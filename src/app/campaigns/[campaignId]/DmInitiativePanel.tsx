@@ -250,8 +250,11 @@ export function DmInitiativePanel({
                 disabled={busy || entry.kind !== "pc" || index === encounter.turnIndex}
                 onClick={() => void send({ op: "goto", id: entry.id })}
                 title={entry.kind === "pc" ? "Give them the turn" : "The turn rests on players only"}
+                // Room for a name before the row's buttons: with no floor the
+                // four of them squeezed it to its first letter in the side
+                // panel; now they wrap under it instead.
                 className={cn(
-                  "min-h-9 min-w-0 flex-1 truncate text-left text-xs disabled:cursor-default",
+                  "min-h-9 min-w-[8rem] flex-1 truncate text-left text-xs disabled:cursor-default",
                   index === encounter.turnIndex ? "text-amber-100" : "text-stone-300",
                   entry.kind === "pc" && index !== encounter.turnIndex && "hover:text-amber-200",
                 )}
