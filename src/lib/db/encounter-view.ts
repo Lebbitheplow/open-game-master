@@ -8,7 +8,7 @@ import { enemyActedThisRound, isSurprised } from "@/lib/dm/can-act";
 import { getCampaignById } from "@/lib/db/campaigns";
 import { dmPlaysTurn } from "@/lib/dm/companion-command";
 import { aiRunsTestTable } from "@/lib/workshop/test-seats-logic";
-import { freshLastHit, heaviestHit, type LastHit } from "@/lib/dm/last-hit";
+import { heaviestHit, hitIdOf, openHits, type LastHit } from "@/lib/dm/last-hit";
 import { conditionNote, conditionNoteLine, namesLookup } from "@/lib/battlemap/condition-notes";
 import { healthState, type HealthState } from "@/lib/bestiary/health";
 import { creatureTypeOf } from "@/lib/bestiary/creature-type";
@@ -144,9 +144,9 @@ export type PublicEncounter = {
   // server (src/lib/dm/combatant.ts). Absent when everyone is on their
   // kind's side; a combatant hidden from this viewer is left out.
   sides?: Record<string, CombatSide>;
-  // The attacks a reaction may still answer (src/lib/dm/last-hit.ts): one
-  // per character hit this turn, while the engine would accept a reaction
-  // to it. Absent keys mean nothing to answer.
+  // The attacks a reaction may still answer (src/lib/dm/last-hit.ts): every
+  // hit still open on each character, oldest first, while the engine would
+  // accept a reaction to it. Absent keys mean nothing to answer.
   lastHits?: PublicLastHit[];
 };
 
@@ -184,6 +184,10 @@ export type PublicTurn = {
 };
 
 export type PublicLastHit = {
+  // The hit's id, which a reaction card sends to answer this hit and no
+  // other (use_reaction's `hit`). Absent from an older host, which kept one
+  // hit per character.
+  id?: string;
   characterId: string;
   attacker: string;
   // The enemy that made it, when the player may know it (not hidden).
@@ -270,6 +274,7 @@ function lastHitView(record: LastHit, hidden: Set<string>, showNumbers: boolean)
   const index = heaviestHit(record.swings);
   const answered = index >= 0 ? record.swings[index] : null;
   return {
+    id: hitIdOf(record),
     characterId: record.characterId,
     attacker: record.attacker.name,
     attackerId: attackerId && (showNumbers || !hidden.has(attackerId)) ? attackerId : null,
@@ -491,14 +496,8 @@ export function activePublicEncounter(
   }
   const map = getBattleMapForEncounter(encounter.id);
   // Only records a reaction may still answer: the engine's own freshness
-  // rule (same round and turn), asked per character in the order.
-  const lastHits = encounter.order.flatMap((entry) => {
-    if (entry.kind !== "pc") {
-      return [];
-    }
-    const record = freshLastHit(campaignId, entry.characterId);
-    return record ? [record] : [];
-  });
+  // rule, asked per character in the order, every open hit of each.
+  const lastHits = encounter.order.flatMap((entry) => (entry.kind === "pc" ? openHits(campaignId, entry.characterId) : []));
   return publicEncounter(encounter, listEnemies(encounter.id), {
     ...options,
     lastHits,

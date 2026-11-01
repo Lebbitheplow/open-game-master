@@ -31,7 +31,7 @@ import { classLevelFor } from "@/lib/srd/multiclass";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { rollCard } from "@/lib/dm/roll-card";
-import { freshLastHit, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
+import { freshLastHit, heaviestRaw, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { settleLastHit } from "@/lib/dm/reaction-refund";
 import { pcResistances, removeConditions } from "@/lib/dm/condition-logic";
 import { HOLDING_ON, PRONE, UNCONSCIOUS, exhaustionPatch } from "@/lib/dm/vitals-logic";
@@ -61,11 +61,7 @@ const has = (conditions: string[], name: string) => conditions.some((entry) => e
 
 // The fresh damage on a character that a reaction to it can still answer.
 function damageOn(campaignId: string, target: CharacterSheet, label: string): LastHit | null {
-  const record = freshLastHit(campaignId, target.id);
-  if (!record || record.answered.includes(label)) {
-    return null;
-  }
-  return record.swings.some((swing) => swing.hit && swing.raw > 0) ? record : null;
+  return freshLastHit(campaignId, target.id, (hit) => !hit.answered.includes(label) && hit.swings.some((swing) => swing.hit && swing.raw > 0));
 }
 
 // Damage taken off a record, the heaviest blow first.
@@ -95,8 +91,8 @@ function publishSheet(campaign: Campaign, id: string) {
 
 // Whether the hit just recorded is the one that dropped them to 0.
 function droppedByFreshHit(campaignId: string, sheet: CharacterSheet): boolean {
-  const record = freshLastHit(campaignId, sheet.id);
-  return Boolean(record && record.before.currentHp > 0 && sheet.currentHp <= 0 && !sheet.deathSaves?.dead);
+  const record = sheet.currentHp <= 0 ? freshLastHit(campaignId, sheet.id, (hit) => hit.before.currentHp > 0) : null;
+  return Boolean(record && !sheet.deathSaves?.dead);
 }
 
 export function planCounterReaction(input: Input): Plan | ToolError | null {
@@ -178,8 +174,8 @@ export function planCounterReaction(input: Input): Plan | ToolError | null {
       if (!armed) {
         return { error: `Warding Maneuver needs ${sheet.name} wielding a melee weapon or a shield. Nothing was spent.`, refused: "rules" };
       }
-      const record = freshLastHit(campaign.id, target.id);
-      const index = record && record.source === "attack" && !record.answered.includes("warding maneuver")
+      const record = freshLastHit(campaign.id, target.id, (hit) => hit.source === "attack" && !hit.answered.includes("warding maneuver") && hit.swings.some((swing) => swing.hit), (hit) => heaviestRaw(hit));
+      const index = record
         ? record.swings.reduce((best, swing, at) => (swing.hit && (best < 0 || swing.raw > record.swings[best].raw) ? at : best), -1)
         : -1;
       if (!record || index < 0) {
@@ -229,7 +225,7 @@ export function planCounterReaction(input: Input): Plan | ToolError | null {
     case "sub_strength_before_death":
       return {
         apply: () => {
-          const record = freshLastHit(campaign.id, sheet.id);
+          const record = freshLastHit(campaign.id, sheet.id, (hit) => hit.before.currentHp > 0);
           const now = getSheetById(sheet.id) ?? sheet;
           const keepProne = Boolean(record && has(record.before.conditions, PRONE));
           const cleared = removeConditions(now.conditions, now.conditionMeta, keepProne ? [UNCONSCIOUS] : [UNCONSCIOUS, PRONE]);

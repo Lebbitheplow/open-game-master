@@ -33,11 +33,23 @@ const HAND_BONUS_ATTACKS = ["martial arts", "frenzy", "feature"] as const;
 const HAND_OPEN_HAND = ["prone", "push", "no reactions"] as const;
 
 export const handIntentExtras = {
-  // A reaction card: the feature or reaction spell use_reaction resolves.
+  // A reaction card: the feature or reaction spell use_reaction resolves,
+  // and the hit it answers when its character has several open (issue 685),
+  // use_reaction's `hit`.
   feature: text(80).optional(),
+  hit: text(120).optional(),
   // A resource's variant: "flurry of blows", "patient defense", "step of the
-  // wind"; a restoration spell's condition to end (cast_buff variant).
+  // wind"; a restoration spell's condition to end (cast_buff variant); the
+  // creature a summoning spell calls ("Wolf", issue 685).
   variant: text(40).optional(),
+  // How many of that creature, cast_buff's `count`: one of the numbers the
+  // spell lets its caster choose (Conjure Animals' one, two, four or eight).
+  count: z.number().int().min(1).max(40).optional(),
+  // A summoning whose targets each take their own form, cast_buff's `mix`:
+  // Animate Dead's skeletons and zombies, Animate Objects' sizes.
+  mix: z.array(z.object({ variant: text(40), count: z.number().int().min(1).max(40) })).min(1).max(6).optional(),
+  // A ritual spell cast as one (no slot, ten minutes longer).
+  ritual: z.boolean().optional(),
   // A save spell's chosen form, cast_at_enemy's `condition`: Command's word,
   // Eyebite's form, Bestow Curse's curse, "armor" for Heat Metal.
   condition: text(40).optional(),
@@ -109,7 +121,11 @@ export type HandAttackArgs = {
 
 export type HandIntentExtras = {
   feature?: string;
+  hit?: string;
   variant?: string;
+  count?: number;
+  mix?: Array<{ variant: string; count: number }>;
+  ritual?: boolean;
   condition?: string;
   bonus?: boolean;
   trigger?: string;
@@ -133,7 +149,11 @@ export type HandShare = { id: string; name?: string; count: number };
 export function handExtraArgs(intent: HandIntentExtras): string[] {
   const args: string[] = [];
   if (intent.feature) args.push(`feature=${intent.feature}`);
+  if (intent.hit) args.push(`hit=${intent.hit}`);
   if (intent.variant) args.push(`variant=${intent.variant}`);
+  if (intent.count) args.push(`count=${intent.count}`);
+  if (intent.mix?.length) args.push(`mix=${intent.mix.map((entry) => `${entry.count} ${entry.variant}`).join(" + ")}`);
+  if (intent.ritual) args.push("ritual=true");
   if (intent.condition) args.push(`condition=${intent.condition}`);
   if (intent.bonus) args.push("bonus=true");
   if (intent.trigger) args.push(`trigger=${intent.trigger}`);

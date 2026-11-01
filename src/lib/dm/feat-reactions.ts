@@ -15,7 +15,7 @@ import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { addSheetCondition } from "@/lib/dm/action-common";
 import { tilesBetween } from "@/lib/dm/attack-spatial";
 import { removeConditions } from "@/lib/dm/condition-logic";
-import { attackerFoeId, freshLastHit, type SwingRecord } from "@/lib/dm/last-hit";
+import { attackerFoeId, freshLastHit, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { READIED } from "@/lib/dm/object-actions";
 import { handlePcAttack } from "@/lib/dm/pc-attack";
 import { settle, spendReaction, SPENT, type Ctx } from "@/lib/dm/reaction-tools";
@@ -38,7 +38,11 @@ export function defensiveDuelist(ctx: Ctx): ToolResult {
       refused: "rules",
     };
   }
-  const record = freshLastHit(campaign.id, sheet.id);
+  // Of several open hits, a melee hit it can still answer; failing that the
+  // latest, whose refusal says why.
+  const fits = (hit: LastHit) =>
+    hit.source === "attack" && attackerFoeId(hit) !== null && !hit.ranged && !hit.answered.includes("defensive duelist") && hit.swings.some((swing) => swing.hit);
+  const record = freshLastHit(campaign.id, sheet.id, fits) ?? freshLastHit(campaign.id, sheet.id);
   if (!record || record.source !== "attack" || attackerFoeId(record) === null) {
     return { error: `Defensive Duelist answers a melee weapon attack that just hit ${sheet.name}, and the server has no such attack on record. Nothing was spent.`, refused: "rules" };
   }
@@ -132,8 +136,7 @@ export function sentinel(ctx: Ctx): ToolResult {
     if (ally.id === sheet.id) {
       return false;
     }
-    const record = freshLastHit(campaign.id, ally.id);
-    return record?.source === "attack" && attackerFoeId(record) !== null && record.attacker.id === args.targetEnemyId;
+    return freshLastHit(campaign.id, ally.id, (hit) => hit.source === "attack" && attackerFoeId(hit) !== null && hit.attacker.id === args.targetEnemyId) !== null;
   });
   if (!struckAlly) {
     return { error: `Sentinel answers an attack on someone other than ${sheet.name}, and the server has no such attack by that creature on record. Nothing was spent.`, refused: "rules" };
@@ -201,7 +204,8 @@ export function lucky(ctx: Ctx): ToolResult {
   if (luckPointsLeft(fresh.resources) === 0) {
     return { error: `${sheet.name} has no luck point to spend${sheet.feats.some((feat) => isNamed(feat, "lucky", "fortunate")) ? " (they come back with a long rest)" : ": Lucky is not among their feats"}. Nothing was spent.`, refused: "rules" };
   }
-  const record = freshLastHit(campaign.id, sheet.id);
+  const fits = (hit: LastHit) => hit.source === "attack" && attackerFoeId(hit) !== null && !hit.answered.includes("lucky") && hit.swings.some((swing) => swing.hit);
+  const record = freshLastHit(campaign.id, sheet.id, fits) ?? freshLastHit(campaign.id, sheet.id);
   if (!record || record.source !== "attack" || attackerFoeId(record) === null) {
     return { error: `Lucky answers an attack that just hit ${sheet.name}, and the server has no such attack on record. Nothing was spent.`, refused: "rules" };
   }

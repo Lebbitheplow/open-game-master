@@ -32,6 +32,9 @@ import type { PreparedEncounter } from "@/app/workshop/encounters/types";
 export type TestFightInfo = {
   ready: boolean;
   reason: string;
+  // Set when the server's "Who may start campaigns and workshops" keeps this
+  // person from starting one; an older host leaves it out.
+  refused?: string;
   standIns: { size: number; level: number; classes: string[] };
   open: { id: string; title: string; createdAt: string } | null;
 };
@@ -187,7 +190,7 @@ export function TestFightSheet({
   const full = picked.length >= TARGET_PARTY_LIMITS.size.max;
   const alliesFull = allies.length >= TEST_ALLY_LIMIT;
   const standIns = info?.standIns;
-  const canStart = Boolean(info) && !busy && (who === "stand-ins" || picked.length > 0);
+  const canStart = Boolean(info) && !info?.refused && !busy && (who === "stand-ins" || picked.length > 0);
 
   // One character to tick, a card the whole of which is its label. An ally
   // wears the word, so the two lists never read as one.
@@ -332,7 +335,12 @@ export function TestFightSheet({
 
         {/* Who runs it is a question only where an AI DM could; with none,
             the author does, and the note says so. */}
-        {info?.ready ? (
+        {info?.refused ? (
+          <p className="flex items-start gap-2 rounded-lg border border-stone-700/60 bg-stone-950/40 px-3 py-2 text-xs text-stone-300" data-testid="test-fight-refused">
+            <GameIcon icon={{ kind: "glyph", key: "ui-ai" }} size="size-5" className="shrink-0" />
+            {info.refused}
+          </p>
+        ) : info?.ready ? (
           <fieldset className="space-y-2">
             <legend className={legend}>Who runs it</legend>
             {radio(

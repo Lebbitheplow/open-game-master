@@ -3,7 +3,7 @@ import { getTemplateSetup, listEncounterTemplates, setTemplateCued, type Encount
 import { layFightSetup } from "@/lib/workshop/fight-setup";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getPreparedMap } from "@/lib/db/prepared-maps";
-import { describeExtras, formatRoster, rosterSummary } from "@/lib/dm/encounter-template-logic";
+import { describeExtras, formatRoster, rosterSummary, savedMapNote } from "@/lib/dm/encounter-template-logic";
 import { preparedFit } from "@/lib/dm/prepared-fit";
 import { fightingParty } from "@/lib/dm/party-budget";
 import { applyTemplateExtras, applyTemplateMap } from "@/lib/dm/template-apply";
@@ -200,6 +200,6 @@ export function runPreparedEncounter(
       : {}),
     ...(plan.length ? { plan } : {}),
     ...(opened.length ? { fightEvents: firedEventsNote(opened) } : {}),
-    ...(mapError ? { mapNote: `Its saved map could not be used (${mapError}); the fight is on a generated one.` } : {}),
+    ...(mapError ? { mapNote: savedMapNote(mapError) } : {}),
   };
 }

@@ -31,8 +31,12 @@ export function reactingSheet(
   if (timing === "after") {
     return { sheet, beforeDrop: false };
   }
-  const answering = freshLastHit(campaignId, sheet.id);
-  const before = answering && answering.before.currentHp > 0 && sheet.currentHp <= 0 ? answering.before : null;
+  // Of several open hits, the one that dropped them (a later one found them
+  // already down), unless the call is aimed at another (last-hit.ts
+  // withHitAim): a reaction to a blow that landed on them down is asked of
+  // them down.
+  const answering = sheet.currentHp <= 0 ? freshLastHit(campaignId, sheet.id, (hit) => hit.before.currentHp > 0) : null;
+  const before = answering ? answering.before : null;
   return before
     ? {
         sheet: { ...sheet, currentHp: before.currentHp, conditions: before.conditions, deathSaves: before.deathSaves },

@@ -31,7 +31,7 @@ import { computeSheetDerived } from "@/lib/srd";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { addSheetCondition } from "@/lib/dm/action-common";
 import { removeConditions } from "@/lib/dm/condition-logic";
-import { attackerFoeId, freshLastHit, writeLastHit, type SwingRecord } from "@/lib/dm/last-hit";
+import { attackerFoeId, freshLastHit, writeLastHit, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { COMMANDED, GRAPPLING_STRIKE, MANEUVERED, SUPERIORITY_STRIKE, maneuverDieFor, markedDie, maneuverUse } from "@/lib/dm/maneuver-rules";
 import { applyDmMutation } from "@/lib/dm/mutations";
 import { READIED } from "@/lib/dm/object-actions";
@@ -111,12 +111,18 @@ export function maneuverReaction(ctx: Ctx): Record<string, unknown> | null {
 
 function parry(ctx: Ctx): ToolResult {
   const { campaign, sheet } = ctx;
-  const record = freshLastHit(campaign.id, sheet.id);
   // The heaviest melee hit, read swing by swing: a routine's last swing
-  // (record.ranged) may be a shot while a blade hit before it.
-  const index = record && record.source === "attack" && attackerFoeId(record) !== null && !record.answered.includes("parry")
-    ? heaviest(record.swings, (swing) => !(swing.ranged ?? record.ranged))
-    : -1;
+  // (record.ranged) may be a shot while a blade hit before it. Of several
+  // open hits, the one with the heaviest such blow.
+  const melee = (hit: LastHit) => (swing: SwingRecord) => !(swing.ranged ?? hit.ranged);
+  const blow = (hit: LastHit) => heaviest(hit.swings, melee(hit));
+  const record = freshLastHit(
+    campaign.id,
+    sheet.id,
+    (hit) => hit.source === "attack" && attackerFoeId(hit) !== null && !hit.answered.includes("parry") && blow(hit) >= 0,
+    (hit) => hit.swings[blow(hit)]?.raw ?? -1,
+  );
+  const index = record ? blow(record) : -1;
   if (!record || index < 0) {
     return noHit(sheet.name, "Parry", "damage from a melee attack");
   }
@@ -148,10 +154,9 @@ function reactionStrike(ctx: Ctx, label: "Riposte" | "Brace"): ToolResult {
   const { campaign, sheet } = ctx;
   let enemyId = ctx.args.targetEnemyId ?? null;
   if (label === "Riposte") {
-    const record = freshLastHit(campaign.id, sheet.id);
-    const missed = record && record.source === "attack" && !record.ranged && attackerFoeId(record) !== null && record.attacker.id
-      && !record.answered.includes("riposte") && record.swings.some((swing) => !swing.hit);
-    if (!record || !missed) {
+    const record = freshLastHit(campaign.id, sheet.id, (hit) => Boolean(hit.source === "attack" && !hit.ranged && attackerFoeId(hit) !== null && hit.attacker.id
+      && !hit.answered.includes("riposte") && hit.swings.some((swing) => !swing.hit)));
+    if (!record || !record.attacker.id) {
       return noHit(sheet.name, "Riposte", "a melee attack that missed them");
     }
     enemyId = record.attacker.id;

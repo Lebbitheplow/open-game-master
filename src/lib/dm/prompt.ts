@@ -195,6 +195,10 @@ export type DmEncounterState = {
   // `round`: the round the current character's turn is in, the next one
   // when the enemies due close this one.
   enemiesDue?: { before: string; enemies: Array<{ enemyId: string; name: string }>; round: number };
+  // The hits a reaction may still answer, by character (turn.ts
+  // openHitsForState); `ai` marks a companion nobody commands, whose
+  // reactions are the AI's. Absent when none are open.
+  openHits?: Array<{ characterId: string; name: string; ai: boolean; hits: Array<{ hitId: string; what: string }> }>;
   // A lair fight's printed options, numbered as lair_action takes them
   // (src/lib/dm/legendary-tools.ts); absent when the lair prints none.
   lairOptions?: string[];
@@ -690,7 +694,7 @@ export function describeSheet(
     // What it shrugs off, so the damage the DM routes at it carries a type.
     const defenses = defenseWords(pet);
     lines.push(
-      `  Pet: ${pet.name} (${pet.form}, ${pet.kind.replaceAll("_", " ")}): ${pet.hp}/${pet.maxHp} HP, AC ${pet.ac}, speed ${pet.speed} ft.${attacks}${defenses ? ` Defenses: ${defenses}.` : ""}${pet.notes ? ` ${pet.notes}` : ""}`,
+      `  Pet: ${pet.name} (${pet.form}, ${pet.creatureType ? `a ${pet.creatureType} ` : ""}${pet.kind.replaceAll("_", " ")}): ${pet.hp}/${pet.maxHp} HP, AC ${pet.ac}, speed ${pet.speed} ft.${attacks}${defenses ? ` Defenses: ${defenses}.` : ""}${pet.notes ? ` ${pet.notes}` : ""}`,
     );
   }
   // A creature a spell made: its stat block's attacks and how it ends
@@ -1079,6 +1083,15 @@ export function buildGameStateBlock(state: DmGameState): string {
         const name = encounter.awaitingPlayer;
         lines.push(
           `Waiting on ${name}'s player: they have not declared an action this turn. Set the scene and ask what ${name} does; the server refuses any action or end_turn for ${name} until they do.`,
+        );
+      }
+      if (encounter.openHits?.length) {
+        const who = encounter.openHits.map(
+          (entry) =>
+            `${entry.name} [characterId=${entry.characterId}${entry.ai ? ", yours to react for" : ""}]: ${entry.hits.map((hit) => `hitId=${hit.hitId} ${hit.what}`).join("; ")}`,
+        );
+        lines.push(
+          `Open hits a reaction may still answer (use_reaction; name the one answered in hit when a character has several): ${who.join(". ")}. A player's character, and a companion a player commands, reacts only when their player says so. A companion marked yours to react for is played by you: when a reaction on its sheet fits (Shield, Uncanny Dodge, Parry, Protection for an ally), you may take it with use_reaction and its characterId.`,
         );
       }
     } else {

@@ -36,6 +36,7 @@ import {
   SkillRows,
   VitalTiles, TrainingLines } from "@/components/sheet/SheetParts";
 import { SheetSpells } from "@/components/sheet/SheetSpells";
+import { SummonDoor } from "@/app/campaigns/[campaignId]/SummonDoor";
 import { DefensesLine, HitDiceSpend, StateTags } from "@/components/sheet/SheetState";
 import { SheetBetween } from "@/components/sheet/SheetBetween";
 import { conditionDetail, hitDiceLine, itemStatus, maxHpView, otherSpeedsLine, speedView, wearableGear } from "@/components/sheet/sheet-state";
@@ -445,6 +446,8 @@ export function CharacterSheetDialog({
               ) : null}
               <div className="reveal mt-3">
                 <SheetSpells sheet={sheet} editable={mine} />
+                {/* Summoning spells cast from here, the creature picked (issue 685). */}
+                <SummonDoor sheet={sheet} mine={mine} inCombat={inCombat} />
               </div>
             </SheetBlock>
           ) : null}

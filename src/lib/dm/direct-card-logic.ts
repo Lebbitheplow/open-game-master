@@ -6,7 +6,8 @@
 // them is the same one.
 //
 // - A spell that makes creatures: cast_buff brings them in with their stat
-//   blocks (summon-cast.ts), the creature named in `variant`.
+//   blocks (summon-cast.ts), the creature named in `variant` and how many in
+//   `count`, both picked on the card (src/lib/battlemap/hand-summon.ts).
 // - A spell with nothing to roll (a utility spell): use_spell_slot spends the
 //   slot and starts its concentration, which is all the engine does for it.
 // - A lasting area laid on the battle map (Web, Moonbeam, Fog Cloud): laid
@@ -48,14 +49,41 @@ function lastingLaid(intent: MessageIntent, pick: LastingPick): boolean {
 }
 
 // A spell that makes creatures, cast whole: the creature is the card's
-// variant, or the only one the spell makes (Unseen Servant). Conjure
-// Animals' beasts are the GM's to choose (SRD 5.1), so a card that names
-// none stays with them.
+// variant, or the only one the spell makes (Unseen Servant), and its number
+// the card's count (the most the slot allows when it names none); a
+// per-target spell's forms come as its mix (Animate Dead's skeletons and
+// zombies). The Hand and the sheet's summoning door ask for them (issue
+// 685); a card that names no creature (an older screen, an agent) stays with
+// the GM, who picks it.
+//
+// A summoning of a minute or more in a fight is begun first (SRD 5.1,
+// Longer Casting Times): a card with no creature begins it through
+// use_spell_slot, which holds it across the caster's turns, and the card
+// that finishes it names the creature, which cast_buff brings as the cast
+// guard completes the casting.
 export function summonCall(intent: MessageIntent, characterId: string, context: DirectContext): DirectCall | null {
-  if (!intent.spell || !context.summon || (context.summon === "choose" && !intent.variant)) {
+  if (!intent.spell || !context.summon) {
     return null;
   }
-  return { name: "cast_buff", args: { characterId, spell: intent.spell, ...level(intent), ...(intent.variant ? { variant: intent.variant } : {}) } };
+  const mix = intent.mix?.length ? intent.mix : null;
+  const ritual = intent.ritual ? { ritual: true } : {};
+  if (context.long && context.inFight && !intent.variant && !mix) {
+    return { name: "use_spell_slot", args: { characterId, spell: intent.spell, ...level(intent), ...ritual } };
+  }
+  if (context.summon === "choose" && !intent.variant && !mix) {
+    return null;
+  }
+  return {
+    name: "cast_buff",
+    args: {
+      characterId,
+      spell: intent.spell,
+      ...level(intent),
+      ...(mix ? { mix } : intent.variant ? { variant: intent.variant } : {}),
+      ...(!mix && intent.count ? { count: intent.count } : {}),
+      ...ritual,
+    },
+  };
 }
 
 // A lasting area's card. Undefined for a buff that lays one (Spirit

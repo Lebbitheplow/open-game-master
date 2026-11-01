@@ -1,7 +1,7 @@
 "use client";
 
 import { Eye, EyeOff, Hand, Loader2, Send } from "lucide-react";
-import { memo, useEffect, useId, useMemo, useRef, type ReactNode } from "react";
+import { memo, useEffect, useId, useMemo, useRef, type ComponentProps, type ReactNode } from "react";
 import type { Dispatch, FormEvent, RefObject, SetStateAction } from "react";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
@@ -15,7 +15,8 @@ import { SideNotice } from "@/app/campaigns/[campaignId]/SideBadge";
 import { TableWaitBanner } from "@/app/campaigns/[campaignId]/TableWaitBanner";
 import { Hand as CombatHand } from "@/app/campaigns/[campaignId]/Hand";
 import { MonsterHand } from "@/app/campaigns/[campaignId]/MonsterHand";
-import { commandedCharacters, gmTurnCompanion, gmTurnDominated } from "@/lib/player-characters";
+import { commandedCharacters, companionReactors, gmTurnCompanion, gmTurnDominated } from "@/lib/player-characters";
+import { ReactAsPicker } from "@/app/campaigns/[campaignId]/ReactAsPicker";
 import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 import { NewAdventurerBanner } from "@/app/campaigns/[campaignId]/NewAdventurerBanner";
 import {
@@ -107,6 +108,7 @@ function ComposerInner({
   onCaptureStory,
   onSnoozeStory,
   onSubmit,
+  speakingAs,
 }: {
   campaignId: string;
   sheets: CampaignState["sheets"];
@@ -178,6 +180,8 @@ function ComposerInner({
   onCaptureStory: () => void;
   onSnoozeStory: () => void;
   onSubmit: (event: FormEvent) => void;
+  // Speaking as, for a reaction typed in the box (ReactAsPicker).
+  speakingAs?: ComponentProps<typeof ReactAsPicker>;
 }) {
   // The Hand outlives the fight by one beat so its fold-away can play.
   const hand = useLingeringEncounter(encounter);
@@ -213,6 +217,9 @@ function ComposerInner({
   // may take (a test fight a person runs): a hit hero answers under the
   // monsters' hand.
   const ownsHeroes = isDm && sheets.some((sheet) => sheet.userId === meUserId && !sheet.isCompanion);
+  // And the companions nobody commands, whose reactions the seat plays at a
+  // table a person runs as it plays their turns (issue 685).
+  const answersForCompanions = gmCompanions && hostOffers(capabilities, "companionReactions") && companionReactors(sheets, meUserId, undefined, true).length > 0;
   // The box speaks for whoever's turn it is: the hero's coming up (or the
   // table opening on it) turns it to Do, and the turn passing on turns Do or
   // Say back to Narrate, so text typed after the turn moved is never sent in
@@ -311,8 +318,9 @@ function ComposerInner({
             genre={genre}
           />
         ) : null}
-        {(partyHand || ownsHeroes) && hand.encounter ? (
+        {(partyHand || ownsHeroes || answersForCompanions) && hand.encounter ? (
           <CombatHand
+            onComposeAs={speakingAs?.onChange}
             reactionsOnly={!partyHand}
             runsTable={gmCompanions}
             runsDominated={gmDominated}
@@ -396,6 +404,7 @@ function ComposerInner({
             monsters={(encounter?.enemies ?? []).filter((enemy) => enemy.status === "alive").map((enemy) => ({ id: enemy.id, name: enemy.name }))}
           />
         ) : null}
+        {kind === "do" && speakingAs?.reactors.length ? <ReactAsPicker {...speakingAs} /> : null}
         {kind === "lead" && steersStory ? (
           <div className="reveal mb-2 flex flex-wrap items-center gap-1.5">
             <DirectorPresets campaignId={campaignId} romance={romanceCue} />

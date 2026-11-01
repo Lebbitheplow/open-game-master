@@ -183,6 +183,24 @@ export function aiTurnNamedBySeat(campaign: Campaign, userId: string, characterI
   return getSheetById(characterId);
 }
 
+// A companion nobody commands whose reaction a person in the GM seat plays
+// between its turns, at a table a person runs (issue 685): one fighting now,
+// as gmCompanionTurn hands that seat its turns. Null at a table the AI runs,
+// whose GM plays it, and for a companion a player commands, who plays it.
+export function gmCompanionReactor(campaign: Campaign, userId: string, characterId: string): CharacterSheet | null {
+  const seats = campaignSeats(campaign);
+  if (!hasHumanDm(seats) || !isDmSeat(seats, userId)) {
+    return null;
+  }
+  const encounter = getActiveEncounter(campaign.id);
+  const entry = encounter?.order.find((candidate) => candidate.kind === "pc" && candidate.characterId === characterId);
+  if (entry?.kind !== "pc" || !isCompanionUserId(entry.userId)) {
+    return null;
+  }
+  const sheet = getSheetById(characterId);
+  return sheet?.isCompanion && sheet.campaignId === campaign.id && dmPlaysTurn(campaign, entry) ? sheet : null;
+}
+
 // The player a companion joining this table follows in fights: the one
 // player at a table the AI runs. Nobody (the DM) when a person narrates,
 // when several players share the table, and for a guest who comes for one

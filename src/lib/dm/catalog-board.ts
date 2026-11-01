@@ -26,12 +26,31 @@ export const BOARD_ADJUDICATIONS: CatalogEntry[] = [
         ],
       },
       {
+        name: "creatureType",
+        label: "Familiar's kind",
+        kind: "select",
+        options: [
+          { value: "celestial", label: "Celestial" },
+          { value: "fey", label: "Fey" },
+          { value: "fiend", label: "Fiend" },
+        ],
+        onlyWhen: { field: "kind", equals: ["familiar"] },
+        host: { feature: "summonPicker" },
+        help: "What the familiar is instead of a beast (Find Familiar: the caster's choice). Empty: celestial.",
+      },
+      {
         name: "form",
         label: "Creature",
-        kind: "text",
+        // Picked from what the engine takes for the kind (issue 685); a story
+        // pet not in the list is typed behind "Not in the list".
+        kind: "petForm",
         required: true,
         placeholder: "owl",
-        help: "A story pet named for an SRD creature or one of your workshop monsters takes its stat block.",
+        help: "A story pet named for an SRD creature or one of this table's monsters takes its stat block; one not in the list takes its hit points and AC below.",
+        host: {
+          feature: "summonPicker",
+          older: { label: "Creature", kind: "text", help: "A story pet named for an SRD creature or one of your workshop monsters takes its stat block." },
+        },
       },
       { name: "name", label: "Name", kind: "text", help: "Blank uses the creature's own." },
       {

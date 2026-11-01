@@ -14,7 +14,8 @@ import {
 } from "@/lib/db/campaigns";
 import { countMessages, insertCampaignMessage, listRecentMessages } from "@/lib/db/messages";
 import { getSheetById, getSheetForUser, listSheets } from "@/lib/db/sheets";
-import { aiTurnNamedBySeat, dominatedRefusal, gmCompanionTurn } from "@/lib/dm/companion-command";
+import { aiTurnNamedBySeat, commandedSheet, dominatedRefusal, gmCompanionReactor, gmCompanionTurn } from "@/lib/dm/companion-command";
+import { openHits } from "@/lib/dm/last-hit";
 import { aiTurnRefusal } from "@/lib/workshop/test-seats-logic";
 import { heroFell } from "@/lib/characters/fallen-logic";
 import { answerSpotlight } from "@/lib/dm/spotlight-answer";
@@ -30,7 +31,7 @@ import { runResumeRecap } from "@/lib/dm/recap";
 import { RECAP_AFTER_MS } from "@/lib/dm/session-hold-logic";
 import { sessionHoldOn } from "@/lib/dm/session-hold";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
-import { directCardCalls, parseMessageIntent } from "@/lib/dm/intent-logic";
+import { TYPED_REACTION, directCardCalls, isTypedReaction, parseMessageIntent } from "@/lib/dm/intent-logic";
 import { directContextFor } from "@/lib/dm/direct-context";
 import { addressesDm } from "@/lib/dm/ooc-question";
 import { spokenLine } from "@/lib/dm/speech";
@@ -65,6 +66,12 @@ const actionSchema = z.object({
       next: z.string().trim().min(1).max(120),
     })
     .optional(),
+  // Words typed for a hero's reaction (issue 685): the composer's Speaking
+  // as names the hero, the one whose turn it is or another of theirs. Taken
+  // off the hero's turn as a reaction card is, while a hit is open and their
+  // reaction unspent, and marked as a reaction so it is no word on their own
+  // turn. Never with a card.
+  reaction: z.boolean().optional(),
 });
 
 function fallenRefusal(name: string): string {
@@ -95,7 +102,15 @@ export async function POST(
   // own. Named by the card, never assumed.
   const companionTurn = gmCompanionTurn(campaign, user.id);
   const namedId = raw && typeof raw === "object" ? (raw as { characterId?: unknown }).characterId : undefined;
-  const playsCompanion = companionTurn && namedId === companionTurn.id ? companionTurn : null;
+  // Between its turns, the same seat plays that companion's reaction cards
+  // (issue 685): its Shield, its Parry, its Protection for an ally.
+  // Held to a reaction card below, once the body is read.
+  const rawIntent = raw && typeof raw === "object" ? (raw as { intent?: unknown }).intent : undefined;
+  const companionReactor =
+    !(companionTurn && namedId === companionTurn.id) && parseMessageIntent(rawIntent)?.card === "reaction" && typeof namedId === "string"
+      ? gmCompanionReactor(campaign, user.id, namedId)
+      : null;
+  const playsCompanion = companionTurn && namedId === companionTurn.id ? companionTurn : companionReactor;
   // At a table the AI runs, that turn is the AI's: the steering seat is told
   // so, rather than "You need a character to act" (test-seats-logic.ts).
   const aiTurn = raw && typeof raw === "object" && (raw as { kind?: unknown }).kind !== "ooc" ? aiTurnNamedBySeat(campaign, user.id, namedId) : null;
@@ -147,7 +162,14 @@ export async function POST(
   if (held) {
     return Response.json({ error: held, dominated: true }, { status: 409 });
   }
-  const intent = kind === "do" ? parseMessageIntent(parsed.data.intent) : null;
+  const played = kind === "do" ? parseMessageIntent(parsed.data.intent) : null;
+  // Words typed as a reaction carry the reaction mark a card carries, and a
+  // reaction card naming nothing to resolve is held to the same checks.
+  const typedReaction = kind === "do" && (isTypedReaction(played) || (!played && parsed.data.reaction === true));
+  const intent = typedReaction ? TYPED_REACTION : played;
+  if (companionReactor && intent?.card !== "reaction") {
+    return Response.json({ error: `${companionReactor.name} acts on their own turn; between turns only their reaction cards are played.` }, { status: 409 });
+  }
   // Floor control: during a spotlight only the named players may act (ooc is
   // always allowed); the floor releases once ALL of them have answered.
   // During a hold nobody may act until the lead releases. This read-modify-
@@ -158,6 +180,27 @@ export async function POST(
   // The same holds while a person plays the enemies' turns under a hold
   // (src/lib/dm/enemies-due.ts): that is when a Shield or an opportunity
   // attack is wanted most.
+  // Words typed for a hero's reaction (the composer's Speaking as) are held to
+  // what a reaction card is: a hit still open in the fight (on them, or on an
+  // ally a reaction of theirs covers) and their reaction unspent. Anything
+  // else is the turn's words.
+  if (typedReaction) {
+    const reactor = named && named.campaignId === campaignId ? named : null;
+    const encounterNow = getActiveEncounter(campaignId);
+    const hitOpen = encounterNow?.order.some((entry) => entry.kind === "pc" && openHits(campaignId, entry.characterId).length > 0);
+    if (!reactor || !encounterNow || !hitOpen) {
+      return Response.json(
+        { error: `No hit is open for ${reactor?.name ?? "that character"} to answer now. Send it as the hero whose turn it is, or as table talk.` },
+        { status: 409 },
+      );
+    }
+    if (encounterNow.reactionsUsed.includes(reactor.id)) {
+      return Response.json(
+        { error: `${reactor.name} has already used their reaction; it comes back at the start of their next turn.` },
+        { status: 409 },
+      );
+    }
+  }
   const reactionOffTurn = intent?.card === "reaction" && combatOwnsFloor(floor);
   // The GM playing a companion's turn holds that turn: the floor names the
   // companion, not them.
@@ -228,6 +271,12 @@ export async function POST(
     return Response.json({ error: actor.error, floor }, { status: actor.status });
   }
   const { sheet } = actor;
+  // A companion's reaction from its commander: the server's word on who
+  // commands it (a commander who left, or a companion turned on the party,
+  // commands nobody), not the sheet's field the screen read.
+  if (sheet.isCompanion && !playsCompanion && !commandedSheet(campaign, user.id, sheet.id)) {
+    return Response.json({ error: `${sheet.name} is not under your command; the GM plays them.`, floor }, { status: 409 });
+  }
   // A hero who fell acts no more (issue 655): the composer says so, and a
   // connected agent or an older screen posting for them is told the same,
   // rather than the GM narrating the dead. Table talk stays open.

@@ -33,14 +33,12 @@ export function giantKillerOpen(
   if (!holdsGiantKiller(sheet) || sizeRank(String(enemy.stats.size ?? "Medium")) < LARGE) {
     return false;
   }
-  const record = freshLastHit(campaignId, sheet.id);
-  if (
-    !record ||
-    record.source !== "attack" ||
-    attackerFoeId(record) === null ||
-    record.attacker.id !== enemy.id ||
-    record.answered.includes(GIANT_KILLER)
-  ) {
+  const record = freshLastHit(
+    campaignId,
+    sheet.id,
+    (hit) => hit.source === "attack" && attackerFoeId(hit) !== null && hit.attacker.id === enemy.id && !hit.answered.includes(GIANT_KILLER),
+  );
+  if (!record) {
     return false;
   }
   const apart = tilesBetween(encounterId, sheet.id, enemy.id);
@@ -48,8 +46,8 @@ export function giantKillerOpen(
 }
 
 // The attack it allowed has been made: the record is answered.
-export function spendGiantKiller(campaignId: string, sheetId: string) {
-  const record = freshLastHit(campaignId, sheetId);
+export function spendGiantKiller(campaignId: string, sheetId: string, enemyId?: string) {
+  const record = freshLastHit(campaignId, sheetId, (hit) => !enemyId || hit.attacker.id === enemyId);
   if (record && !record.answered.includes(GIANT_KILLER)) {
     writeLastHit(campaignId, { ...record, answered: [...record.answered, GIANT_KILLER] });
   }

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { currentUser, unauthorized } from "@/lib/auth";
 import { testFightsOf } from "@/lib/db/test-fights";
 import { getWorkshopForUser } from "@/lib/db/workshops";
+import { canCreateCampaigns, TEST_FIGHT_REFUSED } from "@/lib/shared-host";
 import { TARGET_PARTY_LIMITS } from "@/lib/workshop/kind";
 import { standInClasses } from "@/lib/workshop/stand-ins";
 import { TEST_ALLY_LIMIT } from "@/lib/workshop/test-seats-logic";
@@ -64,6 +65,8 @@ export async function GET(
   return Response.json({
     ready: readiness.ready,
     reason: readiness.reason,
+    // Said before the button, so the sheet never offers a start it refuses.
+    refused: canCreateCampaigns(user) ? "" : TEST_FIGHT_REFUSED,
     standIns: { size: party.size, level: party.level, classes: standInClasses(party.size) },
     open: testFightsOf(workshop.id, user.id)[0] ?? null,
   });
@@ -77,6 +80,9 @@ export async function POST(
   const resolved = await resolve(workshopId);
   if (resolved.error) {
     return resolved.error;
+  }
+  if (!canCreateCampaigns(resolved.user)) {
+    return Response.json({ error: TEST_FIGHT_REFUSED }, { status: 403 });
   }
   const parsed = startSchema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) {
@@ -93,7 +99,8 @@ export async function POST(
   if (!outcome.ok) {
     return Response.json({ error: outcome.error }, { status: outcome.status });
   }
-  return Response.json({ ok: true, campaignId: outcome.campaignId });
+  // `mapError`: the fight's saved map could not be laid (the table says so too).
+  return Response.json({ ok: true, campaignId: outcome.campaignId, ...(outcome.mapError ? { mapError: outcome.mapError } : {}) });
 }
 
 export async function DELETE(

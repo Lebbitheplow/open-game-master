@@ -67,6 +67,11 @@ export function speciesName(source: { race: string; raceLabel?: string | null })
 
 // "Bhain Kwai Fighter 3 / Rogue 2": the species and each class with its levels,
 // as a card's second line reads.
-export function speciesAndClassWords(source: ClassWordsSource & { race: string; raceLabel?: string | null }): string {
+export function speciesAndClassWords(source: ClassWordsSource & { race: string; raceLabel?: string | null; summon?: { form: string; creatureType: string; spell: string } | null }): string {
+  // A summoned creature is its form and the kind it was made (Find Steed's
+  // fey warhorse), not the placeholder race and class its sheet carries.
+  if (source.summon) {
+    return `${source.summon.form}${source.summon.creatureType ? `, ${source.summon.creatureType}` : ""}${source.summon.spell ? ` (${source.summon.spell})` : ""}`;
+  }
   return [speciesName(source), classLevelWords(source)].filter(Boolean).join(" ");
 }

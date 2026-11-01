@@ -1,6 +1,6 @@
 "use client";
 
-import { gmTurnCompanion, gmTurnDominated, initiativeCharacter, offTurnReactors, selectedCharacter } from "@/lib/player-characters";
+import { companionReactors, gmTurnCompanion, gmTurnDominated, initiativeCharacter, offTurnReactors, selectedCharacter } from "@/lib/player-characters";
 
 import { ChevronDown, CircleHelp, SlidersHorizontal } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
@@ -16,7 +16,7 @@ import { HandMoreSheet } from "@/app/campaigns/[campaignId]/HandMoreSheet";
 import { HandGroupFace, HandGroupView, fanStep } from "@/app/campaigns/[campaignId]/HandGroups";
 import { useHandLayout } from "@/app/campaigns/[campaignId]/useHandLayout";
 import { HAND_TUTORIAL_ID, HandTutorial } from "@/app/campaigns/[campaignId]/HandTutorial";
-import { useHandSpells } from "@/app/campaigns/[campaignId]/HandSpells";
+import { useHandSpells, useHandSummons } from "@/app/campaigns/[campaignId]/HandSpells";
 import { HandReactPrompt } from "@/app/campaigns/[campaignId]/HandReactPrompt";
 import { HandPips } from "@/app/campaigns/[campaignId]/HandPips";
 import { handTargets } from "@/app/campaigns/[campaignId]/handTargets";
@@ -47,6 +47,7 @@ import type { HandShare } from "@/lib/battlemap/hand-intent";
 import { offeredBoardControl, type BoardControl, type BoardPanel } from "@/lib/addons/board-bridge";
 import { describePick, hasPick, pickHint } from "@/lib/battlemap/hand-area";
 import { reactionAim, reactionCards, withReactions, offTurnReactionCards } from "@/lib/battlemap/hand-react";
+import { readSummonControl, summonBoardControls } from "@/lib/battlemap/hand-summon";
 import { liveNotice, turnCharacterId, turnFromEncounter, turnPips, turnSignature, type HandNotice } from "@/lib/battlemap/hand-table";
 
 import type { TargetEdge } from "@/lib/battlemap/view-tactics";
@@ -141,6 +142,7 @@ function HandInner({
   runsTable = false,
   runsDominated = false,
   reactionsOnly = false,
+  onComposeAs,
 }: {
   campaignId: string;
   sheets: CharacterSheet[];
@@ -179,15 +181,27 @@ function HandInner({
   // on a turn that is not one of theirs, under the monsters' hand. Nothing
   // shows while none is offered.
   reactionsOnly?: boolean;
+  // A card's sentence handed to the message box ("Edit in chat"), with the
+  // hero it speaks for: another hero's reaction card hands that hero, so the
+  // words are sent as theirs (the composer's Speaking as), not as the hero
+  // whose turn it is (issue 685).
+  onComposeAs?: (characterId: string | null) => void;
 }) {
   const turnId = turnCharacterId(encounter);
+  const capabilities = useCapabilities();
+  // A companion's reactions, for its commander or the GM seat that plays it
+  // (issue 685), on a host that takes their cards.
+  const companionsReact = hostOffers(capabilities, "companionReactions");
   const sheet = useMemo(
     () =>
       initiativeCharacter(sheets, meUserId, turnId) ??
       (runsTable && !reactionsOnly ? gmTurnCompanion(sheets, turnId) : null) ??
       (runsDominated && !reactionsOnly ? gmTurnDominated(sheets, turnId, encounter.sides) : null) ??
-      selectedCharacter(sheets, meUserId, activeSheetId),
-    [sheets, meUserId, activeSheetId, turnId, runsTable, runsDominated, reactionsOnly, encounter.sides],
+      selectedCharacter(sheets, meUserId, activeSheetId) ??
+      // The GM seat holding no hero of its own answers for the companions it
+      // plays: the first of them heads its reactions.
+      (reactionsOnly && companionsReact ? (companionReactors(sheets, meUserId, undefined, runsTable)[0] ?? null) : null),
+    [sheets, meUserId, activeSheetId, turnId, runsTable, runsDominated, reactionsOnly, encounter.sides, companionsReact],
   );
   const floorTurn = floor.mode === "initiative" ? floor.userIds.includes(meUserId) : !inputBlocked;
   const floorName = floor.mode === "initiative" ? floor.currentName : undefined;
@@ -206,19 +220,29 @@ function HandInner({
   // A card sent and not yet resolved holds the cards of its cost (useHandChoices.ts).
   const { waiting, setPending } = useHandPending(signature);
 
-  const hits = encounter.lastHits;
+  // Each open hit's id rides on its cards as the hit they answer (issue 685);
+  // a host that does not take one is sent none.
+  const aimsHits = hostOffers(capabilities, "reactionHits");
+  const hits = useMemo(
+    () => (aimsHits ? encounter.lastHits : encounter.lastHits?.map((hit) => ({ ...hit, id: undefined }))),
+    [encounter.lastHits, aimsHits],
+  );
   const reactions = useMemo(
     // Under the monsters' hand the hero hit is named, as the others are.
     () => (sheet && turn ? reactionCards(sheet, turn, hits ?? [], sheets, reactionsOnly ? sheet.name : "you") : []),
     [sheet, turn, hits, sheets, reactionsOnly],
   );
   // A player's other characters hit while this one acts (a person playing
-  // several heroes): their reactions too, each card naming its hero.
+  // several heroes), and the companions they play: their reactions too, each
+  // card naming its hero.
   const othersReactions = useMemo(
     () =>
       sheet && hits?.length
         ? offTurnReactionCards(
-            offTurnReactors(sheets, meUserId, sheet.id, multiCharacter).map((other) => ({
+            [
+              ...offTurnReactors(sheets, meUserId, sheet.id, multiCharacter),
+              ...(companionsReact ? companionReactors(sheets, meUserId, sheet.id, runsTable) : []),
+            ].map((other) => ({
               sheet: other,
               turn: turnFromEncounter(encounter, other, { myTurn: false, currentName: floorName }),
             })),
@@ -226,7 +250,7 @@ function HandInner({
             sheets,
           )
         : [],
-    [sheet, hits, sheets, meUserId, multiCharacter, encounter, floorName],
+    [sheet, hits, sheets, meUserId, multiCharacter, encounter, floorName, companionsReact, runsTable],
   );
   const gear = useMemo<HandGearContext | undefined>(
     () =>
@@ -244,16 +268,18 @@ function HandInner({
   );
   // A host too old to catch the creatures in a laid blast keeps its blasts
   // aimed at one enemy (src/lib/capabilities.ts handBlasts).
-  const capabilities = useCapabilities();
   const blasts = hostOffers(capabilities, "handBlasts");
   // Sharing a casting out among creatures (issue 570): a host that does not
   // read the shares takes the aimed creature alone, so the split stays shut.
   const splits = hostOffers(capabilities, "handShares");
+  // The creature a summoning spell calls (issue 685): a host without the
+  // picker leaves its summon cards to the GM, as before.
+  const summons = useHandSummons(sheet, hostOffers(capabilities, "summonPicker"));
   const cards = useMemo(() => {
     if (!sheet || !turn) return [];
     if (reactionsOnly) return [...reactions, ...othersReactions];
-    return [...othersReactions, ...holdPendingCards(withReactions(reactions, deriveHand(sheet, turn, { spells, trackAmmo, gear, blasts })), waiting)];
-  }, [sheet, turn, reactions, othersReactions, reactionsOnly, spells, trackAmmo, gear, blasts, waiting]);
+    return [...othersReactions, ...holdPendingCards(withReactions(reactions, deriveHand(sheet, turn, { spells, trackAmmo, gear, blasts, summons })), waiting)];
+  }, [sheet, turn, reactions, othersReactions, reactionsOnly, spells, trackAmmo, gear, blasts, summons, waiting]);
 
   // Cards that spend one thing (spell slots, ki, superiority dice, gear, the
   // basic actions) gather under one card each (issue 528, hand-groups.ts).
@@ -440,6 +466,7 @@ function HandInner({
     (text: string) => {
       onKindChange("do");
       setInput(text);
+      onComposeAs?.(picked?.actor?.id ?? null);
       clearAim();
       // After the box has the text, put the caret where the blank is.
       window.setTimeout(() => {
@@ -451,13 +478,13 @@ function HandInner({
         area.setSelectionRange(at, at);
       }, 50);
     },
-    [onKindChange, setInput, clearAim, composerRef],
+    [onKindChange, setInput, clearAim, composerRef, onComposeAs, picked?.actor?.id],
   );
 
   const commit = useCallback(async () => {
     if (!picked || !sheet || sending || commitBusy.current) return;
     if (inputBlocked && picked.cost !== "reaction") { say(blockedReason); return; }
-    if (!handReady(picked, aim, choices)) { say(picked.asks === "trigger" && !choices.trigger?.trim() ? "Name the trigger first." : "Pick a target or an area first."); return; }
+    if (!handReady(picked, aim, choices)) { say(picked.asks === "trigger" && !choices.trigger?.trim() ? "Name the trigger first." : picked.summon && !choices.choice ? "Choose the creature first." : "Pick a target or an area first."); return; }
     if (picked.compose) {
       toComposer(sentence);
       return;
@@ -557,14 +584,16 @@ function HandInner({
       ...(offered.length ? [{ id: "hand-target" as const, label: "Target", value: aim?.id, disabled: null, options: offered.map(target => option(target.id, `${target.name}${target.note ? ` · ${target.note}` : ""}`)) }] : []),
       ...(barProps.options.length ? [{ id: "hand-option" as const, label: "Attack options (choose to toggle)", disabled: null, options: barProps.options.map(entry => option(entry.id, `${barProps.chosen.includes(entry.id) ? "✓ " : ""}${entry.label}`, entry.disabled ?? null)) }] : []),
       ...(picked.intent.card === "attack" && cards.some(card => card.type === "rider") ? [{ id: "hand-rider" as const, label: "Riders (choose to toggle)", disabled: null, options: cards.filter(card => card.type === "rider").map(card => option(card.id, `${attachedRiders.some(rider => rider.id === card.id) ? "✓ " : ""}${card.name}`, card.disabled)) }] : []),
-      ...(picked.choice ? [{ id: "hand-choice" as const, label: picked.choice.label, value: barProps.choice ?? picked.choice.fallback ?? picked.choice.options[0]?.value, disabled: null, options: picked.choice.options.map(entry => option(entry.value, entry.label)) }] : []),
+      ...(picked.choice && !picked.summon?.mix ? [{ id: "hand-choice" as const, label: picked.choice.label, value: barProps.choice ?? picked.choice.fallback ?? picked.choice.options[0]?.value, disabled: null, options: picked.choice.options.map(entry => option(entry.value, entry.label)) }] : []),
+      // A summoning card's number and each target's form (issue 685).
+      ...summonBoardControls(picked, { form: barProps.choice, ...(barProps.count !== null ? { count: barProps.count } : {}), mix: barProps.mix }),
       ...(splits && picked.shares && aim && offered.some(target => target.id !== aim.id) ? [shareControl(picked, aim, offered, barProps.shares)] : []),
       ...(barProps.trigger !== null ? [{ id: "hand-trigger" as const, label: "Trigger", disabled: null, input: { value: barProps.trigger } }] : []),
       ...(picked.area && hasPick(picked.area, barProps.areaPick) ? [{ id: "hand-area-clear" as const, label: "Clear area", disabled: null }] : []),
-      { id: "hand-play", label: picked.compose ? "Write in chat" : `Play ${picked.name}`, disabled: inputBlocked && picked.cost !== "reaction" ? blockedReason : handReady(picked, aim, { trigger: barProps.trigger ?? "", area: barProps.areaPick }) ? null : "Choose a target, area or trigger first." },
+      { id: "hand-play", label: picked.compose ? "Write in chat" : `Play ${picked.name}`, disabled: inputBlocked && picked.cost !== "reaction" ? blockedReason : handReady(picked, aim, { trigger: barProps.trigger ?? "", area: barProps.areaPick, ...(barProps.choice !== null ? { choice: barProps.choice } : {}), mix: barProps.mix }) ? null : picked.summon ? "Choose the creature first." : "Choose a target, area or trigger first." },
       { id: "hand-edit", label: "Edit in chat", disabled: null }, { id: "hand-back", label: "Back", disabled: null }, close,
     ] };
-  }, [boardNative, boardSwap, boardChoices, cards, picked, rows, sentence, offered, aim, attachedRiders, barProps.options, barProps.chosen, barProps.choice, barProps.trigger, barProps.areaPick, barProps.shares, splits, notice, inputBlocked, blockedReason]);
+  }, [boardNative, boardSwap, boardChoices, cards, picked, rows, sentence, offered, aim, attachedRiders, barProps.options, barProps.chosen, barProps.choice, barProps.count, barProps.mix, barProps.trigger, barProps.areaPick, barProps.shares, splits, notice, inputBlocked, blockedReason]);
   const nativeSignature = JSON.stringify([campaignId, sheet?.id, signature, nativePanel, sending && !boardSwap]);
   useEffect(() => {
     if (swapReply.current && swapTurn.current !== `${campaignId}:${sheet?.id}:${signature}`) {
@@ -591,6 +620,13 @@ function HandInner({
         case "hand-option": { const option = barProps.options.find(entry => entry.id === value); if (option && !option.disabled) barProps.onToggleOption(option.id); break; }
         case "hand-rider": { const card = cards.find(entry => entry.id === value && entry.type === "rider"); if (card) pick(card, true); break; }
         case "hand-choice": barProps.onChoice(value); break;
+        case "hand-count":
+        case "hand-mix": {
+          const step = readSummonControl(detail.actionId, value);
+          if (step && "count" in step) barProps.onCount(step.count);
+          else if (step) barProps.onStepMix(step.form, step.delta);
+          break;
+        }
         case "hand-trigger": barProps.onTrigger(value); break;
         case "hand-share": {
           const [id, step] = value.split(":");
@@ -739,10 +775,10 @@ function HandInner({
           key={myTurn ? "mine" : (currentName ?? "other")}
           className="hand-label min-w-0 break-words font-display text-[11px] uppercase tracking-[0.22em] text-amber-200/90"
         >
-          {reactionsOnly ? "Your heroes' reactions" : myTurn ? "Your hand" : `${currentName ?? "Another hero"}'s turn`}
+          {reactionsOnly ? (sheet.isCompanion ? "Companions' reactions" : "Your heroes' reactions") : myTurn ? "Your hand" : `${currentName ?? "Another hero"}'s turn`}
         </span>
         <span className="hidden text-[11px] text-stone-500 sm:inline">
-          {reactionsOnly ? "A hero of yours was hit: answer it now or let it pass." : myTurn ? "Play a card, or type your move below." : "Look your cards over while you wait."}
+          {reactionsOnly ? `${sheet.isCompanion ? "A companion you play" : "A hero of yours"} was hit: answer it now or let it pass.` : myTurn ? "Play a card, or type your move below." : "Look your cards over while you wait."}
         </span>
         <span className="ml-auto flex items-center gap-1">
           {reactionsOnly ? null : <HandPips pips={pips} flurryStrikes={turn.flurryStrikes} />}
