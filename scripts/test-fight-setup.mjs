@@ -294,12 +294,13 @@ const { workbenchCall, workbenchTools } = await import("../src/lib/agents/workbe
 const agentRoutes = {
   workshops: await world.route("workshops"),
   dice: await world.route("campaigns/[campaignId]/dice-script"),
+  trace: await world.route("campaigns/[campaignId]/turn-trace"),
 };
 
 await test("an agent lists the workshops and their fights, opens a test, saves its moment and reads the set-up back", async () => {
   const grant = createConnectionGrant({ userId: author.id, name: "bench agent", scopes: ["read", "campaigns"] }).grant;
   const names = workbenchTools(grant).map((tool) => tool.name);
-  for (const name of ["odm_list_workshops", "odm_list_prepared_fights", "odm_get_fight_setup", "odm_start_test_fight", "odm_save_fight_setup", "odm_remove_fight_setup", "odm_end_test_fight", "odm_get_dice_script", "odm_set_dice_script"]) {
+  for (const name of ["odm_list_workshops", "odm_list_prepared_fights", "odm_get_fight_setup", "odm_start_test_fight", "odm_save_fight_setup", "odm_remove_fight_setup", "odm_end_test_fight", "odm_get_dice_script", "odm_set_dice_script", "odm_turn_trace"]) {
     assert.ok(names.includes(name), `${name} is not offered`);
   }
   const reader = createConnectionGrant({ userId: author.id, name: "reader", scopes: ["read"] }).grant;
@@ -316,6 +317,7 @@ await test("an agent lists the workshops and their fights, opens a test, saves i
     if (parts[1] === "workshops" && parts[3] === "test-fight") return route.test[method](request, { params: Promise.resolve({ workshopId: parts[2] }) });
     if (parts[3] === "fight-setup") return route.save[method](request, { params: Promise.resolve({ campaignId: parts[2] }) });
     if (parts[3] === "dice-script") return agentRoutes.dice[method](request, { params: Promise.resolve({ campaignId: parts[2] }) });
+    if (parts[3] === "turn-trace") return agentRoutes.trace[method](request, { params: Promise.resolve({ campaignId: parts[2] }) });
     if (parts[6] === "setup") return route.setup[method](request, { params: Promise.resolve({ campaignId: parts[2], templateId: parts[5] }) });
     if (parts[4] === "encounter-templates") return route.list[method](request, { params: Promise.resolve({ campaignId: parts[2] }) });
     throw new Error(`unexpected path ${target.pathname}`);
@@ -338,6 +340,8 @@ await test("an agent lists the workshops and their fights, opens a test, saves i
     assert.equal((await run("odm_get_dice_script", { campaignId: opened.campaignId })).script.seed, 7);
     const refused = await workbenchCall(grant, "odm_set_dice_script", { campaignId: world.campaignId, seed: 7, queue: [] });
     assert.equal(refused.isError, true, "a live table took a dice script");
+    const trace = await run("odm_turn_trace", { campaignId: opened.campaignId, limit: 5 });
+    assert.ok(Array.isArray(trace.turns), JSON.stringify(trace).slice(0, 200));
     const savedOut = await run("odm_save_fight_setup", { campaignId: opened.campaignId });
     assert.ok(savedOut.lines.length);
     const read = await run("odm_get_fight_setup", { workshopId: workshop.id, templateId: ambush.id });

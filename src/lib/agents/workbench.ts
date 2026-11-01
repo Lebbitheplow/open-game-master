@@ -621,6 +621,25 @@ export const WORKBENCH_TOOLS: WorkbenchTool[] = [
     body: (a) => pick(a, ["seed", "queue"]),
   },
   {
+    name: "odm_turn_trace",
+    scope: "read",
+    description: "Read a test table's turn trace, newest turn first: every call the GM made (the model, a card the engine played, a person at the console), whom it named, and the engine's answer, with the sentence behind each refusal or retry. Only at a test table you opened. limit: turns per page (1 to 30); before: a turn id from the last page, for older turns.",
+    properties: {
+      ...campaignIdProp,
+      limit: { type: "integer", minimum: 1, maximum: 30 },
+      before: { type: "string" },
+    },
+    required: ["campaignId"],
+    method: "GET",
+    path: (a) => {
+      const query = new URLSearchParams();
+      if (Number.isSafeInteger(a.limit)) query.set("limit", String(a.limit));
+      if (typeof a.before === "string" && a.before) query.set("before", seg(a.before));
+      const tail = query.toString();
+      return `/api/campaigns/${seg(a.campaignId)}/turn-trace${tail ? `?${tail}` : ""}`;
+    },
+  },
+  {
     name: "odm_end_test_fight",
     scope: "campaigns",
     description: "End your open test fight of a workshop: its table and everything played on it are deleted. The prepared fight and its set-up stay.",
