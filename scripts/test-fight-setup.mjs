@@ -226,6 +226,29 @@ await test("another party at the test starts fresh, and is told so; the foes sti
   assert.ok(note(out.json.campaignId, /another party than the set-up was saved with/), "the table was not told");
 });
 
+// A scenario travels as a file: the workshop's bundle carries the fight's
+// set-up, and a test of the imported fight opens on it.
+await test("a workshop bundle carries a fight's set-up, and the imported fight's test opens on it", async () => {
+  const { exportWorkshopBundle } = await import("../src/lib/db/workshop-bundle-export.ts");
+  const { importWorkshopBundle } = await import("../src/lib/db/workshop-bundle.ts");
+  const { readBundle } = await import("../src/lib/workshop/bundle.ts");
+  const out = exportWorkshopBundle(workshop.id, { name: "Mill fights", blurb: "Goblins at a mill.", inspiredBy: "Original work" });
+  assert.ok(out.bundle, out.error);
+  const read = readBundle(JSON.stringify(out.bundle));
+  assert.ok(!("error" in read), read.error);
+  const result = importWorkshopBundle(author.id, read.bundle);
+  assert.ok(result.workshopId, result.error);
+  const [fight] = templates.listEncounterTemplates(result.workshopId);
+  const carried = templates.getTemplateSetup(fight.id);
+  assert.ok(carried, "the set-up was left behind");
+  assert.equal(carried.foes.find((foe) => foe.slot === 0).hp, 2);
+  const opened = await call(route.test, "POST", { templateId: fight.id, runner: "person" }, { workshopId: result.workshopId });
+  assert.equal(opened.status, 200, JSON.stringify(opened.json));
+  const [g1] = goblinsOf(opened.json.campaignId);
+  assert.equal(g1.currentHp, 2);
+  assert.ok(note(opened.json.campaignId, /Opened from the fight's saved set-up/));
+});
+
 await test("a table's Deploy lays the foes' part only: no party, no forced order", async () => {
   const table = world.campaign();
   const hero = world.addHero({ name: "Brin", level: 3 });

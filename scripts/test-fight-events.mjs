@@ -289,8 +289,11 @@ await test("a creature falling in the model's own call fires its event, told in 
   model.script([reply({ calls: [call("enemy_flees", { enemyId: slots[1] })] }), reply({ text: "The goblin splashes away." })]);
   await model.turn(ai, "I shout at the goblins to run.", aiHero.id);
   assert.notEqual(getEnemy(slots[1]).status, "alive", "the goblin never left the fight");
-  const [answer] = model.results(model.requests[1]);
-  assert.match(String(answer?.result.fightEvents ?? ""), /A horn falls silent in the reeds\./, JSON.stringify(answer));
+  // The flight's own answer, wherever the turn's requests put it: under a
+  // loaded run the turn can ask the model an extra time first.
+  const answers = model.requests.flatMap((request) => model.results(request));
+  const answer = answers.find((entry) => String(entry?.id ?? "").includes("enemy_flees")) ?? answers[0];
+  assert.match(String(answer?.result.fightEvents ?? ""), /A horn falls silent in the reeds\./, JSON.stringify(answers).slice(0, 600));
   model.script([reply({ text: "The fight goes on." })]);
   await model.turn(ai, "I look around.", aiHero.id);
   const told = JSON.stringify(model.requests[0].messages);

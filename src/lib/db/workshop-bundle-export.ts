@@ -1,3 +1,4 @@
+import { parseFightSetup } from "@/lib/workshop/fight-setup-logic";
 import { createHash } from "node:crypto";
 import { compareNames } from "@/lib/language/text-logic";
 import { readFileSync } from "node:fs";
@@ -130,7 +131,7 @@ export const BUNDLE_COLUMNS: Record<string, { carried: string[]; left: Record<st
     left: { ...IDENTITY },
   },
   encounter_templates: {
-    carried: ["name", "enemies_json", "battlefield", "map_json", "notes", "extras_json"],
+    carried: ["name", "enemies_json", "battlefield", "map_json", "notes", "extras_json", "setup_json"],
     left: { ...IDENTITY, created_by_user_id: "the importer", cued: "a lead's cue is the source table's play" },
   },
   locations: {
@@ -429,6 +430,9 @@ export function exportWorkshopBundle(
           height: number(map.height),
         },
         extras: parseJson<Record<string, unknown>>(str(row.extras_json, "{}"), {}),
+        // The moment a test of it was saved to start from (issue 685): a
+        // scenario travels with the fight it opens.
+        setup: parseFightSetup(parseJson<unknown>(str(row.setup_json, ""), null)),
         ref: refFor(row.home, "encounters", str(row.id)),
         shared: row.home !== workshopId,
       };

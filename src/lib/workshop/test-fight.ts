@@ -257,8 +257,14 @@ function partyIdentity(workshop: Campaign, party: TestParty): SetupParty {
 }
 
 // The party a fight's set-up was saved with, for a start that names none.
-function setupParty(setup: FightSetup | null): TestParty | null {
+// A set-up that came in a bundle names characters from its author's library:
+// whoever is not in this author's starts the test as the stand-ins instead.
+function setupParty(setup: FightSetup | null, userId: string): TestParty | null {
   if (!setup) return null;
+  const mine = (ids: readonly string[]) => ids.every((id) => getCharacterForUser(userId, id));
+  if ((setup.party.kind === "characters" && !mine(setup.party.characterIds)) || !mine(setup.party.allyIds ?? [])) {
+    return { kind: "stand-ins" };
+  }
   const allies = setup.party.allyIds?.length ? { allyIds: setup.party.allyIds } : {};
   return setup.party.kind === "stand-ins" ? { kind: "stand-ins", ...allies } : { kind: "characters", characterIds: setup.party.characterIds, ...allies };
 }
@@ -285,7 +291,7 @@ export async function openTestFight(input: {
   }
   // The moment a test of this fight was saved to start from (issue 685).
   const setup = getTemplateSetup(template.id);
-  const chosen = input.party ?? setupParty(setup) ?? { kind: "stand-ins" as const };
+  const chosen = input.party ?? setupParty(setup, userId) ?? { kind: "stand-ins" as const };
   const party = seatsFor(workshop, userId, chosen, template.id);
   if (!party.ok) {
     return { ok: false, status: 422, error: party.error };

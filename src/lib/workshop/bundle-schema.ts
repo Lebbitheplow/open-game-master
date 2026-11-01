@@ -185,6 +185,9 @@ const encounterSchema = z.object({
     })
     .default({ map: null, scene: null, seed: null, theme: null, ambient: null, width: null, height: null }),
   extras: z.record(z.string(), z.unknown()).default({}),
+  // A test's saved moment (src/lib/workshop/fight-setup-logic.ts), checked by
+  // its own schema on import; absent from an older bundle.
+  setup: z.unknown().nullable().default(null),
   ref: refSchema,
   shared: sharedSchema,
 });
