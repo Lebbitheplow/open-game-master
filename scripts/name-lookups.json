@@ -1553,6 +1553,7 @@
     "lib/dm/pc-defenses.ts#partial": [["authoring",2,"resistances read from a feature's name"]],
     "lib/dm/pending-inspiration.ts#partial": [["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "lib/dm/pending-inspiration.ts#whole": [["key",1,"roll kinds"]],
+    "lib/dm/pet-form-logic.ts#switch": [["key",1,"a pet's kind (schema enum)"]],
     "lib/dm/pet-tools.ts#fallback": [["identity",1,"a pet by whole name or form; with none asked, the only one"]],
     "lib/dm/pet-tools.ts#whole": [["identity",2,"a pet by whole name or form"]],
     "lib/dm/place-filing.ts#whole": [["identity",1,"the place move_party's partOf names, by whole name through textKey"]],

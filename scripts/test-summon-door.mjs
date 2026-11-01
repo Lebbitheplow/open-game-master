@@ -243,6 +243,46 @@ await test("The GM console's cast_buff picks Find Steed's kind and Animate Dead'
 });
 
 setDmMode(world.campaignId, "human", world.owner.id);
+
+await test("Summon a pet's Creature is picked from what the engine takes for each kind; a story pet not in the list keeps its hp and ac, and an unknown name is sent to the Bestiary", async () => {
+  const { petFormOptions, petFormTyped } = await import("../src/lib/dm/pet-form-logic.ts");
+  const { createHomebrewMonster } = await import("../src/lib/bestiary/homebrew-monsters.ts");
+  const { draftFromCr } = await import("../src/lib/bestiary/monster-draft.ts");
+  createHomebrewMonster(world.owner.id, draftFromCr("Moonmoth", 0.125), "");
+  const handler = await world.route("campaigns/[campaignId]/dm/pet-forms");
+  const get = async (user) => {
+    world.signIn({ id: user.id });
+    const response = await handler.GET(new Request("http://odm.test/dm/pet-forms"), { params: Promise.resolve({ campaignId: world.campaignId }) });
+    return { status: response.status, body: await response.json() };
+  };
+  assert.notEqual((await get({ id: ivo.userId })).status, 200, "a player is not shown the GM's list");
+  const { catalogue } = (await get(world.owner)).body;
+  assert.ok(catalogue.familiar.some((form) => form.name === "Owl" && !form.chainOnly));
+  assert.ok(catalogue.familiar.some((form) => form.name === "Imp" && form.chainOnly));
+  assert.ok(catalogue.companion.includes("Wolf") && !catalogue.companion.includes("Brown Bear"), "a companion is CR 1/4 or lower");
+  assert.deepEqual(catalogue.table, ["Moonmoth"], "this table's own monsters");
+  assert.ok(catalogue.srd.includes("Riding Horse"));
+  const familiar = petFormOptions("familiar", catalogue);
+  assert.equal(familiar[0].group, "Familiar forms", "the familiar forms come first");
+  assert.equal(familiar.at(-1).group, "Pact of the Chain");
+  const story = petFormOptions("other", catalogue);
+  assert.deepEqual(story[0], { value: "Moonmoth", label: "Moonmoth", group: "This table's monsters" });
+  assert.ok(story.some((option) => option.value === "Mastiff" && option.group === "SRD creatures"));
+  assert.deepEqual(petFormOptions("drake", catalogue).map((option) => option.value), ["Drake"]);
+  assert.equal(petFormTyped("other"), true, "only a story pet has Not in the list");
+  assert.equal(petFormTyped("familiar"), false);
+  // The engine: an unknown name is refused toward the Bestiary; the same
+  // name with hit points and AC is a story pet by design; a table monster
+  // takes its block.
+  const unknown = await world.invoke("summon_pet", { characterId: dain.id, kind: "other", form: "Glimmerwing" });
+  assert.equal(unknown.ok, false);
+  assert.match(unknown.error, /build it in the workshop's Bestiary or the console's, then pick it\), or send its hp and ac/);
+  const typed = await world.invoke("summon_pet", { characterId: dain.id, kind: "other", form: "Glimmerwing", hp: 4, ac: 12 });
+  assert.equal(typed.ok, true, typed.error);
+  const moth = await world.invoke("summon_pet", { characterId: dain.id, kind: "other", form: "Moonmoth" });
+  assert.equal(moth.ok, true, moth.error);
+  assert.ok(world.sheet(dain.id).pets.some((pet) => pet.form === "Moonmoth"));
+});
 const waiting = () => queuedIntents(listRecentMessages(world.campaignId, 40), []).map((row) => row.messageId);
 async function resolve(messageId) {
   const handler = await world.route("campaigns/[campaignId]/dm/resolve-card");

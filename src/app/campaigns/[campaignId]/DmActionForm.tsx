@@ -17,7 +17,7 @@ import {
 import type { CatalogEntry, CatalogField } from "@/lib/dm/invoke-catalog";
 import { fieldForHost, fieldShown, needsConfirm } from "@/lib/dm/catalog-types";
 import { consoleSummonShown } from "@/lib/battlemap/hand-summon";
-import { useSummonCatalogue } from "@/app/campaigns/[campaignId]/HandSpells";
+import { usePetForms, useSummonCatalogue } from "@/app/campaigns/[campaignId]/HandSpells";
 import { hostOffers, useCapabilities, type HostFeature } from "@/lib/use-capabilities";
 import { describeAdjudicationResult, type ResultLine } from "@/lib/dm/catalog-result";
 import { holdConsoleOutcome } from "@/app/campaigns/[campaignId]/ConsoleOutcomeBanner";
@@ -123,6 +123,8 @@ export function DmActionForm({
     () => fields.filter((field) => fieldShown(field, values) && consoleSummonShown(field.kind, catalogue)),
     [fields, values, catalogue],
   );
+  // Summon a pet's Creature: what the engine takes for each kind (issue 685).
+  const petForms = usePetForms(campaignId, fields.some((field) => field.kind === "petForm"));
   const summonSlot = Number(values.level) || Math.min(...Object.keys(catalogue?.forms[0]?.counts ?? { 1: [] }).map(Number));
 
   const enemies = useMemo(
@@ -232,6 +234,7 @@ export function DmActionForm({
               sheets={sheets}
               enemies={enemies}
               {...(summons ? { summon: { catalogue, slotLevel: summonSlot } } : {})}
+              {...(field.kind === "petForm" ? { pets: { catalogue: petForms, kind: String(values.kind ?? "") } } : {})}
             />
             {field.help ? <span className="mt-1 block basis-full text-[11px] leading-snug text-stone-500">{field.help}</span> : null}
           </div>

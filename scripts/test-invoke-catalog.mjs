@@ -1147,6 +1147,12 @@ test("cast_buff's form picks a summoning's kind and each target's form from the 
   const familiar = adjudication("summon_pet").fields.find((field) => field.name === "creatureType");
   assert.deepEqual(familiar?.options.map((option) => option.value), ["celestial", "fey", "fiend"]);
   assert.deepEqual(familiar?.onlyWhen, { field: "kind", equals: ["familiar"] });
+  // Summon a pet's Creature is a pick over what the engine takes; an older
+  // host keeps the text box it had.
+  const creature = adjudication("summon_pet").fields.find((field) => field.name === "form");
+  assert.equal(creature?.kind, "petForm");
+  assert.equal(creature.host?.feature, "summonPicker");
+  assert.equal(creature.host?.older?.kind, "text");
   assert.equal(consoleSummonShown("summonKind", summonCatalogue(summonSpellFor("Find Steed"))), true);
   assert.equal(consoleSummonShown("summonKind", summonCatalogue(summonSpellFor("Conjure Animals"))), false, "no kind to pick");
   assert.equal(consoleSummonShown("summonMix", summonCatalogue(summonSpellFor("Animate Dead"))), true);

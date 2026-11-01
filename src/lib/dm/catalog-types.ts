@@ -51,6 +51,9 @@ export const CATEGORY_LABELS: Record<AdjudicationCategory, string> = {
 //   fey or fiend), sent as one of them, and each target's own form (Animate
 //   Dead, Animate Objects), sent as [{ variant, count }]. Shown only for a
 //   spell that has them.
+// - "petForm": Summon a pet's creature, picked from what the engine takes
+//   for the pet's kind (GET /api/campaigns/[id]/dm/pet-forms,
+//   pet-form-logic.ts), a story pet's "Not in the list" opening a text box.
 export type FieldKind =
   | "character"
   | "characters"
@@ -67,7 +70,8 @@ export type FieldKind =
   | "select"
   | "dice"
   | "summonKind"
-  | "summonMix";
+  | "summonMix"
+  | "petForm";
 
 export type CatalogField = {
   name: string;
@@ -119,7 +123,9 @@ export type CatalogField = {
   // `older` says (what that server does with it), or is not shown. `name`
   // there is the key that server reads the value under, when it was renamed
   // since (take_action's enemyId was escapingEnemyId before issue #621).
-  host?: { feature: string; older?: { label: string; help?: string; name?: string } };
+  // `kind` there is how that server's form asked for it (a pick it cannot
+  // fill reads as the text box it had).
+  host?: { feature: string; older?: { label: string; help?: string; name?: string; kind?: FieldKind } };
 };
 
 // The field as this host should show it, or null when it cannot use it.

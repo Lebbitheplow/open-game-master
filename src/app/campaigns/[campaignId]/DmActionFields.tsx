@@ -18,6 +18,7 @@ import { appendDictation } from "@/lib/dictation";
 import { HandSummonPick, PillChoice } from "@/app/campaigns/[campaignId]/HandSummonPick";
 import { mixRecord, stepMix, summonMix, summonPick } from "@/lib/battlemap/hand-summon";
 import type { SummonCatalogue } from "@/lib/srd/summon-spells";
+import { petFormOptions, petFormTyped, type PetFormCatalogue } from "@/lib/dm/pet-form-logic";
 
 // The inputs one console form is built from, one per catalog field kind
 // (src/lib/dm/catalog-types.ts FieldKind). Split out of DmActionForm.tsx so
@@ -278,6 +279,7 @@ export function FieldInput({
   sheets,
   enemies,
   summon,
+  pets,
 }: {
   field: CatalogField;
   value: Value;
@@ -287,8 +289,23 @@ export function FieldInput({
   // The engine's catalogue for the spell the form names, and the slot it is
   // cast from, for the summon fields (DmActionForm.tsx).
   summon?: { catalogue: SummonCatalogue | null; slotLevel: number };
+  // Summon a pet's creatures, and the kind of pet the form holds.
+  pets?: { catalogue: PetFormCatalogue | null; kind: string };
 }) {
   switch (field.kind) {
+    case "petForm":
+      // The creatures the engine takes for this kind of pet; only a story pet
+      // may be one the lists do not hold, typed behind "Not in the list".
+      return (
+        <PickOrType
+          key={pets?.kind ?? ""}
+          field={{ ...field, other: petFormTyped(pets?.kind ?? "") ? { label: "Not in the list", placeholder: "clockwork crow" } : undefined }}
+          value={String(value ?? "")}
+          onChange={onChange}
+          options={petFormOptions(pets?.kind ?? "", pets?.catalogue ?? null)}
+          placeholder={pets?.kind ? "Pick a creature" : "Pick the kind first"}
+        />
+      );
     case "summonKind": {
       const kinds = summon?.catalogue?.kinds ?? [];
       return (

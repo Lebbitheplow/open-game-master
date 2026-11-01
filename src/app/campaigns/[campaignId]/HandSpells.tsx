@@ -8,6 +8,7 @@ import { factsFromRow } from "@/lib/srd/spell-facts";
 import { scopeQuery } from "@/lib/content-scope";
 import { textKey } from "@/lib/language/text-logic";
 import type { SummonCatalogue } from "@/lib/srd/summon-spells";
+import type { PetFormCatalogue } from "@/lib/dm/pet-form-logic";
 
 // What the content pack says about the spells on a sheet, for the Hand's
 // spell cards: level, casting time, range and the prose the mechanics are
@@ -208,4 +209,31 @@ export function useSummonCatalogue(campaignId: string, spell: string, characterI
     };
   }, [campaignId, name, characterId, key, enabled]);
   return enabled && name ? (summonCache.get(key) ?? null) : null;
+}
+
+// Summon a pet's creatures for the GM console (src/lib/dm/pet-form-logic.ts),
+// once per table per page: the table's own monsters change in the workshop
+// rarely within a session, and a fresh page reads them again.
+const petForms = new Map<string, PetFormCatalogue | null>();
+
+export function usePetForms(campaignId: string, enabled: boolean): PetFormCatalogue | null {
+  const [, setVersion] = useState(0);
+  useEffect(() => {
+    if (!enabled || petForms.has(campaignId)) return;
+    let live = true;
+    void fetch(`/api/campaigns/${campaignId}/dm/pet-forms`)
+      .then(async (response) => {
+        if (!response.ok) return;
+        const body = (await response.json()) as { catalogue?: PetFormCatalogue };
+        petForms.set(campaignId, body.catalogue ?? null);
+        if (live) setVersion((current) => current + 1);
+      })
+      .catch(() => {
+        // Offline: asked again when the form opens next.
+      });
+    return () => {
+      live = false;
+    };
+  }, [campaignId, enabled]);
+  return enabled ? (petForms.get(campaignId) ?? null) : null;
 }

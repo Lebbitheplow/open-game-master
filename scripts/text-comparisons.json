@@ -1594,6 +1594,8 @@
     "lib/dm/pc-defenses.ts#str-includes": [["table-language",1,"meaning reader: \"resistance\" read in a sheet feature's name (SRD features, and homebrew species traits and feats)"]],
     "lib/dm/pc-defenses.ts#toLowerCase": [["table-language",1,"meaning reader: \"resistance\" read in a sheet feature's name (SRD features, and homebrew species traits and feats)"]],
     "lib/dm/pending-inspiration.ts#str-list": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
+    "lib/dm/pet-form-logic.ts#str-case": [["key",3,"a pet's kind (schema enum)"]],
+    "lib/dm/pet-form-logic.ts#str-eq": [["key",1,"a pet's kind (schema enum)"]],
     "lib/dm/pet-tools.ts#str-includes": [["key",1,"a condition label (engine vocabulary)"]],
     "lib/dm/pet-tools.ts#str-list": [["key",4,"tool schema enums and field names"]],
     "lib/dm/pregen-draft-logic.ts#re-word": [["key",1,"a model's JSON code fence"]],
