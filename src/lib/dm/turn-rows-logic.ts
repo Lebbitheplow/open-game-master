@@ -1,5 +1,17 @@
 import type { KeptRow, KeptTable, Row } from "@/lib/db/turn-rows";
 
+// The fight's and the board's own tables, whose rows a revert writes back
+// field by field. A row of any other table was kept whole by a cascade (a
+// summoned creature sent away, its sheet with it): it comes back if it is
+// gone and goes if the turn made it, nothing more, since a sheet's fields
+// are the sheet audit's to put back.
+export const FIGHT_TABLES = ["encounters", "encounter_enemies", "battle_maps", "battle_tokens", "active_effects", "dropped_items"] as const;
+export type FightTable = (typeof FIGHT_TABLES)[number];
+
+export function isFightTable(table: string): table is FightTable {
+  return (FIGHT_TABLES as readonly string[]).includes(table);
+}
+
 // How "Revert this turn" puts back the fight and board rows a turn wrote
 // (issue 685; src/lib/db/turn-rows.ts keeps them). Pure, so the suites read
 // the rules without a table.
@@ -37,7 +49,7 @@ export const FIGHT_COLUMNS = [
 ] as const;
 
 // Columns never written back: who the row is and when it was made.
-const FIXED: Record<KeptTable, readonly string[]> = {
+const FIXED: Record<FightTable, readonly string[]> = {
   encounters: [],
   encounter_enemies: ["id", "encounter_id", "campaign_id", "created_at", "updated_at"],
   battle_maps: ["id", "encounter_id", "campaign_id", "created_at", "updated_at"],
@@ -50,7 +62,7 @@ export function restoredColumns(table: KeptTable, row: Row): string[] {
   if (table === "encounters") {
     return FIGHT_COLUMNS.filter((column) => column in row);
   }
-  return Object.keys(row).filter((column) => !FIXED[table].includes(column));
+  return isFightTable(table) ? Object.keys(row).filter((column) => !FIXED[table].includes(column)) : Object.keys(row);
 }
 
 function pick(row: Row, columns: readonly string[]): Row {
@@ -88,7 +100,7 @@ export type RowPlan = {
   warnings: string[];
 };
 
-const LABELS: Record<KeptTable, (row: Row) => string> = {
+const LABELS: Record<FightTable, (row: Row) => string> = {
   encounters: () => "the fight's order of turns",
   encounter_enemies: (row) => (typeof row.display_name === "string" && row.display_name ? row.display_name : "a creature"),
   battle_maps: () => "the board",
@@ -107,6 +119,14 @@ export function planRowsRevert(rows: readonly RowState[], fights: ReadonlyMap<st
   const changed: string[] = [];
   const told = new Set<string>();
   for (const row of rows) {
+    if (!isFightTable(row.table)) {
+      if (row.before && !row.now) {
+        plan.inserts.push({ table: row.table, row: row.before });
+      } else if (!row.before && row.now) {
+        plan.deletes.push({ table: row.table, rowId: row.rowId });
+      }
+      continue;
+    }
     const fight = row.encounterId ? fights.get(row.encounterId) : undefined;
     if (row.encounterId && fight?.begunInTurn) {
       if (fight.active && !plan.dropFights.includes(row.encounterId)) {
@@ -155,7 +175,7 @@ export function planRowsRevert(rows: readonly RowState[], fights: ReadonlyMap<st
 
 // The event log's line for a turn's fight changes: counts only, so a
 // creature the GM keeps off the board is never named.
-export function fightLine(counts: Partial<Record<KeptTable, number>>): string {
+export function fightLine(counts: Partial<Record<string, number>>): string {
   const many = (count: number | undefined, one: string, more: string) => (count ? `${count} ${count === 1 ? one : more}` : "");
   const parts = [
     many(counts.encounter_enemies, "creature", "creatures"),

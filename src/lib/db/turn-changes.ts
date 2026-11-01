@@ -13,9 +13,9 @@ import { publishPersisted } from "@/lib/events";
 //   - fight_event: a prepared fight's event that fired, its line and the
 //     GM's note of what it could not do (src/lib/dm/fight-event-undo.ts arms
 //     it again; what it did is the turn's fight rows).
-//   - summon, summon_gone: a creature a spell called up in the turn, sent
-//     away by the revert; one sent away in it, which the revert cannot bring
-//     back and says so. Bookkeeping, never shown.
+//   - summon: a creature a spell called up in the turn, sent away by the
+//     revert (one sent away in the turn comes back through the fight rows,
+//     kept whole). Bookkeeping, never shown.
 //   - dice_face: a forced face a test table's dice script spent, and where
 //     it stood in the queue; dice_seed: how far the turn ran the seed
 //     (src/lib/db/dice-scripts.ts gives them back, so a replay rolls the same).
@@ -25,7 +25,7 @@ import { publishPersisted } from "@/lib/events";
 // A row is written only under a turn: work outside every turn is nobody's to
 // revert.
 
-export type TurnChangeKind = "fight" | "fight_event" | "dice_face" | "dice_seed" | "card" | "summon" | "summon_gone";
+export type TurnChangeKind = "fight" | "fight_event" | "dice_face" | "dice_seed" | "card" | "summon";
 
 export type TurnChange = {
   id: string;
@@ -51,10 +51,10 @@ type Row = {
   created_at: string;
 };
 
-const KINDS: readonly TurnChangeKind[] = ["fight", "fight_event", "dice_face", "dice_seed", "card", "summon", "summon_gone"];
+const KINDS: readonly TurnChangeKind[] = ["fight", "fight_event", "dice_face", "dice_seed", "card", "summon"];
 
 // Kept for the revert, never shown or counted in the event log.
-const BOOKKEEPING: readonly TurnChangeKind[] = ["summon", "summon_gone"];
+const BOOKKEEPING: readonly TurnChangeKind[] = ["summon"];
 
 function mapRow(row: Row): TurnChange | null {
   const kind = KINDS.find((entry) => entry === row.kind);
@@ -145,7 +145,7 @@ export function markTurnChangesReverted(ids: readonly string[]) {
 // snapshot's turnChanges).
 export function listLiveTurnChangeViews(campaignId: string, limit = 50): TurnChangeView[] {
   const rows = getDatabase()
-    .prepare(`SELECT * FROM turn_changes WHERE campaign_id = ? AND reverted_at IS NULL AND kind NOT IN ('summon', 'summon_gone') ORDER BY rowid DESC LIMIT ?`)
+    .prepare(`SELECT * FROM turn_changes WHERE campaign_id = ? AND reverted_at IS NULL AND kind NOT IN ('summon') ORDER BY rowid DESC LIMIT ?`)
     .all(campaignId, limit) as Row[];
   return rows
     .reverse()

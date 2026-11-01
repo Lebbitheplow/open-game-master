@@ -35,6 +35,7 @@ import { occupiedTiles } from "@/lib/battlemap/view";
 import { nameArrivals } from "@/lib/dm/encounter-logic";
 import { publishEphemeral, publishPersisted } from "@/lib/events";
 import { recordTurnChange } from "@/lib/db/turn-changes";
+import { keepNew, keepWithCascade } from "@/lib/db/turn-rows";
 import { currentTurnId } from "@/lib/dm/job-control";
 import { d20Expression } from "@/lib/dice";
 import { createSheetSchema, type CharacterSheet } from "@/lib/schemas/sheet";
@@ -120,8 +121,11 @@ export function spawnSummons(campaign: Campaign, caster: CharacterSheet, input: 
     const user = createCompanionUser(name);
     const sheet = createSheet(campaign.id, user.id, level, draft);
     // A creature a GM turn called up goes with the turn's revert (issue 685,
-    // src/lib/dm/turn-revert.ts).
-    noteUnderTurn(campaign.id, "summon", { sheetId: sheet.id, userId: user.id, name: sheet.name, line: "" });
+    // src/lib/dm/turn-revert.ts); sent away in the same turn, it is not
+    // brought back by it either.
+    keepNew("users", user.id, campaign.id);
+    keepNew("character_sheets", sheet.id, campaign.id);
+    noteUnderTurn(campaign.id, { sheetId: sheet.id, userId: user.id, name: sheet.name, line: "" });
     markSheetAsCompanion(sheet.id, "guest", `${form.name}, obeying ${caster.name}. ${record.traits}`.slice(0, 500));
     setSheetSummon(sheet.id, record);
     // A creature is its stat block: no class features or counters of the
@@ -230,11 +234,11 @@ function placeInFight(
 
 // Takes a summoned creature off the table: its initiative entry, its token,
 // its sheet and the bot user behind it.
-// What a summon's coming and going leaves under the GM turn it happened in.
-function noteUnderTurn(campaignId: string, kind: "summon" | "summon_gone", payload: Record<string, unknown>) {
+// A summon's coming, under the GM turn it happened in.
+function noteUnderTurn(campaignId: string, payload: Record<string, unknown>) {
   const turnId = currentTurnId();
   if (turnId) {
-    recordTurnChange(campaignId, turnId, kind, payload);
+    recordTurnChange(campaignId, turnId, "summon", payload);
   }
 }
 
@@ -243,9 +247,10 @@ export function removeSummon(
   sheet: Pick<CharacterSheet, "id" | "userId" | "name">,
   replaceWith?: OrderEntry,
 ) {
-  // A creature sent away has no sheet left to bring back: the turn's revert
-  // says so before the lead says yes.
-  noteUnderTurn(campaign.id, "summon_gone", { sheetId: sheet.id, name: sheet.name, line: "" });
+  // Sent away in a GM turn, the creature is kept whole as the turn found it:
+  // its bot user and every row the user's delete takes with it (its sheet),
+  // so the turn's revert brings it back as it was (src/lib/db/turn-rows.ts).
+  keepWithCascade("users", sheet.userId, campaign.id);
   const encounter = getActiveEncounter(campaign.id);
   if (encounter) {
     const index = encounter.order.findIndex((entry) => entry.kind === "pc" && entry.characterId === sheet.id);

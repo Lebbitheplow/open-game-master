@@ -195,6 +195,25 @@ await test("ground a revert puts back as wall sets whoever has stepped onto it s
   assert.notDeepEqual([at.x, at.y], [2, 2], "the goblin was left inside the wall");
 });
 
+await test("a summoned creature a call sent away comes back whole with its revert: its sheet, its hit points, its token", async () => {
+  kit.giveTurn(vex.id);
+  const servant = await act({ content: "I cast Unseen Servant using a level 1 slot.", characterId: vex.id, intent: { card: "spell", spell: "Unseen Servant", slotLevel: 1 } });
+  assert.equal(servant.status, 200, JSON.stringify(servant.body));
+  const [called] = summonsOf(person.campaignId, vex.id, "Unseen Servant");
+  assert.ok(called, "no servant came");
+  const hp = person.sheet(called.id).currentHp;
+  const struck = await person.invoke("apply_damage", { characterId: called.id, amount: 50, type: "slashing" });
+  assert.equal(struck.ok, true, struck.error);
+  assert.equal(person.sheet(called.id), null, "the servant was not sent away");
+  const back = await revertTurn(person, struck.turnId, true);
+  assert.equal(back.status, 200, JSON.stringify(back.json));
+  const again = person.sheet(called.id);
+  assert.ok(again, "the servant did not come back");
+  assert.equal(again.currentHp, hp, "it came back without its hit points");
+  assert.equal(summonsOf(person.campaignId, vex.id, "Unseen Servant").length, 1);
+  assert.ok(kit.token(called.id), "it came back off the board");
+});
+
 await test("a creature a later call changed again is asked about first, and goes back as the reverted call found it on yes", async () => {
   const before = getEnemy(goblin.id).currentHp;
   const first = await person.invoke("damage_enemy", { enemyId: goblin.id, amount: 3 });

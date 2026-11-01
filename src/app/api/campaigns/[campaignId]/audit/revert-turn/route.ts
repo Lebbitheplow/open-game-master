@@ -6,10 +6,11 @@ import { previewTurnClockRewind, rewindTurnClock } from "@/lib/db/clock";
 import { getDmTurn, markDmTurnReverted } from "@/lib/db/dm-turns";
 import { listAuditForTurn } from "@/lib/db/sheet-audit";
 import { liveTurnChanges } from "@/lib/db/turn-changes";
+import { REVERT_WINDOW_TURNS, revertWindowStart } from "@/lib/db/turn-rows";
 import { describeInstant } from "@/lib/dm/calendar";
 import { publishSceneState } from "@/lib/dm/scene-state";
 import { currentScene } from "@/lib/dm/sky";
-import { takeBackTurnChanges, turnChangeWarnings } from "@/lib/dm/turn-revert";
+import { bringBackTakenRows, takeBackTurnChanges, turnChangeWarnings } from "@/lib/dm/turn-revert";
 import { publishPersisted } from "@/lib/events";
 import { revertAuditEntry, undoConflictWarnings } from "@/lib/sheet-undo";
 
@@ -54,6 +55,15 @@ export async function POST(
   if (!turn || turn.campaignId !== campaignId) {
     return Response.json({ error: "That is not a GM turn of this table." }, { status: 400 });
   }
+  // Past the window the rows a revert puts the fight back from are gone
+  // (src/lib/db/turn-rows.ts REVERT_WINDOW_TURNS): half a revert is refused.
+  const reach = revertWindowStart(campaignId);
+  if (reach && turn.createdAt < reach) {
+    return Response.json(
+      { error: `That turn is too far back to revert: a table's last ${REVERT_WINDOW_TURNS} GM turns can be. Rewinding the chapter takes older ones back.` },
+      { status: 400 },
+    );
+  }
 
   const entries = listAuditForTurn(campaignId, turnId).filter(
     (entry) => entry.undoable && entry.kind !== "undo",
@@ -78,6 +88,11 @@ export async function POST(
     return Response.json({ warnings: [...new Set(warnings)] }, { status: 409 });
   }
 
+  // A creature the turn sent away comes back first, so its sheet's own
+  // changes can be put back on it.
+  if (changes.length) {
+    bringBackTakenRows(context.campaign, turnId);
+  }
   const errors: string[] = [];
   // One ledger row per AI change reverted, each in its own undo's transaction.
   const corrections: string[] = [];

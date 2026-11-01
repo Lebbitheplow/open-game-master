@@ -129,7 +129,7 @@ import { turnStartEffects } from "@/lib/dm/turn-start-effects";
 import { castingTurnBudget } from "@/lib/dm/long-casting";
 import { endEncounterTool, endTurnTool, enemyAttackTool, startEncounterTool, type ToolDef } from "@/lib/dm/encounter-tool-defs";
 import { RUN_PREPARED_ENCOUNTER, runPreparedEncounter } from "@/lib/dm/prepared-encounter-tool";
-import { fireFightEvents } from "@/lib/dm/fight-events";
+import { asEventTurn, fireFightEvents } from "@/lib/dm/fight-events";
 import { rollDeathSave } from "@/lib/dm/death";
 import { getBattleMapForEncounter, getTokenByRef, listHiddenRefIds, resetRoundBudgets, resetTurnBudgets } from "@/lib/db/battle-maps";
 import { tilesApart } from "@/lib/dm/board-reach";
@@ -2519,7 +2519,14 @@ function nearestTo(sheetId: string, encounterId: string, enemies: EncounterEnemy
 // Self-service turn end: the current player declares their combat turn done
 // (attack landed, movement spent or declined). Same shape as the lead skip
 // below; the caller wakes the DM so intervening enemies still act.
+// The player's own End Turn. In a fight whose plan still holds an event it
+// runs as a turn of its own (fight-events.ts asEventTurn), so an event it
+// brings on goes back with the round it began.
 export function endOwnTurn(campaignId: string, userId: string): boolean {
+  return asEventTurn(campaignId, () => endOwnTurnNow(campaignId, userId));
+}
+
+function endOwnTurnNow(campaignId: string, userId: string): boolean {
   const campaign = getCampaignById(campaignId);
   const encounter = getActiveEncounter(campaignId);
   if (!campaign || !encounter || !encounter.orderReady) {
@@ -2698,7 +2705,12 @@ export function stepTurnForward(campaign: Campaign, opening?: string): string | 
 // Lead escape hatch: advance past an absent player's turn. Inserts a table
 // note; the caller wakes the DM so intervening enemies still act (kept out
 // of this module to avoid an import cycle with the turn loop).
+// The lead's skip, as End Turn runs (endOwnTurn).
 export function skipCurrentTurn(campaignId: string): boolean {
+  return asEventTurn(campaignId, () => skipCurrentTurnNow(campaignId));
+}
+
+function skipCurrentTurnNow(campaignId: string): boolean {
   const campaign = getCampaignById(campaignId);
   if (campaign) {
     finishPassBeforeMove(campaign);

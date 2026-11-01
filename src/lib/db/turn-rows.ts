@@ -1,7 +1,10 @@
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
+import { forgetTurnClockMoves } from "@/lib/db/clock-moves";
+import { unfileTurnAudit } from "@/lib/db/sheet-audit";
 import { listLiveTurnChangeViews, liveTurnChangeOf, recordTurnChange, type TurnChangeView } from "@/lib/db/turn-changes";
 import { currentTurnId, onTurnWorkDone } from "@/lib/dm/job-control";
 import { fightLine } from "@/lib/dm/turn-rows-logic";
+import { publishPersisted } from "@/lib/events";
 
 // The fight and the board as a GM turn found them, row by row, so "Revert
 // this turn" puts back what the turn's own calls did there (issue 685): an
@@ -19,9 +22,14 @@ import { fightLine } from "@/lib/dm/turn-rows-logic";
 // (job-control.ts turnWorkDone) each kept row is read once more as the turn
 // left it, which is what tells a change made since. Work outside every turn
 // keeps nothing. The rules of putting rows back: src/lib/dm/turn-rows-logic.ts.
+//
+// A delete that takes other rows with it (a summoned creature sent away: its
+// bot user, and its sheet with it) keeps every row the database removes
+// (keepWithCascade), whole, so the revert brings the creature back as it was.
 
-export const KEPT_TABLES = ["encounters", "encounter_enemies", "battle_maps", "battle_tokens", "active_effects", "dropped_items"] as const;
-export type KeptTable = (typeof KEPT_TABLES)[number];
+// Any table a kept row is from: the fight's own (turn-rows-logic.ts
+// FIGHT_TABLES), or one a cascade reached.
+export type KeptTable = string;
 
 export type Row = Record<string, unknown>;
 
@@ -36,7 +44,7 @@ export type KeptRow = {
 };
 
 declare global {
-  // turn id -> "table:id" of every row it has kept.
+  // turn id -> "table:key" of every row it has kept.
   var __odmTurnRowsSeen: Map<string, Set<string>> | undefined;
 }
 
@@ -54,6 +62,68 @@ function seenBy(turnId: string): Set<string> {
   }
   return seen;
 }
+
+// ---- the database's own shape: tables, keys, cascades (read once) ----
+
+let tables: Set<string> | null = null;
+const keys = new Map<string, string[]>();
+const cascades = new Map<string, Array<{ child: string; from: string; to: string }>>();
+
+function tableNames(): Set<string> {
+  tables ??= new Set(
+    (getDatabase().prepare(`SELECT name FROM sqlite_master WHERE type = 'table'`).all() as Array<{ name: string }>).map((row) => row.name),
+  );
+  return tables;
+}
+
+function primaryKey(table: string): string[] {
+  let key = keys.get(table);
+  if (!key) {
+    const columns = getDatabase().prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string; pk: number }>;
+    key = columns.filter((column) => column.pk > 0).sort((a, b) => a.pk - b.pk).map((column) => column.name);
+    keys.set(table, key);
+  }
+  return key;
+}
+
+// A row's key as turn_rows stores it: its id, or its key columns' values.
+function keyOf(table: string, row: Row): string | null {
+  const key = primaryKey(table);
+  if (!key.length) {
+    return null;
+  }
+  return key.length === 1 ? String(row[key[0]] ?? "") : JSON.stringify(key.map((column) => row[column] ?? null));
+}
+
+function whereKey(table: string, rowId: string): { sql: string; params: unknown[] } {
+  const key = primaryKey(table);
+  if (key.length === 1) {
+    return { sql: `${key[0]} = ?`, params: [rowId] };
+  }
+  const values = parseJson<unknown[]>(rowId, []);
+  return { sql: key.map((column) => `${column} = ?`).join(" AND "), params: key.map((_, index) => values[index] ?? null) };
+}
+
+// The tables whose rows go when a row of `table` is deleted (ON DELETE
+// CASCADE), and by which columns.
+function cascadeChildren(table: string) {
+  let found = cascades.get(table);
+  if (!found) {
+    found = [];
+    for (const child of tableNames()) {
+      const links = getDatabase().prepare(`PRAGMA foreign_key_list(${child})`).all() as Array<{ table: string; from: string; to: string; on_delete: string }>;
+      for (const link of links) {
+        if (link.table === table && link.on_delete.toUpperCase() === "CASCADE") {
+          found.push({ child, from: link.from, to: link.to });
+        }
+      }
+    }
+    cascades.set(table, found);
+  }
+  return found;
+}
+
+// ---- keeping ----
 
 function store(turnId: string, campaignId: string, table: KeptTable, rowId: string, before: Row | null) {
   getDatabase()
@@ -79,12 +149,12 @@ export function keepRow(table: KeptTable, rowId: string) {
     return;
   }
   const seen = seenBy(turnId);
-  const key = `${table}:${rowId}`;
-  if (seen.has(key)) {
+  const mark = `${table}:${rowId}`;
+  if (seen.has(mark)) {
     return;
   }
-  seen.add(key);
-  const row = getDatabase().prepare(`SELECT * FROM ${table} WHERE id = ?`).get(rowId) as Row | undefined;
+  seen.add(mark);
+  const row = readRow(table, rowId);
   if (row && typeof row.campaign_id === "string") {
     store(turnId, row.campaign_id, table, rowId, row);
   }
@@ -97,11 +167,11 @@ export function keepNew(table: KeptTable, rowId: string, campaignId: string) {
     return;
   }
   const seen = seenBy(turnId);
-  const key = `${table}:${rowId}`;
-  if (seen.has(key)) {
+  const mark = `${table}:${rowId}`;
+  if (seen.has(mark)) {
     return;
   }
-  seen.add(key);
+  seen.add(mark);
   store(turnId, campaignId, table, rowId, null);
 }
 
@@ -115,21 +185,54 @@ export function keepRowsWhere(table: KeptTable, where: string, params: unknown[]
   const seen = seenBy(turnId);
   const rows = getDatabase().prepare(`SELECT * FROM ${table} WHERE ${where}`).all(...params) as Row[];
   for (const row of rows) {
-    const rowId = String(row.id ?? "");
-    const key = `${table}:${rowId}`;
-    if (!rowId || seen.has(key) || typeof row.campaign_id !== "string") {
+    const rowId = keyOf(table, row);
+    if (!rowId || seen.has(`${table}:${rowId}`) || typeof row.campaign_id !== "string") {
       continue;
     }
-    seen.add(key);
+    seen.add(`${table}:${rowId}`);
     store(turnId, row.campaign_id, table, rowId, row);
   }
 }
 
-export function readRow(table: KeptTable, rowId: string): Row | null {
-  return (getDatabase().prepare(`SELECT * FROM ${table} WHERE id = ?`).get(rowId) as Row | undefined) ?? null;
+// Before a delete the database carries on through its cascades: the row and
+// every row it takes with it, each as the turn found it.
+export function keepWithCascade(table: KeptTable, rowId: string, campaignId: string) {
+  const turnId = currentTurnId();
+  if (!turnId) {
+    return;
+  }
+  const seen = seenBy(turnId);
+  const db = getDatabase();
+  const visit = (from: string, row: Row) => {
+    const key = keyOf(from, row);
+    if (key === null || seen.has(`${from}:${key}`)) {
+      return;
+    }
+    seen.add(`${from}:${key}`);
+    store(turnId, campaignId, from, key, row);
+    for (const link of cascadeChildren(from)) {
+      for (const child of db.prepare(`SELECT * FROM ${link.child} WHERE ${link.from} = ?`).all(row[link.to] as never) as Row[]) {
+        visit(link.child, child);
+      }
+    }
+  };
+  const row = readRow(table, rowId);
+  if (row) {
+    visit(table, row);
+  }
 }
 
-// The turn's work is done: each row it kept, as it left it.
+export function readRow(table: KeptTable, rowId: string): Row | null {
+  if (!tableNames().has(table)) {
+    return null;
+  }
+  const key = whereKey(table, rowId);
+  return (getDatabase().prepare(`SELECT * FROM ${table} WHERE ${key.sql}`).get(...(key.params as never[])) as Row | undefined) ?? null;
+}
+
+// ---- when a turn's work is done ----
+
+// Each row the turn kept, as it left it.
 function seal(turnId: string) {
   const db = getDatabase();
   const rows = db.prepare(`SELECT tbl, row_id FROM turn_rows WHERE turn_id = ? AND reverted_at IS NULL`).all(turnId) as Array<{
@@ -142,29 +245,89 @@ function seal(turnId: string) {
   const write = db.prepare(`UPDATE turn_rows SET after_json = ?, sealed = 1 WHERE turn_id = ? AND tbl = ? AND row_id = ?`);
   db.transaction(() => {
     for (const row of rows) {
-      if (!(KEPT_TABLES as readonly string[]).includes(row.tbl)) {
-        continue;
-      }
       const now = readRow(row.tbl, row.row_id);
       write.run(now ? JSON.stringify(now) : null, turnId, row.tbl, row.row_id);
     }
   })();
 }
 
-onTurnWorkDone(seal);
+// How far back "Revert this turn" reaches: the table's newest
+// REVERT_WINDOW_TURNS GM turns. The route had no window of its own, nor had
+// the sheet audit or the clock's moves, so the rows kept for a revert grew
+// with every turn a table ever played. Two hundred turns is several sessions
+// at a table the AI runs and a long session at one a person runs (each
+// console call is a turn), and well past what the event log lists (its last
+// fifty changes). Past it the route refuses, rather than put back a turn's
+// sheets without the fight its rows no longer hold. The sheet audit is not
+// pruned with it: a single change's undo, the sheet history and a fight's
+// summary read its rows whatever turn wrote them.
+export const REVERT_WINDOW_TURNS = 200;
+
+// When the oldest turn still in reach began, or null while the table has
+// played fewer turns than the window holds.
+export function revertWindowStart(campaignId: string): string | null {
+  const row = getDatabase()
+    .prepare(`SELECT created_at FROM dm_turns WHERE campaign_id = ? ORDER BY created_at DESC, rowid DESC LIMIT 1 OFFSET ?`)
+    .get(campaignId, REVERT_WINDOW_TURNS - 1) as { created_at: string } | undefined;
+  return row?.created_at ?? null;
+}
+
+// The kept rows and changes of turns out of reach go. A row is kept no
+// earlier than its turn began, so one kept before the window's oldest turn
+// began is an older turn's. Two indexed reads when there is nothing to drop.
+export function pruneOutOfReach(campaignId: string) {
+  const start = revertWindowStart(campaignId);
+  if (!start) {
+    return;
+  }
+  const db = getDatabase();
+  db.prepare(`DELETE FROM turn_rows WHERE campaign_id = ? AND created_at < ?`).run(campaignId, start);
+  db.prepare(`DELETE FROM turn_changes WHERE campaign_id = ? AND created_at < ?`).run(campaignId, start);
+}
+
+function turnDone(turnId: string) {
+  seal(turnId);
+  const turn = getDatabase().prepare(`SELECT campaign_id FROM dm_turns WHERE id = ?`).get(turnId) as { campaign_id: string } | undefined;
+  if (turn) {
+    pruneOutOfReach(turn.campaign_id);
+  }
+}
+
+onTurnWorkDone(turnDone);
+
+// A turn opened in case it had something to take back that had nothing
+// (src/lib/dm/fight-events.ts asEventTurn): what it kept goes, and its sheet
+// changes are nobody's turn again, as they were before it was opened. The
+// turn goes too: nothing else names it (a roll is parked under the turn it is
+// handed, never the one running), and left, every End Turn of a fight with a
+// plan would leave an empty turn that pushes real ones out of the revert's
+// reach and stands as "the latest turn" a retry asks for.
+export function dissolveTurn(campaignId: string, turnId: string) {
+  const db = getDatabase();
+  const had = db.prepare(`SELECT 1 FROM turn_changes WHERE turn_id = ? LIMIT 1`).get(turnId);
+  db.transaction(() => {
+    db.prepare(`DELETE FROM turn_rows WHERE turn_id = ?`).run(turnId);
+    db.prepare(`DELETE FROM turn_changes WHERE turn_id = ?`).run(turnId);
+    unfileTurnAudit(turnId);
+    forgetTurnClockMoves(campaignId, turnId);
+    db.prepare(`DELETE FROM dm_turns WHERE id = ? AND campaign_id = ?`).run(turnId, campaignId);
+  })();
+  if (had) {
+    publishPersisted(campaignId, "turn_changed", { reverted: turnId });
+  }
+}
 
 export function listKeptRows(turnId: string): KeptRow[] {
   const rows = getDatabase()
     .prepare(`SELECT tbl, row_id, before_json, after_json, sealed FROM turn_rows WHERE turn_id = ? AND reverted_at IS NULL ORDER BY rowid ASC`)
     .all(turnId) as Array<{ tbl: string; row_id: string; before_json: string | null; after_json: string | null; sealed: number }>;
   return rows.flatMap((row) => {
-    const table = KEPT_TABLES.find((entry) => entry === row.tbl);
-    if (!table) {
+    if (!tableNames().has(row.tbl)) {
       return [];
     }
     const before = row.before_json === null ? null : parseJson<Row | null>(row.before_json, null);
     const after = row.sealed ? (row.after_json === null ? null : parseJson<Row | null>(row.after_json, null)) : undefined;
-    return [{ table, rowId: row.row_id, before, after }];
+    return [{ table: row.tbl, rowId: row.row_id, before, after }];
   });
 }
 
@@ -207,18 +370,23 @@ function columnsOf(table: KeptTable): Set<string> {
 // Sets the named columns from `values`; only columns the table has.
 export function writeRow(table: KeptTable, rowId: string, values: Row) {
   const known = columnsOf(table);
-  const columns = Object.keys(values).filter((column) => known.has(column) && column !== "id");
-  if (!columns.length) {
+  const key = primaryKey(table);
+  const columns = Object.keys(values).filter((column) => known.has(column) && !key.includes(column));
+  if (!columns.length || !tableNames().has(table)) {
     return;
   }
+  const where = whereKey(table, rowId);
   const stamp = known.has("updated_at") && !columns.includes("updated_at") ? ", updated_at = ?" : "";
   getDatabase()
-    .prepare(`UPDATE ${table} SET ${columns.map((column) => `${column} = ?`).join(", ")}${stamp} WHERE id = ?`)
-    .run(...columns.map((column) => values[column] as never), ...(stamp ? [nowIso()] : []), rowId);
+    .prepare(`UPDATE ${table} SET ${columns.map((column) => `${column} = ?`).join(", ")}${stamp} WHERE ${where.sql}`)
+    .run(...columns.map((column) => values[column] as never), ...(stamp ? [nowIso()] : []), ...(where.params as never[]));
 }
 
 // A row the turn took away, back as it was.
 export function insertRow(table: KeptTable, row: Row) {
+  if (!tableNames().has(table)) {
+    return;
+  }
   const known = columnsOf(table);
   const columns = Object.keys(row).filter((column) => known.has(column));
   getDatabase()
@@ -227,5 +395,9 @@ export function insertRow(table: KeptTable, row: Row) {
 }
 
 export function deleteRow(table: KeptTable, rowId: string) {
-  getDatabase().prepare(`DELETE FROM ${table} WHERE id = ?`).run(rowId);
+  if (!tableNames().has(table)) {
+    return;
+  }
+  const where = whereKey(table, rowId);
+  getDatabase().prepare(`DELETE FROM ${table} WHERE ${where.sql}`).run(...(where.params as never[]));
 }

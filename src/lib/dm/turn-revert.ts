@@ -13,7 +13,7 @@ import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { takeBackFightEvent } from "@/lib/dm/fight-event-undo";
 import { cardRevertWarnings, takeBackCardResolution } from "@/lib/dm/resolve-card";
 import { removeSummon } from "@/lib/dm/summon-store";
-import { planRowsRevert, type FightState, type RowPlan, type RowState } from "@/lib/dm/turn-rows-logic";
+import { isFightTable, planRowsRevert, type FightState, type RowPlan, type RowState } from "@/lib/dm/turn-rows-logic";
 import { publishEphemeral, publishPersisted } from "@/lib/events";
 
 // The part of "Revert this turn" that is not a sheet or the clock (issue
@@ -126,19 +126,29 @@ function applyRows(campaign: Campaign, plan: RowPlan) {
   }
 }
 
-// The creatures the turn called up go; one it sent away cannot come back.
-function summonWarnings(changes: readonly TurnChange[]): string[] {
-  const gone = changes.filter((change) => change.kind === "summon_gone").map((change) => text(change.payload.name) ?? "a creature");
-  return gone.length
-    ? [`${gone.join(", ")}, sent away in this turn, cannot be brought back by the revert; call ${gone.length === 1 ? "it" : "them"} up again.`]
-    : [];
+// What the turn took away whole (a summoned creature sent away: its bot
+// user, its sheet), back before the sheets are put back, so the sheet audit's
+// own revert lands on the sheet again: the hit points the blow that sent it
+// away took come back with it.
+export function bringBackTakenRows(campaign: Campaign, turnId: string) {
+  const plan = rowsPlan(turnId)?.plan;
+  const taken = plan?.inserts.filter((entry) => !isFightTable(entry.table)) ?? [];
+  if (!taken.length) {
+    return;
+  }
+  getDatabase().transaction(() => taken.forEach((entry) => insertRow(entry.table, entry.row)))();
+  for (const entry of taken) {
+    const sheet = entry.table === "character_sheets" ? getSheetById(text(entry.row.id) ?? "") : null;
+    if (sheet) {
+      publishPersisted(campaign.id, "sheet_updated", { sheet });
+    }
+  }
 }
 
 export function turnChangeWarnings(campaign: Campaign, turnId: string, changes: readonly TurnChange[]): string[] {
   const dice = changes.filter((change) => change.kind === "dice_face" || change.kind === "dice_seed");
   return [
     ...(rowsPlan(turnId)?.plan.warnings ?? []),
-    ...summonWarnings(changes),
     ...changes.flatMap((change) => (change.kind === "card" ? cardRevertWarnings(change) : [])),
     ...(dice.length ? diceGiveBackWarnings(campaign.id, dice) : []),
   ];
@@ -170,5 +180,5 @@ export function takeBackTurnChanges(campaign: Campaign, turnId: string, changes:
     markRowsReverted(turnId);
   }
   markTurnChangesReverted(changes.map((change) => change.id));
-  return changes.filter((change) => change.kind !== "summon_gone").length;
+  return changes.length;
 }

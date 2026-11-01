@@ -32,6 +32,9 @@ const { buildFeed, revertableTurns } = await import("../src/app/campaigns/[campa
 const { runInTurnScope } = await import("../src/lib/dm/job-control.ts");
 const { createDmTurn, openStandInTurn, closeStandInTurn } = await import("../src/lib/db/dm-turns.ts");
 const { saveEncounter } = await import("../src/lib/db/encounters.ts");
+const { endOwnTurn, skipCurrentTurn } = await import("../src/lib/dm/encounter-tools.ts");
+const { keepNew, REVERT_WINDOW_TURNS } = await import("../src/lib/db/turn-rows.ts");
+const { getDatabase } = await import("../src/lib/db/core.ts");
 
 const MAP = { mapId: null, scene: null, seed: null, theme: null, ambient: null, width: null, height: null };
 const FRESH = { successes: 0, failures: 0, stable: false, dead: false };
@@ -169,6 +172,83 @@ await test("reinforcements a player's End Turn brought in at a seeded test fight
   assert.ok(scripts.getDiceScript(bench.campaignId).seededRolls <= rolls, "the seed the newcomer's initiative spent stayed spent");
   await bench.invoke("end_encounter", { outcome: "truce" });
   scripts.clearDiceScript(bench.campaignId);
+});
+
+await test("a player's End Turn or the lead's skip that brings on an event is one turn with the round it began: its revert puts the round back, and the event waits for the round to come round again; one that brings on nothing leaves no turn behind", async () => {
+  benchKit.reset(fighter.id);
+  const benchCombat = await combatKit(bench);
+  const template = insertEncounterTemplate({
+    campaignId: bench.campaignId,
+    name: "Round three",
+    enemies: [{ monster: "goblin", count: 1 }],
+    battlefield: "",
+    map: MAP,
+    notes: "",
+    extras: { entry: { x: 2, y: 2 }, events: [{ trigger: { kind: "round", round: 3 }, actions: [{ kind: "say", text: "The drums start." }] }] },
+    createdByUserId: bench.owner.id,
+  });
+  bench.clearDice();
+  bench.dice(20, 1);
+  assert.equal((await deployTemplate(bench.campaign(), bench.owner.id, template)).ok, true);
+  bench.clearDice();
+  const drums = () => listRecentMessages(bench.campaignId, 100).filter((message) => message.content === "The drums start.").length;
+  // The lead hands the goblin's turn on, and the hero closes the round with
+  // their own End Turn.
+  const views = () => listLiveTurnChangeViews(bench.campaignId).length;
+  const turns = () => getDatabase().prepare(`SELECT COUNT(*) AS n FROM dm_turns WHERE campaign_id = ?`).get(bench.campaignId).n;
+  const closeRound = (move) => {
+    benchCombat.handOnEnemies();
+    benchCombat.giveTurn(fighter.id);
+    const before = { changes: views(), turns: turns() };
+    assert.equal(move(), true, "the move was refused");
+    return { changes: views() - before.changes, turns: turns() - before.turns };
+  };
+  const endTurn = () => endOwnTurn(bench.campaignId, fighter.userId);
+  const skip = () => skipCurrentTurn(bench.campaignId);
+  const takeBack = async (word) => {
+    const fired = listLiveTurnChangeViews(bench.campaignId).find((change) => change.kind === "fight_event" && /drums/.test(change.line));
+    assert.ok(fired, `the event ${word} brought on was kept under no turn`);
+    const back = await revertTurn(bench, fired.turnId);
+    assert.equal(back.status, 200, JSON.stringify(back.json));
+    assert.equal(bench.encounter().round, 2, `the round ${word} began stayed`);
+    assert.equal(drums(), 0, "the chronicle still reads the event as standing");
+  };
+  assert.deepEqual(closeRound(endTurn), { changes: 0, turns: 0 }, "an End Turn that brought on nothing left a turn behind");
+  assert.equal(bench.encounter().round, 2);
+  assert.ok(closeRound(endTurn).changes > 0);
+  assert.equal(bench.encounter().round, 3);
+  assert.equal(drums(), 1);
+  await takeBack("the End Turn");
+  // A call in round 2 fires nothing; the round coming round again does.
+  assert.equal((await bench.invoke("set_enemy_condition", { enemyId: bench.enemies()[0].id, condition: "prone" })).ok, true);
+  assert.equal(drums(), 0, "the event fired again before its round came round");
+  assert.ok(closeRound(skip).changes > 0);
+  assert.equal(bench.encounter().round, 3);
+  assert.equal(drums(), 1);
+  await takeBack("the lead's skip");
+  await bench.invoke("end_encounter", { outcome: "truce" });
+});
+
+await test("what a revert keeps reaches the table's last turns only: a turn past them has nothing kept and is refused in words, and the pruning runs as a turn's work is done", async () => {
+  const old = createDmTurn(bench.campaignId, [], "human_dm");
+  runInTurnScope(old.id, () => keepNew("active_effects", "effect-long-gone", bench.campaignId));
+  const kept = (table) => getDatabase().prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE turn_id = ?`).get(old.id).n;
+  assert.ok(kept("turn_rows") > 0 && kept("turn_changes") > 0, "the old turn kept nothing to prune");
+  // Long ago, and a full window of turns since.
+  const db = getDatabase();
+  for (const table of ["dm_turns", "turn_rows", "turn_changes"]) {
+    db.prepare(`UPDATE ${table} SET created_at = '2001-01-01T00:00:00.000Z' WHERE ${table === "dm_turns" ? "id" : "turn_id"} = ?`).run(old.id);
+  }
+  for (let made = 0; made < REVERT_WINDOW_TURNS; made += 1) {
+    createDmTurn(bench.campaignId, [], "human_dm");
+  }
+  assert.ok(kept("turn_rows") > 0, "pruned before any turn's work was done");
+  runInTurnScope(createDmTurn(bench.campaignId, [], "human_dm").id, () => {});
+  assert.equal(kept("turn_rows"), 0, "rows kept for a turn out of reach stayed");
+  assert.equal(kept("turn_changes"), 0, "changes kept for a turn out of reach stayed");
+  const refused = await revertTurn(bench, old.id);
+  assert.equal(refused.status, 400, JSON.stringify(refused.json));
+  assert.match(refused.json.error, /too far back to revert/);
 });
 
 // ---- a card resolved as played ----

@@ -2905,6 +2905,12 @@ function ensureSchema(db: SqliteDatabase) {
       reverted_at TEXT,
       PRIMARY KEY (turn_id, tbl, row_id)
     );
+
+    -- What "Revert this turn" can still reach is the table's newest turns
+    -- (src/lib/db/turn-rows.ts pruneOutOfReach): read by campaign and time.
+    CREATE INDEX IF NOT EXISTS idx_turn_rows_campaign ON turn_rows(campaign_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_turn_changes_campaign ON turn_changes(campaign_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_dm_turns_campaign ON dm_turns(campaign_id, created_at);
   `);
   // Clock-driven disease and poison rows were once filed under the literal
   // turn "clock", one false turn per campaign that "Revert this turn" undid

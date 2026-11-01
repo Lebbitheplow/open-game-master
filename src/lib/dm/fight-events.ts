@@ -42,6 +42,8 @@ import {
 } from "@/lib/dm/fight-event-logic";
 import { changeGround, preparedBoard } from "@/lib/dm/fight-ground";
 import { recordFightEvent } from "@/lib/dm/fight-event-undo";
+import { liveTurnChangeOf } from "@/lib/db/turn-changes";
+import { dissolveTurn } from "@/lib/db/turn-rows";
 import { currentTurnId, runInTurnScope } from "@/lib/dm/job-control";
 import { isDefeated } from "@/lib/dm/knockout";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
@@ -284,6 +286,29 @@ function playEvent(campaign: Campaign, armed: ArmedFightEvent, turn: DmTurn, own
   recordFightEventLines(armed.id, lines);
   recordFightEvent(campaign, owner, armed, { line: content, messageId, noteId });
   return content;
+}
+
+// A player's End Turn and the lead's skip move the fight on where no GM turn
+// runs. In a fight whose plan still holds an event, the move is a turn of its
+// own, opened before it: the round it begins, the turn it hands on and the
+// event it brings on are one change "Revert this turn" takes back together,
+// so the event, armed again, waits for its round to come round again, as at
+// an AI turn. A move that brought on no event leaves no turn behind: it is
+// the player's, as it always was (src/lib/db/turn-rows.ts dissolveTurn).
+export function asEventTurn<T>(campaignId: string, move: () => T): T {
+  const encounter = getActiveEncounter(campaignId);
+  if (currentTurnId() || !encounter || !hasArmedFightEvents(encounter.id)) {
+    return move();
+  }
+  const turn = openStandInTurn(campaignId);
+  try {
+    return runInTurnScope(turn.id, move);
+  } finally {
+    closeStandInTurn(turn);
+    if (!liveTurnChangeOf(campaignId, turn.id, "fight_event")) {
+      dissolveTurn(campaignId, turn.id);
+    }
+  }
 }
 
 // Runs every event the fight has come to, each once, and returns what the
