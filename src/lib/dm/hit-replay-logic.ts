@@ -29,7 +29,10 @@ export type Standing<W extends { beastHp: number } = { beastHp: number }> = {
 
 // One swing as the replay needs it: whether it hit, whether it was a
 // critical hit, and the damage that reached the character (after resistance).
-export type ReplaySwing = { hit: boolean; crit: boolean; landed: number };
+// `ordinary`: a critical that came only from the character lying
+// unconscious at 0 within 5 ft, as the ordinary hit it is on them standing
+// (SRD 5.1); a replay that finds them standing when it lands deals that.
+export type ReplaySwing = { hit: boolean; crit: boolean; landed: number; ordinary?: number };
 
 export type Replay<W extends { beastHp: number }> = {
   // Where they stood before and after each hit, in order.
@@ -84,10 +87,13 @@ export function replayHits<W extends { beastHp: number }>(start: Standing<W>, hi
   const steps = hits.map((swings) => {
     const before = { ...state };
     for (const swing of swings) {
-      if (!swing.hit || swing.landed <= 0) {
+      const standing = state.currentHp > 0 || state.wildShape !== null;
+      const ordinary = standing && swing.ordinary !== undefined;
+      const landed = ordinary ? (swing.ordinary as number) : swing.landed;
+      if (!swing.hit || landed <= 0) {
         continue;
       }
-      const out = blow(state, swing.landed, swing.crit, maxHp);
+      const out = blow(state, landed, swing.crit && !ordinary, maxHp);
       state = out.next;
       if (out.overkill !== null) {
         overkill = out.overkill;

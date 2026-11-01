@@ -488,16 +488,56 @@ await test("Shield that leaves the first hit standing still takes back the later
   assert.ok(down(world, mira).includes("unconscious"));
 });
 
-await test("Shield that turns the first hit away makes the later hit land on her standing: hit point damage, no failures", async () => {
+await test("Shield that turns the first hit away makes the later hit land on her standing: its ordinary damage, no failures", async () => {
   const table = await stage();
   const { world, mira } = table;
-  // The first's 14 now misses; the second's 19 still hits, for 1 + 1 + 2.
-  await downedTwice(table, [10, 5], [15, 15, 1, 1]);
+  // The first's 14 now misses; the second's 19 still hits. It was critical
+  // only because she lay at 0 beside the goblin: 2 + 5 + 2 = 9 as a
+  // critical, 2 + 2 = 4 as the ordinary hit it is on her standing.
+  const { h2 } = await downedTwice(table, [10, 5], [15, 15, 2, 5]);
+  assert.equal(h2.swings[0].raw, 9);
+  assert.deepEqual(h2.swings[0].ordinary, { raw: 4 }, "the ordinary blow is kept, from the same dice");
   const out = await react(world, mira, "Shield");
   assert.equal(out.ok, true, out.error);
-  assert.equal(world.sheet(mira.id).currentHp, 2, "the second club's 4 comes off the 6 she kept");
+  assert.equal(world.sheet(mira.id).currentHp, 2, "the club's ordinary 4 comes off the 6 she kept; its critical 9 would have dropped her");
   assert.equal(track(world, mira)?.failures ?? 0, 0);
   assert.ok(!down(world, mira).includes("unconscious"), down(world, mira).join(", "));
+});
+
+await test("A critical's ordinary blow is read off its first set of dice and the modifier, whatever critical rules the table plays", async () => {
+  const { critDamageExpression, ordinaryOfCritical } = await import("../src/lib/dm/encounter-logic.ts");
+  const dice = (sides, ...faces) => ({ kind: "dice", sign: 1, count: faces.length, sides, dice: faces.map((value) => ({ value, sides, kept: true })), subtotal: faces.reduce((sum, face) => sum + face, 0) });
+  const flat = (value) => ({ kind: "modifier", sign: 1, value });
+  const roll = (expression, terms) => ({ expression, total: terms.reduce((sum, term) => sum + (term.kind === "dice" ? term.subtotal : term.value), 0), terms });
+  // 1d6+2 doubled: the first d6 and the 2.
+  assert.equal(critDamageExpression("1d6+2"), "1d6+1d6+2");
+  assert.equal(ordinaryOfCritical(roll("1d6+1d6+2", [dice(6, 2), dice(6, 5), flat(2)]), "1d6+2").total, 4);
+  // Powerful Critical: the copy is the dice's maximum, a flat 6.
+  assert.equal(critDamageExpression("1d6+2", 0, { powerfulCritical: true }), "1d6+6+2");
+  assert.equal(ordinaryOfCritical(roll("1d6+6+2", [dice(6, 3), flat(6), flat(2)]), "1d6+2").total, 5);
+  // Critical Damage Modifiers: the 2 doubled too.
+  assert.equal(critDamageExpression("1d6+2", 0, { multiplyNumeric: true }), "1d6+1d6+2+2");
+  assert.equal(ordinaryOfCritical(roll("1d6+1d6+2+2", [dice(6, 1), dice(6, 6), flat(2), flat(2)]), "1d6+2", { multiplyNumeric: true }).total, 3);
+  // Brutal Critical's extra die at the end.
+  assert.equal(critDamageExpression("1d8+3", 1), "1d8+1d8+3+1d8");
+  assert.equal(ordinaryOfCritical(roll("1d8+1d8+3+1d8", [dice(8, 4), dice(8, 8), flat(3), dice(8, 7)]), "1d8+3", { extraDice: 1 }).total, 7);
+  // Terms that do not line up read nothing.
+  assert.equal(ordinaryOfCritical(roll("1d6+2", [dice(6, 2), flat(2)]), "1d6+2"), null);
+});
+
+await test("A natural 20 stays a critical when the first hit is turned away", async () => {
+  const table = await stage();
+  const { world, mira } = table;
+  // The second goblin rolls a natural 20: 2 + 5 + 2 = 9 whatever she was.
+  const { h2 } = await downedTwice(table, [10, 5], [20, 20, 2, 5]);
+  assert.equal(h2.swings[0].natural, 20);
+  assert.equal(h2.swings[0].ordinary, undefined, "a natural 20 keeps no ordinary blow");
+  const out = await react(world, mira, "Shield");
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.sheet(mira.id).currentHp, 0, "the critical 9 drops her from the 6 she kept");
+  assert.equal(track(world, mira)?.failures ?? 0, 0, "dropped by it, not hit while down");
+  assert.equal(track(world, mira)?.dead ?? false, false);
+  assert.ok(down(world, mira).includes("unconscious"));
 });
 
 await test("A hero at 0 when a hit lands cannot react to it, and nothing is spent", async () => {

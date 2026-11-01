@@ -60,6 +60,12 @@ export type SwingRecord = {
   // A blow of several types, part by part as sent (enemy-hit.ts blowByType).
   parts?: Array<{ amount: number; type: string }>;
   ranged?: boolean;
+  // A critical that came only from the target lying unconscious at 0 within
+  // 5 ft (SRD 5.1): the blow as an ordinary hit, from the same dice
+  // (encounter-logic.ts ordinaryOfCritical), for a reaction that leaves the
+  // target standing when it landed (reaction-refund.ts). Absent on a natural
+  // 20, which is critical whatever the target.
+  ordinary?: { raw: number; parts?: Array<{ amount: number; type: string }> };
 };
 
 export type HolderSnapshot = {
@@ -511,6 +517,7 @@ export function openLastHit(campaignId: string, characterId: string) {
         parts?: Array<{ amount: number; type: string }>;
         ranged?: boolean;
         attack?: string;
+        ordinary?: SwingRecord["ordinary"];
       },
     ) {
       swings.push({
@@ -526,6 +533,7 @@ export function openLastHit(campaignId: string, characterId: string) {
         ...(result.type !== undefined ? { type: result.type } : {}),
         ...(result.hit && result.parts?.length ? { parts: result.parts } : {}),
         ...(result.ranged !== undefined ? { ranged: result.ranged } : {}),
+        ...(result.hit && result.ordinary ? { ordinary: result.ordinary } : {}),
       });
     },
     close(what: {

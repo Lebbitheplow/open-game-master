@@ -209,10 +209,27 @@ export function settleHits(
   const first = chain[0];
   const last = chain[chain.length - 1];
   const start = standingOf(first.before);
+  // A blow's ordinary damage (a critical only because they lay at 0) comes
+  // off by what a reaction took off the blow itself (Cutting Words).
+  const ordinaryLanded = (record: LastHit, swing: SwingRecord, at: number): number | undefined => {
+    if (!swing.ordinary) {
+      return undefined;
+    }
+    const cut = Math.max(0, (record.swings[at]?.raw ?? swing.raw) - swing.raw);
+    const raw = Math.max(0, swing.ordinary.raw - cut);
+    return landedBy(record, [{ ...swing, raw, parts: cut ? undefined : swing.ordinary.parts }]);
+  };
   const replay = (pick: (record: LastHit) => SwingRecord[]) =>
     replayHits(
       start,
-      chain.map((record) => pick(record).map((swing) => ({ hit: swing.hit, crit: swing.crit, landed: swing.hit ? landedBy(record, [swing]) : 0 }))),
+      chain.map((record) =>
+        pick(record).map((swing, at) => ({
+          hit: swing.hit,
+          crit: swing.crit,
+          landed: swing.hit ? landedBy(record, [swing]) : 0,
+          ...(swing.hit && swing.ordinary ? { ordinary: ordinaryLanded(record, swing, at) } : {}),
+        })),
+      ),
       maxHp,
     );
   const was = replay((record) => record.swings);
