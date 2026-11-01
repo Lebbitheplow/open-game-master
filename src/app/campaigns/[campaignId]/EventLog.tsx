@@ -2,7 +2,7 @@
 
 import { EmptyState } from "@/components/EmptyState";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
-import { Dices, Flag, Hourglass, Loader2, RotateCcw, ScrollText, Star } from "lucide-react";
+import { Dices, Flag, Hourglass, Loader2, RotateCcw, ScrollText, Star, Swords } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/cn";
 import { offerCorrectionReason } from "@/lib/correction-offer";
@@ -46,7 +46,7 @@ function ConfirmUndoDialog({
           </AlertDialog.Title>
           <AlertDialog.Description className="mt-2 text-xs text-stone-400">
             {turn
-              ? "This puts the character sheets and the clock back as they were before the turn, takes back what the fight's prepared events did in it and arms them again, gives a test's forced dice back, and returns a card resolved as played to the waiting list. World events and companions who left stay; rewinding the chapter takes those back."
+              ? "This puts the character sheets, the clock and the fight back as they were before the turn: hit points, conditions, creatures that came or fell, tokens, areas on the board, effects and whose turn it is. A fight the turn began goes; the fight's prepared events are armed again, a test's forced dice given back and a card resolved as played waits again. World events and companions who left stay; rewinding the chapter takes those back."
               : "Newer changes touched the same fields; undoing will overwrite them."}
           </AlertDialog.Description>
           <ul className="mt-2 space-y-1">
@@ -71,9 +71,9 @@ function ConfirmUndoDialog({
 // Chronological feed of DM-driven sheet changes and character milestones.
 // The party lead can undo individual sheet changes, or revert every change
 // from one DM turn. Undo restores sheet stats; a turn's revert also puts
-// the clock back (issue #622), and what else the turn kept for it: a
-// prepared event, a test's forced dice, a card resolved as played (issue
-// 685). World events stay for the chapter rewind.
+// the clock back (issue #622), and what else the turn kept for it: the fight
+// and the board, a prepared event, a test's forced dice, a card resolved as
+// played (issue 685). World events stay for the chapter rewind.
 export function EventLog({
   campaignId,
   auditLog,
@@ -202,7 +202,7 @@ export function EventLog({
           type="button"
           disabled={busyId === `turn:${turnId}`}
           onClick={() => revertTurn(turnId)}
-          title="Put the character sheets and the clock back as they were before this GM turn, with what the fight's prepared events did in it, a test's forced dice and a card resolved as played. World events and companions who left stay; rewinding the chapter takes those back."
+          title="Put the character sheets, the clock and the fight back as they were before this GM turn: hit points, conditions, creatures, tokens, areas, effects and whose turn it is, with the prepared events it fired, a test's forced dice and a card resolved as played. World events and companions who left stay; rewinding the chapter takes those back."
           className="flex w-full items-center justify-center gap-1 rounded border border-dashed border-stone-700 py-0.5 text-[10px] text-stone-500 hover:bg-stone-900 hover:text-amber-300"
         >
           {busyId === `turn:${turnId}` ? (
@@ -250,7 +250,7 @@ export function EventLog({
           if (item.type === "change") {
             // What else the turn kept for its revert (issue 685): gone from
             // the list once the turn is reverted, as the time is.
-            const Icon = item.change.kind === "dice_face" ? Dices : Flag;
+            const Icon = item.change.kind === "dice_face" ? Dices : item.change.kind === "fight" ? Swords : Flag;
             return (
               <li key={`c-${item.change.id}`} className="check-log space-y-1">
                 {turnRevert(turnOfItem(item))}

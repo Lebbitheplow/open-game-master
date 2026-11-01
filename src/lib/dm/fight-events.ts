@@ -41,7 +41,7 @@ import {
   type FightMoment,
 } from "@/lib/dm/fight-event-logic";
 import { changeGround, preparedBoard } from "@/lib/dm/fight-ground";
-import { fightPicture, recordFightEvent } from "@/lib/dm/fight-event-undo";
+import { recordFightEvent } from "@/lib/dm/fight-event-undo";
 import { currentTurnId, runInTurnScope } from "@/lib/dm/job-control";
 import { isDefeated } from "@/lib/dm/knockout";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
@@ -226,10 +226,11 @@ function slotLabels(armed: ArmedFightEvent): (slot: number) => string {
 // The table reads one line of what happened; what the rules refused goes to
 // the GM alone, in a note beside the fight's plan.
 //
-// What it did is kept under the turn it fired in, so "Revert this turn"
-// takes it back and arms it again (fight-event-undo.ts). Fired where no turn
-// runs (a player's End Turn), the stand-in is that turn: what the event
-// rolls and changes is filed under it, and its revert takes all of it.
+// It is kept under the turn it fired in, so "Revert this turn" arms it again
+// (fight-event-undo.ts) as it puts back what it did, which the turn's fight
+// rows hold (src/lib/db/turn-rows.ts). Fired where no turn runs (a player's
+// End Turn), the stand-in is that turn: what the event rolls and changes is
+// filed under it, and its revert takes all of it.
 function runEvent(campaign: Campaign, armed: ArmedFightEvent): string {
   const turn = openStandInTurn(campaign.id);
   try {
@@ -241,7 +242,6 @@ function runEvent(campaign: Campaign, armed: ArmedFightEvent): string {
 }
 
 function playEvent(campaign: Campaign, armed: ArmedFightEvent, turn: DmTurn, owner: string): string {
-  const before = fightPicture(armed.encounterId);
   const sheets = listSheets(campaign.id);
   const sheetsById = new Map(sheets.map((sheet) => [sheet.id, sheet]));
   const label = slotLabels(armed);
@@ -282,7 +282,7 @@ function playEvent(campaign: Campaign, armed: ArmedFightEvent, turn: DmTurn, own
     }).id;
   }
   recordFightEventLines(armed.id, lines);
-  recordFightEvent(campaign, owner, armed, before, { line: content, messageId, noteId });
+  recordFightEvent(campaign, owner, armed, { line: content, messageId, noteId });
   return content;
 }
 

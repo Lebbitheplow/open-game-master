@@ -7,6 +7,7 @@
 // Must not import encounter-tools, map-tools or mutations (they reach here).
 
 import { getDatabase, nowIso } from "@/lib/db/core";
+import { keepRow } from "@/lib/db/turn-rows";
 import { getBattleMapForEncounter, listTokens, type BattleMap } from "@/lib/db/battle-maps";
 import { getActiveBoard, getEnemy, type Encounter } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
@@ -17,6 +18,8 @@ import { holdGasesBack } from "@/lib/battlemap/zones-walls";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 
 export function saveZones(mapId: string, zones: SpellZone[]) {
+  // The areas as the GM turn found them, for its revert (issue 685).
+  keepRow("battle_maps", mapId);
   getDatabase()
     .prepare(`UPDATE battle_maps SET spell_zones_json = ?, updated_at = ? WHERE id = ?`)
     .run(JSON.stringify(zones.slice(-MAX_ZONES)), nowIso(), mapId);

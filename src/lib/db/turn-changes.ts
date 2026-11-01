@@ -7,22 +7,25 @@ import { publishPersisted } from "@/lib/events";
 // (sheet-audit.ts) and the clock's moves (clock-moves.ts) keep the rest; the
 // revert route reads all three.
 //
-//   - fight_event: a prepared fight's event that fired, with what it did
-//     (src/lib/dm/fight-event-undo.ts takes it back and arms it again).
+//   - fight: the turn wrote rows of the fight or the board
+//     (src/lib/db/turn-rows.ts keeps them, one row each, as the turn found
+//     them); one per turn, what makes the event log offer its revert.
+//   - fight_event: a prepared fight's event that fired, its line and the
+//     GM's note of what it could not do (src/lib/dm/fight-event-undo.ts arms
+//     it again; what it did is the turn's fight rows).
+//   - summon, summon_gone: a creature a spell called up in the turn, sent
+//     away by the revert; one sent away in it, which the revert cannot bring
+//     back and says so. Bookkeeping, never shown.
 //   - dice_face: a forced face a test table's dice script spent, and where
 //     it stood in the queue; dice_seed: how far the turn ran the seed
 //     (src/lib/db/dice-scripts.ts gives them back, so a replay rolls the same).
 //   - card: a player's card the GM resolved as played (src/lib/dm/
 //     resolve-card.ts puts it back in "Waiting on you").
-//   - budget: the action economy the turn spent in a fight
-//     (src/lib/db/spent-budget.ts), given back while the fight is still on
-//     that turn. Bookkeeping: it rides along with the turn's other changes,
-//     and alone it does not make a turn the event log offers to revert.
 //
 // A row is written only under a turn: work outside every turn is nobody's to
 // revert.
 
-export type TurnChangeKind = "fight_event" | "dice_face" | "dice_seed" | "card" | "budget";
+export type TurnChangeKind = "fight" | "fight_event" | "dice_face" | "dice_seed" | "card" | "summon" | "summon_gone";
 
 export type TurnChange = {
   id: string;
@@ -48,10 +51,10 @@ type Row = {
   created_at: string;
 };
 
-const KINDS: readonly TurnChangeKind[] = ["fight_event", "dice_face", "dice_seed", "card", "budget"];
+const KINDS: readonly TurnChangeKind[] = ["fight", "fight_event", "dice_face", "dice_seed", "card", "summon", "summon_gone"];
 
 // Kept for the revert, never shown or counted in the event log.
-const BOOKKEEPING: readonly TurnChangeKind[] = ["budget"];
+const BOOKKEEPING: readonly TurnChangeKind[] = ["summon", "summon_gone"];
 
 function mapRow(row: Row): TurnChange | null {
   const kind = KINDS.find((entry) => entry === row.kind);
@@ -142,7 +145,7 @@ export function markTurnChangesReverted(ids: readonly string[]) {
 // snapshot's turnChanges).
 export function listLiveTurnChangeViews(campaignId: string, limit = 50): TurnChangeView[] {
   const rows = getDatabase()
-    .prepare(`SELECT * FROM turn_changes WHERE campaign_id = ? AND reverted_at IS NULL AND kind NOT IN ('budget') ORDER BY rowid DESC LIMIT ?`)
+    .prepare(`SELECT * FROM turn_changes WHERE campaign_id = ? AND reverted_at IS NULL AND kind NOT IN ('summon', 'summon_gone') ORDER BY rowid DESC LIMIT ?`)
     .all(campaignId, limit) as Row[];
   return rows
     .reverse()

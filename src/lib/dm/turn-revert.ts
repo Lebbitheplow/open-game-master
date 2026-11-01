@@ -1,118 +1,174 @@
 import type { Campaign } from "@/lib/db/campaigns";
+import { effectsFollowingMaxHp, effectsUpdate } from "@/lib/db/active-effects";
+import { getBattleMap, listTokens, placeToken } from "@/lib/db/battle-maps";
+import { getDatabase } from "@/lib/db/core";
 import { diceGiveBackWarnings, giveBackDice } from "@/lib/db/dice-scripts";
-import { getEncounter, saveEncounter, turnKey } from "@/lib/db/encounters";
-import type { SpentBudget } from "@/lib/db/spent-budget";
+import { listEnemies } from "@/lib/db/encounters";
+import { getSheetById } from "@/lib/db/sheets";
 import { markTurnChangesReverted, type TurnChange } from "@/lib/db/turn-changes";
+import { deleteRow, insertRow, listKeptRows, markRowsReverted, readRow, writeRow, type KeptRow, type Row } from "@/lib/db/turn-rows";
+import { restandOn } from "@/lib/battlemap/ground-change";
+import { footprintLookup } from "@/lib/battlemap/view";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
-import { fightEventWarnings, takeBackFightEvent } from "@/lib/dm/fight-event-undo";
+import { takeBackFightEvent } from "@/lib/dm/fight-event-undo";
 import { cardRevertWarnings, takeBackCardResolution } from "@/lib/dm/resolve-card";
+import { removeSummon } from "@/lib/dm/summon-store";
+import { planRowsRevert, type FightState, type RowPlan, type RowState } from "@/lib/dm/turn-rows-logic";
+import { publishEphemeral, publishPersisted } from "@/lib/events";
 
 // The part of "Revert this turn" that is not a sheet or the clock (issue
-// 685; src/lib/db/turn-changes.ts lists what a turn keeps): the prepared
+// 685; src/lib/db/turn-changes.ts lists what a turn keeps): the fight and the
+// board as the turn found them, the creatures it called up, the prepared
 // fight's events it fired, the test dice it spent, the cards the GM resolved
-// in it, the action economy it spent. The route (audit/revert-turn) asks for
-// the warnings first and then takes them back, after the sheets.
+// in it. The route (audit/revert-turn) asks for the warnings first and then
+// takes them back, after the sheets.
 
-const budgetOf = (value: unknown) => (value && typeof value === "object" ? (value as SpentBudget["turnBudget"]) : null);
-const idsOf = (value: unknown) => (Array.isArray(value) ? value.filter((id): id is string => typeof id === "string") : []);
+const text = (value: unknown) => (typeof value === "string" && value ? value : null);
 
-function spentOf(change: TurnChange): SpentBudget | null {
-  const raw = change.payload;
-  const after = (raw.after ?? {}) as { turnBudget?: unknown; reactionsUsed?: unknown };
-  return typeof raw.encounterId === "string" && typeof raw.turnKey === "string" && typeof raw.round === "number"
-    ? {
-        encounterId: raw.encounterId,
-        turnKey: raw.turnKey,
-        round: raw.round,
-        turnBudget: budgetOf(raw.turnBudget),
-        reactionsUsed: idsOf(raw.reactionsUsed),
-        after: { turnBudget: budgetOf(after.turnBudget), reactionsUsed: idsOf(after.reactionsUsed) },
+// The fight each kept row belongs to: a token and an item through the board
+// they lie on.
+function fightOf(row: KeptRow, now: Row | null, boards: Map<string, string | null>): string | null {
+  const seen = now ?? row.before ?? {};
+  switch (row.table) {
+    case "encounters":
+      return row.rowId;
+    case "encounter_enemies":
+    case "battle_maps":
+      return text(seen.encounter_id);
+    case "battle_tokens":
+    case "dropped_items": {
+      const mapId = text(seen.map_id);
+      if (!mapId) {
+        return null;
       }
-    : null;
+      if (!boards.has(mapId)) {
+        boards.set(mapId, text(readRow("battle_maps", mapId)?.encounter_id));
+      }
+      return boards.get(mapId) ?? null;
+    }
+    default:
+      return null;
+  }
 }
 
-// The fight still on the creature's turn the budget was spent on.
-function onThatTurn(spent: SpentBudget) {
-  const encounter = getEncounter(spent.encounterId);
-  return encounter && encounter.status === "active" && turnKey(encounter) === spent.turnKey ? encounter : null;
+function rowsPlan(turnId: string): { plan: RowPlan; rows: RowState[] } | null {
+  const kept = listKeptRows(turnId);
+  if (!kept.length) {
+    return null;
+  }
+  const boards = new Map<string, string | null>();
+  for (const row of kept) {
+    if (row.table === "battle_maps") {
+      boards.set(row.rowId, text((row.before ?? readRow("battle_maps", row.rowId) ?? {}).encounter_id));
+    }
+  }
+  const rows: RowState[] = kept.map((row) => {
+    const now = readRow(row.table, row.rowId);
+    return { ...row, now, encounterId: fightOf(row, now, boards) };
+  });
+  const fights = new Map<string, FightState>();
+  for (const id of new Set(rows.flatMap((row) => (row.encounterId ? [row.encounterId] : [])))) {
+    const own = rows.find((row) => row.table === "encounters" && row.rowId === id);
+    const now = readRow("encounters", id);
+    fights.set(id, {
+      active: now?.status === "active",
+      begunInTurn: Boolean(own && !own.before),
+      endedInTurn: own?.before?.status === "active" && (own.after ?? now)?.status === "ended",
+    });
+  }
+  return { plan: planRowsRevert(rows, fights), rows };
 }
 
-// A later turn spent more of the same creature's turn: giving this turn's
-// spending back gives that back too, so the lead is told first.
-function budgetWarnings(change: TurnChange): string[] {
-  const spent = spentOf(change);
-  const encounter = spent ? onThatTurn(spent) : null;
-  return spent && encounter && JSON.stringify(encounter.turnBudget) !== JSON.stringify(spent.after.turnBudget)
-    ? ["The creature whose turn it is has spent more of it since (an action, a bonus action, an attack); reverting gives that back too."]
+// Whoever stands where the ground came back as wall is set on the nearest
+// open square, as a change of ground does (ground-change.ts).
+function restand(mapId: string) {
+  const map = getBattleMap(mapId);
+  if (!map) {
+    return;
+  }
+  const footprint = footprintLookup(new Map(listEnemies(map.encounterId).map((enemy) => [enemy.id, enemy])));
+  const moves = restandOn(
+    map.terrain,
+    map.width,
+    map.height,
+    listTokens(mapId).map((token) => ({ id: token.id, x: token.x, y: token.y, footprint: footprint(token) })),
+  );
+  if (!("error" in moves)) {
+    for (const move of moves) {
+      placeToken(move.id, move.x, move.y);
+    }
+  }
+}
+
+function applyRows(campaign: Campaign, plan: RowPlan) {
+  const db = getDatabase();
+  const effects = (entry: { table: string }) => entry.table === "active_effects";
+  // Effects first, through the rule that moves a hero's maximum with them;
+  // the creatures' rows after, as the turn found them, maximum and all.
+  effectsFollowingMaxHp(campaign.id, () =>
+    db.transaction(() => {
+      plan.deletes.filter(effects).forEach((entry) => deleteRow(entry.table, entry.rowId));
+      plan.inserts.filter(effects).forEach((entry) => insertRow(entry.table, entry.row));
+      plan.updates.filter(effects).forEach((entry) => writeRow(entry.table, entry.rowId, entry.values));
+    })(),
+  );
+  db.transaction(() => {
+    plan.dropFights.forEach((id) => deleteRow("encounters", id));
+    plan.deletes.filter((entry) => !effects(entry)).forEach((entry) => deleteRow(entry.table, entry.rowId));
+    plan.inserts.filter((entry) => !effects(entry)).forEach((entry) => insertRow(entry.table, entry.row));
+    plan.updates.filter((entry) => !effects(entry)).forEach((entry) => writeRow(entry.table, entry.rowId, entry.values));
+    plan.grounds.forEach(restand);
+  })();
+  publishEncounter(campaign.id);
+  publishEphemeral(campaign.id, "battle_map_updated", {});
+  if ([...plan.deletes, ...plan.inserts, ...plan.updates].some(effects)) {
+    publishPersisted(campaign.id, "effects_updated", effectsUpdate(campaign.id));
+  }
+}
+
+// The creatures the turn called up go; one it sent away cannot come back.
+function summonWarnings(changes: readonly TurnChange[]): string[] {
+  const gone = changes.filter((change) => change.kind === "summon_gone").map((change) => text(change.payload.name) ?? "a creature");
+  return gone.length
+    ? [`${gone.join(", ")}, sent away in this turn, cannot be brought back by the revert; call ${gone.length === 1 ? "it" : "them"} up again.`]
     : [];
 }
 
-// The action, bonus action and attacks back while the fight is still on the
-// creature's turn they were spent on; the reactions this turn spent back
-// while it is still the same round, by themselves, so one a later turn spent
-// stays spent. Past those, the budget is the next turn's and is not touched.
-function giveBackBudget(change: TurnChange): boolean {
-  const spent = spentOf(change);
-  const encounter = spent ? getEncounter(spent.encounterId) : null;
-  if (!spent || !encounter || encounter.status !== "active") {
-    return false;
-  }
-  let changed = false;
-  if (encounter.round === spent.round) {
-    const spentHere = new Set(spent.after.reactionsUsed.filter((id) => !spent.reactionsUsed.includes(id)));
-    const kept = encounter.reactionsUsed.filter((id) => !spentHere.has(id));
-    changed = kept.length !== encounter.reactionsUsed.length;
-    encounter.reactionsUsed = kept;
-  }
-  if (onThatTurn(spent)) {
-    encounter.turnBudget = spent.turnBudget;
-    changed = true;
-  }
-  if (changed) {
-    saveEncounter(encounter);
-  }
-  return changed;
-}
-
-export function turnChangeWarnings(campaign: Campaign, changes: readonly TurnChange[]): string[] {
+export function turnChangeWarnings(campaign: Campaign, turnId: string, changes: readonly TurnChange[]): string[] {
   const dice = changes.filter((change) => change.kind === "dice_face" || change.kind === "dice_seed");
   return [
-    ...changes.flatMap((change) => {
-      switch (change.kind) {
-        case "fight_event":
-          return fightEventWarnings(change);
-        case "card":
-          return cardRevertWarnings(change);
-        case "budget":
-          return budgetWarnings(change);
-        default:
-          return [];
-      }
-    }),
+    ...(rowsPlan(turnId)?.plan.warnings ?? []),
+    ...summonWarnings(changes),
+    ...changes.flatMap((change) => (change.kind === "card" ? cardRevertWarnings(change) : [])),
     ...(dice.length ? diceGiveBackWarnings(campaign.id, dice) : []),
   ];
 }
 
-// Newest first, as the sheets go back: an event a later event brought on is
-// taken back before the one that brought it. Returns how many were.
-export function takeBackTurnChanges(campaign: Campaign, changes: readonly TurnChange[]): number {
+// Newest first, as the sheets go back; the fight's rows last, so they land
+// as the turn found them whatever the steps before wrote. Returns how many
+// changes were taken back.
+export function takeBackTurnChanges(campaign: Campaign, turnId: string, changes: readonly TurnChange[]): number {
   const dice = changes.filter((change) => change.kind === "dice_face" || change.kind === "dice_seed");
   if (dice.length) {
     giveBackDice(campaign.id, dice);
   }
-  let budget = false;
   for (const change of [...changes].reverse()) {
     if (change.kind === "fight_event") {
       takeBackFightEvent(campaign, change);
     } else if (change.kind === "card") {
       takeBackCardResolution(change);
-    } else if (change.kind === "budget") {
-      budget = giveBackBudget(change) || budget;
+    } else if (change.kind === "summon") {
+      const sheet = getSheetById(text(change.payload.sheetId) ?? "");
+      if (sheet) {
+        removeSummon(campaign, { id: sheet.id, userId: sheet.userId, name: sheet.name });
+      }
     }
   }
-  if (budget) {
-    publishEncounter(campaign.id);
+  const rows = rowsPlan(turnId);
+  if (rows) {
+    applyRows(campaign, rows.plan);
+    markRowsReverted(turnId);
   }
   markTurnChangesReverted(changes.map((change) => change.id));
-  return changes.length;
+  return changes.filter((change) => change.kind !== "summon_gone").length;
 }

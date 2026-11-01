@@ -5,7 +5,7 @@ import type { RollKind, RollVisibility } from "@/lib/db/rolls";
 import type { ContextTrace } from "@/lib/dm/context-budget";
 import { parkReasonFor, type ParkReason } from "@/lib/dice/held-rolls";
 import { writeTurnQuality } from "@/lib/db/turn-ledger";
-import { releaseStandIn, standInFor } from "@/lib/dm/job-control";
+import { currentTurnId, releaseStandIn, standInFor } from "@/lib/dm/job-control";
 import type { GuardReport } from "@/lib/narrator-quality";
 
 // A DM narration turn persisted as a state machine so it can park while a
@@ -107,10 +107,11 @@ function mapTurn(row: TurnRow): DmTurn {
 }
 
 // The lead reverted the turn (src/app/api/campaigns/[campaignId]/audit/
-// revert-turn): the turn trace reads it as taken back. Its own column, never
-// written by saveDmTurn, so a turn still in hand cannot write it away.
+// revert-turn): the turn trace reads it as taken back, and the stand-in
+// turns opened inside it with it, whose rolls were its own. Its own column,
+// never written by saveDmTurn, so a turn still in hand cannot write it away.
 export function markDmTurnReverted(turnId: string) {
-  getDatabase().prepare(`UPDATE dm_turns SET reverted_at = ? WHERE id = ?`).run(nowIso(), turnId);
+  getDatabase().prepare(`UPDATE dm_turns SET reverted_at = ? WHERE id = ? OR owner_turn_id = ?`).run(nowIso(), turnId, turnId);
 }
 
 export function createDmTurn(
@@ -143,6 +144,12 @@ export function createDmTurn(
 export function openStandInTurn(campaignId: string): DmTurn {
   const turn = createDmTurn(campaignId, [], "human_dm");
   standInFor(turn.id);
+  // Which turn it stands in for, kept on its row so that turn's revert can
+  // mark it (markDmTurnReverted).
+  const owner = currentTurnId();
+  if (owner) {
+    getDatabase().prepare(`UPDATE dm_turns SET owner_turn_id = ? WHERE id = ?`).run(owner, turn.id);
+  }
   return turn;
 }
 

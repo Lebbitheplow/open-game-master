@@ -1,5 +1,6 @@
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
+import { keepNew, keepRow } from "@/lib/db/turn-rows";
 import { listEnemies } from "@/lib/db/encounters";
 import type { EquipmentItem } from "@/lib/schemas/sheet";
 
@@ -94,6 +95,8 @@ export function insertDroppedItem(input: {
       input.heldByEnemy ?? null,
       nowIso(),
     );
+  // An item a GM turn dropped is picked back up by its revert (issue 685).
+  keepNew("dropped_items", id, input.campaignId);
   return getDroppedItem(id)!;
 }
 
@@ -102,6 +105,7 @@ export function moveDroppedItem(
   id: string,
   at: { mapId: string | null; x: number | null; y: number | null; heldByEnemy: string | null },
 ) {
+  keepRow("dropped_items", id);
   getDatabase()
     .prepare(`UPDATE dropped_items SET map_id = ?, x = ?, y = ?, held_by_enemy = ? WHERE id = ?`)
     .run(at.mapId, at.x, at.y, at.heldByEnemy, id);
@@ -114,6 +118,7 @@ export function takeFromDroppedItem(id: string, qty: number): DroppedItem | null
     return null;
   }
   const left = item.item.qty - qty;
+  keepRow("dropped_items", id);
   if (left <= 0) {
     getDatabase().prepare(`DELETE FROM dropped_items WHERE id = ?`).run(id);
   } else {

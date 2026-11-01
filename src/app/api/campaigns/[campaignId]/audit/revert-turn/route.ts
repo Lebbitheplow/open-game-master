@@ -24,10 +24,12 @@ const bodySchema = z.object({
 // Party lead reverts every live sheet change from one DM turn, newest
 // first, so each field lands back on its pre-turn value, and puts back the
 // time the turn moved the clock on (issue #622). It takes back what else the
-// turn kept for it (issue 685, src/lib/db/turn-changes.ts): a prepared
-// fight's event it fired is undone and armed again, the test dice it spent
-// are given back, a card the GM resolved in it waits again. World events
-// and a companion's leaving stay: the chapter rewind is what takes those back.
+// turn kept for it (issue 685, src/lib/db/turn-changes.ts): the fight and the
+// board as the turn found them (hit points, conditions, creatures it brought
+// in, tokens, areas, effects, the order of turns), the creatures it called
+// up, a prepared fight's event it fired (armed again), the test dice it
+// spent, a card the GM resolved in it. World events and a companion's leaving
+// stay: the chapter rewind is what takes those back.
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ campaignId: string }> },
@@ -71,7 +73,7 @@ export async function POST(
       `The clock has moved since this turn; it stays at ${describeInstant(clock.kept.calendar, clock.kept.instant)}.`,
     );
   }
-  warnings.push(...turnChangeWarnings(context.campaign, changes));
+  warnings.push(...turnChangeWarnings(context.campaign, turnId, changes));
   if (warnings.length && !confirm) {
     return Response.json({ warnings: [...new Set(warnings)] }, { status: 409 });
   }
@@ -91,7 +93,7 @@ export async function POST(
     return Response.json({ error: errors[0] }, { status: 400 });
   }
   // After the sheets too: the fight's events, the test dice, the cards.
-  const takenBack = changes.length ? takeBackTurnChanges(context.campaign, changes) : 0;
+  const takenBack = changes.length ? takeBackTurnChanges(context.campaign, turnId, changes) : 0;
   if (takenBack) {
     // `reverted`: the event log stops offering what the turn kept.
     publishPersisted(campaignId, "turn_changed", { reverted: turnId });

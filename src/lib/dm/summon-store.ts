@@ -34,6 +34,8 @@ import { findSpawnTiles } from "@/lib/battlemap/tactics";
 import { occupiedTiles } from "@/lib/battlemap/view";
 import { nameArrivals } from "@/lib/dm/encounter-logic";
 import { publishEphemeral, publishPersisted } from "@/lib/events";
+import { recordTurnChange } from "@/lib/db/turn-changes";
+import { currentTurnId } from "@/lib/dm/job-control";
 import { d20Expression } from "@/lib/dice";
 import { createSheetSchema, type CharacterSheet } from "@/lib/schemas/sheet";
 import type { SheetSummon } from "@/lib/schemas/summon";
@@ -117,6 +119,9 @@ export function spawnSummons(campaign: Campaign, caster: CharacterSheet, input: 
     });
     const user = createCompanionUser(name);
     const sheet = createSheet(campaign.id, user.id, level, draft);
+    // A creature a GM turn called up goes with the turn's revert (issue 685,
+    // src/lib/dm/turn-revert.ts).
+    noteUnderTurn(campaign.id, "summon", { sheetId: sheet.id, userId: user.id, name: sheet.name, line: "" });
     markSheetAsCompanion(sheet.id, "guest", `${form.name}, obeying ${caster.name}. ${record.traits}`.slice(0, 500));
     setSheetSummon(sheet.id, record);
     // A creature is its stat block: no class features or counters of the
@@ -225,11 +230,22 @@ function placeInFight(
 
 // Takes a summoned creature off the table: its initiative entry, its token,
 // its sheet and the bot user behind it.
+// What a summon's coming and going leaves under the GM turn it happened in.
+function noteUnderTurn(campaignId: string, kind: "summon" | "summon_gone", payload: Record<string, unknown>) {
+  const turnId = currentTurnId();
+  if (turnId) {
+    recordTurnChange(campaignId, turnId, kind, payload);
+  }
+}
+
 export function removeSummon(
   campaign: Campaign,
   sheet: Pick<CharacterSheet, "id" | "userId" | "name">,
   replaceWith?: OrderEntry,
 ) {
+  // A creature sent away has no sheet left to bring back: the turn's revert
+  // says so before the lead says yes.
+  noteUnderTurn(campaign.id, "summon_gone", { sheetId: sheet.id, name: sheet.name, line: "" });
   const encounter = getActiveEncounter(campaign.id);
   if (encounter) {
     const index = encounter.order.findIndex((entry) => entry.kind === "pc" && entry.characterId === sheet.id);
