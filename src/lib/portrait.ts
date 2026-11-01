@@ -208,9 +208,11 @@ export function queueNpcPortrait(
           aspect: "square",
         });
         const copied = copyIntoUploads(image.url);
-        if (setNpcPortrait(npc.id, copied.url)) {
-          publishPersisted(campaign.id, "npc_updated", { npcId: npc.id, portraitUrl: copied.url });
-        }
+        // The new face reaches the seats as the cast (setNpcPortrait tells
+        // it, src/lib/dm/cast.ts), so only those who know this person see
+        // it. An npc_updated sent every seat the face of someone not yet
+        // introduced, and kept it for replay (issue 733).
+        setNpcPortrait(npc.id, copied.url);
       } catch (error) {
         console.error(`[portrait] npc generation failed for ${npc.id}:`, error);
       }

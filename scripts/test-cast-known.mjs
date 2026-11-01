@@ -7,7 +7,7 @@
 import assert from "node:assert/strict";
 import { openWorld } from "./lib/enforce-world.mjs";
 
-const { upsertNpc, markNpcMet, mergeNpcs, getNpcById, renameNpc, setNpcArchived, patchNpcAgency } = await import("../src/lib/db/npcs.ts");
+const { upsertNpc, markNpcMet, mergeNpcs, getNpcById, renameNpc, setNpcArchived, patchNpcAgency, setNpcPortrait } = await import("../src/lib/db/npcs.ts");
 const { castForSeat, wholeCast, publishCast } = await import("../src/lib/dm/cast.ts");
 const { insertCampaignMessage, updateMessageContent } = await import("../src/lib/db/messages.ts");
 const { allocateSeq } = await import("../src/lib/db/campaigns.ts");
@@ -207,6 +207,28 @@ await test("a rename, a merge and an archive reach the open seats; a change no s
   assert.deepEqual(await castsSent(world, kara, () => mergeNpcs(world.campaignId, marla.id, twin.id, ["Marla", "Marla Venn"])), [["Marla Brook", "Old Petch"]]);
   assert.deepEqual(await castsSent(world, kara, () => setNpcArchived(old.id, true)), [["Marla Brook"]]);
   assert.deepEqual(await castsSent(world, kara, () => patchNpcAgency(marla.id, { goals: { scene: "find her brother" } })), [], "what they want is no seat's to see");
+});
+
+await test("a face painted for someone not yet introduced reaches no player's seat; a known person's reaches every seat (issue 733)", async () => {
+  const { world, kara, npc } = await table();
+  const stranger = npc("Iarno Albrek");
+  const known = npc("Sildar Hallwinter");
+  markNpcMet(known.id);
+  await settled();
+  const heard = [];
+  const stop = subscribe(world.campaignId, (chunk) => heard.push(chunk), kara.id);
+  try {
+    setNpcPortrait(stranger.id, "/uploads/iarno.webp");
+    setNpcPortrait(known.id, "/uploads/sildar.webp");
+    await settled();
+  } finally {
+    stop();
+  }
+  const sent = heard.join("");
+  assert.ok(!sent.includes("iarno.webp") && !sent.includes("Iarno"), "the stranger's face is not sent to a player");
+  assert.ok(sent.includes("sildar.webp"), "the known person's new face is");
+  const { readFileSync } = await import("node:fs");
+  assert.ok(!readFileSync(new URL("../src/lib/portrait.ts", import.meta.url), "utf8").includes('"npc_updated"'), "a painted face is not sent to every seat");
 });
 
 await test("two rows merged into one keep the earlier hearing", async () => {

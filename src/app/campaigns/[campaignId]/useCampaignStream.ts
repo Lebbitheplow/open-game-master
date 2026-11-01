@@ -859,6 +859,7 @@ export function campaignReducer(state: CampaignState, action: Action): CampaignS
           next.cast = Array.isArray(payload.cast) ? (payload.cast as CastMember[]) : state.cast;
           next.castVersion = state.castVersion + 1;
           return next;
+        // An older host's painted face; a newer one sends it in the cast.
         case "npc_updated":
           next.cast = state.cast.map((member) =>
             member.id === payload.npcId && typeof payload.portraitUrl === "string"
