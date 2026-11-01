@@ -445,11 +445,17 @@ export default {
       }, { timeoutMs: 60_000, label: "the next test table" });
       tableId = (await t.url()).pathname.split("/")[2];
       const opened = page.getByText(/Opened from the fight's saved set-up/).locator("visible=true").first();
-      if (phone && !(await opened.isVisible().catch(() => false))) {
-        await eventually(() => tableView.count(), { timeoutMs: 60_000, label: "the Table view" });
-        await t.tap(tableView);
-      }
-      await eventually(() => opened.isVisible(), { timeoutMs: 60_000, label: "the chronicle's set-up line" });
+      // On a phone the table turns to the board once the fight's order is
+      // in, which can land after a press of Table: Table is pressed again
+      // until the chronicle shows.
+      await eventually(
+        async () => {
+          if (await opened.isVisible().catch(() => false)) return true;
+          if (phone && (await tableView.count())) await t.tap(tableView).catch(() => undefined);
+          return false;
+        },
+        { timeoutMs: 60_000, every: 1_000, label: "the chronicle's set-up line" },
+      );
       await opened.scrollIntoViewIfNeeded().catch(() => undefined);
       await themes("s6-opened-from-setup");
 
