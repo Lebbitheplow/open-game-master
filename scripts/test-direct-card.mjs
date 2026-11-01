@@ -492,6 +492,30 @@ await test("At an AI table a Web laid on a square is the engine's before the mod
   assert.equal(world.sheet(vex.id).spellcasting.slots[2].used, 1);
 });
 
+// A card the GM resolved as played from the console (src/lib/dm/resolve-card.ts)
+// is answered: an AI turn that covers for them does not cast it again.
+await test("A card already resolved as played is not resolved again by an AI turn, and its line says the engine took it.", async () => {
+  const enemy = await stage(iris);
+  const { insertCampaignMessage, claimCardResolution } = await import("../src/lib/db/messages.ts");
+  const { allocateSeq } = await import("../src/lib/db/campaigns.ts");
+  const played = insertCampaignMessage({
+    campaignId: world.campaignId,
+    seq: allocateSeq(world.campaignId),
+    authorType: "player",
+    userId: iris.userId,
+    characterId: iris.id,
+    content: "I cast Fire Bolt at Goblin 1.",
+    intent: { card: "spell", spell: "Fire Bolt", slotLevel: null, targetKind: "enemy", targetId: enemy.id, targetName: enemy.displayName },
+  });
+  assert.ok(claimCardResolution(played.id));
+  model.script([reply({ text: "The bolt has already flown." })]);
+  await model.turn(world, "And I step back.", iris.id, iris.userId);
+  assert.equal(toolCalls(model.requests[0]).length, 0, "nothing cast it again");
+  const transcript = model.requests[0].messages.map((message) => (typeof message.content === "string" ? message.content : "")).join("\n");
+  assert.match(transcript, /Fire Bolt[^\n]*The engine has resolved it/);
+  assert.ok(!corrected(), "no correction chased it");
+});
+
 // ---- issue 570: a casting shared out in the Hand ----
 
 await test("Magic Missile's darts shared between two goblins are one cast_at_enemy each, the darts each takes, and one slot.", async () => {

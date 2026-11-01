@@ -124,6 +124,10 @@ export const SERVER_FEATURES = {
   // attraction's `open`, which an older host drops while saving the rest,
   // so the switch stays hidden there.
   openRelationships: true,
+  // "Resolve as played" on a waiting row of the GM console (issue 685):
+  // GET and POST /api/campaigns/[id]/dm/resolve-card and the message's
+  // `cardResolvedAt`. An older host has neither, so the button stays hidden.
+  resolveAsPlayed: true,
 } as const;
 export type ServerFeatures = { [K in keyof typeof SERVER_FEATURES]: boolean };
 
