@@ -25,8 +25,10 @@
 // and the door show it (HandSummonPick.tsx, SummonDoor.tsx), and
 // scripts/test-summon-picker.mjs holds it to the engine's own counts.
 import type { SummonCatalogue } from "@/lib/srd/summon-spells";
-import { lowestSlot, type HandCard, type HandChoice, type HandSummon } from "@/lib/battlemap/hand-core";
+import { lowestSlot, type HandCard, type HandChoice, type HandSummon, type SpellFact } from "@/lib/battlemap/hand-core";
+import { casterStateProblem, componentProblem, focusProblem, materialPlan } from "@/lib/dm/cast-rules";
 import { castingOf, completedCastingOf } from "@/lib/dm/long-casting-logic";
+import { bundledSpellFacts } from "@/lib/srd/spell-facts";
 import { textKey } from "@/lib/language/text-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { BoardControl } from "@/lib/addons/board-bridge";
@@ -254,9 +256,30 @@ export type SummonDoorRow = {
   roundsLeft?: number;
   // Why it cannot be cast now (no slot left), or null.
   disabled: string | null;
+  // Why it cannot be cast at all now, as a ritual either: the cast guard's
+  // own sentence (raging, no free hand, no pouch or focus, a costly material
+  // neither carried nor affordable), or null.
+  blocked: string | null;
 };
 
-export function summonDoorRows(sheet: CharacterSheet, names: readonly string[], catalogues: Record<string, SummonCatalogue>, inFight: boolean): SummonDoorRow[] {
+// The cast guard's refusals the Hand's spell card carries (hand-spells.ts),
+// asked of the door's casting too: without them Find Familiar's 10 gp of
+// charcoal was found missing only once Cast or Cast as a ritual was pressed.
+// The facts are the table's own where the sheet has fetched them, as the
+// Hand's are (useHandSpells), the bundled ones until then.
+function castBlocked(sheet: CharacterSheet, spell: string, inFight: boolean, slotLevel: number, fetched: SpellFact | undefined): string | null {
+  const facts = fetched?.facts ?? bundledSpellFacts(spell);
+  const material = materialPlan(sheet, facts, { inFight, slotLevel });
+  return (casterStateProblem(sheet) ?? componentProblem(sheet, facts) ?? focusProblem(sheet, facts) ?? ("error" in material ? material : null))?.error ?? null;
+}
+
+export function summonDoorRows(
+  sheet: CharacterSheet,
+  names: readonly string[],
+  catalogues: Record<string, SummonCatalogue>,
+  inFight: boolean,
+  spells: Record<string, SpellFact> = {},
+): SummonDoorRow[] {
   const rows: SummonDoorRow[] = [];
   const held = castingOf(sheet);
   for (const spell of names) {
@@ -266,16 +289,16 @@ export function summonDoorRows(sheet: CharacterSheet, names: readonly string[], 
     const only = catalogue.forms.length === 1 ? catalogue.forms[0].name : null;
     const base = { spell, level, only };
     if (inFight && !catalogue.long) {
-      rows.push({ ...base, state: "hand", slotLevel: null, ritual: false, pick: null, disabled: null });
+      rows.push({ ...base, state: "hand", slotLevel: null, ritual: false, pick: null, disabled: null, blocked: null });
       continue;
     }
     if (inFight && held && textKey(held.spell) === textKey(spell)) {
-      rows.push({ ...base, state: "casting", slotLevel: held.slotLevel, ritual: held.ritual, pick: null, roundsLeft: held.rounds, disabled: null });
+      rows.push({ ...base, state: "casting", slotLevel: held.slotLevel, ritual: held.ritual, pick: null, roundsLeft: held.rounds, disabled: null, blocked: null });
       continue;
     }
     const done = inFight ? completedCastingOf(sheet, spell) : null;
     if (done) {
-      rows.push({ ...base, state: "finish", slotLevel: done.slotLevel, ritual: done.ritual, pick: summonPick(catalogue, done.slotLevel ?? level), disabled: null });
+      rows.push({ ...base, state: "finish", slotLevel: done.slotLevel, ritual: done.ritual, pick: summonPick(catalogue, done.slotLevel ?? level), disabled: null, blocked: null });
       continue;
     }
     const slot = lowestSlot(sheet, level)?.level ?? null;
@@ -287,6 +310,7 @@ export function summonDoorRows(sheet: CharacterSheet, names: readonly string[], 
       ritual,
       pick: inFight ? null : summonPick(catalogue, slot ?? level),
       disabled: slot === null ? `No spell slot of level ${level} or higher is left${ritual ? "; it can still be cast as a ritual" : ""}.` : null,
+      blocked: castBlocked(sheet, spell, inFight, slot ?? level, spells[textKey(spell)]),
     });
   }
   return rows.filter((row) => row.state !== "hand");

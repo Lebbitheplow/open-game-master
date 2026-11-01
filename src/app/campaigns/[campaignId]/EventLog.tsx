@@ -203,7 +203,8 @@ export function EventLog({
           disabled={busyId === `turn:${turnId}`}
           onClick={() => revertTurn(turnId)}
           title="Put the character sheets, the clock and the fight back as they were before this GM turn: hit points, conditions, creatures, tokens, areas, effects and whose turn it is, with the prepared events it fired, a test's forced dice and a card resolved as played. World events and companions who left stay; rewinding the chapter takes those back."
-          className="flex w-full items-center justify-center gap-1 rounded border border-dashed border-stone-700 py-0.5 text-[10px] text-stone-500 hover:bg-stone-900 hover:text-amber-300"
+          // A finger's height on a touch screen; a thin rule with a mouse.
+          className="flex w-full items-center justify-center gap-1 rounded border border-dashed border-stone-700 py-0.5 text-[10px] text-stone-500 hover:bg-stone-900 hover:text-amber-300 pointer-coarse:min-h-10"
         >
           {busyId === `turn:${turnId}` ? (
             <Loader2 className="size-3 animate-spin" />

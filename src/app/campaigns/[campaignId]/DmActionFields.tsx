@@ -321,7 +321,10 @@ export function FieldInput({
     case "summonMix": {
       const pick = summon?.catalogue ? summonPick(summon.catalogue, summon.slotLevel) : null;
       if (!pick?.summon.mix) return null;
-      const card = { name: field.label, summon: pick.summon, choice: pick.choice };
+      // Named for the spell, as the Hand's card is: the steppers' group reads
+      // "Each target's form for Animate Dead" to a screen reader, not the
+      // field's own label twice over.
+      const card = { name: summon?.catalogue?.spell ?? field.label, summon: pick.summon, choice: pick.choice };
       const rows = Array.isArray(value) ? (value as MixRow[]) : [];
       const picked = mixRecord(rows);
       return (

@@ -154,6 +154,39 @@ export function offTurnReactionCards(
   );
 }
 
+// The reaction strips over the fan (HandReactPrompt), one per hit answered:
+// the hero's own first, then each other hero's. A strip reads its first
+// card's prompt, so two hits on one hero kept in one strip showed two like
+// Uncanny Dodge chips under the first hit's words, and nothing said which
+// chip answered which blow. Shield, which covers every hit after the one it
+// answers, sits with that first hit, whose prompt names them all. Cards that
+// name no hit (one hit open, or a host that keeps no ids) keep one strip per
+// hero, as before.
+export function reactionStrips(own: HandCard[], others: HandCard[]): HandCard[][] {
+  const strips = new Map<string, HandCard[]>();
+  for (const card of [...own, ...others]) {
+    const key = `${card.actor?.id ?? ""}|${card.answers?.hitId ?? ""}`;
+    strips.set(key, [...(strips.get(key) ?? []), card]);
+  }
+  return [...strips.values()];
+}
+
+// A reaction sent for a hero and not yet resolved holds that hero's reaction
+// cards, the strip's chips with the fan's (issue 685). At a table a person
+// runs a card or a typed reaction waits for the GM, and nothing in the
+// engine's count moves until then: Shield's chip stayed live after it was
+// played, and another hero's card or words could be sent twice. The session
+// keeps who was sent for (SessionView.tsx) until the encounter's reactions,
+// round or turn move; then the engine's own count decides.
+export function holdSentReactions(cards: HandCard[], sent: readonly string[], selfId: string): HandCard[] {
+  if (!sent.length) return cards;
+  return cards.map((card) =>
+    card.cost === "reaction" && !card.disabled && sent.includes(card.actor?.id ?? selfId)
+      ? { ...card, disabled: `Sent. Waiting for the GM to resolve ${card.actor ? `${card.actor.name}'s reaction` : "your reaction"}.`, spent: false }
+      : card,
+  );
+}
+
 // Every reaction card the moment offers, the character's own hits first.
 // `self` is how the prompt names the character hit: "you" in their own hand.
 // With several hits open on one character (two enemies in one pass, issue

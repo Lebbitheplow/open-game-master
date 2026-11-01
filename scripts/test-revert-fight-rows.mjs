@@ -139,6 +139,31 @@ await test("a creature a call brought in leaves the fight, the board and the ord
   assert.ok(!person.encounter().order.some((entry) => entry.enemyId === newcomer.id));
 });
 
+await test("each call's line in the log says what it changed once it is done, and a later call's rows a revert wrote over go: it no longer offers to bring back a token without its creature", async () => {
+  // The browser pass (scenario 115): the GM added a goblin, then moved it,
+  // and reverted the add, yes to the question. The move still offered its
+  // revert, which would have set the goblin's token back on the board with no
+  // goblin; and a line the GM watched arrive read "The fight changes." until
+  // a reload.
+  const before = person.enemies().map((enemy) => enemy.id);
+  const added = await person.invoke("add_enemies", { enemies: [{ monster: "goblin", count: 1 }] });
+  assert.equal(added.ok, true, added.error);
+  const [newcomer] = person.enemies().filter((enemy) => !before.includes(enemy.id));
+  const at = kit.token(newcomer.id);
+  const moved = await person.invoke("move_token", { token: newcomer.id, x: at.x, y: at.y > 0 ? at.y - 1 : at.y + 1 });
+  assert.equal(moved.ok, true, moved.error);
+  const lineOf = (turnId) => listLiveTurnChangeViews(person.campaignId).find((change) => change.kind === "fight" && change.turnId === turnId)?.line;
+  assert.match(lineOf(added.turnId) ?? "", /^The fight changes: 1 creature, /);
+  assert.equal(lineOf(moved.turnId), "The fight changes: 1 token.");
+  assert.equal((await revertTurn(person, added.turnId)).status, 409, "the later move is asked about first");
+  assert.equal((await revertTurn(person, added.turnId, true)).status, 200);
+  assert.equal(kit.token(newcomer.id), null);
+  assert.equal(lineOf(moved.turnId), undefined, "the move no longer offers its revert");
+  await revertTurn(person, moved.turnId, true);
+  assert.equal(kit.token(newcomer.id), null, "no token came back without its goblin");
+  assert.equal(getEnemy(newcomer.id), null);
+});
+
 await test("the order of turns a call moved on, and the legendary actions a turn spent, go back with it", async () => {
   const { round, turnIndex } = person.encounter();
   const current = person.encounter().order[turnIndex];
@@ -278,7 +303,7 @@ await test("at an AI table, the turn run by the server's own queue, a token the 
   aiKit.place(aiHero.id, 6, 6);
   const asked = await revertTurn(ai, said.dmTurnId);
   assert.equal(asked.status, 409, JSON.stringify(asked.json));
-  assert.ok(asked.json.warnings.some((line) => /token changed again/.test(line)), JSON.stringify(asked.json));
+  assert.ok(asked.json.warnings.some((line) => /'s token changed again/.test(line)), JSON.stringify(asked.json));
   assert.equal((await revertTurn(ai, said.dmTurnId, true)).status, 200);
   assert.deepEqual([aiKit.token(aiHero.id).x, aiKit.token(aiHero.id).y], [4, 4]);
 });

@@ -191,7 +191,18 @@ function HandCardFaceInner({
         </span>
         <span className="hand-rules">{card.rules}</span>
         <span className="hand-foot">
-          <span className="hand-resource">{card.resource}</span>
+          {/* A legendary card's cost and what is left, a line each at the
+              card's left edge: in a fan the next card covers the right of
+              this one's foot. */}
+          {card.cost === "legendary" ? (
+            <span className="hand-resource" data-lines="">
+              {card.resource.split(" · ").map((part) => (
+                <span key={part}>{part}</span>
+              ))}
+            </span>
+          ) : (
+            <span className="hand-resource">{card.resource}</span>
+          )}
           <span className="hand-cond">{card.condition}</span>
         </span>
       </span>

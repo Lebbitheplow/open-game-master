@@ -41,7 +41,7 @@ export function HandReactPrompt({
               aria-disabled={card.disabled ? "true" : undefined}
               onClick={() => onPick(card)}
               className={cn(
-                "hand-react-chip inline-flex min-h-9 items-center gap-1 rounded-full border px-3 text-xs sm:min-h-8",
+                "hand-react-chip inline-flex min-h-10 items-center gap-1 rounded-full border px-3 text-xs sm:min-h-8",
                 card.disabled
                   ? "border-stone-700/60 text-stone-500 opacity-60"
                   : "border-sky-400/60 bg-sky-500/15 text-sky-50 hover:border-sky-300",

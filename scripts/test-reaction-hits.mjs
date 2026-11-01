@@ -34,7 +34,7 @@ const { invokeEngine } = await import("../src/lib/dm/invoke.ts");
 const { openHits, snapshotVitals } = await import("../src/lib/dm/last-hit.ts");
 const { describeIntent, directCardCall, intentNeedsTool } = await import("../src/lib/dm/intent-logic.ts");
 const { characterAwaitingPlayer, declaredThisTurn } = await import("../src/lib/dm/player-word.ts");
-const { offTurnReactionCards, reactionAim, reactionCards } = await import("../src/lib/battlemap/hand-react.ts");
+const { holdSentReactions, offTurnReactionCards, reactionAim, reactionCards, reactionStrips } = await import("../src/lib/battlemap/hand-react.ts");
 const { turnFromEncounter } = await import("../src/lib/battlemap/hand-table.ts");
 const { companionReactors, typedReactors } = await import("../src/lib/player-characters.ts");
 const { buildEncounterState } = await import("../src/lib/dm/turn.ts");
@@ -137,6 +137,37 @@ await test("Two goblins hitting one hero in one AI reply leave two open hits, ea
   assert.match(dodges[1].prompt, new RegExp(`${g2.displayName}'s .* for 7`));
   // A card that answers a hit sends it on as use_reaction's own `hit`.
   assert.equal(directCardCall(dodges[0].intent, poppy.id).args.hit, hits[0].id);
+
+  // Each card sits under its own hit's words: a strip reads its first
+  // card's prompt, and the browser pass (scenario 115) found Poppy's two
+  // chips under the first goblin's words alone.
+  const strips = reactionStrips(cards, []);
+  assert.deepEqual(strips.map((strip) => strip.map((card) => card.intent.hit)), [[hits[0].id], [hits[1].id]], "one strip per hit");
+  assert.notEqual(strips[0][0].prompt, strips[1][0].prompt);
+  // Another hero's cards keep their own strips, after the hero's own.
+  const others = offTurnReactionCards([{ sheet: poppy, turn: turnFromEncounter(encounter, poppy, { myTurn: false }) }], encounter.lastHits, world.sheets());
+  assert.equal(reactionStrips([], others).length, 2);
+  // The Hand renders the strips so, and each chip is a finger's height on a phone.
+  const { createElement } = await import("react");
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  const { HandReactPrompt } = await import("../src/app/campaigns/[campaignId]/HandReactPrompt.tsx");
+  const hand = fs.readFileSync(new URL("../src/app/campaigns/[campaignId]/Hand.tsx", import.meta.url), "utf8");
+  const html = renderToStaticMarkup(createElement(HandReactPrompt, { cards: strips[0], pickedId: null, onPick: () => {} }));
+  assert.match(html, /hand-react-chip inline-flex min-h-10 /, "a 40px chip below the sm breakpoint");
+
+  // A reaction sent and waiting for the GM holds that hero's cards, chips
+  // and fan alike: the browser pass found Shield's chip live after it was
+  // played, and another hero's card or typed words could go twice.
+  const heldOwn = holdSentReactions(cards, [poppy.id], poppy.id);
+  assert.ok(heldOwn.filter((card) => card.cost === "reaction").every((card) => card.disabled === "Sent. Waiting for the GM to resolve your reaction."), JSON.stringify(heldOwn.map((card) => card.disabled)));
+  const heldOther = holdSentReactions(others, [poppy.id], "someone-else");
+  assert.ok(heldOther.every((card) => card.disabled === `Sent. Waiting for the GM to resolve ${poppy.name}'s reaction.`));
+  assert.deepEqual(holdSentReactions(others, [], "someone-else"), others, "nothing sent, nothing held");
+  assert.match(hand, /reactionStrips\(holdPendingCards\(reactions, waiting\), othersReactions\)/, "a sent card holds the strip's chips as it holds the fan's");
+  assert.match(hand, /if \(picked\.cost === "reaction"\) onReactionSent\?\.\(picked\.actor\?\.id \?\? sheet\.id\)/);
+  const session = fs.readFileSync(new URL("../src/app/campaigns/[campaignId]/SessionView.tsx", import.meta.url), "utf8");
+  assert.match(session, /if \(kind === "do" && speakingAs\) markReactionSent\(speakingAs\.id\)/, "typed words hold their hero too");
+  assert.match(session, /\.filter\(\(entry\) => !reactionsSent\.includes\(entry\.id\)\)/, "and leave Speaking as");
 });
 
 await test("Uncanny Dodge answers the hit its player picked, and the other stays open", async () => {

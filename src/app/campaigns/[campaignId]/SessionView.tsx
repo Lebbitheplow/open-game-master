@@ -191,6 +191,10 @@ function subscribeDicePref(callback: () => void) {
   return () => window.removeEventListener(DICE3D_EVENT, listener);
 }
 
+// No reaction waits on the GM: the same empty list each render, so the Hand's
+// memos that read it keep their cards.
+const NO_SENT_REACTIONS: string[] = [];
+
 // The play table. Header, the story column, the docked context column and
 // the dialogs that float over all three. What lives here is the state the
 // columns share: which tab is open, what the composer holds, who is blocked
@@ -509,12 +513,24 @@ export function SessionView({
   const [reactChoice, setReactChoice] = useState<{ id: string; hits: string } | null>(null);
   const reactAs = reactChoice && reactChoice.hits === hitsKey ? reactChoice.id : null;
   const setReactAs = useCallback((id: string | null) => setReactChoice(id ? { id, hits: hitsKey } : null), [hitsKey]);
+  // A reaction sent (typed here, or a card from the Hand) and not resolved
+  // yet, by its hero: at a table a person runs it waits for the GM, and the
+  // engine's count does not move until then, so the box and the cards held
+  // that hero ready for a second. Held while the encounter's reactions,
+  // round and turn stay as they were when it went.
+  const reactionMoment = JSON.stringify([state.encounter?.id ?? "", state.encounter?.round ?? 0, state.encounter?.turnIndex ?? 0, state.encounter?.reactionsUsed ?? []]);
+  const [sentReactions, setSentReactions] = useState<{ moment: string; ids: string[] }>({ moment: "", ids: [] });
+  const reactionsSent = useMemo(() => (sentReactions.moment === reactionMoment ? sentReactions.ids : NO_SENT_REACTIONS), [sentReactions, reactionMoment]);
+  const markReactionSent = useCallback(
+    (id: string) => setSentReactions((current) => ({ moment: reactionMoment, ids: [...(current.moment === reactionMoment ? current.ids : []), id] })),
+    [reactionMoment],
+  );
   const typedReactors = useMemo(
     () =>
       hostOffers(capabilities, "typedReactions")
-        ? typedReactorsOf(sheets, me?.id ?? "", turnSheet?.id, campaign?.gameSettings?.multiCharacter, state.encounter, reactAs)
+        ? typedReactorsOf(sheets, me?.id ?? "", turnSheet?.id, campaign?.gameSettings?.multiCharacter, state.encounter, reactAs).filter((entry) => !reactionsSent.includes(entry.id))
         : [],
-    [capabilities, sheets, me?.id, turnSheet?.id, campaign?.gameSettings?.multiCharacter, state.encounter, reactAs],
+    [capabilities, sheets, me?.id, turnSheet?.id, campaign?.gameSettings?.multiCharacter, state.encounter, reactAs, reactionsSent],
   );
   const speakingAs = typedReactors.find((entry) => entry.id === reactAs) ?? null;
   const reactAsPicker = useMemo(
@@ -885,7 +901,8 @@ export function SessionView({
         }
         setInput("");
         // One line for the hero answering a hit: the box speaks for the hero
-        // whose turn it is again.
+        // whose turn it is again, and that hero's reaction waits on the GM.
+        if (kind === "do" && speakingAs) markReactionSent(speakingAs.id);
         setReactAs(null);
       } catch {
         setError("Could not reach the server.");
@@ -893,7 +910,7 @@ export function SessionView({
         setSending(false);
       }
     },
-    [campaignId, input, sending, gate.inputBlocked, silenced, kind, leadPrivate, speaker, mySheet, actingSheet, speakingAs, setReactAs],
+    [campaignId, input, sending, gate.inputBlocked, silenced, kind, leadPrivate, speaker, mySheet, actingSheet, speakingAs, setReactAs, markReactionSent],
   );
 
   const clearChatTarget = useCallback(() => setChatTarget(null), []);
@@ -1445,6 +1462,8 @@ export function SessionView({
                     onSnoozeStory={snoozeStory}
                     onSubmit={submit}
                     speakingAs={reactAsPicker}
+                    reactionsSent={reactionsSent}
+                    onReactionSent={markReactionSent}
                   />
                   </>
                 )}

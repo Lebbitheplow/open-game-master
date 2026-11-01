@@ -356,7 +356,7 @@ test("an option costing more than is left is held with legendary_action's own se
   const cards = deriveMonsterHand({ id: "e1", name: "Vermithrax", status: "alive", conditions: [], actions: view }, { legendaryCards: true });
   const card = cards.find((entry) => entry.name === "Wing Attack");
   assert.equal(card.disabled, wing.refusal);
-  assert.equal(card.resource, "Costs 2 · 1 of 3 left");
+  assert.equal(card.resource, "Costs 2 · 1/3 left");
 });
 
 test("the legendary cards come only from a host that offers them, and each plays legendary_action then what it buys", () => {

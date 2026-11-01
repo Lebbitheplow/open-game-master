@@ -986,6 +986,11 @@ export function campaignReducer(state: CampaignState, action: Action): CampaignS
           if (typeof payload.reverted === "string") {
             next.turnChanges = state.turnChanges.filter((entry) => entry.turnId !== payload.reverted);
           }
+          // One change a revert of an earlier turn wrote over (turn-rows.ts
+          // supersedeLaterRows): its turn stops offering the fight's revert.
+          if (typeof payload.removed === "string") {
+            next.turnChanges = state.turnChanges.filter((entry) => entry.id !== payload.removed);
+          }
           return next;
         }
         case "audit_reverted":

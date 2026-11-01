@@ -23,7 +23,10 @@ export function legendaryCard(enemy: MonsterHandEnemy, legendary: PublicLegendar
     id: `monster:${enemy.id}:legendary:${cardKey(option.name)}${many && route ? `:${cardKey(route.use)}` : ""}`,
     name: many && route ? `${option.name}: ${route.use}` : option.name,
     cost: "legendary" as const,
-    resource: `Costs ${option.cost} · ${legendary.left} of ${legendary.max} left`,
+    // Two short parts the card shows on two lines at its left edge, which a
+    // fan never covers (HandCardFace.tsx): "· 3 of 3 left" lay under the next
+    // card.
+    resource: `Costs ${option.cost} · ${legendary.left}/${legendary.max} left`,
     description: option.text,
     // An option the server cannot read is spent, and the rest is the GM's.
     rules: route ? `${route.how}.` : "The server cannot read this option: playing it spends the action, and you resolve the rest by hand from its line.",
