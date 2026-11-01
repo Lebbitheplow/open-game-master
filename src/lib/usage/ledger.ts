@@ -270,6 +270,22 @@ export function usageOverview(): { campaigns: CampaignUsage[]; accounts: Account
     .all() as TotalsRow[]) {
     byUserOutsideCampaigns.set(row.key!, totalsFrom(row));
   }
+  // So is what was spent at a table since deleted: its rows keep the
+  // table's id, but no campaign row is left to list them under or a lead to
+  // answer for them, so they answer to whoever asked for the work. Without
+  // this they vanished from every total, and a test fight (issue 553) is
+  // deleted the moment its author ends it or starts the next one.
+  for (const row of db
+    .prepare(
+      `SELECT user_id AS key, ${TOTALS_SELECT} FROM usage_events
+        WHERE campaign_id IS NOT NULL AND user_id IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM campaigns c WHERE c.id = usage_events.campaign_id)
+        GROUP BY user_id`,
+    )
+    .all() as TotalsRow[]) {
+    const own = byUserOutsideCampaigns.get(row.key!);
+    byUserOutsideCampaigns.set(row.key!, own ? addTotals(own, totalsFrom(row)) : totalsFrom(row));
+  }
 
   const campaignRows = db
     .prepare(

@@ -2636,16 +2636,19 @@ function deathSaveAsTurnBegins(campaign: Campaign) {
   rollDeathSave(campaign, current.characterId);
 }
 
-// The pointer rests on an AI companion at a person's table: the server
-// plays its basic turn (as the AI's backstop does) and moves on.
+// The pointer rests on an AI companion at a person's table, or on a hero
+// dominated by the other side: the server plays its basic turn (as the AI's
+// backstop does for both, dmPlaysTurn) and moves on. The tracker offers the
+// button for a dominated hero too; the companion test alone refused it with
+// "It is not a companion's turn" (issue 685 audit).
 export function playCompanionTurn(campaign: Campaign, turn: DmTurn): string | null {
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter || !encounter.orderReady) {
     return "No fight is running.";
   }
   const current = encounter.order[encounter.turnIndex];
-  if (!current || current.kind !== "pc" || !isCompanionUserId(current.userId)) {
-    return "It is not a companion's turn.";
+  if (!current || current.kind !== "pc" || !(isCompanionUserId(current.userId) || dmPlaysTurn(campaign, current))) {
+    return "It is not a turn the GM plays: a companion's, or a dominated hero's.";
   }
   // The enemies before the companion take their turns first, as they do
   // before a player's (src/lib/dm/enemies-due.ts): only the console's button

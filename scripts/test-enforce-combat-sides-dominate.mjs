@@ -25,6 +25,8 @@ const { characterAwaitingPlayer } = await import("../src/lib/dm/player-word.ts")
 const { listRecentMessages } = await import("../src/lib/db/messages.ts");
 const encounters = await import("../src/lib/db/encounters.ts");
 const { latestEventOfType } = await import("../src/lib/events.ts");
+const { setDmMode } = await import("../src/lib/db/campaigns.ts");
+const { activePublicEncounter } = await import("../src/lib/db/encounter-view.ts");
 
 const DOMINATOR = {
   spells: ["Dominate Person"],
@@ -77,6 +79,34 @@ await test("An enemy's Dominate Person on a player's character: the table is tol
   assert.equal(command.turnUserId(world.campaign(), entry), victim.userId);
   assert.equal(command.dmPlaysTurn(world.campaign(), entry), false);
   assert.equal(command.dominatedRefusal(world.campaignId, world.sheet(victim.id)), null);
+});
+
+// At a table a person runs, the tracker offers "Play their turn for me" for a
+// dominated hero (DmInitiativePanel's foe row, from companionTurn), and the
+// route answered "It is not a companion's turn": the button did nothing
+// (issue 685 audit). It plays the hero's basic turn against the party, as
+// the AI's backstop does, and hands the turn on.
+await test("At a person's table the GM's Play their turn for me plays a dominated hero's turn and hands it on", async () => {
+  const { world, sheets: [, victim], enemies: [foe] } = await table([FIGHTER, { ...FIGHTER, name: "Brin" }], 1, DOMINATOR);
+  world.dice(1);
+  const cast = await world.invoke("cast_at_player", { characterId: victim.id, casterEnemyId: foe.id, spell: "Dominate Person", saveAbility: "wis", dc: 20 });
+  world.clearDice();
+  assert.equal(cast.ok, true, cast.error);
+  assert.ok(setDmMode(world.campaignId, "human", world.owner.id)?.dmUserId, "a person takes the GM's seat");
+  const encounter = world.encounter();
+  const place = encounter.order.findIndex((entry) => entry.kind === "pc" && entry.characterId === victim.id);
+  encounters.saveEncounter({ ...encounter, turnIndex: place, turnBudget: null, legendary: { ...encounter.legendary, due: [], handoff: false } });
+  assert.deepEqual(activePublicEncounter(world.campaignId, { enemyNumbers: true }).companionTurn?.id, victim.id, "the tracker offers the GM Brin's turn");
+  const route = await world.route("campaigns/[campaignId]/dm/initiative");
+  world.signIn({ id: world.owner.id });
+  const played = await route.POST(
+    new Request("http://odm.test/dm/initiative", { method: "POST", body: JSON.stringify({ op: "companion" }) }),
+    { params: Promise.resolve({ campaignId: world.campaignId }) },
+  );
+  const body = await played.json();
+  assert.equal(played.status, 200, body.error);
+  const now = world.encounter();
+  assert.notEqual(now.order[now.turnIndex]?.characterId, victim.id, "Brin's turn was played and handed on");
 });
 
 await test("A companion or a character charmed by something other than a Dominate spell is not taken from its player", async () => {

@@ -21,7 +21,7 @@ import { requestDmTurn } from "@/lib/dm/loop";
 import { settleTableWait, waitsForTable } from "@/lib/dm/table-wait";
 import { holdsPostForTable } from "@/lib/dm/table-wait-logic";
 import { coverInEffect } from "@/lib/dm/delegation";
-import { hasHumanDm, isPrimaryDm } from "@/lib/dm/viewer";
+import { hasHumanDm, isDmSeat } from "@/lib/dm/viewer";
 import { invokeEngine } from "@/lib/dm/invoke";
 import { claimNarrationSeq } from "@/lib/dm/narration-slot";
 import { enqueueDmJob } from "@/lib/dm/queue";
@@ -260,9 +260,11 @@ export async function POST(
   // makes before it narrates (directCardCall), and nothing waits in the DM's
   // queue for the DM. A card the engine cannot resolve whole (a spell, a
   // rider) is posted below and queued as any player's is, for the console.
+  // A co-GM adjudicates as the GM does (isDmSeat), and plays a companion's
+  // turn as the GM may (gmCompanionTurn): their cards resolve the same way.
   const dmSeats = campaignSeats(campaign);
   const direct =
-    intent && kind === "do" && hasHumanDm(dmSeats) && isPrimaryDm(dmSeats, user.id)
+    intent && kind === "do" && hasHumanDm(dmSeats) && isDmSeat(dmSeats, user.id)
       ? directCardCalls(intent, sheet.id, directContextFor(campaignId, intent, tableAuthors(campaignId)))
       : null;
   if (direct) {

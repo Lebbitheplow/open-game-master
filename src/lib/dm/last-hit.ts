@@ -17,8 +17,8 @@
 // state from it.
 //
 // One record per character per campaign, replaced by the next attack. It
-// answers a reaction only while it is fresh: in a fight, until the next
-// attack on anyone or the first thing the next turn's creature does
+// answers a reaction only while it is fresh: in a fight, until an attack on
+// anyone in a later GM turn or the first thing the next turn's creature does
 // (freshLastHit); out of one, the last ten minutes. The table is made with the schema (src/lib/db/core.ts), so
 // deleting a campaign can clear its rows.
 
@@ -27,6 +27,7 @@ import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { getActiveEncounter, listEnemies, orderEntryId, turnKey, type Encounter, type OrderEntry } from "@/lib/db/encounters";
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
+import { currentTurnId, owningTurnOf } from "@/lib/dm/job-control";
 import type { RollResult, Advantage } from "@/lib/dice";
 import type { RollAttacker } from "@/lib/db/rolls";
 import { spellMechanicsFor } from "@/lib/content";
@@ -89,6 +90,10 @@ export type LastHit = {
   // Set once the next turn's creature has ended its turn
   // (closeHitsAtTurnEnd): the moment to answer it has gone by.
   closed?: true;
+  // The GM turn that rolled it (src/lib/dm/job-control.ts currentTurnId):
+  // one AI reply, or one call from the console. Absent out of any turn and
+  // on records written before it.
+  dmTurn?: string;
   // Who made it: an enemy, a character fighting on the other side (a
   // turncoat's pc_attack, issue 503), or a hazard, which is nobody.
   attacker: { kind: "enemy" | "sheet" | "hazard"; id: string | null; name: string };
@@ -168,13 +173,26 @@ function enemiesTakingTurns(encounter: Pick<Encounter, "legendary">): boolean {
   return Boolean(encounter.legendary.due?.length || encounter.legendary.handoff);
 }
 
-// Whether an attack on somebody else was recorded after this one.
+// The GM turn the work running now is filed under, if any.
+function rollingTurn(): { dmTurn?: string } {
+  const turnId = currentTurnId();
+  return turnId ? { dmTurn: owningTurnOf(turnId) } : {};
+}
+
+// Whether an attack on somebody else was recorded after this one, in a
+// later go. The attacks one GM turn rolls (the AI's whole reply, every enemy
+// in it, or the monsters a person's "Play the rest" plays) land before any
+// player sees the first: closed by the next of them, a hit on the first
+// hero in the pass was never answerable, and only the last hero hit was
+// offered Shield or Uncanny Dodge (issue 685).
 function attackedSince(campaignId: string, record: LastHit): boolean {
-  return Boolean(
-    db()
-      .prepare(`SELECT 1 FROM last_hits WHERE campaign_id = ? AND character_id != ? AND created_at > ? LIMIT 1`)
-      .get(campaignId, record.characterId, record.at),
-  );
+  const later = db()
+    .prepare(`SELECT payload_json FROM last_hits WHERE campaign_id = ? AND character_id != ? AND created_at > ?`)
+    .all(campaignId, record.characterId, record.at) as Array<{ payload_json: string }>;
+  return later.some((row) => {
+    const other = parseJson<LastHit | null>(row.payload_json, null);
+    return !record.dmTurn || other?.dmTurn !== record.dmTurn;
+  });
 }
 
 // Whether the creature whose turn it is has done anything with it yet: an
@@ -207,7 +225,8 @@ function actedThisTurn(encounter: Encounter): boolean {
 // them take their turns, so a hit then stayed answerable through the other
 // enemies' attacks and that character's whole turn after them: late, and
 // once their turn began, a second reaction in a round. So it closes at the
-// next attack on anyone, or once the next turn's creature does its first
+// next attack on anyone in a later go (attackedSince: the attacks of one AI
+// reply leave each other open), or once the next turn's creature does its first
 // thing (an attack, a cast, an action card, a step, ending the turn). The
 // enemies' turns ending closes nothing: the player hit has the time until
 // somebody acts to read the hit and answer it, at an AI table after the
@@ -368,6 +387,7 @@ export function openLastHit(campaignId: string, characterId: string) {
         encounterId: encounter?.id ?? null,
         turn: encounter ? turnKey(encounter) : "",
         ...(encounter && enemiesTakingTurns(encounter) ? { enemyTurns: true } : {}),
+        ...rollingTurn(),
         attacker: what.attacker,
         attack: what.attack,
         type: what.type,
@@ -407,6 +427,7 @@ export function recordFall(
     encounterId: encounter?.id ?? null,
     turn: encounter ? turnKey(encounter) : "",
     ...(encounter && enemiesTakingTurns(encounter) ? { enemyTurns: true } : {}),
+    ...rollingTurn(),
     attacker: { kind: "hazard", id: null, name: "the fall" },
     attack: "falling",
     type: "bludgeoning",

@@ -44,6 +44,17 @@ const campaign = createCampaign(author.id, {
   difficulty: "normal",
 });
 const workshop = createWorkshop(author.id, { title: "Bench Prep" });
+// A test fight's table (src/lib/workshop/test-fight.ts) is a campaigns row
+// of kind playtest: the header above says it is never listed either.
+const testTable = createCampaign(author.id, {
+  title: "Test: Bench",
+  description: "",
+  theme: "",
+  maxPlayers: 1,
+  startingLevel: 1,
+  difficulty: "normal",
+  kind: "playtest",
+});
 const grant = createConnectionGrant({ userId: author.id, name: "author's agent", scopes: ["read"] }).grant;
 
 // workbenchCall reaches routes over loopback fetch; here fetch goes straight
@@ -62,12 +73,14 @@ globalThis.fetch = async (url, init = {}) => {
 };
 
 try {
-  await test("the list holds the author's campaign and not their workshop", async () => {
+  await test("the list holds the author's campaign and not their workshop or test table", async () => {
     const outcome = await workbenchCall(grant, "odm_list_campaigns", {});
     assert.equal(outcome.isError, false, outcome.text.slice(0, 300));
     const ids = JSON.parse(outcome.text).campaigns.map((entry) => entry.id);
     assert.ok(ids.includes(campaign.id), "the campaign is listed");
     assert.ok(!ids.includes(workshop.id), "the workshop is not listed");
+    assert.equal(testTable.kind, "playtest", "the test table was made as one");
+    assert.ok(!ids.includes(testTable.id), "the test table is not listed");
   });
 
   await test("the description promises campaigns only and says workshops are not listed", () => {
