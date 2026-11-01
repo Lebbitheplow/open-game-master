@@ -22,7 +22,7 @@ import { addSheetCondition } from "@/lib/dm/action-common";
 import { acWithEffects } from "@/lib/dm/ac-effects";
 import { handleCastAtEnemy } from "@/lib/dm/cast-tools";
 import { pcResistances, removeConditions } from "@/lib/dm/condition-logic";
-import { attackerFoeId, freshLastHit } from "@/lib/dm/last-hit";
+import { attackerFoeId, freshLastHit, hitIdOf, openHits, type LastHit } from "@/lib/dm/last-hit";
 // For the reaction spells' slot spend; mutations never imports back.
 import { applyDmMutation } from "@/lib/dm/mutations";
 import { READIED } from "@/lib/dm/object-actions";
@@ -80,7 +80,10 @@ export function reactionSpell(ctx: Ctx, spellName: string): ToolResult {
   // save and fire, resolved as cast_at_enemy resolves it; the reaction is
   // spent here, as for every reaction spell.
   if (name === "hellish rebuke") {
-    const record = freshLastHit(campaign.id, sheet.id);
+    // The open hit that damaged them, by the creature named when one is.
+    const damaged = (hit: LastHit) =>
+      attackerFoeId(hit) !== null && hit.swings.some((swing) => swing.hit && swing.raw > 0) && (!ctx.args.targetEnemyId || hit.attacker.id === ctx.args.targetEnemyId);
+    const record = freshLastHit(campaign.id, sheet.id, damaged) ?? freshLastHit(campaign.id, sheet.id);
     const attackerId =
       ctx.args.targetEnemyId ?? attackerFoeId(record) ?? undefined;
     if (!attackerId) {
@@ -117,8 +120,8 @@ export function reactionSpell(ctx: Ctx, spellName: string): ToolResult {
   // Feather Fall saves a creature from a fall that has just landed.
   if (name === "feather fall") {
     const target = allyOf(ctx) ?? sheet;
-    const record = freshLastHit(campaign.id, target.id);
-    if (!record || record.source !== "fall") {
+    const record = freshLastHit(campaign.id, target.id, (hit) => hit.source === "fall");
+    if (!record) {
       return noFall(target.name, "Feather Fall");
     }
     const cast = castReactionSpell(ctx, spellName);
@@ -138,9 +141,7 @@ export function reactionSpell(ctx: Ctx, spellName: string): ToolResult {
   // Shield answers a hit or Magic Missile; Absorb Elements an acid, cold,
   // fire, lightning or thunder hit. Without the trigger nothing is spent.
   if (name === "shield") {
-    const record = freshLastHit(campaign.id, sheet.id);
-    const hit = record?.source === "attack" && !record.answered.includes("shield") && record.swings.some((swing) => swing.hit);
-    if (!hit) {
+    if (!shieldAnswers(campaign.id, sheet.id).length) {
       return {
         error: `Shield is cast when ${sheet.name} is hit by an attack (or targeted by Magic Missile), and the server has no hit on them this turn to answer. Nothing was spent.`,
         refused: "rules",
@@ -148,9 +149,8 @@ export function reactionSpell(ctx: Ctx, spellName: string): ToolResult {
     }
   }
   if (name === "absorb elements") {
-    const record = freshLastHit(campaign.id, sheet.id);
-    const typed = absorbedType(record);
-    if (!record || !typed || record.answered.includes("absorb elements")) {
+    const record = freshLastHit(campaign.id, sheet.id, absorbable);
+    if (!record) {
       return {
         error: `Absorb Elements is cast when ${sheet.name} takes acid, cold, fire, lightning or thunder damage, and the server has no such damage to them this turn to answer. Nothing was spent.`,
         refused: "rules",
@@ -184,21 +184,25 @@ export function reactionSpell(ctx: Ctx, spellName: string): ToolResult {
   const spent = spentLine(ctx, cast);
 
   // Shield: +5 AC until the start of their next turn, against the
-  // triggering attack too. Every swing of the last attack that the higher
-  // AC turns away becomes a miss (a natural 20 still hits).
+  // triggering attack too (SRD 5.1). Every swing the higher AC turns away
+  // becomes a miss (a natural 20 still hits), in the hit it answers and in
+  // every open hit on them after it: those attacks were made against the
+  // shielded AC (issue 685). Later attacks meet it through "shielded".
   if (name === "shield") {
+    const covered = shieldAnswers(campaign.id, sheet.id);
     addSheetCondition(campaign, sheet, "shielded", { untilTurnOf: sheet.id });
-    const record = freshLastHit(campaign.id, sheet.id);
     let answered = "";
-    if (record && record.source === "attack" && !record.answered.includes("shield")) {
+    // The latest first: each re-resolves on the standing the one after it
+    // left, so a blow undone puts back exactly what it took.
+    for (const record of [...covered].reverse()) {
       const corrected = record.swings.map((swing) =>
         swing.hit && swing.natural !== 20 && swing.total < swing.vsAc + 5 ? { ...swing, hit: false, raw: 0 } : swing,
       );
       const turned = corrected.filter((swing, at) => record.swings[at].hit && !swing.hit).length;
       const settled = settle(ctx, record, corrected, "shield");
-      answered = turned
+      answered = (turned
         ? ` Against ${record.attacker.name}'s ${record.attack}, ${turned} hit${turned === 1 ? "" : "s"} now miss${turned === 1 ? "es" : ""}: ${settled.given} hit points come back. HP ${settled.hp}.`
-        : ` ${record.attacker.name}'s ${record.attack} still hits the higher AC.`;
+        : ` ${record.attacker.name}'s ${record.attack} still hits the higher AC.`) + answered;
     }
     const updated = getSheetById(sheet.id) ?? sheet;
     return {
@@ -214,7 +218,7 @@ export function reactionSpell(ctx: Ctx, spellName: string): ToolResult {
   // their next turn deals 1d6 of it per slot level (condition-effects.ts
   // absorbed strike).
   if (name === "absorb elements") {
-    const record = freshLastHit(campaign.id, sheet.id)!;
+    const record = freshLastHit(campaign.id, sheet.id, absorbable)!;
     const type = absorbedType(record)!;
     const slot = typeof cast.slotLevel === "number" ? cast.slotLevel : 1;
     const resisted = pcResistances(sheet).toLowerCase().includes(type);
@@ -246,9 +250,27 @@ export function reactionSpell(ctx: Ctx, spellName: string): ToolResult {
   };
 }
 
+// The hits Shield answers: the one it is cast against (the hit its player
+// named, else the earliest still open, whose +5 then covers the most), and
+// every open hit on them after it. Empty when none hit them.
+function shieldAnswers(campaignId: string, sheetId: string): LastHit[] {
+  const fits = (hit: LastHit) => hit.source === "attack" && !hit.answered.includes("shield") && hit.swings.some((swing) => swing.hit);
+  const first = freshLastHit(campaignId, sheetId, fits, "earliest");
+  if (!first) {
+    return [];
+  }
+  const open = openHits(campaignId, sheetId);
+  const from = open.findIndex((hit) => hitIdOf(hit) === hitIdOf(first));
+  return open.slice(Math.max(0, from)).filter(fits);
+}
+
+function absorbable(record: LastHit): boolean {
+  return Boolean(absorbedType(record)) && !record.answered.includes("absorb elements");
+}
+
 // The elemental type a recorded hit dealt, for Absorb Elements: the hit's
 // own, or the first swing of an elemental type that landed.
-function absorbedType(record: ReturnType<typeof freshLastHit>): string | null {
+function absorbedType(record: LastHit | null): string | null {
   if (!record) {
     return null;
   }

@@ -170,7 +170,7 @@ await test("The commander moves the companion on its turn, and can take the walk
   assert.deepEqual([kit.token(pip.id).x, kit.token(pip.id).y], [4, 4]);
 });
 
-await test("A commanded companion acts as its player's only on its own turn", async () => {
+await test("A commanded companion acts as its player's on its own turn, and between turns only with its reaction", async () => {
   const { world, kara, pip } = await table({ commandedBy: "owner" });
   const sheets = world.sheets();
   assert.deepEqual(ownedCharacters(sheets, world.owner.id).map((sheet) => sheet.id), [kara.id], "a companion counted as owned");
@@ -182,8 +182,12 @@ await test("A commanded companion acts as its player's only on its own turn", as
   assert.match(offTurn.error, /^Pip follows your orders on their own turn in a fight/);
   const outOfFight = resolveActionCharacter({ sheets, userId: world.owner.id, selectedId: kara.id, characterId: pip.id });
   assert.equal(outOfFight.status, 409, "out of a fight the DM plays Pip");
-  const reaction = resolveActionCharacter({ sheets, userId: world.owner.id, selectedId: kara.id, characterId: pip.id, initiativeId: pip.id, reaction: true });
-  assert.equal(reaction.status, 409);
+  // Its reaction card is its commander's to play off its turn (issue 685);
+  // a reaction not naming it is never taken as its.
+  const reaction = resolveActionCharacter({ sheets, userId: world.owner.id, selectedId: kara.id, characterId: pip.id, initiativeId: kara.id, reaction: true });
+  assert.equal(reaction.sheet?.id, pip.id, JSON.stringify(reaction));
+  const unnamed = resolveActionCharacter({ sheets, userId: world.owner.id, selectedId: kara.id, initiativeId: kara.id, reaction: true });
+  assert.equal(unnamed.sheet?.id, kara.id, "a reaction naming nobody is the selected hero's");
   const stranger = world.addUser();
   assert.equal(initiativeCharacter(sheets, stranger.id, pip.id), null);
 });

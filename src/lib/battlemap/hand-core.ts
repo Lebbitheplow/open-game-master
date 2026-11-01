@@ -36,7 +36,7 @@ export type HandIntent = (
   | { card: "spell"; spell: string; slotLevel: number | null }
   | { card: "feature"; resourceId: string }
   | { card: "basic"; action: BasicActionId }
-  | { card: "reaction"; feature: string; spell?: string; slotLevel?: number | null }
+  | { card: "reaction"; feature: string; spell?: string; slotLevel?: number | null; hit?: string }
   // A gear card (issue #424, hand-gear.ts): a shield, a weapon, a thing
   // dropped, picked up, handed over or drunk. `item` rides as the extra.
   | { card: "gear"; action: HandGearAction }
@@ -141,6 +141,10 @@ export type HandCard = {
   // to a hero who is not the one acting (hand-react.ts offTurnReactionCards).
   // Absent, the card is the acting character's.
   actor?: { id: string; name: string };
+  // The hit a reaction card answers (hand-react.ts): the character hit, the
+  // hit's id when the host gives one, and who made it. Its aim is fixed by
+  // it (reactionAim), not picked.
+  answers?: { characterId: string; hitId?: string; attackerId: string | null; attacker: string };
 };
 
 export type HandShares = { count: number; unit: "dart" | "ray" | "beam" | "creature"; stack: boolean };

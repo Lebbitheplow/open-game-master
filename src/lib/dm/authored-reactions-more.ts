@@ -150,8 +150,10 @@ export function reactionMove(ctx: Ctx, name: string, trigger: "enemy_adjacent" |
 
 function redirectMiss(ctx: Ctx, name: string, rangeFt: number): ToolResult {
   const { campaign, encounter } = ctx;
-  const record = freshLastHit(campaign.id, ctx.sheet.id);
   const label = textKey(name);
+  const record = freshLastHit(campaign.id, ctx.sheet.id, (hit) =>
+    hit.source === "attack" && !hit.ranged && !hit.answered.includes(label) && hit.swings.some((swing) => !swing.hit && !(swing.ranged ?? false)),
+  ) ?? freshLastHit(campaign.id, ctx.sheet.id);
   const missed = record && record.source === "attack" && !record.ranged && !record.answered.includes(label)
     ? record.swings.findIndex((swing) => !swing.hit && !(swing.ranged ?? false))
     : -1;

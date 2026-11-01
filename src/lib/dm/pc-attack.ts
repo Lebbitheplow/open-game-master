@@ -446,7 +446,7 @@ function spendPcAttack(plan: AttackPlan): ToolError | null {
     // The readied action (or the Giant Killer answer) this attack is spends
     // with it.
     if (plan.extras.giantKiller) {
-      spendGiantKiller(campaign.id, sheet.id);
+      spendGiantKiller(campaign.id, sheet.id, plan.enemy.id);
     } else {
       spendReadied(campaign, sheet.id);
     }
