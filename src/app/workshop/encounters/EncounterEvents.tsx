@@ -10,6 +10,7 @@ import { DictateField } from "@/components/DictateField";
 import { appendDictation } from "@/lib/dictation";
 import { Field, FieldLabel, addChip, chipRow, rowIcon } from "@/app/workshop/kit";
 import { MonsterRosterPicker } from "@/app/campaigns/[campaignId]/MonsterRosterPicker";
+import { GroundEditor, type GroundMap } from "@/app/workshop/encounters/EncounterGround";
 import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 import { CONDITION_OPTIONS } from "@/lib/dm/catalog-vocab";
 import { formatRoster, parseRoster, type RosterSlot } from "@/lib/dm/encounter-template-logic";
@@ -24,9 +25,10 @@ import {
 // The Events of a prepared fight (issue 685; what they do at the table:
 // src/lib/dm/fight-event-logic.ts). An event is a moment picked from a list
 // and what happens then, each part picked too: the creature from the roster,
-// the monsters from this world's bestiary, the condition from the rules. The
-// only words typed are the GM's own announcement. Shown under the phases
-// once the fight has a roster, and only on a host that runs events.
+// the monsters from this world's bestiary, the condition from the rules, the
+// squares of a change of ground on the fight's prepared map. The only words
+// typed are the GM's own announcement. Shown under the phases once the fight
+// has a roster, and only on a host that runs events.
 
 type Slots = RosterSlot[];
 type ActionOf<K extends FightAction["kind"]> = Extract<FightAction, { kind: K }>;
@@ -45,6 +47,7 @@ const ACTIONS: Record<FightAction["kind"], { label: string; noun: string }> = {
   hurt: { label: "A creature is hurt", noun: "a creature hurt" },
   condition: { label: "A creature's condition", noun: "a creature's condition" },
   visibility: { label: "A creature appears or hides", noun: "a creature appearing or hiding" },
+  ground: { label: "The ground changes", noun: "the ground changing" },
   say: { label: "Tell the table", noun: "words for the table" },
 };
 const ACTION_KINDS = Object.keys(ACTIONS) as Array<FightAction["kind"]>;
@@ -66,6 +69,8 @@ function newAction(kind: FightAction["kind"], slots: Slots): FightAction {
       return { kind, slot, condition: "prone", remove: false };
     case "visibility":
       return { kind, slot, hidden: false };
+    case "ground":
+      return { kind, tiles: [], terrain: "wall" };
     case "say":
       return { kind, text: "" };
   }
@@ -82,6 +87,7 @@ export function EncounterEvents({
   campaignId,
   slots,
   hasEntry,
+  map,
   value,
   onChange,
 }: {
@@ -89,6 +95,9 @@ export function EncounterEvents({
   slots: Slots;
   // The plan sets where the party comes in, so a wave can come in there.
   hasEntry: boolean;
+  // The fight's prepared map, drawn whole, or null: a change of ground names
+  // its squares, so it is offered only with one.
+  map: GroundMap | null;
   value: FightEvent[];
   onChange: (next: FightEvent[]) => void;
 }) {
@@ -96,6 +105,8 @@ export function EncounterEvents({
   if (!slots.length || !hostOffers(capabilities, "fightEvents")) {
     return null;
   }
+  const groundHost = hostOffers(capabilities, "fightGround");
+  const kinds = ACTION_KINDS.filter((kind) => kind !== "ground" || Boolean(groundHost && map));
   const setEvent = (index: number, next: FightEvent) => onChange(value.map((event, at) => (at === index ? next : event)));
   return (
     <div className="space-y-1.5 text-sm">
@@ -104,6 +115,11 @@ export function EncounterEvents({
         What happens on its own during the fight, once each: more creatures arrive, one is hurt, an ambusher appears.
         Events change the fight; they never decide a roll.
       </p>
+      {groundHost && !map ? (
+        <p className="text-[11px] text-stone-500">
+          An event can change the ground, such as a bridge that gives way, only on a prepared map: link one above to pick its squares.
+        </p>
+      ) : null}
       {value.length ? (
         <ul className="stagger space-y-2">
           {value.map((event, index) => (
@@ -114,6 +130,8 @@ export function EncounterEvents({
                 number={index + 1}
                 slots={slots}
                 hasEntry={hasEntry}
+                map={map}
+                kinds={kinds}
                 onChange={(next) => setEvent(index, next)}
                 onRemove={() => onChange(value.filter((_, at) => at !== index))}
               />
@@ -140,6 +158,8 @@ function EventEditor({
   number,
   slots,
   hasEntry,
+  map,
+  kinds,
   onChange,
   onRemove,
 }: {
@@ -148,6 +168,9 @@ function EventEditor({
   number: number;
   slots: Slots;
   hasEntry: boolean;
+  map: GroundMap | null;
+  // What an event may do here: a change of ground only with a map.
+  kinds: Array<FightAction["kind"]>;
   onChange: (next: FightEvent) => void;
   onRemove: () => void;
 }) {
@@ -211,6 +234,7 @@ function EventEditor({
                   slots={slots}
                   slotOptions={slotOptions}
                   hasEntry={hasEntry}
+                  map={map}
                   onChange={(next) => setAction(index, next)}
                 />
               </div>
@@ -231,7 +255,7 @@ function EventEditor({
       )}
       {event.actions.length < FIGHT_EVENT_LIMITS.actions ? (
         <div role="group" aria-label={`${name}: add what happens`} className={chipRow}>
-          {ACTION_KINDS.map((kind) => (
+          {kinds.map((kind) => (
             <button
               key={kind}
               type="button"
@@ -254,6 +278,7 @@ function ActionEditor({
   slots,
   slotOptions,
   hasEntry,
+  map,
   onChange,
 }: {
   campaignId: string;
@@ -262,6 +287,7 @@ function ActionEditor({
   slots: Slots;
   slotOptions: SelectOption<string>[];
   hasEntry: boolean;
+  map: GroundMap | null;
   onChange: (next: FightAction) => void;
 }) {
   const who = (slot: number, set: (slot: number) => void) => (
@@ -341,6 +367,12 @@ function ActionEditor({
             />
           </Field>
         </div>
+      );
+    case "ground":
+      return map ? (
+        <GroundEditor action={action} name={name} map={map} onChange={onChange} />
+      ) : (
+        <p className="text-[11px] text-amber-300/85">This needs the fight&rsquo;s prepared map: link one above, or it is not saved.</p>
       );
     case "say":
       return (

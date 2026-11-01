@@ -149,6 +149,11 @@ export const SERVER_FEATURES = {
   // older host drops while saving the rest of the plan and never runs, so
   // the Events section of the fight's plan stays hidden there.
   fightEvents: true,
+  // "The ground changes" among a prepared fight's events (issue 685): an
+  // action naming squares of the fight's prepared map, which an older
+  // host's prep routes refuse as an event they cannot read, so the editor
+  // offers it only here.
+  fightGround: true,
 } as const;
 export type ServerFeatures = { [K in keyof typeof SERVER_FEATURES]: boolean };
 
