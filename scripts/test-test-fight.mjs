@@ -389,5 +389,28 @@ await test("a workshop's faction keeps its attitude, and refuses a standing no i
   assert.equal(attitude.json.faction.attitude, "hostile");
 });
 
+// Issue 685 audit: a test fight seats a table of its own, so a server where
+// only administrators start campaigns and workshops holds it too; a workshop
+// kept from before the switch was set is no way around it.
+await test("where only administrators start tables, a test fight is refused, and the sheet says so before its button", async () => {
+  const { saveGlobalConfig } = await import("../src/lib/db/app-settings.ts");
+  const held = openWorkshop("Behind the door");
+  const here = { workshopId: held.workshop.id };
+  world.signIn(author);
+  saveGlobalConfig({ sharedHost: { campaignCreation: "admins" } });
+  try {
+    const info = await call(route.test, "GET", undefined, here);
+    assert.equal(info.status, 200);
+    assert.match(info.json.refused, /administrator starts campaigns, workshops and their test fights/);
+    const out = await call(route.test, "POST", { templateId: held.lone.id, party: { kind: "stand-ins" } }, here);
+    assert.equal(out.status, 403);
+    assert.match(out.json.error, /administrator starts/);
+    assert.deepEqual(testFightsOf(held.workshop.id, author.id), []);
+  } finally {
+    saveGlobalConfig({ sharedHost: { campaignCreation: "everyone" } });
+  }
+  assert.equal((await call(route.test, "GET", undefined, here)).json.refused, "");
+});
+
 world.close();
 finish();
