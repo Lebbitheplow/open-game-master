@@ -23,7 +23,10 @@ const { listEffects } = await import("../src/lib/db/active-effects.ts");
 const { summonsOf } = await import("../src/lib/dm/summon-store.ts");
 const { createDmTurn } = await import("../src/lib/db/dm-turns.ts");
 const { runInTurnScope } = await import("../src/lib/dm/job-control.ts");
-const { setDmMode } = await import("../src/lib/db/campaigns.ts");
+const { setDmMode, allocateSeq } = await import("../src/lib/db/campaigns.ts");
+const { insertCampaignMessage, listRecentMessages } = await import("../src/lib/db/messages.ts");
+const { enqueueDmJob } = await import("../src/lib/dm/queue.ts");
+const { startDmTurn } = await import("../src/lib/dm/turn.ts");
 const { setBattleMapTerrain } = await import("../src/lib/db/battle-maps.ts");
 
 async function revertTurn(world, turnId, confirm = false) {
@@ -240,12 +243,17 @@ await test("at an AI table the storyteller's turn is taken back from the fight t
   assert.deepEqual([ai.encounter().round, ai.encounter().turnIndex], [round, turnIndex]);
 });
 
-await test("at an AI table a token the storyteller's turn moved, moved again since by the GM's own hand, is asked about first", async () => {
+await test("at an AI table, the turn run by the server's own queue, a token the storyteller's turn moved, moved again since by the GM's own hand, is asked about first", async () => {
   aiKit.giveTurn(aiHero.id);
   aiKit.freshTurn();
   aiKit.place(aiHero.id, 4, 4);
   model.script([reply({ calls: [call("move_token", { token: aiHero.id, x: 5, y: 4 })] }), reply({ text: "You step in." })]);
-  const said = await model.turn(ai, "I step forward.", aiHero.id);
+  // As a player's line sets a turn going on a live server: a queue job, whose
+  // end is when the turn's work is done.
+  insertCampaignMessage({ campaignId: ai.campaignId, seq: allocateSeq(ai.campaignId), authorType: "player", userId: ai.owner.id, characterId: aiHero.id, content: "I step forward." });
+  await enqueueDmJob(ai.campaignId, () => startDmTurn(ai.campaignId));
+  const said = listRecentMessages(ai.campaignId, 10).filter((message) => message.authorType === "dm").at(-1);
+  assert.ok(said?.dmTurnId, "the queued turn wrote no narration");
   assert.deepEqual([aiKit.token(aiHero.id).x, aiKit.token(aiHero.id).y], [5, 4], "the model's move landed nowhere");
   // The GM drags the token after the turn: no turn of its own.
   aiKit.place(aiHero.id, 6, 6);
