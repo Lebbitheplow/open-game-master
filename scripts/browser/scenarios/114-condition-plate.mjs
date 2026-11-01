@@ -104,6 +104,33 @@ export default {
     const dial = page.locator(`${root}[role="menu"][aria-label="Actions for ${ogre.name}"]`).first();
     await eventually(() => dial.isVisible(), { timeoutMs: 10_000, label: `the ${ogre.name}'s dial` });
     await untilStill(page);
+    // Every sigil on the dial is on the board and clear of the camera
+    // buttons: near the right edge it opens left (dial-side.ts).
+    const clash = await page.evaluate((name) => {
+      const menu = document.querySelector(`[role="menu"][aria-label="Actions for ${name}"]`);
+      const frame = menu?.closest(".board-view")?.getBoundingClientRect();
+      const cams = [...(menu?.closest(".board-view")?.querySelectorAll(".board-cam button") ?? [])].map((button) => button.getBoundingClientRect());
+      const meets = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+      const sigils = [...(menu?.querySelectorAll('[role="menuitem"]') ?? [])].map((item) => ({ label: item.getAttribute("aria-label"), box: item.getBoundingClientRect() }));
+      const names = [...(menu?.querySelectorAll("span.font-display") ?? [])].map((item) => ({ label: item.textContent, box: item.getBoundingClientRect() }));
+      const off = (box) => !frame || box.left < frame.left || box.right > frame.right || box.top < frame.top || box.bottom > frame.bottom;
+      return [
+        ...[...sigils, ...names].filter(({ box }) => off(box) || cams.some((cam) => meets(box, cam))).map(({ label }) => `${label} off the board or under the camera buttons`),
+        // A name never runs under a sigil, its own or a neighbour's: the
+        // sigils are round, so the name's nearest point against the circle.
+        ...names
+          .filter((name) =>
+            sigils.some(({ box }) => {
+              const [cx, cy, r] = [(box.left + box.right) / 2, (box.top + box.bottom) / 2, box.width / 2];
+              const nx = Math.max(name.box.left, Math.min(cx, name.box.right));
+              const ny = Math.max(name.box.top, Math.min(cy, name.box.bottom));
+              return Math.hypot(nx - cx, ny - cy) < r;
+            }),
+          )
+          .map(({ label }) => `${label} under a sigil`),
+      ];
+    }, ogre.name);
+    check(clash.length === 0, `every sigil on the dial is on the board and clear of the camera buttons (${clash.join(", ")}; opens ${await dial.getAttribute("data-dial-side")})`);
     await t.shot("dial");
     await t.tap(dial.getByRole("menuitem", { name: "Details" }));
     const held = page.getByRole("dialog", { name: `${ogre.name}: details` }).first();
@@ -120,6 +147,12 @@ export default {
     const status = held.locator('[aria-live="polite"]');
     check(((await status.textContent()) ?? "") === "Page 1 of 2", `page 1 of 2 (${await status.textContent()})`);
     check(await held.getByRole("button", { name: "Previous conditions" }).isDisabled(), "no page before the first");
+    // Thumb-sized on a phone, 32px from sm up.
+    const least = viewport === "phone" ? 40 : 32;
+    for (const name of ["Close", "Previous conditions", "Next conditions"]) {
+      const box = await held.getByRole("button", { name }).boundingBox();
+      check(box && box.width >= least && box.height >= least, `${name} is at least ${least}px (${JSON.stringify(box)})`);
+    }
     check(await inWindow(held), `the held plate sits whole inside the window (${JSON.stringify(await held.boundingBox())})`);
     await t.shot("held-page-1");
     const next = held.getByRole("button", { name: "Next conditions" });

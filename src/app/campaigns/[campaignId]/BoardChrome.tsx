@@ -493,7 +493,7 @@ export function TokenPlate({
     pagedRef.current = paged;
   });
   const pagerButton =
-    "flex size-7 items-center justify-center rounded-full border border-[rgba(107,99,148,0.6)] text-[#dedbec] hover:text-white disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#ecd287]";
+    "flex size-10 items-center justify-center rounded-full border border-[rgba(107,99,148,0.6)] text-[#dedbec] sm:size-8 hover:text-white disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#ecd287]";
   const plate = (
     <div
       ref={plateRef}
@@ -503,7 +503,7 @@ export function TokenPlate({
       data-pinned={pinned ? "true" : undefined}
       className={cn(
         "z-[70] flex items-start gap-2 rounded-lg border bg-[rgba(8,6,18,0.94)] p-1.5 text-[#e9e6f4] shadow-elev-2 outline-none",
-        pinned ? "pointer-events-auto border-[rgba(227,193,92,0.45)] pr-9" : "pointer-events-none border-[rgba(107,99,148,0.4)]",
+        pinned ? "pointer-events-auto border-[rgba(227,193,92,0.45)] pr-12 sm:pr-10" : "pointer-events-none border-[rgba(107,99,148,0.4)]",
         // Measured where it will sit, before it is shown.
         spot ? "fixed animate-fade-up" : "invisible fixed left-0 top-0",
         crowded
