@@ -22,6 +22,7 @@
     "assetValidation": "All twelve dimensions, alpha channels, transparent corners, file limits, before/final/source hashes and gallery image paths verified.",
     "lint": "Passed: 0 errors, 172 warnings in unchanged files.",
     "fullSuite": "Attempted with two workers. All 878 files failed to load because Vitest could not find temporary SSR module-cache files (ENOENT); no tests executed in this run.",
+    "build": "Attempted. Stalled at Creating an optimized production build with no compiler output for several minutes and negligible CPU progress between observations. The task's build process was stopped; a successful production build is not claimed.",
     "liveScreenshots": "Not captured: local browser access is disabled in Work settings. Preview images are explicitly marked as standalone comparisons."
   },
   "runtimeBytes": {
