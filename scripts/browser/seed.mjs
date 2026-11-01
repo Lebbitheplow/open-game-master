@@ -465,6 +465,46 @@ const bondTables = {};
   }
 }
 
+// A table per viewport that began with someone the party already knew
+// (issue 731): its patron was marked "Friends" with how they know her, so
+// both heroes' bonds with her opened at Cordial as the table began, her line
+// their first memory.
+const knownTables = {};
+{
+  const npcs = await import("../../src/lib/db/npcs.ts");
+  const { blankDraft } = await import("../../src/lib/npcs/forge.ts");
+  const { openPreStoryTies } = await import("../../src/lib/dm/known-before.ts");
+  for (const viewport of ["desktop", "phone"]) {
+    const table = campaigns.createCampaign(world.owner.id, {
+      title: `Known Table (${viewport})`,
+      description: "A caravan road, and an old employer.",
+      theme: "high-fantasy",
+      maxPlayers: 6,
+      startingLevel: 3,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human" },
+    });
+    const seated = campaigns.joinByInviteCode(player.id, campaigns.getCampaignById(table.id).inviteCode);
+    if (seated.error) {
+      throw new Error(`the player could not join ${table.title}: ${seated.error}`);
+    }
+    sheets.createSheet(table.id, player.id, 3, heroInput({ name: "Kael Ashvale", class: "rogue", level: 3 }));
+    const other = world.addUser("known");
+    campaigns.joinByInviteCode(other.id, campaigns.getCampaignById(table.id).inviteCode);
+    sheets.createSheet(table.id, other.id, 3, heroInput({ name: "Lyra Venn", class: "wizard", level: 3 }));
+    npcs.createNpcFromDraft(table.id, {
+      ...blankDraft(),
+      name: "Maren Dusk",
+      attitude: "friendly",
+      gender: "Female",
+      knownBefore: { grade: "friend", how: "She hired you twice to guard her caravans." },
+    });
+    openPreStoryTies(campaigns.getCampaignById(table.id));
+    campaigns.setCampaignStatus(table.id, "active");
+    knownTables[viewport] = table.id;
+  }
+}
+
 // A table per viewport for the composer's @ menu (issue 650): a person runs
 // it as its GM and the lead plays at it, so the lead's seat holds only the
 // people the story has named. Sildar was named in the GM's narration; Iarno
@@ -2432,6 +2472,7 @@ const ids = {
   dominate,
   conduct,
   bondTables,
+  knownTables,
   romanceTables,
   nameTables,
   pacts: pactTables,
@@ -2475,6 +2516,7 @@ const ids = {
     [offerTable.id]: OFFER_TITLE,
     ...Object.fromEntries(Object.entries(closing).map(([viewport, id]) => [id, `Closing Table (${viewport})`])),
     ...Object.fromEntries(Object.entries(bondTables).map(([viewport, table]) => [table.id, `Bonds Table (${viewport})`])),
+    ...Object.fromEntries(Object.entries(knownTables).map(([viewport, id]) => [id, `Known Table (${viewport})`])),
     ...Object.fromEntries(Object.entries(romanceTables).map(([viewport, table]) => [table.id, `Romance Table (${viewport})`])),
     ...Object.fromEntries(Object.entries(nameTables).map(([key, id]) => [id, key.endsWith("Gm") ? `Names GM Table (${key.slice(0, -2)})` : `Names Table (${key})`])),
     ...Object.fromEntries(Object.entries(stopTables).map(([viewport, id]) => [id, `Stop Table (${viewport})`])),

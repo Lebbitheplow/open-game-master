@@ -147,6 +147,16 @@ const npcSchema = z.object({
   // of one of the bundle's own monsters (a "homebrew:" id means nothing on
   // another machine, so the export writes the name).
   statBlock: z.string().trim().max(80).default(""),
+  // The party already knows them when the story begins (issue 731,
+  // src/lib/dm/known-before-logic.ts): "acquainted", "friend" or "close",
+  // and `source`, how the party knows them, which every hero's bond opens
+  // with as its first memory. A tie with no source is dropped on import (no
+  // reason, no tie), and one this version cannot read is left out rather
+  // than refusing the whole module.
+  knownAtStart: z
+    .object({ grade: z.enum(["acquainted", "friend", "close"]), source: z.string().trim().max(400).default("") })
+    .optional()
+    .catch(undefined),
   ref: refSchema,
   shared: sharedSchema,
 });

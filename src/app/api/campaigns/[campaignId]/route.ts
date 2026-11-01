@@ -39,6 +39,7 @@ import { subclassExtrasAtTable } from "@/lib/db/subclass-extras";
 import { tableFeatsFrom } from "@/lib/db/table-feats";
 import { getDatabase } from "@/lib/db/core";
 import { requestDmTurn } from "@/lib/dm/loop";
+import { openPreStoryTies } from "@/lib/dm/known-before";
 import { hasHumanDm, isPrimaryDm, lobbyBlocker, narratorIsAi } from "@/lib/dm/viewer";
 import { auditEntryForViewer, sheetForViewer } from "@/lib/dm/sheet-view";
 import { enqueueDmJob, resumeDmQueue, runningDmJob } from "@/lib/dm/queue";
@@ -339,6 +340,10 @@ export async function PATCH(
     // because a human DM's plan lives in their own notes, not in an outline
     // the server invented.
     const humanDm = hasHumanDm(campaignSeats(campaign));
+    // The people the party already knows (issue 731) are met and open their
+    // bonds now, before the opening narration reads them and before chapter
+    // 1's rewind point is taken.
+    openPreStoryTies(campaign);
     const seq = allocateSeq(campaignId);
     const message = insertCampaignMessage({
       campaignId,

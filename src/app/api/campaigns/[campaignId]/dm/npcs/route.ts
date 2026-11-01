@@ -51,6 +51,10 @@ export async function GET(
     graph: relationGraph(
       npcs.map((npc) => ({ name: npc.name, relations: npc.agency.relations })),
     ),
+    // Whether "known before the story" can still matter (issue 731): in a
+    // workshop, and at a table that has not begun. A host without the field
+    // sends nothing, and the form leaves the control out.
+    knownBeforeOpen: context.campaign.kind === "workshop" || context.campaign.status === "lobby",
   });
 }
 

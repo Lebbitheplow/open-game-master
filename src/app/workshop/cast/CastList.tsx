@@ -31,6 +31,9 @@ export type Npc = {
   // The faction they belong to, or "" (optional for older servers).
   factionId?: string;
   archived: boolean;
+  // Known to the party before the story, and how (issue 731); absent from
+  // an older server.
+  knownBefore?: { grade: "acquainted" | "friend" | "close"; how: string } | null;
   agency: {
     personality: Record<string, number> | null;
     goals: { scene?: string; session?: { text: string; progress: number; target: number }; ambition?: string };

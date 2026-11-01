@@ -612,6 +612,7 @@
     "lib/dm/action-price.ts#toLowerCase": [["key",1,"condition label (engine vocabulary)"]],
     "lib/dm/intent-logic.ts#str-list": [["key",3,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/intent-logic.ts#str-eq": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
+    "lib/dm/known-before-logic.ts#str-list": [["key",1,"the tie grades: acquainted, friend, close (fixed choice)"]],
     "lib/dm/party-bonds-logic.ts#str-eq": [["key",1,"fixed choices: a companion's kind and a bond's status"]],
     "lib/dm/romance-held-logic.ts#str-eq": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/romance-stage-logic.ts#str-eq": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
