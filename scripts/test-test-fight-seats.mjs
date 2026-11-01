@@ -213,6 +213,9 @@ await test("a person-run test seats the ally the same way, and the author plays 
   const goblin = turnTo(table.id, ally);
   assert.equal(gmCompanionTurn(campaigns.getCampaignById(table.id), author.id)?.id, ally.id, "the ally's turn is not the GM's to play");
   world.signIn(author);
+  // A natural 1: the swing is rolled and misses, so the goblin is still up
+  // for its own card below (a lucky hit could fell it first).
+  world.dice(1);
   const out = await call(route.actions, "POST", {
     content: "Pip attacks the goblin.",
     kind: "do",
@@ -222,6 +225,7 @@ await test("a person-run test seats the ally the same way, and the author plays 
   assert.equal(out.status, 200, JSON.stringify(out.json));
   assert.equal(out.json.resolved, true);
   assert.ok(listRecentRolls(table.id, 10).some((roll) => roll.kind === "attack" && roll.characterId === ally.id), "the ally's attack was not rolled");
+  world.clearDice();
   // A person-run test is unchanged: the enemies' cards are the author's.
   const theirs = await call(route.invoke, "POST", { name: "enemy_attack", args: { enemyId: goblin.id, targetCharacterId: ally.id } }, { campaignId: table.id });
   assert.notEqual(theirs.json.error, AI_RUNS_FOES);
