@@ -84,6 +84,9 @@ export const handIntentExtras = {
       hurlThroughHell: z.boolean().optional(),
       rapidStrike: z.boolean().optional(),
       openHand: z.enum(HAND_OPEN_HAND).optional(),
+      // A Divine Smite rider's slot (issue 685): the riders list names it
+      // and no more, and the swing and the smite are one pc_attack call.
+      smite: z.number().int().min(1).max(9).optional(),
     })
     .optional(),
 };
@@ -101,6 +104,7 @@ export type HandAttackArgs = {
   hurlThroughHell?: boolean;
   rapidStrike?: boolean;
   openHand?: HandOpenHand;
+  smite?: number;
 };
 
 export type HandIntentExtras = {

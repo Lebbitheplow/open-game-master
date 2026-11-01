@@ -1894,7 +1894,7 @@ export function buildDmMessages(
     // parsing the sentence (src/lib/dm/intent-logic.ts).
     const card =
       message.authorType === "player" && message.intent
-        ? `\n${describeIntent(message.intent, message.characterId, { resolved: state.engineCardIds?.has(message.id) ?? false })}`
+        ? `\n${describeIntent(message.intent, message.characterId, { resolved: (state.engineCardIds?.has(message.id) ?? false) || Boolean(message.cardResolvedAt) })}`
         : "";
     return { message, id: message.id, seq: message.seq, text: `${content}${card}` };
   });

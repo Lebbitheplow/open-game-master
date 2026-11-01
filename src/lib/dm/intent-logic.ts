@@ -17,6 +17,7 @@ import { z } from "zod";
 import { HAND_GEAR_ACTIONS, HAND_INTENT_ACTIONS, describeHandExtras, handExtraArgs, handIntentExtras } from "@/lib/battlemap/hand-intent";
 import { textKey } from "@/lib/language/text-logic";
 import type { SpellMech } from "@/lib/srd/spell-mech-types";
+import { lastingAreaCall, riderArgs, selfBuffCall, summonCall, utilityCall } from "@/lib/dm/direct-card-logic";
 
 const text = (max: number) => z.string().trim().min(1).max(max);
 
@@ -106,6 +107,17 @@ export type DirectContext = {
   // aoe_damage checks.
   shareKind?: "darts" | "attacks" | "targets";
   cluster?: boolean;
+  // The spell makes creatures (src/lib/srd/summon-spells.ts): only one kind
+  // ("one", Unseen Servant), or a kind the card must name ("choose").
+  summon?: "one" | "choose";
+  // The spell leaves a lasting area (src/lib/battlemap/zones-spells.ts): how
+  // its square is picked on this fight's battle map, "off" with none, and
+  // whether creatures standing in it when it appears are caught then.
+  lasting?: { pick: "point" | "wall" | "direction" | "none" | "off"; catches?: boolean };
+  // The spell's range is Self.
+  selfOnly?: boolean;
+  // Dispel Magic: cast_buff resolves it against a target.
+  dispel?: boolean;
 };
 
 export type DirectCall = { name: string; args: Record<string, unknown> };
@@ -165,12 +177,17 @@ function targetArgs(intent: MessageIntent): Record<string, unknown> {
 // the engine catches everyone standing in them (aoe-shape.ts
 // creaturesInBlast).
 //
-// Null leaves the card to the model: a rider card (the attack and its rider
-// are one call the model composes), a target the card did not fix, a blast
-// with no board or no square picked (aimed at one creature: the model names
-// who stands in it), a lasting area laid on the board (a Web, which bites
-// when its zone row says), a spell the content has no resolution for, a
-// summon or a utility spell, Ready with no trigger, and anything aimed at an
+// Issue 685 brought the rest the engine takes whole (direct-card-logic.ts):
+// a summon, a utility spell, a lasting area laid on the board, a buff whose
+// range is Self with nobody named, and the riders pc_attack takes (Divine
+// Smite's slot, one maneuver).
+//
+// Null leaves the card to the model, or at a table a person runs to the GM:
+// a rider card alone, a target the card did not fix, a blast with no board
+// or no square picked (aimed at one creature: the model names who stands in
+// it), a lasting area that catches whoever stands in it as it appears
+// (Entangle), a spell the content has no resolution for, a summon whose
+// creatures the GM picks, Ready with no trigger, and anything aimed at an
 // enemy when no fight is on, since the fight has to start first. A card the
 // engine then refuses comes back as the tool's own refusal, which the model
 // narrates.
@@ -179,8 +196,9 @@ export function directCardCall(intent: MessageIntent, characterId: string, conte
   const level = intent.slotLevel ? { level: intent.slotLevel } : {};
   const variant = intent.variant ? { variant: intent.variant } : {};
   switch (intent.card) {
-    case "attack":
-      if (!inFight || !atEnemy(intent) || intent.riders?.length) {
+    case "attack": {
+      const riders = riderArgs(intent);
+      if (!inFight || !atEnemy(intent) || !riders) {
         return null;
       }
       return {
@@ -191,19 +209,30 @@ export function directCardCall(intent: MessageIntent, characterId: string, conte
           ...(intent.weapon ? { weapon: intent.weapon } : {}),
           ...(intent.offHand ? { offHand: true } : {}),
           ...(intent.attack ?? {}),
+          ...riders,
         },
       };
+    }
     case "spell": {
       if (!intent.spell) {
         return null;
       }
       const spell = intent.spell;
+      // A spell that makes creatures is cast_buff's whatever its mechanics
+      // row says (Arcane Hand's is a spell attack): the casting brings them.
+      if (context.summon) {
+        return summonCall(intent, characterId, context);
+      }
       // A buff that leaves something on the board, laid on the square the
       // player tapped (Spiritual Weapon's weapon): cast_buff takes the square
       // and the cast guard lays it there. Sent to the model, the card's
       // square was never cast at all at a table a person runs.
       if (context.resolution === "buff" && laysArea(intent) && !context.area && inFight && onAlly(intent)) {
         return { name: "cast_buff", args: { characterId, spell, targetCharacterIds: [intent.targetId], ...level, ...variant, ...placement(intent) } };
+      }
+      const lasting = lastingAreaCall(intent, characterId, context);
+      if (lasting !== undefined) {
+        return lasting;
       }
       if (laysArea(intent) || context.area) {
         const blasts = context.resolution === "save" || context.resolution === "auto";
@@ -226,7 +255,9 @@ export function directCardCall(intent: MessageIntent, characterId: string, conte
           if (atEnemy(intent)) {
             return inFight ? { name: "cast_buff", args: { characterId, spell, targetEnemyId: intent.targetId, ...level, ...variant } } : null;
           }
-          return onAlly(intent) ? { name: "cast_buff", args: { characterId, spell, targetCharacterIds: [intent.targetId], ...level, ...variant } } : null;
+          return onAlly(intent) ? { name: "cast_buff", args: { characterId, spell, targetCharacterIds: [intent.targetId], ...level, ...variant } } : selfBuffCall(intent, characterId, context);
+        case "utility":
+          return utilityCall(intent, characterId, context);
         default:
           return null;
       }

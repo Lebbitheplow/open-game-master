@@ -398,9 +398,14 @@ export function intentBody(
       return [key, value ?? true];
     }),
   );
+  // Divine Smite's slot rides with the swing under pc_attack's own `smite`
+  // (issue 685), so the engine takes the attack and the smite in one call;
+  // the riders list below names the card and no more.
+  const smiting = riders.find((rider) => rider.intent.card === "rider" && rider.intent.rider === "Divine Smite")?.intent;
+  const smite = smiting?.card === "rider" ? smiting.slotLevel : undefined;
   const attack =
-    card.intent.card === "attack" && (chosen.length || card.intent.attack)
-      ? { attack: { ...card.intent.attack, ...args } }
+    card.intent.card === "attack" && (chosen.length || card.intent.attack || smite)
+      ? { attack: { ...card.intent.attack, ...args, ...(smite ? { smite } : {}) } }
       : {};
   const trigger = card.asks === "trigger" && choices.trigger?.trim() ? { trigger: choices.trigger.trim() } : {};
   const value = chosenValue(card, choices);

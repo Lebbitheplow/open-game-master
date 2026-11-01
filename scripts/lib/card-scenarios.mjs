@@ -152,8 +152,8 @@ export const SCENARIOS = [
   // a square is pressed (issue 570): the engine catches who stands in them.
   S("spell-fireball-laid", "spell", "wizard", "Fireball", { place: "ranged", aim: "enemy", area: "enemy", enemies: 3 }),
   S("spell-burning-hands-laid", "spell", "wizard", "Burning Hands", { aim: "enemy", area: "enemy", enemies: 2 }),
-  // A zone that stays is laid on a square picked on the board; the engine
-  // leaves a laid area to the model (intent-logic.ts directCardCall).
+  // A zone that stays, laid on a square picked on the board: the engine lays
+  // it (issue 685, src/lib/dm/direct-card-logic.ts lastingAreaCall).
   S("spell-web-area", "spell", "wizard", "Web", { place: "ranged", area: "enemy", enemies: 2 }),
 
   // Between fights: no initiative, no direct path.

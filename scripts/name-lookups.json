@@ -1263,6 +1263,7 @@
     "lib/dm/departure.ts#first": [["key",1,"the strongest faction by power, a deliberate pick that reads no name"]],
     "lib/dm/departure.ts#normalizer": [["key",1,"slugs, hosts, file names, ids, env values, display text, throttle keys, model ids (src/: every site read)"]],
     "lib/dm/devoted-guard.ts#whole-single": [["identity",1,"the reaction a use_reaction call names (Take the Blow), by whole name (textKey)"]],
+    "lib/dm/direct-card-logic.ts#first": [["key",1,"a weapon attack's one maneuver rider, after more than one is refused (issue 685)"]],
     "lib/dm/dispel.ts#keyed": [["key",2,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "lib/dm/dispel.ts#partial": [["identity",2,"spells by whole name"]],
     "lib/dm/dispel.ts#whole": [["identity",1,"spells by whole name"],["identity",1,"a condition by the whole name its spell's override writes"]],

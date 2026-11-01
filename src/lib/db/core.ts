@@ -1753,6 +1753,11 @@ function ensureSchema(db: SqliteDatabase) {
     // back to its player, and the line says so. Null when it happened, on
     // typed lines, and on messages written before it.
     ["card_returned", `TEXT`],
+    // When the GM resolved this player message's card as played from the
+    // console's "Waiting on you" list (issue 685, src/lib/dm/resolve-card.ts):
+    // set once, which is what answers the card, so a second press or an AI
+    // turn under cover does not cast it again. Null on every other message.
+    ["card_resolved_at", `TEXT`],
     // A system line's icon, stored by the code that writes the line
     // (src/lib/system-glyphs.ts) rather than read from its words, which only
     // worked in English. Null on other messages and on lines written before

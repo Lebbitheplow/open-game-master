@@ -258,8 +258,9 @@ export async function POST(
   // test fight a person runs, issue 553): the one who would adjudicate it
   // played it, so the engine resolves it now, with the same call an AI turn
   // makes before it narrates (directCardCall), and nothing waits in the DM's
-  // queue for the DM. A card the engine cannot resolve whole (a spell, a
-  // rider) is posted below and queued as any player's is, for the console.
+  // queue for the DM. A card the engine cannot resolve whole (a summon whose
+  // creatures the GM picks, an Entangle that catches whoever stands in it) is
+  // posted below and queued as any player's is, for the console.
   // A co-GM adjudicates as the GM does (isDmSeat), and plays a companion's
   // turn as the GM may (gmCompanionTurn): their cards resolve the same way.
   const dmSeats = campaignSeats(campaign);

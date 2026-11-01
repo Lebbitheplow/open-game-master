@@ -2638,9 +2638,12 @@ function playedCard(context: TurnContext, message: CampaignMessage & { intent: M
 
 // The cards behind the actions this turn answers: the player messages since
 // the DM last spoke that came from the Hand as an attack or a cast.
+// A card the GM already resolved as played from the console (issue 685,
+// src/lib/dm/resolve-card.ts) is answered: an AI turn under cover neither
+// plays it again nor chases it.
 function cardsPlayed(context: TurnContext): PlayedCard[] {
   return playerLinesSinceDm(context.campaign.id).flatMap((message) =>
-    message.intent && intentNeedsTool(message.intent) ? [playedCard(context, { ...message, intent: message.intent })] : [],
+    message.intent && !message.cardResolvedAt && intentNeedsTool(message.intent) ? [playedCard(context, { ...message, intent: message.intent })] : [],
   );
 }
 
@@ -2669,7 +2672,7 @@ function cardsToSettle(context: TurnContext, turn: DmTurn): PlayedCard[] {
   const direct = directlyPlayed(turn.conversation);
   const began = Date.parse(turn.createdAt);
   return playerLinesSinceDm(context.campaign.id).flatMap((message) => {
-    if (!message.intent || Date.parse(message.createdAt) > began) {
+    if (!message.intent || message.cardResolvedAt || Date.parse(message.createdAt) > began) {
       return [];
     }
     return intentNeedsTool(message.intent) || direct.has(cardCallKey(message.id)) ? [playedCard(context, { ...message, intent: message.intent })] : [];
@@ -2752,7 +2755,7 @@ type DirectCard = { messageId: string; index: number; name: string; args: Record
 function directCards(context: TurnContext): DirectCard[] {
   const authors = spellAuthorsFor(context.campaign);
   return playerLinesSinceDm(context.campaign.id).flatMap((message) => {
-    if (!message.intent || !message.characterId) {
+    if (!message.intent || !message.characterId || message.cardResolvedAt) {
       return [];
     }
     const calls = directCardCalls(message.intent, message.characterId, directContextFor(context.campaign.id, message.intent, authors));
