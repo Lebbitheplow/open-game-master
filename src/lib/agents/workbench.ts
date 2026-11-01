@@ -37,7 +37,7 @@ const ID = /^[A-Za-z0-9_-]{1,64}$/;
 
 type Args = Record<string, unknown>;
 
-type ToolMethod = "GET" | "POST" | "PATCH" | "DELETE" | ((args: Args) => "GET" | "POST" | "PATCH" | "DELETE");
+type ToolMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | ((args: Args) => "GET" | "POST" | "PUT" | "PATCH" | "DELETE");
 
 type WorkbenchTool = {
   name: string;
@@ -600,6 +600,25 @@ export const WORKBENCH_TOOLS: WorkbenchTool[] = [
     required: ["workshopId", "templateId"],
     method: "DELETE",
     path: (a) => `/api/campaigns/${seg(a.workshopId)}/dm/encounter-templates/${seg(a.templateId)}/setup`,
+  },
+  {
+    name: "odm_get_dice_script",
+    scope: "campaigns",
+    description: "Read a test table's dice script: the seed, the forced faces still waiting, and the faces already spent. Only a test table has one; every other table rolls honestly.",
+    properties: { ...campaignIdProp },
+    required: ["campaignId"],
+    method: "GET",
+    path: (a) => `/api/campaigns/${seg(a.campaignId)}/dice-script`,
+  },
+  {
+    name: "odm_set_dice_script",
+    scope: "campaigns",
+    description: "Script the server's dice at a test table you opened: seed (an integer, or null for random) makes every unforced die repeat run to run; queue is a list of forced faces, each {roller: 'enemy'|'hero'|'any', kind: 'attack'|'damage'|'save'|'death_save'|'initiative'|'check'|'any', face, who?}, spent by the first roll that fits ('the next enemy attack's d20 is 20'). Refused at any table that is not a test table.",
+    properties: { ...campaignIdProp, seed: { type: ["integer", "null"] }, queue: { type: "array", items: { type: "object" } } },
+    required: ["campaignId", "seed", "queue"],
+    method: "PUT",
+    path: (a) => `/api/campaigns/${seg(a.campaignId)}/dice-script`,
+    body: (a) => pick(a, ["seed", "queue"]),
   },
   {
     name: "odm_end_test_fight",
