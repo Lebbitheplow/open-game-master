@@ -23,7 +23,8 @@ export function TestFightBanner({
 }: {
   campaignId: string;
   source: { workshopId: string; title: string };
-  // Who runs the enemies: the AI DM, or the author from the DM seat.
+  // Who runs the enemies: the AI DM, with the author steering from the GM
+  // seat (issue 685), or the author from the DM seat.
   runsIt: "ai" | "person";
 }) {
   const [busy, setBusy] = useState(false);
@@ -75,7 +76,7 @@ export function TestFightBanner({
           (issue 713). */}
       <span className="test-fight-say">
         {runsIt === "ai"
-          ? `From ${source.title}. Only you can see this table: the AI GM runs the enemies and you play the party, each hero on their own turn.`
+          ? `From ${source.title}. Only you can see this table: the AI GM runs the enemies and you play the party, each hero on their own turn. The GM console is yours for set-ups and corrections.`
           : `From ${source.title}. Only you can see this table, and you run it: the party's cards on each hero's turn, the enemies' cards on theirs.`}
       </span>
       {error ? <PanelError className="mt-1 text-[11px]">{error}</PanelError> : null}

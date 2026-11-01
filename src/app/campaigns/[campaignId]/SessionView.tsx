@@ -82,6 +82,7 @@ import { PrepLayer } from "@/app/campaigns/[campaignId]/CampaignPrep";
 import { SessionBanner, bannerButtonClass } from "@/app/campaigns/[campaignId]/SessionBanner";
 import { TestFightBanner } from "@/app/campaigns/[campaignId]/TestFightBanner";
 import { workshopHref } from "@/lib/workshop/links";
+import { aiRunsTest } from "@/lib/workshop/test-seats-logic";
 import { isPrimaryDm } from "@/lib/dm/viewer";
 import Link from "next/link";
 import { SidePanel } from "@/app/campaigns/[campaignId]/SidePanel";
@@ -481,7 +482,11 @@ export function SessionView({
   // play (player-characters.ts gmTurnCompanion), with its Hand and its Do,
   // on a host that takes them (capabilities.ts gmCompanionTurns).
   const capabilities = useCapabilities();
-  const gmCompanions = caps.role === "dm" && !state.encounter?.enemyTurns && hostOffers(capabilities, "gmCompanionTurns");
+  // A test fight the AI GM runs (src/lib/workshop/test-seats-logic.ts): the
+  // author steers from the GM seat, and the enemies and the allies nobody
+  // commands are the AI's to play, not the seat's.
+  const aiRunsFoes = Boolean(state.testFight) && aiRunsTest(campaign?.gameSettings?.dmMode);
+  const gmCompanions = caps.role === "dm" && !aiRunsFoes && !state.encounter?.enemyTurns && hostOffers(capabilities, "gmCompanionTurns");
   const turnSheet =
     initiativeCharacter(sheets, me?.id ?? "", turnCharacterId(state.encounter)) ??
     (gmCompanions ? gmTurnCompanion(sheets, turnCharacterId(state.encounter)) : null);
@@ -1324,7 +1329,7 @@ export function SessionView({
                     <TestFightBanner
                       campaignId={campaign.id}
                       source={state.testFight}
-                      runsIt={campaign.gameSettings?.dmMode === "ai" ? "ai" : "person"}
+                      runsIt={aiRunsFoes ? "ai" : "person"}
                     />
                   ) : null}
                   {ended ? (
@@ -1367,6 +1372,7 @@ export function SessionView({
                     activeSheetId={state.activeSheetId}
                     steersStory={steersStory}
                     isDm={isDm}
+                    aiRunsFoes={aiRunsFoes}
                     kind={kind}
                     onKindChange={setKind}
                     input={input}

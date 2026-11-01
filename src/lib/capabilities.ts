@@ -137,6 +137,10 @@ export const SERVER_FEATURES = {
   // DELETE /api/campaigns/[id]/dice-script, a seed and forced faces for the
   // test table's own dice, which an older host answers with a 404.
   diceScripts: true,
+  // Allies at a test fight (issue 685): the test-fight route's `allyIds`,
+  // which an older host drops unread and starts the test without them, so
+  // the Test fight sheet offers no allies there.
+  testFightAllies: true,
 } as const;
 export type ServerFeatures = { [K in keyof typeof SERVER_FEATURES]: boolean };
 

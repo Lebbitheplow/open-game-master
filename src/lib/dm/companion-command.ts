@@ -29,6 +29,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { sideOf } from "@/lib/dm/combatant";
 import { dominatorOf } from "@/lib/dm/combat-sides-logic";
+import { isPlaytest } from "@/lib/workshop/kind";
 
 type CommandFields = Pick<CharacterSheet, "isCompanion" | "commandedBy" | "summon">;
 type HeldFields = Pick<CharacterSheet, "isCompanion" | "conditions" | "conditionMeta"> & { id: string };
@@ -60,13 +61,20 @@ export function commandable(sheet: Pick<CharacterSheet, "isCompanion" | "summon"
   return sheet.isCompanion && !sheet.summon;
 }
 
+// Whether this member could command a companion: a player, not a GM seat.
+// At a test fight (src/lib/workshop/test-fight.ts) the author holds a GM
+// seat and every hero, so they are its one player as well: the allies they
+// seated may follow them in fights (issue 685), as at a one-player table.
+function mayCommand(campaign: Campaign, userId: string): boolean {
+  return isPlaytest(campaign) || !isDmSeat(campaignSeats(campaign), userId);
+}
+
 // The players at the table who could command a companion: members holding a
 // party slot (not the DM seats).
 export function commandingPlayers(campaign: Campaign): string[] {
-  const seats = campaignSeats(campaign);
   return listMembers(campaign.id)
     .map((member) => member.userId)
-    .filter((id) => !isDmSeat(seats, id) && !isCompanionUserId(id));
+    .filter((id) => mayCommand(campaign, id) && !isCompanionUserId(id));
 }
 
 // The player commanding this companion in fights now, or null for the DM. A
@@ -80,7 +88,7 @@ export function commanderOf(campaign: Campaign, sheet: CommandFields & { id?: st
   if (!userId || !commandable(sheet)) {
     return null;
   }
-  if (isDmSeat(campaignSeats(campaign), userId) || !isCampaignMember(campaign.id, userId)) {
+  if (!mayCommand(campaign, userId) || !isCampaignMember(campaign.id, userId)) {
     return null;
   }
   if (sheet.id && againstTheParty(campaign.id, sheet.id)) {

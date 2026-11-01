@@ -4,6 +4,7 @@ import { consoleAdjudications } from "@/lib/dm/invoke-catalog";
 import { invokeEngine } from "@/lib/dm/invoke";
 import { agentTurnBegunBefore, agentTurnFor, isAgentRequest, recordAgentCall } from "@/lib/dm/agent-turn";
 import { refuseDuringBreak } from "@/lib/dm/table-break";
+import { testConsoleRefusal } from "@/lib/workshop/test-seats-logic";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -86,6 +87,14 @@ export async function POST(
     : refuseDuringBreak(campaignId, agentCall ? (tableBreak) => agentTurnBegunBefore(campaignId, tableBreak.at) : undefined);
   if (paused) {
     return paused;
+  }
+  // At a test fight the AI GM runs, the author holds the console beside it
+  // (issue 685): set-ups and corrections go through, and an enemy's own
+  // attack, action or ability is refused, so the author and the AI never
+  // both play the same monster. The monsters' Hand is these same calls.
+  const foes = agentCall ? null : testConsoleRefusal(campaign, parsed.data.name, parsed.data.args);
+  if (foes) {
+    return Response.json({ error: foes }, { status: 409 });
   }
   // A connected agent program gets the AI's rails, not the console's
   // correction power (src/lib/dm/agent-turn.ts).

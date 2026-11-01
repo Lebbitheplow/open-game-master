@@ -2339,6 +2339,7 @@
     "lib/workshop/stand-ins.ts#whole": [["identity",1,"a stand-in's rolled name against the names already given, by textKey on both sides, so no two are alike"]],
     "lib/workshop/test-fight.ts#keyed": [["key",1,"a test fight's own copy map: a source row's kind and id to the id of its copy"]],
     "lib/workshop/test-fight.ts#whole": [["identity",1,"a cast member a test fight's roster names, by textKey on both sides as the spawner reads it (src/lib/dm/encounter-spawn.ts)"]],
+    "lib/workshop/test-seats-logic.ts#keyed": [["key",1,"tool names: the console calls in which an enemy acts, read by the name a call merges to"]],
     "lib/workshop/to-pack-omissions.ts#keyed": [["authoring",1,"a world pack's omissions (workshop and WorldForge authoring)"]],
     "lib/workshop/to-pack-omissions.ts#partial": [["authoring",1,"a world pack's omissions (workshop and WorldForge authoring)"]],
     "lib/workshop/to-pack-world.ts#fallback": [["authoring",1,"a world pack's entries by ref (workshop and WorldForge authoring)"]],

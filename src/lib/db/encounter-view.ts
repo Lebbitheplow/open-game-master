@@ -7,6 +7,7 @@ import { enemyMoveBudget } from "@/lib/dm/enemy-speed";
 import { enemyActedThisRound, isSurprised } from "@/lib/dm/can-act";
 import { getCampaignById } from "@/lib/db/campaigns";
 import { dmPlaysTurn } from "@/lib/dm/companion-command";
+import { aiRunsTestTable } from "@/lib/workshop/test-seats-logic";
 import { freshLastHit, heaviestHit, type LastHit } from "@/lib/dm/last-hit";
 import { conditionNote, conditionNoteLine, namesLookup } from "@/lib/battlemap/condition-notes";
 import { healthState, type HealthState } from "@/lib/bestiary/health";
@@ -446,8 +447,10 @@ function dmTurnView(encounter: Encounter, enemies: EncounterEnemy[]) {
   const campaign = getCampaignById(encounter.campaignId);
   return {
     ...(due.length ? { enemiesDue: due } : {}),
-    // A companion turn for the DM to play; one a player commands is theirs.
-    ...(current?.kind === "pc" && campaign && dmPlaysTurn(campaign, current)
+    // A companion turn for the DM to play; one a player commands is theirs,
+    // and at a test the AI GM runs the AI plays it (issue 685), so the
+    // author's tracker offers no button to play it twice.
+    ...(current?.kind === "pc" && campaign && !aiRunsTestTable(campaign) && dmPlaysTurn(campaign, current)
       ? { companionTurn: { id: current.characterId, name: current.name } }
       : {}),
   };

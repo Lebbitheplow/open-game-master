@@ -84,10 +84,12 @@ const setupHeroSchema = z.object({
 export type SetupHero = z.infer<typeof setupHeroSchema>;
 
 // Who sat at the test: the stand-ins the workshop's target party builds, or
-// characters from the author's library, in the order they were seated.
+// characters from the author's library, in the order they were seated, and
+// the allies seated beside them (seats after the heroes').
+const allyIdsSchema = z.array(z.string().trim().min(1).max(80)).max(SETUP_LIMITS.seats).optional();
 export const setupPartySchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("stand-ins"), size: z.number().int().min(1).max(8), level: z.number().int().min(1).max(20) }),
-  z.object({ kind: z.literal("characters"), characterIds: z.array(z.string().trim().min(1).max(80)).min(1).max(SETUP_LIMITS.seats) }),
+  z.object({ kind: z.literal("stand-ins"), size: z.number().int().min(1).max(8), level: z.number().int().min(1).max(20), allyIds: allyIdsSchema }),
+  z.object({ kind: z.literal("characters"), characterIds: z.array(z.string().trim().min(1).max(80)).min(1).max(SETUP_LIMITS.seats), allyIds: allyIdsSchema }),
 ]);
 export type SetupParty = z.infer<typeof setupPartySchema>;
 
@@ -176,19 +178,21 @@ export function swapMetaIds(meta: ConditionMetaMap, ids: ReadonlyMap<string, str
 // Whether a test's party is the one the set-up was saved with: then its
 // heroes' state is theirs to take. Another party starts fresh and is told so.
 export function samePartyAsSetup(setup: Pick<FightSetup, "party">, party: SetupParty): boolean {
-  if (setup.party.kind !== party.kind) {
+  if (setup.party.kind !== party.kind || !sameIds(setup.party.allyIds ?? [], party.allyIds ?? [])) {
     return false;
   }
   if (setup.party.kind === "stand-ins" && party.kind === "stand-ins") {
     return setup.party.size === party.size && setup.party.level === party.level;
   }
   if (setup.party.kind === "characters" && party.kind === "characters") {
-    return (
-      setup.party.characterIds.length === party.characterIds.length &&
-      setup.party.characterIds.every((id, index) => id === party.characterIds[index])
-    );
+    return sameIds(setup.party.characterIds, party.characterIds);
   }
   return false;
+}
+
+// The same people in the same seats.
+function sameIds(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((id, index) => id === b[index]);
 }
 
 // ---- in words ----

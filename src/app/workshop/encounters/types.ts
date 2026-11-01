@@ -45,7 +45,7 @@ export type PreparedEncounter = {
   // with (issue 685, src/lib/workshop/fight-setup-logic.ts). Null for none;
   // absent from an older host's answer.
   setup?: string[] | null;
-  setupParty?: { kind: "stand-ins"; size: number; level: number } | { kind: "characters"; characterIds: string[] } | null;
+  setupParty?: { kind: "stand-ins"; size: number; level: number; allyIds?: string[] } | { kind: "characters"; characterIds: string[]; allyIds?: string[] } | null;
 };
 
 // A prepared map as the picker sees it. The drawer route hands back whole
