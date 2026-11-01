@@ -8,7 +8,9 @@ import type { HandCard } from "@/lib/battlemap/hand";
 import { mixLeft, summonCount, summonKind, type SummonChoices } from "@/lib/battlemap/hand-summon";
 
 const PILL = "hand-option motion-press inline-flex min-h-8 min-w-8 items-center justify-center rounded-full border px-2.5 text-xs pointer-coarse:min-h-10 pointer-coarse:min-w-10";
-const PILL_ON = "border-amber-400/70 bg-amber-500/20 text-amber-100";
+// The chosen pill reads as chosen in both themes: at a fifth of amber on the
+// day's parchment the picked number looked like the others.
+const PILL_ON = "border-amber-400 bg-amber-500/30 font-semibold text-amber-100 shadow-[0_0_0_1px_var(--color-amber-400)]";
 const PILL_OFF = "border-stone-600 text-stone-300 hover:border-amber-500/60";
 const LABEL = "text-[11px] uppercase tracking-wider text-stone-500";
 
