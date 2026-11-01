@@ -233,13 +233,18 @@ export default {
       let tableId = (await t.url()).pathname.split("/")[2];
       const banner = page.locator(`${root}.test-fight-banner`).locator("visible=true").first();
       const tableView = page.locator(`${root}nav.cine-bottombar`).getByRole("button", { name: "Table", exact: true }).locator("visible=true").first();
-      const showBanner = async () => {
-        if (phone) {
-          await eventually(async () => (await banner.isVisible()) || (await tableView.count()) > 0, { timeoutMs: 60_000, label: "the banner or the Table view" });
-          if (!(await banner.isVisible())) await t.tap(tableView);
-        }
-        await eventually(() => banner.isVisible(), { timeoutMs: 60_000, label: "the test fight's banner" });
-      };
+      // On a phone the banner is the Table view's, and the table turns to the
+      // board once the fight's order is in, which can land after a press of
+      // Table: Table is pressed again until the banner shows.
+      const showBanner = () =>
+        eventually(
+          async () => {
+            if (await banner.isVisible().catch(() => false)) return true;
+            if (phone && (await tableView.count())) await t.tap(tableView).catch(() => undefined);
+            return false;
+          },
+          { timeoutMs: 60_000, every: 1_000, label: "the test fight's banner" },
+        );
       await showBanner();
       await untilStill(page).catch(() => undefined);
       const controls = [
