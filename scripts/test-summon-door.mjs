@@ -242,6 +242,27 @@ await test("The GM console's cast_buff picks Find Steed's kind and Animate Dead'
   assert.equal(world.sheet(wren.id).pets[0].creatureType, "celestial");
 });
 
+await test("The console's Each target's form names its steppers for the spell, as the Hand's card does, not for the field's own label", async () => {
+  // The browser pass (scenario 115) heard the group as "Each target's form
+  // for Each target's form".
+  const { createElement } = await import("react");
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  const { FieldInput } = await import("../src/app/campaigns/[campaignId]/DmActionFields.tsx");
+  const html = renderToStaticMarkup(
+    createElement(FieldInput, {
+      field: { name: "mix", label: "Each target's form", kind: "summonMix" },
+      value: [],
+      onChange: () => {},
+      sheets: [],
+      enemies: [],
+      summon: { catalogue: summonCatalogue(summonSpellFor("Animate Dead")), slotLevel: 3 },
+    }),
+  );
+  assert.match(html, /role="group" aria-label="Each target&#x27;s form for Animate Dead"/);
+  assert.match(html, /aria-label="One more Skeleton"/);
+  assert.doesNotMatch(html, /for Each target/);
+});
+
 setDmMode(world.campaignId, "human", world.owner.id);
 
 await test("Summon a pet's Creature is picked from what the engine takes for each kind; a story pet not in the list keeps its hp and ac, and an unknown name is sent to the Bestiary", async () => {
