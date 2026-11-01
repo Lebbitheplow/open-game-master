@@ -137,6 +137,29 @@ export default {
       check(response.ok(), `${name} answered ${response.status()}: ${(await response.text()).slice(0, 200)}`);
       return response.json();
     };
+    // Names a box cuts short: each visible text that is exactly one of
+    // `names`, measured against the nearest box that clips it.
+    const clippedNames = (names) =>
+      page.evaluate((list) => {
+        const out = [];
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          const text = node.textContent?.trim() ?? "";
+          const parent = node.parentElement;
+          if (!list.includes(text) || !parent || parent.offsetParent === null) continue;
+          let box = parent;
+          while (box && getComputedStyle(box).overflowX === "visible") box = box.parentElement;
+          if (!box || box === document.body || box === document.documentElement) continue;
+          const range = document.createRange();
+          range.selectNodeContents(node);
+          const shown = range.getBoundingClientRect();
+          const room = box.getBoundingClientRect();
+          if (shown.width && shown.bottom > room.top && shown.top < room.bottom && shown.right > room.right + 1) {
+            out.push(`${text} shows ${Math.max(0, Math.round(room.right - shown.left))} of ${Math.round(shown.width)}px`);
+          }
+        }
+        return out;
+      }, names);
     // A card in a fan lies partly under its neighbours: it is pressed where
     // it shows, as a person presses it.
     const tapCard = async (locator) => {
@@ -429,8 +452,37 @@ export default {
       const cards = monsters.getByRole("group", { name: "Gynosphinx's cards" });
       const legendary = (name) => cards.getByRole("button", { name: new RegExp(`^${name}, Legendary`) }).first();
       await eventually(() => legendary("Teleport").isVisible(), { timeoutMs: 20_000, label: "the Teleport card" });
-      check(/Costs 2 · 3 of 3 left/.test(await legendary("Teleport").innerText()), `Teleport says its cost and what is left (${await legendary("Teleport").innerText()})`);
-      check(/Costs 3 · 3 of 3 left/.test(await legendary("Cast a Spell").innerText()), `Cast a Spell says its cost and what is left (${await legendary("Cast a Spell").innerText()})`);
+      check(/Costs 2\s+3\/3 left/.test(await legendary("Teleport").innerText()), `Teleport says its cost and what is left (${await legendary("Teleport").innerText()})`);
+      check(/Costs 3\s+3\/3 left/.test(await legendary("Cast a Spell").innerText()), `Cast a Spell says its cost and what is left (${await legendary("Cast a Spell").innerText()})`);
+      // What is left shows on each card in the fan, the next card covering
+      // none of it: here, and on a narrower desktop where the fan is tighter.
+      const footCovered = async () => {
+        await page.mouse.move(1, 1);
+        await untilStill(page).catch(() => undefined);
+        return cards.locator('.hand-card[data-cost="legendary"]').evaluateAll((nodes) =>
+          nodes.flatMap((card) => {
+            card.scrollIntoView({ block: "nearest", inline: "nearest" });
+            const lines = [...card.querySelectorAll(".hand-resource > span")];
+            return (lines.length ? lines : [card.querySelector(".hand-resource")]).flatMap((line) => {
+              const range = document.createRange();
+              range.selectNodeContents(line);
+              const box = range.getBoundingClientRect();
+              const top = document.elementFromPoint(box.right - 1.5, box.top + box.height / 2);
+              return top && card.contains(top) ? [] : [`${card.getAttribute("aria-label")?.split(",")[0]}: "${line.textContent}"`];
+            });
+          }),
+        );
+      };
+      const hidden = await footCovered();
+      soft(!hidden.length, `a legendary card's cost or what is left lies under the next card (${hidden.join(" | ")})`);
+      if (!phone) {
+        const size = page.viewportSize();
+        await page.setViewportSize({ width: 1280, height: 800 });
+        const tight = await footCovered();
+        soft(!tight.length, `at 1280 wide a legendary card's cost or what is left lies under the next card (${tight.join(" | ")})`);
+        await t.shot("s6-legendary-cards-1280");
+        await page.setViewportSize(size);
+      }
       const lairCard = cards.getByRole("button", { name: /^Lair: .*, Lair/ }).first();
       check(await lairCard.isVisible(), "the lair's card on initiative 20");
       check(/Initiative 20/.test(await lairCard.innerText()), `the lair's card says initiative 20 (${await lairCard.innerText()})`);
@@ -444,7 +496,7 @@ export default {
       await spellPick.selectOption({ index: 1 });
       await fingerSized(spellPick, "the spell picker");
       await themes("s6-aim-spell", monsters);
-      check(/Costs 3 · 3 of 3 left/.test(await monsters.innerText()), "the aim bar says the spell's cost and what is left");
+      check(/Costs 3 · 3\/3 left/.test(await monsters.innerText()), "the aim bar says the spell's cost and what is left");
       // The aim bar holds the fan's place: Back to the cards.
       await t.tap(monsters.getByRole("button", { name: "Back", exact: true }));
       await eventually(() => legendary("Teleport").isVisible(), { label: "the cards again" });
@@ -475,6 +527,13 @@ export default {
       await eventually(async () => !(await legendary("Teleport").isVisible().catch(() => false)), { label: "no more legendary cards this turn's end" });
       check(await lairCard.isVisible(), "the lair's card stays after the legendary action");
       await themes("s6-after-teleport", monsters);
+      // The GM's side panel names every combatant in full: the roster and
+      // the order squeezed them to a letter beside their chips and buttons.
+      await openPanelTab(t, "battle");
+      await eventually(async () => (await page.getByText(sphinx.sphinx.name, { exact: true }).locator("visible=true").count()) > 0, { timeoutMs: 20_000, label: "the battle panel" });
+      const cut = await clippedNames([sphinx.sphinx.name, sphinx.kara.name, "Dorn Ashby"]);
+      soft(!cut.length, `the GM panel cuts names short (${cut.join(" | ")})`);
+      await themes("s6-gm-panel");
 
       // ---- 7. A dominated hero's Hand in the GM seat, on his turn ----
       const { dominated } = bench;
@@ -501,6 +560,11 @@ export default {
         return encounter && encounter.order[encounter.turnIndex]?.characterId !== dominated.bran.id;
       }, { timeoutMs: 20_000, label: "the turn past Bran" });
       await t.shot("s7-ended");
+      await openPanelTab(t, "battle");
+      await eventually(async () => (await page.getByText(dominated.bran.name, { exact: true }).locator("visible=true").count()) > 0, { timeoutMs: 20_000, label: "the battle panel" });
+      const cutHere = await clippedNames([dominated.bran.name, dominated.sela.name, dominated.mage.name]);
+      soft(!cutHere.length, `the GM panel cuts names short (${cutHere.join(" | ")})`);
+      await t.shot("s7-gm-panel");
 
       // ---- 8. A steered table: the console, and no monsters' Hand ----
       const { steered } = bench;
