@@ -15,7 +15,7 @@ import { SideNotice } from "@/app/campaigns/[campaignId]/SideBadge";
 import { TableWaitBanner } from "@/app/campaigns/[campaignId]/TableWaitBanner";
 import { Hand as CombatHand } from "@/app/campaigns/[campaignId]/Hand";
 import { MonsterHand } from "@/app/campaigns/[campaignId]/MonsterHand";
-import { commandedCharacters, gmTurnCompanion } from "@/lib/player-characters";
+import { commandedCharacters, gmTurnCompanion, gmTurnDominated } from "@/lib/player-characters";
 import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 import { NewAdventurerBanner } from "@/app/campaigns/[campaignId]/NewAdventurerBanner";
 import {
@@ -116,10 +116,10 @@ function ComposerInner({
 
   // The DM seat: narrates instead of acting, and never runs a character.
   isDm: boolean;
-  // A test fight the AI GM runs, with the author in the steering seat
-  // (src/lib/workshop/test-seats-logic.ts): the enemies and the allies
-  // nobody commands are the AI's, so the seat gets no monsters' Hand and no
-  // ally's, and Direct asks the AI for a move as the lead's does.
+  // A table the AI GM runs with a person in the steering seat, live or a
+  // test (src/lib/workshop/test-seats-logic.ts aiRunsFoes): the enemies and
+  // the allies nobody commands are the AI's, so the seat gets no monsters'
+  // Hand and no ally's, and Direct asks the AI for a move as the lead's does.
   aiRunsFoes?: boolean;
   kind: InputKind;
   onKindChange: (kind: InputKind) => void;
@@ -190,8 +190,11 @@ function ComposerInner({
   // character's turn (capabilities.ts gmCompanionTurns): there its turn
   // keeps the monsters' hand and Skip turn.
   const capabilities = useCapabilities();
-  // Not at a test the AI runs: an ally nobody commands is the AI's there.
+  // Not at a table the AI runs: an ally nobody commands is the AI's there.
   const gmCompanions = isDm && hostOffers(capabilities, "gmCompanionTurns") && !aiRunsFoes;
+  // A hero the other side dominates is the GM's to play card by card too, on
+  // a host whose actions route takes those cards from the GM seat.
+  const gmDominated = gmCompanions && hostOffers(capabilities, "gmDominatedTurns");
   const heroUp =
     isDm &&
     !hand.encounter?.enemyTurns &&
@@ -202,7 +205,9 @@ function ComposerInner({
       commandedCharacters(sheets, meUserId).some((sheet) => sheet.id === current.id) ||
       // A companion nobody commands is the GM's to play at a table a person
       // runs: its turn has its own Hand, as a hero's has.
-      (gmCompanions && Boolean(gmTurnCompanion(sheets, current.id))));
+      (gmCompanions && Boolean(gmTurnCompanion(sheets, current.id))) ||
+      // So is a player's hero the other side dominates (issue 685 audit).
+      (gmDominated && Boolean(gmTurnDominated(sheets, current.id, hand.encounter?.sides))));
   const partyHand = !isDm || heroUp;
   // On every other turn in the GM seat, the reactions the GM's own heroes
   // may take (a test fight a person runs): a hit hero answers under the
@@ -294,8 +299,9 @@ function ComposerInner({
             work exactly as they do without it. */}
         {/* The DM's hand (issue #108): the monsters' attacks and abilities
             as the same cards, played through the console's invoke route.
-            None at a test the AI runs: the enemies are its to play, and the
-            route refuses their cards from the author's seat (issue 685). */}
+            None at a table the AI runs, live or a test: the enemies are its
+            to play, and the route refuses their cards from the steering seat
+            (issue 685). */}
         {!partyHand && !aiRunsFoes && hand.encounter ? (
           <MonsterHand
             campaignId={campaignId}
@@ -309,6 +315,7 @@ function ComposerInner({
           <CombatHand
             reactionsOnly={!partyHand}
             runsTable={gmCompanions}
+            runsDominated={gmDominated}
             multiCharacter={multiCharacter}
             activeSheetId={activeSheetId}
             campaignId={campaignId}
@@ -335,9 +342,9 @@ function ComposerInner({
         <div data-pill-group="" className="mb-2 flex flex-wrap items-center gap-1.5" data-tour="composer-modes">
           {/* The DM authors and talks out of character; they have no
               character to act or speak as, and the story directions exist to
-              steer an AI narrator they have replaced. At a test the AI runs
-              the author steers that narrator from the GM seat, so Direct is
-              theirs too: the one way to ask for an enemy's move there. */}
+              steer an AI narrator they have replaced. At a table the AI runs
+              the steering seat steers that narrator, so Direct is theirs too:
+              the way to ask for an enemy's move there. */}
           {(isDm
             ? [
                 ...(heroUp ? (["do", "say"] as const) : []),

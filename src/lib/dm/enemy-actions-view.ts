@@ -1,10 +1,21 @@
-import type { EnemyAttack } from "@/lib/bestiary/statblock";
+import type { EnemyAttack, EnemyStats } from "@/lib/bestiary/statblock";
 import { manualTraits } from "@/lib/dm/monster-traits";
+import { sectionOfLine } from "@/lib/bestiary/block-sections";
 import { synthesizeStats } from "@/lib/bestiary/synthesize";
-import { turnKey, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
+import { orderEntryId, turnKey, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { canEnemyAct, enemyActedThisRound } from "@/lib/dm/can-act";
 import { plannedSwings } from "@/lib/dm/enemy-profile";
 import { abilityFromLine, abilityRefusal, type MonsterAbility } from "@/lib/dm/monster-abilities";
+import {
+  freshPool,
+  lairSave,
+  legendaryOpening,
+  legendaryProfile,
+  legendaryPurchase,
+  spendLegendaryAction,
+  type LairChoice,
+  type LairSave,
+} from "@/lib/dm/legendary-logic";
 import { textKey } from "@/lib/language/text-logic";
 
 // What an enemy can do on its turn, for the person running it (issue #108).
@@ -61,6 +72,38 @@ export type PublicEnemyAbility = {
 // from a server older than the enemyActions feature.
 export type PublicEnemyMovement = { speedFeet: number; leftFeet: number; dashes: number; disengaged: boolean };
 
+// A legendary action's option as the GM's card plays it (issue 685 audit,
+// 4.G): legendary_action spends it, then what it buys follows through the
+// tool its result names (legendary-logic.ts legendaryPurchase): the one
+// attack (enemy_attack), the ability with its own save (cast_at_player or
+// aoe_damage), or nothing the engine rolls (a cantrip from its list, Detect,
+// a move), which the GM resolves from the console or narrates.
+export type PublicLegendaryOption = {
+  name: string;
+  cost: number;
+  // What the block says it does.
+  text: string;
+  attack?: PublicEnemyAttack;
+  ability?: Omit<PublicEnemyAbility, "resource" | "refusal">;
+  cantrip?: boolean;
+  // The tool's own refusal: it costs more than is left this round, or the
+  // ability it buys has not recharged. Null when it can be taken.
+  refusal: string | null;
+};
+
+// Present only while a legendary action can be taken now (SRD 5.1: one at a
+// time, at the end of another creature's turn, from the actions it has left
+// this round; they come back at the start of its own turn): never on its own
+// turn, never twice at the end of one turn, never with none left.
+export type PublicLegendaryActions = { left: number; max: number; options: PublicLegendaryOption[] };
+
+// A lair option this creature's block prints, while the lair's moment is
+// open (initiative count 20, losing ties, and the lair has not acted this
+// round): numbered as lair_action takes it, with the save it forces as
+// aoe_damage takes it, and the tool's refusal of an effect the block forbids
+// two rounds in a row.
+export type PublicLairOption = { number: number; line: string; save?: LairSave; refusal: string | null };
+
 export type PublicEnemyActions = {
   speed: string;
   movement?: PublicEnemyMovement;
@@ -74,6 +117,10 @@ export type PublicEnemyActions = {
   // The traits on its block the engine does not resolve: the DM applies
   // them by hand (src/lib/dm/monster-traits.ts manualTraits).
   manual: string[];
+  // Absent from a server older than the legendaryCards feature, and
+  // whenever none can be taken now.
+  legendary?: PublicLegendaryActions;
+  lair?: PublicLairOption[];
 };
 
 type ActingEncounter = Pick<
@@ -129,12 +176,17 @@ function abilityResource(ability: MonsterAbility): string {
 }
 
 // The block's abilities with numbers the engine runs: the parsed specials,
-// else the trait lines read the same way findMonsterAbility reads them.
+// else the trait lines read the same way findMonsterAbility reads them. A
+// lair option is the lair's, on initiative count 20 (its card below), not an
+// action of the creature's turn, which this offered it as.
 function abilitiesOf(enemy: EncounterEnemy): MonsterAbility[] {
   const stats = enemy.stats;
   const parsed = stats.specials?.length
     ? stats.specials
-    : (stats.traits ?? []).map(abilityFromLine).filter((entry): entry is MonsterAbility => entry !== null);
+    : (stats.traits ?? [])
+        .filter((line) => sectionOfLine(line).section !== "lair")
+        .map(abilityFromLine)
+        .filter((entry): entry is MonsterAbility => entry !== null);
   const seen = new Set<string>();
   return parsed.filter((ability) => {
     const key = textKey(ability.name);
@@ -146,7 +198,95 @@ function abilitiesOf(enemy: EncounterEnemy): MonsterAbility[] {
   });
 }
 
-export function enemyActionsView(encounter: ActingEncounter, enemy: EncounterEnemy, movement?: PublicEnemyMovement): PublicEnemyActions {
+function attackView(stats: EnemyStats, attacks: EnemyAttack[], attack: EnemyAttack, swings?: string[]): PublicEnemyAttack {
+  const onHit = onHitLine(attack);
+  return {
+    name: attack.name,
+    toHit: attack.toHit,
+    damage: attack.damage,
+    type: attack.type,
+    range: attackRange(attack),
+    melee: (attack.mode ?? (attack.range && !attack.reach ? "ranged" : "melee")) !== "ranged",
+    ...(attack.spellAttack ? { spellAttack: true } : {}),
+    ...(onHit ? { onHit } : {}),
+    swings: swings ?? plannedSwings(stats, attacks, attack).map((swing) => swing.name),
+  };
+}
+
+function abilityNumbers(ability: MonsterAbility): Omit<PublicEnemyAbility, "resource" | "refusal"> {
+  return {
+    name: ability.name,
+    save: ability.save as string,
+    dc: ability.dc as number,
+    ...(ability.damage ? { damage: ability.damage } : {}),
+    ...(ability.damageType ? { damageType: ability.damageType } : {}),
+    ...(ability.halfOnSave !== undefined ? { halfOnSave: ability.halfOnSave } : {}),
+    ...(ability.condition ? { condition: ability.condition } : {}),
+    ...(ability.rounds ? { rounds: ability.rounds } : {}),
+  };
+}
+
+// The options a legendary creature may take now, read by the same rules
+// legendary_action holds the call to (legendary-logic.ts legendaryOpening,
+// spendLegendaryAction), or null when it may take none: the console's form
+// was the only way, and it offered the action on the creature's own turn and
+// after one was already taken at this turn's end.
+function legendaryView(encounter: ActingEncounter, enemy: EncounterEnemy): PublicLegendaryActions | null {
+  const profile = legendaryProfile(enemy.stats);
+  if (!profile?.actions.length || !canEnemyAct({ enemy, encounter, kind: "legendary" }).ok) {
+    return null;
+  }
+  const current = encounter.order[encounter.turnIndex];
+  const opening = legendaryOpening(
+    {
+      turn: turnKey(encounter),
+      round: encounter.round,
+      onPointer: Boolean(current && orderEntryId(current) === enemy.id),
+      actedThisRound: enemyActedThisRound(encounter, enemy.id),
+      legendary: encounter.legendary,
+    },
+    enemy,
+  );
+  const pool = encounter.legendary.pools[enemy.id] ?? freshPool(profile);
+  if (opening.refusal || pool.actions <= 0) {
+    return null;
+  }
+  const stats = enemy.stats;
+  const attacks = stats.attacks?.length ? stats.attacks : synthesizeStats(enemy.cr).attacks;
+  const ledger = encounter.legendary.abilities?.[enemy.id];
+  return {
+    left: pool.actions,
+    max: profile.actionsPerRound,
+    options: profile.actions.map((action) => {
+      const spend = spendLegendaryAction(pool, profile, action.name);
+      const purchase = legendaryPurchase(stats, action);
+      // The ability it buys still keeps its own limits (a recharge), which
+      // the call after the spend would refuse with the action already gone.
+      const held =
+        purchase.kind === "ability" ? abilityRefusal(enemy.displayName, purchase.ability, ledger, { turn: turnKey(encounter), round: encounter.round })?.error ?? null : null;
+      return {
+        name: action.name,
+        cost: action.cost,
+        text: action.text,
+        // One swing: the attack a legendary action buys is never the routine.
+        ...(purchase.kind === "attack" ? { attack: attackView(stats, attacks, purchase.attack, [purchase.attack.name]) } : {}),
+        ...(purchase.kind === "ability" && purchase.ability.save && purchase.ability.dc ? { ability: abilityNumbers(purchase.ability) } : {}),
+        ...(purchase.kind === "cantrip" ? { cantrip: true } : {}),
+        refusal: spend.ok ? held : spend.error,
+      };
+    }),
+  };
+}
+
+// lair: the lair's options this creature's block prints, while the lair may
+// act (legendary-logic.ts lairChoices, which the encounter's projection
+// works out once for the whole fight, numbered across every creature).
+export function enemyActionsView(
+  encounter: ActingEncounter,
+  enemy: EncounterEnemy,
+  movement?: PublicEnemyMovement,
+  lair?: LairChoice[],
+): PublicEnemyActions {
   const stats = enemy.stats;
   // The same fallback enemy_attack makes for a block with no attack lines.
   const attacks = stats.attacks?.length ? stats.attacks : synthesizeStats(enemy.cr).attacks;
@@ -158,39 +298,32 @@ export function enemyActionsView(encounter: ActingEncounter, enemy: EncounterEne
       continue;
     }
     seen.add(key);
-    const onHit = onHitLine(attack);
-    attackViews.push({
-      name: attack.name,
-      toHit: attack.toHit,
-      damage: attack.damage,
-      type: attack.type,
-      range: attackRange(attack),
-      melee: (attack.mode ?? (attack.range && !attack.reach ? "ranged" : "melee")) !== "ranged",
-      ...(attack.spellAttack ? { spellAttack: true } : {}),
-      ...(onHit ? { onHit } : {}),
-      swings: plannedSwings(stats, attacks, attack).map((swing) => swing.name),
-    });
+    attackViews.push(attackView(stats, attacks, attack));
   }
 
   const ledger = encounter.legendary.abilities?.[enemy.id];
   const abilityViews: PublicEnemyAbility[] = abilitiesOf(enemy)
     // A legendary action is spent at the end of another creature's turn,
-    // through legendary_action; it is not one of the turn's cards.
+    // through legendary_action: it is a card of the legendary group below,
+    // not one of the turn's.
     .filter((ability) => ability.save && ability.dc && !ability.legendaryCost)
     .map((ability) => ({
-      name: ability.name,
-      save: ability.save as string,
-      dc: ability.dc as number,
-      ...(ability.damage ? { damage: ability.damage } : {}),
-      ...(ability.damageType ? { damageType: ability.damageType } : {}),
-      ...(ability.halfOnSave !== undefined ? { halfOnSave: ability.halfOnSave } : {}),
-      ...(ability.condition ? { condition: ability.condition } : {}),
-      ...(ability.rounds ? { rounds: ability.rounds } : {}),
+      ...abilityNumbers(ability),
       resource: abilityResource(ability),
       refusal: abilityRefusal(enemy.displayName, ability, ledger, { turn: turnKey(encounter), round: encounter.round })?.error ?? null,
     }));
 
   const allowed = canEnemyAct({ enemy, encounter, kind: "action" });
+  const legendary = legendaryView(encounter, enemy);
+  const lairOptions: PublicLairOption[] =
+    enemy.status === "alive"
+      ? (lair ?? [])
+          .filter((choice) => choice.enemyId === enemy.id)
+          .map((choice) => {
+            const save = lairSave(choice.line);
+            return { number: choice.number, line: choice.line, ...(save ? { save } : {}), refusal: choice.refusal };
+          })
+      : [];
   return {
     speed: stats.speed || "30 ft.",
     ...(movement ? { movement } : {}),
@@ -199,5 +332,7 @@ export function enemyActionsView(encounter: ActingEncounter, enemy: EncounterEne
     refusal: allowed.ok ? null : allowed.error,
     acted: enemyActedThisRound(encounter, enemy.id),
     manual: manualTraits(stats),
+    ...(legendary ? { legendary } : {}),
+    ...(lairOptions.length ? { lair: lairOptions } : {}),
   };
 }

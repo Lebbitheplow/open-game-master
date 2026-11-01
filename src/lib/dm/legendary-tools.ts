@@ -11,7 +11,6 @@ import { canEnemyAct, enemyActedThisRound, oweEnemiesAnAction } from "@/lib/dm/c
 import {
   abilityFromLine,
   abilityKey,
-  findMonsterAbility,
   enemyHpCap,
   REGENERATION_STOPPED,
   regenerationOf,
@@ -23,8 +22,13 @@ import { patchEnemyConditions, patchEnemyHp } from "@/lib/db/encounters";
 import { removeConditionInstances, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import {
   freshPool,
+  lairForbidsRepeat,
+  lairRepeatRefusal,
   lairResolution,
+  legendaryLairLines,
+  legendaryOpening,
   legendaryProfile,
+  legendaryPurchase,
   pickLairOption,
   refillActions,
   spendLegendaryAction,
@@ -32,8 +36,10 @@ import {
   type LegendaryPool,
 } from "@/lib/dm/legendary-logic";
 import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
-import { containsPhrase, textKey } from "@/lib/language/text-logic";
+import { textKey } from "@/lib/language/text-logic";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
+
+export { legendaryLairLines } from "@/lib/dm/legendary-logic";
 
 // Legendary actions, lair actions and legendary resistance as tools
 // (docs/vtt-parity-implementation-plan.md 4.1). Imports point downward
@@ -224,24 +230,22 @@ export function handleLegendaryAction(campaign: Campaign, rawArguments: string):
     return toolError(allowed);
   }
   const current = encounter.order[encounter.turnIndex];
-  // Its own turn: the pointer on it, or its turn handed to the model by an
-  // end_turn and not yet taken (the pointer never rests on an enemy).
-  const turnDue =
-    Boolean(encounter.legendary.handoff?.enemyIds.includes(enemy.id)) && !enemyActedThisRound(encounter, enemy.id);
-  if ((current && orderEntryId(current) === enemy.id) || turnDue) {
-    return { error: `It is ${enemy.displayName}'s own turn; legendary actions come at the end of other creatures' turns. Take its turn first: enemy_attack, or cast_at_player / aoe_damage with casterEnemyId and enemyAbility or spell.`, retry: true };
+  const opening = legendaryOpening(
+    {
+      turn: turnKey(encounter),
+      round: encounter.round,
+      // The pointer never rests on an enemy; the rest of its own turn is the
+      // turn handed on and not yet taken (legendary-logic.ts).
+      onPointer: Boolean(current && orderEntryId(current) === enemy.id),
+      actedThisRound: enemyActedThisRound(encounter, enemy.id),
+      legendary: encounter.legendary,
+    },
+    enemy,
+  );
+  if (opening.refusal) {
+    return opening.refusal;
   }
-  // One option at the end of each other creature's turn: the turn is the
-  // pointer's, and each enemy that acts since closes a turn of its own.
-  const acted = encounter.legendary.acted?.round === encounter.round ? encounter.legendary.acted.ids.length : 0;
-  const key = `${turnKey(encounter)}:${acted}`;
-  const taken = encounter.legendary.opportunities?.key === key ? encounter.legendary.opportunities.ids : [];
-  if (taken.includes(enemy.id)) {
-    return {
-      error: `${enemy.displayName} has already taken a legendary action at the end of this turn. It takes one option at the end of each other creature's turn; the next comes when another creature's turn ends. Nothing was spent.`,
-      retry: true,
-    };
-  }
+  const { key, taken } = opening;
   const pool: LegendaryPool = encounter.legendary.pools[enemy.id] ?? freshPool(profile);
   const outcome = spendLegendaryAction(pool, profile, args.action);
   if (!outcome.ok) {
@@ -249,25 +253,14 @@ export function handleLegendaryAction(campaign: Campaign, rawArguments: string):
   }
   encounter.legendary.pools[enemy.id] = outcome.pool;
   encounter.legendary.opportunities = { key, ids: [...taken, enemy.id] };
-  // The attack the action buys, by the attack's whole name: the action is
-  // named for it ("Bite", "Tail Attack"), or its line makes or uses it
-  // ("makes one tail attack", "uses its Paralyzing Touch"), the longest name
-  // first, so "its tail spike" is the Tail Spike and not the Tail.
-  const named = textKey(outcome.action.name);
-  const attack = [...enemy.stats.attacks, ...(enemy.stats.legendaryAttacks ?? [])].sort((a, b) => b.name.length - a.name.length).find((entry) => {
-    const name = textKey(entry.name.replace(/\([^)]*\)/g, ""));
-    return (
-      named === name ||
-      named === `${name} attack` ||
-      [`${name} attack`, `${name} attacks`, `its ${name}`, `makes one ${name}`].some((phrase) => containsPhrase(outcome.action.text, phrase))
-    );
-  });
   // A line with its own numbers (Wing Attack's DC 22 save) resolves through
   // aoe_damage or cast_at_player naming it; "casts a cantrip" through a
   // cantrip from the creature's list. Either is bought here and spent there.
-  const ability = findMonsterAbility(enemy.stats, outcome.action.name);
-  const effect = !attack && ability && (ability.save || ability.damage) ? abilityKey(ability.name) : null;
-  const cantrip = !attack && !effect && /casts? a cantrip/i.test(outcome.action.text) ? "cantrip" : null;
+  const purchase = legendaryPurchase(enemy.stats, outcome.action);
+  const attack = purchase.kind === "attack" ? purchase.attack : null;
+  const ability = purchase.kind === "ability" ? purchase.ability : null;
+  const effect = ability ? abilityKey(ability.name) : null;
+  const cantrip = purchase.kind === "cantrip" ? "cantrip" : null;
   if (attack) {
     // The attack this action buys is on top of the creature's one action a
     // round, so enemy_attack is owed one more, and it is one swing.
@@ -408,9 +401,9 @@ export function handleLairAction(campaign: Campaign, turn: DmTurn | null, rawArg
   if (!picked) {
     return { error: `The lair's options are printed in its block; send one's number (or its whole line): ${options.map((line, at) => `${at + 1}. ${line}`).join(" ")}`, retry: true };
   }
-  const noRepeat = enemies.some((enemy) => (enemy.stats.traits ?? []).some((line) => /same (?:lair )?(?:effect|action) two rounds in a row/i.test(line)));
-  if (options.length > 1 && noRepeat && encounter.legendary.lairLast === picked && encounter.legendary.lairUsedRound === due - 1) {
-    return { error: `The lair cannot use the same effect two rounds in a row; it used this one last round. Choose another: ${options.filter((line) => line !== picked).join(" ")}`, retry: true };
+  const repeated = lairRepeatRefusal(options, picked, encounter.legendary, due, lairForbidsRepeat(enemies));
+  if (repeated) {
+    return { error: repeated, retry: true };
   }
   encounter.legendary.lairUsedRound = due;
   encounter.legendary.lairLast = picked;
@@ -434,10 +427,4 @@ export function handleLairAction(campaign: Campaign, turn: DmTurn | null, rawArg
     ...(resolution ? { next: resolution } : {}),
     lairActions: options,
   };
-}
-
-export function legendaryLairLines(enemies: EncounterEnemy[]): string[] {
-  // A book's printed lair options (Tome of Beasts' dragons) are offered in a
-  // fight the DM started in the lair; they never make one a lair fight.
-  return enemies.flatMap((enemy) => [...(legendaryProfile(enemy.stats)?.lairActions ?? []), ...(enemy.stats.lairOptions ?? [])]);
 }

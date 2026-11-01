@@ -14,7 +14,8 @@ import {
 } from "@/lib/db/campaigns";
 import { countMessages, insertCampaignMessage, listRecentMessages } from "@/lib/db/messages";
 import { getSheetById, getSheetForUser, listSheets } from "@/lib/db/sheets";
-import { dominatedRefusal, gmCompanionTurn } from "@/lib/dm/companion-command";
+import { aiTurnNamedBySeat, dominatedRefusal, gmCompanionTurn } from "@/lib/dm/companion-command";
+import { aiTurnRefusal } from "@/lib/workshop/test-seats-logic";
 import { heroFell } from "@/lib/characters/fallen-logic";
 import { answerSpotlight } from "@/lib/dm/spotlight-answer";
 import { requestDmTurn } from "@/lib/dm/loop";
@@ -87,13 +88,20 @@ export async function POST(
 
   const owned = getSheetForUser(campaignId, user.id);
   const raw = await request.json().catch(() => ({}));
-  // A companion nobody commands, on its own turn at a table a person runs, is
-  // the GM's to play (src/lib/dm/companion-command.ts gmCompanionTurn): its
-  // Hand's cards and its End turn come from the GM seat, which may hold no
-  // character of its own. Named by the card, never assumed.
+  // A companion nobody commands, or a hero the other side dominates, on its
+  // own turn at a table a person runs, is the GM's to play
+  // (src/lib/dm/companion-command.ts gmCompanionTurn): its Hand's cards and
+  // its End turn come from the GM seat, which may hold no character of its
+  // own. Named by the card, never assumed.
   const companionTurn = gmCompanionTurn(campaign, user.id);
   const namedId = raw && typeof raw === "object" ? (raw as { characterId?: unknown }).characterId : undefined;
   const playsCompanion = companionTurn && namedId === companionTurn.id ? companionTurn : null;
+  // At a table the AI runs, that turn is the AI's: the steering seat is told
+  // so, rather than "You need a character to act" (test-seats-logic.ts).
+  const aiTurn = raw && typeof raw === "object" && (raw as { kind?: unknown }).kind !== "ooc" ? aiTurnNamedBySeat(campaign, user.id, namedId) : null;
+  if (aiTurn) {
+    return Response.json({ error: aiTurnRefusal(campaign, aiTurn.name) }, { status: 409 });
+  }
   const selected = owned ?? playsCompanion;
   if (!selected) {
     return Response.json({ error: "You need a character to act." }, { status: 400 });
@@ -131,10 +139,11 @@ export async function POST(
   }
   // A character dominated by the other side is the DM's to play until the
   // charm ends (src/lib/dm/companion-command.ts): its player hears why,
-  // whoever's turn it is. Table talk is free.
+  // whoever's turn it is. Table talk is free, and so is the GM seat playing
+  // its turn (gmCompanionTurn), which this used to refuse as the player's.
   const named = parsed.data.characterId ? getSheetById(parsed.data.characterId) : null;
   const acting = playsCompanion ?? (named && named.campaignId === campaignId && named.userId === user.id ? named : selected);
-  const held = kind === "ooc" ? null : dominatedRefusal(campaignId, acting);
+  const held = kind === "ooc" || playsCompanion ? null : dominatedRefusal(campaignId, acting);
   if (held) {
     return Response.json({ error: held, dominated: true }, { status: 409 });
   }

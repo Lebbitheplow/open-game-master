@@ -11,8 +11,9 @@ import type { HandCard } from "@/lib/battlemap/hand";
 import { previewRows, type HandAim } from "@/lib/battlemap/hand-play";
 import {
   deriveMonsterHand,
-  monsterInvoke,
+  monsterCalls,
   monsterSentence,
+  rollsMonsterAttack,
   takesManyTargets,
   type MonsterAdvantage,
 } from "@/lib/battlemap/monster-hand";
@@ -29,7 +30,9 @@ import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 // message box where the players' Hand sits. The enemies the pointer walked
 // past lead the roster (src/lib/dm/enemies-due.ts); any living enemy can be
 // picked, as the console lets the DM correct anything. A played card is the
-// console's own invoke call (monster-hand.ts), so the engine's rules hold.
+// console's own invoke call (monster-hand.ts), so the engine's rules hold:
+// a legendary or lair card makes the spend and then what it buys, stopping
+// at the first refusal.
 
 const COLLAPSED_KEY = "odm:monster-hand-collapsed";
 const STORE_EVENT = "odm-monster-hand-store";
@@ -105,7 +108,12 @@ function MonsterHandInner({
   // Dash, Disengage and Dodge cards need a host that resolves an enemy's
   // (issue #621); the apps compile this hand and may open an older one.
   const capabilities = useCapabilities();
-  const cards = selected ? deriveMonsterHand(selected, { enemyActions: hostOffers(capabilities, "enemyActions") }) : [];
+  const legendaryOn = hostOffers(capabilities, "legendaryCards");
+  // Legendary and lair cards from a host that projects when they can be
+  // taken (issue 685 audit); an older one leaves them to the console's forms.
+  const cards = selected
+    ? deriveMonsterHand(selected, { enemyActions: hostOffers(capabilities, "enemyActions"), legendaryCards: hostOffers(capabilities, "legendaryCards") })
+    : [];
 
   // The other side as targets (issue 503): the party (and any creature it
   // dominates) for a foe, the foes (a turncoat among them) for a creature the
@@ -137,7 +145,7 @@ function MonsterHandInner({
   const picked = cards.find((card) => card.id === pickedId && !card.disabled) ?? null;
   const many = picked ? takesManyTargets(picked) : false;
   // A save forced on one target is cast_at_player, a character's door.
-  const chips = !picked || picked.intent.card !== "monster" || picked.intent.action === "attack" || many ? party : party.filter((chip) => !chip.row);
+  const chips = !picked || picked.intent.card !== "monster" || rollsMonsterAttack(picked) || many ? party : party.filter((chip) => !chip.row);
   const aimed = chips.filter((chip) => targetIds.includes(chip.id));
   const aim = aimed[0] ?? null;
   const defaultAim = aim ?? chips[0] ?? null;
@@ -183,26 +191,38 @@ function MonsterHandInner({
     if (!picked || !selected || sending) {
       return;
     }
-    const call = monsterInvoke(picked, aimed.map((chip) => chip.id), advantage, new Set(aimed.filter((chip) => chip.row).map((chip) => chip.id)));
-    if (!call) {
+    const calls = monsterCalls(picked, aimed.map((chip) => chip.id), advantage, new Set(aimed.filter((chip) => chip.row).map((chip) => chip.id)));
+    if (!calls) {
       say(many ? "Pick everyone caught in it." : "Pick a target.");
       return;
     }
     setSending(true);
     setNotice("");
     try {
-      const response = await fetch(`/api/campaigns/${campaignId}/dm/invoke`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(call),
-      });
-      const data = (await response.json().catch(() => ({}))) as { error?: string; result?: unknown };
-      if (!response.ok) {
-        // The engine's own reason; the card stays raised to try another way.
-        say(data.error || "The engine would not take that.");
-        return;
+      const done: ResultLine[] = [];
+      for (const [index, call] of calls.entries()) {
+        // `hand`: a card, not the console's form. A table the AI runs refuses
+        // an enemy's card from the GM seat (test-seats-logic.ts).
+        const response = await fetch(`/api/campaigns/${campaignId}/dm/invoke`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...call, hand: true }),
+        });
+        const data = (await response.json().catch(() => ({}))) as { error?: string; result?: unknown };
+        if (!response.ok) {
+          // The engine's own reason. The card stays raised to try another
+          // way, and what went through before it (a legendary action spent)
+          // shows above.
+          setLines(done);
+          say(data.error || "The engine would not take that.");
+          return;
+        }
+        // What a spend hands on ("Resolve it now with enemy_attack") is the
+        // card's own next call, made below: not a step left for the GM.
+        const handedOn = index < calls.length - 1 && data.result && typeof data.result === "object";
+        done.push(...describeAdjudicationResult(handedOn ? { ...(data.result as Record<string, unknown>), next: undefined } : data.result));
       }
-      setLines(describeAdjudicationResult(data.result));
+      setLines(done);
       clearAim();
     } catch {
       say("Could not reach the table.");
@@ -338,6 +358,10 @@ function MonsterHandInner({
                     {enemy.ac !== undefined ? ` · AC ${enemy.ac}` : ""}
                     {acted ? " · acted" : ""}
                     {movement ? ` · ${movement.leftFeet} ft left${movement.dashes ? " · Dashed" : ""}` : ""}
+                    {/* A legendary action or the lair may act now: say so on
+                        the creature's chip, so the GM need not open each one. */}
+                    {legendaryOn && enemy.actions?.legendary ? ` · ${enemy.actions.legendary.left} legendary` : ""}
+                    {legendaryOn && enemy.actions?.lair?.length ? " · lair" : ""}
                   </span>
                   <SideBadge side={offSide(encounter, enemy.id, "enemy")} className="mt-0.5" />
                 </button>
@@ -413,7 +437,7 @@ function MonsterHandInner({
                 </div>
               ) : null}
 
-              {picked.intent.card === "monster" && picked.intent.action === "attack" ? (
+              {rollsMonsterAttack(picked) ? (
                 <div className="mt-2 flex flex-wrap items-center gap-1.5" data-pill-group="">
                   <span className="text-[11px] uppercase tracking-wider text-stone-500">Roll</span>
                   {ADVANTAGE.map(([value, label]) => (

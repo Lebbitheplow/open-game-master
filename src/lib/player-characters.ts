@@ -1,4 +1,5 @@
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { dominatorOf } from "@/lib/dm/combat-sides-logic";
 
 export function ownedCharacters(sheets: CharacterSheet[], userId: string): CharacterSheet[] {
   return sheets.filter((sheet) => sheet.userId === userId && !sheet.isCompanion);
@@ -37,6 +38,21 @@ export function gmTurnCompanion(sheets: CharacterSheet[], characterId?: string |
   if (!characterId) return null;
   const sheet = sheets.find((entry) => entry.id === characterId);
   return sheet?.isCompanion && !(sheet.commandedBy && !sheet.summon) ? sheet : null;
+}
+
+// The hero whose turn it is when a Dominate spell from the other side holds
+// them: at a table a person runs, that person plays the turn with the hero's
+// own Hand (issue 685 audit, 4.G), as the server's gmCompanionTurn says. The
+// same reading as its dominatedByFoe: the charm's meta names a Domination
+// spell and its caster, and the fight puts the hero on the foes' side.
+export function gmTurnDominated(
+  sheets: CharacterSheet[],
+  characterId: string | null | undefined,
+  sides: Record<string, string> | null | undefined,
+): CharacterSheet | null {
+  if (!characterId || sides?.[characterId] !== "foe") return null;
+  const sheet = sheets.find((entry) => entry.id === characterId);
+  return sheet && !sheet.isCompanion && dominatorOf(sheet.conditions, sheet.conditionMeta) ? sheet : null;
 }
 
 // The person's other characters who may answer a hit with their reaction

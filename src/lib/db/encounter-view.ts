@@ -1,7 +1,7 @@
 import { isKnockedOut } from "@/lib/dm/knockout";
 import { defaultSide, type CombatSide } from "@/lib/dm/combat-sides-logic";
 import { sideOf } from "@/lib/dm/combatant";
-import { legendaryProfile } from "@/lib/dm/legendary-logic";
+import { lairChoices, legendaryProfile } from "@/lib/dm/legendary-logic";
 import { enemyActionsView, type PublicEnemyActions, type PublicEnemyMovement } from "@/lib/dm/enemy-actions-view";
 import { enemyMoveBudget } from "@/lib/dm/enemy-speed";
 import { enemyActedThisRound, isSurprised } from "@/lib/dm/can-act";
@@ -306,6 +306,9 @@ export function publicEncounter(
 ): PublicEncounter {
   const showNumbers = options.enemyNumbers === true;
   const board = showNumbers ? getBattleMapForEncounter(encounter.id) : null;
+  // The lair's options while it may act, numbered across the whole fight as
+  // lair_action numbers them: each creature's card carries its own.
+  const lair = showNumbers ? lairChoices(enemies, encounter.legendary) : null;
   // Hidden is one flag on the board token (src/lib/db/battle-maps.ts) and it
   // means the same thing in both places: an ambusher the players have not
   // met yet is neither on the map nor on the tracker.
@@ -388,7 +391,7 @@ export function publicEncounter(
             ac: enemy.ac,
             initiative: enemy.initiative,
             ...legendaryView(encounter, enemy),
-            actions: enemyActionsView(encounter, enemy, movementView(encounter, enemy, board)),
+            actions: enemyActionsView(encounter, enemy, movementView(encounter, enemy, board), lair ?? undefined),
           }
         : {}),
     })),

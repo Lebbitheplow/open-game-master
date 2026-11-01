@@ -18,7 +18,10 @@ import { conditionBlocksReactions } from "@/lib/srd/condition-effects";
 import type { HandGearAction, HandIntentExtras } from "@/lib/battlemap/hand-intent";
 import type { HandArea } from "@/lib/battlemap/hand-area";
 
-export type HandCost = "action" | "bonus" | "reaction" | "rider" | "free";
+// "legendary" and "lair" are the GM's monsters' Hand only: a legendary
+// creature's action at the end of another creature's turn, and the lair's own
+// on initiative count 20 (src/lib/battlemap/monster-hand.ts).
+export type HandCost = "action" | "bonus" | "reaction" | "rider" | "free" | "legendary" | "lair";
 export type HandCardType = "attack" | "rider" | "spell" | "control" | "mend" | "ward" | "feature" | "basic";
 export type HandTarget = "enemy" | "ally" | "self" | "none";
 export type BasicActionId =
@@ -44,7 +47,17 @@ export type HandIntent = (
   // one of its stat block's attacks, a save ability, or breaking off. Sent
   // to the console's invoke route, never to the actions route.
   // Dash, Disengage and Dodge are take_action with its enemyId (issue #621).
-  | { card: "monster"; enemyId: string; action: "attack" | "ability" | "flee" | MonsterMove; attackName?: string; ability?: MonsterAbilityUse }
+  // A legendary action names its option, and the attack or ability it buys
+  // (attackName, ability); a lair action its option's number and save.
+  | {
+      card: "monster";
+      enemyId: string;
+      action: "attack" | "ability" | "flee" | "legendary" | "lair" | MonsterMove;
+      attackName?: string;
+      ability?: MonsterAbilityUse;
+      legendary?: string;
+      lair?: MonsterLairUse;
+    }
 ) &
   HandIntentExtras;
 
@@ -62,6 +75,13 @@ export type MonsterAbilityUse = {
   halfOnSave?: boolean;
   condition?: string;
   rounds?: number;
+};
+
+// A lair option as lair_action takes it (its number among the fight's), and
+// the save it forces as aoe_damage takes it (legendary-logic.ts lairSave).
+export type MonsterLairUse = {
+  number: number;
+  save?: { dc: number; saveAbility: string; damage?: string; type?: string; halfOnSave?: boolean; condition?: string; rounds?: number };
 };
 
 export type HandCard = {

@@ -12,8 +12,13 @@
 //     casters may buff: Bless lands on its row with the spell's meta, the
 //     caster's lost concentration takes it off, a buff that works through a
 //     character's sheet (Aid) is refused for it, and a hostile one is still
-//     refused.
+//     refused;
+//   - at a table a person runs, the GM plays the dominated hero's turn card
+//     by card from the GM seat with the hero's own Hand, aimed at the party,
+//     and ends it with End turn; the hero's player is still refused (issue
+//     685 audit, 4.G: only "Play their turn for me" played it before).
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { caster, closeTables, enemyOf, FIGHTER, table } from "./lib/enforce-spell-kit.mjs";
 
@@ -25,8 +30,10 @@ const { characterAwaitingPlayer } = await import("../src/lib/dm/player-word.ts")
 const { listRecentMessages } = await import("../src/lib/db/messages.ts");
 const encounters = await import("../src/lib/db/encounters.ts");
 const { latestEventOfType } = await import("../src/lib/events.ts");
-const { setDmMode } = await import("../src/lib/db/campaigns.ts");
+const { joinByInviteCode, setCampaignStatus, setDmMode } = await import("../src/lib/db/campaigns.ts");
 const { activePublicEncounter } = await import("../src/lib/db/encounter-view.ts");
+const { gmTurnCompanion, gmTurnDominated } = await import("../src/lib/player-characters.ts");
+const { handTargets } = await import("../src/app/campaigns/[campaignId]/handTargets.ts");
 
 const DOMINATOR = {
   spells: ["Dominate Person"],
@@ -150,6 +157,93 @@ await test("A creature the party dominates takes the party's buffs as an ally: B
   const refused = await world.invoke("cast_buff", { characterId: cleric.id, spell: "Bless", targetEnemyId: goblin.id });
   assert.equal(refused.ok, false);
   assert.equal(enemyOf(world, goblin.id).conditions.some((entry) => /bless/i.test(entry)), false);
+});
+
+// A person in the GM seat holding no character, at the table `world` runs.
+function seatGm(world) {
+  const gm = world.addUser("gm");
+  const status = world.campaign().status;
+  setCampaignStatus(world.campaignId, "lobby");
+  assert.ok(joinByInviteCode(gm.id, world.campaign().inviteCode).campaign, "the GM joins");
+  setCampaignStatus(world.campaignId, status);
+  assert.equal(setDmMode(world.campaignId, "human", gm.id)?.dmUserId, gm.id, "the GM takes the seat");
+  return gm;
+}
+
+async function post(world, name, body, user) {
+  const handler = await world.route(`campaigns/[campaignId]/${name}`);
+  world.signIn({ id: user.id });
+  const response = await handler.POST(
+    new Request(`http://odm.test/${name}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body ?? {}) }),
+    { params: Promise.resolve({ campaignId: world.campaignId }) },
+  );
+  return { status: response.status, body: await response.json() };
+}
+
+await test("At a person's table the GM plays a dominated hero's turn card by card: its cards aim at the party and resolve, its player is refused, and the GM's End turn ends it", async () => {
+  const { world, sheets: [kara, victim], enemies: [foe] } = await table([FIGHTER, { ...FIGHTER, name: "Brin" }], 1, DOMINATOR);
+  world.dice(1);
+  const cast = await world.invoke("cast_at_player", { characterId: victim.id, casterEnemyId: foe.id, spell: "Dominate Person", saveAbility: "wis", dc: 20 });
+  world.clearDice();
+  assert.equal(cast.ok, true, cast.error);
+  const gm = seatGm(world);
+  const encounter = world.encounter();
+  const place = encounter.order.findIndex((entry) => entry.kind === "pc" && entry.characterId === victim.id);
+  encounters.saveEncounter({ ...encounter, turnIndex: place, turnBudget: null, legendary: { ...encounter.legendary, due: [] } });
+
+  // The server and the GM's screen agree whose turn the seat plays.
+  assert.equal(command.gmCompanionTurn(world.campaign(), gm.id)?.id, victim.id, "the dominated hero's turn is the GM's to play");
+  assert.equal(command.gmCompanionTurn(world.campaign(), victim.userId), null, "not its player's");
+  const view = activePublicEncounter(world.campaignId, { enemyNumbers: true });
+  assert.equal(gmTurnDominated(world.sheets(), victim.id, view.sides)?.id, victim.id);
+  assert.equal(gmTurnDominated(world.sheets(), kara.id, view.sides), null, "a hero the charm does not hold");
+  assert.equal(gmTurnCompanion(world.sheets(), victim.id), null, "no companion");
+  // Its Hand aims at the party it now fights, not at its dominator.
+  const chips = handTargets(view.enemies, world.sheets(), victim.id, undefined, view.sides);
+  assert.deepEqual(chips.filter((chip) => chip.kind === "enemy").map((chip) => chip.id), [kara.id]);
+  assert.ok(chips.some((chip) => chip.id === victim.id && chip.kind === "self"));
+  // And Kara's Hand, on her turn, may aim at Brin.
+  assert.ok(handTargets(view.enemies, world.sheets(), kara.id, undefined, view.sides).some((chip) => chip.id === victim.id && chip.kind === "enemy"));
+
+  // The attack card from the GM seat: rolled and landed on Kara at once.
+  const before = world.sheet(kara.id).currentHp;
+  world.dice(19, 6);
+  const swung = await post(world, "actions", {
+    kind: "do",
+    content: "Brin turns his blade on Kara.",
+    characterId: victim.id,
+    intent: { card: "attack", weapon: "Longsword", targetKind: "enemy", targetId: kara.id, targetName: kara.name },
+  }, gm);
+  world.clearDice();
+  assert.equal(swung.status, 200, JSON.stringify(swung.body));
+  assert.equal(swung.body.resolved, true);
+  assert.ok(world.sheet(kara.id).currentHp < before, "the swing landed on Kara");
+
+  // Its player is still refused, card or End turn.
+  const theirs = await post(world, "actions", { kind: "do", content: "Brin drops his sword.", characterId: victim.id, intent: { card: "basic", action: "dodge" } }, { id: victim.userId });
+  assert.equal(theirs.status, 409);
+  assert.equal(theirs.body.dominated, true);
+  assert.equal((await post(world, "encounter/end-turn", {}, { id: victim.userId })).status, 409);
+
+  // The GM's End turn ends it.
+  const ended = await post(world, "encounter/end-turn", {}, gm);
+  assert.equal(ended.status, 200, JSON.stringify(ended.body));
+  const now = world.encounter();
+  assert.notEqual(now.order[now.turnIndex]?.characterId, victim.id, "Brin's turn was handed on");
+});
+
+await test("The screens hand the GM seat a dominated hero's Hand, its Do and its End turn on a host that offers it", () => {
+  const read = (file) => fs.readFileSync(new URL(`../src/${file}`, import.meta.url), "utf8").replace(/\r\n/g, "\n");
+  const composer = read("app/campaigns/[campaignId]/Composer.tsx");
+  assert.match(composer, /const gmDominated = gmCompanions && hostOffers\(capabilities, "gmDominatedTurns"\)/);
+  assert.match(composer, /gmDominated && Boolean\(gmTurnDominated\(sheets, current\.id, hand\.encounter\?\.sides\)\)/);
+  assert.match(composer, /runsDominated=\{gmDominated\}/);
+  const hand = read("app/campaigns/[campaignId]/Hand.tsx");
+  assert.match(hand, /runsDominated && !reactionsOnly \? gmTurnDominated\(sheets, turnId, encounter\.sides\)/);
+  assert.match(hand, /handTargets\(encounter\.enemies, sheets, sheet\?\.id, edges, encounter\.sides\)/);
+  const view = read("app/campaigns/[campaignId]/SessionView.tsx");
+  assert.match(view, /const gmDominated = gmCompanions && hostOffers\(capabilities, "gmDominatedTurns"\)/);
+  assert.match(view, /heldHero && turnSheet\?\.id === heldHero\.id/, "the box opens on the dominated hero's turn");
 });
 
 closeTables();

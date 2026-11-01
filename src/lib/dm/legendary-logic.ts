@@ -1,10 +1,10 @@
 import { groupTraits } from "@/lib/bestiary/block-sections";
 import { legendaryCountIn } from "@/lib/dm/ability-entries";
-import type { EnemyStats } from "@/lib/bestiary/statblock";
-import { normalizeAbilityLedgers, type AbilityLedger } from "@/lib/dm/monster-abilities";
+import type { EnemyAttack, EnemyStats } from "@/lib/bestiary/statblock";
+import { findMonsterAbility, normalizeAbilityLedgers, type AbilityLedger, type MonsterAbility } from "@/lib/dm/monster-abilities";
 import { ABILITY_WORDS, parseSaveEffect } from "@/lib/dm/save-effect";
 import type { ToolError } from "@/lib/dm/tool-errors";
-import { textKey } from "@/lib/language/text-logic";
+import { containsPhrase, textKey } from "@/lib/language/text-logic";
 import { isNamed } from "@/lib/srd/feature-names";
 import { normalizeEnemyTurns, type EnemyTurns } from "@/lib/dm/enemy-turn-logic";
 
@@ -265,6 +265,91 @@ export function spendLegendaryAction(
   return { ok: true, pool: { ...pool, actions: pool.actions - action.cost }, action };
 }
 
+// What a legendary action buys once it is spent, read one way for the tool's
+// next step (legendary-tools.ts handleLegendaryAction) and for the GM's card
+// (src/lib/dm/enemy-actions-view.ts), so the card plays exactly what the tool
+// hands on: one of its attacks, an ability with numbers of its own (Wing
+// Attack's save), a cantrip from its list, or nothing the engine rolls
+// (Detect, a move), which the GM narrates.
+export type LegendaryPurchase =
+  | { kind: "attack"; attack: EnemyAttack }
+  | { kind: "ability"; ability: MonsterAbility }
+  | { kind: "cantrip" }
+  | { kind: "none" };
+
+export function legendaryPurchase(
+  stats: Pick<EnemyStats, "attacks" | "legendaryAttacks" | "traits" | "specials">,
+  action: LegendaryAction,
+): LegendaryPurchase {
+  // The attack by its whole name: the action is named for it ("Bite", "Tail
+  // Attack"), or its line makes or uses it ("makes one tail attack", "uses
+  // its Paralyzing Touch"), the longest name first, so "its tail spike" is the
+  // Tail Spike and not the Tail.
+  const named = textKey(action.name);
+  const attack = [...(stats.attacks ?? []), ...(stats.legendaryAttacks ?? [])].sort((a, b) => b.name.length - a.name.length).find((entry) => {
+    const name = textKey(entry.name.replace(/\([^)]*\)/g, ""));
+    return (
+      named === name ||
+      named === `${name} attack` ||
+      [`${name} attack`, `${name} attacks`, `its ${name}`, `makes one ${name}`].some((phrase) => containsPhrase(action.text, phrase))
+    );
+  });
+  if (attack) {
+    return { kind: "attack", attack };
+  }
+  const ability = findMonsterAbility(stats, action.name);
+  if (ability && (ability.save || ability.damage)) {
+    return { kind: "ability", ability };
+  }
+  return /casts? a cantrip/i.test(action.text) ? { kind: "cantrip" } : { kind: "none" };
+}
+
+// When a legendary action may be taken (SRD 5.1, Legendary Actions: "only
+// one legendary action option can be used at a time and only at the end of
+// another creature's turn"), read one way by the tool and by the GM's card.
+// One option at the end of each other creature's turn: the turn is the
+// pointer's (`turn`, turnKey), and each enemy that acts since closes a turn
+// of its own. Its own turn is the pointer on it, or its turn begun and not
+// yet taken: handed to the model by an end_turn (`handoff`), or walked past
+// at a table a person runs and held for them (`due`, enemies-due.ts), where
+// the console's form used to spend one on the creature's own turn.
+export function legendaryOpening(
+  moment: {
+    turn: string;
+    round: number;
+    onPointer: boolean;
+    actedThisRound: boolean;
+    legendary: Pick<LegendaryState, "acted" | "opportunities" | "handoff" | "due">;
+  },
+  enemy: { id: string; displayName: string },
+): { key: string; taken: string[]; refusal: ToolError | null } {
+  const begun = Boolean(moment.legendary.handoff?.enemyIds.includes(enemy.id) || moment.legendary.due?.includes(enemy.id));
+  if (moment.onPointer || (begun && !moment.actedThisRound)) {
+    return {
+      key: "",
+      taken: [],
+      refusal: {
+        error: `It is ${enemy.displayName}'s own turn; legendary actions come at the end of other creatures' turns. Take its turn first: enemy_attack, or cast_at_player / aoe_damage with casterEnemyId and enemyAbility or spell.`,
+        retry: true,
+      },
+    };
+  }
+  const acted = moment.legendary.acted?.round === moment.round ? moment.legendary.acted.ids.length : 0;
+  const key = `${moment.turn}:${acted}`;
+  const taken = moment.legendary.opportunities?.key === key ? moment.legendary.opportunities.ids : [];
+  if (taken.includes(enemy.id)) {
+    return {
+      key,
+      taken,
+      refusal: {
+        error: `${enemy.displayName} has already taken a legendary action at the end of this turn. It takes one option at the end of each other creature's turn; the next comes when another creature's turn ends. Nothing was spent.`,
+        retry: true,
+      },
+    };
+  }
+  return { key, taken, refusal: null };
+}
+
 export function spendResistance(pool: LegendaryPool): LegendaryPool | null {
   return pool.resistances > 0 ? { ...pool, resistances: pool.resistances - 1 } : null;
 }
@@ -334,12 +419,25 @@ export function pickLairOption(options: string[], wanted: string): string | null
   return options.find((line) => textKey(line) === text) ?? null;
 }
 
-// How a printed lair option resolves through the engine: a save the server
-// rolls for each creature it reaches (aoe_damage), with the DC, the ability
-// and the dice the line prints, and the condition a failure lays as the save
-// reader finds it (src/lib/dm/save-effect.ts). Null for an option with no
-// save.
-export function lairResolution(line: string): string | null {
+// The save a printed lair option forces, as aoe_damage takes it: the DC, the
+// ability and the dice the line prints, and what a failure lays as the save
+// reader finds it (src/lib/dm/save-effect.ts). `laid` lists every condition;
+// aoe_damage lays one, so `condition` is set only when there is one. Null for
+// an option with no save. Read by the tool's next step (lairResolution) and
+// by the GM's lair card (src/lib/battlemap/monster-hand.ts), which makes the
+// same aoe_damage call.
+export type LairSave = {
+  dc: number;
+  saveAbility: string;
+  damage?: string;
+  type?: string;
+  halfOnSave?: boolean;
+  condition?: string;
+  rounds?: number;
+  laid: string[];
+};
+
+export function lairSave(line: string): LairSave | null {
   const save = /DC\s*(\d+)\s+(str|dex|con|int|wis|cha)[a-z]*\s+sav(?:e|ing throw)/i.exec(line);
   if (!save) {
     return null;
@@ -349,16 +447,94 @@ export function lairResolution(line: string): string | null {
   const word = Object.keys(ABILITY_WORDS).find((name) => ABILITY_WORDS[name] === ability) ?? "";
   const effect = parseSaveEffect(line.replace(save[0], `DC ${save[1]} ${word} saving throw`));
   const laid = effect.condition ? [effect.condition, ...(effect.also ?? [])] : [];
+  return {
+    dc: Number(save[1]),
+    saveAbility: ability,
+    ...(damage ? { damage: damage[1].replace(/\s+/g, ""), type: damage[2].toLowerCase() } : {}),
+    // "or half as much damage on a successful one", as the save reader finds
+    // it; a line without it deals nothing on a success, where aoe_damage
+    // would otherwise halve.
+    ...(damage ? { halfOnSave: Boolean(effect.halfOnSave) } : {}),
+    ...(laid.length === 1 ? { condition: laid[0], ...(effect.rounds ? { rounds: effect.rounds } : {}) } : {}),
+    ...(laid.length > 1 && effect.rounds ? { rounds: effect.rounds } : {}),
+    laid,
+  };
+}
+
+// How a printed lair option resolves through the engine: a save the server
+// rolls for each creature it reaches (aoe_damage). Null for an option with
+// no save.
+export function lairResolution(line: string): string | null {
+  const save = lairSave(line);
+  if (!save) {
+    return null;
+  }
   // aoe_damage lays one condition on a failed save; a line that lays more
   // leaves the rest to set_condition on each creature that failed.
-  const one = laid.length === 1 ? `, condition "${laid[0]}"${effect.rounds ? `, rounds ${effect.rounds}` : ""}` : "";
-  return `Resolve it now with aoe_damage: dc ${save[1]}, saveAbility "${ability}"${
-    damage ? `, damage "${damage[1].replace(/\s+/g, "")}", type "${damage[2].toLowerCase()}"` : ""
+  const one = save.condition ? `, condition "${save.condition}"${save.rounds ? `, rounds ${save.rounds}` : ""}` : "";
+  return `Resolve it now with aoe_damage: dc ${save.dc}, saveAbility "${save.saveAbility}"${
+    save.damage ? `, damage "${save.damage}", type "${save.type}"${save.halfOnSave ? "" : ", halfOnSave false"}` : ""
   }${one}, and the enemyIds and characterIds of the creatures it reaches; the server rolls every save${one ? " and lays the condition on a failure." : "."} ${
-    laid.length > 1
-      ? `A failure lays ${laid.join(" and ")}${effect.rounds ? ` for ${effect.rounds} round${effect.rounds === 1 ? "" : "s"}` : ""}: set it on each creature that failed with set_condition.`
+    save.laid.length > 1
+      ? `A failure lays ${save.laid.join(" and ")}${save.rounds ? ` for ${save.rounds} round${save.rounds === 1 ? "" : "s"}` : ""}: set it on each creature that failed with set_condition.`
       : one
         ? ""
         : "Lay what a failure brings as the line says."
   }`.trim();
+}
+
+type LairHolder = { id: string; stats: Pick<EnemyStats, "traits" | "lairOptions"> };
+
+// Every lair option the fight's creatures print, in the order lair_action
+// numbers them. A book's printed lair options (Tome of Beasts' dragons) are
+// offered in a fight the DM started in the lair; they never make one a lair
+// fight.
+export function legendaryLairLines(enemies: LairHolder[]): string[] {
+  return enemies.flatMap((enemy) => [...(legendaryProfile(enemy.stats)?.lairActions ?? []), ...(enemy.stats.lairOptions ?? [])]);
+}
+
+// A block that says its lair "can't use the same effect two rounds in a row".
+export function lairForbidsRepeat(enemies: LairHolder[]): boolean {
+  return enemies.some((enemy) => (enemy.stats.traits ?? []).some((line) => /same (?:lair )?(?:effect|action) two rounds in a row/i.test(line)));
+}
+
+// The refusal of the option the lair took last round, where its block
+// forbids that, or null.
+export function lairRepeatRefusal(
+  options: string[],
+  picked: string,
+  legendary: Pick<LegendaryState, "lairLast" | "lairUsedRound">,
+  due: number,
+  noRepeat: boolean,
+): string | null {
+  if (options.length > 1 && noRepeat && legendary.lairLast === picked && legendary.lairUsedRound === due - 1) {
+    return `The lair cannot use the same effect two rounds in a row; it used this one last round. Choose another: ${options.filter((line) => line !== picked).join(" ")}`;
+  }
+  return null;
+}
+
+// The lair's options while its moment is open (initiative count 20 has
+// passed this move and the lair has not acted on it), each numbered as
+// lair_action takes it, with the creature whose block prints it and the
+// tool's own refusal of it. Null when the lair may not act now: the GM's
+// lair cards (src/lib/dm/enemy-actions-view.ts) are offered only then.
+export type LairChoice = { number: number; line: string; enemyId: string; refusal: string | null };
+
+export function lairChoices(
+  enemies: LairHolder[],
+  legendary: Pick<LegendaryState, "lair" | "lairDue" | "lairUsedRound" | "lairLast">,
+): LairChoice[] | null {
+  const due = legendary.lairDue;
+  if (!legendary.lair || due === undefined || legendary.lairUsedRound === due) {
+    return null;
+  }
+  const options = legendaryLairLines(enemies);
+  const noRepeat = lairForbidsRepeat(enemies);
+  let number = 0;
+  return enemies.flatMap((enemy) =>
+    legendaryLairLines([enemy]).map((line) => {
+      number += 1;
+      return { number, line, enemyId: enemy.id, refusal: lairRepeatRefusal(options, line, legendary, due, noRepeat) };
+    }),
+  );
 }
