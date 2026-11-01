@@ -18,6 +18,7 @@ import { RefPicker } from "@/app/workshop/tables/RefPicker";
 import { DictateField } from "@/components/DictateField";
 import { appendDictation } from "@/lib/dictation";
 import { EncounterEvents } from "@/app/workshop/encounters/EncounterEvents";
+import { groundMapOf } from "@/app/workshop/encounters/EncounterGround";
 
 // The rest of a prepared fight (docs/workshop-parity-audit.md phase 13):
 // where each enemy starts on the linked map, where the party comes in, who
@@ -247,6 +248,7 @@ export function EncounterExtras({
         campaignId={campaignId}
         slots={slots}
         hasEntry={Boolean(value.entry)}
+        map={groundMapOf(map)}
         value={value.events ?? []}
         onChange={(events) => set({ events })}
       />
