@@ -160,6 +160,31 @@ export default {
         }
         return out;
       }, names);
+    // The order's four buttons on a row share one line, in the night theme
+    // and the day one: a row whose buttons split, one left on the name's
+    // line, is named.
+    const orderSplit = async () => {
+      const found = [];
+      const before = await page.evaluate(() => document.documentElement.dataset.theme ?? "");
+      for (const theme of ["dark", "light"]) {
+        await page.evaluate((mode) => (document.documentElement.dataset.theme = mode), theme);
+        await untilStill(page).catch(() => undefined);
+        found.push(
+          ...(await page.evaluate(() =>
+            [...document.querySelectorAll('button[aria-label$=" up the order"]')].flatMap((up) => {
+              if (up.offsetParent === null) return [];
+              const name = up.getAttribute("aria-label").replace(/^Move /, "").replace(/ up the order$/, "");
+              const tops = [`Move ${name} up the order`, `Move ${name} down the order`, `Delay ${name} to the bottom of the round`, `Take ${name} out of the order`]
+                .map((label) => [...document.querySelectorAll("button")].find((button) => button.getAttribute("aria-label") === label && button.offsetParent !== null))
+                .map((button) => (button ? Math.round(button.getBoundingClientRect().top) : null));
+              return tops.some((top) => top === null) || Math.max(...tops) - Math.min(...tops) > 1 ? [`${name}: ${tops.join("/")}`] : [];
+            }),
+          )).map((line) => `${theme}: ${line}`),
+        );
+      }
+      await page.evaluate((mode) => (document.documentElement.dataset.theme = mode), before);
+      return found;
+    };
     // A card in a fan lies partly under its neighbours: it is pressed where
     // it shows, as a person presses it.
     const tapCard = async (locator) => {
@@ -533,6 +558,8 @@ export default {
       await eventually(async () => (await page.getByText(sphinx.sphinx.name, { exact: true }).locator("visible=true").count()) > 0, { timeoutMs: 20_000, label: "the battle panel" });
       const cut = await clippedNames([sphinx.sphinx.name, sphinx.kara.name, "Dorn Ashby"]);
       soft(!cut.length, `the GM panel cuts names short (${cut.join(" | ")})`);
+      const split = await orderSplit();
+      soft(!split.length, `the order's buttons split across lines (${split.join(" | ")})`);
       await themes("s6-gm-panel");
 
       // ---- 7. A dominated hero's Hand in the GM seat, on his turn ----
@@ -564,7 +591,9 @@ export default {
       await eventually(async () => (await page.getByText(dominated.bran.name, { exact: true }).locator("visible=true").count()) > 0, { timeoutMs: 20_000, label: "the battle panel" });
       const cutHere = await clippedNames([dominated.bran.name, dominated.sela.name, dominated.mage.name]);
       soft(!cutHere.length, `the GM panel cuts names short (${cutHere.join(" | ")})`);
-      await t.shot("s7-gm-panel");
+      const splitHere = await orderSplit();
+      soft(!splitHere.length, `the order's buttons split across lines (${splitHere.join(" | ")})`);
+      await themes("s7-gm-panel");
 
       // ---- 8. A steered table: the console, and no monsters' Hand ----
       const { steered } = bench;

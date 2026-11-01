@@ -270,50 +270,54 @@ export function DmInitiativePanel({
                   ) : null}
                 </span>
               </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void send({ op: "move", id: entry.id, direction: "up" })}
-                aria-label={`Move ${entry.name} up the order`}
-                title="Up the order"
-                className={ROW_ICON}
-              >
-                <ChevronUp className="size-3.5" />
-              </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void send({ op: "move", id: entry.id, direction: "down" })}
-                aria-label={`Move ${entry.name} down the order`}
-                title="Down the order"
-                className={ROW_ICON}
-              >
-                <ChevronDown className="size-3.5" />
-              </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void send({ op: "delay", id: entry.id })}
-                aria-label={`Delay ${entry.name} to the bottom of the round`}
-                title="Delay to the bottom of the round"
-                className={ROW_ICON}
-              >
-                <Clock className="size-3.5" />
-              </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={async () => {
-                  if (await appConfirm(`Take ${entry.name} out of the order? They get no more turns in this fight.`, { actionLabel: "Take out" })) {
-                    void send({ op: "remove", id: entry.id });
-                  }
-                }}
-                aria-label={`Take ${entry.name} out of the order`}
-                title="Out of the order"
-                className={cn(ROW_ICON, "hover:text-red-300")}
-              >
-                <Trash2 className="size-3.5" />
-              </button>
+              {/* The row's four buttons travel together: on the name's line when
+                  they fit, all on the next when they do not, never one left behind. */}
+              <span role="group" aria-label={`Order controls for ${entry.name}`} className="ml-auto flex shrink-0 items-center">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void send({ op: "move", id: entry.id, direction: "up" })}
+                  aria-label={`Move ${entry.name} up the order`}
+                  title="Up the order"
+                  className={ROW_ICON}
+                >
+                  <ChevronUp className="size-3.5" />
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void send({ op: "move", id: entry.id, direction: "down" })}
+                  aria-label={`Move ${entry.name} down the order`}
+                  title="Down the order"
+                  className={ROW_ICON}
+                >
+                  <ChevronDown className="size-3.5" />
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void send({ op: "delay", id: entry.id })}
+                  aria-label={`Delay ${entry.name} to the bottom of the round`}
+                  title="Delay to the bottom of the round"
+                  className={ROW_ICON}
+                >
+                  <Clock className="size-3.5" />
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={async () => {
+                    if (await appConfirm(`Take ${entry.name} out of the order? They get no more turns in this fight.`, { actionLabel: "Take out" })) {
+                      void send({ op: "remove", id: entry.id });
+                    }
+                  }}
+                  aria-label={`Take ${entry.name} out of the order`}
+                  title="Out of the order"
+                  className={cn(ROW_ICON, "hover:text-red-300")}
+                >
+                  <Trash2 className="size-3.5" />
+                </button>
+              </span>
               {/* A line of its own under the name, so a narrow panel never
                   cuts the words off. */}
               {side ? (
