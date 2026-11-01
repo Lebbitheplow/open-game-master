@@ -50,6 +50,7 @@ import { partsTaken, partsTotal, splitDamageExpression, type DamagePart } from "
 import { castingHold, outOfReach } from "@/lib/dm/spell-planes";
 import { castPrismaticSpray, isPrismaticSpray } from "@/lib/dm/prismatic";
 import type { ToolResult } from "@/lib/dm/tool-errors";
+import { swallowCover } from "@/lib/dm/swallow";
 
 export { aoeDamageTool } from "@/lib/dm/aoe-damage-tool";
 const aoeArgsSchema = z.object({
@@ -232,6 +233,28 @@ export function handleAoeDamage(
       const error = `${beyondReach.join(", ")} ${beyondReach.length === 1 ? "is" : "are"} out of reach of the Material Plane; the area catches nobody. Nothing was spent; aim it elsewhere.`;
       return args.casterCharacterId ? { error, refused: "rules" } : { error, retry: true };
     }
+  }
+  // Swallowed (src/lib/dm/swallow.ts): an area from outside reaches nobody
+  // inside a creature, and a swallowed caster's reaches only that creature.
+  // A blast laid on the board leaves them out; one named is refused, to be
+  // aimed again.
+  const coverFrom = args.casterEnemyId
+    ? { kind: "enemy" as const, id: resolveEnemyRef(encounter.id, args.casterEnemyId)?.id ?? args.casterEnemyId }
+    : args.casterCharacterId
+      ? { kind: "sheet" as const, id: resolveSheetRef(args.casterCharacterId, sheets, sheetsById)?.id ?? args.casterCharacterId }
+      : null;
+  const covered = [
+    ...enemyTargets.filter((enemy) => swallowCover(coverFrom, { kind: "enemy", id: enemy.id })),
+    ...pcTargets.filter((sheet) => swallowCover(coverFrom, { kind: "sheet", id: sheet.id })),
+  ];
+  if (covered.length && !caughtByArea) {
+    const first = covered[0];
+    const why = swallowCover(coverFrom, "displayName" in first ? { kind: "enemy", id: first.id } : { kind: "sheet", id: first.id });
+    return { error: `${why} Aim the area without ${covered.map((entry) => ("displayName" in entry ? entry.displayName : entry.name)).join(", ")}. Nothing was spent.`, retry: true };
+  }
+  if (covered.length) {
+    enemyTargets.splice(0, enemyTargets.length, ...enemyTargets.filter((enemy) => !covered.includes(enemy)));
+    pcTargets.splice(0, pcTargets.length, ...pcTargets.filter((sheet) => !covered.includes(sheet)));
   }
   // A Globe of Invulnerability or an Antimagic Field keeps the creatures
   // inside it out of a spell's area from outside (src/lib/dm/zone-rules.ts):

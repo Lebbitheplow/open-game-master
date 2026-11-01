@@ -199,16 +199,16 @@ export const castBuffTool: ToolDef = {
             properties: { variant: { type: "string" }, count: { type: "integer", minimum: 1, maximum: 40 } },
             required: ["variant", "count"],
           },
-          description: "Animate Dead or Animate Objects only, instead of variant: each target's own form and how many ([{variant:'skeleton',count:2},{variant:'zombie',count:1}]); the server holds them to the slot's budget.",
+          description: "Animate Dead or Animate Objects only, instead of variant: each target's own form and how many. For example [{variant:'skeleton',count:2},{variant:'zombie',count:1}]; the server holds them to the slot's budget.",
         },
         ritual: {
           type: "boolean",
-          description: "A summoning ritual (Find Familiar, Unseen Servant, Phantom Steed) cast as one: 10 extra minutes, no slot spent.",
+          description: "A summoning ritual cast as one: 10 extra minutes, no slot spent. For Find Familiar, Unseen Servant or Phantom Steed.",
         },
         kind: {
           type: "string",
           enum: ["celestial", "fey", "fiend"],
-          description: "Find Steed or Find Familiar: what the creature in variant is instead of its own kind, the caster's choice. Default: celestial.",
+          description: "Find Steed or Find Familiar: the caster's choice of kind for the creature in variant. Default: celestial.",
         },
         endSpell: {
           type: "string",

@@ -49,7 +49,7 @@ import { combatFeatureSpend } from "@/lib/dm/combat-features";
 import { srdFeatureSpend } from "@/lib/dm/srd-feature-spends";
 import { handleStabilize } from "@/lib/dm/stabilize";
 import { canonicalCondition, handleSetCondition } from "@/lib/dm/set-condition";
-import { exhaustionPatch, namesExhaustion, PRONE, regainBlockedBy, STABILIZE_METHODS, SUFFOCATING } from "@/lib/dm/vitals-logic";
+import { exhaustionPatch, namesExhaustion, NEGATIVE_ENERGY, PRONE, regainBlockedBy, STABILIZE_METHODS, SUFFOCATING } from "@/lib/dm/vitals-logic";
 import { castMarkCharge, prepareResourceCharge } from "@/lib/dm/resource-turn";
 import { planCounterReaction } from "@/lib/dm/reaction-counters";
 import { channelOptions, channelOptionsHeld, optionCost } from "@/lib/dm/option-costs";
@@ -113,6 +113,7 @@ import { unknownSheetRef } from "@/lib/dm/rolls";
 import { classWords } from "@/lib/sheet-words";
 import { healCeiling } from "@/lib/dm/afflictions";
 import { spreadGear } from "@/lib/dm/gear-zones";
+import { actorOfCall, withActor } from "@/lib/dm/acting-party";
 
 // DM stat authority: the model changes sheets ONLY through these tools.
 // Every mutation is server-clamped, audit-logged, and published live.
@@ -544,7 +545,21 @@ export function castBarred(
 
 // Applies one mutation tool call. Returns the compact tool result the model
 // narrates from. Never throws: errors come back as {error} results.
+// Whose call it is, for what its damage counts toward (acting-party.ts): a
+// feature's spend or an item's use that hurts a creature.
 export function applyDmMutation(
+  campaign: Campaign,
+  turnId: string,
+  toolName: string,
+  rawArguments: string,
+  sheets: CharacterSheet[],
+  sheetsById: Map<string, CharacterSheet>,
+  turn?: DmTurn,
+): MutationOutcome {
+  return withActor(actorOfCall(toolName, rawArguments), () => dmMutation(campaign, turnId, toolName, rawArguments, sheets, sheetsById, turn));
+}
+
+function dmMutation(
   campaign: Campaign,
   turnId: string,
   toolName: string,
@@ -869,7 +884,9 @@ export function applyDmMutation(
             error:
               blocked === SUFFOCATING
                 ? `${target.name} is still without air and cannot regain hit points until they can breathe. Get them to air, clear the suffocating condition, then heal them.`
-                : `${target.name} is gripped by Chill Touch and cannot regain hit points until its caster's next turn starts.`,
+                : blocked === NEGATIVE_ENERGY
+                  ? `${target.name} is in the grip of negative energy and cannot regain hit points until it lifts at the end of its source's next turn.`
+                  : `${target.name} is gripped by Chill Touch and cannot regain hit points until its caster's next turn starts.`,
             refused: "rules",
           },
         };

@@ -3,18 +3,31 @@ import type { TargetEdge } from "@/lib/battlemap/view-tactics";
 import { effectiveMaxHp } from "@/lib/dm/condition-logic";
 import type { PublicEncounter } from "@/lib/db/encounter-view";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { effectiveAcFor } from "@/lib/srd";
 
 // Split from Hand.tsx, which offers these chips on the aim bar.
-// The chips a raised card can be aimed at: the living enemies, with what the
-// board says of each from this character (cover, flanking), and the party.
+// The chips a raised card can be aimed at: the living creatures on the other
+// side of the fight from this character, with what the board says of each
+// (cover, flanking), and the characters on its own side.
+//
+// Sides (issue 503, the encounter's `sides`): a hero a Dominate spell from
+// the foes holds fights for them, and the GM plays its turn with its own
+// Hand (issue 685 audit, 4.G); its targets are the party, not the foes it
+// now fights beside. The other way round, a character on the foes' side (a
+// turncoat companion, a dominated hero) is a target for the party's attacks,
+// and a creature the party dominates is no longer one. A fight with no
+// exceptions sends no sides, and the chips are the enemy rows and the party.
 export function handTargets(
   enemies: PublicEncounter["enemies"],
   sheets: CharacterSheet[],
   selfId: string | undefined,
   edges: Record<string, TargetEdge> | undefined,
+  sides?: PublicEncounter["sides"],
 ): HandTargetChip[] {
+  const sideOf = (id: string, kind: "sheet" | "enemy") => sides?.[id] ?? (kind === "sheet" ? "party" : "foe");
+  const mine = selfId ? sideOf(selfId, "sheet") : "party";
   const enemyChips: HandTargetChip[] = enemies
-    .filter((enemy) => enemy.status === "alive")
+    .filter((enemy) => enemy.status === "alive" && sideOf(enemy.id, "enemy") !== mine)
     .map((enemy) => ({
       id: enemy.id,
       name: enemy.name,
@@ -32,8 +45,21 @@ export function handTargets(
         .filter(Boolean)
         .join(" · "),
     }));
-  const party: HandTargetChip[] = sheets
-    .filter((entry) => !entry.deathSaves?.dead)
+  const living = sheets.filter((entry) => !entry.deathSaves?.dead);
+  // Characters on the other side, struck as foes are (src/lib/dm/sheet-foe.ts).
+  const sheetFoes: HandTargetChip[] = living
+    .filter((entry) => entry.id !== selfId && sideOf(entry.id, "sheet") !== mine)
+    .map((entry) => ({
+      id: entry.id,
+      name: entry.name,
+      kind: "enemy",
+      ac: effectiveAcFor(entry),
+      conditions: entry.conditions,
+      ...(edges?.[entry.id] ? { edge: edges[entry.id] } : {}),
+      note: `${entry.currentHp}/${effectiveMaxHp(entry)} hp`,
+    }));
+  const party: HandTargetChip[] = living
+    .filter((entry) => entry.id === selfId || sideOf(entry.id, "sheet") === mine)
     .map((entry) => ({
       id: entry.id,
       name: entry.name,
@@ -41,5 +67,5 @@ export function handTargets(
       conditions: entry.conditions,
       note: `${entry.currentHp}/${effectiveMaxHp(entry)} hp`,
     }));
-  return [...enemyChips, ...party];
+  return [...enemyChips, ...sheetFoes, ...party];
 }

@@ -39,6 +39,7 @@ import { jumpLine } from "@/lib/srd/jump";
 import { sizeForRace } from "@/lib/srd";
 import { proneCharge } from "@/lib/battlemap/board-move";
 import { refuseDuringBreak } from "@/lib/dm/table-break";
+import { swallowWalk } from "@/lib/dm/swallow";
 
 export const runtime = "nodejs";
 
@@ -157,6 +158,15 @@ export async function POST(
   const speed = turnBudget.speed;
   const budget = readied ? speedToTiles(speed) : turnBudget.tiles;
   const fullTiles = readied ? speedToTiles(speed) : turnBudget.fullTiles;
+  // Swallowed (src/lib/dm/swallow.ts): inside a living creature the route
+  // says so, and how out; out of a dead one the walk is the climb out of its
+  // corpse.
+  const climb = campaign && !readied ? swallowWalk(campaign, encounter, map, sheet, token) : null;
+  if (climb) {
+    return "error" in climb
+      ? Response.json({ error: climb.error }, { status: 409 })
+      : Response.json({ ...climb, view: buildPlayerMapView(campaignId, user.id) });
+  }
   if (speed <= 0) {
     const cause =
       sheet.conditions.join(", ") ||

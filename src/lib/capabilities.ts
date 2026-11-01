@@ -168,6 +168,18 @@ export const SERVER_FEATURES = {
   // host's prep routes refuse as an event they cannot read, so the editor
   // offers it only here.
   fightGround: true,
+  // A legendary creature's legendary actions and the lair's on initiative
+  // count 20 as cards in the GM's monsters' Hand (issue 685 audit): the
+  // `legendary` and `lair` fields on an enemy's actions in the GM's view of
+  // the fight, sent only while they can be taken. An older host sends
+  // neither, so the console's forms stay the only way there.
+  legendaryCards: true,
+  // The GM seat plays a hero dominated by the other side card by card at a
+  // table a person runs (src/lib/dm/companion-command.ts gmCompanionTurn):
+  // the actions route takes that hero's cards and Do from the GM seat, and
+  // End turn ends the turn. An older host refuses them, so its Hand and box
+  // stay closed there and "Play their turn for me" plays the basic turn.
+  gmDominatedTurns: true,
   // The creature picker on a summoning spell's card (issue 685): GET
   // /api/campaigns/[id]/summons and the card's `count`, which an older host
   // answers with a 404 and drops unread, so its summon cards ask nothing

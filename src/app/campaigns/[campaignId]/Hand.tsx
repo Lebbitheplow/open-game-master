@@ -1,6 +1,6 @@
 "use client";
 
-import { companionReactors, gmTurnCompanion, initiativeCharacter, offTurnReactors, selectedCharacter } from "@/lib/player-characters";
+import { companionReactors, gmTurnCompanion, gmTurnDominated, initiativeCharacter, offTurnReactors, selectedCharacter } from "@/lib/player-characters";
 
 import { ChevronDown, CircleHelp, SlidersHorizontal } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
@@ -140,6 +140,7 @@ function HandInner({
   genre,
   multiCharacter,
   runsTable = false,
+  runsDominated = false,
   reactionsOnly = false,
   onComposeAs,
 }: {
@@ -173,6 +174,9 @@ function HandInner({
   // A person running the table: on the turn of a companion nobody commands,
   // the Hand is that companion's (player-characters.ts gmTurnCompanion).
   runsTable?: boolean;
+  // And on the turn of a hero the other side dominates, that hero's
+  // (player-characters.ts gmTurnDominated), on a host that takes its cards.
+  runsDominated?: boolean;
   // Only the reactions the person's characters may take now: the GM seat
   // on a turn that is not one of theirs, under the monsters' hand. Nothing
   // shows while none is offered.
@@ -192,11 +196,12 @@ function HandInner({
     () =>
       initiativeCharacter(sheets, meUserId, turnId) ??
       (runsTable && !reactionsOnly ? gmTurnCompanion(sheets, turnId) : null) ??
+      (runsDominated && !reactionsOnly ? gmTurnDominated(sheets, turnId, encounter.sides) : null) ??
       selectedCharacter(sheets, meUserId, activeSheetId) ??
       // The GM seat holding no hero of its own answers for the companions it
       // plays: the first of them heads its reactions.
       (reactionsOnly && companionsReact ? (companionReactors(sheets, meUserId, undefined, runsTable)[0] ?? null) : null),
-    [sheets, meUserId, activeSheetId, turnId, runsTable, reactionsOnly, companionsReact],
+    [sheets, meUserId, activeSheetId, turnId, runsTable, runsDominated, reactionsOnly, encounter.sides, companionsReact],
   );
   const floorTurn = floor.mode === "initiative" ? floor.userIds.includes(meUserId) : !inputBlocked;
   const floorName = floor.mode === "initiative" ? floor.currentName : undefined;
@@ -330,8 +335,8 @@ function HandInner({
   );
 
   const targets = useMemo<HandTargetChip[]>(
-    () => handTargets(encounter.enemies, sheets, sheet?.id, edges),
-    [encounter.enemies, sheets, sheet?.id, edges],
+    () => handTargets(encounter.enemies, sheets, sheet?.id, edges, encounter.sides),
+    [encounter.enemies, sheets, sheet?.id, edges, encounter.sides],
   );
   const enemyTargets = useMemo(() => targets.filter((target) => target.kind === "enemy"), [targets]);
   const partyTargets = useMemo(() => targets.filter((target) => target.kind !== "enemy"), [targets]);

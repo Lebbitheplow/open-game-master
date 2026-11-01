@@ -41,6 +41,8 @@ const COST_SHORT: Record<HandCost, string> = {
   reaction: "Reaction",
   rider: "Rider",
   free: "Free",
+  legendary: "Legendary",
+  lair: "Lair",
 };
 
 export function typeLabel(type: HandCardType): string {

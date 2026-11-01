@@ -1,7 +1,7 @@
 "use client";
 
 import { romanceCueAllowed } from "@/lib/dm/director-logic";
-import { gmTurnCompanion, initiativeCharacter, selectedCharacter, typedReactors as typedReactorsOf } from "@/lib/player-characters";
+import { gmTurnCompanion, gmTurnDominated, initiativeCharacter, selectedCharacter, typedReactors as typedReactorsOf } from "@/lib/player-characters";
 import { useThemePrefs } from "@/lib/theme-mode";
 import { LevelUpMoment, LootMoment, MomentVeil, RestMoment, TravelBanner } from "@/app/campaigns/[campaignId]/Moments";
 import { CoordinationPanel } from "@/app/campaigns/[campaignId]/CoordinationPanel";
@@ -82,7 +82,7 @@ import { PrepLayer } from "@/app/campaigns/[campaignId]/CampaignPrep";
 import { SessionBanner, bannerButtonClass } from "@/app/campaigns/[campaignId]/SessionBanner";
 import { TestFightBanner } from "@/app/campaigns/[campaignId]/TestFightBanner";
 import { workshopHref } from "@/lib/workshop/links";
-import { aiRunsTest } from "@/lib/workshop/test-seats-logic";
+import { aiRunsFoes as aiRunsFoesAt } from "@/lib/workshop/test-seats-logic";
 import { isPrimaryDm } from "@/lib/dm/viewer";
 import Link from "next/link";
 import { SidePanel } from "@/app/campaigns/[campaignId]/SidePanel";
@@ -482,14 +482,20 @@ export function SessionView({
   // play (player-characters.ts gmTurnCompanion), with its Hand and its Do,
   // on a host that takes them (capabilities.ts gmCompanionTurns).
   const capabilities = useCapabilities();
-  // A test fight the AI GM runs (src/lib/workshop/test-seats-logic.ts): the
-  // author steers from the GM seat, and the enemies and the allies nobody
-  // commands are the AI's to play, not the seat's.
-  const aiRunsFoes = Boolean(state.testFight) && aiRunsTest(campaign?.gameSettings?.dmMode);
+  // A table the AI GM runs with a person steering from the GM seat, live or
+  // a test fight (src/lib/workshop/test-seats-logic.ts aiRunsFoes): the
+  // enemies and the allies nobody commands are the AI's to play, not the
+  // seat's, so it is shown neither's Hand.
+  const aiRunsFoes = aiRunsFoesAt(campaign?.gameSettings?.dmMode);
   const gmCompanions = caps.role === "dm" && !aiRunsFoes && !state.encounter?.enemyTurns && hostOffers(capabilities, "gmCompanionTurns");
+  // A hero the other side dominates is the GM's to play card by card too
+  // (companion-command.ts gmCompanionTurn), on a host that takes its cards.
+  const gmDominated = gmCompanions && hostOffers(capabilities, "gmDominatedTurns");
+  const heldHero = gmDominated ? gmTurnDominated(sheets, turnCharacterId(state.encounter), state.encounter?.sides) : null;
   const turnSheet =
     initiativeCharacter(sheets, me?.id ?? "", turnCharacterId(state.encounter)) ??
-    (gmCompanions ? gmTurnCompanion(sheets, turnCharacterId(state.encounter)) : null);
+    (gmCompanions ? gmTurnCompanion(sheets, turnCharacterId(state.encounter)) : null) ??
+    heldHero;
   const actingSheet = turnSheet ?? mySheet;
   // Speaking as, for a reaction typed in the box (issue 685): the box speaks
   // for the hero whose turn it is, so words for another of the person's
@@ -515,8 +521,9 @@ export function SessionView({
     () => ({ acting: actingSheet?.name ?? "", reactors: typedReactors, value: speakingAs?.id ?? null, onChange: setReactAs }),
     [actingSheet?.name, typedReactors, speakingAs?.id, setReactAs],
   );
-  // The GM seat holds a companion's turn the floor names the companion for.
-  const gmPlaysTurn = Boolean(gmCompanions && turnSheet?.isCompanion);
+  // The GM seat holds a companion's or a dominated hero's turn the floor
+  // names nobody at the table for.
+  const gmPlaysTurn = Boolean(gmCompanions && (turnSheet?.isCompanion || (heldHero && turnSheet?.id === heldHero.id)));
   // The server's notice opens the level-up dialog once, when the experience
   // lands. Closing it only puts it off: the sheet's experience still earns
   // the level, so the party card offers a Level up button until it is done.

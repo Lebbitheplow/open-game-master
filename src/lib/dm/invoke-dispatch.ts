@@ -13,6 +13,7 @@ import { handleCheckNotice, handleGroupCheck } from "@/lib/dm/check-tools";
 import { handleAddCompanion } from "@/lib/dm/companion-tools";
 import { dismissCompanion } from "@/lib/dm/companion-dismissal";
 import { applyEncounterCall, ENCOUNTER_TOOL_NAMES } from "@/lib/dm/encounter-tools";
+import { playLegendaryAction, playsWhole } from "@/lib/dm/legendary-play";
 import { handleApplyHazard } from "@/lib/dm/hazard-tools";
 import { handleSearchLore } from "@/lib/dm/lore-search";
 import { handleReadCard } from "@/lib/dm/prep-card-tool";
@@ -87,6 +88,11 @@ export type DispatchContext = {
   sheets: CharacterSheet[];
   sheetsById: Map<string, CharacterSheet>;
   realDiceUserIds: Set<string>;
+  // A call the server built itself from a stat block, inside a legendary
+  // option it plays whole (src/lib/dm/legendary-play.ts): no number or
+  // condition in it is the model's, so the AI's gate (ai-gate.ts), there to
+  // keep the model's own numbers out, has nothing to hold back.
+  serverBuilt?: boolean;
 };
 
 export async function dispatchAdjudication(
@@ -109,7 +115,7 @@ async function dispatchCall(
   const coerced = strictBooleanArgs(sentArguments);
   // The model's damage, healing and binding conditions are the server's to
   // roll (src/lib/dm/ai-gate.ts); the console keeps its free hand.
-  const gated = gateAiCall(name, coerced, { campaign, turn, sheetsById });
+  const gated = context.serverBuilt ? { args: coerced } : gateAiCall(name, coerced, { campaign, turn, sheetsById });
   if ("result" in gated) {
     return gated.result;
   }
@@ -123,6 +129,13 @@ async function dispatchCall(
       maybeProposeItemChange(campaign, turn.id, name, rawArguments, sheetsById) ??
       applyDmMutation(campaign, turn.id, name, rawArguments, sheets, sheetsById, turn).result
     );
+  }
+  // A legendary action named with what it buys needs (the GM's card, the
+  // console's form filled in): the spend and its follow-up as one step,
+  // the action given back if the engine refuses the follow-up
+  // (src/lib/dm/legendary-play.ts, issue 685 audit).
+  if (name === "legendary_action" && playsWhole(rawArguments)) {
+    return playLegendaryAction(campaign, turn, rawArguments, (tool, args) => dispatchCall(tool, JSON.stringify(args), { ...context, serverBuilt: true }));
   }
   if (ENCOUNTERS.has(name)) {
     return applyEncounterCall(campaign, turn, name, rawArguments, sheets, sheetsById, {

@@ -139,11 +139,15 @@ export function dmPlaysTurn(campaign: Campaign, entry: { characterId: string; us
   return holder === DOMINATED_TURN || (isCompanionUserId(entry.userId) && holder === entry.userId);
 }
 
-// The companion a person in the GM seat plays now: the fight's pointer rests
-// on a companion nobody commands, at a table a person runs. That person
-// plays its turn with its Hand and ends it with End turn, as they would a
-// hero's (src/lib/player-characters.ts gmTurnCompanion is the Hand's view of
-// it). Null on any other turn, at a table the AI runs, and for a player.
+// The character a person in the GM seat plays now, at a table a person runs:
+// the fight's pointer rests on a companion nobody commands, or on a player's
+// hero the other side dominates (issue 685 audit, 4.G: the GM played that
+// one only through "Play their turn for me", its basic turn). That person
+// plays the turn with its Hand and ends it with End turn, as they would a
+// hero's (src/lib/player-characters.ts gmTurnCompanion and gmTurnDominated
+// are the Hand's view of it); the hero's own player is refused it with
+// dominatedRefusal. Null on any other turn, at a table the AI runs, and for
+// a player.
 export function gmCompanionTurn(campaign: Campaign, userId: string): CharacterSheet | null {
   const seats = campaignSeats(campaign);
   if (!hasHumanDm(seats) || !isDmSeat(seats, userId)) {
@@ -151,11 +155,32 @@ export function gmCompanionTurn(campaign: Campaign, userId: string): CharacterSh
   }
   const encounter = getActiveEncounter(campaign.id);
   const current = encounter?.orderReady ? encounter.order[encounter.turnIndex] : undefined;
-  if (current?.kind !== "pc" || !current.characterId || !isCompanionUserId(current.userId)) {
+  if (current?.kind !== "pc" || !current.characterId || !dmPlaysTurn(campaign, current)) {
     return null;
   }
   const sheet = getSheetById(current.characterId);
-  return sheet?.isCompanion && dmPlaysTurn(campaign, current) ? sheet : null;
+  if (!sheet || sheet.campaignId !== campaign.id) {
+    return null;
+  }
+  return isCompanionUserId(current.userId) ? (sheet.isCompanion ? sheet : null) : dominatedByFoe(campaign.id, sheet) ? sheet : null;
+}
+
+// The character whose turn the AI plays at a table it runs, when a person in
+// the GM seat there names it: an ally nobody commands, or a hero the other
+// side dominates, while the pointer rests on it. The steering seat at such a
+// table is shown no Hand for it (SessionView.tsx), and the actions route
+// refuses its move with the reason (test-seats-logic.ts aiTurnRefusal).
+export function aiTurnNamedBySeat(campaign: Campaign, userId: string, characterId: unknown): CharacterSheet | null {
+  const seats = campaignSeats(campaign);
+  if (typeof characterId !== "string" || hasHumanDm(seats) || !isDmSeat(seats, userId)) {
+    return null;
+  }
+  const encounter = getActiveEncounter(campaign.id);
+  const current = encounter?.orderReady ? encounter.order[encounter.turnIndex] : undefined;
+  if (current?.kind !== "pc" || current.characterId !== characterId || !dmPlaysTurn(campaign, current)) {
+    return null;
+  }
+  return getSheetById(characterId);
 }
 
 // A companion nobody commands whose reaction a person in the GM seat plays

@@ -23,6 +23,8 @@ import { rollEnemySave } from "@/lib/dm/forced-save";
 import { enemyHpCap } from "@/lib/dm/monster-abilities";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { isConditionNamed } from "@/lib/srd/feature-names";
+import { swallowCreature } from "@/lib/dm/swallow";
+import { swallowRuleOf } from "@/lib/dm/swallow-logic";
 
 type Sheets = { sheets: CharacterSheet[]; sheetsById: Map<string, CharacterSheet> };
 
@@ -118,8 +120,14 @@ export function resolveRowOnHit(
       }
     }
   }
+  // Swallowed whole, as a character is (swallow.ts).
   if (rider.swallow && !saved) {
-    out.swallowed = `${attacker.displayName}'s ${attack.name} can swallow ${target.displayName}: resolve it from the block.`;
+    const swallowed = swallowCreature(campaign, turn.id, attacker, { kind: "enemy", id: target.id }, swallowRuleOf(attacker.stats, attack.name));
+    if ("swallowed" in swallowed) {
+      out.swallowed = swallowed.swallowed;
+    } else {
+      out.notSwallowed = swallowed.notSwallowed;
+    }
   }
   if (rider.manual?.length) {
     out.manual = `The server does not model this part of ${attack.name}; resolve it by hand: ${rider.manual.join(" ")}`;

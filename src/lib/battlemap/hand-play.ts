@@ -162,6 +162,8 @@ const COST_LABEL: Record<HandCost, string> = {
   reaction: "Reaction",
   rider: "Rider",
   free: "Free",
+  legendary: "Legendary action",
+  lair: "Lair action",
 };
 
 export function costLabel(cost: HandCost): string {

@@ -489,9 +489,14 @@ const FOLDED_BY_THE_HANDLER = {
 
 // Fields only a person is offered: the handler reads them, and the model's
 // tool definition leaves them out on purpose (who may see a roll or a quest,
-// which handout to take down, an uploaded picture no prompt names).
+// which handout to take down, an uploaded picture no prompt names, a
+// legendary option played whole in one call: the console's dispatch reads its
+// characters, enemy rows, square and spell in src/lib/dm/legendary-play.ts;
+// the model names one target, and makes a move, a jump or a spell with the
+// call its `next` names).
 const FOR_A_PERSON_ONLY = {
   request_roll: ["visibility"],
+  legendary_action: ["characterIds", "enemyIds", "x", "y", "spell"],
   set_quest: ["visibility"],
   dismiss_handout: ["handoutId"],
   show_handout: ["imagePath"],

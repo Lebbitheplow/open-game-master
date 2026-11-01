@@ -122,6 +122,7 @@ import { readRomanceScene, romanceSceneNotes } from "@/lib/dm/romance-scenes";
 import type { SpokenLine } from "@/lib/dm/speech";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { dispatchAdjudication } from "@/lib/dm/invoke-dispatch";
+import { playsWhole } from "@/lib/dm/legendary-play";
 import { gateAiCall } from "@/lib/dm/ai-gate";
 import { characterAwaitingPlayer } from "@/lib/dm/player-word";
 import { hitIdOf, openHits } from "@/lib/dm/last-hit";
@@ -2545,10 +2546,17 @@ async function resolveModelCall(
     if ("result" in gated) {
       return gated.result;
     }
-    const result = applyEncounterCall(campaign, turn, name, gated.args, sheets, sheetsById, {
-      realDiceUserIds,
-      toolCallId: toolCall.id ?? null,
-    }).result;
+    // A legendary option named with the creature it acts on is played whole
+    // at the console's own door (src/lib/dm/legendary-play.ts): the spend and
+    // what it buys in one call, given back if the engine refuses the rest.
+    // Fling and Swallow have no other call to make them (issue 685).
+    const result =
+      name === "legendary_action" && playsWhole(gated.args)
+        ? await dispatchAdjudication(name, gated.args, { campaign, turn, sheets, sheetsById, realDiceUserIds })
+        : applyEncounterCall(campaign, turn, name, gated.args, sheets, sheetsById, {
+            realDiceUserIds,
+            toolCallId: toolCall.id ?? null,
+          }).result;
     if (!("error" in result)) {
       turn.encounterCount += 1;
     }

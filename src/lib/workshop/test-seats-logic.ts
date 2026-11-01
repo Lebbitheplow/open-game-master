@@ -1,7 +1,8 @@
 // Who sits where at a test fight (issue 685, src/lib/workshop/test-fight.ts),
 // the pure half: the seat a runner gives the author, the allies a test may
 // bring, and what the author's console leaves to the AI at a test the AI
-// runs. No "@/" imports, so a suite loads it directly.
+// runs, and what a steering seat's cards leave to it at any table it runs.
+// No "@/" imports, so a suite loads it directly.
 
 import type { CompanionSetting } from "../schemas/game-settings-options.ts";
 import { mergedCall } from "../dm/tool-merge-logic.ts";
@@ -26,10 +27,23 @@ export function testFightDmMode(runner: "ai" | "person"): DmMode {
   return runner === "ai" ? "steered" : "human";
 }
 
-// Whether the AI GM runs a test table of this mode: the enemies, and the
-// allies nobody commands, are its to play.
-export function aiRunsTest(dmMode: DmMode | undefined): boolean {
+// Whether the AI GM plays the enemies, and the allies nobody commands, at a
+// table of this mode, live or a test: it narrates every turn, and its turn
+// plays the enemies the pointer walked past, its end playing any it left
+// (src/lib/dm/enemies-due.ts, encounter-tools.ts advanceAfterTurn). That is
+// so with nobody in a GM seat ("ai") and with a person steering beside it
+// ("steered", src/lib/dm/viewer.ts): hasHumanDm is false there, so a move
+// wakes the AI's turn (src/lib/dm/loop.ts requestDmTurn) and no person is
+// the one playing the monsters (enemies-due.ts personRunsTable).
+// The steering seat keeps the console's forms for corrections; the monsters'
+// Hand and an ally's are not theirs (issue 685 audit, section 7).
+export function aiRunsFoes(dmMode: DmMode | undefined): boolean {
   return dmMode === "steered" || dmMode === "ai";
+}
+
+// The same rule at a test table: kept by this name for its callers.
+export function aiRunsTest(dmMode: DmMode | undefined): boolean {
+  return aiRunsFoes(dmMode);
 }
 
 export function aiRunsTestTable(row: { kind: CampaignKind; gameSettings: { dmMode: DmMode } }): boolean {
@@ -71,11 +85,37 @@ export const AI_RUNS_FOES =
 export const AI_RUNS_TURNS =
   "The AI GM plays the enemies' turns at this test, and the turns of any ally nobody commands. To play an ally yourself, take command of them on their card in the Party panel.";
 
-// The refusal for a person's console call at a test the AI runs, or null.
-export function testConsoleRefusal(
+// At a live table the AI runs with a person steering, the console's forms
+// stay the steering seat's to correct the fight with; the monsters' cards
+// are the AI's turn, played twice if the seat played them too.
+export const AI_PLAYS_FOES =
+  "The AI GM plays the enemies at this table, so their cards are its to play. Ask for a move with Direct, or correct one with the console's forms.";
+
+// The refusal for a person's call in which an enemy acts, or null. At a test
+// the AI runs, every such call from the console (the author holds every seat
+// there, and the test measures the AI's play). At a live table the AI runs,
+// only a monsters' Hand card (`hand`), the console's own form going through.
+export function enemyCallRefusal(
   row: { kind: CampaignKind; gameSettings: { dmMode: DmMode } },
   name: string,
   args: Record<string, unknown>,
+  from: { hand?: boolean } = {},
 ): string | null {
-  return aiRunsTestTable(row) && enemyActsIn(name, args) ? AI_RUNS_FOES : null;
+  if (!enemyActsIn(name, args)) {
+    return null;
+  }
+  if (aiRunsTestTable(row)) {
+    return AI_RUNS_FOES;
+  }
+  return from.hand && aiRunsFoes(row.gameSettings.dmMode) ? AI_PLAYS_FOES : null;
+}
+
+// The refusal for a GM seat's move for a character whose turn the AI plays
+// at a table it runs (an ally nobody commands, a hero the other side
+// dominates): the seat's Hand for it is not offered, and an older screen
+// that still offers it hears why rather than "You need a character to act".
+export function aiTurnRefusal(row: { kind: CampaignKind }, name: string): string {
+  return row.kind === "playtest"
+    ? AI_RUNS_TURNS
+    : `The AI GM plays ${name}'s turn at this table, as it plays the enemies'. Ask for a move with Direct.`;
 }

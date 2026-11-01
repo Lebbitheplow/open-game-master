@@ -1,5 +1,10 @@
 import { signed, type HandCard, type MonsterAbilityUse, type MonsterMove } from "@/lib/battlemap/hand-core";
 import type { PublicEnemyAbility, PublicEnemyActions, PublicEnemyAttack } from "@/lib/dm/enemy-actions-view";
+import { BASE, cardKey, saveWord, type MonsterHandEnemy } from "@/lib/battlemap/monster-hand-parts";
+import { lairCard, legendaryCard } from "@/lib/battlemap/monster-hand-legendary";
+
+export type { MonsterHandEnemy } from "@/lib/battlemap/monster-hand-parts";
+export { lairTitle } from "@/lib/battlemap/monster-hand-legendary";
 import { monsterAttackIcon } from "@/lib/battlemap/attack-art";
 
 // The DM's hand: a monster's turn as cards (issue #108). A person running
@@ -12,25 +17,7 @@ import { monsterAttackIcon } from "@/lib/battlemap/attack-art";
 //
 // Pure and database-free: scripts/test-monster-hand.mjs drives every branch.
 
-export type MonsterHandEnemy = {
-  id: string;
-  name: string;
-  status: string;
-  conditions: string[];
-  actions?: PublicEnemyActions;
-};
-
 export type MonsterAdvantage = "none" | "advantage" | "disadvantage";
-
-const SAVE_WORDS: Record<string, string> = { str: "STR", dex: "DEX", con: "CON", int: "INT", wis: "WIS", cha: "CHA" };
-
-function saveWord(code: string): string {
-  return SAVE_WORDS[code.trim().toLowerCase()] ?? code.toUpperCase();
-}
-
-function cardKey(name: string): string {
-  return name.trim().toLowerCase().replace(/\s+/g, "-");
-}
 
 // "Multiattack: 2 Claw, 1 Bite" from the swings one call makes.
 export function swingsLine(swings: string[]): string {
@@ -43,14 +30,6 @@ export function swingsLine(swings: string[]): string {
   }
   return `Multiattack: ${[...counts.entries()].map(([name, count]) => `${count} ${name}`).join(", ")}. One card plays the whole routine.`;
 }
-
-const BASE = {
-  cost: "action" as const,
-  resource: "",
-  condition: "",
-  heals: false,
-  compose: false,
-};
 
 function attackCard(enemy: MonsterHandEnemy, actions: PublicEnemyActions, attack: PublicEnemyAttack): HandCard {
   return {
@@ -76,8 +55,8 @@ function attackCard(enemy: MonsterHandEnemy, actions: PublicEnemyActions, attack
   };
 }
 
-function abilityCard(enemy: MonsterHandEnemy, actions: PublicEnemyActions, ability: PublicEnemyAbility): HandCard {
-  const use: MonsterAbilityUse = {
+function abilityUse(ability: Omit<PublicEnemyAbility, "resource" | "refusal">): MonsterAbilityUse {
+  return {
     name: ability.name,
     save: ability.save,
     dc: ability.dc,
@@ -87,6 +66,10 @@ function abilityCard(enemy: MonsterHandEnemy, actions: PublicEnemyActions, abili
     ...(ability.condition ? { condition: ability.condition } : {}),
     ...(ability.rounds ? { rounds: ability.rounds } : {}),
   };
+}
+
+function abilityCard(enemy: MonsterHandEnemy, actions: PublicEnemyActions, ability: PublicEnemyAbility): HandCard {
+  const use = abilityUse(ability);
   const rules = [
     ability.halfOnSave ? "Half damage on a save." : "",
     ability.rounds ? `Lasts ${ability.rounds} round${ability.rounds === 1 ? "" : "s"}.` : "",
@@ -192,26 +175,52 @@ function moveCards(enemy: MonsterHandEnemy, actions: PublicEnemyActions): HandCa
 }
 
 // The cards one enemy holds: its attacks, its save abilities, Dash, Disengage
-// and Dodge when the host resolves them (`enemyActions`), and breaking off.
+// and Dodge when the host resolves them (`enemyActions`), its legendary and
+// lair actions while they can be taken (`legendaryCards`), and breaking off.
 // Empty for an enemy the projection carries no actions for (a player's view,
 // or an older server).
-export function deriveMonsterHand(enemy: MonsterHandEnemy, options: { enemyActions?: boolean } = {}): HandCard[] {
+export function deriveMonsterHand(enemy: MonsterHandEnemy, options: { enemyActions?: boolean; legendaryCards?: boolean } = {}): HandCard[] {
   const actions = enemy.actions;
   if (!actions) {
     return [];
   }
+  const legendary = options.legendaryCards ? actions.legendary : undefined;
   return [
     ...actions.attacks.map((attack) => attackCard(enemy, actions, attack)),
     ...actions.abilities.map((ability) => abilityCard(enemy, actions, ability)),
     ...(options.enemyActions ? moveCards(enemy, actions) : []),
+    ...(legendary
+      ? legendary.options.flatMap((option) => (option.routes.length ? option.routes.map((route) => legendaryCard(enemy, legendary, option, route)) : [legendaryCard(enemy, legendary, option, null)]))
+      : []),
+    ...(options.legendaryCards ? (actions.lair ?? []).map((option) => lairCard(enemy, option)) : []),
     fleeCard(enemy),
   ];
 }
 
 // Whether the card takes several targets at once (a breath weapon catches
-// everyone in its cone; one call spends one action).
+// everyone in its cone; one call spends one action): an ability, a
+// legendary action's ability, a lair option's save.
 export function takesManyTargets(card: HandCard): boolean {
-  return card.intent.card === "monster" && card.intent.action === "ability";
+  const intent = card.intent;
+  if (intent.card !== "monster") {
+    return false;
+  }
+  return intent.action === "ability" || (intent.action === "legendary" && intent.aim === "many") || (intent.action === "lair" && Boolean(intent.lair?.save));
+}
+
+// Whether the card rolls one of its attacks: the Roll pills (advantage) and
+// a target that may be an enemy row (a creature the party dominates).
+// Whether an enemy row may be among the card's targets (a creature the party
+// dominates, a legendary option that reaches everyone caught): the target
+// chips keep the rows.
+export function monsterAimsAtRows(card: HandCard): boolean {
+  const intent = card.intent;
+  return intent.card === "monster" && (rollsMonsterAttack(card) || takesManyTargets(card) || (intent.action === "legendary" && Boolean(intent.rows)));
+}
+
+export function rollsMonsterAttack(card: HandCard): boolean {
+  const intent = card.intent;
+  return intent.card === "monster" && (intent.action === "attack" || (intent.action === "legendary" && Boolean(intent.attackName)));
 }
 
 function listNames(names: string[]): string {
@@ -243,7 +252,82 @@ export function monsterSentence(enemyName: string, card: HandCard, targetNames: 
   if (intent.action === "dodge") {
     return `${enemyName} takes the Dodge action.`;
   }
+  if (intent.action === "legendary") {
+    return who ? `${enemyName} spends a legendary action: ${card.name} on ${who}.` : `${enemyName} spends a legendary action: ${card.name}.`;
+  }
+  if (intent.action === "lair") {
+    return who ? `The lair acts on ${who}.` : "The lair acts.";
+  }
   return `${enemyName} breaks off and flees.`;
+}
+
+// The calls a played card makes, in order: one for most cards
+// (monsterInvoke), and for a legendary or lair card the spend and then what
+// it buys, each the call the console's form would send, so the tools' rules
+// and sentences are the only ones. Null when the card still needs a target.
+// The caller stops at the first refusal.
+export function monsterCalls(
+  card: HandCard,
+  targetIds: string[],
+  advantage: MonsterAdvantage = "none",
+  rows: ReadonlySet<string> = new Set(),
+  // A legendary move's or jump's square, a spell from its list.
+  choices: { square?: { x: number; y: number } | null; spell?: string | null } = {},
+): Array<{ name: string; args: Record<string, unknown> }> | null {
+  const intent = card.intent;
+  if (intent.card !== "monster") {
+    return null;
+  }
+  if (intent.action === "legendary") {
+    // One call: the spend and what it buys, played whole on the server
+    // (src/lib/dm/legendary-play.ts), so a refused attack gives it back.
+    if (intent.aim && !targetIds.length) {
+      return null;
+    }
+    const characterIds = targetIds.filter((id) => !rows.has(id));
+    const enemyIds = targetIds.filter((id) => rows.has(id));
+    const args: Record<string, unknown> = {
+      enemyId: intent.enemyId,
+      action: intent.legendary ?? card.name,
+      ...(intent.use ? { use: intent.use } : {}),
+      ...(intent.aim === "one" && targetIds[0] ? { targetCharacterId: targetIds[0] } : {}),
+      ...(intent.aim === "many" && characterIds.length ? { characterIds } : {}),
+      ...(intent.aim === "many" && enemyIds.length ? { enemyIds } : {}),
+      ...(choices.square ? { x: choices.square.x, y: choices.square.y } : {}),
+      ...(choices.spell ? { spell: choices.spell } : {}),
+      ...(intent.attackName && advantage !== "none" ? { advantage } : {}),
+    };
+    return [{ name: "legendary_action", args }];
+  }
+  if (intent.action === "lair") {
+    const lair = intent.lair;
+    if (!lair) {
+      return null;
+    }
+    const act = { name: "lair_action", args: { action: String(lair.number) } };
+    if (!lair.save) {
+      return [act];
+    }
+    if (!targetIds.length) {
+      return null;
+    }
+    const characterIds = targetIds.filter((id) => !rows.has(id));
+    const enemyIds = targetIds.filter((id) => rows.has(id));
+    return [
+      act,
+      {
+        name: "aoe_damage",
+        args: {
+          ...(characterIds.length ? { characterIds } : {}),
+          ...(enemyIds.length ? { enemyIds } : {}),
+          ...lair.save,
+          reason: "The lair acts",
+        },
+      },
+    ];
+  }
+  const one = monsterInvoke(card, targetIds, advantage, rows);
+  return one ? [one] : null;
 }
 
 // The console call a played card makes: the same adjudication the form

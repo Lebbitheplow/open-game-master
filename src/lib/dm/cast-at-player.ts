@@ -37,6 +37,7 @@ import { outOfReach } from "@/lib/dm/spell-planes";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { saveAgainst } from "@/lib/dm/roll-about";
+import { swallowCover } from "@/lib/dm/swallow";
 
 // cast_at_player: a save forced on ONE character, by an enemy's spell or
 // ability or by a hazard (SRD 5.1, Saving Throws). The mirror of
@@ -248,6 +249,12 @@ export function handleCastAtPlayer(
   // to pick, not a refusal to narrate.
   if (away) {
     return { error: `${away.error} Nothing was spent.`, retry: true };
+  }
+  // Swallowed: total cover against effects from outside (swallow.ts).
+  const casterRef = args.casterEnemyId ? (resolveEnemyRef(getActiveEncounter(campaign.id)?.id ?? "", args.casterEnemyId)?.id ?? args.casterEnemyId) : null;
+  const inside = swallowCover(casterRef ? { kind: "enemy", id: casterRef } : null, { kind: "sheet", id: sheet.id });
+  if (inside) {
+    return { error: `${inside} Nothing was spent.`, retry: true };
   }
 
   // An enemy caster acts through the enemy guard and its own block: its

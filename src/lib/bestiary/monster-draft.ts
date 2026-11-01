@@ -196,6 +196,16 @@ export function checkMonsterDraft(raw: unknown): DraftCheck {
             .filter(Boolean),
         }
       : {}),
+    // A legendary option's whole line, which the trait lines cut short: what
+    // it does is read from it (src/lib/dm/legendary-route-logic.ts).
+    ...(Array.isArray(source.fullLegendary) && source.fullLegendary.length
+      ? {
+          fullLegendary: source.fullLegendary
+            .slice(0, MAX_FULL_TRAITS)
+            .map((line) => text(line, FULL_TRAIT_MAX))
+            .filter(Boolean),
+        }
+      : {}),
     resist: text(source.resist, RESIST_MAX),
     immune: text(source.immune, RESIST_MAX),
     vulnerable: text(source.vulnerable, RESIST_MAX),

@@ -333,7 +333,7 @@ export function applyExtraEncounterCall(
       return { result: early ? early : handleAoeDamage(campaign, turn, rawArguments, sheets, sheetsById) };
     }
     case "legendary_action":
-      return { result: handleLegendaryAction(campaign, rawArguments) };
+      return { result: handleLegendaryAction(campaign, rawArguments, turn) };
     case "legendary_resist":
       return { result: handleLegendaryResist(campaign, rawArguments) };
     case "lair_action":

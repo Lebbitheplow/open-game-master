@@ -1,12 +1,15 @@
 import { groupTraits } from "@/lib/bestiary/block-sections";
 import { legendaryCountIn } from "@/lib/dm/ability-entries";
-import type { EnemyStats } from "@/lib/bestiary/statblock";
-import { normalizeAbilityLedgers, type AbilityLedger } from "@/lib/dm/monster-abilities";
-import { ABILITY_WORDS, parseSaveEffect } from "@/lib/dm/save-effect";
+import type { EnemyAttack, EnemyStats } from "@/lib/bestiary/statblock";
+import { findMonsterAbility, normalizeAbilityLedgers, type AbilityLedger, type MonsterAbility } from "@/lib/dm/monster-abilities";
 import type { ToolError } from "@/lib/dm/tool-errors";
-import { textKey } from "@/lib/language/text-logic";
+import { legendaryRoutes, type LegendaryRoute } from "@/lib/dm/legendary-route-logic";
 import { isNamed } from "@/lib/srd/feature-names";
 import { normalizeEnemyTurns, type EnemyTurns } from "@/lib/dm/enemy-turn-logic";
+import { lairForbidsRepeat, lairRepeatRefusal, type LairHolder } from "@/lib/dm/lair-logic";
+
+// The lair's own readers live in lair-logic.ts; callers keep importing them here.
+export { lairCountPassed, lairForbidsRepeat, lairRepeatRefusal, lairResolution, lairSave, pickLairOption, type LairSave } from "@/lib/dm/lair-logic";
 
 // Legendary and lair actions and legendary resistance (docs/vtt-parity-
 // implementation-plan.md 4.1): what a stat block says a creature may do
@@ -92,6 +95,23 @@ export type LegendaryState = {
   // Each enemy's turn this round: its Dashes, a Disengage, what its action
   // went on (src/lib/dm/enemy-turn-logic.ts, issue #621).
   turns?: EnemyTurns;
+  // A legendary action spent on what a later call makes (its attack, its
+  // ability, a spell), by enemy: what it cost and at which turn's end, so a
+  // refused follow-up gives the action back (legendary-tools.ts
+  // settleLegendaryFollowUp). Cleared once the follow-up is made.
+  purchases?: Record<string, LegendaryPurchaseRecord>;
+};
+
+export type LegendaryPurchaseRecord = {
+  action: string;
+  cost: number;
+  key: string;
+  strike: boolean;
+  bought: string | null;
+  // A legendary move's allowance (squares, whether it provokes, aloft), and
+  // a teleport's reach in feet, for the move_token or teleport_token after it.
+  move?: { tiles: number; provokes: boolean; fly: boolean };
+  teleportFeet?: number;
 };
 
 export type FailedSave = {
@@ -126,6 +146,7 @@ export function normalizeLegendaryState(raw: unknown): LegendaryState {
   const failed = (record.failedSave && typeof record.failedSave === "object" ? record.failedSave : null) as Record<string, unknown> | null;
   const opportunities = (record.opportunities && typeof record.opportunities === "object" ? record.opportunities : null) as Record<string, unknown> | null;
   const turns = normalizeEnemyTurns(record.turns);
+  const purchases = purchasesOf(record.purchases);
   const areaStruck = record.areaStruck && typeof record.areaStruck === "object"
     ? Object.fromEntries(Object.entries(record.areaStruck as Record<string, unknown>).filter((entry): entry is [string, string] => typeof entry[1] === "string"))
     : null;
@@ -183,7 +204,31 @@ export function normalizeLegendaryState(raw: unknown): LegendaryState {
     ...(typeof record.lairLast === "string" ? { lairLast: record.lairLast } : {}),
     ...(areaStruck && Object.keys(areaStruck).length ? { areaStruck } : {}),
     ...(turns ? { turns } : {}),
+    ...(purchases && Object.keys(purchases).length ? { purchases } : {}),
   };
+}
+
+function purchasesOf(raw: unknown): Record<string, LegendaryPurchaseRecord> | null {
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+  const out: Record<string, LegendaryPurchaseRecord> = {};
+  for (const [id, entry] of Object.entries(raw as Record<string, unknown>)) {
+    const record = (entry && typeof entry === "object" ? entry : {}) as Record<string, unknown>;
+    if (typeof record.action === "string" && typeof record.key === "string") {
+      const move = (record.move && typeof record.move === "object" ? record.move : null) as Record<string, unknown> | null;
+      out[id] = {
+        action: record.action,
+        cost: Math.max(1, Number(record.cost) || 1),
+        key: record.key,
+        strike: record.strike === true,
+        bought: typeof record.bought === "string" ? record.bought : null,
+        ...(move ? { move: { tiles: Math.max(0, Number(move.tiles) || 0), provokes: move.provokes !== false, fly: move.fly === true } } : {}),
+        ...(Number(record.teleportFeet) > 0 ? { teleportFeet: Number(record.teleportFeet) } : {}),
+      };
+    }
+  }
+  return out;
 }
 
 // A cost however the book prints it: "(Costs 2 Actions)", "(Costs 2 Actions;
@@ -265,6 +310,107 @@ export function spendLegendaryAction(
   return { ok: true, pool: { ...pool, actions: pool.actions - action.cost }, action };
 }
 
+// What a legendary action buys for a later call once it is spent, read one
+// way for the tool's next step (legendary-tools.ts handleLegendaryAction)
+// and for the GM's card (src/lib/dm/enemy-actions-view.ts): the way to play
+// it (legendary-route-logic.ts) picked, its first step's attack, its ability
+// with numbers of its own (Wing Attack's save), a cantrip or a spell from its
+// list. Anything else (a check, a move, a heal) the action resolves itself,
+// or the GM narrates.
+export type LegendaryPurchase =
+  | { kind: "attack"; attack: EnemyAttack }
+  | { kind: "ability"; ability: MonsterAbility }
+  | { kind: "cantrip" }
+  | { kind: "spell" }
+  | { kind: "none" };
+
+export function legendaryPurchase(
+  stats: Pick<EnemyStats, "attacks" | "legendaryAttacks" | "traits" | "specials">,
+  action: LegendaryAction,
+  route?: LegendaryRoute | null,
+): LegendaryPurchase {
+  const chosen = route === undefined ? (legendaryRoutes(stats, action)[0] ?? null) : route;
+  const step = chosen?.steps[0];
+  if (step?.kind === "attack" || step?.kind === "swallow") {
+    const attack = [...(stats.attacks ?? []), ...(stats.legendaryAttacks ?? [])].find((entry) => entry.name === step.attack);
+    return attack ? { kind: "attack", attack } : { kind: "none" };
+  }
+  if (step?.kind === "save") {
+    const ability = findMonsterAbility(stats, step.ability);
+    return ability ? { kind: "ability", ability } : { kind: "none" };
+  }
+  if (step?.kind === "spell") {
+    return step.cantrip ? { kind: "cantrip" } : { kind: "spell" };
+  }
+  return { kind: "none" };
+}
+
+// When a legendary action may be taken (SRD 5.1, Legendary Actions: "only
+// one legendary action option can be used at a time and only at the end of
+// another creature's turn"), read one way by the tool and by the GM's card.
+// One option at the end of each other creature's turn: the turn is the
+// pointer's (`turn`, turnKey), and each enemy that acts since closes a turn
+// of its own. Its own turn is the pointer on it, or its turn begun and not
+// yet taken: handed to the model by an end_turn (`handoff`), or walked past
+// at a table a person runs and held for them (`due`, enemies-due.ts), where
+// the console's form used to spend one on the creature's own turn.
+// The turn's end a legendary action is taken at: the turn ending, and how
+// many creatures' own turns have run inside it (the pointer never rests on
+// an enemy, so each one played there is its own turn's end).
+export function legendaryMomentKey(turn: string, round: number, legendary: Pick<LegendaryState, "acted">): string {
+  const acted = legendary.acted?.round === round ? legendary.acted.ids.length : 0;
+  return `${turn}:${acted}`;
+}
+
+// What a legendary action bought for a later call, while the turn's end it
+// was bought at lasts. One never made by then is gone: a Move nobody walked
+// must not make the creature's own walk a round later a free one, nor a
+// Teleport left waiting stretch its next jump.
+export function livePurchase(
+  legendary: Pick<LegendaryState, "acted" | "purchases">,
+  moment: { turn: string; round: number },
+  enemyId: string,
+): LegendaryPurchaseRecord | null {
+  const record = legendary.purchases?.[enemyId];
+  return record && record.key === legendaryMomentKey(moment.turn, moment.round, legendary) ? record : null;
+}
+
+export function legendaryOpening(
+  moment: {
+    turn: string;
+    round: number;
+    onPointer: boolean;
+    actedThisRound: boolean;
+    legendary: Pick<LegendaryState, "acted" | "opportunities" | "handoff" | "due">;
+  },
+  enemy: { id: string; displayName: string },
+): { key: string; taken: string[]; refusal: ToolError | null } {
+  const begun = Boolean(moment.legendary.handoff?.enemyIds.includes(enemy.id) || moment.legendary.due?.includes(enemy.id));
+  if (moment.onPointer || (begun && !moment.actedThisRound)) {
+    return {
+      key: "",
+      taken: [],
+      refusal: {
+        error: `It is ${enemy.displayName}'s own turn; legendary actions come at the end of other creatures' turns. Take its turn first: enemy_attack, or cast_at_player / aoe_damage with casterEnemyId and enemyAbility or spell.`,
+        retry: true,
+      },
+    };
+  }
+  const key = legendaryMomentKey(moment.turn, moment.round, moment.legendary);
+  const taken = moment.legendary.opportunities?.key === key ? moment.legendary.opportunities.ids : [];
+  if (taken.includes(enemy.id)) {
+    return {
+      key,
+      taken,
+      refusal: {
+        error: `${enemy.displayName} has already taken a legendary action at the end of this turn. It takes one option at the end of each other creature's turn; the next comes when another creature's turn ends. Nothing was spent.`,
+        retry: true,
+      },
+    };
+  }
+  return { key, taken, refusal: null };
+}
+
 export function spendResistance(pool: LegendaryPool): LegendaryPool | null {
   return pool.resistances > 0 ? { ...pool, resistances: pool.resistances - 1 } : null;
 }
@@ -291,74 +437,36 @@ export function bindsWorthResisting(conditions: string[], endsWithTurn = false):
   });
 }
 
-// Lair actions happen on initiative count 20, losing ties: once every
-// combatant at 20 or above has had its turn, before anyone below. Whether a
-// pointer move from `from` (exclusive; -1 is the top of round 1) to `to`
-// (inclusive) passes that count, and on which side of the round's end:
-// "before" the order wraps (the round that is ending) or "after" (the new
-// one). When every combatant is at 20 or above, the count falls as the round
-// ends.
-export function lairCountPassed(order: Array<{ initiative?: number | null }>, from: number, to: number): "before" | "after" | null {
-  if (!order.length) {
-    return null;
-  }
-  const first = order.findIndex((entry) => (entry.initiative ?? 0) < 20);
-  let wrapped = false;
-  let index = from;
-  for (let steps = 0; steps < order.length; steps += 1) {
-    if (index + 1 >= order.length) {
-      if (first === -1) {
-        return "before";
-      }
-      wrapped = true;
-    }
-    index = (index + 1) % order.length;
-    if (index === first) {
-      return wrapped ? "after" : "before";
-    }
-    if (index === to) {
-      return null;
-    }
-  }
-  return null;
+// Every lair option the fight's creatures print, in the order lair_action
+// numbers them. A book's printed lair options (Tome of Beasts' dragons) are
+// offered in a fight the DM started in the lair; they never make one a lair
+// fight.
+export function legendaryLairLines(enemies: LairHolder[]): string[] {
+  return enemies.flatMap((enemy) => [...(legendaryProfile(enemy.stats)?.lairActions ?? []), ...(enemy.stats.lairOptions ?? [])]);
 }
 
-// The printed lair option a DM names: its number in the list, or the whole
-// line. Null when none is, never the line that shares a word with it.
-export function pickLairOption(options: string[], wanted: string): string | null {
-  const text = textKey(wanted);
-  const numbered = /^(\d{1,2})$/.exec(text);
-  if (numbered) {
-    return options[Number(numbered[1]) - 1] ?? null;
-  }
-  return options.find((line) => textKey(line) === text) ?? null;
-}
+// The lair's options while its moment is open (initiative count 20 has
+// passed this move and the lair has not acted on it), each numbered as
+// lair_action takes it, with the creature whose block prints it and the
+// tool's own refusal of it. Null when the lair may not act now: the GM's
+// lair cards (src/lib/dm/enemy-actions-view.ts) are offered only then.
+export type LairChoice = { number: number; line: string; enemyId: string; refusal: string | null };
 
-// How a printed lair option resolves through the engine: a save the server
-// rolls for each creature it reaches (aoe_damage), with the DC, the ability
-// and the dice the line prints, and the condition a failure lays as the save
-// reader finds it (src/lib/dm/save-effect.ts). Null for an option with no
-// save.
-export function lairResolution(line: string): string | null {
-  const save = /DC\s*(\d+)\s+(str|dex|con|int|wis|cha)[a-z]*\s+sav(?:e|ing throw)/i.exec(line);
-  if (!save) {
+export function lairChoices(
+  enemies: LairHolder[],
+  legendary: Pick<LegendaryState, "lair" | "lairDue" | "lairUsedRound" | "lairLast">,
+): LairChoice[] | null {
+  const due = legendary.lairDue;
+  if (!legendary.lair || due === undefined || legendary.lairUsedRound === due) {
     return null;
   }
-  const damage = /(\d+d\d+(?:\s*[+-]\s*\d+)?)\)?\s+([a-z]+)\s+damage/i.exec(line);
-  const ability = save[2].slice(0, 3).toLowerCase();
-  const word = Object.keys(ABILITY_WORDS).find((name) => ABILITY_WORDS[name] === ability) ?? "";
-  const effect = parseSaveEffect(line.replace(save[0], `DC ${save[1]} ${word} saving throw`));
-  const laid = effect.condition ? [effect.condition, ...(effect.also ?? [])] : [];
-  // aoe_damage lays one condition on a failed save; a line that lays more
-  // leaves the rest to set_condition on each creature that failed.
-  const one = laid.length === 1 ? `, condition "${laid[0]}"${effect.rounds ? `, rounds ${effect.rounds}` : ""}` : "";
-  return `Resolve it now with aoe_damage: dc ${save[1]}, saveAbility "${ability}"${
-    damage ? `, damage "${damage[1].replace(/\s+/g, "")}", type "${damage[2].toLowerCase()}"` : ""
-  }${one}, and the enemyIds and characterIds of the creatures it reaches; the server rolls every save${one ? " and lays the condition on a failure." : "."} ${
-    laid.length > 1
-      ? `A failure lays ${laid.join(" and ")}${effect.rounds ? ` for ${effect.rounds} round${effect.rounds === 1 ? "" : "s"}` : ""}: set it on each creature that failed with set_condition.`
-      : one
-        ? ""
-        : "Lay what a failure brings as the line says."
-  }`.trim();
+  const options = legendaryLairLines(enemies);
+  const noRepeat = lairForbidsRepeat(enemies);
+  let number = 0;
+  return enemies.flatMap((enemy) =>
+    legendaryLairLines([enemy]).map((line) => {
+      number += 1;
+      return { number, line, enemyId: enemy.id, refusal: lairRepeatRefusal(options, line, legendary, due, noRepeat) };
+    }),
+  );
 }
