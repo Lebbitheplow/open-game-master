@@ -415,7 +415,7 @@ await test("Off the battle map, or aimed at one creature with no square, a blast
 
 // ---- issue 570: a casting shared out in the Hand ----
 
-await test("Magic Missile's darts shared between two goblins are one cast_at_enemy each, the darts each takes, and one slot.", async () => {
+await test("Magic Missile's darts shared between two goblins are one cast_at_enemy with both, the darts each takes, and one slot.", async () => {
   const { near, close } = await stageBlast();
   model.script([reply({ text: "Three darts streak out." })]);
   await model.turn(world, "I cast Magic Missile at Goblin 1 (2 darts) and Goblin 2 (1 dart) using a level 1 slot.", vex.id, vex.userId, {
@@ -425,9 +425,9 @@ await test("Magic Missile's darts shared between two goblins are one cast_at_ene
     },
   });
   const calls = toolCalls(model.requests[0]).map((entry) => ({ name: entry.function.name, args: JSON.parse(entry.function.arguments), id: entry.id }));
-  assert.deepEqual(calls.map((entry) => [entry.name, entry.args.targetEnemyId, entry.args.darts]), [["cast_at_enemy", near.id, 2], ["cast_at_enemy", close.id, 1]]);
-  assert.equal(new Set(calls.map((entry) => entry.id)).size, 2, "each call keeps its own id");
-  assert.ok(results(model.requests[0]).every((result) => result && !result.error), JSON.stringify(results(model.requests[0])));
+  assert.deepEqual(calls.map((entry) => [entry.name, entry.args.targets]), [["cast_at_enemy", [{ targetEnemyId: near.id, darts: 2 }, { targetEnemyId: close.id, darts: 1 }]]]);
+  const [answer] = results(model.requests[0]);
+  assert.ok(answer && !answer.error && answer.targets.every((result) => !result.error), JSON.stringify(answer));
   const hp = (id) => world.enemies().find((enemy) => enemy.id === id).currentHp;
   assert.ok(hp(near.id) < 200 && hp(close.id) < 200, "both goblins were struck");
   assert.equal(world.sheet(vex.id).spellcasting.slots[1].used, 1, "one slot for the whole casting");
@@ -440,9 +440,11 @@ await test("Scorching Ray's three rays at one goblin are three attack rolls, not
     intent: { card: "spell", spell: "Scorching Ray", slotLevel: 2, targetKind: "enemy", targetId: near.id, targetName: near.displayName, shares: [{ id: near.id, count: 3 }] },
   });
   const calls = toolCalls(model.requests[0]);
-  assert.equal(calls.length, 3, JSON.stringify(calls));
-  assert.ok(calls.every((entry) => entry.function.name === "pc_attack"));
-  assert.ok(results(model.requests[0]).every((result) => result && !result.error), JSON.stringify(results(model.requests[0])));
+  assert.equal(calls.length, 1, JSON.stringify(calls));
+  assert.equal(calls[0].function.name, "pc_attack");
+  assert.equal(JSON.parse(calls[0].function.arguments).attacks.length, 3);
+  const [answer] = results(model.requests[0]);
+  assert.ok(answer && answer.attacks.length === 3 && answer.attacks.every((result) => !result.error), JSON.stringify(answer));
   assert.equal(world.sheet(vex.id).spellcasting.slots[2].used, 1, "the rays share one slot");
 });
 

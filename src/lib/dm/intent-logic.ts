@@ -16,6 +16,7 @@
 import { z } from "zod";
 import { HAND_GEAR_ACTIONS, HAND_INTENT_ACTIONS, describeHandExtras, handExtraArgs, handIntentExtras } from "@/lib/battlemap/hand-intent";
 import { textKey } from "@/lib/language/text-logic";
+import { PART_LISTS } from "@/lib/dm/action-parts-logic";
 import type { SpellMech } from "@/lib/srd/spell-mech-types";
 
 const text = (max: number) => z.string().trim().min(1).max(max);
@@ -405,14 +406,13 @@ function slotFallsShort(card: PlayedCard): boolean {
 }
 
 // The calls a card stands for (issue 570): a casting shared out among
-// several creatures is one call per creature, the way the cast tools take
-// it (the first call spends the slot, the rest draw on the same casting):
-// cast_at_enemy for each creature Magic Missile's darts strike, with how
-// many; pc_attack for every ray or beam; cast_at_enemy for each creature an
-// upcast Hold Person takes, or one aoe_damage when they must stand together
-// (Acid Splash); heal for each creature healed; one cast_buff for every ally
-// a Bless takes. Anything else is directCardCall's one call. Null leaves the
-// card to the model.
+// several creatures is one call, the way the cast tools take it: one
+// cast_at_enemy whose targets are the creatures Magic Missile's darts
+// strike, with how many, or those an upcast Hold Person takes; one pc_attack
+// with an attack for every ray or beam; one aoe_damage when they must stand
+// together (Acid Splash); one heal whose targets are the creatures healed; one cast_buff for
+// every ally a Bless takes. Anything else is directCardCall's one call. Null
+// leaves the card to the model.
 export function directCardCalls(intent: MessageIntent, characterId: string, context: DirectContext = { inFight: true }): DirectCall[] | null {
   const shares = intent.card === "spell" && intent.spell && context.shareKind ? intent.shares ?? [] : [];
   if (!shares.length) {
@@ -428,18 +428,26 @@ export function directCardCalls(intent: MessageIntent, characterId: string, cont
   const enemies = intent.targetKind === "enemy";
   switch (first.name) {
     case "pc_attack":
-      return enemies ? shares.flatMap((share) => Array.from({ length: share.count }, () => ({ name: "pc_attack", args: { characterId, targetEnemyId: share.id, spell, ...level } }))) : null;
-    case "cast_at_enemy":
+      return enemies
+        ? [{ name: "pc_attack", args: { characterId, attacks: shares.flatMap((share) => Array.from({ length: share.count }, () => ({ targetEnemyId: share.id, spell, ...level }))) } }]
+        : null;
+    case "cast_at_enemy": {
       if (!enemies) return null;
       if (context.cluster) {
         return [{ name: "aoe_damage", args: { casterCharacterId: characterId, spell, ...level, enemyIds: shares.map((share) => share.id) } }];
       }
-      return shares.map((share) => ({
-        name: "cast_at_enemy",
-        args: { ...first.args, targetEnemyId: share.id, ...(context.shareKind === "darts" ? { darts: share.count } : {}) },
-      }));
-    case "heal":
-      return shares.map((share) => ({ name: "heal", args: { ...first.args, characterId: share.id } }));
+      const cast = Object.fromEntries(Object.entries(first.args).filter(([key]) => key !== "targetEnemyId"));
+      return [
+        {
+          name: "cast_at_enemy",
+          args: { ...cast, targets: shares.map((share) => ({ targetEnemyId: share.id, ...(context.shareKind === "darts" ? { darts: share.count } : {}) })) },
+        },
+      ];
+    }
+    case "heal": {
+      const cast = Object.fromEntries(Object.entries(first.args).filter(([key]) => key !== "characterId"));
+      return [{ name: "heal", args: { ...cast, targets: shares.map((share) => ({ characterId: share.id })) } }];
+    }
     case "cast_buff":
       return enemies ? null : [{ name: "cast_buff", args: { ...first.args, targetCharacterIds: shares.map((share) => share.id) } }];
     default:
@@ -462,11 +470,22 @@ function refMatches(ref: string, id: string | null | undefined, name: string | n
   return ref.trim() === id || Boolean(name && textKey(ref) === textKey(name));
 }
 
+// A call carrying a declaration's parts (pc_attack's attacks, cast_at_enemy's
+// targets) names its creatures in each part.
+const PART_LIST_KEYS = [...new Set(Object.values(PART_LISTS).map((list) => list.key))];
+
 function refsOf(args: Record<string, unknown>, keys: readonly string[]): string[] {
-  return keys.flatMap((key) => {
-    const value = args[key];
-    return typeof value === "string" ? [value] : Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : [];
+  const parts = PART_LIST_KEYS.flatMap((list) => {
+    const value = args[list];
+    return Array.isArray(value) ? value.filter((part): part is Record<string, unknown> => typeof part === "object" && part !== null && !Array.isArray(part)) : [];
   });
+  return [
+    ...keys.flatMap((key) => {
+      const value = args[key];
+      return typeof value === "string" ? [value] : Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : [];
+    }),
+    ...parts.flatMap((part) => refsOf(part, keys)),
+  ];
 }
 
 // Who acts in a call: most tools name them characterId, but heal's
@@ -476,7 +495,7 @@ function actorRef(call: TurnCall): unknown {
   return call.name === "heal" ? call.args.casterId : call.name === "aoe_damage" ? call.args.casterCharacterId : call.args.characterId;
 }
 
-const ENEMY_KEYS = ["targetEnemyId", "secondTargetEnemyId", "enemyIds"];
+const ENEMY_KEYS = ["targetEnemyId", "enemyIds"];
 const ALLY_KEYS = ["targetCharacterId", "targetCharacterIds", "characterIds"];
 
 // How a call fell short of a card: not one of the card's tools; a slot spent
@@ -514,8 +533,8 @@ export function callMismatch(card: PlayedCard, call: TurnCall): CallMismatch | n
     }
   }
   // use_reaction's spell is the one it counters, not the card's own.
-  const spell = call.args.spell;
-  if (intent.spell && call.name !== "use_reaction" && typeof spell === "string" && textKey(spell) !== textKey(intent.spell)) {
+  const spells = refsOf(call.args, ["spell"]);
+  if (intent.spell && call.name !== "use_reaction" && spells.some((spell) => textKey(spell) !== textKey(intent.spell ?? ""))) {
     return "spell";
   }
   return null;

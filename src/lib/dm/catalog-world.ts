@@ -97,9 +97,10 @@ export const WORLD_ADJUDICATIONS: CatalogEntry[] = [
     name: "travel",
     label: "Travel",
     category: "world",
-    summary: "Hours (or miles) on the road at a pace, with the distance covered and the forced-march saves that come with it.",
+    summary: "Hours, miles or whole days on the road at a pace, with the distance covered and the forced-march saves that come with it.",
     fields: [
-      { name: "hours", label: "Hours", kind: "number", min: 1, max: 48, help: "Give hours or miles." },
+      { name: "days", label: "Days", kind: "number", min: 1, max: 30, help: "A journey of whole days: 8 hours on the road each, and a night's rest between them. Or give hours or miles." },
+      { name: "hours", label: "Or hours", kind: "number", min: 1, max: 48, help: "One stretch of marching." },
       { name: "miles", label: "Or miles", kind: "number", min: 1, max: 200, help: "The server works out the hours the pace and the ground need." },
       { name: "terrain", label: "Ground", kind: "select", options: [{ value: "normal", label: "Normal" }, { value: "difficult", label: "Difficult (half the distance)" }] },
       {
@@ -316,6 +317,7 @@ export const WORLD_ADJUDICATIONS: CatalogEntry[] = [
       { name: "ac", label: "Its armor class", kind: "number", min: 1, max: 30, help: "Overrides the material's." },
       { name: "hp", label: "Its hit points", kind: "number", min: 1, max: 1000, help: "Overrides the size's." },
       { name: "threshold", label: "Damage threshold", kind: "number", min: 1, max: 100, help: "A castle wall's or a ship's: a blow below it does nothing." },
+      { name: "blows", label: "Blows", kind: "number", min: 1, max: 20, help: "Struck again and again until it breaks or the blows run out; a named object only, outside a fight." },
       REASON,
     ],
   },

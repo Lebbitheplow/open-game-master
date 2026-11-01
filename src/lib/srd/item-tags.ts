@@ -15,7 +15,7 @@ import { catalogName, matchGear } from "@/lib/srd/adventuring-gear";
 import { rowArmor } from "@/lib/srd/armor";
 import { matchMagicItem } from "@/lib/srd/magic-items";
 import { rowWeapon } from "@/lib/srd/weapons";
-import { rowName } from "@/lib/srd/item-row";
+import { baseName, rowName } from "@/lib/srd/item-row";
 import { findPoison } from "@/lib/srd/afflictions";
 import itemTagsJson from "@/lib/classes/item-tags.json";
 import { textKey } from "@/lib/language/text-logic";
@@ -57,7 +57,15 @@ function rowKey(name: string): string {
 
 const BY_SLUG = new Map<string, ItemRow>();
 const BY_KEY = new Map<string, ItemRow>();
+// By the name before a row's trailing size (src/lib/srd/item-row.ts
+// baseName), when one row is so written; null marks a name two rows share.
+const BY_BASE = new Map<string, ItemRow | null>();
+
 function index(row: ItemRow) {
+  const base = rowKey(baseName(row.name));
+  if (base && base !== rowKey(row.name)) {
+    BY_BASE.set(base, BY_BASE.has(base) && BY_BASE.get(base) !== row ? null : row);
+  }
   const key = rowKey(row.name);
   for (const form of key ? pluralForms(key) : []) {
     if (!BY_KEY.has(form)) {
@@ -83,9 +91,10 @@ for (const [name, slug, tags] of TABLE.items) {
 }
 
 // By the whole name, else the name before a trailing note ("Spell Scroll
-// (Fireball)", "Oil (flask)").
+// (Fireball)", "Oil (flask)"), else the one row that name is without its own
+// trailing size ("Rope, hempen" is "Rope, hempen (50 feet)").
 function rowNamed(name: string): ItemRow | null {
-  return BY_KEY.get(rowKey(name)) ?? BY_KEY.get(rowKey(name.replace(/\s*\([^)]*\)\s*$/, ""))) ?? null;
+  return BY_KEY.get(rowKey(name)) ?? BY_KEY.get(rowKey(baseName(name))) ?? BY_BASE.get(rowKey(name)) ?? null;
 }
 
 // The row an item names: by its slug, else by its row's name

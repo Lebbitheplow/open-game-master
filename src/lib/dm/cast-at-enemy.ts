@@ -1,9 +1,10 @@
-// cast_at_enemy: a save or automatic spell a player casts at ONE enemy. The
-// server spends the slot through the one cast guard, rolls the enemy's save
-// from its block against the caster's DC, and applies the damage and the
-// spell's conditions, each recording the spell and its caster
-// (spell-effects.ts). An area or multi-target spell may be resolved one enemy
-// per call in the same turn for one slot (cast-guard.ts open casts). Split out
+// cast_at_enemy at one creature: a save or automatic spell a player casts.
+// The server spends the slot through the one cast guard, rolls the enemy's
+// save from its block against the caster's DC, and applies the damage and
+// the spell's conditions, each recording the spell and its caster
+// (spell-effects.ts). An area or multi-target spell is resolved one creature
+// at a time for one slot (cast-guard.ts open casts): the model's call lists
+// them all (cast-at-enemy-targets.ts) and each comes here. Split out
 // of cast-tools.ts, which re-exports it; this module imports mutations (for
 // the slot spend) and must never be imported by it.
 
@@ -33,7 +34,7 @@ import type { SaveAbility } from "@/lib/bestiary/statblock";
 import { applyDmMutation, canonicalCondition, castBarred } from "@/lib/dm/mutations";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { getFoe, resolveTargetFoe } from "@/lib/dm/sheet-foe";
-import { hostileTo, unknownCombatantRef } from "@/lib/dm/combatant";
+import { hostileTo, standingFoesLine, unknownCombatantRef } from "@/lib/dm/combatant";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
 import { normalizeAbility } from "@/lib/dm/arg-coerce";
@@ -146,7 +147,8 @@ export function handleCastAtEnemy(
     return barred;
   }
   if (enemy.status !== "alive") {
-    return { error: `${enemy.displayName} is already ${enemy.status}. Ask the player which living enemy in GAME STATE to target instead.`, retry: true };
+    const standing = standingFoesLine(campaign.id, encounter);
+    return { error: `${enemy.displayName} is already ${enemy.status}.${standing ? ` Still standing: ${standing}.` : ""} Ask the player which living enemy to target instead.`, retry: true };
   }
   // SRD 5.1, Charmed: no harmful magic at the charmer (monsters workstream).
   if (charmedBy(sheet.conditions, sheet.conditionMeta, enemy.id)) {

@@ -62,6 +62,7 @@ import { castSpell } from "@/lib/dm/cast-guard";
 import { characterCallUnasked } from "@/lib/dm/player-word";
 import { ZONE_ARGS, zoneArgsSchema, zonePlacement } from "@/lib/dm/zone-args";
 import { castHealingSpell } from "@/lib/dm/heal-spell";
+import type { OneCasting } from "@/lib/dm/action-parts-logic";
 import { advanceClock, recordShapeEnd } from "@/lib/db/clock";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { canAct } from "@/lib/dm/can-act";
@@ -152,7 +153,7 @@ const characterProperty = {
 const ITEM_SRD_NAME_PROPERTY = {
   type: "string",
   description:
-    "English SRD or pack name ('Potion of Healing') when item is the table's own; omit for invented loot. The server reads what it does from that name. A magic weapon or armor names its base as the SRD writes it ('Flame Tongue Scimitar', 'Mithral Half Plate'). Also omit when item already is that English name, and while it is unidentified.",
+    "English SRD or pack name ('Potion of Healing') when item is the table's own; omit for invented loot. Send it with the first call: the server knows an item only by that name and refuses one it cannot read. A magic weapon or armor names its base as the SRD writes it ('Flame Tongue Scimitar', 'Mithral Half Plate'). Also omit when item already is that English name, and while it is unidentified.",
 };
 
 const ITEM_TAGS_PROPERTY = {
@@ -179,7 +180,7 @@ const ITEM_WORTH_PROPERTY = {
     "Gold pieces one is worth, for a thing no SRD or pack row prices: a gem, a trade good, invented loot. A gem is 10 to 5,000 gp, an art object 25 to 7,500 gp; the server prices a sale and a spell's costly material by it. Write item without its worth. Omit for an SRD item, and while it is unidentified.",
 };
 
-function tool(name: string, description: string, extra: Record<string, unknown>, required: string[]): ToolDef {
+function tool(name: string, description: string, extra: Record<string, unknown>, required: string[], characterRequired = true): ToolDef {
   return {
     type: "function",
     function: {
@@ -189,7 +190,7 @@ function tool(name: string, description: string, extra: Record<string, unknown>,
         type: "object",
         additionalProperties: false,
         properties: { ...characterProperty, ...extra },
-        required: ["characterId", ...required],
+        required: characterRequired ? ["characterId", ...required] : required,
       },
     },
   };
@@ -202,13 +203,13 @@ export const mutationTools: ToolDef[] = [
     dice: { type: "string", description: "Dice the server rolls for healing that is not a spell ('2d4+2'). Instead of amount." },
     spell: {
       type: "string",
-      description: "Healing spell being cast (Cure Wounds, Healing Word, Prayer of Healing).",
+      description: "Healing spell being cast.",
     },
     level: {
       type: "integer",
       minimum: 1,
       maximum: 9,
-      description: "Slot level the healing spell was cast at, for upcast scaling.",
+      description: "The slot level it is cast from, for a higher one.",
     },
     casterId: {
       type: "string",
@@ -218,7 +219,12 @@ export const mutationTools: ToolDef[] = [
       type: "boolean",
       description: "True for TEMPORARY HP instead of healing (they do not stack; the higher value wins).",
     },
-  }, []),
+    // Instead of characterId, so neither is required. Kept small: the
+    // compact first call of a 16K window holds it beside an opened group
+    // (scripts/test-tool-profiles.mjs); each entry is a heal call's own
+    // arguments, checked as that call.
+    targets: { type: "array", description: "Instead of characterId: {characterId, amount} for each creature one spell heals." },
+  }, [], false),
   tool(
     "stabilize",
     "Stabilize a DYING character at 0 HP without healing. It takes the healer's action, within 5 feet on a battle map: 'check' rolls their DC 10 Medicine check; 'kit' (a use of a healer's kit they carry) and 'spell' (Spare the Dying) need none. A stable character stops making death saves and stays unconscious at 0 HP.",
@@ -268,17 +274,30 @@ export const mutationTools: ToolDef[] = [
     coins: { type: "string", description: "Money in the coins' codes pp, gp, ep, sp and cp ('3 gp 4 sp'), whatever the table's language. Also '340 sp' or '2 pp 5 sp'. For anything under a gold piece or priced in another coin; whole coins only. It overrides delta's size; delta's sign still says gain or spend (-1 to spend it, 1 to gain it)." },
     additional: { type: "boolean", description: "Only when a player just accepted this same amount and this is another sum from a different source." },
   }, ["delta"]),
-  tool("grant_item", "Give a character an item (loot, purchase, gift), only one the fiction actually put in their hands.", {
+  tool("grant_item", "Give a character items (loot, purchase, gift) the fiction actually put in their hands. Every item they take goes in items, one entry each, in one call.", {
     ...waypointProperty,
-    unidentified: { type: "boolean", description: "True when the party cannot tell what it is yet; item then describes it, not its true name. E.g. 'an ornate silver ring'; reveal_item names it later." },
-    item: { type: "string", description: "The item's name in the table's words ('Spada lunga')." },
-    qty: { type: "integer", minimum: 1, maximum: 99 },
-    additional: { type: "boolean", description: "Only when a player just accepted this same item and this is another one from a different source." },
-    srdName: ITEM_SRD_NAME_PROPERTY,
-    tags: ITEM_TAGS_PROPERTY,
-    worth: ITEM_WORTH_PROPERTY,
-    spell: ITEM_SPELL_PROPERTY,
-  }, ["item"]),
+    // No additionalProperties on the entries (strict is off for every
+    // backend), and worth's bounds left to the handler's schema: the compact
+    // first call of a 16K window has no room for them beside an opened group
+    // (scripts/test-tool-profiles.mjs).
+    items: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          unidentified: { type: "boolean", description: "True when the party cannot tell what it is yet; item then describes it, not its true name. E.g. 'an ornate silver ring'; reveal_item names it later." },
+          item: { type: "string", description: "The item's name in the table's words." },
+          qty: { type: "integer", minimum: 1, maximum: 99 },
+          additional: { type: "boolean", description: "Only when a player just accepted this same item and this is another one from a different source." },
+          srdName: ITEM_SRD_NAME_PROPERTY,
+          tags: ITEM_TAGS_PROPERTY,
+          worth: { type: "number", description: ITEM_WORTH_PROPERTY.description },
+          spell: ITEM_SPELL_PROPERTY,
+        },
+        required: ["item"],
+      },
+    },
+  }, ["items"]),
   tool("remove_item", "Take an item from a character for good (stolen, destroyed, burned up). Something dropped, set down or knocked away is NOT removed: use handle_item drop, which leaves it where it fell. For consumables being USED, use use_item; for sales, use purchase.", {
     item: { type: "string", description: "The item as named on the character's sheet." },
     qty: { type: "integer", minimum: 1, maximum: 99 },
@@ -554,6 +573,9 @@ export function applyDmMutation(
   // The live turn, for a mutation that rolls dice the GM's message shows
   // (stabilize's Medicine check).
   turn?: DmTurn,
+  // One entry of a heal list: the casting its entries share
+  // (src/lib/dm/action-parts-logic.ts OneCasting).
+  casting?: OneCasting,
 ): MutationOutcome {
   let raw: unknown;
   try {
@@ -815,7 +837,7 @@ export function applyDmMutation(
         const outcome = castHealingSpell(
           campaign,
           turnId,
-          { target: sheet, caster, spell: healSpell, level: args.level, amount: args.amount, reason },
+          { target: sheet, caster, spell: healSpell, level: args.level, amount: args.amount, reason, casting },
           (castArgs) =>
             applyDmMutation(campaign, turnId, "use_spell_slot", JSON.stringify(castArgs), sheets, sheetsById).result,
         );
@@ -1325,7 +1347,7 @@ export function applyDmMutation(
       if (counter && BONUS_ATTACK_COUNTERS.includes(counter.id)) {
         return {
           result: {
-            error: `${counter.displayName} is spent by its bonus-action attack: pc_attack with bonusAttack "feature"${counter.id === "race_hungry_jaws" ? ' and weapon "bite"' : ""}. Nothing was spent.`,
+            error: `${counter.displayName} is spent by its bonus-action attack: a pc_attack entry with feature "${counter.displayName}"${counter.id === "race_hungry_jaws" ? ' and weapon "bite"' : ""}. Nothing was spent.`,
             retry: true,
           },
         };

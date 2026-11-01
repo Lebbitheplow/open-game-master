@@ -34,6 +34,7 @@ import { castToNoEffect, spellReachProblem, spellWardOn } from "@/lib/dm/cast-re
 import { layOnEnemy } from "@/lib/dm/spell-riders";
 import { spellConditionMeta } from "@/lib/dm/spell-effects";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
+import { standingFoesLine } from "@/lib/dm/combatant";
 import { beastEnemyStats, enemyCr, enemyShapeForms, enemyShapeNoEffect, enemyShapeOffer, enemyShapeProblem, enemyShapeSpellFor } from "@/lib/dm/enemy-polymorph-logic";
 import { holdingHint, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
@@ -75,7 +76,8 @@ export function castShapeAtEnemy(
     return { error: "Unknown targetEnemyId; use one from GAME STATE. Nothing was spent.", retry: true };
   }
   if (enemy.status !== "alive") {
-    return { error: `${enemy.displayName} is already ${enemy.status}. Ask the player which living enemy in GAME STATE to target instead. Nothing was spent.`, retry: true };
+    const standing = standingFoesLine(campaign.id, encounter);
+    return { error: `${enemy.displayName} is already ${enemy.status}.${standing ? ` Still standing: ${standing}.` : ""} Ask the player which living enemy to target instead. Nothing was spent.`, retry: true };
   }
   // A beast spell named another creature finds it all the same, so the
   // refusal can say it is no beast.

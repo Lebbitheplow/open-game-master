@@ -42,7 +42,7 @@ export function namedCreature(lines: readonly PlayerLine[], creatures: readonly 
 export function castToolHint(mech: SpellMech | null, area: boolean): string {
   switch (mech?.resolution) {
     case "attack":
-      return "pc_attack with spell";
+      return "pc_attack with the spell in each entry of attacks";
     case "save":
     case "auto":
       return area ? "aoe_damage with spell and casterCharacterId" : "cast_at_enemy";

@@ -12,8 +12,10 @@
 //     century, True Resurrection two hundred years.
 //   - Spare the Dying stabilizes, it does not heal.
 //   - one casting of Mass Healing Word, Mass Cure Wounds or Prayer of
-//     Healing reaches six creatures: the later calls the same turn spend
-//     nothing (cast-guard.ts open casts).
+//     Healing reaches six creatures, one entry each in heal's targets: the
+//     later entries spend nothing (cast-guard.ts open casts in a fight, the
+//     list's OneCasting out of one), and a list longer than one casting
+//     reaches is refused before anything is spent.
 //   - the modifier is the spellcasting ability of the class that carries
 //     the spell; Disciple of Life adds 2 + the slot level; Supreme Healing
 //     and Beacon of Hope make the dice their maximum.
@@ -32,6 +34,8 @@ import { publishEphemeral, publishPersisted, publishWithSeq } from "@/lib/events
 import { openJoinerBonds } from "@/lib/dm/party-bonds";
 import { computeSheetDerived, spellSaveDcFor } from "@/lib/srd";
 import { findSpellByName, spellDamageFor, spellFactsFor, spellMechanicsFor } from "@/lib/content";
+import { castShares } from "@/lib/srd/spell-mechanics";
+import type { OneCasting } from "@/lib/dm/action-parts-logic";
 import { castToNoEffect, spellReachProblem, spellWardOn } from "@/lib/dm/cast-reach";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { handleStabilize } from "@/lib/dm/stabilize";
@@ -74,6 +78,8 @@ export function castHealingSpell(
     level?: number;
     amount?: number;
     reason: string;
+    // The casting a heal list's entries share (action-parts-logic.ts).
+    casting?: OneCasting;
   },
   cast: Cast,
 ): HealSpellOutcome | null {
@@ -141,16 +147,45 @@ export function castHealingSpell(
     };
   }
 
-  const paid = cast({
-    characterId: caster.id,
-    spell: input.spell,
-    ...(input.level !== undefined ? { level: input.level } : {}),
-    via: "heal",
-    ...(mech?.healPool ? { uses: input.amount } : {}),
-    reason: input.reason || `${input.spell} on ${target.name}`,
-  });
+  // A heal list's creatures under one casting: what the casting reaches is
+  // asked before it is paid, and out of a fight the later entries ride the
+  // first one's payment.
+  const { casting } = input;
+  const units = mech?.healPool ? (input.amount ?? 0) : 1;
+  if (casting && !casting.paid) {
+    const asked = mech?.healPool ? casting.hitPoints : casting.creatures;
+    const reach = castShares(mech, { spellLevel: facts.level, slotLevel: plannedSlot, casterLevel: caster.level });
+    if (asked > reach) {
+      return {
+        error: `One casting of ${name} reaches ${reach} ${mech?.healPool ? "hit points" : reach === 1 ? "creature" : "creatures"}, and heal's targets ask ${asked}. Nothing was spent. List what one casting reaches; another casting is its own heal call.`,
+        retry: true,
+      };
+    }
+  }
+  if (casting?.paid && casting.left < units) {
+    return { error: `This casting of ${name} has nothing left for ${target.name}. Nothing more was spent.`, refused: "rules" };
+  }
+  const paid = casting?.paid
+    ? { ok: true, slotLevel: casting.paid.slotLevel, uses: units, continuing: `${name}: more of the same casting (${casting.left - units} left); nothing more is spent.` }
+    : cast({
+        characterId: caster.id,
+        spell: input.spell,
+        ...(input.level !== undefined ? { level: input.level } : {}),
+        via: "heal",
+        ...(mech?.healPool ? { uses: input.amount } : {}),
+        reason: input.reason || `${input.spell} on ${target.name}`,
+      });
   if (typeof paid.error === "string") {
     return toolError(paid);
+  }
+  // In a fight the open cast holds the rest of the casting (it answers with
+  // sharesLeft); out of one, the list does.
+  if (casting && !casting.paid && typeof paid.sharesLeft !== "number") {
+    casting.paid = paid;
+    casting.left = mech?.healPool ? casting.hitPoints : casting.creatures;
+  }
+  if (casting?.paid) {
+    casting.left -= units;
   }
   // A ward around the target: the spell is cast, and spent, and heals
   // nothing.

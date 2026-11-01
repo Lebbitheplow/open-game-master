@@ -272,6 +272,9 @@ await test(
       await world.invoke("set_weather", { sky: "clear", temperature: "mild", wind: "calm" });
       fast = await world.invoke("travel", { hours: 8, pace: "fast", characterIds: [scout.id] });
       need(fast.ok, fast.error);
+      // The night between the two days: back to back, the legs are 16 hours
+      // of marching in one day, a forced march.
+      await world.invoke("pass_time", { amount: 16, unit: "hours" });
       await world.invoke("set_weather", { sky: "clear", temperature: "mild", wind: "calm" });
       slow = await world.invoke("travel", { hours: 8, pace: "slow", characterIds: [scout.id] });
       need(slow.ok, slow.error);

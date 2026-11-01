@@ -208,7 +208,7 @@ export function authoredAfterHit(
       if (updated) {
         publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
       }
-      lines.push(`Unwavering Mark: ${input.attacker.displayName} struck someone other than ${cavalier.name}, who may make a bonus-action melee attack against it on their next turn, with advantage and +half their fighter level damage (pc_attack bonusAttack "feature").`);
+      lines.push(`Unwavering Mark: ${input.attacker.displayName} struck someone other than ${cavalier.name}, who may make a bonus-action melee attack against it on their next turn, with advantage and +half their fighter level damage (a pc_attack entry with feature "Unwavering Mark").`);
     }
   }
   const spurned = featuresSetAside(input.attacker, target);

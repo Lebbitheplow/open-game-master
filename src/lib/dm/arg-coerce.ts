@@ -33,10 +33,12 @@ export function normalizeAbility(value: unknown): unknown {
 // The strings "true" and "false" a model sometimes sends for a boolean
 // argument, turned into the booleans they mean before any schema reads them.
 // A tool's z.coerce.boolean() reads every non-empty string as true, so
-// useInspiration: "false" spent the Inspiration it was told to keep. Only a
-// top-level value that is exactly one of the two words is touched: no text
-// argument of any tool is ever the bare word, and anything that is not a JSON
-// object is handed back as it came for the handler to refuse.
+// useInspiration: "false" spent the Inspiration it was told to keep. A value
+// that is exactly one of the two words is touched, at the top level and in
+// the entries of a list (pc_attack's attacks: stunningStrike: "false" spent
+// the ki): no text argument of any tool is ever the bare word, and anything
+// that is not a JSON object is handed back as it came for the handler to
+// refuse.
 export function strictBooleanArgs(rawArguments: string): string {
   let parsed: unknown;
   try {
@@ -44,19 +46,21 @@ export function strictBooleanArgs(rawArguments: string): string {
   } catch {
     return rawArguments;
   }
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+  if (!isRecord(parsed)) {
     return rawArguments;
   }
-  let changed = false;
-  const out: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
-    const word = typeof value === "string" ? value.trim().toLowerCase() : null;
-    if (word === "true" || word === "false") {
-      out[key] = word === "true";
-      changed = true;
-    } else {
-      out[key] = value;
-    }
-  }
-  return changed ? JSON.stringify(out) : rawArguments;
+  const out = Object.fromEntries(
+    Object.entries(parsed).map(([key, value]) => [key, Array.isArray(value) ? value.map((entry) => (isRecord(entry) ? strictEntries(entry) : entry)) : strict(value)]),
+  );
+  const coerced = JSON.stringify(out);
+  return coerced === JSON.stringify(parsed) ? rawArguments : coerced;
 }
+
+function strict(value: unknown): unknown {
+  const word = typeof value === "string" ? value.trim().toLowerCase() : null;
+  return word === "true" || word === "false" ? word === "true" : value;
+}
+
+const strictEntries = (record: Record<string, unknown>) => Object.fromEntries(Object.entries(record).map(([key, value]) => [key, strict(value)]));
+
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);

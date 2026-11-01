@@ -61,6 +61,8 @@ import { getSceneTracker } from "@/lib/db/scene-tracker";
 import { listQuests } from "@/lib/db/quests";
 import { SMALL_MODEL_REASONING_CHARS, type ModelTuning } from "@/lib/dm/model-tuning-logic";
 import { PC_ATTACK_PARKED } from "@/lib/dm/pc-attack";
+import { listedCalls, listRefusal, oneCasting, PART_LISTS, partsResult, type OneCasting } from "@/lib/dm/action-parts-logic";
+import { AWAITING_ROLL } from "@/lib/dm/pc-attack-parts";
 import { strictBooleanArgs } from "@/lib/dm/arg-coerce";
 import { insertCampaignMessage, listMessagesPage, listRecentMessages, markCardReturned, type CampaignMessage } from "@/lib/db/messages";
 import { narrationShown, takeNarrationSeq, takeNarrationSlot } from "@/lib/dm/narration-slot";
@@ -1036,6 +1038,21 @@ function haltOpeningTurn(campaignId: string, opening: OpeningTurn, error: unknow
   haltUnbuiltTurn(campaignId, reason);
 }
 
+// A pc_attack answer with a part parked for the player's dice: the answer
+// and that part's place, or null for any other tool answer.
+function awaitingPart(content: unknown): { content: { attacks: Record<string, unknown>[] }; at: number } | null {
+  if (typeof content !== "string") {
+    return null;
+  }
+  const parsed = JSON.parse(content) as { attacks?: unknown };
+  if (!Array.isArray(parsed.attacks)) {
+    return null;
+  }
+  const attacks = parsed.attacks as Record<string, unknown>[];
+  const at = attacks.findIndex((part) => part[AWAITING_ROLL] === true);
+  return at >= 0 ? { content: { ...parsed, attacks }, at } : null;
+}
+
 export async function resumeDmTurn(campaignId: string, turnId: string) {
   const campaign = getCampaignById(campaignId);
   const turn = getDmTurn(turnId);
@@ -1064,7 +1081,10 @@ export async function resumeDmTurn(campaignId: string, turnId: string) {
   }
 
   // Answer each parked tool call with the roll the player entered (or the
-  // digital fallback), in creation order.
+  // digital fallback), in creation order. A pc_attack of several parts
+  // parked a roll per part under one call: its answer, written when it
+  // parked with the parts that needed no roll, takes each roll in the
+  // part's place, so the call has one answer, as the API requires.
   for (const pending of pendings) {
     const roll = pending.rollId ? getRoll(pending.rollId) : null;
     if (!roll) {
@@ -1073,20 +1093,34 @@ export async function resumeDmTurn(campaignId: string, turnId: string) {
     if (!turn.rollIds.includes(roll.id)) {
       turn.rollIds.push(roll.id);
     }
+    const answer = {
+      total: roll.total,
+      dice: roll.breakdown.terms,
+      ...(pending.dc !== null ? { dc: pending.dc, success: roll.total >= pending.dc } : {}),
+      ...(roll.breakdown.crit ? { crit: roll.breakdown.crit } : {}),
+      rolledBy: pending.status === "submitted" ? "the player, with physical dice" : "the server",
+      note: ROLL_RESULT_NOTE,
+      // What the server already did with this roll (initiative locked,
+      // damage applied); the model must narrate from it, not repeat it.
+      ...(pending.combatNote ? { combat: pending.combatNote } : {}),
+    };
+    // The call whose parts wait on this roll: a tool answer of its id that
+    // still holds a part awaiting one (a backend may reuse an id across
+    // replies, and an earlier answer of that id holds no parts).
+    const waiting = pending.toolCallId
+      ? turn.conversation.findLast((message) => message.role === "tool" && message.tool_call_id === pending.toolCallId && awaitingPart(message.content) !== null)
+      : undefined;
+    const held = waiting ? awaitingPart(waiting.content) : null;
+    if (waiting && held) {
+      const { content, at } = held;
+      content.attacks[at] = { ...answer, ...(content.attacks[at].spent ? { spent: content.attacks[at].spent } : {}) };
+      waiting.content = JSON.stringify(content);
+      continue;
+    }
     turn.conversation.push({
       role: "tool",
       ...(pending.toolCallId ? { tool_call_id: pending.toolCallId } : {}),
-      content: JSON.stringify({
-        total: roll.total,
-        dice: roll.breakdown.terms,
-        ...(pending.dc !== null ? { dc: pending.dc, success: roll.total >= pending.dc } : {}),
-        ...(roll.breakdown.crit ? { crit: roll.breakdown.crit } : {}),
-        rolledBy: pending.status === "submitted" ? "the player, with physical dice" : "the server",
-        note: ROLL_RESULT_NOTE,
-        // What the server already did with this roll (initiative locked,
-        // damage applied); the model must narrate from it, not repeat it.
-        ...(pending.combatNote ? { combat: pending.combatNote } : {}),
-      }),
+      content: JSON.stringify(answer),
     });
   }
 
@@ -2355,6 +2389,15 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       settleTurn(context.campaign, holder);
       if (outcome[PARKED]) {
         parkedAny = true;
+        // The parts of a pc_attack that needed no roll are answered now;
+        // each roll takes its part's place when the turn resumes.
+        if (Array.isArray(outcome.attacks)) {
+          turn.conversation.push({
+            role: "tool",
+            ...(toolCall.id ? { tool_call_id: toolCall.id } : {}),
+            content: JSON.stringify({ attacks: outcome.attacks }),
+          });
+        }
         continue;
       }
       if (!("error" in outcome)) {
@@ -2476,9 +2519,37 @@ const PARKED = "__turnParked";
 async function resolveModelCall(
   context: TurnContext,
   turn: DmTurn,
-  toolCall: { id?: string; name: string; rawArguments: string },
+  toolCall: { id?: string; name: string; rawArguments: string; casting?: OneCasting },
 ): Promise<ToolResult> {
   const { campaign, sheets, sheetsById, realDiceUserIds } = context;
+  // A chest's items, a shopping list, the creatures a healing spell
+  // reaches: each entry the one-entry call it always was
+  // (src/lib/dm/action-parts-logic.ts listedCalls).
+  const each = listedCalls(toolCall.name, toolCall.rawArguments);
+  if (each) {
+    const refused = listRefusal(toolCall.name, each);
+    if (refused) {
+      return refused;
+    }
+    if (turn.mutationCount >= MUTATION_CAP_PER_TURN) {
+      return MUTATION_CAP_REFUSAL;
+    }
+    // The list is one change against the turn's cap, as one call from a
+    // connected agent program is (src/lib/dm/invoke.ts); MAX_PARTS bounds
+    // it. Counted per entry, a chest of twelve lost its last two and every
+    // change after it.
+    const counted = turn.mutationCount;
+    const casting = oneCasting(toolCall.name, each);
+    const outcomes: Record<string, unknown>[] = [];
+    for (const one of each) {
+      outcomes.push(await resolveModelCall(context, turn, { ...toolCall, rawArguments: JSON.stringify(one), casting }));
+      turn.mutationCount = counted;
+    }
+    if (outcomes.some((outcome) => typeof outcome.error !== "string")) {
+      turn.mutationCount = counted + 1;
+    }
+    return partsResult(outcomes, PART_LISTS[toolCall.name].key);
+  }
   // "false" sent as a string is false (src/lib/dm/arg-coerce.ts).
   // A merged tool reaches the handler its arguments name, and a retired
   // name the one it always reached (src/lib/dm/tool-merge.ts): the caps,
@@ -2510,7 +2581,7 @@ async function resolveModelCall(
     if (!("error" in result)) {
       turn.encounterCount += 1;
     }
-    return result[PC_ATTACK_PARKED] ? { [PARKED]: true } : result;
+    return result[PC_ATTACK_PARKED] ? { [PARKED]: true, ...(Array.isArray(result.attacks) ? { attacks: result.attacks } : {}) } : result;
   }
   // Companion recruit/dismiss resolves synchronously: the sheet, order
   // slot, and token exist before the model narrates the arrival. The shared
@@ -2546,7 +2617,7 @@ async function resolveModelCall(
     }
     const result =
       maybeProposeItemChange(campaign, turn.id, name, gated.args, sheetsById) ??
-      applyDmMutation(campaign, turn.id, name, gated.args, sheets, sheetsById, turn).result;
+      applyDmMutation(campaign, turn.id, name, gated.args, sheets, sheetsById, turn, toolCall.casting).result;
     if (!("error" in result)) {
       turn.mutationCount += 1;
     }
