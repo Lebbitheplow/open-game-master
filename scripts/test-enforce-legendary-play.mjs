@@ -23,6 +23,7 @@ const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
 const { listEffects } = await import("../src/lib/db/active-effects.ts");
 const { enemyActedThisRound } = await import("../src/lib/dm/can-act.ts");
 const { getBattleMapForEncounter } = await import("../src/lib/db/battle-maps.ts");
+const { listLiveTurnChangeViews } = await import("../src/lib/db/turn-changes.ts");
 
 const book = JSON.parse(fs.readFileSync(new URL("../src/lib/rulebook/srd-5.1.json", import.meta.url), "utf8"));
 function srd(title) {
@@ -315,6 +316,39 @@ await test("The tarrasque's Chomp: a bite, or Swallow, which swallows the creatu
   const said = out.body.result.swallowed ?? out.body.result.swings?.find((swing) => swing.swallowed)?.swallowed;
   // The creature's own Swallow, numbers and all (src/lib/dm/swallow.ts).
   assert.match(said, /is swallowed: .*16d6 acid damage at the start of each of its turns\. 60 damage dealt it from inside/);
+});
+
+// "Revert this turn" on the GM's card (src/lib/db/turn-rows.ts): the
+// legendary action is a write to the encounter's row, which the turn keeps.
+async function revertTurn(world, user, turnId) {
+  const handler = await world.route("campaigns/[campaignId]/audit/revert-turn");
+  world.signIn({ id: user.id });
+  const response = await handler.POST(
+    new Request("http://odm.test/revert", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ turnId, confirm: true }) }),
+    { params: Promise.resolve({ campaignId: world.campaignId }) },
+  );
+  return { status: response.status, body: await response.json().catch(() => ({})) };
+}
+
+await test("A legendary action played from the card goes back with Revert this turn: the action spent, its place at the turn's end, and what its swing did", async () => {
+  const { world, kara, gm, play, pool } = await facing("Adult Red Dragon");
+  const hp = world.sheet(kara.id).currentHp;
+  world.dice(19, 6, 6);
+  const out = await play({ action: "Tail Attack", targetCharacterId: kara.id });
+  world.clearDice();
+  assert.equal(out.status, 200, JSON.stringify(out.body));
+  assert.equal(pool(), 2);
+  assert.ok(world.sheet(kara.id).currentHp < hp, "the tail struck");
+  const turnId = listLiveTurnChangeViews(world.campaignId).filter((change) => change.kind === "fight").at(-1)?.turnId;
+  assert.ok(turnId, "the card's turn kept the fight's rows");
+  const back = await revertTurn(world, gm, turnId);
+  assert.equal(back.status, 200, JSON.stringify(back.body));
+  assert.equal(pool() ?? 3, 3, "the legendary action is back");
+  assert.equal(world.sheet(kara.id).currentHp, hp, "and the tail's damage");
+  world.dice(19, 6, 6);
+  const again = await play({ action: "Tail Attack", targetCharacterId: kara.id });
+  world.clearDice();
+  assert.equal(again.status, 200, `it may be taken again at this turn's end: ${JSON.stringify(again.body)}`);
 });
 
 finish();
