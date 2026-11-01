@@ -47,10 +47,32 @@ assert.ok(listed.includes(" (1 rd)"), "a round count shows");
 assert.ok(listed.includes("Incapacitated, can&#x27;t move or speak"), "a dying figure reads as unconscious");
 assert.match(listed, /w-\[340px\][^"]*flex-col sm:w-\[680px\] sm:flex-row/, "three or more stack under a header on a phone, and go wide from sm up");
 assert.match(listed, /size-\[72px\]/, "the portrait shrinks to a header on a phone when crowded");
-assert.match(listed, /grid w-full grid-cols-1 sm:flex-1 sm:grid-cols-2/, "two across from sm up");
+assert.match(listed, /grid w-full grid-cols-1 sm:grid-cols-2/, "two across from sm up");
 assert.match(listed, /<span class="capitalize">halted<\/span><span[^>]*> \(1 rd\)/, "only the name is capitalized, not the round count");
 const two = plate({ conditions: [{ id: "prone", label: "Prone" }, { id: "poisoned", label: "Poisoned" }] });
 assert.doesNotMatch(two, /size-\[72px\]|grid-cols-2/, "one or two conditions keep the portrait full size, in one column");
+
+// A high-level pile, buffs on debuffs: a page at a time. The server render
+// has no window, so it pages as a phone does, four to a page.
+const pile = ["prone", "restrained", "poisoned", "frightened", "hasted", "blessed", "invisible", "shielded"]
+  .map((id) => ({ id, label: id }));
+const hovered = plate({ conditions: pile });
+assert.equal((hovered.match(/<li/g) ?? []).length, 4, "hovered: the first page");
+assert.match(hovered, /role="tooltip"/);
+assert.match(hovered, /pointer-events-none/, "hovered: it never takes the pointer");
+assert.match(hovered, /data-plate-more[^>]*>.*\+4 more: <\/span><span class="capitalize">hasted, blessed, invisible, shielded/, "hovered: the rest are named");
+assert.doesNotMatch(hovered, /Next conditions|aria-label="Close"/, "hovered: no buttons");
+const held = plate({ conditions: pile, pinned: true });
+assert.match(held, /role="dialog"/);
+assert.match(held, /aria-label="Ogre Brute: details"/);
+assert.match(held, /tabindex="-1"/, "held: it can take the keyboard");
+assert.match(held, /pointer-events-auto/, "held: it takes the pointer");
+assert.match(held, /aria-label="Close"/);
+assert.match(held, /aria-label="Previous conditions"[^>]*disabled=""|disabled=""[^>]*aria-label="Previous conditions"/, "held: no page before the first");
+assert.match(held, /aria-label="Next conditions"/);
+assert.match(held, /aria-live="polite"[^>]*>Page 1 of 2</, "held: which page, said as it turns");
+assert.doesNotMatch(held, /data-plate-more/, "held: the pager, not a list of names");
+assert.doesNotMatch(plate({ conditions: pile.slice(0, 4), pinned: true }), /Next conditions/, "one page needs no pager");
 
 const { placePlate } = await import("../src/lib/battlemap/plate-place.ts");
 const view = { width: 1280, height: 800 };

@@ -1668,10 +1668,11 @@ const pileup = {};
     };
   }
 
-  // The hover plate under a pile of conditions: an ogre prone, restrained,
-  // poisoned, frightened by the player's Wren and Hasted, so the plate lists
-  // five rows, four with an SRD meaning and one with its own summary, its
-  // rounds and its save. The lead runs the table.
+  // The hover plate under a high-level pile, debuffs and buffs: an ogre
+  // prone, restrained, poisoned, frightened by the player's Wren, Hasted,
+  // Blessed, invisible and Shielded. Eight rows, more than a page on a phone
+  // (four) or a desktop (six): SRD meanings, registry summaries, rounds, a
+  // save and a source. The lead runs the table.
   for (const viewport of ["desktop", "phone"]) {
     const table = campaigns.createCampaign(world.owner.id, {
       title: `Pileup Table (${viewport})`,
@@ -1688,10 +1689,11 @@ const pileup = {};
     const { rows, place } = await fightOn(table, world.owner.id, [{ monster: "ogre", count: 1 }]);
     const ogre = enemyNamed(rows, "ogre");
     [[wren.id, -2], [ogre.id, 1]].forEach(([refId, dx]) => place(refId, dx));
-    encounterRows.patchEnemyConditions(ogre.id, ["prone", "restrained", "poisoned", "frightened", "hasted"], {
+    encounterRows.patchEnemyConditions(ogre.id, ["prone", "restrained", "poisoned", "frightened", "hasted", "blessed", "invisible", "shielded"], {
       restrained: { rounds: 2, spell: "Web" },
       frightened: { source: wren.id, spell: "Cause Fear", saveEnds: { ability: "wis", dc: 13 } },
       hasted: { rounds: 10, spell: "Haste" },
+      blessed: { rounds: 10, spell: "Bless" },
     });
     pileup[viewport] = { id: table.id, ogre: { id: ogre.id, name: ogre.displayName }, wren: { id: wren.id, name: wren.name } };
   }

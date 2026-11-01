@@ -1,6 +1,6 @@
 "use client";
 
-import { EyeOff } from "lucide-react";
+import { ChevronLeft, ChevronRight, EyeOff, X } from "lucide-react";
 import { litOrderRows, pointerOrderIndex } from "@/lib/battlemap/initiative-rows";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -368,12 +368,19 @@ function ConditionRow({ id, label, rounds, note }: { id: string; label: string; 
 // The figure's painting large (a token shows it at a few dozen pixels, so
 // this is the one place on the board the art is actually seen), then name
 // and health word; beside them each condition with its painting and what it
-// does, so a plate with conditions grows wider, not taller. Shown on hover,
-// and on a tap for a phone.
+// does, so a plate with conditions grows wider, not taller. Shown on hover;
+// a click or tap (or Details on the figure's dial) pins it open.
 //
 // A pin the size of the figure rides in the board, under the camera; the
 // plate itself is pinned to the page over it (plate-place.ts), so neither a
 // short board's frame nor the camera's zoom cuts it off or scales it.
+//
+// A high-level fight piles buffs on debuffs, so the list comes a page at a
+// time: four on a phone, six from sm up. Hovered, the plate shows the first
+// page and names the rest; pinned, it pages through them.
+const PAGE_NARROW = 4;
+const PAGE_WIDE = 6;
+
 export function TokenPlate({
   token,
   boardWidth,
@@ -384,6 +391,8 @@ export function TokenPlate({
   conditions,
   edge,
   anchor,
+  pinned = false,
+  onClose,
 }: {
   token: StageToken;
   boardWidth: number;
@@ -395,10 +404,19 @@ export function TokenPlate({
   edge?: TargetEdge;
   // Where an addon's board view drew the figure (TokenHud.tsx says how).
   anchor?: [number, number, number];
+  // Held open by a click: it takes the pointer and the keyboard, pages, and
+  // closes by its own button, Escape, a tap on the board or anywhere else.
+  pinned?: boolean;
+  onClose?: () => void;
 }) {
   const pin = useRef<HTMLSpanElement>(null);
   const plateRef = useRef<HTMLDivElement>(null);
   const [spot, setSpot] = useState<{ left: number; top: number; below: boolean } | null>(null);
+  const [page, setPage] = useState(0);
+  const [wide, setWide] = useState(false);
+  const [floor, setFloor] = useState(0);
+  const floorRef = useRef(0);
+  const pagedRef = useRef(false);
   // Every frame while open: the camera pans and zooms, the page scrolls, the
   // window turns, and none of them re-render the plate.
   useEffect(() => {
@@ -407,6 +425,12 @@ export function TokenPlate({
       const figure = pin.current?.getBoundingClientRect();
       const plate = plateRef.current;
       if (figure && plate) {
+        // Paging, the plate keeps the height of its tallest page, so a
+        // shorter last page neither moves it nor the arrows on it.
+        if (pagedRef.current && plate.offsetHeight > floorRef.current) {
+          floorRef.current = plate.offsetHeight;
+          setFloor(plate.offsetHeight);
+        }
         const next = placePlate(figure, { width: plate.offsetWidth, height: plate.offsetHeight }, { width: window.innerWidth, height: window.innerHeight });
         setSpot((current) =>
           current && current.left === next.left && current.top === next.top && current.below === next.below ? current : next,
@@ -417,21 +441,69 @@ export function TokenPlate({
     frame = requestAnimationFrame(follow);
     return () => cancelAnimationFrame(frame);
   }, []);
+  // The page size follows the layout's own breakpoint (Tailwind's sm).
+  useEffect(() => {
+    const query = window.matchMedia("(min-width: 640px)");
+    const read = () => setWide(query.matches);
+    read();
+    query.addEventListener("change", read);
+    return () => query.removeEventListener("change", read);
+  }, []);
+  const closeRef = useRef(onClose);
+  useEffect(() => {
+    closeRef.current = onClose;
+  });
+  const shown = Boolean(spot);
+  // Pinned: the keyboard comes to the plate once it is in place, and goes
+  // back where it was when the plate closes. A press outside the plate and
+  // the board closes it; the board's own taps close or move it themselves.
+  useEffect(() => {
+    if (!pinned || !shown) return;
+    const before = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    plateRef.current?.focus({ preventScroll: true });
+    const onDown = (event: PointerEvent) => {
+      const target = event.target instanceof Node ? event.target : null;
+      if (target && (plateRef.current?.contains(target) || pin.current?.parentElement?.contains(target))) return;
+      closeRef.current?.();
+    };
+    document.addEventListener("pointerdown", onDown);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      if (before?.isConnected) before.focus({ preventScroll: true });
+    };
+  }, [pinned, shown]);
 
   const left = anchor ? anchor[0] * 100 : ((token.x + footprint / 2) / boardWidth) * 100;
   const top = anchor ? anchor[1] * 100 : (token.y / boardHeight) * 100;
   const height = anchor ? (anchor[2] - anchor[1]) * 100 : (footprint / boardHeight) * 100;
-  const listed = Boolean(conditions?.length);
+  const all = conditions ?? [];
+  const listed = all.length > 0;
   // Three or more conditions stood in one column would run past a phone's
   // screen: on a phone the portrait shrinks to a header beside the name and
   // the list takes the plate's width; from sm up the list goes two across.
-  const crowded = (conditions?.length ?? 0) >= 3;
+  const crowded = all.length >= 3;
+  const size = wide ? PAGE_WIDE : PAGE_NARROW;
+  const pages = Math.max(1, Math.ceil(all.length / size));
+  // A condition that ends while the plate is open can take the last page.
+  const at = Math.min(page, pages - 1);
+  const onPage = all.slice(at * size, (at + 1) * size);
+  const rest = pinned ? [] : all.slice(size);
+  const paged = pinned && pages > 1;
+  useEffect(() => {
+    pagedRef.current = paged;
+  });
+  const pagerButton =
+    "flex size-7 items-center justify-center rounded-full border border-[rgba(107,99,148,0.6)] text-[#dedbec] hover:text-white disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#ecd287]";
   const plate = (
     <div
       ref={plateRef}
-      role="tooltip"
+      role={pinned ? "dialog" : "tooltip"}
+      aria-label={pinned ? `${token.name}: details` : undefined}
+      tabIndex={pinned ? -1 : undefined}
+      data-pinned={pinned ? "true" : undefined}
       className={cn(
-        "pointer-events-none z-[70] flex items-start gap-2 rounded-lg border border-[rgba(107,99,148,0.4)] bg-[rgba(8,6,18,0.94)] p-1.5 text-[#e9e6f4] shadow-elev-2",
+        "z-[70] flex items-start gap-2 rounded-lg border bg-[rgba(8,6,18,0.94)] p-1.5 text-[#e9e6f4] shadow-elev-2 outline-none",
+        pinned ? "pointer-events-auto border-[rgba(227,193,92,0.45)] pr-9" : "pointer-events-none border-[rgba(107,99,148,0.4)]",
         // Measured where it will sit, before it is shown.
         spot ? "fixed animate-fade-up" : "invisible fixed left-0 top-0",
         crowded
@@ -440,8 +512,13 @@ export function TokenPlate({
             ? "w-[312px] sm:w-[380px]"
             : "w-[136px] sm:w-[172px]",
       )}
-      style={spot ? { left: spot.left, top: spot.top } : undefined}
+      style={spot ? { left: spot.left, top: spot.top, ...(paged && floor ? { minHeight: floor } : {}) } : undefined}
     >
+      {pinned ? (
+        <button type="button" onClick={() => onClose?.()} aria-label="Close" className={cn(pagerButton, "absolute right-1 top-1")}>
+          <X className="size-3.5" />
+        </button>
+      ) : null}
       <div
         className={cn(
           "flex shrink-0 sm:w-[160px] sm:flex-col sm:items-center sm:gap-0",
@@ -465,15 +542,38 @@ export function TokenPlate({
         </span>
         {edge && !crowded ? <EdgeChips edge={edge} /> : null}
       </div>
-      {conditions?.length ? (
-        <ul
-          className={cn("min-w-0 gap-1.5", crowded ? "grid w-full grid-cols-1 sm:flex-1 sm:grid-cols-2 sm:gap-x-3" : "flex flex-1 flex-col")}
-          aria-label="Conditions"
-        >
-          {conditions.map((condition, index) => (
-            <ConditionRow key={`${condition.id}-${index}`} {...condition} />
-          ))}
-        </ul>
+      {listed ? (
+        <div className={cn("flex min-w-0 flex-col gap-1.5", crowded ? "w-full sm:flex-1" : "flex-1")}>
+          {/* Above the list, so a shorter last page does not move the arrows
+              out from under the pointer. */}
+          {pinned && pages > 1 ? (
+            <div className="flex items-center gap-2 text-[11px] text-[#d8d3ea]">
+              <button type="button" onClick={() => setPage(at - 1)} disabled={at === 0} aria-label="Previous conditions" className={pagerButton}>
+                <ChevronLeft className="size-4" />
+              </button>
+              {/* Even digits and a set width: the next arrow holds still. */}
+              <span aria-live="polite" className="min-w-[5.5rem] text-center tabular-nums">{`Page ${at + 1} of ${pages}`}</span>
+              <button type="button" onClick={() => setPage(at + 1)} disabled={at === pages - 1} aria-label="Next conditions" className={pagerButton}>
+                <ChevronRight className="size-4" />
+              </button>
+            </div>
+          ) : null}
+          <ul
+            className={cn("min-w-0 gap-1.5", crowded ? "grid w-full grid-cols-1 sm:grid-cols-2 sm:gap-x-3" : "flex flex-col")}
+            aria-label="Conditions"
+          >
+            {onPage.map((condition, index) => (
+              <ConditionRow key={`${condition.id}-${at * size + index}`} {...condition} />
+            ))}
+          </ul>
+          {/* Hovered, the rest are named: a click opens the plate to page them. */}
+          {rest.length ? (
+            <p className="text-[10px] leading-snug text-[#aeaac6]" data-plate-more>
+              <span className="font-semibold text-[#ecd287]">{`+${rest.length} more: `}</span>
+              <span className="capitalize">{rest.map((condition) => condition.label).join(", ")}</span>
+            </p>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );
