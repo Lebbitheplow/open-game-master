@@ -5,6 +5,7 @@ import { useState } from "react";
 import { appConfirm } from "@/components/ui/ConfirmDialog";
 import { SessionBanner, bannerButtonClass } from "@/app/campaigns/[campaignId]/SessionBanner";
 import { PanelError } from "@/app/campaigns/[campaignId]/PanelKit";
+import { TurnTraceButton } from "@/app/campaigns/[campaignId]/TurnTraceSheet";
 import { navigateTo } from "@/lib/navigation";
 import { SaveSetupButton } from "@/app/campaigns/[campaignId]/SaveSetupButton";
 import { workshopHref } from "@/lib/workshop/links";
@@ -60,6 +61,7 @@ export function TestFightBanner({
             Back to the workshop
           </Link>
           <SaveSetupButton campaignId={campaignId} />
+          <TurnTraceButton campaignId={campaignId} />
           <button type="button" disabled={busy} aria-busy={busy} onClick={() => void end()} className={bannerButtonClass(true)}>
             End the test
           </button>

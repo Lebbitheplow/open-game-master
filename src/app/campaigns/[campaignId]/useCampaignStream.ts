@@ -44,6 +44,7 @@ import { DEPARTING_KEPT_MS, type DepartingSheet } from "@/app/campaigns/[campaig
 import type { DmJobView } from "@/lib/dm/job-stage-logic";
 import type { VoiceRosterEntry } from "@/lib/voice/types";
 import { navigateTo } from "@/lib/navigation";
+import { announceDmStatus } from "@/lib/dm-status-event";
 import { registerBrowserSpecies } from "@/lib/srd/race-id";
 import { registerBrowserSubclassExtras, type SubclassExtras } from "@/lib/srd/subclass-tables";
 import { registerBrowserTableFeats } from "@/lib/srd/feat-effects";
@@ -1707,6 +1708,11 @@ export function useCampaignStream(campaignId: string) {
             clearDmDraft();
           }
           dispatch({ type: "event", eventType, seq, payload });
+          // A control outside this state that follows the GM's turns (the
+          // test fight's turn trace) hears them here.
+          if (eventType === "dm_status") {
+            announceDmStatus(campaignId, payload.state);
+          }
           if (eventType === "note_suggested") {
             void refreshNotes();
           }

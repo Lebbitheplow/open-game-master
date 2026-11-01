@@ -129,6 +129,10 @@ export const SERVER_FEATURES = {
   // and "Remove its set-up" on the fight, which an older host answers with
   // a 404, so neither shows there.
   fightSetups: true,
+  // "Turn trace" on a test fight's banner (issue 685): GET
+  // /api/campaigns/[id]/turn-trace, every call the GM made and what the
+  // engine answered, which an older host answers with a 404.
+  turnTrace: true,
 } as const;
 export type ServerFeatures = { [K in keyof typeof SERVER_FEATURES]: boolean };
 
