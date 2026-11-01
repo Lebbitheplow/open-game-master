@@ -99,7 +99,8 @@ export async function POST(
   if (!outcome.ok) {
     return Response.json({ error: outcome.error }, { status: outcome.status });
   }
-  return Response.json({ ok: true, campaignId: outcome.campaignId });
+  // `mapError`: the fight's saved map could not be laid (the table says so too).
+  return Response.json({ ok: true, campaignId: outcome.campaignId, ...(outcome.mapError ? { mapError: outcome.mapError } : {}) });
 }
 
 export async function DELETE(

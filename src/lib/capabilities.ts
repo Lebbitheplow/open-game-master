@@ -168,6 +168,11 @@ export const SERVER_FEATURES = {
   // host's prep routes refuse as an event they cannot read, so the editor
   // offers it only here.
   fightGround: true,
+  // The creature picker on a summoning spell's card (issue 685): GET
+  // /api/campaigns/[id]/summons and the card's `count`, which an older host
+  // answers with a 404 and drops unread, so its summon cards ask nothing
+  // and wait for the GM as before.
+  summonPicker: true,
 } as const;
 export type ServerFeatures = { [K in keyof typeof SERVER_FEATURES]: boolean };
 

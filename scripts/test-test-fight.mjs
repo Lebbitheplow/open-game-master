@@ -412,5 +412,34 @@ await test("where only administrators start tables, a test fight is refused, and
   assert.equal((await call(route.test, "GET", undefined, here)).json.refused, "");
 });
 
+// ---- a fight whose saved map is gone (issue 685, audit 4.G) ----
+
+const said = (campaignId) =>
+  getDatabase().prepare(`SELECT content FROM campaign_messages WHERE campaign_id = ? AND author_type = 'system' ORDER BY seq`).all(campaignId).map((row) => row.content);
+
+await test("a test of a fight on its map says nothing of the map; once that map is removed from the workshop's maps, the test table says the fight is on a generated one", async () => {
+  const lost = openWorkshop("The Lost Cellar");
+  const where = { workshopId: lost.workshop.id };
+  const kept = await call(route.test, "POST", { templateId: lost.fight.id, party: { kind: "stand-ins" } }, where);
+  assert.equal(kept.status, 200, JSON.stringify(kept.json));
+  assert.equal(kept.json.mapError, undefined);
+  assert.ok(!said(kept.json.campaignId).some((line) => /saved map could not be used/.test(line)));
+
+  // "Keep this map" draws the fight on a map of the workshop's own, which
+  // its author may remove from the workshop's maps afterwards.
+  const forgot = await call(route.map, "DELETE", undefined, { campaignId: lost.workshop.id, mapId: lost.cellar.id });
+  assert.equal(forgot.status, 200, JSON.stringify(forgot.json));
+  const out = await call(route.test, "POST", { templateId: lost.fight.id, party: { kind: "stand-ins" } }, where);
+  assert.equal(out.status, 200, JSON.stringify(out.json));
+  assert.ok(getActiveEncounter(out.json.campaignId), "the fight still starts, as a GM's Deploy does");
+  assert.equal(out.json.mapError, "the map it was drawn on is no longer in the workshop's maps");
+  // In the AI's prepared fight's own words (prepared-encounter-tool.ts mapNote).
+  assert.ok(
+    said(out.json.campaignId).includes("Its saved map could not be used (the map it was drawn on is no longer in the workshop's maps); the fight is on a generated one."),
+    JSON.stringify(said(out.json.campaignId)),
+  );
+  await call(route.workshop, "DELETE", undefined, where);
+});
+
 world.close();
 finish();

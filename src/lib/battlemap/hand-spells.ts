@@ -19,6 +19,7 @@ import { mechSpellDamage } from "@/lib/srd/spell-dice";
 import { bakedSpellMech } from "@/lib/content/baked-spells";
 import { allSpellNames } from "@/lib/srd/spell-lists";
 import { areaFor, blastAreaFor } from "@/lib/battlemap/hand-area";
+import { summonPick } from "@/lib/battlemap/hand-summon";
 import {
   SAVE_LABEL,
   addFlat,
@@ -185,7 +186,8 @@ function spellShares(mech: SpellMech, spellLevel: number, slotLevel: number | nu
   return { count, unit: "creature", stack: false };
 }
 
-function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, name: string, fact: SpellFact, blasts = true): HandCard | null {
+function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, name: string, fact: SpellFact, options: HandOptions = {}): HandCard | null {
+  const blasts = options.blasts !== false;
   const cost = castingCost(fact.castingTime);
   if (!cost) return null;
   // The mechanics row the engine reads; the prose is parsed only for what the
@@ -336,6 +338,13 @@ function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, 
   };
   const choice = cost === "reaction" ? undefined : spellChoice(mech);
   if (choice) card.choice = choice;
+  // A summoning spell that calls more than one creature from this slot asks
+  // which, and how many where the spell lets its caster choose (issue 685).
+  const summoning = cost === "reaction" ? null : summonPick(options.summons?.[textKey(name)], slot?.level ?? fact.level);
+  if (summoning) {
+    card.choice = summoning.choice;
+    card.summon = summoning.summon;
+  }
   // Web, Moonbeam, a wall: the square it is laid on is picked on the board.
   // So is an instant blast's (Fireball, Burning Hands), whose squares the
   // engine then catches everyone on (issue 570); a blast around the caster
@@ -374,7 +383,7 @@ export function spellCards(sheet: CharacterSheet, turn: HandTurn, riders: Combat
   for (const name of spellNames(sheet)) {
     const fact = factFor(name, options);
     if (!fact) continue;
-    const card = spellCard(sheet, turn, riders, name, fact, options.blasts !== false);
+    const card = spellCard(sheet, turn, riders, name, fact, options);
     if (card) rows.push({ level: fact.level, card });
   }
   // Attacks first inside a level, so the cantrip that hurts leads the hand.

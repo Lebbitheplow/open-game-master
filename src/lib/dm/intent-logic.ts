@@ -107,9 +107,12 @@ export type DirectContext = {
   // aoe_damage checks.
   shareKind?: "darts" | "attacks" | "targets";
   cluster?: boolean;
-  // The spell makes creatures (src/lib/srd/summon-spells.ts): only one kind
-  // ("one", Unseen Servant), or a kind the card must name ("choose").
+  // The spell makes creatures (src/lib/srd/summon-spells.ts, and Find
+  // Familiar): only one kind ("one", Unseen Servant), or a kind the card must
+  // name ("choose").
   summon?: "one" | "choose";
+  // Its casting time is a minute or more (SRD 5.1, Longer Casting Times).
+  long?: boolean;
   // The spell leaves a lasting area (src/lib/battlemap/zones-spells.ts): how
   // its square is picked on this fight's battle map, "off" with none, and
   // whether creatures standing in it when it appears are caught then.

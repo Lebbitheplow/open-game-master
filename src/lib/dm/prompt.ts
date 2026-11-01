@@ -694,7 +694,7 @@ export function describeSheet(
     // What it shrugs off, so the damage the DM routes at it carries a type.
     const defenses = defenseWords(pet);
     lines.push(
-      `  Pet: ${pet.name} (${pet.form}, ${pet.kind.replaceAll("_", " ")}): ${pet.hp}/${pet.maxHp} HP, AC ${pet.ac}, speed ${pet.speed} ft.${attacks}${defenses ? ` Defenses: ${defenses}.` : ""}${pet.notes ? ` ${pet.notes}` : ""}`,
+      `  Pet: ${pet.name} (${pet.form}, ${pet.creatureType ? `a ${pet.creatureType} ` : ""}${pet.kind.replaceAll("_", " ")}): ${pet.hp}/${pet.maxHp} HP, AC ${pet.ac}, speed ${pet.speed} ft.${attacks}${defenses ? ` Defenses: ${defenses}.` : ""}${pet.notes ? ` ${pet.notes}` : ""}`,
     );
   }
   // A creature a spell made: its stat block's attacks and how it ends

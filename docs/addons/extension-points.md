@@ -474,7 +474,10 @@ contain one native `panel` with a title, display lines and offered controls.
 Only that panel's controls are actionable while it is open. Its `boardInput`
 flag permits the existing target/area picks; otherwise map input is blocked.
 Weapon/spell choices and concentration confirmation reuse the Hand's current
-state and submission. Chat, ordinary cards, sheets and campaign panels remain
+state and submission. A summoning card's creature is its `hand-choice`; how
+many of it is `hand-count` (one of the numbers offered), and a spell whose
+targets each take their own form (Animate Dead) offers `hand-mix`, one more
+or one fewer of a form (`"Skeleton:+"`), within the slot's budget. Chat, ordinary cards, sheets and campaign panels remain
 HTML. Capability ownership follows the active native view, including enlarged
 view transitions; detach/failure restores the existing HTML battlefield.
 

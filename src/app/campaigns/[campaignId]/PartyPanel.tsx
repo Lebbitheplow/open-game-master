@@ -731,7 +731,7 @@ export function PartyPanel({
                 <span className="flex min-w-0 items-center gap-1 truncate">
                   <PawPrint className="size-3 shrink-0 text-stone-500" />
                   {pet.name}
-                  {textKey(pet.name) !== textKey(pet.form) ? ` (${pet.form})` : ""}
+                  {textKey(pet.name) !== textKey(pet.form) ? ` (${pet.form}${pet.creatureType ? `, ${pet.creatureType}` : ""})` : pet.creatureType ? ` (${pet.creatureType})` : ""}
                 </span>
                 <span className={cn("font-mono", pet.hp <= 0 && "text-red-400")}>
                   {pet.hp}/{pet.maxHp}
