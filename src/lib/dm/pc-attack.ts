@@ -33,6 +33,8 @@ import { invalidArguments, type ToolError, type ToolResult } from "@/lib/dm/tool
 import { attacksLeft } from "@/lib/dm/action-budget";
 import { approachForAttack, withApproach } from "@/lib/dm/pc-attack-approach";
 import { commitConjuredStrike } from "@/lib/dm/conjured-strike";
+import { swallowCover } from "@/lib/dm/swallow";
+import { resolveEnemyRef } from "@/lib/dm/enemy-damage";
 
 // Re-exported for the callers that learned it here.
 export { resolvePendingPcAttack } from "@/lib/dm/pc-attack-parked";
@@ -319,6 +321,12 @@ export function handlePcAttack(
   const sheet = staleSheet ? (getSheetById(staleSheet.id) ?? staleSheet) : null;
   if (!sheet) {
     return unknownSheetRef("characterId", args.characterId, sheets);
+  }
+  // Swallowed: from inside, only the creature that swallowed them
+  // (src/lib/dm/swallow.ts).
+  const inside = swallowCover({ kind: "sheet", id: sheet.id }, { kind: "enemy", id: resolveEnemyRef(encounter.id, args.targetEnemyId)?.id ?? args.targetEnemyId });
+  if (inside) {
+    return { error: `${inside} Nothing was spent.`, refused: "rules" };
   }
 
   // The move to the target the player declared, when the swing needs it

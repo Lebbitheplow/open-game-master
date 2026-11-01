@@ -71,6 +71,10 @@ import { ADVANTAGE_SOURCES, claimedAdvantage } from "@/lib/dm/pc-attack-options"
 import { unknownSheetRef } from "@/lib/dm/rolls";
 import { mountTargetProblem, strikeMount } from "@/lib/dm/mount-combat";
 import { enemySpellAttack } from "@/lib/dm/enemy-casting";
+import { swallowCover, swallowRefusal } from "@/lib/dm/swallow";
+import { swallowActionOf } from "@/lib/dm/swallow-logic";
+import { sizeRank } from "@/lib/bestiary/enemy-numbers";
+import { sizeForRace } from "@/lib/srd";
 
 const attackArgsSchema = z.object({
   enemyId: z.string(),
@@ -175,6 +179,17 @@ export function handleEnemyAttack(
   if (!found) {
     return unknownEnemyRef(encounter.id, "enemyId", args.enemyId);
   }
+  // A Swallow action (the behir's, the remorhaz's, a toad's, the
+  // tarrasque's): one bite at a creature it grapples, which a hit swallows
+  // (src/lib/dm/swallow.ts). The bite is the swing, the swallow its rider.
+  const swallowing = !args.spell && args.attack ? swallowActionOf(found.stats, args.attack) : null;
+  const swallowBite = swallowing ? attackNamed(found.stats.attacks, swallowing.attack ?? "") : null;
+  if (swallowing && !swallowBite) {
+    return { error: `${found.displayName}'s ${swallowing.entry} makes a ${swallowing.attack} attack its block does not list. Nothing was spent.`, retry: true };
+  }
+  if (swallowBite) {
+    args.attack = swallowBite.name;
+  }
   // An attack-roll spell: its use was checked and is paid as a casting
   // (its action, a slot, a legendary action), not as a swing.
   const cast = args.spell ? enemySpellAttack(campaign, found, args.spell, args.targetCharacterId) : null;
@@ -233,6 +248,9 @@ export function handleEnemyAttack(
       refused: "rules",
     };
   }
+  if (aimed.kind === "enemy" && swallowing) {
+    return { error: `${found.displayName}'s ${swallowing.entry} swallows a character here; strike a creature's row with its own attacks. Nothing was spent.`, retry: true };
+  }
   if (aimed.kind === "enemy" && cast) {
     return { error: `${cast.use.name} is cast at a character here; strike a creature's row with its own attacks. Nothing was spent.`, retry: true };
   }
@@ -264,6 +282,22 @@ export function handleEnemyAttack(
   const unmounted = args.targetMount ? mountTargetProblem(campaign.id, target) : null;
   if (unmounted) {
     return { error: unmounted, retry: true };
+  }
+  // Swallowed: total cover against everything outside the creature that
+  // swallowed them (swallow.ts).
+  const inside = swallowCover({ kind: "enemy", id: found.id }, { kind: "sheet", id: target.id });
+  if (inside) {
+    return { error: `${inside} Nothing was spent.`, retry: true, stop: "target" };
+  }
+  if (swallowing) {
+    const refused =
+      swallowRefusal(campaign.id, found, target, swallowing) ??
+      (swallowing.maxSize && sizeRank(sizeForRace(target.race)) > sizeRank(swallowing.maxSize)
+        ? `${target.name} is too big: ${found.displayName}'s ${swallowing.entry} takes a ${swallowing.maxSize} or smaller creature.`
+        : null);
+    if (refused) {
+      return { error: `${refused} Nothing was spent.`, retry: true };
+    }
   }
   // SRD 5.1, Charmed: a charmed creature cannot attack its charmer.
   if (charmedBy(found.conditions, found.conditionMeta, target.id)) {
@@ -316,14 +350,17 @@ export function handleEnemyAttack(
   // A bonus action's attack is one swing, and spends no legendary strike.
   // Confusion's lash-out is one melee attack, not the routine.
   const strike = !bonus && !hasteSwing && !lash && owed;
-  const single = Boolean(cast) || bonus || hasteSwing || Boolean(lash) || strike || conditionTurnShape(found.conditions).slowed;
+  const single = Boolean(cast) || Boolean(swallowing) || bonus || hasteSwing || Boolean(lash) || strike || conditionTurnShape(found.conditions).slowed;
   // The one swing the server picks when it plays the turn: a lash-out's is
   // a melee attack (SRD 5.1, Confusion), any other its first.
   const picked =
     !named && single && engine.pickAttack && actionAttacks.length > 1
       ? (lash ? actionAttacks.find((attack) => enemyAttackProfile(attack, found.stats.traits ?? []).melee) : null) ?? actionAttacks[0]
       : null;
-  const asked = named ?? picked;
+  // The Swallow action's bite carries the swallow (and the size it takes).
+  const swung =
+    named && swallowing ? { ...named, onHit: { ...(named.onHit ?? {}), swallow: true, ...(swallowing.maxSize ? { maxSize: swallowing.maxSize } : {}) } } : named;
+  const asked = swung ?? picked;
   if (single && !asked && actionAttacks.length > 1) {
     return { error: `${found.displayName} makes one attack this turn: name it in attack (${actionAttacks.map((attack) => attack.name).join(", ")}).`, retry: true };
   }

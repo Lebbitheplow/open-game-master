@@ -37,7 +37,8 @@ export type LegendaryLine = { name: string; cost: number; text: string };
 
 export type LegendaryStep =
   | { kind: "attack"; attack: string }
-  | { kind: "swallow"; attack: string; maxSize: string }
+  // entry: the block's Swallow, which enemy_attack plays by name.
+  | { kind: "swallow"; attack: string; maxSize: string; entry: string }
   | { kind: "save"; ability: string; most: number | null }
   | { kind: "check"; ability: string; skill: string | null }
   // feet: a count of feet, else its speed (`fraction` of it, flying for "fly").
@@ -140,7 +141,7 @@ function entryRoute(stats: RouteStats, name: string): LegendaryRoute | null {
   if (swallowed) {
     const bite = (stats.attacks ?? []).find((entry) => bareKey(entry.name) === textKey(swallowed[1]));
     if (bite) {
-      return { use: name, steps: [{ kind: "swallow", attack: bite.name, maxSize: swallowed[2].toLowerCase() }] };
+      return { use: name, steps: [{ kind: "swallow", attack: bite.name, maxSize: swallowed[2].toLowerCase(), entry: name }] };
     }
   }
   // "is thrown up to 60 feet ... takes 3 (1d6) bludgeoning damage for every

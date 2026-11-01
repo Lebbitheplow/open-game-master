@@ -150,6 +150,7 @@ import { approachForCompanion } from "@/lib/dm/companion-approach";
 import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
 import { holdsFeat } from "@/lib/srd/feat-effects";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
+import { swallowTurnEnd } from "@/lib/dm/swallow";
 
 // Server-authoritative combat: enemies spawn from real stat blocks, their
 // HP changes only through these tools, and the initiative pointer is moved
@@ -1673,7 +1674,9 @@ function advancePointer(
   startTurnConditions(campaign, encounter, starting, endedTurn);
   // What the turns now starting bring, posted as one table note
   // (src/lib/dm/turn-start-effects.ts).
-  turnStartEffects(campaign, encounter, starting, enemiesById, turnEnd.lines);
+  // A swallower hurt enough from inside this turn saves or regurgitates
+  // (src/lib/dm/swallow.ts), as the turn ends.
+  turnStartEffects(campaign, encounter, starting, enemiesById, [...turnEnd.lines, ...swallowTurnEnd(campaign, encounter)]);
   if (wraps) {
     encounter.round += 1;
     // Surprise costs exactly one turn, so it is spent by the time round 1

@@ -52,6 +52,7 @@ import { getClock } from "@/lib/db/clock";
 import { outcomeShare, wakeHoursOf } from "@/lib/dm/foe-carry-logic";
 import { releaseHeldSteps } from "@/lib/dm/romance-held";
 import { finishCastingsAtFightEnd } from "@/lib/dm/long-casting";
+import { freeFromCorpse } from "@/lib/dm/swallow";
 
 // The single server-side path for damage landing on an enemy. Used by the
 // damage_enemy tool AND by damage rolls carrying targetEnemyId, which the
@@ -557,6 +558,14 @@ export function applyEnemyDamage(
     const freed = endConditionsHeldBy(campaign, enemy.id);
     if (freed.length) {
       base.released = `${freed.join("; ")}: no longer held by ${updated.displayName}.`;
+    }
+  }
+  // One that dies frees what it swallowed, who climb out of the corpse
+  // (src/lib/dm/swallow.ts).
+  if (updated.status === "dead") {
+    const corpse = freeFromCorpse(campaign, updated);
+    if (corpse) {
+      base.swallowedFreed = corpse;
     }
   }
   // Enemy concentration: damage forces the CON save (DC 10 or half the

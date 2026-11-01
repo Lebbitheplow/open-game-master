@@ -491,11 +491,12 @@ const FOLDED_BY_THE_HANDLER = {
 // tool definition leaves them out on purpose (who may see a roll or a quest,
 // which handout to take down, an uploaded picture no prompt names, a
 // legendary option played whole in one call: the console's dispatch reads its
-// targets, square and spell in src/lib/dm/legendary-play.ts, and the model
-// spends it and makes the call its `next` names, which a refusal gives back).
+// characters, enemy rows, square and spell in src/lib/dm/legendary-play.ts;
+// the model names one target, and makes a move, a jump or a spell with the
+// call its `next` names).
 const FOR_A_PERSON_ONLY = {
   request_roll: ["visibility"],
-  legendary_action: ["use", "targetCharacterId", "characterIds", "enemyIds", "x", "y", "spell"],
+  legendary_action: ["characterIds", "enemyIds", "x", "y", "spell"],
   set_quest: ["visibility"],
   dismiss_handout: ["handoutId"],
   show_handout: ["imagePath"],

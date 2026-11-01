@@ -89,6 +89,9 @@ export type ConditionMeta = {
   // Confusion's lash-out: the creature its d10 picked for this round's melee
   // attack (src/lib/dm/confusion.ts).
   lashOut?: { target: string; round: number };
+  // Swallowed whole (src/lib/dm/swallow.ts): the damage dealt the swallower
+  // from inside this turn, and the feet of movement out of its corpse.
+  swallow?: { hurt?: number; escapeFeet?: number };
   // Further sources of the same condition. SRD 5.1: the effects of the same
   // spell (or the same condition) don't combine, but each keeps its own
   // source and lifetime, so ending one leaves the others holding. Each entry

@@ -13,6 +13,8 @@ import { sizeRank } from "@/lib/bestiary/enemy-numbers";
 import type { EnemyAttack, TypedDice } from "@/lib/bestiary/statblock";
 import { durationArgsFor, effectiveMaxHp, maxHpRiders, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { handleSetCondition } from "@/lib/dm/set-condition";
+import { swallowCreature } from "@/lib/dm/swallow";
+import { swallowRuleOf } from "@/lib/dm/swallow-logic";
 import { damageParts } from "@/lib/dm/damage-parts";
 import { rollCharacterSave } from "@/lib/dm/forced-save";
 import { applyDmMutation } from "@/lib/dm/mutations";
@@ -241,17 +243,17 @@ export function resolveOnHit(
       }
     }
   }
-  // Swallowed whole: blinded and restrained, with the creature as source.
+  // Swallowed whole: blinded, restrained and swallowed, held by the
+  // creature, and from here on its acid, the cover, the regurgitation and its
+  // corpse are the engine's (src/lib/dm/swallow.ts), read from the block.
   if (rider.swallow && !saved && (!rider.maxSize || sizeRank(characterSize(target)) <= sizeRank(rider.maxSize))) {
-    for (const condition of ["blinded", "restrained"]) {
-      const applied = handleSetCondition(campaign, turn.id, getSheetById(target.id) ?? target, { condition, sourceEnemyId: enemy.id }, `swallowed by ${enemy.displayName}`, {
-        spellEffect: { source: enemy.id },
-      });
-      if (!("error" in applied)) {
-        out.riderCondition = [...((out.riderCondition as string[] | undefined) ?? []), condition];
-      }
+    const swallowed = swallowCreature(campaign, turn.id, enemy, target, swallowRuleOf(enemy.stats, attack.name));
+    if ("swallowed" in swallowed) {
+      out.riderCondition = [...((out.riderCondition as string[] | undefined) ?? []), "blinded", "restrained"];
+      out.swallowed = swallowed.swallowed;
+    } else {
+      out.notSwallowed = swallowed.notSwallowed;
     }
-    out.swallowed = `${target.name} is swallowed: blinded and restrained inside ${enemy.displayName}, with total cover from everything outside it. Its stomach's damage each turn and the way out are the GM's to resolve from the block.`;
   }
   if (rider.manual?.length) {
     out.manual = `The server does not model this part of ${attack.name}; resolve it by hand: ${rider.manual.join(" ")}`;

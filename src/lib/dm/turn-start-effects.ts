@@ -17,6 +17,7 @@ import { sunlightTurnStart } from "@/lib/dm/sunlight-turn";
 import { beginTurns, endTurns } from "@/lib/dm/turn-end";
 import { burningTurnStart } from "@/lib/dm/gear-weapon-hit";
 import { laughterTurnStart } from "@/lib/dm/afflictions";
+import { swallowTurnStart } from "@/lib/dm/swallow";
 
 export function turnStartEffects(
   campaign: Campaign,
@@ -56,6 +57,8 @@ export function turnStartEffects(
       // A vampire in sunlight burns (sunlight-turn.ts).
       turnStartLines.push(...sunlightTurnStart(campaign, encounter, enemy));
       turnStartLines.push(...refillLegendaryForTurn(encounter, enemy));
+      // What it swallowed takes its acid (swallow.ts).
+      turnStartLines.push(...swallowTurnStart(campaign, enemy));
     }
   }
   if (turnStartLines.length) {

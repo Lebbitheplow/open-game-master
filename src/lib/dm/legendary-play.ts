@@ -322,19 +322,11 @@ async function playStep(
         attack: step.attack,
         ...(args.advantage && args.advantage !== "none" ? { advantage: args.advantage } : {}),
       });
-    case "swallow": {
-      const bitten = await dispatch("enemy_attack", { enemyId: enemy.id, targetCharacterId: idOf(targets[0]), attack: step.attack });
-      if (typeof bitten.error === "string" || bitten.hit !== true) {
-        return bitten;
-      }
-      // "the target is swallowed, and the grapple ends": blinded and
-      // restrained inside it, as a swallowing bite's hit lays them.
-      await dispatch("clear_condition", { ...onTarget(targets[0]), condition: "grappled" });
-      for (const condition of ["blinded", "restrained"]) {
-        await dispatch("set_condition", { ...onTarget(targets[0]), condition, sourceEnemyId: enemy.id });
-      }
-      return { ...bitten, swallowed: `${nameOf(targets[0])} is swallowed: blinded and restrained inside ${enemy.displayName}. Its stomach's damage each turn and the way out are the GM's to resolve from the block.` };
-    }
+    case "swallow":
+      // The creature's own Swallow, as its action plays it (enemy_attack
+      // naming the entry, src/lib/dm/swallow.ts): the bite, and on a hit the
+      // swallow with the block's acid, cover, regurgitation and corpse.
+      return dispatch("enemy_attack", { enemyId: enemy.id, targetCharacterId: idOf(targets[0]), attack: step.entry });
     case "save":
       return castOn(dispatch, enemy, targets, { enemyAbility: step.ability });
     case "spell": {
@@ -397,6 +389,15 @@ export async function playLegendaryAction(campaign: Campaign, turn: DmTurn, rawA
   const routes = option ? legendaryRoutes(enemy.stats, option) : [];
   const route = option ? routeNamed(routes, args.use) : null;
   if (option && route) {
+    const needs = routeNeeds(route);
+    if (
+      turn.actor === "ai" &&
+      ((needs.square === "required" && (args.x === undefined || args.y === undefined)) || (needs.spell && !args.spell))
+    ) {
+      // The model's legendary_action names a target only: a move, a jump or
+      // a spell is spent here and made by the call its result's next names.
+      return dispatch("legendary_action", { enemyId: enemy.id, action: option.name, ...(args.use ? { use: route.use } : {}) });
+    }
     const targets = targetsOf(encounter, args);
     if (typeof targets === "string") {
       return { error: `${targets} Nothing was spent.`, retry: true };

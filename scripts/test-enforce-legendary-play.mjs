@@ -311,8 +311,10 @@ await test("The tarrasque's Chomp: a bite, or Swallow, which swallows the creatu
   world.clearDice();
   assert.equal(out.status, 200, JSON.stringify(out.body));
   const conditions = world.sheet(kara.id).conditions;
-  assert.ok(conditions.includes("blinded") && conditions.includes("restrained"), conditions.join(", "));
-  assert.match(out.body.result.swallowed, /is swallowed/);
+  assert.ok(["blinded", "restrained", "swallowed"].every((name) => conditions.includes(name)) && !conditions.includes("grappled"), conditions.join(", "));
+  const said = out.body.result.swallowed ?? out.body.result.swings?.find((swing) => swing.swallowed)?.swallowed;
+  // The creature's own Swallow, numbers and all (src/lib/dm/swallow.ts).
+  assert.match(said, /is swallowed: .*16d6 acid damage at the start of each of its turns\. 60 damage dealt it from inside/);
 });
 
 finish();

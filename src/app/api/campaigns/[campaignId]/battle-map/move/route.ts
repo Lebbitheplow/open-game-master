@@ -39,6 +39,7 @@ import { jumpLine } from "@/lib/srd/jump";
 import { sizeForRace } from "@/lib/srd";
 import { proneCharge } from "@/lib/battlemap/board-move";
 import { refuseDuringBreak } from "@/lib/dm/table-break";
+import { swallowWalk } from "@/lib/dm/swallow";
 
 export const runtime = "nodejs";
 
@@ -165,6 +166,15 @@ export async function POST(
       { error: `You cannot move while ${cause} holds you (speed 0).` },
       { status: 409 },
     );
+  }
+  // Out of a swallower that died, the walk is the climb out of its corpse
+  // (src/lib/dm/swallow.ts); inside a living one, restrained, the speed check
+  // above already holds them.
+  const climb = campaign && !readied ? swallowWalk(campaign, encounter, map, sheet, token) : null;
+  if (climb) {
+    return "error" in climb
+      ? Response.json({ error: climb.error }, { status: 409 })
+      : Response.json({ ...climb, view: buildPlayerMapView(campaignId, user.id) });
   }
   const scene = encounter.kind === "scene";
   const turnState =

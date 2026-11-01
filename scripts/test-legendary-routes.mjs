@@ -156,7 +156,7 @@ test("the numbers each route carries are the line's", () => {
   assert.deepEqual(routesOf(byName("Aboleth"), "Psychic Drain")[0].steps[0], { kind: "drain", dice: "3d6", type: "psychic" });
   assert.deepEqual(routesOf(byName("Kraken"), "Ink Cloud")[0].steps[0], { kind: "cloud", zone: "ink cloud" });
   assert.deepEqual(routesOf(byName("Kraken"), "Tentacle Attack or Fling")[1].steps[0], { kind: "fling", feet: 60, dice: "1d6", dc: 18, maxSize: "large" });
-  assert.deepEqual(routesOf(byName("Tarrasque"), "Chomp")[1].steps[0], { kind: "swallow", attack: "Bite", maxSize: "large" });
+  assert.deepEqual(routesOf(byName("Tarrasque"), "Chomp")[1].steps[0], { kind: "swallow", attack: "Bite", maxSize: "large", entry: "Swallow" });
   assert.equal(routesOf(byName("Kraken"), "Lightning Storm")[0].steps[0].most, 3, "three bolts");
   assert.equal(routesOf(byName("Lich"), "Frightening Gaze")[0].steps[0].most, 1);
   assert.equal(routesOf(byName("Solar"), "Blinding Gaze")[0].steps[0].most, 1);
