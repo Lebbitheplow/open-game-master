@@ -104,7 +104,8 @@ const LABELS: Record<FightTable, (row: Row) => string> = {
   encounters: () => "the fight's order of turns",
   encounter_enemies: (row) => (typeof row.display_name === "string" && row.display_name ? row.display_name : "a creature"),
   battle_maps: () => "the board",
-  battle_tokens: (row) => `${typeof row.name === "string" && row.name ? row.name : "a"} token`,
+  // "Goblin 2's token", which read "Goblin 2 token" in the revert's question.
+  battle_tokens: (row) => (typeof row.name === "string" && row.name ? `${row.name}'s token` : "a token"),
   active_effects: (row) => (typeof row.name === "string" && row.name ? `the effect ${row.name}` : "an effect"),
   dropped_items: () => "an item on the ground",
 };

@@ -6,7 +6,7 @@ import { diceGiveBackWarnings, giveBackDice } from "@/lib/db/dice-scripts";
 import { listEnemies } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
 import { markTurnChangesReverted, type TurnChange } from "@/lib/db/turn-changes";
-import { deleteRow, insertRow, listKeptRows, markRowsReverted, readRow, writeRow, type KeptRow, type Row } from "@/lib/db/turn-rows";
+import { deleteRow, insertRow, listKeptRows, markRowsReverted, readRow, supersedeLaterRows, writeRow, type KeptRow, type Row } from "@/lib/db/turn-rows";
 import { restandOn } from "@/lib/battlemap/ground-change";
 import { footprintLookup } from "@/lib/battlemap/view";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
@@ -77,6 +77,21 @@ function rowsPlan(turnId: string): { plan: RowPlan; rows: RowState[] } | null {
     });
   }
   return { plan: planRowsRevert(rows, fights), rows };
+}
+
+// The kept rows the revert wrote: put back, taken away, brought back, or
+// gone with a fight the turn began. Rows of a fight that has ended since are
+// left as they are, and so is what a later turn kept of them.
+function writtenRows({ plan, rows }: { plan: RowPlan; rows: RowState[] }): RowState[] {
+  const key = (table: string, rowId: string) => `${table}:${rowId}`;
+  const touched = new Set([...plan.updates, ...plan.deletes].map((entry) => key(entry.table, entry.rowId)));
+  const brought = new Set(plan.inserts.map((entry) => entry.row));
+  return rows.filter(
+    (row) =>
+      touched.has(key(row.table, row.rowId)) ||
+      (row.before !== null && brought.has(row.before)) ||
+      (row.encounterId !== null && plan.dropFights.includes(row.encounterId)),
+  );
 }
 
 // Whoever stands where the ground came back as wall is set on the nearest
@@ -178,6 +193,7 @@ export function takeBackTurnChanges(campaign: Campaign, turnId: string, changes:
   if (rows) {
     applyRows(campaign, rows.plan);
     markRowsReverted(turnId);
+    supersedeLaterRows(campaign.id, turnId, writtenRows(rows));
   }
   markTurnChangesReverted(changes.map((change) => change.id));
   return changes.length;

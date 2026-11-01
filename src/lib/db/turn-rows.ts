@@ -1,7 +1,7 @@
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { forgetTurnClockMoves } from "@/lib/db/clock-moves";
 import { unfileTurnAudit } from "@/lib/db/sheet-audit";
-import { listLiveTurnChangeViews, liveTurnChangeOf, recordTurnChange, type TurnChangeView } from "@/lib/db/turn-changes";
+import { listLiveTurnChangeViews, liveTurnChangeOf, markTurnChangesReverted, recordTurnChange, updateTurnChange, viewOf, type TurnChangeView } from "@/lib/db/turn-changes";
 import { currentTurnId, onTurnWorkDone } from "@/lib/dm/job-control";
 import { fightLine } from "@/lib/dm/turn-rows-logic";
 import { publishPersisted } from "@/lib/events";
@@ -289,7 +289,70 @@ function turnDone(turnId: string) {
   seal(turnId);
   const turn = getDatabase().prepare(`SELECT campaign_id FROM dm_turns WHERE id = ?`).get(turnId) as { campaign_id: string } | undefined;
   if (turn) {
+    tellFightLine(turn.campaign_id, turnId);
     pruneOutOfReach(turn.campaign_id);
+  }
+}
+
+// How many rows of each table one turn keeps.
+function turnCounts(turnId: string): Partial<Record<KeptTable, number>> {
+  const rows = getDatabase()
+    .prepare(`SELECT tbl, COUNT(*) AS n FROM turn_rows WHERE turn_id = ? AND reverted_at IS NULL GROUP BY tbl`)
+    .all(turnId) as Array<{ tbl: KeptTable; n: number }>;
+  return Object.fromEntries(rows.map((row) => [row.tbl, row.n]));
+}
+
+// The event log hears a turn's fight change when its first row is kept, as
+// "The fight changes.", and only a reload read what it came to: a GM
+// watching the log saw every console call so. Once the turn's work is done
+// the line says what it changed, and the table is told.
+function tellFightLine(campaignId: string, turnId: string) {
+  const change = liveTurnChangeOf(campaignId, turnId, "fight");
+  if (!change) {
+    return;
+  }
+  const line = fightLine(turnCounts(turnId));
+  if (line === change.payload.line) {
+    return;
+  }
+  updateTurnChange(change.id, { ...change.payload, line });
+  publishPersisted(campaignId, "turn_changed", { change: { ...viewOf(change), line } });
+}
+
+// The rows a revert has just put back, that a later turn kept too ("Undo
+// anyway" wrote over them): what that turn kept of them no longer stands,
+// and taken back it would bring back what this revert took away, as the
+// token of a creature the revert sent off. They are let go; a later turn
+// left with no row of the fight stops offering its revert there, and the
+// rest say what they still hold.
+export function supersedeLaterRows(campaignId: string, turnId: string, written: ReadonlyArray<{ table: string; rowId: string }>) {
+  const db = getDatabase();
+  const later = db.prepare(
+    `SELECT DISTINCT turn_id FROM turn_rows WHERE campaign_id = ? AND tbl = ? AND row_id = ? AND turn_id != ? AND reverted_at IS NULL
+       AND rowid > (SELECT MIN(rowid) FROM turn_rows WHERE turn_id = ? AND tbl = ? AND row_id = ?)`,
+  );
+  const drop = db.prepare(`UPDATE turn_rows SET reverted_at = ? WHERE turn_id = ? AND tbl = ? AND row_id = ? AND reverted_at IS NULL`);
+  const turns = new Set<string>();
+  const at = nowIso();
+  db.transaction(() => {
+    for (const { table, rowId } of written) {
+      for (const row of later.all(campaignId, table, rowId, turnId, turnId, table, rowId) as Array<{ turn_id: string }>) {
+        drop.run(at, row.turn_id, table, rowId);
+        turns.add(row.turn_id);
+      }
+    }
+  })();
+  for (const other of turns) {
+    const change = liveTurnChangeOf(campaignId, other, "fight");
+    if (!change) {
+      continue;
+    }
+    if (Object.keys(turnCounts(other)).length) {
+      tellFightLine(campaignId, other);
+    } else {
+      markTurnChangesReverted([change.id]);
+      publishPersisted(campaignId, "turn_changed", { removed: change.id });
+    }
   }
 }
 
