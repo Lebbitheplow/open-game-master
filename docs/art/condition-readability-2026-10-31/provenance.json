@@ -1,0 +1,194 @@
+{
+  "date": "2026-10-31",
+  "generator": "Codex built-in image_gen",
+  "baseCommit": "df26af785ceef9024e3f319896273f38f0569abf",
+  "subjectBasis": "Original fantasy status pictograms and original generic adult human designs. No published characters or reference artwork used.",
+  "source": {
+    "file": "source.png",
+    "sha256": "913265da186f71022ff157c8d3b110d3ccfa3983d790679114ed61eede1cdbe6",
+    "width": 1086,
+    "height": 1448
+  },
+  "prompt": "Create a production sprite sheet of TWELVE original hand-painted fantasy RPG status icons on a genuinely TRANSPARENT background, arranged in an exact regular grid of THREE equal columns and FOUR equal rows. Portrait 3:4 canvas. Each square cell contains exactly one standalone icon, centered, with at least 10% transparent padding on every side. No text, labels, letters, grid lines, borders, plates, scenery or watermarks. Premium sculptural painted game UI art, simplified chunky forms, crisp silhouettes, bright ivory highlights, saturated midtones, extremely few details. Must be identifiable reduced to 20px. No dark black silhouettes. Consistent warm directional lighting. Every icon occupies about 80% of its cell. These are original symbolic designs, not known characters. Exact order left to right, top to bottom: ROW 1: (1) BLESSED: large luminous golden eight-point sunburst with bright ivory center and a pair of small upward-swept gold wings, strong welcoming holy radiance. (2) BLINDED: one large ivory human eye covered completely by one broad crimson cloth blindfold tied at one side, no visible pupil. (3) DEAFENED: one large warm ivory human ear with a thick red diagonal slash floating across it, instantly clear. ROW 2: (4) DODGING: bright teal upper body of an adventurer leaning sharply to the left, a single large ivory arrow missing past their right shoulder, two broad gold motion sweeps, clear evasive movement. (5) EXHAUSTION: close-up weary adult face, sagging closed eyelids, deeply drooping brows, head resting heavily on one broad palm, warm pale face with russet sleeve, large bold forms. (6) HIDDEN: close-up of a teal hood with a bright ivory cloth mask covering lower face, only two alert amber eyes visible in deep hood shadow, hood edges brightly lit, strong triangular outline, no torso. ROW 3: (7) INCAPACITATED: one large open ivory gauntleted hand with limp drooping fingers pointing downward, a bold red circular prohibition ring and slash behind the hand, clear inability to act, simple. (8) INVISIBLE: one translucent icy cyan head-and-shoulders silhouette dissolving into three broad separated pale blue wisps along its right edge, luminous clear contour and transparent interior, no hood. (9) PETRIFIED: one large grey stone classical humanoid head and shoulders, bright grey stone face and thick pedestal, two broad cracks and rigid blank stone eyes, unmistakably a stone statue. ROW 4: (10) PRONE: compact side view of one adult adventurer lying face-down horizontally, one bent arm with palm planted, face looking to the side while conscious, amber tunic and ivory head, broad clear body silhouette, no ground/scenery. (11) RESTRAINED: two large warm ivory wrists side by side upright, bound together by three thick intact golden hemp rope loops with a large central knot, no breaking ropes, hands and binding fill cell. (12) UNCONSCIOUS: close-up adult head tilted sideways resting on one open palm, both eyes fully closed, relaxed neutral mouth, bright ivory face and blue hair, a single large pale crescent moon above the forehead; no letters. Preserve exact grid positions and generous clear separation between icons.\n",
+  "revision": {
+    "id": "invisible",
+    "sourceSha256": "656739d1242b0e8205f9f8aa34fa44d2ad8a49cbcf40f8e57aa0b06ae563f035",
+    "prompt": "Create one original premium hand-painted fantasy RPG condition icon representing INVISIBLE. Square canvas with genuine transparent background. One large front-facing translucent icy cyan head-and-upper-shoulders silhouette. The left half has a crisp luminous blue outer contour; the right half dissolves into three broad separate horizontal tapering wisps. Interior is largely transparent, a suggestion of a nose but no detailed face, no hair, no clothing, no spooky monster. The image reads as a person fading out of sight. Chunky simple silhouette readable at 16 pixels, bright ivory-blue edge highlights with medium saturated blue defining edges to remain clear on light backgrounds. Subject fits entirely inside central 78% circle, 12% transparent margin on all sides. No surrounding glow cloud, no speckles, no sparks, no other icons, no text, letters, borders, ground, background or checkerboard. Polished painted game UI art, coherent sculptural brushwork, limited large forms. Single isolated subject.\n",
+    "reason": "Separate generation avoids neighbouring sprite contamination and gives the fading figure a stronger contour."
+  },
+  "encoding": {
+    "width": 128,
+    "height": 128,
+    "contentBox": 104,
+    "format": "webp",
+    "quality": 90,
+    "alphaQuality": 100,
+    "effort": 6,
+    "trimThreshold": 12
+  },
+  "records": [
+    {
+      "id": "blessed",
+      "src": "/assets/icons/condition/blessed.webp",
+      "source": "source.png",
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "width": 390,
+        "height": 373
+      },
+      "previousSha256": "f569805d7d1b77f374de8decd7161719df341747f4d15e9897f54d49d2ece5dc",
+      "sha256": "de08ffada152178b5007e255090819f26a8e8e1f36a16864ebf188765512cc77",
+      "bytes": 8426
+    },
+    {
+      "id": "blinded",
+      "src": "/assets/icons/condition/blinded.webp",
+      "source": "source.png",
+      "crop": {
+        "left": 396,
+        "top": 0,
+        "width": 361,
+        "height": 373
+      },
+      "previousSha256": "b34e2750f49477327a00ef65054c871aecba51aca111e38301ec00a4d85bc7bf",
+      "sha256": "b840988f5d9e7c8ac8ae5784c444ad758b06455cd29dadbef72c4e9d93f4fd4d",
+      "bytes": 5580
+    },
+    {
+      "id": "deafened",
+      "src": "/assets/icons/condition/deafened.webp",
+      "source": "source.png",
+      "crop": {
+        "left": 771,
+        "top": 0,
+        "width": 315,
+        "height": 373
+      },
+      "previousSha256": "bb34fa33e6bcba47144601ec7058fb92c6003bb464c872fec94911e0324480d9",
+      "sha256": "45a7dc30b0e5ec8fddb6f1101984fa33e8e5a72a0d21eb11e1911d04d3218b85",
+      "bytes": 5346
+    },
+    {
+      "id": "dodging",
+      "src": "/assets/icons/condition/dodging.webp",
+      "source": "source.png",
+      "crop": {
+        "left": 0,
+        "top": 374,
+        "width": 396,
+        "height": 350
+      },
+      "previousSha256": "48d8695b535e9fb92153912697eeccf14deafa8249dc62f025c4470cc8937c60",
+      "sha256": "c714486beb745ea483f05464b097952ad591e30190f0b85306f17ea611f06a21",
+      "bytes": 9530
+    },
+    {
+      "id": "exhaustion",
+      "src": "/assets/icons/condition/exhaustion.webp",
+      "source": "source.png",
+      "crop": {
+        "left": 398,
+        "top": 378,
+        "width": 335,
+        "height": 328
+      },
+      "previousSha256": "e1bf6c123d07d8fc071f15f0cb0a9ef5c2b56ae93c6f7199aefdc635277334b9",
+      "sha256": "7c05fa35606a3553dea273e888e4bbf2386d74a3ec5c80f0a63b977b598388a8",
+      "bytes": 7682
+    },
+    {
+      "id": "hidden",
+      "src": "/assets/icons/condition/hidden.webp",
+      "source": "source.png",
+      "crop": {
+        "left": 737,
+        "top": 374,
+        "width": 349,
+        "height": 339
+      },
+      "previousSha256": "e08698660f753c3d8b445e8d11a4be9a571984b9cd8a9a898b7e2bd3118467f7",
+      "sha256": "def93bd4ad0f41a0daa8849b3c670dbcf68954faca80f148b1755585f1aabfc3",
+      "bytes": 6444
+    },
+    {
+      "id": "incapacitated",
+      "src": "/assets/icons/condition/incapacitated.webp",
+      "source": "source.png",
+      "crop": {
+        "left": 0,
+        "top": 726,
+        "width": 358,
+        "height": 348
+      },
+      "previousSha256": "32e23b571c389fbbb41b8cac7c7eacc7e8413f77616a556bea5de4d069dbd03e",
+      "sha256": "2c076b4e8d2959fee84d914f3f5118135dec4ec8dbfb12a9e3d6c1deb4d812dd",
+      "bytes": 7734
+    },
+    {
+      "id": "invisible",
+      "src": "/assets/icons/condition/invisible.webp",
+      "source": "invisible-source.png",
+      "crop": null,
+      "previousSha256": "917e927d56acf811f86da5ea259b9de50d05aee30075f19be9764d453a045aa5",
+      "sha256": "8a6ecbbebc06f588b0a3c9323bc9e929f9ba40f1bb9ed58c0a858f49fbdd5ca4",
+      "bytes": 8442
+    },
+    {
+      "id": "petrified",
+      "src": "/assets/icons/condition/petrified.webp",
+      "source": "source.png",
+      "crop": {
+        "left": 773,
+        "top": 716,
+        "width": 313,
+        "height": 354
+      },
+      "previousSha256": "c930b96c01cf9cfad5f2e9705f6326d5d2fd8bd27d7ab3f28ccd26f6653f9867",
+      "sha256": "73c22378e7aa6ed0a0d38674e0d097548484f306674fe8b24a08ec868bde01c7",
+      "bytes": 6858
+    },
+    {
+      "id": "prone",
+      "src": "/assets/icons/condition/prone.webp",
+      "source": "source.png",
+      "crop": {
+        "left": 0,
+        "top": 1177,
+        "width": 409,
+        "height": 239
+      },
+      "previousSha256": "ed37352b3b67ba9e8653de32e882179e6eeed97b27c4c4f003713794e8b1d684",
+      "sha256": "9698d9e5ae39faa37a847639abe7f9e0d80fed4b609abf1c34b129cfddaf4106",
+      "bytes": 4832
+    },
+    {
+      "id": "restrained",
+      "src": "/assets/icons/condition/restrained.webp",
+      "source": "source.png",
+      "crop": {
+        "left": 409,
+        "top": 1076,
+        "width": 306,
+        "height": 348
+      },
+      "previousSha256": "495f252a91bd1c5f999233a11937c6cb112b975294f24abde47cd96498355986",
+      "sha256": "6d473bf8db2f8675fbca78bb8ef264a4d1b3ce2f6e2b048bd0e95158e10f1cb8",
+      "bytes": 8184
+    },
+    {
+      "id": "unconscious",
+      "src": "/assets/icons/condition/unconscious.webp",
+      "source": "source.png",
+      "crop": {
+        "left": 716,
+        "top": 1075,
+        "width": 370,
+        "height": 349
+      },
+      "previousSha256": "9fcc67a94d2a006cc4aaa95d1db871a9995fee364262bfdeed8ed86598267229",
+      "sha256": "ecea5b778272d3d9039fa53bc46c7da94e045777d8e9e3363a9a49ac97f121e6",
+      "bytes": 6518
+    }
+  ]
+}

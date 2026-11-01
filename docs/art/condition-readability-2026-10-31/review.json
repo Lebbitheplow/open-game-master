@@ -1,0 +1,34 @@
+{
+  "reviewer": "Codex (author visual review)",
+  "scope": "Twelve proposed condition-icon repaints, preserving existing paths and mappings. The other fifteen condition icons are retained.",
+  "previews": {
+    "comparison.webp": "Final WebP files before and after at 96, 40, 20 and 16 pixels on dark and light surrounds.",
+    "badge-comparison.webp": "Raster approximation of the current circular GameIcon badge, including padding and 1.25 image scale; not a browser screenshot.",
+    "index.html": "Standalone gallery with raw images and the current GameIcon CSS presentation. Open from the checkout to resolve relative image paths."
+  },
+  "findings": [
+    "Blessed, dodging, hidden, incapacitated, invisible and petrified no longer depend on near-black silhouettes on the dark badge.",
+    "Blinded uses a broad red blindfold; deafened uses a crossed-out ear. These remain separate shapes at small sizes.",
+    "Restrained uses intact rope-bound wrists, separate from the existing grappled arm and hand.",
+    "Prone retains a horizontal conscious figure, while unconscious uses a closed-eyed resting head and moon. Exhaustion uses a weary head with a downturned mouth.",
+    "The original invisible sheet crop showed neighbouring sprite residue. A separate generation replaces it; both prompts and source images are retained.",
+    "All shipped icons use a 104px content box in a 128px transparent square to allow for the current 1.25 badge scaling.",
+    "Detailed faces and the dodging arrow are easier to interpret at 40px than 16px. Existing text labels remain necessary; this is not an icon-only usability study."
+  ],
+  "checks": {
+    "iconSuite": "8 checks passed",
+    "handLookSuite": "15 tests passed",
+    "placeholderSuite": "22598 passed; 751 plates reachable; 11.67 MB shipped",
+    "assetValidation": "All twelve dimensions, alpha channels, transparent corners, file limits, before/final/source hashes and gallery image paths verified.",
+    "lint": "Passed: 0 errors, 172 warnings in unchanged files.",
+    "fullSuite": "Attempted with two workers. All 878 files failed to load because Vitest could not find temporary SSR module-cache files (ENOENT); no tests executed in this run.",
+    "liveScreenshots": "Not captured: local browser access is disabled in Work settings. Preview images are explicitly marked as standalone comparisons."
+  },
+  "runtimeBytes": {
+    "before": 25440,
+    "after": 85576,
+    "increase": 60136
+  },
+  "historicalVotes": "No vote record changed; these new images have no inherited votes.",
+  "subjectBasis": "Original pictograms and generic adult human designs, with no reference to published character art."
+}
