@@ -141,6 +141,11 @@ export default {
       await t.tap(events);
       const first = page.locator(`${root}[role="group"][aria-label="Event 1"]`).locator("visible=true").first();
       await eventually(() => first.isVisible(), { label: "event 1" });
+      // A fight on the generator's choice has no squares to change: one line
+      // says so, and the ground is not offered.
+      const groundNote = page.getByText(/only on a prepared map: link one above/).locator("visible=true").first();
+      check(await groundNote.isVisible(), "the note that the ground changes only on a prepared map");
+      check(!(await first.getByRole("button", { name: "The ground changes" }).count()), "no change of ground without a map");
       const pick = async (scope, selectName, option) => {
         await t.tap(scope.getByRole("button", { name: selectName, exact: true }));
         const row = page.getByRole("menuitemradio", { name: option }).locator("visible=true").first();
@@ -349,6 +354,65 @@ export default {
       check(/Goblin/.test(await setupRow.innerText()), "the opened set-up lists the foes");
       await setupRow.scrollIntoViewIfNeeded();
       await themes("s6-row-setup", `${root}[data-encounter-setup="${templateId}"]`);
+
+      // ---- 1, again: the ground changes, now the fight keeps its map ----
+      const keptMapId = (await templateNow())?.map?.mapId;
+      check(keptMapId, "the set-up kept the board as the fight's map");
+      const maps = (await (await api.get(`${base}/api/campaigns/${workshopId}/dm/maps`)).json()).maps ?? [];
+      const kept = maps.find((entry) => entry.id === keptMapId);
+      check(kept?.width && kept?.height, `the kept map is in the workshop's maps (${JSON.stringify(maps.map((entry) => entry.id)).slice(0, 200)})`);
+      await openEditor();
+      await eventually(() => second.isVisible(), { timeoutMs: 30_000, label: "event 2 with the kept map" });
+      check(!(await page.getByText(/only on a prepared map: link one above/).locator("visible=true").count()), "no map note once the fight has its map");
+      const groundChip = second.getByRole("button", { name: "The ground changes" });
+      await groundChip.scrollIntoViewIfNeeded();
+      await t.tap(groundChip);
+      const canvas = second.locator("canvas").first();
+      await eventually(() => canvas.isVisible(), { label: "the kept map to pick squares on" });
+      await canvas.scrollIntoViewIfNeeded();
+      await untilStill(page).catch(() => undefined);
+      const squaresSaid = second.getByText(/squares change|Tap each square that changes/).first();
+      // Three squares tapped on the map, in from its edge.
+      const area = await canvas.boundingBox();
+      const tile = area.width / kept.width;
+      for (const [x, y] of [[3, 3], [4, 3], [5, 3]]) {
+        const at = { x: area.x + (x + 0.5) * tile, y: area.y + (y + 0.5) * tile };
+        if (t.touch && t.app) await page.touchscreen.tap(at.x, at.y);
+        else await page.mouse.click(at.x, at.y);
+      }
+      await eventually(async () => /^3 of \d+ squares change/.test(await squaresSaid.innerText()), { label: `three squares tapped (${await squaresSaid.innerText().catch(() => "")})` });
+      // A fourth by the keyboard alone: the column and row steppers, then
+      // Change this square.
+      const groundName = "Event 2, the ground changing";
+      for (const which of ["column", "row"]) {
+        await second.getByRole("button", { name: `Raise ${groundName}: ${which}` }).focus();
+        await page.keyboard.press("Enter");
+        await page.keyboard.press("Enter");
+        await eventually(async () => (await second.getByRole("spinbutton", { name: `${groundName}: ${which}` }).inputValue()) === "3", { label: `the ${which} stepped to 3` });
+      }
+      const changeHere = second.getByRole("button", { name: "Change this square" });
+      check((await changeHere.getAttribute("aria-pressed")) === "true", "the square the keys point at, (3,3), is already picked");
+      await second.getByRole("button", { name: `Lower ${groundName}: row` }).focus();
+      await page.keyboard.press("Enter");
+      await changeHere.focus();
+      await page.keyboard.press("Enter");
+      await eventually(async () => (await changeHere.getAttribute("aria-pressed")) === "true", { label: "the keyboard's square picked" });
+      await eventually(async () => /^4 of \d+ squares change/.test(await squaresSaid.innerText()), { label: "four squares" });
+      const hereBox = await changeHere.boundingBox();
+      soft(hereBox && Math.round(hereBox.height) >= (phone ? 40 : 28), `Change this square is finger-sized (${hereBox?.height})`);
+      await canvas.scrollIntoViewIfNeeded();
+      await themes("s1-ground", `${root}[role="group"][aria-label="Event 2"]`);
+      await t.tap(save);
+      await eventually(async () => {
+        const ground = (await templateNow())?.extras?.events?.[1]?.actions?.find((action) => action.kind === "ground");
+        return ground?.tiles?.length === 4;
+      }, { timeoutMs: 20_000, label: "the change of ground saved with its four squares" });
+      const ground = (await templateNow()).extras.events[1].actions.find((action) => action.kind === "ground");
+      check(ground.tiles.some((tile) => tile.x === 3 && tile.y === 2), `the keyboard's square (3,2) is saved (${JSON.stringify(ground.tiles)})`);
+      await openEditor();
+      await eventually(async () => /^4 of \d+ squares change/.test(await squaresSaid.innerText().catch(() => "")), { timeoutMs: 30_000, label: "the four squares read back" });
+      await canvas.scrollIntoViewIfNeeded();
+      await t.shot("s1-ground-reopened");
 
       // The sheet says the next test opens on it, and warns of another party.
       await openSheet();
