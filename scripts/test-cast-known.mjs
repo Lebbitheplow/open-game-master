@@ -7,7 +7,7 @@
 import assert from "node:assert/strict";
 import { openWorld } from "./lib/enforce-world.mjs";
 
-const { upsertNpc, markNpcMet, mergeNpcs, getNpcById } = await import("../src/lib/db/npcs.ts");
+const { upsertNpc, markNpcMet, mergeNpcs, getNpcById, renameNpc, setNpcArchived, patchNpcAgency } = await import("../src/lib/db/npcs.ts");
 const { castForSeat, wholeCast, publishCast } = await import("../src/lib/dm/cast.ts");
 const { insertCampaignMessage, updateMessageContent } = await import("../src/lib/db/messages.ts");
 const { allocateSeq } = await import("../src/lib/db/campaigns.ts");
@@ -133,6 +133,80 @@ await test("someone the party met through a rule is known without being named", 
   const stranger = npc("Toblen Stonehill");
   markNpcMet(stranger.id);
   assert.deepEqual(castForSeat(world.campaignId, false).map((member) => member.name), ["Toblen Stonehill"]);
+});
+
+// The casts a seat is sent while `body` runs and once the work in hand is
+// done: a write to a person sends the cast on the next turn of the loop.
+async function castsSent(world, user, body) {
+  const heard = [];
+  const stop = subscribe(world.campaignId, (chunk) => heard.push(chunk), user.id);
+  try {
+    await body();
+    await new Promise((resolve) => setImmediate(resolve));
+  } finally {
+    stop();
+  }
+  return heard
+    .filter((chunk) => /^event: cast_updated$/m.test(chunk))
+    .map((chunk) => JSON.parse(/data: (.*)\n/.exec(chunk)[1]).cast.map((member) => member.name).sort());
+}
+
+// A tick for writes made outside castsSent, so their cast is already sent.
+const settled = () => new Promise((resolve) => setImmediate(resolve));
+
+await test("a person met through a rule reaches every open seat at once, and only once (issue 733)", async () => {
+  const { world, kara, npc } = await table();
+  const stranger = npc("Toblen Stonehill");
+  await settled();
+  const sent = await castsSent(world, kara, () => {
+    markNpcMet(stranger.id);
+    markNpcMet(stranger.id);
+  });
+  assert.deepEqual(sent, [["Toblen Stonehill"]], "one cast, with him in it");
+  assert.deepEqual(await castsSent(world, kara, () => markNpcMet(stranger.id)), [], "meeting him again sends nothing");
+});
+
+await test("a reaction roll and a relationship beat each tell the open seats who the party met (issue 733)", async () => {
+  const { world, kara, karaHero, npc } = await table();
+  npc("Iarno Albrek");
+  npc("Daran Edermath");
+  await settled();
+  const rolled = await castsSent(world, kara, async () => {
+    const out = await world.invoke("npc_reaction", { name: "Iarno Albrek", gender: "Male" });
+    assert.ok(out.ok, out.error);
+  });
+  assert.deepEqual(rolled.at(-1), ["Iarno Albrek"]);
+  const helped = await castsSent(world, kara, async () => {
+    const out = await world.invoke("relationship_beat", { characterId: karaHero.id, subject: "Daran Edermath", beat: "helped" });
+    assert.ok(out.ok, out.error);
+  });
+  assert.deepEqual(helped.at(-1), ["Daran Edermath", "Iarno Albrek"]);
+});
+
+await test("people met together in one call are sent in one cast", async () => {
+  const { world, kara, npc } = await table();
+  const a = npc("Linene Graywind");
+  const b = npc("Halia Thornton");
+  await settled();
+  assert.deepEqual(await castsSent(world, kara, () => {
+    markNpcMet(a.id);
+    markNpcMet(b.id);
+  }), [["Halia Thornton", "Linene Graywind"]]);
+});
+
+await test("a rename, a merge and an archive reach the open seats; a change no seat sees sends nothing (issue 733)", async () => {
+  const { world, kara, npc } = await table();
+  const marla = npc("Marla");
+  const twin = npc("Marla Venn");
+  const old = npc("Old Petch");
+  for (const person of [marla, twin, old]) {
+    markNpcMet(person.id);
+  }
+  await settled();
+  assert.deepEqual(await castsSent(world, kara, () => renameNpc(marla.id, "Marla Brook", ["Marla"])), [["Marla Brook", "Marla Venn", "Old Petch"]]);
+  assert.deepEqual(await castsSent(world, kara, () => mergeNpcs(world.campaignId, marla.id, twin.id, ["Marla", "Marla Venn"])), [["Marla Brook", "Old Petch"]]);
+  assert.deepEqual(await castsSent(world, kara, () => setNpcArchived(old.id, true)), [["Marla Brook"]]);
+  assert.deepEqual(await castsSent(world, kara, () => patchNpcAgency(marla.id, { goals: { scene: "find her brother" } })), [], "what they want is no seat's to see");
 });
 
 await test("two rows merged into one keep the earlier hearing", async () => {

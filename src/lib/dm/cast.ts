@@ -1,4 +1,4 @@
-import { listCastNpcs, markNpcsHeard, type Npc } from "@/lib/db/npcs";
+import { listCastNpcs, markNpcsHeard, onCastTouched, type Npc } from "@/lib/db/npcs";
 import { departedSheet } from "@/lib/db/companion-conscience";
 import { characterPlaceholder } from "@/lib/placeholders";
 import { publishEphemeral } from "@/lib/events";
@@ -76,9 +76,60 @@ function departedPlate(npc: Npc): string {
   return characterPlaceholder({ race: word(sheet.race) ?? "", class: word(sheet.class), gender: word(sheet.gender) });
 }
 
-export function publishCast(campaignId: string) {
-  publishEphemeral(campaignId, "cast_updated", { cast: wholeCast(campaignId) });
+declare global {
+  var __odmCastSent: Map<string, string> | undefined;
+  var __odmCastPending: Set<string> | undefined;
 }
+
+// The cast each campaign's seats were last sent, as its JSON, so a write
+// that changed nothing they see sends nothing.
+function lastSent() {
+  return (globalThis.__odmCastSent ??= new Map<string, string>());
+}
+
+export function publishCast(campaignId: string) {
+  const cast = wholeCast(campaignId);
+  lastSent().set(campaignId, JSON.stringify(cast));
+  publishEphemeral(campaignId, "cast_updated", { cast });
+}
+
+// Sends the cast when it differs from what the seats were last sent.
+// Returns whether it did.
+export function syncCast(campaignId: string): boolean {
+  const cast = wholeCast(campaignId);
+  const json = JSON.stringify(cast);
+  if (lastSent().get(campaignId) === json) {
+    return false;
+  }
+  lastSent().set(campaignId, json);
+  publishEphemeral(campaignId, "cast_updated", { cast });
+  return true;
+}
+
+// A write to a person (src/lib/db/npcs.ts touchCast) is weighed once the
+// work in hand is done, so a tool call that meets, renames and paints
+// several people sends one cast, and none when nothing a seat sees moved.
+// Every path that changes the cast reaches the seats this way: a person met
+// through a rule (a reaction roll, a social check, a first relationship
+// beat) set met_at and told no one, so an open seat kept them unknown and
+// its @ menu could not find them until a reload (issue 733). A line that
+// must find its face as it lands still sends the cast itself first
+// (noteNamesHeard), and the check here then finds nothing new.
+onCastTouched((campaignId) => {
+  const pending = (globalThis.__odmCastPending ??= new Set<string>());
+  if (pending.has(campaignId)) {
+    return;
+  }
+  pending.add(campaignId);
+  setImmediate(() => {
+    pending.delete(campaignId);
+    try {
+      syncCast(campaignId);
+    } catch (error) {
+      console.error(`[cast] ${campaignId}: the cast was not sent (${error instanceof Error ? error.message : "error"})`);
+    }
+  });
+});
 
 // A GM or system message has just been written or rewritten: anyone it
 // names for the first time is now known to the table, and every seat is

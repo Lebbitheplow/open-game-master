@@ -231,6 +231,10 @@ export type CampaignState = {
   // Bumped by the contentless relationships_updated ephemeral; the Bonds
   // panel fetches its own tier-scoped view when this changes.
   relationshipsVersion: number;
+  // Bumped by each cast_updated: the GM console's people list reads its
+  // full records again, so a person the story adds or renames shows there
+  // without leaving the tab (issue 733).
+  castVersion: number;
   // Lasting companions whose sheet just went with sheet_deleted's
   // `departed` (issue 503): the Party panel dims each card and moves it to
   // its Gone list (PartyGone.tsx). Kept briefly, never persisted.
@@ -403,6 +407,7 @@ const initialState: CampaignState = {
   asksLoaded: false,
   facts: [],
   relationshipsVersion: 0,
+  castVersion: 0,
   departingSheets: [],
   factionsVersion: 0,
   worldVersion: 0,
@@ -852,6 +857,7 @@ export function campaignReducer(state: CampaignState, action: Action): CampaignS
         }
         case "cast_updated":
           next.cast = Array.isArray(payload.cast) ? (payload.cast as CastMember[]) : state.cast;
+          next.castVersion = state.castVersion + 1;
           return next;
         case "npc_updated":
           next.cast = state.cast.map((member) =>
