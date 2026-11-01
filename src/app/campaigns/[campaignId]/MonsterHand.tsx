@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ChevronDown, Loader2, X } from "lucide-react";
+import { ArrowLeft, ChevronDown, Loader2 } from "lucide-react";
 import { memo, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { CSSProperties } from "react";
 import { cn } from "@/lib/cn";
@@ -8,7 +8,7 @@ import { ui } from "@/lib/ui";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { HandCardFace, HandPreviewRows, typeLabel, typeTone } from "@/app/campaigns/[campaignId]/HandCardFace";
 import type { HandCard } from "@/lib/battlemap/hand";
-import { previewRows, type HandAim } from "@/lib/battlemap/hand-play";
+import { previewRows } from "@/lib/battlemap/hand-play";
 import {
   deriveMonsterHand,
   monsterAimsAtRows,
@@ -26,6 +26,14 @@ import type { PublicEncounter } from "@/lib/db/encounter-view";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { offSide, SideBadge } from "@/app/campaigns/[campaignId]/SideBadge";
 import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
+import {
+  MonsterAimControls,
+  MonsterResultLines,
+  readCollapsed,
+  subscribeStore,
+  writeCollapsed,
+  type PartyChip,
+} from "@/app/campaigns/[campaignId]/MonsterHandAim";
 
 // The DM's hand (issue #108): the monsters' turns as cards, above the
 // message box where the players' Hand sits. The enemies the pointer walked
@@ -34,44 +42,6 @@ import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 // console's own invoke call (monster-hand.ts), so the engine's rules hold:
 // a legendary or lair card makes the spend and then what it buys, stopping
 // at the first refusal.
-
-const COLLAPSED_KEY = "odm:monster-hand-collapsed";
-const STORE_EVENT = "odm-monster-hand-store";
-
-function subscribeStore(callback: () => void) {
-  window.addEventListener(STORE_EVENT, callback);
-  window.addEventListener("storage", callback);
-  return () => {
-    window.removeEventListener(STORE_EVENT, callback);
-    window.removeEventListener("storage", callback);
-  };
-}
-
-function readCollapsed(): boolean {
-  try {
-    return window.localStorage.getItem(COLLAPSED_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function writeCollapsed(on: boolean) {
-  try {
-    window.localStorage.setItem(COLLAPSED_KEY, on ? "1" : "0");
-  } catch {
-    // Storage can be denied; the choice then lasts as long as the page.
-  }
-  window.dispatchEvent(new Event(STORE_EVENT));
-}
-
-// row: an enemy's row, not a sheet (an attack or an area reaches it).
-type PartyChip = HandAim & { note: string; row?: boolean };
-
-const ADVANTAGE: Array<[MonsterAdvantage, string]> = [
-  ["none", "Straight"],
-  ["advantage", "Advantage"],
-  ["disadvantage", "Disadvantage"],
-];
 
 function MonsterHandInner({
   campaignId,
@@ -455,98 +425,21 @@ function MonsterHandInner({
                 </span>
               </div>
 
-              {needsTarget ? (
-                <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label="Targets">
-                  {chips.length ? (
-                    chips.map((chip, index) => (
-                      <button
-                        key={chip.id}
-                        type="button"
-                        style={{ "--i": index } as CSSProperties}
-                        aria-pressed={targetIds.includes(chip.id)}
-                        onClick={() => toggleTarget(chip.id)}
-                        className={cn(ui.btnSmall, "hand-target min-h-11 flex-col items-start gap-0 px-3 py-1 text-left sm:min-h-9")}
-                      >
-                        <span className="text-[13px] leading-tight text-stone-200">{chip.name}</span>
-                        <span className="font-mono text-[10px] leading-tight text-stone-500">{chip.note}</span>
-                      </button>
-                    ))
-                  ) : (
-                    <span className="text-xs text-stone-500">Nobody is standing to be attacked.</span>
-                  )}
-                </div>
-              ) : null}
-
-              {square ? (
-                <div className="mt-2 flex flex-wrap items-end gap-2" role="group" aria-label="Where it goes">
-                  <label className="flex flex-col text-[11px] uppercase tracking-wider text-stone-500">
-                    To column
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      min={0}
-                      value={column}
-                      onChange={(event) => setColumn(event.target.value)}
-                      className={cn(ui.input, "mt-0.5 h-11 w-24 text-sm normal-case tracking-normal sm:h-9")}
-                    />
-                  </label>
-                  <label className="flex flex-col text-[11px] uppercase tracking-wider text-stone-500">
-                    To row
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      min={0}
-                      value={row}
-                      onChange={(event) => setRow(event.target.value)}
-                      className={cn(ui.input, "mt-0.5 h-11 w-24 text-sm normal-case tracking-normal sm:h-9")}
-                    />
-                  </label>
-                  <span className="pb-2 text-xs text-stone-400">
-                    {square.optional ? `Optional: up to ${square.feet} ft, or leave it where it is.` : `Up to ${square.feet} ft.`}
-                  </span>
-                </div>
-              ) : null}
-
-              {intent?.spells ? (
-                <label className="mt-2 flex flex-col text-[11px] uppercase tracking-wider text-stone-500">
-                  Spell
-                  <select
-                    value={spell}
-                    onChange={(event) => setSpell(event.target.value)}
-                    className={cn(ui.input, "mt-0.5 h-11 text-sm normal-case tracking-normal sm:h-9")}
-                  >
-                    <option value="">Pick one from its list</option>
-                    {intent.spells.map((name) => (
-                      <option key={name} value={name}>
-                        {name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ) : null}
-
-              {rollsMonsterAttack(picked) ? (
-                <div className="mt-2 flex flex-wrap items-center gap-1.5" data-pill-group="">
-                  <span className="text-[11px] uppercase tracking-wider text-stone-500">Roll</span>
-                  {ADVANTAGE.map(([value, label]) => (
-                    <button
-                      key={value}
-                      type="button"
-                      data-on={advantage === value ? "" : undefined}
-                      aria-pressed={advantage === value}
-                      onClick={() => setAdvantage(value)}
-                      className={cn(
-                        "hand-option inline-flex min-h-9 items-center rounded-full border px-3 text-xs sm:min-h-8",
-                        advantage === value
-                          ? "border-ember-400/70 bg-ember-500/20 text-orange-100"
-                          : "border-stone-600 text-stone-300 hover:border-amber-500/60",
-                      )}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
+              <MonsterAimControls
+                chips={needsTarget ? chips : null}
+                targetIds={targetIds}
+                onToggle={toggleTarget}
+                square={square}
+                column={column}
+                row={row}
+                onColumn={setColumn}
+                onRow={setRow}
+                spells={intent?.spells ?? null}
+                spell={spell}
+                onSpell={setSpell}
+                advantage={rollsMonsterAttack(picked) ? advantage : null}
+                onAdvantage={setAdvantage}
+              />
 
               <div className="hand-rows-box mt-2">
                 <HandPreviewRows rows={rows} />
@@ -571,31 +464,7 @@ function MonsterHandInner({
             </div>
           ) : null}
 
-          {lines.length ? (
-            <div role="status" className="live-in mt-1 rounded-lg border border-amber-500/30 bg-stone-950/80 px-3 py-2 text-xs">
-              <div className="flex items-center justify-between gap-2">
-                <p className="gold-title font-display text-[11px] uppercase tracking-[0.18em]">{selected.name}</p>
-                <button
-                  type="button"
-                  onClick={() => setLines([])}
-                  aria-label="Dismiss the result"
-                  className="motion-press flex size-7 items-center justify-center rounded-md text-stone-500 hover:text-amber-200"
-                >
-                  <X className="size-3.5" />
-                </button>
-              </div>
-              <ul className="stagger mt-1 space-y-0.5">
-                {lines.map((line, index) => (
-                  <li
-                    key={`${index}-${line.text}`}
-                    className={cn(line.tone === "bad" ? "text-ember-300" : line.tone === "good" ? "text-emerald-300" : "text-stone-200")}
-                  >
-                    {line.text}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
+          {lines.length ? <MonsterResultLines name={selected.name} lines={lines} onDismiss={() => setLines([])} /> : null}
         </>
       )}
       <p ref={noticeRef} role="status" className={cn("mt-1 text-xs text-amber-300", notice ? "" : "hidden")}>
