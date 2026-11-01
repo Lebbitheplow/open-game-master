@@ -22,6 +22,7 @@ import { getActiveEncounter, getEnemy, patchEnemyHp, type Encounter, type Encoun
 import { getBattleMapForEncounter, getTokenByRef, listTokens, placeToken } from "@/lib/db/battle-maps";
 import { getSheetById } from "@/lib/db/sheets";
 import { resolveEnemyRef, unknownEnemyRef } from "@/lib/dm/enemy-damage";
+import { resolveCombatant } from "@/lib/dm/combatant";
 import { enemyHpCap, findMonsterSpell } from "@/lib/dm/monster-abilities";
 import { legendaryProfile } from "@/lib/dm/legendary-logic";
 import { legendaryRoutes, routeNamed, routeNeeds, type LegendaryRoute, type LegendaryStep } from "@/lib/dm/legendary-route-logic";
@@ -80,16 +81,13 @@ function targetsOf(encounter: Encounter, args: PlayArgs): Target[] | string {
   const refs = [...new Set([args.targetCharacterId, ...(args.characterIds ?? []), ...(args.enemyIds ?? [])].filter((ref): ref is string => Boolean(ref)))];
   const out: Target[] = [];
   for (const ref of refs) {
-    const sheet = getSheetById(ref);
-    if (sheet && sheet.campaignId === encounter.campaignId) {
-      out.push({ kind: "sheet", sheet });
-      continue;
-    }
-    const enemy = resolveEnemyRef(encounter.id, ref);
-    if (!enemy) {
+    // The one resolver every target reads through: an id or a name, a hero on
+    // either side or a foe, as the other acts in a fight read theirs.
+    const target = resolveCombatant(encounter.campaignId, encounter, ref);
+    if (!target) {
       return `No creature in this fight is "${ref}".`;
     }
-    out.push({ kind: "enemy", enemy });
+    out.push(target.kind === "sheet" ? { kind: "sheet", sheet: target.sheet } : { kind: "enemy", enemy: target.enemy });
   }
   return out;
 }

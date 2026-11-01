@@ -46,13 +46,20 @@ const ENEMY_FIELDS: Record<string, string> = {
   take_action: "enemyId",
 };
 
+// Read before the tool validates its arguments, so anything JSON can hold
+// (null, an array, a number) names no one here and the tool's own schema
+// refuses it.
 export function actorOfCall(name: string, rawArguments: string): ActingParty | null {
-  let args: Record<string, unknown>;
+  let parsed: unknown;
   try {
-    args = JSON.parse(rawArguments || "{}") as Record<string, unknown>;
+    parsed = JSON.parse(rawArguments || "{}");
   } catch {
     return null;
   }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return null;
+  }
+  const args = parsed as Record<string, unknown>;
   const text = (field: string | undefined) => (field && typeof args[field] === "string" && (args[field] as string).trim() ? (args[field] as string).trim() : null);
   const sheet = text(SHEET_FIELDS[name]);
   if (sheet) {
