@@ -197,6 +197,22 @@ await test("the next test opens on the saved moment, on the kept map, with the s
   first = next;
 });
 
+// The test table's dice script rides with the moment: a scorer's scenario
+// is the set-up and its dice (issue 685's first use).
+await test("a test table's dice script is saved with its moment and set on the next test", async () => {
+  const { getDiceScript, setDiceScript } = await import("../src/lib/db/dice-scripts.ts");
+  assert.equal(setDiceScript(first, { seed: 42, queue: [{ roller: "enemy", kind: "attack", face: 20 }] }), true);
+  const out = await call(route.save, "POST", undefined, { campaignId: first });
+  assert.equal(out.status, 200, JSON.stringify(out.json));
+  assert.ok(out.json.lines.some((line) => /^Dice: Seed 42/.test(line)), out.json.lines.join(" | "));
+  const next = await call(route.test, "POST", { templateId: ambush.id, runner: "person" }, at);
+  assert.equal(next.status, 200, JSON.stringify(next.json));
+  const script = getDiceScript(next.json.campaignId);
+  assert.equal(script?.seed, 42);
+  assert.deepEqual(script?.queue, [{ roller: "enemy", kind: "attack", face: 20 }]);
+  first = next.json.campaignId;
+});
+
 const mine = createCharacter(author.id, 3, { ...LEGAL_FIGHTER, name: "Thessaly", portrait: PORTRAIT }, "pc");
 
 await test("another party at the test starts fresh, and is told so; the foes still start as saved", async () => {

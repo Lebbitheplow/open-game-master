@@ -18,6 +18,7 @@ import {
 } from "@/lib/db/encounter-templates";
 import { listSheets, patchSheet } from "@/lib/db/sheets";
 import { testFightRun } from "@/lib/db/test-fights";
+import { getDiceScript } from "@/lib/db/dice-scripts";
 import { nearestOpenTile } from "@/lib/battlemap/paint";
 import { occupiedTiles } from "@/lib/battlemap/view";
 import { tileIndex } from "@/lib/battlemap/types";
@@ -111,9 +112,16 @@ export function captureFightSetup(test: Campaign, party: SetupParty): Outcome<{ 
       foes,
       heroes,
       settings: { companions: test.gameSettings.companions },
-      dice: null,
+      // What the test table's dice script still holds: a face already spent
+      // belongs to the moment that spent it.
+      dice: diceOf(test.id),
     },
   };
+}
+
+function diceOf(campaignId: string): FightSetup["dice"] {
+  const script = getDiceScript(campaignId);
+  return script && (script.seed !== null || script.queue.length) ? { seed: script.seed, queue: script.queue } : null;
 }
 
 function heroState(sheet: CharacterSheet, seat: number, encounter: Encounter, map: BattleMap | null, ids: ReadonlyMap<string, string>): SetupHero {

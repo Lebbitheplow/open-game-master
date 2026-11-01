@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { conditionMetaSchema, type ConditionMetaMap } from "@/lib/schemas/condition-meta";
+import { describeDiceScript, diceScriptSchema, type DiceScript } from "@/lib/dice-script-logic";
 
 // A prepared fight's set-up (issue 685): the moment a test of it was saved
 // to start from, so the next test, a coding agent's bench or #570's scorer
@@ -104,6 +105,12 @@ export const fightSetupSchema = z.object({
   dice: z.unknown().nullable().default(null),
 });
 export type FightSetup = z.infer<typeof fightSetupSchema>;
+
+// A set-up's dice script, or null for none or one its schema refuses.
+export function setupDice(setup: Pick<FightSetup, "dice">): DiceScript | null {
+  const parsed = diceScriptSchema.safeParse(setup.dice);
+  return parsed.success && (parsed.data.seed !== null || parsed.data.queue.length) ? parsed.data : null;
+}
 
 // A stored set-up, or null for none, an older shape or a damaged row: a
 // fight with no usable set-up deploys as it always did.
@@ -227,7 +234,7 @@ function heroWords(hero: SetupHero): string | null {
 
 // The lines the Workshop shows under a fight with a set-up, and the table
 // note a test opened from one posts. Plain words, the changed things only.
-export function describeFightSetup(setup: FightSetup, options: { diceSummary?: string } = {}): string[] {
+export function describeFightSetup(setup: FightSetup): string[] {
   const lines: string[] = [];
   const party =
     setup.party.kind === "stand-ins"
@@ -246,8 +253,9 @@ export function describeFightSetup(setup: FightSetup, options: { diceSummary?: s
   if (order.length) {
     lines.push(`Initiative: ${order.map((entry) => `${entry.name} ${entry.initiative}`).join(", ")}.`);
   }
-  if (options.diceSummary) {
-    lines.push(`Dice: ${options.diceSummary}`);
+  const dice = setupDice(setup);
+  if (dice) {
+    lines.push(`Dice: ${describeDiceScript(dice)}`);
   }
   return lines;
 }

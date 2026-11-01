@@ -25,7 +25,8 @@ import { TARGET_PARTY_LIMITS } from "@/lib/workshop/kind";
 import { buildStandIns } from "@/lib/workshop/stand-ins";
 import { layFightSetup } from "@/lib/workshop/fight-setup";
 import { relockOrder } from "@/lib/workshop/fight-setup-order";
-import { describeFightSetup, type FightSetup, type SetupParty } from "@/lib/workshop/fight-setup-logic";
+import { describeFightSetup, setupDice, type FightSetup, type SetupParty } from "@/lib/workshop/fight-setup-logic";
+import { setDiceScript } from "@/lib/db/dice-scripts";
 
 // A test fight (issue 553): one of a workshop's prepared fights, played.
 //
@@ -287,6 +288,12 @@ export async function openTestFight(input: {
     }
     if (setup) {
       const laid = layFightSetup(getCampaignById(campaign.id) ?? campaign, fight, setup, { test: { party: identity } });
+      // The dice go in before the order locks again, so a dying hero's save
+      // the lock rolls already comes from them.
+      const dice = setupDice(setup);
+      if (dice) {
+        setDiceScript(campaign.id, dice);
+      }
       relockOrder(campaign, laid.order);
       const lines = [...describeFightSetup(setup), ...laid.notes];
       const setupSeq = allocateSeq(campaign.id);
