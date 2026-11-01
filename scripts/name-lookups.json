@@ -426,6 +426,8 @@
     "app/workshop/bestiary/StatBlockFields.tsx#whole-single": [["authoring",1,"workshop authoring; every site read"]],
     "app/workshop/cast/CastList.tsx#partial": [["authoring",1,"workshop authoring (pickers, drafts, copied rows); every site read, none reads a carried item's row"]],
     "app/workshop/cast/NpcEditorFields.tsx#partial": [["authoring",1,"workshop authoring (pickers, drafts, copied rows); every site read, none reads a carried item's row"],["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
+    "app/workshop/encounters/EncounterEvents.tsx#number": [["authoring",3,"workshop authoring: a roster slot's number from the picker's own option value"]],
+    "app/workshop/encounters/EncounterEvents.tsx#partial": [["authoring",1,"workshop authoring: the arrivals' place picker's own option value (slot:<n>)"]],
     "app/workshop/encounters/EncounterRows.tsx#fallback": [["authoring",1,"workshop authoring (pickers, drafts, copied rows); every site read, none reads a carried item's row"]],
     "app/workshop/encounters/EncounterRows.tsx#partial": [["authoring",1,"workshop authoring (pickers, drafts, copied rows); every site read, none reads a carried item's row"]],
     "app/workshop/homebrew/ArchetypeFields.tsx#bypass": [["authoring",1,"workshop authoring (pickers, drafts, copied rows); every site read, none reads a carried item's row"]],
