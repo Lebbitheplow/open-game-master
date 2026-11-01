@@ -107,9 +107,12 @@ export type DirectContext = {
   // aoe_damage checks.
   shareKind?: "darts" | "attacks" | "targets";
   cluster?: boolean;
-  // The spell makes creatures (src/lib/srd/summon-spells.ts): only one kind
-  // ("one", Unseen Servant), or a kind the card must name ("choose").
+  // The spell makes creatures (src/lib/srd/summon-spells.ts, and Find
+  // Familiar): only one kind ("one", Unseen Servant), or a kind the card must
+  // name ("choose").
   summon?: "one" | "choose";
+  // Its casting time is a minute or more (SRD 5.1, Longer Casting Times).
+  long?: boolean;
   // The spell leaves a lasting area (src/lib/battlemap/zones-spells.ts): how
   // its square is picked on this fight's battle map, "off" with none, and
   // whether creatures standing in it when it appears are caught then.
@@ -312,7 +315,7 @@ export function directCardCall(intent: MessageIntent, characterId: string, conte
     }
     case "reaction":
       return intent.feature
-        ? { name: "use_reaction", args: { characterId, feature: intent.feature, ...(intent.spell ? { spell: intent.spell } : {}), ...level, ...targetArgs(intent) } }
+        ? { name: "use_reaction", args: { characterId, feature: intent.feature, ...(intent.spell ? { spell: intent.spell } : {}), ...level, ...targetArgs(intent), ...(intent.hit ? { hit: intent.hit } : {}) } }
         : null;
     case "gear": {
       if (!intent.item) {
@@ -335,7 +338,18 @@ export function directCardCall(intent: MessageIntent, characterId: string, conte
 // corrective call: those are the ones whose outcome a model most often
 // narrates instead of rolling.
 export function intentNeedsTool(intent: MessageIntent): boolean {
-  return intent.card === "attack" || intent.card === "spell" || intent.card === "reaction";
+  return intent.card === "attack" || intent.card === "spell" || (intent.card === "reaction" && !isTypedReaction(intent));
+}
+
+// A reaction typed in the player's own words (the composer's Speaking as,
+// issue 685): marked as a reaction the way a card is, so it is no word on
+// that hero's own turn (src/lib/dm/player-word.ts), but naming no feature, so
+// nothing resolves it on its own, no correction chases it and no card goes
+// back to a hand. The narrator reads it as their words.
+export const TYPED_REACTION: MessageIntent = { card: "reaction" };
+
+export function isTypedReaction(intent: MessageIntent | null | undefined): boolean {
+  return intent?.card === "reaction" && !intent.feature && !intent.spell;
 }
 
 function target(intent: MessageIntent): string {
@@ -401,6 +415,9 @@ function what(intent: MessageIntent): string {
 export function describeIntent(intent: MessageIntent, characterId: string | null, options: { resolved?: boolean } = {}): string {
   const tools = intentTools(intent);
   const who = characterId ? ` for characterId=${characterId}` : "";
+  if (isTypedReaction(intent)) {
+    return `[A reaction${who}, in their player's words above: if it is one the rules give them against an open hit in GAME STATE, resolve it with use_reaction. It is no action on their own turn.]`;
+  }
   const card = `[Card played${who}: ${what(intent)}${describeHandExtras(intent)}.`;
   if (options.resolved) {
     return `${card} The engine has resolved it: its call and result are in this conversation. Narrate from that result and do not call the tool again.]`;

@@ -1,7 +1,7 @@
 "use client";
 
 import { romanceCueAllowed } from "@/lib/dm/director-logic";
-import { gmTurnCompanion, initiativeCharacter, selectedCharacter } from "@/lib/player-characters";
+import { gmTurnCompanion, initiativeCharacter, selectedCharacter, typedReactors as typedReactorsOf } from "@/lib/player-characters";
 import { useThemePrefs } from "@/lib/theme-mode";
 import { LevelUpMoment, LootMoment, MomentVeil, RestMoment, TravelBanner } from "@/app/campaigns/[campaignId]/Moments";
 import { CoordinationPanel } from "@/app/campaigns/[campaignId]/CoordinationPanel";
@@ -491,6 +491,30 @@ export function SessionView({
     initiativeCharacter(sheets, me?.id ?? "", turnCharacterId(state.encounter)) ??
     (gmCompanions ? gmTurnCompanion(sheets, turnCharacterId(state.encounter)) : null);
   const actingSheet = turnSheet ?? mySheet;
+  // Speaking as, for a reaction typed in the box (issue 685): the box speaks
+  // for the hero whose turn it is, so words for another of the person's
+  // heroes (or a companion they command) went out as the wrong one. Offered
+  // while one of those has a hit still open on them and their reaction
+  // unspent, on a host that takes the words as theirs; a choice that no
+  // longer fits falls back to the hero whose turn it is. A choice holds for
+  // the hits open when it was made: once they close, or another lands, the
+  // box speaks for the hero whose turn it is again.
+  const hitsKey = (state.encounter?.lastHits ?? []).map((hit) => hit.id ?? hit.characterId).join(",");
+  const [reactChoice, setReactChoice] = useState<{ id: string; hits: string } | null>(null);
+  const reactAs = reactChoice && reactChoice.hits === hitsKey ? reactChoice.id : null;
+  const setReactAs = useCallback((id: string | null) => setReactChoice(id ? { id, hits: hitsKey } : null), [hitsKey]);
+  const typedReactors = useMemo(
+    () =>
+      hostOffers(capabilities, "typedReactions")
+        ? typedReactorsOf(sheets, me?.id ?? "", turnSheet?.id, campaign?.gameSettings?.multiCharacter, state.encounter, reactAs)
+        : [],
+    [capabilities, sheets, me?.id, turnSheet?.id, campaign?.gameSettings?.multiCharacter, state.encounter, reactAs],
+  );
+  const speakingAs = typedReactors.find((entry) => entry.id === reactAs) ?? null;
+  const reactAsPicker = useMemo(
+    () => ({ acting: actingSheet?.name ?? "", reactors: typedReactors, value: speakingAs?.id ?? null, onChange: setReactAs }),
+    [actingSheet?.name, typedReactors, speakingAs?.id, setReactAs],
+  );
   // The GM seat holds a companion's turn the floor names the companion for.
   const gmPlaysTurn = Boolean(gmCompanions && turnSheet?.isCompanion);
   // The server's notice opens the level-up dialog once, when the experience
@@ -822,7 +846,9 @@ export function SessionView({
               ? leadPrivate
                 ? ["director", { oneShot: null, absoluteCommand: content }]
                 : ["lead-note", { content }]
-              : ["actions", { content, kind, characterId: (kind === "ooc" ? mySheet : actingSheet)?.id }];
+              : kind === "do" && speakingAs
+                ? ["actions", { content, kind, characterId: speakingAs.id, reaction: true }]
+                : ["actions", { content, kind, characterId: (kind === "ooc" ? mySheet : actingSheet)?.id }];
         const send = (extra: Record<string, unknown> = {}) =>
           fetch(`/api/campaigns/${campaignId}/${route}`, {
             method: "POST",
@@ -851,13 +877,16 @@ export function SessionView({
           }
         }
         setInput("");
+        // One line for the hero answering a hit: the box speaks for the hero
+        // whose turn it is again.
+        setReactAs(null);
       } catch {
         setError("Could not reach the server.");
       } finally {
         setSending(false);
       }
     },
-    [campaignId, input, sending, gate.inputBlocked, silenced, kind, leadPrivate, speaker, mySheet, actingSheet],
+    [campaignId, input, sending, gate.inputBlocked, silenced, kind, leadPrivate, speaker, mySheet, actingSheet, speakingAs, setReactAs],
   );
 
   const clearChatTarget = useCallback(() => setChatTarget(null), []);
@@ -1408,6 +1437,7 @@ export function SessionView({
                     onCaptureStory={openStoryCapture}
                     onSnoozeStory={snoozeStory}
                     onSubmit={submit}
+                    speakingAs={reactAsPicker}
                   />
                   </>
                 )}

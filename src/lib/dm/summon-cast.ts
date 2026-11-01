@@ -13,7 +13,7 @@ import type { Campaign } from "@/lib/db/campaigns";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { computeSheetDerived, spellAttackFor } from "@/lib/srd";
 import { activeAuthored } from "@/lib/srd/authored-effects";
-import { summonPlan, type SummonSpell } from "@/lib/srd/summon-spells";
+import { reassertsControl, summonMixPlan, summonPlan, type SummonMixEntry, type SummonSpell } from "@/lib/srd/summon-spells";
 import type { SummonForm } from "@/lib/srd/summon-forms";
 import { attackSummary } from "@/lib/srd/creature-attacks";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -32,6 +32,10 @@ export type SummonCastArgs = {
   level?: number;
   variant?: string;
   count?: number;
+  // A per-target casting's forms and numbers (summon-spells.ts summonMixPlan).
+  mix?: SummonMixEntry[];
+  // Cast as a ritual: no slot, ten minutes longer (the cast guard asks).
+  ritual?: boolean;
   reason?: string;
 };
 
@@ -85,14 +89,16 @@ export function castSummon(
   const slotLevel = Math.max(spell.level, args.level ?? spell.level);
   // Animate Dead, Create Undead: a casting may reassert control over the
   // undead it already made, rather than making new ones.
-  if (spell.reassert && textKey(args.variant ?? "") === "reassert control") {
+  if (reassertsControl(spell, args.variant)) {
     return reassertControl(campaign, args, slotLevel, cast);
   }
-  const plan = summonPlan(spell, slotLevel, args.variant ?? "", args.count);
-  if ("error" in plan) {
-    return plan;
+  // A per-target casting may bring several forms (Animate Dead's skeletons
+  // and zombies); any other brings one.
+  const planned = args.mix?.length ? summonMixPlan(spell, slotLevel, args.mix) : summonPlan(spell, slotLevel, args.variant ?? "", args.count);
+  if ("error" in planned) {
+    return planned;
   }
-  const form = formFor(spell, plan.form, caster, slotLevel);
+  const plans = (Array.isArray(planned) ? planned : [planned]).map((plan) => ({ ...plan, form: formFor(spell, plan.form, caster, slotLevel) }));
 
   // Cast again while it still holds, the spell's first casting ends, and
   // the creatures it made with it.
@@ -100,12 +106,13 @@ export function castSummon(
 
   // The spend, through the one cast guard: the list, the slot, the turn, the
   // material, concentration (a second concentration spell ends the first,
-  // and the creatures that spell made with it).
+  // and the creatures that spell made with it). A ritual spends no slot.
   const spent = cast({
     characterId: caster.id,
     spell: castAs,
     level: slotLevel,
     via: "buff",
+    ...(args.ritual ? { ritual: true } : {}),
     reason: (args.reason ?? "").slice(0, 200),
   });
   if ("error" in spent) {
@@ -126,41 +133,51 @@ export function castSummon(
   // makes arrives with 30 temporary hit points.
   const durableHp = authoredSummonTempHp(fresh, spell.school);
   const durable = durableHp > 0;
-  // Mighty Summoner (Circle of the Shepherd 6): a beast or fey arrives with
-  // 2 more hit points per Hit Die.
-  const mighty = authoredSummonHitPoints(fresh, form);
-  const record = summonRecord(form, {
-    spell: castAs,
-    casterId: caster.id,
-    casterName: caster.name,
-    concentration: spell.concentration,
-    hostileOnBreak: spell.hostileOnBreak,
-    controlExpires: spell.controlExpires,
-    castId: randomUUID().slice(0, 8),
-  });
-  const created = spawnSummons(campaign, fresh, {
-    form,
-    count: plan.count,
-    record,
-    rounds: spell.rounds,
-    slotLevel: spentLevel,
-    initiative: spell.beforeCaster ? "before" : spell.initiative,
-    ...(spell.conditions?.length ? { conditions: spell.conditions } : {}),
-    ...(durable ? { tempHp: durableHp } : {}),
-    overrides: {
-      ...(spell.minInt ? { int: spell.minInt } : {}),
-      ...(spell.speed ? { speed: spell.speed } : {}),
-      ...(mighty ? { hp: form.hp + mighty.hp } : {}),
-    },
-  });
-  const attacks = form.attacks.length ? form.attacks.map(attackSummary).join(", ") : "none: it cannot attack";
+  const castId = randomUUID().slice(0, 8);
+  const created: CharacterSheet[] = [];
+  for (const { form, count } of plans) {
+    // Mighty Summoner (Circle of the Shepherd 6): a beast or fey arrives
+    // with 2 more hit points per Hit Die.
+    const mighty = authoredSummonHitPoints(fresh, form);
+    const record = summonRecord(form, {
+      spell: castAs,
+      casterId: caster.id,
+      casterName: caster.name,
+      concentration: spell.concentration,
+      hostileOnBreak: spell.hostileOnBreak,
+      controlExpires: spell.controlExpires,
+      castId,
+    });
+    created.push(
+      ...spawnSummons(campaign, fresh, {
+        form,
+        count,
+        record,
+        rounds: spell.rounds,
+        slotLevel: spentLevel,
+        initiative: spell.beforeCaster ? "before" : spell.initiative,
+        ...(spell.conditions?.length ? { conditions: spell.conditions } : {}),
+        ...(durable ? { tempHp: durableHp } : {}),
+        overrides: {
+          ...(spell.minInt ? { int: spell.minInt } : {}),
+          ...(spell.speed ? { speed: spell.speed } : {}),
+          ...(mighty ? { hp: form.hp + mighty.hp } : {}),
+        },
+      }),
+    );
+  }
+  const describe = (form: SummonForm) => {
+    const attacks = form.attacks.length ? form.attacks.map(attackSummary).join(", ") : "none: it cannot attack";
+    return `${form.name} (${form.type}, CR ${form.cr}): ${form.hp} HP, AC ${form.ac}, speed ${spell.speed ?? form.speed} ft. Attacks: ${attacks}${(form.attacksPerTurn ?? 1) > 1 ? ` (${form.attacksPerTurn} per Attack action)` : ""}.`;
+  };
+  const traits = plans.map(({ form }) => form.traits).filter(Boolean).join(" ");
   return {
     ok: true,
     spell: castAs,
     ...(castAs !== spell.name ? { runsAs: spell.name } : {}),
     summoned: created.map((sheet) => ({ characterId: sheet.id, name: sheet.name, hp: `${sheet.currentHp}/${sheet.maxHp}`, ac: sheet.ac })),
-    creature: `${form.name} (${form.type}, CR ${form.cr}): ${form.hp} HP, AC ${form.ac}, speed ${spell.speed ?? form.speed} ft. Attacks: ${attacks}${(form.attacksPerTurn ?? 1) > 1 ? ` (${form.attacksPerTurn} per Attack action)` : ""}.`,
-    ...(form.traits ? { traits: form.traits } : {}),
+    creature: plans.map(({ form, count }) => `${plans.length > 1 ? `${count} x ` : ""}${describe(form)}`).join(" "),
+    ...(traits ? { traits } : {}),
     ...(durable ? { durableSummons: `Durable Summons: each arrives with ${durableHp} temporary hit points.` } : {}),
     ...(replaced.length ? { replaced: `${replaced.join(", ")} ${replaced.length === 1 ? "is" : "are"} gone: ${spell.single ? "one at a time" : "the first casting ended"}.` } : {}),
     ...(spent.slot ? { slot: spent.slot } : {}),

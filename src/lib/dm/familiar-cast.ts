@@ -12,28 +12,36 @@ import type { Campaign } from "@/lib/db/campaigns";
 import { buildPet, handleSummonPet } from "@/lib/dm/pet-tools";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolResult } from "@/lib/dm/tool-errors";
-import { textKey } from "@/lib/language/text-logic";
+import { familiarKindOf } from "@/lib/srd/familiar-forms";
 
-export const isFindFamiliar = (spell: string) => textKey(spell) === "find familiar";
+export { familiarKindOf, isFindFamiliar } from "@/lib/srd/familiar-forms";
 
 export function castFindFamiliar(
   campaign: Campaign,
   // `castAs`: the name it is cast under, a table's workshop copy's own.
-  input: { caster: CharacterSheet; castAs?: string; variant?: string; level?: number; reason?: string; sheets: CharacterSheet[]; sheetsById: Map<string, CharacterSheet> },
+  input: { caster: CharacterSheet; castAs?: string; variant?: string; level?: number; ritual?: boolean; reason?: string; sheets: CharacterSheet[]; sheetsById: Map<string, CharacterSheet> },
   cast: (args: Record<string, unknown>) => Record<string, unknown>,
 ): ToolResult {
   const { caster } = input;
   const castAs = input.castAs?.trim() || "Find Familiar";
-  const form = (input.variant ?? "").trim();
+  const { kind, form } = familiarKindOf(input.variant ?? "");
   const built = buildPet(caster, { kind: "familiar", form });
   if ("error" in built) {
     return { ...built, error: `${built.error} Nothing was spent.` };
   }
-  const spent = cast({ characterId: caster.id, spell: castAs, ...(input.level ? { level: input.level } : {}), via: "buff", reason: (input.reason ?? "").slice(0, 200) });
+  const spent = cast({
+    characterId: caster.id,
+    spell: castAs,
+    ...(input.level ? { level: input.level } : {}),
+    via: "buff",
+    // Find Familiar is a ritual (SRD 5.1): cast as one it spends no slot.
+    ...(input.ritual ? { ritual: true } : {}),
+    reason: (input.reason ?? "").slice(0, 200),
+  });
   if ("error" in spent) {
     return spent;
   }
-  const bound = handleSummonPet(campaign, JSON.stringify({ characterId: caster.id, kind: "familiar", form }), input.sheets, input.sheetsById);
+  const bound = handleSummonPet(campaign, JSON.stringify({ characterId: caster.id, kind: "familiar", form, creatureType: kind }), input.sheets, input.sheetsById);
   if ("error" in bound) {
     return bound;
   }

@@ -48,7 +48,12 @@ function retaliation(ctx: Ctx): ToolResult {
   if (!holdsFeature(sheet, "retaliation")) {
     return { error: `${sheet.name} does not have Retaliation (a Berserker's 14th level feature). Nothing was spent.`, refused: "rules" };
   }
-  const record = freshLastHit(campaign.id, sheet.id);
+  // Of several open hits, one that damaged them (by the creature named,
+  // when one is).
+  const record = freshLastHit(campaign.id, sheet.id, (hit) =>
+    Boolean(hit.source === "attack" && attackerFoeId(hit) !== null && hit.attacker.id && !hit.answered.includes("retaliation")
+      && hit.swings.some((swing) => swing.hit && swing.raw > 0) && (!ctx.args.targetEnemyId || hit.attacker.id === ctx.args.targetEnemyId)),
+  ) ?? freshLastHit(campaign.id, sheet.id);
   const damaged = record && record.source === "attack" && attackerFoeId(record) !== null && record.attacker.id && !record.answered.includes("retaliation")
     ? record.swings.some((swing) => swing.hit && swing.raw > 0)
     : false;
@@ -83,7 +88,9 @@ function standAgainstTheTide(ctx: Ctx): ToolResult {
   if (!holdsFeature(sheet, "stand against the tide", "superior hunter's defense: stand against the tide")) {
     return { error: `${sheet.name} does not have Stand Against the Tide (a Hunter's Superior Hunter's Defense pick). Nothing was spent.`, refused: "rules" };
   }
-  const record = freshLastHit(campaign.id, sheet.id);
+  const record = freshLastHit(campaign.id, sheet.id, (hit) =>
+    hit.source === "attack" && !hit.ranged && !hit.answered.includes("stand against the tide") && hit.swings.some((swing) => !swing.hit && !(swing.ranged ?? false)),
+  ) ?? freshLastHit(campaign.id, sheet.id);
   const missed = record && record.source === "attack" && !record.ranged && !record.answered.includes("stand against the tide")
     ? record.swings.some((swing) => !swing.hit && !(swing.ranged ?? false))
     : false;

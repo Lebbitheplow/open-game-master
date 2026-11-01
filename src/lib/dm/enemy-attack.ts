@@ -43,7 +43,7 @@ import { heldTurnRefusal } from "@/lib/dm/flee-logic";
 import { rangedBackstop, recordEnemyTurn } from "@/lib/dm/enemy-turn-logic";
 import { attackHold, spellAttackHold } from "@/lib/dm/spell-planes";
 import { reachThroughProblem } from "@/lib/dm/zone-rules";
-import { critDamageExpression } from "@/lib/dm/encounter-logic";
+import { critDamageExpression, ordinaryOfCritical } from "@/lib/dm/encounter-logic";
 import { wornArmorTurnsCrits } from "@/lib/srd/armor";
 import { resolveEnemyRef, unknownEnemyRef } from "@/lib/dm/enemy-damage";
 import { approachTarget, reachesThisTurn, spendEnemyAction, standUpIfProne } from "@/lib/dm/enemy-approach";
@@ -57,7 +57,7 @@ import { enemySwingOdds, hasFeatureNamed } from "@/lib/dm/enemy-swing-odds";
 import { openLastHit } from "@/lib/dm/last-hit";
 import { authoredAfterHit, authoredIncomingAttack, WARD_WITHSTOOD } from "@/lib/dm/authored-hooks";
 import { rollEnemySave } from "@/lib/dm/forced-save";
-import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { critOnlyWhileUnconscious, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { releaseGrapplesOutOfReach } from "@/lib/dm/grapple";
 import { sanctuaryWard } from "@/lib/dm/enemy-conditions";
 import { naturesSanctuaryRefusal } from "@/lib/dm/srd-defenses";
@@ -632,7 +632,22 @@ export function handleEnemyAttack(
     // hit's damage to 0, never below it.
     const blow = blowByType(attack, damageOutcome, crit);
     // Ray of Enfeeblement halves a Strength weapon's blow (spell-retort.ts).
-    const dealt = Math.floor(enfeebledBlow(standing, attack, ranged, Math.max(0, blow.amount)) / (authored.halve ? 2 : 1));
+    const shrunk = (amount: number) => Math.floor(enfeebledBlow(standing, attack, ranged, Math.max(0, amount)) / (authored.halve ? 2 : 1));
+    const dealt = shrunk(blow.amount);
+    // A critical that came only from the target lying unconscious at 0 within
+    // 5 ft (SRD 5.1) keeps the blow's ordinary damage too, read off the same
+    // dice: a reaction that later leaves the target standing when it landed
+    // replays it as the ordinary hit it then was (reaction-refund.ts). A
+    // natural 20 is critical whatever the target.
+    const struck = getSheetById(target.id) ?? target;
+    const ordinaryRoll =
+      crit && !natCrit && struck.currentHp <= 0 && critOnlyWhileUnconscious(struck.conditions)
+        ? ordinaryOfCritical(damageOutcome, baseDamage, { multiplyNumeric: campaign.gameSettings.variantRules.criticalDamageMods })
+        : null;
+    const ordinaryBlow = ordinaryRoll ? blowByType(attack, ordinaryRoll, false) : null;
+    const ordinary = ordinaryBlow
+      ? { raw: shrunk(ordinaryBlow.amount), ...(ordinaryBlow.parts ? { parts: scaledParts(ordinaryBlow.parts, shrunk(ordinaryBlow.amount)) } : {}) }
+      : undefined;
     // Damage lands through the damage path: the ward, each type's defenses,
     // temp HP, clamps, audit, concentration and the sheet_updated publish.
     const applied: Record<string, unknown> = dealt <= 0 ? {} : applyPcDamage(campaign, turn.id, getSheetById(target.id) ?? target, {
@@ -655,7 +670,7 @@ export function handleEnemyAttack(
     if (multiattackDefense) {
       defended = 4;
     }
-    hitLog.swing(hitOutcome, targetAc(), { hit: true, crit, raw: dealt, advantage, type: blow.type ?? "", ...(blow.parts ? { parts: scaledParts(blow.parts, dealt) } : {}), ranged, attack: attack.name });
+    hitLog.swing(hitOutcome, targetAc(), { hit: true, crit, raw: dealt, advantage, type: blow.type ?? "", ...(blow.parts ? { parts: scaledParts(blow.parts, dealt) } : {}), ranged, attack: attack.name, ...(ordinary ? { ordinary } : {}) });
     for (const type of attack.type.split("/")) {
       damageTypes.add(type);
     }

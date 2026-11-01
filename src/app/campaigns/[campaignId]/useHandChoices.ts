@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { HandAttackOptionId, HandCard } from "@/lib/battlemap/hand";
 import { HAND_AIM_EVENT, stepShare, toggleOption, type HandAim, type HandAimDetail, type HandChoices } from "@/lib/battlemap/hand-play";
 import type { HandShare } from "@/lib/battlemap/hand-intent";
+import { stepMix } from "@/lib/battlemap/hand-summon";
 import { HAND_AIM_ASK_EVENT, HAND_AREA_EVENT, type AreaPick, type HandAreaDetail } from "@/lib/battlemap/hand-area";
 
 // What the raised card carries beyond its target: the class options chosen
@@ -15,17 +16,34 @@ export function useHandChoices(picked: HandCard | null, aim: HandAim | null = nu
   const [optionIds, setOptionIds] = useState<HandAttackOptionId[]>([]);
   const [trigger, setTrigger] = useState("");
   const [choice, setChoice] = useState<string | null>(null);
+  // A summoning card's number of the creature picked, its kind, and a
+  // per-target spell's forms (hand-summon.ts).
+  const [count, setCount] = useState<number | null>(null);
+  const [kind, setKind] = useState<string | null>(null);
+  const [mix, setMix] = useState<Record<string, number>>({});
   const [areaPick, setAreaPick] = useState<AreaPick>({});
   // The darts, rays or creatures given beside the aimed one (issue 570).
   const [shares, setShares] = useState<HandShare[]>([]);
   const choices = useMemo<HandChoices>(
-    () => ({ options: optionIds, trigger, ...(choice !== null ? { choice } : {}), area: areaPick, ...(shares.length ? { shares } : {}) }),
-    [optionIds, trigger, choice, areaPick, shares],
+    () => ({
+      options: optionIds,
+      trigger,
+      ...(choice !== null ? { choice } : {}),
+      ...(count !== null ? { count } : {}),
+      ...(kind !== null ? { kind } : {}),
+      ...(Object.keys(mix).length ? { mix } : {}),
+      area: areaPick,
+      ...(shares.length ? { shares } : {}),
+    }),
+    [optionIds, trigger, choice, count, kind, mix, areaPick, shares],
   );
   const resetChoices = useCallback(() => {
     setOptionIds([]);
     setTrigger("");
     setChoice(null);
+    setCount(null);
+    setKind(null);
+    setMix({});
     setAreaPick({});
     setShares([]);
   }, []);
@@ -65,6 +83,14 @@ export function useHandChoices(picked: HandCard | null, aim: HandAim | null = nu
     onTrigger: setTrigger,
     choice,
     onChoice: setChoice,
+    count,
+    onCount: setCount,
+    kind,
+    onKind: setKind,
+    mix,
+    onStepMix: (form: string, delta: 1 | -1) => {
+      if (picked) setMix((current) => stepMix(picked, current, form, delta));
+    },
     areaPick,
     onClearArea: () => setAreaPick({}),
     shares,

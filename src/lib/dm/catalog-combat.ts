@@ -282,6 +282,11 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
         help: "A summoning spell's creature (Find Steed's with its kind: fey warhorse), Find Familiar's form, Polymorph's or Animal Shapes' beast, True Polymorph's or Shapechange's creature; or type Enlarge/Reduce, Protection from Energy's type, Enhance Ability, Fire Shield.",
       },
       { name: "count", label: "How many", kind: "number", min: 1, max: 40, help: "A summoning spell: fewer creatures than the slot allows; empty for the most." },
+      // A summoning's choices from the engine's catalogue for the spell named
+      // above, shown only for a spell that has them (issue 685).
+      { name: "kind", label: "Kind", kind: "summonKind", host: { feature: "summonPicker" }, help: "Find Steed or Find Familiar: what the creature is instead of its own kind." },
+      { name: "mix", label: "Each target's form", kind: "summonMix", host: { feature: "summonPicker" }, help: "Animate Dead's bones or corpse, Animate Objects' sizes: how many of each, within the slot. Leaves Choice and How many unread." },
+      { name: "ritual", label: "As a ritual", kind: "boolean", help: "A summoning ritual (Find Familiar, Unseen Servant, Phantom Steed): ten minutes longer and no slot spent, for a caster who casts rituals." },
       { name: "endSpell", label: "Dispel Magic ends", kind: "text", help: "The one spell to end when the target holds several; empty ends them all." },
       // Where Spiritual Weapon's weapon appears, as the AI GM can say it
       // (issue 659).
@@ -445,7 +450,13 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
         required: true,
         options: REACTIONS,
         other: { label: "Another feature", placeholder: "Sentinel" },
-        help: "Answers the last attack against them: a hit that already landed is re-resolved.",
+        help: "Answers an attack still open against them: a hit that already landed is re-resolved.",
+      },
+      {
+        name: "hit",
+        label: "Attack answered",
+        kind: "enemy",
+        help: "When two or more attacks on them are still open: the creature whose attack it answers. Left empty, Shield takes the first (its +5 covers the later ones too), a reaction that cuts one blow the heaviest, any other the latest.",
       },
       { name: "targetCharacterId", label: "Ally covered", kind: "character", help: "Protection, Cutting Words, Feather Fall." },
       { name: "targetEnemyId", label: "Enemy answered", kind: "enemy", help: "Hellish Rebuke, Counterspell, Deflect Missiles' throw back." },

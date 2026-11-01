@@ -17,7 +17,7 @@ import { tableAuthors } from "@/lib/db/homebrew";
 import { getSheetById } from "@/lib/db/sheets";
 import { liveCardChanges, recordTurnChange, type TurnChange } from "@/lib/db/turn-changes";
 import { directContextFor } from "@/lib/dm/direct-context";
-import { directCardCalls, type DirectCall } from "@/lib/dm/intent-logic";
+import { directCardCalls, isTypedReaction, type DirectCall } from "@/lib/dm/intent-logic";
 import { invokeEngine } from "@/lib/dm/invoke";
 import { publishPersisted } from "@/lib/events";
 
@@ -28,7 +28,7 @@ function waitingCardCalls(campaign: Campaign, message: CampaignMessage | null): 
   if (!message || message.campaignId !== campaign.id || message.authorType !== "player") {
     return { error: "That action is not waiting at this table.", status: 404 };
   }
-  if (!message.intent || !message.characterId) {
+  if (!message.intent || !message.characterId || isTypedReaction(message.intent)) {
     return { error: "That action was typed, not played from a card; answer it from the console.", status: 409 };
   }
   if (message.cardResolvedAt) {

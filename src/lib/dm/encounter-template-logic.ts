@@ -287,6 +287,20 @@ function optionalInt(value: unknown, min: number, max: number): number | null {
   return Math.min(max, Math.max(min, number));
 }
 
+// What a deploy says when the fight's saved map could not be laid
+// (deployTemplate's mapError): the fight stands, on the generator's board.
+// One sentence for the AI's prepared fight (prepared-encounter-tool.ts) and
+// a test table's chronicle (src/lib/workshop/test-fight.ts), so the two say
+// it alike.
+export function savedMapNote(mapError: string): string {
+  return `Its saved map could not be used (${mapError}); the fight is on a generated one.`;
+}
+
+// A test of a fight whose kept map was since removed from the workshop's
+// maps: the copy arrives with no map to lay (src/lib/db/content-copy.ts
+// binds it to nothing), so the deploy itself has no failure to report.
+export const MAP_GONE_FROM_WORKSHOP = "the map it was drawn on is no longer in the workshop's maps";
+
 export function normalizeTemplateMap(
   raw: unknown,
   allowed: { themes: string[]; ambients: string[]; scenes: string[] },
