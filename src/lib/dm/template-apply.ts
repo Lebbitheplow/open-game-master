@@ -3,7 +3,7 @@ import { deployPreparedMap } from "@/lib/dm/map-library";
 import { applyStudioMap } from "@/lib/dm/map-studio";
 import type { EncounterTemplate } from "@/lib/db/encounter-templates";
 import { allocateSeq } from "@/lib/db/campaigns";
-import { getActiveEncounter, listEnemies, patchEnemyIdentity } from "@/lib/db/encounters";
+import { getActiveEncounter, patchEnemyIdentity, type EncounterEnemy } from "@/lib/db/encounters";
 import {
   getBattleMapForEncounter,
   getTokenByRef,
@@ -19,7 +19,8 @@ import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import type { MapTheme } from "@/lib/battlemap/generate";
 import { tileIndex, type AmbientLight } from "@/lib/battlemap/types";
-import { describeExtras, expandRoster, matchSlots } from "@/lib/dm/encounter-template-logic";
+import { describeExtras } from "@/lib/dm/encounter-template-logic";
+import { armTemplateEvents, matchTemplateSlots } from "@/lib/dm/fight-events";
 
 // What a prepared fight brings to the board once the fight exists: its
 // saved map and the rest of its plan. Split from src/lib/dm/encounter-
@@ -61,18 +62,20 @@ export function applyTemplateMap(campaign: Campaign, template: EncounterTemplate
   return "error" in applied ? applied.error : null;
 }
 
-// Placements, hidden enemies, overrides and the DM's note. Every part is
-// best effort against the fight that was actually made: a slot the roster
-// no longer has, or a tile that is now rock, is skipped rather than
-// undoing a fight the enemies are already rolled into.
-export function applyTemplateExtras(campaign: Campaign, userId: string, template: EncounterTemplate) {
+// Placements, hidden enemies, overrides, the DM's note and the fight's
+// events. Every part is best effort against the fight that was actually
+// made: a slot the roster no longer has, or a tile that is now rock, is
+// skipped rather than undoing a fight the enemies are already rolled into.
+// Returns what the events that open the fight told the table.
+export function applyTemplateExtras(campaign: Campaign, userId: string, template: EncounterTemplate): string[] {
   const extras = template.extras;
   const hasBoardWork = extras.placements.length || extras.hidden.length || extras.overrides.length || extras.entry;
   const encounter = getActiveEncounter(campaign.id);
+  // Which enemy is which slot, read before an override renames one: the
+  // match goes by the roster's own labels.
+  const matched = encounter ? matchTemplateSlots(template, encounter.id) : new Map<number, EncounterEnemy>();
   if (encounter && hasBoardWork) {
     const map = getBattleMapForEncounter(encounter.id);
-    const enemies = listEnemies(encounter.id).filter((enemy) => enemy.status === "alive");
-    const matched = matchSlots(expandRoster(template.enemies), enemies);
     for (const override of extras.overrides) {
       const enemy = matched.get(override.slot);
       if (!enemy) {
@@ -115,7 +118,7 @@ export function applyTemplateExtras(campaign: Campaign, userId: string, template
     }
     publishEncounter(campaign.id);
   }
-  const lines = describeExtras(extras);
+  const lines = describeExtras(extras, template.enemies);
   if (lines.length) {
     insertNote({
       campaignId: campaign.id,
@@ -129,4 +132,7 @@ export function applyTemplateExtras(campaign: Campaign, userId: string, template
       seq: allocateSeq(campaign.id),
     });
   }
+  // Armed last, on the board as the plan laid it: an ambusher hidden above
+  // is still unseen when an opening event names it.
+  return armTemplateEvents(campaign, template, matched);
 }

@@ -276,6 +276,7 @@ import { FACTION_TOOL_NAMES, factionTools } from "@/lib/dm/faction-tools";
 import { actionTools } from "@/lib/dm/action-tools";
 import { SHOP_TOOL_NAMES, shopTools, shopsBlock } from "@/lib/dm/shop-tools";
 import { preparedEncounterTools, preparedFightsBlock } from "@/lib/dm/prepared-encounter-tool";
+import { fireFightEvents, firedEventsNote } from "@/lib/dm/fight-events";
 import { SETTLEMENT_TOOL_NAMES, settlementTools } from "@/lib/dm/settlement-tools";
 import { placeIsWritten, populateSettlement } from "@/lib/dm/settlement";
 import { listFactions } from "@/lib/db/factions";
@@ -667,6 +668,11 @@ async function openTurn(
   // stragglers are auto-rolled before the prompt is built.
   if (!oocOnly) {
     ensureInitiativeProgress(campaign);
+    // Whatever moved the fight since the last turn (a player's End Turn, a
+    // pass the lead released) has had its prepared events by now; this
+    // catches any that a path outside an engine call left due, before the
+    // prompt reads the fight (fight-events.ts).
+    fireFightEvents(campaign);
   }
   const { summary, coveredCount } = getCampaignSummaryState(campaignId);
   const currentLocation = getCurrentLocation(campaignId);
@@ -2352,7 +2358,9 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
           ? await resolveModelCall(context, turn, toolCall)
           : { error: `The engine has no action called "${toolCall.name}".`, retry: true });
       // A combatant who left the fight during the call takes no turn with them.
-      settleTurn(context.campaign, holder);
+      // The prepared events it brought on (fight-events.ts) ride back in its
+      // result, so the model narrates them in this very reply.
+      const happened = settleTurn(context.campaign, holder);
       if (outcome[PARKED]) {
         parkedAny = true;
         continue;
@@ -2366,7 +2374,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       turn.conversation.push({
         role: "tool",
         ...(toolCall.id ? { tool_call_id: toolCall.id } : {}),
-        content: JSON.stringify(told),
+        content: JSON.stringify(happened.length ? { ...told, fightEvents: firedEventsNote(happened) } : told),
       });
     }
 

@@ -8,6 +8,7 @@
 // live form can never read differently.
 
 import { textKey } from "../language/text-logic.ts";
+import { describeFightEvent, normalizeFightEvents, type FightEvent } from "./fight-event-logic.ts";
 
 export type TemplateEnemy = { monster: string; count: number };
 
@@ -334,6 +335,8 @@ export type TemplateExtras = {
   rewards: string;
   // "When the shaman drops, the wolves flee." One line each.
   phases: string[];
+  // What the server does when, at the table (fight-event-logic.ts).
+  events: FightEvent[];
 };
 
 export const EXTRAS_LIMITS = {
@@ -352,6 +355,7 @@ export const EMPTY_TEMPLATE_EXTRAS: TemplateExtras = {
   overrides: [],
   rewards: "",
   phases: [],
+  events: [],
 };
 
 export type RosterSlot = { slot: number; monster: string; label: string };
@@ -442,6 +446,7 @@ export function normalizeTemplateExtras(
       .map((line) => (typeof line === "string" ? line.trim().slice(0, EXTRAS_LIMITS.phaseText) : ""))
       .filter(Boolean)
       .slice(0, EXTRAS_LIMITS.phases),
+    events: normalizeFightEvents(source.events, slotCount),
   };
 }
 
@@ -472,8 +477,8 @@ export function matchSlots<T extends { id: string; slug: string; displayName: st
 }
 
 // The note the DM gets when the fight opens: the parts of the plan the
-// board cannot show.
-export function describeExtras(extras: TemplateExtras): string[] {
+// board cannot show. The roster names the creatures an event speaks of.
+export function describeExtras(extras: TemplateExtras, roster: TemplateEnemy[] = []): string[] {
   const lines: string[] = [];
   if (extras.rewards) {
     lines.push(`Worth: ${extras.rewards}`);
@@ -481,5 +486,8 @@ export function describeExtras(extras: TemplateExtras): string[] {
   extras.phases.forEach((phase, index) => {
     lines.push(`Phase ${index + 1}: ${phase}`);
   });
+  const slots = expandRoster(roster);
+  const label = (slot: number) => slots[slot]?.label ?? `creature ${slot + 1}`;
+  (extras.events ?? []).forEach((event) => lines.push(`Event: ${describeFightEvent(event, label)}`));
   return lines;
 }

@@ -145,6 +145,10 @@ export const SERVER_FEATURES = {
   // GET and POST /api/campaigns/[id]/dm/resolve-card and the message's
   // `cardResolvedAt`. An older host has neither, so the button stays hidden.
   resolveAsPlayed: true,
+  // A prepared fight's Events (issue 685): the extras' `events`, which an
+  // older host drops while saving the rest of the plan and never runs, so
+  // the Events section of the fight's plan stays hidden there.
+  fightEvents: true,
 } as const;
 export type ServerFeatures = { [K in keyof typeof SERVER_FEATURES]: boolean };
 

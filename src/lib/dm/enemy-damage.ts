@@ -1,4 +1,5 @@
 import { settleDroppedOnFightEnd } from "@/lib/db/dropped-items";
+import { disarmFightEvents } from "@/lib/db/fight-events";
 import { endFightEffects } from "@/lib/db/active-effects";
 import { getFloor, setFloor, type Campaign } from "@/lib/db/campaigns";
 import { burnWebUnder } from "@/lib/dm/zone-cast";
@@ -270,6 +271,8 @@ export function afterTheFight(
   encounter: Encounter,
   enemies: readonly EncounterEnemy[],
 ): { guestsGone: string[]; turncoats: string[]; foesMourned: string[]; answersOwed: string[] } {
+  // What the fight's plan still held can no longer happen (fight-events.ts).
+  disarmFightEvents(encounter.id);
   const floor = getFloor(campaign.id);
   if (floor.mode === "initiative" || (floor.mode === "hold" && floor.next.mode === "initiative")) {
     setFloor(campaign.id, { mode: "open" });

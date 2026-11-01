@@ -13,6 +13,7 @@ import {
   TEMPLATE_NOTES_MAX,
 } from "@/lib/dm/encounter-template-logic";
 import { templateDifficulty } from "@/lib/dm/encounter-templates";
+import { EVENTS_REFUSAL, EXTRAS_INPUT, eventsUnreadable } from "@/lib/dm/fight-event-logic";
 import { getPreparedMap } from "@/lib/db/prepared-maps";
 import { MAP_THEMES } from "@/lib/battlemap/generate";
 import { sceneIds } from "@/lib/ambience/catalog";
@@ -32,7 +33,9 @@ const bodySchema = z.object({
   map: z.unknown().optional(),
   // Placements, hidden slots, overrides, rewards and phases, cleaned
   // against the roster by the pure normalizer.
-  extras: z.unknown().optional(),
+  // Its events are checked here (fight-event-logic.ts): an action of a
+  // kind no event has, a die or a result, is refused, not dropped.
+  extras: EXTRAS_INPUT.optional(),
 });
 
 // Each template carries its difficulty readout, computed fresh: the party
@@ -77,9 +80,13 @@ export async function POST(
   if (isErrorResponse(context)) {
     return context;
   }
-  const parsed = bodySchema.safeParse(await request.json().catch(() => ({})));
+  const body: unknown = await request.json().catch(() => ({}));
+  const parsed = bodySchema.safeParse(body);
   if (!parsed.success) {
-    return Response.json({ error: "A prepared encounter needs a name and a roster." }, { status: 400 });
+    return Response.json(
+      { error: eventsUnreadable(body) ? EVENTS_REFUSAL : "A prepared encounter needs a name and a roster." },
+      { status: 400 },
+    );
   }
   const roster = checkRoster(parseRoster(parsed.data.enemies));
   if ("error" in roster) {

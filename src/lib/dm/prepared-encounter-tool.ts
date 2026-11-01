@@ -7,6 +7,7 @@ import { describeExtras, formatRoster, rosterSummary } from "@/lib/dm/encounter-
 import { preparedFit } from "@/lib/dm/prepared-fit";
 import { fightingParty } from "@/lib/dm/party-budget";
 import { applyTemplateExtras, applyTemplateMap } from "@/lib/dm/template-apply";
+import { firedEventsBlock, firedEventsNote } from "@/lib/dm/fight-events";
 import type { ToolDef } from "@/lib/dm/encounter-tool-defs";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { findNamed } from "@/lib/language/text-logic";
@@ -83,11 +84,13 @@ export const runPreparedEncounterTool: ToolDef = {
   },
 };
 
-// The block in GAME STATE. Empty when there is nothing to run or a fight is
-// already on, so a table without prep pays nothing for this.
+// The block in GAME STATE. Empty when there is nothing to run, so a table
+// without prep pays nothing for this. While a fight is on it holds what that
+// fight's prepared events have done instead (src/lib/dm/fight-events.ts),
+// empty until one has.
 export function preparedFightsBlock(campaign: Campaign): string {
   if (getActiveEncounter(campaign.id)) {
-    return "";
+    return firedEventsBlock(campaign.id);
   }
   const ready = readyTemplates(campaign.id);
   if (!ready.length) {
@@ -97,7 +100,7 @@ export function preparedFightsBlock(campaign: Campaign): string {
   const ordered = [...ready.filter((template) => template.cued), ...ready.filter((template) => !template.cued)];
   const lines = ordered.slice(0, LISTED).map((template) => {
     const map = template.map.mapId ? getPreparedMap(campaign.id, template.map.mapId)?.name : "";
-    const plan = describeExtras(template.extras)[0] ?? "";
+    const plan = describeExtras(template.extras, template.enemies)[0] ?? "";
     const note = template.notes.split("\n")[0]?.trim().slice(0, 120) ?? "";
     return `- ${template.cued ? "[CUED by the party lead: run this one as soon as the scene allows] " : ""}${template.name}: ${formatRoster(template.enemies)}${template.battlefield ? ` | ${template.battlefield.slice(0, 100)}` : ""}${map ? ` | on the map "${map}"` : ""}${note ? ` | ${note}` : ""}${plan ? ` | ${plan.slice(0, 100)}` : ""}`;
   });
@@ -175,9 +178,12 @@ export function runPreparedEncounter(
     return started;
   }
   const mapError = applyTemplateMap(campaign, template);
-  applyTemplateExtras(campaign, campaign.ownerUserId, template);
+  // The events that open the fight have happened by now; the model is told
+  // so in the result, to narrate them.
+  const opened = applyTemplateExtras(campaign, campaign.ownerUserId, template);
   // The foes as a test of the fight was saved to start (issue 685), as a
-  // GM's Deploy lays them.
+  // GM's Deploy lays them: after the opening events, since a saved moment
+  // already holds what its own test's opening did.
   const setup = getTemplateSetup(template.id);
   if (setup) {
     layFightSetup(campaign, template, setup);
@@ -185,7 +191,7 @@ export function runPreparedEncounter(
   setTemplateCued(template.id, false);
   // The plan rides back with the fight: what it is worth and when it
   // turns, so the storyteller can pay it out and play its phases.
-  const plan = describeExtras(template.extras);
+  const plan = describeExtras(template.extras, template.enemies);
   return {
     ...started,
     prepared: template.name,
@@ -193,6 +199,7 @@ export function runPreparedEncounter(
       ? { scaled: `As prepared it is beyond the party as it stands, so it runs without ${rosterSummary(fit.dropped)}. Narrate the fight that is here.` }
       : {}),
     ...(plan.length ? { plan } : {}),
+    ...(opened.length ? { fightEvents: firedEventsNote(opened) } : {}),
     ...(mapError ? { mapNote: `Its saved map could not be used (${mapError}); the fight is on a generated one.` } : {}),
   };
 }

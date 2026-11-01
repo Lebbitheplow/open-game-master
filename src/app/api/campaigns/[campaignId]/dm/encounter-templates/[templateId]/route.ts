@@ -16,6 +16,7 @@ import {
   TEMPLATE_NOTES_MAX,
 } from "@/lib/dm/encounter-template-logic";
 import { templateDifficulty } from "@/lib/dm/encounter-templates";
+import { EVENTS_REFUSAL, EXTRAS_INPUT, eventsUnreadable } from "@/lib/dm/fight-event-logic";
 import { getPreparedMap } from "@/lib/db/prepared-maps";
 import { MAP_THEMES } from "@/lib/battlemap/generate";
 import { sceneIds } from "@/lib/ambience/catalog";
@@ -30,7 +31,9 @@ const patchSchema = z.object({
   battlefield: z.string().trim().max(TEMPLATE_HINT_MAX).optional(),
   notes: z.string().trim().max(TEMPLATE_NOTES_MAX).optional(),
   map: z.unknown().optional(),
-  extras: z.unknown().optional(),
+  // Its events are checked here (fight-event-logic.ts): an action of a
+  // kind no event has, a die or a result, is refused, not dropped.
+  extras: EXTRAS_INPUT.optional(),
 });
 
 export async function PATCH(
@@ -48,9 +51,13 @@ export async function PATCH(
   if (!template || template.campaignId !== campaignId) {
     return Response.json({ error: "No such prepared encounter." }, { status: 404 });
   }
-  const parsed = patchSchema.safeParse(await request.json().catch(() => ({})));
+  const body: unknown = await request.json().catch(() => ({}));
+  const parsed = patchSchema.safeParse(body);
   if (!parsed.success) {
-    return Response.json({ error: "Invalid edit." }, { status: 400 });
+    return Response.json(
+      { error: eventsUnreadable(body) ? EVENTS_REFUSAL : "Invalid edit." },
+      { status: 400 },
+    );
   }
   let enemies = template.enemies;
   if (parsed.data.enemies !== undefined) {
