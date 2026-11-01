@@ -15,6 +15,7 @@ import { allTestFightsOf, recordTestFightRun, strandedTestFights, testFightsOf }
 import { fnv1a, mulberry32 } from "@/lib/battlemap/generate";
 import { finalizeNewCompanion, packClassIds } from "@/lib/dm/companion-tools";
 import { deployTemplate } from "@/lib/dm/encounter-templates";
+import { MAP_GONE_FROM_WORKSHOP, savedMapNote } from "@/lib/dm/encounter-template-logic";
 import { requestDmTurn } from "@/lib/dm/loop";
 import { readyTemplates } from "@/lib/dm/prepared-encounter-tool";
 import { publishWithSeq } from "@/lib/events";
@@ -62,7 +63,9 @@ export type TestParty = { kind: "stand-ins"; allyIds?: string[] } | { kind: "cha
 
 export type TestFightRunner = "ai" | "person";
 
-export type TestFightOutcome = { ok: true; campaignId: string } | { ok: false; status: number; error: string };
+// `mapError`: the fight's saved map could not be laid, and the test table
+// said so (it plays on the generator's board).
+export type TestFightOutcome = { ok: true; campaignId: string; mapError?: string } | { ok: false; status: number; error: string };
 
 export const NO_AI_TEST_REASON =
   "No AI GM is set up on this server, so you run the test: the enemies' cards on their turns, the party's on each hero's.";
@@ -366,6 +369,18 @@ export async function openTestFight(input: {
       deleteCampaignWithFiles(campaign.id);
       return { ok: false, status: 409, error: `The fight would not start for that party: ${deployed.error}` };
     }
+    // A saved map that could not be laid is said on the table, as a GM's
+    // Deploy and the AI's prepared fight say it: a test is read for exactly
+    // what its fight is played on, and a set-up's places were saved on that
+    // map. Since "Keep this map" a fight is drawn on a map of the workshop's
+    // own, which its author can remove from the workshop's maps; the copy
+    // then arrives with no map at all, so the deploy has no error of its own.
+    const mapError = deployed.mapError ?? (template.map.mapId && !fight.map.mapId ? MAP_GONE_FROM_WORKSHOP : undefined);
+    if (mapError) {
+      const mapSeq = allocateSeq(campaign.id);
+      const mapNote = insertCampaignMessage({ campaignId: campaign.id, seq: mapSeq, authorType: "system", glyph: "cue-battle", content: savedMapNote(mapError) });
+      publishWithSeq(campaign.id, mapSeq, "message_added", { message: mapNote });
+    }
     if (setup) {
       const laid = layFightSetup(getCampaignById(campaign.id) ?? campaign, fight, setup, { test: { party: identity } });
       // The dice go in before the order locks again, so a dying hero's save
@@ -397,7 +412,7 @@ export async function openTestFight(input: {
     if (runner === "ai") {
       requestDmTurn(campaign.id);
     }
-    return { ok: true, campaignId: campaign.id };
+    return { ok: true, campaignId: campaign.id, ...(mapError ? { mapError } : {}) };
   } catch (error) {
     deleteCampaignWithFiles(created.id);
     return { ok: false, status: 500, error: error instanceof Error ? error.message : "The test fight could not be set up." };
