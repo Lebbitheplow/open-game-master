@@ -32,6 +32,7 @@ import { expandRoster, matchSlots } from "@/lib/dm/encounter-template-logic";
 import {
   actionWords,
   FIGHT_EVENT_LIMITS,
+  fitEventsToBoard,
   hurtTarget,
   outcomeLine,
   triggerMet,
@@ -39,6 +40,7 @@ import {
   type FightAction,
   type FightMoment,
 } from "@/lib/dm/fight-event-logic";
+import { changeGround, preparedBoard } from "@/lib/dm/fight-ground";
 import { isDefeated } from "@/lib/dm/knockout";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
@@ -65,7 +67,8 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 // person's call: add_enemies for reinforcements (their initiative rolled as
 // the engine rolls any arrival's, the budget and the cap refusing as they
 // would), set and clear condition, the GM's correction of an enemy's hit
-// points, the board's hide and reveal. A person, because the plan is the
+// points, the board's hide and reveal, the painter for a change of ground
+// (src/lib/dm/fight-ground.ts). A person, because the plan is the
 // GM's own call made in advance, not the model's: the rails that keep a
 // model from binding a creature without a save are for what a model decides.
 // Nothing here rolls a die for a result or sets one.
@@ -157,6 +160,10 @@ function runAction(
     placeArrivals(campaign, encounterId, arrivals, anchorFor(encounterId, armed, action));
     const hidden = hiddenNow(encounterId);
     return { line: outcomeLine({ kind: "reinforce", names: arrivals.map((enemy) => tableName(enemy, hidden)) }) };
+  }
+  if (action.kind === "ground") {
+    const done = changeGround(campaign, armed, action);
+    return "refused" in done ? { refused: `${actionWords(action, label)}: ${done.refused}` } : done;
   }
   const enemyId = armed.slots[action.slot];
   const enemy = enemyId ? getEnemy(enemyId) : null;
@@ -308,15 +315,20 @@ export function fireFightEvents(campaign: Campaign): string[] {
 
 // Arms a prepared fight's events on the fight it just started, and runs the
 // "fight starts" ones. `matched`: the enemy each slot became, read before
-// the plan renamed any (template-apply.ts).
+// the plan renamed any (template-apply.ts). A change of ground is kept only
+// when the fight stands on its own prepared map, its squares fitted to it.
 export function armTemplateEvents(
   campaign: Campaign,
   template: EncounterTemplate,
   matched: Map<number, { id: string }>,
 ): string[] {
-  const events = template.extras.events ?? [];
   const encounter = getActiveEncounter(campaign.id);
-  if (!events.length || !encounter) {
+  if (!template.extras.events?.length || !encounter) {
+    return [];
+  }
+  const board = preparedBoard(campaign, template, encounter.id);
+  const events = fitEventsToBoard(template.extras.events, board);
+  if (!events.length) {
     return [];
   }
   armFightEvents({
@@ -326,6 +338,7 @@ export function armTemplateEvents(
     events,
     slots: Object.fromEntries([...matched].map(([slot, enemy]) => [slot, enemy.id])),
     entry: template.extras.entry,
+    board,
   });
   return fireFightEvents(campaign);
 }

@@ -7,8 +7,9 @@
 //
 // What an event can do is a short, closed list of state changes: creatures
 // come in, a creature is hurt to a number or to half, gains or loses a
-// condition, appears or hides, and the GM's words reach the table. None of
-// them names a die or a result. A prepared fight never decides a roll: the
+// condition, appears or hides, squares of the fight's own map turn to another
+// kind of ground, and the GM's words reach the table. None of them names a die
+// or a result. A prepared fight never decides a roll: the
 // table's dice stay honest whoever wrote the plan, which is why there is no
 // such action to normalize and the reader below drops any it does not know.
 //
@@ -21,6 +22,16 @@
 // a prepared fight does (encounter-template-logic.ts expandRoster).
 
 import { z } from "zod";
+import {
+  fitGroundTiles,
+  GROUND_KINDS,
+  GROUND_LIMITS,
+  groundKindOf,
+  groundLine,
+  groundWords,
+  type GroundKind,
+  type GroundTile,
+} from "./fight-ground-logic.ts";
 
 export const FIGHT_EVENT_LIMITS = {
   events: 8,
@@ -60,6 +71,12 @@ export type FightAction =
   | { kind: "condition"; slot: number; condition: string; remove: boolean }
   // hidden false: the ambusher in the rafters is seen.
   | { kind: "visibility"; slot: number; hidden: boolean }
+  // Squares of the fight's prepared map become another kind of ground: the
+  // bridge gives way, the portcullis drops, the sluice floods the floor.
+  // Only a fight drawn on a prepared map keeps one (its squares mean
+  // nothing on a board the generator makes), fitted to the board's size when
+  // the fight is deployed (fitEventsToBoard).
+  | { kind: "ground"; tiles: GroundTile[]; terrain: GroundKind }
   // The GM's words, posted to the chronicle as they wrote them.
   | { kind: "say"; text: string };
 
@@ -72,6 +89,7 @@ export type FightEvent = { trigger: FightTrigger; actions: FightAction[] };
 // not hold (a die, a result) is a bad request, not something to drop quietly.
 
 const slotField = z.number().int().min(0).max(FIGHT_EVENT_LIMITS.slots - 1);
+const tileField = z.number().int().min(0).max(GROUND_LIMITS.tileMax);
 
 const triggerInput = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("start") }),
@@ -107,6 +125,11 @@ const actionInput = z.discriminatedUnion("kind", [
     remove: z.boolean().default(false),
   }),
   z.object({ kind: z.literal("visibility"), slot: slotField, hidden: z.boolean() }),
+  z.object({
+    kind: z.literal("ground"),
+    tiles: z.array(z.object({ x: tileField, y: tileField })).max(GROUND_LIMITS.tiles),
+    terrain: z.enum(GROUND_KINDS),
+  }),
   z.object({ kind: z.literal("say"), text: z.string().max(FIGHT_EVENT_LIMITS.say) }),
 ]);
 
@@ -228,6 +251,11 @@ function readAction(raw: unknown, slotCount: number): FightAction | null {
       const slot = slotOf(source.slot, slotCount);
       return slot === null ? null : { kind: "visibility", slot, hidden: source.hidden === true };
     }
+    case "ground": {
+      const terrain = groundKindOf(source.terrain);
+      const tiles = fitGroundTiles(source.tiles);
+      return terrain && tiles.length ? { kind: "ground", tiles, terrain } : null;
+    }
     case "say": {
       const text = typeof source.text === "string" ? source.text.trim().slice(0, FIGHT_EVENT_LIMITS.say) : "";
       return text ? { kind: "say", text } : null;
@@ -262,6 +290,27 @@ export function normalizeFightEvents(raw: unknown, slotCount: number = FIGHT_EVE
     }
   }
   return events;
+}
+
+// The plan as the board it was deployed on can run it. A change of ground
+// names squares of the fight's prepared map, so on any other board (no map
+// linked, a map that could not be laid, null here) it goes; on the map it
+// keeps the squares inside the board. An event left with nothing goes too.
+// The routes call it with null for a fight that links no map, so a save
+// never keeps squares that name nothing.
+export function fitEventsToBoard(events: FightEvent[], board: { width: number; height: number } | null): FightEvent[] {
+  return events
+    .map((event) => ({
+      ...event,
+      actions: event.actions.flatMap((action): FightAction[] => {
+        if (action.kind !== "ground") {
+          return [action];
+        }
+        const tiles = board ? fitGroundTiles(action.tiles, board) : [];
+        return tiles.length ? [{ ...action, tiles }] : [];
+      }),
+    }))
+    .filter((event) => event.actions.length);
 }
 
 // ---- when an event is due ----
@@ -345,6 +394,8 @@ export function actionWords(action: FightAction, label: (slot: number) => string
       return action.remove ? `${label(action.slot)} is no longer ${action.condition}` : `${label(action.slot)} is ${action.condition}`;
     case "visibility":
       return action.hidden ? `${label(action.slot)} hides` : `${label(action.slot)} appears`;
+    case "ground":
+      return groundWords(action.tiles.length, action.terrain);
     case "say":
       return `the table hears: "${action.text}"`;
   }
@@ -363,6 +414,9 @@ export type ActionOutcome =
   | { kind: "hurt"; name: string; half: boolean }
   | { kind: "condition"; name: string; condition: string; remove: boolean }
   | { kind: "visibility"; name: string; hidden: boolean }
+  // `moved`: who was standing where the ground no longer holds them, as the
+  // table may name them (a creature the GM keeps off the board is left out).
+  | { kind: "ground"; terrain: GroundKind; moved: string[] }
   | { kind: "say"; text: string };
 
 export const UNSEEN = "Someone unseen";
@@ -380,6 +434,8 @@ export function outcomeLine(outcome: ActionOutcome): string {
     case "visibility":
       // One that slips away is not named: it is unseen from now on.
       return outcome.hidden ? "Someone slips out of sight." : `${outcome.name} appears.`;
+    case "ground":
+      return groundLine(outcome.terrain, outcome.moved);
     case "say":
       return outcome.text;
   }
