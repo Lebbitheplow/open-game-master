@@ -24,7 +24,9 @@ export function SaveSetupButton({ campaignId }: { campaignId: string }) {
     if (
       !(await appConfirm(
         "Save this moment as the fight's set-up? Every test of it then opens here: the foes and heroes as they stand now, the initiative order, and the map. At a table, the foes start as they stand now too. It replaces any set-up saved before.",
-        { title: "Save as set-up", actionLabel: "Save as set-up" },
+        // A save, so the kit's own button, not the red of a deletion; the
+        // sentence above already says it replaces an earlier set-up.
+        { title: "Save as set-up", actionLabel: "Save as set-up", tone: "plain" },
       ))
     ) {
       return;

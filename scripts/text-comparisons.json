@@ -417,6 +417,7 @@
     "app/workshop/cast/CastList.tsx#str-key": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/workshop/cast/CastList.tsx#str-list": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/workshop/encounters/EncounterEvents.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
+    "app/workshop/encounters/EncounterEvents.tsx#toUpperCase": [["display",1,"a roster slot's name title-cased as the plan's chips draw it"]],
     "app/workshop/encounters/EncounterRows.tsx#re-word": [["english-source",6,"the budget verdict lines ODM writes"]],
     "app/workshop/encounters/EncounterRows.tsx#str-eq": [["key",1,"budget tick labels"]],
     "app/workshop/encounters/EncounterRows.tsx#str-list": [["key",1,"list nouns"]],

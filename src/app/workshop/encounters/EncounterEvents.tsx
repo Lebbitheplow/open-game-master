@@ -78,6 +78,11 @@ function newAction(kind: FightAction["kind"], slots: Slots): FightAction {
 
 const removeButton = cn(ui.iconAction, rowIcon, "hover:text-red-300");
 
+// A creature's name as the plan above draws it: the roster's slots are
+// named as typed ("goblin 1"), and the plan's chips capitalize each word, so
+// the same goblin read "Goblin 1" there and "goblin 1" in its event.
+const slotName = (label: string) => label.replace(/(^|\s)(\S)/g, (_, space: string, letter: string) => `${space}${letter.toUpperCase()}`);
+
 export function EncounterEvents({
   campaignId,
   slots,
@@ -172,41 +177,46 @@ function EventEditor({
   const name = `Event ${number}`;
   const nameInText = `event ${number}`;
   const trigger = event.trigger;
-  const slotOptions = slots.map((slot) => ({ value: String(slot.slot), label: slot.label }));
+  const slotOptions = slots.map((slot) => ({ value: String(slot.slot), label: slotName(slot.label) }));
   const setAction = (index: number, next: FightAction) =>
     onChange({ ...event, actions: event.actions.map((action, at) => (at === index ? next : action)) });
   return (
     <div role="group" aria-label={name} className="space-y-2">
-      <div className="flex flex-wrap items-end gap-1.5">
-        <Field label="When" className="min-w-48 flex-1">
-          <Select
-            label={`${name}: when`}
-            value={trigger.kind}
-            options={TRIGGERS}
-            onChange={(kind) => onChange({ ...event, trigger: newTrigger(kind, slots) })}
-          />
-        </Field>
-        {trigger.kind === "round" ? (
-          <Field label="Round">
-            <NumberStepper
-              label={`${name}: round`}
-              value={trigger.round}
-              min={FIGHT_EVENT_LIMITS.roundMin}
-              max={FIGHT_EVENT_LIMITS.roundMax}
-              onChange={(round) => onChange({ ...event, trigger: { kind: "round", round } })}
-            />
-          </Field>
-        ) : null}
-        {trigger.kind === "bloodied" || trigger.kind === "falls" ? (
-          <Field label="Which creature" className="min-w-40 flex-1">
+      {/* The fields wrap among themselves and the event's remove button
+          stays at their end: wrapped with them, it sat alone on a row of
+          its own on a phone, apart from the event it removes. */}
+      <div className="flex items-end gap-1.5">
+        <div className="flex min-w-0 flex-1 flex-wrap items-end gap-1.5">
+          <Field label="When" className="min-w-48 flex-1">
             <Select
-              label={`${name}: which creature`}
-              value={String(trigger.slot)}
-              options={slotOptions}
-              onChange={(slot) => onChange({ ...event, trigger: { kind: trigger.kind, slot: Number(slot) } })}
+              label={`${name}: when`}
+              value={trigger.kind}
+              options={TRIGGERS}
+              onChange={(kind) => onChange({ ...event, trigger: newTrigger(kind, slots) })}
             />
           </Field>
-        ) : null}
+          {trigger.kind === "round" ? (
+            <Field label="Round">
+              <NumberStepper
+                label={`${name}: round`}
+                value={trigger.round}
+                min={FIGHT_EVENT_LIMITS.roundMin}
+                max={FIGHT_EVENT_LIMITS.roundMax}
+                onChange={(round) => onChange({ ...event, trigger: { kind: "round", round } })}
+              />
+            </Field>
+          ) : null}
+          {trigger.kind === "bloodied" || trigger.kind === "falls" ? (
+            <Field label="Which creature" className="min-w-40 flex-1">
+              <Select
+                label={`${name}: which creature`}
+                value={String(trigger.slot)}
+                options={slotOptions}
+                onChange={(slot) => onChange({ ...event, trigger: { kind: trigger.kind, slot: Number(slot) } })}
+              />
+            </Field>
+          ) : null}
+        </div>
         <button type="button" aria-label={`Remove ${nameInText}`} title="Remove this event" onClick={onRemove} className={removeButton}>
           <X className="size-3.5" aria-hidden="true" />
         </button>
@@ -403,7 +413,7 @@ function ReinforceEditor({
   const where: SelectOption<string>[] = [
     { value: "any", label: "Where the fight puts them" },
     ...(hasEntry ? [{ value: "entry", label: "Where the party came in" }] : []),
-    ...slots.map((slot) => ({ value: `slot:${slot.slot}`, label: `Beside ${slot.label}` })),
+    ...slots.map((slot) => ({ value: `slot:${slot.slot}`, label: `Beside ${slotName(slot.label)}` })),
   ];
   const whereValue = action.at === "slot" && action.slot !== undefined ? `slot:${action.slot}` : action.at === "entry" && !hasEntry ? "any" : action.at;
   const setEnemies = (enemies: ActionOf<"reinforce">["enemies"]) => onChange({ ...action, enemies: fitArrivals(enemies) });
