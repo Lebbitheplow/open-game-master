@@ -2,10 +2,13 @@
 
 import { EyeOff } from "lucide-react";
 import { litOrderRows, pointerOrderIndex } from "@/lib/battlemap/initiative-rows";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { conditionIconKey } from "@/lib/battlemap/condition-glyphs";
+import { conditionRule } from "@/lib/battlemap/condition-rules";
+import { placePlate } from "@/lib/battlemap/plate-place";
 import { HEALTH_LABEL, HEALTH_RING, type HealthWord } from "@/lib/battlemap/health-words";
 import type { StageToken } from "@/app/campaigns/[campaignId]/BoardStage";
 import type { PublicEncounter } from "@/lib/db/encounter-view";
@@ -335,10 +338,39 @@ function EdgeChips({ edge }: { edge: TargetEdge }) {
   );
 }
 
+// A condition on the hover plate: its painting large enough to read, its
+// name, what it does (condition-rules.ts for the SRD's own; every other
+// condition's note leads with its summary), and how long it lasts.
+function ConditionRow({ id, label, rounds, note }: { id: string; label: string; rounds?: number; note?: string }) {
+  const rule = conditionRule(id);
+  return (
+    <li className="fx-pop flex items-start gap-2 text-left">
+      {/* A fixed box, so a condition with no painting keeps its text in line. */}
+      <span className="flex size-10 shrink-0 items-center justify-center sm:size-12">
+        <GameIcon icon={{ kind: "condition", key: conditionIconKey(label) }} size="size-10 sm:size-12" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[11px] font-semibold capitalize text-amber-300">
+          {label}
+          {rounds ? <span className="font-normal text-amber-200/80">{` (${rounds} rd)`}</span> : null}
+        </span>
+        {rule ? <span className="block text-[10px] leading-snug text-[#d8d3ea]">{rule}</span> : null}
+        {note ? <span className="block text-[10px] leading-snug text-amber-200/70">{note}</span> : null}
+      </span>
+    </li>
+  );
+}
+
 // The board's hover plate: what the native tooltip used to say, as a plate.
 // The figure's painting large (a token shows it at a few dozen pixels, so
-// this is the one place on the board the art is actually seen), then name,
-// health word, conditions. Shown on hover, and on a tap for a phone.
+// this is the one place on the board the art is actually seen), then name
+// and health word; beside them each condition with its painting and what it
+// does, so a plate with conditions grows wider, not taller. Shown on hover,
+// and on a tap for a phone.
+//
+// A pin the size of the figure rides in the board, under the camera; the
+// plate itself is pinned to the page over it (plate-place.ts), so neither a
+// short board's frame nor the camera's zoom cuts it off or scales it.
 export function TokenPlate({
   token,
   boardWidth,
@@ -361,45 +393,77 @@ export function TokenPlate({
   // Where an addon's board view drew the figure (TokenHud.tsx says how).
   anchor?: [number, number, number];
 }) {
-  const cx = anchor ? anchor[0] * 100 : ((token.x + footprint / 2) / boardWidth) * 100;
-  // Below the figure in the top half, above it in the bottom half: the plate
-  // is tall now, and either way it clears the figure rather than covering it.
-  const below = anchor ? (anchor[1] + anchor[2]) / 2 < 0.5 : token.y + footprint / 2 < boardHeight / 2;
-  const cy = anchor ? (below ? anchor[2] : anchor[1]) * 100 : ((below ? token.y + footprint : token.y) / boardHeight) * 100;
-  return (
+  const pin = useRef<HTMLSpanElement>(null);
+  const plateRef = useRef<HTMLDivElement>(null);
+  const [spot, setSpot] = useState<{ left: number; top: number; below: boolean } | null>(null);
+  // Every frame while open: the camera pans and zooms, the page scrolls, the
+  // window turns, and none of them re-render the plate.
+  useEffect(() => {
+    let frame = 0;
+    const follow = () => {
+      const figure = pin.current?.getBoundingClientRect();
+      const plate = plateRef.current;
+      if (figure && plate) {
+        const next = placePlate(figure, { width: plate.offsetWidth, height: plate.offsetHeight }, { width: window.innerWidth, height: window.innerHeight });
+        setSpot((current) =>
+          current && current.left === next.left && current.top === next.top && current.below === next.below ? current : next,
+        );
+      }
+      frame = requestAnimationFrame(follow);
+    };
+    frame = requestAnimationFrame(follow);
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  const left = anchor ? anchor[0] * 100 : ((token.x + footprint / 2) / boardWidth) * 100;
+  const top = anchor ? anchor[1] * 100 : (token.y / boardHeight) * 100;
+  const height = anchor ? (anchor[2] - anchor[1]) * 100 : (footprint / boardHeight) * 100;
+  const listed = Boolean(conditions?.length);
+  const plate = (
     <div
+      ref={plateRef}
       role="tooltip"
-      className="pointer-events-none absolute z-20 flex w-[136px] animate-fade-up flex-col items-center rounded-lg border border-[rgba(107,99,148,0.4)] bg-[rgba(8,6,18,0.94)] p-1.5 text-[#e9e6f4] shadow-elev-2 sm:w-[172px]"
-      style={{
-        // Half the plate's width in from either edge, so it never runs off
-        // the board; a plate near a corner slides along rather than hanging.
-        left: `clamp(88px, ${cx}%, calc(100% - 88px))`,
-        top: `${cy}%`,
-        // `translate`, not `transform`: the fade-up animates transform and
-        // holds its last frame, which would drop the plate's own offset.
-        translate: below ? "-50% 6px" : "-50% calc(-100% - 6px)",
-      }}
+      className={cn(
+        "pointer-events-none z-[70] flex items-start gap-2 rounded-lg border border-[rgba(107,99,148,0.4)] bg-[rgba(8,6,18,0.94)] p-1.5 text-[#e9e6f4] shadow-elev-2",
+        // Measured where it will sit, before it is shown.
+        spot ? "fixed animate-fade-up" : "invisible fixed left-0 top-0",
+        listed ? "w-[312px] sm:w-[380px]" : "w-[136px] sm:w-[172px]",
+      )}
+      style={spot ? { left: spot.left, top: spot.top } : undefined}
     >
-      {/* The plates are square paintings; a square frame shows all of one. */}
-      <TokenFace
-        candidates={face}
-        name={token.name}
-        enemy={token.kind === "enemy"}
-        className="size-[124px] rounded-md border border-[rgba(227,193,92,0.35)] text-3xl sm:size-[160px]"
-      />
-      <span className="mt-1 flex w-full min-w-0 flex-col items-center text-center">
-        <span className="block max-w-full truncate font-display text-xs font-semibold">{token.name}</span>
-        {health ? <HealthWordChip word={health} /> : null}
-      </span>
+      <div className="flex w-[124px] shrink-0 flex-col items-center sm:w-[160px]">
+        {/* The plates are square paintings; a square frame shows all of one. */}
+        <TokenFace
+          candidates={face}
+          name={token.name}
+          enemy={token.kind === "enemy"}
+          className="size-[124px] rounded-md border border-[rgba(227,193,92,0.35)] text-3xl sm:size-[160px]"
+        />
+        <span className="mt-1 flex w-full min-w-0 flex-col items-center text-center">
+          <span className="block max-w-full truncate font-display text-xs font-semibold">{token.name}</span>
+          {health ? <HealthWordChip word={health} /> : null}
+        </span>
+        {edge ? <EdgeChips edge={edge} /> : null}
+      </div>
       {conditions?.length ? (
-        <div className="mt-1 flex flex-wrap gap-1">
+        <ul className="flex min-w-0 flex-1 flex-col gap-1.5" aria-label="Conditions">
           {conditions.map((condition, index) => (
-            <ConditionChip key={`${condition.id}-${index}`} label={condition.label} rounds={condition.rounds} note={condition.note} />
+            <ConditionRow key={`${condition.id}-${index}`} {...condition} />
           ))}
-        </div>
+        </ul>
       ) : null}
-      {edge ? <EdgeChips edge={edge} /> : null}
     </div>
+  );
+  return (
+    <>
+      <span
+        ref={pin}
+        aria-hidden="true"
+        className="pointer-events-none absolute w-px -translate-x-1/2"
+        style={{ left: `${left}%`, top: `${top}%`, height: `${height}%` }}
+      />
+      {typeof document === "undefined" ? plate : createPortal(plate, document.body)}
+    </>
   );
 }
 
