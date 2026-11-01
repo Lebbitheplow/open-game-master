@@ -19,6 +19,8 @@ import { openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { combatKit } from "./lib/enforce-combat.mjs";
 import { fakeModel, reply } from "./lib/enforce-narrator.mjs";
+import { nextTurn } from "./lib/enforce-spell-tail.mjs";
+import { handOnDue } from "./lib/enforce-zones.mjs";
 
 const { test, finish } = suite("test-summon-door");
 
@@ -33,6 +35,8 @@ const { initiativeFloorFor } = await import("../src/lib/dm/encounter-tools.ts");
 const { listRecentMessages } = await import("../src/lib/db/messages.ts");
 const { queuedIntents } = await import("../src/lib/dm/intent-queue.ts");
 const { summonsOf } = await import("../src/lib/dm/summon-store.ts");
+const { sheetCreatureType } = await import("../src/lib/dm/summon-rules.ts");
+const { speciesAndClassWords } = await import("../src/lib/characters/class-words.ts");
 
 const dead = summonSpellFor("Animate Dead");
 const objects = summonSpellFor("Animate Objects");
@@ -66,7 +70,7 @@ await test("The catalogue gives the kinds a creature may be, each target's budge
 
 const world = await openWorld({ gameSettings: { ttsEnabled: false, multiCharacter: "all_active" } });
 const kit = await combatKit(world);
-const SLOTS = () => ({ 1: { max: 4, used: 0 }, 2: { max: 3, used: 0 }, 3: { max: 3, used: 0 }, 4: { max: 3, used: 0 }, 5: { max: 2, used: 0 } });
+const SLOTS = () => ({ 1: { max: 4, used: 0 }, 2: { max: 3, used: 0 }, 3: { max: 3, used: 0 }, 4: { max: 4, used: 0 }, 5: { max: 2, used: 0 } });
 const WIZARD = ["Find Familiar", "Animate Dead", "Conjure Minor Elementals", "Animate Objects", "Unseen Servant"];
 const dain = world.addHero({
   name: "Dain",
@@ -94,6 +98,16 @@ const lark = world.addHero({
   abilities: { cha: 16 },
   spellcasting: { ability: "cha", slots: { 3: { max: 2, used: 0 } }, known: ["Unseen Servant"], prepared: [], cantrips: [] },
 });
+// A Pact of the Chain warlock, whose familiar fights.
+const wren = world.addHero({
+  name: "Wren",
+  class: "warlock",
+  level: 5,
+  maxHp: 33,
+  abilities: { cha: 16 },
+  spellcasting: { ability: "cha", slots: { 3: { max: 2, used: 0 } }, known: ["Find Familiar"], prepared: [], cantrips: [] },
+});
+world.patch(wren.id, { features: [...world.sheet(wren.id).features, { name: "Pact of the Chain", source: "class" }] });
 const used = (sheet, level) => world.sheet(sheet.id).spellcasting.slots[level].used;
 const catalogues = async (sheet) => {
   const handler = await world.route("campaigns/[campaignId]/summons");
@@ -190,15 +204,42 @@ await test("At an AI-run table out of a fight: a fey warhorse comes as the door 
   assert.ok(steed && /warhorse/i.test(steed.name), JSON.stringify(summonsOf(world.campaignId, dain.id, "Find Steed").map((sheet) => sheet.name)));
   const results = model.requests[0].messages.filter((message) => message.role === "tool").map((message) => JSON.parse(message.content));
   assert.ok(results.some((result) => /Warhorse \(fey,/.test(result.creature ?? "")), JSON.stringify(results));
+  // The steed is the kind picked wherever its creature type is read.
+  assert.equal(steed.summon.creatureType, "fey");
+  assert.equal(sheetCreatureType(steed), "fey", "the type its attacks and the zones it walks into read");
+  assert.equal(speciesAndClassWords(steed), "Warhorse, fey (Find Steed)", "its party card names its kind");
   model.script([reply({ text: "An owl of shadow settles on Ivo's shoulder." })]);
   await model.turn(world, "I cast Find Familiar (Fiend Owl) as a ritual.", ivo.id, ivo.userId, {
     intent: { card: "spell", spell: "Find Familiar", slotLevel: null, variant: "fiend Owl", count: 1, ritual: true },
   });
   assert.equal(world.sheet(ivo.id).pets?.[0]?.form, "Owl");
+  assert.equal(world.sheet(ivo.id).pets?.[0]?.creatureType, "fiend", "the kind is kept on the pet record");
+  // The record's schema keeps it through an undo's pre-image, and a pet
+  // stored before the field existed reads as it did.
+  const { fullPatchSheetSchema } = await import("../src/lib/schemas/sheet.ts");
+  assert.equal(fullPatchSheetSchema.parse({ pets: world.sheet(ivo.id).pets }).pets[0].creatureType, "fiend");
+  const { creatureType: _gone, ...older } = world.sheet(ivo.id).pets[0];
+  void _gone;
+  assert.equal(fullPatchSheetSchema.parse({ pets: [older] }).pets[0].creatureType, undefined);
   assert.equal(used(ivo, 1), 0, "a ritual spends no slot");
   const told = model.requests.at(-1).messages.filter((message) => message.role === "tool").map((message) => JSON.parse(message.content));
-  assert.ok(told.some((result) => /A fiend in the form of a owl/i.test(result.familiarKind ?? "")), JSON.stringify(told));
+  assert.ok(told.some((result) => /Owl \(Owl, a fiend\)/.test(result.pet ?? "")), JSON.stringify(told));
   model.close();
+});
+
+await test("The GM console's cast_buff picks Find Steed's kind and Animate Dead's per-target forms as the GM casts for anyone", async () => {
+  const fiend = await world.invoke("cast_buff", { characterId: dain.id, spell: "Find Steed", level: 2, variant: "warhorse", kind: "fiend" });
+  assert.equal(fiend.ok, true, fiend.error);
+  const [steed] = summonsOf(world.campaignId, dain.id, "Find Steed");
+  assert.equal(sheetCreatureType(steed), "fiend", "the console's Kind, not a word typed in Another choice");
+  const before = summonsOf(world.campaignId, ivo.id, "Animate Dead").length;
+  const raised = await world.invoke("cast_buff", { characterId: ivo.id, spell: "Animate Dead", level: 4, mix: [{ variant: "Skeleton", count: 1 }, { variant: "Zombie", count: 2 }] });
+  assert.equal(raised.ok, true, raised.error);
+  const made = summonsOf(world.campaignId, ivo.id, "Animate Dead").slice(before).map((sheet) => sheet.summon.form);
+  assert.deepEqual(made.sort(), ["Skeleton", "Zombie", "Zombie"]);
+  const familiar = await world.invoke("summon_pet", { characterId: wren.id, kind: "familiar", form: "Pseudodragon", creatureType: "celestial" });
+  assert.equal(familiar.ok, true, familiar.error);
+  assert.equal(world.sheet(wren.id).pets[0].creatureType, "celestial");
 });
 
 setDmMode(world.campaignId, "human", world.owner.id);
@@ -212,14 +253,15 @@ async function resolve(messageId) {
 }
 
 await test("At a table a person runs: Animate Dead's skeletons and zombie wait for the GM, who resolves them as played", async () => {
+  const before = summonsOf(world.campaignId, ivo.id, "Animate Dead").length;
   const out = await act(world.sheet(ivo.id), { content: "I cast Animate Dead (2 Skeleton and 1 Zombie) using a level 4 slot.", intent: { card: "spell", spell: "Animate Dead", slotLevel: 4, mix: [{ variant: "Skeleton", count: 2 }, { variant: "Zombie", count: 1 }] } });
   assert.equal(out.status, 202, JSON.stringify(out.body));
   const resolved = await resolve(waiting().at(-1));
   assert.equal(resolved.status, 200, JSON.stringify(resolved.body));
-  const raised = summonsOf(world.campaignId, ivo.id, "Animate Dead").map((sheet) => sheet.name);
+  const raised = summonsOf(world.campaignId, ivo.id, "Animate Dead").slice(before).map((sheet) => sheet.name);
   assert.equal(raised.filter((name) => /skeleton/i.test(name)).length, 2, raised.join(", "));
   assert.equal(raised.filter((name) => /zombie/i.test(name)).length, 1, raised.join(", "));
-  assert.equal(used(ivo, 4), 1, "one slot for the lot");
+  assert.equal(used(ivo, 4), 2, "one slot for the lot (the console's casting took the other)");
 });
 
 await test("A mix past the slot's budget, an imp without the pact, or a ritual from a class that casts none is refused before it is posted", async () => {
@@ -236,8 +278,10 @@ await test("A mix past the slot's budget, an imp without the pact, or a ritual f
   assert.equal(waiting().length, before, "nothing was posted");
 });
 
-await test("In a fight a summoning of a minute is begun by its card and finished by the next, with the creatures picked then", async () => {
+await test("In a fight a summoning of a minute is begun by its card, held through ten rounds of the engine's own turns, and finished by the next card with the creatures picked then", async () => {
   await kit.fight(1);
+  const [goblin] = world.enemies();
+  kit.setEnemy(goblin.id, { maxHp: 300, currentHp: 300 });
   kit.giveTurn(ivo.id);
   kit.freshTurn();
   setFloor(world.campaignId, initiativeFloorFor(world.campaignId));
@@ -246,16 +290,55 @@ await test("In a fight a summoning of a minute is begun by its card and finished
   assert.equal(begun.status, 202, JSON.stringify(begun.body));
   const first = await resolve(waiting().at(-1));
   assert.equal(first.status, 200, JSON.stringify(first.body));
-  assert.ok(world.sheet(ivo.id).conditions.includes("casting"), JSON.stringify(world.sheet(ivo.id).conditions));
+  assert.equal(world.sheet(ivo.id).conditionMeta?.casting?.rounds, 10, "a minute is ten rounds");
   const before = used(ivo, 4);
-  // Its ten rounds pass (condition-tick.ts): the casting is done.
-  world.patch(ivo.id, { conditions: ["casting complete"], conditionMeta: { "casting complete": { spell: "Conjure Minor Elementals", source: ivo.id, slotLevel: 4, untilTurnEndOf: ivo.id, turnBegun: true } }, concentratingOn: null });
+  // The turns go round as the table plays them (encounter-tools.ts
+  // skipCurrentTurn, the enemies handed on), until the casting is done as
+  // Ivo's turn starts.
+  let turns = 0;
+  while (!world.sheet(ivo.id).conditions.includes("casting complete") && turns < 200) {
+    nextTurn(world);
+    handOnDue(world);
+    turns += 1;
+    assert.equal(used(ivo, 4), before, `the slot was spent ${turns} turns in, before the casting was done`);
+  }
+  assert.ok(world.sheet(ivo.id).conditions.includes("casting complete"), `the casting never finished in ${turns} turns`);
+  assert.equal(world.encounter().order[world.encounter().turnIndex]?.characterId, ivo.id, "it finishes as Ivo's turn starts");
+  assert.ok(world.encounter().round >= 11, `ten rounds passed: round ${world.encounter().round}`);
+  setFloor(world.campaignId, initiativeFloorFor(world.campaignId));
+  const rows = summonDoorRows(world.sheet(ivo.id), WIZARD, await catalogues(world.sheet(ivo.id)), true);
+  assert.equal(rowOf(rows, "Conjure Minor Elementals").state, "finish", "the door offers the pick now");
   const done = await act(world.sheet(ivo.id), { content: "I finish casting Conjure Minor Elementals (Magma Mephit, 2 of them).", intent: { card: "spell", spell: "Conjure Minor Elementals", slotLevel: 4, variant: "Magma Mephit", count: 2 } });
   assert.equal(done.status, 202, JSON.stringify(done.body));
   const second = await resolve(waiting().at(-1));
   assert.equal(second.status, 200, JSON.stringify(second.body));
   assert.equal(summonsOf(world.campaignId, ivo.id, "Conjure Minor Elementals").length, 2, "the two mephits picked");
   assert.equal(used(ivo, 4), before + 1, "the slot is spent as it completes");
+});
+
+await test("A familiar's kind is the type its attack meets a ward with: Protection from Evil and Good turns a celestial pseudodragon, not one of old with no kind", async () => {
+  const [goblin] = world.enemies();
+  kit.setEnemy(goblin.id, { conditions: ["protected from evil and good"] });
+  kit.giveTurn(wren.id);
+  kit.freshTurn();
+  world.dice(19, 2);
+  const warded = await world.invoke("pet_attack", { characterId: wren.id, targetEnemyId: goblin.id, attack: "Bite" });
+  world.clearDice();
+  assert.equal(warded.ok, true, warded.error);
+  assert.equal(warded.result.hit, false, "disadvantage: the 2 is kept");
+  assert.match(String(warded.result.situation), /disadvantage for a celestial/);
+  // A pet stored before the record kept a kind reads as its form: a dragon.
+  const [pseudodragon] = world.sheet(wren.id).pets;
+  const { creatureType: _kept, ...old } = pseudodragon;
+  void _kept;
+  world.patch(wren.id, { pets: [old] });
+  kit.freshTurn();
+  world.dice(19, 1, 1);
+  const plain = await world.invoke("pet_attack", { characterId: wren.id, targetEnemyId: goblin.id, attack: "Bite" });
+  world.clearDice();
+  assert.equal(plain.ok, true, plain.error);
+  assert.equal(plain.result.hit, true, "one die, the 19: no ward against a dragon");
+  kit.setEnemy(goblin.id, { conditions: [] });
 });
 
 world.close();

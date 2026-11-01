@@ -24,6 +24,8 @@ const { ADJUDICATIONS, ADJUDICATION_NAMES, adjudication, checkArgs, consoleAdjud
 // Names retired into a merged tool (issue #471): still engine actions, never
 // offered, so neither a form of their own nor a tool the scan should count.
 const { RETIRED_TOOLS } = await import("../src/lib/dm/tool-merge-logic.ts");
+const { consoleSummonShown, mixRecord } = await import("../src/lib/battlemap/hand-summon.ts");
+const { summonCatalogue, summonSpellFor } = await import("../src/lib/srd/summon-spells.ts");
 
 let passed = 0;
 function test(name, fn) {
@@ -750,12 +752,6 @@ const OMITTED_ON_PURPOSE = {
   // save (SRD 5.1, Cover). A person sees the board and rules that cover as
   // they set the DC; the model, which cannot point, names the square.
   apply_hazard: ["fromX", "fromY"],
-  // Each target's own form for Animate Dead or Animate Objects (issue 685):
-  // the player picks it on the Hand's card or the sheet's summoning door,
-  // and the console resolves that card as played with it; a GM casting the
-  // spell from the form gives one form for the casting with Choice and How
-  // many.
-  cast_buff: ["mix"],
 };
 
 function formOmissions(entry) {
@@ -1136,6 +1132,26 @@ test("the console's enemy lines carry an invented foe's challenge rating, a resk
     { monster: "goblin", count: 1, returning: "e1" },
     { monster: "Bog Thing", count: 1, cr: 3, name: "The Bog" },
   ]);
+});
+
+test("cast_buff's form picks a summoning's kind and each target's form from the catalogue, never typed (issue 685)", () => {
+  const entry = adjudication("cast_buff");
+  const kind = entry.fields.find((field) => field.name === "kind");
+  const mix = entry.fields.find((field) => field.name === "mix");
+  assert.equal(kind?.kind, "summonKind", "Find Steed's kind is a pick, not a word in Another choice");
+  assert.equal(mix?.kind, "summonMix", "Animate Dead's bones and corpses are steppers");
+  assert.equal(kind.host?.feature, "summonPicker");
+  assert.equal(mix.host?.feature, "summonPicker");
+  assert.equal(checkArgs(entry, { characterId: "c1", spell: "Animate Dead", mix: [{ variant: "Skeleton", count: 2 }] }), null);
+  assert.match(checkArgs(entry, { characterId: "c1", spell: "Animate Dead", mix: ["two skeletons"] }) ?? "", /list of rows/);
+  const familiar = adjudication("summon_pet").fields.find((field) => field.name === "creatureType");
+  assert.deepEqual(familiar?.options.map((option) => option.value), ["celestial", "fey", "fiend"]);
+  assert.deepEqual(familiar?.onlyWhen, { field: "kind", equals: ["familiar"] });
+  assert.equal(consoleSummonShown("summonKind", summonCatalogue(summonSpellFor("Find Steed"))), true);
+  assert.equal(consoleSummonShown("summonKind", summonCatalogue(summonSpellFor("Conjure Animals"))), false, "no kind to pick");
+  assert.equal(consoleSummonShown("summonMix", summonCatalogue(summonSpellFor("Animate Dead"))), true);
+  assert.equal(consoleSummonShown("summonMix", null), false, "no spell named yet");
+  assert.deepEqual(mixRecord([{ variant: "Skeleton", count: 2 }]), { Skeleton: 2 });
 });
 
 console.log(`invoke-catalog: ${passed} tests passed`);

@@ -12,8 +12,9 @@ const PILL_ON = "border-amber-400/70 bg-amber-500/20 text-amber-100";
 const PILL_OFF = "border-stone-600 text-stone-300 hover:border-amber-500/60";
 const LABEL = "text-[11px] uppercase tracking-wider text-stone-500";
 
-// A row of pills that picks one value (a number, a kind).
-function PillChoice<T extends string | number>({ label, values, chosen, show, onPick }: { label: string; values: T[]; chosen: T | null; show: (value: T) => string; onPick: (value: T) => void }) {
+// A row of pills that picks one value (a number, a kind). The console's
+// summon Kind uses it too (DmActionFields.tsx).
+export function PillChoice<T extends string | number>({ label, values, chosen, show, onPick }: { label: string; values: T[]; chosen: T | null; show: (value: T) => string; onPick: (value: T) => void }) {
   return (
     <div className="flex items-center gap-1.5">
       <span className={LABEL} aria-hidden="true">

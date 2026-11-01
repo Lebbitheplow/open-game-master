@@ -4,6 +4,7 @@ import { isNamed } from "@/lib/srd/feature-names";
 import { featureChoiceOf } from "@/lib/srd/features";
 import { classLevelFor } from "@/lib/srd/multiclass";
 import { creatureDefenses, familiarOffer, familiarFormsHolding, findFamiliarForm } from "@/lib/srd/familiar-forms";
+import { findSummonForm } from "@/lib/srd/summon-forms";
 import { creatureAttackOf, type CreatureAttack } from "@/lib/srd/creature-attacks";
 import { traitLine } from "@/lib/srd/srd-creatures";
 import { sizeRank } from "@/lib/bestiary/statblock";
@@ -131,6 +132,9 @@ export function buildPet(
   args: {
     kind: SheetPet["kind"];
     form: string;
+    // A familiar's celestial, fey or fiend (the caster's choice); celestial
+    // when none is named.
+    creatureType?: SheetPet["creatureType"];
     name?: string;
     essence?: string;
     hp?: number;
@@ -167,6 +171,7 @@ export function buildPet(
       name: args.name?.trim() || form.form,
       kind: "familiar",
       form: form.form,
+      creatureType: args.creatureType ?? "celestial",
       hp: form.hp,
       maxHp: form.maxHp,
       ac: form.ac,
@@ -286,6 +291,20 @@ export function buildPet(
 }
 
 // The words a pet's defenses read in a summon's result and in GAME STATE.
+// The creature type a pet is, for every rule that reads one: a familiar's
+// celestial, fey or fiend (the caster's choice, on the record), else its
+// form's own (a pet stored before the record kept a kind reads as its form,
+// as it always did); a drake is a dragon.
+export function petCreatureType(pet: Pick<SheetPet, "kind" | "form" | "creatureType">): string {
+  if (pet.creatureType) {
+    return pet.creatureType;
+  }
+  if (pet.kind === "drake") {
+    return "dragon";
+  }
+  return (pet.kind === "familiar" ? findFamiliarForm(pet.form)?.creatureType : findSummonForm(pet.form)?.type) ?? "beast";
+}
+
 export function defenseWords(pet: Pick<SheetPet, "resist" | "immune" | "vulnerable">): string {
   return [
     pet.immune ? `immune to ${pet.immune}` : "",

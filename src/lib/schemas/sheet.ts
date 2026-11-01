@@ -669,6 +669,11 @@ export const petSchema = z.object({
   kind: z.enum(["familiar", "beast_companion", "drake", "other"]),
   // The species/form behind the name ("owl", "wolf", "drake").
   form: z.string().trim().min(1).max(60),
+  // What it is instead of its form's own creature type: a Find Familiar
+  // familiar is a celestial, fey or fiend, the caster's choice (SRD 5.1).
+  // Absent on a pet stored before it existed, and on one whose form's own
+  // type stands (a Beast Master's wolf is a beast): petCreatureType reads it.
+  creatureType: z.enum(["celestial", "fey", "fiend"]).optional(),
   hp: z.number().int().min(0).max(300),
   maxHp: z.number().int().min(1).max(300),
   ac: z.number().int().min(1).max(30),

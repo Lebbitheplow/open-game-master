@@ -213,6 +213,23 @@ export function readSummonControl(id: "hand-count" | "hand-mix", value: string):
   return at > 0 && (step === "+" || step === "-") ? { form: value.slice(0, at), delta: step === "+" ? 1 : -1 } : null;
 }
 
+// ---- the GM console's summon fields (catalog-combat.ts cast_buff) ----
+
+// Whether the console shows a summon field for the spell its form names: the
+// kind for a spell whose creature is made one (Find Steed), each target's
+// form for a per-target spell (Animate Dead). Hidden fields send nothing.
+export function consoleSummonShown(kind: string, catalogue: SummonCatalogue | null | undefined): boolean {
+  if (kind === "summonKind") return Boolean(catalogue?.kinds && catalogue.kinds.length > 1);
+  if (kind === "summonMix") return Boolean(catalogue?.perTarget);
+  return true;
+}
+
+// The console's form value for each target's form, a list of rows, as the
+// card's per-form numbers, and back.
+export function mixRecord(rows: ReadonlyArray<{ variant: string; count: number }>): Record<string, number> {
+  return Object.fromEntries(rows.map((row) => [row.variant, row.count]));
+}
+
 // ---- the sheet's summoning door (SummonDoor.tsx) ----
 
 // One summoning spell on the sheet as the door offers it. The Hand deals the

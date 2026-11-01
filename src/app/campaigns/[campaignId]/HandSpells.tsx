@@ -180,3 +180,32 @@ export function useHandSummons(sheet: CharacterSheet | null, enabled: boolean): 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wanted, campaignId, characterId, version]);
 }
+
+// One spell's summoning catalogue, for the GM console's summon fields
+// (DmActionForm.tsx): the spell the form names, as the caster the form names
+// would cast it. Shares the cache above; null until it is known, or when the
+// spell makes no creatures.
+export function useSummonCatalogue(campaignId: string, spell: string, characterId: string, enabled: boolean): SummonCatalogue | null {
+  const name = spell.trim();
+  const key = `${characterId}|${textKey(name)}`;
+  const [, setVersion] = useState(0);
+  useEffect(() => {
+    if (!enabled || !name || summonCache.has(key)) return;
+    let live = true;
+    const query = [`spell=${encodeURIComponent(name)}`, ...(characterId ? [`characterId=${encodeURIComponent(characterId)}`] : [])].join("&");
+    void fetch(`/api/campaigns/${campaignId}/summons?${query}`)
+      .then(async (response) => {
+        if (!response.ok) return;
+        const body = (await response.json()) as { summons?: Record<string, SummonCatalogue> };
+        summonCache.set(key, body.summons?.[name] ?? null);
+        if (live) setVersion((current) => current + 1);
+      })
+      .catch(() => {
+        // Offline or refused: asked again when the spell or caster changes.
+      });
+    return () => {
+      live = false;
+    };
+  }, [campaignId, name, characterId, key, enabled]);
+  return enabled && name ? (summonCache.get(key) ?? null) : null;
+}

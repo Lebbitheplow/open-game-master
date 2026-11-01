@@ -16,6 +16,8 @@ import {
 } from "@/app/campaigns/[campaignId]/DmActionFields";
 import type { CatalogEntry, CatalogField } from "@/lib/dm/invoke-catalog";
 import { fieldForHost, fieldShown, needsConfirm } from "@/lib/dm/catalog-types";
+import { consoleSummonShown } from "@/lib/battlemap/hand-summon";
+import { useSummonCatalogue } from "@/app/campaigns/[campaignId]/HandSpells";
 import { hostOffers, useCapabilities, type HostFeature } from "@/lib/use-capabilities";
 import { describeAdjudicationResult, type ResultLine } from "@/lib/dm/catalog-result";
 import { holdConsoleOutcome } from "@/app/campaigns/[campaignId]/ConsoleOutcomeBanner";
@@ -112,6 +114,17 @@ export function DmActionForm({
     [entry, capabilities],
   );
 
+  // A summoning's Kind and Each target's form read the engine's catalogue
+  // for the spell the form names, as its caster would cast it, and show only
+  // for a spell that has them (issue 685, hand-summon.ts).
+  const summons = fields.some((field) => field.kind === "summonKind" || field.kind === "summonMix");
+  const catalogue = useSummonCatalogue(campaignId, String(values.spell ?? ""), String(values.characterId ?? ""), summons);
+  const shown = useMemo(
+    () => fields.filter((field) => fieldShown(field, values) && consoleSummonShown(field.kind, catalogue)),
+    [fields, values, catalogue],
+  );
+  const summonSlot = Number(values.level) || Math.min(...Object.keys(catalogue?.forms[0]?.counts ?? { 1: [] }).map(Number));
+
   const enemies = useMemo(
     // The dead and the fled are still on the encounter so the log reads
     // right; they are not things left to aim at.
@@ -125,7 +138,7 @@ export function DmActionForm({
   }
 
   async function run() {
-    const args = argsFor(fields, values);
+    const args = argsFor(shown, values);
     // What cannot be taken back asks first (end the fight, dismiss a
     // companion, a death).
     const question = needsConfirm(entry, args);
@@ -191,7 +204,7 @@ export function DmActionForm({
           label would press the first of them (the stepper's minus) whenever
           its caption was tapped. Each control carries the field's name. */}
       <div className="stagger space-y-2.5">
-        {fields.filter((field) => fieldShown(field, values)).map((field) => (
+        {shown.map((field) => (
           <div key={field.name} className={cn(field.kind === "boolean" && "flex flex-wrap items-center justify-between gap-x-3")}>
             <div className={cn(field.square && "flex flex-wrap items-center gap-x-2")}>
               <FieldLabel className={cn((field.kind === "boolean" || field.square) && "mb-0")}>
@@ -218,6 +231,7 @@ export function DmActionForm({
               onChange={(value) => set(field.name, value)}
               sheets={sheets}
               enemies={enemies}
+              {...(summons ? { summon: { catalogue, slotLevel: summonSlot } } : {})}
             />
             {field.help ? <span className="mt-1 block basis-full text-[11px] leading-snug text-stone-500">{field.help}</span> : null}
           </div>

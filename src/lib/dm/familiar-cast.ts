@@ -41,7 +41,7 @@ export function castFindFamiliar(
   if ("error" in spent) {
     return spent;
   }
-  const bound = handleSummonPet(campaign, JSON.stringify({ characterId: caster.id, kind: "familiar", form }), input.sheets, input.sheetsById);
+  const bound = handleSummonPet(campaign, JSON.stringify({ characterId: caster.id, kind: "familiar", form, creatureType: kind }), input.sheets, input.sheetsById);
   if ("error" in bound) {
     return bound;
   }
@@ -51,7 +51,6 @@ export function castFindFamiliar(
     ...(spent.slot ? { slot: spent.slot } : {}),
     ...(spent.cost ? { cost: spent.cost } : {}),
     ...(spent.material ? { material: spent.material } : {}),
-    familiarKind: `A ${kind} in the form of a ${form.toLowerCase() || "beast"}, not a beast.`,
     note: "The familiar is bound to the caster as a pet (summon_pet's rules): it acts on its own, cannot attack, and vanishes at 0 hit points. Narrate exactly this.",
   };
 }

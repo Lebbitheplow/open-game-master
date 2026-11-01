@@ -26,6 +26,19 @@ export const BOARD_ADJUDICATIONS: CatalogEntry[] = [
         ],
       },
       {
+        name: "creatureType",
+        label: "Familiar's kind",
+        kind: "select",
+        options: [
+          { value: "celestial", label: "Celestial" },
+          { value: "fey", label: "Fey" },
+          { value: "fiend", label: "Fiend" },
+        ],
+        onlyWhen: { field: "kind", equals: ["familiar"] },
+        host: { feature: "summonPicker" },
+        help: "What the familiar is instead of a beast (Find Familiar: the caster's choice). Empty: celestial.",
+      },
+      {
         name: "form",
         label: "Creature",
         kind: "text",

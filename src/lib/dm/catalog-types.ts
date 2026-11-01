@@ -45,6 +45,12 @@ export const CATEGORY_LABELS: Record<AdjudicationCategory, string> = {
 //   own [{ characterId, dice }].
 // - "list": several words typed in one box (a companion's spells), sent as
 //   a list.
+// - "summonKind", "summonMix": a summoning spell's choices, drawn from the
+//   engine's catalogue for the spell the form names (GET /api/campaigns/[id]/
+//   summons, issue 685): the kind its creature is (Find Steed's celestial,
+//   fey or fiend), sent as one of them, and each target's own form (Animate
+//   Dead, Animate Objects), sent as [{ variant, count }]. Shown only for a
+//   spell that has them.
 export type FieldKind =
   | "character"
   | "characters"
@@ -59,7 +65,9 @@ export type FieldKind =
   | "number"
   | "boolean"
   | "select"
-  | "dice";
+  | "dice"
+  | "summonKind"
+  | "summonMix";
 
 export type CatalogField = {
   name: string;
@@ -310,7 +318,7 @@ export function checkArgs(
     if (field.kind === "boolean" && typeof value !== "boolean") {
       return `${field.label} must be true or false.`;
     }
-    if (field.kind === "hitDice" || field.kind === "shares") {
+    if (field.kind === "hitDice" || field.kind === "shares" || field.kind === "summonMix") {
       if (!Array.isArray(value) || value.some((row) => !row || typeof row !== "object")) {
         return `${field.label} must be a list of rows.`;
       }

@@ -205,6 +205,11 @@ export const castBuffTool: ToolDef = {
           type: "boolean",
           description: "A summoning ritual (Find Familiar, Unseen Servant, Phantom Steed) cast as one: 10 extra minutes, no slot spent.",
         },
+        kind: {
+          type: "string",
+          enum: ["celestial", "fey", "fiend"],
+          description: "Find Steed or Find Familiar: what the creature in variant is instead of its own kind, the caster's choice. Default: celestial.",
+        },
         endSpell: {
           type: "string",
           description: "Dispel Magic only: the spell to end when the target holds several; omit to end them all.",
