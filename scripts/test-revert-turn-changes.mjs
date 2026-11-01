@@ -17,7 +17,7 @@
 import assert from "node:assert/strict";
 import { openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
-import { combatKit } from "./lib/enforce-combat.mjs";
+import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
 import { kit as conditionsKit, FIGHTER } from "./lib/enforce-conditions.mjs";
 import { call, fakeModel, reply } from "./lib/enforce-narrator.mjs";
 
@@ -42,6 +42,9 @@ const { initiativeFloorFor } = await import("../src/lib/dm/encounter-tools.ts");
 const { queuedIntents } = await import("../src/lib/dm/intent-queue.ts");
 const { buildFeed, revertableTurns } = await import("../src/app/campaigns/[campaignId]/event-log-logic.ts");
 const { planTakeBack } = await import("../src/lib/dm/fight-event-undo-logic.ts");
+const { runInTurnScope } = await import("../src/lib/dm/job-control.ts");
+const { createDmTurn } = await import("../src/lib/db/dm-turns.ts");
+const { saveEncounter } = await import("../src/lib/db/encounters.ts");
 
 const MAP = { mapId: null, scene: null, seed: null, theme: null, ambient: null, width: null, height: null };
 
@@ -71,10 +74,12 @@ const slotsOf = (world) => listFightEvents(world.encounter().id)[0]?.slots ?? {}
 const eventOf = (world, kind) => listFightEvents(world.encounter().id).find((entry) => entry.event.trigger.kind === kind);
 const boardOf = (world) => getBattleMapForEncounter(world.encounter().id);
 
-async function deploy(world, name, extras, map = MAP, enemies = [{ monster: "goblin", count: 3 }]) {
+// The foes' one initiative die, then the hero's: by default the hero goes
+// first.
+async function deploy(world, name, extras, map = MAP, enemies = [{ monster: "goblin", count: 3 }], faces = [1, 20]) {
   const template = insertEncounterTemplate({ campaignId: world.campaignId, name, enemies, battlefield: "", map, notes: "", extras, createdByUserId: world.owner.id });
   world.clearDice();
-  world.dice(1, 20);
+  world.dice(...faces);
   const outcome = await deployTemplate(world.campaign(), world.owner.id, template);
   world.clearDice();
   assert.equal(outcome.ok, true, outcome.error);
@@ -372,6 +377,36 @@ await test("the test fight's turn trace reads a reverted turn as taken back, its
   benchKit.reset(fighter.id);
 });
 
+await test("reinforcements a player's End Turn brought in at a seeded test fight roll their initiative under the event's own turn, and its revert gives the seed back", async () => {
+  benchKit.reset(fighter.id);
+  const benchCombat = await combatKit(bench);
+  // The goblin goes first, so the hero's own End Turn closes the round: the
+  // event fires there, where no turn runs.
+  await deploy(bench, "Seeded ambush", { entry: { x: 2, y: 2 }, events: [{ trigger: { kind: "round", round: 2 }, actions: [{ kind: "reinforce", enemies: [{ monster: "goblin", count: 1 }], at: "entry" }] }] }, MAP, [{ monster: "goblin", count: 1 }], [20, 1]);
+  assert.equal(bench.encounter().order.at(-1)?.characterId, fighter.id, "the hero does not close the round");
+  scripts.setDiceScript(bench.campaignId, { seed: 4040, queue: [] });
+  const before = bench.enemies().length;
+  let rolls = scripts.getDiceScript(bench.campaignId).seededRolls;
+  for (let step = 0; step < 8 && bench.encounter().round < 2; step += 1) {
+    rolls = scripts.getDiceScript(bench.campaignId).seededRolls;
+    benchCombat.endTurn(fighter.userId);
+  }
+  assert.equal(bench.encounter().round, 2, "the fight never reached round 2");
+  assert.equal(bench.enemies().length, before + 1);
+  const fired = listLiveTurnChangeViews(bench.campaignId).find((change) => change.kind === "fight_event");
+  assert.ok(fired, "the reinforcement was kept under no turn");
+  assert.ok(
+    liveTurnChanges(bench.campaignId, fired.turnId).some((change) => change.kind === "dice_seed"),
+    "the newcomer's initiative was rolled under no turn, so no revert gives the seed back",
+  );
+  const back = await revertTurn(bench, fired.turnId, true);
+  assert.equal(back.status, 200, JSON.stringify(back.json));
+  assert.equal(bench.enemies().length, before);
+  assert.ok(scripts.getDiceScript(bench.campaignId).seededRolls <= rolls, "the seed the newcomer's initiative spent stayed spent");
+  await bench.invoke("end_encounter", { outcome: "truce" });
+  scripts.clearDiceScript(bench.campaignId);
+});
+
 // ---- a card resolved as played ----
 
 const table = await openWorld({ gameSettings: { multiCharacter: "all_active", ttsEnabled: false } });
@@ -385,6 +420,17 @@ const iris = table.addHero({
   abilities: { int: 16 },
   equipment: [{ name: "Dagger", qty: 1 }],
   spellcasting: { ability: "int", slots: { 1: { max: 4, used: 0 }, 2: { max: 3, used: 0 } }, known: [], prepared: ["Detect Thoughts"], cantrips: [], spellbook: ["Detect Thoughts"] },
+});
+// The GM's own fighter, for the action economy a swing spends.
+const brakka = table.addHero({
+  user: table.owner,
+  name: "Brakka",
+  class: "fighter",
+  level: 5,
+  maxHp: 44,
+  abilities: { str: 16 },
+  proficiencies: TRAINED,
+  equipment: [{ name: "Longsword", qty: 1, equipped: true }],
 });
 setDmMode(table.campaignId, "human", table.owner.id);
 
@@ -429,6 +475,58 @@ await test("a card the GM resolved as played waits again once the turn it was re
   const again = await resolve(card);
   assert.equal(again.status, 200, JSON.stringify(again.body));
   assert.equal(table.sheet(iris.id).spellcasting.slots[2].used, 1);
+});
+
+await test("a turn's revert gives back the attack it spent while it is still that creature's turn; spent more by a later turn, the lead is told first", async () => {
+  const [dummy] = table.enemies();
+  tableKit.openField();
+  tableKit.place(brakka.id, 4, 4);
+  tableKit.place(dummy.id, 5, 4);
+  tableKit.setEnemy(dummy.id, { maxHp: 200, currentHp: 200 });
+  tableKit.giveTurn(brakka.id);
+  tableKit.freshTurn();
+  const swing = async () => {
+    table.clearDice();
+    table.dice(15, 4);
+    const out = await table.invoke("pc_attack", { characterId: brakka.id, enemyId: dummy.id, targetEnemyId: dummy.id, weapon: "Longsword" });
+    table.clearDice();
+    assert.equal(out.ok, true, out.error);
+    return out;
+  };
+  const made = () => table.encounter().turnBudget?.attacksMade ?? 0;
+  const first = await swing();
+  assert.equal(made(), 1);
+  // Reverted at once, the swing is Brakka's again.
+  const back = await revertTurn(table, first.turnId);
+  assert.equal(back.status, 200, JSON.stringify(back.json));
+  assert.equal(made(), 0, "the swing the revert took back stayed spent");
+  const again = await swing();
+  await swing();
+  assert.equal(made(), 2);
+  const asked = await revertTurn(table, again.turnId);
+  assert.equal(asked.status, 409, JSON.stringify(asked.json));
+  assert.ok(asked.json.warnings.some((line) => /spent more of it since/.test(line)), JSON.stringify(asked.json));
+  const done = await revertTurn(table, again.turnId, true);
+  assert.equal(done.status, 200, JSON.stringify(done.json));
+  assert.equal(made(), 0);
+});
+
+await test("the reactions a reverted turn spent come back by themselves, and one a later turn spent stays spent", async () => {
+  // Two turns each spend a reaction this round, as an opportunity strike or a
+  // Shield writes it (encounters.ts saveEncounter).
+  const spendIn = (turn, id) =>
+    runInTurnScope(turn.id, () => {
+      const encounter = table.encounter();
+      encounter.reactionsUsed = [...encounter.reactionsUsed, id];
+      saveEncounter(encounter);
+    });
+  const before = table.encounter().reactionsUsed;
+  const earlier = createDmTurn(table.campaignId, [], "human_dm");
+  spendIn(earlier, iris.id);
+  spendIn(createDmTurn(table.campaignId, [], "human_dm"), brakka.id);
+  const back = await revertTurn(table, earlier.id);
+  assert.equal(back.status, 200, JSON.stringify(back.json));
+  assert.deepEqual(table.encounter().reactionsUsed, [...before, brakka.id]);
 });
 
 // ---- the event log's reading ----

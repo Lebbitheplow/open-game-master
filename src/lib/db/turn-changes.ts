@@ -116,15 +116,6 @@ export function liveTurnChangeOf(campaignId: string, turnId: string, kind: TurnC
   return row ? mapRow(row) : null;
 }
 
-// The live changes of a kind kept after this one, across the campaign's
-// turns: what a later turn did to the same thing.
-export function liveTurnChangesAfter(change: TurnChange): TurnChange[] {
-  const rows = getDatabase()
-    .prepare(`SELECT * FROM turn_changes WHERE campaign_id = ? AND kind = ? AND reverted_at IS NULL AND seq > ? ORDER BY rowid ASC`)
-    .all(change.campaignId, change.kind, change.seq) as Row[];
-  return rows.map(mapRow).filter((entry): entry is TurnChange => entry !== null && entry.turnId !== change.turnId);
-}
-
 // A card's live changes, across every turn its calls ran in.
 export function liveCardChanges(campaignId: string, messageId: string): TurnChange[] {
   const rows = getDatabase()

@@ -1,6 +1,6 @@
 import { getDatabase, parseJson } from "@/lib/db/core";
 import { turnKey, type OrderEntry } from "@/lib/db/encounters";
-import { liveTurnChangeOf, recordTurnChange } from "@/lib/db/turn-changes";
+import { liveTurnChangeOf, recordTurnChange, updateTurnChange } from "@/lib/db/turn-changes";
 import type { TurnBudget } from "@/lib/dm/action-budget";
 import { currentTurnId } from "@/lib/dm/job-control";
 
@@ -12,8 +12,10 @@ import { currentTurnId } from "@/lib/dm/job-control";
 // played again, was refused: "has already used their action this turn".
 //
 // The fight row is saved whole (encounters.ts saveEncounter), so the stored
-// budget is read just before the turn's first save that changes it: that is
-// the budget as the turn found it. One per turn and fight.
+// budget is read just before the turn's first save that changes it (the
+// budget as the turn found it), and what each later save of the turn writes
+// is kept beside it (as the turn left it), so the revert can tell what the
+// turn spent from what a later turn spent. One per turn and fight.
 
 type FightRow = {
   campaign_id: string;
@@ -30,8 +32,10 @@ export type SpentBudget = {
   // turnKey), and the round, for the reactions.
   turnKey: string;
   round: number;
+  // As the turn found them, and as it left them.
   turnBudget: TurnBudget | null;
   reactionsUsed: string[];
+  after: { turnBudget: TurnBudget | null; reactionsUsed: string[] };
 };
 
 function keyOf(row: FightRow): string {
@@ -55,10 +59,12 @@ export function keepSpentBudget(encounterId: string, next: { turnBudget: TurnBud
   if (JSON.stringify(budget) === JSON.stringify(next.turnBudget) && JSON.stringify(reactions) === JSON.stringify(next.reactionsUsed)) {
     return;
   }
+  const after = { turnBudget: next.turnBudget, reactionsUsed: next.reactionsUsed };
   const kept = liveTurnChangeOf(row.campaign_id, turnId, "budget");
   if (kept && kept.payload.encounterId === encounterId) {
+    updateTurnChange(kept.id, { ...kept.payload, after });
     return;
   }
-  const spent: SpentBudget = { encounterId, turnKey: keyOf(row), round: row.round, turnBudget: budget, reactionsUsed: reactions };
+  const spent: SpentBudget = { encounterId, turnKey: keyOf(row), round: row.round, turnBudget: budget, reactionsUsed: reactions, after };
   recordTurnChange(row.campaign_id, turnId, "budget", { ...spent, line: "" });
 }
