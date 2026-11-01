@@ -6,7 +6,7 @@
 
 import { elementalAdeptApplies, floorDamageDice } from "@/lib/srd/feat-combat";
 import type { Campaign } from "@/lib/db/campaigns";
-import { getEnemy, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
+import type { Encounter, EncounterEnemy } from "@/lib/db/encounters";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { rollCard } from "@/lib/dm/action-common";
 import { rollAgainst } from "@/lib/roll-labels";
@@ -18,7 +18,6 @@ import { flooredDamage, maximizedDamage } from "@/lib/dm/spell-riders";
 import { curseBurn } from "@/lib/dm/spell-retort";
 import { spellDamageRiders } from "@/lib/srd/spell-damage-riders";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import { noteBlowFromInside } from "@/lib/dm/swallow";
 
 // Rolls and lands the damage, writing what happened onto `base`; returns the
 // damage dealt and the dice's total. A later creature of one area casting
@@ -90,8 +89,6 @@ export function landSpellDamage(input: {
       spell: true,
       ...(adept ? { ignoreResistance: true } : {}),
     });
-    // A spell from inside the creature that swallowed its caster (swallow.ts).
-    noteBlowFromInside(enemy.id, sheet.id, Math.max(0, enemy.currentHp - (getEnemy(enemy.id)?.currentHp ?? enemy.currentHp)));
     if (adept) {
       base.elementalAdept = `Elemental Adept: ${damageType} ignores resistance; every 1 on the dice counted as 2.`;
     }

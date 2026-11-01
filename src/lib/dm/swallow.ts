@@ -1,63 +1,81 @@
 // Swallowed whole (SRD 5.1: the behir, the kraken, the purple worm, the
 // remorhaz, the tarrasque, the giant frog and the giant toad), played by the
 // engine whichever way the swallow came: a Swallow action, a bite that
-// swallows, or a legendary action that uses either (issue 685).
+// swallows, or a legendary action that uses either (issue 685). A hero and a
+// creature fighting on the party's side (a turncoat, a creature it
+// dominates) are swallowed alike.
 //
-// A swallowed character carries "swallowed" beside the blinded and
-// restrained it lays, each with the swallower as source. While inside they
-// have total cover against everything outside it and reach nothing but it
-// (swallowCover); they take its acid at the start of each of its turns
-// (swallowTurnStart); damage they deal it is counted for the turn, and at the
-// turn's end enough of it forces its Constitution save or it regurgitates
-// everyone, prone beside it (swallowTurnEnd); and when it dies they are no
-// longer restrained and climb out of the corpse with the feet of movement
-// the block prints, exiting prone (freeFromCorpse, swallowWalk). The numbers
-// are the block's own (swallow-logic.ts).
+// The creature inside carries "swallowed" beside the blinded and restrained
+// it lays, each with the swallower as source. While inside it has total
+// cover against everything outside and reaches nothing but its swallower
+// (swallowCover); it takes the acid at the start of each of the swallower's
+// turns (swallowTurnStart); damage it deals the swallower is counted for the
+// turn wherever it lands (noteBlowFromInside, from applyEnemyDamage), and at
+// the turn's end enough of it forces the swallower's Constitution save or it
+// regurgitates everyone, prone beside it (swallowTurnEnd); and when the
+// swallower dies the creature is no longer restrained and climbs out of the
+// corpse with the feet of movement the block prints, exiting prone
+// (freeFromCorpse, swallowWalk, swallowRowWalk). The numbers are the block's
+// own (swallow-logic.ts).
 //
-// Must not import encounter-tools, enemy-attack or pc-attack: they call in
-// here.
+// Every write goes through a writer "Revert this turn" reads: a character's
+// through the sheet audit (audited-patch.ts, set-condition.ts), a creature's
+// row and its token through the rows the turn keeps (turn-rows.ts).
+//
+// Must not import encounter-tools, enemy-attack, pc-attack or enemy-damage:
+// they call in here.
 
 import type { Campaign } from "@/lib/db/campaigns";
-import { getEnemy, listEnemies, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
-import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
+import { getActiveEncounter, getEnemy, listEnemies, patchEnemyConditions, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
+import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { getBattleMapForEncounter, getTokenByRef, listTokens, moveToken, type BattleMap } from "@/lib/db/battle-maps";
 import { footprintLookup, occupiedTiles, pcMoveBudget } from "@/lib/battlemap/view";
 import { footprintForSize } from "@/lib/battlemap/footprint";
 import { chebyshev, inBounds, tileIndex, type BattleToken } from "@/lib/battlemap/types";
-import { removeConditionInstances, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { removeConditionInstances, type ConditionMeta, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { swallowRuleOf, type SwallowRule } from "@/lib/dm/swallow-logic";
 import { handleSetCondition } from "@/lib/dm/set-condition";
+import { patchSheetAudited } from "@/lib/dm/audited-patch";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { withOpportunityTurn } from "@/lib/dm/opportunity-strike";
 import { publicDie } from "@/lib/dm/between-io";
 import { rollEnemySave } from "@/lib/dm/forced-save";
+import { currentActor } from "@/lib/dm/acting-party";
+import { textKey } from "@/lib/language/text-logic";
 import { publishEphemeral, publishPersisted } from "@/lib/events";
+import { activePublicEncounter } from "@/lib/db/encounter-view";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 
 export const SWALLOWED = "swallowed";
 
 type Holder = { conditions: string[]; conditionMeta?: unknown };
-type Party = { kind: "sheet" | "enemy"; id: string };
+export type Party = { kind: "sheet" | "enemy"; id: string };
+type Inside = Party & { name: string; conditions: string[]; meta: ConditionMetaMap };
 
 const held = (holder: Holder, name: string) => holder.conditions.find((entry) => entry.toLowerCase() === name);
-const metaOf = (holder: Holder) => (holder.conditionMeta ?? {}) as ConditionMetaMap;
+const metaOf = (holder: Holder | Inside) => (("meta" in holder ? holder.meta : holder.conditionMeta) ?? {}) as ConditionMetaMap;
 
-// The creature a character is inside, or null.
-export function swallowerOf(holder: Holder): string | null {
+// The creature a character or a creature is inside, or null.
+export function swallowerOf(holder: Holder | Inside): string | null {
   const name = held(holder, SWALLOWED);
   return name ? (metaOf(holder)[name]?.source ?? null) : null;
 }
 
-function insideOf(party: Party | null): string | null {
-  if (party?.kind !== "sheet") {
-    return null;
+function read(party: Party): Inside | null {
+  if (party.kind === "sheet") {
+    const sheet = getSheetById(party.id);
+    return sheet ? { ...party, name: sheet.name, conditions: sheet.conditions, meta: metaOf(sheet) } : null;
   }
-  const sheet = getSheetById(party.id);
-  return sheet ? swallowerOf(sheet) : null;
+  const row = getEnemy(party.id);
+  return row ? { ...party, name: row.displayName, conditions: row.conditions, meta: metaOf(row) } : null;
 }
 
-const nameOf = (party: Party) => (party.kind === "sheet" ? getSheetById(party.id)?.name : getEnemy(party.id)?.displayName) ?? "That creature";
+const insideOf = (party: Party | null) => {
+  const found = party ? read(party) : null;
+  return found ? swallowerOf(found) : null;
+};
+
 const swallowerName = (id: string) => getEnemy(id)?.displayName ?? "the creature that swallowed them";
 
 // Total cover (SRD 5.1): a swallowed creature "has total cover against
@@ -68,79 +86,104 @@ export function swallowCover(from: Party | null, to: Party): string | null {
   const toInside = insideOf(to);
   const fromInside = insideOf(from);
   if (toInside && fromInside !== toInside) {
-    return `${nameOf(to)} is inside ${swallowerName(toInside)}: total cover against attacks and other effects from outside it.`;
+    return `${read(to)?.name ?? "That creature"} is inside ${swallowerName(toInside)}: total cover against attacks and other effects from outside it.`;
   }
   if (fromInside && from && !(to.kind === "enemy" && to.id === fromInside) && toInside !== fromInside) {
-    return `${nameOf(from)} is inside ${swallowerName(fromInside)}: from there only ${swallowerName(fromInside)} can be reached.`;
+    return `${read(from)?.name ?? "That creature"} is inside ${swallowerName(fromInside)}: from there only ${swallowerName(fromInside)} can be reached.`;
   }
   return null;
 }
 
-// The characters inside a creature, read fresh.
-export function swallowedBy(campaignId: string, enemyId: string): CharacterSheet[] {
-  return listSheets(campaignId)
-    .map((stale) => getSheetById(stale.id) ?? stale)
-    .filter((sheet) => swallowerOf(sheet) === enemyId);
+// Everyone inside a creature, read fresh: characters, and the fight's rows.
+export function swallowedBy(campaignId: string, enemyId: string): Inside[] {
+  const encounter = getActiveEncounter(campaignId);
+  const parties: Party[] = [
+    ...listSheets(campaignId).map((sheet) => ({ kind: "sheet" as const, id: sheet.id })),
+    ...(encounter ? listEnemies(encounter.id).map((row) => ({ kind: "enemy" as const, id: row.id })) : []),
+  ];
+  return parties.map(read).filter((found): found is Inside => Boolean(found && swallowerOf(found) === enemyId));
 }
 
-function grappledBy(sheet: CharacterSheet, enemyId: string): boolean {
-  const name = held(sheet, "grappled");
-  if (!name) {
-    return false;
-  }
-  const entry = metaOf(sheet)[name];
-  return entry?.source === enemyId || (entry?.others ?? []).some((other) => other.source === enemyId);
+function grappledBy(holder: Holder | Inside, enemyId: string): boolean {
+  const name = held(holder, "grappled");
+  const entry = name ? metaOf(holder)[name] : undefined;
+  return Boolean(entry && (entry.source === enemyId || (entry.others ?? []).some((other) => other.source === enemyId)));
 }
 
 // Before a Swallow action is rolled: what keeps it from swallowing at all.
-export function swallowRefusal(campaignId: string, enemy: EncounterEnemy, target: CharacterSheet, rule: SwallowRule): string | null {
-  if (rule.grappledOnly && !grappledBy(target, enemy.id)) {
-    return `${target.name} is not grappled by ${enemy.displayName}; its ${rule.entry} takes a creature it is grappling.`;
+export function swallowRefusal(campaignId: string, enemy: EncounterEnemy, target: Party, rule: SwallowRule): string | null {
+  const live = read(target);
+  if (!live) {
+    return null;
   }
-  if (rule.onlyOne && swallowedBy(campaignId, enemy.id).some((sheet) => sheet.id !== target.id)) {
+  if (rule.grappledOnly && !grappledBy(live, enemy.id)) {
+    return `${live.name} is not grappled by ${enemy.displayName}; its ${rule.entry} takes a creature it is grappling.`;
+  }
+  if (rule.onlyOne && swallowedBy(campaignId, enemy.id).some((inside) => inside.id !== target.id)) {
     return `${enemy.displayName} already has a creature swallowed, and can have only one at a time.`;
   }
   return null;
 }
 
-function withoutFrom(sheet: CharacterSheet, names: string[], sourceId: string): { conditions: string[]; meta: ConditionMetaMap } {
-  let conditions = sheet.conditions;
-  let meta = metaOf(sheet);
+function without(conditions: string[], meta: ConditionMetaMap, names: string[], sourceId: string) {
+  let next = { conditions, meta };
   for (const name of names) {
-    const out = removeConditionInstances(conditions, meta, name, (entry) => entry.source === sourceId);
-    conditions = out.conditions;
-    meta = out.meta;
+    const out = removeConditionInstances(next.conditions, next.meta, name, (entry) => entry.source === sourceId);
+    next = { conditions: out.conditions, meta: out.meta };
   }
-  return { conditions, meta };
+  return next;
 }
 
-function save(campaign: Campaign, sheetId: string, next: { conditions: string[]; meta: ConditionMetaMap }) {
-  const updated = patchSheet(sheetId, { conditions: next.conditions, conditionMeta: next.meta });
-  if (updated) {
-    publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
+// One door for both kinds, each to a writer the revert reads.
+function write(campaign: Campaign, party: Party, next: { conditions: string[]; meta: ConditionMetaMap }, reason: string) {
+  if (party.kind === "sheet") {
+    patchSheetAudited(campaign.id, party.id, { conditions: next.conditions, conditionMeta: next.meta }, { kind: "condition", reason });
+    return;
   }
+  patchEnemyConditions(party.id, next.conditions, next.meta);
+  publishPersisted(campaign.id, "encounter_updated", { encounter: activePublicEncounter(campaign.id) });
+}
+
+// A creature's row takes a condition held by `source`.
+function laid(conditions: string[], meta: ConditionMetaMap, names: string[], source: string) {
+  const next = { conditions: [...conditions], meta: { ...meta } };
+  for (const name of names) {
+    if (!next.conditions.some((entry) => entry.toLowerCase() === name)) {
+      next.conditions.push(name);
+      next.meta[name] = { source };
+    }
+  }
+  return next;
 }
 
 // A hit (or a failed save) that swallows: blinded, restrained and swallowed,
 // each held by the creature, and the grapple ends. Returns the result's
 // sentence, or why it did not swallow.
-export function swallowCreature(campaign: Campaign, turnId: string, enemy: EncounterEnemy, target: CharacterSheet, rule: SwallowRule | null): { swallowed: string } | { notSwallowed: string } {
-  const live = getSheetById(target.id) ?? target;
+export function swallowCreature(campaign: Campaign, turnId: string, enemy: EncounterEnemy, target: Party, rule: SwallowRule | null): { swallowed: string } | { notSwallowed: string } {
+  const live = read(target);
+  if (!live) {
+    return { notSwallowed: "That creature is gone." };
+  }
   // A second swing of the same turn finds them inside already.
   if (swallowerOf(live)) {
     return { notSwallowed: `${live.name} is already swallowed.` };
   }
-  const refused = rule ? swallowRefusal(campaign.id, enemy, live, rule) : null;
+  const refused = rule ? swallowRefusal(campaign.id, enemy, target, rule) : null;
   if (refused) {
     return { notSwallowed: `${refused} ${live.name} is not swallowed.` };
   }
-  for (const condition of ["blinded", "restrained", SWALLOWED]) {
-    handleSetCondition(campaign, turnId, getSheetById(live.id) ?? live, { condition, sourceEnemyId: enemy.id }, `swallowed by ${enemy.displayName}`, {
-      spellEffect: { source: enemy.id },
-    });
+  if (target.kind === "sheet") {
+    for (const condition of ["blinded", "restrained", SWALLOWED]) {
+      const sheet = getSheetById(target.id);
+      if (sheet) {
+        handleSetCondition(campaign, turnId, sheet, { condition, sourceEnemyId: enemy.id }, `swallowed by ${enemy.displayName}`, { spellEffect: { source: enemy.id } });
+      }
+    }
+  } else {
+    write(campaign, target, laid(live.conditions, live.meta, ["blinded", "restrained", SWALLOWED], enemy.id), `swallowed by ${enemy.displayName}`);
   }
-  const now = getSheetById(live.id) ?? live;
-  save(campaign, now.id, withoutFrom(now, ["grappled"], enemy.id));
+  const now = read(target) ?? live;
+  write(campaign, target, without(now.conditions, now.meta, ["grappled"], enemy.id), `the grapple ends as ${enemy.displayName} swallows ${now.name}`);
   const acid = rule?.acid ? `, and takes ${rule.acid.dice} ${rule.acid.type} damage at the start of each of its turns` : "";
   const out = rule?.regurgitate
     ? ` ${rule.regurgitate.damage} damage dealt it from inside in one turn makes it save (DC ${rule.regurgitate.dc} Constitution) at that turn's end or regurgitate them.`
@@ -148,39 +191,62 @@ export function swallowCreature(campaign: Campaign, turnId: string, enemy: Encou
   return { swallowed: `${now.name} is swallowed: blinded and restrained inside ${enemy.displayName}, with total cover against everything outside it${acid}.${out}` };
 }
 
-// The acid at the start of each of the swallower's turns.
-export function swallowTurnStart(campaign: Campaign, enemy: EncounterEnemy): string[] {
+// The acid at the start of each of the swallower's turns. A creature's row
+// takes it through `hurtRow`, the engine's own damage to a creature, which
+// this module may not import.
+export function swallowTurnStart(campaign: Campaign, enemy: EncounterEnemy, hurtRow: (row: EncounterEnemy, amount: number, type: string) => void): string[] {
   const rule = swallowRuleOf(enemy.stats);
-  if (!rule?.acid) {
+  const acid = rule?.acid;
+  if (!acid) {
     return [];
   }
   const lines: string[] = [];
-  for (const sheet of swallowedBy(campaign.id, enemy.id)) {
-    if (sheet.deathSaves?.dead) {
+  for (const inside of swallowedBy(campaign.id, enemy.id)) {
+    const sheet = inside.kind === "sheet" ? getSheetById(inside.id) : null;
+    const row = inside.kind === "enemy" ? getEnemy(inside.id) : null;
+    if ((sheet && sheet.deathSaves?.dead) || (row && row.status !== "alive")) {
       continue;
     }
-    const amount = publicDie(campaign, sheet, rule.acid.dice, `${sheet.name}: ${rule.acid.type} inside ${enemy.displayName}`);
-    const acid = rule.acid;
-    withOpportunityTurn(campaign.id, (turn) => applyPcDamage(campaign, turn.id, getSheetById(sheet.id) ?? sheet, { amount, type: acid.type, reason: `swallowed by ${enemy.displayName}` }));
-    lines.push(`${sheet.name}, swallowed, takes ${amount} ${acid.type} damage as ${enemy.displayName}'s turn starts (before resistances).`);
+    const amount = publicDie(campaign, sheet, acid.dice, `${inside.name}: ${acid.type} inside ${enemy.displayName}`);
+    if (sheet) {
+      withOpportunityTurn(campaign.id, (turn) => applyPcDamage(campaign, turn.id, getSheetById(sheet.id) ?? sheet, { amount, type: acid.type, reason: `swallowed by ${enemy.displayName}` }));
+    } else if (row) {
+      hurtRow(row, amount, acid.type);
+    }
+    lines.push(`${inside.name}, swallowed, takes ${amount} ${acid.type} damage as ${enemy.displayName}'s turn starts (before resistances).`);
   }
   return lines;
 }
 
-// Damage a character dealt the creature that swallowed them, counted toward
-// the turn's regurgitation save.
-export function noteBlowFromInside(enemyId: string, byId: string | undefined, amount: number) {
-  const sheet = byId ? getSheetById(byId) : null;
-  const name = sheet ? held(sheet, SWALLOWED) : undefined;
-  if (!sheet || !name || amount <= 0 || swallowerOf(sheet) !== enemyId) {
+// Damage the swallower takes while the creature acting is inside it, from
+// whatever the creature did (acting-party.ts): counted toward the turn's
+// regurgitation save.
+export function noteBlowFromInside(campaign: Campaign, encounterId: string, enemyId: string, amount: number) {
+  const actor = currentActor();
+  if (!actor || amount <= 0) {
     return;
   }
-  const meta = metaOf(sheet);
-  const entry = meta[name] ?? {};
-  patchSheet(sheet.id, { conditionMeta: { ...meta, [name]: { ...entry, swallow: { ...(entry.swallow ?? {}), hurt: (entry.swallow?.hurt ?? 0) + Math.floor(amount) } } } });
+  const party: Party | null =
+    actor.kind === "sheet"
+      ? (() => {
+          const sheet = getSheetById(actor.ref) ?? listSheets(campaign.id).find((entry) => textKey(entry.name) === textKey(actor.ref));
+          return sheet ? { kind: "sheet" as const, id: sheet.id } : null;
+        })()
+      : (() => {
+          const row = getEnemy(actor.ref) ?? listEnemies(encounterId).find((entry) => textKey(entry.displayName) === textKey(actor.ref));
+          return row ? { kind: "enemy" as const, id: row.id } : null;
+        })();
+  const inside = party ? read(party) : null;
+  const name = inside ? held(inside, SWALLOWED) : undefined;
+  if (!inside || !name || swallowerOf(inside) !== enemyId) {
+    return;
+  }
+  const entry: ConditionMeta = inside.meta[name] ?? {};
+  const hurt = (entry.swallow?.hurt ?? 0) + Math.floor(amount);
+  write(campaign, inside, { conditions: inside.conditions, meta: { ...inside.meta, [name]: { ...entry, swallow: { ...(entry.swallow ?? {}), hurt } } } }, `${hurt} damage dealt ${swallowerName(enemyId)} from inside this turn`);
 }
 
-// An open square beside a creature's footprint, nearest the character.
+// An open square beside a creature's footprint, nearest the mover.
 function besideSquare(encounterId: string, map: BattleMap, mover: BattleToken, beside: BattleToken, size: number): { x: number; y: number } | null {
   const enemiesById = new Map(listEnemies(encounterId).map((enemy) => [enemy.id, enemy]));
   const occupied = occupiedTiles(map, listTokens(map.id), mover, footprintLookup(enemiesById));
@@ -201,21 +267,22 @@ function besideSquare(encounterId: string, map: BattleMap, mover: BattleToken, b
 
 // Out of the creature, prone in a space beside it (within 10 feet: SRD 5.1).
 // Returns where they landed, or null off the board.
-function outProne(campaign: Campaign, encounterId: string, sheet: CharacterSheet, swallower: EncounterEnemy, names: string[]): string | null {
-  const live = getSheetById(sheet.id) ?? sheet;
-  const freed = withoutFrom(live, names, swallower.id);
-  const prone = freed.conditions.some((entry) => entry.toLowerCase() === "prone") ? freed : { conditions: [...freed.conditions, "prone"], meta: freed.meta };
-  save(campaign, live.id, prone);
+function outProne(campaign: Campaign, encounterId: string, party: Party, swallower: EncounterEnemy, names: string[], reason: string, spentTiles = 0): string | null {
+  const live = read(party);
+  if (!live) {
+    return null;
+  }
+  const freed = without(live.conditions, live.meta, names, swallower.id);
+  write(campaign, party, laid(freed.conditions, freed.meta, ["prone"], swallower.id), reason);
   const map = getBattleMapForEncounter(encounterId);
-  const token = map ? getTokenByRef(map.id, live.id) : null;
+  const token = map ? getTokenByRef(map.id, party.id) : null;
   const body = map ? getTokenByRef(map.id, swallower.id) : null;
   const square = map && token && body ? besideSquare(encounterId, map, token, body, footprintForSize(swallower.stats.size)) : null;
-  if (map && token && square) {
-    moveToken(token.id, square.x, square.y, token.movedThisRound);
+  if (map && token) {
+    moveToken(token.id, square?.x ?? token.x, square?.y ?? token.y, token.movedThisRound + spentTiles);
     publishEphemeral(campaign.id, "battle_map_updated", {});
-    return `(${square.x},${square.y})`;
   }
-  return null;
+  return square ? `(${square.x},${square.y})` : null;
 }
 
 // The end of a turn: a swallower dealt enough from inside it this turn saves
@@ -223,16 +290,20 @@ function outProne(campaign: Campaign, encounterId: string, sheet: CharacterSheet
 export function swallowTurnEnd(campaign: Campaign, encounter: Encounter): string[] {
   const lines: string[] = [];
   const hurt = new Map<string, number>();
-  for (const sheet of listSheets(campaign.id).map((stale) => getSheetById(stale.id) ?? stale)) {
-    const name = held(sheet, SWALLOWED);
-    const entry = name ? metaOf(sheet)[name] : undefined;
-    if (!name || !entry?.source || !entry.swallow?.hurt) {
+  const parties: Party[] = [
+    ...listSheets(campaign.id).map((sheet) => ({ kind: "sheet" as const, id: sheet.id })),
+    ...listEnemies(encounter.id).map((row) => ({ kind: "enemy" as const, id: row.id })),
+  ];
+  for (const party of parties) {
+    const inside = read(party);
+    const name = inside ? held(inside, SWALLOWED) : undefined;
+    const entry = inside && name ? inside.meta[name] : undefined;
+    if (!inside || !name || !entry?.source || !entry.swallow?.hurt) {
       continue;
     }
     hurt.set(entry.source, Math.max(hurt.get(entry.source) ?? 0, entry.swallow.hurt));
     // The count is the turn's: it starts again at nothing.
-    const reset = { ...entry, swallow: { ...entry.swallow, hurt: 0 } };
-    patchSheet(sheet.id, { conditionMeta: { ...metaOf(sheet), [name]: reset } });
+    write(campaign, inside, { conditions: inside.conditions, meta: { ...inside.meta, [name]: { ...entry, swallow: { ...entry.swallow, hurt: 0 } } } }, "the turn's count of damage from inside starts again");
   }
   for (const [enemyId, amount] of hurt) {
     const swallower = getEnemy(enemyId);
@@ -245,9 +316,9 @@ export function swallowTurnEnd(campaign: Campaign, encounter: Encounter): string
       lines.push(`${swallower.displayName} took ${amount} damage from inside this turn and keeps it down (CON save ${roll.total} vs DC ${rule.regurgitate.dc}).`);
       continue;
     }
-    const out = swallowedBy(campaign.id, enemyId).map((sheet) => {
-      const at = outProne(campaign, encounter.id, sheet, swallower, [SWALLOWED, "blinded", "restrained"]);
-      return `${sheet.name}${at ? ` at ${at}` : ""}`;
+    const out = swallowedBy(campaign.id, enemyId).map((inside) => {
+      const at = outProne(campaign, encounter.id, inside, swallower, [SWALLOWED, "blinded", "restrained"], `regurgitated by ${swallower.displayName}`);
+      return `${inside.name}${at ? ` at ${at}` : ""}`;
     });
     lines.push(`${swallower.displayName} took ${amount} damage from inside this turn and fails its CON save (${roll.total ?? "failed"} vs DC ${rule.regurgitate.dc}): it regurgitates ${out.join(", ")}, prone beside it.`);
   }
@@ -262,42 +333,59 @@ export function freeFromCorpse(campaign: Campaign, enemy: EncounterEnemy): strin
     return null;
   }
   const feet = swallowRuleOf(enemy.stats)?.escapeFeet ?? 5;
-  for (const sheet of inside) {
-    const freed = withoutFrom(sheet, ["restrained"], enemy.id);
-    const name = held(sheet, SWALLOWED) ?? SWALLOWED;
+  for (const party of inside) {
+    const freed = without(party.conditions, party.meta, ["restrained"], enemy.id);
+    const name = held(party, SWALLOWED) ?? SWALLOWED;
     const entry = freed.meta[name] ?? {};
-    save(campaign, sheet.id, { conditions: freed.conditions, meta: { ...freed.meta, [name]: { ...entry, swallow: { ...(entry.swallow ?? {}), escapeFeet: feet } } } });
+    write(campaign, party, { conditions: freed.conditions, meta: { ...freed.meta, [name]: { ...entry, swallow: { ...(entry.swallow ?? {}), escapeFeet: feet } } } }, `${enemy.displayName} dies around them`);
   }
-  return `${inside.map((sheet) => sheet.name).join(", ")} ${inside.length === 1 ? "is" : "are"} no longer restrained by ${enemy.displayName}: ${feet} feet of movement climbs out of the corpse, exiting prone.`;
+  return `${inside.map((party) => party.name).join(", ")} ${inside.length === 1 ? "is" : "are"} no longer restrained by ${enemy.displayName}: ${feet} feet of movement climbs out of the corpse, exiting prone.`;
 }
 
-// A swallowed character's walk: none while the creature lives, and once it
+// The way out of a living swallower, for the refusal that says why there is
+// no walking.
+function wayOut(swallower: EncounterEnemy): string {
+  const rule = swallowRuleOf(swallower.stats);
+  const corpse = `once it dies, ${rule?.escapeFeet ?? 5} feet of movement climbs out of its corpse`;
+  return rule?.regurgitate
+    ? `${rule.regurgitate.damage} damage dealt it from inside in one turn makes it save or regurgitate them, and ${corpse}`
+    : `${corpse[0].toUpperCase()}${corpse.slice(1)}`;
+}
+
+// A swallowed creature's walk: none while the swallower lives, and once it
 // is dead the walk is the climb out (its feet of movement, exiting prone).
-// Null for a character nothing holds inside.
-export function swallowWalk(campaign: Campaign, encounter: Encounter, map: BattleMap, sheet: CharacterSheet, token: BattleToken): ToolResult | null {
-  const id = swallowerOf(sheet);
+// Null for one nothing holds inside.
+function walkOut(campaign: Campaign, encounter: Encounter, party: Party, token: BattleToken, tilesLeft: () => number): ToolResult | null {
+  const live = read(party);
+  const id = live ? swallowerOf(live) : null;
   const swallower = id ? getEnemy(id) : null;
-  if (!id || !swallower) {
+  if (!live || !swallower) {
     return null;
   }
   if (swallower.status === "alive") {
-    return { error: `${sheet.name} is swallowed inside ${swallower.displayName}, restrained there: no walking until it regurgitates them or dies.`, refused: "rules" };
+    return { error: `${live.name} is swallowed inside ${swallower.displayName}, restrained there: no walking. ${wayOut(swallower)}.`, refused: "rules" };
   }
-  const name = held(sheet, SWALLOWED) ?? SWALLOWED;
-  const feet = metaOf(sheet)[name]?.swallow?.escapeFeet ?? swallowRuleOf(swallower.stats)?.escapeFeet ?? 5;
-  const left = pcMoveBudget(campaign.id, encounter, map, sheet, token).fullTiles;
+  const name = held(live, SWALLOWED) ?? SWALLOWED;
+  const feet = live.meta[name]?.swallow?.escapeFeet ?? swallowRuleOf(swallower.stats)?.escapeFeet ?? 5;
+  const left = tilesLeft();
   const tiles = Math.ceil(feet / 5);
   if (left < tiles) {
-    return { error: `${sheet.name} needs ${feet} feet of movement to climb out of ${swallower.displayName}'s corpse and has ${left * 5} left this turn.`, refused: "rules" };
+    return { error: `${live.name} needs ${feet} feet of movement to climb out of ${swallower.displayName}'s corpse and has ${left * 5} left this turn.`, refused: "rules" };
   }
-  const at = outProne(campaign, encounter.id, sheet, swallower, [SWALLOWED, "blinded"]);
-  const moved = getTokenByRef(map.id, sheet.id);
-  if (moved) {
-    moveToken(moved.id, moved.x, moved.y, token.movedThisRound + tiles);
-  }
+  const at = outProne(campaign, encounter.id, party, swallower, [SWALLOWED, "blinded"], `climbs out of ${swallower.displayName}'s corpse`, tiles);
   return {
     ok: true,
-    name: sheet.name,
-    escaped: `${sheet.name} climbs out of ${swallower.displayName}'s corpse with ${feet} feet of movement and lands prone${at ? ` at ${at}` : ""}.`,
+    name: live.name,
+    escaped: `${live.name} climbs out of ${swallower.displayName}'s corpse with ${feet} feet of movement and lands prone${at ? ` at ${at}` : ""}.`,
   };
+}
+
+export function swallowWalk(campaign: Campaign, encounter: Encounter, map: BattleMap, sheet: CharacterSheet, token: BattleToken): ToolResult | null {
+  return walkOut(campaign, encounter, { kind: "sheet", id: sheet.id }, token, () => pcMoveBudget(campaign.id, encounter, map, sheet, token).fullTiles);
+}
+
+// A creature's row (one fighting on the party's side), with the squares its
+// own move has left.
+export function swallowRowWalk(campaign: Campaign, encounter: Encounter, row: EncounterEnemy, token: BattleToken, tilesLeft: number): ToolResult | null {
+  return walkOut(campaign, encounter, { kind: "enemy", id: row.id }, token, () => tilesLeft);
 }

@@ -158,6 +158,15 @@ export async function POST(
   const speed = turnBudget.speed;
   const budget = readied ? speedToTiles(speed) : turnBudget.tiles;
   const fullTiles = readied ? speedToTiles(speed) : turnBudget.fullTiles;
+  // Swallowed (src/lib/dm/swallow.ts): inside a living creature the route
+  // says so, and how out; out of a dead one the walk is the climb out of its
+  // corpse.
+  const climb = campaign && !readied ? swallowWalk(campaign, encounter, map, sheet, token) : null;
+  if (climb) {
+    return "error" in climb
+      ? Response.json({ error: climb.error }, { status: 409 })
+      : Response.json({ ...climb, view: buildPlayerMapView(campaignId, user.id) });
+  }
   if (speed <= 0) {
     const cause =
       sheet.conditions.join(", ") ||
@@ -166,15 +175,6 @@ export async function POST(
       { error: `You cannot move while ${cause} holds you (speed 0).` },
       { status: 409 },
     );
-  }
-  // Out of a swallower that died, the walk is the climb out of its corpse
-  // (src/lib/dm/swallow.ts); inside a living one, restrained, the speed check
-  // above already holds them.
-  const climb = campaign && !readied ? swallowWalk(campaign, encounter, map, sheet, token) : null;
-  if (climb) {
-    return "error" in climb
-      ? Response.json({ error: climb.error }, { status: 409 })
-      : Response.json({ ...climb, view: buildPlayerMapView(campaignId, user.id) });
   }
   const scene = encounter.kind === "scene";
   const turnState =

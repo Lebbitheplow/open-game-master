@@ -151,6 +151,7 @@ import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
 import { holdsFeat } from "@/lib/srd/feat-effects";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
 import { swallowTurnEnd } from "@/lib/dm/swallow";
+import { actorOfCall, withActor } from "@/lib/dm/acting-party";
 
 // Server-authoritative combat: enemies spawn from real stat blocks, their
 // HP changes only through these tools, and the initiative pointer is moved
@@ -1235,7 +1236,8 @@ export function applyEncounterCall(
   // roll answers on resume.
   callContext?: { realDiceUserIds: Set<string>; toolCallId: string | null },
 ): { result: ToolResult } {
-  const { result } = encounterCall(campaign, turn, toolName, rawArguments, sheets, sheetsById, callContext);
+  // Whose call it is, for what its damage counts toward (acting-party.ts).
+  const { result } = withActor(actorOfCall(toolName, rawArguments), () => encounterCall(campaign, turn, toolName, rawArguments, sheets, sheetsById, callContext));
   return { result: settleLegendaryFollowUp(campaign, toolName, rawArguments, result) };
 }
 

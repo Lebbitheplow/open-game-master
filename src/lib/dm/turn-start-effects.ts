@@ -18,6 +18,9 @@ import { beginTurns, endTurns } from "@/lib/dm/turn-end";
 import { burningTurnStart } from "@/lib/dm/gear-weapon-hit";
 import { laughterTurnStart } from "@/lib/dm/afflictions";
 import { swallowTurnStart } from "@/lib/dm/swallow";
+import { applyEnemyDamage } from "@/lib/dm/enemy-damage";
+import { withOpportunityTurn } from "@/lib/dm/opportunity-strike";
+import { listSheets } from "@/lib/db/sheets";
 
 export function turnStartEffects(
   campaign: Campaign,
@@ -58,7 +61,12 @@ export function turnStartEffects(
       turnStartLines.push(...sunlightTurnStart(campaign, encounter, enemy));
       turnStartLines.push(...refillLegendaryForTurn(encounter, enemy));
       // What it swallowed takes its acid (swallow.ts).
-      turnStartLines.push(...swallowTurnStart(campaign, enemy));
+      turnStartLines.push(
+        ...swallowTurnStart(campaign, enemy, (row, amount, type) => {
+          const sheets = listSheets(campaign.id);
+          withOpportunityTurn(campaign.id, (turn) => applyEnemyDamage(campaign, turn, encounter, row, amount, sheets, new Map(sheets.map((sheet) => [sheet.id, sheet])), type, { holdVictory: true }));
+        }),
+      );
     }
   }
   if (turnStartLines.length) {

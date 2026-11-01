@@ -248,8 +248,21 @@ export function handleEnemyAttack(
       refused: "rules",
     };
   }
+  // A creature on the other side (one the party dominates, a turncoat's
+  // row) has the same cover inside a swallower, and is swallowed the same.
+  const rowInside = aimed.kind === "enemy" ? swallowCover({ kind: "enemy", id: found.id }, { kind: "enemy", id: aimed.id }) : null;
+  if (rowInside) {
+    return { error: `${rowInside} Nothing was spent.`, retry: true, stop: "target" };
+  }
   if (aimed.kind === "enemy" && swallowing) {
-    return { error: `${found.displayName}'s ${swallowing.entry} swallows a character here; strike a creature's row with its own attacks. Nothing was spent.`, retry: true };
+    const refused =
+      swallowRefusal(campaign.id, found, { kind: "enemy", id: aimed.id }, swallowing) ??
+      (swallowing.maxSize && sizeRank(aimed.enemy.stats.size ?? "medium") > sizeRank(swallowing.maxSize)
+        ? `${aimed.name} is too big: ${found.displayName}'s ${swallowing.entry} takes a ${swallowing.maxSize} or smaller creature.`
+        : null);
+    if (refused) {
+      return { error: `${refused} Nothing was spent.`, retry: true };
+    }
   }
   if (aimed.kind === "enemy" && cast) {
     return { error: `${cast.use.name} is cast at a character here; strike a creature's row with its own attacks. Nothing was spent.`, retry: true };
@@ -267,9 +280,10 @@ export function handleEnemyAttack(
       ...(args.attack ? { attack: args.attack } : {}),
       // The claim is held to the rule the character path holds (enemy-swing-odds.ts).
       advantage: claimedAdvantage({ requested: args.advantage, source: args.advantageSource, reason: args.advantageReason, byAi: turn.actor === "ai" }).requested,
-      single: bonus || hasteSwing || Boolean(lash) || conditionTurnShape(found.conditions).slowed,
+      single: bonus || hasteSwing || Boolean(lash) || Boolean(swallowing) || conditionTurnShape(found.conditions).slowed,
       bonus,
       haste: hasteSwing,
+      ...(swallowing ? { swallowing: { maxSize: swallowing.maxSize } } : {}),
       sheets,
       sheetsById,
     });
@@ -291,7 +305,7 @@ export function handleEnemyAttack(
   }
   if (swallowing) {
     const refused =
-      swallowRefusal(campaign.id, found, target, swallowing) ??
+      swallowRefusal(campaign.id, found, { kind: "sheet", id: target.id }, swallowing) ??
       (swallowing.maxSize && sizeRank(sizeForRace(target.race)) > sizeRank(swallowing.maxSize)
         ? `${target.name} is too big: ${found.displayName}'s ${swallowing.entry} takes a ${swallowing.maxSize} or smaller creature.`
         : null);
@@ -535,6 +549,15 @@ export function handleEnemyAttack(
   planned.forEach((plannedAttack: EnemyAttack, index) => {
     let attack = plannedAttack;
     if (dropped) {
+      return;
+    }
+    // Swallowed by an earlier swing of this routine (or by anything since
+    // the call began): total cover from outside, the creature's own swings
+    // included (swallow.ts).
+    const inside = index > 0 ? swallowCover({ kind: "enemy", id: found.id }, { kind: "sheet", id: target.id }) : null;
+    if (inside) {
+      swings.push({ attack: attack.name, skipped: inside });
+      dropped = true;
       return;
     }
     if (attack.onlyIfHit && !previousHit) {

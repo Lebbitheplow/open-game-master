@@ -247,7 +247,7 @@ export function resolveOnHit(
   // creature, and from here on its acid, the cover, the regurgitation and its
   // corpse are the engine's (src/lib/dm/swallow.ts), read from the block.
   if (rider.swallow && !saved && (!rider.maxSize || sizeRank(characterSize(target)) <= sizeRank(rider.maxSize))) {
-    const swallowed = swallowCreature(campaign, turn.id, enemy, target, swallowRuleOf(enemy.stats, attack.name));
+    const swallowed = swallowCreature(campaign, turn.id, enemy, { kind: "sheet", id: target.id }, swallowRuleOf(enemy.stats, attack.name));
     if ("swallowed" in swallowed) {
       out.riderCondition = [...((out.riderCondition as string[] | undefined) ?? []), "blinded", "restrained"];
       out.swallowed = swallowed.swallowed;

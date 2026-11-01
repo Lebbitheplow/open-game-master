@@ -76,6 +76,7 @@ import { dragLandings, enemyDrag } from "@/lib/dm/drag-move";
 import { walkCostFactor } from "@/lib/dm/drag";
 import { flightOf, markSqueezing } from "@/lib/dm/token-state";
 import { livePurchase } from "@/lib/dm/legendary-logic";
+import { swallowRowWalk } from "@/lib/dm/swallow";
 import { toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { findNamed, textKey } from "@/lib/language/text-logic";
 
@@ -623,6 +624,12 @@ export function handleMoveToken(
   // stands, fears and Disengages nothing.
   const move = resolved.kind === "enemy" && resolved.enemy ? enemyMoveBudget(encounter, resolved.enemy, resolved.token) : null;
   const walking = move !== null && !args.forced;
+  // Swallowed, as a character is (swallow.ts): no walk inside a living
+  // creature, and out of a dead one the walk is the climb out of its corpse.
+  const climb = walking && resolved.enemy ? swallowRowWalk(campaign, encounter, resolved.enemy, resolved.token, move?.tilesLeft ?? 0) : null;
+  if (climb) {
+    return climb;
+  }
   let standCost = 0;
   let aggressiveCut = false;
   let approachCut = false;

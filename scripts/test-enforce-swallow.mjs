@@ -43,17 +43,36 @@ const kara = world.addHero({
   equipment: [{ name: "Greatsword", qty: 1, equipped: true }],
 });
 const bram = world.addHero({ name: "Bram", maxHp: 60 });
+const vex = world.addHero({
+  name: "Vex", class: "wizard", level: 5, maxHp: 60,
+  abilities: { int: 17, dex: 14 },
+  spellcasting: { ability: "int", slots: { 1: { max: 4, used: 0 }, 2: { max: 3, used: 0 }, 3: { max: 2, used: 0 } }, known: [], prepared: ["Fireball"], cantrips: [], spellbook: ["Fireball"] },
+});
+
+// "Revert this turn" (src/lib/dm/turn-revert.ts), as the table's owner.
+async function revertTurn(turnId) {
+  const handler = await world.route("campaigns/[campaignId]/audit/revert-turn");
+  world.signIn(world.owner);
+  const response = await handler.POST(
+    new Request("http://odm.test/revert", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ turnId, confirm: true }) }),
+    { params: Promise.resolve({ campaignId: world.campaignId }) },
+  );
+  return { status: response.status, body: await response.json().catch(() => ({})) };
+}
 
 // Kara on her turn beside one SRD creature (and a goblin far off).
 async function facing(title, extra = 0) {
   await kit.endFight();
-  await kit.fight(1 + extra, { heroFaces: { [kara.id]: 20, [bram.id]: 2 }, enemyFace: 1 });
+  // Kara first, the creatures next, the others last: Kara's End Turn walks
+  // the order past the creatures' turns.
+  await kit.fight(1 + extra, { heroFaces: { [kara.id]: 20, [bram.id]: 2, [vex.id]: 3 }, enemyFace: 10 });
   const [foe, ...others] = world.enemies();
   const stats = srd(title);
   kit.setEnemy(foe.id, { ac: stats.ac, maxHp: stats.maxHp, stats });
   kit.place(kara.id, 5, 5);
   kit.place(foe.id, 6, 5);
   kit.place(bram.id, 14, 12);
+  kit.place(vex.id, 12, 12);
   others.forEach((other, index) => kit.place(other.id, 1 + index, 13));
   kit.giveTurn(kara.id);
   return { foe: world.enemies().find((enemy) => enemy.id === foe.id), others };
@@ -152,7 +171,7 @@ await test("A behir's Swallow: its bite at the creature it grapples, one creatur
   assert.match(second.error ?? "", /already has a creature swallowed, and can have only one at a time/);
   // Inside a living behir there is no walk.
   const stuck = await walk(2, 5);
-  assert.match(stuck.body.error ?? JSON.stringify(stuck.body), /cannot move while .*restrained/);
+  assert.match(stuck.body.error ?? JSON.stringify(stuck.body), /Kara is swallowed inside .*no walking/);
   // It dies.
   const slain = await world.invoke("apply_damage", { enemyId: foe.id, amount: 200, reason: "the test's blow" });
   assert.match(JSON.stringify(slain), /no longer restrained by .*15 feet of movement climbs out of the corpse/);
@@ -178,6 +197,105 @@ await test("A kraken's bite swallows only the creature it grapples, and asks no 
   world.clearDice();
   assert.match(said(held, "swallowed"), /Kara is swallowed/);
   assert.ok(holds(kara.id, "swallowed"));
+});
+
+await test("A routine's later swing at a creature an earlier one swallowed is refused with total cover, and nothing outside reaches it", async () => {
+  const { foe } = await facing("Purple Worm");
+  world.dice(19, 1, 1, 1, 1, 19, 1, 1, 1);
+  const out = await bite(foe, kara);
+  world.clearDice();
+  assert.equal(out.ok, true, JSON.stringify(out));
+  const swings = out.result.swings ?? [];
+  assert.match(swings[0]?.swallowed ?? "", /Kara is swallowed/);
+  assert.match(swings[1]?.skipped ?? JSON.stringify(swings), /Kara is inside .*total cover against attacks and other effects from outside it/);
+  assert.equal(swings[1]?.hit, undefined, "the second bite never rolled");
+});
+
+await test("A swallow in a turn goes back with Revert this turn: free, held as before, unharmed", async () => {
+  const { foe } = await facing("Behir", 1);
+  grapple(kara.id, foe.id);
+  const hp = world.sheet(kara.id).currentHp;
+  world.dice(19, 1, 1, 1);
+  const swallowed = await bite(foe, kara, "Swallow");
+  world.clearDice();
+  assert.ok(holds(kara.id, "swallowed") && world.sheet(kara.id).currentHp < hp);
+  const back = await revertTurn(swallowed.turnId);
+  assert.equal(back.status, 200, JSON.stringify(back.body));
+  for (const name of ["swallowed", "blinded", "restrained"]) {
+    assert.ok(!holds(kara.id, name), `no longer ${name}`);
+  }
+  assert.ok(holds(kara.id, "grappled"), "held as before");
+  assert.equal(world.sheet(kara.id).currentHp, hp, "unharmed");
+});
+
+await test("A regurgitation at a turn's end goes back with that turn's revert: inside again, not prone, where she was", async () => {
+  const { foe } = await facing("Purple Worm");
+  world.dice(19, 1, 1, 1, 1);
+  await bite(foe, kara);
+  world.clearDice();
+  await kit.swing(kara.id, foe.id, [19, 19, 6, 6]);
+  await kit.swing(kara.id, foe.id, [19, 19, 6, 6]);
+  const at = { ...kit.token(kara.id) };
+  world.dice(2);
+  const ended = await world.invoke("end_turn", { characterId: kara.id });
+  world.clearDice();
+  assert.ok(!holds(kara.id, "swallowed") && holds(kara.id, "prone"), "regurgitated");
+  const back = await revertTurn(ended.turnId);
+  assert.equal(back.status, 200, JSON.stringify(back.body));
+  assert.ok(holds(kara.id, "swallowed") && holds(kara.id, "blinded") && holds(kara.id, "restrained"), "inside again");
+  assert.ok(!holds(kara.id, "prone"), "not prone");
+  assert.deepEqual([kit.token(kara.id).x, kit.token(kara.id).y], [at.x, at.y], "where she was");
+});
+
+await test("Damage from inside counts from whatever deals it: Vex's Fireball from inside the worm makes it save and regurgitate her", async () => {
+  const { foe } = await facing("Purple Worm");
+  kit.place(vex.id, 5, 6);
+  world.dice(19, 1, 1, 1, 1);
+  const swallowed = await bite(foe, vex);
+  world.clearDice();
+  assert.ok(holds(vex.id, "swallowed"), JSON.stringify(swallowed));
+  kit.giveTurn(vex.id);
+  world.dice(1, 6, 6, 6, 6, 6, 6, 6, 6);
+  const fire = await world.invoke("aoe_damage", { casterCharacterId: vex.id, spell: "Fireball", level: 3, enemyIds: [foe.id] });
+  world.clearDice();
+  assert.equal(fire.ok, true, JSON.stringify(fire));
+  assert.ok(foe.currentHp - kit.enemy(foe.id).currentHp >= 30, `thirty from inside: ${JSON.stringify(fire.result)}`);
+  world.dice(2);
+  await world.invoke("end_turn", { characterId: vex.id });
+  world.clearDice();
+  assert.ok(!holds(vex.id, "swallowed") && holds(vex.id, "prone"), "regurgitated by the fire inside it");
+});
+
+await test("A creature fighting on the party's side is swallowed as a hero is: its row inside, total cover, the acid at the worm's turn start", async () => {
+  const { foe, others } = await facing("Purple Worm", 1);
+  const [goblin] = others;
+  kit.setEnemy(goblin.id, { conditions: ["charmed"], conditionMeta: { charmed: { spell: "Dominate Person", source: kara.id } } });
+  kit.place(goblin.id, 5, 6);
+  world.dice(19, 1, 1, 1, 1);
+  const out = await world.invoke("enemy_attack", { enemyId: foe.id, targetCharacterId: goblin.id, attack: "Bite" });
+  world.clearDice();
+  assert.equal(out.ok, true, JSON.stringify(out));
+  assert.match(said(out, "swallowed") ?? JSON.stringify(out), /is swallowed/);
+  const row = () => kit.enemy(goblin.id);
+  assert.ok(["swallowed", "blinded", "restrained"].every((name) => row().conditions.includes(name)), row().conditions.join(", "));
+  kit.freshRound();
+  const sting = await world.invoke("enemy_attack", { enemyId: foe.id, targetCharacterId: goblin.id, attack: "Tail Stinger" });
+  assert.match(sting.error ?? JSON.stringify(sting), /is inside .*total cover against attacks and other effects from outside it/);
+  const hp = row().currentHp;
+  world.dice(2, 2, 2, 2, 2, 2);
+  await world.invoke("end_turn", { characterId: kara.id });
+  world.clearDice();
+  assert.ok(row().currentHp < hp, "the acid at the worm's turn start");
+});
+
+await test("The board's move says she is swallowed and how out, not that her speed is 0", async () => {
+  const { foe } = await facing("Purple Worm");
+  world.dice(19, 1, 1, 1, 1);
+  await bite(foe, kara);
+  world.clearDice();
+  const stuck = await walk(2, 5);
+  assert.equal(stuck.status, 409);
+  assert.match(stuck.body.error, /Kara is swallowed inside .*no walking\. 30 damage dealt it from inside in one turn makes it save or regurgitate them, and once it dies, 20 feet of movement climbs out of its corpse/);
 });
 
 finish();

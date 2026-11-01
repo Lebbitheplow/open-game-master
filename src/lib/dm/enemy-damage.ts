@@ -52,7 +52,7 @@ import { getClock } from "@/lib/db/clock";
 import { outcomeShare, wakeHoursOf } from "@/lib/dm/foe-carry-logic";
 import { releaseHeldSteps } from "@/lib/dm/romance-held";
 import { finishCastingsAtFightEnd } from "@/lib/dm/long-casting";
-import { freeFromCorpse } from "@/lib/dm/swallow";
+import { freeFromCorpse, noteBlowFromInside } from "@/lib/dm/swallow";
 
 // The single server-side path for damage landing on an enemy. Used by the
 // damage_enemy tool AND by damage rolls carrying targetEnemyId, which the
@@ -560,6 +560,9 @@ export function applyEnemyDamage(
       base.released = `${freed.join("; ")}: no longer held by ${updated.displayName}.`;
     }
   }
+  // Damage the acting creature deals the one that swallowed it, from
+  // whatever it did (acting-party.ts), counts toward its regurgitation.
+  noteBlowFromInside(campaign, encounter.id, enemy.id, Math.max(0, enemy.currentHp - updated.currentHp));
   // One that dies frees what it swallowed, who climb out of the corpse
   // (src/lib/dm/swallow.ts).
   if (updated.status === "dead") {

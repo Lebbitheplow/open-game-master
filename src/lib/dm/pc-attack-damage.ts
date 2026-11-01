@@ -15,7 +15,7 @@ import { ragingMeleeBonus, type AttackProfile } from "@/lib/dm/attack-logic";
 import { damageParts, type TypedRider } from "@/lib/dm/damage-parts";
 import type { BlowSource } from "@/lib/dm/damage-logic";
 import { effectOutcome } from "@/lib/dm/effect-tools";
-import { getEnemy, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
+import type { Encounter, EncounterEnemy } from "@/lib/db/encounters";
 import { DAMAGE_TYPES } from "@/lib/dm/condition-logic";
 import { subclassFeatureDescription } from "@/lib/srd/features";
 import { authoredSneakEdge } from "@/lib/dm/authored-hooks";
@@ -37,7 +37,6 @@ import { holdsFeature, isNamed } from "@/lib/srd/feature-names";
 import { subclassNamed } from "@/lib/srd/subclass-name";
 import { authoredDamageAbility } from "@/lib/srd/authored-effects-more";
 import { alignmentIs } from "@/lib/srd/alignment";
-import { noteBlowFromInside } from "@/lib/dm/swallow";
 
 export type FeatureRider = CombatRiders["damageRiders"][number];
 
@@ -439,7 +438,6 @@ export function applyHitDamage(input: {
     ignoreResistanceBy: plan.elementalAdept ? "Elemental Adept" : "Poisoner",
     concentrationDisadvantage: plan.mageSlayer,
     blow: blowSource(plan),
-    by: plan.sheet.id,
   });
 }
 
@@ -480,9 +478,6 @@ export function landBlow(input: {
   holdVictory?: boolean;
   // A spell's damage, or a good wielder's weapon (damage-logic.ts).
   blow?: BlowSource;
-  // The character striking: a blow from inside the creature that swallowed
-  // them counts toward its regurgitation (src/lib/dm/swallow.ts).
-  by?: string;
 }): Record<string, unknown> {
   const { campaign, turn, encounter, enemy, sheets, sheetsById, profile, damageOutcome, dealt, crit, critExtraDice, magical } = input;
   // A silvered or adamantine weapon passes the resistances that name it.
@@ -548,9 +543,6 @@ export function landBlow(input: {
       crit,
       concentrationDisadvantage: input.concentrationDisadvantage === true,
     });
-  }
-  if (input.by && dealt > 0 && !isSheetFoe(enemy)) {
-    noteBlowFromInside(enemy.id, input.by, Math.max(0, enemy.currentHp - (getEnemy(enemy.id)?.currentHp ?? enemy.currentHp)));
   }
   return applied;
 }
