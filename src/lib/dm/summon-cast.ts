@@ -13,7 +13,7 @@ import type { Campaign } from "@/lib/db/campaigns";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { computeSheetDerived, spellAttackFor } from "@/lib/srd";
 import { activeAuthored } from "@/lib/srd/authored-effects";
-import { summonPlan, type SummonSpell } from "@/lib/srd/summon-spells";
+import { reassertsControl, summonPlan, type SummonSpell } from "@/lib/srd/summon-spells";
 import type { SummonForm } from "@/lib/srd/summon-forms";
 import { attackSummary } from "@/lib/srd/creature-attacks";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -85,7 +85,7 @@ export function castSummon(
   const slotLevel = Math.max(spell.level, args.level ?? spell.level);
   // Animate Dead, Create Undead: a casting may reassert control over the
   // undead it already made, rather than making new ones.
-  if (spell.reassert && textKey(args.variant ?? "") === "reassert control") {
+  if (reassertsControl(spell, args.variant)) {
     return reassertControl(campaign, args, slotLevel, cast);
   }
   const plan = summonPlan(spell, slotLevel, args.variant ?? "", args.count);

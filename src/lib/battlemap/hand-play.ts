@@ -21,6 +21,7 @@ import { areaArgs, describePick, hasPick, type AreaPick, type HandArea } from "@
 import type { HandShare } from "@/lib/battlemap/hand-intent";
 import { textKey } from "@/lib/language/text-logic";
 import { grantedRideMark } from "@/lib/battlemap/hand-granted";
+import { summonCount, summonPhrase } from "@/lib/battlemap/hand-summon";
 import type { BoardControlId, BoardPanel } from "@/lib/addons/board-bridge";
 
 // Who a card is aimed at. `ac` only ever arrives in the DM's projection; a
@@ -44,6 +45,8 @@ export type HandChoices = {
   trigger?: string;
   // The card's one pick (HandCard.choice): a spell's form, a readied spell.
   choice?: string;
+  // How many a summoning card brings of the creature picked (HandCard.summon).
+  count?: number;
   // Where an area spell is laid (HandCard.area), picked on the board.
   area?: AreaPick;
   // The darts, rays or creatures given to creatures beside the one aimed at
@@ -100,7 +103,9 @@ export function sharePhrase(card: HandCard, list: HandShare[]): string {
 
 export function handReady(card: HandCard, aim: HandAim | null, choices: HandChoices = {}): boolean {
   return (!(card.target === "enemy" || card.target === "ally") || aim !== null || hasPick(card.area, choices.area ?? {}))
-    && (card.asks !== "trigger" || Boolean(choices.trigger?.trim()));
+    && (card.asks !== "trigger" || Boolean(choices.trigger?.trim()))
+    // A summoning card goes with its creature picked (hand-summon.ts).
+    && (!card.summon || Boolean(chosenValue(card, choices)));
 }
 
 // The value a card's pick sends: the player's, else the card's fallback,
@@ -116,7 +121,9 @@ export function chosenValue(card: HandCard, choices: HandChoices = {}): string |
 function chosenLabel(card: HandCard, choices: HandChoices): string | null {
   const value = chosenValue(card, choices);
   if (!value) return null;
-  return card.choice?.options.find((option) => option.value === value)?.label ?? value;
+  const label = card.choice?.options.find((option) => option.value === value)?.label ?? value;
+  // A summoning card's creature with its number: "Wolf, 8 of them".
+  return card.summon ? summonPhrase(label, summonCount(card, value, choices.count)) : label;
 }
 
 export type PreviewRow = {
@@ -224,6 +231,9 @@ export function previewRows(
   }
   if (card.damageType) rows.push({ key: "Type", value: card.damageType, tone: "muted" });
   if (card.condition) rows.push({ key: "Applies", value: card.condition, tone: "applies" });
+  // What a summoning card brings, once its creature is picked.
+  const brings = card.summon ? chosenLabel(card, choices) : null;
+  if (brings) rows.push({ key: "Brings", value: brings, tone: "plain" });
   rows.push({ key: "Cost", value: card.resource ? `${costLabel(card.cost)} · ${card.resource}` : costLabel(card.cost), tone: "cost", cost: card.cost });
   return rows;
 }
@@ -417,6 +427,8 @@ export function intentBody(
           ? { readyAction: value.slice(1) }
           : { readySpell: value, ...(card.choice.levels?.[value] ? { readyLevel: card.choice.levels[value] } : {}) }
         : { [card.choice.arg]: value };
+  // A summoning card's number rides as cast_buff's own `count` (issue 685).
+  const count = card.summon && value ? summonCount(card, value, choices.count) : null;
   const area = card.area && choices.area ? areaArgs(card.area, choices.area) : {};
   // Sent even for one creature taking every dart or ray, so the engine
   // throws them all rather than one (issue 570).
@@ -426,6 +438,7 @@ export function intentBody(
     ...attack,
     ...trigger,
     ...pick,
+    ...(count ? { count } : {}),
     ...area,
     ...(shared.length ? { shares: shared } : {}),
     ...(aim ? { targetId: aim.id, targetName: aim.name, targetKind: aim.kind } : {}),

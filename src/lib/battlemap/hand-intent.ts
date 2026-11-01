@@ -36,8 +36,12 @@ export const handIntentExtras = {
   // A reaction card: the feature or reaction spell use_reaction resolves.
   feature: text(80).optional(),
   // A resource's variant: "flurry of blows", "patient defense", "step of the
-  // wind"; a restoration spell's condition to end (cast_buff variant).
+  // wind"; a restoration spell's condition to end (cast_buff variant); the
+  // creature a summoning spell calls ("Wolf", issue 685).
   variant: text(40).optional(),
+  // How many of that creature, cast_buff's `count`: one of the numbers the
+  // spell lets its caster choose (Conjure Animals' one, two, four or eight).
+  count: z.number().int().min(1).max(40).optional(),
   // A save spell's chosen form, cast_at_enemy's `condition`: Command's word,
   // Eyebite's form, Bestow Curse's curse, "armor" for Heat Metal.
   condition: text(40).optional(),
@@ -110,6 +114,7 @@ export type HandAttackArgs = {
 export type HandIntentExtras = {
   feature?: string;
   variant?: string;
+  count?: number;
   condition?: string;
   bonus?: boolean;
   trigger?: string;
@@ -134,6 +139,7 @@ export function handExtraArgs(intent: HandIntentExtras): string[] {
   const args: string[] = [];
   if (intent.feature) args.push(`feature=${intent.feature}`);
   if (intent.variant) args.push(`variant=${intent.variant}`);
+  if (intent.count) args.push(`count=${intent.count}`);
   if (intent.condition) args.push(`condition=${intent.condition}`);
   if (intent.bonus) args.push("bonus=true");
   if (intent.trigger) args.push(`trigger=${intent.trigger}`);

@@ -6,7 +6,8 @@
 // them is the same one.
 //
 // - A spell that makes creatures: cast_buff brings them in with their stat
-//   blocks (summon-cast.ts), the creature named in `variant`.
+//   blocks (summon-cast.ts), the creature named in `variant` and how many in
+//   `count`, both picked on the card (src/lib/battlemap/hand-summon.ts).
 // - A spell with nothing to roll (a utility spell): use_spell_slot spends the
 //   slot and starts its concentration, which is all the engine does for it.
 // - A lasting area laid on the battle map (Web, Moonbeam, Fog Cloud): laid
@@ -48,14 +49,24 @@ function lastingLaid(intent: MessageIntent, pick: LastingPick): boolean {
 }
 
 // A spell that makes creatures, cast whole: the creature is the card's
-// variant, or the only one the spell makes (Unseen Servant). Conjure
-// Animals' beasts are the GM's to choose (SRD 5.1), so a card that names
-// none stays with them.
+// variant, or the only one the spell makes (Unseen Servant), and its number
+// the card's count (the most the slot allows when it names none). The Hand
+// asks for both (issue 685); a card that names no creature (an older
+// screen, an agent) stays with the GM, who picks it.
 export function summonCall(intent: MessageIntent, characterId: string, context: DirectContext): DirectCall | null {
   if (!intent.spell || !context.summon || (context.summon === "choose" && !intent.variant)) {
     return null;
   }
-  return { name: "cast_buff", args: { characterId, spell: intent.spell, ...level(intent), ...(intent.variant ? { variant: intent.variant } : {}) } };
+  return {
+    name: "cast_buff",
+    args: {
+      characterId,
+      spell: intent.spell,
+      ...level(intent),
+      ...(intent.variant ? { variant: intent.variant } : {}),
+      ...(intent.count ? { count: intent.count } : {}),
+    },
+  };
 }
 
 // A lasting area's card. Undefined for a buff that lays one (Spirit

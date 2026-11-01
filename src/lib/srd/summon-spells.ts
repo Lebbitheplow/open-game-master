@@ -5,7 +5,7 @@
 import { findSummonForm, summonFormsHolding, summonFormsOf, type SummonForm } from "@/lib/srd/summon-forms";
 import { formatCr, formList } from "@/lib/srd/beast-forms";
 import { holdingHint, type ToolError } from "@/lib/dm/tool-errors";
-import { textKey, words } from "@/lib/language/text-logic";
+import { compareNames, textKey, words } from "@/lib/language/text-logic";
 
 const HOUR = 600;
 const DAY = 14400;
@@ -176,6 +176,13 @@ export function summonSlotProblem(spell: string): ToolError | null {
     : null;
 }
 
+// Animate Dead and Create Undead may be cast to hold the undead already made
+// for another day rather than to make more (cast_buff variant "reassert
+// control", src/lib/dm/summon-cast.ts).
+export function reassertsControl(spell: SummonSpell, variant: string | undefined): boolean {
+  return Boolean(spell.reassert) && textKey(variant ?? "") === "reassert control";
+}
+
 export function summonSpellFor(spell: string): SummonSpell | null {
   const wanted = textKey(spell);
   return SUMMON_SPELLS.find((entry) => textKey(entry.name) === wanted) ?? null;
@@ -230,7 +237,6 @@ export function summonPlan(
   formName: string,
   wanted?: number,
 ): SummonPlan | ToolError {
-  const above = Math.max(0, slotLevel - spell.level);
   const { kind, rest: named } = chosenKind(spell, formName.trim());
   const found = named ? findSummonForm(named) : spell.forms?.length === 1 ? findSummonForm(spell.forms[0]) : null;
   if (!found) {
@@ -247,34 +253,105 @@ export function summonPlan(
   if (spell.types && !spell.types.includes(form.type)) {
     return { error: `${spell.name} calls a ${spell.types.join(" or ")}; a ${form.name} is a ${form.type}. Nothing was spent.`, retry: true };
   }
-  let most = 1;
-  if (spell.byCr) {
-    const tier = [...spell.byCr].reverse().find(([cr]) => form.cr <= cr);
-    if (!tier) {
-      return { error: `${spell.name} calls creatures of challenge rating ${formatCr(spell.byCr[0][0])} or lower; a ${form.name} is CR ${formatCr(form.cr)}. Nothing was spent.`, retry: true };
-    }
-    const factor = [...(spell.multiplier ?? [])].reverse().find(([slot]) => slotLevel >= slot)?.[1] ?? 1;
-    most = tier[1] * factor;
-  } else if (spell.maxCr !== undefined) {
+  if (spell.byCr && form.cr > spell.byCr[0][0]) {
+    return { error: `${spell.name} calls creatures of challenge rating ${formatCr(spell.byCr[0][0])} or lower; a ${form.name} is CR ${formatCr(form.cr)}. Nothing was spent.`, retry: true };
+  }
+  if (!spell.byCr && spell.maxCr !== undefined) {
     const ceiling = crCeiling(spell, slotLevel) ?? spell.maxCr;
     if (form.cr > ceiling) {
       return { error: `${spell.name} from a level ${slotLevel} slot calls a creature of challenge rating ${formatCr(ceiling)} or lower; a ${form.name} is CR ${formatCr(form.cr)}. Nothing was spent.`, retry: true };
     }
-  } else if (spell.countByForm) {
+  }
+  const row = spell.bySlot && !spell.countByForm ? slotRow(spell, slotLevel) : null;
+  if (row && !(row[form.name] > 0)) {
+    return { error: `${spell.name} from a level ${slotLevel} slot makes ${Object.entries(row).map(([name, count]) => `${count} ${name.toLowerCase()}s`).join(" or ")}; not a ${form.name}. Nothing was spent.`, retry: true };
+  }
+  const most = summonCounts(spell, slotLevel, form).at(-1) ?? 1;
+  const count = wanted && wanted > 0 ? Math.min(wanted, most) : most;
+  return { form, count: Math.max(1, count), spell };
+}
+
+// Create Undead: what a casting from this slot makes, by form.
+function slotRow(spell: SummonSpell, slotLevel: number): Record<string, number> {
+  return [...(spell.bySlot ?? [])].reverse().find(([slot]) => slotLevel >= slot)?.[1] ?? {};
+}
+
+// The numbers of this form one casting from `slotLevel` may bring, fewest
+// first, or none when that slot cannot call it. Conjure Animals' caster
+// picks one of the options the spell prints (one beast of CR 2 or lower,
+// two of CR 1, four of CR 1/2, eight of CR 1/4, twice as many from a 5th
+// level slot), so a wolf comes one, two, four or eight at a time; a spell
+// that says "up to" (Giant Insect's ten centipedes, Animate Objects' ten
+// objects, Create Undead's three corpses) or makes more from a higher slot
+// (Animate Dead) brings any number up to its most. The last number is what
+// summonPlan brings when no count is asked, and the Hand's picker offers
+// these (src/lib/battlemap/hand-summon.ts), so the two cannot disagree.
+export function summonCounts(spell: SummonSpell, slotLevel: number, form: Pick<SummonForm, "name" | "cr" | "type">): number[] {
+  const above = Math.max(0, slotLevel - spell.level);
+  if (spell.forms && !spell.forms.includes(form.name)) {
+    return [];
+  }
+  if (spell.types && !spell.types.includes(form.type)) {
+    return [];
+  }
+  if (spell.byCr) {
+    const factor = [...(spell.multiplier ?? [])].reverse().find(([slot]) => slotLevel >= slot)?.[1] ?? 1;
+    const counts = spell.byCr.filter(([cr]) => form.cr <= cr).map(([, count]) => count * factor);
+    return [...new Set(counts)].sort((a, b) => a - b);
+  }
+  if (spell.maxCr !== undefined) {
+    return form.cr <= (crCeiling(spell, slotLevel) ?? spell.maxCr) ? [1] : [];
+  }
+  let most: number;
+  if (spell.countByForm) {
     most = spell.countByForm[form.name] ?? 1;
   } else if (spell.bySlot) {
-    const row = [...spell.bySlot].reverse().find(([slot]) => slotLevel >= slot)?.[1] ?? {};
-    const allowed = row[form.name];
-    if (!allowed) {
-      return { error: `${spell.name} from a level ${slotLevel} slot makes ${Object.entries(row).map(([name, count]) => `${count} ${name.toLowerCase()}s`).join(" or ")}; not a ${form.name}. Nothing was spent.`, retry: true };
-    }
-    most = allowed;
+    most = slotRow(spell, slotLevel)[form.name] ?? 0;
   } else if (spell.objectBudget) {
     const cost = spell.objectBudget.cost[form.name] ?? 1;
     most = Math.floor((spell.objectBudget.base + spell.objectBudget.perSlotLevel * above) / cost);
   } else {
     most = (spell.base ?? 1) + (spell.perSlotLevel ?? 0) * above;
   }
-  const count = wanted && wanted > 0 ? Math.min(wanted, most) : most;
-  return { form, count: Math.max(1, count), spell };
+  return Array.from({ length: Math.max(0, most) }, (_, index) => index + 1);
+}
+
+// What the Hand's creature picker reads for a summoning spell (the route
+// GET /api/campaigns/[id]/summons): every creature the spell can call from
+// some slot, from the same stat blocks summonPlan spawns, with the numbers
+// each slot level may bring. The forms a spell names keep its own order;
+// the ones it calls by challenge rating come strongest first, then by name.
+export type SummonCatalogueForm = {
+  name: string;
+  type: string;
+  cr: number;
+  ac: number;
+  hp: number;
+  // By slot level ("3"), the numbers it may come in, fewest first.
+  counts: Record<string, number[]>;
+};
+
+// `calls`: whether the spell names its forms (Giant Insect's four insects)
+// or calls any creature of its kinds up to a challenge rating (Conjure
+// Animals), which the picker lists under their ratings.
+export type SummonCatalogue = { spell: string; calls: "forms" | "rating"; forms: SummonCatalogueForm[] };
+
+export function summonCatalogue(spell: SummonSpell): SummonCatalogue {
+  const candidates = spell.forms
+    ? spell.forms.map((name) => findSummonForm(name)).filter((form): form is SummonForm => form !== null)
+    : summonFormsOf(spell.types ?? [], crCeiling(spell, 9) ?? Infinity).sort((a, b) => b.cr - a.cr || compareNames(a.name, b.name));
+  const forms: SummonCatalogueForm[] = [];
+  for (const form of candidates) {
+    const counts: Record<string, number[]> = {};
+    for (let slot = Math.max(1, spell.level); slot <= 9; slot += 1) {
+      const allowed = summonCounts(spell, slot, form);
+      if (allowed.length) {
+        counts[String(slot)] = allowed;
+      }
+    }
+    if (Object.keys(counts).length) {
+      forms.push({ name: form.name, type: form.type, cr: form.cr, ac: form.ac, hp: form.hp, counts });
+    }
+  }
+  return { spell: spell.name, calls: spell.forms ? "forms" : "rating", forms };
 }

@@ -7,6 +7,7 @@ import { normalizeSpellMech } from "@/lib/homebrew/gear";
 import { factsFromRow } from "@/lib/srd/spell-facts";
 import { scopeQuery } from "@/lib/content-scope";
 import { textKey } from "@/lib/language/text-logic";
+import type { SummonCatalogue } from "@/lib/srd/summon-spells";
 
 // What the content pack says about the spells on a sheet, for the Hand's
 // spell cards: level, casting time, range and the prose the mechanics are
@@ -120,4 +121,59 @@ export function useHandSpells(sheet: CharacterSheet | null): Record<string, Spel
     // `version` is the cache's change signal.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wanted, scope, version]);
+}
+
+// The creatures each summoning spell on the sheet can call (issue 685), for
+// its card's creature picker (src/lib/battlemap/hand-summon.ts): asked of
+// the table's server (GET /api/campaigns/[id]/summons), which answers from
+// the stat blocks the cast spawns, a workshop copy as the spell it runs as.
+// Once per spell per table per page; nothing is asked where the host has no
+// picker (`enabled`), and a spell that makes no creatures is remembered as
+// such. Keyed by textKey of the spell's name as the sheet holds it.
+const summonCache = new Map<string, SummonCatalogue | null>();
+const SUMMON_BATCH = 60;
+
+export function useHandSummons(sheet: CharacterSheet | null, enabled: boolean): Record<string, SummonCatalogue> {
+  const campaignId = sheet?.campaignId ?? null;
+  const names = useMemo(() => (sheet && enabled ? spellsToLookUp(sheet) : []), [sheet, enabled]);
+  const wanted = names.join("\n");
+  const [version, setVersion] = useState(0);
+
+  useEffect(() => {
+    if (!campaignId) return;
+    const missing = wanted.split("\n").filter((name) => name && !summonCache.has(`${campaignId}|${textKey(name)}`));
+    if (!missing.length) return;
+    let live = true;
+    const batches: string[][] = [];
+    for (let at = 0; at < missing.length; at += SUMMON_BATCH) batches.push(missing.slice(at, at + SUMMON_BATCH));
+    void Promise.all(
+      batches.map(async (batch) => {
+        try {
+          const query = batch.map((name) => `spell=${encodeURIComponent(name)}`).join("&");
+          const response = await fetch(`/api/campaigns/${campaignId}/summons?${query}`);
+          if (!response.ok) return;
+          const body = (await response.json()) as { summons?: Record<string, SummonCatalogue> };
+          for (const name of batch) summonCache.set(`${campaignId}|${textKey(name)}`, body.summons?.[name] ?? null);
+        } catch {
+          // Offline or refused: left out of the cache so a later turn retries.
+        }
+      }),
+    ).then(() => {
+      if (live) setVersion((current) => current + 1);
+    });
+    return () => {
+      live = false;
+    };
+  }, [wanted, campaignId]);
+
+  return useMemo(() => {
+    const out: Record<string, SummonCatalogue> = {};
+    for (const name of wanted.split("\n")) {
+      const found = campaignId ? summonCache.get(`${campaignId}|${textKey(name)}`) : null;
+      if (found) out[textKey(name)] = found;
+    }
+    return out;
+    // `version` is the cache's change signal.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wanted, campaignId, version]);
 }

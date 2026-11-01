@@ -19,6 +19,9 @@ import { canAct, type ActKind } from "@/lib/dm/can-act";
 import { freshBudget, spendAction } from "@/lib/dm/action-budget";
 import { castSpell } from "@/lib/dm/cast-guard";
 import type { MessageIntent } from "@/lib/dm/intent-logic";
+import { spellEngineName } from "@/lib/content";
+import { spellAuthorsFor } from "@/lib/dm/spell-authors";
+import { reassertsControl, summonPlan, summonSpellFor } from "@/lib/srd/summon-spells";
 
 const NO_HOOKS = { record: () => {}, publish: () => {} };
 
@@ -40,6 +43,30 @@ function kindOf(intent: MessageIntent): ActKind {
     case "gear":
       return intent.action === "use" ? "action" : "free";
   }
+}
+
+// A summoning card's creature and number, asked of the plan the cast will
+// make (src/lib/srd/summon-spells.ts summonPlan): a creature the spell
+// cannot call from that slot, or more of it than the slot brings, is refused
+// here in the engine's words, before the card waits on anyone (issue 685).
+// The engine itself brings the most when asked for more, so a card asking
+// eight brown bears would have been played as two.
+function summonCardRefusal(campaign: Campaign, intent: MessageIntent): string | null {
+  if (!intent.spell || (!intent.variant && !intent.count)) {
+    return null;
+  }
+  const summoning = summonSpellFor(spellEngineName(intent.spell, spellAuthorsFor(campaign)));
+  if (!summoning || reassertsControl(summoning, intent.variant)) {
+    return null;
+  }
+  const slot = Math.max(summoning.level, intent.slotLevel ?? summoning.level);
+  const plan = summonPlan(summoning, slot, intent.variant ?? "", intent.count);
+  if ("error" in plan) {
+    return plan.error;
+  }
+  return intent.count && intent.count > plan.count
+    ? `${summoning.name} from a level ${slot} slot brings at most ${plan.count} of that creature (${plan.form.name}), not ${intent.count}. Nothing was spent.`
+    : null;
 }
 
 // The engine's reason the card cannot be played now, or null.
@@ -72,7 +99,7 @@ export function intentRefusal(
       return verdict.error;
     }
     if (intent.card === "spell") {
-      return null;
+      return summonCardRefusal(campaign, intent);
     }
   }
   const encounter = getActiveEncounter(campaign.id);

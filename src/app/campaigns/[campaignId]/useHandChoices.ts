@@ -15,17 +15,20 @@ export function useHandChoices(picked: HandCard | null, aim: HandAim | null = nu
   const [optionIds, setOptionIds] = useState<HandAttackOptionId[]>([]);
   const [trigger, setTrigger] = useState("");
   const [choice, setChoice] = useState<string | null>(null);
+  // A summoning card's number of the creature picked (hand-summon.ts).
+  const [count, setCount] = useState<number | null>(null);
   const [areaPick, setAreaPick] = useState<AreaPick>({});
   // The darts, rays or creatures given beside the aimed one (issue 570).
   const [shares, setShares] = useState<HandShare[]>([]);
   const choices = useMemo<HandChoices>(
-    () => ({ options: optionIds, trigger, ...(choice !== null ? { choice } : {}), area: areaPick, ...(shares.length ? { shares } : {}) }),
-    [optionIds, trigger, choice, areaPick, shares],
+    () => ({ options: optionIds, trigger, ...(choice !== null ? { choice } : {}), ...(count !== null ? { count } : {}), area: areaPick, ...(shares.length ? { shares } : {}) }),
+    [optionIds, trigger, choice, count, areaPick, shares],
   );
   const resetChoices = useCallback(() => {
     setOptionIds([]);
     setTrigger("");
     setChoice(null);
+    setCount(null);
     setAreaPick({});
     setShares([]);
   }, []);
@@ -65,6 +68,8 @@ export function useHandChoices(picked: HandCard | null, aim: HandAim | null = nu
     onTrigger: setTrigger,
     choice,
     onChoice: setChoice,
+    count,
+    onCount: setCount,
     areaPick,
     onClearArea: () => setAreaPick({}),
     shares,

@@ -17,6 +17,8 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { conditionBlocksReactions } from "@/lib/srd/condition-effects";
 import type { HandGearAction, HandIntentExtras } from "@/lib/battlemap/hand-intent";
 import type { HandArea } from "@/lib/battlemap/hand-area";
+// A type alone: the catalogue's stat blocks stay on the server.
+import type { SummonCatalogue } from "@/lib/srd/summon-spells";
 
 export type HandCost = "action" | "bonus" | "reaction" | "rider" | "free";
 export type HandCardType = "attack" | "rider" | "spell" | "control" | "mend" | "ward" | "feature" | "basic";
@@ -114,6 +116,10 @@ export type HandCard = {
   // restoration ends, the spell a Ready holds. Sent under the tool
   // argument's own name (hand-intent.ts).
   choice?: HandChoice;
+  // A summoning spell that calls more than one creature at this slot
+  // (issue 685, hand-summon.ts): its choice is the creature, and this says
+  // how many of each the casting may bring.
+  summon?: HandSummon;
   // The card is the turn's object interaction (hand-gear.ts): a draw, a
   // stow, a pick-up, a hand-over.
   interaction?: boolean;
@@ -144,6 +150,12 @@ export type HandCard = {
 };
 
 export type HandShares = { count: number; unit: "dart" | "ray" | "beam" | "creature"; stack: boolean };
+
+// Each creature a summoning card's choice offers: the numbers it may come
+// in from the card's slot, fewest first (the last is the most, what the
+// engine brings when no number is picked), and the challenge rating it is
+// listed under when the spell calls by rating ("CR 1/4").
+export type HandSummon = { forms: Record<string, { counts: number[]; group?: string }> };
 
 export type HandChoice = {
   arg: "condition" | "variant" | "readySpell" | "item";
@@ -253,6 +265,11 @@ export type SpellFact = {
 
 export type HandOptions = {
   spells?: Record<string, SpellFact>;
+  // The creatures each summoning spell on the sheet can call, by the
+  // spell's name as the sheet holds it (textKey), read from the server's
+  // own catalogue (GET /api/campaigns/[id]/summons, issue 685). Absent on a
+  // host that has none, whose summon cards ask nothing as before.
+  summons?: Record<string, SummonCatalogue>;
   // The table's ammunition variant rule. Undefined = unknown: the count is
   // shown but an empty quiver only warns.
   trackAmmo?: boolean;
