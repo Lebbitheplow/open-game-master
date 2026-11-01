@@ -139,7 +139,7 @@ export function suitorIdentity(campaign: Campaign, subject: Subject, sheets: rea
     warmth: subject.personality?.warmth ?? 0,
     companionKind: null,
     portraitUrl: npc?.portraitUrl ?? "",
-    look: { gender: String(npc?.gender ?? ""), role: npc?.role ?? "" } as Record<string, string>,
+    look: { gender: String(npc?.gender ?? ""), role: npc?.role ?? "", race: npc?.race ?? "" } as Record<string, string>,
   };
 }
 

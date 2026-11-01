@@ -74,10 +74,23 @@ export function parseRoster(value: unknown): TemplateEnemy[] {
 // to drop all three, so a human GM could not field an invented foe though
 // the refusal told them to pass a challenge rating. Templates keep to
 // parseRoster: a saved roster names monsters, and an enemyId goes stale.
-export type FightRequest = TemplateEnemy & { cr?: number; name?: string; returning?: string };
+//
+// A foe's look rides the same way, so the console fields the elf bandit the
+// AI GM can ("bandit race elf gender female x4"). Never at the start of the
+// line, which is the monster's own name; the race word is read where the
+// fight is made (encounter-spawn.ts toldLook), and one it cannot read only
+// leaves the face as it was.
+export type FightRequest = TemplateEnemy & { cr?: number; name?: string; returning?: string; race?: string; gender?: string };
 
 const CR_IN_LINE = /(?:^|\s|,|\()cr\s*[:=]?\s*(\d{1,2}\s*\/\s*\d{1,2}|\d{1,2}(?:\.\d+)?)\)?/i;
 const NAMED_AS = /^(.+?)\s+as\s+(.+)$/i;
+const RACE_IN_LINE = /(?:\s|,)race\s*[:=]?\s*([a-z][\w'-]*)/i;
+const GENDER_IN_LINE = /(?:\s|,)gender\s*[:=]?\s*(female|male|nonbinary)\b/i;
+
+// The text without the part `found` matched, tidied the way the cr strip is.
+function without(text: string, found: RegExpExecArray): string {
+  return `${text.slice(0, found.index)} ${text.slice(found.index + found[0].length)}`.replace(/[\s,]+$/, "").replace(/\s+/g, " ").trim();
+}
 
 function crValue(text: string): number | undefined {
   const [top, bottom] = text.split("/").map((part) => Number(part.trim()));
@@ -91,7 +104,19 @@ function fightLine(row: TemplateEnemy): FightRequest {
   const rated = CR_IN_LINE.exec(monster);
   if (rated) {
     cr = crValue(rated[1]);
-    monster = `${monster.slice(0, rated.index)} ${monster.slice(rated.index + rated[0].length)}`.replace(/[\s,]+$/, "").replace(/\s+/g, " ").trim();
+    monster = without(monster, rated);
+  }
+  let race = "";
+  const raced = RACE_IN_LINE.exec(monster);
+  if (raced) {
+    race = raced[1];
+    monster = without(monster, raced);
+  }
+  let gender = "";
+  const gendered = GENDER_IN_LINE.exec(monster);
+  if (gendered) {
+    gender = gendered[1];
+    monster = without(monster, gendered);
   }
   const named = NAMED_AS.exec(monster);
   const out: FightRequest = { monster: named ? named[1].trim() : monster, count: row.count };
@@ -100,6 +125,12 @@ function fightLine(row: TemplateEnemy): FightRequest {
   }
   if (cr !== undefined) {
     out.cr = cr;
+  }
+  if (race) {
+    out.race = race;
+  }
+  if (gender) {
+    out.gender = gender;
   }
   return out;
 }
@@ -124,6 +155,12 @@ export function parseFightRoster(value: unknown): FightRequest[] {
         }
         if (typeof row.returning === "string" && row.returning.trim()) {
           out.returning = row.returning.trim();
+        }
+        if (typeof row.race === "string" && row.race.trim()) {
+          out.race = row.race.trim();
+        }
+        if (typeof row.gender === "string" && row.gender.trim()) {
+          out.gender = row.gender.trim();
         }
         return [out];
       })

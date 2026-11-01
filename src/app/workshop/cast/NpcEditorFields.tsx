@@ -19,6 +19,7 @@ import {
 } from "@/lib/npcs/forge";
 import { npcRoleOptions } from "@/lib/placeholders";
 import { GENDERS, type Gender } from "@/lib/gender";
+import { NPC_RACE_OPTIONS } from "@/lib/npc-race";
 import { AttractionPicker, NPC_ATTRACTION_HINT } from "@/components/AttractionPicker";
 import {
   GOAL_FIELDS,
@@ -124,6 +125,16 @@ export function NpcEditorFields({
             value={draft.gender}
             onChange={(gender) => onChange({ ...draft, gender })}
             options={[{ value: "", label: "Unspecified" }, ...GENDERS.map((gender) => ({ value: gender, label: gender }))]}
+          />
+          </span>
+          {/* Beside the gender because the two pick the stand-in face
+              together: an elf bandit draws the elf bandit, not a human one. */}
+          <span className="w-full sm:w-48">
+          <Select<string>
+            label="Race"
+            value={draft.race ?? ""}
+            onChange={(race) => onChange({ ...draft, race })}
+            options={[{ value: "", label: "Unspecified" }, ...NPC_RACE_OPTIONS]}
           />
           </span>
         </div>

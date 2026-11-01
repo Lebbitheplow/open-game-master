@@ -6,6 +6,8 @@ import { enemyActionsView, type PublicEnemyActions, type PublicEnemyMovement } f
 import { enemyMoveBudget } from "@/lib/dm/enemy-speed";
 import { enemyActedThisRound, isSurprised } from "@/lib/dm/can-act";
 import { getCampaignById } from "@/lib/db/campaigns";
+import { getNpcById } from "@/lib/db/npcs";
+import { trackedNpcFace } from "@/lib/db/npc-faces";
 import { dmPlaysTurn } from "@/lib/dm/companion-command";
 import { freshLastHit, heaviestHit, type LastHit } from "@/lib/dm/last-hit";
 import { conditionNote, conditionNoteLine, namesLookup } from "@/lib/battlemap/condition-notes";
@@ -57,6 +59,9 @@ export type PublicEncounter = {
     id: string;
     name: string;
     hidden: boolean;
+    // An "npc" entry the Cast knows: their portrait or the plate their
+    // role, race and gender pick (src/lib/db/npc-faces.ts).
+    face?: string;
     // DM view only, like the enemy numbers below.
     initiative?: number;
     // Thief's Reflexes: the thief's second turn in the first round, a
@@ -80,6 +85,12 @@ export type PublicEncounter = {
     // groupKey has always been this same slug. Optional so a client talking
     // to an older server still renders.
     slug?: string;
+    // Who a humanoid foe is, for the face (enemyNpcPlaceholder): an SRD
+    // race id and a gender. A Cast NPC's come from their record, so an edit
+    // there shows at once; a nameless foe's from start_encounter. Absent
+    // when unrecorded, and nothing a player could not already see.
+    race?: string;
+    gender?: string;
     // Kept off the players' board and tracker by the DM. Only ever true in
     // the DM's own projection: a hidden enemy is absent from a player's.
     hidden: boolean;
@@ -286,6 +297,21 @@ function lastHitView(record: LastHit, hidden: Set<string>, showNumbers: boolean)
   };
 }
 
+// The face an initiative entry for a tracked NPC draws (npc-faces.ts).
+function npcFace(campaignId: string, npcId: string, name: string): { face?: string } {
+  const face = trackedNpcFace(campaignId, { npcId, name });
+  return face ? { face } : {};
+}
+
+// Who a foe is, for its face: a Cast NPC's own record first, read live so an
+// edit there shows in a running fight, else what start_encounter was told.
+function lookOf(enemy: EncounterEnemy): { race?: string; gender?: string } {
+  const npc = enemy.npcId ? getNpcById(enemy.npcId) : null;
+  const race = npc?.race || enemy.race || "";
+  const gender = npc?.gender || enemy.gender || "";
+  return { ...(race ? { race } : {}), ...(gender ? { gender } : {}) };
+}
+
 // How far an enemy may still walk this turn, for the person running it: the
 // Monster Hand's roster and its Dash card (issue #621). Undefined with no
 // board or no rounds to count.
@@ -338,6 +364,7 @@ export function publicEncounter(
             ...(showNumbers ? { initiative: entry.initiative } : {}),
             ...(entry.kind === "pc" && entry.reflex ? { reflex: true } : {}),
             ...(entry.kind === "pc" && entry.extra ? { extra: entry.extra } : {}),
+            ...(entry.kind === "npc" ? npcFace(encounter.campaignId, entry.npcId, entry.name) : {}),
           }))
       : [],
     enemies: enemies
@@ -351,6 +378,7 @@ export function publicEncounter(
       cr: enemy.cr,
       type: creatureTypeOf(enemy.stats),
       slug: enemy.slug,
+      ...lookOf(enemy),
       groupKey: enemy.slug,
       // Knocked out by a nonlethal blow (src/lib/dm/knockout.ts): alive at
       // 0 hit points, out of the fight, not dying.

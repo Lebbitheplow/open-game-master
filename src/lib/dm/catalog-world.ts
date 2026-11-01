@@ -9,6 +9,7 @@ import { cueOptions, sceneOptions } from "@/lib/ambience/catalog";
 import { RELATIONSHIP_BEAT_NAMES } from "@/lib/dm/relationship-logic";
 import { NOTE_LIMIT_WORDS } from "@/lib/dm/relationship-note";
 import { TOLD_GENDERS } from "@/lib/gender";
+import { NPC_RACE_OPTIONS } from "@/lib/npc-race";
 import {
   ABILITY_OPTIONS as ABILITIES,
   DIFFICULTY_OPTIONS as DIFFICULTIES,
@@ -53,6 +54,14 @@ export const GENDER_FIELD = {
   label: "Gender",
   kind: "select",
   options: TOLD_GENDERS.map((gender) => ({ value: gender, label: gender })),
+} as const;
+
+// Which race's face an NPC or a foe draws (src/lib/npc-race.ts).
+export const RACE_FIELD = {
+  name: "race",
+  label: "Race",
+  kind: "select",
+  options: NPC_RACE_OPTIONS,
 } as const;
 
 // Who an NPC or companion could fall for (issue 501), the words the DM's
@@ -408,6 +417,7 @@ export const SOCIAL_ADJUDICATIONS: CatalogEntry[] = [
       { name: "trait", label: "Trait", kind: "text" },
       { name: "location", label: "Found at", kind: "text" },
       GENDER_FIELD,
+      RACE_FIELD,
       DRAWN_TO_FIELD,
       { name: "goal", label: "Wants", kind: "text" },
       { name: "ambition", label: "Long game", kind: "text" },

@@ -2091,6 +2091,11 @@ function ensureSchema(db: SqliteDatabase) {
     // (src/lib/dm/foe-return.ts).
     ["npc_id", `TEXT NOT NULL DEFAULT ''`],
     ["carried_from", `TEXT NOT NULL DEFAULT ''`],
+    // Who a nameless foe is as start_encounter told it (an SRD race id and a
+    // gender, '' for unspecified), so an elf bandit draws the elf bandit
+    // plate (src/lib/placeholders.ts). A Cast NPC's own record wins.
+    ["race", `TEXT NOT NULL DEFAULT ''`],
+    ["gender", `TEXT NOT NULL DEFAULT ''`],
   ]);
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_encounter_enemies_npc ON encounter_enemies(campaign_id, npc_id);
@@ -2291,6 +2296,9 @@ function ensureSchema(db: SqliteDatabase) {
     // One of the builder's genders or '' (src/lib/gender.ts): what the voice
     // cast and the speech reader's pronouns read, never their prose.
     ["gender", `TEXT NOT NULL DEFAULT ''`],
+    // An SRD race id or '' (src/lib/npc-race.ts): which race's face they
+    // draw before a portrait exists. No rule reads it.
+    ["race", `TEXT NOT NULL DEFAULT ''`],
     // Who they are drawn to (src/lib/attraction.ts, issue 501): {genders,
     // note}, '' = undecided. The DM's set_npc writes it once.
     ["attraction_json", `TEXT NOT NULL DEFAULT ''`],

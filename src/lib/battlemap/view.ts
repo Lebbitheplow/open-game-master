@@ -57,6 +57,7 @@ import { undoableMove, undoOffer } from "@/lib/battlemap/move-undo";
 import type { AuraTone, PlayerMapView } from "@/lib/battlemap/view-types";
 import { ENEMY_TURN_NAME, turnOwner } from "@/lib/dm/turn-owner";
 import { holdsFeature } from "@/lib/srd/feature-names";
+import { trackedNpcFace } from "@/lib/db/npc-faces";
 
 export type { PlayerMapView } from "@/lib/battlemap/view-types";
 
@@ -223,6 +224,10 @@ function dropsOn(
   return out;
 }
 
+function faceField(face: string | null): { face?: string } {
+  return face ? { face } : {};
+}
+
 export function buildPlayerMapView(
   campaignId: string,
   userId: string,
@@ -360,6 +365,7 @@ export function buildPlayerMapView(
       hidden: token.hidden,
       light: lightRemaining(token, clockInstant),
       stamp: token.stamp ?? "",
+      ...(token.kind === "npc" ? faceField(trackedNpcFace(campaignId, { name: token.name })) : {}),
       ...offSide(token, sides(token)),
     }));
 
