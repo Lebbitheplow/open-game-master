@@ -244,12 +244,12 @@ await test("Every card since the DM last spoke is resolved, in the order played:
   assert.equal(first.args.spell, "Fire Bolt");
 });
 
-await test("An area spell is left to the model, aimed at one enemy or laid on a square, and so is a spell the content has no resolution for.", async () => {
+await test("An area spell is left to the model, aimed at one enemy or laid off the board, and so is a spell the content has no resolution for.", async () => {
   const enemy = await stage(iris);
   assert.equal(
-    directCardCall({ card: "spell", spell: "Web", slotLevel: 2, targetKind: "enemy", targetId: enemy.id, atX: 5, atY: 6 }, iris.id, { inFight: true, resolution: "save" }),
+    directCardCall({ card: "spell", spell: "Web", slotLevel: 2, targetKind: "enemy", targetId: enemy.id, atX: 5, atY: 6 }, iris.id, { inFight: true, resolution: "save", area: true, lasting: { pick: "off" } }),
     null,
-    "a square laid on the board is the model's",
+    "with no board, who a web holds is the GM's word",
   );
   // A Fireball aimed at one goblin: cast_at_enemy would roll that goblin
   // alone, so the burst is the model's to lay over everyone in it.
@@ -410,7 +410,86 @@ await test("Off the battle map, or aimed at one creature with no square, a blast
     { name: "aoe_damage", args: { casterCharacterId: vex.id, spell: "Fireball", level: 3, atX: 4, atY: 4 } },
   );
   assert.equal(directCardCall({ card: "spell", spell: "Burning Hands", slotLevel: 1, atX: 4, atY: 4 }, vex.id, { inFight: true, resolution: "save", area: true, blast: "direction" }), null, "a cone needs its direction");
-  assert.equal(directCardCall({ card: "spell", spell: "Web", slotLevel: 2, atX: 5, atY: 6 }, iris.id, { inFight: true, resolution: "save", area: true }), null, "a Web bites when its zone says");
+});
+
+// ---- issue 685: the rest of the cards the engine takes whole ----
+
+await test("A lasting area laid on a square is aoe_damage's with its squares and nobody named; one that catches whoever stands in it as it appears stays with the GM.", () => {
+  const web = { card: "spell", spell: "Web", slotLevel: 2, targetKind: "enemy", targetId: "goblin-1", atX: 5, atY: 6 };
+  assert.deepEqual(
+    directCardCall(web, iris.id, { inFight: true, resolution: "save", area: true, lasting: { pick: "point" } }),
+    { name: "aoe_damage", args: { casterCharacterId: iris.id, spell: "Web", level: 2, atX: 5, atY: 6 } },
+  );
+  assert.equal(directCardCall({ ...web, atX: undefined, atY: undefined }, iris.id, { inFight: true, resolution: "save", area: true, lasting: { pick: "point" } }), null, "no square picked");
+  assert.equal(directCardCall({ card: "spell", spell: "Entangle", slotLevel: 1, atX: 5, atY: 6 }, iris.id, { inFight: true, resolution: "save", area: true, lasting: { pick: "point", catches: true } }), null, "its first saves need the creatures in it named");
+  assert.deepEqual(
+    directCardCall({ card: "spell", spell: "Fog Cloud", slotLevel: 1, atX: 8, atY: 2 }, iris.id, { inFight: true, resolution: null, lasting: { pick: "point" } }),
+    { name: "use_spell_slot", args: { characterId: iris.id, spell: "Fog Cloud", level: 1, atX: 8, atY: 2 } },
+    "an area with nothing to roll is laid by the slot",
+  );
+  assert.deepEqual(
+    directCardCall({ card: "spell", spell: "Fog Cloud", slotLevel: 1 }, iris.id, { inFight: false, resolution: null, lasting: { pick: "off" } }),
+    { name: "use_spell_slot", args: { characterId: iris.id, spell: "Fog Cloud", level: 1 } },
+    "off the board the slot alone is spent",
+  );
+  assert.deepEqual(
+    directCardCall({ card: "spell", spell: "Spirit Guardians", slotLevel: 3, targetKind: "self", targetId: sefa.id }, sefa.id, { inFight: true, resolution: "buff", lasting: { pick: "none" }, selfOnly: true }),
+    { name: "cast_buff", args: { characterId: sefa.id, spell: "Spirit Guardians", targetCharacterIds: [sefa.id], level: 3 } },
+    "a buff that lays an area is cast_buff's",
+  );
+});
+
+await test("A summon is cast_buff's when its creature is named or the only one; a utility spell spends its slot; a Self buff with nobody named lands on its caster.", () => {
+  assert.deepEqual(directCardCall({ card: "spell", spell: "Unseen Servant", slotLevel: 1 }, iris.id, { inFight: true, resolution: null, summon: "one" }), {
+    name: "cast_buff",
+    args: { characterId: iris.id, spell: "Unseen Servant", level: 1 },
+  });
+  assert.equal(directCardCall({ card: "spell", spell: "Conjure Animals", slotLevel: 3 }, iris.id, { inFight: true, resolution: null, summon: "choose" }), null, "the GM picks the beasts");
+  assert.deepEqual(directCardCall({ card: "spell", spell: "Animate Dead", slotLevel: 3, variant: "Skeleton" }, iris.id, { inFight: true, resolution: null, summon: "choose" }), {
+    name: "cast_buff",
+    args: { characterId: iris.id, spell: "Animate Dead", level: 3, variant: "Skeleton" },
+  });
+  assert.equal(directCardCall({ card: "spell", spell: "Arcane Hand", slotLevel: 5, targetKind: "enemy", targetId: "goblin-1" }, iris.id, { inFight: true, resolution: "attack", summon: "one" }).name, "cast_buff", "the casting brings the hand, whatever its row says");
+  assert.deepEqual(directCardCall({ card: "spell", spell: "Detect Thoughts", slotLevel: 2 }, iris.id, { inFight: false, resolution: "utility" }), {
+    name: "use_spell_slot",
+    args: { characterId: iris.id, spell: "Detect Thoughts", level: 2 },
+  });
+  assert.equal(directCardCall({ card: "spell", spell: "Dispel Magic", slotLevel: 3 }, iris.id, { inFight: true, resolution: "utility", dispel: true }), null, "Dispel Magic needs its target");
+  assert.deepEqual(directCardCall({ card: "spell", spell: "Blur", slotLevel: 2 }, iris.id, { inFight: true, resolution: "buff", selfOnly: true }), {
+    name: "cast_buff",
+    args: { characterId: iris.id, spell: "Blur", targetCharacterIds: [iris.id], level: 2 },
+  });
+  assert.equal(directCardCall({ card: "spell", spell: "Bless", slotLevel: 1 }, iris.id, { inFight: true, resolution: "buff" }), null, "a buff on someone not named is the GM's");
+});
+
+await test("An attack's riders ride pc_attack under its own names: Divine Smite's slot and one maneuver; a smite with no slot, an unnamed maneuver or two are left.", () => {
+  const swing = { card: "attack", weapon: "Longsword", targetKind: "enemy", targetId: "goblin-1" };
+  assert.deepEqual(directCardCall({ ...swing, riders: ["Divine Smite"], attack: { smite: 2 } }, kara.id), {
+    name: "pc_attack",
+    args: { characterId: kara.id, targetEnemyId: "goblin-1", weapon: "Longsword", smite: 2 },
+  });
+  assert.equal(directCardCall({ ...swing, riders: ["Divine Smite"] }, kara.id), null, "a card from an older screen names no slot");
+  assert.deepEqual(directCardCall({ ...swing, riders: ["Trip Attack"] }, kara.id).args.maneuver, "Trip Attack");
+  assert.equal(directCardCall({ ...swing, riders: ["Trip Attack", "Menacing Attack"] }, kara.id), null, "one Superiority Die a swing");
+  assert.equal(directCardCall({ ...swing, riders: ["Maneuver"] }, kara.id), null, "a maneuver not named");
+  assert.equal(directCardCall({ card: "rider", rider: "Divine Smite", slotLevel: 1 }, kara.id), null, "a rider alone waits for the swing");
+});
+
+await test("At an AI table a Web laid on a square is the engine's before the model is asked: the web is on the board.", async () => {
+  await stageBlast();
+  const casting = world.sheet(vex.id).spellcasting;
+  world.patch(vex.id, { spellcasting: { ...casting, prepared: [...casting.prepared, "Web"], spellbook: [...casting.spellbook, "Web"] }, concentratingOn: null });
+  model.script([reply({ text: "Sticky strands fill the clearing." })]);
+  await model.turn(world, "I cast Web on (11,6) using a level 2 slot.", vex.id, vex.userId, {
+    intent: { card: "spell", spell: "Web", slotLevel: 2, atX: 11, atY: 6 },
+  });
+  assert.equal(model.requests.length, 1, "one model call: the narration");
+  const first = firstCall(model.requests[0]);
+  assert.equal(first?.name, "aoe_damage", JSON.stringify(toolCalls(model.requests[0])));
+  const [result] = results(model.requests[0]);
+  assert.ok(result && !result.error, JSON.stringify(result));
+  assert.ok(kit.map().spellZones.some((zone) => zone.spell === "Web"), "the web is laid");
+  assert.equal(world.sheet(vex.id).spellcasting.slots[2].used, 1);
 });
 
 // ---- issue 570: a casting shared out in the Hand ----
