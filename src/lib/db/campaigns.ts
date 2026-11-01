@@ -981,6 +981,26 @@ export function setCampaignScene(campaignId: string, scene: string) {
     .run(scene.slice(0, 2000), nowIso(), campaignId);
 }
 
+// The party came to a new place: its narration starts at `seq`, or at the
+// next message's when null.
+export function markSceneStart(campaignId: string, seq: number | null) {
+  getDatabase()
+    .prepare(`UPDATE campaigns SET scene_since_seq = COALESCE(?, next_seq) WHERE id = ?`)
+    .run(seq, campaignId);
+}
+
+// The seq the current place's narration starts at; 0 before the party ever
+// moved, which reads the whole story.
+export function sceneSinceSeq(campaignId: string): number {
+  const row = getDatabase()
+    .prepare(`SELECT scene_since_seq FROM campaigns WHERE id = ?`)
+    .get(campaignId) as { scene_since_seq: number } | undefined;
+  if (!row) {
+    throw new Error("Campaign not found.");
+  }
+  return row.scene_since_seq;
+}
+
 export function getCampaignSummaryState(campaignId: string) {
   const row = getDatabase()
     .prepare(`SELECT story_summary, story_summary_count FROM campaigns WHERE id = ?`)

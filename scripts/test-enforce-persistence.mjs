@@ -321,6 +321,32 @@ await test("a rewind restores quest and structured-scene progress, and its safet
   assert.equal(safetyPayload.campaign.scene_tracker_json, JSON.stringify(advanced.tracker));
 });
 
+await test("a rewind restores where the party's place starts in the transcript, and a snapshot from before it was kept reads the whole story", async () => {
+  const { world, freeze, rewind } = await chapter();
+  world.say("dm", "The party reaches the gate.");
+  campaigns.markSceneStart(world.campaignId, null);
+  const gate = campaigns.sceneSinceSeq(world.campaignId);
+  assert.ok(gate > 0);
+  freeze();
+  world.say("dm", "The party walks on to the market.");
+  campaigns.markSceneStart(world.campaignId, null);
+  assert.ok(campaigns.sceneSinceSeq(world.campaignId) > gate);
+  await rewind();
+  assert.equal(campaigns.sceneSinceSeq(world.campaignId), gate);
+
+  // The snapshot as an older server wrote it.
+  const db = getDatabase();
+  const row = db.prepare("SELECT id, snapshot_json FROM chapter_snapshots WHERE campaign_id = ? AND kind = 'boundary'").get(world.campaignId);
+  const old = JSON.parse(row.snapshot_json);
+  delete old.campaign.scene_since_seq;
+  db.prepare("UPDATE chapter_snapshots SET snapshot_json = ? WHERE id = ?").run(JSON.stringify(old), row.id);
+  world.say("dm", "The party walks on to the docks.");
+  campaigns.markSceneStart(world.campaignId, null);
+  await rewind();
+  assert.equal(campaigns.sceneSinceSeq(world.campaignId), 0);
+  assert.throws(() => campaigns.sceneSinceSeq("no-such-campaign"), /Campaign not found/);
+});
+
 await test("a rewind takes the shops, factions, calendar, attributes, pins and beats of the discarded timeline with it", async () => {
   const { world, freeze, rewind } = await chapter();
   const shops = await import("../src/lib/db/shops.ts");

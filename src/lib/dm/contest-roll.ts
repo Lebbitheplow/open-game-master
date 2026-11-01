@@ -29,15 +29,12 @@ export type CharacterCheck = {
   autoFailed?: boolean;
 };
 
-export function rollCharacterCheck(
-  campaign: Campaign,
-  stale: CharacterSheet,
-  // `charmedTarget`: the creature the check is aimed at, when this
-  // character charmed it (rolls.ts: advantage on a Charisma check with it).
-  check: { skill?: string; ability?: Ability; advantage?: "advantage" | "disadvantage"; dc?: number; charmedTarget?: string },
-  detail: string,
-): CharacterCheck {
-  const sheet = getSheetById(stale.id) ?? stale;
+// `charmedTarget`: the creature the check is aimed at, when this character
+// charmed it (rolls.ts: advantage on a Charisma check with it).
+type CheckAsked = { skill?: string; ability?: Ability; advantage?: "advantage" | "disadvantage"; dc?: number; charmedTarget?: string };
+
+// The check as the resolver builds it, before any die is rolled.
+function resolveCheck(campaign: Campaign, sheet: CharacterSheet, check: CheckAsked) {
   const args = (
     check.skill
       ? { kind: "skill_check", skill: check.skill }
@@ -48,6 +45,29 @@ export function rollCharacterCheck(
     sheet,
     { ...rollExtrasFor(campaign, sheet, args.kind), ...(check.charmedTarget ? { charmedTarget: check.charmedTarget } : {}) },
   );
+  return resolved;
+}
+
+// The most the check can total, every die at its highest. Nothing is
+// rolled or spent: an improvised attempt whose DC is past it is impossible
+// for the character (src/lib/dm/improvise.ts). The skill is a validated id,
+// and with no sense named (`by`) no condition fails a check unrolled.
+export function checkCeiling(campaign: Campaign, stale: CharacterSheet, check: CheckAsked): number {
+  const resolved = resolveCheck(campaign, getSheetById(stale.id) ?? stale, check);
+  if ("error" in resolved || "autoFail" in resolved) {
+    throw new Error(`checkCeiling: ${"error" in resolved ? resolved.error : resolved.notes.join("; ")}`);
+  }
+  return rollExpression(resolved.expression, (sides) => sides).total;
+}
+
+export function rollCharacterCheck(
+  campaign: Campaign,
+  stale: CharacterSheet,
+  check: CheckAsked,
+  detail: string,
+): CharacterCheck {
+  const sheet = getSheetById(stale.id) ?? stale;
+  const resolved = resolveCheck(campaign, sheet, check);
   if ("error" in resolved) {
     // An unknown skill: fall back to the plain ability, never to nothing.
     const outcome = rollCard(campaign, null, sheet.id, check.skill ? "skill_check" : "ability_check", `${detail}: ${check.skill ?? check.ability ?? "check"}`, d20Expression(0, check.advantage ?? "none"), null);

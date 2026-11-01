@@ -81,6 +81,13 @@ test("the rules point at more_tools exactly when the turn carries it", () => {
   assert.ok(compactTurnTools(everything, false, true, signals, []).closed.length > 0);
 });
 
+// SRD 5.1, Actions in Combat: a character may improvise an action. A model that reads the rules' tool list as the
+// limit of what a player may attempt refuses one, so the rules name the action that takes it.
+test("the combat rules name take_action improvise, an action take_action takes", () => {
+  assert.match(encounterRulesText(false), /improvised action[^.]*5e allows[\s\S]*take_action improvise/);
+  assert.ok(tools.get("take_action").function.parameters.properties.action.enum.includes("improvise"));
+});
+
 // What the rules call by a camelCase name is a parameter some tool takes, or a field a tool's result carries.
 const RESULT_FIELDS = ["levelUpAvailable", "extraAttack", "enemiesToAct"];
 test("a parameter or result field the rules name exists", () => {

@@ -6,7 +6,7 @@ import { actingSheetFor } from "@/lib/character-seat";
 import { capsFor, isErrorResponse, requireMember } from "@/lib/campaign-api";
 import { getFloor } from "@/lib/db/campaigns";
 import { getActiveBoard, listEnemies } from "@/lib/db/encounters";
-import { patchSheet } from "@/lib/db/sheets";
+import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import {
   getBattleMapForEncounter,
   getTokenByRef,
@@ -373,7 +373,9 @@ export async function POST(
   // Walking away from a grapple ends it (src/lib/dm/grapple.ts).
   const letGo = campaign ? releaseGrapplesOutOfReach(campaign) : [];
   if (stands) {
-    const stood = removeConditions(sheet.conditions, sheet.conditionMeta, ["prone"]);
+    // Read again: the move above may have ended an invisibility on the sheet.
+    const current = getSheetById(sheet.id) ?? sheet;
+    const stood = removeConditions(current.conditions, current.conditionMeta, ["prone"]);
     const updated = patchSheet(sheet.id, {
       conditions: stood.conditions,
       conditionMeta: stood.meta,
