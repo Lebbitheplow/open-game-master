@@ -30,7 +30,7 @@ import { runResumeRecap } from "@/lib/dm/recap";
 import { RECAP_AFTER_MS } from "@/lib/dm/session-hold-logic";
 import { sessionHoldOn } from "@/lib/dm/session-hold";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
-import { directCardCalls, parseMessageIntent } from "@/lib/dm/intent-logic";
+import { TYPED_REACTION, directCardCalls, isTypedReaction, parseMessageIntent } from "@/lib/dm/intent-logic";
 import { directContextFor } from "@/lib/dm/direct-context";
 import { addressesDm } from "@/lib/dm/ooc-question";
 import { spokenLine } from "@/lib/dm/speech";
@@ -66,9 +66,10 @@ const actionSchema = z.object({
     })
     .optional(),
   // Words typed for a hero's reaction (issue 685): the composer's Speaking
-  // as, offered while another of the person's heroes has a hit to answer,
-  // names that hero. Taken off the hero's turn as a reaction card is, while
-  // they have an open hit and their reaction; never with a card.
+  // as names the hero, the one whose turn it is or another of theirs. Taken
+  // off the hero's turn as a reaction card is, while a hit is open and their
+  // reaction unspent, and marked as a reaction so it is no word on their own
+  // turn. Never with a card.
   reaction: z.boolean().optional(),
 });
 
@@ -152,7 +153,11 @@ export async function POST(
   if (held) {
     return Response.json({ error: held, dominated: true }, { status: 409 });
   }
-  const intent = kind === "do" ? parseMessageIntent(parsed.data.intent) : null;
+  const played = kind === "do" ? parseMessageIntent(parsed.data.intent) : null;
+  // Words typed as a reaction carry the reaction mark a card carries, and a
+  // reaction card naming nothing to resolve is held to the same checks.
+  const typedReaction = kind === "do" && (isTypedReaction(played) || (!played && parsed.data.reaction === true));
+  const intent = typedReaction ? TYPED_REACTION : played;
   if (companionReactor && intent?.card !== "reaction") {
     return Response.json({ error: `${companionReactor.name} acts on their own turn; between turns only their reaction cards are played.` }, { status: 409 });
   }
@@ -170,7 +175,6 @@ export async function POST(
   // what a reaction card is: a hit still open in the fight (on them, or on an
   // ally a reaction of theirs covers) and their reaction unspent. Anything
   // else is the turn's words.
-  const typedReaction = kind !== "ooc" && !intent && parsed.data.reaction === true;
   if (typedReaction) {
     const reactor = named && named.campaignId === campaignId ? named : null;
     const encounterNow = getActiveEncounter(campaignId);
@@ -188,7 +192,7 @@ export async function POST(
       );
     }
   }
-  const reactionOffTurn = (intent?.card === "reaction" || typedReaction) && combatOwnsFloor(floor);
+  const reactionOffTurn = intent?.card === "reaction" && combatOwnsFloor(floor);
   // The GM playing a companion's turn holds that turn: the floor names the
   // companion, not them.
   if (!reactionOffTurn && !(playsCompanion && kind !== "ooc") && !canAct(floor, user.id, kind)) {
@@ -251,7 +255,7 @@ export async function POST(
     selectedId: selected.id,
     characterId: parsed.data.characterId,
     initiativeId: kind !== "ooc" && combatOwnsFloor(floor) ? currentPcId(getActiveEncounter(campaignId)) : undefined,
-    reaction: intent?.card === "reaction" || typedReaction,
+    reaction: intent?.card === "reaction",
     multiCharacter: campaign.gameSettings.multiCharacter,
   });
   if ("error" in actor) {

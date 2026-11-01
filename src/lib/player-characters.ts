@@ -73,12 +73,14 @@ export function companionReactors(
 }
 
 // The heroes a typed line may speak for as a reaction (the composer's
-// Speaking as, issue 685): beside the hero whose turn it is, the person's
-// other heroes the table fields and the companions they command, with their
-// reaction unspent, while a hit is still open: each one hit, and the one
-// whose reaction card was handed to the box (`pinned`, "Edit in chat"),
-// which may answer a hit on an ally (Protection, Cutting Words). Empty off
-// the person's own turn: the box is shut then.
+// Speaking as, issue 685): the hero whose turn it is (their words are their
+// turn's otherwise, and a reaction counted as their turn's word let the AI
+// play that turn for them), the person's other heroes the table fields and
+// the companions they command, with their reaction unspent, while a hit is
+// still open: each one hit, and the one whose reaction card was handed to
+// the box (`pinned`, "Edit in chat"), which may answer a hit on an ally
+// (Protection, Cutting Words). Empty off the person's own turn: the box is
+// shut then.
 export function typedReactors(
   sheets: CharacterSheet[],
   userId: string,
@@ -90,8 +92,9 @@ export function typedReactors(
   if (!turnId || !userId || !encounter?.lastHits?.length) return [];
   const hit = new Set(encounter.lastHits.map((entry) => entry.characterId));
   const spent = new Set(encounter.reactionsUsed ?? []);
-  const seen = new Set<string>([turnId]);
-  return [...offTurnReactors(sheets, userId, turnId, multiCharacter), ...commandedCharacters(sheets, userId)].flatMap((sheet) => {
+  const seen = new Set<string>();
+  const turnHero = sheets.filter((sheet) => sheet.id === turnId);
+  return [...turnHero, ...offTurnReactors(sheets, userId, turnId, multiCharacter), ...commandedCharacters(sheets, userId)].flatMap((sheet) => {
     if (seen.has(sheet.id) || !(hit.has(sheet.id) || sheet.id === pinned) || spent.has(sheet.id)) return [];
     seen.add(sheet.id);
     return [{ id: sheet.id, name: sheet.name }];

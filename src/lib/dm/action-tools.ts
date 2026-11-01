@@ -169,7 +169,7 @@ export const actionTools: ToolDef[] = [
           hit: {
             type: "string",
             description:
-              "The open hit it answers, by its hitId in GAME STATE, when the character has more than one open; omit for the only one. Shield answers the hit named and every open hit on them after it.",
+              "The open hit it answers, by its hitId in GAME STATE. Needed only when the character has several open. Shield answers the hit named and every open hit on them after it.",
           },
           x: { type: "integer", minimum: 0, description: "Skirmisher, Relentless Avenger only: the column of the square the character moves to." },
           y: { type: "integer", minimum: 0, description: "Skirmisher, Relentless Avenger only: the row of the square the character moves to." },

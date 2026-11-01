@@ -846,7 +846,7 @@ export function SessionView({
               ? leadPrivate
                 ? ["director", { oneShot: null, absoluteCommand: content }]
                 : ["lead-note", { content }]
-              : kind !== "ooc" && speakingAs
+              : kind === "do" && speakingAs
                 ? ["actions", { content, kind, characterId: speakingAs.id, reaction: true }]
                 : ["actions", { content, kind, characterId: (kind === "ooc" ? mySheet : actingSheet)?.id }];
         const send = (extra: Record<string, unknown> = {}) =>

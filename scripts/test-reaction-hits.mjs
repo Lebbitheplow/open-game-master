@@ -32,8 +32,8 @@ const { activePublicEncounter } = await import("../src/lib/db/encounter-view.ts"
 const tools = await import("../src/lib/dm/encounter-tools.ts");
 const { invokeEngine } = await import("../src/lib/dm/invoke.ts");
 const { openHits, snapshotVitals } = await import("../src/lib/dm/last-hit.ts");
-const { directCardCall } = await import("../src/lib/dm/intent-logic.ts");
-const { declaredThisTurn } = await import("../src/lib/dm/player-word.ts");
+const { describeIntent, directCardCall, intentNeedsTool } = await import("../src/lib/dm/intent-logic.ts");
+const { characterAwaitingPlayer, declaredThisTurn } = await import("../src/lib/dm/player-word.ts");
 const { offTurnReactionCards, reactionAim, reactionCards } = await import("../src/lib/battlemap/hand-react.ts");
 const { turnFromEncounter } = await import("../src/lib/battlemap/hand-table.ts");
 const { companionReactors, typedReactors } = await import("../src/lib/player-characters.ts");
@@ -275,6 +275,9 @@ await test("The narrator is told every open hit with the id use_reaction takes",
     encounter: buildEncounterState(world.campaignId, world.sheets()),
   });
   assert.match(block, /Open hits a reaction may still answer/);
+  // A line for the 16K profile too: it is there only while hits are open.
+  const line = block.split("\n").find((entry) => entry.startsWith("Open hits a reaction may still answer")) ?? "";
+  assert.ok(line.length < 800, `the open-hits line is ${line.length} characters`);
   assert.ok(block.includes(`hitId=${first.id} ${g1.displayName}'s Club, 5 bludgeoning`), block);
   assert.ok(block.includes(`hitId=${second.id} ${g2.displayName}'s Club, 7 bludgeoning`), block);
   assert.doesNotMatch(block, /Poppy \[characterId=[^\]]*yours to react for/, "a player's hero reacts when their player says so");
@@ -411,14 +414,138 @@ await test("Words typed for another hero's reaction go out as that hero, only wh
   assert.equal(spent.status, 409, JSON.stringify(spent.body));
 });
 
+await test("A reaction typed by the hero up next, hit in the enemies' pass, is marked as one and leaves their own turn waiting on their word", async () => {
+  const table = await stage();
+  const { world, poppy } = table;
+  // The reply ends Mira's turn and the goblins hit Poppy, who is up next.
+  await oneReply(table, poppy, [[15, 3], [16, 5]]);
+  assert.equal(characterAwaitingPlayer(world.campaignId)?.id, poppy.id, "Poppy's turn waits on her player");
+  const encounter = activePublicEncounter(world.campaignId);
+  assert.deepEqual(typedReactors(world.sheets(), world.owner.id, poppy.id, "all_active", encounter), [{ id: poppy.id, name: "Poppy" }], "her own reaction is offered beside her turn");
+
+  const typed = await route(world, "actions", { kind: "do", content: "Poppy twists away from the second club.", characterId: poppy.id, reaction: true }, world.owner);
+  assert.equal(typed.status, 202, JSON.stringify(typed.body));
+  const [line] = listRecentMessages(world.campaignId, 1);
+  assert.equal(line.characterId, poppy.id);
+  assert.deepEqual(line.intent, { card: "reaction" }, "marked as a reaction, as a card is");
+  assert.equal(declaredThisTurn(world.campaignId, poppy.id), false, "a reaction is no word on her turn");
+  assert.equal(characterAwaitingPlayer(world.campaignId)?.id, poppy.id, "the AI still waits on Poppy's player for her turn");
+  // The narrator reads it as her words to answer with use_reaction; nothing
+  // chases it as a card or hands it back.
+  assert.match(describeIntent(line.intent, poppy.id), /A reaction for characterId=.*use_reaction.*no action on their own turn/);
+  assert.equal(intentNeedsTool(line.intent), false);
+  // Her next plain line is her turn's word, as before.
+  const move = await route(world, "actions", { kind: "do", content: "Poppy stabs the nearer goblin.", characterId: poppy.id }, world.owner);
+  assert.ok(move.status < 400, JSON.stringify(move.body));
+  assert.equal(declaredThisTurn(world.campaignId, poppy.id), true);
+});
+
+// ---- Shield and a hit on a hero at 0 ----
+// Mira at 6 of 30. The first goblin's club drops her; the second hits her at
+// 0 from beside her, a critical hit (SRD 5.1: a hit within 5 feet of an
+// unconscious creature), and two death-save failures. Shield, cast as the
+// first hit lands, re-checks both with +5 AC.
+
+async function downedTwice(table, first, second) {
+  const { world, mira } = table;
+  world.patch(mira.id, { currentHp: 6 });
+  await oneReply(table, mira, [first, second]);
+  const [h1, h2] = openHits(world.campaignId, mira.id);
+  assert.equal(h1.swings[0].hit, true, JSON.stringify(h1.swings));
+  assert.equal(h1.before.currentHp, 6);
+  assert.equal(h2.before.currentHp, 0, "the second blow found her down");
+  assert.equal(h2.swings[0].hit, true, JSON.stringify(h2.swings));
+  assert.equal(h2.swings[0].crit, true, "a hit beside an unconscious creature is critical");
+  assert.equal(world.sheet(mira.id).deathSaves?.failures, 2, "two failures on a critical hit");
+  return { h1, h2 };
+}
+
+const track = (world, hero) => world.sheet(hero.id).deathSaves;
+const down = (world, hero) => world.sheet(hero.id).conditions.map((entry) => entry.toLowerCase());
+
+await test("Shield turning both hits into misses gives back the drop and the second hit's failures", async () => {
+  const table = await stage();
+  const { world, mira } = table;
+  // 10 + 4 = 14 and 12 + 4 = 16: both miss AC 17.
+  await downedTwice(table, [10, 5], [12, 12, 3, 3]);
+  const out = await react(world, mira, "Shield");
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.sheet(mira.id).currentHp, 6);
+  assert.equal(track(world, mira)?.failures ?? 0, 0);
+  assert.ok(!down(world, mira).includes("unconscious"), down(world, mira).join(", "));
+});
+
+await test("Shield that leaves the first hit standing still takes back the later hit's failures", async () => {
+  const table = await stage();
+  const { world, mira } = table;
+  // 15 + 4 = 19 still hits AC 17; the second's 16 now misses.
+  await downedTwice(table, [15, 5], [12, 12, 3, 3]);
+  const out = await react(world, mira, "Shield");
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.sheet(mira.id).currentHp, 0, "the first club still drops her");
+  assert.equal(track(world, mira)?.failures, 0, "the second club's two failures are taken back");
+  assert.equal(track(world, mira)?.dead, false);
+  assert.ok(down(world, mira).includes("unconscious"));
+});
+
+await test("Shield that turns the first hit away makes the later hit land on her standing: hit point damage, no failures", async () => {
+  const table = await stage();
+  const { world, mira } = table;
+  // The first's 14 now misses; the second's 19 still hits, for 1 + 1 + 2.
+  await downedTwice(table, [10, 5], [15, 15, 1, 1]);
+  const out = await react(world, mira, "Shield");
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.sheet(mira.id).currentHp, 2, "the second club's 4 comes off the 6 she kept");
+  assert.equal(track(world, mira)?.failures ?? 0, 0);
+  assert.ok(!down(world, mira).includes("unconscious"), down(world, mira).join(", "));
+});
+
+await test("A hero at 0 when a hit lands cannot react to it, and nothing is spent", async () => {
+  const table = await stage();
+  const { world, mira } = table;
+  const { h2 } = await downedTwice(table, [15, 5], [12, 12, 3, 3]);
+  const out = await react(world, mira, "Shield", { hit: h2.id });
+  assert.equal(out.ok, false, "Shield against the blow that found her down");
+  assert.equal(world.sheet(mira.id).spellcasting.slots["1"].used, 0);
+  assert.equal(world.encounter().reactionsUsed.includes(mira.id), false);
+  assert.equal(track(world, mira)?.failures, 2);
+});
+
+await test("Her earlier Shield still counts against a later attack on her at 0", async () => {
+  const table = await stage();
+  const { world, mira, g2 } = table;
+  world.patch(mira.id, { currentHp: 6 });
+  // Only the first goblin swings in the reply: 19 still hits AC 17.
+  const turn = createDmTurn(world.campaignId, [], "ai");
+  const ai = { kind: "ai", turnId: turn.id };
+  world.say("player", "That's my turn.", world.sheet(mira.id));
+  assert.equal((await invokeEngine(world.campaign(), ai, { name: "end_turn", args: { characterId: mira.id } })).ok, true);
+  table.kit.place(mira.id, 5, 5);
+  table.kit.place(table.g1.id, 5, 6);
+  table.kit.place(g2.id, 4, 5);
+  world.dice(15, 5);
+  assert.equal((await invokeEngine(world.campaign(), ai, { name: "enemy_attack", args: { enemyId: table.g1.id, targetCharacterId: mira.id } })).ok, true);
+  world.clearDice();
+  const shield = await react(world, mira, "Shield");
+  assert.equal(shield.ok, true, shield.error);
+  assert.equal(world.sheet(mira.id).currentHp, 0, "the club still drops her");
+  // The second goblin's 16 meets the shielded 17 and misses: no failure.
+  world.dice(12, 12, 3, 3);
+  const later = await world.invoke("enemy_attack", { enemyId: g2.id, targetCharacterId: mira.id });
+  world.clearDice();
+  assert.equal(later.ok, true, later.error);
+  assert.equal(track(world, mira)?.failures ?? 0, 0, JSON.stringify(later.result));
+});
+
 await test("The screens wire it: Speaking as on its host flag, Edit in chat names the card's hero, and the companions' reactions in the Hand", () => {
   const view = read("app/campaigns/[campaignId]/SessionView.tsx");
   assert.match(view, /hostOffers\(capabilities, "typedReactions"\)/);
+  assert.match(view, /kind === "do" && speakingAs/);
   assert.match(view, /characterId: speakingAs\.id, reaction: true/);
   assert.match(view, /setReactAs\(null\)/, "back on the hero whose turn it is after a send");
   const composer = read("app/campaigns/[campaignId]/Composer.tsx");
   assert.match(composer, /<ReactAsPicker /);
-  assert.match(composer, /\(kind === "do" \|\| kind === "say"\) && speakingAs\?\.reactors\.length/);
+  assert.match(composer, /kind === "do" && speakingAs\?\.reactors\.length/, "in Do: a reaction is something done");
   assert.match(composer, /onComposeAs=\{speakingAs\?\.onChange\}/);
   const picker = read("app/campaigns/[campaignId]/ReactAsPicker.tsx");
   assert.match(picker, /label="Speaking as"/, "named for screen readers");

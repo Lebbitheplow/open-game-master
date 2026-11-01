@@ -397,7 +397,7 @@ function ComposerInner({
             monsters={(encounter?.enemies ?? []).filter((enemy) => enemy.status === "alive").map((enemy) => ({ id: enemy.id, name: enemy.name }))}
           />
         ) : null}
-        {(kind === "do" || kind === "say") && speakingAs?.reactors.length ? <ReactAsPicker {...speakingAs} /> : null}
+        {kind === "do" && speakingAs?.reactors.length ? <ReactAsPicker {...speakingAs} /> : null}
         {kind === "lead" && steersStory ? (
           <div className="reveal mb-2 flex flex-wrap items-center gap-1.5">
             <DirectorPresets campaignId={campaignId} romance={romanceCue} />

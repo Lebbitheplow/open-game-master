@@ -28,6 +28,7 @@ import { applyDmMutation } from "@/lib/dm/mutations";
 import { READIED } from "@/lib/dm/object-actions";
 import { handlePcAttack } from "@/lib/dm/pc-attack";
 import { allyOf, noFall, settle, softenFall, spendReaction, type Ctx } from "@/lib/dm/reaction-tools";
+import { settleHits } from "@/lib/dm/reaction-refund";
 import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
 import { takeItemCast } from "@/lib/srd/item-cast-credit";
 import { spellHeldProblem } from "@/lib/dm/cast-rules";
@@ -191,18 +192,26 @@ export function reactionSpell(ctx: Ctx, spellName: string): ToolResult {
   if (name === "shield") {
     const covered = shieldAnswers(campaign.id, sheet.id);
     addSheetCondition(campaign, sheet, "shielded", { untilTurnOf: sheet.id });
-    let answered = "";
-    // The latest first: each re-resolves on the standing the one after it
-    // left, so a blow undone puts back exactly what it took.
-    for (const record of [...covered].reverse()) {
-      const corrected = record.swings.map((swing) =>
+    // Every hit it covers is re-checked together, so a later blow that now
+    // misses gives back all it did and an earlier one undone turns the later
+    // ones back into hit point damage (reaction-refund.ts settleHits).
+    const answers = covered.map((record) => ({
+      record,
+      corrected: record.swings.map((swing) =>
         swing.hit && swing.natural !== 20 && swing.total < swing.vsAc + 5 ? { ...swing, hit: false, raw: 0 } : swing,
-      );
-      const turned = corrected.filter((swing, at) => record.swings[at].hit && !swing.hit).length;
-      const settled = settle(ctx, record, corrected, "shield");
-      answered = (turned
-        ? ` Against ${record.attacker.name}'s ${record.attack}, ${turned} hit${turned === 1 ? "" : "s"} now miss${turned === 1 ? "es" : ""}: ${settled.given} hit points come back. HP ${settled.hp}.`
-        : ` ${record.attacker.name}'s ${record.attack} still hits the higher AC.`) + answered;
+      ),
+    }));
+    const settled = answers.length ? settleHits(campaign, ctx.turn.id, answers, "shield", ctx.sheets, ctx.sheetsById) : null;
+    let answered = answers
+      .map(({ record, corrected }) => {
+        const turned = corrected.filter((swing, at) => record.swings[at].hit && !swing.hit).length;
+        return turned
+          ? ` Against ${record.attacker.name}'s ${record.attack}, ${turned} hit${turned === 1 ? "" : "s"} now miss${turned === 1 ? "es" : ""}.`
+          : ` ${record.attacker.name}'s ${record.attack} still hits the higher AC.`;
+      })
+      .join("");
+    if (settled) {
+      answered += ` ${settled.given} hit points come back. HP ${settled.hp}.${settled.notes.length ? ` ${settled.notes.join(" ")}` : ""}`;
     }
     const updated = getSheetById(sheet.id) ?? sheet;
     return {
