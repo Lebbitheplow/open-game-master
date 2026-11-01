@@ -21,7 +21,7 @@ import { areaArgs, describePick, hasPick, type AreaPick, type HandArea } from "@
 import type { HandShare } from "@/lib/battlemap/hand-intent";
 import { textKey } from "@/lib/language/text-logic";
 import { grantedRideMark } from "@/lib/battlemap/hand-granted";
-import { summonCount, summonPhrase } from "@/lib/battlemap/hand-summon";
+import { summonIntent, summonReady, summonWords, type SummonChoices } from "@/lib/battlemap/hand-summon";
 import type { BoardControlId, BoardPanel } from "@/lib/addons/board-bridge";
 
 // Who a card is aimed at. `ac` only ever arrives in the DM's projection; a
@@ -45,8 +45,11 @@ export type HandChoices = {
   trigger?: string;
   // The card's one pick (HandCard.choice): a spell's form, a readied spell.
   choice?: string;
-  // How many a summoning card brings of the creature picked (HandCard.summon).
+  // How many a summoning card brings of the creature picked, the kind it is
+  // (Find Steed's fey), and a per-target spell's forms (HandCard.summon).
   count?: number;
+  kind?: string;
+  mix?: Record<string, number>;
   // Where an area spell is laid (HandCard.area), picked on the board.
   area?: AreaPick;
   // The darts, rays or creatures given to creatures beside the one aimed at
@@ -105,7 +108,12 @@ export function handReady(card: HandCard, aim: HandAim | null, choices: HandChoi
   return (!(card.target === "enemy" || card.target === "ally") || aim !== null || hasPick(card.area, choices.area ?? {}))
     && (card.asks !== "trigger" || Boolean(choices.trigger?.trim()))
     // A summoning card goes with its creature picked (hand-summon.ts).
-    && (!card.summon || Boolean(chosenValue(card, choices)));
+    && (!card.summon || summonReady(card, summonChoicesOf(card, choices)));
+}
+
+// A summoning card's picks, as hand-summon.ts reads them.
+function summonChoicesOf(card: HandCard, choices: HandChoices): SummonChoices {
+  return { form: chosenValue(card, choices), count: choices.count, kind: choices.kind, mix: choices.mix };
 }
 
 // The value a card's pick sends: the player's, else the card's fallback,
@@ -119,11 +127,13 @@ export function chosenValue(card: HandCard, choices: HandChoices = {}): string |
 }
 
 function chosenLabel(card: HandCard, choices: HandChoices): string | null {
+  // A per-target summoning names its forms, with no one creature picked.
+  if (card.summon?.mix) return summonWords(card, summonChoicesOf(card, choices));
   const value = chosenValue(card, choices);
   if (!value) return null;
-  const label = card.choice?.options.find((option) => option.value === value)?.label ?? value;
   // A summoning card's creature with its number: "Wolf, 8 of them".
-  return card.summon ? summonPhrase(label, summonCount(card, value, choices.count)) : label;
+  if (card.summon) return summonWords(card, summonChoicesOf(card, choices));
+  return card.choice?.options.find((option) => option.value === value)?.label ?? value;
 }
 
 export type PreviewRow = {
@@ -420,15 +430,17 @@ export function intentBody(
   const trigger = card.asks === "trigger" && choices.trigger?.trim() ? { trigger: choices.trigger.trim() } : {};
   const value = chosenValue(card, choices);
   const pick =
-    !value || !card.choice
+    // A summoning card's creature, kind, number or forms (issue 685), under
+    // cast_buff's own names.
+    card.summon
+      ? summonIntent(card, summonChoicesOf(card, choices))
+      : !value || !card.choice
       ? {}
       : card.choice.arg === "readySpell"
         ? value.startsWith("@")
           ? { readyAction: value.slice(1) }
           : { readySpell: value, ...(card.choice.levels?.[value] ? { readyLevel: card.choice.levels[value] } : {}) }
         : { [card.choice.arg]: value };
-  // A summoning card's number rides as cast_buff's own `count` (issue 685).
-  const count = card.summon && value ? summonCount(card, value, choices.count) : null;
   const area = card.area && choices.area ? areaArgs(card.area, choices.area) : {};
   // Sent even for one creature taking every dart or ray, so the engine
   // throws them all rather than one (issue 570).
@@ -438,7 +450,6 @@ export function intentBody(
     ...attack,
     ...trigger,
     ...pick,
-    ...(count ? { count } : {}),
     ...area,
     ...(shared.length ? { shares: shared } : {}),
     ...(aim ? { targetId: aim.id, targetName: aim.name, targetKind: aim.kind } : {}),

@@ -21,7 +21,9 @@ import { castSpell } from "@/lib/dm/cast-guard";
 import type { MessageIntent } from "@/lib/dm/intent-logic";
 import { spellEngineName } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
-import { reassertsControl, summonPlan, summonSpellFor } from "@/lib/srd/summon-spells";
+import { reassertsControl, summonMixPlan, summonPlan, summonSpellFor } from "@/lib/srd/summon-spells";
+import { familiarKindOf, isFindFamiliar } from "@/lib/srd/familiar-forms";
+import { buildPet } from "@/lib/dm/pet-build";
 
 const NO_HOOKS = { record: () => {}, publish: () => {} };
 
@@ -51,15 +53,26 @@ function kindOf(intent: MessageIntent): ActKind {
 // here in the engine's words, before the card waits on anyone (issue 685).
 // The engine itself brings the most when asked for more, so a card asking
 // eight brown bears would have been played as two.
-function summonCardRefusal(campaign: Campaign, intent: MessageIntent): string | null {
-  if (!intent.spell || (!intent.variant && !intent.count)) {
+function summonCardRefusal(campaign: Campaign, sheet: CharacterSheet, intent: MessageIntent): string | null {
+  if (!intent.spell || (!intent.variant && !intent.count && !intent.mix?.length)) {
     return null;
   }
-  const summoning = summonSpellFor(spellEngineName(intent.spell, spellAuthorsFor(campaign)));
+  const engine = spellEngineName(intent.spell, spellAuthorsFor(campaign));
+  // Find Familiar's form, Pact of the Chain's four only with the pact.
+  if (isFindFamiliar(engine)) {
+    const built = intent.variant ? buildPet(sheet, { kind: "familiar", form: familiarKindOf(intent.variant).form }) : null;
+    return built && "error" in built ? built.error : null;
+  }
+  const summoning = summonSpellFor(engine);
   if (!summoning || reassertsControl(summoning, intent.variant)) {
     return null;
   }
   const slot = Math.max(summoning.level, intent.slotLevel ?? summoning.level);
+  // Each target's own form (Animate Dead), within the slot's budget.
+  if (intent.mix?.length) {
+    const plans = summonMixPlan(summoning, slot, intent.mix);
+    return "error" in plans ? plans.error : null;
+  }
   const plan = summonPlan(summoning, slot, intent.variant ?? "", intent.count);
   if ("error" in plan) {
     return plan.error;
@@ -90,6 +103,8 @@ export function intentRefusal(
       {
         spell: intent.spell,
         ...(intent.slotLevel ? { level: intent.slotLevel } : {}),
+        // A ritual card is asked as a ritual: a class that casts none is told so.
+        ...(intent.ritual ? { ritual: true } : {}),
         ...(intent.card === "reaction" ? { via: "reaction" as const } : {}),
         dryRun: true,
       },
@@ -99,7 +114,7 @@ export function intentRefusal(
       return verdict.error;
     }
     if (intent.card === "spell") {
-      return summonCardRefusal(campaign, intent);
+      return summonCardRefusal(campaign, sheet, intent);
     }
   }
   const encounter = getActiveEncounter(campaign.id);

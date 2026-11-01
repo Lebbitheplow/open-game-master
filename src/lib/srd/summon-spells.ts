@@ -59,6 +59,11 @@ export type SummonSpell = {
   // Find Steed: the kind of creature it is instead of its own, the caster's
   // choice ("a fey warhorse"), the first when none is named.
   kinds?: string[];
+  // Each target takes its own form (SRD 5.1): Animate Dead raises bones as a
+  // skeleton and a corpse as a zombie, Animate Objects animates objects of
+  // any size. One casting may bring several forms (cast_buff's `mix`), held
+  // to the one budget its slot gives.
+  perTarget?: boolean;
   // Phantom Steed's speed.
   speed?: number;
   // Faithful Hound: it acts at the start of its caster's turn (its entry
@@ -104,7 +109,7 @@ export const SUMMON_SPELLS: SummonSpell[] = [
     note: "One celestial of CR 4 or lower (CR 5 from a 9th level slot).",
   },
   {
-    name: "Animate Dead", school: "necromancy", level: 3, concentration: false, rounds: DAY, forms: ["Skeleton", "Zombie"],
+    name: "Animate Dead", school: "necromancy", level: 3, concentration: false, rounds: DAY, forms: ["Skeleton", "Zombie"], perTarget: true,
     base: 1, perSlotLevel: 2, initiative: "group", controlExpires: true, reassert: 4, reassertPerSlot: 2,
     note: "A skeleton or zombie under the caster's command for 24 hours (two more for each slot level above 3rd); a bonus action commands them all.",
   },
@@ -140,7 +145,7 @@ export const SUMMON_SPELLS: SummonSpell[] = [
     note: "A quasi-real horse with a riding horse's statistics and a speed of 100 feet for an hour; it disappears if it takes any damage.",
   },
   {
-    name: "Animate Objects", school: "transmutation", level: 5, concentration: true, rounds: 10,
+    name: "Animate Objects", school: "transmutation", level: 5, concentration: true, rounds: 10, perTarget: true,
     forms: ["Animated Object (Tiny)", "Animated Object (Small)", "Animated Object (Medium)", "Animated Object (Large)", "Animated Object (Huge)"],
     objectBudget: {
       base: 10,
@@ -323,6 +328,9 @@ export function summonCounts(spell: SummonSpell, slotLevel: number, form: Pick<S
 // the ones it calls by challenge rating come strongest first, then by name.
 export type SummonCatalogueForm = {
   name: string;
+  // Pact of the Chain's four familiar forms (imp, pseudodragon, quasit,
+  // sprite), offered only to a caster who holds the pact.
+  chainOnly?: boolean;
   type: string;
   cr: number;
   ac: number;
@@ -334,7 +342,76 @@ export type SummonCatalogueForm = {
 // `calls`: whether the spell names its forms (Giant Insect's four insects)
 // or calls any creature of its kinds up to a challenge rating (Conjure
 // Animals), which the picker lists under their ratings.
-export type SummonCatalogue = { spell: string; calls: "forms" | "rating"; forms: SummonCatalogueForm[] };
+export type SummonCatalogue = {
+  spell: string;
+  calls: "forms" | "rating";
+  forms: SummonCatalogueForm[];
+  // The kinds the caster chooses the creature to be instead of its own
+  // (Find Steed's and Find Familiar's celestial, fey or fiend), the first
+  // being the engine's when none is named.
+  kinds?: string[];
+  // A casting whose targets each take their own form (Animate Dead, Animate
+  // Objects): by slot level, the budget the forms share, and what one of
+  // each form costs of it.
+  perTarget?: { budgets: Record<string, number>; cost: Record<string, number> };
+  // The asking caster may cast it as a ritual (src/lib/dm/cast-rules.ts
+  // ritualProblem): no slot, ten minutes longer. Set by the route, which
+  // knows the caster.
+  ritual?: boolean;
+  // Its casting time is a minute or more, so in a fight it is begun and held
+  // across the caster's turns, and the Hand deals no card for it. Set by the
+  // route from the spell's facts.
+  long?: boolean;
+};
+
+// One form of a per-target casting and how many of it (cast_buff's `mix`).
+export type SummonMixEntry = { variant: string; count: number };
+
+// The budget a per-target casting from `slotLevel` shares out, and what one
+// creature of a form costs of it: Animate Objects' ten objects (two more a
+// slot level above 5th), a Medium counting two, a Large four, a Huge eight;
+// Animate Dead's one creature (two more a slot level above 3rd), each one.
+function mixBudget(spell: SummonSpell, slotLevel: number): { budget: number; cost: (form: string) => number } {
+  const above = Math.max(0, slotLevel - spell.level);
+  if (spell.objectBudget) {
+    const objects = spell.objectBudget;
+    return { budget: objects.base + objects.perSlotLevel * above, cost: (form) => objects.cost[form] ?? 1 };
+  }
+  return { budget: (spell.base ?? 1) + (spell.perSlotLevel ?? 0) * above, cost: () => 1 };
+}
+
+// A per-target casting's forms and numbers (Animate Dead's two skeletons and
+// a zombie), each a form the spell makes, together within the slot's budget,
+// or the rule they break. A spell that calls one kind per casting refuses a
+// mix: its creature goes in variant.
+export function summonMixPlan(spell: SummonSpell, slotLevel: number, mix: readonly SummonMixEntry[]): SummonPlan[] | ToolError {
+  if (!spell.perTarget) {
+    return { error: `${spell.name} calls one kind of creature per casting: name it in variant (and count for fewer), not mix. Nothing was spent.`, retry: true };
+  }
+  const plans: SummonPlan[] = [];
+  for (const entry of mix) {
+    const plan = summonPlan(spell, slotLevel, entry.variant);
+    if ("error" in plan) {
+      return plan;
+    }
+    const same = plans.find((held) => held.form.name === plan.form.name);
+    if (same) {
+      same.count += entry.count;
+    } else {
+      plans.push({ ...plan, count: entry.count });
+    }
+  }
+  if (!plans.length) {
+    return { error: `${spell.name} needs at least one creature in mix. Nothing was spent.`, retry: true };
+  }
+  const { budget, cost } = mixBudget(spell, slotLevel);
+  const used = plans.reduce((sum, plan) => sum + plan.count * cost(plan.form.name), 0);
+  if (used > budget) {
+    const counted = spell.objectBudget ? " (a Medium object counts as two, a Large four, a Huge eight)" : "";
+    return { error: `${spell.name} from a level ${slotLevel} slot brings ${budget} at most${counted}; these come to ${used}. Nothing was spent.`, retry: true };
+  }
+  return plans;
+}
 
 export function summonCatalogue(spell: SummonSpell): SummonCatalogue {
   const candidates = spell.forms
@@ -353,5 +430,17 @@ export function summonCatalogue(spell: SummonSpell): SummonCatalogue {
       forms.push({ name: form.name, type: form.type, cr: form.cr, ac: form.ac, hp: form.hp, counts });
     }
   }
-  return { spell: spell.name, calls: spell.forms ? "forms" : "rating", forms };
+  const perTarget = spell.perTarget
+    ? {
+        budgets: Object.fromEntries(Object.keys(forms[0]?.counts ?? {}).map((slot) => [slot, mixBudget(spell, Number(slot)).budget])),
+        cost: Object.fromEntries(forms.map((form) => [form.name, mixBudget(spell, spell.level).cost(form.name)])),
+      }
+    : null;
+  return {
+    spell: spell.name,
+    calls: spell.forms ? "forms" : "rating",
+    forms,
+    ...(spell.kinds ? { kinds: spell.kinds } : {}),
+    ...(perTarget ? { perTarget } : {}),
+  };
 }

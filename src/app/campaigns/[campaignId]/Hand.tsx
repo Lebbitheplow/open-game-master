@@ -47,6 +47,7 @@ import type { HandShare } from "@/lib/battlemap/hand-intent";
 import { offeredBoardControl, type BoardControl, type BoardPanel } from "@/lib/addons/board-bridge";
 import { describePick, hasPick, pickHint } from "@/lib/battlemap/hand-area";
 import { reactionAim, reactionCards, withReactions, offTurnReactionCards } from "@/lib/battlemap/hand-react";
+import { readSummonControl, summonBoardControls } from "@/lib/battlemap/hand-summon";
 import { liveNotice, turnCharacterId, turnFromEncounter, turnPips, turnSignature, type HandNotice } from "@/lib/battlemap/hand-table";
 
 import type { TargetEdge } from "@/lib/battlemap/view-tactics";
@@ -555,14 +556,16 @@ function HandInner({
       ...(offered.length ? [{ id: "hand-target" as const, label: "Target", value: aim?.id, disabled: null, options: offered.map(target => option(target.id, `${target.name}${target.note ? ` · ${target.note}` : ""}`)) }] : []),
       ...(barProps.options.length ? [{ id: "hand-option" as const, label: "Attack options (choose to toggle)", disabled: null, options: barProps.options.map(entry => option(entry.id, `${barProps.chosen.includes(entry.id) ? "✓ " : ""}${entry.label}`, entry.disabled ?? null)) }] : []),
       ...(picked.intent.card === "attack" && cards.some(card => card.type === "rider") ? [{ id: "hand-rider" as const, label: "Riders (choose to toggle)", disabled: null, options: cards.filter(card => card.type === "rider").map(card => option(card.id, `${attachedRiders.some(rider => rider.id === card.id) ? "✓ " : ""}${card.name}`, card.disabled)) }] : []),
-      ...(picked.choice ? [{ id: "hand-choice" as const, label: picked.choice.label, value: barProps.choice ?? picked.choice.fallback ?? picked.choice.options[0]?.value, disabled: null, options: picked.choice.options.map(entry => option(entry.value, entry.label)) }] : []),
+      ...(picked.choice && !picked.summon?.mix ? [{ id: "hand-choice" as const, label: picked.choice.label, value: barProps.choice ?? picked.choice.fallback ?? picked.choice.options[0]?.value, disabled: null, options: picked.choice.options.map(entry => option(entry.value, entry.label)) }] : []),
+      // A summoning card's number and each target's form (issue 685).
+      ...summonBoardControls(picked, { form: barProps.choice, ...(barProps.count !== null ? { count: barProps.count } : {}), mix: barProps.mix }),
       ...(splits && picked.shares && aim && offered.some(target => target.id !== aim.id) ? [shareControl(picked, aim, offered, barProps.shares)] : []),
       ...(barProps.trigger !== null ? [{ id: "hand-trigger" as const, label: "Trigger", disabled: null, input: { value: barProps.trigger } }] : []),
       ...(picked.area && hasPick(picked.area, barProps.areaPick) ? [{ id: "hand-area-clear" as const, label: "Clear area", disabled: null }] : []),
-      { id: "hand-play", label: picked.compose ? "Write in chat" : `Play ${picked.name}`, disabled: inputBlocked && picked.cost !== "reaction" ? blockedReason : handReady(picked, aim, { trigger: barProps.trigger ?? "", area: barProps.areaPick, ...(barProps.choice !== null ? { choice: barProps.choice } : {}) }) ? null : picked.summon ? "Choose the creature first." : "Choose a target, area or trigger first." },
+      { id: "hand-play", label: picked.compose ? "Write in chat" : `Play ${picked.name}`, disabled: inputBlocked && picked.cost !== "reaction" ? blockedReason : handReady(picked, aim, { trigger: barProps.trigger ?? "", area: barProps.areaPick, ...(barProps.choice !== null ? { choice: barProps.choice } : {}), mix: barProps.mix }) ? null : picked.summon ? "Choose the creature first." : "Choose a target, area or trigger first." },
       { id: "hand-edit", label: "Edit in chat", disabled: null }, { id: "hand-back", label: "Back", disabled: null }, close,
     ] };
-  }, [boardNative, boardSwap, boardChoices, cards, picked, rows, sentence, offered, aim, attachedRiders, barProps.options, barProps.chosen, barProps.choice, barProps.trigger, barProps.areaPick, barProps.shares, splits, notice, inputBlocked, blockedReason]);
+  }, [boardNative, boardSwap, boardChoices, cards, picked, rows, sentence, offered, aim, attachedRiders, barProps.options, barProps.chosen, barProps.choice, barProps.count, barProps.mix, barProps.trigger, barProps.areaPick, barProps.shares, splits, notice, inputBlocked, blockedReason]);
   const nativeSignature = JSON.stringify([campaignId, sheet?.id, signature, nativePanel, sending && !boardSwap]);
   useEffect(() => {
     if (swapReply.current && swapTurn.current !== `${campaignId}:${sheet?.id}:${signature}`) {
@@ -589,6 +592,13 @@ function HandInner({
         case "hand-option": { const option = barProps.options.find(entry => entry.id === value); if (option && !option.disabled) barProps.onToggleOption(option.id); break; }
         case "hand-rider": { const card = cards.find(entry => entry.id === value && entry.type === "rider"); if (card) pick(card, true); break; }
         case "hand-choice": barProps.onChoice(value); break;
+        case "hand-count":
+        case "hand-mix": {
+          const step = readSummonControl(detail.actionId, value);
+          if (step && "count" in step) barProps.onCount(step.count);
+          else if (step) barProps.onStepMix(step.form, step.delta);
+          break;
+        }
         case "hand-trigger": barProps.onTrigger(value); break;
         case "hand-share": {
           const [id, step] = value.split(":");

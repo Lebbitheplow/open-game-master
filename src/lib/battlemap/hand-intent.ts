@@ -42,6 +42,11 @@ export const handIntentExtras = {
   // How many of that creature, cast_buff's `count`: one of the numbers the
   // spell lets its caster choose (Conjure Animals' one, two, four or eight).
   count: z.number().int().min(1).max(40).optional(),
+  // A summoning whose targets each take their own form, cast_buff's `mix`:
+  // Animate Dead's skeletons and zombies, Animate Objects' sizes.
+  mix: z.array(z.object({ variant: text(40), count: z.number().int().min(1).max(40) })).min(1).max(6).optional(),
+  // A ritual spell cast as one (no slot, ten minutes longer).
+  ritual: z.boolean().optional(),
   // A save spell's chosen form, cast_at_enemy's `condition`: Command's word,
   // Eyebite's form, Bestow Curse's curse, "armor" for Heat Metal.
   condition: text(40).optional(),
@@ -115,6 +120,8 @@ export type HandIntentExtras = {
   feature?: string;
   variant?: string;
   count?: number;
+  mix?: Array<{ variant: string; count: number }>;
+  ritual?: boolean;
   condition?: string;
   bonus?: boolean;
   trigger?: string;
@@ -140,6 +147,8 @@ export function handExtraArgs(intent: HandIntentExtras): string[] {
   if (intent.feature) args.push(`feature=${intent.feature}`);
   if (intent.variant) args.push(`variant=${intent.variant}`);
   if (intent.count) args.push(`count=${intent.count}`);
+  if (intent.mix?.length) args.push(`mix=${intent.mix.map((entry) => `${entry.count} ${entry.variant}`).join(" + ")}`);
+  if (intent.ritual) args.push("ritual=true");
   if (intent.condition) args.push(`condition=${intent.condition}`);
   if (intent.bonus) args.push("bonus=true");
   if (intent.trigger) args.push(`trigger=${intent.trigger}`);

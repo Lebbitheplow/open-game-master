@@ -750,6 +750,12 @@ const OMITTED_ON_PURPOSE = {
   // save (SRD 5.1, Cover). A person sees the board and rules that cover as
   // they set the DC; the model, which cannot point, names the square.
   apply_hazard: ["fromX", "fromY"],
+  // Each target's own form for Animate Dead or Animate Objects (issue 685):
+  // the player picks it on the Hand's card or the sheet's summoning door,
+  // and the console resolves that card as played with it; a GM casting the
+  // spell from the form gives one form for the casting with Choice and How
+  // many.
+  cast_buff: ["mix"],
 };
 
 function formOmissions(entry) {

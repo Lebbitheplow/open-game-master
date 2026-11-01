@@ -282,6 +282,7 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
         help: "A summoning spell's creature (Find Steed's with its kind: fey warhorse), Find Familiar's form, Polymorph's or Animal Shapes' beast, True Polymorph's or Shapechange's creature; or type Enlarge/Reduce, Protection from Energy's type, Enhance Ability, Fire Shield.",
       },
       { name: "count", label: "How many", kind: "number", min: 1, max: 40, help: "A summoning spell: fewer creatures than the slot allows; empty for the most." },
+      { name: "ritual", label: "As a ritual", kind: "boolean", help: "A summoning ritual (Find Familiar, Unseen Servant, Phantom Steed): ten minutes longer and no slot spent, for a caster who casts rituals." },
       { name: "endSpell", label: "Dispel Magic ends", kind: "text", help: "The one spell to end when the target holds several; empty ends them all." },
       // Where Spiritual Weapon's weapon appears, as the AI GM can say it
       // (issue 659).

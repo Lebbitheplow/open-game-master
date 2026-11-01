@@ -70,6 +70,12 @@ const castBuffSchema = z.object({
   endSpell: z.string().max(80).optional(),
   // A summoning spell: fewer creatures than the slot allows.
   count: z.coerce.number().int().min(1).max(40).optional(),
+  // A summoning spell whose targets each take their own form (Animate Dead's
+  // skeletons and zombies, Animate Objects' sizes): each form and how many.
+  mix: z.array(z.object({ variant: z.string().trim().min(1).max(40), count: z.coerce.number().int().min(1).max(40) })).min(1).max(6).optional(),
+  // A summoning ritual (Find Familiar, Unseen Servant, Phantom Steed) cast as
+  // one: no slot, ten minutes longer.
+  ritual: z.boolean().optional(),
   reason: z.string().optional(),
   // Where a buff that leaves something on the board appears (Spiritual
   // Weapon's weapon, issue 659): the Hand's board pick carried these, and
@@ -135,13 +141,13 @@ export function handleCastBuff(
   if (summoning) {
     return castSummon(
       campaign,
-      { caster: sheet, spell: summoning, castAs, level: args.level, variant: args.variant, count: args.count, reason: args.reason },
+      { caster: sheet, spell: summoning, castAs, level: args.level, variant: args.variant, count: args.count, mix: args.mix, ritual: args.ritual, reason: args.reason },
       (cast) => applyDmMutation(campaign, turn.id, "use_spell_slot", JSON.stringify(cast), sheets, sheetsById).result,
     );
   }
   // Find Familiar binds a pet once the casting is paid (familiar-cast.ts).
   if (isFindFamiliar(engine)) {
-    return castFindFamiliar(campaign, { caster: sheet, castAs, variant: args.variant, level: args.level, reason: args.reason, sheets, sheetsById }, (cast) =>
+    return castFindFamiliar(campaign, { caster: sheet, castAs, variant: args.variant, level: args.level, ritual: args.ritual, reason: args.reason, sheets, sheetsById }, (cast) =>
       applyDmMutation(campaign, turn.id, "use_spell_slot", JSON.stringify(cast), sheets, sheetsById).result,
     );
   }

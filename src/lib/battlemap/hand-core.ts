@@ -155,7 +155,15 @@ export type HandShares = { count: number; unit: "dart" | "ray" | "beam" | "creat
 // in from the card's slot, fewest first (the last is the most, what the
 // engine brings when no number is picked), and the challenge rating it is
 // listed under when the spell calls by rating ("CR 1/4").
-export type HandSummon = { forms: Record<string, { counts: number[]; group?: string }> };
+export type HandSummon = {
+  forms: Record<string, { counts: number[]; group?: string }>;
+  // The kinds the creature may be instead of its own (Find Steed's
+  // celestial, fey or fiend), the first being the engine's default.
+  kinds?: Array<{ value: string; label: string }>;
+  // A spell whose targets each take their own form (Animate Dead, Animate
+  // Objects): the budget the forms share at this slot, and each one's cost.
+  mix?: { budget: number; cost: Record<string, number> };
+};
 
 export type HandChoice = {
   arg: "condition" | "variant" | "readySpell" | "item";

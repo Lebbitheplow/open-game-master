@@ -50,11 +50,27 @@ function lastingLaid(intent: MessageIntent, pick: LastingPick): boolean {
 
 // A spell that makes creatures, cast whole: the creature is the card's
 // variant, or the only one the spell makes (Unseen Servant), and its number
-// the card's count (the most the slot allows when it names none). The Hand
-// asks for both (issue 685); a card that names no creature (an older
-// screen, an agent) stays with the GM, who picks it.
+// the card's count (the most the slot allows when it names none); a
+// per-target spell's forms come as its mix (Animate Dead's skeletons and
+// zombies). The Hand and the sheet's summoning door ask for them (issue
+// 685); a card that names no creature (an older screen, an agent) stays with
+// the GM, who picks it.
+//
+// A summoning of a minute or more in a fight is begun first (SRD 5.1,
+// Longer Casting Times): a card with no creature begins it through
+// use_spell_slot, which holds it across the caster's turns, and the card
+// that finishes it names the creature, which cast_buff brings as the cast
+// guard completes the casting.
 export function summonCall(intent: MessageIntent, characterId: string, context: DirectContext): DirectCall | null {
-  if (!intent.spell || !context.summon || (context.summon === "choose" && !intent.variant)) {
+  if (!intent.spell || !context.summon) {
+    return null;
+  }
+  const mix = intent.mix?.length ? intent.mix : null;
+  const ritual = intent.ritual ? { ritual: true } : {};
+  if (context.long && context.inFight && !intent.variant && !mix) {
+    return { name: "use_spell_slot", args: { characterId, spell: intent.spell, ...level(intent), ...ritual } };
+  }
+  if (context.summon === "choose" && !intent.variant && !mix) {
     return null;
   }
   return {
@@ -63,8 +79,9 @@ export function summonCall(intent: MessageIntent, characterId: string, context: 
       characterId,
       spell: intent.spell,
       ...level(intent),
-      ...(intent.variant ? { variant: intent.variant } : {}),
-      ...(intent.count ? { count: intent.count } : {}),
+      ...(mix ? { mix } : intent.variant ? { variant: intent.variant } : {}),
+      ...(!mix && intent.count ? { count: intent.count } : {}),
+      ...ritual,
     },
   };
 }

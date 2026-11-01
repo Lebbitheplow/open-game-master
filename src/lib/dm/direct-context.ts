@@ -13,6 +13,7 @@ import { areaFor } from "@/lib/battlemap/hand-area";
 import { zoneRowFor } from "@/lib/battlemap/zones-spells";
 import { spellAreaShape } from "@/lib/dm/aoe-shape";
 import { summonSpellFor } from "@/lib/srd/summon-spells";
+import { isFindFamiliar } from "@/lib/srd/familiar-forms";
 import type { DirectContext, MessageIntent } from "@/lib/dm/intent-logic";
 
 export function directContextFor(campaignId: string, intent: MessageIntent, authors: string[]): DirectContext {
@@ -38,6 +39,9 @@ export function directContextFor(campaignId: string, intent: MessageIntent, auth
   // the creatures it makes, the area it leaves, its range (issue 685).
   const cast = intent.card === "spell" && spell ? spell : null;
   const summoning = cast && runsAs ? summonSpellFor(runsAs) : null;
+  // Find Familiar binds a pet of the form named (familiar-cast.ts).
+  const familiar = Boolean(cast && runsAs && isFindFamiliar(runsAs));
+  const facts = cast ? spellFactsFor(cast, authors) : null;
   const pick = cast && zone ? (board ? (areaFor({ spell: cast, runsAs })?.pick ?? "point") : "off") : null;
   return {
     inFight: Boolean(encounter),
@@ -46,9 +50,10 @@ export function directContextFor(campaignId: string, intent: MessageIntent, auth
     ...(blast ? { blast } : {}),
     ...(shareKind ? { shareKind } : {}),
     ...(mech?.riders?.clusterFeet ? { cluster: true } : {}),
-    ...(summoning ? { summon: summoning.forms?.length === 1 ? "one" : "choose" } : {}),
+    ...(summoning ? { summon: summoning.forms?.length === 1 ? "one" : "choose" } : familiar ? { summon: "choose" } : {}),
+    ...((summoning || familiar) && typeof facts?.castingTime === "number" ? { long: true } : {}),
     ...(pick && zone ? { lasting: { pick, ...(zone.catchesWhenLaid ? { catches: true } : {}) } } : {}),
-    ...(cast && spellFactsFor(cast, authors)?.range.kind === "self" ? { selfOnly: true } : {}),
+    ...(facts?.range.kind === "self" ? { selfOnly: true } : {}),
     ...(mech?.dispel ? { dispel: true } : {}),
   };
 }

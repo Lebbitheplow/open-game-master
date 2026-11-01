@@ -191,6 +191,20 @@ export const castBuffTool: ToolDef = {
           maximum: 40,
           description: "A summoning spell only: fewer creatures than the slot allows. Default: the most.",
         },
+        mix: {
+          type: "array",
+          maxItems: 6,
+          items: {
+            type: "object",
+            properties: { variant: { type: "string" }, count: { type: "integer", minimum: 1, maximum: 40 } },
+            required: ["variant", "count"],
+          },
+          description: "Animate Dead or Animate Objects only, instead of variant: each target's own form and how many ([{variant:'skeleton',count:2},{variant:'zombie',count:1}]); the server holds them to the slot's budget.",
+        },
+        ritual: {
+          type: "boolean",
+          description: "A summoning ritual (Find Familiar, Unseen Servant, Phantom Steed) cast as one: 10 extra minutes, no slot spent.",
+        },
         endSpell: {
           type: "string",
           description: "Dispel Magic only: the spell to end when the target holds several; omit to end them all.",
