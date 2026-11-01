@@ -687,6 +687,7 @@
     "lib/battlemap/delivery.ts#fallback": [["key",1,"damage types, a neutral tone for the rest"]],
     "lib/battlemap/delivery.ts#keyed": [["key",2,"delivery and damage type keys"],["key",4,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "lib/battlemap/flipbooks.ts#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
+    "lib/battlemap/ground-change.ts#partial": [["key",1,"terrain codes"]],
     "lib/battlemap/hand-class.ts#fallback": [["key",1,"the first carried weapon the hands can use, else the first that fits"]],
     "lib/battlemap/hand-class.ts#first": [["key",1,"an authored effect by its kind"]],
     "lib/battlemap/hand-class.ts#whole": [["identity",1,"a feature by its whole name, its note stripped"]],

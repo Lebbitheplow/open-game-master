@@ -14,6 +14,7 @@ import {
 } from "@/lib/dm/encounter-template-logic";
 import { templateDifficulty } from "@/lib/dm/encounter-templates";
 import { EVENTS_REFUSAL, EXTRAS_INPUT, eventsUnreadable } from "@/lib/dm/fight-event-logic";
+import { fitPlanToMap } from "@/lib/dm/fight-ground";
 import { getPreparedMap } from "@/lib/db/prepared-maps";
 import { MAP_THEMES } from "@/lib/battlemap/generate";
 import { sceneIds } from "@/lib/ambience/catalog";
@@ -108,7 +109,7 @@ export async function POST(
     battlefield: parsed.data.battlefield,
     map,
     notes: parsed.data.notes,
-    extras: normalizeTemplateExtras(parsed.data.extras, rosterSize(roster.rows)),
+    extras: fitPlanToMap(campaignId, normalizeTemplateExtras(parsed.data.extras, rosterSize(roster.rows)), map.mapId),
     createdByUserId: context.user.id,
   });
   return Response.json(

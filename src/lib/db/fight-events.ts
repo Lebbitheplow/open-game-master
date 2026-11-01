@@ -1,5 +1,6 @@
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { normalizeFightEvents, type FightEvent } from "@/lib/dm/fight-event-logic";
+import { readBoardStamp, type BoardStamp } from "@/lib/dm/fight-ground-logic";
 
 // A prepared fight's events, armed on the fight it started
 // (src/lib/dm/fight-events.ts runs them).
@@ -26,6 +27,11 @@ export type ArmedFightEvent = {
   // The party's entry tile the plan set, for reinforcements that come in
   // where the party did.
   entry: { x: number; y: number } | null;
+  // The board a change of ground was fitted to when the fight was deployed
+  // on its prepared map, or null (no change of ground was kept). Kept in
+  // event_json beside the event, which the reader ignores, so the table
+  // needs no new column.
+  board: BoardStamp | null;
   firedAt: string | null;
   // What the table was told when it fired.
   lines: string[];
@@ -44,7 +50,8 @@ type Row = {
 };
 
 function mapRow(row: Row): ArmedFightEvent | null {
-  const [event] = normalizeFightEvents([parseJson<unknown>(row.event_json, null)]);
+  const raw = parseJson<unknown>(row.event_json, null);
+  const [event] = normalizeFightEvents([raw]);
   if (!event) {
     return null;
   }
@@ -56,6 +63,7 @@ function mapRow(row: Row): ArmedFightEvent | null {
     event,
     slots: parseJson<Record<number, string>>(row.slots_json, {}),
     entry: parseJson<{ x: number; y: number } | null>(row.entry_json, null),
+    board: readBoardStamp((raw as { board?: unknown } | null)?.board),
     firedAt: row.fired_at,
     lines: parseJson<string[]>(row.lines_json, []),
   };
@@ -68,6 +76,7 @@ export function armFightEvents(input: {
   events: FightEvent[];
   slots: Record<number, string>;
   entry: { x: number; y: number } | null;
+  board: BoardStamp | null;
 }) {
   const db = getDatabase();
   const insert = db.prepare(
@@ -84,7 +93,7 @@ export function armFightEvents(input: {
         input.encounterId,
         input.templateName,
         position,
-        JSON.stringify(event),
+        JSON.stringify(input.board ? { ...event, board: input.board } : event),
         JSON.stringify(input.slots),
         JSON.stringify(input.entry),
         now,

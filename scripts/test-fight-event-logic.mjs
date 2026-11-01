@@ -15,8 +15,10 @@ const {
   outcomeLine,
   fitArrivals,
   eventsUnreadable,
+  fitEventsToBoard,
   UNSEEN,
 } = await import("../src/lib/dm/fight-event-logic.ts");
+const { GROUND_LIMITS, fitGroundTiles, readBoardStamp, sameBoard } = await import("../src/lib/dm/fight-ground-logic.ts");
 const { normalizeTemplateExtras, describeExtras, EMPTY_TEMPLATE_EXTRAS } = await import("../src/lib/dm/encounter-template-logic.ts");
 
 let passed = 0;
@@ -197,6 +199,111 @@ test("the table's line names a creature the GM keeps off the board as nobody", (
   assert.equal(outcomeLine({ kind: "visibility", name: "Goblin 3", hidden: false }), "Goblin 3 appears.");
   assert.equal(outcomeLine({ kind: "reinforce", names: ["Wolf 1", "Wolf 2", "Wolf 3"] }), "Wolf 1, Wolf 2 and Wolf 3 join the fight.");
   assert.equal(outcomeLine({ kind: "reinforce", names: ["Wolf 1"] }), "Wolf 1 joins the fight.");
+});
+
+// ---- the ground changes (a bridge that falls when the boss does) ----
+
+const bridge = [{ x: 6, y: 5 }, { x: 6, y: 4 }];
+
+test("a change of ground keeps its squares once each, in reading order, and its kind", () => {
+  const [event] = normalizeFightEvents(
+    [{ trigger: { kind: "falls", slot: 0 }, actions: [{ kind: "ground", tiles: [...bridge, { x: 6, y: 4 }, { x: 6.2, y: 5 }], terrain: "lowwall" }] }],
+    3,
+  );
+  assert.deepEqual(event.actions, [{ kind: "ground", tiles: [{ x: 6, y: 4 }, { x: 6, y: 5 }], terrain: "lowwall" }]);
+});
+
+test("a change with no squares, past the board's reach or of a kind the painter has not, is read as nothing", () => {
+  const events = normalizeFightEvents(
+    [
+      {
+        trigger: { kind: "start" },
+        actions: [
+          { kind: "ground", tiles: [], terrain: "wall" },
+          { kind: "ground", tiles: bridge, terrain: "lava" },
+          { kind: "ground", tiles: [{ x: 300, y: 4 }, { x: -1, y: 2 }, { x: "a", y: 2 }], terrain: "wall" },
+          { kind: "say", text: "Nothing moves." },
+        ],
+      },
+    ],
+    3,
+  );
+  assert.deepEqual(events, [{ trigger: { kind: "start" }, actions: [{ kind: "say", text: "Nothing moves." }] }]);
+});
+
+test("the limits: a hundred squares a change, and the route's gate refuses more or a kind it does not know", () => {
+  const many = Array.from({ length: 150 }, (_, index) => ({ x: (index % 20) + 1, y: Math.floor(index / 20) + 1 }));
+  assert.equal(fitGroundTiles(many).length, GROUND_LIMITS.tiles);
+  const [event] = normalizeFightEvents([{ trigger: { kind: "start" }, actions: [{ kind: "ground", tiles: many, terrain: "water" }] }], 3);
+  assert.equal(event.actions[0].tiles.length, GROUND_LIMITS.tiles);
+  const ok = [{ trigger: { kind: "start" }, actions: [{ kind: "ground", tiles: bridge, terrain: "wall" }] }];
+  assert.equal(FIGHT_EVENTS_INPUT.safeParse(ok).success, true);
+  assert.equal(FIGHT_EVENTS_INPUT.safeParse([{ ...ok[0], actions: [{ kind: "ground", tiles: many, terrain: "wall" }] }]).success, false);
+  assert.equal(FIGHT_EVENTS_INPUT.safeParse([{ ...ok[0], actions: [{ kind: "ground", tiles: bridge, terrain: "lava" }] }]).success, false);
+  assert.equal(FIGHT_EVENTS_INPUT.safeParse([{ ...ok[0], actions: [{ kind: "ground", tiles: [{ x: 256, y: 1 }], terrain: "wall" }] }]).success, false);
+  assert.equal(eventsUnreadable({ extras: { events: [{ ...ok[0], actions: [{ kind: "ground", tiles: bridge, terrain: "lava" }] }] } }), true);
+});
+
+test("fitted to the board it is deployed on: squares off the board or on its edge go; with no map the change goes", () => {
+  const events = normalizeFightEvents(
+    [
+      {
+        trigger: { kind: "falls", slot: 0 },
+        actions: [
+          { kind: "ground", tiles: [...bridge, { x: 0, y: 4 }, { x: 11, y: 4 }, { x: 6, y: 9 }, { x: 40, y: 40 }], terrain: "lowwall" },
+          { kind: "say", text: "The bridge gives way." },
+        ],
+      },
+      { trigger: { kind: "round", round: 2 }, actions: [{ kind: "ground", tiles: [{ x: 30, y: 30 }], terrain: "wall" }] },
+    ],
+    3,
+  );
+  const board = { width: 12, height: 10 };
+  assert.deepEqual(fitEventsToBoard(events, board), [
+    {
+      trigger: { kind: "falls", slot: 0 },
+      actions: [
+        { kind: "ground", tiles: [{ x: 6, y: 4 }, { x: 6, y: 5 }], terrain: "lowwall" },
+        { kind: "say", text: "The bridge gives way." },
+      ],
+    },
+  ]);
+  assert.deepEqual(fitEventsToBoard(events, null), [{ trigger: { kind: "falls", slot: 0 }, actions: [{ kind: "say", text: "The bridge gives way." }] }]);
+  // The rest of a plan passes untouched.
+  const plain = normalizeFightEvents([{ trigger: { kind: "start" }, actions: [{ kind: "hurt", slot: 0, to: "half" }] }], 3);
+  assert.deepEqual(fitEventsToBoard(plain, null), plain);
+});
+
+test("the board a change was fitted to is known again only by its size and seed", () => {
+  const stamp = readBoardStamp({ width: 12, height: 10, seed: 4242 });
+  assert.deepEqual(stamp, { width: 12, height: 10, seed: 4242 });
+  assert.equal(readBoardStamp(undefined), null);
+  assert.equal(readBoardStamp({ width: 0, height: 10, seed: 1 }), null);
+  assert.equal(sameBoard(stamp, { width: 12, height: 10, seed: 4242 }), true);
+  assert.equal(sameBoard(stamp, { width: 12, height: 10, seed: 7 }), false);
+  assert.equal(sameBoard(null, { width: 12, height: 10, seed: 4242 }), false);
+});
+
+test("the GM's plan note and the table's line say what the ground does in plain words", () => {
+  const extras = normalizeTemplateExtras(
+    {
+      events: [
+        {
+          trigger: { kind: "falls", slot: 2 },
+          actions: [{ kind: "ground", tiles: bridge, terrain: "lowwall" }, { kind: "say", text: "The bridge gives way." }],
+        },
+        { trigger: { kind: "round", round: 3 }, actions: [{ kind: "ground", tiles: [{ x: 2, y: 2 }], terrain: "water" }] },
+      ],
+    },
+    3,
+  );
+  assert.deepEqual(describeExtras(extras, roster), [
+    'Event: When bugbear falls: 2 squares of the map become a low wall or ledge; the table hears: "The bridge gives way.".',
+    "Event: When round 3 begins: 1 square of the map becomes water.",
+  ]);
+  assert.equal(outcomeLine({ kind: "ground", terrain: "lowwall", moved: [] }), "The ground gives way.");
+  assert.equal(outcomeLine({ kind: "ground", terrain: "wall", moved: ["Goblin 2"] }), "The way is blocked. Goblin 2 is pushed clear.");
+  assert.equal(outcomeLine({ kind: "ground", terrain: "water", moved: ["Kara", "Grak"] }), "Water floods the ground. Kara and Grak are pushed clear.");
 });
 
 console.log(`test-fight-event-logic: ${passed} passed`);

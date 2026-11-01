@@ -17,6 +17,7 @@ import {
 } from "@/lib/dm/encounter-template-logic";
 import { templateDifficulty } from "@/lib/dm/encounter-templates";
 import { EVENTS_REFUSAL, EXTRAS_INPUT, eventsUnreadable } from "@/lib/dm/fight-event-logic";
+import { fitPlanToMap } from "@/lib/dm/fight-ground";
 import { getPreparedMap } from "@/lib/db/prepared-maps";
 import { MAP_THEMES } from "@/lib/battlemap/generate";
 import { sceneIds } from "@/lib/ambience/catalog";
@@ -87,10 +88,12 @@ export async function PATCH(
     );
   }
   // Re-fitted to the roster either way: a roster that shrank takes the
-  // placements past its end with it.
-  const extras = normalizeTemplateExtras(
-    parsed.data.extras === undefined ? template.extras : parsed.data.extras,
-    rosterSize(enemies),
+  // placements past its end with it. And to the map: a change of ground
+  // goes with a map unlinked, and keeps only the squares a new one has.
+  const extras = fitPlanToMap(
+    campaignId,
+    normalizeTemplateExtras(parsed.data.extras === undefined ? template.extras : parsed.data.extras, rosterSize(enemies)),
+    map.mapId,
   );
   const updated = updateEncounterTemplate(templateId, {
     name: parsed.data.name ?? template.name,
