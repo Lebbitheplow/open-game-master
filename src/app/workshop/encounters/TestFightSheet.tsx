@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { Sheet } from "@/components/ui/Sheet";
 import { PanelError } from "@/app/campaigns/[campaignId]/PanelKit";
+import { classWordsAfterLevel, speciesName } from "@/lib/characters/class-words";
 import { cn } from "@/lib/cn";
 import { readLoad, readWrite } from "@/lib/load-state";
 import { navigateTo } from "@/lib/navigation";
@@ -46,8 +47,10 @@ type Character = {
 
 type Who = "stand-ins" | "characters";
 
+// "Level 4 Variant Human Fighter", in the words the library's cards use: the
+// ids themselves ("variant_human", "srd-2024-goliath") read as code here.
 function describe(character: Character): string {
-  return `Level ${character.level} ${[character.race, character.class].filter(Boolean).join(" ")}`;
+  return `Level ${character.level} ${[speciesName(character), classWordsAfterLevel(character)].filter(Boolean).join(" ")}`;
 }
 
 function listed(names: string[]): string {
