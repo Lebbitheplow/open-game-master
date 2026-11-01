@@ -69,6 +69,20 @@ export default {
       await locator.evaluate((node, mark) => node.setAttribute("data-bench", mark), String(marks));
       return `[data-bench="${marks}"]`;
     };
+    // A travelling pill (src/lib/motion/pill.ts) wears a copy of its chosen
+    // button's fill: after a theme switch it must wear the new theme's.
+    const stalePills = (on) =>
+      on.evaluate(() =>
+        [...document.querySelectorAll("[data-pill-ready]")].flatMap((group) => {
+          const pill = group.querySelector(":scope > .motion-pill");
+          const chosen = group.querySelector('[data-on], [role="tab"][aria-selected="true"]');
+          if (!pill || !chosen || chosen.offsetParent === null) return [];
+          group.removeAttribute("data-pill-ready");
+          const look = getComputedStyle(chosen).backgroundImage;
+          group.setAttribute("data-pill-ready", "");
+          return look === pill.style.backgroundImage ? [] : [`${chosen.textContent?.trim().slice(0, 24)}: ${pill.style.backgroundImage.slice(0, 60)} for ${look.slice(0, 60)}`];
+        }),
+      );
     async function themes(step, scope, on = page) {
       const selector = !scope || typeof scope === "string" ? scope : await markFor(scope);
       const shoot = (name) => (on === page ? t.shot(name) : on.screenshot({ path: t.shotPath(name) }).catch(() => {}));
@@ -83,6 +97,8 @@ export default {
       const theme = await on.evaluate(() => document.documentElement.dataset.theme ?? "");
       await on.evaluate(() => (document.documentElement.dataset.theme = "light"));
       await untilStill(on).catch(() => undefined);
+      const stale = await stalePills(on);
+      soft(!stale.length, `${step}: a chosen pill keeps the night's fill in the day theme (${stale.join(" | ")})`);
       if (selector) {
         const day = await axeViolations(on, selector);
         soft(day.length === 0, `${step} fails axe in the day theme: ${JSON.stringify(day).slice(0, 500)}`);
