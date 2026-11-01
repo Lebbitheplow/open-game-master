@@ -13,6 +13,7 @@
 import { claimedAdvantage } from "@/lib/dm/pc-attack-options";
 import { askedFields, unnamedTraitFields } from "@/lib/dm/roll-feature-riders";
 import { rollExpression } from "@/lib/dice";
+import { heroRollTag } from "@/lib/dice-script-logic";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getFoe } from "@/lib/dm/sheet-foe";
 import { charmedBy } from "@/lib/dm/enemy-profile";
@@ -208,7 +209,7 @@ export function handleRequestRoll(
   }
 
   try {
-    const outcome = rollExpression(resolved.expression);
+    const outcome = rollExpression(resolved.expression, undefined, { purpose: sheet ? heroRollTag(args.kind, sheet.name) : undefined });
     const roll = insertRoll({
       campaignId,
       characterId: sheet?.id ?? null,

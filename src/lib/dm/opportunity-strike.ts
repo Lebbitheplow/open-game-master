@@ -164,7 +164,9 @@ export function pcOpportunitySwing(input: {
   const targetAc = enemyAcWithEffects(campaign.id, enemy);
   const hitLog = isSheetFoe(enemy) ? openLastHit(campaign.id, enemy.id) : null;
   const closeLog = () => hitLog?.close({ attacker: { kind: "sheet", id: sheet.id, name: sheet.name }, attack: `${profile.weapon} (opportunity attack)`, type: profile.damageType, ranged: false });
-  const hitOutcome = rollExpression(`${d20Expression(profile.toHit, advantage)}${attackRiders.diceSuffix}`);
+  const hitOutcome = rollExpression(`${d20Expression(profile.toHit, advantage)}${attackRiders.diceSuffix}`, undefined, {
+    purpose: { roller: "hero", kind: "attack", who: sheet.name },
+  });
   const hitRoll = insertRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
@@ -220,6 +222,8 @@ export function pcOpportunitySwing(input: {
           multiplyNumeric: campaign.gameSettings.variantRules.criticalDamageMods,
         })
       : profile.damageExpression,
+    undefined,
+    { purpose: { roller: "hero", kind: "damage", who: sheet.name } },
   );
   const dealt = Math.max(0, damageOutcome.total);
   return withOpportunityTurn(campaign.id, (turn) => {

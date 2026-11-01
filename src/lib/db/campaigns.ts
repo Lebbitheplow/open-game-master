@@ -21,6 +21,7 @@ import { MINUTES_PER_DAY, daysPerYear, defaultClock, normalizeCalendarDefinition
 import { packFor } from "@/lib/worlds/preset";
 import { closeStreamsForCampaign } from "@/lib/live-streams";
 import { dropDmQueue } from "@/lib/dm/queue";
+import { forgetDiceTable } from "@/lib/db/dice-scripts";
 import type { PartyState } from "@/lib/dm/party-logic";
 import { partyFromJson } from "@/lib/db/party";
 import {
@@ -430,6 +431,10 @@ export function deleteCampaign(campaignId: string) {
   // The last attack on each of its characters (src/lib/dm/last-hit.ts),
   // keyed the same way.
   db.prepare(`DELETE FROM last_hits WHERE campaign_id = ?`).run(campaignId);
+  // A test table's dice script goes with the row (ON DELETE CASCADE); the
+  // dice's note that this id was a test table goes too
+  // (src/lib/db/dice-scripts.ts).
+  forgetDiceTable(campaignId);
   // Anyone still at the table stops hearing it now (src/lib/live-streams.ts),
   // and turns still waiting for it are not run against rows that are gone.
   closeStreamsForCampaign(campaignId);

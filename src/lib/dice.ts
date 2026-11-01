@@ -1,4 +1,5 @@
 import { randomInt } from "node:crypto";
+import type { RollTag } from "@/lib/dice-script-logic";
 
 // Rolls one die: returns an integer in [1, sides]. Injectable for testing.
 export type DieRng = (sides: number) => number;
@@ -53,7 +54,38 @@ const MAX_TERMS = 20;
 const TERM_PATTERN =
   /^(?:(\d{1,3})d(\d{1,3})(?:k([hl])(\d{1,3}))?(?:r(\d{1,3}))?(?:f(\d{1,3}))?|(\d{1,7}))$/i;
 
+// ---- a test table's dice script (issue 685) ----
+//
+// A test table may script its dice: a seed, and faces forced on the rolls
+// they are aimed at (src/lib/dice-script-logic.ts). The script lives in the
+// database, which this module (bundled for the browser too) must not
+// import, so the server module that keeps it (src/lib/db/dice-scripts.ts)
+// registers a hook here, as src/lib/dm/wake.ts lets the loop register its
+// waker. The hook answers null for every die at any other table, and then
+// the die is rolled here as it always was.
+//
+// The frame is the one roll being made (one rollExpression call): what its
+// site says it rolls, and the face a script forced on its d20, which every
+// d20 of that roll then shows, so a forced face is the face the roll keeps
+// at advantage or disadvantage too.
+export type RollFrame = { purpose: RollTag | null; forcedD20: number | null };
+export type ScriptedDie = (sides: number, frame: RollFrame) => number | null;
+
+declare global {
+  var __odmScriptedDie: ScriptedDie | undefined;
+}
+
+export function registerScriptedDice(hook: ScriptedDie) {
+  globalThis.__odmScriptedDie = hook;
+}
+
+let frame: RollFrame | null = null;
+
 export function defaultRng(sides: number) {
+  const scripted = globalThis.__odmScriptedDie?.(sides, frame ?? { purpose: null, forcedD20: null });
+  if (scripted !== undefined && scripted !== null) {
+    return scripted;
+  }
   return randomInt(1, sides + 1);
 }
 
@@ -62,6 +94,9 @@ export type RollOptions = {
   // value, once each, and keep the new face even if it is worse. d20s are
   // exempt: this is a damage-dice rule, never an attack-roll one.
   rerollBelow?: number;
+  // Who rolls and what, for a test table's dice script to aim its forced
+  // faces by (src/lib/dice-script-logic.ts). Nothing else reads it.
+  purpose?: RollTag;
 };
 
 // Parses and rolls a dice expression: XdY terms with optional khN/klN keeps
@@ -72,6 +107,18 @@ export function rollExpression(
   rng: DieRng = defaultRng,
   options: RollOptions = {},
 ): RollResult {
+  // Rolling is synchronous, so the frame is this call's alone until it
+  // returns; the one it replaced is put back for whoever was rolling.
+  const outer = frame;
+  frame = { purpose: options.purpose ?? null, forcedD20: null };
+  try {
+    return rollTerms(expression, rng, options);
+  } finally {
+    frame = outer;
+  }
+}
+
+function rollTerms(expression: string, rng: DieRng, options: RollOptions): RollResult {
   const compact = expression.replace(/\s+/g, "").toLowerCase();
   if (!compact) {
     throw new Error("Empty dice expression.");
@@ -232,8 +279,9 @@ export function rollD20(
   modifier: number,
   advantage: Advantage = "none",
   rng: DieRng = defaultRng,
+  options: RollOptions = {},
 ): RollResult {
-  return rollExpression(d20Expression(modifier, advantage), rng);
+  return rollExpression(d20Expression(modifier, advantage), rng, options);
 }
 
 // The die faces an expression will roll, in roll order. Lets the UI render

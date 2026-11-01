@@ -84,7 +84,10 @@ export function groupInitiatives(campaignId: string, rows: ResolvedEnemyRequest[
     }
     const size = entry.group === undefined ? 1 : rows.filter((row) => row.group === entry.group).length;
     const label = size > 1 ? `${entry.name} (${size}): initiative` : `${names[index]}: initiative`;
-    const total = dmRoll(campaignId, null, "initiative", label, d20Expression(entry.stats.dexMod)).total;
+    // One roll for the whole group, so a face forced on any of them is the
+    // group's (src/lib/dice-script-logic.ts).
+    const who = entry.group === undefined ? names[index] : names.filter((_, at) => rows[at].group === entry.group);
+    const total = dmRoll(campaignId, null, "initiative", label, d20Expression(entry.stats.dexMod), { roller: "enemy", kind: "initiative", who }).total;
     if (entry.group !== undefined) {
       rolled.set(entry.group, total);
     }

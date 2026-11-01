@@ -831,7 +831,9 @@ export function ensureInitiativeProgress(campaign: Campaign): string | null {
   for (const sheet of missing) {
     // The same roll request_roll would make (src/lib/dm/contest-roll.ts):
     // effects on initiative, Feral Instinct, exhaustion, Lucky.
-    const outcome = rollExpression(characterInitiativeExpression(campaign, sheet, computeSheetDerived(sheet).initiative));
+    const outcome = rollExpression(characterInitiativeExpression(campaign, sheet, computeSheetDerived(sheet).initiative), undefined, {
+      purpose: { roller: "hero", kind: "initiative", who: sheet.name },
+    });
     const roll = insertRoll({
       campaignId: campaign.id,
       characterId: sheet.id,
