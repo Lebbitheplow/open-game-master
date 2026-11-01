@@ -180,7 +180,9 @@ export function enemyStrikesEnemy(
     const advantage = odds.advantage;
     notes.push(...odds.notes.filter((note) => !notes.includes(note)));
     const vsAc = enemyAcWithEffects(campaign.id, now) + cover;
-    const toHit = rollExpression(`${d20Expression(attack.toHit + odds.attackBonus, advantage)}${riders.diceSuffix}`);
+    const toHit = rollExpression(`${d20Expression(attack.toHit + odds.attackBonus, advantage)}${riders.diceSuffix}`, undefined, {
+      purpose: { roller: "enemy", kind: "attack", who: enemy.displayName },
+    });
     riders = spendEnemyRiders(enemy, riders);
     const hitRoll = insertRoll({
       campaignId: campaign.id,
@@ -217,7 +219,7 @@ export function enemyStrikesEnemy(
           multiplyNumeric: campaign.gameSettings.variantRules.criticalDamageMods,
         })
       : base;
-    const damage = rollExpression(expression);
+    const damage = rollExpression(expression, undefined, { purpose: { roller: "enemy", kind: "damage", who: enemy.displayName } });
     const damageRoll = insertRoll({
       campaignId: campaign.id,
       characterId: null,

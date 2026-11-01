@@ -535,7 +535,9 @@ export function handleEnemyAttack(
         notes.push(note);
       }
     }
-    const hitOutcome = rollExpression(`${d20Expression(attack.toHit + odds.attackBonus, advantage)}${riders.diceSuffix}`);
+    const hitOutcome = rollExpression(`${d20Expression(attack.toHit + odds.attackBonus, advantage)}${riders.diceSuffix}`, undefined, {
+      purpose: { roller: "enemy", kind: "attack", who: enemy.displayName },
+    });
     // A one-shot rider (Vicious Mockery) is spent by the roll it rode (spell-retort.ts).
     riders = spendEnemyRiders(standing, riders);
     const hitRoll = insertRoll({
@@ -608,7 +610,7 @@ export function handleEnemyAttack(
           multiplyNumeric: campaign.gameSettings.variantRules.criticalDamageMods,
         })
       : baseDamage;
-    const damageOutcome = rollExpression(damageExpression);
+    const damageOutcome = rollExpression(damageExpression, undefined, { purpose: { roller: "enemy", kind: "damage", who: enemy.displayName } });
     const damageRoll = insertRoll({
       campaignId: campaign.id,
       characterId: target.id,

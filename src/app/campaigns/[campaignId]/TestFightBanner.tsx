@@ -6,6 +6,7 @@ import { appConfirm } from "@/components/ui/ConfirmDialog";
 import { SessionBanner, bannerButtonClass } from "@/app/campaigns/[campaignId]/SessionBanner";
 import { PanelError } from "@/app/campaigns/[campaignId]/PanelKit";
 import { TurnTraceButton } from "@/app/campaigns/[campaignId]/TurnTraceSheet";
+import { TestDiceScript } from "@/app/campaigns/[campaignId]/TestDiceScript";
 import { navigateTo } from "@/lib/navigation";
 import { SaveSetupButton } from "@/app/campaigns/[campaignId]/SaveSetupButton";
 import { workshopHref } from "@/lib/workshop/links";
@@ -62,6 +63,7 @@ export function TestFightBanner({
           </Link>
           <SaveSetupButton campaignId={campaignId} />
           <TurnTraceButton campaignId={campaignId} />
+          <TestDiceScript campaignId={campaignId} />
           <button type="button" disabled={busy} aria-busy={busy} onClick={() => void end()} className={bannerButtonClass(true)}>
             End the test
           </button>

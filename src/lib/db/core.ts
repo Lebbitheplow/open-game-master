@@ -2822,6 +2822,20 @@ function ensureSchema(db: SqliteDatabase) {
     );
 
     CREATE INDEX IF NOT EXISTS idx_clock_moves_turn ON clock_moves(campaign_id, turn_id);
+
+    -- A test table's dice script (issue 685, src/lib/db/dice-scripts.ts):
+    -- its seed and how far the seed's sequence has got, the faces still
+    -- forced, and the ones spent. Only a test table (kind 'playtest') is
+    -- given a row. Older servers ignore it, so it needs no schema revision.
+    CREATE TABLE IF NOT EXISTS dice_scripts (
+      campaign_id TEXT PRIMARY KEY REFERENCES campaigns(id) ON DELETE CASCADE,
+      seed INTEGER,
+      seed_state INTEGER,
+      seeded_rolls INTEGER NOT NULL DEFAULT 0,
+      queue_json TEXT NOT NULL DEFAULT '[]',
+      used_json TEXT NOT NULL DEFAULT '[]',
+      updated_at TEXT NOT NULL
+    );
   `);
   // Clock-driven disease and poison rows were once filed under the literal
   // turn "clock", one false turn per campaign that "Revert this turn" undid

@@ -220,7 +220,7 @@ export function handleStabilize(
       storeBudget(encounter, spent.budget);
     }
     readied?.release();
-    const outcome = rollExpression(resolved.expression);
+    const outcome = rollExpression(resolved.expression, undefined, { purpose: { roller: "hero", kind: "check", who: healer.name } });
     const roll = insertRoll({
       campaignId: campaign.id,
       characterId: healer.id,

@@ -133,6 +133,10 @@ export const SERVER_FEATURES = {
   // /api/campaigns/[id]/turn-trace, every call the GM made and what the
   // engine answered, which an older host answers with a 404.
   turnTrace: true,
+  // The Dice button on a test fight's banner (issue 685): GET, PUT and
+  // DELETE /api/campaigns/[id]/dice-script, a seed and forced faces for the
+  // test table's own dice, which an older host answers with a 404.
+  diceScripts: true,
 } as const;
 export type ServerFeatures = { [K in keyof typeof SERVER_FEATURES]: boolean };
 

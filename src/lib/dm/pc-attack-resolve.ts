@@ -122,7 +122,7 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike): Record<string, u
   const hitLog = isSheetFoe(enemy) ? openLastHit(campaign.id, enemy.id) : null;
   const closeLog = () =>
     hitLog?.close({ attacker: { kind: "sheet", id: sheet.id, name: sheet.name }, attack: plan.profile.weapon, type: plan.profile.damageType, ranged: plan.profile.ranged });
-  const hitOutcome = rollExpression(strike.toHitExpression);
+  const hitOutcome = rollExpression(strike.toHitExpression, undefined, { purpose: { roller: "hero", kind: "attack", who: sheet.name } });
   const hitRoll = insertRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
@@ -281,6 +281,7 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike): Record<string, u
     : profile.damageExpression;
   let damageOutcome = rollExpression(damageExpression, undefined, {
     rerollBelow: strike.rerollBelow,
+    purpose: { roller: "hero", kind: "damage", who: sheet.name },
   });
   if (stunShot) {
     context.notes.push("Stunning Sniper: the critical hit's damage is not doubled; the target is stunned instead");

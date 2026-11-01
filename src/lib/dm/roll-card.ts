@@ -8,6 +8,7 @@ import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { insertRoll, revealRollRow, type RollAttacker, type RollKind } from "@/lib/db/rolls";
 import { rollExpression } from "@/lib/dice";
+import type { RollTag } from "@/lib/dice-script-logic";
 import { publishWithSeq } from "@/lib/events";
 
 // `turn` is the DM turn the card belongs to, when one is running; a roll at a
@@ -57,8 +58,11 @@ export function dmRoll(
   kind: Exclude<RollKind, "attack" | "damage">,
   detail: string,
   expression: string,
+  // Who rolls it and what, for a test table's dice script
+  // (src/lib/dice-script-logic.ts).
+  purpose?: RollTag,
 ) {
-  const outcome = rollExpression(expression);
+  const outcome = rollExpression(expression, undefined, { purpose });
   const roll = insertRoll({
     campaignId,
     characterId: null,
