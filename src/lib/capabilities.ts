@@ -124,6 +124,10 @@ export const SERVER_FEATURES = {
   // attraction's `open`, which an older host drops while saving the rest,
   // so the switch stays hidden there.
   openRelationships: true,
+  // A prepared fight's Events (issue 685): the extras' `events`, which an
+  // older host drops while saving the rest of the plan and never runs, so
+  // the Events section of the fight's plan stays hidden there.
+  fightEvents: true,
 } as const;
 export type ServerFeatures = { [K in keyof typeof SERVER_FEATURES]: boolean };
 

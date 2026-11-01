@@ -129,6 +129,7 @@ import { turnStartEffects } from "@/lib/dm/turn-start-effects";
 import { castingTurnBudget } from "@/lib/dm/long-casting";
 import { endEncounterTool, endTurnTool, enemyAttackTool, startEncounterTool, type ToolDef } from "@/lib/dm/encounter-tool-defs";
 import { RUN_PREPARED_ENCOUNTER, runPreparedEncounter } from "@/lib/dm/prepared-encounter-tool";
+import { fireFightEvents } from "@/lib/dm/fight-events";
 import { rollDeathSave } from "@/lib/dm/death";
 import { getBattleMapForEncounter, getTokenByRef, listHiddenRefIds, resetRoundBudgets, resetTurnBudgets } from "@/lib/db/battle-maps";
 import { tilesApart } from "@/lib/dm/board-reach";
@@ -1389,14 +1390,17 @@ function resumeAfter(before: Pick<TurnHolder, "order" | "turnIndex">, order: Ord
 // turn itself (an end_turn, the DM's step) already ended the holder's: if
 // they go with that pass (a summon whose spell ran out at the wrap), the
 // floor has moved and nothing is left to settle.
-export function settleTurn(campaign: Campaign, before: TurnHolder | null) {
-  if (!before) {
-    return;
+// A prepared fight's events the call brought on happen here too, for the
+// same reason (src/lib/dm/fight-events.ts); what they told the table is
+// returned, for the model's turn to hear in the call's result.
+export function settleTurn(campaign: Campaign, before: TurnHolder | null): string[] {
+  if (before) {
+    passOnFrom(campaign, before);
+    // The call may have downed the last of the party (a blow on a dying or a
+    // stable character, the death save a pass rolled).
+    partyFallen(campaign, before.partyCouldRise);
   }
-  passOnFrom(campaign, before);
-  // The call may have downed the last of the party (a blow on a dying or a
-  // stable character, the death save a pass rolled).
-  partyFallen(campaign, before.partyCouldRise);
+  return fireFightEvents(campaign);
 }
 
 function passOnFrom(campaign: Campaign, before: TurnHolder | null) {
@@ -2032,6 +2036,9 @@ export function advanceAfterTurn(campaign: Campaign, turn?: DmTurn) {
   if (!turnStuck(campaign)) {
     clearIdle(getActiveEncounter(campaign.id));
   }
+  // The round this close of the turn began, the blows its backstop landed:
+  // the prepared events they bring on (fight-events.ts).
+  fireFightEvents(campaign);
 }
 
 function advanceAfterNarration(campaign: Campaign, turn?: DmTurn) {
@@ -2540,6 +2547,8 @@ export function endOwnTurn(campaignId: string, userId: string): boolean {
   }
   // The death saves the pass rolled may have left nobody able to rise.
   partyFallen(campaign, couldRise);
+  // A round this pass began brings on its prepared events (fight-events.ts).
+  fireFightEvents(campaign);
   return true;
 }
 
@@ -2707,5 +2716,6 @@ export function skipCurrentTurn(campaignId: string): boolean {
     return false;
   }
   partyFallen(campaign, couldRise);
+  fireFightEvents(campaign);
   return true;
 }

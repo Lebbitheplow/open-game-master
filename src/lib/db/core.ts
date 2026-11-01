@@ -2806,6 +2806,25 @@ function ensureSchema(db: SqliteDatabase) {
     );
 
     CREATE INDEX IF NOT EXISTS idx_clock_moves_turn ON clock_moves(campaign_id, turn_id);
+
+    -- A prepared fight's events, armed on the fight it started, one row each
+    -- (src/lib/db/fight-events.ts says why not a field of the encounter).
+    -- Older servers ignore it, so it needs no schema revision.
+    CREATE TABLE IF NOT EXISTS fight_events (
+      id TEXT PRIMARY KEY,
+      campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+      encounter_id TEXT NOT NULL REFERENCES encounters(id) ON DELETE CASCADE,
+      template_name TEXT NOT NULL DEFAULT '',
+      position INTEGER NOT NULL DEFAULT 0,
+      event_json TEXT NOT NULL,
+      slots_json TEXT NOT NULL DEFAULT '{}',
+      entry_json TEXT NOT NULL DEFAULT 'null',
+      fired_at TEXT,
+      lines_json TEXT NOT NULL DEFAULT '[]',
+      created_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_fight_events_encounter ON fight_events(encounter_id, position);
   `);
   // Clock-driven disease and poison rows were once filed under the literal
   // turn "clock", one false turn per campaign that "Revert this turn" undid
