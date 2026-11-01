@@ -382,7 +382,10 @@ export async function openTestFight(input: {
         seq: setupSeq,
         authorType: "system",
         glyph: "cue-battle",
-        content: `Opened from the fight's saved set-up. ${lines.join(" ")}`,
+        // The deploy rolled an opening order before the set-up's was laid
+        // in its place, and those rolls are in the chronicle above: said, so
+        // the two do not read as a contradiction.
+        content: `Opened from the fight's saved set-up${laid.order.size ? ": its initiative order replaces the opening rolls above" : ""}. ${lines.join(" ")}`,
       });
       publishWithSeq(campaign.id, setupSeq, "message_added", { message: setupNote });
     }

@@ -193,7 +193,7 @@ await test("the next test opens on the saved moment, on the kept map, with the s
   const kept = getPreparedMap(workshop.id, keptMapId);
   assert.equal(board.width, kept.width);
   assert.equal(board.terrain, kept.terrain, "the test is not on the kept map");
-  assert.ok(note(next, /Opened from the fight's saved set-up/), "the table was not told");
+  assert.ok(note(next, /Opened from the fight's saved set-up: its initiative order replaces the opening rolls above/), "the table was not told the order is the set-up's");
   first = next;
 });
 
