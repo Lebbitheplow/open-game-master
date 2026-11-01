@@ -1504,6 +1504,7 @@ const gone = {};
 const TURNCOAT_TITLE = "Turncoat Table";
 const turncoat = {};
 const dominate = {};
+const pileup = {};
 {
   const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
   const maps = await import("../../src/lib/db/battle-maps.ts");
@@ -1665,6 +1666,34 @@ const dominate = {};
       heldId: held.id,
       tamsin: { id: tamsin.id, name: tamsin.name },
     };
+  }
+
+  // The hover plate under a pile of conditions: an ogre prone, restrained,
+  // poisoned, frightened by the player's Wren and Hasted, so the plate lists
+  // five rows, four with an SRD meaning and one with its own summary, its
+  // rounds and its save. The lead runs the table.
+  for (const viewport of ["desktop", "phone"]) {
+    const table = campaigns.createCampaign(world.owner.id, {
+      title: `Pileup Table (${viewport})`,
+      description: "An ogre that has had a very bad round.",
+      theme: "high-fantasy",
+      maxPlayers: 6,
+      startingLevel: 5,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human" },
+    });
+    campaigns.joinByInviteCode(player.id, campaigns.getCampaignById(table.id).inviteCode);
+    campaigns.setCampaignStatus(table.id, "active");
+    const wren = sheets.createSheet(table.id, player.id, 5, heroInput({ name: "Wren Ashby", class: "wizard", level: 5, maxHp: 30 }));
+    const { rows, place } = await fightOn(table, world.owner.id, [{ monster: "ogre", count: 1 }]);
+    const ogre = enemyNamed(rows, "ogre");
+    [[wren.id, -2], [ogre.id, 1]].forEach(([refId, dx]) => place(refId, dx));
+    encounterRows.patchEnemyConditions(ogre.id, ["prone", "restrained", "poisoned", "frightened", "hasted"], {
+      restrained: { rounds: 2, spell: "Web" },
+      frightened: { source: wren.id, spell: "Cause Fear", saveEnds: { ability: "wis", dc: 13 } },
+      hasted: { rounds: 10, spell: "Haste" },
+    });
+    pileup[viewport] = { id: table.id, ogre: { id: ogre.id, name: ogre.displayName }, wren: { id: wren.id, name: wren.name } };
   }
 }
 
@@ -2430,6 +2459,7 @@ const ids = {
   turncoat,
   gone,
   dominate,
+  pileup,
   conduct,
   bondTables,
   romanceTables,

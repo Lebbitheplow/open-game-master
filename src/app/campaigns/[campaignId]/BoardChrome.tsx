@@ -349,13 +349,16 @@ function ConditionRow({ id, label, rounds, note }: { id: string; label: string; 
       <span className="flex size-10 shrink-0 items-center justify-center sm:size-12">
         <GameIcon icon={{ kind: "condition", key: conditionIconKey(label) }} size="size-10 sm:size-12" />
       </span>
+      {/* The plate is dark by day too, so its golds are written out: the day
+          theme turns the amber scale brown for light backgrounds
+          (globals.css). */}
       <span className="min-w-0 flex-1">
-        <span className="block text-[11px] font-semibold capitalize text-amber-300">
-          {label}
-          {rounds ? <span className="font-normal text-amber-200/80">{` (${rounds} rd)`}</span> : null}
+        <span className="block text-[11px] font-semibold text-[#ecd287]">
+          <span className="capitalize">{label}</span>
+          {rounds ? <span className="font-normal text-[rgba(244,224,166,0.8)]">{` (${rounds} rd)`}</span> : null}
         </span>
         {rule ? <span className="block text-[10px] leading-snug text-[#d8d3ea]">{rule}</span> : null}
-        {note ? <span className="block text-[10px] leading-snug text-amber-200/70">{note}</span> : null}
+        {note ? <span className="block text-[10px] leading-snug text-[rgba(244,224,166,0.75)]">{note}</span> : null}
       </span>
     </li>
   );
@@ -419,6 +422,10 @@ export function TokenPlate({
   const top = anchor ? anchor[1] * 100 : (token.y / boardHeight) * 100;
   const height = anchor ? (anchor[2] - anchor[1]) * 100 : (footprint / boardHeight) * 100;
   const listed = Boolean(conditions?.length);
+  // Three or more conditions stood in one column would run past a phone's
+  // screen: on a phone the portrait shrinks to a header beside the name and
+  // the list takes the plate's width; from sm up the list goes two across.
+  const crowded = (conditions?.length ?? 0) >= 3;
   const plate = (
     <div
       ref={plateRef}
@@ -427,26 +434,42 @@ export function TokenPlate({
         "pointer-events-none z-[70] flex items-start gap-2 rounded-lg border border-[rgba(107,99,148,0.4)] bg-[rgba(8,6,18,0.94)] p-1.5 text-[#e9e6f4] shadow-elev-2",
         // Measured where it will sit, before it is shown.
         spot ? "fixed animate-fade-up" : "invisible fixed left-0 top-0",
-        listed ? "w-[312px] sm:w-[380px]" : "w-[136px] sm:w-[172px]",
+        crowded
+          ? "w-[340px] max-w-[calc(100vw-16px)] flex-col sm:w-[680px] sm:flex-row"
+          : listed
+            ? "w-[312px] sm:w-[380px]"
+            : "w-[136px] sm:w-[172px]",
       )}
       style={spot ? { left: spot.left, top: spot.top } : undefined}
     >
-      <div className="flex w-[124px] shrink-0 flex-col items-center sm:w-[160px]">
+      <div
+        className={cn(
+          "flex shrink-0 sm:w-[160px] sm:flex-col sm:items-center sm:gap-0",
+          crowded ? "w-full flex-row items-center gap-2" : "w-[124px] flex-col items-center",
+        )}
+      >
         {/* The plates are square paintings; a square frame shows all of one. */}
         <TokenFace
           candidates={face}
           name={token.name}
           enemy={token.kind === "enemy"}
-          className="size-[124px] rounded-md border border-[rgba(227,193,92,0.35)] text-3xl sm:size-[160px]"
+          className={cn(
+            "rounded-md border border-[rgba(227,193,92,0.35)] text-3xl sm:size-[160px]",
+            crowded ? "size-[72px] shrink-0" : "size-[124px]",
+          )}
         />
-        <span className="mt-1 flex w-full min-w-0 flex-col items-center text-center">
+        <span className={cn("mt-1 flex min-w-0 flex-col sm:w-full sm:items-center sm:text-center", crowded ? "flex-1 items-start text-left" : "w-full items-center text-center")}>
           <span className="block max-w-full truncate font-display text-xs font-semibold">{token.name}</span>
           {health ? <HealthWordChip word={health} /> : null}
+          {edge && crowded ? <EdgeChips edge={edge} /> : null}
         </span>
-        {edge ? <EdgeChips edge={edge} /> : null}
+        {edge && !crowded ? <EdgeChips edge={edge} /> : null}
       </div>
       {conditions?.length ? (
-        <ul className="flex min-w-0 flex-1 flex-col gap-1.5" aria-label="Conditions">
+        <ul
+          className={cn("min-w-0 gap-1.5", crowded ? "grid w-full grid-cols-1 sm:flex-1 sm:grid-cols-2 sm:gap-x-3" : "flex flex-1 flex-col")}
+          aria-label="Conditions"
+        >
           {conditions.map((condition, index) => (
             <ConditionRow key={`${condition.id}-${index}`} {...condition} />
           ))}
