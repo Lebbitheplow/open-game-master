@@ -27,7 +27,8 @@ import { adjudicateHit } from "@/lib/dm/attack-logic";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { darkOnesBlessing } from "@/lib/dm/feature-hooks";
 import { authoredOnHit } from "@/lib/dm/authored-hooks";
-import { critDamageExpression } from "@/lib/dm/encounter-logic";
+import { critDamageExpression, ordinaryOfCritical } from "@/lib/dm/encounter-logic";
+import { critOnlyWhileUnconscious } from "@/lib/dm/condition-logic";
 import { gearCritRiders } from "@/lib/dm/gear-attack";
 import { publishFx, tokenPosition } from "@/lib/dm/fx";
 import { applyHitDamage, claimHitRiders, type strikeDamage } from "@/lib/dm/pc-attack-damage";
@@ -362,7 +363,23 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike): Record<string, u
       critExtraDice,
     }),
   );
-  hitLog?.swing(hitOutcome, plan.effectiveAc, { hit: true, crit, raw: dealt, advantage: plan.advantage, type: profile.damageType, ranged: profile.ranged });
+  // A critical that came only from the character it struck lying unconscious
+  // at 0 within 5 ft (SRD 5.1) keeps its ordinary damage from the same dice,
+  // for a reaction that later leaves them standing when it landed
+  // (reaction-refund.ts). A natural 20 is critical whatever the target.
+  const ordinaryRoll =
+    hitLog && crit && !stunShot && hitOutcome.crit !== "nat20" && enemy.currentHp <= 0 && critOnlyWhileUnconscious(enemy.conditions)
+      ? ordinaryOfCritical(damageOutcome, profile.damageExpression, { multiplyNumeric: strike.critOptions?.multiplyNumeric, extraDice: critExtraDice })
+      : null;
+  hitLog?.swing(hitOutcome, plan.effectiveAc, {
+    hit: true,
+    crit,
+    raw: dealt,
+    advantage: plan.advantage,
+    type: profile.damageType,
+    ranged: profile.ranged,
+    ...(ordinaryRoll ? { ordinary: { raw: Math.max(0, ordinaryRoll.total) } } : {}),
+  });
   closeLog();
 
   // Great Weapon Master: a melee weapon crit or kill opens a bonus-action

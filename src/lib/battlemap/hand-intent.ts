@@ -33,8 +33,11 @@ const HAND_BONUS_ATTACKS = ["martial arts", "frenzy", "feature"] as const;
 const HAND_OPEN_HAND = ["prone", "push", "no reactions"] as const;
 
 export const handIntentExtras = {
-  // A reaction card: the feature or reaction spell use_reaction resolves.
+  // A reaction card: the feature or reaction spell use_reaction resolves,
+  // and the hit it answers when its character has several open (issue 685),
+  // use_reaction's `hit`.
   feature: text(80).optional(),
+  hit: text(120).optional(),
   // A resource's variant: "flurry of blows", "patient defense", "step of the
   // wind"; a restoration spell's condition to end (cast_buff variant).
   variant: text(40).optional(),
@@ -109,6 +112,7 @@ export type HandAttackArgs = {
 
 export type HandIntentExtras = {
   feature?: string;
+  hit?: string;
   variant?: string;
   condition?: string;
   bonus?: boolean;
@@ -133,6 +137,7 @@ export type HandShare = { id: string; name?: string; count: number };
 export function handExtraArgs(intent: HandIntentExtras): string[] {
   const args: string[] = [];
   if (intent.feature) args.push(`feature=${intent.feature}`);
+  if (intent.hit) args.push(`hit=${intent.hit}`);
   if (intent.variant) args.push(`variant=${intent.variant}`);
   if (intent.condition) args.push(`condition=${intent.condition}`);
   if (intent.bonus) args.push("bonus=true");

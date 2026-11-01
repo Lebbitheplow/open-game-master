@@ -1,6 +1,6 @@
 "use client";
 
-import { gmTurnCompanion, initiativeCharacter, offTurnReactors, selectedCharacter } from "@/lib/player-characters";
+import { companionReactors, gmTurnCompanion, initiativeCharacter, offTurnReactors, selectedCharacter } from "@/lib/player-characters";
 
 import { ChevronDown, CircleHelp, SlidersHorizontal } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
@@ -140,6 +140,7 @@ function HandInner({
   multiCharacter,
   runsTable = false,
   reactionsOnly = false,
+  onComposeAs,
 }: {
   campaignId: string;
   sheets: CharacterSheet[];
@@ -175,14 +176,26 @@ function HandInner({
   // on a turn that is not one of theirs, under the monsters' hand. Nothing
   // shows while none is offered.
   reactionsOnly?: boolean;
+  // A card's sentence handed to the message box ("Edit in chat"), with the
+  // hero it speaks for: another hero's reaction card hands that hero, so the
+  // words are sent as theirs (the composer's Speaking as), not as the hero
+  // whose turn it is (issue 685).
+  onComposeAs?: (characterId: string | null) => void;
 }) {
   const turnId = turnCharacterId(encounter);
+  const capabilities = useCapabilities();
+  // A companion's reactions, for its commander or the GM seat that plays it
+  // (issue 685), on a host that takes their cards.
+  const companionsReact = hostOffers(capabilities, "companionReactions");
   const sheet = useMemo(
     () =>
       initiativeCharacter(sheets, meUserId, turnId) ??
       (runsTable && !reactionsOnly ? gmTurnCompanion(sheets, turnId) : null) ??
-      selectedCharacter(sheets, meUserId, activeSheetId),
-    [sheets, meUserId, activeSheetId, turnId, runsTable, reactionsOnly],
+      selectedCharacter(sheets, meUserId, activeSheetId) ??
+      // The GM seat holding no hero of its own answers for the companions it
+      // plays: the first of them heads its reactions.
+      (reactionsOnly && companionsReact ? (companionReactors(sheets, meUserId, undefined, runsTable)[0] ?? null) : null),
+    [sheets, meUserId, activeSheetId, turnId, runsTable, reactionsOnly, companionsReact],
   );
   const floorTurn = floor.mode === "initiative" ? floor.userIds.includes(meUserId) : !inputBlocked;
   const floorName = floor.mode === "initiative" ? floor.currentName : undefined;
@@ -201,19 +214,29 @@ function HandInner({
   // A card sent and not yet resolved holds the cards of its cost (useHandChoices.ts).
   const { waiting, setPending } = useHandPending(signature);
 
-  const hits = encounter.lastHits;
+  // Each open hit's id rides on its cards as the hit they answer (issue 685);
+  // a host that does not take one is sent none.
+  const aimsHits = hostOffers(capabilities, "reactionHits");
+  const hits = useMemo(
+    () => (aimsHits ? encounter.lastHits : encounter.lastHits?.map((hit) => ({ ...hit, id: undefined }))),
+    [encounter.lastHits, aimsHits],
+  );
   const reactions = useMemo(
     // Under the monsters' hand the hero hit is named, as the others are.
     () => (sheet && turn ? reactionCards(sheet, turn, hits ?? [], sheets, reactionsOnly ? sheet.name : "you") : []),
     [sheet, turn, hits, sheets, reactionsOnly],
   );
   // A player's other characters hit while this one acts (a person playing
-  // several heroes): their reactions too, each card naming its hero.
+  // several heroes), and the companions they play: their reactions too, each
+  // card naming its hero.
   const othersReactions = useMemo(
     () =>
       sheet && hits?.length
         ? offTurnReactionCards(
-            offTurnReactors(sheets, meUserId, sheet.id, multiCharacter).map((other) => ({
+            [
+              ...offTurnReactors(sheets, meUserId, sheet.id, multiCharacter),
+              ...(companionsReact ? companionReactors(sheets, meUserId, sheet.id, runsTable) : []),
+            ].map((other) => ({
               sheet: other,
               turn: turnFromEncounter(encounter, other, { myTurn: false, currentName: floorName }),
             })),
@@ -221,7 +244,7 @@ function HandInner({
             sheets,
           )
         : [],
-    [sheet, hits, sheets, meUserId, multiCharacter, encounter, floorName],
+    [sheet, hits, sheets, meUserId, multiCharacter, encounter, floorName, companionsReact, runsTable],
   );
   const gear = useMemo<HandGearContext | undefined>(
     () =>
@@ -239,7 +262,6 @@ function HandInner({
   );
   // A host too old to catch the creatures in a laid blast keeps its blasts
   // aimed at one enemy (src/lib/capabilities.ts handBlasts).
-  const capabilities = useCapabilities();
   const blasts = hostOffers(capabilities, "handBlasts");
   // Sharing a casting out among creatures (issue 570): a host that does not
   // read the shares takes the aimed creature alone, so the split stays shut.
@@ -435,6 +457,7 @@ function HandInner({
     (text: string) => {
       onKindChange("do");
       setInput(text);
+      onComposeAs?.(picked?.actor?.id ?? null);
       clearAim();
       // After the box has the text, put the caret where the blank is.
       window.setTimeout(() => {
@@ -446,7 +469,7 @@ function HandInner({
         area.setSelectionRange(at, at);
       }, 50);
     },
-    [onKindChange, setInput, clearAim, composerRef],
+    [onKindChange, setInput, clearAim, composerRef, onComposeAs, picked?.actor?.id],
   );
 
   const commit = useCallback(async () => {
@@ -734,10 +757,10 @@ function HandInner({
           key={myTurn ? "mine" : (currentName ?? "other")}
           className="hand-label min-w-0 break-words font-display text-[11px] uppercase tracking-[0.22em] text-amber-200/90"
         >
-          {reactionsOnly ? "Your heroes' reactions" : myTurn ? "Your hand" : `${currentName ?? "Another hero"}'s turn`}
+          {reactionsOnly ? (sheet.isCompanion ? "Companions' reactions" : "Your heroes' reactions") : myTurn ? "Your hand" : `${currentName ?? "Another hero"}'s turn`}
         </span>
         <span className="hidden text-[11px] text-stone-500 sm:inline">
-          {reactionsOnly ? "A hero of yours was hit: answer it now or let it pass." : myTurn ? "Play a card, or type your move below." : "Look your cards over while you wait."}
+          {reactionsOnly ? `${sheet.isCompanion ? "A companion you play" : "A hero of yours"} was hit: answer it now or let it pass.` : myTurn ? "Play a card, or type your move below." : "Look your cards over while you wait."}
         </span>
         <span className="ml-auto flex items-center gap-1">
           {reactionsOnly ? null : <HandPips pips={pips} flurryStrikes={turn.flurryStrikes} />}

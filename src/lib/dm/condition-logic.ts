@@ -320,6 +320,14 @@ function has(conditions: string[], names: string[]): string | null {
   return names.find((name) => lowered.includes(name)) ?? null;
 }
 
+// Whether a hit within 5 ft is critical only because the target is
+// unconscious (paralysis would make it critical all the same): the blow a
+// reaction later finds landing on a target standing is an ordinary hit
+// (issue 685, src/lib/dm/reaction-refund.ts).
+export function critOnlyWhileUnconscious(targetConditions: string[]): boolean {
+  return has(targetConditions, ["unconscious"]) !== null && has(targetConditions, ["paralyzed"]) === null;
+}
+
 export function isIncapacitated(conditions: string[]): boolean {
   return has(conditions, INCAPACITATING) !== null;
 }

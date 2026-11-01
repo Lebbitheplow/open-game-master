@@ -47,8 +47,8 @@ export function devotedGuard(ctx: Ctx): ToolResult | null {
   if (!withinFeet(encounter.id, sheet.id, ally.id, 5)) {
     return { error: `${ally.name} is beyond 5 feet of ${sheet.name}. Nothing was spent.`, refused: "rules" };
   }
-  const record = freshLastHit(campaign.id, ally.id);
-  if (!record || record.source !== "attack" || record.answered.includes(LABEL) || !record.swings.some((swing) => swing.hit)) {
+  const record = freshLastHit(campaign.id, ally.id, (hit) => hit.source === "attack" && !hit.answered.includes(LABEL) && hit.swings.some((swing) => swing.hit));
+  if (!record) {
     return noHit(ally.name, GUARD_REACTION, `an attack that hit ${ally.name}`);
   }
   const raw = record.swings.filter((swing) => swing.hit).reduce((sum, swing) => sum + swing.raw, 0);

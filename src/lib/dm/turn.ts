@@ -124,6 +124,8 @@ import type { ToolResult } from "@/lib/dm/tool-errors";
 import { dispatchAdjudication } from "@/lib/dm/invoke-dispatch";
 import { gateAiCall } from "@/lib/dm/ai-gate";
 import { characterAwaitingPlayer } from "@/lib/dm/player-word";
+import { hitIdOf, openHits } from "@/lib/dm/last-hit";
+import { aiPlaysSheet } from "@/lib/dm/companion-command";
 import { enemiesDue, enemiesOwedTurn, personRunsTable } from "@/lib/dm/enemies-due";
 import { noteTurnHead, settleTurnWarmup, turnHeadKey, warmNextTurn } from "@/lib/dm/turn-warmup";
 import { directContextFor } from "@/lib/dm/direct-context";
@@ -437,7 +439,7 @@ function fightNames(campaignId: string): string[] {
   return [...encounter.order.map((entry) => entry.name), ...listEnemies(encounter.id).map((enemy) => enemy.displayName)];
 }
 
-function buildEncounterState(campaignId: string, sheets: CharacterSheet[]) {
+export function buildEncounterState(campaignId: string, sheets: CharacterSheet[]) {
   const encounter = getActiveEncounter(campaignId);
   if (!encounter) {
     return null;
@@ -469,6 +471,7 @@ function buildEncounterState(campaignId: string, sheets: CharacterSheet[]) {
     ...(lair.length ? { lairOptions: lair.map((line, at) => `${at + 1}. ${line}`) } : {}),
     movementLeft: encounter.orderReady ? movementLeft(campaignId, encounter, sheets) : null,
     awaitingPlayer: characterAwaitingPlayer(campaignId)?.name ?? null,
+    ...openHitsForState(campaignId, encounter, sheets),
     ...(due.length
       ? {
           enemiesDue: {
@@ -513,6 +516,37 @@ function buildEncounterState(campaignId: string, sheets: CharacterSheet[]) {
     ...sidesForState(encounter),
     map: buildMapText(encounter.id, sheets),
   };
+}
+
+// The hits a reaction may still answer (src/lib/dm/last-hit.ts), by the
+// character hit, each with the id use_reaction's `hit` takes: the model was
+// told of none, so with two open on one hero it could not name the one a
+// player answered, and it never knew a companion nobody commands could answer
+// one (issue 685). `ai`: the AI plays that character's reactions.
+function openHitsForState(campaignId: string, encounter: Encounter, sheets: CharacterSheet[]) {
+  const campaign = getCampaignById(campaignId);
+  const open = encounter.order.flatMap((entry) => {
+    const sheet = entry.kind === "pc" ? sheets.find((candidate) => candidate.id === entry.characterId) : undefined;
+    const hits = sheet ? openHits(campaignId, sheet.id) : [];
+    return sheet && hits.length
+      ? [{
+          characterId: sheet.id,
+          name: sheet.name,
+          ai: Boolean(sheet.isCompanion && aiPlaysSheet(campaign, sheet)),
+          hits: hits.map((hit) => {
+            const landed = hit.swings.filter((swing) => swing.hit);
+            const damage = landed.reduce((sum, swing) => sum + swing.raw, 0);
+            return {
+              hitId: hitIdOf(hit),
+              what: hit.source === "fall"
+                ? `a fall, ${damage} damage`
+                : `${hit.attacker.name}'s ${hit.attack}${landed.length ? `, ${damage} ${hit.type}` : ", a miss"}`,
+            };
+          }),
+        }]
+      : [];
+  });
+  return open.length ? { openHits: open } : {};
 }
 
 // An enemy's movement left this turn when it is not its plain speed (a

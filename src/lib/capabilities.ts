@@ -114,6 +114,20 @@ export const SERVER_FEATURES = {
   // beside someone in the same call. The console shows the fields only on a host
   // that reads them; an older one drops them unread.
   moveWithAction: true,
+  // Every open hit on a character, each with its id, in the encounter's
+  // `lastHits`, and a reaction card's `hit` (issue 685): the Hand offers a
+  // card per hit and sends the one it answers. An older host keeps one hit
+  // per character and drops `hit` unread, so the Hand sends none there.
+  reactionHits: true,
+  // A companion's reaction cards (issue 685): the actions route takes one
+  // off the companion's turn from its commander, or from the GM seat for a
+  // companion nobody commands at a table a person runs. An older host
+  // refuses both, so the Hand offers no companion's reaction there.
+  companionReactions: true,
+  // "Speaking as" in the composer for another hero's reaction (issue 685):
+  // the actions route's `reaction`, which an older host drops and refuses
+  // the hero as off their turn, so the choice stays hidden there.
+  typedReactions: true,
   // The GM seat plays the turn of a companion nobody commands at a table a
   // person runs (src/lib/dm/companion-command.ts gmCompanionTurn): the
   // actions route takes that companion's cards and Do, and End turn ends its
