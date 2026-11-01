@@ -11,11 +11,15 @@ import {
   lairSave,
   legendaryOpening,
   legendaryProfile,
-  legendaryPurchase,
   spendLegendaryAction,
   type LairChoice,
   type LairSave,
 } from "@/lib/dm/legendary-logic";
+import { legendaryRoutes, routeNeeds, type LegendaryRoute, type LegendaryStep } from "@/lib/dm/legendary-route-logic";
+import { legendaryMoveFor } from "@/lib/dm/legendary-move";
+import { findMonsterAbility } from "@/lib/dm/monster-abilities";
+import { regainBlockedBy } from "@/lib/dm/vitals-logic";
+import { zoneRowFor } from "@/lib/battlemap/zones-spells";
 import { textKey } from "@/lib/language/text-logic";
 
 // What an enemy can do on its turn, for the person running it (issue #108).
@@ -72,22 +76,42 @@ export type PublicEnemyAbility = {
 // from a server older than the enemyActions feature.
 export type PublicEnemyMovement = { speedFeet: number; leftFeet: number; dashes: number; disengaged: boolean };
 
-// A legendary action's option as the GM's card plays it (issue 685 audit,
-// 4.G): legendary_action spends it, then what it buys follows through the
-// tool its result names (legendary-logic.ts legendaryPurchase): the one
-// attack (enemy_attack), the ability with its own save (cast_at_player or
-// aoe_damage), or nothing the engine rolls (a cantrip from its list, Detect,
-// a move), which the GM resolves from the console or narrates.
+// One way to play a legendary option (src/lib/dm/legendary-route-logic.ts),
+// as the GM's card plays it in one call (src/lib/dm/legendary-play.ts): what
+// it does in a few words, and what the card asks for before it goes: its
+// target or everyone caught, the square a move or a jump goes to, the spell
+// it casts. `use` names it when the option offers more than one way.
+export type PublicLegendaryRoute = {
+  use: string;
+  how: string;
+  target: "none" | "one" | "many";
+  // The most creatures it reaches (Lightning Storm's three bolts).
+  most?: number;
+  // An enemy row may be among them (a creature the party dominates).
+  rows: boolean;
+  // Whom it is aimed at: the other side (an attack, a save), its own side
+  // (a shield on itself or an ally), or anyone in reach (negative energy).
+  pick: "foes" | "allies" | "anyone";
+  square?: { feet: number; optional: boolean };
+  spells?: string[];
+  attack?: PublicEnemyAttack;
+  ability?: Omit<PublicEnemyAbility, "resource" | "refusal">;
+  // Why this way cannot be played now (its ability has not recharged, it
+  // cannot regain hit points, it stands on no board), or absent.
+  refusal?: string;
+};
+
+// A legendary action's option, every way it can be played; none when the
+// server cannot read the line, which the card then spends and leaves the
+// rest to the GM.
 export type PublicLegendaryOption = {
   name: string;
   cost: number;
   // What the block says it does.
   text: string;
-  attack?: PublicEnemyAttack;
-  ability?: Omit<PublicEnemyAbility, "resource" | "refusal">;
-  cantrip?: boolean;
-  // The tool's own refusal: it costs more than is left this round, or the
-  // ability it buys has not recharged. Null when it can be taken.
+  routes: PublicLegendaryRoute[];
+  // The tool's own refusal: it costs more than is left this round. Null
+  // when it can be taken.
   refusal: string | null;
 };
 
@@ -259,23 +283,106 @@ function legendaryView(encounter: ActingEncounter, enemy: EncounterEnemy): Publi
     max: profile.actionsPerRound,
     options: profile.actions.map((action) => {
       const spend = spendLegendaryAction(pool, profile, action.name);
-      const purchase = legendaryPurchase(stats, action);
-      // The ability it buys still keeps its own limits (a recharge), which
-      // the call after the spend would refuse with the action already gone.
-      const held =
-        purchase.kind === "ability" ? abilityRefusal(enemy.displayName, purchase.ability, ledger, { turn: turnKey(encounter), round: encounter.round })?.error ?? null : null;
       return {
         name: action.name,
         cost: action.cost,
         text: action.text,
-        // One swing: the attack a legendary action buys is never the routine.
-        ...(purchase.kind === "attack" ? { attack: attackView(stats, attacks, purchase.attack, [purchase.attack.name]) } : {}),
-        ...(purchase.kind === "ability" && purchase.ability.save && purchase.ability.dc ? { ability: abilityNumbers(purchase.ability) } : {}),
-        ...(purchase.kind === "cantrip" ? { cantrip: true } : {}),
-        refusal: spend.ok ? held : spend.error,
+        routes: legendaryRoutes(stats, action).map((route) => routeView(enemy, stats, attacks, ledger, encounter, route)),
+        refusal: spend.ok ? null : spend.error,
       };
     }),
   };
+}
+
+const ABILITY_WORDS: Record<string, string> = { str: "Strength", dex: "Dexterity", con: "Constitution", int: "Intelligence", wis: "Wisdom", cha: "Charisma" };
+
+// One step in a few words, for the card.
+function stepWords(enemy: EncounterEnemy, step: LegendaryStep): string {
+  switch (step.kind) {
+    case "attack":
+      return `One ${step.attack} attack`;
+    case "swallow":
+      return `A ${step.attack} attack on a ${step.maxSize} or smaller creature it grapples, swallowing it on a hit`;
+    case "save": {
+      const ability = findMonsterAbility(enemy.stats, step.ability);
+      const reach = step.most === 1 ? "one creature" : step.most ? `up to ${step.most} creatures` : "everyone caught";
+      return `${ability?.save ? ability.save.toUpperCase() : ""} save DC ${ability?.dc ?? "?"} on ${reach}`.trim();
+    }
+    case "check":
+      return `A ${ABILITY_WORDS[step.ability] ?? step.ability}${step.skill ? ` (${step.skill})` : ""} check the server rolls`;
+    case "move": {
+      const feet = legendaryMoveFor(enemy, step).tiles * 5;
+      return `${step.optional ? "Then it may fly" : step.mode === "fly" ? "Flies" : "Moves"} up to ${feet} ft${step.provokes ? "" : " without opportunity attacks"}`;
+    }
+    case "teleport":
+      return `Teleports up to ${step.feet} ft`;
+    case "spell":
+      return step.cantrip ? "Casts a cantrip from its list" : "Casts a spell from its list, spending its slot as normal";
+    case "heal":
+      return `Regains ${step.dice} hit points`;
+    case "ward":
+      return `+${step.ac} AC for a round, on itself or a creature within ${step.feet} ft`;
+    case "noRegain":
+      return `Creatures within ${step.feet} ft cannot regain hit points for a round`;
+    case "drain":
+      return `${step.dice} ${step.type} to a creature it charms, and it regains as much`;
+    case "cloud":
+      return `A cloud around it: ${zoneRowFor({ spell: step.zone })?.summary ?? "laid on the board"}`;
+    case "fling":
+      return `Throws a creature it grapples up to ${step.feet} ft in a random direction, prone`;
+  }
+}
+
+function routeView(
+  enemy: EncounterEnemy,
+  stats: EnemyStats,
+  attacks: EnemyAttack[],
+  ledger: Parameters<typeof abilityRefusal>[2],
+  encounter: ActingEncounter,
+  route: LegendaryRoute,
+): PublicLegendaryRoute {
+  const needs = routeNeeds(route);
+  const first = route.steps[0];
+  const attackStep = route.steps.find((step) => step.kind === "attack" || step.kind === "swallow") as Extract<LegendaryStep, { attack: string }> | undefined;
+  const attack = attackStep ? [...attacks, ...(stats.legendaryAttacks ?? [])].find((entry) => entry.name === attackStep.attack) : undefined;
+  const saveStep = route.steps.find((step): step is Extract<LegendaryStep, { kind: "save" }> => step.kind === "save");
+  const ability = saveStep ? findMonsterAbility(stats, saveStep.ability) : null;
+  const moveStep = route.steps.find((step): step is Extract<LegendaryStep, { kind: "move" }> => step.kind === "move");
+  const spellStep = route.steps.find((step): step is Extract<LegendaryStep, { kind: "spell" }> => step.kind === "spell");
+  const spells = spellStep ? spellChoices(stats, spellStep.cantrip) : undefined;
+  // Its ability keeps its own limits (a recharge), which the call after the
+  // spend would refuse with the action already gone.
+  const held = ability ? (abilityRefusal(enemy.displayName, ability, ledger, { turn: turnKey(encounter), round: encounter.round })?.error ?? null) : null;
+  const blocked = first?.kind === "heal" ? regainBlockedBy({ conditions: enemy.conditions, currentHp: enemy.currentHp }) : null;
+  const refusal =
+    held ??
+    (blocked ? `${enemy.displayName} cannot regain hit points while ${blocked} holds it.` : null) ??
+    (spells && !spells.length ? `${enemy.displayName} has no ${spellStep?.cantrip ? "cantrip" : "spell"} on its list to cast.` : null);
+  return {
+    use: route.use,
+    how: route.steps.map((step) => stepWords(enemy, step)).join("; "),
+    target: needs.target,
+    ...(saveStep?.most ? { most: saveStep.most } : {}),
+    rows: needs.rows,
+    pick: route.steps.some((step) => step.kind === "ward") ? "allies" : route.steps.some((step) => step.kind === "noRegain") ? "anyone" : "foes",
+    ...(moveStep ? { square: { feet: legendaryMoveFor(enemy, moveStep).tiles * 5, optional: moveStep.optional } } : {}),
+    ...(first?.kind === "teleport" ? { square: { feet: first.feet, optional: false } } : {}),
+    ...(spells ? { spells } : {}),
+    // One swing: the attack a legendary action buys is never the routine.
+    ...(attack ? { attack: attackView(stats, attacks, attack, [attack.name]) } : {}),
+    ...(ability?.save && ability.dc ? { ability: abilityNumbers(ability) } : {}),
+    ...(refusal ? { refusal } : {}),
+  };
+}
+
+// The spells a legendary option may cast: the block's list, cantrips alone
+// for an option that casts a cantrip.
+function spellChoices(stats: EnemyStats, cantrip: boolean): string[] {
+  const listed = stats.spellcasting?.spells ?? [];
+  if (listed.length) {
+    return listed.filter((spell) => !cantrip || spell.level === 0).map((spell) => spell.name);
+  }
+  return cantrip ? [] : (stats.spells ?? []);
 }
 
 // lair: the lair's options this creature's block prints, while the lair may

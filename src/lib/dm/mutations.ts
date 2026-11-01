@@ -49,7 +49,7 @@ import { combatFeatureSpend } from "@/lib/dm/combat-features";
 import { srdFeatureSpend } from "@/lib/dm/srd-feature-spends";
 import { handleStabilize } from "@/lib/dm/stabilize";
 import { canonicalCondition, handleSetCondition } from "@/lib/dm/set-condition";
-import { exhaustionPatch, namesExhaustion, PRONE, regainBlockedBy, STABILIZE_METHODS, SUFFOCATING } from "@/lib/dm/vitals-logic";
+import { exhaustionPatch, namesExhaustion, NEGATIVE_ENERGY, PRONE, regainBlockedBy, STABILIZE_METHODS, SUFFOCATING } from "@/lib/dm/vitals-logic";
 import { castMarkCharge, prepareResourceCharge } from "@/lib/dm/resource-turn";
 import { planCounterReaction } from "@/lib/dm/reaction-counters";
 import { channelOptions, channelOptionsHeld, optionCost } from "@/lib/dm/option-costs";
@@ -869,7 +869,9 @@ export function applyDmMutation(
             error:
               blocked === SUFFOCATING
                 ? `${target.name} is still without air and cannot regain hit points until they can breathe. Get them to air, clear the suffocating condition, then heal them.`
-                : `${target.name} is gripped by Chill Touch and cannot regain hit points until its caster's next turn starts.`,
+                : blocked === NEGATIVE_ENERGY
+                  ? `${target.name} is in the grip of negative energy and cannot regain hit points until it lifts at the end of its source's next turn.`
+                  : `${target.name} is gripped by Chill Touch and cannot regain hit points until its caster's next turn starts.`,
             refused: "rules",
           },
         };

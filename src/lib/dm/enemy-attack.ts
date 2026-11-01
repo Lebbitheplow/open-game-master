@@ -70,6 +70,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { ADVANTAGE_SOURCES, claimedAdvantage } from "@/lib/dm/pc-attack-options";
 import { unknownSheetRef } from "@/lib/dm/rolls";
 import { mountTargetProblem, strikeMount } from "@/lib/dm/mount-combat";
+import { enemySpellAttack } from "@/lib/dm/enemy-casting";
 
 const attackArgsSchema = z.object({
   enemyId: z.string(),
@@ -84,6 +85,10 @@ const attackArgsSchema = z.object({
   // At the target's mount instead (SRD 5.1, Controlling a Mount: "the
   // attacker can target you or the mount"): mount-combat.ts.
   targetMount: z.coerce.boolean().optional(),
+  // An attack-roll spell from its list (enemy-casting.ts enemySpellAttack):
+  // paid as the casting is, its action, a slot or the legendary action that
+  // bought it.
+  spell: z.string().trim().max(80).optional(),
 });
 
 // The profile the enemy walks in for: the shortest reach among the melee
@@ -170,14 +175,20 @@ export function handleEnemyAttack(
   if (!found) {
     return unknownEnemyRef(encounter.id, "enemyId", args.enemyId);
   }
+  // An attack-roll spell: its use was checked and is paid as a casting
+  // (its action, a slot, a legendary action), not as a swing.
+  const cast = args.spell ? enemySpellAttack(campaign, found, args.spell, args.targetCharacterId) : null;
+  if (cast && "error" in cast) {
+    return cast;
+  }
   // An attack the block prints among its Bonus Actions is the creature's
   // bonus action: one swing, beside its action, once a round.
-  const bonus = Boolean(args.attack && attackNamed(found.stats.attacks, args.attack)?.bonusAction);
+  const bonus = !cast && Boolean(args.attack && attackNamed(found.stats.attacks, args.attack)?.bonusAction);
   // One guard for the enemy side (src/lib/dm/can-act.ts): the dead, the
   // incapacitated and the surprised do nothing, and an action is one a round.
   // Haste's extra action, once its own is spent, is one weapon attack
   // (enemy-actions.ts, issue #621).
-  const allowed = canEnemyAct({ enemy: found, encounter, kind: bonus ? "bonus" : "action" });
+  const allowed = cast ? ({ ok: true } as const) : canEnemyAct({ enemy: found, encounter, kind: bonus ? "bonus" : "action" });
   const hasteSwing = !allowed.ok && !bonus && allowed.reason === "already_acted" && hasteActionOpen(encounter, found);
   if (!allowed.ok && !hasteSwing) {
     return toolError(allowed);
@@ -221,6 +232,9 @@ export function handleEnemyAttack(
       error: `${aimed.name} fights on ${found.displayName}'s side: enemy_attack does not strike an ally. Pick a creature on the other side.`,
       refused: "rules",
     };
+  }
+  if (aimed.kind === "enemy" && cast) {
+    return { error: `${cast.use.name} is cast at a character here; strike a creature's row with its own attacks. Nothing was spent.`, retry: true };
   }
   if (aimed.kind === "enemy") {
     // Turned, calmed or fleeing, it strikes no creature on any side.
@@ -279,15 +293,17 @@ export function handleEnemyAttack(
   }
   // A legendary action that bought an attack printed only among the legendary
   // actions (an ankheg queen's Acid Glob) may swing it, and only then.
-  const owed = (encounter.legendary.strikes ?? []).includes(found.id);
-  const attacks = [
-    ...(found.stats.attacks.length ? found.stats.attacks : synthesizeStats(found.cr).attacks),
-    ...(owed ? (found.stats.legendaryAttacks ?? []) : []),
-  ];
+  const owed = !cast && (encounter.legendary.strikes ?? []).includes(found.id);
+  const attacks = cast
+    ? [cast.attack]
+    : [
+        ...(found.stats.attacks.length ? found.stats.attacks : synthesizeStats(found.cr).attacks),
+        ...(owed ? (found.stats.legendaryAttacks ?? []) : []),
+      ];
   if (!attacks.length) {
     return { error: `${found.displayName} has no usable attacks; narrate a different action.`, retry: true };
   }
-  const named = args.attack ? attackNamed(attacks, args.attack) : null;
+  const named = cast ? cast.attack : args.attack ? attackNamed(attacks, args.attack) : null;
   if (args.attack && !named) {
     return noneNamed(`${found.displayName} has no attack called`, args.attack, attacks.map((attack) => attack.name));
   }
@@ -300,7 +316,7 @@ export function handleEnemyAttack(
   // A bonus action's attack is one swing, and spends no legendary strike.
   // Confusion's lash-out is one melee attack, not the routine.
   const strike = !bonus && !hasteSwing && !lash && owed;
-  const single = bonus || hasteSwing || Boolean(lash) || strike || conditionTurnShape(found.conditions).slowed;
+  const single = Boolean(cast) || bonus || hasteSwing || Boolean(lash) || strike || conditionTurnShape(found.conditions).slowed;
   // The one swing the server picks when it plays the turn: a lash-out's is
   // a melee attack (SRD 5.1, Confusion), any other its first.
   const picked =
@@ -397,10 +413,17 @@ export function handleEnemyAttack(
 
   // The action is spent by taking it, hit or miss. Read fresh: the walk up
   // to the target may have spent a character's reaction on this same row.
+  // A spell's casting pays as a casting does (its slot, its action or the
+  // legendary action that bought it), before the row is read.
+  if (cast) {
+    cast.use.commit();
+  }
   const live = getActiveEncounter(campaign.id) ?? encounter;
   // An attack a legendary action bought is not a turn of the creature's,
   // and a bonus action's is its bonus action.
-  if (bonus) {
+  if (cast) {
+    // Paid above.
+  } else if (bonus) {
     markEnemyBonus(live, enemy.id);
   } else if (hasteSwing) {
     recordEnemyTurn(live, enemy.id, { hasteUsed: true });

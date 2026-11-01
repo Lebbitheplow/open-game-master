@@ -2,6 +2,10 @@ import { z } from "zod";
 import { dmRoll } from "@/lib/dm/roll-card";
 import { type Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, listEnemies, orderEntryId, saveEncounter, turnKey, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
+import { regainBlockedBy } from "@/lib/dm/vitals-logic";
+import { legendaryMoveFor } from "@/lib/dm/legendary-move";
+import { legendaryRoutes, routeNamed } from "@/lib/dm/legendary-route-logic";
+import { nextStep, resolveSelfStep, selfStepRefusal, type SelfStep } from "@/lib/dm/legendary-steps";
 import { resolveEnemyRef, unknownEnemyRef } from "@/lib/dm/enemy-damage";
 import { insertCampaignMessage } from "@/lib/db/messages";
 import type { DmTurn } from "@/lib/db/dm-turns";
@@ -11,6 +15,7 @@ import { canEnemyAct, enemyActedThisRound, oweEnemiesAnAction } from "@/lib/dm/c
 import {
   abilityFromLine,
   abilityKey,
+  findMonsterAbility,
   enemyHpCap,
   REGENERATION_STOPPED,
   regenerationOf,
@@ -40,6 +45,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
 
 export { legendaryLairLines } from "@/lib/dm/legendary-logic";
+export { legendaryMoveFor } from "@/lib/dm/legendary-move";
 
 // Legendary actions, lair actions and legendary resistance as tools
 // (docs/vtt-parity-implementation-plan.md 4.1). Imports point downward
@@ -150,8 +156,8 @@ export function refillLegendaryForTurn(encounter: Encounter, enemy: EncounterEne
   // A5e's Bloodied Regeneration works only at half its hit points or fewer.
   const bloodied = !regeneration?.whileBloodied || enemy.currentHp <= Math.floor(enemy.maxHp / 2);
   if (regeneration && enemy.currentHp > 0 && bloodied) {
-    // Chill Touch: a creature it struck cannot regain hit points.
-    if (enemy.conditions.includes(REGENERATION_STOPPED) || enemy.conditions.includes("chill touch")) {
+    // Chill Touch, negative energy: a creature they hold cannot regain hit points.
+    if (enemy.conditions.includes(REGENERATION_STOPPED) || regainBlockedBy({ conditions: enemy.conditions, currentHp: 1 }) !== null) {
       lines.push(`${enemy.displayName} does not regenerate this turn.`);
     } else if (enemy.currentHp < enemyHpCap(enemy)) {
       // Never past the maximum, which exhaustion 4 halves. What the block
@@ -199,9 +205,15 @@ function publishEncounter(campaign: Campaign) {
   publishPersisted(campaign.id, "encounter_updated", { encounter: activePublicEncounter(campaign.id) });
 }
 
-const actionSchema = z.object({ enemyId: z.string().min(1), action: z.string().trim().min(1).max(80) });
+const actionSchema = z.object({
+  enemyId: z.string().min(1),
+  action: z.string().trim().min(1).max(80),
+  // Which way to play an option that offers more than one ("Rotting Fist"
+  // or "Dreadful Glare"): legendary-route-logic.ts. The first otherwise.
+  use: z.string().trim().max(80).optional(),
+});
 
-export function handleLegendaryAction(campaign: Campaign, rawArguments: string): ToolResult {
+export function handleLegendaryAction(campaign: Campaign, rawArguments: string, turn: DmTurn | null = null): ToolResult {
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter) {
     return { error: "No active encounter: legendary actions are taken only in a fight.", retry: true };
@@ -251,23 +263,37 @@ export function handleLegendaryAction(campaign: Campaign, rawArguments: string):
   if (!outcome.ok) {
     return toolError(outcome);
   }
+  // The way it is played (legendary-route-logic.ts): what a later call
+  // makes is bought here, what needs nothing more is made here.
+  const routes = legendaryRoutes(enemy.stats, outcome.action);
+  const route = routeNamed(routes, args.use);
+  if (args.use && !route) {
+    return {
+      error: `${outcome.action.name} is played as ${routes.map((entry) => entry.use).join(" or ") || "it reads"}; "${args.use}" is not one of them. Nothing was spent.`,
+      retry: true,
+    };
+  }
+  const own = route?.steps.find((step): step is SelfStep => step.kind === "check" || step.kind === "heal" || step.kind === "cloud") ?? null;
+  const ownAbility = own?.kind === "cloud" ? findMonsterAbility(enemy.stats, outcome.action.name) : null;
+  const ownRefusal = own ? selfStepRefusal(campaign, enemy, own, outcome.action.name) : null;
+  if (ownRefusal) {
+    return ownRefusal;
+  }
   encounter.legendary.pools[enemy.id] = outcome.pool;
   encounter.legendary.opportunities = { key, ids: [...taken, enemy.id] };
-  // A line with its own numbers (Wing Attack's DC 22 save) resolves through
-  // aoe_damage or cast_at_player naming it; "casts a cantrip" through a
-  // cantrip from the creature's list. Either is bought here and spent there.
-  const purchase = legendaryPurchase(enemy.stats, outcome.action);
+  const purchase = legendaryPurchase(enemy.stats, outcome.action, route);
   const attack = purchase.kind === "attack" ? purchase.attack : null;
   const ability = purchase.kind === "ability" ? purchase.ability : null;
-  const effect = ability ? abilityKey(ability.name) : null;
-  const cantrip = purchase.kind === "cantrip" ? "cantrip" : null;
   if (attack) {
     // The attack this action buys is on top of the creature's one action a
     // round, so enemy_attack is owed one more, and it is one swing.
     oweEnemiesAnAction(encounter, [enemy.id]);
     encounter.legendary.strikes = [...(encounter.legendary.strikes ?? []), enemy.id];
   }
-  const bought = effect ?? cantrip;
+  // An ability with its own numbers (Wing Attack's save) is bought for
+  // aoe_damage or cast_at_player naming it; a cantrip or a spell from its
+  // list for the call that casts it (enemy-casting.ts).
+  const bought = ability ? abilityKey(ability.name) : purchase.kind === "cantrip" || purchase.kind === "spell" ? purchase.kind : null;
   if (bought) {
     const ledger = encounter.legendary.abilities?.[enemy.id] ?? {};
     encounter.legendary.abilities = {
@@ -275,19 +301,40 @@ export function handleLegendaryAction(campaign: Campaign, rawArguments: string):
       [enemy.id]: { ...ledger, bought: [...(ledger.bought ?? []), bought] },
     };
   }
+  // What a later call makes is remembered with its price, so that call
+  // refused gives the action back (legendary-purchase.ts, and the card's
+  // one call in legendary-play.ts).
+  const first = route?.steps[0];
+  const move = first?.kind === "move" ? legendaryMoveFor(enemy, first) : null;
+  if (route && !own) {
+    encounter.legendary.purchases = {
+      ...(encounter.legendary.purchases ?? {}),
+      [enemy.id]: {
+        action: outcome.action.name,
+        cost: outcome.action.cost,
+        key,
+        strike: Boolean(attack),
+        bought,
+        ...(move ? { move } : {}),
+        ...(first?.kind === "teleport" ? { teleportFeet: first.feet } : {}),
+      },
+    };
+  }
   saveEncounter(encounter);
+  const made = own ? resolveSelfStep(campaign, turn, enemy, own, outcome.action.name, ownAbility?.dc ?? null) : {};
   publishEncounter(campaign);
+  const next = own ? null : nextStep(enemy, first);
   return {
     ok: true,
     enemy: enemy.displayName,
     action: outcome.action.name,
     text: outcome.action.text,
     remaining: outcome.pool.actions,
-    ...(attack ? { next: `Resolve it now with enemy_attack (enemyId ${enemy.id}, attack "${attack.name}"): one attack.` } : {}),
-    ...(effect
-      ? { next: `Resolve it now with aoe_damage (or cast_at_player for one target) with casterEnemyId ${enemy.id} and enemyAbility "${ability?.name}"; the server takes its DC and dice from the block.` }
-      : {}),
-    ...(cantrip ? { next: `Resolve it now with the cantrip from its list: cast_at_player or aoe_damage with casterEnemyId ${enemy.id} and spell.` } : {}),
+    ...(routes.length > 1 && route ? { played: route.use } : {}),
+    ...made,
+    ...(next ? { next } : {}),
+    // An option the server cannot read: spent, and the rest is the GM's.
+    ...(!routes.length ? { manual: `The server cannot read what ${outcome.action.name} does: resolve it by hand from its line.` } : {}),
   };
 }
 

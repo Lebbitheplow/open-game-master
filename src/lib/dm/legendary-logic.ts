@@ -4,7 +4,8 @@ import type { EnemyAttack, EnemyStats } from "@/lib/bestiary/statblock";
 import { findMonsterAbility, normalizeAbilityLedgers, type AbilityLedger, type MonsterAbility } from "@/lib/dm/monster-abilities";
 import { ABILITY_WORDS, parseSaveEffect } from "@/lib/dm/save-effect";
 import type { ToolError } from "@/lib/dm/tool-errors";
-import { containsPhrase, textKey } from "@/lib/language/text-logic";
+import { textKey } from "@/lib/language/text-logic";
+import { legendaryRoutes, type LegendaryRoute } from "@/lib/dm/legendary-route-logic";
 import { isNamed } from "@/lib/srd/feature-names";
 import { normalizeEnemyTurns, type EnemyTurns } from "@/lib/dm/enemy-turn-logic";
 
@@ -92,6 +93,23 @@ export type LegendaryState = {
   // Each enemy's turn this round: its Dashes, a Disengage, what its action
   // went on (src/lib/dm/enemy-turn-logic.ts, issue #621).
   turns?: EnemyTurns;
+  // A legendary action spent on what a later call makes (its attack, its
+  // ability, a spell), by enemy: what it cost and at which turn's end, so a
+  // refused follow-up gives the action back (legendary-tools.ts
+  // settleLegendaryFollowUp). Cleared once the follow-up is made.
+  purchases?: Record<string, LegendaryPurchaseRecord>;
+};
+
+export type LegendaryPurchaseRecord = {
+  action: string;
+  cost: number;
+  key: string;
+  strike: boolean;
+  bought: string | null;
+  // A legendary move's allowance (squares, whether it provokes, aloft), and
+  // a teleport's reach in feet, for the move_token or teleport_token after it.
+  move?: { tiles: number; provokes: boolean; fly: boolean };
+  teleportFeet?: number;
 };
 
 export type FailedSave = {
@@ -126,6 +144,7 @@ export function normalizeLegendaryState(raw: unknown): LegendaryState {
   const failed = (record.failedSave && typeof record.failedSave === "object" ? record.failedSave : null) as Record<string, unknown> | null;
   const opportunities = (record.opportunities && typeof record.opportunities === "object" ? record.opportunities : null) as Record<string, unknown> | null;
   const turns = normalizeEnemyTurns(record.turns);
+  const purchases = purchasesOf(record.purchases);
   const areaStruck = record.areaStruck && typeof record.areaStruck === "object"
     ? Object.fromEntries(Object.entries(record.areaStruck as Record<string, unknown>).filter((entry): entry is [string, string] => typeof entry[1] === "string"))
     : null;
@@ -183,7 +202,31 @@ export function normalizeLegendaryState(raw: unknown): LegendaryState {
     ...(typeof record.lairLast === "string" ? { lairLast: record.lairLast } : {}),
     ...(areaStruck && Object.keys(areaStruck).length ? { areaStruck } : {}),
     ...(turns ? { turns } : {}),
+    ...(purchases && Object.keys(purchases).length ? { purchases } : {}),
   };
+}
+
+function purchasesOf(raw: unknown): Record<string, LegendaryPurchaseRecord> | null {
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+  const out: Record<string, LegendaryPurchaseRecord> = {};
+  for (const [id, entry] of Object.entries(raw as Record<string, unknown>)) {
+    const record = (entry && typeof entry === "object" ? entry : {}) as Record<string, unknown>;
+    if (typeof record.action === "string" && typeof record.key === "string") {
+      const move = (record.move && typeof record.move === "object" ? record.move : null) as Record<string, unknown> | null;
+      out[id] = {
+        action: record.action,
+        cost: Math.max(1, Number(record.cost) || 1),
+        key: record.key,
+        strike: record.strike === true,
+        bought: typeof record.bought === "string" ? record.bought : null,
+        ...(move ? { move: { tiles: Math.max(0, Number(move.tiles) || 0), provokes: move.provokes !== false, fly: move.fly === true } } : {}),
+        ...(Number(record.teleportFeet) > 0 ? { teleportFeet: Number(record.teleportFeet) } : {}),
+      };
+    }
+  }
+  return out;
 }
 
 // A cost however the book prints it: "(Costs 2 Actions)", "(Costs 2 Actions;
@@ -265,43 +308,39 @@ export function spendLegendaryAction(
   return { ok: true, pool: { ...pool, actions: pool.actions - action.cost }, action };
 }
 
-// What a legendary action buys once it is spent, read one way for the tool's
-// next step (legendary-tools.ts handleLegendaryAction) and for the GM's card
-// (src/lib/dm/enemy-actions-view.ts), so the card plays exactly what the tool
-// hands on: one of its attacks, an ability with numbers of its own (Wing
-// Attack's save), a cantrip from its list, or nothing the engine rolls
-// (Detect, a move), which the GM narrates.
+// What a legendary action buys for a later call once it is spent, read one
+// way for the tool's next step (legendary-tools.ts handleLegendaryAction)
+// and for the GM's card (src/lib/dm/enemy-actions-view.ts): the way to play
+// it (legendary-route-logic.ts) picked, its first step's attack, its ability
+// with numbers of its own (Wing Attack's save), a cantrip or a spell from its
+// list. Anything else (a check, a move, a heal) the action resolves itself,
+// or the GM narrates.
 export type LegendaryPurchase =
   | { kind: "attack"; attack: EnemyAttack }
   | { kind: "ability"; ability: MonsterAbility }
   | { kind: "cantrip" }
+  | { kind: "spell" }
   | { kind: "none" };
 
 export function legendaryPurchase(
   stats: Pick<EnemyStats, "attacks" | "legendaryAttacks" | "traits" | "specials">,
   action: LegendaryAction,
+  route?: LegendaryRoute | null,
 ): LegendaryPurchase {
-  // The attack by its whole name: the action is named for it ("Bite", "Tail
-  // Attack"), or its line makes or uses it ("makes one tail attack", "uses
-  // its Paralyzing Touch"), the longest name first, so "its tail spike" is the
-  // Tail Spike and not the Tail.
-  const named = textKey(action.name);
-  const attack = [...(stats.attacks ?? []), ...(stats.legendaryAttacks ?? [])].sort((a, b) => b.name.length - a.name.length).find((entry) => {
-    const name = textKey(entry.name.replace(/\([^)]*\)/g, ""));
-    return (
-      named === name ||
-      named === `${name} attack` ||
-      [`${name} attack`, `${name} attacks`, `its ${name}`, `makes one ${name}`].some((phrase) => containsPhrase(action.text, phrase))
-    );
-  });
-  if (attack) {
-    return { kind: "attack", attack };
+  const chosen = route === undefined ? (legendaryRoutes(stats, action)[0] ?? null) : route;
+  const step = chosen?.steps[0];
+  if (step?.kind === "attack" || step?.kind === "swallow") {
+    const attack = [...(stats.attacks ?? []), ...(stats.legendaryAttacks ?? [])].find((entry) => entry.name === step.attack);
+    return attack ? { kind: "attack", attack } : { kind: "none" };
   }
-  const ability = findMonsterAbility(stats, action.name);
-  if (ability && (ability.save || ability.damage)) {
-    return { kind: "ability", ability };
+  if (step?.kind === "save") {
+    const ability = findMonsterAbility(stats, step.ability);
+    return ability ? { kind: "ability", ability } : { kind: "none" };
   }
-  return /casts? a cantrip/i.test(action.text) ? { kind: "cantrip" } : { kind: "none" };
+  if (step?.kind === "spell") {
+    return step.cantrip ? { kind: "cantrip" } : { kind: "spell" };
+  }
+  return { kind: "none" };
 }
 
 // When a legendary action may be taken (SRD 5.1, Legendary Actions: "only
@@ -313,6 +352,27 @@ export function legendaryPurchase(
 // yet taken: handed to the model by an end_turn (`handoff`), or walked past
 // at a table a person runs and held for them (`due`, enemies-due.ts), where
 // the console's form used to spend one on the creature's own turn.
+// The turn's end a legendary action is taken at: the turn ending, and how
+// many creatures' own turns have run inside it (the pointer never rests on
+// an enemy, so each one played there is its own turn's end).
+export function legendaryMomentKey(turn: string, round: number, legendary: Pick<LegendaryState, "acted">): string {
+  const acted = legendary.acted?.round === round ? legendary.acted.ids.length : 0;
+  return `${turn}:${acted}`;
+}
+
+// What a legendary action bought for a later call, while the turn's end it
+// was bought at lasts. One never made by then is gone: a Move nobody walked
+// must not make the creature's own walk a round later a free one, nor a
+// Teleport left waiting stretch its next jump.
+export function livePurchase(
+  legendary: Pick<LegendaryState, "acted" | "purchases">,
+  moment: { turn: string; round: number },
+  enemyId: string,
+): LegendaryPurchaseRecord | null {
+  const record = legendary.purchases?.[enemyId];
+  return record && record.key === legendaryMomentKey(moment.turn, moment.round, legendary) ? record : null;
+}
+
 export function legendaryOpening(
   moment: {
     turn: string;
@@ -334,8 +394,7 @@ export function legendaryOpening(
       },
     };
   }
-  const acted = moment.legendary.acted?.round === moment.round ? moment.legendary.acted.ids.length : 0;
-  const key = `${moment.turn}:${acted}`;
+  const key = legendaryMomentKey(moment.turn, moment.round, moment.legendary);
   const taken = moment.legendary.opportunities?.key === key ? moment.legendary.opportunities.ids : [];
   if (taken.includes(enemy.id)) {
     return {

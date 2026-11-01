@@ -317,7 +317,7 @@ function afterFailOnCharacter(campaign: Campaign, turn: DmTurn, map: BattleMap, 
 // The zone's creature filter: hostile-only areas spare the caster's side,
 // and nobody suffers their own aura.
 function touches(zone: SpellZone, trigger: ZoneTrigger, victim: Victim): boolean {
-  if (victim.id === zone.casterId && zoneRowFor(zone)?.shape === "aura") {
+  if (victim.id === zone.casterId && (zoneRowFor(zone)?.shape === "aura" || trigger.others)) {
     return false;
   }
   return trigger.who !== "hostile" || hostileTo(zone, victim.kind);

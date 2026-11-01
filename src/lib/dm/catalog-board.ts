@@ -161,11 +161,20 @@ export const BOARD_ADJUDICATIONS: CatalogEntry[] = [
     name: "legendary_action",
     label: "Legendary action",
     category: "combat",
-    summary: "A legendary creature spends legendary actions at the end of someone else's turn. The pool refills on its own turn.",
+    summary: "A legendary creature spends legendary actions at the end of someone else's turn. The pool refills on its own turn. Name its target or square here and it is played whole: a refused attack or save gives the action back.",
     needsEncounter: true,
     fields: [
       { name: "enemyId", label: "Creature", kind: "enemy", required: true },
       { name: "action", label: "Action", kind: "text", required: true, placeholder: "Wing Attack" },
+      // The one-step play (src/lib/dm/legendary-play.ts, issue 685 audit):
+      // what the option needs, filled in, resolves it with the spend.
+      { name: "use", label: "Played as", kind: "text", placeholder: "Dreadful Glare", help: "For an option that offers two ways (an attack or an ability): the one it uses." },
+      { name: "targetCharacterId", label: "Its target", kind: "combatant", help: "The one creature an attack, a gaze or a shield is aimed at." },
+      { name: "characterIds", label: "Players caught", kind: "characters", help: "Everyone a save or a spell reaches." },
+      { name: "enemyIds", label: "Enemies caught", kind: "enemies" },
+      { name: "x", label: "To column", kind: "number", min: 0, max: 200, help: "Where a move, a flight or a teleport goes." },
+      { name: "y", label: "To row", kind: "number", min: 0, max: 200 },
+      { name: "spell", label: "Spell", kind: "text", placeholder: "Ray of Frost", help: "A cantrip or a spell from its own list." },
     ],
   },
   {

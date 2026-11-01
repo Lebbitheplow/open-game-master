@@ -56,6 +56,16 @@ export type HandIntent = (
       attackName?: string;
       ability?: MonsterAbilityUse;
       legendary?: string;
+      // A legendary option's way to play when it has several, what it is
+      // aimed at, the square a move or a jump needs, the spells it may cast
+      // (src/lib/dm/enemy-actions-view.ts PublicLegendaryRoute).
+      use?: string;
+      aim?: "one" | "many";
+      rows?: boolean;
+      pick?: "allies" | "anyone";
+      most?: number;
+      square?: { feet: number; optional: boolean };
+      spells?: string[];
       lair?: MonsterLairUse;
     }
 ) &

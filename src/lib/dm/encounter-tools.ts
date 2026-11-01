@@ -135,6 +135,7 @@ import { getBattleMapForEncounter, getTokenByRef, listHiddenRefIds, resetRoundBu
 import { tilesApart } from "@/lib/dm/board-reach";
 
 import { initLegendaryPools } from "@/lib/dm/legendary-tools";
+import { settleLegendaryFollowUp } from "@/lib/dm/legendary-purchase";
 import { lairCountPassed } from "@/lib/dm/legendary-logic";
 import { publishTitleCard } from "@/lib/dm/scene-state";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -1217,6 +1218,11 @@ export function resolveTurnFromNarration(turn: DmTurn, sheetId: string) {
 
 // ---- dispatch ----
 
+// Every encounter call, from the AI's turn and from the console alike. One
+// that makes what a legendary action bought and is refused gives that action
+// back (legendary-purchase.ts settleLegendaryFollowUp, issue 685 audit): the
+// spend and its follow-up are two calls, and a swing out of reach left the
+// action spent for nothing.
 export function applyEncounterCall(
   campaign: Campaign,
   turn: DmTurn,
@@ -1226,6 +1232,19 @@ export function applyEncounterCall(
   sheetsById: Map<string, CharacterSheet>,
   // pc_attack only: physical-dice roster and the call id its parked to-hit
   // roll answers on resume.
+  callContext?: { realDiceUserIds: Set<string>; toolCallId: string | null },
+): { result: ToolResult } {
+  const { result } = encounterCall(campaign, turn, toolName, rawArguments, sheets, sheetsById, callContext);
+  return { result: settleLegendaryFollowUp(campaign, toolName, rawArguments, result) };
+}
+
+function encounterCall(
+  campaign: Campaign,
+  turn: DmTurn,
+  toolName: string,
+  rawArguments: string,
+  sheets: CharacterSheet[],
+  sheetsById: Map<string, CharacterSheet>,
   callContext?: { realDiceUserIds: Set<string>; toolCallId: string | null },
 ): { result: ToolResult } {
   // A companion's unpaid share refuses its attack (issue 503,

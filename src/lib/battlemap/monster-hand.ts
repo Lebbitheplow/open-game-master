@@ -6,6 +6,7 @@ import type {
   PublicLairOption,
   PublicLegendaryActions,
   PublicLegendaryOption,
+  PublicLegendaryRoute,
 } from "@/lib/dm/enemy-actions-view";
 import { monsterAttackIcon } from "@/lib/battlemap/attack-art";
 
@@ -204,20 +205,41 @@ function moveCards(enemy: MonsterHandEnemy, actions: PublicEnemyActions): HandCa
 
 // A legendary action's option (issue 685 audit, 4.G): offered only while the
 // projection says one can be taken now (enemy-actions-view.ts
-// PublicLegendaryActions), its cost and what is left on the card, and a cost
-// above what is left held with legendary_action's own sentence.
-function legendaryCard(enemy: MonsterHandEnemy, legendary: PublicLegendaryActions, option: PublicLegendaryOption): HandCard {
-  const attack = option.attack;
-  const ability = option.ability;
+// PublicLegendaryActions), one card for each way to play it ("Attack: Claw",
+// "Attack: Tail"), its cost and what is left on the card, and a cost above
+// what is left held with legendary_action's own sentence. A card is one call:
+// the spend and what it buys together (src/lib/dm/legendary-play.ts).
+function legendaryCard(enemy: MonsterHandEnemy, legendary: PublicLegendaryActions, option: PublicLegendaryOption, route: PublicLegendaryRoute | null): HandCard {
+  const attack = route?.attack;
+  const ability = route?.ability;
+  const many = option.routes.length > 1;
+  const refusal = option.refusal ?? route?.refusal ?? null;
+  const target = route?.target === "none" || !route ? "none" : "enemy";
   const shared = {
     ...BASE,
-    id: `monster:${enemy.id}:legendary:${cardKey(option.name)}`,
-    name: option.name,
+    id: `monster:${enemy.id}:legendary:${cardKey(option.name)}${many && route ? `:${cardKey(route.use)}` : ""}`,
+    name: many && route ? `${option.name}: ${route.use}` : option.name,
     cost: "legendary" as const,
     resource: `Costs ${option.cost} · ${legendary.left} of ${legendary.max} left`,
     description: option.text,
-    disabled: option.refusal,
-    spent: Boolean(option.refusal),
+    // An option the server cannot read is spent, and the rest is the GM's.
+    rules: route ? `${route.how}.` : "The server cannot read this option: playing it spends the action, and you resolve the rest by hand from its line.",
+    target,
+    disabled: refusal,
+    spent: Boolean(refusal),
+  } satisfies Partial<HandCard>;
+  const intent = {
+    card: "monster" as const,
+    enemyId: enemy.id,
+    action: "legendary" as const,
+    legendary: option.name,
+    ...(many && route ? { use: route.use } : {}),
+    ...(route?.square ? { square: route.square } : {}),
+    ...(route?.spells ? { spells: route.spells } : {}),
+    ...(route?.target === "one" ? { aim: "one" as const } : route?.target === "many" ? { aim: "many" as const } : {}),
+    ...(route?.rows ? { rows: true } : {}),
+    ...(route && route.pick !== "foes" ? { pick: route.pick } : {}),
+    ...(route?.most ? { most: route.most } : {}),
   };
   if (attack) {
     return {
@@ -226,16 +248,14 @@ function legendaryCard(enemy: MonsterHandEnemy, legendary: PublicLegendaryAction
       range: attack.range,
       dice: `${attack.damage} ${attack.type}`.trim(),
       roll: `${signed(attack.toHit)} to hit`,
-      rules: `One ${attack.name} attack at the end of another creature's turn.${attack.spellAttack ? " A spell attack." : ""}`,
       condition: attack.onHit ?? "",
       icon: monsterAttackIcon(enemy.name, attack.name, Boolean(attack.spellAttack)),
-      target: "enemy",
       toHit: attack.toHit,
       damage: attack.damage || null,
       damageType: attack.type.split("/")[0] ?? "",
       save: null,
       melee: attack.melee,
-      intent: { card: "monster", enemyId: enemy.id, action: "legendary", legendary: option.name, attackName: attack.name },
+      intent: { ...intent, attackName: attack.name },
     };
   }
   if (ability) {
@@ -245,36 +265,29 @@ function legendaryCard(enemy: MonsterHandEnemy, legendary: PublicLegendaryAction
       range: "",
       dice: ability.damage ? `${ability.damage} ${ability.damageType ?? ""}`.trim() : (ability.condition ?? ""),
       roll: `${saveWord(ability.save)} save DC ${ability.dc}`,
-      rules: [ability.halfOnSave ? "Half damage on a save." : "", "Pick everyone caught in it."].filter(Boolean).join(" "),
       condition: ability.condition ?? "",
       icon: { kind: "action", key: "cast" },
-      target: "enemy",
       toHit: null,
       damage: ability.damage ?? null,
       damageType: ability.damageType ?? "",
       save: { ability: saveWord(ability.save), dc: ability.dc },
       melee: false,
-      intent: { card: "monster", enemyId: enemy.id, action: "legendary", legendary: option.name, ability: abilityUse(ability) },
+      intent,
     };
   }
-  // A cantrip from its list or something the engine does not roll (Detect,
-  // a move): the card spends the action, and the GM casts the cantrip from
-  // the console or narrates the rest.
   return {
     ...shared,
-    type: "feature",
-    range: "",
+    type: route?.spells ? "spell" : "feature",
+    range: route?.square ? `${route.square.feet} ft` : "",
     dice: "",
     roll: "no roll",
-    rules: option.cantrip ? `${option.text} Then cast the cantrip from the console.`.trim() : option.text,
-    icon: { kind: "action", key: "cast" },
-    target: "none",
+    icon: { kind: "action", key: route?.square ? "dash" : "cast" },
     toHit: null,
     damage: null,
     damageType: "",
     save: null,
     melee: false,
-    intent: { card: "monster", enemyId: enemy.id, action: "legendary", legendary: option.name },
+    intent,
   };
 }
 
@@ -354,7 +367,9 @@ export function deriveMonsterHand(enemy: MonsterHandEnemy, options: { enemyActio
     ...actions.attacks.map((attack) => attackCard(enemy, actions, attack)),
     ...actions.abilities.map((ability) => abilityCard(enemy, actions, ability)),
     ...(options.enemyActions ? moveCards(enemy, actions) : []),
-    ...(legendary ? legendary.options.map((option) => legendaryCard(enemy, legendary, option)) : []),
+    ...(legendary
+      ? legendary.options.flatMap((option) => (option.routes.length ? option.routes.map((route) => legendaryCard(enemy, legendary, option, route)) : [legendaryCard(enemy, legendary, option, null)]))
+      : []),
     ...(options.legendaryCards ? (actions.lair ?? []).map((option) => lairCard(enemy, option)) : []),
     fleeCard(enemy),
   ];
@@ -368,11 +383,19 @@ export function takesManyTargets(card: HandCard): boolean {
   if (intent.card !== "monster") {
     return false;
   }
-  return intent.action === "ability" || (intent.action === "legendary" && Boolean(intent.ability)) || (intent.action === "lair" && Boolean(intent.lair?.save));
+  return intent.action === "ability" || (intent.action === "legendary" && intent.aim === "many") || (intent.action === "lair" && Boolean(intent.lair?.save));
 }
 
 // Whether the card rolls one of its attacks: the Roll pills (advantage) and
 // a target that may be an enemy row (a creature the party dominates).
+// Whether an enemy row may be among the card's targets (a creature the party
+// dominates, a legendary option that reaches everyone caught): the target
+// chips keep the rows.
+export function monsterAimsAtRows(card: HandCard): boolean {
+  const intent = card.intent;
+  return intent.card === "monster" && (rollsMonsterAttack(card) || takesManyTargets(card) || (intent.action === "legendary" && Boolean(intent.rows)));
+}
+
 export function rollsMonsterAttack(card: HandCard): boolean {
   const intent = card.intent;
   return intent.card === "monster" && (intent.action === "attack" || (intent.action === "legendary" && Boolean(intent.attackName)));
@@ -426,22 +449,33 @@ export function monsterCalls(
   targetIds: string[],
   advantage: MonsterAdvantage = "none",
   rows: ReadonlySet<string> = new Set(),
+  // A legendary move's or jump's square, a spell from its list.
+  choices: { square?: { x: number; y: number } | null; spell?: string | null } = {},
 ): Array<{ name: string; args: Record<string, unknown> }> | null {
   const intent = card.intent;
   if (intent.card !== "monster") {
     return null;
   }
   if (intent.action === "legendary") {
-    const spend = { name: "legendary_action", args: { enemyId: intent.enemyId, action: intent.legendary ?? card.name } };
-    if (card.target === "none") {
-      return [spend];
+    // One call: the spend and what it buys, played whole on the server
+    // (src/lib/dm/legendary-play.ts), so a refused attack gives it back.
+    if (intent.aim && !targetIds.length) {
+      return null;
     }
-    const follow = intent.attackName
-      ? monsterInvoke({ ...card, intent: { card: "monster", enemyId: intent.enemyId, action: "attack", attackName: intent.attackName } }, targetIds, advantage, rows)
-      : intent.ability
-        ? monsterInvoke({ ...card, intent: { card: "monster", enemyId: intent.enemyId, action: "ability", ability: intent.ability } }, targetIds, advantage, rows)
-        : null;
-    return follow ? [spend, follow] : null;
+    const characterIds = targetIds.filter((id) => !rows.has(id));
+    const enemyIds = targetIds.filter((id) => rows.has(id));
+    const args: Record<string, unknown> = {
+      enemyId: intent.enemyId,
+      action: intent.legendary ?? card.name,
+      ...(intent.use ? { use: intent.use } : {}),
+      ...(intent.aim === "one" && targetIds[0] ? { targetCharacterId: targetIds[0] } : {}),
+      ...(intent.aim === "many" && characterIds.length ? { characterIds } : {}),
+      ...(intent.aim === "many" && enemyIds.length ? { enemyIds } : {}),
+      ...(choices.square ? { x: choices.square.x, y: choices.square.y } : {}),
+      ...(choices.spell ? { spell: choices.spell } : {}),
+      ...(intent.attackName && advantage !== "none" ? { advantage } : {}),
+    };
+    return [{ name: "legendary_action", args }];
   }
   if (intent.action === "lair") {
     const lair = intent.lair;

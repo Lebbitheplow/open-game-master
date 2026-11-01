@@ -11,6 +11,7 @@ import type { HandCard } from "@/lib/battlemap/hand";
 import { previewRows, type HandAim } from "@/lib/battlemap/hand-play";
 import {
   deriveMonsterHand,
+  monsterAimsAtRows,
   monsterCalls,
   monsterSentence,
   rollsMonsterAttack,
@@ -131,10 +132,27 @@ function MonsterHandInner({
     ],
     [sheets, encounter, mySide],
   );
+  // Its own side, for a legendary shield on itself or an ally, and everyone
+  // in reach, for negative energy that spares nobody.
+  const allies = useMemo<PartyChip[]>(
+    () => [
+      ...encounter.enemies
+        .filter((enemy) => enemy.status === "alive" && (offSide(encounter, enemy.id, "enemy") ?? "foe") === mySide)
+        .map((enemy) => ({ id: enemy.id, name: enemy.name, kind: "enemy" as const, ac: enemy.ac, conditions: enemy.conditions, row: true, note: `${enemy.currentHp !== undefined ? `${enemy.currentHp}/${enemy.maxHp} hp` : enemy.health}${enemy.ac !== undefined ? ` · AC ${enemy.ac}` : ""}` })),
+      ...sheets
+        .filter((sheet) => !sheet.deathSaves?.dead && (offSide(encounter, sheet.id, "pc") ?? "party") === mySide)
+        .map((sheet) => ({ id: sheet.id, name: sheet.name, kind: "enemy" as const, ac: effectiveAcFor(sheet), conditions: sheet.conditions, note: `${sheet.currentHp}/${effectiveMaxHp(sheet)} hp · AC ${effectiveAcFor(sheet)}` })),
+    ],
+    [sheets, encounter, mySide],
+  );
 
   const [pickedId, setPickedId] = useState<string | null>(null);
   const [targetIds, setTargetIds] = useState<string[]>([]);
   const [advantage, setAdvantage] = useState<MonsterAdvantage>("none");
+  // A legendary move's or jump's square, and the spell it casts.
+  const [column, setColumn] = useState("");
+  const [row, setRow] = useState("");
+  const [spell, setSpell] = useState("");
   const [sending, setSending] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -144,8 +162,10 @@ function MonsterHandInner({
 
   const picked = cards.find((card) => card.id === pickedId && !card.disabled) ?? null;
   const many = picked ? takesManyTargets(picked) : false;
+  const intent = picked?.intent.card === "monster" ? picked.intent : null;
   // A save forced on one target is cast_at_player, a character's door.
-  const chips = !picked || picked.intent.card !== "monster" || rollsMonsterAttack(picked) || many ? party : party.filter((chip) => !chip.row);
+  const sideChips = intent?.pick === "allies" ? allies : intent?.pick === "anyone" ? [...party, ...allies] : party;
+  const chips = !picked || !intent || monsterAimsAtRows(picked) ? sideChips : sideChips.filter((chip) => !chip.row);
   const aimed = chips.filter((chip) => targetIds.includes(chip.id));
   const aim = aimed[0] ?? null;
   const defaultAim = aim ?? chips[0] ?? null;
@@ -154,7 +174,13 @@ function MonsterHandInner({
   const rows = picked ? previewRows(picked, picked.target === "none" ? null : defaultAim, conditions) : [];
   const sentence = picked && selected ? monsterSentence(selected.name, picked, aimed.map((chip) => chip.name)) : "";
   const needsTarget = Boolean(picked && picked.target !== "none");
-  const ready = Boolean(picked) && (!needsTarget || aimed.length > 0);
+  const square = intent?.square ?? null;
+  const squareSet = column.trim() !== "" && row.trim() !== "";
+  const ready =
+    Boolean(picked) &&
+    (!needsTarget || aimed.length > 0) &&
+    (!square || square.optional || squareSet) &&
+    (!intent?.spells || Boolean(spell));
 
   function say(text: string) {
     setNotice(text);
@@ -165,6 +191,9 @@ function MonsterHandInner({
     setPickedId(null);
     setTargetIds([]);
     setAdvantage("none");
+    setColumn("");
+    setRow("");
+    setSpell("");
   }
 
   function pick(card: HandCard) {
@@ -175,6 +204,9 @@ function MonsterHandInner({
     setNotice("");
     setTargetIds([]);
     setAdvantage("none");
+    setColumn("");
+    setRow("");
+    setSpell("");
     setPickedId((current) => (current === card.id ? null : card.id));
   }
 
@@ -183,7 +215,12 @@ function MonsterHandInner({
       if (!many) {
         return current[0] === id ? [] : [id];
       }
-      return current.includes(id) ? current.filter((entry) => entry !== id) : [...current, id];
+      if (current.includes(id)) {
+        return current.filter((entry) => entry !== id);
+      }
+      // Lightning Storm's three bolts: no more creatures than it reaches.
+      const most = intent?.most;
+      return most && current.length >= most ? current : [...current, id];
     });
   }
 
@@ -191,7 +228,10 @@ function MonsterHandInner({
     if (!picked || !selected || sending) {
       return;
     }
-    const calls = monsterCalls(picked, aimed.map((chip) => chip.id), advantage, new Set(aimed.filter((chip) => chip.row).map((chip) => chip.id)));
+    const calls = monsterCalls(picked, aimed.map((chip) => chip.id), advantage, new Set(aimed.filter((chip) => chip.row).map((chip) => chip.id)), {
+      square: squareSet ? { x: Number(column), y: Number(row) } : null,
+      spell: spell || null,
+    });
     if (!calls) {
       say(many ? "Pick everyone caught in it." : "Pick a target.");
       return;
@@ -435,6 +475,54 @@ function MonsterHandInner({
                     <span className="text-xs text-stone-500">Nobody is standing to be attacked.</span>
                   )}
                 </div>
+              ) : null}
+
+              {square ? (
+                <div className="mt-2 flex flex-wrap items-end gap-2" role="group" aria-label="Where it goes">
+                  <label className="flex flex-col text-[11px] uppercase tracking-wider text-stone-500">
+                    To column
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      value={column}
+                      onChange={(event) => setColumn(event.target.value)}
+                      className={cn(ui.input, "mt-0.5 h-11 w-24 text-sm normal-case tracking-normal sm:h-9")}
+                    />
+                  </label>
+                  <label className="flex flex-col text-[11px] uppercase tracking-wider text-stone-500">
+                    To row
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      value={row}
+                      onChange={(event) => setRow(event.target.value)}
+                      className={cn(ui.input, "mt-0.5 h-11 w-24 text-sm normal-case tracking-normal sm:h-9")}
+                    />
+                  </label>
+                  <span className="pb-2 text-xs text-stone-400">
+                    {square.optional ? `Optional: up to ${square.feet} ft, or leave it where it is.` : `Up to ${square.feet} ft.`}
+                  </span>
+                </div>
+              ) : null}
+
+              {intent?.spells ? (
+                <label className="mt-2 flex flex-col text-[11px] uppercase tracking-wider text-stone-500">
+                  Spell
+                  <select
+                    value={spell}
+                    onChange={(event) => setSpell(event.target.value)}
+                    className={cn(ui.input, "mt-0.5 h-11 text-sm normal-case tracking-normal sm:h-9")}
+                  >
+                    <option value="">Pick one from its list</option>
+                    {intent.spells.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               ) : null}
 
               {rollsMonsterAttack(picked) ? (

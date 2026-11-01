@@ -33,6 +33,9 @@ export type ZoneMoment = "enter" | "start" | "end" | "each5";
 
 export type ZoneTrigger = {
   on: ZoneMoment[];
+  // Spares the creature that made it ("each creature other than the
+  // kraken"), as an aura spares its caster.
+  others?: boolean;
   // "hostile": only creatures hostile to the caster (Spirit Guardians,
   // Guardian of Faith). Everyone otherwise.
   who?: "hostile";
@@ -486,7 +489,23 @@ export const LIGHT_SPELLS: Record<string, { radiusTiles: number; dimTiles: numbe
 
 // The spells' areas and the gear spread on the ground (zones-gear.ts), one
 // table.
-const AREA_ROWS: Record<string, ZoneRow> = { ...ZONE_ROWS, ...GEAR_ZONE_ROWS };
+// A creature's own lasting area, laid by its legendary action rather than a
+// spell (src/lib/dm/legendary-route-logic.ts "cloud"): its DC is the block's,
+// carried on the area. SRD 5.1, the kraken's Ink Cloud: "Each creature other
+// than the kraken that ends its turn there must succeed on a DC 23
+// Constitution saving throw, taking 16 (3d10) poison damage on a failed
+// save, or half as much damage on a successful one", and the cloud "disappears
+// at the end of the kraken's next turn".
+export const CREATURE_ZONE_ROWS: Record<string, ZoneRow> = {
+  "ink cloud": {
+    shape: "sphere", feet: 60, level: 0, concentration: false, rounds: 1,
+    obscured: "heavy", gas: true, mundane: true, tone: "poison",
+    trigger: { on: ["end"], others: true, save: "con", dice: "3d10", type: "poison", half: true },
+    summary: "heavily obscured; anyone but its maker ending a turn there: CON save, 3d10 poison (half on a success)",
+  },
+};
+
+const AREA_ROWS: Record<string, ZoneRow> = { ...ZONE_ROWS, ...GEAR_ZONE_ROWS, ...CREATURE_ZONE_ROWS };
 
 export function zoneRowFor(spell: ZoneNamed): ZoneRow | null {
   return AREA_ROWS[zoneKey(spell)] ?? null;

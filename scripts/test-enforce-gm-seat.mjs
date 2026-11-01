@@ -88,8 +88,8 @@ function dragonHand(world, dragonId) {
   return { row, cards: deriveMonsterHand(row, { enemyActions: true, legendaryCards: true }) };
 }
 
-// Plays a card as MonsterHand.tsx does: each call in order, marked as a
-// card, stopping at the first refusal.
+// Plays a card as MonsterHand.tsx does: each call in order (one for a
+// legendary card), marked as a card, stopping at the first refusal.
 async function play(world, card, targets, user) {
   const calls = monsterCalls(card, targets);
   assert.ok(calls, `${card.name} needs a target`);
@@ -131,8 +131,10 @@ await test("At a person's table the dragon's legendary actions are its cards at 
   world.dice(19, 8, 8);
   const answers = await play(world, tail, [kara.id], gm);
   world.clearDice();
-  assert.deepEqual(answers.map((out) => out.status), [200, 200], JSON.stringify(answers.map((out) => out.body)));
+  // One call: the spend and the swing together (legendary-play.ts).
+  assert.deepEqual(answers.map((out) => out.status), [200], JSON.stringify(answers.map((out) => out.body)));
   assert.equal(answers[0].body.result.remaining, 2);
+  assert.equal(answers[0].body.result.hit, true);
   assert.equal(world.encounter().legendary.pools[dragon.id].actions, 2, "one legendary action spent");
   assert.ok(world.sheet(kara.id).currentHp < hp, "the tail landed");
   assert.ok(listRecentRolls(world.campaignId, 5).some((roll) => roll.kind === "attack"), "the attack was rolled");
@@ -155,7 +157,7 @@ await test("At a person's table the dragon's legendary actions are its cards at 
   world.dice(1);
   const blown = await play(world, wing, [kara.id], gm);
   world.clearDice();
-  assert.deepEqual(blown.map((out) => out.status), [200, 200], JSON.stringify(blown.map((out) => out.body)));
+  assert.deepEqual(blown.map((out) => out.status), [200], JSON.stringify(blown.map((out) => out.body)));
   assert.equal(world.encounter().legendary.pools[dragon.id].actions, 0);
   assert.ok(world.sheet(kara.id).conditions.includes("prone"), "Kara failed the save and was knocked prone");
   // None left this round: no card.

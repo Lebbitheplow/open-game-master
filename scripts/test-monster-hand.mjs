@@ -323,9 +323,11 @@ test("a legendary creature's options are projected at the end of another creatur
   assert.equal(view.legendary.left, 3);
   assert.equal(view.legendary.max, 3);
   const [detect, tail, wing] = view.legendary.options;
-  assert.deepEqual([detect.name, detect.cost, detect.attack, detect.ability], ["Detect", 1, undefined, undefined]);
-  assert.deepEqual([tail.name, tail.cost, tail.attack.name, tail.attack.swings], ["Tail Attack", 1, "Tail", ["Tail"]], "one swing, never the routine");
-  assert.deepEqual([wing.name, wing.cost, wing.ability.save, wing.ability.dc, wing.ability.damage, wing.ability.condition], ["Wing Attack", 2, "dex", 22, "2d6+8", "prone"]);
+  assert.deepEqual([detect.name, detect.cost, detect.routes.length, detect.routes[0].target, detect.routes[0].how], ["Detect", 1, 1, "none", "A Wisdom (perception) check the server rolls"]);
+  const [swing] = tail.routes;
+  assert.deepEqual([tail.name, tail.cost, swing.attack.name, swing.attack.swings, swing.target, swing.pick], ["Tail Attack", 1, "Tail", ["Tail"], "one", "foes"], "one swing, never the routine");
+  const [beat] = wing.routes;
+  assert.deepEqual([wing.name, wing.cost, beat.ability.save, beat.ability.dc, beat.ability.damage, beat.ability.condition, beat.target], ["Wing Attack", 2, "dex", 22, "2d6+8", "prone", "many"]);
   assert.ok([detect, tail, wing].every((option) => option.refusal === null));
   // The lair's lines are the lair's, not abilities of the creature's turn.
   assert.deepEqual(view.abilities.map((ability) => ability.name), []);
@@ -365,25 +367,54 @@ test("the legendary cards come only from a host that offers them, and each plays
   const [detect, tail, wing] = cards.filter((card) => card.cost === "legendary");
   assert.deepEqual([detect.name, tail.name, wing.name], ["Detect", "Tail Attack", "Wing Attack"]);
   assert.equal(cards.at(-1).name, "Flee", "Flee stays last");
-  // Detect: the spend alone, no target.
+  // Detect: the spend alone, no target; the server rolls the check.
   assert.equal(detect.target, "none");
   assert.deepEqual(monsterCalls(detect, []), [{ name: "legendary_action", args: { enemyId: "e1", action: "Detect" } }]);
-  // Tail Attack: the spend, then one attack, with the Roll pills.
+  // Tail Attack: one call, the spend and its swing together, with the Roll pills.
   assert.equal(rollsMonsterAttack(tail), true);
   assert.equal(tail.roll, "+11 to hit");
   assert.equal(monsterCalls(tail, []), null, "an attack needs its target");
   assert.deepEqual(monsterCalls(tail, ["s1"], "advantage"), [
-    { name: "legendary_action", args: { enemyId: "e1", action: "Tail Attack" } },
-    { name: "enemy_attack", args: { enemyId: "e1", targetCharacterId: "s1", attack: "Tail", advantage: "advantage" } },
+    { name: "legendary_action", args: { enemyId: "e1", action: "Tail Attack", targetCharacterId: "s1", advantage: "advantage" } },
   ]);
-  // Wing Attack: the spend, then its save on everyone caught.
+  // Wing Attack: one call, its save on everyone caught.
   assert.equal(takesManyTargets(wing), true);
   assert.equal(wing.roll, "DEX save DC 22");
-  assert.deepEqual(monsterCalls(wing, ["s1", "s2"]), [
-    { name: "legendary_action", args: { enemyId: "e1", action: "Wing Attack" } },
-    { name: "aoe_damage", args: { casterEnemyId: "e1", enemyAbility: "Wing Attack", characterIds: ["s1", "s2"], saveAbility: "dex", dc: 22, damage: "2d6+8", type: "bludgeoning" } },
+  assert.deepEqual(monsterCalls(wing, ["s1", "e2"], "none", new Set(["e2"])), [
+    { name: "legendary_action", args: { enemyId: "e1", action: "Wing Attack", characterIds: ["s1"], enemyIds: ["e2"] } },
   ]);
   assert.equal(monsterSentence("Vermithrax", tail, ["Kael"]), "Vermithrax spends a legendary action: Tail Attack on Kael.");
+});
+
+test("an option with two ways to play is two cards, and a move or a spell asks for its square or its spell", () => {
+  const actions = {
+    speed: "30 ft.", attacks: [], abilities: [], refusal: null, acted: false, manual: [],
+    legendary: {
+      left: 3, max: 3,
+      options: [
+        { name: "Attack", cost: 1, text: "", refusal: null, routes: [
+          { use: "Rotting Fist", how: "One Rotting Fist attack", target: "one", rows: true, pick: "foes", attack: { name: "Rotting Fist", toHit: 9, damage: "3d6+4", type: "bludgeoning", range: "5 ft", melee: true, swings: ["Rotting Fist"] } },
+          { use: "Dreadful Glare", how: "WIS save DC 16 on one creature", target: "one", most: 1, rows: true, pick: "foes", ability: { name: "Dreadful Glare", save: "wis", dc: 16, condition: "frightened" } },
+        ] },
+        { name: "Move", cost: 1, text: "", refusal: null, routes: [{ use: "Move", how: "Moves up to 30 ft without opportunity attacks", target: "none", rows: false, pick: "foes", square: { feet: 30, optional: false } }] },
+        { name: "Cantrip", cost: 1, text: "", refusal: null, routes: [{ use: "Cantrip", how: "Casts a cantrip from its list", target: "many", rows: true, pick: "foes", spells: ["Ray of Frost"] }] },
+        { name: "Shimmering Shield", cost: 2, text: "", refusal: null, routes: [{ use: "Shimmering Shield", how: "+2 AC", target: "one", rows: true, pick: "allies" }] },
+        { name: "Hum", cost: 1, text: "The creature hums.", refusal: null, routes: [] },
+      ],
+    },
+  };
+  const cards = deriveMonsterHand({ id: "m1", name: "Mummy Lord", status: "alive", conditions: [], actions }, { legendaryCards: true }).filter((card) => card.cost === "legendary");
+  assert.deepEqual(cards.map((card) => card.name), ["Attack: Rotting Fist", "Attack: Dreadful Glare", "Move", "Cantrip", "Shimmering Shield", "Hum"]);
+  assert.deepEqual(monsterCalls(cards[1], ["s1"]), [{ name: "legendary_action", args: { enemyId: "m1", action: "Attack", use: "Dreadful Glare", targetCharacterId: "s1" } }]);
+  assert.deepEqual(cards[2].intent.square, { feet: 30, optional: false });
+  assert.deepEqual(monsterCalls(cards[2], [], "none", new Set(), { square: { x: 4, y: 7 } }), [{ name: "legendary_action", args: { enemyId: "m1", action: "Move", x: 4, y: 7 } }]);
+  assert.deepEqual(cards[3].intent.spells, ["Ray of Frost"]);
+  assert.deepEqual(monsterCalls(cards[3], ["s1"], "none", new Set(), { spell: "Ray of Frost" }), [{ name: "legendary_action", args: { enemyId: "m1", action: "Cantrip", characterIds: ["s1"], spell: "Ray of Frost" } }]);
+  assert.equal(cards[4].intent.pick, "allies", "a shield goes on its own side");
+  // The line the server cannot read: the spend, and the card says the rest is the GM's.
+  assert.equal(cards[5].target, "none");
+  assert.match(cards[5].rules, /cannot read this option: playing it spends the action, and you resolve the rest by hand/);
+  assert.deepEqual(monsterCalls(cards[5], []), [{ name: "legendary_action", args: { enemyId: "m1", action: "Hum" } }]);
 });
 
 test("the lair's options are offered on its initiative count 20 only, on the card of the creature that prints them, numbered as lair_action takes them", () => {

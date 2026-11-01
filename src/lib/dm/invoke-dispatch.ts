@@ -13,6 +13,7 @@ import { handleCheckNotice, handleGroupCheck } from "@/lib/dm/check-tools";
 import { handleAddCompanion } from "@/lib/dm/companion-tools";
 import { dismissCompanion } from "@/lib/dm/companion-dismissal";
 import { applyEncounterCall, ENCOUNTER_TOOL_NAMES } from "@/lib/dm/encounter-tools";
+import { playLegendaryAction, playsWhole } from "@/lib/dm/legendary-play";
 import { handleApplyHazard } from "@/lib/dm/hazard-tools";
 import { handleSearchLore } from "@/lib/dm/lore-search";
 import { handleReadCard } from "@/lib/dm/prep-card-tool";
@@ -123,6 +124,13 @@ async function dispatchCall(
       maybeProposeItemChange(campaign, turn.id, name, rawArguments, sheetsById) ??
       applyDmMutation(campaign, turn.id, name, rawArguments, sheets, sheetsById, turn).result
     );
+  }
+  // A legendary action named with what it buys needs (the GM's card, the
+  // console's form filled in): the spend and its follow-up as one step,
+  // the action given back if the engine refuses the follow-up
+  // (src/lib/dm/legendary-play.ts, issue 685 audit).
+  if (name === "legendary_action" && playsWhole(rawArguments)) {
+    return playLegendaryAction(campaign, turn, rawArguments, (tool, args) => dispatchCall(tool, JSON.stringify(args), context));
   }
   if (ENCOUNTERS.has(name)) {
     return applyEncounterCall(campaign, turn, name, rawArguments, sheets, sheetsById, {
