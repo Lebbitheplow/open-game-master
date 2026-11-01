@@ -2060,6 +2060,11 @@ function ensureSchema(db: SqliteDatabase) {
   // storyteller to run when the scene reaches it (src/lib/dm/prepared-
   // encounter-tool.ts, #154). Play state: a copy never carries it.
   addColumns("encounter_templates", [["cued", `INTEGER NOT NULL DEFAULT 0`]]);
+  // The moment a test of this fight was saved to start from (issue 685,
+  // src/lib/workshop/fight-setup-logic.ts): the foes' state wherever it is
+  // deployed, and on a test table the party's, the order and the dice. Empty
+  // for a fight with none.
+  addColumns("encounter_templates", [["setup_json", `TEXT NOT NULL DEFAULT ''`]]);
   // What an arrow on the storyboard means, keyed by the card it points at:
   // one route of several, or a scene that only happens if something holds
   // (src/lib/workshop/board.ts). An arrow with no entry is the plain "then
@@ -2774,6 +2779,17 @@ function ensureSchema(db: SqliteDatabase) {
       workshop_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
       created_at TEXT NOT NULL,
       PRIMARY KEY (campaign_id, workshop_id)
+    );
+
+    -- What a test table was opened from (src/lib/workshop/test-fight.ts):
+    -- the workshop's prepared fight, by its own id (a copy plays at the
+    -- table), and the party it was seated with, so "Save as this fight's
+    -- set-up" knows where the moment goes and whose it is (issue 685).
+    CREATE TABLE IF NOT EXISTS test_fight_runs (
+      campaign_id TEXT PRIMARY KEY REFERENCES campaigns(id) ON DELETE CASCADE,
+      template_id TEXT NOT NULL,
+      party_json TEXT NOT NULL,
+      created_at TEXT NOT NULL
     );
 
     -- The last attack against each character, for the reactions that answer

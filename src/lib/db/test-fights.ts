@@ -1,4 +1,5 @@
-import { getDatabase } from "@/lib/db/core";
+import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
+import { setupPartySchema, type SetupParty } from "@/lib/workshop/fight-setup-logic";
 
 // Where a test fight (issue 553, src/lib/workshop/test-fight.ts) is found.
 // A test table is a campaigns row of kind 'playtest', linked to the workshop
@@ -68,4 +69,26 @@ export function testFightSource(campaignId: string): { workshopId: string; title
     )
     .get(campaignId) as { id: string; title: string } | undefined;
   return row ? { workshopId: row.id, title: row.title } : null;
+}
+
+// What a test table was opened from (issue 685): the workshop's own fight
+// and the party seated, read back when its author saves the moment as that
+// fight's set-up. Gone with the table (ON DELETE CASCADE).
+export type TestFightRun = { templateId: string; party: SetupParty };
+
+export function recordTestFightRun(campaignId: string, run: TestFightRun) {
+  getDatabase()
+    .prepare(
+      `INSERT INTO test_fight_runs (campaign_id, template_id, party_json, created_at) VALUES (?, ?, ?, ?)
+       ON CONFLICT (campaign_id) DO UPDATE SET template_id = excluded.template_id, party_json = excluded.party_json`,
+    )
+    .run(campaignId, run.templateId, JSON.stringify(run.party), nowIso());
+}
+
+export function testFightRun(campaignId: string): TestFightRun | null {
+  const row = getDatabase()
+    .prepare(`SELECT template_id, party_json FROM test_fight_runs WHERE campaign_id = ?`)
+    .get(campaignId) as { template_id: string; party_json: string } | undefined;
+  const party = row ? setupPartySchema.safeParse(parseJson<unknown>(row.party_json, null)) : null;
+  return row && party?.success ? { templateId: row.template_id, party: party.data } : null;
 }

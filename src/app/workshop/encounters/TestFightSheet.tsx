@@ -48,6 +48,13 @@ function listed(names: string[]): string {
   return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 }
 
+// Whether the party picked is the one a fight's set-up was saved with
+// (src/lib/workshop/fight-setup-logic.ts samePartyAsSetup, for the sheet).
+function sameAsSetup(party: NonNullable<PreparedEncounter["setupParty"]>, who: Who, picked: string[]): boolean {
+  if (party.kind === "stand-ins") return who === "stand-ins";
+  return who === "characters" && party.characterIds.length === picked.length && party.characterIds.every((id, index) => id === picked[index]);
+}
+
 const choiceCard =
   "flex min-h-11 cursor-pointer items-start gap-2.5 rounded-lg border px-3 py-2.5 transition-colors focus-within:ring-2 focus-within:ring-amber-400/40";
 
@@ -63,15 +70,22 @@ export function TestFightSheet({
   info: TestFightInfo | null;
   onClose: () => void;
 }) {
-  const [who, setWho] = useState<Who>("stand-ins");
+  const [whoChoice, setWho] = useState<Who | null>(null);
   const [runner, setRunner] = useState<"ai" | "person">("ai");
-  const [picked, setPicked] = useState<string[]>([]);
+  const [pickedChoice, setPicked] = useState<string[] | null>(null);
   const [pregens, setPregens] = useState<Character[] | null>(null);
   const [library, setLibrary] = useState<Character[] | null>(null);
   const [loadError, setLoadError] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const open = encounter !== null;
+  const setupParty = encounter?.setup?.length ? (encounter.setupParty ?? null) : null;
+  // Until the author answers, a fight with a saved set-up offers the party
+  // it was saved with, so the moment is the same moment (issue 685), and
+  // any other fight the stand-ins. Another answer is one press away, and
+  // says below what it costs.
+  const who: Who = whoChoice ?? (setupParty?.kind === "characters" ? "characters" : "stand-ins");
+  const picked = pickedChoice ?? (setupParty?.kind === "characters" ? setupParty.characterIds : []);
 
   // The characters are read when the sheet opens, the roster first: the
   // pregens are the ones made for this workshop.
@@ -96,11 +110,14 @@ export function TestFightSheet({
     if (next) return;
     setError("");
     setBusy(false);
+    // The next fight opened asks afresh, from its own default.
+    setWho(null);
+    setPicked(null);
     onClose();
   }
 
   function toggle(id: string, on: boolean) {
-    setPicked((current) => (on ? [...current.filter((entry) => entry !== id), id] : current.filter((entry) => entry !== id)));
+    setPicked(on ? [...picked.filter((entry) => entry !== id), id] : picked.filter((entry) => entry !== id));
   }
 
   async function start() {
@@ -177,6 +194,22 @@ export function TestFightSheet({
           Play this fight on a table only you can see, on its map and by its plan. You play the
           party, each hero on their own turn.
         </p>
+
+        {encounter?.setup?.length ? (
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-50" data-testid="test-fight-setup">
+            <p className="font-display text-amber-200">It opens on its saved set-up.</p>
+            <ul className="mt-1 space-y-0.5 text-stone-300">
+              {encounter.setup.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+            {setupParty && !sameAsSetup(setupParty, who, picked) ? (
+              <p className="mt-1 text-amber-200/90">
+                This is another party than the set-up was saved with: the foes and the order start as saved, the heroes fresh.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
 
         <fieldset className="space-y-2">
           <legend className={legend}>Who fights it</legend>

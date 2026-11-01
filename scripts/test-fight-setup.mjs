@@ -1,0 +1,259 @@
+// Issue 685: a prepared fight's set-up. A test fight's author saves the
+// moment on the table ("Save as set-up") and every test of that fight opens
+// on it: the foes' hit points, conditions and places, the party's hit
+// points, conditions and spent slots, and the initiative order. A fight
+// played on the generator's map keeps that map. A live table's Deploy lays
+// the foes' part only; another party at a test starts fresh. Everything here
+// goes through the routes the screens call, and is read back from the rows.
+import assert from "node:assert/strict";
+import { openWorld } from "./lib/enforce-world.mjs";
+import { suite } from "./lib/enforce-harness.mjs";
+import { LEGAL_FIGHTER, PORTRAIT } from "./lib/enforce-creation.mjs";
+
+const { test, finish } = suite("test-fight-setup");
+const world = await openWorld({ status: "lobby" });
+const campaigns = await import("../src/lib/db/campaigns.ts");
+const { createWorkshop } = await import("../src/lib/db/workshops.ts");
+const templates = await import("../src/lib/db/encounter-templates.ts");
+const { createCharacter } = await import("../src/lib/db/characters.ts");
+const { listSheets, patchSheet, getSheetById } = await import("../src/lib/db/sheets.ts");
+const { getActiveEncounter, listEnemies, patchEnemyHp, patchEnemyConditions, saveEncounter } = await import("../src/lib/db/encounters.ts");
+const { getBattleMapForEncounter, getTokenByRef, placeToken } = await import("../src/lib/db/battle-maps.ts");
+const { getPreparedMap } = await import("../src/lib/db/prepared-maps.ts");
+const { getDatabase } = await import("../src/lib/db/core.ts");
+const { deployTemplate } = await import("../src/lib/dm/encounter-templates.ts");
+const logic = await import("../src/lib/workshop/fight-setup-logic.ts");
+
+const route = {
+  test: await world.route("workshops/[workshopId]/test-fight"),
+  save: await world.route("campaigns/[campaignId]/fight-setup"),
+  setup: await world.route("campaigns/[campaignId]/dm/encounter-templates/[templateId]/setup"),
+  list: await world.route("campaigns/[campaignId]/dm/encounter-templates"),
+};
+
+async function call(mod, method, body, params) {
+  const request = new Request("http://test/", {
+    method,
+    headers: { "content-type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const response = await mod[method](request, { params: Promise.resolve(params) });
+  return { status: response.status, json: await response.json().catch(() => ({})) };
+}
+
+const author = world.owner;
+world.signIn(author);
+
+const workshop = createWorkshop(author.id, { title: "The Old Mill", targetParty: { size: 2, level: 3 } });
+const ambush = templates.insertEncounterTemplate({
+  campaignId: workshop.id,
+  name: "Goblins at the mill",
+  enemies: [{ monster: "goblin", count: 2 }],
+  battlefield: "a mill yard",
+  // The generator's map: nothing saved, so a test draws a new one.
+  map: { mapId: null, scene: null, seed: null, theme: null, ambient: null, width: null, height: null },
+  notes: "",
+  extras: {},
+  createdByUserId: author.id,
+});
+const at = { workshopId: workshop.id };
+
+const goblinsOf = (campaignId) => {
+  const fight = getActiveEncounter(campaignId);
+  return listEnemies(fight.id).sort((a, b) => a.displayName.localeCompare(b.displayName));
+};
+const tokenAt = (campaignId, refId) => {
+  const board = getBattleMapForEncounter(getActiveEncounter(campaignId).id);
+  const token = getTokenByRef(board.id, refId);
+  return { x: token.x, y: token.y };
+};
+const note = (campaignId, pattern) =>
+  getDatabase()
+    .prepare(`SELECT content FROM campaign_messages WHERE campaign_id = ? AND author_type = 'system'`)
+    .all(campaignId)
+    .some((row) => pattern.test(row.content));
+
+// ---- the shape ----
+
+await test("a set-up's ids travel as ref tokens and come back as the new table's", () => {
+  const ids = new Map([["enemy-1", logic.refToken({ kind: "slot", slot: 0 })], ["sheet-2", logic.refToken({ kind: "seat", seat: 1 })]]);
+  const saved = logic.swapIds({ charmed: { source: "sheet-2", note: "kept" }, prone: { source: "enemy-1" }, other: { source: "a-zone" } }, ids);
+  assert.deepEqual(saved, { charmed: { source: "@setup:seat:1", note: "kept" }, prone: { source: "@setup:slot:0" }, other: { source: "a-zone" } });
+  const back = new Map([["@setup:slot:0", "enemy-9"]]);
+  // A seat with nobody at the new table loses the field, not the condition.
+  assert.deepEqual(logic.swapIds(saved, back), { charmed: { note: "kept" }, prone: { source: "enemy-9" }, other: { source: "a-zone" } });
+  assert.equal(logic.parseFightSetup(""), null);
+  assert.equal(logic.parseFightSetup({ version: 2 }), null, "another shape is no set-up");
+  assert.equal(logic.samePartyAsSetup({ party: { kind: "stand-ins", size: 2, level: 3 } }, { kind: "stand-ins", size: 2, level: 3 }), true);
+  assert.equal(logic.samePartyAsSetup({ party: { kind: "stand-ins", size: 2, level: 3 } }, { kind: "stand-ins", size: 3, level: 3 }), false);
+  assert.equal(logic.samePartyAsSetup({ party: { kind: "characters", characterIds: ["a", "b"] } }, { kind: "characters", characterIds: ["b", "a"] }), false);
+});
+
+// ---- saving a moment ----
+
+let first = "";
+let firstNames = [];
+let saved = null;
+await test("a test of a fight seats the same stand-ins every time", async () => {
+  const one = await call(route.test, "POST", { templateId: ambush.id, party: { kind: "stand-ins" }, runner: "person" }, at);
+  assert.equal(one.status, 200, JSON.stringify(one.json));
+  const names = listSheets(one.json.campaignId).map((sheet) => sheet.name);
+  const two = await call(route.test, "POST", { templateId: ambush.id, party: { kind: "stand-ins" }, runner: "person" }, at);
+  assert.equal(two.status, 200, JSON.stringify(two.json));
+  assert.deepEqual(listSheets(two.json.campaignId).map((sheet) => sheet.name), names, "a new draw of names, gear or stats each test");
+  first = two.json.campaignId;
+  firstNames = names;
+});
+
+await test("Save as set-up keeps the moment on the workshop's fight, and the generator's map with it", async () => {
+  const fight = getActiveEncounter(first);
+  assert.ok(fight?.orderReady, "the opening rolled everyone's initiative");
+  const [g1, g2] = goblinsOf(first);
+  const [h1, h2] = listSheets(first);
+  // The author's console work, as it leaves the rows.
+  patchEnemyHp(g1.id, 2, "alive");
+  patchEnemyConditions(g2.id, ["prone"], {});
+  const caster = listSheets(first).find((sheet) => (sheet.spellcasting?.slots?.["1"]?.max ?? 0) > 0);
+  patchSheet(h1.id, { currentHp: 3, conditions: ["poisoned"] });
+  if (caster) {
+    patchSheet(caster.id, { spellcasting: { ...caster.spellcasting, slots: { ...caster.spellcasting.slots, 1: { ...caster.spellcasting.slots["1"], used: 1 } } } });
+  }
+  const board = getBattleMapForEncounter(fight.id);
+  placeToken(getTokenByRef(board.id, g1.id).id, 1, 1);
+  placeToken(getTokenByRef(board.id, h2.id).id, 2, 3);
+  // A known order: the second goblin first, then the heroes, then the first.
+  const order = [
+    { kind: "enemy", enemyId: g2.id, name: g2.displayName, initiative: 22 },
+    { kind: "pc", characterId: h2.id, userId: author.id, name: h2.name, initiative: 18 },
+    { kind: "pc", characterId: h1.id, userId: author.id, name: h1.name, initiative: 12 },
+    { kind: "enemy", enemyId: g1.id, name: g1.displayName, initiative: 5 },
+  ];
+  saveEncounter({ ...getActiveEncounter(first), order, turnIndex: 1 });
+
+  const out = await call(route.save, "POST", undefined, { campaignId: first });
+  assert.equal(out.status, 200, JSON.stringify(out.json));
+  assert.equal(out.json.keptMap, true, "the generator's map was not kept");
+  const fresh = templates.getEncounterTemplate(ambush.id);
+  assert.ok(fresh.map.mapId, "the fight is not drawn on the kept map");
+  const kept = getPreparedMap(workshop.id, fresh.map.mapId);
+  assert.ok(kept, "the kept map is not in the workshop's library");
+  assert.equal(kept.width, board.width);
+  saved = templates.getTemplateSetup(ambush.id);
+  assert.ok(saved, "no set-up on the workshop's fight");
+  assert.deepEqual(saved.party, { kind: "stand-ins", size: 2, level: 3 });
+  assert.equal(saved.foes.find((foe) => foe.slot === 0).hp, 2);
+  assert.deepEqual(saved.foes.find((foe) => foe.slot === 1).conditions, ["prone"]);
+  assert.deepEqual(saved.foes.find((foe) => foe.slot === 0).at, { x: 1, y: 1 });
+  assert.equal(saved.heroes[0].currentHp, 3);
+  assert.equal(saved.foes.find((foe) => foe.slot === 1).initiative, 22);
+  assert.ok(out.json.lines.some((line) => /Goblin 1 \(2 of \d+ HP\)/.test(line)), out.json.lines.join(" | "));
+  // The list says so, and with what party.
+  const list = await call(route.list, "GET", undefined, { campaignId: workshop.id });
+  const row = list.json.templates.find((entry) => entry.id === ambush.id);
+  assert.ok(row.setup?.length, "the fight's row does not show its set-up");
+  assert.deepEqual(row.setupParty, { kind: "stand-ins", size: 2, level: 3 });
+});
+
+await test("the next test opens on the saved moment, on the kept map, with the same party unasked", async () => {
+  const keptMapId = templates.getEncounterTemplate(ambush.id).map.mapId;
+  const out = await call(route.test, "POST", { templateId: ambush.id, runner: "person" }, at);
+  assert.equal(out.status, 200, JSON.stringify(out.json));
+  const next = out.json.campaignId;
+  assert.equal(campaigns.getCampaignById(first), null, "the test before it was not ended");
+  const sheets = listSheets(next);
+  assert.deepEqual(sheets.map((sheet) => sheet.name), firstNames);
+  assert.equal(sheets[0].currentHp, 3);
+  assert.deepEqual(sheets[0].conditions, ["poisoned"]);
+  const caster = sheets.find((sheet) => (sheet.spellcasting?.slots?.["1"]?.max ?? 0) > 0);
+  if (caster) assert.equal(caster.spellcasting.slots["1"].used, 1, "the spent slot came back unspent");
+  const [g1, g2] = goblinsOf(next);
+  assert.equal(g1.currentHp, 2);
+  assert.ok(g2.conditions.includes("prone"), g2.conditions.join(", "));
+  assert.deepEqual(tokenAt(next, g1.id), { x: 1, y: 1 });
+  assert.deepEqual(tokenAt(next, sheets[1].id), { x: 2, y: 3 });
+  const fight = getActiveEncounter(next);
+  assert.equal(fight.orderReady, true);
+  assert.equal(fight.round, 1);
+  assert.deepEqual(
+    fight.order.map((entry) => [entry.name, entry.initiative]),
+    [[g2.displayName, 22], [sheets[1].name, 18], [sheets[0].name, 12], [g1.displayName, 5]],
+  );
+  const board = getBattleMapForEncounter(fight.id);
+  const kept = getPreparedMap(workshop.id, keptMapId);
+  assert.equal(board.width, kept.width);
+  assert.equal(board.terrain, kept.terrain, "the test is not on the kept map");
+  assert.ok(note(next, /Opened from the fight's saved set-up/), "the table was not told");
+  first = next;
+});
+
+const mine = createCharacter(author.id, 3, { ...LEGAL_FIGHTER, name: "Thessaly", portrait: PORTRAIT }, "pc");
+
+await test("another party at the test starts fresh, and is told so; the foes still start as saved", async () => {
+  const out = await call(route.test, "POST", { templateId: ambush.id, party: { kind: "characters", characterIds: [mine.id] }, runner: "person" }, at);
+  assert.equal(out.status, 200, JSON.stringify(out.json));
+  const [seat] = listSheets(out.json.campaignId);
+  assert.equal(seat.currentHp, seat.maxHp);
+  assert.deepEqual(seat.conditions, []);
+  const [g1] = goblinsOf(out.json.campaignId);
+  assert.equal(g1.currentHp, 2);
+  assert.ok(note(out.json.campaignId, /another party than the set-up was saved with/), "the table was not told");
+});
+
+await test("a table's Deploy lays the foes' part only: no party, no forced order", async () => {
+  const table = world.campaign();
+  const hero = world.addHero({ name: "Brin", level: 3 });
+  world.addHero({ name: "Oda", level: 3 });
+  campaigns.setCampaignStatus(table.id, "active");
+  const copy = templates.insertEncounterTemplate({
+    campaignId: table.id,
+    name: "Goblins at the mill",
+    enemies: [{ monster: "goblin", count: 2 }],
+    battlefield: "",
+    map: { mapId: null, scene: null, seed: null, theme: null, ambient: null, width: null, height: null },
+    notes: "",
+    extras: {},
+    createdByUserId: author.id,
+  });
+  templates.setTemplateSetup(copy.id, saved);
+  const deployed = await deployTemplate(campaigns.getCampaignById(table.id), author.id, copy);
+  assert.equal(deployed.ok, true, deployed.error);
+  const [g1, g2] = goblinsOf(table.id);
+  assert.equal(g1.currentHp, 2);
+  assert.ok(g2.conditions.includes("prone"));
+  const brin = getSheetById(hero.id);
+  assert.equal(brin.currentHp, brin.maxHp, "a live table's hero took the test's wounds");
+  assert.deepEqual(brin.conditions, []);
+});
+
+await test("Remove its set-up: the fight opens as its roster makes it again", async () => {
+  const read = await call(route.setup, "GET", undefined, { campaignId: workshop.id, templateId: ambush.id });
+  assert.equal(read.status, 200);
+  assert.ok(read.json.setup && read.json.lines.length);
+  const gone = await call(route.setup, "DELETE", undefined, { campaignId: workshop.id, templateId: ambush.id });
+  assert.equal(gone.status, 200);
+  assert.equal(templates.getTemplateSetup(ambush.id), null);
+  const out = await call(route.test, "POST", { templateId: ambush.id, runner: "person" }, at);
+  assert.equal(out.status, 200, JSON.stringify(out.json));
+  const [g1] = goblinsOf(out.json.campaignId);
+  assert.equal(g1.currentHp, g1.maxHp);
+  assert.equal(note(out.json.campaignId, /Opened from the fight's saved set-up/), false);
+  first = out.json.campaignId;
+});
+
+await test("what Save as set-up refuses: another's test, a table that is no test, a fight not yet in order", async () => {
+  const stranger = world.addUser("stranger");
+  world.signIn(stranger);
+  assert.equal((await call(route.save, "POST", undefined, { campaignId: first })).status, 404, "a stranger reached the test table");
+  world.signIn(author);
+  const live = await call(route.save, "POST", undefined, { campaignId: world.campaignId });
+  assert.equal(live.status, 409);
+  assert.match(live.json.error, /test fight's author/);
+  const fight = getActiveEncounter(first);
+  saveEncounter({ ...fight, orderReady: false });
+  const early = await call(route.save, "POST", undefined, { campaignId: first });
+  assert.equal(early.status, 409);
+  assert.match(early.json.error, /every initiative is in/);
+  assert.equal(templates.getTemplateSetup(ambush.id), null, "a refused save wrote a set-up");
+});
+
+finish();

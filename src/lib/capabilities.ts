@@ -124,6 +124,11 @@ export const SERVER_FEATURES = {
   // attraction's `open`, which an older host drops while saving the rest,
   // so the switch stays hidden there.
   openRelationships: true,
+  // A test fight's moment saved as its prepared fight's set-up (issue 685):
+  // "Save as set-up" on the test table (POST /api/campaigns/[id]/fight-setup)
+  // and "Remove its set-up" on the fight, which an older host answers with
+  // a 404, so neither shows there.
+  fightSetups: true,
 } as const;
 export type ServerFeatures = { [K in keyof typeof SERVER_FEATURES]: boolean };
 

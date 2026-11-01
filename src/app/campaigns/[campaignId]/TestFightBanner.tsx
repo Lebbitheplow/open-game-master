@@ -6,6 +6,7 @@ import { appConfirm } from "@/components/ui/ConfirmDialog";
 import { SessionBanner, bannerButtonClass } from "@/app/campaigns/[campaignId]/SessionBanner";
 import { PanelError } from "@/app/campaigns/[campaignId]/PanelKit";
 import { navigateTo } from "@/lib/navigation";
+import { SaveSetupButton } from "@/app/campaigns/[campaignId]/SaveSetupButton";
 import { workshopHref } from "@/lib/workshop/links";
 
 // The test fight's way back (issue 553, src/lib/workshop/test-fight.ts): a
@@ -58,6 +59,7 @@ export function TestFightBanner({
           <Link href={back} className={bannerButtonClass()}>
             Back to the workshop
           </Link>
+          <SaveSetupButton campaignId={campaignId} />
           <button type="button" disabled={busy} aria-busy={busy} onClick={() => void end()} className={bannerButtonClass(true)}>
             End the test
           </button>

@@ -1,5 +1,6 @@
 import type { Campaign } from "@/lib/db/campaigns";
-import { listEncounterTemplates, setTemplateCued, type EncounterTemplate } from "@/lib/db/encounter-templates";
+import { getTemplateSetup, listEncounterTemplates, setTemplateCued, type EncounterTemplate } from "@/lib/db/encounter-templates";
+import { layFightSetup } from "@/lib/workshop/fight-setup";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getPreparedMap } from "@/lib/db/prepared-maps";
 import { describeExtras, formatRoster, rosterSummary } from "@/lib/dm/encounter-template-logic";
@@ -175,6 +176,12 @@ export function runPreparedEncounter(
   }
   const mapError = applyTemplateMap(campaign, template);
   applyTemplateExtras(campaign, campaign.ownerUserId, template);
+  // The foes as a test of the fight was saved to start (issue 685), as a
+  // GM's Deploy lays them.
+  const setup = getTemplateSetup(template.id);
+  if (setup) {
+    layFightSetup(campaign, template, setup);
+  }
   setTemplateCued(template.id, false);
   // The plan rides back with the fight: what it is worth and when it
   // turns, so the storyteller can pay it out and play its phases.

@@ -16,13 +16,17 @@ export const dynamic = "force-dynamic";
 
 const startSchema = z.object({
   templateId: z.string().trim().min(1).max(80),
-  party: z.discriminatedUnion("kind", [
-    z.object({ kind: z.literal("stand-ins") }),
-    z.object({
-      kind: z.literal("characters"),
-      characterIds: z.array(z.string().trim().min(1).max(80)).min(1).max(TARGET_PARTY_LIMITS.size.max),
-    }),
-  ]),
+  // Left out: the party the fight's saved set-up was seated with, else the
+  // stand-ins (issue 685).
+  party: z
+    .discriminatedUnion("kind", [
+      z.object({ kind: z.literal("stand-ins") }),
+      z.object({
+        kind: z.literal("characters"),
+        characterIds: z.array(z.string().trim().min(1).max(80)).min(1).max(TARGET_PARTY_LIMITS.size.max),
+      }),
+    ])
+    .optional(),
   // Who runs it. Left out: the AI DM where one is set up, else the author.
   runner: z.enum(["ai", "person"]).optional(),
 });

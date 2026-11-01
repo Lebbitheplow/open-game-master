@@ -342,6 +342,30 @@ export function DmEncounterPrepPanel({
     await load();
   }
 
+  // Forgets the moment a test saved (issue 685): the fight opens as its
+  // roster and plan make it again, at a test and at a table.
+  async function removeSetup(template: PreparedEncounter) {
+    if (
+      !(await appConfirm(`Remove the saved set-up of "${template.name}"? Its tests and tables open as the roster and plan make it again. The map it kept stays.`, {
+        actionLabel: "Remove the set-up",
+      }))
+    ) {
+      return;
+    }
+    setError("");
+    setNote("");
+    const sent = await readWrite(
+      fetch(`/api/campaigns/${campaignId}/dm/encounter-templates/${template.id}/setup`, { method: "DELETE" }),
+      "The set-up could not be removed.",
+    );
+    if (sent.error !== null) {
+      setError(sent.error);
+      if (sent.unanswered) await load();
+      return;
+    }
+    await load();
+  }
+
   async function deploy(id: string, cueIt = true) {
     setBusy(true);
     setError("");
@@ -433,6 +457,7 @@ export function DmEncounterPrepPanel({
             deployLabel={testFight ? "Test fight" : undefined}
             onDuplicate={(template) => void duplicate(template)}
             onDelete={(template) => void remove(template)}
+            onRemoveSetup={(template) => void removeSetup(template)}
           />
         </Listed>
         {feedback}

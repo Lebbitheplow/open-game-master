@@ -7,11 +7,12 @@ import { ensureOpenChapter } from "@/lib/db/chapters";
 import { admitLibraryCharacter, companionRoleRefusal, getCharacterForUser } from "@/lib/db/characters";
 import { copyOneRow, type CopyContext } from "@/lib/db/content-copy";
 import { getDatabase, nowIso } from "@/lib/db/core";
-import { getEncounterTemplate, type EncounterTemplate } from "@/lib/db/encounter-templates";
+import { getEncounterTemplate, getTemplateSetup, type EncounterTemplate } from "@/lib/db/encounter-templates";
 import { insertCampaignMessage } from "@/lib/db/messages";
 import { listNpcs } from "@/lib/db/npcs";
 import { createSheet } from "@/lib/db/sheets";
-import { allTestFightsOf, strandedTestFights, testFightsOf } from "@/lib/db/test-fights";
+import { allTestFightsOf, recordTestFightRun, strandedTestFights, testFightsOf } from "@/lib/db/test-fights";
+import { fnv1a, mulberry32 } from "@/lib/battlemap/generate";
 import { packClassIds } from "@/lib/dm/companion-tools";
 import { deployTemplate } from "@/lib/dm/encounter-templates";
 import { requestDmTurn } from "@/lib/dm/loop";
@@ -22,6 +23,9 @@ import type { GameSettings } from "@/lib/schemas/game-settings";
 import type { CreateSheetInput } from "@/lib/schemas/sheet";
 import { TARGET_PARTY_LIMITS } from "@/lib/workshop/kind";
 import { buildStandIns } from "@/lib/workshop/stand-ins";
+import { layFightSetup } from "@/lib/workshop/fight-setup";
+import { relockOrder } from "@/lib/workshop/fight-setup-order";
+import { describeFightSetup, type FightSetup, type SetupParty } from "@/lib/workshop/fight-setup-logic";
 
 // A test fight (issue 553): one of a workshop's prepared fights, played.
 //
@@ -88,11 +92,14 @@ export async function testFightReadiness(workshop: Campaign): Promise<{ ready: b
 type Seat = { name: string; level: number; sheet: CreateSheetInput; xp?: number; settle?: () => void };
 
 // The heroes, built and judged before anything is stored, so a party the
-// rules refuse leaves no table behind.
-function seatsFor(workshop: Campaign, userId: string, party: TestParty): { ok: true; seats: Seat[] } | { ok: false; error: string } {
+// rules refuse leaves no table behind. The stand-ins are drawn from the
+// fight's own seed, so every test of it seats the same people, names, gear
+// and all: a saved set-up's seats, and a bench run against one, mean the
+// same heroes each time (issue 685).
+function seatsFor(workshop: Campaign, userId: string, party: TestParty, templateId: string): { ok: true; seats: Seat[] } | { ok: false; error: string } {
   if (party.kind === "stand-ins") {
     const offered = draftOffered(workshop.gameSettings.genre, packClassIds(workshop.gameSettings));
-    const built = buildStandIns(workshop.gameSettings.targetParty, offered, userId);
+    const built = buildStandIns(workshop.gameSettings.targetParty, offered, userId, mulberry32(fnv1a(templateId)));
     return built.ok ? { ok: true, seats: built.heroes } : built;
   }
   const ids = [...new Set(party.characterIds)];
@@ -177,11 +184,26 @@ export function deleteWorkshopTestFights(workshopId: string) {
   }
 }
 
+// Who the test seats, in the set-up's terms (src/lib/workshop/fight-setup-logic.ts).
+function partyIdentity(workshop: Campaign, party: TestParty): SetupParty {
+  return party.kind === "stand-ins"
+    ? { kind: "stand-ins", size: workshop.gameSettings.targetParty.size, level: workshop.gameSettings.targetParty.level }
+    : { kind: "characters", characterIds: [...new Set(party.characterIds)] };
+}
+
+// The party a fight's set-up was saved with, for a start that names none.
+function setupParty(setup: FightSetup | null): TestParty | null {
+  if (!setup) return null;
+  return setup.party.kind === "stand-ins" ? { kind: "stand-ins" } : { kind: "characters", characterIds: setup.party.characterIds };
+}
+
 export async function openTestFight(input: {
   workshop: Campaign;
   userId: string;
   templateId: string;
-  party: TestParty;
+  // Left out: the party the fight's set-up was saved with, else the
+  // stand-ins.
+  party?: TestParty;
   runner: TestFightRunner;
 }): Promise<TestFightOutcome> {
   const { workshop, userId, runner } = input;
@@ -195,7 +217,10 @@ export async function openTestFight(input: {
   if (runner === "ai" && !(await testFightReadiness(workshop)).ready) {
     return { ok: false, status: 409, error: "No AI GM is set up on this server to run it. Run the test yourself." };
   }
-  const party = seatsFor(workshop, userId, input.party);
+  // The moment a test of this fight was saved to start from (issue 685).
+  const setup = getTemplateSetup(template.id);
+  const chosen = input.party ?? setupParty(setup) ?? { kind: "stand-ins" as const };
+  const party = seatsFor(workshop, userId, chosen, template.id);
   if (!party.ok) {
     return { ok: false, status: 422, error: party.error };
   }
@@ -210,7 +235,13 @@ export async function openTestFight(input: {
     difficulty: workshop.difficulty,
     kind: "playtest",
     // A person's table seats its maker in the DM seat (createCampaign).
-    gameSettings: { ...workshop.gameSettings, ...TEST_FIGHT_SETTINGS, dmMode: runner === "ai" ? "ai" : "human" },
+    gameSettings: {
+      ...workshop.gameSettings,
+      ...TEST_FIGHT_SETTINGS,
+      // The test table's own settings the set-up was saved with: allies on.
+      ...(setup?.settings.companions ? { companions: setup.settings.companions as GameSettings["companions"] } : {}),
+      dmMode: runner === "ai" ? "ai" : "human",
+    },
   });
   try {
     // The workshop's own narrator, and no scene pictures: a test is about
@@ -219,6 +250,8 @@ export async function openTestFight(input: {
       .prepare(`UPDATE campaigns SET settings_json = ?, dm_outline = ?, updated_at = ? WHERE id = ?`)
       .run(JSON.stringify({ ...workshop.settings, autoImages: false }), runner === "ai" ? TEST_FIGHT_OUTLINE : "", nowIso(), created.id);
     linkWorkshop(created.id, workshop.id);
+    const identity = partyIdentity(workshop, chosen);
+    recordTestFightRun(created.id, { templateId: template.id, party: identity });
 
     const fight = copyFight(workshop, created.id, template);
     if (!fight) {
@@ -251,6 +284,20 @@ export async function openTestFight(input: {
     if (!deployed.ok) {
       deleteCampaignWithFiles(campaign.id);
       return { ok: false, status: 409, error: `The fight would not start for that party: ${deployed.error}` };
+    }
+    if (setup) {
+      const laid = layFightSetup(getCampaignById(campaign.id) ?? campaign, fight, setup, { test: { party: identity } });
+      relockOrder(campaign, laid.order);
+      const lines = [...describeFightSetup(setup), ...laid.notes];
+      const setupSeq = allocateSeq(campaign.id);
+      const setupNote = insertCampaignMessage({
+        campaignId: campaign.id,
+        seq: setupSeq,
+        authorType: "system",
+        glyph: "cue-battle",
+        content: `Opened from the fight's saved set-up. ${lines.join(" ")}`,
+      });
+      publishWithSeq(campaign.id, setupSeq, "message_added", { message: setupNote });
     }
     // One test at a time per workshop: this one replaces the one before it,
     // now that it has started. A start the engine refused left that one be.

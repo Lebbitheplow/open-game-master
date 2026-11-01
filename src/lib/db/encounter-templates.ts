@@ -8,6 +8,7 @@ import {
   type TemplateExtras,
   type TemplateMap,
 } from "@/lib/dm/encounter-template-logic";
+import { parseFightSetup, type FightSetup } from "@/lib/workshop/fight-setup-logic";
 
 // Storage for prepared encounters. Rows are text: a roster, a battlefield
 // hint, saved map settings and the DM's notes. Nothing here is a live
@@ -150,4 +151,20 @@ export function setTemplateCued(id: string, cued: boolean) {
 
 export function deleteEncounterTemplate(id: string) {
   getDatabase().prepare(`DELETE FROM encounter_templates WHERE id = ?`).run(id);
+}
+
+// A prepared fight's set-up (src/lib/workshop/fight-setup-logic.ts), apart
+// from the row the editor saves: the editor never sends it, and a save of
+// the form must not drop a set-up a test wrote.
+export function getTemplateSetup(id: string): FightSetup | null {
+  const row = getDatabase().prepare(`SELECT setup_json FROM encounter_templates WHERE id = ?`).get(id) as
+    | { setup_json: string | null }
+    | undefined;
+  return row?.setup_json ? parseFightSetup(parseJson<unknown>(row.setup_json, null)) : null;
+}
+
+export function setTemplateSetup(id: string, setup: FightSetup | null) {
+  getDatabase()
+    .prepare(`UPDATE encounter_templates SET setup_json = ?, updated_at = ? WHERE id = ?`)
+    .run(setup ? JSON.stringify(setup) : "", nowIso(), id);
 }
