@@ -49,6 +49,12 @@ const vex = world.addHero({
   spellcasting: { ability: "int", slots: { 1: { max: 4, used: 0 }, 2: { max: 3, used: 0 }, 3: { max: 2, used: 0 } }, known: [], prepared: ["Fireball"], cantrips: [], spellbook: ["Fireball"] },
 });
 
+const orin = world.addHero({
+  name: "Orin", class: "cleric", level: 5, maxHp: 80, proficiencies: TRAINED,
+  abilities: { str: 14, dex: 10, con: 14, int: 10, wis: 16, cha: 10 },
+  equipment: [{ name: "Mace", qty: 1, equipped: true }],
+});
+
 // "Revert this turn" (src/lib/dm/turn-revert.ts), as the table's owner.
 async function revertTurn(turnId) {
   const handler = await world.route("campaigns/[campaignId]/audit/revert-turn");
@@ -65,7 +71,7 @@ async function facing(title, extra = 0) {
   await kit.endFight();
   // Kara first, the creatures next, the others last: Kara's End Turn walks
   // the order past the creatures' turns.
-  await kit.fight(1 + extra, { heroFaces: { [kara.id]: 20, [bram.id]: 2, [vex.id]: 3 }, enemyFace: 10 });
+  await kit.fight(1 + extra, { heroFaces: { [kara.id]: 20, [bram.id]: 2, [vex.id]: 3, [orin.id]: 4 }, enemyFace: 10 });
   const [foe, ...others] = world.enemies();
   const stats = srd(title);
   kit.setEnemy(foe.id, { ac: stats.ac, maxHp: stats.maxHp, stats });
@@ -73,6 +79,7 @@ async function facing(title, extra = 0) {
   kit.place(foe.id, 6, 5);
   kit.place(bram.id, 14, 12);
   kit.place(vex.id, 12, 12);
+  kit.place(orin.id, 10, 12);
   others.forEach((other, index) => kit.place(other.id, 1 + index, 13));
   kit.giveTurn(kara.id);
   return { foe: world.enemies().find((enemy) => enemy.id === foe.id), others };
@@ -286,6 +293,38 @@ await test("A creature fighting on the party's side is swallowed as a hero is: i
   await world.invoke("end_turn", { characterId: kara.id });
   world.clearDice();
   assert.ok(row().currentHp < hp, "the acid at the worm's turn start");
+});
+
+await test("A swallowed cleric's Spirit Guardians as the worm's turn starts counts from inside: with her mace in her turn after it, 30 in all, and the worm saves or regurgitates her", async () => {
+  const { foe } = await facing("Purple Worm");
+  kit.place(orin.id, 5, 6);
+  world.dice(19, 1, 1, 1, 1);
+  await bite(foe, orin);
+  world.clearDice();
+  assert.ok(holds(orin.id, "swallowed"));
+  const sheet = world.sheet(orin.id);
+  world.patch(orin.id, {
+    conditions: [...sheet.conditions, "spirit guardians"],
+    conditionMeta: { ...sheet.conditionMeta, "spirit guardians": { spell: "Spirit Guardians", slotLevel: 3, source: orin.id } },
+  });
+  // Kara's End Turn walks past the worm: its WIS save a 2, the ring's 3d8
+  // all 8s, then its acid on Orin.
+  kit.giveTurn(kara.id);
+  const before = kit.enemy(foe.id).currentHp;
+  world.dice(2, 8, 8, 8, 1, 1, 1, 1, 1, 1);
+  await world.invoke("end_turn", { characterId: kara.id });
+  world.clearDice();
+  assert.equal(before - kit.enemy(foe.id).currentHp, 24, "the ring burned it");
+  assert.ok(holds(orin.id, "swallowed"), "24 is not yet 30");
+  // Orin's turn: her mace from inside (blinded and restrained: two d20s).
+  kit.giveTurn(orin.id);
+  const mace = await kit.swing(orin.id, foe.id, [19, 19, 6]);
+  assert.equal(mace.error, undefined, JSON.stringify(mace.out));
+  // The worm's save at the turn's end: a 2.
+  world.dice(2);
+  await world.invoke("end_turn", { characterId: orin.id });
+  world.clearDice();
+  assert.ok(!holds(orin.id, "swallowed") && holds(orin.id, "prone"), "the ring and the mace together made it save, and it failed");
 });
 
 await test("The board's move says she is swallowed and how out, not that her speed is 0", async () => {

@@ -50,6 +50,8 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { effectiveMaxHp } from "@/lib/dm/condition-logic";
 import { rollAgainst } from "@/lib/roll-labels";
 import { textKey } from "@/lib/language/text-logic";
+import { freeFromCorpse, noteBlowFromInside } from "@/lib/dm/swallow";
+import { withActor } from "@/lib/dm/acting-party";
 
 const FEET_PER_TILE = 5;
 
@@ -80,6 +82,11 @@ export function hurtEnemy(campaign: Campaign, encounter: Encounter, enemy: Encou
   }
   const hp = Math.max(0, enemy.currentHp - adjusted.amount);
   patchEnemyHp(enemy.id, hp, hp <= 0 ? "dead" : "alive");
+  // A lasting effect's owner inside the creature that swallowed it (the
+  // caller names the owner, acting-party.ts): the damage counts toward the
+  // regurgitation, and a death frees what it swallowed (swallow.ts).
+  noteBlowFromInside(campaign, encounter.id, enemy.id, enemy.currentHp - hp);
+  const corpse = hp <= 0 ? freeFromCorpse(campaign, enemy) : null;
   if (enemy.concentration) {
     const dc = Math.max(10, Math.floor(adjusted.amount / 2));
     // The same save the damage path rolls (enemy-damage.ts): its conditions
@@ -95,7 +102,7 @@ export function hurtEnemy(campaign: Campaign, encounter: Encounter, enemy: Encou
     if (map) {
       removeTokenByRef(map.id, enemy.id);
     }
-    return `${enemy.displayName} takes ${adjusted.amount}${type ? ` ${type}` : ""} damage from ${why} and falls.`;
+    return `${enemy.displayName} takes ${adjusted.amount}${type ? ` ${type}` : ""} damage from ${why} and falls.${corpse ? ` ${corpse}` : ""}`;
   }
   spellEffectsOnEnemyDamage(enemy.id);
   return `${enemy.displayName} takes ${adjusted.amount}${type ? ` ${type}` : ""} damage from ${why}.`;
@@ -143,7 +150,7 @@ function auraHits(campaign: Campaign, encounter: Encounter, enemy: EncounterEnem
         `${live.displayName} starts its turn in ${caster.name}'s ${aura.name}: ${ring.save.toUpperCase()} save ${save.success ? "made" : "failed"} (DC ${dc}).`,
       );
       if (amount > 0) {
-        lines.push(hurtEnemy(campaign, encounter, live, amount, ring.type, aura.name));
+        lines.push(withActor({ kind: "sheet", ref: caster.id }, () => hurtEnemy(campaign, encounter, live, amount, ring.type, aura.name)));
       }
     }
   }
@@ -274,7 +281,8 @@ function turnStartDamage(campaign: Campaign, encounter: Encounter, enemy: Encoun
         continue;
       }
     }
-    lines.push(hurtEnemy(campaign, encounter, live, rollCard(campaign, null, hold.casterSheetId, "damage", rollAgainst(hold.spell, live.displayName), hold.dice, hold.attacker).total, hold.type, hold.spell));
+    const rolled = rollCard(campaign, null, hold.casterSheetId, "damage", rollAgainst(hold.spell, live.displayName), hold.dice, hold.attacker).total;
+    lines.push(withActor(hold.casterSheetId ? { kind: "sheet", ref: hold.casterSheetId } : null, () => hurtEnemy(campaign, encounter, live, rolled, hold.type, hold.spell)));
   }
 }
 

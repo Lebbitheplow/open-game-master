@@ -46,6 +46,7 @@ import { pcImmunities } from "@/lib/dm/pc-defenses";
 import { liveZones, publishZones, saveZones } from "@/lib/dm/zone-store";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { saveAgainst } from "@/lib/dm/roll-about";
+import { withActor } from "@/lib/dm/acting-party";
 
 // A turn for a character's saves and damage, closed once used, as an
 // opportunity attack's is (src/lib/dm/opportunity-strike.ts).
@@ -165,7 +166,8 @@ function strike(
       dealt = failed ? rolled : Math.floor(rolled / 2);
       if (dealt > 0) {
         const before = enemy.currentHp;
-        lines.push(hurtEnemy(campaign, encounter, enemy, dealt, trigger.type ?? "force", why, row.mundane));
+        // The area's caster is whose damage it is (acting-party.ts).
+        lines.push(withActor({ kind: zone.casterKind === "pc" ? "sheet" : "enemy", ref: zone.casterId }, () => hurtEnemy(campaign, encounter, enemy, dealt, trigger.type ?? "force", why, row.mundane)));
         dealt = Math.max(0, before - (getEnemy(enemy.id)?.currentHp ?? before));
       }
     }

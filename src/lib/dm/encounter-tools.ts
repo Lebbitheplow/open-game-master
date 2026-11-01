@@ -1637,6 +1637,10 @@ function advancePointer(
     ...(leaving ? [orderEntryId(leaving)] : []),
     ...enemiesById.keys(),
   ]);
+  // A swallower hurt enough from inside the turn now ending saves or
+  // regurgitates (src/lib/dm/swallow.ts), before any turn starts: what the
+  // turns now starting do (an aura, a zone) counts toward the next.
+  const swallowEnd = swallowTurnEnd(campaign, encounter);
   // A save that ends a condition "at the end of each of its turns" (SRD 5.1,
   // Hold Person) is made as the turn ends: by the character whose turn it
   // was, by the characters the pointer walks past (their turns start and end
@@ -1676,9 +1680,7 @@ function advancePointer(
   startTurnConditions(campaign, encounter, starting, endedTurn);
   // What the turns now starting bring, posted as one table note
   // (src/lib/dm/turn-start-effects.ts).
-  // A swallower hurt enough from inside this turn saves or regurgitates
-  // (src/lib/dm/swallow.ts), as the turn ends.
-  turnStartEffects(campaign, encounter, starting, enemiesById, [...turnEnd.lines, ...swallowTurnEnd(campaign, encounter)]);
+  turnStartEffects(campaign, encounter, starting, enemiesById, [...turnEnd.lines, ...swallowEnd]);
   if (wraps) {
     encounter.round += 1;
     // Surprise costs exactly one turn, so it is spent by the time round 1
