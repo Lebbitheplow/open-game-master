@@ -1809,6 +1809,10 @@ function ensureSchema(db: SqliteDatabase) {
     // conversation and is never handed back to the model, which is what the
     // pending-roll resume path branches on.
     ["actor", `TEXT NOT NULL DEFAULT 'ai'`],
+    // When the lead reverted this turn ("Revert this turn"), so the test
+    // fight's turn trace reads its calls as taken back, as the event log
+    // strikes its rows (issue 685). Null on a turn that stands.
+    ["reverted_at", `TEXT`],
   ]);
 
   addColumns("battle_maps", [
@@ -2859,6 +2863,25 @@ function ensureSchema(db: SqliteDatabase) {
     );
 
     CREATE INDEX IF NOT EXISTS idx_fight_events_encounter ON fight_events(encounter_id, position);
+
+    -- What a turn changed beyond the sheets and the clock, kept so "Revert
+    -- this turn" takes it back with them (issue 685,
+    -- src/lib/db/turn-changes.ts): a prepared fight's event that fired, a test
+    -- table's dice it spent, a card the GM resolved as played. Older servers
+    -- ignore it, so it needs no schema revision.
+    CREATE TABLE IF NOT EXISTS turn_changes (
+      id TEXT PRIMARY KEY,
+      campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+      turn_id TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      payload_json TEXT NOT NULL,
+      -- Its place in the campaign's log, beside the sheet changes.
+      seq INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      reverted_at TEXT
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_turn_changes_turn ON turn_changes(campaign_id, turn_id);
   `);
   // Clock-driven disease and poison rows were once filed under the literal
   // turn "clock", one false turn per campaign that "Revert this turn" undid

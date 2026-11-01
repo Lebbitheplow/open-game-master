@@ -41,6 +41,8 @@ import {
   type FightMoment,
 } from "@/lib/dm/fight-event-logic";
 import { changeGround, preparedBoard } from "@/lib/dm/fight-ground";
+import { fightPicture, recordFightEvent } from "@/lib/dm/fight-event-undo";
+import { currentTurnId, runInTurnScope } from "@/lib/dm/job-control";
 import { isDefeated } from "@/lib/dm/knockout";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
@@ -223,50 +225,65 @@ function slotLabels(armed: ArmedFightEvent): (slot: number) => string {
 // the engine opens for work it does on its own (dm-turns.ts openStandInTurn).
 // The table reads one line of what happened; what the rules refused goes to
 // the GM alone, in a note beside the fight's plan.
+//
+// What it did is kept under the turn it fired in, so "Revert this turn"
+// takes it back and arms it again (fight-event-undo.ts). Fired where no turn
+// runs (a player's End Turn), the stand-in is that turn: what the event
+// rolls and changes is filed under it, and its revert takes all of it.
 function runEvent(campaign: Campaign, armed: ArmedFightEvent): string {
   const turn = openStandInTurn(campaign.id);
   try {
-    const sheets = listSheets(campaign.id);
-    const sheetsById = new Map(sheets.map((sheet) => [sheet.id, sheet]));
-    const label = slotLabels(armed);
-    const lines: string[] = [];
-    const refused: string[] = [];
-    for (const action of armed.event.actions) {
-      if (!getActiveEncounter(campaign.id)) {
-        break;
-      }
-      const done = runAction(campaign, turn, armed, action, sheets, sheetsById, label);
-      if ("refused" in done) {
-        refused.push(done.refused);
-      } else if (done.line) {
-        lines.push(done.line);
-      }
-    }
-    publishEncounter(campaign.id);
-    const content = lines.join(" ");
-    if (content) {
-      const seq = tableNoteSeq(campaign.id);
-      const message = insertCampaignMessage({ campaignId: campaign.id, seq, authorType: "system", glyph: "cue-battle", content });
-      publishWithSeq(campaign.id, seq, "message_added", { message });
-    }
-    if (refused.length) {
-      insertNote({
-        campaignId: campaign.id,
-        characterId: null,
-        authorUserId: campaign.ownerUserId,
-        authorKind: "dm",
-        visibility: "private",
-        status: "active",
-        title: `${armed.templateName}: what an event could not do`,
-        body: refused.join("\n"),
-        seq: allocateSeq(campaign.id),
-      });
-    }
-    recordFightEventLines(armed.id, lines);
-    return content;
+    const owner = currentTurnId();
+    return owner ? playEvent(campaign, armed, turn, owner) : runInTurnScope(turn.id, () => playEvent(campaign, armed, turn, turn.id));
   } finally {
     closeStandInTurn(turn);
   }
+}
+
+function playEvent(campaign: Campaign, armed: ArmedFightEvent, turn: DmTurn, owner: string): string {
+  const before = fightPicture(armed.encounterId);
+  const sheets = listSheets(campaign.id);
+  const sheetsById = new Map(sheets.map((sheet) => [sheet.id, sheet]));
+  const label = slotLabels(armed);
+  const lines: string[] = [];
+  const refused: string[] = [];
+  for (const action of armed.event.actions) {
+    if (!getActiveEncounter(campaign.id)) {
+      break;
+    }
+    const done = runAction(campaign, turn, armed, action, sheets, sheetsById, label);
+    if ("refused" in done) {
+      refused.push(done.refused);
+    } else if (done.line) {
+      lines.push(done.line);
+    }
+  }
+  publishEncounter(campaign.id);
+  const content = lines.join(" ");
+  let messageId: string | null = null;
+  if (content) {
+    const seq = tableNoteSeq(campaign.id);
+    const message = insertCampaignMessage({ campaignId: campaign.id, seq, authorType: "system", glyph: "cue-battle", content });
+    publishWithSeq(campaign.id, seq, "message_added", { message });
+    messageId = message.id;
+  }
+  let noteId: string | null = null;
+  if (refused.length) {
+    noteId = insertNote({
+      campaignId: campaign.id,
+      characterId: null,
+      authorUserId: campaign.ownerUserId,
+      authorKind: "dm",
+      visibility: "private",
+      status: "active",
+      title: `${armed.templateName}: what an event could not do`,
+      body: refused.join("\n"),
+      seq: allocateSeq(campaign.id),
+    }).id;
+  }
+  recordFightEventLines(armed.id, lines);
+  recordFightEvent(campaign, owner, armed, before, { line: content, messageId, noteId });
+  return content;
 }
 
 // Runs every event the fight has come to, each once, and returns what the

@@ -3,11 +3,13 @@ import { isErrorResponse, requireStoryAuthority } from "@/lib/campaign-api";
 import { correctionsField } from "@/lib/correction-reasons";
 import { getCampaignById } from "@/lib/db/campaigns";
 import { previewTurnClockRewind, rewindTurnClock } from "@/lib/db/clock";
-import { getDmTurn } from "@/lib/db/dm-turns";
+import { getDmTurn, markDmTurnReverted } from "@/lib/db/dm-turns";
 import { listAuditForTurn } from "@/lib/db/sheet-audit";
+import { liveTurnChanges } from "@/lib/db/turn-changes";
 import { describeInstant } from "@/lib/dm/calendar";
 import { publishSceneState } from "@/lib/dm/scene-state";
 import { currentScene } from "@/lib/dm/sky";
+import { takeBackTurnChanges, turnChangeWarnings } from "@/lib/dm/turn-revert";
 import { publishPersisted } from "@/lib/events";
 import { revertAuditEntry, undoConflictWarnings } from "@/lib/sheet-undo";
 
@@ -21,8 +23,11 @@ const bodySchema = z.object({
 
 // Party lead reverts every live sheet change from one DM turn, newest
 // first, so each field lands back on its pre-turn value, and puts back the
-// time the turn moved the clock on (issue #622). World events and a
-// companion's leaving stay: the chapter rewind is what takes those back.
+// time the turn moved the clock on (issue #622). It takes back what else the
+// turn kept for it (issue 685, src/lib/db/turn-changes.ts): a prepared
+// fight's event it fired is undone and armed again, the test dice it spent
+// are given back, a card the GM resolved in it waits again. World events
+// and a companion's leaving stay: the chapter rewind is what takes those back.
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ campaignId: string }> },
@@ -52,7 +57,8 @@ export async function POST(
     (entry) => entry.undoable && entry.kind !== "undo",
   );
   const clock = previewTurnClockRewind(campaignId, turnId);
-  if (!entries.length && !clock) {
+  const changes = liveTurnChanges(campaignId, turnId);
+  if (!entries.length && !clock && !changes.length) {
     return Response.json({ error: "Nothing left to revert for that turn." }, { status: 400 });
   }
 
@@ -65,6 +71,7 @@ export async function POST(
       `The clock has moved since this turn; it stays at ${describeInstant(clock.kept.calendar, clock.kept.instant)}.`,
     );
   }
+  warnings.push(...turnChangeWarnings(context.campaign, changes));
   if (warnings.length && !confirm) {
     return Response.json({ warnings: [...new Set(warnings)] }, { status: 409 });
   }
@@ -80,8 +87,14 @@ export async function POST(
       corrections.push(outcome.correctionId);
     }
   }
-  if (entries.length && errors.length === entries.length && !clock) {
+  if (entries.length && errors.length === entries.length && !clock && !changes.length) {
     return Response.json({ error: errors[0] }, { status: 400 });
+  }
+  // After the sheets too: the fight's events, the test dice, the cards.
+  const takenBack = changes.length ? takeBackTurnChanges(context.campaign, changes) : 0;
+  if (takenBack) {
+    // `reverted`: the event log stops offering what the turn kept.
+    publishPersisted(campaignId, "turn_changed", { reverted: turnId });
   }
   // After the sheets, so what their undo wrote to the clock (a long rest
   // forgotten) is kept.
@@ -96,10 +109,13 @@ export async function POST(
       publishSceneState(campaignId, currentScene(campaign));
     }
   }
+  // The test fight's turn trace reads the turn as taken back from here on.
+  markDmTurnReverted(turnId);
   return Response.json({
     ok: true,
     reverted: entries.length - errors.length,
     ...(rewound ? { clock: "restored" in rewound ? "restored" : "kept" } : {}),
+    ...(takenBack ? { takenBack } : {}),
     ...correctionsField(corrections),
   });
 }

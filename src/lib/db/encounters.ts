@@ -14,6 +14,7 @@ import { noteGrounding } from "@/lib/db/flight-watch";
 import { publishPersisted } from "@/lib/events";
 import { isKnockedOut } from "@/lib/dm/knockout";
 import { isConditionNamed } from "@/lib/srd/feature-names";
+import { keepSpentBudget } from "@/lib/db/spent-budget";
 
 // Server-authoritative combat state. Enemy HP lives here and changes ONLY
 // through the encounter tools; the AI DM narrates from tool results, never
@@ -397,6 +398,9 @@ export function getActiveBoard(campaignId: string): Encounter | null {
 }
 
 export function saveEncounter(encounter: Encounter) {
+  // What the save spends of the acting creature's turn, kept for the GM
+  // turn's revert (issue 685).
+  keepSpentBudget(encounter.id, encounter);
   getDatabase()
     .prepare(
       `UPDATE encounters SET status = ?, round = ?, turn_index = ?, order_ready = ?,
@@ -571,6 +575,42 @@ export function renameEnemy(enemyId: string, displayName: string) {
   getDatabase()
     .prepare(`UPDATE encounter_enemies SET display_name = ?, updated_at = ? WHERE id = ?`)
     .run(displayName.trim().slice(0, 80), nowIso(), enemyId);
+}
+
+// "Revert this turn" putting back what a prepared fight's event changed of a
+// creature (src/lib/dm/fight-event-undo.ts): the values written as they
+// were, with none of the knock-on rules a fresh change runs (a regained hit
+// point ending a wound, a condition grounding a flyer), as a sheet's undo
+// restores its fields (sheet-undo.ts).
+export function restoreEnemyState(
+  enemyId: string,
+  state: Partial<Pick<EncounterEnemy, "displayName" | "currentHp" | "status" | "conditions" | "conditionMeta">>,
+) {
+  const enemy = getEnemy(enemyId);
+  if (!enemy) {
+    return;
+  }
+  getDatabase()
+    .prepare(
+      `UPDATE encounter_enemies SET display_name = ?, current_hp = ?, status = ?, conditions_json = ?, condition_meta_json = ?, updated_at = ?
+       WHERE id = ?`,
+    )
+    .run(
+      (state.displayName ?? enemy.displayName).slice(0, 80),
+      state.currentHp ?? enemy.currentHp,
+      state.status ?? enemy.status,
+      JSON.stringify((state.conditions ?? enemy.conditions).slice(0, 10)),
+      JSON.stringify(state.conditionMeta ?? enemy.conditionMeta),
+      nowIso(),
+      enemyId,
+    );
+}
+
+// A creature that never came: reinforcements a reverted event brought in
+// (src/lib/dm/fight-event-undo.ts). The caller takes its token and its place
+// in the order.
+export function deleteEnemy(enemyId: string) {
+  getDatabase().prepare(`DELETE FROM encounter_enemies WHERE id = ?`).run(enemyId);
 }
 
 export function patchEnemyHp(

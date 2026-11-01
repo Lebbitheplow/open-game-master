@@ -47,6 +47,9 @@ export type DmTurn = {
   contextTrace: ContextTrace | null;
   createdAt: string;
   updatedAt: string;
+  // When the lead reverted the turn (markDmTurnReverted). Absent on a turn
+  // that stands.
+  revertedAt?: string;
   // What the narration guard did, set on the turn in hand just before it
   // ends (src/lib/dm/turn.ts) and written to its turn_quality row (issue
   // #460). Not a column of dm_turns: a turn read back carries none, and its
@@ -73,6 +76,7 @@ type TurnRow = {
   context_trace_json: string | null;
   created_at: string;
   updated_at: string;
+  reverted_at?: string | null;
 };
 
 function mapTurn(row: TurnRow): DmTurn {
@@ -98,7 +102,15 @@ function mapTurn(row: TurnRow): DmTurn {
     contextTrace: parseJson<ContextTrace | null>(row.context_trace_json, null),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    ...(row.reverted_at ? { revertedAt: row.reverted_at } : {}),
   };
+}
+
+// The lead reverted the turn (src/app/api/campaigns/[campaignId]/audit/
+// revert-turn): the turn trace reads it as taken back. Its own column, never
+// written by saveDmTurn, so a turn still in hand cannot write it away.
+export function markDmTurnReverted(turnId: string) {
+  getDatabase().prepare(`UPDATE dm_turns SET reverted_at = ? WHERE id = ?`).run(nowIso(), turnId);
 }
 
 export function createDmTurn(

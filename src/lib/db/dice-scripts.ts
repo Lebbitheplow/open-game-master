@@ -1,9 +1,13 @@
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { registerScriptedDice, type RollFrame } from "@/lib/dice";
 import {
+  describeUsed,
   diceScriptSchema,
+  forcedFaceSchema,
   forcesWholeD20,
+  giveBackFaces,
   matchForced,
+  rewindSeed,
   seededFace,
   seedState,
   usedFace,
@@ -11,8 +15,11 @@ import {
   type DiceScript,
   type ForcedFace,
   type RollPurpose,
+  type SeedRun,
+  type SpentFace,
   type UsedFace,
 } from "@/lib/dice-script-logic";
+import { liveTurnChangeOf, recordTurnChange, updateTurnChange, type TurnChange } from "@/lib/db/turn-changes";
 import { currentDmJob, currentTurnId } from "@/lib/dm/job-control";
 import { currentUsageScope } from "@/lib/usage/scope";
 import { isPlaytest, normalizeCampaignKind } from "@/lib/workshop/kind";
@@ -175,6 +182,91 @@ export function clearDiceScript(campaignId: string): void {
   getDatabase().prepare(`DELETE FROM dice_scripts WHERE campaign_id = ?`).run(campaignId);
 }
 
+// What a die spent of the script is kept under the turn rolling it, so
+// "Revert this turn" gives it back (issue 685). Never in the way of the
+// roll: a record that cannot be written leaves the face as it fell.
+function noteSpent(campaignId: string, record: (turnId: string) => void) {
+  const turnId = currentTurnId();
+  if (!turnId) {
+    return;
+  }
+  try {
+    record(turnId);
+  } catch (error) {
+    console.error("[dice-script] what the die spent could not be kept for a revert", error);
+  }
+}
+
+// One row per turn for the seed: where the turn found it, and where it has
+// left it so far.
+function noteSeedRun(campaignId: string, turnId: string, run: SeedRun) {
+  const kept = liveTurnChangeOf(campaignId, turnId, "dice_seed");
+  const before = kept ? seedRunOf(kept.payload) : null;
+  if (kept && before && before.seed === run.seed) {
+    updateTurnChange(kept.id, { ...kept.payload, to: run.to });
+    return;
+  }
+  recordTurnChange(campaignId, turnId, "dice_seed", { ...run, line: "" });
+}
+
+function seedRunOf(payload: Record<string, unknown>): SeedRun | null {
+  const point = (value: unknown) => {
+    const raw = value as { state?: unknown; rolls?: unknown } | null;
+    return raw && typeof raw.state === "number" && typeof raw.rolls === "number" ? { state: raw.state, rolls: raw.rolls } : null;
+  };
+  const from = point(payload.from);
+  const to = point(payload.to);
+  return typeof payload.seed === "number" && from && to ? { seed: payload.seed, from, to } : null;
+}
+
+function spentFaceOf(payload: Record<string, unknown>): SpentFace | null {
+  const forced = forcedFaceSchema.safeParse(payload.forced);
+  const used = payload.used as UsedFace | null;
+  return forced.success && typeof payload.position === "number" && used && typeof used === "object"
+    ? { forced: forced.data, position: payload.position, used }
+    : null;
+}
+
+// What the lead is told before a revert gives the dice back.
+export function diceGiveBackWarnings(campaignId: string, changes: readonly TurnChange[]): string[] {
+  const row = readRow(campaignId);
+  if (!row) {
+    return changes.length ? ["The test's dice script was cleared since this turn; the dice it spent are not given back."] : [];
+  }
+  const current = { seed: row.seed, state: row.seed_state, rolls: row.seeded_rolls };
+  return changes.some((change) => {
+    const run = change.kind === "dice_seed" ? seedRunOf(change.payload) : null;
+    return run !== null && rewindSeed(current, run) === null;
+  })
+    ? ["The dice script's seed has rolled on since this turn (or was set again); it carries on from where it is, so a replay will not roll the same seeded dice."]
+    : [];
+}
+
+// "Revert this turn": the forced faces back in the queue where they stood,
+// and the seed back where the turn found it when nothing has rolled since.
+export function giveBackDice(campaignId: string, changes: readonly TurnChange[]) {
+  const row = readRow(campaignId);
+  if (!row) {
+    return;
+  }
+  const faces = changes.flatMap((change) => {
+    const face = change.kind === "dice_face" ? spentFaceOf(change.payload) : null;
+    return face ? [face] : [];
+  });
+  const back = giveBackFaces(queueOf(row.queue_json), usedOf(row.used_json), faces);
+  let seed = { state: row.seed_state, rolls: row.seeded_rolls };
+  for (const change of [...changes].reverse()) {
+    const run = change.kind === "dice_seed" ? seedRunOf(change.payload) : null;
+    const rewound = run ? rewindSeed({ seed: row.seed, ...seed }, run) : null;
+    if (rewound) {
+      seed = rewound;
+    }
+  }
+  getDatabase()
+    .prepare(`UPDATE dice_scripts SET queue_json = ?, used_json = ?, seed_state = ?, seeded_rolls = ?, updated_at = ? WHERE campaign_id = ?`)
+    .run(JSON.stringify(back.queue), JSON.stringify(back.used), seed.state, seed.rolls, nowIso(), campaignId);
+}
+
 // The hook (src/lib/dice.ts defaultRng): the face this die must show, or
 // null to roll it honestly.
 function scriptedDie(sides: number, frame: RollFrame): number | null {
@@ -198,7 +290,8 @@ function scriptedDie(sides: number, frame: RollFrame): number | null {
     const at = matchForced(queue, purpose);
     if (at >= 0) {
       const forced = queue[at];
-      const used = withUsed(usedOf(row.used_json), usedFace(forced, purpose, nowIso()));
+      const spent = usedFace(forced, purpose, nowIso());
+      const used = withUsed(usedOf(row.used_json), spent);
       db.prepare(`UPDATE dice_scripts SET queue_json = ?, used_json = ?, updated_at = ? WHERE campaign_id = ?`).run(
         JSON.stringify(queue.filter((_, index) => index !== at)),
         JSON.stringify(used),
@@ -208,16 +301,22 @@ function scriptedDie(sides: number, frame: RollFrame): number | null {
       if (forcesWholeD20(forced.kind)) {
         frame.forcedD20 = forced.face;
       }
+      noteSpent(campaignId, (turnId) =>
+        recordTurnChange(campaignId, turnId, "dice_face", { forced, position: at, used: spent, line: `Forced die: ${describeUsed(spent)}` }),
+      );
       return forced.face;
     }
     if (row.seed === null) {
       return null;
     }
-    const next = seededFace(row.seed_state ?? seedState(row.seed), sides);
+    const from = { state: row.seed_state ?? seedState(row.seed), rolls: row.seeded_rolls };
+    const next = seededFace(from.state, sides);
     db.prepare(`UPDATE dice_scripts SET seed_state = ?, seeded_rolls = seeded_rolls + 1 WHERE campaign_id = ?`).run(
       next.state,
       campaignId,
     );
+    const seed = row.seed;
+    noteSpent(campaignId, (turnId) => noteSeedRun(campaignId, turnId, { seed, from, to: { state: next.state, rolls: from.rolls + 1 } }));
     return next.face;
   } catch (error) {
     // A script that cannot be read never stops a roll: the die is rolled

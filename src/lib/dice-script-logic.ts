@@ -208,6 +208,52 @@ export function withUsed(used: readonly UsedFace[], entry: UsedFace): UsedFace[]
   return [...used, entry].slice(-DICE_SCRIPT_LIMITS.used);
 }
 
+// ---- a revert ----
+//
+// "Revert this turn" gives back what the turn spent of the script (issue
+// 685), so the turn played again rolls what it rolled: each forced face goes
+// back where it stood in the queue and off the spent list, and the seed goes
+// back to where the turn found it.
+
+export type SpentFace = { forced: ForcedFace; position: number; used: UsedFace };
+
+// The faces come oldest first, as the turn spent them; they go back newest
+// first, so each lands where it stood when it was taken.
+export function giveBackFaces(
+  queue: readonly ForcedFace[],
+  used: readonly UsedFace[],
+  spent: readonly SpentFace[],
+): { queue: ForcedFace[]; used: UsedFace[] } {
+  const nextQueue = [...queue];
+  const nextUsed = [...used];
+  for (const face of [...spent].reverse()) {
+    nextQueue.splice(Math.min(Math.max(0, face.position), nextQueue.length), 0, face.forced);
+    // The spent line it wrote: the same die, face and moment.
+    const at = nextUsed.findLastIndex((entry) => entry.at === face.used.at && entry.sides === face.used.sides && entry.face === face.used.face);
+    if (at >= 0) {
+      nextUsed.splice(at, 1);
+    }
+  }
+  return { queue: nextQueue.slice(0, DICE_SCRIPT_LIMITS.queue), used: nextUsed };
+}
+
+// How far one turn ran the seed: its state and count as the turn found them
+// and as it left them.
+export type SeedRun = { seed: number; from: { state: number; rolls: number }; to: { state: number; rolls: number } };
+
+// The seed back where the turn found it, or null when it has rolled on since
+// (another turn's dice) or another seed was set: it carries on from where it
+// is, as the clock stays where a later turn moved it.
+export function rewindSeed(
+  current: { seed: number | null; state: number | null; rolls: number },
+  run: SeedRun,
+): { state: number; rolls: number } | null {
+  if (current.seed !== run.seed) {
+    return null;
+  }
+  return (current.state ?? seedState(run.seed)) === run.to.state ? run.from : null;
+}
+
 // ---- words ----
 
 const KIND_LABELS: Record<DiceKind, { word: string; title: string }> = {
