@@ -19,7 +19,44 @@
 // None of them: the server has no ears, and the button hides (or hands the
 // job to the device, when an app offers its own recognizer).
 
+import type { TableLanguage } from "./schemas/game-settings-options.ts";
+
 export type SttBackend = "whisper" | "builtin" | "openai" | "none";
+
+// What Whisper calls each table language: the ISO 639-1 code the Whisper
+// service and OpenAI take (the built-in engine takes it too). Without one,
+// the built-in engine assumes English, and the service and OpenAI detect the
+// language from the clip, which a few spoken words often get wrong; so a
+// clip from a table is heard in that table's language. Irish is not one of
+// Whisper's languages: its clips go with no hint, as every clip did before.
+const WHISPER_CODES: Record<TableLanguage, string | null> = {
+  danish: "da",
+  dutch: "nl",
+  english: "en",
+  finnish: "fi",
+  french: "fr",
+  german: "de",
+  hungarian: "hu",
+  indonesian: "id",
+  irish: null,
+  italian: "it",
+  norwegian: "no",
+  portuguese: "pt",
+  russian: "ru",
+  spanish: "es",
+  swedish: "sv",
+};
+
+export function whisperLanguageCode(language: TableLanguage): string | null {
+  return WHISPER_CODES[language];
+}
+
+// The built-in engine's language: STT_LANGUAGE when the server sets one (an
+// operator's choice for every table, Whisper's names or codes), else the
+// clip's table's.
+export function builtinSpeechLanguage(serverLanguage: string, tableCode: string | null): string | null {
+  return serverLanguage || tableCode;
+}
 
 // STT_URL=off (or the admin field set to "off") says this server has no
 // Whisper service, so nothing probes the default address: for a machine

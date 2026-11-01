@@ -18,6 +18,7 @@ const { checkClaims, claimKindsFor, englishEndsTurn, namedSpeakers, parseReaderR
   "../src/lib/dm/claims-logic.ts"
 );
 const { leveledSpellNames, readClaims, ruledFor } = await import("../src/lib/dm/claims.ts");
+const { withoutCombatBookkeeping } = await import("../src/lib/dm/narration-tidy-logic.ts");
 const { guardOutcomes, normalizeSpellName } = await import("../src/lib/dm/engine-boundary.ts");
 const campaigns = await import("../src/lib/db/campaigns.ts");
 
@@ -195,23 +196,23 @@ await test("What a small model writes about the turn is cut without the reader; 
 });
 
 // Qwen3.5 9B on the short rules copied the game state into the story: the
-// turn order as a list and the board squares it reads.
-await test("The turn order recited and the board's squares quoted are cut without the reader; the scene around them stays.", () => {
-  const order =
-    "The shadows circle, claws drawn.\n\n**Initiative order:**\n1. Shadow Aberration 1 (moves to (7,13))\n2. **Avery (your turn)**\n3. Bram\n\nThe purple mist swirls around the wagons. What do you do?";
-  assert.equal(withoutAsides(order, [], "english"), "The shadows circle, claws drawn.\n\nThe purple mist swirls around the wagons. What do you do?");
-  const inline = "**Current Initiative:** 1. Shadow 1 (at 7,13) 2. Avery (your turn)\nThe river roars.";
-  assert.equal(withoutAsides(inline, [], "english").trim(), "The river roars.");
-  const squares = "Avery, you're up. You're currently at (15,1) with the nearest enemy at (7,11). The mist thickens.";
-  assert.equal(withoutAsides(squares, [], "english").trim(), "Avery, you're up. The mist thickens.");
+// turn order as a list and the board squares it reads. The squares go with
+// the asides; the order goes by the fight's own names when the table reads
+// the turn (narration-tidy-logic.ts), at every table alike.
+await test("The board's squares quoted are cut without the reader, and the turn order recited goes by the fight's names, at a table in any language; the scene around them stays.", () => {
+  const fight = ["Shadow Aberration 1", "Shadow 1", "Avery", "Bram"];
+  const read = (text, language) => withoutCombatBookkeeping(withoutAsides(text, [], language), fight, language).trim();
+  for (const language of ["english", "italian", "french", "spanish", "german"]) {
+    const order =
+      "The shadows circle, claws drawn.\n\n**Initiative order:**\n1. Shadow Aberration 1 (moves to (7,13))\n2. **Avery (your turn)**\n3. Bram\n\nThe purple mist swirls around the wagons. What do you do?";
+    assert.equal(read(order, language), "The shadows circle, claws drawn.\n\nThe purple mist swirls around the wagons. What do you do?", language);
+    const inline = "**Current Initiative:** 1. Shadow 1 (at 7,13) 2. Avery (your turn)\nThe river roars.";
+    assert.equal(read(inline, language), "The river roars.", language);
+    const squares = "Avery, you're up. You're currently at (15,1) with the nearest enemy at (7,11). The mist thickens.";
+    assert.equal(withoutAsides(squares, [], language).trim(), "Avery, you're up. The mist thickens.", language);
+  }
   const fiction = "The old map marks two wells, a mill and the ford. The order of the watch changes at dusk.\nInitiative wins fights, the old sergeant says.";
   assert.equal(withoutAsides(fiction, [], "english"), fiction, "words like order and numbers in prose stay");
-  // The recited order's English heading is read at an English table only;
-  // at every table the board's squares quoted still go.
-  for (const language of ["italian", "french", "spanish", "german"]) {
-    const ordine = "Le ombre girano attorno.\n\n**Initiative order:**\n1. Ombra 1\n2. Avery\n\nAvery, sei a (15,1). La nebbia si addensa.";
-    assert.equal(withoutAsides(ordine, [], language), "Le ombre girano attorno.\n\n**Initiative order:**\n1. Ombra 1\n2. Avery\n\n La nebbia si addensa.", language);
-  }
 });
 
 await test("A claim of a kind not asked, about a creature the engine does not know, or by someone outside the party never acts.", () => {

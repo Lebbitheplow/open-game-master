@@ -67,32 +67,16 @@ export function windowTurnsLeft(readyUntil: number, aiTurns: number): number {
 
 // ---- the table's own limits ----
 
-// One word list for lines and veils, matched as the start of a word so
-// "romances" and "flirting" count and "aromantic" does not.
-const ROMANCE_WORDS = /(^|[^\p{L}])(romanc|romantic|flirt|seduc|love interest)/iu;
-
-export function namesRomance(text: string): boolean {
-  return ROMANCE_WORDS.test(text);
-}
-
 export type SafetyLike = { boundaries?: string; lines?: string[]; veils?: string[] };
 
 // Why advances are off at this table, or null. A family table never has
-// them, and a line or veil naming romance is the table saying so.
+// them. A line or veil reaches the model as the table wrote it, in any
+// language (safety-logic.ts); whether romance is played at all is the
+// table's Romance setting, which the Safety panel points to, never a
+// reading of their words.
 export function romanceSafetyBlock(safety: SafetyLike | null | undefined): string | null {
-  if (!safety) {
-    return null;
-  }
-  if (safety.boundaries === "family") {
+  if (safety?.boundaries === "family") {
     return "This is a family table, so no NPC makes a romantic advance.";
-  }
-  const line = (safety.lines ?? []).find(namesRomance);
-  if (line) {
-    return `The table drew a line at "${line}", so no NPC makes a romantic advance.`;
-  }
-  const veil = (safety.veils ?? []).find(namesRomance);
-  if (veil) {
-    return `The table veiled "${veil}", so no NPC makes a romantic advance.`;
   }
   return null;
 }

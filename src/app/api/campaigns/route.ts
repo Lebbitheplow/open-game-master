@@ -5,6 +5,8 @@ import { createCampaign, listCampaignsForUser, publicCampaign, type Campaign } f
 import { playingAsByCampaign } from "@/lib/db/sheets";
 import { homeGlanceFor, partyFacesByCampaign, sessionGlances } from "@/lib/db/home-glance";
 import { gameSettingsSchema } from "@/lib/schemas/game-settings";
+import { ttsBackend } from "@/lib/tts-backend";
+import { narratorVoiceFor } from "@/lib/tts-voices";
 import { capabilitiesSnapshot, narrationAvailable, NO_STORYTELLER_MESSAGE, storytellerConfigured } from "@/lib/capabilities";
 import { narratorIsAi } from "@/lib/dm/viewer";
 import { CAMPAIGN_DIFFICULTIES } from "@/lib/campaign-types";
@@ -19,10 +21,14 @@ const createCampaignSchema = z.object({
   maxPlayers: z.number().int().min(1).max(8).default(5),
   startingLevel: z.number().int().min(1).max(20).default(1),
   difficulty: z.enum(CAMPAIGN_DIFFICULTIES).default("normal"),
-  // Narration is the one switch the route decides when unsaid (POST below),
-  // so it is carved out of the partial: zod fills a field's default through
-  // .partial(), which would say "on" for a caller that said nothing.
-  gameSettings: gameSettingsSchema.partial().extend({ ttsEnabled: z.boolean().optional() }).default({}),
+  // Narration and the narrator's voice are what the route decides when
+  // unsaid (POST below), so they are carved out of the partial: zod fills a
+  // field's default through .partial(), which would say "on" and "af_heart"
+  // for a caller that said nothing.
+  gameSettings: gameSettingsSchema
+    .partial()
+    .extend({ ttsEnabled: z.boolean().optional(), ttsVoice: gameSettingsSchema.shape.ttsVoice.unwrap().optional() })
+    .default({}),
 });
 
 // Whether this server has an AI storyteller, for the shells' Quick start
@@ -95,6 +101,14 @@ export async function POST(request: Request) {
   const gameSettings = { ...parsed.data.gameSettings };
   if (gameSettings.ttsEnabled === undefined) {
     gameSettings.ttsEnabled = await narrationAvailable();
+  }
+  // A create that names no voice starts on its table language's narrator;
+  // a voice the creator picked is kept, whichever it is.
+  if (gameSettings.ttsVoice === undefined) {
+    const voice = narratorVoiceFor(gameSettings.tableLanguage ?? "english", "", ttsBackend().provider === "openai");
+    if (voice) {
+      gameSettings.ttsVoice = voice;
+    }
   }
   // No storyteller, no AI seat: the creator hides the AI seats when the
   // server says so, and this holds the same line for every other caller (a

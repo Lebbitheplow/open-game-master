@@ -38,14 +38,14 @@ const NOTE = {
   help: NOTE_LIMIT_WORDS,
 };
 
-// The kind of place, from the ambience beds: its sound, battle map and
+// The kind of place, from the ambience beds: its sound, battle map, light and
 // stand-in picture follow it.
 const SCENE_FIELD = {
   name: "scene",
   label: "Kind of place",
   kind: "select",
   options: sceneOptions(),
-  help: "Sets the place's sound, battle map and picture. Blank keeps what it was.",
+  help: "Sets the place's sound, battle map, picture and light. Blank keeps what it was.",
 } as const;
 
 export const GENDER_FIELD = {

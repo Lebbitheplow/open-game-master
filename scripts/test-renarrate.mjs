@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import { openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
-import { fakeModel, reply } from "./lib/enforce-narrator.mjs";
+import { call, fakeModel, reply } from "./lib/enforce-narrator.mjs";
 import {
   DEFAULT_STORY_TEMPERATURE,
   REROLL_TEMP_OFFSET,
@@ -233,6 +233,31 @@ console.log(`renarrate: ${passed} tests passed`);
     assert.ok("message" in rerolled, rerolled.error);
     assert.equal(rerolled.message.content, story);
     assert.equal(model.readerRequests.length, 1, "the take was read for asides");
+  });
+
+  await takes.test("In a fight a reroll's take loses the fight's bookkeeping, as a turn's own narration does.", async () => {
+    await world.invoke("start_encounter", { enemies: "goblin", summary: "A goblin bursts from the reeds." });
+    const story = "The goblin snarls and circles Kara on the slick planks.";
+    model.script([reply({ text: `**Round 1:** ${story}\n\nTurn order: 1. Kara 2. Goblin` })]);
+    model.claims([[]]);
+    const rerolled = await runRenarrate({ campaignId: world.campaignId, messageId: first.id, guidance: "" });
+    assert.ok("message" in rerolled, rerolled.error);
+    assert.equal(rerolled.message.content, story);
+  });
+
+  await takes.test("A turn that ends the fight loses the order it recites, and so does a reroll of it, at every table.", async () => {
+    const story = ["The last goblin falls into the reeds.", "Silence returns to the quay."];
+    const recited = `${story[0]}\n\n**Initiative order:**\n1. Kara (17)\n2. Goblin (9)\n\n${story[1]}`;
+    model.script([reply({ calls: [call("end_encounter", { outcome: "victory" })] }), reply({ text: recited })]);
+    model.claims([]);
+    const ended = await model.turn(world, "I cut down the last goblin.", kara.id);
+    assert.equal(world.encounter(), null, "the turn ended the fight");
+    assert.equal(ended.content, story.join("\n\n"));
+    model.script([reply({ text: recited })]);
+    model.claims([[]]);
+    const rerolled = await runRenarrate({ campaignId: world.campaignId, messageId: ended.id, guidance: "" });
+    assert.ok("message" in rerolled, rerolled.error);
+    assert.equal(rerolled.message.content, story.join("\n\n"));
   });
 
   model.close();

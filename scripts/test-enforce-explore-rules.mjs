@@ -29,7 +29,7 @@ const world = await openWorld({ campaign: { maxPlayers: 30 } });
 const kit = await combatKit(world);
 const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
 const { getClock, setClockInstant } = await import("../src/lib/db/clock.ts");
-const { upsertCurrentLocation, getCurrentLocation, listLocations } = await import("../src/lib/db/locations.ts");
+const { upsertCurrentLocation, getCurrentLocation, listLocations, setLocationLinks } = await import("../src/lib/db/locations.ts");
 const { speedFor } = await import("../src/lib/srd/index.ts");
 
 const profs = (extra = {}) => ({
@@ -130,18 +130,20 @@ await test("Travel reports the miles covered (4, 3 or 2 an hour, half in difficu
 // ---- light off the board ----
 
 const scout = world.addHero({ class: "fighter", level: 3, abilities: { wis: 14 }, proficiencies: profs({ skills: ["perception"] }) });
+// The scene the location tools store as the place's bed.
+const withScene = (place, scene) => setLocationLinks(place.id, { ambience: { bed: scene, music: "" } });
 const notices = async (extra = {}, dc = 5) => {
   const out = await world.invoke("check_notice", { dc, characterIds: [scout.id], ...extra });
   assert.equal(out.ok, true, out.error);
   return out.result.noticedBy.length === 1;
 };
 
-await test("Off the board the light is the place's, not the sky's: a lit inn at night lets a character see, a cave at noon is dark, and a light the DM names (dim) is -5.", async () => {
+await test("Off the board the light is the place's, by its scene, not the sky's: a lit inn at night lets a character see, a cave at noon is dark, and a light the DM names (dim) is -5.", async () => {
   await at(22);
-  upsertCurrentLocation({ campaignId: world.campaignId, name: "The Prancing Pony Inn", layoutDescription: "a busy common room" });
+  withScene(upsertCurrentLocation({ campaignId: world.campaignId, name: "The Prancing Pony Inn", layoutDescription: "a busy common room" }), "tavern");
   assert.equal(await notices(), true, "a lit inn at night was darkness");
   await at(12);
-  upsertCurrentLocation({ campaignId: world.campaignId, name: "Goblin Cave", layoutDescription: "a damp cavern under the hill" });
+  withScene(upsertCurrentLocation({ campaignId: world.campaignId, name: "Goblin Cave", layoutDescription: "a damp cavern under the hill" }), "cave");
   assert.equal(await notices(), false, "a cave at noon was bright");
   world.patch(scout.id, { equipment: [{ name: "Torch", qty: 1 }] });
   assert.equal(await notices(), true, "a torch in the cave gave no light");

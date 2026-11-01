@@ -535,11 +535,10 @@ export function withoutSentences(text: string, quotes: readonly string[]): strin
 const ENGLISH_META_SENTENCE =
   /\btool[ -]?calls?\b|\b(?:the|this|a) tool'?s? (?:output|result)s?\b|\bcalling the (?:necessary |right |appropriate |correct )?tools?\b|\bnarrate the results?\b|\bunwarranted assumption\b|\bmy (?:previous|last|earlier) (?:response|reply|narration|message)\b/i;
 const ECHOED_LINE = /^[ \t]*(?:\[[^\]\n]{1,80}\|\s*attempt\][^\n]*|[^\n|[\]]{1,60}\s\|\s*attempt\b[^\n]*|\[Table note\][^\n]*)$/gim;
-// The game state copied into the story by a small model (Qwen3.5 9B): the
-// turn order recited as a numbered list under its English heading (read only
-// at an English table), and the board squares it reads, "(7,13)", at every
-// table. The board shows both; the prose never needs them.
-const ENGLISH_ORDER_BLOCK = /^[ \t]*\**[ \t]*(?:current[ \t]+)?(?:initiative(?:[ \t]+order)?|turn[ \t]+order)[ \t]*(?::\**|\**[ \t]*:)[^\n]*(?:\n[ \t]*\d+\.[^\n]*)*/gim;
+// The board squares a small model (Qwen3.5 9B) copied into the story,
+// "(7,13)": the board shows them; the prose never needs them. The turn order
+// it recited beside them goes by the fight's own names when the table reads
+// the turn (narration-tidy-logic.ts withoutCombatBookkeeping).
 const GRID_SQUARE = /\(\s*\d{1,3}\s*,\s*\d{1,3}\s*\)/;
 
 export function metaQuotes(text: string, language: TableLanguage): string[] {
@@ -553,16 +552,10 @@ export function metaQuotes(text: string, language: TableLanguage): string[] {
 }
 
 export function withoutAsides(text: string, claims: readonly NarrationClaim[], language: TableLanguage): string {
-  // A recited turn order under its English heading goes whole, heading and
-  // list, at an English table only (cut sentence by sentence, its "3." would
-  // match the wrong line); at any table the reader's asides and the board
-  // squares quoted still go.
-  const unlisted = language === "english" ? text.replace(ENGLISH_ORDER_BLOCK, "").replace(/\n{3,}/g, "\n\n").trim() : text.trim();
-  const source = unlisted === text.trim() ? text : unlisted;
-  const quotes = [...claims.flatMap((claim) => (claim.kind === "aside" ? [claim.quote] : [])), ...metaQuotes(source, language)];
+  const quotes = [...claims.flatMap((claim) => (claim.kind === "aside" ? [claim.quote] : [])), ...metaQuotes(text, language)];
   if (!quotes.length) {
-    return words(source).length ? source : "";
+    return words(text).length ? text : "";
   }
-  const kept = withoutSentences(source, quotes);
+  const kept = withoutSentences(text, quotes);
   return words(kept).length ? kept : "";
 }
