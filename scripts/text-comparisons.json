@@ -1504,7 +1504,7 @@
     "lib/dm/natural-onhit.ts#toUpperCase": [["display",2,"an ability's abbreviation shown in a result line"]],
     "lib/dm/notice-logic.ts#\\b": [["table-language",6,"meaning reader: underground, indoor and outdoor words read in a location's name and description (authors and the model write them)"]],
     "lib/dm/notice-logic.ts#re-word": [["table-language",3,"meaning reader: underground, indoor and outdoor words read in a location's name and description (authors and the model write them)"]],
-    "lib/dm/npc-logic.ts#str-list": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
+    "lib/dm/npc-logic.ts#str-list": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/npc-suggest.ts#str-eq": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/object-actions.ts#toLowerCase": [["key",1,"condition label (engine vocabulary)"]],
     "lib/dm/object-damage.ts#re-word": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
