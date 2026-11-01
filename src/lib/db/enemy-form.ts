@@ -4,11 +4,13 @@
 // spell ends (concentration, its hour, Dispel Magic) gives the block back.
 
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
+import { keepRow } from "@/lib/db/turn-rows";
 import type { EnemyOwnForm, EnemyStats } from "@/lib/bestiary/statblock";
 
 // The block, armor class and hit points of a new form. The challenge rating
 // and XP columns stay the creature's own: the fight is still worth what it was.
 export function writeEnemyForm(enemyId: string, stats: EnemyStats) {
+  keepRow("encounter_enemies", enemyId);
   getDatabase()
     .prepare(
       `UPDATE encounter_enemies SET stat_json = ?, ac = ?, max_hp = ?, current_hp = ?, updated_at = ? WHERE id = ?`,
@@ -32,6 +34,7 @@ export function restoreOwnForm(enemyId: string, own: EnemyOwnForm) {
   );
   const meta = parseJson<Record<string, unknown>>(row.condition_meta_json, {});
   delete meta.polymorphed;
+  keepRow("encounter_enemies", enemyId);
   db.prepare(
     `UPDATE encounter_enemies SET stat_json = ?, ac = ?, max_hp = ?, current_hp = ?,
      conditions_json = ?, condition_meta_json = ?, updated_at = ? WHERE id = ?`,

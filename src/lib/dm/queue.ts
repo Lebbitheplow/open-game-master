@@ -20,7 +20,7 @@ import { bindUsageScope } from "@/lib/usage/scope";
 import { publishEphemeral } from "@/lib/events";
 import { knownDmStatus, setDmStatus } from "@/lib/dm/status";
 import { latestTurnParkedByAi } from "@/lib/db/dm-turns";
-import { createDmJobControl, detachFromTurn, jobDeadlineMs, jobStage, runInDmJob, viewOf, type DmJobControl } from "@/lib/dm/job-control";
+import { createDmJobControl, detachFromTurn, jobDeadlineMs, jobStage, runInDmJob, turnWorkDone, viewOf, type DmJobControl } from "@/lib/dm/job-control";
 import { describeStage, stalledReason, type DmJobKind, type DmJobView } from "@/lib/dm/job-stage-logic";
 import { haltAbandonedJob } from "@/lib/dm/turn-halt";
 
@@ -292,6 +292,10 @@ async function runJob(campaignId: string, job: () => Promise<void>, kind: DmJobK
     await Promise.race([runInDmJob(control, job), abandoned]);
   } finally {
     control.settled = true;
+    // The turn the job drove is done: what it changed is read as it left it.
+    if (control.turnId) {
+      detachFromTurn(() => turnWorkDone(control.turnId as string));
+    }
     releases.delete(control);
     if (running().get(campaignId) === control) {
       running().delete(campaignId);

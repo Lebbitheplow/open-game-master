@@ -17,6 +17,7 @@
 
 import { getCampaignById, type Campaign } from "@/lib/db/campaigns";
 import { getDatabase } from "@/lib/db/core";
+import { keepRow } from "@/lib/db/turn-rows";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter, getEnemy, patchEnemyConditions, setEnemyConcentration, type EncounterEnemy } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
@@ -268,6 +269,7 @@ export function afterEnemySave(input: SaveAftermath): string[] {
       }
     } else {
       const max = Math.max(1, standing.maxHp - input.taken);
+      keepRow("encounter_enemies", standing.id);
       getDatabase().prepare("UPDATE encounter_enemies SET max_hp = ? WHERE id = ?").run(max, standing.id);
       lines.push(`${standing.displayName}'s hit point maximum drops by ${input.taken} to ${max} for an hour.`);
     }

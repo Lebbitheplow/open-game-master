@@ -1138,6 +1138,7 @@ export function SessionView({
     facts: state.facts,
     characterEvents: state.characterEvents,
     clockTurns: state.clockTurns,
+    turnChanges: state.turnChanges,
     refreshNotes,
     refreshFacts,
     sideThreads: state.sideThreads,

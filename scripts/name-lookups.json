@@ -2481,6 +2481,8 @@
     "app/workshop/homebrew/HomebrewPanel.tsx#whole-single": [["key",1,"the address's item name against the draft already opened from it"]],
     "lib/dm/intent-logic.ts#switch": [["key",1,"a card's first tool call by name, to share a casting out (issue 570)"]],
     "lib/battlemap/hand-play.ts#first": [["key",2,"a creature's share of a casting, by its id (issue 570)"]],
+    "lib/db/turn-rows.ts#keyed": [["key",2,"a kept row's columns by their own names, read and written back (field names)"]],
+    "lib/db/turn-rows.ts#first": [["key",2,"a table's key columns and its cascading links, read from the database's own schema (table and column names)"]],
     "lib/dm/intent-logic.ts#partial": [["parse",1,"the first sentence of a tool's error, for the line of a card that went back (issue 570)"]],
     "lib/dm/persons-record-logic.ts#keyed": [["key",1,"a roll kind (engine vocabulary) to the words a table note says for it"]],
     "lib/dm/persons-record-logic.ts#whole": [["key",1,"one roller's run of rolls about one thing, by the names and detail the same engine stored, read back in order"]],

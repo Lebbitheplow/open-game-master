@@ -31,6 +31,7 @@ import { publicItemProposal } from "@/lib/dm/proposal-intercept";
 import { listLocations } from "@/lib/db/locations";
 import { listRecentAuditChanges } from "@/lib/db/sheet-audit";
 import { listLiveClockTurns } from "@/lib/db/clock-moves";
+import { listTurnChangeViews } from "@/lib/db/turn-rows";
 import { insertCampaignMessage, listRecentMessages } from "@/lib/db/messages";
 import { listRollsVisibleTo } from "@/lib/db/rolls";
 import { getSheetForUser, listSheets } from "@/lib/db/sheets";
@@ -178,6 +179,10 @@ export async function GET(
     // The turns whose time the event log can still put back (issue #622);
     // an app reading an older host gets none and keeps its old rule.
     clockTurns: listLiveClockTurns(campaignId),
+    // What else those turns kept for their revert (issue 685): the fight and
+    // the board, a prepared event, a test die, a card. An older host sends
+    // none.
+    turnChanges: listTurnChangeViews(campaignId),
     encounter: activePublicEncounter(campaignId, { enemyNumbers: caps.enemyNumbers }),
     // An owner-only offer (a pact's approach, issue 503) only to its player
     // and the storyteller.

@@ -79,15 +79,28 @@ export function planGroundChange(input: {
       after[index] = painted.terrain[index];
     }
   }
-  const ground = after.join("");
+  const moves = restandOn(after.join(""), width, height, input.standing);
+  return "error" in moves ? moves : { terrain: painted.terrain, moves };
+}
+
+// Whoever the ground no longer holds, set on the nearest square they can
+// stand on that nobody else holds. Shared with the revert of a change of
+// ground (src/lib/dm/fight-event-undo-logic.ts), which puts squares back and
+// must not leave anyone inside them either.
+export function restandOn(
+  ground: string,
+  width: number,
+  height: number,
+  standing: Standing[],
+): Array<{ id: string; x: number; y: number }> | { error: string } {
   const taken = new Set<number>();
-  for (const token of input.standing) {
+  for (const token of standing) {
     for (const index of footprintIndexes(width, token, token.footprint)) {
       taken.add(index);
     }
   }
   const moves: Array<{ id: string; x: number; y: number }> = [];
-  for (const token of input.standing) {
+  for (const token of standing) {
     const own = footprintIndexes(width, token, token.footprint);
     if (!own.some((index) => blocksMove(ground[index] ?? ""))) {
       continue;
@@ -100,7 +113,7 @@ export function planGroundChange(input: {
     footprintIndexes(width, spot, token.footprint).forEach((index) => taken.add(index));
     moves.push({ id: token.id, x: spot.x, y: spot.y });
   }
-  return { terrain: painted.terrain, moves };
+  return moves;
 }
 
 // The map as the change would leave it, for the editor's picture of the

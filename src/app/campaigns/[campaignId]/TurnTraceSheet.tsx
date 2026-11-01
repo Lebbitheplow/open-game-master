@@ -243,9 +243,17 @@ function TurnCard({ turn }: { turn: TurnTrace }) {
         <span className="text-xs font-normal text-stone-400">{clock(turn.startedAt)}</span>
       </h3>
       <p className="mt-0.5 text-xs text-stone-400">{factsOf(turn)}</p>
+      {turn.revertedAt ? (
+        // Said in words, not only by the dimmed calls: the event log's
+        // "Revert this turn" took back what these calls changed.
+        <p className="mt-1 text-xs text-amber-200">
+          <RotateCcw className="mr-1 inline size-3" aria-hidden="true" />
+          Reverted {clock(turn.revertedAt)}: what this turn changed was taken back. Its calls stay listed as they were made.
+        </p>
+      ) : null}
       {turn.by === "ai" ? <Answered lines={turn.answered} /> : null}
       {turn.rows.length ? (
-        <ol className="mt-2 space-y-1.5">
+        <ol className={cn("mt-2 space-y-1.5", turn.revertedAt && "opacity-60")}>
           {turn.rows.map((row, index) => (
             <li key={index}>
               <Row row={row} id={`${heading}-${index}`} />

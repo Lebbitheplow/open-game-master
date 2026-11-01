@@ -129,6 +129,20 @@ export function recordFightEventLines(id: string, lines: string[]) {
   getDatabase().prepare(`UPDATE fight_events SET lines_json = ? WHERE id = ?`).run(JSON.stringify(lines), id);
 }
 
+// "Revert this turn" took back what the event did (src/lib/dm/
+// fight-event-undo.ts): it waits for its moment again. False when the row is
+// gone (the fight ended and disarmed it).
+export function rearmFightEvent(id: string): boolean {
+  return (
+    getDatabase().prepare(`UPDATE fight_events SET fired_at = NULL, lines_json = '[]' WHERE id = ?`).run(id).changes === 1
+  );
+}
+
+export function getFightEvent(id: string): ArmedFightEvent | null {
+  const row = getDatabase().prepare(`SELECT * FROM fight_events WHERE id = ?`).get(id) as Row | undefined;
+  return row ? mapRow(row) : null;
+}
+
 // The fight is over: nothing it planned can happen any more.
 export function disarmFightEvents(encounterId: string) {
   getDatabase().prepare(`DELETE FROM fight_events WHERE encounter_id = ?`).run(encounterId);

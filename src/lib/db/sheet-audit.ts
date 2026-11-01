@@ -148,6 +148,13 @@ export function adoptTurnAudit(turnId: string, auditIds: string[]): SheetAuditEn
   return auditIds.map((id) => getAuditEntry(id)).filter((entry): entry is SheetAuditEntry => entry !== null);
 }
 
+// The changes a turn opened only in case it brought on something to take
+// back (src/lib/db/turn-rows.ts dissolveTurn), filed under no turn again, as
+// they were before it was opened: a player's End Turn is not a GM turn.
+export function unfileTurnAudit(turnId: string) {
+  getDatabase().prepare(`UPDATE sheet_audit SET turn_id = NULL WHERE turn_id = ?`).run(turnId);
+}
+
 export function getAuditEntry(entryId: string): SheetAuditEntry | null {
   const row = getDatabase()
     .prepare(`SELECT * FROM sheet_audit WHERE id = ?`)
