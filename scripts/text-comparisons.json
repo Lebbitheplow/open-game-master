@@ -141,6 +141,7 @@
     "app/campaigns/[campaignId]/DiceTrayDialog.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/DmActionFields.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/DmActionFields.tsx#toUpperCase": [["display",1,"a summoning kind's label capitalised (issue 685)"]],
+    "app/campaigns/[campaignId]/DmActionForm.tsx#str-eq": [["key",1,"a form field's name (Summon a pet's kind, issue 685)"]],
     "app/campaigns/[campaignId]/DmAssistPanel.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/DmBestiaryPanel.tsx#str-eq": [["key",3,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/DmConsolePanel.tsx#str-key": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],

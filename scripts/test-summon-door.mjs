@@ -283,7 +283,41 @@ await test("Summon a pet's Creature is picked from what the engine takes for eac
   assert.equal(moth.ok, true, moth.error);
   assert.ok(world.sheet(dain.id).pets.some((pet) => pet.form === "Moonmoth"));
 });
-const waiting = () => queuedIntents(listRecentMessages(world.campaignId, 40), []).map((row) => row.messageId);
+
+await test("Summon a pet's familiar list holds Pact of the Chain's forms only for an owner with the pact, and a new kind lets go of a creature its list does not hold", async () => {
+  const { petFormAfterKind } = await import("../src/lib/dm/pet-form-logic.ts");
+  const handler = await world.route("campaigns/[campaignId]/dm/pet-forms");
+  world.signIn(world.owner);
+  const get = async (query) => {
+    const response = await handler.GET(new Request(`http://odm.test/dm/pet-forms${query}`), { params: Promise.resolve({ campaignId: world.campaignId }) });
+    return { status: response.status, body: await response.json() };
+  };
+  const names = (body) => body.catalogue.familiar.map((form) => form.name);
+  const chained = await get(`?characterId=${wren.id}`);
+  assert.equal(chained.status, 200, JSON.stringify(chained.body));
+  assert.ok(names(chained.body).includes("Imp") && names(chained.body).includes("Owl"), "an owner with the pact has its four");
+  const plain = await get(`?characterId=${ivo.id}`);
+  assert.equal(plain.status, 200, JSON.stringify(plain.body));
+  assert.ok(names(plain.body).includes("Owl"));
+  assert.ok(!names(plain.body).some((name) => ["Imp", "Pseudodragon", "Quasit", "Sprite"].includes(name)), "an owner without the pact is not offered its forms");
+  assert.ok(names((await get("")).body).includes("Imp"), "an older console names no owner: the forms stay listed for the engine to judge");
+  assert.equal((await get("?characterId=no-such-hero")).status, 404, "an owner from no table here is refused");
+  const refused = await world.invoke("summon_pet", { characterId: ivo.id, kind: "familiar", form: "Imp" });
+  assert.equal(refused.ok, false, "the engine still refuses the pact's forms to an owner without it");
+  // The console's kind change keeps a creature the new list holds and lets
+  // go of one it does not; a story pet keeps whatever was picked or typed.
+  const catalogue = chained.body.catalogue;
+  assert.equal(petFormAfterKind("drake", "Owl", catalogue), "", "a familiar's owl is no drake");
+  assert.equal(petFormAfterKind("beast_companion", "Imp", catalogue), "", "an imp is no beast");
+  assert.equal(petFormAfterKind("familiar", "Riding Horse", catalogue), "");
+  assert.equal(petFormAfterKind("beast_companion", "Owl", catalogue), "Owl", "an owl is a beast a companion can be");
+  assert.equal(petFormAfterKind("familiar", "Imp", catalogue), "Imp");
+  assert.equal(petFormAfterKind("familiar", "owl", catalogue), "Owl", "a story pet typed by a list's name becomes that pick");
+  assert.equal(petFormAfterKind("familiar", "Imp", plain.body.catalogue), "", "the pact's form goes with an owner without it");
+  assert.equal(petFormAfterKind("other", "Glimmerwing", catalogue), "Glimmerwing", "a story pet may be any creature");
+  assert.equal(petFormAfterKind("drake", "", catalogue), "");
+});
+const waiting =() => queuedIntents(listRecentMessages(world.campaignId, 40), []).map((row) => row.messageId);
 async function resolve(messageId) {
   const handler = await world.route("campaigns/[campaignId]/dm/resolve-card");
   world.signIn(world.owner);

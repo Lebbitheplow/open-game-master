@@ -17,6 +17,7 @@ import {
 import type { CatalogEntry, CatalogField } from "@/lib/dm/invoke-catalog";
 import { fieldForHost, fieldShown, needsConfirm } from "@/lib/dm/catalog-types";
 import { consoleSummonShown } from "@/lib/battlemap/hand-summon";
+import { petFormAfterKind } from "@/lib/dm/pet-form-logic";
 import { usePetForms, useSummonCatalogue } from "@/app/campaigns/[campaignId]/HandSpells";
 import { hostOffers, useCapabilities, type HostFeature } from "@/lib/use-capabilities";
 import { describeAdjudicationResult, type ResultLine } from "@/lib/dm/catalog-result";
@@ -124,7 +125,8 @@ export function DmActionForm({
     [fields, values, catalogue],
   );
   // Summon a pet's Creature: what the engine takes for each kind (issue 685).
-  const petForms = usePetForms(campaignId, fields.some((field) => field.kind === "petForm"));
+  const petPick = fields.some((field) => field.kind === "petForm");
+  const petForms = usePetForms(campaignId, String(values.characterId ?? ""), petPick);
   const summonSlot = Number(values.level) || Math.min(...Object.keys(catalogue?.forms[0]?.counts ?? { 1: [] }).map(Number));
 
   const enemies = useMemo(
@@ -136,7 +138,13 @@ export function DmActionForm({
   const blocked = entry.needsEncounter && !encounter;
 
   function set(name: string, value: Value) {
-    setValues((current) => ({ ...current, [name]: value }));
+    setValues((current) => ({
+      ...current,
+      [name]: value,
+      // A pet's new kind lets go of a creature its list does not hold (a
+      // familiar's owl is no drake), so nothing stale is sent.
+      ...(petPick && name === "kind" ? { form: petFormAfterKind(String(value), String(current.form ?? ""), petForms) } : {}),
+    }));
   }
 
   async function run() {

@@ -10,6 +10,8 @@
 // Pure: the route builds the catalogue on the server (the SRD's blocks never
 // reach the browser) and the console's field reads it here.
 
+import { findNamed } from "@/lib/language/text-logic";
+
 export type PetFormCatalogue = {
   familiar: Array<{ name: string; chainOnly?: boolean }>;
   companion: string[];
@@ -46,4 +48,13 @@ export function petFormOptions(kind: string, catalogue: PetFormCatalogue | null)
 // Only a story pet may be a creature the lists do not hold.
 export function petFormTyped(kind: string): boolean {
   return kind === "other";
+}
+
+// The creature a form keeps when its pet's kind changes: the one picked while
+// the new kind's list holds it, by whole name (a story pet typed "owl" is the
+// familiar list's Owl), or anything for a story pet, which may be any; else
+// none, so a familiar's owl never rides along as a drake.
+export function petFormAfterKind(kind: string, form: string, catalogue: PetFormCatalogue | null): string {
+  if (!form || petFormTyped(kind)) return form;
+  return findNamed(petFormOptions(kind, catalogue), form, (option) => [option.value])?.value ?? "";
 }

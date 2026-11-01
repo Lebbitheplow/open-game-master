@@ -212,20 +212,22 @@ export function useSummonCatalogue(campaignId: string, spell: string, characterI
 }
 
 // Summon a pet's creatures for the GM console (src/lib/dm/pet-form-logic.ts),
-// once per table per page: the table's own monsters change in the workshop
-// rarely within a session, and a fresh page reads them again.
+// as the pet's owner may have them (Pact of the Chain's familiar forms only
+// with the pact), once per owner per page: the table's own monsters change
+// in the workshop rarely within a session, and a fresh page reads them again.
 const petForms = new Map<string, PetFormCatalogue | null>();
 
-export function usePetForms(campaignId: string, enabled: boolean): PetFormCatalogue | null {
+export function usePetForms(campaignId: string, ownerId: string, enabled: boolean): PetFormCatalogue | null {
+  const key = `${campaignId}|${ownerId}`;
   const [, setVersion] = useState(0);
   useEffect(() => {
-    if (!enabled || petForms.has(campaignId)) return;
+    if (!enabled || petForms.has(key)) return;
     let live = true;
-    void fetch(`/api/campaigns/${campaignId}/dm/pet-forms`)
+    void fetch(`/api/campaigns/${campaignId}/dm/pet-forms${ownerId ? `?characterId=${encodeURIComponent(ownerId)}` : ""}`)
       .then(async (response) => {
         if (!response.ok) return;
         const body = (await response.json()) as { catalogue?: PetFormCatalogue };
-        petForms.set(campaignId, body.catalogue ?? null);
+        petForms.set(key, body.catalogue ?? null);
         if (live) setVersion((current) => current + 1);
       })
       .catch(() => {
@@ -234,6 +236,6 @@ export function usePetForms(campaignId: string, enabled: boolean): PetFormCatalo
     return () => {
       live = false;
     };
-  }, [campaignId, enabled]);
-  return enabled ? (petForms.get(campaignId) ?? null) : null;
+  }, [campaignId, ownerId, key, enabled]);
+  return enabled ? (petForms.get(key) ?? null) : null;
 }
