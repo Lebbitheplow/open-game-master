@@ -118,7 +118,10 @@ await test("Test fight with the stand-ins: a table of its own, in play, the part
   assert.equal(table.kind, "playtest");
   assert.equal(table.status, "active");
   assert.equal(table.ownerUserId, author.id);
-  assert.equal(table.gameSettings.dmMode, "ai");
+  // The AI GM runs it with the author in the steering seat, the console
+  // theirs beside the AI (issue 685, scripts/test-test-fight-seats.mjs).
+  assert.equal(table.gameSettings.dmMode, "steered");
+  assert.equal(table.dmUserId, author.id);
   assert.equal(table.gameSettings.multiCharacter, "all_active");
   assert.equal(table.settings.autoImages, false);
 

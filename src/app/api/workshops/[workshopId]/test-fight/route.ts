@@ -4,6 +4,7 @@ import { testFightsOf } from "@/lib/db/test-fights";
 import { getWorkshopForUser } from "@/lib/db/workshops";
 import { TARGET_PARTY_LIMITS } from "@/lib/workshop/kind";
 import { standInClasses } from "@/lib/workshop/stand-ins";
+import { TEST_ALLY_LIMIT } from "@/lib/workshop/test-seats-logic";
 import { endTestFights, openTestFight, testFightReadiness } from "@/lib/workshop/test-fight";
 
 export const runtime = "nodejs";
@@ -14,13 +15,18 @@ export const dynamic = "force-dynamic";
 // is there to run one, the stand-in party, the test already open), starting
 // one, by the AI DM or by its author, and ending it.
 
+// Library companions who fight beside either party (issue 685); they count
+// against their own cap, not the party's.
+const allyIds = z.array(z.string().trim().min(1).max(80)).max(TEST_ALLY_LIMIT).optional();
+
 const startSchema = z.object({
   templateId: z.string().trim().min(1).max(80),
   party: z.discriminatedUnion("kind", [
-    z.object({ kind: z.literal("stand-ins") }),
+    z.object({ kind: z.literal("stand-ins"), allyIds }),
     z.object({
       kind: z.literal("characters"),
       characterIds: z.array(z.string().trim().min(1).max(80)).min(1).max(TARGET_PARTY_LIMITS.size.max),
+      allyIds,
     }),
   ]),
   // Who runs it. Left out: the AI DM where one is set up, else the author.

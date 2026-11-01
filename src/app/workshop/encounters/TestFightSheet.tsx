@@ -10,6 +10,8 @@ import { readLoad, readWrite } from "@/lib/load-state";
 import { navigateTo } from "@/lib/navigation";
 import { ui } from "@/lib/ui";
 import { TARGET_PARTY_LIMITS } from "@/lib/workshop/kind";
+import { TEST_ALLY_LIMIT } from "@/lib/workshop/test-seats-logic";
+import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 import type { PreparedEncounter } from "@/app/workshop/encounters/types";
 
 // Test fight (issue 553): who fights the prepared fight, then the table
@@ -20,6 +22,11 @@ import type { PreparedEncounter } from "@/app/workshop/encounters/types";
 // their party fares. Where an AI DM is set up it runs the fight unless the
 // author would rather run it, as they run their own tables; where none is,
 // the author runs it and the sheet only says so.
+//
+// Allies (issue 685): a fight written around an ally is tested with that
+// ally. The companions the author keeps are offered beside either party,
+// marked as allies, and only to an author who keeps any; none is picked
+// unless the author picks one.
 
 export type TestFightInfo = {
   ready: boolean;
@@ -66,6 +73,10 @@ export function TestFightSheet({
   const [who, setWho] = useState<Who>("stand-ins");
   const [runner, setRunner] = useState<"ai" | "person">("ai");
   const [picked, setPicked] = useState<string[]>([]);
+  const [allies, setAllies] = useState<string[]>([]);
+  // An older host drops the allies unread and starts the test without them
+  // (capabilities.ts testFightAllies), so it is offered none.
+  const allyOffer = hostOffers(useCapabilities(), "testFightAllies");
   const [pregens, setPregens] = useState<Character[] | null>(null);
   const [library, setLibrary] = useState<Character[] | null>(null);
   const [loadError, setLoadError] = useState("");
@@ -74,7 +85,8 @@ export function TestFightSheet({
   const open = encounter !== null;
 
   // The characters are read when the sheet opens, the roster first: the
-  // pregens are the ones made for this workshop.
+  // pregens are the ones made for this workshop. Heroes and allies are told
+  // apart by the role each is filed under.
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
@@ -84,8 +96,8 @@ export function TestFightSheet({
     ]).then(([roster, shelf]) => {
       if (cancelled) return;
       setLoadError(roster.error ?? shelf.error ?? "");
-      setPregens((roster.payload?.pregens ?? []).filter((character) => character.role !== "companion"));
-      setLibrary((shelf.payload?.characters ?? []).filter((character) => character.role !== "companion"));
+      setPregens(roster.payload?.pregens ?? []);
+      setLibrary(shelf.payload?.characters ?? []);
     });
     return () => {
       cancelled = true;
@@ -99,21 +111,38 @@ export function TestFightSheet({
     onClose();
   }
 
+  const toggled = (id: string, on: boolean) => (current: string[]) =>
+    on ? [...current.filter((entry) => entry !== id), id] : current.filter((entry) => entry !== id);
   function toggle(id: string, on: boolean) {
-    setPicked((current) => (on ? [...current.filter((entry) => entry !== id), id] : current.filter((entry) => entry !== id)));
+    setPicked(toggled(id, on));
   }
+  function toggleAlly(id: string, on: boolean) {
+    setAllies(toggled(id, on));
+  }
+
+  // Heroes fight in the party; companions (filed as allies the GM plays)
+  // fight beside it, the workshop's own first.
+  const hero = (character: Character) => character.role !== "companion";
+  const pregenIds = new Set((pregens ?? []).map((character) => character.id));
+  const heroPregens = (pregens ?? []).filter(hero);
+  const others = (library ?? []).filter((character) => !pregenIds.has(character.id) && hero(character));
+  const allyChoices = [...(pregens ?? []), ...(library ?? []).filter((character) => !pregenIds.has(character.id))].filter(
+    (character) => !hero(character),
+  );
 
   async function start() {
     if (!encounter) return;
     setBusy(true);
     setError("");
+    const beside = allyOffer ? allies.filter((id) => allyChoices.some((character) => character.id === id)) : [];
+    const allyPart = beside.length ? { allyIds: beside } : {};
     const sent = await readWrite<{ campaignId: string }>(
       fetch(`/api/workshops/${workshopId}/test-fight`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           templateId: encounter.id,
-          party: who === "stand-ins" ? { kind: "stand-ins" } : { kind: "characters", characterIds: picked },
+          party: who === "stand-ins" ? { kind: "stand-ins", ...allyPart } : { kind: "characters", characterIds: picked, ...allyPart },
           runner: info?.ready ? runner : "person",
         }),
       }),
@@ -131,32 +160,42 @@ export function TestFightSheet({
     navigateTo(`/campaigns/${sent.payload.campaignId}`);
   }
 
-  const pregenIds = new Set((pregens ?? []).map((character) => character.id));
-  const others = (library ?? []).filter((character) => !pregenIds.has(character.id));
   const full = picked.length >= TARGET_PARTY_LIMITS.size.max;
+  const alliesFull = allies.length >= TEST_ALLY_LIMIT;
   const standIns = info?.standIns;
   const canStart = Boolean(info) && !busy && (who === "stand-ins" || picked.length > 0);
 
-  const checkbox = (character: Character) => {
-    const on = picked.includes(character.id);
+  // One character to tick, a card the whole of which is its label. An ally
+  // wears the word, so the two lists never read as one.
+  const pickCard = (character: Character, ally: boolean) => {
+    const on = (ally ? allies : picked).includes(character.id);
     return (
       <li key={character.id}>
-        <label className={cn(choiceCard, on ? "border-amber-500/50 bg-amber-500/10" : "border-stone-800 bg-stone-950/40")} data-test-pick={character.id}>
+        <label
+          className={cn(choiceCard, on ? "border-amber-500/50 bg-amber-500/10" : "border-stone-800 bg-stone-950/40")}
+          {...(ally ? { "data-test-ally": character.id } : { "data-test-pick": character.id })}
+        >
           <input
             type="checkbox"
             checked={on}
-            disabled={!on && full}
-            onChange={(event) => toggle(character.id, event.target.checked)}
+            disabled={!on && (ally ? alliesFull : full)}
+            onChange={(event) => (ally ? toggleAlly : toggle)(character.id, event.target.checked)}
             className="mt-0.5 size-4 shrink-0 accent-amber-500"
           />
           <span className="min-w-0">
-            <span className="block text-sm text-stone-100">{character.name}</span>
+            <span className="flex flex-wrap items-center gap-1.5 text-sm text-stone-100">
+              {character.name}
+              {ally ? (
+                <span className="rounded-full border border-stone-600 px-1.5 text-[10px] uppercase tracking-[0.12em] text-amber-200">Ally</span>
+              ) : null}
+            </span>
             <span className="block text-xs text-stone-400">{describe(character)}</span>
           </span>
         </label>
       </li>
     );
   };
+  const checkbox = (character: Character) => pickCard(character, false);
 
   // One answer of a question, as a card the whole of which is its label.
   const radio = (group: string, checked: boolean, onSelect: () => void, title: string, hint: string) => (
@@ -204,16 +243,16 @@ export function TestFightSheet({
               <p className="flex items-center gap-2 text-xs text-stone-400">
                 <Loader2 className="size-3.5 animate-spin" /> Reading your characters...
               </p>
-            ) : pregens.length + others.length === 0 ? (
+            ) : heroPregens.length + others.length === 0 ? (
               <p className="text-xs text-stone-400">
-                You have no characters yet. Build one from the Party tool, or test with the stand-ins.
+                You have no heroes to pick yet. Build one from the Party tool, or test with the stand-ins.
               </p>
             ) : (
               <>
-                {pregens.length ? (
+                {heroPregens.length ? (
                   <section>
                     <h4 className="mb-1.5 text-xs text-stone-400">This workshop&apos;s pregens</h4>
-                    <ul className="grid gap-1.5 sm:grid-cols-2">{pregens.map(checkbox)}</ul>
+                    <ul className="grid gap-1.5 sm:grid-cols-2">{heroPregens.map(checkbox)}</ul>
                   </section>
                 ) : null}
                 {others.length ? (
@@ -233,6 +272,24 @@ export function TestFightSheet({
           </div>
         ) : null}
 
+        {/* Allies, beside either party: shown only to an author who keeps a
+            companion, on a host that seats them (issue 685). */}
+        {allyOffer && allyChoices.length ? (
+          <fieldset className="reveal space-y-2" data-testid="test-fight-allies">
+            <legend className={legend}>Allies beside them</legend>
+            <p className="text-xs text-stone-400">
+              Optional. Companions you keep fight beside the party as copies, at their own levels. Whoever runs
+              the test plays them; to play one yourself, take command of them on their card in the Party panel.
+            </p>
+            <ul className="grid gap-1.5 sm:grid-cols-2">{allyChoices.map((character) => pickCard(character, true))}</ul>
+            <p className="text-xs text-stone-500">
+              {allies.length
+                ? `${allies.length} beside the party${alliesFull ? ", the most a test seats" : ""}.`
+                : `None unless you pick them, up to ${TEST_ALLY_LIMIT}.`}
+            </p>
+          </fieldset>
+        ) : null}
+
         {/* Who runs it is a question only where an AI DM could; with none,
             the author does, and the note says so. */}
         {info?.ready ? (
@@ -243,7 +300,7 @@ export function TestFightSheet({
               runner === "ai",
               () => setRunner("ai"),
               "The AI GM",
-              "It opens the fight and runs the enemies by their plan, as at a table the AI runs.",
+              "It opens the fight and runs the enemies by their plan, as at a table the AI runs. You keep the GM console for set-ups and corrections.",
             )}
             {radio(
               "test-fight-runner",
