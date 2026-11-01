@@ -30,6 +30,8 @@ import type { PublicEncounter } from "@/lib/db/encounter-view";
 import { DmEnemyHpCard } from "@/app/campaigns/[campaignId]/DmEnemyHpCard";
 import type { DmCover } from "@/lib/dm/delegation";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { useRomanceBonds } from "@/app/campaigns/[campaignId]/CompanionBondLine";
+import { HeldAsks, heldAsksOf, type HeldAsk } from "@/app/campaigns/[campaignId]/HeldAsks";
 
 // The DM's console: the queue of what the players have done and not yet been
 // answered on, and every adjudication the rules engine can perform.
@@ -163,6 +165,7 @@ export function DmConsolePanel({
   variantRules,
   delegations,
   cover,
+  bondsKey = 0,
 }: {
   campaignId: string;
   sheets: CharacterSheet[];
@@ -180,6 +183,9 @@ export function DmConsolePanel({
   delegations: { monsters: boolean; narration: boolean; cover: boolean };
   // The stretch of answers currently handed over, or null.
   cover: DmCover | null;
+  // Bumped by relationships_updated: a romantic step asked in a fight is
+  // owed its answer once the fight is over (issue 640, HeldAsks.tsx).
+  bondsKey?: number;
 }) {
   // Illustrate stays in the catalog (the AI DM and the dispatcher still know
   // it) but leaves the console on a server with no image backend, where the
@@ -229,6 +235,12 @@ export function DmConsolePanel({
   );
 
   const active = groups.find((group) => group.category === category) ?? null;
+  // Steps asked in a fight, owed their answer once it is over.
+  const bonds = useRomanceBonds(campaignId, bondsKey, !encounter);
+  const held = encounter ? [] : heldAsksOf(bonds);
+  const [answering, setAnswering] = useState<HeldAsk | null>(null);
+  const romanceEntry = groups.flatMap((group) => group.entries).find((entry) => entry.name === "romance_advance") ?? null;
+  const waiting = queue.length + held.length;
 
   const tabs: Array<readonly [ConsoleTab, string]> = [
     ["assist", "Assist"],
@@ -260,7 +272,7 @@ export function DmConsolePanel({
     ...(delegations.monsters || delegations.cover
       ? [["dm-delegation", "Hand things to the AI", "Monsters and cover", "tab-dm"] as [string, string, string, string]]
       : []),
-    ["dm-queue", "Waiting on you", queue.length ? `${queue.length} unanswered` : "Nothing waiting", "tab-log"],
+    ["dm-queue", "Waiting on you", waiting ? `${waiting} unanswered` : "Nothing waiting", "tab-log"],
   ];
   const commands: PaletteCommand[] = [
     ...groups.flatMap((group) =>
@@ -335,9 +347,9 @@ export function DmConsolePanel({
           title="Waiting on you"
           glyph="tab-log"
           aside={
-            queue.length ? (
-              <span key={queue.length} className="count-pop rounded-full border border-amber-500/40 bg-amber-400/15 px-2 py-0.5 text-[11px] font-semibold text-amber-100">
-                {queue.length}
+            waiting ? (
+              <span key={waiting} className="count-pop rounded-full border border-amber-500/40 bg-amber-400/15 px-2 py-0.5 text-[11px] font-semibold text-amber-100">
+                {waiting}
               </span>
             ) : (
               "All answered"
@@ -368,7 +380,17 @@ export function DmConsolePanel({
               </li>
             ))}
           </ul>
-        ) : (
+        ) : null}
+        <HeldAsks
+          campaignId={campaignId}
+          asks={held}
+          answering={answering}
+          onAnswer={setAnswering}
+          entry={romanceEntry}
+          sheets={sheets}
+          encounter={encounter}
+        />
+        {waiting || answering ? null : (
           <EmptyState size="sm" art="scrolls" title="Nothing waiting. Everything the party has said has been answered." />
         )}
       </section>

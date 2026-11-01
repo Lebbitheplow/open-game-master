@@ -75,6 +75,17 @@ export function forgetHarnessStatus(id?: HarnessId) {
   }
 }
 
+// A real call the program turned away for its sign-in (an expired OAuth
+// session) outranks a probe from minutes ago: the cached status reads signed
+// out at once, so no page says "Ready" for it until the cache runs out
+// (issue #713).
+export function noteSignedOut(id: HarnessId) {
+  const cached = cache().get(id);
+  if (cached) {
+    cached.auth = { state: "signed-out" };
+  }
+}
+
 // Shown on the card, never the full address.
 export function maskAccount(account: string | undefined): string | undefined {
   if (!account) {
@@ -187,8 +198,13 @@ export async function probeHarness(id: HarnessId, options: { refresh?: boolean; 
   return status;
 }
 
-export async function probeAllHarnesses(options: { refresh?: boolean; phone?: boolean } = {}): Promise<HarnessStatus[]> {
-  return Promise.all(HARNESS_IDS.map((id) => probeHarness(id, options)));
+// `fresh` asks one program again whatever the cache holds: the admin page
+// passes the saved one, whose sign-in is the one the tables depend on.
+export async function probeAllHarnesses(
+  options: { refresh?: boolean; phone?: boolean; fresh?: HarnessId | "" } = {},
+): Promise<HarnessStatus[]> {
+  const { fresh, ...rest } = options;
+  return Promise.all(HARNESS_IDS.map((id) => probeHarness(id, { ...rest, refresh: rest.refresh || id === fresh })));
 }
 
 // The context window a harness model is packed against. Capped at 128K for

@@ -19,12 +19,14 @@ import {
 } from "@/lib/db/npcs";
 import { companionNpcFor } from "@/lib/db/companion-npcs";
 import { meetNpc } from "@/lib/dm/party-bonds";
-import { attractionFromTold, attractionWords, TOLD_ATTRACTION } from "@/lib/attraction";
+import { attractionFromTold, attractionWords, openToMore, TOLD_ATTRACTION } from "@/lib/attraction";
+import { owedAfter } from "@/lib/dm/amends-logic";
 import { agencyFragment, derivePersonality, driftPersonality, nearestNpcHint } from "@/lib/dm/npc-logic";
 import { ensureRelationship, patchRelationship } from "@/lib/db/relationships";
 import {
   applyApproval,
   approvalRollModifier,
+  demoteRomance,
   friendshipTier,
   SOCIAL_CHECK_SWING,
   TIER_LABEL,
@@ -84,7 +86,7 @@ export const socialTools: ToolDef[] = [
             type: "string",
             enum: [...ATTITUDE_ENUM],
             description:
-              "How they currently feel about the party. Default: 'indifferent'. On someone already registered it means the party is dealing with them now: they are met, and how they feel about each character is tracked from then on. So give it there only for someone in the scene, never to preset how someone the party has not met feels.",
+              "How they currently feel about the party. Default: 'indifferent'. On someone already registered it marks them met, their feelings tracked per character from then on: give it only for someone in the scene, never to preset how an unmet NPC feels.",
           },
           trait: {
             type: "string",
@@ -99,12 +101,12 @@ export const socialTools: ToolDef[] = [
           drawnTo: {
             type: "array",
             items: { type: "string", enum: TOLD_ATTRACTION },
-            description: "Who they could fall for, once the story shows it. The server keeps the first value it is given, so it never changes between characters.",
+            description: "Who they could fall for, once the story shows it. The first value given is kept.",
           },
           goal: {
             type: "string",
             description:
-              "What they are working toward right now (a scheme, an errand, a hunt). The server advances it in the background between chapters, so give real NPCs real goals.",
+              "What they are working toward right now (a scheme, an errand, a hunt). The server advances it between chapters.",
           },
           ambition: {
             type: "string",
@@ -120,7 +122,7 @@ export const socialTools: ToolDef[] = [
     function: {
       name: "npc_reaction",
       description:
-        "Roll a first-meeting reaction for a new NPC when it is uncertain how they take the party. The server rolls 2d6 (plus any modifier for the party's approach or reputation) and turns it into a starting attitude (hostile, indifferent, or friendly), registering the NPC with it. Call it instead of simply deciding how a stranger feels. Skip it when the story already fixes the NPC's stance (a sworn enemy, a hired ally). Someone the party has already dealt with, or whose attitude is already set, is not rolled again: the result reports how they feel.",
+        "Roll a first-meeting reaction for a new NPC when it is uncertain how they take the party. The server rolls 2d6 plus modifier into a starting attitude and registers the NPC with it. Call it instead of simply deciding how a stranger feels; skip it when the story already fixes their stance (a sworn enemy, a hired ally). Someone already met or set is not rolled again: the result reports how they feel.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -488,7 +490,15 @@ export function handleSocialCheck(
         approval,
         outcome.direction === "down" ? -SOCIAL_CHECK_SWING : SOCIAL_CHECK_SWING,
       );
-      patchRelationship(relationship.id, { approval });
+      // Being bullied is a wrong an amends can repair (issue 642).
+      const moved = patchRelationship(relationship.id, { approval, owed: owedAfter(relationship.owed, approval - relationship.approval) });
+      // A romance the meter no longer holds slips back, as it does under a
+      // beat (beat-landing.ts): bullied below a rung's grace, a courtship
+      // stayed "courting" until some later beat noticed (issue 640). An act
+      // reads the warmth it shows, which the patch moved with the meter.
+      if (moved && moved.romance !== "none") {
+        patchRelationship(moved.id, { romance: demoteRomance(moved.romance, outwardApproval(moved)) });
+      }
       publishRelationshipsUpdated(campaign.id);
       const personality =
         npc.agency.personality ?? derivePersonality(npc.name, npc.attitude, npc.trait);
@@ -591,7 +601,9 @@ export function npcRosterForPrompt(campaignId: string, options: { romance?: bool
 
 function npcIdentity(npc: Npc, romance: boolean): string {
   const drawn = romance ? attractionWords(npc.attraction) : "";
-  return [npc.gender, drawn ? `drawn to ${drawn}` : ""].filter(Boolean).join(", ");
+  // Romance is exclusive unless someone is open to more (issue 642).
+  const open = romance && openToMore(npc.attraction) ? "open to more than one partner" : "";
+  return [npc.gender, drawn ? `drawn to ${drawn}` : "", open].filter(Boolean).join(", ");
 }
 
 const ATTITUDE_LADDER = ["hostile", "indifferent", "friendly"] as const;

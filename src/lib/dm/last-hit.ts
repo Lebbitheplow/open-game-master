@@ -17,13 +17,15 @@
 // state from it.
 //
 // One record per character per campaign, replaced by the next attack. It
-// answers a reaction only while it is fresh: in a fight, the same round and
-// the same turn; out of one, the last ten minutes. The table is made with
-// the schema (src/lib/db/core.ts), so deleting a campaign can clear its rows.
+// answers a reaction only while it is fresh: in a fight, until the next
+// attack on anyone or the first thing the next turn's creature does
+// (freshLastHit); out of one, the last ten minutes. The table is made with the schema (src/lib/db/core.ts), so
+// deleting a campaign can clear its rows.
 
 import { sheetSpellAuthors } from "@/lib/dm/spell-authors";
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
-import { getActiveEncounter, listEnemies, turnKey } from "@/lib/db/encounters";
+import { getActiveEncounter, listEnemies, orderEntryId, turnKey, type Encounter, type OrderEntry } from "@/lib/db/encounters";
+import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import type { RollResult, Advantage } from "@/lib/dice";
 import type { RollAttacker } from "@/lib/db/rolls";
@@ -79,6 +81,14 @@ export type LastHit = {
   encounterId: string | null;
   // The turn it landed in (turnKey), "" out of a fight.
   turn: string;
+  // Whether it landed in the enemies' turns before the character up next
+  // (enemiesTakingTurns): the pointer already names that character, so the
+  // turn key alone does not change when their turn begins. Absent on
+  // records written before it, read as false.
+  enemyTurns?: boolean;
+  // Set once the next turn's creature has ended its turn
+  // (closeHitsAtTurnEnd): the moment to answer it has gone by.
+  closed?: true;
   // Who made it: an enemy, a character fighting on the other side (a
   // turncoat's pc_attack, issue 503), or a hazard, which is nobody.
   attacker: { kind: "enemy" | "sheet" | "hazard"; id: string | null; name: string };
@@ -151,8 +161,58 @@ export function readLastHit(campaignId: string, characterId: string): LastHit | 
 
 const FRESH_MS = 10 * 60 * 1000;
 
+// Whether the enemies a pass walked past are taking their turns: held for
+// (src/lib/dm/enemies-due.ts), or handed to the model's own end_turn to play
+// in its reply. The pointer already rests on the character up next.
+function enemiesTakingTurns(encounter: Pick<Encounter, "legendary">): boolean {
+  return Boolean(encounter.legendary.due?.length || encounter.legendary.handoff);
+}
+
+// Whether an attack on somebody else was recorded after this one.
+function attackedSince(campaignId: string, record: LastHit): boolean {
+  return Boolean(
+    db()
+      .prepare(`SELECT 1 FROM last_hits WHERE campaign_id = ? AND character_id != ? AND created_at > ? LIMIT 1`)
+      .get(campaignId, record.characterId, record.at),
+  );
+}
+
+// Whether the creature whose turn it is has done anything with it yet: an
+// attack, a cast, an action card (anything its action economy records), or
+// a step on the board.
+function actedThisTurn(encounter: Encounter): boolean {
+  const current = encounter.order[encounter.turnIndex];
+  if (!current) {
+    return false;
+  }
+  const id = orderEntryId(current);
+  const budget = encounter.turnBudget;
+  if (
+    budget &&
+    budget.ownerId === id &&
+    budget.round === encounter.round &&
+    (budget.actionUsed || budget.bonusUsed || budget.attacksMade > 0 || budget.dashed || budget.disengaged)
+  ) {
+    return true;
+  }
+  const map = getBattleMapForEncounter(encounter.id);
+  const token = map ? getTokenByRef(map.id, id) : null;
+  return Boolean(token && token.movedThisRound > 0);
+}
+
 // The record a reaction may still answer, or null: the same encounter, and
-// in a fight the same round and turn; out of one, the last ten minutes.
+// in a fight the moment after it. SRD 5.1: a reaction is taken right after
+// its trigger, and a creature's reaction comes back at the start of its
+// turn. The pointer rests on the character up next while the enemies before
+// them take their turns, so a hit then stayed answerable through the other
+// enemies' attacks and that character's whole turn after them: late, and
+// once their turn began, a second reaction in a round. So it closes at the
+// next attack on anyone, or once the next turn's creature does its first
+// thing (an attack, a cast, an action card, a step, ending the turn). The
+// enemies' turns ending closes nothing: the player hit has the time until
+// somebody acts to read the hit and answer it, at an AI table after the
+// reply that told it, at a person's table after the GM hands the turn on.
+// Out of a fight, the last ten minutes.
 export function freshLastHit(campaignId: string, characterId: string): LastHit | null {
   const record = readLastHit(campaignId, characterId);
   if (!record) {
@@ -163,9 +223,36 @@ export function freshLastHit(campaignId: string, characterId: string): LastHit |
     return null;
   }
   if (encounter) {
-    return turnKey(encounter) === record.turn ? record : null;
+    if (record.closed || attackedSince(campaignId, record)) {
+      return null;
+    }
+    const sameTurn = turnKey(encounter) === record.turn && Boolean(record.enemyTurns) === enemiesTakingTurns(encounter);
+    // A later turn's enemies close it only by attacking (above).
+    if (sameTurn || enemiesTakingTurns(encounter)) {
+      return record;
+    }
+    return actedThisTurn(encounter) ? null : record;
   }
   return Date.now() - Date.parse(record.at) <= FRESH_MS ? record : null;
+}
+
+// A creature's turn is ending (src/lib/dm/encounter-tools.ts advancePointer):
+// every hit still open in the fight closes, except one that landed in that
+// creature's own turn, which the creature after it may still let pass.
+// Ending the turn is the last thing the next turn's creature can do first.
+export function closeHitsAtTurnEnd(campaignId: string, encounter: Pick<Encounter, "id" | "round">, ending: OrderEntry) {
+  const endingKey = turnKey({ round: encounter.round, order: [ending], turnIndex: 0 });
+  const rows = db().prepare(`SELECT payload_json FROM last_hits WHERE campaign_id = ?`).all(campaignId) as Array<{ payload_json: string }>;
+  for (const row of rows) {
+    const record = parseJson<LastHit | null>(row.payload_json, null);
+    if (!record || record.closed || record.encounterId !== encounter.id) {
+      continue;
+    }
+    if (record.turn === endingKey && !record.enemyTurns) {
+      continue;
+    }
+    writeLastHit(campaignId, { ...record, closed: true });
+  }
 }
 
 function concentrationHeld(
@@ -280,6 +367,7 @@ export function openLastHit(campaignId: string, characterId: string) {
         characterId,
         encounterId: encounter?.id ?? null,
         turn: encounter ? turnKey(encounter) : "",
+        ...(encounter && enemiesTakingTurns(encounter) ? { enemyTurns: true } : {}),
         attacker: what.attacker,
         attack: what.attack,
         type: what.type,
@@ -318,6 +406,7 @@ export function recordFall(
     characterId,
     encounterId: encounter?.id ?? null,
     turn: encounter ? turnKey(encounter) : "",
+    ...(encounter && enemiesTakingTurns(encounter) ? { enemyTurns: true } : {}),
     attacker: { kind: "hazard", id: null, name: "the fall" },
     attack: "falling",
     type: "bludgeoning",

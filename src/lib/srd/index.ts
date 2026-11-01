@@ -10,13 +10,14 @@ import spellSlotsJson from "@/lib/srd/spell-slots.json";
 import { CUSTOM_CLASSES, findCustomClass } from "@/lib/classes";
 import { computeArmorClass, unarmoredFormulaFor, type AcBreakdown } from "@/lib/srd/armor";
 import { conditionAcRiders } from "@/lib/srd/condition-effects";
-import { combatRiders, defenseRiders, halfProficiencyCovers } from "@/lib/srd/feature-effects";
-import { featureSaveProficiencies } from "@/lib/srd/trait-rules";
+import { auraGranted, combatRiders, defenseRiders, halfProficiencyCovers } from "@/lib/srd/feature-effects";
+import { featureSaveProficiencies, featureSkillProficiencies } from "@/lib/srd/trait-rules";
 import { authoredAcBonus, authoredSaveModifier, authoredSpeeds } from "@/lib/srd/authored-effects";
-import { effectiveAbilities, magicItemRiders } from "@/lib/srd/magic-items";
+import { effectiveAbilities, itemSpeeds, magicItemRiders, type Wearer, type WornMagicItem } from "@/lib/srd/magic-items";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
 import { allSpellNames } from "@/lib/srd/spell-lists";
 import { hpBonusPerLevel, speciesRulesFor, type SpeciesRules } from "@/lib/srd/race-id";
+import { racialSpellAbility } from "@/lib/srd/racial-grants";
 import { isThirdCaster, thirdCasterSlots } from "@/lib/srd/third-caster";
 import type {
   Ability,
@@ -332,7 +333,11 @@ export function speedFor(
       })
     : null;
   const load = options.encumbrance ? (carried?.speedPenalty ?? 0) : 0;
-  const speed = Math.max(0, source.speed + bonus - breakdown.speedPenalty - load);
+  // The weight tiers replace the armor's Strength requirement: SRD 5.1
+  // Using Ability Scores, Variant: Encumbrance, "When you use this variant,
+  // ignore the Strength column of the Armor table."
+  const armorPenalty = options.encumbrance ? 0 : breakdown.speedPenalty;
+  const speed = Math.max(0, source.speed + bonus - armorPenalty - load);
   // Past the carrying capacity (Strength x 15, SRD 5.1 Lifting and
   // Carrying) the load can only be dragged: speed 5 feet, whatever the
   // table's encumbrance rule (src/lib/dm/load-rules.ts).
@@ -366,9 +371,10 @@ export type SheetDerived = {
   passiveInvestigation: number;
   spellSaveDc: number | null;
   spellAttack: number | null;
-  // Flying and swimming speeds the authored subclass features grant
-  // (Stormborn, Wind Soul, Gift of the Sea), in feet; absent when none do.
-  speeds?: { fly?: number; swim?: number };
+  // Flying, swimming and climbing speeds the authored subclass features
+  // (Stormborn, Wind Soul, Gift of the Sea) and worn items (Winged Boots)
+  // grant, in feet; absent when none do.
+  speeds?: { fly?: number; swim?: number; climb?: number };
   parts: DerivedParts;
 };
 
@@ -382,12 +388,25 @@ function sumParts(parts: DerivedPart[]): number {
   return parts.reduce((total, part) => total + part.value, 0);
 }
 
-// Flying and swimming speeds from the authored features, as a spread for the
-// derived numbers; nothing when there are none.
-function otherSpeeds(sheet: { features?: Array<{ name: string }>; speed?: number }): { speeds?: { fly?: number; swim?: number } } {
-  const speeds = authoredSpeeds(sheet, sheet.speed ?? 30);
+// Flying, swimming and climbing speeds from the authored features and the
+// worn items (Winged Boots, Ring of Swimming, Slippers of Spider Climbing),
+// the best of each, as a spread for the derived numbers; nothing when there
+// are none.
+function otherSpeeds(
+  sheet: Parameters<typeof authoredSpeeds>[0] & Wearer & { speed?: number; equipment?: WornMagicItem[] },
+): { speeds?: { fly?: number; swim?: number; climb?: number } } {
+  const walking = sheet.speed ?? 30;
+  const speeds: { fly?: number; swim?: number; climb?: number } = { ...authoredSpeeds(sheet, walking) };
+  for (const [mode, feet] of Object.entries(sheet.equipment ? itemSpeeds(sheet.equipment, sheet, walking) : {}) as Array<["fly" | "swim" | "climb", number]>) {
+    speeds[mode] = Math.max(speeds[mode] ?? 0, feet);
+  }
   return Object.keys(speeds).length ? { speeds } : {};
 }
+
+// The label the derived parts give what worn magic items add, which the
+// per-class numbers below read back.
+const MAGIC_ITEMS_PART = "magic items";
+const itemPart = (parts: DerivedPart[]) => parts.find((part) => part.label === MAGIC_ITEMS_PART)?.value ?? 0;
 
 // All derived numbers come from the sheet + SRD data; the model never
 // invents a modifier.
@@ -403,6 +422,9 @@ export function computeSheetDerived(
     wildShape?: CharacterSheet["wildShape"];
     // The table, for its workshop feats.
     campaignId?: string;
+    // Whether the character is awake, for Aura of Protection (auraGranted).
+    currentHp?: number;
+    conditions?: string[];
   },
 ): SheetDerived {
   // A Polymorph's beast is its own creature: none of the character's
@@ -422,7 +444,8 @@ export function computeSheetDerived(
   const abilities = sheet.wildShape?.abilities
     ? { ...withItems, ...sheet.wildShape.abilities }
     : withItems;
-  const magicSaveBonus = sheet.equipment ? magicItemRiders(sheet.equipment, sheet).saveBonus : 0;
+  const magic = sheet.equipment ? magicItemRiders(sheet.equipment, sheet) : null;
+  const magicSaveBonus = magic?.saveBonus ?? 0;
   const abilityMods = Object.fromEntries(
     (Object.keys(abilities) as Ability[]).map((ability) => [ability, abilityMod(abilities[ability])]),
   ) as Record<Ability, number>;
@@ -454,7 +477,9 @@ export function computeSheetDerived(
           value:
             sheet.proficiencies.saves.includes(ability) || featureSaves.includes(ability) ? pb : 0,
         },
-        { label: "features", value: defense.saveBonus },
+        // Aura of Protection, the one feature save bonus: an unconscious
+        // paladin grants it to nobody, themselves included.
+        { label: "features", value: auraGranted(sheet) ? defense.saveBonus : 0 },
         // Durable Magic's +2, Elegant Courtier's Charisma (authored-effects.ts).
         { label: "subclass features", value: authoredSaveModifier(sheet, ability, abilityMods) },
         { label: "magic items", value: magicSaveBonus },
@@ -474,11 +499,13 @@ export function computeSheetDerived(
   const halfScope = defense.halfProficiency ?? null;
   const halfPb = halfScope === "physical" ? Math.ceil(pb / 2) : Math.floor(pb / 2);
   const expertise = sheet.proficiencies.expertise ?? [];
+  // Skills a feature trains (Beguiling Influence), as featureSaves above.
+  const featureSkills = featureSkillProficiencies({ features: riderFeatures });
   const skillParts = Object.fromEntries(
     SRD_SKILLS.map((skill) => {
       const trained = expertise.includes(skill.id)
         ? { label: "expertise", value: pb * 2 }
-        : sheet.proficiencies.skills.includes(skill.id)
+        : sheet.proficiencies.skills.includes(skill.id) || featureSkills.includes(skill.id)
           ? { label: "proficiency", value: pb }
           : halfProficiencyCovers(halfScope, skill.ability)
             ? { label: "half proficiency", value: halfPb }
@@ -515,17 +542,23 @@ export function computeSheetDerived(
     { label: "Investigation", value: skills.investigation },
     { label: "features", value: defense.passiveBonus },
   ]);
+  // A worn item's bonus to spell attacks and the spell save DC (SRD 5.1,
+  // Robe of the Archmagi: "Your spell save DC and spell attack bonus each
+  // increase by 2"; Staff of Power, Wand of the War Mage).
+  const itemSpellParts = (value: number) => (value ? [{ label: MAGIC_ITEMS_PART, value }] : []);
   const spellSaveParts = spellAbility
     ? [
         { label: "base", value: 8 },
         { label: "proficiency", value: pb },
         { label: `${spellAbility.toUpperCase()} modifier`, value: abilityMods[spellAbility] },
+        ...itemSpellParts(magic?.spellDcBonus ?? 0),
       ]
     : [];
   const spellAttackParts = spellAbility
     ? [
         { label: "proficiency", value: pb },
         { label: `${spellAbility.toUpperCase()} modifier`, value: abilityMods[spellAbility] },
+        ...itemSpellParts(magic?.spellAttackBonus ?? 0),
       ]
     : [];
   return {
@@ -583,6 +616,17 @@ function casterEntryForSpell(
 }
 
 type DerivedSheet = Parameters<typeof computeSheetDerived>[0];
+// The fields a race's spell reads, which a full sheet carries.
+type RacialSheet = Parameters<typeof racialSpellAbility>[0];
+
+// Whether the class's levelled lists hold the spell (a race's cantrips sit
+// on the cantrip list, and are the race's).
+function classListsHold(casting: DerivedSheet["spellcasting"], spell: string): boolean {
+  const wanted = textKey(spell);
+  return [casting, ...(casting?.casters ?? [])].some((entry) =>
+    [...(entry?.known ?? []), ...(entry?.prepared ?? [])].some((name) => textKey(name) === wanted),
+  );
+}
 export type CastingSheet<T extends DerivedSheet = DerivedSheet> = T & { spellcasting: NonNullable<T["spellcasting"]> };
 
 // A sheet with spellcasting, which always has a save DC (its ability is
@@ -607,6 +651,12 @@ export function spellSaveDcFor(
     return fromItem;
   }
   const derived = computeSheetDerived(sheet);
+  // A race's spell is cast with the ability the race names, caster or not
+  // (SRD 5.1, Infernal Legacy; High Elf, Cantrip).
+  const racial = racialSpellAbility(sheet as RacialSheet, spellName, classListsHold(sheet.spellcasting, spellName));
+  if (racial) {
+    return 8 + derived.proficiencyBonus + derived.abilityMods[racial];
+  }
   if (!sheet.spellcasting) {
     return derived.spellSaveDc;
   }
@@ -614,7 +664,7 @@ export function spellSaveDcFor(
   if (!owner || owner.ability === sheet.spellcasting.ability) {
     return derived.spellSaveDc;
   }
-  return 8 + derived.proficiencyBonus + derived.abilityMods[owner.ability];
+  return 8 + derived.proficiencyBonus + derived.abilityMods[owner.ability] + itemPart(derived.parts.spellSaveDc);
 }
 
 // The spell-attack bonus for a named spell, same ownership rule as the DC.
@@ -629,6 +679,10 @@ export function spellAttackFor(
     return fromItem;
   }
   const derived = computeSheetDerived(sheet);
+  const racial = racialSpellAbility(sheet as RacialSheet, spellName, classListsHold(sheet.spellcasting, spellName));
+  if (racial) {
+    return derived.proficiencyBonus + derived.abilityMods[racial];
+  }
   if (!sheet.spellcasting) {
     return derived.spellAttack;
   }
@@ -636,7 +690,7 @@ export function spellAttackFor(
   if (!owner || owner.ability === sheet.spellcasting.ability) {
     return derived.spellAttack;
   }
-  return derived.proficiencyBonus + derived.abilityMods[owner.ability];
+  return derived.proficiencyBonus + derived.abilityMods[owner.ability] + itemPart(derived.parts.spellAttack);
 }
 
 // The spellcasting ability a named spell is cast with: the owning caster

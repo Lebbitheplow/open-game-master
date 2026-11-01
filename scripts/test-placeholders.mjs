@@ -233,6 +233,50 @@ for (const [name, plate] of [
 ]) {
   expectPlate(`npc name ${name}`, R.monsterPlaceholder("humanoid", { cr: 3, genre: "high_fantasy", slug: "custom", name }), plate);
 }
+// Enemy NPCs by race and presentation: every painted cell is reached from
+// the stat block and from the role itself, and each fallback holds.
+for (const role of R.ENEMY_NPC_VARIANT_ROLES) {
+  for (const race of R.ENEMY_NPC_VARIANT_RACES) {
+    for (const presentation of ["masculine", "feminine", "neutral"]) {
+      const want = `/assets/placeholders/enemy-npc/${role}-${race}-${presentation}.webp`;
+      const byRole = R.enemyNpcPlaceholder(role, { race: race.replace(/-/g, "_"), presentation });
+      check(byRole, `enemy npc ${role}/${race}/${presentation}`);
+      if (byRole !== want) {
+        failures.push(`enemy npc ${role}/${race}/${presentation} drew ${byRole}, expected ${want}`);
+      }
+    }
+  }
+}
+for (const [label, url, want] of [
+  // From the stat block, with gender standing in for a blank presentation.
+  ["bandit captain, hill dwarf, Female", R.monsterPlaceholder("humanoid", { cr: 2, genre: "high_fantasy", slug: "bandit-captain", name: "Bandit Captain", race: "hill_dwarf", gender: "Female" }), "enemy-npc/bandit-dwarf-feminine"],
+  ["scout, wood elf, Male", R.monsterPlaceholder("humanoid", { cr: 0.5, genre: "dark_fantasy", slug: "scout", name: "Scout", race: "wood_elf", gender: "Male" }), "enemy-npc/archer-elf-masculine"],
+  ["knight, half-orc, no presentation", R.monsterPlaceholder("humanoid", { cr: 3, genre: "high_fantasy", slug: "knight", name: "Knight", race: "half-orc" }), "enemy-npc/dark-knight-half-orc-neutral"],
+  ["cult fanatic, presentation beats gender", R.monsterPlaceholder("humanoid", { cr: 2, genre: "high_fantasy", slug: "cult-fanatic", name: "Cult Fanatic", race: "human", presentation: "feminine", gender: "Male" }), "enemy-npc/cultist-human-feminine"],
+  // No race recorded: the role token, exactly as before, whatever the gender.
+  ["bandit, no race", R.monsterPlaceholder("humanoid", { cr: 0.125, genre: "high_fantasy", slug: "bandit", name: "Bandit", gender: "Female" }), "monster/bandit"],
+  ["bandit, race Unknown", R.monsterPlaceholder("humanoid", { cr: 0.125, genre: "high_fantasy", slug: "bandit", name: "Bandit", race: "Unknown" }), "monster/bandit"],
+  // A race the role was not painted for keeps its own face, never a human one.
+  ["drow bandit", R.monsterPlaceholder("humanoid", { cr: 0.125, genre: "high_fantasy", slug: "bandit", name: "Bandit", race: "drow", gender: "Female" }), "character-race/drow-feminine"],
+  ["tiefling assassin", R.monsterPlaceholder("humanoid", { cr: 8, genre: "high_fantasy", slug: "assassin", name: "Assassin", race: "tiefling" }), "character-race/tiefling-neutral"],
+  // A role with no variants does the same for a covered race: a dwarf
+  // assassin is still a dwarf, so it draws the dwarf portrait.
+  ["dwarf assassin", R.monsterPlaceholder("humanoid", { cr: 8, genre: "high_fantasy", slug: "assassin", name: "Assassin", race: "hill_dwarf", gender: "Male" }), "character-race/dwarf-masculine"],
+  // An unrecognised race word is not a race we can draw: the role token.
+  ["spacefolk bandit", R.monsterPlaceholder("humanoid", { cr: 0.125, genre: "high_fantasy", slug: "bandit", name: "Bandit", race: "spacefolk" }), "monster/bandit"],
+  // The genre's own token still comes first: a cyberpunk bandit is a ganger.
+  ["cyberpunk dwarf bandit", R.monsterPlaceholder("humanoid", { cr: 0.125, genre: "cyberpunk", slug: "bandit", name: "Bandit", race: "dwarf" }), "monster/cyberpunk-gang"],
+  // A homebrew stat block is drawn by its type, race or not.
+  ["homebrew dwarf bandit", R.monsterPlaceholder("humanoid", { cr: 1, genre: "high_fantasy", slug: "homebrew:abc", name: "Bandit", race: "dwarf" }), "monster/humanoid"],
+]) {
+  check(url, label);
+  if (!url.endsWith(`/${want}.webp`)) {
+    failures.push(`${label} drew ${url}, expected ${want}`);
+  }
+}
+if (R.enemyNpcPlaceholder("merchant", { race: "dwarf" }) !== null) {
+  failures.push("a merchant is not an enemy role, yet enemyNpcPlaceholder answered");
+}
 // A mage or a veteran is not one of the roles; it keeps the humanoid plate.
 expectPlate("mage stays humanoid", R.monsterPlaceholder("humanoid", { cr: 6, genre: "high_fantasy", slug: "mage", name: "Mage" }), "humanoid");
 expectPlate("veteran stays humanoid", R.monsterPlaceholder("humanoid", { cr: 3, genre: "high_fantasy", slug: "veteran", name: "Veteran" }), "humanoid");
@@ -472,7 +516,7 @@ for (const url of shipped) {
   const group = url.split("/")[3];
   const ceiling = ["campaign", "map", "misc", "workshop"].includes(group)
     ? BUDGET_SCENE_FILE_BYTES
-    : ["npc", "monster", "avatar", "character", "character-genre"].includes(group)
+    : ["npc", "monster", "enemy-npc", "avatar", "character", "character-genre"].includes(group)
       ? BUDGET_PAINTED_SQUARE_BYTES
       : BUDGET_FILE_BYTES;
   if (size > ceiling) {

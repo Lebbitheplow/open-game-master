@@ -56,17 +56,7 @@ export function holdForEnemies(campaign: Campaign | null, encounter: Encounter, 
     const enemy = enemies.get(id);
     return Boolean(enemy && canEnemyAct({ enemy, encounter, kind: "action" }).ok);
   });
-  // One walked past while it could not act lost its turn: no hold for it,
-  // and no name among those who act, but a line saying so (issue #666: it
-  // passed in silence).
-  const lost = [...new Set(enemyIds)].filter((id) => {
-    const enemy = enemies.get(id);
-    const allowed = enemy ? canEnemyAct({ enemy, encounter, kind: "action" }) : null;
-    return Boolean(allowed && !allowed.ok && allowed.reason === "incapacitated");
-  });
-  if (lost.length) {
-    encounter.legendary.lost = [...new Set([...(encounter.legendary.lost ?? []), ...lost])];
-  }
+  noteLostTurns(encounter, enemyIds, enemies);
   // Added to, never replaced: the enemies an earlier pass left due are owed
   // their turns still (a pass that goes on from someone who left as their
   // turn began holds both legs).
@@ -85,6 +75,26 @@ export function holdForEnemies(campaign: Campaign | null, encounter: Encounter, 
     publishPersisted(campaign.id, "floor_changed", { floor: held });
   }
   return due;
+}
+
+// One walked past while it could not act lost its turn: no hold for it, and
+// no name among those who act, but a line saying so (issue #666: it passed
+// in silence). Recorded on the encounter, which the caller saves. A pass
+// that turns the round over records the ones it walked before the wrap
+// before the new round can free them (issue 713).
+export function noteLostTurns(
+  encounter: Encounter,
+  enemyIds: string[],
+  enemies = new Map(listEnemies(encounter.id).map((enemy) => [enemy.id, enemy])),
+) {
+  const lost = [...new Set(enemyIds)].filter((id) => {
+    const enemy = enemies.get(id);
+    const allowed = enemy ? canEnemyAct({ enemy, encounter, kind: "action" }) : null;
+    return Boolean(allowed && !allowed.ok && allowed.reason === "incapacitated");
+  });
+  if (lost.length) {
+    encounter.legendary.lost = [...new Set([...(encounter.legendary.lost ?? []), ...lost])];
+  }
 }
 
 export function enemiesDue(encounter: Encounter): string[] {

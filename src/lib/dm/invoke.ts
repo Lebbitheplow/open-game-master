@@ -36,6 +36,7 @@ import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { routeCall } from "@/lib/dm/tool-merge";
 import { settleCompanionLeaving } from "@/lib/dm/departure-turn";
 import { runInTurnScope } from "@/lib/dm/job-control";
+import { postPersonsRecord, startPersonsRecord } from "@/lib/dm/persons-record";
 import { mergedCall, renamedArgs } from "@/lib/dm/tool-merge-logic";
 
 export type Actor =
@@ -309,6 +310,9 @@ export async function invokeEngine(
     return { ok: false, ...MUTATION_CAP_REFUSAL };
   }
 
+  // A person's call leaves its rolls and what it changed in the chronicle,
+  // as an AI turn's narration does (src/lib/dm/persons-record.ts, issue 713).
+  const record = actor.kind === "human" ? startPersonsRecord(campaign, turn) : null;
   const sheets: CharacterSheet[] = listSheets(campaign.id);
   const sheetsById = new Map(sheets.map((sheet) => [sheet.id, sheet]));
 
@@ -352,6 +356,7 @@ export async function invokeEngine(
     return { result };
   });
   if ("thrown" in ran) {
+    if (record) postPersonsRecord(campaign, turn, record);
     return { ok: false, error: ran.thrown };
   }
   const result = ran.result;
@@ -395,6 +400,7 @@ export async function invokeEngine(
     turn.status = parked ? "awaiting_rolls" : "done";
   }
   saveDmTurn(turn);
+  if (record) postPersonsRecord(campaign, turn, record);
 
   if (typeof result.error === "string") {
     const refusal = toolError(result);
@@ -428,6 +434,9 @@ export function resumeHumanTurn(turnId: string): boolean {
 // to belong to, closed the way invokeEngine closes one.
 export function onPersonsTurn<T>(campaign: Campaign, run: (turn: DmTurn) => T): T {
   const turn = humanTurnFor(campaign.id);
+  // Its rolls reach the chronicle too (issue 713); the enemies the server
+  // plays here say each blow in their own note.
+  const record = startPersonsRecord(campaign, turn);
   const holder = turnHolder(campaign.id);
   // Its sheet changes are the turn's, as an invokeEngine call's are (#622).
   const out = runInTurnScope(turn.id, () => {
@@ -439,6 +448,7 @@ export function onPersonsTurn<T>(campaign: Campaign, run: (turn: DmTurn) => T): 
   const parked = listOpenPendingRolls(campaign.id).some((pending) => pending.turnId === turn.id);
   turn.status = parked ? "awaiting_rolls" : "done";
   saveDmTurn(turn);
+  postPersonsRecord(campaign, turn, record, { changes: false });
   return out;
 }
 

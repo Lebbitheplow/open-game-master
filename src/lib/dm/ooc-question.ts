@@ -57,6 +57,20 @@ export function oocQuestionPending(history: readonly Line[], { heldMoves = false
   );
 }
 
+// Whether the newest line anyone wrote waits on the GM: a move or a line said
+// in character, or table talk put to the GM (table talk alone waits on
+// nobody). Table notes after it are passed over: a chapter's close landing
+// below a player's line answers nothing (issue 636).
+export function lineAwaitsGm(history: readonly Line[]): boolean {
+  for (let index = history.length - 1; index >= 0; index -= 1) {
+    const line = history[index];
+    if (line.authorType !== "system") {
+      return line.authorType === "player" && (!line.content.startsWith(OOC_PREFIX) || addressesDm(line.content));
+    }
+  }
+  return false;
+}
+
 // A DM line that is story: anything the DM wrote but an out-of-character
 // answer. "Since the DM last narrated" (the moves a turn answers, the newest
 // passage a reroll may take, a join notice still unanswered) is counted from

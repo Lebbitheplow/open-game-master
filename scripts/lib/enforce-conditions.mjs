@@ -135,6 +135,17 @@ export function kit(world) {
     return dice.filter((die) => die.startsWith("d20:")).length;
   }
 
+  // The lead's "Hand on the turn": the enemies a pass left due end their
+  // turns unplayed. Whether any were due.
+  function handOn() {
+    if (!world.encounter()?.legendary.due?.length) {
+      return false;
+    }
+    const campaign = world.campaign();
+    onPersonsTurn(campaign, (turn) => turns.handOnEnemyTurns(campaign, turn, false));
+    return true;
+  }
+
   return {
     offBoard,
     freshTurn,
@@ -152,17 +163,23 @@ export function kit(world) {
     // (src/lib/dm/enemies-due.ts): the lead hands the turn on first, ending
     // their turns unplayed, as the next pass used to.
     endOwnTurn: (userId) => {
-      if (world.encounter()?.legendary.due?.length) {
-        const campaign = world.campaign();
-        onPersonsTurn(campaign, (turn) => turns.handOnEnemyTurns(campaign, turn, false));
-      }
+      handOn();
       return turns.endOwnTurn(world.campaignId, userId);
     },
-    skipTurn: () => turns.skipCurrentTurn(world.campaignId),
+    // The lead's skip as the floor route makes it: while enemies are due
+    // the floor is held for them, and releasing it hands their turns on
+    // (what waited for them follows: the round turning over, a dying
+    // hero's save, issue 713); otherwise the pointer moves on.
+    skipTurn: () => (handOn() ? true : turns.skipCurrentTurn(world.campaignId)),
+    handOn,
+    // Whose turn it is: nobody's in the order while the enemies a pass
+    // walked past are still due (src/lib/dm/turn-owner.ts), so a loop that
+    // skips to someone's turn hands theirs on first.
     pointer: () => {
       const encounter = world.encounter();
       const entry = encounter.order[encounter.turnIndex];
-      return { round: encounter.round, id: entry?.characterId ?? entry?.enemyId ?? null };
+      const id = encounter.legendary.due?.length ? null : (entry?.characterId ?? entry?.enemyId ?? null);
+      return { round: encounter.round, id };
     },
   };
 }

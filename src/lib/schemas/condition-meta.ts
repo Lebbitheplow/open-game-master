@@ -42,6 +42,9 @@ const conditionInstanceSchema = z.object({
     // that spell's conditions, and an aura rolls the slot's dice.
     spell: z.string().trim().min(1).max(80).optional(),
     slotLevel: z.number().int().min(0).max(9).optional(),
+    // A casting held across turns cast as a ritual, which spends no slot
+    // when it completes (src/lib/dm/long-casting-logic.ts).
+    ritual: z.boolean().optional(),
     // Ends when the creature takes damage (Sleep, Hypnotic Pattern), or
     // gives it a new save when it does (Hideous Laughter, Dominate Person).
     endsOnDamage: z.boolean().optional(),
@@ -61,6 +64,10 @@ const conditionInstanceSchema = z.object({
     // A monster's grapple prints its escape DC, which the escape is rolled
     // against instead of a contest (src/lib/dm/grapple.ts).
     escapeDc: z.number().int().min(1).max(40).optional(),
+    // The Grappler feat's pin: on the grappler's own restraint, the creature
+    // they hold pinned; it lasts while that grapple does
+    // (src/lib/dm/grappler-pin.ts).
+    pinning: z.string().trim().min(1).max(80).optional(),
     // Ends when the creature finishes a long rest (Life Drain, Draining Kiss).
     untilLongRest: z.boolean().optional(),
     // A knocked-out creature's 1d4 hours to coming to (foe-carry-logic.ts).

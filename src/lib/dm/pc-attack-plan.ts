@@ -492,6 +492,7 @@ export function planPcAttack(input: {
     budget,
     options,
     grantedBonusAction,
+    grantedWholeAction: built.grantedWholeAction,
     grantedWithActivation: built.grantedWithActivation,
     grantedActivation: built.grantedActivation,
     bonusSwing: maneuver?.use === "bonus_swing" ? "Quick Toss" : undefined,

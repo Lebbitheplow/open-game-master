@@ -4,6 +4,7 @@
 // module describes. Nothing is spent here and nothing is rolled: every
 // return is either a refusal or a profile.
 
+import { holdsPactOfTheBlade } from "@/lib/srd/pact-weapon";
 import { sheetSpellAuthors } from "@/lib/dm/spell-authors";
 import { brawlerUnarmed } from "@/lib/srd/feat-combat";
 import { getMounts } from "@/lib/db/mounts";
@@ -16,6 +17,7 @@ import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { lastCastSlot } from "@/lib/dm/spell-effects";
 import { castRedirect } from "@/lib/dm/cast-tools";
 import {
+  improvisedUse,
   resolveAttackWeapon,
   spellAttackProfile,
   weaponAttackProfile,
@@ -40,6 +42,7 @@ import { noneNamed, type ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { weaponMaterial } from "@/lib/dm/damage-logic";
 import { hasName, namesOf } from "@/lib/dm/cast-rules";
+import { magicItemRiders } from "@/lib/srd/magic-items";
 
 export type AttackKind = "weapon" | "spell" | "natural" | "granted";
 
@@ -53,6 +56,9 @@ export type BuiltAttack = {
   scalingNote: string | null;
   // An attack a condition grants that rides a bonus action.
   grantedBonusAction: boolean;
+  // One that is the whole action, not a swing of the Attack action (Flame
+  // Blade).
+  grantedWholeAction: boolean;
   // The granted attack that may ride its activation's bonus action, by name,
   // and what that activation spends.
   grantedWithActivation: string | null;
@@ -319,11 +325,14 @@ export function buildAttackProfile(
       const refusal = noneNamed(`${sheet.name} carries no weapon called`, args.weapon ?? "", [...weapons, ...grantedAttackConditions(sheet.conditions), "unarmed strike"]);
       return { ...refusal, error: `${refusal.error} An object they pick up and swing is sent by what it is with improvised true. Nothing was rolled.` };
     }
-    const properties = resolved.srd?.properties ?? [];
-    const lance = resolved.srd?.name === SPECIAL_WEAPONS.lance;
+    // A carried weapon thrown or swung as an improvised one
+    // (attack-logic.ts improvisedUse) is no longer the weapon it is.
+    const used = (args.improvised === true ? improvisedUse(resolved, target.apart) : null) ?? resolved;
+    const properties = used.srd?.properties ?? [];
+    const lance = used.srd?.name === SPECIAL_WEAPONS.lance;
     const hands = handsRuling({
       who: sheet.name,
-      weapon: resolved.displayName,
+      weapon: used.displayName,
       properties,
       lance,
       mounted: Boolean(getMounts(campaignId)[sheet.id]),
@@ -336,26 +345,36 @@ export function buildAttackProfile(
     }
     // Shillelagh: a club or quarterstaff swings with the spellcasting
     // ability and a d8, and is magical (src/lib/dm/attack-features.ts).
-    const shillelagh = shillelaghSwing(sheet, resolved, derived);
+    const shillelagh = shillelaghSwing(sheet, used, derived);
     // Hex Warrior: the bound weapon swings with Charisma (attack-features.ts).
-    const hexed = shillelagh ? null : hexWarriorSwing(sheet, resolved, derived);
-    const material = weaponMaterial(sheet.equipment.find((item) => item.name === resolved.displayName));
-    const swing = (twoHanded: boolean) => ({
-      ...weaponAttackProfile(shillelagh?.derived ?? hexed?.derived ?? derived, sheet.proficiencies.weapons, shillelagh?.resolved ?? resolved, {
+    const hexed = shillelagh ? null : hexWarriorSwing(sheet, used, derived);
+    const material = weaponMaterial(sheet.equipment.find((item) => item.name === used.displayName));
+    // SRD 5.1, Pact of the Blade: "You are proficient with it while you
+    // wield it" (src/lib/srd/pact-weapon.ts).
+    const pactForm = used.srd?.kind === "melee" && holdsPactOfTheBlade(sheet) ? [used.srd.name.toLowerCase()] : [];
+    const swing = (twoHanded: boolean, weapon = used) => ({
+      ...weaponAttackProfile(shillelagh?.derived ?? hexed?.derived ?? derived, [...sheet.proficiencies.weapons, ...pactForm], shillelagh?.resolved ?? weapon, {
         riders,
         martialArts: martialArtsApplies(sheet),
         brawler: brawlerUnarmed(sheet),
+        // Bracers of Archery's longbow training and +2 damage.
+        worn: magicItemRiders(sheet.equipment, sheet).weaponRiders,
         twoHanded,
         offHand: args.offHand,
         otherWeaponInHand: otherHandArmed({
           equipment: sheet.equipment,
-          weapon: resolved.displayName,
+          weapon: used.displayName,
           shieldName,
         }),
       }),
       material,
     });
     profile = swing(hands.twoHanded);
+    // A torch's 1 fire is for a melee attack with it; thrown past its reach
+    // it is any object (src/lib/srd/gear-weapons.ts).
+    if (profile.gearWeapon && !profile.ranged && thrownAtRange(profile, target.apart)) {
+      profile = swing(false, { ...used, bareObject: true });
+    }
     let handsNote = hands.note;
     // SRD 5.1 Versatile: the bigger die is for a melee attack. A spear thrown
     // past its reach (counting the reach Demiurgic Colossus adds below) is a
@@ -365,7 +384,7 @@ export function buildAttackProfile(
       const reachTiles = profile.reachTiles + (authoredReachBonus(sheet)?.tiles ?? 0);
       if (thrownAtRange({ thrown: true, reachTiles }, target.apart)) {
         profile = swing(false);
-        handsNote = `${resolved.displayName} is thrown: one-handed die`;
+        handsNote = `${used.displayName} is thrown: one-handed die`;
       }
     }
     if (handsNote) {
@@ -378,14 +397,14 @@ export function buildAttackProfile(
       profile = { ...profile, riderNotes: [...profile.riderNotes, hexed.note] };
     }
     kind = "weapon";
-    special = lance ? "lance" : resolved.srd?.name === SPECIAL_WEAPONS.net ? "net" : null;
+    special = lance ? "lance" : used.srd?.name === SPECIAL_WEAPONS.net ? "net" : null;
   }
   // Demiurgic Colossus: a raging giant's melee reach grows by 5 feet.
   const reach = kind === "weapon" && !profile.ranged ? authoredReachBonus(sheet) : null;
   if (reach) {
     profile = { ...profile, reachTiles: profile.reachTiles + reach.tiles, riderNotes: [...profile.riderNotes, `${reach.feature}: ${reach.tiles * 5} more feet of reach`] };
   }
-  return { profile, derived, riders, scalingNote, grantedBonusAction, grantedWithActivation, grantedActivation: granted?.attack.activation ?? "bonus", kind, special, conjured, grantedSpell };
+  return { profile, derived, riders, scalingNote, grantedBonusAction, grantedWholeAction: granted?.attack.wholeAction === true, grantedWithActivation, grantedActivation: granted?.attack.activation ?? "bonus", kind, special, conjured, grantedSpell };
 }
 
 // The natural attacks a beast form fights with: the record's own, or for a

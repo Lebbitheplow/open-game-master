@@ -117,6 +117,9 @@ export type HandCard = {
   // The card is the turn's object interaction (hand-gear.ts): a draw, a
   // stow, a pick-up, a hand-over.
   interaction?: boolean;
+  // An attack that is the whole action, not a swing of the Attack action
+  // (Flame Blade, hand-granted.ts): afterCommit spends the action for it.
+  wholeAction?: boolean;
   // A spell that leaves an area on the battle map: the square it is laid on
   // is picked on the board (src/lib/battlemap/hand-area.ts) and sent as the
   // tool's atX/atY/towardX/towardY.

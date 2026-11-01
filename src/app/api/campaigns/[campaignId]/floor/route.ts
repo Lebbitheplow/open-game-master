@@ -89,8 +89,11 @@ export async function POST(
     }
     setFloor(campaignId, next);
     publishPersisted(campaignId, "floor_changed", { floor: next });
-    // An open floor at a table that waits for everyone starts a beat.
-    settleTableWait(campaignId);
+    // An open floor at a table that waits for everyone starts a beat, and
+    // answers now what was posted before it opened (issue 636).
+    if (settleTableWait(campaignId)) {
+      requestDmTurn(campaignId);
+    }
     return Response.json({ ok: true, floor: next });
   }
 
@@ -113,7 +116,15 @@ export async function POST(
   // on (src/lib/dm/enemies-due.ts, src/lib/dm/invoke.ts handOnFromBanner).
   if (floor.mode === "hold" && floor.next.mode === "initiative" && getActiveEncounter(campaignId)?.legendary.due?.length) {
     const error = handOnFromBanner(context.campaign);
-    return error ? Response.json({ error }, { status: 409 }) : Response.json({ ok: true });
+    if (error) {
+      return Response.json({ error }, { status: 409 });
+    }
+    // The turn handed on turned the round over into the next round's
+    // enemies (issue 713): where the AI runs them, it is woken to play them.
+    if (getActiveEncounter(campaignId)?.legendary.due?.length) {
+      requestDmTurn(campaignId);
+    }
+    return Response.json({ ok: true });
   }
   // A hold opens into its stored spotlight; anything else opens into the
   // fight's floor while a fight runs (read fresh from the pointer, which may
@@ -124,8 +135,11 @@ export async function POST(
   publishPersisted(campaignId, "floor_changed", { floor: next });
   if (floor.mode === "spotlight" && floor.respondedUserIds.length) {
     requestDmTurn(campaignId);
-  } else {
-    settleTableWait(campaignId);
+  } else if (settleTableWait(campaignId)) {
+    // A move posted while the narration was still being written, at a table
+    // that holds after each narration: the hold kept the narration from
+    // settling the table, so the release answers it (issue 636).
+    requestDmTurn(campaignId);
   }
   return Response.json({ ok: true });
 }

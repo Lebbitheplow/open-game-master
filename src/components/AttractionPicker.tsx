@@ -2,9 +2,13 @@
 
 import { useId } from "react";
 import { InfoButton } from "@/components/ui/InfoDialog";
-import { ATTRACTION_CHOICES, ATTRACTION_NOTE_MAX, type Attraction } from "@/lib/attraction";
+import { ATTRACTION_CHOICES, ATTRACTION_NOTE_MAX, openToMore, type Attraction } from "@/lib/attraction";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
+import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
+
+const CHIP =
+  "inline-flex h-10 items-center rounded-full border border-stone-700/70 bg-stone-950/60 px-3 text-xs text-stone-300 transition-colors duration-150 hover:border-amber-500/40 hover:text-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 aria-pressed:border-rose-400/60 aria-pressed:bg-rose-500/10 aria-pressed:text-rose-100 motion-press";
 
 // "Drawn to" (issue 501): who a character or an NPC could fall for, as
 // chips beside their gender and a short note. One tap picks or drops a
@@ -24,6 +28,11 @@ export function AttractionPicker({
   className?: string;
 }) {
   const labelId = useId();
+  // Open to more than one partner (issue 642), beside who they are drawn to
+  // because it is the same kind of fact about them. Off is the default and
+  // most tables never touch it; a host from before it would drop it unsaved.
+  const offersOpen = hostOffers(useCapabilities(), "openRelationships");
+  const open = openToMore(value);
   return (
     <div role="group" aria-labelledby={labelId} className={cn("min-w-0", className)} data-attraction-picker>
       <span className="mb-1 flex items-center gap-1 text-xs text-stone-400">
@@ -48,7 +57,7 @@ export function AttractionPicker({
                       ),
                 })
               }
-              className="inline-flex h-10 items-center rounded-full border border-stone-700/70 bg-stone-950/60 px-3 text-xs text-stone-300 transition-colors duration-150 hover:border-amber-500/40 hover:text-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 aria-pressed:border-rose-400/60 aria-pressed:bg-rose-500/10 aria-pressed:text-rose-100 motion-press"
+              className={CHIP}
             >
               {choice.label}
             </button>
@@ -63,12 +72,29 @@ export function AttractionPicker({
         aria-label="Drawn to: a note"
         className={cn(ui.input, "mt-1.5 h-10")}
       />
+      {offersOpen ? (
+        <span className="mt-1.5 flex items-center gap-1">
+          <button
+            type="button"
+            aria-pressed={open}
+            onClick={() => onChange({ genders: value.genders, note: value.note, ...(open ? {} : { open: true }) })}
+            className={CHIP}
+            data-open-relationship
+          >
+            Open to more than one partner
+          </button>
+          <InfoButton label="Open to more than one partner" text={OPEN_RELATIONSHIP_HINT} />
+        </span>
+      ) : null}
     </div>
   );
 }
 
 export const CHARACTER_ATTRACTION_HINT =
   "Who your character could fall for. Leave it blank and nothing changes; it only matters at a table with romance on, where an NPC who courts your character is one this fits.";
+
+export const OPEN_RELATIONSHIP_HINT =
+  "Off, the usual, they keep to one partner: while they are with someone, nobody new courts them and they court nobody new. On, they may have more than one, as long as everyone in it is open too. A partner who is not open still minds a flirt in front of them. Where a whole culture lives this way, say so in the campaign's world notes.";
 
 export const NPC_ATTRACTION_HINT =
   "Who they could fall for. Blank means not decided yet: the GM settles it the first time it matters, and it then stays.";

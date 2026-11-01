@@ -323,9 +323,14 @@ export function handleTakeRest(
   // the server's own choice (toward half HP) stand in for a character with
   // no player connected.
   const humanDm = getDmTurn(turnId)?.actor === "human_dm";
-  const choosers = sheets.filter(
-    (sheet) => !sheet.deathSaves?.dead && playerChoosesHitDice(campaign.id, sheet),
-  );
+  // The rest's own hour rolled the dying's death saves, so a hero dying
+  // when the rest was called for may be dead by its end. The sheets this
+  // handler was given were read before that, so read them again: the dead
+  // choose no hit dice and the server plans none for them.
+  const standing = sheets
+    .map((stale) => getSheetById(stale.id))
+    .filter((sheet): sheet is CharacterSheet => Boolean(sheet) && !sheet?.deathSaves?.dead);
+  const choosers = standing.filter((sheet) => playerChoosesHitDice(campaign.id, sheet));
   const chooses = (id: string) => choosers.some((sheet) => sheet.id === id);
   const plan = new Map<string, number>();
   const leftToPlayers: string[] = [];
@@ -342,7 +347,7 @@ export function handleTakeRest(
       plan.set(sheet.id, entry.dice);
     }
   } else {
-    for (const sheet of sheets) {
+    for (const sheet of standing) {
       if (chooses(sheet.id)) {
         continue;
       }

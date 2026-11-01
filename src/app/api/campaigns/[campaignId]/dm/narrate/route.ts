@@ -8,6 +8,7 @@ import { enqueueDmJob } from "@/lib/dm/queue";
 import { publishEphemeral, publishPersisted, publishWithSeq } from "@/lib/events";
 import { meetSpeakers } from "@/lib/dm/party-bonds";
 import { voiceOwedConscience } from "@/lib/dm/conscience-voice";
+import { readRomanceScene } from "@/lib/dm/romance-scenes";
 import { enqueueNarrationAudio } from "@/lib/tts";
 import { getNpcById } from "@/lib/db/npcs";
 import type { Speaker } from "@/lib/dm/speech";
@@ -122,6 +123,9 @@ export async function POST(
   // say (issue 615): their own line right after it, for a person running the
   // table and an agent program alike.
   const voiced = voiceOwedConscience(campaign, message, { post: true });
+  // A romance scene due on the Bonds tab, read against this passage, and the
+  // next one chosen (issue 643).
+  readRomanceScene(campaign, message, { handedNow: true });
 
   // Held responses behave exactly as they do after an AI narration: the
   // table is locked for discussion until the floor is opened again.

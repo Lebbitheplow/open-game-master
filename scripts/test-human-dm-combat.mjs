@@ -132,8 +132,14 @@ await test("the DM's on-a-turn is a turn ending: a downed character passed rolls
   world.patch(slow.id, { currentHp: 0, deathSaves: { successes: 0, failures: 0, stable: false, dead: false } });
   world.dice(15);
   const out = await post(world, world.owner, "campaigns/[campaignId]/dm/initiative", {}, { op: "step", direction: "forward" });
-  world.clearDice();
   assert.equal(out.status, 200, out.body.error);
+  // The goblin before slow takes its turn first: slow's save and the new
+  // round wait for it (issue 713), and the DM's Hand on brings them.
+  assert.equal(world.sheet(slow.id).deathSaves.successes, 0, "slow's save waits for the goblin's turn");
+  assert.equal(world.encounter().round, 1);
+  const handed = await post(world, world.owner, "campaigns/[campaignId]/dm/initiative", {}, { op: "enemies", play: false });
+  world.clearDice();
+  assert.equal(handed.status, 200, handed.body.error);
   assert.equal(world.sheet(slow.id).deathSaves.successes, 1, "the downed character rolled no death save");
   assert.equal(world.encounter().round, 2, "the round never turned over");
   assert.equal(kit.current().characterId, fast.id);

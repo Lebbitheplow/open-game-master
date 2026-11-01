@@ -29,7 +29,10 @@
 //   GET /dm/effects are sent them all, live;
 //   a sheet's audit row is stored and sent with the character's notes and
 //   opt-ins blanked in its delta; the owner and the DM seats are sent it
-//   whole, as they are the sheet.
+//   whole, as they are the sheet;
+//   the cast is stored and sent as the people the table knows, met or heard
+//   (src/lib/dm/cast-logic.ts, issue 650); the seats that read the whole
+//   cast in the GM's people panel are sent it all, each marked, live.
 import { campaignSeats, capsFor, getCampaignById, type Campaign } from "@/lib/db/campaigns";
 import { getRoll } from "@/lib/db/rolls";
 import { getAuditEntry } from "@/lib/db/sheet-audit";
@@ -38,6 +41,7 @@ import { auditEntryForViewer, mayReadNotes, publicAuditEntry, publicSheet } from
 import { redactRoll, rollAccessFor, type RollView } from "@/lib/dm/viewer";
 import { audienceOf, type SeatRight } from "@/lib/event-audience";
 import { offerVisibleTo, publicItemProposal, readProposal } from "@/lib/dm/proposal-view";
+import { knownCast } from "@/lib/dm/cast-logic";
 
 type Payload = Record<string, unknown>;
 type SheetLike = { id: string; userId: string; notes?: string; hopes?: string; openToAdvances?: boolean; openToPacts?: boolean };
@@ -83,6 +87,15 @@ function effectsOf(type: string, payload: unknown): EffectLike[] | null {
   }
   const effects = asPayload(payload)?.effects;
   return Array.isArray(effects) ? (effects as EffectLike[]) : null;
+}
+
+// The cast (src/lib/dm/cast.ts), each member marked known or not.
+function castOf(type: string, payload: unknown): Array<{ known?: boolean }> | null {
+  if (type !== "cast_updated") {
+    return null;
+  }
+  const cast = asPayload(payload)?.cast;
+  return Array.isArray(cast) ? (cast as Array<{ known?: boolean }>) : null;
 }
 
 // An effect whose damage figure is the DM's (src/lib/battlemap/fx-plan.ts).
@@ -151,6 +164,10 @@ export function tablePayload(type: string, payload: unknown): unknown {
     const hidden = new Set(Array.isArray(rest.hiddenTargets) ? (rest.hiddenTargets as unknown[]).map(String) : []);
     delete rest.hiddenTargets;
     return { ...rest, effects: effects.filter((effect) => effect.visible === true && !hidden.has(String(effect.targetId ?? ""))) };
+  }
+  const cast = castOf(type, payload);
+  if (cast) {
+    return { ...(payload as Payload), cast: knownCast(cast) };
   }
   const roll = rollOf(type, payload);
   // A caller that forgot to redact does not get to publish the number.
@@ -307,6 +324,12 @@ export function payloadForViewer(
     // The table's list, filtered again on the way out: one logged before it
     // was filtered when stored holds the hidden effects too.
     return tablePayload(type, stored);
+  }
+
+  // The whole cast rides only live: cast_updated is ephemeral, and a fresh
+  // load reads it from the snapshot, which asks the same right.
+  if (castOf(type, stored)) {
+    return holds(viewer, "secretStory") && castOf(type, original) ? original : tablePayload(type, stored);
   }
 
   // The figure rides only live: an effect is ephemeral and never replayed.

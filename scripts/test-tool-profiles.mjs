@@ -245,7 +245,7 @@ const baseUrl = `http://127.0.0.1:${server.address().port}/v1`;
 
 const { createUser } = await import("../src/lib/db/users.ts");
 const { createCampaign, getCampaignById, setCampaignStatus, updateStorySettings, allocateSeq } = await import("../src/lib/db/campaigns.ts");
-const { createSheet, listSheets } = await import("../src/lib/db/sheets.ts");
+const { createSheet, listSheets, patchSheet } = await import("../src/lib/db/sheets.ts");
 const { createSheetSchema } = await import("../src/lib/schemas/sheet.ts");
 const { insertCampaignMessage, listRecentMessages } = await import("../src/lib/db/messages.ts");
 const { getDmTurn, getLatestDmTurnId } = await import("../src/lib/db/dm-turns.ts");
@@ -506,6 +506,11 @@ await test("the narration minimum narrates an exploration turn", async () => {
 await test("the combat minimum opens a fight and plays its next turn with the attack tools", async () => {
   process.env.OPENAI_COMPAT_CONTEXT = String(windows.MIN_COMBAT_WINDOW);
   const campaign = table("Bandits leap from the ditch! I draw my sword.");
+  // Two bandits that win initiative swing before Bram's next turn, and at 12
+  // hit points he can fall: his death saves then wake turns of their own, and
+  // the one read below is one of those, still running. The test is about the
+  // tools a fight's turn is offered, so he stands through it.
+  patchSheet(listSheets(campaign.id)[0].id, { maxHp: 300, currentHp: 300 });
   script = [{ call: "start_encounter", args: { enemies: [{ monster: "bandit" }, { monster: "bandit" }] } }, { content: "Steel rings as two bandits close in." }];
   requests.length = 0;
   await startDmTurn(campaign.id);

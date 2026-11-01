@@ -1,11 +1,13 @@
 {
   "table-player": {
     "version": 1,
-    "content": "7115a068105d9d53"
+    "edition": 2,
+    "content": "39a12de9a3ca9ce0"
   },
   "table-dm": {
     "version": 2,
-    "content": "4e15526ffd07bcba"
+    "edition": 2,
+    "content": "fd0e7e57a17323f6"
   },
   "workshop-shelf": {
     "version": 1,

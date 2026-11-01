@@ -13,7 +13,7 @@ import {
   updateCampaignInfo,
 } from "@/lib/db/campaigns";
 import { ensureOpenChapter, listChaptersForSnapshot } from "@/lib/db/chapters";
-import { publicCast } from "@/lib/dm/cast";
+import { castForSeat } from "@/lib/dm/cast";
 import { currentCoordination } from "@/lib/dm/coordination";
 import { currentTableWait } from "@/lib/dm/table-wait";
 import { getAmbience } from "@/lib/db/ambience";
@@ -132,8 +132,11 @@ export async function GET(
     // for everyone (src/lib/dm/table-wait.ts); null when it is not waiting.
     tableWait: currentTableWait(campaignId),
     members: listMembers(campaignId),
-    // Names and faces of the cast, for the transcript's speech lines.
-    cast: publicCast(campaignId),
+    // Names and faces of the cast, for the transcript's speech lines and
+    // the composer's @ menu: the people the table knows, or the whole cast,
+    // each marked, for the seats that read it in the GM's people panel
+    // (src/lib/dm/cast.ts, issue 650).
+    cast: castForSeat(campaignId, caps.secretStory),
     // Players this user has blocked; their table messages fold away.
     blockedUserIds: listBlockedUserIds(user.id),
     // A player's notes are theirs: every other seat but the DM's is sent

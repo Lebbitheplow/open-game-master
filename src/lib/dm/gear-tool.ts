@@ -53,7 +53,7 @@ export const handleItemTool = {
   function: {
     name: "handle_item",
     description:
-      "Equip, unequip, drop, pick up or hand over gear for a character (or an enemy), at its real cost. equip / unequip: put on or take off a shield (one action, on their own turn), draw or stow a weapon or other held thing (their free object interaction; a second takes the Use an Object action), wear or take off armor or a worn item (armor never changes in a fight; outside one the clock moves by the minutes it takes). drop: free; the item lies where it fell on the board, NOT destroyed, and anyone within 5 feet can pick it up with pick_up (use this, never remove_item, for anything set down, knocked away or let fall). pick_up: an item on the ground, from within 5 feet in a fight; the free object interaction. hand: give an item to an ally within 5 feet (the giver's free object interaction). An enemy may drop (something it holds: a disarmed blade) or pick_up an item on the ground; give enemyId instead of characterId.",
+      "Equip, unequip, drop, pick up or hand over gear for a character (or an enemy), at its real cost. The server charges the action, the free object interaction or the minutes each takes (a shield takes an action; armor never changes in a fight). drop: free, and the item lies where it fell, NOT destroyed, for anyone within 5 feet to pick_up (use this, never remove_item, for anything set down, knocked away or let fall). hand: give an item to an ally within 5 feet. An enemy may drop something it holds (a disarmed blade) or pick_up an item on the ground, with enemyId instead of characterId.",
     parameters: {
       type: "object",
       additionalProperties: false,
@@ -69,6 +69,7 @@ export const handleItemTool = {
         srdName: { type: "string", description: "An enemy's drop in the table's language: its SRD or pack name in English ('Scimitar')." },
         tags: { type: "array", items: { type: "string" }, description: "An enemy's drop only: as grant_item's tags." },
         toCharacterId: { type: "string", description: "hand: who receives it, exact characterId from GAME STATE." },
+        helped: { type: "boolean", description: "unequip armor: someone helps, so it comes off in half the time." },
         reason: { type: "string", description: "Short in-fiction cause." },
       },
       required: ["action", "item"],
@@ -85,6 +86,7 @@ type Args = {
   srdName?: string;
   tags?: unknown;
   toCharacterId?: string;
+  helped?: boolean;
   reason?: string;
 };
 
@@ -151,7 +153,7 @@ export function handleItemCall(
   switch (action) {
     case "equip":
     case "unequip":
-      return changeWear(campaign, turn, encounter, sheet, row, action === "equip", reason);
+      return changeWear(campaign, turn, encounter, sheet, row, action === "equip", reason, args.helped === true);
     case "drop":
       return drop(campaign, turn, encounter, sheet, row, qty, reason);
     case "hand": {
@@ -174,6 +176,7 @@ function changeWear(
   row: EquipmentItem,
   on: boolean,
   reason: string,
+  helped = false,
 ): ToolResult {
   const kind = gearKindOf(row);
   if (inHand(row, sheet.equipment) === on && sheet.equipment.some((item) => item.equipped !== undefined)) {
@@ -248,7 +251,7 @@ function changeWear(
   }
   // Out of a fight, armor takes its minutes (SRD 5.1, Getting Into and Out
   // of Armor); the clock moves by them.
-  const dressing = !encounter ? armorChangeMinutes(sheet.equipment, { [row.name]: { equipped: on } }) : null;
+  const dressing = !encounter ? armorChangeMinutes(sheet.equipment, { [row.name]: { equipped: on } }, { helped }) : null;
   if (dressing?.minutes) {
     advanceClock(campaign.id, dressing.minutes, "minutes");
   }

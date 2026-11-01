@@ -61,8 +61,8 @@ export const DRAWN_TO_FIELD = {
   name: "drawnTo",
   label: "Drawn to",
   kind: "list",
-  placeholder: "women, men, nonbinary people",
-  help: "Who they could fall for, once the story shows it. Set once and kept.",
+  placeholder: "women, men, nonbinary people, open relationships",
+  help: "Who they could fall for, once the story shows it. Set once and kept. Add open relationships if they keep more than one partner; that can be added later.",
 } as const;
 
 export const WORLD_ADJUDICATIONS: CatalogEntry[] = [
@@ -466,7 +466,7 @@ export const SOCIAL_ADJUDICATIONS: CatalogEntry[] = [
       NOTE,
       // A deed's (issue 503): who else saw it and how grave it was, and what
       // a companion it pushes to an ultimatum demands.
-      { name: "witnesses", label: "Others who saw it", kind: "list", placeholder: "Brother Aldo, Seren", help: "Deeds only: every other tracked NPC or companion who saw it, and other player characters who stood by, comma separated." },
+      { name: "witnesses", label: "Others who saw it", kind: "list", placeholder: "Brother Aldo, Seren", help: "For a deed: every other tracked NPC or companion who saw it, and other player characters who stood by, comma separated. For a flirt: a partner of the character's who saw it, who takes it as a deed." },
       // Issue 580: whoever it was done to takes it harder than a witness.
       { name: "victims", label: "Done to", kind: "list", placeholder: "The captive", help: "Deeds only: whoever it was done to, comma separated: the one harmed, spared or set free. It lands harder on them than on anyone who only watched." },
       // Issue 563: a player character there who stood by bears a share of

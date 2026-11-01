@@ -407,7 +407,7 @@ export function AiGroup({ settings, patch }: Base) {
       {aiNarrates ? (
         <div className="flex flex-wrap items-center gap-2">
           <span className="pk-rowlabel">Prose</span>
-          <Tooltip content="After each turn the server compares the GM's narration against what the dice and tools actually resolved: a hit written on a miss, a death the hit points deny, a damage number no die rolled. A contradiction is sent back to the GM once for a rewrite. Nothing on any sheet changes either way.">
+          <Tooltip content="After each turn the server compares the GM's narration against what the dice and tools actually resolved: a hit written on a miss, a death the hit points deny, a damage number no die rolled. A contradiction is sent back to the GM once for a rewrite. It also does what the GM left undone: a spell a player asked for that the story cast is cast for real, and a kindness or flirt a player declared is recorded on their bonds.">
             <SettingToggle on={settings.narrationGuard} onToggle={() => patch({ narrationGuard: !settings.narrationGuard })}>
               Outcome check {settings.narrationGuard ? "on" : "off"}
             </SettingToggle>
@@ -535,7 +535,7 @@ export function BondsGroup({ settings, patch, lastingCompanions = false }: Base 
         </SettingToggle>
       </Tooltip>
       {settings.relationships !== "off" ? (
-        <Tooltip content="The romance ladder on top of the bond meter: interested, courting, together, betrothed, married. Nobody can be romanced who does not already like the character, nobody is courted who did not ask to be, and intimate scenes always fade to black.">
+        <Tooltip content="The romance ladder on top of the bond meter: interested, courting, together, betrothed, married. Nobody can be romanced who does not already like the character, nobody is courted who did not ask to be, partners keep to each other unless everyone involved is open to more than one partner, and intimate scenes always fade to black. Each step needs a little story time after the last, the other side starts scenes of their own, and every step is told to the table.">
           <SettingToggle on={settings.romance !== "off"} onToggle={() => patch({ romance: settings.romance === "off" ? "on" : "off" })}>
             Romance {settings.romance !== "off" ? "on" : "off"}
           </SettingToggle>

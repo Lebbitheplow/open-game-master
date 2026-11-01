@@ -61,6 +61,15 @@ export function textKey(text: string): string {
   return (straight(text).match(KEY_PART) ?? []).join(" ").toUpperCase().toLowerCase();
 }
 
+// What a search typed as you go compares by (the composer's @ menu, issue
+// 650): textKey with accents and apostrophes set aside, so "fabb" finds
+// "Fàbbro" and "thundertrees" finds "Thundertree's" on a phone keyboard
+// that offers neither. Never an identity: two names this folds together may
+// be two people, which is why textKey keeps both.
+export function searchKey(text: string): string {
+  return textKey(text.replace(/['‘’ʼ´`]/g, "")).normalize("NFD").replace(/\p{M}/gu, "");
+}
+
 // Where `phrase` stands in `text` as whole words, offsets into textKey(text):
 // "Marla" is in "Marla's sword" and "Oracolo" in "dell'Oracolo", but "José"
 // is not in "Joséphine".

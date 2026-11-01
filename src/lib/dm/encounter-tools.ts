@@ -39,12 +39,12 @@ import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { getRoll, insertRoll } from "@/lib/db/rolls";
 import { getLatestDmMessage, insertCampaignMessage, listRecentMessages } from "@/lib/db/messages";
 import { closeStandInTurn, listOpenPendingRolls, openStandInTurn, saveDmTurn, type DmTurn } from "@/lib/db/dm-turns";
-import { d20Expression, rollExpression } from "@/lib/dice";
+import { rollExpression } from "@/lib/dice";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
 import { fightingParty, MAX_COMBATANTS, rosterBudget } from "@/lib/dm/party-budget";
 import { suggestEnemies } from "@/lib/bestiary";
-import { enemyRequestSchema, resolveEnemyRequests } from "@/lib/dm/encounter-spawn";
+import { enemyRequestSchema, groupInitiatives, resolveEnemyRequests } from "@/lib/dm/encounter-spawn";
 import { arrivalsFor, unknownReturning } from "@/lib/dm/foe-return";
 import { isKnockedOut } from "@/lib/dm/knockout";
 import { fieldSheetFoes, sheetFoeIds, turnedFoes } from "@/lib/dm/sheet-foes";
@@ -58,6 +58,7 @@ import {
   advanceOrder,
   buildOrder,
   nameArrivals,
+  passWaits,
   rankEnemyTargets,
   resolveEncounterOutcome,
   spliceIntoOrder,
@@ -68,7 +69,6 @@ import { holdsThiefsReflexes } from "@/lib/dm/bonus-routes";
 import {
   actingCombatantId,
   canEnemyAct,
-  markEnemyActed,
   oweEnemiesAnAction,
 } from "@/lib/dm/can-act";
 import { acWithEffects, enemyAcWithEffects } from "@/lib/dm/ac-effects";
@@ -126,6 +126,7 @@ import { attackLine, attackStopOf, standStillLine, stillFromStop, tableName, typ
 import { endTurnSaves, startTurnConditions, tickEncounterConditions } from "@/lib/dm/condition-tick";
 import { endTurns } from "@/lib/dm/turn-end";
 import { turnStartEffects } from "@/lib/dm/turn-start-effects";
+import { castingTurnBudget } from "@/lib/dm/long-casting";
 import { endEncounterTool, endTurnTool, enemyAttackTool, startEncounterTool, type ToolDef } from "@/lib/dm/encounter-tool-defs";
 import { RUN_PREPARED_ENCOUNTER, runPreparedEncounter } from "@/lib/dm/prepared-encounter-tool";
 import { rollDeathSave } from "@/lib/dm/death";
@@ -141,9 +142,9 @@ import { handleReaperCast } from "@/lib/dm/authored-reaper";
 import { sweepSummons } from "@/lib/dm/summon-store";
 import { endConcentrationOnFadedSummons } from "@/lib/dm/concentration-upkeep";
 import { afflictionsAtCombatStart } from "@/lib/dm/afflictions";
-import { ENEMY_TURNS_CUE, enemiesDue, enemiesOwedTurn, holdForEnemies } from "@/lib/dm/enemies-due";
+import { ENEMY_TURNS_CUE, enemiesDue, enemiesOwedTurn, holdForEnemies, noteLostTurns } from "@/lib/dm/enemies-due";
+import { closeHitsAtTurnEnd } from "@/lib/dm/last-hit";
 import { approachForCompanion } from "@/lib/dm/companion-approach";
-import { dmRoll } from "@/lib/dm/roll-card";
 import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
 import { holdsFeat } from "@/lib/srd/feat-effects";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
@@ -366,6 +367,14 @@ function handleStartEncounter(
   for (const { index, name } of numbered.renames) {
     names[carriedAt[index]] = name;
   }
+  // Enemy initiative rolls silently at spawn, once for each group of
+  // identical creatures (encounter-spawn.ts); players roll on request. One
+  // back from an earlier fight is no member of a group here and rolls alone.
+  const initiatives = groupInitiatives(
+    campaign.id,
+    rows.map((entry, index) => (arrivals.carries[index] ? { ...entry, group: undefined } : entry)),
+    names,
+  );
   const enemies = rows.map((entry, index) => {
     const carry = arrivals.carries[index];
     return insertEnemy({
@@ -373,9 +382,7 @@ function handleStartEncounter(
       campaignId: campaign.id,
       slug: entry.slug,
       displayName: names[index],
-      // Enemy initiative rolls silently at spawn; players roll on request.
-      // A record for the DM alone, as an enemy's save is.
-      initiative: dmRoll(campaign.id, null, "initiative", `${names[index]}: initiative`, d20Expression(entry.stats.dexMod)).total,
+      initiative: initiatives[index],
       stats: entry.stats,
       ...(entry.npcId ? { npcId: entry.npcId } : {}),
       ...(carry ? { arrives: carry.arrives } : {}),
@@ -1105,6 +1112,8 @@ function handleEndTurn(
     };
   }
   markTurnResolved(turn, sheet.id);
+  finishPassBeforeMove(campaign);
+  Object.assign(encounter, getActiveEncounter(campaign.id) ?? encounter);
   // The pointer moves now, for the AI as for a person at the console, so the
   // enemies whose turns come next are the model's to play in this same reply
   // (their round has begun for them: an enemy acts once a round, counted
@@ -1115,8 +1124,10 @@ function handleEndTurn(
   // narration it belongs to, when its DM turn finishes (advanceAfterTurn);
   // the model reads it in this result, and plays its enemies in this turn
   // rather than holding the floor for them.
+  // A person at the console says it as the End Turn button does
+  // (endsTurnAnnounce), the dying it passes included.
   const ai = turn.actor === "ai";
-  const advanced = advancePointer(campaign, encounter, { announce: !ai, hold: !ai });
+  const advanced = advancePointer(campaign, encounter, { announce: ai ? false : endsTurnAnnounce(current), hold: !ai });
   if (!advanced) {
     return { error: "Nobody is left standing to take the next turn.", retry: true };
   }
@@ -1133,22 +1144,29 @@ function handleEndTurn(
     const live = getActiveEncounter(campaign.id) ?? encounter;
     const earlier = live.legendary.handoff?.turnId === turn.id ? live.legendary.handoff : null;
     const wrapped = advanced.wrapped || earlier?.wrapped === true;
+    // The dying it walked past, named in the pass line said after the
+    // narration, as a person's End Turn names them.
+    const dying = [...(earlier?.dying ?? []), ...advanced.dyingPassed];
     live.legendary.handoff = {
       turnId: turn.id,
       enemyIds: [...(earlier?.enemyIds ?? []), ...passed.map((enemy) => enemy.id)],
       ...(wrapped ? { wrapped } : {}),
+      ...(dying.length ? { dying } : {}),
     };
     saveEncounter(live);
   }
   const names = acting.map((enemy) => enemy.displayName);
+  // A pass that waits for its enemies to turn the round over lands on the
+  // next round's turn (issue 713).
+  const round = encounter.round + (encounter.legendary.rest?.wrap ? 1 : 0);
   return {
     ok: true,
     nextTurn: next?.name ?? null,
-    round: encounter.round,
+    round,
     ...(acting.length
       ? { enemiesToAct: acting.map((enemy) => ({ enemyId: enemy.id, name: enemy.displayName })) }
       : {}),
-    note: `${sheet.name}'s turn is over.${
+    note: `${sheet.name}'s turn is over.${dyingNote(advanced.dyingPassed)}${
       names.length
         ? ` ${names.join(" and ")} act${names.length === 1 ? "s" : ""} before ${next?.name}${
             turn.actor === "ai"
@@ -1156,7 +1174,7 @@ function handleEndTurn(
               : "."
           }`
         : ""
-    } It is now ${next?.name}'s turn (round ${encounter.round}).`,
+    } It is now ${next?.name}'s turn (round ${round}).`,
   };
 }
 
@@ -1390,11 +1408,94 @@ function passOnFrom(campaign: Campaign, before: TurnHolder | null) {
     return;
   }
   const from = resumeAfter(before, encounter.order);
-  if (from !== null) {
-    encounter.turnIndex = from;
-    advancePointer(campaign, encounter, { leaving: before.order[before.turnIndex] });
+  if (from === null) {
+    return;
   }
+  // The one up next went while the enemies before them still had their
+  // turns and the round had not turned over (issue 713): their turn never
+  // began, so none passes on; the pointer names whoever is up next now, and
+  // the rest of the walk reaches them once the enemies have gone.
+  if (encounter.legendary.rest?.wrap) {
+    const enemiesById = new Map(listEnemies(encounter.id).map((enemy) => [enemy.id, enemy]));
+    const upNext = nextTurn(encounter.order, encounter.order.length - 1, (entry) => entryActs(entry, enemiesById, encounter.surprisedIds));
+    if (upNext) {
+      encounter.turnIndex = upNext.turnIndex;
+      saveEncounter(encounter);
+      setInitiativeFloor(campaign, encounter);
+      publishEncounter(campaign.id);
+    }
+    return;
+  }
+  encounter.turnIndex = from;
+  advancePointer(campaign, encounter, { leaving: before.order[before.turnIndex] });
 }
+
+// The rest of a pass that waited for the enemies it walked past (issue 713,
+// passWaits), once they have had their turns: the dying after them save,
+// and a walk stopped at the end of the order goes on from there, the round
+// turning over, to the next who can act; the table is told where the turn
+// went. `landOn`: the combatant whose turn somebody is ending, where the
+// walk lands whoever else could act. Whether anything was waiting.
+function finishPass(campaign: Campaign, landOn?: string, named: string[] = []): boolean {
+  const encounter = getActiveEncounter(campaign.id);
+  const rest = encounter?.orderReady ? encounter.legendary.rest : undefined;
+  if (!encounter || !rest) {
+    return false;
+  }
+  delete encounter.legendary.rest;
+  saveEncounter(encounter);
+  const saves = rest.dying ?? [];
+  // Read before the saves, which may stabilize or kill them. `named`: the
+  // dying an earlier step of the pass walked past, said in this line (the
+  // AI's end_turn, said after its narration).
+  const dying = [...named, ...dyingNames(saves)];
+  if (rest.wrap) {
+    encounter.turnIndex = encounter.order.length - 1;
+    advancePointer(campaign, encounter, {
+      rest: { saves, ...(landOn ? { landOn } : {}) },
+      dyingPassed: dying,
+      announce: (next, line) => `${line.trim()}${line ? " " : ""}It is now ${next.name}'s turn (round ${encounter.round}).`,
+    });
+    return true;
+  }
+  const current = encounter.order[encounter.turnIndex];
+  if (current) {
+    tableNote(campaign, `${dyingNote(dying).trim()}${dying.length ? " " : ""}It is now ${current.name}'s turn (round ${encounter.round}).`, "cue-battle");
+  }
+  for (const characterId of saves) {
+    rollDeathSave(campaign, characterId);
+  }
+  return true;
+}
+
+// A turn ending while the rest of the last pass still waits (the enemies
+// it walked past have had their turns but nobody handed the turn on: the
+// model played them and ends the next turn in the same reply) finishes it
+// first, landing on the turn being ended, so the round turns over and the
+// dying save before that turn passes on. The enemies due that have had
+// their turns are no longer due.
+function finishPassBeforeMove(campaign: Campaign) {
+  const encounter = getActiveEncounter(campaign.id);
+  if (!encounter?.orderReady || !encounter.legendary.rest) {
+    return;
+  }
+  const owed = enemiesOwedTurn(encounter).map((enemy) => enemy.id);
+  if (owed.length) {
+    encounter.legendary.due = owed;
+  } else {
+    delete encounter.legendary.due;
+  }
+  saveEncounter(encounter);
+  if (!owed.length) {
+    releaseEnemyHold(campaign);
+  }
+  const current = encounter.order[encounter.turnIndex];
+  finishPass(campaign, current?.kind === "pc" ? current.characterId : undefined);
+}
+
+// Exported for src/lib/dm/initiative.ts: a DM's edit to the order while the
+// rest of a pass waits finishes it first, as a turn ending does.
+export { finishPassBeforeMove };
 
 // options.announce: false posts no table line; a function gives the line in
 // place of "It is now X's turn", posted like it before the death saves the
@@ -1404,6 +1505,11 @@ function passOnFrom(campaign: Campaign, before: TurnHolder | null) {
 // the slot before the next turn's, -1 when that is the first.
 // options.hold: false leaves the floor open past the enemies walked past
 // (src/lib/dm/enemies-due.ts), for the model's own end_turn.
+// options.rest: this walk is the rest of a pass that waited for the
+// enemies it walked past (finishPass): no turn ends with it, `saves` are the
+// death saves that pass left for after the enemies, and `landOn` lands it on
+// that combatant (the turn somebody is about to end) rather than on the
+// next who can act.
 function advancePointer(
   campaign: Campaign,
   encounter: Encounter,
@@ -1411,12 +1517,30 @@ function advancePointer(
   // the first step passed.
   // dyingPassed: the dying a first step walked past, named in the note the
   // last step posts.
-  options?: { announce?: boolean | PassAnnounce; leaving?: OrderEntry; hold?: boolean; chained?: boolean; dyingPassed?: string[] },
-): { enemiesPassed: string[]; wrapped: boolean } | null {
+  options?: {
+    announce?: boolean | PassAnnounce;
+    leaving?: OrderEntry;
+    hold?: boolean;
+    chained?: boolean;
+    dyingPassed?: string[];
+    rest?: { saves: string[]; landOn?: string };
+  },
+): { enemiesPassed: string[]; wrapped: boolean; dyingPassed: string[] } | null {
   const enemiesById = new Map(listEnemies(encounter.id).map((enemy) => [enemy.id, enemy]));
-  const leaving = options?.leaving ?? encounter.order[encounter.turnIndex];
+  const leaving = options?.leaving ?? (options?.rest ? undefined : encounter.order[encounter.turnIndex]);
+  // A turn ending is the moment past answering any hit but one in that
+  // creature's own turn (src/lib/dm/last-hit.ts). Not the rest of a pass,
+  // which ends nobody's turn, nor a second step of the same move.
+  if (leaving && !options?.rest && !options?.chained) {
+    closeHitsAtTurnEnd(campaign.id, encounter, leaving);
+  }
   const acts = (entry: OrderEntry) => entryActs(entry, enemiesById, encounter.surprisedIds);
-  let next = nextTurn(encounter.order, encounter.turnIndex, acts);
+  const landOn = options?.rest?.landOn;
+  const stopAt =
+    landOn && encounter.order.some((entry) => orderEntryId(entry) === landOn)
+      ? (entry: OrderEntry) => (entry.kind === "pc" ? entry.characterId === landOn : acts(entry))
+      : acts;
+  let next = nextTurn(encounter.order, encounter.turnIndex, stopAt);
   // Round 1 is ending: Thief's Reflexes' second turns go with it
   // (src/lib/dm/encounter-logic.ts), and the step is taken again on the
   // order the next round keeps.
@@ -1424,11 +1548,28 @@ function advancePointer(
   if (reflexless) {
     encounter.order = reflexless.order;
     encounter.turnIndex = reflexless.turnIndex;
-    next = nextTurn(encounter.order, encounter.turnIndex, acts);
+    next = nextTurn(encounter.order, encounter.turnIndex, stopAt);
   }
   if (!next) {
     return null;
   }
+  // What of this walk waits for the enemies it passes (issue 713): the dying
+  // after them save once they have gone, and a walk that would turn the
+  // round over after one of them stops at the end of the order, the pointer
+  // naming who is up next; finishPass walks the rest.
+  const waits = passWaits(
+    encounter.order,
+    encounter.turnIndex,
+    next.turnIndex,
+    (entry) => {
+      const enemy = entry.kind === "enemy" ? enemiesById.get(entry.enemyId) : undefined;
+      return Boolean(enemy && canEnemyAct({ enemy, encounter, kind: "action" }).ok);
+    },
+    (entry) => entry.kind === "pc" && dyingNames([entry.characterId]).length > 0,
+  );
+  const stop = waits.stopsAtWrap;
+  const wraps = next.wrapped && !stop;
+  const walkTo = stop ? encounter.order.length - 1 : next.turnIndex;
   // Every combatant from the one after the last turn to the one the pointer
   // lands on is starting a turn: enemies and the downed are walked past, and
   // an enemy's turn is taken inside the DM turn that follows.
@@ -1444,13 +1585,21 @@ function advancePointer(
     if (!wrappedHere && index > encounter.turnIndex) {
       beforeWrap.push(id);
     }
-    if (index === next.turnIndex || starting.length >= encounter.order.length) {
+    if (index === walkTo || starting.length >= encounter.order.length) {
       break;
     }
   }
-  const lostToSurprise = beforeWrap.filter(
-    (id) => encounter.surprisedIds.includes(id) && enemiesById.has(id),
-  );
+  // The enemies whose turns this walk hands out. A walk that turns the
+  // round over passed none before the wrap that could act (passWaits stops
+  // it there otherwise): those lost this round's turn or had it, and the new
+  // round must not hand it back, so they are told as lost now, before it
+  // can free them; their next turns come when the pointer reaches them.
+  const preWrapEnemies = wraps ? beforeWrap.filter((id) => enemiesById.has(id)) : [];
+  noteLostTurns(encounter, preWrapEnemies, enemiesById);
+  const handedOut = next.enemiesPassed.filter((id) => starting.includes(id) && !preWrapEnemies.includes(id));
+  // The dying this walk passes who save now: not the ones after an enemy
+  // still to act, nor the ones the rest of a stopped walk passes.
+  const savesNow = next.pcsPassed.filter((id) => starting.includes(id) && !waits.dying.includes(id));
   // The turn the pointer leaves is over, and so are the enemies' turns it
   // handed out before (they were played in the DM turn after that move):
   // whatever lasted "until the end of" one of those turns ends now
@@ -1476,7 +1625,7 @@ function advancePointer(
   // Initiative count 20, losing ties: the lair acts in the DM turn that
   // follows the move that passes it, or that round it does not
   // (src/lib/dm/legendary-tools.ts handleLairAction).
-  const lairPassed = encounter.legendary.lair ? lairCountPassed(encounter.order, encounter.turnIndex, next.turnIndex) : null;
+  const lairPassed = encounter.legendary.lair ? lairCountPassed(encounter.order, encounter.turnIndex, walkTo) : null;
   if (lairPassed) {
     encounter.legendary.lairDue = lairPassed === "after" ? encounter.round + 1 : encounter.round;
   } else if (!options?.chained) {
@@ -1500,13 +1649,8 @@ function advancePointer(
   // What the turns now starting bring, posted as one table note
   // (src/lib/dm/turn-start-effects.ts).
   turnStartEffects(campaign, encounter, starting, enemiesById, turnEnd.lines);
-  if (next.wrapped) {
+  if (wraps) {
     encounter.round += 1;
-    // A surprised enemy at the tail of the order was walked past in round
-    // 1: that was the turn it lost, and the new round must not hand it back.
-    for (const id of lostToSurprise) {
-      markEnemyActed(encounter, id);
-    }
     // Surprise costs exactly one turn, so it is spent by the time round 1
     // has gone all the way around.
     encounter.surprisedIds = [];
@@ -1546,6 +1690,18 @@ function advancePointer(
       encounter.legendary.failedSave = stored.legendary.failedSave;
     }
   }
+  // A caster in the middle of a spell of a minute or more starts the turn
+  // with its action already gone to the casting, stored now so the board's
+  // pips and GAME STATE show it before anything is spent (long-casting.ts).
+  // A stopped walk has not reached them: their turn begins with its rest.
+  encounter.turnBudget = stop ? null : (castingTurnBudget(encounter, landingId) ?? encounter.turnBudget);
+  if (stop || waits.dying.length) {
+    // Added to, never replaced: a second step of the same move (a landing
+    // that went as it began) keeps what the first left waiting.
+    const rest = encounter.legendary.rest;
+    const dying = [...new Set([...(rest?.dying ?? []), ...waits.dying])];
+    encounter.legendary.rest = { ...(stop || rest?.wrap ? { wrap: true as const } : {}), ...(dying.length ? { dying } : {}) };
+  }
   encounter.waitingSeq = latestSeq(campaign.id);
   saveEncounter(encounter);
   const landed = { order: [...encounter.order], turnIndex: next.turnIndex };
@@ -1566,25 +1722,44 @@ function advancePointer(
   // below, and the note names them so the pass never reads as the turn
   // coming straight back to whoever ended it. Read before the saves, which
   // may stabilize or kill them.
-  const dyingPassed = [...(options?.dyingPassed ?? []), ...dyingNames(next.pcsPassed)];
-  const resume = resumeAfter(landed, encounter.order);
+  const dyingPassed = [...(options?.dyingPassed ?? []), ...dyingNames(savesNow)];
+  // The saves this walk rolls: the ones the pass it finishes left for after
+  // the enemies, then the dying it passes itself.
+  const saves = [...(options?.rest?.saves ?? []), ...savesNow];
+  // A stopped walk has not begun the turn of the one up next: one who went
+  // meanwhile is not passed on from; the rest of the walk finds who is next.
+  const resume = stop ? null : resumeAfter(landed, encounter.order);
+  if (stop && !encounter.order.some((entry) => orderEntryId(entry) === landingId)) {
+    const again = nextTurn(encounter.order, encounter.order.length - 1, acts);
+    if (again) {
+      encounter.turnIndex = again.turnIndex;
+      saveEncounter(encounter);
+    }
+  }
   if (resume !== null) {
     encounter.turnIndex = resume;
     if (options?.hold !== false) {
-      holdForEnemies(campaign, encounter, next.enemiesPassed);
+      holdForEnemies(campaign, encounter, handedOut);
     }
-    for (const characterId of next.pcsPassed) {
+    for (const characterId of saves) {
       rollDeathSave(campaign, characterId);
     }
-    const after = advancePointer(campaign, encounter, { ...options, leaving: landed.order[landed.turnIndex], chained: true, dyingPassed });
+    const after = advancePointer(campaign, encounter, {
+      ...options,
+      leaving: landed.order[landed.turnIndex],
+      chained: true,
+      dyingPassed,
+      ...(options?.rest ? { rest: { saves: [], landOn: options.rest.landOn } } : {}),
+    });
     return {
-      enemiesPassed: [...next.enemiesPassed, ...(after?.enemiesPassed ?? [])],
-      wrapped: next.wrapped || Boolean(after?.wrapped),
+      enemiesPassed: [...handedOut, ...(after?.enemiesPassed ?? [])],
+      wrapped: wraps || Boolean(after?.wrapped),
+      dyingPassed: after?.dyingPassed ?? dyingPassed,
     };
   }
   setInitiativeFloor(campaign, encounter);
   if (options?.hold !== false) {
-    holdForEnemies(campaign, encounter, next.enemiesPassed);
+    holdForEnemies(campaign, encounter, handedOut);
   }
   publishEncounter(campaign.id);
   // The pointer move is announced as a table note so the transcript can
@@ -1595,24 +1770,28 @@ function advancePointer(
   const owed = owedNamesForTable(encounter);
   const owedNote = owed.length ? ` ${owed.join(" and ")} act${owed.length === 1 ? "s" : ""} before ${landedOn.name}.` : "";
   if (typeof options?.announce === "function") {
-    tableNote(campaign, `${options.announce(landedOn, dyingNote(dyingPassed))}${owedNote}`, "cue-battle");
+    // The lair's count passed is said as on the plain line, which the
+    // console's end_turn posted before it took this one.
+    tableNote(campaign, `${options.announce(landedOn, dyingNote(dyingPassed))}${lairOpen(encounter) ? LAIR_NOTE : ""}${owedNote}`, "cue-battle");
   } else if (options?.announce !== false) {
-    announceTurn(campaign, encounter, `${lairOpen(encounter) ? LAIR_NOTE : ""}${owedNote}`);
+    // A stopped walk's next turn is the next round's.
+    announceTurn(campaign, encounter, `${lairOpen(encounter) ? LAIR_NOTE : ""}${owedNote}`, dyingNote(dyingPassed), encounter.round + (stop ? 1 : 0));
   }
   if (options?.hold !== false) {
     sayLostTurns(campaign, encounter);
   }
   // Downed PCs the pointer skipped make their death saves now, once per
   // pass, announced to the table as system messages and dice cards.
-  for (const characterId of next.pcsPassed) {
+  for (const characterId of saves) {
     rollDeathSave(campaign, characterId);
   }
   // Nobody could act, so the turn came to a PC who cannot either: it is
-  // still their turn beginning, and a downed one rolls for it.
-  if (!next.acts) {
+  // still their turn beginning, and a downed one rolls for it, once the
+  // walk has reached them.
+  if (!next.acts && !stop) {
     rollDeathSave(campaign, orderEntryId(landed.order[landed.turnIndex]));
   }
-  return { enemiesPassed: next.enemiesPassed, wrapped: next.wrapped };
+  return { enemiesPassed: handedOut, wrapped: wraps, dyingPassed };
 }
 
 // The creatures the GM keeps off the board now (the tracker's "someone
@@ -1883,10 +2062,11 @@ function advanceAfterNarration(campaign: Campaign, turn?: DmTurn) {
     const holder = turnHolder(campaign.id);
     autoActSkippedEnemies(campaign, turn, encounter, handoff.enemyIds, sheets, sheetsById);
     passOnFrom(campaign, holder);
-    // The pass the model's end_turn made, said now that the narration is in.
+    // The pass the model's end_turn made, said now that the narration is in,
+    // with what waited for the enemies it handed over (issue 713).
     const live = getActiveEncounter(campaign.id);
-    if (live) {
-      announceTurn(campaign, live, lairOpen(live) ? LAIR_NOTE : "");
+    if (live && !finishPass(campaign, undefined, handoff.dying ?? [])) {
+      announceTurn(campaign, live, lairOpen(live) ? LAIR_NOTE : "", dyingNote(handoff.dying ?? []));
     }
     // The turn they led to is one its owner cannot take: it is ended below,
     // now. A wake alone could find nothing posted since this turn's
@@ -1918,9 +2098,16 @@ function advanceAfterNarration(campaign: Campaign, turn?: DmTurn) {
     if (turn && dmPlaysTurn(campaign, current)) {
       companionAutoAct(campaign, turn, encounter, current.characterId);
     } else {
+      // The rest of a pass the backstop finished above may have walked on
+      // into the next round's enemies (issue 713): they are woken for.
+      if (enemiesDue(getActiveEncounter(campaign.id) ?? encounter).length) {
+        followTurn(campaign, turn);
+      }
       return;
     }
   }
+  finishPassBeforeMove(campaign);
+  Object.assign(encounter, getActiveEncounter(campaign.id) ?? encounter);
   if (!advancePointer(campaign, encounter)) {
     return;
   }
@@ -2067,6 +2254,12 @@ function passTurnLine(opening: string, from: OrderEntry | undefined, next: Order
   return `${opening}${dying} It is ${again ? `${next.name}'s turn again` : `now ${next.name}'s turn`}.`;
 }
 
+// A hero's turn ended by whoever may end it: the End Turn button
+// (endOwnTurn) and the console's end_turn (handleEndTurn) post this one line.
+function endsTurnAnnounce(from: OrderEntry): PassAnnounce {
+  return (next, dying) => passTurnLine(`${from.name} ends their turn.`, from, next, dying);
+}
+
 // The names of the characters among these who roll a death save as the turn
 // passes them (src/lib/dm/death.ts rollDeathSave): at 0 HP, neither stable
 // nor dead.
@@ -2089,10 +2282,17 @@ function dyingNote(names: string[]): string {
     : ` ${listed} are dying: each of their turns is a death save.`;
 }
 
-function announceTurn(campaign: Campaign, encounter: Encounter, extra = "") {
+// The plain pass line, for a move no hero's End Turn made (the GM's step
+// forward, a companion the server played, a turn its owner cannot take, the
+// AI's end_turn after its narration). `dying` names those walked past, as the
+// worded line does (dyingNote): without it the death save posted beside the
+// pass read as the turn skipping a hero for no reason. `round`: the round the
+// turn is in, the next one for a pass still waiting on its enemies to turn
+// this one over (issue 713).
+function announceTurn(campaign: Campaign, encounter: Encounter, extra = "", dying = "", round = encounter.round) {
   const current = encounter.order[encounter.turnIndex];
   if (current) {
-    tableNote(campaign, `It is now ${current.name}'s turn (round ${encounter.round}).${extra}`, "cue-battle");
+    tableNote(campaign, `${dying ? `${dying.trim()} ` : ""}It is now ${current.name}'s turn (round ${round}).${extra}`, "cue-battle");
   }
 }
 
@@ -2329,12 +2529,13 @@ export function endOwnTurn(campaignId: string, userId: string): boolean {
   if (enemiesOwedTurn(encounter).length) {
     return false;
   }
-  const name = current.name;
+  finishPassBeforeMove(campaign);
+  Object.assign(encounter, getActiveEncounter(campaignId) ?? encounter);
   const couldRise = partyCanRise(encounter);
   // A person moved the fight on: the rounds it may go round alone start
   // again (idledOut). The pass below saves it.
   delete encounter.legendary.idle;
-  if (!advancePointer(campaign, encounter, { announce: (next, dying) => passTurnLine(`${name} ends their turn.`, current, next, dying) })) {
+  if (!advancePointer(campaign, encounter, { announce: endsTurnAnnounce(current) })) {
     return false;
   }
   // The death saves the pass rolled may have left nobody able to rise.
@@ -2392,17 +2593,25 @@ export function handOnEnemyTurns(campaign: Campaign, turn: DmTurn, play: boolean
     const sheetsById = new Map(sheets.map((sheet) => [sheet.id, sheet]));
     autoActSkippedEnemies(campaign, turn, encounter, due, sheets, sheetsById, { play });
   }
+  releaseEnemyHold(campaign);
+  // What the pass left for after them: the round turning over, the dying's
+  // saves (issue 713).
+  finishPass(campaign);
+  if (due.length) {
+    deathSaveAsTurnBegins(campaign);
+  }
+  publishEncounter(campaign.id);
+  return null;
+}
+
+// The floor held for the enemies' turns opens into the fight's floor.
+function releaseEnemyHold(campaign: Campaign) {
   const floor = getFloor(campaign.id);
   if (floor.mode === "hold" && floor.next.mode === "initiative") {
     const next = floorAfterRelease(campaign.id);
     setFloor(campaign.id, next);
     publishPersisted(campaign.id, "floor_changed", { floor: next });
   }
-  if (due.length) {
-    deathSaveAsTurnBegins(campaign);
-  }
-  publishEncounter(campaign.id);
-  return null;
 }
 
 // The enemies before a character have had their turns, so the character's
@@ -2445,6 +2654,8 @@ export function playCompanionTurn(campaign: Campaign, turn: DmTurn): string | nu
   if (enemiesOwedTurn(encounter).length) {
     return "The enemies before them have not had their turns yet: hand the turn on once they have, then the companion plays.";
   }
+  finishPassBeforeMove(campaign);
+  Object.assign(encounter, getActiveEncounter(campaign.id) ?? encounter);
   companionAutoAct(campaign, turn, encounter, current.characterId);
   const live = getActiveEncounter(campaign.id);
   if (live && !advancePointer(campaign, live)) {
@@ -2455,12 +2666,19 @@ export function playCompanionTurn(campaign: Campaign, turn: DmTurn): string | nu
 
 // The DM's "on a turn": the same move End Turn makes, with everything a new
 // turn brings (conditions, reactions, movement, death saves, a new round).
-export function stepTurnForward(campaign: Campaign): string | null {
+// `opening` words its one pass line ("The GM moved the turn on from Kara."),
+// the dying it walks past named as End Turn names them: the caller posted a
+// line of its own beside the plain one, and the table read whose turn it was
+// twice.
+export function stepTurnForward(campaign: Campaign, opening?: string): string | null {
+  finishPassBeforeMove(campaign);
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter || !encounter.orderReady) {
     return "No fight is running.";
   }
-  return advancePointer(campaign, encounter) ? null : "Nobody is left standing to take the next turn.";
+  const from = encounter.order[encounter.turnIndex];
+  const announce: PassAnnounce | undefined = opening ? (next, dying) => passTurnLine(opening, from, next, dying) : undefined;
+  return advancePointer(campaign, encounter, announce ? { announce } : undefined) ? null : "Nobody is left standing to take the next turn.";
 }
 
 // Lead escape hatch: advance past an absent player's turn. Inserts a table
@@ -2468,6 +2686,9 @@ export function stepTurnForward(campaign: Campaign): string | null {
 // of this module to avoid an import cycle with the turn loop).
 export function skipCurrentTurn(campaignId: string): boolean {
   const campaign = getCampaignById(campaignId);
+  if (campaign) {
+    finishPassBeforeMove(campaign);
+  }
   const encounter = getActiveEncounter(campaignId);
   if (!campaign || !encounter || !encounter.orderReady) {
     return false;

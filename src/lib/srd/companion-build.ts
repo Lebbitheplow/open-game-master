@@ -10,6 +10,7 @@
 //
 // Pure: no database. The spells to pick from are handed in.
 import type { Ability, AbilityScores, AsiChoice } from "@/lib/schemas/sheet";
+import skillsJson from "@/lib/srd/skills.json";
 import { ABILITY_SCORE_CAP, applyAsiChoices } from "@/lib/srd/asi";
 import {
   cantripCapOf,
@@ -208,4 +209,98 @@ export function companionSpellPicks(input: CompanionSpellInput): string[] {
     }
   }
   return [...cantrips, ...spells].map((spell) => spell.name);
+}
+
+const SRD_SKILLS = skillsJson.skills as Array<{ id: string; name: string; ability: string }>;
+
+// Skills a party calls on most, in that order: what breaks a tie between
+// two skills a companion's scores favour equally.
+const SKILL_STAPLES = [
+  "perception", "stealth", "insight", "athletics", "persuasion", "investigation",
+  "survival", "arcana", "acrobatics", "medicine", "deception", "religion",
+  "nature", "history", "intimidation", "animal_handling", "sleight_of_hand", "performance",
+];
+
+const skillAbility = (skill: string): Ability | null =>
+  (SRD_SKILLS.find((entry) => entry.id === skill)?.ability as Ability | undefined) ?? null;
+
+// A skill as the sheet stores it ("animal_handling"), from its id or its
+// name as somebody wrote it ("Animal Handling"). Null for no skill.
+export function skillIdOf(written: string): string | null {
+  const key = textKey(written).replace(/[\s-]+/g, "_");
+  return SRD_SKILLS.find((entry) => entry.id === key || textKey(entry.name) === textKey(written))?.id ?? null;
+}
+
+// Skills best first for a companion with these scores: the one rolled with
+// its higher ability first, the staples above breaking ties.
+export function companionSkillOrder(skills: readonly string[], abilities: AbilityScores): string[] {
+  const modifier = (skill: string) => {
+    const ability = skillAbility(skill);
+    return ability ? Math.floor((abilities[ability] - 10) / 2) : -5;
+  };
+  const staple = (skill: string) => {
+    const index = SKILL_STAPLES.indexOf(skill);
+    return index === -1 ? SKILL_STAPLES.length : index;
+  };
+  return [...new Set(skills)].sort((a, b) => modifier(b) - modifier(a) || staple(a) - staple(b));
+}
+
+export type CompanionSkillInput = {
+  // The class's list and how many it picks from it.
+  from: readonly string[];
+  count: number;
+  abilities: AbilityScores;
+  // Skills the background and race already give.
+  taken: readonly string[];
+  // Skills whoever recruited them named. Tried first; one off the class's
+  // list is passed over.
+  wanted?: readonly string[];
+};
+
+// The class skills a companion picks: the ones asked for that its class
+// offers, then the best of the rest for its scores.
+export function companionSkillPicks(input: CompanionSkillInput): string[] {
+  const taken = new Set(input.taken);
+  const open = input.from.filter((skill) => !taken.has(skill));
+  const asked = (input.wanted ?? []).flatMap((name) => {
+    const id = skillIdOf(name);
+    return id && open.includes(id) ? [id] : [];
+  });
+  return [...new Set([...asked, ...companionSkillOrder(open, input.abilities)])].slice(0, input.count);
+}
+
+// The skills a companion doubles with expertise: its best skills it has not
+// doubled yet, as many as the class has left to give.
+export function companionExpertisePicks(
+  skills: readonly string[],
+  abilities: AbilityScores,
+  held: readonly string[],
+  count: number,
+): string[] {
+  const doubled = new Set(held);
+  return companionSkillOrder(skills.filter((skill) => !doubled.has(skill)), abilities).slice(0, Math.max(0, count));
+}
+
+// The background a companion grew up in, when nobody named one: the one whose
+// skills its scores favour most, the staples breaking ties, then the list's
+// own order.
+export function companionBackground<T extends { id: string; skills: readonly string[] }>(
+  backgrounds: readonly T[],
+  abilities: AbilityScores,
+): T | null {
+  const order = companionSkillOrder(SKILL_STAPLES, abilities);
+  const worth = (background: T) =>
+    background.skills.reduce((sum, skill) => {
+      const ability = skillAbility(skill);
+      return sum + (ability ? Math.floor((abilities[ability] - 10) / 2) : 0);
+    }, 0);
+  const rank = (background: T) =>
+    background.skills.reduce((sum, skill) => sum + (order.includes(skill) ? order.indexOf(skill) : order.length), 0);
+  let best: T | null = null;
+  for (const background of backgrounds) {
+    if (!best || worth(background) > worth(best) || (worth(background) === worth(best) && rank(background) < rank(best))) {
+      best = background;
+    }
+  }
+  return best;
 }

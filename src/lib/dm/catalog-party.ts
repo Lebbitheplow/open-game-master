@@ -295,6 +295,7 @@ export const PARTY_ADJUDICATIONS: CatalogEntry[] = [
       { ...ITEM_SRD_NAME_FIELD, help: `An enemy's drop only. ${ITEM_SRD_NAME_FIELD.help}` },
       { ...ITEM_TAGS_FIELD, help: `An enemy's drop only. ${ITEM_TAGS_FIELD.help}` },
       { name: "toCharacterId", label: "Hand to", kind: "character" },
+      { name: "helped", label: "With help", kind: "boolean", help: "Taking off armor with someone's help takes half the time." },
       REASON,
     ],
   },
@@ -308,7 +309,7 @@ export const PARTY_ADJUDICATIONS: CatalogEntry[] = [
       { name: "item", label: "Item", kind: "text", required: true },
       { name: "targetCharacterId", label: "Used on", kind: "character" },
       { name: "charges", label: "Charges spent", kind: "number", min: 1, max: 50, help: "A wand or a staff: the item stays and the count drops. It refills at dawn." },
-      { name: "spell", label: "Spell cast from it", kind: "text", help: "A wand or staff's spell: the charges set its level, and the spell's own form then spends no slot." },
+      { name: "spell", label: "Spell cast from it", kind: "text", help: "The spell the item casts (a wand's fireball, a hat's disguise self): the item sets its level, and the spell's own form then spends no slot." },
       REASON,
     ],
   },
@@ -607,6 +608,9 @@ export const PARTY_ADJUDICATIONS: CatalogEntry[] = [
       ] },
       { name: "personality", label: "Personality", kind: "text", required: true },
       { name: "spells", label: "Spells they know", kind: "list", placeholder: "Cure Wounds, Bless", help: "For a caster, comma separated; the server keeps what their level allows." },
+      // An older host drops both unread (SERVER_FEATURES companionTraining).
+      { name: "background", label: "Background", kind: "text", placeholder: "Soldier", help: "Chosen to suit their stats when left empty.", host: { feature: "companionTraining" } },
+      { name: "skills", label: "Skills", kind: "list", placeholder: "Stealth, Insight", help: "Comma separated; the server keeps the ones their class offers and picks the rest.", host: { feature: "companionTraining" } },
       {
         name: "alignment",
         label: "Alignment",

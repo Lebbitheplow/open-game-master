@@ -23,10 +23,13 @@ import { srdNameFor } from "@/lib/dm/item-logic";
 import { infectDisease, infectWorkshopDisease, inflictMadness } from "@/lib/dm/afflictions";
 import { diseaseAt, hazardNamesAt, poisonAt } from "@/lib/srd/table-hazards";
 import { applyPoison } from "@/lib/dm/affliction-poisons";
+import { petrifiedRefusal } from "@/lib/dm/damage-logic";
 import { DISEASES, MADNESS_KINDS, POISONS, findDisease } from "@/lib/srd/afflictions";
 import { formatPrice } from "@/lib/srd/currency";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolResult } from "@/lib/dm/tool-errors";
+import { matchGear } from "@/lib/srd/adventuring-gear";
+import { rowName } from "@/lib/srd/item-row";
 
 type ToolDef = {
   type: "function";
@@ -118,7 +121,7 @@ export const exploreTools: ToolDef[] = [
     function: {
       name: "afflict",
       description:
-        `Lay an SRD disease (${Object.values(DISEASES).map((disease) => disease.name).join(", ")}), a madness or a poison on a character; the server rolls the save and holds the effects from then on. A disease is a CON save against catching it, symptoms after their incubation, then the disease's own saves after each long rest; lesser restoration cures it. For a madness, pass its duration (short, long or indefinite); the server rolls that table and how long it lasts, and applies the conditions; pass saveDc (and saveAbility wis or cha) for an effect that allows a save. The SRD poisons are ${POISONS.filter((poison) => poison.type !== "injury").map((poison) => poison.name).join(", ")}, and the injury poisons when a poisoned blade strikes a character; the server rolls the CON save, the damage and the conditions. The table's own diseases and poisons from the workshop are named under GAME STATE and work the same way. Never narrate a disease, madness or poison taking hold without this call.`,
+        `Lay an SRD disease (${Object.values(DISEASES).map((disease) => disease.name).join(", ")}), a madness or a poison on a character; the server rolls the save and holds the effects from then on (lesser restoration cures a disease). For a madness, pass its duration, and saveDc for an effect that allows a save. The SRD poisons are ${POISONS.filter((poison) => poison.type !== "injury").map((poison) => poison.name).join(", ")}, and the injury poisons when a poisoned blade strikes a character. The table's own diseases and poisons from the workshop are named under GAME STATE and work the same way. Never narrate a disease, madness or poison taking hold without this call.`,
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -127,7 +130,7 @@ export const exploreTools: ToolDef[] = [
           kind: { type: "string", enum: ["disease", "madness", "poison"], description: "What it is." },
           name: { type: "string", description: "Disease or poison only: which, by name." },
           duration: { type: "string", enum: [...MADNESS_KINDS], description: "Madness only: how long it lasts." },
-          save: { type: "boolean", description: "Whether the server rolls the save against it; false when already infected or with no save. Default: true. False for a madness from a failed save you already rolled." },
+          save: { type: "boolean", description: "Whether the server rolls the save against it. False when already infected, with no save, or for a madness from a failed save already rolled. Default: true." },
           saveDc: { type: "integer", minimum: 1, maximum: 30, description: "The save's DC, if the source sets one: a disease's infection, a madness's save. A poison uses its own." },
           saveAbility: { type: "string", enum: ["wis", "cha"], description: "Madness only: the save's ability. Default: 'wis'." },
           symptomsNow: { type: "boolean", description: "Disease only: the symptoms show now rather than after the incubation." },
@@ -150,6 +153,9 @@ function resolveTargets(ids: unknown, sheets: CharacterSheet[], sheetsById: Map<
 
 // ---- lift ----
 
+// The SRD's block and tackle row, every spelling of it.
+const BLOCK_AND_TACKLE = matchGear("Block and Tackle");
+
 const liftSchema = z.object({
   characterId: z.string(),
   weightLb: z.coerce.number().min(1).max(100000),
@@ -165,11 +171,21 @@ function handleLift(args: z.infer<typeof liftSchema>, sheets: CharacterSheet[], 
   }
   const how = args.how ?? "lift";
   const limits = liftLimits(sheet);
-  if (args.weightLb > limits.liftLb) {
+  // SRD 5.1 Adventuring Gear, Block and Tackle: "a block and tackle allows
+  // you to hoist up to four times the weight you can normally lift" (issue
+  // #570, EQP-26).
+  const pulleys = how === "lift" && sheet.equipment.some((item) => matchGear(rowName(item)) === BLOCK_AND_TACKLE);
+  const hoistLb = pulleys ? limits.liftLb * 4 : limits.liftLb;
+  if (args.weightLb > hoistLb) {
     return {
-      error: `${sheet.name} can push, drag or lift at most ${limits.liftLb} lb (30 x Strength); ${args.weightLb} lb does not move. Narrate the strain; more hands (another character's own lift) or a lever are the way.`,
+      error: pulleys
+        ? `${sheet.name} can hoist at most ${hoistLb} lb with a block and tackle (four times their ${limits.liftLb} lb lift); ${args.weightLb} lb does not move. Narrate the strain; more hands (another character's own lift) are the way.`
+        : `${sheet.name} can push, drag or lift at most ${limits.liftLb} lb (30 x Strength); ${args.weightLb} lb does not move. Narrate the strain; more hands (another character's own lift) or a lever are the way.`,
       refused: "rules",
     };
+  }
+  if (pulleys && args.weightLb > limits.liftLb) {
+    return { ok: true, lifted: `${args.weightLb} lb`, limitLb: hoistLb, note: `${sheet.name} hoists ${args.weightLb} lb with a block and tackle, up to four times the ${limits.liftLb} lb they lift by hand. Narrate the haul on the ropes.` };
   }
   const load = encumbranceFor({
     strength: sheet.abilities.str,
@@ -336,6 +352,11 @@ export function handleExploreCall(
     }
     if (sheet.deathSaves?.dead) {
       return { error: `${sheet.name} is dead; nothing more takes hold.`, retry: true };
+    }
+    // SRD 5.1, Conditions, Petrified: "immune to poison and disease".
+    const stone = petrifiedRefusal(sheet.conditions, args.kind);
+    if (stone) {
+      return { error: `${sheet.name} cannot take a new ${args.kind}: ${stone}.`, refused: "rules" };
     }
     if (args.kind === "madness") {
       if (!args.duration) {

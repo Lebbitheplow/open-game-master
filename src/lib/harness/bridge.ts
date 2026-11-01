@@ -31,7 +31,7 @@ import { createStreamRepetitionGuard, firstCopyOf, streamRepetitionResponse } fr
 import { buildChildEnv, leaksServerSecret } from "./child-env.ts";
 import { childPath } from "./discover.ts";
 import { renderCompletion, renderFollowUp, renderTurn, toMcpTools, toolNames } from "./render.ts";
-import { adapterFor, harnessConfig, probeHarness, resolveHarnessBinary } from "./status.ts";
+import { adapterFor, harnessConfig, noteSignedOut, probeHarness, resolveHarnessBinary } from "./status.ts";
 import { harnessOfferFor } from "./policy.ts";
 import { makeRunDir, removeRunDir } from "./run-dir.ts";
 import { getCampaignById } from "@/lib/db/campaigns";
@@ -219,6 +219,10 @@ export class BridgeSession {
       return;
     }
     if (event.type === "error") {
+      const id = harnessConfig().id;
+      if (event.kind === "signed-out" && isHarnessId(id)) {
+        noteSignedOut(id);
+      }
       this.deliver({ error: harnessError(event.message, event.kind) });
       this.close();
       return;

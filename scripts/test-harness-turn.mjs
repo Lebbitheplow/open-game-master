@@ -269,7 +269,9 @@ await test("a program that writes nothing after its tool call keeps what it wrot
 });
 
 await test("a signed-out program halts the turn with a message the table can act on", async () => {
-  script([[{ fail: "signed-out", message: "Not logged in" }]]);
+  const { probeHarness } = await import("../src/lib/harness/status.ts");
+  assert.equal((await probeHarness("claude", { refresh: true })).auth.state, "ready");
+  script([[{ fail: "signed-out", message: "OAuth session expired and could not be refreshed" }]]);
   say("I look around.");
   await startDmTurn(campaign.id);
   const latest = getLatestDmMessage(campaign.id);
@@ -278,6 +280,21 @@ await test("a signed-out program halts the turn with a message the table can act
   assert.ok(system && /signed out/i.test(system.content), `expected a signed-out halt, got ${system?.content}`);
   assert.ok(!latest.content.includes("I look around"), "no narration was invented");
   assert.equal(activeBridgeSessions(), 0);
+  // The admin page reads the cached status: the halted turn makes it say
+  // "Sign in needed" at once, not "Ready" until the cache runs out (#713).
+  assert.equal((await probeHarness("claude")).auth.state, "signed-out");
+});
+
+await test("the admin page asks the saved program again on every load; the others keep their cached answer", async () => {
+  const { probeAllHarnesses, probeHarness } = await import("../src/lib/harness/status.ts");
+  const before = await probeHarness("codex");
+  const saved = (await probeHarness("claude")).checkedAt;
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  const statuses = await probeAllHarnesses({ fresh: "claude" });
+  const claude = statuses.find((status) => status.id === "claude");
+  assert.ok(claude.checkedAt > saved, "the saved program was asked again");
+  assert.equal(claude.auth.state, "ready", "and a sign-in that came back reads Ready");
+  assert.equal(statuses.find((status) => status.id === "codex").checkedAt, before.checkedAt, "the others stay cached");
 });
 
 // The program's text goes through the same loop guard as a model's stream

@@ -41,6 +41,8 @@ import { handleSetCondition } from "@/lib/dm/set-condition";
 import { breakConcentration, clearSpellConditionsByName } from "@/lib/dm/concentration";
 import { laySpellConditionsOnEnemy } from "@/lib/dm/spell-effects";
 import { instancesOf, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { petrifiedImmunities } from "@/lib/dm/damage-logic";
+import { pcImmunities } from "@/lib/dm/pc-defenses";
 import { liveZones, publishZones, saveZones } from "@/lib/dm/zone-store";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { saveAgainst } from "@/lib/dm/roll-about";
@@ -149,9 +151,9 @@ function strike(
     if (held && !trigger.concentrationSave) {
       return [];
     }
-    const immune = trigger.immuneSucceeds && new RegExp(`\\b${trigger.immuneSucceeds}\\b`, "i").test(enemy.stats.immune ?? "");
+    const immune = immuneSucceeds(trigger, [enemy.stats.immune ?? "", ...petrifiedImmunities(enemy.conditions)].join(", "));
     const save = trigger.save && !immune && !held
-      ? rollEnemySave(campaign.id, enemy, trigger.save, dc, { magical: true, resist: Boolean(trigger.condition) && bindsWorthResisting([trigger.condition ?? ""]), against: trigger.condition ?? [], record: { detail: `${enemy.displayName}: ${trigger.save.toUpperCase()} save against ${zone.spell}` } })
+      ? rollEnemySave(campaign.id, enemy, trigger.save, dc, { magical: !row.mundane, resist: Boolean(trigger.condition) && bindsWorthResisting([trigger.condition ?? ""]), against: trigger.condition ?? [], record: { detail: `${enemy.displayName}: ${trigger.save.toUpperCase()} save against ${zone.spell}` } })
       : null;
     const failed = !held && (trigger.save ? !immune && !save?.success : true);
     if (trigger.save && !held) {
@@ -163,7 +165,7 @@ function strike(
       dealt = failed ? rolled : Math.floor(rolled / 2);
       if (dealt > 0) {
         const before = enemy.currentHp;
-        lines.push(hurtEnemy(campaign, encounter, enemy, dealt, trigger.type ?? "force", why));
+        lines.push(hurtEnemy(campaign, encounter, enemy, dealt, trigger.type ?? "force", why, row.mundane));
         dealt = Math.max(0, before - (getEnemy(enemy.id)?.currentHp ?? before));
       }
     }
@@ -193,11 +195,14 @@ function strike(
   if (held && !trigger.concentrationSave) {
     return [];
   }
+  // A character's own immunities as damage reads them, petrified's poison
+  // included (pc-defenses.ts).
+  const immune = immuneSucceeds(trigger, pcImmunities(sheet));
   return withZoneTurn(campaign.id, (turn) => {
-    const save = trigger.save && !held
-      ? rollCharacterSave(campaign, turn, sheet, trigger.save, dc, `${trigger.save.toUpperCase()} save against ${zone.spell}`, saveAgainst({ damageType: trigger.type, magical: true }))
+    const save = trigger.save && !held && !immune
+      ? rollCharacterSave(campaign, turn, sheet, trigger.save, dc, `${trigger.save.toUpperCase()} save against ${zone.spell}`, saveAgainst({ damageType: trigger.type, magical: !row.mundane }))
       : null;
-    const failed = !held && (trigger.save ? !save?.success : true);
+    const failed = !held && (trigger.save ? !immune && !save?.success : true);
     if (trigger.save && !held) {
       lines.push(`${sheet.name} ${failed ? "fails" : "makes"} the ${trigger.save.toUpperCase()} save against ${zone.spell} (DC ${dc}).`);
     }
@@ -215,8 +220,8 @@ function strike(
         const hurt = applyPcDamage(campaign, turn.id, getSheetById(sheet.id) ?? sheet, {
           amount,
           type: trigger.type,
-          magical: true,
-          spell: true,
+          magical: !row.mundane,
+          spell: !row.mundane,
           reason: why,
         });
         const taken = typeof hurt.damageApplied === "number" ? hurt.damageApplied : amount;
@@ -241,6 +246,14 @@ function strike(
     }
     return lines;
   });
+}
+
+// "Creatures that ... are immune to poison automatically succeed on this
+// saving throw" (Stinking Cloud): read against the creature's immunities as
+// damage takes them, so a petrified creature, "immune to poison and
+// disease" (SRD 5.1, Conditions, Petrified), is not touched either.
+function immuneSucceeds(trigger: ZoneTrigger, immunities: string): boolean {
+  return Boolean(trigger.immuneSucceeds) && new RegExp(`\\b${trigger.immuneSucceeds}\\b`, "i").test(immunities);
 }
 
 // What a failed save lays on an enemy: a condition (restrained is the
@@ -323,13 +336,15 @@ function settle(campaign: Campaign, map: BattleMap, zones: SpellZone[]) {
 
 // A creature walked `walked` from `start`: the areas it entered, and the
 // feet it moved inside Spike Growth. A creature an area restrains stops on
-// the square it was caught on.
+// the square it was caught on. `careful` is a walk made at half speed, which
+// enters caltrops and ball bearings with no save (zones-gear.ts).
 export function zonesAfterMove(
   campaign: Campaign,
   encounterId: string,
   mover: { kind: string; refId: string },
   start: XY,
   walked: XY[],
+  options: { careful?: boolean } = {},
 ): string[] {
   const encounter = getActiveEncounter(campaign.id);
   const map = getBattleMapForEncounter(encounterId);
@@ -367,10 +382,23 @@ export function zonesAfterMove(
       lines.push(...strike(campaign, encounter, map, zone, victim, "each5", inside));
     }
     const struckKey = `${victim.id}:enter`;
+    // "A creature moving through the area at half speed doesn't need to make
+    // the saving throw": nothing is rolled and nothing is spent, so the same
+    // creature walking back in at full speed later this turn still saves.
+    if (trigger.on.includes("enter") && enteredAt && options.careful && trigger.carefulSkips) {
+      lines.push(`${victimName(victim)} moves carefully through ${zone.spell} at half speed and needs no save.`);
+      continue;
+    }
     if (trigger.on.includes("enter") && enteredAt && zone.struck?.[struckKey] !== key) {
       zone.struck = { ...(zone.struck ?? {}), [struckKey]: key };
+      // Caltrops: a failed save, seen as the condition it newly lays,
+      // stops the move on the square entered (zones-gear.ts).
+      const hadIt = Boolean(trigger.stopsOnFail && trigger.condition && victimHolds(victim, trigger.condition));
       lines.push(...strike(campaign, encounter, map, zone, victim, "enter"));
       if (trigger.condition === "restrained" && stillHeld(victim)) {
+        stopAt = stopAt ?? enteredAt;
+      }
+      if (trigger.stopsOnFail && trigger.condition && !hadIt && victimHolds(victim, trigger.condition)) {
         stopAt = stopAt ?? enteredAt;
       }
     }
@@ -393,6 +421,15 @@ function heldByZone(victim: Victim, zone: SpellZone): boolean {
   const held = holder?.conditions.find((entry) => entry.toLowerCase() === "restrained");
   const spells = [zone.spell, zone.heldBy ?? ""].map((name) => name.toLowerCase()).filter(Boolean);
   return Boolean(held && instancesOf((holder?.conditionMeta as ConditionMetaMap | undefined)?.[held]).some((entry) => entry.source === zone.casterId && spells.includes((entry.spell ?? "").toLowerCase())));
+}
+
+function victimName(victim: Victim): string {
+  return (victim.kind === "enemy" ? getEnemy(victim.id)?.displayName : getSheetById(victim.id)?.name) ?? "The creature";
+}
+
+function victimHolds(victim: Victim, condition: string): boolean {
+  const conditions = victim.kind === "enemy" ? getEnemy(victim.id)?.conditions : getSheetById(victim.id)?.conditions;
+  return holds(conditions ?? [], condition);
 }
 
 function stillHeld(victim: Victim): boolean {

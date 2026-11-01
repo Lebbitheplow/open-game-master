@@ -143,6 +143,7 @@ export const BUNDLE_COLUMNS: Record<string, { carried: string[]; left: Record<st
       ...IDENTITY,
       last_shift_turn: "the source table's clock",
       met_at: "who the party has met is the source table's play: a new table meets everyone fresh",
+      heard_at: "whose name the party has heard is the source table's play: a new table hears every name fresh",
       companion_sheet_id: "a companion's sheet is the source table's play",
       values_json: "a companion's convictions, seeded again from its class when one joins a party",
       conscience_json: "a companion's conscience is the source table's play",

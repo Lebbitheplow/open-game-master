@@ -227,11 +227,18 @@ export const RELATIONSHIP_BEATS = {
     label: "made a grand gesture for",
   },
   intimacy: { base: 8, track: "romantic", minRomance: "together", label: "spent the night with" },
+  // What a partner who saw a romantic move toward someone else takes it as
+  // (issue 642, src/lib/dm/romance-exclusive.ts). The server lands it, never
+  // the GM, so it is not among the beats a tool offers.
+  unfaithful: { base: -8, track: "social", label: "flirted with someone else in front of" },
 } as const satisfies Record<string, BeatSpec>;
 
 export type RelationshipBeat = keyof typeof RELATIONSHIP_BEATS;
 
-export const RELATIONSHIP_BEAT_NAMES = Object.keys(RELATIONSHIP_BEATS) as RelationshipBeat[];
+// The beats only the server lands.
+const SERVER_BEATS: ReadonlySet<string> = new Set(["unfaithful"]);
+
+export const RELATIONSHIP_BEAT_NAMES = (Object.keys(RELATIONSHIP_BEATS) as RelationshipBeat[]).filter((beat) => !SERVER_BEATS.has(beat));
 
 export function beatSpec(beat: string): BeatSpec | null {
   return (RELATIONSHIP_BEATS as Record<string, BeatSpec>)[beat] ?? null;

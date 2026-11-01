@@ -144,7 +144,7 @@ await test("The public encounter names whose turn it is, and the spent reactions
   assert.deepEqual(view.surprised, { acting: [], reacting: [] });
 });
 
-await test("An enemy's hit on a character is projected as an attack a reaction may answer, and not once the turn has moved.", async () => {
+await test("An enemy's hit on a character is projected as an attack a reaction may answer, and not once the next turn's creature has acted.", async () => {
   const enemy = await stage();
   kit.freshRound();
   kit.place(mira.id, 5, 5);
@@ -160,7 +160,13 @@ await test("An enemy's hit on a character is projected as an attack a reaction m
   assert.equal(hit.attackerId, enemy.id);
   assert.ok(hit.damage > 0);
   kit.giveTurn(vex.id);
-  assert.equal(activePublicEncounter(world.campaignId).lastHits?.some((entry) => entry.characterId === mira.id) ?? false, false);
+  const projected = () => activePublicEncounter(world.campaignId).lastHits?.some((entry) => entry.characterId === mira.id) ?? false;
+  // The turn moving on leaves Mira's player time to answer, until Vex does
+  // something with it (issue 713).
+  assert.equal(projected(), true);
+  const dodged = await world.invoke("take_action", { characterId: vex.id, action: "dodge" });
+  assert.equal(dodged.ok, true, dodged.error);
+  assert.equal(projected(), false);
 });
 
 await test("A knocked-out enemy is projected as knocked out, and a condition says until whose turn it lasts.", async () => {

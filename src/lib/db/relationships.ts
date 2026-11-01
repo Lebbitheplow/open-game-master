@@ -52,6 +52,9 @@ export type Relationship = {
   // An NPC's act toward the character (src/lib/dm/scheme-logic.ts): the
   // motive and the warmth they show. A storyteller secret; null = none.
   pretense: Pretense | null;
+  // What wrongs cost this bond and no amends has repaired (issue 642,
+  // src/lib/dm/amends-logic.ts).
+  owed: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -75,6 +78,7 @@ type RelationshipRow = {
   advance_ready_until?: number | null;
   advance_cooldown_until?: number | null;
   pretense_json?: string | null;
+  owed?: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -99,6 +103,7 @@ function mapRelationship(row: RelationshipRow): Relationship {
     advanceReadyUntil: row.advance_ready_until ?? 0,
     advanceCooldownUntil: row.advance_cooldown_until ?? 0,
     pretense: parsePretense(row.pretense_json),
+    owed: Math.max(0, row.owed ?? 0),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -218,6 +223,7 @@ export function patchRelationship(
       | "advanceReadyUntil"
       | "advanceCooldownUntil"
       | "pretense"
+      | "owed"
     >
   >,
 ): Relationship | null {
@@ -237,7 +243,7 @@ export function patchRelationship(
        SET approval = ?, romance = ?, status = ?, flags_json = ?, memories_json = ?,
            beats_json = ?, apart_chapters = ?, last_shift_turn = ?, subject_id = ?,
            subject_kind = ?, character_name = ?, advance_ready_until = ?,
-           advance_cooldown_until = ?, pretense_json = ?, updated_at = ?
+           advance_cooldown_until = ?, pretense_json = ?, owed = ?, updated_at = ?
        WHERE id = ?`,
     )
     .run(
@@ -255,6 +261,7 @@ export function patchRelationship(
       Math.max(0, Math.round(patch.advanceReadyUntil ?? current.advanceReadyUntil)),
       Math.max(0, Math.round(patch.advanceCooldownUntil ?? current.advanceCooldownUntil)),
       serializePretense(pretense),
+      Math.max(0, Math.round(patch.owed ?? current.owed)),
       nowIso(),
       id,
     );

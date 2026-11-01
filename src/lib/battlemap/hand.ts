@@ -48,7 +48,9 @@ import { featureCards, spellCards, spellNames } from "@/lib/battlemap/hand-spell
 import { intimidatingPresenceCards, subclassSpendCards } from "@/lib/battlemap/hand-subclass";
 import { spellHoldOf } from "@/lib/battlemap/hand-escape";
 import { gearCards, undrawnGate } from "@/lib/battlemap/hand-gear";
+import { grantedAttackCards } from "@/lib/battlemap/hand-granted";
 import { textKey } from "@/lib/language/text-logic";
+import { magicItemRiders } from "@/lib/srd/magic-items";
 
 export * from "@/lib/battlemap/hand-core";
 
@@ -153,7 +155,8 @@ function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders
       // A natural weapon is always proficient, as the engine swings it.
       natural ? [...profs, "simple", name.toLowerCase()] : profs,
       shillelagh?.resolved ?? resolved,
-      { riders, offHand, martialArts },
+      // Bracers of Archery's longbow training and +2 damage, as pc_attack swings.
+      { riders, offHand, martialArts, worn: magicItemRiders(sheet.equipment, sheet).weaponRiders },
     );
     const rage = ragingMeleeBonus(sheet, profile);
     const damage = `${addFlat(profile.damageExpression, rage)}${onHit.suffix}`;
@@ -241,6 +244,8 @@ function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders
   cards.push(build("Unarmed strike", null, false));
   // The bonus-action strikes a feature grants (Martial Arts, Frenzy).
   cards.push(...bonusStrikeCards(sheet, turn, riders, carried.map((weapon) => ({ name: weapon.name, srd: weapon.srd }))));
+  // The attacks a held condition grants (Spiritual Weapon's weapon).
+  cards.push(...grantedAttackCards(sheet, turn, allowed));
 
   // Two-weapon fighting: two light melee weapons in hand buy a bonus swing,
   // and with Dual Wielder any two melee weapons held in one hand do.

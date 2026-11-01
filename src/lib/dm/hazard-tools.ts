@@ -30,6 +30,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { rollCard } from "@/lib/dm/roll-card";
 import { rollOn } from "@/lib/roll-labels";
 import { springTrapOn } from "@/lib/dm/trap-run";
+import { rollExpression } from "@/lib/dice";
 import { SAMPLE_TRAPS } from "@/lib/srd/trap-specs";
 import { hazardNamesAt, trapAt } from "@/lib/srd/table-hazards";
 import type { ToolResult } from "@/lib/dm/tool-errors";
@@ -62,7 +63,7 @@ export const hazardTools: ToolDef[] = [
     function: {
       name: "apply_hazard",
       description:
-        "Resolve a trap, a fall, or an environmental hazard against one or more characters with real 5e numbers. The server computes the damage and (for traps) the save DC from the book and applies the save and damage itself, so you never invent them. Use this, never apply_damage, for any harm from the environment to a character. Call it BEFORE narrating the result; narrate exactly what it reports.",
+        "Resolve a trap, a fall, or an environmental hazard against one or more characters with real 5e numbers. The server takes the damage and save DC from the book and applies them; never invent them. Use this, never apply_damage, for any harm from the environment to a character. Call it BEFORE narrating the result; narrate exactly what it reports.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -79,19 +80,19 @@ export const hazardTools: ToolDef[] = [
               "extreme_heat",
             ],
             description:
-              "Hazard math: falling, trap, generic, suffocation, drowning, extreme_cold or extreme_heat. Feet for falling; severity, or a trap by name, for trap; for generic a bespoke hazard (a gout of flame) with your own damage, saveAbility and dc; roundsWithoutAir for suffocation and drowning; hours for extreme_cold and extreme_heat.",
+              "Which hazard. Feet for falling; severity or a trap by name for trap; for generic, a bespoke hazard (a gout of flame) with your own damage, saveAbility and dc; roundsWithoutAir for suffocation and drowning; hours for extreme cold and heat.",
           },
           hours: {
             type: "integer",
             minimum: 1,
             maximum: 48,
             description:
-              "extreme_cold/extreme_heat only: hours of exposure. The server rolls one CON save for each hour (cold DC 10; heat DC 5 rising by 1 an hour, at disadvantage in medium or heavy armor or heavy clothing) and applies a level of exhaustion for each failure. Cold weather gear or the matching resistance shrugs it off.",
+              "extreme_cold/extreme_heat only: hours of exposure. The server rolls the hourly CON saves (gear and resistances count) and applies exhaustion for each failure.",
           },
           roundsWithoutAir: {
             type: "integer",
             description:
-              "suffocation/drowning only: rounds already without air; 0 means they have just run out. The server derives from their Constitution how long they last before dropping to 0 HP.",
+              "suffocation/drowning only: rounds already without air; 0 means they have just run out.",
           },
           characterIds: {
             type: "array",
@@ -103,7 +104,7 @@ export const hazardTools: ToolDef[] = [
             type: "string",
             enum: ["front", "rear"],
             description:
-              "Instead of characterIds: whoever walks first ('front') or last ('rear') in the travel formation. Use it for a trap or hazard the party walks into; the formation is in GAME STATE. Refused when no formation is set; then name the characterIds.",
+              "Instead of characterIds: whoever walks first ('front') or last ('rear') in the travel formation. For a trap or hazard the party walks into; refused when GAME STATE shows no formation, then name the characterIds.",
           },
           feet: {
             type: "integer",
@@ -113,7 +114,7 @@ export const hazardTools: ToolDef[] = [
             type: "string",
             enum: [...SEVERITY_ENUM],
             description:
-              "trap only: setback is a nuisance, dangerous can drop a careless character, deadly can kill. It sets a DEX save and damage scaled to each victim's level. Default: 'dangerous'.",
+              "trap only: setback is a nuisance, dangerous can drop a careless character, deadly can kill. Default: 'dangerous'.",
           },
           saveAbility: {
             type: "string",
@@ -127,7 +128,7 @@ export const hazardTools: ToolDef[] = [
           },
           damageType: {
             type: "string",
-            description: "Damage type (bludgeoning, piercing, fire, poison, ...). Resistances apply. Default: piercing, or bludgeoning for falling.",
+            description: "Damage type (fire, poison). Default: piercing, or bludgeoning for falling.",
           },
           halfOnSave: {
             type: "boolean",
@@ -140,8 +141,10 @@ export const hazardTools: ToolDef[] = [
           },
           trap: {
             type: "string",
-            description: `trap only: an SRD sample trap or one of the table's own workshop traps, by its listed name. SRD traps: ${SAMPLE_TRAPS.map((trap) => trap.name).join(", ")}; workshop traps are named under GAME STATE. A named trap runs by its own numbers (spot and disarm DCs, attack, fall, damage, save, conditions) instead of the severity table.`,
+            description: `trap only: an SRD sample trap or one of the table's own workshop traps, by its listed name. SRD traps: ${SAMPLE_TRAPS.map((trap) => trap.name).join(", ")}; workshop traps are named under GAME STATE. A named trap runs by its own numbers instead of the severity table.`,
           },
+          fromX: { type: "integer", description: "trap and generic: x of the square it fires from, for cover on a DEX save." },
+          fromY: { type: "integer", description: "Its y." },
           reason: { type: "string", description: "Short note on the hazard." },
         },
         required: ["type"],
@@ -178,7 +181,17 @@ const hazardSchema = z.object({
   // A trap by name: one of the SRD's sample traps or the table's own.
   trap: z.string().max(80).optional(),
   reason: z.string().optional(),
+  // The square a trap or hazard comes from: cover between it and a
+  // character counts on a Dexterity save (SRD 5.1, Cover), which the board
+  // cannot know without it.
+  fromX: z.coerce.number().int().min(0).optional(),
+  fromY: z.coerce.number().int().min(0).optional(),
 });
+
+// The square the hazard comes from, as cast_at_player reads it.
+function fromOf(args: z.infer<typeof hazardSchema>): { fromX?: number; fromY?: number } {
+  return args.fromX !== undefined && args.fromY !== undefined ? { fromX: args.fromX, fromY: args.fromY } : {};
+}
 
 // Slow Fall and Feather Fall answer a fall that has landed (use_reaction,
 // src/lib/dm/reaction-tools.ts); a turn out of a fight offers use_reaction
@@ -408,11 +421,21 @@ function resolveHazard(
       const own = hazardNamesAt(campaign.id).trap;
       return { error: `No trap is named "${args.trap}". The SRD's sample traps are ${SAMPLE_TRAPS.map((trap) => trap.name).join(", ")}${own.length ? `; this table's are ${own.join(", ")}` : ""}. Leave trap out to use the severity table.`, retry: true };
     }
+    // A volley (Poison Darts' four) is dealt out at random among the
+    // creatures named, each missile its own attack, hit and save (SRD 5.1
+    // Traps; issue #570, EQP-20: one dart per victim was all that flew).
+    const volley = found.trap.volley ?? 0;
+    const results = volley > 0 && targets.length
+      ? Array.from({ length: volley }, (_, dart) => {
+          const pick = targets.length > 1 ? rollExpression(`1d${targets.length}`).total - 1 : 0;
+          return { dart: dart + 1, ...springTrapOn(campaign, turn, targets[pick], found.name, found.trap, sheets, sheetsById, fromOf(args)) };
+        })
+      : targets.map((sheet) => springTrapOn(campaign, turn, sheet, found.name, found.trap, sheets, sheetsById, fromOf(args)));
     return {
       ok: true,
       type: "trap",
       trap: found.name,
-      results: targets.map((sheet) => springTrapOn(campaign, turn, sheet, found.name, found.trap, sheets, sheetsById)),
+      results,
       note: `${found.trap.summary} Rolled and applied by the server; narrate the outcome per character.`,
     };
   }
@@ -450,6 +473,7 @@ function resolveHazard(
         halfOnSave,
         condition: args.condition,
         ...(args.type === "trap" ? { hazard: "trap" } : {}),
+        ...fromOf(args),
       }),
       sheets,
       sheetsById,

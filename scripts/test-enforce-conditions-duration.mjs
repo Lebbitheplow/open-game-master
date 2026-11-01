@@ -61,10 +61,9 @@ function nextRound() {
 // Skips turns until this character's own turn has ended once: a save that
 // ends a condition is made at the end of the holder's turn (SRD 5.1).
 function throughTurnOf(id) {
-  const current = () => {
-    const encounter = world.encounter();
-    return encounter.order[encounter.turnIndex]?.characterId;
-  };
+  // Whose turn it is: nobody's while the enemies a pass walked past are
+  // still due (the skip hands theirs on first).
+  const current = () => kit.pointer().id;
   for (let turn = 0; turn < 8 && current() !== id; turn += 1) {
     assert.equal(kit.skipTurn(), true);
   }

@@ -25,7 +25,7 @@ import assert from "node:assert/strict";
 import "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { caster, closeTables, enemyOf, FIGHTER } from "./lib/enforce-spell-kit.mjs";
-import { board, holdTurn, nextTurn, stride, tokenOf, walk, zonesOf } from "./lib/enforce-zones.mjs";
+import { board, handOnDue, holdTurn, nextTurn, stride, tokenOf, walk, zonesOf } from "./lib/enforce-zones.mjs";
 
 const encounters = await import("../src/lib/db/encounters.ts");
 
@@ -50,6 +50,9 @@ function startTurnOf(world, refId) {
   }
   encounters.saveEncounter({ ...encounter, turnIndex: before, turnBudget: null });
   nextTurn(world);
+  // Enemies between them take their turns first; theirs begins once they
+  // have (issue 713).
+  handOnDue(world);
 }
 const ABJURER = (level = 6) =>
   caster("wizard", "int", ["Mage Armor", "Protection from Evil and Good"], [], level, { subclass: "School of Abjuration" });

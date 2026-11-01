@@ -65,7 +65,32 @@ export type ResolvedEnemyRequest = {
   // The row of an earlier fight this creature comes back from, as it was
   // left there (src/lib/dm/foe-return.ts).
   returning?: string;
+  // Which entry of the request it came from: a monster and its count are
+  // one group of identical creatures, on one initiative roll.
+  group?: number;
 };
+
+// One initiative roll for each group of identical creatures: "The GM makes
+// one roll for an entire group of identical creatures, so each member of
+// the group acts at the same time" (SRD 5.1, Initiative). A group is one
+// entry of the enemies list, a monster with its count. Rolled silently, a
+// record for the DM alone, as an enemy's save is.
+export function groupInitiatives(campaignId: string, rows: ResolvedEnemyRequest[], names: string[]): number[] {
+  const rolled = new Map<number, number>();
+  return rows.map((entry, index) => {
+    const held = entry.group === undefined ? undefined : rolled.get(entry.group);
+    if (held !== undefined) {
+      return held;
+    }
+    const size = entry.group === undefined ? 1 : rows.filter((row) => row.group === entry.group).length;
+    const label = size > 1 ? `${entry.name} (${size}): initiative` : `${names[index]}: initiative`;
+    const total = dmRoll(campaignId, null, "initiative", label, d20Expression(entry.stats.dexMod)).total;
+    if (entry.group !== undefined) {
+      rolled.set(entry.group, total);
+    }
+    return total;
+  });
+}
 
 // Resolves every requested enemy before anything is created. Returns the
 // flat per-individual list, or the first unresolvable monster reference.
@@ -89,7 +114,7 @@ export function resolveEnemyRequests(
   // A companion who left the party and comes back against it, or one that
   // turned on it, fights as themselves: once, whatever the count.
   const sheetFoes = campaignId ? sheetFoesByName(campaignId) : new Map<string, SheetFoeEntry>();
-  for (const request of requests) {
+  for (const [group, request] of requests.entries()) {
     const count = request.count ?? 1;
     const wanted = textKey(request.monster);
     // A creature from an earlier fight, named by its id there or, alone, by
@@ -144,7 +169,7 @@ export function resolveEnemyRequests(
       continue;
     }
     for (let index = 0; index < count; index += 1) {
-      resolved.push({ slug: match?.slug ?? "custom", name: displayName, stats });
+      resolved.push({ slug: match?.slug ?? "custom", name: displayName, stats, group });
     }
   }
   return { resolved };
@@ -332,21 +357,26 @@ export function handleAddEnemies(
   }
   const nameOf = (arrival: (typeof arriving)[number]) =>
     arrival.carry ? carriedNames[carriedHere.indexOf(arrival)] : freshNames[freshHere.indexOf(arrival)];
-  const inserted = arriving.map((arrival) => {
-    const name = nameOf(arrival);
-    return insertEnemy({
+  // Enemy initiative rolls silently at spawn, like start_encounter: once
+  // for each group of identical creatures. One back from an earlier fight
+  // is no member of a group here and rolls alone.
+  const initiatives = groupInitiatives(
+    campaign.id,
+    arriving.map((arrival) => (arrival.carry ? { ...arrival.entry, group: undefined } : arrival.entry)),
+    arriving.map(nameOf),
+  );
+  const inserted = arriving.map((arrival, index) =>
+    insertEnemy({
       encounterId: encounter.id,
       campaignId: campaign.id,
       slug: arrival.entry.slug,
-      displayName: name,
-      // Enemy initiative rolls silently at spawn, like start_encounter.
-      // A record for the DM alone, as an enemy's save is.
-      initiative: dmRoll(campaign.id, null, "initiative", `${name}: initiative`, d20Expression(arrival.entry.stats.dexMod)).total,
+      displayName: nameOf(arrival),
+      initiative: initiatives[index],
       stats: arrival.entry.stats,
       ...(arrival.entry.npcId ? { npcId: arrival.entry.npcId } : {}),
       ...(arrival.carry ? { arrives: arrival.carry.arrives } : {}),
-    });
-  });
+    }),
+  );
   const back = rejoining.flatMap(({ id, carry }) => {
     const row = patchEnemyHp(id, carry.arrives.currentHp, "alive");
     return row ? [row] : [];

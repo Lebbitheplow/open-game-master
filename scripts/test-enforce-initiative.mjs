@@ -23,6 +23,8 @@ const { test, finish } = suite("test-enforce-initiative");
 const world = await openWorld();
 const kit = await combatKit(world);
 const { getFloor } = await import("../src/lib/db/campaigns.ts");
+const { invokeEngine } = await import("../src/lib/dm/invoke.ts");
+const { createDmTurn } = await import("../src/lib/db/dm-turns.ts");
 
 const quick = world.addHero({ class: "fighter", level: 5, abilities: { dex: 16 }, proficiencies: TRAINED });
 const alert = world.addHero({ class: "fighter", level: 5, abilities: { dex: 12 }, feats: ["Alert"], proficiencies: TRAINED });
@@ -330,22 +332,29 @@ await test("a surprised enemy walked past at the end of round 1 has lost that tu
     assert.equal(kit.endTurn(entry.userId), true);
   }
   assert.equal(world.encounter().round, 2);
+  assert.deepEqual(world.encounter().legendary.due ?? [], [], "nothing is owed for the turn surprise took");
   const hero = world.sheet(kit.current().characterId);
   kit.place(hero.id, 5, 5);
   kit.place(enemy.id, 6, 5);
+  // The GM's model may not play it at the top of round 2: its turn comes
+  // at its place in the order (a person at the console keeps a free hand).
   world.dice(15, 3);
-  const early = await world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: hero.id });
+  const early = await invokeEngine(world.campaign(), { kind: "ai", turnId: createDmTurn(world.campaignId, [], "ai").id }, { name: "enemy_attack", args: { enemyId: enemy.id, targetCharacterId: hero.id } });
   world.clearDice();
   assert.equal(early.ok, false, "the turn lost to surprise was taken at the top of round 2");
-  // Its turn comes at the end of round 2, as the order says.
+  // Its turn comes at the end of round 2, as the order says, and round 3
+  // begins once it has had it (issue 713).
   for (const entry of order) {
     assert.equal(kit.endTurn(entry.userId), true);
   }
-  assert.equal(world.encounter().round, 3);
+  assert.equal(world.encounter().round, 2);
+  assert.deepEqual(world.encounter().legendary.due, [enemy.id]);
   world.dice(15, 3);
   const late = await world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: hero.id });
   world.clearDice();
   assert.equal(late.ok, true, late.error);
+  kit.handOnEnemies();
+  assert.equal(world.encounter().round, 3);
 });
 
 await test("a surprised enemy does not walk in round 1 either", async () => {

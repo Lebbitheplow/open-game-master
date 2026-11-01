@@ -12,6 +12,8 @@ import { RollCard } from "@/app/campaigns/[campaignId]/RollCard";
 import type { StoredRoll } from "@/lib/db/rolls";
 import type { TranscriptSheet } from "@/app/campaigns/[campaignId]/departing";
 import type { MediaStatus } from "@/app/campaigns/[campaignId]/useCampaignStream";
+import { SystemMessage } from "@/app/campaigns/[campaignId]/MessageParts";
+import type { SystemGlyph } from "@/lib/system-glyphs";
 
 // What a DM passage is made of: the prose (with its inline roll cards and
 // speech lines) and the placeholder shown while a picture is on the render
@@ -70,6 +72,31 @@ export function MediaPlaceholder({
 }
 
 const ROLL_MARKER = /\[roll:([0-9a-f-]{36})\]/g;
+
+// A table note that carries rolls: what a person's adjudication leaves at a
+// table they run (src/lib/dm/persons-record-logic.ts, issue 713). A card for
+// each roll this seat holds (the newest few, as for a passage), then the
+// line, whose words stand alone where a screen has no cards to draw.
+export function RolledNote({ content, rollIds, glyph, rollsById, sheetsById }: {
+  content: string;
+  rollIds: readonly string[];
+  glyph?: SystemGlyph;
+  rollsById: Map<string, StoredRoll>;
+  sheetsById: ReadonlyMap<string, TranscriptSheet>;
+}) {
+  const rolls = rollIds.flatMap((id) => {
+    const roll = rollsById.get(id);
+    return roll ? [roll] : [];
+  });
+  return (
+    <div className="space-y-2" data-rolled-note="">
+      {rolls.map((roll) => (
+        <RollCard key={roll.id} roll={roll} characterName={roll.characterId ? sheetsById.get(roll.characterId)?.name : undefined} />
+      ))}
+      <SystemMessage content={content} glyph={glyph} />
+    </div>
+  );
+}
 
 export function DmContent({ content, rollsById, sheetsById, cast = [], lines, speaker }: {
   content: string;

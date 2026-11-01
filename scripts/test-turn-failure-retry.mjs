@@ -20,7 +20,8 @@ import { call, failure, fakeModel, held, reply, settleQueue } from "./lib/enforc
 
 const { test, finish } = suite("test-turn-failure-retry");
 
-const { listRecentMessages, findMessageForDmTurn } = await import("../src/lib/db/messages.ts");
+const { listRecentMessages, findMessageForDmTurn, getCampaignMessage, insertCampaignMessage } = await import("../src/lib/db/messages.ts");
+const { allocateSeq } = await import("../src/lib/db/campaigns.ts");
 const { getDmTurn, getLatestDmTurnId } = await import("../src/lib/db/dm-turns.ts");
 const { insertPlayerWhisper } = await import("../src/lib/db/dm-whispers.ts");
 const { getDatabase } = await import("../src/lib/db/core.ts");
@@ -162,7 +163,7 @@ await test("A backend error after the turn granted gold parks it as failed with 
   // The narration links the turn (for a reroll of its prose); the notice
   // must not any more, or it would still offer a Retry.
   assert.ok(!notices(world)[0].dmTurnId, "the notice still offers a Retry for a finished turn");
-  assert.equal(findMessageForDmTurn(turnId)?.id, said[0].id);
+  assert.equal(findMessageForDmTurn(turnId), null, "a finished turn still finds a notice offering its Retry");
 
   // The retry re-entered the saved conversation: the player's line, the
   // gold's call and its result are all in it, so the model can see the gold
@@ -210,6 +211,36 @@ await test("A backend error is written to the server log with its status and the
   const [notice] = notices(world);
   assert.ok(notice, "the table was not told the DM stopped");
   assert.doesNotMatch(notice.content, /CUDA|gpu-box/, "the backend's words reached the table");
+  model.close();
+  world.close();
+});
+
+// A lair action the turn's own tool posts is linked to the turn as well
+// (src/lib/dm/legendary-tools.ts), under a seq after the narration's slot,
+// which the halted notice then takes (src/lib/dm/narration-slot.ts). The
+// newest linked row was the lair's: Retry cleared its link, and the notice
+// went on offering a Retry of a turn already claimed.
+await test("Retry takes the halted notice's link, not that of a lair action the turn posted after the notice's place.", async () => {
+  const { world, kara, model } = await table();
+  model.script([failure(500)]);
+  await model.turn(world, "I step into the dragon's cave.", kara.id);
+  const turnId = getLatestDmTurnId(world.campaignId);
+  const [notice] = notices(world);
+  const lair = insertCampaignMessage({
+    campaignId: world.campaignId,
+    seq: allocateSeq(world.campaignId),
+    authorType: "system",
+    content: "Lair action (initiative 20, round 1): Smoke fills the cave.",
+    dmTurnId: turnId,
+  });
+  assert.ok(lair.seq > notice.seq);
+  assert.equal(findMessageForDmTurn(turnId)?.id, notice.id, "the lair's line was taken for the halted notice");
+
+  model.script([reply({ text: "Smoke curls along the cave roof as you step in." })]);
+  const retried = await retry(world, world.owner, turnId);
+  assert.equal(retried.status, 200, JSON.stringify(retried.json));
+  assert.ok(!getCampaignMessage(notice.id).dmTurnId, "the notice still offers a Retry of a turn already claimed");
+  assert.equal(getCampaignMessage(lair.id).dmTurnId, turnId);
   model.close();
   world.close();
 });

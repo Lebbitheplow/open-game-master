@@ -671,6 +671,19 @@ export function TabletopChronicle({
                 line
               );
             }
+            // A person's adjudication carries its rolls (issue 713): the
+            // ones this seat holds, then the line.
+            if (message.rollIds?.length) {
+              return (
+                <div key={message.id}>
+                  {message.rollIds.map((id) => {
+                    const roll = rollsById.get(id);
+                    return roll ? <ChronicleRoll key={roll.id} roll={roll} sheets={sheets} /> : null;
+                  })}
+                  <p className="cine-chronicle-system">{chronicleSystemLine(message.content)}</p>
+                </div>
+              );
+            }
             return (
               <p key={message.id} className="cine-chronicle-system">
                 {chronicleSystemLine(message.content)}

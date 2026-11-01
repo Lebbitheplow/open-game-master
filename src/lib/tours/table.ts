@@ -30,7 +30,7 @@ export const PLAYER_TOUR: TourStep[] = [
   {
     id: "compose",
     title: "Take your turn",
-    body: "Type your action here and press Enter. The Game Master reads everything sent up to that moment and answers the whole table at once, whether that is the AI or a person in the GM seat, so agree on a plan before you send.",
+    body: "Type your action here and press Enter. Type @ to pick a name the story has given you: someone in the party, a person you have met, or a place. The Game Master reads everything sent up to that moment and answers the whole table at once, whether that is the AI or a person in the GM seat, so agree on a plan before you send.",
     anchors: ["composer-input"],
     prepare: "show-chat",
   },
@@ -161,7 +161,7 @@ export const FIRST_TURN_TOUR: TourStep[] = [
   {
     id: "first-act",
     title: "Say what you do",
-    body: "Pick Do for an action or Say to speak in character, write it here and press Enter. The Game Master answers the whole table at once, so agree on a plan before you send.",
+    body: "Pick Do for an action or Say to speak in character, write it here and press Enter; type @ to pick a name. The Game Master answers the whole table at once, so agree on a plan before you send.",
     anchors: ["composer-input", "composer-modes"],
     prepare: "show-chat",
   },
@@ -196,7 +196,7 @@ export const DM_TOUR: TourStep[] = [
   {
     id: "modes",
     title: "Narrate and OOC",
-    body: "Narrate writes into the story as the Game Master. OOC is table talk. Player actions arrive as intents for you to answer.",
+    body: "Narrate writes into the story as the Game Master. OOC is table talk. Player actions arrive as intents for you to answer. Type @ to pick a name: your whole cast is offered, and anyone the table has not met yet is marked.",
     anchors: ["composer-modes"],
     prepare: "show-chat",
   },

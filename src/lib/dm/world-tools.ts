@@ -126,7 +126,7 @@ export const worldTools: ToolDef[] = [
           damageType: { type: "string", description: "Damage type, for damage you pass yourself." },
           material: { type: "string", enum: MATERIALS, description: "What the object is made of. Default: wood." },
           size: { type: "string", enum: SIZES, description: "Its size class. Default: medium." },
-          fragile: { type: "boolean", description: "True for brittle objects (halves HP)." },
+          fragile: { type: "boolean", description: "True for brittle objects (fewer HP)." },
           damage: { type: "string", description: "The damage dealt by something other than a character's weapon, as dice (2d6) or a number." },
           ac: { type: "integer", description: "Override the material's AC if you know it." },
           hp: { type: "integer", description: "Override the size's HP if you know it." },
@@ -478,6 +478,12 @@ const passTimeSchema = z.object({
 // "Revert this turn" (audit/revert-turn): the turn's moves are kept
 // (src/lib/db/clock-moves.ts), and the revert puts the instant back with the
 // sheet changes the time made, all audited (issue #622).
+// "1 hour passes", "10 minutes pass": describeDuration names one unit, so
+// its count alone says whether the verb is singular.
+function passVerb(minutes: number): string {
+  return Number.parseInt(describeDuration(minutes), 10) === 1 ? "passes" : "pass";
+}
+
 export function handlePassTime(
   campaign: Campaign,
   rawArguments: string,
@@ -514,7 +520,7 @@ export function handlePassTime(
   const sky = refreshSky(campaign.id, { before, minutes: moved.minutes });
   tableNote(
     campaign,
-    `${describeDuration(moved.minutes)} passes${args.reason?.trim() ? `: ${asSentence(args.reason)}` : "."} It is now ${describeInstant(moved.clock.calendar, moved.clock.instant)}.`,
+    `${describeDuration(moved.minutes)} ${passVerb(moved.minutes)}${args.reason?.trim() ? `: ${asSentence(args.reason)}` : "."} It is now ${describeInstant(moved.clock.calendar, moved.clock.instant)}.`,
   );
   return {
     ok: true,
@@ -525,6 +531,15 @@ export function handlePassTime(
     // Rolled by the server as the time passed; narrate what they decided.
     ...(moved.deathSaves.length ? { deathSaves: moved.deathSaves } : {}),
   };
+}
+
+// The journey's own line in the chronicle, as a rest and pass_time post
+// theirs. It goes last, after the death saves the hours rolled (settleDying
+// posts them inside advanceClock) and any forced-march saves.
+function journeyNote(campaign: Campaign, minutes: number | null, reason: string | undefined, now: string) {
+  const length = minutes ? ` for ${describeDuration(minutes)}` : "";
+  const why = reason?.trim() ? `: ${asSentence(reason)}` : ".";
+  tableNote(campaign, `The party travels${length}${why}${now ? ` It is now ${now}.` : ""}`);
 }
 
 export function handleTravel(
@@ -540,8 +555,14 @@ export function handleTravel(
   } catch {
     return { error: "Invalid arguments: travel needs hours or miles.", retry: true };
   }
-  if (args.water) {
-    setWaterRation(campaign.id, args.water);
+  // Who travels, settled before anything moves. A forced march with no
+  // traveller used to find out only after the clock, the world, the sky and
+  // the water had moved, and its retry moved them all again.
+  const travellers = resolveTargets(args.characterIds, sheets, sheetsById);
+  if (!travellers.length) {
+    return args.characterIds?.length
+      ? { error: "No traveller: characterIds names nobody at this table. Use characterIds from GAME STATE, or leave it out for the whole party. Nothing moved: the clock and the march are as they were.", retry: true }
+      : { error: "Nobody at this table can travel: it has no characters yet. Nothing moved: the clock and the march are as they were.", refused: "rules" };
   }
   const pace: TravelPace = args.pace ?? "normal";
   const effect = paceEffect(pace);
@@ -552,6 +573,9 @@ export function handleTravel(
   const leg = travelLeg({ pace, terrain, hours: args.hours, miles: args.miles, weatherFactor: before.weather ? weatherTravelFactor(before.weather) : 1 });
   if ("error" in leg) {
     return leg;
+  }
+  if (args.water) {
+    setWaterRation(campaign.id, args.water);
   }
   const legHours = leg.hours;
   const extra = forcedMarchHours(legHours);
@@ -574,8 +598,9 @@ export function handleTravel(
   });
   const weatherNotes: string[] = [];
   const weatherOutcome: Record<string, unknown> = {};
-  // The ground covered: miles an hour of the pace, halved in difficult
-  // terrain, cut by the weather the party set out in (src/lib/srd/travel.ts).
+  // The ground covered: the pace's Hour column, its Day column for a full
+  // day, halved in difficult terrain, cut by the weather the party set out
+  // in (src/lib/srd/travel.ts).
   weatherOutcome.miles = leg.miles;
   if (terrain === "difficult") {
     weatherNotes.push("Difficult terrain halves the distance.");
@@ -595,7 +620,7 @@ export function handleTravel(
         turn,
         JSON.stringify({
           type: exposure,
-          characterIds: resolveTargets(args.characterIds, sheets, sheetsById).map((sheet) => sheet.id),
+          characterIds: travellers.map((sheet) => sheet.id),
           // One save for every hour on the road in it.
           hours: legHours,
           reason: exposure === "extreme_cold" ? "hours in the bitter cold" : "hours in the heat",
@@ -639,7 +664,9 @@ export function handleTravel(
         ? "A slow pace lets the party travel stealthily if they wish."
         : "A normal pace carries no perception penalty, and like a fast one it allows no stealth: Stealth checks are refused until the march ends.";
 
+  const minutesOnRoad = "error" in moved ? null : moved.minutes;
   if (extra <= 0) {
+    journeyNote(campaign, minutesOnRoad, args.reason, now);
     return {
       ok: true,
       pace,
@@ -656,17 +683,18 @@ export function handleTravel(
   // DC 10 + 1 for each hour past 8 (SRD 5.1, Travel Pace), each failure a
   // level of exhaustion through the real exhaustion track.
   const dc = forcedMarchSaveDc(extra);
-  const targets = resolveTargets(args.characterIds, sheets, sheetsById);
-  if (!targets.length) {
-    return { error: "No travellers; use characterIds from GAME STATE.", retry: true };
-  }
   const hours = Array.from({ length: extra }, (_, index) => ({
     hour: index + 1,
     dc: forcedMarchSaveDc(index + 1),
   }));
   const results: Array<{ name: string; saves: HourSave[]; failed: boolean; exhaustion?: number }> = [];
-  for (const stale of targets) {
+  for (const stale of travellers) {
     const sheet = getSheetById(stale.id) ?? stale;
+    // The road's hours rolled the dying's death saves before these (clock.ts):
+    // one who died in them was listed holding up, saves and all.
+    if (sheet.deathSaves?.dead) {
+      continue;
+    }
     const saves = hourlyConSaves({
       campaign,
       turn,
@@ -687,18 +715,24 @@ export function handleTravel(
   }
 
   const worn = results.filter((entry) => entry.failed).map((entry) => entry.name);
+  journeyNote(campaign, minutesOnRoad, args.reason, now);
+  // The same account of the road a day within 8 hours gives (the clock, the
+  // weather and its exposure, the companions, the death saves the hours
+  // rolled), with the forced march's saves on top: the GM narrates the march
+  // from this result, and a long day left a hero's death unsaid.
   return {
     ok: true,
     pace,
     hours: legHours,
-    miles: weatherOutcome.miles,
     forcedMarch: true,
     forcedMarchHours: extra,
     dc,
     results,
+    ...(now ? { now } : {}),
+    ...weatherOutcome,
     note:
       (worn.length
         ? `Forced march (${extra}h past 8, one save an hour up to DC ${dc}): ${worn.join(", ")} failed and gained a level of exhaustion for each failed hour (server-applied).`
-        : `Forced march (${extra}h past 8, one save an hour up to DC ${dc}): everyone holds up.`) + ` ${paceNote}`,
+        : `Forced march (${extra}h past 8, one save an hour up to DC ${dc}): everyone holds up.`) + ` ${paceNote}${weatherNotes.length ? ` ${weatherNotes.join(" ")}` : ""}`,
   };
 }

@@ -9,7 +9,7 @@ const { placeCard, resolveSteps, skipVanished } = await import("../src/lib/tours
 const { finished, legacyKey, mergeLedgers, parseLedger, readDevice, settle, takeLegacy, writeDevice, deviceKey } = await import(
   "../src/lib/tours/account-logic.ts"
 );
-const { HAND_TUTORIAL_ID, TOUR_IDS, isTourId, tourVersion } = await import("../src/lib/tours/registry.ts");
+const { HAND_TUTORIAL_ID, TOUR_IDS, isTourId, tourEdition, tourVersion } = await import("../src/lib/tours/registry.ts");
 const { DM_TOUR, FIRST_TURN_TOUR, PLAYER_TOUR } = await import("../src/lib/tours/table.ts");
 const { HUB_TOUR, SHELF_TOUR, SYSTEM_TOURS, systemTourId, workshopTourAnchors } = await import(
   "../src/lib/tours/workshop.ts"
@@ -149,6 +149,12 @@ test("a revised tour opens again for anyone who finished an older version", () =
   assert.equal(finished(ledger, "table-player", 1), true);
   assert.equal(finished(ledger, "table-player", 2), false, "version 2 is not finished by a version-1 record");
   assert.equal(finished({ "table-player": { version: 3, how: "done", at } }, "table-player", 2), true);
+  // A reworded tour (its edition raised, issue 650) is still finished by the
+  // record its reader already holds: only a version opens it again.
+  for (const id of ["table-player", "table-dm"]) {
+    assert.ok(tourEdition(id) > 1, `${id} was reworded`);
+    assert.equal(finished({ [id]: { version: tourVersion(id), how: "done", at } }, id, tourVersion(id)), true, `${id} is not shown again`);
+  }
 });
 
 test("merging keeps the higher version and the first record of a tie", () => {
@@ -342,24 +348,35 @@ const fingerprint = (steps) =>
     .digest("hex")
     .slice(0, 16);
 const recordPath = new URL("./fixtures/tour-content.json", import.meta.url);
+// The edition rides only once raised, so a tour never reworded records as
+// it always did.
+const recordOf = (id, steps) => ({
+  version: tourVersion(id),
+  ...(tourEdition(id) > 1 ? { edition: tourEdition(id) } : {}),
+  content: fingerprint(steps),
+});
 if (process.argv.includes("--record")) {
   const { writeFileSync } = await import("node:fs");
-  const record = Object.fromEntries(Object.entries(TOUR_CONTENT).map(([id, steps]) => [id, { version: tourVersion(id), content: fingerprint(steps) }]));
+  const record = Object.fromEntries(Object.entries(TOUR_CONTENT).map(([id, steps]) => [id, recordOf(id, steps)]));
   writeFileSync(recordPath, `${JSON.stringify(record, null, 2)}
 `);
   console.log(`recorded ${Object.keys(record).length} tours`);
 }
 const recorded = JSON.parse(readFileSync(recordPath, "utf8"));
 
-test("a tour whose content changed has its version raised, and the record says so", () => {
+test("a tour whose content changed has its version or its edition raised, and the record says so", () => {
   assert.deepEqual(Object.keys(recorded).sort(), Object.keys(TOUR_CONTENT).sort(), "a tour is missing from the record, or the record names one that is gone");
   for (const [id, steps] of Object.entries(TOUR_CONTENT)) {
-    const now = { version: tourVersion(id), content: fingerprint(steps) };
+    const now = recordOf(id, steps);
     const then = recorded[id];
-    if (now.content !== then.content && now.version === then.version) {
-      assert.fail(`${id} changed but is still version ${now.version}: raise it in src/lib/tours/registry.ts, then record it`);
+    const edition = (entry) => entry.edition ?? 1;
+    if (now.content !== then.content && now.version === then.version && edition(now) === edition(then)) {
+      assert.fail(
+        `${id} changed but is still version ${now.version}, edition ${edition(now)}: in src/lib/tours/registry.ts raise its version to walk those who finished it through it again, or its edition for words they need not see twice; then record it`,
+      );
     }
     assert.ok(now.version >= then.version, `${id} went back from version ${then.version} to ${now.version}`);
+    assert.ok(edition(now) >= edition(then), `${id} went back from edition ${edition(then)} to ${edition(now)}`);
     assert.deepEqual(now, then, `${id} is not recorded as it stands: run node scripts/test-tours.mjs --record`);
   }
 });

@@ -355,4 +355,103 @@ await test("an engine-made dragonborn's ancestry is rolled on the SRD's table, o
   assert.match(ancestryOf(silver, namedId)[0], /^Draconic Ancestry: Silver/);
 });
 
+// A companion's training is chosen as a player would choose it: a background
+// (SRD 5.1, Backgrounds: two skills of its own), then the class's skills from
+// the class's list, none the background already gave, the best for its
+// scores first; a race's open picks the same way. Whoever recruits it may
+// name the background and the skills.
+await test("a companion's skills suit its scores, and the background is chosen by them too", () => {
+  const rogue = { str: 10, dex: 15, con: 14, int: 12, wis: 13, cha: 8 };
+  const from = ["acrobatics", "athletics", "deception", "insight", "intimidation", "investigation", "perception", "performance", "persuasion", "sleight_of_hand", "stealth"];
+  const picks = build.companionSkillPicks({ from, count: 4, abilities: rogue, taken: ["stealth"] });
+  assert.deepEqual(picks, ["acrobatics", "sleight_of_hand", "perception", "insight"]);
+  assert.deepEqual(
+    build.companionSkillPicks({ from, count: 4, abilities: rogue, taken: [], wanted: ["Persuasion", "Arcana", "nonsense"] }).slice(0, 2),
+    ["persuasion", "stealth"],
+  );
+  const backgrounds = [
+    { id: "sage", skills: ["arcana", "history"] },
+    { id: "urchin", skills: ["sleight_of_hand", "stealth"] },
+    { id: "soldier", skills: ["athletics", "intimidation"] },
+  ];
+  assert.equal(build.companionBackground(backgrounds, rogue).id, "urchin");
+  assert.equal(build.companionBackground(backgrounds, { ...rogue, int: 16, dex: 10 }).id, "sage");
+  assert.deepEqual(build.companionExpertisePicks(["insight", "stealth", "deception"], rogue, ["stealth"], 1), ["insight"]);
+});
+
+const SKILL_COUNT = { rogue: 4, bard: 3, ranger: 3, fighter: 2, wizard: 2, cleric: 2 };
+
+await test("a recruited companion has a background, its class's count of skills beside it, and no repeats", async () => {
+  const world = await table({ maxGuests: 6 });
+  for (const classId of Object.keys(SKILL_COUNT)) {
+    const { id } = await recruit(world, classId);
+    const sheet = world.sheet(id);
+    assert.notEqual(sheet.background, "", `${classId} has no background`);
+    const skills = sheet.proficiencies.skills;
+    assert.equal(new Set(skills).size, skills.length, `${classId}: ${skills.join(", ")}`);
+    assert.equal(skills.length, SKILL_COUNT[classId] + 2, `${classId}: ${skills.join(", ")}`);
+    await world.invoke("dismiss_companion", { characterId: id });
+  }
+});
+
+await test("the background and skills a recruiter names are kept, a skill off the list is passed over with a note, and an unknown background is refused with the options", async () => {
+  const world = await table();
+  const { id, note } = await recruit(world, "fighter", { background: "Sailor", skills: ["Intimidation", "Arcana"] });
+  const sheet = world.sheet(id);
+  assert.equal(sheet.background, "sailor");
+  assert.ok(sheet.proficiencies.skills.includes("intimidation"));
+  assert.ok(!sheet.proficiencies.skills.includes("arcana"));
+  assert.match(note, /Arcana is not among the skills/);
+  const refused = await world.invoke("add_companion", {
+    gender: "Unknown", name: "Other", class: "fighter", personality: "Quiet.", kind: "guest", background: "Astronaut",
+  });
+  assert.match(refused.error ?? refused.result?.error ?? "", /"Astronaut" is not a background this table offers\. Call add_companion again with one of: .*Soldier/);
+});
+
+await test("a half-elf companion takes the two skills its race leaves to it", async () => {
+  const world = await table();
+  const { id } = await recruit(world, "fighter", { race: "half-elf" });
+  assert.equal(world.sheet(id).proficiencies.skills.length, 2 + 2 + 2);
+});
+
+// SRD 5.1, Rogue: Expertise at 1st and 6th level; Bard: at 3rd and 10th. Two
+// proficient skills each time.
+await test("a rogue or bard companion places the expertise its class has given, at recruitment and as it levels", async () => {
+  const world = await table({ maxGuests: 6 });
+  const check = (sheet, count) => {
+    const expertise = sheet.proficiencies.expertise;
+    assert.equal(expertise.length, count, `${sheet.class} ${sheet.level}: ${expertise.join(", ")}`);
+    for (const skill of expertise) {
+      assert.ok(sheet.proficiencies.skills.includes(skill), `${skill} is not among ${sheet.proficiencies.skills.join(", ")}`);
+    }
+  };
+  const { id: rogue } = await recruit(world, "rogue");
+  check(world.sheet(rogue), 2);
+  check(await raiseTo(world, rogue, 6), 4);
+  await world.invoke("dismiss_companion", { characterId: rogue });
+  const { id: bard } = await recruit(world, "bard");
+  check(world.sheet(bard), 0);
+  check(await raiseTo(world, bard, 3), 2);
+  check(await raiseTo(world, bard, 9), 2);
+  check(await raiseTo(world, bard, 10), 4);
+  await world.invoke("dismiss_companion", { characterId: bard });
+  const { id: seasoned } = await recruit(world, "rogue", { name: "Seasoned", level: 6 });
+  check(world.sheet(seasoned), 4);
+  await world.invoke("dismiss_companion", { characterId: seasoned });
+  const { id: lore } = await recruit(world, "bard", { name: "Lore", level: 10 });
+  check(world.sheet(lore), 4);
+  await world.invoke("dismiss_companion", { characterId: lore });
+  const { id: fighter } = await recruit(world, "fighter");
+  check(await raiseTo(world, fighter, 4), 0);
+});
+
+await test("a companion an older build left without expertise places it at its next level", async () => {
+  const world = await table();
+  const { id } = await recruit(world, "rogue");
+  const made = world.sheet(id);
+  world.patch(id, { proficiencies: { ...made.proficiencies, expertise: [] } });
+  assert.deepEqual(world.sheet(id).proficiencies.expertise, []);
+  assert.equal((await raiseTo(world, id, 2)).proficiencies.expertise.length, 2);
+});
+
 finish();

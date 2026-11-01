@@ -66,8 +66,13 @@ test("the DM's passage ends the turn; a player's does not", () => {
   const afterPlayer = campaignReducer(narrating, event("message_added", { message: player }, 12));
   assert.equal(afterPlayer.dmStatus, "narrating");
 
-  const halted = { id: "m3", seq: 13, authorType: "system", dmTurnId: "t1", content: "halted" };
+  const halted = { id: "m3", seq: 13, authorType: "system", dmTurnId: "t1", content: "The GM ran into a problem: timeout." };
   assert.equal(campaignReducer(narrating, event("message_added", { message: halted }, 13)).dmStatus, "idle");
+
+  // A lair action the turn's own tool posts carries the turn's link too; the
+  // turn runs on past it, still narrating, with the party's actions queued.
+  const lair = { id: "m4", seq: 14, authorType: "system", dmTurnId: "t1", content: "Lair action (initiative 20, round 2): The ceiling sheds stones." };
+  assert.equal(campaignReducer(narrating, event("message_added", { message: lair }, 14)).dmStatus, "narrating");
 });
 
 test("issue 68: a narration a player answered mid-stream lands before the answer", () => {

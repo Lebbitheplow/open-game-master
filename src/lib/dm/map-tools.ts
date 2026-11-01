@@ -72,6 +72,7 @@ import { z } from "zod";
 import { zonesAfterMove } from "@/lib/dm/zone-triggers";
 import { zoneCoverBetween } from "@/lib/dm/zone-rules";
 import { dragLandings, enemyDrag } from "@/lib/dm/drag-move";
+import { walkCostFactor } from "@/lib/dm/drag";
 import { flightOf, markSqueezing } from "@/lib/dm/token-state";
 import { toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { findNamed, textKey } from "@/lib/language/text-logic";
@@ -384,7 +385,7 @@ export const moveTokenTool: ToolDef = {
   function: {
     name: "move_token",
     description:
-      "Move a combatant on the battle map. A walk (no forced): an enemy taking its movement, or a character on their own turn, either an AI companion or a player character walking the move their player just declared; it spends their speed, stands them from prone for what standing costs, and draws opportunity attacks. A forced move (forced:true): a character pushed, pulled, or carried. A teleport (teleport:true): to a tile WITHOUT walking (Misty Step, a portal, a trap door), by spell with casterCharacterId for a character's (the server casts it and refuses a jump past its range), or casterEnemyId with enemyAbility (or spell) for an enemy's, or cause 'hazard'; the tile must be open and empty. The server enforces walls, occupancy, speed, and that a frightened creature never walks closer to what it fears; moves clamp to the farthest legal tile toward the target. A walking enemy passes through its allies' spaces and a character's two sizes apart at double cost (never stopping in one), and a Large or bigger one squeezes through a gap one size too small at double cost and is squeezing there (attacks against it have advantage).",
+      "Move a combatant on the battle map. A walk (no forced): an enemy taking its movement, or a character on their own turn, either an AI companion or a player character walking the move their player just declared; it spends their speed (standing from prone too) and draws opportunity attacks. A forced move (forced:true): a character pushed, pulled, or carried. A teleport (teleport:true): to an open, empty tile WITHOUT walking (Misty Step, a portal, a trap door), by spell with casterCharacterId for a character's (the server casts it and refuses a jump past its range), casterEnemyId with enemyAbility or spell for an enemy's, or cause 'hazard'. The server enforces walls, occupancy, speed, fear and squeezing, and clamps a move to the farthest legal tile toward the target.",
     parameters: {
       type: "object",
       additionalProperties: false,
@@ -403,13 +404,14 @@ export const moveTokenTool: ToolDef = {
         disengage: {
           type: "boolean",
           description:
-            "An enemy Disengages before it walks, so leaving reach draws no opportunity attack. A bonus action for a creature with Nimble Escape (once a round), its action for anyone else.",
+            "An enemy Disengages before it walks, so leaving reach draws no opportunity attack. Its action, or a bonus action with Nimble Escape.",
         },
         drag: {
           type: "boolean",
           description:
-            "An enemy drags the character it grapples, keeping the grapple; without drag, leaving reach lets go. Its speed is halved unless the character is two sizes smaller, and the server sets the character down beside it.",
+            "An enemy drags the character it grapples, keeping the grapple; without drag, leaving reach lets go. The server halves its speed as the rules say.",
         },
+        careful: { type: "boolean", description: "Half speed: no save in caltrops or ball bearings." },
         teleport: { type: "boolean", description: "No walking and no movement spent." },
         spell: { type: "string", description: "A teleport's spell (Misty Step), or the feature a character spent on it." },
         casterCharacterId: { type: "string", description: "Its caster: exact characterId from GAME STATE." },
@@ -431,6 +433,7 @@ const moveArgsSchema = z.object({
   forced: z.coerce.boolean().optional(),
   disengage: z.coerce.boolean().optional(),
   drag: z.boolean().optional(),
+  careful: z.boolean().optional(),
   reason: z.string().optional(),
 });
 
@@ -503,12 +506,12 @@ export function handleMoveToken(
     const current = encounter.orderReady ? encounter.order[encounter.turnIndex] : undefined;
     const declared = fresh && turn.actor === "ai" && declaredThisTurn(campaign.id, fresh.id);
     if (fresh && (aiPlaysSheet(campaign, fresh) || declared) && current?.kind === "pc" && current.characterId === fresh.id) {
-      return walkCharacter(campaign, encounter, map, fresh, resolved.token, { x: args.x, y: args.y }, { drag: args.drag });
+      return walkCharacter(campaign, encounter, map, fresh, resolved.token, { x: args.x, y: args.y }, { drag: args.drag, careful: args.careful });
     }
     // The move a character readied releases off their turn, by whoever runs
     // the table (readied-release.ts: their reaction, up to their speed).
     if (fresh && readiedHeld(fresh)?.holds === "move" && !(current?.kind === "pc" && current.characterId === fresh.id)) {
-      return walkCharacter(campaign, encounter, map, fresh, resolved.token, { x: args.x, y: args.y }, { drag: args.drag });
+      return walkCharacter(campaign, encounter, map, fresh, resolved.token, { x: args.x, y: args.y }, { drag: args.drag, careful: args.careful });
     }
     return {
       error: fresh?.isCompanion && aiPlaysSheet(campaign, fresh)
@@ -593,7 +596,8 @@ export function handleMoveToken(
   let landing = { x: args.x, y: args.y };
   let spent = 0;
   let clamped = false;
-  // Dragging the character it grapples halves its speed (drag-move.ts).
+  // Dragging the character it grapples halves its speed (drag-move.ts), and
+  // so does walking carefully; a creature pushed or carried chooses neither.
   const drag = args.drag && !args.forced && resolved.enemy ? enemyDrag(campaign.id, resolved.enemy, tokens) : null;
   if (drag && "error" in drag) {
     return toolError(drag);
@@ -607,6 +611,9 @@ export function handleMoveToken(
   let standCost = 0;
   let aggressiveCut = false;
   let approachCut = false;
+  // Careful: at half speed, so caltrops and ball bearings ask no save.
+  const careful = Boolean(args.careful) && !args.forced;
+  const factor = walkCostFactor(drag?.factor ?? 1, careful);
   if (resolved.kind === "enemy") {
     // Walking on its own: a prone creature stands first for half its speed,
     // and a frightened one never steps closer to what it fears. Standing is
@@ -630,7 +637,7 @@ export function handleMoveToken(
       aggressiveCut = rushed.cut;
       approachCut = drawn.cut;
     }
-    const budget = Math.floor(Math.max(0, (move?.tilesLeft ?? 0) - standCost) / (drag?.factor ?? 1));
+    const budget = Math.floor(Math.max(0, (move?.tilesLeft ?? 0) - standCost) / factor);
     const walk = walkPathWithBudget(map.terrain, map.width, steps, budget, traits, resolved.token);
     if (!walk.at) {
       const words = move && resolved.enemy ? speedWords(move.speedTiles, enemyTurnEntry(encounter, resolved.enemy.id)) : "speed 0 ft";
@@ -647,7 +654,7 @@ export function handleMoveToken(
       };
     }
     landing = walk.at;
-    spent = walk.spent * (drag?.factor ?? 1);
+    spent = walk.spent * factor;
     clamped = !walk.reachedEnd || aggressiveCut || approachCut;
   }
   const origin = { x: resolved.token.x, y: resolved.token.y };
@@ -716,7 +723,7 @@ export function handleMoveToken(
         )
       : [];
   // The spell areas walked (or pushed) into: their saves and damage (zone-triggers.ts).
-  const zoneEffects = zonesAfterMove(campaign, encounter.id, resolved.token, origin, walkedPart(path, landing));
+  const zoneEffects = zonesAfterMove(campaign, encounter.id, resolved.token, origin, walkedPart(path, landing), { careful });
   return {
     ok: true,
     name: resolved.token.name,

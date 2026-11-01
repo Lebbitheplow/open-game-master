@@ -14,8 +14,9 @@ import { QUOTE, quotedText, speakerMatchers } from "./speech-prose.ts";
 import { textKey, words } from "../language/text-logic.ts";
 import type { TableLanguage } from "../schemas/game-settings-options.ts";
 import { DEED_KINDS, type DeedKind } from "./companion-values-logic.ts";
+import { BOND_MOVES, bondClaim, bondKindLine, type BondClaim } from "./story-moves-logic.ts";
 
-export const CLAIM_KINDS = ["hit", "miss", "dies", "downed", "amount", "cast", "fight_start", "roll_ask", "aside", "speaker", "turn_over", "deed"] as const;
+export const CLAIM_KINDS = ["hit", "miss", "dies", "downed", "amount", "cast", "fight_start", "roll_ask", "aside", "speaker", "turn_over", "deed", "bond"] as const;
 export type ClaimKind = (typeof CLAIM_KINDS)[number];
 
 export const ROLL_ASK_CHECKS = ["skill", "ability", "save", "initiative"] as const;
@@ -46,7 +47,10 @@ export type NarrationClaim =
   | { kind: "speaker"; line: string; speaker: Speaker }
   | { kind: "turn_over"; quote: string }
   // A deed a party character commits now (issue 503): who, by id and name.
-  | { kind: "deed"; character: string; name: string; deed: DeedKind; quote: string };
+  | { kind: "deed"; character: string; name: string; deed: DeedKind; quote: string }
+  // A romantic move or a kindness one person makes toward another (issue
+  // 641, src/lib/dm/story-moves-logic.ts).
+  | BondClaim;
 
 // Which claims a piece of narration could contradict or trigger, from
 // engine state alone. A kind the turn gives no ground truth for is never
@@ -88,6 +92,10 @@ export type ReaderGate = {
   // A lasting companion whose conscience weighs deeds travels with the
   // party (issue 503), so a deed the narration shows unrecorded is noted.
   deeds?: boolean;
+  // Relationships are tracked, so a romantic move or a kindness toward
+  // someone tracked that nothing recorded can be caught (issue 641). Asked
+  // only of a passage that names someone it could be about (claims.ts).
+  bonds?: boolean;
 };
 
 // One read of a passage: the kinds it was asked and the claims that
@@ -128,10 +136,13 @@ export function claimKindsFor(gate: ReaderGate): ClaimKind[] {
   if (gate.guard && gate.deeds) {
     kinds.push("deed");
   }
+  if (gate.guard && gate.bonds) {
+    kinds.push("bond");
+  }
   return kinds;
 }
 
-const KIND_LINES: Record<ClaimKind, string> = {
+const KIND_LINES: Record<Exclude<ClaimKind, "bond">, string> = {
   hit: '{"kind":"hit","target":REF,"quote":Q}: an attack hits that creature. target is the creature struck, never the attacker.',
   miss: '{"kind":"miss","target":REF,"quote":Q}: an attack aimed at that creature misses it. target is the creature attacked, never the attacker: "an arrow from the bandit flies past Mira" is a miss on Mira, not on the bandit.',
   dies: '{"kind":"dies","target":REF,"quote":Q}: that creature dies, is killed, or is now a corpse.',
@@ -184,31 +195,40 @@ export function englishEndsTurn(text: string): boolean {
 // against quoted dialogue win and named nobody (recorded narration, five
 // languages). A read asking only who speaks is not: told the same, it
 // guessed.
-export function readerSystem(skillIds: readonly string[], speakers: boolean, alongside = false): string {
-  const kinds = CLAIM_KINDS.filter((kind) => speakers || kind !== "speaker");
+// A romantic move or a kindness (the bond kind, issue 641) is listed the same
+// way, only on a read that asks it: "romance" at a table where romance is on,
+// "kindness" where only the kindnesses are asked. Such a read also carries the
+// players' words for it, and its moves are often made in a quoted line.
+export function readerSystem(skillIds: readonly string[], speakers: boolean, alongside = false, bonds: "romance" | "kindness" | null = null): string {
+  const kinds = CLAIM_KINDS.filter((kind) => (speakers || kind !== "speaker") && (bonds !== null || kind !== "bond"));
+  const line = (kind: ClaimKind) => (kind === "bond" ? bondKindLine(bonds === "romance") : KIND_LINES[kind]);
   return `You read one passage of a tabletop RPG game master's narration and list what it states as happening now, as claims. You do not judge whether a claim is true: the game engine does that. The narration may be in any language; spell names in claims are the English SRD names (the narration may use its own language's name).
 
 Answer with exactly one JSON object and nothing else: {"claims":[ ... ]}. Use only the claim kinds the message lists under "Ask"; with nothing to report, answer {"claims":[]}.
 
 Claim kinds:
-${kinds.map((kind) => `- ${KIND_LINES[kind]}`).join("\n")}
+${kinds.map((kind) => `- ${line(kind)}`).join("\n")}
 SKILL is one of: ${skillIds.join(", ")}.
 
 Rules:
-- A passage headed "Player's words" is asked only for turn_over: there the player's own word that their turn ends is the claim.
+${
+    bonds
+      ? `- A passage headed "Player's words" holds what each player wrote this turn, after their character's name: it is read only for turn_over and bond, and there what the player says or does toward someone is a move their character makes now. Every other kind comes from the narration alone. In the narration, "you" is the party character whose player wrote.`
+      : `- A passage headed "Player's words" is asked only for turn_over: there the player's own word that their turn ends is the claim.`
+  }
 - A claim only for what the narrator states as a fact happening now. Never for:
-  - anything inside quoted dialogue, numbers included;
+  - anything inside quoted dialogue, numbers included${bonds ? " (a bond excepted: a move or an answer made in words counts)" : ""};
   - what a character reports, boasts, swears or claims ("the innkeeper insists the boar was slain" is no death);
   - comparisons, metaphors and similes; hedged, possible, nearly-happening, hypothetical or negated statements ("the wyvern barely clings to life" is no death; "your blade would miss from here" and "it cannot reach him" are no miss);
   - attempts ("swings at", "strikes toward");
   - events in the past ("yesterday's fireball");
   - a spell cast by anyone outside the party.
-- target, caster${speakers ? ", character and ref are" : " and character are"} a ref copied exactly as the message lists it in quotes ("goblin", never "Goblin 1" or "goblin (Goblin 1)"). If the narration doesn't say which listed creature it means, leave the claim out.
+- target, caster${bonds ? ", by, to" : ""}${speakers ? ", character and ref are" : " and character are"} a ref copied exactly as the message lists it in quotes ("goblin", never "Goblin 1" or "goblin (Goblin 1)"). If the narration doesn't say which listed creature it means, leave the claim out.
 - quote: copy the words from the narration exactly, a short span that contains the claim.
 - A roll ask that names nobody: "all" when it addresses everyone; the only character when the party has one; otherwise leave it out.${
     speakers && alongside
       ? `
-- speaker is the one kind that reads quoted dialogue: give a speaker claim for every quoted line the words around it tie to a listed person, however many lines the passage has. Someone the narration describes who has no speaker ref (a sentry, a passer-by, "the cook") speaks their own lines: leave those out, even when a listed person is close by.`
+- speaker is the one kind that reads quoted dialogue${bonds ? " besides bond (a line that is a move or an answer gets both)" : ""}: give a speaker claim for every quoted line the words around it tie to a listed person, however many lines the passage has. Someone the narration describes who has no speaker ref (a sentry, a passer-by, "the cook") speaks their own lines: leave those out, even when a listed person is close by.`
       : ""
   }`;
 }
@@ -221,11 +241,21 @@ export type ReaderRefs = {
   speakers: Array<{ ref: string; name: string; aliases?: readonly string[] }>;
   // What the party spent this turn, by ref, with who spent it.
   spent: Array<{ ref: string; name: string; by: string }>;
+  // The tracked NPCs the passage names, by ref, when a bond is asked.
+  people?: Array<{ ref: string; name: string }>;
 };
 
 // A player's own words are read only for turn_over (claims.ts
-// readTurnEndInWords), under their own heading.
-export function renderReaderInput(kinds: readonly ClaimKind[], refs: ReaderRefs, text: string, heading: "Narration" | "Player's words" = "Narration"): string {
+// readTurnEndInWords), under their own heading. A read that asks a bond
+// carries the players' words this exchange ahead of the narration (words):
+// the flirt or the ask is usually theirs, and the answer the narration's.
+export function renderReaderInput(
+  kinds: readonly ClaimKind[],
+  refs: ReaderRefs,
+  text: string,
+  heading: "Narration" | "Player's words" = "Narration",
+  words = "",
+): string {
   const creatures = refs.creatures.map((entry) => `"${entry.ref}" for ${entry.display}`).join(", ") || "(none)";
   const party = refs.party.map((entry) => `"${entry.ref}" for ${entry.name}`).join(", ") || "(none)";
   const speakers = kinds.includes("speaker")
@@ -235,7 +265,10 @@ export function renderReaderInput(kinds: readonly ClaimKind[], refs: ReaderRefs,
     kinds.includes("cast") && refs.spent.length
       ? `\nSpent refs: ${refs.spent.map((entry) => `"${entry.ref}" for ${entry.name} (${entry.by})`).join(", ")}`
       : "";
-  return `Ask: ${kinds.join(", ")}\nCreature refs: ${creatures}\nParty refs: ${party}${spent}${speakers}\n\n${heading}:\n<<<\n${text}\n>>>`;
+  const bond = kinds.includes("bond");
+  const people = bond ? `\nPeople refs: ${(refs.people ?? []).map((entry) => `"${entry.ref}" for ${entry.name}`).join(", ") || "(none)"}` : "";
+  const said = bond && words.trim() ? `Player's words:\n<<<\n${words}\n>>>\n\n` : "";
+  return `Ask: ${kinds.join(", ")}\nCreature refs: ${creatures}\nParty refs: ${party}${spent}${speakers}${people}\n\n${said}${heading}:\n<<<\n${text}\n>>>`;
 }
 
 // The reply, read once at the boundary: a claim that is not shaped as its
@@ -269,6 +302,7 @@ const claimSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("turn_over"), quote: quoteField }),
   z.object({ kind: z.literal("speaker"), ref: z.string().min(1).max(120), quote: quoteField }),
   z.object({ kind: z.literal("deed"), actor: z.string().min(1).max(120), deed: z.enum(DEED_KINDS), quote: quoteField }),
+  z.object({ kind: z.literal("bond"), move: z.enum(BOND_MOVES), by: z.string().min(1).max(120), to: z.string().min(1).max(120), quote: quoteField }),
 ]);
 const replySchema = z.object({ claims: z.array(z.unknown()).max(40) });
 
@@ -303,6 +337,12 @@ export type ClaimContext = {
   spent: ReadonlyMap<string, string>;
   // Speaker ref to who it is: the people the passage names (namedSpeakers).
   speakers: ReadonlyMap<string, Speaker>;
+  // For a bond (issue 641): the party's companions by id, the tracked NPCs
+  // the passage names by ref, and the players' words the read carried, each
+  // with the character whose player wrote them.
+  companions?: ReadonlySet<string>;
+  people?: ReadonlyMap<string, string>;
+  words?: ReadonlyArray<{ characterId: string; name: string; text: string }>;
 };
 
 // The people a passage names outside its quoted lines: the only ones the
@@ -344,7 +384,10 @@ export function checkClaims(raw: readonly unknown[], context: ClaimContext): Nar
       continue;
     }
     const claim = parsed.data;
-    if (!asked.has(claim.kind) || !text.includes(squash(claim.quote))) {
+    const quote = squash(claim.quote);
+    const inNarration = text.includes(quote);
+    // A bond may quote the players' words; every other kind the narration.
+    if (!asked.has(claim.kind) || (!inNarration && claim.kind !== "bond")) {
       continue;
     }
     switch (claim.kind) {
@@ -401,6 +444,18 @@ export function checkClaims(raw: readonly unknown[], context: ClaimContext): Nar
         const name = context.party.get(claim.actor);
         if (name) {
           kept.push({ kind: "deed", character: claim.actor, name, deed: claim.deed, quote: claim.quote });
+        }
+        break;
+      }
+      case "bond": {
+        const said = (context.words ?? []).find((entry) => squash(entry.text).includes(quote) || squash(`${entry.name}: ${entry.text}`).includes(quote));
+        const read = bondClaim(
+          claim,
+          { party: context.party, companions: context.companions ?? new Set(), people: context.people ?? new Map() },
+          { narration: inNarration, said: said?.characterId ?? null },
+        );
+        if (read) {
+          kept.push(read);
         }
         break;
       }

@@ -26,6 +26,7 @@ import {
 import { hasQuotedLine, type Speaker } from "@/lib/dm/speech";
 import { textKey } from "@/lib/language/text-logic";
 import { mergedCallText } from "@/lib/dm/tool-merge-logic";
+import { bondRefs, exchangeWords, type ExchangeWords } from "@/lib/dm/story-moves";
 import {
   checkClaims,
   claimKindsFor,
@@ -170,7 +171,7 @@ export function guardGate(
   campaign: Campaign,
   outcomes: ResolvedOutcomes,
   sheets: readonly CharacterSheet[],
-): Pick<ReaderGate, "guard" | "attacks" | "fight" | "creatures" | "numbers" | "party" | "deeds"> {
+): Pick<ReaderGate, "guard" | "attacks" | "fight" | "creatures" | "numbers" | "party" | "deeds" | "bonds"> {
   return {
     guard: campaign.gameSettings.narrationGuard,
     attacks: outcomes.attacks.size > 0,
@@ -180,13 +181,16 @@ export function guardGate(
     party: sheets.length > 0,
     // Read in the same call as the rest, never one of its own (issue 503).
     deeds: conscienceOn(campaign) && consciousCompanions(sheets).length > 0,
+    // The same (issue 641); readClaims drops it from a passage that names
+    // nobody it could be about.
+    bonds: campaign.gameSettings.relationships !== "off" && sheets.length > 0,
   };
 }
 
 const SKILL_IDS = SRD_SKILLS.map((skill) => skill.id);
 
 // Everyone who may speak a line at this table, by the ref the reader copies:
-// the cast every seat sees (src/lib/dm/cast.ts publicCast), the party, the
+// the cast (src/lib/dm/cast.ts wholeCast), the party, the
 // fight's creatures, and the NPCs the reply being read registers, whose row
 // does not exist yet (an id-less speaker, resolved by name when the message
 // is written: src/lib/dm/speech-lines.ts). Aliases and the gender field ride
@@ -263,6 +267,9 @@ export async function readClaims(
     // narration guard can say "unread" rather than "quiet" (issue #460):
     // either way the passage counts as claiming nothing.
     onUnread?: () => void;
+    // The players' words this exchange, read for a bond beside the
+    // narration (issue 641, src/lib/dm/story-moves.ts exchangeWords).
+    words?: readonly ExchangeWords[];
   },
 ): Promise<NarrationClaim[]> {
   if (!input.kinds.length || !input.text.trim()) {
@@ -285,12 +292,14 @@ export async function readClaims(
     : new Map<string, Speaker>();
   // Who speaks is asked only when the passage names someone it could be.
   const named = namedSpeakers(input.text, speakers);
-  const kinds = named.size ? input.kinds : input.kinds.filter((kind) => kind !== "speaker");
+  // A bond only of a passage that names someone tracked (issue 641).
+  const bonds = input.kinds.includes("bond") ? bondRefs(campaign, input.sheets, input.text, input.words ?? [], Boolean(input.outcomes.liveFight)) : null;
+  const kinds = input.kinds.filter((kind) => (kind !== "speaker" || named.size > 0) && (kind !== "bond" || bonds !== null));
   if (!kinds.length) {
     return [];
   }
   const reading = [
-    { role: "system" as const, content: readerSystem(SKILL_IDS, kinds.includes("speaker"), kinds.length > 1) },
+    { role: "system" as const, content: readerSystem(SKILL_IDS, kinds.includes("speaker"), kinds.length > 1, bonds?.mode ?? null) },
     {
       role: "user" as const,
       content: renderReaderInput(
@@ -300,9 +309,11 @@ export async function readClaims(
           party: [...party].map(([ref, name]) => ({ ref, name })),
           speakers: [...named].map(([ref, speaker]) => ({ ref, name: speaker.name, aliases: speaker.aliases })),
           spent,
+          people: bonds ? [...bonds.people].map(([ref, name]) => ({ ref, name })) : [],
         },
         input.text,
         input.heading,
+        bonds?.words ?? "",
       ),
     },
   ];
@@ -363,6 +374,7 @@ export async function readClaims(
     skills: new Set(SKILL_IDS),
     spent: new Map(spent.map((spend) => [spend.ref, spend.characterId])),
     speakers: named,
+    ...(bonds ? { companions: bonds.companions, people: bonds.people, words: input.words ?? [] } : {}),
   });
   if (process.env.DM_DEBUG) {
     console.log(`[dm-debug] claims ${input.label}: asked ${kinds.join(",")}; ${JSON.stringify(claims)}`);
@@ -398,7 +410,7 @@ export function registeringNames(calls: ReadonlyArray<{ name: string; rawArgumen
 export async function readReply(
   campaign: Campaign,
   sheets: readonly CharacterSheet[],
-  turn: Pick<DmTurn, "id" | "conversation" | "resolvedCharacterIds">,
+  turn: Pick<DmTurn, "id" | "conversation" | "resolvedCharacterIds" | "createdAt">,
   text: string,
   state: { inEncounter: boolean; encounterNudged: boolean; damageNudged: boolean; registering: readonly string[] },
 ): Promise<PartRead & { outcomes: ResolvedOutcomes }> {
@@ -423,6 +435,7 @@ export async function readReply(
     onUnread: () => {
       unread = true;
     },
+    ...(kinds.includes("bond") ? { words: exchangeWords(campaign.id, sheets, turn.createdAt) } : {}),
   });
   return { kinds, claims, outcomes, ...(unread ? { unread: true } : {}) };
 }

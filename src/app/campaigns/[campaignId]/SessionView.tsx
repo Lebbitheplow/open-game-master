@@ -1395,6 +1395,7 @@ export function SessionView({
                     speaker={speaker}
                     onSpeakerChange={setSpeaker}
                     cast={state.cast}
+                    places={state.locations}
                     onXCard={campaign.gameSettings?.safety?.xCard ? raiseXCard : undefined}
                     storyCadence={storyCadence}
                     onCaptureStory={openStoryCapture}

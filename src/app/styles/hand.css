@@ -497,6 +497,19 @@
   .session-desk:has(.hand) > div > :is(.session-compose-notices, .session-compose-entry) > * { flex-shrink: 0; }
   .session-desk:has(.hand) > div > .session-compose-hand > .hand { flex: 0 1 auto; min-height: 0; max-height: none; overflow-y: auto; overscroll-behavior: contain; }
 }
+/* In a fight on a phone the chronicle keeps about three lines and the Hand
+   gives way (the rule above scrolls it in what is left): a test fight's
+   banner, the round and the Hand left a 375 by 667 phone's chronicle 0 px
+   tall, and a line sent with Enter seemed to vanish (issue 713). The test
+   fight's banner keeps its title and buttons, so the Hand keeps its name in
+   view. A phone on its side is shorter than the box and the round alone, so
+   it is left as it was. */
+@media (max-width: 63.98rem) and (min-height: 560px) {
+  .cine-chat:has(.hand) > .session-transcript { min-height: 4.5rem; }
+  /* The newest line sits on the bottom edge, not 2rem above it. */
+  .cine-chat:has(.hand) > .session-transcript > div > :nth-last-child(2) { margin-bottom: 0; }
+  .cine-chat:has(.hand) .test-fight-say { display: none; }
+}
 @keyframes hand-rail-in {
   from { opacity: 0; transform: translateX(28px); }
   to { opacity: 1; transform: none; }

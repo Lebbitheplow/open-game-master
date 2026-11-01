@@ -4,6 +4,7 @@ import { refuseDuringBreak } from "@/lib/dm/table-break";
 import { allocateSeq } from "@/lib/db/campaigns";
 import {
   dicePreferencesOf,
+  getDmTurn,
   getPendingRoll,
   listPendingForTurn,
   resolvePendingRoll,
@@ -20,6 +21,7 @@ import { resumeDmTurn } from "@/lib/dm/turn";
 import { resumeHumanTurn } from "@/lib/dm/invoke";
 import { enqueueDmJob } from "@/lib/dm/queue";
 import { runInTurnScope } from "@/lib/dm/job-control";
+import { postPersonsRecord, startPersonsRecord } from "@/lib/dm/persons-record";
 import { publishWithSeq } from "@/lib/events";
 
 export const runtime = "nodejs";
@@ -179,6 +181,10 @@ export async function POST(
     source: isFallback || allDigital ? "digital" : "physical",
   });
 
+  // A person's turn has no narration to carry the dice entered for it: they
+  // and what they did go to the chronicle now (issue 713).
+  const parkedOn = getDmTurn(pending.turnId);
+  const record = parkedOn?.actor === "human_dm" ? startPersonsRecord(context.campaign, parkedOn) : null;
   // What the roll does lands in the player's request, but it is the parked
   // turn's work: the order the last initiative locks (and the death saves
   // the pointer then rolls), the damage it lands. Filed under that turn, its
@@ -218,6 +224,10 @@ export async function POST(
     // A combatant who left the fight during the call takes no turn with them.
     settleTurn(context.campaign, holder);
   });
+  const after = record ? getDmTurn(pending.turnId) : null;
+  if (record && after) {
+    postPersonsRecord(context.campaign, after, record, { rollIds: [roll.id] });
+  }
 
   const remaining = listPendingForTurn(pending.turnId).filter(
     (entry) => entry.status === "pending",

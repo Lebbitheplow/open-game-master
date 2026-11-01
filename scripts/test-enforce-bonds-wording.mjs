@@ -63,6 +63,9 @@ await test("a memory too long for the card ends at a word, with an ellipsis", as
 
 await test("an NPC's first move keeps their words bare, for the card to quote once", async () => {
   bond("Lucan", { approval: 60, lastShiftTurn: "" });
+  // The steps above left Tamsin betrothed to Hollis, and nobody makes a
+  // first move on someone spoken for (issue 642): that romance is over here.
+  bond("Hollis", { romance: "none" });
   setOpenToAdvances(tamsin.id, true);
   const out = await world.invoke("romance_advance", {
     characterId: tamsin.id,

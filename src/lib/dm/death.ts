@@ -23,6 +23,7 @@ import {
 import {
   applyDeathSaveRoll,
   freshDeathTrack,
+  stableDeathTrack,
   isDying,
   isMassiveDamage,
   MOST_SAVES_TO_SETTLE,
@@ -107,6 +108,12 @@ function tableNote(campaign: Campaign, content: string, glyph: SystemGlyph) {
   publishWithSeq(campaign.id, seq, "message_added", { message });
 }
 
+// "1 success, 2 failures": each count with its own noun, as the table reads
+// it. "(1 successes, 1 failures)" was every first save's line.
+function tally(track: { successes: number; failures: number }): string {
+  return `${track.successes} success${track.successes === 1 ? "" : "es"}, ${track.failures} failure${track.failures === 1 ? "" : "s"}`;
+}
+
 export function describeTrack(track: DeathSaves): string {
   if (!track) {
     return "";
@@ -117,7 +124,7 @@ export function describeTrack(track: DeathSaves): string {
   if (track.stable) {
     return "stable at 0 HP";
   }
-  return `dying: ${track.successes} successes, ${track.failures} failures`;
+  return `dying: ${tally(track)}`;
 }
 
 // Called from apply_damage after the HP math lands. `preSheet` is the
@@ -130,6 +137,8 @@ export function applyDamageDeathHook(
   preSheet: CharacterSheet,
   math: { currentHp: number; dropped: boolean; overkill: number },
   crit: boolean,
+  // The blow that dropped them was a melee attack meant to knock out.
+  nonlethal = false,
 ): Record<string, unknown> {
   if (math.currentHp > 0) {
     return {};
@@ -172,6 +181,21 @@ export function applyDamageDeathHook(
   }
 
   if (math.dropped) {
+    // "The attacker can make this choice the instant the damage is dealt.
+    // The creature falls unconscious and is stable" (SRD 5.1, Knocking a
+    // Creature Out): no death saves, the stable wait for the hit point, and
+    // no instant death, which the attacker chose not to deal.
+    if (nonlethal) {
+      const wait = rollStableTimer(campaign, fresh);
+      writeDeathState(campaign, turnId, fresh, stableDeathTrack(), "death_state", "knocked out", {
+        conditions: wait.conditions,
+        conditionMeta: wait.conditionMeta,
+      });
+      return {
+        knockedOut: true,
+        note: `${fresh.name} is knocked out: unconscious and stable at 0 HP, making no death saves. They regain 1 hit point in ${wait.hours} hour${wait.hours === 1 ? "" : "s"}, or sooner if healed.`,
+      };
+    }
     if (isMassiveDamage(math.overkill, effectiveMaxHp(fresh))) {
       const track = { ...freshDeathTrack(), failures: 3, dead: true };
       writeDeathState(campaign, turnId, fresh, track, "death_state", "massive damage");
@@ -356,7 +380,7 @@ export function rollDeathSave(campaign: Campaign, characterId: string, turnId: s
   }
   const line = `${sheet.name} death save: rolled ${outcome.total}, ${
     applied.outcome === "success" ? "success" : "failure"
-  } (${applied.track.successes} successes, ${applied.track.failures} failures).`;
+  } (${tally(applied.track)}).`;
   tableNote(campaign, line, "die-d20");
   return line;
 }

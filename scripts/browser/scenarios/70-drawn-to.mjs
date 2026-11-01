@@ -1,6 +1,6 @@
 // Issue 501: "Drawn to", beside the Gender line in the builder's Identity step and in
 // the NPC editor's "On the surface": three chips (Women, Men, Nonbinary
-// people) and a short note. A labelled group, each chip a pressed-or-not
+// people), a short note, and (issue 642) "Open to more than one partner". A labelled group, each chip a pressed-or-not
 // button at a finger's size that works by keyboard, legible by night and by
 // day, and clean under axe.
 import { axeViolations, check, eventually, untilStill } from "../lib.mjs";
@@ -29,6 +29,24 @@ async function checkPicker(t, where) {
   await eventually(async () => (await men.getAttribute("aria-pressed")) === "true", { label: "Men picked by keyboard" });
   const note = picker.getByRole("textbox", { name: /drawn to: a note/i });
   await note.fill("only the ones who make them laugh");
+  // Issue 642: "Open to more than one partner" beside the chips, off by
+  // default (romance is exclusive), the same finger-sized pressed-or-not
+  // button, with an ⓘ that says what it changes.
+  const open = picker.getByRole("button", { name: /^open to more than one partner$/i });
+  check(await open.count(), `the open-relationship switch in ${where}`);
+  check((await open.getAttribute("aria-pressed")) === "false", "exclusive by default");
+  const openBox = await open.boundingBox();
+  check(openBox && openBox.height >= (t.touch ? 40 : 36), `a finger-sized switch (${openBox?.height})`);
+  check(await picker.getByRole("button", { name: /what is open to more than one partner/i }).count(), "its ⓘ");
+  await note.focus();
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Space");
+  await eventually(async () => (await open.getAttribute("aria-pressed")) === "true", { label: "opened by keyboard" });
+  check((await women.getAttribute("aria-pressed")) === "true", "the chips keep their picks");
+  await t.tap(open);
+  await eventually(async () => (await open.getAttribute("aria-pressed")) === "false", { label: "closed again by a tap" });
+  await t.tap(open);
+  await eventually(async () => (await open.getAttribute("aria-pressed")) === "true", { label: "open for the shots" });
   const found = await axeViolations(page, `${root}[data-attraction-picker]`);
   check(!found.length, `axe on Drawn to in ${where}: ${found.map((entry) => `${entry.id}: ${entry.help}`).join("; ").slice(0, 600)}`);
   return picker;

@@ -3,9 +3,11 @@ import { listSheets } from "@/lib/db/sheets";
 import { getCurrentLocation } from "@/lib/db/locations";
 import { patchRelationship } from "@/lib/db/relationships";
 import { getAiTurns, listPendingAdvances } from "@/lib/db/advances";
+import { romanceStepDue } from "@/lib/dm/romance-scenes";
 import {
   ADVANCE_ANSWER_TURNS,
   ADVANCE_EVERY,
+  ADVANCE_TARGET,
   ADVANCE_WINDOW,
   advanceCue,
   advanceRollSucceeds,
@@ -25,6 +27,7 @@ import { getNpcByName } from "@/lib/db/npcs";
 import { attractionBlank } from "@/lib/attraction";
 import { abilityMod } from "@/lib/srd";
 import { livingHero } from "@/lib/characters/fallen-logic";
+import { exclusiveBetween } from "@/lib/dm/romance-exclusive";
 
 // The roll for NPC advances (issue 501), after every AI turn that finished,
 // beside the world tick rather than inside it: the world tick runs only
@@ -65,7 +68,9 @@ export function tickAdvances(campaign: Campaign, aiTurns: number, narration: str
     }
     const candidates: Array<{ suitor: Suitor; relationshipId: string }> = [];
     for (const relationship of context.relationships) {
-      if (relationship.characterId !== sheet.id || !rollDue(aiTurns, relationship.advanceCooldownUntil)) {
+      // A pair whose last step was too recent for courting (issue 643) has
+      // no moment to open: the move would be refused.
+      if (relationship.characterId !== sheet.id || !rollDue(aiTurns, relationship.advanceCooldownUntil) || !romanceStepDue(campaign.id, relationship.id, ADVANCE_TARGET)) {
         continue;
       }
       const subject = resolveSubject(campaign, relationship.subjectName, sheets);
@@ -120,6 +125,10 @@ export function advanceDirectorNotes(campaign: Campaign): string[] {
     }
     const sheet = sheets.find((entry) => entry.id === relationship.characterId);
     if (!sheet?.openToAdvances || !livingHero(sheet)) {
+      return [];
+    }
+    // Someone spoken for since the window opened is not courted (issue 642).
+    if (exclusiveBetween(campaign.id, sheet.id, relationship.subjectName, { relationships: context.relationships, sheets })) {
       return [];
     }
     const row = getNpcByName(campaign.id, relationship.subjectName);

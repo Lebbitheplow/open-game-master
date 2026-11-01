@@ -11,6 +11,8 @@ import type { Campaign } from "@/lib/db/campaigns";
 import type { TurnBudget } from "@/lib/dm/action-budget";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { pushTokenAway } from "@/lib/dm/map-tools";
+import { holdsFeature } from "@/lib/srd/feature-names";
+import { textKey } from "@/lib/language/text-logic";
 import { BRUTAL_ATTACK_USED, brawlerUnarmed, brutalAttackApplies, CRUSHER_USED, damageTypeFeat, GREAT_WEAPON_MASTER_READY, PIERCER_USED, SAVAGE_ATTACKER_USED, savageAttackerApplies, SLASHER_USED, TAVERN_GRAPPLE_READY, type DamageTypeFeat } from "@/lib/srd/feat-combat";
 import { holdsFeat } from "@/lib/srd/feat-effects";
 import { tryParry } from "@/lib/dm/enemy-reactions";
@@ -55,6 +57,7 @@ import { untilTurnEnd } from "@/lib/dm/turn-end";
 import { rollAgainst } from "@/lib/roll-labels";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { markCritRange } from "@/lib/dm/attack-marks";
+import { gearHitWithoutDamage } from "@/lib/dm/gear-weapon-hit";
 
 // The roll the attack makes and the damage it carries, built once the
 // attack is paid for and shared by both dice paths.
@@ -256,6 +259,14 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike): Record<string, u
     };
   }
 
+  // A flask whose hit deals nothing at once (alchemist's fire, oil), or holy
+  // water on a creature neither fiend nor undead (gear-weapon-hit.ts).
+  const markOnly = profile.gearWeapon ? gearHitWithoutDamage(campaign, enemy, profile.gearWeapon) : null;
+  if (markOnly) {
+    emitAttackFx(campaign.id, stage, { hit: true, crit: false, ranged: profile.ranged, damageType: profile.damageType, visibility: hitRoll.visibility });
+    return { ...base, hit: true, damage: 0, ...(profile.damageType ? { damageType: profile.damageType } : {}), note: markOnly };
+  }
+
   // A magic weapon's dice on a natural 20 (src/lib/dm/gear-attack.ts).
   const critGear = hitOutcome.crit === "nat20" ? gearCritRiders(profile, enemy.stats.type) : null;
   if (critGear?.suffix) {
@@ -377,6 +388,10 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike): Record<string, u
   if (!applied.dead && !applied.encounterOver) {
     const left = featHitMarks({ campaign, encounter, sheet, enemy, typeFeat, crit, stunShot, budget });
     context.notes.push(...left);
+    const repelled = repellingBlast(campaign, encounter, sheet, enemy, plan);
+    if (repelled) {
+      context.notes.push(repelled);
+    }
   }
   const maneuverOutcome: Record<string, unknown> =
     maneuver?.rider && !applied.dead && !applied.encounterOver
@@ -540,7 +555,8 @@ function maneuverRiderSave(plan: AttackPlan, maneuver: ManeuverPick): Record<str
   // The creature's save as every other is rolled (src/lib/dm/forced-save.ts):
   // its conditions (a paralyzed creature fails a STR or DEX save outright),
   // Bane or Bless on it, its exhaustion, lasting effects, authored features.
-  const save = rollEnemySave(campaign.id, fresh, rider.save, dc, { against: rider.condition });
+  // Cover between the attacker and the target counts on a DEX rider.
+  const save = rollEnemySave(campaign.id, fresh, rider.save, dc, { against: rider.condition, origin: { ref: plan.sheet.id } });
   if (save.result) {
     const saveRoll = insertRoll({
       campaignId: campaign.id,
@@ -626,6 +642,29 @@ function emitAttackFx(
   );
 }
 
+
+// SRD 5.1, Repelling Blast (a warlock invocation): "When you hit a creature
+// with eldritch blast, you can push the creature up to 10 feet away from you
+// in a straight line." On a battle map each hit pushes it two squares, as far
+// as the ground behind it lets it go.
+function repellingBlast(campaign: Campaign, encounter: Encounter, sheet: CharacterSheet, enemy: EncounterEnemy, plan: AttackPlan): string | null {
+  if (plan.kind !== "spell" || textKey(plan.profile.weapon) !== textKey("Eldritch Blast") || !holdsFeature(sheet, "Invocation: Repelling Blast")) {
+    return null;
+  }
+  let feet = 0;
+  let stopped = "";
+  for (let step = 0; step < 2; step += 1) {
+    const pushed = pushTokenAway(campaign, encounter.id, sheet.id, enemy.id);
+    if (!pushed.moved) {
+      stopped = pushed.reason;
+      break;
+    }
+    feet += 5;
+  }
+  return feet
+    ? `Repelling Blast: ${enemy.displayName} is pushed ${feet} feet away${stopped ? ` (${stopped})` : ""}`
+    : `Repelling Blast: ${enemy.displayName} could not be pushed (${stopped})`;
+}
 
 // The conditions a feat's hit leaves on an enemy (src/lib/srd/feat-combat.ts):
 // Stunning Sniper's stun; Slasher's hamstring (speed -10) once a turn and

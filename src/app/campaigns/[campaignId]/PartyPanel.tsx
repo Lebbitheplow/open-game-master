@@ -1,6 +1,6 @@
 "use client";
 
-import { attractionWords } from "@/lib/attraction";
+import { attractionWords, openToMore } from "@/lib/attraction";
 import { TravelFormation } from "@/app/campaigns/[campaignId]/TravelFormation";
 import { PartyStory } from "@/app/campaigns/[campaignId]/PartyStory";
 import type { PartyState } from "@/lib/dm/party-logic";
@@ -29,6 +29,7 @@ import { CompanionBuilderDialog } from "@/app/campaigns/[campaignId]/CompanionBu
 import { CompanionCommand } from "@/app/campaigns/[campaignId]/CompanionCommand";
 import { CompanionPaintButton } from "@/app/campaigns/[campaignId]/CompanionPaintButton";
 import { CompanionKeepButton } from "@/app/campaigns/[campaignId]/CompanionKeepButton";
+import { CompanionBondLine, useRomanceBonds } from "@/app/campaigns/[campaignId]/CompanionBondLine";
 import { hostOffers, offersImages, useCapabilities } from "@/lib/use-capabilities";
 import { offSide, SideBadge } from "@/app/campaigns/[campaignId]/SideBadge";
 import { DiceSourcesButton } from "@/app/campaigns/[campaignId]/DiceSourcesDialog";
@@ -341,7 +342,8 @@ export function PartyPanel({
   sheets: CharacterSheet[];
   meUserId: string;
   // Lasting companions whose sheet just went (issue 503), and the key the
-  // Gone list reads itself again on (PartyGone.tsx).
+  // Gone list reads itself again on (PartyGone.tsx), as a companion's
+  // romance line does (issue 640): both move with relationships_updated.
   departing?: readonly DepartingSheet[];
   goneRefreshKey?: number;
   // A person runs this table and it plays romance (issue 501): the DM's
@@ -415,6 +417,8 @@ export function PartyPanel({
   const capabilities = useCapabilities();
   const canPaint = offersImages(capabilities) && hostOffers(capabilities, "companionPortrait");
   const canKeep = hostOffers(capabilities, "keepCompanion");
+  // Where each companion's romances stand, for its card (issue 640).
+  const bonds = useRomanceBonds(campaignId, goneRefreshKey, sheets.some((sheet) => sheet.isCompanion));
   const [editingSheetId, setEditingSheetId] = useState("");
   const [viewingSheetId, setViewingSheetId] = useState("");
   const [croppingSheetId, setCroppingSheetId] = useState("");
@@ -657,6 +661,7 @@ export function PartyPanel({
             </div>
 
             {romanceNotes ? <RomanceNote sheet={sheet} /> : null}
+            {sheet.isCompanion ? <CompanionBondLine name={sheet.name} bonds={bonds} /> : null}
 
             {shape ? (
               <div
@@ -1066,12 +1071,15 @@ function RomanceNote({ sheet }: { sheet: CharacterSheet }) {
   const drawn = attractionWords(sheet.attraction);
   // A hero who fell is courted by nobody (issue 657), so the chip goes.
   const open = livingHero(sheet) && Boolean(sheet.openToAdvances);
-  if (!drawn && !open) {
+  // Romance is exclusive unless they are open to more (issue 642).
+  const more = openToMore(sheet.attraction);
+  if (!drawn && !open && !more) {
     return null;
   }
   return (
     <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-stone-400" data-romance-note={sheet.id}>
       {drawn ? <span>Drawn to {drawn}</span> : null}
+      {more ? <span data-open-relationship-note>Open to more than one partner</span> : null}
       {open ? (
         <span className="rounded-full border border-rose-500/40 bg-rose-500/10 px-1.5 text-rose-200">Open to advances</span>
       ) : null}

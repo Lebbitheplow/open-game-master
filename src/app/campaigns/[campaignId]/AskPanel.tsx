@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown, Loader2, Send, Users } from "lucide-react";
-import { memo, useCallback, useId, useState } from "react";
+import { memo, useCallback, useId, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { cn } from "@/lib/cn";
 import { EmptyState } from "@/components/EmptyState";
@@ -14,6 +14,10 @@ import { LengthNote } from "@/components/ui/LengthNote";
 import type { CampaignAsk } from "@/lib/db/asks";
 import { QUESTION_MAX_CHARS, questionLength, type AskScope, type AskVisibility } from "@/lib/dm/ask-logic";
 import { ui } from "@/lib/ui";
+import type { CastMember } from "@/lib/dm/cast";
+import type { CampaignState } from "@/app/campaigns/[campaignId]/useCampaignStream";
+import { NameMenu, useNameMenu } from "@/app/campaigns/[campaignId]/NameMenu";
+import { nameChoices } from "@/app/campaigns/[campaignId]/name-menu-logic";
 
 // The Ask thread: out-of-character questions to the DM and their grounded
 // answers. Framed hard as an aside, because the one thing a player must
@@ -112,6 +116,9 @@ function AskDockInner({
   open,
   onOpenChange,
   onAsked,
+  sheets,
+  cast,
+  places,
 }: {
   campaignId: string;
   asks: CampaignAsk[];
@@ -121,6 +128,11 @@ function AskDockInner({
   onOpenChange: (open: boolean) => void;
   // Refetches the thread once an answer lands.
   onAsked: () => Promise<void>;
+  // The table's names, for the @ menu the composer below offers too (issue
+  // 650): the same two boxes, inches apart, answer @ the same way.
+  sheets: CampaignState["sheets"];
+  cast: CastMember[];
+  places: CampaignState["locations"];
 }) {
   const [question, setQuestion] = useState("");
   const [scope, setScope] = useState<AskScope | "auto">("auto");
@@ -137,6 +149,12 @@ function AskDockInner({
   const noteId = useId();
   const length = questionLength(question);
   const tooLong = length > QUESTION_MAX_CHARS;
+  // A question is the asker's own words, so it is offered what a character
+  // knows: never someone the story has not introduced.
+  const boxRef = useRef<HTMLTextAreaElement>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const choices = useMemo(() => nameChoices({ sheets, cast, places, storyVoice: false }), [sheets, cast, places]);
+  const names = useNameMenu({ text: question, setText: setQuestion, field: boxRef, choices });
 
   // No floor gating anywhere in here, by design. Asking never consumes the
   // floor and /ask runs no floor check (ask/route.ts), so this stays usable
@@ -271,11 +289,22 @@ function AskDockInner({
             </span>
             <span className="ml-auto italic text-stone-500">The story does not move.</span>
           </div>
-          <div className="flex items-end gap-2">
+          <div ref={rowRef} className="flex items-end gap-2">
+            <NameMenu menu={names} anchor={rowRef} />
             <textarea
+              ref={boxRef}
               value={question}
-              onChange={(event) => setQuestion(event.target.value)}
+              onChange={(event) => {
+                setQuestion(event.target.value);
+                names.read(event.target);
+              }}
+              onSelect={(event) => names.read(event.currentTarget)}
+              onBlur={names.close}
+              {...names.fieldProps}
               onKeyDown={(event) => {
+                if (names.onKeyDown(event)) {
+                  return;
+                }
                 if (event.key === "Enter" && !event.shiftKey) {
                   event.preventDefault();
                   submit(event);

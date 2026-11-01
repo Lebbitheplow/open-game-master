@@ -77,7 +77,15 @@ const mage = world.addHero({
   equipment: [{ name: "Miniature platinum sword", qty: 1, worth: 250 }],
   spellcasting: { ability: "int", slots: slotsOf(FULL_CASTER_SLOTS[12]), known: [], prepared: ["Arcane Sword"], cantrips: [] },
 });
-const heroes = [wizard, cleric, ranger, paladin, fighter, mage];
+// A fighter 5 / druid 3 for Flame Blade, whose strike is the action and no
+// swing of the Attack action that Extra Attack doubles.
+const bladesman = world.addHero({
+  class: "fighter", level: 8, abilities: { str: 16, wis: 16, con: 14 }, proficiencies: TRAINED,
+  classes: [{ id: "fighter", level: 5, subclass: "" }, { id: "druid", level: 3, subclass: "" }],
+  features: [{ name: "Extra Attack", source: "class" }],
+  spellcasting: { ability: "wis", slots: { 1: { max: 4, used: 0 }, 2: { max: 2, used: 0 } }, known: [], prepared: ["Flame Blade"], cantrips: [] },
+});
+const heroes = [wizard, cleric, ranger, paladin, fighter, mage, bladesman];
 const base = new Map(heroes.map((hero) => [hero.id, world.sheet(hero.id)]));
 
 // The named hero at the pointer, toe to toe with the first dummy.
@@ -402,6 +410,25 @@ await test("Arcane Sword's first strike comes with the casting, from the sword; 
   const [sword] = (kit.map()?.spellZones ?? []).filter((zone) => ["Arcane Sword", "Mordenkainen's Sword"].includes(zone.spell));
   assert.ok(Math.max(Math.abs(sword.origin.x - 9), Math.abs(sword.origin.y - 11)) <= 1, "the sword is not beside the foe");
   assert.deepEqual(tokenAt(mage.id), { x: 5, y: 5 }, "the wizard walked");
+});
+
+// Flame Blade (SRD 5.1): "you can use your action to make a melee spell
+// attack with the fiery blade". It was a swing of the Attack action, so a
+// fighter-druid's Extra Attack made it two strikes, or one and a sword.
+await test("Flame Blade's strike takes the whole action: a fighter-druid with Extra Attack strikes with it once and swings nothing after it.", async () => {
+  const [enemy] = await stage(bladesman);
+  const cast = await world.invoke("cast_buff", { characterId: bladesman.id, spell: "Flame Blade", level: 2 });
+  assert.equal(cast.ok, true, cast.error);
+  const first = await kit.swing(bladesman.id, enemy.id, [15, 3, 3, 3], { weapon: "Flame Blade" });
+  assert.equal(first.ok, true, first.error);
+  assert.equal(dieCount(first.damage, 6), 3, "the blade's 3d6");
+  const budget = world.encounter().turnBudget;
+  assert.equal(budget?.actionUsed, true, "the strike spent the action");
+  assert.equal(budget?.attacksMade, 0, "the strike counted as a swing of the Attack action");
+  const again = await kit.swing(bladesman.id, enemy.id, [15, 3, 3, 3], { weapon: "Flame Blade" });
+  assert.equal(again.ok, false, "Extra Attack gave the blade a second strike");
+  const fist = await kit.swing(bladesman.id, enemy.id, [15, 3], { weapon: "Unarmed strike" });
+  assert.equal(fist.ok, false, "an Attack action swing followed the blade's action");
 });
 
 await test("The Tentacle of the Deeps strikes a creature within 10 feet of the tentacle, wherever its warlock stands.", async () => {

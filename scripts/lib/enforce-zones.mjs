@@ -10,7 +10,8 @@ import { table } from "./enforce-spell-kit.mjs";
 const maps = await import("../../src/lib/db/battle-maps.ts");
 const encounters = await import("../../src/lib/db/encounters.ts");
 const { getDatabase } = await import("../../src/lib/db/core.ts");
-const { skipCurrentTurn } = await import("../../src/lib/dm/encounter-tools.ts");
+const { handOnEnemyTurns, skipCurrentTurn } = await import("../../src/lib/dm/encounter-tools.ts");
+const { onPersonsTurn } = await import("../../src/lib/dm/invoke.ts");
 
 // An open board of 24 by 9 floor tiles.
 export const OPEN = () => Array.from({ length: 9 }, () => ".".repeat(24));
@@ -83,3 +84,15 @@ export function holdTurn(world, heroId) {
 
 // The pointer moves on once, as ending the current turn does.
 export const nextTurn = (world) => skipCurrentTurn(world.campaignId);
+
+// The lead's Hand on: the enemies a move walked past end their turns
+// unplayed, and what waited for them follows (the round turning over, the
+// next hero's turn beginning: issue 713). Whether any were due.
+export function handOnDue(world) {
+  if (!world.encounter()?.legendary.due?.length) {
+    return false;
+  }
+  const campaign = world.campaign();
+  onPersonsTurn(campaign, (turn) => handOnEnemyTurns(campaign, turn, false));
+  return true;
+}

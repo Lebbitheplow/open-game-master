@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { Campaign } from "@/lib/db/campaigns";
-import { getActiveEncounter, patchEnemyConditions, patchEnemyHp } from "@/lib/db/encounters";
+import { releaseLostPins } from "@/lib/dm/grappler-pin";
+import { getActiveEncounter, listEnemies, patchEnemyConditions, patchEnemyHp } from "@/lib/db/encounters";
 import { getBattleMapForEncounter, removeTokenByRef } from "@/lib/db/battle-maps";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { finishEncounter, publishEncounter, resolveEnemyRef, unknownEnemyRef } from "@/lib/dm/enemy-damage";
@@ -10,6 +11,7 @@ import { declareIntentTool, handleDeclareIntent } from "@/lib/dm/intent-tools";
 import { canonicalCondition } from "@/lib/dm/mutations";
 import { conditionNameRefusal } from "@/lib/dm/set-condition";
 import { instancesOf, pruneMeta, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { petrifiedRefusal } from "@/lib/dm/damage-logic";
 import { AI_BIND_REFUSAL, AI_CLEAR_REFUSAL, bindsCreature, engineKept } from "@/lib/dm/ai-boundary";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { layEnemyConditionInstance } from "@/lib/dm/enemy-condition-lay";
@@ -195,6 +197,11 @@ function handleEnemyCondition(
         refused: "rules",
       };
     }
+    // SRD 5.1, Conditions, Petrified: "immune to poison and disease".
+    const stone = petrifiedRefusal(enemy.conditions, named);
+    if (stone) {
+      return { error: `${enemy.displayName} cannot be ${named}: ${stone}.`, refused: "rules" };
+    }
     // Exhaustion is a level, not a flag: the table applies (enemy-exhaustion.ts).
     if (exhaustion) {
       // A bare "exhaustion" is one more level; "exhaustion 2" is that level.
@@ -294,6 +301,8 @@ function handleEnemyCondition(
   }
   const remaining = enemy.conditions.filter((entry) => !matches(entry));
   patchEnemyConditions(enemy.id, remaining, pruneMeta(remaining, enemy.conditionMeta));
+  // A grapple let go ends the Grappler's own pin restraint (grappler-pin.ts).
+  releaseLostPins(campaign);
   publishEncounter(campaign.id);
   return { ok: true, name: enemy.displayName, cleared: removed.join(", ") };
 }

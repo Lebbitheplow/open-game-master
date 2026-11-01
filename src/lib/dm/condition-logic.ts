@@ -7,8 +7,9 @@
 import { RAGING } from "@/lib/srd/class-resources";
 import { conditionIncomingAttackState, conditionSpeed } from "@/lib/srd/condition-effects";
 import { conditionSeesInvisible } from "@/lib/srd/condition-effect-queries";
-import { magicItemRiders, type Wearer } from "@/lib/srd/magic-items";
+import { itemAbilityScore, type Wearer } from "@/lib/srd/magic-items";
 import { textKey } from "@/lib/language/text-logic";
+import { CALTROPS_WOUND } from "@/lib/battlemap/zones-gear";
 
 export {
   DAMAGE_TYPES,
@@ -53,6 +54,9 @@ export type ConditionMeta = {
   // down and its slot, ending on damage, or a new save on damage.
   spell?: string;
   slotLevel?: number;
+  // A casting of a minute or more held across turns is a ritual: it spends
+  // no slot when it completes (src/lib/dm/long-casting-logic.ts).
+  ritual?: boolean;
   endsOnDamage?: boolean;
   saveOnDamage?: { ability: SaveAbilityId; dc: number; advantage?: boolean };
   // Hunter's Mark and Hex: the enemyId of the marked creature, the only one
@@ -65,6 +69,9 @@ export type ConditionMeta = {
   mote?: boolean;
   // A monster's grapple: its printed escape DC (grapple.ts).
   escapeDc?: number;
+  // The Grappler feat's pin, on the grappler's own restraint: the creature
+  // they hold pinned (grappler-pin.ts).
+  pinning?: string;
   // Ends when the creature finishes a long rest (a succubus's Draining Kiss,
   // a wight's Life Drain): src/lib/dm/rest-logic.ts.
   untilLongRest?: boolean;
@@ -350,6 +357,9 @@ export function attackContext(input: {
   requested: AdvantageState;
   // An enemy attacker's creature type (Protection from Evil and Good).
   attackerType?: string;
+  // False when the board's light keeps the target from seeing the attacker
+  // (src/lib/dm/attack-light.ts attackSight): a Dodge then does nothing.
+  targetSeesAttacker?: boolean;
 }): { advantage: AdvantageState; sources: AdvantageState[]; autoCrit: boolean; notes: string[] } {
   // Every source is kept for the caller to merge with its own: advantage
   // and disadvantage cancel once, over all of them (SRD 5.1), so a
@@ -398,8 +408,16 @@ export function attackContext(input: {
     notes.push("target is hidden: disadvantage");
   }
   // Dodge only helps a target who can actually see it coming: an
-  // incapacitated dodger gets nothing, per the SRD.
-  if (has(input.targetConditions, [DODGING]) && !isIncapacitated(input.targetConditions)) {
+  // incapacitated dodger gets nothing, per the SRD, and "any attack roll
+  // made against you has disadvantage if you can see the attacker" (SRD
+  // 5.1, Dodge): not while blinded, nor against an invisible attacker it
+  // cannot see through or a hidden one, nor one the dark hides.
+  const dodgerSees =
+    !has(input.targetConditions, ["blinded"]) &&
+    !(has(input.attackerConditions, ["invisible"]) && !conditionSeesInvisible(input.targetConditions)) &&
+    !has(input.attackerConditions, ["hidden"]) &&
+    input.targetSeesAttacker !== false;
+  if (has(input.targetConditions, [DODGING]) && !isIncapacitated(input.targetConditions) && dodgerSees) {
     sources.push("disadvantage");
     notes.push("target is dodging: disadvantage");
   }
@@ -633,6 +651,28 @@ export function removeConditions(
   };
 }
 
+// What lasts "until the creature regains at least 1 hit point" (SRD 5.1
+// Caltrops: the 10 feet of walking speed the spikes took), ended by a rise
+// in hit points from `before` to `after`, whatever healed it: a potion, a
+// troll's regeneration, a drain, a golem's absorption, the GM's correction.
+// The written lists come back without it, or null when nothing ends. The
+// two places hit points are written call it (db/encounters.ts patchEnemyHp,
+// db/sheets.ts patchSheet), so every creature's wound mends the same way.
+const ENDS_ON_REGAIN = [CALTROPS_WOUND];
+
+export function endedByRegain(
+  conditions: string[],
+  meta: ConditionMetaMap | undefined,
+  before: number,
+  after: number,
+): { conditions: string[]; meta: ConditionMetaMap } | null {
+  if (!(after > before)) {
+    return null;
+  }
+  const mended = removeConditions(conditions, meta, ENDS_ON_REGAIN);
+  return mended.conditions.length < conditions.length ? mended : null;
+}
+
 // Prunes metadata entries whose condition no longer exists (update_sheet
 // full replacements, clear_condition fuzzy removals).
 export function pruneMeta(
@@ -684,8 +724,9 @@ export function effectiveMaxHp(sheet: {
 }): number {
   let max = sheet.maxHp;
   if (sheet.abilities && sheet.equipment?.length && sheet.level) {
-    const set = magicItemRiders(sheet.equipment, sheet as Wearer).abilitySet.con;
-    if (set && set > sheet.abilities.con) {
+    // An Amulet of Health's 19, or a Belt of Dwarvenkind's +2 to at most 20.
+    const set = itemAbilityScore("con", sheet.abilities.con, sheet.equipment, sheet as Wearer);
+    if (set > sheet.abilities.con) {
       const modOf = (score: number) => Math.floor((score - 10) / 2);
       max += (modOf(set) - modOf(sheet.abilities.con)) * sheet.level;
     }

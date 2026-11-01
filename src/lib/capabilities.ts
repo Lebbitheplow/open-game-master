@@ -61,10 +61,22 @@ export const SERVER_FEATURES = {
   // "Paint a portrait" on a companion's card (issue 569):
   // POST /api/campaigns/[id]/companions/[characterId]/portrait.
   companionPortrait: true,
+  // A companion's Background and Skills in the GM console's "Add a
+  // companion": add_companion's `background` and `skills`, which an older
+  // host drops unread and picks the first skills on the class's list.
+  companionTraining: true,
   // "Save to my characters" on a companion's card, and a companion built at
   // the table kept in its builder's characters (the builder says so):
   // POST /api/campaigns/[id]/companions/[characterId]/keep.
   keepCompanion: true,
+  // Loot no list holds marked in the lead's Adjust dialog, with "Give it
+  // stats" into the workshop: GET /api/campaigns/[id]/sheets/[sheetId]/
+  // unknown-gear, which an older host answers with a 404.
+  unknownGear: true,
+  // More than six expertise on a sheet (a rogue 6 / bard 10 holds eight):
+  // an older host's sheet schema refuses the save with its raw message, so
+  // the Adjust dialog stops at six there and says why in plain words.
+  moreExpertise: true,
   // "Hopes for this story" on a character (the builder's Hero step and the
   // sheet in play): the `hopes` field an older host drops while answering
   // the save as done.
@@ -108,6 +120,10 @@ export const SERVER_FEATURES = {
   // turn. An older host refuses all three as "another character's turn", so
   // the seat keeps the monsters' hand and Skip turn there.
   gmCompanionTurns: true,
+  // "Open to more than one partner" beside "Drawn to" (issue 642): the
+  // attraction's `open`, which an older host drops while saving the rest,
+  // so the switch stays hidden there.
+  openRelationships: true,
 } as const;
 export type ServerFeatures = { [K in keyof typeof SERVER_FEATURES]: boolean };
 

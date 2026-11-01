@@ -405,6 +405,106 @@ export function npcPlaceholder(
   return `${BASE}/npc/commoner.webp`;
 }
 
+// ---- enemy NPCs by race and presentation ----
+
+// The thirteen enemy NPC roles (scripts/placeholder-set.mjs ENEMY_ROLE_PLATES):
+// the humanoid foes drawn by what they do at the table, one painted token
+// each under monster/. MONSTER_FAMILIES maps stat blocks and names onto them.
+const ENEMY_ROLES = new Set([
+  "bandit", "cultist", "assassin", "necromancer", "dark-knight", "archer",
+  "gladiator", "pirate", "battle-shaman", "alchemical-saboteur",
+  "executioner", "houndmaster", "tyrant",
+]);
+
+// The roles painted again for each common race and presentation, under
+// enemy-npc/<role>-<race>-<presentation>.webp. Only the four most common foes
+// and the four most common races are covered, by design; a rarer race (a drow
+// bandit) draws its race portrait rather than a human face in its place.
+export const ENEMY_NPC_VARIANT_ROLES = ["bandit", "cultist", "archer", "dark-knight"] as const;
+export const ENEMY_NPC_VARIANT_RACES = ["human", "elf", "dwarf", "half-orc"] as const;
+const ENEMY_NPC_VARIANT_ROLE_SET = new Set<string>(ENEMY_NPC_VARIANT_ROLES);
+
+// A recorded race id (the SRD ids characters use, or the plain word) onto the
+// race column it is painted in. Subraces share their race's column: a wood
+// elf bandit and a high elf bandit are the same elf bandit. Drow are not
+// elves here: they read as their own people, and get their own face or none.
+const ENEMY_NPC_RACE: Record<string, string> = {
+  human: "human",
+  variant_human: "human",
+  elf: "elf",
+  high_elf: "elf",
+  wood_elf: "elf",
+  dwarf: "dwarf",
+  hill_dwarf: "dwarf",
+  mountain_dwarf: "dwarf",
+  half_orc: "half-orc",
+};
+
+function raceKey(race: string | null | undefined): string {
+  return String(race ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+}
+
+// A race the table actually recorded. Blank and "unknown" (the AI DM's word
+// for unspecified, as with gender) mean none.
+function recordedRace(race: string | null | undefined): string | null {
+  const key = raceKey(race);
+  return key && key !== "unknown" ? key : null;
+}
+
+// How someone looks, which is not always their gender: an explicit
+// presentation wins, else the same mapping the character plates use
+// (normalizeGender), so Male draws masculine, Female feminine, anything else
+// neutral.
+export function normalizePresentation(
+  presentation: string | null | undefined,
+  gender?: string | null,
+): PlaceholderGender {
+  const value = String(presentation ?? "").trim().toLowerCase();
+  if (value === "masculine" || value === "feminine" || value === "neutral") {
+    return value;
+  }
+  return normalizeGender(gender);
+}
+
+export type EnemyNpcLook = {
+  // The NPC's recorded race, never one guessed from a name.
+  race?: string | null;
+  // masculine / feminine / neutral, when recorded apart from gender.
+  presentation?: string | null;
+  // The sheet's gender (src/lib/gender.ts), used when presentation is blank.
+  gender?: string | null;
+};
+
+// The plate for an enemy NPC role, given what is recorded about who they are.
+// Most specific first, and never a face that contradicts the record:
+//   1. the role painted for this race and presentation (enemy-npc/);
+//   2. a recorded race the role was not painted for: that race's own portrait
+//      (character-race/), so a tiefling bandit is a tiefling, not a human;
+//   3. no race recorded: the role's own token from monster/, as before.
+// Returns null when `role` is not one of the enemy roles.
+export function enemyNpcPlaceholder(
+  role: string | null | undefined,
+  look: EnemyNpcLook = {},
+): string | null {
+  const id = familyOf(role);
+  if (!id || !ENEMY_ROLES.has(id)) {
+    return null;
+  }
+  const race = recordedRace(look.race);
+  if (race) {
+    const presentation = normalizePresentation(look.presentation, look.gender);
+    const column = ENEMY_NPC_RACE[race];
+    if (column && ENEMY_NPC_VARIANT_ROLE_SET.has(id)) {
+      return `${BASE}/enemy-npc/${id}-${column}-${presentation}.webp`;
+    }
+    const family = raceFamily(race);
+    if (family) {
+      return `${BASE}/character-race/${family}-${presentation}.webp`;
+    }
+  }
+  return `${BASE}/monster/${id}.webp`;
+}
+
 // A monster draws its own creature family's plate when one is painted, else
 // the genre's boss plate when it is the centrepiece of a fight, else its SRD
 // creature type. Among the generic plates threat is checked first because a
@@ -912,7 +1012,7 @@ export type MonsterLook = {
   // The name the table sees, for the reskin guard and for a monster with no
   // slug at all.
   name?: string | null;
-};
+} & EnemyNpcLook;
 
 // A stat block somebody wrote (a homebrew or Workshop monster, slug
 // "homebrew:<id>"). Its name is the author's to choose and says nothing
@@ -942,7 +1042,9 @@ export function monsterPlaceholder(
     }
     const family = familyPlate(slug, options.slug, options.name);
     if (family) {
-      return `${BASE}/monster/${family}.webp`;
+      // An enemy NPC role with a recorded race draws that race's face
+      // (enemyNpcPlaceholder); with none it is the role token, as before.
+      return enemyNpcPlaceholder(family, options) ?? `${BASE}/monster/${family}.webp`;
     }
   }
   if (typeof options.cr === "number" && options.cr >= BOSS_CR_FLOOR && BOSS_GENRES.has(slug)) {

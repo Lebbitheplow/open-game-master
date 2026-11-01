@@ -12,14 +12,17 @@ import { patchEnemyConditions } from "@/lib/db/encounters";
 import { restoreOwnForm } from "@/lib/db/enemy-form";
 import { recordEncounterSummary } from "@/lib/dm/encounter-summary-store";
 import { getBattleMapForEncounter, removeTokenByRef } from "@/lib/db/battle-maps";
-import { publishEphemeral, publishPersisted } from "@/lib/events";
+import { publishEphemeral, publishPersisted, publishWithSeq } from "@/lib/events";
 import { closeFallenFoes } from "@/lib/dm/party-bonds";
 import { healthState } from "@/lib/bestiary/health";
 import { ammoCount, recoveredAmmo, withAmmoCount } from "@/lib/srd/ammunition";
 import { clearSpellConditionsByName } from "@/lib/dm/concentration";
 import { spellEffectsOnEnemyDamage } from "@/lib/dm/spell-effects";
-import { enemyDamageMath } from "@/lib/dm/encounter-logic";
-import { damageAdjust, resistsAllDamage } from "@/lib/dm/condition-logic";
+import { enemyDamageMath, fightOverLine } from "@/lib/dm/encounter-logic";
+import { insertCampaignMessage } from "@/lib/db/messages";
+import { tableNoteSeq } from "@/lib/dm/narration-slot";
+import { damageAdjust, removeConditions, resistsAllDamage } from "@/lib/dm/condition-logic";
+import { BURNING_OIL_DAMAGE, COVERED_IN_OIL, oilCatches } from "@/lib/srd/gear-weapons";
 import { enemyDefenseLines } from "@/lib/dm/enemy-defenses";
 import { authoredIgnoresResistance } from "@/lib/dm/authored-saves";
 import { isKnockedOut, knockedOutConditions } from "@/lib/dm/knockout";
@@ -46,6 +49,8 @@ import { fallenFoeSheetsXp } from "@/lib/dm/sheet-foe";
 import { dmRoll } from "@/lib/dm/roll-card";
 import { getClock } from "@/lib/db/clock";
 import { outcomeShare, wakeHoursOf } from "@/lib/dm/foe-carry-logic";
+import { releaseHeldSteps } from "@/lib/dm/romance-held";
+import { finishCastingsAtFightEnd } from "@/lib/dm/long-casting";
 
 // The single server-side path for damage landing on an enemy. Used by the
 // damage_enemy tool AND by damage rolls carrying targetEnemyId, which the
@@ -83,6 +88,20 @@ export function unknownEnemyRef(encounterId: string, field: string, ref: string 
   return unknownRef(field, ref, living.map((enemy) => ({ id: enemy.id, name: enemy.displayName })), tail);
 }
 
+// The one line that says a fight is over, and names who is still dying
+// (fightOverLine). `rolledOut`: the fight's end rolls out the saves of the
+// dying nobody is left standing to tend (finishEncounter), each its own
+// line, so those are not promised saves to come. Called once per end, by
+// whatever ended it; a lost fight says so in its own words (partyFallen).
+export function sayFightOver(campaign: Campaign, encounter: Encounter, rolledOut: boolean) {
+  const party = listSheets(campaign.id).filter((sheet) => sheetSide(encounter, sheet.id) === "party");
+  const alone = new Set(rolledOut ? dyingLeftAlone(party).map((sheet) => sheet.id) : []);
+  const content = fightOverLine(party.filter((sheet) => isDying(sheet) && !alone.has(sheet.id)).map((sheet) => sheet.name));
+  const seq = tableNoteSeq(campaign.id);
+  const message = insertCampaignMessage({ campaignId: campaign.id, seq, authorType: "system", glyph: "cue-battle", content });
+  publishWithSeq(campaign.id, seq, "message_added", { message });
+}
+
 export function finishEncounter(
   campaign: Campaign,
   turn: DmTurn,
@@ -105,7 +124,14 @@ export function finishEncounter(
   // When it ended on the world clock, so a foe who comes back to a later
   // fight has had the time since (foe-return.ts, issue #667).
   endEncounter(encounter.id, outcome, getClock(campaign.id).instant);
+  // The table is told first, before what the end brings (issue 713).
+  if (outcome !== "party_defeated") {
+    sayFightOver(campaign, encounter, true);
+  }
   const itemsLeft = settleFightState(campaign, encounter.id);
+  // A spell of a minute or more still being cast takes effect as the fight
+  // ends, its slot spent then (long-casting.ts finishCastingsAtFightEnd).
+  const castingsFinished = finishCastingsAtFightEnd(campaign);
 
   // Half the ammunition spent in the fight is recovered from the field
   // (PHB). Only ever non-empty when the `ammunition` variant rule is on, so
@@ -167,7 +193,7 @@ export function finishEncounter(
   // Read again: the survivors scattered above are fled now, and the card
   // counts them so.
   recordEncounterSummary(campaign.id, encounter, outcome, listEnemies(encounter.id), sheets);
-  const { guestsGone, turncoats, foesMourned } = afterTheFight(campaign, encounter, enemies);
+  const { guestsGone, turncoats, foesMourned, answersOwed } = afterTheFight(campaign, encounter, enemies);
   // The end of initiative is not the end of dying. With nobody on the
   // party's side left conscious, no one can stabilize the fallen, so their
   // saves are rolled out now, in order, as the pointer would have rolled
@@ -202,6 +228,7 @@ export function finishEncounter(
     ...(foesMourned.length
       ? { bondsClosed: `Every bond with ${foesMourned.join(" and ")} is closed: they died in the fight.` }
       : {}),
+    ...(answersOwed.length ? { answerOwed: answersOwed.join(" ") } : {}),
     ...(spared.length
       ? {
           spared: `Left lying knocked out, unconscious and stable: ${spared
@@ -212,6 +239,7 @@ export function finishEncounter(
             .join("; ")}. To bring one into a later fight as they are, pass returning=<enemyId>.`,
         }
       : {}),
+    ...(castingsFinished.length ? { castingsFinished: castingsFinished.join(" ") } : {}),
     ...(xpEach > 0 ? { xpAwarded: `${xpEach} XP each` } : {}),
     ...(typeof xpResult.levelUpAvailable !== "undefined"
       ? { levelUpAvailable: xpResult.levelUpAvailable }
@@ -241,7 +269,7 @@ export function afterTheFight(
   campaign: Campaign,
   encounter: Encounter,
   enemies: readonly EncounterEnemy[],
-): { guestsGone: string[]; turncoats: string[]; foesMourned: string[] } {
+): { guestsGone: string[]; turncoats: string[]; foesMourned: string[]; answersOwed: string[] } {
   const floor = getFloor(campaign.id);
   if (floor.mode === "initiative" || (floor.mode === "hold" && floor.next.mode === "initiative")) {
     setFloor(campaign.id, { mode: "open" });
@@ -268,7 +296,11 @@ export function afterTheFight(
   if (foesMourned.length) {
     publishEphemeral(campaign.id, "relationships_updated", {});
   }
-  return { guestsGone, turncoats, foesMourned };
+  // A romantic step asked in the fight is owed its answer now (issue 640,
+  // romance-held.ts): the GM is told here, on the turns after, and on a
+  // person's console.
+  const answersOwed = releaseHeldSteps(campaign);
+  return { guestsGone, turncoats, foesMourned, answersOwed };
 }
 
 // Ends the encounter with victory XP once nobody on the foes' side is left
@@ -370,6 +402,17 @@ export function applyEnemyDamage(
     const blow = { amount, type: damageType ?? undefined, magical, spell, silvered, adamantine, goodWielder, ignoreResistanceTo: ignores, crit, nonlethal, death };
     return applySheetFoeBlow(campaign, turn, encounter, enemy, blow, sheets, sheetsById, holdVictory === true);
   }
+  const fireBlow = /\bfire\b/i.test(damageType ?? "");
+  // Oil (SRD 5.1 Adventuring Gear): "If the target takes any fire damage
+  // before the oil dries (after 1 minute), the target takes an additional 5
+  // fire damage from the burning oil." The coat burns once and is gone
+  // (src/lib/dm/gear-weapon-hit.ts lays it).
+  if (enemy.status === "alive" && oilCatches(enemy.conditions, fireBlow, amount)) {
+    const dried = removeConditions(enemy.conditions, enemy.conditionMeta, [COVERED_IN_OIL]);
+    patchEnemyConditions(enemy.id, dried.conditions, dried.meta);
+    const burnt = applyEnemyDamage(campaign, turn, encounter, { ...enemy, conditions: dried.conditions, conditionMeta: dried.meta }, amount + BURNING_OIL_DAMAGE, sheets, sheetsById, damageType, options);
+    return burnt.error ? burnt : { ...burnt, burningOil: `The oil on ${enemy.displayName} catches: ${BURNING_OIL_DAMAGE} more fire damage, and the oil is burnt away.` };
+  }
   // Inescapable Destruction (the acting Death cleric's necrotic), Elemental
   // Adept or Poisoner set the type's resistance aside; under water the block
   // resists fire, inside Silence it is immune to thunder (enemy-defenses.ts).
@@ -410,7 +453,7 @@ export function applyEnemyDamage(
     };
   }
   // Fire burns away the web around it (zone-cast.ts).
-  if (/\bfire\b/i.test(damageType ?? "")) {
+  if (fireBlow) {
     burnWebUnder(campaign, enemy.id);
   }
   // A Polymorph's beast dropped to 0 reverts (SRD 5.1): the creature's own

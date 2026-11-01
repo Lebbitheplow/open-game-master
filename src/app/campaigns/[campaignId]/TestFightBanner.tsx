@@ -64,9 +64,14 @@ export function TestFightBanner({
         </>
       }
     >
-      {runsIt === "ai"
-        ? `From ${source.title}. Only you can see this table: the AI GM runs the enemies and you play the party, each hero on their own turn.`
-        : `From ${source.title}. Only you can see this table, and you run it: the party's cards on each hero's turn, the enemies' cards on theirs.`}
+      {/* Left out on a phone while a Hand is dealt (hand.css): the title
+          and the way out stay, and the chronicle and the Hand get the room
+          (issue 713). */}
+      <span className="test-fight-say">
+        {runsIt === "ai"
+          ? `From ${source.title}. Only you can see this table: the AI GM runs the enemies and you play the party, each hero on their own turn.`
+          : `From ${source.title}. Only you can see this table, and you run it: the party's cards on each hero's turn, the enemies' cards on theirs.`}
+      </span>
       {error ? <PanelError className="mt-1 text-[11px]">{error}</PanelError> : null}
     </SessionBanner>
   );

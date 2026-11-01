@@ -25,6 +25,7 @@ import { applyAsiChoices, earnedAsiCountFor } from "@/lib/srd/asi";
 import { asiTaken } from "@/lib/srd/asi-ledger";
 import {
   abilityPriority,
+  companionExpertisePicks,
   companionImprovements,
   companionSpellPicks,
 } from "@/lib/srd/companion-build";
@@ -38,7 +39,7 @@ import { checklistSpellsOn } from "@/lib/srd/spell-lists";
 import { casterViewsOf, spellStyleFor, type CasterView } from "@/lib/srd/spell-prep";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
-import { subclassLevelFor, subclassNamesFor, subclassSpellsFor } from "@/lib/srd/features";
+import { expertiseSlotsFor, subclassLevelFor, subclassNamesFor, subclassSpellsFor } from "@/lib/srd/features";
 
 // A companion's sheet is made and levelled by the same rules as a player's:
 // the legality check at the door (src/lib/characters/admit.ts, the "engine"
@@ -143,15 +144,31 @@ export function legalCompanionSheet(draft: CompanionDraft): CompanionSheet {
     };
   }
 
-  const admitted = admitSheet({
-    door: "engine",
-    level,
-    sheet: { ...draft.sheet, subclass, abilities, asiChoices, spellcasting },
-    userId: campaign.ownerUserId,
-    campaign,
-  });
+  const admit = (sheet: CreateSheetInput) =>
+    admitSheet({ door: "engine", level, sheet, userId: campaign.ownerUserId, campaign });
+  const sent: CreateSheetInput = { ...draft.sheet, subclass, abilities, asiChoices, spellcasting };
+  let admitted = admit(sent);
   if (!admitted.ok) {
     return { ok: false, error: admitted.problems[0] ?? "That companion is not within the rules.", retry: true };
+  }
+  // A rogue's or a bard's expertise, in the best of the skills the rules
+  // gave them (the background's among them), once the sheet holds them all.
+  const held = admitted.sheet.proficiencies.expertise ?? [];
+  const expertise = companionExpertisePicks(
+    admitted.sheet.proficiencies.skills,
+    abilities,
+    held,
+    expertiseSlotsFor(klass.id, level) - held.length,
+  );
+  if (expertise.length) {
+    // The same sheet again with the picks: the admitted one already holds
+    // its improvements, and would be judged as taking them twice.
+    const doubled = admit({ ...sent, proficiencies: { ...sent.proficiencies, expertise: [...held, ...expertise] } });
+    if (doubled.ok) {
+      admitted = doubled;
+    } else {
+      notes.push(`Their expertise could not be placed: ${doubled.problems[0] ?? "the rules refused it"}`);
+    }
   }
   return { ok: true, sheet: admitted.sheet, notes };
 }
@@ -246,11 +263,21 @@ function levelOnce(campaign: Campaign, sheet: CharacterSheet): CharacterSheet | 
 
   // The class's subclass, once it reaches the level that grants one.
   const subclass = companionSubclass(leading.id, leading.level + 1, leading.subclass);
+  // Expertise the class has given by the new level and the companion has not
+  // placed: this level's, and any an older build left empty.
+  const heldExpertise = sheet.proficiencies.expertise ?? [];
+  const expertise = companionExpertisePicks(
+    sheet.proficiencies.skills,
+    abilities,
+    heldExpertise,
+    after.reduce((sum, entry) => sum + expertiseSlotsFor(entry.id, entry.level), 0) - heldExpertise.length,
+  );
   const request: LevelUpRequest = {
     level: sheet.level + 1,
     levelUpClass: leading.id,
     ...(subclass && subclass !== leading.subclass ? { subclass } : {}),
     ...(asiChoices.length ? { asiChoices } : {}),
+    ...(expertise.length ? { expertise } : {}),
   };
   const context = contextFor(campaign, sheet);
   let built = buildLevelUp(
@@ -261,6 +288,10 @@ function levelOnce(campaign: Campaign, sheet: CharacterSheet): CharacterSheet | 
   if ("error" in built && picks.length) {
     // The level is not held up by a spell the tables would not take.
     built = buildLevelUp(sheet, request, context);
+  }
+  if ("error" in built && expertise.length) {
+    // Nor by an expertise pick.
+    built = buildLevelUp(sheet, { ...request, expertise: undefined }, context);
   }
   if ("error" in built) {
     return null;

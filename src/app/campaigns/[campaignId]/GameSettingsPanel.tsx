@@ -53,13 +53,14 @@ export const BONDS_INFO = [
 
 export const ROMANCE_INFO = [
   "The romance ladder on top of the bond meter: interested, courting, together, betrothed, married.",
-  "Nobody can be romanced who does not already like the character, nobody is courted who did not ask to be, and intimate scenes always fade to black.",
+  "Nobody can be romanced who does not already like the character, nobody is courted who did not ask to be, partners keep to each other unless everyone involved is open to more than one partner, and intimate scenes always fade to black.",
+  "Each step needs a little story time after the last, the other side starts scenes of their own, and every step is told to the table.",
   "Requires Bonds to be on.",
 ].join("\n\n");
 
 export const NARRATION_GUARD_INFO = [
   "After each turn the server compares the GM's narration against what the dice and tools actually resolved: a hit written on a miss, a death the hit points deny, a damage number no die rolled.",
-  "A contradiction is sent back to the GM once for a rewrite. Nothing on any sheet changes either way.",
+  "A contradiction is sent back to the GM once for a rewrite. It also does what the GM left undone: a spell a player asked for that the story cast is cast for real, and a kindness or flirt a player declared is recorded on their bonds.",
   "Off costs nothing but the check, and the narration is persisted exactly as written.",
 ].join("\n\n");
 

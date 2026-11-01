@@ -216,7 +216,9 @@ function clearTimer(entry: WaitMemory) {
 export function settleTableWait(campaignId: string, now = Date.now(), holdUntilDeadline = false): boolean {
   // A turn is already requested or running (a released spotlight's answers,
   // say): it reads everything so far, and the gather opens again only once
-  // its narration lands, when turn.ts settles the table.
+  // its narration lands, when turn.ts settles the table. Other work (a
+  // chapter closing, the arc being planned) settles nothing as it ends; the
+  // queue running dry reads the table again (src/lib/dm/loop.ts, issue 636).
   if (getDmStatus(campaignId) !== "idle") {
     publishView(campaignId, null);
     return false;
@@ -268,6 +270,15 @@ export function tableWaitTurnStarted(campaignId: string, readSeq: number) {
   publishView(campaignId, null);
 }
 
+// A rewind took the transcript back to a chapter's start, and the turn that
+// opened this window with it: the window opens again at the restored
+// narration, so a move still waiting there counts (issue 636).
+export function tableWaitRewound(campaignId: string) {
+  const entry = memory(campaignId);
+  entry.readSeq = undefined;
+  clearTimer(entry);
+}
+
 export type PassResult = { ok: true; fire: boolean } | { ok: false; status: number; error: string };
 
 // A player says "go on without me" for this beat. Refused where there is no
@@ -288,7 +299,13 @@ export function passTable(campaignId: string, userId: string): PassResult {
   if (campaign.floor.mode !== "open") {
     return { ok: false, status: 409, error: "Only an open table waits for passes." };
   }
-  if (getDmStatus(campaignId) !== "idle") {
+  const status = getDmStatus(campaignId);
+  if (status === "writing_chapter" || status === "plotting_arc") {
+    // Nobody is being answered while a chapter closes; what was posted waits
+    // for it to close (issue 636).
+    return { ok: false, status: 409, error: "The GM is closing the chapter. Pass once it has closed if you have nothing to add." };
+  }
+  if (status !== "idle") {
     return { ok: false, status: 409, error: "The GM is answering now. Pass after the narration if you have nothing to add." };
   }
   const decision = decisionFor(campaignId, Date.now());

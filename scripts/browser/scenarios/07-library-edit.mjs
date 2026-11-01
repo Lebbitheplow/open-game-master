@@ -32,83 +32,105 @@ async function walkToSave(t) {
   throw new Error("the build editor never reached Save changes");
 }
 
+// Brann goes back to his seeded name once this is done, as
+// library-level-up keeps him at his level: the scenarios after this one meet
+// the stored build as seeded. The builder's checks measure his header
+// (32-builder-a11y: "Brann Stoutheart the Swift" wraps to a second line at
+// 125% text on a phone), so the rename left behind passed or failed them by
+// which scenarios shared a CI shard.
+async function restoreName(t) {
+  const url = `${t.base}/api/characters/${t.ids.library}`;
+  const { character } = await (await t.api.get(url)).json();
+  if (!character || character.sheet?.name === t.ids.libraryName) return;
+  const put = await t.api.patch(url, { data: { level: character.level, sheet: { ...character.sheet, name: t.ids.libraryName } } });
+  check(put.ok(), `Brann's seeded name is back for the scenarios after this one (${put.status()}: ${(await put.text()).slice(0, 200)})`);
+}
+
+async function editAndCopy(t) {
+  const { page, root, ids } = t;
+  await t.open(`/characters/${ids.library}`);
+  await t.tap(await eventually(async () => {
+    const edit = visible(page, root, /^\s*Edit build\s*$/);
+    return (await edit.count()) ? edit.first() : null;
+  }, { label: "the Edit build button" }));
+  // The editor opens on its summary (backlog F3); the name row goes to
+  // the identity step, the last before it (backlog F4).
+  const nameRow = page.locator(`${root}section[data-active] [data-summary-edit="identity"]`).locator("visible=true");
+  await eventually(() => nameRow.count(), { timeoutMs: 30_000, label: "the summary's name row" });
+  await t.tap(nameRow.first());
+  const name = page.locator(`${root}section[data-active] input[aria-label="Name"]`).locator("visible=true").first();
+  await name.waitFor({ state: "visible", timeout: 30_000 });
+  // The stored name, as an earlier viewport may have renamed it.
+  const stored = await name.inputValue();
+  check(stored.startsWith(ids.libraryName), `the editor opens on the stored build (${stored})`);
+  const renamed = `${ids.libraryName} the ${t.viewport === "phone" ? "Swift" : "Bold"}${t.app ? " (app)" : ""}`;
+  const body = await screenText(page, root);
+  check(/level 3/i.test(body), "the editor opens at the stored level 3, not at 1");
+  await t.shot("editor");
+  await name.fill(renamed);
+  await t.tap(await walkToSave(t));
+  await eventually(async () => {
+    const text = (await page.locator(`${root}h1, ${root}h2`).allInnerTexts()).join(" ");
+    return text.toLowerCase().includes(renamed.toLowerCase());
+  }, { timeoutMs: 30_000, label: "the saved name on the character page" });
+  await t.shot("saved");
+
+  // Duplicate and edit: the copy opens in the editor and says it is one.
+  // The saved name shows in the editor's own heading before the save has
+  // navigated, so wait for the character page's actions themselves: in
+  // the app the page arrived a beat after the heading matched, and the
+  // menu was looked for on the editor, found absent, and never opened.
+  const menu = page.locator(`${root}button[aria-label^="More actions"]`).locator("visible=true");
+  await eventually(
+    async () => (await menu.count()) || (await visible(page, root, /^\s*Duplicate and edit/).count()),
+    { timeoutMs: 30_000, label: "the character page's actions after the save" },
+  );
+  if (await menu.count()) {
+    await t.tap(menu.first());
+  }
+  // The item's hint follows its label in the same button.
+  const duplicate = visible(page, root, /^\s*Duplicate and edit/);
+  await eventually(() => duplicate.count(), { label: "Duplicate and edit" });
+  await t.tap(duplicate.first());
+  await eventually(async () => {
+    const text = await screenText(page, root);
+    return /A separate copy of/.test(text);
+  }, { timeoutMs: 30_000, label: "the copy's notice in the editor" });
+  await t.shot("copy");
+  // The copy's id is in the address (/characters/<copy>/edit?copyOf=...).
+  // (In the app, the shell's router holds it: the window stays on index.html.)
+  const where = t.app
+    ? await page.evaluate(() => {
+        const location = window.odmShell?.navigation?.location();
+        return location ? `${location.pathname}${location.search}` : "";
+      })
+    : page.url();
+  const copyId = /\/characters\/([^/?#]+)\/edit/.exec(where)?.[1] ?? null;
+  check(Boolean(copyId) && copyId !== ids.library, `the editor holds a new entry (${where})`);
+  const discard = visible(page, root, /^\s*Discard this copy/i);
+  await t.tap(discard.first());
+  // Deleting asks first, and names the original as staying.
+  const yes = page.locator(`${root}[role="dialog"] button, ${root}[role="alertdialog"] button`).filter({ hasText: /^\s*Yes\s*$/ }).locator("visible=true");
+  await eventually(() => yes.count(), { label: "the delete confirmation" });
+  await t.tap(yes.first());
+  await eventually(async () => {
+    const text = await screenText(page, root);
+    return !/A separate copy of/.test(text);
+  }, { timeoutMs: 30_000, label: "leaving the discarded copy" });
+  const gone = await t.api.get(`${t.base}/api/characters/${copyId}`);
+  check(gone.status() === 404, `the discarded copy is gone (${gone.status()})`);
+  const kept = await t.api.get(`${t.base}/api/characters/${ids.library}`);
+  check(kept.ok(), `the original stays (${kept.status()})`);
+}
+
 export default {
   name: "library-edit",
   viewports: ["desktop", "phone"],
   async run(t) {
-    const { page, root, ids } = t;
-    await t.open(`/characters/${ids.library}`);
-    await t.tap(await eventually(async () => {
-      const edit = visible(page, root, /^\s*Edit build\s*$/);
-      return (await edit.count()) ? edit.first() : null;
-    }, { label: "the Edit build button" }));
-    // The editor opens on its summary (backlog F3); the name row goes to
-    // the identity step, the last before it (backlog F4).
-    const nameRow = page.locator(`${root}section[data-active] [data-summary-edit="identity"]`).locator("visible=true");
-    await eventually(() => nameRow.count(), { timeoutMs: 30_000, label: "the summary's name row" });
-    await t.tap(nameRow.first());
-    const name = page.locator(`${root}section[data-active] input[aria-label="Name"]`).locator("visible=true").first();
-    await name.waitFor({ state: "visible", timeout: 30_000 });
-    // The stored name, as an earlier viewport may have renamed it.
-    const stored = await name.inputValue();
-    check(stored.startsWith(ids.libraryName), `the editor opens on the stored build (${stored})`);
-    const renamed = `${ids.libraryName} the ${t.viewport === "phone" ? "Swift" : "Bold"}${t.app ? " (app)" : ""}`;
-    const body = await screenText(page, root);
-    check(/level 3/i.test(body), "the editor opens at the stored level 3, not at 1");
-    await t.shot("editor");
-    await name.fill(renamed);
-    await t.tap(await walkToSave(t));
-    await eventually(async () => {
-      const text = (await page.locator(`${root}h1, ${root}h2`).allInnerTexts()).join(" ");
-      return text.toLowerCase().includes(renamed.toLowerCase());
-    }, { timeoutMs: 30_000, label: "the saved name on the character page" });
-    await t.shot("saved");
-
-    // Duplicate and edit: the copy opens in the editor and says it is one.
-    // The saved name shows in the editor's own heading before the save has
-    // navigated, so wait for the character page's actions themselves: in
-    // the app the page arrived a beat after the heading matched, and the
-    // menu was looked for on the editor, found absent, and never opened.
-    const menu = page.locator(`${root}button[aria-label^="More actions"]`).locator("visible=true");
-    await eventually(
-      async () => (await menu.count()) || (await visible(page, root, /^\s*Duplicate and edit/).count()),
-      { timeoutMs: 30_000, label: "the character page's actions after the save" },
-    );
-    if (await menu.count()) {
-      await t.tap(menu.first());
+    try {
+      await editAndCopy(t);
+    } finally {
+      await restoreName(t);
     }
-    // The item's hint follows its label in the same button.
-    const duplicate = visible(page, root, /^\s*Duplicate and edit/);
-    await eventually(() => duplicate.count(), { label: "Duplicate and edit" });
-    await t.tap(duplicate.first());
-    await eventually(async () => {
-      const text = await screenText(page, root);
-      return /A separate copy of/.test(text);
-    }, { timeoutMs: 30_000, label: "the copy's notice in the editor" });
-    await t.shot("copy");
-    // The copy's id is in the address (/characters/<copy>/edit?copyOf=...).
-    // (In the app, the shell's router holds it: the window stays on index.html.)
-    const where = t.app
-      ? await page.evaluate(() => {
-          const location = window.odmShell?.navigation?.location();
-          return location ? `${location.pathname}${location.search}` : "";
-        })
-      : page.url();
-    const copyId = /\/characters\/([^/?#]+)\/edit/.exec(where)?.[1] ?? null;
-    check(Boolean(copyId) && copyId !== ids.library, `the editor holds a new entry (${where})`);
-    const discard = visible(page, root, /^\s*Discard this copy/i);
-    await t.tap(discard.first());
-    // Deleting asks first, and names the original as staying.
-    const yes = page.locator(`${root}[role="dialog"] button, ${root}[role="alertdialog"] button`).filter({ hasText: /^\s*Yes\s*$/ }).locator("visible=true");
-    await eventually(() => yes.count(), { label: "the delete confirmation" });
-    await t.tap(yes.first());
-    await eventually(async () => {
-      const text = await screenText(page, root);
-      return !/A separate copy of/.test(text);
-    }, { timeoutMs: 30_000, label: "leaving the discarded copy" });
-    const gone = await t.api.get(`${t.base}/api/characters/${copyId}`);
-    check(gone.status() === 404, `the discarded copy is gone (${gone.status()})`);
-    const kept = await t.api.get(`${t.base}/api/characters/${ids.library}`);
-    check(kept.ok(), `the original stays (${kept.status()})`);
   },
 };

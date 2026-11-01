@@ -9,6 +9,7 @@ import {
   rollDerivation,
   wearsHeavyArmor,
 } from "@/lib/dm/condition-logic";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 import { heldHelp } from "@/lib/dm/help-logic";
 import { encumbranceCovers, encumbranceFor } from "@/lib/srd/encumbrance";
 import { conditionRollRiders } from "@/lib/srd/condition-effects";
@@ -25,6 +26,7 @@ import { DM_TOOL_NAME_PATTERN, toolTextRegex, xmlToolCallRegex } from "@/lib/dm/
 import { acBreakdownFor, computeSheetDerived, findSkill } from "@/lib/srd";
 import { withoutSentences, type NarrationClaim } from "@/lib/dm/claims-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import type { Light } from "@/lib/dm/notice-logic";
 import type { StreamedToolCall } from "@/lib/model-client";
 import { senseCheckFailure } from "@/lib/srd/sense-checks";
 import { sightRotPenalty } from "@/lib/srd/afflictions";
@@ -308,6 +310,11 @@ export function resolveRollExpression(
     sunlight?: boolean;
     // Standing in an obscured spell area (src/lib/dm/zone-rules.ts): the same.
     obscured?: string | null;
+    // The light the roller sees by off the board (src/lib/dm/place-light.ts),
+    // read by a check that names `by: "sight"`.
+    light?: Light | null;
+    // Who gave the held Help (src/lib/dm/forced-save.ts helperOf).
+    helper?: Pick<CharacterSheet, "name" | "proficiencies"> | null;
     // The roller moved no more than half their speed this turn (Supreme
     // Sneak, src/lib/srd/check-traits.ts); the caller reads the board.
     movedLittle?: boolean;
@@ -315,6 +322,12 @@ export function resolveRollExpression(
     // ability, so no ability modifier and no proficiency, while every rider
     // a save takes (Bless, an aura, exhaustion, Lucky) still applies.
     death?: boolean;
+    // The creature a check is aimed at, when this roller charmed it
+    // (enemy-profile.ts charmedBy): advantage on a Charisma check with it.
+    charmedTarget?: string;
+    // Every source of the roller's fear is out of sight on the board
+    // (attack-light.ts fearAsRolled): frightened costs the check nothing.
+    fearOutOfSight?: boolean;
   },
 ):
   | {
@@ -344,7 +357,7 @@ export function resolveRollExpression(
   // Rage gives nothing in heavy armor, its advantage on Strength included.
   const derivation =
     sheet && derivationKind
-      ? rollDerivation(sheet.conditions, derivationKind, derivationAbility, {
+      ? rollDerivation(extras?.fearOutOfSight ? sheet.conditions.filter((entry) => !isConditionNamed(entry, "frightened")) : sheet.conditions, derivationKind, derivationAbility, {
           rageSuppressed: wearsHeavyArmor(sheet.equipment),
         })
       : { advantage: "none" as const, sources: [], autoFail: false, notes: [] };
@@ -356,6 +369,14 @@ export function resolveRollExpression(
   if (senseless) {
     return { autoFail: true, detail: args.skill ?? args.ability ?? "", notes: [senseless] };
   }
+  // Darkness with no light and no darkvision: SRD 5.1 Vision and Light, "A
+  // creature effectively suffers from the blinded condition when trying to
+  // see something in that area", and a blinded creature fails a check that
+  // requires sight. check_notice's passive gate already counts them out.
+  const bySight = named(args.by) === "sight";
+  if (sheet && bySight && extras?.light === "dark" && (derivationKind === "skill_check" || derivationKind === "ability_check")) {
+    return { autoFail: true, detail: args.skill ?? args.ability ?? "", notes: ["darkness: sees nothing without a light or darkvision"] };
+  }
   const exhaustion =
     sheet && derivationKind
       ? exhaustionRollState(sheet.exhaustion ?? 0, derivationKind)
@@ -364,10 +385,19 @@ export function resolveRollExpression(
   // check, and is spent by taking it (src/lib/dm/action-tools.ts).
   // Help is for an ability check or an attack roll, never a saving throw,
   // which leaves the held Help where it is for the roll it was given for.
-  const helped =
+  const heldForCheck =
     sheet && derivationKind && derivationKind !== "initiative" && derivationKind !== "saving_throw"
       ? heldHelp(sheet, { check: true })
       : null;
+  // A tool check is helped only by one trained with the tool (SRD 5.1,
+  // Working Together: "trying to open a lock requires proficiency with
+  // thieves' tools, so a character who lacks that proficiency can't help
+  // another character in that task"). The Help stays for a check they can.
+  const untrainedHelper =
+    heldForCheck && args.kind === "ability_check" && args.tool && extras?.helper && !toolProficiencyBonus(extras.helper, args.tool, 0)
+      ? extras.helper.name
+      : null;
+  const helped = untrainedHelper ? null : heldForCheck;
   // Feature-driven roll riders: Reliable Talent floors a proficient check,
   // Jack of All Trades adds half proficiency.
   const defense =
@@ -399,11 +429,14 @@ export function resolveRollExpression(
     sheet && sheet.class && Array.isArray(sheet.equipment) && derivationKind
       ? acBreakdownFor(sheet)
       : null;
+  // Initiative is a Dexterity check (SRD 5.1 Using Ability Scores,
+  // Initiative), so the riders keyed to a check's ability read it as one.
+  const physicalAbility = derivationKind === "initiative" ? "dex" : derivationAbility;
   // SRD: armor worn without training = disadvantage on every STR- or
   // DEX-based ability check, skill check, and saving throw.
   const armorUntrained =
     Boolean(wornBreakdown?.unproficient) &&
-    (derivationAbility === "str" || derivationAbility === "dex");
+    (physicalAbility === "str" || physicalAbility === "dex");
   // Variant: Encumbrance. Past 10x Strength in pounds every physical roll
   // is at disadvantage; the pack is weighed from the sheet, and the table's
   // rule switch is the one thing the caller has to supply.
@@ -416,7 +449,7 @@ export function resolveRollExpression(
         })
       : null;
   const overloaded =
-    Boolean(load?.disadvantage) && encumbranceCovers(derivationAbility ?? null);
+    Boolean(load?.disadvantage) && encumbranceCovers(physicalAbility ?? null);
   // Effect conditions (bless, bane, guidance, haste...) add their dice and
   // advantage to the holder's own rolls; one-shot riders land in `spent`.
   const effectKind =
@@ -437,8 +470,16 @@ export function resolveRollExpression(
           derivationKind === "skill_check" ? findSkill((args.skill ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_"))?.id : undefined,
         )
       : { diceSuffix: "", advantageSources: [], notes: [], spent: [] };
+  // "The charmer has advantage on any ability check to interact socially
+  // with the creature" (SRD 5.1, Conditions, Charmed): the Charisma checks
+  // (Deception, Intimidation, Performance, Persuasion) aimed at it.
+  const charming =
+    extras?.charmedTarget && (derivationKind === "skill_check" || derivationKind === "ability_check") && derivationAbility === "cha"
+      ? extras.charmedTarget
+      : null;
   const advantage: Advantage = mergeAdvantage([
     args.advantage ?? "none",
+    ...(charming ? ["advantage" as const] : []),
     ...(extras?.effectAdvantage ? ["advantage" as const] : []),
     ...(extras?.effectDisadvantage ? ["disadvantage" as const] : []),
     ...derivation.sources,
@@ -463,11 +504,13 @@ export function resolveRollExpression(
   const inspirationFields = carriersSpent.length ? { spendInspiration: carriersSpent.join("|") } : {};
 
   const allNotes = [
+    ...(charming ? [`${charming} is charmed by them: advantage on a social check with it`] : []),
     ...derivation.notes,
     ...(exhaustion.note ? [exhaustion.note] : []),
     ...riders.inspirationNotes,
     ...effects.notes,
     ...(helped ? ["spends the Help their ally gave them: advantage"] : []),
+    ...(untrainedHelper ? [`${untrainedHelper}'s Help gives nothing here: they are not trained with ${args.tool}`] : []),
     ...riders.notes,
     ...(armorUntrained
       ? ["wearing armor they are not trained in: disadvantage on STR and DEX rolls"]
@@ -506,12 +549,15 @@ export function resolveRollExpression(
     // Skulker: dim light costs their Perception nothing (feat-combat.ts).
     const veiledBy = skill.id === "perception" ? (extras?.obscured ?? null) : null;
     const veiled = veiledBy && hasSkulker(sheet) && /dim light/i.test(veiledBy) ? null : veiledBy;
+    // Dim light: disadvantage on Perception that relies on sight (SRD 5.1,
+    // Vision and Light), which Skulker waives.
+    const dimSight = skill.id === "perception" && bySight && extras?.light === "dim" && !hasSkulker(sheet);
     // The feats' check riders: an expertise die, an advantage, a doubled
     // proficiency (src/lib/srd/feat-combat.ts).
     const featRider = featCheckRider(sheet, skill.id, { about: named(args.about), creature: named(args.creature) });
     const finalAdvantage = mergeAdvantage([
       advantage,
-      ...(armorStealth || sunlit || veiled ? ["disadvantage" as const] : []),
+      ...(armorStealth || sunlit || veiled || dimSight ? ["disadvantage" as const] : []),
       ...(featRider?.advantage ? ["advantage" as const] : []),
     ]);
     // A skill check is an ability check: a lasting effect on checks counts,
@@ -554,6 +600,7 @@ export function resolveRollExpression(
       ...(veiledBy && !veiled ? ["Skulker: dim light costs their Perception nothing"] : []),
       ...(sunlit ? ["Sunlight Sensitivity: disadvantage on Perception in direct sunlight"] : []),
       ...(veiled ? [veiled] : []),
+      ...(dimSight ? ["dim light: disadvantage on Perception by sight"] : []),
       ...(extras?.effectNote ? [extras.effectNote] : []),
     ];
     return {

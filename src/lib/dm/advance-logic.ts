@@ -141,6 +141,10 @@ export type Suitor = {
   attraction: Attraction | null;
   // Together, betrothed or married to someone else.
   committedElsewhere: boolean;
+  // Why romance's exclusivity rules this pair out (issue 642,
+  // romance-exclusive-logic.ts): either of them spoken for elsewhere, and not
+  // everyone in it open to more than one partner. Null or absent when free.
+  exclusive?: string | null;
   // An open window or an unanswered advance with anyone.
   pendingAdvance: boolean;
 };
@@ -181,6 +185,9 @@ export function suitorProblem(suitor: Suitor, target: AdvanceTarget): string | n
   }
   if (tierIndex(friendshipTier(suitor.approval)) < tierIndex("friendly") || suitor.approval < ROMANCE_THRESHOLD[ADVANCE_TARGET]) {
     return `${suitor.name} does not feel enough for ${target.name} to court them (approval ${suitor.approval}; courting needs ${ROMANCE_THRESHOLD[ADVANCE_TARGET]}).`;
+  }
+  if (suitor.exclusive) {
+    return suitor.exclusive;
   }
   if (suitor.committedElsewhere) {
     return `${suitor.name} is already with someone else.`;

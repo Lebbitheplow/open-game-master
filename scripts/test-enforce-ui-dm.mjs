@@ -246,6 +246,66 @@ await test("an Adjust save can set a shared spell slot maximum to zero and clamp
   assert.deepEqual(leadEdit.editedSpellSlots(original, {}), original);
 });
 
+// A GM-made companion can come with the wrong skills and no expertise, and
+// the lead had no way to put that right short of editing the database.
+await test("an Adjust save sets saves and each skill's training, and keeps the training it does not show", () => {
+  const stored = {
+    saves: ["dex", "int"],
+    skills: ["Stealth", "acrobatics", "perception", "Pack Lore"],
+    expertise: ["stealth", "thieves' tools"],
+    languages: ["Common"],
+    tools: ["thieves' tools"],
+    armor: ["light armor"],
+    weapons: ["simple weapons"],
+  };
+  const levels = leadEdit.skillLevelsOf(stored);
+  assert.equal(levels.stealth, "expert");
+  assert.equal(levels.acrobatics, "trained");
+  assert.equal(levels.arcana, "none");
+  assert.equal(Object.keys(levels).length, 18);
+  const saved = leadEdit.trainingFrom(stored, { ...levels, perception: "expert", acrobatics: "none", insight: "trained" }, ["dex", "wis"]);
+  assert.deepEqual(saved.saves, ["dex", "wis"]);
+  assert.deepEqual(saved.skills, ["Pack Lore", "insight", "perception", "stealth"]);
+  assert.deepEqual(saved.expertise, ["thieves' tools", "perception", "stealth"]);
+  assert.deepEqual(saved.tools, stored.tools);
+  assert.deepEqual(saved.languages, stored.languages);
+  // Untouched, the levels read back as they were.
+  assert.deepEqual(leadEdit.skillLevelsOf(leadEdit.trainingFrom(stored, levels, stored.saves)), levels);
+});
+
+// SRD 5.1 gives a rogue expertise at 1st and 6th level and a bard at 3rd and
+// 10th, two skills each: a rogue 6 / bard 10 holds eight. The sheet schema
+// stopped at six, so the correction route (and every other door) refused
+// that sheet, and the dialog counted against six for every class.
+await test("a rogue 6 / bard 10 keeps eight expertise, and the dialog counts what the classes gave", async () => {
+  const { fullPatchSheetSchema } = await import("../src/lib/schemas/sheet.ts");
+  const eight = ["stealth", "acrobatics", "perception", "insight", "deception", "persuasion", "performance", "sleight_of_hand"];
+  const proficiencies = { saves: ["dex", "int"], skills: [...eight, "history"], expertise: eight, languages: [], tools: ["thieves' tools"], armor: [], weapons: [] };
+  const parsed = fullPatchSheetSchema.safeParse({ proficiencies });
+  assert.ok(parsed.success, parsed.success ? "" : parsed.error.issues[0]?.message);
+  const multi = { class: "rogue", level: 16, classes: [{ id: "rogue", subclass: "", level: 6 }, { id: "bard", subclass: "", level: 10 }] };
+  assert.equal(leadEdit.earnedExpertise(multi), 8);
+  assert.equal(leadEdit.earnedExpertise({ class: "bard", level: 9, classes: [] }), 2);
+  assert.equal(leadEdit.earnedExpertise({ class: "fighter", level: 20, classes: [] }), 0);
+});
+
+// The apps' Adjust dialog can open a host from before the cap was raised,
+// whose schema refuses a seventh expertise with its own message ("Too big:
+// expected array to have <=6 items"). The dialog stops at six there and says
+// why in plain words; a host that holds more takes the eight.
+await test("past six expertise, an older host gets a plain sentence before the save, and this one takes it", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { SERVER_FEATURES } = await import("../src/lib/capabilities.ts");
+  assert.equal(leadEdit.expertiseOverCap(6, false), null);
+  assert.match(leadEdit.expertiseOverCap(7, false) ?? "", /^This server's version holds expertise in 6 skills at most; set some back to Trained, or update the server\.$/);
+  assert.equal(leadEdit.expertiseOverCap(8, true), null);
+  assert.match(leadEdit.expertiseOverCap(20, true) ?? "", /at most; set some back to Trained/);
+  assert.equal(SERVER_FEATURES.moreExpertise, true, "this server says it holds more than six");
+  const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
+  assert.match(read("src/lib/use-capabilities.ts"), /features\?: \{[^}]*moreExpertise\?: boolean/);
+  assert.match(read("src/app/campaigns/[campaignId]/LeadEditDialog.tsx"), /hostOffers\(useCapabilities\(\), "moreExpertise"\)/);
+});
+
 // ---- U:UD9 the human DM corrects an enemy's hit points ----
 
 const { enemyHpCorrection } = await import("../src/lib/dm/catalog-enemy-hp.ts");

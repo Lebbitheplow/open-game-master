@@ -1,7 +1,7 @@
 import { normalizeHandLayout, type HandLayout } from "@/lib/battlemap/hand-layout";
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { touchCampaign } from "@/lib/db/campaigns";
-import { effectiveMaxHp, maxHpRiders, tempHpClaims, withoutTempHpClaims, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { effectiveMaxHp, endedByRegain, maxHpRiders, tempHpClaims, withoutTempHpClaims, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { populateFeaturesForClasses } from "@/lib/srd/features";
 import { populateResources } from "@/lib/srd/class-resources";
 import { XP_THRESHOLDS, deriveAc } from "@/lib/srd";
@@ -25,6 +25,7 @@ import {
 } from "@/lib/schemas/sheet";
 import { textKey } from "@/lib/language/text-logic";
 import { noteDominationShift } from "@/lib/db/side-watch";
+import { noteGrounding } from "@/lib/db/flight-watch";
 import { repairedPets } from "@/lib/srd/familiar-forms";
 import { rowName } from "@/lib/srd/item-row";
 
@@ -697,11 +698,24 @@ function adjustPoolsSpent(
   return next;
 }
 
-export function patchSheet(sheetId: string, patch: FullPatchSheetInput): CharacterSheet | null {
+export function patchSheet(
+  sheetId: string,
+  input: FullPatchSheetInput,
+  // An undo putting back what a change took (src/lib/sheet-undo.ts): the hit
+  // points it returns were never lost, so nothing ends on their regain.
+  options: { restoring?: boolean } = {},
+): CharacterSheet | null {
   const existing = getSheetById(sheetId);
   if (!existing) {
     return null;
   }
+  // A hit point regained ends a caltrops wound by whatever path the
+  // character healed: a potion, hit dice, a drain, Second Wind (issue #570;
+  // src/lib/dm/condition-logic.ts endedByRegain).
+  const mended = input.currentHp !== undefined && !options.restoring
+    ? endedByRegain(input.conditions ?? existing.conditions, input.conditionMeta ?? existing.conditionMeta, existing.currentHp, input.currentHp)
+    : null;
+  const patch: FullPatchSheetInput = mended ? { ...input, conditions: mended.conditions, conditionMeta: mended.meta } : input;
 
   // Multiclass: the classes array is authoritative when present, and the
   // scalar class/subclass/level fields are mirrors of it. Scalar patches on
@@ -905,6 +919,9 @@ export function patchSheet(sheetId: string, patch: FullPatchSheetInput): Charact
     // A Dominate starting or ending moves the character's side (side-watch.ts).
     noteDominationShift(existing.campaignId, existing, next);
   }
+  // A flyer knocked prone, or held or exhausted to a speed of 0, falls
+  // (flight-watch.ts).
+  noteGrounding(existing.campaignId, existing, next);
 
   // Temporary hit points a spell granted for its duration go when it ends
   // (False Life, Heroism): the instance that granted them carries the claim.

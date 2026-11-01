@@ -201,6 +201,7 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
       { name: "targetCharacterId", label: "Target", kind: "character", required: true },
       { name: "attack", label: "Attack", kind: "text", help: "Blank picks from the stat block." },
       ...advantageFields(),
+      { name: "nonlethal", label: "Knock out", kind: "boolean", help: "Melee only. A player dropped to 0 falls unconscious and stable instead of dying." },
     ],
   },
   {
@@ -331,7 +332,7 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
     name: "take_action",
     label: "Action",
     category: "combat",
-    summary: "Dodge, Dash, Disengage, Hide, Help, Grapple, Shove, Ready, Search, Use an Object or Escape, with its real contest and effect, for a character or an enemy.",
+    summary: "Dodge, Dash, Disengage, Hide, Help, Grapple, Shove, Ready, Search, Use an Object, Escape or a Grappler's Pin, with its real contest and effect, for a character or an enemy.",
     fields: [
       { name: "characterId", label: "Character", kind: "character", help: "Blank when an enemy acts." },
       {
@@ -351,6 +352,7 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
           { value: "search", label: "Search" },
           { value: "use_object", label: "Use an Object" },
           { value: "escape", label: "Escape a grapple or a spell's hold" },
+          { value: "pin", label: "Pin the creature they grapple (Grappler feat)" },
         ],
       },
       { name: "bonus", label: "As a bonus action", kind: "boolean", help: "Cunning Action, Step of the Wind, Patient Defense." },

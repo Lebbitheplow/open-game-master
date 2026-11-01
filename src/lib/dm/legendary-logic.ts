@@ -53,7 +53,7 @@ export type LegendaryState = {
   // them again (src/lib/dm/encounter-tools.ts). `wrapped`: that end_turn
   // began a new round, which the turn's table note says once the narration
   // is in.
-  handoff?: { turnId: string; enemyIds: string[]; wrapped?: boolean };
+  handoff?: { turnId: string; enemyIds: string[]; wrapped?: boolean; dying?: string[] };
   // The enemies that have taken a bonus action in `round` (Nimble Escape's
   // Disengage or Hide).
   bonus?: { round: number; ids: string[] };
@@ -64,6 +64,12 @@ export type LegendaryState = {
   // held by a spell): owed no turn, and owed a line saying they lost it, in
   // the backstop's note (src/lib/dm/encounter-tools.ts, issue #666).
   lost?: string[];
+  // What the last pass left for once the enemies it walked past have gone
+  // (issue 713, src/lib/dm/encounter-logic.ts passWaits): the death saves
+  // of the dying after them, and, with `wrap`, the rest of the walk from
+  // the end of the order, the round turning over with it
+  // (src/lib/dm/encounter-tools.ts finishPass).
+  rest?: { wrap?: true; dying?: string[] };
   // A stretch with nobody able to act: the round it began, and whether the
   // table was told it ran too long to keep waking the DM
   // (src/lib/dm/encounter-tools.ts idledOut).
@@ -116,6 +122,7 @@ export function normalizeLegendaryState(raw: unknown): LegendaryState {
   const handoff = (record.handoff && typeof record.handoff === "object" ? record.handoff : null) as Record<string, unknown> | null;
   const bonus = (record.bonus && typeof record.bonus === "object" ? record.bonus : null) as Record<string, unknown> | null;
   const idle = (record.idle && typeof record.idle === "object" ? record.idle : null) as Record<string, unknown> | null;
+  const rest = (record.rest && typeof record.rest === "object" ? record.rest : null) as Record<string, unknown> | null;
   const failed = (record.failedSave && typeof record.failedSave === "object" ? record.failedSave : null) as Record<string, unknown> | null;
   const opportunities = (record.opportunities && typeof record.opportunities === "object" ? record.opportunities : null) as Record<string, unknown> | null;
   const turns = normalizeEnemyTurns(record.turns);
@@ -138,11 +145,21 @@ export function normalizeLegendaryState(raw: unknown): LegendaryState {
     ...(stringList(record.strikes).length ? { strikes: stringList(record.strikes) } : {}),
     ...(Object.keys(abilities).length ? { abilities } : {}),
     ...(handoff && typeof handoff.turnId === "string"
-      ? { handoff: { turnId: handoff.turnId, enemyIds: stringList(handoff.enemyIds), ...(handoff.wrapped === true ? { wrapped: true } : {}) } }
+      ? {
+          handoff: {
+            turnId: handoff.turnId,
+            enemyIds: stringList(handoff.enemyIds),
+            ...(handoff.wrapped === true ? { wrapped: true } : {}),
+            ...(stringList(handoff.dying).length ? { dying: stringList(handoff.dying) } : {}),
+          },
+        }
       : {}),
     ...(bonus ? { bonus: { round: Number(bonus.round) || 0, ids: stringList(bonus.ids) } } : {}),
     ...(stringList(record.due).length ? { due: stringList(record.due) } : {}),
     ...(stringList(record.lost).length ? { lost: stringList(record.lost) } : {}),
+    ...(rest && (rest.wrap === true || stringList(rest.dying).length)
+      ? { rest: { ...(rest.wrap === true ? { wrap: true as const } : {}), ...(stringList(rest.dying).length ? { dying: stringList(rest.dying) } : {}) } }
+      : {}),
     ...(idle ? { idle: { since: Number(idle.since) || 0, ...(idle.told === true ? { told: true } : {}) } } : {}),
     ...(stringList(record.walked).length ? { walked: stringList(record.walked) } : {}),
     ...(failed && typeof failed.enemyId === "string"

@@ -21,6 +21,9 @@ import { guardKinds } from "@/lib/dm/narration-guard";
 import { AGENT_MARK } from "@/lib/dm/agent-mark";
 import { hasQuotedLine, type SpokenLine } from "@/lib/dm/speech";
 import { modelTextLines } from "@/lib/dm/speech-lines";
+import { noteUnrecordedDeeds } from "@/lib/dm/deed-claims";
+import { exchangeWords } from "@/lib/dm/story-moves";
+import { settleStoryMoves } from "@/lib/dm/story-moves-settle";
 
 // Every request an agent program sends carries this header
 // (src/lib/agents/workbench.ts workbenchCall).
@@ -118,6 +121,7 @@ export async function readAgentNarration(
     kinds: hasQuotedLine(narration) ? [...guarded, "speaker"] : guarded,
     outcomes,
     sheets,
+    words: exchangeWords(campaign.id, sheets),
   });
   const lines = modelTextLines(
     campaign,
@@ -126,6 +130,12 @@ export async function readAgentNarration(
   );
   const found = ruleClaims(claims, outcomes);
   if (!found.length) {
+    // The narration stands: a deed it showed that no relationship_beat
+    // recorded is noted for the agent, as for the storyteller (issue 503,
+    // which this read dropped), and so is a romantic move or a kindness,
+    // which the engine records where the player declared it (issue 641).
+    noteUnrecordedDeeds(campaign, turn?.conversation ?? [], claims.flatMap((claim) => (claim.kind === "deed" ? [claim] : [])));
+    settleStoryMoves(campaign, { turn, sheets, claims, record: turn !== null });
     return { problem: null, lines };
   }
   return {

@@ -1,3 +1,4 @@
+import { backfillNpcHeard } from "@/lib/db/npc-heard-backfill";
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { restoreCompanionUser } from "@/lib/db/users";
 import {
@@ -246,4 +247,8 @@ export function restoreSnapshot(campaignId: string, payload: SnapshotPayload) {
   for (const flag of payload.ruleFlags ?? []) {
     updateRule.run(flag.enabled, flag.pinned, flag.id, campaignId);
   }
+  // Who the table has heard named is what the transcript left standing says
+  // (issue 650): a snapshot taken before npcs had heard_at brings every NPC
+  // back unheard, and the players would lose names and faces they were shown.
+  backfillNpcHeard(db, campaignId);
 }

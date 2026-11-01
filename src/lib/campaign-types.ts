@@ -155,6 +155,16 @@ export function haltedTurnPrefix(content: string): string {
   return [DM_HALTED_PREFIX, LEGACY_DM_HALTED_PREFIX].find((prefix) => content.startsWith(prefix)) ?? "";
 }
 
+// The notice a halted turn left, still offering its Retry: a system line
+// linked to its turn that carries the mark. The link alone is not enough. A
+// lair action the turn's own tool posts is linked to the turn too
+// (src/lib/dm/legendary-tools.ts), and read as a halt it was left out of the
+// chronicle, ended the turn's streaming draft mid-turn, and took the Retry's
+// claim in place of the notice.
+export function isHaltedTurnNotice(message: { authorType: string; dmTurnId?: string | null; content: string }): boolean {
+  return message.authorType === "system" && Boolean(message.dmTurnId) && haltedTurnPrefix(message.content) !== "";
+}
+
 // Marks the system message announcing a mid-game joiner's new character.
 // The lead's "new adventurer" banner derives from it: shown until a DM
 // message lands after it (the DM had its "next natural moment").

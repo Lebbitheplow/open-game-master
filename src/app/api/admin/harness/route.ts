@@ -17,8 +17,10 @@ export const maxDuration = 600;
 
 // The agent programs on this machine (docs/archive/harness-mcp-plan.md 6). Probing
 // starts each program briefly, so answers are cached for five minutes and
-// ?refresh=1 asks again. No vendor credential is ever read or returned: only
-// whether the program says it is signed in, and a masked account name.
+// ?refresh=1 asks again. The saved program is always asked again: a sign-in
+// that ran out since the last look must not read "Ready" (issue #713). No
+// vendor credential is ever read or returned: only whether the program says
+// it is signed in, and a masked account name.
 export async function GET(request: Request) {
   const admin = await requireAdmin();
   if (isErrorResponse(admin)) {
@@ -27,7 +29,8 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const refresh = url.searchParams.get("refresh") === "1";
   const phone = url.searchParams.get("platform") === "android";
-  const statuses = await probeAllHarnesses({ refresh, phone });
+  const saved = harnessConfig().id;
+  const statuses = await probeAllHarnesses({ refresh, phone, fresh: isHarnessId(saved) ? saved : "" });
   return Response.json({
     statuses,
     config: harnessConfig(),

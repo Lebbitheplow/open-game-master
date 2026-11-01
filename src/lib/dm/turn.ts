@@ -118,6 +118,7 @@ import { liveStateFor, readAsides, readReply, readTurnEndInWords, registeringNam
 import { modelTextLines } from "@/lib/dm/speech-lines";
 import { meetSpeakers } from "@/lib/dm/party-bonds";
 import { voiceOwedConscience } from "@/lib/dm/conscience-voice";
+import { readRomanceScene, romanceSceneNotes } from "@/lib/dm/romance-scenes";
 import type { SpokenLine } from "@/lib/dm/speech";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { dispatchAdjudication } from "@/lib/dm/invoke-dispatch";
@@ -143,6 +144,7 @@ import { agendaLinesForPrompt } from "@/lib/dm/companion-agenda";
 import { pactLinesForPrompt } from "@/lib/dm/pacts";
 import { returnDirectorNotes } from "@/lib/dm/companion-revenge";
 import { noteUnrecordedDeeds } from "@/lib/dm/deed-claims";
+import { settleStoryMoves } from "@/lib/dm/story-moves-settle";
 import {
   buildDmMessages,
   type DmGameState,
@@ -177,6 +179,8 @@ import { consumePendingSparks, storyMarkFor, tickWorldState } from "@/lib/dm/wor
 import { storyMoved } from "@/lib/dm/world-tick-logic";
 import { conversationInFlight } from "@/lib/dm/conversation-logic";
 import { advanceDirectorNotes, advanceWindowOpen, tickAdvances } from "@/lib/dm/advance-tick";
+import { heldStepNotes, romanceAnswerOwed } from "@/lib/dm/romance-held";
+import { exclusiveLinesForPrompt } from "@/lib/dm/romance-exclusive";
 import { storytellerLinesForPrompt } from "@/lib/dm/scheme-tools";
 import { isStorytellerFact } from "@/lib/dm/fact-logic";
 import { bumpAiTurns } from "@/lib/db/advances";
@@ -469,6 +473,9 @@ function buildEncounterState(campaignId: string, sheets: CharacterSheet[]) {
           enemiesDue: {
             before: encounter.order[encounter.turnIndex].name,
             enemies: due.map((enemy) => ({ enemyId: enemy.id, name: enemy.displayName })),
+            // Enemies before the end of the order act in this round, which
+            // turns over once they have (issue 713).
+            round: encounter.round + (encounter.legendary.rest?.wrap ? 1 : 0),
           },
         }
       : {}),
@@ -897,12 +904,16 @@ async function openTurn(
           pinned: fact.pinned,
           knownBy: fact.knownBy,
         })),
-      // The world's sparks, and a departed companion's return once it is
-      // cued (issue 503); both wait out a conversation.
-      directorNotes:
-        oocOnly || talk
-          ? []
-          : [...consumePendingSparks(campaignId).map((spark) => spark.text), ...returnDirectorNotes(campaign)],
+      // The world's sparks, a departed companion's return once it is cued
+      // (issue 503), and a scene a romance's other side starts (issue 643);
+      // all wait out a conversation. A romantic step asked in a fight that
+      // just ended (issue 640) is conversation itself, so it does not wait.
+      directorNotes: oocOnly
+        ? []
+        : [
+            ...(talk ? [] : [...consumePendingSparks(campaignId).map((spark) => spark.text), ...returnDirectorNotes(campaign), ...romanceSceneNotes(campaign)]),
+            ...heldStepNotes(campaign),
+          ],
       conversation: talk,
       // The storyteller's section: who is open to advances, an NPC ready to
       // make a move (issue 501, said while its window is open), an NPC's act,
@@ -922,7 +933,11 @@ async function openTurn(
       relationships:
         campaign.gameSettings.relationships === "off"
           ? []
-          : relationshipRosterForPrompt(campaignId, { storyteller: !oocOnly, leaving: souredLeaving(campaign) }),
+          : [
+              ...relationshipRosterForPrompt(campaignId, { storyteller: !oocOnly, leaving: souredLeaving(campaign) }),
+              // Who is spoken for, and exclusive (issue 642): only while anyone is.
+              ...(romanceEnabled(campaign) ? exclusiveLinesForPrompt(campaignId) : []),
+            ],
       recentWhispers: listRecentWhispersForPrompt(campaignId, 10),
       pendingPlayerWhispers: pendingWhispers.map((whisper) => ({
         from: whisper.characterName,
@@ -1298,8 +1313,9 @@ export function profileSignals(campaign: Campaign, sheets: readonly CharacterShe
       : false,
     caster: sheets.some(casts),
     // An NPC is ready to make a romantic move (issue 501): its tool is
-    // offered while the window is open.
-    advanceReady: !inEncounter && advanceWindowOpen(campaign),
+    // offered while the window is open; and while a step asked in a fight
+    // waits for its answer (issue 640).
+    advanceReady: !inEncounter && (advanceWindowOpen(campaign) || romanceAnswerOwed(campaign)),
   };
 }
 
@@ -2403,6 +2419,10 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     // A deed the narration showed that no relationship_beat recorded is
     // noted for the DM (issue 503, src/lib/dm/deed-claims.ts).
     noteUnrecordedDeeds(campaign, turn.conversation, guarded.deeds);
+    // A romantic move or a kindness the story showed and no call recorded:
+    // the engine records a declared one, or the GM reads a note next turn
+    // (issue 641, src/lib/dm/story-moves-settle.ts).
+    settleStoryMoves(campaign, { turn, sheets, claims: [...guarded.deeds, ...(guarded.bonds ?? [])], record: true });
     // The narration told the table a player's turn is over ("It is now
     // Bram's turn") and no call ended it: it ends after the narration, as
     // the table was told, and the enemies it passes act then
@@ -3476,6 +3496,9 @@ function finalize(context: TurnContext, turn: DmTurn, failed: string, spoken: re
   // move would make it look answered, and the follow-up turn would skip it.
   // The next narration, which answers it, says the line then.
   const voiced = voiceOwedConscience(context.campaign, message, { post: !slot.person });
+  // The scene a romance's other side was due to start, read against this
+  // narration, and the next one chosen (issue 643).
+  readRomanceScene(context.campaign, message, { handedNow: false });
 
   // Combat bookkeeping: if the current PC's turn was adjudicated, hand the
   // initiative pointer to the next living PC now, after the narration

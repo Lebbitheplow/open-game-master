@@ -162,6 +162,30 @@ html[data-theme="light"] .palette-option[aria-selected="true"] {
   opacity: 0.55;
 }
 
+/* ---- the composer's @ menu (src/app/campaigns/[campaignId]/NameMenu.tsx) ---- */
+
+/* Placed against the screen at the box's top edge and hung above it, so it
+   never needs the menu's own height to find its place. */
+.name-menu-anchor {
+  position: fixed;
+  z-index: 60;
+  transform: translateY(-100%);
+}
+@keyframes name-menu-in {
+  0% { opacity: 0; transform: translateY(10px) scale(0.97); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.name-menu {
+  transform-origin: bottom left;
+  animation: name-menu-in var(--dur-beat) var(--ease-spring) both;
+}
+/* It opens over the composer's own pills and pickers: a solid sheet under
+   the smoke, as the other floating menus have (globals.css), so none of
+   them reads through it. The day theme's sheet is .ctx-menu's, above. */
+.name-menu.panel {
+  background-color: #151029;
+}
+
 /* ---- a row of chips with one travelling mark ---- */
 
 .chip-rail {
@@ -210,7 +234,8 @@ html[data-theme="light"] .ref-badge[data-tone="red"] { border-color: rgba(185, 2
   .kbd-chip {
     transition: none;
   }
-  .palette-panel[role="dialog"][data-state="open"] {
+  .palette-panel[role="dialog"][data-state="open"],
+  .name-menu {
     animation: none;
   }
   .palette-list > [role="option"] {
@@ -218,6 +243,7 @@ html[data-theme="light"] .ref-badge[data-tone="red"] { border-color: rgba(185, 2
   }
 }
 [data-effects="low"] .palette-panel[role="dialog"][data-state="open"],
-[data-effects="low"] .palette-list > [role="option"] {
+[data-effects="low"] .palette-list > [role="option"],
+[data-effects="low"] .name-menu {
   animation: none;
 }

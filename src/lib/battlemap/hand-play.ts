@@ -3,7 +3,7 @@
 // (docs/visual-overhaul-plan.md 5.2 and 5.3). Pure, tested by
 // scripts/test-hand.mjs.
 import { READIED_WORDS, type Readiable } from "@/lib/dm/readied-kinds";
-import { spendAction, spendAttack } from "@/lib/dm/action-budget";
+import { ACTION_SURGED, spendAction, spendAttack } from "@/lib/dm/action-budget";
 import { BONUS_SPELL, LEVELLED_SPELL } from "@/lib/dm/cast-rules";
 import { attackContext, mergeAdvantage } from "@/lib/dm/condition-logic";
 import { asPercent, attackOdds, averageDetail } from "@/lib/srd/odds";
@@ -20,6 +20,7 @@ import {
 import { areaArgs, describePick, hasPick, type AreaPick, type HandArea } from "@/lib/battlemap/hand-area";
 import type { HandShare } from "@/lib/battlemap/hand-intent";
 import { textKey } from "@/lib/language/text-logic";
+import { grantedRideMark } from "@/lib/battlemap/hand-granted";
 import type { BoardControlId, BoardPanel } from "@/lib/addons/board-bridge";
 
 // Who a card is aimed at. `ac` only ever arrives in the DM's projection; a
@@ -449,7 +450,10 @@ export function toggleOption(
 // action grants (1 + Extra Attack).
 export function afterCommit(turn: HandTurn, card: HandCard, allowed = 1): HandTurn {
   const intent = card.intent;
-  const swing = intent.card === "attack" && !intent.offHand && !intent.attack?.bonusAttack;
+  // A strike a condition grants is a swing only when it costs the action
+  // (Flame Blade); Spiritual Weapon's is a bonus action, or rides its casting.
+  // Flame Blade's is the whole action, which Extra Attack does not repeat.
+  const swing = intent.card === "attack" && !intent.offHand && !intent.attack?.bonusAttack && card.cost !== "bonus" && card.cost !== "free" && !card.wholeAction;
   const contest = intent.card === "basic" && (intent.action === "grapple" || intent.action === "shove");
   // The engine's own spend functions do the counting (Extra Attack, Haste's
   // one weapon attack, Action Surge, Flurry of Blows).
@@ -491,10 +495,16 @@ export function afterCommit(turn: HandTurn, card: HandCard, allowed = 1): HandTu
     const mark = card.cost === "bonus" ? BONUS_SPELL : card.resource !== "Cantrip" ? LEVELLED_SPELL : null;
     if (mark && !(next.marks ?? []).includes(mark)) next.marks = [...(next.marks ?? []), mark];
   }
+  // The strike that came with its casting, once a turn (pc-attack-spend.ts).
+  if (intent.card === "attack" && card.cost === "free") {
+    const mark = grantedRideMark(intent.weapon);
+    if (!(next.marks ?? []).includes(mark)) next.marks = [...(next.marks ?? []), mark];
+  }
   // Action Surge grants a whole additional action (the engine's
   // grantedActions), not Haste's restricted one.
   if (card.intent.card === "feature" && card.intent.resourceId === "action_surge") {
     next.grantedActions = (turn.grantedActions ?? 0) + 1;
+    if (!(next.marks ?? []).includes(ACTION_SURGED)) next.marks = [...(next.marks ?? []), ACTION_SURGED];
   }
   return next;
 }

@@ -134,6 +134,134 @@ await test("A Purple Worm's turn is a bite and a tail stinger: its Multiattack i
   }
 });
 
+await test("A Multiattack of two melee attacks is two Mace swings but one Heavy Crossbow shot, and a Loading weapon fires once (SRD 5.1, Thug, Scout, Wererat).", () => {
+  const thug = {
+    name: "Thug", slug: "thug", document__slug: "wotc-srd", size: "Medium", type: "Humanoid", armor_class: 11, hit_points: 32, cr: 0.5,
+    actions: [
+      { name: "Multiattack", desc: "The thug makes two melee attacks." },
+      { name: "Mace", desc: "Melee Weapon Attack: +4 to hit, reach 5 ft., one creature. Hit: 5 (1d6 + 2) bludgeoning damage.", attack_bonus: 4, damage_dice: "1d6", damage_bonus: 2 },
+      { name: "Heavy Crossbow", desc: "Ranged Weapon Attack: +2 to hit, range 100/400 ft., one target. Hit: 5 (1d10) piercing damage.", attack_bonus: 2, damage_dice: "1d10" },
+    ],
+  };
+  const swingsOf = (stats, name) => plannedSwings(stats, stats.attacks, stats.attacks.find((attack) => attack.name === name)).map((swing) => swing.name);
+  for (const row of [thug, ...(world.hasPack ? [srdRow("thug")] : [])]) {
+    const stats = parseMonster(row, 0.5);
+    assert.deepEqual(swingsOf(stats, "Mace"), ["Mace", "Mace"]);
+    assert.deepEqual(swingsOf(stats, "Heavy Crossbow"), ["Heavy Crossbow"], "the crossbow fired twice");
+  }
+  // "two melee attacks or two ranged attacks": the Longbow is two.
+  const scout = {
+    attacks: [
+      { name: "Shortsword", toHit: 4, damage: "1d6+2", type: "piercing", mode: "melee", reach: 5 },
+      { name: "Longbow", toHit: 4, damage: "1d8+2", type: "piercing", mode: "ranged", range: { normal: 150, long: 600 } },
+    ],
+    attacksPerTurn: 2,
+    traits: ["Multiattack: The scout makes two melee attacks or two ranged attacks."],
+  };
+  assert.deepEqual(swingsOf(scout, "Longbow"), ["Longbow", "Longbow"]);
+  // "two attacks, only one of which can be a bite": a hand crossbow loads once.
+  const wererat = {
+    attacks: [
+      { name: "Shortsword", toHit: 4, damage: "1d6+2", type: "piercing", mode: "melee", reach: 5 },
+      { name: "Hand Crossbow", toHit: 4, damage: "1d6+2", type: "piercing", mode: "ranged", range: { normal: 30, long: 120 } },
+    ],
+    attacksPerTurn: 2,
+    traits: ["Multiattack: The wererat makes two attacks, only one of which can be a bite."],
+  };
+  assert.deepEqual(swingsOf(wererat, "Shortsword"), ["Shortsword", "Shortsword"]);
+  assert.deepEqual(swingsOf(wererat, "Hand Crossbow"), ["Hand Crossbow"]);
+});
+
+// The wererat as its block prints it: "only one of which can be a bite" is
+// read as routines of any two of its attacks, the Hand Crossbow's two shots
+// among them, which the Loading rule above never reached.
+await test("A wererat read from its SRD 5.1 block fires its Hand Crossbow once, and a Multiattack that names a ranged attack among its melee ones counts it (Wererat; Tome of Beasts' mordant snare).", () => {
+  const wererat = {
+    name: "Wererat", size: "Medium", type: "Humanoid", armor_class: 12, hit_points: 33, cr: 2,
+    actions: [
+      { name: "Multiattack (Humanoid or Hybrid Form Only)", desc: "The wererat makes two attacks, only one of which can be a bite." },
+      { name: "Bite (Rat or Hybrid Form Only)", desc: "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 4 (1d4 + 2) piercing damage. If the target is a humanoid, it must succeed on a DC 11 Constitution saving throw or be cursed with wererat lycanthropy.", attack_bonus: 4, damage_dice: "1d4", damage_bonus: 2 },
+      { name: "Shortsword (Humanoid or Hybrid Form Only)", desc: "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) piercing damage.", attack_bonus: 4, damage_dice: "1d6", damage_bonus: 2 },
+      { name: "Hand Crossbow (Humanoid or Hybrid Form Only)", desc: "Ranged Weapon Attack: +4 to hit, range 30/120 ft., one target. Hit: 5 (1d6 + 2) piercing damage.", attack_bonus: 4, damage_dice: "1d6", damage_bonus: 2 },
+    ],
+  };
+  const swingsOf = (stats, name) => plannedSwings(stats, stats.attacks, stats.attacks.find((attack) => attack.name.startsWith(name))).map((swing) => swing.name.replace(/ \(.*$/, ""));
+  for (const row of [wererat, ...(world.hasPack ? [srdRow("wererat")] : [])]) {
+    const stats = parseMonster(row, 2);
+    assert.ok(stats.routines?.length, "the wererat's Multiattack is read as routines");
+    assert.deepEqual(swingsOf(stats, "Hand Crossbow"), ["Hand Crossbow"], "the hand crossbow fired twice");
+    assert.deepEqual(swingsOf(stats, "Shortsword"), ["Shortsword", "Shortsword"]);
+  }
+  const snare = {
+    attacks: [
+      { name: "Spike", toHit: 8, damage: "2d8+3", type: "piercing", mode: "ranged", range: { normal: 20, long: 60 } },
+      { name: "Tentacle", toHit: 11, damage: "2d10+6", type: "bludgeoning", mode: "melee", reach: 5 },
+    ],
+    attacksPerTurn: 4,
+    traits: ["Multiattack: The mordant snare makes four melee attacks, using any combination of tentacle attacks, spike attacks, and filament attacks."],
+  };
+  assert.deepEqual(swingsOf(snare, "Spike"), ["Spike", "Spike", "Spike", "Spike"]);
+  assert.deepEqual(swingsOf(snare, "Tentacle"), ["Tentacle", "Tentacle", "Tentacle", "Tentacle"]);
+});
+
+// The SRD 5.1 page sets the medusa's melee routine off with dashes, where the
+// pack prints " - ": read from the page or a block pasted from it, it was
+// five attacks of anything.
+await test("A medusa whose Multiattack sets its melee routine off with dashes, as the SRD 5.1 page prints it, makes its three melee attacks or two longbow shots.", () => {
+  const names = ["Snake Hair", "Shortsword", "Longbow"];
+  const pack = readAs("The medusa makes either three melee attacks - one with its snake hair and two with its shortsword - or two ranged attacks with its longbow.", names);
+  for (const dash of ["\u2014", "\u2013", " \u2014 "]) {
+    const page = readAs(`The medusa makes either three melee attacks${dash}one with its snake hair and two with its shortsword${dash}or two ranged attacks with its longbow.`, names);
+    assert.deepEqual(page.routines, ["Snake Hair x1 + Shortsword x2", "Longbow x2"]);
+    assert.deepEqual(page, pack);
+  }
+});
+
+// The bandit captain's second sentence is a routine of its own (SRD 5.1),
+// and the turn takes whichever routine lands: out of melee reach, the two
+// thrown daggers.
+await test("A bandit captain's Multiattack reads as its melee routine or two thrown daggers, and the turn takes the one whose swings land.", () => {
+  const captain = {
+    name: "Bandit Captain", size: "Medium", type: "Humanoid", armor_class: 15, hit_points: 65, cr: 2,
+    actions: [
+      { name: "Multiattack", desc: "The captain makes three melee attacks: two with its scimitar and one with its dagger. Or the captain makes two ranged attacks with its daggers." },
+      { name: "Scimitar", desc: "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 6 (1d6 + 3) slashing damage.", attack_bonus: 5, damage_dice: "1d6", damage_bonus: 3 },
+      { name: "Dagger", desc: "Melee or Ranged Weapon Attack: +5 to hit, reach 5 ft. or range 20/60 ft., one target. Hit: 5 (1d4 + 3) piercing damage.", attack_bonus: 5, damage_dice: "1d4", damage_bonus: 3 },
+    ],
+  };
+  for (const row of [captain, ...(world.hasPack ? [srdRow("bandit-captain")] : [])]) {
+    const stats = parseMonster(row, 2);
+    const dagger = stats.attacks.find((attack) => attack.name === "Dagger");
+    const names = (swings) => swings.map((swing) => swing.name);
+    assert.deepEqual(names(plannedSwings(stats, stats.attacks, dagger)), ["Scimitar", "Scimitar", "Dagger"], "in reach, the melee routine");
+    const thrown = plannedSwings(stats, stats.attacks, dagger, { reaches: (attack) => attack.name === "Dagger" });
+    assert.deepEqual(names(thrown), ["Dagger", "Dagger"], "out of melee reach, the two thrown daggers");
+  }
+});
+
+// Black Flag prints "two Rapier or Hand Crossbow attacks": two of either.
+// The count stayed with the first name only, so the crossbow was no routine
+// and shot once. The Tome of Beasts scheznyki's "four war pick attacks or two
+// hand crossbow attacks" names a war pick its block calls Heavy Pick, so no
+// routine is read; its crossbow shot four times for the first group's count.
+await test("A count before a choice of attacks is that many of either, and a Multiattack's printed count of a named attack holds where no routine is read (Black Flag; Tome of Beasts' scheznyki).", () => {
+  assert.deepEqual(readAs("The bard makes two Rapier or Hand Crossbow attacks. It can replace one attack with a use of Spellcasting.", ["Rapier", "Hand Crossbow"]).routines, ["Rapier x2", "Hand Crossbow x2"]);
+  assert.deepEqual(readAs("Three Rapier or Light Crossbow attacks.", ["Rapier", "Light Crossbow"]).routines, ["Rapier x3", "Light Crossbow x3"]);
+  // A count before names the noun does not close is still each name's own.
+  assert.deepEqual(readAs("One Bite and two Kicks or three Spit Worms.", ["Bite", "Kick", "Spit Worm"]).routines, ["Bite x1 + Kick x2", "Spit Worm x3"]);
+  const scheznyki = {
+    attacks: [
+      { name: "Heavy Pick", toHit: 6, damage: "1d12+4", type: "piercing", mode: "melee", reach: 5 },
+      { name: "Hand Crossbow", toHit: 6, damage: "1d6+3", type: "piercing", mode: "ranged", range: { normal: 30, long: 120 } },
+    ],
+    attacksPerTurn: 4,
+    traits: ["Multiattack: The scheznyki makes four war pick attacks or two hand crossbow attacks."],
+  };
+  const swingsOf = (name) => plannedSwings(scheznyki, scheznyki.attacks, scheznyki.attacks.find((attack) => attack.name === name)).length;
+  assert.equal(swingsOf("Hand Crossbow"), 2, "the crossbow's printed two shots");
+  assert.equal(swingsOf("Heavy Pick"), 4, "the war pick's four, under the block's own name for it");
+});
+
 await test("A Multiattack's groups name the block's attacks by whole name, \"+1\" and a bracket note set aside, either side plural.", () => {
   assert.deepEqual(readAs("The vila makes two shortsword attacks or two shortbow attacks.", ["+1 Shortsword", "+1 Shortbow"]).routines, ["+1 Shortsword x2", "+1 Shortbow x2"]);
   assert.deepEqual(readAs("It makes two talon attacks and one beak attack.", ["Talons (Eagle Form Only)", "Beak (Eagle Form Only)"]).routines, ["Talons (Eagle Form Only) x2 + Beak (Eagle Form Only) x1"]);

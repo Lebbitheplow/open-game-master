@@ -29,6 +29,7 @@ export function SegmentedControl<T extends string>({
   size = "md",
   label,
   className,
+  optionClassName,
 }: {
   options: SegmentedOption<T>[];
   value: T;
@@ -36,6 +37,9 @@ export function SegmentedControl<T extends string>({
   size?: "sm" | "md";
   label?: string;
   className?: string;
+  // Classes for each option's button (a finger's height on a phone where
+  // the row is a form's control, not a filter).
+  optionClassName?: string;
 }) {
   const group = useRef<HTMLDivElement | null>(null);
   const pill = useRef<HTMLSpanElement | null>(null);
@@ -113,6 +117,7 @@ export function SegmentedControl<T extends string>({
               active
                 ? "bg-gradient-to-b from-amber-100 via-amber-200 to-amber-400 font-semibold text-amber-950 shadow-[0_1px_0_rgba(253,247,231,0.6)_inset,0_2px_8px_rgba(4,2,12,0.5)]"
                 : "text-stone-400 hover:bg-stone-800/70 hover:text-amber-100",
+              optionClassName,
             )}
           >
             {Icon ? <Icon className={size === "sm" ? "size-3.5" : "size-4"} aria-hidden="true" /> : null}

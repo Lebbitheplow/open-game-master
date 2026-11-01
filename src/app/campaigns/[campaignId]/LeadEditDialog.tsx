@@ -10,8 +10,10 @@ import { ui } from "@/lib/ui";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { NumberStepper } from "@/components/ui/NumberStepper";
 import { SectionHead } from "@/components/ui/SectionHead";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Switch } from "@/components/ui/Switch";
 import { KitButton, PanelError } from "./PanelKit";
+import { GiveStats, useUnknownGear } from "./GiveStats";
 import {
   ChipList,
   ItemFlags,
@@ -26,13 +28,25 @@ import {
   type ItemRow,
   type SlotEdits,
 } from "./LeadEditParts";
-import { acBreakdownFor, effectiveAcFor } from "@/lib/srd";
+import { earnedExpertise, expertiseOverCap, skillLevelsOf, trainingFrom, type SkillLevel } from "./lead-edit-logic";
+import { acBreakdownFor, effectiveAcFor, SRD_SKILLS } from "@/lib/srd";
+import { ABILITY_NAMES } from "@/lib/srd/legality/types";
 import { isCantripName } from "@/lib/srd/spell-lists";
 import { spellStyleFor } from "@/lib/srd/spell-prep";
 import MultiContentPicker from "@/app/characters/builder/MultiContentPicker";
-import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { ABILITIES, type Ability, type CharacterSheet, type Proficiencies } from "@/lib/schemas/sheet";
+import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 
-// Party lead correction of any character's numbers, items, and spells, for
+const ABILITY_SHORT: Record<string, string> = { str: "STR", dex: "DEX", con: "CON", int: "INT", wis: "WIS", cha: "CHA" };
+
+const SKILL_LEVELS: Array<{ value: SkillLevel; label: string }> = [
+  { value: "none", label: "None" },
+  { value: "trained", label: "Trained" },
+  { value: "expert", label: "Expert" },
+];
+
+// Party lead correction of any character's numbers, scores, training, items
+// and spells, for
 // when the AI DM gets something wrong. Server clamps values and writes an
 // audit entry.
 export function LeadEditDialog({
@@ -107,6 +121,18 @@ export function LeadEditDialog({
     ...(pact ? { pact: { max: String(pact.max), used: String(pact.used) } } : {}),
   }));
   const [feats, setFeats] = useState<string[]>(sheet.feats);
+  // Scores and training: what a GM-made companion or a model's update can
+  // get wrong and nothing in play puts right.
+  const [abilities, setAbilities] = useState(sheet.abilities);
+  const [saves, setSaves] = useState<Ability[]>(sheet.proficiencies.saves);
+  const [skillLevels, setSkillLevels] = useState(() => skillLevelsOf(sheet.proficiencies));
+  const experts = Object.values(skillLevels).filter((level) => level === "expert").length;
+  const earned = earnedExpertise(sheet);
+  // An older host's sheet schema holds six expertise at most and refuses
+  // more with its own raw message (SERVER_FEATURES moreExpertise).
+  const holdsMoreExpertise = hostOffers(useCapabilities(), "moreExpertise");
+  // Items the table has no stats for, each offered a workshop entry.
+  const unknownGear = useUnknownGear(campaignId, sheet.id);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -122,10 +148,10 @@ export function LeadEditDialog({
       .filter(Boolean);
   }
 
-  function save() {
-    setBusy(true);
-    setError("");
-    const patch: Record<string, unknown> = { reason };
+  // The fields this correction changes, as the route takes them: what Save
+  // sends, and what is lost if the dialog is left without saving.
+  function correction(): Record<string, unknown> {
+    const patch: Record<string, unknown> = {};
     const numbers: Array<[string, string, number]> = [
       ["currentHp", currentHp, sheet.currentHp],
       ["tempHp", tempHp, sheet.tempHp],
@@ -195,6 +221,31 @@ export function LeadEditDialog({
     if (feats.join("|") !== sheet.feats.join("|")) {
       patch.feats = feats;
     }
+    if (ABILITIES.some((ability) => abilities[ability] !== sheet.abilities[ability])) {
+      patch.abilities = abilities;
+    }
+    const savesChanged = [...saves].sort().join("|") !== [...sheet.proficiencies.saves].sort().join("|");
+    if (savesChanged || JSON.stringify(skillLevels) !== JSON.stringify(skillLevelsOf(sheet.proficiencies))) {
+      patch.proficiencies = trainingFrom(sheet.proficiencies, skillLevels, ABILITIES.filter((ability) => saves.includes(ability)));
+    }
+    return patch;
+  }
+  // What the dialog would send as it opened: a sheet the dialog tidies on
+  // the way (a wizard's prepared spells written into the book) is not an
+  // edit until the lead makes one.
+  const [opened] = useState(() => JSON.stringify(correction()));
+  const unsaved = JSON.stringify(correction()) !== opened;
+
+  function save() {
+    setBusy(true);
+    setError("");
+    const patch: Record<string, unknown> = { reason, ...correction() };
+    const over = expertiseOverCap((patch.proficiencies as Proficiencies | undefined)?.expertise?.length ?? 0, holdsMoreExpertise);
+    if (over) {
+      setError(over);
+      setBusy(false);
+      return;
+    }
     void (async () => {
       try {
         const response = await fetch(`/api/campaigns/${campaignId}/sheets/${sheet.id}`, {
@@ -244,7 +295,7 @@ export function LeadEditDialog({
             </Dialog.Close>
           </div>
           <p className="mb-3 text-xs text-stone-500">
-            Party lead correction of stats, items, and spells. Changes are logged to the session
+            Party lead correction of stats, scores, skills, items, and spells. Changes are logged to the session
             event log.
           </p>
           <SectionHead title="Numbers" glyph="rest-hp" level="h3" />
@@ -302,6 +353,68 @@ export function LeadEditDialog({
             />
           </label>
 
+          <div className="mt-3 space-y-2 text-xs">
+            <SectionHead title="Scores and training" glyph="rest-level-up" level="h3" />
+            <div className="grid grid-cols-3 gap-2">
+              {ABILITIES.map((ability) => (
+                <div key={ability} className="space-y-1">
+                  <span className="text-stone-400">{ABILITY_NAMES[ability]}</span>
+                  <NumberStepper
+                    size="sm"
+                    value={abilities[ability]}
+                    min={1}
+                    max={30}
+                    onChange={(next) => setAbilities((scores) => ({ ...scores, [ability]: next }))}
+                    label={ABILITY_NAMES[ability]}
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="space-y-1">
+              <span className="text-stone-400">Saving throws</span>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 sm:grid-cols-3">
+                {ABILITIES.map((ability) => (
+                  // The whole row is the switch's label, a finger's height
+                  // on a phone (pk-tap), where the switch alone is 24 px.
+                  <label key={ability} className="pk-tap flex items-center gap-2">
+                    <Switch
+                      on={saves.includes(ability)}
+                      onChange={(on) => setSaves((list) => (on ? [...list, ability] : list.filter((entry) => entry !== ability)))}
+                      label={`${ABILITY_NAMES[ability]} saving throw`}
+                    />
+                    <span className="text-stone-300">{ABILITY_NAMES[ability]}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-1">
+              <span className="flex items-baseline justify-between gap-2 text-stone-400">
+                Skills
+                <span className="text-[11px] text-stone-500">
+                  Expert in {experts}; {(sheet.classes?.length ?? 0) > 1 ? "their classes give" : "their class gives"} {earned || "none"}
+                </span>
+              </span>
+              <ul className="divide-y divide-stone-800/60">
+                {SRD_SKILLS.map((skill) => (
+                  <li key={skill.id} className="flex items-center justify-between gap-2 py-1">
+                    <span className="min-w-0 text-stone-200">
+                      {skill.name} <span className="text-stone-500">{ABILITY_SHORT[skill.ability]}</span>
+                    </span>
+                    <SegmentedControl
+                      options={SKILL_LEVELS}
+                      value={skillLevels[skill.id] ?? "none"}
+                      onChange={(level) => setSkillLevels((levels) => ({ ...levels, [skill.id]: level }))}
+                      size="sm"
+                      label={skill.name}
+                      className="shrink-0"
+                      optionClassName="pointer-coarse:min-h-10"
+                    />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
           <div className="mt-3 space-y-1 text-xs">
             <SectionHead title="Items" glyph="tab-loot" level="h3" aside={items.length || null} />
             {items.map((row, index) => (
@@ -324,6 +437,7 @@ export function LeadEditDialog({
                 </KitButton>
               </div>
               <ItemFlags item={row.base} />
+              <GiveStats name={row.base.name} gear={unknownGear} unsaved={unsaved} />
               </div>
             ))}
             <div className="mt-1">

@@ -9,6 +9,9 @@
 // This module must not import mutations.ts (which imports it).
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, getEnemy, listEnemies, patchEnemyConditions } from "@/lib/db/encounters";
+// Registers the board's landing for a flyer the condition grounds
+// (db/flight-watch.ts), which this module's writes call on.
+import "@/lib/dm/token-state";
 import { activePublicEncounter } from "@/lib/db/encounter-view";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { dominatedByFoe } from "@/lib/dm/companion-command";
@@ -32,17 +35,22 @@ import {
   type ConditionMetaMap,
   type SaveAbilityId,
 } from "@/lib/dm/condition-logic";
+import { petrifiedRefusal } from "@/lib/dm/damage-logic";
 import { exhaustionPatch, namesExhaustion } from "@/lib/dm/vitals-logic";
 import { spellEffectRefusal } from "@/lib/dm/spell-effects";
 import { allyConditionAura } from "@/lib/dm/aura";
-import { awardInspirationCounter, heldInspiration } from "@/lib/dm/roll-riders";
+import { awardInspirationCounter, heldInspiration, spendInspirationCounter } from "@/lib/dm/roll-riders";
+import { withoutGrapple } from "@/lib/dm/grapple";
+import { releaseLostPins } from "@/lib/dm/grappler-pin";
 import { featureConditionImmunities, sourcedConditionImmunity } from "@/lib/srd/trait-rules";
+import { magicItemRiders } from "@/lib/srd/magic-items";
 import { conditionGrantedImmunity } from "@/lib/srd/condition-effect-queries";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
 import { containsPhrase } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { conditionEffectsFor } from "@/lib/srd/condition-effects";
+import { afflictionStress } from "@/lib/dm/afflictions";
 
 // A sheet holds this many conditions at once (the stored list's own cap).
 export const MAX_CONDITIONS = 15;
@@ -155,12 +163,17 @@ export function releaseGrapplesHeldBy(campaign: Campaign, holderId: string): str
     if (!names.length) {
       continue;
     }
-    const cleared = removeConditions(enemy.conditions, enemy.conditionMeta, names);
+    // The restraint a Grappler's pin laid on it ends with the grapple too.
+    const cleared = names.reduce(
+      (state, name) => withoutGrapple(state.conditions, state.meta, { name, source: holderId }),
+      { conditions: enemy.conditions, meta: enemy.conditionMeta as ConditionMetaMap },
+    );
     patchEnemyConditions(enemy.id, cleared.conditions, cleared.meta);
     released.push(enemy.displayName);
     enemiesChanged = true;
   }
   if (enemiesChanged) {
+    releaseLostPins(campaign);
     publishPersisted(campaign.id, "encounter_updated", {
       encounter: activePublicEncounter(campaign.id),
     });
@@ -227,6 +240,11 @@ export function conditionImmunity(
   sourceEnemyId?: string,
 ): string | null {
   const wanted = condition.trim().toLowerCase();
+  // SRD 5.1, Conditions, Petrified: "immune to poison and disease".
+  const stone = petrifiedRefusal(sheet.conditions, wanted);
+  if (stone) {
+    return stone;
+  }
   const source = sourceEnemyId ? getEnemy(sourceEnemyId.trim()) : null;
   const sourced = sourcedConditionImmunity(sheet, wanted, source ? String(source.stats.type ?? "") : undefined);
   if (sourced) {
@@ -239,7 +257,9 @@ export function conditionImmunity(
     return `${warded} makes them immune`;
   }
   const own = featureConditionImmunities(sheet);
-  const held = own.conditions.find((entry) => entry.condition === wanted);
+  // A worn item's too (SRD 5.1, Periapt of Proof against Poison: "You are
+  // immune to the poisoned condition").
+  const held = [...own.conditions, ...magicItemRiders(sheet.equipment, sheet).conditionImmunities].find((entry) => entry.condition === wanted);
   if (held) {
     return `${held.because} makes them immune`;
   }
@@ -259,18 +279,36 @@ export function conditionImmunity(
   return aura ? `${aura} protects them` : null;
 }
 
-// The DM awards Inspiration. Holding it twice is holding it once.
+// The DM awards Inspiration. Holding it twice is holding it once. Named
+// with a giver (sourceCharacterId), it is passed on: SRD 5.1 Inspiration,
+// Using Inspiration, "if you have inspiration, you can reward another player
+// ... you can give up your inspiration to give that character inspiration."
+// The giver's is spent in the same call, and one with none has none to give.
 function awardInspiration(
   campaign: Campaign,
   turnId: string,
   sheet: CharacterSheet,
   reason: string,
+  giverId?: string,
 ): ToolResult {
+  const giver = giverId && giverId !== sheet.id ? getSheetById(giverId) : null;
+  if (giverId && giverId !== sheet.id && (!giver || giver.campaignId !== campaign.id)) {
+    return { error: `sourceCharacterId "${giverId}" is no character in this campaign; use a characterId from GAME STATE.`, retry: true };
+  }
   if (sheet.deathSaves?.dead) {
     return { error: `${sheet.name} is dead; Inspiration has nothing to inspire.`, retry: true };
   }
+  if (giver && !heldInspiration(giver)) {
+    return { error: `${giver.name} has no Inspiration to give up; only a character who holds it can pass it on.`, refused: "rules" };
+  }
   if (heldInspiration(sheet)) {
-    return { ok: true, note: `${sheet.name} already has Inspiration; it does not stack.` };
+    return { ok: true, note: `${sheet.name} already has Inspiration; it does not stack${giver ? `, so ${giver.name} keeps theirs` : ""}.` };
+  }
+  if (giver) {
+    const spent = spendInspirationCounter(giver.resources);
+    patchSheet(giver.id, { resources: spent });
+    audit(campaign, turnId, giver, { inspiration: false }, reason, { resources: spent });
+    publishSheet(campaign, giver.id);
   }
   const resources = awardInspirationCounter(sheet.resources);
   patchSheet(sheet.id, { resources });
@@ -278,7 +316,7 @@ function awardInspiration(
   publishSheet(campaign, sheet.id);
   return {
     ok: true,
-    inspiration: `${sheet.name} has Inspiration`,
+    inspiration: giver ? `${giver.name} gave up their Inspiration: ${sheet.name} has it now` : `${sheet.name} has Inspiration`,
     note: "They spend it for advantage on one attack, save or check (useInspiration on the roll).",
   };
 }
@@ -311,7 +349,7 @@ export function handleSetCondition(
   // Inspiration is the DM's award, held on the sheet until a roll spends it
   // (src/lib/dm/roll-riders.ts), not a condition.
   if (/^\s*(heroic\s+)?inspir(ation|ed)\s*$/i.test(raw)) {
-    return awardInspiration(campaign, turnId, sheet, reason);
+    return awardInspiration(campaign, turnId, sheet, reason, args.sourceCharacterId?.trim() || undefined);
   }
   // Exhaustion is a leveled track, not a stackable condition: each set
   // raises a character one level (6 = death), "exhaustion" or "exhaustion
@@ -436,10 +474,15 @@ export function handleSetCondition(
         : {}),
     };
   }
+  // Cackle Fever: "Any event that causes the infected creature great
+  // stress, including ... experiencing fear ... forces the creature to make
+  // a DC 13 Constitution saving throw" (afflictions.ts; issue #570, EQP-19).
+  const stress = isConditionNamed(normalized, "frightened") ? afflictionStress(campaign, turnId, sheet.id, "fear") : [];
   return {
     ok: true,
     condition: normalized,
     ...storyConditionNote(normalized),
+    ...(stress.length ? { stress: stress.join(" ") } : {}),
     ...(rounds ? { duration: `${describeConditionDuration(rounds)}, expires automatically` } : {}),
     ...(saveEnds
       ? {

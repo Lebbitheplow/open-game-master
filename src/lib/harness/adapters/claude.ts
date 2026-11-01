@@ -346,7 +346,9 @@ async function start(options: HarnessStartOptions) {
         if (code !== 0 && tail) {
           options.onEvent({
             type: "error",
-            kind: /not logged in|log in|authenticat/i.test(tail) ? "signed-out" : "crash",
+            // "OAuth session expired and could not be refreshed" is a
+            // sign-in that ran out (issue #713).
+            kind: /not logged in|log in|authenticat|oauth/i.test(tail) ? "signed-out" : "crash",
             message: tail.split("\n").filter(Boolean).slice(-2).join(" ").slice(0, 400),
           });
         }

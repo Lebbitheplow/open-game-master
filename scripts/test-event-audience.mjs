@@ -233,6 +233,22 @@ test("the DM's cover reaches every seat; the brief handed to the AI stays with t
   assert.ok(!JSON.stringify(bromReplay).includes("ASSASSIN"));
 });
 
+test("a stranger in the cast reaches the GM seat by name and no player's device (issue 650)", () => {
+  clear();
+  events.publishEphemeral(campaign.id, "cast_updated", {
+    cast: [
+      { id: "n1", name: "Sildar Hallwinter", portraitUrl: "", hasVoice: false, known: true },
+      { id: "n2", name: "IARNO THE TRAITOR", portraitUrl: "", hasVoice: false, known: false },
+    ],
+  });
+  assert.equal(got("dm", "cast_updated")[0].payload.cast.length, 2);
+  for (const seat of ["kara", "brom"]) {
+    assert.deepEqual(got(seat, "cast_updated")[0].payload.cast.map((member) => member.name), ["Sildar Hallwinter"]);
+    assert.ok(!text(seat, "cast_updated").includes("IARNO"), `${seat} was sent the stranger`);
+  }
+  assert.deepEqual(payloadForViewer("cast_updated", { cast: [{ name: "x", known: false }] }, null), { cast: [] });
+});
+
 test("a table event reaches every seat as one text", () => {
   clear();
   events.publishPersisted(campaign.id, "title_card", { title: "Chapter 2", at: Date.now() });

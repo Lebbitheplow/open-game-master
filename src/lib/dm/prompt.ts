@@ -1,7 +1,7 @@
 import { advanceRulesLine, openToAdvanceNames } from "@/lib/dm/advance-logic";
 import { defenseWords } from "@/lib/dm/pet-build";
 import { STORYTELLER_SECRET } from "@/lib/dm/viewer";
-import { attractionWords } from "@/lib/attraction";
+import { attractionWords, openToMore } from "@/lib/attraction";
 import { READIED, READIED_WORDS, RELEASE_TOOLS, readiedHeld } from "@/lib/dm/readied-kinds";
 import type { Campaign } from "@/lib/db/campaigns";
 import { sceneIds } from "@/lib/ambience/catalog";
@@ -192,7 +192,9 @@ export type DmEncounterState = {
   // none are. The pass's table note names them too
   // (src/lib/dm/encounter-tools.ts advancePointer); this adds their ids and
   // what to do.
-  enemiesDue?: { before: string; enemies: Array<{ enemyId: string; name: string }> };
+  // `round`: the round the current character's turn is in, the next one
+  // when the enemies due close this one.
+  enemiesDue?: { before: string; enemies: Array<{ enemyId: string; name: string }>; round: number };
   // A lair fight's printed options, numbered as lair_action takes them
   // (src/lib/dm/legendary-tools.ts); absent when the lair prints none.
   lairOptions?: string[];
@@ -805,6 +807,8 @@ export function describeSheet(
   const identity = [
     sheet.gender ? `Gender: ${sheet.gender}` : "",
     drawn ? `Drawn to: ${drawn}` : "",
+    // Romance is exclusive unless they are open to more (issue 642).
+    options.romance && openToMore(sheet.attraction) ? "Open to more than one partner" : "",
     options.advances && !sheet.isCompanion && sheet.openToAdvances ? "Open to advances from NPCs" : "",
   ].filter(Boolean);
   if (identity.length) {
@@ -1065,11 +1069,11 @@ export function buildGameStateBlock(state: DmGameState): string {
       // Their turns come first: asking the current character's player now
       // would leave them to the backstop.
       if (encounter.enemiesDue) {
-        const { before, enemies } = encounter.enemiesDue;
+        const { before, enemies, round } = encounter.enemiesDue;
         const due = enemies.map((enemy) => `${enemy.name} [enemyId=${enemy.enemyId}]`);
         const one = due.length === 1;
         lines.push(
-          `${due.join(" and ")} ${one ? "acts" : "act"} before ${before}; the turn passed ${one ? "it" : "them"} outside your turn. ${ENEMY_TURNS_CUE} ${before}'s turn comes after ${one ? "its" : "theirs"}: a new turn in round ${encounter.round}, its action, bonus action and movement unspent.`,
+          `${due.join(" and ")} ${one ? "acts" : "act"} before ${before}; the turn passed ${one ? "it" : "them"} outside your turn. ${ENEMY_TURNS_CUE} ${before}'s turn comes after ${one ? "its" : "theirs"}: a new turn in round ${round}, its action, bonus action and movement unspent.`,
         );
       } else if (encounter.awaitingPlayer) {
         const name = encounter.awaitingPlayer;
@@ -1461,7 +1465,7 @@ export const requestRollTool = {
           type: "string",
           enum: ["very_easy", "easy", "moderate", "hard", "very_hard", "nearly_impossible"],
           description:
-            "How hard the task is. The server turns this into the canonical DC (very_easy 5, easy 10, moderate 15, hard 20, very_hard 25, nearly_impossible 30), keeping DCs consistent scene to scene. Prefer this over dc. Omit for damage or initiative.",
+            "How hard the task is. The server turns it into the DC (5, 10, 15, 20, 25 or 30, in order). Prefer this over dc. Omit for damage or initiative.",
         },
         dc: {
           type: "integer",
@@ -1476,13 +1480,13 @@ export const requestRollTool = {
         damageType: {
           type: "string",
           description:
-            "damage only: the damage type (fire, slashing, poison...), for resistances and immunities. Vulnerabilities apply too.",
+            "damage only: the damage type (fire, slashing), for resistances, immunities and vulnerabilities.",
         },
         advantage: {
           type: "string",
           enum: ["none", "advantage", "disadvantage"],
           description:
-            "Only for a circumstance the server cannot see: advantageSource 'other', named in advantageReason. It already applies conditions, exhaustion, armor the character is untrained in, Help, spell and item effects, and the traits on the sheet; Inspiration is useInspiration, never this.",
+            "Only for a circumstance the server cannot see: advantageSource 'other', named in advantageReason. It already applies conditions, exhaustion, untrained armor, Help, spells, items and the sheet's traits; Inspiration is useInspiration.",
         },
         advantageSource: {
           type: "string",
@@ -1493,12 +1497,12 @@ export const requestRollTool = {
         advantageReason: {
           type: "string",
           description:
-            "The circumstance behind the advantage or disadvantage, one the server cannot see. Without one, the server sets the claim aside.",
+            "The circumstance behind it, in a few words. Without one, the server sets the claim aside.",
         },
         targetEnemyId: {
           type: "string",
           description:
-            "damage only, in combat, from someone with no sheet: the enemy struck, exact enemyId from GAME STATE. Someone with no sheet is an NPC ally who was never recruited. The server applies the rolled total to that enemy automatically and reports its new state; never follow up with apply_damage. A party character's damage goes through pc_attack or the spell tools, and the server refuses it here.",
+            "damage only, in combat, from someone with no sheet: the enemy struck, exact enemyId from GAME STATE. Someone with no sheet is an NPC ally never recruited. The server applies the total and reports it; never follow up with apply_damage. A party character's damage goes through pc_attack or the spell tools and is refused here.",
         },
         reason: {
           type: "string",
@@ -1509,7 +1513,7 @@ export const requestRollTool = {
           type: "string",
           enum: [...SAVE_AGAINST, NONE],
           description:
-            "saving_throw only: what the save resists (a condition, a damage type, disease, dismount) or 'none'. Such as frightened, charmed, poisoned; fire, poison; dismount for being thrown from a mount. The server applies Brave, Fey Ancestry, Dwarven and Stout Resilience, Countercharm and the subclass traits from it.",
+            "saving_throw only: what the save resists (a condition, a damage type, disease, dismount) or 'none'. dismount is being thrown from a mount. The server applies the traits keyed to it (Brave, Fey Ancestry, Countercharm).",
         },
         magical: {
           type: "boolean",
@@ -1523,7 +1527,7 @@ export const requestRollTool = {
         tool: {
           type: "string",
           description:
-            "ability_check with a tool only: the tool's name as the sheet lists it (\"thieves' tools\"). Also \"herbalism kit\"; thieves' tools pick a lock or disarm a trap. A character proficient in it adds their proficiency bonus; the server does it, so never add it to an expression yourself.",
+            "ability_check with a tool only: the tool's name as the sheet lists it (\"thieves' tools\"). Thieves' tools pick a lock or disarm a trap. The server adds the proficiency bonus when they are proficient; never add it yourself.",
         },
         useInspiration: {
           type: "boolean",
@@ -1533,22 +1537,22 @@ export const requestRollTool = {
         luck: {
           type: "boolean",
           description:
-            "Lucky: spend a luck point for an extra d20 on this roll, the best kept. The server checks the feat and spends the point; ignored without one left.",
+            "Lucky: spend a luck point for an extra d20 on this roll, the best kept. The server checks the feat and spends the point.",
         },
         againstEnemyId: {
           type: "string",
           description:
-            "A contest in a fight: the enemy opposing this skill or ability check, exact enemyId from GAME STATE. The server rolls that creature's own check from its stat block, as SRD 5.1 contests do (Insight against a lie, Perception against Stealth, Athletics against Athletics) and the character must beat it; a tie leaves things as they were. Send no dc or difficulty with it.",
+            "A contest in a fight: the enemy opposing this skill or ability check, exact enemyId from GAME STATE. The server rolls its check from its stat block (Insight against Deception, Perception against Stealth) and the character must beat it; a tie changes nothing. Send no dc or difficulty with it.",
         },
         againstMonster: {
           type: "string",
           description:
-            "Out of a fight: the stat block, by name, of the creature that opposes the check (a guard, a goblin). The server rolls that creature's own check from its stat block, as for againstEnemyId.",
+            "Out of a fight: the stat block, by name, of the creature opposing the check (a guard, a goblin). Rolled as for againstEnemyId.",
         },
         contestSkill: {
           type: "string",
           description:
-            "The creature's skill in the contest ('athletics'), when the usual pairing is not the one wanted. Such as Athletics to hold a door shut against a shove.",
+            "The creature's skill in the contest ('athletics'), when not the usual pairing.",
         },
       },
       required: ["kind"],

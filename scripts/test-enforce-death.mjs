@@ -150,7 +150,17 @@ await test("the save is a bare d20: 10 succeeds and 9 fails, whatever the sheet 
 
 await test("a save the pointer rolls on a player's own End Turn belongs to no GM turn (issue #622)", async () => {
   dying();
-  pass(12);
+  // With the goblins out of the fight the pass rolls the save itself; with
+  // them in it, the save waits for their turns and rolls as the GM hands
+  // the turn on, on that GM turn (issue 713).
+  const goblins = world.enemies().map((enemy) => enemy.id);
+  const status = (value) => goblins.forEach((id) => getDatabase().prepare("UPDATE encounter_enemies SET status = ? WHERE id = ?").run(value, id));
+  status("dead");
+  try {
+    pass(12);
+  } finally {
+    status("alive");
+  }
   const save = listRecentAudit(world.campaignId, 30).filter((row) => row.kind === "death_state" && row.characterId === hero.id).at(-1);
   assert.ok(save, "the save was not audited");
   assert.deepEqual(save.delta.deathSaves, { ...FRESH, successes: 1 });
@@ -293,6 +303,31 @@ await test("stabilize's How takes the label the console shows for it, and a word
   assert.equal(word.outcome.ok, false);
   assert.deepEqual(word.dice, []);
   assert.match(word.outcome.error, /"check" \(Medicine check, DC 10\)/);
+});
+
+await test("stabilize's How takes a label's leading words as far as its value, and any other label words get the value to send, not a schema error", async () => {
+  // The label without its DC is the check, rolled as the whole label is.
+  for (const method of ["Medicine check", "medicine CHECK"]) {
+    dying();
+    kit.freshTurn();
+    const tended = await kit.withDice([10, 3], "stabilize", { characterId: hero.id, healerId: ally.id, method });
+    assert.equal(tended.outcome.ok, true, `${method}: ${tended.outcome.error}`);
+    assert.deepEqual(tended.dice, ["d20:10", "d4:3"]);
+    assert.equal(track().stable, true);
+  }
+  // Words of a label that name no option as sent hold a value's word, so
+  // they passed the pre-flight and met the handler's list. They are refused
+  // before anything rolls, with the value the label stands for.
+  for (const [method, value] of [["Medicine check DC 15", "check"], ["check, DC 10", "check"], ["healer's kit", "kit"]]) {
+    dying();
+    kit.freshTurn();
+    const refused = await kit.withDice([10, 3], "stabilize", { characterId: hero.id, healerId: ally.id, method });
+    assert.equal(refused.outcome.ok, false, method);
+    assert.deepEqual(refused.dice, []);
+    assert.doesNotMatch(refused.outcome.error, /Invalid arguments|Invalid option/, method);
+    assert.match(refused.outcome.error, new RegExp(`^How must be one of: check, kit, spell\\. For "${method}", send "${value}"`), method);
+    assert.equal(track().stable, false);
+  }
 });
 
 await test("stabilize is refused for the living and for the dead", async () => {
@@ -565,6 +600,52 @@ await test("a rest or a march that settles a dying character's saves tells the G
   const march = await kit.withDice([4], "travel", { hours: 2, pace: "normal", characterIds: [ally.id] });
   assert.equal(march.outcome.ok, true, march.outcome.error);
   assert.match(String(march.result.deathSaves?.at(-1)), /dies/, JSON.stringify(march.result));
+  kit.reset(hero.id);
+});
+
+// A day past 8 hours returned the forced march's saves alone: the death
+// saves its hours rolled, the clock, and the weather never reached the GM.
+await test("a forced march tells the GM the death saves its hours rolled and the time it is now, as a shorter march does", async () => {
+  dying({ ...FRESH, failures: 2 });
+  const march = await kit.withDice([4], "travel", { hours: 10, pace: "normal", characterIds: [ally.id] });
+  assert.equal(march.outcome.ok, true, march.outcome.error);
+  assert.equal(march.result.forcedMarch, true, JSON.stringify(march.result));
+  assert.match(String(march.result.deathSaves?.at(-1)), /dies/, JSON.stringify(march.result));
+  assert.match(String(march.result.now), /\S/, JSON.stringify(march.result));
+  assert.equal(typeof march.result.miles, "number");
+  kit.reset(hero.id);
+});
+
+await test("a death save's line counts its tally in English: 1 success, 2 failures", async () => {
+  const name = world.sheet(hero.id).name;
+  dying({ ...FRESH, failures: 1 });
+  await kit.withDice([11, 9, 20], "travel", { hours: 2, pace: "normal", characterIds: [ally.id] });
+  const lines = messages.listRecentMessages(world.campaignId, 20).map((row) => row.content);
+  assert.ok(lines.includes(`${name} death save: rolled 11, success (1 success, 1 failure).`), lines.slice(-6).join(" | "));
+  assert.ok(lines.includes(`${name} death save: rolled 9, failure (1 success, 2 failures).`), lines.slice(-6).join(" | "));
+  const { describeTrack } = await import("../src/lib/dm/death.ts");
+  assert.equal(describeTrack({ ...FRESH, failures: 1 }), "dying: 0 successes, 1 failure");
+  kit.reset(hero.id);
+});
+
+await test("a march posts its own line to the chronicle after the death saves it rolled, as a rest does", async () => {
+  const name = world.sheet(hero.id).name;
+  dying({ ...FRESH, failures: 1 });
+  const march = await kit.withDice([11, 9, 20], "travel", { hours: 2, pace: "normal", characterIds: [ally.id], reason: "Up the old mill road" });
+  assert.equal(march.outcome.ok, true, march.outcome.error);
+  assert.equal(hp(), 1, JSON.stringify(march.result));
+  const lines = messages.listRecentMessages(world.campaignId, 20).map((row) => row.content);
+  const journey = lines.findLastIndex((content) => content.startsWith("The party travels"));
+  assert.ok(journey >= 0, `no journey line: ${lines.slice(-6).join(" | ")}`);
+  assert.match(lines[journey], /^The party travels for 2 hours: Up the old mill road\. It is now .+\.$/);
+  assert.equal(lines[journey], `The party travels for 2 hours: Up the old mill road. It is now ${march.result.now}.`);
+  const lastSave = lines.findLastIndex((content) => content.includes(`${name} death save: rolled`));
+  assert.ok(lastSave >= 0 && lastSave < journey, `the journey line is not after the saves: ${lines.slice(-6).join(" | ")}`);
+
+  // And time passing reads as English: "10 minutes pass", "1 hour passes".
+  await world.invoke("pass_time", { amount: 10, unit: "minutes", reason: "Catching breath" });
+  const passed = messages.listRecentMessages(world.campaignId, 5).map((row) => row.content).at(-1);
+  assert.match(passed, /^10 minutes pass: Catching breath\. It is now /);
   kit.reset(hero.id);
 });
 
@@ -969,6 +1050,49 @@ await test("the table's log keeps its newest fifty changes, however many ticks t
   assert.equal(changes.length, 50, `the log holds ${changes.length} of the newest changes`);
   assert.equal(changes[0].reason, "blow 6");
   assert.equal(snapshot.auditLog.filter((entry) => entry.kind === "condition_clock" && entry.reason === "time counted down on their conditions").length, 200);
+});
+
+// Prayer of Healing takes ten minutes to cast (SRD 5.1), and those minutes
+// roll a dying creature's death saves. The heal tool read its target before
+// the casting moved the clock, so a hero who died in those saves was healed
+// back to life by a spell that cannot raise the dead.
+await test("A hero who dies in the death saves Prayer of Healing's ten minutes roll stays dead: the spell is spent and heals nothing.", async () => {
+  // A fight above is still running, and ten minutes of casting is no turn's.
+  await world.invoke("end_encounter", { outcome: "truce" });
+  const priest = world.addHero({ name: "Prior", class: "cleric", level: 5, maxHp: 30 });
+  world.patch(priest.id, {
+    spellcasting: { ability: "wis", slots: { 1: { max: 4, used: 0 }, 2: { max: 3, used: 0 } }, prepared: ["Prayer of Healing"], known: [], cantrips: [] },
+  });
+  const fallen = world.addHero({ name: "Fallen", class: "fighter", level: 4, maxHp: 30 });
+  world.patch(fallen.id, { currentHp: 0, deathSaves: { successes: 0, failures: 2, stable: false, dead: false } });
+  // The casting's first death save fails: her third failure.
+  world.dice(5, 5, 5, 5);
+  const prayed = await world.invoke("heal", { characterId: fallen.id, casterId: priest.id, spell: "Prayer of Healing" });
+  world.clearDice();
+  assert.equal(prayed.ok, true, prayed.error);
+  const after = world.sheet(fallen.id);
+  assert.equal(after.deathSaves?.dead, true, `the prayer raised the dead: ${JSON.stringify(prayed.result)}`);
+  assert.equal(after.currentHp, 0);
+  assert.equal(prayed.result.healed, 0);
+  assert.match(prayed.result.note, /died while Prayer of Healing was being cast/);
+});
+
+// A forced march rolls its Constitution saves after the road's hours, which
+// rolled the dying's death saves first: one who died on the road was listed
+// among the marchers, holding up.
+await test("A hero who dies in the death saves a long road rolls is left out of its forced march saves.", async () => {
+  // The table's seats are taken by now: the owner plays both.
+  const walker = world.addHero({ name: "Walker", class: "fighter", level: 4, maxHp: 40, user: world.owner });
+  const carried = world.addHero({ name: "Carried", class: "fighter", level: 4, maxHp: 30, user: world.owner });
+  world.patch(carried.id, { currentHp: 0, deathSaves: { successes: 0, failures: 2, stable: false, dead: false } });
+  // Her first save on the road fails; the walker's two Constitution saves pass.
+  world.dice(5, 19, 19);
+  const marched = await world.invoke("travel", { hours: 10, characterIds: [walker.id, carried.id] });
+  world.clearDice();
+  assert.equal(marched.ok, true, marched.error);
+  assert.equal(world.sheet(carried.id).deathSaves?.dead, true, "the road's hours rolled her death save");
+  const names = (marched.result.results ?? []).map((entry) => entry.name);
+  assert.deepEqual(names, ["Walker"], `the dead are among the marchers: ${JSON.stringify(marched.result.results)}`);
 });
 
 world.close();

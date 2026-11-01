@@ -56,6 +56,21 @@ await test("A 12-hour march is four forced-march hours: four Constitution saves 
   assert.equal(world.sheet(walker.id).exhaustion, 4);
 });
 
+// A march that named no one at the table found out only on its forced
+// hours, after the clock, the world, the sky and the water had moved, and
+// the retry it asked for moved them all again. Within 8 hours it walked on
+// with nobody.
+await test("A march naming nobody at the table is refused before anything moves: the clock, the water and the pace stay as they were.", async () => {
+  const { getClock: clockNow } = await import("../src/lib/db/clock.ts");
+  const before = clockNow(world.campaignId);
+  for (const hours of [2, 12]) {
+    const out = await world.invoke("travel", { hours, pace: "fast", water: "none", characterIds: ["nobody-at-this-table"] });
+    assert.equal(out.ok, false, `${hours} hours: ${JSON.stringify(out.result ?? {})}`);
+    assert.match(out.error, /names nobody at this table.*Nothing moved/, `${hours} hours`);
+    assert.deepEqual(clockNow(world.campaignId), before, `${hours} hours moved the clock`);
+  }
+});
+
 // Passive Perception exactly 15: WIS 16 (+3) and proficiency (+2).
 const lookout = world.addHero({ user: world.owner, class: "ranger", level: 1, race: "human", abilities: { wis: 16 }, proficiencies: profs({ skills: ["perception"] }) });
 // The clock set to an hour of the next day, so a case reads the light it
@@ -104,6 +119,24 @@ await test("An unconscious character notices nothing, however high their passive
   const out = await world.invoke("check_notice", { dc: 10, characterIds: [sleeper.id] });
   assert.deepEqual(out.result.noticedBy, []);
   assert.deepEqual(out.result.missedBy, [world.sheet(sleeper.id).name]);
+  assert.ok((out.result.applied ?? []).includes(`${world.sheet(sleeper.id).name}: unconscious: unaware of their surroundings`), `the result does not say why: ${JSON.stringify(out.result)}`);
+});
+
+// A hero killed by six levels of exhaustion (a frigid march, issue #570's
+// flaky ADV-06) missed a DC 5 thing with no applied line, and the note said
+// their passive Perception was under DC 5.
+await test("A dead character notices nothing, and the result says so instead of blaming a passive score that was never compared.", async () => {
+  const fallen = world.addHero({ user: world.owner, class: "ranger", level: 5, abilities: { wis: 20 }, proficiencies: profs({ skills: ["perception"] }) });
+  world.patch(fallen.id, { currentHp: 0, exhaustion: 6, deathSaves: { successes: 0, failures: 0, stable: false, dead: true } });
+  const name = world.sheet(fallen.id).name;
+  const out = await world.invoke("check_notice", { dc: 5, characterIds: [fallen.id] });
+  assert.equal(out.ok, true, out.error);
+  assert.deepEqual(out.result.missedBy, [name]);
+  assert.ok((out.result.applied ?? []).includes(`${name}: dead: notices nothing`), `the result does not say why: ${JSON.stringify(out.result)}`);
+  assert.doesNotMatch(out.result.note, /under DC/, `the note blames the passive score: ${out.result.note}`);
+  // Beside someone who was scored, the note names both reasons.
+  const mixed = await world.invoke("check_notice", { dc: 30, characterIds: [fallen.id, lookout.id] });
+  assert.match(mixed.result.note, /applied says why some cannot notice it, and every other passive perception is under DC 30/, mixed.result.note);
 });
 
 await test("Three hours of extreme heat are three Constitution saves at DC 5, 6 and 7, at disadvantage in medium armor, each failure a level of exhaustion.", async () => {

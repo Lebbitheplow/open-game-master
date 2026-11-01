@@ -198,6 +198,13 @@ export function directCardCall(intent: MessageIntent, characterId: string, conte
         return null;
       }
       const spell = intent.spell;
+      // A buff that leaves something on the board, laid on the square the
+      // player tapped (Spiritual Weapon's weapon): cast_buff takes the square
+      // and the cast guard lays it there. Sent to the model, the card's
+      // square was never cast at all at a table a person runs.
+      if (context.resolution === "buff" && laysArea(intent) && !context.area && inFight && onAlly(intent)) {
+        return { name: "cast_buff", args: { characterId, spell, targetCharacterIds: [intent.targetId], ...level, ...variant, ...placement(intent) } };
+      }
       if (laysArea(intent) || context.area) {
         const blasts = context.resolution === "save" || context.resolution === "auto";
         return inFight && blasts && blastLaid(intent, context.blast)

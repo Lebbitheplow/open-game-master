@@ -55,6 +55,22 @@ export function tourVersion(tourId: string): number {
   return REVISED[tourId] ?? 1;
 }
 
+// Raise a tour's edition instead when its words change but those who
+// finished it need not walk it again: a line about a new shortcut, which the
+// next person to take the tour, or to replay it from Help, reads. The record
+// in scripts/fixtures/tour-content.json moves on with it; the account's
+// record, and so who is shown what, does not.
+const EDITED: Readonly<Record<string, number>> = {
+  // The composer's @ menu (issue 650): a line in Take your turn, Say what
+  // you do, and the GM's Narrate and OOC.
+  "table-player": 2,
+  "table-dm": 2,
+};
+
+export function tourEdition(tourId: string): number {
+  return EDITED[tourId] ?? 1;
+}
+
 export function isTourId(value: unknown): value is string {
   return typeof value === "string" && TOUR_IDS.includes(value);
 }

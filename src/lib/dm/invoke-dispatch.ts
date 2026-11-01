@@ -72,6 +72,7 @@ import { gateAiCall } from "@/lib/dm/ai-gate";
 import { conductGate } from "@/lib/dm/party-conduct";
 import { characterCallUnasked } from "@/lib/dm/player-word";
 import { EXPLORE_TOOL_NAMES, handleExploreCall } from "@/lib/dm/explore-tools";
+import { watchRungs } from "@/lib/dm/romance-stage-lines";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -89,6 +90,16 @@ export type DispatchContext = {
 };
 
 export async function dispatchAdjudication(
+  name: string,
+  sentArguments: string,
+  context: DispatchContext,
+): Promise<ToolResult> {
+  // A romance rung the call moves, up or down, is told to the table here,
+  // at the one door the AI's turn and a person's console share (issue 640).
+  return watchRungs(context.campaign, name, () => dispatchCall(name, sentArguments, context));
+}
+
+async function dispatchCall(
   name: string,
   sentArguments: string,
   context: DispatchContext,

@@ -22,13 +22,17 @@ dark and light surrounds. A detailed square illustration can still fail here.
 
 ## File and review requirements
 
-Use 512x512 WebP at the existing path when repainting a tile. New subjects need
-an entry in the placeholder job list, manifest and runtime lookup. Keep genre
-subjects confined to their genre, and avoid broad stat-block aliases when the
-same stats can represent a visually different creature.
+Ship a 256x256 WebP at the existing path when repainting a tile: every square
+plate ships at the size the UI draws (`SHIP` in
+`scripts/generate-placeholders.mjs`), since the 512px plates were downsized for
+the client apps on 12 October 2026. New subjects need an entry in the
+placeholder job list, manifest and runtime lookup. Keep genre subjects confined
+to their genre, and avoid broad stat-block aliases when the same stats can
+represent a visually different creature.
 
-Keep each painted square under the existing 128 KiB limit and check the complete
-set with `node scripts/test-placeholders.mjs`. Account for other open art PRs
+Keep each painted square under the 48 KiB limit (128 KiB is the ceiling for
+scenes) and check the complete set with `node scripts/test-placeholders.mjs`,
+which holds those limits and the 12 MiB total. Account for other open art PRs
 when checking the total budget. Preserve generation prompts, original and final
 hashes, encoding settings, and the review previews. Keep historical vote records
 unchanged: a repaint has not received its predecessor's votes.

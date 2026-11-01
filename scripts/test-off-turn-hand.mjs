@@ -28,7 +28,10 @@ const { activePublicEncounter } = await import("../src/lib/db/encounter-view.ts"
 const { gmCompanionTurn } = await import("../src/lib/dm/companion-command.ts");
 const { gmTurnCompanion, offTurnReactors } = await import("../src/lib/player-characters.ts");
 const { offTurnReactionCards, reactionAim, reactionCards } = await import("../src/lib/battlemap/hand-react.ts");
-const { turnFromEncounter } = await import("../src/lib/battlemap/hand-table.ts");
+const { turnCharacterId, turnFromEncounter } = await import("../src/lib/battlemap/hand-table.ts");
+const { initiativeCharacter } = await import("../src/lib/player-characters.ts");
+const { subscribe } = await import("../src/lib/events.ts");
+const { refreshesEncounter } = await import("../src/app/campaigns/[campaignId]/useCampaignStream.ts");
 const { characterAwaitingPlayer, declaredThisTurn } = await import("../src/lib/dm/player-word.ts");
 const { turnOverFor } = await import("../src/lib/dm/claims.ts");
 
@@ -271,6 +274,63 @@ await test("The GM's box and cards are open on the companion's turn they play, a
   const gate = (playsTurn) => composerGate({ floor, sheets: [], meUserId: "gm", kind: "do", myName: "Pip", leadPrivate: false, openingNarrationPlaying: false, playsTurn });
   assert.equal(gate(true).inputBlocked, false);
   assert.equal(gate(false).inputBlocked, true);
+});
+
+// The play-test of 0.31.3 (2026-10-31): at a test fight its author ran from
+// the GM seat, an enemy's hit on one of the author's heroes showed no
+// reaction under the monsters' hand until a reload. An enemy's attack
+// publishes its rolls and no encounter_updated, and the GM seat pulled the
+// encounter only on encounter_updated, so the hit's record never reached it.
+await test("In the GM seat, a hit hero's reaction arrives with the enemy's roll, whichever hero is up next", async () => {
+  const world = await openWorld({ gameSettings: { multiCharacter: "all_active" }, campaign: { maxPlayers: 8 } });
+  const kit = await combatKit(world);
+  const vesper = world.addHero({ name: "Vesper", class: "rogue", level: 5, user: world.owner, maxHp: 38 });
+  const vyrrath = world.addHero({ name: "Vyrrath", class: "cleric", level: 5, user: world.owner });
+  world.patch(vesper.id, { features: [{ name: "Uncanny Dodge", source: "class" }] });
+  setDmMode(world.campaignId, "human", world.owner.id);
+  await kit.fight(2, { heroFaces: { [vesper.id]: 20, [vyrrath.id]: 1 }, enemyFace: 10 });
+  const ended = await world.invoke("end_turn", { characterId: vesper.id });
+  assert.equal(ended.ok, true, ended.error);
+  // The goblin already stands next to Vesper, as the play-test put Thug 2,
+  // so its swing draws no opportunity attack: that strike's damage would
+  // publish an encounter_updated of its own.
+  const [goblin] = world.enemies();
+  kit.place(vesper.id, 5, 5);
+  kit.place(goblin.id, 6, 5);
+  const types = [];
+  const stop = subscribe(world.campaignId, (chunk) => {
+    const type = /event: (\S+)/.exec(chunk)?.[1];
+    if (type) types.push(type);
+  });
+  world.dice(19, 19, 6, 6);
+  const swing = await world.invoke("enemy_attack", { enemyId: goblin.id, targetCharacterId: vesper.id });
+  stop();
+  assert.equal(swing.ok, true, swing.error);
+  assert.ok(types.includes("roll_result"), `the attack published ${types.join(", ")}`);
+  assert.ok(
+    types.some((type) => refreshesEncounter(type, true)),
+    `the GM seat pulls no encounter after ${types.join(", ")}: the reaction shows only after a reload`,
+  );
+  assert.equal(refreshesEncounter("roll_result", false), true, "a player's seat still pulls it");
+
+  // What the GM seat then reads: Vyrrath is up next, so the Hand follows
+  // her, and Vesper's Uncanny Dodge is offered as Vesper's card.
+  const encounter = activePublicEncounter(world.campaignId, { enemyNumbers: true });
+  assert.equal(encounter.enemyTurns, true);
+  const sheets = world.sheets();
+  const following = initiativeCharacter(sheets, world.owner.id, turnCharacterId(encounter));
+  assert.equal(following?.id, vyrrath.id, "Vyrrath is up next");
+  const others = offTurnReactionCards(
+    offTurnReactors(sheets, world.owner.id, following.id, "all_active").map((sheet) => ({
+      sheet,
+      turn: turnFromEncounter(encounter, sheet, { myTurn: false }),
+    })),
+    encounter.lastHits ?? [],
+    sheets,
+  );
+  const dodge = others.find((card) => card.name === "Uncanny Dodge");
+  assert.deepEqual(dodge?.actor, { id: vesper.id, name: "Vesper" });
+  assert.equal(dodge.disabled, null, dodge.disabled ?? "");
 });
 
 finish();

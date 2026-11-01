@@ -109,7 +109,7 @@ await test("a red-line atrocity walks a timid companion out at once at a Leave t
 await test("a companion who walks out gives her face to the row that speaks her parting line, and the cast is sent with it", async () => {
   const { world, row, atrocity, sheet } = await table({ axes: { boldness: -2 } });
   const { patchSheet } = await import("../src/lib/db/sheets.ts");
-  const { publicCast } = await import("../src/lib/dm/cast.ts");
+  const { wholeCast } = await import("../src/lib/dm/cast.ts");
   const { subscribe } = await import("../src/lib/events.ts");
   patchSheet(sheet.id, { portrait: { url: "/uploads/seren-face.png" } });
   assert.equal(row().portraitUrl, "", "the row behind her has no face of its own");
@@ -122,7 +122,7 @@ await test("a companion who walks out gives her face to the row that speaks her 
     stop();
   }
   assert.equal(row().portraitUrl, "/uploads/seren-face.png");
-  const member = publicCast(world.campaignId).find((entry) => entry.name === "Seren");
+  const member = wholeCast(world.campaignId).find((entry) => entry.name === "Seren");
   assert.equal(member?.portraitUrl, "/uploads/seren-face.png", "the cast carries her face");
   const castSent = sent.filter((chunk) => /^event: cast_updated$/m.test(chunk));
   assert.ok(castSent.some((chunk) => chunk.includes("/uploads/seren-face.png")), "the table is sent the cast with her face");
@@ -146,17 +146,17 @@ await test("a companion row that already has a face keeps it when she leaves", a
 // painted for her later still comes first.
 await test("a companion with no portrait leaves on her class and ancestry's plate, and a portrait painted later comes first", async () => {
   const { world, row, atrocity, sheet } = await table({ axes: { boldness: -2 } });
-  const { publicCast } = await import("../src/lib/dm/cast.ts");
+  const { wholeCast } = await import("../src/lib/dm/cast.ts");
   const { castFaces, speakerFaces } = await import("../src/lib/speaker-faces.ts");
   assert.equal(world.sheet(sheet.id).portrait ?? null, null, "she has no portrait");
   const earlier = speakerFaces({ kind: "pc", id: sheet.id, name: "Seren" }, new Map([[sheet.id, world.sheet(sheet.id)]]));
   assert.equal(earlier.length, 1, "her lines in the party showed her plate");
   await atrocity();
   assert.equal(row().portraitUrl, "", "nothing is written onto the row");
-  const member = publicCast(world.campaignId).find((entry) => entry.name === "Seren");
+  const member = wholeCast(world.campaignId).find((entry) => entry.name === "Seren");
   assert.deepEqual(castFaces(member), earlier, "her parting line shows the plate her earlier lines did");
   npcs.setNpcPortrait(row().id, "/uploads/seren-painted.png");
-  const painted = publicCast(world.campaignId).find((entry) => entry.name === "Seren");
+  const painted = wholeCast(world.campaignId).find((entry) => entry.name === "Seren");
   assert.deepEqual(castFaces(painted), ["/uploads/seren-painted.png", earlier[0]]);
   // The story log, the theatre inserts and the speaker picker all draw an
   // NPC's face through it.

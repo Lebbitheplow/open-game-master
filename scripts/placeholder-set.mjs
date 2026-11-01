@@ -695,8 +695,9 @@ const MONSTER_FAMILY_PLATES = [
 // bandit, the cultist, the dark knight), keyed like a family and looked up
 // the same way, from the NPC stat block it fights with (bandit-captain,
 // cult-fanatic, knight, scout, thug, archmage...) or the name it goes by
-// (MONSTER_FAMILIES in src/lib/placeholders.ts). One face per role for now;
-// the race and presentation variants these need are a later batch.
+// (MONSTER_FAMILIES in src/lib/placeholders.ts). One face per role here; the
+// four most common roles are painted again per race and presentation below
+// (ENEMY_NPC_VARIANTS).
 const ENEMY_ROLE_PLATES = [
   { id: "bandit", subject: "a masked roadside bandit with a short sword" },
   { id: "cultist", subject: "a hooded cultist holding a ritual dagger" },
@@ -711,6 +712,29 @@ const ENEMY_ROLE_PLATES = [
   { id: "executioner", subject: "a hooded executioner in an apron with a heavy axe" },
   { id: "houndmaster", subject: "a houndmaster with a war hound on a chain" },
   { id: "tyrant", subject: "a crowned tyrant sorcerer on a dark throne" },
+];
+
+// The four most common enemy roles, painted for each of the four most common
+// races in each presentation: enemy-npc/<role>-<race>-<presentation>.webp, 48
+// plates (enemyNpcPlaceholder in src/lib/placeholders.ts). A role token above
+// stays the picture for an NPC with no race recorded. The shipped WebPs are
+// hand-picked painted art at 256 px, not renders of these subjects, so the
+// same --force / --reencode caution applies; the subjects name each plate
+// for the manifest and give a regeneration its starting prompt. Poses are
+// aggressive because these people are usually the enemy. Dwarf archers carry
+// crossbows; the longbow archers draw canted near-vertical. Every dark knight
+// wears the same open-faced horned helm with cheek guards, sword raised.
+const ENEMY_NPC_VARIANT_ROLES = [
+  { id: "bandit", subject: "roadside bandit, hooded and masked, drawing a short sword and dagger" },
+  { id: "cultist", subject: "cultist in a deep red hood with a forehead sigil, raising a ritual dagger" },
+  { id: "archer", subject: "archer in a green hood drawing a longbow at a canted near-vertical angle" },
+  { id: "dark-knight", subject: "dark knight in black plate and an open-faced horned helm with cheek guards, sword raised" },
+];
+const ENEMY_NPC_VARIANT_RACES = [
+  { id: "human", name: "human" },
+  { id: "elf", name: "elf with long pointed ears" },
+  { id: "dwarf", name: "dwarf with a short stout build", archer: "archer in a green hood levelling a heavy dwarven crossbow" },
+  { id: "half-orc", name: "half-orc with jutting tusks" },
 ];
 
 // Enemies painted for one genre: drawn only in that genre (GENRE_ENEMY_TOKENS
@@ -892,6 +916,18 @@ export function placeholderJobs() {
   }
   for (const token of GENRE_ENEMY_TOKEN_PLATES) {
     portrait("monster", token.id, token.subject, "creature");
+  }
+  for (const role of ENEMY_NPC_VARIANT_ROLES) {
+    for (const race of ENEMY_NPC_VARIANT_RACES) {
+      for (const genderId of GENDER_IDS) {
+        const subject = (role.id === "archer" && race.archer) || role.subject;
+        portrait(
+          "enemy-npc",
+          `${role.id}-${race.id}-${genderId}`,
+          `${GENDERS[genderId].build} ${race.name}, a ${subject}`,
+        );
+      }
+    }
   }
 
   // Threat, not kind: id is <genre>-boss so paletteForId still picks up the

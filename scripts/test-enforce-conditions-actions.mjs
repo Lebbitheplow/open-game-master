@@ -9,7 +9,7 @@
 //   grappled, restrained  speed 0; restrained has disadvantage on DEX saves
 //   poisoned       disadvantage on attack rolls and ability checks, NOT saves
 //   frightened     disadvantage on ability checks and attack rolls
-//   prone          standing up costs half the speed; crawling costs double
+//   prone          standing up costs half the speed; crawling costs 1 extra a foot
 //   Concentration ends when the caster is incapacitated or killed
 //   (SRD 5.1, Spellcasting, Concentration).
 //
@@ -131,9 +131,10 @@ await test("A prone creature's only movement is to crawl at double cost, unless 
     const spent = tokenOf(hero.id).movedThisRound;
     const stood = !world.sheet(hero.id).conditions.includes("prone");
     // Standing from speed 30 costs 15 ft (three tiles) before the step;
-    // crawling costs the step twice over.
+    // crawling costs one extra square for the square crawled: "Every foot
+    // of movement while crawling costs 1 extra foot" (SRD 5.1, Being Prone).
     assert.ok(
-      stood ? spent >= upright + 3 : spent >= upright * 2,
+      stood ? spent >= upright + 3 : spent >= upright + 1,
       `prone, and the step cost ${spent} where it costs ${upright} standing`,
     );
   } finally {
@@ -218,7 +219,10 @@ await test("the initiative pointer passes a character who cannot act", async () 
   kit.reset(caster.id, { conditions: ["stunned"] });
   assert.equal(kit.pointer().id, hero.id);
   assert.equal(kit.endOwnTurn(world.owner.id), true);
-  // The stunned cleric is passed over and the fighter is up again, a round on.
+  // The stunned cleric is passed over and the fighter is up again, a round
+  // on, once the enemies after them have had their turns (issue 713).
+  assert.equal(kit.pointer().id, null, "the enemies' turns come first");
+  assert.equal(kit.handOn(), true);
   assert.equal(kit.pointer().id, hero.id);
   assert.equal(kit.endOwnTurn(caster.userId), false);
   kit.reset(caster.id);

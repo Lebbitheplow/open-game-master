@@ -1,7 +1,7 @@
 "use client";
 
 import { Eye, EyeOff, Hand, Loader2, Send } from "lucide-react";
-import { memo, useEffect, useId, useRef, type ReactNode } from "react";
+import { memo, useEffect, useId, useMemo, useRef, type ReactNode } from "react";
 import type { Dispatch, FormEvent, RefObject, SetStateAction } from "react";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
@@ -37,6 +37,8 @@ import type { CampaignState } from "@/app/campaigns/[campaignId]/useCampaignStre
 import type { InputKind } from "@/lib/campaign-types";
 import { LengthNote } from "@/components/ui/LengthNote";
 import { composerLimit, textLength } from "@/lib/text-limits";
+import { NameMenu, useNameMenu } from "@/app/campaigns/[campaignId]/NameMenu";
+import { nameChoices } from "@/app/campaigns/[campaignId]/name-menu-logic";
 
 export type { InputKind };
 
@@ -88,6 +90,7 @@ function ComposerInner({
   speaker = null,
   onSpeakerChange,
   cast = [],
+  places = [],
   onXCard,
   composerRef,
   trackAmmo,
@@ -141,6 +144,8 @@ function ComposerInner({
   speaker?: Speaker | null;
   onSpeakerChange?: (speaker: Speaker | null) => void;
   cast?: CastMember[];
+  // The places on the map, for the @ menu's names (issue 650).
+  places?: CampaignState["locations"];
   // The X-card (docs/vtt-parity-implementation-plan.md 9.1): always
   // there when the table uses it, one press, no confirmation.
   onXCard?: () => void;
@@ -211,6 +216,14 @@ function ComposerInner({
   const maxChars = composerLimit(kind, leadPrivate);
   const length = textLength(input);
   const tooLong = length > maxChars;
+  // Typing @ offers the table's names (issue 650): the party, the people
+  // the story has introduced, the places on the map. In Narrate and Direct
+  // the box is the story's voice, and a seat holding the whole cast is
+  // offered everyone, the not yet introduced marked (name-menu-logic.ts).
+  const wellRef = useRef<HTMLDivElement>(null);
+  const storyVoice = kind === "narrate" || kind === "lead";
+  const choices = useMemo(() => nameChoices({ sheets, cast, places, storyVoice }), [sheets, cast, places, storyVoice]);
+  const names = useNameMenu({ text: input, setText: setInput, field: composerRef, choices });
   return (
     <form onSubmit={onSubmit} className="glass session-desk cine-desk border-t border-stone-700/40 px-3 pb-3 pt-2.5">
       <div className="session-desk-body mx-auto max-w-3xl sm:px-3">
@@ -337,7 +350,9 @@ function ComposerInner({
                       ? "Say"
                       : option === "ooc"
                         ? "OOC"
-                        : "Direct"}
+                        : option === "narrate"
+                          ? "Narrate"
+                          : "Direct"}
                 </button>
               </Tooltip>
             ),
@@ -376,6 +391,7 @@ function ComposerInner({
           </div>
         ) : null}
         <div
+          ref={wellRef}
           data-tour="composer-input"
           data-over={tooLong ? "" : undefined}
           className={
@@ -383,11 +399,23 @@ function ComposerInner({
             (highlight ? " composer-pulse" : "")
           }
         >
+          <NameMenu menu={names} anchor={wellRef} />
           <textarea
             ref={composerRef}
             value={input}
-            onChange={(event) => setInput(event.target.value)}
+            onChange={(event) => {
+              setInput(event.target.value);
+              names.read(event.target);
+            }}
+            // The caret moving (arrows, a tap) moves the menu with it.
+            onSelect={(event) => names.read(event.currentTarget)}
+            onBlur={names.close}
+            {...names.fieldProps}
             onKeyDown={(event) => {
+              // Enter picks a name while the menu is up, and sends otherwise.
+              if (names.onKeyDown(event)) {
+                return;
+              }
               if (event.key === "Enter" && !event.shiftKey) {
                 event.preventDefault();
                 onSubmit(event);

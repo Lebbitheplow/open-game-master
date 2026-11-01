@@ -31,6 +31,9 @@ export type MountProfile = {
   // Size, which decides who can ride it: a mount must be at least one size
   // larger than its rider.
   size: MountSize;
+  // A flying or aquatic mount, which "An exotic saddle is required for
+  // riding" (SRD 5.1 Mounts and Vehicles, Saddles).
+  exotic?: boolean;
   blurb: string;
 };
 
@@ -132,6 +135,7 @@ export const MOUNTS: MountProfile[] = [
     carry: 540,
     controllable: false,
     size: "large",
+    exotic: true,
     blurb: "Flies at 80 ft. Independent: it decides.",
   },
 ];
@@ -158,7 +162,40 @@ export type MountState = {
   // Controlled mounts share the rider's initiative; independent ones do not.
   controlled: boolean;
   size: MountSize;
+  // The mount's own Armor Class and hit points, from its SRD stat block, so
+  // an attack can be aimed at it instead of its rider (SRD 5.1, Controlling
+  // a Mount). Absent on a beast the GM wrote with no numbers, and on a
+  // mount taken before they were kept.
+  ac?: number;
+  hp?: number;
+  maxHp?: number;
 };
+
+// A controlled mount "has only three action options: Dash, Disengage, and
+// Dodge" (SRD 5.1, Controlling a Mount): one of them a turn, taken on the
+// rider's turn beside the rider's own action.
+export const MOUNT_ACTIONS = ["dash", "disengage", "dodge"] as const;
+export type MountAction = (typeof MOUNT_ACTIONS)[number];
+
+// The rider's once-a-turn mark for the mount's action (action-budget.ts).
+export function mountActionKey(action: MountAction): string {
+  return `mount:${action}`;
+}
+
+// The action the mount took this turn, read from the rider's marks, or null.
+export function mountActionTaken(oncePerTurn: readonly string[]): MountAction | null {
+  return MOUNT_ACTIONS.find((action) => oncePerTurn.includes(mountActionKey(action))) ?? null;
+}
+
+// Whether the ride has already taken the mount's Dash: more squares moved
+// than its speed gives once for each Dash the rider took (the rider's own).
+export function mountDashRidden(movedTiles: number, mountTiles: number, riderDashes: number): boolean {
+  return movedTiles > mountTiles * (1 + riderDashes);
+}
+
+// The mark on the rider while the mount dodges, until the rider's next
+// turn: an attack aimed at the mount rolls at disadvantage.
+export const MOUNT_DODGING = "mount dodging";
 
 export type MountCheck = { ok: true; state: MountState } | ToolError;
 
@@ -168,6 +205,8 @@ export type MountCheck = { ok: true; state: MountState } | ToolError;
 export function checkMount(input: {
   ref: string;
   riderSize?: MountSize;
+  // The rider carries an exotic saddle (Saddle, Exotic).
+  exoticSaddle?: boolean;
   // A DM writing their own beast: everything is taken on trust except the
   // size rule, which still applies.
   custom?: { name: string; speed: number; controlled: boolean; size: MountSize };
@@ -202,6 +241,14 @@ export function checkMount(input: {
       refused: "rules",
     };
   }
+  // SRD 5.1 Saddles: "An exotic saddle is required for riding any aquatic
+  // or flying mount" (issue #570, EQP-24).
+  if (profile.exotic && !input.exoticSaddle) {
+    return {
+      error: `A ${profile.name} is ridden only in an exotic saddle (SRD 5.1, Saddles), and the rider carries none. They get one (Saddle, Exotic) or ride another mount.`,
+      refused: "rules",
+    };
+  }
   return {
     ok: true,
     state: {
@@ -224,13 +271,16 @@ export function mountedSpeed(mount: MountState | null, riderSpeed: number): numb
 // Being knocked off. PHB p.198: if an effect moves the mount against its
 // will, or the rider is knocked prone, the rider must make a DC 10 Dexterity
 // save or fall prone in a space within 5 feet of the mount. A save is not
-// required when the rider dismounts deliberately.
+// required when the rider dismounts deliberately, nor when the mount is
+// knocked prone: "you can use your reaction to dismount it as it falls and
+// land on your feet. Otherwise, you are dismounted and fall prone" (SRD 5.1,
+// Mounting and Dismounting).
 export const DISMOUNT_SAVE_DC = 10;
 
 export type DismountCause = "forced-move" | "mount-prone" | "rider-prone" | "voluntary";
 
 export function dismountSave(cause: DismountCause): { dc: number; ability: "dex" } | null {
-  return cause === "voluntary" ? null : { dc: DISMOUNT_SAVE_DC, ability: "dex" };
+  return cause === "voluntary" || cause === "mount-prone" ? null : { dc: DISMOUNT_SAVE_DC, ability: "dex" };
 }
 
 // PHB p.198: mounting or dismounting costs half the rider's movement.

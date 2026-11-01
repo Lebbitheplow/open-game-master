@@ -31,12 +31,14 @@ import assert from "node:assert/strict";
 import "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { combatKit } from "./lib/enforce-combat.mjs";
-import { caster, closeTables, enemyOf, FIGHTER } from "./lib/enforce-spell-kit.mjs";
-import { board, holdTurn, mapOf, nextTurn, place, stride, tokenOf, walk, zonesOf } from "./lib/enforce-zones.mjs";
+import { caster, closeTables, enemyOf, field, FIGHTER, table } from "./lib/enforce-spell-kit.mjs";
+import { layMap } from "./lib/enforce-spells.mjs";
+import { board, handOnDue, holdTurn, mapOf, nextTurn, place, stride, tokenOf, walk, zonesOf } from "./lib/enforce-zones.mjs";
 
 const { test, finish } = suite("test-enforce-zones");
 const { buildPlayerMapView } = await import("../src/lib/battlemap/view.ts");
 const encounters = await import("../src/lib/db/encounters.ts");
+const { getDatabase } = await import("../src/lib/db/core.ts");
 
 const moved = (world, refId) => tokenOf(world, refId).movedThisRound;
 const hp = (world, id) => world.sheet(id).currentHp;
@@ -211,6 +213,30 @@ await test("Stinking Cloud: a creature starting its turn in the cloud makes a CO
   assert.ok(enemyOf(world, goblin.id).conditions.includes("retching"));
 });
 
+// conditions, Petrified: 'The creature is immune to poison and disease'; Stinking Cloud: 'Creatures that don't need to breathe or are immune to poison automatically succeed on this saving throw.'
+await test("Stinking Cloud cannot touch a petrified creature, enemy or character: stone is immune to poison.", async () => {
+  const { world, sheets: [wizard, fighter], enemies: [goblin] } = await board([caster("wizard", "int", ["Stinking Cloud"]), FIGHTER], { 0: { x: 2, y: 4 }, 1: { x: 15, y: 5 }, e0: { x: 14, y: 4 } });
+  const cast = await world.invoke("use_spell_slot", { characterId: wizard.id, spell: "Stinking Cloud", level: 3, atX: 14, atY: 4 });
+  assert.equal(cast.ok, true, cast.error);
+  encounters.patchEnemyConditions(goblin.id, ["petrified"], {});
+  world.patch(fighter.id, { conditions: ["petrified"], conditionMeta: {} });
+  // Each one's turn starts in the cloud, with a CON save of 1 if one is
+  // rolled: the die left unused is the automatic success.
+  const startTurnOf = (refId) => {
+    const encounter = world.encounter();
+    const at = encounter.order.findIndex((entry) => (entry.kind === "pc" ? entry.characterId : entry.enemyId) === refId);
+    encounters.saveEncounter({ ...encounter, turnIndex: (at - 1 + encounter.order.length) % encounter.order.length, turnBudget: null });
+    world.dice(1);
+    nextTurn(world);
+    return world.clearDice() === 1;
+  };
+  const touched = [
+    ...(startTurnOf(goblin.id) && !enemyOf(world, goblin.id).conditions.includes("retching") ? [] : ["the goblin"]),
+    ...(startTurnOf(fighter.id) && !world.sheet(fighter.id).conditions.includes("retching") ? [] : ["the fighter"]),
+  ];
+  assert.deepEqual(touched, [], `stone saved against the cloud, or retched in it: ${touched.join(" and ")}`);
+});
+
 await test("Sleet Storm: a creature starting its turn in the storm makes a DEX save or falls prone.", async () => {
   const { world, sheets: [wizard, fighter], enemies: [goblin] } = await board([caster("wizard", "int", ["Sleet Storm"]), FIGHTER], { 0: { x: 2, y: 4 }, 1: { x: 4, y: 8 }, e0: { x: 16, y: 4 } });
   const cast = await world.invoke("use_spell_slot", { characterId: wizard.id, spell: "Sleet Storm", level: 3, atX: 16, atY: 4 });
@@ -251,6 +277,9 @@ await test("Cloudkill moves 10 feet away from its caster at the start of each of
   assert.equal(cast.ok, true, cast.error);
   holdTurn(world, fighter.id);
   nextTurn(world);
+  // The goblins after the fighter go first; the caster's turn begins once
+  // they have (issue 713).
+  handOnDue(world);
   world.clearDice();
   const cloud = zonesOf(world).find((zone) => zone.spell === "Cloudkill");
   assert.deepEqual(cloud.origin, { x: 14, y: 4 });
@@ -303,6 +332,32 @@ await test("Daylight fills its area with bright light: on a dark board a charact
   const swing = await kit.swing(fighter.id, goblin.id, [10, 4]);
   assert.equal(swing.ok, true, swing.error);
   assert.equal(swing.toHit?.breakdown?.terms?.find((term) => term.sides === 20)?.dice?.length, 1);
+});
+
+// SRD 5.1 Daylight: "A 60-foot-radius sphere of light spreads out from a
+// point you choose within range. The sphere is bright light and sheds dim
+// light for an additional 60 feet." Past the sphere's edge its dim light
+// still shows a creature to a character without darkvision, out to 120 feet
+// from the point and no farther.
+await test("Daylight sheds dim light 60 feet past its sphere: on a dark board a character without darkvision sees a creature standing there, and not one beyond it.", async () => {
+  const { world, sheets: [cleric, fighter], enemies: [goblin] } = await table([caster("cleric", "wis", ["Daylight"]), FIGHTER], 1, { senses: { darkvision: 60, passivePerception: 10 } });
+  const map = await layMap(world, field(40), { [cleric.id]: { x: 2, y: 4 }, [fighter.id]: { x: 19, y: 2 }, [goblin.id]: { x: 20, y: 2 } });
+  getDatabase().prepare("UPDATE battle_maps SET ambient = 'dark', outdoors = 0 WHERE id = ?").run(map.id);
+  const kit = await combatKit(world);
+  const cast = await world.invoke("use_spell_slot", { characterId: cleric.id, spell: "Daylight", level: 3, atX: 2, atY: 2 });
+  assert.equal(cast.ok, true, cast.error);
+  const d20s = (swing) => swing.toHit?.breakdown?.terms?.find((term) => term.sides === 20)?.dice?.length;
+  // 90 feet from the point: in the dim light.
+  const dim = await kit.swing(fighter.id, goblin.id, [10, 4]);
+  assert.equal(dim.ok, true, dim.error);
+  assert.equal(d20s(dim), 1, "a goblin in Daylight's dim light was attacked as unseen");
+  // 140 feet from it: dark again.
+  place(world, fighter.id, 27, 2);
+  place(world, goblin.id, 28, 2);
+  kit.freshTurn();
+  const dark = await kit.swing(fighter.id, goblin.id, [10, 10, 4]);
+  assert.equal(dark.ok, true, dark.error);
+  assert.equal(d20s(dark), 2, "a goblin past Daylight's dim light was seen in the dark");
 });
 
 await test("Daylight overlapping an area of darkness made by a spell of 3rd level or lower dispels that spell.", async () => {
@@ -801,6 +856,8 @@ await test("Light makes the caster's held object shed bright light 20 feet: on a
   const flame = await world.invoke("use_spell_slot", { characterId: wizard.id, spell: "Continual Flame", level: 2 });
   assert.equal(flame.ok, true, flame.error);
   assert.equal(tokenOf(world, wizard.id).lightRadius, 4);
+  // "dim light for an additional 20 feet": it ends 8 squares out.
+  assert.equal(tokenOf(world, wizard.id).lightDimRadius, 8);
   assert.equal(tokenOf(world, wizard.id).burnsUntil, 0);
 });
 

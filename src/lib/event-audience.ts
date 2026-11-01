@@ -52,6 +52,10 @@ export const EVENT_AUDIENCE: Readonly<Record<string, Audience>> = {
   // A sheet's audit row: the change to a character's notes or opt-ins is
   // blanked for every seat that may not read the sheet's own (sheet-view.ts).
   sheet_audit: SEAT,
+  // The cast: every seat is sent the people the table knows, met or heard;
+  // the seats holding the story's secrets the whole cast (issue 650). A
+  // module's prepared cast used to reach every player's device by name.
+  cast_updated: SEAT,
 
   // ---- the DM seats alone ----
   // The record of the DM's hands on the board names hidden pieces.
@@ -168,7 +172,6 @@ export const EVENT_AUDIENCE: Readonly<Record<string, Audience>> = {
   title_card: TABLE,
   handout_shown: TABLE,
   handout_dismissed: TABLE,
-  cast_updated: TABLE,
   // Safety: the X-card is for everyone by definition.
   x_card: TABLE,
   safety_resumed: TABLE,

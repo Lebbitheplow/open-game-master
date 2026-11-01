@@ -3,10 +3,11 @@ import { publishEphemeral } from "@/lib/events";
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { byName } from "@/lib/language/text-logic";
 import { matchEntity, mergeAliases, normalizeName, type EntityMatch } from "@/lib/dm/entity-logic";
+import { namesHeard } from "@/lib/dm/cast-logic";
 import { normalizeNpcVoice, type NpcDraft, type NpcVoice } from "@/lib/npcs/forge";
 import { isUploadedImagePath } from "@/lib/uploads";
 import { storedGender, type Gender } from "@/lib/gender";
-import { attractionBlank, attractionJson, normalizeAttraction, type Attraction } from "@/lib/attraction";
+import { attractionJson, keptAttraction, normalizeAttraction, type Attraction } from "@/lib/attraction";
 import {
   parseBonds,
   parseGoals,
@@ -65,6 +66,11 @@ export type Npc = {
   // only heard of as well as people in the room. A reaction roll is for a
   // stranger (src/lib/dm/social-tools.ts), so it reads this.
   metAt: string;
+  // When the story first said their name to the table: in narration, a
+  // system line, or as the speaker a quoted line was shown under. "" until
+  // then. Met or heard, the table knows them, and only then is their name
+  // sent to every seat (src/lib/dm/cast-logic.ts, issue 650).
+  heardAt: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -94,6 +100,7 @@ type NpcRow = {
   companion_sheet_id?: string | null;
   archived: number;
   met_at?: string | null;
+  heard_at?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -128,6 +135,7 @@ function mapNpc(row: NpcRow): Npc {
     statBlock: row.stat_block ?? "",
     archived: row.archived === 1,
     metAt: row.met_at ?? "",
+    heardAt: row.heard_at ?? "",
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -252,7 +260,7 @@ export function upsertNpc(input: {
       normalizeName(input.name) === normalizeName(existing.name)
         ? existing.aliases
         : mergeAliases(existing.aliases, input.name);
-    const attraction = attractionBlank(existing.attraction) && input.attraction ? input.attraction : existing.attraction;
+    const attraction = keptAttraction(existing.attraction, input.attraction);
     db.prepare(
       `UPDATE npcs
        SET attitude = ?, trait = ?, location = ?, gender = ?, attraction_json = ?, aliases_json = ?, updated_at = ?
@@ -429,6 +437,27 @@ export function markNpcMet(id: string): Npc | null {
   return row ? mapNpc(row) : null;
 }
 
+// The story has now said these people's names to the table (see
+// Npc.heardAt): the cast not yet met or heard whose name stands in the
+// passage (a key from heardKey, src/lib/dm/cast-logic.ts). Returns the ids
+// newly marked; the first hearing is kept.
+export function markNpcsHeard(campaignId: string, key: string): string[] {
+  const db = getDatabase();
+  const strangers = db
+    .prepare(`SELECT id, name FROM npcs WHERE campaign_id = ? AND met_at = '' AND heard_at = ''`)
+    .all(campaignId) as Array<{ id: string; name: string }>;
+  const heard = namesHeard(strangers, [key]);
+  if (!heard.length) {
+    return [];
+  }
+  const mark = db.prepare(`UPDATE npcs SET heard_at = ? WHERE id = ? AND heard_at = ''`);
+  const now = nowIso();
+  for (const npc of heard) {
+    mark.run(now, npc.id);
+  }
+  return heard.map((npc) => npc.id);
+}
+
 export function deleteNpc(id: string): boolean {
   return getDatabase().prepare(`DELETE FROM npcs WHERE id = ?`).run(id).changes > 0;
 }
@@ -544,9 +573,12 @@ export function mergeNpcs(
     // The two rows are one person, so the party met them when it met
     // either: the earlier meeting is the one kept.
     const metAt = [keep.metAt, merge.metAt].filter(Boolean).sort()[0] ?? "";
-    db.prepare(`UPDATE npcs SET aliases_json = ?, met_at = ?, updated_at = ? WHERE id = ?`).run(
+    // So did it hear of them when it heard either name.
+    const heardAt = [keep.heardAt, merge.heardAt].filter(Boolean).sort()[0] ?? "";
+    db.prepare(`UPDATE npcs SET aliases_json = ?, met_at = ?, heard_at = ?, updated_at = ? WHERE id = ?`).run(
       JSON.stringify(aliases),
       metAt,
+      heardAt,
       now,
       keepId,
     );

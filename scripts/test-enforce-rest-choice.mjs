@@ -95,6 +95,35 @@ await test("Undoing a long rest gives back the 24 hours it started: the characte
   assert.equal(sheet().currentHp, sheet().maxHp);
 });
 
+await test("A short rest leaves out a hero who dies in the death saves its hour rolls: the dead are not among those who choose hit dice, and cannot spend any.", async () => {
+  const mourner = world.addUser("mourner");
+  const dying = world.addHero({ user: mourner, class: "rogue", level: 4, maxHp: 28 });
+  const away = subscribe(world.campaignId, () => {}, mourner.id);
+  world.patch(dying.id, {
+    currentHp: 0,
+    hitDice: { die: "d8", total: 4, spent: 0 },
+    deathSaves: { successes: 0, failures: 2, stable: false, dead: false },
+  });
+  world.patch(hero.id, { currentHp: 10 });
+  // The rest's first death save fails: the third failure, and she dies.
+  world.dice(5);
+  const rested = await world.invoke("take_rest", { kind: "short" });
+  world.clearDice();
+  assert.equal(rested.ok, true, rested.error);
+  assert.equal(world.sheet(dying.id).deathSaves.dead, true, "the rest did not roll her last death save");
+  const result = JSON.stringify(rested.result);
+  const name = world.sheet(dying.id).name;
+  assert.ok(JSON.stringify(rested.result.deathSaves).includes(name), `the rest tells of her death: ${result}`);
+  assert.ok(rested.result.choosing?.includes(sheet().name), `the living player still chooses: ${result}`);
+  assert.ok(!rested.result.choosing.includes(name), `the dead hero is among those choosing hit dice: ${result}`);
+  assert.ok(!rested.result.choosingNote.includes(name), `the note asks the dead hero to choose hit dice: ${result}`);
+  assert.ok(!JSON.stringify(rested.result.results).includes(name), `the hit dice results name the dead hero: ${result}`);
+  const reply = await spend(1, mourner);
+  assert.notEqual(reply.status, 200, "the dead hero spent a hit die");
+  assert.equal(world.sheet(dying.id).hitDice.spent, 0);
+  away();
+});
+
 leave();
 world.close();
 finish();

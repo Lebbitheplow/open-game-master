@@ -8,7 +8,9 @@ import { normalizeIntents, type EncounterIntents } from "@/lib/db/encounter-inte
 import { restoreOwnForm } from "@/lib/db/enemy-form";
 import { normalizeSides, type SideExceptions } from "@/lib/dm/combat-sides-logic";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
+import { endedByRegain } from "@/lib/dm/condition-logic";
 import { noteDominationShift } from "@/lib/db/side-watch";
+import { noteGrounding } from "@/lib/db/flight-watch";
 import { publishPersisted } from "@/lib/events";
 import { isKnockedOut } from "@/lib/dm/knockout";
 import { isConditionNamed } from "@/lib/srd/feature-names";
@@ -576,22 +578,37 @@ export function patchEnemyHp(
   currentHp: number,
   status: EnemyStatus,
 ): EncounterEnemy | null {
-  const before = currentHp > 0 && status === "alive" ? getEnemy(enemyId) : null;
+  const before = getEnemy(enemyId);
   getDatabase()
     .prepare(
       `UPDATE encounter_enemies SET current_hp = ?, status = ?, updated_at = ? WHERE id = ?`,
     )
     .run(currentHp, status, nowIso(), enemyId);
-  // A creature knocked out comes to the moment it regains a hit point (SRD
-  // 5.1: unconscious ends then; it stays prone until it stands). Every heal
-  // of an enemy lands here: a golem's Absorption, a legendary resistance's
-  // refund, a drain, an aura (issue #667: they left it unconscious with hit
-  // points, out of the fight and never waking).
-  if (before && isKnockedOut(before)) {
-    const conditions = before.conditions.filter((entry) => !isConditionNamed(entry, "unconscious"));
-    const meta = { ...before.conditionMeta };
-    delete meta.unconscious;
-    patchEnemyConditions(enemyId, conditions, meta);
+  if (before) {
+    let conditions = before.conditions;
+    let meta: ConditionMetaMap = { ...before.conditionMeta };
+    let changed = false;
+    // A hit point regained ends a caltrops wound, by whatever path the enemy
+    // healed (issue #570: only a character's heal did).
+    const mended = endedByRegain(conditions, meta, before.currentHp, currentHp);
+    if (mended) {
+      conditions = mended.conditions;
+      meta = mended.meta;
+      changed = true;
+    }
+    // A creature knocked out comes to the moment it regains a hit point (SRD
+    // 5.1: unconscious ends then; it stays prone until it stands). Every heal
+    // of an enemy lands here: a golem's Absorption, a legendary resistance's
+    // refund, a drain, an aura (issue #667: they left it unconscious with hit
+    // points, out of the fight and never waking).
+    if (currentHp > 0 && status === "alive" && isKnockedOut(before)) {
+      conditions = conditions.filter((entry) => !isConditionNamed(entry, "unconscious"));
+      delete meta.unconscious;
+      changed = true;
+    }
+    if (changed) {
+      patchEnemyConditions(enemyId, conditions, meta);
+    }
   }
   return getEnemy(enemyId);
 }
@@ -638,6 +655,8 @@ export function patchEnemyConditions(
   const after = getEnemy(enemyId);
   // A Dominate starting or ending moves the creature's side (side-watch.ts).
   noteDominationShift(after?.campaignId ?? before?.campaignId ?? "", before, after);
+  // A flyer knocked prone or held to a speed of 0 falls (flight-watch.ts).
+  noteGrounding(after?.campaignId ?? before?.campaignId ?? "", before, after);
   const own = after?.stats.polymorphedFrom;
   if (!own || after.conditions.some((name) => name.toLowerCase() === "polymorphed")) {
     return after;

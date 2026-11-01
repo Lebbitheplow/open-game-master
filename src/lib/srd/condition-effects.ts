@@ -42,8 +42,11 @@ export const CONDITION_EFFECTS: ConditionEffectRow[] = [
     id: "sacred_weapon",
     match: ["sacred weapon"],
     summary:
-      "Sacred Weapon: the paladin's Charisma modifier is added to their weapon attack rolls, and the weapon sheds bright light, for a minute.",
+      "Sacred Weapon: the paladin's Charisma modifier is added to their weapon attack rolls, the weapon is magical, and it sheds bright light, for a minute.",
     paramAttackBonus: true,
+    // SRD 5.1 paladin, Oath of Devotion, Sacred Weapon: "If the weapon is not
+    // already magical, it becomes magical for the duration."
+    magicalStrikes: true,
   },
   {
     id: "blessed",
@@ -1129,11 +1132,15 @@ export function conditionSpeed(conditions: string[], baseSpeed: number): number 
 // Slow's one attack and an action OR a bonus action (SRD 5.1). The turn
 // budget reads it every time it is asked (src/lib/dm/turn-budget.ts), so an
 // effect that lands mid-turn counts on that turn.
-export type TurnShape = { extraActions: number; slowed: boolean };
+// actionHeld: the turn's action is spent before it begins (a spell of a
+// minute or more being cast, src/lib/dm/long-casting-logic.ts).
+export type TurnShape = { extraActions: number; slowed: boolean; actionHeld?: boolean };
 export function conditionTurnShape(conditions: string[]): TurnShape {
+  const rows = activeConditionEffects(conditions);
   return {
     extraActions: conditionExtraActions(conditions),
-    slowed: activeConditionEffects(conditions).some(({ row }) => row.actionOrBonus === true),
+    slowed: rows.some(({ row }) => row.actionOrBonus === true),
+    ...(rows.some(({ row }) => row.holdsAction === true) ? { actionHeld: true } : {}),
   };
 }
 

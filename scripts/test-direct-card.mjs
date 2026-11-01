@@ -510,5 +510,41 @@ await test("A card the engine refused is answered by the refusal, not given back
   assert.equal(lastPlayerLine().cardReturned, undefined);
 });
 
+// The play-test of 0.31.3: Spiritual Weapon from the Hand spent the slot and
+// the bonus action and made no strike. The square the player taps for the
+// weapon reaches cast_buff, and the strike card that follows strikes from
+// there, riding the casting's bonus action (SRD 5.1: "When you cast the
+// spell, you can make a melee spell attack against a creature within 5 feet
+// of the weapon").
+await test("A Spiritual Weapon card laid on a square is cast there, and its strike card strikes from it with no second bonus action.", async () => {
+  const enemy = await stage(sefa);
+  const casting = world.sheet(sefa.id).spellcasting;
+  world.patch(sefa.id, { spellcasting: { ...casting, prepared: [...casting.prepared, "Spiritual Weapon"] } });
+  kit.place(enemy.id, 9, 6);
+  model.script([reply({ text: "A spectral mace shimmers into being beside the goblin." })]);
+  await model.turn(world, "I cast Spiritual Weapon on myself as a bonus action using a level 2 slot.", sefa.id, sefa.userId, {
+    intent: { card: "spell", spell: "Spiritual Weapon", slotLevel: 2, targetKind: "self", targetId: sefa.id, targetName: "Sefa", atX: 8, atY: 6 },
+  });
+  const cast = firstCall(model.requests[0]);
+  assert.equal(cast?.name, "cast_buff", JSON.stringify(toolCalls(model.requests[0])));
+  assert.equal(cast.args.atX, 8);
+  assert.equal(cast.args.atY, 6);
+  const [laid] = results(model.requests[0]);
+  assert.ok(laid && !laid.error, JSON.stringify(laid));
+  assert.equal(world.sheet(sefa.id).spellcasting.slots[2].used, 1);
+
+  model.script([reply({ text: "The mace cracks down on the goblin." })]);
+  await model.turn(world, "I attack Goblin 1 with Spiritual Weapon.", sefa.id, sefa.userId, {
+    intent: { card: "attack", weapon: "Spiritual Weapon", targetKind: "enemy", targetId: enemy.id, targetName: enemy.displayName },
+  });
+  const strike = firstCall(model.requests[0]);
+  assert.equal(strike?.name, "pc_attack", JSON.stringify(toolCalls(model.requests[0])));
+  assert.equal(strike.args.weapon, "Spiritual Weapon");
+  const [struck] = results(model.requests[0]);
+  assert.ok(struck && !struck.error, `the casting's strike resolved: ${JSON.stringify(struck)}`);
+  assert.match(JSON.stringify(struck), /no second bonus action/);
+  assert.match(JSON.stringify(struck), /strikes from \(8,6\)/);
+});
+
 model.close();
 await finish();

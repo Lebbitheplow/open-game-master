@@ -11,7 +11,7 @@ import assert from "node:assert/strict";
 import { openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { caster, closeTables, enemyOf, FIGHTER, table } from "./lib/enforce-spell-kit.mjs";
-import { board, holdTurn, nextTurn, stride, tokenOf, zonesOf } from "./lib/enforce-zones.mjs";
+import { board, handOnDue, holdTurn, nextTurn, stride, tokenOf, zonesOf } from "./lib/enforce-zones.mjs";
 import { nextTurn as roundTurn } from "./lib/enforce-spell-tail.mjs";
 import { layMap, onTurnOf } from "./lib/enforce-spells.mjs";
 import { combatKit } from "./lib/enforce-combat.mjs";
@@ -143,9 +143,13 @@ await test("Blink: the caster returns at the start of their next turn.", async (
   nextTurn(world);
   world.clearDice();
   assert.ok(has(world.sheet(wizard.id).conditions, "blinked"));
-  for (let guard = 0; guard < 6 && world.encounter().order[world.encounter().turnIndex]?.characterId !== wizard.id; guard += 1) {
+  // The goblin after the fighter goes first; the caster's turn begins once
+  // it has (issue 713).
+  for (let guard = 0; guard < 6 && (world.encounter().order[world.encounter().turnIndex]?.characterId !== wizard.id || world.encounter().legendary.due?.length); guard += 1) {
     world.dice(1);
-    nextTurn(world);
+    if (!handOnDue(world)) {
+      nextTurn(world);
+    }
     world.clearDice();
   }
   assert.ok(!has(world.sheet(wizard.id).conditions, "blinked"), "the caster is still away on their own turn");
@@ -320,6 +324,9 @@ await test("Prismatic Spray's violet ray blinds; a failed WIS save at the start 
   assert.ok(has(enemyOf(world, goblin.id).conditions, "blinded"), "the violet ray did not blind");
   world.dice(1, 1, 1);
   roundTurn(world);
+  // The goblin's turn closes the round; the caster's begins once it has
+  // gone (issue 713).
+  handOnDue(world);
   world.clearDice();
   assert.equal(enemyOf(world, goblin.id).status, "fled", "the creature stayed after failing its WIS save");
 });

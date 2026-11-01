@@ -17,6 +17,7 @@ import {
 import { claimKindsFor, withoutSentences, type ClaimKind, type NarrationClaim, type PartRead } from "@/lib/dm/claims-logic";
 import { hasQuotedLine, type SpokenLine } from "@/lib/dm/speech";
 import { guardGate, liveStateFor, readClaims, turnOverFor } from "@/lib/dm/claims";
+import { exchangeWords } from "@/lib/dm/story-moves";
 import type { GuardKind, GuardOutcome, GuardReport } from "@/lib/narrator-quality";
 
 // The DB/model rim of the engine-boundary guard. The ruling lives in
@@ -65,7 +66,7 @@ async function readNarration(
   sheets: readonly CharacterSheet[],
   parts: readonly string[],
   partReads: ReadonlyMap<string, PartRead>,
-): Promise<{ contradictions: Contradiction[]; lines: SpokenLine[]; handedOn: string | null; deeds: DeedClaim[]; unread: boolean }> {
+): Promise<{ contradictions: Contradiction[]; lines: SpokenLine[]; handedOn: string | null; deeds: DeedClaim[]; bonds: BondClaim[]; unread: boolean }> {
   const outcomes = guardOutcomes(turn.conversation, liveStateFor(campaign.id), campaign.gameSettings.tableLanguage);
   const kinds = guardKinds(campaign, outcomes, sheets);
   const waiting = turnOverFor(campaign.id, turn);
@@ -92,6 +93,7 @@ async function readNarration(
     onUnread: () => {
       failedRead = true;
     },
+    words: exchangeWords(campaign.id, sheets, turn.createdAt),
   });
   const claims = [...known, ...read];
   return {
@@ -104,6 +106,8 @@ async function readNarration(
     // A deed is no contradiction: the turn notes the ones nothing recorded
     // (src/lib/dm/deed-claims.ts).
     deeds: claims.flatMap((claim) => (claim.kind === "deed" ? [claim] : [])),
+    // And the romantic moves and kindnesses (src/lib/dm/story-moves-settle.ts).
+    bonds: claims.flatMap((claim) => (claim.kind === "bond" ? [claim] : [])),
     unread: failedRead && kinds.length > 0,
   };
 }
@@ -119,7 +123,7 @@ export type SlotlessCast = { rolled: boolean } | { refused: string };
 // turn holds against the relationship_beat calls it made. And what the
 // guard itself did, for the turn's narrator quality row (issue #460,
 // src/lib/narrator-quality.ts GuardOutcome), rather than only a log line.
-export type GuardedNarration = { spoken: SpokenLine[]; handedOn: string | null; deeds: DeedClaim[]; guard: GuardReport };
+export type GuardedNarration = { spoken: SpokenLine[]; handedOn: string | null; deeds: DeedClaim[]; bonds?: BondClaim[]; guard: GuardReport };
 
 // The contradiction kinds found, and a line crossed, by name only.
 function kindsOf(contradictions: readonly Contradiction[], crossed: readonly string[]): GuardKind[] {
@@ -131,6 +135,7 @@ function kindsOf(contradictions: readonly Contradiction[], crossed: readonly str
 }
 
 type DeedClaim = Extract<NarrationClaim, { kind: "deed" }>;
+type BondClaim = Extract<NarrationClaim, { kind: "bond" }>;
 
 // When the rewrite cannot be used, the sentences that contradict the results
 // are cut from what the table reads instead: a hit written on a miss, a blow
@@ -184,9 +189,9 @@ export async function enforceEngineBoundary(
   const lines = campaign.gameSettings.safety?.lines ?? [];
   const crossed = lineViolations(narration, lines, campaign.gameSettings.tableLanguage);
   const read = await readNarration(campaign, turn, sheets, turn.narrationParts, partReads);
-  const { lines: spoken, handedOn, deeds, unread } = read;
+  const { lines: spoken, handedOn, deeds, bonds, unread } = read;
   const found = kindsOf([...read.contradictions, ...(campaign.gameSettings.narrationGuard ? returned.map(() => ({ kind: "card" as const, detail: "", clause: "" })) : [])], crossed);
-  const kept = (outcome: GuardOutcome): GuardedNarration => ({ spoken, handedOn, deeds, guard: { outcome, kinds: found } });
+  const kept = (outcome: GuardOutcome): GuardedNarration => ({ spoken, handedOn, deeds, bonds, guard: { outcome, kinds: found } });
   // A spell the prose cast with nothing behind it, which its player asked
   // for, is cast now rather than written out of the story (issue 570). The
   // rewrite then tells a rolled result as the dice fell; a cast that rolled

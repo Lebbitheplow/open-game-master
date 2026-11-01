@@ -223,6 +223,62 @@ test("a select's whole label is that option's value; a word of a label is refuse
   assert.equal(selectValue(typed, shown.label), shown.label);
 });
 
+test("a label's leading words as far as its value are that option; other words of a label are refused with the value, never left to the handler's schema", () => {
+  const stabilize = adjudication("stabilize");
+  const how = stabilize.fields.find((field) => field.name === "method");
+  const send = (method) => checkArgs(stabilize, { characterId: "c1", healerId: "c2", method });
+  assert.equal(selectValue(how, "Medicine check"), "check");
+  assert.equal(selectValue(how, "medicine check, dc"), "check");
+  assert.equal(selectValue(how, "Check"), "check");
+  assert.equal(send("Medicine check"), null);
+  // "medicine" stops short of the value: still the refusal with its hint.
+  assert.equal(selectValue(how, "medicine"), "medicine");
+  assert.match(send("medicine"), /For "medicine", send "check" \(Medicine check, DC 10\)\./);
+  // Each of these holds a value's word, so the loose pre-flight passed it
+  // and the handler's list refused it with a schema error.
+  assert.equal(send("Medicine check DC 15"), 'How must be one of: check, kit, spell. For "Medicine check DC 15", send "check" (Medicine check, DC 10).');
+  assert.equal(send("check, DC 10"), 'How must be one of: check, kit, spell. For "check, DC 10", send "check" (Medicine check, DC 10).');
+  assert.equal(send("healer's kit"), `How must be one of: check, kit, spell. For "healer's kit", send "kit" (A use of their healer's kit).`);
+  // Every select: its value in another case is that value, and its label's
+  // leading words up to the value, where they stop short of the whole
+  // label, name that option and no other.
+  for (const field of ADJUDICATIONS.flatMap((entry) => entry.fields)) {
+    if (field.kind !== "select" || !field.options || field.other) {
+      continue;
+    }
+    for (const option of field.options) {
+      assert.equal(selectValue(field, option.value.toUpperCase()), option.value, `${field.name}: ${option.value}`);
+    }
+  }
+  // A value that only adds its own words to an option's speaks no label,
+  // and stays for the handler to read as it always has: "dex save" is dex.
+  const save = adjudication("cast_at_enemy").fields.find((field) => field.name === "saveAbility");
+  const alone = { name: "x", label: "X", category: "combat", summary: "", fields: [save] };
+  assert.equal(checkArgs(alone, { saveAbility: "dex save" }), null);
+  assert.equal(selectValue(save, "dex save"), "dex save");
+});
+
+// "a grapple" is a run from the middle of Escape's label, "Escape a grapple
+// or a spell's hold", and reads as the Grapple action: the refusal pointed it
+// at "escape". Words from a label's middle that hold another option's value
+// name neither option now; the values listed are the answer. A label's
+// start, a run that reaches the value, or one that reads as no other option
+// still names it.
+test("a run from a label's middle that reads as another option points at neither: \"a grapple\" is not sent to Escape", () => {
+  const take = adjudication("take_action");
+  const actions = take.fields.find((field) => field.name === "action").options.map((option) => option.value).join(", ");
+  for (const words of ["a grapple", "the creature they grapple", "grapple or a spell's hold"]) {
+    assert.equal(checkArgs(take, { action: words }), `Action must be one of: ${actions}.`, words);
+  }
+  const ready = take.fields.find((field) => field.name === "readied");
+  assert.equal(checkArgs({ ...take, fields: [ready] }, { readied: "a grapple" }), `Readied action must be one of: ${ready.options.map((option) => option.value).join(", ")}.`);
+  const stash = adjudication("party_stash");
+  assert.match(checkArgs(stash, { ...Object.fromEntries(stash.fields.filter((field) => field.required && field.name !== "do").map((field) => [field.name, "x"])), do: "Take money" }) ?? "", /For "Take money", send "withdraw"/);
+  assert.match(checkArgs(take, { action: "a spell's hold" }) ?? "", /For "a spell's hold", send "escape" \(Escape a grapple or a spell's hold\)\.$/);
+  const scene = adjudication("start_encounter").fields.find((field) => field.name === "scene");
+  assert.match(checkArgs({ ...take, fields: [scene] }, { scene: "street" }) ?? "", /For "street", send "city" \(City street\)\.$/);
+});
+
 test("the console offers every entry exactly once", () => {
   // Not "every visible entry": nothing is hidden. If the engine can do it,
   // the person running the table can reach it.
@@ -437,6 +493,7 @@ const FOR_A_PERSON_ONLY = {
   set_quest: ["visibility"],
   dismiss_handout: ["handoutId"],
   show_handout: ["imagePath"],
+  add_companion: ["background", "skills"],
 };
 
 function formDrift(entry) {
@@ -499,7 +556,7 @@ test("an older form's field names reach the names the handler reads", () => {
 
 test("the property scan reads the tools it is pointed at", () => {
   assert.deepEqual(toolProperties("take_action").keys.sort(), [
-    "action", "bonus", "characterId", "enemyId", "item", "level", "readied", "reason", "shove", "skill",
+    "action", "bonus", "characterId", "enemyId", "item", "level", "mount", "readied", "reason", "shove", "skill",
     "spell", "targetCharacterId", "targetEnemyId", "toward", "trigger",
   ]);
   assert.ok(toolProperties("apply_damage").keys.includes("amount"));
@@ -671,7 +728,12 @@ const OMITTED_ON_PURPOSE = {
   // approach and endTurn carry the move and the end a player declared around
   // their attack on the AI's one call (src/lib/dm/pc-attack-approach.ts).
   pc_attack: ["advantageSource", "approach", "endTurn"],
-  enemy_attack: ["advantageSource"],
+  // A controlled mount's own Dash, Disengage or Dodge, and an attack aimed
+  // at it (SRD 5.1, Controlling a Mount): a person at the console narrates
+  // the mount's action and rules the swing at it; the model, which cannot,
+  // names it on the call.
+  take_action: ["mount"],
+  enemy_attack: ["advantageSource", "targetMount"],
   request_roll: ["advantageSource"],
   // What a companion holds to is set by the class and alignment the form
   // does offer; the model alone may replace it, as a list of objects no form
@@ -684,6 +746,10 @@ const OMITTED_ON_PURPOSE = {
   // new place where it belongs by dragging it on the region map; the model
   // has neither, so only it says these on the call.
   move_party: ["partOf", "direction", "distance"],
+  // The square a trap or hazard comes from, for the cover on its Dexterity
+  // save (SRD 5.1, Cover). A person sees the board and rules that cover as
+  // they set the DC; the model, which cannot point, names the square.
+  apply_hazard: ["fromX", "fromY"],
 };
 
 function formOmissions(entry) {
@@ -1031,6 +1097,21 @@ test("take_action's destination fields ask for the host, and the enemy field rea
   assert.equal(fieldForHost(named("enemyId"), older).name, "escapingEnemyId");
   assert.ok(read("src/lib/capabilities.ts").match(/^\s*moveWithAction: true,$/m), "the server flags it");
   assert.match(read("src/lib/use-capabilities.ts"), /features\?: \{[^}]*moveWithAction\?: boolean/);
+});
+
+// The console's Background and Skills for a new companion: an older host's
+// add_companion strips both unread and recruits by the class list's first
+// skills, so the app's console shows them only to a host that reads them.
+test("add_companion's background and skills ask for the host", () => {
+  const fields = adjudication("add_companion").fields;
+  for (const name of ["background", "skills"]) {
+    const field = fields.find((entry) => entry.name === name);
+    assert.ok(field, name);
+    assert.ok(fieldForHost(field, () => true), `${name} on a host that has it`);
+    assert.equal(fieldForHost(field, () => false), null, `${name} hidden on an older host`);
+  }
+  assert.ok(read("src/lib/capabilities.ts").match(/^\s*companionTraining: true,$/m), "the server flags it");
+  assert.match(read("src/lib/use-capabilities.ts"), /features\?: \{[^}]*companionTraining\?: boolean/);
 });
 
 // A human GM fields an invented foe by its challenge rating and renames a

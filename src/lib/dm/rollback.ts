@@ -12,7 +12,9 @@ import {
 import { rollbackWarnings, type RollbackScope } from "@/lib/dm/rollback-logic";
 import { resetChapterMemory } from "@/lib/dm/chapter-close";
 import { requestDmTurn } from "@/lib/dm/loop";
+import { lineAwaitsGm } from "@/lib/dm/ooc-question";
 import { enqueueDmJobFirst, stopDmJob } from "@/lib/dm/queue";
+import { tableWaitRewound, waitsForTable } from "@/lib/dm/table-wait";
 import { REWOUND_REASON } from "@/lib/dm/job-stage-logic";
 import { setDmStatus } from "@/lib/dm/status";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
@@ -136,7 +138,17 @@ export async function performRollback(
   // again, as the campaign's start does; requestDmTurn leaves a table with a
   // person in the DM seat to them. A rewind point that already holds a
   // narration waits for the players as any other chapter's does.
-  if (result.ok && targetChapterIndex === 1 && !listRecentMessages(campaignId, 50).some((message) => message.authorType === "dm")) {
+  //
+  // Unless a player's move after that narration still waits on the GM: one
+  // posted while the narration that closed the chapter was being written is
+  // part of that chapter, and its answer was in the one the rewind took away
+  // (issue 636). It is answered again. A table that waits for everyone reads
+  // it as the rewind leaves the queue (src/lib/dm/loop.ts), by the wait's
+  // own rules; any other table is woken here.
+  const recent = result.ok ? listRecentMessages(campaignId, 50) : [];
+  const opening = targetChapterIndex === 1 && !recent.some((message) => message.authorType === "dm");
+  const campaign = result.ok ? getCampaignById(campaignId) : null;
+  if (result.ok && (opening || (campaign && !waitsForTable(campaign) && lineAwaitsGm(recent)))) {
     requestDmTurn(campaignId);
   }
   return result;
@@ -248,6 +260,7 @@ function rollbackNow(
 
   deleteBoundarySnapshotsAfter(campaignId, targetChapterIndex);
   resetChapterMemory(campaignId);
+  tableWaitRewound(campaignId);
   setDmStatus(campaignId, "idle");
 
   const seq = allocateSeq(campaignId);

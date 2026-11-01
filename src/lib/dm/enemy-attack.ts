@@ -50,7 +50,7 @@ import { approachTarget, reachesThisTurn, spendEnemyAction, standUpIfProne } fro
 import { blowByType, resolveOnHit, scaledParts } from "@/lib/dm/enemy-hit";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { effectOutcome } from "@/lib/dm/effect-tools";
-import { alternativeBlow, attackNamed, charmedBy, enemyAttackProfile, plannedSwings, swingMode, type EnemyAttackProfile } from "@/lib/dm/enemy-profile";
+import { alternativeBlow, attackNamed, charmedBy, enemyAttackProfile, pastRangedLimit, plannedSwings, swingMode, type EnemyAttackProfile } from "@/lib/dm/enemy-profile";
 import { publishFx, tokenPosition } from "@/lib/dm/fx";
 import { hasTrait } from "@/lib/dm/monster-abilities";
 import { enemySwingOdds, hasFeatureNamed } from "@/lib/dm/enemy-swing-odds";
@@ -69,6 +69,7 @@ import { invalidArguments, noneNamed, toolError, type ToolResult } from "@/lib/d
 import { textKey } from "@/lib/language/text-logic";
 import { ADVANTAGE_SOURCES, claimedAdvantage } from "@/lib/dm/pc-attack-options";
 import { unknownSheetRef } from "@/lib/dm/rolls";
+import { mountTargetProblem, strikeMount } from "@/lib/dm/mount-combat";
 
 const attackArgsSchema = z.object({
   enemyId: z.string(),
@@ -77,6 +78,12 @@ const attackArgsSchema = z.object({
   advantage: z.enum(["none", "advantage", "disadvantage"]).optional(),
   advantageSource: z.enum(ADVANTAGE_SOURCES).optional(),
   advantageReason: z.string().max(200).optional(),
+  // A melee blow meant to knock the character out (SRD 5.1, Knocking a
+  // Creature Out): dropped to 0, they fall unconscious and stable.
+  nonlethal: z.coerce.boolean().optional(),
+  // At the target's mount instead (SRD 5.1, Controlling a Mount: "the
+  // attacker can target you or the mount"): mount-combat.ts.
+  targetMount: z.coerce.boolean().optional(),
 });
 
 // The profile the enemy walks in for: the shortest reach among the melee
@@ -239,6 +246,11 @@ export function handleEnemyAttack(
   if (!target) {
     return unknownSheetRef("targetCharacterId", args.targetCharacterId, sheets);
   }
+  // Refused before anything is spent: no mount, or one with no numbers.
+  const unmounted = args.targetMount ? mountTargetProblem(campaign.id, target) : null;
+  if (unmounted) {
+    return { error: unmounted, retry: true };
+  }
   // SRD 5.1, Charmed: a charmed creature cannot attack its charmer.
   if (charmedBy(found.conditions, found.conditionMeta, target.id)) {
     return {
@@ -299,7 +311,16 @@ export function handleEnemyAttack(
   if (single && !asked && actionAttacks.length > 1) {
     return { error: `${found.displayName} makes one attack this turn: name it in attack (${actionAttacks.map((attack) => attack.name).join(", ")}).`, retry: true };
   }
-  const planned = plannedSwings(found.stats, bonus ? attacks : actionAttacks, asked, { single });
+  // Of several routines, the one whose swings land from here this turn
+  // (enemy-profile.ts plannedSwings), each attack's reach asked once.
+  const reachOf = new Map<EnemyAttack, boolean>();
+  const reaches = (attack: EnemyAttack) => {
+    if (!reachOf.has(attack)) {
+      reachOf.set(attack, reachesThisTurn(campaign, encounter.id, found, target.id, enemyAttackProfile(attack, found.stats.traits ?? [])));
+    }
+    return reachOf.get(attack) === true;
+  };
+  const planned = plannedSwings(found.stats, bonus ? attacks : actionAttacks, asked, { single, rollCount: (dice) => rollExpression(dice).total, reaches });
   if (hasteSwing && planned.some((attack) => attack.spellAttack)) {
     return { error: `Haste's extra action is one weapon attack, and ${found.displayName}'s ${planned[0].name} is a spell attack. Nothing was spent.`, refused: "rules" };
   }
@@ -392,6 +413,37 @@ export function handleEnemyAttack(
     spendEnemyAction(live, enemy.id);
   }
   saveEncounter(live);
+  // At the mount: its own AC, hit points and Dodge (mount-combat.ts). The
+  // rider's own wards and reactions answer attacks on the rider only.
+  if (args.targetMount) {
+    const bloodied = standing.currentHp <= standing.maxHp / 2;
+    let shotsAtMount = 0;
+    const swingsAtMount = planned.map((attack, index) => {
+      const mode = swingMode(profiles[index], spatial.distance);
+      if (!mode) {
+        return { attack, skipped: `${target.name}'s mount is out of this attack's reach` };
+      }
+      const past = mode.ranged ? pastRangedLimit(found.stats.traits, attack, shotsAtMount) : null;
+      if (past) {
+        return { attack, skipped: past };
+      }
+      shotsAtMount += mode.ranged ? 1 : 0;
+      return { attack: alternativeBlow(attack, { ranged: mode.ranged, bloodied }), ranged: mode.ranged };
+    });
+    return strikeMount({
+      campaign,
+      turn,
+      encounterId: encounter.id,
+      enemy: standing,
+      rider: target,
+      swings: swingsAtMount,
+      distance: spatial.distance,
+      cover,
+      requested: claimedAdvantage({ requested: args.advantage, source: args.advantageSource, reason: args.advantageReason, byAi: turn.actor === "ai" }).requested,
+      sheets,
+      sheetsById,
+    });
+  }
   // Among the Dead: an undead saves before it may attack this warlock, and on
   // a failure the attack is lost (src/lib/dm/authored-hooks.ts).
   const warded = authoredWardSave(campaign, turn, standing, target);
@@ -417,6 +469,9 @@ export function handleEnemyAttack(
   // after a miss.
   let previousHit = false;
   const attackerSubmerged = isImmersed(campaign.id, enemy.id);
+  // The swings made at range, held to what a Multiattack of melee attacks
+  // leaves room for (enemy-profile.ts rangedSwingsAllowed).
+  let shots = 0;
   planned.forEach((plannedAttack: EnemyAttack, index) => {
     let attack = plannedAttack;
     if (dropped) {
@@ -432,6 +487,12 @@ export function handleEnemyAttack(
       swings.push({ attack: attack.name, skipped: `${target.name} is out of this attack's reach` });
       return;
     }
+    const past = mode.ranged ? pastRangedLimit(standing.stats.traits, plannedAttack, shots) : null;
+    if (past) {
+      swings.push({ attack: attack.name, skipped: past });
+      return;
+    }
+    shots += mode.ranged ? 1 : 0;
     const ranged = mode.ranged;
     // What the block deals instead at half its hit points or at range (a
     // swarm's weaker bite, a spear thrown), from here on the swing's blow.
@@ -581,6 +642,8 @@ export function handleEnemyAttack(
       ...(hasTrait(standing.stats, "magicWeapons") || attack.spellAttack || attack.magical ? { magical: true } : {}),
       // Crits against a dying target count double death-save failures.
       ...(crit ? { crit: true } : {}),
+      // Only a melee attack knocks out; a ranged one drops them dying.
+      ...(args.nonlethal && !ranged ? { nonlethal: true } : {}),
       // Emissary of Redemption holds nothing against a creature the paladin attacked.
       ...(authored.spurned.length ? { exceptFeatures: authored.spurned } : {}),
       reason: `${enemy.displayName}'s ${attack.name}`,

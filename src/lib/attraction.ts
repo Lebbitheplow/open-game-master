@@ -14,7 +14,9 @@ import { textKey } from "./language/text-logic.ts";
 
 export type AttractionGender = (typeof GENDERS)[number];
 
-export type Attraction = { genders: AttractionGender[]; note: string };
+// `open` (issue 642): open to more than one partner. Romance is exclusive
+// by default, so it is stored only when true and absent means exclusive.
+export type Attraction = { genders: AttractionGender[]; note: string; open?: boolean };
 
 export const ATTRACTION_NOTE_MAX = 60;
 
@@ -25,8 +27,12 @@ export const ATTRACTION_CHOICES: ReadonlyArray<{ gender: AttractionGender; label
   { gender: "Nonbinary", label: "Nonbinary people", word: "nonbinary people" },
 ];
 
+// The drawnTo word that says someone keeps more than one partner (issue
+// 642): beside who they are drawn to, as the picker shows it.
+export const TOLD_OPEN = "open relationships";
+
 // What the DM's tools take for drawnTo: the same words the DM reads.
-export const TOLD_ATTRACTION = ATTRACTION_CHOICES.map((choice) => choice.word) as [string, ...string[]];
+export const TOLD_ATTRACTION: [string, ...string[]] = [ATTRACTION_CHOICES[0].word, ...ATTRACTION_CHOICES.slice(1).map((choice) => choice.word), TOLD_OPEN];
 
 export const BLANK_ATTRACTION: Attraction = { genders: [], note: "" };
 
@@ -49,7 +55,13 @@ export function normalizeAttraction(raw: unknown): Attraction {
   const listed = Array.isArray(record.genders) ? record.genders : [];
   const genders = GENDERS.filter((gender) => listed.includes(gender));
   const note = typeof record.note === "string" ? record.note.replace(/\s+/g, " ").trim().slice(0, ATTRACTION_NOTE_MAX) : "";
-  return { genders: [...genders], note };
+  return { genders: [...genders], note, ...((record as { open?: unknown }).open === true ? { open: true } : {}) };
+}
+
+// Whether they are open to more than one partner (issue 642). Blank, and
+// every value written before the trait, is exclusive.
+export function openToMore(attraction: Attraction | null | undefined): boolean {
+  return attraction?.open === true;
 }
 
 export function attractionBlank(attraction: Attraction | null | undefined): boolean {
@@ -94,12 +106,22 @@ export function attractionFromTold(words: unknown, note?: unknown): Attraction |
     list.some((word) => [choice.word, choice.label, choice.gender].some((name) => textKey(name) === word)),
   ).map((choice) => choice.gender);
   const text = typeof note === "string" ? note.replace(/\s+/g, " ").trim().slice(0, ATTRACTION_NOTE_MAX) : "";
-  if (!genders.length && !text) {
+  const open = list.includes(textKey(TOLD_OPEN));
+  if (!genders.length && !text && !open) {
     return null;
   }
-  return { genders, note: text };
+  return { genders, note: text, ...(open ? { open: true } : {}) };
+}
+
+// The value an NPC row keeps when the DM tells it again (set_npc keeps the
+// first answer, so who they are drawn to never changes between characters):
+// a blank one takes the new answer, and openness only ever turns on, so a
+// world whose custom it is can say so after the first answer (issue 642).
+export function keptAttraction(existing: Attraction, told: Attraction | null | undefined): Attraction {
+  const kept = attractionBlank(existing) && told ? { genders: told.genders, note: told.note } : { genders: existing.genders, note: existing.note };
+  return openToMore(existing) || openToMore(told) ? { ...kept, open: true } : kept;
 }
 
 export function attractionJson(attraction: Attraction | null | undefined): string {
-  return attractionBlank(attraction) ? "" : JSON.stringify(normalizeAttraction(attraction));
+  return attractionBlank(attraction) && !openToMore(attraction) ? "" : JSON.stringify(normalizeAttraction(attraction));
 }

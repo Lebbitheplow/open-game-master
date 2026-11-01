@@ -252,6 +252,9 @@ export async function combatKit(world) {
         conditions: [],
         conditionMeta: {},
         exhaustion: 0,
+        // A hero who died in one test is not still dead, at full hit
+        // points, in the next one's fight.
+        deathSaves: null,
       });
     }
     diceLog();

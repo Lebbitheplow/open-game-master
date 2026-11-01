@@ -4,12 +4,13 @@
 import { campaignSeats, getCampaignById, latestSeq } from "@/lib/db/campaigns";
 import { consumeDmCoverTurn } from "@/lib/db/dm-cover";
 import { coverInEffect } from "@/lib/dm/delegation";
-import { dmQueuePausedFor, enqueueDmJob } from "@/lib/dm/queue";
+import { dmQueuePausedFor, enqueueDmJob, onDmQueueDrained } from "@/lib/dm/queue";
 import { listRecentMessages } from "@/lib/db/messages";
 import { getDmStatus, setDmStatus } from "@/lib/dm/status";
-import { tableWaitTurnStarted } from "@/lib/dm/table-wait";
+import { settleTableWait, tableWaitTurnStarted, waitsForTable } from "@/lib/dm/table-wait";
 import { startDmTurn } from "@/lib/dm/turn";
 import { hasHumanDm } from "@/lib/dm/viewer";
+import { lineAwaitsGm } from "@/lib/dm/ooc-question";
 import { registerDmWaker } from "@/lib/dm/wake";
 import { publishPersisted } from "@/lib/events";
 import { runsAiTurns } from "@/lib/workshop/kind";
@@ -89,15 +90,31 @@ export function requestDmTurn(campaignId: string): boolean {
 // DM through the registry instead of importing this module (cycle).
 registerDmWaker(requestDmTurn);
 
+// A table that waits for everyone holds a post made while the GM is busy for
+// the narration under way, which settles the table as it lands. Work that is
+// not a turn never does: a chapter closing, the arc being planned, an
+// out-of-character answer, a whisper answered in private. A line posted while
+// a chapter closed was never answered, though nothing was running after
+// (issue 636). So once the queue runs dry the table is read again: a post it
+// holds is answered now, or its clock is armed. The wait's own rules decide,
+// so a person's table, table talk, a break, a hold, the time between
+// sessions and a workshop still wake nothing.
+onDmQueueDrained((campaignId) => {
+  const campaign = getCampaignById(campaignId);
+  if (campaign && waitsForTable(campaign) && settleTableWait(campaignId)) {
+    requestDmTurn(campaignId);
+  }
+});
+
 // The AI just took over answering (a cover stretch began, or the table was
 // handed to it) and players may already be waiting on the person who had
-// the seat. Only a player message at the end of the transcript wakes it, so
-// a cover's handed-over answers are never spent on a table with nothing to
-// answer. requestDmTurn's own guards still apply.
+// the seat. Only a player's line that is still the newest wakes it, table
+// notes such as a chapter's close aside (src/lib/dm/ooc-question.ts
+// lineAwaitsGm), so a cover's handed-over answers are never spent on a table
+// with nothing to answer. requestDmTurn's own guards still apply.
 export function wakeForWaitingPlayers(campaignId: string, aiAnswersNow: boolean): boolean {
   if (!aiAnswersNow) {
     return false;
   }
-  const last = listRecentMessages(campaignId, 1).at(-1);
-  return last?.authorType === "player" ? requestDmTurn(campaignId) : false;
+  return lineAwaitsGm(listRecentMessages(campaignId, 20)) ? requestDmTurn(campaignId) : false;
 }

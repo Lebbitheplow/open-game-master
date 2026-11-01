@@ -14,7 +14,7 @@
 // Pure by design: no "@/" imports of anything with I/O, so the guard test
 // can load it directly.
 
-import { containsPhrase, findNamed, namesHolding } from "@/lib/language/text-logic";
+import { containsPhrase, findNamed, namesHolding, textKey } from "@/lib/language/text-logic";
 
 export type AdjudicationCategory =
   | "combat"
@@ -179,14 +179,78 @@ function selectAccepts(allowed: string[], value: string): boolean {
 
 const labelOf = (option: { label: string }) => [option.label] as const;
 
-// The option a select's value names by its whole label. The console shows
-// the labels, and odm_dm_catalog hands agents the same ones beside the
-// values: stabilize's How reads "Medicine check, DC 10" for the value
-// "check", and that label sent as it reads is the option. This runs ahead of
-// selectAccepts below: the label holds the word "check", so it would pass
-// that check as sent and then fail the handler's own list. A value, a typed
-// one (`other`), or anything short of a whole label stays as sent, for
-// checkArgs to judge.
+const valueOf = (option: { value: string }) => [option.value] as const;
+
+// The run of whole words two keyed texts both start with: "medicine check"
+// for "medicine check dc 15" and "medicine check dc 10".
+function sharedLead(a: string, b: string): string {
+  const left = a.split(" ");
+  const right = b.split(" ");
+  let count = 0;
+  while (count < left.length && count < right.length && left[count] === right[count]) {
+    count += 1;
+  }
+  return left.slice(0, count).join(" ");
+}
+
+// The options whose label starts with the words sent, which reach as far as
+// the option's own value: "Medicine check" is the leading words of
+// "Medicine check, DC 10" up to its value "check". One word of a label short
+// of the value ("medicine") leads to no option here; checkArgs answers it.
+function optionsLed(field: CatalogField, value: string): Array<{ value: string; label: string }> {
+  const sent = textKey(value);
+  return (field.options ?? []).filter(
+    (option) => sent !== "" && sharedLead(textKey(option.label), sent) === sent && containsPhrase(sent, option.value),
+  );
+}
+
+// A label's leading words that reach its option's value and go on past what
+// the label says: "Medicine check DC 15" for "Medicine check, DC 10".
+function pastValue(option: { value: string; label: string }, sent: string): boolean {
+  const lead = sharedLead(textKey(option.label), sent);
+  return lead !== textKey(option.value) && containsPhrase(lead, option.value);
+}
+
+// Whether a value speaks in a label's words rather than as a value: a run of
+// a label's words ("medicine", "healer's kit", "a grapple"), or a label's
+// leading words past its value. A handler's own list knows none of these,
+// so checkArgs refuses them with the values. A value that only adds its own
+// words to an option's ("fire damage" for "fire") speaks no label and stays
+// for selectAccepts.
+function speaksLabel(field: CatalogField, value: string): boolean {
+  const options = field.options ?? [];
+  const sent = textKey(value);
+  return namesHolding(options, value, labelOf).length > 0 || options.some((option) => pastValue(option, sent));
+}
+
+// The options a refusal names for words of their labels: a label the words
+// start ("medicine" for "Medicine check, DC 10"), a run of a label that
+// reaches its value ("healer's kit", "check, DC 10"), a run that names no
+// other option ("street" for "City street"), or a label's leading words past
+// its value. A run from a label's middle that holds another option's value
+// reads as that other option, and names neither: "a grapple" is the middle
+// of Escape's "Escape a grapple or a spell's hold", and it pointed a Grapple
+// at Escape. The refusal's list of values answers it.
+function optionsSpoken(field: CatalogField, value: string): Array<{ value: string; label: string }> {
+  const sent = textKey(value);
+  const options = field.options ?? [];
+  const holding = namesHolding(options, value, labelOf);
+  const spoken = (option: { value: string; label: string }) =>
+    sharedLead(textKey(option.label), sent) === sent ||
+    containsPhrase(value, option.value) ||
+    !options.some((other) => other !== option && containsPhrase(value, other.value));
+  return options.filter((option) => (holding.includes(option) && spoken(option)) || pastValue(option, sent));
+}
+
+// The option a select's value names by its label. The console shows the
+// labels, and odm_dm_catalog hands agents the same ones beside the values:
+// stabilize's How reads "Medicine check, DC 10" for the value "check", and
+// that label sent as it reads, or its leading words as far as the value
+// ("Medicine check"), is the option. A value in another case or spacing
+// ("Check", "use object") is that value. This runs ahead of selectAccepts
+// below: the label holds the word "check", so it would pass that check as
+// sent and then fail the handler's own list. A typed value (`other`), or
+// anything that names no one option, stays as sent, for checkArgs to judge.
 export function selectValue(field: CatalogField, value: unknown): unknown {
   if (field.kind !== "select" || !field.options || field.other || typeof value !== "string") {
     return value;
@@ -194,16 +258,22 @@ export function selectValue(field: CatalogField, value: unknown): unknown {
   if (field.options.some((option) => option.value === value)) {
     return value;
   }
-  return findNamed(field.options, value, labelOf)?.value ?? value;
+  const named = findNamed(field.options, value, labelOf) ?? findNamed(field.options, value, valueOf);
+  if (named) {
+    return named.value;
+  }
+  const led = optionsLed(field, value);
+  return led.length === 1 ? led[0].value : value;
 }
 
-// A select's refusal, with the options whose labels hold the words sent:
-// "medicine" is no option, and the answer says the Medicine check is "check".
+// A select's refusal, with the options whose labels the words sent speak
+// of: "medicine" is no option, and the answer says the Medicine check is
+// "check".
 function selectRefusal(field: CatalogField, value: unknown): string {
   const allowed = (field.options ?? []).map((option) => option.value);
-  const holding = typeof value === "string" ? namesHolding(field.options ?? [], value, labelOf) : [];
-  const hint = holding.length
-    ? ` For "${value}", send ${holding.map((option) => `"${option.value}" (${option.label})`).join(" or ")}.`
+  const spoken = typeof value === "string" ? optionsSpoken(field, value) : [];
+  const hint = spoken.length
+    ? ` For "${value}", send ${spoken.map((option) => `"${option.value}" (${option.label})`).join(" or ")}.`
     : "";
   return `${field.label} must be one of: ${allowed.join(", ")}.${hint}`;
 }
@@ -247,8 +317,16 @@ export function checkArgs(
     }
     if (field.kind === "select" && field.options && !field.other) {
       const allowed = field.options.map((option) => option.value);
-      if (typeof value !== "string" || !selectAccepts(allowed, value)) {
-        return selectRefusal(field, value);
+      // The option the value names by its label, as normalizeArgs reads it
+      // (src/lib/dm/invoke.ts). A label's words that name no one option are
+      // refused here with the value to send, never left to the handler's
+      // schema, whose list holds only the values.
+      const chosen = selectValue(field, value);
+      if (
+        typeof chosen !== "string" ||
+        (!allowed.includes(chosen) && (speaksLabel(field, chosen) || !selectAccepts(allowed, chosen)))
+      ) {
+        return selectRefusal(field, chosen);
       }
     }
   }

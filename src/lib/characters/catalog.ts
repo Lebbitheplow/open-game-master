@@ -116,6 +116,14 @@ export function raceGrantsFor(raceId: string, authors?: Authors): RaceGrants | n
   return raceCandidatesFor(raceId, authors)[0] ?? null;
 }
 
+// Every background a table's characters may come from: the bundled ones and
+// the content pack's, with the table's workshop backgrounds. Archived ones
+// still answer for a character already made from them.
+export function offeredBackgrounds(authors?: Authors, includeArchived = true): BackgroundGrants[] {
+  const rows = listBackgrounds({ limit: 200, userIds: authorIds(authors), includeArchived }) as ContentRow[];
+  return mergedBackgroundOptions(rows);
+}
+
 export function backgroundGrantsFor(
   backgroundId: string,
   authors?: Authors,
@@ -124,8 +132,7 @@ export function backgroundGrantsFor(
   if (!id) {
     return null;
   }
-  const rows = listBackgrounds({ limit: 200, userIds: authorIds(authors), includeArchived: true }) as ContentRow[];
-  const options = mergedBackgroundOptions(rows);
+  const options = offeredBackgrounds(authors);
   return (
     options.find((option) => option.id === id) ??
     options.find((option) => textKey(option.id) === textKey(id)) ??

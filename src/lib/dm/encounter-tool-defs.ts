@@ -94,7 +94,7 @@ export const enemyAttackTool: ToolDef = {
   function: {
     name: "enemy_attack",
     description:
-      "Resolve an enemy's attack on a character, on the enemy's own turn: once end_turn hands it to you (or it acts first in the round); before its turn comes it only reacts or takes a legendary action. The server rolls to-hit from the enemy's real stat block against the target's real AC and applies real damage, and reads what bears on the roll (conditions, exhaustion, light, Pack Tactics, Sunlight Sensitivity, Sanctuary, Chill Touch). Never invent an enemy's numbers or use request_roll for enemy attacks.",
+      "Resolve an enemy's attack on a character, on the enemy's own turn: once end_turn hands it to you (or it acts first in the round); before its turn comes it only reacts or takes a legendary action. The server rolls it from the enemy's stat block against the target's real AC, applies the damage, and reads what bears on the roll (conditions, light, Pack Tactics, Sanctuary). Never invent an enemy's numbers or use request_roll for enemy attacks.",
     parameters: {
       type: "object",
       additionalProperties: false,
@@ -120,6 +120,11 @@ export const enemyAttackTool: ToolDef = {
             "Where the advantage or disadvantage comes from; only 'other' counts.",
         },
         advantageReason: { type: "string", description: "The circumstance behind advantage, in a few words." },
+        nonlethal: {
+          type: "boolean",
+          description: "Melee, to take them alive: dropped to 0 HP they are stable, not dying.",
+        },
+        targetMount: { type: "boolean", description: "At the target's mount instead." },
       },
       required: ["enemyId", "targetCharacterId"],
     },

@@ -72,6 +72,7 @@ export const NUMBERED_CONDITION_EFFECTS: ConditionEffectRow[] = [
       abilityToDamage: false,
       ranged: false,
       bonusAction: false,
+      wholeAction: true,
       upcast: { baseLevel: 2, every: 2, dice: "1d6" },
     },
   },

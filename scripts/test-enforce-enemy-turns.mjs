@@ -119,8 +119,8 @@ const ARCHER = [
 
 // The lead ends Scout's turn, the pointer walks past the enemy, and "Play
 // the rest for me" hands the enemy's turn to the server.
-async function playTheRest(enemy, at) {
-  kit.setEnemy(enemy.id, { stats: { attacks: ARCHER } });
+async function playTheRest(enemy, at, stats = { attacks: ARCHER }) {
+  kit.setEnemy(enemy.id, { stats });
   kit.place(scout.id, 2, 2);
   kit.place(watcher.id, 2, 0);
   kit.place(enemy.id, ...at);
@@ -172,6 +172,85 @@ await test("Played for the lead, a prone enemy that could walk into melee standi
   assert.match(made[0].detail, /Shortbow/);
   assert.ok(!kit.enemy(enemy.id).conditions.includes("prone"), "it stood to shoot");
   assert.deepEqual([kit.token(enemy.id).x, kit.token(enemy.id).y], [8, 2]);
+});
+
+// A thug (SRD 5.1): "The thug makes two melee attacks", with its Mace; its
+// Heavy Crossbow, at 100/400 ft., is no part of them and has the Loading
+// property.
+const THUG = {
+  attacks: [
+    { name: "Mace", toHit: 4, damage: "1d6+2", type: "bludgeoning", mode: "melee", reach: 5 },
+    { name: "Heavy Crossbow", toHit: 2, damage: "1d10", type: "piercing", mode: "ranged", range: { normal: 100, long: 400 } },
+  ],
+  attacksPerTurn: 2,
+  traits: ["Multiattack: The thug makes two melee attacks."],
+};
+
+await test("Played for the lead, a thug that cannot reach anyone in melee fires its Heavy Crossbow once, not twice for its two melee attacks.", async () => {
+  const [enemy] = await stage();
+  const before = enemyRolls(enemy).length;
+  await playTheRest(enemy, [11, 2], THUG);
+  const made = enemyRolls(enemy).slice(0, enemyRolls(enemy).length - before);
+  assert.equal(made.length, 1, `the thug made ${made.length} attacks`);
+  assert.match(made[0].detail, /Heavy Crossbow/);
+});
+
+// A cult fanatic's "two melee attacks" count no thrown dagger, and a
+// gladiator's "three melee attacks or two ranged attacks" throw two spears
+// (SRD 5.1). A dagger or a spear is melee or thrown by where its target
+// stands, so the plan held both swings, and the fanatic threw two.
+const thrower = (name, multiattack, count, weapon) => ({
+  attacks: [{ name: weapon, toHit: 4, damage: "1d4+2", type: "piercing", mode: "both", reach: 5, range: { normal: 20, long: 60 } }],
+  attacksPerTurn: count,
+  traits: [`Multiattack: The ${name} makes ${multiattack}.`],
+});
+
+await test("Played for the lead, a cult fanatic out of melee reach throws one dagger, not two for its two melee attacks; a gladiator throws two spears, not three.", async () => {
+  for (const [stats, weapon, expected] of [
+    [thrower("fanatic", "two melee attacks", 2, "Dagger"), "Dagger", 1],
+    [thrower("gladiator", "three melee attacks or two ranged attacks", 3, "Spear"), "Spear", 2],
+  ]) {
+    const [enemy] = await stage();
+    const before = enemyRolls(enemy).length;
+    await playTheRest(enemy, [11, 2], stats);
+    const made = enemyRolls(enemy).slice(0, enemyRolls(enemy).length - before);
+    assert.equal(made.length, expected, `the ${weapon} was thrown ${made.length} times`);
+    assert.ok(made.every((roll) => roll.detail.includes(weapon)));
+  }
+});
+
+// A bandit captain (SRD 5.1): "three melee attacks: two with its scimitar
+// and one with its dagger. Or the captain makes two ranged attacks with its
+// daggers." Both routines were read, but a dagger asked for took the first
+// that holds it, so out of reach the captain walked up and threw one dagger
+// after two scimitar swings that could not land.
+const CAPTAIN = {
+  attacks: [
+    { name: "Scimitar", toHit: 5, damage: "1d6+3", type: "slashing", mode: "melee", reach: 5 },
+    { name: "Dagger", toHit: 5, damage: "1d4+3", type: "piercing", mode: "both", reach: 5, range: { normal: 20, long: 60 } },
+  ],
+  attacksPerTurn: 3,
+  routines: [[{ attack: "Scimitar", count: 2 }, { attack: "Dagger", count: 1 }], [{ attack: "Dagger", count: 2 }]],
+  traits: ["Multiattack: The captain makes three melee attacks: two with its scimitar and one with its dagger. Or the captain makes two ranged attacks with its daggers."],
+};
+
+await test("Played for the lead, a bandit captain out of melee reach throws its two daggers; one that can walk in swings its scimitar twice and its dagger once.", async () => {
+  for (const [at, expected] of [[[11, 2], ["Dagger", "Dagger"]], [[6, 2], ["Scimitar", "Scimitar", "Dagger"]]]) {
+    const [enemy] = await stage();
+    const before = enemyRolls(enemy).length;
+    await playTheRest(enemy, at, CAPTAIN);
+    const made = enemyRolls(enemy).slice(0, enemyRolls(enemy).length - before);
+    assert.deepEqual(made.map((roll) => /Scimitar|Dagger/.exec(roll.detail)?.[0]).sort(), [...expected].sort(), `from ${at}: ${made.map((roll) => roll.detail).join(" | ")}`);
+  }
+});
+
+await test("Played for the lead, a thug that can walk into melee still swings its Mace twice.", async () => {
+  const [enemy] = await stage();
+  const before = enemyRolls(enemy).length;
+  await playTheRest(enemy, [6, 2], THUG);
+  const made = enemyRolls(enemy).slice(0, enemyRolls(enemy).length - before);
+  assert.equal(made.length, 2, `the thug made ${made.length} attacks`);
+  assert.ok(made.every((roll) => /Mace/.test(roll.detail)));
 });
 
 // ---- initiative at the start (N:S15, N:T12) ----
@@ -249,11 +328,15 @@ await test("A mounted rider moves at the mount's speed, and mounting costs half 
   kit.giveTurn(scout.id);
   const mounted = await world.invoke("mount_up", { characterId: scout.id, mount: "Riding horse" });
   assert.equal(mounted.ok, true, mounted.error);
-  // 60 ft is 12 squares, less 3 for mounting.
-  const far = await walk(scout, 1, 11);
-  assert.notEqual(far.status, 200, "mounting cost nothing");
+  // Mounting costs half the rider's own 30 ft: 3 squares of this turn's move.
+  assert.equal(kit.token(scout.id).movedThisRound, 3, "mounting cost nothing");
+  // 60 ft is 12 squares, and the controlled horse's own Dash makes it 24
+  // (SRD 5.1, Controlling a Mount: its options are Dash, Disengage and
+  // Dodge), less 3 for mounting.
   const ride = await walk(scout, 1, 10);
   assert.equal(ride.status, 200, "the rider moved at their own speed, not the horse's");
+  // Mounting and dismounting are once during a move (SRD 5.1): the next turn.
+  kit.freshTurn();
   await world.invoke("dismount", { characterId: scout.id });
 });
 

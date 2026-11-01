@@ -99,6 +99,61 @@ export function advanceOrder(
   return null;
 }
 
+// The line the table reads as a fight ends (issue 713): that it is over,
+// and who is still dying, whose death saves now go on with game time
+// (src/lib/dm/death.ts) until somebody stabilizes them. Ending a fight
+// posted nothing, and the saves went on with nobody told.
+export function fightOverLine(stillDying: string[]): string {
+  const names = [...new Set(stillDying)];
+  if (!names.length) {
+    return "The fight is over.";
+  }
+  const listed = names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+  return `The fight is over. ${listed} ${names.length === 1 ? "is" : "are"} still dying: their death saves roll as time passes until they are stabilized.`;
+}
+
+// What of a pass from fromIndex to toIndex waits for the enemies it walks
+// past (issue 713). Those enemies take their turns after the move (in the
+// DM turn that follows it, or played by the person running the table:
+// src/lib/dm/enemies-due.ts), so the pass rolled the dying beyond them at
+// once and turned the round over before they had gone: a hero's death save
+// came ahead of the goblins earlier in the order, and the round header
+// showed the next round while this one's enemies were still to act. SRD
+// 5.1: a creature at 0 hit points saves at the start of each of its turns,
+// and the round is over once everyone in the order has had one.
+// Once the walk has passed an enemy who will act (`acts`): a dying
+// character after it (`dying`) rolls once the enemies have gone, and the
+// walk stops at the end of the order (`stopsAtWrap`), its rest walked then,
+// so the round turns over after them. The enemies still act together before
+// the next character who can act; only the saves and the round wait.
+export function passWaits(
+  order: OrderEntry[],
+  fromIndex: number,
+  toIndex: number,
+  acts: (entry: OrderEntry) => boolean,
+  dying: (entry: OrderEntry) => boolean,
+): { stopsAtWrap: boolean; dying: string[] } {
+  const waiting: string[] = [];
+  let enemyFirst = false;
+  let index = fromIndex;
+  for (let steps = 0; steps < order.length; steps += 1) {
+    if (index + 1 >= order.length && enemyFirst) {
+      return { stopsAtWrap: true, dying: waiting };
+    }
+    index = (index + 1) % order.length;
+    if (index === toIndex) {
+      break;
+    }
+    const entry = order[index];
+    if (entry.kind === "enemy" && acts(entry)) {
+      enemyFirst = true;
+    } else if (enemyFirst && entry.kind === "pc" && dying(entry)) {
+      waiting.push(entry.characterId);
+    }
+  }
+  return { stopsAtWrap: false, dying: waiting };
+}
+
 // Inserts new initiative entries into an existing sorted order without
 // moving the pointer off the current combatant. Each entry slots by
 // descending initiative (after existing equal counts); insertions at or

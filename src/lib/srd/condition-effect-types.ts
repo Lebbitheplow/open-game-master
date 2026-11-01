@@ -20,6 +20,11 @@ export type GrantedAttack = {
   abilityToDamage: boolean;
   ranged: boolean;
   bonusAction: boolean;
+  // The attack is the whole action, not a swing of the Attack action: Flame
+  // Blade's "you can use your action to make a melee spell attack" (SRD 5.1).
+  // Extra Attack adds no second strike, and Haste's one weapon attack is no
+  // spell attack to spend on it.
+  wholeAction?: boolean;
   // The first attack comes with the activation itself (Starry Form's Archer,
   // Tentacle of the Deep, Spiritual Weapon: "when you cast the spell, you can
   // make..."), so it costs no second bonus action. The number is the
@@ -117,6 +122,10 @@ export type ConditionEffectRow = {
   // An action or a bonus action on its turn, not both, and one attack at
   // most (slow): the turn budget holds it (src/lib/dm/action-budget.ts).
   actionOrBonus?: boolean;
+  // The holder's action on each of its turns is spent before the turn
+  // begins (a spell of a minute or more being cast:
+  // src/lib/dm/long-casting-logic.ts).
+  holdsAction?: boolean;
   // Extra dice the holder's weapon and spell attacks deal on a hit
   // (divine favor +1d4 radiant, hunter's mark +1d6 of the weapon's type,
   // enlarged +1d4). `type` "" = the attack's own damage type. A leading "-"

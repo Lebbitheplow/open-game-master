@@ -356,6 +356,7 @@ export function SidePanelRouter({
           campaign?.gameSettings?.dmAssist,
         )}
         cover={dmCover ?? null}
+        bondsKey={relationshipsVersion}
         variantRules={{
           powerfulCritical: campaign?.gameSettings?.variantRules?.powerfulCritical ?? false,
           criticalDamageMods: campaign?.gameSettings?.variantRules?.criticalDamageMods ?? false,

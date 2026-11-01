@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
-import type { CampaignMember, SessionUser } from "@/lib/campaign-types";
+import { isHaltedTurnNotice, type CampaignMember, type SessionUser } from "@/lib/campaign-types";
 import type { CoordinationPhase } from "@/lib/dm/coordination-logic";
 import type { TableWaitView } from "@/lib/dm/table-wait-logic";
 import { coalesceRefresh } from "@/app/campaigns/[campaignId]/coalesce";
@@ -1130,9 +1130,10 @@ export function campaignReducer(state: CampaignState, action: Action): CampaignS
 }
 
 // A DM passage, or the system notice that a turn was halted, ends the turn
-// and with it the streaming draft.
+// and with it the streaming draft. A lair action the turn's tool posts is
+// linked to the turn as well, and the turn runs on past it.
 function endsDmTurn(message: CampaignMessage): boolean {
-  return message.authorType === "dm" || (message.authorType === "system" && Boolean(message.dmTurnId));
+  return message.authorType === "dm" || isHaltedTurnNotice(message);
 }
 
 const PERSISTED_EVENTS = [
@@ -1321,6 +1322,19 @@ export function refreshesBattleMap(eventType: string, boardUp: boolean): boolean
     eventType === "roster_updated" ||
     (eventType === "sheet_updated" && boardUp)
   );
+}
+
+// Events after which a seat pulls the encounter projection again, coalesced.
+// - encounter_updated: only the seats allowed real numbers need their own
+//   projection; for everyone else the stream payload already applied.
+// - roll_result: an attack roll is when a reaction becomes possible (the
+//   engine's last-hit record) and when a turn's count moves, and an enemy's
+//   attack publishes no encounter_updated. Every seat pulls it, the GM's too:
+//   a GM who plays heroes at a table they run (a workshop test fight) is
+//   offered a hit hero's reaction under the monsters' hand, and without the
+//   pull it showed only after a reload.
+export function refreshesEncounter(eventType: string, enemyNumbers: boolean): boolean {
+  return eventType === "roll_result" || (eventType === "encounter_updated" && enemyNumbers);
 }
 
 // Events the stream cannot apply by itself, after which the snapshot is read
@@ -1723,16 +1737,7 @@ export function useCampaignStream(campaignId: string) {
               dispatch({ type: "mapPing", ping });
             }
           }
-          // Only the seats allowed real numbers need their own projection;
-          // for everyone else the stream payload already applied above.
-          if (eventType === "encounter_updated" && capsRef.current.enemyNumbers) {
-            void refreshEncounter();
-          }
-          // An attack roll is when a reaction becomes possible (the engine's
-          // last-hit record) and when a turn's count moves; the projection
-          // carrying both is pulled again, coalesced, so the Hand's reaction
-          // prompt and its pips arrive with the roll.
-          if (eventType === "roll_result" && !capsRef.current.enemyNumbers) {
+          if (refreshesEncounter(eventType, capsRef.current.enemyNumbers)) {
             void refreshEncounter();
           }
           if (

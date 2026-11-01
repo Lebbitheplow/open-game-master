@@ -14,7 +14,7 @@ import { getSheetById } from "@/lib/db/sheets";
 import { sizeForRace } from "@/lib/srd";
 import { barredByShell, barredCells, ignoresZoneSteps, moverSpellTraits, withBarred, withEdges, type ZoneMover } from "@/lib/battlemap/zones-movers";
 import { effectiveTerrain, type LightZone } from "@/lib/battlemap/scene";
-import { tileIndex, type MoveTraits, type XY } from "@/lib/battlemap/types";
+import { tileIndex, type MapLight, type MoveTraits, type XY } from "@/lib/battlemap/types";
 import {
   missileDeflectedBy,
   silentAt,
@@ -98,6 +98,21 @@ export function lightsWithZones(map: BattleMap): LightZone[] {
   return zones.length ? [...(map.zones ?? []), ...zoneLights(zones, map.width)] : (map.zones ?? []);
 }
 
+// The lights the lit set is cast from: the board's own, and a spell area's
+// dim light past its bright squares, shed from the point it was laid at
+// (Daylight: "The sphere is bright light and sheds dim light for an
+// additional 60 feet", issue #570). Without it the sphere's edge was where
+// the dark began.
+export function lightSourcesWithZones(map: BattleMap): MapLight[] {
+  const glows = zonesOf(map).flatMap((zone) => {
+    const row = zoneRowFor(zone);
+    return row?.light && row.dimFeet && zone.cells.length
+      ? [{ x: zone.origin.x, y: zone.origin.y, brightRadius: Math.floor(row.feet / 5), dimRadius: Math.floor((row.feet + row.dimFeet) / 5) }]
+      : [];
+  });
+  return glows.length ? [...map.lights, ...glows] : map.lights;
+}
+
 // The terrain a viewer's sight is cast over: clouds and opaque walls stop
 // it, a wall of force does not, magical darkness does unless the viewer
 // sees into it.
@@ -145,6 +160,13 @@ export function zoneCoverBetween(encounterId: string, attackerRef: string, targe
   const from = at ?? (map ? getTokenByRef(map.id, attackerRef) : null);
   const to = map ? getTokenByRef(map.id, targetRef) : null;
   return map && from && to ? zoneCover(zonesOf(map), map.width, from, to) : 0;
+}
+
+// The same from a square an effect starts at (a Fireball's point).
+export function zoneCoverFromPoint(encounterId: string, at: { x: number; y: number }, targetRef: string): 0 | 5 {
+  const map = getBattleMapForEncounter(encounterId);
+  const to = map ? getTokenByRef(map.id, targetRef) : null;
+  return map && to ? zoneCover(zonesOf(map), map.width, at, to) : 0;
 }
 
 // A Wind Wall between a shooter and its target (SRD 5.1): arrows, bolts and

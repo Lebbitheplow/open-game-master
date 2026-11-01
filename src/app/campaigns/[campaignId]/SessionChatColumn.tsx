@@ -4,6 +4,8 @@ import { useMemo, useState, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { offerCorrectionReason } from "@/lib/correction-offer";
 import { MessageList } from "@/app/campaigns/[campaignId]/MessageList";
+import { HaltedTurnBanner } from "@/app/campaigns/[campaignId]/HaltedTurnBanner";
+import { stagedHaltedTurn } from "@/lib/chronicle-logic";
 import { ReportDialog, type ReportTarget } from "@/app/campaigns/[campaignId]/ReportDialog";
 import { ItemProposalBar } from "@/app/campaigns/[campaignId]/ItemProposalBar";
 import { RulingBar } from "@/app/campaigns/[campaignId]/RulingBar";
@@ -94,6 +96,10 @@ export function SessionChatColumn({
   // question being answered, so repeating it in the strip is the same news
   // twice.
   const visibleUtilityCalls = utilityCalls.filter((call) => call.kind !== "ask");
+  // While the board holds the stage the transcript is out of sight, and the
+  // chronicle leaves a halted turn out, so its notice and Retry sit here.
+  const transcriptShown = !stage || showTranscript;
+  const halted = useMemo(() => (transcriptShown ? null : stagedHaltedTurn(messages)), [transcriptShown, messages]);
 
   return (
     <div className={cn("cine-chat min-w-0 flex-1 flex-col", visible ? "flex" : "hidden lg:flex", stage && "cine-chat-staged")}>
@@ -279,6 +285,11 @@ export function SessionChatColumn({
           the Ask draft or the Hand. */}
       <div className="cine-fight-controls">
       <div className="session-compose-support">
+      {halted?.dmTurnId ? (
+        <div className="mx-3 mb-2" data-staged-halt="">
+          <HaltedTurnBanner campaignId={campaignId} turnId={halted.dmTurnId} content={halted.content} canRetry={steersStory} />
+        </div>
+      ) : null}
       <RulingBar
         campaignId={campaignId}
         disputes={state.disputes}
@@ -304,6 +315,9 @@ export function SessionChatColumn({
         open={askOpen}
         onOpenChange={onAskOpenChange}
         onAsked={refreshAsks}
+        sheets={sheets}
+        cast={state.cast}
+        places={locations}
       />
 
       {/* Directly above the composer, so the answer to "why is nothing

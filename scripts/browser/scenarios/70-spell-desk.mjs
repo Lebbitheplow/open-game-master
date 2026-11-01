@@ -38,11 +38,11 @@ export default {
     // desk keeps the compact sizes.
     const tall = async (locator, what) => {
       if (t.viewport !== "phone") return;
-      // Measured once its entrance has finished: mid-pop a loaded run read
-      // the swap's Cancel a fraction under 40px.
-      await locator.evaluate((node) => Promise.all(node.getAnimations({ subtree: true }).map((animation) => animation.finished))).catch(() => undefined);
-      const box = await locator.boundingBox();
-      if (!box || box.height < 40) found.push(`${what} is ${Math.round(box?.height ?? 0)}px tall on a phone, under 40px`);
+      // The layout height, which no transform changes: the swap's pop-in
+      // scales an ancestor, and a bounding box read mid-pop came out a
+      // fraction under 40px on a loaded run.
+      const height = await locator.evaluate((node) => (node instanceof HTMLElement ? node.offsetHeight : 0)).catch(() => 0);
+      if (height < 40) found.push(`${what} is ${height}px tall on a phone, under 40px`);
     };
 
     // The filters are the kit's pickers, each saying its choice; a school

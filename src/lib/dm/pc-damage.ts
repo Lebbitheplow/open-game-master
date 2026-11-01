@@ -44,6 +44,7 @@ import { summonAfterDamage } from "@/lib/dm/summon-store";
 import { absorbByWard } from "@/lib/dm/arcane-ward";
 import { afflictionStress } from "@/lib/dm/afflictions";
 import type { ToolResult } from "@/lib/dm/tool-errors";
+import { BURNING_OIL_DAMAGE, COVERED_IN_OIL, oilCatches } from "@/lib/srd/gear-weapons";
 
 export type PcDamageInput = {
   // What was rolled or sent, before resistance.
@@ -51,6 +52,9 @@ export type PcDamageInput = {
   type?: string;
   // A critical hit: two death save failures on a character already at 0.
   crit?: boolean;
+  // A melee blow meant to knock out: dropped to 0, the character is stable
+  // (SRD 5.1, Knocking a Creature Out).
+  nonlethal?: boolean;
   // From a spell, a magic weapon or strikes that count as magical, so
   // resistance to nonmagical attacks does not apply.
   magical?: boolean;
@@ -138,6 +142,22 @@ export function applyPcDamage(
   if (sheet.deathSaves?.dead) {
     return { error: `${sheet.name} is already dead.`, retry: true };
   }
+  // Oil (SRD 5.1 Adventuring Gear): "If the target takes any fire damage
+  // before the oil dries (after 1 minute), the target takes an additional 5
+  // fire damage from the burning oil." The coat burns once and is gone, on a
+  // character (a turncoat, or a party member a turncoat's flask struck) as
+  // on an enemy (enemy-damage.ts); the 5 meets their defences with the rest.
+  const fireBlow = /\bfire\b/i.test([input.type ?? "", ...(input.parts ?? []).map((part) => part.type)].join(" "));
+  if (oilCatches(sheet.conditions, fireBlow, amount)) {
+    const dried = removeConditions(sheet.conditions, sheet.conditionMeta, [COVERED_IN_OIL]);
+    const unoiled = patchSheet(sheet.id, { conditions: dried.conditions, conditionMeta: dried.meta }) ?? sheet;
+    const burnt = applyPcDamage(campaign, turnId, unoiled, {
+      ...input,
+      amount: amount + BURNING_OIL_DAMAGE,
+      ...(input.parts?.length ? { parts: [...input.parts, { amount: BURNING_OIL_DAMAGE, type: "fire" }] } : {}),
+    });
+    return burnt.error ? burnt : { ...burnt, burningOil: `The oil on ${sheet.name} catches: ${BURNING_OIL_DAMAGE} more fire damage, and the oil is burnt away.` };
+  }
   // An abjurer's Arcane Ward takes the blow first, as it lands: the ward has
   // none of the wizard's own resistances, immunities or vulnerabilities
   // (Sage Advice Compendium; arcane-ward.ts).
@@ -193,7 +213,7 @@ export function applyPcDamage(
     };
   }
   // Fire burns away the web around them (zone-cast.ts).
-  if (/\bfire\b/i.test([input.type ?? "", ...(input.parts ?? []).map((part) => part.type)].join(" "))) {
+  if (fireBlow) {
     burnWebUnder(campaign, sheet.id);
   }
   // Wild Shape: the beast's hit points take the blow first. While the form
@@ -352,7 +372,7 @@ export function applyPcDamage(
   // already down adds automatic failures; massive damage kills.
   // Disintegrate leaves nothing to be dying: the drop is death itself.
   const fatal = input.disintegrate && math.dropped ? { ...math, overkill: Math.max(math.overkill, effectiveMaxHp(sheet)) } : math;
-  const deathInfo = applyDamageDeathHook(campaign, turnId, sheet, fatal, input.crit === true);
+  const deathInfo = applyDamageDeathHook(campaign, turnId, sheet, fatal, input.crit === true, input.nonlethal === true && !input.disintegrate);
   // Unconscious at 0 is incapacitated: a grapple they held ends.
   const letGo = math.dropped ? releaseGrapplesHeldBy(campaign, sheet.id) : [];
   // Concentration: damage forces the CON save server-side. A form that broke

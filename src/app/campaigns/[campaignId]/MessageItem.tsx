@@ -30,7 +30,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { TranscriptSheet } from "@/app/campaigns/[campaignId]/departing";
 import { HaltedTurnBanner } from "@/app/campaigns/[campaignId]/HaltedTurnBanner";
 import { InlineMessageEditor } from "@/app/campaigns/[campaignId]/InlineMessageEditor";
-import { DmContent, MediaPlaceholder } from "@/app/campaigns/[campaignId]/MessageContent";
+import { DmContent, MediaPlaceholder, RolledNote } from "@/app/campaigns/[campaignId]/MessageContent";
 import {
   MessageActions,
   toContextItems,
@@ -210,6 +210,10 @@ export const MessageItem = memo(function MessageItem({
     if (message.shopId) {
       const shopId = message.shopId;
       return <ShopOpenLine content={message.content} onBrowse={onBrowseShop ? () => onBrowseShop(shopId) : undefined} />;
+    }
+    // A person's adjudication: its rolls as cards, then its line (issue 713).
+    if (message.rollIds?.length) {
+      return <RolledNote content={message.content} rollIds={message.rollIds} glyph={message.glyph} rollsById={rollsById} sheetsById={sheetsById} />;
     }
     return <SystemMessage content={message.content} glyph={message.glyph} />;
   }

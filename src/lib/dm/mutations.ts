@@ -1,4 +1,4 @@
-import { healerKitUse } from "@/lib/dm/stabilize";
+import { healerKitStabilize, healerKitUse } from "@/lib/dm/stabilize";
 import { conductGate } from "@/lib/dm/party-conduct";
 import { shadowExperience } from "@/lib/db/companion-departures";
 import { ALIGNMENT_CODES } from "@/lib/dm/companion-values-logic";
@@ -79,6 +79,7 @@ import {
 } from "@/lib/dm/condition-logic";
 import { normalizeAbility } from "@/lib/dm/arg-coerce";
 import { breakConcentration } from "@/lib/dm/concentration";
+import { CASTING, castingHeldBy } from "@/lib/dm/long-casting-logic";
 import {
   computePurchase,
   computeUseItem,
@@ -110,6 +111,8 @@ import { ITEM_TAGS } from "@/lib/schemas/item-tags";
 import { holdsFeature, isConditionNamed, isNamed } from "@/lib/srd/feature-names";
 import { unknownSheetRef } from "@/lib/dm/rolls";
 import { classWords } from "@/lib/sheet-words";
+import { healCeiling } from "@/lib/dm/afflictions";
+import { spreadGear } from "@/lib/dm/gear-zones";
 
 // DM stat authority: the model changes sheets ONLY through these tools.
 // Every mutation is server-clamped, audit-logged, and published live.
@@ -149,21 +152,21 @@ const characterProperty = {
 const ITEM_SRD_NAME_PROPERTY = {
   type: "string",
   description:
-    "English SRD or pack name ('Potion of Healing') when item is the table's own; omit for invented loot. E.g. 'Longsword' for item 'Spada lunga': the server reads what it does from that item. A magic weapon or armor built on a chosen base is named with it as the SRD writes it ('Flame Tongue Scimitar', 'Vicious Rapier', 'Mithral Half Plate', 'Chain Mail of Fire Resistance'). Also omit when item already is that English name, and while it is unidentified.",
+    "English SRD or pack name ('Potion of Healing') when item is the table's own; omit for invented loot. The server reads what it does from that name. A magic weapon or armor names its base as the SRD writes it ('Flame Tongue Scimitar', 'Mithral Half Plate'). Also omit when item already is that English name, and while it is unidentified.",
 };
 
 const ITEM_TAGS_PROPERTY = {
   type: "array",
   items: { type: "string", enum: [...ITEM_TAGS] },
   description:
-    "What the item is beyond its SRD or pack row; all of it for invented loot, [] when none fits. The server reads these for potions, scrolls, rations and water, light, foci, ammunition, silvered or adamantine weapons, and treasure. For an SRD or pack item, only what it adds to its row: a silvered longsword is srdName 'Longsword' with tags ['silvered']; omit them otherwise. Omit while it is unidentified.",
+    "What the item is beyond its SRD or pack row; all of it for invented loot, [] when none fits. For an SRD or pack item, only what it adds to its row: a silvered longsword is srdName 'Longsword' with tags ['silvered']; omit them otherwise. Omit while it is unidentified.",
 };
 
 // The spell a spell scroll holds (src/lib/dm/consumables.ts).
 const ITEM_SPELL_PROPERTY = {
   type: "string",
   description:
-    "A spell scroll only (tags with scroll): the spell it holds, as the spell lists name it ('Fireball'). Use the spell's name whatever the scroll is called. Reading it casts that spell. Omit while it is unidentified.",
+    "A spell scroll only (tags with scroll): the spell it holds, as the spell lists name it ('Fireball'). Use the spell's name whatever the scroll is called. Omit while it is unidentified.",
 };
 
 // What one is worth, for a thing the content pack does not price
@@ -173,7 +176,7 @@ const ITEM_WORTH_PROPERTY = {
   minimum: 0.01,
   maximum: 100000,
   description:
-    "Gold pieces one is worth, for a thing no SRD or pack row prices: a gem, a trade good, invented loot. A gem is 10 to 5,000 gp, an art object 25 to 7,500 gp. The server prices its sale by it (full for treasure, half for anything else) and a spell's costly material by it. Write item without its worth. Omit for an SRD item, and while it is unidentified.",
+    "Gold pieces one is worth, for a thing no SRD or pack row prices: a gem, a trade good, invented loot. A gem is 10 to 5,000 gp, an art object 25 to 7,500 gp; the server prices a sale and a spell's costly material by it. Write item without its worth. Omit for an SRD item, and while it is unidentified.",
 };
 
 function tool(name: string, description: string, extra: Record<string, unknown>, required: string[]): ToolDef {
@@ -194,7 +197,7 @@ function tool(name: string, description: string, extra: Record<string, unknown>,
 
 export const mutationTools: ToolDef[] = [
   applyDamageTool,
-  tool("heal", "Restore a character's HP, capped at their max, from plain healing or a HEALING SPELL. For a spell the server casts it (the caster must have the spell; the slot and the action are spent), rolls the spell's real dice, adds the caster's ability modifier, and shows the dice card.", {
+  tool("heal", "Restore a character's HP, capped at their max, from plain healing or a HEALING SPELL. For a spell the server casts it (the slot and the action are spent) and rolls its real dice.", {
     amount: { type: "integer", minimum: 1, maximum: 200, description: "Hit points the server rolled this turn, for healing that is not a spell." },
     dice: { type: "string", description: "Dice the server rolls for healing that is not a spell ('2d4+2'). Instead of amount." },
     spell: {
@@ -218,7 +221,7 @@ export const mutationTools: ToolDef[] = [
   }, []),
   tool(
     "stabilize",
-    "Stabilize a DYING character at 0 HP without healing. It takes the healer's action: with method 'check' the server rolls their DC 10 Wisdom (Medicine) check; 'kit' (one of the ten uses of the healer's kit they carry) and 'spell' (Spare the Dying) need no check. On a battle map the healer must be within 5 feet. A stable character stops making death saves, stays unconscious at 0 HP, and regains 1 HP after 1d4 hours.",
+    "Stabilize a DYING character at 0 HP without healing. It takes the healer's action, within 5 feet on a battle map: 'check' rolls their DC 10 Medicine check; 'kit' (a use of a healer's kit they carry) and 'spell' (Spare the Dying) need none. A stable character stops making death saves and stays unconscious at 0 HP.",
     {
       healerId: { type: "string", description: "Whoever tends them: exact characterId from GAME STATE." },
       method: {
@@ -291,7 +294,7 @@ export const mutationTools: ToolDef[] = [
   ...resourceTools,
   setConditionTool,
   clearConditionTool,
-  tool("use_spell_slot", "Cast a spell that no other tool resolves (a utility spell, a summoning, a ritual): the server spends the slot and tracks concentration. It checks the caster holds the spell and can cast it now, and spends the slot of the spell's level (or the higher one named), its casting time from the turn and any costly material; a new concentration spell ends the previous one and its effects. A spell that leaves an area on the battle map with nobody caught in it yet (Fog Cloud, Darkness, Silence, Spike Growth, Web, Moonbeam, Daylight, a Wall of Stone, Force, Ice, Fire or Thorns, Guardian of Faith) is laid there (atX); the server applies the area from then on (movement, sight, Silence, the saves and damage of creatures entering it or starting or ending a turn in it) and removes it when the concentration or the duration ends.", {
+  tool("use_spell_slot", "Cast a spell that no other tool resolves (a utility spell, a summoning, a ritual): the server spends the slot and tracks concentration. It checks the caster can cast it now and spends the slot, the casting time and any costly material; a new concentration spell ends the previous one. A spell that leaves an area on the battle map with nobody caught in it yet (Fog Cloud, Darkness, Silence, Spike Growth, Web, a Wall of Stone or Fire) is laid there (atX), and the server applies the area from then on until it ends.", {
     level: { type: "integer", minimum: 1, maximum: 9, description: "The slot level it is cast from, for a higher one; omit for the spell's own (a warlock's pact slot)." },
     spell: { type: "string", description: "Exact name of the spell being cast, from the character's spell list." },
     ritual: {
@@ -312,7 +315,7 @@ export const mutationTools: ToolDef[] = [
   }, ["spell"]),
   tool(
     "learn_spell",
-    "Permanently add or remove ONE spell on a character's spell list, only when the story genuinely teaches or strips it: a scroll copied into a spellbook, a mentor's training, a granted boon, a curse. For a wizard the spell is written in the spellbook and can be prepared after a long rest. Players choose their own prepared spells from their sheet; never use this to swap what is prepared. Never use this to let a character cast something in the moment; casting requires the spell to already be on their sheet.",
+    "Permanently add or remove ONE spell on a character's spell list, only when the story genuinely teaches or strips it: a scroll copied into a spellbook, a mentor's training, a granted boon, a curse. For a wizard it is written in the spellbook, to prepare after a long rest. Never use it to swap prepared spells (players choose those) or to let a character cast something in the moment.",
     {
       action: { type: "string", enum: ["add", "remove"] },
       spell: { type: "string", description: "Exact spell name." },
@@ -827,6 +830,22 @@ export function applyDmMutation(
           healNote = outcome.note;
         }
       }
+      // A healing spell that takes longer than an action (Prayer of Healing's
+      // ten minutes) moved the clock, and those minutes rolled the dying's
+      // death saves (src/lib/db/clock.ts). The sheet read before the casting
+      // still showed a creature who died in them alive, and healed her back:
+      // read it again.
+      const target = healSpell ? (getSheetById(sheet.id) ?? sheet) : sheet;
+      if (healNote && target.deathSaves?.dead && !sheet.deathSaves?.dead) {
+        return {
+          result: {
+            ok: true,
+            healed: 0,
+            spell: healNote,
+            note: `${target.name} died while ${healSpell} was being cast: the death saves its casting time rolled are in the chronicle. The spell is spent and heals nothing; narrate it.`,
+          },
+        };
+      }
       if (amount < 1) {
         return {
           result: {
@@ -835,72 +854,75 @@ export function applyDmMutation(
           },
         };
       }
-      if (sheet.deathSaves?.dead) {
+      if (target.deathSaves?.dead) {
         return {
           result: {
-            error: `${sheet.name} is DEAD. Healing cannot help; only the party lead can reverse a death.`,
+            error: `${target.name} is DEAD. Healing cannot help; only the party lead can reverse a death.`,
             refused: "rules",
           },
         };
       }
-      const blocked = args.temp ? null : regainBlockedBy(sheet);
+      const blocked = args.temp ? null : regainBlockedBy(target);
       if (blocked) {
         return {
           result: {
             error:
               blocked === SUFFOCATING
-                ? `${sheet.name} is still without air and cannot regain hit points until they can breathe. Get them to air, clear the suffocating condition, then heal them.`
-                : `${sheet.name} is gripped by Chill Touch and cannot regain hit points until its caster's next turn starts.`,
+                ? `${target.name} is still without air and cannot regain hit points until they can breathe. Get them to air, clear the suffocating condition, then heal them.`
+                : `${target.name} is gripped by Chill Touch and cannot regain hit points until its caster's next turn starts.`,
             refused: "rules",
           },
         };
       }
       // Temporary HP: 5e non-stacking, the higher value wins.
       if (args.temp) {
-        const tempHp = Math.max(sheet.tempHp, Math.min(amount, 200));
-        if (tempHp === sheet.tempHp) {
+        const tempHp = Math.max(target.tempHp, Math.min(amount, 200));
+        if (tempHp === target.tempHp) {
           return {
             result: {
               ok: true,
               tempHp,
-              note: `${sheet.name} keeps their existing ${tempHp} temp HP (temporary hit points do not stack; the higher value wins).`,
+              note: `${target.name} keeps their existing ${tempHp} temp HP (temporary hit points do not stack; the higher value wins).`,
             },
           };
         }
-        patchSheet(sheet.id, { tempHp });
-        audit(campaign, turnId, sheet, "grant_temp_hp", { tempHp }, reason, { tempHp });
-        publishSheet(campaign, sheet.id);
+        patchSheet(target.id, { tempHp });
+        audit(campaign, turnId, target, "grant_temp_hp", { tempHp }, reason, { tempHp });
+        publishSheet(campaign, target.id);
         return { result: { ok: true, tempHp, note: "Temporary hit points; they absorb damage first and vanish on a long rest." } };
       }
       // Healing in a beast form restores the beast: the druid's own hit
       // points wait, untouched, for the form to end.
-      if (sheet.wildShape) {
-        const shape = sheet.wildShape;
+      if (target.wildShape) {
+        const shape = target.wildShape;
         const beast = healMath(shape.beastHp, shape.beastMaxHp, Math.min(amount, 200));
         const patch: FullPatchSheetInput = { wildShape: { ...shape, beastHp: beast.currentHp } };
-        patchSheet(sheet.id, patch);
-        audit(campaign, turnId, sheet, "heal", { amount, form: shape.form, beastHp: beast.currentHp }, reason, patch);
-        publishSheet(campaign, sheet.id);
+        patchSheet(target.id, patch);
+        audit(campaign, turnId, target, "heal", { amount, form: shape.form, beastHp: beast.currentHp }, reason, patch);
+        publishSheet(campaign, target.id);
         return {
           result: {
             ok: true,
             form: `${shape.form}: ${beast.currentHp}/${shape.beastMaxHp} HP`,
             healed: beast.currentHp - shape.beastHp,
             ...(healNote ? { spell: healNote } : {}),
-            note: `The healing restores the beast form; ${sheet.name}'s own ${sheet.currentHp}/${effectiveMaxHp(sheet)} is untouched.`,
+            note: `The healing restores the beast form; ${target.name}'s own ${target.currentHp}/${effectiveMaxHp(target)} is untouched.`,
           },
         };
       }
-      // Exhaustion level 4 halves the maximum healing can reach.
-      const ceiling = effectiveMaxHp(sheet);
-      const math = healMath(Math.min(sheet.currentHp, ceiling), ceiling, Math.min(amount, 200));
-      patchSheet(sheet.id, { currentHp: math.currentHp });
-      audit(campaign, turnId, sheet, "heal", { amount, newHp: math.currentHp }, reason, {
+      // Exhaustion level 4 halves the maximum healing can reach; Pale
+      // Tincture's damage is beyond it (afflictions.ts healCeiling).
+      const ceiling = healCeiling(campaign.id, target);
+      const math = healMath(Math.min(target.currentHp, ceiling), ceiling, Math.min(amount, 200));
+      // A regained hit point ends a caltrops wound in patchSheet itself
+      // (condition-logic.ts endedByRegain), whichever path healed.
+      patchSheet(target.id, { currentHp: math.currentHp });
+      audit(campaign, turnId, target, "heal", { amount, newHp: math.currentHp }, reason, {
         currentHp: math.currentHp,
       });
-      publishSheet(campaign, sheet.id);
+      publishSheet(campaign, target.id);
       {
-        const pos = tokenPosition(campaign.id, sheet.id);
+        const pos = tokenPosition(campaign.id, target.id);
         if (pos && amount > 0) {
           publishFx(
             campaign.id,
@@ -909,7 +931,7 @@ export function applyDmMutation(
         }
       }
       // Any healing ends the dying state.
-      const deathInfo = healDeathHook(campaign, turnId, sheet);
+      const deathInfo = healDeathHook(campaign, turnId, target);
       return {
         result: {
           ok: true,
@@ -1122,6 +1144,12 @@ export function applyDmMutation(
         ).result;
         return { result: { ok: true, note: kitHeal.note, ...healed } };
       }
+      // Without the Healer feat, a healer's kit stabilizes a dying creature
+      // with one of its uses (src/lib/dm/stabilize.ts).
+      const kitStabilize = healerKitStabilize(campaign, turnId, sheet, target, itemName);
+      if (kitStabilize) {
+        return { result: kitStabilize };
+      }
       // A charged item (a wand, a staff) spends charges and stays in the
       // pack (src/lib/dm/item-use.ts); null for anything else.
       const charged = chargedItemUse(campaign, turnId, sheet, itemName, args.charges, args.spell);
@@ -1148,6 +1176,11 @@ export function applyDmMutation(
       // What the potion or scroll does, applied by the engine.
       const used = String(outcome.result.used ?? itemName);
       Object.assign(outcome.result, applyConsumable(campaign, turnId, sheet, target, sheet.equipment.find((item) => item.name === used) ?? { name: used }) ?? {});
+      // A bag of caltrops or ball bearings lies on the board (gear-zones.ts).
+      const spread = spreadGear(campaign, sheet, used);
+      if (spread) {
+        outcome.result.spread = spread;
+      }
       audit(campaign, turnId, sheet, "use_item", { item: itemName }, reason, outcome.patch);
       publishSheet(campaign, sheet.id);
       // Potion healing rides the standard heal mutation so the death engine
@@ -1421,10 +1454,13 @@ export function applyDmMutation(
       // "concentration" is not a real condition: clearing it ends the
       // tracked spell (a caster dropping concentration voluntarily).
       const rawCondition = (args.condition ?? "").trim().toLowerCase();
-      if (isConditionNamed(rawCondition, "concentration")) {
+      // A casting held across turns is its concentration (long-casting-logic.ts):
+      // letting go of either ends it, and the spell fails with no slot spent.
+      const casting = isConditionNamed(rawCondition, CASTING) ? castingHeldBy(sheet, sheet.concentratingOn) : null;
+      if (isConditionNamed(rawCondition, "concentration") || casting) {
         const ended = breakConcentration(campaign, turnId, sheet.id, "ended voluntarily");
         return ended
-          ? { result: { ok: true, cleared: `concentration (${ended})` } }
+          ? { result: { ok: true, cleared: `concentration (${ended})`, ...(casting ? { failed: `${casting.spell} fails; no slot is spent.` } : {}) } }
           : { result: { error: `${sheet.name} is not concentrating on anything.`, retry: true } };
       }
       // Exhaustion clears one level at a time (greater restoration, a long

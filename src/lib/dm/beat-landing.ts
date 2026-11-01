@@ -9,6 +9,7 @@ import { departureNote, settleBreakingPoint, type DepartureOutcome } from "@/lib
 import { clockDay, RUNG_WORD, stepLadder, type LadderStep } from "@/lib/dm/conscience-logic";
 import { deedVerdict, doneToDelta, SEVERITY_FACTOR, type DeedKind, type DeedSeverity, type DeedVerdict } from "@/lib/dm/companion-values-logic";
 import { openLedger, type Subject } from "@/lib/dm/relationship-subject";
+import { fadedValueSwing, honourRepeats } from "@/lib/dm/romance-pace-logic";
 import { actAfterBeat, actFaceValue, actRunning, outwardApproval } from "@/lib/dm/scheme-logic";
 import {
   addFlag,
@@ -25,6 +26,7 @@ import {
   type RelationshipBeat,
 } from "@/lib/dm/relationship-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { amendsDelta, owedAfter } from "@/lib/dm/amends-logic";
 
 // One beat landing on one person who saw it: the approval it moves, weighed
 // by their nature (relationship-logic.ts) and, for a lasting companion, by
@@ -76,6 +78,7 @@ const CAUSE: Partial<Record<RelationshipBeat, string>> = {
   defended: "standing up for someone",
   greed: "profit taken",
   amends: "amends made",
+  unfaithful: "a flirt with someone else",
 };
 
 export function causeOf(beat: RelationshipBeat, doer: string): string {
@@ -111,10 +114,14 @@ export function landBeat(
     hostile: subject.hostile,
   });
   const companion = conscienceOn(campaign) ? liveCompanion(subject) : null;
-  const values = companion && subject.npc
-    ? deedVerdict(companionValues(subject.npc.id), beat, deed?.severity ?? "serious", deed?.faction ?? "")
-    : null;
-  const delta = Math.round(weighed * (deed ? SEVERITY_FACTOR[deed.severity] : 1)) + (values?.approval ?? 0);
+  const held = companion && subject.npc ? companionValues(subject.npc.id) : null;
+  const values = held ? deedVerdict(held, beat, deed?.severity ?? "serious", deed?.faction ?? "") : null;
+  // What they hold wears as the personality read does (issue 643): the
+  // third deed honouring one value is worth well under the first.
+  const swing = held && values ? fadedValueSwing(values.approval, honourRepeats(held, relationship.beats, beat, deed?.faction ?? "")) : 0;
+  const moved = Math.round(weighed * (deed ? SEVERITY_FACTOR[deed.severity] : 1)) + swing;
+  // An amends repairs what wrongs cost this bond, never more (issue 642).
+  const delta = beat === "amends" ? amendsDelta(moved, relationship.owed) : moved;
   const sheets = listSheets(campaign.id);
   // Where they stood before it: a breach steps down from there.
   const worstBefore = companion ? worstApproval(campaign.id, companion.name, sheets) : null;
@@ -132,6 +139,7 @@ export function landBeat(
       approval,
       romance: demoteRomance(relationship.romance, act ? act.shown : approval),
       beats: { ...relationship.beats, [beat]: (relationship.beats[beat] ?? 0) + 1 },
+      owed: owedAfter(relationship.owed, approval - relationship.approval, beat === "amends"),
       ...(beat === "intimacy" ? { flags: addFlag(relationship.flags, "intimacy") } : {}),
       ...(act ? { pretense: act } : {}),
       ...(memorable && note?.trim()
@@ -202,6 +210,7 @@ export function landOnVictim(
       approval,
       romance: demoteRomance(relationship.romance, running ? running.shown : approval),
       beats: { ...relationship.beats, [beat]: (relationship.beats[beat] ?? 0) + 1 },
+      owed: owedAfter(relationship.owed, approval - relationship.approval),
       ...(note?.trim() ? { memories: addMemory(relationship.memories, { kind: beat, text: note.trim(), at: new Date().toISOString() }) } : {}),
     }) ?? relationship;
   const { conscience, departure } = stepConscience(campaign, sheet, subject, companion, beat, values, deed, worstBefore);
@@ -231,7 +240,12 @@ export function landBystanders(campaign: Campaign, landings: readonly Landing[],
       // An act an NPC keeps up shows the same warmth (scheme-logic.ts), so the
       // romance it carries holds by that, as landBeat's does.
       const running = actRunning(ledger.pretense) ? ledger.pretense : null;
-      const updated = patchRelationship(ledger.id, { approval, romance: demoteRomance(ledger.romance, running ? running.shown : approval) }) ?? ledger;
+      const updated =
+        patchRelationship(ledger.id, {
+          approval,
+          romance: demoteRomance(ledger.romance, running ? running.shown : approval),
+          owed: owedAfter(ledger.owed, approval - ledger.approval),
+        }) ?? ledger;
       moved.push(`${landing.subject.name} (${TIER_LABEL[friendshipTier(updated.approval)]})`);
     }
     if (moved.length) {

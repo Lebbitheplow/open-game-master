@@ -413,6 +413,8 @@ await test("legendary resistance: three for the fight, never refilled", async ()
   assert.equal((await world.invoke("legendary_resist", { enemyId: enemy.id })).ok, false);
   assert.equal(kit.endTurn(tank.userId), true);
   assert.equal(kit.endTurn(mage.userId), true);
+  // The dragon's turn closes round 1 (issue 713).
+  kit.handOnEnemies();
   assert.equal(world.encounter().round, 2);
   assert.equal(pool(enemy).resistances, 0);
   failedSave(enemy);
@@ -436,6 +438,7 @@ await test("a lair acts on initiative count 20, once a round, and only in a lair
   }
   // Its moment has passed: the next turn does not bring it back.
   assert.equal(kit.endTurn(mage.userId), true);
+  kit.handOnEnemies();
   assert.equal(world.encounter().round, 2);
   if (tankFirst) {
     assert.equal((await world.invoke("lair_action", { action: "Stalactites fall" })).ok, false);
@@ -456,6 +459,7 @@ await test("A legendary creature regains its spent legendary actions at the star
   assert.equal(pool(enemy).actions, 0);
   assert.equal(kit.endTurn(tank.userId), true);
   assert.equal(kit.endTurn(mage.userId), true);
+  kit.handOnEnemies();
   assert.equal(world.encounter().round, 2);
   assert.equal(pool(enemy).actions, 3, `round 2 began with ${pool(enemy).actions} legendary actions`);
 });

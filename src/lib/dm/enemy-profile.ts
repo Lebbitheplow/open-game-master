@@ -1,5 +1,6 @@
 import type { EnemyAttack, EnemyStats, RoutineStep } from "@/lib/bestiary/statblock";
 import { textKey } from "@/lib/language/text-logic";
+import { pluralForms } from "@/lib/srd/name-forms";
 
 // How an enemy's attack reaches (SRD 5.1, Monsters: melee or ranged, reach,
 // normal and long range) and which attacks a turn of it makes (its
@@ -101,12 +102,16 @@ export function attackNamed(attacks: EnemyAttack[], wanted: string): EnemyAttack
 }
 
 // A step that follows only a hit (the grick's beak) is marked on the swing,
-// and enemy-attack.ts skips it after a miss.
-function expand(routine: RoutineStep[], attacks: EnemyAttack[]): EnemyAttack[] {
+// and enemy-attack.ts skips it after a miss. A step whose count is rolled
+// (a violet fungus's 1d4 Rotting Touches) is rolled by `rollCount` when the
+// caller makes the swings, and is its average count for a caller that only
+// shows them.
+function expand(routine: RoutineStep[], attacks: EnemyAttack[], rollCount?: (dice: string) => number): EnemyAttack[] {
   return routine.flatMap((step) => {
     const found = attackNamed(attacks, step.attack);
     const attack = found && step.ifHit ? { ...found, onlyIfHit: true } : found;
-    return attack ? new Array<EnemyAttack>(Math.max(1, Math.min(10, step.count))).fill(attack) : [];
+    const count = step.dice && rollCount ? rollCount(step.dice) : step.count;
+    return attack ? new Array<EnemyAttack>(Math.max(1, Math.min(10, count))).fill(attack) : [];
   });
 }
 
@@ -138,11 +143,117 @@ export function alternativeBlow(attack: EnemyAttack, when: { ranged: boolean; bl
   return blow;
 }
 
+// A crossbow or a blowgun: a Loading weapon (SRD 5.1, Weapons), which fires
+// once per action however many attacks the creature has. A stat block does
+// not print the property, so the weapon's name tells it.
+const LOADING_WEAPON_RE = /\b(?:crossbow|blowgun)\b/i;
+
+// Whether a Multiattack's words name the attack, whole, either side plural:
+// "spike attacks" names Spike, "two heavy crossbow attacks" Heavy Crossbow.
+function multiattackNames(multiattack: string, attack: EnemyAttack): boolean {
+  const said = ` ${textKey(multiattack)} `;
+  const bare = attackKey(attack.name);
+  return Boolean(bare) && [bare, ...pluralForms(bare)].some((form) => said.includes(` ${form} `));
+}
+
+// Whether a Multiattack that prints only a count ("The thug makes two melee
+// attacks") leaves `attack` out, so a turn of it is one attack: a Loading
+// weapon, or an attack made only at range when the Multiattack's attacks
+// are melee ones. A thug's Heavy Crossbow is one shot, not two (SRD 5.1,
+// Thug); a scout's "two ranged attacks" are still two. A Multiattack that
+// names the attack counts it, its own words over the general rule: a
+// mordant snare's "four melee attacks, using any combination of tentacle
+// attacks, spike attacks, and filament attacks" throws four Spikes.
+function outsideMultiattackCount(stats: { traits?: string[] }, attack: EnemyAttack): boolean {
+  const traits = stats.traits ?? [];
+  const multiattack = traits.find((trait) => /^multiattack\b/i.test(trait)) ?? "";
+  if (multiattack && multiattackNames(multiattack, attack)) {
+    return false;
+  }
+  if (LOADING_WEAPON_RE.test(attack.name)) {
+    return true;
+  }
+  const meleeOnly = /\bmelee attacks?\b/i.test(multiattack) && !/\branged attacks?\b/i.test(multiattack);
+  return meleeOnly && !enemyAttackProfile(attack, traits).melee;
+}
+
+const RANGED_COUNT_RE = /\b(one|two|three|four|five|six|\d)\s+ranged attacks?\b/i;
+const COUNT_WORDS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6 };
+
+// How many of a turn's swings may be made at range when its Multiattack
+// counts melee attacks, or null when it sets no such limit. "The cult
+// fanatic makes two melee attacks" counts no thrown dagger, so a turn of
+// throws is one, as the Attack action's; "three melee attacks or two ranged
+// attacks" throws two (SRD 5.1, Gladiator). plannedSwings cannot tell: a
+// dagger or a spear is melee or thrown by where the target stands, which the
+// caller learns after the walk. An attack the Multiattack names is its own.
+export function rangedSwingsAllowed(traits: string[] | undefined, attack: EnemyAttack): number | null {
+  const multiattack = (traits ?? []).find((trait) => /^multiattack\b/i.test(trait)) ?? "";
+  if (!/\bmelee attacks?\b/i.test(multiattack) || multiattackNames(multiattack, attack)) {
+    return null;
+  }
+  const ranged = RANGED_COUNT_RE.exec(multiattack);
+  if (ranged) {
+    return COUNT_WORDS[ranged[1].toLowerCase()] ?? Number(ranged[1]);
+  }
+  return /\branged attacks?\b/i.test(multiattack) ? null : 1;
+}
+
+// Why a swing at range is not made, when the turn has already made the
+// ranged attacks its Multiattack leaves room for; null to make it.
+export function pastRangedLimit(traits: string[] | undefined, attack: EnemyAttack, made: number): string | null {
+  const allowed = rangedSwingsAllowed(traits, attack);
+  if (allowed === null || made < allowed) {
+    return null;
+  }
+  return `its Multiattack's melee attacks leave ${allowed === 1 ? "one attack" : `${allowed} attacks`} at range a turn`;
+}
+
+// The count a Multiattack prints for this attack ("two hand crossbow
+// attacks"), or null. A Multiattack whose routine was not read (the Tome of
+// Beasts scheznyki's "four war pick attacks or two hand crossbow attacks"
+// names a war pick its block calls Heavy Pick) still says how many of a
+// named attack a turn is: the crossbow shot four times for the count of the
+// first group.
+function printedCount(multiattack: string, attack: EnemyAttack): number | null {
+  const words = textKey(multiattack).split(" ");
+  const bare = attackKey(attack.name);
+  for (const form of bare ? [bare, ...pluralForms(bare)] : []) {
+    const parts = form.split(" ");
+    for (let index = 1; index + parts.length < words.length; index += 1) {
+      const said = parts.every((part, offset) => words[index + offset] === part) && /^attacks?$/.test(words[index + parts.length]);
+      const count = said ? (COUNT_WORDS[words[index - 1]] ?? Number(words[index - 1])) : NaN;
+      if (count >= 1) {
+        return count;
+      }
+    }
+  }
+  return null;
+}
+
+// A routine's swings with a Loading weapon the Multiattack does not name
+// made once: the wererat's "two attacks, only one of which can be a bite"
+// is read as routines of any two of its attacks, and its Hand Crossbow
+// still fires once per action (SRD 5.1, Weapons: Loading).
+function loadedOnce(stats: { traits?: string[] }, swings: EnemyAttack[]): EnemyAttack[] {
+  return swings.filter(
+    (swing, index) =>
+      swings.indexOf(swing) === index ||
+      !LOADING_WEAPON_RE.test(swing.name) ||
+      !outsideMultiattackCount(stats, swing),
+  );
+}
+
 export function plannedSwings(
-  stats: Pick<EnemyStats, "attacks" | "attacksPerTurn" | "routines">,
+  stats: Pick<EnemyStats, "attacks" | "attacksPerTurn" | "routines"> & { traits?: string[] },
   attacks: EnemyAttack[],
   asked: EnemyAttack | null,
-  options: { single?: boolean } = {},
+  // `reaches`: whether a swing can land on the target this turn, walk and
+  // all. Of several routines that could be the turn, the first whose every
+  // swing reaches: a bandit captain out of melee reach throws "two ranged
+  // attacks with its daggers" (SRD 5.1), where its first routine, "two with
+  // its scimitar and one with its dagger", left it nothing to land.
+  options: { single?: boolean; rollCount?: (dice: string) => number; reaches?: (attack: EnemyAttack) => boolean } = {},
 ): EnemyAttack[] {
   if (!attacks.length) {
     return [];
@@ -150,16 +261,21 @@ export function plannedSwings(
   if (options.single) {
     return [asked ?? attacks[0]];
   }
-  const routines = (stats.routines ?? []).map((routine) => expand(routine, attacks)).filter((swings) => swings.length);
+  const routines = (stats.routines ?? []).map((routine) => expand(routine, attacks, options.rollCount)).filter((swings) => swings.length);
   if (routines.length) {
-    if (!asked) {
-      return routines[0];
-    }
-    const holding = routines.find((swings) => swings.includes(asked));
-    return holding ?? [asked];
+    const holding = asked ? routines.filter((swings) => swings.includes(asked)) : routines;
+    const reaches = options.reaches;
+    const landing = reaches && holding.length > 1 ? holding.find((swings) => swings.every(reaches)) : undefined;
+    const chosen = landing ?? holding[0];
+    return chosen ? loadedOnce(stats, chosen) : [asked ?? attacks[0]];
   }
-  const count = Math.max(1, Math.min(10, Math.floor(stats.attacksPerTurn ?? 1)));
-  return new Array<EnemyAttack>(count).fill(asked ?? attacks[0]);
+  const swing = asked ?? attacks[0];
+  const multiattack = (stats.traits ?? []).find((trait) => /^multiattack\b/i.test(trait)) ?? "";
+  // Only for an attack asked for: the turn no attack is named for keeps the
+  // whole count, its first attack the one swung.
+  const printed = asked && multiattack ? printedCount(multiattack, asked) : null;
+  const count = Math.max(1, Math.min(10, printed ?? Math.floor(stats.attacksPerTurn ?? 1)));
+  return new Array<EnemyAttack>(outsideMultiattackCount(stats, swing) ? 1 : count).fill(swing);
 }
 
 // Whether a creature is charmed by `sourceId`: a charmed creature cannot

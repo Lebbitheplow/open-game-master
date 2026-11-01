@@ -1,4 +1,5 @@
 import { readiedReleaseFor } from "@/lib/dm/readied-release";
+import { endShadowInvisibility } from "@/lib/dm/one-with-shadows";
 import { tokenSides } from "@/lib/dm/combatant";
 import { z } from "zod";
 import { actingSheetFor } from "@/lib/character-seat";
@@ -16,7 +17,7 @@ import { buildPlayerMapView, footprintLookup, occupiedTiles, pcMoveBudget, type 
 import { boardState, forgetMoves, keepMove, revealedSince, sightOf, stepFeet, type MoveStep } from "@/lib/battlemap/move-undo";
 import { findPath, reachableTiles, speedToTiles } from "@/lib/battlemap/movement";
 import { pcMoveTraits } from "@/lib/battlemap/passage";
-import { tileIndex } from "@/lib/battlemap/types";
+import { crawlingTraits, tileIndex } from "@/lib/battlemap/types";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
 import { publishFx } from "@/lib/dm/fx";
 import { planDoorFx } from "@/lib/battlemap/fx-plan";
@@ -32,7 +33,7 @@ import { releaseGrapplesOutOfReach } from "@/lib/dm/grapple";
 import { withZoneSteps } from "@/lib/dm/zone-rules";
 import { zonesAfterMove } from "@/lib/dm/zone-triggers";
 import { standUpTiles } from "@/lib/srd/authored-effects-more";
-import { dragCostFactor, dragPlacements, grappledBy } from "@/lib/dm/drag";
+import { dragCostFactor, dragPlacements, grappledBy, walkCostFactor } from "@/lib/dm/drag";
 import { jumpMove } from "@/lib/dm/jump-move";
 import { jumpLine } from "@/lib/srd/jump";
 import { sizeForRace } from "@/lib/srd";
@@ -71,6 +72,9 @@ const moveSchema = z.object({
   drag: z.boolean().optional(),
   // A long jump in a straight line to the square (src/lib/dm/jump-move.ts).
   jump: z.boolean().optional(),
+  // A careful walk at half speed, every square doubled: through caltrops or
+  // ball bearings it asks no save (src/lib/battlemap/zones-gear.ts).
+  careful: z.boolean().optional(),
 });
 
 // A player moves their own token. Server-authoritative: walls, occupancy,
@@ -242,17 +246,26 @@ export async function POST(
     traits,
   );
   const stepCost = reach.get(tileIndex(map.width, x, y));
+  // Moving carefully at half speed (caltrops, ball bearings): each square
+  // costs double. A scene rations no movement, and its areas strike nobody.
+  const careful = Boolean(parsed.data.careful) && !scene;
+  const walkCost = stepCost === undefined ? undefined : stepCost * walkCostFactor(1, careful);
   // Prone: standing up costs half the character's speed and ends the
   // condition; without the movement for that the character crawls, every
-  // foot costing two (SRD 5.1, Being Prone).
+  // foot costing one extra (SRD 5.1, Being Prone).
   const prone =
     !scene && sheet.conditions.some((entry) => entry.trim().toLowerCase() === "prone");
   // Half the speed, or a feature's own price (Tipsy Sway: 5 feet).
   const standCost = standUpTiles(sheet, speedToTiles(speed));
-  // The board's lit squares price a prone walk with the same function.
-  const charged = prone && stepCost !== undefined ? proneCharge(stepCost, standCost, fullTiles) : null;
+  const crawlTraits = crawlingTraits(traits);
+  const crawlCost = prone
+    ? reachableTiles(map.terrain, map.width, map.height, occupied, token, fullTiles, 1, token.movement === "fly", crawlTraits).get(tileIndex(map.width, x, y))
+    : undefined;
+  // The board's lit squares price a prone walk with the same function; a
+  // careful one pays double for the walk after standing and for the crawl.
+  const charged = prone ? proneCharge(stepCost, crawlCost, standCost, fullTiles, walkCostFactor(1, careful)) : null;
   const stands = Boolean(charged?.stands);
-  const cost = stepCost === undefined || !prone ? stepCost : charged?.cost;
+  const cost = !prone ? walkCost : charged?.cost;
   if (cost === undefined) {
     // A locked door on the way: the handle rattles for everyone (the shake
     // and the sting), and the DM's prompt is told so the model can offer
@@ -265,9 +278,17 @@ export async function POST(
     return Response.json(
       {
         error: prone
-          ? "You are prone: standing costs half your speed and crawling costs double. You cannot reach that tile this turn."
+          ? "You are prone: standing costs half your speed and every foot crawled costs one extra. You cannot reach that tile this turn."
           : "You cannot reach that tile this turn.",
       },
+      { status: 400 },
+    );
+  }
+
+  // The lit squares were priced at full speed; a careful walk pays double.
+  if (careful && !prone && cost > budget) {
+    return Response.json(
+      { error: `Moving carefully at half speed doubles every square: that move costs ${cost * 5} feet and ${budget * 5} are left this turn.` },
       { status: 400 },
     );
   }
@@ -286,7 +307,8 @@ export async function POST(
         { x, y },
         1,
         token.movement === "fly",
-        traits,
+        // A crawl takes the way that is cheapest to crawl, which it was charged for.
+        charged && !charged.stands ? crawlTraits : traits,
       );
   // Frightened: no square of the walk may be closer to the source of the
   // fear than where it began (SRD 5.1, Frightened).
@@ -319,7 +341,8 @@ export async function POST(
     if (prone) {
       return Response.json({ error: `${sheet.name} is prone; they stand up before dragging anyone.` }, { status: 409 });
     }
-    spend = cost * dragCostFactor(sizeForRace(sheet.race), held.map((enemy) => ({ refId: enemy.id, name: enemy.displayName, size: enemy.stats.size })));
+    // A careful drag is half speed, as the drag alone is (drag.ts).
+    spend = (stepCost ?? cost) * walkCostFactor(dragCostFactor(sizeForRace(sheet.race), held.map((enemy) => ({ refId: enemy.id, name: enemy.displayName, size: enemy.stats.size }))), careful);
     if (spend > budget) {
       return Response.json({ error: `Dragging a grappled creature halves ${sheet.name}'s speed: that move costs ${spend * 5} feet and ${budget * 5} are left this turn.` }, { status: 400 });
     }
@@ -340,6 +363,10 @@ export async function POST(
     carried = placed;
   }
   moveToken(token.id, x, y, scene ? 0 : token.movedThisRound + (readied ? 0 : spend));
+  // Moving ends One with Shadows' invisibility (src/lib/dm/one-with-shadows.ts).
+  if (!scene) {
+    endShadowInvisibility(campaignId, sheet.id, "moves");
+  }
   for (const entry of carried) {
     moveToken(entry.token.id, entry.at.x, entry.at.y, entry.token.movedThisRound);
   }
@@ -373,7 +400,7 @@ export async function POST(
         )
       : { notes: [], downed: false };
   // The spell areas walked into: Spike Growth's spikes, a web's hold.
-  const zoneEffects = campaign && !scene && path && !opportunity.downedAt ? zonesAfterMove(campaign, encounter.id, { kind: "pc", refId: sheet.id }, from, path) : [];
+  const zoneEffects = campaign && !scene && path && !opportunity.downedAt ? zonesAfterMove(campaign, encounter.id, { kind: "pc", refId: sheet.id }, from, path, { careful }) : [];
   // Struck down on the way: they fall where they were hit, not where they
   // were going.
   if (opportunity.downedAt) {

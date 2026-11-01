@@ -170,6 +170,7 @@ export function MessageList({
   const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const nearBottomRef = useRef(true);
+  const lastTopRef = useRef(0);
   const scrollPendingRef = useRef(false);
   const statusPhrase = dmStatusPhrase(dmStatus, messages[messages.length - 1]?.id ?? "");
   const rollsById = useMemo(() => new Map(rolls.map((roll) => [roll.id, roll])), [rolls]);
@@ -339,6 +340,17 @@ export function MessageList({
   useEffect(() => {
     follow("smooth");
   }, [messages.length, newestKey, dmStatus, follow]);
+  // The pane changed size (a phone's keyboard, the Hand dealt under it, the
+  // Table tab shown again): a reader at the end stays there.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      if (nearBottomRef.current) el.scrollTop = el.scrollHeight;
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   // The streaming passage sits at the bottom, unless a player answered it
   // mid-stream: then it already holds a seq before that reply (issue 68) and
@@ -350,10 +362,19 @@ export function MessageList({
     <DmDraftBubble key="dm-draft" dmStatus={dmStatus} statusPhrase={statusPhrase} follow={follow} />
   );
 
+  // Only the reader scrolling up leaves the end. A pane that shrinks also
+  // opens a gap below, and reading that as the reader leaving stranded every
+  // new line under the fold: on a phone in a fight a sent line seemed to
+  // vanish (issue 713; the scroll beside the board learned it in issue 212).
   function handleScroll() {
     const el = containerRef.current;
     if (el) {
-      nearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+      if (el.scrollHeight - el.scrollTop - el.clientHeight < 120) {
+        nearBottomRef.current = true;
+      } else if (el.scrollTop < lastTopRef.current - 1) {
+        nearBottomRef.current = false;
+      }
+      lastTopRef.current = el.scrollTop;
     }
   }
 

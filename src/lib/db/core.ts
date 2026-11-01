@@ -1,5 +1,6 @@
 import { openDatabase, type SqliteDatabase } from "./driver.ts";
 import { fileSubAreasByName } from "./place-parents-backfill.ts";
+import { backfillNpcHeard } from "./npc-heard-backfill.ts";
 import { createHash } from "node:crypto";
 import { mkdirSync, statSync } from "node:fs";
 import path from "node:path";
@@ -1765,6 +1766,11 @@ function ensureSchema(db: SqliteDatabase) {
     // announceShop), so the chat's Browse wares opens the Market on it.
     // Null on every other message.
     ["shop_id", `TEXT`],
+    // The rolls a table note carries (a JSON list of roll ids), drawn as
+    // cards above its line: a person's adjudication at a table they run
+    // (src/lib/dm/persons-record.ts, issue 713). Its words stand alone for an
+    // older screen. Null on every other message.
+    ["roll_ids_json", `TEXT`],
     // Which take in variants_json a person wrote by editing the narration
     // (src/app/api/campaigns/[campaignId]/messages/[messageId]/edit): the
     // narrator's takes stay beside it, so an edit never loses the original
@@ -1857,6 +1863,11 @@ function ensureSchema(db: SqliteDatabase) {
     // lit, for the bar. 0 means the light does not burn down.
     ["burns_until", `INTEGER NOT NULL DEFAULT 0`],
     ["light_minutes", `INTEGER NOT NULL DEFAULT 0`],
+    // Where that light's dim light ends, in tiles (issue #570, EQP-03: a
+    // lamp's dim light reaches 45 feet, three times its bright). 0 on every
+    // light lit before, which reads as twice the bright radius, as it did
+    // (src/lib/battlemap/types.ts carriedDimRadius).
+    ["light_dim_radius", `INTEGER NOT NULL DEFAULT 0`],
     // The painted object a prop or bystander token is drawn as: a catalogue id
     // from a prepared map's MapProp.stamp (src/lib/battlemap/scene.ts), or ''.
     ["stamp", `TEXT NOT NULL DEFAULT ''`],
@@ -2304,6 +2315,29 @@ function ensureSchema(db: SqliteDatabase) {
     // storyteller secret: only the AI and a person running the table read
     // the motive and the true meter (src/lib/dm/viewer.ts).
     ["pretense_json", `TEXT NOT NULL DEFAULT ''`],
+  ]);
+
+  // A romantic step asked mid-fight, held for its answer after it (issue
+  // 640, src/lib/db/romance-held.ts): {to, note, source, heldAt,
+  // releasedAt}, '' = none. On the bond's row, so a rewind restores it with
+  // the bond.
+  addColumns("relationships", [["held_step_json", `TEXT NOT NULL DEFAULT ''`]]);
+
+  // What wrongs cost a bond and no amends has repaired yet (issue 642,
+  // src/lib/dm/amends-logic.ts): an amends gives back at most this. A bond
+  // from before it starts owing what its meter sits below neutral, the least
+  // its history must have cost it.
+  const relationshipsOwed = (db.prepare(`PRAGMA table_info(relationships)`).all() as Array<{ name: string }>).some((column) => column.name === "owed");
+  addColumns("relationships", [["owed", `INTEGER NOT NULL DEFAULT 0`]]);
+  if (!relationshipsOwed) {
+    db.exec(`UPDATE relationships SET owed = MAX(0, -approval)`);
+  }
+
+  addColumns("relationships", [
+    // A romance's pace (issue 643, src/lib/db/romance-pacing.ts): when its
+    // last step was taken, the scenes the other side started, and the one
+    // due now. '' = nothing recorded yet.
+    ["pacing_json", `TEXT NOT NULL DEFAULT ''`],
   ]);
 
   addColumns("campaigns", [
@@ -2842,6 +2876,14 @@ function ensureSchema(db: SqliteDatabase) {
   if (!npcColumns.some((column) => column.name === "met_at")) {
     addColumns("npcs", [["met_at", `TEXT NOT NULL DEFAULT ''`]]);
     backfillNpcMet(db);
+  }
+  // When the story first said an NPC's name to the table (Npc.heardAt):
+  // met or heard, every seat is sent them; anyone else stays with the seats
+  // that read the whole cast (issue 650). The rows already played get it
+  // once, from the transcript they were named in.
+  if (!npcColumns.some((column) => column.name === "heard_at")) {
+    addColumns("npcs", [["heard_at", `TEXT NOT NULL DEFAULT ''`]]);
+    backfillNpcHeard(db);
   }
 }
 

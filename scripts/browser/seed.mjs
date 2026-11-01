@@ -465,6 +465,103 @@ const bondTables = {};
   }
 }
 
+// A table per viewport for the composer's @ menu (issue 650): a person runs
+// it as its GM and the lead plays at it, so the lead's seat holds only the
+// people the story has named. Sildar was named in the GM's narration; Iarno
+// is prepared and never named, and no player's menu or device may hold him.
+// Two places are on the map, one of them with an accent and an apostrophe.
+const nameTables = {};
+{
+  const npcs = await import("../../src/lib/db/npcs.ts");
+  const { upsertCurrentLocation, insertKnownLocation } = await import("../../src/lib/db/locations.ts");
+  for (const viewport of ["desktop", "phone"]) {
+    const gm = world.addUser("names-gm");
+    const table = campaigns.createCampaign(gm.id, {
+      title: `Names Table (${viewport})`,
+      description: "A town with too many names to spell.",
+      theme: "high-fantasy",
+      maxPlayers: 6,
+      startingLevel: 3,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human" },
+    });
+    for (const user of [world.owner, player]) {
+      const seated = campaigns.joinByInviteCode(user.id, campaigns.getCampaignById(table.id).inviteCode);
+      if (seated.error) {
+        throw new Error(`a player could not join ${table.title}: ${seated.error}`);
+      }
+    }
+    campaigns.setCampaignStatus(table.id, "active");
+    sheets.createSheet(table.id, world.owner.id, 3, heroInput({ name: "Rowan Ashby", class: "fighter", level: 3 }));
+    sheets.createSheet(table.id, player.id, 3, heroInput({ name: "Bree Underhill", class: "rogue", level: 3 }));
+    npcs.upsertNpc({ campaignId: table.id, name: "Sildar Hallwinter", aliases: ["Sildar"] });
+    npcs.upsertNpc({ campaignId: table.id, name: "Iarno Albrek" });
+    upsertCurrentLocation({ campaignId: table.id, name: "Phandalin" });
+    insertKnownLocation({ campaignId: table.id, name: "Thundertree's Côte" });
+    messages.insertCampaignMessage({
+      campaignId: table.id,
+      seq: campaigns.allocateSeq(table.id),
+      authorType: "dm",
+      userId: gm.id,
+      content: "Sildar Hallwinter waves you over to the fire.",
+      speech: [],
+    });
+    nameTables[viewport] = table.id;
+    // And one the lead runs as its GM, holding the whole cast: Narrate
+    // offers Iarno too, marked as not introduced yet.
+    const run = campaigns.createCampaign(world.owner.id, {
+      title: `Names GM Table (${viewport})`,
+      description: "The same town, from behind the screen.",
+      theme: "high-fantasy",
+      maxPlayers: 6,
+      startingLevel: 3,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human" },
+    });
+    const seated = campaigns.joinByInviteCode(player.id, campaigns.getCampaignById(run.id).inviteCode);
+    if (seated.error) {
+      throw new Error(`the player could not join ${run.title}: ${seated.error}`);
+    }
+    campaigns.setCampaignStatus(run.id, "active");
+    sheets.createSheet(run.id, player.id, 3, heroInput({ name: "Bree Underhill", class: "rogue", level: 3 }));
+    npcs.upsertNpc({ campaignId: run.id, name: "Sildar Hallwinter" });
+    npcs.markNpcMet(npcs.getNpcByName(run.id, "Sildar Hallwinter").id);
+    npcs.upsertNpc({ campaignId: run.id, name: "Iarno Albrek" });
+    nameTables[`${viewport}Gm`] = run.id;
+  }
+}
+
+// A table per viewport for a romance the table hears of (issue 640): the
+// lead runs it as its GM, the player's Kael is courting the companion Sir
+// Hollis, who adores him, so every step asked of him is a certain yes.
+const romanceTables = {};
+{
+  const bonds = await import("../../src/lib/db/relationships.ts");
+  for (const viewport of ["desktop", "phone"]) {
+    const table = campaigns.createCampaign(world.owner.id, {
+      title: `Romance Table (${viewport})`,
+      description: "A road with someone dear on it.",
+      theme: "high-fantasy",
+      maxPlayers: 6,
+      startingLevel: 3,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human", companions: "full" },
+    });
+    const seated = campaigns.joinByInviteCode(player.id, campaigns.getCampaignById(table.id).inviteCode);
+    if (seated.error) {
+      throw new Error(`the player could not join ${table.title}: ${seated.error}`);
+    }
+    campaigns.setCampaignStatus(table.id, "active");
+    const kael = sheets.createSheet(table.id, player.id, 3, heroInput({ name: "Kael Ashvale", class: "rogue", level: 3 }));
+    const hollisBot = createCompanionUser("Sir Hollis Stonebridge");
+    const hollis = sheets.createSheet(table.id, hollisBot.id, 3, heroInput({ name: "Sir Hollis Stonebridge", class: "paladin", level: 3 }));
+    sheets.markSheetAsCompanion(hollis.id, "party", "Keeps his word.");
+    const courtship = bonds.ensureRelationship({ campaignId: table.id, characterId: kael.id, characterName: kael.name, subjectKind: "companion", subjectName: hollis.name });
+    bonds.patchRelationship(courtship.id, { approval: 100, romance: "courting" });
+    romanceTables[viewport] = { id: table.id, kael: kael.id };
+  }
+}
+
 // A table per viewport for the DM's Stop (issue 383): its turn runs against
 // a model the scenario starts and never lets answer.
 const stopTables = {};
@@ -807,6 +904,55 @@ messages.insertCampaignMessage({
   authorType: "dm",
   speech: [],
   content: "The road is quiet now. Rook wipes the blade clean and feels steadier for it.",
+});
+
+// A College of Lore bard who has earned 10th level (issue #570, CLS-21): the
+// level-up dialog's spell step offers Magical Secrets' two spells from any
+// class as their own group. The two Additional Magical Secrets took at 6th
+// (haste, counterspell) are already held, so the group is Magical Secrets'.
+const { withAsiLedger } = await import("../../src/lib/srd/asi-ledger.ts");
+const secretsTable = campaigns.createCampaign(world.owner.id, {
+  title: "Secrets Table",
+  description: "A library of borrowed songs.",
+  theme: "high-fantasy",
+  maxPlayers: 6,
+  startingLevel: 9,
+  difficulty: "normal",
+  gameSettings: { ttsEnabled: false, genre: "high_fantasy" },
+});
+campaigns.setCampaignStatus(secretsTable.id, "active");
+sheets.createSheet(
+  secretsTable.id,
+  world.owner.id,
+  9,
+  heroInput({
+    name: "Wren Lark",
+    class: "bard",
+    subclass: "College of Lore",
+    level: 9,
+    abilities: { str: 8, dex: 14, con: 14, int: 10, wis: 12, cha: 16 },
+    // Both improvements bard 4th and 8th give, taken.
+    features: withAsiLedger([], 2),
+    spellcasting: {
+      ability: "cha",
+      slots: {},
+      known: [
+        "Charm Person", "Cure Wounds", "Healing Word", "Faerie Fire", "Heroism", "Thunderwave", "Sleep",
+        "Hold Person", "Invisibility", "Shatter", "Hypnotic Pattern", "Dispel Magic", "Haste", "Counterspell",
+      ],
+      prepared: [],
+      cantrips: ["Vicious Mockery", "Minor Illusion", "Mage Hand"],
+    },
+  }),
+  null,
+  { xp: 64000 },
+);
+messages.insertCampaignMessage({
+  campaignId: secretsTable.id,
+  seq: campaigns.allocateSeq(secretsTable.id),
+  authorType: "dm",
+  speech: [],
+  content: "The archive's last door opens. Wren reads a verse no bard was ever taught.",
 });
 
 // The lead runs the server too, for the admin settings (issue 255).
@@ -1182,6 +1328,45 @@ const conscience = {};
       throw new Error(`the conscience table's first deed was refused: ${cruelty.error}`);
     }
     conscience[viewport] = { id: table.id, kael: kael.id, seren: seren.name };
+  }
+}
+
+// A romance's own scene (issue 643): one table per viewport, run by the lead
+// as its GM, where the player's Kael is courting Lyra Wren, a party
+// companion, and the engine has made her ask him for help with something of
+// her own. The scenario reads the line on her Bonds row and plays it.
+const ROMANCE_PACE_TITLE = "Romance Pace Table";
+const romancePace = {};
+{
+  const { companionNpcFor } = await import("../../src/lib/db/companion-npcs.ts");
+  const { patchNpcAgency } = await import("../../src/lib/db/npcs.ts");
+  const { ensureRelationship, patchRelationship } = await import("../../src/lib/db/relationships.ts");
+  const { writePacing } = await import("../../src/lib/db/romance-pacing.ts");
+  const { NO_PACING } = await import("../../src/lib/dm/romance-scene-logic.ts");
+  for (const viewport of ["desktop", "phone"]) {
+    const table = campaigns.createCampaign(world.owner.id, {
+      title: `${ROMANCE_PACE_TITLE} (${viewport})`,
+      description: "A bard who has her own troubles.",
+      theme: "high-fantasy",
+      maxPlayers: 6,
+      startingLevel: 3,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human" },
+    });
+    const seated = campaigns.joinByInviteCode(player.id, campaigns.getCampaignById(table.id).inviteCode);
+    if (seated.error) {
+      throw new Error(`the player could not join ${table.title}: ${seated.error}`);
+    }
+    campaigns.setCampaignStatus(table.id, "active");
+    const kael = sheets.createSheet(table.id, player.id, 3, heroInput({ name: "Kael Ashvale", class: "rogue", level: 3 }));
+    const bot = createCompanionUser("Lyra Wren");
+    const lyra = sheets.createSheet(table.id, bot.id, 3, heroInput({ name: "Lyra Wren", class: "bard", level: 3 }));
+    sheets.markSheetAsCompanion(lyra.id, "party", "Bright, restless, quick to laugh.");
+    patchNpcAgency(companionNpcFor(sheets.getSheetById(lyra.id)).id, { personality: { drive: 0, diligence: 0, boldness: 0, warmth: 1, empathy: 0, composure: 0 } });
+    const bond = ensureRelationship({ campaignId: table.id, characterId: kael.id, characterName: kael.name, subjectKind: "companion", subjectName: lyra.name, subjectId: lyra.id });
+    patchRelationship(bond.id, { approval: 80, romance: "courting" });
+    writePacing(bond.id, { ...NO_PACING, due: { kind: "asks_help", stage: "courting", rival: "", handed: 0 } });
+    romancePace[viewport] = { id: table.id, kael: kael.name, lyra: lyra.name };
   }
 }
 
@@ -2234,6 +2419,7 @@ const ids = {
   enemyTurns,
   enemyMoves,
   levelTableId: levelTable.id,
+  secretsTableId: secretsTable.id,
   commandTableId: commandTable.id,
   replayTableId: replayTable.id,
   voiceTableId: voiceTable.id,
@@ -2246,13 +2432,18 @@ const ids = {
   dominate,
   conduct,
   bondTables,
+  romanceTables,
+  nameTables,
   pacts: pactTables,
   pip: pip.id,
   // Issue 548's made-up world, one table per viewport.
   regionTables,
+  // Issue 643's courting companion with a scene due, one per viewport.
+  romancePace,
   // Every campaign a scenario opens, by id, for the app's home tiles.
   titles: {
     [levelTable.id]: "Level Table",
+    [secretsTable.id]: "Secrets Table",
     [commandTable.id]: COMMAND_TITLE,
     [replayTable.id]: REPLAY_TITLE,
     [voiceTable.id]: VOICE_TITLE,
@@ -2277,12 +2468,15 @@ const ids = {
     [quiet.id]: QUIET_TITLE,
     [marketTable.id]: MARKET_TITLE,
     ...Object.fromEntries(Object.entries(regionTables).map(([viewport, id]) => [id, `${REGION_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(romancePace).map(([viewport, table]) => [table.id, `${ROMANCE_PACE_TITLE} (${viewport})`])),
     [prepared.id]: PREP_TITLE,
     [tourTable.id]: TOUR_TITLE,
     [prepSource.id]: PREP_SOURCE_TITLE,
     [offerTable.id]: OFFER_TITLE,
     ...Object.fromEntries(Object.entries(closing).map(([viewport, id]) => [id, `Closing Table (${viewport})`])),
     ...Object.fromEntries(Object.entries(bondTables).map(([viewport, table]) => [table.id, `Bonds Table (${viewport})`])),
+    ...Object.fromEntries(Object.entries(romanceTables).map(([viewport, table]) => [table.id, `Romance Table (${viewport})`])),
+    ...Object.fromEntries(Object.entries(nameTables).map(([key, id]) => [id, key.endsWith("Gm") ? `Names GM Table (${key.slice(0, -2)})` : `Names Table (${key})`])),
     ...Object.fromEntries(Object.entries(stopTables).map(([viewport, id]) => [id, `Stop Table (${viewport})`])),
     ...Object.fromEntries(Object.entries(questTables).map(([viewport, table]) => [table.id, `Quest Table (${viewport})`])),
     ...Object.fromEntries(Object.entries(wardrobe).map(([viewport, id]) => [id, `Wardrobe (${viewport})`])),

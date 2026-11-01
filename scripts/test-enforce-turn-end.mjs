@@ -99,6 +99,9 @@ await test("Ray of Frost's slow ends at the START of the caster's next turn, as 
   assert.equal(ray.ok, true, ray.error);
   assert.ok(has(kit.enemy(enemy.id).conditions, "ray of frost"));
   walkTo(wizard);
+  // The dummy's turn closes the round; the caster's begins once it has
+  // gone (issue 713).
+  kit.handOnEnemies();
   assert.equal(has(kit.enemy(enemy.id).conditions, "ray of frost"), false);
 });
 
@@ -127,6 +130,7 @@ await test("Chill Touch on an undead keeps its disadvantage against the caster u
   assert.equal(touch.ok, true, touch.error);
   assert.ok(has(kit.enemy(enemy.id).conditions, "undead dread (chill touch)"));
   walkTo(wizard);
+  kit.handOnEnemies();
   assert.equal(has(kit.enemy(enemy.id).conditions, "chill touch"), false, "the no-healing part outlived the start of the caster's turn");
   assert.ok(has(kit.enemy(enemy.id).conditions, "undead dread (chill touch)"), "the dread ended as the caster's turn started");
   assert.ok(kit.endTurn(userOf(wizard)));

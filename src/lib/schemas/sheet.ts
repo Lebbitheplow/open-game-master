@@ -156,12 +156,20 @@ export function keyedFeatChoices<T>(choices: Record<string, T> | undefined): Rec
 }
 export const featChoicesSchema = z.record(z.string().trim().min(1).max(80), featPicksSchema).transform(keyedFeatChoices);
 
+// Expertise doubles a proficiency the character holds, so the list is
+// bounded by those: every skill and thieves' tools. It stopped at six, which
+// refused a rogue 6 / bard 10, whom SRD 5.1 gives eight (Rogue at 1st and
+// 6th, Bard at 3rd and 10th, two each); the legality check
+// (src/lib/srd/legality/proficiencies.ts) holds the count to what the
+// classes and feats have given.
+export const EXPERTISE_CAP = 19;
+
 export const proficienciesSchema = z.object({
   saves: z.array(z.enum(ABILITIES)).max(6),
   skills: z.array(z.string().max(40)).max(18),
   // Skills with doubled proficiency (rogue/bard expertise). The .default
   // heals rows stored before the field existed.
-  expertise: z.array(z.string().max(40)).max(6).default([]),
+  expertise: z.array(z.string().max(40)).max(EXPERTISE_CAP).default([]),
   // Languages, tools, armor and weapons are clipped rather than refused: the
   // server writes the training itself from the race, class and background
   // rows (src/lib/srd/legality/proficiencies.ts), whose text a content pack
@@ -372,6 +380,8 @@ export type AsiChoice = z.infer<typeof asiChoiceSchema>;
 export const attractionSchema = z.object({
   genders: z.array(z.enum(GENDERS)).max(GENDERS.length).default([]),
   note: z.string().trim().max(ATTRACTION_NOTE_MAX).default(""),
+  // Open to more than one partner (issue 642); absent is exclusive.
+  open: z.boolean().optional(),
 });
 
 export const createSheetSchema = z.object({
@@ -631,8 +641,9 @@ export const wildShapeSchema = z
     // An empty list is a form with no attack at all (a frog), which leaves
     // the character nothing to attack with.
     attacks: z.array(summonAttackSchema).max(4).optional(),
-    // The form's Multiattack: attacks one Attack action holds.
-    attacksPerTurn: z.number().int().min(1).max(4).optional(),
+    // The form's Multiattack: attacks one Attack action holds, up to the
+    // marilith's seven (SRD 5.1) under the enemy reader's ceiling of ten.
+    attacksPerTurn: z.number().int().min(1).max(10).optional(),
     // What the creature is: its type ("elemental"), challenge rating, the
     // saving throws its block lists, and the damage and conditions it
     // shrugs off. Rows stored before these fields lack them and read as a

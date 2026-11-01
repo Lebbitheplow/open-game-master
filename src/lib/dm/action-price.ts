@@ -5,7 +5,7 @@
 // nothing. Nothing here writes; action-tools.ts stores the budget it returns.
 
 import { acBreakdownFor } from "@/lib/srd";
-import { spendAction, spendAttack, type SpendResult, type TurnBudget } from "@/lib/dm/action-budget";
+import { spendAction, spendAttack, WIND_STEP, type SpendResult, type TurnBudget } from "@/lib/dm/action-budget";
 import { bonusRouteFor, counterSpend, kiSpend, noBonusRoute, type BonusRoute, type MoveAction } from "@/lib/dm/bonus-actions";
 import { authoredBonusRoute } from "@/lib/srd/authored-economy";
 import { featBonusRoute } from "@/lib/srd/feat-combat";
@@ -27,6 +27,7 @@ export const ACTIONS = [
   "search",
   "use_object",
   "escape",
+  "pin",
 ] as const;
 
 export type TakeActionName = (typeof ACTIONS)[number];
@@ -46,6 +47,7 @@ const ACTION_WORDS: Record<(typeof ACTIONS)[number], string> = {
   search: "search",
   use_object: "use an object",
   escape: "escape",
+  pin: "pin",
 };
 
 const MOVES = new Set<string>(["dodge", "dash", "disengage", "hide"]);
@@ -122,9 +124,12 @@ export function priceAction(
       };
     }
     const spent = spendAction(budget, "bonus", `${route.feature} (${action})`, sheet.name);
-    return spent.ok
-      ? { budget: spent.budget, note: `${route.feature}: their bonus action`, ki: route.ki, feature: route.feature, ...counter }
-      : toolError(spent);
+    if (!spent.ok) {
+      return toolError(spent);
+    }
+    // Step of the Wind doubles the jump for the turn (jump-move.ts).
+    const marked = route.feature === "Step of the Wind" ? { ...spent.budget, oncePerTurn: [...spent.budget.oncePerTurn, WIND_STEP] } : spent.budget;
+    return { budget: marked, note: `${route.feature}: their bonus action`, ki: route.ki, feature: route.feature, ...counter };
   }
   if (!budget) {
     return { budget: null };

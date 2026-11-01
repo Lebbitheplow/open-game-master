@@ -25,7 +25,8 @@ import { abilityMod, proficiencyBonus, suite } from "./lib/enforce-harness.mjs";
 import { cleric, fightDummies, wizard, castOnOwnTurn } from "./lib/enforce-spells.mjs";
 
 const { test, finish } = suite("test-enforce-spell-effects");
-const { skipCurrentTurn } = await import("../src/lib/dm/encounter-tools.ts");
+const { handOnEnemyTurns, skipCurrentTurn } = await import("../src/lib/dm/encounter-tools.ts");
+const { onPersonsTurn } = await import("../src/lib/dm/invoke.ts");
 const worlds = [];
 
 const FIGHTER = {
@@ -47,11 +48,23 @@ async function party(...heroes) {
   return { world, sheets: heroes.map((hero) => world.addHero(hero)) };
 }
 
+// The lead's release as the floor route makes it: while the enemies a pass
+// walked past are due it hands their turns on, and the round turns over
+// after them (issue 713); otherwise it skips the turn.
+function leadSkip(world) {
+  if (world.encounter().legendary.due?.length) {
+    const campaign = world.campaign();
+    onPersonsTurn(campaign, (turn) => handOnEnemyTurns(campaign, turn, false));
+    return true;
+  }
+  return skipCurrentTurn(world.campaignId);
+}
+
 // Skips turns until the round number moves: one tick of every duration.
 function nextRound(world) {
   const round = world.encounter().round;
   for (let turn = 0; turn < 12 && world.encounter().round === round; turn += 1) {
-    assert.equal(skipCurrentTurn(world.campaignId), true);
+    assert.equal(leadSkip(world), true);
   }
   assert.equal(world.encounter().round, round + 1);
 }
