@@ -134,10 +134,16 @@ function without(conditions: string[], meta: ConditionMetaMap, names: string[], 
   return next;
 }
 
+// What a write records in a character's trail, under the kinds the event log
+// already reads for a condition (event-log-logic.ts describeKnownEntry): one
+// laid, one ended, or the turn's count of damage from inside starting again
+// (a quiet tick, folded with the turn's others).
+type Change = { kind: "set_condition" | "clear_condition" | "condition_clock"; delta: Record<string, unknown>; reason: string };
+
 // One door for both kinds, each to a writer the revert reads.
-function write(campaign: Campaign, party: Party, next: { conditions: string[]; meta: ConditionMetaMap }, reason: string) {
+function write(campaign: Campaign, party: Party, next: { conditions: string[]; meta: ConditionMetaMap }, change: Change) {
   if (party.kind === "sheet") {
-    patchSheetAudited(campaign.id, party.id, { conditions: next.conditions, conditionMeta: next.meta }, { kind: "condition", reason });
+    patchSheetAudited(campaign.id, party.id, { conditions: next.conditions, conditionMeta: next.meta }, { kind: change.kind, delta: change.delta, reason: change.reason });
     return;
   }
   patchEnemyConditions(party.id, next.conditions, next.meta);
@@ -180,10 +186,19 @@ export function swallowCreature(campaign: Campaign, turnId: string, enemy: Encou
       }
     }
   } else {
-    write(campaign, target, laid(live.conditions, live.meta, ["blinded", "restrained", SWALLOWED], enemy.id), `swallowed by ${enemy.displayName}`);
+    write(campaign, target, laid(live.conditions, live.meta, ["blinded", "restrained", SWALLOWED], enemy.id), {
+      kind: "set_condition",
+      delta: { condition: SWALLOWED },
+      reason: `swallowed by ${enemy.displayName}`,
+    });
   }
   const now = read(target) ?? live;
-  write(campaign, target, without(now.conditions, now.meta, ["grappled"], enemy.id), `the grapple ends as ${enemy.displayName} swallows ${now.name}`);
+  const ungrappled = without(now.conditions, now.meta, ["grappled"], enemy.id);
+  // Only a grapple this creature held ends; with none there is nothing to
+  // write, and no "no longer grappled" line for one never grappled.
+  if (ungrappled.conditions.length !== now.conditions.length) {
+    write(campaign, target, ungrappled, { kind: "clear_condition", delta: { condition: "grappled" }, reason: `the grapple ends as ${enemy.displayName} swallows ${now.name}` });
+  }
   const acid = rule?.acid ? `, and takes ${rule.acid.dice} ${rule.acid.type} damage at the start of each of its turns` : "";
   const out = rule?.regurgitate
     ? ` ${rule.regurgitate.damage} damage dealt it from inside in one turn makes it save (DC ${rule.regurgitate.dc} Constitution) at that turn's end or regurgitate them.`
@@ -243,7 +258,13 @@ export function noteBlowFromInside(campaign: Campaign, encounterId: string, enem
   }
   const entry: ConditionMeta = inside.meta[name] ?? {};
   const hurt = (entry.swallow?.hurt ?? 0) + Math.floor(amount);
-  write(campaign, inside, { conditions: inside.conditions, meta: { ...inside.meta, [name]: { ...entry, swallow: { ...(entry.swallow ?? {}), hurt } } } }, `${hurt} damage dealt ${swallowerName(enemyId)} from inside this turn`);
+  const swallower = swallowerName(enemyId);
+  write(
+    campaign,
+    inside,
+    { conditions: inside.conditions, meta: { ...inside.meta, [name]: { ...entry, swallow: { ...(entry.swallow ?? {}), hurt } } } },
+    { kind: "set_condition", delta: { condition: SWALLOWED, hurtInside: hurt, swallower }, reason: `${hurt} damage dealt ${swallower} from inside this turn` },
+  );
 }
 
 // An open square beside a creature's footprint, nearest the mover.
@@ -272,8 +293,11 @@ function outProne(campaign: Campaign, encounterId: string, party: Party, swallow
   if (!live) {
     return null;
   }
+  // Two lines in the trail, as the table reads them: out, then prone.
+  const ended = names.filter((name) => held(live, name));
   const freed = without(live.conditions, live.meta, names, swallower.id);
-  write(campaign, party, laid(freed.conditions, freed.meta, ["prone"], swallower.id), reason);
+  write(campaign, party, freed, { kind: "clear_condition", delta: { condition: ended.join(", ") || SWALLOWED }, reason });
+  write(campaign, party, laid(freed.conditions, freed.meta, ["prone"], swallower.id), { kind: "set_condition", delta: { condition: "prone" }, reason });
   const map = getBattleMapForEncounter(encounterId);
   const token = map ? getTokenByRef(map.id, party.id) : null;
   const body = map ? getTokenByRef(map.id, swallower.id) : null;
@@ -303,7 +327,12 @@ export function swallowTurnEnd(campaign: Campaign, encounter: Encounter): string
     }
     hurt.set(entry.source, Math.max(hurt.get(entry.source) ?? 0, entry.swallow.hurt));
     // The count is the turn's: it starts again at nothing.
-    write(campaign, inside, { conditions: inside.conditions, meta: { ...inside.meta, [name]: { ...entry, swallow: { ...entry.swallow, hurt: 0 } } } }, "the turn's count of damage from inside starts again");
+    write(
+      campaign,
+      inside,
+      { conditions: inside.conditions, meta: { ...inside.meta, [name]: { ...entry, swallow: { ...entry.swallow, hurt: 0 } } } },
+      { kind: "condition_clock", delta: {}, reason: "the turn's count of damage from inside starts again" },
+    );
   }
   for (const [enemyId, amount] of hurt) {
     const swallower = getEnemy(enemyId);
@@ -337,7 +366,12 @@ export function freeFromCorpse(campaign: Campaign, enemy: EncounterEnemy): strin
     const freed = without(party.conditions, party.meta, ["restrained"], enemy.id);
     const name = held(party, SWALLOWED) ?? SWALLOWED;
     const entry = freed.meta[name] ?? {};
-    write(campaign, party, { conditions: freed.conditions, meta: { ...freed.meta, [name]: { ...entry, swallow: { ...(entry.swallow ?? {}), escapeFeet: feet } } } }, `${enemy.displayName} dies around them`);
+    write(
+      campaign,
+      party,
+      { conditions: freed.conditions, meta: { ...freed.meta, [name]: { ...entry, swallow: { ...(entry.swallow ?? {}), escapeFeet: feet } } } },
+      { kind: "clear_condition", delta: { condition: "restrained" }, reason: `${enemy.displayName} dies around them` },
+    );
   }
   return `${inside.map((party) => party.name).join(", ")} ${inside.length === 1 ? "is" : "are"} no longer restrained by ${enemy.displayName}: ${feet} feet of movement climbs out of the corpse, exiting prone.`;
 }

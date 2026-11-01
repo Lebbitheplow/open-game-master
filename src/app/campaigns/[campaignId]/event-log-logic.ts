@@ -241,6 +241,10 @@ export function describeKnownEntry(entry: { kind: string; delta: Delta }, name: 
       return `${name}'s items regain charges at dawn`;
     case "set_condition": {
       if (delta.inspiration) return `${name} gains Inspiration`;
+      // A swallowed creature's running count toward its swallower's
+      // regurgitation save (src/lib/dm/swallow.ts noteBlowFromInside).
+      const inside = amount(delta.hurtInside);
+      if (inside !== null) return `${name} has dealt ${word(delta.swallower) ?? "what swallowed them"} ${inside} damage from inside this turn`;
       const condition = word(delta.condition);
       return condition ? `${name} is ${condition}` : `${name} gains a condition`;
     }
