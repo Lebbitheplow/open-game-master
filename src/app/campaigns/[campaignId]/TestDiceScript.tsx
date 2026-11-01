@@ -75,6 +75,10 @@ export function TestDiceScript({ campaignId }: { campaignId: string }) {
   const [rows, setRows] = useState<Row[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // What the last save said: Save the dice changed nothing on screen, so a
+  // press looked like it had done nothing. The word goes as soon as the dice
+  // on screen are changed again, since then they are no longer what it said.
+  const [said, setSaid] = useState("");
 
   if (!hostOffers(capabilities, "diceScripts")) {
     return null;
@@ -100,6 +104,13 @@ export function TestDiceScript({ campaignId }: { campaignId: string }) {
       return;
     }
     show(payload);
+    setSaid(
+      method === "PUT"
+        ? "Saved. This table's next rolls use these dice."
+        : method === "DELETE"
+          ? "Back to ordinary dice: no seed and nothing forced."
+          : "",
+    );
   }
 
   function openSheet(next: boolean) {
@@ -122,6 +133,7 @@ export function TestDiceScript({ campaignId }: { campaignId: string }) {
   }
 
   function patch(key: string, change: Partial<Row>) {
+    setSaid("");
     setRows((now) =>
       now.map((row) => {
         if (row.key !== key) {
@@ -134,6 +146,7 @@ export function TestDiceScript({ campaignId }: { campaignId: string }) {
   }
 
   function move(index: number, by: -1 | 1) {
+    setSaid("");
     setRows((now) => {
       const to = index + by;
       if (to < 0 || to >= now.length) {
@@ -175,7 +188,10 @@ export function TestDiceScript({ campaignId }: { campaignId: string }) {
               type="text"
               inputMode="numeric"
               value={seed}
-              onChange={(event) => setSeed(event.target.value.replace(/[^0-9]/g, ""))}
+              onChange={(event) => {
+                setSeed(event.target.value.replace(/[^0-9]/g, ""));
+                setSaid("");
+              }}
               placeholder="Empty: random dice"
               aria-describedby="dice-seed-hint"
               aria-invalid={seedBad || undefined}
@@ -243,7 +259,15 @@ export function TestDiceScript({ campaignId }: { campaignId: string }) {
                       <KitButton tone="icon" always aria-label={`Move forced roll ${index + 1} down`} disabled={index === rows.length - 1} onClick={() => move(index, 1)}>
                         <ArrowDown className="size-4" aria-hidden="true" />
                       </KitButton>
-                      <KitButton tone="iconDanger" always aria-label={`Remove forced roll ${index + 1}`} onClick={() => setRows((now) => now.filter((entry) => entry.key !== row.key))}>
+                      <KitButton
+                        tone="iconDanger"
+                        always
+                        aria-label={`Remove forced roll ${index + 1}`}
+                        onClick={() => {
+                          setSaid("");
+                          setRows((now) => now.filter((entry) => entry.key !== row.key));
+                        }}
+                      >
                         <X className="size-4" aria-hidden="true" />
                       </KitButton>
                     </div>
@@ -255,7 +279,10 @@ export function TestDiceScript({ campaignId }: { campaignId: string }) {
             )}
             <KitButton
               disabled={rows.length >= DICE_SCRIPT_LIMITS.queue}
-              onClick={() => setRows((now) => [...now, { key: nextKey(), roller: "enemy", kind: "attack", face: 20, who: ANYONE }])}
+              onClick={() => {
+                setSaid("");
+                setRows((now) => [...now, { key: nextKey(), roller: "enemy", kind: "attack", face: 20, who: ANYONE }]);
+              }}
             >
               Add a forced roll
             </KitButton>
@@ -270,6 +297,11 @@ export function TestDiceScript({ campaignId }: { campaignId: string }) {
             <KitButton tone="danger" disabled={busy} onClick={() => void send("DELETE")}>
               Back to ordinary dice
             </KitButton>
+            {said ? (
+              <span role="status" className="motion-pop text-[11px] text-stone-300" data-dice-saved>
+                {said}
+              </span>
+            ) : null}
           </div>
 
           <section aria-labelledby="dice-used-head" className="space-y-1">
