@@ -109,6 +109,8 @@ function ComposerInner({
   onSnoozeStory,
   onSubmit,
   speakingAs,
+  reactionsSent,
+  onReactionSent,
 }: {
   campaignId: string;
   sheets: CampaignState["sheets"];
@@ -182,6 +184,10 @@ function ComposerInner({
   onSubmit: (event: FormEvent) => void;
   // Speaking as, for a reaction typed in the box (ReactAsPicker).
   speakingAs?: ComponentProps<typeof ReactAsPicker>;
+  // The heroes a reaction was sent for that the GM has not resolved, and the
+  // call that adds one (the Hand holds their reaction cards meanwhile).
+  reactionsSent?: readonly string[];
+  onReactionSent?: (characterId: string) => void;
 }) {
   // The Hand outlives the fight by one beat so its fold-away can play.
   const hand = useLingeringEncounter(encounter);
@@ -321,6 +327,8 @@ function ComposerInner({
         {(partyHand || ownsHeroes || answersForCompanions) && hand.encounter ? (
           <CombatHand
             onComposeAs={speakingAs?.onChange}
+            reactionsSent={reactionsSent}
+            onReactionSent={onReactionSent}
             reactionsOnly={!partyHand}
             runsTable={gmCompanions}
             runsDominated={gmDominated}
