@@ -14,8 +14,10 @@ import type { GuardReport } from "@/lib/narrator-quality";
 export type DmTurnStatus = "running" | "awaiting_rolls" | "done" | "failed";
 
 // Who is driving the turn. A human turn exists only so the engine has
-// somewhere to hang rolls and per-turn bookkeeping; it holds no
-// conversation and is never handed to the model.
+// somewhere to hang rolls and per-turn bookkeeping, and is never handed to
+// the model. It holds no conversation, except at a test fight, where each
+// call the person makes is kept on it for the author's turn trace
+// (src/lib/dm/invoke.ts, issue 685).
 export type DmTurnActor = "ai" | "human_dm";
 
 export type DmTurn = {

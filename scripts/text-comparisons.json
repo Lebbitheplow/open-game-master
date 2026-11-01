@@ -1166,6 +1166,8 @@
     "lib/dm/call-tracker-logic.ts#localeCompare": [["key",1,"call ids (tie-break)"]],
     "lib/dm/can-act.ts#str-eq": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/card-score-logic.ts#str-eq": [["key",6,"a stored message's role, a call's tool name and the engine's refusal kind: the protocol's own tokens"]],
+    "lib/dm/turn-trace-logic.ts#re-word": [["key",1,"the server's own roll marker in narration ([roll:<id>]), never words a person wrote"]],
+    "lib/dm/turn-trace-logic.ts#str-eq": [["key",13,"a stored message's role, the engine's refusal kind, a turn's actor and status, and the turn row's own marks: the protocol's tokens"]],
     "lib/dm/cast-at-enemy.ts#re-word": [["english-source",1,"the value the cast tool's description lists (\"armor\" for Heat Metal on worn armour)"]],
     "lib/dm/cast-at-enemy.ts#str-eq": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/cast-at-enemy.ts#str-includes": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
