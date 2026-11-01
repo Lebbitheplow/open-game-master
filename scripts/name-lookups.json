@@ -141,6 +141,7 @@
     "app/campaigns/[campaignId]/Hand.tsx#first": [["key",1,"the default aim: the aimed enemy, else the first target on the board"],["key",1,"the first companion the GM seat answers for, heading its reactions (no text names it)"]],
     "app/campaigns/[campaignId]/Hand.tsx#partial": [["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["key",1,"a board control's value, \"id:+\" or \"id:-\" for a share (issue 570)"]],
     "app/campaigns/[campaignId]/Hand.tsx#whole": [["identity",1,"a target by whole name"]],
+    "app/campaigns/[campaignId]/HandCardFace.tsx#partial": [["parse",1,"a legendary card's own resource line split at the separator it was built with, into the lines the card shows (no record's name, issue 685)"]],
     "app/campaigns/[campaignId]/HandGroups.tsx#fallback": [["key",2,"a group's section by its own id; the first section when the one chosen has gone (a level emptied mid-fight)"]],
     "app/campaigns/[campaignId]/HandSpells.tsx#fallback": [["key",1,"UI keys, ids, refs, view choices and documented defaults (a palette, a tile, a peer volume, the first sheet)"]],
     "app/campaigns/[campaignId]/HandSpells.tsx#first": [["identity",1,"among the spells a whole name found, one outside a5e, else the first"]],

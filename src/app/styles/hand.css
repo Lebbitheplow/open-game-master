@@ -239,6 +239,11 @@
 .hand-foot { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 4px; min-width: 0; }
 .hand-resource { font-family: var(--font-geist-mono), monospace; font-size: 9px; color: var(--hand-gold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hand-cond { font-family: var(--font-geist-mono), monospace; font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: #ff9d5c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* A legendary card's cost and what is left, stacked at the left edge. */
+.hand-resource[data-lines] { display: flex; flex-direction: column; line-height: 1.25; overflow: visible; }
+/* Its slot is wide enough that the next card leaves those lines showing,
+   however tight the fan draws. */
+.hand-slot:has(> .hand-card[data-cost="legendary"]) { min-width: 60px; }
 
 /* Card types, the mockup's ribbon table. */
 .hand-card[data-type="attack"] { --ribbon-bg: linear-gradient(180deg, rgba(198, 90, 36, 0.5), rgba(69, 20, 6, 0.35)); --ribbon-edge: rgba(224, 112, 58, 0.45); --ribbon-ink: #ffd0ad; --tone: #ff9d5c; --tone-rgb: 255, 157, 92; }
