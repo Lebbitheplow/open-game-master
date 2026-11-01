@@ -24,6 +24,7 @@ const { summonsOf } = await import("../src/lib/dm/summon-store.ts");
 const { createDmTurn } = await import("../src/lib/db/dm-turns.ts");
 const { runInTurnScope } = await import("../src/lib/dm/job-control.ts");
 const { setDmMode } = await import("../src/lib/db/campaigns.ts");
+const { setBattleMapTerrain } = await import("../src/lib/db/battle-maps.ts");
 
 async function revertTurn(world, turnId, confirm = false) {
   world.signIn(world.owner);
@@ -177,6 +178,20 @@ await test("a Web laid on the board and a servant a spell called up go with the 
   assert.equal(summonsOf(person.campaignId, vex.id, "Unseen Servant").length, 0, "the servant stayed");
 });
 
+await test("ground a revert puts back as wall sets whoever has stepped onto it since on open ground, never inside it", async () => {
+  kit.openField([[2, 2, "#"]]);
+  const board = kit.map();
+  const turn = createDmTurn(person.campaignId, [], "human_dm");
+  // The turn opens the wall; afterwards a goblin is set down where it stood.
+  runInTurnScope(turn.id, () => setBattleMapTerrain(board.id, board.drawnTerrain.replace("#", ".")));
+  kit.place(goblin.id, 2, 2);
+  assert.equal((await revertTurn(person, turn.id)).status, 200);
+  const after = kit.map();
+  assert.equal(after.terrain[2 * after.width + 2], "#", "the wall did not come back");
+  const at = kit.token(goblin.id);
+  assert.notDeepEqual([at.x, at.y], [2, 2], "the goblin was left inside the wall");
+});
+
 await test("a creature a later call changed again is asked about first, and goes back as the reverted call found it on yes", async () => {
   const before = getEnemy(goblin.id).currentHp;
   const first = await person.invoke("damage_enemy", { enemyId: goblin.id, amount: 3 });
@@ -223,6 +238,22 @@ await test("at an AI table the storyteller's turn is taken back from the fight t
   assert.equal(getEnemy(brute.id).currentHp, hp);
   assert.deepEqual([aiKit.token(aiHero.id).x, aiKit.token(aiHero.id).y], [at.x, at.y]);
   assert.deepEqual([ai.encounter().round, ai.encounter().turnIndex], [round, turnIndex]);
+});
+
+await test("at an AI table a token the storyteller's turn moved, moved again since by the GM's own hand, is asked about first", async () => {
+  aiKit.giveTurn(aiHero.id);
+  aiKit.freshTurn();
+  aiKit.place(aiHero.id, 4, 4);
+  model.script([reply({ calls: [call("move_token", { token: aiHero.id, x: 5, y: 4 })] }), reply({ text: "You step in." })]);
+  const said = await model.turn(ai, "I step forward.", aiHero.id);
+  assert.deepEqual([aiKit.token(aiHero.id).x, aiKit.token(aiHero.id).y], [5, 4], "the model's move landed nowhere");
+  // The GM drags the token after the turn: no turn of its own.
+  aiKit.place(aiHero.id, 6, 6);
+  const asked = await revertTurn(ai, said.dmTurnId);
+  assert.equal(asked.status, 409, JSON.stringify(asked.json));
+  assert.ok(asked.json.warnings.some((line) => /token changed again/.test(line)), JSON.stringify(asked.json));
+  assert.equal((await revertTurn(ai, said.dmTurnId, true)).status, 200);
+  assert.deepEqual([aiKit.token(aiHero.id).x, aiKit.token(aiHero.id).y], [4, 4]);
 });
 
 model.close();
