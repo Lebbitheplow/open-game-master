@@ -79,6 +79,12 @@ export function listLiveClockTurns(campaignId: string, limit = 50): ClockTurn[] 
   return [...byTurn].map(([turnId, moves]) => asClockTurn(turnId, moves));
 }
 
+// A turn dissolved (src/lib/db/turn-rows.ts dissolveTurn): a move made in
+// no turn is not one a turn can take back, and is not kept.
+export function forgetTurnClockMoves(campaignId: string, turnId: string) {
+  getDatabase().prepare(`DELETE FROM clock_moves WHERE campaign_id = ? AND turn_id = ?`).run(campaignId, turnId);
+}
+
 // The turn's moves have been through a revert: put back, or left standing
 // because the clock had moved on since. Either way no later revert of the
 // same turn reads them again.

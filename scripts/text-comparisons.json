@@ -2675,9 +2675,14 @@
     "lib/battlemap/area-shape.ts#str-key": [["english-source",1,"reference: SRD spell and ability names with their areas"]],
     "lib/battlemap/hand-area.ts#toLowerCase": [["key",1,"a spell's damage type (engine vocabulary), keying the colour its blast is drawn in"]],
     "lib/battlemap/hand-area.ts#str-key": [["key",1,"a spell's damage type (engine vocabulary), keying the colour its blast is drawn in"]],
+    "lib/db/turn-rows.ts#str-eq": [["key",1,"the id column left out of a write-back (field names)"]],
+    "lib/db/turn-rows.ts#toUpperCase": [["key",1,"the schema's own ON DELETE action (SQLite vocabulary)"]],
     "lib/dm/intent-logic.ts#str-case": [["key",1,"a card's first tool call by name, to share a casting out (issue 570)"]],
     "lib/dm/persons-record-logic.ts#str-eq": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/persons-record-logic.ts#str-key": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
-    "lib/dm/slotless-cast-logic.ts#str-eq": [["key",1,"tool names (engine vocabulary)"]]
+    "lib/dm/slotless-cast-logic.ts#str-eq": [["key",1,"tool names (engine vocabulary)"]],
+    "lib/dm/turn-revert.ts#str-eq": [["key",4,"turn change kinds, table names and a fight's standing (engine vocabulary)"]],
+    "lib/dm/turn-revert.ts#str-case": [["key",1,"the tables a kept row may be from (table names)"]],
+    "lib/dm/turn-rows-logic.ts#str-eq": [["key",1,"a table name (the schema's own)"]]
   }
 }

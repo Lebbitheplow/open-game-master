@@ -107,6 +107,10 @@ export type TurnTrace = {
   narration: string;
   modelCalls: number;
   rolls: number;
+  // When the lead reverted the turn ("Revert this turn"): its calls stay
+  // listed as they were made, read as taken back, as the event log strikes
+  // its rows and the chronicle keeps its lines. Null while it stands.
+  revertedAt: string | null;
 };
 
 // A stored turn as the trace reads it: a DmTurn (src/lib/db/dm-turns.ts)
@@ -122,6 +126,7 @@ export type TraceTurnInput = {
   contextTrace: { shape?: { historyStart: number; historyEnd: number; promptMessages: number } } | null;
   createdAt: string;
   updatedAt: string;
+  revertedAt?: string | null;
 };
 
 const SUMMARY_FIELDS = 5;
@@ -400,6 +405,7 @@ export function traceTurn(
     narration: plainNarration(turn.narrationParts),
     modelCalls: by === "ai" ? modelCallsIn(turn.conversation, turn.callIndex) : 0,
     rolls: turn.rollIds.length,
+    revertedAt: turn.revertedAt ?? null,
   };
 }
 

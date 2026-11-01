@@ -268,7 +268,9 @@ await test("every adjudication is rendered by the console: its category is one o
 });
 
 await test("every field has a kind the console can render, every select has options, and no required field is a boolean", () => {
-  const kinds = new Set(["character", "characters", "enemy", "enemies", "combatant", "shares", "hitDice", "list", "text", "longtext", "number", "boolean", "select", "dice"]);
+  // summonKind, summonMix and petForm draw their choices from the engine's
+  // own catalogue (issue 685; DmActionFields.tsx renders each).
+  const kinds = new Set(["character", "characters", "enemy", "enemies", "combatant", "shares", "hitDice", "list", "text", "longtext", "number", "boolean", "select", "dice", "summonKind", "summonMix", "petForm"]);
   for (const entry of ADJUDICATIONS) {
     const seen = new Set();
     for (const field of entry.fields) {

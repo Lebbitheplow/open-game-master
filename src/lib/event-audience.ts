@@ -156,6 +156,10 @@ export const EVENT_AUDIENCE: Readonly<Record<string, Audience>> = {
   calendar_updated: TABLE,
   schedule_updated: TABLE,
   clock_changed: TABLE,
+  // What a turn kept for its revert beyond the sheets (issue 685): the line
+  // a prepared event already told the table, a test table's spent die, a
+  // card resolved as played.
+  turn_changed: TABLE,
   whisper_activity: TABLE,
   side_activity: TABLE,
   ask_activity: TABLE,

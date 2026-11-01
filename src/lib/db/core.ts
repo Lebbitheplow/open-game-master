@@ -1809,6 +1809,14 @@ function ensureSchema(db: SqliteDatabase) {
     // conversation and is never handed back to the model, which is what the
     // pending-roll resume path branches on.
     ["actor", `TEXT NOT NULL DEFAULT 'ai'`],
+    // When the lead reverted this turn ("Revert this turn"), so the test
+    // fight's turn trace reads its calls as taken back, as the event log
+    // strikes its rows (issue 685). Null on a turn that stands.
+    ["reverted_at", `TEXT`],
+    // The turn a stand-in turn was opened inside (dm-turns.ts
+    // openStandInTurn): its rolls are that turn's, and that turn's revert
+    // marks it too. Null on every other turn.
+    ["owner_turn_id", `TEXT`],
   ]);
 
   addColumns("battle_maps", [
@@ -2859,6 +2867,50 @@ function ensureSchema(db: SqliteDatabase) {
     );
 
     CREATE INDEX IF NOT EXISTS idx_fight_events_encounter ON fight_events(encounter_id, position);
+
+    -- What a turn changed beyond the sheets and the clock, kept so "Revert
+    -- this turn" takes it back with them (issue 685,
+    -- src/lib/db/turn-changes.ts): a prepared fight's event that fired, a test
+    -- table's dice it spent, a card the GM resolved as played. Older servers
+    -- ignore it, so it needs no schema revision.
+    CREATE TABLE IF NOT EXISTS turn_changes (
+      id TEXT PRIMARY KEY,
+      campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+      turn_id TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      payload_json TEXT NOT NULL,
+      -- Its place in the campaign's log, beside the sheet changes.
+      seq INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      reverted_at TEXT
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_turn_changes_turn ON turn_changes(campaign_id, turn_id);
+
+    -- Each fight and board row a turn wrote (an enemy, the fight's order, a
+    -- token, the board, an effect, a dropped item), as the turn found it and
+    -- as it left it, so "Revert this turn" puts it back and asks first about
+    -- one changed again since (issue 685, src/lib/db/turn-rows.ts). A row
+    -- the turn made has no "before". Older servers ignore it, so it needs no
+    -- schema revision.
+    CREATE TABLE IF NOT EXISTS turn_rows (
+      campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+      turn_id TEXT NOT NULL,
+      tbl TEXT NOT NULL,
+      row_id TEXT NOT NULL,
+      before_json TEXT,
+      after_json TEXT,
+      sealed INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      reverted_at TEXT,
+      PRIMARY KEY (turn_id, tbl, row_id)
+    );
+
+    -- What "Revert this turn" can still reach is the table's newest turns
+    -- (src/lib/db/turn-rows.ts pruneOutOfReach): read by campaign and time.
+    CREATE INDEX IF NOT EXISTS idx_turn_rows_campaign ON turn_rows(campaign_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_turn_changes_campaign ON turn_changes(campaign_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_dm_turns_campaign ON dm_turns(campaign_id, created_at);
   `);
   // Clock-driven disease and poison rows were once filed under the literal
   // turn "clock", one false turn per campaign that "Revert this turn" undid
