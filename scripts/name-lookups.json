@@ -125,6 +125,8 @@
     "app/campaigns/[campaignId]/EncounterPanel.tsx#partial": [["key",1,"UI keys, ids, refs, view choices and documented defaults (a palette, a tile, a peer volume, the first sheet)"]],
     "app/campaigns/[campaignId]/EncounterPanel.tsx#whole": [["key",1,"UI group keys"],["key",1,"UI keys, ids, refs, view choices and documented defaults (a palette, a tile, a peer volume, the first sheet)"]],
     "app/campaigns/[campaignId]/EventLog.tsx#keyed":[["key",2,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
+    "app/campaigns/[campaignId]/TestDiceScript.tsx#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
+    "app/campaigns/[campaignId]/TestDiceScript.tsx#whole": [["identity",2,"a creature picked from the table's own list (the dice-script route's combatants), by the name that list gave it"],["key",2,"UI row keys"]],
     "app/campaigns/[campaignId]/event-log-logic.ts#partial": [["key",1,"audit row kinds the server writes, looked up whole in a set of kinds"]],
     "app/campaigns/[campaignId]/event-log-logic.ts#switch": [["key",1,"switches on tool names, event kinds, key names and kinds"]],
     "app/campaigns/[campaignId]/EventLog.tsx#helper": [["parse",1,"a Log milestone's line, the character's name left off when the summary already starts with it (milestoneLine): display, no record decided"]],
