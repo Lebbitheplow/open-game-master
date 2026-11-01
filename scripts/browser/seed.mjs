@@ -2352,9 +2352,90 @@ for (const viewport of ["desktop", "phone"]) {
   clockTables[viewport] = { id: table.id, hero: hero.id, heroName: hero.name };
 }
 
+// Issue 685, gap 4: a table the lead runs as its GM, in a fight on the
+// player's wizard's turn, so her Web card waits in the console's "Waiting on
+// you" list and the GM resolves it as played. One per viewport, since the
+// card is answered once.
+const RESOLVE_TITLE = "Resolve Table";
+const resolveTables = {};
+{
+  const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
+  const maps = await import("../../src/lib/db/battle-maps.ts");
+  const encounterRows = await import("../../src/lib/db/encounters.ts");
+  const { initiativeFloorFor } = await import("../../src/lib/dm/encounter-tools.ts");
+  for (const viewport of ["desktop", "phone"]) {
+    const table = campaigns.createCampaign(world.owner.id, {
+      title: `${RESOLVE_TITLE} (${viewport})`,
+      description: "A goblin in a lane and a wizard with a web to spin.",
+      theme: "high-fantasy",
+      maxPlayers: 4,
+      startingLevel: 5,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human" },
+    });
+    const seated = campaigns.joinByInviteCode(player.id, campaigns.getCampaignById(table.id).inviteCode);
+    if ("error" in seated) {
+      throw new Error(`could not seat the player at the resolve table: ${seated.error}`);
+    }
+    campaigns.setCampaignStatus(table.id, "active");
+    const iris = sheets.createSheet(
+      table.id,
+      player.id,
+      5,
+      heroInput({
+        name: "Iris Vane",
+        class: "wizard",
+        level: 5,
+        maxHp: 27,
+        abilities: { int: 16, dex: 14 },
+        equipment: [{ name: "Dagger", qty: 1 }, { name: "Component pouch", qty: 1 }],
+        spellcasting: {
+          ability: "int",
+          slots: { 1: { max: 4, used: 0 }, 2: { max: 3, used: 0 }, 3: { max: 2, used: 0 } },
+          known: [],
+          prepared: ["Web"],
+          cantrips: [],
+          spellbook: ["Web"],
+        },
+      }),
+    );
+    const started = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: world.owner.id }, {
+      name: "start_encounter",
+      args: { enemies: [{ monster: "goblin", count: 1 }] },
+    });
+    if (!started.ok) {
+      throw new Error(`the resolve table's fight did not start: ${started.error}`);
+    }
+    const encounter = encounterRows.getActiveEncounter(table.id);
+    const board = maps.getBattleMapForEncounter(encounter.id);
+    maps.setBattleMapTerrain(board.id, ".".repeat(board.width * board.height));
+    getDatabase().prepare("UPDATE battle_maps SET doors_json = '{}' WHERE id = ?").run(board.id);
+    // Iris at (2,6), the goblin at (10,6): the web goes on (5,4), in range
+    // and on nobody (the scenario's card names that square).
+    for (const token of maps.listTokens(board.id)) {
+      maps.moveToken(token.id, token.refId === iris.id ? 2 : 10, 6, 0);
+    }
+    const place = encounter.order.findIndex((entry) => entry.characterId === iris.id);
+    if (place < 0) {
+      throw new Error("the resolve table's wizard has no place in the order");
+    }
+    encounterRows.saveEncounter({
+      ...encounter,
+      orderReady: true,
+      round: Math.max(1, encounter.round),
+      turnIndex: place,
+      turnBudget: null,
+      legendary: { ...encounter.legendary, due: [] },
+    });
+    campaigns.setFloor(table.id, initiativeFloorFor(table.id) ?? { mode: "open" });
+    resolveTables[viewport] = { id: table.id, iris: iris.id };
+  }
+}
+
 const ids = {
   fallenTables,
   clockTables,
+  resolveTables,
   weekly,
   multiclassTableId: multiclassTable.id,
   singleClassTableId: singleClassTable.id,
@@ -2457,6 +2538,7 @@ const ids = {
     ...Object.fromEntries(Object.values(weekly).map((table) => [table.id, table.title])),
     ...Object.fromEntries(Object.entries(fallenTables).map(([viewport, id]) => [id, `The Fallen Watch (${viewport})`])),
     ...Object.fromEntries(Object.entries(clockTables).map(([viewport, table]) => [table.id, `Clock Table (${viewport})`])),
+    ...Object.fromEntries(Object.entries(resolveTables).map(([viewport, table]) => [table.id, `${RESOLVE_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(pactTables).flatMap(([kind, tables]) => Object.entries(tables).map(([viewport, table]) => [table.id, `Pact ${kind.charAt(0).toUpperCase()}${kind.slice(1)} (${viewport})`]))),
     ...Object.fromEntries(Object.entries(chipTables).map(([viewport, table]) => [table.id, `Chip Table (${viewport})`])),
     ...Object.fromEntries(Object.entries(spellbook).map(([viewport, table]) => [table.id, `${SPELLBOOK_TITLE} (${viewport})`])),
