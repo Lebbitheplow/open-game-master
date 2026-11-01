@@ -45,6 +45,7 @@ const route = {
   initiative: await world.route("campaigns/[campaignId]/dm/initiative"),
   actions: await world.route("campaigns/[campaignId]/actions"),
   command: await world.route("campaigns/[campaignId]/companions/[characterId]"),
+  companions: await world.route("campaigns/[campaignId]/companions/create"),
 };
 
 async function call(mod, method, body, params) {
@@ -236,6 +237,26 @@ await test("nothing the test does reaches the library: the ally's row is as it w
   assert.equal(ended.status, 200);
   assert.equal(campaigns.getCampaignById(table.id), null);
   assert.equal(JSON.stringify(getCharacter(pip.id)), pipBefore);
+});
+
+// The Party panel's companion doors are open mid-test now that allies are:
+// one brought from the library or built at the test sits unlinked, as the
+// seats the test opens with do, and no library entry is made for it.
+await test("a companion brought or built mid-test sits with no library entry behind it", async () => {
+  const table = await start({ kind: "stand-ins" }, "person");
+  campaigns.updateGameSettings(table.id, { companions: "full" });
+  const bo = createCharacter(author.id, 1, { ...LEGAL_FIGHTER, name: "Bo", portrait: PORTRAIT, backstory: "Quiet." }, "companion");
+  const boBefore = JSON.stringify(getCharacter(bo.id));
+  const libraryCount = () => getDatabase().prepare(`SELECT COUNT(*) AS n FROM library_characters WHERE user_id = ?`).get(author.id).n;
+  const before = libraryCount();
+  const brought = await call(route.companions, "POST", { libraryCharacterId: bo.id }, { campaignId: table.id });
+  assert.equal(brought.status, 201, JSON.stringify(brought.json));
+  assert.equal(brought.json.sheet.libraryCharacterId ?? null, null, "the brought companion is tied to its library row");
+  const built = await call(route.companions, "POST", { sheet: { ...LEGAL_FIGHTER, name: "Wren", portrait: PORTRAIT } }, { campaignId: table.id });
+  assert.equal(built.status, 201, JSON.stringify(built.json));
+  assert.equal(built.json.sheet.libraryCharacterId ?? null, null);
+  assert.equal(libraryCount(), before, "building a companion at a test filed it in the library");
+  assert.equal(JSON.stringify(getCharacter(bo.id)), boBefore);
 });
 
 await test("a workshop with companions off keeps them off with no ally, and seats a picked ally with them on", async () => {
