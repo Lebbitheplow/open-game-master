@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
-import { DIAL_CENTRE, dialSide, type DialSide } from "@/lib/battlemap/dial-side";
+import { DIAL_CENTRE, DIAL_RADIUS, fitDial, type DialSide } from "@/lib/battlemap/dial-side";
 import type { StageToken } from "@/app/campaigns/[campaignId]/BoardStage";
 import type { HudGateId } from "@/lib/battlemap/hand-hud";
 
@@ -121,11 +121,15 @@ export function TokenHud({
   hint,
   onClose,
   anchor,
+  camera,
 }: {
   token: StageToken;
   boardWidth: number;
   boardHeight: number;
   footprint: number;
+  // The board camera, to measure the dial again as it pans and zooms (an
+  // addon's board view has none).
+  camera?: { x: number; y: number; zoom: number };
   actions: HudAction[];
   // A line under the arc: "tap an enemy" while a target is being chosen.
   hint?: string;
@@ -141,8 +145,19 @@ export function TokenHud({
   // Then, measured where the figure sits in the frame on screen, away from
   // an edge it would cross: near the right edge it no longer runs under the
   // camera buttons (dial-side.ts).
+  //
+  // The dial rides inside the camera's layer, so the camera's zoom scaled it:
+  // zoomed out to a third, a 40px sigil drew at 13px. It undoes the zoom about
+  // the figure's centre, so it keeps its size on screen at any zoom while it
+  // still rides with the figure as the board pans.
   const centre = useRef<HTMLDivElement>(null);
-  const [measured, setMeasured] = useState<DialSide | null>(null);
+  // Zoomed in, the figure grows and the sigils do not, so the arc widens to
+  // clear it, as far as the frame has room (fitDial).
+  const [fit, setFit] = useState<{ side: DialSide; zoom: number; radius: number; fits: boolean } | null>(null);
+  // Again whenever the figure or the camera moves: a pan or a zoom changes
+  // where the figure sits on screen without the figure moving.
+  const [panX, panY, camZoom] = [camera?.x, camera?.y, camera?.zoom];
+  const across = anchor ? anchor[2] - anchor[1] : footprint / boardWidth;
   useLayoutEffect(() => {
     const at = centre.current?.getBoundingClientRect();
     const view = centre.current?.closest(".board-view");
@@ -153,11 +168,22 @@ export function TokenHud({
     const frame = box && { left: box.left, top: box.top, bottom: box.bottom, right: cams?.width ? Math.min(box.right, cams.left) : box.right };
     // The camera's zoom: the dial's layer on screen against its own size.
     const layer = centre.current?.parentElement;
-    const zoom = layer && layer.offsetWidth ? layer.getBoundingClientRect().width / layer.offsetWidth : 1;
-    if (at && frame) setMeasured(dialSide({ x: at.left, y: at.top }, frame, zoom));
-  }, [cx, cy]);
-  const side = measured ?? (flip ? "down" : "up");
-  const radius = 56;
+    const shown = layer?.getBoundingClientRect();
+    const zoom = layer && shown && layer.offsetWidth ? shown.width / layer.offsetWidth : 1;
+    if (!at || !frame || !shown || !(zoom > 0)) return;
+    // The figure's half-width on screen (an addon's anchor is a share of
+    // the board's height).
+    const half = ((anchor ? shown.height : shown.width) * across) / 2;
+    // Its size undone, the dial reaches the same on screen at any zoom.
+    const next = fitDial({ x: at.left, y: at.top }, frame, half);
+    setFit((current) =>
+      current && current.side === next.side && current.radius === next.radius && current.fits === next.fits && Math.abs(current.zoom - zoom) < 0.001
+        ? current
+        : { ...next, zoom },
+    );
+  }, [cx, cy, panX, panY, camZoom, across, anchor]);
+  const side = fit?.side ?? (flip ? "down" : "up");
+  const radius = fit?.radius ?? DIAL_RADIUS;
   const spread = Math.min(Math.PI, actions.length * 0.52);
   const middle = DIAL_CENTRE[side];
   const start = middle - spread / 2;
@@ -170,11 +196,20 @@ export function TokenHud({
       role="menu"
       aria-label={`Actions for ${token.name}`}
       data-dial-side={side}
+      data-dial-radius={radius}
+      data-dial-fits={fit ? String(fit.fits) : undefined}
     >
       <div
         ref={centre}
         className="absolute"
-        style={{ left: `${cx}%`, top: `${cy}%`, width: 0, height: 0 }}
+        style={{
+          left: `${cx}%`,
+          top: `${cy}%`,
+          width: 0,
+          height: 0,
+          // About its own point, the figure's centre (it has no size).
+          ...(fit && fit.zoom !== 1 ? { scale: String(1 / fit.zoom), transformOrigin: "0 0" } : {}),
+        }}
       >
         {actions.map((action, index) => {
           const angle = start + (actions.length === 1 ? spread / 2 : (index / (actions.length - 1)) * spread);

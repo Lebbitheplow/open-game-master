@@ -9,7 +9,9 @@
 // inside the window and reads light on its dark ground by day. The DM's tap
 // opens the figure's dial, whose Details holds the plate open: it takes the
 // keyboard, pages through all eight, stays when the pointer leaves, and
-// closes on Escape. Desktop and phone, night and day.
+// closes on Escape. The dial keeps its 40px sigils clear of the board's
+// edges at the board's own zoom, zoomed all the way out and zoomed in.
+// Desktop and phone, night and day.
 import { check, eventually, openPanelTab, sleep, untilStill } from "../lib.mjs";
 
 const ROWS = [
@@ -104,33 +106,64 @@ export default {
     const dial = page.locator(`${root}[role="menu"][aria-label="Actions for ${ogre.name}"]`).first();
     await eventually(() => dial.isVisible(), { timeoutMs: 10_000, label: `the ${ogre.name}'s dial` });
     await untilStill(page);
-    // Every sigil on the dial is on the board and clear of the camera
-    // buttons: near the right edge it opens left (dial-side.ts).
-    const clash = await page.evaluate((name) => {
-      const menu = document.querySelector(`[role="menu"][aria-label="Actions for ${name}"]`);
-      const frame = menu?.closest(".board-view")?.getBoundingClientRect();
-      const cams = [...(menu?.closest(".board-view")?.querySelectorAll(".board-cam button") ?? [])].map((button) => button.getBoundingClientRect());
-      const meets = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
-      const sigils = [...(menu?.querySelectorAll('[role="menuitem"]') ?? [])].map((item) => ({ label: item.getAttribute("aria-label"), box: item.getBoundingClientRect() }));
-      const names = [...(menu?.querySelectorAll("span.font-display") ?? [])].map((item) => ({ label: item.textContent, box: item.getBoundingClientRect() }));
-      const off = (box) => !frame || box.left < frame.left || box.right > frame.right || box.top < frame.top || box.bottom > frame.bottom;
-      return [
-        ...[...sigils, ...names].filter(({ box }) => off(box) || cams.some((cam) => meets(box, cam))).map(({ label }) => `${label} off the board or under the camera buttons`),
-        // A name never runs under a sigil, its own or a neighbour's: the
-        // sigils are round, so the name's nearest point against the circle.
-        ...names
-          .filter((name) =>
-            sigils.some(({ box }) => {
-              const [cx, cy, r] = [(box.left + box.right) / 2, (box.top + box.bottom) / 2, box.width / 2];
-              const nx = Math.max(name.box.left, Math.min(cx, name.box.right));
-              const ny = Math.max(name.box.top, Math.min(cy, name.box.bottom));
-              return Math.hypot(nx - cx, ny - cy) < r;
-            }),
-          )
-          .map(({ label }) => `${label} under a sigil`),
-      ];
-    }, ogre.name);
-    check(clash.length === 0, `every sigil on the dial is on the board and clear of the camera buttons (${clash.join(", ")}; opens ${await dial.getAttribute("data-dial-side")})`);
+    // Every sigil and name on the dial is on the board, clear of the camera
+    // buttons and of every sigil (near the right edge it opens left,
+    // dial-side.ts), and the sigils are 40px on screen whatever the zoom.
+    const dialProblems = () =>
+      page.evaluate((name) => {
+        const menu = document.querySelector(`[role="menu"][aria-label="Actions for ${name}"]`);
+        const frame = menu?.closest(".board-view")?.getBoundingClientRect();
+        const cams = [...(menu?.closest(".board-view")?.querySelectorAll(".board-cam button") ?? [])].map((button) => button.getBoundingClientRect());
+        const meets = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+        const sigils = [...(menu?.querySelectorAll('[role="menuitem"]') ?? [])].map((item) => ({ label: item.getAttribute("aria-label"), box: item.getBoundingClientRect() }));
+        const names = [...(menu?.querySelectorAll("span.font-display") ?? [])].map((item) => ({ label: item.textContent, box: item.getBoundingClientRect() }));
+        const off = (box) => !frame || box.left < frame.left || box.right > frame.right || box.top < frame.top || box.bottom > frame.bottom;
+        // The figure the dial is on, by its round rim: the sigils ring it,
+        // clear of it, unless the frame had no room for an arc that wide
+        // (the dial says the radius it took; dial-side.ts the one it wants).
+        const body = menu
+          ?.closest(".board-view")
+          ?.querySelector(`[role="img"][aria-label^="${name}"] .token-rim`)
+          ?.getBoundingClientRect();
+        const round = (box) => [(box.left + box.right) / 2, (box.top + box.bottom) / 2, box.width / 2];
+        const radius = Number(menu?.getAttribute("data-dial-radius"));
+        const wanted = body ? Math.max(56, Math.round(body.width / 2 + 28)) : 56;
+        const roomy = radius >= wanted;
+        const onBody = (box) => {
+          if (!body || !roomy) return false;
+          const [ax, ay, ar] = round(box);
+          const [bx, by, br] = round(body);
+          return Math.hypot(ax - bx, ay - by) < ar + br - 2;
+        };
+        // A frame smaller than the ordinary dial cannot hold it; the dial
+        // says so, and takes the side with the most room.
+        const fits = menu?.getAttribute("data-dial-fits") !== "false";
+        return [
+          ...(body ? [] : ["no rim found on the figure"]),
+          ...sigils.filter(({ box }) => Math.abs(box.width - 40) > 1).map(({ label, box }) => `${label} is ${Math.round(box.width)}px, not 40`),
+          ...sigils.filter(({ box }) => onBody(box)).map(({ label }) => `${label} over the figure`),
+          ...(fits ? [...sigils, ...names] : []).filter(({ box }) => off(box) || cams.some((cam) => meets(box, cam))).map(({ label }) => `${label} off the board or under the camera buttons`),
+          // A name never runs under a sigil, its own or a neighbour's: the
+          // sigils are round, so the name's nearest point against the circle.
+          ...names
+            .filter((name) =>
+              sigils.some(({ box }) => {
+                const [cx, cy, r] = [(box.left + box.right) / 2, (box.top + box.bottom) / 2, box.width / 2];
+                const nx = Math.max(name.box.left, Math.min(cx, name.box.right));
+                const ny = Math.max(name.box.top, Math.min(cy, name.box.bottom));
+                return Math.hypot(nx - cx, ny - cy) < r;
+              }),
+            )
+            .map(({ label }) => `${label} under a sigil`),
+        ];
+      }, ogre.name);
+    const checkDial = async (when) => {
+      const problems = await dialProblems();
+      const how = ["side", "radius", "fits"].map((key) => dial.getAttribute(`data-dial-${key}`));
+      check(problems.length === 0, `${when}, the dial is whole, clear and full size (${problems.join(", ")}; ${(await Promise.all(how)).join(" ")})`);
+      check((await dial.getAttribute("data-dial-fits")) === "true", `${when}, the board has room for the dial`);
+    };
+    await checkDial("at the board's own zoom");
     await t.shot("dial");
     await t.tap(dial.getByRole("menuitem", { name: "Details" }));
     const held = page.getByRole("dialog", { name: `${ogre.name}: details` }).first();
@@ -175,5 +208,35 @@ export default {
     await held.screenshot({ path: t.shotPath("held-plate") }).catch(() => {});
     await page.keyboard.press("Escape");
     await eventually(async () => !(await held.isVisible().catch(() => false)), { label: "Escape closes the held plate" });
+
+    // The dial at the camera's far zooms: the board zooms at the pointer, so
+    // the ogre stays under it. Zoomed out its sigils used to shrink with the
+    // board (a third of the way out, a 40px sigil drew at 13px).
+    const zoomAt = async (delta, steps) => {
+      const box = await figure.boundingBox();
+      check(box, `${ogre.name} on screen to zoom at`);
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      for (let step = 0; step < steps; step += 1) await page.mouse.wheel(0, delta);
+      await sleep(400);
+      await untilStill(page);
+    };
+    // The camera's zoom, read off the dial's layer: its size on screen
+    // against its own.
+    const cameraZoom = () => dial.evaluate((menu) => menu.getBoundingClientRect().width / menu.offsetWidth);
+    for (const [delta, steps, when, wanted] of [
+      [600, 8, "zoomed all the way out", (zoom) => zoom < 1],
+      [-600, 20, "zoomed in", (zoom) => zoom > 1],
+    ]) {
+      await zoomAt(delta, steps);
+      await t.tap(figure);
+      await eventually(() => dial.isVisible(), { timeoutMs: 10_000, label: `the ${ogre.name}'s dial, ${when}` });
+      await untilStill(page);
+      const zoom = await cameraZoom();
+      check(wanted(zoom), `${when}, the camera's zoom is ${zoom.toFixed(2)}`);
+      await checkDial(`${when} (${zoom.toFixed(2)}x)`);
+      await t.shot(`dial-${delta > 0 ? "out" : "in"}`);
+      await page.keyboard.press("Escape");
+      await eventually(async () => !(await dial.isVisible().catch(() => false)), { label: "Escape closes the dial" });
+    }
   },
 };

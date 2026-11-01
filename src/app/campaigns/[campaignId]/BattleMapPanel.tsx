@@ -1424,6 +1424,7 @@ export function BattleMapPanel({
                 boardHeight={view.height}
                 footprint={view.tokenFootprint[hudToken.id] ?? 1}
                 anchor={anchor}
+                camera={addonViewport ? undefined : cam.camera}
                 actions={targeting ? [] : hudActions}
                 hint={
                   targeting
