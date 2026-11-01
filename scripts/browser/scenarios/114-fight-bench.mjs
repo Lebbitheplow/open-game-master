@@ -382,18 +382,25 @@ export default {
       }
       await eventually(async () => /^3 of \d+ squares change/.test(await squaresSaid.innerText()), { label: `three squares tapped (${await squaresSaid.innerText().catch(() => "")})` });
       // A fourth by the keyboard alone: the column and row steppers, then
-      // Change this square.
+      // Change this square, at a person's pace: in the app, presses less
+      // than a frame apart, as a script sends them, left the stepper a step
+      // behind, and the next press then stepped twice.
       const groundName = "Event 2, the ground changing";
+      const stepper = (which) => second.getByRole("spinbutton", { name: `${groundName}: ${which}` });
       for (const which of ["column", "row"]) {
         await second.getByRole("button", { name: `Raise ${groundName}: ${which}` }).focus();
-        await page.keyboard.press("Enter");
-        await page.keyboard.press("Enter");
-        await eventually(async () => (await second.getByRole("spinbutton", { name: `${groundName}: ${which}` }).inputValue()) === "3", { label: `the ${which} stepped to 3` });
+        for (let press = 0; press < 2; press += 1) {
+          await page.keyboard.press("Enter");
+          await page.waitForTimeout(150);
+        }
+        await eventually(async () => (await stepper(which).inputValue()) === "3", { label: `the ${which} stepped to 3` });
       }
       const changeHere = second.getByRole("button", { name: "Change this square" });
       check((await changeHere.getAttribute("aria-pressed")) === "true", "the square the keys point at, (3,3), is already picked");
       await second.getByRole("button", { name: `Lower ${groundName}: row` }).focus();
       await page.keyboard.press("Enter");
+      await eventually(async () => (await stepper("row").inputValue()) === "2", { label: "the row stepped back to 2" });
+      await page.waitForTimeout(150);
       await changeHere.focus();
       await page.keyboard.press("Enter");
       await eventually(async () => (await changeHere.getAttribute("aria-pressed")) === "true", { label: "the keyboard's square picked" });
