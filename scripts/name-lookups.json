@@ -723,7 +723,7 @@
     "lib/battlemap/hand-spells.ts#whole-single": [["identity",1,"concentration by textKey"]],
     "lib/battlemap/hand-subclass.ts#partial": [["identity",1,"spends by whole name"]],
     "lib/battlemap/hand-summon.ts#first": [["key",1,"a spell's own level, read off the slot levels its catalogue's first form is offered at (issue 685)"]],
-    "lib/battlemap/hand-summon.ts#keyed": [["key",11,"a summoning card's creatures by the name the catalogue gave them (picked from it), their numbers and budgets by slot level, the player's counts by those names, and the catalogues by textKey of the sheet's spell names (issue 685)"]],
+    "lib/battlemap/hand-summon.ts#keyed": [["key",12,"a summoning card's creatures by the name the catalogue gave them (picked from it), their numbers and budgets by slot level, the player's counts by those names, and the catalogues and the table's fetched spell facts by textKey of the sheet's spell names (issue 685)"]],
     "lib/battlemap/hand-summon.ts#partial": [["key",1,"a board control's own value, \"Skeleton:+\", which the Hand wrote and the bridge held to its offer"]],
     "lib/battlemap/hand-summon.ts#whole": [["identity",1,"the casting held, by textKey of its spell"]],
     "lib/battlemap/hand-table.ts#fallback": [["key",1,"the active sheet id, else the player's first"]],

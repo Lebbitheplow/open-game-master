@@ -179,6 +179,25 @@ await test("The door's card: the kind with the creature, a ritual with no slot, 
   assert.deepEqual(directCardCall({ card: "spell", spell: "Animate Dead", slotLevel: 4, mix: [{ variant: "Skeleton", count: 2 }] }, ivo.id, { inFight: false, summon: "choose", long: true }).args.mix, [{ variant: "Skeleton", count: 2 }]);
 });
 
+await test("The door holds a casting the cast guard would refuse, in its own words: Find Familiar's 10 gp of charcoal neither carried nor affordable", async () => {
+  // The browser pass (scenario 115) pressed Cast as a ritual for a wizard
+  // with no gold and heard the refusal only then; the Hand's spell cards
+  // carry it before (hand-spells.ts).
+  const offer = await catalogues(world.sheet(ivo.id));
+  const poor = { ...world.sheet(ivo.id), gold: 0, copper: 0 };
+  const held = rowOf(summonDoorRows(poor, WIZARD, offer, false), "Find Familiar");
+  // Its words, here from the bundled facts (the table's own name the
+  // charcoal); "needs  worth 10 gp" read as if a word had fallen out.
+  assert.match(held.blocked ?? "", /^Find Familiar needs \S.* worth 10 gp, which the spell consumes\. Ivo carries none/);
+  assert.equal(held.ritual, true, "the ritual is still the way it would be cast");
+  assert.equal(rowOf(summonDoorRows(world.sheet(ivo.id), WIZARD, offer, false), "Find Familiar").blocked, null, "the purse buys it");
+  // In a fight there is no buying one: beginning the casting is held too.
+  assert.match(rowOf(summonDoorRows(poor, WIZARD, offer, true), "Find Familiar").blocked ?? "", /no buying one in the middle of a fight/);
+  // A raging caster casts nothing.
+  const raging = { ...world.sheet(ivo.id), conditions: ["raging"] };
+  assert.match(rowOf(summonDoorRows(raging, WIZARD, offer, false), "Animate Dead").blocked ?? "", /is raging and cannot cast spells/);
+});
+
 await test("The Hand's Animate Objects card takes each object's size within the budget, and sends them as the mix", async () => {
   const offer = await catalogues(world.sheet(ivo.id));
   const [card] = deriveHand(world.sheet(ivo.id), undefined, { summons: offer }).filter((entry) => entry.name === "Animate Objects");

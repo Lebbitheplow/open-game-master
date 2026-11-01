@@ -9,7 +9,7 @@ import { askConcentrationSwap, isConcentrationQuestion } from "@/components/conc
 import { spellsToLookUp } from "@/lib/battlemap/hand";
 import { stepMix, summonDoorPost, summonDoorRows, summonReady, type SummonChoices, type SummonDoorRow } from "@/lib/battlemap/hand-summon";
 import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
-import { useHandSummons } from "@/app/campaigns/[campaignId]/HandSpells";
+import { useHandSpells, useHandSummons } from "@/app/campaigns/[campaignId]/HandSpells";
 import { HandSummonPick } from "@/app/campaigns/[campaignId]/HandSummonPick";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -27,7 +27,9 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 export function SummonDoor({ sheet, mine, inCombat }: { sheet: CharacterSheet; mine: boolean; inCombat: boolean }) {
   const offered = hostOffers(useCapabilities(), "summonPicker");
   const catalogues = useHandSummons(mine && offered ? sheet : null, mine && offered);
-  const rows = useMemo(() => summonDoorRows(sheet, spellsToLookUp(sheet), catalogues, inCombat), [sheet, catalogues, inCombat]);
+  // The table's own spell facts, which the cast guard's refusals read.
+  const spells = useHandSpells(mine && offered ? sheet : null);
+  const rows = useMemo(() => summonDoorRows(sheet, spellsToLookUp(sheet), catalogues, inCombat, spells), [sheet, catalogues, inCombat, spells]);
   const [choices, setChoices] = useState<Record<string, SummonChoices>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [sent, setSent] = useState<string | null>(null);
@@ -110,8 +112,8 @@ export function SummonDoor({ sheet, mine, inCombat }: { sheet: CharacterSheet; m
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <button
                   type="button"
-                  disabled={!ready || row.disabled !== null || busy !== null}
-                  title={row.disabled ?? (ready ? undefined : "Choose the creature first.")}
+                  disabled={!ready || row.blocked !== null || row.disabled !== null || busy !== null}
+                  title={row.blocked ?? row.disabled ?? (ready ? undefined : "Choose the creature first.")}
                   onClick={() => void send(row, false)}
                   className={cn(ui.btnSmall, "min-h-10 sm:min-h-8")}
                 >
@@ -121,8 +123,8 @@ export function SummonDoor({ sheet, mine, inCombat }: { sheet: CharacterSheet; m
                 {row.state === "cast" && row.ritual ? (
                   <button
                     type="button"
-                    disabled={!ready || busy !== null}
-                    title="Ten minutes longer, and no spell slot spent."
+                    disabled={!ready || row.blocked !== null || busy !== null}
+                    title={row.blocked ?? "Ten minutes longer, and no spell slot spent."}
                     onClick={() => void send(row, true)}
                     className={cn(ui.btnSmall, "min-h-10 sm:min-h-8")}
                   >
@@ -130,7 +132,7 @@ export function SummonDoor({ sheet, mine, inCombat }: { sheet: CharacterSheet; m
                     Cast as a ritual
                   </button>
                 ) : null}
-                {row.disabled ? <span className="text-[11px] text-stone-400">{row.disabled}</span> : null}
+                {row.blocked || row.disabled ? <span className="text-[11px] text-stone-400">{row.blocked ?? row.disabled}</span> : null}
                 {sent === row.spell ? (
                   <span role="status" className="animate-fade-up text-[11px] text-sky-200/90">
                     Sent.
