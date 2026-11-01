@@ -18,7 +18,10 @@ const templates = await import("../src/lib/db/encounter-templates.ts");
 const { createCharacter } = await import("../src/lib/db/characters.ts");
 const { listSheets, patchSheet, getSheetById } = await import("../src/lib/db/sheets.ts");
 const { getActiveEncounter, listEnemies, patchEnemyHp, patchEnemyConditions, saveEncounter } = await import("../src/lib/db/encounters.ts");
-const { getBattleMapForEncounter, getTokenByRef, placeToken } = await import("../src/lib/db/battle-maps.ts");
+const { getBattleMapForEncounter, getTokenByRef, listTokens, placeToken } = await import("../src/lib/db/battle-maps.ts");
+const { nearestOpenTile } = await import("../src/lib/battlemap/paint.ts");
+const { occupiedTiles } = await import("../src/lib/battlemap/view.ts");
+const { tileIndex } = await import("../src/lib/battlemap/types.ts");
 const { getPreparedMap } = await import("../src/lib/db/prepared-maps.ts");
 const { getDatabase } = await import("../src/lib/db/core.ts");
 const { deployTemplate } = await import("../src/lib/dm/encounter-templates.ts");
@@ -94,6 +97,7 @@ await test("a set-up's ids travel as ref tokens and come back as the new table's
 let first = "";
 let firstNames = [];
 let saved = null;
+let tiles = null;
 await test("a test of a fight seats the same stand-ins every time", async () => {
   const one = await call(route.test, "POST", { templateId: ambush.id, party: { kind: "stand-ins" }, runner: "person" }, at);
   assert.equal(one.status, 200, JSON.stringify(one.json));
@@ -118,9 +122,16 @@ await test("Save as set-up keeps the moment on the workshop's fight, and the gen
   if (caster) {
     patchSheet(caster.id, { spellcasting: { ...caster.spellcasting, slots: { ...caster.spellcasting.slots, 1: { ...caster.spellcasting.slots["1"], used: 1 } } } });
   }
+  // Two open floor tiles nobody stands on (the generator's walls fall
+  // anywhere).
   const board = getBattleMapForEncounter(fight.id);
-  placeToken(getTokenByRef(board.id, g1.id).id, 1, 1);
-  placeToken(getTokenByRef(board.id, h2.id).id, 2, 3);
+  const taken = occupiedTiles(board, listTokens(board.id), null);
+  const goblinTile = nearestOpenTile(board.terrain, board.width, board.height, { x: 1, y: 1 }, taken);
+  taken.add(tileIndex(board.width, goblinTile.x, goblinTile.y));
+  const heroTile = nearestOpenTile(board.terrain, board.width, board.height, { x: 2, y: 3 }, taken);
+  placeToken(getTokenByRef(board.id, g1.id).id, goblinTile.x, goblinTile.y);
+  placeToken(getTokenByRef(board.id, h2.id).id, heroTile.x, heroTile.y);
+  tiles = { goblin: { x: goblinTile.x, y: goblinTile.y }, hero: { x: heroTile.x, y: heroTile.y } };
   // A known order: the second goblin first, then the heroes, then the first.
   const order = [
     { kind: "enemy", enemyId: g2.id, name: g2.displayName, initiative: 22 },
@@ -143,7 +154,7 @@ await test("Save as set-up keeps the moment on the workshop's fight, and the gen
   assert.deepEqual(saved.party, { kind: "stand-ins", size: 2, level: 3 });
   assert.equal(saved.foes.find((foe) => foe.slot === 0).hp, 2);
   assert.deepEqual(saved.foes.find((foe) => foe.slot === 1).conditions, ["prone"]);
-  assert.deepEqual(saved.foes.find((foe) => foe.slot === 0).at, { x: 1, y: 1 });
+  assert.deepEqual(saved.foes.find((foe) => foe.slot === 0).at, tiles.goblin);
   assert.equal(saved.heroes[0].currentHp, 3);
   assert.equal(saved.foes.find((foe) => foe.slot === 1).initiative, 22);
   assert.ok(out.json.lines.some((line) => /Goblin 1 \(2 of \d+ HP\)/.test(line)), out.json.lines.join(" | "));
@@ -169,8 +180,8 @@ await test("the next test opens on the saved moment, on the kept map, with the s
   const [g1, g2] = goblinsOf(next);
   assert.equal(g1.currentHp, 2);
   assert.ok(g2.conditions.includes("prone"), g2.conditions.join(", "));
-  assert.deepEqual(tokenAt(next, g1.id), { x: 1, y: 1 });
-  assert.deepEqual(tokenAt(next, sheets[1].id), { x: 2, y: 3 });
+  assert.deepEqual(tokenAt(next, g1.id), tiles.goblin);
+  assert.deepEqual(tokenAt(next, sheets[1].id), tiles.hero);
   const fight = getActiveEncounter(next);
   assert.equal(fight.orderReady, true);
   assert.equal(fight.round, 1);
@@ -254,6 +265,69 @@ await test("what Save as set-up refuses: another's test, a table that is no test
   assert.equal(early.status, 409);
   assert.match(early.json.error, /every initiative is in/);
   assert.equal(templates.getTemplateSetup(ambush.id), null, "a refused save wrote a set-up");
+});
+
+// ---- a connected agent's bench ----
+//
+// The report: test tables are hidden from odm_list_campaigns and no tool
+// listed workshops or started a test fight, so an agent could play one only
+// if it already knew its id. The tools below go through the same routes.
+
+const { createConnectionGrant } = await import("../src/lib/agents/grants.ts");
+const { workbenchCall, workbenchTools } = await import("../src/lib/agents/workbench.ts");
+const agentRoutes = {
+  workshops: await world.route("workshops"),
+};
+
+await test("an agent lists the workshops and their fights, opens a test, saves its moment and reads the set-up back", async () => {
+  const grant = createConnectionGrant({ userId: author.id, name: "bench agent", scopes: ["read", "campaigns"] }).grant;
+  const names = workbenchTools(grant).map((tool) => tool.name);
+  for (const name of ["odm_list_workshops", "odm_list_prepared_fights", "odm_get_fight_setup", "odm_start_test_fight", "odm_save_fight_setup", "odm_remove_fight_setup", "odm_end_test_fight"]) {
+    assert.ok(names.includes(name), `${name} is not offered`);
+  }
+  const reader = createConnectionGrant({ userId: author.id, name: "reader", scopes: ["read"] }).grant;
+  assert.equal(workbenchTools(reader).some((tool) => tool.name === "odm_start_test_fight"), false, "a read-only agent may open tables");
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init = {}) => {
+    const target = new URL(url);
+    globalThis.__odmTestToken = (new Headers(init.headers).get("authorization") ?? "").replace(/^Bearer\s+/i, "");
+    const request = new Request(target, { method: init.method ?? "GET", headers: init.headers, body: init.body });
+    const parts = target.pathname.split("/").filter(Boolean).map(decodeURIComponent);
+    const method = request.method;
+    if (target.pathname === "/api/workshops") return agentRoutes.workshops[method](request);
+    if (parts[1] === "workshops" && parts[3] === "test-fight") return route.test[method](request, { params: Promise.resolve({ workshopId: parts[2] }) });
+    if (parts[3] === "fight-setup") return route.save[method](request, { params: Promise.resolve({ campaignId: parts[2] }) });
+    if (parts[6] === "setup") return route.setup[method](request, { params: Promise.resolve({ campaignId: parts[2], templateId: parts[5] }) });
+    if (parts[4] === "encounter-templates") return route.list[method](request, { params: Promise.resolve({ campaignId: parts[2] }) });
+    throw new Error(`unexpected path ${target.pathname}`);
+  };
+  try {
+    const run = async (name, args = {}) => {
+      const out = await workbenchCall(grant, name, args);
+      assert.equal(out.isError, false, `${name}: ${out.text.slice(0, 300)}`);
+      return JSON.parse(out.text);
+    };
+    const { workshops } = await run("odm_list_workshops");
+    assert.ok(workshops.some((entry) => entry.id === workshop.id), "the workshop is not listed");
+    const { templates: fights } = await run("odm_list_prepared_fights", { workshopId: workshop.id });
+    assert.ok(fights.some((entry) => entry.id === ambush.id));
+    const opened = await run("odm_start_test_fight", { workshopId: workshop.id, templateId: ambush.id, runner: "person" });
+    assert.ok(campaigns.getCampaignById(opened.campaignId)?.kind === "playtest");
+    const [g1] = goblinsOf(opened.campaignId);
+    patchEnemyHp(g1.id, 4, "alive");
+    const savedOut = await run("odm_save_fight_setup", { campaignId: opened.campaignId });
+    assert.ok(savedOut.lines.length);
+    const read = await run("odm_get_fight_setup", { workshopId: workshop.id, templateId: ambush.id });
+    assert.equal(read.setup.foes.find((foe) => foe.slot === 0).hp, 4);
+    await run("odm_end_test_fight", { workshopId: workshop.id });
+    assert.equal(campaigns.getCampaignById(opened.campaignId), null, "the test table outlived its end");
+    await run("odm_remove_fight_setup", { workshopId: workshop.id, templateId: ambush.id });
+    assert.equal(templates.getTemplateSetup(ambush.id), null);
+  } finally {
+    globalThis.fetch = originalFetch;
+    world.signIn(author);
+  }
 });
 
 finish();

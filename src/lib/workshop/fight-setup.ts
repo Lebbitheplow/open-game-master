@@ -214,19 +214,13 @@ export function layFightSetup(campaign: Campaign, template: EncounterTemplate, s
     sheets.forEach((sheet, seat) => ids.set(refToken({ kind: "seat", seat }), sheet.id));
   }
 
-  // Everyone on the board, so a creature moved onto a tile is not stood on
-  // another; each move frees the tile it leaves.
-  const tokens = map ? listTokens(map.id) : [];
-  const taken = map ? occupiedTiles(map, tokens, null) : new Set<number>();
+  // Where each creature the set-up names stands, laid once everyone moving
+  // has been lifted off the board: one at a time, a saved tile was still held
+  // by a creature not yet moved, which the deploy stood anywhere, and the
+  // first came down beside it.
+  const moves: Array<{ refId: string; at: { x: number; y: number } }> = [];
   const standAt = (refId: string, at: { x: number; y: number } | null) => {
-    if (!map || !at) return;
-    const token = getTokenByRef(map.id, refId);
-    if (!token) return;
-    taken.delete(tileIndex(map.width, token.x, token.y));
-    const from = { x: Math.min(map.width - 1, at.x), y: Math.min(map.height - 1, at.y) };
-    const spot = nearestOpenTile(map.terrain, map.width, map.height, from, taken);
-    taken.add(tileIndex(map.width, spot.x, spot.y));
-    placeToken(token.id, spot.x, spot.y);
+    if (at) moves.push({ refId, at });
   };
 
   for (const foe of setup.foes) {
@@ -262,6 +256,19 @@ export function layFightSetup(campaign: Campaign, template: EncounterTemplate, s
     }
     if (!sameParty && setup.heroes.length) {
       notes.push("This test seats another party than the set-up was saved with, so the heroes start fresh where the set-up stood them.");
+    }
+  }
+  if (map && moves.length) {
+    const tokens = listTokens(map.id);
+    const moving = new Set(moves.map((move) => move.refId));
+    const taken = occupiedTiles(map, tokens.filter((token) => !moving.has(token.refId)), null);
+    for (const move of moves) {
+      const token = getTokenByRef(map.id, move.refId);
+      if (!token) continue;
+      const from = { x: Math.min(map.width - 1, move.at.x), y: Math.min(map.height - 1, move.at.y) };
+      const spot = nearestOpenTile(map.terrain, map.width, map.height, from, taken);
+      taken.add(tileIndex(map.width, spot.x, spot.y));
+      placeToken(token.id, spot.x, spot.y);
     }
   }
   if (map) publishBattleMapUpdate(campaign.id);

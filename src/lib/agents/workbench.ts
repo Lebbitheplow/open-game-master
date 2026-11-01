@@ -93,7 +93,7 @@ export const WORKBENCH_TOOLS: WorkbenchTool[] = [
   {
     name: "odm_list_campaigns",
     scope: "read",
-    description: "List the campaigns you belong to. Workshops and test tables are not listed.",
+    description: "List the campaigns you belong to. Workshops and test tables are not listed: odm_list_workshops lists your workshops, and odm_start_test_fight opens a test table.",
     properties: {},
     method: "GET",
     path: () => "/api/campaigns",
@@ -539,6 +539,76 @@ export const WORKBENCH_TOOLS: WorkbenchTool[] = [
         return JSON.stringify({ inviteCode: null });
       }
     },
+  },
+  // workshops and their test fights (issue 685): the bench a developer, a
+  // tester or a scorer plays a prepared fight on, from its saved set-up
+  {
+    name: "odm_list_workshops",
+    scope: "read",
+    description: "List your workshops (prep spaces that are not tables): their ids for odm_list_prepared_fights and odm_start_test_fight.",
+    properties: {},
+    method: "GET",
+    path: () => "/api/workshops",
+  },
+  {
+    name: "odm_list_prepared_fights",
+    scope: "read",
+    description: "List a workshop's prepared fights: roster, difficulty, and each fight's saved set-up in words (setup, null for none) with the party it was saved with (setupParty).",
+    properties: { workshopId: { type: "string", description: "The workshop's id (from odm_list_workshops)." } },
+    required: ["workshopId"],
+    method: "GET",
+    path: (a) => `/api/campaigns/${seg(a.workshopId)}/dm/encounter-templates`,
+  },
+  {
+    name: "odm_get_fight_setup",
+    scope: "read",
+    description: "Read a prepared fight's saved set-up as data: the foes by roster slot and the party by seat (hit points, conditions, places, initiative, what was spent), the party it was saved with, and the test table's dice script. null for a fight with none.",
+    properties: { workshopId: { type: "string" }, templateId: { type: "string", description: "The prepared fight's id (from odm_list_prepared_fights)." } },
+    required: ["workshopId", "templateId"],
+    method: "GET",
+    path: (a) => `/api/campaigns/${seg(a.workshopId)}/dm/encounter-templates/${seg(a.templateId)}/setup`,
+  },
+  {
+    name: "odm_start_test_fight",
+    scope: "campaigns",
+    description: "Open a test fight of one of a workshop's prepared fights: a hidden table only you can see, you playing every hero, with the fight on the board. It opens on the fight's saved set-up when it has one. party: {kind:'stand-ins'} or {kind:'characters', characterIds:[...]} (left out: the set-up's party, else the stand-ins). runner: 'ai' (the AI GM runs the enemies) or 'person' (you run them through the dm tools); left out, the AI GM where one is set up. Starting one ends the test of that workshop already open. Returns the table's campaignId for the play and dm tools.",
+    properties: {
+      workshopId: { type: "string" },
+      templateId: { type: "string" },
+      party: { type: "object" },
+      runner: { type: "string", enum: ["ai", "person"] },
+    },
+    required: ["workshopId", "templateId"],
+    method: "POST",
+    path: (a) => `/api/workshops/${seg(a.workshopId)}/test-fight`,
+    body: (a) => pick(a, ["templateId", "party", "runner"]),
+  },
+  {
+    name: "odm_save_fight_setup",
+    scope: "campaigns",
+    description: "Save the moment on a test table as its prepared fight's set-up: every later test of the fight opens there (the foes' and heroes' state, places and initiative order, the map, and the table's dice script). Only at a test table you opened, once every initiative is in. It replaces any set-up saved before.",
+    properties: { ...campaignIdProp },
+    required: ["campaignId"],
+    method: "POST",
+    path: (a) => `/api/campaigns/${seg(a.campaignId)}/fight-setup`,
+  },
+  {
+    name: "odm_remove_fight_setup",
+    scope: "campaigns",
+    description: "Remove a prepared fight's saved set-up: its tests and tables open as its roster and plan make it again.",
+    properties: { workshopId: { type: "string" }, templateId: { type: "string" } },
+    required: ["workshopId", "templateId"],
+    method: "DELETE",
+    path: (a) => `/api/campaigns/${seg(a.workshopId)}/dm/encounter-templates/${seg(a.templateId)}/setup`,
+  },
+  {
+    name: "odm_end_test_fight",
+    scope: "campaigns",
+    description: "End your open test fight of a workshop: its table and everything played on it are deleted. The prepared fight and its set-up stay.",
+    properties: { workshopId: { type: "string" } },
+    required: ["workshopId"],
+    method: "DELETE",
+    path: (a) => `/api/workshops/${seg(a.workshopId)}/test-fight`,
   },
   // dm (only works for the person in the DM seat of a human or assisted game)
   {
