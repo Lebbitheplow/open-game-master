@@ -287,7 +287,7 @@ import {
   companionTools,
 } from "@/lib/dm/companion-tools";
 import { dismissCompanion } from "@/lib/dm/companion-dismissal";
-import { getActiveEncounter, listEnemies, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
+import { fightNames, getActiveEncounter, listEnemies, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { enemyMoveBudget, enemyMovementNote } from "@/lib/dm/enemy-speed";
 import { getBattleMapForEncounter, getTokenByRef, listTokens, type BattleMap } from "@/lib/db/battle-maps";
 import { pcMoveBudget } from "@/lib/battlemap/view";
@@ -427,15 +427,6 @@ type TurnContext = {
 
 // Compact snapshot of the active encounter for the GAME STATE block. Exact
 // HP is model-facing only; clients get vague health states elsewhere.
-// Everyone in the running fight by the names the prose would use, or none.
-function fightNames(campaignId: string): string[] {
-  const encounter = getActiveEncounter(campaignId);
-  if (!encounter) {
-    return [];
-  }
-  return [...encounter.order.map((entry) => entry.name), ...listEnemies(encounter.id).map((enemy) => enemy.displayName)];
-}
-
 function buildEncounterState(campaignId: string, sheets: CharacterSheet[]) {
   const encounter = getActiveEncounter(campaignId);
   if (!encounter) {
@@ -3437,7 +3428,7 @@ function finalize(context: TurnContext, turn: DmTurn, failed: string, spoken: re
   // says each sentence once (src/lib/dm/narration-tidy-logic.ts). Any
   // marker already in a part is the model's own (the rescue's and the
   // guard's rewrite included), never one of the real ones placed below.
-  const combatants = fightNames(campaignId);
+  const combatants = fightNames(campaignId, turn.createdAt);
   const narrationParts = withoutRepeatedSentences(
     turn.narrationParts.map((part) =>
       withoutToolTalk(withoutCombatBookkeeping(withoutRollMarkers(part), combatants, campaignLanguage(campaignId))),

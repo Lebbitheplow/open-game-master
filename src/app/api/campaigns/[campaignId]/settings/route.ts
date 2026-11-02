@@ -7,6 +7,8 @@ import { layOver } from "@/lib/schemas/parse-keeping-valid";
 import { publishPersisted } from "@/lib/events";
 import { requestDmTurn, wakeForWaitingPlayers } from "@/lib/dm/loop";
 import { settleTableWait } from "@/lib/dm/table-wait";
+import { ttsBackend } from "@/lib/tts-backend";
+import { narratorVoiceFor } from "@/lib/tts-voices";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -72,10 +74,16 @@ export async function PATCH(
     // Handed to the AI with players waiting on the person who ran it: answer.
     wakeForWaitingPlayers(campaignId, dmMode === "ai");
   }
-  const gameSettings = updateGameSettings(
-    campaignId,
-    Object.fromEntries(Object.entries(rest).filter(([key]) => sent.has(key))),
-  );
+  // A new table language brings its narrator voice, unless someone picked
+  // one themselves (or picks one in this same edit).
+  const voice =
+    sent.has("tableLanguage") && !sent.has("ttsVoice") && rest.tableLanguage !== context.campaign.gameSettings.tableLanguage
+      ? { ttsVoice: narratorVoiceFor(rest.tableLanguage, rest.ttsVoice, ttsBackend().provider === "openai") }
+      : {};
+  const gameSettings = updateGameSettings(campaignId, {
+    ...Object.fromEntries(Object.entries(rest).filter(([key]) => sent.has(key))),
+    ...voice,
+  });
   if (!gameSettings) {
     return Response.json({ error: "Campaign not found." }, { status: 404 });
   }

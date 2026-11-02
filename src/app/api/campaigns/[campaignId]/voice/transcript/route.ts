@@ -6,6 +6,7 @@ import { insertTranscriptLines, listTranscriptSince } from "@/lib/db/voice-trans
 import { describeInstant } from "@/lib/dm/calendar";
 import { publishEphemeral } from "@/lib/events";
 import { sttAvailable, transcribeAudio } from "@/lib/stt";
+import { whisperLanguageCode } from "@/lib/stt-logic";
 import { labelLines, MIN_RING_SECONDS } from "@/lib/voice/transcript";
 
 export const runtime = "nodejs";
@@ -47,7 +48,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ cam
     return Response.json({ lines: 0 });
   }
   const startedAt = String(form?.get("startedAt") ?? new Date().toISOString());
-  const transcribed = await transcribeAudio(audio, audio.type.includes("ogg") ? "ring.ogg" : "ring.webm");
+  const transcribed = await transcribeAudio(
+    audio,
+    audio.type.includes("ogg") ? "ring.ogg" : "ring.webm",
+    whisperLanguageCode(context.campaign.gameSettings.tableLanguage),
+  );
   if ("error" in transcribed) {
     return Response.json({ error: transcribed.error }, { status: 502 });
   }

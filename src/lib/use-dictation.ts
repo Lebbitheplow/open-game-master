@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useParams } from "next/navigation";
 import { readMicId } from "@/app/campaigns/[campaignId]/useVoicePrefs";
 import {
   DICTATION_BITRATE,
@@ -41,6 +42,9 @@ export function useDictation({
   // later says so with an event.
   const hasNative = useSyncExternalStore(subscribeNativeDictation, hasNativeDictation, noNativeOnServer);
   const engine = pickDictationEngine(capabilities?.stt, hasNative);
+  // The campaign page the take is made on, if any: the server hears it in
+  // that table's language. A page outside a campaign (the workshop) has none.
+  const { campaignId } = useParams<{ campaignId?: string }>();
 
   const [state, setState] = useState<DictationState>("idle");
   const [hint, setHint] = useState("");
@@ -116,13 +120,16 @@ export function useDictation({
   const upload = useCallback(async (blob: Blob, name: string, signal: AbortSignal): Promise<string> => {
     const form = new FormData();
     form.set("audio", blob, name);
+    if (campaignId) {
+      form.set("campaignId", campaignId);
+    }
     const response = await fetch("/api/stt", { method: "POST", body: form, signal });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       throw new Error(data.error || "Transcription failed.");
     }
     return String(data.text ?? "").trim();
-  }, []);
+  }, [campaignId]);
 
   const send = useCallback(
     async (blob: Blob, type: string, asWav: boolean) => {

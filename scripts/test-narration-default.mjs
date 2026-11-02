@@ -35,7 +35,8 @@ world.signIn(world.owner);
 // whether the caller said anything, and the schema's own default stays on.
 assert.equal(gameSettingsSchema.partial().parse({}).ttsEnabled, true, "partial alone would say on for a caller that said nothing");
 assert.equal(gameSettingsSchema.parse({}).ttsEnabled, true, "the schema's own default is still on");
-assert.match(read("src/app/api/campaigns/route.ts"), /gameSettingsSchema\.partial\(\)\.extend\(\{ ttsEnabled: z\.boolean\(\)\.optional\(\) \}\)/, "the route leaves the switch unsaid until it decides");
+assert.equal(gameSettingsSchema.partial().parse({}).ttsVoice, "af_heart", "and would name the English voice for a caller that named none");
+assert.match(read("src/app/api/campaigns/route.ts"), /gameSettingsSchema\s*\.partial\(\)\s*\.extend\(\{ ttsEnabled: z\.boolean\(\)\.optional\(\), ttsVoice: [^}]*\.optional\(\) \}\)/, "the route leaves the switch and the voice unsaid until it decides");
 
 const campaigns = await world.route("campaigns");
 const starter = await world.route("starter");

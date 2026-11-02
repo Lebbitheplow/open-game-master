@@ -110,21 +110,34 @@ test("a window opened after turn 8 is open for the next three AI turns and then 
 
 // ---- the table's own limits ----
 
-test("one word list for lines and veils, matched at the start of a word", () => {
-  for (const said of ["Romance", "no romantic subplots", "Flirting", "seduction", "love interests"]) {
-    assert.equal(logic.namesRomance(said), true, said);
+// A line or veil naming romance, in each of five table languages: the words
+// are the model's to keep, never the engine's switch.
+const ROMANCE_SAID = [
+  ["romance", "no romantic subplots", "Flirting", "seduction", "love interests"],
+  ["romanticismo", "niente storie d'amore", "seduzione", "flirt"],
+  ["romance", "pas d'intrigues romantiques", "séduction", "flirt"],
+  ["romance", "nada romántico", "seducción", "coqueteo"],
+  ["Romantik", "keine Liebesgeschichten", "Verführung", "Flirten"],
+];
+
+test("only a family table rules advances out; a line or veil naming romance, in any language, does not (the Romance setting does)", () => {
+  assert.match(logic.romanceSafetyBlock({ boundaries: "family", lines: [], veils: [] }), /family table/);
+  for (const said of ROMANCE_SAID.flat()) {
+    assert.equal(logic.romanceSafetyBlock({ boundaries: "standard", lines: [said], veils: [] }), null, `line: ${said}`);
+    assert.equal(logic.romanceSafetyBlock({ boundaries: "mature", lines: [], veils: [said] }), null, `veil: ${said}`);
   }
-  for (const said of ["spiders", "aromantic characters", "gore"]) {
-    assert.equal(logic.namesRomance(said), false, said);
-  }
+  assert.equal(logic.romanceSafetyBlock(undefined), null);
 });
 
-test("a family table, or a line or veil naming romance, rules advances out", () => {
-  assert.match(logic.romanceSafetyBlock({ boundaries: "family", lines: [], veils: [] }), /family table/);
-  assert.match(logic.romanceSafetyBlock({ boundaries: "standard", lines: ["romance"], veils: [] }), /line at "romance"/);
-  assert.match(logic.romanceSafetyBlock({ boundaries: "mature", lines: [], veils: ["Seduction scenes"] }), /veiled "Seduction scenes"/);
-  assert.equal(logic.romanceSafetyBlock({ boundaries: "standard", lines: ["spiders"], veils: ["torture"] }), null);
-  assert.equal(logic.romanceSafetyBlock(undefined), null);
+test("with Romance off no player character is open to advances, at every table, whatever its lines say", () => {
+  const sheets = [{ name: "Kael", isCompanion: false, openToAdvances: true, deathSaves: null }];
+  const settings = (romance, lines) => ({ gameSettings: { relationships: "on", romance, safety: { boundaries: "standard", lines, veils: [] } } });
+  for (const said of ROMANCE_SAID.flat()) {
+    assert.deepEqual(logic.openToAdvanceNames(settings("on", [said]), sheets), ["Kael"], said);
+  }
+  for (const lines of [[], ["spiders"], ["Romantik"]]) {
+    assert.deepEqual(logic.openToAdvanceNames(settings("off", lines), sheets), [], lines.join());
+  }
 });
 
 // ---- presence ----

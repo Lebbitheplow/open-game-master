@@ -27,39 +27,57 @@ export function skyLight(hour: number): Light {
 // Where the party is, off the board, as far as light goes. SRD 5.1, Vision
 // and Light: darkness outdoors at night, and "within the confines of an
 // unlit dungeon or a subterranean vault" at any hour; a lived-in building is
-// lit by its lamps and fires. Read from the current location's name, then
-// its description; a place the words do not settle is not guessed at.
+// lit by its lamps and fires. Read from the scene the location tools store
+// as the place's bed (src/lib/ambience/catalog.ts sceneIds), a fixed choice
+// made the same way at every table, never from the words of its name: a
+// scene that does not settle it (null) is not guessed at.
 export type PlaceKind = "outdoors" | "indoors" | "underground";
 
-const UNDERGROUND =
-  /\b(caves?|caverns?|grotto|dungeons?|crypts?|catacombs?|tombs?|barrows?|mines?|tunnels?|sewers?|underdark|undercity|cellars?|vaults?|burrows?|warrens?|depths|underground|subterranean|oubliette)\b/i;
-const INDOORS =
-  /\b(inns?|taverns?|alehouse|pub|house|home|halls?|rooms?|chambers?|shops?|store|smithy|forge|temples?|shrines?|chapel|church|cathedral|library|keep|castle|palace|manor|mansion|towers?|guildhall|guild|barracks|warehouse|mill|stables?|cottage|hut|cabin|lodge|office|study|kitchen|prison|jail|hovel|brothel|bathhouse|theatre|theater|academy|monastery|abbey|court|throne room)\b/i;
-const OUTDOORS =
-  /\b(roads?|highway|forests?|woods?|woodland|fields?|plains?|hills?|mountains?|river|lake|coast|shore|beach|swamp|marsh|bog|desert|tundra|valley|meadow|camp|campsite|clearing|garden|courtyard|square|market|streets?|alley|bridge|trail|path|pass|wilds?|wilderness|jungle|glade|grove|ruins?|graveyard|cemetery|farm|village|docks?|harbou?r|deck|sea|ocean|rooftops?|outdoors|outside|open air)\b/i;
-
-export function placeKindOf(text: string): PlaceKind | null {
-  if (UNDERGROUND.test(text)) {
-    return "underground";
-  }
-  if (INDOORS.test(text)) {
-    return "indoors";
-  }
-  if (OUTDOORS.test(text)) {
-    return "outdoors";
-  }
-  return null;
-}
+export const PLACE_KIND_OF_SCENE: Readonly<Record<string, PlaceKind | null>> = {
+  dungeon: "underground",
+  cave: "underground",
+  crypt: "underground",
+  sewer: "underground",
+  mine: "underground",
+  temple: "indoors",
+  tavern: "indoors",
+  keep: "indoors",
+  library: "indoors",
+  forge: "indoors",
+  ruins: "outdoors",
+  forest: "outdoors",
+  deep_forest: "outdoors",
+  jungle: "outdoors",
+  swamp: "outdoors",
+  desert: "outdoors",
+  mountain: "outdoors",
+  tundra: "outdoors",
+  plains: "outdoors",
+  river: "outdoors",
+  waterfall: "outdoors",
+  coast: "outdoors",
+  ship: "outdoors",
+  town: "outdoors",
+  city: "outdoors",
+  market: "outdoors",
+  camp: "outdoors",
+  graveyard: "outdoors",
+  // Lit or not by where they are: under the sea, a crowd in a hall or a
+  // square, a wizard's laboratory or a rift in the open.
+  underwater: null,
+  crowd: null,
+  arcane: null,
+};
 
 // The light off the board. A light the DM names wins; then the place: an
 // unlit underground place is dark, a building is lit, the open sky follows
 // the hour. With no location recorded the party is taken to be under the
-// sky, as before; a named place the words cannot settle gives no light
+// sky, as before; a place whose scene does not settle it gives no light
 // shift at all (null), for the DM to name.
 export function offBoardLight(input: {
   hour: number;
   named?: Light | null;
-  place?: { name: string; description?: string; outdoors?: boolean | null } | null;
+  place?: { scene: string | null; outdoors?: boolean | null } | null;
 }): Light | null {
   if (input.named) {
     return input.named;
@@ -70,7 +88,9 @@ export function offBoardLight(input: {
   if (input.place.outdoors === true) {
     return skyLight(input.hour);
   }
-  const kind = placeKindOf(input.place.name) ?? placeKindOf(input.place.description ?? "") ?? (input.place.outdoors === false ? "indoors" : null);
+  // A bed that is no scene (a sound picked for the place, "wind", "night")
+  // has no row, and settles nothing.
+  const kind = (input.place.scene ? PLACE_KIND_OF_SCENE[input.place.scene] : null) ?? (input.place.outdoors === false ? "indoors" : null);
   if (kind === "underground") {
     return "dark";
   }

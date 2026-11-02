@@ -10,7 +10,7 @@ import { cn } from "@/lib/cn";
 import { GENRE_PRESETS, type GenrePreset } from "@/lib/genres";
 import type { WorldPackSummary } from "@/lib/worlds/types";
 import { WorldPackGallery } from "@/components/WorldPackGallery";
-import { VoicePicker } from "@/components/VoicePicker";
+import { NarratorLanguageNote, VoicePicker } from "@/components/VoicePicker";
 import { NarrationNote } from "@/app/campaigns/[campaignId]/NarrationNote";
 import { CharacterVoices } from "@/app/campaigns/[campaignId]/CharacterVoices";
 import { VoicePreviewButton } from "@/components/VoicePreviewButton";
@@ -274,11 +274,12 @@ export function NarrationGroup({
         </SettingToggle>
         {narrating ? (
           <>
-            <VoicePicker size="sm" label="Narration voice" value={settings.ttsVoice} onChange={(ttsVoice) => patch({ ttsVoice })} />
+            <VoicePicker size="sm" label="Narration voice" value={settings.ttsVoice} onChange={(ttsVoice) => patch({ ttsVoice })} language={settings.tableLanguage} />
             <VoicePreviewButton voice={settings.ttsVoice} />
           </>
         ) : null}
       </div>
+      {narrating ? <NarratorLanguageNote language={settings.tableLanguage} /> : null}
       {narrating ? <CharacterVoices campaignId={campaignId} settings={settings} steersStory patch={patch} /> : null}
       {narrating || narrationOff ? <NarrationNote /> : null}
       <p className="text-stone-500">
@@ -357,6 +358,7 @@ export function SafetyGroup({ settings, patch }: Base) {
       onSafety={(safety) => patch({ safety })}
       onGm={(gm) => patch({ gm })}
       onVoice={(ttsVoice) => patch({ ttsVoice })}
+      tableLanguage={settings.tableLanguage}
     />
   );
 }

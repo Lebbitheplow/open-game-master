@@ -1,4 +1,3 @@
-import { namesRomance } from "./advance-logic.ts";
 import { ROMANCE_LABEL, romanceIndex, type RelationshipStatus, type RomanceStage } from "./relationship-logic.ts";
 
 // A romance's rung moving, said where the table can see it (issue 640). In
@@ -75,17 +74,10 @@ export function cooledNote(change: RungChange, character: string, subject: strin
 
 // Whether this table hears romance lines at all, by the settings it already
 // has (no setting of its own). Romance off: the ladder is not played, and a
-// rung left from before it went off slips without a word. A safety line drawn
-// at romance keeps it off the page in any form (safety-logic.ts), a table
-// line included; a veil allows the summary after the fact a line is, and a
-// family table hears of a wedding as any other does.
-export function romanceLinesAllowed(settings: {
-  relationships?: string;
-  romance?: string;
-  safety?: { lines?: readonly string[] } | null;
-}): boolean {
-  if (settings.relationships === "off" || settings.romance === "off") {
-    return false;
-  }
-  return !(settings.safety?.lines ?? []).some(namesRomance);
+// rung left from before it went off slips without a word. The Romance
+// setting is the one switch, at every table and in every language: a safety
+// line or veil is the model's to keep (safety-logic.ts), never read here for
+// its words, and a family table hears of a wedding as any other does.
+export function romanceLinesAllowed(settings: { relationships?: string; romance?: string }): boolean {
+  return settings.relationships !== "off" && settings.romance !== "off";
 }
