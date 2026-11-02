@@ -497,7 +497,7 @@ export function handleDamageObject(
   for (let count = 0; count < blows.data; count += 1) {
     const result = damageObject(campaign, turn, JSON.stringify(blow));
     struck.push(result);
-    immune = Array.isArray(result.notes) && result.notes.some((note) => String(note).includes("immune to"));
+    immune = result.immune === true;
     if (typeof result.error === "string" || result.broken === true || immune || (result.damage === undefined && result.hit === undefined)) {
       break;
     }
