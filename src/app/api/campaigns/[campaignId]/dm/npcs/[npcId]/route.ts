@@ -81,12 +81,12 @@ export async function PATCH(
       return Response.json({ error: "That NPC is not at this table." }, { status: 404 });
     }
     if (body.generatePortrait) {
+      // The saved row: an older app sends no race, and the row kept its own.
       queueNpcPortrait(context.campaign, {
         id: npcId,
-        gender: outcome.draft.gender,
-        // The saved row: an older app sends no race and keeps the stored one.
+        gender: saved.gender,
         race: saved.race,
-        role: outcome.draft.role,
+        role: saved.role,
         trait: outcome.draft.trait,
         personality: describePersonality(outcome.draft.personality),
       });

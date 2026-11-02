@@ -153,7 +153,7 @@ await test("every painter reads the shared prompt and the fields it needs", () =
   const tools = read("src/lib/dm/companion-tools.ts");
   assert.match(tools, /queueCompanionPortrait\(campaign, sheet, \{\n\s+personality,\n\s+appearance: input\.appearance,\n\s+ancestry: input\.racialChoices\?\.ancestry,/);
   for (const route of ["src/app/api/campaigns/[campaignId]/dm/npcs/route.ts", "src/app/api/campaigns/[campaignId]/dm/npcs/[npcId]/route.ts"]) {
-    assert.match(read(route), /gender: (npc|outcome\.draft)\.gender,\n\s+race: (npc|outcome\.draft)\.race( \?\? "")?,\n\s+role: (npc|outcome\.draft)\.role,/, route);
+    assert.match(read(route), /gender: (npc|outcome\.draft|saved)\.gender,\n\s+race: (npc|outcome\.draft|saved)\.race( \?\? "")?,\n\s+role: (npc|outcome\.draft|saved)\.role,/, route);
   }
   assert.match(read("src/lib/dm/world-ai.ts"), /npcIdentity\(\{ gender: npc\.gender, race: raceWords\(npc\.race\), role: npcRoleLabel\(npc\.role\) \}\)/);
 });
