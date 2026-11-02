@@ -53,9 +53,11 @@ export function whisperLanguageCode(language: TableLanguage): string | null {
 
 // The built-in engine's language: STT_LANGUAGE when the server sets one (an
 // operator's choice for every table, Whisper's names or codes), else the
-// clip's table's.
-export function builtinSpeechLanguage(serverLanguage: string, tableCode: string | null): string | null {
-  return serverLanguage || tableCode;
+// clip's table's. An English-only model (STT_BUILTIN_MODEL=...whisper-base.en)
+// takes no language at all: transformers.js refuses every clip that names
+// one, an English table's "en" included, so the table's is left unsaid there.
+export function builtinSpeechLanguage(serverLanguage: string, tableCode: string | null, multilingual: boolean): string | null {
+  return serverLanguage || (multilingual ? tableCode : null);
 }
 
 // STT_URL=off (or the admin field set to "off") says this server has no

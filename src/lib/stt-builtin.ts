@@ -47,10 +47,14 @@ export function builtinSpeechInstalled(): boolean {
   return REQUIRED_FILES.every((file) => existsSync(path.join(/*turbopackIgnore: true*/ root, file)));
 }
 
-type Transcriber = (
+type Transcriber = ((
   audio: Float32Array,
   options: { chunk_length_s: number; stride_length_s: number; language?: string; task?: string },
-) => Promise<{ text: string } | Array<{ text: string }>>;
+) => Promise<{ text: string } | Array<{ text: string }>>) & {
+  // The model's generation config, which says whether it hears more than
+  // English (an ".en" model does not, and refuses a language).
+  model?: { generation_config?: { is_multilingual?: boolean | null } | null };
+};
 
 type InstallState = {
   status: "idle" | "installing" | "ready" | "error";
@@ -154,9 +158,9 @@ export function installBuiltinSpeech(): BuiltinSpeechStatus {
 // code for the clip's table, null for none). Serialized across the whole
 // server.
 export async function transcribeBuiltin(samples: Float32Array, tableCode: string | null): Promise<string> {
-  const language = builtinSpeechLanguage(LANGUAGE, tableCode);
   const run = async () => {
     const pipe = await transcriber();
+    const language = builtinSpeechLanguage(LANGUAGE, tableCode, pipe.model?.generation_config?.is_multilingual === true);
     const output = await pipe(samples, {
       chunk_length_s: 30,
       stride_length_s: 5,

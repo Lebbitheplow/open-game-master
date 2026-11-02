@@ -94,9 +94,18 @@ await test("each of the 15 table languages has Whisper's code; Irish, which Whis
 });
 
 await test("the built-in engine hears the server's STT_LANGUAGE when it is set, else the clip's table's, else nothing", () => {
-  assert.equal(builtinSpeechLanguage("italian", "de"), "italian");
-  assert.equal(builtinSpeechLanguage("", "de"), "de");
-  assert.equal(builtinSpeechLanguage("", null), null);
+  assert.equal(builtinSpeechLanguage("italian", "de", true), "italian");
+  assert.equal(builtinSpeechLanguage("", "de", true), "de");
+  assert.equal(builtinSpeechLanguage("", null, true), null);
+});
+
+await test("an English-only built-in model is never handed a table's language, which transformers.js refuses for every clip", () => {
+  // whisper-base.en and its kind: naming any language, English included,
+  // throws "Cannot specify `task` or `language` for an English-only model".
+  for (const code of ["en", "it", "de"]) {
+    assert.equal(builtinSpeechLanguage("", code, false), null, code);
+  }
+  assert.equal(builtinSpeechLanguage("english", "it", false), "english", "the operator's own STT_LANGUAGE is theirs to set");
 });
 
 process.env.STT_URL = "http://stt.test:8870";
