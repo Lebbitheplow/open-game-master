@@ -39,6 +39,7 @@ import {
   closedGroups,
   COMBAT_SPARE_TOOLS,
   ESSENTIAL_COMBAT_TOOLS,
+  EXPLORE_SPARE_TOOLS,
   ESSENTIAL_TOOLS,
   compactTool,
   compactToolNames,
@@ -1382,6 +1383,11 @@ function compactToolsThatFit(
   const opened = (turn.contextTrace?.profile?.opened ?? []) as ToolGroupId[];
   const last = opened.at(-1);
   const variants: unknown[][] = [compactTurnTools(campaign, inEncounter, imageEnabled, signals, [...intent, ...opened]).tools];
+  // Out of a fight the groups the moment opened outrank the lookups.
+  if (!inEncounter && (intent.length || opened.length)) {
+    const spare = new Set(EXPLORE_SPARE_TOOLS);
+    variants.push((variants[0] as ToolDefLike[]).filter((tool) => !spare.has(tool.function.name)));
+  }
   if (intent.length || opened.length > 1) {
     variants.push(compactTurnTools(campaign, inEncounter, imageEnabled, signals, last ? [last] : []).tools);
   }
