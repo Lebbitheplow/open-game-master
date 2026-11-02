@@ -232,10 +232,12 @@ export function EncounterPanel({
                 out && "opacity-60",
               )}
             >
-              <div className="flex items-center justify-between">
+              {/* The name keeps room for itself, and the chips wrap under it
+                  in a narrow panel: they used to squeeze it to one letter. */}
+              <div className="flex flex-wrap items-center justify-between gap-y-1">
                 <span
                   className={cn(
-                    "flex min-w-0 items-center gap-1.5 text-sm text-stone-200",
+                    "flex min-w-[9rem] flex-1 items-center gap-1.5 text-sm text-stone-200",
                     out && "line-through decoration-stone-500",
                   )}
                 >

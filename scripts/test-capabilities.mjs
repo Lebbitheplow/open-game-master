@@ -378,7 +378,26 @@ check("the server flags the GM's companion turns, and the apps' composer and tab
   const view = readFileSync(path.join(root, "src/app/campaigns/[campaignId]/SessionView.tsx"), "utf8");
   assert.match(view, /hostOffers\(capabilities, "gmCompanionTurns"\)/);
   assert.match(view, /\(gmCompanions \? gmTurnCompanion\(sheets, turnCharacterId\(state\.encounter\)\) : null\)/);
-  assert.match(view, /const gmPlaysTurn = Boolean\(gmCompanions && turnSheet\?\.isCompanion\)/);
+  assert.match(view, /const gmPlaysTurn = Boolean\(gmCompanions && \(turnSheet\?\.isCompanion \|\| \(heldHero && turnSheet\?\.id === heldHero\.id\)\)\)/);
+});
+
+// Issue 685 audit, 4.G: a dominated hero's turn played card by card from the
+// GM seat, and a legendary creature's legendary and lair actions as cards.
+// An older host refuses the first (its actions route takes the GM's cards for
+// a companion only) and sends no `legendary` or `lair` for the second, so the
+// screens offer each only on a host that says it has it.
+check("the server flags the GM's dominated-hero turns and the legendary cards, and the screens ask for them", () => {
+  assert.match(source, /^\s*gmDominatedTurns: true,$/m);
+  assert.match(source, /^\s*legendaryCards: true,$/m);
+  const client = readFileSync(path.join(root, "src/lib/use-capabilities.ts"), "utf8");
+  assert.match(client, /features\?: \{[^}]*gmDominatedTurns\?: boolean/);
+  assert.match(client, /features\?: \{[^}]*legendaryCards\?: boolean/);
+  const composer = readFileSync(path.join(root, "src/app/campaigns/[campaignId]/Composer.tsx"), "utf8");
+  assert.match(composer, /const gmDominated = gmCompanions && hostOffers\(capabilities, "gmDominatedTurns"\)/);
+  const view = readFileSync(path.join(root, "src/app/campaigns/[campaignId]/SessionView.tsx"), "utf8");
+  assert.match(view, /const gmDominated = gmCompanions && hostOffers\(capabilities, "gmDominatedTurns"\)/);
+  const hand = readFileSync(path.join(root, "src/app/campaigns/[campaignId]/MonsterHand.tsx"), "utf8");
+  assert.match(hand, /legendaryCards: hostOffers\(capabilities, "legendaryCards"\)/);
 });
 
 if (failures) {

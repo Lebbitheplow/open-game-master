@@ -39,6 +39,8 @@ import { settleCompanionLeaving } from "@/lib/dm/departure-turn";
 import { runInTurnScope } from "@/lib/dm/job-control";
 import { postPersonsRecord, startPersonsRecord } from "@/lib/dm/persons-record";
 import { mergedCall, renamedArgs } from "@/lib/dm/tool-merge-logic";
+import { PERSON_CALL_ID_PREFIX, keptAnswer } from "@/lib/dm/turn-trace-logic";
+import { isPlaytest } from "@/lib/workshop/kind";
 
 export type Actor =
   | { kind: "ai"; turnId: string }
@@ -400,6 +402,17 @@ export async function invokeEngine(
       (pending) => pending.turnId === turn.id,
     );
     turn.status = parked ? "awaiting_rolls" : "done";
+    // At a test fight its author reads every call in the turn trace (issue
+    // 685): a person's call is kept on their turn in the conversation's own
+    // shape, as an agent program's is (agent-turn.ts recordAgentCall). Only
+    // there: a live table's person turns keep no conversation.
+    if (isPlaytest(campaign)) {
+      const id = `${PERSON_CALL_ID_PREFIX}${turn.conversation.length}`;
+      turn.conversation.push(
+        { role: "assistant", content: "", tool_calls: [{ id, type: "function", function: { name: engine.name, arguments: JSON.stringify(engine.args) } }] },
+        { role: "tool", tool_call_id: id, content: keptAnswer(result) },
+      );
+    }
   }
   saveDmTurn(turn);
   if (record) postPersonsRecord(campaign, turn, record);

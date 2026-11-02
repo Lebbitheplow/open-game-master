@@ -46,6 +46,15 @@ export const CATEGORY_LABELS: Record<AdjudicationCategory, string> = {
 //   own [{ characterId, dice }].
 // - "list": several words typed in one box (a companion's spells), sent as
 //   a list.
+// - "summonKind", "summonMix": a summoning spell's choices, drawn from the
+//   engine's catalogue for the spell the form names (GET /api/campaigns/[id]/
+//   summons, issue 685): the kind its creature is (Find Steed's celestial,
+//   fey or fiend), sent as one of them, and each target's own form (Animate
+//   Dead, Animate Objects), sent as [{ variant, count }]. Shown only for a
+//   spell that has them.
+// - "petForm": Summon a pet's creature, picked from what the engine takes
+//   for the pet's kind (GET /api/campaigns/[id]/dm/pet-forms,
+//   pet-form-logic.ts), a story pet's "Not in the list" opening a text box.
 export type FieldKind =
   | "character"
   | "characters"
@@ -60,7 +69,10 @@ export type FieldKind =
   | "number"
   | "boolean"
   | "select"
-  | "dice";
+  | "dice"
+  | "summonKind"
+  | "summonMix"
+  | "petForm";
 
 export type CatalogField = {
   name: string;
@@ -115,7 +127,9 @@ export type CatalogField = {
   // `older` says (what that server does with it), or is not shown. `name`
   // there is the key that server reads the value under, when it was renamed
   // since (take_action's enemyId was escapingEnemyId before issue #621).
-  host?: { feature: string; older?: { label: string; help?: string; name?: string } };
+  // `kind` there is how that server's form asked for it (a pick it cannot
+  // fill reads as the text box it had).
+  host?: { feature: string; older?: { label: string; help?: string; name?: string; kind?: FieldKind } };
 };
 
 // The field as this host should show it, or null when it cannot use it.
@@ -324,7 +338,7 @@ export function checkArgs(
     if (field.kind === "boolean" && typeof value !== "boolean") {
       return `${field.label} must be true or false.`;
     }
-    if (field.kind === "hitDice" || field.kind === "shares") {
+    if (field.kind === "hitDice" || field.kind === "shares" || field.kind === "summonMix") {
       if (!Array.isArray(value) || value.some((row) => !row || typeof row !== "object")) {
         return `${field.label} must be a list of rows.`;
       }

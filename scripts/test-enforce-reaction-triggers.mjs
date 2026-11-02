@@ -72,15 +72,43 @@ if (world.hasPack) {
     const enemy = await stage();
     const refused = await world.invoke("use_reaction", { characterId: wizard.id, feature: "Absorb Elements" });
     assert.equal(refused.ok, false, "Absorb Elements was cast with no elemental damage to answer");
-    // A fire bolt that took 10 of the wizard's 40.
+    // A fire bolt that took 10 of the wizard's 40, kept as the engine keeps a
+    // hit: the reaction replays the fight from where it left them.
     await world.hitBy(wizard.id, { enemyId: enemy.id, raw: 10, type: "fire", attack: "Fire Bolt" });
     world.patch(wizard.id, { currentHp: 30 });
+    const { freshLastHit, writeLastHit } = await import("../src/lib/dm/last-hit.ts");
+    writeLastHit(world.campaignId, { ...freshLastHit(world.campaignId, wizard.id), after: { currentHp: 30, tempHp: 0, beastHp: null } });
     const out = await world.invoke("use_reaction", { characterId: wizard.id, feature: "Absorb Elements", level: 2 });
     assert.equal(out.ok, true, out.error);
     const held = world.sheet(wizard.id).conditions;
     assert.ok(held.includes("absorb elements (fire)"), held.join(", "));
     assert.ok(held.includes("absorbed strike (2d6 fire)"), held.join(", "));
     assert.equal(world.sheet(wizard.id).currentHp, 35, "half of the 10 came back");
+  });
+
+  await test("Absorb Elements resists only the fire of a mixed blow, and every later open hit of that type too", async () => {
+    const enemy = await stage();
+    const { freshLastHit, writeLastHit } = await import("../src/lib/dm/last-hit.ts");
+    // A bite of 6 piercing and 4 fire takes the wizard from 40 to 30, then a
+    // fire bolt of 8 to 22, in one GM turn: both are open when Absorb
+    // Elements is cast.
+    await world.hitBy(wizard.id, { enemyId: enemy.id, raw: 10, type: "piercing", attack: "Bite" });
+    const bite = freshLastHit(world.campaignId, wizard.id);
+    writeLastHit(world.campaignId, {
+      ...bite,
+      dmTurn: "one-pass",
+      swings: [{ ...bite.swings[0], type: "", parts: [{ amount: 6, type: "piercing" }, { amount: 4, type: "fire" }] }],
+      after: { currentHp: 30, tempHp: 0, beastHp: null },
+    });
+    world.patch(wizard.id, { currentHp: 30 });
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await world.hitBy(wizard.id, { enemyId: enemy.id, raw: 8, type: "fire", attack: "Fire Bolt" });
+    writeLastHit(world.campaignId, { ...freshLastHit(world.campaignId, wizard.id), dmTurn: "one-pass", after: { currentHp: 22, tempHp: 0, beastHp: null } });
+    world.patch(wizard.id, { currentHp: 22 });
+    const out = await world.invoke("use_reaction", { characterId: wizard.id, feature: "Absorb Elements" });
+    assert.equal(out.ok, true, out.error);
+    // The bite's 4 fire halves to 2 and its teeth stand; the bolt's 8 halves to 4.
+    assert.equal(world.sheet(wizard.id).currentHp, 28, JSON.stringify(out));
   });
 }
 
@@ -131,6 +159,37 @@ await test("A monster that has used its reaction this round cannot counter.", as
   world.clearDice();
   assert.equal(out.ok, true, out.error);
   assert.ok(kit.enemy(enemy.id).conditions.includes("paralyzed"));
+});
+
+// ---- Shield and Magic Missile ----
+
+await test("Shield answers a creature's Magic Missile, which hits without a roll or a save, and while it lasts the darts deal nothing (SRD 5.1).", async () => {
+  const enemy = await stage();
+  kit.setEnemy(enemy.id, { stats: { spellcasting: MAGE([{ name: "Magic Missile", level: 1 }], { 1: 2 }) } });
+  // Three darts of 1d4 + 1: 3 + 4 + 5.
+  world.dice(2, 3, 4);
+  const cast = await world.invoke("cast_at_player", { characterId: wizard.id, casterEnemyId: enemy.id, spell: "Magic Missile" });
+  world.clearDice();
+  assert.equal(cast.ok, true, cast.error);
+  assert.equal(world.sheet(wizard.id).currentHp, 28, JSON.stringify(cast));
+  // The Hand offers Shield against it.
+  const { activePublicEncounter } = await import("../src/lib/db/encounter-view.ts");
+  const { reactionCards } = await import("../src/lib/battlemap/hand-react.ts");
+  const { turnFromEncounter } = await import("../src/lib/battlemap/hand-table.ts");
+  const view = activePublicEncounter(world.campaignId);
+  const wizardNow = world.sheet(wizard.id);
+  assert.ok(reactionCards(wizardNow, turnFromEncounter(view, wizardNow, { myTurn: false }), view.lastHits, world.sheets()).some((card) => card.name === "Shield"), JSON.stringify(view.lastHits));
+  const shield = await world.invoke("use_reaction", { characterId: wizard.id, feature: "Shield" });
+  assert.equal(shield.ok, true, shield.error);
+  assert.equal(world.sheet(wizard.id).currentHp, 40, "Shield: no damage from magic missile");
+  assert.equal(world.sheet(wizard.id).spellcasting.slots["1"].used, 1);
+  // Cast again while Shield holds: the darts deal nothing.
+  kit.freshRound();
+  world.dice(4, 4, 4);
+  const again = await world.invoke("cast_at_player", { characterId: wizard.id, casterEnemyId: enemy.id, spell: "Magic Missile" });
+  world.clearDice();
+  assert.equal(again.ok, true, again.error);
+  assert.equal(world.sheet(wizard.id).currentHp, 40, JSON.stringify(again));
 });
 
 world.close();

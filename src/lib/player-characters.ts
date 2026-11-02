@@ -1,4 +1,5 @@
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { dominatorOf } from "@/lib/dm/combat-sides-logic";
 
 export function ownedCharacters(sheets: CharacterSheet[], userId: string): CharacterSheet[] {
   return sheets.filter((sheet) => sheet.userId === userId && !sheet.isCompanion);
@@ -39,6 +40,21 @@ export function gmTurnCompanion(sheets: CharacterSheet[], characterId?: string |
   return sheet?.isCompanion && !(sheet.commandedBy && !sheet.summon) ? sheet : null;
 }
 
+// The hero whose turn it is when a Dominate spell from the other side holds
+// them: at a table a person runs, that person plays the turn with the hero's
+// own Hand (issue 685 audit, 4.G), as the server's gmCompanionTurn says. The
+// same reading as its dominatedByFoe: the charm's meta names a Domination
+// spell and its caster, and the fight puts the hero on the foes' side.
+export function gmTurnDominated(
+  sheets: CharacterSheet[],
+  characterId: string | null | undefined,
+  sides: Record<string, string> | null | undefined,
+): CharacterSheet | null {
+  if (!characterId || sides?.[characterId] !== "foe") return null;
+  const sheet = sheets.find((entry) => entry.id === characterId);
+  return sheet && !sheet.isCompanion && dominatorOf(sheet.conditions, sheet.conditionMeta) ? sheet : null;
+}
+
 // The person's other characters who may answer a hit with their reaction
 // while another acts: every one of theirs but the one acting, when the table
 // fields them all at once. With one fielded at a time only the selected one
@@ -51,6 +67,54 @@ export function offTurnReactors(
 ): CharacterSheet[] {
   if (multiCharacter !== "all_active") return [];
   return ownedCharacters(sheets, userId).filter((sheet) => sheet.id !== actingId);
+}
+
+// The companions whose reactions this person plays between turns, beside the
+// one acting (issue 685): the ones they command in fights, and from the GM
+// seat at a table a person runs, every one nobody commands (gmTurnCompanion
+// is the same rule for a companion's own turn). An AI-run table plays an
+// uncommanded companion's reactions itself.
+export function companionReactors(
+  sheets: CharacterSheet[],
+  userId: string,
+  actingId: string | undefined,
+  runsTable: boolean,
+): CharacterSheet[] {
+  return sheets.filter(
+    (sheet) =>
+      sheet.isCompanion &&
+      sheet.id !== actingId &&
+      ((!sheet.summon && Boolean(userId) && sheet.commandedBy === userId) || (runsTable && Boolean(gmTurnCompanion(sheets, sheet.id)))),
+  );
+}
+
+// The heroes a typed line may speak for as a reaction (the composer's
+// Speaking as, issue 685): the hero whose turn it is (their words are their
+// turn's otherwise, and a reaction counted as their turn's word let the AI
+// play that turn for them), the person's other heroes the table fields and
+// the companions they command, with their reaction unspent, while a hit is
+// still open: each one hit, and the one whose reaction card was handed to
+// the box (`pinned`, "Edit in chat"), which may answer a hit on an ally
+// (Protection, Cutting Words). Empty off the person's own turn: the box is
+// shut then.
+export function typedReactors(
+  sheets: CharacterSheet[],
+  userId: string,
+  turnId: string | undefined,
+  multiCharacter: "off" | "one_active" | "all_active" | undefined,
+  encounter: { lastHits?: Array<{ characterId: string }>; reactionsUsed?: string[] } | null | undefined,
+  pinned?: string | null,
+): Array<{ id: string; name: string }> {
+  if (!turnId || !userId || !encounter?.lastHits?.length) return [];
+  const hit = new Set(encounter.lastHits.map((entry) => entry.characterId));
+  const spent = new Set(encounter.reactionsUsed ?? []);
+  const seen = new Set<string>();
+  const turnHero = sheets.filter((sheet) => sheet.id === turnId);
+  return [...turnHero, ...offTurnReactors(sheets, userId, turnId, multiCharacter), ...commandedCharacters(sheets, userId)].flatMap((sheet) => {
+    if (seen.has(sheet.id) || !(hit.has(sheet.id) || sheet.id === pinned) || spent.has(sheet.id)) return [];
+    seen.add(sheet.id);
+    return [{ id: sheet.id, name: sheet.name }];
+  });
 }
 
 export function resolveActionCharacter({ sheets, userId, selectedId, characterId, initiativeId, reaction = false, multiCharacter = "off" }: {
@@ -66,11 +130,12 @@ export function resolveActionCharacter({ sheets, userId, selectedId, characterId
   const expected = initiativeCharacter(sheets, userId, initiativeId);
   const sheet = characterId ? initiativeCharacter(sheets, userId, characterId) : (!reaction && expected) || selected;
   if (!sheet) return { error: "That is not one of your characters.", status: 404 };
-  // A companion takes orders on its own turn in a fight, never between turns.
+  // A companion takes orders on its own turn in a fight, and between turns
+  // only its reaction (a reaction card, issue 685): its commander plays both.
   if (sheet.isCompanion) {
-    return !reaction && initiativeId === sheet.id
+    return (reaction && characterId === sheet.id) || (!reaction && initiativeId === sheet.id)
       ? { sheet }
-      : { error: `${sheet.name} follows your orders on their own turn in a fight; the GM plays them otherwise.`, status: 409 };
+      : { error: `${sheet.name} follows your orders on their own turn in a fight, and with their reaction between turns; the GM plays them otherwise.`, status: 409 };
   }
   if (multiCharacter !== "all_active" && sheet.id !== selected?.id) {
     return { error: "Select that character before acting as them.", status: 409 };

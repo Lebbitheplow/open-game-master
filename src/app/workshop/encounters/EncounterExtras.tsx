@@ -17,6 +17,8 @@ import type { MapOption } from "@/app/workshop/encounters/types";
 import { RefPicker } from "@/app/workshop/tables/RefPicker";
 import { DictateField } from "@/components/DictateField";
 import { appendDictation } from "@/lib/dictation";
+import { EncounterEvents } from "@/app/workshop/encounters/EncounterEvents";
+import { groundMapOf } from "@/app/workshop/encounters/EncounterGround";
 
 // The rest of a prepared fight (docs/workshop-parity-audit.md phase 13):
 // where each enemy starts on the linked map, where the party comes in, who
@@ -241,6 +243,15 @@ export function EncounterExtras({
           Rewards and phases land as a note only you can read when the fight is deployed.
         </p>
       </div>
+
+      <EncounterEvents
+        campaignId={campaignId}
+        slots={slots}
+        hasEntry={Boolean(value.entry)}
+        map={groundMapOf(map)}
+        value={value.events ?? []}
+        onChange={(events) => set({ events })}
+      />
     </div>
   );
 }

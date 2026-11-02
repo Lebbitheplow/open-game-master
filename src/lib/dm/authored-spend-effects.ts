@@ -33,6 +33,7 @@ import { namedOption, type ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { creditFeatureTeleport } from "@/lib/dm/feature-teleport";
 import { isConditionNamed, isNamed, nameChoice } from "@/lib/srd/feature-names";
+import { swallowCoverBetween, swallowCoverError } from "@/lib/dm/swallow";
 
 // A spend's damage on one enemy, as the holder's dice card.
 const damageDice = (ctx: SpendContext, enemy: EncounterEnemy, dice: string) =>
@@ -99,7 +100,9 @@ function targetEnemy(ctx: SpendContext): EncounterEnemy | ToolError {
   if (!enemy || enemy.status !== "alive") {
     return { error: `${ctx.spend.name} needs a living creature: pass targetEnemyId from GAME STATE. Nothing was spent.`, retry: true };
   }
-  return enemy;
+  // Not across a swallower's wall, the creature attacked last included
+  // (swallow.ts).
+  return swallowCoverError(ctx.sheet.id, enemy.id) ?? enemy;
 }
 
 function damageEnemy(ctx: SpendContext, enemy: EncounterEnemy, amount: number, type: string): Record<string, unknown> {
@@ -153,7 +156,9 @@ function alliesInReach(ctx: SpendContext, rangeFt: number, withSelf: boolean): C
   const party = listSheets(ctx.campaign.id)
     .map((stale) => getSheetById(stale.id) ?? stale)
     .filter((entry) => !entry.deathSaves?.dead && entry.id !== ctx.sheet.id)
-    .filter((entry) => !encounter || withinFeet(encounter.id, ctx.sheet.id, entry.id, rangeFt));
+    .filter((entry) => !encounter || withinFeet(encounter.id, ctx.sheet.id, entry.id, rangeFt))
+    // Nobody across a swallower's wall is in reach (swallow.ts).
+    .filter((entry) => !swallowCoverBetween(ctx.sheet.id, entry.id));
   return withSelf ? [ctx.sheet, ...party] : party;
 }
 
@@ -457,8 +462,9 @@ function burst(ctx: SpendContext, spec: NonNullable<Extract<SpendDoes, { kind: "
   }
   const lines: string[] = [];
   const dc = saveDc(ctx, spec.dcAbility);
+  // Nobody across a swallower's wall is in the burst (swallow.ts).
   const enemies = (ctx.args.targetEnemyId ? [resolveTargetFoe(encounter.campaignId, encounter, ctx.args.targetEnemyId)] : listEnemiesNear(ctx, encounter, spec.rangeFt)).filter(
-    (enemy): enemy is EncounterEnemy => Boolean(enemy && enemy.status === "alive"),
+    (enemy): enemy is EncounterEnemy => Boolean(enemy && enemy.status === "alive" && !swallowCoverBetween(ctx.sheet.id, enemy.id)),
   );
   for (const enemy of enemies) {
     const save = rollEnemySave(ctx.campaign.id, enemy, spec.save, dc, {

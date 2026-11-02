@@ -51,6 +51,11 @@ export function canCreateCampaigns(user: { isAdmin: boolean }): boolean {
 export const CAMPAIGN_CREATION_REFUSED =
   "On this server an administrator starts campaigns and workshops; ask them for a room code to join one.";
 
+// A test fight seats a table of its own and may run the AI, so the same door
+// holds it (issue 685): a workshop kept from before the switch was set is no
+// way around it.
+export const TEST_FIGHT_REFUSED = "On this server an administrator starts campaigns, workshops and their test fights.";
+
 export function campaignCreationRefusal(): Response {
   return Response.json({ error: CAMPAIGN_CREATION_REFUSED }, { status: 403 });
 }

@@ -126,8 +126,11 @@ import { readRomanceScene, romanceSceneNotes } from "@/lib/dm/romance-scenes";
 import type { SpokenLine } from "@/lib/dm/speech";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { dispatchAdjudication } from "@/lib/dm/invoke-dispatch";
+import { playsWhole } from "@/lib/dm/legendary-play";
 import { gateAiCall } from "@/lib/dm/ai-gate";
 import { characterAwaitingPlayer } from "@/lib/dm/player-word";
+import { hitIdOf, openHits } from "@/lib/dm/last-hit";
+import { aiPlaysSheet } from "@/lib/dm/companion-command";
 import { enemiesDue, enemiesOwedTurn, personRunsTable } from "@/lib/dm/enemies-due";
 import { noteTurnHead, settleTurnWarmup, turnHeadKey, warmNextTurn } from "@/lib/dm/turn-warmup";
 import { directContextFor } from "@/lib/dm/direct-context";
@@ -280,6 +283,7 @@ import { FACTION_TOOL_NAMES, factionTools } from "@/lib/dm/faction-tools";
 import { actionTools } from "@/lib/dm/action-tools";
 import { SHOP_TOOL_NAMES, shopTools, shopsBlock } from "@/lib/dm/shop-tools";
 import { preparedEncounterTools, preparedFightsBlock } from "@/lib/dm/prepared-encounter-tool";
+import { fireFightEvents, firedEventsNote } from "@/lib/dm/fight-events";
 import { SETTLEMENT_TOOL_NAMES, settlementTools } from "@/lib/dm/settlement-tools";
 import { placeIsWritten, populateSettlement } from "@/lib/dm/settlement";
 import { listFactions } from "@/lib/db/factions";
@@ -431,7 +435,7 @@ type TurnContext = {
 
 // Compact snapshot of the active encounter for the GAME STATE block. Exact
 // HP is model-facing only; clients get vague health states elsewhere.
-function buildEncounterState(campaignId: string, sheets: CharacterSheet[]) {
+export function buildEncounterState(campaignId: string, sheets: CharacterSheet[]) {
   const encounter = getActiveEncounter(campaignId);
   if (!encounter) {
     return null;
@@ -463,6 +467,7 @@ function buildEncounterState(campaignId: string, sheets: CharacterSheet[]) {
     ...(lair.length ? { lairOptions: lair.map((line, at) => `${at + 1}. ${line}`) } : {}),
     movementLeft: encounter.orderReady ? movementLeft(campaignId, encounter, sheets) : null,
     awaitingPlayer: characterAwaitingPlayer(campaignId)?.name ?? null,
+    ...openHitsForState(campaignId, encounter, sheets),
     ...(due.length
       ? {
           enemiesDue: {
@@ -507,6 +512,37 @@ function buildEncounterState(campaignId: string, sheets: CharacterSheet[]) {
     ...sidesForState(encounter),
     map: buildMapText(encounter.id, sheets),
   };
+}
+
+// The hits a reaction may still answer (src/lib/dm/last-hit.ts), by the
+// character hit, each with the id use_reaction's `hit` takes: the model was
+// told of none, so with two open on one hero it could not name the one a
+// player answered, and it never knew a companion nobody commands could answer
+// one (issue 685). `ai`: the AI plays that character's reactions.
+function openHitsForState(campaignId: string, encounter: Encounter, sheets: CharacterSheet[]) {
+  const campaign = getCampaignById(campaignId);
+  const open = encounter.order.flatMap((entry) => {
+    const sheet = entry.kind === "pc" ? sheets.find((candidate) => candidate.id === entry.characterId) : undefined;
+    const hits = sheet ? openHits(campaignId, sheet.id) : [];
+    return sheet && hits.length
+      ? [{
+          characterId: sheet.id,
+          name: sheet.name,
+          ai: Boolean(sheet.isCompanion && aiPlaysSheet(campaign, sheet)),
+          hits: hits.map((hit) => {
+            const landed = hit.swings.filter((swing) => swing.hit);
+            const damage = landed.reduce((sum, swing) => sum + swing.raw, 0);
+            return {
+              hitId: hitIdOf(hit),
+              what: hit.source === "fall"
+                ? `a fall, ${damage} damage`
+                : `${hit.attacker.name}'s ${hit.attack}${landed.length ? `, ${damage} ${hit.type}` : ", a miss"}`,
+            };
+          }),
+        }]
+      : [];
+  });
+  return open.length ? { openHits: open } : {};
 }
 
 // An enemy's movement left this turn when it is not its plain speed (a
@@ -662,6 +698,11 @@ async function openTurn(
   // stragglers are auto-rolled before the prompt is built.
   if (!oocOnly) {
     ensureInitiativeProgress(campaign);
+    // Whatever moved the fight since the last turn (a player's End Turn, a
+    // pass the lead released) has had its prepared events by now; this
+    // catches any that a path outside an engine call left due, before the
+    // prompt reads the fight (fight-events.ts).
+    fireFightEvents(campaign);
   }
   const { summary, coveredCount } = getCampaignSummaryState(campaignId);
   const currentLocation = getCurrentLocation(campaignId);
@@ -2388,7 +2429,9 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
           ? await resolveModelCall(context, turn, toolCall)
           : { error: `The engine has no action called "${toolCall.name}".`, retry: true });
       // A combatant who left the fight during the call takes no turn with them.
-      settleTurn(context.campaign, holder);
+      // The prepared events it brought on (fight-events.ts) ride back in its
+      // result, so the model narrates them in this very reply.
+      const happened = settleTurn(context.campaign, holder);
       if (outcome[PARKED]) {
         parkedAny = true;
         // The parts of a pc_attack that needed no roll are answered now;
@@ -2414,7 +2457,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       turn.conversation.push({
         role: "tool",
         ...(toolCall.id ? { tool_call_id: toolCall.id } : {}),
-        content: JSON.stringify(told),
+        content: JSON.stringify(happened.length ? { ...told, fightEvents: firedEventsNote(happened) } : told),
       });
     }
 
@@ -2581,10 +2624,17 @@ async function resolveModelCall(
     if ("result" in gated) {
       return gated.result;
     }
-    const result = applyEncounterCall(campaign, turn, name, gated.args, sheets, sheetsById, {
-      realDiceUserIds,
-      toolCallId: toolCall.id ?? null,
-    }).result;
+    // A legendary option named with the creature it acts on is played whole
+    // at the console's own door (src/lib/dm/legendary-play.ts): the spend and
+    // what it buys in one call, given back if the engine refuses the rest.
+    // Fling and Swallow have no other call to make them (issue 685).
+    const result =
+      name === "legendary_action" && playsWhole(gated.args)
+        ? await dispatchAdjudication(name, gated.args, { campaign, turn, sheets, sheetsById, realDiceUserIds })
+        : applyEncounterCall(campaign, turn, name, gated.args, sheets, sheetsById, {
+            realDiceUserIds,
+            toolCallId: toolCall.id ?? null,
+          }).result;
     if (!("error" in result)) {
       turn.encounterCount += 1;
     }
@@ -2716,9 +2766,12 @@ function playedCard(context: TurnContext, message: CampaignMessage & { intent: M
 
 // The cards behind the actions this turn answers: the player messages since
 // the DM last spoke that came from the Hand as an attack or a cast.
+// A card the GM already resolved as played from the console (issue 685,
+// src/lib/dm/resolve-card.ts) is answered: an AI turn under cover neither
+// plays it again nor chases it.
 function cardsPlayed(context: TurnContext): PlayedCard[] {
   return playerLinesSinceDm(context.campaign.id).flatMap((message) =>
-    message.intent && intentNeedsTool(message.intent) ? [playedCard(context, { ...message, intent: message.intent })] : [],
+    message.intent && !message.cardResolvedAt && intentNeedsTool(message.intent) ? [playedCard(context, { ...message, intent: message.intent })] : [],
   );
 }
 
@@ -2747,7 +2800,7 @@ function cardsToSettle(context: TurnContext, turn: DmTurn): PlayedCard[] {
   const direct = directlyPlayed(turn.conversation);
   const began = Date.parse(turn.createdAt);
   return playerLinesSinceDm(context.campaign.id).flatMap((message) => {
-    if (!message.intent || Date.parse(message.createdAt) > began) {
+    if (!message.intent || message.cardResolvedAt || Date.parse(message.createdAt) > began) {
       return [];
     }
     return intentNeedsTool(message.intent) || direct.has(cardCallKey(message.id)) ? [playedCard(context, { ...message, intent: message.intent })] : [];
@@ -2830,7 +2883,7 @@ type DirectCard = { messageId: string; index: number; name: string; args: Record
 function directCards(context: TurnContext): DirectCard[] {
   const authors = spellAuthorsFor(context.campaign);
   return playerLinesSinceDm(context.campaign.id).flatMap((message) => {
-    if (!message.intent || !message.characterId) {
+    if (!message.intent || !message.characterId || message.cardResolvedAt) {
       return [];
     }
     const calls = directCardCalls(message.intent, message.characterId, directContextFor(context.campaign.id, message.intent, authors));

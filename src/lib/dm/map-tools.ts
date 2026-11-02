@@ -9,6 +9,7 @@ import {
   getEnemy,
   listEnemies,
   saveEncounter,
+  turnKey,
   type Encounter,
   type EncounterEnemy,
 } from "@/lib/db/encounters";
@@ -74,6 +75,8 @@ import { zoneCoverBetween } from "@/lib/dm/zone-rules";
 import { dragLandings, enemyDrag } from "@/lib/dm/drag-move";
 import { walkCostFactor } from "@/lib/dm/drag";
 import { flightOf, markSqueezing } from "@/lib/dm/token-state";
+import { livePurchase } from "@/lib/dm/legendary-logic";
+import { swallowRowWalk } from "@/lib/dm/swallow";
 import { toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { findNamed, textKey } from "@/lib/language/text-logic";
 
@@ -290,7 +293,11 @@ export function handleTeleportToken(
   const distanceFeet = Math.max(Math.abs(args.x - token.x), Math.abs(args.y - token.y)) * TILE_FEET;
   const spender = args.spell && args.casterCharacterId ? resolveSheetRef(args.casterCharacterId, sheets, sheetsById) : null;
   const featureFeet = spender && args.spell ? featureTeleportFeet(spender.id, args.spell) : null;
-  const rangeFeet = featureFeet ?? (args.spell ? teleportRangeFeet(args.spell) : null) ?? args.rangeFeet;
+  // A legendary action that bought the jump (a sphinx's or a solar's
+  // Teleport) gives its reach and has paid for it.
+  const live = token.kind === "enemy" ? getActiveEncounter(campaign.id) : null;
+  const legendaryFeet = live ? (livePurchase(live.legendary, { turn: turnKey(live), round: live.round }, token.refId)?.teleportFeet ?? null) : null;
+  const rangeFeet = legendaryFeet ?? featureFeet ?? (args.spell ? teleportRangeFeet(args.spell) : null) ?? args.rangeFeet;
   if (rangeFeet !== undefined && rangeFeet !== null && distanceFeet > rangeFeet) {
     return {
       error: `(${args.x},${args.y}) is ${distanceFeet} ft away, past the ${rangeFeet} ft range. Pick a tile within range.`,
@@ -299,7 +306,7 @@ export function handleTeleportToken(
   }
   // Every refusal above spends nothing; the spell is cast (or the enemy's
   // block checked) only now.
-  if (turn?.actor === "ai") {
+  if (turn?.actor === "ai" && legendaryFeet === null) {
     const refused = payForTeleport(
       campaign,
       turn,
@@ -477,6 +484,11 @@ export function handleMoveToken(
   sheets: CharacterSheet[],
   sheetsById: Map<string, CharacterSheet>,
   turn: Pick<DmTurn, "id" | "actor">,
+  // A legendary move (src/lib/dm/legendary-play.ts): this many squares, none
+  // of the creature's own turn's movement, opportunity attacks only when the
+  // option provokes them, aloft for a flight. A move_token after a
+  // legendary_action that bought a move reads the same from the purchase.
+  legendaryMove?: { tiles: number; provokes: boolean; fly: boolean },
 ): ToolResult {
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter) {
@@ -496,6 +508,10 @@ export function handleMoveToken(
   if (!resolved) {
     return unknownCombatant(map, args.token);
   }
+  const allowance =
+    resolved.kind === "enemy" && resolved.enemy && !args.forced
+      ? (legendaryMove ?? livePurchase(encounter.legendary, { turn: turnKey(encounter), round: encounter.round }, resolved.enemy.id)?.move ?? null)
+      : null;
   if (resolved.kind === "pc" && !args.forced) {
     // An AI companion walks on its own turn as a player walks from the
     // board: its speed, standing from prone, fear, opportunity attacks. So
@@ -577,7 +593,7 @@ export function handleMoveToken(
     ? fearSourceAt(map.id, resolved.enemy.conditions, resolved.enemy.conditionMeta as Record<string, { source?: string }>)
     : null;
   const pathAvoiding = (blocked: Set<number>) =>
-    findPath(map.terrain, map.width, map.height, blocked, resolved.token, { x: args.x, y: args.y }, moverFootprint, resolved.token.movement === "fly", traits);
+    findPath(map.terrain, map.width, map.height, blocked, resolved.token, { x: args.x, y: args.y }, moverFootprint, resolved.token.movement === "fly" || Boolean(allowance?.fly), traits);
   const path =
     (feared ? pathAvoiding(new Set([...occupied, ...nearerSquares(map.width, map.height, resolved.token, feared)])) : null) ??
     pathAvoiding(occupied);
@@ -608,6 +624,12 @@ export function handleMoveToken(
   // stands, fears and Disengages nothing.
   const move = resolved.kind === "enemy" && resolved.enemy ? enemyMoveBudget(encounter, resolved.enemy, resolved.token) : null;
   const walking = move !== null && !args.forced;
+  // Swallowed, as a character is (swallow.ts): no walk inside a living
+  // creature, and out of a dead one the walk is the climb out of its corpse.
+  const climb = walking && resolved.enemy ? swallowRowWalk(campaign, encounter, resolved.enemy, resolved.token, move?.tilesLeft ?? 0) : null;
+  if (climb) {
+    return climb;
+  }
   let standCost = 0;
   let aggressiveCut = false;
   let approachCut = false;
@@ -637,8 +659,11 @@ export function handleMoveToken(
       aggressiveCut = rushed.cut;
       approachCut = drawn.cut;
     }
-    const budget = Math.floor(Math.max(0, (move?.tilesLeft ?? 0) - standCost) / factor);
+    const budget = Math.floor(Math.max(0, (allowance ? allowance.tiles : (move?.tilesLeft ?? 0)) - standCost) / factor);
     const walk = walkPathWithBudget(map.terrain, map.width, steps, budget, traits, resolved.token);
+    if (!walk.at && allowance) {
+      return { error: `${resolved.token.name} cannot get anywhere toward (${args.x},${args.y}) on its legendary move (${allowance.tiles * 5} ft).${stillAt(tokens, resolved.token)}`, refused: "rules" };
+    }
     if (!walk.at) {
       const words = move && resolved.enemy ? speedWords(move.speedTiles, enemyTurnEntry(encounter, resolved.enemy.id)) : "speed 0 ft";
       const why = approachCut
@@ -667,7 +692,7 @@ export function handleMoveToken(
   // above: nothing has changed until here.
   let disengaged: string | null = walking && move.disengaged ? "its Disengage earlier this turn" : null;
   let closesOwedTurn = false;
-  if (args.disengage && walking && resolved.enemy && !disengaged) {
+  if (args.disengage && walking && resolved.enemy && !disengaged && !allowance) {
     const paid = spendEnemyDisengage(campaign.id, resolved.enemy);
     if ("error" in paid) {
       return toolError(paid);
@@ -682,10 +707,14 @@ export function handleMoveToken(
     resolved.token.id,
     landing.x,
     landing.y,
-    resolved.kind === "enemy"
+    resolved.kind === "enemy" && !allowance
       ? (getTokenByRef(map.id, resolved.token.refId)?.movedThisRound ?? resolved.token.movedThisRound) + spent
-      : resolved.token.movedThisRound,
+      : (getTokenByRef(map.id, resolved.token.refId)?.movedThisRound ?? resolved.token.movedThisRound),
   );
+  // A flight takes it up: it stays aloft where it lands (set_movement).
+  if (allowance?.fly && resolved.token.movement !== "fly") {
+    setTokenMovement(resolved.token.id, "fly");
+  }
   for (const entry of carried) {
     moveToken(entry.token.id, entry.at.x, entry.at.y, entry.token.movedThisRound);
   }
@@ -713,7 +742,7 @@ export function handleMoveToken(
   // exactly as the reverse does when a player walks off. Forced movement
   // (a shove, a gust of wind) provokes nothing.
   const opportunity =
-    resolved.kind === "enemy" && !args.forced && !disengaged
+    resolved.kind === "enemy" && !args.forced && !disengaged && (!allowance || allowance.provokes)
       ? resolvePcOpportunityAttacks(
           campaign,
           resolved.token.refId,
@@ -743,11 +772,14 @@ export function handleMoveToken(
             ? `Command draws ${resolved.token.name} only toward its caster: it stopped at (${landing.x},${landing.y}) short of (${args.x},${args.y}).`
             : aggressiveCut
               ? `Aggressive carries ${resolved.token.name} only toward a hostile creature it can see: it stopped at (${landing.x},${landing.y}) short of (${args.x},${args.y}).`
-              : `Speed limited the move: ${resolved.token.name} stopped at (${landing.x},${landing.y}) short of (${args.x},${args.y}).`,
+              : allowance
+                ? `Its legendary move goes ${allowance.tiles * 5} ft: ${resolved.token.name} stopped at (${landing.x},${landing.y}) short of (${args.x},${args.y}).`
+                : `Speed limited the move: ${resolved.token.name} stopped at (${landing.x},${landing.y}) short of (${args.x},${args.y}).`,
         }
       : {}),
     ...(disengaged ? { disengaged: `Disengaged with ${disengaged}: no opportunity attacks.` } : {}),
-    ...(walking && resolved.enemy ? { movementLeft: movementLeft(campaign.id, resolved.enemy) } : {}),
+    ...(allowance ? { legendaryMove: `A legendary move: none of its own turn's movement spent${allowance.provokes ? "" : ", and no opportunity attacks"}.` } : {}),
+    ...(walking && resolved.enemy && !allowance ? { movementLeft: movementLeft(campaign.id, resolved.enemy) } : {}),
   };
 }
 

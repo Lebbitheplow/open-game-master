@@ -26,6 +26,7 @@ import { budgetApplies } from "@/lib/dm/action-budget";
 import { resolveOpportunityAttacks } from "@/lib/dm/opportunity";
 import { riskyOrderGate } from "@/lib/dm/party-conduct";
 import { canAct } from "@/lib/dm/can-act";
+import { dominatedRefusal } from "@/lib/dm/companion-command";
 import { removeConditions } from "@/lib/dm/condition-logic";
 import { awayFromFear, fearSourceAt } from "@/lib/dm/enemy-approach";
 import { publishPersisted } from "@/lib/events";
@@ -39,6 +40,7 @@ import { jumpLine } from "@/lib/srd/jump";
 import { sizeForRace } from "@/lib/srd";
 import { proneCharge } from "@/lib/battlemap/board-move";
 import { refuseDuringBreak } from "@/lib/dm/table-break";
+import { swallowWalk } from "@/lib/dm/swallow";
 
 export const runtime = "nodejs";
 
@@ -112,6 +114,14 @@ export async function POST(
   if (!sheet || !token) {
     return Response.json({ error: "You have no token on this map." }, { status: 400 });
   }
+  // A character dominated by the other side is the GM's to play until the
+  // charm ends (src/lib/dm/companion-command.ts), its walk included: the
+  // actions route refused its player's words while this route still walked
+  // its token on its turn.
+  const held = dominatedRefusal(campaignId, sheet);
+  if (held) {
+    return Response.json({ error: held, dominated: true }, { status: 409 });
+  }
   // The one guard every acting handler asks (src/lib/dm/can-act.ts): the
   // dead, the dying, the incapacitated and the surprised do not move, and in
   // a fight nobody moves on a turn that is not theirs.
@@ -157,6 +167,15 @@ export async function POST(
   const speed = turnBudget.speed;
   const budget = readied ? speedToTiles(speed) : turnBudget.tiles;
   const fullTiles = readied ? speedToTiles(speed) : turnBudget.fullTiles;
+  // Swallowed (src/lib/dm/swallow.ts): inside a living creature the route
+  // says so, and how out; out of a dead one the walk is the climb out of its
+  // corpse.
+  const climb = campaign && !readied ? swallowWalk(campaign, encounter, map, sheet, token) : null;
+  if (climb) {
+    return "error" in climb
+      ? Response.json({ error: climb.error }, { status: 409 })
+      : Response.json({ ...climb, view: buildPlayerMapView(campaignId, user.id) });
+  }
   if (speed <= 0) {
     const cause =
       sheet.conditions.join(", ") ||

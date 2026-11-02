@@ -22,6 +22,7 @@ import type { Campaign } from "@/lib/db/campaigns";
 import type { Chapter } from "@/lib/db/chapters";
 import type { CharacterEvent } from "@/lib/db/character-events";
 import type { ClockTurn } from "@/lib/db/clock-moves";
+import type { TurnChangeView } from "@/lib/db/turn-changes";
 import { changesWindow } from "@/lib/sheet-audit-logic";
 import type { PublicEncounter } from "@/lib/db/encounter-view";
 import type { CampaignMessage } from "@/lib/db/messages";
@@ -44,6 +45,7 @@ import { DEPARTING_KEPT_MS, type DepartingSheet } from "@/app/campaigns/[campaig
 import type { DmJobView } from "@/lib/dm/job-stage-logic";
 import type { VoiceRosterEntry } from "@/lib/voice/types";
 import { navigateTo } from "@/lib/navigation";
+import { announceDmStatus } from "@/lib/dm-status-event";
 import { registerBrowserSpecies } from "@/lib/srd/race-id";
 import { registerBrowserSubclassExtras, type SubclassExtras } from "@/lib/srd/subclass-tables";
 import { registerBrowserTableFeats } from "@/lib/srd/feat-effects";
@@ -209,6 +211,9 @@ export type CampaignState = {
   auditLog: AuditEntry[];
   // The GM turns whose time the event log can still put back (issue #622).
   clockTurns: ClockTurn[];
+  // What else those turns kept for their revert: a prepared event, a test
+  // die, a card resolved as played (issue 685).
+  turnChanges: TurnChangeView[];
   levelUps: LevelUpNotice[];
   locations: CampaignLocation[];
   chapters: Chapter[];
@@ -393,6 +398,7 @@ const initialState: CampaignState = {
   pendingRolls: [],
   auditLog: [],
   clockTurns: [],
+  turnChanges: [],
   levelUps: [],
   locations: [],
   chapters: [],
@@ -977,6 +983,23 @@ export function campaignReducer(state: CampaignState, action: Action): CampaignS
           }
           return next;
         }
+        // A turn kept something for its revert, or a revert took it back
+        // (issue 685): the event log offers the turn's revert while it stands.
+        case "turn_changed": {
+          const change = payload.change as TurnChangeView | null | undefined;
+          if (change?.id) {
+            next.turnChanges = upsertBy(state.turnChanges.slice(-50), change, (entry) => entry.id);
+          }
+          if (typeof payload.reverted === "string") {
+            next.turnChanges = state.turnChanges.filter((entry) => entry.turnId !== payload.reverted);
+          }
+          // One change a revert of an earlier turn wrote over (turn-rows.ts
+          // supersedeLaterRows): its turn stops offering the fight's revert.
+          if (typeof payload.removed === "string") {
+            next.turnChanges = state.turnChanges.filter((entry) => entry.id !== payload.removed);
+          }
+          return next;
+        }
         case "audit_reverted":
           next.auditLog = state.auditLog.map((entry) =>
             entry.id === payload.entryId
@@ -1214,6 +1237,9 @@ const PERSISTED_EVENTS = [
   // The clock moved or was put back; the event log reads the GM turn it
   // names (issue #622).
   "clock_changed",
+  // What a turn kept for its revert, or the revert that took it back (issue
+  // 685).
+  "turn_changed",
 ];
 const EPHEMERAL_EVENTS = [
   // A visual effect planned from a resolved outcome. Worthless after the
@@ -1431,6 +1457,7 @@ export function useCampaignStream(campaignId: string) {
           pendingRolls: data.pendingRolls ?? [],
           auditLog: data.auditLog ?? [],
           clockTurns: data.clockTurns ?? [],
+          turnChanges: data.turnChanges ?? [],
           locations: data.locations ?? [],
           chapters: data.chapters ?? [],
           notes: data.notes ?? [],
@@ -1714,6 +1741,11 @@ export function useCampaignStream(campaignId: string) {
             clearDmDraft();
           }
           dispatch({ type: "event", eventType, seq, payload });
+          // A control outside this state that follows the GM's turns (the
+          // test fight's turn trace) hears them here.
+          if (eventType === "dm_status") {
+            announceDmStatus(campaignId, payload.state);
+          }
           if (eventType === "note_suggested") {
             void refreshNotes();
           }

@@ -426,7 +426,12 @@ await test("Mid-round, a hit in the enemies' turns stays open into the hero's tu
   }
 });
 
-await test("At an AI table a hit the model's reply dealt is still answerable after the reply ends, and closes at the next hero's first step", async () => {
+// Every enemy of an AI table's pass attacks in one reply, before any player
+// reads a word of it: the next enemy's attack in that same reply closed the
+// hit before it, so only the last hero hit was ever offered a reaction (the
+// workshop bench, issue 685). The attacks of one GM turn leave each other
+// open; an attack in a later one closes them, as at a person's table.
+await test("At an AI table every hit the model's reply dealt is still answerable after the reply ends, and closes at the next hero's first step", async () => {
   const table = await stage({ human: false, dying: [] });
   const { world, kit, hero, enemy } = table;
   kit.openField();
@@ -438,12 +443,32 @@ await test("At an AI table a hit the model's reply dealt is still answerable aft
   await swingAt(world, kit, enemy("Goblin 1"), hero("Vyrrath Stormclaw"), ai);
   assert.equal(answerable(world, hero("Vyrrath Stormclaw")), true, "open on the hit");
   await swingAt(world, kit, enemy("Thug 1"), hero("Tamsin"), ai);
-  assert.equal(answerable(world, hero("Vyrrath Stormclaw")), false, "closed once the next enemy attacked");
+  assert.equal(answerable(world, hero("Vyrrath Stormclaw")), true, "the same reply's next attack leaves it open: nobody has read it yet");
   dmTurnEnds(world, getDmTurn(turn.id));
   assert.equal(answerable(world, hero("Tamsin")), true, "the reply is over and Tamsin's player can still read the hit and answer it");
+  assert.equal(answerable(world, hero("Vyrrath Stormclaw")), true, "and so can Vyrrath's");
   const next = upNow(world);
   await step(world, next, 1, ["Vesper", "Vyrrath Stormclaw", "Tamsin"].indexOf(next.name));
   assert.equal(answerable(world, hero("Tamsin")), false, `${next.name}'s first step closed it`);
+  assert.equal(answerable(world, hero("Vyrrath Stormclaw")), false, `${next.name}'s first step closed Vyrrath's too`);
+});
+
+// A later GM turn: a person stepping in at the console (the enemies' order
+// hands Thug 1 to the reply that ended Tamsin's turn, so a second AI turn
+// would be refused its swing).
+await test("At an AI table an attack in a later GM turn closes a hit an earlier reply dealt", async () => {
+  const table = await stage({ human: false, dying: [] });
+  const { world, kit, hero, enemy } = table;
+  kit.openField();
+  const first = createDmTurn(world.campaignId, [], "ai");
+  world.say("player", "That's my turn.", world.sheet(hero("Tamsin").id));
+  const ended = await invokeEngine(world.campaign(), { kind: "ai", turnId: first.id }, { name: "end_turn", args: { characterId: hero("Tamsin").id } });
+  assert.equal(ended.ok, true, ended.error);
+  await swingAt(world, kit, enemy("Goblin 1"), hero("Vyrrath Stormclaw"), { kind: "ai", turnId: first.id });
+  assert.equal(answerable(world, hero("Vyrrath Stormclaw")), true);
+  await swingAt(world, kit, enemy("Thug 1"), hero("Tamsin"), { kind: "human" });
+  assert.equal(answerable(world, hero("Vyrrath Stormclaw")), false, "the later turn's attack closed it");
+  assert.equal(answerable(world, hero("Tamsin")), true);
 });
 
 await test("A hit in the hero's own turn stays answerable through the rest of it and the enemies after, until the next hero acts", async () => {

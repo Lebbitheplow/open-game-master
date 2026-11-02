@@ -14,14 +14,18 @@ import {
 } from "@/lib/db/campaigns";
 import { countMessages, insertCampaignMessage, listRecentMessages } from "@/lib/db/messages";
 import { getSheetById, getSheetForUser, listSheets } from "@/lib/db/sheets";
-import { dominatedRefusal, gmCompanionTurn } from "@/lib/dm/companion-command";
+import { aiTurnNamedBySeat, commandedSheet, dominatedRefusal, gmCompanionReactor, gmCompanionTurn } from "@/lib/dm/companion-command";
+import { openHits } from "@/lib/dm/last-hit";
+import { activePublicEncounter } from "@/lib/db/encounter-view";
+import { allyReactions } from "@/lib/battlemap/hand-react";
+import { aiTurnRefusal } from "@/lib/workshop/test-seats-logic";
 import { heroFell } from "@/lib/characters/fallen-logic";
 import { answerSpotlight } from "@/lib/dm/spotlight-answer";
 import { requestDmTurn } from "@/lib/dm/loop";
 import { settleTableWait, waitsForTable } from "@/lib/dm/table-wait";
 import { holdsPostForTable } from "@/lib/dm/table-wait-logic";
 import { coverInEffect } from "@/lib/dm/delegation";
-import { hasHumanDm, isPrimaryDm } from "@/lib/dm/viewer";
+import { hasHumanDm, isDmSeat } from "@/lib/dm/viewer";
 import { invokeEngine } from "@/lib/dm/invoke";
 import { claimNarrationSeq } from "@/lib/dm/narration-slot";
 import { enqueueDmJob } from "@/lib/dm/queue";
@@ -29,7 +33,7 @@ import { runResumeRecap } from "@/lib/dm/recap";
 import { RECAP_AFTER_MS } from "@/lib/dm/session-hold-logic";
 import { sessionHoldOn } from "@/lib/dm/session-hold";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
-import { directCardCalls, parseMessageIntent } from "@/lib/dm/intent-logic";
+import { TYPED_REACTION, directCardCalls, isTypedReaction, parseMessageIntent } from "@/lib/dm/intent-logic";
 import { refusedPartsLine } from "@/lib/dm/action-parts-logic";
 import { directContextFor } from "@/lib/dm/direct-context";
 import { addressesDm } from "@/lib/dm/ooc-question";
@@ -65,6 +69,12 @@ const actionSchema = z.object({
       next: z.string().trim().min(1).max(120),
     })
     .optional(),
+  // Words typed for a hero's reaction (issue 685): the composer's Speaking
+  // as names the hero, the one whose turn it is or another of theirs. Taken
+  // off the hero's turn as a reaction card is, while a hit is open and their
+  // reaction unspent, and marked as a reaction so it is no word on their own
+  // turn. Never with a card.
+  reaction: z.boolean().optional(),
 });
 
 function fallenRefusal(name: string): string {
@@ -88,13 +98,28 @@ export async function POST(
 
   const owned = getSheetForUser(campaignId, user.id);
   const raw = await request.json().catch(() => ({}));
-  // A companion nobody commands, on its own turn at a table a person runs, is
-  // the GM's to play (src/lib/dm/companion-command.ts gmCompanionTurn): its
-  // Hand's cards and its End turn come from the GM seat, which may hold no
-  // character of its own. Named by the card, never assumed.
+  // A companion nobody commands, or a hero the other side dominates, on its
+  // own turn at a table a person runs, is the GM's to play
+  // (src/lib/dm/companion-command.ts gmCompanionTurn): its Hand's cards and
+  // its End turn come from the GM seat, which may hold no character of its
+  // own. Named by the card, never assumed.
   const companionTurn = gmCompanionTurn(campaign, user.id);
   const namedId = raw && typeof raw === "object" ? (raw as { characterId?: unknown }).characterId : undefined;
-  const playsCompanion = companionTurn && namedId === companionTurn.id ? companionTurn : null;
+  // Between its turns, the same seat plays that companion's reaction cards
+  // (issue 685): its Shield, its Parry, its Protection for an ally.
+  // Held to a reaction card below, once the body is read.
+  const rawIntent = raw && typeof raw === "object" ? (raw as { intent?: unknown }).intent : undefined;
+  const companionReactor =
+    !(companionTurn && namedId === companionTurn.id) && parseMessageIntent(rawIntent)?.card === "reaction" && typeof namedId === "string"
+      ? gmCompanionReactor(campaign, user.id, namedId)
+      : null;
+  const playsCompanion = companionTurn && namedId === companionTurn.id ? companionTurn : companionReactor;
+  // At a table the AI runs, that turn is the AI's: the steering seat is told
+  // so, rather than "You need a character to act" (test-seats-logic.ts).
+  const aiTurn = raw && typeof raw === "object" && (raw as { kind?: unknown }).kind !== "ooc" ? aiTurnNamedBySeat(campaign, user.id, namedId) : null;
+  if (aiTurn) {
+    return Response.json({ error: aiTurnRefusal(campaign, aiTurn.name) }, { status: 409 });
+  }
   const selected = owned ?? playsCompanion;
   if (!selected) {
     return Response.json({ error: "You need a character to act." }, { status: 400 });
@@ -132,14 +157,22 @@ export async function POST(
   }
   // A character dominated by the other side is the DM's to play until the
   // charm ends (src/lib/dm/companion-command.ts): its player hears why,
-  // whoever's turn it is. Table talk is free.
+  // whoever's turn it is. Table talk is free, and so is the GM seat playing
+  // its turn (gmCompanionTurn), which this used to refuse as the player's.
   const named = parsed.data.characterId ? getSheetById(parsed.data.characterId) : null;
   const acting = playsCompanion ?? (named && named.campaignId === campaignId && named.userId === user.id ? named : selected);
-  const held = kind === "ooc" ? null : dominatedRefusal(campaignId, acting);
+  const held = kind === "ooc" || playsCompanion ? null : dominatedRefusal(campaignId, acting);
   if (held) {
     return Response.json({ error: held, dominated: true }, { status: 409 });
   }
-  const intent = kind === "do" ? parseMessageIntent(parsed.data.intent) : null;
+  const played = kind === "do" ? parseMessageIntent(parsed.data.intent) : null;
+  // Words typed as a reaction carry the reaction mark a card carries, and a
+  // reaction card naming nothing to resolve is held to the same checks.
+  const typedReaction = kind === "do" && (isTypedReaction(played) || (!played && parsed.data.reaction === true));
+  const intent = typedReaction ? TYPED_REACTION : played;
+  if (companionReactor && intent?.card !== "reaction") {
+    return Response.json({ error: `${companionReactor.name} acts on their own turn; between turns only their reaction cards are played.` }, { status: 409 });
+  }
   // Floor control: during a spotlight only the named players may act (ooc is
   // always allowed); the floor releases once ALL of them have answered.
   // During a hold nobody may act until the lead releases. This read-modify-
@@ -150,6 +183,34 @@ export async function POST(
   // The same holds while a person plays the enemies' turns under a hold
   // (src/lib/dm/enemies-due.ts): that is when a Shield or an opportunity
   // attack is wanted most.
+  // Words typed for a hero's reaction (the composer's Speaking as) are held to
+  // what a reaction card is: a hit still open in the fight (on them, or on an
+  // ally a reaction of theirs covers) and their reaction unspent. Anything
+  // else is the turn's words.
+  if (typedReaction) {
+    const reactor = named && named.campaignId === campaignId ? named : null;
+    const encounterNow = getActiveEncounter(campaignId);
+    // Any hero's open hit once let words through for a hero with nothing to
+    // answer: the hit must be on them, or on an ally a reaction they hold
+    // covers, as the Hand reads it (hand-react.ts allyReactions).
+    const hitOpen =
+      reactor !== null &&
+      encounterNow !== null &&
+      (openHits(campaignId, reactor.id).length > 0 ||
+        (activePublicEncounter(campaignId)?.lastHits ?? []).some((hit) => hit.characterId !== reactor.id && allyReactions(reactor, hit).length > 0));
+    if (!reactor || !encounterNow || !hitOpen) {
+      return Response.json(
+        { error: `No hit is open for ${reactor?.name ?? "that character"} to answer now. Send it as the hero whose turn it is, or as table talk.` },
+        { status: 409 },
+      );
+    }
+    if (encounterNow.reactionsUsed.includes(reactor.id)) {
+      return Response.json(
+        { error: `${reactor.name} has already used their reaction; it comes back at the start of their next turn.` },
+        { status: 409 },
+      );
+    }
+  }
   const reactionOffTurn = intent?.card === "reaction" && combatOwnsFloor(floor);
   // The GM playing a companion's turn holds that turn: the floor names the
   // companion, not them.
@@ -220,6 +281,12 @@ export async function POST(
     return Response.json({ error: actor.error, floor }, { status: actor.status });
   }
   const { sheet } = actor;
+  // A companion's reaction from its commander: the server's word on who
+  // commands it (a commander who left, or a companion turned on the party,
+  // commands nobody), not the sheet's field the screen read.
+  if (sheet.isCompanion && !playsCompanion && !commandedSheet(campaign, user.id, sheet.id)) {
+    return Response.json({ error: `${sheet.name} is not under your command; the GM plays them.`, floor }, { status: 409 });
+  }
   // A hero who fell acts no more (issue 655): the composer says so, and a
   // connected agent or an older screen posting for them is told the same,
   // rather than the GM narrating the dead. Table talk stays open.
@@ -259,11 +326,14 @@ export async function POST(
   // test fight a person runs, issue 553): the one who would adjudicate it
   // played it, so the engine resolves it now, with the same call an AI turn
   // makes before it narrates (directCardCall), and nothing waits in the DM's
-  // queue for the DM. A card the engine cannot resolve whole (a spell, a
-  // rider) is posted below and queued as any player's is, for the console.
+  // queue for the DM. A card the engine cannot resolve whole (a summon whose
+  // creatures the GM picks, an Entangle that catches whoever stands in it) is
+  // posted below and queued as any player's is, for the console.
+  // A co-GM adjudicates as the GM does (isDmSeat), and plays a companion's
+  // turn as the GM may (gmCompanionTurn): their cards resolve the same way.
   const dmSeats = campaignSeats(campaign);
   const direct =
-    intent && kind === "do" && hasHumanDm(dmSeats) && isPrimaryDm(dmSeats, user.id)
+    intent && kind === "do" && hasHumanDm(dmSeats) && isDmSeat(dmSeats, user.id)
       ? directCardCalls(intent, sheet.id, directContextFor(campaignId, intent, tableAuthors(campaignId)))
       : null;
   if (direct) {

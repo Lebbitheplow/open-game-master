@@ -25,27 +25,38 @@ import { resolveSheetRef } from "@/lib/dm/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolError } from "@/lib/dm/tool-errors";
 
+// The character's own words since the DM last spoke, table talk and
+// reactions aside. A reaction card answers a hit in somebody else's turn
+// (Shield, Uncanny Dodge): it says nothing of what the character does with
+// a turn of their own. Counted, the hero up next who answered a hit in the
+// enemies' pass had "declared", so the AI was let play that turn for them and
+// the narration's hand-off moved it on unplayed (issue 685).
+function ownWordsSinceDm(campaignId: string, characterId: string) {
+  const messages = listRecentMessages(campaignId, 50);
+  // An out-of-character answer in between leaves the move standing.
+  const since = messages.slice(messages.findLastIndex(isNarration) + 1);
+  return since.filter(
+    (message) =>
+      message.authorType === "player" &&
+      message.characterId === characterId &&
+      !message.content.startsWith("(ooc)") &&
+      message.intent?.card !== "reaction",
+  );
+}
+
 // Whether the character's player asked for something in the input this DM
 // turn answers: a message of theirs since the DM last spoke, table talk
 // aside. A token never walks on a turn its player did not speak in (issue 17:
 // a token that moved with no input).
 export function declaredThisTurn(campaignId: string, characterId: string): boolean {
-  const messages = listRecentMessages(campaignId, 50);
-  // An out-of-character answer in between leaves the move standing.
-  const since = messages.slice(messages.findLastIndex(isNarration) + 1);
-  return since.some(
-    (message) => message.authorType === "player" && message.characterId === characterId && !message.content.startsWith("(ooc)"),
-  );
+  return ownWordsSinceDm(campaignId, characterId).length > 0;
 }
 
 // What the character's player wrote since the DM last spoke, table talk
 // aside: the words a turn's end may be read from (src/lib/dm/claims.ts
 // readTurnEndInWords).
 export function wordsThisTurn(campaignId: string, characterId: string): string {
-  const messages = listRecentMessages(campaignId, 50);
-  const since = messages.slice(messages.findLastIndex(isNarration) + 1);
-  return since
-    .filter((message) => message.authorType === "player" && message.characterId === characterId && !message.content.startsWith("(ooc)"))
+  return ownWordsSinceDm(campaignId, characterId)
     .map((message) => message.content)
     .join("\n\n");
 }

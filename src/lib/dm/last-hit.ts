@@ -16,21 +16,30 @@
 // it). src/lib/dm/reaction-refund.ts turns a corrected outcome back into
 // state from it.
 //
-// One record per character per campaign, replaced by the next attack. It
-// answers a reaction only while it is fresh: in a fight, until the next
-// attack on anyone or the first thing the next turn's creature does
-// (freshLastHit); out of one, the last ten minutes. The table is made with the schema (src/lib/db/core.ts), so
-// deleting a campaign can clear its rows.
+// Every hit still open on a character is kept, one row per character per
+// campaign holding them in the order they landed: two enemies hitting the
+// same hero in one AI reply (or one pass of the enemies) leave two hits, and
+// a reaction answers the one its player picks (issue 685). A row written
+// before that holds a single record and reads as a list of one. A hit
+// answers a reaction only while it is fresh: in a fight, until an attack on
+// anyone in a later GM turn or the first thing the next turn's creature does
+// (freshLastHit); out of one, the last ten minutes. The table is made with
+// the schema (src/lib/db/core.ts), so deleting a campaign can clear its rows.
 
+import { AsyncLocalStorage } from "node:async_hooks";
+import { randomUUID } from "node:crypto";
 import { sheetSpellAuthors } from "@/lib/dm/spell-authors";
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { getActiveEncounter, listEnemies, orderEntryId, turnKey, type Encounter, type OrderEntry } from "@/lib/db/encounters";
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
+import { currentTurnId, owningTurnOf } from "@/lib/dm/job-control";
 import type { RollResult, Advantage } from "@/lib/dice";
-import type { RollAttacker } from "@/lib/db/rolls";
+import { listRecentRolls, type RollAttacker } from "@/lib/db/rolls";
 import { spellMechanicsFor } from "@/lib/content";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { wardOf } from "@/lib/dm/arcane-ward";
+import type { BlowFlags } from "@/lib/dm/pc-damage";
 
 export type SwingRecord = {
   // The attack this swing was, when a multiattack swings several (a
@@ -53,6 +62,31 @@ export type SwingRecord = {
   // A blow of several types, part by part as sent (enemy-hit.ts blowByType).
   parts?: Array<{ amount: number; type: string }>;
   ranged?: boolean;
+  // A critical that came only from the target lying unconscious at 0 within
+  // 5 ft (SRD 5.1): the blow as an ordinary hit, from the same dice
+  // (encounter-logic.ts ordinaryOfCritical), for a reaction that leaves the
+  // target standing when it landed (reaction-refund.ts). Absent on a natural
+  // 20, which is critical whatever the target.
+  ordinary?: { raw: number; parts?: Array<{ amount: number; type: string }> };
+  // The advantage the swing would have had against the target standing, when
+  // it lay at 0 and that changed the roll (SRD 5.1, Unconscious: attack rolls
+  // against it have advantage). A reaction that leaves them standing when it
+  // landed reads the hit again with it (hit-replay-logic.ts hitsWith): the
+  // blow went back to ordinary damage and kept the advantage it had only
+  // because they were down.
+  standingAdvantage?: Advantage;
+  // What the blow was made of, as the damage path read it (a magic weapon, a
+  // feature its resistance did not hold against), so a replay meets the same
+  // clauses (pc-damage.ts blowDefenses).
+  flags?: BlowFlags;
+  // Resistance a reaction gave against this blow (Absorb Elements' type).
+  resists?: string[];
+  // The concentration save this swing's damage asked, when the character was
+  // concentrating as it landed: the save's total (null when none was rolled,
+  // as for a drop to 0, which ends it outright) and whether concentration
+  // ended with it. SRD 5.1: a separate save for each source of damage, so a
+  // reaction judges the one blow that broke it, not the whole attack.
+  concentration?: { save: number | null; broke: boolean };
 };
 
 export type HolderSnapshot = {
@@ -70,6 +104,12 @@ export type VitalsSnapshot = {
   conditionMeta: CharacterSheet["conditionMeta"];
   deathSaves: CharacterSheet["deathSaves"] | null;
   relentless: { max: number; used: number } | null;
+  // Relentless Rage's uses since the last rest, which raise its DC: given
+  // back with the drop that spent one. Absent on records written before it.
+  relentlessRage?: number | null;
+  // An abjurer's Arcane Ward's hit points, which take a blow first; null
+  // with no ward raised. Absent on records written before it.
+  ward?: number | null;
   concentratingOn: string | null;
   // The conditions the concentration spell held on every creature, so a
   // hit that is undone can put back what breaking it took away.
@@ -77,6 +117,9 @@ export type VitalsSnapshot = {
 };
 
 export type LastHit = {
+  // The hit's own id, which a reaction names to answer it (hitIdOf). Absent
+  // on records written before a character could hold several.
+  id?: string;
   characterId: string;
   encounterId: string | null;
   // The turn it landed in (turnKey), "" out of a fight.
@@ -89,17 +132,31 @@ export type LastHit = {
   // Set once the next turn's creature has ended its turn
   // (closeHitsAtTurnEnd): the moment to answer it has gone by.
   closed?: true;
+  // The GM turn that rolled it (src/lib/dm/job-control.ts currentTurnId):
+  // one AI reply, or one call from the console. Absent out of any turn and
+  // on records written before it.
+  dmTurn?: string;
   // Who made it: an enemy, a character fighting on the other side (a
   // turncoat's pc_attack, issue 503), or a hazard, which is nobody.
   attacker: { kind: "enemy" | "sheet" | "hazard"; id: string | null; name: string };
   attack: string;
   type: string;
   ranged: boolean;
-  // What made the damage: an attack (with swings) or a fall.
-  source: "attack" | "fall";
+  // What made the damage: an attack (with swings), a fall, or a spell's
+  // missiles that hit without a roll (Magic Missile, which Shield answers:
+  // SRD 5.1, "when you are hit by an attack or targeted by the magic missile
+  // spell").
+  source: "attack" | "fall" | "missile";
   swings: SwingRecord[];
   before: VitalsSnapshot;
-  after: { currentHp: number; tempHp: number; beastHp: number | null };
+  // Where the hit left them. `track` and `ward` are absent on records
+  // written before they were kept.
+  after: { currentHp: number; tempHp: number; beastHp: number | null; track?: CharacterSheet["deathSaves"] | null; ward?: number | null };
+  // The damage that went past 0 hit points after this hit and before the next
+  // (or since), up to `until`, in the fight as a reaction left it: the hit
+  // points alone do not show it (reaction-refund.ts). Absent until a reaction
+  // has answered a hit on them.
+  pastZeroAfter?: { amount: number; until: string };
   // The reactions already answered with it, so one cannot be taken twice.
   answered: string[];
   // When the attack began (the first swing) and when it was recorded.
@@ -141,7 +198,35 @@ export function heaviestHit(swings: SwingRecord[], which: (swing: SwingRecord) =
 
 const db = getDatabase;
 
-export function writeLastHit(campaignId: string, record: LastHit) {
+// A hit's id: its own, or for a record written before hits carried one, the
+// moment it was recorded, which no other hit on that character shares.
+export function hitIdOf(record: Pick<LastHit, "id" | "at">): string {
+  return record.id ?? record.at;
+}
+
+// The hits a row holds, oldest first: a list, or a single record from
+// before a character could hold several.
+function hitsIn(payload: string): LastHit[] {
+  const parsed = parseJson<LastHit | LastHit[] | null>(payload, null);
+  return Array.isArray(parsed) ? parsed.filter(Boolean) : parsed ? [parsed] : [];
+}
+
+function readHits(campaignId: string, characterId: string): LastHit[] {
+  const row = db()
+    .prepare(`SELECT payload_json FROM last_hits WHERE campaign_id = ? AND character_id = ?`)
+    .get(campaignId, characterId) as { payload_json: string } | undefined;
+  return row ? hitsIn(row.payload_json) : [];
+}
+
+// The newest hit kept on a character, open or not.
+export function readLastHit(campaignId: string, characterId: string): LastHit | null {
+  return readHits(campaignId, characterId).at(-1) ?? null;
+}
+
+// The row's created_at is its newest hit's, so attackedSince can skip rows
+// with nothing later than the hit it asks about.
+function saveHits(campaignId: string, characterId: string, hits: LastHit[]) {
+  const newest = hits.reduce((latest, record) => (record.at > latest ? record.at : latest), "");
   db()
     .prepare(
       `INSERT INTO last_hits (campaign_id, character_id, payload_json, created_at)
@@ -149,17 +234,35 @@ export function writeLastHit(campaignId: string, record: LastHit) {
        ON CONFLICT (campaign_id, character_id)
        DO UPDATE SET payload_json = excluded.payload_json, created_at = excluded.created_at`,
     )
-    .run(campaignId, record.characterId, JSON.stringify(record), record.at);
-}
-
-export function readLastHit(campaignId: string, characterId: string): LastHit | null {
-  const row = db()
-    .prepare(`SELECT payload_json FROM last_hits WHERE campaign_id = ? AND character_id = ?`)
-    .get(campaignId, characterId) as { payload_json: string } | undefined;
-  return row ? parseJson<LastHit | null>(row.payload_json, null) : null;
+    .run(campaignId, characterId, JSON.stringify(hits), newest);
 }
 
 const FRESH_MS = 10 * 60 * 1000;
+// More hits than one pass of enemies deals to one character is never open at
+// once; the oldest go first past it.
+const MAX_KEPT = 16;
+
+// Whether a kept hit stays in the row beside a newer one: not closed, in the
+// same fight (or both out of any fight, within the ten minutes).
+function stillKept(record: LastHit, next: LastHit): boolean {
+  if (record.closed || record.encounterId !== next.encounterId) {
+    return false;
+  }
+  return next.encounterId !== null || Date.parse(next.at) - Date.parse(record.at) <= FRESH_MS;
+}
+
+// Writes a hit: a new one joins the character's open hits, and one already
+// kept (a reaction answered it, a turn's end closed it) is replaced in place.
+export function writeLastHit(campaignId: string, record: LastHit) {
+  const id = hitIdOf(record);
+  const hits = readHits(campaignId, record.characterId);
+  const at = hits.findIndex((entry) => hitIdOf(entry) === id);
+  const next =
+    at >= 0
+      ? hits.map((entry, index) => (index === at ? record : entry))
+      : [...hits.filter((entry) => stillKept(entry, record)), record].slice(-MAX_KEPT);
+  saveHits(campaignId, record.characterId, next);
+}
 
 // Whether the enemies a pass walked past are taking their turns: held for
 // (src/lib/dm/enemies-due.ts), or handed to the model's own end_turn to play
@@ -168,12 +271,29 @@ function enemiesTakingTurns(encounter: Pick<Encounter, "legendary">): boolean {
   return Boolean(encounter.legendary.due?.length || encounter.legendary.handoff);
 }
 
-// Whether an attack on somebody else was recorded after this one.
+// The GM turn the work running now is filed under, if any.
+function rollingTurn(): { dmTurn?: string } {
+  const turnId = currentTurnId();
+  return turnId ? { dmTurn: owningTurnOf(turnId) } : {};
+}
+
+// Whether an attack on anyone (this character too) was recorded after this
+// one, in a later go. The attacks one GM turn rolls (the AI's whole reply,
+// every enemy in it, or the monsters a person's "Play the rest" plays) land
+// before any player sees the first: closed by the next of them, a hit on the
+// first hero in the pass was never answerable, and only the last hero hit
+// was offered Shield or Uncanny Dodge (issue 685). A hit with no GM turn
+// (out of any) is closed by any later one, as the one record it once was
+// was replaced by it.
 function attackedSince(campaignId: string, record: LastHit): boolean {
-  return Boolean(
-    db()
-      .prepare(`SELECT 1 FROM last_hits WHERE campaign_id = ? AND character_id != ? AND created_at > ? LIMIT 1`)
-      .get(campaignId, record.characterId, record.at),
+  const id = hitIdOf(record);
+  const later = db()
+    .prepare(`SELECT payload_json FROM last_hits WHERE campaign_id = ? AND created_at > ?`)
+    .all(campaignId, record.at) as Array<{ payload_json: string }>;
+  return later.some((row) =>
+    hitsIn(row.payload_json).some(
+      (other) => hitIdOf(other) !== id && other.at > record.at && (!record.dmTurn || other.dmTurn !== record.dmTurn),
+    ),
   );
 }
 
@@ -207,33 +327,154 @@ function actedThisTurn(encounter: Encounter): boolean {
 // them take their turns, so a hit then stayed answerable through the other
 // enemies' attacks and that character's whole turn after them: late, and
 // once their turn began, a second reaction in a round. So it closes at the
-// next attack on anyone, or once the next turn's creature does its first
+// next attack on anyone in a later go (attackedSince: the attacks of one AI
+// reply leave each other open), or once the next turn's creature does its first
 // thing (an attack, a cast, an action card, a step, ending the turn). The
 // enemies' turns ending closes nothing: the player hit has the time until
 // somebody acts to read the hit and answer it, at an AI table after the
 // reply that told it, at a person's table after the GM hands the turn on.
 // Out of a fight, the last ten minutes.
-export function freshLastHit(campaignId: string, characterId: string): LastHit | null {
-  const record = readLastHit(campaignId, characterId);
-  if (!record) {
-    return null;
-  }
-  const encounter = getActiveEncounter(campaignId);
+function isFresh(campaignId: string, record: LastHit, encounter: Encounter | null): boolean {
   if ((encounter?.id ?? null) !== record.encounterId) {
-    return null;
+    return false;
   }
   if (encounter) {
     if (record.closed || attackedSince(campaignId, record)) {
-      return null;
+      return false;
     }
     const sameTurn = turnKey(encounter) === record.turn && Boolean(record.enemyTurns) === enemiesTakingTurns(encounter);
     // A later turn's enemies close it only by attacking (above).
     if (sameTurn || enemiesTakingTurns(encounter)) {
-      return record;
+      return true;
     }
-    return actedThisTurn(encounter) ? null : record;
+    return !actedThisTurn(encounter);
   }
-  return Date.now() - Date.parse(record.at) <= FRESH_MS ? record : null;
+  return Date.now() - Date.parse(record.at) <= FRESH_MS;
+}
+
+// Whether a hit of the enemies' pass before the character whose turn it is
+// is still open to a reaction: one that landed while the pointer already
+// named them and the enemies took their turns (src/lib/dm/held-turn.ts).
+export function passHitsOpen(campaignId: string, encounter: Encounter): boolean {
+  const key = turnKey(encounter);
+  const rows = db().prepare(`SELECT character_id FROM last_hits WHERE campaign_id = ?`).all(campaignId) as Array<{ character_id: string }>;
+  return rows.some((row) => openHits(campaignId, row.character_id).some((record) => record.enemyTurns && record.turn === key));
+}
+
+// Whether a reaction the character takes now belongs before their turn
+// (src/lib/dm/held-turn.ts): the pointer names them, their turn has begun,
+// and a hit of the enemies' pass before it is still open.
+export function lateFor(campaignId: string, encounter: Encounter, id: string): boolean {
+  const current = encounter.order[encounter.turnIndex];
+  return (
+    current?.kind === "pc" &&
+    current.characterId === id &&
+    encounter.legendary.turnStart !== id &&
+    !encounter.legendary.due?.length &&
+    !encounter.legendary.handoff &&
+    passHitsOpen(campaignId, encounter)
+  );
+}
+
+// Whether the character already answered that pass after their turn began:
+// one reaction for it, though their turn has given theirs back. The engine
+// refuses a second (reaction-tools.ts), and the Hand reads it as spent
+// (encounter-view.ts), so it offers none.
+export function reactedLate(campaignId: string, encounter: Encounter, id: string): boolean {
+  const late = encounter.legendary.lateReacted;
+  return Boolean(late && late.turn === turnKey(encounter) && late.ids.includes(id) && lateFor(campaignId, encounter, id));
+}
+
+// Every hit on the character a reaction may still answer, oldest first.
+export function openHits(campaignId: string, characterId: string): LastHit[] {
+  const hits = readHits(campaignId, characterId);
+  if (!hits.length) {
+    return [];
+  }
+  const encounter = getActiveEncounter(campaignId);
+  return hits.filter((record) => isFresh(campaignId, record, encounter));
+}
+
+// The hit a use_reaction call answers, named by its player: its id
+// (hitIdOf), or the creature that made it (an enemy's id, or a sheet's for a
+// character fighting on the other side). Held for the whole call
+// (src/lib/dm/reaction-tools.ts handleUseReaction), so every lookup in it,
+// the reaction gate's and a use_resource counter's included, answers that
+// same hit; a lookup about another character than the one it names goes on
+// as if nothing were named.
+const aims = new AsyncLocalStorage<string>();
+
+export function withHitAim<T>(aim: string | null | undefined, run: () => T): T {
+  return aims.run(aim?.trim() ?? "", run);
+}
+
+// The hit an aim names among a character's open hits: every one it matches
+// (an attacker may have made several), or null when it names none of them.
+function aimedAmong(open: LastHit[], aim: string): LastHit[] | null {
+  if (!aim) {
+    return null;
+  }
+  const matched = open.filter((record) => hitIdOf(record) === aim || (record.attacker.id !== null && record.attacker.id === aim));
+  return matched.length ? matched : null;
+}
+
+// Which of several open hits a reaction answers when its player named none:
+// the latest (as the one record a character once held was), the earliest
+// (Shield, whose +5 then covers every hit after it too), or the one that
+// weighs most to it (Uncanny Dodge halves the heaviest blow).
+export type HitPreference = "latest" | "earliest" | ((record: LastHit) => number);
+
+function preferred(records: LastHit[], prefer: HitPreference): LastHit | null {
+  if (!records.length) {
+    return null;
+  }
+  if (prefer === "latest") {
+    return records[records.length - 1];
+  }
+  if (prefer === "earliest") {
+    return records[0];
+  }
+  // Ties go to the later hit.
+  return records.reduce((best, record) => (prefer(record) >= prefer(best) ? record : best));
+}
+
+// The hit a reaction answers, or null: among the character's open hits that
+// `which` takes (all of them by default), the one the call is aimed at
+// (withHitAim), else the one `prefer` picks. An aim naming one of this
+// character's hits that `which` refuses answers nothing: the reaction does
+// not fit the hit its player picked, and another is not taken in its place.
+export function freshLastHit(
+  campaignId: string,
+  characterId: string,
+  which: (record: LastHit) => boolean = () => true,
+  prefer: HitPreference = "latest",
+): LastHit | null {
+  const open = openHits(campaignId, characterId);
+  const aimed = aimedAmong(open, aims.getStore() ?? "");
+  return preferred((aimed ?? open).filter(which), prefer);
+}
+
+// The open hit an aim names on one character, or on anyone in the campaign,
+// for a use_reaction call to check before anything is spent: null when it
+// names none.
+export function openHitAimed(campaignId: string, aim: string, characterId?: string): LastHit | null {
+  const rows = characterId
+    ? [{ character_id: characterId }]
+    : (db().prepare(`SELECT character_id FROM last_hits WHERE campaign_id = ?`).all(campaignId) as Array<{ character_id: string }>);
+  for (const row of rows) {
+    const found = aimedAmong(openHits(campaignId, row.character_id), aim.trim());
+    if (found) {
+      return found[found.length - 1];
+    }
+  }
+  return null;
+}
+
+// The heaviest hit swing a record holds, for HitPreference: the blow a
+// one-attack reaction answers in it (heaviestHit).
+export function heaviestRaw(record: LastHit, which: (swing: SwingRecord) => boolean = () => true): number {
+  const index = heaviestHit(record.swings, which);
+  return index >= 0 ? record.swings[index].raw : -1;
 }
 
 // A creature's turn is ending (src/lib/dm/encounter-tools.ts advancePointer):
@@ -242,16 +483,45 @@ export function freshLastHit(campaignId: string, characterId: string): LastHit |
 // Ending the turn is the last thing the next turn's creature can do first.
 export function closeHitsAtTurnEnd(campaignId: string, encounter: Pick<Encounter, "id" | "round">, ending: OrderEntry) {
   const endingKey = turnKey({ round: encounter.round, order: [ending], turnIndex: 0 });
-  const rows = db().prepare(`SELECT payload_json FROM last_hits WHERE campaign_id = ?`).all(campaignId) as Array<{ payload_json: string }>;
+  const rows = db()
+    .prepare(`SELECT character_id, payload_json FROM last_hits WHERE campaign_id = ?`)
+    .all(campaignId) as Array<{ character_id: string; payload_json: string }>;
   for (const row of rows) {
-    const record = parseJson<LastHit | null>(row.payload_json, null);
-    if (!record || record.closed || record.encounterId !== encounter.id) {
+    const hits = hitsIn(row.payload_json);
+    let changed = false;
+    const next = hits.map((record) => {
+      if (record.closed || record.encounterId !== encounter.id || (record.turn === endingKey && !record.enemyTurns)) {
+        return record;
+      }
+      changed = true;
+      return { ...record, closed: true as const };
+    });
+    if (changed) {
+      saveHits(campaignId, row.character_id, next);
+    }
+  }
+}
+
+// "Revert this turn" (src/app/api/campaigns/[campaignId]/audit/revert-turn)
+// takes the turn's blows back: their hits go too, as if never landed. Left,
+// they stayed open, so a Shield after the revert "turned" a blow whose
+// damage the revert had already given back and healed the hero on top of
+// it, and they still closed the hits of the turns before them.
+export function forgetTurnHits(campaignId: string, turnId: string) {
+  const rows = db()
+    .prepare(`SELECT character_id, payload_json FROM last_hits WHERE campaign_id = ?`)
+    .all(campaignId) as Array<{ character_id: string; payload_json: string }>;
+  for (const row of rows) {
+    const hits = hitsIn(row.payload_json);
+    const kept = hits.filter((record) => record.dmTurn !== turnId);
+    if (kept.length === hits.length) {
       continue;
     }
-    if (record.turn === endingKey && !record.enemyTurns) {
-      continue;
+    if (kept.length) {
+      saveHits(campaignId, row.character_id, kept);
+    } else {
+      db().prepare(`DELETE FROM last_hits WHERE campaign_id = ? AND character_id = ?`).run(campaignId, row.character_id);
     }
-    writeLastHit(campaignId, { ...record, closed: true });
   }
 }
 
@@ -289,6 +559,12 @@ function concentrationHeld(
   return { spell, names, holders };
 }
 
+// The Arcane Ward's hit points as a blow meets them, null with none raised.
+export function wardHpOf(sheet: CharacterSheet): number | null {
+  const ward = wardOf(sheet);
+  return ward?.raised ? ward.hp : null;
+}
+
 export function snapshotVitals(campaignId: string, sheet: CharacterSheet): VitalsSnapshot {
   const relentless = sheet.resources?.relentless_endurance ?? null;
   return {
@@ -299,9 +575,17 @@ export function snapshotVitals(campaignId: string, sheet: CharacterSheet): Vital
     conditionMeta: { ...sheet.conditionMeta },
     deathSaves: sheet.deathSaves ?? null,
     relentless: relentless ? { max: relentless.max, used: relentless.used } : null,
+    relentlessRage: sheet.resources?.relentless_rage?.used ?? null,
+    ward: wardHpOf(sheet),
     concentratingOn: sheet.concentratingOn ?? null,
     held: concentrationHeld(campaignId, sheet),
   };
+}
+
+// A new hit's id: short, since the model reads it in GAME STATE and sends
+// it back, and unique among the few hits open at once.
+function newHitId(): string {
+  return `h${randomUUID().replace(/-/g, "").slice(0, 8)}`;
 }
 
 // The d20 faces of an attack roll, as the dice engine stored them.
@@ -321,6 +605,33 @@ export function openLastHit(campaignId: string, characterId: string) {
   const before = sheet ? snapshotVitals(campaignId, sheet) : null;
   const startedAt = nowIso();
   const swings: SwingRecord[] = [];
+  // The concentration each swing found, and when the swing before it ended,
+  // so a swing's own concentration save is read off the rolls since then.
+  let concentrating = before?.concentratingOn ?? null;
+  let since = startedAt;
+  // The save this swing's damage asked of a concentrating character, and
+  // whether concentration survived it (SwingRecord.concentration).
+  const concentrationOf = (hit: boolean, raw: number): SwingRecord["concentration"] => {
+    const now = getSheetById(characterId);
+    const was = concentrating;
+    const from = since;
+    concentrating = now?.concentratingOn ?? null;
+    since = nowIso();
+    if (!was || !hit || raw <= 0 || !now) {
+      return undefined;
+    }
+    // Oldest first: the last is this swing's save.
+    const save = listRecentRolls(campaignId, 40)
+      .filter(
+        (roll) =>
+          roll.characterId === characterId &&
+          roll.kind === "saving_throw" &&
+          roll.detail.startsWith("CON save to keep concentration") &&
+          roll.createdAt >= from,
+      )
+      .at(-1);
+    return { save: save ? save.total : null, broke: !now.concentratingOn };
+  };
   return {
     swing(
       outcome: RollResult,
@@ -334,8 +645,13 @@ export function openLastHit(campaignId: string, characterId: string) {
         parts?: Array<{ amount: number; type: string }>;
         ranged?: boolean;
         attack?: string;
+        ordinary?: SwingRecord["ordinary"];
+        standingAdvantage?: Advantage;
+        flags?: BlowFlags;
       },
     ) {
+      const concentration = concentrationOf(result.hit, result.raw);
+      const flags = Object.fromEntries(Object.entries(result.flags ?? {}).filter(([, value]) => value !== undefined && value !== false && !(Array.isArray(value) && !value.length)));
       swings.push({
         ...(result.attack !== undefined ? { attack: result.attack } : {}),
         total: outcome.total,
@@ -349,6 +665,10 @@ export function openLastHit(campaignId: string, characterId: string) {
         ...(result.type !== undefined ? { type: result.type } : {}),
         ...(result.hit && result.parts?.length ? { parts: result.parts } : {}),
         ...(result.ranged !== undefined ? { ranged: result.ranged } : {}),
+        ...(result.hit && result.ordinary ? { ordinary: result.ordinary } : {}),
+        ...(result.hit && result.standingAdvantage && result.standingAdvantage !== result.advantage ? { standingAdvantage: result.standingAdvantage } : {}),
+        ...(result.hit && Object.keys(flags).length ? { flags: flags as BlowFlags } : {}),
+        ...(concentration ? { concentration } : {}),
       });
     },
     close(what: {
@@ -364,10 +684,12 @@ export function openLastHit(campaignId: string, characterId: string) {
       }
       const encounter = getActiveEncounter(campaignId);
       writeLastHit(campaignId, {
+        id: newHitId(),
         characterId,
         encounterId: encounter?.id ?? null,
         turn: encounter ? turnKey(encounter) : "",
         ...(encounter && enemiesTakingTurns(encounter) ? { enemyTurns: true } : {}),
+        ...rollingTurn(),
         attacker: what.attacker,
         attack: what.attack,
         type: what.type,
@@ -375,16 +697,23 @@ export function openLastHit(campaignId: string, characterId: string) {
         source: what.source ?? "attack",
         swings,
         before,
-        after: {
-          currentHp: now.currentHp,
-          tempHp: now.tempHp,
-          beastHp: now.wildShape?.beastHp ?? null,
-        },
+        after: afterOf(now),
         answered: [],
         startedAt,
         at: nowIso(),
       });
     },
+  };
+}
+
+// Where a hit left the character.
+function afterOf(now: CharacterSheet): LastHit["after"] {
+  return {
+    currentHp: now.currentHp,
+    tempHp: now.tempHp,
+    beastHp: now.wildShape?.beastHp ?? null,
+    track: now.deathSaves ?? null,
+    ward: wardHpOf(now),
   };
 }
 
@@ -403,10 +732,12 @@ export function recordFall(
   }
   const encounter = getActiveEncounter(campaignId);
   writeLastHit(campaignId, {
+    id: newHitId(),
     characterId,
     encounterId: encounter?.id ?? null,
     turn: encounter ? turnKey(encounter) : "",
     ...(encounter && enemiesTakingTurns(encounter) ? { enemyTurns: true } : {}),
+    ...rollingTurn(),
     attacker: { kind: "hazard", id: null, name: "the fall" },
     attack: "falling",
     type: "bludgeoning",
@@ -414,7 +745,7 @@ export function recordFall(
     source: "fall",
     swings: [{ total: 0, faces: [], natural: null, advantage: "none", vsAc: 0, hit: true, crit: false, raw }],
     before,
-    after: { currentHp: now.currentHp, tempHp: now.tempHp, beastHp: now.wildShape?.beastHp ?? null },
+    after: afterOf(now),
     answered: [],
     startedAt,
     at: nowIso(),

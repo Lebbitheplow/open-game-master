@@ -50,6 +50,7 @@ import { publishFx, tokenPosition } from "@/lib/dm/fx";
 import { hasTrait } from "@/lib/dm/monster-abilities";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { noneNamed, type ToolResult } from "@/lib/dm/tool-errors";
+import { swallowCover } from "@/lib/dm/swallow";
 
 function leadProfile(profiles: EnemyAttackProfile[]): EnemyAttackProfile {
   const melee = profiles.filter((profile) => profile.melee);
@@ -70,6 +71,8 @@ export function enemyStrikesEnemy(
     // One swing, not the routine (a slowed creature, a bonus action's
     // attack, Confusion's attack on a random creature).
     single?: boolean;
+    // A Swallow action's bite (swallow.ts): the swallow rides it.
+    swallowing?: { maxSize: string | null };
     bonus?: boolean;
     // The swing Haste's extra action buys (enemy-actions.ts).
     haste?: boolean;
@@ -82,7 +85,11 @@ export function enemyStrikesEnemy(
     return { error: "No active encounter: an attack needs a fight.", retry: true };
   }
   const attacks = attacker.stats.attacks.length ? attacker.stats.attacks : synthesizeStats(attacker.cr).attacks;
-  const asked = input.attack ? attackNamed(attacks, input.attack) : null;
+  const named = input.attack ? attackNamed(attacks, input.attack) : null;
+  const asked =
+    named && input.swallowing
+      ? { ...named, onHit: { ...(named.onHit ?? {}), swallow: true, ...(input.swallowing.maxSize ? { maxSize: input.swallowing.maxSize } : {}) } }
+      : named;
   if (input.attack && !asked) {
     return noneNamed(`${attacker.displayName} has no attack called`, input.attack, attacks.map((attack) => attack.name));
   }
@@ -153,6 +160,13 @@ export function enemyStrikesEnemy(
     if (!now || now.status !== "alive" || last.dead || last.down) {
       break;
     }
+    // Swallowed by an earlier swing of this routine: total cover from
+    // outside, the creature's own swings included (swallow.ts).
+    const inside = swallowCover({ kind: "enemy", id: enemy.id }, { kind: "enemy", id: now.id });
+    if (inside) {
+      swings.push({ attack: plannedAttack.name, skipped: inside });
+      break;
+    }
     const mode = swingMode(profiles[index], spatial.distance);
     if (!mode) {
       swings.push({ attack: plannedAttack.name, skipped: `${now.displayName} is out of this attack's reach` });
@@ -180,7 +194,9 @@ export function enemyStrikesEnemy(
     const advantage = odds.advantage;
     notes.push(...odds.notes.filter((note) => !notes.includes(note)));
     const vsAc = enemyAcWithEffects(campaign.id, now) + cover;
-    const toHit = rollExpression(`${d20Expression(attack.toHit + odds.attackBonus, advantage)}${riders.diceSuffix}`);
+    const toHit = rollExpression(`${d20Expression(attack.toHit + odds.attackBonus, advantage)}${riders.diceSuffix}`, undefined, {
+      purpose: { roller: "enemy", kind: "attack", who: enemy.displayName },
+    });
     riders = spendEnemyRiders(enemy, riders);
     const hitRoll = insertRoll({
       campaignId: campaign.id,
@@ -217,7 +233,7 @@ export function enemyStrikesEnemy(
           multiplyNumeric: campaign.gameSettings.variantRules.criticalDamageMods,
         })
       : base;
-    const damage = rollExpression(expression);
+    const damage = rollExpression(expression, undefined, { purpose: { roller: "enemy", kind: "damage", who: enemy.displayName } });
     const damageRoll = insertRoll({
       campaignId: campaign.id,
       characterId: null,

@@ -1,4 +1,5 @@
 import type { OrderEntry } from "@/lib/db/encounters";
+import type { RollResult } from "@/lib/dice";
 import { compareNames, textKey } from "@/lib/language/text-logic";
 
 // Pure combat bookkeeping, kept database-free like mutation-math.ts so
@@ -311,6 +312,37 @@ export function critDamageExpression(
     doubled.push(`+${powerfulCritical ? maxOfDice(firstDie) : firstDie}`);
   }
   return doubled.join("").replace(/^\+/, "");
+}
+
+// The roll a critical blow would have been as an ordinary hit, from the same
+// dice: each term of the expression's first set (its dice and modifiers)
+// without the critical copy critDamageExpression put straight after it (a
+// rolled die, Powerful Critical's maximum, a modifier doubled under Critical
+// Damage Modifiers), and without the extra dice a critical adds at the end
+// (critDamageExpression's extraDice: Brutal Critical). Null when the rolled
+// terms do not line up with the expression, so nothing is read off the
+// wrong dice.
+export function ordinaryOfCritical(outcome: RollResult, expression: string, options: { multiplyNumeric?: boolean; extraDice?: number } = {}): RollResult | null {
+  const terms = expression.replace(/\s+/g, "").match(/[+-]?[^+-]+/g);
+  if (!terms) {
+    return null;
+  }
+  const kept: RollResult["terms"] = [];
+  let at = 0;
+  for (const term of terms) {
+    const body = term.replace(/^[+-]/, "");
+    const own = outcome.terms[at];
+    if (!own) {
+      return null;
+    }
+    kept.push(own);
+    at += /\d+d\d+/i.test(body) || (options.multiplyNumeric && /^\d+$/.test(body)) ? 2 : 1;
+  }
+  if (at + Math.max(0, options.extraDice ?? 0) !== outcome.terms.length) {
+    return null;
+  }
+  const total = kept.reduce((sum, term) => sum + term.sign * (term.kind === "dice" ? term.subtotal : term.value), 0);
+  return { expression, total, terms: kept };
 }
 
 // ["Wolf", "Wolf", "Bear"] -> ["Wolf 1", "Wolf 2", "Bear"].

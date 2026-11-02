@@ -89,6 +89,10 @@ export type ConditionMeta = {
   // Confusion's lash-out: the creature its d10 picked for this round's melee
   // attack (src/lib/dm/confusion.ts).
   lashOut?: { target: string; round: number };
+  // Swallowed whole (src/lib/dm/swallow.ts): the damage dealt the swallower
+  // from inside this turn, and on the swallower's own turn, which runs beside
+  // the turn the pointer rests on; and the feet of movement out of its corpse.
+  swallow?: { hurt?: number; hurtOnItsTurn?: number; escapeFeet?: number };
   // Further sources of the same condition. SRD 5.1: the effects of the same
   // spell (or the same condition) don't combine, but each keeps its own
   // source and lifetime, so ending one leaves the others holding. Each entry
@@ -318,6 +322,14 @@ const CHECK_DISADVANTAGE = ["poisoned", "frightened"];
 function has(conditions: string[], names: string[]): string | null {
   const lowered = conditions.map((entry) => entry.toLowerCase());
   return names.find((name) => lowered.includes(name)) ?? null;
+}
+
+// Whether a hit within 5 ft is critical only because the target is
+// unconscious (paralysis would make it critical all the same): the blow a
+// reaction later finds landing on a target standing is an ordinary hit
+// (issue 685, src/lib/dm/reaction-refund.ts).
+export function critOnlyWhileUnconscious(targetConditions: string[]): boolean {
+  return has(targetConditions, ["unconscious"]) !== null && has(targetConditions, ["paralyzed"]) === null;
 }
 
 export function isIncapacitated(conditions: string[]): boolean {

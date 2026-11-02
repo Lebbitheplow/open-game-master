@@ -1755,6 +1755,11 @@ function ensureSchema(db: SqliteDatabase) {
     // back to its player, and the line says so. Null when it happened, on
     // typed lines, and on messages written before it.
     ["card_returned", `TEXT`],
+    // When the GM resolved this player message's card as played from the
+    // console's "Waiting on you" list (issue 685, src/lib/dm/resolve-card.ts):
+    // set once, which is what answers the card, so a second press or an AI
+    // turn under cover does not cast it again. Null on every other message.
+    ["card_resolved_at", `TEXT`],
     // A system line's icon, stored by the code that writes the line
     // (src/lib/system-glyphs.ts) rather than read from its words, which only
     // worked in English. Null on other messages and on lines written before
@@ -1806,6 +1811,14 @@ function ensureSchema(db: SqliteDatabase) {
     // conversation and is never handed back to the model, which is what the
     // pending-roll resume path branches on.
     ["actor", `TEXT NOT NULL DEFAULT 'ai'`],
+    // When the lead reverted this turn ("Revert this turn"), so the test
+    // fight's turn trace reads its calls as taken back, as the event log
+    // strikes its rows (issue 685). Null on a turn that stands.
+    ["reverted_at", `TEXT`],
+    // The turn a stand-in turn was opened inside (dm-turns.ts
+    // openStandInTurn): its rolls are that turn's, and that turn's revert
+    // marks it too. Null on every other turn.
+    ["owner_turn_id", `TEXT`],
   ]);
 
   addColumns("battle_maps", [
@@ -2062,6 +2075,11 @@ function ensureSchema(db: SqliteDatabase) {
   // storyteller to run when the scene reaches it (src/lib/dm/prepared-
   // encounter-tool.ts, #154). Play state: a copy never carries it.
   addColumns("encounter_templates", [["cued", `INTEGER NOT NULL DEFAULT 0`]]);
+  // The moment a test of this fight was saved to start from (issue 685,
+  // src/lib/workshop/fight-setup-logic.ts): the foes' state wherever it is
+  // deployed, and on a test table the party's, the order and the dice. Empty
+  // for a fight with none.
+  addColumns("encounter_templates", [["setup_json", `TEXT NOT NULL DEFAULT ''`]]);
   // What an arrow on the storyboard means, keyed by the card it points at:
   // one route of several, or a scene that only happens if something holds
   // (src/lib/workshop/board.ts). An arrow with no entry is the plain "then
@@ -2807,6 +2825,17 @@ function ensureSchema(db: SqliteDatabase) {
       PRIMARY KEY (campaign_id, workshop_id)
     );
 
+    -- What a test table was opened from (src/lib/workshop/test-fight.ts):
+    -- the workshop's prepared fight, by its own id (a copy plays at the
+    -- table), and the party it was seated with, so "Save as this fight's
+    -- set-up" knows where the moment goes and whose it is (issue 685).
+    CREATE TABLE IF NOT EXISTS test_fight_runs (
+      campaign_id TEXT PRIMARY KEY REFERENCES campaigns(id) ON DELETE CASCADE,
+      template_id TEXT NOT NULL,
+      party_json TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
     -- The last attack against each character, for the reactions that answer
     -- it (src/lib/dm/last-hit.ts). No foreign keys: deleteCampaign clears a
     -- table's rows by hand. That module used to make the table on first use,
@@ -2837,6 +2866,82 @@ function ensureSchema(db: SqliteDatabase) {
     );
 
     CREATE INDEX IF NOT EXISTS idx_clock_moves_turn ON clock_moves(campaign_id, turn_id);
+
+    -- A test table's dice script (issue 685, src/lib/db/dice-scripts.ts):
+    -- its seed and how far the seed's sequence has got, the faces still
+    -- forced, and the ones spent. Only a test table (kind 'playtest') is
+    -- given a row. Older servers ignore it, so it needs no schema revision.
+    CREATE TABLE IF NOT EXISTS dice_scripts (
+      campaign_id TEXT PRIMARY KEY REFERENCES campaigns(id) ON DELETE CASCADE,
+      seed INTEGER,
+      seed_state INTEGER,
+      seeded_rolls INTEGER NOT NULL DEFAULT 0,
+      queue_json TEXT NOT NULL DEFAULT '[]',
+      used_json TEXT NOT NULL DEFAULT '[]',
+      updated_at TEXT NOT NULL
+    );
+    -- A prepared fight's events, armed on the fight it started, one row each
+    -- (src/lib/db/fight-events.ts says why not a field of the encounter).
+    -- Older servers ignore it, so it needs no schema revision.
+    CREATE TABLE IF NOT EXISTS fight_events (
+      id TEXT PRIMARY KEY,
+      campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+      encounter_id TEXT NOT NULL REFERENCES encounters(id) ON DELETE CASCADE,
+      template_name TEXT NOT NULL DEFAULT '',
+      position INTEGER NOT NULL DEFAULT 0,
+      event_json TEXT NOT NULL,
+      slots_json TEXT NOT NULL DEFAULT '{}',
+      entry_json TEXT NOT NULL DEFAULT 'null',
+      fired_at TEXT,
+      lines_json TEXT NOT NULL DEFAULT '[]',
+      created_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_fight_events_encounter ON fight_events(encounter_id, position);
+
+    -- What a turn changed beyond the sheets and the clock, kept so "Revert
+    -- this turn" takes it back with them (issue 685,
+    -- src/lib/db/turn-changes.ts): a prepared fight's event that fired, a test
+    -- table's dice it spent, a card the GM resolved as played. Older servers
+    -- ignore it, so it needs no schema revision.
+    CREATE TABLE IF NOT EXISTS turn_changes (
+      id TEXT PRIMARY KEY,
+      campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+      turn_id TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      payload_json TEXT NOT NULL,
+      -- Its place in the campaign's log, beside the sheet changes.
+      seq INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      reverted_at TEXT
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_turn_changes_turn ON turn_changes(campaign_id, turn_id);
+
+    -- Each fight and board row a turn wrote (an enemy, the fight's order, a
+    -- token, the board, an effect, a dropped item), as the turn found it and
+    -- as it left it, so "Revert this turn" puts it back and asks first about
+    -- one changed again since (issue 685, src/lib/db/turn-rows.ts). A row
+    -- the turn made has no "before". Older servers ignore it, so it needs no
+    -- schema revision.
+    CREATE TABLE IF NOT EXISTS turn_rows (
+      campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+      turn_id TEXT NOT NULL,
+      tbl TEXT NOT NULL,
+      row_id TEXT NOT NULL,
+      before_json TEXT,
+      after_json TEXT,
+      sealed INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      reverted_at TEXT,
+      PRIMARY KEY (turn_id, tbl, row_id)
+    );
+
+    -- What "Revert this turn" can still reach is the table's newest turns
+    -- (src/lib/db/turn-rows.ts pruneOutOfReach): read by campaign and time.
+    CREATE INDEX IF NOT EXISTS idx_turn_rows_campaign ON turn_rows(campaign_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_turn_changes_campaign ON turn_changes(campaign_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_dm_turns_campaign ON dm_turns(campaign_id, created_at);
   `);
   // Clock-driven disease and poison rows were once filed under the literal
   // turn "clock", one false turn per campaign that "Revert this turn" undid

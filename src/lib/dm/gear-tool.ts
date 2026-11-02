@@ -36,6 +36,7 @@ import { addRowMath, handedOverRow, removeItemMath } from "@/lib/dm/mutation-mat
 import { characterCallUnasked } from "@/lib/dm/player-word";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
 import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { swallowCoverError } from "@/lib/dm/swallow";
 import { storeBudget } from "@/lib/dm/turn-budget";
 import { gearPatch, implicitlyWorn } from "@/lib/dm/usage-rules";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
@@ -160,6 +161,11 @@ export function handleItemCall(
       const to = resolveSheetRef(args.toCharacterId, sheets, sheetsById);
       if (!to || to.id === sheet.id) {
         return retry("hand needs toCharacterId: the ally who receives it.");
+      }
+      // Nothing passes a swallower's wall, either way (swallow.ts).
+      const inside = swallowCoverError(sheet.id, to.id);
+      if (inside) {
+        return inside;
       }
       return handOver(campaign, turn, encounter, sheet, to, row, qty, reason);
     }

@@ -41,6 +41,11 @@ export type PreparedEncounter = {
   readout: TemplateReadout;
   // Cued for the storyteller by the lead of an AI-narrated table (#154).
   cued?: boolean;
+  // The set-up a test of it saved, in words, and the party it was saved
+  // with (issue 685, src/lib/workshop/fight-setup-logic.ts). Null for none;
+  // absent from an older host's answer.
+  setup?: string[] | null;
+  setupParty?: { kind: "stand-ins"; size: number; level: number; allyIds?: string[] } | { kind: "characters"; characterIds: string[]; allyIds?: string[] } | null;
 };
 
 // A prepared map as the picker sees it. The drawer route hands back whole

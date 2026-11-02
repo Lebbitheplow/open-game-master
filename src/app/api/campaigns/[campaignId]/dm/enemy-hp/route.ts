@@ -2,11 +2,11 @@ import { z } from "zod";
 import { isErrorResponse, requireDm } from "@/lib/campaign-api";
 import { correctionsField } from "@/lib/correction-reasons";
 import { getDatabase } from "@/lib/db/core";
-import { getActiveEncounter, getEnemy, patchEnemyConditions, patchEnemyHp } from "@/lib/db/encounters";
+import { getActiveEncounter, getEnemy } from "@/lib/db/encounters";
 import { recordFightCorrection } from "@/lib/db/turn-ledger";
 import { enemyHpCorrection } from "@/lib/dm/catalog-enemy-hp";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
-import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { fixEnemyHp } from "@/lib/dm/enemy-hp-fix";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -45,20 +45,7 @@ export async function POST(
   // latest AI turn is the one corrected, inferred, since the fix names only
   // the enemy. Nothing is recorded at a table a person runs.
   const correctionId = getDatabase().transaction(() => {
-    // Read back after the write: a regained hit point may have ended a
-    // condition there (a caltrops wound, condition-logic.ts endedByRegain).
-    const healed = patchEnemyHp(enemy.id, correction.currentHp, "alive") ?? enemy;
-    if (correction.wakes) {
-      const meta = { ...(healed.conditionMeta as ConditionMetaMap) };
-      const kept = healed.conditions.filter((entry) => {
-        const woke = entry.trim().toLowerCase() === "unconscious";
-        if (woke) {
-          delete meta[entry];
-        }
-        return !woke;
-      });
-      patchEnemyConditions(enemy.id, kept, meta);
-    }
+    fixEnemyHp(enemy, correction.currentHp);
     return recordFightCorrection({
       campaignId,
       fightStartedAt: encounter.createdAt,

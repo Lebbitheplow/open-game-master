@@ -20,7 +20,7 @@ import { bindUsageScope } from "@/lib/usage/scope";
 import { publishEphemeral } from "@/lib/events";
 import { knownDmStatus, setDmStatus } from "@/lib/dm/status";
 import { latestTurnParkedByAi } from "@/lib/db/dm-turns";
-import { createDmJobControl, detachFromTurn, jobDeadlineMs, jobStage, runInDmJob, viewOf, type DmJobControl } from "@/lib/dm/job-control";
+import { createDmJobControl, detachFromTurn, jobDeadlineMs, jobStage, runInDmJob, turnScopeOpen, turnWorkDone, viewOf, type DmJobControl } from "@/lib/dm/job-control";
 import { describeStage, stalledReason, type DmJobKind, type DmJobView } from "@/lib/dm/job-stage-logic";
 import { haltAbandonedJob } from "@/lib/dm/turn-halt";
 
@@ -167,6 +167,14 @@ export function dmQueueTotals(): { campaigns: number; jobs: number } {
   return { campaigns: depths().size, jobs };
 }
 
+// Whether a GM turn still has work to come: the queue job playing it, work
+// of it running now, or the rolls it waits on before it goes on. Reverted
+// then, what the turn did after the revert was half kept and offered again.
+export function turnStillPlaying(campaignId: string, turn: { id: string; status: string }): boolean {
+  const control = running().get(campaignId);
+  return Boolean(control && control.turnId === turn.id && !control.settled) || turnScopeOpen(turn.id) || turn.status === "awaiting_rolls";
+}
+
 // The job a campaign is running now, as the table sees it.
 export function runningDmJob(campaignId: string): DmJobView | null {
   const control = running().get(campaignId);
@@ -292,6 +300,10 @@ async function runJob(campaignId: string, job: () => Promise<void>, kind: DmJobK
     await Promise.race([runInDmJob(control, job), abandoned]);
   } finally {
     control.settled = true;
+    // The turn the job drove is done: what it changed is read as it left it.
+    if (control.turnId) {
+      detachFromTurn(() => turnWorkDone(control.turnId as string));
+    }
     releases.delete(control);
     if (running().get(campaignId) === control) {
       running().delete(campaignId);

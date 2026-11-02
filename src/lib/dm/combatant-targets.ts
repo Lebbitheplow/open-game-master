@@ -44,6 +44,7 @@ export const TARGET_PARAMS: Readonly<Record<string, TargetRule>> = {
   "request_roll.againstEnemyId": { kind: "combatant", file: "src/lib/dm/roll-gates.ts" },
   "check_notice.againstEnemyId": { kind: "combatant", file: "src/lib/dm/roll-gates.ts" },
   "declare_intent.target": { kind: "combatant", file: "src/lib/dm/intent-tools.ts" },
+  "legendary_action.targetCharacterId": { kind: "combatant", file: "src/lib/dm/legendary-play.ts" },
   "cast_at_player.characterId": { kind: "both", why: "the target is a character; an enemy target is cast_at_enemy, and a character on either side is reached here" },
   "aoe_damage.targets": { kind: "both", why: "names of enemies and characters mixed, each read by its kind; characterIds and enemyIds beside it" },
   "apply_damage.targets": { kind: "both", why: "each entry an enemyId or a characterId" },

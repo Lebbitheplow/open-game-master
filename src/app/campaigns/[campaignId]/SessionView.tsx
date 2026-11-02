@@ -1,7 +1,7 @@
 "use client";
 
 import { romanceCueAllowed } from "@/lib/dm/director-logic";
-import { gmTurnCompanion, initiativeCharacter, selectedCharacter } from "@/lib/player-characters";
+import { gmTurnCompanion, gmTurnDominated, initiativeCharacter, selectedCharacter, typedReactors as typedReactorsOf } from "@/lib/player-characters";
 import { useThemePrefs } from "@/lib/theme-mode";
 import { LevelUpMoment, LootMoment, MomentVeil, RestMoment, TravelBanner } from "@/app/campaigns/[campaignId]/Moments";
 import { CoordinationPanel } from "@/app/campaigns/[campaignId]/CoordinationPanel";
@@ -82,6 +82,7 @@ import { PrepLayer } from "@/app/campaigns/[campaignId]/CampaignPrep";
 import { SessionBanner, bannerButtonClass } from "@/app/campaigns/[campaignId]/SessionBanner";
 import { TestFightBanner } from "@/app/campaigns/[campaignId]/TestFightBanner";
 import { workshopHref } from "@/lib/workshop/links";
+import { aiRunsFoes as aiRunsFoesAt } from "@/lib/workshop/test-seats-logic";
 import { isPrimaryDm } from "@/lib/dm/viewer";
 import Link from "next/link";
 import { SidePanel } from "@/app/campaigns/[campaignId]/SidePanel";
@@ -189,6 +190,10 @@ function subscribeDicePref(callback: () => void) {
   window.addEventListener(DICE3D_EVENT, listener);
   return () => window.removeEventListener(DICE3D_EVENT, listener);
 }
+
+// No reaction waits on the GM: the same empty list each render, so the Hand's
+// memos that read it keep their cards.
+const NO_SENT_REACTIONS: string[] = [];
 
 // The play table. Header, the story column, the docked context column and
 // the dialogs that float over all three. What lives here is the state the
@@ -481,13 +486,60 @@ export function SessionView({
   // play (player-characters.ts gmTurnCompanion), with its Hand and its Do,
   // on a host that takes them (capabilities.ts gmCompanionTurns).
   const capabilities = useCapabilities();
-  const gmCompanions = caps.role === "dm" && !state.encounter?.enemyTurns && hostOffers(capabilities, "gmCompanionTurns");
+  // A table the AI GM runs with a person steering from the GM seat, live or
+  // a test fight (src/lib/workshop/test-seats-logic.ts aiRunsFoes): the
+  // enemies and the allies nobody commands are the AI's to play, not the
+  // seat's, so it is shown neither's Hand.
+  const aiRunsFoes = aiRunsFoesAt(campaign?.gameSettings?.dmMode);
+  const gmCompanions = caps.role === "dm" && !aiRunsFoes && !state.encounter?.enemyTurns && hostOffers(capabilities, "gmCompanionTurns");
+  // A hero the other side dominates is the GM's to play card by card too
+  // (companion-command.ts gmCompanionTurn), on a host that takes its cards.
+  const gmDominated = gmCompanions && hostOffers(capabilities, "gmDominatedTurns");
+  const heldHero = gmDominated ? gmTurnDominated(sheets, turnCharacterId(state.encounter), state.encounter?.sides) : null;
   const turnSheet =
     initiativeCharacter(sheets, me?.id ?? "", turnCharacterId(state.encounter)) ??
-    (gmCompanions ? gmTurnCompanion(sheets, turnCharacterId(state.encounter)) : null);
+    (gmCompanions ? gmTurnCompanion(sheets, turnCharacterId(state.encounter)) : null) ??
+    heldHero;
   const actingSheet = turnSheet ?? mySheet;
-  // The GM seat holds a companion's turn the floor names the companion for.
-  const gmPlaysTurn = Boolean(gmCompanions && turnSheet?.isCompanion);
+  // Speaking as, for a reaction typed in the box (issue 685): the box speaks
+  // for the hero whose turn it is, so words for another of the person's
+  // heroes (or a companion they command) went out as the wrong one. Offered
+  // while one of those has a hit still open on them and their reaction
+  // unspent, on a host that takes the words as theirs; a choice that no
+  // longer fits falls back to the hero whose turn it is. A choice holds for
+  // the hits open when it was made: once they close, or another lands, the
+  // box speaks for the hero whose turn it is again.
+  const hitsKey = (state.encounter?.lastHits ?? []).map((hit) => hit.id ?? hit.characterId).join(",");
+  const [reactChoice, setReactChoice] = useState<{ id: string; hits: string } | null>(null);
+  const reactAs = reactChoice && reactChoice.hits === hitsKey ? reactChoice.id : null;
+  const setReactAs = useCallback((id: string | null) => setReactChoice(id ? { id, hits: hitsKey } : null), [hitsKey]);
+  // A reaction sent (typed here, or a card from the Hand) and not resolved
+  // yet, by its hero: at a table a person runs it waits for the GM, and the
+  // engine's count does not move until then, so the box and the cards held
+  // that hero ready for a second. Held while the encounter's reactions,
+  // round and turn stay as they were when it went.
+  const reactionMoment = JSON.stringify([state.encounter?.id ?? "", state.encounter?.round ?? 0, state.encounter?.turnIndex ?? 0, state.encounter?.reactionsUsed ?? []]);
+  const [sentReactions, setSentReactions] = useState<{ moment: string; ids: string[] }>({ moment: "", ids: [] });
+  const reactionsSent = useMemo(() => (sentReactions.moment === reactionMoment ? sentReactions.ids : NO_SENT_REACTIONS), [sentReactions, reactionMoment]);
+  const markReactionSent = useCallback(
+    (id: string) => setSentReactions((current) => ({ moment: reactionMoment, ids: [...(current.moment === reactionMoment ? current.ids : []), id] })),
+    [reactionMoment],
+  );
+  const typedReactors = useMemo(
+    () =>
+      hostOffers(capabilities, "typedReactions")
+        ? typedReactorsOf(sheets, me?.id ?? "", turnSheet?.id, campaign?.gameSettings?.multiCharacter, state.encounter, reactAs).filter((entry) => !reactionsSent.includes(entry.id))
+        : [],
+    [capabilities, sheets, me?.id, turnSheet?.id, campaign?.gameSettings?.multiCharacter, state.encounter, reactAs, reactionsSent],
+  );
+  const speakingAs = typedReactors.find((entry) => entry.id === reactAs) ?? null;
+  const reactAsPicker = useMemo(
+    () => ({ acting: actingSheet?.name ?? "", reactors: typedReactors, value: speakingAs?.id ?? null, onChange: setReactAs }),
+    [actingSheet?.name, typedReactors, speakingAs?.id, setReactAs],
+  );
+  // The GM seat holds a companion's or a dominated hero's turn the floor
+  // names nobody at the table for.
+  const gmPlaysTurn = Boolean(gmCompanions && (turnSheet?.isCompanion || (heldHero && turnSheet?.id === heldHero.id)));
   // The server's notice opens the level-up dialog once, when the experience
   // lands. Closing it only puts it off: the sheet's experience still earns
   // the level, so the party card offers a Level up button until it is done.
@@ -817,7 +869,9 @@ export function SessionView({
               ? leadPrivate
                 ? ["director", { oneShot: null, absoluteCommand: content }]
                 : ["lead-note", { content }]
-              : ["actions", { content, kind, characterId: (kind === "ooc" ? mySheet : actingSheet)?.id }];
+              : kind === "do" && speakingAs
+                ? ["actions", { content, kind, characterId: speakingAs.id, reaction: true }]
+                : ["actions", { content, kind, characterId: (kind === "ooc" ? mySheet : actingSheet)?.id }];
         const send = (extra: Record<string, unknown> = {}) =>
           fetch(`/api/campaigns/${campaignId}/${route}`, {
             method: "POST",
@@ -846,13 +900,17 @@ export function SessionView({
           }
         }
         setInput("");
+        // One line for the hero answering a hit: the box speaks for the hero
+        // whose turn it is again, and that hero's reaction waits on the GM.
+        if (kind === "do" && speakingAs) markReactionSent(speakingAs.id);
+        setReactAs(null);
       } catch {
         setError("Could not reach the server.");
       } finally {
         setSending(false);
       }
     },
-    [campaignId, input, sending, gate.inputBlocked, silenced, kind, leadPrivate, speaker, mySheet, actingSheet],
+    [campaignId, input, sending, gate.inputBlocked, silenced, kind, leadPrivate, speaker, mySheet, actingSheet, speakingAs, setReactAs, markReactionSent],
   );
 
   const clearChatTarget = useCallback(() => setChatTarget(null), []);
@@ -1104,6 +1162,7 @@ export function SessionView({
     facts: state.facts,
     characterEvents: state.characterEvents,
     clockTurns: state.clockTurns,
+    turnChanges: state.turnChanges,
     refreshNotes,
     refreshFacts,
     sideThreads: state.sideThreads,
@@ -1325,7 +1384,7 @@ export function SessionView({
                     <TestFightBanner
                       campaignId={campaign.id}
                       source={state.testFight}
-                      runsIt={campaign.gameSettings?.dmMode === "ai" ? "ai" : "person"}
+                      runsIt={aiRunsFoes ? "ai" : "person"}
                     />
                   ) : null}
                   {ended ? (
@@ -1368,6 +1427,7 @@ export function SessionView({
                     activeSheetId={state.activeSheetId}
                     steersStory={steersStory}
                     isDm={isDm}
+                    aiRunsFoes={aiRunsFoes}
                     kind={kind}
                     onKindChange={setKind}
                     input={input}
@@ -1402,6 +1462,9 @@ export function SessionView({
                     onCaptureStory={openStoryCapture}
                     onSnoozeStory={snoozeStory}
                     onSubmit={submit}
+                    speakingAs={reactAsPicker}
+                    reactionsSent={reactionsSent}
+                    onReactionSent={markReactionSent}
                   />
                   </>
                 )}

@@ -34,7 +34,9 @@ export const READING_KINDS = ["spell", "monster", "feat", "race", "class", "back
 //   4: Mass Heal's note names heal's targets, one entry per creature (PR
 //      749); a pack's stored "one heal call per creature" sent the model to a
 //      call, and a slot, per creature out of a fight.
-export const READER_REVISION = 4;
+//   5: issue 685's monster reader keeps each legendary option's whole line
+//      (fullLegendary) and reads a Swallow as the attack it is.
+export const READER_REVISION = 5;
 export type ReadingKind = (typeof READING_KINDS)[number];
 export type ReadingSource = "hand-written" | "parsed" | "missing";
 

@@ -5,7 +5,10 @@ import { useState } from "react";
 import { appConfirm } from "@/components/ui/ConfirmDialog";
 import { SessionBanner, bannerButtonClass } from "@/app/campaigns/[campaignId]/SessionBanner";
 import { PanelError } from "@/app/campaigns/[campaignId]/PanelKit";
+import { TurnTraceButton } from "@/app/campaigns/[campaignId]/TurnTraceSheet";
+import { TestDiceScript } from "@/app/campaigns/[campaignId]/TestDiceScript";
 import { navigateTo } from "@/lib/navigation";
+import { SaveSetupButton } from "@/app/campaigns/[campaignId]/SaveSetupButton";
 import { workshopHref } from "@/lib/workshop/links";
 
 // The test fight's way back (issue 553, src/lib/workshop/test-fight.ts): a
@@ -20,7 +23,8 @@ export function TestFightBanner({
 }: {
   campaignId: string;
   source: { workshopId: string; title: string };
-  // Who runs the enemies: the AI DM, or the author from the DM seat.
+  // Who runs the enemies: the AI DM, with the author steering from the GM
+  // seat (issue 685), or the author from the DM seat.
   runsIt: "ai" | "person";
 }) {
   const [busy, setBusy] = useState(false);
@@ -58,6 +62,9 @@ export function TestFightBanner({
           <Link href={back} className={bannerButtonClass()}>
             Back to the workshop
           </Link>
+          <SaveSetupButton campaignId={campaignId} />
+          <TurnTraceButton campaignId={campaignId} />
+          <TestDiceScript campaignId={campaignId} />
           <button type="button" disabled={busy} aria-busy={busy} onClick={() => void end()} className={bannerButtonClass(true)}>
             End the test
           </button>
@@ -69,7 +76,7 @@ export function TestFightBanner({
           (issue 713). */}
       <span className="test-fight-say">
         {runsIt === "ai"
-          ? `From ${source.title}. Only you can see this table: the AI GM runs the enemies and you play the party, each hero on their own turn.`
+          ? `From ${source.title}. Only you can see this table: the AI GM runs the enemies and you play the party, each hero on their own turn. The GM console is yours for set-ups and corrections.`
           : `From ${source.title}. Only you can see this table, and you run it: the party's cards on each hero's turn, the enemies' cards on theirs.`}
       </span>
       {error ? <PanelError className="mt-1 text-[11px]">{error}</PanelError> : null}

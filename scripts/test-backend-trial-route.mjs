@@ -20,7 +20,15 @@ const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-backend-trial-route-"));
 process.env.SQLITE_DB_PATH = path.join(dir, "test.sqlite");
 process.env.DB_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 
+// Two probes and a played turn, on a database created and migrated by the
+// first of them, took 9 seconds on a Windows runner that stalled mid-shard,
+// past Vitest's 5. The database is opened here, before the clock starts,
+// and the test is given the room the other route suites give theirs.
+vi.setConfig({ testTimeout: 30_000 });
+
 const { POST } = await import("../src/app/api/admin/backend-probe/route.ts");
+const { getDatabase } = await import("../src/lib/db/core.ts");
+getDatabase();
 
 const sse = (events) =>
   new Response(events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join("") + "data: [DONE]\n\n", {

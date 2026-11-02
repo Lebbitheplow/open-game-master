@@ -20,7 +20,7 @@ process.chdir(dir);
 register("./lib/register-alias.mjs", import.meta.url);
 
 const { createUser, setUserAdmin } = await import("../src/lib/db/users.ts");
-const { createCampaign, setPartyLead, joinByInviteCode } = await import("../src/lib/db/campaigns.ts");
+const { createCampaign, deleteCampaign, setPartyLead, joinByInviteCode } = await import("../src/lib/db/campaigns.ts");
 const { saveGlobalConfig } = await import("../src/lib/db/app-settings.ts");
 const shared = await import("../src/lib/shared-host.ts");
 const { recordUsage, usageOverview, storageBytesFor, forgetUsageFor } = await import("../src/lib/usage/ledger.ts");
@@ -189,6 +189,32 @@ await test("the ledger sums by campaign and by lead, with paid and local kept ap
   const after = usageOverview();
   assert.equal(after.accounts.find((row) => row.userId === player.id).paidDictationClips, 0);
   assert.equal(after.campaigns.find((row) => row.campaignId === guestTable.id).localInputTokens, 2000);
+});
+
+// A test fight's table (src/lib/workshop/test-fight.ts) is deleted when its
+// author ends it or starts the next one, and any table can be deleted. Its
+// rows keep the table's id; with no campaign row left they were in no total
+// at all (issue 685 audit). They answer to whoever asked for the work.
+await test("what a deleted table spent stays on the account that asked for it", () => {
+  const author = createUser("Bench author", "hash");
+  const bench = createCampaign(author.id, { title: "Test: Bench", description: "", theme: "", maxPlayers: 1, startingLevel: 1, difficulty: "normal", kind: "playtest" });
+  runInUsageScope({ campaignId: bench.id, userId: author.id }, () => {
+    recordUsage({ kind: "text", role: "story", backend: "custom", model: "gpt", paid: true, inputTokens: 700, outputTokens: 70 });
+  });
+  runInUsageScope({ userId: author.id }, () => {
+    recordUsage({ kind: "image", role: "portrait", backend: "comfyui", paid: false, units: 1 });
+  });
+  const before = usageOverview();
+  assert.equal(before.campaigns.find((row) => row.campaignId === bench.id).paidInputTokens, 700);
+  assert.equal(before.accounts.find((row) => row.userId === author.id).paidInputTokens, 700, "the lead's table counts for the lead");
+  deleteCampaign(bench.id);
+  const after = usageOverview();
+  assert.equal(after.campaigns.find((row) => row.campaignId === bench.id), undefined, "the table is gone from the list");
+  const account = after.accounts.find((row) => row.userId === author.id);
+  assert.equal(account.paidInputTokens, 700, "its spend still counts for the account that asked for it");
+  assert.equal(account.paidOutputTokens, 70);
+  assert.equal(account.localImages, 1, "beside the account's own work");
+  assert.equal(account.campaignsLed, 0);
 });
 
 await test("storage counts the files on disk the rows name, with their resized copies, and nothing missing", () => {

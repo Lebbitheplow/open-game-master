@@ -29,6 +29,7 @@ import {
 } from "@/lib/srd/condition-effect-queries";
 import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { finishEncounter } from "@/lib/dm/enemy-damage";
+import { leftBehind } from "@/lib/dm/swallow";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolError } from "@/lib/dm/tool-errors";
 
@@ -126,6 +127,9 @@ export function sendHome(
   }
   const encounter = getActiveEncounter(campaign.id);
   patchEnemyHp(enemy.id, enemy.currentHp, "fled");
+  // What it swallowed stays on this plane, prone where it stood (swallow.ts),
+  // asked while its token is still there.
+  const behind = encounter ? leftBehind(campaign, encounter.id, enemy, "goes") : null;
   const map = encounter ? getBattleMapForEncounter(encounter.id) : null;
   if (map) {
     removeTokenByRef(map.id, enemy.id);
@@ -133,5 +137,5 @@ export function sendHome(
   if (encounter && !listEnemies(encounter.id).some((entry) => entry.status === "alive")) {
     finishEncounter(campaign, turn, encounter, "enemies_fled", sheets, sheetsById);
   }
-  return `${enemy.displayName} is forced back to its home plane by ${spell} and cannot return for 24 hours.`;
+  return `${enemy.displayName} is forced back to its home plane by ${spell} and cannot return for 24 hours.${behind ? ` ${behind}` : ""}`;
 }

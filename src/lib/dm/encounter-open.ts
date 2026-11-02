@@ -82,7 +82,7 @@ export function decideAmbush(
       continue;
     }
     spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-    const outcome = rollExpression(resolved.expression);
+    const outcome = rollExpression(resolved.expression, undefined, { purpose: { roller: "hero", kind: "check", who: sheet.name } });
     publish(
       campaign,
       insertRoll({
@@ -140,7 +140,7 @@ export function rollOpeningInitiative(
       continue;
     }
     spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-    const outcome = rollExpression(resolved.expression);
+    const outcome = rollExpression(resolved.expression, undefined, { purpose: { roller: "hero", kind: "initiative", who: sheet.name } });
     const roll = insertRoll({
       campaignId: campaign.id,
       characterId: sheet.id,

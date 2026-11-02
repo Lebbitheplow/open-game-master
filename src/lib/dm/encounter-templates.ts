@@ -5,7 +5,8 @@ import { preparedFit } from "@/lib/dm/prepared-fit";
 import { resolveEnemyRequests } from "@/lib/dm/encounter-spawn";
 import { resolveMonster } from "@/lib/bestiary";
 import { invokeEngine } from "@/lib/dm/invoke";
-import type { EncounterTemplate } from "@/lib/db/encounter-templates";
+import { getTemplateSetup, type EncounterTemplate } from "@/lib/db/encounter-templates";
+import { layFightSetup } from "@/lib/workshop/fight-setup";
 import { applyTemplateExtras, applyTemplateMap } from "@/lib/dm/template-apply";
 import { rosterSummary, type TemplateEnemy } from "@/lib/dm/encounter-template-logic";
 
@@ -129,6 +130,12 @@ export async function deployTemplate(
   // The rest of the plan lands on whatever board the fight ended up with:
   // where each enemy starts, who is hidden, the overrides, and the note.
   applyTemplateExtras(campaign, userId, template);
+  // A set-up saved from a test of it: the foes as the moment left them
+  // (issue 685). The party's part is a test table's alone.
+  const setup = getTemplateSetup(template.id);
+  if (setup) {
+    layFightSetup(campaign, template, setup);
+  }
   return mapError
     ? { ok: true, result: outcome.result, mapError }
     : { ok: true, result: outcome.result };

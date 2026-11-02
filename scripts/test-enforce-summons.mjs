@@ -318,6 +318,33 @@ await test("Create Undead makes three ghouls from a 6th level slot and refuses w
   assert.equal(made[0].maxHp, 22);
 });
 
+// SRD 5.1, Create Undead: "an 8th-level spell slot, you can animate or
+// reassert control over five ghouls or two ghasts or wights"; a 6th level
+// slot reasserts the three a 6th level casting makes.
+await test("Create Undead reasserts control by kind, as its slot prints: an 8th level casting holds two of five wights, and a 6th level casting none, spending nothing.", async () => {
+  const { world, sheets: [wizard] } = await outOfFight([WIZARD(["Create Undead"], 17, { gold: 10000 })]);
+  const fresh = () => {
+    const sheet = world.sheet(wizard.id);
+    const slots = Object.fromEntries(Object.entries(sheet.spellcasting.slots).map(([level, slot]) => [level, { ...slot, used: 0 }]));
+    world.patch(wizard.id, { spellcasting: { ...sheet.spellcasting, slots } });
+  };
+  const nine = await world.invoke("cast_buff", { characterId: wizard.id, spell: "Create Undead", level: 9, variant: "wight", count: 3 });
+  assert.equal(nine.ok, true, nine.error);
+  const eight = await world.invoke("cast_buff", { characterId: wizard.id, spell: "Create Undead", level: 8, variant: "wight", count: 2 });
+  assert.equal(eight.ok, true, eight.error);
+  assert.equal(summonsOf(world, "Create Undead").length, 5, "five wights");
+  fresh();
+  const held = await world.invoke("cast_buff", { characterId: wizard.id, spell: "Create Undead", level: 8, variant: "reassert control" });
+  assert.equal(held.ok, true, held.error);
+  assert.equal(held.result.reasserted.length, 2, `two wights held, not five: ${held.result.reasserted.join(", ")}`);
+  assert.match(held.result.note, /3 more are beyond this casting's hold \(up to 5 Ghoul, or up to 2 Ghast or Wight\)/);
+  fresh();
+  const low = await world.invoke("cast_buff", { characterId: wizard.id, spell: "Create Undead", level: 6, variant: "reassert control" });
+  assert.equal(low.ok, false, JSON.stringify(low).slice(0, 300));
+  assert.match(low.error, /Create Undead from a level 6 slot reasserts control over up to 3 Ghoul, and .* are Wight, Wight, Wight, Wight, Wight\. Nothing was spent/);
+  assert.equal(slotsLeft(world, wizard.id, 6), 1, "the slot is kept");
+});
+
 await test("Phantom Steed's horse has a speed of 100 feet and disappears when it takes any damage.", async () => {
   const { world, sheets: [wizard] } = await outOfFight([WIZARD(["Phantom Steed"], 5)]);
   const cast = await world.invoke("cast_buff", { characterId: wizard.id, spell: "Phantom Steed", level: 3 });

@@ -46,6 +46,12 @@ export type SaveEffect = {
   // "for 1 minute" is 10 rounds; "until the end of its next turn" is 1;
   // "for 1 hour" 600, "for 24 hours" a day's 14400.
   rounds?: number;
+  // "Until the end of the mummy lord's next turn", "until the start of its
+  // next turn": the turn it lasts until, the target's or the creature's own,
+  // which the condition is tied to (turn-tie.ts). Counted as a round it ended
+  // at the next round's start, before that turn or after it by where the
+  // creature and the target stand in the order.
+  until?: TurnTie;
   // "until the target finishes a long rest" (a succubus's kiss).
   untilLongRest?: boolean;
   // "until it is removed by the lesser restoration spell", "until freed by
@@ -186,9 +192,27 @@ function chained(first: string, after: string): string[] {
 
 const UNIT_ROUNDS: Record<string, number> = { round: 1, minute: 10, hour: 600, day: 14400 };
 
+// The start or end of a turn a duration is tied to, and whose: the target's
+// ("its", "their", "the creature's", "the target's") or the creature's that
+// laid it ("the mummy lord's", "your").
+export type TurnTie = { edge: "start" | "end"; whose: "target" | "source" };
+
+const TURN_BOUND = /\b(?:until|til) (?:the )?(end|start) of (its|their|your|the ([a-z' ]+?)'s) next turn/i;
+
+// The turn a clause's duration is tied to, or null when it names none.
+export function turnTieIn(clause: string): TurnTie | null {
+  const turn = TURN_BOUND.exec(clause);
+  if (!turn) {
+    return null;
+  }
+  const owner = turn[3] ? textKey(turn[3]) : textKey(turn[2]);
+  const target = ["its", "their", "creature", "target"].includes(owner);
+  return { edge: textKey(turn[1]) === "start" ? "start" : "end", whose: target ? "target" : "source" };
+}
+
 // How long a clause says something lasts, in rounds; null when it does not.
 function roundsIn(clause: string): number | null {
-  const turn = /\b(?:until|til) (?:the )?(?:end|start) of (?:its|their|the [a-z' ]+?'s|your) next turn/i.exec(clause);
+  const turn = TURN_BOUND.exec(clause);
   // "for 1 minute", "lasts 1 hour", and Tome of Beasts 3's "frightened 1 min"
   // (the clause begins at the condition's verb or word).
   const span = /(?:\b(?:for|lasts?(?: for)?) |^(?:\w+ ){0,2}?)(\d{1,3}) (round|minute|min|hour|hr|day)s?\b/i.exec(clause);
@@ -200,6 +224,17 @@ function roundsIn(clause: string): number | null {
   }
   const unit = span[2].toLowerCase();
   return Number(span[1]) * UNIT_ROUNDS[unit === "min" ? "minute" : unit === "hr" ? "hour" : unit];
+}
+
+// A duration read as one round from a clause that names the turn it ends
+// with keeps that turn too (SaveEffect.until).
+function tieTo(out: { rounds?: number; until?: TurnTie }, clause: string) {
+  const span = /(\d{1,3}) (round|minute|min|hour|hr|day)s?\b/i.exec(clause);
+  const turn = TURN_BOUND.exec(clause);
+  const tie = turn && (!span || turn.index < span.index) ? turnTieIn(clause) : null;
+  if (out.rounds === 1 && tie) {
+    out.until = tie;
+  }
 }
 
 const ENDS_ON_DAMAGE =
@@ -249,6 +284,7 @@ export function parseSaveEffect(raw: string): SaveEffect {
     const rounds = roundsIn(kept);
     if (rounds !== null) {
       out.rounds = rounds;
+      tieTo(out, kept);
     } else if (/until (?:it|the target|the creature)(?:'s)? (?:finishes|completes) a long rest/i.test(kept)) {
       out.untilLongRest = true;
     } else if (/until (?:it is |the (?:target|creature|disease|curse|poison) is )?(?:removed|cured|freed|ended)\b/i.test(kept)) {
@@ -409,6 +445,7 @@ function readFailure(text: string, sentences: Sentence[], at: number): SaveEffec
   const rounds = durationFrom === null ? null : roundsIn(durationFrom);
   if (rounds !== null && !out.lasting) {
     out.rounds = rounds;
+    tieTo(out, durationFrom as string);
   } else if (!out.lasting) {
     // Said in a sentence about the condition after it: "The condition lasts
     // for 1 minute", "The target remains paralyzed for 1 hour".
@@ -416,8 +453,9 @@ function readFailure(text: string, sentences: Sentence[], at: number): SaveEffec
       .slice(index + 1)
       .find((sentence) => !SUCCESS.test(sentence.text) && new RegExp(`\\b(?:${names[0]}|condition|effect|lasts?)\\b`, "i").test(sentence.text) && roundsIn(sentence.text) !== null);
     const later = about ? roundsIn(about.text) : null;
-    if (later !== null) {
+    if (about && later !== null) {
       out.rounds = later;
+      tieTo(out, about.text);
     }
   }
   return out;

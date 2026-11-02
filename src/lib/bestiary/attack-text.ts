@@ -1,4 +1,5 @@
 import { CONDITION_WORDS, conditionName, parseSaveEffect, SAVE_DC } from "@/lib/dm/monster-abilities";
+import type { TurnTie } from "@/lib/dm/save-effect";
 import type { SaveAbility } from "@/lib/bestiary/statblock";
 
 // What an attack's printed line says beyond its bonus and dice (SRD 5.1,
@@ -28,6 +29,9 @@ export type OnHitRider = {
   halfOnSave?: boolean;
   escapeDc?: number;
   rounds?: number;
+  // The turn it lasts until, the target's or the attacker's own
+  // (save-effect.ts SaveEffect.until).
+  until?: TurnTie;
   // No count and no repeat save: a long rest ends it, or a cure does.
   untilLongRest?: boolean;
   lasting?: boolean;
@@ -334,7 +338,12 @@ function hitClause(text: string): string {
 // What a hit does besides its damage.
 function readOnHit(hit: string, effectOnly: boolean): OnHitRider | null {
   const rider: OnHitRider = {};
-  const dcAt = hit.search(SAVE_DC);
+  // A swallower's own save at the end of a turn it was hurt from inside
+  // ("must succeed on a DC 25 Constitution saving throw ... or regurgitate")
+  // is the creature's, not the target's: the hit's save is read before it
+  // (a kraken's bite asked the target that save to stay out).
+  const regurgitation = hit.search(/\bIf the [^.]*? takes \d+ damage or more on a single turn\b/i);
+  const dcAt = (regurgitation >= 0 ? hit.slice(0, regurgitation) : hit).search(SAVE_DC);
   if (dcAt >= 0) {
     // The save's damage is its own sentence's, or an "On a failure, ..."
     // sentence's right after it (A5e, and Tome of Beasts 3's spelled-out
@@ -358,6 +367,7 @@ function readOnHit(hit: string, effectOnly: boolean): OnHitRider | null {
       // "On a success, it takes half the damage" comes after the failure's.
       ...(struck.halfOnSave || (struck.damage && followed.halfOnSave) ? { halfOnSave: true } : {}),
       ...(laid.rounds ? { rounds: laid.rounds } : {}),
+      ...(laid.until ? { until: laid.until } : {}),
       ...(laid.untilLongRest ? { untilLongRest: true } : {}),
       ...(laid.lasting ? { lasting: true } : {}),
     });
@@ -389,7 +399,8 @@ function readOnHit(hit: string, effectOnly: boolean): OnHitRider | null {
       rider.drainHeals = true;
     }
   }
-  if (/\bis swallowed\b/i.test(hit)) {
+  // "is swallowed", and the purple worm's "or be swallowed by the worm".
+  if (/\b(?:is|be) swallowed\b/i.test(hit)) {
     rider.swallow = true;
   }
   const sentences = hit.split(/(?<=\.)\s+/).map((sentence) => sentence.trim()).filter(Boolean);
@@ -413,6 +424,11 @@ function readOnHit(hit: string, effectOnly: boolean): OnHitRider | null {
       rider.condition = conditionName(laid[1]);
     }
     manual = [...new Set([...manual, ...sentences.slice(laid ? 1 : 0)])];
+  }
+  // A swallow is the engine's to play (src/lib/dm/swallow.ts): its acid,
+  // cover, regurgitation and corpse are not left to the GM.
+  if (rider.swallow) {
+    manual = manual.filter((sentence) => !/\b(?:swallowed|regurgitate|escape from the corpse)\b/i.test(sentence));
   }
   manual = manual.slice(0, 3);
   if (manual.length) {

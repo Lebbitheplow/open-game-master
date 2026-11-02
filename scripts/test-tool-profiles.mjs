@@ -248,9 +248,33 @@ const { createCampaign, getCampaignById, setCampaignStatus, updateStorySettings,
 const { createSheet, listSheets, patchSheet } = await import("../src/lib/db/sheets.ts");
 const { createSheetSchema } = await import("../src/lib/schemas/sheet.ts");
 const { insertCampaignMessage, listRecentMessages } = await import("../src/lib/db/messages.ts");
-const { getDmTurn, getLatestDmTurnId } = await import("../src/lib/db/dm-turns.ts");
+const { getDmTurn, getLatestDmTurnId, listRecentDmTurns } = await import("../src/lib/db/dm-turns.ts");
 const { startDmTurn, dmTurnTuning, dmTurnTools } = await import("../src/lib/dm/turn.ts");
 const { forgetContextWindows } = await import("../src/lib/model-client.ts");
+const { dmQueueDepth, enqueueDmJob } = await import("../src/lib/dm/queue.ts");
+
+// A turn as the server plays one: through the campaign's DM queue, behind
+// any turn the table already woke, and done once the queue has drained, so
+// what it woke in turn has run before the next line is posted. Called beside
+// the queue, a turn the table woke on its own ran at the same time as the
+// suite's on a loaded machine: it took the suite's scripted reply, and the
+// newest turn row, still running, was read as the suite's ("the second turn
+// finished (running)"). Returns the suite's own turn: the first one the model
+// ran after the call, read by its id rather than as the newest.
+async function playTurn(campaignId) {
+  let own = null;
+  await enqueueDmJob(campaignId, async () => {
+    const before = new Set(listRecentDmTurns(campaignId, 200).map((turn) => turn.id));
+    await startDmTurn(campaignId);
+    own = listRecentDmTurns(campaignId, 200).find((turn) => !before.has(turn.id) && turn.actor === "ai")?.id ?? null;
+  }, { kind: "turn" });
+  // A job put last settles after every one before it; one a running job
+  // queues comes after it, so the queue is asked again until it is dry.
+  while (dmQueueDepth(campaignId) > 0) {
+    await enqueueDmJob(campaignId, async () => {});
+  }
+  return getDmTurn(own ?? getLatestDmTurnId(campaignId));
+}
 
 const lead = createUser(`lead${randomBytes(3).toString("hex")}`, "x", { isAdmin: true });
 function table(line, model = "fake", tableLanguage = "english") {
@@ -276,8 +300,7 @@ await test("a compact turn: the group opens free of the budget, rides from the n
     { content: "Rain hammers the road as you march." },
   ];
   requests.length = 0;
-  await startDmTurn(campaign.id);
-  const turn = getDmTurn(getLatestDmTurnId(campaign.id));
+  const turn = await playTurn(campaign.id);
   assert.equal(turn.status, "done", `the turn finished (${turn.status})`);
   const calls = requests.filter((body) => Array.isArray(body.tools));
   const offered = (body) => body.tools.map((tool) => tool.function.name);
@@ -300,6 +323,18 @@ await test("a compact turn: the group opens free of the budget, rides from the n
   assert.ok(String(calls[0].messages[0].content).includes("NEVER state the result of any die roll"));
 });
 
+await test("the suite plays a turn in the campaign's DM queue, as the server does, and returns once the queue is dry", async () => {
+  const campaign = table("I warm my hands by the fire.");
+  script = [{ content: "The fire crackles. What do you do?" }];
+  requests.length = 0;
+  const playing = playTurn(campaign.id);
+  // Its place in the queue, behind any turn the table already woke.
+  assert.ok(dmQueueDepth(campaign.id) > 0, "the turn ran beside the queue, where a turn the table woke could run with it");
+  const turn = await playing;
+  assert.equal(dmQueueDepth(campaign.id), 0, "nothing it woke is still running when the next line is posted");
+  assert.equal(turn.status, "done", `the turn finished (${turn.status}): ${turn.error ?? ""}`);
+});
+
 await test("a small model, sized by its server, plays on the short rules: no rulebook, enemy health in words, no dice markers in its transcript", async () => {
   const campaign = table("Goblins leap from the ditch! I raise my shield.", "small-dm");
   const hero = listSheets(campaign.id)[0];
@@ -309,8 +344,7 @@ await test("a small model, sized by its server, plays on the short rules: no rul
     { content: "A goblin snarls and circles you. What do you do?" },
   ];
   requests.length = 0;
-  await startDmTurn(campaign.id);
-  let turn = getDmTurn(getLatestDmTurnId(campaign.id));
+  let turn = await playTurn(campaign.id);
   assert.equal(turn.status, "done", `the first turn finished (${turn.status}): ${turn.error ?? ""}`);
   assert.equal(dmTurnTuning(getCampaignById(campaign.id)).briefRules, true, "the 9B the server reported is small");
   const first = requests.find((body) => Array.isArray(body.tools));
@@ -326,8 +360,7 @@ await test("a small model, sized by its server, plays on the short rules: no rul
   insertCampaignMessage({ campaignId: campaign.id, seq: allocateSeq(campaign.id), authorType: "player", userId: lead.id, characterId: sheet.id, content: "I hold my ground." });
   script = [{ content: "The goblin hesitates. What do you do?" }];
   requests.length = 0;
-  await startDmTurn(campaign.id);
-  turn = getDmTurn(getLatestDmTurnId(campaign.id));
+  turn = await playTurn(campaign.id);
   assert.equal(turn.status, "done", `the second turn finished (${turn.status}): ${turn.error ?? ""}`);
   const next = requests.find((body) => isDmCall(body));
   const state = next.messages.map((message) => String(message.content ?? "")).join("\n");
@@ -340,8 +373,7 @@ await test("a tool never offered still runs when called by name", async () => {
   const campaign = table("I sit quietly and listen.");
   script = [{ call: "pass_time", args: { hours: 6 } }, { content: "Night falls over the crossroads." }];
   requests.length = 0;
-  await startDmTurn(campaign.id);
-  const turn = getDmTurn(getLatestDmTurnId(campaign.id));
+  const turn = await playTurn(campaign.id);
   const calls = requests.filter((body) => Array.isArray(body.tools));
   assert.ok(!calls[0].tools.some((tool) => tool.function.name === "pass_time"), "it was not offered");
   const result = calls[1].messages.find((message) => message.role === "tool");
@@ -353,7 +385,7 @@ await test("the players' words open the group the move needs on the first call",
   const campaign = table("I want to buy a sturdy rope and sell my old boots.");
   script = [{ content: "The trader eyes your boots. What will you offer?" }];
   requests.length = 0;
-  await startDmTurn(campaign.id);
+  await playTurn(campaign.id);
   const first = requests.find((body) => Array.isArray(body.tools));
   assert.ok(first.tools.some((tool) => tool.function.name === "haggle"), "the shop group rides from the start");
   assert.ok(first.tools.some((tool) => tool.function.name === "purchase"), "and the trade itself is in the exploring core");
@@ -366,8 +398,7 @@ await test("the English words that open a group are read at an English table onl
     const campaign = table("I want to buy a sturdy rope and sell my old boots.", "fake", language);
     script = [{ content: "The trader eyes your boots. What will you offer?" }];
     requests.length = 0;
-    await startDmTurn(campaign.id);
-    const turn = getDmTurn(getLatestDmTurnId(campaign.id));
+    const turn = await playTurn(campaign.id);
     assert.deepEqual(turn.contextTrace.profile.intent, [], language);
   }
 });
@@ -381,7 +412,7 @@ async function firstCall(line) {
   const campaign = table(line);
   script = [{ content: "Quiet fields." }];
   requests.length = 0;
-  await startDmTurn(campaign.id);
+  await playTurn(campaign.id);
   const first = requests.find((body) => Array.isArray(body.tools));
   return { need: requestTokens(first.messages, first.tools), tools: requestTokens([], first.tools) };
 }
@@ -399,8 +430,7 @@ await test("a follow-up the compact set no longer fits steps down to the essenti
   const campaign = table(line);
   script = [{ call: "pass_time", args: { hours: 1 } }, { content: "An hour passes. A cart rattles by. What do you do?" }];
   requests.length = 0;
-  await startDmTurn(campaign.id);
-  const turn = getDmTurn(getLatestDmTurnId(campaign.id));
+  const turn = await playTurn(campaign.id);
   assert.equal(turn.status, "done", `the turn finished (${turn.status}): ${turn.error ?? ""}`);
   const calls = requests.filter((body) => Array.isArray(body.tools));
   assert.equal(calls.length, 2);
@@ -433,8 +463,7 @@ await test("a follow-up no tool set fits narrates what the turn did with no tool
   const passage = parts.join(", ");
   script = [{ call: "pass_time", args: { hours: 1 }, content: passage }, { content: "Dusk settles over the watch. What do you do?" }];
   requests.length = 0;
-  await startDmTurn(campaign.id);
-  const turn = getDmTurn(getLatestDmTurnId(campaign.id));
+  const turn = await playTurn(campaign.id);
   assert.equal(turn.status, "done", `the turn finished (${turn.status}): ${turn.error ?? ""}`);
   const dmCalls = requests.filter(isDmCall);
   assert.equal(dmCalls.length, 2);
@@ -451,7 +480,7 @@ await test("a window the full set fits keeps the full set, uncut", async () => {
   const campaign = table("I look around.");
   script = [{ content: "Quiet fields." }];
   requests.length = 0;
-  await startDmTurn(campaign.id);
+  await playTurn(campaign.id);
   const first = requests.find((body) => Array.isArray(body.tools));
   assert.equal(dmTurnTuning(campaign).toolProfile, "full");
   assert.deepEqual(first.tools, JSON.parse(JSON.stringify(dmTurnTools(campaign, false, false, false))), "the full set, as before");
@@ -465,8 +494,7 @@ await test("the first turn asks the endpoint for its window before it picks the 
   const campaign = table("I look around the square.");
   script = [{ content: "Pigeons scatter from the fountain." }];
   requests.length = 0;
-  await startDmTurn(campaign.id);
-  const turn = getDmTurn(getLatestDmTurnId(campaign.id));
+  const turn = await playTurn(campaign.id);
   assert.equal(turn.contextTrace.profile.name, "full", "the 64K the server reports keeps the full set, not the 16K default's compact one");
   const first = requests.find((body) => Array.isArray(body.tools));
   assert.equal(first.tools.length, dmTurnTools(campaign, false, false, false).length);
@@ -495,8 +523,7 @@ await test("the narration minimum narrates an exploration turn", async () => {
   const campaign = table("I rest by the crossroads shrine for an hour.");
   script = [{ call: "pass_time", args: { hours: 1 } }, { content: "An hour slips by under the moss-grown stones. What do you do?" }];
   requests.length = 0;
-  await startDmTurn(campaign.id);
-  const turn = getDmTurn(getLatestDmTurnId(campaign.id));
+  const turn = await playTurn(campaign.id);
   assert.equal(turn.status, "done", `the turn finished (${turn.status}): ${turn.error ?? ""}`);
   assert.ok(dmBodies().every((body) => body.tools?.length), "with tools on every call");
   allFit(windows.MIN_NARRATION_WINDOW);
@@ -513,8 +540,7 @@ await test("the combat minimum opens a fight and plays its next turn with the at
   patchSheet(listSheets(campaign.id)[0].id, { maxHp: 300, currentHp: 300 });
   script = [{ call: "start_encounter", args: { enemies: [{ monster: "bandit" }, { monster: "bandit" }] } }, { content: "Steel rings as two bandits close in." }];
   requests.length = 0;
-  await startDmTurn(campaign.id);
-  let turn = getDmTurn(getLatestDmTurnId(campaign.id));
+  let turn = await playTurn(campaign.id);
   assert.equal(turn.status, "done", `the opening finished (${turn.status}): ${turn.error ?? ""}`);
   const opening = dmBodies();
   assert.ok(opening.length >= 2, "the fight opened and the turn went on");
@@ -528,8 +554,7 @@ await test("the combat minimum opens a fight and plays its next turn with the at
   insertCampaignMessage({ campaignId: campaign.id, seq: allocateSeq(campaign.id), authorType: "player", userId: lead.id, characterId: bram.id, content: "I swing my longsword at the nearest bandit." });
   script = [{ content: "The bandit circles, wary. Make your attack roll." }];
   requests.length = 0;
-  await startDmTurn(campaign.id);
-  turn = getDmTurn(getLatestDmTurnId(campaign.id));
+  turn = await playTurn(campaign.id);
   assert.equal(turn.status, "done", `the next turn finished (${turn.status}): ${turn.error ?? ""}`);
   const offered = (dmBodies()[0].tools ?? []).map((tool) => tool.function.name);
   for (const name of COMBAT_TOOLS) assert.ok(offered.includes(name), `${name} offered on the fight's next turn`);
@@ -546,7 +571,7 @@ await test("the combat minimum opens a fight and plays its next turn with the at
   insertCampaignMessage({ campaignId: campaign.id, seq: allocateSeq(campaign.id), authorType: "player", userId: lead.id, characterId: bram.id, content: "I hold my ground." });
   script = [{ content: "Dust sifts from the ceiling." }];
   requests.length = 0;
-  await startDmTurn(campaign.id);
+  await playTurn(campaign.id);
   const prompt = JSON.stringify(dmBodies()[0].messages);
   assert.ok(prompt.includes("1. The ceiling collapses above one creature.") && prompt.includes("2. A pillar of stone erupts"), "the lair's options are numbered in GAME STATE");
   process.env.OPENAI_COMPAT_CONTEXT = "16384";

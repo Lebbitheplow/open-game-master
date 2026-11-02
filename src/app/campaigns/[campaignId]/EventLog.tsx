@@ -2,7 +2,7 @@
 
 import { EmptyState } from "@/components/EmptyState";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
-import { Hourglass, Loader2, RotateCcw, ScrollText, Star } from "lucide-react";
+import { Dices, Flag, Hourglass, Loader2, RotateCcw, ScrollText, Star, Swords } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/cn";
 import { offerCorrectionReason } from "@/lib/correction-offer";
@@ -12,6 +12,7 @@ import type { CharacterEvent } from "@/lib/db/character-events";
 import type { AuditEntry } from "@/app/campaigns/[campaignId]/useCampaignStream";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ClockTurn } from "@/lib/db/clock-moves";
+import type { TurnChangeView } from "@/lib/db/turn-changes";
 import { buildFeed, describeAuditEntry, revertableTurns, turnOfItem } from "@/app/campaigns/[campaignId]/event-log-logic";
 
 // Confirmation for undos that would clobber newer changes to the same
@@ -45,7 +46,7 @@ function ConfirmUndoDialog({
           </AlertDialog.Title>
           <AlertDialog.Description className="mt-2 text-xs text-stone-400">
             {turn
-              ? "This puts the character sheets and the clock back as they were before the turn. World events and companions who left stay; rewinding the chapter takes those back."
+              ? "This puts the character sheets, the clock and the fight back as they were before the turn: hit points, conditions, creatures that came or fell, tokens, areas on the board, effects and whose turn it is. A fight the turn began goes; the fight's prepared events are armed again, a test's forced dice given back and a card resolved as played waits again. World events and companions who left stay; rewinding the chapter takes those back."
               : "Newer changes touched the same fields; undoing will overwrite them."}
           </AlertDialog.Description>
           <ul className="mt-2 space-y-1">
@@ -70,13 +71,16 @@ function ConfirmUndoDialog({
 // Chronological feed of DM-driven sheet changes and character milestones.
 // The party lead can undo individual sheet changes, or revert every change
 // from one DM turn. Undo restores sheet stats; a turn's revert also puts
-// the clock back (issue #622). World events stay for the chapter rewind.
+// the clock back (issue #622), and what else the turn kept for it: the fight
+// and the board, a prepared event, a test's forced dice, a card resolved as
+// played (issue 685). World events stay for the chapter rewind.
 export function EventLog({
   campaignId,
   auditLog,
   sheets,
   characterEvents = [],
   clockTurns = [],
+  turnChanges = [],
   steersStory = false,
 }: {
   campaignId: string;
@@ -85,6 +89,8 @@ export function EventLog({
   characterEvents?: CharacterEvent[];
   // The GM turns whose time is not back yet (an older host sends none).
   clockTurns?: ClockTurn[];
+  // What else the GM turns kept for their revert (an older host sends none).
+  turnChanges?: TurnChangeView[];
   steersStory?: boolean;
 }) {
   const [busyId, setBusyId] = useState("");
@@ -170,7 +176,7 @@ export function EventLog({
   const revertTurn = (turnId: string) =>
     post(`/api/campaigns/${campaignId}/audit/revert-turn`, { turnId }, `turn:${turnId}`, true);
 
-  const feed = buildFeed(auditLog, characterEvents, clockTurns);
+  const feed = buildFeed(auditLog, characterEvents, clockTurns, turnChanges);
 
   if (!feed.length) {
     return (
@@ -180,7 +186,7 @@ export function EventLog({
 
   // The turns the lead may revert from here, with their live change counts
   // (src/app/campaigns/[campaignId]/event-log-logic.ts).
-  const revertable = revertableTurns(auditLog, clockTurns);
+  const revertable = revertableTurns(auditLog, clockTurns, turnChanges);
   const revertShownForTurn = new Set<string>();
 
   // The turn's revert, above the newest row of that turn.
@@ -196,8 +202,9 @@ export function EventLog({
           type="button"
           disabled={busyId === `turn:${turnId}`}
           onClick={() => revertTurn(turnId)}
-          title="Put the character sheets and the clock back as they were before this GM turn. World events and companions who left stay; rewinding the chapter takes those back."
-          className="flex w-full items-center justify-center gap-1 rounded border border-dashed border-stone-700 py-0.5 text-[10px] text-stone-500 hover:bg-stone-900 hover:text-amber-300"
+          title="Put the character sheets, the clock and the fight back as they were before this GM turn: hit points, conditions, creatures, tokens, areas, effects and whose turn it is, with the prepared events it fired, a test's forced dice and a card resolved as played. World events and companions who left stay; rewinding the chapter takes those back."
+          // A finger's height on a touch screen; a thin rule with a mouse.
+          className="flex w-full items-center justify-center gap-1 rounded border border-dashed border-stone-700 py-0.5 text-[10px] text-stone-500 hover:bg-stone-900 hover:text-amber-300 pointer-coarse:min-h-10"
         >
           {busyId === `turn:${turnId}` ? (
             <Loader2 className="size-3 animate-spin" />
@@ -237,6 +244,20 @@ export function EventLog({
                 <div className="rounded-md border border-stone-800 bg-stone-950/40 px-2.5 py-1.5 text-xs text-stone-300">
                   <Hourglass className="mr-1.5 inline size-3 text-amber-600" />
                   Time passes: {item.move.passed}
+                </div>
+              </li>
+            );
+          }
+          if (item.type === "change") {
+            // What else the turn kept for its revert (issue 685): gone from
+            // the list once the turn is reverted, as the time is.
+            const Icon = item.change.kind === "dice_face" ? Dices : item.change.kind === "fight" ? Swords : Flag;
+            return (
+              <li key={`c-${item.change.id}`} className="check-log space-y-1">
+                {turnRevert(turnOfItem(item))}
+                <div className="rounded-md border border-stone-800 bg-stone-950/40 px-2.5 py-1.5 text-xs text-stone-300">
+                  <Icon className="mr-1.5 inline size-3 text-amber-600" aria-hidden="true" />
+                  {item.change.line}
                 </div>
               </li>
             );

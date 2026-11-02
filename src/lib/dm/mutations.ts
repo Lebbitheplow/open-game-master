@@ -49,7 +49,7 @@ import { combatFeatureSpend } from "@/lib/dm/combat-features";
 import { srdFeatureSpend } from "@/lib/dm/srd-feature-spends";
 import { handleStabilize } from "@/lib/dm/stabilize";
 import { canonicalCondition, handleSetCondition } from "@/lib/dm/set-condition";
-import { exhaustionPatch, namesExhaustion, PRONE, regainBlockedBy, STABILIZE_METHODS, SUFFOCATING } from "@/lib/dm/vitals-logic";
+import { exhaustionPatch, namesExhaustion, NEGATIVE_ENERGY, PRONE, regainBlockedBy, STABILIZE_METHODS, SUFFOCATING } from "@/lib/dm/vitals-logic";
 import { castMarkCharge, prepareResourceCharge } from "@/lib/dm/resource-turn";
 import { planCounterReaction } from "@/lib/dm/reaction-counters";
 import { channelOptions, channelOptionsHeld, optionCost } from "@/lib/dm/option-costs";
@@ -111,9 +111,11 @@ import { textKey } from "@/lib/language/text-logic";
 import { ITEM_TAGS } from "@/lib/schemas/item-tags";
 import { holdsFeature, isConditionNamed, isNamed } from "@/lib/srd/feature-names";
 import { unknownSheetRef } from "@/lib/dm/rolls";
+import { swallowCoverError } from "@/lib/dm/swallow";
 import { classWords } from "@/lib/sheet-words";
 import { healCeiling } from "@/lib/dm/afflictions";
 import { spreadGear } from "@/lib/dm/gear-zones";
+import { actorOfCall, withActor } from "@/lib/dm/acting-party";
 
 // DM stat authority: the model changes sheets ONLY through these tools.
 // Every mutation is server-clamped, audit-logged, and published live.
@@ -563,7 +565,22 @@ export function castBarred(
 
 // Applies one mutation tool call. Returns the compact tool result the model
 // narrates from. Never throws: errors come back as {error} results.
+// Whose call it is, for what its damage counts toward (acting-party.ts): a
+// feature's spend or an item's use that hurts a creature.
 export function applyDmMutation(
+  campaign: Campaign,
+  turnId: string,
+  toolName: string,
+  rawArguments: string,
+  sheets: CharacterSheet[],
+  sheetsById: Map<string, CharacterSheet>,
+  turn?: DmTurn,
+  casting?: OneCasting,
+): MutationOutcome {
+  return withActor(actorOfCall(toolName, rawArguments), () => dmMutation(campaign, turnId, toolName, rawArguments, sheets, sheetsById, turn, casting));
+}
+
+function dmMutation(
   campaign: Campaign,
   turnId: string,
   toolName: string,
@@ -852,6 +869,16 @@ export function applyDmMutation(
           healNote = outcome.note;
         }
       }
+      // Healing from a named healer that is no spell (a potion poured, a
+      // touch) crosses no swallower's wall either (swallow.ts); a spell's
+      // reach asked it above.
+      if (!healSpell && args.casterId) {
+        const healer = resolve(args.casterId);
+        const inside = healer ? swallowCoverError(healer.id, sheet.id) : null;
+        if (inside) {
+          return { result: inside };
+        }
+      }
       // A healing spell that takes longer than an action (Prayer of Healing's
       // ten minutes) moved the clock, and those minutes rolled the dying's
       // death saves (src/lib/db/clock.ts). The sheet read before the casting
@@ -891,7 +918,9 @@ export function applyDmMutation(
             error:
               blocked === SUFFOCATING
                 ? `${target.name} is still without air and cannot regain hit points until they can breathe. Get them to air, clear the suffocating condition, then heal them.`
-                : `${target.name} is gripped by Chill Touch and cannot regain hit points until its caster's next turn starts.`,
+                : blocked === NEGATIVE_ENERGY
+                  ? `${target.name} is in the grip of negative energy and cannot regain hit points until it lifts at the end of its source's next turn.`
+                  : `${target.name} is gripped by Chill Touch and cannot regain hit points until its caster's next turn starts.`,
             refused: "rules",
           },
         };
@@ -1150,6 +1179,12 @@ export function applyDmMutation(
       if (!target) {
         return { result: unknownSheetRef("targetCharacterId", args.targetCharacterId, sheets) };
       }
+      // An item used on someone (a potion poured, a kit's bandage) crosses
+      // no swallower's wall (swallow.ts).
+      const walled = swallowCoverError(sheet.id, target.id);
+      if (walled) {
+        return { result: walled };
+      }
       // A Healer's kit use heals (src/lib/dm/stabilize.ts); null otherwise.
       const kitHeal = healerKitUse(campaign, turnId, sheet, target, itemName);
       if (kitHeal) {
@@ -1300,6 +1335,13 @@ export function applyDmMutation(
             retry: true,
           },
         };
+      }
+      // A feature aimed across a swallower's wall (Lay on Hands, Bardic
+      // Inspiration, a Rally, Intimidating Presence) does not reach
+      // (swallow.ts).
+      const walled = swallowCoverError(sheet.id, target.id) ?? (args.targetEnemyId ? swallowCoverError(sheet.id, args.targetEnemyId.trim()) : null);
+      if (walled) {
+        return { result: walled };
       }
       // Intimidating Presence, Holy Nimbus and Divine Intervention resolve in
       // the fight (src/lib/dm/combat-features.ts).
@@ -1470,6 +1512,16 @@ export function applyDmMutation(
       return { result: outcome.result };
     }
     case "set_condition": {
+      // A condition a creature lays from the other side of a swallower's
+      // wall does not land (swallow.ts): a legendary action's prone on a
+      // hero inside a worm, a goblin's fear from outside it. Inspiration,
+      // passed between players, is no creature's effect. The swallow's own
+      // conditions are laid past this door (swallow.ts swallowCreature).
+      const layer = (args.sourceEnemyId ?? args.sourceCharacterId ?? "").trim();
+      const walled = layer && !isConditionNamed(args.condition ?? "", "inspiration") ? swallowCoverError(layer, sheet.id) : null;
+      if (walled) {
+        return { result: walled };
+      }
       return { result: handleSetCondition(campaign, turnId, sheet, args, reason) };
     }
     case "clear_condition": {

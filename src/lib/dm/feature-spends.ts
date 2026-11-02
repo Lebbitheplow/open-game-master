@@ -44,6 +44,7 @@ import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
 import { familyOf, isConditionNamed, isNamed } from "@/lib/srd/feature-names";
 import { TURNED } from "@/lib/dm/flee-logic";
+import { swallowCoverBetween } from "@/lib/dm/swallow";
 
 type Ability = "str" | "dex" | "con" | "int" | "wis" | "cha";
 
@@ -270,11 +271,13 @@ function turnUndead(
   const derived = computeSheetDerived(sheet);
   const dc = derived.spellSaveDc ?? 8 + derived.proficiencyBonus + Math.max(derived.abilityMods.wis, derived.abilityMods.cha);
   const destroyAt = kind.destroy ? destroyUndeadCr(classLevelOf(sheet, "cleric")) : null;
+  // Nothing across a swallower's wall sees or hears the cleric (swallow.ts).
   const undead = listEnemies(encounter.id).filter(
     (enemy) =>
       enemy.status === "alive" &&
       kind.types.test(String(enemy.stats.type ?? "")) &&
-      within(campaign.id, sheet.id, enemy.id, TURN_RANGE_FEET),
+      within(campaign.id, sheet.id, enemy.id, TURN_RANGE_FEET) &&
+      !swallowCoverBetween(sheet.id, enemy.id),
   );
   if (!undead.length) {
     return { error: `Nothing ${kind.name} affects is within ${TURN_RANGE_FEET} feet of ${sheet.name}; Channel Divinity was not spent.`, refused: "rules" };
@@ -387,7 +390,7 @@ function preserveLife(
   let pool = 5 * Math.max(1, classLevelOf(sheet, "cleric"));
   const party = fieldedSheets(campaign, listSheets(campaign.id))
     .map((entry) => getSheetById(entry.id) ?? entry)
-    .filter((entry) => !entry.deathSaves?.dead && within(campaign.id, sheet.id, entry.id, 30));
+    .filter((entry) => !entry.deathSaves?.dead && within(campaign.id, sheet.id, entry.id, 30) && !swallowCoverBetween(sheet.id, entry.id));
   const room = (entry: CharacterSheet) =>
     Math.max(0, Math.floor(effectiveMaxHp(entry) / 2) - entry.currentHp);
   const ordered = [

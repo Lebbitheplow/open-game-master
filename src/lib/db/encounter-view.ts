@@ -1,7 +1,7 @@
 import { isKnockedOut } from "@/lib/dm/knockout";
 import { defaultSide, type CombatSide } from "@/lib/dm/combat-sides-logic";
 import { sideOf } from "@/lib/dm/combatant";
-import { legendaryProfile } from "@/lib/dm/legendary-logic";
+import { lairChoices, legendaryProfile } from "@/lib/dm/legendary-logic";
 import { enemyActionsView, type PublicEnemyActions, type PublicEnemyMovement } from "@/lib/dm/enemy-actions-view";
 import { enemyMoveBudget } from "@/lib/dm/enemy-speed";
 import { enemyActedThisRound, isSurprised } from "@/lib/dm/can-act";
@@ -9,7 +9,8 @@ import { getCampaignById } from "@/lib/db/campaigns";
 import { castLookup, npcFace, type CastLookup } from "@/lib/db/npc-faces";
 import { foeLook } from "@/lib/actor-sex-logic";
 import { dmPlaysTurn } from "@/lib/dm/companion-command";
-import { freshLastHit, heaviestHit, type LastHit } from "@/lib/dm/last-hit";
+import { aiRunsTestTable } from "@/lib/workshop/test-seats-logic";
+import { heaviestHit, hitIdOf, openHits, reactedLate, type LastHit } from "@/lib/dm/last-hit";
 import { conditionNote, conditionNoteLine, namesLookup } from "@/lib/battlemap/condition-notes";
 import { healthState, type HealthState } from "@/lib/bestiary/health";
 import { creatureTypeOf } from "@/lib/bestiary/creature-type";
@@ -154,9 +155,9 @@ export type PublicEncounter = {
   // server (src/lib/dm/combatant.ts). Absent when everyone is on their
   // kind's side; a combatant hidden from this viewer is left out.
   sides?: Record<string, CombatSide>;
-  // The attacks a reaction may still answer (src/lib/dm/last-hit.ts): one
-  // per character hit this turn, while the engine would accept a reaction
-  // to it. Absent keys mean nothing to answer.
+  // The attacks a reaction may still answer (src/lib/dm/last-hit.ts): every
+  // hit still open on each character, oldest first, while the engine would
+  // accept a reaction to it. Absent keys mean nothing to answer.
   lastHits?: PublicLastHit[];
 };
 
@@ -194,6 +195,10 @@ export type PublicTurn = {
 };
 
 export type PublicLastHit = {
+  // The hit's id, which a reaction card sends to answer this hit and no
+  // other (use_reaction's `hit`). Absent from an older host, which kept one
+  // hit per character.
+  id?: string;
   characterId: string;
   attacker: string;
   // The enemy that made it, when the player may know it (not hidden).
@@ -204,7 +209,7 @@ export type PublicLastHit = {
   attack: string;
   type: string;
   ranged: boolean;
-  source: "attack" | "fall";
+  source: "attack" | "fall" | "missile";
   // Whether any swing hit, and how many did.
   hit: boolean;
   hits: number;
@@ -271,7 +276,10 @@ function actingView(encounter: Encounter, hidden: Set<string>, showNumbers: bool
       acting: pcIds.filter((id) => isSurprised(encounter, id)),
       reacting: pcIds.filter((id) => isSurprised(encounter, id, true)),
     },
-    reactionsUsed: encounter.reactionsUsed.filter((id) => pcIds.includes(id)),
+    // A character who answered the enemies' pass after their turn began has
+    // their reaction back for that turn, and no second one for the pass
+    // (last-hit.ts reactedLate): the Hand offered one the engine refused.
+    reactionsUsed: pcIds.filter((id) => encounter.reactionsUsed.includes(id) || reactedLate(encounter.campaignId, encounter, id)),
   };
 }
 
@@ -280,6 +288,7 @@ function lastHitView(record: LastHit, hidden: Set<string>, showNumbers: boolean)
   const index = heaviestHit(record.swings);
   const answered = index >= 0 ? record.swings[index] : null;
   return {
+    id: hitIdOf(record),
     characterId: record.characterId,
     attacker: record.attacker.name,
     attackerId: attackerId && (showNumbers || !hidden.has(attackerId)) ? attackerId : null,
@@ -330,6 +339,9 @@ export function publicEncounter(
 ): PublicEncounter {
   const showNumbers = options.enemyNumbers === true;
   const board = showNumbers ? getBattleMapForEncounter(encounter.id) : null;
+  // The lair's options while it may act, numbered across the whole fight as
+  // lair_action numbers them: each creature's card carries its own.
+  const lair = showNumbers ? lairChoices(enemies, encounter.legendary) : null;
   // Hidden is one flag on the board token (src/lib/db/battle-maps.ts) and it
   // means the same thing in both places: an ambusher the players have not
   // met yet is neither on the map nor on the tracker.
@@ -415,7 +427,7 @@ export function publicEncounter(
             ac: enemy.ac,
             initiative: enemy.initiative,
             ...legendaryView(encounter, enemy),
-            actions: enemyActionsView(encounter, enemy, movementView(encounter, enemy, board)),
+            actions: enemyActionsView(encounter, enemy, movementView(encounter, enemy, board), lair ?? undefined),
           }
         : {}),
     })),
@@ -474,8 +486,10 @@ function dmTurnView(encounter: Encounter, enemies: EncounterEnemy[]) {
   const campaign = getCampaignById(encounter.campaignId);
   return {
     ...(due.length ? { enemiesDue: due } : {}),
-    // A companion turn for the DM to play; one a player commands is theirs.
-    ...(current?.kind === "pc" && campaign && dmPlaysTurn(campaign, current)
+    // A companion turn for the DM to play; one a player commands is theirs,
+    // and at a test the AI GM runs the AI plays it (issue 685), so the
+    // author's tracker offers no button to play it twice.
+    ...(current?.kind === "pc" && campaign && !aiRunsTestTable(campaign) && dmPlaysTurn(campaign, current)
       ? { companionTurn: { id: current.characterId, name: current.name } }
       : {}),
   };
@@ -513,14 +527,8 @@ export function activePublicEncounter(
   }
   const map = getBattleMapForEncounter(encounter.id);
   // Only records a reaction may still answer: the engine's own freshness
-  // rule (same round and turn), asked per character in the order.
-  const lastHits = encounter.order.flatMap((entry) => {
-    if (entry.kind !== "pc") {
-      return [];
-    }
-    const record = freshLastHit(campaignId, entry.characterId);
-    return record ? [record] : [];
-  });
+  // rule, asked per character in the order, every open hit of each.
+  const lastHits = encounter.order.flatMap((entry) => (entry.kind === "pc" ? openHits(campaignId, entry.characterId) : []));
   return publicEncounter(encounter, listEnemies(encounter.id), {
     ...options,
     lastHits,

@@ -118,7 +118,10 @@ await test("Test fight with the stand-ins: a table of its own, in play, the part
   assert.equal(table.kind, "playtest");
   assert.equal(table.status, "active");
   assert.equal(table.ownerUserId, author.id);
-  assert.equal(table.gameSettings.dmMode, "ai");
+  // The AI GM runs it with the author in the steering seat, the console
+  // theirs beside the AI (issue 685, scripts/test-test-fight-seats.mjs).
+  assert.equal(table.gameSettings.dmMode, "steered");
+  assert.equal(table.dmUserId, author.id);
   assert.equal(table.gameSettings.multiCharacter, "all_active");
   assert.equal(table.settings.autoImages, false);
 
@@ -384,6 +387,58 @@ await test("a workshop's faction keeps its attitude, and refuses a standing no i
   const attitude = await call(route.faction, "PATCH", { attitude: "hostile" }, { campaignId: prepId, factionId: court.id });
   assert.equal(attitude.status, 200, JSON.stringify(attitude.json));
   assert.equal(attitude.json.faction.attitude, "hostile");
+});
+
+// Issue 685 audit: a test fight seats a table of its own, so a server where
+// only administrators start campaigns and workshops holds it too; a workshop
+// kept from before the switch was set is no way around it.
+await test("where only administrators start tables, a test fight is refused, and the sheet says so before its button", async () => {
+  const { saveGlobalConfig } = await import("../src/lib/db/app-settings.ts");
+  const held = openWorkshop("Behind the door");
+  const here = { workshopId: held.workshop.id };
+  world.signIn(author);
+  saveGlobalConfig({ sharedHost: { campaignCreation: "admins" } });
+  try {
+    const info = await call(route.test, "GET", undefined, here);
+    assert.equal(info.status, 200);
+    assert.match(info.json.refused, /administrator starts campaigns, workshops and their test fights/);
+    const out = await call(route.test, "POST", { templateId: held.lone.id, party: { kind: "stand-ins" } }, here);
+    assert.equal(out.status, 403);
+    assert.match(out.json.error, /administrator starts/);
+    assert.deepEqual(testFightsOf(held.workshop.id, author.id), []);
+  } finally {
+    saveGlobalConfig({ sharedHost: { campaignCreation: "everyone" } });
+  }
+  assert.equal((await call(route.test, "GET", undefined, here)).json.refused, "");
+});
+
+// ---- a fight whose saved map is gone (issue 685, audit 4.G) ----
+
+const said = (campaignId) =>
+  getDatabase().prepare(`SELECT content FROM campaign_messages WHERE campaign_id = ? AND author_type = 'system' ORDER BY seq`).all(campaignId).map((row) => row.content);
+
+await test("a test of a fight on its map says nothing of the map; once that map is removed from the workshop's maps, the test table says the fight is on a generated one", async () => {
+  const lost = openWorkshop("The Lost Cellar");
+  const where = { workshopId: lost.workshop.id };
+  const kept = await call(route.test, "POST", { templateId: lost.fight.id, party: { kind: "stand-ins" } }, where);
+  assert.equal(kept.status, 200, JSON.stringify(kept.json));
+  assert.equal(kept.json.mapError, undefined);
+  assert.ok(!said(kept.json.campaignId).some((line) => /saved map could not be used/.test(line)));
+
+  // "Keep this map" draws the fight on a map of the workshop's own, which
+  // its author may remove from the workshop's maps afterwards.
+  const forgot = await call(route.map, "DELETE", undefined, { campaignId: lost.workshop.id, mapId: lost.cellar.id });
+  assert.equal(forgot.status, 200, JSON.stringify(forgot.json));
+  const out = await call(route.test, "POST", { templateId: lost.fight.id, party: { kind: "stand-ins" } }, where);
+  assert.equal(out.status, 200, JSON.stringify(out.json));
+  assert.ok(getActiveEncounter(out.json.campaignId), "the fight still starts, as a GM's Deploy does");
+  assert.equal(out.json.mapError, "the map it was drawn on is no longer in the workshop's maps");
+  // In the AI's prepared fight's own words (prepared-encounter-tool.ts mapNote).
+  assert.ok(
+    said(out.json.campaignId).includes("Its saved map could not be used (the map it was drawn on is no longer in the workshop's maps); the fight is on a generated one."),
+    JSON.stringify(said(out.json.campaignId)),
+  );
+  await call(route.workshop, "DELETE", undefined, where);
 });
 
 world.close();

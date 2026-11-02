@@ -362,10 +362,13 @@ export function importUvttIntoLibrary(
 }
 
 // Saving what is on the table so it can be used again. The tokens and the
-// fog stay behind: a prepared map is ground, not a moment in a fight.
+// fog stay behind: a prepared map is ground, not a moment in a fight. A test
+// fight keeps the board it was played on in its workshop's library, not the
+// test table's (`into`, src/lib/workshop/fight-setup.ts).
 export function captureBoardIntoLibrary(
   campaign: Campaign,
   name: string,
+  into: string = campaign.id,
 ): LibraryOutcome<PreparedMap> {
   const board = getActiveBoard(campaign.id);
   const map = board ? getBattleMapForEncounter(board.id) : null;
@@ -378,7 +381,7 @@ export function captureBoardIntoLibrary(
   return {
     ok: true,
     map: createPreparedMap({
-      campaignId: campaign.id,
+      campaignId: into,
       name: name.trim(),
       width: map.width,
       height: map.height,

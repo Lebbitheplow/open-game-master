@@ -21,7 +21,10 @@ import { naturalAttackProfile, pickNaturalAttack } from "@/lib/dm/natural-attack
 import { landNaturalOnHit } from "@/lib/dm/natural-onhit";
 import { landBlow } from "@/lib/dm/pc-attack-damage";
 import { noneNamed, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
-import { buildPet, defenseWords, DRAKE_ESSENCES } from "@/lib/dm/pet-build";
+import { swallowCoverError } from "@/lib/dm/swallow";
+import { buildPet, defenseWords, DRAKE_ESSENCES, petCreatureType } from "@/lib/dm/pet-build";
+import { conditionIncomingAttackState } from "@/lib/srd/condition-effects";
+import { mergeAdvantage } from "@/lib/dm/condition-logic";
 import { damageAdjust } from "@/lib/dm/damage-logic";
 import { findTableMonster } from "@/lib/bestiary/homebrew-monsters";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
@@ -59,6 +62,11 @@ export const petTools: ToolDef[] = [
           kind: { type: "string", enum: ["familiar", "beast_companion", "drake", "other"] },
           form: { type: "string", description: "The creature ('owl', 'wolf', 'drake'); for a story pet its stat block's name when it has one." },
           name: { type: "string", description: "The pet's given name. Default: the form." },
+          creatureType: {
+            type: "string",
+            enum: ["celestial", "fey", "fiend"],
+            description: "kind=familiar only, instead of beast. Default: celestial.",
+          },
           essence: {
             type: "string",
             enum: [...DRAKE_ESSENCES],
@@ -117,6 +125,7 @@ const summonSchema = z.object({
   kind: z.enum(["familiar", "beast_companion", "drake", "other"]),
   form: z.string().trim().min(1).max(60),
   name: z.string().trim().max(60).optional(),
+  creatureType: z.enum(["celestial", "fey", "fiend"]).optional(),
   essence: z.string().trim().max(20).optional(),
   hp: z.coerce.number().int().min(1).max(300).optional(),
   ac: z.coerce.number().int().min(1).max(30).optional(),
@@ -217,7 +226,7 @@ export function handleSummonPet(
   publishSheet(campaign, sheet.id);
   return {
     ok: true,
-    pet: `${built.name} (${built.form}): ${built.hp} HP, AC ${built.ac}, speed ${built.speed} ft`,
+    pet: `${built.name} (${built.form}${built.creatureType ? `, a ${built.creatureType}` : ""}): ${built.hp} HP, AC ${built.ac}, speed ${built.speed} ft`,
     ...(built.attacks.length
       ? {
           attacks: built.attacks.map(attackSummary).join(", "),
@@ -273,6 +282,12 @@ export function handlePetAttack(
   if (!enemy || enemy.status !== "alive") {
     return { error: "pet_attack needs a living targetEnemyId from GAME STATE.", retry: true };
   }
+  // A creature inside a swallower is out of the pet's reach (swallow.ts).
+  // The pet has no square of its own, so it strikes from outside.
+  const inside = swallowCoverError(null, enemy.id);
+  if (inside) {
+    return inside;
+  }
   // Commanding the pet is the owner's to do, on the owner's turn, and costs
   // what the feature says (src/lib/dm/pet-attack-cost.ts).
   const charge = petAttackCost(sheet, pet, encounter);
@@ -290,7 +305,14 @@ export function handlePetAttack(
     return { error: `${pet.name}'s ${attack.name} strikes only a prone creature, and ${enemy.displayName} is not prone. Nothing was spent.`, refused: "rules" };
   }
 
-  const hitOutcome = rollExpression(d20Expression(attack.toHit));
+  // The target's conditions as they meet this attacker (SRD 5.1): a
+  // restrained target is struck with advantage, and one warded by
+  // Protection from Evil and Good turns a fiend or fey familiar's strike
+  // with disadvantage, by the kind the caster made it (pet-build.ts
+  // petCreatureType).
+  const incoming = conditionIncomingAttackState(enemy.conditions, petCreatureType(pet));
+  const advantage = mergeAdvantage(incoming.sources);
+  const hitOutcome = rollExpression(d20Expression(attack.toHit, advantage));
   const hitRoll = insertRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
@@ -319,6 +341,7 @@ export function handlePetAttack(
       rolled: hitOutcome.total,
       vsAc,
       hit: false,
+      ...(incoming.notes.length ? { situation: incoming.notes.join("; ") } : {}),
       economy,
     };
   }

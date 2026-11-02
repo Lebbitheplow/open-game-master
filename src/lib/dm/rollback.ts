@@ -218,6 +218,15 @@ function rollbackNow(
       `DELETE FROM rolls WHERE campaign_id = ?
          AND (seq > ? OR (seq IS NULL AND created_at > ?))`,
     ).run(campaignId, boundary, capturedAt);
+    // What those turns kept for "Revert this turn" goes with them: left, the
+    // event log went on offering their reverts, each refused as no turn of
+    // this table.
+    for (const table of ["turn_rows", "turn_changes"]) {
+      db.prepare(`DELETE FROM ${table} WHERE turn_id IN (SELECT id FROM dm_turns WHERE campaign_id = ? AND created_at > ?)`).run(
+        campaignId,
+        capturedAt,
+      );
+    }
     db.prepare(`DELETE FROM dm_turns WHERE campaign_id = ? AND created_at > ?`).run(
       campaignId,
       capturedAt,

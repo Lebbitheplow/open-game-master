@@ -62,6 +62,7 @@ import { handleCastBuff } from "@/lib/dm/cast-buff";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { spellHeldProblem, grantedCastOf } from "@/lib/dm/cast-rules";
 import { conditionNameRefusal } from "@/lib/dm/set-condition";
+import { swallowCover } from "@/lib/dm/swallow";
 
 const castArgsSchema = z.object({
   characterId: z.string(),
@@ -138,6 +139,12 @@ export function handleCastAtEnemy(
   const enemy = resolveTargetFoe(campaign.id, encounter, args.targetEnemyId);
   if (!enemy) {
     return unknownCombatantRef(campaign.id, encounter, "targetEnemyId", args.targetEnemyId);
+  }
+  // Swallowed: from inside, only the creature that swallowed them; into one,
+  // nothing from outside (swallow.ts).
+  const inside = swallowCover({ kind: "sheet", id: sheet.id }, { kind: isSheetFoe(enemy) ? "sheet" : "enemy", id: enemy.id });
+  if (inside) {
+    return { error: `${inside} Nothing was spent.`, refused: "rules" };
   }
   if (isSheetFoe(enemy) && !hostileTo(encounter, { kind: "sheet", id: sheet.id }, { kind: "sheet", id: enemy.id })) {
     return { error: `${enemy.displayName} fights on ${sheet.name}'s side: cast_at_enemy does not aim at an ally. Nothing was spent.`, refused: "rules" };

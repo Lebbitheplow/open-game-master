@@ -15,6 +15,7 @@ import { multiclassEntryProblem } from "@/lib/srd/sheet-legality";
 import { createSheetSchema } from "@/lib/schemas/sheet";
 import { publishWithSeq } from "@/lib/events";
 import { classWords, raceWords } from "@/lib/sheet-words";
+import { isPlaytest } from "@/lib/workshop/kind";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -141,10 +142,14 @@ export async function POST(
     return refusal(admitted.problems);
   }
   const input = admitted.sheet;
-  const kept = from ?? createCharacter(context.user.id, level, input, "companion");
+  // A test fight is played on copies (src/lib/workshop/test-fight.ts):
+  // nothing it does reaches the library, so a companion brought or built
+  // there is seated with no library entry behind it (issue 685).
+  const test = isPlaytest(campaign);
+  const kept = test ? null : (from ?? createCharacter(context.user.id, level, input, "companion"));
   admitted.settle();
 
-  const { sheet } = finalizeNewCompanion(campaign, level, input, "party", input.backstory ?? "", kept.id);
+  const { sheet } = finalizeNewCompanion(campaign, level, input, "party", input.backstory ?? "", kept?.id ?? null);
 
   // Active session: a table note so the DM writes them into the scene next
   // turn. In the lobby the opening narration already reads every party sheet.

@@ -24,6 +24,8 @@ const { ADJUDICATIONS, ADJUDICATION_NAMES, adjudication, checkArgs, consoleAdjud
 // Names retired into a merged tool (issue #471): still engine actions, never
 // offered, so neither a form of their own nor a tool the scan should count.
 const { RETIRED_TOOLS } = await import("../src/lib/dm/tool-merge-logic.ts");
+const { consoleSummonShown, mixRecord } = await import("../src/lib/battlemap/hand-summon.ts");
+const { summonCatalogue, summonSpellFor } = await import("../src/lib/srd/summon-spells.ts");
 
 let passed = 0;
 function test(name, fn) {
@@ -524,13 +526,20 @@ const FOLDED_BY_THE_HANDLER = {
 
 // Fields only a person is offered: the handler reads them, and the model's
 // tool definition leaves them out on purpose (who may see a roll or a quest,
-// which handout to take down, an uploaded picture no prompt names).
+// which handout to take down, an uploaded picture no prompt names, a
+// legendary option played whole in one call: the console's dispatch reads its
+// characters, enemy rows, square and spell in src/lib/dm/legendary-play.ts;
+// the model names one target, and makes a move, a jump or a spell with the
+// call its `next` names).
 const FOR_A_PERSON_ONLY = {
   request_roll: ["visibility"],
+  legendary_action: ["characterIds", "enemyIds", "x", "y", "spell"],
   set_quest: ["visibility"],
   dismiss_handout: ["handoutId"],
   show_handout: ["imagePath"],
   add_companion: ["background", "skills"],
+  // The console's Kind picker; the storyteller names the kind in variant.
+  cast_buff: ["kind"],
 };
 
 // A tool that takes a declaration's parts as a list (pc_attack's attacks,
@@ -1237,6 +1246,32 @@ test("the console's enemy lines carry an invented foe's challenge rating, a resk
     { monster: "goblin", count: 1, returning: "e1" },
     { monster: "Bog Thing", count: 1, cr: 3, name: "The Bog" },
   ]);
+});
+
+test("cast_buff's form picks a summoning's kind and each target's form from the catalogue, never typed (issue 685)", () => {
+  const entry = adjudication("cast_buff");
+  const kind = entry.fields.find((field) => field.name === "kind");
+  const mix = entry.fields.find((field) => field.name === "mix");
+  assert.equal(kind?.kind, "summonKind", "Find Steed's kind is a pick, not a word in Another choice");
+  assert.equal(mix?.kind, "summonMix", "Animate Dead's bones and corpses are steppers");
+  assert.equal(kind.host?.feature, "summonPicker");
+  assert.equal(mix.host?.feature, "summonPicker");
+  assert.equal(checkArgs(entry, { characterId: "c1", spell: "Animate Dead", mix: [{ variant: "Skeleton", count: 2 }] }), null);
+  assert.match(checkArgs(entry, { characterId: "c1", spell: "Animate Dead", mix: ["two skeletons"] }) ?? "", /list of rows/);
+  const familiar = adjudication("summon_pet").fields.find((field) => field.name === "creatureType");
+  assert.deepEqual(familiar?.options.map((option) => option.value), ["celestial", "fey", "fiend"]);
+  assert.deepEqual(familiar?.onlyWhen, { field: "kind", equals: ["familiar"] });
+  // Summon a pet's Creature is a pick over what the engine takes; an older
+  // host keeps the text box it had.
+  const creature = adjudication("summon_pet").fields.find((field) => field.name === "form");
+  assert.equal(creature?.kind, "petForm");
+  assert.equal(creature.host?.feature, "summonPicker");
+  assert.equal(creature.host?.older?.kind, "text");
+  assert.equal(consoleSummonShown("summonKind", summonCatalogue(summonSpellFor("Find Steed"))), true);
+  assert.equal(consoleSummonShown("summonKind", summonCatalogue(summonSpellFor("Conjure Animals"))), false, "no kind to pick");
+  assert.equal(consoleSummonShown("summonMix", summonCatalogue(summonSpellFor("Animate Dead"))), true);
+  assert.equal(consoleSummonShown("summonMix", null), false, "no spell named yet");
+  assert.deepEqual(mixRecord([{ variant: "Skeleton", count: 2 }]), { Skeleton: 2 });
 });
 
 console.log(`invoke-catalog: ${passed} tests passed`);

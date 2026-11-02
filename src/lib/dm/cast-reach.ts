@@ -1,6 +1,9 @@
 // Whether a spell reaches its target on a mapped fight: its range, and a
 // clear line to the target (a creature behind total cover cannot be
 // targeted, SRD 5.1 Cover and Spellcasting, "A Clear Path to the Target").
+// A swallowed creature's total cover holds with or without a board: nothing
+// outside its swallower reaches it, and it reaches nothing outside
+// (swallow.ts).
 //
 // Reads the live board through attack-spatial.ts. With no map, or a token
 // off it, there is nothing to measure and the answer is "it reaches"
@@ -17,6 +20,7 @@ import type { AttackProfile } from "@/lib/dm/attack-logic";
 import { tilesBetween, wallBetween } from "@/lib/dm/attack-spatial";
 import { spellWard } from "@/lib/dm/zone-rules";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
+import { swallowCoverBetween } from "@/lib/dm/swallow";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { SpellFacts } from "@/lib/srd/spell-facts";
 import type { ToolError } from "@/lib/dm/tool-errors";
@@ -46,6 +50,13 @@ export function spellReachProblem(input: {
   targetName: string;
   facts: SpellFacts | null;
 }): ToolError | null {
+  // Asked of every spell that names its target, heal and cast_buff among
+  // them: a Cure Wounds by touch from outside reached a hero inside a purple
+  // worm, and a cleric inside healed an ally outside with Healing Word.
+  const inside = input.casterId === input.targetId ? null : swallowCoverBetween(input.casterId, input.targetId);
+  if (inside) {
+    return { error: `${inside} Nothing was spent.`, refused: "rules" };
+  }
   const { facts } = input;
   if (!facts) {
     return null;

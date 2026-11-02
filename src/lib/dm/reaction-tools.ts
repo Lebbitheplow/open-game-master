@@ -39,11 +39,12 @@ import { devotedGuard } from "@/lib/dm/devoted-guard";
 import { reactionTimingOf, timingOfDoes, type ReactionTiming } from "@/lib/dm/reaction-kinds";
 import { authoredReactionNamed, heldReaction } from "@/lib/srd/authored-effects";
 import { removeConditions } from "@/lib/dm/condition-logic";
-import { attackerFoeId, freshLastHit, heaviestHit, rerollAttacker, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
+import { attackerFoeId, freshLastHit, heaviestHit, heaviestRaw, hitIdOf, openHitAimed, openHits, reactedLate, rerollAttacker, withHitAim, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import type { RollAttacker } from "@/lib/db/rolls";
 import { rollAgainst } from "@/lib/roll-labels";
 import { opportunity, reactionSpell } from "@/lib/dm/reaction-spells";
 import { settleLastHit } from "@/lib/dm/reaction-refund";
+import { asReaction, lateReaction } from "@/lib/dm/held-turn";
 import { authoredReaction } from "@/lib/dm/authored-reactions";
 import { freeAuthoredReaction } from "@/lib/dm/authored-reactions-more";
 import { srdFeatureReaction } from "@/lib/dm/srd-reactions";
@@ -55,6 +56,7 @@ import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { PRONE } from "@/lib/dm/vitals-logic";
 import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
+import { swallowCoverBetween, swallowCoverError } from "@/lib/dm/swallow";
 import { engineFeatNamed } from "@/lib/srd/feat-effects";
 import { isPublishedFeatureName } from "@/lib/srd/features";
 import { holdsFeature, isNamed } from "@/lib/srd/feature-names";
@@ -73,6 +75,10 @@ const useReactionSchema = z.object({
   // the square on the battle map.
   x: z.coerce.number().int().min(0).optional(),
   y: z.coerce.number().int().min(0).optional(),
+  // The hit it answers when a character has several open (issue 685): the
+  // hit's id from GAME STATE or the Hand's card, or the enemyId of the
+  // creature that made it.
+  hit: z.string().trim().max(120).optional(),
   reason: z.string().optional(),
 });
 
@@ -124,8 +130,9 @@ function uncannyDodge(ctx: Ctx): ToolResult {
   if (classLevelFor(sheet, "rogue") < 5 && !holdsFeature(sheet, "uncanny dodge")) {
     return { error: `${sheet.name} does not have Uncanny Dodge (a rogue's feature from 5th level). Nothing was spent.`, refused: "rules" };
   }
-  const record = freshLastHit(campaign.id, sheet.id);
-  const index = record && record.source === "attack" && !record.answered.includes("uncanny dodge") ? heaviestHit(record.swings) : -1;
+  // Unnamed, the heaviest blow among the open hits: the one halving helps most.
+  const record = freshLastHit(campaign.id, sheet.id, (hit) => hit.source === "attack" && !hit.answered.includes("uncanny dodge") && heaviestHit(hit.swings) >= 0, (hit) => heaviestRaw(hit));
+  const index = record ? heaviestHit(record.swings) : -1;
   if (!record || index < 0) {
     return noHit(sheet.name, "Uncanny Dodge");
   }
@@ -149,11 +156,14 @@ function deflectMissiles(ctx: Ctx): ToolResult {
   if (monk < 3 && !holdsFeature(sheet, "deflect missiles")) {
     return { error: `${sheet.name} does not have Deflect Missiles (a monk's feature from 3rd level). Nothing was spent.`, refused: "rules" };
   }
-  const record = freshLastHit(campaign.id, sheet.id);
-  const index =
-    record && record.source === "attack" && !record.answered.includes("deflect missiles")
-      ? heaviestHit(record.swings, (swing) => swing.ranged ?? record.ranged)
-      : -1;
+  const ranged = (hit: LastHit) => (swing: SwingRecord) => swing.ranged ?? hit.ranged;
+  const record = freshLastHit(
+    campaign.id,
+    sheet.id,
+    (hit) => hit.source === "attack" && !hit.answered.includes("deflect missiles") && heaviestHit(hit.swings, ranged(hit)) >= 0,
+    (hit) => heaviestRaw(hit, ranged(hit)),
+  );
+  const index = record ? heaviestHit(record.swings, ranged(record)) : -1;
   if (!record || index < 0) {
     return noHit(sheet.name, "Deflect Missiles", "a ranged weapon attack that hit them");
   }
@@ -191,6 +201,11 @@ function throwBack(ctx: Ctx, record: LastHit, monkLevel: number): Record<string,
   const enemy = encounter && ctx.args.targetEnemyId ? resolveTargetFoe(encounter.campaignId, encounter, ctx.args.targetEnemyId) : null;
   if (!encounter || !enemy || enemy.status !== "alive") {
     return { error: "The missile can be thrown back at a living enemy from GAME STATE; it was caught and kept." };
+  }
+  // Not across a swallower's wall (swallow.ts).
+  const walled = swallowCoverBetween(sheet.id, enemy.id);
+  if (walled) {
+    return { error: `${walled} The missile was caught and kept.` };
   }
   const apart = tilesBetween(encounter.id, sheet.id, enemy.id);
   if (apart !== null && apart > 12) {
@@ -236,13 +251,15 @@ function cuttingWords(ctx: Ctx): ToolResult {
     return { error: `${sheet.name} has no Bardic Inspiration left to spend on Cutting Words. Nothing was spent.`, refused: "rules" };
   }
   const target = allyOf(ctx) ?? sheet;
-  const record = freshLastHit(campaign.id, target.id);
   // The hit the prompt names (heaviestHit): the die once went off a
   // multiattack's last hit while the card offered its heaviest.
-  const index =
-    record && record.source === "attack" && attackerFoeId(record) !== null && !record.answered.includes("cutting words")
-      ? heaviestHit(record.swings)
-      : -1;
+  const record = freshLastHit(
+    campaign.id,
+    target.id,
+    (hit) => hit.source === "attack" && attackerFoeId(hit) !== null && !hit.answered.includes("cutting words") && heaviestHit(hit.swings) >= 0,
+    (hit) => heaviestRaw(hit),
+  );
+  const index = record ? heaviestHit(record.swings) : -1;
   if (!record || index < 0) {
     return noHit(target.name, "Cutting Words", `an attack that hit ${target.name}`);
   }
@@ -253,6 +270,11 @@ function cuttingWords(ctx: Ctx): ToolResult {
       error: `${record.attacker.name} is ${apart * 5} ft from ${sheet.name}; Cutting Words reaches a creature within 60 ft. Nothing was spent.`,
       refused: "rules",
     };
+  }
+  // The words reach no creature across a swallower's wall (swallow.ts).
+  const walled = record.attacker.id ? swallowCoverError(sheet.id, record.attacker.id) : null;
+  if (walled) {
+    return walled;
   }
   spendReaction(ctx);
   const spentPool = patchSheet(sheet.id, {
@@ -301,17 +323,22 @@ function protection(ctx: Ctx): ToolResult {
       refused: "rules",
     };
   }
+  // A shield does not reach across a swallower's wall (swallow.ts).
+  const walled = swallowCoverError(sheet.id, ally.id);
+  if (walled) {
+    return walled;
+  }
   spendReaction(ctx);
   addSheetCondition(campaign, ally, "protected", { untilTurnOf: sheet.id });
   // The attack that called for it, already rolled: rolled again at
   // disadvantage. A straight roll takes the lower of its die and a new one;
   // a roll with advantage becomes a straight one (its first die); one
   // already at disadvantage is unchanged.
-  const record = freshLastHit(campaign.id, ally.id);
   // The hit the prompt names (heaviestHit), not the routine's first swing:
   // after a multiattack whose first swing missed, Protection rolled nothing
   // again and the hit that landed stood.
-  const index = record && record.source === "attack" && !record.answered.includes("protection") ? heaviestHit(record.swings) : -1;
+  const record = freshLastHit(campaign.id, ally.id, (hit) => hit.source === "attack" && !hit.answered.includes("protection") && heaviestHit(hit.swings) >= 0, (hit) => heaviestRaw(hit));
+  const index = record ? heaviestHit(record.swings) : -1;
   const first = record && index >= 0 ? record.swings[index] : null;
   let reread = "";
   if (record && first?.hit && first.natural !== null && first.faces.length) {
@@ -342,8 +369,8 @@ function protection(ctx: Ctx): ToolResult {
 // monk's level, Feather Fall all of it. Taking none of it means landing on
 // their feet.
 export function softenFall(ctx: Ctx, target: CharacterSheet, label: string, reduction: number | "all") {
-  const record = freshLastHit(ctx.campaign.id, target.id);
-  if (!record || record.source !== "fall" || record.answered.includes(label)) {
+  const record = freshLastHit(ctx.campaign.id, target.id, (hit) => hit.source === "fall" && !hit.answered.includes(label));
+  if (!record) {
     return null;
   }
   const corrected = record.swings.map((swing) => ({
@@ -370,8 +397,8 @@ function slowFall(ctx: Ctx): ToolResult {
   if (monk < 4 && !holdsFeature(sheet, "slow fall")) {
     return { error: `${sheet.name} does not have Slow Fall (a monk's feature from 4th level). Nothing was spent.`, refused: "rules" };
   }
-  const record = freshLastHit(ctx.campaign.id, sheet.id);
-  if (!record || record.source !== "fall") {
+  const record = freshLastHit(ctx.campaign.id, sheet.id, (hit) => hit.source === "fall");
+  if (!record) {
     return noFall(sheet.name, "Slow Fall");
   }
   spendReaction(ctx);
@@ -413,6 +440,21 @@ function timingOfUseReaction(
   return reactionTimingOf(feature);
 }
 
+// The reactions that answer a hit on the reactor alone (SRD 5.1: Uncanny
+// Dodge "an attack against you", Deflect Missiles, Slow Fall, Shield,
+// Hellish Rebuke; Parry and Riposte, the Battle Master's own; Absorb
+// Elements). Cutting Words, Protection, Feather Fall and the authored
+// reactions for an ally take another's hit.
+function answersOwnHitOnly(campaign: Campaign, feature: string): boolean {
+  const name = feature.trim();
+  if (isNamed(name, "uncanny dodge", "deflect missiles", "deflect missile", "slow fall", "parry", "riposte")) {
+    return true;
+  }
+  const authors = spellAuthorsFor(campaign);
+  const spell = spellFactsFor(name, authors);
+  return spell?.castingTime === "reaction" && isNamed(spellEngineName(spell.name, authors), "shield", "absorb elements", "hellish rebuke");
+}
+
 export function handleUseReaction(
   campaign: Campaign,
   turn: DmTurn,
@@ -431,6 +473,52 @@ export function handleUseReaction(
   if (!sheet) {
     return unknownSheetRef("characterId", args.characterId, sheets);
   }
+  // The hit it answers, when the call names one (issue 685): it must still be
+  // open, or the reaction would quietly answer another. A hit on someone
+  // else names the ally a reaction for one is taken for (Cutting Words,
+  // Protection) when the call left that out.
+  if (args.hit) {
+    const own = openHitAimed(campaign.id, args.hit, sheet.id);
+    const aimed = own ?? openHitAimed(campaign.id, args.hit);
+    if (!aimed) {
+      return {
+        error: `No attack still open to a reaction matches hit "${args.hit}": it has been answered, its moment to answer has passed, or that creature made none. Nothing was spent.`,
+        refused: "rules",
+      };
+    }
+    // A reaction for the reactor alone answers only a hit on them: Uncanny
+    // Dodge sent with an ally's hit once halved one of the rogue's own hits
+    // in its place, quietly. The call is sent back with the reactor's own.
+    if (!own && answersOwnHitOnly(campaign, args.feature)) {
+      const mine = openHits(campaign.id, sheet.id);
+      const holder = getSheetById(aimed.characterId)?.name ?? "another character";
+      const listed = mine.map((record) => `hit "${hitIdOf(record)}" (${record.attacker.name}'s ${record.attack})`).join(", ");
+      return mine.length
+        ? { error: `Hit "${args.hit}" is on ${holder}, and ${args.feature.trim()} answers a hit on ${sheet.name}. ${sheet.name}'s open hits: ${listed}. Send one of those as hit. Nothing was spent.`, retry: true }
+        : { error: `Hit "${args.hit}" is on ${holder}, and ${args.feature.trim()} answers a hit on ${sheet.name}, who has none open. Nothing was spent.`, refused: "rules" };
+    }
+    if (!own && !args.targetCharacterId) {
+      args = { ...args, targetCharacterId: aimed.characterId };
+    }
+  }
+  const aimedArgs = args;
+  const result = withHitAim(args.hit, () => asReaction(sheet.id, () => useReaction(campaign, turn, sheet, aimedArgs, sheets, sheetsById)));
+  // Taken against the enemies' pass after the engine began the reactor's
+  // turn: it belongs before that turn (src/lib/dm/held-turn.ts).
+  if (!("error" in result) && lateReaction(campaign, sheet.id)) {
+    return { ...result, turnBegun: `${sheet.name}'s turn has begun since those attacks: the reaction comes back with it, and what lasts until the start of it has ended.` };
+  }
+  return result;
+}
+
+function useReaction(
+  campaign: Campaign,
+  turn: DmTurn,
+  sheet: CharacterSheet,
+  args: Args,
+  sheets: CharacterSheet[],
+  sheetsById: Map<string, CharacterSheet>,
+): ToolResult {
   const encounter = getActiveEncounter(campaign.id);
   const feature = args.feature.trim();
   const refused = reactionRefusal(campaign.id, sheet, encounter, feature, timingOfUseReaction(campaign, sheet, args, sheets, sheetsById));
@@ -454,7 +542,7 @@ export function handleUseReaction(
   // acting combatant's turn budget. Both sides of the table share
   // encounter.reactionsUsed; a combatant's entry leaves it as their own turn
   // starts (advancePointer).
-  if (encounter?.reactionsUsed.includes(sheet.id)) {
+  if (encounter && (encounter.reactionsUsed.includes(sheet.id) || reactedLate(campaign.id, encounter, sheet.id))) {
     return {
       error: `${sheet.name} has already used their reaction; it comes back at the start of their next turn. ${feature} does not happen.`,
       refused: "rules",

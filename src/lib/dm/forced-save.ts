@@ -293,6 +293,8 @@ export function rollCharacterSave(
   const versus = authoredSaveDieVs(sheet, sheet.id, from ? { conditions: from.conditions, meta: from.conditionMeta as Record<string, { source?: string }> } : null);
   const outcome = rollExpression(
     `${resolved.expression}${versus ? `+${versus.die}` : ""}${shieldSave ? `+${shieldSave}` : ""}${covered ? `+${covered}` : ""}${extra?.die ? `+${extra.die}` : ""}`,
+    undefined,
+    { purpose: { roller: "hero", kind: "save", who: sheet.name } },
   );
   // A floor under the d20 (Starry Form's dragon: a 9 or lower counts as 10).
   if (extra?.floor && outcome.natural !== undefined && outcome.natural < extra.floor) {
@@ -443,6 +445,8 @@ export function rollEnemySave(
   ]);
   const outcome = rollExpression(
     `${d20Expression(saveModFor(enemy.stats, ability) + effect.bonus + covered, advantage)}${riders.diceSuffix}`,
+    undefined,
+    { purpose: { roller: "enemy", kind: "save", who: enemy.displayName } },
   );
   if (options.record) {
     const roll = insertRoll({

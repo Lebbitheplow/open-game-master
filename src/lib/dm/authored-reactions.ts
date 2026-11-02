@@ -41,6 +41,7 @@ import { resolveMoreReaction } from "@/lib/dm/authored-reactions-more";
 import { projectWard } from "@/lib/dm/arcane-ward";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { noneNamed, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { swallowCoverError } from "@/lib/dm/swallow";
 import { spentSlotRefusal } from "@/lib/dm/cast-rules";
 import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
@@ -102,8 +103,14 @@ function heaviest(swings: SwingRecord[], which: (swing: SwingRecord) => boolean 
 }
 
 function lastHitOn(ctx: Ctx, target: CharacterSheet, label: string): { record: LastHit; index: number } | ToolError {
-  const record = freshLastHit(ctx.campaign.id, target.id);
-  const index = record && record.source === "attack" && !record.answered.includes(label) ? heaviest(record.swings) : -1;
+  // Of several open hits, the heaviest blow it can still answer.
+  const record = freshLastHit(
+    ctx.campaign.id,
+    target.id,
+    (hit) => hit.source === "attack" && !hit.answered.includes(label) && heaviest(hit.swings) >= 0,
+    (hit) => hit.swings[heaviest(hit.swings)]?.raw ?? -1,
+  );
+  const index = record ? heaviest(record.swings) : -1;
   if (!record || index < 0) {
     return noHit(target.name, label);
   }
@@ -190,6 +197,15 @@ export function authoredReaction(ctx: Ctx): ToolResult | null {
       const updated = patchSheet(now.id, { resources: { ...now.resources, [pool.id]: { max: current.max, used: current.used + amount } } });
       if (updated) publishPersisted(ctx.campaign.id, "sheet_updated", { sheet: updated });
     };
+  }
+  // The ally it covers and the creature it answers are both across no
+  // swallower's wall (swallow.ts).
+  const ally = allyOf(ctx);
+  const walled =
+    (ally ? swallowCoverError(ctx.sheet.id, ally.id) : null) ??
+    (ctx.args.targetEnemyId ? swallowCoverError(ctx.sheet.id, ctx.args.targetEnemyId.trim()) : null);
+  if (walled) {
+    return walled;
   }
   const outcome = resolve(ctx, found);
   if ("error" in outcome) {
@@ -334,8 +350,8 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (encounter && !withinFeet(encounter.id, ctx.sheet.id, ally.id, feet)) {
         return { error: `${ally.name} is beyond ${feet} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
       }
-      const record = freshLastHit(ctx.campaign.id, ally.id);
-      if (!record || record.source !== "attack" || record.answered.includes(label) || !record.swings.some((swing) => swing.hit)) {
+      const record = freshLastHit(ctx.campaign.id, ally.id, (hit) => hit.source === "attack" && !hit.answered.includes(label) && hit.swings.some((swing) => swing.hit));
+      if (!record) {
         return noHit(ally.name, reaction.name, `an attack that hit ${ally.name}`);
       }
       const raw = record.swings.filter((swing) => swing.hit).reduce((sum, swing) => sum + swing.raw, 0);
@@ -359,7 +375,8 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       };
     }
     case "strike_back": {
-      const record = freshLastHit(ctx.campaign.id, ctx.sheet.id);
+      // The open hit by the creature named, when one is.
+      const record = freshLastHit(ctx.campaign.id, ctx.sheet.id, (hit) => !ctx.args.targetEnemyId || hit.attacker.id === ctx.args.targetEnemyId) ?? freshLastHit(ctx.campaign.id, ctx.sheet.id);
       const enemy = enemyTarget(ctx, attackerFoeId(record));
       if (!enemy || !encounter) {
         return { error: `${reaction.name} strikes a creature in the fight: pass targetEnemyId. Nothing was spent.`, retry: true };
@@ -430,7 +447,7 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       return { attack: result };
     }
     case "save_condition": {
-      const record = freshLastHit(ctx.campaign.id, ctx.sheet.id);
+      const record = freshLastHit(ctx.campaign.id, ctx.sheet.id, (hit) => !ctx.args.targetEnemyId || hit.attacker.id === ctx.args.targetEnemyId) ?? freshLastHit(ctx.campaign.id, ctx.sheet.id);
       const enemy = enemyTarget(ctx, attackerFoeId(record));
       if (!enemy || !encounter) {
         return { error: `${reaction.name} answers a creature in the fight: pass targetEnemyId. Nothing was spent.`, retry: true };

@@ -1,3 +1,4 @@
+import { parseFightSetup, portableSetup } from "@/lib/workshop/fight-setup-logic";
 import { createHash } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -466,9 +467,9 @@ function writeBundleRows(
       const id = crypto.randomUUID();
       db.prepare(
         `INSERT INTO encounter_templates
-           (id, campaign_id, name, enemies_json, battlefield, map_json, notes, extras_json,
+           (id, campaign_id, name, enemies_json, battlefield, map_json, notes, extras_json, setup_json,
             created_by_user_id, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ).run(
         id,
         workshop.id,
@@ -478,6 +479,12 @@ function writeBundleRows(
         JSON.stringify(map),
         encounter.notes,
         JSON.stringify(normalizeTemplateExtras(encounter.extras, Math.min(slots, EXTRAS_LIMITS.slots))),
+        // A bundle exported before set-ups travelled without their party
+        // still carries its author's character ids and names: they stay out.
+        (() => {
+          const setup = parseFightSetup(encounter.setup);
+          return setup ? JSON.stringify(portableSetup(setup)) : "";
+        })(),
         userId,
         now,
         now,

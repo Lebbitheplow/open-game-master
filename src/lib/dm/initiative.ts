@@ -161,6 +161,9 @@ export function resetInitiative(campaign: Campaign): InitiativeResult {
   // what that pass left for after them (issue 713).
   delete encounter.legendary.due;
   delete encounter.legendary.rest;
+  // So does a turn held for them (src/lib/dm/held-turn.ts).
+  delete encounter.legendary.turnStart;
+  delete encounter.legendary.lateReacted;
   saveEncounter(encounter);
   // The initiative floor named an order that no longer exists, so the table
   // goes back to open until the new one locks.

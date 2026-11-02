@@ -10,7 +10,8 @@ import { SectionHead } from "@/components/ui/SectionHead";
 import { ActionPlate, CloseForm, DeskCard, adjudicationGlyph } from "@/app/campaigns/[campaignId]/DmConsoleParts";
 import { CommandPalette, type PaletteCommand } from "@/components/CommandPalette";
 import { consoleAdjudications, type AdjudicationCategory } from "@/lib/dm/invoke-catalog";
-import { offersImages, useCapabilities } from "@/lib/use-capabilities";
+import { hostOffers, offersImages, useCapabilities } from "@/lib/use-capabilities";
+import { QueuedAction, useResolvableCards } from "@/app/campaigns/[campaignId]/DmQueuedAction";
 import { DmActionForm } from "@/app/campaigns/[campaignId]/DmActionForm";
 import { DmBeatComposer } from "@/app/campaigns/[campaignId]/DmBeatComposer";
 import { DmDelegationPanel } from "@/app/campaigns/[campaignId]/DmDelegationPanel";
@@ -224,17 +225,22 @@ export function DmConsolePanel({
     () => new Map(messages.map((message) => [message.id, message])),
     [messages],
   );
+  // A card the GM resolved as played is answered (issue 685).
   const queue = useMemo(
     () =>
       intents
-        .map((intent) => ({
-          intent,
-          message: messagesById.get(intent.messageId) ?? null,
-          name: sheetsById.get(intent.characterId)?.name ?? "Someone",
-        }))
-        .filter((row) => row.message)
+        .flatMap((intent) => {
+          const message = messagesById.get(intent.messageId);
+          return message && !message.cardResolvedAt ? [{ intent, message, name: sheetsById.get(intent.characterId)?.name ?? "Someone" }] : [];
+        })
         .sort((a, b) => a.intent.seq - b.intent.seq),
     [intents, messagesById, sheetsById],
+  );
+  const resolvable = useResolvableCards(
+    campaignId,
+    queue.filter((row) => row.message.intent).map((row) => row.message.id),
+    encounter?.id ?? "",
+    hostOffers(capabilities, "resolveAsPlayed"),
   );
 
   const active = groups.find((group) => group.category === category) ?? null;
@@ -366,20 +372,17 @@ export function DmConsolePanel({
                 key={intent.messageId}
                 className="rounded-lg border border-amber-500/20 bg-stone-950/50 px-2.5 py-2"
               >
-                <p className="font-display text-[11px] tracking-[0.12em] text-amber-200/90">{name}</p>
-                <p className="whitespace-pre-wrap text-sm text-stone-200">{message?.content}</p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAssistIntent(message?.content ?? "");
+                <QueuedAction
+                  campaignId={campaignId}
+                  name={name}
+                  message={message}
+                  resolvable={resolvable.has(message.id)}
+                  onAsk={(words) => {
+                    setAssistIntent(words);
                     setCategory("assist");
                     setOpenAction("");
                   }}
-                  className={cn(ui.btnSmall, "mt-1.5 min-h-9 px-2 py-1 text-xs")}
-                >
-                  <GameIcon icon={{ kind: "glyph", key: "die-d20" }} size="size-5" />
-                  What should I press?
-                </button>
+                />
               </li>
             ))}
           </ul>

@@ -5,7 +5,7 @@ import type { RollKind, RollVisibility } from "@/lib/db/rolls";
 import type { ContextTrace } from "@/lib/dm/context-budget";
 import { parkReasonFor, type ParkReason } from "@/lib/dice/held-rolls";
 import { writeTurnQuality } from "@/lib/db/turn-ledger";
-import { releaseStandIn, standInFor } from "@/lib/dm/job-control";
+import { currentTurnId, releaseStandIn, standInFor } from "@/lib/dm/job-control";
 import type { GuardReport } from "@/lib/narrator-quality";
 
 // A DM narration turn persisted as a state machine so it can park while a
@@ -14,8 +14,10 @@ import type { GuardReport } from "@/lib/narrator-quality";
 export type DmTurnStatus = "running" | "awaiting_rolls" | "done" | "failed";
 
 // Who is driving the turn. A human turn exists only so the engine has
-// somewhere to hang rolls and per-turn bookkeeping; it holds no
-// conversation and is never handed to the model.
+// somewhere to hang rolls and per-turn bookkeeping, and is never handed to
+// the model. It holds no conversation, except at a test fight, where each
+// call the person makes is kept on it for the author's turn trace
+// (src/lib/dm/invoke.ts, issue 685).
 export type DmTurnActor = "ai" | "human_dm";
 
 export type DmTurn = {
@@ -45,6 +47,9 @@ export type DmTurn = {
   contextTrace: ContextTrace | null;
   createdAt: string;
   updatedAt: string;
+  // When the lead reverted the turn (markDmTurnReverted). Absent on a turn
+  // that stands.
+  revertedAt?: string;
   // What the narration guard did, set on the turn in hand just before it
   // ends (src/lib/dm/turn.ts) and written to its turn_quality row (issue
   // #460). Not a column of dm_turns: a turn read back carries none, and its
@@ -71,6 +76,7 @@ type TurnRow = {
   context_trace_json: string | null;
   created_at: string;
   updated_at: string;
+  reverted_at?: string | null;
 };
 
 function mapTurn(row: TurnRow): DmTurn {
@@ -96,7 +102,16 @@ function mapTurn(row: TurnRow): DmTurn {
     contextTrace: parseJson<ContextTrace | null>(row.context_trace_json, null),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    ...(row.reverted_at ? { revertedAt: row.reverted_at } : {}),
   };
+}
+
+// The lead reverted the turn (src/app/api/campaigns/[campaignId]/audit/
+// revert-turn): the turn trace reads it as taken back, and the stand-in
+// turns opened inside it with it, whose rolls were its own. Its own column,
+// never written by saveDmTurn, so a turn still in hand cannot write it away.
+export function markDmTurnReverted(turnId: string) {
+  getDatabase().prepare(`UPDATE dm_turns SET reverted_at = ? WHERE id = ? OR owner_turn_id = ?`).run(nowIso(), turnId, turnId);
 }
 
 export function createDmTurn(
@@ -129,6 +144,12 @@ export function createDmTurn(
 export function openStandInTurn(campaignId: string): DmTurn {
   const turn = createDmTurn(campaignId, [], "human_dm");
   standInFor(turn.id);
+  // Which turn it stands in for, kept on its row so that turn's revert can
+  // mark it (markDmTurnReverted).
+  const owner = currentTurnId();
+  if (owner) {
+    getDatabase().prepare(`UPDATE dm_turns SET owner_turn_id = ? WHERE id = ?`).run(owner, turn.id);
+  }
   return turn;
 }
 

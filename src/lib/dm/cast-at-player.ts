@@ -37,6 +37,10 @@ import { outOfReach } from "@/lib/dm/spell-planes";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { saveAgainst } from "@/lib/dm/roll-about";
+import { swallowCover } from "@/lib/dm/swallow";
+import { openLastHit } from "@/lib/dm/last-hit";
+import { tieToTurn } from "@/lib/dm/turn-tie";
+import { isConditionNamed, isNamed } from "@/lib/srd/feature-names";
 
 // cast_at_player: a save forced on ONE character, by an enemy's spell or
 // ability or by a hazard (SRD 5.1, Saving Throws). The mirror of
@@ -162,6 +166,18 @@ export function layEnemyCondition(
   // damage"), else its condition. Marked on the instance this enemy laid,
   // after the condition went on the ordinary way, so a sleep that is not
   // magic stays one Fey Ancestry does not turn.
+  // "Until the end of the mummy lord's next turn": tied to that turn, the
+  // target's or the creature's (turn-tie.ts), not counted as a round.
+  if (use?.until && !("error" in applied)) {
+    tieToTurn(
+      campaign,
+      { kind: "sheet", id: sheet.id },
+      condition,
+      use.enemy.id,
+      { edge: use.until.edge, turnOf: use.until.whose === "source" ? use.enemy.id : sheet.id },
+      `${condition} lasts until the ${use.until.edge} of ${use.until.whose === "source" ? `${use.enemy.displayName}'s` : "their"} next turn`,
+    );
+  }
   const laid = [use?.condition, ...(use?.also ?? [])];
   const wakes = condition === "unconscious" || (condition === use?.condition && !laid.includes("unconscious"));
   if (use?.endsOnDamage && wakes && !("error" in applied)) {
@@ -212,6 +228,64 @@ export function layFailedSaveExtras(
   return landed;
 }
 
+// The darts of a spell that hits without a roll or a save, at one character:
+// rolled whole, landed through the damage path, and kept as a hit
+// (last-hit.ts, source "missile") so Shield can answer it. While Shield is
+// up a Magic Missile deals them nothing (SRD 5.1, Shield: "you take no
+// damage from magic missile").
+function autoSpellAtPlayer(
+  campaign: Campaign,
+  turn: DmTurn,
+  sheet: CharacterSheet,
+  use: EnemyUse | null,
+  spell: string,
+  cast: { damage?: string; damageType?: string; source?: string; ward: string | null },
+  sheets: CharacterSheet[],
+  sheetsById: Map<string, CharacterSheet>,
+): ToolResult {
+  if (!cast.damage || !isValidExpression(cast.damage)) {
+    return { error: `${spell} hits without a save: send its damage dice, or cast it from a creature whose block lists it. Nothing was spent.`, retry: true };
+  }
+  use?.commit();
+  const source = (cast.source ?? (use ? `${use.enemy.displayName}'s ${spell}` : spell)).trim() || spell;
+  if (cast.ward) {
+    return { ok: true, target: sheet.name, source, ...castToNoEffect(cast.ward) };
+  }
+  const caster: RollAttacker | null = use ? { kind: "enemy", id: use.enemy.id, name: use.enemy.displayName } : null;
+  const hitLog = openLastHit(campaign.id, sheet.id);
+  const outcome = rollCard(campaign, turn, sheet.id, "damage", rollAgainst(spell, sheet.name), cast.damage, caster);
+  const shielded = isNamed(spell, "magic missile") && (getSheetById(sheet.id) ?? sheet).conditions.some((entry) => isConditionNamed(entry, "shielded"));
+  const dealt = shielded ? 0 : Math.max(0, outcome.total);
+  const applied =
+    dealt > 0
+      ? applyDmMutation(
+          campaign,
+          turn.id,
+          "apply_damage",
+          JSON.stringify({ characterId: sheet.id, amount: dealt, ...(cast.damageType ? { type: cast.damageType } : {}), magical: true, spell, reason: source }),
+          sheets,
+          sheetsById,
+        ).result
+      : {};
+  hitLog.swing(outcome, 0, { hit: dealt > 0, crit: false, raw: dealt, advantage: "none", ...(cast.damageType ? { type: cast.damageType } : {}), ranged: true, attack: spell, flags: { magical: true, spell: true } });
+  hitLog.close({
+    attacker: use ? { kind: "enemy", id: use.enemy.id, name: use.enemy.displayName } : { kind: "hazard", id: null, name: source },
+    attack: spell,
+    type: cast.damageType ?? "force",
+    ranged: true,
+    source: "missile",
+  });
+  return {
+    ...applied,
+    ok: true,
+    target: sheet.name,
+    source,
+    damage: dealt,
+    ...(shielded ? { shield: `Shield is up: ${sheet.name} takes no damage from ${spell}.` } : { note: `${spell} hits without a roll or a save.` }),
+    ...(use?.corrections.length ? { corrected: use.corrections } : {}),
+  };
+}
+
 export function handleCastAtPlayer(
   campaign: Campaign,
   turn: DmTurn,
@@ -249,6 +323,12 @@ export function handleCastAtPlayer(
   if (away) {
     return { error: `${away.error} Nothing was spent.`, retry: true };
   }
+  // Swallowed: total cover against effects from outside (swallow.ts).
+  const casterRef = args.casterEnemyId ? (resolveEnemyRef(getActiveEncounter(campaign.id)?.id ?? "", args.casterEnemyId)?.id ?? args.casterEnemyId) : null;
+  const inside = swallowCover(casterRef ? { kind: "enemy", id: casterRef } : null, { kind: "sheet", id: sheet.id });
+  if (inside) {
+    return { error: `${inside} Nothing was spent.`, retry: true };
+  }
 
   // An enemy caster acts through the enemy guard and its own block: its
   // action (or a legendary action bought for it), the ability's printed save,
@@ -277,6 +357,15 @@ export function handleCastAtPlayer(
     // spell is cast, its use spent, and does nothing to them (zone-rules.ts).
     ward = spellWardOn({ encounterId: prepared.enemy.encounterId, casterId: prepared.enemy.id, targetId: sheet.id, targetName: sheet.name, facts: args.spell ? spellFactsFor(args.spell, spellAuthorsFor(campaign)) : null });
     use = prepared;
+  }
+  // A spell that hits without a roll or a save (Magic Missile, SRD 5.1:
+  // "Each dart hits a creature of your choice"): no save is asked, and the
+  // darts land as one hit kept for Shield to answer. It once asked for a
+  // save the spell does not allow, and nothing kept it for Shield.
+  const castName = use?.name || args.spell;
+  const unsaved = castName && !use?.save && !args.saveAbility ? spellMechanicsFor({ spell: castName, userIds: spellAuthorsFor(campaign) }) : null;
+  if (castName && unsaved?.mech.resolution === "auto") {
+    return autoSpellAtPlayer(campaign, turn, sheet, use, castName, { damage: (use?.fromBlock ? use.damage : undefined) ?? args.damage, damageType: (use?.fromBlock ? use.damageType : undefined) ?? args.damageType ?? unsaved.mech.damageType, source: args.source, ward }, sheets, sheetsById);
   }
   const byBlock = Boolean(use?.fromBlock);
   const ability = (use?.save ?? args.saveAbility) as SaveAbility | undefined;

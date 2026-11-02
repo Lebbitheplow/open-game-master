@@ -24,7 +24,7 @@ export type ClientCapabilities = {
   voice: { enabled: boolean; mode: string; transcribes?: boolean };
   // features arrives from servers newer than 0.31.0 (src/lib/capabilities.ts
   // SERVER_FEATURES); an older host sends none.
-  features?: { companionPortrait?: boolean; keepCompanion?: boolean; companionTraining?: boolean; unknownGear?: boolean; moreExpertise?: boolean; storyHopes?: boolean; builderMulticlass?: boolean; sessions?: boolean; fallenHeroes?: boolean; enemyActions?: boolean; handBlasts?: boolean; handShares?: boolean; agentLinks?: boolean; moveWithAction?: boolean; gmCompanionTurns?: boolean; openRelationships?: boolean; npcRace?: boolean; improvisedActions?: boolean; actionParts?: boolean };
+  features?: { companionPortrait?: boolean; keepCompanion?: boolean; companionTraining?: boolean; unknownGear?: boolean; moreExpertise?: boolean; storyHopes?: boolean; builderMulticlass?: boolean; sessions?: boolean; fallenHeroes?: boolean; enemyActions?: boolean; handBlasts?: boolean; handShares?: boolean; agentLinks?: boolean; moveWithAction?: boolean; gmCompanionTurns?: boolean; openRelationships?: boolean; npcRace?: boolean; improvisedActions?: boolean; actionParts?: boolean; fightSetups?: boolean; turnTrace?: boolean; diceScripts?: boolean; testFightAllies?: boolean; resolveAsPlayed?: boolean; fightEvents?: boolean; fightGround?: boolean; legendaryCards?: boolean; gmDominatedTurns?: boolean; reactionHits?: boolean; companionReactions?: boolean; typedReactions?: boolean; summonPicker?: boolean };
 };
 
 let cached: ClientCapabilities | null = null;

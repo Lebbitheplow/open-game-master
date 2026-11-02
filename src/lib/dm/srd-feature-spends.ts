@@ -41,6 +41,7 @@ import { rollAgainst } from "@/lib/roll-labels";
 import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { spentSlotRefusal } from "@/lib/dm/cast-rules";
 import { textKey } from "@/lib/language/text-logic";
+import { swallowCoverBetween } from "@/lib/dm/swallow";
 
 export type SrdSpendArgs = { variant?: string; targetEnemyId?: string; amount?: number };
 
@@ -190,7 +191,8 @@ function draconicPresence(campaign: Campaign, turnId: string, sheet: CharacterSh
         const feet = feetBetween(encounter.id, sheet.id, enemy.id);
         return feet === null || feet <= 60;
       });
-  const targets = chosen.filter((enemy) => enemy.status === "alive");
+  // A creature across a swallower's wall is out of the presence (swallow.ts).
+  const targets = chosen.filter((enemy) => enemy.status === "alive" && !swallowCoverBetween(sheet.id, enemy.id));
   if (!targets.length) {
     return { error: "No living creature of the sorcerer's choice stands within 60 feet. Nothing was spent.", refused: "rules" };
   }

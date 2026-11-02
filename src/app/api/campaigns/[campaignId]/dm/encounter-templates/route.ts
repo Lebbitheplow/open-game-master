@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { isErrorResponse, requirePrepAuthority } from "@/lib/campaign-api";
-import { insertEncounterTemplate, listEncounterTemplates } from "@/lib/db/encounter-templates";
+import { getTemplateSetup, insertEncounterTemplate, listEncounterTemplates } from "@/lib/db/encounter-templates";
+import { describeFightSetup } from "@/lib/workshop/fight-setup-logic";
 import {
   checkRoster,
   normalizeTemplateExtras,
@@ -12,6 +13,8 @@ import {
   TEMPLATE_NOTES_MAX,
 } from "@/lib/dm/encounter-template-logic";
 import { templateDifficulty } from "@/lib/dm/encounter-templates";
+import { EVENTS_REFUSAL, EXTRAS_INPUT, eventsUnreadable } from "@/lib/dm/fight-event-logic";
+import { fitPlanToMap } from "@/lib/dm/fight-ground";
 import { getPreparedMap } from "@/lib/db/prepared-maps";
 import { MAP_THEMES } from "@/lib/battlemap/generate";
 import { sceneIds } from "@/lib/ambience/catalog";
@@ -31,20 +34,30 @@ const bodySchema = z.object({
   map: z.unknown().optional(),
   // Placements, hidden slots, overrides, rewards and phases, cleaned
   // against the roster by the pure normalizer.
-  extras: z.unknown().optional(),
+  // Its events are checked here (fight-event-logic.ts): an action of a
+  // kind no event has, a die or a result, is refused, not dropped.
+  extras: EXTRAS_INPUT.optional(),
 });
 
 // Each template carries its difficulty readout, computed fresh: the party
 // levels up between the prep and the session, and a saved verdict would go
-// quietly stale.
+// quietly stale. And the set-up a test of it saved, in words (issue 685):
+// null for none.
 function withReadout(
   campaign: Parameters<typeof templateDifficulty>[0],
   templates: ReturnType<typeof listEncounterTemplates>,
 ) {
-  return templates.map((template) => ({
-    ...template,
-    readout: templateDifficulty(campaign, template.enemies),
-  }));
+  return templates.map((template) => {
+    const setup = getTemplateSetup(template.id);
+    return {
+      ...template,
+      readout: templateDifficulty(campaign, template.enemies),
+      setup: setup ? describeFightSetup(setup) : null,
+      // A party from another table is no party a test here can seat again
+      // (fight-setup-logic.ts portableSetup): the Test sheet offers none.
+      setupParty: setup && setup.party.kind !== "elsewhere" ? setup.party : null,
+    };
+  });
 }
 
 export async function GET(
@@ -70,9 +83,13 @@ export async function POST(
   if (isErrorResponse(context)) {
     return context;
   }
-  const parsed = bodySchema.safeParse(await request.json().catch(() => ({})));
+  const body: unknown = await request.json().catch(() => ({}));
+  const parsed = bodySchema.safeParse(body);
   if (!parsed.success) {
-    return Response.json({ error: "A prepared encounter needs a name and a roster." }, { status: 400 });
+    return Response.json(
+      { error: eventsUnreadable(body) ? EVENTS_REFUSAL : "A prepared encounter needs a name and a roster." },
+      { status: 400 },
+    );
   }
   const roster = checkRoster(parseRoster(parsed.data.enemies));
   if ("error" in roster) {
@@ -94,7 +111,7 @@ export async function POST(
     battlefield: parsed.data.battlefield,
     map,
     notes: parsed.data.notes,
-    extras: normalizeTemplateExtras(parsed.data.extras, rosterSize(roster.rows)),
+    extras: fitPlanToMap(campaignId, normalizeTemplateExtras(parsed.data.extras, rosterSize(roster.rows)), map.mapId),
     createdByUserId: context.user.id,
   });
   return Response.json(

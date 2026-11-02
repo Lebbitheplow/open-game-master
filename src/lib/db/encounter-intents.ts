@@ -1,9 +1,10 @@
 import { getDatabase, parseJson } from "@/lib/db/core";
+import { keepRow } from "@/lib/db/turn-rows";
 
 // Declared enemy intent as the encounter row stores it
 // (docs/visual-overhaul-plan.md 5.6). A sibling of encounters.ts rather than
-// part of it so that file stays readable; this one imports only the core, so
-// encounters.ts may import it without a cycle.
+// part of it so that file stays readable; this one imports only the core and
+// the turn's row keeping (turn-rows.ts), so encounters.ts may import it.
 
 // One declared intent as stored: refs, never token ids, so a token that is
 // re-placed mid-round still carries its threat.
@@ -67,6 +68,7 @@ export function recordEncounterIntent(
   const current = normalizeIntents(parseJson<unknown>(row.intents_json ?? "{}", {}));
   const byActor = current.round === round ? current.byActor : {};
   byActor[actorRef] = intent;
+  keepRow("encounters", encounterId);
   db.prepare(`UPDATE encounters SET intents_json = ? WHERE id = ?`).run(
     JSON.stringify({ round, byActor }),
     encounterId,

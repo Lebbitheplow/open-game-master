@@ -122,6 +122,9 @@ try {
   updateStorySettings(off.id, { imageGenerationEnabled: false });
   const prep = createCampaign(lead.id, { ...base, title: "Prep", kind: "workshop", gameSettings: {} });
   updateGameSettings(prep.id, { mapsEnabled: false });
+  // A test fight's table on the same dead backend: it copied its workshop's
+  // and is gone when the test ends, so the workshop is the one to move.
+  const bench = createCampaign(lead.id, { ...base, title: "Test: Bench", kind: "playtest", gameSettings: { mapsEnabled: false } });
   assert.equal(getCampaignById(oldRoad.id).settings.imageBackend, "comfyui");
 
   await test("the admin's test paints a landscape map through the tables' own door and queue", async () => {
@@ -142,6 +145,7 @@ try {
     assert.equal(byTitle["The Old Road"].canPaint, false);
     assert.equal(byTitle["Working OpenAI"].canPaint, true);
     assert.equal(result.wouldMove, 2, "the stranded campaign and workshop");
+    assert.equal(byTitle["Test: Bench"], undefined, "a test fight's table is no stranded campaign");
   });
 
   await test("a locked picture scratch folder does not discard a completed paint", async () => {
@@ -180,6 +184,7 @@ try {
     assert.equal(getCampaignById(prep.id).gameSettings.mapsEnabled, false, "a workshop's maps are left alone");
     assert.equal(getCampaignById(working.id).settings.imageBackend, "openai", "a working backend is never switched");
     assert.equal(getCampaignById(off.id).settings.imageBackend, "comfyui", "pictures switched off stay off");
+    assert.equal(getCampaignById(bench.id).gameSettings.mapsEnabled, false, "a test table's maps are not turned on");
     assert.deepEqual(await rescueStrandedCampaigns(), [], "running it again moves nobody");
     assert.equal((await campaignPictures()).find((entry) => entry.title === "The Old Road").canPaint, true);
   });

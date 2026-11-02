@@ -8,6 +8,7 @@
 // live form can never read differently.
 
 import { textKey } from "../language/text-logic.ts";
+import { describeFightEvent, normalizeFightEvents, type FightEvent } from "./fight-event-logic.ts";
 
 export type TemplateEnemy = { monster: string; count: number };
 
@@ -344,6 +345,20 @@ function optionalInt(value: unknown, min: number, max: number): number | null {
   return Math.min(max, Math.max(min, number));
 }
 
+// What a deploy says when the fight's saved map could not be laid
+// (deployTemplate's mapError): the fight stands, on the generator's board.
+// One sentence for the AI's prepared fight (prepared-encounter-tool.ts) and
+// a test table's chronicle (src/lib/workshop/test-fight.ts), so the two say
+// it alike.
+export function savedMapNote(mapError: string): string {
+  return `Its saved map could not be used (${mapError}); the fight is on a generated one.`;
+}
+
+// A test of a fight whose kept map was since removed from the workshop's
+// maps: the copy arrives with no map to lay (src/lib/db/content-copy.ts
+// binds it to nothing), so the deploy itself has no failure to report.
+export const MAP_GONE_FROM_WORKSHOP = "the map it was drawn on is no longer in the workshop's maps";
+
 export function normalizeTemplateMap(
   raw: unknown,
   allowed: { themes: string[]; ambients: string[]; scenes: string[] },
@@ -392,6 +407,8 @@ export type TemplateExtras = {
   rewards: string;
   // "When the shaman drops, the wolves flee." One line each.
   phases: string[];
+  // What the server does when, at the table (fight-event-logic.ts).
+  events: FightEvent[];
 };
 
 export const EXTRAS_LIMITS = {
@@ -410,6 +427,7 @@ export const EMPTY_TEMPLATE_EXTRAS: TemplateExtras = {
   overrides: [],
   rewards: "",
   phases: [],
+  events: [],
 };
 
 export type RosterSlot = { slot: number; monster: string; label: string };
@@ -500,6 +518,7 @@ export function normalizeTemplateExtras(
       .map((line) => (typeof line === "string" ? line.trim().slice(0, EXTRAS_LIMITS.phaseText) : ""))
       .filter(Boolean)
       .slice(0, EXTRAS_LIMITS.phases),
+    events: normalizeFightEvents(source.events, slotCount),
   };
 }
 
@@ -530,8 +549,8 @@ export function matchSlots<T extends { id: string; slug: string; displayName: st
 }
 
 // The note the DM gets when the fight opens: the parts of the plan the
-// board cannot show.
-export function describeExtras(extras: TemplateExtras): string[] {
+// board cannot show. The roster names the creatures an event speaks of.
+export function describeExtras(extras: TemplateExtras, roster: TemplateEnemy[] = []): string[] {
   const lines: string[] = [];
   if (extras.rewards) {
     lines.push(`Worth: ${extras.rewards}`);
@@ -539,5 +558,8 @@ export function describeExtras(extras: TemplateExtras): string[] {
   extras.phases.forEach((phase, index) => {
     lines.push(`Phase ${index + 1}: ${phase}`);
   });
+  const slots = expandRoster(roster);
+  const label = (slot: number) => slots[slot]?.label ?? `creature ${slot + 1}`;
+  (extras.events ?? []).forEach((event) => lines.push(`Event: ${describeFightEvent(event, label)}`));
   return lines;
 }

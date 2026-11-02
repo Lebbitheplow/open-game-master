@@ -331,7 +331,7 @@ export function rollDeathSave(campaign: Campaign, characterId: string, turnId: s
   // the spend, a natural 20 or a third success wrote the spent carrier back
   // with the conditions, and the audit's pre-image still held it (#622).
   const current = getSheetById(characterId) ?? sheet;
-  const outcome = rollExpression(resolved.expression);
+  const outcome = rollExpression(resolved.expression, undefined, { purpose: { roller: "hero", kind: "death_save", who: sheet.name } });
   const advantage = /^2d20kh1/.test(resolved.expression) ? "advantage" : /^2d20kl1/.test(resolved.expression) ? "disadvantage" : "none";
   const notes = [...(resolved.conditionNotes ?? []), ...(hope ? [`${hope}: advantage`] : []), ...(feat ? [`${feat}: advantage`] : [])];
   const roll = insertRoll({

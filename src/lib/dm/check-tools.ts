@@ -1,4 +1,5 @@
 import { dungeonDelverNotices, hasDungeonDelver } from "@/lib/srd/feat-combat";
+import { heroRollTag } from "@/lib/dice-script-logic";
 import { CHECK_KEY_PROPERTIES, named, NONE } from "@/lib/dm/roll-about";
 import { CHECK_KEY_FIELDS } from "@/lib/dm/roll-args";
 import { askedFields, unnamedTraitFields } from "@/lib/dm/roll-feature-riders";
@@ -285,7 +286,7 @@ export function handleGroupCheck(
     }
     // An inspiration die or a held Help is spent by the roll it rides.
     spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-    const rolled = rollExpression(resolved.expression);
+    const rolled = rollExpression(resolved.expression, undefined, { purpose: heroRollTag(rollArgs.kind, sheet.name) });
     const roll = insertRoll({
       campaignId: campaign.id,
       characterId: sheet.id,

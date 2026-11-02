@@ -130,6 +130,11 @@ export function installPills(): void {
     observer.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["data-on", "aria-selected"] });
     sweep(document);
   };
+  // The day and the night theme give a chosen button another fill, and the
+  // pill wears a copy of it: switched at the table, the night's pale gold
+  // stayed under the day's pale ink ("Do", "Narrate" unreadable) until the
+  // next choice. Each row takes its chosen button's look again.
+  new MutationObserver(() => sweep(document)).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
   if (document.body) start();
   else document.addEventListener("DOMContentLoaded", start, { once: true });
 

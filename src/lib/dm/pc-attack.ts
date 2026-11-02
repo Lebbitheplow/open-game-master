@@ -33,6 +33,8 @@ import { invalidArguments, type ToolError, type ToolResult } from "@/lib/dm/tool
 import { attacksLeft } from "@/lib/dm/action-budget";
 import { approachForAttack, withApproach } from "@/lib/dm/pc-attack-approach";
 import { commitConjuredStrike } from "@/lib/dm/conjured-strike";
+import { swallowCover } from "@/lib/dm/swallow";
+import { resolveEnemyRef } from "@/lib/dm/enemy-damage";
 
 // Re-exported for the callers that learned it here.
 export { resolvePendingPcAttack } from "@/lib/dm/pc-attack-parked";
@@ -315,6 +317,12 @@ export function handlePcAttack(
   if (!sheet) {
     return unknownSheetRef("characterId", args.characterId, sheets);
   }
+  // Swallowed: from inside, only the creature that swallowed them
+  // (src/lib/dm/swallow.ts).
+  const inside = swallowCover({ kind: "sheet", id: sheet.id }, { kind: "enemy", id: resolveEnemyRef(encounter.id, args.targetEnemyId)?.id ?? args.targetEnemyId });
+  if (inside) {
+    return { error: `${inside} Nothing was spent.`, refused: "rules" };
+  }
 
   // The move to the target the player declared, when the swing needs it
   // (src/lib/dm/pc-attack-approach.ts): the plan is asked first (it spends
@@ -441,7 +449,7 @@ function spendPcAttack(plan: AttackPlan): ToolError | null {
     // The readied action (or the Giant Killer answer) this attack is spends
     // with it.
     if (plan.extras.giantKiller) {
-      spendGiantKiller(campaign.id, sheet.id);
+      spendGiantKiller(campaign.id, sheet.id, plan.enemy.id);
     } else {
       spendReadied(campaign, sheet.id);
     }

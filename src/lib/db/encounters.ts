@@ -16,6 +16,7 @@ import { isKnockedOut } from "@/lib/dm/knockout";
 import { storedGender, type Gender } from "@/lib/gender";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { pickedGender } from "@/lib/actor-sex-logic";
+import { keepNew, keepRow } from "@/lib/db/turn-rows";
 
 // Server-authoritative combat state. Enemy HP lives here and changes ONLY
 // through the encounter tools; the AI DM narrates from tool results, never
@@ -253,6 +254,7 @@ export function recordEncounterTarget(
   if (!list.includes(targetRef)) {
     pairs[attackerRef] = [...list, targetRef].slice(-6);
   }
+  keepRow("encounters", encounterId);
   db.prepare(`UPDATE encounters SET targets_json = ? WHERE id = ?`).run(
     JSON.stringify({ round, pairs }),
     encounterId,
@@ -356,6 +358,8 @@ export function createEncounter(
        VALUES (?, ?, 'active', ?, ?, ?, ?)`,
     )
     .run(id, campaignId, kind, summary.slice(0, 300), now, now);
+  // A fight a GM turn began goes with the turn's revert (issue 685).
+  keepNew("encounters", id, campaignId);
   return getEncounter(id);
 }
 
@@ -409,6 +413,8 @@ export function getActiveBoard(campaignId: string): Encounter | null {
 }
 
 export function saveEncounter(encounter: Encounter) {
+  // The fight as the GM turn found it, kept for its revert (issue 685).
+  keepRow("encounters", encounter.id);
   getDatabase()
     .prepare(
       `UPDATE encounters SET status = ?, round = ?, turn_index = ?, order_ready = ?,
@@ -437,12 +443,14 @@ export function saveEncounter(encounter: Encounter) {
 // Kept apart from saveEncounter, as the target lines are, so a handler that
 // read the encounter before a side changed cannot write the old sides back.
 export function setEncounterSides(encounterId: string, sides: SideExceptions) {
+  keepRow("encounters", encounterId);
   getDatabase()
     .prepare(`UPDATE encounters SET sides_json = ?, updated_at = ? WHERE id = ?`)
     .run(JSON.stringify(sides), nowIso(), encounterId);
 }
 
 export function setEncounterSummary(encounterId: string, summary: EncounterSummary, line: string) {
+  keepRow("encounters", encounterId);
   getDatabase()
     .prepare(`UPDATE encounters SET summary_json = ?, summary = ?, updated_at = ? WHERE id = ?`)
     .run(JSON.stringify(summary), line.slice(0, 600), nowIso(), encounterId);
@@ -451,6 +459,7 @@ export function setEncounterSummary(encounterId: string, summary: EncounterSumma
 // `endedInstant`: the world clock's instant the fight ended at, for a foe
 // who comes back to a later one (issue #667). A scene closing passes none.
 export function endEncounter(id: string, outcome: string, endedInstant?: number) {
+  keepRow("encounters", id);
   getDatabase()
     .prepare(`UPDATE encounters SET status = 'ended', outcome = ?, ended_instant = COALESCE(?, ended_instant), updated_at = ? WHERE id = ?`)
     .run(outcome.slice(0, 60), endedInstant ?? null, nowIso(), id);
@@ -522,6 +531,8 @@ export function insertEnemy(input: {
       now,
       now,
     );
+  // A creature a GM turn brought in leaves with the turn's revert (issue 685).
+  keepNew("encounter_enemies", id, input.campaignId);
   const enemy = getEnemy(id);
   if (!enemy) {
     throw new Error("Failed to create encounter enemy.");
@@ -565,6 +576,7 @@ export function patchEnemyIdentity(
   enemyId: string,
   patch: { displayName?: string; maxHp?: number },
 ): EncounterEnemy | null {
+  keepRow("encounter_enemies", enemyId);
   const existing = getEnemy(enemyId);
   if (!existing) {
     return null;
@@ -585,6 +597,7 @@ export function patchEnemyIdentity(
 // The maximum moved by `delta` (an active effect's maxHp, effects-logic.ts):
 // a raise lifts the current hit points with it, a drop only caps them.
 export function shiftEnemyMaxHp(enemyId: string, delta: number): EncounterEnemy | null {
+  keepRow("encounter_enemies", enemyId);
   const existing = getEnemy(enemyId);
   if (!existing || !delta) {
     return existing;
@@ -601,6 +614,7 @@ export function shiftEnemyMaxHp(enemyId: string, delta: number): EncounterEnemy 
 // stat snapshot stay exactly as the fight left them (patchEnemyIdentity
 // above may set a new maximum, which is right only before anybody has acted).
 export function renameEnemy(enemyId: string, displayName: string) {
+  keepRow("encounter_enemies", enemyId);
   getDatabase()
     .prepare(`UPDATE encounter_enemies SET display_name = ?, updated_at = ? WHERE id = ?`)
     .run(displayName.trim().slice(0, 80), nowIso(), enemyId);
@@ -611,6 +625,7 @@ export function patchEnemyHp(
   currentHp: number,
   status: EnemyStatus,
 ): EncounterEnemy | null {
+  keepRow("encounter_enemies", enemyId);
   const before = getEnemy(enemyId);
   getDatabase()
     .prepare(
@@ -667,6 +682,7 @@ export function patchEnemyConditions(
   conditions: string[],
   conditionMeta?: ConditionMetaMap,
 ): EncounterEnemy | null {
+  keepRow("encounter_enemies", enemyId);
   if (sheetBehind(enemyId)) {
     patchSheetAsFoe(enemyId, { conditions, ...(conditionMeta !== undefined ? { conditionMeta } : {}) });
     return null;
@@ -700,6 +716,7 @@ export function patchEnemyConditions(
 
 // A fresh initiative count, for a DM's reset of the order.
 export function setEnemyInitiative(enemyId: string, initiative: number) {
+  keepRow("encounter_enemies", enemyId);
   getDatabase()
     .prepare(`UPDATE encounter_enemies SET initiative = ?, updated_at = ? WHERE id = ?`)
     .run(initiative, nowIso(), enemyId);
@@ -712,6 +729,7 @@ export function setEnemyConcentration(
   // (src/lib/dm/concentration-clock.ts); null for none or no clock.
   rounds: number | null = null,
 ): EncounterEnemy | null {
+  keepRow("encounter_enemies", enemyId);
   getDatabase()
     .prepare(`UPDATE encounter_enemies SET concentration = ?, concentration_rounds = ?, updated_at = ? WHERE id = ?`)
     .run(spell, spell ? rounds : null, nowIso(), enemyId);
@@ -720,6 +738,7 @@ export function setEnemyConcentration(
 
 // The rounds an enemy's concentration has left, without touching the spell.
 export function setEnemyConcentrationRounds(enemyId: string, rounds: number | null) {
+  keepRow("encounter_enemies", enemyId);
   getDatabase()
     .prepare(`UPDATE encounter_enemies SET concentration_rounds = ?, updated_at = ? WHERE id = ?`)
     .run(rounds, nowIso(), enemyId);

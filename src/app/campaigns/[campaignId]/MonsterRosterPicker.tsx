@@ -110,6 +110,7 @@ export function MonsterRosterPicker({
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search monsters to add: goblin, owlbear, the boss you built..."
+          aria-label="Search monsters to add"
           className={cn(input, "w-full pl-7")}
         />
         {loading ? (

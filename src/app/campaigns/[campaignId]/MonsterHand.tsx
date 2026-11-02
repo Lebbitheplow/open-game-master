@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ChevronDown, Loader2, X } from "lucide-react";
+import { ArrowLeft, ChevronDown, Loader2 } from "lucide-react";
 import { memo, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { CSSProperties } from "react";
 import { cn } from "@/lib/cn";
@@ -8,11 +8,13 @@ import { ui } from "@/lib/ui";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { HandCardFace, HandPreviewRows, typeLabel, typeTone } from "@/app/campaigns/[campaignId]/HandCardFace";
 import type { HandCard } from "@/lib/battlemap/hand";
-import { previewRows, type HandAim } from "@/lib/battlemap/hand-play";
+import { previewRows } from "@/lib/battlemap/hand-play";
 import {
   deriveMonsterHand,
-  monsterInvoke,
+  monsterAimsAtRows,
+  monsterCalls,
   monsterSentence,
+  rollsMonsterAttack,
   takesManyTargets,
   type MonsterAdvantage,
 } from "@/lib/battlemap/monster-hand";
@@ -24,50 +26,22 @@ import type { PublicEncounter } from "@/lib/db/encounter-view";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { offSide, SideBadge } from "@/app/campaigns/[campaignId]/SideBadge";
 import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
+import {
+  MonsterAimControls,
+  MonsterResultLines,
+  readCollapsed,
+  subscribeStore,
+  writeCollapsed,
+  type PartyChip,
+} from "@/app/campaigns/[campaignId]/MonsterHandAim";
 
 // The DM's hand (issue #108): the monsters' turns as cards, above the
 // message box where the players' Hand sits. The enemies the pointer walked
 // past lead the roster (src/lib/dm/enemies-due.ts); any living enemy can be
 // picked, as the console lets the DM correct anything. A played card is the
-// console's own invoke call (monster-hand.ts), so the engine's rules hold.
-
-const COLLAPSED_KEY = "odm:monster-hand-collapsed";
-const STORE_EVENT = "odm-monster-hand-store";
-
-function subscribeStore(callback: () => void) {
-  window.addEventListener(STORE_EVENT, callback);
-  window.addEventListener("storage", callback);
-  return () => {
-    window.removeEventListener(STORE_EVENT, callback);
-    window.removeEventListener("storage", callback);
-  };
-}
-
-function readCollapsed(): boolean {
-  try {
-    return window.localStorage.getItem(COLLAPSED_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function writeCollapsed(on: boolean) {
-  try {
-    window.localStorage.setItem(COLLAPSED_KEY, on ? "1" : "0");
-  } catch {
-    // Storage can be denied; the choice then lasts as long as the page.
-  }
-  window.dispatchEvent(new Event(STORE_EVENT));
-}
-
-// row: an enemy's row, not a sheet (an attack or an area reaches it).
-type PartyChip = HandAim & { note: string; row?: boolean };
-
-const ADVANTAGE: Array<[MonsterAdvantage, string]> = [
-  ["none", "Straight"],
-  ["advantage", "Advantage"],
-  ["disadvantage", "Disadvantage"],
-];
+// console's own invoke call (monster-hand.ts), so the engine's rules hold:
+// a legendary or lair card makes the spend and then what it buys, stopping
+// at the first refusal.
 
 function MonsterHandInner({
   campaignId,
@@ -105,7 +79,12 @@ function MonsterHandInner({
   // Dash, Disengage and Dodge cards need a host that resolves an enemy's
   // (issue #621); the apps compile this hand and may open an older one.
   const capabilities = useCapabilities();
-  const cards = selected ? deriveMonsterHand(selected, { enemyActions: hostOffers(capabilities, "enemyActions") }) : [];
+  const legendaryOn = hostOffers(capabilities, "legendaryCards");
+  // Legendary and lair cards from a host that projects when they can be
+  // taken (issue 685 audit); an older one leaves them to the console's forms.
+  const cards = selected
+    ? deriveMonsterHand(selected, { enemyActions: hostOffers(capabilities, "enemyActions"), legendaryCards: hostOffers(capabilities, "legendaryCards") })
+    : [];
 
   // The other side as targets (issue 503): the party (and any creature it
   // dominates) for a foe, the foes (a turncoat among them) for a creature the
@@ -123,10 +102,27 @@ function MonsterHandInner({
     ],
     [sheets, encounter, mySide],
   );
+  // Its own side, for a legendary shield on itself or an ally, and everyone
+  // in reach, for negative energy that spares nobody.
+  const allies = useMemo<PartyChip[]>(
+    () => [
+      ...encounter.enemies
+        .filter((enemy) => enemy.status === "alive" && (offSide(encounter, enemy.id, "enemy") ?? "foe") === mySide)
+        .map((enemy) => ({ id: enemy.id, name: enemy.name, kind: "enemy" as const, ac: enemy.ac, conditions: enemy.conditions, row: true, note: `${enemy.currentHp !== undefined ? `${enemy.currentHp}/${enemy.maxHp} hp` : enemy.health}${enemy.ac !== undefined ? ` · AC ${enemy.ac}` : ""}` })),
+      ...sheets
+        .filter((sheet) => !sheet.deathSaves?.dead && (offSide(encounter, sheet.id, "pc") ?? "party") === mySide)
+        .map((sheet) => ({ id: sheet.id, name: sheet.name, kind: "enemy" as const, ac: effectiveAcFor(sheet), conditions: sheet.conditions, note: `${sheet.currentHp}/${effectiveMaxHp(sheet)} hp · AC ${effectiveAcFor(sheet)}` })),
+    ],
+    [sheets, encounter, mySide],
+  );
 
   const [pickedId, setPickedId] = useState<string | null>(null);
   const [targetIds, setTargetIds] = useState<string[]>([]);
   const [advantage, setAdvantage] = useState<MonsterAdvantage>("none");
+  // A legendary move's or jump's square, and the spell it casts.
+  const [column, setColumn] = useState("");
+  const [row, setRow] = useState("");
+  const [spell, setSpell] = useState("");
   const [sending, setSending] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -136,8 +132,10 @@ function MonsterHandInner({
 
   const picked = cards.find((card) => card.id === pickedId && !card.disabled) ?? null;
   const many = picked ? takesManyTargets(picked) : false;
+  const intent = picked?.intent.card === "monster" ? picked.intent : null;
   // A save forced on one target is cast_at_player, a character's door.
-  const chips = !picked || picked.intent.card !== "monster" || picked.intent.action === "attack" || many ? party : party.filter((chip) => !chip.row);
+  const sideChips = intent?.pick === "allies" ? allies : intent?.pick === "anyone" ? [...party, ...allies] : party;
+  const chips = !picked || !intent || monsterAimsAtRows(picked) ? sideChips : sideChips.filter((chip) => !chip.row);
   const aimed = chips.filter((chip) => targetIds.includes(chip.id));
   const aim = aimed[0] ?? null;
   const defaultAim = aim ?? chips[0] ?? null;
@@ -146,7 +144,13 @@ function MonsterHandInner({
   const rows = picked ? previewRows(picked, picked.target === "none" ? null : defaultAim, conditions) : [];
   const sentence = picked && selected ? monsterSentence(selected.name, picked, aimed.map((chip) => chip.name)) : "";
   const needsTarget = Boolean(picked && picked.target !== "none");
-  const ready = Boolean(picked) && (!needsTarget || aimed.length > 0);
+  const square = intent?.square ?? null;
+  const squareSet = column.trim() !== "" && row.trim() !== "";
+  const ready =
+    Boolean(picked) &&
+    (!needsTarget || aimed.length > 0) &&
+    (!square || square.optional || squareSet) &&
+    (!intent?.spells || Boolean(spell));
 
   function say(text: string) {
     setNotice(text);
@@ -157,6 +161,9 @@ function MonsterHandInner({
     setPickedId(null);
     setTargetIds([]);
     setAdvantage("none");
+    setColumn("");
+    setRow("");
+    setSpell("");
   }
 
   function pick(card: HandCard) {
@@ -167,6 +174,9 @@ function MonsterHandInner({
     setNotice("");
     setTargetIds([]);
     setAdvantage("none");
+    setColumn("");
+    setRow("");
+    setSpell("");
     setPickedId((current) => (current === card.id ? null : card.id));
   }
 
@@ -175,7 +185,12 @@ function MonsterHandInner({
       if (!many) {
         return current[0] === id ? [] : [id];
       }
-      return current.includes(id) ? current.filter((entry) => entry !== id) : [...current, id];
+      if (current.includes(id)) {
+        return current.filter((entry) => entry !== id);
+      }
+      // Lightning Storm's three bolts: no more creatures than it reaches.
+      const most = intent?.most;
+      return most && current.length >= most ? current : [...current, id];
     });
   }
 
@@ -183,26 +198,41 @@ function MonsterHandInner({
     if (!picked || !selected || sending) {
       return;
     }
-    const call = monsterInvoke(picked, aimed.map((chip) => chip.id), advantage, new Set(aimed.filter((chip) => chip.row).map((chip) => chip.id)));
-    if (!call) {
+    const calls = monsterCalls(picked, aimed.map((chip) => chip.id), advantage, new Set(aimed.filter((chip) => chip.row).map((chip) => chip.id)), {
+      square: squareSet ? { x: Number(column), y: Number(row) } : null,
+      spell: spell || null,
+    });
+    if (!calls) {
       say(many ? "Pick everyone caught in it." : "Pick a target.");
       return;
     }
     setSending(true);
     setNotice("");
     try {
-      const response = await fetch(`/api/campaigns/${campaignId}/dm/invoke`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(call),
-      });
-      const data = (await response.json().catch(() => ({}))) as { error?: string; result?: unknown };
-      if (!response.ok) {
-        // The engine's own reason; the card stays raised to try another way.
-        say(data.error || "The engine would not take that.");
-        return;
+      const done: ResultLine[] = [];
+      for (const [index, call] of calls.entries()) {
+        // `hand`: a card, not the console's form. A table the AI runs refuses
+        // an enemy's card from the GM seat (test-seats-logic.ts).
+        const response = await fetch(`/api/campaigns/${campaignId}/dm/invoke`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...call, hand: true }),
+        });
+        const data = (await response.json().catch(() => ({}))) as { error?: string; result?: unknown };
+        if (!response.ok) {
+          // The engine's own reason. The card stays raised to try another
+          // way, and what went through before it (a legendary action spent)
+          // shows above.
+          setLines(done);
+          say(data.error || "The engine would not take that.");
+          return;
+        }
+        // What a spend hands on ("Resolve it now with enemy_attack") is the
+        // card's own next call, made below: not a step left for the GM.
+        const handedOn = index < calls.length - 1 && data.result && typeof data.result === "object";
+        done.push(...describeAdjudicationResult(handedOn ? { ...(data.result as Record<string, unknown>), next: undefined } : data.result));
       }
-      setLines(describeAdjudicationResult(data.result));
+      setLines(done);
       clearAim();
     } catch {
       say("Could not reach the table.");
@@ -338,6 +368,10 @@ function MonsterHandInner({
                     {enemy.ac !== undefined ? ` · AC ${enemy.ac}` : ""}
                     {acted ? " · acted" : ""}
                     {movement ? ` · ${movement.leftFeet} ft left${movement.dashes ? " · Dashed" : ""}` : ""}
+                    {/* A legendary action or the lair may act now: say so on
+                        the creature's chip, so the GM need not open each one. */}
+                    {legendaryOn && enemy.actions?.legendary ? ` · ${enemy.actions.legendary.left} legendary` : ""}
+                    {legendaryOn && enemy.actions?.lair?.length ? " · lair" : ""}
                   </span>
                   <SideBadge side={offSide(encounter, enemy.id, "enemy")} className="mt-0.5" />
                 </button>
@@ -391,50 +425,21 @@ function MonsterHandInner({
                 </span>
               </div>
 
-              {needsTarget ? (
-                <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label="Targets">
-                  {chips.length ? (
-                    chips.map((chip, index) => (
-                      <button
-                        key={chip.id}
-                        type="button"
-                        style={{ "--i": index } as CSSProperties}
-                        aria-pressed={targetIds.includes(chip.id)}
-                        onClick={() => toggleTarget(chip.id)}
-                        className={cn(ui.btnSmall, "hand-target min-h-11 flex-col items-start gap-0 px-3 py-1 text-left sm:min-h-9")}
-                      >
-                        <span className="text-[13px] leading-tight text-stone-200">{chip.name}</span>
-                        <span className="font-mono text-[10px] leading-tight text-stone-500">{chip.note}</span>
-                      </button>
-                    ))
-                  ) : (
-                    <span className="text-xs text-stone-500">Nobody is standing to be attacked.</span>
-                  )}
-                </div>
-              ) : null}
-
-              {picked.intent.card === "monster" && picked.intent.action === "attack" ? (
-                <div className="mt-2 flex flex-wrap items-center gap-1.5" data-pill-group="">
-                  <span className="text-[11px] uppercase tracking-wider text-stone-500">Roll</span>
-                  {ADVANTAGE.map(([value, label]) => (
-                    <button
-                      key={value}
-                      type="button"
-                      data-on={advantage === value ? "" : undefined}
-                      aria-pressed={advantage === value}
-                      onClick={() => setAdvantage(value)}
-                      className={cn(
-                        "hand-option inline-flex min-h-9 items-center rounded-full border px-3 text-xs sm:min-h-8",
-                        advantage === value
-                          ? "border-ember-400/70 bg-ember-500/20 text-orange-100"
-                          : "border-stone-600 text-stone-300 hover:border-amber-500/60",
-                      )}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
+              <MonsterAimControls
+                chips={needsTarget ? chips : null}
+                targetIds={targetIds}
+                onToggle={toggleTarget}
+                square={square}
+                column={column}
+                row={row}
+                onColumn={setColumn}
+                onRow={setRow}
+                spells={intent?.spells ?? null}
+                spell={spell}
+                onSpell={setSpell}
+                advantage={rollsMonsterAttack(picked) ? advantage : null}
+                onAdvantage={setAdvantage}
+              />
 
               <div className="hand-rows-box mt-2">
                 <HandPreviewRows rows={rows} />
@@ -459,31 +464,7 @@ function MonsterHandInner({
             </div>
           ) : null}
 
-          {lines.length ? (
-            <div role="status" className="live-in mt-1 rounded-lg border border-amber-500/30 bg-stone-950/80 px-3 py-2 text-xs">
-              <div className="flex items-center justify-between gap-2">
-                <p className="gold-title font-display text-[11px] uppercase tracking-[0.18em]">{selected.name}</p>
-                <button
-                  type="button"
-                  onClick={() => setLines([])}
-                  aria-label="Dismiss the result"
-                  className="motion-press flex size-7 items-center justify-center rounded-md text-stone-500 hover:text-amber-200"
-                >
-                  <X className="size-3.5" />
-                </button>
-              </div>
-              <ul className="stagger mt-1 space-y-0.5">
-                {lines.map((line, index) => (
-                  <li
-                    key={`${index}-${line.text}`}
-                    className={cn(line.tone === "bad" ? "text-ember-300" : line.tone === "good" ? "text-emerald-300" : "text-stone-200")}
-                  >
-                    {line.text}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
+          {lines.length ? <MonsterResultLines name={selected.name} lines={lines} onDismiss={() => setLines([])} /> : null}
         </>
       )}
       <p ref={noticeRef} role="status" className={cn("mt-1 text-xs text-amber-300", notice ? "" : "hidden")}>

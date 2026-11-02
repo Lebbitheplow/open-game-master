@@ -11,22 +11,27 @@ import { breakConcentration } from "@/lib/dm/concentration";
 import { isIncapacitated } from "@/lib/dm/condition-logic";
 import { onEnemyIncapacitated } from "@/lib/dm/enemy-conditions";
 import { releaseGrapplesHeldBy } from "@/lib/dm/set-condition";
+import { swallowerAway } from "@/lib/dm/swallow";
 
 // `wasOut`: whether it was already out of action before these landed (its
 // concentration went then). Returns lines for the result.
 export function settleEnemyIncapacitation(enemyId: string, wasOut: boolean): string[] {
-  if (wasOut) {
-    return [];
-  }
   const enemy = getEnemy(enemyId);
+  const campaign = enemy ? getCampaignById(enemy.campaignId) : null;
+  // Sent off this plane (Banishment, Maze): what it swallowed stays on this
+  // one (swallow.ts), whether or not it was out of action before.
+  const behind = campaign ? swallowerAway(campaign, enemyId) : null;
+  const left = behind ? [behind] : [];
+  if (wasOut) {
+    return left;
+  }
   if (!enemy) {
     return settleSheetFoeIncapacitation(enemyId);
   }
   if (enemy.status !== "alive" || !isIncapacitated(enemy.conditions)) {
-    return [];
+    return left;
   }
-  const campaign = getCampaignById(enemy.campaignId);
-  return campaign ? onEnemyIncapacitated(campaign, enemy) : [];
+  return campaign ? [...onEnemyIncapacitated(campaign, enemy), ...left] : left;
 }
 
 // A character fighting on the other side, held by a foe path (sheet-foe.ts):

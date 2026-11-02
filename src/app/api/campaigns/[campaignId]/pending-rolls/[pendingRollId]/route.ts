@@ -12,6 +12,7 @@ import {
 } from "@/lib/db/dm-turns";
 import { insertRoll } from "@/lib/db/rolls";
 import { defaultRng, expressionDice, rollExpression, rollExpressionWithDice } from "@/lib/dice";
+import { heroRollTag } from "@/lib/dice-script-logic";
 import { mayTypeFaces } from "@/lib/dice/held-rolls";
 import { recordInitiativeRoll, settleTurn, turnHolder } from "@/lib/dm/encounter-tools";
 import { applyInitiativeRefills } from "@/lib/dm/feature-hooks";
@@ -114,7 +115,7 @@ export async function POST(
   let outcome;
   try {
     if (isFallback) {
-      outcome = rollExpression(pending.expression);
+      outcome = rollExpression(pending.expression, undefined, { purpose: heroRollTag(pending.kind) });
     } else {
       // Per-index sides come from the expression itself, so each server-drawn
       // face matches the die it stands in for ("2d20kh1+1d4" -> [20, 20, 4]).

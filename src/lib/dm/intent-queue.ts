@@ -6,7 +6,9 @@
 // came back empty while players still waited. The same rule read off the
 // loaded messages rebuilds it: every player action (table talk excepted)
 // after the last DM passage that answered the party. A beat is a DM passage
-// that records play rather than answering it, so it answers nothing.
+// that records play rather than answering it, so it answers nothing. A card
+// the GM resolved as played (issue 685, src/lib/dm/resolve-card.ts) is
+// answered too.
 //
 // Pure, for scripts/test-intent-queue.mjs.
 
@@ -21,6 +23,7 @@ type MessageLike = {
   userId: string | null;
   characterId: string | null;
   content: string;
+  cardResolvedAt?: string;
 };
 
 export function queuedIntents(messages: MessageLike[], beatMessageIds: Iterable<string>): QueuedIntent[] {
@@ -35,6 +38,7 @@ export function queuedIntents(messages: MessageLike[], beatMessageIds: Iterable<
       (message) =>
         message.authorType === "player" &&
         message.seq > answered &&
+        !message.cardResolvedAt &&
         !message.content.startsWith("(ooc) "),
     )
     .sort((a, b) => a.seq - b.seq)

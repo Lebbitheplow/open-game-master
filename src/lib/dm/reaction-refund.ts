@@ -1,103 +1,118 @@
 // Turning a re-resolved attack back into state. A reaction (Shield, Uncanny
 // Dodge, Deflect Missiles, Cutting Words, Protection, Slow Fall, Feather
-// Fall) corrects the swings of the last attack against a character
-// (src/lib/dm/last-hit.ts); this module works out what the character should
-// have taken and puts them there.
+// Fall) corrects the swings of an attack against a character that the engine
+// kept open (src/lib/dm/last-hit.ts); this module works out what the
+// character should have taken and puts them there.
 //
-// The corrected damage is replayed on the character as they stood before
-// the attack: temporary hit points first, a beast form's pool before the
-// druid's own, resistance as the damage path applies it. When nothing else
-// has touched them since the attack, their hit points become exactly the
-// replayed ones, and what the undone part of the blow set off is undone too:
-// the drop to 0 (unconscious, prone, the death track, a death by massive
-// damage), the rage it ended, the Relentless Endurance it spent, and the
-// concentration it broke with the effects that spell held. When something
-// has, the difference is healed through the heal path instead.
+// The fight is replayed on the character from where the first hit answered
+// found them (hit-replay-logic.ts): each open hit's swings as the damage path
+// lands them (an Arcane Ward first, each type against their defenses as
+// pc-damage.ts reads them, temporary hit points, a beast form's pool, and on
+// a character at 0 a death-save failure per blow, two on a critical hit),
+// and between the hits, and since the last, whatever else changed them (an
+// area spell, a breath, healing, temporary hit points, their death saves),
+// carried as the change it made. Only the corrected swings' own part is taken
+// back; everything else since stays. What the undone part of a blow set off
+// is undone too: the drop to 0 (unconscious, prone, the death track, a death
+// by massive damage), the rage it ended, the Relentless Endurance, Death Ward
+// or Relentless Rage that held them up, a Warding Bond's share, and the
+// concentration it broke with the effects that spell held.
 //
 // This module must not import mutations.ts' callers back; it calls the heal
 // mutation the same way cast-tools does.
 
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, getEnemy, patchEnemyConditions } from "@/lib/db/encounters";
-import { listRecentRolls } from "@/lib/db/rolls";
+import { listAuditSince } from "@/lib/db/sheet-audit";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
+import { nowIso } from "@/lib/db/core";
 import { publishPersisted } from "@/lib/events";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { RAGING } from "@/lib/srd/class-resources";
+import { isConditionNamed } from "@/lib/srd/feature-names";
+import { WARD_POOL } from "@/lib/dm/arcane-ward";
 import { concentrationDamageHook } from "@/lib/dm/concentration";
-import { effectiveMaxHp, pcImmunities, pcResistances, removeConditions } from "@/lib/dm/condition-logic";
-import { damageAdjust } from "@/lib/dm/damage-logic";
-import { isMassiveDamage } from "@/lib/dm/death-logic";
+import { effectiveMaxHp, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import type { DeathTrack } from "@/lib/dm/death-logic";
+import { scaledParts } from "@/lib/dm/enemy-hit";
+import {
+  carryGap,
+  hitsWith,
+  pool,
+  replayHit,
+  sameStanding,
+  strike,
+  up,
+  type ReplaySwing,
+  type Standing,
+  type SwingOutcome,
+} from "@/lib/dm/hit-replay-logic";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
-import { writeLastHit, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
-import { applyDamageMath, wildShapeDamageMath } from "@/lib/dm/mutation-math";
+import { hitIdOf, openHits, wardHpOf, writeLastHit, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { applyDmMutation } from "@/lib/dm/mutations";
+import { blowDefenses, meetDefenses } from "@/lib/dm/pc-damage";
 import { PRONE } from "@/lib/dm/vitals-logic";
 
 const UNCONSCIOUS = "unconscious";
 const LETHARGY = "incapacitated";
+const DEATH_WARD = "death ward";
+const WARDING_BOND = "warding bond";
+
+type Shape = NonNullable<CharacterSheet["wildShape"]>;
 
 function has(list: string[], name: string): boolean {
   return list.some((entry) => entry.toLowerCase() === name);
 }
 
-// Damage that reached the character from these swings, after resistance
-// and immunity, a blow of several types part by part as it landed.
-export function landedBy(record: LastHit, swings: SwingRecord[]): number {
-  const sheet = getSheetById(record.characterId);
-  const held = sheet ? { ...sheet, conditions: record.before.conditions } : null;
-  const resist = held ? pcResistances(held) : "";
-  const immune = held ? pcImmunities(held) : "";
-  const meet = (amount: number, type: string | undefined) => damageAdjust(amount, type, resist, immune, "").amount;
-  return swings
-    .filter((swing) => swing.hit)
-    .reduce((sum, swing) => sum + (swing.parts?.length
-      ? swing.parts.reduce((total, part) => total + meet(part.amount, part.type), 0)
-      : meet(swing.raw, swing.type ?? record.type)), 0);
+// A condition as the list holds it, by its name.
+function heldAs(list: string[], name: string): string | undefined {
+  return list.find((entry) => isConditionNamed(entry, name));
 }
 
-type Replayed = {
-  currentHp: number;
-  tempHp: number;
-  wildShape: CharacterSheet["wildShape"];
-  overkill: number;
-};
-
-function replay(record: LastHit, landed: number): Replayed {
-  const before = record.before;
-  if (before.wildShape) {
-    const shape = wildShapeDamageMath(before.wildShape.beastHp, before.tempHp, landed);
-    if (!shape.reverted) {
-      return {
-        currentHp: before.currentHp,
-        tempHp: shape.tempHp,
-        wildShape: { ...before.wildShape, beastHp: shape.beastHp },
-        overkill: 0,
-      };
-    }
-    const math = applyDamageMath(before.currentHp, shape.tempHp, shape.carryover);
-    return { currentHp: math.currentHp, tempHp: math.tempHp, wildShape: null, overkill: math.overkill };
-  }
-  const math = applyDamageMath(before.currentHp, before.tempHp, landed);
-  return { currentHp: math.currentHp, tempHp: math.tempHp, wildShape: null, overkill: math.overkill };
+// A swing as the replay needs it: what of its damage gets through the
+// character's defenses as they stood for that hit (their conditions then, a
+// form they wore), read by the damage path's own rules (pc-damage.ts) with
+// the blow's flags and a reaction's resistance against it, a blow of several
+// types part by part. `landedAs` is the swing as it was kept before this
+// correction: a blow's ordinary damage (a critical only because they lay at
+// 0) comes off by what a reaction took off the blow itself (Cutting Words).
+function replaySwing(campaignId: string, sheet: CharacterSheet, record: LastHit, swing: SwingRecord, landedAs: SwingRecord | undefined): ReplaySwing {
+  const held = { ...sheet, conditions: record.before.conditions, conditionMeta: record.before.conditionMeta, wildShape: record.before.wildShape ?? null };
+  const defenses = blowDefenses(campaignId, held, { ...(swing.flags ?? {}), ...(swing.resists?.length ? { resists: swing.resists } : {}) });
+  const type = swing.type ?? record.type;
+  // A blow of several types halved or cut whole (Uncanny Dodge) keeps its
+  // parts in proportion.
+  const landing = (raw: number, parts: SwingRecord["parts"]) => {
+    const scaled = parts?.length ? scaledParts(parts, raw) : undefined;
+    return (past: number) => meetDefenses(defenses, raw, type || undefined, scaled, raw - past).amount;
+  };
+  const cut = landedAs ? Math.max(0, landedAs.raw - swing.raw) : 0;
+  const ordinaryRaw = swing.ordinary ? Math.max(0, swing.ordinary.raw - cut) : 0;
+  return {
+    hit: swing.hit,
+    crit: swing.crit,
+    raw: swing.hit ? swing.raw : 0,
+    land: landing(swing.raw, swing.parts),
+    ...(swing.hit && swing.ordinary ? { ordinary: { raw: ordinaryRaw, land: landing(ordinaryRaw, cut ? undefined : swing.ordinary.parts) } } : {}),
+    ...(swing.hit && swing.standingAdvantage ? { standingHit: hitsWith(swing, swing.standingAdvantage) } : {}),
+  };
 }
 
-// The concentration save this attack forced, if one was rolled.
-function concentrationSaveTotal(campaignId: string, record: LastHit): number | null {
-  const spell = record.before.concentratingOn;
-  if (!spell) {
-    return null;
-  }
-  const save = listRecentRolls(campaignId, 40)
-    .filter(
-      (roll) =>
-        roll.characterId === record.characterId &&
-        roll.kind === "saving_throw" &&
-        roll.detail.startsWith("CON save to keep concentration") &&
-        roll.createdAt >= record.startedAt,
-    )
-    .at(-1);
-  return save ? save.total : null;
+// The damage that went past 0 hit points on the character between two
+// moments (the damage path's audit keeps it as the overkill): a gap's hit
+// points show only that they reached 0.
+function auditedPastZero(campaignId: string, characterId: string, from: string, to: string | null): number {
+  return listAuditSince(campaignId, from)
+    .filter((entry) => entry.characterId === characterId && entry.kind === "apply_damage" && entry.createdAt > from && (to === null || entry.createdAt < to))
+    .reduce((sum, entry) => sum + Math.max(0, Number(entry.delta.overkill) || 0), 0);
+}
+
+// The damage past 0 in the gap after a hit: what a reaction that answered it
+// kept, with what the audit holds since, else the audit's alone.
+function pastZeroAfter(campaignId: string, record: LastHit, next: LastHit | null): number {
+  const to = next ? next.startedAt : null;
+  const kept = record.pastZeroAfter;
+  return kept ? kept.amount + auditedPastZero(campaignId, record.characterId, kept.until, to) : auditedPastZero(campaignId, record.characterId, record.at, to);
 }
 
 // Puts back the concentration the attack broke, with the conditions the
@@ -178,56 +193,195 @@ export function settleLastHit(
   sheets: CharacterSheet[],
   sheetsById: Map<string, CharacterSheet>,
 ): Settled {
-  const sheet = getSheetById(record.characterId);
+  return settleHits(campaign, turnId, [{ record, corrected }], label, sheets, sheetsById);
+}
+
+// The open hits on the character from the earliest one answered on, in the
+// order they landed: what changing that one changes (hit-replay-logic.ts).
+function chainFrom(campaignId: string, answers: Array<{ record: LastHit }>): LastHit[] {
+  const ids = new Set(answers.map((answer) => hitIdOf(answer.record)));
+  const open = openHits(campaignId, answers[0].record.characterId);
+  const from = open.findIndex((record) => ids.has(hitIdOf(record)));
+  const chain = from >= 0 ? open.slice(from) : [];
+  for (const answer of answers) {
+    if (!chain.some((record) => hitIdOf(record) === hitIdOf(answer.record))) {
+      chain.push(answer.record);
+    }
+  }
+  return chain;
+}
+
+function standingOf(before: LastHit["before"]): Standing<Shape> {
+  return {
+    currentHp: before.currentHp,
+    tempHp: before.tempHp,
+    wildShape: before.wildShape ?? null,
+    track: before.deathSaves ?? null,
+    ward: before.ward ?? null,
+  };
+}
+
+function standingOfSheet(sheet: CharacterSheet): Standing<Shape> {
+  return { currentHp: sheet.currentHp, tempHp: sheet.tempHp, wildShape: sheet.wildShape ?? null, track: sheet.deathSaves ?? null, ward: wardHpOf(sheet) };
+}
+
+// Where a hit left them: its record's own account, read with the replay of
+// its swings for what a record written before it kept no more of.
+function standingAfter(record: LastHit, replayed: Standing<Shape>): Standing<Shape> {
+  const form = replayed.wildShape ?? record.before.wildShape ?? null;
+  return {
+    currentHp: record.after.currentHp,
+    tempHp: record.after.tempHp,
+    wildShape: record.after.beastHp !== null && form ? { ...form, beastHp: record.after.beastHp } : null,
+    track: record.after.track !== undefined ? record.after.track : replayed.track,
+    ward: record.after.ward !== undefined ? record.after.ward : (replayed.ward ?? null),
+  };
+}
+
+// One hit of the fight being replayed: what it did as kept, what the
+// corrected swings do, and what changed them after it.
+type Step = {
+  record: LastHit;
+  corrected: SwingRecord[];
+  // Where it left them besides its swings: held up at 1 (Relentless
+  // Endurance, Death Ward, Relentless Rage) when it dropped them, or a
+  // rider's damage on top (a bite's poison on a failed save).
+  heldAt: number | null;
+  rider: number;
+  // As kept: where it found and left them, and each swing's outcome.
+  was: { swings: SwingOutcome[]; landed: number };
+  // Corrected: where it found them, where it left them, each swing.
+  now: { before: Standing<Shape>; after: Standing<Shape>; swings: SwingOutcome[]; dropped: boolean; landed: number; heldUsed: boolean };
+  // After it, until the next hit or now: the damage it dealt in the
+  // corrected fight and what of that went past 0.
+  gap: { dealt: number; pastZero: number };
+};
+
+// One or more hits on one character answered at once (Shield answers the
+// hit it is cast against and re-checks every open hit after it). The fight
+// is replayed from the earliest answered on (see the head of this file), and
+// the character is put where the corrected fight leaves them. Every hit of
+// it is kept as the corrected fight has it, so a second reaction starts from
+// there.
+export function settleHits(
+  campaign: Campaign,
+  turnId: string,
+  answers: Array<{ record: LastHit; corrected: SwingRecord[] }>,
+  label: string,
+  sheets: CharacterSheet[],
+  sheetsById: Map<string, CharacterSheet>,
+): Settled {
   const notes: string[] = [];
+  const sheet = answers.length ? getSheetById(answers[0].record.characterId) : null;
   if (!sheet) {
     return { given: 0, hp: "", notes };
   }
-  const oldLanded = landedBy(record, record.swings);
-  const newLanded = Math.min(oldLanded, landedBy(record, corrected));
-  const keep = (after: LastHit["after"]) =>
-    writeLastHit(campaign.id, { ...record, swings: corrected, after, answered: [...record.answered, label] });
   const maxHp = effectiveMaxHp(sheet);
-  if (newLanded >= oldLanded) {
-    keep(record.after);
+  const chain = chainFrom(campaign.id, answers);
+  const correctedOf = new Map(answers.map((answer) => [hitIdOf(answer.record), answer.corrected]));
+  const swingsOf = (record: LastHit) => correctedOf.get(hitIdOf(record)) ?? record.swings;
+  const first = chain[0];
+  const nowStanding = standingOfSheet(sheet);
+
+  // Each hit as it was kept and as it now is, and the gap after it carried.
+  // The holds that kept them up in the fight as it was (one each for a
+  // Relentless Endurance, a Death Ward, a Relentless Rage spent) stand ready
+  // in the corrected one, whichever hit now needs them.
+  const steps: Step[] = [];
+  let holds = 0;
+  let state = standingOf(first.before);
+  chain.forEach((record, at) => {
+    const corrected = swingsOf(record);
+    const actualBefore = standingOf(record.before);
+    const was = replayHit(actualBefore, record.swings.map((swing) => replaySwing(campaign.id, sheet, record, swing, swing)), maxHp);
+    const left = standingAfter(record, was.after);
+    const heldAt = was.dropped && up(left) && !was.after.track?.dead ? left.currentHp : null;
+    const rider = heldAt === null ? Math.max(0, pool(was.after) - pool(left)) : 0;
+    if (heldAt !== null) {
+      holds += 1;
+    }
+    const before = state;
+    const hit = replayHit(before, corrected.map((swing, index) => replaySwing(campaign.id, sheet, record, swing, record.swings[index])), maxHp);
+    let after = hit.after;
+    let heldUsed = false;
+    if (hit.dropped && holds > 0 && !after.track?.dead) {
+      after = { ...after, currentHp: heldAt ?? 1, track: null };
+      holds -= 1;
+      heldUsed = true;
+    }
+    if (rider > 0 && corrected.some((swing) => swing.hit)) {
+      after = strike(after, rider, (past) => past, false, maxHp).next;
+    }
+    const next = chain[at + 1] ?? null;
+    const gap = carryGap(after, { from: left, to: next ? standingOf(next.before) : nowStanding, pastZero: pastZeroAfter(campaign.id, record, next) }, maxHp);
+    state = gap.next;
+    steps.push({
+      record,
+      corrected,
+      heldAt,
+      rider,
+      was: { swings: was.swings, landed: was.swings.reduce((sum, swing) => sum + swing.landed, 0) },
+      now: { before, after, swings: hit.swings, dropped: hit.dropped, landed: hit.swings.reduce((sum, swing) => sum + swing.landed, 0), heldUsed },
+      gap: { dealt: gap.dealt, pastZero: gap.pastZero },
+    });
+  });
+  const final = state;
+  const settledAt = nowIso();
+
+  // Each hit of the chain is kept as the corrected fight has it: its
+  // swings, where it found and left them (a later hit that found them down
+  // now finds them standing, with the conditions they had standing), the
+  // damage past 0 after it, and the reaction that answered it.
+  const keep = () => {
+    for (const step of steps) {
+      const { record, now } = step;
+      const upAgain = !up(standingOf(record.before)) && up(now.before);
+      writeLastHit(campaign.id, {
+        ...record,
+        swings: step.corrected,
+        before: {
+          ...record.before,
+          currentHp: now.before.currentHp,
+          tempHp: now.before.tempHp,
+          wildShape: now.before.wildShape,
+          deathSaves: now.before.track,
+          ward: now.before.ward ?? null,
+          ...(upAgain ? { conditions: first.before.conditions, conditionMeta: first.before.conditionMeta } : {}),
+        },
+        after: {
+          currentHp: now.after.currentHp,
+          tempHp: now.after.tempHp,
+          beastHp: now.after.wildShape?.beastHp ?? null,
+          track: now.after.track,
+          ward: now.after.ward ?? null,
+        },
+        pastZeroAfter: { amount: step.gap.pastZero, until: settledAt },
+        answered: correctedOf.has(hitIdOf(record)) ? [...record.answered, label] : record.answered,
+      });
+    }
+  };
+  if (sameStanding(final, nowStanding) && !steps.some((step) => step.heldAt !== null && !step.now.heldUsed)) {
+    keep();
     return { given: 0, hp: `${sheet.currentHp}/${maxHp}`, notes };
   }
-  const untouched =
-    sheet.currentHp === record.after.currentHp &&
-    sheet.tempHp === record.after.tempHp &&
-    (sheet.wildShape?.beastHp ?? null) === record.after.beastHp;
-  if (!untouched) {
-    // Something moved their hit points since the attack; give back the
-    // difference through the heal path, which wakes a dying character.
-    const give = oldLanded - newLanded;
-    applyDmMutation(
-      campaign,
-      turnId,
-      "heal",
-      JSON.stringify({ characterId: sheet.id, amount: give, reason: label }),
-      sheets,
-      sheetsById,
-    );
-    const now = getSheetById(sheet.id) ?? sheet;
-    keep({ currentHp: now.currentHp, tempHp: now.tempHp, beastHp: now.wildShape?.beastHp ?? null });
-    return { given: give, hp: `${now.currentHp}/${maxHp}`, notes };
-  }
 
-  const before = record.before;
-  const next = replay(record, newLanded);
+  // Where the corrected fight leaves them.
   const patch: FullPatchSheetInput = {
-    currentHp: next.currentHp,
-    tempHp: next.tempHp,
-    ...(before.wildShape ? { wildShape: next.wildShape } : {}),
+    currentHp: final.currentHp,
+    tempHp: final.tempHp,
+    ...(final.wildShape || sheet.wildShape ? { wildShape: final.wildShape } : {}),
   };
-  const droppedByIt = before.currentHp > 0 && sheet.currentHp === 0;
-  const relentlessSpent =
-    before.relentless !== null &&
-    (sheet.resources?.relentless_endurance?.used ?? 0) > before.relentless.used;
+  const ward = sheet.resources?.[WARD_POOL];
+  if (ward && final.ward !== undefined && final.ward !== null && final.ward !== nowStanding.ward) {
+    patch.resources = { ...sheet.resources, [WARD_POOL]: { max: ward.max, used: Math.max(0, Math.min(ward.max, ward.max - final.ward)) } };
+  }
   let conditions = [...sheet.conditions];
   let meta = { ...sheet.conditionMeta } as Record<string, unknown>;
-  if (next.currentHp > 0 && (droppedByIt || relentlessSpent || sheet.deathSaves?.dead)) {
-    // The blow no longer drops them: the fall, the death track and what the
+  const before = first.before;
+  const fellThen = !up(nowStanding) || Boolean(sheet.deathSaves?.dead) || steps.some((step) => step.heldAt !== null);
+  const fallsNow = !up(final) || steps.some((step) => step.now.dropped);
+  if (up(final) && fellThen && !fallsNow) {
+    // The blows no longer drop them: the fall, the death track and what the
     // drop ended are undone.
     for (const name of [UNCONSCIOUS, PRONE]) {
       if (has(conditions, name) && !has(before.conditions, name)) {
@@ -236,25 +390,49 @@ export function settleLastHit(
         meta = cleared.meta as Record<string, unknown>;
       }
     }
-    const rage = before.conditions.find((name) => name.toLowerCase() === RAGING);
-    if (rage && !has(conditions, RAGING)) {
-      conditions = [...conditions, rage];
-      meta = { ...meta, [rage]: (before.conditionMeta as Record<string, unknown>)[rage] ?? {} };
-      notes.push(`${sheet.name} is still raging.`);
+    for (const kept of [RAGING, DEATH_WARD]) {
+      const was = heldAs(before.conditions, kept);
+      if (was && !has(conditions, kept)) {
+        conditions = [...conditions, was];
+        meta = { ...meta, [was]: (before.conditionMeta as Record<string, unknown>)[was] ?? {} };
+        notes.push(kept === RAGING ? `${sheet.name} is still raging.` : `Death Ward was never needed and still holds on ${sheet.name}.`);
+      }
     }
-    patch.deathSaves = before.deathSaves ?? null;
-    if (relentlessSpent && before.relentless) {
-      patch.resources = { ...sheet.resources, relentless_endurance: { ...before.relentless } };
+    patch.deathSaves = null;
+  } else if (up(final)) {
+    if (sheet.deathSaves) {
+      patch.deathSaves = null;
+    }
+  } else if (final.track && !sameTrack(final.track, sheet.deathSaves ?? null)) {
+    // Still down: the failures and the death the corrected blows no longer
+    // dealt are taken off the track, the saves rolled since kept.
+    patch.deathSaves = final.track;
+    notes.push(
+      sheet.deathSaves?.dead && !final.track.dead
+        ? `${sheet.name} is dying, not dead: the lighter blows were no longer enough to kill.`
+        : failuresNote(sheet.name, sheet.deathSaves ?? null, final.track),
+    );
+  }
+  // A hold the fight as it was spent, and the corrected one never needed.
+  const unneeded = steps.filter((step) => step.heldAt !== null).length - steps.filter((step) => step.now.heldUsed).length;
+  if (unneeded > 0) {
+    const relentless = sheet.resources?.relentless_endurance;
+    if (before.relentless && relentless && relentless.used > before.relentless.used) {
+      patch.resources = { ...(patch.resources ?? sheet.resources), relentless_endurance: { ...before.relentless } };
       notes.push("Relentless Endurance was never needed and is unspent.");
     }
-  } else if (next.currentHp === 0 && relentlessSpent) {
-    // Still a drop: Relentless Endurance still holds them at 1.
-    patch.currentHp = 1;
-  } else if (next.currentHp === 0 && sheet.deathSaves?.dead && !before.deathSaves?.dead) {
-    // A death by massive damage the lighter blow no longer deals.
-    if (!isMassiveDamage(next.overkill, maxHp)) {
-      patch.deathSaves = { successes: 0, failures: 0, stable: false, dead: false };
-      notes.push(`${sheet.name} is dying, not dead: the blow was no longer enough to kill outright.`);
+    const rage = sheet.resources?.relentless_rage;
+    if (typeof before.relentlessRage === "number" && rage && rage.used > before.relentlessRage) {
+      patch.resources = { ...(patch.resources ?? sheet.resources), relentless_rage: { ...rage, used: before.relentlessRage } };
+      notes.push("Relentless Rage was never needed: its next save is as easy as before.");
+    }
+    if (!fallsNow) {
+      const warded = heldAs(before.conditions, DEATH_WARD);
+      if (warded && !has(conditions, DEATH_WARD)) {
+        conditions = [...conditions, warded];
+        meta = { ...meta, [warded]: (before.conditionMeta as Record<string, unknown>)[warded] ?? {} };
+        notes.push(`Death Ward was never needed and still holds on ${sheet.name}.`);
+      }
     }
   }
   patch.conditions = conditions;
@@ -264,36 +442,120 @@ export function settleLastHit(
     publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
   }
 
-  // Concentration the attack broke: undone when the corrected blow would
-  // not have broken it. A miss asks no save; a lighter hit asks it against
-  // the lower DC, which the save already rolled is read against; a drop to
-  // 0 that is undone asks the save now.
-  if (before.concentratingOn && !getSheetById(sheet.id)?.concentratingOn) {
-    const dc = Math.max(10, Math.floor(newLanded / 2));
-    const rolled = concentrationSaveTotal(campaign.id, record);
-    const wasDropped = droppedByIt && rolled === null;
-    const heldNow = newLanded === 0 || (rolled !== null && rolled >= dc) || (wasDropped && next.currentHp > 0);
-    if (heldNow && next.currentHp > 0) {
-      const spell = restoreConcentration(campaign, record);
-      if (spell) {
-        notes.push(`${sheet.name} keeps concentrating on ${spell}.`);
-        if (wasDropped && newLanded > 0) {
-          const fresh = getSheetById(sheet.id);
-          if (fresh) {
-            const save = concentrationDamageHook(campaign, turnId, fresh, newLanded);
-            if (save.concentrationBroken || (save.concentration as { held?: boolean } | undefined)?.held === false) {
-              notes.push(`The lighter blow still asked a concentration save, and ${spell} ended.`);
-            }
-          }
-        }
-      }
+  bondShareBack(campaign, turnId, steps, label, sheets, sheetsById);
+  concentrationBack(campaign, turnId, steps, final, notes);
+  keep();
+  const after = getSheetById(sheet.id) ?? sheet;
+  const held = (entry: CharacterSheet) => entry.currentHp + entry.tempHp + (entry.wildShape?.beastHp ?? 0);
+  return { given: Math.max(0, held(after) - held(sheet)), hp: `${after.currentHp}/${maxHp}`, notes };
+}
+
+function sameTrack(a: DeathTrack | null, b: DeathTrack | null): boolean {
+  return (
+    (a?.failures ?? 0) === (b?.failures ?? 0) &&
+    (a?.successes ?? 0) === (b?.successes ?? 0) &&
+    Boolean(a?.dead) === Boolean(b?.dead) &&
+    Boolean(a?.stable) === Boolean(b?.stable)
+  );
+}
+
+// Warding Bond: the cleric who bound them took the same damage each blow
+// dealt them (pc-damage.ts wardingBondShare). What the corrected blows no
+// longer dealt comes back to the cleric through the heal path.
+function bondShareBack(campaign: Campaign, turnId: string, steps: Step[], label: string, sheets: CharacterSheet[], sheetsById: Map<string, CharacterSheet>) {
+  const back = new Map<string, number>();
+  for (const step of steps) {
+    const bond = heldAs(step.record.before.conditions, WARDING_BOND);
+    const casterId = bond ? (step.record.before.conditionMeta as ConditionMetaMap)[bond]?.source : undefined;
+    if (!casterId || casterId === step.record.characterId) {
+      continue;
+    }
+    const less = step.was.landed - step.now.landed;
+    if (less > 0) {
+      back.set(casterId, (back.get(casterId) ?? 0) + less);
     }
   }
-  const now = getSheetById(sheet.id) ?? sheet;
-  keep({ currentHp: now.currentHp, tempHp: now.tempHp, beastHp: now.wildShape?.beastHp ?? null });
-  return {
-    given: oldLanded - newLanded,
-    hp: `${now.currentHp}/${maxHp}`,
-    notes,
-  };
+  for (const [casterId, amount] of back) {
+    const caster = getSheetById(casterId);
+    if (caster && !caster.deathSaves?.dead) {
+      applyDmMutation(campaign, turnId, "heal", JSON.stringify({ characterId: casterId, amount, reason: `${label}: the Warding Bond's share of a blow undone` }), sheets, sheetsById);
+    }
+  }
+}
+
+// Concentration the fight broke: given back when the blow that broke it is
+// one a reaction corrected and the corrected fight would not have broken it.
+// SRD 5.1: each source of damage asks its own save, DC 10 or half the damage
+// it dealt. The save that blow rolled is read against its corrected damage;
+// a drop to 0 that is undone, and every later source that now finds them
+// still concentrating (a later blow, the damage in a gap), ask theirs now.
+// A break nothing in this fight made (damage between the hits, the GM)
+// stands.
+function concentrationBack(campaign: Campaign, turnId: string, steps: Step[], final: Standing<Shape>, notes: string[]) {
+  const first = steps[0]?.record;
+  const spell = first?.before.concentratingOn;
+  const sheet = first ? getSheetById(first.characterId) : null;
+  if (!spell || !sheet || sheet.concentratingOn || !up(final)) {
+    return;
+  }
+  const at = steps.findIndex((step) => step.record.swings.some((swing) => swing.concentration?.broke));
+  if (at < 0) {
+    return;
+  }
+  const breaking = steps[at];
+  const index = breaking.record.swings.findIndex((swing) => swing.concentration?.broke);
+  const outcome = breaking.now.swings[index];
+  const asked: number[] = [];
+  if (outcome.dropped) {
+    return;
+  }
+  if (outcome.landed > 0) {
+    const rolled = breaking.record.swings[index].concentration?.save ?? null;
+    if (rolled !== null) {
+      if (rolled < Math.max(10, Math.floor(outcome.landed / 2))) {
+        return;
+      }
+    } else {
+      asked.push(outcome.landed);
+    }
+  }
+  // Every source after it in the corrected fight.
+  for (let step = at; step < steps.length; step += 1) {
+    const { now, gap } = steps[step];
+    if (step > at && now.dropped) {
+      return;
+    }
+    now.swings.forEach((swing, swingAt) => {
+      if ((step > at || swingAt > index) && swing.landed > 0 && swing.standing) {
+        asked.push(swing.landed);
+      }
+    });
+    if (gap.dealt > 0) {
+      asked.push(gap.dealt);
+    }
+  }
+  const restored = restoreConcentration(campaign, first);
+  if (!restored) {
+    return;
+  }
+  notes.push(`${sheet.name} keeps concentrating on ${restored}.`);
+  for (const damage of asked) {
+    const fresh = getSheetById(sheet.id);
+    if (!fresh?.concentratingOn) {
+      break;
+    }
+    const save = concentrationDamageHook(campaign, turnId, fresh, damage);
+    if (save.concentrationBroken || (save.concentration as { held?: boolean } | undefined)?.held === false) {
+      notes.push(`A blow that now lands on ${sheet.name} still asks a concentration save, and ${restored} ends.`);
+      break;
+    }
+  }
+}
+
+// The line a refund adds when it takes death-save failures back.
+function failuresNote(name: string, was: DeathTrack | null, now: DeathTrack): string {
+  const back = Math.max(0, (was?.failures ?? 0) - now.failures);
+  return back
+    ? `${back} death-save failure${back === 1 ? "" : "s"} the blow dealt ${name} ${back === 1 ? "is" : "are"} taken back: ${now.failures} of 3.`
+    : `${name}'s death track is ${now.failures} failure${now.failures === 1 ? "" : "s"} of 3.`;
 }

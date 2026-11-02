@@ -227,7 +227,9 @@ export function resolveOpportunityAttacks(
       ...(attackEffect.disadvantage ? ["disadvantage" as const] : []),
     ]);
     const targetAc = acWithEffects(campaign.id, sheet);
-    const hitOutcome = rollExpression(d20Expression(attack.toHit + attackEffect.bonus, advantage));
+    const hitOutcome = rollExpression(d20Expression(attack.toHit + attackEffect.bonus, advantage), undefined, {
+      purpose: { roller: "enemy", kind: "attack", who: enemy.displayName },
+    });
     const hitRoll = insertRoll({
       campaignId: campaign.id,
       characterId: null,
@@ -259,6 +261,8 @@ export function resolveOpportunityAttacks(
       : attack.damage;
     const damageOutcome = rollExpression(
       damageEffect > 0 ? `${rolledDamage}+${damageEffect}` : damageEffect < 0 ? `${rolledDamage}-${-damageEffect}` : rolledDamage,
+      undefined,
+      { purpose: { roller: "enemy", kind: "damage", who: enemy.displayName } },
     );
     const damageRoll = insertRoll({
       campaignId: campaign.id,
@@ -307,7 +311,7 @@ export function resolveOpportunityAttacks(
       return { landed: applied, onHit: rider };
     });
     const updated = getSheetById(sheet.id);
-    hitLog.swing(hitOutcome, targetAc, { hit: true, crit, raw: rolled, advantage, ...(blow.type ? { type: blow.type } : {}), ...(blow.parts ? { parts: scaledParts(blow.parts, rolled) } : {}) });
+    hitLog.swing(hitOutcome, targetAc, { hit: true, crit, raw: rolled, advantage, ...(blow.type ? { type: blow.type } : {}), ...(blow.parts ? { parts: scaledParts(blow.parts, rolled) } : {}), ...(magical ? { flags: { magical: true } } : {}) });
     hitLog.close({ attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName }, attack: `${attack.name} (opportunity attack)`, type: attack.type, ranged: false });
     if (updated && updated.currentHp <= 0 && !updated.wildShape) {
       downed = true;

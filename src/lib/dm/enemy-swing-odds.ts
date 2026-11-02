@@ -24,8 +24,9 @@ import { CHILL_TOUCH_DREAD } from "@/lib/dm/spell-attack-riders";
 import { cursedAgainst } from "@/lib/dm/spell-retort";
 import { inDirectSunlight } from "@/lib/dm/sunlight";
 import type { underwaterSwing } from "@/lib/dm/underwater";
-import { conditionsOf } from "@/lib/dm/vitals-logic";
+import { conditionsOf, PRONE, UNCONSCIOUS } from "@/lib/dm/vitals-logic";
 import type { ConditionRollRiders } from "@/lib/srd/condition-effects";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 import { weatherRangedRider } from "@/lib/srd/weather";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -52,6 +53,11 @@ export function enemySwingOdds(input: {
   riders: ConditionRollRiders;
   // Multiattack Defense's +4 is already up.
   defended: number;
+  // The odds against the target as if it stood: a character at 0 without
+  // the unconsciousness and the fall that lying there lays (vitals-logic.ts
+  // downConditions). Kept with a hit on them at 0, for a reaction that leaves
+  // them standing when it lands (last-hit.ts standingAdvantage).
+  standingTarget?: boolean;
 }): {
   advantage: Advantage;
   notes: string[];
@@ -71,13 +77,15 @@ export function enemySwingOdds(input: {
     attacker: { refId: standing.id, senses: enemySenses(standing) },
     target: { refId: target.id, senses: characterSenses(target) },
   });
+  const live = getSheetById(target.id) ?? target;
+  const upright = input.standingTarget ? live.conditions.filter((entry) => !isConditionNamed(entry, UNCONSCIOUS) && !isConditionNamed(entry, PRONE)) : null;
   const conditionContext = attackContext({
     // Frightened weighs on the roll only with its source in sight.
     attackerConditions: fearAsRolled(encounterId, standing.id, standing.conditions, standing.conditionMeta),
     attackerType: standing.stats.type,
     // Dodge is lost with the dodger's speed, and a character at 0 hit
     // points is unconscious and prone whatever wrote the 0.
-    targetConditions: withLiveDodge(conditionsOf(getSheetById(target.id) ?? target)),
+    targetConditions: withLiveDodge(upright ?? conditionsOf(live)),
     melee: !ranged,
     adjacent: distance === null ? !ranged : distance <= 1,
     // The AI names a circumstance the engine does not decide (pc-attack-options.ts).
@@ -112,8 +120,8 @@ export function enemySwingOdds(input: {
     );
   // Elusive (rogue 18): no attack roll against them has advantage while
   // they are not incapacitated.
-  const liveTarget = getSheetById(target.id) ?? target;
-  const elusive = hasFeatureNamed(liveTarget, /^elusive$/i) && !isIncapacitated(liveTarget.conditions);
+  const liveTarget = live;
+  const elusive = hasFeatureNamed(liveTarget, /^elusive$/i) && !isIncapacitated(upright ?? liveTarget.conditions);
   // Authored subclass features (Among the Dead, Fungal Body, a guardian's mark): authored-hooks.ts.
   const authored = authoredIncomingAttack({ campaignId: campaign.id, encounterId, attacker: standing, target: liveTarget });
   const sources: Advantage[] = [

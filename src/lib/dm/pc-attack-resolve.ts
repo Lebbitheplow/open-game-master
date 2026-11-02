@@ -27,10 +27,11 @@ import { adjudicateHit } from "@/lib/dm/attack-logic";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { darkOnesBlessing } from "@/lib/dm/feature-hooks";
 import { authoredOnHit } from "@/lib/dm/authored-hooks";
-import { critDamageExpression } from "@/lib/dm/encounter-logic";
+import { critDamageExpression, ordinaryOfCritical } from "@/lib/dm/encounter-logic";
+import { critOnlyWhileUnconscious } from "@/lib/dm/condition-logic";
 import { gearCritRiders } from "@/lib/dm/gear-attack";
 import { publishFx, tokenPosition } from "@/lib/dm/fx";
-import { applyHitDamage, claimHitRiders, type strikeDamage } from "@/lib/dm/pc-attack-damage";
+import { applyHitDamage, blowSource, claimHitRiders, strikesAsMagic, type strikeDamage } from "@/lib/dm/pc-attack-damage";
 import type { AttackPlan, ManeuverPick } from "@/lib/dm/pc-attack-plan";
 import {
   applyRiderCondition,
@@ -122,7 +123,7 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike): Record<string, u
   const hitLog = isSheetFoe(enemy) ? openLastHit(campaign.id, enemy.id) : null;
   const closeLog = () =>
     hitLog?.close({ attacker: { kind: "sheet", id: sheet.id, name: sheet.name }, attack: plan.profile.weapon, type: plan.profile.damageType, ranged: plan.profile.ranged });
-  const hitOutcome = rollExpression(strike.toHitExpression);
+  const hitOutcome = rollExpression(strike.toHitExpression, undefined, { purpose: { roller: "hero", kind: "attack", who: sheet.name } });
   const hitRoll = insertRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
@@ -281,6 +282,7 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike): Record<string, u
     : profile.damageExpression;
   let damageOutcome = rollExpression(damageExpression, undefined, {
     rerollBelow: strike.rerollBelow,
+    purpose: { roller: "hero", kind: "damage", who: sheet.name },
   });
   if (stunShot) {
     context.notes.push("Stunning Sniper: the critical hit's damage is not doubled; the target is stunned instead");
@@ -361,7 +363,27 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike): Record<string, u
       critExtraDice,
     }),
   );
-  hitLog?.swing(hitOutcome, plan.effectiveAc, { hit: true, crit, raw: dealt, advantage: plan.advantage, type: profile.damageType, ranged: profile.ranged });
+  // A critical that came only from the character it struck lying unconscious
+  // at 0 within 5 ft (SRD 5.1) keeps its ordinary damage from the same dice,
+  // for a reaction that later leaves them standing when it landed
+  // (reaction-refund.ts). A natural 20 is critical whatever the target.
+  const ordinaryRoll =
+    hitLog && crit && !stunShot && hitOutcome.crit !== "nat20" && enemy.currentHp <= 0 && critOnlyWhileUnconscious(enemy.conditions)
+      ? ordinaryOfCritical(damageOutcome, profile.damageExpression, { multiplyNumeric: strike.critOptions?.multiplyNumeric, extraDice: critExtraDice })
+      : null;
+  hitLog?.swing(hitOutcome, plan.effectiveAc, {
+    hit: true,
+    crit,
+    raw: dealt,
+    advantage: plan.advantage,
+    type: profile.damageType,
+    ranged: profile.ranged,
+    ...(ordinaryRoll ? { ordinary: { raw: Math.max(0, ordinaryRoll.total) } } : {}),
+    // What the blow is made of, as the damage path met it (pc-attack-damage.ts
+    // landBlow): a reaction's replay meets the same clauses (a magic weapon
+    // past Stoneskin, a silvered blade past a form's resistance).
+    flags: { ...(strikesAsMagic(plan) ? { magical: true } : {}), ...(profile.material ?? {}), ...blowSource(plan) },
+  });
   closeLog();
 
   // Great Weapon Master: a melee weapon crit or kill opens a bonus-action
