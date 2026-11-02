@@ -1503,6 +1503,8 @@
     "lib/dm/natural-onhit.ts#str-eq": [["key",5,"condition names and creature types (engine vocabulary)"]],
     "lib/dm/natural-onhit.ts#toLowerCase": [["key",2,"condition names and creature types folded as the engine stores them"]],
     "lib/dm/natural-onhit.ts#toUpperCase": [["display",2,"an ability's abbreviation shown in a result line"]],
+    "lib/dm/notice-logic.ts#\\b": [["english-extra",6,"the English words of a place's name and description (caves, crypts, inns, roads), read only at an English table and only where the place's scene settles nothing (englishPlaceKind, offBoardLight): a place written before the location tools took a scene, or reached without one; the scene serves every language, and at any other table such a place is the DM's to light, as it always was"]],
+    "lib/dm/notice-logic.ts#re-word": [["english-extra",3,"the English words of a place's name and description (caves, crypts, inns, roads), read only at an English table and only where the place's scene settles nothing (englishPlaceKind, offBoardLight): a place written before the location tools took a scene, or reached without one; the scene serves every language, and at any other table such a place is the DM's to light, as it always was"]],
     "lib/dm/npc-logic.ts#str-list": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/npc-suggest.ts#str-eq": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/object-actions.ts#toLowerCase": [["key",1,"condition label (engine vocabulary)"]],

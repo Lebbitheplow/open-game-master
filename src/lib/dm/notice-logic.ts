@@ -8,6 +8,7 @@
 // disadvantage is -5; in darkness a creature without darkvision sees nothing,
 // and darkvision turns darkness into dim light and dim light into bright.
 import { isConditionNamed } from "../srd/feature-names.ts";
+import type { TableLanguage } from "../schemas/game-settings-options.ts";
 
 export type Light = "bright" | "dim" | "dark";
 
@@ -29,8 +30,8 @@ export function skyLight(hour: number): Light {
 // unlit dungeon or a subterranean vault" at any hour; a lived-in building is
 // lit by its lamps and fires. Read from the scene the location tools store
 // as the place's bed (src/lib/ambience/catalog.ts sceneIds), a fixed choice
-// made the same way at every table, never from the words of its name: a
-// scene that does not settle it (null) is not guessed at.
+// made the same way at every table: a scene that does not settle it (null)
+// is not guessed at, beyond the English words below at an English table.
 export type PlaceKind = "outdoors" | "indoors" | "underground";
 
 export const PLACE_KIND_OF_SCENE: Readonly<Record<string, PlaceKind | null>> = {
@@ -69,15 +70,44 @@ export const PLACE_KIND_OF_SCENE: Readonly<Record<string, PlaceKind | null>> = {
   arcane: null,
 };
 
+// The English words a place's name, then its description, were read by
+// before places had a scene, kept as an extra at an English table only and
+// only where the scene settles nothing: a place written before the location
+// tools took a scene (October 2026), a known place a world pack or World
+// Forge laid down and a small model moved to without naming one, a crowd or
+// a laboratory. A table in another language leaves those to the DM, as every
+// place there was before the scene.
+const ENGLISH_UNDERGROUND =
+  /\b(caves?|caverns?|grotto|dungeons?|crypts?|catacombs?|tombs?|barrows?|mines?|tunnels?|sewers?|underdark|undercity|cellars?|vaults?|burrows?|warrens?|depths|underground|subterranean|oubliette)\b/i;
+const ENGLISH_INDOORS =
+  /\b(inns?|taverns?|alehouse|pub|house|home|halls?|rooms?|chambers?|shops?|store|smithy|forge|temples?|shrines?|chapel|church|cathedral|library|keep|castle|palace|manor|mansion|towers?|guildhall|guild|barracks|warehouse|mill|stables?|cottage|hut|cabin|lodge|office|study|kitchen|prison|jail|hovel|brothel|bathhouse|theatre|theater|academy|monastery|abbey|court|throne room)\b/i;
+const ENGLISH_OUTDOORS =
+  /\b(roads?|highway|forests?|woods?|woodland|fields?|plains?|hills?|mountains?|river|lake|coast|shore|beach|swamp|marsh|bog|desert|tundra|valley|meadow|camp|campsite|clearing|garden|courtyard|square|market|streets?|alley|bridge|trail|path|pass|wilds?|wilderness|jungle|glade|grove|ruins?|graveyard|cemetery|farm|village|docks?|harbou?r|deck|sea|ocean|rooftops?|outdoors|outside|open air)\b/i;
+
+export function englishPlaceKind(text: string): PlaceKind | null {
+  if (ENGLISH_UNDERGROUND.test(text)) {
+    return "underground";
+  }
+  if (ENGLISH_INDOORS.test(text)) {
+    return "indoors";
+  }
+  if (ENGLISH_OUTDOORS.test(text)) {
+    return "outdoors";
+  }
+  return null;
+}
+
 // The light off the board. A light the DM names wins; then the place: an
 // unlit underground place is dark, a building is lit, the open sky follows
 // the hour. With no location recorded the party is taken to be under the
-// sky, as before; a place whose scene does not settle it gives no light
-// shift at all (null), for the DM to name.
+// sky, as before; a place whose scene does not settle it (and, at an English
+// table, whose words do not either) gives no light shift at all (null), for
+// the DM to name.
 export function offBoardLight(input: {
   hour: number;
   named?: Light | null;
-  place?: { scene: string | null; outdoors?: boolean | null } | null;
+  place?: { scene: string | null; outdoors?: boolean | null; name?: string; description?: string } | null;
+  language?: TableLanguage;
 }): Light | null {
   if (input.named) {
     return input.named;
@@ -90,7 +120,9 @@ export function offBoardLight(input: {
   }
   // A bed that is no scene (a sound picked for the place, "wind", "night")
   // has no row, and settles nothing.
-  const kind = (input.place.scene ? PLACE_KIND_OF_SCENE[input.place.scene] : null) ?? (input.place.outdoors === false ? "indoors" : null);
+  const words =
+    input.language === "english" ? (englishPlaceKind(input.place.name ?? "") ?? englishPlaceKind(input.place.description ?? "")) : null;
+  const kind = (input.place.scene ? PLACE_KIND_OF_SCENE[input.place.scene] : null) ?? words ?? (input.place.outdoors === false ? "indoors" : null);
   if (kind === "underground") {
     return "dark";
   }

@@ -1,8 +1,10 @@
 // The light off the board comes from the place's scene, the fixed kind the
-// location tools store as its bed, never from the words of its name: a crypt
-// is dark at noon and a tavern lit at midnight whatever language the place is
-// named in, and a place whose scene does not settle it is left for the DM to
-// name (src/lib/dm/notice-logic.ts PLACE_KIND_OF_SCENE, place-light.ts).
+// location tools store as its bed: a crypt is dark at noon and a tavern lit
+// at midnight whatever language the place is named in. A place whose scene
+// does not settle it is read by its English words at an English table only
+// (the places written before there was a scene, and the moves made without
+// one), and is otherwise left for the DM to name (src/lib/dm/notice-logic.ts
+// PLACE_KIND_OF_SCENE and englishPlaceKind, place-light.ts).
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
 import fs from "node:fs";
@@ -21,7 +23,7 @@ const { PLACE_KIND_OF_SCENE, offBoardLight } = await import("../src/lib/dm/notic
 const { offBoardAmbient } = await import("../src/lib/dm/place-light.ts");
 const { sceneIds } = await import("../src/lib/ambience/catalog.ts");
 const { createUser } = await import("../src/lib/db/users.ts");
-const { createCampaign } = await import("../src/lib/db/campaigns.ts");
+const { createCampaign, updateGameSettings } = await import("../src/lib/db/campaigns.ts");
 const { getClock, setClockInstant } = await import("../src/lib/db/clock.ts");
 const { setLocationLinks, upsertCurrentLocation } = await import("../src/lib/db/locations.ts");
 
@@ -84,19 +86,51 @@ test("a forest follows the hour: bright at noon, dim at dusk, dark at midnight, 
   }
 });
 
-test("a place with no scene gives no light shift at every table, an English name included: its words are never read", () => {
+const speaking = (tableLanguage) => updateGameSettings(campaign.id, { tableLanguage });
+
+test("at an English table a place with no scene is still read by its English words, as every place was before the scene", () => {
+  speaking("english");
   atHour(12);
-  for (const name of ["The Sunken Crypt", "Goblin Cave", ...PLACES.crypt]) {
+  for (const name of ["The Sunken Crypt", "Goblin Cave"]) {
     goTo(name, null);
-    assert.equal(offBoardAmbient(campaign.id), null, name);
+    assert.equal(offBoardAmbient(campaign.id), "dark", name);
   }
+  atHour(0);
+  goTo("The Prancing Pony Inn", null);
+  assert.equal(offBoardAmbient(campaign.id), "bright");
+  goTo("The King's Road", null);
+  assert.equal(offBoardAmbient(campaign.id), "dark");
+  // A place its words do not settle is left to the DM.
+  goTo("Thornfield", null);
+  assert.equal(offBoardAmbient(campaign.id), null);
+  // The scene wins over the words wherever it settles the light.
+  goTo("The Crypt", "tavern");
+  assert.equal(offBoardAmbient(campaign.id), "bright");
 });
 
-test("a scene that does not settle the light (a crowd, underwater, arcane) leaves it to the DM", () => {
+test("at a table in another language a place with no scene gives no light shift, whatever words its name holds", () => {
+  atHour(12);
+  for (const tableLanguage of ["italian", "french", "spanish", "german"]) {
+    speaking(tableLanguage);
+    for (const name of ["The Sunken Crypt", "Goblin Cave", ...PLACES.crypt]) {
+      goTo(name, null);
+      assert.equal(offBoardAmbient(campaign.id), null, `${tableLanguage}: ${name}`);
+    }
+  }
+  speaking("english");
+});
+
+test("a scene that does not settle the light (a crowd, underwater, arcane) leaves it to the DM, or at an English table to the place's words", () => {
   atHour(12);
   for (const scene of ["crowd", "underwater", "arcane"]) {
+    speaking("italian");
     goTo(`Somewhere ${scene}`, scene);
     assert.equal(offBoardAmbient(campaign.id), null, scene);
+    speaking("english");
+    goTo(`Somewhere ${scene}`, scene);
+    assert.equal(offBoardAmbient(campaign.id), null, scene);
+    goTo(`The ${scene} cellar`, scene);
+    assert.equal(offBoardAmbient(campaign.id), "dark", scene);
   }
 });
 
