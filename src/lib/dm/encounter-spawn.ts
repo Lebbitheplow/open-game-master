@@ -280,12 +280,9 @@ function parseAddArgs(rawArguments: string): z.infer<typeof addArgsSchema> | nul
   }
   const flat = enemyRequestSchema.extend({ reason: z.string().optional() }).safeParse(raw);
   if (flat.success) {
-    return {
-      enemies: [
-        { monster: flat.data.monster, name: flat.data.name, count: flat.data.count, cr: flat.data.cr, returning: flat.data.returning },
-      ],
-      reason: flat.data.reason,
-    };
+    // Every field an enemy takes (encounter-tools.ts parseStartArgs).
+    const { reason, ...enemy } = flat.data;
+    return { enemies: [enemy], reason };
   }
   return null;
 }

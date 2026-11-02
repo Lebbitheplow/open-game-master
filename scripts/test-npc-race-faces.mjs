@@ -21,6 +21,9 @@ const { buildPlayerMapView } = await import("../src/lib/battlemap/view.ts");
 const { trackedNpcFace } = await import("../src/lib/db/npc-faces.ts");
 const { handleSetNpc, npcRosterForPrompt } = await import("../src/lib/dm/social-tools.ts");
 const { parseFightRoster } = await import("../src/lib/dm/encounter-template-logic.ts");
+const { applyEncounterCall } = await import("../src/lib/dm/encounter-tools.ts");
+const { handleAddEnemies } = await import("../src/lib/dm/encounter-spawn.ts");
+const { createDmTurn } = await import("../src/lib/db/dm-turns.ts");
 
 const BASE = "/assets/placeholders";
 
@@ -156,6 +159,20 @@ await test("an ally the GM puts on the board draws the face the Cast gives them;
   assert.equal(tokens.get("ally-ilya").face, `${BASE}/enemy-npc/archer-elf-neutral.webp`);
   assert.equal(tokens.get("ally-nobody").face, undefined);
   assert.equal(trackedNpcFace(world.campaignId, { name: "Brakka" }), `${BASE}/character-race/half-orc-feminine.webp`);
+});
+
+await test("a weak model's flat call keeps the race and gender, for a start and for reinforcements", async () => {
+  await world.invoke("end_encounter", { summary: "The bandits scatter." });
+  const campaign = world.campaign();
+  const sheets = world.sheets();
+  const turn = createDmTurn(world.campaignId, [], "ai");
+  const started = applyEncounterCall(campaign, turn, "start_encounter", JSON.stringify({ monster: "bandit", race: "dwarf", gender: "Male" }), sheets, new Map(sheets.map((sheet) => [sheet.id, sheet])), { realDiceUserIds: new Set(), toolCallId: null });
+  assert.equal(started.result.error, undefined, started.result.error);
+  assert.deepEqual([world.enemies()[0].race, world.enemies()[0].gender], ["hill_dwarf", "Male"]);
+  const added = handleAddEnemies(campaign, JSON.stringify({ monster: "bandit", name: "Lookout", race: "half-orc", gender: "Female" }), sheets);
+  assert.equal(added.error, undefined, added.error);
+  const lookout = world.enemies().find((enemy) => enemy.displayName === "Lookout");
+  assert.deepEqual([lookout.race, lookout.gender], ["half_orc", "Female"]);
 });
 
 await test("a Cast NPC fighting draws from their own record, so an edit there shows at once", async () => {
