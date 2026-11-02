@@ -20,6 +20,7 @@ import { normalizeAmbience } from "@/lib/battlemap/scene";
 import { MAP_THEMES } from "@/lib/battlemap/generate";
 import { sceneIds } from "@/lib/ambience/catalog";
 import { normalizeNpcVoice } from "@/lib/npcs/forge";
+import { knownBeforeColumn, readKnownBefore } from "@/lib/dm/known-before-logic";
 import { attractionJson, normalizeAttraction } from "@/lib/attraction";
 import { textKey } from "@/lib/language/text-logic";
 import {
@@ -377,8 +378,8 @@ function writeBundleRows(
         `INSERT INTO npcs
            (id, campaign_id, name, attitude, trait, location, role, gender, race, attraction_json, last_shift_turn,
             aliases_json, personality_json, goals_json, relations_json, bonds_json,
-            pressure_json, arc_cast_id, portrait_url, voice_json, stat_block, archived, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?, ?, ?, '[]', '', '', ?, ?, ?, 0, ?, ?)`,
+            pressure_json, arc_cast_id, portrait_url, voice_json, stat_block, archived, known_before_json, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?, ?, ?, '[]', '', '', ?, ?, ?, 0, ?, ?, ?)`,
       ).run(
         id,
         workshop.id,
@@ -401,6 +402,10 @@ function writeBundleRows(
         npcPortraits[index],
         voice ? JSON.stringify(voice) : null,
         npc.statBlock ?? "",
+        // Never for someone hostile to the party (known-before-logic.ts).
+        npc.attitude === "hostile" || !npc.knownAtStart
+          ? ""
+          : knownBeforeColumn(readKnownBefore({ grade: npc.knownAtStart.grade, how: npc.knownAtStart.source })),
         now,
         now,
       );

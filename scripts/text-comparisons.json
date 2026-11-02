@@ -622,6 +622,7 @@
     "lib/dm/improvise-logic.ts#str-list": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/intent-logic.ts#str-list": [["key",3,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/intent-logic.ts#str-eq": [["key",4,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
+    "lib/dm/known-before-logic.ts#str-list": [["key",1,"the tie grades: acquainted, friend, close (fixed choice)"]],
     "lib/dm/notice-logic.ts#str-key": [["key",1,"scene ids, the ambience beds the location tools store (engine vocabulary)"]],
     "lib/dm/party-bonds-logic.ts#str-eq": [["key",1,"fixed choices: a companion's kind and a bond's status"]],
     "lib/dm/romance-held-logic.ts#str-eq": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],

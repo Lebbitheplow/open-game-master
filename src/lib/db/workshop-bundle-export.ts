@@ -18,6 +18,7 @@ import { storedSheetSchema } from "@/lib/schemas/sheet";
 import { storedGender } from "@/lib/gender";
 import { storedRace } from "@/lib/npc-race";
 import { normalizeAttraction } from "@/lib/attraction";
+import { parseKnownBefore } from "@/lib/dm/known-before-logic";
 import { isUploadedImagePath } from "@/lib/uploads";
 import { normalizeMapSkin } from "@/lib/battlemap/skins";
 import { normalizeRoutes } from "@/lib/workshop/board";
@@ -49,6 +50,13 @@ type Row = Record<string, unknown>;
 
 function allRows(sql: string, ...args: unknown[]): Row[] {
   return getDatabase().prepare(sql).all(...args) as Row[];
+}
+
+// Who the party already knows when the story begins, in the bundle's words
+// (issue 731): absent for everyone else.
+function knownAtStartOf(column: string): { knownAtStart?: { grade: "acquainted" | "friend" | "close"; source: string } } {
+  const known = parseKnownBefore(column);
+  return known ? { knownAtStart: { grade: known.grade, source: known.how } } : {};
 }
 
 function str(value: unknown, fallback = ""): string {
@@ -139,7 +147,7 @@ export const BUNDLE_COLUMNS: Record<string, { carried: string[]; left: Record<st
     left: { ...IDENTITY, visited: "play", is_current: "play", map_image_json: "a legacy column nothing reads" },
   },
   npcs: {
-    carried: ["name", "attitude", "trait", "location", "role", "gender", "race", "attraction_json", "aliases_json", "personality_json", "goals_json", "relations_json", "portrait_url", "voice_json", "faction_id", "stat_block"],
+    carried: ["name", "attitude", "trait", "location", "role", "gender", "race", "attraction_json", "aliases_json", "personality_json", "goals_json", "relations_json", "portrait_url", "voice_json", "faction_id", "stat_block", "known_before_json"],
     left: {
       ...IDENTITY,
       last_shift_turn: "the source table's clock",
@@ -396,6 +404,7 @@ export function exportWorkshopBundle(
       portrait: loadImage(row.portrait_url, budget),
       voice: row.voice_json ? parseJson<Record<string, unknown> | null>(str(row.voice_json), null) : null,
       statBlock: portableStatBlock(str(row.stat_block)),
+      ...knownAtStartOf(str(row.known_before_json)),
       ref: refFor(row.home, "npcs", str(row.id)),
       shared: row.home !== workshopId,
     })),

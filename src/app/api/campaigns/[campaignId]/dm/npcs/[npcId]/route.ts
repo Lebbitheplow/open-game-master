@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { publishCast } from "@/lib/dm/cast";
+import { openMarkedAtBegunTable } from "@/lib/dm/known-before";
 import { isErrorResponse, requireDm } from "@/lib/campaign-api";
 import {
   deleteNpc,
@@ -80,6 +81,9 @@ export async function PATCH(
     if (!saved) {
       return Response.json({ error: "That NPC is not at this table." }, { status: 404 });
     }
+    // Someone the party knew before the story, marked before the GM's first
+    // narration, is known from now (issue 731).
+    openMarkedAtBegunTable(context.campaign, saved);
     if (body.generatePortrait) {
       queueNpcPortrait(context.campaign, {
         id: npcId,

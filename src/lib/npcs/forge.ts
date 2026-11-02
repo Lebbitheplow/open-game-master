@@ -37,6 +37,7 @@ import { storedGender, type Gender } from "@/lib/gender";
 import { storedRace } from "@/lib/npc-race";
 import { normalizeAttraction, type Attraction } from "@/lib/attraction";
 import { textKey } from "@/lib/language/text-logic";
+import { knownBeforeMissingHow, readKnownBefore, type KnownBefore } from "@/lib/dm/known-before-logic";
 
 export const ATTITUDES = ["hostile", "indifferent", "friendly"] as const;
 export type Attitude = (typeof ATTITUDES)[number];
@@ -265,6 +266,11 @@ export type NpcDraft = {
   // reference start_encounter resolves ("veteran", "homebrew:<id>"); "" for
   // none (src/lib/dm/encounter-spawn.ts).
   statBlock: string;
+  // The party already knows them when the story begins, and how (issue 731,
+  // src/lib/dm/known-before-logic.ts); null for someone met in play.
+  // Absent keeps what the record has: a form from an app built before the
+  // field, or a draft made by code, says nothing about it.
+  knownBefore?: KnownBefore | null;
 };
 
 export function blankDraft(): NpcDraft {
@@ -284,6 +290,7 @@ export function blankDraft(): NpcDraft {
     goals: {},
     relations: [],
     statBlock: "",
+    knownBefore: null,
   };
 }
 
@@ -306,10 +313,12 @@ export function draftFrom(npc: {
   voice?: NpcVoice | null;
   factionId?: string;
   statBlock?: string;
+  knownBefore?: KnownBefore | null;
   agency: { personality: NpcPersonality | null; goals: NpcGoals; relations: NpcRelation[] };
 }): NpcDraft {
   return {
     statBlock: npc.statBlock ?? "",
+    knownBefore: npc.knownBefore ? { ...npc.knownBefore } : null,
     name: npc.name,
     voice: npc.voice ? { ...npc.voice } : null,
     factionId: npc.factionId ?? "",
@@ -405,6 +414,17 @@ export function normalizeNpcDraft(input: unknown): DraftOutcome {
     relations = removeRelation(relations, name);
   }
 
+  // A person hostile to the party is nobody's friend from the start, so a
+  // tie goes with that attitude, an unfinished one included: the editor
+  // hides the section for them, and refusing the save would ask for a line
+  // nobody can see. Otherwise a grade with nothing said about how is
+  // refused: the line is the bond's reason on every hero's Bonds tab.
+  if (attitude !== "hostile" && knownBeforeMissingHow(raw.knownBefore)) {
+    return { error: `Say how the party knows ${name}: that line opens every hero's bond with them.` };
+  }
+  const knownBefore =
+    attitude === "hostile" ? null : raw.knownBefore === undefined ? undefined : readKnownBefore(raw.knownBefore);
+
   return {
     draft: {
       name,
@@ -424,6 +444,7 @@ export function normalizeNpcDraft(input: unknown): DraftOutcome {
       goals,
       relations,
       statBlock: String(raw.statBlock ?? "").trim().slice(0, 80),
+      ...(knownBefore === undefined ? {} : { knownBefore }),
     },
   };
 }

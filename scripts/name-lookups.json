@@ -1407,6 +1407,7 @@
     "lib/dm/json-salvage.ts#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"],["key",1,"argument field names"]],
     "lib/dm/json-salvage.ts#partial": [["key",1,"tool shapes"],["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "lib/dm/knockout.ts#whole": [["identity",1,"condition instances by whole name or key"]],
+    "lib/dm/known-before.ts#whole": [["identity",1,"a hero is never their own tie's subject, by whole name (textKey)"]],
     "lib/dm/last-hit.ts#whole": [["identity",2,"condition instances by whole name or key"],["key",1,"turn keys"]],
     "lib/dm/last-hit.ts#whole-single": [["key",1,"turn keys"]],
     "lib/dm/learn-rules.ts#whole": [["key",2,"class ids by textKey"],["identity",1,"a spell by whole name"]],

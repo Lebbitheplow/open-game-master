@@ -1004,7 +1004,9 @@ export function relationshipRosterForPrompt(
       (relationship) =>
         relationship.status !== "ended" &&
         !fallen.has(relationship.characterId) &&
-        (relationship.approval !== 0 || relationship.romance !== "none"),
+        // A bond at Neutral with a history still says something: someone the
+        // party knew before the story, at "acquainted" (issue 731).
+        (relationship.approval !== 0 || relationship.romance !== "none" || relationship.memories.length > 0),
     )
     .slice(0, 14)
     .map((relationship) => relationshipFragment(relationship, options.leaving));

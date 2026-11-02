@@ -94,6 +94,8 @@ export function DmNpcForgePanel({
   }, [campaignId]);
   // The table's setting, for the role picker's ordering.
   const [genre, setGenre] = useState("");
+  // Whether "Before the story" can still matter here (issue 731).
+  const [knownBeforeOpen, setKnownBeforeOpen] = useState(false);
   // The world's named places, for the location field's dropdown.
   const [places, setPlaces] = useState<string[]>([]);
   const [selectedId, setSelectedId] = useState("");
@@ -116,12 +118,13 @@ export function DmNpcForgePanel({
   const { loaded, loadError, settle } = useLoadStatus();
   const load = useCallback(
     () =>
-      readLoad<{ npcs: Npc[]; graph: RelationGraph; genre?: string }>(fetch(`/api/campaigns/${campaignId}/dm/npcs`), "The cast").then(
+      readLoad<{ npcs: Npc[]; graph: RelationGraph; genre?: string; knownBeforeOpen?: boolean }>(fetch(`/api/campaigns/${campaignId}/dm/npcs`), "The cast").then(
         (outcome) => {
           if (outcome.payload) {
             setNpcs(outcome.payload.npcs);
             setGraph(outcome.payload.graph);
             setGenre(outcome.payload.genre ?? "");
+            setKnownBeforeOpen(outcome.payload.knownBeforeOpen === true);
           }
           settle(outcome);
         },
@@ -390,6 +393,7 @@ export function DmNpcForgePanel({
         genre={genre}
         places={places}
         factions={factions}
+        knownBeforeOpen={knownBeforeOpen}
       />
 
       {onWorldEntry && selected ? <WorldEntryLink onOpen={() => onWorldEntry(selected.id)} /> : null}

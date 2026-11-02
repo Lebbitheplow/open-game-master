@@ -2,6 +2,7 @@ import { z } from "zod";
 import { isErrorResponse, requireMember, steersStory } from "@/lib/campaign-api";
 import { getImportSourceForUser } from "@/lib/db/import-sources";
 import { planContentImport, runContentImport } from "@/lib/db/content-import";
+import { openPreStoryTies } from "@/lib/dm/known-before";
 import { keptNotes } from "@/lib/db/world-forge-io";
 import { listOfferedPregens } from "@/lib/db/pregen-offers";
 import { IMPORT_KINDS } from "@/lib/workshop/import";
@@ -144,6 +145,12 @@ export async function POST(
   // shows without a refresh. Contentless: each seat reads back only what it
   // may.
   publishEphemeral(campaignId, "prep_imported", {});
+  // A module brought into a table that has begun but not yet heard its
+  // first narration opens its people's ties as Begin would have (issue 731);
+  // in the lobby they open at Begin, and once the story is under way never.
+  if (context.campaign.status === "active") {
+    openPreStoryTies(context.campaign);
+  }
   // The workshop's pregens its players can now take here, by name, so the
   // picker can say the roster came along even when no prep did.
   const pregensOffered =

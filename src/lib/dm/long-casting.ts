@@ -48,7 +48,14 @@ import {
 // The cast door, as cast-guard.ts registers it: completes the casting the
 // "casting complete" mark holds, spending its slot and no action.
 type Completion = (campaign: Campaign, sheetId: string, spell: string) => ToolResult;
-let completion: Completion | null = null;
+// A `var` with no initializer, never a `let`: a module that loads this one
+// first (the encounter route does) reaches cast-guard.ts through this
+// module's own imports, and cast-guard.ts registers the door before this
+// body runs. A `let` cannot be written until then, so the route threw as it
+// loaded (scripts/test-long-casting-load-order.mjs); an initializer would
+// wipe the door once this body ran.
+// eslint-disable-next-line no-var
+var completion: Completion | undefined;
 
 export function registerCastingCompletion(run: Completion) {
   completion = run;

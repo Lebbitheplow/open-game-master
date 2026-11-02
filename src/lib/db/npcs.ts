@@ -9,6 +9,7 @@ import { isUploadedImagePath } from "@/lib/uploads";
 import { storedGender, type Gender } from "@/lib/gender";
 import { storedRace } from "@/lib/npc-race";
 import { attractionJson, keptAttraction, normalizeAttraction, type Attraction } from "@/lib/attraction";
+import { knownBeforeColumn, parseKnownBefore, type KnownBefore } from "@/lib/dm/known-before-logic";
 import {
   parseBonds,
   parseGoals,
@@ -102,6 +103,10 @@ export type Npc = {
   // then. Met or heard, the table knows them, and only then is their name
   // sent to every seat (src/lib/dm/cast-logic.ts, issue 650).
   heardAt: string;
+  // The party already knows them when the story begins, and how (issue 731,
+  // src/lib/dm/known-before-logic.ts): an author's mark, opened into every
+  // hero's bond as the table begins. Null for everyone else.
+  knownBefore: KnownBefore | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -133,6 +138,7 @@ type NpcRow = {
   archived: number;
   met_at?: string | null;
   heard_at?: string | null;
+  known_before_json?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -169,6 +175,7 @@ function mapNpc(row: NpcRow): Npc {
     archived: row.archived === 1,
     metAt: row.met_at ?? "",
     heardAt: row.heard_at ?? "",
+    knownBefore: parseKnownBefore(row.known_before_json ?? ""),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -362,8 +369,8 @@ export function createNpcFromDraft(campaignId: string, draft: NpcDraft): Npc {
     `INSERT INTO npcs
        (id, campaign_id, name, attitude, trait, location, role, gender, race, attraction_json, last_shift_turn,
         aliases_json, personality_json, goals_json, relations_json,
-        bonds_json, pressure_json, arc_cast_id, portrait_url, voice_json, faction_id, stat_block, archived, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?, ?, ?, '[]', '', '', '', ?, ?, ?, 0, ?, ?)`,
+        bonds_json, pressure_json, arc_cast_id, portrait_url, voice_json, faction_id, stat_block, archived, known_before_json, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?, ?, ?, '[]', '', '', '', ?, ?, ?, 0, ?, ?, ?)`,
   ).run(
     id,
     campaignId,
@@ -382,6 +389,7 @@ export function createNpcFromDraft(campaignId: string, draft: NpcDraft): Npc {
     draft.voice ? JSON.stringify(draft.voice) : null,
     draft.factionId,
     draft.statBlock ?? "",
+    knownBeforeColumn(draft.knownBefore),
     now,
     now,
   );
@@ -426,6 +434,11 @@ export function updateNpcFromDraft(campaignId: string, npcId: string, draft: Npc
     nowIso(),
     npcId,
   );
+  // Who the party knew before the story, when the form said: a form from an
+  // app built before the field says nothing, and keeps it.
+  if (draft.knownBefore !== undefined) {
+    db.prepare(`UPDATE npcs SET known_before_json = ? WHERE id = ?`).run(knownBeforeColumn(draft.knownBefore), npcId);
+  }
   // Renamed in the NPC editor: their bonds follow, as renameNpc's do.
   followBonds(mapNpc(row), draft.name);
   touchCast(campaignId);
