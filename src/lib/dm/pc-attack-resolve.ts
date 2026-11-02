@@ -31,7 +31,7 @@ import { critDamageExpression, ordinaryOfCritical } from "@/lib/dm/encounter-log
 import { critOnlyWhileUnconscious } from "@/lib/dm/condition-logic";
 import { gearCritRiders } from "@/lib/dm/gear-attack";
 import { publishFx, tokenPosition } from "@/lib/dm/fx";
-import { applyHitDamage, claimHitRiders, type strikeDamage } from "@/lib/dm/pc-attack-damage";
+import { applyHitDamage, blowSource, claimHitRiders, strikesAsMagic, type strikeDamage } from "@/lib/dm/pc-attack-damage";
 import type { AttackPlan, ManeuverPick } from "@/lib/dm/pc-attack-plan";
 import {
   applyRiderCondition,
@@ -379,6 +379,10 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike): Record<string, u
     type: profile.damageType,
     ranged: profile.ranged,
     ...(ordinaryRoll ? { ordinary: { raw: Math.max(0, ordinaryRoll.total) } } : {}),
+    // What the blow is made of, as the damage path met it (pc-attack-damage.ts
+    // landBlow): a reaction's replay meets the same clauses (a magic weapon
+    // past Stoneskin, a silvered blade past a form's resistance).
+    flags: { ...(strikesAsMagic(plan) ? { magical: true } : {}), ...(profile.material ?? {}), ...blowSource(plan) },
   });
   closeLog();
 

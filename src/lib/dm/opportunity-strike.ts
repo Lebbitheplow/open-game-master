@@ -257,7 +257,16 @@ export function pcOpportunitySwing(input: {
     if (!("error" in applied)) {
       markRollApplied(damageRoll.id, enemy.id);
     }
-    hitLog?.swing(hitOutcome, targetAc, { hit: true, crit, raw: dealt, advantage, type: profile.damageType, ranged: false });
+    hitLog?.swing(hitOutcome, targetAc, {
+      hit: true,
+      crit,
+      raw: dealt,
+      advantage,
+      type: profile.damageType,
+      ranged: false,
+      // As the blow met the damage path, for a reaction's replay (last-hit.ts flags).
+      flags: { ...(strikesAsMagic({ kind: "weapon", profile, riders, sheet }) ? { magical: true } : {}), ...(profile.material ?? {}) },
+    });
     closeLog();
     const after = getFoe(enemy.id);
     const dropped = Boolean(applied.dead) || after?.status === "dead";
