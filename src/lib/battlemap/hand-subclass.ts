@@ -9,7 +9,8 @@
 // Pure; scripts/test-hand-engine.mjs drives it.
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { computeSheetDerived } from "@/lib/srd";
-import { gateHolds, heldAuthored, type AuthoredSpend } from "@/lib/srd/authored-effects";
+import { authoredSpendFor, gateHolds, heldAuthored, type AuthoredSpend } from "@/lib/srd/authored-effects";
+import { resourceDef } from "@/lib/srd/class-resources";
 import { holdsFeature } from "@/lib/srd/trait-rules";
 import {
   costGate,
@@ -30,7 +31,8 @@ const COST: Record<string, HandCost> = { action: "action", bonus: "bonus", none:
 
 function targetOf(does: SpendDoes): HandTarget {
   if (does.kind === "buff") {
-    return does.target === "enemy" ? "enemy" : does.target === "ally" ? "ally" : "self";
+    // A quarry (Hexblade's Curse) marks a creature, and the engine asks which.
+    return does.target === "enemy" || does.quarry ? "enemy" : does.target === "ally" ? "ally" : "self";
   }
   if (does.kind === "save_effect" || does.kind === "insight_contest" || does.kind === "die_damage") return "enemy";
   return "none";
@@ -53,15 +55,30 @@ function linesOf(does: SpendDoes): { dice: string; condition: string } {
   }
 }
 
-// One card per spend the character holds that is played in a fight. The
-// counters populateResources makes for these features are already cards
-// (hand-spells.ts featureCards); `taken` names them so none shows twice.
+// Whether a spend is played from the Hand as its own card: subclassSpendCards
+// deals it, and hand-spells.ts featureCards leaves its counter to this card, so
+// the card carries the spend's name, target and gate. A counter's own card sent
+// its id and no target, and a capstone spent its use for nothing.
+export function playedAsSpendCard(sheet: CharacterSheet, name: string): boolean {
+  const found = authoredSpendFor(sheet, name);
+  if (!found) return false;
+  const { spend, held } = found;
+  return spend.fight !== "out" && spend.does.kind !== "choose" && spend.action !== "reaction" && gateHolds(spend.gate, sheet, held);
+}
+
+// One card per spend the character holds that is played in a fight. `taken`
+// names the cards dealt before these so none shows twice.
 export function subclassSpendCards(sheet: CharacterSheet, turn: HandTurn, taken: Set<string>): HandCard[] {
   const cards: HandCard[] = [];
   for (const held of heldAuthored(sheet)) {
     for (const spend of held.entry.spends ?? []) {
       const does = spend.does;
-      const action = spend.action ?? "action";
+      const own = spend.pool ? resourceDef(spend.pool.id) : null;
+      // The counter of this spend's own name. Its card's id, cost and uses line
+      // carry over, so a seat the player arranged holds and Hidden Paths, whose
+      // variants price themselves, stays a bonus action.
+      const counter = own?.displayName === spend.name ? own : null;
+      const action = spend.action ?? counter?.action ?? "action";
       if (spend.fight === "out" || does.kind === "choose" || action === "reaction") continue;
       if (taken.has(textKey(spend.name)) || !gateHolds(spend.gate, sheet, held)) continue;
       taken.add(textKey(spend.name));
@@ -72,7 +89,7 @@ export function subclassSpendCards(sheet: CharacterSheet, turn: HandTurn, taken:
       const lines = linesOf(does);
       const perUnit = Boolean(pool?.perUnit);
       const card: HandCard = {
-        id: `feature:authored:${textKey(spend.name).replace(/\s+/g, "-")}`,
+        id: counter ? `feature:${counter.id}` : `feature:authored:${textKey(spend.name).replace(/\s+/g, "-")}`,
         type: does.kind === "save_effect" ? (lines.condition ? "control" : "spell") : does.kind === "buff" ? "ward" : "feature",
         name: spend.name,
         cost,
@@ -80,7 +97,9 @@ export function subclassSpendCards(sheet: CharacterSheet, turn: HandTurn, taken:
         dice: lines.dice,
         roll: does.kind === "save_effect" ? "no attack" : "no roll",
         rules: `${held.feature}: the server resolves it.`,
-        resource: state && left !== null ? `${pool!.id.replace(/_/g, " ")} ${left}/${state.max}` : "",
+        // The counter's reminder, which its own card used to show on hover.
+        ...(counter ? { description: counter.guidance } : {}),
+        resource: counter && state && left !== null ? `Uses ${left}/${state.max}` : state && left !== null ? `${pool!.id.replace(/_/g, " ")} ${left}/${state.max}` : "",
         condition: lines.condition,
         icon: { kind: "feature", key: spend.name, family: `class-${primaryClass(sheet)}` },
         target: targetOf(does),
