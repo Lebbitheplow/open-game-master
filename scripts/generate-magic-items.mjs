@@ -33,6 +33,8 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const contentDb = process.env.CONTENT_DB_PATH || join(root, "data", "content", "open5e.sqlite");
 const outPath = join(root, "src", "lib", "classes", "magic-items.json");
 
+const HELD_CATEGORY = /^(?:rod|staff|wand|weapon|armor)/i;
+
 const ABILITY = {
   strength: "str",
   dexterity: "dex",
@@ -452,23 +454,27 @@ function collect() {
     const restriction = attunedBy(attunement);
     const gear = gearOf(row, desc, match, rawDesc);
     const aliases = srd ? ALIASES[match] : undefined;
+    const requiresAttunement = /requires attunement/i.test(attunement);
     // A row with no effect is kept only when the engine has something to
-    // enforce about it: who may attune, the item a magic weapon or armor is
-    // built on, its bonus, its charges, and for an SRD item that casts a
-    // spell and asks for attunement (a Hat of Disguise, a Crystal Ball), that
-    // use_item must find it attuned before the cast (src/lib/dm/item-use.ts).
-    const castsAttuned = srd && /requires attunement/i.test(attunement) && CAST.test(desc);
-    if (!effects.length && !restriction && !Object.keys(gear).length && !castsAttuned) {
+    // enforce about it: that it asks for attunement (the sheet's attune button,
+    // the one-copy rule and use_item's check all read this table, so a Ring of
+    // Spell Storing left out could never be attuned), who may attune, the item
+    // a magic weapon or armor is built on, its bonus, its charges.
+    if (!effects.length && !requiresAttunement && !restriction && !Object.keys(gear).length) {
       continue;
     }
     out.push({
       name: row.name.trim(),
       match,
       slugs: slugs.get(match) ?? [],
-      requiresAttunement: /requires attunement/i.test(attunement),
+      requiresAttunement,
       ...(aliases ? { aliases } : {}),
       ...(restriction ? { attunedBy: restriction } : {}),
       ...(parsed.carried && effects.length ? { carried: true } : {}),
+      // Nothing reads whether this one is worn, so the sheet offers it no wear
+      // toggle: a Crystal Ball is attuned to, not put on. A rod, staff or wand
+      // keeps its toggle, since one in hand is a focus (src/lib/dm/cast-rules.ts).
+      ...(!effects.length && !Object.keys(gear).length && !HELD_CATEGORY.test(row.category || "") ? { noWear: true } : {}),
       effects,
       ...gear,
     });

@@ -262,6 +262,19 @@ test("a potion offers no wear toggle; armor, a ring, a magic weapon and a wand h
   assert.equal(isWornGear({ name: "Berserker Axe" }), true);
 });
 
+test("an item in the table for its attunement alone offers wear only where wearing or holding it means something", () => {
+  // Nothing reads whether a Crystal Ball is worn; it is attuned to, not put on.
+  for (const name of ["Crystal Ball", "Candle of Invocation", "Talisman of the Sphere"]) {
+    assert.equal(isWornGear({ name }), false, name);
+  }
+  assert.equal(isWornGear({ name: "Ring of Spell Storing" }), true, "a ring has a finger");
+  // One in hand is a focus (src/lib/dm/cast-rules.ts), and the sheet cannot
+  // always see the tag that says so.
+  assert.equal(isWornGear({ name: "Rod of Absorption" }), true, "a rod is held");
+  assert.equal(isWornGear({ name: "Staff of Thunder and Lightning" }), true, "a staff is held");
+  assert.equal(isWornGear({ name: "Crystal Ball", tags: ["rod"] }), true, "a stored focus tag still counts");
+});
+
 test("only gear with somewhere to be worn or held offers it, in any language: a weapon, a staff held as a focus; never a rope, arrows or a key", () => {
   assert.equal(isWornGear({ name: "Longsword" }), true);
   assert.equal(isWornGear({ name: "Spada lunga", srdName: "Longsword" }), true);

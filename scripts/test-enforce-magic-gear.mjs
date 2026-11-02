@@ -300,6 +300,11 @@ await test("the GAME STATE line for a magic item says what the engine applies, i
   assert.match(magicItemLine({ name: "Wand of Magic Missiles", qty: 1, charges: 3 }), /3\/7 charges/);
   assert.match(magicItemLine({ name: "Ring of Protection", qty: 1, attuning: true }), /attuning at the next rest/);
   assert.equal(magicItemLine({ name: "Rope", qty: 1 }), null);
+  // An item in the table only for its attunement keeps its sentence from the
+  // pack, with its state, so the model has something to narrate it from.
+  const ring = magicItemLine({ name: "Ring of Spell Storing", qty: 1, attuned: true, equipped: true });
+  assert.match(ring, /^Ring of Spell Storing: .*spells.* \(narrated\); attuned, worn$/i);
+  assert.match(magicItemLine({ name: "Ring of Spell Storing", qty: 1, equipped: true }), /; not attuned, worn$/);
 });
 
 await test("a magic item's charges and its pending attunement are optional fields: an old row with neither still loads", () => {

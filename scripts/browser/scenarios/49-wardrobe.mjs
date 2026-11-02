@@ -57,6 +57,15 @@ export default {
     const rowOf = (name) => sheet.locator(`[data-gear-row="${name}"]`).first();
     const before = await gear();
     check(before[PROTECTION]?.equipped === true && before[ELVENKIND]?.equipped === false, "Vex starts in the Cloak of Protection");
+    // Its details say it requires attunement, and only items the magic item
+    // table holds offer the button, so a ring left out could never be attuned.
+    const ring = rowOf("Ring of Spell Storing");
+    await ring.scrollIntoViewIfNeeded().catch(() => undefined);
+    await t.tap(ring.getByRole("button", { name: "attune", exact: true }));
+    await eventually(async () => (await gear())["Ring of Spell Storing"]?.attuning === true, { label: "the Ring of Spell Storing attuning" });
+    await eventually(() => ring.getByRole("button", { name: "cancel", exact: true }).count(), { label: "the ring's attunement offered back" });
+    await t.shot("attuning");
+
     await rowOf(ELVENKIND).scrollIntoViewIfNeeded().catch(() => undefined);
     await t.tap(rowOf(ELVENKIND).getByRole("button", { name: "wear", exact: true }));
     const ask = sheet.getByRole("group", { name: `Wear ${ELVENKIND}?` });
