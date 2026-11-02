@@ -220,7 +220,8 @@ export function reactionCards(
   };
 
   const mine = hits.filter((hit) => hit.characterId === sheet.id && hit.hit);
-  const shieldable = mine.filter((hit) => hit.source === "attack" && !answered(hit, "Shield"));
+  // Shield answers an attack, and a Magic Missile aimed at them.
+  const shieldable = mine.filter((hit) => (hit.source === "attack" || hit.source === "missile") && !answered(hit, "Shield"));
   if (shieldable.length) {
     const shield = spellReaction(
       sheet,

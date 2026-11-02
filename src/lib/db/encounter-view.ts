@@ -198,7 +198,7 @@ export type PublicLastHit = {
   attack: string;
   type: string;
   ranged: boolean;
-  source: "attack" | "fall";
+  source: "attack" | "fall" | "missile";
   // Whether any swing hit, and how many did.
   hit: boolean;
   hits: number;

@@ -203,20 +203,26 @@ export function reactionSpell(ctx: Ctx, spellName: string): ToolResult {
     // ones back into hit point damage (reaction-refund.ts settleHits).
     // Each swing keeps the shielded AC it met, so a hit read again later (a
     // blow that now finds her standing, Cutting Words after it) is read
-    // against it.
+    // against it. A Magic Missile deals her nothing at all.
     const answers = covered.map((record) => ({
       record,
       corrected: record.swings.map((swing) =>
-        swing.hit && swing.natural !== 20 && swing.total < swing.vsAc + 5 ? { ...swing, vsAc: swing.vsAc + 5, hit: false, raw: 0 } : { ...swing, vsAc: swing.vsAc + 5 },
+        record.source === "missile"
+          ? { ...swing, hit: false, raw: 0 }
+          : swing.hit && swing.natural !== 20 && swing.total < swing.vsAc + 5
+            ? { ...swing, vsAc: swing.vsAc + 5, hit: false, raw: 0 }
+            : { ...swing, vsAc: swing.vsAc + 5 },
       ),
     }));
     const settled = answers.length ? settleHits(campaign, ctx.turn.id, answers, "shield", ctx.sheets, ctx.sheetsById) : null;
     let answered = answers
       .map(({ record, corrected }) => {
         const turned = corrected.filter((swing, at) => record.swings[at].hit && !swing.hit).length;
-        return turned
-          ? ` Against ${record.attacker.name}'s ${record.attack}, ${turned} hit${turned === 1 ? "" : "s"} now miss${turned === 1 ? "es" : ""}.`
-          : ` ${record.attacker.name}'s ${record.attack} still hits the higher AC.`;
+        return record.source === "missile"
+          ? ` ${record.attacker.name}'s ${record.attack} deals ${sheet.name} no damage.`
+          : turned
+            ? ` Against ${record.attacker.name}'s ${record.attack}, ${turned} hit${turned === 1 ? "" : "s"} now miss${turned === 1 ? "es" : ""}.`
+            : ` ${record.attacker.name}'s ${record.attack} still hits the higher AC.`;
       })
       .join("");
     if (settled) {
@@ -280,7 +286,7 @@ export function reactionSpell(ctx: Ctx, spellName: string): ToolResult {
 // named, else the earliest still open, whose +5 then covers the most), and
 // every open hit on them after it. Empty when none hit them.
 function shieldAnswers(campaignId: string, sheetId: string): LastHit[] {
-  const fits = (hit: LastHit) => hit.source === "attack" && !hit.answered.includes("shield") && hit.swings.some((swing) => swing.hit);
+  const fits = (hit: LastHit) => (hit.source === "attack" || hit.source === "missile") && !hit.answered.includes("shield") && hit.swings.some((swing) => swing.hit);
   const first = freshLastHit(campaignId, sheetId, fits, "earliest");
   if (!first) {
     return [];

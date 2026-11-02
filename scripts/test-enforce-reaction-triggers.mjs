@@ -161,5 +161,36 @@ await test("A monster that has used its reaction this round cannot counter.", as
   assert.ok(kit.enemy(enemy.id).conditions.includes("paralyzed"));
 });
 
+// ---- Shield and Magic Missile ----
+
+await test("Shield answers a creature's Magic Missile, which hits without a roll or a save, and while it lasts the darts deal nothing (SRD 5.1).", async () => {
+  const enemy = await stage();
+  kit.setEnemy(enemy.id, { stats: { spellcasting: MAGE([{ name: "Magic Missile", level: 1 }], { 1: 2 }) } });
+  // Three darts of 1d4 + 1: 3 + 4 + 5.
+  world.dice(2, 3, 4);
+  const cast = await world.invoke("cast_at_player", { characterId: wizard.id, casterEnemyId: enemy.id, spell: "Magic Missile" });
+  world.clearDice();
+  assert.equal(cast.ok, true, cast.error);
+  assert.equal(world.sheet(wizard.id).currentHp, 28, JSON.stringify(cast));
+  // The Hand offers Shield against it.
+  const { activePublicEncounter } = await import("../src/lib/db/encounter-view.ts");
+  const { reactionCards } = await import("../src/lib/battlemap/hand-react.ts");
+  const { turnFromEncounter } = await import("../src/lib/battlemap/hand-table.ts");
+  const view = activePublicEncounter(world.campaignId);
+  const wizardNow = world.sheet(wizard.id);
+  assert.ok(reactionCards(wizardNow, turnFromEncounter(view, wizardNow, { myTurn: false }), view.lastHits, world.sheets()).some((card) => card.name === "Shield"), JSON.stringify(view.lastHits));
+  const shield = await world.invoke("use_reaction", { characterId: wizard.id, feature: "Shield" });
+  assert.equal(shield.ok, true, shield.error);
+  assert.equal(world.sheet(wizard.id).currentHp, 40, "Shield: no damage from magic missile");
+  assert.equal(world.sheet(wizard.id).spellcasting.slots["1"].used, 1);
+  // Cast again while Shield holds: the darts deal nothing.
+  kit.freshRound();
+  world.dice(4, 4, 4);
+  const again = await world.invoke("cast_at_player", { characterId: wizard.id, casterEnemyId: enemy.id, spell: "Magic Missile" });
+  world.clearDice();
+  assert.equal(again.ok, true, again.error);
+  assert.equal(world.sheet(wizard.id).currentHp, 40, JSON.stringify(again));
+});
+
 world.close();
 finish();

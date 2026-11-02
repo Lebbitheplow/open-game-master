@@ -142,8 +142,11 @@ export type LastHit = {
   attack: string;
   type: string;
   ranged: boolean;
-  // What made the damage: an attack (with swings) or a fall.
-  source: "attack" | "fall";
+  // What made the damage: an attack (with swings), a fall, or a spell's
+  // missiles that hit without a roll (Magic Missile, which Shield answers:
+  // SRD 5.1, "when you are hit by an attack or targeted by the magic missile
+  // spell").
+  source: "attack" | "fall" | "missile";
   swings: SwingRecord[];
   before: VitalsSnapshot;
   // Where the hit left them. `track` and `ward` are absent on records
