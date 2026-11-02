@@ -1202,7 +1202,7 @@
     "lib/dm/caster-features.ts#re-word": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/caster-features.ts#str-eq": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/caster-features.ts#toLowerCase": [["key",2,"school of magic; class id"]],
-    "lib/dm/catalog-combat.ts#str-list": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
+    "lib/dm/catalog-combat.ts#str-list": [["key",3,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/catalog-combat.ts#toLowerCase": [["key",2,"select option values from SRD beast names"]],
     "lib/dm/catalog-enemy-hp.ts#str-eq": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/catalog-enemy-hp.ts#toLowerCase": [["key",1,"condition label (engine vocabulary)"]],
