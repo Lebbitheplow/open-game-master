@@ -245,6 +245,30 @@ export function splitParts(
   });
 }
 
+// A call's arguments as the entries that resolved, for what credits a call
+// with what it did (the waypoint ticks, src/lib/dm/waypoint-tick.ts): a list
+// partly refused names only its done entries, so a refused Sun Blade ticks
+// no "Recover the Sun Blade". Any other call is itself.
+export function doneParts(name: string, rawArguments: string, result: Record<string, unknown>): string {
+  const list = PART_LISTS[name] as { key: string; bare: string } | undefined;
+  const answers = list ? result[list.key] : undefined;
+  if (!list || typeof result.partial !== "string" || !Array.isArray(answers)) {
+    return rawArguments;
+  }
+  let args: unknown;
+  try {
+    args = JSON.parse(rawArguments || "{}");
+  } catch {
+    return rawArguments;
+  }
+  const entries = isRecord(args) ? args[list.key] : undefined;
+  if (!isRecord(args) || !Array.isArray(entries)) {
+    return rawArguments;
+  }
+  const done = entries.filter((_, index) => !(isRecord(answers[index]) && typeof (answers[index] as Record<string, unknown>).error === "string"));
+  return JSON.stringify({ ...args, [list.key]: done });
+}
+
 // What a person who played a card is told when part of its share was
 // refused and the rest landed (the actions route, where the GM at a table
 // they run plays a hero's card): each refused entry's reason, in plain

@@ -104,7 +104,9 @@ async function agentTurn(whose, line, calls) {
   const sent = calls.map(([name, args]) => call(name, args));
   model.script([...sent.map((entry) => reply({ calls: [entry] })), reply({ text: "The moment turns." })]);
   await model.turn(world, line, whose.id, whose.userId);
-  const last = model.requests.at(-1);
+  // The turn's own last request: a story arc's checks may ask the model
+  // after it, with none of the turn's calls in theirs.
+  const last = model.requests.findLast((request) => request.messages.some((message) => message.role === "tool" && sent.some((entry) => entry.id === message.tool_call_id))) ?? model.requests.at(-1);
   const answers = new Map(last.messages.filter((message) => message.role === "tool").map((message) => [message.tool_call_id, JSON.parse(message.content)]));
   return sent.map((entry) => ({ name: entry.name, result: answers.get(entry.id) }));
 }
@@ -853,6 +855,40 @@ await test("A rider sent as the word false inside a part is false: no ki spent",
   assert.equal(ran[0].result.error, undefined, JSON.stringify(ran[0].result).slice(0, 300));
   assert.equal(ki(), before, "Stunning Strike was spent");
   assert.ok(!kit.enemy(enemies[0].id).conditions.some((entry) => /stunned/i.test(entry)));
+});
+
+// The beat's steps ticked before the reply's calls ran (issue #31) stayed
+// ticked when the call naming them was refused: a list whose Sun Blade was
+// refused ticked "Recover the Sun Blade" with the blade nowhere on the sheet,
+// and so did a lone grant_item refused (rev-749).
+await test("Waypoints: a step named only by a refused item opens again; one the same reply's beat landed on stays", async () => {
+  const { setStoryArc, getCampaignById } = await import("../src/lib/db/campaigns.ts");
+  const { normalizeStoryArc } = await import("../src/lib/dm/arc-logic.ts");
+  const { activeBeat } = await import("../src/lib/dm/waypoint-logic.ts");
+  const arcWith = () =>
+    setStoryArc(world.campaignId, normalizeStoryArc({ premise: "The sun returns.", beats: [
+      { text: "Find what the tomb hides.", status: "active", act: 1, waypoints: [{ kind: "item", text: "Recover the Sun Blade" }, { kind: "item", text: "Take the iron key" }] },
+      { text: "Go home.", status: "pending", act: 1 },
+    ] }));
+  const steps = () => activeBeat(getCampaignById(world.campaignId).storyArc)?.beat.waypoints.map((waypoint) => Boolean(waypoint.done));
+  try {
+    await kit.endFight();
+    arcWith();
+    const listed = await agentTurn(fighter, "Brann takes the torch and the blade.", [
+      ["grant_item", { characterId: fighter.id, reason: "the tomb", items: [{ item: "Torch" }, { item: "Sun Blade", qty: 500 }] }],
+    ]);
+    assert.match(String(listed[0].result.partial), /^Entry 2 of 2 refused/);
+    assert.deepEqual(steps(), [false, false], "the refused blade ticks nothing");
+    const lone = await agentTurn(fighter, "Brann takes the blade.", [["grant_item", { characterId: fighter.id, reason: "the tomb", item: "Sun Blade", qty: 500 }]]);
+    assert.equal(typeof lone[0].result.error, "string");
+    assert.deepEqual(steps(), [false, false], "a lone refused grant ticks nothing either");
+    const keyed = await agentTurn(fighter, "Brann takes the iron key.", [["grant_item", { characterId: fighter.id, reason: "the tomb", items: [{ item: "Iron key", tags: [] }] }]]);
+    assert.deepEqual(errorsOf([keyed[0].result]), [], JSON.stringify(keyed[0].result).slice(0, 300));
+    assert.deepEqual(steps(), [false, true], "a granted item still ticks its step");
+  } finally {
+    // No active beat for the tests after this one.
+    setStoryArc(world.campaignId, normalizeStoryArc({ premise: "The sun returns.", beats: [{ text: "Find what the tomb hides.", status: "done", act: 1 }, { text: "Go home.", status: "done", act: 1 }] }));
+  }
 });
 
 await test("Items: a chest of twelve is one change against the turn's cap, and the changes after it still run", async () => {

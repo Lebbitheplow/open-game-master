@@ -61,7 +61,7 @@ import { getSceneTracker } from "@/lib/db/scene-tracker";
 import { listQuests } from "@/lib/db/quests";
 import { SMALL_MODEL_REASONING_CHARS, type ModelTuning } from "@/lib/dm/model-tuning-logic";
 import { PC_ATTACK_PARKED } from "@/lib/dm/pc-attack";
-import { listedCalls, listRefusal, oneCasting, PART_LISTS, partsResult, type OneCasting } from "@/lib/dm/action-parts-logic";
+import { doneParts, listedCalls, listRefusal, oneCasting, PART_LISTS, partsResult, type OneCasting } from "@/lib/dm/action-parts-logic";
 import { AWAITING_ROLL } from "@/lib/dm/pc-attack-parts";
 import { strictBooleanArgs } from "@/lib/dm/arg-coerce";
 import { insertCampaignMessage, listMessagesPage, listRecentMessages, markCardReturned, type CampaignMessage } from "@/lib/db/messages";
@@ -134,7 +134,7 @@ import type { SlotlessCast } from "@/lib/dm/narration-guard";
 import { DIRECT_CALL_ID_PREFIX, directCardCalls, intentAnswered, intentCorrection, intentNeedsTool, returnedCardNote, returnReason, unresolvedCards, type MessageIntent, type PlayedCard, type TurnCall } from "@/lib/dm/intent-logic";
 import type { SpellMech } from "@/lib/srd/spell-mech-types";
 import { handleCompleteBeat } from "@/lib/dm/arc";
-import { tickWaypointsFromCalls } from "@/lib/dm/waypoint-tick";
+import { markActiveBeat, settleEarlyTicks, tickWaypointsFromCalls } from "@/lib/dm/waypoint-tick";
 import { enforceEngineBoundary } from "@/lib/dm/narration-guard";
 import { spellAreaShape } from "@/lib/dm/aoe-shape";
 import { textKey } from "@/lib/language/text-logic";
@@ -2018,7 +2018,9 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     }
     // Waypoints tick before the beat is judged, so an arrival and the beat
     // it lands in the same reply resolve in order (issue #31). The location
-    // calls above already ran; the rest of the tools tick again below.
+    // calls above already ran; the rest of the tools tick again below, and a
+    // step only a call refused there named is opened again (settleEarlyTicks).
+    const beatBefore = markActiveBeat(campaignId);
     await tickWaypointsFromCalls(campaignId, toolCalls, { enemyNames: foesBefore, accepted, refused });
     const beatResults = new Map<string, Record<string, unknown>>();
     for (const beatCall of beatCalls) {
@@ -2378,6 +2380,8 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     // result arrives when the turn resumes with the adjudicated roll.
     const inputInFight = !spotlightSet && fightOwnsFloor(campaignId);
     let parkedAny = false;
+    // A list partly refused is credited with its done entries alone.
+    const credited = new Map<(typeof toolCalls)[number], (typeof toolCalls)[number]>();
     for (const toolCall of toolCalls) {
       const holder = turnHolder(campaignId);
       const outcome =
@@ -2401,7 +2405,10 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
         continue;
       }
       if (!("error" in outcome)) {
-        accepted.add(toolCall);
+        const done = doneParts(toolCall.name, toolCall.rawArguments, outcome);
+        const call = done === toolCall.rawArguments ? toolCall : { ...toolCall, rawArguments: done };
+        credited.set(toolCall, call);
+        accepted.add(call);
       } else {
         refused.add(toolCall);
       }
@@ -2416,7 +2423,9 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     // The NPC, item, objective and combat tools ran after the beat check:
     // their waypoints tick now, for the next reply's checklist, and before
     // a park so a resumed turn does not lose them.
-    await tickWaypointsFromCalls(campaignId, toolCalls, { enemyNames: foesBefore, accepted, refused });
+    const ran = toolCalls.map((call) => credited.get(call) ?? call);
+    await tickWaypointsFromCalls(campaignId, ran, { enemyNames: foesBefore, accepted, refused });
+    settleEarlyTicks(campaignId, beatBefore, ran, { enemyNames: foesBefore, accepted, refused });
 
     if (parkedAny) {
       // Park: the queue job ends here. Submissions resume the turn.
