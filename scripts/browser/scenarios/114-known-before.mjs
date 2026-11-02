@@ -106,13 +106,14 @@ const scenario = {
     const castTab = page.locator(`${root}[data-tour="dm-console-tabs"] button`).filter({ hasText: /^cast$/i }).locator("visible=true").first();
     await eventually(() => castTab.count(), { timeoutMs: 30_000, label: "the console's Cast tab" });
     await t.tap(castTab);
-    const newPerson = page.locator(`${root}[data-tour="cast-new"]`).locator("visible=true").first();
-    await eventually(() => newPerson.count(), { timeoutMs: 30_000, label: "Someone new in the console's Cast" });
-    await t.tap(newPerson);
-    await eventually(() => page.locator(`${root}[data-tour="cast-known-before"]`).locator("visible=true").count(), {
-      timeoutMs: 20_000,
+    // The console's Cast opens on a new person's form.
+    const consoleSection = page.locator(`${root}[data-tour="cast-known-before"]`).locator("visible=true").first();
+    await eventually(() => consoleSection.count(), {
+      timeoutMs: 30_000,
       label: "Before the story in the console before the first narration",
     });
+    await consoleSection.scrollIntoViewIfNeeded();
+    await untilStill(page);
     await t.shot("console");
   },
 };
