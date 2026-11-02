@@ -501,13 +501,18 @@ await test("Bram beside her token cannot stabilize Kara dying inside the worm", 
   assert.match(tended.error ?? JSON.stringify(tended), insideRefusal);
 });
 
-await test("From inside the worm Kara can neither grapple, shove nor help against the goblin outside it", async () => {
+await test("From inside the worm Kara can neither grapple, shove, help nor improvise against the goblin outside it, nor reach the scene outside", async () => {
   const goblin = await insideBesideGoblin();
   const crossed = [];
+  // An improvised action (take_action improvise) reaches a creature or the
+  // scene: from inside, neither is there.
+  const improvised = { action: "improvise", reason: "kicks a lantern over", skill: "athletics", scene: "the lantern", distanceFt: 5 };
   for (const args of [
     { action: "grapple", targetEnemyId: goblin.id },
     { action: "shove", targetEnemyId: goblin.id },
     { action: "help", targetCharacterId: bram.id, targetEnemyId: goblin.id },
+    { ...improvised, targetEnemyId: goblin.id, condition: "prone" },
+    { ...improvised, difficulty: "easy" },
   ]) {
     kit.giveTurn(kara.id);
     world.dice(20, 1);

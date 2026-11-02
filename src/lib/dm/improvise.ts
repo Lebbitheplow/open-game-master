@@ -23,7 +23,7 @@
 
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
-import type { Encounter } from "@/lib/db/encounters";
+import { getEnemy, type Encounter } from "@/lib/db/encounters";
 import { getBattleMapForEncounter, getTokenByRef, moveToken } from "@/lib/db/battle-maps";
 import { sceneSinceSeq } from "@/lib/db/campaigns";
 import { getCurrentLocation } from "@/lib/db/locations";
@@ -54,6 +54,7 @@ import { applyRiderCondition } from "@/lib/dm/pc-attack-riders";
 import { rollContest, type Opponent } from "@/lib/dm/roll-gates";
 import { rollCard } from "@/lib/dm/roll-card";
 import { strictnessShift } from "@/lib/dm/safety-logic";
+import { swallowCover, swallowerOf } from "@/lib/dm/swallow";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { publishPersisted } from "@/lib/events";
@@ -181,6 +182,17 @@ export function improviseAction(
       retry: true,
     };
   }
+  // Swallowed (swallow.ts): from inside, the scene the narration shows is
+  // outside the swallower, so an action on it reaches nothing; one at the
+  // swallower itself is checked below with its target.
+  const swallower = swallowerOf(sheet);
+  if (swallower && !args.targetEnemyId) {
+    const name = getEnemy(swallower)?.displayName ?? "the creature that swallowed them";
+    return {
+      error: `${sheet.name} is inside ${name}, out of reach of anything in the scene outside it: from there only ${name} can be reached. Nothing was spent.`,
+      refused: "rules",
+    };
+  }
   // The thing's distance on the battle map, and the walk there.
   let thingFt: number | null = null;
   let pay = () => {};
@@ -283,6 +295,12 @@ export function improviseAction(
   }
   if (enemy.status !== "alive") {
     return { error: `${enemy.displayName} is ${enemy.status}: an improvised action reaches a living creature. Nothing was spent.`, retry: true };
+  }
+  // Total cover both ways (swallow.ts): a creature inside a swallower is out
+  // of reach from outside, and from inside only the swallower is in reach.
+  const inside = swallowCover({ kind: "sheet", id: sheet.id }, { kind: isSheetFoe(enemy) ? "sheet" : "enemy", id: enemy.id });
+  if (inside) {
+    return { error: `${inside} Nothing was spent.`, refused: "rules" };
   }
   if (isSheetFoe(enemy) && !hostileTo(encounter, { kind: "sheet", id: sheet.id }, { kind: "sheet", id: enemy.id })) {
     return { error: `${enemy.displayName} fights on ${sheet.name}'s side: an improvised action here is aimed at a creature of the other side. Nothing was spent.`, refused: "rules" };
