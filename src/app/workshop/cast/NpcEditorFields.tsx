@@ -20,6 +20,7 @@ import {
 import { npcRoleOptions } from "@/lib/placeholders";
 import { GENDERS, type Gender } from "@/lib/gender";
 import { NPC_RACE_OPTIONS } from "@/lib/npc-race";
+import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 import { AttractionPicker, NPC_ATTRACTION_HINT } from "@/components/AttractionPicker";
 import {
   GOAL_FIELDS,
@@ -68,6 +69,7 @@ export function NpcEditorFields({
 }) {
   const roleListId = useId();
   const placeListId = useId();
+  const keepsRace = hostOffers(useCapabilities(), "npcRace");
   const roles = npcRoleOptions(genre);
   return (
     <>
@@ -128,15 +130,19 @@ export function NpcEditorFields({
           />
           </span>
           {/* Beside the gender because the two pick the stand-in face
-              together: an elf bandit draws the elf bandit, not a human one. */}
-          <span className="w-full sm:w-48">
-          <Select<string>
-            label="Race"
-            value={draft.race ?? ""}
-            onChange={(race) => onChange({ ...draft, race })}
-            options={[{ value: "", label: "Unspecified" }, ...NPC_RACE_OPTIONS]}
-          />
-          </span>
+              together: an elf bandit draws the elf bandit, not a human one.
+              An older host drops the race unsaved, so it waits for one that
+              keeps it (the apps can open an older server). */}
+          {keepsRace ? (
+            <span className="w-full sm:w-48">
+            <Select<string>
+              label="Race"
+              value={draft.race ?? ""}
+              onChange={(race) => onChange({ ...draft, race })}
+              options={[{ value: "", label: "Unspecified" }, ...NPC_RACE_OPTIONS]}
+            />
+            </span>
+          ) : null}
         </div>
 
         {/* Who they are drawn to, beside the gender (issue 501): identity,

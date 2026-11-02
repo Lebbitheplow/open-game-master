@@ -62,6 +62,7 @@ export const RACE_FIELD = {
   label: "Race",
   kind: "select",
   options: NPC_RACE_OPTIONS,
+  host: { feature: "npcRace" },
 } as const;
 
 // Who an NPC or companion could fall for (issue 501), the words the DM's

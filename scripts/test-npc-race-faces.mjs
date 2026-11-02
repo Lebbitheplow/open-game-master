@@ -24,6 +24,29 @@ const { parseFightRoster } = await import("../src/lib/dm/encounter-template-logi
 
 const BASE = "/assets/placeholders";
 
+// The apps' screens can open an older host, which drops a race unread and
+// reads "bandit race elf" as one unknown monster: the race controls and the
+// fight line's race words wait for a host that keeps them.
+await test("the race controls wait for a host that keeps a race", async () => {
+  const fs = await import("node:fs");
+  const { SERVER_FEATURES } = await import("../src/lib/capabilities.ts");
+  const { hostOffers } = await import("../src/lib/use-capabilities.ts");
+  const { fieldForHost } = await import("../src/lib/dm/catalog-types.ts");
+  const { RACE_FIELD } = await import("../src/lib/dm/catalog-world.ts");
+  const { COMBAT_ADJUDICATIONS } = await import("../src/lib/dm/catalog-combat.ts");
+  assert.equal(SERVER_FEATURES.npcRace, true, "this server keeps a race");
+  const older = { story: { configured: true, reachable: true }, utility: { configured: true }, images: { configured: false, reachable: false, backend: "comfyui" }, tts: { configured: false, reachable: false }, stt: { configured: false }, voice: { enabled: false, mode: "off" } };
+  assert.equal(hostOffers(older, "npcRace"), false);
+  assert.equal(fieldForHost(RACE_FIELD, () => false), null, "no Race in Write an NPC on an older host");
+  assert.equal(fieldForHost(RACE_FIELD, () => true), RACE_FIELD);
+  for (const name of ["start_encounter", "add_enemies"]) {
+    const field = COMBAT_ADJUDICATIONS.find((entry) => entry.name === name).fields.find((entry) => entry.name === "enemies");
+    assert.match(fieldForHost(field, () => true).help, /race elf/);
+    assert.doesNotMatch(fieldForHost(field, () => false).help, /race/, `${name}'s line says nothing of races on an older host`);
+  }
+  assert.match(fs.readFileSync(new URL("../src/app/workshop/cast/NpcEditorFields.tsx", import.meta.url), "utf8"), /const keepsRace = hostOffers\(useCapabilities\(\), "npcRace"\);[\s\S]*\{keepsRace \? \(\n\s+<span className="w-full sm:w-48">\n\s+<Select<string>\n\s+label="Race"/);
+});
+
 await test("a race is stored as its SRD id, read from an id, a name or the plain word, and never guessed", () => {
   assert.equal(storedRace("half_orc"), "half_orc");
   assert.equal(storedRace("Half-Orc"), "half_orc");
