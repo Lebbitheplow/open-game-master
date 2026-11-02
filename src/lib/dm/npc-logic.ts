@@ -181,17 +181,17 @@ function nameHash(seed: string): number {
   return hash >>> 0;
 }
 
-// Deterministic coarse hexagon from what we already know: the seed spreads
-// each axis into -1..1 from the name, then attitude leans warmth/empathy.
-// A hostile enforcer and a friendly innkeeper feel different from turn one
-// without any model call; play then drifts the axes.
-export function derivePersonality(
-  name: string,
-  attitude: "hostile" | "indifferent" | "friendly",
-  trait: string,
+type NpcAttitude = "hostile" | "indifferent" | "friendly";
+
+function personalitySeed(name: string, trait: string): number {
+  return nameHash(`${textKey(name)}|${textKey(trait)}`);
+}
+
+// The hexagon a seed spreads, given how it reads one axis's bits.
+function spreadPersonality(
+  axisSeed: (index: number) => number,
+  attitude: NpcAttitude,
 ): NpcPersonality {
-  const seed = nameHash(`${textKey(name)}|${textKey(trait)}`);
-  const axisSeed = (index: number) => ((seed >> (index * 4)) % 3) - 1;
   const lean = attitude === "friendly" ? 1 : attitude === "hostile" ? -1 : 0;
   return {
     drive: clampAxis(axisSeed(0)),
@@ -201,6 +201,90 @@ export function derivePersonality(
     empathy: clampAxis(axisSeed(4) + lean),
     composure: clampAxis(axisSeed(5)),
   };
+}
+
+// Deterministic coarse hexagon from what we already know: the seed spreads
+// each axis into -1..1 from the name, then attitude leans warmth/empathy.
+// A hostile enforcer and a friendly innkeeper feel different from turn one
+// without any model call; play then drifts the axes. The shift is unsigned:
+// `>>` read a seed past 2^31 as negative, and its negative remainder put
+// every axis of about half of all names at -3..-1, so a friendly NPC could
+// take a kindness as an irritation by their name alone (issue 732).
+export function derivePersonality(
+  name: string,
+  attitude: NpcAttitude,
+  trait: string,
+): NpcPersonality {
+  const seed = personalitySeed(name, trait);
+  return spreadPersonality((index) => ((seed >>> (index * 4)) % 3) - 1, attitude);
+}
+
+// What derivePersonality gave before issue 732, kept only to recognise the
+// personalities saved from it.
+function skewedPersonality(name: string, trait: string, attitude: NpcAttitude): NpcPersonality {
+  const seed = personalitySeed(name, trait);
+  return spreadPersonality((index) => ((seed >> (index * 4)) % 3) - 1, attitude);
+}
+
+// The axes play never drifts (driftPersonality moves warmth, empathy and
+// composure), so a saved personality still shows on them where it came from.
+const UNDRIFTED_AXES = ["drive", "diligence", "boldness"] as const;
+const ATTITUDES: readonly NpcAttitude[] = ["friendly", "indifferent", "hostile"];
+
+// Play moves a seeded personality one way on two axes: driftPersonality only
+// ever raises empathy and only ever lowers composure. A saved personality on
+// the other side of its seed on either was not seeded and drifted but set by
+// hand (an author's, the GM's).
+function reachedByPlay(saved: NpcPersonality, seeded: NpcPersonality): boolean {
+  return saved.empathy >= seeded.empathy && saved.composure <= seeded.composure;
+}
+
+// A personality saved from the skewed spread (at registration, on a
+// companion's row, or by a social check's drift), moved onto the corrected
+// one. It is recognised by its undrifted axes matching the skewed spread of
+// one of the names and notes it may have been seeded from (a rename keeps
+// the old name as an alias; set_npc rewrites the note), with its empathy and
+// composure where play could have taken them from there. One already on the
+// corrected spread of any of those is never moved, so a repaired
+// personality is never moved twice. The attitude it was seeded under is the
+// one whose warmth and empathy sit nearest, `attitude` first; each axis then
+// keeps what play added since (a drift, the GM's warmer or colder word) and
+// drops only the skew. Null when there is nothing to repair: a personality
+// set by hand, or a seed the old shift read correctly.
+export function repairSkewedPersonality(
+  saved: NpcPersonality,
+  seeds: ReadonlyArray<{ name: string; trait: string }>,
+  attitude: NpcAttitude,
+): NpcPersonality | null {
+  const undriftedAt = (spread: NpcPersonality) => UNDRIFTED_AXES.every((axis) => saved[axis] === spread[axis]);
+  // The undrifted axes take no lean, so any attitude reads them. A seed the
+  // old shift read correctly gives the same spread both ways, and lands here.
+  if (seeds.some(({ name, trait }) => undriftedAt(derivePersonality(name, attitude, trait)))) {
+    return null;
+  }
+  const order = [attitude, ...ATTITUDES.filter((entry) => entry !== attitude)];
+  for (const { name, trait } of seeds) {
+    if (!undriftedAt(skewedPersonality(name, trait, attitude))) {
+      continue;
+    }
+    const reachable = order.filter((entry) => reachedByPlay(saved, skewedPersonality(name, trait, entry)));
+    if (!reachable.length) {
+      continue;
+    }
+    const distance = (entry: NpcAttitude) => {
+      const at = skewedPersonality(name, trait, entry);
+      return Math.abs(saved.warmth - at.warmth) + Math.abs(saved.empathy - at.empathy);
+    };
+    const seededAs = reachable.reduce((best, entry) => (distance(entry) < distance(best) ? entry : best));
+    const before = skewedPersonality(name, trait, seededAs);
+    const after = derivePersonality(name, seededAs, trait);
+    const repaired = {} as NpcPersonality;
+    for (const axis of PERSONALITY_AXES) {
+      repaired[axis] = clampAxis(after[axis] + saved[axis] - before[axis]);
+    }
+    return repaired;
+  }
+  return null;
 }
 
 // Decisive social outcomes drift the axes a step: being won over warms an

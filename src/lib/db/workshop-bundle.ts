@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { getDatabase, nowIso } from "@/lib/db/core";
+import { repairSkewedPersonalities } from "@/lib/db/npc-personality-repair";
 import { createCampaign } from "@/lib/db/campaigns";
 import { WORKSHOP_GAME_SETTINGS, getWorkshopForUser } from "@/lib/db/workshops";
 import { setHouseRules } from "@/lib/db/rules";
@@ -573,6 +574,10 @@ function writeBundleRows(
   if (bundle.world) {
     copied += worldFromBundle(workshop.id, bundle.world, { npc: ids.npcs, location: ids.locations, faction: ids.factions, lore: ids.lore }, shelf.entryFor, { maps: ids.maps, encounters: ids.encounters }, saveWorldImage);
   }
+
+  // A module exported before issue 732 carries the personalities its NPCs
+  // were saved with from the skewed name hash.
+  repairSkewedPersonalities(getDatabase(), workshop.id);
 
   return { workshopId: workshop.id, copied, linkedShared, droppedLinks, shelf: { reused: shelf.reused, renamed: shelf.renamed, refused: shelf.refused } };
 }

@@ -1,6 +1,7 @@
 import { openDatabase, type SqliteDatabase } from "./driver.ts";
 import { fileSubAreasByName } from "./place-parents-backfill.ts";
 import { backfillNpcHeard } from "./npc-heard-backfill.ts";
+import { repairSkewedPersonalities } from "./npc-personality-repair.ts";
 import { createHash } from "node:crypto";
 import { mkdirSync, statSync } from "node:fs";
 import path from "node:path";
@@ -2914,6 +2915,17 @@ function ensureSchema(db: SqliteDatabase) {
   if (!npcColumns.some((column) => column.name === "heard_at")) {
     addColumns("npcs", [["heard_at", `TEXT NOT NULL DEFAULT ''`]]);
     backfillNpcHeard(db);
+  }
+  // Personalities saved from the skewed name hash move onto the corrected
+  // spread, keeping what play drifted (issue 732,
+  // src/lib/db/npc-personality-repair.ts). One pass, guarded by an
+  // app_settings marker.
+  const personalityMarker = db.prepare(`SELECT key FROM app_settings WHERE key = 'npc_personality_repair_done'`).get();
+  if (!personalityMarker) {
+    db.transaction(() => {
+      repairSkewedPersonalities(db);
+      db.prepare(`INSERT INTO app_settings (key, value_json, updated_at) VALUES (?, ?, ?)`).run("npc_personality_repair_done", "true", new Date().toISOString());
+    })();
   }
 }
 

@@ -1,4 +1,5 @@
 import { backfillNpcHeard } from "@/lib/db/npc-heard-backfill";
+import { repairSkewedPersonalities } from "@/lib/db/npc-personality-repair";
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { restoreCompanionUser } from "@/lib/db/users";
 import {
@@ -257,4 +258,7 @@ export function restoreSnapshot(campaignId: string, payload: SnapshotPayload) {
   // (issue 650): a snapshot taken before npcs had heard_at brings every NPC
   // back unheard, and the players would lose names and faces they were shown.
   backfillNpcHeard(db, campaignId);
+  // A snapshot taken before issue 732 brings back personalities saved from
+  // the skewed name hash; they move onto the corrected spread again.
+  repairSkewedPersonalities(db, campaignId);
 }
