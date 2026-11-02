@@ -6,6 +6,7 @@
 // shown.
 
 import { searchItems } from "@/lib/content";
+import { bundledItemRows } from "@/lib/rulebook/catalog-rows";
 import { chargeMax, chargeRuleOf, chargesLeft } from "@/lib/dm/item-charges";
 import { armorOfRow, isWorn } from "@/lib/srd/armor";
 import { oneOfKind, wornButIdle } from "@/lib/srd/wear-slots";
@@ -46,13 +47,20 @@ function effectWords(effect: MagicItemEffect): string {
   }
 }
 
-// The pack's first sentence for a magic item the engine does not hold.
-function packSentence(name: string): string | null {
+// The first sentence of a magic item's text: the content pack's row, else
+// the bundled SRD 5.1 book's page (src/lib/rulebook/catalog-rows.ts), so a
+// table with no pack still tells the model what a Ring of Spell Storing does
+// instead of calling it "magic". The pack marks italics with underscores and
+// the book with asterisks; both are dropped, as the model reads them as text.
+function itemSentence(name: string): string | null {
   const wanted = textKey(name);
-  const row = searchItems({ q: name.trim(), kind: "magic_item", limit: 5 }).find(
-    (item) => textKey(item.name) === wanted,
-  );
-  const desc = String(row?.data?.desc ?? "").replace(/\s+/g, " ").trim();
+  const row =
+    searchItems({ q: name.trim(), kind: "magic_item", limit: 5 }).find((item) => textKey(item.name) === wanted) ??
+    bundledItemRows(name.trim()).find((item) => textKey(item.name) === wanted);
+  const desc = String(row?.data?.desc ?? "")
+    .replace(/(\*+|_+)(?=\S)([^*_]+?)(?<=\S)\1/g, "$2")
+    .replace(/\s+/g, " ")
+    .trim();
   if (!desc) {
     return null;
   }
@@ -71,7 +79,7 @@ export function magicItemLine(item: EquipmentItem, equipment: readonly Equipment
   const def = gearDefOfRow(item);
   const worn = item.gear?.magic ? { effects: item.gear.magic.effects, requiresAttunement: item.gear.magic.requiresAttunement } : matchMagicItem(item);
   if (!def && !worn && !magicItemBonus(item.name)) {
-    const sentence = packSentence(rowName(item));
+    const sentence = itemSentence(rowName(item));
     return sentence ? `${item.name}: ${sentence} (narrated)` : null;
   }
   const parts: string[] = [];
@@ -113,7 +121,7 @@ export function magicItemLine(item: EquipmentItem, equipment: readonly Equipment
   }
   // An item in the table only for its attunement has nothing above to say, so
   // the model still gets the pack's sentence to narrate it from.
-  const sentence = parts.length ? null : packSentence(rowName(item));
+  const sentence = parts.length ? null : itemSentence(rowName(item));
   const says = parts.join(", ") || (sentence ? `${sentence} (narrated)` : "magic");
   return `${item.name}: ${says}${state.length ? `; ${state.join(", ")}` : ""}`;
 }

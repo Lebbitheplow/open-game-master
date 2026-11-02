@@ -305,6 +305,11 @@ await test("the GAME STATE line for a magic item says what the engine applies, i
   const ring = magicItemLine({ name: "Ring of Spell Storing", qty: 1, attuned: true, equipped: true });
   assert.match(ring, /^Ring of Spell Storing: .*spells.* \(narrated\); attuned, worn$/i);
   assert.match(magicItemLine({ name: "Ring of Spell Storing", qty: 1, equipped: true }), /; not attuned, worn$/);
+  // With no content pack (CI runs this suite without one) the sentence comes
+  // from the bundled SRD book, for an item in the table and for one the
+  // engine only narrates, without the book's italics marks.
+  assert.match(magicItemLine({ name: "Bag of Holding", qty: 1 }), /^Bag of Holding: This bag has an interior space .* \(narrated\)$/);
+  assert.match(magicItemLine({ name: "Crystal Ball", qty: 1 }), /^Crystal Ball: The typical crystal ball, a very rare item, .* \(narrated\); not attuned/);
 });
 
 await test("a magic item's charges and its pending attunement are optional fields: an old row with neither still loads", () => {
