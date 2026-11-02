@@ -53,6 +53,7 @@ const orin = world.addHero({
   name: "Orin", class: "cleric", level: 5, maxHp: 80, proficiencies: TRAINED,
   abilities: { str: 14, dex: 10, con: 14, int: 10, wis: 16, cha: 10 },
   equipment: [{ name: "Mace", qty: 1, equipped: true }],
+  spellcasting: { ability: "wis", slots: { 1: { max: 4, used: 0 }, 2: { max: 3, used: 0 }, 3: { max: 2, used: 0 } }, known: [], prepared: ["Cure Wounds", "Healing Word", "Bless"], cantrips: [] },
 });
 
 // "Revert this turn" (src/lib/dm/turn-revert.ts), as the table's owner.
@@ -410,6 +411,106 @@ await test("A swallower banished to another plane leaves her behind on this one,
   }
   assert.ok(holds(kara.id, "prone"), "prone");
   assert.match(JSON.stringify(gone.result), /Kara at \(\d+,\d+\) is left behind as .* vanishes from this plane/);
+});
+
+// "A swallowed creature ... has total cover against attacks and other effects
+// outside the worm" (SRD 5.1): a heal, a buff and a healer's hands are effects
+// too, both ways.
+const firstSlots = () => world.sheet(orin.id).spellcasting.slots[1].used;
+const insideRefusal = /is inside .*(total cover against attacks and other effects from outside it|from there only .* can be reached)\. Nothing was spent/;
+
+await test("Orin's Cure Wounds and Bless from outside the worm do not reach Kara inside it, and nothing is spent", async () => {
+  const { foe } = await facing("Purple Worm");
+  kit.place(orin.id, 5, 6);
+  world.dice(19, 1, 1, 1, 1);
+  await bite(foe, kara);
+  world.clearDice();
+  world.patch(kara.id, { currentHp: 40 });
+  kit.giveTurn(orin.id);
+  const spent = firstSlots();
+  world.dice(8);
+  const touch = await world.invoke("heal", { characterId: kara.id, casterId: orin.id, spell: "Cure Wounds", level: 1 });
+  world.clearDice();
+  assert.equal(world.sheet(kara.id).currentHp, 40, "a touch from outside heals nobody inside");
+  assert.match(touch.error ?? JSON.stringify(touch), insideRefusal);
+  const bless = await world.invoke("cast_buff", { characterId: orin.id, spell: "Bless", targetCharacterIds: [kara.id] });
+  assert.ok(!holds(kara.id, "blessed") && !holds(kara.id, "bless"), "no Bless inside");
+  assert.match(bless.error ?? JSON.stringify(bless), insideRefusal);
+  assert.equal(firstSlots(), spent, "no slot spent");
+});
+
+await test("From inside the worm Orin's Healing Word does not reach Bram outside, while Cure Wounds reaches Kara inside the same worm", async () => {
+  const { foe } = await facing("Purple Worm");
+  kit.place(orin.id, 5, 6);
+  kit.place(bram.id, 4, 6);
+  world.dice(19, 1, 1, 1, 1);
+  await bite(foe, kara);
+  world.clearDice();
+  kit.freshRound();
+  world.dice(19, 1, 1, 1, 1);
+  await bite(foe, orin);
+  world.clearDice();
+  assert.ok(holds(orin.id, "swallowed") && holds(kara.id, "swallowed"), "both inside");
+  world.patch(bram.id, { currentHp: 10 });
+  world.patch(kara.id, { currentHp: 40 });
+  kit.giveTurn(orin.id);
+  const spent = firstSlots();
+  world.dice(4);
+  const word = await world.invoke("heal", { characterId: bram.id, casterId: orin.id, spell: "Healing Word", level: 1 });
+  world.clearDice();
+  assert.equal(world.sheet(bram.id).currentHp, 10, "nothing from inside reaches outside");
+  assert.match(word.error ?? JSON.stringify(word), insideRefusal);
+  assert.equal(firstSlots(), spent, "no slot spent");
+  world.dice(8);
+  const touch = await world.invoke("heal", { characterId: kara.id, casterId: orin.id, spell: "Cure Wounds", level: 1 });
+  world.clearDice();
+  assert.equal(touch.ok, true, JSON.stringify(touch));
+  assert.ok(world.sheet(kara.id).currentHp > 40, "inside the same worm, a touch reaches");
+});
+
+// Kara inside the worm, Bram and a goblin beside her token outside it.
+async function insideBesideGoblin() {
+  const { foe, others } = await facing("Purple Worm", 1);
+  const [goblin] = others;
+  kit.place(bram.id, 5, 6);
+  kit.place(goblin.id, 4, 5);
+  world.dice(19, 1, 1, 1, 1);
+  await bite(foe, kara);
+  world.clearDice();
+  assert.ok(holds(kara.id, "swallowed"));
+  return goblin;
+}
+
+await test("Bram beside her token cannot stabilize Kara dying inside the worm", async () => {
+  await insideBesideGoblin();
+  world.patch(kara.id, { currentHp: 0, deathSaves: { successes: 0, failures: 0, stable: false, dead: false } });
+  kit.giveTurn(bram.id);
+  world.dice(20);
+  const tended = await world.invoke("stabilize", { characterId: kara.id, healerId: bram.id });
+  world.clearDice();
+  assert.ok(!world.sheet(kara.id).deathSaves?.stable, "not stabilized from outside");
+  assert.match(tended.error ?? JSON.stringify(tended), insideRefusal);
+});
+
+await test("From inside the worm Kara can neither grapple, shove nor help against the goblin outside it", async () => {
+  const goblin = await insideBesideGoblin();
+  const crossed = [];
+  for (const args of [
+    { action: "grapple", targetEnemyId: goblin.id },
+    { action: "shove", targetEnemyId: goblin.id },
+    { action: "help", targetCharacterId: bram.id, targetEnemyId: goblin.id },
+  ]) {
+    kit.giveTurn(kara.id);
+    world.dice(20, 1);
+    const tried = await world.invoke("take_action", { characterId: kara.id, ...args });
+    world.clearDice();
+    if (!insideRefusal.test(tried.error ?? "")) {
+      crossed.push(`${args.action}: ${JSON.stringify(tried).slice(0, 200)}`);
+    }
+  }
+  assert.deepEqual(crossed, [], "each reached outside the worm");
+  assert.ok(!kit.enemy(goblin.id).conditions.some((entry) => /grappled|prone/i.test(entry)), "no grapple or shove landed");
+  assert.ok(!holds(bram.id, "helped"), "no help given from inside");
 });
 
 await test("The board's move says she is swallowed and how out, not that her speed is 0", async () => {

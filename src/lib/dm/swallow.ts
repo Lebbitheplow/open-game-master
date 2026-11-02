@@ -97,6 +97,20 @@ export function swallowCover(from: Party | null, to: Party): string | null {
   return null;
 }
 
+// The same, from ids alone (a spell's reach, a healer's touch): a
+// character's sheet or a creature's row, whichever the id names.
+export function swallowCoverBetween(fromId: string, toId: string): string | null {
+  const to = partyOf(toId);
+  return to ? swallowCover(partyOf(fromId), to) : null;
+}
+
+function partyOf(id: string): Party | null {
+  if (getSheetById(id)) {
+    return { kind: "sheet", id };
+  }
+  return getEnemy(id) ? { kind: "enemy", id } : null;
+}
+
 // Every character, and the rows of the fight (the one running, or the one
 // `encounterId` names once it has ended).
 function partiesOf(campaignId: string, encounterId?: string): Party[] {

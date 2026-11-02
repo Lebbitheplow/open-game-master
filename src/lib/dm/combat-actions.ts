@@ -28,6 +28,7 @@ import { landTheFlightless, pushTokenAway } from "@/lib/dm/map-tools";
 import { resolveSheetRef } from "@/lib/dm/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { swallowCover } from "@/lib/dm/swallow";
 
 // Successfully hidden: attacks from here have advantage, and the first one
 // spends it (src/lib/dm/condition-logic.ts).
@@ -128,6 +129,15 @@ export function help(
   if (args.targetEnemyId && (!foe || foe.status !== "alive")) {
     return { error: "Help on an attack needs a living targetEnemyId from GAME STATE.", retry: true };
   }
+  // Swallowed (swallow.ts): the help is aimed at the creature it distracts,
+  // or at the ally whose check it helps.
+  const inside = swallowCover(
+    { kind: "sheet", id: sheet.id },
+    foe ? { kind: isSheetFoe(foe) ? "sheet" : "enemy", id: foe.id } : { kind: "sheet", id: target.id },
+  );
+  if (inside) {
+    return { error: `${inside} Nothing was spent.`, refused: "rules" };
+  }
   if (foe && encounter) {
     const apart = tilesBetween(encounter.id, sheet.id, foe.id);
     // Tactical Support: the creature may be 30 feet away (feat-combat.ts).
@@ -172,6 +182,12 @@ export function contest(
   const enemy = args.targetEnemyId ? resolveTargetFoe(campaign.id, encounter, args.targetEnemyId) : null;
   if (!enemy || enemy.status !== "alive") {
     return { error: `${action} needs a living targetEnemyId from GAME STATE.`, retry: true };
+  }
+  // Swallowed (swallow.ts): from inside, hands reach only the swallower, and
+  // nothing outside reaches in.
+  const inside = swallowCover({ kind: "sheet", id: sheet.id }, { kind: isSheetFoe(enemy) ? "sheet" : "enemy", id: enemy.id });
+  if (inside) {
+    return { error: `${inside} Nothing was spent.`, refused: "rules" };
   }
   if (isSheetFoe(enemy) && !hostileTo(encounter, { kind: "sheet", id: sheet.id }, { kind: "sheet", id: enemy.id })) {
     return { error: `${enemy.displayName} fights on ${sheet.name}'s side: a ${action} here is aimed at a creature of the other side. Nothing was spent.`, refused: "rules" };
