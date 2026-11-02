@@ -120,8 +120,8 @@ test("every generated item is well formed", () => {
     names.add(item.match);
     // A row with no effect is in the table for what the engine holds about
     // it: who may attune, the weapon or armor it is built on, its bonus and
-    // riders, its charges, or that an SRD item that casts a spell (a Hat of
-    // Disguise) asks for attunement, which use_item asks before the cast.
+    // riders, its charges, or that it asks for attunement, which the sheet's
+    // attune button, the one-copy rule and use_item all read.
     assert.ok(
       item.effects.length > 0 || item.attunedBy || item.base || item.weapon || item.armor || item.charges || item.requiresAttunement,
       item.name,
@@ -201,12 +201,28 @@ test("attunement is refused with the reason, and settled the same way on a write
   );
 });
 
+test("an item that asks for attunement is in the table, even with nothing else to enforce", () => {
+  // SRD 5.1: "Ring of Spell Storing ... (requires attunement)". Its details
+  // said so while the sheet offered no attune button, since the button reads
+  // this table.
+  for (const name of ["Ring of Spell Storing", "Ring of Invisibility", "Boots of Speed", "Cloak of Displacement", "Crystal Ball"]) {
+    assert.equal(magicItemNamed(name)?.requiresAttunement, true, name);
+  }
+  const ring = { name: "Ring of Spell Storing" };
+  assert.equal(attunementProblem(ring, [], null), null);
+  assert.match(attunementProblem(ring, [{ name: "Ring of Spell Storing", attuned: true }], null), /one copy/);
+  // Nothing narrated comes along with the attunement: its effects stay empty,
+  // and an item that asks for none stays out unless it has something else.
+  assert.deepEqual(magicItemNamed("Ring of Spell Storing").effects, []);
+  assert.equal(magicItemNamed("Bag of Holding"), null);
+});
+
 test("the rows a person corrected against the item's own text", () => {
   // Magic weapons now have rows (their base weapon and bonus), with no worn
   // effect: a Vorpal Sword gives no resistance, a Defender no standing AC.
   assert.deepEqual(magicItemNamed("Vorpal Sword")?.effects, []);
   assert.deepEqual(magicItemNamed("Defender")?.effects, []);
-  assert.equal(magicItemNamed("Asi"), null);
+  assert.deepEqual(magicItemNamed("Asi")?.effects, []);
   // SRD 5.1, Staff of Power: "a +2 bonus to Armor Class, saving throws, and
   // spell attack rolls" (#570, ITM-03).
   assert.deepEqual(magicItemNamed("Staff of Power").effects, [

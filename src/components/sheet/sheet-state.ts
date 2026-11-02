@@ -246,9 +246,10 @@ export function isWornGear(item: Pick<EquipmentItem, "name" | "slug" | "srdName"
   if (item.gear?.armor || item.gear?.weapon || matchArmor(item) || matchWeapon(item) || gearDefFor(item)?.base) {
     return true;
   }
-  const magic = item.gear?.magic ?? matchMagicItem(item);
+  const listed = item.gear?.magic ? null : matchMagicItem(item);
+  const magic = item.gear?.magic ?? listed;
   const riders = item.gear?.checks ? { carried: item.gear.magic?.carried === true } : checkRidersOf(item);
-  if ((magic && !magic.carried) || (riders && !riders.carried)) {
+  if ((magic && !magic.carried && !listed?.noWear) || (riders && !riders.carried)) {
     return true;
   }
   const tags = item.identified === false ? [] : (item.tags ?? item.gear?.tags ?? []);

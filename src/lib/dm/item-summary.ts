@@ -111,5 +111,9 @@ export function magicItemLine(item: EquipmentItem, equipment: readonly Equipment
   } else if (isWorn(item, equipment)) {
     state.push("worn");
   }
-  return `${item.name}: ${parts.join(", ") || "magic"}${state.length ? `; ${state.join(", ")}` : ""}`;
+  // An item in the table only for its attunement has nothing above to say, so
+  // the model still gets the pack's sentence to narrate it from.
+  const sentence = parts.length ? null : packSentence(rowName(item));
+  const says = parts.join(", ") || (sentence ? `${sentence} (narrated)` : "magic");
+  return `${item.name}: ${says}${state.length ? `; ${state.join(", ")}` : ""}`;
 }
