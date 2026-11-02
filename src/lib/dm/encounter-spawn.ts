@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SEXES, actorSex } from "@/lib/actor-sex-logic";
+import { SEXES, actorSex, declaredSex } from "@/lib/actor-sex-logic";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import type { Campaign } from "@/lib/db/campaigns";
 import {
@@ -15,7 +15,7 @@ import {
 import { getBattleMapForEncounter, getTokenByRef, insertToken, listTokens, renameTokenByRef } from "@/lib/db/battle-maps";
 import { d20Expression } from "@/lib/dice";
 import { resolveMonster } from "@/lib/bestiary";
-import { listNpcs } from "@/lib/db/npcs";
+import { getNpcById, listNpcs } from "@/lib/db/npcs";
 import { synthesizeStats } from "@/lib/bestiary/synthesize";
 import { encounterCeiling, evaluateEncounter } from "@/lib/srd/encounter-math";
 import { nameArrivals, spliceIntoOrder } from "@/lib/dm/encounter-logic";
@@ -160,10 +160,13 @@ export function resolveEnemyRequests(
       // of them), and comes back from their last fight as it left them.
       const last = lastAppearanceOfNpc(campaignId, npc.id);
       if (!resolved.some((entry) => entry.npcId === npc.id)) {
+        // The Cast's record wins over the sex their last fight stored, which
+        // it may have been told since (src/lib/battlemap/view.ts reads it).
+        const declared = declaredSex(npc.gender);
         resolved.push({
           slug: match?.slug ?? "custom",
           name: displayName,
-          stats: { ...stats, sex: actorSex(npc.id, last?.stats.sex ?? request.sex ?? npc.gender) },
+          stats: { ...stats, sex: declared === null ? undefined : (declared ?? actorSex(npc.id, last?.stats.sex ?? request.sex)) },
           npcId: npc.id,
           ...(last ? { returning: latestAppearance(last.id)?.id ?? last.id } : {}),
         });
@@ -180,7 +183,10 @@ export function resolveEnemyRequests(
 // A creature from an earlier fight, fighting as that row had it: its block,
 // its name, who it is.
 function carriedEntry(row: EncounterEnemy): ResolvedEnemyRequest {
-  return { slug: row.slug, name: row.displayName, stats: { ...row.stats, sex: actorSex(row.npcId ?? row.id, row.stats.sex) }, returning: row.id, ...(row.npcId ? { npcId: row.npcId } : {}) };
+  // A Cast NPC's record wins over the sex the row stored, as below.
+  const declared = declaredSex(row.npcId ? getNpcById(row.npcId)?.gender : undefined);
+  const sex = declared === null ? undefined : (declared ?? actorSex(row.npcId ?? row.id, row.stats.sex));
+  return { slug: row.slug, name: row.displayName, stats: { ...row.stats, sex }, returning: row.id, ...(row.npcId ? { npcId: row.npcId } : {}) };
 }
 
 type ToolDef = {

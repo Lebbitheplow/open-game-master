@@ -57,8 +57,8 @@ import { undoableMove, undoOffer } from "@/lib/battlemap/move-undo";
 import type { AuraTone, PlayerMapView } from "@/lib/battlemap/view-types";
 import { ENEMY_TURN_NAME, turnOwner } from "@/lib/dm/turn-owner";
 import { holdsFeature } from "@/lib/srd/feature-names";
-import { actorSex } from "@/lib/actor-sex-logic";
-import { getNpcById } from "@/lib/db/npcs";
+import { actorSex, declaredSex, type Sex } from "@/lib/actor-sex-logic";
+import { getNpcById, getNpcByName, type Npc } from "@/lib/db/npcs";
 
 export type { PlayerMapView } from "@/lib/battlemap/view-types";
 
@@ -225,6 +225,26 @@ function dropsOn(
   return out;
 }
 
+// The Cast NPC an id names at this table, or null.
+function castMember(campaignId: string, npcId: string | undefined): Npc | null {
+  const npc = npcId ? getNpcById(npcId) : null;
+  return npc?.campaignId === campaignId ? npc : null;
+}
+
+// The sex a 3D board view draws a figure as. A Cast NPC's own record first,
+// read live, so a gender the story records after their first fight changes
+// their model in this fight and the next; a figure the GM put on the board
+// by hand is the Cast NPC of that whole name or alias, as start_encounter
+// links one (src/lib/dm/encounter-spawn.ts). Otherwise the stable pick from
+// the saved identity: the NPC's id, else the token's or the enemy row's.
+function castSex(npc: Npc | null, refId: string, stored: unknown): { sex?: Sex } {
+  const declared = declaredSex(npc?.gender);
+  if (declared === null) {
+    return {};
+  }
+  return { sex: declared ?? actorSex(npc?.id ?? refId, stored) };
+}
+
 export function buildPlayerMapView(
   campaignId: string,
   userId: string,
@@ -354,14 +374,11 @@ export function buildPlayerMapView(
       kind: token.kind,
       refId: token.refId,
       name: token.name,
-      ...(token.kind === "enemy" ? {
-        sex: actorSex(enemiesById.get(token.refId)?.npcId ?? token.refId, enemiesById.get(token.refId)?.stats.sex),
-      } : token.kind === "npc" ? (() => {
-        // A display name is not a link to a cast member with the same name.
-        const linked = getNpcById(token.refId);
-        const npc = linked?.campaignId === campaignId ? linked : null;
-        return { sex: actorSex(token.refId, npc?.gender) };
-      })() : {}),
+      ...(token.kind === "enemy"
+        ? castSex(castMember(campaignId, enemiesById.get(token.refId)?.npcId), token.refId, enemiesById.get(token.refId)?.stats.sex)
+        : token.kind === "npc"
+          ? castSex(castMember(campaignId, token.refId) ?? getNpcByName(campaignId, token.name), token.refId, undefined)
+          : {}),
       x: token.x,
       y: token.y,
       mine: myToken !== null && token.id === myToken.id,

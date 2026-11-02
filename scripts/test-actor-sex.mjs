@@ -15,6 +15,7 @@ const {upsertNpc,createNpcFromDraft}=await import('../src/lib/db/npcs.ts');
 const {normalizeNpcDraft}=await import('../src/lib/npcs/forge.ts');
 const {insertToken}=await import('../src/lib/db/battle-maps.ts');
 const {buildPlayerMapView}=await import('../src/lib/battlemap/view.ts');
+const {addAdhocToken}=await import('../src/lib/dm/board.ts');
 const {boardSnapshot}=await import('../src/lib/addons/board-bridge.ts');
 const {actorSex}=await import('../src/lib/actor-sex-logic.ts');
 world.addHero({class:'fighter',level:5,proficiencies:TRAINED});
@@ -64,12 +65,31 @@ await test('invalid explicit sex is refused instead of silently assigning a diff
   assert.equal(out.ok,false);
   assert.equal(world.enemies().length,before);
 });
-await test('an unlinked NPC keeps its automatic sex when a same-name cast entry is registered',()=>{
-  const token=insertToken({mapId:kit.map().id,campaignId:world.campaignId,kind:'npc',refId:'npc:independent',name:'Newcomer',x:6,y:2});
-  const projected=()=>buildPlayerMapView(world.campaignId,world.owner.id,{fullVision:true}).tokens.find(t=>t.id===token.id).sex;
-  const before=projected();
-  upsertNpc({campaignId:world.campaignId,name:'Newcomer',gender:before==='Female'?'Male':'Female'});
-  assert.equal(projected(),before,'display names must not change an existing actor identity');
+await test('a figure the GM puts on the board is the Cast NPC of that whole name, and an unknown one keeps its own pick',()=>{
+  // The board's own placement: an ad hoc ref (npc:<uuid>), never an NPC id.
+  const placed=addAdhocToken(world.campaign(),{kind:'npc',name:'Corin Vale',x:6,y:2});
+  assert.equal(placed.ok,true,placed.error);
+  const stranger=addAdhocToken(world.campaign(),{kind:'npc',name:'Passer-by',x:6,y:3});
+  assert.equal(stranger.ok,true,stranger.error);
+  const view=()=>buildPlayerMapView(world.campaignId,world.owner.id,{fullVision:true});
+  const sexOf=(name)=>view().tokens.find(t=>t.name===name).sex;
+  // Recorded as the opposite of the figure's own pick, so the record shows.
+  const told=actorSex(view().tokens.find(t=>t.name==='Corin Vale').refId)==='Female'?'Male':'Female';
+  upsertNpc({campaignId:world.campaignId,name:'Corin Vale',gender:told});
+  assert.equal(sexOf('Corin Vale'),told,'the Cast records who they are');
+  const before=sexOf('Passer-by');
+  assert(['Male','Female'].includes(before));
+  assert.equal(sexOf('Passer-by'),before,'a stranger keeps a stable pick');
+});
+await test('a Cast NPC recorded as nonbinary is drawn with the ordinary model, not as a man or a woman',()=>{
+  const npc=upsertNpc({campaignId:world.campaignId,name:'Sable',gender:'Nonbinary'});
+  addAdhocToken(world.campaign(),{kind:'npc',name:'Sable',x:7,y:3});
+  const token=buildPlayerMapView(world.campaignId,world.owner.id,{fullVision:true}).tokens.find(t=>t.name==='Sable');
+  assert.equal(Object.hasOwn(token,'sex'),false);
+  const enemy=insertEnemy({campaignId:world.campaignId,encounterId:world.encounter().id,slug:'bandit',displayName:npc.name,initiative:1,stats:enemies[0].stats,npcId:npc.id});
+  insertToken({mapId:kit.map().id,campaignId:world.campaignId,kind:'enemy',refId:enemy.id,name:npc.name,x:8,y:3});
+  const foe=buildPlayerMapView(world.campaignId,world.owner.id,{fullVision:true}).tokens.find(t=>t.refId===enemy.id);
+  assert.equal(Object.hasOwn(foe,'sex'),false);
 });
 await test('new and legacy returning foes keep their sex in a later fight',async()=>{
   const original=enemies[1];
@@ -109,6 +129,22 @@ await test('a cast NPC keeps its saved sex when requested again by name',async()
   const back=world.enemies()[0];
   assert.equal(back.carriedFrom,first.id);
   assert.equal(back.stats.sex,'Female','returning cast identity wins over a new request');
+});
+await test("a Cast NPC's gender recorded after their first fight wins over the sex that fight stored, then and in the next",async()=>{
+  await kit.endFight();
+  const draft=normalizeNpcDraft({name:'Cast raider',gender:'',statBlock:'bandit'});
+  const npc=createNpcFromDraft(world.campaignId,draft.draft);
+  await world.beginFight([{monster:npc.name}]);
+  kit.openField();
+  const first=world.enemies()[0];
+  const told=first.stats.sex==='Female'?'Male':'Female';
+  upsertNpc({campaignId:world.campaignId,name:npc.name,gender:told});
+  const shown=()=>buildPlayerMapView(world.campaignId,world.owner.id,{fullVision:true}).tokens.find(t=>t.kind==='enemy').sex;
+  assert.equal(shown(),told,'the running fight follows the record');
+  await kit.endFight();
+  await world.beginFight([{monster:npc.name}]);
+  assert.equal(world.enemies()[0].carriedFrom,first.id);
+  assert.equal(world.enemies()[0].stats.sex,told,'the next fight starts from the record, not the stored pick');
 });
 await test('flat AI tool calls carry sex for start and reinforcement requests',async()=>{
   await kit.endFight();
