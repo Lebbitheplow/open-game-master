@@ -24,6 +24,8 @@ const { listEffects } = await import("../src/lib/db/active-effects.ts");
 const { enemyActedThisRound } = await import("../src/lib/dm/can-act.ts");
 const { getBattleMapForEncounter } = await import("../src/lib/db/battle-maps.ts");
 const { listLiveTurnChangeViews } = await import("../src/lib/db/turn-changes.ts");
+const { acWithEffects, enemyAcWithEffects } = await import("../src/lib/dm/ac-effects.ts");
+const { endOwnTurn } = await import("../src/lib/dm/encounter-tools.ts");
 
 const book = JSON.parse(fs.readFileSync(new URL("../src/lib/rulebook/srd-5.1.json", import.meta.url), "utf8"));
 function srd(title) {
@@ -211,10 +213,14 @@ await test("Heal Self, and Shimmering Shield on itself; negative energy keeps th
   assert.equal(healed.status, 200, JSON.stringify(healed.body));
   assert.equal(world.enemies()[0].currentHp, 38, "2d8+2: 8, 8 and 2");
   nextTurn();
+  const ac = enemyAcWithEffects(world.campaignId, world.enemies()[0]);
   const shield = await play({ action: "Shimmering Shield", targetCharacterId: foe.id });
   assert.equal(shield.status, 200, JSON.stringify(shield.body));
-  const effect = listEffects(world.campaignId, { kind: "enemy", id: foe.id }).find((entry) => /shimmering shield/i.test(entry.name));
-  assert.ok(effect, "the shield is an effect on it");
+  const held = world.enemies()[0];
+  assert.ok(held.conditions.includes("shimmering shield"), held.conditions.join(", "));
+  assert.equal(held.conditionMeta["shimmering shield"].untilTurnEndOf, foe.id, "until the end of the unicorn's next turn");
+  assert.equal(enemyAcWithEffects(world.campaignId, held), ac + 2);
+  assert.equal(listEffects(world.campaignId, { kind: "enemy", id: foe.id }).length, 0, "no effect counted in rounds beside it");
   nextTurn();
   kit.setEnemy(foe.id, { conditions: ["negative energy"] });
   const blocked = await play({ action: "Heal Self" });
@@ -223,8 +229,8 @@ await test("Heal Self, and Shimmering Shield on itself; negative energy keeps th
   assert.equal(pool() ?? 3, 3);
 });
 
-await test("Channel Negative Energy: no healing for those it reaches until a round has passed", async () => {
-  const { world, kara, gm, play } = await facing("Mummy Lord");
+await test("Channel Negative Energy: no healing for those it reaches until the end of the mummy lord's next turn", async () => {
+  const { world, kit, kara, gm, play } = await facing("Mummy Lord");
   const out = await play({ action: "Channel Negative Energy", characterIds: [kara.id] });
   assert.equal(out.status, 200, JSON.stringify(out.body));
   assert.ok(world.sheet(kara.id).conditions.includes("negative energy"));
@@ -232,6 +238,30 @@ await test("Channel Negative Energy: no healing for those it reaches until a rou
   const heal = await post(world, "dm/invoke", { name: "heal", args: { characterId: kara.id, amount: 10 } }, gm);
   assert.equal(heal.status, 409);
   assert.match(heal.body.error, /negative energy and cannot regain hit points/);
+  // Kara's turn ends and the round turns over: the mummy lord's turn has
+  // begun, not ended. A round's count ended it here.
+  assert.equal(endOwnTurn(world.campaignId, kara.userId), true);
+  assert.ok(world.sheet(kara.id).conditions.includes("negative energy"), "it holds through the mummy lord's turn");
+  // The GM hands its turn on: the end of its next turn, and of the curse.
+  kit.handOnEnemies();
+  assert.equal(world.sheet(kara.id).conditions.includes("negative energy"), false, world.sheet(kara.id).conditions.join(", "));
+});
+
+await test("Shimmering Shield on Kara lasts until the end of the unicorn's next turn: through the new round's start, gone as its turn ends", async () => {
+  const { world, kit, kara, play } = await facing("Unicorn");
+  // The unicorn acts first in the round: the round turns over as Kara's turn
+  // ends, before the unicorn's turn. A round's count ended the shield there.
+  const encounter = world.encounter();
+  const order = [...encounter.order].sort((a, b) => (a.kind === b.kind ? 0 : a.kind === "enemy" ? -1 : 1));
+  encounters.saveEncounter({ ...encounter, order, turnIndex: order.findIndex((entry) => entry.characterId === kara.id) });
+  const ac = acWithEffects(world.campaignId, world.sheet(kara.id));
+  const out = await play({ action: "Shimmering Shield", targetCharacterId: kara.id });
+  assert.equal(out.status, 200, JSON.stringify(out.body));
+  assert.equal(acWithEffects(world.campaignId, world.sheet(kara.id)), ac + 2);
+  assert.equal(endOwnTurn(world.campaignId, kara.userId), true);
+  assert.equal(acWithEffects(world.campaignId, world.sheet(kara.id)), ac + 2, "it holds through the unicorn's turn");
+  kit.handOnEnemies();
+  assert.equal(acWithEffects(world.campaignId, world.sheet(kara.id)), ac, "and ends with it");
 });
 
 await test("The mummy lord's Attack is two cards: its fist, or its Dreadful Glare, which spends a legendary action and not its own", async () => {

@@ -337,8 +337,13 @@ test("no legendary action is offered on the creature's own turn, twice at one tu
   // Its turn handed to the AI, or walked past and held for a person (due).
   assert.equal(enemyActionsView(encounter({ legendary: { pools: {}, lair: false, lairUsedRound: 0, due: ["e1"] } }), dragon()).legendary, undefined);
   assert.equal(enemyActionsView(encounter({ legendary: { pools: {}, lair: false, lairUsedRound: 0, handoff: { turnId: "t", enemyIds: ["e1"] } } }), dragon()).legendary, undefined);
-  // Due but its action already taken: its turn is over, and the next turn's end is open.
-  assert.ok(enemyActionsView(encounter({ legendary: { pools: {}, lair: false, lairUsedRound: 0, due: ["e1"], acted: { round: 1, ids: ["e1"] } } }), dragon()).legendary);
+  // Due with its action taken and nobody after it: still its own turn, whose
+  // end is no moment for one (SRD 5.1: at the end of another creature's turn).
+  assert.equal(enemyActionsView(encounter({ legendary: { pools: {}, lair: false, lairUsedRound: 0, due: ["e1"], acted: { round: 1, ids: ["e1"] } } }), dragon()).legendary, undefined);
+  // Another creature held with it has acted since: that turn's end is open.
+  assert.ok(enemyActionsView(encounter({ legendary: { pools: {}, lair: false, lairUsedRound: 0, due: ["e1", "e2"], acted: { round: 1, ids: ["e1", "e2"] } } }), dragon()).legendary);
+  // Handed on: the turn is over, and the next turn's end is open.
+  assert.ok(enemyActionsView(encounter({ legendary: { pools: {}, lair: false, lairUsedRound: 0, acted: { round: 1, ids: ["e1"] } } }), dragon()).legendary);
   // One already taken at the end of this turn.
   assert.equal(enemyActionsView(encounter({ legendary: { pools: {}, lair: false, lairUsedRound: 0, opportunities: { key: "1:s1:0", ids: ["e1"] } } }), dragon()).legendary, undefined);
   // None left this round.

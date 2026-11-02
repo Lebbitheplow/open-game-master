@@ -353,7 +353,13 @@ export function legendaryPurchase(
 // of its own. Its own turn is the pointer on it, or its turn begun and not
 // yet taken: handed to the model by an end_turn (`handoff`), or walked past
 // at a table a person runs and held for them (`due`, enemies-due.ts), where
-// the console's form used to spend one on the creature's own turn.
+// the console's form used to spend one on the creature's own turn. Having
+// acted, it is still in its own turn while it is held so and no creature
+// has acted after it: before this, a GM who played a dragon's Tail on its
+// turn could spend a legendary Detect inside that same turn. Its turn ends
+// with another's after it, or when the turn is handed on; the pointer then
+// rests on the next character, whose turn's end is the moment the next one
+// is keyed to.
 // The turn's end a legendary action is taken at: the turn ending, and how
 // many creatures' own turns have run inside it (the pointer never rests on
 // an enemy, so each one played there is its own turn's end).
@@ -386,12 +392,16 @@ export function legendaryOpening(
   enemy: { id: string; displayName: string },
 ): { key: string; taken: string[]; refusal: ToolError | null } {
   const begun = Boolean(moment.legendary.handoff?.enemyIds.includes(enemy.id) || moment.legendary.due?.includes(enemy.id));
-  if (moment.onPointer || (begun && !moment.actedThisRound)) {
+  const acted = moment.legendary.acted?.round === moment.round ? moment.legendary.acted.ids : [];
+  const running = begun && moment.actedThisRound && acted.at(-1) === enemy.id;
+  if (moment.onPointer || (begun && !moment.actedThisRound) || running) {
     return {
       key: "",
       taken: [],
       refusal: {
-        error: `It is ${enemy.displayName}'s own turn; legendary actions come at the end of other creatures' turns. Take its turn first: enemy_attack, or cast_at_player / aoe_damage with casterEnemyId and enemyAbility or spell.`,
+        error: running
+          ? `It is ${enemy.displayName}'s own turn; legendary actions come at the end of other creatures' turns, and the end of its own turn is not one. The next comes once another creature's turn ends. Nothing was spent.`
+          : `It is ${enemy.displayName}'s own turn; legendary actions come at the end of other creatures' turns. Take its turn first: enemy_attack, or cast_at_player / aoe_damage with casterEnemyId and enemyAbility or spell.`,
         retry: true,
       },
     };

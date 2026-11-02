@@ -18,10 +18,14 @@
 import { z } from "zod";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
-import { getActiveEncounter, getEnemy, patchEnemyHp, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
+import { getActiveEncounter, getEnemy, patchEnemyConditions, patchEnemyHp, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { getBattleMapForEncounter, getTokenByRef, listTokens, placeToken } from "@/lib/db/battle-maps";
 import { getSheetById } from "@/lib/db/sheets";
-import { resolveEnemyRef, unknownEnemyRef } from "@/lib/dm/enemy-damage";
+import { patchSheetAudited } from "@/lib/dm/audited-patch";
+import { instancesOf, packInstances, type ConditionMeta, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { publishEncounter, resolveEnemyRef, unknownEnemyRef } from "@/lib/dm/enemy-damage";
+import { conditionEffectsFor } from "@/lib/srd/condition-effects";
+import { textKey } from "@/lib/language/text-logic";
 import { resolveCombatant } from "@/lib/dm/combatant";
 import { enemyHpCap, findMonsterSpell } from "@/lib/dm/monster-abilities";
 import { legendaryProfile } from "@/lib/dm/legendary-logic";
@@ -34,7 +38,7 @@ import { sizeForRace } from "@/lib/srd";
 import { NEGATIVE_ENERGY, regainBlockedBy } from "@/lib/dm/vitals-logic";
 import { dmRoll } from "@/lib/dm/roll-card";
 import { blocksMove, inBounds, tileAt } from "@/lib/battlemap/types";
-import { isNamed } from "@/lib/srd/feature-names";
+import { isConditionNamed, isNamed } from "@/lib/srd/feature-names";
 import { handleMoveToken, publishBattleMapUpdate } from "@/lib/dm/map-tools";
 import { spellMechanicsFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
@@ -276,18 +280,104 @@ async function fling(
   return { ok: true, ...out };
 }
 
+// What a legendary action lays "until the end of the <creature>'s next turn"
+// (SRD 5.1: Channel Negative Energy, Shimmering Shield) is tied to that turn
+// (src/lib/dm/turn-end.ts untilTurnEndOf), not counted in rounds. A round
+// counted ended it at the next round's start, before that turn when the
+// creature acts later in the order than whoever took the shield or the
+// curse, and after it when the creature acts earlier.
+function untilItsTurnEnds(campaign: Campaign, target: Target, condition: string, enemy: EncounterEnemy) {
+  // The instance this creature laid, under whatever spelling it was written.
+  const tied = (meta: Record<string, ConditionMeta>) => {
+    let found = false;
+    const next = Object.fromEntries(
+      Object.entries(meta).map(([name, held]) => {
+        if (!isConditionNamed(name, condition)) {
+          return [name, held];
+        }
+        found = true;
+        const instances = instancesOf(held).map((entry) => {
+          if (entry.source !== enemy.id) {
+            return entry;
+          }
+          const lasting = { ...entry, untilTurnEndOf: enemy.id };
+          delete lasting.rounds;
+          delete lasting.turnBegun;
+          return lasting;
+        });
+        return [name, packInstances(instances) ?? {}];
+      }),
+    );
+    return found ? next : null;
+  };
+  if (target.kind === "sheet") {
+    const now = getSheetById(target.sheet.id);
+    const meta = now ? tied(now.conditionMeta as Record<string, ConditionMeta>) : null;
+    if (now && meta) {
+      patchSheetAudited(campaign.id, now.id, { conditionMeta: meta as ConditionMetaMap }, {
+        kind: "condition_clock",
+        reason: `${condition} lasts until the end of ${enemy.displayName}'s next turn`,
+        delta: { ended: [], added: [] },
+      });
+    }
+    return;
+  }
+  const now = getEnemy(target.enemy.id);
+  const meta = now ? tied(now.conditionMeta as Record<string, ConditionMeta>) : null;
+  if (now && meta) {
+    patchEnemyConditions(now.id, now.conditions, meta as ConditionMetaMap);
+    publishEncounter(campaign.id);
+  }
+}
+
+// A condition from the creature on a character or on a creature's row. The
+// dispatcher takes the engine's own tools, which keep a row's conditions
+// apart: set_condition with an enemyId refused "Unknown characterId".
+function layCondition(dispatch: Dispatch, target: Target, condition: string, enemy: EncounterEnemy): Promise<ToolResult> {
+  return target.kind === "sheet"
+    ? dispatch("set_condition", { characterId: target.sheet.id, condition, sourceEnemyId: enemy.id })
+    : dispatch("set_enemy_condition", { enemyId: target.enemy.id, condition, sourceEnemyId: enemy.id });
+}
+
 // A mummy lord's Channel Negative Energy: no creature it reaches regains hit
 // points until the end of its next turn.
-async function denyHealing(dispatch: Dispatch, enemy: EncounterEnemy, targets: Target[]): Promise<ToolResult> {
+async function denyHealing(campaign: Campaign, dispatch: Dispatch, enemy: EncounterEnemy, targets: Target[]): Promise<ToolResult> {
   const laid: string[] = [];
   for (const target of targets) {
-    const out = await dispatch("set_condition", { ...onTarget(target), condition: NEGATIVE_ENERGY, rounds: 1, sourceEnemyId: enemy.id });
+    const out = await layCondition(dispatch, target, NEGATIVE_ENERGY, enemy);
     if (typeof out.error === "string") {
       return laid.length ? { ok: true, noHealing: laid, refusedFor: `${nameOf(target)}: ${out.error}` } : out;
     }
+    untilItsTurnEnds(campaign, target, NEGATIVE_ENERGY, enemy);
     laid.push(nameOf(target));
   }
   return { ok: true, noHealing: `${laid.join(", ")} cannot regain hit points until the end of ${enemy.displayName}'s next turn.` };
+}
+
+// A unicorn's Shimmering Shield: the AC bonus on itself or a creature it
+// sees until the end of its next turn. The SRD's one ward is a condition
+// with its bonus (src/lib/srd/condition-effects.ts), so the turn it ends
+// with can hold it; an option the conditions do not carry at that bonus (a
+// pack's own) keeps the effect counted in rounds, the one way an effect
+// ends.
+async function ward(campaign: Campaign, dispatch: Dispatch, enemy: EncounterEnemy, target: Target, option: string, ac: number): Promise<ToolResult> {
+  if (conditionEffectsFor(option)?.acBonus === ac) {
+    const out = await layCondition(dispatch, target, textKey(option), enemy);
+    if (typeof out.error === "string") {
+      return out;
+    }
+    untilItsTurnEnds(campaign, target, option, enemy);
+    return { ok: true, ward: `${nameOf(target)} gains +${ac} to AC until the end of ${enemy.displayName}'s next turn.` };
+  }
+  return dispatch("set_effect", {
+    ...onTarget(target),
+    name: option,
+    source: enemy.displayName,
+    modifiers: [{ field: "ac", mode: "add", value: ac }],
+    duration: "rounds",
+    remaining: 1,
+    visible: true,
+  });
 }
 
 // An aboleth's Psychic Drain: the damage a creature it charms takes, and the
@@ -357,17 +447,9 @@ async function playStep(
     case "teleport":
       return dispatch("teleport_token", { token: enemy.id, x: args.x, y: args.y });
     case "ward":
-      return dispatch("set_effect", {
-        ...onTarget(targets[0]),
-        name: option,
-        source: enemy.displayName,
-        modifiers: [{ field: "ac", mode: "add", value: step.ac }],
-        duration: "rounds",
-        remaining: 1,
-        visible: true,
-      });
+      return ward(campaign, dispatch, enemy, targets[0], option, step.ac);
     case "noRegain":
-      return denyHealing(dispatch, enemy, targets);
+      return denyHealing(campaign, dispatch, enemy, targets);
     case "drain":
       return drain(campaign, turn, dispatch, enemy, targets[0], step, option);
     case "fling":

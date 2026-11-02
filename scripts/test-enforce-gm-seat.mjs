@@ -178,6 +178,30 @@ await test("A legendary action is refused on the creature's own turn while a per
   assert.equal(world.encounter().legendary.pools[dragon.id]?.actions ?? 3, 3, "nothing was spent");
 });
 
+await test("A legendary action is refused for the rest of the creature's own turn once it has acted, and offered again once its turn is handed on", async () => {
+  const { world, kit, kara, gm, dragon } = await dragonTable();
+  // Kara ends her turn: the pointer walks past the dragon, held for the GM.
+  kit.giveTurn(kara.id);
+  assert.equal((await post(world, "encounter/end-turn", {}, { id: kara.userId })).status, 200);
+  assert.deepEqual(world.encounter().legendary.due, [dragon.id], "the dragon's turn waits on the GM");
+  // The GM plays its Tail on its own turn.
+  world.dice(19, 8, 8);
+  const swing = await post(world, "dm/invoke", { name: "enemy_attack", args: { enemyId: dragon.id, targetCharacterId: kara.id } }, gm);
+  world.clearDice();
+  assert.equal(swing.status, 200, JSON.stringify(swing.body));
+  // Still its own turn: the end of its own turn is no moment for one.
+  assert.equal(dragonHand(world, dragon.id).row.actions.legendary, undefined, "no legendary card inside its own turn");
+  const inside = await post(world, "dm/invoke", { name: "legendary_action", args: { enemyId: dragon.id, action: "Detect" } }, gm);
+  assert.equal(inside.status, 409, JSON.stringify(inside.body));
+  assert.match(inside.body.error, /the end of its own turn is not one/);
+  assert.equal(world.encounter().legendary.pools[dragon.id]?.actions ?? 3, 3, "nothing was spent");
+  // The GM hands the turn on: Kara's turn, whose end is the next one's.
+  kit.handOnEnemies();
+  assert.ok(dragonHand(world, dragon.id).row.actions.legendary, "offered once its turn is over");
+  const next = await post(world, "dm/invoke", { name: "legendary_action", args: { enemyId: dragon.id, action: "Detect" } }, gm);
+  assert.equal(next.status, 200, JSON.stringify(next.body));
+});
+
 await test("The lair acts on initiative count 20 from the dragon's card, once a round: its option's save lands on everyone caught", async () => {
   const { world, kara, gm, dragon } = await dragonTable();
   assert.equal(dragonHand(world, dragon.id).row.actions.lair, undefined, "not before the count has passed");
