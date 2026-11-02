@@ -104,6 +104,30 @@ await test("a rewind to a chapter saved before the fix repairs what it brings ba
   assert.deepEqual(saved(sildar.id), derivePersonality("Sildar Hallwinter", "friendly", ""));
 });
 
+await test("a row whose note the story rewrote after it was seeded is found by the note it was seeded from", async () => {
+  // Registered with no note, so the name alone seeded who she is.
+  await world.invoke("set_npc", { name: "Agatha Holt", gender: "Female", attitude: "friendly" });
+  const agatha = getNpcByName(world.campaignId, "Agatha Holt");
+  save(agatha.id, skewed("Agatha Holt", "friendly"));
+  // A later set_npc writes the note the seed never saw (set_npc's trait is
+  // the AI's own recall note, rewritten as the story goes).
+  await world.invoke("set_npc", { name: "Agatha Holt", trait: "owes the party a favour" });
+  assert.equal(getNpcByName(world.campaignId, "Agatha Holt").trait, "owes the party a favour");
+  // The AI's turns keep the calls it made, with their arguments.
+  const call = (id, args) => ({ id, type: "function", function: { name: "set_npc", arguments: JSON.stringify(args) } });
+  const conversation = [
+    { role: "user", content: "We knock at the farmhouse." },
+    { role: "assistant", content: "", tool_calls: [call("a", { name: "Agatha Holt", gender: "Female", attitude: "friendly" })] },
+    { role: "tool", tool_call_id: "a", content: "{\"ok\":true}" },
+    { role: "assistant", content: "", tool_calls: [call("b", { name: "agatha holt", trait: "owes the party a favour" })] },
+  ];
+  const at = new Date().toISOString();
+  db.prepare(`INSERT INTO dm_turns (id, campaign_id, status, conversation_json, created_at, updated_at) VALUES (?, ?, 'done', ?, ?, ?)`)
+    .run(crypto.randomUUID(), world.campaignId, JSON.stringify(conversation), at, at);
+  repairSkewedPersonalities(db, world.campaignId);
+  assert.deepEqual(saved(agatha.id), derivePersonality("Agatha Holt", "friendly", ""));
+});
+
 await test("a module exported before the fix lands with its NPCs repaired", async () => {
   const bundle = workshopBundleSchema.parse({
     kind: "odm.workshop",

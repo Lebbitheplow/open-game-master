@@ -1004,6 +1004,7 @@
     "lib/db/map-addon-view-bundle.ts#toLowerCase": [["key",1,"file extension"]],
     "lib/db/messages.ts#LIKE": [["key",1,"out-of-character marker"]],
     "lib/db/moderation.ts#str-list": [["key",1,"report reasons (fixed choice)"]],
+    "lib/db/npc-personality-repair.ts#LIKE": [["key",2,"tool names in a turn's stored conversation (engine vocabulary)"]],
     "lib/db/overworld.ts#localeCompare": [["key",1,"createdAt"]],
     "lib/db/prepared-maps.ts#toLowerCase": [["key",1,"a map tag's stored form (lower case, as upstream stores it); deduped by textKey"]],
     "lib/db/quests.ts#str-eq": [["key",2,"stored quest source, visibility and status values"]],
