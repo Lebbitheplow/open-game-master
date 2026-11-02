@@ -260,6 +260,8 @@ await test("Haste's extra action is one weapon attack, Dash, Disengage, Hide or 
   assert.equal((await hit(veteran, enemy)).ok, true);
   const dodge = await world.invoke("take_action", { characterId: veteran.id, action: "dodge" });
   assert.equal(dodge.ok, false, "the hasted action bought a Dodge");
+  const improvised = await world.invoke("take_action", { characterId: veteran.id, action: "improvise", reason: "topples the shelf onto the goblin" });
+  assert.equal(improvised.ok, false, "the hasted action bought an improvised action");
 });
 
 await test("Casting a spell is its own action. Extra Attack belongs to the Attack action and gives no second casting.", async () => {

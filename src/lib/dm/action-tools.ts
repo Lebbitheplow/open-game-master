@@ -19,6 +19,11 @@ import { characterEscape } from "@/lib/dm/grapple";
 import { handleEnemyTakeAction } from "@/lib/dm/enemy-actions";
 import { pin } from "@/lib/dm/grappler-pin";
 import { readyAction, searchAction, objectAction } from "@/lib/dm/object-actions";
+import { improviseAction, sceneNarration } from "@/lib/dm/improvise";
+import { IMPROVISED_CONDITIONS, IMPROVISED_DAMAGE } from "@/lib/dm/improvise-logic";
+import { DIFFICULTY_TIERS } from "@/lib/srd/dc";
+import { SRD_SKILLS } from "@/lib/srd";
+import { ABILITIES } from "@/lib/schemas/abilities";
 import { READIABLE } from "@/lib/dm/readied-kinds";
 import { readiedReleaseFor } from "@/lib/dm/readied-release";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
@@ -54,6 +59,8 @@ type ToolDef = {
   function: { name: string; description: string; parameters: Record<string, unknown> };
 };
 
+const SKILL_IDS = SRD_SKILLS.map((skill) => skill.id) as [string, ...string[]];
+
 export const ACTION_TOOL_NAMES = ["take_action", "use_reaction"] as const;
 
 export const actionTools: ToolDef[] = [
@@ -62,7 +69,7 @@ export const actionTools: ToolDef[] = [
     function: {
       name: "take_action",
       description:
-        "Resolve a character or an enemy taking a standard 5e action that is not an attack or a spell: Dodge, Dash, Disengage, Hide, Help, Grapple, Shove, Ready, Search, Use an Object, or Escape (a grapple). Pin is the Grappler feat's: a grapple check against the creature they grapple, and a win restrains both until the grapple ends. The server spends the action, rolls any check or contest it calls for and applies the real effect. Grapple and Shove each replace ONE attack of the Attack action, so a character with Extra Attack can grapple and still swing. Ready commits ONE action to the character's reaction until their next turn, named in `readied` (or a spell in `spell`). When you judge the trigger has come, release it off their turn with that action's own tool (pc_attack for an attack): the server spends the reaction and refuses any other action. Hide is for a fight; out of one, use request_roll for Stealth. Call it BEFORE narrating the action; narrate exactly what it reports.",
+        "Resolve a character or an enemy taking a 5e action that is not an attack or a spell: Dodge, Dash, Disengage, Hide, Help, Grapple, Shove, Ready, Search, Use an Object, Escape (a grapple) or Improvise. Pin is the Grappler feat's: a grapple check against the creature they grapple, and a win restrains both until the grapple ends. Improvise is an action in a fight that no other tool names, the deed in reason; never hitting a creature (a weapon or a thrown object aimed at it, or a punch or kick: weapon 'unarmed strike'), which is pc_attack. One call decides it: against targetEnemyId a contest of checks, else a check against difficulty; a win lays its condition and damage. The server spends the action, rolls any check or contest it calls for and applies the real effect. Grapple and Shove each replace ONE attack of the Attack action, so a character with Extra Attack can grapple and still swing. Ready commits ONE action to the character's reaction until their next turn, named in `readied` (or a spell in `spell`). When you judge the trigger has come, release it off their turn with that action's own tool (pc_attack for an attack): the server spends the reaction and refuses any other action. Hide is for a fight; out of one, use request_roll for Stealth. Call it BEFORE narrating the action; narrate exactly what it reports.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -78,7 +85,7 @@ export const actionTools: ToolDef[] = [
           targetEnemyId: {
             type: "string",
             description:
-              "Grapple, Shove, Pin or Help: the enemy acted against, exact enemyId from GAME STATE. For Pin, the enemy they grapple. For Help, the enemy the ally attacks (within 5 feet of the helper); omit to help an ability check.",
+              "Grapple, Shove, Pin, Help or Improvise: the enemy acted against, exact enemyId from GAME STATE. For Pin, the enemy they grapple. For Help, the enemy the ally attacks (within 5 feet of the helper); omit to help an ability check.",
           },
           targetCharacterId: {
             type: "string",
@@ -101,12 +108,38 @@ export const actionTools: ToolDef[] = [
           },
           skill: {
             type: "string",
-            enum: ["perception", "investigation"],
-            description: "Search only: look (perception, the default) or reason it out (investigation).",
+            enum: SKILL_IDS,
+            description: "Search: look (perception, the default) or reason it out (investigation). Improvise: the character's check (athletics to topple, deception to bluff).",
           },
+          ability: { type: "string", enum: [...ABILITIES], description: "Improvise: the check's ability when no skill fits." },
+          contestSkill: {
+            type: "string",
+            description: "Improvise: the creature's resisting skill or ability ('acrobatics', 'dex'), when not the usual pair. Usual: Athletics vs Athletics, Stealth vs Perception, Deception vs Insight.",
+          },
+          difficulty: {
+            type: "string",
+            enum: [...DIFFICULTY_TIERS],
+            description: "Improvise: how hard the attempt is; the server sets the DC. Required with no creature; against one the check must meet it and beat the creature's.",
+          },
+          condition: {
+            type: "string",
+            enum: [...IMPROVISED_CONDITIONS],
+            description: "Improvise: what a win does to the creature. prone (knocked down), restrained (tangled, as a net), blinded, deafened or frightened (until the end of its next turn).",
+          },
+          damage: {
+            type: "string",
+            enum: [...IMPROVISED_DAMAGE],
+            description: "Improvise: a win's damage, with damageType. 1d10 a falling bookcase, 2d10 a fire pit, 4d10 a collapsing tunnel, 10d10 crushing walls, 18d10 lava, 24d10 a god's jaws.",
+          },
+          damageType: { type: "string", description: "Improvise: the damage's type (bludgeoning, fire)." },
+          distanceFt: { type: "integer", minimum: 0, description: "Improvise on the battle map (required): feet from the character to the thing used, as narrated. Never a guess: 5 only when the narration puts it beside the character." },
           item: {
             type: "string",
             description: "Use an Object only: the object, when it is one they carry. For consumables, use use_item.",
+          },
+          scene: {
+            type: "string",
+            description: "Improvise (required): the thing used, copied from the narration ('the chandelier'), never the deed.",
           },
           enemyId: {
             type: "string",
@@ -187,8 +220,16 @@ const takeActionSchema = z.object({
   targetCharacterId: z.string().optional(),
   shove: z.enum(["prone", "push"]).optional(),
   trigger: z.string().max(200).optional(),
-  skill: z.enum(["perception", "investigation"]).optional(),
+  skill: z.enum(SKILL_IDS).optional(),
+  ability: z.enum(ABILITIES).optional(),
+  contestSkill: z.enum([...SKILL_IDS, ...ABILITIES]).optional(),
+  difficulty: z.enum(DIFFICULTY_TIERS).optional(),
+  condition: z.enum(IMPROVISED_CONDITIONS).optional(),
+  damage: z.enum(IMPROVISED_DAMAGE).optional(),
+  damageType: z.string().max(40).optional(),
+  distanceFt: z.coerce.number().int().min(0).optional(),
   item: z.string().max(80).optional(),
+  scene: z.string().max(160).optional(),
   enemyId: z.string().optional(),
   spell: z.string().max(80).optional(),
   level: z.coerce.number().int().min(1).max(9).optional(),
@@ -287,12 +328,21 @@ export function handleTakeAction(
   sheets: CharacterSheet[],
   sheetsById: Map<string, CharacterSheet>,
 ): ToolResult {
-  let args: z.infer<typeof takeActionSchema>;
+  let raw: unknown;
   try {
-    args = takeActionSchema.parse(JSON.parse(rawArguments || "{}"));
+    raw = JSON.parse(rawArguments || "{}");
   } catch {
-    return { error: "Invalid arguments: take_action needs characterId (or an enemy's enemyId) and a known action.", retry: true };
+    return { error: "Invalid arguments: take_action's arguments are not JSON.", retry: true };
   }
+  const parsed = takeActionSchema.safeParse(raw);
+  if (!parsed.success) {
+    // The field and its fault, so the model fixes that field rather than
+    // guessing (an ability sent as "athletics" was answered with a list of
+    // fields it had sent right).
+    const issue = parsed.error.issues[0];
+    return { error: `Invalid arguments: take_action field ${issue.path.join(".")}: ${issue.message}. Nothing was spent.`, retry: true };
+  }
+  const args = parsed.data;
   // An enemy's action (src/lib/dm/enemy-actions.ts, issue #621). With both
   // ids, which creature acts is the model's to say, not the server's to
   // guess.
@@ -456,8 +506,13 @@ export function handleTakeAction(
         );
       }
       return readyAction(campaign, sheet, args.trigger, inFight, { spend: () => spend() }, args.readied ?? "attack");
-    case "search":
-      return searchAction(campaign, turn, sheet, args.skill ?? "perception", { spend: () => spend() });
+    case "search": {
+      const skill = args.skill ?? "perception";
+      if (skill !== "perception" && skill !== "investigation") {
+        return { error: `Search is a Perception or an Investigation check, not ${skill}. Nothing was spent.`, retry: true };
+      }
+      return searchAction(campaign, turn, sheet, skill, { spend: () => spend() });
+    }
     case "use_object":
       return objectAction(
         sheet,
@@ -470,6 +525,26 @@ export function handleTakeAction(
       return characterEscape(campaign, turn, sheet, () => spend());
     case "pin":
       return pin(campaign, turn, sheet, encounter, args.targetEnemyId, () => spend());
+    case "improvise":
+      return improviseAction(
+        campaign,
+        turn,
+        sheet,
+        encounter,
+        args,
+        turn.actor === "ai"
+          ? {
+              quoted: args.scene,
+              distanceFt: args.distanceFt,
+              narration: sceneNarration(campaign.id, encounter?.summary ?? null),
+              language: campaign.gameSettings.tableLanguage,
+              released: Boolean(readied),
+            }
+          : null,
+        sheets,
+        sheetsById,
+        () => spend(),
+      );
   }
   };
   const outcome = resolveAction();

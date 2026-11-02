@@ -605,6 +605,9 @@ test("Codex is started with its shell, web, apps and sub-agents off, read-only, 
     'mcp_servers.odm.bearer_token_env_var="ODM_MCP_TOKEN"',
     // Issue #131: without this, Codex refuses its own calls to ODM's tools.
     'mcp_servers.odm.default_tools_approval_mode="approve"',
+    // Past its 5,000-byte default Codex sends a tool's fields without their
+    // descriptions (codex-rs tools/src/json_schema/compaction.rs, 0.166.0).
+    "mcp_servers.odm.tool_input_schema_max_bytes=65536",
   ]) {
     assert.ok(overrides.includes(expected), `missing ${expected}`);
   }

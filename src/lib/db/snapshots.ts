@@ -233,6 +233,12 @@ export function restoreSnapshot(campaignId: string, payload: SnapshotPayload) {
       `UPDATE campaigns SET ${campaignSets.map((column) => `${column} = ?`).join(", ")} WHERE id = ?`,
     ).run(...campaignSets.map((column) => payload.campaign?.[column] ?? null), campaignId);
   }
+  // A snapshot from before where the party's place starts in the transcript
+  // was kept reads the whole story: the start it would restore is unknown,
+  // and the one standing may lie past every message the rewind leaves.
+  if (!held.has("scene_since_seq")) {
+    db.prepare(`UPDATE campaigns SET scene_since_seq = 0 WHERE id = ?`).run(campaignId);
+  }
   // Lore/rules text is lead-owned and survives a rewind; only the
   // prompt-facing flags roll back, for entries that still exist.
   const updateLore = db.prepare(

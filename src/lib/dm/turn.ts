@@ -16,6 +16,7 @@ import {
   getCampaignSummaryState,
   getFloor,
   listMembers,
+  markSceneStart,
   setCampaignScene,
   setFloor,
   type Campaign,
@@ -63,7 +64,7 @@ import { SMALL_MODEL_REASONING_CHARS, type ModelTuning } from "@/lib/dm/model-tu
 import { PC_ATTACK_PARKED } from "@/lib/dm/pc-attack";
 import { strictBooleanArgs } from "@/lib/dm/arg-coerce";
 import { insertCampaignMessage, listMessagesPage, listRecentMessages, markCardReturned, type CampaignMessage } from "@/lib/db/messages";
-import { narrationShown, takeNarrationSeq, takeNarrationSlot } from "@/lib/dm/narration-slot";
+import { heldNarrationSeq, narrationShown, takeNarrationSeq, takeNarrationSlot } from "@/lib/dm/narration-slot";
 import { getRoll, listRecentRolls } from "@/lib/db/rolls";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { adoptTurnAudit } from "@/lib/db/sheet-audit";
@@ -3212,6 +3213,11 @@ export function handleLocationCall(
       }
     }
     setCampaignScene(campaign.id, location.name);
+    // A new place's narration is what an improvised action may use there
+    // (improvise.ts); this turn's narration, wherever it sits, is its first.
+    if (movedToNewLocation) {
+      markSceneStart(campaign.id, heldNarrationSeq(campaign.id));
+    }
     // The scene line under the title reads the campaign's scene, which only
     // the opening ever told the table; it named the first place for the
     // whole campaign.

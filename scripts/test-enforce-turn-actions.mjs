@@ -1,6 +1,7 @@
 // The rest of a turn's actions and who may act off their own turn
 // (src/lib/dm/action-tools.ts take_action, src/lib/dm/object-actions.ts,
-// src/lib/dm/grapple.ts, the use_item handler in src/lib/dm/mutations.ts,
+// src/lib/dm/improvise.ts, src/lib/dm/grapple.ts, the use_item handler in
+// src/lib/dm/mutations.ts,
 // src/lib/dm/pet-tools.ts pet_attack, the off-turn block of
 // src/lib/dm/pc-attack-plan.ts).
 //
@@ -12,6 +13,9 @@
 //     uses the reaction when its trigger comes. Off their own turn a
 //     character attacks only as an opportunity attack or a readied action.
 //   - Search: an action, a Perception or Investigation check.
+//   - Actions in Combat: an action the character improvises is their
+//     action, the GM choosing the roll it needs; against a creature, a
+//     contest of checks appropriate to each side's effort (Contests).
 //   - Help: an ally's attack against a creature within 5 feet of the helper.
 //   - Hide and the grapple contest are ability checks like any other.
 //   - A grappled creature escapes with its action; a grapple ends when the
@@ -151,6 +155,387 @@ await test("Use an Object is an action take_action spends.", async () => {
   assert.equal(budget().actionUsed, true);
 });
 
+// ---- An improvised action ----
+//
+// One call decides it and lands it (src/lib/dm/improvise.ts). The dummy has
+// no ability scores, so its checks are +0; the fighter's Athletics is +5.
+
+const conditionsOf = (enemyId) => kit.enemy(enemyId).conditions;
+
+await test("An improvised action is the turn's action: a win in the contest lays its condition and the damage the server rolls, and an attack after it is refused.", async () => {
+  const enemy = await stage(fighter);
+  const hp = kit.enemy(enemy.id).currentHp;
+  // The goblin's Athletics 2, the fighter's 15 + 5, the d10 a 7.
+  world.dice(2, 15, 7);
+  const out = await act(fighter, "improvise", {
+    reason: "cuts the guy ropes so the tent falls on the goblin", targetEnemyId: enemy.id, skill: "athletics", condition: "prone", damage: "1d10", damageType: "bludgeoning",
+  });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(out.result.success, true);
+  assert.equal(budget().actionUsed, true);
+  assert.ok(conditionsOf(enemy.id).includes("prone"));
+  assert.equal(kit.enemy(enemy.id).currentHp, hp - 7);
+  const swing = await kit.swing(fighter.id, enemy.id, [15, 4]);
+  assert.equal(swing.ok, false, "an attack followed the improvised action");
+});
+
+await test("A lost contest lays nothing, and the action is still spent.", async () => {
+  const enemy = await stage(fighter);
+  const hp = kit.enemy(enemy.id).currentHp;
+  world.dice(19, 2);
+  const out = await act(fighter, "improvise", { reason: "topples the shelf onto the goblin", targetEnemyId: enemy.id, skill: "athletics", condition: "prone", damage: "1d10", damageType: "bludgeoning" });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(out.result.success, false);
+  assert.equal(budget().actionUsed, true);
+  assert.ok(!conditionsOf(enemy.id).includes("prone"));
+  assert.equal(kit.enemy(enemy.id).currentHp, hp);
+});
+
+await test("A tie leaves things as they were: the creature holds.", async () => {
+  const enemy = await stage(fighter);
+  // 15 + 0 against 10 + 5.
+  world.dice(15, 10);
+  const out = await act(fighter, "improvise", { reason: "yanks the rug from under the goblin", targetEnemyId: enemy.id, skill: "athletics", condition: "prone" });
+  world.clearDice();
+  assert.equal(out.result.success, false, out.result.contest);
+  assert.ok(!conditionsOf(enemy.id).includes("prone"));
+});
+
+await test("Each side rolls the check its effort calls for: a bluff meets Insight, and contestSkill names another.", async () => {
+  const enemy = await stage(ally);
+  world.dice(2, 15);
+  const bluff = await act(ally, "improvise", { reason: "feints left and sends the goblin stumbling into the brazier", targetEnemyId: enemy.id, skill: "deception", condition: "prone" });
+  world.clearDice();
+  assert.equal(bluff.ok, true, bluff.error);
+  assert.match(bluff.result.contest, /Deception \d+ vs .*Insight \d+/);
+  await stage(ally);
+  const [goblin] = world.enemies();
+  world.dice(2, 15);
+  const tumble = await act(ally, "improvise", { reason: "trips the goblin with a rope", targetEnemyId: goblin.id, skill: "sleight_of_hand", contestSkill: "acrobatics", condition: "prone" });
+  world.clearDice();
+  assert.match(tumble.result.contest, /Sleight of Hand \d+ vs .*Acrobatics \d+/);
+});
+
+await test("contestSkill may name a bare ability: the creature rolls that ability with its own modifier.", async () => {
+  const enemy = await stage(ally);
+  const stats = kit.enemy(enemy.id).stats;
+  kit.setEnemy(enemy.id, { stats: { ...stats, abilities: { ...stats.abilities, str: 8, dex: 20 } } });
+  world.dice(10, 10);
+  const slip = await act(ally, "improvise", { reason: "pulls the rug from under the goblin", targetEnemyId: enemy.id, skill: "sleight_of_hand", contestSkill: "dex", condition: "prone" });
+  world.clearDice();
+  assert.equal(slip.ok, true, slip.error);
+  assert.match(slip.result.contest, /vs .*DEX 15$/);
+});
+
+await test("The GM says whether an action is possible before any roll: a DC past the best the character's check can total is refused, nothing spent and nothing rolled.", async () => {
+  const enemy = await stage(fighter);
+  const hp = kit.enemy(enemy.id).currentHp;
+  const before = kit.lastRolls(1)[0]?.id;
+  // Athletics +5 totals 25 at best: DC 30 leaves the dice nothing to decide.
+  const boulder = await act(fighter, "improvise", { reason: "lifts the house-sized boulder and hurls it at the goblin", targetEnemyId: enemy.id, skill: "athletics", difficulty: "nearly_impossible", damage: "24d10", damageType: "bludgeoning" });
+  assert.equal(boulder.ok, false);
+  assert.match(boulder.error, /Impossible for .*25 at best.*DC 30.*Nothing was spent.*without numbers/);
+  assert.equal(budget()?.actionUsed ?? false, false);
+  assert.equal(kit.lastRolls(1)[0]?.id, before, "a die was rolled for the impossible");
+  assert.equal(kit.enemy(enemy.id).currentHp, hp);
+  // Within reach of a natural 20, the attempt is rolled.
+  const { checkCeiling } = await import("../src/lib/dm/contest-roll.ts");
+  assert.equal(checkCeiling(world.campaign(), world.sheet(fighter.id), { skill: "athletics" }), 25);
+});
+
+await test("The attempt's difficulty holds against a creature too: one check must meet the DC and beat the creature's.", async () => {
+  const enemy = await stage(fighter);
+  // 15 + 5 beats the goblin's 1 but misses DC 25.
+  world.dice(1, 15);
+  const hurl = await act(fighter, "improvise", { reason: "heaves the cart onto the goblin", targetEnemyId: enemy.id, skill: "athletics", difficulty: "very_hard", condition: "prone" });
+  world.clearDice();
+  assert.equal(hurl.result.success, false, hurl.result.contest);
+  assert.match(hurl.result.contest, /Athletics 20 vs DC 25 and Goblin's/);
+  assert.ok(!conditionsOf(enemy.id).includes("prone"));
+  await stage(fighter);
+  const [goblin] = world.enemies();
+  // 10 + 5 meets DC 15 and beats the goblin's 2.
+  world.dice(2, 10);
+  const tent = await act(fighter, "improvise", { reason: "cuts the guy ropes so the tent falls on the goblin", targetEnemyId: goblin.id, skill: "athletics", difficulty: "moderate", condition: "prone" });
+  world.clearDice();
+  assert.equal(tent.result.success, true, tent.result.contest);
+  assert.ok(conditionsOf(goblin.id).includes("prone"));
+});
+
+await test("A helpless creature makes no effort, but the attempt's difficulty still holds.", async () => {
+  const enemy = await stage(fighter);
+  kit.setEnemy(enemy.id, { conditions: ["paralyzed"] });
+  world.dice(5);
+  const out = await act(fighter, "improvise", { reason: "drags the cart onto the goblin", targetEnemyId: enemy.id, skill: "athletics", difficulty: "hard", condition: "prone" });
+  world.clearDice();
+  assert.equal(out.result.success, false, out.result.contest);
+  assert.match(out.result.contest, /Athletics 10 vs DC 20 and no contest/);
+});
+
+await test("A creature that cannot act makes no effort: no contest, and the effect lands.", async () => {
+  const enemy = await stage(fighter);
+  kit.setEnemy(enemy.id, { conditions: ["paralyzed"] });
+  const out = await act(fighter, "improvise", { reason: "throws a net of vines over the goblin", targetEnemyId: enemy.id, skill: "athletics", condition: "restrained" });
+  assert.equal(out.ok, true, out.error);
+  assert.match(out.result.contest, /no contest/);
+  assert.ok(conditionsOf(enemy.id).includes("restrained"));
+});
+
+await test("How long each condition lasts: restrained as a net (the GM clears it), blinded to the end of the creature's next turn, frightened of the one who scared it.", async () => {
+  const { improvisedHold } = await import("../src/lib/dm/improvise-logic.ts");
+  assert.equal(improvisedHold("restrained", "e1", "c1"), undefined);
+  assert.equal(improvisedHold("prone", "e1", "c1"), undefined);
+  assert.deepEqual(improvisedHold("blinded", "e1", "c1"), { untilTurnEndOf: "e1" });
+  assert.deepEqual(improvisedHold("frightened", "e1", "c1"), { untilTurnEndOf: "e1", source: "c1" });
+  const enemy = await stage(fighter);
+  world.dice(2, 15);
+  const out = await act(fighter, "improvise", { reason: "kicks sand in the goblin's eyes", targetEnemyId: enemy.id, skill: "athletics", condition: "blinded" });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.deepEqual(kit.enemy(enemy.id).conditionMeta.blinded, { untilTurnEndOf: enemy.id });
+});
+
+await test("A creature immune to the condition takes none.", async () => {
+  const enemy = await stage(fighter);
+  kit.setEnemy(enemy.id, { stats: { ...kit.enemy(enemy.id).stats, conditionImmune: "blinded" } });
+  world.dice(2, 15);
+  const out = await act(fighter, "improvise", { reason: "kicks sand in its eyes", targetEnemyId: enemy.id, skill: "athletics", condition: "blinded" });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.ok(!conditionsOf(enemy.id).includes("blinded"));
+  assert.match(out.result.applied, /immune/);
+});
+
+await test("An action that reaches no creature is the character's check against a DC.", async () => {
+  await stage(fighter);
+  world.dice(6);
+  const out = await act(fighter, "improvise", { reason: "forces the rusted portcullis lever", skill: "athletics", difficulty: "easy" });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(out.result.success, true, out.result.check);
+  assert.match(out.result.check, /Athletics 11 vs DC 10/);
+});
+
+await test("What it needs is asked before anything is spent: a reason, a check, a creature for an effect, a difficulty without one.", async () => {
+  const enemy = await stage(fighter);
+  const cases = [
+    [{}, /reason/],
+    [{ reason: "topples the shelf", targetEnemyId: enemy.id, condition: "prone" }, /skill/],
+    [{ reason: "topples the shelf", skill: "athletics", condition: "prone" }, /targetEnemyId/],
+    [{ reason: "forces the lever", skill: "athletics" }, /difficulty/],
+    [{ reason: "drops the beam", targetEnemyId: enemy.id, skill: "athletics", damage: "1d10" }, /damageType/],
+  ];
+  for (const [args, wanted] of cases) {
+    const out = await act(fighter, "improvise", args);
+    assert.equal(out.ok, false, JSON.stringify(args));
+    assert.match(out.error, wanted);
+  }
+  assert.equal(budget()?.actionUsed ?? false, false);
+});
+
+await test("An improvised action is never a bonus action.", async () => {
+  await stage(ally);
+  const out = await act(ally, "improvise", { bonus: true, reason: "kicks sand in the goblin's eyes" });
+  assert.equal(out.ok, false);
+  assert.equal(budget()?.bonusUsed ?? false, false);
+});
+
+// The model's improvised action uses only what the story put in the scene,
+// within the character's reach: the GM's narration and the fight's opening
+// line, never a player's words.
+const { createDmTurn } = await import("../src/lib/db/dm-turns.ts");
+const { invokeEngine } = await import("../src/lib/dm/invoke.ts");
+const { unshownWords } = await import("../src/lib/dm/improvise-logic.ts");
+const { latestSeq } = await import("../src/lib/db/campaigns.ts");
+const { insertCampaignMessage } = await import("../src/lib/db/messages.ts");
+const { claimNarrationSeq, narrationShown, takeNarrationSlot } = await import("../src/lib/dm/narration-slot.ts");
+const { handleLocationCall } = await import("../src/lib/dm/turn.ts");
+const { listEventsSince } = await import("../src/lib/events.ts");
+const aiAct = (sheet, args) =>
+  invokeEngine(world.campaign(), { kind: "ai", turnId: createDmTurn(world.campaignId, []).id }, { name: "take_action", args: { characterId: sheet.id, action: "improvise", ...args } });
+const TENT = { reason: "cuts the guy ropes so the tent falls on the goblin", skill: "athletics", condition: "prone" };
+
+await test("The model's improvised action names what it uses in the narration's words: without them it is refused and spends nothing.", async () => {
+  const enemy = await stage(fighter);
+  world.say("player", "I drop the chandelier on the goblin.", fighter);
+  const out = await aiAct(fighter, { ...TENT, reason: "drops the chandelier on the goblin", targetEnemyId: enemy.id, distanceFt: 5 });
+  assert.equal(out.ok, false);
+  assert.match(out.error, /scene/);
+  assert.equal(budget()?.actionUsed ?? false, false);
+});
+
+await test("A thing the narration never showed is not there: a tent on a bare riverbank is refused, a player naming it is not the story, and nothing is spent.", async () => {
+  const enemy = await stage(fighter);
+  world.say("dm", "The goblin stands in the open on the bare riverbank; around you there is nothing but mud and reeds.");
+  world.say("player", "I cut the guy ropes so the tent collapses on the goblin.", fighter);
+  const out = await aiAct(fighter, { ...TENT, targetEnemyId: enemy.id, scene: "the tent's guy ropes", distanceFt: 5 });
+  assert.equal(out.ok, false);
+  assert.match(out.error, /"tent's"/);
+  assert.match(out.error, /not there/);
+  // The model stood "nothing but mud and reeds" in for the refused tent and
+  // dealt its damage: the refusal says never to.
+  assert.match(out.error, /never stand other words of the scene in for it/);
+  assert.match(out.error, /"ropes"/, "the player's words counted as the scene's");
+  assert.equal(budget()?.actionUsed ?? false, false);
+});
+
+await test("What the narration showed is used, whatever ending the model gives it, and the action is spent.", async () => {
+  const enemy = await stage(fighter);
+  world.say("dm", "The goblin ducks into the half-collapsed tent beside you; its guy ropes are stretched taut right at your feet.");
+  world.say("player", "I cut the guy ropes so the tent collapses on the goblin.", fighter);
+  const out = await aiAct(fighter, { ...TENT, targetEnemyId: enemy.id, scene: "the guy rope of the tent", distanceFt: 5 });
+  assert.equal(out.ok, true, out.error);
+  assert.equal(budget().actionUsed, true);
+});
+
+await test("A field of the model's take_action the server cannot read is named in the refusal, with its fault, and nothing is spent.", async () => {
+  const enemy = await stage(fighter);
+  world.say("dm", "A heavy shelf of jars leans right beside the goblin.");
+  world.say("player", "I topple the shelf onto the goblin.", fighter);
+  // The DM loop hands take_action straight to its handler (no console form).
+  const { applyEncounterCall } = await import("../src/lib/dm/encounter-tools.ts");
+  const sheets = world.sheets();
+  const raw = JSON.stringify({ characterId: fighter.id, action: "improvise", reason: "topples the shelf", scene: "the shelf", distanceFt: 5, targetEnemyId: enemy.id, ability: "athletics", condition: "prone" });
+  const { result } = applyEncounterCall(world.campaign(), createDmTurn(world.campaignId, []), "take_action", raw, sheets, new Map(sheets.map((sheet) => [sheet.id, sheet])));
+  assert.match(String(result.error), /field ability: .*str/);
+  const misspelt = applyEncounterCall(world.campaign(), createDmTurn(world.campaignId, []), "take_action", JSON.stringify({ ...JSON.parse(raw), ability: undefined, skill: "athletic" }), sheets, new Map(sheets.map((sheet) => [sheet.id, sheet])));
+  assert.match(String(misspelt.result.error), /field skill: .*athletics/);
+  assert.equal(budget()?.actionUsed ?? false, false);
+});
+
+await test("On the battle map the model says how far the thing is, and one beyond the character's movement left plus 5 feet is out of reach: refused, nothing spent.", async () => {
+  const enemy = await stage(fighter);
+  world.say("dm", "Sixty feet across the camp a tent sags on its guy ropes; the goblin stands right in front of you.");
+  world.say("player", "I cut the guy ropes so the tent collapses on the goblin.", fighter);
+  const unsaid = await aiAct(fighter, { ...TENT, targetEnemyId: enemy.id, scene: "the tent's guy ropes" });
+  assert.equal(unsaid.ok, false);
+  assert.match(unsaid.error, /distanceFt/);
+  const far = await aiAct(fighter, { ...TENT, targetEnemyId: enemy.id, scene: "the tent's guy ropes", distanceFt: 60 });
+  assert.equal(far.ok, false);
+  assert.match(far.error, /60 ft .*reach 35 ft/);
+  assert.equal(budget()?.actionUsed ?? false, false);
+  world.dice(2, 15);
+  const near = await aiAct(fighter, { ...TENT, targetEnemyId: enemy.id, scene: "the tent's guy ropes", distanceFt: 35 });
+  world.clearDice();
+  assert.equal(near.ok, true, near.error);
+  assert.equal(kit.token(fighter.id).movedThisRound, 6, "the 30 feet walked to stand next to the ropes are spent");
+});
+
+await test("A prone character's walk to the thing used is priced as the board prices it: standing up first when that fits, else crawling at double cost.", async () => {
+  const SHELF = { reason: "topples the shelf onto the goblin", skill: "athletics", condition: "prone", scene: "the shelf" };
+  let enemy = await stage(fighter);
+  world.say("dm", "A shelf of jars stands behind you, the goblin right in front of you.");
+  world.say("player", "I topple the shelf onto the goblin.", fighter);
+  world.patch(fighter.id, { conditions: ["prone"] });
+  // 30 feet: standing costs 15, so 15 feet of walk, plus the 5 feet reached.
+  const far = await aiAct(fighter, { ...SHELF, targetEnemyId: enemy.id, distanceFt: 25 });
+  assert.equal(far.ok, false);
+  assert.match(far.error, /25 ft .*reach 20 ft/);
+  world.dice(2, 15);
+  const stood = await aiAct(fighter, { ...SHELF, targetEnemyId: enemy.id, distanceFt: 20 });
+  world.clearDice();
+  assert.equal(stood.ok, true, stood.error);
+  assert.equal(kit.token(fighter.id).movedThisRound, 6, "15 feet to stand and 15 walked");
+  assert.deepEqual(world.sheet(fighter.id).conditions, [], "the character stood up");
+
+  enemy = await stage(fighter);
+  world.say("dm", "A shelf of jars stands behind you, the goblin right in front of you.");
+  world.say("player", "I topple the shelf onto the goblin.", fighter);
+  world.patch(fighter.id, { conditions: ["prone"] });
+  // 10 feet already moved: 20 left, too little to stand and walk 10, enough to crawl them.
+  kit.place(fighter.id, 5, 5, 2);
+  world.dice(2, 15);
+  const crawled = await aiAct(fighter, { ...SHELF, targetEnemyId: enemy.id, distanceFt: 15 });
+  world.clearDice();
+  assert.equal(crawled.ok, true, crawled.error);
+  assert.equal(kit.token(fighter.id).movedThisRound, 6, "10 feet crawled cost 20 feet of movement");
+  assert.deepEqual(world.sheet(fighter.id).conditions, ["prone"], "a crawl leaves the character prone");
+});
+
+await test("A condition typed loosely ('Prone.') is read as the board reads it: the walk is priced as the move route prices it, and nothing breaks after the action is spent.", async () => {
+  const enemy = await stage(fighter);
+  world.say("dm", "A shelf of jars stands behind you, the goblin right in front of you.");
+  world.say("player", "I topple the shelf onto the goblin.", fighter);
+  world.patch(fighter.id, { conditions: ["Prone."] });
+  world.dice(2, 15);
+  const out = await aiAct(fighter, { reason: "topples the shelf onto the goblin", skill: "athletics", condition: "prone", scene: "the shelf", targetEnemyId: enemy.id, distanceFt: 35 });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(kit.token(fighter.id).movedThisRound, 6, "30 feet walked, as the board charges a character it does not read as prone");
+});
+
+await test("Standing up for the walk keeps what the action ended: One with Shadows' invisibility stays gone, and the stood sheet is published.", async () => {
+  const enemy = await stage(fighter);
+  world.say("dm", "A shelf of jars stands behind you, the goblin right in front of you.");
+  world.say("player", "I topple the shelf onto the goblin.", fighter);
+  world.patch(fighter.id, { conditions: ["prone", "invisible"], conditionMeta: { invisible: { source: "One with Shadows" } } });
+  const from = latestSeq(world.campaignId);
+  world.dice(2, 15);
+  const out = await aiAct(fighter, { reason: "topples the shelf onto the goblin", skill: "athletics", condition: "prone", scene: "the shelf", targetEnemyId: enemy.id, distanceFt: 20 });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.deepEqual(world.sheet(fighter.id).conditions, [], "the action ends the invisibility and standing ends prone");
+  const published = listEventsSince(world.campaignId, from, 500).filter((event) => event.type === "sheet_updated" && event.payload.sheet.id === fighter.id);
+  assert.deepEqual(published.at(-1)?.payload.sheet.conditions, [], "the last sheet published is the stood one");
+});
+
+await test("Out of a fight an improvised action is refused for request_roll: nothing is rationed there, and nothing is spent or rolled.", async () => {
+  await kit.endFight();
+  world.say("dm", "A shelf of jars stands against the wall.");
+  const rolls = kit.lastRolls(50).length;
+  const out = await aiAct(fighter, { reason: "topples the shelf", skill: "athletics", difficulty: "moderate", scene: "the shelf" });
+  assert.equal(out.refused, "rules");
+  assert.match(out.error, /request_roll/);
+  assert.equal(kit.lastRolls(50).length, rolls);
+});
+
+await test("What an improvised action does lands beside the thing it uses: a creature farther than the thing plus 5 feet is refused, and nothing is spent.", async () => {
+  const enemy = await stage(fighter);
+  kit.place(enemy.id, 5, 12);
+  world.say("dm", "A shelf of jars stands beside you; across the hall the goblin waits by a second shelf.");
+  world.say("player", "I topple the shelf onto the goblin.", fighter);
+  const near = await aiAct(fighter, { reason: "topples the shelf onto the goblin", skill: "athletics", condition: "prone", scene: "the shelf", targetEnemyId: enemy.id, distanceFt: 5 });
+  assert.equal(near.refused, "rules");
+  assert.match(near.error, /35 ft .*within 5 ft of the thing/);
+  assert.equal(budget()?.actionUsed ?? false, false);
+  world.dice(2, 15);
+  const far = await aiAct(fighter, { reason: "topples the second shelf onto the goblin", skill: "athletics", condition: "prone", scene: "a second shelf", targetEnemyId: enemy.id, distanceFt: 30 });
+  world.clearDice();
+  assert.equal(far.ok, true, far.error);
+});
+
+await test("The scene is the narration since the party came to this place, the arrival's own narration included when a player's message made it take its seq early; moving to where the party stands keeps it.", async () => {
+  const enemy = await stage(fighter);
+  world.say("dm", "A brazier glows by the city gate.");
+  // The turn that moves the party: a player posts while it runs, so its
+  // narration claims the seq before theirs, ahead of move_party.
+  const turn = createDmTurn(world.campaignId, []);
+  narrationShown(world.campaignId, turn.id);
+  const slot = claimNarrationSeq(world.campaignId);
+  world.say("player", "Wait for me!", ally);
+  assert.equal(handleLocationCall(world.campaign(), "move_party", JSON.stringify({ name: "The Market" }), false).ok, true);
+  insertCampaignMessage({ campaignId: world.campaignId, seq: slot, authorType: "dm", content: "Stalls and crates crowd the market square; the goblin stands right in front of you.", speech: [] });
+  takeNarrationSlot(world.campaignId, turn.id);
+  assert.equal(handleLocationCall(world.campaign(), "move_party", JSON.stringify({ name: "The Market" }), false).ok, true);
+  world.say("player", "I kick the brazier onto the goblin.", fighter);
+  const gone = await aiAct(fighter, { reason: "kicks the brazier onto the goblin", skill: "athletics", damage: "1d10", damageType: "fire", scene: "the brazier", targetEnemyId: enemy.id, distanceFt: 5 });
+  assert.equal(gone.ok, false);
+  assert.match(gone.error, /never shows "brazier"/);
+  world.dice(2, 15);
+  const here = await aiAct(fighter, { reason: "topples the crates onto the goblin", skill: "athletics", condition: "prone", scene: "the crates", targetEnemyId: enemy.id, distanceFt: 5 });
+  world.clearDice();
+  assert.equal(here.ok, true, here.error);
+});
+
+await test("Every table compares the scene's words by its own stems: corda finds corde, and a tenda no one narrated is not there.", () => {
+  const riva = ["Il goblin si infila nella tenda mezza crollata; le corde di tensione sono tese ai tuoi piedi."];
+  assert.deepEqual(unshownWords("la corda della tenda", riva, "italian"), []);
+  assert.deepEqual(unshownWords("la tenda", ["Il goblin è sulla riva spoglia: solo fango e canne."], "italian"), ["tenda"]);
+  assert.deepEqual(unshownWords("the", riva, "english"), ["the"], "stop words alone name nothing");
+});
+
 // ---- Search ----
 
 await test("Search is an action and a Perception check the server rolls.", async () => {
@@ -164,6 +549,14 @@ await test("Search is an action and a Perception check the server rolls.", async
   assert.equal(roll.kind, "skill_check");
   // Perception, proficient: 12 + 1 + 4.
   assert.equal(roll.total, 12 + abilityMod(10) + proficiencyBonus(11));
+});
+
+await test("Search is a Perception or an Investigation check: another skill is refused and spends nothing.", async () => {
+  await stage(ally);
+  const out = await act(ally, "search", { skill: "stealth" });
+  assert.equal(out.ok, false);
+  assert.match(out.error, /Perception or an Investigation/);
+  assert.equal(budget()?.actionUsed ?? false, false);
 });
 
 // ---- Ready and off-turn attacks ----

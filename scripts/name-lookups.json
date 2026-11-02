@@ -1373,6 +1373,7 @@
     "lib/dm/hostile-buffs.ts#keyed": [["identity",1,"SRD, spell, feature, subclass, hazard and magic rows by textKey (or armorKey/gearKey/rowKey/featureKey/priceKey, textKey-based); row tables keyed by the row's own name; the workshop's tables"]],
     "lib/dm/inference-gate.ts#keyed": [["key",3,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "lib/dm/initiative.ts#whole-single": [["key",2,"turn keys"]],
+    "lib/dm/improvise-logic.ts#partial": [["search",1,"the words an improvised action uses read in the scene's narration by stem: a thing no word of the narration names is not there, and a miss is refused with the words"]],
     "lib/dm/inline-markdown.ts#partial": [["parse",1,"markdown"]],
     "lib/dm/card-score-logic.ts#partial": [["key",3,"a call id's engine prefix and the corrective message's own words, both the turn loop's tokens"]],
     "lib/dm/intent-logic.ts#first": [["key",3,"a hand intent's one tool name"]],

@@ -28,6 +28,7 @@ export const ACTIONS = [
   "use_object",
   "escape",
   "pin",
+  "improvise",
 ] as const;
 
 export type TakeActionName = (typeof ACTIONS)[number];
@@ -48,6 +49,7 @@ const ACTION_WORDS: Record<(typeof ACTIONS)[number], string> = {
   use_object: "use an object",
   escape: "escape",
   pin: "pin",
+  improvise: "an improvised action",
 };
 
 const MOVES = new Set<string>(["dodge", "dash", "disengage", "hide"]);
