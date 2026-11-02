@@ -8,7 +8,7 @@ import { enemyActedThisRound, isSurprised } from "@/lib/dm/can-act";
 import { getCampaignById } from "@/lib/db/campaigns";
 import { dmPlaysTurn } from "@/lib/dm/companion-command";
 import { aiRunsTestTable } from "@/lib/workshop/test-seats-logic";
-import { heaviestHit, hitIdOf, openHits, type LastHit } from "@/lib/dm/last-hit";
+import { heaviestHit, hitIdOf, openHits, reactedLate, type LastHit } from "@/lib/dm/last-hit";
 import { conditionNote, conditionNoteLine, namesLookup } from "@/lib/battlemap/condition-notes";
 import { healthState, type HealthState } from "@/lib/bestiary/health";
 import { creatureTypeOf } from "@/lib/bestiary/creature-type";
@@ -265,7 +265,10 @@ function actingView(encounter: Encounter, hidden: Set<string>, showNumbers: bool
       acting: pcIds.filter((id) => isSurprised(encounter, id)),
       reacting: pcIds.filter((id) => isSurprised(encounter, id, true)),
     },
-    reactionsUsed: encounter.reactionsUsed.filter((id) => pcIds.includes(id)),
+    // A character who answered the enemies' pass after their turn began has
+    // their reaction back for that turn, and no second one for the pass
+    // (last-hit.ts reactedLate): the Hand offered one the engine refused.
+    reactionsUsed: pcIds.filter((id) => encounter.reactionsUsed.includes(id) || reactedLate(encounter.campaignId, encounter, id)),
   };
 }
 

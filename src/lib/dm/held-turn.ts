@@ -30,7 +30,7 @@ import { activePublicEncounter } from "@/lib/db/encounter-view";
 import { publishPersisted } from "@/lib/events";
 import { endTurnStartHolds } from "@/lib/dm/condition-tick";
 import { beginTurns } from "@/lib/dm/turn-end";
-import { passHitsOpen } from "@/lib/dm/last-hit";
+import { lateFor } from "@/lib/dm/last-hit";
 import { VIGILANT_PREFIX } from "@/lib/srd/authored-effects-more";
 
 // The reactions a character's turn gives back: their own, and Vigilant
@@ -89,28 +89,6 @@ export function beginHeldTurn(campaign: Campaign) {
   startHeldTurn(campaign, encounter);
   saveEncounter(encounter);
   publishPersisted(campaign.id, "encounter_updated", { encounter: activePublicEncounter(campaign.id) });
-}
-
-// Whether a reaction the character takes now belongs before their turn: the
-// pointer names them, their turn has begun, and a hit of the enemies' pass
-// before it is still open.
-function lateFor(campaignId: string, encounter: Encounter, id: string): boolean {
-  const current = encounter.order[encounter.turnIndex];
-  return (
-    current?.kind === "pc" &&
-    current.characterId === id &&
-    encounter.legendary.turnStart !== id &&
-    !encounter.legendary.due?.length &&
-    !encounter.legendary.handoff &&
-    passHitsOpen(campaignId, encounter)
-  );
-}
-
-// Whether the character already answered that pass after their turn began:
-// one reaction for it, though their turn has given theirs back.
-export function reactedLate(campaignId: string, encounter: Encounter, id: string): boolean {
-  const late = encounter.legendary.lateReacted;
-  return Boolean(late && late.turn === turnKey(encounter) && late.ids.includes(id) && lateFor(campaignId, encounter, id));
 }
 
 // A reaction just taken: when it answered the pass before the character's

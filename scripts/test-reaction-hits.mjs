@@ -877,6 +877,12 @@ await test("A reaction to the goblins before Mira, answered after the AI's reply
   assert.equal(hp(world, mira), 24, "the first goblin's 5 comes back; the second still hits");
   assert.equal(world.encounter().reactionsUsed.includes(mira.id), false, "her turn has given it back");
   assert.equal(shielded(world, mira), false, "her turn has started: Shield is over");
+  // The Hand reads the same rule the engine applies: no second card for the pass.
+  const view = activePublicEncounter(world.campaignId);
+  const miraNow = world.sheet(mira.id);
+  const offered = reactionCards(miraNow, turnFromEncounter(view, miraNow, { myTurn: true }), view.lastHits, world.sheets()).find((card) => card.name === "Uncanny Dodge");
+  assert.ok(offered, "the second goblin's hit is still open");
+  assert.ok(offered.disabled, "the Hand offers no second reaction against the same goblins");
   const dodge = await react(world, mira, "Uncanny Dodge");
   assert.equal(dodge.ok, false, "a second reaction against the same goblins");
   assert.equal(hp(world, mira), 24);
