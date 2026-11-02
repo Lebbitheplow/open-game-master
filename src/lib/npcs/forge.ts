@@ -23,8 +23,8 @@
 // which are one-sided, and which point at somebody who does not exist.
 //
 // Pure by design: no DB and no I/O, so scripts/test-npc-forge.mjs drives it
-// directly. Its imports, npc-logic.ts, gender.ts and attraction.ts, are pure;
-// the impure rim is src/lib/db/npcs.ts.
+// directly. Its imports, npc-logic.ts, gender.ts, npc-race.ts and
+// attraction.ts, are pure; the impure rim is src/lib/db/npcs.ts.
 
 import {
   PERSONALITY_AXES,
@@ -34,6 +34,7 @@ import {
   type NpcRelation,
 } from "@/lib/dm/npc-logic";
 import { storedGender, type Gender } from "@/lib/gender";
+import { storedRace } from "@/lib/npc-race";
 import { normalizeAttraction, type Attraction } from "@/lib/attraction";
 import { textKey } from "@/lib/language/text-logic";
 
@@ -251,6 +252,9 @@ export type NpcDraft = {
   role: string;
   // src/lib/gender.ts; "" for unspecified.
   gender: Gender;
+  // An SRD race id (src/lib/npc-race.ts); blank or absent = unrecorded.
+  // Optional so drafts made by code need not say.
+  race?: string;
   // Who they are drawn to (src/lib/attraction.ts); blank or absent =
   // undecided. Optional so drafts made by code (a settlement) need not say.
   attraction?: Attraction;
@@ -274,6 +278,7 @@ export function blankDraft(): NpcDraft {
     location: "",
     role: "",
     gender: "",
+    race: "",
     attraction: { genders: [], note: "" },
     personality: null,
     goals: {},
@@ -296,6 +301,7 @@ export function draftFrom(npc: {
   // Optional so rows stored before the column existed still open.
   role?: string;
   gender?: Gender;
+  race?: string;
   attraction?: Attraction;
   voice?: NpcVoice | null;
   factionId?: string;
@@ -315,6 +321,7 @@ export function draftFrom(npc: {
     location: npc.location,
     role: npc.role ?? "",
     gender: npc.gender ?? "",
+    race: npc.race ?? "",
     attraction: normalizeAttraction(npc.attraction),
     personality: npc.agency.personality ? { ...npc.agency.personality } : null,
     goals: structuredClone(npc.agency.goals),
@@ -409,6 +416,7 @@ export function normalizeNpcDraft(input: unknown): DraftOutcome {
       location: String(raw.location ?? "").trim().slice(0, 120),
       role: String(raw.role ?? "").trim().slice(0, 40),
       gender: storedGender(raw.gender),
+      race: storedRace(raw.race),
       attraction: normalizeAttraction(raw.attraction),
       personality: normalizePersonality(raw.personality),
       goals,

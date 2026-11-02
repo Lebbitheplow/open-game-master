@@ -385,6 +385,8 @@ function handleStartEncounter(
       initiative: initiatives[index],
       stats: entry.stats,
       ...(entry.npcId ? { npcId: entry.npcId } : {}),
+      race: entry.race,
+      gender: entry.gender,
       ...(carry ? { arrives: carry.arrives } : {}),
     });
   });

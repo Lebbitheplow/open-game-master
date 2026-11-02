@@ -26,6 +26,10 @@ export type Npc = {
   // Optional so a roster fetched from a server that predates the column
   // still renders; the placeholder falls back to a hash of the name.
   role?: string;
+  // An SRD race id and a gender, which pick the face with the role; optional
+  // for the same reason.
+  race?: string;
+  gender?: string;
   aliases: string[];
   portraitUrl: string;
   // The faction they belong to, or "" (optional for older servers).
@@ -73,7 +77,7 @@ export function CastChips({ npcs, selectedId, onOpen }: ListProps) {
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={npc.portraitUrl || npcPlaceholder(npc.role, npc.name)}
+              src={npc.portraitUrl || npcPlaceholder(npc.role, npc.name, { race: npc.race, gender: npc.gender })}
               alt=""
               className="size-5 rounded-full object-cover"
             />
@@ -155,7 +159,7 @@ export function CastRows({ npcs, onOpen, factionNames }: Omit<ListProps, "select
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={npc.portraitUrl || npcPlaceholder(npc.role, npc.name)}
+                  src={npc.portraitUrl || npcPlaceholder(npc.role, npc.name, { race: npc.race, gender: npc.gender })}
                   alt=""
                   className="size-11 shrink-0 rounded-full border border-amber-400/25 bg-stone-950 object-cover"
                 />
