@@ -1201,7 +1201,7 @@ test("take_action's improvised action and its skills ask for the host", () => {
 // host strips them unread, so an app compiled with them asks first. There a
 // "Two-Weapon Fighting" or a flurry strike was swung as the Attack action's
 // own swing, and Days or Blows came back as one stretch or one blow
-// (rev-749); the attack's field is that host's bonusAttack.
+// (PR 749 review); the attack's field is that host's bonusAttack.
 test("pc_attack's Made with, travel's Days and damage_object's Blows ask for the host", () => {
   const field = (tool, name) => adjudication(tool).fields.find((entry) => entry.name === name);
   for (const [tool, name] of [["pc_attack", "feature"], ["travel", "days"], ["damage_object", "blows"]]) {
