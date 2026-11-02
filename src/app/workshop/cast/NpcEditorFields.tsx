@@ -77,8 +77,8 @@ export function NpcEditorFields({
   // The world's factions, for the membership picker.
   factions?: ReadonlyArray<{ id: string; name: string }>;
   // Whether "Before the story" can still matter: in a workshop, and at a
-  // table that has not begun (the people route says; an older host never
-  // does, and the section stays out).
+  // table whose GM has not yet narrated (the people route says; an older
+  // host never does, and the section stays out).
   knownBeforeOpen?: boolean;
 }) {
   const roleListId = useId();
@@ -318,9 +318,9 @@ export function NpcEditorFields({
               />
               <p id={howHintId} className="text-[11px] text-stone-500">
                 {known.how.trim() ? "" : "Needed. "}
-                Use only what the adventure&apos;s opening says the whole party shares. Every hero starts with this bond
-                when the table begins, and this line is its first memory on the Bonds tab and for the GM. A hero who joins
-                later meets them fresh.
+                Use only what the adventure&apos;s opening says the whole party shares. Every hero in the party as the
+                story begins starts with this bond, and this line is its first memory on the Bonds tab and for the GM. A
+                hero who joins later meets them fresh.
               </p>
             </div>
           ) : null}

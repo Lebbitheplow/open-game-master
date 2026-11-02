@@ -166,7 +166,7 @@ await test("with bonds off the party still knows them, and no meter opens", asyn
   assert.equal(bond(world, heroes[0], "Maren Dusk"), null);
 });
 
-await test("the people route offers the field only while it can matter: a workshop, or a table not yet begun", async () => {
+await test("the people route offers the field only while it can matter: a workshop, or a table whose GM has not yet narrated", async () => {
   const { world, begin } = await lobby();
   const route = await world.route("campaigns/[campaignId]/dm/npcs");
   const open = async () => {
@@ -176,7 +176,61 @@ await test("the people route offers the field only while it can matter: a worksh
   };
   assert.equal(await open(), true);
   await begin();
+  // The lobby has no cast editor: the GM console's Cast tab, which a table
+  // has once it begins, is where a GM marks someone for their own table.
+  assert.equal(await open(), true, "begun, but the story has not started");
+  world.say("dm", "The rain has not stopped for three days.");
   assert.equal(await open(), false);
+});
+
+await test("a GM who marks someone in the console before their first narration opens that tie at once; after it, nothing opens", async () => {
+  const { world, heroes, begin, npcs } = await lobby();
+  await begin();
+  world.signIn(world.owner);
+  const people = await world.route("campaigns/[campaignId]/dm/npcs");
+  const one = await world.route("campaigns/[campaignId]/dm/npcs/[npcId]");
+  const params = { params: Promise.resolve({ campaignId: world.campaignId }) };
+  const draft = (name, extra = {}) => ({ ...blankDraft(), name, attitude: "friendly", ...extra });
+  const created = await people.POST(
+    new Request("http://test/api", { method: "POST", body: JSON.stringify({ draft: draft("Maren Dusk", { knownBefore: { grade: "friend", how: "She hired you twice." } }) }) }),
+    params,
+  );
+  assert.equal(created.status, 201, await created.clone().text());
+  for (const hero of heroes) {
+    assert.equal(bond(world, hero, "Maren Dusk")?.approval, 15, `${hero.name} knows her`);
+  }
+  // Marked on an edit, as well as on a new record.
+  const tam = npcs.createNpcFromDraft(world.campaignId, draft("Old Tam"));
+  const edited = await one.PATCH(
+    new Request("http://test/api", { method: "PATCH", body: JSON.stringify({ draft: draft("Old Tam", { knownBefore: { grade: "close", how: "He taught you all." } }) }) }),
+    { params: Promise.resolve({ campaignId: world.campaignId, npcId: tam.id }) },
+  );
+  assert.equal(edited.status, 200, await edited.clone().text());
+  assert.equal(bond(world, heroes[0], "Old Tam")?.approval, 30);
+  world.say("dm", "The rain has not stopped for three days.");
+  const late = await people.POST(
+    new Request("http://test/api", { method: "POST", body: JSON.stringify({ draft: draft("Wenna", { knownBefore: { grade: "acquainted", how: "The ferry keeper." } }) }) }),
+    params,
+  );
+  assert.equal(late.status, 201);
+  assert.equal(bond(world, heroes[0], "Wenna"), null, "once the GM has narrated, nothing opens");
+});
+
+await test("a mark saved in a table's lobby waits for Begin: heroes still joining are not left out", async () => {
+  const { world, heroes, begin } = await lobby();
+  world.signIn(world.owner);
+  const people = await world.route("campaigns/[campaignId]/dm/npcs");
+  const created = await people.POST(
+    new Request("http://test/api", {
+      method: "POST",
+      body: JSON.stringify({ draft: { ...blankDraft(), name: "Maren Dusk", attitude: "friendly", knownBefore: { grade: "friend", how: "She hired you twice." } } }),
+    }),
+    { params: Promise.resolve({ campaignId: world.campaignId }) },
+  );
+  assert.equal(created.status, 201);
+  assert.equal(bond(world, heroes[0], "Maren Dusk"), null, "nothing opens in the lobby");
+  await begin();
+  assert.equal(bond(world, heroes[0], "Maren Dusk")?.approval, 15);
 });
 
 await test("a module carries the mark: imported in the issue's words, copied to a table, opened at Begin, and exported again", async () => {

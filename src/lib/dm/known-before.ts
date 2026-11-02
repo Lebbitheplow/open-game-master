@@ -17,8 +17,10 @@ import { textKey } from "@/lib/language/text-logic";
 // cast knows them, and every hero in play opens a bond with them at the
 // grade's standing, its first memory the author's line on how they know
 // each other. Called as the table begins (the lobby's Begin), before the
-// opening narration reads the bonds, and after a module is brought into a
-// table that has begun but not yet heard its first narration.
+// opening narration reads the bonds, and, at a table that has begun but not
+// yet heard its first narration, after a module is brought in or the GM
+// marks someone in the console's Cast tab (the lobby has no cast editor, so
+// that is where a GM prepares their own table's people).
 //
 // Never once the story is under way: a hero who joins later meets them as
 // anyone met in play (party-bonds.ts openJoinerBonds), and a module brought
@@ -30,6 +32,29 @@ export function storyUnderway(campaignId: string): boolean {
   return Boolean(
     getDatabase().prepare(`SELECT 1 FROM campaign_messages WHERE campaign_id = ? AND author_type = 'dm' LIMIT 1`).get(campaignId),
   );
+}
+
+// Whether a mark can still matter here, for the people route's
+// knownBeforeOpen: a workshop's people go into every table made from it,
+// and a table opens its ties at Begin or, once begun, until the GM first
+// narrates.
+export function knownBeforeOpen(campaign: Campaign): boolean {
+  if (campaign.kind === "workshop") {
+    return true;
+  }
+  if (campaign.kind !== "campaign") {
+    return false;
+  }
+  return campaign.status === "lobby" || (campaign.status === "active" && !storyUnderway(campaign.id));
+}
+
+// A person the GM just marked at a table that has begun opens their ties
+// now, as a module brought in then does; in the lobby they wait for Begin,
+// when every hero still joining has a seat.
+export function openMarkedAtBegunTable(campaign: Campaign, npc: { knownBefore: unknown } | null): void {
+  if (npc?.knownBefore && campaign.status === "active") {
+    openPreStoryTies(campaign);
+  }
 }
 
 // Returns how many people it met and how many bonds it opened.

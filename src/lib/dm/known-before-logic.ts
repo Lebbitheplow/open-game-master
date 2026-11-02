@@ -2,9 +2,9 @@
 // patron who hires them, an old friend, the mentor who trained them all.
 // Pure, so node test scripts load it directly.
 //
-// Only an author says so, on the person's record in the workshop (or a GM on
-// their own table before it begins), never the engine or the AI, and always
-// with how the party knows them. That line opens every hero's bond with them
+// Only an author says so, on the person's record in the workshop (or a GM at
+// their own table before their first narration), never the engine or the
+// AI, and always with how the party knows them. That line opens every hero's bond with them
 // as its first memory, so the Bonds panel and the GM read the reason beside
 // the standing. The standing stays modest: a tie opens at Neutral, Cordial
 // or Friendly, never Close or above and never on the romance ladder (whose

@@ -98,6 +98,22 @@ const scenario = {
     const bondAxe = await axeViolations(page, `${root}[data-bond-row="Maren Dusk"]`);
     check(!bondAxe.length, `axe on a known-before bond: ${bondAxe.map((entry) => entry.id).join(", ")}`);
     await t.shot("bonds");
+
+    // A GM marks their own table's people in the console's Cast tab (the
+    // lobby has no cast editor), which offers the section until the GM's
+    // first narration: this table has begun and its GM has not narrated.
+    await openPanelTab(t, "dm");
+    const castTab = page.locator(`${root}[data-tour="dm-console-tabs"] button`).filter({ hasText: /^cast$/i }).locator("visible=true").first();
+    await eventually(() => castTab.count(), { timeoutMs: 30_000, label: "the console's Cast tab" });
+    await t.tap(castTab);
+    const newPerson = page.locator(`${root}[data-tour="cast-new"]`).locator("visible=true").first();
+    await eventually(() => newPerson.count(), { timeoutMs: 30_000, label: "Someone new in the console's Cast" });
+    await t.tap(newPerson);
+    await eventually(() => page.locator(`${root}[data-tour="cast-known-before"]`).locator("visible=true").count(), {
+      timeoutMs: 20_000,
+      label: "Before the story in the console before the first narration",
+    });
+    await t.shot("console");
   },
 };
 
