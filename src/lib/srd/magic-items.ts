@@ -25,7 +25,7 @@ import { countsAsWorn } from "@/lib/srd/wear-slots";
 import type { Ability } from "@/lib/schemas/sheet";
 import type { ItemTag } from "@/lib/schemas/item-tags";
 import { textKey } from "@/lib/language/text-logic";
-import { magicItemBonus, rowName, type RowItem } from "@/lib/srd/item-row";
+import { isWorkshopRow, magicItemBonus, rowName, type RowItem } from "@/lib/srd/item-row";
 import { compositeGearNamed } from "@/lib/srd/magic-gear";
 import { isNamed } from "@/lib/srd/feature-names";
 import { alignmentIs } from "@/lib/srd/alignment";
@@ -145,8 +145,12 @@ for (const item of MAGIC_ITEMS) {
 }
 
 // The magic item a sheet entry is, if any: by its pack slug, or by its row's
-// name (src/lib/srd/item-row.ts).
+// name (src/lib/srd/item-row.ts). A workshop entry's line is none of the
+// table's (isWorkshopRow): its magic is its own `gear.magic`.
 export function matchMagicItem(item: RowItem): MagicItemDef | null {
+  if (isWorkshopRow(item)) {
+    return null;
+  }
   if (item.slug) {
     const known = bySlug.get(item.slug.trim().toLowerCase());
     if (known) {

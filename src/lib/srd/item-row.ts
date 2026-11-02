@@ -22,6 +22,16 @@ export function rowName(item: RowItem): string {
   return item.srdName ?? withoutBonus(item.name);
 }
 
+// Whether the line is a workshop entry's: its slug names the entry
+// ("homebrew:<id>", how src/lib/db/homebrew.ts hydrateHomebrewGear finds it),
+// so its mechanics are the snapshot it carries in `gear` and never a
+// published row it shares a name with. A GM's own "Prayer Mat", made before
+// the pack's item of that name came into the magic item table, stays the
+// GM's rug rather than turning into an item that asks for attunement.
+export function isWorkshopRow(item: RowItem): boolean {
+  return Boolean(item.slug?.startsWith("homebrew:"));
+}
+
 // The bonus a magic item's name declares: "+1 Longsword", "Plate +2",
 // "Shield, +3". Shared with the weapon engine (attack-logic.ts) because
 // both sides read the same naming convention off the same equipment list.

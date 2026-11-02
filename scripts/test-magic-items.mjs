@@ -217,6 +217,25 @@ test("an item that asks for attunement is in the table, even with nothing else t
   assert.equal(magicItemNamed("Bag of Holding"), null);
 });
 
+const { gearDefFor } = await import("../src/lib/srd/magic-gear.ts");
+test("a workshop entry's line is its own snapshot, never the published row it shares a name with", () => {
+  // A GM's own "Prayer Mat", carried by its homebrew: slug and made before
+  // the pack's Prayer Mat (which asks for attunement) came into the table:
+  // its entry says what it is, and it is no magic item.
+  const rug = { name: "Prayer Mat", slug: "homebrew:rug" };
+  assert.equal(matchMagicItem(rug), null);
+  assert.equal(gearDefFor(rug), null);
+  // With no workshop slug the name is the published item, as every other
+  // reader of a published name has it (src/lib/homebrew/published-names.ts).
+  assert.equal(matchMagicItem({ name: "Prayer Mat" })?.requiresAttunement, true);
+  assert.equal(matchMagicItem({ name: "Prayer Mat", slug: "prayer-mat" })?.requiresAttunement, true);
+  // A workshop ring whose own magic asks no attunement is not attuned to on
+  // the strength of the pack ring's name.
+  const ring = { name: "Ring of Spell Storing", slug: "homebrew:ring", gear: { magic: { requiresAttunement: false, effects: [] } } };
+  assert.equal(matchMagicItem(ring), null);
+  assert.match(attunementProblem(ring, [], null), /needs no attunement/);
+});
+
 test("the rows a person corrected against the item's own text", () => {
   // Magic weapons now have rows (their base weapon and bonus), with no worn
   // effect: a Vorpal Sword gives no resistance, a Defender no standing AC.

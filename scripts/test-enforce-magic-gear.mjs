@@ -312,6 +312,10 @@ await test("the GAME STATE line for a magic item says what the engine applies, i
   // Nothing puts a Crystal Ball on, so its line never says it is worn.
   assert.match(magicItemLine({ name: "Crystal Ball", qty: 1 }), /^Crystal Ball: The typical crystal ball, a very rare item, .* \(narrated\); not attuned$/);
   assert.match(magicItemLine({ name: "Wings of Flying", qty: 1, attuned: true, equipped: true }), /; attuned, worn$/);
+  // A GM's own item carried by its workshop slug is not the published item
+  // it shares a name with: no pack sentence, no attunement to ask for.
+  assert.equal(magicItemLine({ name: "Prayer Mat", qty: 1, slug: "homebrew:rug" }), null);
+  assert.equal(magicItemLine({ name: "Ring of Spell Storing", qty: 1, slug: "homebrew:ring" }), null);
 });
 
 await test("a magic item's charges and its pending attunement are optional fields: an old row with neither still loads", () => {

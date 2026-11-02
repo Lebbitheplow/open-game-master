@@ -37,5 +37,14 @@ assert.ok(!buttons(row("Ring of Swimming")).includes("attune"), "a Ring of Swimm
 assert.ok(!buttons(row("Rope")).includes("attune"), "a rope offers no attunement");
 // Attuned to, never put on: the row has the one button that means something.
 assert.deepEqual(buttons(row("Crystal Ball")), ["attune"]);
+// A workshop entry is what its own snapshot says, whatever published item it
+// shares a name with: a GM's mundane "Prayer Mat" and a workshop ring whose
+// magic asks no attunement offer no attunement.
+assert.ok(buttons(row("Prayer Mat")).includes("attune"), "the pack's Prayer Mat asks for attunement");
+assert.ok(!buttons(row("Prayer Mat", { slug: "homebrew:rug" })).includes("attune"), "a GM's own Prayer Mat asks for none");
+assert.ok(
+  !buttons(row("Ring of Spell Storing", { slug: "homebrew:ring", gear: { magic: { requiresAttunement: false, effects: [] } } })).includes("attune"),
+  "a workshop ring that asks for none offers none",
+);
 
 console.log("test-sheet-attune-button: ok");

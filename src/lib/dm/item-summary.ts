@@ -14,7 +14,7 @@ import { gearDefOfRow } from "@/lib/srd/magic-gear";
 import { matchMagicItem, type MagicItemEffect } from "@/lib/srd/magic-items";
 import type { EquipmentItem } from "@/lib/schemas/sheet";
 import { textKey } from "@/lib/language/text-logic";
-import { magicItemBonus, rowName } from "@/lib/srd/item-row";
+import { isWorkshopRow, magicItemBonus, rowName } from "@/lib/srd/item-row";
 
 function effectWords(effect: MagicItemEffect): string {
   switch (effect.kind) {
@@ -80,7 +80,8 @@ export function magicItemLine(item: EquipmentItem, equipment: readonly Equipment
   const listed = item.gear?.magic ? null : matchMagicItem(item);
   const worn = item.gear?.magic ? { effects: item.gear.magic.effects, requiresAttunement: item.gear.magic.requiresAttunement } : listed;
   if (!def && !worn && !magicItemBonus(item.name)) {
-    const sentence = itemSentence(rowName(item));
+    // A workshop entry is not the published item it may share a name with.
+    const sentence = isWorkshopRow(item) ? null : itemSentence(rowName(item));
     return sentence ? `${item.name}: ${sentence} (narrated)` : null;
   }
   const parts: string[] = [];
@@ -124,7 +125,7 @@ export function magicItemLine(item: EquipmentItem, equipment: readonly Equipment
   }
   // An item in the table only for its attunement has nothing above to say, so
   // the model still gets the pack's sentence to narrate it from.
-  const sentence = parts.length ? null : itemSentence(rowName(item));
+  const sentence = parts.length || isWorkshopRow(item) ? null : itemSentence(rowName(item));
   const says = parts.join(", ") || (sentence ? `${sentence} (narrated)` : "magic");
   return `${item.name}: ${says}${state.length ? `; ${state.join(", ")}` : ""}`;
 }
