@@ -1655,6 +1655,7 @@
     "lib/dm/reaction-counters.ts#str-includes": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/reaction-counters.ts#toLowerCase": [["key",4,"condition labels (engine vocabulary); damage types"]],
     "lib/dm/reaction-kinds.ts#str-list": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
+    "lib/dm/reaction-refund.ts#str-list": [["key",1,"the sheet field names the gap replay carries (schema keys, not text)"]],
     "lib/dm/reaction-refund.ts#toLowerCase": [["key",4,"condition labels (engine vocabulary)"]],
     "lib/dm/reaction-spells.ts#re-word": [["key",1,"damage types (engine vocabulary)"],["english-source",1,"reference: SRD spell, condition and feature names"]],
     "lib/dm/reaction-spells.ts#str-eq": [["english-source",12,"reference: SRD spell, condition and feature names"]],

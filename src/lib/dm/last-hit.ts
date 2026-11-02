@@ -30,6 +30,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { randomUUID } from "node:crypto";
 import { sheetSpellAuthors } from "@/lib/dm/spell-authors";
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
+import { latestSeq } from "@/lib/db/campaigns";
 import { getActiveEncounter, listEnemies, orderEntryId, turnKey, type Encounter, type OrderEntry } from "@/lib/db/encounters";
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
@@ -152,11 +153,12 @@ export type LastHit = {
   // Where the hit left them. `track` and `ward` are absent on records
   // written before they were kept.
   after: { currentHp: number; tempHp: number; beastHp: number | null; track?: CharacterSheet["deathSaves"] | null; ward?: number | null };
-  // The damage that went past 0 hit points after this hit and before the next
-  // (or since), up to `until`, in the fight as a reaction left it: the hit
-  // points alone do not show it (reaction-refund.ts). Absent until a reaction
-  // has answered a hit on them.
-  pastZeroAfter?: { amount: number; until: string };
+  // The campaign's sequence number (allocateSeq) as the attack began and as
+  // it was recorded: the sheet changes between them are the hit's own, and
+  // those after it until the next hit began are the gap a reaction's replay
+  // carries, in their order (reaction-refund.ts). Absent on records written
+  // before it, which are read by their times.
+  seqs?: { open: number; close: number };
   // The reactions already answered with it, so one cannot be taken twice.
   answered: string[];
   // When the attack began (the first swing) and when it was recorded.
@@ -604,6 +606,7 @@ export function openLastHit(campaignId: string, characterId: string) {
   const sheet = getSheetById(characterId);
   const before = sheet ? snapshotVitals(campaignId, sheet) : null;
   const startedAt = nowIso();
+  const openSeq = latestSeq(campaignId);
   const swings: SwingRecord[] = [];
   // The concentration each swing found, and when the swing before it ended,
   // so a swing's own concentration save is read off the rolls since then.
@@ -701,6 +704,7 @@ export function openLastHit(campaignId: string, characterId: string) {
         answered: [],
         startedAt,
         at: nowIso(),
+        seqs: { open: openSeq, close: latestSeq(campaignId) },
       });
     },
   };
@@ -725,6 +729,7 @@ export function recordFall(
   before: VitalsSnapshot,
   raw: number,
   startedAt: string,
+  openSeq?: number,
 ) {
   const now = getSheetById(characterId);
   if (!now) {
@@ -749,6 +754,7 @@ export function recordFall(
     answered: [],
     startedAt,
     at: nowIso(),
+    ...(openSeq !== undefined ? { seqs: { open: openSeq, close: latestSeq(campaignId) } } : {}),
   });
 }
 
@@ -758,10 +764,11 @@ export function openFall(campaignId: string, characterId: string) {
   const sheet = getSheetById(characterId);
   const before = sheet ? snapshotVitals(campaignId, sheet) : null;
   const startedAt = nowIso();
+  const openSeq = latestSeq(campaignId);
   return {
     close(raw: number) {
       if (before) {
-        recordFall(campaignId, characterId, before, raw, startedAt);
+        recordFall(campaignId, characterId, before, raw, startedAt, openSeq);
       }
     },
   };

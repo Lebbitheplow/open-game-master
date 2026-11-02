@@ -668,6 +668,43 @@ await test("Shield takes back only the clubs: healing between the two hits stays
   assert.equal(hp(world, mira), 30, "20 healed 10, and neither club lands");
 });
 
+await test("Shield replays the healing and the fire between two hits in the order they landed: healing at her maximum does nothing (issue 685 review)", async () => {
+  const table = await stage();
+  const { world, mira, g1, g2 } = table;
+  // 30 - 5 = 25; healed 2d4 + 2 = 10, to her maximum of 30; 2d6 fire for 6
+  // to 24; the second club for 6 to 18. Without the clubs she is at 30
+  // when the healing lands, which does nothing, and the fire leaves her at
+  // 24. Read as one change (25 to 24) the gap was a point of damage, 29.
+  await replyOf(table, mira, [
+    { enemy: g1, faces: [10, 3] },
+    { call: { name: "heal", args: { characterId: mira.id, dice: "2d4+2", reason: "a potion" } }, faces: [4, 4] },
+    { call: { name: "apply_damage", args: { characterId: mira.id, dice: "2d6", type: "fire", reason: "a fire bolt" } }, faces: [3, 3] },
+    { enemy: g2, faces: [12, 4] },
+  ]);
+  assert.equal(hp(world, mira), 18);
+  const out = await react(world, mira, "Shield");
+  assert.equal(out.ok, true, out.error);
+  assert.equal(hp(world, mira), 24, "the clubs miss, the healing finds her whole, the fire lands");
+  const [, second] = openHits(world.campaignId, mira.id);
+  assert.equal(second.before.currentHp, 24, JSON.stringify(second.before));
+});
+
+await test("Shield replays what landed after the last hit in its order too: healing, then fire", async () => {
+  const table = await stage();
+  const { world, mira, g1 } = table;
+  // 30 - 5 = 25; healed to 30; fire for 6 to 24. Without the club: 30,
+  // healing does nothing, fire to 24.
+  await replyOf(table, mira, [
+    { enemy: g1, faces: [10, 3] },
+    { call: { name: "heal", args: { characterId: mira.id, dice: "2d4+2", reason: "a potion" } }, faces: [4, 4] },
+    { call: { name: "apply_damage", args: { characterId: mira.id, dice: "2d6", type: "fire", reason: "a fire bolt" } }, faces: [3, 3] },
+  ]);
+  assert.equal(hp(world, mira), 24);
+  const out = await react(world, mira, "Shield");
+  assert.equal(out.ok, true, out.error);
+  assert.equal(hp(world, mira), 24, "the club misses; the healing found her whole, so nothing is given back");
+});
+
 await test("A concentration the damage between the hits broke stays broken when Shield turns the clubs away", async () => {
   const table = await stage();
   const { world, mira, g1, g2 } = table;

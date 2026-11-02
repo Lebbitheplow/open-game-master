@@ -23,9 +23,8 @@
 
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, getEnemy, patchEnemyConditions } from "@/lib/db/encounters";
-import { listAuditSince } from "@/lib/db/sheet-audit";
+import { getAuditPreImage, listAuditSince } from "@/lib/db/sheet-audit";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
-import { nowIso } from "@/lib/db/core";
 import { publishPersisted } from "@/lib/events";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { RAGING } from "@/lib/srd/class-resources";
@@ -36,13 +35,14 @@ import { effectiveMaxHp, removeConditions, type ConditionMetaMap } from "@/lib/d
 import type { DeathTrack } from "@/lib/dm/death-logic";
 import { scaledParts } from "@/lib/dm/enemy-hit";
 import {
-  carryGap,
+  carryGaps,
   hitsWith,
   pool,
   replayHit,
   sameStanding,
   strike,
   up,
+  type Gap,
   type ReplaySwing,
   type Standing,
   type SwingOutcome,
@@ -98,21 +98,43 @@ function replaySwing(campaignId: string, sheet: CharacterSheet, record: LastHit,
   };
 }
 
-// The damage that went past 0 hit points on the character between two
-// moments (the damage path's audit keeps it as the overkill): a gap's hit
-// points show only that they reached 0.
-function auditedPastZero(campaignId: string, characterId: string, from: string, to: string | null): number {
-  return listAuditSince(campaignId, from)
-    .filter((entry) => entry.characterId === characterId && entry.kind === "apply_damage" && entry.createdAt > from && (to === null || entry.createdAt < to))
-    .reduce((sum, entry) => sum + Math.max(0, Number(entry.delta.overkill) || 0), 0);
-}
+// The sheet fields a change between two hits can move that the replay
+// carries (Standing).
+const STANDING_FIELDS = ["currentHp", "tempHp", "wildShape", "deathSaves", "resources"];
 
-// The damage past 0 in the gap after a hit: what a reaction that answered it
-// kept, with what the audit holds since, else the audit's alone.
-function pastZeroAfter(campaignId: string, record: LastHit, next: LastHit | null): number {
-  const to = next ? next.startedAt : null;
-  const kept = record.pastZeroAfter;
-  return kept ? kept.amount + auditedPastZero(campaignId, record.characterId, kept.until, to) : auditedPastZero(campaignId, record.characterId, record.at, to);
+// The changes the audit kept on the character after a hit and before the
+// next began (or since), oldest first, each as the change it made: where
+// its pre-image found them and where its patch left them, with the damage
+// that went past 0 hit points (the damage path's overkill, which the hit
+// points cannot show). A pre-image taken before an earlier change of the
+// same call (a beast form that breaks, then the hit points under it) is read
+// on from where that change left them. The window is the hits' sequence
+// numbers, or their times on records written before them.
+function changesAfter(campaignId: string, record: LastHit, next: LastHit | null): Gap<Shape>[] {
+  const after = (entry: { seq: number; createdAt: string }) => (record.seqs ? entry.seq > record.seqs.close : entry.createdAt > record.at);
+  const beforeNext = (entry: { seq: number; createdAt: string }) =>
+    !next || (next.seqs ? entry.seq <= next.seqs.open : entry.createdAt < next.startedAt);
+  const changes: Gap<Shape>[] = [];
+  let running: CharacterSheet | null = null;
+  let lastRead: Standing<Shape> | null = null;
+  for (const entry of listAuditSince(campaignId, record.startedAt)) {
+    if (entry.characterId !== record.characterId || !after(entry) || !beforeNext(entry) || !entry.patchKeys.some((key) => STANDING_FIELDS.includes(key))) {
+      continue;
+    }
+    const image = getAuditPreImage(entry.id);
+    if (!image) {
+      continue;
+    }
+    const read = standingOfSheet(image.before);
+    if (!running || !lastRead || !sameStanding(read, lastRead)) {
+      running = image.before;
+    }
+    lastRead = read;
+    const from = standingOfSheet(running);
+    running = { ...running, ...image.patch } as CharacterSheet;
+    changes.push({ from, to: standingOfSheet(running), pastZero: Math.max(0, Number(entry.delta.overkill) || 0) });
+  }
+  return changes;
 }
 
 // Puts back the concentration the attack broke, with the conditions the
@@ -252,9 +274,9 @@ type Step = {
   was: { swings: SwingOutcome[]; landed: number };
   // Corrected: where it found them, where it left them, each swing.
   now: { before: Standing<Shape>; after: Standing<Shape>; swings: SwingOutcome[]; dropped: boolean; landed: number; heldUsed: boolean };
-  // After it, until the next hit or now: the damage it dealt in the
-  // corrected fight and what of that went past 0.
-  gap: { dealt: number; pastZero: number };
+  // After it, until the next hit or now: the damage each change dealt in
+  // the corrected fight.
+  gap: { dealt: number[] };
 };
 
 // One or more hits on one character answered at once (Shield answers the
@@ -313,7 +335,7 @@ export function settleHits(
       after = strike(after, rider, (past) => past, false, maxHp).next;
     }
     const next = chain[at + 1] ?? null;
-    const gap = carryGap(after, { from: left, to: next ? standingOf(next.before) : nowStanding, pastZero: pastZeroAfter(campaign.id, record, next) }, maxHp);
+    const gap = carryGaps(after, { kept: left, to: next ? standingOf(next.before) : nowStanding, changes: changesAfter(campaign.id, record, next) }, maxHp);
     state = gap.next;
     steps.push({
       record,
@@ -322,11 +344,10 @@ export function settleHits(
       rider,
       was: { swings: was.swings, landed: was.swings.reduce((sum, swing) => sum + swing.landed, 0) },
       now: { before, after, swings: hit.swings, dropped: hit.dropped, landed: hit.swings.reduce((sum, swing) => sum + swing.landed, 0), heldUsed },
-      gap: { dealt: gap.dealt, pastZero: gap.pastZero },
+      gap: { dealt: gap.dealt },
     });
   });
   const final = state;
-  const settledAt = nowIso();
 
   // Each hit of the chain is kept as the corrected fight has it: its
   // swings, where it found and left them (a later hit that found them down
@@ -355,7 +376,6 @@ export function settleHits(
           track: now.after.track,
           ward: now.after.ward ?? null,
         },
-        pastZeroAfter: { amount: step.gap.pastZero, until: settledAt },
         answered: correctedOf.has(hitIdOf(record)) ? [...record.answered, label] : record.answered,
       });
     }
@@ -530,9 +550,7 @@ function concentrationBack(campaign: Campaign, turnId: string, steps: Step[], fi
         asked.push(swing.landed);
       }
     });
-    if (gap.dealt > 0) {
-      asked.push(gap.dealt);
-    }
+    asked.push(...gap.dealt);
   }
   const restored = restoreConcentration(campaign, first);
   if (!restored) {
