@@ -30,6 +30,7 @@ import { isConditionNamed } from "@/lib/srd/feature-names";
 import { enemyExhaustion } from "@/lib/dm/monster-abilities";
 import { isKnockedOut } from "@/lib/dm/knockout";
 import { standingOn } from "@/lib/dm/combatant";
+import { leftBehind } from "@/lib/dm/swallow";
 
 // Encounter tools beyond the core start/damage/attack/end set:
 // reinforcements, enemy flight, enemy conditions, and multi-target AoE.
@@ -129,6 +130,9 @@ function handleEnemyFlees(
     return { error: `${enemy.displayName} is knocked out: unconscious, they cannot flee. They stay where they fell.`, refused: "rules" };
   }
   patchEnemyHp(enemy.id, enemy.currentHp, "fled");
+  // What it swallowed stays, prone where it stood (swallow.ts): asked while
+  // its token is still there to stand them beside.
+  const behind = leftBehind(campaign, encounter.id, enemy, "flees");
   const map = getBattleMapForEncounter(encounter.id);
   if (map) {
     removeTokenByRef(map.id, enemy.id);
@@ -139,6 +143,7 @@ function handleEnemyFlees(
     ok: true,
     fled: enemy.displayName,
     note: `${enemy.displayName} has escaped and is out of the fight.`,
+    ...(behind ? { swallowedFreed: behind } : {}),
   };
   // The fight ends when nobody is left standing on the foes' side: one
   // lying knocked out does not hold it open (issue #667: it did, and the

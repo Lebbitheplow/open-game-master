@@ -327,6 +327,62 @@ await test("A swallowed cleric's Spirit Guardians as the worm's turn starts coun
   assert.ok(!holds(orin.id, "swallowed") && holds(orin.id, "prone"), "the ring and the mace together made it save, and it failed");
 });
 
+await test("The fight's last foe dies with Kara inside: the fight ends with her out of the corpse and prone, and the next fight reaches her and she it", async () => {
+  const { foe } = await facing("Purple Worm");
+  world.dice(19, 1, 1, 1, 1);
+  await bite(foe, kara);
+  world.clearDice();
+  assert.ok(holds(kara.id, "swallowed"), "swallowed");
+  kit.setEnemy(foe.id, { currentHp: 100 });
+  const slain = await world.invoke("apply_damage", { enemyId: foe.id, amount: 200, reason: "the test's blow" });
+  assert.equal(slain.result?.encounterOver, true, JSON.stringify(slain));
+  for (const name of ["swallowed", "blinded", "restrained"]) {
+    assert.ok(!holds(kara.id, name), `no longer ${name} once the fight is over`);
+  }
+  assert.ok(holds(kara.id, "prone"), "exiting prone");
+  assert.match(slain.result.swallowedOut ?? JSON.stringify(slain.result), /As the fight ends: Kara out of .*'s corpse, prone\./);
+  // The next fight, staged without the reset facing() does: a goblin beside her.
+  await kit.fight(1, { heroFaces: { [kara.id]: 20, [bram.id]: 2, [vex.id]: 3, [orin.id]: 4 }, enemyFace: 10 });
+  const [goblin] = world.enemies();
+  kit.place(kara.id, 5, 5);
+  kit.place(goblin.id, 6, 5);
+  kit.giveTurn(kara.id);
+  const swing = await kit.attack(kara.id, goblin.id);
+  assert.doesNotMatch(JSON.stringify(swing), /is inside/, "her swing reaches the goblin");
+  kit.freshRound();
+  const back = await world.invoke("enemy_attack", { enemyId: goblin.id, targetCharacterId: kara.id });
+  assert.doesNotMatch(JSON.stringify(back), /is inside/, "the goblin's swing reaches her");
+});
+
+await test("A swallower that flees leaves her behind, prone where it stood, and the fight goes on", async () => {
+  const { foe } = await facing("Purple Worm", 1);
+  world.dice(19, 1, 1, 1, 1);
+  await bite(foe, kara);
+  world.clearDice();
+  const fled = await world.invoke("enemy_flees", { enemyId: foe.id });
+  assert.equal(fled.ok, true, JSON.stringify(fled));
+  assert.ok(world.encounter(), "the goblin holds the fight open");
+  for (const name of ["swallowed", "blinded", "restrained"]) {
+    assert.ok(!holds(kara.id, name), `no longer ${name} after it fled`);
+  }
+  assert.ok(holds(kara.id, "prone"), "prone");
+  assert.match(fled.result.swallowedFreed ?? JSON.stringify(fled.result), /Kara at \(\d+,\d+\) is left behind as .* flees: out of it, prone where it was\./);
+});
+
+await test("A swallower banished to another plane leaves her behind on this one, prone where it stood", async () => {
+  const { foe } = await facing("Purple Worm", 1);
+  world.dice(19, 1, 1, 1, 1);
+  await bite(foe, kara);
+  world.clearDice();
+  const gone = await world.invoke("set_condition", { enemyId: foe.id, condition: "banished" });
+  assert.equal(gone.ok, true, JSON.stringify(gone));
+  for (const name of ["swallowed", "blinded", "restrained"]) {
+    assert.ok(!holds(kara.id, name), `no longer ${name} once it is banished`);
+  }
+  assert.ok(holds(kara.id, "prone"), "prone");
+  assert.match(JSON.stringify(gone.result), /Kara at \(\d+,\d+\) is left behind as .* vanishes from this plane/);
+});
+
 await test("The board's move says she is swallowed and how out, not that her speed is 0", async () => {
   const { foe } = await facing("Purple Worm");
   world.dice(19, 1, 1, 1, 1);

@@ -10,13 +10,16 @@
 // cover against everything outside and reaches nothing but its swallower
 // (swallowCover); it takes the acid at the start of each of the swallower's
 // turns (swallowTurnStart); damage it deals the swallower is counted for the
-// turn wherever it lands (noteBlowFromInside, from applyEnemyDamage), and at
+// turn wherever it lands (noteBlowFromInside, from applyEnemyDamage), the
+// swallower's own turn apart from the others (swallowTurnsStarted), and at
 // the turn's end enough of it forces the swallower's Constitution save or it
 // regurgitates everyone, prone beside it (swallowTurnEnd); and when the
 // swallower dies the creature is no longer restrained and climbs out of the
 // corpse with the feet of movement the block prints, exiting prone
-// (freeFromCorpse, swallowWalk, swallowRowWalk). The numbers are the block's
-// own (swallow-logic.ts).
+// (freeFromCorpse, swallowWalk, swallowRowWalk). A swallower that leaves the
+// fight alive leaves them behind (leftBehind, swallowerAway), and the fight's
+// end lets out whoever is still inside (swallowFightEnd). The numbers are the
+// block's own (swallow-logic.ts).
 //
 // Every write goes through a writer "Revert this turn" reads: a character's
 // through the sheet audit (audited-patch.ts, set-condition.ts), a creature's
@@ -94,14 +97,19 @@ export function swallowCover(from: Party | null, to: Party): string | null {
   return null;
 }
 
-// Everyone inside a creature, read fresh: characters, and the fight's rows.
-export function swallowedBy(campaignId: string, enemyId: string): Inside[] {
-  const encounter = getActiveEncounter(campaignId);
-  const parties: Party[] = [
+// Every character, and the rows of the fight (the one running, or the one
+// `encounterId` names once it has ended).
+function partiesOf(campaignId: string, encounterId?: string): Party[] {
+  const fight = encounterId ?? getActiveEncounter(campaignId)?.id ?? null;
+  return [
     ...listSheets(campaignId).map((sheet) => ({ kind: "sheet" as const, id: sheet.id })),
-    ...(encounter ? listEnemies(encounter.id).map((row) => ({ kind: "enemy" as const, id: row.id })) : []),
+    ...(fight ? listEnemies(fight).map((row) => ({ kind: "enemy" as const, id: row.id })) : []),
   ];
-  return parties.map(read).filter((found): found is Inside => Boolean(found && swallowerOf(found) === enemyId));
+}
+
+// Everyone inside a creature, read fresh: characters, and the fight's rows.
+export function swallowedBy(campaignId: string, enemyId: string, encounterId?: string): Inside[] {
+  return partiesOf(campaignId, encounterId).map(read).filter((found): found is Inside => Boolean(found && swallowerOf(found) === enemyId));
 }
 
 function grappledBy(holder: Holder | Inside, enemyId: string): boolean {
@@ -133,6 +141,9 @@ function without(conditions: string[], meta: ConditionMetaMap, names: string[], 
   }
   return next;
 }
+
+// What swallowing lays, all of it ended when the creature comes out.
+const INSIDE = [SWALLOWED, "blinded", "restrained"];
 
 // What a write records in a character's trail, under the kinds the event log
 // already reads for a condition (event-log-logic.ts describeKnownEntry): one
@@ -286,6 +297,15 @@ function besideSquare(encounterId: string, map: BattleMap, mover: BattleToken, b
   return best;
 }
 
+// Out of the creature `sourceId` names, and prone. Two lines in the trail,
+// as the table reads them: out, then prone.
+function freeProne(campaign: Campaign, live: Inside, sourceId: string, names: string[], reason: string) {
+  const ended = names.filter((name) => held(live, name));
+  const freed = without(live.conditions, live.meta, names, sourceId);
+  write(campaign, live, freed, { kind: "clear_condition", delta: { condition: ended.join(", ") || SWALLOWED }, reason });
+  write(campaign, live, laid(freed.conditions, freed.meta, ["prone"], sourceId), { kind: "set_condition", delta: { condition: "prone" }, reason });
+}
+
 // Out of the creature, prone in a space beside it (within 10 feet: SRD 5.1).
 // Returns where they landed, or null off the board.
 function outProne(campaign: Campaign, encounterId: string, party: Party, swallower: EncounterEnemy, names: string[], reason: string, spentTiles = 0): string | null {
@@ -293,11 +313,7 @@ function outProne(campaign: Campaign, encounterId: string, party: Party, swallow
   if (!live) {
     return null;
   }
-  // Two lines in the trail, as the table reads them: out, then prone.
-  const ended = names.filter((name) => held(live, name));
-  const freed = without(live.conditions, live.meta, names, swallower.id);
-  write(campaign, party, freed, { kind: "clear_condition", delta: { condition: ended.join(", ") || SWALLOWED }, reason });
-  write(campaign, party, laid(freed.conditions, freed.meta, ["prone"], swallower.id), { kind: "set_condition", delta: { condition: "prone" }, reason });
+  freeProne(campaign, live, swallower.id, names, reason);
   const map = getBattleMapForEncounter(encounterId);
   const token = map ? getTokenByRef(map.id, party.id) : null;
   const body = map ? getTokenByRef(map.id, swallower.id) : null;
@@ -346,7 +362,7 @@ export function swallowTurnEnd(campaign: Campaign, encounter: Encounter): string
       continue;
     }
     const out = swallowedBy(campaign.id, enemyId).map((inside) => {
-      const at = outProne(campaign, encounter.id, inside, swallower, [SWALLOWED, "blinded", "restrained"], `regurgitated by ${swallower.displayName}`);
+      const at = outProne(campaign, encounter.id, inside, swallower, INSIDE, `regurgitated by ${swallower.displayName}`);
       return `${inside.name}${at ? ` at ${at}` : ""}`;
     });
     lines.push(`${swallower.displayName} took ${amount} damage from inside this turn and fails its CON save (${roll.total ?? "failed"} vs DC ${rule.regurgitate.dc}): it regurgitates ${out.join(", ")}, prone beside it.`);
@@ -374,6 +390,61 @@ export function freeFromCorpse(campaign: Campaign, enemy: EncounterEnemy): strin
     );
   }
   return `${inside.map((party) => party.name).join(", ")} ${inside.length === 1 ? "is" : "are"} no longer restrained by ${enemy.displayName}: ${feet} feet of movement climbs out of the corpse, exiting prone.`;
+}
+
+// A swallower gone from the fight alive (it fled, or a spell sent it off
+// this plane) leaves what it swallowed behind: out of it, prone in a space
+// beside where it stood. Called before its token leaves the board. Without
+// this they stayed blinded, restrained and swallowed inside a creature no
+// longer in the fight, reached by nothing and reaching nothing.
+export function leftBehind(campaign: Campaign, encounterId: string, enemy: EncounterEnemy, going: string): string | null {
+  const inside = swallowedBy(campaign.id, enemy.id, encounterId);
+  if (!inside.length) {
+    return null;
+  }
+  const out = inside.map((party) => {
+    const at = outProne(campaign, encounterId, party, enemy, INSIDE, `left behind as ${enemy.displayName} ${going}`);
+    return `${party.name}${at ? ` at ${at}` : ""}`;
+  });
+  return `${out.join(", ")} ${inside.length === 1 ? "is" : "are"} left behind as ${enemy.displayName} ${going}: out of it, prone where it was.`;
+}
+
+// The conditions that take a living creature off this plane (Banishment's
+// demiplane, Maze's labyrinth): what it swallowed stays on this one.
+const OFF_PLANE = ["banished", "mazed"];
+
+// After conditions land on a creature: one now off this plane leaves its
+// swallowed behind (leftBehind). Null when it is not, or held nobody.
+export function swallowerAway(campaign: Campaign, enemyId: string): string | null {
+  const enemy = getEnemy(enemyId);
+  const away = enemy?.status === "alive" && enemy.conditions.some((entry) => OFF_PLANE.includes(entry.toLowerCase()));
+  return enemy && away ? leftBehind(campaign, enemy.encounterId, enemy, "vanishes from this plane") : null;
+}
+
+// The fight's end, however it came (its last foe down, a flight, a truce,
+// end_encounter, the lead's Force-end): whoever is still inside comes out,
+// prone, with what swallowing laid gone. The climb out of a corpse is a walk
+// on the fight's board, and once the fight is over there is no board to
+// walk: a hero swallowed by the fight's last foe stayed swallowed and
+// blinded, and the next fight neither reached her nor let her reach anyone.
+export function swallowFightEnd(campaign: Campaign, encounterId: string): string | null {
+  const out: string[] = [];
+  for (const party of partiesOf(campaign.id, encounterId)) {
+    const live = read(party);
+    const source = live ? swallowerOf(live) : null;
+    if (!live || !source) {
+      continue;
+    }
+    const swallower = getEnemy(source);
+    const reason = `out of ${swallower?.displayName ?? "what swallowed them"} as the fight ends`;
+    if (swallower) {
+      outProne(campaign, encounterId, live, swallower, INSIDE, reason);
+    } else {
+      freeProne(campaign, live, source, INSIDE, reason);
+    }
+    out.push(`${live.name} out of ${swallower ? `${swallower.displayName}${swallower.status === "dead" ? "'s corpse" : ""}` : "what swallowed them"}`);
+  }
+  return out.length ? `As the fight ends: ${out.join(", ")}, prone.` : null;
 }
 
 // The way out of a living swallower, for the refusal that says why there is
