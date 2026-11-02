@@ -52,6 +52,14 @@ export function improvisedHold(
   }
 }
 
+// The largest creature a condition takes, where what it copies has one: a
+// net holds a creature Large or smaller (SRD 5.1, Net: "A net has no effect
+// on creatures that are formless, or creatures that are Huge or larger"), as
+// pc_attack's net lays it (pc-attack-resolve.ts).
+export function improvisedMaxSize(condition: ImprovisedCondition): string | undefined {
+  return condition === "restrained" ? "Large" : undefined;
+}
+
 // Improvised damage by the situation, after the DMG's Improvising Damage
 // table: 1d10 a falling bookcase or burning coals, 2d10 a fire pit, 4d10 a
 // collapsing tunnel's rubble, 10d10 compacting walls, 18d10 a lava bath,

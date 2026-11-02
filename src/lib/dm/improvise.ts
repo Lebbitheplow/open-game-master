@@ -43,6 +43,7 @@ import { checkCeiling, rollCharacterCheck } from "@/lib/dm/contest-roll";
 import { applyEnemyDamage, unknownEnemyRef } from "@/lib/dm/enemy-damage";
 import {
   improvisedHold,
+  improvisedMaxSize,
   unshownWords,
   type ImprovisedCondition,
   type ImprovisedDamage,
@@ -330,6 +331,7 @@ export function improviseAction(
     };
   }
   const landed: string[] = [];
+  const said: string[] = [];
   const result: Record<string, unknown> = {};
   if (args.damage && args.damageType) {
     const rolled = rollCard(campaign, turn, sheet.id, "damage", `${sheet.name}: ${what}`.slice(0, 120), args.damage, null);
@@ -338,22 +340,31 @@ export function improviseAction(
   }
   const fresh = resolveTargetFoe(campaign.id, encounter, enemy.id);
   if (args.condition && fresh?.status === "alive") {
-    const laid = applyRiderCondition(campaign, fresh, args.condition, { meta: improvisedHold(args.condition, fresh.id, sheet.id) });
-    landed.push(laid.applied ? args.condition : `not ${args.condition}: ${laid.reason}`);
+    const maxSize = improvisedMaxSize(args.condition);
+    const laid = applyRiderCondition(campaign, fresh, args.condition, { meta: improvisedHold(args.condition, fresh.id, sheet.id), ...(maxSize ? { maxSize } : {}) });
+    if (laid.applied) {
+      landed.push(args.condition);
+      if (args.condition === "restrained") {
+        said.push("It stays restrained until freed: its action and a DC 10 Strength check, which you clear with clear_condition on a success.");
+      }
+    } else {
+      // Said apart from what landed: a refused condition is never followed
+      // by "the server applied it" or a restraint that holds.
+      said.push(`It is not ${args.condition}: ${laid.reason}`);
+    }
     // A flyer knocked prone or held to a speed of 0 falls (token-state.ts).
     const fell = laid.applied ? landTheFlightless(campaign, encounter.id) : [];
     if (fell.length) {
       result.fell = fell.join(" ");
     }
   }
+  const head = landed.length ? `${what}: ${enemy.displayName} takes ${landed.join(", ")}. The server applied it.` : `${what}: it reaches ${enemy.displayName}.`;
   return {
     ...result,
     ok: true,
     action: "Improvised action",
     contest: outcome.text,
     success: true,
-    applied: landed.length
-      ? `${what}: ${enemy.displayName} takes ${landed.join(", ")}. The server applied it.${args.condition === "restrained" ? " It stays restrained until freed: its action and a DC 10 Strength check, which you clear with clear_condition on a success." : ""}`
-      : `${what}: it works on ${enemy.displayName}. Narrate it.`,
+    applied: landed.length || said.length ? [head, ...said].join(" ") : `${what}: it works on ${enemy.displayName}. Narrate it.`,
   };
 }

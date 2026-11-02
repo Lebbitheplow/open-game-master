@@ -297,6 +297,18 @@ await test("How long each condition lasts: restrained as a net (the GM clears it
   assert.deepEqual(kit.enemy(enemy.id).conditionMeta.blinded, { untilTurnEndOf: enemy.id });
 });
 
+await test("Restrained as a net holds a creature no larger than Large, as the net does (SRD 5.1, Net): a Huge one is not tangled, and the result never says it stays restrained.", async () => {
+  const enemy = await stage(fighter);
+  kit.setEnemy(enemy.id, { stats: { ...kit.enemy(enemy.id).stats, size: "Huge" } });
+  world.dice(2, 15);
+  const out = await act(fighter, "improvise", { reason: "drops the tent canvas over the giant", targetEnemyId: enemy.id, skill: "athletics", condition: "restrained" });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.ok(!conditionsOf(enemy.id).includes("restrained"), "a Huge creature was tangled");
+  assert.match(out.result.applied, /Large or smaller/);
+  assert.doesNotMatch(out.result.applied, /stays restrained|The server applied it/);
+});
+
 await test("A creature immune to the condition takes none.", async () => {
   const enemy = await stage(fighter);
   kit.setEnemy(enemy.id, { stats: { ...kit.enemy(enemy.id).stats, conditionImmune: "blinded" } });
