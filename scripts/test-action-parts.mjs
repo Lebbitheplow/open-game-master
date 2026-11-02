@@ -693,6 +693,16 @@ await test("Travel: back-to-back legs are one day's march and reach the forced-m
   assert.ok(Array.isArray(getClock(world.campaignId).marched), "the clock keeps the day's legs");
 });
 
+// Damage an object is immune to never adds up: twenty blows of poison drew
+// twenty roll cards of nothing and "20 blows and it still stands" (rev-749).
+await test("damage_object blows of a damage the object is immune to stop at the first, which says so", async () => {
+  await kit.endFight();
+  const out = await world.invoke("damage_object", { name: "the poisoned chest", material: "wood", size: "small", damage: "2d6", damageType: "poison", blows: 20 });
+  assert.equal(out.ok, true, out.error);
+  assert.equal(out.result.blows?.length, 1, JSON.stringify(out.result).slice(0, 400));
+  assert.match(String(out.result.note), /immune/);
+});
+
 // A night camped with pass_time, or a long rest the one-in-24-hours rule
 // refused, closed no day: the next morning's 8 hours rolled four
 // forced-march saves (rev-749). A stop of a night's length ends the day.

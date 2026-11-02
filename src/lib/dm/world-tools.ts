@@ -491,10 +491,14 @@ export function handleDamageObject(
     return { error: "In a fight each blow is one of the character's attacks: one blow a call, on their turn. Nothing was rolled.", retry: true };
   }
   const struck: Record<string, unknown>[] = [];
+  // Damage the object is immune to never adds up: one blow says so, and
+  // nineteen more drew nineteen roll cards of nothing.
+  let immune = false;
   for (let count = 0; count < blows.data; count += 1) {
     const result = damageObject(campaign, turn, JSON.stringify(blow));
     struck.push(result);
-    if (typeof result.error === "string" || result.broken === true || result.damage === undefined && result.hit === undefined) {
+    immune = Array.isArray(result.notes) && result.notes.some((note) => String(note).includes("immune to"));
+    if (typeof result.error === "string" || result.broken === true || immune || (result.damage === undefined && result.hit === undefined)) {
       break;
     }
   }
@@ -510,7 +514,9 @@ export function handleDamageObject(
     note:
       last.broken === true
         ? `It breaks on blow ${struck.length}. Narrate the blows and it giving way.`
-        : `${struck.length} blows and it still stands. Narrate the effort.`,
+        : immune
+          ? "It is immune to that damage, so no blow of it can break it. Narrate it holding."
+          : `${struck.length} blows and it still stands. Narrate the effort.`,
   };
 }
 
