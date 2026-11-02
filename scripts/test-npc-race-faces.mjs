@@ -50,7 +50,8 @@ await test("the race controls wait for a host that keeps a race", async () => {
     assert.match(fieldForHost(field, () => true).help, /race elf/);
     assert.doesNotMatch(fieldForHost(field, () => false).help, /race/, `${name}'s line says nothing of races on an older host`);
   }
-  assert.match(fs.readFileSync(new URL("../src/app/workshop/cast/NpcEditorFields.tsx", import.meta.url), "utf8"), /const keepsRace = hostOffers\(useCapabilities\(\), "npcRace"\);[\s\S]*\{keepsRace \? \(\n\s+<span className="w-full sm:w-48">\n\s+<Select<string>\n\s+label="Race"/);
+  // A Windows checkout writes CRLF: the pattern below reads the file's lines.
+  assert.match(fs.readFileSync(new URL("../src/app/workshop/cast/NpcEditorFields.tsx", import.meta.url), "utf8").replace(/\r\n/g, "\n"), /const keepsRace = hostOffers\(useCapabilities\(\), "npcRace"\);[\s\S]*\{keepsRace \? \(\n\s+<span className="w-full sm:w-48">\n\s+<Select<string>\n\s+label="Race"/);
 });
 
 await test("a race is stored as its SRD id, read from an id, a name or the plain word, and never guessed", () => {
