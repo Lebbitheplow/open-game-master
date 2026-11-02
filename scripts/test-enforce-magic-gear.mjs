@@ -341,6 +341,16 @@ await test("use_item never uses up a magic item the table holds, and asks attune
   assert.deepEqual(sheet().equipment.map((item) => [item.name, item.qty]), [["Prayer Mat", 1], ["Ring of Spell Storing", 1], ["Ioun Stone of Protection", 1]]);
 });
 
+await test("use_item keeps a pack magic item outside the table that its text keeps, and uses up one its text uses up: an Apron of the Eager Artisan stays, an Air Seed is thrown", async () => {
+  carry([{ name: "Apron of the Eager Artisan", qty: 1 }, { name: "Air Seed", qty: 2 }]);
+  const apron = await world.invoke("use_item", { characterId: hero.id, item: "Apron of the Eager Artisan" });
+  assert.equal(apron.ok, false);
+  assert.match(apron.error, /kept, not consumed/);
+  const seed = await world.invoke("use_item", { characterId: hero.id, item: "Air Seed" });
+  assert.equal(seed.ok, true, seed.error);
+  assert.deepEqual(sheet().equipment.map((item) => [item.name, item.qty]), [["Apron of the Eager Artisan", 1], ["Air Seed", 1]]);
+});
+
 await test("a magic item's charges and its pending attunement are optional fields: an old row with neither still loads", () => {
   carry([{ name: "Rope", qty: 1 }]);
   assert.deepEqual(sheet().equipment.map((item) => item.name), ["Rope"]);
