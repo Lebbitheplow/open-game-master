@@ -693,6 +693,25 @@ await test("Travel: back-to-back legs are one day's march and reach the forced-m
   assert.ok(Array.isArray(getClock(world.campaignId).marched), "the clock keeps the day's legs");
 });
 
+// A night camped with pass_time, or a long rest the one-in-24-hours rule
+// refused, closed no day: the next morning's 8 hours rolled four
+// forced-march saves (rev-749). A stop of a night's length ends the day.
+await test("Forced march: a night's stop between two legs ends the day, rested or not; back-to-back legs still share theirs", async () => {
+  const { forcedMarchSpan } = await import("../src/lib/srd/travel.ts");
+  assert.deepEqual(forcedMarchSpan([{ end: 480, minutes: 480, ids: ["a"] }], 480 + 12 * 60 + 480, 8), { from: 1, to: 0 }, "an 8-hour leg after a 12-hour stop");
+  assert.deepEqual(forcedMarchSpan([{ end: 480, minutes: 480, ids: ["a"] }], 720, 4), { from: 1, to: 4 }, "four more hours straight after eight");
+  assert.deepEqual(forcedMarchSpan([{ end: 480, minutes: 480, ids: ["a"] }], 480 + 2 * 60 + 480, 8).to, 8, "a two-hour halt is no night");
+  await kit.endFight();
+  await world.invoke("pass_time", { amount: 24, unit: "hours" });
+  world.patch(fighter.id, { exhaustion: 0 });
+  await world.invoke("travel", { hours: 8, pace: "normal", characterIds: [fighter.id] });
+  await world.invoke("pass_time", { amount: 12, unit: "hours" });
+  const morning = await world.invoke("travel", { hours: 8, pace: "normal", characterIds: [fighter.id] });
+  world.patch(fighter.id, { exhaustion: 0 });
+  assert.equal(morning.ok, true, morning.error);
+  assert.equal(morning.result.forcedMarch, false, JSON.stringify(morning.result).slice(0, 400));
+});
+
 await test("Items: a chest of five and a shopping list of four, each one call, every item resolved; a name in other words resolves with srdName on the first call, English or Italian", async () => {
   world.patch(fighter.id, { gold: 200 });
   const ran = await agentTurn(fighter, "Brann empties the chest, then buys supplies.", [

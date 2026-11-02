@@ -84,7 +84,20 @@ const DAY_MINUTES = 24 * 60;
 // the hours past 8 this leg adds (from 1 for the ninth), none when `to` is
 // below `from`.
 export function forcedMarchSpan(earlier: readonly MarchLeg[], end: number, legHours: number, restedAt?: number): { from: number; to: number } {
-  const start = Math.max(end - DAY_MINUTES, restedAt ?? end - DAY_MINUTES);
+  // A stop of a night's length (8 hours, a long rest's) between two
+  // stretches ends the day before it, whether or not a long rest was taken
+  // or granted in it: a night camped with pass_time, or a rest refused by
+  // the one-in-24-hours rule, left the next morning's 8 hours a forced march.
+  let stopped = Number.NEGATIVE_INFINITY;
+  let cursor = end - legHours * 60;
+  for (const leg of [...earlier].sort((a, b) => b.end - a.end)) {
+    if (cursor - leg.end >= NORMAL_TRAVEL_HOURS * 60) {
+      stopped = cursor;
+      break;
+    }
+    cursor = Math.min(cursor, leg.end - leg.minutes);
+  }
+  const start = Math.max(end - DAY_MINUTES, restedAt ?? end - DAY_MINUTES, stopped);
   const before = earlier.reduce((sum, leg) => sum + Math.max(0, Math.min(leg.end, end) - Math.max(leg.end - leg.minutes, start)), 0) / 60;
   return { from: forcedMarchHours(before) + 1, to: forcedMarchHours(before + legHours) };
 }
