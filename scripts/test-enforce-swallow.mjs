@@ -295,7 +295,8 @@ await test("A creature fighting on the party's side is swallowed as a hero is: i
   assert.ok(row().currentHp < hp, "the acid at the worm's turn start");
 });
 
-await test("A swallowed cleric's Spirit Guardians as the worm's turn starts counts from inside: with her mace in her turn after it, 30 in all, and the worm saves or regurgitates her", async () => {
+// Orin inside the worm with her Spirit Guardians up, cast from `slotLevel`.
+async function guardiansInside(slotLevel) {
   const { foe } = await facing("Purple Worm");
   kit.place(orin.id, 5, 6);
   world.dice(19, 1, 1, 1, 1);
@@ -305,8 +306,17 @@ await test("A swallowed cleric's Spirit Guardians as the worm's turn starts coun
   const sheet = world.sheet(orin.id);
   world.patch(orin.id, {
     conditions: [...sheet.conditions, "spirit guardians"],
-    conditionMeta: { ...sheet.conditionMeta, "spirit guardians": { spell: "Spirit Guardians", slotLevel: 3, source: orin.id } },
+    conditionMeta: { ...sheet.conditionMeta, "spirit guardians": { spell: "Spirit Guardians", slotLevel, source: orin.id } },
   });
+  return foe;
+}
+
+// "30 damage or more on a single turn from a creature inside it" (SRD 5.1,
+// Purple Worm): the worm's own turn is one turn and Orin's is another. Both
+// end at the same move here (the worm's turn is played in the GM turn after
+// the move that starts it), and each is counted alone.
+await test("A swallowed cleric's Spirit Guardians as the worm's turn starts counts for the worm's own turn: its 24 and her mace's 13 on her turn are two turns, and neither makes it save", async () => {
+  const foe = await guardiansInside(3);
   // Kara's End Turn walks past the worm: its WIS save a 2, the ring's 3d8
   // all 8s, then its acid on Orin.
   kit.giveTurn(kara.id);
@@ -320,11 +330,30 @@ await test("A swallowed cleric's Spirit Guardians as the worm's turn starts coun
   kit.giveTurn(orin.id);
   const mace = await kit.swing(orin.id, foe.id, [19, 19, 6]);
   assert.equal(mace.error, undefined, JSON.stringify(mace.out));
-  // The worm's save at the turn's end: a 2.
+  // A save would take this 2; none is owed.
+  world.dice(2);
+  await world.invoke("end_turn", { characterId: orin.id });
+  const unused = world.clearDice();
+  assert.ok(holds(orin.id, "swallowed") && !holds(orin.id, "prone"), "24 on the worm's turn and 13 on hers are two turns, and neither is 30");
+  assert.equal(unused, 1, "no Constitution save was rolled");
+});
+
+await test("A ring that deals 30 or more from inside on the worm's own turn makes it save at that turn's end, and a failure regurgitates her", async () => {
+  const foe = await guardiansInside(5);
+  // The ring from a 5th level slot: 5d8, all 8s.
+  kit.giveTurn(kara.id);
+  const before = kit.enemy(foe.id).currentHp;
+  world.dice(2, 8, 8, 8, 8, 8, 1, 1, 1, 1, 1, 1);
+  await world.invoke("end_turn", { characterId: kara.id });
+  world.clearDice();
+  assert.equal(before - kit.enemy(foe.id).currentHp, 40, "the ring burned it");
+  assert.ok(holds(orin.id, "swallowed"), "its turn has not ended yet");
+  // The worm's turn ends with the next move: its save a 2.
+  kit.giveTurn(orin.id);
   world.dice(2);
   await world.invoke("end_turn", { characterId: orin.id });
   world.clearDice();
-  assert.ok(!holds(orin.id, "swallowed") && holds(orin.id, "prone"), "the ring and the mace together made it save, and it failed");
+  assert.ok(!holds(orin.id, "swallowed") && holds(orin.id, "prone"), "40 on its own turn: it saved, failed, and regurgitated her");
 });
 
 await test("The fight's last foe dies with Kara inside: the fight ends with her out of the corpse and prone, and the next fight reaches her and she it", async () => {

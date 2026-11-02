@@ -325,47 +325,82 @@ function outProne(campaign: Campaign, encounterId: string, party: Party, swallow
   return square ? `(${square.x},${square.y})` : null;
 }
 
-// The end of a turn: a swallower dealt enough from inside it this turn saves
-// or regurgitates everyone it holds, and the count starts again.
-export function swallowTurnEnd(campaign: Campaign, encounter: Encounter): string[] {
-  const lines: string[] = [];
-  const hurt = new Map<string, number>();
-  const parties: Party[] = [
-    ...listSheets(campaign.id).map((sheet) => ({ kind: "sheet" as const, id: sheet.id })),
-    ...listEnemies(encounter.id).map((row) => ({ kind: "enemy" as const, id: row.id })),
-  ];
-  for (const party of parties) {
+// After the turns a pointer move starts have had their start-of-turn effects:
+// what a creature inside dealt its swallower as the swallower's own turn
+// began (a Spirit Guardians ring carried in with it) is that turn's, counted
+// apart, and the turn the pointer lands on starts its count at nothing. The
+// swallower's turn is played in the GM turn after this move and ends with
+// the next one, beside the turn the pointer rests on; summed with that turn,
+// a 24 point ring at the worm's turn and a 13 point mace on the cleric's
+// made 37 "on a single turn".
+export function swallowTurnsStarted(campaign: Campaign, encounter: Encounter, starting: readonly string[]) {
+  for (const party of partiesOf(campaign.id, encounter.id)) {
     const inside = read(party);
     const name = inside ? held(inside, SWALLOWED) : undefined;
     const entry = inside && name ? inside.meta[name] : undefined;
-    if (!inside || !name || !entry?.source || !entry.swallow?.hurt) {
+    if (!inside || !name || !entry?.source || !starting.includes(entry.source) || !entry.swallow?.hurt) {
       continue;
     }
-    hurt.set(entry.source, Math.max(hurt.get(entry.source) ?? 0, entry.swallow.hurt));
-    // The count is the turn's: it starts again at nothing.
+    const own = (entry.swallow.hurtOnItsTurn ?? 0) + entry.swallow.hurt;
     write(
       campaign,
       inside,
-      { conditions: inside.conditions, meta: { ...inside.meta, [name]: { ...entry, swallow: { ...entry.swallow, hurt: 0 } } } },
+      { conditions: inside.conditions, meta: { ...inside.meta, [name]: { ...entry, swallow: { ...entry.swallow, hurt: 0, hurtOnItsTurn: own } } } },
+      { kind: "condition_clock", delta: {}, reason: "the damage dealt it from inside as its turn began counts for its own turn" },
+    );
+  }
+}
+
+// The end of a turn: a swallower dealt enough from inside it on a single
+// turn saves or regurgitates everyone it holds, and the counts start again.
+// Its own turn and the turn the pointer rested on end at the same move, and
+// each is held to the block's number alone.
+export function swallowTurnEnd(campaign: Campaign, encounter: Encounter): string[] {
+  const lines: string[] = [];
+  // By swallower, the most one creature inside dealt it: on its own turn,
+  // then on the turn the pointer rested on.
+  const hurt = new Map<string, [number, number]>();
+  for (const party of partiesOf(campaign.id, encounter.id)) {
+    const inside = read(party);
+    const name = inside ? held(inside, SWALLOWED) : undefined;
+    const entry = inside && name ? inside.meta[name] : undefined;
+    const counts: [number, number] = [entry?.swallow?.hurtOnItsTurn ?? 0, entry?.swallow?.hurt ?? 0];
+    if (!inside || !name || !entry?.source || !counts.some((count) => count > 0)) {
+      continue;
+    }
+    const most = hurt.get(entry.source) ?? [0, 0];
+    hurt.set(entry.source, [Math.max(most[0], counts[0]), Math.max(most[1], counts[1])]);
+    // The counts are the turns': they start again at nothing.
+    write(
+      campaign,
+      inside,
+      { conditions: inside.conditions, meta: { ...inside.meta, [name]: { ...entry, swallow: { ...entry.swallow, hurt: 0, hurtOnItsTurn: 0 } } } },
       { kind: "condition_clock", delta: {}, reason: "the turn's count of damage from inside starts again" },
     );
   }
-  for (const [enemyId, amount] of hurt) {
+  for (const [enemyId, turns] of hurt) {
     const swallower = getEnemy(enemyId);
-    const rule = swallower ? swallowRuleOf(swallower.stats) : null;
-    if (!swallower || swallower.status !== "alive" || !rule?.regurgitate || amount < rule.regurgitate.damage) {
+    const regurgitate = swallower ? swallowRuleOf(swallower.stats)?.regurgitate : null;
+    if (!swallower || swallower.status !== "alive" || !regurgitate) {
       continue;
     }
-    const roll = rollEnemySave(campaign.id, swallower, "con", rule.regurgitate.dc, { record: { detail: `${swallower.displayName}: holding down what it swallowed (CON save)` } });
-    if (roll.success) {
-      lines.push(`${swallower.displayName} took ${amount} damage from inside this turn and keeps it down (CON save ${roll.total} vs DC ${rule.regurgitate.dc}).`);
-      continue;
+    for (const [index, amount] of turns.entries()) {
+      if (amount < regurgitate.damage) {
+        continue;
+      }
+      const when = index === 0 ? "on its own turn" : "this turn";
+      const roll = rollEnemySave(campaign.id, swallower, "con", regurgitate.dc, { record: { detail: `${swallower.displayName}: holding down what it swallowed (CON save)` } });
+      if (roll.success) {
+        lines.push(`${swallower.displayName} took ${amount} damage from inside ${when} and keeps it down (CON save ${roll.total} vs DC ${regurgitate.dc}).`);
+        continue;
+      }
+      const out = swallowedBy(campaign.id, enemyId).map((inside) => {
+        const at = outProne(campaign, encounter.id, inside, swallower, INSIDE, `regurgitated by ${swallower.displayName}`);
+        return `${inside.name}${at ? ` at ${at}` : ""}`;
+      });
+      lines.push(`${swallower.displayName} took ${amount} damage from inside ${when} and fails its CON save (${roll.total ?? "failed"} vs DC ${regurgitate.dc}): it regurgitates ${out.join(", ")}, prone beside it.`);
+      break;
     }
-    const out = swallowedBy(campaign.id, enemyId).map((inside) => {
-      const at = outProne(campaign, encounter.id, inside, swallower, INSIDE, `regurgitated by ${swallower.displayName}`);
-      return `${inside.name}${at ? ` at ${at}` : ""}`;
-    });
-    lines.push(`${swallower.displayName} took ${amount} damage from inside this turn and fails its CON save (${roll.total ?? "failed"} vs DC ${rule.regurgitate.dc}): it regurgitates ${out.join(", ")}, prone beside it.`);
   }
   return lines;
 }

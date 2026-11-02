@@ -17,7 +17,7 @@ import { sunlightTurnStart } from "@/lib/dm/sunlight-turn";
 import { beginTurns, endTurns } from "@/lib/dm/turn-end";
 import { burningTurnStart } from "@/lib/dm/gear-weapon-hit";
 import { laughterTurnStart } from "@/lib/dm/afflictions";
-import { swallowTurnStart } from "@/lib/dm/swallow";
+import { swallowTurnStart, swallowTurnsStarted } from "@/lib/dm/swallow";
 import { applyEnemyDamage } from "@/lib/dm/enemy-damage";
 import { withOpportunityTurn } from "@/lib/dm/opportunity-strike";
 import { listSheets } from "@/lib/db/sheets";
@@ -69,6 +69,9 @@ export function turnStartEffects(
       );
     }
   }
+  // What a creature inside dealt its swallower as the swallower's turn began
+  // is that turn's, apart from the one the pointer lands on (swallow.ts).
+  swallowTurnsStarted(campaign, encounter, starting);
   if (turnStartLines.length) {
     const seq = allocateSeq(campaign.id);
     const message = insertCampaignMessage({
