@@ -2,7 +2,8 @@
 // dice. At the Dominate Table, which the lead runs, the player's Sela holds
 // an ogre by Dominate Monster and an enemy mage holds the player's Bran by
 // Dominate Person. The ogre's token wears the party's stone band outside its
-// health ring and Bran's the foes' red; the initiative rail, the DM's order,
+// health ring and Bran's the foes' red, and the ogre's hover plate shows its
+// charm's painting large with what charmed does; the initiative rail, the DM's order,
 // the monster hand, the enemy roster and the party cards say who fights for
 // whom in words, and the ogre's cards aim at the foes and at Bran, never at
 // Sela. When the charms end the bands fade and the words go. At the Held
@@ -80,6 +81,31 @@ export default {
       const box = await figureOf(ogre.name).boundingBox();
       if (box) await page.screenshot({ path: t.shotPath("ogre-close"), clip: { x: Math.max(0, box.x - 40), y: Math.max(0, box.y - 40), width: box.width + 80, height: box.height + 80 } }).catch(() => {});
     }
+
+    // The ogre's hover plate lists its charm with the painting large and
+    // what charmed does (condition-rules.ts), above who laid it. It is
+    // pinned to the page, outside the game's root, so a short board's frame
+    // does not cut it off.
+    const ogreAt = await figureOf(ogre.name).boundingBox();
+    if (ogreAt) await page.mouse.move(ogreAt.x + ogreAt.width / 2, ogreAt.y + ogreAt.height / 2);
+    const plate = page.locator('[role="tooltip"]').locator("visible=true").filter({ hasText: "charmed" }).first();
+    await eventually(() => plate.isVisible(), { timeoutMs: 10_000, label: `the ${ogre.name}'s hover plate` });
+    const plateText = (await plate.textContent()) ?? "";
+    check(plateText.includes("Can't attack the charmer"), `the plate says what charmed does (${plateText.slice(0, 160)})`);
+    check(plateText.includes(sela.name), `the plate says who laid the charm (${plateText.slice(0, 160)})`);
+    const art = plate.locator('img[src*="/icons/condition/charmed"]').first();
+    await eventually(() => art.count(), { label: "the charm's painting on the plate" });
+    const artWidth = await art.evaluate((node) => node.parentElement.getBoundingClientRect().width);
+    check(artWidth >= 40, `the charm's painting is shown large (${artWidth}px)`);
+    const plateBox = await plate.boundingBox();
+    const windowSize = page.viewportSize();
+    check(
+      plateBox && windowSize && plateBox.x >= 0 && plateBox.y >= 0 && plateBox.x + plateBox.width <= windowSize.width && plateBox.y + plateBox.height <= windowSize.height,
+      `the plate sits whole inside the window (${JSON.stringify(plateBox)})`,
+    );
+    await untilStill(page);
+    await t.shot("condition-plate");
+    await page.mouse.move(0, 0);
 
     // The initiative rail says it in words and opens the DM's order, where
     // each row wears its side down its edge.

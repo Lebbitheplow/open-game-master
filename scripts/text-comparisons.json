@@ -727,6 +727,7 @@
     "lib/battlemap/condition-glyphs.ts#str-key": [["key",2,"condition labels (engine vocabulary)"]],
     "lib/battlemap/condition-glyphs.ts#toLowerCase": [["key",1,"condition labels (engine vocabulary)"]],
     "lib/battlemap/condition-notes.ts#\\b": [["key",1,"condition labels and engine source words"]],
+    "lib/battlemap/condition-rules.ts#str-key": [["key",1,"condition stage-row ids (engine vocabulary)"]],
     "lib/battlemap/condition-notes.ts#re-word": [["key",1,"condition labels (engine vocabulary)"]],
     "lib/battlemap/condition-notes.ts#str-eq": [["key",1,"condition labels (engine vocabulary)"]],
     "lib/battlemap/condition-notes.ts#str-key": [["key",1,"condition labels (engine vocabulary)"]],
