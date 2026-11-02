@@ -2,6 +2,7 @@ import { z } from "zod";
 import { conditionMetaSchema, type ConditionMetaMap } from "@/lib/schemas/condition-meta";
 import { describeDiceScript, diceScriptSchema, type DiceScript } from "@/lib/dice-script-logic";
 import { textKey } from "@/lib/language/text-logic";
+import { GENDERS } from "@/lib/gender";
 
 // A prepared fight's set-up (issue 685): the moment a test of it was saved
 // to start from, so the next test, a coding agent's bench or #570's scorer
@@ -53,6 +54,12 @@ const setupFoeSchema = z.object({
   monster: z.string().trim().min(1).max(80).optional(),
   nth: z.number().int().min(0).max(SETUP_LIMITS.foes - 1).optional(),
   name: z.string().trim().min(1).max(SETUP_LIMITS.name),
+  // Who the foe is (src/lib/actor-sex-logic.ts): a foe told no gender takes
+  // a pick from its own row id, and a test's rows are new each time, so the
+  // moment keeps the face and the 3D board's model it had. Set-ups saved
+  // before this carry neither, and their foes take a pick as they arrive.
+  gender: z.enum(GENDERS).optional(),
+  race: z.string().trim().max(40).optional(),
   hp: z.number().int().min(0).max(5000),
   maxHp: z.number().int().min(1).max(5000),
   status: z.enum(["alive", "dead", "fled"]),

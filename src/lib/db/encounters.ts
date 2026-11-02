@@ -715,6 +715,15 @@ export function patchEnemyConditions(
 }
 
 // A fresh initiative count, for a DM's reset of the order.
+// Who a foe is, laid back from a saved fight set-up (src/lib/workshop/
+// fight-setup.ts): a field left undefined stays as the row has it.
+export function setEnemyLook(enemyId: string, look: { gender?: Gender; race?: string }) {
+  keepRow("encounter_enemies", enemyId);
+  getDatabase()
+    .prepare(`UPDATE encounter_enemies SET gender = COALESCE(?, gender), race = COALESCE(?, race), updated_at = ? WHERE id = ?`)
+    .run(look.gender ?? null, look.race ?? null, nowIso(), enemyId);
+}
+
 export function setEnemyInitiative(enemyId: string, initiative: number) {
   keepRow("encounter_enemies", enemyId);
   getDatabase()

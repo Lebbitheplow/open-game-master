@@ -7,6 +7,7 @@ import {
   patchEnemyConditions,
   patchEnemyHp,
   setEnemyInitiative,
+  setEnemyLook,
   type Encounter,
 } from "@/lib/db/encounters";
 import {
@@ -97,6 +98,8 @@ export function captureFightSetup(test: Campaign, party: SetupParty): Outcome<{ 
       slot,
       ...(kind ? { monster: kind.monster.slice(0, 80), nth: kind.nth } : {}),
       name: enemy.displayName.slice(0, 60),
+      ...(enemy.gender ? { gender: enemy.gender } : {}),
+      ...(enemy.race ? { race: enemy.race.slice(0, 40) } : {}),
       hp: Math.max(0, enemy.currentHp),
       maxHp: Math.max(1, enemy.maxHp),
       status: enemy.status,
@@ -249,6 +252,7 @@ export function layFightSetup(campaign: Campaign, template: EncounterTemplate, s
   };
 
   for (const { foe, enemy } of placed) {
+    if (foe.gender !== undefined || foe.race !== undefined) setEnemyLook(enemy.id, { gender: foe.gender, race: foe.race });
     if (foe.status !== "alive") {
       // Down or gone when the moment was saved: out of the fight from its
       // start, its token with it.
