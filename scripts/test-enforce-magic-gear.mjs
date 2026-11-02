@@ -318,6 +318,29 @@ await test("the GAME STATE line for a magic item says what the engine applies, i
   assert.equal(magicItemLine({ name: "Ring of Spell Storing", qty: 1, slug: "homebrew:ring" }), null);
 });
 
+await test("use_item never uses up a magic item the table holds, and asks attunement before its magic (SRD 5.1, Attunement): a Prayer Mat, a Ring of Spell Storing and an Ioun Stone stay in the pack", async () => {
+  const use = (item) => world.invoke("use_item", { characterId: hero.id, item });
+  // A Prayer Mat and an Ioun Stone carry no durable word in their names, and
+  // use_item took them out of the pack as if drunk.
+  carry([{ name: "Prayer Mat", qty: 1 }, { name: "Ring of Spell Storing", qty: 1, equipped: true }, { name: "Ioun Stone of Protection", qty: 1, equipped: true }]);
+  for (const name of ["Prayer Mat", "Ring of Spell Storing", "Ioun Stone of Protection"]) {
+    const out = await use(name);
+    assert.equal(out.ok, false, name);
+    assert.match(out.error, /works only for someone attuned to it/, name);
+  }
+  carry([
+    { name: "Prayer Mat", qty: 1, attuned: true },
+    { name: "Ring of Spell Storing", qty: 1, equipped: true, attuned: true },
+    { name: "Ioun Stone of Protection", qty: 1, equipped: true, attuned: true },
+  ]);
+  for (const name of ["Prayer Mat", "Ring of Spell Storing", "Ioun Stone of Protection"]) {
+    const out = await use(name);
+    assert.equal(out.ok, false, name);
+    assert.match(out.error, /kept, not consumed/, name);
+  }
+  assert.deepEqual(sheet().equipment.map((item) => [item.name, item.qty]), [["Prayer Mat", 1], ["Ring of Spell Storing", 1], ["Ioun Stone of Protection", 1]]);
+});
+
 await test("a magic item's charges and its pending attunement are optional fields: an old row with neither still loads", () => {
   carry([{ name: "Rope", qty: 1 }]);
   assert.deepEqual(sheet().equipment.map((item) => item.name), ["Rope"]);

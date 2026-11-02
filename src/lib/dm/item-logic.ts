@@ -3,7 +3,7 @@ import { matchArmor } from "@/lib/srd/armor";
 import { matchWeapon } from "@/lib/srd/weapons";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { hasItemTag, itemRow, itemTags, type TaggedItem } from "@/lib/srd/item-tags";
-import { magicItemNamed } from "@/lib/srd/magic-items";
+import { magicItemNamed, matchMagicItem } from "@/lib/srd/magic-items";
 import { lineNamed, linesNamed, magicItemBonus } from "@/lib/srd/item-row";
 import type { ItemTag } from "@/lib/schemas/item-tags";
 import { compositeGearNamed } from "@/lib/srd/magic-gear";
@@ -46,8 +46,11 @@ export function carriedItemsMatching(equipment: EquipmentItem[], term: string): 
 // consumable, by what the item is (src/lib/srd/item-tags.ts). Weapons are
 // wielded through pc_attack, armor is worn, and a durable magic item keeps
 // its place in the pack; ammunition and thrown weapons are spent by the
-// attacks that use them, never here.
-export function itemUseProblem(item: TaggedItem): ToolError | null {
+// attacks that use them, never here. So does every magic item the table
+// holds that its tags do not call consumable: a Prayer Mat or an Ioun Stone
+// has no durable word in its name, and use_item took one out of the pack as
+// if drunk (its charges and its spells are item-use.ts's, asked before this).
+export function itemUseProblem(item: TaggedItem & { attuned?: boolean }): ToolError | null {
   const tags = itemTags(item);
   if (tags.includes("kept")) {
     return { error: tags.includes("water")
@@ -70,7 +73,13 @@ export function itemUseProblem(item: TaggedItem): ToolError | null {
   if (matchArmor(item)) {
     return { error: "it is armor, worn rather than used up.", retry: true };
   }
-  if (tags.includes("durable")) {
+  const magic = item.identified === false ? null : matchMagicItem(item);
+  // SRD 5.1, Attunement: without it a creature gains only an item's
+  // nonmagical benefits.
+  if (magic?.requiresAttunement && !item.attuned) {
+    return { error: "it is kept, not consumed, and its magic works only for someone attuned to it, which takes a short rest with the item. Narrate the attempt without use_item.", refused: "rules" };
+  }
+  if (tags.includes("durable") || magic) {
     return { error: "it is kept, not consumed: a wand or staff spends charges on a cast, and worn items work while worn. Narrate its use without use_item.", retry: true };
   }
   return null;
