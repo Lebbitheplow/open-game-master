@@ -27,7 +27,8 @@ import { summonAttacksPerTurn } from "@/lib/dm/summon-rules";
 import { findBeastForm } from "@/lib/srd/beast-forms";
 import { formSees } from "@/lib/srd/form-sees";
 import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
-import { beginHeldTurnOf } from "@/lib/dm/held-turn";
+import { beginHeldTurnOf, releasesReadiedOffTurn, turnHeldForEnemies } from "@/lib/dm/held-turn";
+import { getSheetById } from "@/lib/db/sheets";
 
 // The combatant the initiative pointer is currently on, or null out of
 // combat and while initiative is still being rolled.
@@ -55,6 +56,14 @@ export function budgetFor(
   shape: number | TurnShape = 0,
 ): TurnBudget | null {
   if (!encounter || currentCombatantId(encounter) !== ownerId) {
+    return null;
+  }
+  // A turn held while an enemy before it is still to act has not begun: no
+  // budget, so what the character does then is a reaction (a readied
+  // release, Giant Killer), and their turn's own actions are refused
+  // (held-turn.ts heldTurnRefusal).
+  const owner = getSheetById(ownerId);
+  if (turnHeldForEnemies(encounter, ownerId) || (owner && releasesReadiedOffTurn(encounter, owner))) {
     return null;
   }
   // A character acting on a turn held for the enemies before it: their turn

@@ -32,6 +32,7 @@ import { tilesApart } from "@/lib/dm/board-reach";
 
 import { spendAction } from "@/lib/dm/action-budget";
 import { canAct } from "@/lib/dm/can-act";
+import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { readiedReleaseFor } from "@/lib/dm/readied-release";
 import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { applyEnemyDamage, publishEncounter, resolveEnemyRef } from "@/lib/dm/enemy-damage";
@@ -79,6 +80,10 @@ export function priceTheAction(
   const able = canAct({ sheet, encounter, kind: "action" });
   if (!able.ok) {
     return toolError(able);
+  }
+  const heldOff = heldTurnRefusal(encounter, sheet);
+  if (heldOff) {
+    return heldOff;
   }
   const fight = encounter && (encounter.kind ?? "fight") === "fight" ? encounter : null;
   const budget = fight ? budgetFor(fight, sheet.id, attacksAllowedFor(sheet), conditionTurnShape(sheet.conditions)) : null;

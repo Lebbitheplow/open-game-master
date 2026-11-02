@@ -41,6 +41,7 @@ import { sizeForRace } from "@/lib/srd";
 import { proneCharge } from "@/lib/battlemap/board-move";
 import { refuseDuringBreak } from "@/lib/dm/table-break";
 import { swallowWalk } from "@/lib/dm/swallow";
+import { beginHeldTurnOf, enemiesAhead, heldTurnLine } from "@/lib/dm/held-turn";
 
 export const runtime = "nodejs";
 
@@ -139,6 +140,15 @@ export async function POST(
   }
 
   const floor = getFloor(campaignId);
+  // A turn held for the enemies before it has not begun until they have
+  // acted (src/lib/dm/held-turn.ts): the walk waits for it, as an action
+  // does, and once nothing is still to act it begins the turn.
+  if (!readied && encounter.legendary.turnStart === sheet.id) {
+    const ahead = enemiesAhead(encounter, sheet.id);
+    if (ahead.length || floor.mode === "hold") {
+      return Response.json({ error: heldTurnLine(sheet.name, ahead) }, { status: 409 });
+    }
+  }
   if (floor.mode === "initiative") {
     const current = encounter.orderReady ? encounter.order[encounter.turnIndex] : undefined;
     if (!readied && (!current || current.kind !== "pc" || current.characterId !== sheet.id)) {
@@ -149,6 +159,9 @@ export async function POST(
     }
   } else if (floor.mode !== "open") {
     return Response.json({ error: "You cannot move right now." }, { status: 409 });
+  }
+  if (!readied) {
+    beginHeldTurnOf(encounter, sheet.id);
   }
 
   const raw = await request.json().catch(() => ({}));

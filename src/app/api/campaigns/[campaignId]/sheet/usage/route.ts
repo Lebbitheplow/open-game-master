@@ -10,6 +10,7 @@ import { publishPersisted } from "@/lib/events";
 import { spendAction } from "@/lib/dm/action-budget";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import { canAct } from "@/lib/dm/can-act";
+import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { dominatedRefusal } from "@/lib/dm/companion-command";
 import { recordManualTicks } from "@/lib/dm/manual-ticks";
 import { attunementRefusal, gearChanges, gearPatch, usageLowers, usageSpendsHitDice } from "@/lib/dm/usage-rules";
@@ -217,6 +218,10 @@ export async function POST(
       if (!able.ok) {
         return refuse(able.error);
       }
+      const heldOff = heldTurnRefusal(encounter, sheet);
+      if (heldOff) {
+        return refuse(heldOff.error);
+      }
       const budget = budgetFor(encounter, sheet.id, attacksAllowedFor(sheet));
       if (!budget) {
         return refuse(
@@ -235,6 +240,10 @@ export async function POST(
       const able = canAct({ sheet, encounter, kind: "free" });
       if (!able.ok) {
         return refuse(able.error);
+      }
+      const heldOff = heldTurnRefusal(encounter, sheet);
+      if (heldOff) {
+        return refuse(heldOff.error);
       }
       let budget = shieldBudget?.ok ? shieldBudget.budget : budgetFor(encounter, sheet.id, attacksAllowedFor(sheet));
       if (!budget) {

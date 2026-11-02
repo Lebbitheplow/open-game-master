@@ -307,6 +307,9 @@ await test(
     // Order: brawler, the enemy, then the other two.
     assert.equal(kit.endTurn(brawler.userId), true);
     const dodger = world.sheet(kit.current().characterId);
+    // The enemy between them is due first: the dodger's turn waits for it
+    // (held-turn.ts), so the lead hands the turn on before the Dodge.
+    kit.handOnEnemies();
     assert.equal((await act(dodger, "dodge")).ok, true);
     while (world.encounter().round === 1) {
       assert.equal(kit.endTurn(kit.current().userId), true);

@@ -15,6 +15,7 @@ import { counterSpend, kiSpend } from "@/lib/dm/bonus-actions";
 import { ACTIONS, priceAction, type Price } from "@/lib/dm/action-price";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import { canAct, canEnemyAct } from "@/lib/dm/can-act";
+import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { resolveEnemyRef } from "@/lib/dm/enemy-damage";
 import { characterEscape } from "@/lib/dm/grapple";
 import { handleEnemyTakeAction } from "@/lib/dm/enemy-actions";
@@ -373,6 +374,10 @@ export function handleTakeAction(
     const allowed = canAct({ sheet, encounter, kind: args.bonus ? "bonus" : "action" });
     if (!allowed.ok) {
       return toolError(allowed);
+    }
+    const heldOff = heldTurnRefusal(encounter, sheet);
+    if (heldOff) {
+      return heldOff;
     }
   }
 

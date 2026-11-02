@@ -21,6 +21,7 @@ import { tokenFootprint } from "@/lib/dm/board-reach";
 import type { TurnBudget } from "@/lib/dm/action-budget";
 import { hasFastHands } from "@/lib/dm/bonus-routes";
 import { canAct } from "@/lib/dm/can-act";
+import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { resolveEnemyRef, unknownEnemyRef } from "@/lib/dm/enemy-damage";
 import { gearKindOf, holdIfFree, inHand, spendInteraction } from "@/lib/dm/gear-hands";
 import { lineNamed, linesNamed } from "@/lib/srd/item-row";
@@ -157,6 +158,10 @@ export function pickUp(
     const able = canAct({ sheet, encounter, kind: "free" });
     if (!able.ok) {
       return toolError(able);
+    }
+    const heldOff = heldTurnRefusal(encounter, sheet);
+    if (heldOff) {
+      return heldOff;
     }
     const own = ownBudget(encounter, sheet);
     if (!own) {

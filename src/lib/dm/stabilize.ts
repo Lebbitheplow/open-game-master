@@ -26,6 +26,7 @@ import type { CharacterSheet, EquipmentItem, FullPatchSheetInput } from "@/lib/s
 import { allSpellNames } from "@/lib/srd/spell-lists";
 import { spendAction } from "@/lib/dm/action-budget";
 import { canAct } from "@/lib/dm/can-act";
+import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { rollStableTimer } from "@/lib/dm/death";
 import { tableNote } from "@/lib/dm/between-io";
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
@@ -157,6 +158,10 @@ export function handleStabilize(
     const able = canAct({ sheet: healer, encounter, kind: quick ? "bonus" : "action" });
     if (!able.ok) {
       return toolError(able);
+    }
+    const heldOff = heldTurnRefusal(encounter, healer);
+    if (heldOff) {
+      return heldOff;
     }
   }
   const far = outOfTouch(encounter?.id, healer, sheet);
@@ -357,6 +362,10 @@ export function healerKitUse(
     const able = canAct({ sheet: healer, encounter, kind: "action" });
     if (!able.ok) {
       return toolError(able);
+    }
+    const heldOff = heldTurnRefusal(encounter, healer);
+    if (heldOff) {
+      return heldOff;
     }
     const far = outOfTouch(encounter.id, healer, target);
     if (far && healer.id !== target.id) {

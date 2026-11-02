@@ -66,6 +66,7 @@ import type { OneCasting } from "@/lib/dm/action-parts-logic";
 import { advanceClock, recordShapeEnd } from "@/lib/db/clock";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { canAct } from "@/lib/dm/can-act";
+import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { spendAction } from "@/lib/dm/action-budget";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
@@ -1622,6 +1623,10 @@ function dmMutation(
         const able = fighting ? canAct({ sheet, encounter: fighting, kind: "bonus" }) : null;
         if (able && !able.ok) {
           return { result: toolError(able) };
+        }
+        const heldOff = heldTurnRefusal(fighting, sheet);
+        if (heldOff) {
+          return { result: heldOff };
         }
         const budget = fighting ? budgetFor(fighting, sheet.id, attacksAllowedFor(sheet), conditionTurnShape(sheet.conditions)) : null;
         const bonus = budget ? spendAction(budget, "bonus", "Combat Wild Shape", sheet.name) : null;

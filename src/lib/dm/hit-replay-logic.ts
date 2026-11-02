@@ -14,11 +14,12 @@
 //
 // Between two hits, and since the last, anything else may have changed them:
 // an area spell, a breath, healing, temporary hit points, the death saves
-// they rolled. That is a gap, read off where one hit left them and where the
-// next found them, and carried onto the corrected fight as the change it
-// made (carryGap). The corrected blows then take back only their own part:
-// replaying the hits alone from where the first found them erased the fire
-// and the healing between them.
+// they rolled. That is a gap, and each change in it is carried onto the
+// corrected fight as the change it made (carryGap), in the order the changes
+// happened (carryGaps): healing that found them whole now does nothing to
+// a blow that lands after it. The corrected blows then take back only their
+// own part: replaying the hits alone from where the first found them erased
+// the fire and the healing between them.
 //
 // Pure.
 import type { Advantage } from "@/lib/dice";
@@ -239,6 +240,44 @@ export function carryGap<W extends { beastHp: number }>(
     next = up(next) ? { ...next, currentHp: Math.min(maxHp, next.currentHp + healed) } : { ...next, currentHp: Math.min(maxHp, healed), track: null };
   }
   return { next, dealt, pastZero };
+}
+
+// A gap carried change by change, in the order the changes happened: healing
+// that found them whole in the corrected fight does nothing, and damage after
+// it still lands, where the gap read as one change (where the hit left them
+// against where the next found them) let a heal and a blow cancel out. The
+// changes are those the audit kept, each read off its own pre-image, then
+// whatever the audit did not keep, read as one change from where they leave
+// the fight as it was (`kept`) to where the next hit found them (`to`).
+// Returns each change's damage, as each source asks its own concentration
+// save.
+export function carryGaps<W extends { beastHp: number }>(
+  state: Standing<W>,
+  gap: { kept: Standing<W>; to: Standing<W>; changes: Gap<W>[] },
+  maxHp: number,
+): { next: Standing<W>; dealt: number[] } {
+  let next = state;
+  let left = gap.kept;
+  const dealt: number[] = [];
+  for (const change of gap.changes) {
+    if (sameStanding(change.from, change.to) && change.pastZero <= 0) {
+      continue;
+    }
+    const out = carryGap(next, change, maxHp);
+    next = out.next;
+    left = carryGap(left, change, maxHp).next;
+    if (out.dealt > 0) {
+      dealt.push(out.dealt);
+    }
+  }
+  if (!sameStanding(left, gap.to)) {
+    const out = carryGap(next, { from: left, to: gap.to, pastZero: 0 }, maxHp);
+    next = out.next;
+    if (out.dealt > 0) {
+      dealt.push(out.dealt);
+    }
+  }
+  return { next, dealt };
 }
 
 // The track of a character still at 0 moved as theirs did in a gap: the

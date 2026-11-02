@@ -18,6 +18,7 @@ import { computeSheetDerived } from "@/lib/srd";
 import { authoredSpendFor, gateHolds, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
 import type { SpendAction, SpendDoes } from "@/lib/srd/authored-effects-types";
 import { canAct } from "@/lib/dm/can-act";
+import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { spendAction } from "@/lib/dm/action-budget";
 import { attacksAllowedFor, budgetFor, prepareReaction, storeBudget } from "@/lib/dm/turn-budget";
@@ -92,6 +93,10 @@ function prepareCost(
   const able = canAct({ sheet, encounter, kind: cost });
   if (!able.ok) {
     return toolError(able);
+  }
+  const heldOff = heldTurnRefusal(encounter, sheet);
+  if (heldOff) {
+    return heldOff;
   }
   if (!budget) {
     return { commit: () => ({}) };

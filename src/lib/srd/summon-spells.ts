@@ -187,9 +187,20 @@ export function summonSlotProblem(spell: string): ToolError | null {
 
 // Animate Dead and Create Undead may be cast to hold the undead already made
 // for another day rather than to make more (cast_buff variant "reassert
-// control", src/lib/dm/summon-cast.ts).
+// control", src/lib/dm/summon-cast.ts), the caster naming which of them
+// after it ("reassert control ghast"; SRD 5.1: "up to" so many "creatures
+// you have animated"). The kind named, "" for none, or null when the variant
+// is no reassert.
+export function reassertKind(spell: SummonSpell, variant: string | undefined): string | null {
+  const said = words(variant ?? "");
+  if (!spell.reassert || said.length < 2 || textKey(said.slice(0, 2).join(" ")) !== "reassert control") {
+    return null;
+  }
+  return said.slice(2).join(" ");
+}
+
 export function reassertsControl(spell: SummonSpell, variant: string | undefined): boolean {
-  return Boolean(spell.reassert) && textKey(variant ?? "") === "reassert control";
+  return reassertKind(spell, variant) !== null;
 }
 
 export function summonSpellFor(spell: string): SummonSpell | null {
@@ -301,16 +312,26 @@ export function summonPlan(
 // their place in `held` (their forms, oldest first). Animate Dead holds four
 // of any kind, two more a slot level above 3rd. Create Undead holds by kind,
 // as its slot prints them, one option per casting: from an 8th level slot
-// "five ghouls or two ghasts or wights", whichever holds more of them; from a
-// 6th, three ghouls. Counted alike, an 8th level casting held five wights.
-export function reassertHold(spell: SummonSpell, slotLevel: number, held: readonly string[]): number[] {
-  const places = held.map((_, index) => index);
+// "five ghouls or two ghasts or wights"; from a 6th, three ghouls. Counted
+// alike, an 8th level casting held five wights. The kind the caster names
+// (reassertKind) is held first, and picks Create Undead's option; with none
+// named, the option holding more of them. A kind they have none of holds
+// nothing.
+export function reassertHold(spell: SummonSpell, slotLevel: number, held: readonly string[], kind = ""): number[] {
+  const named = (index: number) => textKey(held[index]) === textKey(kind);
+  const places = held.map((_, index) => index).sort((a, b) => Number(named(b)) - Number(named(a)));
+  if (kind && !places.some(named)) {
+    return [];
+  }
   if (!spell.bySlot || !spell.options) {
     return places.slice(0, (spell.reassert ?? 0) + (spell.reassertPerSlot ?? 0) * Math.max(0, slotLevel - spell.level));
   }
   const row = slotRow(spell, slotLevel);
   let best: number[] = [];
   for (const option of spell.options) {
+    if (kind && !option.some((form) => textKey(form) === textKey(kind))) {
+      continue;
+    }
     const most = Math.max(0, ...option.map((form) => row[form] ?? 0));
     const kept = places.filter((index) => option.some((form) => textKey(form) === textKey(held[index]))).slice(0, most);
     if (kept.length > best.length) {

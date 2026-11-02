@@ -35,7 +35,7 @@ import { hurtEnemy } from "@/lib/dm/spell-aura";
 import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import { rollAgainst } from "@/lib/roll-labels";
 import { textKey } from "@/lib/language/text-logic";
-import { withActor } from "@/lib/dm/acting-party";
+import { withActor, withTurnOf } from "@/lib/dm/acting-party";
 
 type TurnEndHook = (campaign: Campaign, enemy: EncounterEnemy, meta: ConditionMeta) => string | null;
 
@@ -169,5 +169,5 @@ export function spellTurnEndHook(condition: string): TurnEndHook | null {
     return null;
   }
   return (campaign, enemy, meta) =>
-    withActor(meta.source ? { kind: getSheetById(meta.source) ? "sheet" : "enemy", ref: meta.source } : null, () => hook(campaign, enemy, meta));
+    withTurnOf(enemy.id, () => withActor(meta.source ? { kind: getSheetById(meta.source) ? "sheet" : "enemy", ref: meta.source } : null, () => hook(campaign, enemy, meta)));
 }

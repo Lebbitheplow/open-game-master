@@ -25,13 +25,17 @@
 
 import { AsyncLocalStorage } from "node:async_hooks";
 import { getCampaignById, type Campaign } from "@/lib/db/campaigns";
-import { getActiveEncounter, saveEncounter, turnKey, type Encounter } from "@/lib/db/encounters";
+import { getActiveEncounter, listEnemies, orderEntryId, saveEncounter, turnKey, type Encounter } from "@/lib/db/encounters";
+import { getDmTurn } from "@/lib/db/dm-turns";
 import { activePublicEncounter } from "@/lib/db/encounter-view";
 import { publishPersisted } from "@/lib/events";
 import { endTurnStartHolds } from "@/lib/dm/condition-tick";
 import { beginTurns } from "@/lib/dm/turn-end";
 import { lateFor } from "@/lib/dm/last-hit";
 import { VIGILANT_PREFIX } from "@/lib/srd/authored-effects-more";
+import { canEnemyAct } from "@/lib/dm/can-act";
+import { readiedHeld } from "@/lib/dm/readied-kinds";
+import type { ToolError } from "@/lib/dm/tool-errors";
 
 // The reactions a character's turn gives back: their own, and Vigilant
 // Defender's per-turn ones ("vigilant:<id>:<mover>").
@@ -78,6 +82,88 @@ export function beginHeldTurnOf(encounter: Encounter, id: string) {
   }
   startHeldTurn(campaign, encounter);
   saveEncounter(encounter);
+}
+
+// The enemies a held turn still waits on, by name: those the pass left due,
+// and those an AI reply was handed while that reply still plays, that can
+// still take their turn's action (canEnemyAct: not dead, fled, incapacitated
+// or surprised, and not acted this round). Moving and acting are both the
+// turn's (SRD 5.1, Your Turn: "On your turn, you can move a distance up to
+// your speed and take one action"), so until they have the move route
+// refuses the walk, the board lights no square, and the character's own
+// actions are refused (heldTurnRefusal). One that cannot act holds nobody,
+// nor does a reply that ended without its narration: the character's walk or
+// action begins the turn (beginHeldTurnOf). Empty when the turn is not held.
+export function enemiesAhead(encounter: Encounter, id: string): string[] {
+  if (encounter.legendary.turnStart !== id) {
+    return [];
+  }
+  const waiting = new Set(passEnemies(encounter));
+  return listEnemies(encounter.id)
+    .filter((enemy) => waiting.has(enemy.id) && canEnemyAct({ enemy, encounter, kind: "action" }).ok)
+    .map((enemy) => enemy.displayName);
+}
+
+// The enemies of the pass before the held turn: those it left due, and those
+// an AI reply was handed while that reply still plays.
+function passEnemies(encounter: Encounter): string[] {
+  const handoff = encounter.legendary.handoff;
+  const reply = handoff ? getDmTurn(handoff.turnId) : null;
+  const playing = Boolean(reply && (reply.status === "running" || reply.status === "awaiting_rolls"));
+  return [...(encounter.legendary.due ?? []), ...(playing && handoff ? handoff.enemyIds : [])];
+}
+
+// The character the pointer rests on, whose turn is held while an enemy
+// before them is still to act.
+export function turnHeldForEnemies(encounter: Encounter | null, id: string): boolean {
+  const entry = encounter?.orderReady ? encounter.order[encounter.turnIndex] : undefined;
+  return Boolean(encounter && entry && orderEntryId(entry) === id && enemiesAhead(encounter, id).length);
+}
+
+// What they readied on their turn before, released while the enemies of the
+// pass before their turn are taking theirs (their turn begins once the turn
+// is handed on or the reply is narrated): off their own turn, with their
+// reaction (SRD 5.1, Ready), also after the enemy whose act triggered it has
+// taken its action. The engine read the pointer and took a readied swing
+// released as the worm acted for the character's own Attack action, which
+// began their turn early and spent its attack.
+export function releasesReadiedOffTurn(encounter: Encounter | null, sheet: { id: string; conditions: string[]; conditionMeta?: unknown }): boolean {
+  const entry = encounter?.orderReady ? encounter.order[encounter.turnIndex] : undefined;
+  return Boolean(
+    encounter &&
+      entry &&
+      readiedHeld(sheet) &&
+      orderEntryId(entry) === sheet.id &&
+      encounter.legendary.turnStart === sheet.id &&
+      passEnemies(encounter).length,
+  );
+}
+
+// An action of the character's own turn (an attack, a spell, an action, an
+// item, a feature, a walk) while an enemy before them is still to act:
+// refused, so the order holds (SRD 5.1, Initiative), whoever asks (the AI,
+// the GM's console). It used to begin their turn at once, and the enemy was
+// skipped or played after them. A reaction, an opportunity attack and a
+// readied release are not their turn's, and pass.
+export function heldTurnRefusal(encounter: Encounter | null, sheet: { id: string; name: string; conditions: string[]; conditionMeta?: unknown }): ToolError | null {
+  if (!encounter || reacting.getStore() === sheet.id || readiedHeld(sheet) || !turnHeldForEnemies(encounter, sheet.id)) {
+    return null;
+  }
+  return { error: heldActionLine(sheet.name, enemiesAhead(encounter, sheet.id)), retry: true };
+}
+
+function heldActionLine(name: string, ahead: string[]): string {
+  const one = ahead.length === 1;
+  const who = one ? ahead[0] : `${ahead.slice(0, -1).join(", ")} and ${ahead[ahead.length - 1]}`;
+  return `${who} ${one ? "acts" : "act"} before ${name}: play ${one ? "its turn" : "their turns"} (enemy_attack / take_action with ${one ? "its" : "each one's"} enemyId) first, then resolve ${name}'s action. Nothing was spent.`;
+}
+
+// The refusal of a walk on a turn that has not begun.
+export function heldTurnLine(name: string, ahead: string[]): string {
+  const who = ahead.length > 1 ? `${ahead.slice(0, -1).join(", ")} and ${ahead[ahead.length - 1]}` : ahead[0];
+  return who
+    ? `${who} ${ahead.length > 1 ? "take their turns" : "takes its turn"} before ${name}'s: ${name} moves once their turn begins.`
+    : `The enemies before ${name} are taking their turns; ${name} moves once the GM hands the turn on.`;
 }
 
 // The enemies before the held character have acted: their turn begins.

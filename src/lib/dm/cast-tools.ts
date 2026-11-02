@@ -190,7 +190,7 @@ export const castBuffTool: ToolDef = {
         variant: {
           type: "string",
           description:
-            "A spell's choice, or the creature made ('wolf'). Enlarge or Reduce, Protection from Energy's damage type, Enhance Ability's effect, Fire Shield's warm or chill, a form; Animate Dead 'skeleton' or 'reassert control', Find Steed 'fey warhorse', Find Familiar 'fiend owl' (celestial when no kind is named), Animate Objects 'tiny'.",
+            "A spell's choice, or the creature made ('wolf'). Enlarge or Reduce, Protection from Energy's damage type, Enhance Ability's effect, Fire Shield's warm or chill, a form; Animate Dead 'skeleton' or 'reassert control zombie', Find Steed 'fey warhorse', Find Familiar 'fiend owl' (celestial when no kind is named), Animate Objects 'tiny'.",
         },
         count: {
           type: "integer",

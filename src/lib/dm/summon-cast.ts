@@ -13,7 +13,7 @@ import type { Campaign } from "@/lib/db/campaigns";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { computeSheetDerived, spellAttackFor } from "@/lib/srd";
 import { activeAuthored } from "@/lib/srd/authored-effects";
-import { reassertHold, reassertsControl, reassertWords, summonMixPlan, summonPlan, type SummonMixEntry, type SummonSpell } from "@/lib/srd/summon-spells";
+import { reassertHold, reassertKind, reassertsControl, reassertWords, summonMixPlan, summonPlan, type SummonMixEntry, type SummonSpell } from "@/lib/srd/summon-spells";
 import type { SummonForm } from "@/lib/srd/summon-forms";
 import { attackSummary } from "@/lib/srd/creature-attacks";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -202,11 +202,13 @@ function reassertControl(
   if (!held.length) {
     return { error: `${caster.name} has no creatures of ${spell.name} to reassert control over. Nothing was spent.`, refused: "rules" };
   }
-  // By kind where the spell's slot says so (summon-spells.ts reassertHold).
-  const kept = reassertHold(spell, slotLevel, held.map((sheet) => sheet.summon?.form ?? sheet.name)).map((index) => held[index]);
+  // By kind where the spell's slot says so, the kind the caster names first
+  // (summon-spells.ts reassertHold).
+  const kind = reassertKind(spell, args.variant) ?? "";
+  const kept = reassertHold(spell, slotLevel, held.map((sheet) => sheet.summon?.form ?? sheet.name), kind).map((index) => held[index]);
   if (!kept.length) {
     return {
-      error: `${spell.name} from a level ${slotLevel} slot reasserts control over ${reassertWords(spell, slotLevel)}, and ${caster.name}'s are ${held.map((sheet) => sheet.summon?.form ?? sheet.name).join(", ")}. Nothing was spent.`,
+      error: `${spell.name} from a level ${slotLevel} slot reasserts control over ${reassertWords(spell, slotLevel)}, and ${caster.name}'s are ${held.map((sheet) => sheet.summon?.form ?? sheet.name).join(", ")}${kind ? `, none of them a ${kind}` : ""}. Nothing was spent.`,
       refused: "rules",
     };
   }

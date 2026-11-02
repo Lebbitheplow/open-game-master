@@ -44,6 +44,7 @@ import { castShares } from "@/lib/srd/spell-mechanics";
 import { describeCastingTime, type SpellFacts } from "@/lib/srd/spell-facts";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { canAct } from "@/lib/dm/can-act";
+import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { incapacitatedBy } from "@/lib/dm/condition-logic";
 import { attacksAllowedFor, budgetFor, markReactionUsed, storeBudget } from "@/lib/dm/turn-budget";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
@@ -375,6 +376,11 @@ export function castSpell(
     const able = canAct({ sheet, encounter: completing ? null : encounter, kind: "cast" });
     if (!able.ok) {
       return toolError(able);
+    }
+    // A turn held while an enemy before it is still to act (held-turn.ts).
+    const heldOff = completing ? null : heldTurnRefusal(encounter, sheet);
+    if (heldOff) {
+      return heldOff;
     }
   }
   const extras = subclassExtrasForTable(campaign.id, sheet.userId);

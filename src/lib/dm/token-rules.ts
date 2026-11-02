@@ -19,6 +19,7 @@ import { describeDistances } from "@/lib/battlemap/serialize";
 import { standUpTiles } from "@/lib/srd/authored-effects-more";
 import { budgetApplies } from "@/lib/dm/action-budget";
 import { canAct } from "@/lib/dm/can-act";
+import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { removeConditions } from "@/lib/dm/condition-logic";
 import { awayFromFear, fearSourceAt } from "@/lib/dm/enemy-approach";
 import { abilityNames } from "@/lib/dm/monster-abilities";
@@ -189,6 +190,10 @@ export function walkCharacter(
     const allowed = canAct({ sheet, encounter, kind: "move" });
     if (!allowed.ok) {
       return toolError(allowed);
+    }
+    const heldOff = heldTurnRefusal(encounter, sheet);
+    if (heldOff) {
+      return heldOff;
     }
   }
   if (destination.x < 0 || destination.y < 0 || destination.x >= map.width || destination.y >= map.height) {

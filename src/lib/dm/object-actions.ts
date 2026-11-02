@@ -27,6 +27,7 @@ import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { spendAction } from "@/lib/dm/action-budget";
 import { tilesBetween } from "@/lib/dm/attack-spatial";
 import { canAct } from "@/lib/dm/can-act";
+import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { rollCharacterCheck } from "@/lib/dm/contest-roll";
 import { findCarriedItem, itemUseProblem } from "@/lib/dm/item-logic";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
@@ -70,6 +71,10 @@ export function prepareUseItem(
     const allowed = canAct({ sheet, encounter, kind: "action" });
     if (!allowed.ok) {
       return toolError(allowed);
+    }
+    const heldOff = heldTurnRefusal(encounter, sheet);
+    if (heldOff) {
+      return heldOff;
     }
   }
   if (target.id !== sheet.id && encounter) {
