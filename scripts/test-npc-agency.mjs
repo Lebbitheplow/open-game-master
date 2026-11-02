@@ -146,6 +146,33 @@ test("a personality saved from the skewed hash moves onto the corrected spread, 
   assert.deepEqual(repairSkewedPersonality(skewed(name, "friendly", "fence"), [{ name: "New Name", trait: "fence" }, { name, trait: "fence" }], "friendly"), derivePersonality(name, "friendly", "fence"));
 });
 
+test("a hand-set personality that play could not have reached from the skewed spread stays as it was set (issue 732)", () => {
+  // An author's timid, idle sort whose drive, diligence and boldness happen
+  // to read like the old spread of their name, but whose composure sits
+  // above it: play only ever lowers composure (driftPersonality), so this
+  // was set by hand, not seeded and drifted.
+  for (const name of SKEWED_NAMES) {
+    const old = skewed(name, "friendly", "");
+    const authored = { ...old, composure: clampAxis(old.composure + 2) };
+    assert.equal(repairSkewedPersonality(authored, [{ name, trait: "" }], "friendly"), null, name);
+  }
+});
+
+test("a personality on a corrected spread is never moved again, whichever name it answers to (issue 732)", () => {
+  // One name whose corrected spread puts drive, diligence, boldness and
+  // composure at -1, and a second name the same person answers to whose old
+  // spread reads the same there: the second name must not move a
+  // personality the first one already put right.
+  const first = "Agatha Thornton";
+  const second = "Garaele Graywind";
+  const low = (personality) => ["drive", "diligence", "boldness", "composure"].every((axis) => personality[axis] === -1);
+  const settled = derivePersonality(first, "friendly", "");
+  assert.ok(low(settled), "the first name's corrected spread sits at -1");
+  assert.ok(low(skewed(second, "friendly", "")), "the second name's old spread sits at -1 too");
+  assert.notDeepEqual(skewed(second, "friendly", ""), derivePersonality(second, "friendly", ""), "the old shift skewed the second name");
+  assert.equal(repairSkewedPersonality(settled, [{ name: first, trait: "" }, { name: second, trait: "" }], "friendly"), null);
+});
+
 test("drift moves the right axes and clamps", () => {
   const base = { drive: 0, diligence: 0, boldness: 0, warmth: 3, empathy: 0, composure: -3 };
   const warmed = driftPersonality(base, "persuade", "up");
