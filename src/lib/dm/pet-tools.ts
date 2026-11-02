@@ -65,7 +65,7 @@ export const petTools: ToolDef[] = [
           creatureType: {
             type: "string",
             enum: ["celestial", "fey", "fiend"],
-            description: "kind=familiar only: what the familiar is instead of a beast, the caster's choice. Default: celestial.",
+            description: "kind=familiar only, instead of beast. Default: celestial.",
           },
           essence: {
             type: "string",

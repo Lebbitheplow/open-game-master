@@ -183,7 +183,7 @@ export const castBuffTool: ToolDef = {
         variant: {
           type: "string",
           description:
-            "For a spell with a choice: the chosen option, or the beast or creature made ('wolf', 'skeleton'). Enlarge/Reduce, Protection from Energy's damage type, Enhance Ability's effect, Fire Shield's warm or chill, a form, or a summoning's creature (Animate Dead 'skeleton' or 'reassert control', Find Steed 'warhorse' or 'fey warhorse', Animate Objects 'tiny').",
+            "A spell's choice, or the creature made ('wolf'). Enlarge or Reduce, Protection from Energy's damage type, Enhance Ability's effect, Fire Shield's warm or chill, a form; Animate Dead 'skeleton' or 'reassert control', Find Steed 'fey warhorse', Find Familiar 'fiend owl' (celestial when no kind is named), Animate Objects 'tiny'.",
         },
         count: {
           type: "integer",
@@ -191,24 +191,23 @@ export const castBuffTool: ToolDef = {
           maximum: 40,
           description: "A summoning spell only: fewer creatures than the slot allows. Default: the most.",
         },
+        // The bounds are the handler's (cast-buff.ts), which says them when a
+        // call passes them and holds the forms to the slot's budget; in every
+        // fight call's tools they only spent the model's window. So is `kind`
+        // (the console's and the Hand's), as the model names a kind in
+        // variant, which is what the handler makes of the two.
         mix: {
           type: "array",
-          maxItems: 6,
           items: {
             type: "object",
-            properties: { variant: { type: "string" }, count: { type: "integer", minimum: 1, maximum: 40 } },
+            properties: { variant: { type: "string" }, count: { type: "integer" } },
             required: ["variant", "count"],
           },
-          description: "Animate Dead or Animate Objects only, instead of variant: each target's own form and how many. For example [{variant:'skeleton',count:2},{variant:'zombie',count:1}]; the server holds them to the slot's budget.",
+          description: "Animate Dead or Animate Objects, instead of variant: each form and how many.",
         },
         ritual: {
           type: "boolean",
-          description: "A summoning ritual cast as one: 10 extra minutes, no slot spent. For Find Familiar, Unseen Servant or Phantom Steed.",
-        },
-        kind: {
-          type: "string",
-          enum: ["celestial", "fey", "fiend"],
-          description: "Find Steed or Find Familiar: the caster's choice of kind for the creature in variant. Default: celestial.",
+          description: "Cast as a ritual (Find Familiar, Unseen Servant, Phantom Steed): no slot.",
         },
         endSpell: {
           type: "string",

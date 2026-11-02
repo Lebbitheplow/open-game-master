@@ -63,15 +63,15 @@ export const legendaryTools: ToolDef[] = [
     function: {
       name: "legendary_action",
       description:
-        "Spend one of a legendary creature's legendary actions at the END of another creature's turn: one option per turn that ends, never two at once. The server checks the pool (it refills at the start of the creature's own turn), the cost and the turn. Make what it bought with the call its result's next names, or name targetCharacterId and the server plays an option aimed at one creature whole (an attack, Fling, Swallow, a drain).",
+        "Spend a legendary creature's legendary action at the END of another creature's turn: one option per turn that ends. The server checks the pool, the cost and the turn. With targetCharacterId it plays an option aimed at one creature whole; otherwise make the call its result names.",
       parameters: {
         type: "object",
         additionalProperties: false,
         properties: {
           enemyId: { type: "string", description: "Exact enemyId from GAME STATE." },
           action: { type: "string", description: "The legendary action's name as the stat block lists it." },
-          use: { type: "string", description: "Which way to play an option that offers more than one: Tentacle Attack or Fling. The first otherwise." },
-          targetCharacterId: { type: "string", description: "The one creature it acts on, a characterId or enemyId. The option is then played whole, nothing left to call." },
+          use: { type: "string", description: "Which of an option's ways to play it (Tentacle Attack or Fling). Default: the first." },
+          targetCharacterId: { type: "string", description: "The one creature it acts on (characterId or enemyId)." },
         },
         required: ["enemyId", "action"],
       },

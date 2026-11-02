@@ -261,6 +261,21 @@ await test("The GM console's cast_buff picks Find Steed's kind and Animate Dead'
   assert.equal(world.sheet(wren.id).pets[0].creatureType, "celestial");
 });
 
+await test("The storyteller names a summoning's kind in variant, which its cast_buff no longer spends a kind field on: 'fey warhorse' brings a fey steed", async () => {
+  const { castBuffTool } = await import("../src/lib/dm/cast-tools.ts");
+  const properties = castBuffTool.function.parameters.properties;
+  assert.equal(properties.kind, undefined, "the model's cast_buff still carries a kind field");
+  assert.match(properties.variant.description, /fey warhorse/);
+  const sheet = world.sheet(dain.id);
+  world.patch(dain.id, { spellcasting: { ...sheet.spellcasting, slots: Object.fromEntries(Object.entries(sheet.spellcasting.slots).map(([level, slot]) => [level, { ...slot, used: 0 }])) } });
+  const before = summonsOf(world.campaignId, dain.id, "Find Steed").length;
+  const fey = await world.invoke("cast_buff", { characterId: dain.id, spell: "Find Steed", level: 2, variant: "fey warhorse" });
+  assert.equal(fey.ok, true, fey.error);
+  const steed = summonsOf(world.campaignId, dain.id, "Find Steed").at(-1);
+  assert.ok(steed && summonsOf(world.campaignId, dain.id, "Find Steed").length >= before, "no steed");
+  assert.equal(sheetCreatureType(steed), "fey", "the kind named in variant");
+});
+
 await test("The console's Each target's form names its steppers for the spell, as the Hand's card does, not for the field's own label", async () => {
   // The browser pass (scenario 115) heard the group as "Each target's form
   // for Each target's form".

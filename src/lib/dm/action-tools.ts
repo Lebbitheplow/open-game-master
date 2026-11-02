@@ -135,7 +135,7 @@ export const actionTools: ToolDef[] = [
     function: {
       name: "use_reaction",
       description:
-        "Resolve a character spending their reaction on a feature or spell that answers someone else's turn; the server applies it. The server keeps every attack still open against each character (GAME STATE's open hits), so a reaction to a hit that already landed (Shield, Uncanny Dodge, Deflect Missiles, Cutting Words, Protection) re-resolves that attack and gives back what the rules give back. Also Slow Fall and Feather Fall (after a fall), Hellish Rebuke, and Counterspell (call it BEFORE the enemy's spell is resolved: a countered spell spends the enemy's action and is not cast). Subclass reactions resolve the same way (feature). Only the holder of a feature uses it, and a refusal spends nothing. Opportunity attacks are not taken here: on a battle map the server rolls them itself; off the map it resolves the swing. One reaction per round, refreshed at the start of their turn.",
+        "Resolve a character spending their reaction on a feature or spell that answers someone else's turn; the server applies it. The server keeps each character's open hits (GAME STATE), so a reaction to a hit that already landed (Shield, Uncanny Dodge, Deflect Missiles, Cutting Words, Protection) re-resolves that attack and gives back what the rules give back. Also Slow Fall and Feather Fall (after a fall), Hellish Rebuke, and Counterspell (call it BEFORE the enemy's spell is resolved: a countered spell spends the enemy's action and is not cast). Subclass reactions resolve the same way (feature). Only the holder of a feature uses it, and a refusal spends nothing. Opportunity attacks are not taken here: on a battle map the server rolls them itself; off the map it resolves the swing. One reaction per round, refreshed at the start of their turn.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -169,7 +169,7 @@ export const actionTools: ToolDef[] = [
           hit: {
             type: "string",
             description:
-              "The open hit it answers, by its hitId in GAME STATE. Needed only when the character has several open. Shield answers the hit named and every open hit on them after it.",
+              "The open hit it answers (its hitId in GAME STATE), when the character has several.",
           },
           x: { type: "integer", minimum: 0, description: "Skirmisher, Relentless Avenger only: the column of the square the character moves to." },
           y: { type: "integer", minimum: 0, description: "Skirmisher, Relentless Avenger only: the row of the square the character moves to." },

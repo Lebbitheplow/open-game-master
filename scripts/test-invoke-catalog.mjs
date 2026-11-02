@@ -501,6 +501,8 @@ const FOR_A_PERSON_ONLY = {
   dismiss_handout: ["handoutId"],
   show_handout: ["imagePath"],
   add_companion: ["background", "skills"],
+  // The console's Kind picker; the storyteller names the kind in variant.
+  cast_buff: ["kind"],
 };
 
 function formDrift(entry) {
