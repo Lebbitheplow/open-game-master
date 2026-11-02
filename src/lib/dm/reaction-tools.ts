@@ -55,6 +55,7 @@ import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { PRONE } from "@/lib/dm/vitals-logic";
 import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
+import { swallowCoverBetween, swallowCoverError } from "@/lib/dm/swallow";
 import { engineFeatNamed } from "@/lib/srd/feat-effects";
 import { isPublishedFeatureName } from "@/lib/srd/features";
 import { holdsFeature, isNamed } from "@/lib/srd/feature-names";
@@ -200,6 +201,11 @@ function throwBack(ctx: Ctx, record: LastHit, monkLevel: number): Record<string,
   if (!encounter || !enemy || enemy.status !== "alive") {
     return { error: "The missile can be thrown back at a living enemy from GAME STATE; it was caught and kept." };
   }
+  // Not across a swallower's wall (swallow.ts).
+  const walled = swallowCoverBetween(sheet.id, enemy.id);
+  if (walled) {
+    return { error: `${walled} The missile was caught and kept.` };
+  }
   const apart = tilesBetween(encounter.id, sheet.id, enemy.id);
   if (apart !== null && apart > 12) {
     return { error: `${enemy.displayName} is ${apart * 5} ft away, past the missile's 60 ft; it was caught and kept.` };
@@ -264,6 +270,11 @@ function cuttingWords(ctx: Ctx): ToolResult {
       refused: "rules",
     };
   }
+  // The words reach no creature across a swallower's wall (swallow.ts).
+  const walled = record.attacker.id ? swallowCoverError(sheet.id, record.attacker.id) : null;
+  if (walled) {
+    return walled;
+  }
   spendReaction(ctx);
   const spentPool = patchSheet(sheet.id, {
     resources: { ...sheet.resources, bardic_inspiration: { max: pool.max, used: pool.used + 1 } },
@@ -310,6 +321,11 @@ function protection(ctx: Ctx): ToolResult {
       error: `${ally.name} is ${apart * 5} ft from ${sheet.name}; Protection covers a creature within 5 ft. Nothing was spent.`,
       refused: "rules",
     };
+  }
+  // A shield does not reach across a swallower's wall (swallow.ts).
+  const walled = swallowCoverError(sheet.id, ally.id);
+  if (walled) {
+    return walled;
   }
   spendReaction(ctx);
   addSheetCondition(campaign, ally, "protected", { untilTurnOf: sheet.id });

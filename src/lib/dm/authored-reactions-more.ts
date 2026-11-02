@@ -35,6 +35,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { enemyAttacker, rollCard } from "@/lib/dm/roll-card";
 import { rollAgainst } from "@/lib/roll-labels";
 import type { ToolResult } from "@/lib/dm/tool-errors";
+import { swallowCoverError } from "@/lib/dm/swallow";
 import { textKey } from "@/lib/language/text-logic";
 
 // The mark a character's opportunity attack that hit leaves until their next
@@ -166,6 +167,12 @@ function redirectMiss(ctx: Ctx, name: string, rangeFt: number): ToolResult {
   }
   if (!withinFeet(encounter.id, ctx.sheet.id, target.id, rangeFt)) {
     return { error: `${target.displayName} is not within ${rangeFt} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
+  }
+  // The turned miss reaches no creature across a swallower's wall
+  // (swallow.ts).
+  const walled = swallowCoverError(record.attacker.id, target.id);
+  if (walled) {
+    return walled;
   }
   const attacker = getEnemy(record.attacker.id);
   const attack = (attacker?.stats.attacks ?? []).find((entry) => textKey(entry.name) === textKey(record.attack));

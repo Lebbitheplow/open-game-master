@@ -30,6 +30,7 @@ import { handlePcAttack } from "@/lib/dm/pc-attack";
 import { allyOf, noFall, settle, softenFall, spendReaction, type Ctx } from "@/lib/dm/reaction-tools";
 import { settleHits } from "@/lib/dm/reaction-refund";
 import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
+import { swallowCoverError } from "@/lib/dm/swallow";
 import { takeItemCast } from "@/lib/srd/item-cast-credit";
 import { spellHeldProblem } from "@/lib/dm/cast-rules";
 import { textKey } from "@/lib/language/text-logic";
@@ -124,6 +125,11 @@ export function reactionSpell(ctx: Ctx, spellName: string): ToolResult {
     const record = freshLastHit(campaign.id, target.id, (hit) => hit.source === "fall");
     if (!record) {
       return noFall(target.name, "Feather Fall");
+    }
+    // Not across a swallower's wall (swallow.ts).
+    const walled = swallowCoverError(sheet.id, target.id);
+    if (walled) {
+      return walled;
     }
     const cast = castReactionSpell(ctx, spellName);
     if ("error" in cast) {
@@ -315,6 +321,11 @@ function checkCounterspell(ctx: Ctx): Counter | ToolError {
   const wanted = (args.spell ?? "").trim();
   if (!wanted) {
     return { error: `Counterspell needs the spell ${enemy.displayName} is casting (spell), so the server knows its level. Nothing was spent.`, retry: true };
+  }
+  // Not across a swallower's wall, either way (swallow.ts).
+  const walled = swallowCoverError(sheet.id, enemy.id);
+  if (walled) {
+    return walled;
   }
   // Only a spell the creature can cast: its block's list.
   const casting = enemy.stats.spellcasting;

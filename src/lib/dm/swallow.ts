@@ -45,10 +45,11 @@ import { publicDie } from "@/lib/dm/between-io";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { currentActor } from "@/lib/dm/acting-party";
 import { textKey } from "@/lib/language/text-logic";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 import { publishEphemeral, publishPersisted } from "@/lib/events";
 import { activePublicEncounter } from "@/lib/db/encounter-view";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
 
 export const SWALLOWED = "swallowed";
 
@@ -102,6 +103,17 @@ export function swallowCover(from: Party | null, to: Party): string | null {
 export function swallowCoverBetween(fromId: string, toId: string): string | null {
   const to = partyOf(toId);
   return to ? swallowCover(partyOf(fromId), to) : null;
+}
+
+// The refusal a tool returns when an act would cross a swallower's wall, or
+// null. `fromId` null is an act with no creature of its own behind it (a
+// familiar with no square of its own): outside. An id that names nobody is
+// the caller's own refusal to make.
+export function swallowCoverError(fromId: string | null, toId: string): ToolError | null {
+  const from = fromId ? partyOf(fromId) : null;
+  const to = partyOf(toId);
+  const inside = to && (fromId === null || (from && fromId !== toId)) ? swallowCover(from, to) : null;
+  return inside ? { error: `${inside} Nothing was spent.`, refused: "rules" } : null;
 }
 
 function partyOf(id: string): Party | null {
@@ -218,11 +230,23 @@ export function swallowCreature(campaign: Campaign, turnId: string, enemy: Encou
     });
   }
   const now = read(target) ?? live;
-  const ungrappled = without(now.conditions, now.meta, ["grappled"], enemy.id);
-  // Only a grapple this creature held ends; with none there is nothing to
-  // write, and no "no longer grappled" line for one never grappled.
-  if (ungrappled.conditions.length !== now.conditions.length) {
+  // Inside, it is out of reach of everyone outside, and a grapple ends when
+  // its creature leaves the grappler's reach (SRD 5.1, Grappled): every
+  // grapple on it ends, not only the swallower's, and every grapple it held
+  // on another. A grapple held from outside used to survive, and its escape
+  // was a contest with a creature nothing inside can reach. With none there
+  // is nothing to write, and no "no longer grappled" line for one never
+  // grappled.
+  const ungrappled = removeConditionInstances(now.conditions, now.meta, "grappled", () => true);
+  if (ungrappled.removed) {
     write(campaign, target, ungrappled, { kind: "clear_condition", delta: { condition: "grappled" }, reason: `the grapple ends as ${enemy.displayName} swallows ${now.name}` });
+  }
+  for (const other of partiesOf(campaign.id)) {
+    const held = other.id === target.id ? null : read(other);
+    const freed = held ? removeConditionInstances(held.conditions, held.meta, "grappled", (entry) => entry.source === target.id) : null;
+    if (held && freed?.removed) {
+      write(campaign, held, freed, { kind: "clear_condition", delta: { condition: "grappled" }, reason: `${now.name} lets go, swallowed by ${enemy.displayName}` });
+    }
   }
   const acid = rule?.acid ? `, and takes ${rule.acid.dice} ${rule.acid.type} damage at the start of each of its turns` : "";
   const out = rule?.regurgitate
@@ -466,7 +490,7 @@ const OFF_PLANE = ["banished", "mazed"];
 // swallowed behind (leftBehind). Null when it is not, or held nobody.
 export function swallowerAway(campaign: Campaign, enemyId: string): string | null {
   const enemy = getEnemy(enemyId);
-  const away = enemy?.status === "alive" && enemy.conditions.some((entry) => OFF_PLANE.includes(entry.toLowerCase()));
+  const away = enemy?.status === "alive" && enemy.conditions.some((entry) => isConditionNamed(entry, ...OFF_PLANE));
   return enemy && away ? leftBehind(campaign, enemy.encounterId, enemy, "vanishes from this plane") : null;
 }
 

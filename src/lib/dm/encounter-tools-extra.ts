@@ -30,7 +30,7 @@ import { isConditionNamed } from "@/lib/srd/feature-names";
 import { enemyExhaustion } from "@/lib/dm/monster-abilities";
 import { isKnockedOut } from "@/lib/dm/knockout";
 import { standingOn } from "@/lib/dm/combatant";
-import { leftBehind } from "@/lib/dm/swallow";
+import { leftBehind, swallowCoverError } from "@/lib/dm/swallow";
 
 // Encounter tools beyond the core start/damage/attack/end set:
 // reinforcements, enemy flight, enemy conditions, and multi-target AoE.
@@ -206,6 +206,13 @@ function handleEnemyCondition(
     const stone = petrifiedRefusal(enemy.conditions, named);
     if (stone) {
       return { error: `${enemy.displayName} cannot be ${named}: ${stone}.`, refused: "rules" };
+    }
+    // Laid by a creature on the other side of a swallower's wall: it does
+    // not land (swallow.ts).
+    const layer = (args.sourceCharacterId ?? args.sourceEnemyId ?? "").trim();
+    const walled = layer ? swallowCoverError(layer, enemy.id) : null;
+    if (walled) {
+      return walled;
     }
     // Exhaustion is a level, not a flag: the table applies (enemy-exhaustion.ts).
     if (exhaustion) {

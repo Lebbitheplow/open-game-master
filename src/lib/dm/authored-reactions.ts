@@ -41,6 +41,7 @@ import { resolveMoreReaction } from "@/lib/dm/authored-reactions-more";
 import { projectWard } from "@/lib/dm/arcane-ward";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { noneNamed, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { swallowCoverError } from "@/lib/dm/swallow";
 import { spentSlotRefusal } from "@/lib/dm/cast-rules";
 import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
@@ -196,6 +197,15 @@ export function authoredReaction(ctx: Ctx): ToolResult | null {
       const updated = patchSheet(now.id, { resources: { ...now.resources, [pool.id]: { max: current.max, used: current.used + amount } } });
       if (updated) publishPersisted(ctx.campaign.id, "sheet_updated", { sheet: updated });
     };
+  }
+  // The ally it covers and the creature it answers are both across no
+  // swallower's wall (swallow.ts).
+  const ally = allyOf(ctx);
+  const walled =
+    (ally ? swallowCoverError(ctx.sheet.id, ally.id) : null) ??
+    (ctx.args.targetEnemyId ? swallowCoverError(ctx.sheet.id, ctx.args.targetEnemyId.trim()) : null);
+  if (walled) {
+    return walled;
   }
   const outcome = resolve(ctx, found);
   if ("error" in outcome) {

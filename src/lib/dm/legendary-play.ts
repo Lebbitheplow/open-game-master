@@ -40,6 +40,7 @@ import { spellMechanicsFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolResult } from "@/lib/dm/tool-errors";
+import { swallowCover } from "@/lib/dm/swallow";
 
 export type Dispatch = (name: string, args: Record<string, unknown>) => Promise<ToolResult>;
 
@@ -127,6 +128,16 @@ function refusalBefore(encounter: Encounter, enemy: EncounterEnemy, option: stri
   }
   if (needs.spell && !args.spell) {
     return `${option} casts a spell from ${enemy.displayName}'s list: name it.`;
+  }
+  // A creature inside a swallower, or a swallower's creature reaching out,
+  // is refused before the action is spent (swallow.ts): the steps that
+  // dispatch to enemy_attack refused only after it, and a ward, a drain or
+  // a fling none at all.
+  for (const target of targets) {
+    const inside = idOf(target) === enemy.id ? null : swallowCover({ kind: "enemy", id: enemy.id }, { kind: target.kind, id: idOf(target) });
+    if (inside) {
+      return inside;
+    }
   }
   for (const step of route.steps) {
     if (step.kind === "save" && step.most !== null && targets.length > step.most) {

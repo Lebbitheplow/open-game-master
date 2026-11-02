@@ -110,6 +110,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { ITEM_TAGS } from "@/lib/schemas/item-tags";
 import { holdsFeature, isConditionNamed, isNamed } from "@/lib/srd/feature-names";
 import { unknownSheetRef } from "@/lib/dm/rolls";
+import { swallowCoverError } from "@/lib/dm/swallow";
 import { classWords } from "@/lib/sheet-words";
 import { healCeiling } from "@/lib/dm/afflictions";
 import { spreadGear } from "@/lib/dm/gear-zones";
@@ -845,6 +846,16 @@ function dmMutation(
           healNote = outcome.note;
         }
       }
+      // Healing from a named healer that is no spell (a potion poured, a
+      // touch) crosses no swallower's wall either (swallow.ts); a spell's
+      // reach asked it above.
+      if (!healSpell && args.casterId) {
+        const healer = resolve(args.casterId);
+        const inside = healer ? swallowCoverError(healer.id, sheet.id) : null;
+        if (inside) {
+          return { result: inside };
+        }
+      }
       // A healing spell that takes longer than an action (Prayer of Healing's
       // ten minutes) moved the clock, and those minutes rolled the dying's
       // death saves (src/lib/db/clock.ts). The sheet read before the casting
@@ -1145,6 +1156,12 @@ function dmMutation(
       if (!target) {
         return { result: unknownSheetRef("targetCharacterId", args.targetCharacterId, sheets) };
       }
+      // An item used on someone (a potion poured, a kit's bandage) crosses
+      // no swallower's wall (swallow.ts).
+      const walled = swallowCoverError(sheet.id, target.id);
+      if (walled) {
+        return { result: walled };
+      }
       // A Healer's kit use heals (src/lib/dm/stabilize.ts); null otherwise.
       const kitHeal = healerKitUse(campaign, turnId, sheet, target, itemName);
       if (kitHeal) {
@@ -1295,6 +1312,13 @@ function dmMutation(
             retry: true,
           },
         };
+      }
+      // A feature aimed across a swallower's wall (Lay on Hands, Bardic
+      // Inspiration, a Rally, Intimidating Presence) does not reach
+      // (swallow.ts).
+      const walled = swallowCoverError(sheet.id, target.id) ?? (args.targetEnemyId ? swallowCoverError(sheet.id, args.targetEnemyId.trim()) : null);
+      if (walled) {
+        return { result: walled };
       }
       // Intimidating Presence, Holy Nimbus and Divine Intervention resolve in
       // the fight (src/lib/dm/combat-features.ts).
@@ -1465,6 +1489,16 @@ function dmMutation(
       return { result: outcome.result };
     }
     case "set_condition": {
+      // A condition a creature lays from the other side of a swallower's
+      // wall does not land (swallow.ts): a legendary action's prone on a
+      // hero inside a worm, a goblin's fear from outside it. Inspiration,
+      // passed between players, is no creature's effect. The swallow's own
+      // conditions are laid past this door (swallow.ts swallowCreature).
+      const layer = (args.sourceEnemyId ?? args.sourceCharacterId ?? "").trim();
+      const walled = layer && !isConditionNamed(args.condition ?? "", "inspiration") ? swallowCoverError(layer, sheet.id) : null;
+      if (walled) {
+        return { result: walled };
+      }
       return { result: handleSetCondition(campaign, turnId, sheet, args, reason) };
     }
     case "clear_condition": {

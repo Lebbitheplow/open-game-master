@@ -9,6 +9,7 @@ import { GUARD_REACTION, guardRefusal } from "@/lib/dm/party-conduct-logic";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { allyOf, noHit, settle, SPENT, spendReaction, type Ctx } from "@/lib/dm/reaction-tools";
 import type { ToolResult } from "@/lib/dm/tool-errors";
+import { swallowCoverError } from "@/lib/dm/swallow";
 import { publishEphemeral } from "@/lib/events";
 import { textKey } from "@/lib/language/text-logic";
 
@@ -46,6 +47,11 @@ export function devotedGuard(ctx: Ctx): ToolResult | null {
   }
   if (!withinFeet(encounter.id, sheet.id, ally.id, 5)) {
     return { error: `${ally.name} is beyond 5 feet of ${sheet.name}. Nothing was spent.`, refused: "rules" };
+  }
+  // Not across a swallower's wall, either way (swallow.ts).
+  const walled = swallowCoverError(sheet.id, ally.id);
+  if (walled) {
+    return walled;
   }
   const record = freshLastHit(campaign.id, ally.id, (hit) => hit.source === "attack" && !hit.answered.includes(LABEL) && hit.swings.some((swing) => swing.hit));
   if (!record) {

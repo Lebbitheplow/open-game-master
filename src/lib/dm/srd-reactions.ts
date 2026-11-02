@@ -30,6 +30,7 @@ import { READIED } from "@/lib/dm/object-actions";
 import { handlePcAttack } from "@/lib/dm/pc-attack";
 import { noHit, SPENT, spendReaction, type Ctx } from "@/lib/dm/reaction-tools";
 import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { swallowCoverError } from "@/lib/dm/swallow";
 import { textKey } from "@/lib/language/text-logic";
 import { isNamed } from "@/lib/srd/feature-names";
 
@@ -105,6 +106,12 @@ function standAgainstTheTide(ctx: Ctx): ToolResult {
   const attack = (attacker?.stats.attacks ?? []).find((entry) => textKey(entry.name) === textKey(record.attack));
   if (!attacker || !attack) {
     return { error: `The server has no record of ${record.attacker.name}'s ${record.attack} to repeat. Nothing was spent.`, refused: "rules" };
+  }
+  // The turned attack reaches no creature across a swallower's wall
+  // (swallow.ts).
+  const walled = swallowCoverError(attacker.id, target.id);
+  if (walled) {
+    return walled;
   }
   const ac = enemyAcWithEffects(campaign.id, target);
   const bonus = Number(attack.toHit ?? 0);

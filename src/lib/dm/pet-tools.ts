@@ -21,6 +21,7 @@ import { naturalAttackProfile, pickNaturalAttack } from "@/lib/dm/natural-attack
 import { landNaturalOnHit } from "@/lib/dm/natural-onhit";
 import { landBlow } from "@/lib/dm/pc-attack-damage";
 import { noneNamed, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { swallowCoverError } from "@/lib/dm/swallow";
 import { buildPet, defenseWords, DRAKE_ESSENCES, petCreatureType } from "@/lib/dm/pet-build";
 import { conditionIncomingAttackState } from "@/lib/srd/condition-effects";
 import { mergeAdvantage } from "@/lib/dm/condition-logic";
@@ -280,6 +281,12 @@ export function handlePetAttack(
   const enemy = resolveTargetFoe(encounter.campaignId, encounter, args.targetEnemyId);
   if (!enemy || enemy.status !== "alive") {
     return { error: "pet_attack needs a living targetEnemyId from GAME STATE.", retry: true };
+  }
+  // A creature inside a swallower is out of the pet's reach (swallow.ts).
+  // The pet has no square of its own, so it strikes from outside.
+  const inside = swallowCoverError(null, enemy.id);
+  if (inside) {
+    return inside;
   }
   // Commanding the pet is the owner's to do, on the owner's turn, and costs
   // what the feature says (src/lib/dm/pet-attack-cost.ts).

@@ -513,6 +513,44 @@ await test("From inside the worm Kara can neither grapple, shove nor help agains
   assert.ok(!holds(bram.id, "helped"), "no help given from inside");
 });
 
+await test("Swallowed, she is out of every grapple: the goblin's on her ends, and so does hers on the goblin", async () => {
+  const { foe, others } = await facing("Purple Worm", 1);
+  const [goblin] = others;
+  kit.place(goblin.id, 4, 5);
+  world.patch(kara.id, { conditions: ["grappled"], conditionMeta: { grappled: { source: goblin.id } } });
+  kit.setEnemy(goblin.id, { conditions: ["grappled"], conditionMeta: { grappled: { source: kara.id } } });
+  world.dice(19, 1, 1, 1, 1);
+  await bite(foe, kara);
+  world.clearDice();
+  assert.ok(holds(kara.id, "swallowed"), "swallowed");
+  assert.ok(!holds(kara.id, "grappled"), "the goblin outside holds her no longer");
+  assert.ok(!kit.enemy(goblin.id).conditions.includes("grappled"), "she holds the goblin outside no longer");
+});
+
+await test("Every other door is shut across the worm's wall: a condition laid from either side, a potion poured, an item handed, a feature spent", async () => {
+  const goblin = await insideBesideGoblin();
+  world.patch(bram.id, { equipment: [...world.sheet(bram.id).equipment, { name: "Potion of Healing", qty: 1 }] });
+  world.patch(kara.id, { currentHp: 40 });
+  const crossed = [];
+  const tryIt = async (label, name, args) => {
+    const out = await world.invoke(name, args);
+    if (!insideRefusal.test(out.error ?? "")) {
+      crossed.push(`${label}: ${JSON.stringify(out).slice(0, 200)}`);
+    }
+  };
+  kit.giveTurn(bram.id);
+  await tryIt("the goblin's fear on Kara inside", "set_condition", { characterId: kara.id, condition: "frightened", sourceEnemyId: goblin.id });
+  await tryIt("Kara's fear on the goblin outside", "set_condition", { enemyId: goblin.id, condition: "frightened", sourceCharacterId: kara.id });
+  await tryIt("Bram's potion poured into Kara", "use_item", { characterId: bram.id, item: "Potion of Healing", targetCharacterId: kara.id });
+  await tryIt("Bram's Lay on Hands on Kara", "use_resource", { characterId: bram.id, resource: "Lay on Hands", targetCharacterId: kara.id, amount: 5 });
+  kit.giveTurn(kara.id);
+  await tryIt("Kara's greatsword handed to Bram", "handle_item", { characterId: kara.id, action: "hand", item: "Greatsword", toCharacterId: bram.id });
+  assert.deepEqual(crossed, [], "each crossed the worm's wall");
+  assert.ok(!holds(kara.id, "frightened") && !kit.enemy(goblin.id).conditions.includes("frightened"), "no fear landed");
+  assert.equal(world.sheet(kara.id).currentHp, 40, "nothing healed her");
+  assert.ok(world.sheet(kara.id).equipment.some((item) => /greatsword/i.test(item.name)), "she keeps her sword");
+});
+
 await test("The board's move says she is swallowed and how out, not that her speed is 0", async () => {
   const { foe } = await facing("Purple Worm");
   world.dice(19, 1, 1, 1, 1);

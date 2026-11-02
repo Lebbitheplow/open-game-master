@@ -651,7 +651,7 @@
     "lib/dm/swallow-logic.ts#toLowerCase": [["english-source",4,"SRD 5.1 and content-pack stat-block text: a swallowing creature's line read for its rule (scripts/test-swallow.mjs reads every SRD swallower); a line it cannot read leaves the swallow blinded and restrained, as before"]],
     "lib/dm/swallow-logic.ts#re-word": [["english-source",9,"SRD 5.1 and content-pack stat-block text: a swallowing creature's line read for its rule (scripts/test-swallow.mjs reads every SRD swallower); a line it cannot read leaves the swallow blinded and restrained, as before"]],
     "lib/dm/swallow.ts#toLowerCase": [["key",2,"condition labels (engine vocabulary)"]],
-    "lib/dm/swallow.ts#str-list": [["key",3,"condition labels (engine vocabulary)"]],
+    "lib/dm/swallow.ts#str-list": [["key",4,"condition labels (engine vocabulary)"]],
     "lib/dm/swallow.ts#toUpperCase": [["display",1,"a sentence's first letter, shown"]],
     "lib/language/player-text.ts#[a-z]": [["english-source",4,"ODM's own rules lines: a GM tool's snake_case name as ODM's rows write it (issue 659)"]],
     "lib/language/player-text.ts#\\b": [["english-source",3,"ODM's own rules lines: a GM tool's snake_case name, \"via\"/\"with\"/\"through\" before it, and \"weapon '...'\" as ODM's rows write them (issue 659)"]],
