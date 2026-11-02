@@ -770,6 +770,39 @@ await test("Mass Healing Word over six allies out of a fight is one casting too:
   assert.equal(slot(), 2, "a separate call is a casting of its own");
 });
 
+// With no casterId each entry's creature was its own caster: the cleric
+// paid, and Brann, who casts nothing, rode the slot with a healing of 1d4
+// and no modifier, where his own call was refused (rev-749).
+await test("A heal list under a spell with no casterId is sent back before anything is spent", async () => {
+  await kit.endFight();
+  for (const hero of heroes) world.patch(hero.id, { currentHp: 1 });
+  world.patch(cleric.id, { spellcasting: { ...world.sheet(cleric.id).spellcasting, slots: { 2: { max: 3, used: 0 }, 3: { max: 3, used: 0 } } } });
+  const ran = await agentTurn(cleric, "Odo speaks a Mass Healing Word over himself and Brann.", [
+    ["heal", { spell: "Mass Healing Word", targets: [{ characterId: cleric.id }, { characterId: fighter.id }] }],
+  ]);
+  assert.equal(ran[0].result.retry, true, JSON.stringify(ran[0].result).slice(0, 300));
+  assert.match(String(ran[0].result.error), /casterId/);
+  assert.equal(world.sheet(cleric.id).spellcasting.slots[3].used, 0, "no slot spent");
+  assert.equal(world.sheet(fighter.id).currentHp, 1, "nobody healed");
+});
+
+// heal's schema reads "30" as 30; the casting's pool counted it as none, and
+// Mass Heal's second creature found nothing left of the 700 after the 9th
+// level slot was spent (rev-749).
+await test("Mass Heal's amounts sent as words share the 700 hit points of one casting", async () => {
+  await kit.endFight();
+  for (const hero of heroes) world.patch(hero.id, { currentHp: 1 });
+  const casting = world.sheet(cleric.id).spellcasting;
+  world.patch(cleric.id, { level: 17, spellcasting: { ...casting, prepared: [...new Set([...casting.prepared, "Mass Heal"])], slots: { ...casting.slots, 9: { max: 1, used: 0 } } } });
+  const ran = await agentTurn(cleric, "Odo casts Mass Heal on Brann and Kara.", [
+    ["heal", { casterId: cleric.id, spell: "Mass Heal", targets: [{ characterId: fighter.id, amount: "30" }, { characterId: monk.id, amount: "30" }] }],
+  ]);
+  world.patch(cleric.id, { level: 9, spellcasting: casting });
+  assert.deepEqual(errorsOf(ran[0].result.targets), [], JSON.stringify(ran[0].result).slice(0, 400));
+  assert.equal(world.sheet(fighter.id).currentHp, 31);
+  assert.equal(world.sheet(monk.id).currentHp, 31);
+});
+
 await test("Hold Person from a 3rd-level slot on two creatures is one casting of its own, not a twin feature's", async () => {
   const enemies = await stage(cleric, 2);
   const slot = () => world.sheet(cleric.id).spellcasting.slots[3].used;

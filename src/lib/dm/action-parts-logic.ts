@@ -198,15 +198,28 @@ export function oneCasting(name: string, each: readonly Record<string, unknown>[
   if (!each.every((entry) => entry.spell === spell && entry.casterId === each[0].casterId)) {
     return undefined;
   }
-  const hitPoints = each.reduce((sum, entry) => sum + (typeof entry.amount === "number" ? entry.amount : 0), 0);
+  // An amount sent as "30" is 30, as heal's own schema reads it: counted as
+  // none, Mass Heal's later entries found nothing left of the 700.
+  const hitPoints = each.reduce((sum, entry) => {
+    const amount = Number(entry.amount);
+    return sum + (Number.isFinite(amount) && amount > 0 ? amount : 0);
+  }, 0);
   return { spell, creatures: each.length, hitPoints, paid: null, left: 0 };
 }
 
 // The refusal of a list longer than a call takes, or null.
 export function listRefusal(name: string, each: readonly unknown[]): ToolResult | null {
-  return each.length < 1 || each.length > MAX_PARTS
-    ? { error: `${name}: ${PART_LISTS[name].key} lists 1 to ${MAX_PARTS} entries, one each. Nothing changed.`, retry: true }
-    : null;
+  if (each.length < 1 || each.length > MAX_PARTS) {
+    return { error: `${name}: ${PART_LISTS[name].key} lists 1 to ${MAX_PARTS} entries, one each. Nothing changed.`, retry: true };
+  }
+  // Several creatures under one healing spell are one casting by one caster.
+  // With no casterId each entry's creature was its own caster: the first one
+  // paid, and the rest rode that slot with their own modifier, or none.
+  const uncast = (entry: unknown) => isRecord(entry) && typeof entry.spell === "string" && entry.spell.trim() !== "" && typeof entry.casterId !== "string";
+  if (name === "heal" && each.length > 1 && each.some(uncast)) {
+    return { error: "heal: targets under a spell are one casting; send casterId, the characterId of the one who casts it. Nothing changed.", retry: true };
+  }
+  return null;
 }
 
 // A call and its answer as the one-part calls its parts stand for, each with
