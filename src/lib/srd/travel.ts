@@ -67,6 +67,46 @@ export function forcedMarchHours(totalHours: number): number {
   return Math.max(0, Math.round(Number(totalHours) || 0) - NORMAL_TRAVEL_HOURS);
 }
 
+// One stretch of marching the clock keeps: when it ended, how long it was in
+// minutes, and who marched it (src/lib/dm/march-state.ts).
+export type MarchLeg = { end: number; minutes: number; ids: string[] };
+
+const DAY_MINUTES = 24 * 60;
+
+// The forced-march hours a traveller's leg ending at `end` adds, counted over
+// their day before it ends. SRD 5.1, Travel Pace (Forced March): "The table
+// assumes that characters travel for 8 hours in day. They can push on beyond
+// that limit ... For each additional hour of travel beyond 8 hours". A day is
+// the 24 hours before the leg ends, or less when their last long rest ended
+// inside them (`restedAt`): two back-to-back 8-hour legs are 16 hours in a
+// day, as one 16-hour leg is, and a night's rest gives the next day's march
+// its own 8. `earlier` holds the legs they marched. `from` and `to` number
+// the hours past 8 this leg adds (from 1 for the ninth), none when `to` is
+// below `from`.
+export function forcedMarchSpan(earlier: readonly MarchLeg[], end: number, legHours: number, restedAt?: number): { from: number; to: number } {
+  // A stop of a night's length (8 hours, a long rest's) between two
+  // stretches ends the day before it, whether or not a long rest was taken
+  // or granted in it: a night camped with pass_time, or a rest refused by
+  // the one-in-24-hours rule, left the next morning's 8 hours a forced march.
+  let stopped = Number.NEGATIVE_INFINITY;
+  let cursor = end - legHours * 60;
+  for (const leg of [...earlier].sort((a, b) => b.end - a.end)) {
+    if (cursor - leg.end >= NORMAL_TRAVEL_HOURS * 60) {
+      stopped = cursor;
+      break;
+    }
+    cursor = Math.min(cursor, leg.end - leg.minutes);
+  }
+  const start = Math.max(end - DAY_MINUTES, restedAt ?? end - DAY_MINUTES, stopped);
+  const before = earlier.reduce((sum, leg) => sum + Math.max(0, Math.min(leg.end, end) - Math.max(leg.end - leg.minutes, start)), 0) / 60;
+  return { from: forcedMarchHours(before) + 1, to: forcedMarchHours(before + legHours) };
+}
+
+// The legs still inside the day before `now`, for the clock to keep.
+export function legsWithinDay(legs: readonly MarchLeg[], now: number): MarchLeg[] {
+  return legs.filter((leg) => leg.end > now - DAY_MINUTES);
+}
+
 // The Constitution save DC for the nth forced-march hour. SRD 5.1, Forced
 // March: "The DC is 10 + 1 for each hour past 8 hours", so the ninth hour is
 // DC 11 and the twelfth DC 14.
@@ -103,7 +143,7 @@ export function travelLeg(input: {
     const minutes = Math.ceil(paceHours(input.pace, input.miles / factor) * 60);
     if (minutes > 24 * 60) {
       return {
-        error: `${input.miles} miles at a ${input.pace} pace takes ${Math.ceil(minutes / 60)} hours, more than one day's leg. Travel it a day at a time: call travel once per day (8 hours is a normal day; more is a forced march).`,
+        error: `${input.miles} miles at a ${input.pace} pace takes ${Math.ceil(minutes / 60)} hours, more than one day's leg. A journey of several days is days, each one 8 hours on the road and a night in camp.`,
         retry: true,
       };
     }

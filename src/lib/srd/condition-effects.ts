@@ -541,7 +541,7 @@ export const CONDITION_EFFECTS: ConditionEffectRow[] = [
     id: "swift_quiver",
     match: ["swift quiver"],
     summary:
-      "Swift Quiver: a bonus action makes two attacks with a weapon fed by the quiver (resolve each with pc_attack).",
+      "Swift Quiver: a bonus action makes two attacks with a weapon fed by the quiver (two entries in pc_attack's attacks, each with feature Swift Quiver).",
   },
   {
     id: "holy_weapon",

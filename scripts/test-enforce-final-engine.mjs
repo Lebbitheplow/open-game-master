@@ -128,15 +128,15 @@ function systemText() {
 }
 const offered = (name) => dmTurnToolCatalogue(world.campaign(), true, false).find((entry) => entry.function.name === name)?.function;
 
-await test("The prompt sends subclass features to use_resource by name, their choices as the variant, their reactions to use_reaction, and their bonus attack to bonusAttack \"feature\"; the rest the server applies.", () => {
+await test("The prompt sends subclass features to use_resource by name, their choices as the variant, their reactions to use_reaction, and their bonus attack to a pc_attack part's feature by name; the rest the server applies.", () => {
   const text = systemText();
   assert.match(text, /spend one with use_resource by its own name \(Kensei's Shot/);
   assert.match(text, /A subclass choice \(Totem Spirit, Aspect of the Beast, Totemic Attunement, Transmuter's Stone, Elemental Gift, Armor Model\) is made once with use_resource and the option as the variant, outside a fight/);
   assert.match(text, /Subclass reactions go through use_reaction by name \(Spectral Defense/);
-  assert.match(text, /bonusAttack "feature"/);
+  assert.match(text, /a subclass's or feat's bonus-action weapon attack by its name \(Battle Magic, War Magic/);
   assert.match(text, /never add them by hand and never pass advantage for them/);
-  const bonus = offered("pc_attack").parameters.properties.bonusAttack;
-  assert.ok((bonus.enum ?? []).includes("feature"), "pc_attack's bonusAttack does not take feature");
+  const feature = offered("pc_attack").parameters.properties.attacks.items.properties.feature;
+  assert.match(feature.description, /Any other feat or feature granting a bonus weapon attack by its name/, "pc_attack's feature takes no subclass attack");
   const reaction = JSON.stringify(offered("use_reaction"));
   for (const name of ["Spectral Defense", "Spirit Shield", "Divine Allegiance", "Storm's Fury", "Opportunist"]) {
     assert.ok(reaction.includes(name), `use_reaction never names ${name}`);
@@ -557,16 +557,16 @@ await test("Arcane Jolt: once a turn, after a magic weapon hit, the Battle Smith
   assert.equal(again.ok, false, "once a turn");
 });
 
-await test("The prompt and the tool schemas name the final round's subclass hooks: the weapons a feature makes, rapidStrike, secondTargetEnemyId, the reaction moves and Tipsy Sway.", () => {
+await test("The prompt and the tool schemas name the final round's subclass hooks: the weapons a feature makes, rapidStrike, Improved Reaper's second target, the reaction moves and Tipsy Sway.", () => {
   const text = systemText();
-  assert.match(text, /a weapon a subclass feature makes is named as the weapon \(a raging Path of the Beast barbarian's bite, claws or tail, a Soulknife's psychic blade with offHand for the second blade, a Sun Soul monk's radiant sun bolt\)/);
+  assert.match(text, /a weapon a subclass feature makes is named as the weapon \(a raging Path of the Beast barbarian's bite, claws or tail, a Soulknife's psychic blade with feature "Two-Weapon Fighting" for the second blade, a Sun Soul monk's radiant sun bolt\)/);
   assert.match(text, /rapidStrike is a Samurai's Rapid Strike on an attack that has advantage/);
-  assert.match(text, /Improved Reaper is secondTargetEnemyId on that call/);
+  assert.match(text, /Improved Reaper is a second entry in targets/);
   assert.match(text, /is use_reaction with the square's x and y, never move_token/);
-  const attack = offered("pc_attack").parameters.properties;
+  const attack = offered("pc_attack").parameters.properties.attacks.items.properties;
   assert.ok(attack.rapidStrike, "pc_attack takes no rapidStrike");
   assert.match(attack.weapon.description, /psychic blade/);
-  assert.ok(offered("cast_at_enemy").parameters.properties.secondTargetEnemyId, "cast_at_enemy takes no secondTargetEnemyId");
+  assert.match(offered("cast_at_enemy").parameters.properties.targets.description, /Improved Reaper/, "cast_at_enemy's targets name no second target");
   const reaction = offered("use_reaction");
   assert.ok(reaction.parameters.properties.x && reaction.parameters.properties.y, "use_reaction takes no square");
   for (const name of ["Tipsy Sway", "Skirmisher", "Relentless Avenger"]) {

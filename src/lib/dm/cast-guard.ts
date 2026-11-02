@@ -584,7 +584,8 @@ export function castSpell(
     result.sharesLeft = left;
     result.uses = uses;
     if (shares > 1) {
-      result.shares = `${name} holds ${shares} ${mech?.attacks ? "attack rolls" : mech?.darts ? "darts" : "targets"} from this one casting; ${left} left for more calls this turn, spending nothing more.`;
+      const list = mech?.attacks ? "pc_attack's attacks" : mech?.resolution === "heal" ? "heal's targets" : "cast_at_enemy's targets";
+      result.shares = `${name} holds ${shares} ${mech?.attacks ? "attack rolls" : mech?.darts ? "darts" : "targets"} from this one casting; ${left} left this turn at no further cost, each its own entry in ${list}.`;
     }
     storeBudget(encounter, budget);
     result.cost = turn.cost === "bonus action" ? "their bonus action" : "their action";

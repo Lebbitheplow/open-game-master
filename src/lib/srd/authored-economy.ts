@@ -18,6 +18,9 @@ export function authoredBonusRoute(sheet: AuthoredSheet, action: string): { feat
   return held ? { feature: held.held.feature, ki: 0 } : null;
 }
 
+// The refusal of a sheet none of whose features grants a bonus attack.
+export const NO_BONUS_ATTACK_FEATURE = "No feature of theirs grants a bonus-action weapon attack.";
+
 // Whether a feature grants a bonus-action weapon attack now, from what the
 // turn has held: null when it may be made, else the sentence that refuses.
 export function authoredBonusAttackProblem(
@@ -26,7 +29,7 @@ export function authoredBonusAttackProblem(
 ): { feature: string } | { refused: ToolError } {
   const offers = activeAuthored(sheet, "bonus_attack");
   if (!offers.length) {
-    return { refused: { error: "No feature of theirs grants a bonus-action weapon attack. Their attacks come from the Attack action.", refused: "rules" } };
+    return { refused: { error: `${NO_BONUS_ATTACK_FEATURE} Their attacks come from the Attack action.`, refused: "rules" } };
   }
   // A spell cast with the action marks the budget (cast-rules.ts turnCharge);
   // a levelled one leaves its own mark, so a cantrip is a cast without it.

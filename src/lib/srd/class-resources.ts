@@ -340,7 +340,7 @@ const SRD_RESOURCE_DEFS: ResourceDef[] = [
     recharge: "short",
     effect: { kind: "narrative" },
     guidance:
-      "Ki fuels Flurry of Blows (a bonus-action pair of unarmed strikes: resolve each with pc_attack), Patient Defense (Dodge), and Step of the Wind (Dash or Disengage, doubled jump).",
+      "Ki fuels Flurry of Blows (a bonus-action pair of unarmed strikes: two pc_attack entries with feature 'Flurry of Blows', which spend the ki), Patient Defense (Dodge), and Step of the Wind (Dash or Disengage, doubled jump).",
   },
   {
     id: "sorcery_points",

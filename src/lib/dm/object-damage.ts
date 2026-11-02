@@ -190,7 +190,10 @@ export function damageObject(
       return { error: `Invalid damage "${args.damage}".`, retry: true };
     }
   }
-  if (dealt !== null && /^(poison|psychic)$/.test(type)) {
+  // Said as a field too: blow after blow of it stops at the first
+  // (world-tools.ts handleDamageObject).
+  const immune = dealt !== null && /^(poison|psychic)$/.test(type);
+  if (immune) {
     notes.push(`objects are immune to ${type} damage`);
     dealt = 0;
   }
@@ -219,6 +222,7 @@ export function damageObject(
     ...(dealt !== null ? { damage: dealt, broken } : {}),
     ...(args.name ? { damageTaken: broken ? hp : taken, hpLeft: Math.max(0, hp - taken) } : {}),
     ...(notes.length ? { notes } : {}),
+    ...(immune ? { immune: true } : {}),
     note:
       dealt === null
         ? `That object has AC ${ac} and ${hp} HP; a hit needs to beat AC ${ac} and enough damage to matter.`

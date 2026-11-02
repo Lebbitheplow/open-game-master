@@ -101,6 +101,7 @@ import {
   extraEncounterTools,
 } from "@/lib/dm/encounter-tools-extra";
 import { handlePcAttack, PC_ATTACK_PARKED, pcAttackTool } from "@/lib/dm/pc-attack";
+import { handlePcAttackParts } from "@/lib/dm/pc-attack-parts";
 import { companionShot, endTurnAsked } from "@/lib/dm/pc-attack-approach";
 import { backstopAttack, handleEnemyAttack } from "@/lib/dm/enemy-attack";
 import { isCompanionUserId } from "@/lib/db/users";
@@ -111,7 +112,6 @@ import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
 import {
   castAtEnemyTool,
   castAtPlayerTool,
-  handleCastAtEnemy,
   handleCastAtPlayer,
 } from "@/lib/dm/cast-tools";
 import {
@@ -138,7 +138,7 @@ import { lairCountPassed } from "@/lib/dm/legendary-logic";
 import { publishTitleCard } from "@/lib/dm/scene-state";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { VIGILANT_PREFIX } from "@/lib/srd/authored-effects-more";
-import { handleReaperCast } from "@/lib/dm/authored-reaper";
+import { handleCastAtEnemyTargets } from "@/lib/dm/cast-at-enemy-targets";
 import { sweepSummons } from "@/lib/dm/summon-store";
 import { endConcentrationOnFadedSummons } from "@/lib/dm/concentration-upkeep";
 import { afflictionsAtCombatStart } from "@/lib/dm/afflictions";
@@ -1197,12 +1197,34 @@ function endTurnAfterAttack(
   if (!characterId || result[PC_ATTACK_PARKED] || (result.error && !result.outOfReach)) {
     return result;
   }
+  // A part refused for what the next call can put right (its creature
+  // dropped to an earlier swing, an id sent wrong) keeps the turn open, as
+  // the last attack refused on its own always did: ended here, "two swings at
+  // the goblin, then I end my turn" lost the second swing when the first
+  // killed it, and the enemies acted.
+  const again = result.error ? [] : partsToSendAgain(result);
+  if (again.length) {
+    return {
+      ...result,
+      turnNotEnded: `Entr${again.length === 1 ? "y" : "ies"} ${again.join(", ")} can be sent again (at another creature, or with the id put right), so the turn stays open: end it with end_turn once those attacks are made or given up.`,
+    };
+  }
   const ended = handleEndTurn(campaign, turn, JSON.stringify({ characterId }), sheets, sheetsById);
   if (ended.error) {
     // The last enemy fell to the swing and the fight is over: no turn to end.
     return getActiveEncounter(campaign.id) ? { ...result, turnNotEnded: ended.error } : result;
   }
   return { ...result, turnEnded: Object.fromEntries(Object.entries(ended).filter(([key]) => key !== "ok")) };
+}
+
+// The places (from 1) of a list's parts refused with retry, past a walk that
+// fell short (its movement is spent: that refusal ends a declared turn).
+function partsToSendAgain(result: ToolResult): number[] {
+  const parts: unknown[] = Array.isArray(result.attacks) ? result.attacks : [];
+  return parts.flatMap((part, index) => {
+    const entry = typeof part === "object" && part !== null ? (part as Record<string, unknown>) : {};
+    return typeof entry.error === "string" && entry.retry === true && entry.outOfReach !== true ? [index + 1] : [];
+  });
 }
 
 // Ends a player's turn the narration already handed on (src/lib/dm/turn.ts):
@@ -1251,7 +1273,7 @@ export function applyEncounterCall(
       if (unasked) {
         return { result: unasked };
       }
-      const result = handlePcAttack(
+      const result = handlePcAttackParts(
         campaign,
         turn,
         rawArguments,
@@ -1268,8 +1290,7 @@ export function applyEncounterCall(
       if (unasked) {
         return { result: unasked };
       }
-      // Improved Reaper's second target (src/lib/dm/authored-reaper.ts).
-      const result = handleReaperCast(campaign, turn, rawArguments, sheets, sheetsById) ?? handleCastAtEnemy(campaign, turn, rawArguments, sheets, sheetsById);
+      const result = handleCastAtEnemyTargets(campaign, turn, rawArguments, sheets, sheetsById);
       markResolvedFromArgs(turn, rawArguments, sheets, sheetsById, result);
       return { result };
     }

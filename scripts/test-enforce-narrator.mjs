@@ -172,7 +172,7 @@ await test("Every tool the rules name is one the turn offers, and every other sn
   // that names it stands either way.
   const unknown = named.filter((word) => !tools.has(word) && !argumentWords.has(word) && word !== "complete_beat");
   assert.deepEqual(unknown, [], `the prompt names ${unknown.join(", ")}, which no offered tool knows`);
-  for (const option of ["reckless", "stunningStrike", "nonlethal", "bonusAttack", "advantageReason", "useInspiration", "damageType"]) {
+  for (const option of ["reckless", "stunningStrike", "nonlethal", "feature", "advantageReason", "useInspiration", "damageType"]) {
     assert.ok(argumentWords.has(option), `the prompt teaches ${option}, which no tool takes`);
   }
 });
@@ -292,7 +292,7 @@ await test("Potions in a fight are the user's action on their own turn, within 5
 
 await test("pc_attack's class options and the advantage rule are in the prompt, and it never invites advantage for what the server applies.", () => {
   const rule = ruleLine(systemText(), "- Enemy HP and AC in GAME STATE");
-  for (const option of ["reckless", "stunningStrike", "nonlethal", "bonusAttack \"martial arts\" or \"frenzy\""]) {
+  for (const option of ["reckless", "stunningStrike", "nonlethal", "feature with the name of what the attack is made with: \"Martial Arts\", \"Frenzy\""]) {
     assert.ok(rule.includes(option), `pc_attack option ${option} missing from the rule`);
   }
   assert.match(rule, /A knocked-out enemy is out of the fight but alive/);

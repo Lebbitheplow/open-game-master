@@ -279,6 +279,53 @@ test("a reaction spell use_reaction cast is accounted; the enemy spell a Counter
   assert.equal(ruleClaims([{ kind: "cast", caster: "Mira", spell: "fireball", quote: "Mira casts Fireball" }], outcomes).length, 1);
 });
 
+// A call carrying a declaration's parts (pc_attack's attacks, cast_at_enemy's
+// targets) is read part by part, each as the one-part call it stands for.
+const missedPart = { targetEnemyId: "e1", weapon: "longsword" };
+const partsMissed = {
+  name: "pc_attack",
+  args: { characterId: "c1", endTurn: true, attacks: [missedPart, { targetEnemyId: "e9", weapon: "longsword" }] },
+  result: { attacks: [attackMissed.result, { error: "The ogre is already dead.", retry: true }] },
+};
+
+test("a miss inside a call's parts is read: a hit claimed on it is caught, with no live turn to fall back on", () => {
+  const found = rule([about("hit", "goblin", "the blade bites the goblin")], [partsMissed]);
+  assert.deepEqual(kinds(found), ["hit"]);
+  // The refused part landed nothing on the creature it named.
+  const live = { enemies: [{ id: "e9", name: "Ogre", hp: 59, maxHp: 59, status: "alive" }] };
+  assert.deepEqual(kinds(rule([about("hit", "ogre")], [partsMissed], live)), ["hit"]);
+  const outcomes = resolveOutcomes(collectExchanges(conversationOf([partsMissed])), null, "english");
+  assert.deepEqual(outcomes.spends, [{ characterId: "c1", name: "longsword" }], "the parts' one spend is named once");
+});
+
+test("a spell cast in a call's parts is accounted, and a refused part's spell is not", () => {
+  const outcomes = resolveOutcomes(
+    collectExchanges(
+      conversationOf([
+        {
+          name: "pc_attack",
+          args: { characterId: "c2", attacks: [{ targetEnemyId: "e1", spell: "Scorching Ray", level: 2 }, { targetEnemyId: "e2", spell: "Scorching Ray", level: 2 }] },
+          result: { attacks: [{ ...attackHit.result, weapon: "Scorching Ray" }, { ...attackMissed.result, weapon: "Scorching Ray", target: "Goblin 2" }] },
+        },
+        {
+          name: "cast_at_enemy",
+          args: { characterId: "c3", spell: "Hold Person", level: 3, targets: [{ targetEnemyId: "e3" }, { targetEnemyId: "e4" }] },
+          result: { targets: [{ error: "The bandit is already dead.", retry: true }, { ok: true, target: "Bandit 2" }] },
+        },
+        {
+          name: "pc_attack",
+          args: { characterId: "c4", attacks: [{ targetEnemyId: "e1", spell: "Guiding Bolt" }] },
+          result: { error: "The goblin is already dead.", retry: true },
+        },
+      ]),
+    ),
+    null,
+    "english",
+  );
+  assert.deepEqual([...outcomes.spells].sort(), ["hold person", "scorching ray"]);
+  assert.deepEqual(ruleClaims([{ kind: "cast", caster: "Iris", spell: "scorching ray", quote: "Iris casts Scorching Ray" }], outcomes), []);
+});
+
 // ---------------------------------------------------------------------------
 // Part 3: the ruling catches real contradictions
 // ---------------------------------------------------------------------------

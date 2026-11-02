@@ -337,14 +337,20 @@ export function compactTool<T extends ToolDefLike>(tool: T): T {
   };
 }
 
-// The whole of one tool's instructions, as more_tools returns them.
+type FieldSchema = { description?: string; items?: { properties?: Record<string, FieldSchema> } };
+
+// The whole of one tool's instructions, as more_tools returns them. A list
+// of entries (pc_attack's attacks) has its entries' fields as list[].field.
 export function toolHelp(tool: ToolDefLike): Record<string, unknown> {
-  const parameters = tool.function.parameters as { properties?: Record<string, { description?: string }> } | undefined;
+  const parameters = tool.function.parameters as { properties?: Record<string, FieldSchema> } | undefined;
   return {
     tool: tool.function.name,
     instructions: tool.function.description ?? "",
     parameters: Object.fromEntries(
-      Object.entries(parameters?.properties ?? {}).map(([name, schema]) => [name, schema?.description ?? ""]),
+      Object.entries(parameters?.properties ?? {}).flatMap(([name, schema]) => [
+        [name, schema.description ?? ""],
+        ...Object.entries(schema.items?.properties ?? {}).map(([field, inner]) => [`${name}[].${field}`, inner.description ?? ""]),
+      ]),
     ),
   };
 }

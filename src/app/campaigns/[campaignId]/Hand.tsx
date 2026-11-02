@@ -505,6 +505,13 @@ function HandInner({
           return;
         }
       }
+      // A share of the card the engine refused for one creature while the
+      // rest landed (the actions route at a table the GM runs): said, as a
+      // refusal is, and the card is spent, since the others are done.
+      const answered = (await response.json().catch(() => ({}))) as { refused?: string };
+      if (typeof answered.refused === "string" && answered.refused) {
+        say(answered.refused);
+      }
       // Nothing is marked spent: the engine's count arrives with the
       // encounter. Until it moves, the same cost waits on this card. Another
       // hero's reaction spends nothing of this one's.

@@ -307,7 +307,7 @@ export const SRD_EFFECT_ROWS: Record<string, SpellMech> = {
   "mass heal": {
     resolution: "heal",
     healPool: 700,
-    note: "700 hit points divided among any number of creatures: one heal call per creature with its amount, the same turn, one slot.",
+    note: "700 hit points divided among any number of creatures: one entry per creature in heal's targets, each with its amount; one slot.",
   },
   "mass healing word": { resolution: "heal", targets: { count: 6 } },
   "mass cure wounds": { resolution: "heal", targets: { count: 6 } },

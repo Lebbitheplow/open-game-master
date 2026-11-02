@@ -18,6 +18,14 @@ import { textKey } from "../language/text-logic.ts";
 
 export type RowItem = { name: string; slug?: string | null; srdName?: string };
 
+// A name without its trailing size or note: "Rope, hempen (50 feet)" is
+// "Rope, hempen", "Rations (1 day)" "Rations". A tool sends a row's name
+// that way (live), and the name picks the row out when it is the only one
+// so written.
+export function baseName(name: string): string {
+  return name.replace(/\s*\([^)]*\)\s*$/, "");
+}
+
 export function rowName(item: RowItem): string {
   return item.srdName ?? withoutBonus(item.name);
 }
@@ -52,14 +60,15 @@ export function srdNameWithBonus(item: RowItem): string {
 
 // The lines a tool's item name picks out, by the first of its names that
 // any line answers to: its very own name, which names one line on the
-// sheet, else its srdNameWithBonus, else its row. A starting-kit
+// sheet, else its srdNameWithBonus, else its row, else its row without
+// its trailing size (baseName), when one row is so written. A starting-kit
 // "Longsword" is the one "Longsword" takes beside the "Spada lunga" the DM
 // granted later, and with only a "Longsword +1" carried, "Longsword" is
 // that one. A word of a name picks out nothing.
 function namedLines<T extends RowItem>(items: readonly T[], name: string): { tier: number; lines: T[] } {
   const wanted = textKey(name);
   if (wanted) {
-    for (const [tier, nameOf] of [(item: RowItem) => item.name, srdNameWithBonus, rowName].entries()) {
+    for (const [tier, nameOf] of [(item: RowItem) => item.name, srdNameWithBonus, rowName, (item: RowItem) => baseName(rowName(item))].entries()) {
       const lines = items.filter((item) => textKey(nameOf(item)) === wanted);
       if (lines.length) {
         return { tier, lines };

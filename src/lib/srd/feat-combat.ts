@@ -556,7 +556,7 @@ export function featEngineTag(feat: string, campaignId?: string): string | null 
   const name = featTwinOf(feat, campaignId);
   if (["great weapon master", "sharpshooter", "powerful attacker", "deadeye"].includes(name)) return "[pc_attack powerAttack]";
   if (["defensive duelist", "mage slayer", "sentinel"].includes(name)) return "[use_reaction]";
-  if (["polearm master", "crossbow expert", "charger"].includes(name)) return "[pc_attack bonusAttack feature]";
+  if (["polearm master", "crossbow expert", "charger"].includes(name)) return "[pc_attack feature]";
   if (name === "stunning sniper") return "[pc_attack stunShot]";
   if (["tavern brawler", "shield master"].includes(name)) return "[take_action bonus]";
   if ([

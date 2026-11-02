@@ -354,7 +354,7 @@ await test("The prompt and the tool schemas teach the recount's features: the Mu
     { campaign: world.campaign(), members: listMembers(world.campaignId), sheets: world.sheets(), encounter, recentRolls: [], storySummary: "" },
     [],
   )[0].content;
-  assert.match(text, /whirlwind or volley is a Hunter's Multiattack, one pc_attack per creature/);
+  assert.match(text, /feature "Whirlwind Attack" or "Volley" is a Hunter's Multiattack, one entry per creature/);
   assert.match(text, /Retaliation \(a Berserker just damaged by a creature within 5 feet\) and Stand Against the Tide/);
   assert.match(text, /Peerless Skill, Quivering Palm \(targetEnemyId; once to set the vibrations after an unarmed hit, again to end them\), Draconic Presence/);
   assert.match(text, /A check names what it is about in about, creature and terrain/);
@@ -362,8 +362,8 @@ await test("The prompt and the tool schemas teach the recount's features: the Mu
   assert.ok(requestRollTool.function.parameters.properties.about.enum.includes("tracking"));
   const tools = dmTurnToolCatalogue(world.campaign(), true, false);
   const tool = (name) => tools.find((entry) => entry.function.name === name)?.function;
-  const attack = tool("pc_attack").parameters.properties;
-  assert.ok(attack.whirlwind && attack.volley, "pc_attack takes no whirlwind or volley");
+  const feature = tool("pc_attack").parameters.properties.attacks.items.properties.feature;
+  assert.match(feature.description, /'Whirlwind Attack' or 'Volley': a Hunter's action, one entry per creature/, "pc_attack takes no Whirlwind Attack or Volley");
   const reaction = JSON.stringify(tool("use_reaction"));
   assert.ok(reaction.includes("Retaliation") && reaction.includes("Stand Against the Tide"));
   const resource = JSON.stringify(tool("use_resource"));

@@ -15,7 +15,7 @@ import { resourceLeft } from "@/lib/dm/attack-rules";
 import type { AttackKind } from "@/lib/dm/pc-attack-profile";
 import { acBreakdownFor, type SheetDerived } from "@/lib/srd";
 import { RAGING } from "@/lib/srd/class-resources";
-import { CURVING_SHOT, authoredBonusAttackProblem } from "@/lib/srd/authored-economy";
+import { CURVING_SHOT, NO_BONUS_ATTACK_FEATURE, authoredBonusAttackProblem } from "@/lib/srd/authored-economy";
 import { featureBonusAttack, type FeatureBonusAttack } from "@/lib/dm/feature-bonus-attacks";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolError } from "@/lib/dm/tool-errors";
@@ -144,7 +144,7 @@ export function checkAttackOptions(input: {
       // War Priest, Unwavering Mark, Hungry Jaws, Pistol and Blade
       // (src/lib/dm/feature-bonus-attacks.ts).
       const own = "refused" in authored ? featureBonusAttack({ sheet, budget, profile, melee: meleeWeapon, targetId: input.targetId, mods: derived.abilityMods }) : null;
-      const granted = own && !("refused" in own) ? { ok: true } : own && "refused" in authored && /^No feature/.test(authored.refused.error) ? own : authored;
+      const granted = own && !("refused" in own) ? { ok: true } : own && "refused" in authored && authored.refused.error.startsWith(NO_BONUS_ATTACK_FEATURE) ? own : authored;
       if ("refused" in granted || !weaponAttack) {
         const gwmHint = holdsFeat(sheet, "Great Weapon Master") ? " Great Weapon Master's bonus attack follows a melee critical hit or a kill on this turn." : "";
         return {

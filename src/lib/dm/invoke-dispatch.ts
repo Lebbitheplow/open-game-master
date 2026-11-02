@@ -68,6 +68,7 @@ import { handleGenerateImage } from "@/lib/dm/images";
 import { handleRequestRoll } from "@/lib/dm/invoke-roll";
 import { handleSplitDamage } from "@/lib/dm/split-damage";
 import { strictBooleanArgs } from "@/lib/dm/arg-coerce";
+import { listedCalls, listRefusal, oneCasting, PART_LISTS, partsResult, type OneCasting } from "@/lib/dm/action-parts-logic";
 import { gateAiCall } from "@/lib/dm/ai-gate";
 import { conductGate } from "@/lib/dm/party-conduct";
 import { characterCallUnasked } from "@/lib/dm/player-word";
@@ -103,8 +104,27 @@ async function dispatchCall(
   name: string,
   sentArguments: string,
   context: DispatchContext,
+  // One entry of a heal list: the casting its entries share.
+  casting?: OneCasting,
 ): Promise<ToolResult> {
   const { campaign, turn, sheets, sheetsById } = context;
+  // A chest's items, a shopping list, the creatures a healing spell
+  // reaches: each entry the one-entry call it always was
+  // (src/lib/dm/action-parts-logic.ts listedCalls), for a connected agent
+  // program and the console as for the model's turn loop (turn.ts).
+  const each = listedCalls(name, sentArguments);
+  if (each) {
+    const refused = listRefusal(name, each);
+    if (refused) {
+      return refused;
+    }
+    const shared = oneCasting(name, each);
+    const outcomes: Record<string, unknown>[] = [];
+    for (const one of each) {
+      outcomes.push(await dispatchCall(name, JSON.stringify(one), context, shared));
+    }
+    return partsResult(outcomes, PART_LISTS[name].key);
+  }
   // "false" sent as a string is false (src/lib/dm/arg-coerce.ts).
   const coerced = strictBooleanArgs(sentArguments);
   // The model's damage, healing and binding conditions are the server's to
@@ -121,7 +141,7 @@ async function dispatchCall(
     // as from the AI's turn (turn.ts).
     return (
       maybeProposeItemChange(campaign, turn.id, name, rawArguments, sheetsById) ??
-      applyDmMutation(campaign, turn.id, name, rawArguments, sheets, sheetsById, turn).result
+      applyDmMutation(campaign, turn.id, name, rawArguments, sheets, sheetsById, turn, casting).result
     );
   }
   if (ENCOUNTERS.has(name)) {

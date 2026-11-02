@@ -17,17 +17,19 @@ import {
 } from "@/lib/srd/treasure";
 import type { ObjectMaterial, ObjectSize } from "@/lib/srd/objects";
 import { damageObject } from "@/lib/dm/object-damage";
-import { forcedMarchHours, forcedMarchSaveDc, paceEffect, travelLeg, type TravelPace } from "@/lib/srd/travel";
+import { forcedMarchSaveDc, forcedMarchSpan, NORMAL_TRAVEL_HOURS, paceEffect, travelLeg, type TravelPace } from "@/lib/srd/travel";
 import { tickWorldTimeskip } from "@/lib/dm/world-tick";
 import { pactMoment } from "@/lib/dm/pacts";
 import { readUneaseTells } from "@/lib/dm/conscience-voice";
-import { advanceClock, getClock, setTravelPace, setWaterRation } from "@/lib/db/clock";
+import { advanceClock, getClock, recordMarch, setTravelPace, setWaterRation } from "@/lib/db/clock";
+import { getActiveEncounter } from "@/lib/db/encounters";
 import { refreshSky } from "@/lib/dm/sky";
 import { publishTitleCard } from "@/lib/dm/scene-state";
 import { handleApplyHazard } from "@/lib/dm/hazard-tools";
 import { describeWeather, weatherExposure, weatherTravelFactor } from "@/lib/srd/weather";
 import type { Weather } from "@/lib/scene/state";
-import { ADVANCE_UNITS, describeDuration, describeInstant } from "@/lib/dm/calendar";
+import { ADVANCE_UNITS, describeDuration, describeInstant, restMinutes } from "@/lib/dm/calendar";
+import { handleTakeRest } from "@/lib/dm/rest-tools";
 import { insertCampaignMessage } from "@/lib/db/messages";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolResult } from "@/lib/dm/tool-errors";
@@ -39,6 +41,26 @@ import { tableNoteSeq } from "@/lib/dm/narration-slot";
 // loot value, whether a door breaks, and whether a hard day's march wore the
 // party down were all pure DM assertion. This module imports the roll engine,
 // the sheet layer, and mutations; it must never be imported by them.
+
+// "Until it breaks" as one call: an agent program's calls arrive one at a
+// time, and the player who hacks at a door until it splinters was given one
+// blow (src/lib/dm/action-parts-logic.ts). The blows are struck one after
+// another, each the single blow it always was, and stop when the object
+// breaks. Twenty blows are two minutes of hacking: SRD 5.1 sets no limit,
+// and a thing that stands that long is one to find another way past. In a
+// fight each blow is one of the character's attacks, so blows is refused
+// there.
+const MAX_BLOWS = 20;
+
+// A journey of days in one call: the player who says "we travel for four
+// days" was given one leg, and the model's next calls never came (an agent
+// program's calls arrive one at a time, src/lib/dm/action-parts-logic.ts).
+// Each day is the pace's day (8 hours, SRD 5.1 Travel Pace) and the camp
+// after it, its night the rules' own rest through take_rest: a long rest
+// when the table's rest fits a night, a short one when a long rest is longer
+// than the camp (Gritty Realism's week). The last day ends on the road.
+const MAX_TRAVEL_DAYS = 30;
+const CAMP_MINUTES = 16 * 60;
 
 type ToolDef = {
   type: "function";
@@ -113,7 +135,7 @@ export const worldTools: ToolDef[] = [
     function: {
       name: "damage_object",
       description:
-        "Resolve one blow at an inanimate object (a door, a chest, a rope, a window) against the DMG object table: give its name, material and size, or an explicit ac and hp. Each call is one blow. Objects are immune to poison and psychic damage. A Wall of Ice is struck a section at a time: name it 'Wall of Ice' and give the section, 10 feet each. The server uses a section's AC 12 and 30 HP, doubles fire, and when it breaks opens its squares and lays the frigid air.",
+        "Resolve blows at an inanimate object (a door, a chest, a rope, a window) against the DMG object table: give its name, material and size, or an explicit ac and hp. Out of a fight, blows strikes again and again until it breaks. Objects are immune to poison and psychic damage. A Wall of Ice is struck a section at a time: name it 'Wall of Ice' and give the section, 10 feet each. The server uses a section's AC 12 and 30 HP, doubles fire, and when it breaks opens its squares and lays the frigid air.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -131,6 +153,12 @@ export const worldTools: ToolDef[] = [
           ac: { type: "integer", description: "Override the material's AC if you know it." },
           hp: { type: "integer", description: "Override the size's HP if you know it." },
           threshold: { type: "integer", description: "Damage threshold (castle walls, ships): a blow below it does nothing." },
+          blows: {
+            type: "integer",
+            minimum: 1,
+            maximum: MAX_BLOWS,
+            description: `Blows struck one after another out of a fight, stopping when it breaks; ${MAX_BLOWS} to strike until it does. Default: 1.`,
+          },
           reason: { type: "string", description: "Short note on what is being broken." },
         },
         required: [],
@@ -142,12 +170,18 @@ export const worldTools: ToolDef[] = [
     function: {
       name: "travel",
       description:
-        "Resolve a stretch of overland travel, one day's leg at a time. Snow or a storm slows the march further; fast travellers take -5 passive Perception; only a slow pace allows stealth, so Stealth checks are refused while the party marches at a normal or fast pace; a failed forced-march save costs a level of exhaustion. It moves no one on the map: when the leg ends somewhere the story names, that place is a move_party call.",
+        "Resolve overland travel: a journey of several days in one call (days), or one stretch of marching (hours or miles). Each day is the pace's 8 hours and the night's camp, a rest through take_rest's rules. Hours marched past 8 in a day are a forced march. Snow or a storm slows the march further; fast travellers take -5 passive Perception; only a slow pace allows stealth, so Stealth checks are refused while the party marches at a normal or fast pace; a failed forced-march save costs a level of exhaustion. It moves no one on the map: when the leg ends somewhere the story names, that place is a move_party call.",
       parameters: {
         type: "object",
         additionalProperties: false,
         properties: {
-          hours: { type: "integer", description: "Hours travelled that day. Give this or miles." },
+          days: {
+            type: "integer",
+            minimum: 1,
+            maximum: MAX_TRAVEL_DAYS,
+            description: "A journey of this many days: each day 8 hours on the road, each night in camp. Give this, hours or miles.",
+          },
+          hours: { type: "integer", description: "One stretch of marching, in hours; the server counts it with the hours already marched that day." },
           miles: {
             type: "number",
             description: "Miles to cover instead of hours, one day's leg of 24 hours at most. The server works out the hours the pace, the ground and the weather need.",
@@ -433,12 +467,63 @@ export function handleDamageObject(
   campaign: Campaign | null = null,
   turn: DmTurn | null = null,
 ): Record<string, unknown> {
-  return damageObject(campaign, turn, rawArguments);
+  let raw: unknown;
+  try {
+    raw = JSON.parse(rawArguments || "{}");
+  } catch {
+    return damageObject(campaign, turn, rawArguments);
+  }
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw) || !("blows" in raw)) {
+    return damageObject(campaign, turn, rawArguments);
+  }
+  const blows = z.coerce.number().int().min(1).max(MAX_BLOWS).safeParse(raw.blows);
+  if (!blows.success) {
+    return { error: `blows is how many blows to strike, 1 to ${MAX_BLOWS}.`, retry: true };
+  }
+  const blow = Object.fromEntries(Object.entries(raw).filter(([key]) => key !== "blows"));
+  if (blows.data === 1) {
+    return damageObject(campaign, turn, JSON.stringify(blow));
+  }
+  if (typeof blow.name !== "string" || !blow.name.trim()) {
+    return { error: "Several blows strike the same object: name it, so its damage adds up between them. Nothing was rolled.", retry: true };
+  }
+  if (campaign && getActiveEncounter(campaign.id)) {
+    return { error: "In a fight each blow is one of the character's attacks: one blow a call, on their turn. Nothing was rolled.", retry: true };
+  }
+  const struck: Record<string, unknown>[] = [];
+  // Damage the object is immune to never adds up: one blow says so, and
+  // nineteen more drew nineteen roll cards of nothing.
+  let immune = false;
+  for (let count = 0; count < blows.data; count += 1) {
+    const result = damageObject(campaign, turn, JSON.stringify(blow));
+    struck.push(result);
+    immune = result.immune === true;
+    if (typeof result.error === "string" || result.broken === true || immune || (result.damage === undefined && result.hit === undefined)) {
+      break;
+    }
+  }
+  const last = struck[struck.length - 1];
+  if (typeof last.error === "string") {
+    return struck.length === 1 ? last : { ...last, blows: struck };
+  }
+  return {
+    ok: true,
+    blows: struck,
+    broken: last.broken === true,
+    ...(last.damageTaken !== undefined ? { damageTaken: last.damageTaken, hpLeft: last.hpLeft } : {}),
+    note:
+      last.broken === true
+        ? `It breaks on blow ${struck.length}. Narrate the blows and it giving way.`
+        : immune
+          ? "It is immune to that damage, so no blow of it can break it. Narrate it holding."
+          : `${struck.length} blows and it still stands. Narrate the effort.`,
+  };
 }
 
 // ---- travel ----
 
 const travelSchema = z.object({
+  days: z.coerce.number().int().min(1).max(MAX_TRAVEL_DAYS).optional(),
   hours: z.coerce.number().int().min(0).max(48).optional(),
   miles: z.coerce.number().min(0.1).max(200).optional(),
   terrain: z.enum(["normal", "difficult"]).optional(),
@@ -564,6 +649,76 @@ export function handleTravel(
       ? { error: "No traveller: characterIds names nobody at this table. Use characterIds from GAME STATE, or leave it out for the whole party. Nothing moved: the clock and the march are as they were.", retry: true }
       : { error: "Nobody at this table can travel: it has no characters yet. Nothing moved: the clock and the march are as they were.", refused: "rules" };
   }
+  if (args.days !== undefined) {
+    if (args.hours !== undefined || args.miles !== undefined) {
+      return { error: "travel takes days, hours or miles: one of them. Nothing moved: the clock and the march are as they were.", retry: true };
+    }
+    return travelDays(campaign, turn, { ...args, days: args.days }, travellers, sheets, sheetsById);
+  }
+  return travelStretch(campaign, turn, args, travellers, sheets, sheetsById);
+}
+
+function travelDays(
+  campaign: Campaign,
+  turn: DmTurn,
+  args: z.infer<typeof travelSchema> & { days: number },
+  travellers: CharacterSheet[],
+  sheets: CharacterSheet[],
+  sheetsById: Map<string, CharacterSheet>,
+): ToolResult {
+  const variant = campaign.gameSettings.variantRules.restVariant;
+  const night = restMinutes("long", variant) <= CAMP_MINUTES ? "long" : "short";
+  const legs: ToolResult[] = [];
+  const nights: ToolResult[] = [];
+  for (let count = 1; count <= args.days; count += 1) {
+    const leg = travelStretch(campaign, turn, { ...args, hours: NORMAL_TRAVEL_HOURS }, travellers, sheets, sheetsById);
+    legs.push(leg);
+    if (typeof leg.error === "string" || count === args.days) {
+      break;
+    }
+    // The evening in camp, then the night's rest to the next morning. The
+    // world and the sky move with the evening as with pass_time.
+    const dusk = getClock(campaign.id);
+    const evening = advanceClock(campaign.id, CAMP_MINUTES - restMinutes(night, variant), "minutes");
+    if ("error" in evening) {
+      break;
+    }
+    tickWorldTimeskip(campaign.id, Math.floor(evening.minutes / (4 * 60)));
+    refreshSky(campaign.id, { before: dusk, minutes: evening.minutes });
+    // Only the travellers camp: whoever stayed behind rests on their own.
+    const rest = handleTakeRest(campaign, turn.id, JSON.stringify({ kind: night, reason: "the night's camp" }), travellers, sheetsById);
+    nights.push(rest);
+    if (typeof rest.error === "string") {
+      break;
+    }
+  }
+  // A first day refused moved nothing: its refusal is the answer.
+  if (legs.length === 1 && typeof legs[0].error === "string") {
+    return legs[0];
+  }
+  const travelled = legs.filter((leg) => typeof leg.error !== "string").length;
+  const stopped = [...legs, ...nights].find((result) => typeof result.error === "string");
+  return {
+    ok: true,
+    days: travelled,
+    legs,
+    nights,
+    note:
+      typeof stopped?.error === "string"
+        ? `The journey stopped after ${travelled} of ${args.days} days: ${stopped.error} Narrate what was travelled.`
+        : `${args.days} days on the road, ${nights.length} nights in camp with a ${night} rest each. Narrate the journey from the legs and the nights.`,
+  };
+}
+
+// One stretch of marching: the hours or miles of one leg.
+function travelStretch(
+  campaign: Campaign,
+  turn: DmTurn,
+  args: z.infer<typeof travelSchema>,
+  travellers: CharacterSheet[],
+  sheets: CharacterSheet[],
+  sheetsById: Map<string, CharacterSheet>,
+): ToolResult {
   const pace: TravelPace = args.pace ?? "normal";
   const effect = paceEffect(pace);
   const terrain = args.terrain ?? "normal";
@@ -578,7 +733,6 @@ export function handleTravel(
     setWaterRation(campaign.id, args.water);
   }
   const legHours = leg.hours;
-  const extra = forcedMarchHours(legHours);
 
   // A journey is a timeskip: the off-screen world moves roughly once per
   // four hours on the road (world arcs, NPC goals; zero model calls).
@@ -589,6 +743,17 @@ export function handleTravel(
   // no matter how far anyone walked.
   const moved = advanceClock(campaign.id, leg.minutes, "minutes");
   const now = "error" in moved ? "" : describeInstant(moved.clock.calendar, moved.clock.instant);
+  // The hours past 8 this leg adds to each traveller's day (SRD 5.1, Forced
+  // March), counted with the legs they marched before it that day: a hero
+  // who joined at noon has not marched the morning.
+  const end = "error" in moved ? before.instant + leg.minutes : moved.clock.instant;
+  const marchers = travellers.map((sheet) => ({
+    sheet,
+    span: forcedMarchSpan((before.marched ?? []).filter((earlier) => earlier.ids.includes(sheet.id)), end, legHours, before.longRests?.[sheet.id]),
+  }));
+  const forced = marchers.reduce((longest, { span }) => (span.to > longest.to ? span : longest), { from: 1, to: 0 });
+  const extra = Math.max(0, forced.to - forced.from + 1);
+  recordMarch(campaign.id, end, leg.minutes, travellers.map((sheet) => sheet.id));
   // A leg of four hours or more rolls the sky; the sky then has its say on
   // the march: snow and storm halve the ground covered, and frigid or hot
   // air is the extreme cold or heat hazard for every traveller.
@@ -682,19 +847,20 @@ export function handleTravel(
   // Forced march: a Constitution save at the end of every hour past eight,
   // DC 10 + 1 for each hour past 8 (SRD 5.1, Travel Pace), each failure a
   // level of exhaustion through the real exhaustion track.
-  const dc = forcedMarchSaveDc(extra);
-  const hours = Array.from({ length: extra }, (_, index) => ({
-    hour: index + 1,
-    dc: forcedMarchSaveDc(index + 1),
-  }));
+  const dc = forcedMarchSaveDc(forced.to);
   const results: Array<{ name: string; saves: HourSave[]; failed: boolean; exhaustion?: number }> = [];
-  for (const stale of travellers) {
+  for (const { sheet: stale, span } of marchers) {
     const sheet = getSheetById(stale.id) ?? stale;
     // The road's hours rolled the dying's death saves before these (clock.ts):
-    // one who died in them was listed holding up, saves and all.
-    if (sheet.deathSaves?.dead) {
+    // one who died in them was listed holding up, saves and all. A traveller
+    // whose own day is within 8 hours rolls none.
+    if (sheet.deathSaves?.dead || span.to < span.from) {
       continue;
     }
+    const hours = Array.from({ length: span.to - span.from + 1 }, (_, index) => ({
+      hour: span.from + index,
+      dc: forcedMarchSaveDc(span.from + index),
+    }));
     const saves = hourlyConSaves({
       campaign,
       turn,
@@ -732,7 +898,7 @@ export function handleTravel(
     ...weatherOutcome,
     note:
       (worn.length
-        ? `Forced march (${extra}h past 8, one save an hour up to DC ${dc}): ${worn.join(", ")} failed and gained a level of exhaustion for each failed hour (server-applied).`
-        : `Forced march (${extra}h past 8, one save an hour up to DC ${dc}): everyone holds up.`) + ` ${paceNote}${weatherNotes.length ? ` ${weatherNotes.join(" ")}` : ""}`,
+        ? `Forced march (the day's march reaches ${8 + forced.to} hours, one save for each hour past 8, up to DC ${dc}): ${worn.join(", ")} failed and gained a level of exhaustion for each failed hour (server-applied).`
+        : `Forced march (the day's march reaches ${8 + forced.to} hours, one save for each hour past 8, up to DC ${dc}): everyone holds up.`) + ` ${paceNote}${weatherNotes.length ? ` ${weatherNotes.join(" ")}` : ""}`,
   };
 }

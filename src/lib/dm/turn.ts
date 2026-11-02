@@ -63,6 +63,8 @@ import { getSceneTracker } from "@/lib/db/scene-tracker";
 import { listQuests } from "@/lib/db/quests";
 import { SMALL_MODEL_REASONING_CHARS, type ModelTuning } from "@/lib/dm/model-tuning-logic";
 import { PC_ATTACK_PARKED } from "@/lib/dm/pc-attack";
+import { doneParts, listedCalls, listRefusal, oneCasting, PART_LISTS, partsResult, type OneCasting } from "@/lib/dm/action-parts-logic";
+import { AWAITING_ROLL } from "@/lib/dm/pc-attack-parts";
 import { strictBooleanArgs } from "@/lib/dm/arg-coerce";
 import { insertCampaignMessage, listMessagesPage, listRecentMessages, markCardReturned, type CampaignMessage } from "@/lib/db/messages";
 import { heldNarrationSeq, narrationShown, takeNarrationSeq, takeNarrationSlot } from "@/lib/dm/narration-slot";
@@ -134,7 +136,7 @@ import type { SlotlessCast } from "@/lib/dm/narration-guard";
 import { DIRECT_CALL_ID_PREFIX, directCardCalls, intentAnswered, intentCorrection, intentNeedsTool, returnedCardNote, returnReason, unresolvedCards, type MessageIntent, type PlayedCard, type TurnCall } from "@/lib/dm/intent-logic";
 import type { SpellMech } from "@/lib/srd/spell-mech-types";
 import { handleCompleteBeat } from "@/lib/dm/arc";
-import { tickWaypointsFromCalls } from "@/lib/dm/waypoint-tick";
+import { markActiveBeat, settleEarlyTicks, tickWaypointsFromCalls } from "@/lib/dm/waypoint-tick";
 import { enforceEngineBoundary } from "@/lib/dm/narration-guard";
 import { spellAreaShape } from "@/lib/dm/aoe-shape";
 import { textKey } from "@/lib/language/text-logic";
@@ -1029,6 +1031,21 @@ function haltOpeningTurn(campaignId: string, opening: OpeningTurn, error: unknow
   haltUnbuiltTurn(campaignId, reason);
 }
 
+// A pc_attack answer with a part parked for the player's dice: the answer
+// and that part's place, or null for any other tool answer.
+function awaitingPart(content: unknown): { content: { attacks: Record<string, unknown>[] }; at: number } | null {
+  if (typeof content !== "string") {
+    return null;
+  }
+  const parsed = JSON.parse(content) as { attacks?: unknown };
+  if (!Array.isArray(parsed.attacks)) {
+    return null;
+  }
+  const attacks = parsed.attacks as Record<string, unknown>[];
+  const at = attacks.findIndex((part) => part[AWAITING_ROLL] === true);
+  return at >= 0 ? { content: { ...parsed, attacks }, at } : null;
+}
+
 export async function resumeDmTurn(campaignId: string, turnId: string) {
   const campaign = getCampaignById(campaignId);
   const turn = getDmTurn(turnId);
@@ -1057,7 +1074,10 @@ export async function resumeDmTurn(campaignId: string, turnId: string) {
   }
 
   // Answer each parked tool call with the roll the player entered (or the
-  // digital fallback), in creation order.
+  // digital fallback), in creation order. A pc_attack of several parts
+  // parked a roll per part under one call: its answer, written when it
+  // parked with the parts that needed no roll, takes each roll in the
+  // part's place, so the call has one answer, as the API requires.
   for (const pending of pendings) {
     const roll = pending.rollId ? getRoll(pending.rollId) : null;
     if (!roll) {
@@ -1066,20 +1086,34 @@ export async function resumeDmTurn(campaignId: string, turnId: string) {
     if (!turn.rollIds.includes(roll.id)) {
       turn.rollIds.push(roll.id);
     }
+    const answer = {
+      total: roll.total,
+      dice: roll.breakdown.terms,
+      ...(pending.dc !== null ? { dc: pending.dc, success: roll.total >= pending.dc } : {}),
+      ...(roll.breakdown.crit ? { crit: roll.breakdown.crit } : {}),
+      rolledBy: pending.status === "submitted" ? "the player, with physical dice" : "the server",
+      note: ROLL_RESULT_NOTE,
+      // What the server already did with this roll (initiative locked,
+      // damage applied); the model must narrate from it, not repeat it.
+      ...(pending.combatNote ? { combat: pending.combatNote } : {}),
+    };
+    // The call whose parts wait on this roll: a tool answer of its id that
+    // still holds a part awaiting one (a backend may reuse an id across
+    // replies, and an earlier answer of that id holds no parts).
+    const waiting = pending.toolCallId
+      ? turn.conversation.findLast((message) => message.role === "tool" && message.tool_call_id === pending.toolCallId && awaitingPart(message.content) !== null)
+      : undefined;
+    const held = waiting ? awaitingPart(waiting.content) : null;
+    if (waiting && held) {
+      const { content, at } = held;
+      content.attacks[at] = { ...answer, ...(content.attacks[at].spent ? { spent: content.attacks[at].spent } : {}) };
+      waiting.content = JSON.stringify(content);
+      continue;
+    }
     turn.conversation.push({
       role: "tool",
       ...(pending.toolCallId ? { tool_call_id: pending.toolCallId } : {}),
-      content: JSON.stringify({
-        total: roll.total,
-        dice: roll.breakdown.terms,
-        ...(pending.dc !== null ? { dc: pending.dc, success: roll.total >= pending.dc } : {}),
-        ...(roll.breakdown.crit ? { crit: roll.breakdown.crit } : {}),
-        rolledBy: pending.status === "submitted" ? "the player, with physical dice" : "the server",
-        note: ROLL_RESULT_NOTE,
-        // What the server already did with this roll (initiative locked,
-        // damage applied); the model must narrate from it, not repeat it.
-        ...(pending.combatNote ? { combat: pending.combatNote } : {}),
-      }),
+      content: JSON.stringify(answer),
     });
   }
 
@@ -1982,7 +2016,9 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     }
     // Waypoints tick before the beat is judged, so an arrival and the beat
     // it lands in the same reply resolve in order (issue #31). The location
-    // calls above already ran; the rest of the tools tick again below.
+    // calls above already ran; the rest of the tools tick again below, and a
+    // step only a call refused there named is opened again (settleEarlyTicks).
+    const beatBefore = markActiveBeat(campaignId);
     await tickWaypointsFromCalls(campaignId, toolCalls, { enemyNames: foesBefore, accepted, refused });
     const beatResults = new Map<string, Record<string, unknown>>();
     for (const beatCall of beatCalls) {
@@ -2342,6 +2378,8 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     // result arrives when the turn resumes with the adjudicated roll.
     const inputInFight = !spotlightSet && fightOwnsFloor(campaignId);
     let parkedAny = false;
+    // A list partly refused is credited with its done entries alone.
+    const credited = new Map<(typeof toolCalls)[number], (typeof toolCalls)[number]>();
     for (const toolCall of toolCalls) {
       const holder = turnHolder(campaignId);
       const outcome =
@@ -2353,10 +2391,22 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       settleTurn(context.campaign, holder);
       if (outcome[PARKED]) {
         parkedAny = true;
+        // The parts of a pc_attack that needed no roll are answered now;
+        // each roll takes its part's place when the turn resumes.
+        if (Array.isArray(outcome.attacks)) {
+          turn.conversation.push({
+            role: "tool",
+            ...(toolCall.id ? { tool_call_id: toolCall.id } : {}),
+            content: JSON.stringify({ attacks: outcome.attacks }),
+          });
+        }
         continue;
       }
       if (!("error" in outcome)) {
-        accepted.add(toolCall);
+        const done = doneParts(toolCall.name, toolCall.rawArguments, outcome);
+        const call = done === toolCall.rawArguments ? toolCall : { ...toolCall, rawArguments: done };
+        credited.set(toolCall, call);
+        accepted.add(call);
       } else {
         refused.add(toolCall);
       }
@@ -2371,7 +2421,9 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     // The NPC, item, objective and combat tools ran after the beat check:
     // their waypoints tick now, for the next reply's checklist, and before
     // a park so a resumed turn does not lose them.
-    await tickWaypointsFromCalls(campaignId, toolCalls, { enemyNames: foesBefore, accepted, refused });
+    const ran = toolCalls.map((call) => credited.get(call) ?? call);
+    await tickWaypointsFromCalls(campaignId, ran, { enemyNames: foesBefore, accepted, refused });
+    settleEarlyTicks(campaignId, beatBefore, ran, { enemyNames: foesBefore, accepted, refused });
 
     if (parkedAny) {
       // Park: the queue job ends here. Submissions resume the turn.
@@ -2474,9 +2526,37 @@ const PARKED = "__turnParked";
 async function resolveModelCall(
   context: TurnContext,
   turn: DmTurn,
-  toolCall: { id?: string; name: string; rawArguments: string },
+  toolCall: { id?: string; name: string; rawArguments: string; casting?: OneCasting },
 ): Promise<ToolResult> {
   const { campaign, sheets, sheetsById, realDiceUserIds } = context;
+  // A chest's items, a shopping list, the creatures a healing spell
+  // reaches: each entry the one-entry call it always was
+  // (src/lib/dm/action-parts-logic.ts listedCalls).
+  const each = listedCalls(toolCall.name, toolCall.rawArguments);
+  if (each) {
+    const refused = listRefusal(toolCall.name, each);
+    if (refused) {
+      return refused;
+    }
+    if (turn.mutationCount >= MUTATION_CAP_PER_TURN) {
+      return MUTATION_CAP_REFUSAL;
+    }
+    // The list is one change against the turn's cap, as one call from a
+    // connected agent program is (src/lib/dm/invoke.ts); MAX_PARTS bounds
+    // it. Counted per entry, a chest of twelve lost its last two and every
+    // change after it.
+    const counted = turn.mutationCount;
+    const casting = oneCasting(toolCall.name, each);
+    const outcomes: Record<string, unknown>[] = [];
+    for (const one of each) {
+      outcomes.push(await resolveModelCall(context, turn, { ...toolCall, rawArguments: JSON.stringify(one), casting }));
+      turn.mutationCount = counted;
+    }
+    if (outcomes.some((outcome) => typeof outcome.error !== "string")) {
+      turn.mutationCount = counted + 1;
+    }
+    return partsResult(outcomes, PART_LISTS[toolCall.name].key);
+  }
   // "false" sent as a string is false (src/lib/dm/arg-coerce.ts).
   // A merged tool reaches the handler its arguments name, and a retired
   // name the one it always reached (src/lib/dm/tool-merge.ts): the caps,
@@ -2508,7 +2588,7 @@ async function resolveModelCall(
     if (!("error" in result)) {
       turn.encounterCount += 1;
     }
-    return result[PC_ATTACK_PARKED] ? { [PARKED]: true } : result;
+    return result[PC_ATTACK_PARKED] ? { [PARKED]: true, ...(Array.isArray(result.attacks) ? { attacks: result.attacks } : {}) } : result;
   }
   // Companion recruit/dismiss resolves synchronously: the sheet, order
   // slot, and token exist before the model narrates the arrival. The shared
@@ -2544,7 +2624,7 @@ async function resolveModelCall(
     }
     const result =
       maybeProposeItemChange(campaign, turn.id, name, gated.args, sheetsById) ??
-      applyDmMutation(campaign, turn.id, name, gated.args, sheets, sheetsById, turn).result;
+      applyDmMutation(campaign, turn.id, name, gated.args, sheets, sheetsById, turn, toolCall.casting).result;
     if (!("error" in result)) {
       turn.mutationCount += 1;
     }

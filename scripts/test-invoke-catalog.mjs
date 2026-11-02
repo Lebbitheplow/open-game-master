@@ -331,6 +331,14 @@ function closingBrace(source, from) {
   let depth = 0;
   for (let index = from; index < source.length; index += 1) {
     const char = source[index];
+    // A comment's words are no code: an apostrophe in one opens no string.
+    if (source.startsWith("//", index)) {
+      index = source.indexOf("\n", index);
+      if (index < 0) {
+        break;
+      }
+      continue;
+    }
     if (char === '"' || char === "'" || char === "`") {
       index += 1;
       while (index < source.length && source[index] !== char) {
@@ -358,6 +366,13 @@ function topLevelKeys(objectText) {
   let depth = 0;
   for (let index = 0; index < objectText.length; index += 1) {
     const char = objectText[index];
+    if (objectText.startsWith("//", index)) {
+      index = objectText.indexOf("\n", index);
+      if (index < 0) {
+        break;
+      }
+      continue;
+    }
     if (char === '"' || char === "'" || char === "`") {
       // Escaped quotes stay inside the string: a description that quotes
       // "thieves' tools" must not end it early and hide the keys after it.
@@ -443,6 +458,23 @@ function expandSpreads(keys, source, depth = 0) {
   return out;
 }
 
+// The keys of each list argument's items (pc_attack's attacks), for a form
+// that sends one item flat (partsOf below).
+function listItems(properties) {
+  const items = {};
+  for (const match of properties.matchAll(/\b([A-Za-z_]+):\s*\{\s*\n\s*type:\s*"array"/g)) {
+    const list = properties.slice(match.index + match[0].indexOf("{"));
+    const inner = list.slice(0, closingBrace(list, 0) + 1);
+    const at = inner.indexOf("items:");
+    const props = at < 0 ? -1 : inner.indexOf("properties:", at);
+    if (props >= 0) {
+      const from = inner.indexOf("{", props);
+      items[match[1]] = topLevelKeys(inner.slice(from, closingBrace(inner, from) + 1));
+    }
+  }
+  return items;
+}
+
 function toolProperties(name) {
   for (const relative of DEFINITION_SOURCES) {
     const source = read(relative);
@@ -456,8 +488,9 @@ function toolProperties(name) {
         continue;
       }
       const open = body.indexOf("{", at);
-      const keys = expandSpreads(topLevelKeys(body.slice(open, closingBrace(body, open) + 1)), source);
-      return { keys, open: keys.includes("...") };
+      const properties = body.slice(open, closingBrace(body, open) + 1);
+      const keys = expandSpreads(topLevelKeys(properties), source);
+      return { keys, items: listItems(properties), open: keys.includes("...") };
     }
     // mutations.ts: tool("x", "description", { ...properties }, [required]),
     // every one of which also takes characterId.
@@ -465,9 +498,10 @@ function toolProperties(name) {
     if (helper) {
       const open = source.indexOf("{", helper.index);
       const close = closingBrace(source, open);
-      const keys = expandSpreads(topLevelKeys(source.slice(open, close + 1)), source);
+      const properties = source.slice(open, close + 1);
+      const keys = expandSpreads(topLevelKeys(properties), source);
       // characterProperty, which the helper spreads into every one of them.
-      return { keys: ["characterId", "reason", ...keys], open: keys.includes("...") };
+      return { keys: ["characterId", "reason", ...keys], items: listItems(properties), open: keys.includes("...") };
     }
   }
   return null;
@@ -483,6 +517,9 @@ const FOLDED_BY_THE_FACADE = {
 // and its value into the sheet's own key (src/lib/dm/update-sheet-args.ts).
 const FOLDED_BY_THE_HANDLER = {
   update_sheet: ["field", "value"],
+  // The form's second creature is Improved Reaper's, read from the one-target
+  // shape (src/lib/dm/authored-reaper.ts); the model lists both in targets.
+  cast_at_enemy: ["secondTargetEnemyId"],
 };
 
 // Fields only a person is offered: the handler reads them, and the model's
@@ -496,6 +533,15 @@ const FOR_A_PERSON_ONLY = {
   add_companion: ["background", "skills"],
 };
 
+// A tool that takes a declaration's parts as a list (pc_attack's attacks,
+// cast_at_enemy's targets) also reads one part sent flat, as a list of one
+// (src/lib/dm/pc-attack-parts.ts, cast-at-enemy-targets.ts): a form that
+// offers no list field sends one part, so the list's keys are the item's.
+function partsOf(entry, found) {
+  const offered = new Set(entry.fields.map((field) => field.name));
+  return found.keys.flatMap((key) => (found.items?.[key] && !offered.has(key) ? found.items[key] : [key]));
+}
+
 function formDrift(entry) {
   const found = toolProperties(entry.name);
   if (!found || found.open) {
@@ -506,9 +552,10 @@ function formDrift(entry) {
     ...(FOLDED_BY_THE_HANDLER[entry.name] ?? []),
     ...(FOR_A_PERSON_ONLY[entry.name] ?? []),
   ];
+  const keys = partsOf(entry, found);
   return entry.fields
     .map((field) => field.name)
-    .filter((field) => !found.keys.includes(field) && !folded.includes(field));
+    .filter((field) => !keys.includes(field) && !folded.includes(field));
 }
 
 const { COMBAT_ADJUDICATIONS } = await import("../src/lib/dm/catalog-combat.ts");
@@ -544,8 +591,10 @@ const OLDER_FORM_NAMES = [
 test("an older form's field names reach the names the handler reads", () => {
   for (const [name, sent, read] of OLDER_FORM_NAMES) {
     assert.deepEqual(normalizeArgs(adjudication(name), sent), read, name);
+    const found = toolProperties(name);
+    const defined = [...found.keys, ...Object.values(found.items).flat()];
     for (const key of Object.keys(read)) {
-      assert.ok(toolProperties(name).keys.includes(key), `${name} defines no ${key}`);
+      assert.ok(defined.includes(key), `${name} defines no ${key}`);
     }
     // The model is offered only the new name; afflict keeps name for a disease or a poison.
     for (const key of Object.keys(sent).filter((key) => !(key in read) && !(name === "afflict" && key === "name"))) {
@@ -562,7 +611,9 @@ test("the property scan reads the tools it is pointed at", () => {
   ]);
   assert.ok(toolProperties("apply_damage").keys.includes("amount"));
   assert.ok(toolProperties("apply_damage").keys.includes("characterId"));
-  assert.ok(toolProperties("pc_attack").keys.includes("targetEnemyId"));
+  assert.ok(toolProperties("pc_attack").keys.includes("attacks"));
+  assert.ok(toolProperties("pc_attack").items.attacks.includes("targetEnemyId"));
+  assert.ok(toolProperties("cast_at_enemy").items.targets.includes("darts"));
 });
 
 // The spell-area placement every area tool spreads in (src/lib/dm/zone-args.ts
@@ -618,6 +669,26 @@ const HANDLER_FILLS_IN = {
   end_encounter: ["outcome"],
 };
 
+// What a tool requires, as a form sends it. The last `required` in the
+// definition is the tool's own; any before it belong to the items of an
+// array argument. A required list of parts (pc_attack's attacks) that the
+// form does not offer as a list is its one part, sent flat (partsOf): what
+// each part requires.
+function requiredNames(entry, source, from) {
+  const body = source.slice(from, closingBrace(source, source.indexOf("{", from)) + 1);
+  const required = [...body.matchAll(/required:\s*\[([^\]]*)\]/g)].at(-1);
+  const names = required ? [...required[1].matchAll(/"([A-Za-z_]+)"/g)].map((match) => match[1]) : [];
+  return names.flatMap((name) => {
+    const at = new RegExp(`\\b${name}:\\s*\\{\\s*\\n\\s*type:\\s*"array"`).exec(body);
+    if (!at || entry.fields.some((field) => field.name === name)) {
+      return [name];
+    }
+    const list = body.slice(at.index, closingBrace(body, body.indexOf("{", at.index)) + 1);
+    const items = /required:\s*\[([^\]]*)\]/.exec(list);
+    return items ? [...items[1].matchAll(/"([A-Za-z_]+)"/g)].map((match) => match[1]) : [];
+  });
+}
+
 test("every combat form offers what its handler requires", () => {
   const missing = {};
   for (const entry of COMBAT_ADJUDICATIONS) {
@@ -627,12 +698,7 @@ test("every combat form offers what its handler requires", () => {
       if (!defined) {
         continue;
       }
-      const end = closingBrace(source, source.indexOf("{", defined.index));
-      // The last `required` in the definition is the tool's own; any before
-      // it belong to the items of an array argument.
-      const lists = [...source.slice(defined.index, end + 1).matchAll(/required:\s*\[([^\]]*)\]/g)];
-      const required = lists.at(-1);
-      const names = required ? [...required[1].matchAll(/"([A-Za-z_]+)"/g)].map((match) => match[1]) : [];
+      const names = requiredNames(entry, source, defined.index);
       const offered = entry.fields.filter((field) => field.required).map((field) => field.name);
       const tolerated = HANDLER_FILLS_IN[entry.name] ?? [];
       const absent = names.filter((name) => !offered.includes(name) && !tolerated.includes(name));
@@ -690,10 +756,7 @@ test("every other form requires what its handler requires", () => {
       if (!defined) {
         continue;
       }
-      const end = closingBrace(source, source.indexOf("{", defined.index));
-      const lists = [...source.slice(defined.index, end + 1).matchAll(/required:\s*\[([^\]]*)\]/g)];
-      const required = lists.at(-1);
-      const names = required ? [...required[1].matchAll(/"([A-Za-z_]+)"/g)].map((match) => match[1]) : [];
+      const names = requiredNames(entry, source, defined.index);
       const absent = names.filter((name) => !offered.includes(name) && !tolerated.includes(name));
       if (absent.length) {
         missing[entry.name] = absent;
@@ -723,6 +786,9 @@ const OMITTED_ON_PURPOSE = {
   // A person runs one character's downtime per form; the model may batch
   // several in activities, each with the same fields the form offers.
   downtime: ["activities"],
+  // A person heals one creature per form; the model may name every creature
+  // one spell heals in targets, each the call the form makes.
+  heal: ["targets"],
   // A person's advantage stands as their ruling; only the AI names where it
   // comes from (src/lib/dm/pc-attack-options.ts claimedAdvantage). A person
   // walks the token on the board and ends the turn from the initiative bar;
@@ -774,7 +840,7 @@ function formOmissions(entry) {
   // waypoint tags the AI DM's call with the [NOW] step it accomplishes; a
   // person's console call never ticks a step (src/lib/dm/waypoint-tick.ts),
   // the arc panel does, so no form offers it.
-  return found.keys.filter(
+  return partsOf(entry, found).filter(
     (key) =>
       key !== "..." &&
       key !== "reason" &&
@@ -816,10 +882,7 @@ test("no form requires a field its handler leaves optional", () => {
       if (!defined) {
         continue;
       }
-      const end = closingBrace(source, source.indexOf("{", defined.index));
-      const lists = [...source.slice(defined.index, end + 1).matchAll(/required:\s*\[([^\]]*)\]/g)];
-      const required = lists.at(-1);
-      const names = required ? [...required[1].matchAll(/"([A-Za-z_]+)"/g)].map((match) => match[1]) : [];
+      const names = requiredNames(entry, source, defined.index);
       const tolerated = REQUIRED_BY_THE_FORM_ONLY[entry.name] ?? [];
       const extra = entry.fields
         .filter((field) => field.required && !names.includes(field.name) && !tolerated.includes(field.name))
@@ -1123,6 +1186,24 @@ test("take_action's improvised action and its skills ask for the host", () => {
   assert.deepEqual(named("skill").onlyWhen, { field: "action", equals: ["search", "improvise"] });
   assert.ok(read("src/lib/capabilities.ts").match(/^\s*improvisedActions: true,$/m), "the server flags it");
   assert.match(read("src/lib/use-capabilities.ts"), /features\?: \{[^}]*improvisedActions\?: boolean/);
+});
+
+// The fields a declaration's parts brought to the console (PR 749): an older
+// host strips them unread, so an app compiled with them asks first. There a
+// "Two-Weapon Fighting" or a flurry strike was swung as the Attack action's
+// own swing, and Days or Blows came back as one stretch or one blow
+// (rev-749); the attack's field is that host's bonusAttack.
+test("pc_attack's Made with, travel's Days and damage_object's Blows ask for the host", () => {
+  const field = (tool, name) => adjudication(tool).fields.find((entry) => entry.name === name);
+  for (const [tool, name] of [["pc_attack", "feature"], ["travel", "days"], ["damage_object", "blows"]]) {
+    assert.ok(field(tool, name), `${tool} ${name}`);
+    assert.equal(fieldForHost(field(tool, name), () => true)?.name, name, `${tool} ${name} on a host that has it`);
+  }
+  assert.equal(fieldForHost(field("pc_attack", "feature"), () => false)?.name, "bonusAttack");
+  assert.equal(fieldForHost(field("travel", "days"), () => false), null);
+  assert.equal(fieldForHost(field("damage_object", "blows"), () => false), null);
+  assert.ok(read("src/lib/capabilities.ts").match(/^\s*actionParts: true,$/m), "the server flags it");
+  assert.match(read("src/lib/use-capabilities.ts"), /features\?: \{[^}]*actionParts\?: boolean/);
 });
 
 // The console's Background and Skills for a new companion: an older host's

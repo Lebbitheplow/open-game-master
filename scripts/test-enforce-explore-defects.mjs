@@ -212,6 +212,11 @@ await test("strictBooleanArgs turns the words true and false into booleans, leav
   assert.deepEqual(JSON.parse(strictBooleanArgs(JSON.stringify({ a: "false", b: "TRUE", c: "no", d: 1, e: "falsey" }))), { a: false, b: true, c: "no", d: 1, e: "falsey" });
   assert.equal(strictBooleanArgs("{not json"), "{not json");
   assert.equal(strictBooleanArgs("[]"), "[]");
+  // A list's entries are coerced too (pc_attack's attacks), and a list of words is left alone.
+  assert.deepEqual(JSON.parse(strictBooleanArgs(JSON.stringify({ attacks: [{ stunningStrike: "false", weapon: "unarmed strike" }], tags: ["true"] }))), {
+    attacks: [{ stunningStrike: false, weapon: "unarmed strike" }],
+    tags: ["true"],
+  });
   const fs = await import("node:fs");
   const turn = fs.readFileSync(new URL("../src/lib/dm/turn.ts", import.meta.url), "utf8");
   // The turn loop coerces the call before it routes it (issue #471).

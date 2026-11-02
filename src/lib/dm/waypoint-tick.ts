@@ -7,12 +7,14 @@ import { narratorIsAi } from "@/lib/dm/viewer";
 import { requestDmMessage } from "@/lib/dm/model";
 import { arcTextTimeoutMs } from "@/lib/model-client";
 import { stripReasoningArtifacts } from "@/lib/story-prompt";
-import type { StoryArc } from "@/lib/dm/arc-logic";
+import type { ArcBeat, StoryArc } from "@/lib/dm/arc-logic";
+import type { Campaign } from "@/lib/db/campaigns";
 import {
   activeBeat,
   matchSignal,
   openWaypoints,
   parseWaypointJudge,
+  setWaypointDone,
   signalFromToolCall,
   taggedWaypoint,
   tickWaypoints,
@@ -54,6 +56,17 @@ export async function tickWaypointsFromCalls(
   if (!active || !openWaypoints(active.beat).length) {
     return [];
   }
+  const matched = matchCalls(campaign, active.beat, calls, extra);
+  if (!matched.size) {
+    return [];
+  }
+  return applyTicks(campaignId, campaign.storyArc, active.number, [...matched]);
+}
+
+type TickExtra = { enemyNames?: string[]; accepted?: ReadonlySet<ToolCall>; refused?: ReadonlySet<ToolCall> };
+
+// The open waypoints of `beat` the calls satisfy.
+function matchCalls(campaign: Campaign, beat: ArcBeat, calls: ToolCall[], extra: TickExtra): Set<number> {
   const matched = new Set<number>();
   for (const call of calls) {
     if (extra.refused?.has(call)) {
@@ -61,24 +74,60 @@ export async function tickWaypointsFromCalls(
     }
     // Read under the names it ran by: a retired tool, an older argument name.
     const ran = mergedCallText(call.name, call.rawArguments);
-    const tagged = extra.accepted?.has(call) ? taggedWaypoint(active.beat, ran.name, ran.rawArguments) : null;
+    const tagged = extra.accepted?.has(call) ? taggedWaypoint(beat, ran.name, ran.rawArguments) : null;
     if (tagged !== null) {
       matched.add(tagged);
     }
     const signal = signalFromToolCall(ran.name, ran.rawArguments, {
       enemyNames: extra.enemyNames,
-      objectiveText: ran.name === "tick_objective" ? objectiveText(campaignId, ran.rawArguments) : undefined,
+      objectiveText: ran.name === "tick_objective" ? objectiveText(campaign.id, ran.rawArguments) : undefined,
     });
     if (signal) {
-      for (const index of matchSignal(active.beat, signal, campaign.gameSettings.tableLanguage)) {
+      for (const index of matchSignal(beat, signal, campaign.gameSettings.tableLanguage)) {
         matched.add(index);
       }
     }
   }
-  if (!matched.size) {
+  return matched;
+}
+
+// The [NOW] beat as it stood before a reply's calls ticked it, or null.
+export type BeatMark = { number: number; beat: ArcBeat } | null;
+
+export function markActiveBeat(campaignId: string): BeatMark {
+  const arc = getCampaignById(campaignId)?.storyArc;
+  return arc ? activeBeat(arc) : null;
+}
+
+// A reply's waypoints tick before its beat is judged, from calls that have
+// not run yet (issue #31: the arrival and the beat it lands in resolve in
+// order). Once they have run, a step only a refused call (or a refused item
+// of a call's list) named is open again: a grant_item refused for the Sun
+// Blade had ticked "Recover the Sun Blade" with the blade nowhere on the
+// sheet. A beat the same reply's complete_beat already closed keeps what
+// the claim stood on. Returns the texts opened again.
+export function settleEarlyTicks(campaignId: string, mark: BeatMark, calls: ToolCall[], extra: TickExtra): string[] {
+  const campaign = getCampaignById(campaignId);
+  if (!mark || !campaign?.storyArc) {
     return [];
   }
-  return applyTicks(campaignId, campaign.storyArc, active.number, [...matched]);
+  const active = activeBeat(campaign.storyArc);
+  if (!active || active.number !== mark.number) {
+    return [];
+  }
+  const ticked = (active.beat.waypoints ?? []).flatMap((waypoint, index) => (waypoint.done && !mark.beat.waypoints?.[index]?.done ? [index] : []));
+  if (!ticked.length) {
+    return [];
+  }
+  const done = matchCalls(campaign, mark.beat, calls.filter((call) => extra.accepted?.has(call)), extra);
+  const opened = ticked.filter((index) => !done.has(index));
+  if (!opened.length) {
+    return [];
+  }
+  const arc = opened.reduce((next, index) => setWaypointDone(next, active.number, index, false), campaign.storyArc);
+  setStoryArc(campaignId, arc);
+  publishEphemeral(campaignId, "arc_updated", {});
+  return opened.map((index) => active.beat.waypoints?.[index]?.text ?? "").filter(Boolean);
 }
 
 function objectiveText(campaignId: string, rawArguments: string): string | undefined {

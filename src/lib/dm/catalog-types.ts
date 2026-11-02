@@ -15,6 +15,7 @@
 // can load it directly.
 
 import { containsPhrase, findNamed, namesHolding, textKey } from "@/lib/language/text-logic";
+import { PART_LISTS } from "@/lib/dm/action-parts-logic";
 
 export type AdjudicationCategory =
   | "combat"
@@ -290,6 +291,15 @@ export function checkArgs(
   entry: CatalogEntry,
   args: Record<string, unknown>,
 ): string | null {
+  // A call carrying a declaration's parts names in each part what the
+  // form's one field names: the Hand's share of a casting at a table a
+  // person runs is one heal with targets, one pc_attack with attacks, one
+  // cast_at_enemy with targets (actions/route.ts directCardCalls), and each
+  // part is checked by the handler as the one call it stands for. A
+  // purchase is left out: its shop is chosen before its list is split
+  // (tool-merge.ts tradeCall), so a list sent here would skip the shelf.
+  const list = entry.name === "purchase" ? undefined : PART_LISTS[entry.name];
+  const listed = list !== undefined && Array.isArray(args[list.key]) && (args[list.key] as unknown[]).length > 0;
   for (const field of entry.fields) {
     const value = args[field.name];
     const missing =
@@ -297,7 +307,7 @@ export function checkArgs(
       value === null ||
       (typeof value === "string" && value.trim() === "") ||
       (Array.isArray(value) && value.length === 0);
-    if (field.required && missing) {
+    if (field.required && missing && !(listed && field.name === list?.bare)) {
       return `${entry.label} needs ${field.label.toLowerCase()}.`;
     }
     const others = field.requiredUnless === undefined ? [] : [field.requiredUnless].flat();

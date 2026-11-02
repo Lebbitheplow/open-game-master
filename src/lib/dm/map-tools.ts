@@ -13,7 +13,7 @@ import {
   type EncounterEnemy,
 } from "@/lib/db/encounters";
 import type { CombatSide } from "@/lib/dm/combat-sides-logic";
-import { sideOf } from "@/lib/dm/combatant";
+import { sideOf, standingFoesLine } from "@/lib/dm/combatant";
 import {
   createBattleMap,
   getBattleMapForEncounter,
@@ -903,8 +903,9 @@ export function checkPcAttackRange(
     longRangeTiles?: number;
   },
 ): (ToolError & { closeIn?: string }) | null {
+  const encounter = getEncounter(encounterId);
   const map = getBattleMapForEncounter(encounterId);
-  if (!map) {
+  if (!encounter || !map) {
     return null;
   }
   const attacker = getTokenByRef(map.id, characterId);
@@ -938,8 +939,18 @@ export function checkPcAttackRange(
       ? null
       : { error: `${attacker.name} has no line of sight to ${target.name}; something blocks the shot. They must move their token to a sightline first or pick another target.`, retry: true };
   }
+  // The foes this same attack reaches from where they stand, for the next
+  // call to aim at instead.
+  const tokens = listTokens(map.id);
+  const within = (tiles: number) => {
+    const line = standingFoesLine(encounter.campaignId, encounter, (id) => {
+      const token = tokens.find((entry) => entry.refId === id);
+      return Boolean(token && tilesApart(attacker, token) <= tiles);
+    });
+    return line ? ` ${options.ranged || options.thrown ? "In range" : "Within reach"}: ${line}.` : "";
+  };
   if (options.ranged || options.thrown) {
-    return { error: `${attacker.name} is ${distance * 5} ft from ${target.name}, beyond this attack's ${maxTiles * 5} ft maximum range. They must move their token closer or pick another target.`, retry: true };
+    return { error: `${attacker.name} is ${distance * 5} ft from ${target.name}, beyond this attack's ${maxTiles * 5} ft maximum range.${within(maxTiles)} They must move their token closer or pick another target.`, retry: true };
   }
   // Named, so a model that cannot count tiles knows where the walk ends.
   // The directions name the model's own tools, so they ride beside the
@@ -947,7 +958,7 @@ export function checkPcAttackRange(
   // sentence alone, and a model reads both (src/lib/dm/invoke.ts).
   const enemy = listEnemies(encounterId).find((entry) => entry.id === target.refId);
   const square = openSquaresBeside(encounterId, map, attacker, target, footprintForSize(enemy?.stats.size))[0];
-  const refusal = { error: `${attacker.name} is ${distance * 5} ft from ${target.name}, out of melee reach (${options.reachTiles * 5} ft). They must move their token adjacent first or attack with a ranged weapon.`, retry: true as const };
+  const refusal = { error: `${attacker.name} is ${distance * 5} ft from ${target.name}, out of melee reach (${options.reachTiles * 5} ft).${within(options.reachTiles)} They must move their token adjacent first or attack with a ranged weapon.`, retry: true as const };
   return square
     ? { ...refusal, closeIn: `When their player said they close in, send the attack again with approach true: the server walks them to (${square.x},${square.y}), the nearest open square beside ${target.name}, and attacks. The nearest open square beside ${target.name} is (${square.x},${square.y}): move_token ${attacker.name} there, then attack.` }
     : refusal;

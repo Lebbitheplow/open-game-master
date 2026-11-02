@@ -15,6 +15,7 @@
 import type { NarrationClaim } from "./claims-logic.ts";
 import { THIS_MOMENT_HEADING, THIS_TURN_HEADING } from "../prompt-boundary.ts";
 import { textKey, WORD_CHAR } from "../language/text-logic.ts";
+import { splitParts } from "./action-parts-logic.ts";
 import { withoutLeadingStopWords } from "../language/language.ts";
 import type { TableLanguage } from "../schemas/game-settings-options.ts";
 
@@ -385,10 +386,15 @@ export function resolveOutcomes(
   const refusedTargets: string[] = [];
   let toolResultCount = 0;
 
-  for (const exchange of exchanges) {
-    const args = parseJsonObject(exchange.arguments);
+  // A call carrying a declaration's parts is read part by part, each as the
+  // one-part call it stands for: its target, its spell, its hit.
+  const parts = exchanges.flatMap((exchange) =>
+    splitParts(exchange.name, parseJsonObject(exchange.arguments) ?? {}, exchange.result).map((part) => ({ name: exchange.name, ...part })),
+  );
+  for (const exchange of parts) {
+    const args = exchange.args;
     if (ATTACK_TOOLS.has(exchange.name) && exchange.result && "error" in exchange.result) {
-      if (typeof args?.targetEnemyId === "string") {
+      if (typeof args.targetEnemyId === "string") {
         refusedTargets.push(args.targetEnemyId);
       }
     }
@@ -400,7 +406,7 @@ export function resolveOutcomes(
     // the enemy's spell a Counterspell answers, never the party's.
     const spellArg = exchange.name === "use_reaction" ? "feature" : SPELL_ACCOUNTING_TOOLS.has(exchange.name) ? "spell" : null;
     if (spellArg) {
-      const value = args?.[spellArg];
+      const value = args[spellArg];
       const named = typeof value === "string" ? normalizeSpellName(value) : "";
       if (named && !(exchange.result && "error" in exchange.result)) {
         spells.add(named);
@@ -411,9 +417,10 @@ export function resolveOutcomes(
       continue;
     }
     toolResultCount += 1;
-    const spent = args ? spentName(args) : "";
-    if (typeof args?.characterId === "string" && spent) {
-      spends.push({ characterId: args.characterId, name: spent });
+    const spent = spentName(args);
+    const characterId = args.characterId;
+    if (typeof characterId === "string" && spent && !spends.some((entry) => entry.characterId === characterId && entry.name === spent)) {
+      spends.push({ characterId, name: spent });
     }
     walkNumbers(result, numbers, damageNumbers);
     walkCreatures(result, creatures, language);
@@ -835,7 +842,7 @@ export function unpaidCast(claims: readonly NarrationClaim[], outcomes: Resolved
 }
 
 export function unrolledBlowPrompt(clause: string): string {
-  return `[System] Your narration resolves an attack that no tool rolled this turn ("${clause}"), so it has not happened: no dice were rolled and no hit points changed. Resolve only the attack the acting player declared, with its tool, and narrate from the result: pc_attack with their characterId, the targetEnemyId and their weapon (approach true when they close in on a target out of reach), cast_at_enemy for a spell; an enemy acts only on its own turn, through enemy_attack. Never act for a character whose player has not declared an action. If the attack cannot happen yet (out of reach, not their turn), say so instead of resolving it.`;
+  return `[System] Your narration resolves an attack that no tool rolled this turn ("${clause}"), so it has not happened: no dice were rolled and no hit points changed. Resolve only the attack the acting player declared, with its tool, and narrate from the result: pc_attack with their characterId and one entry in attacks per attack, each with its targetEnemyId and weapon (approach true when they close in on a target out of reach), cast_at_enemy for a spell; an enemy acts only on its own turn, through enemy_attack. Never act for a character whose player has not declared an action. If the attack cannot happen yet (out of reach, not their turn), say so instead of resolving it.`;
 }
 
 export function unrolledDamagePrompt(clause: string): string {
