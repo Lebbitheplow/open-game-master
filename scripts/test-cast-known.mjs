@@ -256,6 +256,53 @@ await test("what each table was last sent is kept as a short digest, however lar
   assert.ok(kept.length <= 64, `kept ${kept.length} characters for one table`);
 });
 
+await test("a face painted for the workshop's cast tells the workshop's tools to read the cast again (issue 733)", async () => {
+  const fs = await import("node:fs");
+  const os = await import("node:os");
+  const path = await import("node:path");
+  const scriptDir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-cast-paint-"));
+  const scriptFile = path.join(scriptDir, "fake-script.json");
+  fs.writeFileSync(scriptFile, JSON.stringify([[{ paint: [48, 48] }, { text: "done" }]]));
+  process.env.HARNESS_FAKE = "1";
+  process.env.HARNESS_FAKE_SCRIPT = scriptFile;
+  try {
+    const world = await openWorld();
+    const { saveGlobalConfig } = await import("../src/lib/db/app-settings.ts");
+    const { createWorkshop } = await import("../src/lib/db/workshops.ts");
+    saveGlobalConfig({ harness: { id: "codex", images: "native", imagesVerifiedAt: new Date().toISOString() }, images: { defaultBackend: "harness" } });
+    const workshopId = createWorkshop(world.owner.id, { title: "Saltmarch" }).id;
+    world.signIn(world.owner);
+    const route = await world.route("campaigns/[campaignId]/dm/npcs");
+    const response = await route.POST(
+      new Request("http://test/api", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ draft: { name: "Mira Fenn", gender: "Female" }, portrait: true }) }),
+      { params: Promise.resolve({ campaignId: workshopId }) },
+    );
+    assert.equal(response.status, 201);
+    const { npc } = await response.json();
+    // Heard from here: only what the painting job sends once the face lands.
+    const heard = [];
+    const stop = subscribe(workshopId, (chunk) => heard.push(chunk), world.owner.id);
+    try {
+      const until = Date.now() + 20_000;
+      while (!getNpcById(npc.id).portraitUrl && Date.now() < until) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      assert.ok(getNpcById(npc.id).portraitUrl, "the face was painted");
+      await settled();
+    } finally {
+      stop();
+    }
+    const pinged = heard
+      .filter((chunk) => /^event: records_changed$/m.test(chunk))
+      .some((chunk) => JSON.parse(/data: (.*)\n/.exec(chunk)[1]).kinds.includes("npc"));
+    assert.ok(pinged, "the workshop's Cast tool hears that a person changed");
+  } finally {
+    delete process.env.HARNESS_FAKE;
+    delete process.env.HARNESS_FAKE_SCRIPT;
+    fs.rmSync(scriptDir, { recursive: true, force: true });
+  }
+});
+
 await test("two rows merged into one keep the earlier hearing", async () => {
   const { world, npc, gm } = await table();
   const keep = npc("Marla Venn");

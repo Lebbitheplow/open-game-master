@@ -8,6 +8,7 @@ import { listSheetsForLibraryCharacter, patchSheet } from "@/lib/db/sheets";
 import { setNpcPortrait } from "@/lib/db/npcs";
 import { publishPersisted } from "@/lib/events";
 import { enqueueMediaJob } from "@/lib/media-queue";
+import { recordsChanged } from "@/lib/workshop/record-events";
 import { toEnglishForImage } from "@/lib/image-english";
 import type { Campaign } from "@/lib/db/campaigns";
 import { presetFor } from "@/lib/worlds/preset";
@@ -211,8 +212,13 @@ export function queueNpcPortrait(
         // The new face reaches the seats as the cast (setNpcPortrait tells
         // it, src/lib/dm/cast.ts), so only those who know this person see
         // it. An npc_updated sent every seat the face of someone not yet
-        // introduced, and kept it for replay (issue 733).
-        setNpcPortrait(npc.id, copied.url);
+        // introduced, and kept it for replay (issue 733). It was also what
+        // told the workshop's Cast and World tools to read the person again,
+        // so they are told as every write to a Cast member tells them, by
+        // kind and to the story's seats alone.
+        if (setNpcPortrait(npc.id, copied.url)) {
+          recordsChanged(campaign.id, "npc", "world");
+        }
       } catch (error) {
         console.error(`[portrait] npc generation failed for ${npc.id}:`, error);
       }
