@@ -52,6 +52,22 @@ export function improvisedHold(
   }
 }
 
+// A laid condition and how long it holds, as the result says it: the
+// tool's schema names the conditions alone, and the model narrates the
+// duration from here. A restraint's freeing is the result's own sentence.
+export function improvisedLasts(condition: ImprovisedCondition, actorName: string): string {
+  switch (condition) {
+    case "prone":
+      return "prone until it stands";
+    case "restrained":
+      return "restrained";
+    case "frightened":
+      return `frightened of ${actorName} until the end of its next turn`;
+    default:
+      return `${condition} until the end of its next turn`;
+  }
+}
+
 // The largest creature a condition takes, where what it copies has one: a
 // net holds a creature Large or smaller (SRD 5.1, Net: "A net has no effect
 // on creatures that are formless, or creatures that are Huge or larger"), as
