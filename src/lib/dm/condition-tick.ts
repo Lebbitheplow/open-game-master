@@ -181,6 +181,10 @@ export function startTurnConditions(
   // advancePointer passes it; a caller that does not leaves the stored row
   // to be read, which holds it until the pointer's save.
   endedTurn?: { budget: TurnBudget | null },
+  // The character the pointer landed on while enemies it walked past still
+  // take their turns (src/lib/dm/held-turn.ts): what lasts until the start
+  // of their turn holds until those enemies have acted.
+  held: string[] = [],
 ) {
   if (!combatantIds.length) {
     return;
@@ -188,37 +192,7 @@ export function startTurnConditions(
   endTurnRage(campaign, encounter, combatantIds[0], endedTurn);
   startTurnFeatures(campaign, combatantIds);
   const starting = new Set(combatantIds);
-  let enemiesChanged = false;
-  for (const enemy of listEnemies(encounter.id)) {
-    const ended = endInstancesBoundTo(enemy.conditions, enemy.conditionMeta as ConditionMetaMap, starting);
-    if (ended.changed) {
-      patchEnemyConditions(enemy.id, ended.conditions, ended.meta);
-      enemiesChanged = true;
-    }
-  }
-  for (const stale of listSheets(campaign.id)) {
-    const sheet = getSheetById(stale.id) ?? stale;
-    const ended = endInstancesBoundTo(sheet.conditions, sheet.conditionMeta as ConditionMetaMap, starting);
-    const ending = ended.ended;
-    if (!ended.changed) {
-      continue;
-    }
-    // A readied spell never released is lost, and the concentration that
-    // held it ends with it (src/lib/dm/readied-spell.ts).
-    const lostSpell = ending.some((name) => name.toLowerCase() === "readied")
-      ? readiedSpellOf(sheet)?.spell
-      : undefined;
-    if (lostSpell && textKey(sheet.concentratingOn ?? "") === textKey(lostSpell)) {
-      breakConcentration(campaign, null, sheet.id, "the readied spell was never released");
-    }
-    // Audited, as everything the pointer writes to a sheet is: the turn that
-    // moved it gives back what it ended when it is reverted (issue #622).
-    patchSheetAudited(campaign.id, sheet.id, { conditions: ended.conditions, conditionMeta: ended.meta }, {
-      kind: "condition_clock",
-      reason: ending.length ? `no longer ${ending.join(" or ")} as their turn starts` : "a hold that lasted until their turn ended",
-      delta: { ended: ending, added: [] },
-    });
-  }
+  let enemiesChanged = endTurnStartHolds(campaign, encounter.id, new Set(combatantIds.filter((id) => !held.includes(id))));
   // A count that belongs to these turns runs down now: "for 1 minute" from
   // a caster's (or a monster's) turn ends ten of its turns later, where it
   // began (SRD 5.1); a concentration spell's clock with them.
@@ -249,6 +223,47 @@ export function startTurnConditions(
   if (spellLines.length) {
     noteAtTable(campaign.id, spellLines);
   }
+}
+
+// Whatever lasted "until the start of the next turn" of these combatants
+// ends: on the creatures' rows and on the sheets (Dodge, Shield, a
+// protector's Protection). Returns whether a creature's row changed.
+export function endTurnStartHolds(campaign: Campaign, encounterId: string, starting: Set<string>): boolean {
+  if (!starting.size) {
+    return false;
+  }
+  let enemiesChanged = false;
+  for (const enemy of listEnemies(encounterId)) {
+    const ended = endInstancesBoundTo(enemy.conditions, enemy.conditionMeta as ConditionMetaMap, starting);
+    if (ended.changed) {
+      patchEnemyConditions(enemy.id, ended.conditions, ended.meta);
+      enemiesChanged = true;
+    }
+  }
+  for (const stale of listSheets(campaign.id)) {
+    const sheet = getSheetById(stale.id) ?? stale;
+    const ended = endInstancesBoundTo(sheet.conditions, sheet.conditionMeta as ConditionMetaMap, starting);
+    const ending = ended.ended;
+    if (!ended.changed) {
+      continue;
+    }
+    // A readied spell never released is lost, and the concentration that
+    // held it ends with it (src/lib/dm/readied-spell.ts).
+    const lostSpell = ending.some((name) => name.toLowerCase() === "readied")
+      ? readiedSpellOf(sheet)?.spell
+      : undefined;
+    if (lostSpell && textKey(sheet.concentratingOn ?? "") === textKey(lostSpell)) {
+      breakConcentration(campaign, null, sheet.id, "the readied spell was never released");
+    }
+    // Audited, as everything the pointer writes to a sheet is: the turn that
+    // moved it gives back what it ended when it is reverted (issue #622).
+    patchSheetAudited(campaign.id, sheet.id, { conditions: ended.conditions, conditionMeta: ended.meta }, {
+      kind: "condition_clock",
+      reason: ending.length ? `no longer ${ending.join(" or ")} as their turn starts` : "a hold that lasted until their turn ended",
+      delta: { ended: ending, added: [] },
+    });
+  }
+  return enemiesChanged;
 }
 
 // What a character's features do at the start of their turn. Survivor

@@ -776,6 +776,112 @@ await test("Words typed as a hero's reaction pass only for a hit on them or on a
   assert.equal(covered.status, 202, JSON.stringify(covered.body));
 });
 
+// ---- a reaction comes back as the hero's turn starts ----
+// The pointer lands on Mira as Poppy's turn ends, with the goblins before her
+// still to act. SRD 5.1: her reaction comes back, and Shield ends, at the
+// start of her turn, which comes after theirs.
+
+// The order, from Poppy's turn: `before` goblins between Poppy and Mira, the
+// rest after her.
+async function passOrder(table, before, after, { human = false } = {}) {
+  const { world, kit, poppy, mira } = table;
+  if (human) {
+    setDmMode(world.campaignId, "human", world.owner.id);
+  }
+  const enemy = (goblin, initiative) => ({ kind: "enemy", enemyId: goblin.id, name: goblin.displayName, initiative });
+  const entries = [
+    { kind: "pc", characterId: poppy.id, userId: poppy.userId, name: "Poppy", initiative: 20 },
+    ...before.map((goblin, at) => enemy(goblin, 15 - at)),
+    { kind: "pc", characterId: mira.id, userId: mira.userId, name: "Mira", initiative: 10 },
+    ...after.map((goblin, at) => enemy(goblin, 5 - at)),
+  ];
+  kit.saveEncounter({ ...world.encounter(), order: entries, turnIndex: 0, round: 2, surprisedIds: [], turnBudget: null, reactionsUsed: [] });
+  tools.setInitiativeFloor(world.campaign(), world.encounter());
+  kit.place(mira.id, 5, 5);
+  kit.place(table.g1.id, 5, 6);
+  kit.place(table.g2.id, 4, 5);
+  kit.place(poppy.id, 9, 9);
+}
+
+const shielded = (world, hero) => world.sheet(hero.id).conditions.some((entry) => entry.toLowerCase() === "shielded");
+
+await test("A Shield cast against the goblin before Mira's turn ends as her turn starts, and her reaction is back for the goblin after it", async () => {
+  const table = await stage();
+  const { world, kit, poppy, mira, g1, g2 } = table;
+  await passOrder(table, [g1], [g2], { human: true });
+  assert.equal(tools.endOwnTurn(world.campaignId, poppy.userId), true, "Poppy ends her turn");
+  // The first goblin, due before Mira: 10 + 4 hits her AC 12 for 3 + 2.
+  world.dice(10, 3);
+  const swing = await world.invoke("enemy_attack", { enemyId: g1.id, targetCharacterId: mira.id });
+  world.clearDice();
+  assert.equal(swing.ok, true, swing.error);
+  const shield = await react(world, mira, "Shield");
+  assert.equal(shield.ok, true, shield.error);
+  assert.equal(hp(world, mira), 30);
+  assert.ok(shielded(world, mira));
+  // The GM hands the turn on: Mira's turn starts.
+  kit.handOnEnemies();
+  assert.equal(world.encounter().reactionsUsed.includes(mira.id), false, "her reaction is back as her turn starts");
+  assert.equal(shielded(world, mira), false, "Shield lasts until the start of her turn");
+  assert.equal(tools.endOwnTurn(world.campaignId, mira.userId), true, "Mira ends her turn");
+  // The second goblin's 12 + 4 hits her AC 12 again for 4 + 2.
+  world.dice(12, 4);
+  const later = await world.invoke("enemy_attack", { enemyId: g2.id, targetCharacterId: mira.id });
+  world.clearDice();
+  assert.equal(later.ok, true, later.error);
+  assert.equal(hp(world, mira), 24, JSON.stringify(later.result ?? later));
+});
+
+await test("A Shield from the round before still holds against the goblin before Mira's turn, and her reaction comes back only with that turn", async () => {
+  const table = await stage();
+  const { world, kit, poppy, mira, g1, g2 } = table;
+  await passOrder(table, [g1], [g2], { human: true });
+  // After her turn last round she cast Shield, spending her reaction.
+  world.patch(mira.id, { conditions: ["shielded"], conditionMeta: { shielded: { untilTurnOf: mira.id } } });
+  kit.saveEncounter({ ...world.encounter(), reactionsUsed: [mira.id] });
+  assert.equal(tools.endOwnTurn(world.campaignId, poppy.userId), true, "Poppy ends her turn");
+  assert.ok(shielded(world, mira), "Mira's turn has not started");
+  assert.ok(world.encounter().reactionsUsed.includes(mira.id), "nor has her reaction come back");
+  // 12 + 4 = 16 misses the shielded 17.
+  world.dice(12, 4);
+  const swing = await world.invoke("enemy_attack", { enemyId: g1.id, targetCharacterId: mira.id });
+  world.clearDice();
+  assert.equal(swing.ok, true, swing.error);
+  assert.equal(hp(world, mira), 30, JSON.stringify(swing.result ?? swing));
+  kit.handOnEnemies();
+  assert.equal(shielded(world, mira), false);
+  assert.equal(world.encounter().reactionsUsed.includes(mira.id), false);
+});
+
+await test("A reaction to the goblins before Mira, answered after the AI's reply began her turn, comes back with that turn, and it is her one reaction for them", async () => {
+  const table = await stage();
+  const { world, poppy, mira, g1, g2 } = table;
+  world.patch(mira.id, { features: [{ name: "Uncanny Dodge", source: "class" }] });
+  await passOrder(table, [g1, g2], []);
+  const turn = createDmTurn(world.campaignId, [], "ai");
+  const ai = { kind: "ai", turnId: turn.id };
+  world.say("player", "Poppy is done.", world.sheet(poppy.id));
+  const ended = await invokeEngine(world.campaign(), ai, { name: "end_turn", args: { characterId: poppy.id } });
+  assert.equal(ended.ok, true, ended.error);
+  // 10 + 4 hits for 3 + 2; 16 + 4 = 20 hits even the shielded 17, for 4 + 2.
+  for (const [goblin, faces] of [[g1, [10, 3]], [g2, [16, 4]]]) {
+    world.dice(...faces);
+    const out = await invokeEngine(world.campaign(), ai, { name: "enemy_attack", args: { enemyId: goblin.id, targetCharacterId: mira.id } });
+    world.clearDice();
+    assert.equal(out.ok, true, out.error);
+  }
+  // The reply is narrated: the goblins have acted, and Mira's turn begins.
+  tools.advanceAfterTurn(world.campaign(), turn);
+  const shield = await react(world, mira, "Shield");
+  assert.equal(shield.ok, true, shield.error);
+  assert.equal(hp(world, mira), 24, "the first goblin's 5 comes back; the second still hits");
+  assert.equal(world.encounter().reactionsUsed.includes(mira.id), false, "her turn has given it back");
+  assert.equal(shielded(world, mira), false, "her turn has started: Shield is over");
+  const dodge = await react(world, mira, "Uncanny Dodge");
+  assert.equal(dodge.ok, false, "a second reaction against the same goblins");
+  assert.equal(hp(world, mira), 24);
+});
+
 await test("The screens wire it: Speaking as on its host flag, Edit in chat names the card's hero, and the companions' reactions in the Hand", () => {
   const view = read("app/campaigns/[campaignId]/SessionView.tsx");
   assert.match(view, /hostOffers\(capabilities, "typedReactions"\)/);

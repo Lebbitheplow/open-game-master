@@ -140,6 +140,7 @@ import { lairCountPassed } from "@/lib/dm/legendary-logic";
 import { publishTitleCard } from "@/lib/dm/scene-state";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { VIGILANT_PREFIX } from "@/lib/srd/authored-effects-more";
+import { beginHeldTurn, startHeldTurn } from "@/lib/dm/held-turn";
 import { handleReaperCast } from "@/lib/dm/authored-reaper";
 import { sweepSummons } from "@/lib/dm/summon-store";
 import { endConcentrationOnFadedSummons } from "@/lib/dm/concentration-upkeep";
@@ -1516,6 +1517,7 @@ function finishPassBeforeMove(campaign: Campaign) {
   saveEncounter(encounter);
   if (!owed.length) {
     releaseEnemyHold(campaign);
+    beginHeldTurn(campaign);
   }
   const current = encounter.order[encounter.turnIndex];
   finishPass(campaign, current?.kind === "pc" ? current.characterId : undefined);
@@ -1556,6 +1558,9 @@ function advancePointer(
 ): { enemiesPassed: string[]; wrapped: boolean; dyingPassed: string[] } | null {
   const enemiesById = new Map(listEnemies(encounter.id).map((enemy) => [enemy.id, enemy]));
   const leaving = options?.leaving ?? (options?.rest ? undefined : encounter.order[encounter.turnIndex]);
+  // A turn held for the enemies before it has begun by the time the pointer
+  // moves again (src/lib/dm/held-turn.ts).
+  startHeldTurn(campaign, encounter);
   // A turn ending is the moment past answering any hit but one in that
   // creature's own turn (src/lib/dm/last-hit.ts). Not the rest of a pass,
   // which ends nobody's turn, nor a second step of the same move.
@@ -1670,14 +1675,33 @@ function advancePointer(
   // it is thrown away, so they never depend on when this row is saved.
   const endedTurn = { budget: encounter.turnBudget };
   encounter.turnBudget = null;
+  // The character landed on after enemies this walk hands out, who act
+  // first: their turn begins once those enemies have acted
+  // (src/lib/dm/held-turn.ts). Until then their spent reaction stays spent
+  // and what lasts until the start of their turn holds, so a Shield cast
+  // against those enemies no longer runs on through the character's turn.
+  const landingEntry = encounter.order[next.turnIndex];
+  const heldTurn =
+    !stop &&
+    landingEntry?.kind === "pc" &&
+    handedOut.some((id) => {
+      const enemy = enemiesById.get(id);
+      return Boolean(enemy && canEnemyAct({ enemy, encounter, kind: "action" }).ok);
+    })
+      ? landingEntry.characterId
+      : null;
   // A reaction comes back at the start of its owner's turn, and what lasted
   // until that turn (Dodge, Shield) ends with it.
   // Vigilant Defender's per-turn reactions ("vigilant:<id>:<mover>") come
   // back with the defender's own turn too.
+  const startsNow = starting.filter((id) => id !== heldTurn);
   encounter.reactionsUsed = encounter.reactionsUsed.filter(
-    (id) => !starting.includes(id) && !starting.some((owner) => id.startsWith(`${VIGILANT_PREFIX}${owner}:`)),
+    (id) => !startsNow.includes(id) && !startsNow.some((owner) => id.startsWith(`${VIGILANT_PREFIX}${owner}:`)),
   );
-  startTurnConditions(campaign, encounter, starting, endedTurn);
+  startTurnConditions(campaign, encounter, starting, endedTurn, heldTurn ? [heldTurn] : []);
+  if (heldTurn) {
+    encounter.legendary.turnStart = heldTurn;
+  }
   // What the turns now starting bring, posted as one table note
   // (src/lib/dm/turn-start-effects.ts).
   turnStartEffects(campaign, encounter, starting, enemiesById, [...turnEnd.lines, ...swallowEnd]);
@@ -2096,6 +2120,7 @@ function advanceAfterNarration(campaign: Campaign, turn?: DmTurn) {
     // An enemy it plays may take out the summon whose turn it is.
     const holder = turnHolder(campaign.id);
     autoActSkippedEnemies(campaign, turn, encounter, handoff.enemyIds, sheets, sheetsById);
+    beginHeldTurn(campaign);
     passOnFrom(campaign, holder);
     // The pass the model's end_turn made, said now that the narration is in,
     // with what waited for the enemies it handed over (issue 713).
@@ -2638,6 +2663,9 @@ export function handOnEnemyTurns(campaign: Campaign, turn: DmTurn, play: boolean
     autoActSkippedEnemies(campaign, turn, encounter, due, sheets, sheetsById, { play });
   }
   releaseEnemyHold(campaign);
+  // The enemies before the character up next have had their turns: theirs
+  // begins (src/lib/dm/held-turn.ts).
+  beginHeldTurn(campaign);
   // What the pass left for after them: the round turning over, the dying's
   // saves (issue 713).
   finishPass(campaign);

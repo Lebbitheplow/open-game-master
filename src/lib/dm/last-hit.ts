@@ -352,6 +352,15 @@ function isFresh(campaignId: string, record: LastHit, encounter: Encounter | nul
   return Date.now() - Date.parse(record.at) <= FRESH_MS;
 }
 
+// Whether a hit of the enemies' pass before the character whose turn it is
+// is still open to a reaction: one that landed while the pointer already
+// named them and the enemies took their turns (src/lib/dm/held-turn.ts).
+export function passHitsOpen(campaignId: string, encounter: Encounter): boolean {
+  const key = turnKey(encounter);
+  const rows = db().prepare(`SELECT character_id FROM last_hits WHERE campaign_id = ?`).all(campaignId) as Array<{ character_id: string }>;
+  return rows.some((row) => openHits(campaignId, row.character_id).some((record) => record.enemyTurns && record.turn === key));
+}
+
 // Every hit on the character a reaction may still answer, oldest first.
 export function openHits(campaignId: string, characterId: string): LastHit[] {
   const hits = readHits(campaignId, characterId);

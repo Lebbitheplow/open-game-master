@@ -100,6 +100,16 @@ export type LegendaryState = {
   // refused follow-up gives the action back (legendary-tools.ts
   // settleLegendaryFollowUp). Cleared once the follow-up is made.
   purchases?: Record<string, LegendaryPurchaseRecord>;
+  // The character the pointer landed on while enemies it walked past still
+  // had their turns (enemies-due.ts): that character's turn begins once those
+  // enemies have acted (held-turn.ts), so the reaction they spent and what
+  // lasts until the start of their turn (Shield) hold until then.
+  turnStart?: string;
+  // The characters who took a reaction against the enemies' pass before
+  // their turn after the engine began it (a hit stays open to a reaction
+  // until they act, last-hit.ts), by that turn's key: one reaction for the
+  // pass (held-turn.ts).
+  lateReacted?: { turn: string; ids: string[] };
 };
 
 export type LegendaryPurchaseRecord = {
@@ -147,6 +157,7 @@ export function normalizeLegendaryState(raw: unknown): LegendaryState {
   const opportunities = (record.opportunities && typeof record.opportunities === "object" ? record.opportunities : null) as Record<string, unknown> | null;
   const turns = normalizeEnemyTurns(record.turns);
   const purchases = purchasesOf(record.purchases);
+  const lateReacted = (record.lateReacted && typeof record.lateReacted === "object" ? record.lateReacted : null) as Record<string, unknown> | null;
   const areaStruck = record.areaStruck && typeof record.areaStruck === "object"
     ? Object.fromEntries(Object.entries(record.areaStruck as Record<string, unknown>).filter((entry): entry is [string, string] => typeof entry[1] === "string"))
     : null;
@@ -205,6 +216,10 @@ export function normalizeLegendaryState(raw: unknown): LegendaryState {
     ...(areaStruck && Object.keys(areaStruck).length ? { areaStruck } : {}),
     ...(turns ? { turns } : {}),
     ...(purchases && Object.keys(purchases).length ? { purchases } : {}),
+    ...(typeof record.turnStart === "string" && record.turnStart ? { turnStart: record.turnStart } : {}),
+    ...(lateReacted && typeof lateReacted.turn === "string" && stringList(lateReacted.ids).length
+      ? { lateReacted: { turn: lateReacted.turn, ids: stringList(lateReacted.ids) } }
+      : {}),
   };
 }
 

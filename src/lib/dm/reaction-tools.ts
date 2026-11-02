@@ -44,6 +44,7 @@ import type { RollAttacker } from "@/lib/db/rolls";
 import { rollAgainst } from "@/lib/roll-labels";
 import { opportunity, reactionSpell } from "@/lib/dm/reaction-spells";
 import { settleLastHit } from "@/lib/dm/reaction-refund";
+import { asReaction, lateReaction, reactedLate } from "@/lib/dm/held-turn";
 import { authoredReaction } from "@/lib/dm/authored-reactions";
 import { freeAuthoredReaction } from "@/lib/dm/authored-reactions-more";
 import { srdFeatureReaction } from "@/lib/dm/srd-reactions";
@@ -501,7 +502,13 @@ export function handleUseReaction(
     }
   }
   const aimedArgs = args;
-  return withHitAim(args.hit, () => useReaction(campaign, turn, sheet, aimedArgs, sheets, sheetsById));
+  const result = withHitAim(args.hit, () => asReaction(sheet.id, () => useReaction(campaign, turn, sheet, aimedArgs, sheets, sheetsById)));
+  // Taken against the enemies' pass after the engine began the reactor's
+  // turn: it belongs before that turn (src/lib/dm/held-turn.ts).
+  if (!("error" in result) && lateReaction(campaign, sheet.id)) {
+    return { ...result, turnBegun: `${sheet.name}'s turn has begun since those attacks: the reaction comes back with it, and what lasts until the start of it has ended.` };
+  }
+  return result;
 }
 
 function useReaction(
@@ -535,7 +542,7 @@ function useReaction(
   // acting combatant's turn budget. Both sides of the table share
   // encounter.reactionsUsed; a combatant's entry leaves it as their own turn
   // starts (advancePointer).
-  if (encounter?.reactionsUsed.includes(sheet.id)) {
+  if (encounter && (encounter.reactionsUsed.includes(sheet.id) || reactedLate(campaign.id, encounter, sheet.id))) {
     return {
       error: `${sheet.name} has already used their reaction; it comes back at the start of their next turn. ${feature} does not happen.`,
       refused: "rules",
