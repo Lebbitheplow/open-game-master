@@ -35,7 +35,7 @@ export function repairSkewedPersonalities(db: SqliteDatabase, campaignId?: strin
     campaignId ? db.prepare(`${select} AND n.campaign_id = ?`).all(campaignId) : db.prepare(select).all()
   ) as Row[];
   const update = db.prepare(`UPDATE npcs SET personality_json = ? WHERE id = ?`);
-  const notes = new Map<string, Map<string, Set<string>>>();
+  const histories = new Map<string, History>();
   let moved = 0;
   for (const row of rows) {
     const saved = parsePersonality(row.personality_json);
@@ -43,14 +43,17 @@ export function repairSkewedPersonalities(db: SqliteDatabase, campaignId?: strin
       continue;
     }
     // The old spread put every axis at -3..-1, so only a row whose undrifted
-    // axes all sit there is worth reading the campaign's turns for.
+    // axes all sit there is worth reading the campaign's history for.
     const couldBeSkewed = saved.drive < 0 && saved.diligence < 0 && saved.boldness < 0;
-    let given: Map<string, Set<string>> | undefined;
+    let history: History | undefined;
     if (couldBeSkewed) {
-      given = notes.get(row.campaign_id) ?? notesTheAiGave(db, row.campaign_id);
-      notes.set(row.campaign_id, given);
+      history = histories.get(row.campaign_id) ?? {
+        given: notesTheAiGave(db, row.campaign_id),
+        former: namesAtChapterOpenings(db, row.campaign_id),
+      };
+      histories.set(row.campaign_id, history);
     }
-    const repaired = repairSkewedPersonality(saved, seedsOf(row, given), row.attitude);
+    const repaired = repairSkewedPersonality(saved, seedsOf(row, history), row.attitude);
     if (repaired) {
       update.run(JSON.stringify(repaired), row.id);
       moved += 1;
@@ -59,15 +62,34 @@ export function repairSkewedPersonalities(db: SqliteDatabase, campaignId?: strin
   return moved;
 }
 
+// What a campaign kept of the names and notes its people had before today.
+type History = {
+  given: Map<string, Set<string>>;
+  former: Map<string, Array<{ name: string; trait: string }>>;
+};
+
 // Every name and text the row's personality may have been seeded from: each
-// name it answers to with its note today and every note the AI gave that
-// name, then a companion's sheet.
-function seedsOf(row: Row, given?: Map<string, Set<string>>): Array<{ name: string; trait: string }> {
+// name it answers to, today or at a kept chapter's opening, with its note
+// today and every note the AI gave that name; each name and note a kept
+// chapter opened with; then a companion's sheet.
+function seedsOf(row: Row, history?: History): Array<{ name: string; trait: string }> {
   const seeds: Array<{ name: string; trait: string }> = [];
-  for (const name of [row.name, ...strings(row.aliases_json)]) {
-    for (const trait of new Set([row.trait, ...(given?.get(textKey(name)) ?? [])])) {
+  const seen = new Set<string>();
+  const add = (name: string, trait: string) => {
+    const key = JSON.stringify([name, trait]);
+    if (!seen.has(key)) {
+      seen.add(key);
       seeds.push({ name, trait });
     }
+  };
+  const former = history?.former.get(row.id) ?? [];
+  for (const name of [row.name, ...strings(row.aliases_json), ...former.map((entry) => entry.name)]) {
+    for (const trait of [row.trait, ...(history?.given.get(textKey(name)) ?? [])]) {
+      add(name, trait);
+    }
+  }
+  for (const { name, trait } of former) {
+    add(name, trait);
   }
   if (row.sheet_name !== null) {
     seeds.push({ name: row.sheet_name, trait: row.sheet_personality ?? "" });
@@ -144,6 +166,41 @@ function registrations(raw: string): Array<{ name: string; trait: string }> {
     }
   }
   return found;
+}
+
+// The name, other spellings and note each person had at the opening of
+// every chapter the campaign kept a rewind point for (chapter_snapshots),
+// by row id. The GM's people panel writes a new name with the alias list
+// as its form held it (updateNpcFromDraft), and a new note, so a person
+// renamed or re-noted there keeps no other record of what seeded them.
+function namesAtChapterOpenings(db: SqliteDatabase, campaignId: string): Map<string, Array<{ name: string; trait: string }>> {
+  const former = new Map<string, Array<{ name: string; trait: string }>>();
+  const kept = db
+    .prepare(`SELECT snapshot_json FROM chapter_snapshots WHERE campaign_id = ?`)
+    .all(campaignId) as Array<{ snapshot_json: string }>;
+  for (const { snapshot_json } of kept) {
+    let npcs: unknown;
+    try {
+      npcs = (JSON.parse(snapshot_json) as { tables?: { npcs?: unknown } } | null)?.tables?.npcs;
+    } catch {
+      continue;
+    }
+    if (!Array.isArray(npcs)) {
+      continue;
+    }
+    for (const npc of npcs as Array<{ id?: unknown; name?: unknown; trait?: unknown; aliases_json?: unknown }>) {
+      if (typeof npc?.id !== "string" || typeof npc.name !== "string") {
+        continue;
+      }
+      const trait = typeof npc.trait === "string" ? npc.trait : "";
+      const list = former.get(npc.id) ?? [];
+      for (const name of [npc.name, ...strings(typeof npc.aliases_json === "string" ? npc.aliases_json : "")]) {
+        list.push({ name, trait });
+      }
+      former.set(npc.id, list);
+    }
+  }
+  return former;
 }
 
 function strings(raw: string): string[] {

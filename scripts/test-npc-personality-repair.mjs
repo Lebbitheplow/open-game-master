@@ -10,12 +10,13 @@ import { openWorld } from "./lib/enforce-world.mjs";
 
 const world = await openWorld();
 const { getDatabase } = await import("../src/lib/db/core.ts");
-const { getNpcByName } = await import("../src/lib/db/npcs.ts");
+const { getNpcById, getNpcByName, updateNpcFromDraft } = await import("../src/lib/db/npcs.ts");
+const { draftFrom, normalizeNpcDraft } = await import("../src/lib/npcs/forge.ts");
 const { getRelationship } = await import("../src/lib/db/relationships.ts");
 const { derivePersonality, clampAxis } = await import("../src/lib/dm/npc-logic.ts");
 const { textKey } = await import("../src/lib/language/text-logic.ts");
 const { repairSkewedPersonalities } = await import("../src/lib/db/npc-personality-repair.ts");
-const { restoreSnapshot } = await import("../src/lib/db/snapshots.ts");
+const { captureBoundarySnapshot, restoreSnapshot } = await import("../src/lib/db/snapshots.ts");
 const { importWorkshopBundle } = await import("../src/lib/db/workshop-bundle.ts");
 const { workshopBundleSchema } = await import("../src/lib/workshop/bundle-schema.ts");
 
@@ -126,6 +127,23 @@ await test("a row whose note the story rewrote after it was seeded is found by t
     .run(crypto.randomUUID(), world.campaignId, JSON.stringify(conversation), at, at);
   repairSkewedPersonalities(db, world.campaignId);
   assert.deepEqual(saved(agatha.id), derivePersonality("Agatha Holt", "friendly", ""));
+});
+
+await test("a person the GM renamed in their people panel is found by the name a rewind point kept", async () => {
+  await world.invoke("set_npc", { name: "Kell Graywind", gender: "Male", attitude: "friendly" });
+  const kell = getNpcByName(world.campaignId, "Kell Graywind");
+  save(kell.id, skewed("Kell Graywind", "friendly"));
+  // A chapter opens, and its rewind point keeps the table as it stood.
+  captureBoundarySnapshot(world.campaignId, 7, 0);
+  // The people panel writes the whole record (updateNpcFromDraft): a new
+  // name with the alias list as the form held it, and a new note, and no
+  // turn of the AI's ever named him either way.
+  const outcome = normalizeNpcDraft({ ...draftFrom(getNpcById(kell.id)), name: "Kell the Grey", aliases: [], trait: "ferryman" });
+  assert.ok(!("error" in outcome), outcome.error);
+  assert.ok(updateNpcFromDraft(world.campaignId, kell.id, outcome.draft));
+  assert.deepEqual(getNpcById(kell.id).aliases, []);
+  repairSkewedPersonalities(db, world.campaignId);
+  assert.deepEqual(saved(kell.id), derivePersonality("Kell Graywind", "friendly", ""));
 });
 
 await test("a module exported before the fix lands with its NPCs repaired", async () => {
