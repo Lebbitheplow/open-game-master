@@ -13,7 +13,7 @@ import { suite } from "./lib/enforce-harness.mjs";
 const { test, finish } = suite("test-npc-race-faces");
 const { storedRace, raceWords, NPC_RACE_OPTIONS } = await import("../src/lib/npc-race.ts");
 const { npcPlaceholder, monsterPlaceholder } = await import("../src/lib/placeholders.ts");
-const { listNpcs, createNpcFromDraft } = await import("../src/lib/db/npcs.ts");
+const { listNpcs, createNpcFromDraft, updateNpcFromDraft } = await import("../src/lib/db/npcs.ts");
 const { normalizeNpcDraft, draftFrom } = await import("../src/lib/npcs/forge.ts");
 const { activePublicEncounter } = await import("../src/lib/db/encounter-view.ts");
 const { createBattleMap, getBattleMapForEncounter, insertToken } = await import("../src/lib/db/battle-maps.ts");
@@ -220,6 +220,19 @@ await test("a Cast NPC fighting draws from their own record, so an edit there sh
   await world.invoke("set_npc", { name: "Grell", race: "Half-Orc" });
   const again = activePublicEncounter(world.campaignId).enemies.find((enemy) => enemy.name === "Grell");
   assert.equal(again.race, "half_orc", "a race the story corrects shows on the foe in the running fight");
+});
+
+// An app built before the Race select saves the people panel's form with no
+// race at all: that is the race left as it was, not one cleared, or every
+// edit from an older app would wipe the face the race picked.
+await test("a people-panel save with no race keeps the race, and an empty one clears it", () => {
+  const made = normalizeNpcDraft({ name: "Maelis", race: "high_elf", role: "archer", gender: "Female" });
+  const row = createNpcFromDraft(world.campaignId, made.draft);
+  const older = normalizeNpcDraft({ name: "Maelis", role: "archer", gender: "Female", trait: "keeps the north gate" });
+  assert.equal("error" in older, false);
+  assert.equal(updateNpcFromDraft(world.campaignId, row.id, older.draft).race, "high_elf", "an older app's save kept the race");
+  const cleared = normalizeNpcDraft({ name: "Maelis", role: "archer", gender: "Female", race: "" });
+  assert.equal(updateNpcFromDraft(world.campaignId, row.id, cleared.draft).race, "", "a picked blank race clears it");
 });
 
 finish();

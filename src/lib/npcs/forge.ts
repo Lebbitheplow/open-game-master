@@ -416,7 +416,9 @@ export function normalizeNpcDraft(input: unknown): DraftOutcome {
       location: String(raw.location ?? "").trim().slice(0, 120),
       role: String(raw.role ?? "").trim().slice(0, 40),
       gender: storedGender(raw.gender),
-      race: storedRace(raw.race),
+      // Absent is "as it was": an app built before the Race select sends no
+      // race, and its save must not clear the one the NPC has.
+      race: raw.race === undefined ? undefined : storedRace(raw.race),
       attraction: normalizeAttraction(raw.attraction),
       personality: normalizePersonality(raw.personality),
       goals,
