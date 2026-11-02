@@ -115,6 +115,7 @@ import {
   REPEATED_NARRATION_PROMPT,
   repeatsNarration,
   withoutCombatBookkeeping,
+  withoutOrphanClosers,
   withoutRepeatedSentences,
   withoutToolTalk,
 } from "@/lib/dm/narration-tidy-logic";
@@ -3576,7 +3577,7 @@ function finalize(context: TurnContext, turn: DmTurn, failed: string, spoken: re
   const combatants = fightNames(campaignId, turn.createdAt);
   const narrationParts = withoutRepeatedSentences(
     turn.narrationParts.map((part) =>
-      withoutToolTalk(withoutCombatBookkeeping(withoutRollMarkers(part), combatants, campaignLanguage(campaignId))),
+      withoutOrphanClosers(withoutToolTalk(withoutCombatBookkeeping(withoutRollMarkers(part), combatants, campaignLanguage(campaignId)))),
     ),
   );
   let content = narrationParts.join("\n\n").trim();

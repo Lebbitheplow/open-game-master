@@ -472,6 +472,8 @@ export function checkClaims(raw: readonly unknown[], context: ClaimContext): Nar
   return kept;
 }
 
+const count = (text: string, pattern: RegExp) => text.match(pattern)?.length ?? 0;
+
 // The passage with every sentence that holds one of the quotes cut out: how
 // a roll asked in words (rolls.ts rollAsksFromClaims) and the narrator's
 // asides leave the narration. A sentence runs to its end mark or the end of
@@ -493,6 +495,12 @@ export function withoutSentences(text: string, quotes: readonly string[]): strin
     let end = sentence.index + sentence[0].length;
     if (text.slice(end, end + 2) === "**") {
       end += 2;
+    }
+    // And the closers of a bracket the sentence left open: a sentence stops at
+    // its full stop, so cutting "*(I'll set the hour first.)*" left ")*" in the
+    // story (issue 744). One opened in a sentence that stays keeps its closers.
+    if (count(sentence[0], /[([]/g) > count(sentence[0], /[)\]]/g)) {
+      end += /^[)\]]+[*_]*/.exec(text.slice(end))?.[0].length ?? 0;
     }
     removals.set(sentence.index, end);
     return true;

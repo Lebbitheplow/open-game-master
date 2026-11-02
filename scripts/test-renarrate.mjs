@@ -235,6 +235,22 @@ console.log(`renarrate: ${passed} tests passed`);
     assert.equal(model.readerRequests.length, 1, "the take was read for asides");
   });
 
+  // Issue 744, on each path that stores what the model wrote.
+  await takes.test("A line of orphan closers leaves a turn's narration and a reroll's take; a player's message keeps it.", async () => {
+    const story = "The hammer hangs from the strap.";
+    model.script([reply({ text: `)*\n\n${story}\n\n]*\n\nThe strap creaks.` })]);
+    model.claims([]);
+    const said = await model.turn(world, ")*", kara.id);
+    assert.equal(said.content, `${story}\n\nThe strap creaks.`);
+    const players = messages.listAllMessages(world.campaignId).filter((message) => message.authorType === "player");
+    assert.equal(players.at(-1).content, ")*", "a player's words are their own");
+    model.script([reply({ text: `)_\n\n${story}` })]);
+    model.claims([[]]);
+    const rerolled = await runRenarrate({ campaignId: world.campaignId, messageId: said.id, guidance: "" });
+    assert.ok("message" in rerolled, rerolled.error);
+    assert.equal(rerolled.message.content, story);
+  });
+
   await takes.test("In a fight a reroll's take loses the fight's bookkeeping, as a turn's own narration does.", async () => {
     await world.invoke("start_encounter", { enemies: "goblin", summary: "A goblin bursts from the reeds." });
     const story = "The goblin snarls and circles Kara on the slick planks.";
