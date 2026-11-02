@@ -501,6 +501,7 @@ function handleStartEncounter(
       : {}),
     map: "A tactical battle map was generated; positions appear in GAME STATE on your next call.",
     ...(placed ? { formation: placed.formation } : {}),
+    ...(placed?.distance ? { distance: placed.distance } : {}),
     ...(ambushLines.length ? { ambush: ambushLines.join(" ") } : {}),
     ...(surprisedNames.length
       ? {

@@ -1046,6 +1046,38 @@ const directed = {};
   }
 }
 
+// A fight opened from farther off than any board holds, per viewport (issue
+// 741): it threw after the map was written and left a black board.
+const longOpening = {};
+{
+  const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
+  for (const viewport of ["desktop", "phone"]) {
+    const table = campaigns.createCampaign(world.owner.id, {
+      title: `Long Opening (${viewport})`,
+      description: "A table whose fight opened two hundred feet off.",
+      theme: "high-fantasy",
+      maxPlayers: 6,
+      startingLevel: 3,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human" },
+    });
+    const seated = campaigns.joinByInviteCode(player.id, campaigns.getCampaignById(table.id).inviteCode);
+    if ("error" in seated) {
+      throw new Error(`could not seat the player at the long opening table: ${seated.error}`);
+    }
+    campaigns.setCampaignStatus(table.id, "active");
+    sheets.createSheet(table.id, player.id, 3, heroInput({ name: "Ilse Marr", class: "fighter", level: 3 }));
+    const started = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: world.owner.id }, {
+      name: "start_encounter",
+      args: { enemies: [{ monster: "goblin", count: 2 }], distanceFeet: 200 },
+    });
+    if (!started.ok) {
+      throw new Error(`the long opening table's fight did not start: ${started.error}`);
+    }
+    longOpening[viewport] = table.id;
+  }
+}
+
 // A person's table where two goblins act before the hero, per viewport
 // (table function audit 2026-10-26, T11 and T09): the goblins win
 // initiative, so the fight opens held for their turns, and the second is
@@ -2803,6 +2835,7 @@ const ids = {
   wardrobe,
   spotlightTables,
   directed,
+  longOpening,
   enemyTurns,
   enemyMoves,
   levelTableId: levelTable.id,
