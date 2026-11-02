@@ -1376,6 +1376,7 @@
     "lib/dm/enemy-damage.ts#RegExp i": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/enemy-damage.ts#\\b": [["key",4,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/enemy-damage.ts#re-word": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
+    "lib/dm/fight-away-logic.ts#str-case": [["key",2,"DM tool names and typeof checks on a tool's arguments (issue 740)"]],
     "lib/dm/foe-carry-logic.ts#str-eq": [["key",5,"enemy statuses and fight outcomes (engine vocabulary), issue #667"]],
     "lib/dm/foe-carry-logic.ts#str-list": [["key",1,"fight outcomes (engine vocabulary), issue #667"]],
     "lib/dm/enemy-damage.ts#str-eq": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],

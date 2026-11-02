@@ -16,7 +16,7 @@ import { suite } from "./lib/enforce-harness.mjs";
 import { combatKit } from "./lib/enforce-combat.mjs";
 
 const { test, finish } = suite("test-enforce-fight-away");
-const world = await openWorld({ gameSettings: { ttsEnabled: false } });
+const world = await openWorld({ campaign: { maxPlayers: 12 }, gameSettings: { ttsEnabled: false } });
 const kit = await combatKit(world);
 const { resolveAwayNames, atTheFight } = await import("../src/lib/dm/fight-away-logic.ts");
 const { applyEncounterCall, ensureInitiativeProgress } = await import("../src/lib/dm/encounter-tools.ts");
@@ -31,6 +31,12 @@ const { standingOn } = await import("../src/lib/dm/combatant.ts");
 const { buildEncounterState } = await import("../src/lib/dm/turn.ts");
 const { adjudication } = await import("../src/lib/dm/invoke-catalog.ts");
 const { blocksMove, tileAt } = await import("../src/lib/battlemap/types.ts");
+const { gateAiCall } = await import("../src/lib/dm/ai-gate.ts");
+const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
+const { dmTurnTools } = await import("../src/lib/dm/turn.ts");
+const { markSheetAsCompanion } = await import("../src/lib/db/sheets.ts");
+const { FULL_CASTER_SLOTS, slotsOf } = await import("./lib/enforce-spells.mjs");
+const klass = (classId, ...names) => names.map((name) => ({ name, source: "class", classId }));
 
 const alice = world.addHero({ name: "Alice Smith", level: 3, maxHp: 30 });
 const bram = world.addHero({ name: "Bram", level: 3, maxHp: 30 });
@@ -302,6 +308,175 @@ await test("The party outside the fight's own questions does not change: fielded
   assert.equal(atTheFight(world.encounter(), world.sheets()).some((sheet) => sheet.id === cora.id), false);
   const none = world.sheets();
   assert.equal(atTheFight({ awayIds: [] }, none), none, "no list is copied when nobody is away");
+});
+
+// A fight with Cora away, the turn on Bram, and what is on her sheet right now.
+async function coraAway(extra = {}) {
+  await kit.endFight();
+  opensWithout({ absent: [cora.name], ...extra });
+  const encounter = world.encounter();
+  encounter.turnIndex = encounter.order.findIndex((entry) => entry.characterId === bram.id);
+  saveEncounter(encounter);
+  return world.enemies()[0];
+}
+const rollCount = () => listRecentRolls(world.campaignId, 500).length;
+const sheetOf = (id) => JSON.stringify(world.sheet(id));
+
+await test("Reach does not cross the edge of the fight: each call naming someone away, from the fight or to it, is refused at both doors with nothing rolled or spent.", async () => {
+  const enemy = await coraAway();
+  const cases = [
+    ["aoe_damage by id", "aoe_damage", { characterIds: [cora.id], damage: "2d6", saveAbility: "dex", dc: 12 }],
+    ["aoe_damage by name", "aoe_damage", { targets: cora.name, damage: "2d6", saveAbility: "dex", dc: 12 }],
+    ["aoe_damage beside someone present", "aoe_damage", { characterIds: [bram.id, cora.id], damage: "2d6", saveAbility: "dex", dc: 12 }],
+    ["aoe_damage by an enemy", "aoe_damage", { casterEnemyId: enemy.id, enemyAbility: "Blast", characterIds: [cora.id], damage: "2d6" }],
+    ["aoe_damage cast by one away", "aoe_damage", { casterCharacterId: cora.id, enemyIds: [enemy.id], spell: "Fireball", level: 3 }],
+    ["legendary_action", "legendary_action", { enemyId: enemy.id, action: "Tail", targetCharacterId: cora.id }],
+    ["declare_intent", "declare_intent", { actor: enemy.id, verb: "Scimitar", target: cora.id }],
+    ["cast_at_player by an enemy", "cast_at_player", { characterId: cora.id, casterEnemyId: enemy.id, source: "a hex", saveAbility: "wis", dc: 12, condition: "frightened" }],
+    ["set_condition from an enemy", "set_condition", { characterId: cora.id, condition: "frightened", sourceEnemyId: enemy.id, reason: "a roar" }],
+    ["set_condition from one at the fight", "set_condition", { characterId: cora.id, condition: "charmed", sourceCharacterId: bram.id, reason: "a word" }],
+    ["cast_buff on one away", "cast_buff", { characterId: bram.id, spell: "Bless", targetCharacterIds: [cora.id] }],
+    ["heal by a caster at the fight", "heal", { characterId: cora.id, casterId: bram.id, spell: "Cure Wounds", reason: "a touch" }],
+    ["heal among several", "heal", { casterId: bram.id, spell: "Mass Cure Wounds", targets: [{ characterId: alice.id, amount: 3 }, { characterId: cora.id, amount: 3 }], reason: "a wave" }],
+    ["stabilize by a healer at the fight", "stabilize", { characterId: cora.id, healerId: bram.id, reason: "a kit" }],
+    ["use_item fed to one away", "use_item", { characterId: bram.id, item: "Potion of Healing", targetCharacterId: cora.id }],
+    ["use_resource on one away", "use_resource", { characterId: bram.id, resource: "Lay on Hands", targetCharacterId: cora.id }],
+    ["take_action help for one away", "take_action", { characterId: bram.id, action: "help", targetCharacterId: cora.id }],
+    ["use_reaction for one away", "use_reaction", { characterId: bram.id, feature: "Protection", targetCharacterId: cora.id }],
+    ["handle_item handed to one away", "handle_item", { characterId: bram.id, action: "hand", item: "Rope", toCharacterId: cora.id }],
+    ["pc_attack by one away", "pc_attack", { characterId: cora.id, enemyId: enemy.id, targetEnemyId: enemy.id }],
+    ["cast_at_enemy by one away", "cast_at_enemy", { characterId: cora.id, spell: "Fire Bolt", targetEnemyId: enemy.id }],
+    ["pet_attack by one away", "pet_attack", { characterId: cora.id, targetEnemyId: enemy.id }],
+    ["cast_buff by one away on an enemy", "cast_buff", { characterId: cora.id, spell: "Hunter's Mark", targetEnemyId: enemy.id }],
+    ["cast_buff by one away on one at the fight", "cast_buff", { characterId: cora.id, spell: "Bless", targetCharacterIds: [bram.id] }],
+    ["use_resource by one away on an enemy", "use_resource", { characterId: cora.id, resource: "Favored Foe", targetEnemyId: enemy.id }],
+    ["take_action by one away on an enemy", "take_action", { characterId: cora.id, action: "shove", targetEnemyId: enemy.id }],
+    ["use_reaction by one away on an enemy", "use_reaction", { characterId: cora.id, feature: "Hellish Rebuke", targetEnemyId: enemy.id }],
+  ];
+  const sheetsById = new Map(world.sheets().map((sheet) => [sheet.id, sheet]));
+  for (const [what, name, args] of cases) {
+    const before = [rollCount(), sheetOf(cora.id), sheetOf(bram.id), JSON.stringify(world.enemies()[0])];
+    const out = await world.invoke(name, args);
+    assert.equal(out.ok, false, what + " went through");
+    assert.match(out.error, /Cora Vale (is|are) not at this fight/, what + ": " + out.error);
+    assert.equal(out.retry, true, what);
+    assert.deepEqual([rollCount(), sheetOf(cora.id), sheetOf(bram.id), JSON.stringify(world.enemies()[0])], before, what + " rolled or spent something");
+    const turn = createDmTurn(world.campaignId, [], "ai");
+    const gated = gateAiCall(name, JSON.stringify(args), { campaign: world.campaign(), turn, sheetsById });
+    assert.match(gated.result?.error ?? "", /Cora Vale (is|are) not at this fight/, what + " passed the AI's door");
+  }
+});
+
+await test("The same calls at someone present are not refused for it, and once they arrive nor is the one away.", async () => {
+  const enemy = await coraAway();
+  const notRefused = async (what, name, args) => {
+    const out = await world.invoke(name, args);
+    assert.doesNotMatch(out.error ?? "", /not at this fight/, what);
+  };
+  await notRefused("a blast at Bram", "aoe_damage", { characterIds: [bram.id], damage: "1", saveAbility: "dex", dc: 1 });
+  await notRefused("Bram helped", "take_action", { characterId: alice.id, action: "help", targetCharacterId: bram.id });
+  await notRefused("Bram's own attack", "pc_attack", { characterId: bram.id, enemyId: enemy.id, targetEnemyId: enemy.id });
+  await arrive(cora.id);
+  await notRefused("a blast at Cora once here", "aoe_damage", { characterIds: [cora.id], damage: "1", saveAbility: "dex", dc: 1 });
+  await notRefused("a mark by Cora once here", "cast_buff", { characterId: cora.id, spell: "Hunter's Mark", targetEnemyId: enemy.id });
+});
+
+await test("Kept open on purpose: what the story does where they are, with nobody at the fight behind it, and what one away does for themselves or for another away.", async () => {
+  await coraAway({ absent: [cora.name, alice.name] });
+  const open = [
+    ["a condition with no source", "set_condition", { characterId: cora.id, condition: "poisoned", rounds: 2, reason: "a bad well" }],
+    ["a story effect", "set_effect", { characterId: cora.id, name: "Shrine's Blessing", modifiers: [{ target: "ac", value: 1 }], source: "a roadside shrine" }],
+    ["a trap by apply_hazard", "apply_hazard", { type: "generic", characterIds: [cora.id], damage: "1d4", dc: 1, reason: "a snare" }],
+    ["a hazard's save with no enemy", "cast_at_player", { characterId: cora.id, source: "a trap's needle", saveAbility: "con", dc: 1, damage: "1" }],
+    ["an affliction", "afflict", { characterId: cora.id, kind: "madness", duration: "short", save: false, reason: "what they saw" }],
+    ["a potion or rest's healing", "heal", { characterId: cora.id, dice: "1d4", reason: "a potion on the road" }],
+    ["tended where they lie", "stabilize", { characterId: cora.id, reason: "a passing healer" }],
+    ["two who are away together", "cast_buff", { characterId: alice.id, spell: "Bless", targetCharacterIds: [cora.id] }],
+    ["a check where they are", "request_roll", { characterId: cora.id, kind: "skill_check", skill: "perception", reason: "the road", dc: 5 }],
+    ["a rockfall by apply_damage", "apply_damage", { characterId: cora.id, dice: "1d4", type: "bludgeoning", reason: "a rockfall on the scout's road" }],
+  ];
+  for (const [what, name, args] of open) {
+    const out = await world.invoke(name, args);
+    assert.doesNotMatch(out.error ?? "", /not at this fight/, what);
+  }
+  const hurt = world.sheet(cora.id);
+  await kit.endFight();
+  assert.ok(hurt.currentHp < hurt.maxHp, "the rockfall did not land");
+  assert.ok(hurt.conditions.some((name) => /poisoned/i.test(name)), "the bad well did not land");
+});
+
+await test("lair_action names nobody, so it has no path to someone away.", () => {
+  const offered = dmTurnTools(world.campaign(), true, true, false).find((tool) => tool.function.name === "lair_action");
+  assert.deepEqual(Object.keys(offered.function.parameters.properties), ["action"]);
+});
+
+await test("Preserve Life heals who is in reach: a named target away is refused, and one away is passed over when it spreads.", async () => {
+  const life = world.addHero({ name: "Lena", class: "cleric", level: 2, subclass: "Life Domain", maxHp: 30, features: klass("cleric", "Channel Divinity (1/rest)", "Channel Divinity: Preserve Life") });
+  await coraAway();
+  const encounter = world.encounter();
+  encounter.turnIndex = encounter.order.findIndex((entry) => entry.characterId === life.id);
+  saveEncounter(encounter);
+  world.patch(cora.id, { currentHp: 5 });
+  world.patch(bram.id, { currentHp: 5 });
+  kit.place(life.id, 5, 5);
+  kit.place(bram.id, 5, 6);
+  const named = await world.invoke("use_resource", { characterId: life.id, resource: "Channel Divinity", variant: "preserve life", targetCharacterId: cora.id });
+  assert.match(named.error ?? "", /Cora Vale is not at this fight/);
+  assert.equal(world.sheet(life.id).resources?.channel_divinity?.used ?? 0, 0, "the use was spent");
+  const spread = await world.invoke("use_resource", { characterId: life.id, resource: "Channel Divinity", variant: "preserve life" });
+  assert.equal(spread.ok, true, spread.error);
+  assert.equal(world.sheet(cora.id).currentHp, 5, "it reached one who is away");
+  assert.ok(world.sheet(bram.id).currentHp > 5, "it did not reach who is beside them");
+  await kit.endFight();
+  deleteSheetById(world.campaignId, life.userId, life.id);
+});
+
+await test("A creature a spell made goes with its maker: no slot and no token while they are away, and it arrives with them on their count.", async () => {
+  await kit.endFight();
+  const moss = world.addHero({ name: "Moss", class: "druid", level: 5, maxHp: 30, abilities: { wis: 16, con: 14 }, spellcasting: { ability: "wis", slots: slotsOf(FULL_CASTER_SLOTS[4]), known: [], prepared: ["Conjure Animals"], cantrips: [] } });
+  const cast = await world.invoke("cast_buff", { characterId: moss.id, spell: "Conjure Animals", variant: "wolf", count: 2 });
+  assert.equal(cast.ok, true, cast.error);
+  const wolves = () => world.sheets().filter((sheet) => sheet.summon?.casterId === moss.id);
+  assert.equal(wolves().length, 2);
+  opensWithout({ absent: ["Moss"] });
+  const ids = wolves().map((sheet) => sheet.id);
+  assert.deepEqual([...world.encounter().awayIds].sort(), [moss.id, ...ids].sort());
+  for (const id of [moss.id, ...ids]) {
+    assert.equal(orderIds().includes(id), false);
+    assert.equal(tokenOf(id), null);
+  }
+  await arrive(moss.id);
+  assert.deepEqual(world.encounter().awayIds, []);
+  const slot = (id) => world.encounter().order.find((entry) => entry.characterId === id);
+  for (const id of ids) {
+    assert.ok(slot(id), "a wolf did not come");
+    assert.equal(slot(id).initiative, slot(moss.id).initiative);
+    assert.ok(tokenOf(id), "a wolf has no token");
+  }
+  await kit.endFight();
+  for (const sheet of [...wolves(), moss]) {
+    deleteSheetById(world.campaignId, sheet.userId, sheet.id);
+  }
+});
+
+await test("A party companion has a sheet of its own and stays in the fight unless named, even when the player who commands it has a character away. A pet stays on its owner's sheet and cannot be sent from afar.", async () => {
+  await kit.endFight();
+  const pal = world.addHero({ name: "Tam Hollis", level: 3, maxHp: 30 });
+  markSheetAsCompanion(pal.id, "party", "Steady.");
+  world.patch(pal.id, { commandedBy: cora.userId });
+  world.patch(cora.id, { pets: [{ name: "Rex", kind: "other", form: "wolf", hp: 11, maxHp: 11, ac: 13, speed: 40, attacks: [], notes: "" }] });
+  opensWithout({ absent: [cora.name] });
+  assert.ok(orderIds().includes(pal.id), "the companion left with the one who commands it");
+  assert.ok(tokenOf(pal.id));
+  const [enemy] = world.enemies();
+  const bite = await world.invoke("pet_attack", { characterId: cora.id, targetEnemyId: enemy.id });
+  assert.match(bite.error ?? "", /Cora Vale is not at this fight/);
+  await kit.endFight();
+  opensWithout({ absent: [pal.name] });
+  assert.equal(orderIds().includes(pal.id), false, "named, the companion stays away");
+  await kit.endFight();
+  world.patch(cora.id, { pets: [] });
+  deleteSheetById(world.campaignId, pal.userId, pal.id);
 });
 
 await test("What the GM reads says who is absent and who is not, with someone behind a door as the case who still rolls.", () => {

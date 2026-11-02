@@ -38,7 +38,8 @@ export default {
     check((await cora.getAttribute("aria-pressed")) === "true", "Cora picked");
     await cora.focus();
     const box = await cora.boundingBox();
-    check(Boolean(box) && box.height >= 32, `a chip a finger can press (${box?.height}px)`);
+    console.log(`  fight-away ${viewport}: chip height ${box?.height}px`);
+    check(Boolean(box) && box.height >= (viewport === "phone" ? 40 : 36), `a chip a finger can press (${box?.height}px)`);
     await away.scrollIntoViewIfNeeded();
     await untilStill(page);
     await t.shot("picked");

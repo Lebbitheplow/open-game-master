@@ -6,7 +6,7 @@ import { lashOutTarget } from "@/lib/dm/confusion";
 import type { SystemGlyph } from "@/lib/system-glyphs";
 import { holdsOn } from "@/lib/dm/vitals-logic";
 import { fieldedSheets } from "@/lib/dm/roster";
-import { atTheFight, resolveAwayNames } from "@/lib/dm/fight-away-logic";
+import { atTheFight, resolveAwayNames, withFollowers } from "@/lib/dm/fight-away-logic";
 import { arriveAtFight } from "@/lib/dm/fight-away";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { sceneIds } from "@/lib/ambience/catalog";
@@ -354,10 +354,11 @@ function handleStartEncounter(
   if ("error" in away) {
     return { error: away.error, retry: true };
   }
-  const awaySheets = sheets.filter((sheet) => away.ids.includes(sheet.id));
-  sheets = sheets.filter((sheet) => !away.ids.includes(sheet.id));
+  const awayIds = withFollowers(away.ids, sheets);
+  const awaySheets = sheets.filter((sheet) => awayIds.includes(sheet.id));
+  sheets = sheets.filter((sheet) => !awayIds.includes(sheet.id));
   // Nobody left would roll, so the order would never close.
-  if (away.ids.length && !fightingParty(campaign, sheets).length) {
+  if (awayIds.length && !fightingParty(campaign, sheets).length) {
     return {
       error: "Every character who could fight is listed in absent, so nobody is at this fight and none was started. Someone close but out of sight, behind a door or in the next room, is not absent.",
       retry: true,
@@ -380,9 +381,9 @@ function handleStartEncounter(
   if (!encounter) {
     return { error: "An encounter is already active.", retry: true };
   }
-  if (away.ids.length) {
-    encounter.awayIds = away.ids;
-    setEncounterAway(encounter.id, away.ids);
+  if (awayIds.length) {
+    encounter.awayIds = awayIds;
+    setEncounterAway(encounter.id, awayIds);
   }
 
   // One run of numbers per kind, whatever the caller numbered itself
@@ -674,10 +675,26 @@ export function heldInitiative(campaignId: string, characterId: string): string 
   return `${entry.name} already has initiative ${entry.initiative} in this fight, so nothing was rolled. Initiative order: ${describeOrder(encounter)}. Play the turn of whoever is CURRENT.`;
 }
 
-// Records one PC's initiative result. When the last one lands, builds the
-// order, points the turn at the first living PC, and locks the floor.
-// Returns a note for the model when combat begins.
+// Records one PC's initiative result, and those of the creatures a spell made
+// for one who arrives: they come with their maker, on the maker's count.
 export function recordInitiativeRoll(
+  campaignId: string,
+  characterId: string | null,
+  total: number,
+): string | null {
+  const awayIds = characterId ? (getActiveEncounter(campaignId)?.awayIds ?? []) : [];
+  const followers = awayIds.includes(characterId ?? "") ? listSheets(campaignId).filter((sheet) => sheet.summon?.casterId === characterId && awayIds.includes(sheet.id)) : [];
+  const note = placeInitiativeRoll(campaignId, characterId, total);
+  for (const follower of followers) {
+    placeInitiativeRoll(campaignId, follower.id, total);
+  }
+  return note && followers.length ? `${note} ${followers.map((follower) => follower.name).join(" and ")} came too, on the same count.` : note;
+}
+
+// When the last one lands, builds the order, points the turn at the first
+// living PC, and locks the floor. Returns a note for the model when combat
+// begins.
+function placeInitiativeRoll(
   campaignId: string,
   characterId: string | null,
   total: number,

@@ -57,3 +57,83 @@ export function resolveAwayNames(asked: readonly string[], roster: readonly Name
 export function atTheFight<T extends { id: string }>(encounter: { awayIds: readonly string[] }, sheets: T[]): T[] {
   return encounter.awayIds.length ? sheets.filter((sheet) => !encounter.awayIds.includes(sheet.id)) : sheets;
 }
+
+// A creature a spell made goes where its maker goes: left at the fight it
+// would roll, stand on the board and act for someone who is not there.
+export function withFollowers(ids: readonly string[], sheets: ReadonlyArray<{ id: string; summon?: { casterId: string } | null }>): string[] {
+  return [...new Set([...ids, ...sheets.filter((sheet) => sheet.summon && ids.includes(sheet.summon.casterId)).map((sheet) => sheet.id)])];
+}
+
+// What a call reaches: who does it, who it lands on, and whether it comes
+// from or lands on the fight itself (an enemy, the board).
+type Reach = { actor: string; marks: string[]; fight: boolean };
+
+const refs = (...values: unknown[]): string[] =>
+  values.flatMap((value) => (typeof value === "string" ? [value] : Array.isArray(value) ? value.flatMap((entry) => refs(entry && typeof entry === "object" ? (entry as { characterId?: unknown }).characterId : entry)) : [])).filter(Boolean);
+const said = (value: unknown): string => (typeof value === "string" ? value : "");
+
+function reachOf(name: string, args: Record<string, unknown>): Reach | null {
+  switch (name) {
+    case "aoe_damage": {
+      const actor = said(args.casterCharacterId);
+      const enemies = refs(args.enemyIds);
+      const marks = [...refs(args.characterIds), ...said(args.targets).split(",").map((part) => part.trim()).filter(Boolean), ...enemies];
+      return { actor, marks, fight: !actor || enemies.length > 0 || !marks.length };
+    }
+    case "legendary_action":
+      return { actor: "", marks: refs(args.targetCharacterId), fight: true };
+    case "declare_intent":
+      return { actor: "", marks: refs(args.target), fight: true };
+    case "cast_at_player":
+      // With no enemy behind it, it is a hazard, and one can be where they are.
+      return args.casterEnemyId ? { actor: "", marks: refs(args.characterId), fight: true } : null;
+    case "set_condition":
+      return args.sourceEnemyId || args.sourceCharacterId ? { actor: said(args.sourceCharacterId), marks: refs(args.characterId), fight: Boolean(args.sourceEnemyId) } : null;
+    case "cast_buff":
+      return { actor: said(args.characterId), marks: refs(args.targetCharacterIds), fight: Boolean(args.targetEnemyId) };
+    case "heal":
+      return { actor: said(args.casterId), marks: refs(args.characterId, args.targets), fight: false };
+    case "stabilize":
+      return { actor: said(args.healerId), marks: refs(args.characterId), fight: false };
+    case "use_item":
+    case "use_resource":
+    case "take_action":
+    case "use_reaction":
+      return { actor: said(args.characterId), marks: refs(args.targetCharacterId), fight: Boolean(args.targetEnemyId) };
+    case "handle_item":
+      return { actor: said(args.characterId), marks: refs(args.toCharacterId), fight: false };
+    case "pc_attack":
+    case "cast_at_enemy":
+    case "pet_attack":
+      return { actor: said(args.characterId), marks: [], fight: true };
+    default:
+      return null;
+  }
+}
+
+// Whether this tool can cross between the fight and someone away, asked first
+// so the rest of the tools pay for no read of the encounter.
+export function canCrossAway(name: string, args: Record<string, unknown>): boolean {
+  return reachOf(name, args) !== null;
+}
+
+// No token means no reach for the engine to measure, so a call naming someone
+// away landed as if they stood there: a blast, a hold, a touch from across
+// the map. Reach does not cross the edge of the fight, either way. Two who are
+// away may be together, and what the story does where they are (apply_damage,
+// apply_hazard, afflict, a condition or effect with nobody at the fight behind
+// it) is no reach from the fight, so it stays the GM's.
+export function awayRefusal(name: string, args: Record<string, unknown>, away: readonly Named[]): string | null {
+  const reach = reachOf(name, args);
+  const named = (ref: string) => away.find((sheet) => sheet.id === ref || textKey(sheet.name) === textKey(ref));
+  if (!reach || !away.length) {
+    return null;
+  }
+  const bring = "Bring them in first with their initiative roll (request_roll kind=initiative) if the story has brought them here.";
+  const actor = named(reach.actor);
+  if (actor) {
+    return reach.fight || reach.marks.some((mark) => !named(mark)) ? `${actor.name} is not at this fight, so this cannot reach it. ${bring} Nothing was rolled or spent.` : null;
+  }
+  const marks = [...new Set(reach.marks.flatMap((mark) => named(mark)?.name ?? []))];
+  return marks.length && (reach.fight || reach.actor) ? `${marks.join(" and ")} ${marks.length === 1 ? "is" : "are"} not at this fight, so this cannot reach them. Name someone who is. ${bring} Nothing was rolled or spent.` : null;
+}

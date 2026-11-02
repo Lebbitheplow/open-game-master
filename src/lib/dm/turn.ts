@@ -127,7 +127,7 @@ import type { SpokenLine } from "@/lib/dm/speech";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { dispatchAdjudication } from "@/lib/dm/invoke-dispatch";
 import { playsWhole } from "@/lib/dm/legendary-play";
-import { gateAiCall } from "@/lib/dm/ai-gate";
+import { awayCall, gateAiCall } from "@/lib/dm/ai-gate";
 import { characterAwaitingPlayer } from "@/lib/dm/player-word";
 import { hitIdOf, openHits } from "@/lib/dm/last-hit";
 import { aiPlaysSheet } from "@/lib/dm/companion-command";
@@ -2581,7 +2581,7 @@ async function resolveModelCall(
   // (src/lib/dm/action-parts-logic.ts listedCalls).
   const each = listedCalls(toolCall.name, toolCall.rawArguments);
   if (each) {
-    const refused = listRefusal(toolCall.name, each);
+    const refused = listRefusal(toolCall.name, each) ?? awayCall(toolCall.name, JSON.parse(toolCall.rawArguments), { campaign, sheetsById });
     if (refused) {
       return refused;
     }
