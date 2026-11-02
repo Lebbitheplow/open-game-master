@@ -1102,6 +1102,29 @@ test("take_action's destination fields ask for the host, and the enemy field rea
   assert.match(read("src/lib/use-capabilities.ts"), /features\?: \{[^}]*moveWithAction\?: boolean/);
 });
 
+// The console compiled into the apps can open an older server, whose
+// take_action refuses "improvise" outright and whose Search takes only
+// Perception or Investigation: there the console offers no improvised action
+// (nor one to ready), and Search keeps the two skills that host reads.
+test("take_action's improvised action and its skills ask for the host", () => {
+  const fields = adjudication("take_action").fields;
+  const named = (name) => fields.find((field) => field.name === name);
+  const values = (field) => field.options.map((option) => option.value);
+  for (const name of ["action", "readied"]) {
+    assert.ok(values(fieldForHost(named(name), () => true)).includes("improvise"), `${name} offers it on a host that has it`);
+    assert.ok(!values(fieldForHost(named(name), () => false)).includes("improvise"), `${name} offers it to an older host`);
+    assert.ok(values(fieldForHost(named(name), () => false)).includes("dodge"), `${name} keeps the rest on an older host`);
+  }
+  assert.equal(values(fieldForHost(named("skill"), () => true)).length, 18);
+  const older = fieldForHost(named("skill"), () => false);
+  assert.deepEqual(values(older), ["investigation", "perception"]);
+  assert.equal(older.label, "Search with");
+  // The skill reads only for the actions that take one.
+  assert.deepEqual(named("skill").onlyWhen, { field: "action", equals: ["search", "improvise"] });
+  assert.ok(read("src/lib/capabilities.ts").match(/^\s*improvisedActions: true,$/m), "the server flags it");
+  assert.match(read("src/lib/use-capabilities.ts"), /features\?: \{[^}]*improvisedActions\?: boolean/);
+});
+
 // The console's Background and Skills for a new companion: an older host's
 // add_companion strips both unread and recruits by the class list's first
 // skills, so the app's console shows them only to a host that reads them.

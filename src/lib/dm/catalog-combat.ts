@@ -32,6 +32,12 @@ const OUTCOME_LABELS: Record<EncounterOutcome, string> = {
   truce: "A truce",
 };
 
+// take_action improvise (src/lib/dm/improvise.ts): an older host refuses the
+// action, so the console compiled into the apps offers it only where the
+// host says it takes it (src/lib/capabilities.ts improvisedActions).
+const IMPROVISED = "improvisedActions";
+const SEARCH_SKILLS = new Set(["perception", "investigation"]);
+
 const BONUS_ATTACK = [
   { value: "martial arts", label: "Martial Arts strike" },
   { value: "frenzy", label: "Frenzy" },
@@ -355,7 +361,7 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
           { value: "use_object", label: "Use an Object" },
           { value: "escape", label: "Escape a grapple or a spell's hold" },
           { value: "pin", label: "Pin the creature they grapple (Grappler feat)" },
-          { value: "improvise", label: "Improvise" },
+          { value: "improvise", label: "Improvise", host: IMPROVISED },
         ],
       },
       { name: "bonus", label: "As a bonus action", kind: "boolean", help: "Cunning Action, Step of the Wind, Patient Defense." },
@@ -383,7 +389,7 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
           { value: "dash", label: "Dash" },
           { value: "disengage", label: "Disengage" },
           { value: "escape", label: "Escape a grapple" },
-          { value: "improvise", label: "An improvised action" },
+          { value: "improvise", label: "An improvised action", host: IMPROVISED },
         ],
       },
       { name: "spell", label: "Readied spell", kind: "text", placeholder: "Fire Bolt", help: "Ready only: a one-action spell cast now (slot and concentration) and released with the reaction when the trigger comes." },
@@ -392,8 +398,11 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
         name: "skill",
         label: "Skill",
         kind: "select",
-        options: SKILL_OPTIONS,
+        // An older host's Search takes these two and nothing else.
+        options: SKILL_OPTIONS.map((option) => (SEARCH_SKILLS.has(option.value) ? option : { ...option, host: IMPROVISED })),
         help: "Search: Perception or Investigation. Improvise: the character's check.",
+        onlyWhen: { field: "action", equals: ["search", "improvise"] },
+        host: { feature: IMPROVISED, older: { label: "Search with", help: "Perception, or Investigation to reason it out." } },
       },
       { name: "ability", label: "Or an ability", kind: "select", options: ABILITIES, onlyWhen: { field: "action", equals: ["improvise"] } },
       {

@@ -69,7 +69,10 @@ export type CatalogField = {
   // Required unless one of these other fields is filled (damage, or the
   // dice the server rolls for it; a character, or an enemy instead).
   requiredUnless?: string | string[];
-  options?: Array<{ value: string; label: string }>;
+  // `host`: the server feature an option needs (src/lib/capabilities.ts
+  // SERVER_FEATURES), left out of the select on a host without it, as a
+  // field's own `host` below leaves the field out.
+  options?: Array<{ value: string; label: string; host?: string }>;
   min?: number;
   max?: number;
   placeholder?: string;
@@ -116,10 +119,11 @@ export type CatalogField = {
 
 // The field as this host should show it, or null when it cannot use it.
 export function fieldForHost(field: CatalogField, offers: (feature: string) => boolean): CatalogField | null {
-  if (!field.host || offers(field.host.feature)) {
-    return field;
+  const shown = !field.host || offers(field.host.feature) ? field : field.host.older ? { ...field, ...field.host.older } : null;
+  if (!shown?.options?.some((option) => option.host && !offers(option.host))) {
+    return shown;
   }
-  return field.host.older ? { ...field, ...field.host.older } : null;
+  return { ...shown, options: shown.options.filter((option) => !option.host || offers(option.host)) };
 }
 
 // Whether a field can matter with the values the form holds now.
