@@ -13,6 +13,8 @@
 // (one character's aunt) is not something an author who never met the
 // heroes can write, so it stays in the notes for the table to bind.
 
+import { clipText } from "../language/text-logic.ts";
+
 export const KNOWN_BEFORE_GRADES = ["acquainted", "friend", "close"] as const;
 export type KnownBeforeGrade = (typeof KNOWN_BEFORE_GRADES)[number];
 
@@ -42,7 +44,9 @@ export function readKnownBefore(raw: unknown): KnownBefore | null {
   }
   const entry = raw as { grade?: unknown; how?: unknown };
   const grade = gradeOf(entry.grade);
-  const how = typeof entry.how === "string" ? entry.how.trim().slice(0, KNOWN_BEFORE_HOW_CHARS) : "";
+  // Cut at a word's edge, as the Bonds tab cuts every memory (issue 644): a
+  // long quote from a module's opening would otherwise end mid-word.
+  const how = typeof entry.how === "string" ? clipText(entry.how, KNOWN_BEFORE_HOW_CHARS) : "";
   return grade && how ? { grade, how } : null;
 }
 

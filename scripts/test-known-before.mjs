@@ -261,7 +261,10 @@ await test("a module carries the mark: imported in the issue's words, copied to 
   assert.equal(shelf("No Reason"), null);
   assert.equal(shelf("Newer Grade"), null, "an unreadable tie is left out, the module still lands");
   assert.equal(shelf("Long Quote")?.grade, "friend", "a long reason keeps its tie");
-  assert.equal(shelf("Long Quote").how.length, 160);
+  // Cut at a word's edge with an ellipsis, as the Bonds tab cuts every
+  // memory (issue 644): a hard slice read "their ol" as a typo.
+  assert.ok(shelf("Long Quote").how.length <= 160);
+  assert.match(shelf("Long Quote").how, /(their|old|friend|and|patron)…$/);
   const copied = runContentImport({ sourceId: landed.workshopId, campaignId: world.campaignId, selection: ["npcs"], houseRulesMode: "replace" });
   assert.ok(!("error" in copied), copied.error);
   await begin();
