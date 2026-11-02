@@ -443,4 +443,50 @@ await test("a roster that loses a creature drops its saved state from the set-up
   assert.ok(read.json.lines.some((line) => /Goblin 1 down/.test(line)) && !read.json.lines.some((line) => /Goblin 2/.test(line)), JSON.stringify(read.json.lines));
 });
 
+// A set-up saved from a test with the author's own library characters names
+// them: their ids and their names. In a bundle, or copied into a table where
+// anyone with prep authority reads it (a party lead at an AI-run table), it
+// goes without them; the foes and the dice travel.
+await test("a set-up saved with library characters leaves their ids and names behind in a bundle and in a copy into a table, and keeps its foes", async () => {
+  world.signIn(author);
+  const weir = templates.insertEncounterTemplate({
+    campaignId: workshop.id,
+    name: "Ambush at the weir",
+    enemies: [{ monster: "goblin", count: 2 }],
+    battlefield: "",
+    map: { mapId: null, scene: null, seed: null, theme: null, ambient: null, width: null, height: null },
+    notes: "",
+    extras: {},
+    createdByUserId: author.id,
+  });
+  const tested = await call(route.test, "POST", { templateId: weir.id, party: { kind: "characters", characterIds: [mine.id] }, runner: "person" }, at);
+  assert.equal(tested.status, 200, JSON.stringify(tested.json));
+  const [g1] = goblinsOf(tested.json.campaignId);
+  patchEnemyHp(g1.id, 2, "alive");
+  const kept = await call(route.save, "POST", undefined, { campaignId: tested.json.campaignId });
+  assert.equal(kept.status, 200, JSON.stringify(kept.json));
+  assert.equal(templates.getTemplateSetup(weir.id).party.kind, "characters", "the author's own set-up keeps the party");
+  const leaks = (label, value) => {
+    const text = JSON.stringify(value);
+    return [text.includes(mine.id) ? `${label}: the character's id` : null, text.includes("Thessaly") ? `${label}: the character's name` : null].filter(Boolean);
+  };
+  const { exportWorkshopBundle } = await import("../src/lib/db/workshop-bundle-export.ts");
+  const out = exportWorkshopBundle(workshop.id, { name: "Mill fights", blurb: "Goblins at a mill.", inspiredBy: "Original work" });
+  assert.ok(out.bundle, out.error);
+  const carried = out.bundle.encounters.find((entry) => entry.name === "Ambush at the weir")?.setup;
+  const { runContentImport } = await import("../src/lib/db/content-import.ts");
+  const table = world.campaign();
+  const imported = runContentImport({ sourceId: workshop.id, campaignId: table.id, selection: ["encounters"], houseRulesMode: "append" });
+  assert.ok(!("error" in imported), imported.error);
+  const copy = templates.listEncounterTemplates(table.id).find((entry) => /Ambush at the weir/.test(entry.name));
+  const copied = templates.getTemplateSetup(copy.id);
+  const listed = await call(route.list, "GET", undefined, { campaignId: table.id });
+  const row = listed.json.templates.find((entry) => entry.id === copy.id);
+  assert.deepEqual([...leaks("the bundle", carried), ...leaks("the table's copy", copied), ...leaks("the table's prep list", row)], [], "the author's character travelled");
+  assert.equal(carried.foes.find((foe) => foe.nth === 0)?.hp, 2, "the bundle keeps the foes");
+  assert.equal(copied.foes.find((foe) => foe.nth === 0)?.hp, 2, "the copy keeps the foes");
+  assert.equal(copied.party.kind, "elsewhere");
+  assert.equal(row.setupParty, null, "the Test sheet is offered no party from another table");
+});
+
 finish();

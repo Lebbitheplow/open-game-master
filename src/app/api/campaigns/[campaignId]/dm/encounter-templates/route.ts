@@ -53,7 +53,9 @@ function withReadout(
       ...template,
       readout: templateDifficulty(campaign, template.enemies),
       setup: setup ? describeFightSetup(setup) : null,
-      setupParty: setup?.party ?? null,
+      // A party from another table is no party a test here can seat again
+      // (fight-setup-logic.ts portableSetup): the Test sheet offers none.
+      setupParty: setup && setup.party.kind !== "elsewhere" ? setup.party : null,
     };
   });
 }

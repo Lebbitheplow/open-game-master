@@ -264,6 +264,8 @@ function partyIdentity(workshop: Campaign, party: TestParty): SetupParty {
 // whoever is not in this author's starts the test as the stand-ins instead.
 function setupParty(setup: FightSetup | null, userId: string): TestParty | null {
   if (!setup) return null;
+  // A party from another table travelled without its people (portableSetup).
+  if (setup.party.kind === "elsewhere") return { kind: "stand-ins" };
   const mine = (ids: readonly string[]) => ids.every((id) => getCharacterForUser(userId, id));
   if ((setup.party.kind === "characters" && !mine(setup.party.characterIds)) || !mine(setup.party.allyIds ?? [])) {
     return { kind: "stand-ins" };

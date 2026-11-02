@@ -99,6 +99,10 @@ const allyIdsSchema = z.array(z.string().trim().min(1).max(80)).max(SETUP_LIMITS
 export const setupPartySchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("stand-ins"), size: z.number().int().min(1).max(8), level: z.number().int().min(1).max(20), allyIds: allyIdsSchema }),
   z.object({ kind: z.literal("characters"), characterIds: z.array(z.string().trim().min(1).max(80)).min(1).max(SETUP_LIMITS.seats), allyIds: allyIdsSchema }),
+  // A set-up that left its author's workshop (a bundle, a copy into a
+  // table): the party it was saved with stays behind (portableSetup), so no
+  // test matches it and the heroes start fresh where it stood them.
+  z.object({ kind: z.literal("elsewhere"), size: z.number().int().min(0).max(SETUP_LIMITS.seats) }),
 ]);
 export type SetupParty = z.infer<typeof setupPartySchema>;
 
@@ -240,6 +244,9 @@ export function fitSetupToRoster(setup: FightSetup, before: readonly RosterSlot[
 // Whether a test's party is the one the set-up was saved with: then its
 // heroes' state is theirs to take. Another party starts fresh and is told so.
 export function samePartyAsSetup(setup: Pick<FightSetup, "party">, party: SetupParty): boolean {
+  if (setup.party.kind === "elsewhere" || party.kind === "elsewhere") {
+    return false;
+  }
   if (setup.party.kind !== party.kind || !sameIds(setup.party.allyIds ?? [], party.allyIds ?? [])) {
     return false;
   }
@@ -250,6 +257,26 @@ export function samePartyAsSetup(setup: Pick<FightSetup, "party">, party: SetupP
     return sameIds(setup.party.characterIds, party.characterIds);
   }
   return false;
+}
+
+// A set-up as it leaves its author's workshop, in a bundle or a copy into
+// another table (where anyone with prep authority reads it, a party lead at
+// an AI-run table among them): without the author's library characters'
+// ids and names. The foes, the dice and where the seats stood travel; the
+// party becomes one from elsewhere, which no test seats again, so the
+// importer's heroes start fresh where the set-up stood them, as a set-up
+// naming characters the importer does not own already did. Stand-ins with
+// no allies are no one's characters and travel whole.
+export function portableSetup(setup: FightSetup): FightSetup {
+  const party = setup.party;
+  if (party.kind === "elsewhere" || (party.kind === "stand-ins" && !party.allyIds?.length)) {
+    return setup;
+  }
+  return {
+    ...setup,
+    party: { kind: "elsewhere", size: setup.heroes.length },
+    heroes: setup.heroes.map((hero) => ({ ...hero, name: `Seat ${hero.seat + 1}` })),
+  };
 }
 
 // The same people in the same seats.
@@ -305,15 +332,20 @@ export function describeFightSetup(setup: FightSetup): string[] {
   const party =
     setup.party.kind === "stand-ins"
       ? `the stand-in party (${setup.party.size} at level ${setup.party.level})`
-      : `${setup.party.characterIds.length} character${setup.party.characterIds.length === 1 ? "" : "s"} from your library`;
+      : setup.party.kind === "elsewhere"
+        ? "a party that sat at another table; a test here seats its own, fresh"
+        : `${setup.party.characterIds.length} character${setup.party.characterIds.length === 1 ? "" : "s"} from your library`;
   lines.push(`Saved ${setup.savedAt.slice(0, 10)} from a test with ${party}.`);
   const foes = setup.foes.map(hurtWords).filter((entry): entry is string => Boolean(entry));
   lines.push(foes.length ? `Foes: ${listed(foes)}.` : "Foes: as the roster makes them, where the test left them.");
-  const heroes = setup.heroes.map(heroWords).filter((entry): entry is string => Boolean(entry));
+  // Another table's party is nobody's here: its wounds and its order are not
+  // what a test here starts with.
+  const ours = setup.party.kind !== "elsewhere";
+  const heroes = ours ? setup.heroes.map(heroWords).filter((entry): entry is string => Boolean(entry)) : [];
   if (heroes.length) {
     lines.push(`Party: ${listed(heroes)}.`);
   }
-  const order = [...setup.heroes.map((hero) => ({ name: hero.name, initiative: hero.initiative })), ...setup.foes.filter((foe) => foe.status === "alive").map((foe) => ({ name: foe.name, initiative: foe.initiative }))]
+  const order = [...(ours ? setup.heroes : []).map((hero) => ({ name: hero.name, initiative: hero.initiative })), ...setup.foes.filter((foe) => foe.status === "alive").map((foe) => ({ name: foe.name, initiative: foe.initiative }))]
     .filter((entry): entry is { name: string; initiative: number } => entry.initiative !== null)
     .sort((a, b) => b.initiative - a.initiative);
   if (order.length) {

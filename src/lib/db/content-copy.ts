@@ -2,6 +2,7 @@ import { getDatabase, parseJson } from "@/lib/db/core";
 import { getClock } from "@/lib/db/clock";
 import type { OriginKind } from "@/lib/db/content-origins";
 import { dedupeName, type ImportKind } from "@/lib/workshop/import";
+import { parseFightSetup, portableSetup } from "@/lib/workshop/fight-setup-logic";
 
 // Copying prep rows from one campaign into another, column for column.
 //
@@ -36,7 +37,7 @@ const NEVER_COPIED: Record<string, readonly string[]> = {
 // was deliberately reset from one that was dropped.
 export const COPY_OVERRIDES: Record<string, readonly string[]> = {
   prepared_maps: ["id", "campaign_id", "name", "created_at", "updated_at"],
-  encounter_templates: ["id", "campaign_id", "name", "map_json", "cued", "created_at", "updated_at"],
+  encounter_templates: ["id", "campaign_id", "name", "map_json", "cued", "setup_json", "created_at", "updated_at"],
   locations: [
     "id", "campaign_id", "name", "visited", "is_current", "prepared_map_id", "created_at", "updated_at",
   ],
@@ -213,6 +214,13 @@ function copyEncounterRow(context: CopyContext, row: Row, name: string): string 
     map_json: JSON.stringify(map),
     // A cue is the source table's play: the copy starts uncued.
     cued: 0,
+    // A saved set-up travels without its author's library characters' ids
+    // and names (fight-setup-logic.ts portableSetup): at the table it lands
+    // in, anyone with prep authority reads it.
+    setup_json: (() => {
+      const setup = parseFightSetup(parseJson<unknown>(String(row.setup_json ?? ""), null));
+      return setup ? JSON.stringify(portableSetup(setup)) : "";
+    })(),
     created_at: context.now,
     updated_at: context.now,
   });
