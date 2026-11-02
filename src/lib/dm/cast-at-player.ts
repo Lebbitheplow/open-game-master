@@ -39,6 +39,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { saveAgainst } from "@/lib/dm/roll-about";
 import { swallowCover } from "@/lib/dm/swallow";
 import { openLastHit } from "@/lib/dm/last-hit";
+import { tieToTurn } from "@/lib/dm/turn-tie";
 import { isConditionNamed, isNamed } from "@/lib/srd/feature-names";
 
 // cast_at_player: a save forced on ONE character, by an enemy's spell or
@@ -165,6 +166,18 @@ export function layEnemyCondition(
   // damage"), else its condition. Marked on the instance this enemy laid,
   // after the condition went on the ordinary way, so a sleep that is not
   // magic stays one Fey Ancestry does not turn.
+  // "Until the end of the mummy lord's next turn": tied to that turn, the
+  // target's or the creature's (turn-tie.ts), not counted as a round.
+  if (use?.until && !("error" in applied)) {
+    tieToTurn(
+      campaign,
+      { kind: "sheet", id: sheet.id },
+      condition,
+      use.enemy.id,
+      { edge: use.until.edge, turnOf: use.until.whose === "source" ? use.enemy.id : sheet.id },
+      `${condition} lasts until the ${use.until.edge} of ${use.until.whose === "source" ? `${use.enemy.displayName}'s` : "their"} next turn`,
+    );
+  }
   const laid = [use?.condition, ...(use?.also ?? [])];
   const wakes = condition === "unconscious" || (condition === use?.condition && !laid.includes("unconscious"));
   if (use?.endsOnDamage && wakes && !("error" in applied)) {

@@ -2,6 +2,7 @@ import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, saveEncounter, turnKey, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import type { EnemyAttack, SaveAbility } from "@/lib/bestiary/statblock";
 import type { SpellCondition } from "@/lib/srd/spell-mech-types";
+import type { TurnTie } from "@/lib/dm/save-effect";
 import { spellDamageFor, spellFactsFor, spellMechanicsFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { canEnemyAct, markEnemyBonus } from "@/lib/dm/can-act";
@@ -46,6 +47,9 @@ export type EnemyUse = {
   halfOnSave?: boolean;
   condition?: string;
   rounds?: number;
+  // The turn the condition lasts until, the target's or the creature's own
+  // (save-effect.ts SaveEffect.until).
+  until?: TurnTie;
   // The condition ends on a save at the end of each of the holder's turns.
   saveEnds?: boolean;
   // The block gives it no count and no save: a long rest or a cure ends it.
@@ -248,6 +252,7 @@ export function prepareEnemyUse(campaign: Campaign, input: Input): EnemyUse | To
         ...(ability.halfOnSave !== undefined ? { halfOnSave: ability.halfOnSave } : { halfOnSave: false }),
         ...(ability.condition ? { condition: ability.condition } : {}),
         ...(ability.rounds ? { rounds: ability.rounds } : {}),
+        ...(ability.until ? { until: ability.until } : {}),
         ...(ability.repeatSave ? { saveEnds: true } : {}),
         ...(ability.untilLongRest ? { untilLongRest: true } : {}),
         ...(ability.lasting ? { lasting: true } : {}),

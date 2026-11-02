@@ -18,12 +18,11 @@
 import { z } from "zod";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
-import { getActiveEncounter, getEnemy, patchEnemyConditions, patchEnemyHp, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
+import { getActiveEncounter, getEnemy, patchEnemyHp, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { getBattleMapForEncounter, getTokenByRef, listTokens, placeToken } from "@/lib/db/battle-maps";
 import { getSheetById } from "@/lib/db/sheets";
-import { patchSheetAudited } from "@/lib/dm/audited-patch";
-import { instancesOf, packInstances, type ConditionMeta, type ConditionMetaMap } from "@/lib/dm/condition-logic";
-import { publishEncounter, resolveEnemyRef, unknownEnemyRef } from "@/lib/dm/enemy-damage";
+import { tieToTurn } from "@/lib/dm/turn-tie";
+import { resolveEnemyRef, unknownEnemyRef } from "@/lib/dm/enemy-damage";
 import { conditionEffectsFor } from "@/lib/srd/condition-effects";
 import { textKey } from "@/lib/language/text-logic";
 import { resolveCombatant } from "@/lib/dm/combatant";
@@ -38,7 +37,7 @@ import { sizeForRace } from "@/lib/srd";
 import { NEGATIVE_ENERGY, regainBlockedBy } from "@/lib/dm/vitals-logic";
 import { dmRoll } from "@/lib/dm/roll-card";
 import { blocksMove, inBounds, tileAt } from "@/lib/battlemap/types";
-import { isConditionNamed, isNamed } from "@/lib/srd/feature-names";
+import { isNamed } from "@/lib/srd/feature-names";
 import { handleMoveToken, publishBattleMapUpdate } from "@/lib/dm/map-tools";
 import { spellMechanicsFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
@@ -287,47 +286,14 @@ async function fling(
 // creature acts later in the order than whoever took the shield or the
 // curse, and after it when the creature acts earlier.
 function untilItsTurnEnds(campaign: Campaign, target: Target, condition: string, enemy: EncounterEnemy) {
-  // The instance this creature laid, under whatever spelling it was written.
-  const tied = (meta: Record<string, ConditionMeta>) => {
-    let found = false;
-    const next = Object.fromEntries(
-      Object.entries(meta).map(([name, held]) => {
-        if (!isConditionNamed(name, condition)) {
-          return [name, held];
-        }
-        found = true;
-        const instances = instancesOf(held).map((entry) => {
-          if (entry.source !== enemy.id) {
-            return entry;
-          }
-          const lasting = { ...entry, untilTurnEndOf: enemy.id };
-          delete lasting.rounds;
-          delete lasting.turnBegun;
-          return lasting;
-        });
-        return [name, packInstances(instances) ?? {}];
-      }),
-    );
-    return found ? next : null;
-  };
-  if (target.kind === "sheet") {
-    const now = getSheetById(target.sheet.id);
-    const meta = now ? tied(now.conditionMeta as Record<string, ConditionMeta>) : null;
-    if (now && meta) {
-      patchSheetAudited(campaign.id, now.id, { conditionMeta: meta as ConditionMetaMap }, {
-        kind: "condition_clock",
-        reason: `${condition} lasts until the end of ${enemy.displayName}'s next turn`,
-        delta: { ended: [], added: [] },
-      });
-    }
-    return;
-  }
-  const now = getEnemy(target.enemy.id);
-  const meta = now ? tied(now.conditionMeta as Record<string, ConditionMeta>) : null;
-  if (now && meta) {
-    patchEnemyConditions(now.id, now.conditions, meta as ConditionMetaMap);
-    publishEncounter(campaign.id);
-  }
+  tieToTurn(
+    campaign,
+    target.kind === "sheet" ? { kind: "sheet", id: target.sheet.id } : { kind: "enemy", id: target.enemy.id },
+    condition,
+    enemy.id,
+    { edge: "end", turnOf: enemy.id },
+    `${condition} lasts until the end of ${enemy.displayName}'s next turn`,
+  );
 }
 
 // A condition from the creature on a character or on a creature's row. The

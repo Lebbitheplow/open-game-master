@@ -247,6 +247,38 @@ await test("Channel Negative Energy: no healing for those it reaches until the e
   assert.equal(world.sheet(kara.id).conditions.includes("negative energy"), false, world.sheet(kara.id).conditions.join(", "));
 });
 
+await test("Blasphemous Word stuns until the end of the mummy lord's next turn: through the round's turn over, gone as its turn ends", async () => {
+  const { world, kit, kara, play } = await facing("Mummy Lord");
+  // Kara's Constitution save: a 1.
+  world.dice(1);
+  const out = await play({ action: "Blasphemous Word", characterIds: [kara.id] });
+  world.clearDice();
+  assert.equal(out.status, 200, JSON.stringify(out.body));
+  assert.ok(world.sheet(kara.id).conditions.includes("stunned"), JSON.stringify(out.body));
+  // Kara's turn ends and the round turns over: the mummy lord's turn has
+  // begun, not ended. A round's count ended the stun here.
+  assert.equal(endOwnTurn(world.campaignId, kara.userId), true);
+  assert.ok(world.sheet(kara.id).conditions.includes("stunned"), "it holds through the mummy lord's turn");
+  kit.handOnEnemies();
+  assert.equal(world.sheet(kara.id).conditions.includes("stunned"), false, world.sheet(kara.id).conditions.join(", "));
+});
+
+await test("Blinding Dust blinds until the end of the creature's own next turn: laid on Kara's turn, it holds through her next one", async () => {
+  const { world, kit, kara, play } = await facing("Mummy Lord");
+  world.dice(1);
+  const out = await play({ action: "Blinding Dust", characterIds: [kara.id] });
+  world.clearDice();
+  assert.equal(out.status, 200, JSON.stringify(out.body));
+  assert.ok(world.sheet(kara.id).conditions.includes("blinded"), JSON.stringify(out.body));
+  // Laid during her turn: that one is not her next.
+  assert.equal(endOwnTurn(world.campaignId, kara.userId), true);
+  assert.ok(world.sheet(kara.id).conditions.includes("blinded"), "the round's turn over is not the end of her next turn");
+  kit.handOnEnemies();
+  assert.ok(world.sheet(kara.id).conditions.includes("blinded"), "her next turn has begun, not ended");
+  assert.equal(endOwnTurn(world.campaignId, kara.userId), true);
+  assert.equal(world.sheet(kara.id).conditions.includes("blinded"), false, world.sheet(kara.id).conditions.join(", "));
+});
+
 await test("Shimmering Shield on Kara lasts until the end of the unicorn's next turn: through the new round's start, gone as its turn ends", async () => {
   const { world, kit, kara, play } = await facing("Unicorn");
   // The unicorn acts first in the round: the round turns over as Kara's turn

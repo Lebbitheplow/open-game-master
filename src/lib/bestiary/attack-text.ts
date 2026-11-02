@@ -1,4 +1,5 @@
 import { CONDITION_WORDS, conditionName, parseSaveEffect, SAVE_DC } from "@/lib/dm/monster-abilities";
+import type { TurnTie } from "@/lib/dm/save-effect";
 import type { SaveAbility } from "@/lib/bestiary/statblock";
 
 // What an attack's printed line says beyond its bonus and dice (SRD 5.1,
@@ -28,6 +29,9 @@ export type OnHitRider = {
   halfOnSave?: boolean;
   escapeDc?: number;
   rounds?: number;
+  // The turn it lasts until, the target's or the attacker's own
+  // (save-effect.ts SaveEffect.until).
+  until?: TurnTie;
   // No count and no repeat save: a long rest ends it, or a cure does.
   untilLongRest?: boolean;
   lasting?: boolean;
@@ -363,6 +367,7 @@ function readOnHit(hit: string, effectOnly: boolean): OnHitRider | null {
       // "On a success, it takes half the damage" comes after the failure's.
       ...(struck.halfOnSave || (struck.damage && followed.halfOnSave) ? { halfOnSave: true } : {}),
       ...(laid.rounds ? { rounds: laid.rounds } : {}),
+      ...(laid.until ? { until: laid.until } : {}),
       ...(laid.untilLongRest ? { untilLongRest: true } : {}),
       ...(laid.lasting ? { lasting: true } : {}),
     });

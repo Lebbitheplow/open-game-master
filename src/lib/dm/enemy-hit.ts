@@ -1,3 +1,4 @@
+import { tieToTurn } from "@/lib/dm/turn-tie";
 import type { Campaign } from "@/lib/db/campaigns";
 import { saveDamageTaken } from "@/lib/srd/trait-rules";
 import type { DmTurn } from "@/lib/db/dm-turns";
@@ -208,6 +209,17 @@ export function resolveOnHit(
         ).result;
     if (!("error" in applied)) {
       out.riderCondition = [...((out.riderCondition as string[] | undefined) ?? []), condition];
+      // "Until the end of the otyugh's next turn": tied to that turn (turn-tie.ts).
+      if (rider.until && !rider.untilLongRest) {
+        tieToTurn(
+          campaign,
+          { kind: "sheet", id: target.id },
+          condition,
+          enemy.id,
+          { edge: rider.until.edge, turnOf: rider.until.whose === "source" ? enemy.id : target.id },
+          `${condition} lasts until the ${rider.until.edge} of ${rider.until.whose === "source" ? `${enemy.displayName}'s` : "their"} next turn`,
+        );
+      }
     }
   }
   if (rider.escapeDc && ((out.riderCondition as string[] | undefined) ?? []).includes("grappled")) {

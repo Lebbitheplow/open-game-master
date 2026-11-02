@@ -29,6 +29,7 @@ import { getActiveEncounter, saveEncounter, turnKey, type Encounter } from "@/li
 import { activePublicEncounter } from "@/lib/db/encounter-view";
 import { publishPersisted } from "@/lib/events";
 import { endTurnStartHolds } from "@/lib/dm/condition-tick";
+import { beginTurns } from "@/lib/dm/turn-end";
 import { passHitsOpen } from "@/lib/dm/last-hit";
 import { VIGILANT_PREFIX } from "@/lib/srd/authored-effects-more";
 
@@ -48,6 +49,9 @@ export function startHeldTurn(campaign: Campaign, encounter: Encounter): string 
   delete encounter.legendary.turnStart;
   encounter.reactionsUsed = withoutReactionsOf(encounter.reactionsUsed, id);
   endTurnStartHolds(campaign, encounter.id, new Set([id]));
+  // What was laid in the meantime to last until the end of this turn (a
+  // mummy lord's Blinding Dust before it) waits on this turn's end.
+  beginTurns(campaign, encounter.id, [id]);
   return id;
 }
 
