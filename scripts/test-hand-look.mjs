@@ -273,6 +273,18 @@ test("an item in the table for its attunement alone offers wear only where weari
   assert.equal(isWornGear({ name: "Rod of Absorption" }), true, "a rod is held");
   assert.equal(isWornGear({ name: "Staff of Thunder and Lightning" }), true, "a staff is held");
   assert.equal(isWornGear({ name: "Crystal Ball", tags: ["rod"] }), true, "a stored focus tag still counts");
+  // An item whose own text puts it on keeps the toggle though no engine reads
+  // its effect: whether it is worn is whether its magic is on. SRD 5.1, Wings
+  // of Flying: "While wearing this cloak"; an Ioun Stone "orbits your head".
+  for (const name of ["Wings of Flying", "Ioun Stone", "Deepstone Cestus", "Soulbound Wraps", "Devil Shark Mask", "Knight-Sergeant's Surcoat"]) {
+    assert.equal(isWornGear({ name }), true, name);
+  }
+  // Held, pressed or carried, never put on: a Cube of Force's charges need
+  // no wear toggle, and one that works "while wearing or carrying" it works
+  // from the pack.
+  for (const name of ["Cube of Force", "Gem of Seeing", "Wind Fan", "Locket of Dragon Vitality", "Beads of Contemplation"]) {
+    assert.equal(isWornGear({ name }), false, name);
+  }
 });
 
 test("only gear with somewhere to be worn or held offers it, in any language: a weapon, a staff held as a focus; never a rope, arrows or a key", () => {

@@ -9,7 +9,7 @@ import { searchItems } from "@/lib/content";
 import { bundledItemRows } from "@/lib/rulebook/catalog-rows";
 import { chargeMax, chargeRuleOf, chargesLeft } from "@/lib/dm/item-charges";
 import { armorOfRow, isWorn } from "@/lib/srd/armor";
-import { oneOfKind, wornButIdle } from "@/lib/srd/wear-slots";
+import { oneOfKind, wearSlotOf, wornButIdle } from "@/lib/srd/wear-slots";
 import { gearDefOfRow } from "@/lib/srd/magic-gear";
 import { matchMagicItem, type MagicItemEffect } from "@/lib/srd/magic-items";
 import type { EquipmentItem } from "@/lib/schemas/sheet";
@@ -77,7 +77,8 @@ export function magicItemLine(item: EquipmentItem, equipment: readonly Equipment
   // A workshop item's own magic rides on its line (gearDefOfRow); its effects
   // are the ones magic-items.ts reads off the same line.
   const def = gearDefOfRow(item);
-  const worn = item.gear?.magic ? { effects: item.gear.magic.effects, requiresAttunement: item.gear.magic.requiresAttunement } : matchMagicItem(item);
+  const listed = item.gear?.magic ? null : matchMagicItem(item);
+  const worn = item.gear?.magic ? { effects: item.gear.magic.effects, requiresAttunement: item.gear.magic.requiresAttunement } : listed;
   if (!def && !worn && !magicItemBonus(item.name)) {
     const sentence = itemSentence(rowName(item));
     return sentence ? `${item.name}: ${sentence} (narrated)` : null;
@@ -113,10 +114,12 @@ export function magicItemLine(item: EquipmentItem, equipment: readonly Equipment
   } else if (def?.requiresAttunement || worn?.requiresAttunement) {
     state.push("not attuned");
   }
+  // A row the sheet offers no wear toggle (noWear: a Crystal Ball, a Cube of
+  // Force) is never said to be worn: nothing puts it on.
   const idle = wornButIdle(item, equipment);
   if (idle) {
     state.push(`worn, not in effect (${oneOfKind(idle) ?? "one of its kind"} at a time)`);
-  } else if (isWorn(item, equipment)) {
+  } else if (isWorn(item, equipment) && !(listed?.noWear && !wearSlotOf(item))) {
     state.push("worn");
   }
   // An item in the table only for its attunement has nothing above to say, so

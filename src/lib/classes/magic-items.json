@@ -72,6 +72,7 @@
         "alchemical-lantern"
       ],
       "requiresAttunement": false,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 3
@@ -84,7 +85,6 @@
         "alliance-rings-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -94,7 +94,6 @@
         "amber-wings-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -120,7 +119,6 @@
         "amulet-of-memory"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -131,7 +129,6 @@
         "amulet-of-proof-against-detection-and-location-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -141,7 +138,6 @@
         "amulet-of-sustaining-health"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -151,7 +147,6 @@
         "amulet-of-the-oracle"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -162,7 +157,6 @@
         "amulet-of-the-planes-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -184,6 +178,7 @@
         "amulet-of-whirlwinds"
       ],
       "requiresAttunement": true,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 9
@@ -214,7 +209,6 @@
         "angel-eyes-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -224,7 +218,6 @@
         "angelic-earrings"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -283,6 +276,7 @@
         "ankh-of-aten"
       ],
       "requiresAttunement": false,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 5,
@@ -783,6 +777,7 @@
         "baleful-wardrums"
       ],
       "requiresAttunement": true,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 3,
@@ -796,7 +791,6 @@
         "band-of-iron-thorns"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -821,7 +815,6 @@
         "bandana-of-bravado"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -841,7 +834,6 @@
         "barbed-devils-bracelet-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -877,7 +869,6 @@
         "bear-paws"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -950,7 +941,6 @@
         "belt-of-giant-strength-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -999,7 +989,6 @@
         "belt-of-the-wilds"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -1028,7 +1017,6 @@
         "berserkers-kilt"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -1216,7 +1204,6 @@
         "bloodiron-band-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -1308,6 +1295,7 @@
         "book-of-ebon-tides"
       ],
       "requiresAttunement": true,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 15
@@ -1341,7 +1329,6 @@
         "boots-of-levitation-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -1351,7 +1338,6 @@
         "boots-of-pouncing"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -1362,7 +1348,6 @@
         "boots-of-speed-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -1373,7 +1358,6 @@
         "boots-of-striding-and-springing-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -1383,7 +1367,6 @@
         "boots-of-the-grandmother"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -1393,7 +1376,6 @@
         "boots-of-the-swift-striker"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -1443,6 +1425,7 @@
         "bowl-of-commanding-water-elementals-a5e"
       ],
       "requiresAttunement": false,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 1,
@@ -1457,6 +1440,7 @@
         "box-of-bees-a5e"
       ],
       "requiresAttunement": true,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 3
@@ -1505,7 +1489,6 @@
         "braid-whip-clasp"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -1566,7 +1549,6 @@
         "brazen-band"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -1589,6 +1571,7 @@
         "brazier-of-commanding-fire-elementals-a5e"
       ],
       "requiresAttunement": false,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 1,
@@ -1704,7 +1687,6 @@
         "burning-skull"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -1714,6 +1696,7 @@
         "butter-of-disbelief"
       ],
       "requiresAttunement": false,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 3,
@@ -1769,6 +1752,7 @@
         "candle-of-the-surreptitious-scholar-a5e"
       ],
       "requiresAttunement": true,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 3
@@ -1834,7 +1818,6 @@
         "captains-goggles"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -1884,6 +1867,7 @@
         "censer-of-controlling-air-elementals-a5e"
       ],
       "requiresAttunement": false,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 1,
@@ -1898,7 +1882,6 @@
         "centaur-wrist-wraps"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -1946,6 +1929,7 @@
         "chalk-of-exodus"
       ],
       "requiresAttunement": false,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 10,
@@ -1971,7 +1955,6 @@
         "charlatans-veneer"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -2009,6 +1992,7 @@
         "chronomancers-pocket-clock"
       ],
       "requiresAttunement": false,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 3
@@ -2021,7 +2005,6 @@
         "cinch-of-the-wolfmother"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -2055,7 +2038,6 @@
         "circlet-of-holly"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -2075,6 +2057,7 @@
         "clacking-teeth"
       ],
       "requiresAttunement": false,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 3
@@ -2124,7 +2107,6 @@
         "cloak-of-coagulation"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -2135,7 +2117,6 @@
         "cloak-of-displacement-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -2146,7 +2127,6 @@
         "cloak-of-elvenkind-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -2219,7 +2199,6 @@
         "cloak-of-tentacles"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -2284,7 +2263,6 @@
         "cloak-of-the-inconspicuous-rake"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -2310,7 +2288,6 @@
         "cloak-of-the-ram"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -2320,7 +2297,6 @@
         "cloak-of-the-rat"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -2330,7 +2306,6 @@
         "cloak-of-the-shadowcaster-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -2340,7 +2315,6 @@
         "cloak-of-wicked-wings"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -2363,7 +2337,6 @@
         "clockwork-hand"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -2386,6 +2359,7 @@
         "clockwork-pendant"
       ],
       "requiresAttunement": true,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 3,
@@ -2399,7 +2373,6 @@
         "clockwork-rogue-ring"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -2440,7 +2413,6 @@
         "collar-of-beast-armor"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -2475,7 +2447,6 @@
         "commoners-veneer"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -2584,7 +2555,6 @@
         "crab-gloves"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -2614,7 +2584,6 @@
         "crest-of-putrid-endurance-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -2645,7 +2614,6 @@
         "crown-of-the-crystal-sovereign-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -2749,6 +2717,7 @@
         "cube-of-force-a5e"
       ],
       "requiresAttunement": true,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 36,
@@ -2763,6 +2732,7 @@
         "cubic-gate-a5e"
       ],
       "requiresAttunement": false,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 3,
@@ -2834,6 +2804,7 @@
         "dancing-floret"
       ],
       "requiresAttunement": true,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 3,
@@ -2872,6 +2843,7 @@
         "deaths-essence-pendant-a5e"
       ],
       "requiresAttunement": false,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 5
@@ -2903,7 +2875,6 @@
           "monk"
         ]
       },
-      "noWear": true,
       "effects": []
     },
     {
@@ -2959,7 +2930,6 @@
         "deserters-boots"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -2969,7 +2939,6 @@
         "devil-shark-mask"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -3132,6 +3101,7 @@
         "dread-caduceus-a5e"
       ],
       "requiresAttunement": true,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": "2d10"
@@ -3239,7 +3209,6 @@
         "eagle-cape"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -3249,7 +3218,6 @@
         "earrings-of-the-agent"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -3276,6 +3244,7 @@
         "ebon-shards"
       ],
       "requiresAttunement": true,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 10
@@ -3310,6 +3279,7 @@
         "elemental-quiver-a5e"
       ],
       "requiresAttunement": false,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 20
@@ -3374,7 +3344,6 @@
         "esquires-rowels"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -3406,7 +3375,6 @@
         "excaliburs-scabbard-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -3440,7 +3408,6 @@
         "eye-of-elsewhere-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -3450,7 +3417,6 @@
         "eye-of-the-golden-god"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -3475,7 +3441,6 @@
         "eyes-of-the-eagle-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -3485,7 +3450,6 @@
         "eyes-of-the-outer-dark"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -3505,7 +3469,6 @@
         "fanged-mask"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -3525,7 +3488,6 @@
         "fear-eaters-mask"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -3568,6 +3530,7 @@
         "figurine-of-wondrous-power-a5e"
       ],
       "requiresAttunement": false,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 24
@@ -3613,6 +3576,7 @@
         "flask-of-inebriation-a5e"
       ],
       "requiresAttunement": false,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 2
@@ -3625,7 +3589,6 @@
         "fleshspurned-mask"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -3641,7 +3604,6 @@
           "monk"
         ]
       },
-      "noWear": true,
       "effects": []
     },
     {
@@ -3821,7 +3783,6 @@
         "garments-of-winters-knight"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -3831,7 +3792,6 @@
         "gauntlet-of-dominion-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -3841,7 +3801,6 @@
         "gauntlet-of-the-iron-sphere"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -3868,6 +3827,7 @@
         "gem-of-brightness-a5e"
       ],
       "requiresAttunement": false,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 50
@@ -3881,6 +3841,7 @@
         "gem-of-seeing-a5e"
       ],
       "requiresAttunement": true,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 3,
@@ -3936,7 +3897,6 @@
           "monk"
         ]
       },
-      "noWear": true,
       "effects": []
     },
     {
@@ -3946,7 +3906,6 @@
         "girdle-of-traveling-alchemy"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -4010,7 +3969,6 @@
         "gloomflower-corsage"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -4033,7 +3991,6 @@
         "glove-of-swift-return-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -4044,7 +4001,6 @@
         "gloves-of-missile-snaring-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -4055,7 +4011,6 @@
         "gloves-of-swimming-and-climbing-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -4065,7 +4020,6 @@
         "gloves-of-the-magister"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -4214,7 +4168,6 @@
         "grasping-cap"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -4224,7 +4177,6 @@
         "grasping-cloak"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -4345,6 +4297,7 @@
         "hallowed-effigy"
       ],
       "requiresAttunement": true,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 10,
@@ -4398,7 +4351,6 @@
         "hand-of-the-night-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -4408,6 +4360,7 @@
         "handy-halter-a5e"
       ],
       "requiresAttunement": true,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 3,
@@ -4421,6 +4374,7 @@
         "hangmans-noose"
       ],
       "requiresAttunement": true,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 3,
@@ -4434,6 +4388,7 @@
         "harmonizing-instrument"
       ],
       "requiresAttunement": true,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 3,
@@ -4457,7 +4412,6 @@
         "hat-of-disguise-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -4477,7 +4431,6 @@
         "hat-of-mental-acuity"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -4608,7 +4561,6 @@
         "helm-of-the-slashing-fin"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -4677,7 +4629,6 @@
         "honey-buckle"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -4687,6 +4638,7 @@
         "honey-trap"
       ],
       "requiresAttunement": false,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 7,
@@ -4700,6 +4652,7 @@
         "hopes-final-light-a5e"
       ],
       "requiresAttunement": false,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 0
@@ -4712,7 +4665,6 @@
         "hopeful-slippers-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -4774,6 +4726,7 @@
         "idol-of-light-a5e"
       ],
       "requiresAttunement": true,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 10
@@ -4821,6 +4774,7 @@
         "inkpot-of-the-thrifty-apprentice-a5e"
       ],
       "requiresAttunement": false,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 3
@@ -4833,6 +4787,7 @@
         "inspiring-pahu-a5e"
       ],
       "requiresAttunement": false,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 2
@@ -4846,7 +4801,6 @@
         "ioun-stone-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -5064,7 +5018,6 @@
         "justicars-mask"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -5074,7 +5027,6 @@
         "knight-sergeants-surcoat"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -5131,6 +5083,7 @@
         "language-pyramid"
       ],
       "requiresAttunement": true,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 3,
@@ -5185,7 +5138,6 @@
         "leonino-wings"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -5195,6 +5147,7 @@
         "library-scarf-a5e"
       ],
       "requiresAttunement": false,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 3
@@ -5236,6 +5189,7 @@
         "listening-quills-a5e"
       ],
       "requiresAttunement": true,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 3
@@ -5326,6 +5280,7 @@
         "lucky-coin"
       ],
       "requiresAttunement": false,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 6,
@@ -5353,7 +5308,6 @@
         "lucky-halfling-foot-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -5520,7 +5474,6 @@
         "mantle-of-the-forest-lord"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -5530,7 +5483,6 @@
         "mantle-of-the-lion"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -5564,7 +5516,6 @@
         "mask-of-relentless-fury-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -5574,7 +5525,6 @@
         "mask-of-the-war-chief"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -5584,7 +5534,6 @@
         "mask-of-the-white-stag-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -5604,7 +5553,6 @@
         "mayhem-mask"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -5655,7 +5603,6 @@
         "memory-leaf-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -5665,7 +5612,6 @@
         "menders-mark"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -5834,7 +5780,6 @@
         "monkeys-paw-of-fortune"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -5854,6 +5799,7 @@
         "moonfield-lens"
       ],
       "requiresAttunement": true,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 4,
@@ -5888,6 +5834,7 @@
         "mug-of-warming-a5e"
       ],
       "requiresAttunement": false,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 3
@@ -5929,7 +5876,6 @@
         "necklace-of-adaptation-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -5940,6 +5886,7 @@
         "necklace-of-fireballs-a5e"
       ],
       "requiresAttunement": false,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": "1d6+3",
@@ -5953,7 +5900,6 @@
         "necklace-of-hunger-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -6065,7 +6011,6 @@
         "octopus-bracers"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -6108,7 +6053,6 @@
         "opera-goers-guise-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -6119,6 +6063,7 @@
         "orb-of-dragonkind-a5e"
       ],
       "requiresAttunement": true,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 7,
@@ -6186,7 +6131,6 @@
         "ouroboros-amulet"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -6196,7 +6140,6 @@
         "paired-gauntlets-of-striking"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -6326,7 +6269,6 @@
         "periapt-of-wound-closure-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -6388,6 +6330,7 @@
         "phoenix-feather-cap-a5e"
       ],
       "requiresAttunement": true,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 2
@@ -6413,6 +6356,7 @@
         "pipes-of-haunting-a5e"
       ],
       "requiresAttunement": false,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 3,
@@ -6426,6 +6370,7 @@
         "pipes-of-madness"
       ],
       "requiresAttunement": true,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 5,
@@ -6440,6 +6385,7 @@
         "pipes-of-the-sewers-a5e"
       ],
       "requiresAttunement": true,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 3,
@@ -6556,6 +6502,7 @@
         "quick-canoe-paddle-a5e"
       ],
       "requiresAttunement": false,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 2
@@ -6578,7 +6525,6 @@
         "quiver-of-the-hunt-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -6604,7 +6550,6 @@
         "raiment-of-the-devouring-king-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -6635,7 +6580,6 @@
         "recondite-shield"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -6728,7 +6672,6 @@
         "revenants-shawl"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -6792,7 +6735,6 @@
         "ring-of-battered-courage-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -6833,7 +6775,6 @@
         "ring-of-djinni-summoning-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -6878,7 +6819,6 @@
         "ring-of-feather-falling-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -6888,7 +6828,6 @@
         "ring-of-featherweight-weapons"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -6933,7 +6872,6 @@
         "ring-of-free-action-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -6943,7 +6881,6 @@
         "ring-of-giant-mingling"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -6953,7 +6890,6 @@
         "ring-of-hoarded-life"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -6977,7 +6913,6 @@
         "ring-of-invisibility-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -6988,7 +6923,6 @@
         "ring-of-jumping-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -6998,7 +6932,6 @@
         "ring-of-lights-comfort"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -7026,7 +6959,6 @@
         "ring-of-mind-shielding-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -7053,7 +6985,6 @@
         "ring-of-nights-solace"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -7080,7 +7011,6 @@
         "ring-of-powerful-summons"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -7144,7 +7074,6 @@
         "ring-of-regeneration-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -7155,7 +7084,6 @@
         "ring-of-resistance-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -7206,7 +7134,6 @@
         "ring-of-spell-storing-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -7217,7 +7144,6 @@
         "ring-of-spell-turning-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -7256,7 +7182,6 @@
         "ring-of-telekinesis-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -7309,7 +7234,6 @@
         "ring-of-the-groves-guardian"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -7349,7 +7273,6 @@
         "ring-of-the-water-dancer"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -7424,7 +7347,6 @@
         "ring-of-x-ray-vision-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -7447,7 +7369,6 @@
         "robe-of-eyes-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -7849,6 +7770,7 @@
         "sail-of-the-black-opal-a5e"
       ],
       "requiresAttunement": true,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 3
@@ -7877,7 +7799,6 @@
         "sandals-of-sand-skating"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -8009,7 +7930,6 @@
         "scorpion-feet"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -8031,6 +7951,7 @@
         "scrimshaw-comb"
       ],
       "requiresAttunement": true,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 3,
@@ -8085,6 +8006,7 @@
         "second-light-lantern-a5e"
       ],
       "requiresAttunement": false,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 4
@@ -8123,7 +8045,6 @@
         "seneschals-gloves"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -8196,7 +8117,6 @@
         "serpentine-sandals"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -8206,7 +8126,6 @@
         "serveros-war-engine-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -8246,7 +8165,6 @@
         "shark-tooth-crown"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -8359,7 +8277,6 @@
         "shoes-of-the-shingled-canopy"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -8405,7 +8322,6 @@
         "signet-of-the-magister"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -8500,7 +8416,6 @@
         "skysail"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -8510,7 +8425,6 @@
         "slatelight-ring"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -8574,6 +8488,7 @@
         "snake-eye-bones-a5e"
       ],
       "requiresAttunement": false,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 2
@@ -8605,7 +8520,6 @@
           "monk"
         ]
       },
-      "noWear": true,
       "effects": []
     },
     {
@@ -8730,6 +8644,7 @@
         "spirit-trapping-camera-a5e"
       ],
       "requiresAttunement": false,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 3
@@ -9597,6 +9512,7 @@
         "stone-of-controlling-earth-elementals-a5e"
       ],
       "requiresAttunement": false,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 1,
@@ -9640,7 +9556,6 @@
         "stonechewer-gauntlets"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -9747,7 +9662,6 @@
         "survivors-cloak-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -9781,7 +9695,6 @@
         "swolbold-wraps"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -10145,6 +10058,7 @@
         "timeworn-timepiece"
       ],
       "requiresAttunement": true,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 3
@@ -10170,6 +10084,7 @@
         "tome-of-the-endless-tale-a5e"
       ],
       "requiresAttunement": false,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 3
@@ -10225,7 +10140,6 @@
         "transforming-cloak-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -10248,6 +10162,7 @@
         "trick-shot-mirror"
       ],
       "requiresAttunement": true,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 3,
@@ -10322,7 +10237,6 @@
         "tyrants-teeth-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -10361,7 +10275,6 @@
         "umbral-band"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -10454,7 +10367,6 @@
         "veil-of-fate-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -10464,7 +10376,6 @@
         "vengeful-coat"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -10474,7 +10385,6 @@
         "venomous-fangs"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -10539,6 +10449,7 @@
         "victory-banner"
       ],
       "requiresAttunement": true,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 3,
@@ -10602,7 +10513,6 @@
         "voidwalker"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -11197,7 +11107,6 @@
         "ward-against-wild-appetites"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -11207,7 +11116,6 @@
         "warding-icon"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -11242,6 +11150,7 @@
         "waystone-a5e"
       ],
       "requiresAttunement": false,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 3
@@ -11385,6 +11294,7 @@
         "wind-fan-a5e"
       ],
       "requiresAttunement": false,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 1,
@@ -11400,7 +11310,6 @@
         "windwalker-boots"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -11427,7 +11336,6 @@
         "wings-of-flying-a5e"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     },
     {
@@ -11512,6 +11420,7 @@
         "wraithstone"
       ],
       "requiresAttunement": true,
+      "noWear": true,
       "effects": [],
       "charges": {
         "max": 6
@@ -11553,7 +11462,6 @@
         "zipline-ring"
       ],
       "requiresAttunement": true,
-      "noWear": true,
       "effects": []
     }
   ]

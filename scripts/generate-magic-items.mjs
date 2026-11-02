@@ -33,7 +33,17 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const contentDb = process.env.CONTENT_DB_PATH || join(root, "data", "content", "open5e.sqlite");
 const outPath = join(root, "src", "lib", "classes", "magic-items.json");
 
-const HELD_CATEGORY = /^(?:rod|staff|wand|weapon|armor)/i;
+// A rod, staff or wand in hand is a focus (src/lib/dm/cast-rules.ts), a
+// weapon is wielded, armor and a ring are worn: each keeps its wear toggle.
+const HELD_CATEGORY = /^(?:rod|staff|wand|weapon|armor|ring)/i;
+// What an item's own text says about wearing it: "While wearing this cloak",
+// "worn as a helm", a stone that "orbits your head". One that works "while
+// wearing or carrying" it works from the pack. Read only for a row nothing
+// else in the table puts on the body; "don't" and a "worn cloth purse" are
+// not wearing.
+const WORN_TEXT =
+  /\b(?:wear|wears|wearing|wearer|donned|dons)\b|\bdon\b(?!['’])|\b(?:is|are|be|been|being|when|while|if|once|commonly|typically|usually) worn\b|\bworn (?:as|around|on|over|under|beneath|by|attached|item)\b|\borbit(?:s|ing)? (?:around )?your head\b|\battached to your\b/i;
+const CARRIED_TEXT = /\b(?:wear(?:ing)?|hold(?:ing)?) or carry(?:ing)?\b|\bcarry(?:ing)? or wear(?:ing)?\b/i;
 
 const ABILITY = {
   strength: "str",
@@ -471,10 +481,19 @@ function collect() {
       ...(aliases ? { aliases } : {}),
       ...(restriction ? { attunedBy: restriction } : {}),
       ...(parsed.carried && effects.length ? { carried: true } : {}),
-      // Nothing reads whether this one is worn, so the sheet offers it no wear
-      // toggle: a Crystal Ball is attuned to, not put on. A rod, staff or wand
-      // keeps its toggle, since one in hand is a focus (src/lib/dm/cast-rules.ts).
-      ...(!effects.length && !Object.keys(gear).length && !HELD_CATEGORY.test(row.category || "") ? { noWear: true } : {}),
+      // Nothing reads whether this one is worn and its text never puts it on,
+      // so the sheet offers it no wear toggle and the GM's line no "worn": a
+      // Crystal Ball is attuned to and a Cube of Force pressed, not put on.
+      // Wings of Flying ("While wearing this cloak") and a mask keep theirs,
+      // since whether it is worn is whether its magic is on.
+      ...(!effects.length &&
+      !gear.base &&
+      !gear.weapon &&
+      !gear.armor &&
+      !HELD_CATEGORY.test(row.category || "") &&
+      (!WORN_TEXT.test(desc) || CARRIED_TEXT.test(desc))
+        ? { noWear: true }
+        : {}),
       effects,
       ...gear,
     });

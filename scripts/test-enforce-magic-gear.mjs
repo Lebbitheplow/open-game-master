@@ -309,7 +309,9 @@ await test("the GAME STATE line for a magic item says what the engine applies, i
   // from the bundled SRD book, for an item in the table and for one the
   // engine only narrates, without the book's italics marks.
   assert.match(magicItemLine({ name: "Bag of Holding", qty: 1 }), /^Bag of Holding: This bag has an interior space .* \(narrated\)$/);
-  assert.match(magicItemLine({ name: "Crystal Ball", qty: 1 }), /^Crystal Ball: The typical crystal ball, a very rare item, .* \(narrated\); not attuned/);
+  // Nothing puts a Crystal Ball on, so its line never says it is worn.
+  assert.match(magicItemLine({ name: "Crystal Ball", qty: 1 }), /^Crystal Ball: The typical crystal ball, a very rare item, .* \(narrated\); not attuned$/);
+  assert.match(magicItemLine({ name: "Wings of Flying", qty: 1, attuned: true, equipped: true }), /; attuned, worn$/);
 });
 
 await test("a magic item's charges and its pending attunement are optional fields: an old row with neither still loads", () => {

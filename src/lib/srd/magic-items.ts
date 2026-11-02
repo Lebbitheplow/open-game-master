@@ -101,8 +101,10 @@ export type MagicItemDef = {
   attunedBy?: AttunementRule;
   // Works from the pack: the item's text asks only that it be on the person.
   carried?: boolean;
-  // Nothing reads whether it is worn: the sheet offers no wear toggle, unless
-  // the item has a place on the body or is tagged a focus (isWornGear).
+  // Nothing reads whether it is worn and its own text never puts it on (a
+  // Crystal Ball, a Cube of Force): the sheet offers no wear toggle and the
+  // GM's line never says "worn", unless the item has a place on the body or
+  // is tagged a focus (isWornGear).
   noWear?: boolean;
   effects: MagicItemEffect[];
 };
