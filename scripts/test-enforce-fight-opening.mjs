@@ -184,7 +184,12 @@ await test("A fight begun mid-turn with the player up keeps the turn's tool list
 // first message the narrator has not read: it is sent ahead as the turn
 // ends (src/lib/dm/turn-warmup.ts), and the next turn starts with exactly it.
 await test("After a turn that starts a fight, the next turn's first message and tools are sent ahead, once, and the next turn starts with exactly them.", async () => {
+  // The last test's goblin can drop Alden, and his death save queues a GM
+  // turn of its own; on a loaded runner its model call landed after this
+  // test began counting, as a fourth request no warm-up sent.
+  await settleQueue(world.campaignId);
   await kit.endFight();
+  await settleQueue(world.campaignId);
   process.env.DM_TURN_WARMUP = "1";
   try {
     world.dice(1, 20);
