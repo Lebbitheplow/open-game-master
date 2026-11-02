@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { listCastNpcs, markNpcsHeard, onCastTouched, type Npc } from "@/lib/db/npcs";
 import { departedSheet } from "@/lib/db/companion-conscience";
 import { characterPlaceholder } from "@/lib/placeholders";
@@ -88,15 +89,22 @@ declare global {
   var __odmCastPending: Set<string> | undefined;
 }
 
-// The cast each campaign's seats were last sent, as its JSON, so a write
-// that changed nothing they see sends nothing.
+// The cast each campaign's seats were last sent, as a digest of its JSON, so
+// a write that changed nothing they see sends nothing. A digest and not the
+// JSON itself: the map keeps one entry for every table and workshop touched
+// since the server started, and a large cast's JSON runs to tens of
+// kilobytes.
 function lastSent() {
   return (globalThis.__odmCastSent ??= new Map<string, string>());
 }
 
+function castDigest(cast: CastMember[]): string {
+  return createHash("sha1").update(JSON.stringify(cast)).digest("base64");
+}
+
 export function publishCast(campaignId: string) {
   const cast = wholeCast(campaignId);
-  lastSent().set(campaignId, JSON.stringify(cast));
+  lastSent().set(campaignId, castDigest(cast));
   publishEphemeral(campaignId, "cast_updated", { cast });
 }
 
@@ -104,11 +112,11 @@ export function publishCast(campaignId: string) {
 // Returns whether it did.
 export function syncCast(campaignId: string): boolean {
   const cast = wholeCast(campaignId);
-  const json = JSON.stringify(cast);
-  if (lastSent().get(campaignId) === json) {
+  const digest = castDigest(cast);
+  if (lastSent().get(campaignId) === digest) {
     return false;
   }
-  lastSent().set(campaignId, json);
+  lastSent().set(campaignId, digest);
   publishEphemeral(campaignId, "cast_updated", { cast });
   return true;
 }

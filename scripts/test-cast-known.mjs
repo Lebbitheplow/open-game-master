@@ -245,6 +245,17 @@ await test("a seat that loads the table after a rewind hears the next change, ev
   assert.deepEqual(await castsSent(world, kara, () => markNpcMet(marla.id)), [["Marla Venn"]], "meeting her again reaches the seat");
 });
 
+await test("what each table was last sent is kept as a short digest, however large its cast", async () => {
+  const { world, npc } = await table();
+  for (const name of ["Ander Holt", "Bryn Marsh", "Cael Dusk", "Dara Vane", "Esk Thornton", "Fen Alderleaf", "Gwyn Stonehill", "Hale Graywind"]) {
+    markNpcMet(npc(name).id);
+  }
+  await settled();
+  const kept = globalThis.__odmCastSent?.get(world.campaignId);
+  assert.equal(typeof kept, "string");
+  assert.ok(kept.length <= 64, `kept ${kept.length} characters for one table`);
+});
+
 await test("two rows merged into one keep the earlier hearing", async () => {
   const { world, npc, gm } = await table();
   const keep = npc("Marla Venn");
