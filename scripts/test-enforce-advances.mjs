@@ -319,10 +319,12 @@ await test("romance switched off withdraws what waits, and a yes after it takes 
 
 // ---- the table's limits ----
 
-await test("a family table, or Romance switched off, never opens a window", async () => {
+await test("a family table, Romance switched off, or a line or veil naming romance in any table language, never opens a window", async () => {
   for (const gameSettings of [
     { safety: { xCard: true, lines: [], veils: [], boundaries: "family" } },
     { safety: { xCard: true, lines: [], veils: [], boundaries: "standard" }, romance: "off" },
+    { safety: { xCard: true, lines: ["romance"], veils: [], boundaries: "standard" } },
+    { safety: { xCard: true, lines: [], veils: ["storie d'amore"], boundaries: "standard" }, tableLanguage: "italian" },
   ]) {
     const table = await openWorld({ gameSettings });
     table.addHero({ name: "Host" });

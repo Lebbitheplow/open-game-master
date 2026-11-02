@@ -1057,6 +1057,7 @@
     "lib/dm/action-tools.ts#str-list": [["key",3,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/action-walk.ts#str-list": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/action-walk.ts#str-eq": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
+    "lib/dm/advance-logic.ts#str-list": [["english-extra",1,"the romance words of every table language (ROMANCE_STEMS: romance, romantic, flirt, seduction, a love story or affair, courtship) read in a table's safety lines and veils: an extra beside the family boundary, the Romance switch and each player's own opt-in, which serve every language; a word it misses leaves the table where the switch the Safety panel names already puts it"]],
     "lib/dm/advance-logic.ts#str-eq": [["key",3,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/affliction-poisons.ts#str-eq": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/affliction-poisons.ts#toLowerCase": [["key",1,"condition label (engine vocabulary)"]],

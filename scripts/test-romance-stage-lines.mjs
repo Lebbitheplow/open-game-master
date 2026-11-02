@@ -3,8 +3,9 @@
 // silence, with nothing in the GM's note either. Every rung that moves, up or
 // down, now posts a table line at AI-run and person-run tables alike, below
 // the narration that caused it, and a slip tells whoever made the call. It
-// follows the table's romance setting; a death and a parting move no rung and
-// post nothing. Found beside it: a social check that
+// follows the table's romance setting and its safety lines, in any table
+// language; a death and a parting move no rung and post nothing. Found beside
+// it: a social check that
 // bullied someone below a rung's grace left the romance where it stood.
 import assert from "node:assert/strict";
 import { openWorld } from "./lib/enforce-world.mjs";
@@ -60,14 +61,15 @@ await test("the table's words: a step as the Log words it, a slip, an end; the G
   assert.equal(cooledNote({ kind: "up", to: "together" }, "Vex", "Ivo"), null);
 });
 
-await test("lines follow the table's Romance setting alone: off keeps them out at every table; a line or veil naming romance, in any language, and a family table do not", () => {
+await test("lines follow the table's own settings: romance off or a safety line naming romance, in any table language, keep them out; a veil or a family table do not", () => {
   assert.equal(romanceLinesAllowed({}), true);
   assert.equal(romanceLinesAllowed({ romance: "off" }), false);
   assert.equal(romanceLinesAllowed({ relationships: "off" }), false);
   for (const said of ["romance", "storie d'amore", "romantique", "romántico", "Romantik"]) {
-    assert.equal(romanceLinesAllowed({ safety: { lines: [said], veils: [said] } }), true, said);
-    assert.equal(romanceLinesAllowed({ romance: "off", safety: { lines: [said] } }), false, said);
+    assert.equal(romanceLinesAllowed({ safety: { lines: [said] } }), false, `line: ${said}`);
+    assert.equal(romanceLinesAllowed({ safety: { lines: ["spiders"], veils: [said] } }), true, `veil: ${said}`);
   }
+  assert.equal(romanceLinesAllowed({ safety: { lines: ["spiders", "Romans"] } }), true);
   assert.equal(romanceLinesAllowed({ safety: { boundaries: "family", lines: [] } }), true);
 });
 
@@ -144,7 +146,7 @@ await test("a break-up posts that the romance is over; a death posts no romance 
   assert.deepEqual(mourned.lines(), [], "the death is the GM's to narrate");
 });
 
-await test("a table with romance off hears no romance line; a line or veil naming romance, in any language, is not the switch", async () => {
+await test("a table with romance off, or a line drawn at romance in any table language, hears no romance line; a veil hears the summary", async () => {
   const off = await pair({ gameSettings: { romance: "off" }, approval: 46 });
   const beat = await off.world.invoke("relationship_beat", { characterId: off.hero.id, subject: "Ivo", beat: "insult" });
   assert.equal(beat.ok, true, beat.error);
@@ -153,10 +155,14 @@ await test("a table with romance off hears no romance line; a line or veil namin
   assert.doesNotMatch(beat.result.note, /cooled/);
 
   for (const said of ["romance", "storie d'amore"]) {
-    const lined = await pair({ gameSettings: { safety: { boundaries: "standard", lines: [said], veils: [said] } }, approval: 80 });
+    const lined = await pair({ gameSettings: { safety: { boundaries: "standard", lines: [said], veils: [] } }, approval: 80 });
     const step = await lined.world.invoke("romance_advance", { characterId: lined.hero.id, subject: "Ivo", to: "together" });
     assert.equal(step.ok, true, step.error);
-    assert.deepEqual(lined.lines(), ["Vex and Ivo became partners."], said);
+    assert.deepEqual(lined.lines(), [], `a line keeps it off the page in any form: ${said}`);
+
+    const veiled = await pair({ gameSettings: { safety: { boundaries: "standard", lines: [], veils: [said] } }, approval: 80 });
+    await veiled.world.invoke("romance_advance", { characterId: veiled.hero.id, subject: "Ivo", to: "together" });
+    assert.deepEqual(veiled.lines(), ["Vex and Ivo became partners."], `a veil allows the summary after the fact: ${said}`);
   }
 });
 

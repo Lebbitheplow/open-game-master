@@ -23,9 +23,10 @@ import { personalityVoiceFits } from "@/lib/tts-voices";
 // section 9), shared by the creation wizard's Feel step and the lobby's
 // settings. Lines and veils are typed as lists; the boundary, strictness
 // and tone are chips; a personality preset fills strictness, tone and the
-// narrator's voice at once. No engine reads a line or veil for its words, so
-// the panel points a table that wants no romance to its switch, under Bonds
-// and romance.
+// narrator's voice at once. A line or veil naming romance keeps the engine's
+// own romance offers away (dm/advance-logic.ts namesRomance), and the panel
+// points a table that wants no romance at all to its switch, under Bonds and
+// romance.
 
 const chip = "rounded-md border px-2 py-0.5 text-[11px]";
 const on = "border-amber-700 bg-amber-950/40 text-amber-100";
