@@ -89,15 +89,31 @@ await test("a foe's flat face and its 3D model read one gender", () => {
   }
 });
 
+// The kit's walls and the fight's foes stand where they were put, and one of
+// them on a square asked for here refused the figure about one run in ten:
+// a figure takes the first open square from the one it asks for.
+function placeFigure(input) {
+  const board = kit.map();
+  const squares = board.width * board.height;
+  for (let step = 0; step < squares; step += 1) {
+    const at = (input.y * board.width + input.x + step) % squares;
+    const placed = addAdhocToken(world.campaign(), { ...input, x: at % board.width, y: Math.floor(at / board.width) });
+    if (placed.ok) {
+      return placed;
+    }
+  }
+  return { error: `no open square for ${input.name}` };
+}
+
 await test("figures on the board carry the Cast's gender, a stranger its own pick, and nothing hidden reaches a player", () => {
   upsertNpc({ campaignId: world.campaignId, name: "Scout Ada", gender: "Female" });
   upsertNpc({ campaignId: world.campaignId, name: "Scout Ben", gender: "Male" });
   upsertNpc({ campaignId: world.campaignId, name: "Scout Ari" });
   for (const [index, name] of ["Scout Ada", "Scout Ben", "Scout Ari", "Passer-by"].entries()) {
-    assert.equal(addAdhocToken(world.campaign(), { kind: "npc", name, x: 2 + index, y: 2 }).ok, true);
+    assert.equal(placeFigure({ kind: "npc", name, x: 2 + index, y: 2 }).ok, true);
   }
-  addAdhocToken(world.campaign(), { kind: "npc", name: "Secret", x: 8, y: 8, hidden: true });
-  addAdhocToken(world.campaign(), { kind: "prop", name: "Crate", x: 7, y: 7 });
+  assert.equal(placeFigure({ kind: "npc", name: "Secret", x: 8, y: 8, hidden: true }).ok, true);
+  assert.equal(placeFigure({ kind: "prop", name: "Crate", x: 7, y: 7 }).ok, true);
   const snap = boardSnapshot(view(), "combat-tabletop", { canDirect: true, appearance: "miniatures" });
   const sexOf = (name) => snap.tokens.find((token) => token.name === name);
   assert.equal(sexOf("Scout Ada").sex, "Female");
@@ -112,7 +128,7 @@ await test("figures on the board carry the Cast's gender, a stranger its own pic
 
 await test("a figure the GM puts on the board is the Cast NPC of that whole name", () => {
   // The board's own placement: an ad hoc ref (npc:<uuid>), never an NPC id.
-  assert.equal(addAdhocToken(world.campaign(), { kind: "npc", name: "Corin Vale", x: 6, y: 3 }).ok, true);
+  assert.equal(placeFigure({ kind: "npc", name: "Corin Vale", x: 6, y: 3 }).ok, true);
   const ref = tokenOf((token) => token.name === "Corin Vale").refId;
   const told = pickedGender(ref) === "Female" ? "Male" : "Female";
   upsertNpc({ campaignId: world.campaignId, name: "Corin Vale", gender: told });
@@ -121,7 +137,7 @@ await test("a figure the GM puts on the board is the Cast NPC of that whole name
 
 await test("someone recorded as nonbinary is drawn with the ordinary model and the neutral face", async () => {
   const npc = upsertNpc({ campaignId: world.campaignId, name: "Sable", gender: "Nonbinary" });
-  addAdhocToken(world.campaign(), { kind: "npc", name: "Sable", x: 7, y: 3 });
+  assert.equal(placeFigure({ kind: "npc", name: "Sable", x: 7, y: 3 }).ok, true);
   assert.equal(Object.hasOwn(tokenOf((token) => token.name === "Sable"), "sex"), false);
   const cast = insertEnemy({ campaignId: world.campaignId, encounterId: world.encounter().id, slug: "bandit", displayName: npc.name, initiative: 1, stats: enemies[0].stats, npcId: npc.id });
   insertToken({ mapId: kit.map().id, campaignId: world.campaignId, kind: "enemy", refId: cast.id, name: npc.name, x: 8, y: 3 });
