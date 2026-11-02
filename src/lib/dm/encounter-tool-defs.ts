@@ -52,6 +52,12 @@ export const startEncounterTool: ToolDef = {
           },
         },
         summary: { type: "string", description: "One line on what this fight is." },
+        absent: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "Those too far away to reach it in a few rounds, or unaware of it; behind a door is NOT absent. They roll no initiative and get no place in the order and no token until request_roll kind=initiative brings them in. Someone close but out of sight hears the fight, rolls initiative now and acts on their own turn. Omit it when everyone is near.",
+        },
         ambush: {
           type: "string",
           enum: ["enemies", "party"],

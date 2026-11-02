@@ -235,6 +235,11 @@ export function handleEnemyAttack(
   if (aimed.id === found.id) {
     return { error: `${found.displayName} cannot attack itself. Name the creature it attacks.`, retry: true };
   }
+  // With no token there is no reach to fail, so the blow would land on someone
+  // the fight goes on without.
+  if (encounter.awayIds.includes(aimed.id)) {
+    return { error: `${aimed.name} is not at this fight. Name someone who is, or call request_roll kind=initiative for them first if the story has brought them here.`, retry: true, stop: "target" };
+  }
   // Confusion's lash-out (confusion.ts): one melee attack on the creature
   // its d10 picked, and no other, whichever side it is on.
   const lash = lashOutTarget(found, encounter.round);

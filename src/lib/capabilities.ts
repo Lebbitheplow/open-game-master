@@ -149,6 +149,10 @@ export const SERVER_FEATURES = {
   // drops the race unread and reads that line as one unknown monster, so the
   // selects stay hidden and the line's help says nothing of them there.
   npcRace: true,
+  // Who a fight goes on without (start_encounter's absent, issue 740): an
+  // older host strips the field unread and stages everyone the console's
+  // "Not at this fight" named, so it stays hidden there.
+  fightAbsent: true,
   // A declaration's parts in one call (PR 749): the console's "Made with"
   // on an attack, a journey's Days and a blow's Blows. An older host strips
   // all three unread (a flurry strike swung as the Attack action's, one day

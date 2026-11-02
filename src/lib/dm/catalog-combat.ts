@@ -65,7 +65,7 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
     name: "start_encounter",
     label: "Start a fight",
     category: "combat",
-    summary: "Rolls initiative for everyone and opens the encounter.",
+    summary: "Rolls initiative for everyone at it and opens the encounter.",
     fields: [
       {
         name: "enemies",
@@ -81,6 +81,13 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
         },
       },
       { name: "summary", label: "Opening", kind: "text" },
+      {
+        name: "absent",
+        label: "Not at this fight",
+        kind: "characters",
+        help: "Leave empty when everyone is near. Pick those too far away to reach it within a few rounds, or who do not know of it: they roll no initiative and have no token until you ask for their initiative. Someone behind a door is still in the fight.",
+        host: { feature: "fightAbsent" },
+      },
       {
         name: "ambush",
         label: "Ambush",

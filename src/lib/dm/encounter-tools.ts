@@ -6,6 +6,8 @@ import { lashOutTarget } from "@/lib/dm/confusion";
 import type { SystemGlyph } from "@/lib/system-glyphs";
 import { holdsOn } from "@/lib/dm/vitals-logic";
 import { fieldedSheets } from "@/lib/dm/roster";
+import { atTheFight, resolveAwayNames } from "@/lib/dm/fight-away-logic";
+import { arriveAtFight } from "@/lib/dm/fight-away";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { sceneIds } from "@/lib/ambience/catalog";
 import { z } from "zod";
@@ -34,6 +36,7 @@ import {
   type EncounterEnemy,
   orderEntryId,
   type OrderEntry,
+  setEncounterAway,
 } from "@/lib/db/encounters";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { getRoll, insertRoll } from "@/lib/db/rolls";
@@ -210,9 +213,17 @@ function crLabel(cr: number): string {
 const hasAlert = (sheet: CharacterSheet) =>
   holdsFeat(sheet, "Alert");
 
+// Who is not at this fight. A weak caller's one string ("Alice" or "Alice,
+// Bob") counts as the list; any other shape is refused, because dropping it
+// would stage the very character the GM just said is not there.
+const absentArg = {
+  absent: z.preprocess((value) => (value === null ? undefined : typeof value === "string" ? [value] : value), z.array(z.string().max(200)).max(40).optional()),
+};
+
 const startArgsSchema = z.object({
   enemies: z.array(enemyRequestSchema).min(1).max(8),
   summary: z.string().optional(),
+  ...absentArg,
   // A side that is not one of these ("none", "both" from a weak caller) is
   // the same as none given: Qwen3.5 9B sent ambush "none" twice and the
   // whole fight was refused.
@@ -248,13 +259,13 @@ function parseStartArgs(rawArguments: string): { args: z.infer<typeof startArgsS
     return { args: nested.data };
   }
   const flat = enemyRequestSchema
-    .extend({ summary: z.string().optional() })
+    .extend({ summary: z.string().optional(), ...absentArg })
     .safeParse(raw);
   if (flat.success) {
     // Every field an enemy takes, so one added to enemyRequestSchema (a
     // race, a gender) is not dropped from a weak model's flat call.
-    const { summary, ...enemy } = flat.data;
-    return { args: { enemies: [enemy], summary } };
+    const { summary, absent, ...enemy } = flat.data;
+    return { args: { enemies: [enemy], summary, absent } };
   }
   return { fields: [...new Set(nested.error.issues.map((issue) => issue.path.join(".")).filter(Boolean))] };
 }
@@ -277,7 +288,7 @@ function handleStartEncounter(
   const parsed = parseStartArgs(rawArguments);
   if (!("args" in parsed)) {
     return {
-      error: `Invalid start_encounter arguments${parsed.fields.length ? ` (fix or leave out: ${parsed.fields.join(", ")})` : ""}. Send {"enemies":[{"monster":"goblin","count":3}],"summary":"..."}.`,
+      error: `Invalid start_encounter arguments${parsed.fields.length ? ` (fix or leave out: ${parsed.fields.join(", ")})` : ""}. Send {"enemies":[{"monster":"goblin","count":3}],"summary":"..."}.${parsed.fields.some((field) => field.split(".")[0] === "absent") ? ' absent is a list of character names: {"absent":["Alice","Bob"]}. No fight was started.' : ""}`,
       retry: true,
     };
   }
@@ -339,6 +350,19 @@ function handleStartEncounter(
   const foes = [...named, ...turnedFoes(campaign.id).filter((foe) => foe.kind === "turned" && !namedIds.has(foe.sheetId))];
   const turnedIds = sheetFoeIds(foes);
   sheets = sheets.filter((sheet) => !turnedIds.has(sheet.id));
+  const away = resolveAwayNames(args.absent ?? [], sheets);
+  if ("error" in away) {
+    return { error: away.error, retry: true };
+  }
+  const awaySheets = sheets.filter((sheet) => away.ids.includes(sheet.id));
+  sheets = sheets.filter((sheet) => !away.ids.includes(sheet.id));
+  // Nobody left would roll, so the order would never close.
+  if (away.ids.length && !fightingParty(campaign, sheets).length) {
+    return {
+      error: "Every character who could fight is listed in absent, so nobody is at this fight and none was started. Someone close but out of sight, behind a door or in the next room, is not absent.",
+      retry: true,
+    };
+  }
 
   // 5e budget check: refuse fights the party cannot plausibly survive,
   // measured against the characters who fight it (src/lib/dm/party-budget.ts):
@@ -355,6 +379,10 @@ function handleStartEncounter(
   const encounter = createEncounter(campaign.id, args.summary ?? "");
   if (!encounter) {
     return { error: "An encounter is already active.", retry: true };
+  }
+  if (away.ids.length) {
+    encounter.awayIds = away.ids;
+    setEncounterAway(encounter.id, away.ids);
   }
 
   // One run of numbers per kind, whatever the caller numbered itself
@@ -502,6 +530,9 @@ function handleStartEncounter(
     map: "A tactical battle map was generated; positions appear in GAME STATE on your next call.",
     ...(placed ? { formation: placed.formation } : {}),
     ...(ambushLines.length ? { ambush: ambushLines.join(" ") } : {}),
+    ...(awaySheets.length
+      ? { absent: `${awaySheets.map((sheet) => sheet.name).join(", ")}: not at this fight, with no initiative and no token. When the story brings one here, ${actor === "ai" ? "call request_roll kind=initiative for them" : "ask for their initiative"} and they join the order and the board.` }
+      : {}),
     ...(surprisedNames.length
       ? {
           surprise: `Surprised: ${surprisedNames.join(", ")}. The server skips their turns for the first round. Narrate the ambush landing.`,
@@ -671,6 +702,7 @@ export function recordInitiativeRoll(
     if (!fielded.some((entry) => entry.id === sheet.id)) {
       return null;
     }
+    arriveAtFight(campaignId, encounter, sheet);
     const joined = spliceIntoOrder(encounter.order, encounter.turnIndex, [
       { kind: "pc", characterId: sheet.id, userId: sheet.userId, name: sheet.name, initiative: total },
     ]);
@@ -680,6 +712,8 @@ export function recordInitiativeRoll(
     publishEncounter(campaignId);
     return `${sheet.name} joins the fight on initiative ${total}. Initiative order: ${describeOrder(encounter)}.`;
   }
+  // One who arrives before the order closes: it now waits on them too.
+  arriveAtFight(campaignId, encounter, sheet);
   encounter.order.push({
     kind: "pc",
     characterId: sheet.id,
@@ -691,7 +725,7 @@ export function recordInitiativeRoll(
   const campaignForRoster = getCampaignById(campaignId);
   // The dead roll nothing (request_roll refuses them), so the order is not
   // held open waiting on them.
-  const sheets = (campaignForRoster ? fieldedSheets(campaignForRoster) : listSheets(campaignId)).filter(
+  const sheets = atTheFight(encounter, campaignForRoster ? fieldedSheets(campaignForRoster) : listSheets(campaignId)).filter(
     (entry) => !entry.deathSaves?.dead,
   );
   const staged = encounter.order.filter(
@@ -829,7 +863,8 @@ export function ensureInitiativeProgress(campaign: Campaign): string | null {
       .filter((entry): entry is Extract<OrderEntry, { kind: "pc" }> => entry.kind === "pc")
       .map((entry) => entry.characterId),
   );
-  const missing = fieldedSheets(campaign).filter((sheet) => !staged.has(sheet.id) && !sheet.deathSaves?.dead);
+  // Rolling for one who is away would bring them to the fight.
+  const missing = atTheFight(encounter, fieldedSheets(campaign)).filter((sheet) => !staged.has(sheet.id) && !sheet.deathSaves?.dead);
   if (!missing.length) {
     return null;
   }
