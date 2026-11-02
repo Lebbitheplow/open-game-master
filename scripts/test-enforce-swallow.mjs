@@ -35,7 +35,7 @@ function srd(title) {
   return parsed.stats ?? parsed;
 }
 
-const world = await openWorld({ campaign: { maxPlayers: 4 } });
+const world = await openWorld({ campaign: { maxPlayers: 5 } });
 const kit = await combatKit(world);
 const kara = world.addHero({
   name: "Kara", class: "fighter", level: 5, maxHp: 150, proficiencies: TRAINED,
@@ -55,6 +55,14 @@ const orin = world.addHero({
   equipment: [{ name: "Mace", qty: 1, equipped: true }],
   spellcasting: { ability: "wis", slots: { 1: { max: 4, used: 0 }, 2: { max: 3, used: 0 }, 3: { max: 2, used: 0 } }, known: [], prepared: ["Cure Wounds", "Healing Word", "Bless"], cantrips: [] },
 });
+// A paladin with her Lay on Hands pool, last in the order (after the
+// creatures), so Kara's End Turn still walks past them first.
+const pella = world.addHero({
+  name: "Pella", class: "paladin", level: 5, maxHp: 50, proficiencies: TRAINED,
+  abilities: { str: 16, dex: 10, con: 14, int: 10, wis: 10, cha: 14 },
+  features: [{ name: "Lay on Hands", source: "class", level: 1 }],
+  resources: { lay_on_hands: { max: 25, used: 0 } },
+});
 
 // "Revert this turn" (src/lib/dm/turn-revert.ts), as the table's owner.
 async function revertTurn(turnId) {
@@ -72,7 +80,7 @@ async function facing(title, extra = 0) {
   await kit.endFight();
   // Kara first, the creatures next, the others last: Kara's End Turn walks
   // the order past the creatures' turns.
-  await kit.fight(1 + extra, { heroFaces: { [kara.id]: 20, [bram.id]: 2, [vex.id]: 3, [orin.id]: 4 }, enemyFace: 10 });
+  await kit.fight(1 + extra, { heroFaces: { [kara.id]: 20, [bram.id]: 2, [vex.id]: 3, [orin.id]: 4, [pella.id]: 1 }, enemyFace: 10 });
   const [foe, ...others] = world.enemies();
   const stats = srd(title);
   kit.setEnemy(foe.id, { ac: stats.ac, maxHp: stats.maxHp, stats });
@@ -81,6 +89,7 @@ async function facing(title, extra = 0) {
   kit.place(bram.id, 14, 12);
   kit.place(vex.id, 12, 12);
   kit.place(orin.id, 10, 12);
+  kit.place(pella.id, 8, 12);
   others.forEach((other, index) => kit.place(other.id, 1 + index, 13));
   kit.giveTurn(kara.id);
   return { foe: world.enemies().find((enemy) => enemy.id === foe.id), others };
@@ -542,13 +551,137 @@ await test("Every other door is shut across the worm's wall: a condition laid fr
   await tryIt("the goblin's fear on Kara inside", "set_condition", { characterId: kara.id, condition: "frightened", sourceEnemyId: goblin.id });
   await tryIt("Kara's fear on the goblin outside", "set_condition", { enemyId: goblin.id, condition: "frightened", sourceCharacterId: kara.id });
   await tryIt("Bram's potion poured into Kara", "use_item", { characterId: bram.id, item: "Potion of Healing", targetCharacterId: kara.id });
-  await tryIt("Bram's Lay on Hands on Kara", "use_resource", { characterId: bram.id, resource: "Lay on Hands", targetCharacterId: kara.id, amount: 5 });
   kit.giveTurn(kara.id);
   await tryIt("Kara's greatsword handed to Bram", "handle_item", { characterId: kara.id, action: "hand", item: "Greatsword", toCharacterId: bram.id });
   assert.deepEqual(crossed, [], "each crossed the worm's wall");
   assert.ok(!holds(kara.id, "frightened") && !kit.enemy(goblin.id).conditions.includes("frightened"), "no fear landed");
   assert.equal(world.sheet(kara.id).currentHp, 40, "nothing healed her");
   assert.ok(world.sheet(kara.id).equipment.some((item) => /greatsword/i.test(item.name)), "she keeps her sword");
+});
+
+// The goblin beside Kara's token, held inside the worm with her: a creature
+// row swallowed as the engine writes one (swallowCreature).
+function goblinInside(foe, goblin) {
+  kit.setEnemy(goblin.id, { conditions: ["blinded", "restrained", "swallowed"], conditionMeta: { blinded: { source: foe.id }, restrained: { source: foe.id }, swallowed: { source: foe.id } } });
+}
+
+await test("Pella's Lay on Hands from beside Kara's token does not reach her inside the worm, and spends no point of the pool", async () => {
+  await insideBesideGoblin();
+  kit.place(pella.id, 4, 6);
+  world.patch(kara.id, { currentHp: 40 });
+  kit.giveTurn(pella.id);
+  const touch = await world.invoke("use_resource", { characterId: pella.id, resource: "Lay on Hands", targetCharacterId: kara.id, amount: 5 });
+  assert.equal(world.sheet(kara.id).currentHp, 40, `a paladin's touch from outside healed her: ${JSON.stringify(touch).slice(0, 200)}`);
+  assert.equal(world.sheet(pella.id).resources.lay_on_hands.used, 0, "no point of the pool spent");
+  assert.match(touch.error ?? "", insideRefusal);
+});
+
+await test("Bram's healing with no spell (a potion poured, a touch) does not reach Kara inside the worm", async () => {
+  await insideBesideGoblin();
+  world.patch(kara.id, { currentHp: 40 });
+  const poured = await world.invoke("heal", { characterId: kara.id, casterId: bram.id, amount: 10, reason: "a potion poured" });
+  assert.equal(world.sheet(kara.id).currentHp, 40, `healed from outside: ${JSON.stringify(poured).slice(0, 200)}`);
+  assert.match(poured.error ?? "", insideRefusal);
+});
+
+await test("Kara inside the worm cannot pin the goblin outside it, though she holds its grapple", async () => {
+  const goblin = await insideBesideGoblin();
+  world.patch(kara.id, { feats: ["Grappler"] });
+  // A grapple written after the swallow (the swallow itself ends hers).
+  kit.setEnemy(goblin.id, { conditions: ["grappled"], conditionMeta: { grappled: { source: kara.id } } });
+  kit.giveTurn(kara.id);
+  world.dice(20, 1, 1);
+  const pinned = await world.invoke("take_action", { characterId: kara.id, action: "pin", targetEnemyId: goblin.id });
+  world.clearDice();
+  assert.ok(!kit.enemy(goblin.id).conditions.includes("restrained"), `pinned from inside: ${JSON.stringify(pinned).slice(0, 200)}`);
+  assert.match(pinned.error ?? "", insideRefusal);
+});
+
+await test("Bram's wolf cannot bite a goblin inside the worm", async () => {
+  const { foe, others } = await facing("Purple Worm", 1);
+  const [goblin] = others;
+  kit.place(goblin.id, 5, 5);
+  goblinInside(foe, goblin);
+  kit.giveTurn(bram.id);
+  const summoned = await world.invoke("summon_pet", { characterId: bram.id, kind: "other", form: "wolf", name: "Patch" });
+  assert.equal(summoned.ok, true, summoned.error);
+  kit.giveTurn(bram.id);
+  const hp = kit.enemy(goblin.id).currentHp;
+  world.dice(20, 4, 4, 20);
+  const bite = await world.invoke("pet_attack", { characterId: bram.id, targetEnemyId: goblin.id });
+  world.clearDice();
+  assert.equal(kit.enemy(goblin.id).currentHp, hp, `bitten inside the worm: ${JSON.stringify(bite).slice(0, 200)}`);
+  assert.match(bite.error ?? "", insideRefusal);
+});
+
+await test("Bram's Protection does not reach Kara inside the worm, though her token is beside him", async () => {
+  await insideBesideGoblin();
+  const sheet = world.sheet(bram.id);
+  world.patch(bram.id, {
+    equipment: [...sheet.equipment, { name: "Shield", qty: 1, equipped: true }],
+    features: [...sheet.features, { name: "Fighting Style: Protection", source: "class", level: 1 }],
+  });
+  const out = await world.invoke("use_reaction", { characterId: bram.id, feature: "Protection", targetCharacterId: kara.id });
+  assert.ok(!holds(kara.id, "protected"), `protected from outside: ${JSON.stringify(out).slice(0, 200)}`);
+  assert.match(out.error ?? "", insideRefusal);
+});
+
+await test("Vex's Counterspell does not reach a goblin shaman casting inside the worm", async () => {
+  const { foe, others } = await facing("Purple Worm", 1);
+  const [goblin] = others;
+  kit.setEnemy(goblin.id, { stats: { spellcasting: { dc: 13, attack: 5, ability: "int", slots: { 3: 1 }, spells: [{ name: "Fireball", level: 3 }] } } });
+  kit.place(goblin.id, 5, 5);
+  kit.place(vex.id, 8, 5);
+  goblinInside(foe, goblin);
+  const sheet = world.sheet(vex.id);
+  world.patch(vex.id, { spellcasting: { ...sheet.spellcasting, prepared: [...sheet.spellcasting.prepared, "Counterspell"], spellbook: [...(sheet.spellcasting.spellbook ?? []), "Counterspell"] } });
+  const slots = world.sheet(vex.id).spellcasting.slots[3].used;
+  const out = await world.invoke("use_reaction", { characterId: vex.id, feature: "Counterspell", targetEnemyId: goblin.id, spell: "Fireball" });
+  assert.equal(world.sheet(vex.id).spellcasting.slots[3].used, slots, `countered inside the worm: ${JSON.stringify(out).slice(0, 200)}`);
+  assert.match(out.error ?? "", insideRefusal);
+});
+
+await test("Orin's Turn Undead reaches no undead inside the worm, and keeps his Channel Divinity", async () => {
+  const { foe, others } = await facing("Purple Worm", 1);
+  const [goblin] = others;
+  kit.setEnemy(goblin.id, { stats: { type: "undead", cr: 1 } });
+  kit.place(goblin.id, 5, 5);
+  kit.place(orin.id, 7, 7);
+  goblinInside(foe, goblin);
+  const sheet = world.sheet(orin.id);
+  world.patch(orin.id, {
+    features: [...sheet.features, { name: "Channel Divinity (1/rest)", source: "class", level: 2 }],
+    resources: { ...sheet.resources, channel_divinity: { max: 1, used: 0 } },
+  });
+  kit.giveTurn(orin.id);
+  world.dice(1, 1);
+  const out = await world.invoke("use_resource", { characterId: orin.id, resource: "Channel Divinity", variant: "turn undead" });
+  world.clearDice();
+  assert.ok(!kit.enemy(goblin.id).conditions.includes("turned"), `turned inside the worm: ${JSON.stringify(out).slice(0, 200)}`);
+  assert.equal(world.sheet(orin.id).resources.channel_divinity.used, 0, "Channel Divinity kept");
+  assert.match(out.error ?? "", /Nothing Turn Undead affects is within 30 feet/);
+});
+
+await test("An aboleth's Psychic Drain does not reach Kara inside the worm, and its legendary actions are not spent", async () => {
+  const { foe, others } = await facing("Purple Worm", 1);
+  const [aboleth] = others;
+  const stats = srd("Aboleth");
+  kit.setEnemy(aboleth.id, { ac: stats.ac, maxHp: stats.maxHp, currentHp: 100, stats });
+  kit.place(aboleth.id, 4, 5);
+  world.dice(19, 1, 1, 1, 1);
+  await bite(foe, kara);
+  world.clearDice();
+  const sheet = world.sheet(kara.id);
+  world.patch(kara.id, { conditions: [...sheet.conditions, "charmed"], conditionMeta: { ...sheet.conditionMeta, charmed: { source: aboleth.id } } });
+  kit.giveTurn(kara.id);
+  const hp = world.sheet(kara.id).currentHp;
+  const pool = () => world.encounter().legendary.pools?.[aboleth.id]?.actions ?? 3;
+  world.dice(4, 4, 4);
+  const out = await world.invoke("legendary_action", { enemyId: aboleth.id, action: "Psychic Drain", targetCharacterId: kara.id });
+  world.clearDice();
+  assert.equal(world.sheet(kara.id).currentHp, hp, `drained through the wall: ${JSON.stringify(out).slice(0, 200)}`);
+  assert.equal(pool(), 3, "no legendary action spent");
+  assert.match(out.error ?? "", /Kara is inside .*total cover against attacks and other effects from outside it/);
 });
 
 await test("The board's move says she is swallowed and how out, not that her speed is 0", async () => {
