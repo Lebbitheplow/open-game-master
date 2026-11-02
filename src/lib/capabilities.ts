@@ -124,6 +124,12 @@ export const SERVER_FEATURES = {
   // attraction's `open`, which an older host drops while saving the rest,
   // so the switch stays hidden there.
   openRelationships: true,
+  // A declaration's parts in one call (PR 749): the console's "Made with"
+  // on an attack, a journey's Days and a blow's Blows. An older host strips
+  // all three unread (a flurry strike swung as the Attack action's, one day
+  // or one blow where many were asked), so they stay hidden there, and the
+  // attack's field is that host's bonusAttack.
+  actionParts: true,
 } as const;
 export type ServerFeatures = { [K in keyof typeof SERVER_FEATURES]: boolean };
 

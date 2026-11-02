@@ -30,6 +30,7 @@ import { RECAP_AFTER_MS } from "@/lib/dm/session-hold-logic";
 import { sessionHoldOn } from "@/lib/dm/session-hold";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { directCardCalls, parseMessageIntent } from "@/lib/dm/intent-logic";
+import { refusedPartsLine } from "@/lib/dm/action-parts-logic";
 import { directContextFor } from "@/lib/dm/direct-context";
 import { addressesDm } from "@/lib/dm/ooc-question";
 import { spokenLine } from "@/lib/dm/speech";
@@ -266,15 +267,23 @@ export async function POST(
       ? directCardCalls(intent, sheet.id, directContextFor(campaignId, intent, tableAuthors(campaignId)))
       : null;
   if (direct) {
-    // A casting shared out among creatures is one call each, in order: the
-    // first spends the slot, the rest draw on the same casting.
+    // A casting shared out among creatures is one call with every creature
+    // in its list (src/lib/dm/action-parts-logic.ts): one slot, each
+    // creature resolved in order. A creature refused while the rest landed
+    // is said, and the card is spent: played again, it would reach the
+    // others twice.
+    const refused: string[] = [];
     for (const call of direct) {
       const resolved = await invokeEngine(campaign, { kind: "human", userId: user.id }, call);
       if (!resolved.ok) {
         return Response.json({ error: resolved.error }, { status: 409 });
       }
+      const line = refusedPartsLine(resolved.result);
+      if (line) {
+        refused.push(line);
+      }
     }
-    return Response.json({ resolved: true });
+    return Response.json({ resolved: true, ...(refused.length ? { refused: refused.join(" ") } : {}) });
   }
   const spotlightStillWaiting = kind !== "ooc" && answerSpotlight(campaignId, floor, user.id);
 

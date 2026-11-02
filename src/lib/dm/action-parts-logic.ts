@@ -232,6 +232,22 @@ export function splitParts(
   });
 }
 
+// What a person who played a card is told when part of its share was
+// refused and the rest landed (the actions route, where the GM at a table
+// they run plays a hero's card): each refused entry's reason, in plain
+// words, or null when none was. The card is spent, since the others are
+// done; refused whole, the call is a refusal of its own.
+export function refusedPartsLine(result: Record<string, unknown>): string | null {
+  if (typeof result.partial !== "string") {
+    return null;
+  }
+  const answers = Object.values(PART_LISTS)
+    .map((list) => result[list.key])
+    .find((value): value is unknown[] => Array.isArray(value));
+  const reasons = (answers ?? []).flatMap((answer) => (isRecord(answer) && typeof answer.error === "string" ? [answer.error] : []));
+  return reasons.length ? `Not all of it landed. ${reasons.join(" ")} The rest is done.` : null;
+}
+
 // One answer for a call's parts, under `key`: a lone part's own answer; an
 // error when every part was refused, with each one's reason (the call did
 // nothing); otherwise every part's answer, the refused among them, and

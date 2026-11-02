@@ -182,6 +182,14 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
         label: "Made with",
         kind: "text",
         help: `The feature the attack is made with: ${ATTACK_FEATURE_NAMES.join(", ")}, or a feat's or subclass's bonus attack (Polearm Master, War Magic). Empty for an attack of the Attack action. The first Action Surge or Flurry of Blows attack spends it.`,
+        // An older host strips feature unread and swings an Attack action
+        // swing in its place (an off-hand blade, a flurry strike, a surge's
+        // attack): there the field is that host's bonusAttack, whose words
+        // its own schema reads.
+        host: {
+          feature: "actionParts",
+          older: { name: "bonusAttack", label: "Bonus-action attack", help: "'martial arts' for a monk's bonus unarmed strike, 'frenzy' for a raging Berserker's, 'feature' for a subclass's or feat's. Spends the bonus action." },
+        },
       },
     ],
   },

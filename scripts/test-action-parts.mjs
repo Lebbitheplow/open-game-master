@@ -10,6 +10,7 @@
 // drives whole turns, and the choices a player makes between parts, the
 // refusals, the physical dice and the state a turn saved before all hold.
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { clearDice, dice, openWorld, seedDice } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
@@ -587,6 +588,50 @@ await test("Physical dice: the parts park in order and the resumed turn answers 
   const result = JSON.parse(answer.content);
   assert.equal(result.attacks?.length, 4, answer.content.slice(0, 400));
   assert.ok(result.attacks.every((entry) => !entry.awaitingRoll), "every part holds its roll's answer");
+});
+
+// At a table a person runs, the Hand's share of a casting reaches the engine
+// through the console's door (actions/route.ts: directCardCalls, then
+// invokeEngine as a person), whose form still requires the one creature a
+// call named before the share became a list: refused there, "Heal needs
+// character." and "Player attacks needs target." (rev-749).
+await test("The console takes the Hand's share of a casting as one call: Scorching Ray's rays, Magic Missile's darts, Mass Healing Word's creatures", async () => {
+  const { directCardCalls } = await import("../src/lib/dm/intent-logic.ts");
+  const share = (intent, context) => directCardCalls(intent, intent.caster, context)[0];
+  let enemies = await stage(wizard, 2);
+  const aim = { card: "spell", targetKind: "enemy", targetId: enemies[0].id, caster: wizard.id };
+  const rays = share({ ...aim, spell: "Scorching Ray", slotLevel: 2, shares: [{ id: enemies[0].id, count: 2 }, { id: enemies[1].id, count: 1 }] }, { inFight: true, resolution: "attack", shareKind: "attacks" });
+  const shot = await world.invoke(rays.name, rays.args);
+  assert.equal(shot.ok, true, shot.error);
+  assert.deepEqual(errorsOf(shot.result.attacks), [], JSON.stringify(shot.result).slice(0, 300));
+  assert.equal(shot.result.attacks.length, 3);
+
+  enemies = await stage(wizard, 2);
+  const darts = share({ ...aim, targetId: enemies[0].id, spell: "Magic Missile", slotLevel: 1, shares: [{ id: enemies[0].id, count: 2 }, { id: enemies[1].id, count: 1 }] }, { inFight: true, resolution: "auto", shareKind: "darts" });
+  const struck = await world.invoke(darts.name, darts.args);
+  assert.equal(struck.ok, true, struck.error);
+  assert.deepEqual(errorsOf(struck.result.targets), [], JSON.stringify(struck.result).slice(0, 300));
+
+  await kit.endFight();
+  for (const hero of [fighter, monk, cleric]) world.patch(hero.id, { currentHp: 1 });
+  const before = world.sheet(cleric.id).spellcasting.slots[3].used;
+  const word = share(
+    { card: "spell", spell: "Mass Healing Word", slotLevel: 3, targetKind: "ally", targetId: fighter.id, caster: cleric.id, shares: [fighter, monk, cleric].map((hero) => ({ id: hero.id, count: 1 })) },
+    { inFight: false, resolution: "heal", shareKind: "targets" },
+  );
+  const healed = await world.invoke(word.name, word.args);
+  assert.equal(healed.ok, true, healed.error);
+  assert.ok([fighter, monk, cleric].every((hero) => world.sheet(hero.id).currentHp > 1), "every creature of the share was healed");
+  assert.equal(world.sheet(cleric.id).spellcasting.slots[3].used - before, 1, "one casting, one slot");
+});
+
+await test("A share partly refused at the console tells the person why, and says the rest landed", async () => {
+  const { refusedPartsLine } = await import("../src/lib/dm/action-parts-logic.ts");
+  const line = refusedPartsLine({ targets: [{ ok: true }, { error: "Goblin 2 is already dead.", retry: true }], partial: "Entry 2 of 2 refused; the others are done." });
+  assert.match(String(line), /Goblin 2 is already dead\..*The rest is done\./);
+  assert.equal(refusedPartsLine({ attacks: [{ hit: true }, { hit: false }] }), null);
+  const route = readFileSync(new URL("../src/app/api/campaigns/[campaignId]/actions/route.ts", import.meta.url), "utf8");
+  assert.match(route, /refusedPartsLine\(resolved\.result\)/, "the actions route says a share's refused creatures");
 });
 
 // ---- Outside a fight ----

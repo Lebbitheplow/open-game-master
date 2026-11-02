@@ -1162,6 +1162,24 @@ test("take_action's destination fields ask for the host, and the enemy field rea
   assert.match(read("src/lib/use-capabilities.ts"), /features\?: \{[^}]*moveWithAction\?: boolean/);
 });
 
+// The fields a declaration's parts brought to the console (PR 749): an older
+// host strips them unread, so an app compiled with them asks first. There a
+// "Two-Weapon Fighting" or a flurry strike was swung as the Attack action's
+// own swing, and Days or Blows came back as one stretch or one blow
+// (rev-749); the attack's field is that host's bonusAttack.
+test("pc_attack's Made with, travel's Days and damage_object's Blows ask for the host", () => {
+  const field = (tool, name) => adjudication(tool).fields.find((entry) => entry.name === name);
+  for (const [tool, name] of [["pc_attack", "feature"], ["travel", "days"], ["damage_object", "blows"]]) {
+    assert.ok(field(tool, name), `${tool} ${name}`);
+    assert.equal(fieldForHost(field(tool, name), () => true)?.name, name, `${tool} ${name} on a host that has it`);
+  }
+  assert.equal(fieldForHost(field("pc_attack", "feature"), () => false)?.name, "bonusAttack");
+  assert.equal(fieldForHost(field("travel", "days"), () => false), null);
+  assert.equal(fieldForHost(field("damage_object", "blows"), () => false), null);
+  assert.ok(read("src/lib/capabilities.ts").match(/^\s*actionParts: true,$/m), "the server flags it");
+  assert.match(read("src/lib/use-capabilities.ts"), /features\?: \{[^}]*actionParts\?: boolean/);
+});
+
 // The console's Background and Skills for a new companion: an older host's
 // add_companion strips both unread and recruits by the class list's first
 // skills, so the app's console shows them only to a host that reads them.
