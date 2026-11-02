@@ -30,6 +30,7 @@ import {
 } from "@/lib/db/battle-maps";
 import { planTeleportFx } from "@/lib/battlemap/fx-plan";
 import { publishFx } from "@/lib/dm/fx";
+import { buildingSkin, drawBuilding, holdsBuilding, type BuildingPlan } from "@/lib/battlemap/building";
 import { generateBattleMap, fnv1a, spotsForTokens, tilesBetweenSides } from "@/lib/battlemap/generate";
 import { findPath, squeezedAt, walkPathWithBudget } from "@/lib/battlemap/movement";
 import { coverBetween, hasLineOfSight } from "@/lib/battlemap/los";
@@ -119,17 +120,32 @@ export function createBattleMapForEncounter(
   // One side caught the other unawares: the board opens close
   // (battlemap/generate.ts CLOSE_OPENING_TILES) unless distanceFeet said.
   ambush = false,
-): { map: BattleMap; formation: string; distance?: string } | null {
+  // The party inside a building, the enemies outside (issue 743).
+  building?: BuildingPlan,
+): { map: BattleMap; formation: string; distance?: string; building?: string } | null {
   const location = getCurrentLocation(campaign.id);
   const askedTiles = distanceFeet ? Math.max(1, Math.round(distanceFeet / TILE_FEET)) : undefined;
-  const generated = generateBattleMap({
+  const ground = scene ?? location?.ambience?.bed ?? null;
+  const drawn = generateBattleMap({
     seed: fnv1a(encounter.id),
-    scene: scene ?? location?.ambience?.bed ?? null,
+    // The place itself may be the building: an inn's own ambience would draw
+    // the yard as more inn, so the ground outside it is open ground.
+    scene: building && !holdsBuilding(ground) ? null : ground,
     pcCount: sheets.length,
     enemyCount: enemies.length,
     enemyDistanceTiles: askedTiles,
     ambush,
   });
+  const house = building
+    ? drawBuilding(drawn, {
+        plan: building,
+        seed: fnv1a(encounter.id),
+        pcCount: sheets.length,
+        enemyFootprints: enemies.map((enemy) => footprintForSize(enemy.stats.size)),
+        enemyDistanceTiles: askedTiles,
+      })
+    : null;
+  const generated = house ?? drawn;
   // Every token's tile is settled before anything is written, and the map and
   // its tokens are written together: a failure leaves no board without its
   // tokens (issue 741).
@@ -150,6 +166,7 @@ export function createBattleMapForEncounter(
       theme: generated.theme,
       lights: generated.lights,
       seed: fnv1a(encounter.id),
+      skin: house ? buildingSkin(campaign.gameSettings.genre, generated.theme) : undefined,
     });
     placeTokens(created.id, campaign.id, [
       ...sheets.map((sheet) => ({
@@ -175,8 +192,10 @@ export function createBattleMapForEncounter(
   const apart = askedTiles && partySpots.length && enemySpots.length ? tilesBetweenSides(partySpots, enemySpots) : undefined;
   const distance = askedTiles && apart !== undefined && apart < askedTiles
     ? `This board cannot hold ${distanceFeet} feet: the nearest enemy stands ${apart * TILE_FEET} feet from the party on it. Range and movement go by the board, so narrate them that far off.`
-    : undefined;
-  return { map, formation: formation.line, ...(distance ? { distance } : {}) };
+    : house && askedTiles && apart !== undefined && apart > askedTiles
+      ? `The building's wall stands between them, so the nearest enemy stands ${apart * TILE_FEET} feet from the party, not ${distanceFeet}. Range and movement go by the board, so narrate them that far off.`
+      : undefined;
+  return { map, formation: formation.line, ...(distance ? { distance } : {}), ...(house ? { building: house.building.line } : {}) };
 }
 
 // ---- teleports and set_movement ----

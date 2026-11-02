@@ -3,6 +3,7 @@
 // offers them (encounterTools) and handles every call.
 
 import { sceneIds } from "@/lib/ambience/catalog";
+import { BUILDING_SIDES, MAX_OPENINGS } from "@/lib/battlemap/building";
 import { GENDERS } from "@/lib/gender";
 import { ENCOUNTER_OUTCOMES } from "@/lib/dm/encounter-logic";
 import { waypointProperty } from "@/lib/dm/waypoint-logic";
@@ -91,6 +92,20 @@ export const startEncounterTool: ToolDef = {
           enum: ["ahead", "behind"],
           description:
             "Where the enemy comes from against the travel formation: 'ahead' (the default) or 'behind'. The formation (GAME STATE) only places the party, with no surprise or bonus: ahead puts its front nearest them, behind its rear.",
+        },
+        building: {
+          type: "object",
+          description:
+            "The party inside a building, enemies outside on enemySide. A besieged house, a barricaded inn: the door faces them. The board draws it on the outdoor ground of scene, or on open ground if the place itself is indoors or underground; a scene that is indoors or underground is refused. Enemies open 30 feet from the party unless distanceFeet says, and the result says how far when a wall keeps them farther.",
+          properties: {
+            enemySide: { type: "string", enum: [...BUILDING_SIDES] },
+            openings: {
+              type: "integer",
+              maximum: MAX_OPENINGS,
+              description: "One door, the rest windows, at least 1. Default: 2. A window is seen and shot through, and only a flier or a jump crosses it.",
+            },
+          },
+          required: ["enemySide"],
         },
       },
       required: ["enemies"],

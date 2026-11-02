@@ -513,6 +513,7 @@ function toolProperties(name) {
 // (src/lib/dm/invoke.ts normalizeArgs): the form's own names for them.
 const FOLDED_BY_THE_FACADE = {
   set_effect: ["field", "mode", "value"],
+  start_encounter: ["buildingEnemySide", "buildingOpenings"],
 };
 
 // What a handler folds itself: update_sheet turns the form's one named field
@@ -845,6 +846,7 @@ function formOmissions(entry) {
   const aliases = {
     cast_at_enemy: { targetEnemyId: "enemyIds" },
     cast_at_player: { characterId: "characterIds" },
+    start_encounter: { building: "buildingEnemySide" },
   };
   // waypoint tags the AI DM's call with the [NOW] step it accomplishes; a
   // person's console call never ticks a step (src/lib/dm/waypoint-tick.ts),

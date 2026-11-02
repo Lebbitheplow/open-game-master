@@ -219,6 +219,15 @@ export function normalizeArgs(
   // reads the catalog's required fields off these same args, and the
   // handler's schema drops the keys it does not know. The model sends the
   // array alone, so the first change it names stands in for the field.
+  // The building is two questions on the form and one argument to the handler.
+  if (entry.name === "start_encounter" && out.buildingEnemySide !== undefined) {
+    out.building = {
+      enemySide: out.buildingEnemySide,
+      ...(out.buildingOpenings === undefined ? {} : { openings: Number(out.buildingOpenings) }),
+    };
+  }
+  delete out.buildingEnemySide;
+  delete out.buildingOpenings;
   if (entry.name === "set_effect") {
     if (!out.modifiers && typeof out.field === "string") {
       out.modifiers = [

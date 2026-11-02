@@ -1078,6 +1078,39 @@ const longOpening = {};
   }
 }
 
+// A fight opened inside a building, per viewport (issue 743): the table's own
+// ground is a field, the hero stands in a house with a door and two windows,
+// and the goblins are in the yard to the east.
+const fightInBuilding = {};
+{
+  const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
+  for (const viewport of ["desktop", "phone"]) {
+    const table = campaigns.createCampaign(world.owner.id, {
+      title: `Fight In A Building (${viewport})`,
+      description: "A table whose fight opened with the party behind walls.",
+      theme: "high-fantasy",
+      maxPlayers: 6,
+      startingLevel: 3,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human" },
+    });
+    const seated = campaigns.joinByInviteCode(player.id, campaigns.getCampaignById(table.id).inviteCode);
+    if ("error" in seated) {
+      throw new Error(`could not seat the player at the building table: ${seated.error}`);
+    }
+    campaigns.setCampaignStatus(table.id, "active");
+    sheets.createSheet(table.id, player.id, 3, heroInput({ name: "Ilse Marr", class: "fighter", level: 3 }));
+    const started = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: world.owner.id }, {
+      name: "start_encounter",
+      args: { enemies: [{ monster: "goblin", count: 2 }], building: { enemySide: "east", openings: 3 } },
+    });
+    if (!started.ok) {
+      throw new Error(`the building table's fight did not start: ${started.error}`);
+    }
+    fightInBuilding[viewport] = table.id;
+  }
+}
+
 // A person's table where two goblins act before the hero, per viewport
 // (table function audit 2026-10-26, T11 and T09): the goblins win
 // initiative, so the fight opens held for their turns, and the second is
@@ -2914,6 +2947,7 @@ const ids = {
   spotlightTables,
   directed,
   longOpening,
+  fightInBuilding,
   enemyTurns,
   enemyMoves,
   levelTableId: levelTable.id,
