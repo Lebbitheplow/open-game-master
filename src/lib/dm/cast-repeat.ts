@@ -9,6 +9,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { SpellFacts } from "@/lib/srd/spell-facts";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { canAct } from "@/lib/dm/can-act";
+import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import type { CastInput, CastResult } from "@/lib/dm/cast-guard";
 import { turnCharge } from "@/lib/dm/cast-rules";
 import { lastCastSlot } from "@/lib/dm/spell-effects";
@@ -41,6 +42,10 @@ export function repeatSpell(
   const able = canAct({ sheet, encounter: fight, kind: cost === "bonus" ? "bonus" : "action" });
   if (!able.ok) {
     return toolError(able);
+  }
+  const heldOff = heldTurnRefusal(fight, sheet);
+  if (heldOff) {
+    return heldOff;
   }
   const budget = budgetFor(fight, sheet.id, attacksAllowedFor(sheet), conditionTurnShape(sheet.conditions));
   // Not a casting: the bonus-action spell rule and the levelled spell mark

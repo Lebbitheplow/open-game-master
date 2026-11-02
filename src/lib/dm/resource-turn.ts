@@ -18,6 +18,7 @@ import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { matchResource, type ResourceAction } from "@/lib/srd/class-resources";
 import { ACTION_SURGED, spendAction } from "@/lib/dm/action-budget";
 import { canAct } from "@/lib/dm/can-act";
+import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { readiedReleaseFor } from "@/lib/dm/readied-release";
 import { EMBODIMENT_MARK, LEVELLED_SPELL, SURGE_MARK } from "@/lib/dm/cast-rules";
 import {
@@ -84,6 +85,10 @@ export function prepareResourceCharge(
   const able = canAct({ sheet, encounter, kind });
   if (!able.ok) {
     return toolError(able);
+  }
+  const heldOff = heldTurnRefusal(encounter, sheet);
+  if (heldOff) {
+    return heldOff;
   }
   if (def.id === "action_surge") {
     // SRD 5.1 fighter, Action Surge: "only once on the same turn", whatever

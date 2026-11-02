@@ -11,7 +11,8 @@ import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 
 import type { Campaign } from "@/lib/db/campaigns";
 import type { Encounter, EncounterEnemy } from "@/lib/db/encounters";
-import { actingCombatantId, canAct, releasesReadiedOffTurn } from "@/lib/dm/can-act";
+import { actingCombatantId, canAct } from "@/lib/dm/can-act";
+import { heldTurnRefusal, releasesReadiedOffTurn, turnHeldForEnemies } from "@/lib/dm/held-turn";
 import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { READIED_WORDS, RELEASE_TOOLS, readiedHeld } from "@/lib/dm/readied-kinds";
 import type { PcAttackArgs } from "@/lib/dm/pc-attack";
@@ -37,9 +38,18 @@ export function gatePcAttack(input: {
   // On their own turn a character attacks with their action. Off it they
   // have one reaction, and an attack made then is that reaction (an
   // opportunity attack, a readied strike): one, until their turn comes round.
-  // A turn held for the enemies before it has not begun: what they readied
-  // is released then as off it (can-act.ts releasesReadiedOffTurn).
-  const onTurn = actingCombatantId(encounter) === sheet.id && !releasesReadiedOffTurn(encounter, sheet);
+  // A turn held while an enemy before it is still to act has not begun
+  // (held-turn.ts): what they readied, or Giant Killer's answer, is a
+  // reaction then, and an attack of their own turn waits for that enemy.
+  const held = turnHeldForEnemies(encounter, sheet.id);
+  if (held && !readiedHeld(sheet)) {
+    const foe = resolveTargetFoe(campaign.id, encounter, args.targetEnemyId);
+    const refusal = foe && giantKillerOpen(campaign.id, encounter.id, sheet, foe) ? null : heldTurnRefusal(encounter, sheet);
+    if (refusal) {
+      return { refused: refusal };
+    }
+  }
+  const onTurn = actingCombatantId(encounter) === sheet.id && !held && !releasesReadiedOffTurn(encounter, sheet);
   let giantKiller = false;
   const allowed = canAct({ sheet, encounter, kind: onTurn ? "attack" : "reaction" });
   if (!allowed.ok) {

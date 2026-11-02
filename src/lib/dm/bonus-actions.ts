@@ -26,6 +26,7 @@ import { classLevelFor } from "@/lib/srd/multiclass";
 import { authoredFlurryStrikes } from "@/lib/srd/authored-economy";
 import { dashCount, spendAction, WIND_STEP } from "@/lib/dm/action-budget";
 import { canAct } from "@/lib/dm/can-act";
+import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { DODGING } from "@/lib/dm/condition-logic";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import { QUICKENED } from "@/lib/dm/cast-rules";
@@ -116,6 +117,10 @@ export function spendKiTechnique(
   const allowed = canAct({ sheet, encounter, kind: "bonus" });
   if (!allowed.ok) {
     return toolError(allowed);
+  }
+  const heldOff = heldTurnRefusal(encounter, sheet);
+  if (heldOff) {
+    return heldOff;
   }
   const budget = inFight
     ? budgetFor(encounter, sheet.id, attacksAllowedFor(sheet), conditionTurnShape(sheet.conditions))

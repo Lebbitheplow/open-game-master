@@ -19,7 +19,6 @@ import { incapacitatedBy } from "@/lib/dm/condition-logic";
 import { spellTurnHold } from "@/lib/srd/condition-effect-queries";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { enemyTurnEntry, spentOnSentence, type EnemyTurns } from "@/lib/dm/enemy-turn-logic";
-import { readiedHeld } from "@/lib/dm/readied-kinds";
 
 // What the combatant is trying to spend. "attack" and "cast" are actions
 // with their own handlers, "free" is anything that costs nothing but still
@@ -51,15 +50,7 @@ export type ActingEncounter = Pick<
 > & {
   kind?: Encounter["kind"];
   status?: Encounter["status"];
-  legendary?: {
-    acted?: EnemyActedLedger;
-    turns?: EnemyTurns;
-    // The pointer's character whose turn is held while the enemies before
-    // it take theirs, and those enemies (src/lib/dm/held-turn.ts).
-    turnStart?: string;
-    due?: string[];
-    handoff?: { enemyIds: string[] };
-  };
+  legendary?: { acted?: EnemyActedLedger; turns?: EnemyTurns };
 };
 
 export type ActingEnemy = Pick<EncounterEnemy, "id" | "displayName" | "status" | "conditions">;
@@ -111,30 +102,6 @@ export function actingCombatantId(encounter: ActingEncounter | null): string | n
   }
   const entry = encounter.order[encounter.turnIndex];
   return entry ? entryRef(entry) : null;
-}
-
-// A character the pointer rests on whose turn is held while the enemies
-// before it take theirs (src/lib/dm/held-turn.ts), holding what they readied
-// on their turn before: the trigger comes in those enemies' turns, so the
-// release is off their own turn, with their reaction (SRD 5.1, Ready), and
-// their own turn has not begun. The engine read the pointer and took a
-// readied swing released as the worm acted for the character's own Attack
-// action, which began their turn early and spent its attack.
-export function releasesReadiedOffTurn(
-  encounter: ActingEncounter | null,
-  sheet: { id: string; conditions: string[]; conditionMeta?: unknown },
-): boolean {
-  if (!isRunningFight(encounter) || !encounter.orderReady || !readiedHeld(sheet)) {
-    return false;
-  }
-  const entry = encounter.order[encounter.turnIndex];
-  const legendary = encounter.legendary;
-  return Boolean(
-    entry &&
-      entryRef(entry) === sheet.id &&
-      legendary?.turnStart === sheet.id &&
-      ((legendary.due?.length ?? 0) > 0 || (legendary.handoff?.enemyIds.length ?? 0) > 0),
-  );
 }
 
 // Surprise costs the first turn, and the reaction until that turn has

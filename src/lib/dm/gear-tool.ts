@@ -23,6 +23,7 @@ import { spendAction, type TurnBudget } from "@/lib/dm/action-budget";
 import { dualWields } from "@/lib/dm/attack-rules";
 import { hasFastHands } from "@/lib/dm/bonus-routes";
 import { canAct } from "@/lib/dm/can-act";
+import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { armorChangeMinutes } from "@/lib/dm/don-doff";
 import { drawRow, gearKindOf, handsFor, handsFullError, handsFullFor, holdIfFree, inHand, spendInteraction } from "@/lib/dm/gear-hands";
 import { lineNamed } from "@/lib/srd/item-row";
@@ -219,6 +220,10 @@ function changeWear(
     if (!able.ok) {
       return toolError(able);
     }
+    const heldOff = heldTurnRefusal(encounter, sheet);
+    if (heldOff) {
+      return heldOff;
+    }
     const own = ownBudget(encounter, sheet);
     if (!own) {
       return refuse(`${on ? "Putting on" : "Taking off"} ${row.name} happens on ${sheet.name}'s own turn.`);
@@ -293,6 +298,10 @@ function handOver(
     const able = canAct({ sheet, encounter, kind: "free" });
     if (!able.ok) {
       return toolError(able);
+    }
+    const heldOff = heldTurnRefusal(encounter, sheet);
+    if (heldOff) {
+      return heldOff;
     }
     const own = ownBudget(encounter, sheet);
     if (!own) {

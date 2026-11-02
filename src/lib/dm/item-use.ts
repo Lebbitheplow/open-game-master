@@ -18,6 +18,7 @@ import { insertRoll } from "@/lib/db/rolls";
 import { publishWithSeq } from "@/lib/events";
 import { spendAction } from "@/lib/dm/action-budget";
 import { canAct } from "@/lib/dm/can-act";
+import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
 import { carriedItemsMatching } from "@/lib/dm/item-logic";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
@@ -143,6 +144,10 @@ export function chargedItemUse(
     const able = canAct({ sheet, encounter, kind });
     if (!able.ok) {
       return toolError(able);
+    }
+    const heldOff = heldTurnRefusal(encounter, sheet);
+    if (heldOff) {
+      return heldOff;
     }
     budget = budgetFor(encounter, sheet.id, attacksAllowedFor(sheet), conditionTurnShape(sheet.conditions));
     if (budget) {
