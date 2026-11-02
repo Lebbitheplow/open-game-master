@@ -68,6 +68,8 @@ export type SaveAbility = "str" | "dex" | "con" | "int" | "wis" | "cha";
 export type EnemySaveMods = Record<SaveAbility, number>;
 
 export type EnemyStats = {
+  // Per-individual appearance; absent on older snapshots and shared bestiary blocks.
+  sex?: import("@/lib/actor-sex-logic").Sex;
   ac: number;
   maxHp: number;
   dexMod: number;

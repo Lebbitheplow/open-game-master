@@ -57,6 +57,8 @@ import { undoableMove, undoOffer } from "@/lib/battlemap/move-undo";
 import type { AuraTone, PlayerMapView } from "@/lib/battlemap/view-types";
 import { ENEMY_TURN_NAME, turnOwner } from "@/lib/dm/turn-owner";
 import { holdsFeature } from "@/lib/srd/feature-names";
+import { actorSex } from "@/lib/actor-sex-logic";
+import { getNpcById } from "@/lib/db/npcs";
 
 export type { PlayerMapView } from "@/lib/battlemap/view-types";
 
@@ -352,6 +354,14 @@ export function buildPlayerMapView(
       kind: token.kind,
       refId: token.refId,
       name: token.name,
+      ...(token.kind === "enemy" ? {
+        sex: actorSex(enemiesById.get(token.refId)?.npcId ?? token.refId, enemiesById.get(token.refId)?.stats.sex),
+      } : token.kind === "npc" ? (() => {
+        // A display name is not a link to a cast member with the same name.
+        const linked = getNpcById(token.refId);
+        const npc = linked?.campaignId === campaignId ? linked : null;
+        return { sex: actorSex(token.refId, npc?.gender) };
+      })() : {}),
       x: token.x,
       y: token.y,
       mine: myToken !== null && token.id === myToken.id,

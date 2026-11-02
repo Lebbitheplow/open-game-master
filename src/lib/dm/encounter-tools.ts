@@ -247,7 +247,7 @@ function parseStartArgs(rawArguments: string): { args: z.infer<typeof startArgsS
   if (flat.success) {
     return {
       args: {
-        enemies: [{ monster: flat.data.monster, name: flat.data.name, count: flat.data.count, cr: flat.data.cr, returning: flat.data.returning }],
+        enemies: [{ monster: flat.data.monster, name: flat.data.name, sex: flat.data.sex, count: flat.data.count, cr: flat.data.cr, returning: flat.data.returning }],
         summary: flat.data.summary,
       },
     };

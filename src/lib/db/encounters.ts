@@ -14,6 +14,7 @@ import { noteGrounding } from "@/lib/db/flight-watch";
 import { publishPersisted } from "@/lib/events";
 import { isKnockedOut } from "@/lib/dm/knockout";
 import { isConditionNamed } from "@/lib/srd/feature-names";
+import { actorSex } from "@/lib/actor-sex-logic";
 
 // Server-authoritative combat state. Enemy HP lives here and changes ONLY
 // through the encounter tools; the AI DM narrates from tool results, never
@@ -494,7 +495,7 @@ export function insertEnemy(input: {
       input.initiative,
       input.stats.cr,
       arrives ? Math.max(0, Math.round(arrives.xp)) : input.stats.xp,
-      JSON.stringify(input.stats),
+      JSON.stringify({ ...input.stats, sex: actorSex(input.npcId ?? arrives?.carriedFrom ?? id, input.stats.sex) }),
       JSON.stringify(arrives ? arrives.conditions.slice(0, 10) : []),
       JSON.stringify(arrives ? arrives.conditionMeta : {}),
       input.npcId ?? "",

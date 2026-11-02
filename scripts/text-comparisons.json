@@ -622,6 +622,7 @@
     "lib/language/player-text.ts#re-word": [["english-source",3,"ODM's own rules lines: \"via\", \"weapon\" and \"resolve\" as ODM's rows write them beside a tool name (issue 659)"]],
     "lib/narrator-quality.ts#str-list": [["key",1,"the narration guard's outcomes (fixed choices, stored values)"]],
     "lib/correction-reasons.ts#str-list": [["key",1,"the correction ledger's kinds of fix and its reason chips (fixed choices, stored values)"]],
+    "lib/actor-sex-logic.ts#str-list": [["key",1,"fixed Male/Female model-selection values in the board protocol; not player-written text"]],
     "lib/addons/board-bridge.ts#str-case": [["key",13,"addon board message types and view names (protocol)"]],
     "lib/addons/board-bridge.ts#str-eq": [["key",1,"addon board message types and view names (protocol)"]],
     "lib/addons/catalog-entry.ts#str-list": [["key",1,"addon catalog categories (fixed choice)"]],

@@ -53,7 +53,7 @@ async function duel(variantRules, hero = {}) {
     equipment: [{ name: "Longsword", qty: 1, equipped: true }],
     ...hero,
   });
-  await world.beginFight([{ monster: "goblin", count: 1 }], { heroFaces: { [fighter.id]: 20 } });
+  await world.beginFight([{ monster: "goblin", count: 1, sex: "Female" }], { heroFaces: { [fighter.id]: 20 } });
   const [enemy] = world.enemies();
   getDatabase()
     .prepare(`UPDATE encounter_enemies SET max_hp = 90, current_hp = 90, ac = 12 WHERE id = ?`)

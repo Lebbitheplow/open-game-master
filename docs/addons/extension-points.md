@@ -617,3 +617,11 @@ A board snapshot's optional budgetLeft is remaining movement in squares. The aut
 A separate host message { odm: 1, type: "ruler", mapId, ruler } carries the normal board's current hover or first-tap preview. ruler is null to clear it, otherwise { path: [{ x, y }, ...], label, overBudget }. Paths contain only in-bounds known terrain from this viewer's projection. Draw over-budget previews distinctly. The path is an existing native estimate from the same ruler the normal board uses; it is not movement authority. Continue forwarding tile taps to the host for normal aim/confirmation and server validation.
 
 Ruler updates are separate from snapshots so hovering does not require rebuilding terrain, figures or other expensive scene resources. Ignore messages for other map IDs. This additive message retains bridge version 1; older views may ignore it and older hosts do not send it.
+
+### Enemy and NPC sex
+
+Visible enemy and NPC tokens may include `sex: "Female" | "Male"`, supplied by the server's viewer projection. This cosmetic model-selection field is independent of character/NPC gender, pronouns and combat rules.
+
+New enemies snapshot a declared value (optional `sex` on `start_encounter`/`add_enemies` entries), a linked cast NPC's declared Male/Female value, or a stable automatic Male/Female assignment derived from their saved identity. Existing enemies and unspecified NPCs use the same stable ID assignment without rewriting records. Returning enemies keep the last fight's value, including those first created by an older server. A linked cast NPC uses its own ID for automatic assignment both as a friendly NPC and as an enemy; an ad hoc display name alone is not a link to the cast. Refreshing, renaming, changing forms or starting another turn never rerolls it.
+
+PCs retain `character.gender`; props receive no automatic sex. Older hosts omit `sex`, so views should retain their ordinary model fallback. Hidden/fogged actors still never enter a player's snapshot. For example, a view can select `monsters.bandit:Female` when a visible bandit's `sex` is `"Female"`, falling back to `monsters.bandit` when that variant or metadata is absent. The host sends no model paths or full NPC records with this field. This optional addition keeps bridge version 1.

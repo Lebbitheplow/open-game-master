@@ -5,15 +5,18 @@
 
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import type { EnemyOwnForm, EnemyStats } from "@/lib/bestiary/statblock";
+import { actorSex } from "@/lib/actor-sex-logic";
 
 // The block, armor class and hit points of a new form. The challenge rating
 // and XP columns stay the creature's own: the fight is still worth what it was.
 export function writeEnemyForm(enemyId: string, stats: EnemyStats) {
+  const row = getDatabase().prepare(`SELECT stat_json, npc_id FROM encounter_enemies WHERE id = ?`).get(enemyId) as { stat_json: string; npc_id: string } | undefined;
+  const previous = parseJson<EnemyStats>(row?.stat_json ?? "{}", {} as EnemyStats);
   getDatabase()
     .prepare(
       `UPDATE encounter_enemies SET stat_json = ?, ac = ?, max_hp = ?, current_hp = ?, updated_at = ? WHERE id = ?`,
     )
-    .run(JSON.stringify(stats), stats.ac, stats.maxHp, stats.maxHp, nowIso(), enemyId);
+    .run(JSON.stringify({ ...stats, sex: actorSex(row?.npc_id || enemyId, previous.sex) }), stats.ac, stats.maxHp, stats.maxHp, nowIso(), enemyId);
 }
 
 // The creature's own block and hit points, as the spell found them. The

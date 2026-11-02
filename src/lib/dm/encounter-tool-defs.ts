@@ -6,6 +6,7 @@ import { sceneIds } from "@/lib/ambience/catalog";
 import { ENCOUNTER_OUTCOMES } from "@/lib/dm/encounter-logic";
 import { waypointProperty } from "@/lib/dm/waypoint-logic";
 import { ADVANTAGE_SOURCES } from "@/lib/dm/pc-attack-options";
+import { SEXES } from "@/lib/actor-sex-logic";
 
 export type ToolDef = {
   type: "function";
@@ -38,6 +39,7 @@ export const startEncounterTool: ToolDef = {
                 description: "In-world display name, to reskin one for this setting.",
               },
               count: { type: "integer", minimum: 1, maximum: 8 },
+              sex: { type: "string", enum: [...SEXES] },
               cr: {
                 type: "number",
                 description:

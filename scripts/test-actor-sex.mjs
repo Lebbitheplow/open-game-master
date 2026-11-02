@@ -1,0 +1,124 @@
+import assert from 'node:assert/strict';
+import {openWorld} from './lib/enforce-world.mjs';
+import {suite} from './lib/enforce-harness.mjs';
+import {combatKit,TRAINED} from './lib/enforce-combat.mjs';
+const {test,finish}=suite('test-actor-sex');
+const world=await openWorld();
+const kit=await combatKit(world);
+const {getEnemy,renameEnemy,patchEnemyHp,insertEnemy}=await import('../src/lib/db/encounters.ts');
+const {getDatabase}=await import('../src/lib/db/core.ts');
+const {resolveEnemyRequests,handleAddEnemies}=await import('../src/lib/dm/encounter-spawn.ts');
+const {applyEncounterCall}=await import('../src/lib/dm/encounter-tools.ts');
+const {createDmTurn}=await import('../src/lib/db/dm-turns.ts');
+const {writeEnemyForm}=await import('../src/lib/db/enemy-form.ts');
+const {upsertNpc,createNpcFromDraft}=await import('../src/lib/db/npcs.ts');
+const {normalizeNpcDraft}=await import('../src/lib/npcs/forge.ts');
+const {insertToken}=await import('../src/lib/db/battle-maps.ts');
+const {buildPlayerMapView}=await import('../src/lib/battlemap/view.ts');
+const {boardSnapshot}=await import('../src/lib/addons/board-bridge.ts');
+const {actorSex}=await import('../src/lib/actor-sex-logic.ts');
+world.addHero({class:'fighter',level:5,proficiencies:TRAINED});
+await world.beginFight([{monster:'bandit',name:'Woman',sex:'Female',cr:0.125},{monster:'bandit',name:'Man',sex:'Male',cr:0.125},{monster:'bandit',count:3,cr:0.125}]);
+kit.openField();
+const enemies=world.enemies();
+await test('automatic assignment is stable from saved IDs and explicit values win',()=>{
+  assert.equal(new Set(Array.from({length:16},(_,i)=>actorSex('actor-'+i))).size,2);
+  assert.equal(actorSex('same'),actorSex('same'));
+  assert.equal(actorSex('same','Female'),'Female');
+  assert.equal(actorSex('same','Male'),'Male');
+});
+await test('real enemy creation stores explicit sex and assigns stable automatic values',()=>{
+  assert.equal(enemies[0].stats.sex,'Female');
+  assert.equal(enemies[1].stats.sex,'Male');
+  for(const enemy of enemies) assert(['Male','Female'].includes(enemy.stats.sex));
+});
+await test('stored sex survives reload, renaming, damage and form replacement',()=>{
+  const enemy=enemies[0];
+  renameEnemy(enemy.id,'Renamed');patchEnemyHp(enemy.id,Math.max(1,enemy.currentHp-1),'alive');
+  const form={...enemy.stats};delete form.sex;
+  writeEnemyForm(enemy.id,form);
+  assert.equal(getEnemy(enemy.id).stats.sex,'Female');
+});
+await test('NPCs and enemies carry authoritative sex through the real projection and addon bridge',()=>{
+  const npc=upsertNpc({campaignId:world.campaignId,name:'Scout Ada',gender:'Female'});
+  const male=upsertNpc({campaignId:world.campaignId,name:'Scout Ben',gender:'Male'});
+  const unknown=upsertNpc({campaignId:world.campaignId,name:'Scout Ari'});
+  const tokens=[npc,male,unknown].map((n,i)=>insertToken({mapId:kit.map().id,campaignId:world.campaignId,kind:'npc',refId:n.id,name:n.name,x:2+i,y:2}));
+  const hidden=insertToken({mapId:kit.map().id,campaignId:world.campaignId,kind:'npc',refId:'npc:hidden',name:'Secret',x:8,y:8,hidden:true});
+  const prop=insertToken({mapId:kit.map().id,campaignId:world.campaignId,kind:'prop',refId:'prop:crate',name:'Crate',x:7,y:7});
+  const project=()=>buildPlayerMapView(world.campaignId,world.owner.id,{fullVision:true});
+  const view=project(),snap=boardSnapshot(view,'combat-tabletop',{canDirect:true,appearance:'miniatures'});
+  assert.equal(snap.tokens.find(t=>t.id===tokens[0].id).sex,'Female');
+  assert.equal(snap.tokens.find(t=>t.id===tokens[1].id).sex,'Male');
+  const assigned=snap.tokens.find(t=>t.id===tokens[2].id).sex;
+  assert(['Male','Female'].includes(assigned));
+  assert.equal(project().tokens.find(t=>t.id===tokens[2].id).sex,assigned);
+  assert.equal(snap.tokens.find(t=>t.id===prop.id).sex,undefined,'props have no automatic sex');
+  for(const token of snap.tokens.filter(t=>t.kind==='enemy')) assert.equal(token.sex,getEnemy(view.tokens.find(t=>t.id===token.id).refId).stats.sex);
+  const player=buildPlayerMapView(world.campaignId,world.owner.id);
+  assert(!player.tokens.some(t=>t.id===hidden.id),'hidden NPC metadata never leaves its viewer projection');
+});
+await test('invalid explicit sex is refused instead of silently assigning a different value',async()=>{
+  const before=world.enemies().length;
+  const out=await world.invoke('add_enemies',{enemies:[{monster:'bandit',sex:'invalid'}]});
+  assert.equal(out.ok,false);
+  assert.equal(world.enemies().length,before);
+});
+await test('an unlinked NPC keeps its automatic sex when a same-name cast entry is registered',()=>{
+  const token=insertToken({mapId:kit.map().id,campaignId:world.campaignId,kind:'npc',refId:'npc:independent',name:'Newcomer',x:6,y:2});
+  const projected=()=>buildPlayerMapView(world.campaignId,world.owner.id,{fullVision:true}).tokens.find(t=>t.id===token.id).sex;
+  const before=projected();
+  upsertNpc({campaignId:world.campaignId,name:'Newcomer',gender:before==='Female'?'Male':'Female'});
+  assert.equal(projected(),before,'display names must not change an existing actor identity');
+});
+await test('new and legacy returning foes keep their sex in a later fight',async()=>{
+  const original=enemies[1];
+  const legacy=enemies[2];
+  const stats={...legacy.stats};delete stats.sex;
+  getDatabase().prepare('UPDATE encounter_enemies SET stat_json = ? WHERE id = ?').run(JSON.stringify(stats),legacy.id);
+  const legacySex=actorSex(legacy.id);
+  await kit.endFight();
+  await world.beginFight([{monster:'bandit',returning:original.id},{monster:'bandit',returning:legacy.id}]);
+  const returned=world.enemies();
+  assert.equal(returned.find(e=>e.carriedFrom===original.id).stats.sex,'Male');
+  assert.equal(returned.find(e=>e.carriedFrom===legacy.id).stats.sex,legacySex);
+});
+await test('a linked cast NPC uses the same automatic sex as a friendly board token',()=>{
+  const npc=upsertNpc({campaignId:world.campaignId,name:'Cast scout',gender:''});
+  // A legacy linked row has no stored sex yet.
+  const stats={...enemies[0].stats};delete stats.sex;
+  const enemy=insertEnemy({campaignId:world.campaignId,encounterId:world.encounter().id,slug:'bandit',displayName:npc.name,initiative:1,stats,npcId:npc.id});
+  assert.equal(enemy.stats.sex,actorSex(npc.id));
+  getDatabase().prepare('UPDATE encounter_enemies SET stat_json = ? WHERE id = ?').run(JSON.stringify(stats),enemy.id);
+  writeEnemyForm(enemy.id,stats);
+  assert.equal(getEnemy(enemy.id).stats.sex,actorSex(npc.id),'a legacy cast NPC keeps its identity in a new form');
+  const requested=resolveEnemyRequests(world.campaign().gameSettings,[{monster:'bandit',sex:'Female'}]);
+  assert.equal(requested.resolved[0].stats.sex,'Female');
+});
+await test('a cast NPC keeps its saved sex when requested again by name',async()=>{
+  await kit.endFight();
+  const draft=normalizeNpcDraft({name:'Cast guard',gender:'Female',statBlock:'bandit'});
+  assert('draft' in draft,draft.error);
+  const npc=createNpcFromDraft(world.campaignId,draft.draft);
+  await world.beginFight([{monster:npc.name,count:2}]);
+  const first=world.enemies()[0];
+  assert.equal(first.npcId,npc.id);
+  assert.equal(first.stats.sex,'Female');
+  await kit.endFight();
+  await world.beginFight([{monster:npc.name,count:2,sex:'Male'}]);
+  const back=world.enemies()[0];
+  assert.equal(back.carriedFrom,first.id);
+  assert.equal(back.stats.sex,'Female','returning cast identity wins over a new request');
+});
+await test('flat AI tool calls carry sex for start and reinforcement requests',async()=>{
+  await kit.endFight();
+  const campaign=world.campaign(),sheets=world.sheets(),byId=new Map(sheets.map(s=>[s.id,s]));
+  const turn=createDmTurn(world.campaignId,[],'ai');
+  const started=applyEncounterCall(campaign,turn,'start_encounter',JSON.stringify({monster:'bandit',sex:'Female',cr:0.125}),sheets,byId,{realDiceUserIds:new Set(),toolCallId:null});
+  assert.equal(started.result.error,undefined);
+  assert.equal(world.enemies()[0].stats.sex,'Female');
+  const added=handleAddEnemies(campaign,JSON.stringify({monster:'bandit',name:'Another',sex:'Male',cr:0.125}),sheets);
+  assert.equal(added.error,undefined);
+  assert.equal(world.enemies().find(e=>e.displayName==='Another').stats.sex,'Male');
+});
+await kit.endFight();world.close();finish();

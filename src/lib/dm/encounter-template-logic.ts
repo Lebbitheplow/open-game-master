@@ -74,7 +74,7 @@ export function parseRoster(value: unknown): TemplateEnemy[] {
 // to drop all three, so a human GM could not field an invented foe though
 // the refusal told them to pass a challenge rating. Templates keep to
 // parseRoster: a saved roster names monsters, and an enemyId goes stale.
-export type FightRequest = TemplateEnemy & { cr?: number; name?: string; returning?: string };
+export type FightRequest = TemplateEnemy & { cr?: number; name?: string; returning?: string; sex?: unknown };
 
 const CR_IN_LINE = /(?:^|\s|,|\()cr\s*[:=]?\s*(\d{1,2}\s*\/\s*\d{1,2}|\d{1,2}(?:\.\d+)?)\)?/i;
 const NAMED_AS = /^(.+?)\s+as\s+(.+)$/i;
@@ -124,6 +124,10 @@ export function parseFightRoster(value: unknown): FightRequest[] {
         }
         if (typeof row.returning === "string" && row.returning.trim()) {
           out.returning = row.returning.trim();
+        }
+        // Keep invalid values too: the encounter enum must refuse them, not assign a different sex.
+        if (row.sex !== undefined) {
+          out.sex = row.sex;
         }
         return [out];
       })

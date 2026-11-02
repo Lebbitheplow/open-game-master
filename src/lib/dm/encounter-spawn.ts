@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SEXES, actorSex } from "@/lib/actor-sex-logic";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import type { Campaign } from "@/lib/db/campaigns";
 import {
@@ -42,6 +43,7 @@ import { latestAppearance, lastAppearanceOfNpc } from "@/lib/db/foe-history";
 export const enemyRequestSchema = z.object({
   monster: z.string(),
   name: z.string().optional(),
+  sex: z.enum(SEXES).optional(),
   count: z.number().int().min(1).max(8).optional(),
   cr: z.number().min(0).max(30).optional(),
   // A creature from an earlier fight, by its enemyId there: it comes back
@@ -161,7 +163,7 @@ export function resolveEnemyRequests(
         resolved.push({
           slug: match?.slug ?? "custom",
           name: displayName,
-          stats,
+          stats: { ...stats, sex: actorSex(npc.id, last?.stats.sex ?? request.sex ?? npc.gender) },
           npcId: npc.id,
           ...(last ? { returning: latestAppearance(last.id)?.id ?? last.id } : {}),
         });
@@ -169,7 +171,7 @@ export function resolveEnemyRequests(
       continue;
     }
     for (let index = 0; index < count; index += 1) {
-      resolved.push({ slug: match?.slug ?? "custom", name: displayName, stats, group });
+      resolved.push({ slug: match?.slug ?? "custom", name: displayName, stats: { ...stats, sex: request.sex ?? stats.sex }, group });
     }
   }
   return { resolved };
@@ -178,7 +180,7 @@ export function resolveEnemyRequests(
 // A creature from an earlier fight, fighting as that row had it: its block,
 // its name, who it is.
 function carriedEntry(row: EncounterEnemy): ResolvedEnemyRequest {
-  return { slug: row.slug, name: row.displayName, stats: row.stats, returning: row.id, ...(row.npcId ? { npcId: row.npcId } : {}) };
+  return { slug: row.slug, name: row.displayName, stats: { ...row.stats, sex: actorSex(row.npcId ?? row.id, row.stats.sex) }, returning: row.id, ...(row.npcId ? { npcId: row.npcId } : {}) };
 }
 
 type ToolDef = {
@@ -212,6 +214,7 @@ export const addEnemiesTool: ToolDef = {
                 description: "In-world display name, to reskin one for this setting.",
               },
               count: { type: "integer", minimum: 1, maximum: 8 },
+              sex: { type: "string", enum: [...SEXES] },
               cr: {
                 type: "number",
                 description:
@@ -251,7 +254,7 @@ function parseAddArgs(rawArguments: string): z.infer<typeof addArgsSchema> | nul
   if (flat.success) {
     return {
       enemies: [
-        { monster: flat.data.monster, name: flat.data.name, count: flat.data.count, cr: flat.data.cr, returning: flat.data.returning },
+        { monster: flat.data.monster, name: flat.data.name, sex: flat.data.sex, count: flat.data.count, cr: flat.data.cr, returning: flat.data.returning },
       ],
       reason: flat.data.reason,
     };

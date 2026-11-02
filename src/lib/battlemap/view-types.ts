@@ -13,6 +13,7 @@ import type { AmbientLight, TokenKind } from "@/lib/battlemap/types";
 import type { TargetEdge } from "@/lib/battlemap/view-tactics";
 import type { ViewZone } from "@/lib/dm/zone-view";
 import type { MapAddonView } from "@/lib/addons/map-view";
+import type { Sex } from "@/lib/actor-sex-logic";
 
 export type PlayerMapView = {
   mapId: string;
@@ -41,6 +42,7 @@ export type PlayerMapView = {
     kind: TokenKind;
     refId: string;
     name: string;
+    sex?: Sex;
     x: number;
     y: number;
     mine: boolean;
