@@ -14,12 +14,14 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { serverEnv } from "./server-env.ts";
+import { builtinSpeechLanguage } from "./stt-logic.ts";
 
 export const BUILTIN_STT_MODEL = serverEnv("STT_BUILTIN_MODEL", "onnx-community/whisper-base").trim();
 const DTYPE = "q8";
 // Whisper base hears many languages, but transformers.js assumes English
-// unless told otherwise. A table that plays in Italian sets
-// STT_LANGUAGE=italian (Whisper's language names or codes both work).
+// unless told otherwise: a clip is heard in its table's language, unless the
+// server sets STT_LANGUAGE=italian for every table (Whisper's language names
+// or codes both work).
 const LANGUAGE = serverEnv("STT_LANGUAGE", "").trim().toLowerCase();
 // Roughly what the install pulls, for the button that offers it.
 export const BUILTIN_STT_DOWNLOAD_MB = 76;
@@ -45,10 +47,14 @@ export function builtinSpeechInstalled(): boolean {
   return REQUIRED_FILES.every((file) => existsSync(path.join(/*turbopackIgnore: true*/ root, file)));
 }
 
-type Transcriber = (
+type Transcriber = ((
   audio: Float32Array,
   options: { chunk_length_s: number; stride_length_s: number; language?: string; task?: string },
-) => Promise<{ text: string } | Array<{ text: string }>>;
+) => Promise<{ text: string } | Array<{ text: string }>>) & {
+  // The model's generation config, which says whether it hears more than
+  // English (an ".en" model does not, and refuses a language).
+  model?: { generation_config?: { is_multilingual?: boolean | null } | null };
+};
 
 type InstallState = {
   status: "idle" | "installing" | "ready" | "error";
@@ -148,14 +154,17 @@ export function installBuiltinSpeech(): BuiltinSpeechStatus {
   return builtinSpeechStatus();
 }
 
-// Words from 16 kHz mono samples. Serialized across the whole server.
-export async function transcribeBuiltin(samples: Float32Array): Promise<string> {
+// Words from 16 kHz mono samples, heard in `tableCode`'s language (Whisper's
+// code for the clip's table, null for none). Serialized across the whole
+// server.
+export async function transcribeBuiltin(samples: Float32Array, tableCode: string | null): Promise<string> {
   const run = async () => {
     const pipe = await transcriber();
+    const language = builtinSpeechLanguage(LANGUAGE, tableCode, pipe.model?.generation_config?.is_multilingual === true);
     const output = await pipe(samples, {
       chunk_length_s: 30,
       stride_length_s: 5,
-      ...(LANGUAGE ? { language: LANGUAGE, task: "transcribe" } : {}),
+      ...(language ? { language, task: "transcribe" } : {}),
     });
     const parts = Array.isArray(output) ? output : [output];
     return parts.map((part) => part.text).join(" ").replace(/\s+/g, " ").trim();

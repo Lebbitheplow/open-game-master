@@ -18,9 +18,10 @@ export function SafetyFields({ draft, patch, gates }: StepProps) {
         onSafety={(safety) => patch({ safety })}
         onGm={(gm) => patch({ gm })}
         onVoice={(ttsVoice) => patch({ ttsVoice })}
+        tableLanguage={draft.tableLanguage}
       />
       <p className="text-xs text-stone-500">
-        A GM personality also sets the narrator&apos;s voice{gates.ttsAvailable && draft.ttsEnabled ? "" : ", kept for when narration is on"}.
+        A GM personality also sets the narrator&apos;s voice, except at a table in another language Kokoro has voices of its own for{gates.ttsAvailable && draft.ttsEnabled ? "" : ", kept for when narration is on"}.
         Lines and veils are separated by commas.
       </p>
     </div>

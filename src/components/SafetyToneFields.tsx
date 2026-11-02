@@ -16,12 +16,17 @@ import {
   type Tone,
 } from "@/lib/dm/safety-logic";
 import type { Personality } from "@/lib/dm/personalities";
+import type { TableLanguage } from "@/lib/schemas/game-settings-options";
+import { personalityVoiceFits } from "@/lib/tts-voices";
 
 // Safety, strictness and tone (docs/vtt-parity-implementation-plan.md
 // section 9), shared by the creation wizard's Feel step and the lobby's
 // settings. Lines and veils are typed as lists; the boundary, strictness
 // and tone are chips; a personality preset fills strictness, tone and the
-// narrator's voice at once.
+// narrator's voice at once. A line or veil naming romance keeps the engine's
+// own romance offers away (dm/advance-logic.ts namesRomance), and the panel
+// points a table that wants no romance at all to its switch, under Bonds and
+// romance.
 
 const chip = "rounded-md border px-2 py-0.5 text-[11px]";
 const on = "border-amber-700 bg-amber-950/40 text-amber-100";
@@ -68,6 +73,7 @@ export function SafetyToneFields({
   onSafety,
   onGm,
   onVoice,
+  tableLanguage,
   showPresets = true,
 }: {
   safety: SafetySettings;
@@ -76,6 +82,7 @@ export function SafetyToneFields({
   onSafety: (next: SafetySettings) => void;
   onGm: (next: GmSettings) => void;
   onVoice?: (voice: string) => void;
+  tableLanguage: TableLanguage;
   showPresets?: boolean;
 }) {
   const [presets, setPresets] = useState<Personality[]>([]);
@@ -96,9 +103,11 @@ export function SafetyToneFields({
       cancelled = true;
     };
   }, [showPresets]);
-  const chosenPreset = presets.find(
-    (preset) => preset.gm.strictness === gm.strictness && preset.gm.tone.join() === gm.tone.join() && (!ttsVoice || preset.ttsVoice === ttsVoice),
-  );
+  // A preset's voice counts only where it can narrate this table.
+  const voiced = (preset: Personality) => personalityVoiceFits(tableLanguage, preset.ttsVoice);
+  const isChosen = (preset: Personality) =>
+    preset.gm.strictness === gm.strictness && preset.gm.tone.join() === gm.tone.join() && (!ttsVoice || !voiced(preset) || preset.ttsVoice === ttsVoice);
+  const chosenPreset = presets.find(isChosen);
   const toggleTone = (tone: Tone) => {
     const has = gm.tone.includes(tone);
     if (!has && gm.tone.length >= TONE_MAX) {
@@ -122,8 +131,10 @@ export function SafetyToneFields({
         </div>
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
           <ListField label="Lines (never in the story)" hint="spiders, harm to children" value={safety.lines} onChange={(lines) => onSafety({ ...safety, lines })} />
-          <ListField label="Veils (only off the page)" hint="torture, romance" value={safety.veils} onChange={(veils) => onSafety({ ...safety, veils })} />
+          <ListField label="Veils (only off the page)" hint="torture, gore" value={safety.veils} onChange={(veils) => onSafety({ ...safety, veils })} />
         </div>
+        {/* An all-ages table never has romance, whatever the switch says. */}
+        {safety.boundaries !== "family" ? <p className="mt-1 text-[11px] text-stone-500">To keep romance out of the story, turn Romance off under Bonds and romance.</p> : null}
       </div>
       <div>
         <p className="mb-1 text-xs uppercase tracking-wide text-stone-500">Strictness and tone</p>
@@ -147,11 +158,11 @@ export function SafetyToneFields({
         <div>
           <p className="mb-1 flex items-center gap-1 text-xs uppercase tracking-wide text-stone-500">
             Or pick a GM personality
-            <InfoButton label="GM personalities" text={personalitiesInfo(presets, Boolean(onVoice))} />
+            <InfoButton label="GM personalities" text={personalitiesInfo(presets, Boolean(onVoice) && presets.some(voiced))} />
           </p>
           <div className="stagger-pop flex flex-wrap items-center gap-1.5">
             {presets.map((preset) => {
-              const active = preset.gm.strictness === gm.strictness && preset.gm.tone.join() === gm.tone.join() && (!ttsVoice || preset.ttsVoice === ttsVoice);
+              const active = isChosen(preset);
               return (
                 <button
                   key={preset.id}
@@ -160,7 +171,9 @@ export function SafetyToneFields({
                   aria-pressed={active}
                   onClick={() => {
                     onGm({ strictness: preset.gm.strictness, tone: [...preset.gm.tone] });
-                    onVoice?.(preset.ttsVoice);
+                    if (voiced(preset)) {
+                      onVoice?.(preset.ttsVoice);
+                    }
                   }}
                   className={cn(chip, active ? on : off)}
                 >

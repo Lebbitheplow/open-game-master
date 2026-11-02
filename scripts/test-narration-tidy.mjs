@@ -77,6 +77,33 @@ check("at every other table the English headings stay as written, and the recite
   }
 });
 
+check("a recited order under a bold heading of its own goes with the heading, at a table in any language", () => {
+  for (const [language, heading] of [["italian", "**Ordine di iniziativa:**"], ["german", "**Initiative-Reihenfolge:**"], ["english", "**Initiative Order:**"]]) {
+    assert.equal(
+      withoutCombatBookkeeping(`La lotta comincia.\n\n${heading}\n1. Avery (14)\n2. Silent Cultist 2 (11)\n3. Bram (9)\n\nAvery si muove per prima.`, FIGHT, language),
+      "La lotta comincia.\n\nAvery si muove per prima.",
+      language,
+    );
+  }
+});
+
+check("an item number left alone on its line by the board-square cut goes with the rest of the recited order", () => {
+  // What withoutAsides leaves of Qwen3.5 9B's "1. Shadow Aberration 1 (moves to (7,13))" (scripts/test-claims.mjs)
+  // at a table in another language: the sentence quoting the square goes, its item number stays.
+  assert.equal(
+    withoutCombatBookkeeping("Le ombre girano.\n\n**Ordine di iniziativa:**\n1.\n2. **Avery (your turn)**\n3. Bram\n\nLa nebbia sale.", [...FIGHT, "Shadow Aberration 1"], "italian"),
+    "Le ombre girano.\n\nLa nebbia sale.",
+  );
+  // An order of two, so only one named item is left beside the lone number: still an order, at every table.
+  for (const language of ["english", "italian", "french", "spanish", "german"]) {
+    assert.equal(
+      withoutCombatBookkeeping("Steel flashes.\n\n**Initiative order:**\n1.\n2. Avery (your turn)\n\nWhat do you do?", FIGHT, language),
+      "Steel flashes.\n\nWhat do you do?",
+      language,
+    );
+  }
+});
+
 check("a later call repeating the earlier call's prose says it once", () => {
   assert.deepEqual(
     withoutRepeatedSentences([

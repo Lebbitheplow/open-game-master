@@ -523,6 +523,19 @@ export function listEnemies(encounterId: string): EncounterEnemy[] {
   return rows.map(mapEnemy);
 }
 
+// Everyone in the running fight, and in a fight that ended since `since`,
+// by the names the prose would use, or none. `since` is the start of the
+// turn being posted: the order a turn recites as its fight ends names that
+// fight, which is no longer running when the turn's narration is posted.
+export function fightNames(campaignId: string, since: string): string[] {
+  const rows = getDatabase()
+    .prepare(`SELECT * FROM encounters WHERE campaign_id = ? AND kind = 'fight' AND (status = 'active' OR updated_at >= ?)`)
+    .all(campaignId, since) as EncounterRow[];
+  return rows
+    .map(mapEncounter)
+    .flatMap((encounter) => [...encounter.order.map((entry) => entry.name), ...listEnemies(encounter.id).map((enemy) => enemy.displayName)]);
+}
+
 // A prepared encounter's overrides: this one is called Snik, that one has
 // 3 hit points. Written before anybody has acted, so the stat snapshot
 // keeps the printed block. The damage a creature already carries stays

@@ -4,8 +4,10 @@ import { ImageIcon } from "lucide-react";
 import { useState, type CSSProperties } from "react";
 import { InfoButton } from "@/components/ui/InfoDialog";
 import { Select } from "@/components/ui/Select";
+import { useTtsVoices } from "@/components/VoicePicker";
 import { cn } from "@/lib/cn";
 import { GENRE_PRESETS } from "@/lib/genres";
+import { narratorVoiceFor } from "@/lib/tts-voices";
 import {
   TABLE_LANGUAGE_HELP,
   TABLE_LANGUAGE_LABELS,
@@ -212,6 +214,9 @@ export function WorldDetailsFields({
   patch,
   selectedPack,
 }: Pick<StepProps, "draft" | "patch"> & { selectedPack: WorldPackSummary | null }) {
+  // A new table language brings its narrator voice, as the server does on
+  // create, so the narration step shows the voice that will be saved.
+  const voices = useTtsVoices();
   return (
     <div className="space-y-4">
       <div className="cc-field">
@@ -239,7 +244,7 @@ export function WorldDetailsFields({
         </div>
         <Select<TableLanguage>
           value={draft.tableLanguage}
-          onChange={(tableLanguage) => patch({ tableLanguage })}
+          onChange={(tableLanguage) => patch({ tableLanguage, ttsVoice: narratorVoiceFor(tableLanguage, draft.ttsVoice, voices.provider === "openai") })}
           label="Table language"
           className="w-full"
           options={TABLE_LANGUAGES.map((value) => ({ value, label: TABLE_LANGUAGE_LABELS[value] }))}

@@ -4,7 +4,8 @@ import { decodeWav, SPEECH_SAMPLE_RATE } from "@/lib/speech-wav";
 import { currentSttBackend } from "@/lib/stt-backend";
 import { whisperModelFor, whisperUrl } from "@/lib/stt";
 import { transcribeBuiltin } from "@/lib/stt-builtin";
-import { isCampaignMember } from "@/lib/db/campaigns";
+import { whisperLanguageCode } from "@/lib/stt-logic";
+import { getCampaignById, isCampaignMember } from "@/lib/db/campaigns";
 import { isPrivateBackendHost } from "@/lib/backend-host";
 import { paidAiAllowedNow, paidAiRefusalResponse } from "@/lib/shared-host";
 import { recordUsage } from "@/lib/usage/ledger";
@@ -36,24 +37,29 @@ export async function POST(request: Request) {
     return Response.json({ error: "Recording too long." }, { status: 413 });
   }
 
+  // The campaign the clip was recorded at, honoured only for a member: its
+  // table's language is what Whisper listens for, and OpenAI bills to it.
+  const campaignId = form?.get("campaignId");
+  const campaign = typeof campaignId === "string" && campaignId && isCampaignMember(campaignId, user.id) ? getCampaignById(campaignId) : null;
+  const language = campaign ? whisperLanguageCode(campaign.gameSettings.tableLanguage) : null;
+
   const backend = await currentSttBackend();
   if (backend === "builtin") {
     recordUsage({ kind: "stt", role: "dictation", backend: "builtin", paid: false, units: 1 });
-    return builtin(audio);
+    return builtin(audio, language);
   }
   if (backend === "openai") {
     // OpenAI listens on the host's key (src/lib/shared-host.ts); the
     // campaign named with the clip decides, else the account itself.
-    const campaignId = form?.get("campaignId");
-    if (typeof campaignId === "string" && campaignId && isCampaignMember(campaignId, user.id)) {
-      enterUsageScope({ campaignId });
+    if (campaign) {
+      enterUsageScope({ campaignId: campaign.id });
     }
     const paid = !isPrivateBackendHost(openAiSpeechConfig().baseUrl);
     if (paid && !paidAiAllowedNow()) {
       return paidAiRefusalResponse("speech");
     }
     recordUsage({ kind: "stt", role: "dictation", backend: "openai", paid, units: 1 });
-    return openAi(audio);
+    return openAi(audio, language);
   }
   recordUsage({ kind: "stt", role: "dictation", backend: "whisper", paid: false, units: 1 });
   if (backend === "none") {
@@ -66,6 +72,9 @@ export async function POST(request: Request) {
   const upstream = new FormData();
   upstream.set("file", audio, audio.name || "speech.webm");
   upstream.set("model", await whisperModelFor(whisperUrl()));
+  if (language) {
+    upstream.set("language", language);
+  }
   try {
     const response = await fetch(`${whisperUrl()}/v1/audio/transcriptions`, {
       method: "POST",
@@ -91,7 +100,7 @@ export async function POST(request: Request) {
 // The built-in engine reads 16 kHz WAV, which the browser makes when the
 // capabilities say so. An older page that sends its raw recording is told
 // to reload rather than handed a wrong transcript.
-async function builtin(audio: File) {
+async function builtin(audio: File, language: string | null) {
   const decoded = decodeWav(new Uint8Array(await audio.arrayBuffer()));
   if (!decoded || decoded.sampleRate !== SPEECH_SAMPLE_RATE) {
     return Response.json(
@@ -100,18 +109,21 @@ async function builtin(audio: File) {
     );
   }
   try {
-    return Response.json({ text: await transcribeBuiltin(decoded.samples) });
+    return Response.json({ text: await transcribeBuiltin(decoded.samples, language) });
   } catch (error) {
     console.error("[speech] built-in transcription failed", error);
     return Response.json({ error: "The built-in speech engine could not transcribe that." }, { status: 502 });
   }
 }
 
-async function openAi(audio: File) {
+async function openAi(audio: File, language: string | null) {
   const { baseUrl, apiKey, model } = openAiSpeechConfig();
   const upstream = new FormData();
   upstream.set("file", audio, audio.name || "speech.webm");
   upstream.set("model", model);
+  if (language) {
+    upstream.set("language", language);
+  }
   try {
     const response = await fetch(`${baseUrl}/audio/transcriptions`, {
       method: "POST",

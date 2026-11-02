@@ -319,12 +319,14 @@ await test("romance switched off withdraws what waits, and a yes after it takes 
 
 // ---- the table's limits ----
 
-await test("a family table, or a line naming romance, never opens a window", async () => {
-  for (const safety of [
-    { xCard: true, lines: [], veils: [], boundaries: "family" },
-    { xCard: true, lines: ["romance"], veils: [], boundaries: "standard" },
+await test("a family table, Romance switched off, or a line or veil naming romance in any table language, never opens a window", async () => {
+  for (const gameSettings of [
+    { safety: { xCard: true, lines: [], veils: [], boundaries: "family" } },
+    { safety: { xCard: true, lines: [], veils: [], boundaries: "standard" }, romance: "off" },
+    { safety: { xCard: true, lines: ["romance"], veils: [], boundaries: "standard" } },
+    { safety: { xCard: true, lines: [], veils: ["storie d'amore"], boundaries: "standard" }, tableLanguage: "italian" },
   ]) {
-    const table = await openWorld({ gameSettings: { safety } });
+    const table = await openWorld({ gameSettings });
     table.addHero({ name: "Host" });
     const player = table.addUser("p");
     const hero = table.addHero({ user: player, name: "Rook", gender: "Male", abilities: { cha: 20 } });
@@ -336,7 +338,7 @@ await test("a family table, or a line naming romance, never opens a window", asy
     table.dice(1);
     tickAdvances(table.campaign(), 8, "Vela smiles.");
     table.clearDice();
-    assert.equal(relationships.getRelationshipById(row.id).advanceReadyUntil, 0, JSON.stringify(safety));
+    assert.equal(relationships.getRelationshipById(row.id).advanceReadyUntil, 0, JSON.stringify(gameSettings));
     const made = await table.invoke("romance_advance", { characterId: hero.id, subject: "Vela", to: "courting", initiator: "npc" });
     assert.equal(made.ok, false);
   }

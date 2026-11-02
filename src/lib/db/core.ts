@@ -18,6 +18,7 @@ import { registerTableHazardReader } from "@/lib/srd/table-hazards";
 import { tableHazardsFrom } from "@/lib/db/table-hazards";
 import { ROW_TEXT, settleLoreTexts } from "@/lib/worldforge/account";
 import { backfillLegacyItemRows } from "@/lib/db/item-row-backfill";
+import { backfillNarratorVoices } from "@/lib/db/narrator-voice-backfill";
 
 const dbPath =
   process.env.SQLITE_DB_PATH || path.join(/*turbopackIgnore: true*/ process.cwd(), "data", "local-roleplay.sqlite");
@@ -2462,6 +2463,20 @@ function ensureSchema(db: SqliteDatabase) {
     db.prepare(
       `INSERT INTO app_settings (key, value_json, updated_at) VALUES (?, ?, ?)`,
     ).run("sheet_portrait_backfill_done", "true", new Date().toISOString());
+  }
+
+  // Tables in a language Kokoro speaks that still have the English narrator
+  // every campaign once started on move to their own language's narrator
+  // (src/lib/db/narrator-voice-backfill.ts). One-time, so a table that picks
+  // the English voice again keeps it.
+  const narratorMarker = db.prepare(`SELECT key FROM app_settings WHERE key = 'narrator_language_backfill_done'`).get();
+  if (!narratorMarker) {
+    backfillNarratorVoices(db);
+    db.prepare(`INSERT INTO app_settings (key, value_json, updated_at) VALUES (?, ?, ?)`).run(
+      "narrator_language_backfill_done",
+      "true",
+      new Date().toISOString(),
+    );
   }
 
   // Workshops imported from a bundle before 0.24.9 were written with the

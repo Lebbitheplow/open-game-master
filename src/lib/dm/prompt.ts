@@ -1595,12 +1595,12 @@ export const requestPlayerInputTool = {
 // Location tools: the DM keeps a structured record of where the party is
 // and how areas connect, feeding GAME STATE and the map renderer.
 
-// A place's kind from a fixed list, so its sound, battle map and picture
-// never depend on reading its name in some language.
+// A place's kind from a fixed list, so its sound, battle map, picture and
+// light never depend on reading its name in some language.
 const sceneProperty = {
   type: "string",
   enum: sceneIds(),
-  description: "What kind of place this is, for its sound, battle map and picture. Set it when the party arrives somewhere new.",
+  description: "What kind of place this is, for its sound, battle map, picture and light. Set it when the party arrives somewhere new.",
 } as const;
 
 // What both location tools write about a place, worded once.
