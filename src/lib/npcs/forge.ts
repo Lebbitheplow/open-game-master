@@ -407,10 +407,12 @@ export function normalizeNpcDraft(input: unknown): DraftOutcome {
     relations = removeRelation(relations, name);
   }
 
-  // A grade with nothing said about how is refused: the line is the bond's
-  // reason on every hero's Bonds tab. A person hostile to the party is
-  // nobody's friend from the start, so a tie goes with that attitude.
-  if (knownBeforeMissingHow(raw.knownBefore)) {
+  // A person hostile to the party is nobody's friend from the start, so a
+  // tie goes with that attitude, an unfinished one included: the editor
+  // hides the section for them, and refusing the save would ask for a line
+  // nobody can see. Otherwise a grade with nothing said about how is
+  // refused: the line is the bond's reason on every hero's Bonds tab.
+  if (attitude !== "hostile" && knownBeforeMissingHow(raw.knownBefore)) {
     return { error: `Say how the party knows ${name}: that line opens every hero's bond with them.` };
   }
   const knownBefore =

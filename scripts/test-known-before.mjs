@@ -46,6 +46,12 @@ await test("the form refuses a grade with no reason, drops a tie for a hostile p
   const draft = (extra) => normalizeNpcDraft({ ...blankDraft(), name: "Maren Dusk", attitude: "friendly", ...extra });
   assert.match(draft({ knownBefore: { grade: "friend", how: "" } }).error, /how the party knows Maren Dusk/);
   assert.equal(draft({ attitude: "hostile", knownBefore: { grade: "friend", how: "Hired you once" } }).draft.knownBefore, null);
+  // A grade picked, then the person made hostile before the line was
+  // written: the editor hides the section for them, so the save goes
+  // through with the tie dropped rather than asking for a field nobody sees.
+  const turned = draft({ attitude: "hostile", knownBefore: { grade: "friend", how: "" } });
+  assert.ok(!("error" in turned), turned.error);
+  assert.equal(turned.draft.knownBefore, null);
   const sent = { ...blankDraft(), name: "Maren Dusk" };
   delete sent.knownBefore;
   assert.ok(!("knownBefore" in normalizeNpcDraft(sent).draft), "an app built before the field keeps what the record has");
