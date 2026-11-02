@@ -194,6 +194,9 @@ await test("a module carries the mark: imported in the issue's words, copied to 
       { name: "Hidden Boss", attitude: "hostile", gender: "Male", knownAtStart: { grade: "acquainted", source: "export error" } },
       { name: "No Reason", attitude: "friendly", knownAtStart: { grade: "close" } },
       { name: "Newer Grade", attitude: "friendly", knownAtStart: { grade: "rival", source: "a grade from a later version" } },
+      // A long quote from the adventure's opening is clipped as the form
+      // clips it, not dropped with the whole tie.
+      { name: "Long Quote", attitude: "friendly", knownAtStart: { grade: "friend", source: `intro: ${"their old friend and patron, ".repeat(20)}` } },
     ],
   });
   const landed = importWorkshopBundle(world.owner.id, bundle);
@@ -203,6 +206,8 @@ await test("a module carries the mark: imported in the issue's words, copied to 
   assert.equal(shelf("Hidden Boss"), null);
   assert.equal(shelf("No Reason"), null);
   assert.equal(shelf("Newer Grade"), null, "an unreadable tie is left out, the module still lands");
+  assert.equal(shelf("Long Quote")?.grade, "friend", "a long reason keeps its tie");
+  assert.equal(shelf("Long Quote").how.length, 160);
   const copied = runContentImport({ sourceId: landed.workshopId, campaignId: world.campaignId, selection: ["npcs"], houseRulesMode: "replace" });
   assert.ok(!("error" in copied), copied.error);
   await begin();

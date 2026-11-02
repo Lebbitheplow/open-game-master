@@ -152,9 +152,11 @@ const npcSchema = z.object({
   // and `source`, how the party knows them, which every hero's bond opens
   // with as its first memory. A tie with no source is dropped on import (no
   // reason, no tie), and one this version cannot read is left out rather
-  // than refusing the whole module.
+  // than refusing the whole module. A long source is clipped on import as
+  // the form clips it (KNOWN_BEFORE_HOW_CHARS), so the bound here is the
+  // other text fields' and a long quote from an opening keeps its tie.
   knownAtStart: z
-    .object({ grade: z.enum(["acquainted", "friend", "close"]), source: z.string().trim().max(400).default("") })
+    .object({ grade: z.enum(["acquainted", "friend", "close"]), source: z.string().trim().max(4_000).default("") })
     .optional()
     .catch(undefined),
   ref: refSchema,
