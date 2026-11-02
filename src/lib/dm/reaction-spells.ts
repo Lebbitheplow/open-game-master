@@ -21,13 +21,13 @@ import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { addSheetCondition } from "@/lib/dm/action-common";
 import { acWithEffects } from "@/lib/dm/ac-effects";
 import { handleCastAtEnemy } from "@/lib/dm/cast-tools";
-import { pcResistances, removeConditions } from "@/lib/dm/condition-logic";
-import { attackerFoeId, freshLastHit, hitIdOf, openHits, type LastHit } from "@/lib/dm/last-hit";
+import { removeConditions } from "@/lib/dm/condition-logic";
+import { attackerFoeId, freshLastHit, hitIdOf, openHits, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 // For the reaction spells' slot spend; mutations never imports back.
 import { applyDmMutation } from "@/lib/dm/mutations";
 import { READIED } from "@/lib/dm/object-actions";
 import { handlePcAttack } from "@/lib/dm/pc-attack";
-import { allyOf, noFall, settle, softenFall, spendReaction, type Ctx } from "@/lib/dm/reaction-tools";
+import { allyOf, noFall, softenFall, spendReaction, type Ctx } from "@/lib/dm/reaction-tools";
 import { settleHits } from "@/lib/dm/reaction-refund";
 import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
 import { swallowCoverError } from "@/lib/dm/swallow";
@@ -234,20 +234,28 @@ export function reactionSpell(ctx: Ctx, spellName: string): ToolResult {
   // Absorb Elements: resistance to the triggering type until the start of
   // their next turn (the triggering damage too), and the first melee hit on
   // their next turn deals 1d6 of it per slot level (condition-effects.ts
-  // absorbed strike).
+  // absorbed strike). The resistance meets every open hit of that type from
+  // the trigger on, as Shield's +5 does (those blows landed after it in the
+  // fight), and only that type's part of a blow of several (a bite's fire,
+  // not its teeth): it once halved the trigger alone, and the whole of a
+  // mixed blow or none of it. A character who resists the type already gains
+  // nothing more, which the replay reads off their defenses.
   if (name === "absorb elements") {
-    const record = freshLastHit(campaign.id, sheet.id, absorbable)!;
-    const type = absorbedType(record)!;
+    const trigger = freshLastHit(campaign.id, sheet.id, absorbable, "earliest")!;
+    const type = absorbedType(trigger)!;
     const slot = typeof cast.slotLevel === "number" ? cast.slotLevel : 1;
-    const resisted = pcResistances(sheet).toLowerCase().includes(type);
     let applied = `Absorb Elements: resistance to ${type} until the start of ${sheet.name}'s next turn, and the first melee hit on their next turn deals ${slot}d6 ${type} more.`;
-    if (!resisted) {
-      const settled = settle(
-        ctx,
+    const open = openHits(campaign.id, sheet.id);
+    const from = open.findIndex((hit) => hitIdOf(hit) === hitIdOf(trigger));
+    const answers = open
+      .slice(Math.max(0, from))
+      .filter((hit) => !hit.answered.includes("absorb elements") && hit.swings.some((swing) => dealsType(hit, swing, type)))
+      .map((record) => ({
         record,
-        record.swings.map((swing) => ((swing.type ?? record.type).toLowerCase() === type ? { ...swing, raw: Math.floor(swing.raw / 2) } : swing)),
-        "absorb elements",
-      );
+        corrected: record.swings.map((swing) => (dealsType(record, swing, type) ? { ...swing, resists: [...(swing.resists ?? []), type] } : swing)),
+      }));
+    if (answers.length) {
+      const settled = settleHits(campaign, ctx.turn.id, answers, "absorb elements", ctx.sheets, ctx.sheetsById);
       applied += ` ${settled.given} hit points come back. HP ${settled.hp}.`;
     }
     const now = getSheetById(sheet.id) ?? sheet;
@@ -286,15 +294,26 @@ function absorbable(record: LastHit): boolean {
   return Boolean(absorbedType(record)) && !record.answered.includes("absorb elements");
 }
 
-// The elemental type a recorded hit dealt, for Absorb Elements: the hit's
-// own, or the first swing of an elemental type that landed.
+// The damage types a swing dealt: each part of a blow of several, else its
+// own type (the record's when it names none).
+function typesOf(record: LastHit, swing: SwingRecord): string[] {
+  return swing.parts?.length ? swing.parts.map((part) => part.type.toLowerCase()) : (swing.type || record.type).toLowerCase().split("/");
+}
+
+// Whether a swing that landed dealt damage of this type.
+function dealsType(record: LastHit, swing: SwingRecord, type: string): boolean {
+  return swing.hit && swing.raw > 0 && typesOf(record, swing).includes(type);
+}
+
+// The elemental type a recorded hit dealt, for Absorb Elements: the first of
+// acid, cold, fire, lightning or thunder among the swings that landed, a
+// blow of several types part by part.
 function absorbedType(record: LastHit | null): string | null {
   if (!record) {
     return null;
   }
-  const types = [record.type, ...record.swings.filter((swing) => swing.hit && swing.raw > 0).map((swing) => swing.type ?? "")];
-  const found = types.map((entry) => (entry ?? "").toLowerCase()).find((entry) => /^(acid|cold|fire|lightning|thunder)$/.test(entry));
-  return found ?? null;
+  const types = record.swings.filter((swing) => swing.hit && swing.raw > 0).flatMap((swing) => typesOf(record, swing));
+  return types.find((entry) => /^(acid|cold|fire|lightning|thunder)$/.test(entry)) ?? null;
 }
 
 // ---- Counterspell ----

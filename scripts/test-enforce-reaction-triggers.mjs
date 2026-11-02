@@ -85,6 +85,31 @@ if (world.hasPack) {
     assert.ok(held.includes("absorbed strike (2d6 fire)"), held.join(", "));
     assert.equal(world.sheet(wizard.id).currentHp, 35, "half of the 10 came back");
   });
+
+  await test("Absorb Elements resists only the fire of a mixed blow, and every later open hit of that type too", async () => {
+    const enemy = await stage();
+    const { freshLastHit, writeLastHit } = await import("../src/lib/dm/last-hit.ts");
+    // A bite of 6 piercing and 4 fire takes the wizard from 40 to 30, then a
+    // fire bolt of 8 to 22, in one GM turn: both are open when Absorb
+    // Elements is cast.
+    await world.hitBy(wizard.id, { enemyId: enemy.id, raw: 10, type: "piercing", attack: "Bite" });
+    const bite = freshLastHit(world.campaignId, wizard.id);
+    writeLastHit(world.campaignId, {
+      ...bite,
+      dmTurn: "one-pass",
+      swings: [{ ...bite.swings[0], type: "", parts: [{ amount: 6, type: "piercing" }, { amount: 4, type: "fire" }] }],
+      after: { currentHp: 30, tempHp: 0, beastHp: null },
+    });
+    world.patch(wizard.id, { currentHp: 30 });
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await world.hitBy(wizard.id, { enemyId: enemy.id, raw: 8, type: "fire", attack: "Fire Bolt" });
+    writeLastHit(world.campaignId, { ...freshLastHit(world.campaignId, wizard.id), dmTurn: "one-pass", after: { currentHp: 22, tempHp: 0, beastHp: null } });
+    world.patch(wizard.id, { currentHp: 22 });
+    const out = await world.invoke("use_reaction", { characterId: wizard.id, feature: "Absorb Elements" });
+    assert.equal(out.ok, true, out.error);
+    // The bite's 4 fire halves to 2 and its teeth stand; the bolt's 8 halves to 4.
+    assert.equal(world.sheet(wizard.id).currentHp, 28, JSON.stringify(out));
+  });
 }
 
 // ---- the monsters' reaction spells ----
