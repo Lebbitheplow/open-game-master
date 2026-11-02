@@ -31,7 +31,9 @@ export const READING_KINDS = ["spell", "monster", "feat", "race", "class", "back
 //   2: an SRD entry reads as checked (the SRD 5.1 text audit).
 //   3: the SRD 5.1 text audit's fixes changed spell and monster readings
 //      (spells read as hand-written rows, corrected monster blocks).
-export const READER_REVISION = 3;
+//   4: issue 685's monster reader keeps each legendary option's whole line
+//      (fullLegendary) and reads a Swallow as the attack it is.
+export const READER_REVISION = 4;
 export type ReadingKind = (typeof READING_KINDS)[number];
 export type ReadingSource = "hand-written" | "parsed" | "missing";
 
