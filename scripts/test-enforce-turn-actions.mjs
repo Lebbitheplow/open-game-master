@@ -348,7 +348,7 @@ await test("An improvised action is never a bonus action.", async () => {
 const { createDmTurn } = await import("../src/lib/db/dm-turns.ts");
 const { invokeEngine } = await import("../src/lib/dm/invoke.ts");
 const { unshownWords } = await import("../src/lib/dm/improvise-logic.ts");
-const { latestSeq } = await import("../src/lib/db/campaigns.ts");
+const { allocateSeq, latestSeq } = await import("../src/lib/db/campaigns.ts");
 const { insertCampaignMessage } = await import("../src/lib/db/messages.ts");
 const { claimNarrationSeq, narrationShown, takeNarrationSlot } = await import("../src/lib/dm/narration-slot.ts");
 const { handleLocationCall } = await import("../src/lib/dm/turn.ts");
@@ -534,6 +534,33 @@ await test("Every table compares the scene's words by its own stems: corda finds
   assert.deepEqual(unshownWords("la corda della tenda", riva, "italian"), []);
   assert.deepEqual(unshownWords("la tenda", ["Il goblin è sulla riva spoglia: solo fango e canne."], "italian"), ["tenda"]);
   assert.deepEqual(unshownWords("the", riva, "english"), ["the"], "stop words alone name nothing");
+});
+
+await test("The scene is the GM's own lines however many table notes a long fight posts between them: the place's first description still counts.", async () => {
+  const enemy = await stage(fighter);
+  world.say("dm", "A rack of spears leans against the wall beside you; the goblin snarls right in front of you.");
+  // Rounds of a long fight: whose turn it is, a hit, a fall, each a note.
+  for (let round = 0; round < 120; round += 1) {
+    insertCampaignMessage({ campaignId: world.campaignId, seq: allocateSeq(world.campaignId), authorType: "system", glyph: "cue-battle", content: `Round ${round}: the goblin's turn.` });
+  }
+  world.say("player", "I topple the spear rack onto the goblin.", fighter);
+  world.dice(2, 15);
+  const out = await aiAct(fighter, { reason: "topples the spear rack onto the goblin", skill: "athletics", condition: "prone", scene: "the rack of spears", targetEnemyId: enemy.id, distanceFt: 5 });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+});
+
+await test("The layout move_party gave the place is part of the scene: GAME STATE shows it to the model and the battle map is drawn from it.", async () => {
+  const enemy = await stage(fighter);
+  assert.equal(handleLocationCall(world.campaign(), "move_party", JSON.stringify({ name: "The Smithy", layoutDescription: "A forge glows at the back; a water trough stands by the door." }), false).ok, true);
+  world.say("dm", "The goblin bursts in after you, blade raised.");
+  world.say("player", "I tip the trough onto the goblin.", fighter);
+  const never = await aiAct(fighter, { reason: "drops the chandelier on the goblin", skill: "athletics", condition: "prone", scene: "the chandelier", targetEnemyId: enemy.id, distanceFt: 5 });
+  assert.match(never.error ?? "", /never shows "chandelier"/, "a thing neither the layout nor the narration names is still refused");
+  world.dice(2, 15);
+  const out = await aiAct(fighter, { reason: "tips the water trough onto the goblin", skill: "athletics", condition: "prone", scene: "the water trough", targetEnemyId: enemy.id, distanceFt: 5 });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
 });
 
 // ---- Search ----

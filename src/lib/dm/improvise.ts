@@ -26,7 +26,8 @@ import type { DmTurn } from "@/lib/db/dm-turns";
 import type { Encounter } from "@/lib/db/encounters";
 import { getBattleMapForEncounter, getTokenByRef, moveToken } from "@/lib/db/battle-maps";
 import { sceneSinceSeq } from "@/lib/db/campaigns";
-import { listRecentMessages } from "@/lib/db/messages";
+import { getCurrentLocation } from "@/lib/db/locations";
+import { listDmMessagesSince } from "@/lib/db/messages";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import type { SaveAbility } from "@/lib/bestiary/statblock";
 import { proneCharge } from "@/lib/battlemap/board-move";
@@ -62,17 +63,21 @@ import { dcForDifficulty, type DifficultyTier } from "@/lib/srd/dc";
 import { findSkill } from "@/lib/srd";
 import { ABILITY_NAMES } from "@/lib/srd/legality/types";
 
-// The scene as the story told it: the GM's recent narration since the party
-// came to the place it is in, and the fight's opening line; never a
-// player's words, which may name what is not there.
+// The scene as the story told it: the place as move_party laid it out, the
+// GM's recent narration since the party came to it, and the fight's opening
+// line; never a player's words, which may name what is not there.
 const SCENE_MESSAGES = 100;
 
 export function sceneNarration(campaignId: string, encounterSummary: string | null): string[] {
-  const since = sceneSinceSeq(campaignId);
-  const told = listRecentMessages(campaignId, SCENE_MESSAGES)
-    .filter((message) => message.authorType === "dm" && message.seq >= since)
-    .map((message) => message.content);
-  return encounterSummary ? [...told, encounterSummary] : told;
+  // The GM's own lines, counted alone: a window over every message lost the
+  // place's first description in a long fight, whose turn and roll notes
+  // outnumber the narration.
+  const told = listDmMessagesSince(campaignId, sceneSinceSeq(campaignId), SCENE_MESSAGES).map((message) => message.content);
+  // The layout GAME STATE shows the model for this place, which the battle
+  // map is drawn from: a thing it names is there even before a line of
+  // narration repeats it.
+  const place = getCurrentLocation(campaignId);
+  return [...(place ? [place.name, place.layoutDescription] : []), ...told, ...(encounterSummary ? [encounterSummary] : [])];
 }
 
 // What the model must show of the scene; null at the console, whose DM keeps
