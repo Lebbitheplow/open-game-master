@@ -28,6 +28,8 @@ import { findBeastForm } from "@/lib/srd/beast-forms";
 import { formSees } from "@/lib/srd/form-sees";
 import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
 import { beginHeldTurnOf } from "@/lib/dm/held-turn";
+import { releasesReadiedOffTurn } from "@/lib/dm/can-act";
+import { getSheetById } from "@/lib/db/sheets";
 
 // The combatant the initiative pointer is currently on, or null out of
 // combat and while initiative is still being rolled.
@@ -55,6 +57,12 @@ export function budgetFor(
   shape: number | TurnShape = 0,
 ): TurnBudget | null {
   if (!encounter || currentCombatantId(encounter) !== ownerId) {
+    return null;
+  }
+  // What they readied, released as those enemies act: off their turn, with
+  // their reaction, and their turn has not begun (can-act.ts).
+  const owner = getSheetById(ownerId);
+  if (owner && releasesReadiedOffTurn(encounter, owner)) {
     return null;
   }
   // A character acting on a turn held for the enemies before it: their turn

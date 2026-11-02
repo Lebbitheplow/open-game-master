@@ -11,7 +11,7 @@ import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 
 import type { Campaign } from "@/lib/db/campaigns";
 import type { Encounter, EncounterEnemy } from "@/lib/db/encounters";
-import { actingCombatantId, canAct } from "@/lib/dm/can-act";
+import { actingCombatantId, canAct, releasesReadiedOffTurn } from "@/lib/dm/can-act";
 import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { READIED_WORDS, RELEASE_TOOLS, readiedHeld } from "@/lib/dm/readied-kinds";
 import type { PcAttackArgs } from "@/lib/dm/pc-attack";
@@ -37,7 +37,9 @@ export function gatePcAttack(input: {
   // On their own turn a character attacks with their action. Off it they
   // have one reaction, and an attack made then is that reaction (an
   // opportunity attack, a readied strike): one, until their turn comes round.
-  const onTurn = actingCombatantId(encounter) === sheet.id;
+  // A turn held for the enemies before it has not begun: what they readied
+  // is released then as off it (can-act.ts releasesReadiedOffTurn).
+  const onTurn = actingCombatantId(encounter) === sheet.id && !releasesReadiedOffTurn(encounter, sheet);
   let giantKiller = false;
   const allowed = canAct({ sheet, encounter, kind: onTurn ? "attack" : "reaction" });
   if (!allowed.ok) {

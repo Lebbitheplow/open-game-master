@@ -21,7 +21,7 @@ import type { DmTurn } from "@/lib/db/dm-turns";
 import { getSheetById } from "@/lib/db/sheets";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
 import { spellFactsFor } from "@/lib/content";
-import { actingCombatantId, canAct } from "@/lib/dm/can-act";
+import { actingCombatantId, canAct, releasesReadiedOffTurn } from "@/lib/dm/can-act";
 import { breakConcentration, setConcentration } from "@/lib/dm/concentration";
 import { removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -101,7 +101,7 @@ export function readySpell(
 // and it is not their turn.
 export function readiedRelease(sheet: CharacterSheet, encounter: Encounter | null, spell: string): Held | null {
   const held = readiedSpellOf(sheet);
-  if (!held || !encounter || actingCombatantId(encounter) === sheet.id) {
+  if (!held || !encounter || (actingCombatantId(encounter) === sheet.id && !releasesReadiedOffTurn(encounter, sheet))) {
     return null;
   }
   return textKey(held.spell) === textKey(spell) ? held : null;

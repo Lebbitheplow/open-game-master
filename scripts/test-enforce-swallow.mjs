@@ -366,6 +366,104 @@ await test("A ring that deals 30 or more from inside on the worm's own turn make
   assert.ok(!holds(orin.id, "swallowed") && holds(orin.id, "prone"), "40 on its own turn: it saved, failed, and regurgitated her");
 });
 
+// A blow from inside lands on the turn it is dealt in. Kara's End Turn walks
+// past the worm and rests on Vex, whose turn waits while the worm takes its
+// own (held-turn.ts). Orin's ring burns it as its turn starts, and the attack
+// she readied answers as it acts: both on the worm's turn. They used to be
+// counted apart, the swing on Vex's turn.
+await test("Orin's ring as the worm's turn starts and her readied attack as it acts are one turn: 24 and 8 make it save, and it regurgitates her", async () => {
+  const foe = await guardiansInside(3);
+  kit.freshRound();
+  kit.giveTurn(orin.id);
+  const ready = await world.invoke("take_action", { characterId: orin.id, action: "ready", trigger: "when the worm acts" });
+  assert.equal(ready.ok, true, JSON.stringify(ready));
+  kit.giveTurn(kara.id);
+  // Its WIS save a 2, the ring's 3d8 all 8s, then its acid on Orin.
+  const before = kit.enemy(foe.id).currentHp;
+  world.dice(2, 8, 8, 8, 1, 1, 1, 1, 1, 1);
+  await world.invoke("end_turn", { characterId: kara.id });
+  world.clearDice();
+  assert.equal(before - kit.enemy(foe.id).currentHp, 24, "the ring burned it");
+  const encounter = world.encounter();
+  assert.equal(encounter.order[encounter.turnIndex].characterId, vex.id, "the pointer rests on Vex");
+  assert.equal(encounter.legendary.turnStart, vex.id, "Vex's turn waits for the worm's");
+  // The worm acts: its stinger at Kara misses on a 1, and Orin's readied
+  // mace answers from inside: 6 + 2.
+  world.dice(1);
+  const sting = await bite(foe, kara, "Tail Stinger");
+  world.clearDice();
+  assert.equal(sting.ok, true, JSON.stringify(sting));
+  const readied = await kit.swing(orin.id, foe.id, [19, 19, 6]);
+  assert.equal(readied.error, undefined, JSON.stringify(readied.out));
+  assert.equal(before - kit.enemy(foe.id).currentHp, 32, "24 and 8, on the worm's turn");
+  // The turn is handed on; Vex ends hers, and with it the worm's turn ends:
+  // its save a 2.
+  kit.handOnEnemies();
+  world.dice(2);
+  await world.invoke("end_turn", { characterId: vex.id });
+  world.clearDice();
+  assert.ok(!holds(orin.id, "swallowed") && holds(orin.id, "prone"), "32 on its own turn: it saved, failed, and regurgitated her");
+});
+
+// Vex, the one the pointer rests on, readied an attack on her turn before.
+// Released as the worm acts, it is her reaction, not her turn's Attack
+// action, and her turn has not begun; her swing once it has is her own
+// turn's. 16 on the worm's turn and 16 on hers are two turns, where both used
+// to be counted on hers as 32.
+await test("Vex's readied attack released from inside as the worm acts is her reaction on the worm's turn, and her swing on her own turn is hers: 16 and 16, and no save", async () => {
+  const { foe } = await facing("Purple Worm");
+  const was = world.sheet(vex.id);
+  world.patch(vex.id, { abilities: { ...was.abilities, str: 18 }, equipment: [{ name: "Greatsword", qty: 1, equipped: true }] });
+  try {
+    kit.place(vex.id, 5, 6);
+    world.dice(19, 1, 1, 1, 1);
+    await bite(foe, vex);
+    world.clearDice();
+    assert.ok(holds(vex.id, "swallowed"));
+    kit.freshRound();
+    // On her turn before, Vex readies an attack for when the worm acts.
+    kit.giveTurn(vex.id);
+    const ready = await world.invoke("take_action", { characterId: vex.id, action: "ready", trigger: "when the worm acts" });
+    assert.equal(ready.ok, true, JSON.stringify(ready));
+    // Kara's End Turn walks past the worm (its acid on Vex, all 1s) and
+    // rests on Vex, whose turn waits for the worm's.
+    kit.giveTurn(kara.id);
+    world.dice(1, 1, 1, 1, 1, 1);
+    await world.invoke("end_turn", { characterId: kara.id });
+    world.clearDice();
+    const encounter = world.encounter();
+    assert.equal(encounter.order[encounter.turnIndex].characterId, vex.id, "the pointer rests on Vex");
+    assert.equal(encounter.legendary.turnStart, vex.id, "Vex's turn is held for the worm's");
+    // The worm acts: its stinger at Kara misses on a 1. Vex's readied
+    // greatsword answers from inside: 16.
+    world.dice(1);
+    const sting = await bite(foe, kara, "Tail Stinger");
+    world.clearDice();
+    assert.equal(sting.ok, true, JSON.stringify(sting));
+    const before = kit.enemy(foe.id).currentHp;
+    const readied = await kit.swing(vex.id, foe.id, [19, 19, 6, 6]);
+    assert.equal(readied.error, undefined, JSON.stringify(readied.out));
+    assert.equal(before - kit.enemy(foe.id).currentHp, 16, "the readied swing on the worm's turn");
+    assert.ok(world.encounter().reactionsUsed.includes(vex.id), "the release took her reaction");
+    assert.ok(!holds(vex.id, "readied"), "and what she readied");
+    assert.equal(world.encounter().legendary.turnStart, vex.id, "her turn has not begun");
+    // The turn is handed on, and Vex's begins: her swing from inside, 16.
+    kit.handOnEnemies();
+    assert.equal(world.encounter().legendary.turnStart, undefined, "Vex's turn has begun");
+    const own = await kit.swing(vex.id, foe.id, [19, 19, 6, 6]);
+    assert.equal(own.error, undefined, JSON.stringify(own.out));
+    assert.equal(before - kit.enemy(foe.id).currentHp, 32);
+    // A save would take this 2; none is owed.
+    world.dice(2);
+    await world.invoke("end_turn", { characterId: vex.id });
+    const unused = world.clearDice();
+    assert.ok(holds(vex.id, "swallowed") && !holds(vex.id, "prone"), "16 on the worm's turn and 16 on hers are two turns, and neither is 30");
+    assert.equal(unused, 1, "no Constitution save was rolled");
+  } finally {
+    world.patch(vex.id, { abilities: was.abilities, equipment: was.equipment });
+  }
+});
+
 await test("The fight's last foe dies with Kara inside: the fight ends with her out of the corpse and prone, and the next fight reaches her and she it", async () => {
   const { foe } = await facing("Purple Worm");
   world.dice(19, 1, 1, 1, 1);

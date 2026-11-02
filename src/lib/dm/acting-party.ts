@@ -28,6 +28,27 @@ export function currentActor(): ActingParty | null {
   return acting;
 }
 
+// Whose turn the engine is working through when the fight's own state does
+// not say it: a creature's turn ends as the pointer moves on past the
+// character after it (turn-end.ts), so the mark that burns as its turn ends
+// (Acid Arrow) is dealt on that creature's turn, not on the character's the
+// pointer leaves (src/lib/dm/swallow.ts counts damage from inside so).
+let turnOf: string | null = null;
+
+export function withTurnOf<T>(id: string, run: () => T): T {
+  const before = turnOf;
+  turnOf = id;
+  try {
+    return run();
+  } finally {
+    turnOf = before;
+  }
+}
+
+export function turnInHand(): string | null {
+  return turnOf;
+}
+
 // The field naming who acts, by tool: a character's own calls, and the
 // creature's.
 const SHEET_FIELDS: Record<string, string> = {

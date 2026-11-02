@@ -90,9 +90,11 @@ export type ConditionMeta = {
   // attack (src/lib/dm/confusion.ts).
   lashOut?: { target: string; round: number };
   // Swallowed whole (src/lib/dm/swallow.ts): the damage dealt the swallower
-  // from inside this turn, and on the swallower's own turn, which runs beside
-  // the turn the pointer rests on; and the feet of movement out of its corpse.
-  swallow?: { hurt?: number; hurtOnItsTurn?: number; escapeFeet?: number };
+  // from inside, by the creature whose turn it landed in (the swallower's
+  // own, the character's the pointer rests on, another creature's), each
+  // read at its turn's end for a regurgitation; and the feet of movement out
+  // of its corpse.
+  swallow?: { turns?: Record<string, number>; escapeFeet?: number };
   // Further sources of the same condition. SRD 5.1: the effects of the same
   // spell (or the same condition) don't combine, but each keeps its own
   // source and lifetime, so ending one leaves the others holding. Each entry

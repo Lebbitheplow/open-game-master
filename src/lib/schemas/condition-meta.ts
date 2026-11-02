@@ -81,13 +81,12 @@ const conditionInstanceSchema = z.object({
     // melee attack (src/lib/dm/confusion.ts).
     lashOut: z.object({ target: z.string().trim().min(1).max(80), round: z.number().int().min(0) }).optional(),
     // Swallowed whole (src/lib/dm/swallow.ts): the damage the creature dealt
-    // its swallower this turn, and on the swallower's own turn, each read at
+    // its swallower, by the creature whose turn it landed in, each read at
     // its turn's end for a regurgitation, and once the swallower dies the
     // feet of movement out of its corpse.
     swallow: z
       .object({
-        hurt: z.number().int().min(0).max(100_000).optional(),
-        hurtOnItsTurn: z.number().int().min(0).max(100_000).optional(),
+        turns: z.record(z.string().trim().min(1).max(80), z.number().int().min(0).max(100_000)).optional(),
         escapeFeet: z.number().int().min(0).max(120).optional(),
       })
       .optional(),
