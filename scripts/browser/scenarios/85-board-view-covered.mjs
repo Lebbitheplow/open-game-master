@@ -139,7 +139,12 @@ export default {
       for (let step = 1; step <= 30; step += 1) parent.postMessage({ odm: 1, type: "anchors", tokens: { [tokenId]: [0.25 + step / 60, 0.5, 0.6] } }, "*");
     }, mine));
     await eventually(async () => (await ring.getAttribute("style"))?.includes("left: 75%"), { label: "the ring at the newest of thirty reports" });
-    check(burst.busy - burst.idle <= 1, `thirty reports sent at once are one render (${burst.busy} commits, ${burst.idle} idle)`);
+    // One render a frame, never one a report: thirty reports read alone
+    // would be about thirty commits. A loaded runner can hand the thirty
+    // messages over across one frame's edge, which is two frames' renders
+    // and still right (it failed so 1 run in 318 with every PR of
+    // 2026-11-01 merged, and passed alone).
+    check(burst.busy - burst.idle <= 2, `thirty reports sent at once render once a frame, not once a report (${burst.busy} commits, ${burst.idle} idle)`);
     // The same report again moves nothing, so nothing renders.
     const still = await commitsWhile(page, () => view.evaluate((tokenId) => parent.postMessage({ odm: 1, type: "anchors", tokens: { [tokenId]: [0.75, 0.5, 0.6] } }, "*"), mine));
     check(still.busy <= still.idle, `an anchor that did not move re-renders nothing (${still.busy} commits, ${still.idle} idle)`);
