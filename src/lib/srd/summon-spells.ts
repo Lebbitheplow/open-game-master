@@ -233,9 +233,20 @@ function callable(spell: SummonSpell, slotLevel: number): string {
   return formList(summonFormsOf(spell.types ?? [], ceiling ?? Infinity));
 }
 
+// The numbers a casting offers, in words: "1, 2, 4 or 8", "1 to 10".
+function countWords(counts: readonly number[]): string {
+  if (counts.length >= 4 && counts.every((count, index) => count === index + 1)) {
+    return `1 to ${counts.length}`;
+  }
+  return counts.length > 1 ? `${counts.slice(0, -1).join(", ")} or ${counts.at(-1)}` : String(counts[0] ?? 1);
+}
+
 // What one casting of `spell` from `slotLevel` makes of the form the caller
-// names, or the rule it breaks. `wanted` caps the count below the most the
-// slot allows.
+// names, or the rule it breaks. `wanted` is one of the numbers the spell
+// offers for that creature from that slot (summonCounts); without it the
+// casting brings the most. A number it does not offer is refused with the
+// ones it does: three wolves from a 3rd level Conjure Animals were three,
+// where the spell prints one, two, four or eight.
 export function summonPlan(
   spell: SummonSpell,
   slotLevel: number,
@@ -271,8 +282,14 @@ export function summonPlan(
   if (row && !(row[form.name] > 0)) {
     return { error: `${spell.name} from a level ${slotLevel} slot makes ${Object.entries(row).map(([name, count]) => `${count} ${name.toLowerCase()}s`).join(" or ")}; not a ${form.name}. Nothing was spent.`, retry: true };
   }
-  const most = summonCounts(spell, slotLevel, form).at(-1) ?? 1;
-  const count = wanted && wanted > 0 ? Math.min(wanted, most) : most;
+  const counts = summonCounts(spell, slotLevel, form);
+  if (wanted && wanted > 0 && counts.length && !counts.includes(wanted)) {
+    return {
+      error: `${spell.name} from a level ${slotLevel} slot brings ${countWords(counts)} of that creature (${form.name}), not ${wanted}. Ask the player which, unless they named one. Nothing was spent.`,
+      retry: true,
+    };
+  }
+  const count = wanted && wanted > 0 ? wanted : (counts.at(-1) ?? 1);
   return { form, count: Math.max(1, count), spell };
 }
 

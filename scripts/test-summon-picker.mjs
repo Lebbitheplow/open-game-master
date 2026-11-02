@@ -52,6 +52,17 @@ await test("The numbers a creature may come in are the options the spell prints,
   assert.deepEqual(summonCounts(summonSpellFor("Conjure Elemental"), 5, { name: "Fire Elemental", type: "elemental", cr: 5 }), [1]);
 });
 
+await test("A number the spell does not offer is refused with the ones it does, never brought as asked nor cut to the most", () => {
+  const three = summonPlan(conjure, 3, "Wolf", 3);
+  assert.equal(three.retry, true, JSON.stringify(three));
+  assert.match(three.error ?? "", /Conjure Animals from a level 3 slot brings 1, 2, 4 or 8 of that creature \(Wolf\), not 3\. .*Nothing was spent/);
+  assert.match(summonPlan(conjure, 5, "Wolf", 7).error ?? "", /brings 2, 4, 8 or 16 of that creature \(Wolf\), not 7/);
+  assert.match(summonPlan(conjure, 3, "Brown Bear", 8).error ?? "", /brings 1 or 2 of that creature \(Brown Bear\), not 8/);
+  assert.match(summonPlan(insects, 4, "Giant Centipede", 12).error ?? "", /brings 1 to 10 of that creature \(Giant Centipede\), not 12/);
+  assert.equal(summonPlan(conjure, 3, "Wolf", 4).count, 4, "an option the spell prints");
+  assert.equal(summonPlan(insects, 4, "Giant Centipede", 7).count, 7, "up to ten");
+});
+
 await test("Every creature the catalogue offers, at every slot it offers it, is one summonPlan casts, and as many as the catalogue's most", () => {
   for (const spell of SUMMON_SPELLS) {
     const catalogue = summonCatalogue(spell);
@@ -220,16 +231,30 @@ await test("A player's summon card with its creature waits with Resolve as playe
   assert.equal(bears.length, 1, `one bear, not the two the slot allows: ${brought(theirs).map((sheet) => sheet.name).join(", ")} (before: ${before})`);
 });
 
-await test("A creature the spell cannot call, or more of it than the slot brings, is refused before the card is posted", async () => {
+await test("A creature the spell cannot call, or a number of it the spell does not offer, is refused before the card is posted", async () => {
   turnOf(theirs);
   const before = waiting().length;
   const fey = await act({ content: "I cast Conjure Animals (Dryad).", characterId: theirs.id, intent: { card: "spell", spell: "Conjure Animals", slotLevel: 3, variant: "Dryad" } }, player);
   assert.equal(fey.status, 409);
   assert.match(fey.body.error, /calls a beast; a Dryad is a fey/);
+  const wolves = await act({ content: "I cast Conjure Animals (Wolf, 3 of them).", characterId: theirs.id, intent: { card: "spell", spell: "Conjure Animals", slotLevel: 3, variant: "Wolf", count: 3 } }, player);
+  assert.equal(wolves.status, 409, `three wolves are none of the spell's options: ${JSON.stringify(wolves.body)}`);
+  assert.match(wolves.body.error, /brings 1, 2, 4 or 8 of that creature \(Wolf\), not 3/);
   const bears = await act({ content: "I cast Conjure Animals (Brown Bear, 8 of them).", characterId: theirs.id, intent: { card: "spell", spell: "Conjure Animals", slotLevel: 3, variant: "Brown Bear", count: 8 } }, player);
   assert.equal(bears.status, 409);
-  assert.match(bears.body.error, /at most 2 of that creature \(Brown Bear\), not 8/);
+  assert.match(bears.body.error, /brings 1 or 2 of that creature \(Brown Bear\), not 8/);
   assert.equal(waiting().length, before, "nothing was posted");
+});
+
+await test("The console's cast_buff asks again for three wolves from a 3rd level slot, with the numbers the spell offers, and spends nothing", async () => {
+  turnOf(mine);
+  const used = world.sheet(mine.id).spellcasting.slots[3].used;
+  const before = brought(mine).length;
+  const out = await world.invoke("cast_buff", { characterId: mine.id, spell: "Conjure Animals", level: 3, variant: "Wolf", count: 3 });
+  assert.equal(brought(mine).length, before, "no wolves came");
+  assert.equal(out.retry, true, JSON.stringify(out));
+  assert.match(out.error ?? "", /brings 1, 2, 4 or 8 of that creature \(Wolf\), not 3/);
+  assert.equal(world.sheet(mine.id).spellcasting.slots[3].used, used, "no slot spent");
 });
 
 world.close();

@@ -49,10 +49,9 @@ function kindOf(intent: MessageIntent): ActKind {
 
 // A summoning card's creature and number, asked of the plan the cast will
 // make (src/lib/srd/summon-spells.ts summonPlan): a creature the spell
-// cannot call from that slot, or more of it than the slot brings, is refused
-// here in the engine's words, before the card waits on anyone (issue 685).
-// The engine itself brings the most when asked for more, so a card asking
-// eight brown bears would have been played as two.
+// cannot call from that slot, or a number of it the spell does not offer
+// (eight brown bears, three wolves), is refused here in the engine's words,
+// before the card waits on anyone (issue 685).
 function summonCardRefusal(campaign: Campaign, sheet: CharacterSheet, intent: MessageIntent): string | null {
   if (!intent.spell || (!intent.variant && !intent.count && !intent.mix?.length)) {
     return null;
@@ -74,12 +73,7 @@ function summonCardRefusal(campaign: Campaign, sheet: CharacterSheet, intent: Me
     return "error" in plans ? plans.error : null;
   }
   const plan = summonPlan(summoning, slot, intent.variant ?? "", intent.count);
-  if ("error" in plan) {
-    return plan.error;
-  }
-  return intent.count && intent.count > plan.count
-    ? `${summoning.name} from a level ${slot} slot brings at most ${plan.count} of that creature (${plan.form.name}), not ${intent.count}. Nothing was spent.`
-    : null;
+  return "error" in plan ? plan.error : null;
 }
 
 // The engine's reason the card cannot be played now, or null.
