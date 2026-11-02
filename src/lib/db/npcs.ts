@@ -383,7 +383,8 @@ export function updateNpcFromDraft(campaignId: string, npcId: string, draft: Npc
     draft.location,
     draft.role,
     draft.gender,
-    draft.race ?? "",
+    // No race in the draft (an older app's form) keeps the stored one.
+    draft.race ?? row.race ?? "",
     attractionJson(draft.attraction),
     JSON.stringify(draft.aliases),
     draft.personality ? JSON.stringify(draft.personality) : "",
