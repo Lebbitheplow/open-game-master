@@ -380,4 +380,67 @@ await test("an agent lists the workshops and their fights, opens a test, saves i
   }
 });
 
+// A foe's saved state lands on the creature it was saved from, by its kind
+// and its number among that kind, whatever the roster puts before it since:
+// keyed by slot number, Goblin 1's "dead" landed on the wolf an author put
+// first, and Goblin 1 came back fresh, at the next test and a table's Deploy.
+const edit = await world.route("campaigns/[campaignId]/dm/encounter-templates/[templateId]");
+const { endEncounter } = await import("../src/lib/db/encounters.ts");
+const foesOf = (campaignId) =>
+  Object.fromEntries(listEnemies(getActiveEncounter(campaignId).id).map((enemy) => [enemy.displayName, `${enemy.status} ${enemy.currentHp}/${enemy.maxHp}`]));
+const raid = templates.insertEncounterTemplate({
+  campaignId: workshop.id,
+  name: "Raid on the mill",
+  enemies: [{ monster: "goblin", count: 2 }],
+  battlefield: "",
+  map: { mapId: null, scene: null, seed: null, theme: null, ambient: null, width: null, height: null },
+  notes: "",
+  extras: {},
+  createdByUserId: author.id,
+});
+
+await test("a roster edited after the save: a wolf put first starts fresh, and the goblins start as they were saved, at the next test and at a table's Deploy", async () => {
+  world.signIn(author);
+  const tested = await call(route.test, "POST", { templateId: raid.id, party: { kind: "stand-ins" }, runner: "person" }, at);
+  assert.equal(tested.status, 200, JSON.stringify(tested.json));
+  const [g1, g2] = goblinsOf(tested.json.campaignId);
+  patchEnemyHp(g1.id, 0, "dead");
+  patchEnemyHp(g2.id, 3, "alive");
+  const kept = await call(route.save, "POST", undefined, { campaignId: tested.json.campaignId });
+  assert.equal(kept.status, 200, JSON.stringify(kept.json));
+  const edited = await call(edit, "PATCH", { enemies: "wolf\ngoblin x2" }, { campaignId: workshop.id, templateId: raid.id });
+  assert.equal(edited.status, 200, JSON.stringify(edited.json));
+  assert.equal(edited.json.setupNote, undefined, "both goblins are still in the fight: nothing was dropped");
+  const next = await call(route.test, "POST", { templateId: raid.id, runner: "person" }, at);
+  assert.equal(next.status, 200, JSON.stringify(next.json));
+  const tested2 = foesOf(next.json.campaignId);
+  assert.match(tested2.Wolf ?? "", /^alive (\d+)\/\1$/, `the wolf starts fresh: ${JSON.stringify(tested2)}`);
+  assert.match(tested2["Goblin 1"] ?? "", /^dead 0\//, `Goblin 1 starts as saved: ${JSON.stringify(tested2)}`);
+  assert.match(tested2["Goblin 2"] ?? "", /^alive 3\//, `Goblin 2 starts as saved: ${JSON.stringify(tested2)}`);
+  // A table's Deploy of its copy, as an import brings it.
+  const table = world.campaign();
+  const running = getActiveEncounter(table.id);
+  if (running) endEncounter(running.id, "aborted");
+  const fresh = templates.getEncounterTemplate(raid.id);
+  const copy = templates.insertEncounterTemplate({ campaignId: table.id, name: fresh.name, enemies: fresh.enemies, battlefield: "", map: fresh.map, notes: "", extras: {}, createdByUserId: author.id });
+  templates.setTemplateSetup(copy.id, templates.getTemplateSetup(raid.id));
+  const deployed = await deployTemplate(campaigns.getCampaignById(table.id), author.id, copy);
+  assert.equal(deployed.ok, true, deployed.error);
+  const live = foesOf(table.id);
+  assert.match(live.Wolf ?? "", /^alive (\d+)\/\1$/, `the wolf starts fresh at the table: ${JSON.stringify(live)}`);
+  assert.match(live["Goblin 1"] ?? "", /^dead 0\//, JSON.stringify(live));
+  assert.match(live["Goblin 2"] ?? "", /^alive 3\//, JSON.stringify(live));
+});
+
+await test("a roster that loses a creature drops its saved state from the set-up, keeps the rest, and the author is told which", async () => {
+  world.signIn(author);
+  const edited = await call(edit, "PATCH", { enemies: "wolf\ngoblin" }, { campaignId: workshop.id, templateId: raid.id });
+  assert.equal(edited.status, 200, JSON.stringify(edited.json));
+  assert.match(edited.json.setupNote ?? "", /no longer holds Goblin 2: the roster has no such creature now\. The rest of the set-up is kept\./);
+  const setup = templates.getTemplateSetup(raid.id);
+  assert.deepEqual(setup.foes.map((foe) => [foe.monster, foe.nth, foe.status]), [["goblin", 0, "dead"]], "the first goblin's state is kept");
+  const read = await call(route.setup, "GET", undefined, { campaignId: workshop.id, templateId: raid.id });
+  assert.ok(read.json.lines.some((line) => /Goblin 1 down/.test(line)) && !read.json.lines.some((line) => /Goblin 2/.test(line)), JSON.stringify(read.json.lines));
+});
+
 finish();

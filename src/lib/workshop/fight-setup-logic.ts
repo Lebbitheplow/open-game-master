@@ -1,13 +1,15 @@
 import { z } from "zod";
 import { conditionMetaSchema, type ConditionMetaMap } from "@/lib/schemas/condition-meta";
 import { describeDiceScript, diceScriptSchema, type DiceScript } from "@/lib/dice-script-logic";
+import { textKey } from "@/lib/language/text-logic";
 
 // A prepared fight's set-up (issue 685): the moment a test of it was saved
 // to start from, so the next test, a coding agent's bench or #570's scorer
 // opens on that moment instead of playing up to it again.
 //
 // What it holds, and where each part applies:
-//   - the foes, by roster slot: hit points, conditions, where they stand,
+//   - the foes, by their kind and number in the roster (the second goblin,
+//     wherever the roster puts it): hit points, conditions, where they stand,
 //     who is hidden. Wherever the fight is deployed, a live table included
 //     ("a foe that starts bloodied"); never a die.
 //   - the party, by seat (the order the test seated them): hit points,
@@ -43,6 +45,13 @@ const conditionsSchema = z.array(z.string().trim().min(1).max(40)).max(15);
 
 const setupFoeSchema = z.object({
   slot: z.number().int().min(0).max(SETUP_LIMITS.foes - 1),
+  // The roster row's creature and its number among that kind ("goblin x2,
+  // wolf": goblin 0, goblin 1, wolf 0). Where the saved state lands
+  // (foeSlot), so a roster edited after the save lays it on the same
+  // creature, never on whatever took its slot number. Set-ups saved before
+  // this carry neither.
+  monster: z.string().trim().min(1).max(80).optional(),
+  nth: z.number().int().min(0).max(SETUP_LIMITS.foes - 1).optional(),
   name: z.string().trim().min(1).max(SETUP_LIMITS.name),
   hp: z.number().int().min(0).max(5000),
   maxHp: z.number().int().min(1).max(5000),
@@ -171,6 +180,59 @@ export function swapMetaIds(meta: ConditionMetaMap, ids: ReadonlyMap<string, str
   const swapped = swapIds(meta, ids);
   const parsed = conditionMetaSchema.safeParse(swapped);
   return parsed.success ? parsed.data : {};
+}
+
+// ---- the foes, by kind ----
+
+type RosterSlot = { slot: number; monster: string; label: string };
+
+// Each roster slot's creature kind and its number among that kind.
+export function slotKinds(roster: readonly RosterSlot[]): Array<{ slot: number; monster: string; nth: number }> {
+  const seen = new Map<string, number>();
+  return roster.map((entry) => {
+    const kind = textKey(entry.monster);
+    const nth = seen.get(kind) ?? 0;
+    seen.set(kind, nth + 1);
+    return { slot: entry.slot, monster: entry.monster, nth };
+  });
+}
+
+// The slot of today's roster a saved foe's state lands on: the one of its
+// kind and number, or null when the roster has none. Keyed by slot number
+// alone, a set-up saved with Goblin 1 dead laid "dead" on the wolf an
+// author then put first in the roster, and Goblin 1 came back fresh. A foe
+// saved before set-ups carried its kind keeps its own slot only while the
+// creature there still bears its saved name.
+export function foeSlot(foe: Pick<SetupFoe, "slot" | "name" | "monster" | "nth">, roster: readonly RosterSlot[]): number | null {
+  if (foe.monster !== undefined && foe.nth !== undefined) {
+    const kind = textKey(foe.monster);
+    return slotKinds(roster).find((entry) => textKey(entry.monster) === kind && entry.nth === foe.nth)?.slot ?? null;
+  }
+  const same = roster.find((entry) => entry.slot === foe.slot);
+  return same && textKey(same.label) === textKey(foe.name) ? same.slot : null;
+}
+
+// A roster edited under a saved set-up: the foes still in it, by kind and
+// number, are kept as they were saved, and the rest are dropped and named
+// for the author. Kept rather than cleared because the set-up is the moment
+// every test opens on (issue 685): adding a wolf to the fight should not
+// throw away the goblin the author left dead, only the state of creatures
+// the fight no longer has. `before` is the roster the set-up was laid
+// against, for a set-up saved before foes carried their kind.
+export function fitSetupToRoster(setup: FightSetup, before: readonly RosterSlot[], after: readonly RosterSlot[]): { setup: FightSetup; dropped: string[] } {
+  const kinds = slotKinds(before);
+  const kept: SetupFoe[] = [];
+  const dropped: string[] = [];
+  for (const saved of setup.foes) {
+    const own = saved.monster === undefined ? kinds.find((entry) => entry.slot === saved.slot) : undefined;
+    const foe = own && foeSlot(saved, before) !== null ? { ...saved, monster: own.monster, nth: own.nth } : saved;
+    if (foeSlot(foe, after) === null) {
+      dropped.push(saved.name);
+    } else {
+      kept.push(foe);
+    }
+  }
+  return { setup: { ...setup, foes: kept }, dropped };
 }
 
 // ---- the party ----

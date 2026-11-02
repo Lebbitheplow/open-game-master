@@ -29,8 +29,10 @@ import { captureBoardIntoLibrary } from "@/lib/dm/map-library";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import {
+  foeSlot,
   refToken,
   samePartyAsSetup,
+  slotKinds,
   swapMetaIds,
   type FightSetup,
   type SetupFoe,
@@ -82,6 +84,7 @@ export function captureFightSetup(test: Campaign, party: SetupParty): Outcome<{ 
   }
   const map = getBattleMapForEncounter(encounter.id);
   const slots = slotsOf(copy, encounter);
+  const kinds = new Map(slotKinds(expandRoster(copy.enemies)).map((entry) => [entry.slot, entry]));
   const sheets = listSheets(test.id);
   const ids = new Map<string, string>();
   for (const [slot, enemy] of slots) ids.set(enemy.id, refToken({ kind: "slot", slot }));
@@ -89,8 +92,10 @@ export function captureFightSetup(test: Campaign, party: SetupParty): Outcome<{ 
 
   const foes: SetupFoe[] = [...slots].map(([slot, enemy]) => {
     const { token, at } = tileOf(map, enemy.id);
+    const kind = kinds.get(slot);
     return {
       slot,
+      ...(kind ? { monster: kind.monster.slice(0, 80), nth: kind.nth } : {}),
       name: enemy.displayName.slice(0, 60),
       hp: Math.max(0, enemy.currentHp),
       maxHp: Math.max(1, enemy.maxHp),
@@ -206,18 +211,30 @@ export type LayOutcome = { laid: boolean; heroes: "laid" | "fresh" | "none"; not
 // Lays a set-up on the fight its prepared fight just deployed. Best effort,
 // like the rest of a plan (src/lib/dm/template-apply.ts): a slot the roster
 // no longer has, a seat with nobody in it or a tile that is now rock is
-// skipped, never a reason to undo a fight that has begun.
+// skipped, never a reason to undo a fight that has begun. A foe lands by its
+// kind and number in the roster, so "a slot the roster no longer has" is a
+// creature it no longer has.
 export function layFightSetup(campaign: Campaign, template: EncounterTemplate, setup: FightSetup, options: LayOptions = {}): LayOutcome {
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter || encounter.kind === "scene") {
     return { laid: false, heroes: "none", notes: [], order: new Map() };
   }
   const map = getBattleMapForEncounter(encounter.id);
-  const slots = slotsOf(template, encounter);
+  const roster = expandRoster(template.enemies);
+  const slots = matchSlots(roster, listEnemies(encounter.id));
+  // Each saved foe's creature at this fight: the one of its kind and number
+  // in today's roster (fight-setup-logic.ts foeSlot), never whatever holds
+  // its old slot number since the roster was edited. Its ref token, kept in
+  // other creatures' condition meta, names it by its saved slot.
+  const placed = setup.foes.flatMap((foe) => {
+    const slot = foeSlot(foe, roster);
+    const enemy = slot === null ? undefined : slots.get(slot);
+    return enemy ? [{ foe, enemy }] : [];
+  });
   const sheets = listSheets(campaign.id);
   const sameParty = options.test ? samePartyAsSetup(setup, options.test.party) : false;
   const ids = new Map<string, string>();
-  for (const [slot, enemy] of slots) ids.set(refToken({ kind: "slot", slot }), enemy.id);
+  for (const { foe, enemy } of placed) ids.set(refToken({ kind: "slot", slot: foe.slot }), enemy.id);
   if (sameParty) {
     sheets.forEach((sheet, seat) => ids.set(refToken({ kind: "seat", seat }), sheet.id));
   }
@@ -231,9 +248,7 @@ export function layFightSetup(campaign: Campaign, template: EncounterTemplate, s
     if (at) moves.push({ refId, at });
   };
 
-  for (const foe of setup.foes) {
-    const enemy = slots.get(foe.slot);
-    if (!enemy) continue;
+  for (const { foe, enemy } of placed) {
     if (foe.status !== "alive") {
       // Down or gone when the moment was saved: out of the fight from its
       // start, its token with it.

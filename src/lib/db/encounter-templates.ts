@@ -2,13 +2,14 @@ import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { byName } from "@/lib/language/text-logic";
 import {
   EMPTY_TEMPLATE_MAP,
+  expandRoster,
   normalizeTemplateExtras,
   parseRoster,
   type TemplateEnemy,
   type TemplateExtras,
   type TemplateMap,
 } from "@/lib/dm/encounter-template-logic";
-import { parseFightSetup, type FightSetup } from "@/lib/workshop/fight-setup-logic";
+import { fitSetupToRoster, parseFightSetup, type FightSetup } from "@/lib/workshop/fight-setup-logic";
 
 // Storage for prepared encounters. Rows are text: a roster, a battlefield
 // hint, saved map settings and the DM's notes. Nothing here is a live
@@ -127,6 +128,16 @@ export function updateEncounterTemplate(
     extras: TemplateExtras;
   },
 ): EncounterTemplate | null {
+  // A roster edited under a saved set-up keeps the foes still in it, by kind
+  // and number, and drops the rest (fight-setup-logic.ts fitSetupToRoster):
+  // the set-up the Workshop describes is then the one a test lays, from
+  // every door that edits a roster.
+  const before = getEncounterTemplate(id);
+  const setup = before ? getTemplateSetup(id) : null;
+  const fitted = before && setup ? fitSetupToRoster(setup, expandRoster(before.enemies), expandRoster(patch.enemies)) : null;
+  if (fitted?.dropped.length) {
+    setTemplateSetup(id, fitted.setup);
+  }
   getDatabase()
     .prepare(
       `UPDATE encounter_templates SET name = ?, enemies_json = ?, battlefield = ?,

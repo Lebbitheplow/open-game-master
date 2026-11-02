@@ -272,6 +272,11 @@ export function DmEncounterPrepPanel({
       setEditingId(null);
       showEditor(false);
       await load();
+      // A roster edit that let go of a saved set-up's creatures says which.
+      const setupNote = (sent.payload as { setupNote?: unknown } | null)?.setupNote;
+      if (typeof setupNote === "string") {
+        setNote(setupNote);
+      }
     } finally {
       setBusy(false);
     }

@@ -3,10 +3,13 @@ import { isErrorResponse, requirePrepAuthority } from "@/lib/campaign-api";
 import {
   deleteEncounterTemplate,
   getEncounterTemplate,
+  getTemplateSetup,
   updateEncounterTemplate,
 } from "@/lib/db/encounter-templates";
+import { fitSetupToRoster } from "@/lib/workshop/fight-setup-logic";
 import {
   checkRoster,
+  expandRoster,
   normalizeTemplateExtras,
   normalizeTemplateMap,
   parseRoster,
@@ -95,6 +98,11 @@ export async function PATCH(
     normalizeTemplateExtras(parsed.data.extras === undefined ? template.extras : parsed.data.extras, rosterSize(enemies)),
     map.mapId,
   );
+  // A saved set-up keeps the foes the new roster still has, by kind and
+  // number (updateEncounterTemplate fits it); the author is told which
+  // creatures' saved state the edit let go.
+  const setup = getTemplateSetup(templateId);
+  const dropped = setup ? fitSetupToRoster(setup, expandRoster(template.enemies), expandRoster(enemies)).dropped : [];
   const updated = updateEncounterTemplate(templateId, {
     name: parsed.data.name ?? template.name,
     enemies,
@@ -107,6 +115,9 @@ export async function PATCH(
     template: updated
       ? { ...updated, readout: templateDifficulty(context.campaign, updated.enemies) }
       : null,
+    ...(dropped.length
+      ? { setupNote: `Saved. Its set-up no longer holds ${dropped.join(", ")}: the roster has no such creature now. The rest of the set-up is kept.` }
+      : {}),
   });
 }
 
