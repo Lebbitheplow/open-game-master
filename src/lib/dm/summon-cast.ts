@@ -13,7 +13,7 @@ import type { Campaign } from "@/lib/db/campaigns";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { computeSheetDerived, spellAttackFor } from "@/lib/srd";
 import { activeAuthored } from "@/lib/srd/authored-effects";
-import { reassertsControl, summonMixPlan, summonPlan, type SummonMixEntry, type SummonSpell } from "@/lib/srd/summon-spells";
+import { reassertHold, reassertsControl, reassertWords, summonMixPlan, summonPlan, type SummonMixEntry, type SummonSpell } from "@/lib/srd/summon-spells";
 import type { SummonForm } from "@/lib/srd/summon-forms";
 import { attackSummary } from "@/lib/srd/creature-attacks";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -202,12 +202,19 @@ function reassertControl(
   if (!held.length) {
     return { error: `${caster.name} has no creatures of ${spell.name} to reassert control over. Nothing was spent.`, refused: "rules" };
   }
-  const most = (spell.reassert ?? 0) + (spell.reassertPerSlot ?? 0) * Math.max(0, slotLevel - spell.level);
+  // By kind where the spell's slot says so (summon-spells.ts reassertHold).
+  const kept = reassertHold(spell, slotLevel, held.map((sheet) => sheet.summon?.form ?? sheet.name)).map((index) => held[index]);
+  if (!kept.length) {
+    return {
+      error: `${spell.name} from a level ${slotLevel} slot reasserts control over ${reassertWords(spell, slotLevel)}, and ${caster.name}'s are ${held.map((sheet) => sheet.summon?.form ?? sheet.name).join(", ")}. Nothing was spent.`,
+      refused: "rules",
+    };
+  }
   const spent = cast({ characterId: caster.id, spell: spell.name, level: slotLevel, via: "buff", reason: (args.reason ?? "reasserting control").slice(0, 200) });
   if ("error" in spent) {
     return spent;
   }
-  const renewed = held.slice(0, most).map((sheet) => {
+  const renewed = kept.map((sheet) => {
     const meta = { ...(sheet.conditionMeta ?? {}) } as Record<string, Record<string, unknown>>;
     const key = Object.keys(meta).find((name) => name.toLowerCase() === SUMMONED) ?? SUMMONED;
     meta[key] = { ...(meta[key] ?? {}), rounds: spell.rounds ?? undefined };
@@ -218,7 +225,7 @@ function reassertControl(
     ok: true,
     spell: spell.name,
     reasserted: renewed,
-    note: `${caster.name} reasserts control over ${renewed.join(", ")} for another ${spell.rounds === DAY_ROUNDS ? "24 hours" : "full duration"}${held.length > most ? `; ${held.length - most} more are beyond this casting's hold` : ""}.`,
+    note: `${caster.name} reasserts control over ${renewed.join(", ")} for another ${spell.rounds === DAY_ROUNDS ? "24 hours" : "full duration"}${held.length > renewed.length ? `; ${held.length - renewed.length} more are beyond this casting's hold (${reassertWords(spell, slotLevel)})` : ""}.`,
   };
 }
 

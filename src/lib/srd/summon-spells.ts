@@ -37,8 +37,11 @@ export type SummonSpell = {
   countByForm?: Record<string, number>;
   base?: number;
   perSlotLevel?: number;
-  // Create Undead: what each slot level makes.
+  // Create Undead: what each slot level makes, and the options one casting
+  // picks between ("five ghouls or two ghasts or wights"), each the forms
+  // that share its number.
   bySlot?: Array<[number, Record<string, number>]>;
+  options?: string[][];
   // Animate Objects: a budget of objects, larger ones counting for more.
   objectBudget?: { base: number; perSlotLevel: number; cost: Record<string, number> };
   hostileOnBreak?: boolean;
@@ -122,6 +125,7 @@ export const SUMMON_SPELLS: SummonSpell[] = [
       [8, { Ghoul: 5, Ghast: 2, Wight: 2 }],
       [9, { Ghoul: 6, Ghast: 3, Wight: 3, Mummy: 2 }],
     ],
+    options: [["Ghoul"], ["Ghast", "Wight"], ["Mummy"]],
     initiative: "group",
     note: "Ghouls under the caster's command for 24 hours; from 8th level ghasts or wights, from 9th mummies.",
   },
@@ -291,6 +295,43 @@ export function summonPlan(
   }
   const count = wanted && wanted > 0 ? wanted : (counts.at(-1) ?? 1);
   return { form, count: Math.max(1, count), spell };
+}
+
+// Which of a caster's undead one reasserting casting holds another day, by
+// their place in `held` (their forms, oldest first). Animate Dead holds four
+// of any kind, two more a slot level above 3rd. Create Undead holds by kind,
+// as its slot prints them, one option per casting: from an 8th level slot
+// "five ghouls or two ghasts or wights", whichever holds more of them; from a
+// 6th, three ghouls. Counted alike, an 8th level casting held five wights.
+export function reassertHold(spell: SummonSpell, slotLevel: number, held: readonly string[]): number[] {
+  const places = held.map((_, index) => index);
+  if (!spell.bySlot || !spell.options) {
+    return places.slice(0, (spell.reassert ?? 0) + (spell.reassertPerSlot ?? 0) * Math.max(0, slotLevel - spell.level));
+  }
+  const row = slotRow(spell, slotLevel);
+  let best: number[] = [];
+  for (const option of spell.options) {
+    const most = Math.max(0, ...option.map((form) => row[form] ?? 0));
+    const kept = places.filter((index) => option.some((form) => textKey(form) === textKey(held[index]))).slice(0, most);
+    if (kept.length > best.length) {
+      best = kept;
+    }
+  }
+  return best;
+}
+
+// What a reasserting casting from this slot holds, in words: "up to 5 Ghoul,
+// or up to 2 Ghast or Wight".
+export function reassertWords(spell: SummonSpell, slotLevel: number): string {
+  if (!spell.bySlot || !spell.options) {
+    return `up to ${(spell.reassert ?? 0) + (spell.reassertPerSlot ?? 0) * Math.max(0, slotLevel - spell.level)}`;
+  }
+  const row = slotRow(spell, slotLevel);
+  return spell.options
+    .map((option) => ({ option, most: Math.max(0, ...option.map((form) => row[form] ?? 0)) }))
+    .filter((entry) => entry.most > 0)
+    .map((entry) => `up to ${entry.most} ${entry.option.join(" or ")}`)
+    .join(", or ");
 }
 
 // Create Undead: what a casting from this slot makes, by form.

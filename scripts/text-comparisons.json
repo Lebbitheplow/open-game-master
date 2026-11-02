@@ -2466,7 +2466,7 @@
     "lib/srd/subclass-training.ts#str-list": [["english-source",17,"ODM's subclass training table (bundled data)"],["key",3,"armour and weapon categories, grant kinds"]],
     "lib/srd/subclass-training.ts#toLowerCase": [["english-source",1,"ODM's subclass training table (bundled data)"],["table-language",1,"meaning reader: a subclass feature's text (content-pack archetypes and workshop subclasses) parsed for armour, shield and weapon training"]],
     "lib/srd/summon-spells.ts#str-eq": [["key",1,"the summon variant the tool description names (reassert control)"]],
-    "lib/srd/summon-spells.ts#str-list": [["english-source",5,"ODM's summon rows (bundled data)"],["key",1,"creature types (engine vocabulary): Find Steed's kinds"]],
+    "lib/srd/summon-spells.ts#str-list": [["english-source",6,"ODM's summon rows (bundled data)"],["key",1,"creature types (engine vocabulary): Find Steed's kinds"]],
     "lib/srd/summon-spells.ts#toLowerCase": [["display",2,"form names in an error sentence"]],
     "lib/srd/third-caster.ts#str-eq": [["key",1,"casting profiles (fixed choice)"]],
     "lib/srd/third-caster.ts#str-key": [["key",2,"class ids and schools"]],
