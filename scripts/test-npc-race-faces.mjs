@@ -18,7 +18,7 @@ const { normalizeNpcDraft, draftFrom } = await import("../src/lib/npcs/forge.ts"
 const { activePublicEncounter } = await import("../src/lib/db/encounter-view.ts");
 const { createBattleMap, getBattleMapForEncounter, insertToken } = await import("../src/lib/db/battle-maps.ts");
 const { buildPlayerMapView } = await import("../src/lib/battlemap/view.ts");
-const { trackedNpcFace } = await import("../src/lib/db/npc-faces.ts");
+const { castLookup, npcFace } = await import("../src/lib/db/npc-faces.ts");
 const { handleSetNpc, npcRosterForPrompt } = await import("../src/lib/dm/social-tools.ts");
 const { parseFightRoster } = await import("../src/lib/dm/encounter-template-logic.ts");
 const { applyEncounterCall } = await import("../src/lib/dm/encounter-tools.ts");
@@ -158,7 +158,7 @@ await test("an ally the GM puts on the board draws the face the Cast gives them;
   const tokens = new Map(view.tokens.map((token) => [token.refId, token]));
   assert.equal(tokens.get("ally-ilya").face, `${BASE}/enemy-npc/archer-elf-neutral.webp`);
   assert.equal(tokens.get("ally-nobody").face, undefined);
-  assert.equal(trackedNpcFace(world.campaignId, { name: "Brakka" }), `${BASE}/character-race/half-orc-feminine.webp`);
+  assert.equal(npcFace(castLookup(world.campaignId).byName("Brakka")), `${BASE}/character-race/half-orc-feminine.webp`);
 });
 
 await test("a weak model's flat call keeps the race and gender, for a start and for reinforcements", async () => {

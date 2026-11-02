@@ -17,6 +17,7 @@ import { resolveMonster } from "@/lib/bestiary";
 import { listNpcs } from "@/lib/db/npcs";
 import { storedRace } from "@/lib/npc-race";
 import { GENDERS, type Gender } from "@/lib/gender";
+import { pickedGender } from "@/lib/actor-sex-logic";
 import { synthesizeStats } from "@/lib/bestiary/synthesize";
 import { encounterCeiling, evaluateEncounter } from "@/lib/srd/encounter-math";
 import { nameArrivals, spliceIntoOrder } from "@/lib/dm/encounter-logic";
@@ -199,6 +200,10 @@ export function resolveEnemyRequests(
 // A creature from an earlier fight, fighting as that row had it: its block,
 // its name, who it is.
 function carriedEntry(row: EncounterEnemy): ResolvedEnemyRequest {
+  // Its look comes back with it (src/lib/actor-sex-logic.ts): a row from
+  // before the column keeps the pick the board drew it with, from its id. A
+  // Cast NPC's is read from the Cast instead.
+  const gender = row.gender || (row.npcId ? "" : pickedGender(row.id));
   return {
     slug: row.slug,
     name: row.displayName,
@@ -206,7 +211,7 @@ function carriedEntry(row: EncounterEnemy): ResolvedEnemyRequest {
     returning: row.id,
     ...(row.npcId ? { npcId: row.npcId } : {}),
     ...(row.race ? { race: row.race } : {}),
-    ...(row.gender ? { gender: row.gender } : {}),
+    ...(gender ? { gender } : {}),
   };
 }
 

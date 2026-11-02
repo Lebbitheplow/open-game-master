@@ -196,12 +196,22 @@ export function getNpcByName(campaignId: string, name: string): Npc | null {
   return found && !found.match.needsConfirmation ? found.npc : null;
 }
 
+// getNpcByName over a roster already read, for a reader that names many at
+// once (every figure on a board, src/lib/db/npc-faces.ts).
+export function npcNamedIn(npcs: Npc[], name: string): Npc | null {
+  const found = matchRosterIn(npcs, name.trim());
+  return found && !found.match.needsConfirmation ? found.npc : null;
+}
+
 // The roster's best match for a name, across every name and alias.
 function matchRoster(campaignId: string, name: string): { npc: Npc; match: EntityMatch } | null {
+  return matchRosterIn(listNpcs(campaignId), name);
+}
+
+function matchRosterIn(npcs: Npc[], name: string): { npc: Npc; match: EntityMatch } | null {
   // Aliases are matched alongside canonical names, then mapped back. Every
   // canonical name is listed first, so it wins a tie with another NPC's
   // alias.
-  const npcs = listNpcs(campaignId);
   const ownerByName = new Map<string, Npc>(npcs.map((npc) => [npc.name, npc]));
   for (const npc of npcs) {
     for (const alias of npc.aliases) {

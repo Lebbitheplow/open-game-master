@@ -15,6 +15,7 @@ import { publishPersisted } from "@/lib/events";
 import { isKnockedOut } from "@/lib/dm/knockout";
 import { storedGender, type Gender } from "@/lib/gender";
 import { isConditionNamed } from "@/lib/srd/feature-names";
+import { pickedGender } from "@/lib/actor-sex-logic";
 
 // Server-authoritative combat state. Enemy HP lives here and changes ONLY
 // through the encounter tools; the AI DM narrates from tool results, never
@@ -152,8 +153,10 @@ export type EncounterEnemy = {
   // back from it as that fight left it (src/lib/dm/foe-return.ts). Empty
   // for a creature that arrived fresh.
   carriedFrom?: string;
-  // Who a nameless foe is, as start_encounter told it: an SRD race id
-  // (src/lib/npc-race.ts) and a gender. Only the face reads them.
+  // Who a nameless foe is: a race id (src/lib/npc-race.ts) as
+  // start_encounter told it, and a gender as told or picked when it arrived
+  // (insertEnemy). Its flat face and a 3D view's model read them through
+  // src/lib/actor-sex-logic.ts foeLook; a Cast NPC's are the Cast's.
   race?: string;
   gender?: Gender;
   createdAt: string;
@@ -462,7 +465,10 @@ export function insertEnemy(input: {
   stats: EnemyStats;
   // The Cast NPC this enemy is, so their next fight finds them (issue #667).
   npcId?: string;
-  // Who a nameless foe is, for the face; "" or absent for unspecified.
+  // Who a nameless foe is, for its face and a 3D view's model
+  // (src/lib/actor-sex-logic.ts); "" or absent for unspecified. A nameless
+  // foe told no gender takes a pick from its own id here, once, and keeps
+  // it; a Cast NPC's look is the Cast's, read live, so theirs stays "".
   race?: string;
   gender?: Gender;
   // A creature come back from an earlier fight as it left them
@@ -512,7 +518,7 @@ export function insertEnemy(input: {
       input.npcId ?? "",
       arrives?.carriedFrom ?? "",
       input.race ?? "",
-      input.gender ?? "",
+      input.gender || (input.npcId ? "" : pickedGender(id)),
       now,
       now,
     );
