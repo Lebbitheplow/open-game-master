@@ -1,5 +1,5 @@
 import { getDatabase, nowIso } from "@/lib/db/core";
-import { getNpcById, listNpcs, setNpcPortrait, type Npc } from "@/lib/db/npcs";
+import { getNpcById, listNpcs, setNpcPortrait, touchCast, type Npc } from "@/lib/db/npcs";
 import { attractionBlank, attractionJson, type Attraction } from "@/lib/attraction";
 import { derivePersonality } from "@/lib/dm/npc-logic";
 import { defaultValues } from "@/lib/dm/companion-values-logic";
@@ -80,6 +80,8 @@ function linkedRow(sheet: CompanionLike): Npc | null {
       now,
       named.id,
     );
+    // Now that they travel with the party, the sheet speaks for them.
+    touchCast(sheet.campaignId);
     return getNpcById(named.id);
   }
   const id = crypto.randomUUID();

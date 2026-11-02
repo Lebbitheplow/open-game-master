@@ -65,7 +65,8 @@ export function DmNpcForgePanel({
 }: {
   campaignId: string;
   layout?: "chips" | "rows";
-  // Bumped when the Cast changed elsewhere (the workshop's live versions).
+  // Bumped when the Cast changed elsewhere (the workshop's live versions, a
+  // table's cast_updated).
   refreshKey?: number;
   // In the workshop only (src/app/workshop/world/WorldEntryLink.tsx): the
   // record to open on arrival, and the way to its WorldForge entry.

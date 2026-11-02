@@ -28,6 +28,33 @@ import {
 
 export type Attitude = "hostile" | "indifferent" | "friendly";
 
+declare global {
+  var __odmCastTouched: ((campaignId: string) => void) | undefined;
+}
+
+// Told when a write may have changed the cast the seats are sent: a name or
+// alias, a face, a voice, who is on the roster, who the table has met or
+// heard named. src/lib/dm/cast.ts sends the cast again when what a seat sees
+// did change, so a person met through a rule (a reaction roll, a social
+// check, a first relationship beat) reaches every open seat's @ menu without
+// a reload (issue 733). Registered, not imported, because cast.ts imports
+// this module.
+export function onCastTouched(listener: (campaignId: string) => void): void {
+  globalThis.__odmCastTouched = listener;
+}
+
+export function touchCast(campaignId: string): void {
+  const listener = globalThis.__odmCastTouched;
+  if (listener) {
+    listener(campaignId);
+    return;
+  }
+  // cast.ts registers as it loads; a route that has not loaded it yet does now.
+  void import("@/lib/dm/cast")
+    .then(() => globalThis.__odmCastTouched?.(campaignId))
+    .catch(() => undefined);
+}
+
 export type Npc = {
   id: string;
   campaignId: string;
@@ -293,6 +320,7 @@ export function upsertNpc(input: {
       now,
       existing.id,
     );
+    touchCast(input.campaignId);
     return mapNpc(db.prepare(`SELECT * FROM npcs WHERE id = ?`).get(existing.id) as NpcRow);
   }
   const id = crypto.randomUUID();
@@ -312,6 +340,7 @@ export function upsertNpc(input: {
     now,
     now,
   );
+  touchCast(input.campaignId);
   return mapNpc(
     db.prepare(`SELECT * FROM npcs WHERE id = ?`).get(id) as NpcRow,
   );
@@ -356,6 +385,7 @@ export function createNpcFromDraft(campaignId: string, draft: NpcDraft): Npc {
     now,
     now,
   );
+  touchCast(campaignId);
   return mapNpc(db.prepare(`SELECT * FROM npcs WHERE id = ?`).get(id) as NpcRow);
 }
 
@@ -398,17 +428,21 @@ export function updateNpcFromDraft(campaignId: string, npcId: string, draft: Npc
   );
   // Renamed in the NPC editor: their bonds follow, as renameNpc's do.
   followBonds(mapNpc(row), draft.name);
+  touchCast(campaignId);
   return mapNpc(db.prepare(`SELECT * FROM npcs WHERE id = ?`).get(npcId) as NpcRow);
 }
 
 // Their read-aloud voice alone, for the table's voices panel (issue 97):
 // the rest of the record is left exactly as it stands.
 export function setNpcVoice(campaignId: string, npcId: string, voice: NpcVoice | null): boolean {
-  return (
+  const changed =
     getDatabase()
       .prepare(`UPDATE npcs SET voice_json = ?, updated_at = ? WHERE id = ? AND campaign_id = ?`)
-      .run(voice ? JSON.stringify(voice) : null, nowIso(), npcId, campaignId).changes > 0
-  );
+      .run(voice ? JSON.stringify(voice) : null, nowIso(), npcId, campaignId).changes > 0;
+  if (changed) {
+    touchCast(campaignId);
+  }
+  return changed;
 }
 
 // "" takes the face away. Nothing validates the path here: the routes accept
@@ -420,8 +454,7 @@ export function setNpcPortrait(npcId: string, url: string): Npc | null {
     nowIso(),
     npcId,
   );
-  const row = db.prepare(`SELECT * FROM npcs WHERE id = ?`).get(npcId) as NpcRow | undefined;
-  return row ? mapNpc(row) : null;
+  return touchedRow(npcId);
 }
 
 // The faction they belong to, or where they live, as one World link says
@@ -446,8 +479,7 @@ export function setNpcAttitude(id: string, attitude: Attitude, turnId: string): 
   db.prepare(
     `UPDATE npcs SET attitude = ?, last_shift_turn = ?, met_at = CASE WHEN met_at = '' THEN ? ELSE met_at END, updated_at = ? WHERE id = ?`,
   ).run(attitude, turnId, now, now, id);
-  const row = db.prepare(`SELECT * FROM npcs WHERE id = ?`).get(id) as NpcRow | undefined;
-  return row ? mapNpc(row) : null;
+  return touchedRow(id);
 }
 
 // The party has now dealt with them (see Npc.metAt). The first meeting is
@@ -455,8 +487,17 @@ export function setNpcAttitude(id: string, attitude: Attitude, turnId: string): 
 export function markNpcMet(id: string): Npc | null {
   const db = getDatabase();
   db.prepare(`UPDATE npcs SET met_at = ? WHERE id = ? AND met_at = ''`).run(nowIso(), id);
-  const row = db.prepare(`SELECT * FROM npcs WHERE id = ?`).get(id) as NpcRow | undefined;
-  return row ? mapNpc(row) : null;
+  return touchedRow(id);
+}
+
+// The row as it stands after a write, with the cast told of it.
+function touchedRow(id: string): Npc | null {
+  const row = getDatabase().prepare(`SELECT * FROM npcs WHERE id = ?`).get(id) as NpcRow | undefined;
+  if (!row) {
+    return null;
+  }
+  touchCast(row.campaign_id);
+  return mapNpc(row);
 }
 
 // The story has now said these people's names to the table (see
@@ -477,11 +518,18 @@ export function markNpcsHeard(campaignId: string, key: string): string[] {
   for (const npc of heard) {
     mark.run(now, npc.id);
   }
+  touchCast(campaignId);
   return heard.map((npc) => npc.id);
 }
 
 export function deleteNpc(id: string): boolean {
-  return getDatabase().prepare(`DELETE FROM npcs WHERE id = ?`).run(id).changes > 0;
+  const db = getDatabase();
+  const row = db.prepare(`SELECT campaign_id FROM npcs WHERE id = ?`).get(id) as { campaign_id: string } | undefined;
+  const deleted = db.prepare(`DELETE FROM npcs WHERE id = ?`).run(id).changes > 0;
+  if (deleted && row) {
+    touchCast(row.campaign_id);
+  }
+  return deleted;
 }
 
 // Writes any subset of the agency state; untouched pieces keep their column.
@@ -523,6 +571,7 @@ export function setNpcArchived(npcId: string, archived: boolean) {
   getDatabase()
     .prepare(`UPDATE npcs SET archived = ?, updated_at = ? WHERE id = ?`)
     .run(archived ? 1 : 0, nowIso(), npcId);
+  touchedRow(npcId);
 }
 
 export function getNpcById(npcId: string): Npc | null {
@@ -552,7 +601,7 @@ export function renameNpc(npcId: string, name: string, aliases: string[]): Npc |
   ).run(name, nowIso(), npc.campaignId, npc.name);
   // Bonds are kept by name too, for the same reason (issue 580).
   followBonds(npc, name);
-  return getNpcById(npcId);
+  return touchedRow(npcId);
 }
 
 // An NPC's bonds follow a new name (issue 580), and the Bonds panel hears of
@@ -614,7 +663,7 @@ export function mergeNpcs(
     db.prepare(`DELETE FROM npcs WHERE id = ?`).run(mergeId);
   });
   apply();
-  return getNpcById(keepId);
+  return touchedRow(keepId);
 }
 
 // Pairs the lead has already looked at and rejected.

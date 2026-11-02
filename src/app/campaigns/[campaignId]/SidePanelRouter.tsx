@@ -162,6 +162,8 @@ export type SidePanelRouterProps = {
   // Bumped by the relationships_updated ephemeral; the Bonds panel refetches
   // its own scoped view when it changes.
   relationshipsVersion: number;
+  // Bumped by cast_updated; the GM console's people list reads again.
+  castVersion?: number;
   // Lasting companions whose sheet just went (issue 503): the Party panel's
   // Gone list.
   departingSheets?: DepartingSheet[];
@@ -251,6 +253,7 @@ export function SidePanelRouter({
   stageBoard = false,
   tab: rawTab,
   relationshipsVersion,
+  castVersion = 0,
   departingSheets = [],
   factionsVersion = 0,
   worldVersion = 0,
@@ -357,6 +360,7 @@ export function SidePanelRouter({
         )}
         cover={dmCover ?? null}
         bondsKey={relationshipsVersion}
+        castKey={castVersion}
         variantRules={{
           powerfulCritical: campaign?.gameSettings?.variantRules?.powerfulCritical ?? false,
           criticalDamageMods: campaign?.gameSettings?.variantRules?.criticalDamageMods ?? false,

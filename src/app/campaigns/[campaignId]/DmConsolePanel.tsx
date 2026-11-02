@@ -166,6 +166,7 @@ export function DmConsolePanel({
   delegations,
   cover,
   bondsKey = 0,
+  castKey = 0,
 }: {
   campaignId: string;
   sheets: CharacterSheet[];
@@ -186,6 +187,8 @@ export function DmConsolePanel({
   // Bumped by relationships_updated: a romantic step asked in a fight is
   // owed its answer once the fight is over (issue 640, HeldAsks.tsx).
   bondsKey?: number;
+  // Bumped by cast_updated: the people list reads again (issue 733).
+  castKey?: number;
 }) {
   // Illustrate stays in the catalog (the AI DM and the dispatcher still know
   // it) but leaves the console on a server with no image backend, where the
@@ -439,7 +442,7 @@ export function DmConsolePanel({
               <DmEncounterPrepPanel campaignId={campaignId} />
             </div>
           ) : category === "cast" ? (
-            <DmNpcForgePanel campaignId={campaignId} />
+            <DmNpcForgePanel campaignId={campaignId} refreshKey={castKey} />
           ) : category === "bestiary" ? (
             <div className="reveal space-y-4">
               <DmBestiaryPanel campaignId={campaignId} />

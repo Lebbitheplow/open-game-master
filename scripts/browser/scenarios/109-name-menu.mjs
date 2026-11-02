@@ -8,13 +8,15 @@
 // box, animated, legible night and day, and clean under axe. The Ask box
 // above the composer answers @ the same way. A GM's Narrate holds the whole
 // cast and marks the person not introduced yet; its pill says Narrate.
+// When a rule meets that person while the page is open (a reaction roll),
+// the open menu stops marking him without a reload (issue 733).
 import { axeViolations, check, eventually, untilStill } from "../lib.mjs";
 
 const scenario = {
   name: "name-menu",
   viewports: ["desktop", "phone"],
   async run(t) {
-    const { page, root, ids, viewport, touch } = t;
+    const { page, root, ids, viewport, touch, api, base } = t;
     await t.open(`/campaigns/${ids.nameTables[viewport]}`);
     await eventually(() => page.locator(`${root}.cine-stage`).count(), { timeoutMs: 30_000, label: "the table" });
     const tableTab = page.locator(`${root}nav.cine-bottombar`).getByRole("button", { name: /^table$/i }).locator("visible=true").first();
@@ -143,6 +145,17 @@ const scenario = {
     check(/Not introduced yet/.test((await unmet.textContent()) ?? ""), "the not yet introduced is marked");
     await untilStill(page);
     await t.shot("gm");
+    await narrate.fill("");
+    await t.tap(narrate);
+    const rolled = await api.post(`${base}/api/campaigns/${ids.nameTables[`${viewport}Gm`]}/dm/invoke`, {
+      data: { name: "npc_reaction", args: { name: "Iarno Albrek", gender: "Male" } },
+    });
+    check(rolled.ok(), `the GM's reaction roll for Iarno ran (${rolled.status()})`);
+    await narrate.pressSequentially("@ia");
+    await eventually(async () => {
+      const row = list.locator('[role="option"]').filter({ hasText: "Iarno Albrek" }).first();
+      return (await row.count()) > 0 && !/Not introduced yet/.test((await row.textContent()) ?? "");
+    }, { label: "the person a reaction roll met is no longer marked, with no reload" });
     await narrate.fill("");
     await narrate.pressSequentially("@sild");
     await eventually(async () => (await shown()).some((name) => name.startsWith("Sildar Hallwinter")), { label: "a person already met offered" });
