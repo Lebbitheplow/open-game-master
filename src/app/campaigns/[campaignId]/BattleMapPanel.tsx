@@ -5,6 +5,7 @@ import { returnFocus } from "@/components/ui/return-focus";
 import {
   Eraser,
   Footprints,
+  Info,
   Lock,
   Maximize2,
   MapPin,
@@ -325,6 +326,13 @@ export function BattleMapPanel({
   // The stage: the figure the pointer rests on (the hover plate), the target
   // the aim is on, the order dialog, and the banner for a new turn.
   const [plateTokenId, setPlateTokenId] = useState<string | null>(null);
+  // A click or Details holds the plate open (it pages and takes the
+  // keyboard) until it is closed; while held, hovering leaves it be.
+  const [platePinned, setPlatePinned] = useState(false);
+  const closePlate = useCallback(() => {
+    setPlateTokenId(null);
+    setPlatePinned(false);
+  }, []);
   const [aimHoverId, setAimHoverId] = useState<string | null>(null);
   const [orderOpen, setOrderOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
@@ -789,6 +797,7 @@ export function BattleMapPanel({
     setAimHoverId(null);
     setPendingMove(null);
     setPlateTokenId(null);
+    setPlatePinned(false);
     setHudTokenId(null);
     setTeleporting(null);
     setHeld(null);
@@ -842,6 +851,7 @@ export function BattleMapPanel({
   function handleTile(x: number, y: number) {
     setNativeSelection(null);
     setPlateTokenId(null);
+    setPlatePinned(false);
     if (!targeting) setHudTokenId(null);
     if (pointing) {
       void sendPing(x, y);
@@ -994,8 +1004,15 @@ export function BattleMapPanel({
       setHudTokenId((current) => (current === tokenId ? null : tokenId));
       return;
     }
-    // Anybody else's figure: a tap is the phone's hover, and shows its plate.
-    setPlateTokenId((current) => (current === tokenId ? null : tokenId));
+    // Anybody else's figure: a click or tap holds its plate open, and a
+    // second one on the same figure lets it go. (On a desktop the hover has
+    // already opened it, so a toggle closed it on the first click.)
+    if (platePinned && plateTokenId === tokenId) {
+      closePlate();
+      return;
+    }
+    setPlateTokenId(tokenId);
+    setPlatePinned(true);
   }
 
   // Every tile takes a tap when the DM is placing something, when anyone is
@@ -1017,8 +1034,22 @@ export function BattleMapPanel({
     if (!hudToken) {
       return [];
     }
+    // The figure's plate held open: its painting, and every condition with
+    // what it does, a page at a time. The dial is how the DM, and a player
+    // on their own figure, reach it, since their click opens the dial.
+    // A native board view draws no plate, so it is not offered there.
+    const details: HudAction[] = nativeHudActive ? [] : [{
+      id: "details",
+      label: "Details",
+      icon: Info,
+      onPick: () => {
+        setHudTokenId(null);
+        setPlateTokenId(hudToken.id);
+        setPlatePinned(true);
+      },
+    }];
     if (canDirect) {
-      return dmActions(hudToken, {
+      return [...dmActions(hudToken, {
         hold: () => {
           setHeld((current) => (current === hudToken.id ? null : hudToken.id));
           setTool("handle");
@@ -1040,7 +1071,7 @@ export function BattleMapPanel({
           void board({ do: "remove", tokenId: hudToken.id });
           setHudTokenId(null);
         },
-      });
+      }), ...details];
     }
     // The same engine questions the Hand asks (src/lib/battlemap/hand-hud.ts),
     // so a sigil the engine would refuse says so instead of composing.
@@ -1053,16 +1084,16 @@ export function BattleMapPanel({
       mySheet && !scene ? boardHudGates(mySheet, encounter ?? null, { myTurn, currentName: view.currentTurnName }) : undefined,
       (reason) => setError(reason),
     );
-    return nativeHudSupported ? actions.map(action => action.disabled ? action : { ...action, onPick: () => {
+    return [...(nativeHudSupported ? actions.map(action => action.disabled ? action : { ...action, onPick: () => {
       window.dispatchEvent(new CustomEvent(HAND_BOARD_ACTION_EVENT, { detail: { campaignId, action: action.id as HandBoardAction, nativeChoices: nativeBattlefieldActive } }));
       setHudTokenId(null);
-    } }) : actions;
+    } }) : actions), ...details];
     // `board` is a closure over state; the actions are rebuilt per token.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hudToken, canDirect, onCompose, mySheet, encounter, myTurn, view.currentTurnName, scene, nativeHudSupported, nativeBattlefieldActive, campaignId]);
+  }, [hudToken, canDirect, onCompose, mySheet, encounter, myTurn, view.currentTurnName, scene, nativeHudSupported, nativeHudActive, nativeBattlefieldActive, campaignId]);
 
   const closeHud = useCallback(() => {
-    setNativeSelection(null); setPlateTokenId(null);
+    setNativeSelection(null); setPlateTokenId(null); setPlatePinned(false);
     setHudTokenId(null); setTargeting(null); setAimHoverId(null); setTeleporting(null);
   }, []);
   const hudHint = targeting ? (targeting === "attack" ? "Tap the enemy you attack" : "Tap the enemy you cast at")
@@ -1287,7 +1318,7 @@ export function BattleMapPanel({
           }
           onTokenClick={handleToken}
           onTokenHover={(tokenId) => {
-            setPlateTokenId(tokenId);
+            if (!platePinned) setPlateTokenId(tokenId);
             if (targeting) {
               setAimHoverId(tokenId && aimTargets.some((entry) => entry.token.id === tokenId) ? tokenId : null);
             }
@@ -1393,6 +1424,7 @@ export function BattleMapPanel({
                 boardHeight={view.height}
                 footprint={view.tokenFootprint[hudToken.id] ?? 1}
                 anchor={anchor}
+                camera={addonViewport ? undefined : cam.camera}
                 actions={targeting ? [] : hudActions}
                 hint={
                   targeting
@@ -1430,6 +1462,7 @@ export function BattleMapPanel({
           <Anchored store={anchorsOf(expanded)} tokenId={plateToken.id}>
             {(anchor) => (
               <TokenPlate
+                key={plateToken.id}
                 token={plateToken}
                 boardWidth={view.width}
                 boardHeight={view.height}
@@ -1439,6 +1472,8 @@ export function BattleMapPanel({
                 health={view.tokenHealth[plateToken.id]}
                 conditions={view.tokenConditions[plateToken.id]}
                 edge={plateToken.kind === "enemy" ? view.edges?.[plateToken.refId] : undefined}
+                pinned={platePinned}
+                onClose={closePlate}
               />
             )}
           </Anchored>
