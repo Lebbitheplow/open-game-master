@@ -224,7 +224,7 @@ export const pcAttackTool: ToolDef = {
   },
 };
 
-const pcAttackArgsSchema = z.object({
+export const pcAttackArgsSchema = z.object({
   characterId: z.string(),
   targetEnemyId: z.string(),
   weapon: z.string().max(80).optional(),
@@ -269,6 +269,10 @@ const pcAttackArgsSchema = z.object({
   rapidStrike: z.coerce.boolean().optional(),
   whirlwind: z.coerce.boolean().optional(),
   volley: z.coerce.boolean().optional(),
+  // A part declared as a Flurry of Blows strike (pc-attack-parts.ts): it
+  // takes a strike the ki paid for even while the Attack action has a swing
+  // left, so the player's one swing and then a flurry is that.
+  flurryStrike: z.coerce.boolean().optional(),
   // Attack-roll spells: the slot level cast from.
   level: z.coerce.number().int().min(1).max(9).optional(),
 });

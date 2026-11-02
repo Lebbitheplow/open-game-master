@@ -62,6 +62,10 @@ const NAMED: ReadonlyArray<[string, AttackFeatureKind]> = [
   ["volley", "volley"],
   ["action surge", "action surge"],
   ["extra attack", "attack"],
+  // Haste's extra action buys one weapon attack, and the budget spends it
+  // once the Attack action's swings are gone: named, it was sent back as no
+  // feature of theirs, and the declared attack cost another model call.
+  ["haste", "attack"],
   // A spell's bonus attacks (an authored spell held as a condition).
   ["swift quiver", "feature"],
 ];
@@ -101,7 +105,7 @@ export function partAttackArgs(
   const unarmed = rest.weapon === undefined ? { weapon: "unarmed strike" } : {};
   const fields: Record<string, unknown> =
     kind === "flurry"
-      ? unarmed
+      ? { ...unarmed, flurryStrike: true }
       : kind === "martial arts"
         ? { ...unarmed, bonusAttack: "martial arts" }
         : kind === "frenzy"

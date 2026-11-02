@@ -440,6 +440,82 @@ await test("Swift Quiver: one bonus action buys two attacks, and no third", asyn
   assert.equal(typeof three.error, "string", "a third attack has no bonus action to ride");
 });
 
+// A part refused for what owes nothing to its feature never buys the
+// feature: bought first, the Action Surge after the swing that dropped the
+// last foe spent a use on a fight already over, and a flurry aimed at a
+// creature the action's swings had killed spent the ki (rev-749).
+await test("A feature is bought only for a strike that can be made: the swing that ends the fight leaves Action Surge unspent, a flurry at a fallen creature leaves the ki", async () => {
+  const lone = await stage(fighter, 1);
+  kit.setEnemy(lone[0].id, { ac: 1, maxHp: 1, currentHp: 1 });
+  dice(15, 6);
+  const surged = await agentTurn(fighter, "Brann swings, then surges.", [["pc_attack", { characterId: fighter.id, attacks: [part(lone[0]), part(lone[0], { feature: "Action Surge" })] }]]);
+  clearDice();
+  const [kill, surge] = surged[0].result.attacks;
+  assert.equal(kill.dead, true, JSON.stringify(kill).slice(0, 300));
+  assert.equal(typeof surge.error, "string", "no fight is left to surge in");
+  assert.equal(surge.spent, undefined, JSON.stringify(surge));
+  assert.equal(world.sheet(fighter.id).resources.action_surge.used, 0, "the use is still there");
+
+  const pair = await stage(monk, 2);
+  kit.setEnemy(pair[0].id, { ac: 1, maxHp: 1, currentHp: 1 });
+  dice(15, 6);
+  const flurried = await agentTurn(monk, "Kara strikes the first, then the second, then flurries at the first.", [
+    ["pc_attack", { characterId: monk.id, attacks: [part(pair[0]), part(pair[1]), part(pair[0], { feature: "Flurry of Blows" }), part(pair[0], { feature: "Flurry of Blows" })] }],
+  ]);
+  clearDice();
+  const strikes = flurried[0].result.attacks;
+  assert.equal(strikes[0].dead, true, JSON.stringify(strikes[0]).slice(0, 300));
+  assert.match(String(strikes[2].error), /already dead/, JSON.stringify(strikes[2]).slice(0, 300));
+  assert.equal(world.sheet(monk.id).resources.ki.used, 0, "no ki for strikes aimed at a fallen creature");
+  assert.equal(flurried[0].result.owed, undefined, "no strike was paid for");
+});
+
+// "Two swings at the goblin, then I end my turn": the first killed it, and
+// the turn ended on the second's refusal, which the next call could have
+// aimed at the other goblin (rev-749).
+await test("endTurn keeps the turn open while a part can be sent again; a part that names endTurn still ends it", async () => {
+  const enemies = await stage(fighter, 2);
+  kit.setEnemy(enemies[0].id, { ac: 1, maxHp: 1, currentHp: 1 });
+  dice(15, 6);
+  // The second swing, aimed again in the same GM turn, ends the turn with
+  // endTurn on its entry, where the one-attack call carried it.
+  const ran = await agentTurn(fighter, "Brann swings twice at the first goblin, then ends his turn.", [
+    ["pc_attack", { characterId: fighter.id, endTurn: true, attacks: [part(enemies[0]), part(enemies[0])] }],
+    ["pc_attack", { characterId: fighter.id, attacks: [part(enemies[1], { endTurn: true })] }],
+  ]);
+  clearDice();
+  const [first, second] = ran.map((entry) => entry.result);
+  assert.equal(first.turnEnded, undefined, JSON.stringify(first).slice(-400));
+  assert.match(String(first.turnNotEnded), /Entry 2 can be sent again/, JSON.stringify(first).slice(-400));
+  assert.equal(second.error, undefined, `the swing aimed again is still Brann's: ${JSON.stringify(second).slice(0, 300)}`);
+  assert.ok(second.turnEnded, `endTurn on the entry ends the turn: ${JSON.stringify(second).slice(-300)}`);
+});
+
+// SRD 5.1, Way of the Open Hand: the technique rides "each of the attacks"
+// of Flurry of Blows. A strike declared as the flurry's after one swing was
+// counted as the Attack action's second swing: the ki was spent and both
+// riders refused (rev-749).
+await test("A strike declared as Flurry of Blows is one of its strikes, with the Attack action's other swing still owed", async () => {
+  const enemies = await stage(monk, 1, { ac: 1, stats: { saveMods: { str: -20, dex: -20, con: -20, int: -20, wis: -20, cha: -20 } } });
+  const ran = await agentTurn(monk, "Kara strikes once, then a Flurry: prone, then push.", [
+    ["pc_attack", { characterId: monk.id, attacks: [part(enemies[0]), part(enemies[0], { feature: "Flurry of Blows", openHand: "prone" }), part(enemies[0], { feature: "Flurry of Blows", openHand: "push" })] }],
+  ]);
+  assert.deepEqual(errorsOf(ran[0].result.attacks), [], JSON.stringify(ran[0].result).slice(0, 600));
+  assert.ok(kit.enemy(enemies[0].id).conditions.some((entry) => /prone/i.test(entry)), "the first flurry strike knocked it prone");
+  assert.equal(world.sheet(monk.id).resources.ki.used, 1);
+  assert.equal(ran[0].result.attacksRemaining, 1, JSON.stringify(ran[0].result).slice(-300));
+});
+
+await test("Haste named as a part's feature is the hasted action's one weapon attack", async () => {
+  const enemies = await stage(fighter, 1);
+  world.patch(fighter.id, { conditions: ["hasted"] });
+  const ran = await agentTurn(fighter, "Brann attacks four times, then once more with Haste.", [
+    ["pc_attack", { characterId: fighter.id, attacks: [...[0, 1, 2, 3].map(() => part(enemies[0])), part(enemies[0], { feature: "Haste" })] }],
+  ]);
+  world.patch(fighter.id, { conditions: [] });
+  assert.deepEqual(errorsOf(ran[0].result.attacks), [], JSON.stringify(ran[0].result).slice(-400));
+});
+
 await test("An older flat pc_attack call, one attack with its target, still resolves", async () => {
   const enemies = await stage(fighter, 1);
   const ran = await agentTurn(fighter, "Brann swings.", [["pc_attack", { characterId: fighter.id, targetEnemyId: enemies[0].id }]]);

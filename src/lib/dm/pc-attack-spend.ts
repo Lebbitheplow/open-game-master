@@ -138,7 +138,7 @@ export function spendAttackEconomy(input: {
         : kind === "spell"
           ? // The cast guard charges the casting time in pc-attack.ts.
             { ok: true as const, budget }
-          : spendAttack(budget, sheet.name, { unarmed: profile.weapon === "Unarmed strike" });
+          : spendAttack(budget, sheet.name, { unarmed: profile.weapon === "Unarmed strike", flurry: args.flurryStrike === true });
     if (!spend.ok) {
       return { refused: usesAttackAction ? withSurgeOpen(toolError(spend), sheet, budget) : toolError(spend) };
     }

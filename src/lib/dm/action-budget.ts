@@ -301,8 +301,9 @@ export function spendAction(
 // What kind of attack a swing is, for the spends that care. `unarmed` lets
 // a Flurry of Blows strike be spent once the Attack action's own swings are
 // gone; `hasteOk: false` keeps Haste's extra action, which buys one WEAPON
-// attack, from paying for a grapple or a shove.
-export type AttackSpendOptions = { unarmed?: boolean; hasteOk?: boolean };
+// attack, from paying for a grapple or a shove. `flurry` is an unarmed
+// strike the player declared as one of Flurry of Blows'.
+export type AttackSpendOptions = { unarmed?: boolean; hasteOk?: boolean; flurry?: boolean };
 
 // One swing of the Attack action. The first attack spends the action; the
 // rest come free until Extra Attack runs out. Off-hand attacks are a bonus
@@ -318,11 +319,14 @@ export function spendAttack(
   }
   const swingsGone = budget.attacksMade >= budget.attacksAllowed || budget.castThisAction === true;
   // Flurry of Blows is spent only once the Attack action has no swing left
-  // to give, so a monk with Extra Attack uses both before the flurry.
+  // to give, so a monk with Extra Attack uses both before the flurry. A
+  // strike declared as the flurry's is one of its strikes whatever is left:
+  // counted as the action's swing, a monk's one swing and then a flurry spent
+  // the ki and had its Open Hand Technique refused on both strikes.
   if (
     options.unarmed &&
     (budget.flurryStrikes ?? 0) > 0 &&
-    (swingsGone || (budget.attacksMade === 0 && budget.actionUsed))
+    (swingsGone || (budget.attacksMade === 0 && budget.actionUsed) || options.flurry)
   ) {
     const left = (budget.flurryStrikes ?? 0) - 1;
     return {

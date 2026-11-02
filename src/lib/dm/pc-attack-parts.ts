@@ -32,7 +32,8 @@ import {
 } from "@/lib/dm/action-parts-logic";
 import { instancesOf } from "@/lib/dm/condition-logic";
 import { applyDmMutation } from "@/lib/dm/mutations";
-import { handlePcAttack, PC_ATTACK_PARKED } from "@/lib/dm/pc-attack";
+import { handlePcAttack, PC_ATTACK_PARKED, pcAttackArgsSchema } from "@/lib/dm/pc-attack";
+import { gatePcAttack } from "@/lib/dm/pc-attack-gate";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
 import { getFoe } from "@/lib/dm/sheet-foe";
 import { invalidArguments, type ToolResult } from "@/lib/dm/tool-errors";
@@ -162,14 +163,7 @@ function resolvePart(
   if (named && !kind) {
     return { result: { error: `${sheet.name} has no feature called "${named}". ${FEATURE_NAMES}`, retry: true }, notes: [] };
   }
-  const notes: string[] = [];
-  const bought = buyFeature(campaign, turn, sheet, kind, sheets, sheetsById);
-  if (bought && "refused" in bought) {
-    return { result: bought.refused, notes };
-  }
-  if (bought) {
-    notes.push(bought.note);
-  }
+  const said: string[] = [];
   const args = partAttackArgs(sheet.id, part, kind);
   // SRD 5.1: Flurry of Blows is "two unarmed strikes" and Martial Arts' bonus
   // attack "one unarmed strike". A part naming anything else for one (the
@@ -177,13 +171,27 @@ function resolvePart(
   // does: refused, the part was lost after the flurry was bought (it was,
   // live, both ways).
   if ((kind === "flurry" || kind === "martial arts") && typeof args.weapon === "string" && !naturalAttack(sheet, args.weapon)) {
-    notes.push(`${kind === "flurry" ? "Flurry of Blows" : "Martial Arts"} strikes are unarmed: struck with an unarmed strike, not the ${args.weapon}.`);
+    said.push(`${kind === "flurry" ? "Flurry of Blows" : "Martial Arts"} strikes are unarmed: struck with an unarmed strike, not the ${args.weapon}.`);
     args.weapon = "unarmed strike";
   }
   if (args.stunningStrike === true && typeof args.targetEnemyId === "string" && stunnedThroughNextTurn(args.targetEnemyId, sheet.id)) {
     delete args.stunningStrike;
-    notes.push("Stunning Strike not used: the target is already stunned until the end of the monk's next turn, and a second stun would end with it. No ki spent.");
+    said.push("Stunning Strike not used: the target is already stunned until the end of the monk's next turn, and a second stun would end with it. No ki spent.");
   }
+  // What refuses the strike whatever the feature buys is asked before it is
+  // bought: bought first, the Action Surge after a swing that dropped the
+  // last foe spent its use on a fight already over, and a flurry aimed at a
+  // creature the action's swings had killed spent the ki for strikes the
+  // player had not aimed anywhere else.
+  const unmade = kind === "action surge" || kind === "flurry" ? refusedBeforeBuying(campaign, sheet, args) : null;
+  if (unmade) {
+    return { result: unmade, notes: said };
+  }
+  const bought = buyFeature(campaign, turn, sheet, kind, sheets, sheetsById);
+  if (bought && "refused" in bought) {
+    return { result: bought.refused, notes: said };
+  }
+  const notes = bought ? [bought.note, ...said] : said;
   const result = handlePcAttack(campaign, turn, JSON.stringify(args), sheets, sheetsById, realDiceUserIds, toolCallId);
   // A feature of theirs that makes no attack of its own (Sneak Attack, a
   // rider on the swing) is no part's feature: sent back
@@ -196,6 +204,23 @@ function resolvePart(
 }
 
 const FEATURE_NAMES = `An attack's feature names what it is made with: ${ATTACK_FEATURE_NAMES.join(", ")}, or a feat or feature of theirs that grants a bonus attack. A swing of the Attack action names none, and a rider is none: the entry's own fields choose it, and Sneak Attack is the server's.`;
+
+// The part's refusals that owe nothing to its feature, as handlePcAttack
+// asks them first (no fight, arguments it cannot read, then
+// src/lib/dm/pc-attack-gate.ts: not their turn, a target unknown, already
+// down or out of every attack's way), or null.
+function refusedBeforeBuying(campaign: Campaign, sheet: CharacterSheet, args: Record<string, unknown>): ToolResult | null {
+  const encounter = getActiveEncounter(campaign.id);
+  if (!encounter) {
+    return { error: "No active encounter. Call start_encounter first.", retry: true };
+  }
+  const parsed = pcAttackArgsSchema.safeParse(args);
+  if (!parsed.success) {
+    return invalidArguments("Invalid arguments: pc_attack needs characterId and targetEnemyId.", parsed.error);
+  }
+  const gate = gatePcAttack({ campaign, encounter, sheet, args: parsed.data });
+  return "refused" in gate ? gate.refused : null;
+}
 
 // What the first part of a feature buys before it swings: Action Surge's
 // action, and the flurry's strikes. Null when the part buys nothing (or its

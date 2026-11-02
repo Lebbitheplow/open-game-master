@@ -182,8 +182,13 @@ export function withApproach(result: ToolResult, walked: ToolResult): ToolResult
 // or null.
 export function endTurnAsked(rawArguments: string): string | null {
   try {
-    const args = JSON.parse(rawArguments || "{}") as { endTurn?: unknown; characterId?: unknown };
-    const asked = args.endTurn === true || args.endTurn === "true";
+    const args = JSON.parse(rawArguments || "{}") as { endTurn?: unknown; characterId?: unknown; attacks?: unknown };
+    const said = (value: unknown) => value === true || value === "true";
+    // Sent on the last entry of attacks, where the one-attack call carried
+    // it ("only on the last attack they declared"), it was read nowhere and
+    // the turn waited.
+    const entries = Array.isArray(args.attacks) ? (args.attacks as unknown[]) : [];
+    const asked = said(args.endTurn) || entries.some((entry) => typeof entry === "object" && entry !== null && said((entry as { endTurn?: unknown }).endTurn));
     return asked && typeof args.characterId === "string" ? args.characterId : null;
   } catch {
     return null;
