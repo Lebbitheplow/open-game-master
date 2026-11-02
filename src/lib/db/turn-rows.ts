@@ -267,7 +267,10 @@ export const REVERT_WINDOW_TURNS = 200;
 // played fewer turns than the window holds.
 export function revertWindowStart(campaignId: string): string | null {
   const row = getDatabase()
-    .prepare(`SELECT created_at FROM dm_turns WHERE campaign_id = ? ORDER BY created_at DESC, rowid DESC LIMIT 1 OFFSET ?`)
+    // A stand-in opened inside another turn (a fired event's, a zone's) is
+    // part of that turn, never one of its own to revert: counted, every
+    // event and opportunity strike shortened the window.
+    .prepare(`SELECT created_at FROM dm_turns WHERE campaign_id = ? AND owner_turn_id IS NULL ORDER BY created_at DESC, rowid DESC LIMIT 1 OFFSET ?`)
     .get(campaignId, REVERT_WINDOW_TURNS - 1) as { created_at: string } | undefined;
   return row?.created_at ?? null;
 }
@@ -285,19 +288,46 @@ export function pruneOutOfReach(campaignId: string) {
   db.prepare(`DELETE FROM turn_changes WHERE campaign_id = ? AND created_at < ?`).run(campaignId, start);
 }
 
+declare global {
+  var __odmPruneHeld: Set<string> | undefined;
+}
+
+const pruneHeld = () => (globalThis.__odmPruneHeld ??= new Set<string>());
+
+// A turn opened in case it has something to take back (fight-events.ts
+// asEventTurn) prunes once its opener knows whether it stays: counted while
+// it waited to be dissolved, it pushed the oldest turn still in reach out of
+// the window, rows and all, though the route still offered its revert.
+export function holdPrune(turnId: string) {
+  pruneHeld().add(turnId);
+}
+
+export function releasePrune(campaignId: string, turnId: string) {
+  pruneHeld().delete(turnId);
+  pruneOutOfReach(campaignId);
+}
+
 function turnDone(turnId: string) {
   seal(turnId);
   const turn = getDatabase().prepare(`SELECT campaign_id FROM dm_turns WHERE id = ?`).get(turnId) as { campaign_id: string } | undefined;
   if (turn) {
     tellFightLine(turn.campaign_id, turnId);
-    pruneOutOfReach(turn.campaign_id);
+    if (!pruneHeld().has(turnId)) {
+      pruneOutOfReach(turn.campaign_id);
+    }
   }
 }
 
-// How many rows of each table one turn keeps.
-function turnCounts(turnId: string): Partial<Record<KeptTable, number>> {
+// A kept row of a creature or token the table cannot see. The event log's
+// line goes to every seat, so it counts only what they can see: "1 creature"
+// told the players that a hidden one had been touched.
+const VISIBLE = `NOT EXISTS (SELECT 1 FROM battle_tokens t WHERE t.hidden = 1 AND (t.id = turn_rows.row_id OR t.ref_id = turn_rows.row_id))`;
+
+// How many rows of each table one turn keeps (`seen`: only those of what the
+// table can see, for the line it reads).
+function turnCounts(turnId: string, seen = false): Partial<Record<KeptTable, number>> {
   const rows = getDatabase()
-    .prepare(`SELECT tbl, COUNT(*) AS n FROM turn_rows WHERE turn_id = ? AND reverted_at IS NULL GROUP BY tbl`)
+    .prepare(`SELECT tbl, COUNT(*) AS n FROM turn_rows WHERE turn_id = ? AND reverted_at IS NULL${seen ? ` AND ${VISIBLE}` : ""} GROUP BY tbl`)
     .all(turnId) as Array<{ tbl: KeptTable; n: number }>;
   return Object.fromEntries(rows.map((row) => [row.tbl, row.n]));
 }
@@ -311,7 +341,7 @@ function tellFightLine(campaignId: string, turnId: string) {
   if (!change) {
     return;
   }
-  const line = fightLine(turnCounts(turnId));
+  const line = fightLine(turnCounts(turnId, true));
   if (line === change.payload.line) {
     return;
   }
@@ -399,7 +429,7 @@ export function listKeptRows(turnId: string): KeptRow[] {
 // named there).
 export function keptCounts(campaignId: string): Map<string, Partial<Record<KeptTable, number>>> {
   const rows = getDatabase()
-    .prepare(`SELECT turn_id, tbl, COUNT(*) AS n FROM turn_rows WHERE campaign_id = ? AND reverted_at IS NULL GROUP BY turn_id, tbl`)
+    .prepare(`SELECT turn_id, tbl, COUNT(*) AS n FROM turn_rows WHERE campaign_id = ? AND reverted_at IS NULL AND ${VISIBLE} GROUP BY turn_id, tbl`)
     .all(campaignId) as Array<{ turn_id: string; tbl: KeptTable; n: number }>;
   const counts = new Map<string, Partial<Record<KeptTable, number>>>();
   for (const row of rows) {

@@ -165,6 +165,12 @@ function scopeClosed(turnId: string) {
   turnWorkDone(turnId);
 }
 
+// Whether some work of this turn is running now (a console call, a parked
+// roll being answered): "Revert this turn" waits for it to finish.
+export function turnScopeOpen(turnId: string): boolean {
+  return openScopes().has(turnId);
+}
+
 // Runs `fn` as part of this turn. The scope closes when `fn` returns (or its
 // promise settles), so a timer it started that fires later is nobody's turn.
 export function runInTurnScope<T>(turnId: string, fn: () => T): T {

@@ -11,6 +11,8 @@ import { firedEventsBlock, firedEventsNote } from "@/lib/dm/fight-events";
 import type { ToolDef } from "@/lib/dm/encounter-tool-defs";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { findNamed } from "@/lib/language/text-logic";
+import { recordTurnChange } from "@/lib/db/turn-changes";
+import { currentTurnId, owningTurnOf } from "@/lib/dm/job-control";
 
 // The prepared fights, offered to the AI storyteller (#154).
 //
@@ -187,6 +189,13 @@ export function runPreparedEncounter(
   const setup = getTemplateSetup(template.id);
   if (setup) {
     layFightSetup(campaign, template, setup);
+  }
+  // The cue goes with the fight it began: "Revert this turn" takes the fight
+  // away and cues the prepared fight again (turn-revert.ts). Before, the fight
+  // went and the lead's cue stayed spent.
+  const turnId = currentTurnId();
+  if (template.cued && turnId) {
+    recordTurnChange(campaign.id, owningTurnOf(turnId), "cue", { templateId: template.id });
   }
   setTemplateCued(template.id, false);
   // The plan rides back with the fight: what it is worth and when it

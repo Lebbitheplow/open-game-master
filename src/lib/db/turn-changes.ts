@@ -25,7 +25,7 @@ import { publishPersisted } from "@/lib/events";
 // A row is written only under a turn: work outside every turn is nobody's to
 // revert.
 
-export type TurnChangeKind = "fight" | "fight_event" | "dice_face" | "dice_seed" | "card" | "summon";
+export type TurnChangeKind = "fight" | "fight_event" | "dice_face" | "dice_seed" | "card" | "summon" | "cue";
 
 export type TurnChange = {
   id: string;
@@ -51,10 +51,11 @@ type Row = {
   created_at: string;
 };
 
-const KINDS: readonly TurnChangeKind[] = ["fight", "fight_event", "dice_face", "dice_seed", "card", "summon"];
+const KINDS: readonly TurnChangeKind[] = ["fight", "fight_event", "dice_face", "dice_seed", "card", "summon", "cue"];
 
-// Kept for the revert, never shown or counted in the event log.
-const BOOKKEEPING: readonly TurnChangeKind[] = ["summon"];
+// Kept for the revert, never shown or counted in the event log: a creature
+// a spell called up, and the prepared fight whose cue the turn spent.
+const BOOKKEEPING: readonly TurnChangeKind[] = ["summon", "cue"];
 
 function mapRow(row: Row): TurnChange | null {
   const kind = KINDS.find((entry) => entry === row.kind);

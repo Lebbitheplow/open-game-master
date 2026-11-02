@@ -184,6 +184,13 @@ export function describeKnownEntry(entry: { kind: string; delta: Delta }, name: 
       const temp = amount(delta.tempHp);
       return temp !== null ? `${name} gains ${temp} temporary HP` : `${name} gains temporary HP`;
     }
+    // An effect's move of the hit point maximum (Aid, a drain), with the hit
+    // points it carried along (src/lib/db/active-effects.ts).
+    case "set_effect": {
+      const max = amount(delta.maxHp);
+      const hp = amount(delta.currentHp);
+      return max !== null ? `${name}'s hit point maximum is now ${max}${hp !== null ? ` (${hp} HP)` : ""}` : `${name}'s hit point maximum changes`;
+    }
     case "award_xp": {
       const xp = amount(delta.amount);
       const total = amount(delta.newXp);

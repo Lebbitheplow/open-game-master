@@ -432,6 +432,29 @@ export function closeHitsAtTurnEnd(campaignId: string, encounter: Pick<Encounter
   }
 }
 
+// "Revert this turn" (src/app/api/campaigns/[campaignId]/audit/revert-turn)
+// takes the turn's blows back: their hits go too, as if never landed. Left,
+// they stayed open, so a Shield after the revert "turned" a blow whose
+// damage the revert had already given back and healed the hero on top of
+// it, and they still closed the hits of the turns before them.
+export function forgetTurnHits(campaignId: string, turnId: string) {
+  const rows = db()
+    .prepare(`SELECT character_id, payload_json FROM last_hits WHERE campaign_id = ?`)
+    .all(campaignId) as Array<{ character_id: string; payload_json: string }>;
+  for (const row of rows) {
+    const hits = hitsIn(row.payload_json);
+    const kept = hits.filter((record) => record.dmTurn !== turnId);
+    if (kept.length === hits.length) {
+      continue;
+    }
+    if (kept.length) {
+      saveHits(campaignId, row.character_id, kept);
+    } else {
+      db().prepare(`DELETE FROM last_hits WHERE campaign_id = ? AND character_id = ?`).run(campaignId, row.character_id);
+    }
+  }
+}
+
 function concentrationHeld(
   campaignId: string,
   sheet: CharacterSheet,

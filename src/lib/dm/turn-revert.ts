@@ -1,9 +1,10 @@
 import type { Campaign } from "@/lib/db/campaigns";
-import { effectsFollowingMaxHp, effectsUpdate } from "@/lib/db/active-effects";
+import { effectsUpdate } from "@/lib/db/active-effects";
 import { getBattleMap, listTokens, placeToken } from "@/lib/db/battle-maps";
 import { getDatabase } from "@/lib/db/core";
 import { diceGiveBackWarnings, giveBackDice } from "@/lib/db/dice-scripts";
 import { listEnemies } from "@/lib/db/encounters";
+import { setTemplateCued } from "@/lib/db/encounter-templates";
 import { getSheetById } from "@/lib/db/sheets";
 import { markTurnChangesReverted, type TurnChange } from "@/lib/db/turn-changes";
 import { deleteRow, insertRow, listKeptRows, markRowsReverted, readRow, supersedeLaterRows, writeRow, type KeptRow, type Row } from "@/lib/db/turn-rows";
@@ -42,7 +43,12 @@ function fightOf(row: KeptRow, now: Row | null, boards: Map<string, string | nul
         return null;
       }
       if (!boards.has(mapId)) {
-        boards.set(mapId, text(readRow("battle_maps", mapId)?.encounter_id));
+        const board = readRow("battle_maps", mapId);
+        // A board gone since (with a fight a revert took away) holds nothing
+        // to put back: its id stands in for a fight that is over, so its
+        // rows are left. Read as no fight, a token was put back onto a board
+        // that no longer exists, and the database refused it halfway through.
+        boards.set(mapId, board ? text(board.encounter_id) : mapId);
       }
       return boards.get(mapId) ?? null;
     }
@@ -51,7 +57,17 @@ function fightOf(row: KeptRow, now: Row | null, boards: Map<string, string | nul
   }
 }
 
-function rowsPlan(turnId: string): { plan: RowPlan; rows: RowState[] } | null {
+// The creatures and tokens the table cannot see, for a question asked of a
+// seat that does not see them either.
+function hiddenRefs(campaignId: string): Set<string> {
+  const rows = getDatabase().prepare(`SELECT id, ref_id FROM battle_tokens WHERE campaign_id = ? AND hidden = 1`).all(campaignId) as Array<{
+    id: string;
+    ref_id: string;
+  }>;
+  return new Set(rows.flatMap((row) => [row.id, row.ref_id]));
+}
+
+function rowsPlan(turnId: string, hidden?: ReadonlySet<string>): { plan: RowPlan; rows: RowState[] } | null {
   const kept = listKeptRows(turnId);
   if (!kept.length) {
     return null;
@@ -76,7 +92,7 @@ function rowsPlan(turnId: string): { plan: RowPlan; rows: RowState[] } | null {
       endedInTurn: own?.before?.status === "active" && (own.after ?? now)?.status === "ended",
     });
   }
-  return { plan: planRowsRevert(rows, fights), rows };
+  return { plan: planRowsRevert(rows, fights, hidden), rows };
 }
 
 // The kept rows the revert wrote: put back, taken away, brought back, or
@@ -84,7 +100,7 @@ function rowsPlan(turnId: string): { plan: RowPlan; rows: RowState[] } | null {
 // left as they are, and so is what a later turn kept of them.
 function writtenRows({ plan, rows }: { plan: RowPlan; rows: RowState[] }): RowState[] {
   const key = (table: string, rowId: string) => `${table}:${rowId}`;
-  const touched = new Set([...plan.updates, ...plan.deletes].map((entry) => key(entry.table, entry.rowId)));
+  const touched = new Set([...plan.updates, ...plan.deletes, ...plan.settled].map((entry) => key(entry.table, entry.rowId)));
   const brought = new Set(plan.inserts.map((entry) => entry.row));
   return rows.filter(
     (row) =>
@@ -118,15 +134,15 @@ function restand(mapId: string) {
 function applyRows(campaign: Campaign, plan: RowPlan) {
   const db = getDatabase();
   const effects = (entry: { table: string }) => entry.table === "active_effects";
-  // Effects first, through the rule that moves a hero's maximum with them;
-  // the creatures' rows after, as the turn found them, maximum and all.
-  effectsFollowingMaxHp(campaign.id, () =>
-    db.transaction(() => {
-      plan.deletes.filter(effects).forEach((entry) => deleteRow(entry.table, entry.rowId));
-      plan.inserts.filter(effects).forEach((entry) => insertRow(entry.table, entry.row));
-      plan.updates.filter(effects).forEach((entry) => writeRow(entry.table, entry.rowId, entry.values));
-    })(),
-  );
+  // Effects as rows alone: what an effect did to a hero's maximum and hit
+  // points in the turn is the sheet audit's to put back (active-effects.ts
+  // audits it there), and a creature's is its own row's below. Moved again
+  // here, a hero given Aid and then hit came back 5 hit points over.
+  db.transaction(() => {
+    plan.deletes.filter(effects).forEach((entry) => deleteRow(entry.table, entry.rowId));
+    plan.inserts.filter(effects).forEach((entry) => insertRow(entry.table, entry.row));
+    plan.updates.filter(effects).forEach((entry) => writeRow(entry.table, entry.rowId, entry.values));
+  })();
   db.transaction(() => {
     plan.dropFights.forEach((id) => deleteRow("encounters", id));
     plan.deletes.filter((entry) => !effects(entry)).forEach((entry) => deleteRow(entry.table, entry.rowId));
@@ -160,10 +176,13 @@ export function bringBackTakenRows(campaign: Campaign, turnId: string) {
   }
 }
 
-export function turnChangeWarnings(campaign: Campaign, turnId: string, changes: readonly TurnChange[]): string[] {
+// `seesSecrets`: whether the person asking sees what the GM keeps off the
+// board (campaign-api.ts seesStorytellerSecrets); a party lead at an AI
+// table is told of a hidden creature without its name.
+export function turnChangeWarnings(campaign: Campaign, turnId: string, changes: readonly TurnChange[], seesSecrets = true): string[] {
   const dice = changes.filter((change) => change.kind === "dice_face" || change.kind === "dice_seed");
   return [
-    ...(rowsPlan(turnId)?.plan.warnings ?? []),
+    ...(rowsPlan(turnId, seesSecrets ? undefined : hiddenRefs(campaign.id))?.plan.warnings ?? []),
     ...changes.flatMap((change) => (change.kind === "card" ? cardRevertWarnings(change) : [])),
     ...(dice.length ? diceGiveBackWarnings(campaign.id, dice) : []),
   ];
@@ -177,8 +196,17 @@ export function takeBackTurnChanges(campaign: Campaign, turnId: string, changes:
   if (dice.length) {
     giveBackDice(campaign.id, dice);
   }
+  const dropsFight = changes.some((change) => change.kind === "cue") && Boolean(rowsPlan(turnId)?.plan.dropFights.length);
   for (const change of [...changes].reverse()) {
-    if (change.kind === "fight_event") {
+    if (change.kind === "cue") {
+      // The prepared fight the turn ran is the lead's cue again once the
+      // fight it began goes (a fight that has ended since stays, and so does
+      // its cue's use).
+      const templateId = text(change.payload.templateId);
+      if (templateId && dropsFight) {
+        setTemplateCued(templateId, true);
+      }
+    } else if (change.kind === "fight_event") {
       takeBackFightEvent(campaign, change);
     } else if (change.kind === "card") {
       takeBackCardResolution(change);

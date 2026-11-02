@@ -92,6 +92,10 @@ export type RowState = KeptRow & {
 export type RowPlan = {
   // Fights the turn began, still on: they go, with all they hold.
   dropFights: string[];
+  // Rows the turn made that are gone already (a creature it brought in,
+  // slain since, its token taken off): nothing to write, but a later turn's
+  // copy of them no longer stands either (turn-rows.ts supersedeLaterRows).
+  settled: Array<{ table: KeptTable; rowId: string }>;
   deletes: Array<{ table: KeptTable; rowId: string }>;
   inserts: Array<{ table: KeptTable; row: Row }>;
   updates: Array<{ table: KeptTable; rowId: string; values: Row }>;
@@ -100,12 +104,19 @@ export type RowPlan = {
   warnings: string[];
 };
 
-const LABELS: Record<FightTable, (row: Row) => string> = {
+// `hidden`: ids of the creatures and tokens kept off the board from the
+// person asking (a party lead at an AI table), who is told of them without
+// their names, as the event log counts them.
+const LABELS: Record<FightTable, (row: Row, hidden: ReadonlySet<string>) => string> = {
   encounters: () => "the fight's order of turns",
-  encounter_enemies: (row) => (typeof row.display_name === "string" && row.display_name ? row.display_name : "a creature"),
+  encounter_enemies: (row, hidden) =>
+    typeof row.display_name === "string" && row.display_name && !hidden.has(String(row.id)) ? row.display_name : "a creature",
   battle_maps: () => "the board",
   // "Goblin 2's token", which read "Goblin 2 token" in the revert's question.
-  battle_tokens: (row) => (typeof row.name === "string" && row.name ? `${row.name}'s token` : "a token"),
+  battle_tokens: (row, hidden) =>
+    typeof row.name === "string" && row.name && !row.hidden && !hidden.has(String(row.id)) && !hidden.has(String(row.ref_id))
+      ? `${row.name}'s token`
+      : "a token",
   active_effects: (row) => (typeof row.name === "string" && row.name ? `the effect ${row.name}` : "an effect"),
   dropped_items: () => "an item on the ground",
 };
@@ -115,10 +126,32 @@ function listWords(names: string[]): string {
   return shown.length <= 1 ? (shown[0] ?? "") : `${shown.slice(0, -1).join(", ")} and ${shown[shown.length - 1]}`;
 }
 
-export function planRowsRevert(rows: readonly RowState[], fights: ReadonlyMap<string, FightState>): RowPlan {
-  const plan: RowPlan = { dropFights: [], deletes: [], inserts: [], updates: [], grounds: [], warnings: [] };
+// A scene's own row: the place's exploration that a fight breaking out
+// closes (encounters.ts createEncounter), apart from the fights.
+function isScene(row: RowState): boolean {
+  return row.table === "encounters" && typeof row.before?.kind === "string" && row.before.kind !== "fight";
+}
+
+// The scene columns a revert writes back when the fight that closed it goes.
+const SCENE_COLUMNS = ["status", "outcome", "ended_instant"] as const;
+
+export function planRowsRevert(
+  rows: readonly RowState[],
+  fights: ReadonlyMap<string, FightState>,
+  hidden: ReadonlySet<string> = new Set(),
+): RowPlan {
+  const plan: RowPlan = { dropFights: [], settled: [], deletes: [], inserts: [], updates: [], grounds: [], warnings: [] };
   const changed: string[] = [];
   const told = new Set<string>();
+  // A fight the turn began on an exploration map closed that scene; with the
+  // fight gone the scene is open again, its board with it, as the turn found
+  // them. Left closed, the revert left the table with no board at all.
+  const dropping = [...fights.values()].some((fight) => fight.begunInTurn && fight.active);
+  const reopened = new Set(
+    dropping
+      ? rows.filter((row) => isScene(row) && row.before?.status === "active" && row.now?.status === "ended").map((row) => row.rowId)
+      : [],
+  );
   for (const row of rows) {
     if (!isFightTable(row.table)) {
       if (row.before && !row.now) {
@@ -134,9 +167,18 @@ export function planRowsRevert(rows: readonly RowState[], fights: ReadonlyMap<st
         plan.dropFights.push(row.encounterId);
         plan.warnings.push("This turn began the fight: reverting it takes the fight away, as if it never began.");
       }
-      continue;
-    }
-    if (row.encounterId && (!fight || !fight.active)) {
+      // An item has no tie to the board it lies on that a fight's delete
+      // follows (dropped_items.map_id): it is put back on its own, or it
+      // outlived the fight on a board that no longer exists.
+      if (row.table !== "dropped_items" || !fight.active) {
+        continue;
+      }
+    } else if (row.encounterId && reopened.has(row.encounterId)) {
+      if (row.table === "encounters" && row.before) {
+        plan.updates.push({ table: row.table, rowId: row.rowId, values: pick(row.before, [...restoredColumns(row.table, row.before), ...SCENE_COLUMNS]) });
+        continue;
+      }
+    } else if (row.encounterId && (!fight || !fight.active)) {
       if (!told.has(row.encounterId)) {
         told.add(row.encounterId);
         plan.warnings.push(
@@ -148,11 +190,13 @@ export function planRowsRevert(rows: readonly RowState[], fights: ReadonlyMap<st
       continue;
     }
     if (row.after !== undefined && changedSince(row.table, row.after, row.now)) {
-      changed.push(LABELS[row.table](row.now ?? row.before ?? {}));
+      changed.push(LABELS[row.table](row.now ?? row.before ?? {}, hidden));
     }
     if (!row.before) {
       if (row.now) {
         plan.deletes.push({ table: row.table, rowId: row.rowId });
+      } else {
+        plan.settled.push({ table: row.table, rowId: row.rowId });
       }
       continue;
     }

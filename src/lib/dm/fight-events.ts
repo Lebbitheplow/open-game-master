@@ -43,7 +43,7 @@ import {
 import { changeGround, preparedBoard } from "@/lib/dm/fight-ground";
 import { recordFightEvent } from "@/lib/dm/fight-event-undo";
 import { liveTurnChangeOf } from "@/lib/db/turn-changes";
-import { dissolveTurn } from "@/lib/db/turn-rows";
+import { dissolveTurn, holdPrune, releasePrune } from "@/lib/db/turn-rows";
 import { currentTurnId, runInTurnScope } from "@/lib/dm/job-control";
 import { isDefeated } from "@/lib/dm/knockout";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
@@ -301,6 +301,7 @@ export function asEventTurn<T>(campaignId: string, move: () => T): T {
     return move();
   }
   const turn = openStandInTurn(campaignId);
+  holdPrune(turn.id);
   try {
     return runInTurnScope(turn.id, move);
   } finally {
@@ -308,6 +309,7 @@ export function asEventTurn<T>(campaignId: string, move: () => T): T {
     if (!liveTurnChangeOf(campaignId, turn.id, "fight_event")) {
       dissolveTurn(campaignId, turn.id);
     }
+    releasePrune(campaignId, turn.id);
   }
 }
 

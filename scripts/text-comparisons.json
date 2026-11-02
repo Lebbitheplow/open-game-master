@@ -2692,6 +2692,7 @@
     "lib/dm/slotless-cast-logic.ts#str-eq": [["key",1,"tool names (engine vocabulary)"]],
     "lib/dm/turn-revert.ts#str-eq": [["key",4,"turn change kinds, table names and a fight's standing (engine vocabulary)"]],
     "lib/dm/turn-revert.ts#str-case": [["key",1,"the tables a kept row may be from (table names)"]],
-    "lib/dm/turn-rows-logic.ts#str-eq": [["key",1,"a table name (the schema's own)"]]
+    "lib/dm/turn-rows-logic.ts#str-eq": [["key",5,"table names, and a fight's kind and standing (the schema's own vocabulary)"]],
+    "lib/dm/turn-rows-logic.ts#str-list": [["key",1,"column names (the schema's own)"]]
   }
 }

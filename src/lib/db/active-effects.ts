@@ -2,6 +2,9 @@ import { textKey } from "@/lib/language/text-logic";
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { keepNew, keepRow } from "@/lib/db/turn-rows";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
+import { allocateSeq } from "@/lib/db/campaigns";
+import { insertSheetAudit } from "@/lib/db/sheet-audit";
+import { currentTurnId } from "@/lib/dm/job-control";
 import { getActiveEncounter, shiftEnemyMaxHp } from "@/lib/db/encounters";
 import { getBattleMapForEncounter, listHiddenRefIds } from "@/lib/db/battle-maps";
 import { publishPersisted } from "@/lib/events";
@@ -138,9 +141,27 @@ function followingMaxHp<T>(campaignId: string, change: () => T): T {
     // shiftEnemyMaxHp): set_effect refuses a drain with no room, but a bonus
     // lifted from under one could still take it there.
     const maxHp = sheet ? Math.max(1, sheet.maxHp + delta) : 0;
-    const updated = sheet
-      ? patchSheet(id, { maxHp, currentHp: delta > 0 ? sheet.currentHp + delta : Math.min(sheet.currentHp, maxHp) })
-      : null;
+    const patch = sheet ? { maxHp, currentHp: delta > 0 ? sheet.currentHp + delta : Math.min(sheet.currentHp, maxHp) } : null;
+    const updated = sheet && patch ? patchSheet(id, patch) : null;
+    if (sheet && patch && updated && currentTurnId()) {
+      // Inside a GM turn the move is audited like any change the turn makes
+      // to a sheet, so "Revert this turn" puts the maximum and the hit points
+      // back exactly (turn-revert.ts writes the effect rows back raw). Undone
+      // by the effect's own end, Aid's 5 hit points came back as a clamp to
+      // the old maximum: a hero at 25 of 30 given Aid and then hit, reverted,
+      // stood at 30 of 30.
+      const entry = insertSheetAudit({
+        campaignId,
+        characterId: id,
+        kind: "set_effect",
+        delta: patch,
+        reason: delta > 0 ? `an effect raised the hit point maximum by ${delta}` : `an effect lowered the hit point maximum by ${-delta}`,
+        seq: allocateSeq(campaignId),
+        before: sheet,
+        patch,
+      });
+      publishPersisted(campaignId, "sheet_audit", { entry, characterName: sheet.name });
+    }
     if (updated) {
       publishPersisted(campaignId, "sheet_updated", { sheet: updated });
     }
