@@ -16,12 +16,12 @@ import { check, eventually, openPanelTab, sleep, untilStill } from "../lib.mjs";
 
 const ROWS = [
   ["prone", "Can only crawl"],
-  ["restrained", "Speed 0. Attacks against it have advantage"],
+  ["restrained", "Attacks against it have advantage, its own attacks have disadvantage"],
   ["poisoned", "Disadvantage on attack rolls and ability checks"],
-  ["frightened", "while the source of its fear is in sight"],
+  ["frightened", "while the source of its fear is within line of sight"],
   ["hasted", "Haste: +2 AC"],
   ["blessed", "Bless: +1d4"],
-  ["invisible", "Can't be seen without magic"],
+  ["invisible", "Impossible to see without magic"],
   ["shielded", "Shield: +5 AC"],
 ];
 

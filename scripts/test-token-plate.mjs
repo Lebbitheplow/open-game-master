@@ -89,9 +89,28 @@ assert.ok(squeezed.top >= 8 && squeezed.top + size.height <= 232, "kept inside a
 assert.equal(squeezed.left, 8, "a window narrower than the plate keeps its left edge");
 
 const { conditionRule } = await import("../src/lib/battlemap/condition-rules.ts");
-for (const id of ["blinded", "charmed", "deafened", "frightened", "grappled", "incapacitated", "invisible", "paralyzed", "petrified", "poisoned", "prone", "restrained", "stunned", "unconscious"]) {
+for (const id of ["blinded", "charmed", "deafened", "exhaustion", "frightened", "grappled", "incapacitated", "invisible", "paralyzed", "petrified", "poisoned", "prone", "restrained", "stunned", "unconscious"]) {
   assert.ok(conditionRule(id), `${id} has a meaning`);
 }
 assert.equal(conditionRule(" Prone "), conditionRule("prone"));
 assert.equal(conditionRule("halted"), null, "a non-SRD condition is left to its note");
+// The fifteenth SRD condition. A character's row is bare "exhaustion" (its
+// note names its level); an enemy carries its level in the condition and has
+// nothing else saying what that level does.
+assert.match(conditionRule("exhaustion") ?? "", /1, disadvantage on ability checks; 2, speed halved; 3, disadvantage on attack rolls and saves; 4, hit point maximum halved; 5, speed 0; 6, death\. A long rest with food and drink lowers it by one level\./, "exhaustion's whole ladder");
+assert.equal(conditionRule("exhaustion 3"), "Level 3: disadvantage on ability checks; speed halved; disadvantage on attack rolls and saves. A long rest with food and drink lowers it by one level.", "an enemy's level, with every level below it");
+assert.match(conditionRule("Exhaustion 5") ?? "", /speed 0; disadvantage on attack rolls and saves; hit point maximum halved\./);
+assert.equal(conditionRule("Exhaustion 6"), "Level 6: death.");
+// Every clause of the SRD's text, not most of them.
+const says = (id, ...clauses) => clauses.forEach((clause) => assert.ok((conditionRule(id) ?? "").includes(clause), `${id}: ${clause}`));
+says("unconscious", "unaware of its surroundings", "drops what it holds and falls prone", "any hit from within 5 feet is a critical hit");
+says("petrified", "unaware of its surroundings", "resists all damage", "immune to poison and disease");
+says("invisible", "heavily obscured", "noise or tracks");
+says("grappled", "no bonus can raise it", "out of the grappler's reach");
+says("restrained", "no bonus can raise it", "disadvantage on Dexterity saves");
+says("frightened", "within line of sight", "Can't willingly move closer");
+says("dodging", "Until the start of its next turn", "if it can see the attacker", "Lost if it is incapacitated or its speed drops to 0");
+says("concentrating", "DC 10 or half the damage if higher", "another concentration spell", "incapacitated or killed");
+says("raging", "Out of heavy armor", "melee weapon attacks using Strength", "Can't cast or concentrate on spells", "Ends early if it is knocked unconscious");
+says("hidden", "hit or miss, gives away where it is");
 console.log("ok: hover plate shows the portrait and condition art large, says what each condition does, and is pinned on screen above or below the figure");
