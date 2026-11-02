@@ -84,40 +84,57 @@ function departedPlate(npc: Npc): string {
   return characterPlaceholder({ race: word(sheet.race) ?? "", class: word(sheet.class), gender: word(sheet.gender) });
 }
 
+// What a table's seats were last sent of its cast: the whole cast the
+// story's seats hold, and the known part every other seat holds.
+type SentCast = { whole: string; known: string };
+
 declare global {
-  var __odmCastSent: Map<string, string> | undefined;
+  var __odmCastSent: Map<string, SentCast> | undefined;
   var __odmCastPending: Set<string> | undefined;
 }
 
-// The cast each campaign's seats were last sent, as a digest of its JSON, so
-// a write that changed nothing they see sends nothing. A digest and not the
+// The cast each campaign's seats were last sent, as digests of its JSON, so
+// a write that changed nothing they see sends nothing. Digests and not the
 // JSON itself: the map keeps one entry for every table and workshop touched
 // since the server started, and a large cast's JSON runs to tens of
 // kilobytes.
 function lastSent() {
-  return (globalThis.__odmCastSent ??= new Map<string, string>());
+  return (globalThis.__odmCastSent ??= new Map<string, SentCast>());
 }
 
 function castDigest(cast: CastMember[]): string {
   return createHash("sha1").update(JSON.stringify(cast)).digest("base64");
 }
 
+function digestsOf(cast: CastMember[]): SentCast {
+  return { whole: castDigest(cast), known: castDigest(knownCast(cast)) };
+}
+
+// Sends the cast now, whatever the seats were last sent.
 export function publishCast(campaignId: string) {
-  const cast = wholeCast(campaignId);
-  lastSent().set(campaignId, castDigest(cast));
-  publishEphemeral(campaignId, "cast_updated", { cast });
+  sendCast(campaignId, true);
 }
 
 // Sends the cast when it differs from what the seats were last sent.
 // Returns whether it did.
 export function syncCast(campaignId: string): boolean {
+  return sendCast(campaignId, false);
+}
+
+// A change only the story's seats can see (someone registered or prepared
+// before the story names them, a prepared person renamed) is marked
+// storyOnly and reaches them alone (src/lib/table-delivery.ts): a player's
+// seat sent its own unchanged list at that moment would learn that the story
+// had just added someone it has not met.
+function sendCast(campaignId: string, always: boolean): boolean {
   const cast = wholeCast(campaignId);
-  const digest = castDigest(cast);
-  if (lastSent().get(campaignId) === digest) {
+  const sent = digestsOf(cast);
+  const last = lastSent().get(campaignId);
+  if (!always && last?.whole === sent.whole) {
     return false;
   }
-  lastSent().set(campaignId, digest);
-  publishEphemeral(campaignId, "cast_updated", { cast });
+  lastSent().set(campaignId, sent);
+  publishEphemeral(campaignId, "cast_updated", last?.known === sent.known ? { cast, storyOnly: true } : { cast });
   return true;
 }
 

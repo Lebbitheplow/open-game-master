@@ -7,7 +7,7 @@
 import assert from "node:assert/strict";
 import { openWorld } from "./lib/enforce-world.mjs";
 
-const { upsertNpc, markNpcMet, mergeNpcs, getNpcById, renameNpc, setNpcArchived, patchNpcAgency, setNpcPortrait } = await import("../src/lib/db/npcs.ts");
+const { upsertNpc, markNpcMet, mergeNpcs, getNpcById, getNpcByName, renameNpc, setNpcArchived, patchNpcAgency, setNpcPortrait } = await import("../src/lib/db/npcs.ts");
 const { castForSeat, wholeCast, publishCast } = await import("../src/lib/dm/cast.ts");
 const { insertCampaignMessage, updateMessageContent } = await import("../src/lib/db/messages.ts");
 const { allocateSeq } = await import("../src/lib/db/campaigns.ts");
@@ -245,15 +245,27 @@ await test("a seat that loads the table after a rewind hears the next change, ev
   assert.deepEqual(await castsSent(world, kara, () => markNpcMet(marla.id)), [["Marla Venn"]], "meeting her again reaches the seat");
 });
 
+await test("a change only the story's seats can see is sent to them alone (issue 733)", async () => {
+  const { world, kara, npc } = await table();
+  markNpcMet(npc("Sildar Hallwinter").id);
+  await settled();
+  assert.deepEqual(await castsSent(world, kara, () => npc("Glasstaff")), [], "a player's seat is sent nothing when someone not yet introduced is registered");
+  assert.deepEqual(await castsSent(world, kara, () => {
+    npc("Halia Thornton");
+    publishCast(world.campaignId);
+  }), [], "nor when the GM's people panel writes one and sends the cast itself");
+  assert.deepEqual(await castsSent(world, world.owner, () => npc("Nezznar")), [["Glasstaff", "Halia Thornton", "Nezznar", "Sildar Hallwinter"]], "the GM seat is sent the whole cast");
+  assert.deepEqual(await castsSent(world, kara, () => markNpcMet(getNpcByName(world.campaignId, "Glasstaff").id)), [["Glasstaff", "Sildar Hallwinter"]], "and a player's seat the next change it can see");
+});
+
 await test("what each table was last sent is kept as a short digest, however large its cast", async () => {
   const { world, npc } = await table();
   for (const name of ["Ander Holt", "Bryn Marsh", "Cael Dusk", "Dara Vane", "Esk Thornton", "Fen Alderleaf", "Gwyn Stonehill", "Hale Graywind"]) {
     markNpcMet(npc(name).id);
   }
   await settled();
-  const kept = globalThis.__odmCastSent?.get(world.campaignId);
-  assert.equal(typeof kept, "string");
-  assert.ok(kept.length <= 64, `kept ${kept.length} characters for one table`);
+  const kept = JSON.stringify(globalThis.__odmCastSent?.get(world.campaignId) ?? null);
+  assert.ok(kept !== "null" && kept.length <= 128, `kept ${kept.length} characters for one table`);
 });
 
 await test("a face painted for the workshop's cast tells the workshop's tools to read the cast again (issue 733)", async () => {
