@@ -20,7 +20,9 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { suite } from "./lib/enforce-harness.mjs";
-import { caster, closeTables, enemyOf, FIGHTER, table } from "./lib/enforce-spell-kit.mjs";
+import { caster, closeTables, enemyOf, field, FIGHTER, table } from "./lib/enforce-spell-kit.mjs";
+import { combatKit } from "./lib/enforce-combat.mjs";
+import { layMap } from "./lib/enforce-spells.mjs";
 
 const { test, finish } = suite("test-enforce-combat-sides-dominate");
 const { sideOf } = await import("../src/lib/dm/combatant.ts");
@@ -230,6 +232,41 @@ await test("At a person's table the GM plays a dominated hero's turn card by car
   assert.equal(ended.status, 200, JSON.stringify(ended.body));
   const now = world.encounter();
   assert.notEqual(now.order[now.turnIndex]?.characterId, victim.id, "Brin's turn was handed on");
+});
+
+// The actions route refused a dominated hero's player, and the board's own
+// routes did not: on its turn the player still walked its token, took the
+// walk back and drew its weapon (issue 685 review).
+await test("A dominated hero's player cannot walk its token, take a walk back or draw its gear on its turn", async () => {
+  const { world, sheets: [, victim], enemies: [foe] } = await table([FIGHTER, { ...FIGHTER, name: "Brin" }], 1, DOMINATOR);
+  world.dice(1);
+  const cast = await world.invoke("cast_at_player", { characterId: victim.id, casterEnemyId: foe.id, spell: "Dominate Person", saveAbility: "wis", dc: 20 });
+  world.clearDice();
+  assert.equal(cast.ok, true, cast.error);
+  const kit = await combatKit(world);
+  await layMap(world, field(16), { [victim.id]: { x: 2, y: 2 }, [foe.id]: { x: 12, y: 2 } });
+  const encounter = world.encounter();
+  const place = encounter.order.findIndex((entry) => entry.kind === "pc" && entry.characterId === victim.id);
+  encounters.saveEncounter({ ...encounter, turnIndex: place, turnBudget: null, legendary: { ...encounter.legendary, due: [] } });
+  const player = { id: victim.userId };
+
+  const walked = await post(world, "battle-map/move", { x: 4, y: 2 }, player);
+  assert.equal(walked.status, 409, JSON.stringify(walked.body));
+  assert.equal(walked.body.dominated, true);
+  assert.match(walked.body.error, /Brin is dominated: the GM plays Brin until the charm ends/);
+  assert.deepEqual([kit.token(victim.id).x, kit.token(victim.id).y], [2, 2], "the token stays where it stood");
+  const undone = await post(world, "battle-map/undo", {}, player);
+  assert.equal(undone.status, 409, JSON.stringify(undone.body));
+  assert.equal(undone.body.dominated, true);
+  const stowed = await post(world, "sheet/usage", { characterId: victim.id, gear: { Longsword: { equipped: false } } }, player);
+  assert.equal(stowed.status, 409, JSON.stringify(stowed.body));
+  assert.equal(stowed.body.dominated, true);
+  assert.equal(world.sheet(victim.id).equipment.find((item) => item.name === "Longsword")?.equipped, true, "the sword stays drawn");
+
+  // The charm ends: the walk is the player's again.
+  assert.equal((await world.invoke("clear_condition", { characterId: victim.id, condition: "charmed" })).ok, true);
+  const freed = await post(world, "battle-map/move", { x: 4, y: 2 }, player);
+  assert.equal(freed.status, 200, JSON.stringify(freed.body));
 });
 
 await test("The screens hand the GM seat a dominated hero's Hand, its Do and its End turn on a host that offers it", () => {

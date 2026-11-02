@@ -26,6 +26,7 @@ import { budgetApplies } from "@/lib/dm/action-budget";
 import { resolveOpportunityAttacks } from "@/lib/dm/opportunity";
 import { riskyOrderGate } from "@/lib/dm/party-conduct";
 import { canAct } from "@/lib/dm/can-act";
+import { dominatedRefusal } from "@/lib/dm/companion-command";
 import { removeConditions } from "@/lib/dm/condition-logic";
 import { awayFromFear, fearSourceAt } from "@/lib/dm/enemy-approach";
 import { publishPersisted } from "@/lib/events";
@@ -112,6 +113,14 @@ export async function POST(
   const token = sheet ? getTokenByRef(map.id, sheet.id) : null;
   if (!sheet || !token) {
     return Response.json({ error: "You have no token on this map." }, { status: 400 });
+  }
+  // A character dominated by the other side is the GM's to play until the
+  // charm ends (src/lib/dm/companion-command.ts), its walk included: the
+  // actions route refused its player's words while this route still walked
+  // its token on its turn.
+  const held = dominatedRefusal(campaignId, sheet);
+  if (held) {
+    return Response.json({ error: held, dominated: true }, { status: 409 });
   }
   // The one guard every acting handler asks (src/lib/dm/can-act.ts): the
   // dead, the dying, the incapacitated and the surprised do not move, and in

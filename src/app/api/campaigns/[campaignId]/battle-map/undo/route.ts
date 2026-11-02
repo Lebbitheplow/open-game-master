@@ -1,5 +1,6 @@
 import { capsFor, isErrorResponse, requireMember } from "@/lib/campaign-api";
 import { actingSheetFor } from "@/lib/character-seat";
+import { dominatedRefusal } from "@/lib/dm/companion-command";
 import { getBattleMapForEncounter } from "@/lib/db/battle-maps";
 import { getActiveBoard } from "@/lib/db/encounters";
 import { takeBack, undoableMove } from "@/lib/battlemap/move-undo";
@@ -34,6 +35,12 @@ export async function POST(
     return Response.json({ error: "No active battle map." }, { status: 404 });
   }
   const sheet = actingSheetFor(campaignId, context.user.id, undefined, encounter);
+  // A dominated character's walk is the GM's (companion-command.ts), so is
+  // taking one back, as the move route refuses its player the walk.
+  const held = sheet ? dominatedRefusal(campaignId, sheet) : null;
+  if (held) {
+    return Response.json({ error: held, dominated: true }, { status: 409 });
+  }
   const step = sheet ? undoableMove(encounter, map.id, sheet.id) : null;
   if (!step) {
     return Response.json(
