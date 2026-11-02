@@ -687,6 +687,7 @@ for (const viewport of ["desktop", "phone"]) {
         { name: "Leather", qty: 1, equipped: true },
         { name: "Cloak of Protection", qty: 1, equipped: true, attuned: true },
         { name: "Cloak of Elvenkind", qty: 1, equipped: false, attuned: true },
+        { name: "Ring of Spell Storing", qty: 1, equipped: true },
       ],
     }),
   );

@@ -17,6 +17,9 @@ const { potionPlan } = await import("../src/lib/dm/consumables.ts");
 const { carriedLight } = await import("../src/lib/dm/light-timers.ts");
 const { ammoKindForItem } = await import("../src/lib/srd/ammunition.ts");
 const { isBasicPoison } = await import("../src/lib/dm/attack-onhit.ts");
+const { inMagicTable, tagsOfPackItem, unplaced, usedUpWords } = await import("./lib/item-tag-rules.mjs");
+const { RETAGGED } = await import("./lib/item-tag-corrections.mjs");
+const { default: Database } = await import("better-sqlite3-multiple-ciphers");
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..");
@@ -128,6 +131,68 @@ test("the engines read a tagged item in any language as its English row", () => 
 test("an unidentified item is nothing: its name is the party's description", () => {
   assert.deepEqual(itemTags({ name: "Potion of Healing", identified: false }), []);
   assert.deepEqual(itemTags({ name: "a red vial", identified: false, tags: ["potion"] }), []);
+});
+
+// A magic item no word of its name or category places, outside the magic
+// item table: use_item took every one out of the pack as if drunk, a Bow of
+// Accuracy, an Armored Corset and an Apron of the Eager Artisan with the Air
+// Seeds. Each is now kept or used up by its own text (SRD 5.1, Magic Items,
+// Consumables: "Some items are used up when they are activated").
+const KEPT_BY_TEXT = [
+  "Apron of the Eager Artisan", "Armored Corset", "Bow of Accuracy", "Alembic of Unmaking", "Efreeti Bottle",
+  "Iron Bands of Binding", "Instant Fortress", "Folding Boat", "Handy Haversack", "Birdsong Whistle",
+  "Message Whistle", "Clockwork Calendar", "Pocket Spark", "Dimensional Shackles",
+];
+const USED_UP_BY_TEXT = [
+  "Ammunition +1", "Angry Hornet", "Air Seed", "Blackbird Pie", "Feather Token", "Frost Pellet", "Luminescent Gum",
+  "Oracle Charm", "Primal Doom", "Skipstone", "Universal Solvent", "Whispering Powder", "Sleep Pellet", "Ashes of the Fallen",
+];
+
+test("a magic item no word of its name places is kept or used up by its own text: named ones each way", () => {
+  for (const name of KEPT_BY_TEXT) {
+    assert.ok(itemTags({ name }).includes("durable"), `${name} is kept`);
+    assert.match(itemUseProblem({ name })?.error ?? "", /kept, not consumed/, `${name} stays in the pack`);
+  }
+  for (const name of USED_UP_BY_TEXT) {
+    assert.ok(itemTags({ name }).includes("consumable"), `${name} is used up`);
+    assert.equal(itemUseProblem({ name }), null, `${name} is used up by use_item`);
+  }
+  // The other document's Feather Token gives its kinds in a roll table; the
+  // SRD's says "single use", which both take.
+  assert.ok(itemTags({ name: "Feather Token", slug: "feather-token-a5e" }).includes("consumable"));
+});
+
+test("every magic item no word of its name places is read from its text, each one listed with the words that use it up", () => {
+  // Needs the pack's texts (CI without it reads the committed table, above).
+  const contentDb = process.env.CONTENT_DB_PATH || join(root, "data", "content", "open5e.sqlite");
+  if (!existsSync(contentDb)) {
+    return;
+  }
+  const rows = new Database(contentDb, { readonly: true })
+    .prepare("SELECT name, slug, category, data_json FROM items WHERE kind = 'magic_item' ORDER BY name, slug")
+    .all();
+  const inTable = inMagicTable(JSON.parse(readFileSync(join(root, "src", "lib", "classes", "magic-items.json"), "utf8")).items);
+  const group = rows.filter(
+    (row) => !RETAGGED[row.name.toLowerCase()] && !inTable(row.name, row.slug) && unplaced(tagsOfPackItem(row.name, "magic_item", row.category)),
+  );
+  const tagsBySlug = new Map(table.items.map(([, slug, tags]) => [slug, tags]));
+  const usedUp = [];
+  let kept = 0;
+  for (const row of group) {
+    const tags = tagsBySlug.get(row.slug) ?? [];
+    assert.ok(tags.includes("consumable") !== tags.includes("durable"), `${row.name} (${row.slug}) is kept or used up: ${tags}`);
+    const words = usedUpWords(row.name, row.category ?? "", String(JSON.parse(row.data_json || "{}").desc ?? ""));
+    if (tags.includes("consumable")) {
+      usedUp.push(`${row.name} (${row.slug}): ${words ?? "its twin of the same name"}`);
+    } else {
+      assert.equal(words, null, row.name);
+      kept += 1;
+    }
+  }
+  console.log(`read from their text: ${group.length}, kept ${kept}, used up ${usedUp.length}:\n  ${usedUp.join("\n  ")}`);
+  assert.equal(group.length, 284);
+  assert.equal(usedUp.length, 44);
+  assert.equal(kept, 240);
 });
 
 console.log(`test-item-tags: ${passed} tests passed`);

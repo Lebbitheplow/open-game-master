@@ -120,8 +120,8 @@ test("every generated item is well formed", () => {
     names.add(item.match);
     // A row with no effect is in the table for what the engine holds about
     // it: who may attune, the weapon or armor it is built on, its bonus and
-    // riders, its charges, or that an SRD item that casts a spell (a Hat of
-    // Disguise) asks for attunement, which use_item asks before the cast.
+    // riders, its charges, or that it asks for attunement, which the sheet's
+    // attune button, the one-copy rule and use_item all read.
     assert.ok(
       item.effects.length > 0 || item.attunedBy || item.base || item.weapon || item.armor || item.charges || item.requiresAttunement,
       item.name,
@@ -201,12 +201,62 @@ test("attunement is refused with the reason, and settled the same way on a write
   );
 });
 
+test("an item that asks for attunement is in the table, even with nothing else to enforce", () => {
+  // SRD 5.1: "Ring of Spell Storing ... (requires attunement)". Its details
+  // said so while the sheet offered no attune button, since the button reads
+  // this table.
+  for (const name of ["Ring of Spell Storing", "Ring of Invisibility", "Boots of Speed", "Cloak of Displacement", "Crystal Ball"]) {
+    assert.equal(magicItemNamed(name)?.requiresAttunement, true, name);
+  }
+  const ring = { name: "Ring of Spell Storing" };
+  assert.equal(attunementProblem(ring, [], null), null);
+  assert.match(attunementProblem(ring, [{ name: "Ring of Spell Storing", attuned: true }], null), /one copy/);
+  // Nothing narrated comes along with the attunement: its effects stay empty,
+  // and an item that asks for none stays out unless it has something else.
+  assert.deepEqual(magicItemNamed("Ring of Spell Storing").effects, []);
+  assert.equal(magicItemNamed("Bag of Holding"), null);
+});
+
+const { matchGear } = await import("../src/lib/srd/adventuring-gear.ts");
+const { SRD_WEAPONS } = await import("../src/lib/srd/weapons.ts");
+const { SRD_ARMOR } = await import("../src/lib/srd/armor.ts");
+const { textKey } = await import("../src/lib/language/text-logic.ts");
+// Being in the table makes a name magic to starting wealth, downtime
+// crafting and the trade price (src/lib/srd/starting-wealth.ts looksMagical,
+// src/lib/dm/lifestyle.ts), so no row may share its whole name with mundane
+// gear the lists price: that gear would stop being buyable or craftable.
+test("no magic item row shares its whole name with mundane gear the lists price", () => {
+  const mundane = new Set([...SRD_WEAPONS, ...SRD_ARMOR].map((row) => textKey(row.name)));
+  for (const item of items) {
+    assert.ok(!mundane.has(textKey(item.name)) && !matchGear(item.name), item.name);
+  }
+});
+
+const { gearDefFor } = await import("../src/lib/srd/magic-gear.ts");
+test("a workshop entry's line is its own snapshot, never the published row it shares a name with", () => {
+  // A GM's own "Prayer Mat", carried by its homebrew: slug and made before
+  // the pack's Prayer Mat (which asks for attunement) came into the table:
+  // its entry says what it is, and it is no magic item.
+  const rug = { name: "Prayer Mat", slug: "homebrew:rug" };
+  assert.equal(matchMagicItem(rug), null);
+  assert.equal(gearDefFor(rug), null);
+  // With no workshop slug the name is the published item, as every other
+  // reader of a published name has it (src/lib/homebrew/published-names.ts).
+  assert.equal(matchMagicItem({ name: "Prayer Mat" })?.requiresAttunement, true);
+  assert.equal(matchMagicItem({ name: "Prayer Mat", slug: "prayer-mat" })?.requiresAttunement, true);
+  // A workshop ring whose own magic asks no attunement is not attuned to on
+  // the strength of the pack ring's name.
+  const ring = { name: "Ring of Spell Storing", slug: "homebrew:ring", gear: { magic: { requiresAttunement: false, effects: [] } } };
+  assert.equal(matchMagicItem(ring), null);
+  assert.match(attunementProblem(ring, [], null), /needs no attunement/);
+});
+
 test("the rows a person corrected against the item's own text", () => {
   // Magic weapons now have rows (their base weapon and bonus), with no worn
   // effect: a Vorpal Sword gives no resistance, a Defender no standing AC.
   assert.deepEqual(magicItemNamed("Vorpal Sword")?.effects, []);
   assert.deepEqual(magicItemNamed("Defender")?.effects, []);
-  assert.equal(magicItemNamed("Asi"), null);
+  assert.deepEqual(magicItemNamed("Asi")?.effects, []);
   // SRD 5.1, Staff of Power: "a +2 bonus to Armor Class, saving throws, and
   // spell attack rolls" (#570, ITM-03).
   assert.deepEqual(magicItemNamed("Staff of Power").effects, [

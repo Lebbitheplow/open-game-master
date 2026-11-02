@@ -18,6 +18,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { openTable, postUsage } from "./lib/enforce-resources.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 
@@ -39,7 +40,9 @@ const names = (set) => [...set].map((item) => item.name);
 await test("item-slots.json is current with the content pack", () => {
   // Only meaningful where the pack is (CI has none and reads the committed table).
   if (!existsSync(new URL("../data/content/open5e.sqlite", import.meta.url))) return;
-  const result = spawnSync(process.execPath, [new URL("./generate-item-slots.mjs", import.meta.url).pathname, "--check"], { encoding: "utf8" });
+  // A file URL's pathname is "/C:/..." on Windows, which node read as
+  // "C:\C:\..." and failed on any Windows machine with the pack.
+  const result = spawnSync(process.execPath, [fileURLToPath(new URL("./generate-item-slots.mjs", import.meta.url)), "--check"], { encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr || result.stdout);
 });
 
