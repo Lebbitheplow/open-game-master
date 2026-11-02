@@ -435,6 +435,36 @@ await test("On the battle map the model says how far the thing is, and one beyon
   assert.equal(kit.token(fighter.id).movedThisRound, 6, "the 30 feet walked to stand next to the ropes are spent");
 });
 
+await test("A distance the model sends empty (null or \"\") is no distance: the action still asks for one and spends nothing, never reading it as 0 feet away.", async () => {
+  const enemy = await stage(fighter);
+  world.say("dm", "Sixty feet across the camp a tent sags on its guy ropes; the goblin stands right in front of you.");
+  world.say("player", "I cut the guy ropes so the tent collapses on the goblin.", fighter);
+  const { applyEncounterCall } = await import("../src/lib/dm/encounter-tools.ts");
+  const sheets = world.sheets();
+  for (const distanceFt of [null, ""]) {
+    const raw = JSON.stringify({ characterId: fighter.id, action: "improvise", ...TENT, targetEnemyId: enemy.id, scene: "the tent's guy ropes", distanceFt });
+    world.dice(2, 15);
+    const { result } = applyEncounterCall(world.campaign(), createDmTurn(world.campaignId, []), "take_action", raw, sheets, new Map(sheets.map((sheet) => [sheet.id, sheet])));
+    world.clearDice();
+    assert.match(String(result.error), /needs distanceFt/, `distanceFt ${JSON.stringify(distanceFt)} read as a distance`);
+  }
+  assert.equal(budget()?.actionUsed ?? false, false);
+});
+
+await test("An ability the model writes by its rules name (\"Strength\", \"DEX\") is the ability, as every other tool reads one.", async () => {
+  const enemy = await stage(fighter);
+  world.say("dm", "A heavy cart stands right beside the goblin.");
+  world.say("player", "I heave the cart onto the goblin.", fighter);
+  const { applyEncounterCall } = await import("../src/lib/dm/encounter-tools.ts");
+  const sheets = world.sheets();
+  const raw = JSON.stringify({ characterId: fighter.id, action: "improvise", reason: "heaves the cart onto the goblin", ability: "Strength", contestSkill: "DEX", targetEnemyId: enemy.id, condition: "prone", scene: "the cart", distanceFt: 5 });
+  world.dice(2, 15);
+  const { result } = applyEncounterCall(world.campaign(), createDmTurn(world.campaignId, []), "take_action", raw, sheets, new Map(sheets.map((sheet) => [sheet.id, sheet])));
+  world.clearDice();
+  assert.equal(result.ok, true, result.error);
+  assert.match(result.contest, /^Strength \d+ vs .*DEX \d+$/);
+});
+
 await test("A prone character's walk to the thing used is priced as the board prices it: standing up first when that fits, else crawling at double cost.", async () => {
   const SHELF = { reason: "topples the shelf onto the goblin", skill: "athletics", condition: "prone", scene: "the shelf" };
   let enemy = await stage(fighter);

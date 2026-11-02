@@ -1,5 +1,6 @@
 import { endShadowInvisibility } from "@/lib/dm/one-with-shadows";
 import { z } from "zod";
+import { normalizeAbility } from "@/lib/dm/arg-coerce";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
@@ -221,13 +222,17 @@ const takeActionSchema = z.object({
   shove: z.enum(["prone", "push"]).optional(),
   trigger: z.string().max(200).optional(),
   skill: z.enum(SKILL_IDS).optional(),
-  ability: z.enum(ABILITIES).optional(),
-  contestSkill: z.enum([...SKILL_IDS, ...ABILITIES]).optional(),
+  // An ability by its rules name ("Strength", "DEX") is its id, as every
+  // other tool reads one (arg-coerce.ts); a skill name is left as it came.
+  ability: z.preprocess(normalizeAbility, z.enum(ABILITIES)).optional(),
+  contestSkill: z.preprocess(normalizeAbility, z.enum([...SKILL_IDS, ...ABILITIES])).optional(),
   difficulty: z.enum(DIFFICULTY_TIERS).optional(),
   condition: z.enum(IMPROVISED_CONDITIONS).optional(),
   damage: z.enum(IMPROVISED_DAMAGE).optional(),
   damageType: z.string().max(40).optional(),
-  distanceFt: z.coerce.number().int().min(0).optional(),
+  // A null or empty distance is none given: coerced, it read as 0 feet, the
+  // thing in hand, and the reach check it exists for passed unasked.
+  distanceFt: z.preprocess((value) => (value === null || value === "" ? undefined : value), z.coerce.number().int().min(0).optional()),
   item: z.string().max(80).optional(),
   scene: z.string().max(160).optional(),
   enemyId: z.string().optional(),
