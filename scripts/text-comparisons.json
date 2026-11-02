@@ -606,6 +606,7 @@
     "lib/content/spell-reading-logic.ts#\\b": [["english-source",21,"content-pack text read for what its reader left unread (the pack's English rows), so the misses are counted and listed"]],
     "lib/content/spell-reading-logic.ts#re-word": [["english-source",8,"content-pack text read for what its reader left unread (the pack's English rows), so the misses are counted and listed"]],
     "lib/content/spell-reading-logic.ts#str-alt": [["english-source",3,"content-pack text read for what its reader left unread (the pack's English rows), so the misses are counted and listed"]],
+    "lib/db/narrator-voice-backfill.ts#str-eq": [["key",1,"a stored table language and narrator voice id (fixed choices, stored values)"]],
     "lib/db/home-glance.ts#str-eq": [["key",2,"campaign status, a fixed choice"]],
     "lib/dm/action-price.ts#str-eq": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/action-price.ts#str-list": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],

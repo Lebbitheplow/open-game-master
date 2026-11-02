@@ -22,7 +22,9 @@ register("./lib/register-routes.mjs", import.meta.url);
 
 const { createUser } = await import("../src/lib/db/users.ts");
 const { mintSession } = await import("../src/lib/auth.ts");
-const { getCampaignById } = await import("../src/lib/db/campaigns.ts");
+const { createCampaign, getCampaignById, updateGameSettings } = await import("../src/lib/db/campaigns.ts");
+const { closeDatabaseForRestore, getDatabase } = await import("../src/lib/db/core.ts");
+const { getUserSettings, setCampaignDefaults } = await import("../src/lib/db/users.ts");
 
 const route = (name) => import(new URL(`../src/app/api/${name}/route.ts`, import.meta.url).href);
 const campaignsRoute = await route("campaigns");
@@ -97,6 +99,40 @@ await test("on an OpenAI speech backend the voice is the table's own choice, wha
   await call(settingsRoute, "PATCH", { tableLanguage: "spanish" }, { campaignId });
   assert.equal(getCampaignById(campaignId).gameSettings.ttsVoice, "af_heart");
   delete process.env.TTS_PROVIDER;
+});
+
+await test("an upgraded server moves each table in a Kokoro language off the English narrator it started on, once, and keeps every picked voice", async () => {
+  const table = (tableLanguage, ttsVoice) => {
+    const campaign = createCampaign(lead.id, { title: "Old table", description: "", theme: "", maxPlayers: 4, startingLevel: 1, difficulty: "normal" });
+    updateGameSettings(campaign.id, { tableLanguage, ttsVoice });
+    return campaign.id;
+  };
+  const italian = table("italian", "af_heart");
+  const spanishPicked = table("spanish", "bm_fable");
+  const english = table("english", "af_heart");
+  const german = table("german", "af_heart");
+  const portuguese = table("portuguese", "af_heart");
+  // A row written before the voice was stored at all reads as the old narrator.
+  const french = table("french", "af_heart");
+  getDatabase().prepare(`UPDATE campaigns SET game_settings_json = json_remove(game_settings_json, '$.ttsVoice') WHERE id = ?`).run(french);
+  setCampaignDefaults(lead.id, { version: 1, savedAt: new Date().toISOString(), settings: { tableLanguage: "italian", ttsVoice: "af_heart", maxPlayers: 3 } });
+
+  // The server restarts on the new version.
+  getDatabase().prepare(`DELETE FROM app_settings WHERE key = 'narrator_language_backfill_done'`).run();
+  closeDatabaseForRestore();
+  const voice = (campaignId) => getCampaignById(campaignId).gameSettings.ttsVoice;
+  assert.equal(voice(italian), "if_sara");
+  assert.equal(voice(french), "ff_siwis");
+  assert.equal(voice(portuguese), "pf_dora");
+  assert.equal(voice(spanishPicked), "bm_fable", "a picked voice stays");
+  assert.equal(voice(english), "af_heart");
+  assert.equal(voice(german), "af_heart", "Kokoro has no German narrator to move to");
+  assert.deepEqual(getUserSettings(lead.id).campaignDefaults.settings, { tableLanguage: "italian", ttsVoice: "if_sara", maxPlayers: 3 }, "saved defaults move too");
+
+  // Once: a table that picks the English voice again keeps it after the next restart.
+  updateGameSettings(italian, { ttsVoice: "af_heart" });
+  closeDatabaseForRestore();
+  assert.equal(voice(italian), "af_heart");
 });
 
 process.chdir(os.tmpdir());
