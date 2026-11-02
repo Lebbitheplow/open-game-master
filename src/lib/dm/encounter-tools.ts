@@ -1016,16 +1016,18 @@ function markTurnResolved(turn: DmTurn, sheetId: string) {
   }
 }
 
-// An attack no longer ends a HUMAN character's initiative turn: they may
-// still have movement and a bonus action, so only end_turn (the model's or
-// the player's own button) advances past them. Companions are the
-// exception: the model plays their whole turn in one go, and marking them
-// resolved here keeps the auto-act backstop from swinging a second time.
-// Not while the Attack action still has swings in it (Extra Attack): a
-// turn ended there loses them. A commanded companion's turn then waits for
-// its commander, as a player's own does, and one the DM plays is finished
-// by the backstop (companionAutoAct), which takes only the swings left.
+// An attack no longer ends a character's initiative turn when a person plays
+// it: they may still have movement and a bonus action, so only end_turn (the
+// model's or the person's own button) advances past them. A companion the GM
+// plays is the exception: the model plays its whole turn in one go, and
+// marking it resolved here keeps the auto-act backstop from swinging a second
+// time. Not while the Attack action still has swings in it (Extra Attack): a
+// turn ended there loses them, and the backstop (companionAutoAct) takes only
+// the swings left. A commanded companion's turn waits for its commander, as a
+// player's own does (issue 761: a cast or an attack ended it after the GM had
+// offered the rest of the turn, and its movement and bonus action were lost).
 function markResolvedFromArgs(
+  campaign: Campaign,
   turn: DmTurn,
   rawArguments: string,
   sheets: CharacterSheet[],
@@ -1044,40 +1046,9 @@ function markResolvedFromArgs(
   }
   const sheet = characterId ? resolveSheetRef(characterId, sheets, sheetsById) : null;
   const swingsLeft = typeof result.attacksRemaining === "number" && result.attacksRemaining > 0;
-  if (sheet?.isCompanion && !swingsLeft) {
+  if (sheet?.isCompanion && !commanderOf(campaign, sheet) && !swingsLeft) {
     markTurnResolved(turn, sheet.id);
   }
-}
-
-// A commanded companion's Dash, Disengage, Dodge or Hide that walked nowhere
-// leaves movement its commander still spends: its turn waits for their End
-// Turn (or the GM's end_turn), as a player's own does, instead of ending with
-// the action (issue #666: a typed "Dash to Vesper" ended Rowan's turn where
-// he stood, and nobody could walk him after). A companion the GM plays is
-// finished by the backstop as before.
-const MOVEMENT_ACTIONS = new Set(["dash", "disengage", "dodge", "hide"]);
-
-function movementLeftToCommander(
-  campaign: Campaign,
-  rawArguments: string,
-  sheets: CharacterSheet[],
-  sheetsById: Map<string, CharacterSheet>,
-  result: Record<string, unknown>,
-): boolean {
-  if ("error" in result && result.error) {
-    return false;
-  }
-  let parsed: { characterId?: unknown; action?: unknown };
-  try {
-    parsed = JSON.parse(rawArguments || "{}") as { characterId?: unknown; action?: unknown };
-  } catch {
-    return false;
-  }
-  if (typeof parsed.action !== "string" || !MOVEMENT_ACTIONS.has(parsed.action) || result.walked || typeof parsed.characterId !== "string") {
-    return false;
-  }
-  const sheet = resolveSheetRef(parsed.characterId, sheets, sheetsById);
-  return Boolean(sheet?.isCompanion && commanderOf(campaign, sheet) !== null);
 }
 
 const endTurnArgsSchema = z.object({ characterId: z.string() });
@@ -1309,7 +1280,7 @@ function encounterCall(
         callContext?.realDiceUserIds ?? new Set(),
         callContext?.toolCallId ?? null,
       );
-      markResolvedFromArgs(turn, rawArguments, sheets, sheetsById, result);
+      markResolvedFromArgs(campaign, turn, rawArguments, sheets, sheetsById, result);
       return { result: endTurnAfterAttack(campaign, turn, rawArguments, sheets, sheetsById, result) };
     }
     case "cast_at_enemy": {
@@ -1318,7 +1289,7 @@ function encounterCall(
         return { result: unasked };
       }
       const result = handleCastAtEnemyTargets(campaign, turn, rawArguments, sheets, sheetsById);
-      markResolvedFromArgs(turn, rawArguments, sheets, sheetsById, result);
+      markResolvedFromArgs(campaign, turn, rawArguments, sheets, sheetsById, result);
       return { result };
     }
     case "cast_at_player": {
@@ -1332,9 +1303,7 @@ function encounterCall(
         return { result: unasked };
       }
       const result = handleTakeAction(campaign, turn, rawArguments, sheets, sheetsById);
-      if (!movementLeftToCommander(campaign, rawArguments, sheets, sheetsById, result)) {
-        markResolvedFromArgs(turn, rawArguments, sheets, sheetsById, result);
-      }
+      markResolvedFromArgs(campaign, turn, rawArguments, sheets, sheetsById, result);
       return { result };
     }
     case "use_reaction":
