@@ -72,7 +72,7 @@ export function attachNativeBoard(frame: HTMLIFrameElement, api: ShellNativeBoar
   const layout = () => {
     if (!id || disposed) return;
     const bounds = rect(frame);
-    const occlusions = [...document.querySelectorAll('[data-native-board-occluder],dialog[open],[role="dialog"],[role="menu"],[role="tooltip"]')]
+    const occlusions = [...document.querySelectorAll('[data-native-board-occluder],dialog[open],[role="dialog"],[role="alertdialog"],[role="menu"],[role="tooltip"]')]
       .filter(e => e.getAttribute("role") !== "menu" || getComputedStyle(e).pointerEvents !== "none")
       .filter(e => !e.contains(frame) && e.getClientRects().length && getComputedStyle(e).visibility !== "hidden")
       .filter(e => {
