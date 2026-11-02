@@ -179,6 +179,10 @@ export function codexArgs(options: {
     overrides.push(["mcp_servers.odm.bearer_token_env_var", TOKEN_ENV]);
     overrides.push(["mcp_servers.odm.tool_timeout_sec", 600]);
     overrides.push(["mcp_servers.odm.startup_timeout_sec", 30]);
+    // Codex strips every parameter description from a tool whose input
+    // schema passes 5,000 bytes, its default for an MCP server, leaving the
+    // model bare field names; pc_attack's and request_roll's are past it.
+    overrides.push(["mcp_servers.odm.tool_input_schema_max_bytes", 65_536]);
     // Current Codex asks for approval before every MCP tool call, and with
     // approval_policy "never" that question is answered no: "MCP tool call
     // requires approval, but approval policy is never" (issue #131, seen on

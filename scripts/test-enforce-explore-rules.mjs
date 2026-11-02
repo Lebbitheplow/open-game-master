@@ -180,6 +180,14 @@ await test("A character can push, drag or lift up to 30 x Strength pounds: 301 l
   assert.equal(drag.result.speed, 5);
 });
 
+await test("A house-sized boulder is refused by the same rule, whatever its weight, never as arguments missing.", async () => {
+  const mover = world.addHero({ class: "fighter", level: 1, abilities: { str: 16 } });
+  const boulder = await world.invoke("lift", { characterId: mover.id, weightLb: 500000, how: "lift", reason: "a boulder the size of a house" });
+  assert.equal(boulder.ok, false, "a 500,000 lb boulder was lifted");
+  assert.equal(boulder.refused, "rules", boulder.error);
+  assert.match(boulder.error, /at most 480 lb/);
+});
+
 // ---- armor takes time out of a fight ----
 
 await test("Putting on heavy armor takes 10 minutes and taking it off 5, and the clock moves by that much.", async () => {

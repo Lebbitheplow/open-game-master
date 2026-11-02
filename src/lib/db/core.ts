@@ -2356,6 +2356,13 @@ function ensureSchema(db: SqliteDatabase) {
     ["ai_turns", `INTEGER NOT NULL DEFAULT 0`],
   ]);
 
+  addColumns("campaigns", [
+    // Where the narration of the place the party is in starts (move_party,
+    // markSceneStart): what an improvised action may use is what the GM told
+    // of this place (src/lib/dm/improvise.ts). 0 reads the whole story.
+    ["scene_since_seq", `INTEGER NOT NULL DEFAULT 0`],
+  ]);
+
   addColumns("library_characters", [
     // The workshop this sheet is a pregen for, or empty for a character of
     // the library's own. A pregen is an ordinary library character that a

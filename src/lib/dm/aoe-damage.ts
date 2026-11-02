@@ -10,7 +10,7 @@ import { elementalAdeptApplies, floorDamageDice } from "@/lib/srd/feat-combat";
 import { z } from "zod";
 import { immuneToCondition } from "@/lib/dm/damage-logic";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
-import { getActiveEncounter, getEnemy, type EncounterEnemy } from "@/lib/db/encounters";
+import { getActiveEncounter, getEnemy, listEnemies, type EncounterEnemy } from "@/lib/db/encounters";
 import { insertRoll, type RollAttacker } from "@/lib/db/rolls";
 import { getBattleMapForEncounter, listHiddenRefIds } from "@/lib/db/battle-maps";
 import { rollOn } from "@/lib/roll-labels";
@@ -49,7 +49,7 @@ import { spellWardOn } from "@/lib/dm/cast-reach";
 import { partsTaken, partsTotal, splitDamageExpression, type DamagePart } from "@/lib/dm/aoe-parts";
 import { castingHold, outOfReach } from "@/lib/dm/spell-planes";
 import { castPrismaticSpray, isPrismaticSpray } from "@/lib/dm/prismatic";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import { unknownRef, type ToolResult } from "@/lib/dm/tool-errors";
 
 export { aoeDamageTool } from "@/lib/dm/aoe-damage-tool";
 const aoeArgsSchema = z.object({
@@ -261,6 +261,15 @@ export function handleAoeDamage(
   // in it yet) catches nobody (src/lib/dm/zone-cast.ts).
   const areaOnly = Boolean(args.spell && zoneRowFor(engineSpell));
   if (!enemyTargets.length && !pcTargets.length && !areaOnly && !shielded.length) {
+    // Only ids that named nobody: refused with the creatures there are, as
+    // every other id is (tool-errors.ts unknownRef).
+    if (unmatched.length) {
+      const living = listEnemies(encounter.id).filter((enemy) => enemy.status === "alive");
+      return unknownRef("target", unmatched.join(", "), [
+        ...living.map((enemy) => ({ id: enemy.id, name: enemy.displayName })),
+        ...sheets.map((sheet) => ({ id: sheet.id, name: sheet.name })),
+      ]);
+    }
     return {
       error:
         "aoe_damage needs at least one valid target: enemyIds and/or characterIds from GAME STATE.",

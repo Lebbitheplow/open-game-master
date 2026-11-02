@@ -158,7 +158,7 @@ const BLOCK_AND_TACKLE = matchGear("Block and Tackle");
 
 const liftSchema = z.object({
   characterId: z.string(),
-  weightLb: z.coerce.number().min(1).max(100000),
+  weightLb: z.coerce.number().min(1),
   how: z.enum(["lift", "push", "drag"]).optional(),
   reason: z.string().max(200).optional(),
 });

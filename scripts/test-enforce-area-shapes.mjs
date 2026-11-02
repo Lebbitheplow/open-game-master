@@ -8,6 +8,8 @@
 //   - Lightning Bolt: "A stroke of lightning forming a line 100 feet long and
 //     5 feet wide blasts out from you in a direction you choose."
 //   - A point of origin sits within the spell's range (Shatter: 60 feet).
+//   - An id that names nobody catches nobody: the refusal names the creatures
+//     there are, by name and id, as every other unknown id is refused.
 //
 // A refusal spends nothing. Every check reads a refusal, a slot or an enemy.
 import assert from "node:assert/strict";
@@ -79,6 +81,17 @@ await test("Lightning Bolt refuses creatures in opposite directions; one line ho
   along.world.clearDice();
   assert.equal(cast.ok, true, cast.error);
   assert.ok(enemyOf(along.world, along.enemies[1].id).currentHp < enemyOf(along.world, along.enemies[1].id).maxHp);
+});
+
+await test("An effect whose ids name nobody is refused with the creatures there are, and harms nobody.", async () => {
+  const { world, sheets: [mage], enemies: [a] } = await board([WIZARD], { 0: { x: 2, y: 0 }, e0: { x: 3, y: 0 } });
+  const mangled = `${a.id.slice(0, 9)}${mage.id.slice(9)}`;
+  const hp = enemyOf(world, a.id).currentHp;
+  const out = await world.invoke("aoe_damage", { enemyIds: [mangled], damage: "1d6", type: "fire", saveAbility: "dex", dc: 12, reason: "coals" });
+  assert.equal(out.ok, false);
+  assert.ok(String(out.error).includes(a.id), "the refusal names the enemy's id");
+  assert.ok(String(out.error).includes(mage.id), "the refusal names the party's ids");
+  assert.equal(enemyOf(world, a.id).currentHp, hp);
 });
 
 closeTables();

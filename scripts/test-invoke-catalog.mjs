@@ -556,8 +556,9 @@ test("an older form's field names reach the names the handler reads", () => {
 
 test("the property scan reads the tools it is pointed at", () => {
   assert.deepEqual(toolProperties("take_action").keys.sort(), [
-    "action", "bonus", "characterId", "enemyId", "item", "level", "mount", "readied", "reason", "shove", "skill",
-    "spell", "targetCharacterId", "targetEnemyId", "toward", "trigger",
+    "ability", "action", "bonus", "characterId", "condition", "contestSkill", "damage", "damageType", "difficulty", "distanceFt",
+    "enemyId", "item", "level", "mount", "readied", "reason", "scene", "shove", "skill", "spell", "targetCharacterId",
+    "targetEnemyId", "toward", "trigger",
   ]);
   assert.ok(toolProperties("apply_damage").keys.includes("amount"));
   assert.ok(toolProperties("apply_damage").keys.includes("characterId"));
@@ -731,8 +732,10 @@ const OMITTED_ON_PURPOSE = {
   // A controlled mount's own Dash, Disengage or Dodge, and an attack aimed
   // at it (SRD 5.1, Controlling a Mount): a person at the console narrates
   // the mount's action and rules the swing at it; the model, which cannot,
-  // names it on the call.
-  take_action: ["mount"],
+  // names it on the call. Only the AI shows the scene holds what an
+  // improvised action uses, and how far it is (src/lib/dm/improvise.ts); a
+  // person running the table knows it.
+  take_action: ["mount", "scene", "distanceFt"],
   enemy_attack: ["advantageSource", "targetMount"],
   request_roll: ["advantageSource"],
   // What a companion holds to is set by the class and alignment the form
@@ -1097,6 +1100,29 @@ test("take_action's destination fields ask for the host, and the enemy field rea
   assert.equal(fieldForHost(named("enemyId"), older).name, "escapingEnemyId");
   assert.ok(read("src/lib/capabilities.ts").match(/^\s*moveWithAction: true,$/m), "the server flags it");
   assert.match(read("src/lib/use-capabilities.ts"), /features\?: \{[^}]*moveWithAction\?: boolean/);
+});
+
+// The console compiled into the apps can open an older server, whose
+// take_action refuses "improvise" outright and whose Search takes only
+// Perception or Investigation: there the console offers no improvised action
+// (nor one to ready), and Search keeps the two skills that host reads.
+test("take_action's improvised action and its skills ask for the host", () => {
+  const fields = adjudication("take_action").fields;
+  const named = (name) => fields.find((field) => field.name === name);
+  const values = (field) => field.options.map((option) => option.value);
+  for (const name of ["action", "readied"]) {
+    assert.ok(values(fieldForHost(named(name), () => true)).includes("improvise"), `${name} offers it on a host that has it`);
+    assert.ok(!values(fieldForHost(named(name), () => false)).includes("improvise"), `${name} offers it to an older host`);
+    assert.ok(values(fieldForHost(named(name), () => false)).includes("dodge"), `${name} keeps the rest on an older host`);
+  }
+  assert.equal(values(fieldForHost(named("skill"), () => true)).length, 18);
+  const older = fieldForHost(named("skill"), () => false);
+  assert.deepEqual(values(older), ["investigation", "perception"]);
+  assert.equal(older.label, "Search with");
+  // The skill reads only for the actions that take one.
+  assert.deepEqual(named("skill").onlyWhen, { field: "action", equals: ["search", "improvise"] });
+  assert.ok(read("src/lib/capabilities.ts").match(/^\s*improvisedActions: true,$/m), "the server flags it");
+  assert.match(read("src/lib/use-capabilities.ts"), /features\?: \{[^}]*improvisedActions\?: boolean/);
 });
 
 // The console's Background and Skills for a new companion: an older host's

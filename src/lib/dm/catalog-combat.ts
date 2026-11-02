@@ -14,6 +14,8 @@ import { SAMPLE_TRAPS } from "@/lib/srd/trap-specs";
 import {
   ABILITY_OPTIONS as ABILITIES,
   AREA_PLACEMENT_FIELDS,
+  DIFFICULTY_OPTIONS,
+  SKILL_OPTIONS,
   WEAPON_SQUARE_FIELDS,
   REASON_FIELD as REASON,
   TRAP_SEVERITY_OPTIONS,
@@ -29,6 +31,12 @@ const OUTCOME_LABELS: Record<EncounterOutcome, string> = {
   party_defeated: "The party was defeated",
   truce: "A truce",
 };
+
+// take_action improvise (src/lib/dm/improvise.ts): an older host refuses the
+// action, so the console compiled into the apps offers it only where the
+// host says it takes it (src/lib/capabilities.ts improvisedActions).
+const IMPROVISED = "improvisedActions";
+const SEARCH_SKILLS = new Set(["perception", "investigation"]);
 
 const BONUS_ATTACK = [
   { value: "martial arts", label: "Martial Arts strike" },
@@ -341,7 +349,7 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
     name: "take_action",
     label: "Action",
     category: "combat",
-    summary: "Dodge, Dash, Disengage, Hide, Help, Grapple, Shove, Ready, Search, Use an Object, Escape or a Grappler's Pin, with its real contest and effect, for a character or an enemy.",
+    summary: "Dodge, Dash, Disengage, Hide, Help, Grapple, Shove, Ready, Search, Use an Object, Escape, a Grappler's Pin or an improvised action, with its real contest and effect, for a character or an enemy.",
     fields: [
       { name: "characterId", label: "Character", kind: "character", help: "Blank when an enemy acts." },
       {
@@ -362,6 +370,7 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
           { value: "use_object", label: "Use an Object" },
           { value: "escape", label: "Escape a grapple or a spell's hold" },
           { value: "pin", label: "Pin the creature they grapple (Grappler feat)" },
+          { value: "improvise", label: "Improvise", host: IMPROVISED },
         ],
       },
       { name: "bonus", label: "As a bonus action", kind: "boolean", help: "Cunning Action, Step of the Wind, Patient Defense." },
@@ -389,19 +398,59 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
           { value: "dash", label: "Dash" },
           { value: "disengage", label: "Disengage" },
           { value: "escape", label: "Escape a grapple" },
+          { value: "improvise", label: "An improvised action", host: IMPROVISED },
         ],
       },
       { name: "spell", label: "Readied spell", kind: "text", placeholder: "Fire Bolt", help: "Ready only: a one-action spell cast now (slot and concentration) and released with the reaction when the trigger comes." },
       { name: "level", label: "Readied spell's slot", kind: "number", min: 1, max: 9, help: "Empty for the spell's own level." },
       {
         name: "skill",
-        label: "Search with",
+        label: "Skill",
+        kind: "select",
+        // An older host's Search takes these two and nothing else.
+        options: SKILL_OPTIONS.map((option) => (SEARCH_SKILLS.has(option.value) ? option : { ...option, host: IMPROVISED })),
+        help: "Search: Perception or Investigation. Improvise: the character's check.",
+        onlyWhen: { field: "action", equals: ["search", "improvise"] },
+        host: { feature: IMPROVISED, older: { label: "Search with", help: "Perception, or Investigation to reason it out." } },
+      },
+      { name: "ability", label: "Or an ability", kind: "select", options: ABILITIES, onlyWhen: { field: "action", equals: ["improvise"] } },
+      {
+        name: "contestSkill",
+        label: "Enemy resists with",
+        kind: "select",
+        options: [...SKILL_OPTIONS, ...ABILITIES],
+        help: "Empty for the usual pairing: Athletics against Athletics, Stealth against Perception, Deception against Insight.",
+        onlyWhen: { field: "action", equals: ["improvise"] },
+      },
+      { name: "difficulty", label: "Difficulty", kind: "select", options: DIFFICULTY_OPTIONS, help: "With no enemy: the check's DC.", onlyWhen: { field: "action", equals: ["improvise"] } },
+      {
+        name: "condition",
+        label: "On a win",
         kind: "select",
         options: [
-          { value: "perception", label: "Perception" },
-          { value: "investigation", label: "Investigation" },
+          { value: "prone", label: "Prone" },
+          { value: "restrained", label: "Restrained, as a net" },
+          { value: "blinded", label: "Blinded until the end of its next turn" },
+          { value: "deafened", label: "Deafened until the end of its next turn" },
+          { value: "frightened", label: "Frightened until the end of its next turn" },
         ],
+        onlyWhen: { field: "action", equals: ["improvise"] },
       },
+      {
+        name: "damage",
+        label: "Damage on a win",
+        kind: "select",
+        options: [
+          { value: "1d10", label: "1d10 (a falling bookcase)" },
+          { value: "2d10", label: "2d10 (a fire pit)" },
+          { value: "4d10", label: "4d10 (a collapsing tunnel)" },
+          { value: "10d10", label: "10d10 (crushing walls)" },
+          { value: "18d10", label: "18d10 (lava)" },
+          { value: "24d10", label: "24d10 (a god's jaws)" },
+        ],
+        onlyWhen: { field: "action", equals: ["improvise"] },
+      },
+      { ...damageTypeField("damageType", "Damage type"), onlyWhen: { field: "action", equals: ["improvise"] } },
       { name: "item", label: "Object", kind: "text" },
       // An older host reads it as the escaping enemy it always named there
       // (issue #621 turned it into the enemy taking any of its actions).

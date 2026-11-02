@@ -231,6 +231,21 @@ export function listRecentMessages(campaignId: string, limit = 100): CampaignMes
   return rows.map(mapMessage);
 }
 
+// The GM's own messages from `sinceSeq` on, the newest `limit` of them, in
+// ascending seq order (src/lib/dm/improvise.ts reads the place's narration).
+export function listDmMessagesSince(campaignId: string, sinceSeq: number, limit: number): CampaignMessage[] {
+  const rows = getDatabase()
+    .prepare(
+      `
+        SELECT * FROM (
+          SELECT * FROM campaign_messages WHERE campaign_id = ? AND author_type = 'dm' AND seq >= ? ORDER BY seq DESC LIMIT ?
+        ) ORDER BY seq ASC
+      `,
+    )
+    .all(campaignId, sinceSeq, limit) as MessageRow[];
+  return rows.map(mapMessage);
+}
+
 // A page of transcript ending just before `beforeSeq` (the newest page when
 // null), ascending, and whether anything older is left to page to.
 export function listMessagesBefore(
