@@ -51,6 +51,32 @@ export function whisperLanguageCode(language: TableLanguage): string | null {
   return WHISPER_CODES[language];
 }
 
+// What the phone's own recognizer (an app shell's window.odmDictation,
+// src/lib/native-dictation.ts) is asked to hear at a table: a BCP 47 tag, as
+// Android's RecognizerIntent takes it. Unlike Whisper the phone may know
+// Irish, and Android names Norwegian by its written standard, Bokmal.
+const DEVICE_SPEECH_TAGS: Record<TableLanguage, string> = {
+  danish: "da",
+  dutch: "nl",
+  english: "en",
+  finnish: "fi",
+  french: "fr",
+  german: "de",
+  hungarian: "hu",
+  indonesian: "id",
+  irish: "ga",
+  italian: "it",
+  norwegian: "nb",
+  portuguese: "pt",
+  russian: "ru",
+  spanish: "es",
+  swedish: "sv",
+};
+
+export function deviceSpeechLanguage(language: TableLanguage | null): string | null {
+  return language ? DEVICE_SPEECH_TAGS[language] : null;
+}
+
 // The built-in engine's language: STT_LANGUAGE when the server sets one (an
 // operator's choice for every table, Whisper's names or codes), else the
 // clip's table's. An English-only model (STT_BUILTIN_MODEL=...whisper-base.en)

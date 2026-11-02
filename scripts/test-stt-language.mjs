@@ -20,7 +20,7 @@ process.chdir(dir);
 
 register("./lib/register-routes.mjs", import.meta.url);
 
-const { whisperLanguageCode, builtinSpeechLanguage } = await import("../src/lib/stt-logic.ts");
+const { whisperLanguageCode, builtinSpeechLanguage, deviceSpeechLanguage } = await import("../src/lib/stt-logic.ts");
 const { TABLE_LANGUAGES } = await import("../src/lib/schemas/game-settings-options.ts");
 const { createUser } = await import("../src/lib/db/users.ts");
 const { mintSession } = await import("../src/lib/auth.ts");
@@ -106,6 +106,19 @@ await test("an English-only built-in model is never handed a table's language, w
     assert.equal(builtinSpeechLanguage("", code, false), null, code);
   }
   assert.equal(builtinSpeechLanguage("english", "it", false), "english", "the operator's own STT_LANGUAGE is theirs to set");
+});
+
+await test("the phone's own recognizer is asked for every table language as Android names it, Irish and Norwegian included; outside a campaign, for none", () => {
+  const tags = Object.fromEntries(TABLE_LANGUAGES.map((language) => [language, deviceSpeechLanguage(language)]));
+  assert.equal(tags.irish, "ga", "the phone may know Irish where Whisper does not");
+  assert.equal(tags.norwegian, "nb", "Android's Norwegian is Bokmal");
+  for (const language of TABLE_LANGUAGES) {
+    assert.match(tags[language], /^[a-z]{2}$/, language);
+    if (language !== "irish" && language !== "norwegian") {
+      assert.equal(tags[language], whisperLanguageCode(language), language);
+    }
+  }
+  assert.equal(deviceSpeechLanguage(null), null);
 });
 
 process.env.STT_URL = "http://stt.test:8870";

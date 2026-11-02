@@ -13,6 +13,8 @@ import {
   pickRecorderType,
 } from "@/lib/dictation";
 import { nativeDictation, subscribeNativeDictation, type NativeDictation } from "@/lib/native-dictation";
+import { tableLanguageOf } from "@/lib/dictation-language";
+import { deviceSpeechLanguage } from "@/lib/stt-logic";
 import { micBlockMessage, micBlockReason } from "@/lib/secure-context";
 import { encodeWav, SPEECH_SAMPLE_RATE, splitForUpload } from "@/lib/speech-wav";
 import { subscribeCapabilities, useCapabilities } from "@/lib/use-capabilities";
@@ -241,15 +243,21 @@ export function useDictation({
       setHint("");
       setPartial("");
       setState("starting");
+      // The table's language, as the server's engines hear a clip from this
+      // page; a page outside a campaign leaves the phone its own.
+      const language = deviceSpeechLanguage(tableLanguageOf(campaignId));
       try {
-        await bridge.start({
-          onLevel: setLevel,
-          onPartial: setPartial,
-          onError: (message) => {
-            nativeErrorRef.current = message;
-            stopRef.current();
+        await bridge.start(
+          {
+            onLevel: setLevel,
+            onPartial: setPartial,
+            onError: (message) => {
+              nativeErrorRef.current = message;
+              stopRef.current();
+            },
           },
-        });
+          language ? { language } : {},
+        );
       } catch (error) {
         activeRef.current = false;
         setHint(errorText(error, "This device's speech recognizer is unavailable."));
@@ -266,7 +274,7 @@ export function useDictation({
       setState("recording");
       startTimer(stop);
     },
-    [setLevel, startTimer, stop],
+    [campaignId, setLevel, startTimer, stop],
   );
 
   const start = useCallback(async () => {

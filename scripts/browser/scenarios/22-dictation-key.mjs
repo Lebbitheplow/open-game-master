@@ -7,18 +7,19 @@
 // before the recognizer is listening each leave nothing recording. The
 // harness has no speech-to-text, so the device's own recognizer (what the
 // Android app installs) is stood in for, which works the same on the
-// server's pages and in the app.
+// server's pages and in the app, and is told the table's language.
 import { check, eventually, sleep, untilStill } from "../lib.mjs";
 
 const SAID = "I search the altar for a hidden catch";
 
 async function installRecognizer(page) {
   await page.evaluate((said) => {
-    const state = { starts: 0, stops: 0, cancels: 0, live: false, delay: 0 };
+    const state = { starts: 0, stops: 0, cancels: 0, live: false, delay: 0, language: null };
     window.__dictation = state;
     window.odmDictation = {
-      async start() {
+      async start(handlers, options) {
         state.starts += 1;
+        state.language = options?.language ?? null;
         if (state.delay) await new Promise((resolve) => setTimeout(resolve, state.delay));
         state.live = true;
       },
@@ -101,6 +102,9 @@ export default {
     await eventually(async () => (await box.inputValue()) === `Look closer. ${SAID}`, { label: "the words in the box after the draft" });
     let seen = await counts(page);
     check(seen.starts === 1 && seen.stops === 1 && !seen.live, `one take, ended (${JSON.stringify(seen)})`);
+    // The phone's recognizer is told the table's language, as the server's
+    // engines are (the fixture table plays in English).
+    check(seen.language === "en", `the recognizer was asked for the table's language (${seen.language})`);
     check((await badge.getAttribute("data-held")) === null, "the key's name dims on release");
 
     // Alt let go first ends the take; the M still held repeats as typing

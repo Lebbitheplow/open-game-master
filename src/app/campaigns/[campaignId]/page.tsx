@@ -11,6 +11,7 @@ import { useCampaignStream, type CampaignState } from "@/app/campaigns/[campaign
 import { ContentScopeProvider } from "@/lib/content-scope";
 import { pushView, replaceView } from "@/lib/navigation";
 import { installPageErrorRecorder } from "@/lib/page-errors";
+import { noteTableLanguage } from "@/lib/dictation-language";
 
 // The lobby and the table are separate downloads: a table in play never
 // needs the lobby's character builder, and a lobby never needs the board,
@@ -59,6 +60,12 @@ export default function CampaignPage({
   // report, so nobody else's browser keeps them.
   const recordErrors = Boolean(state.me?.isAdmin);
   useEffect(() => (recordErrors ? installPageErrorRecorder() : undefined), [recordErrors]);
+
+  // The phone's own recognizer hears a take in the table's language.
+  const tableLanguage = state.campaign?.gameSettings.tableLanguage;
+  useEffect(() => {
+    if (tableLanguage) noteTableLanguage(campaignId, tableLanguage);
+  }, [campaignId, tableLanguage]);
 
   if (state.loading) {
     return (
