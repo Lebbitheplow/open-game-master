@@ -69,10 +69,16 @@ export function attachNativeBoard(frame: HTMLIFrameElement, api: ShellNativeBoar
     frame.toggleAttribute("data-native-board-active", !enabled);
     frame.contentWindow?.postMessage({ odm: 1, type: "rendering", active: enabled }, "*");
   };
+  // What the page draws over a native board, which would otherwise cover it:
+  // dialogs (the X-card's pause is an alertdialog), menus, tooltips, a
+  // combobox's list (the composer's @ menu), and the banners that float over
+  // the table (a table break with its Resume, a session's end), besides
+  // anything marked data-native-board-occluder.
+  const OCCLUDERS = '[data-native-board-occluder],dialog[open],[role="dialog"],[role="alertdialog"],[role="menu"],[role="tooltip"],[role="listbox"],.session-banner';
   const layout = () => {
     if (!id || disposed) return;
     const bounds = rect(frame);
-    const occlusions = [...document.querySelectorAll('[data-native-board-occluder],dialog[open],[role="dialog"],[role="alertdialog"],[role="menu"],[role="tooltip"]')]
+    const occlusions = [...document.querySelectorAll(OCCLUDERS)]
       .filter(e => e.getAttribute("role") !== "menu" || getComputedStyle(e).pointerEvents !== "none")
       .filter(e => !e.contains(frame) && e.getClientRects().length && getComputedStyle(e).visibility !== "hidden")
       .filter(e => {
@@ -100,6 +106,10 @@ export function attachNativeBoard(frame: HTMLIFrameElement, api: ShellNativeBoar
     window.addEventListener("resize", layout);
     window.addEventListener("scroll", layout, true);
     document.addEventListener("visibilitychange", layout);
+    // An overlay is measured as it mounts, mid-way through its entrance; the
+    // end of a slide or a fade moves it with no change the observer sees.
+    document.addEventListener("animationend", layout, true);
+    document.addEventListener("transitionend", layout, true);
     let animation = 0, geometry = "";
     const followGeometry = () => {
       if (disposed) return;
@@ -117,6 +127,8 @@ export function attachNativeBoard(frame: HTMLIFrameElement, api: ShellNativeBoar
       window.removeEventListener("resize", layout);
       window.removeEventListener("scroll", layout, true);
       document.removeEventListener("visibilitychange", layout);
+      document.removeEventListener("animationend", layout, true);
+      document.removeEventListener("transitionend", layout, true);
     };
     unsubscribe = api.subscribe(id, raw => {
       const message = readViewMessage(raw);
