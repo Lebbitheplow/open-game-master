@@ -865,7 +865,7 @@
     "lib/bestiary/multiattack-text.ts#str-eq": [["english-source",5,"content-pack attack and Multiattack text (Open5e rows), parsed when a pack row becomes a stored block"]],
     "lib/bestiary/multiattack-text.ts#str-key": [["english-source",3,"content-pack attack and Multiattack text (Open5e rows), parsed when a pack row becomes a stored block"]],
     "lib/bestiary/multiattack-text.ts#toLowerCase": [["english-source",7,"content-pack attack and Multiattack text (Open5e rows), parsed when a pack row becomes a stored block"]],
-    "lib/bestiary/block-check.ts#str-eq": [["key",4,"attack modes, creature sizes, drain kinds and an ability's once-a-turn or once-a-round limit (fixed choice)"],["key",2,"an alternative blow's case (fixed choice: bloodied, ranged)"]],
+    "lib/bestiary/block-check.ts#str-eq": [["key",4,"attack modes, creature sizes, drain kinds and an ability's once-a-turn or once-a-round limit (fixed choice)"],["key",2,"an alternative blow's case (fixed choice: bloodied, ranged)"],["key",4,"a turn tie's edge and whose turn (fixed choice: start or end, target or source)"]],
     "lib/bestiary/block-check.ts#str-list": [["key",2,"attack modes, creature sizes and drain kinds (fixed choice)"]],
     "lib/bestiary/block-check.ts#toLowerCase": [["key",11,"damage types, condition names and sizes in an authored block"],["key",1,"an alternative blow's damage type in an authored block"]],
     "lib/bestiary/block-sections.ts#re-word": [["table-language",5,"meaning reader: a trait line's section read from an English prefix (\"Legendary:\", \"Bonus action:\") an author types in the workshop's trait box"]],
