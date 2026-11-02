@@ -57,6 +57,7 @@ import { undoableMove, undoOffer } from "@/lib/battlemap/move-undo";
 import type { AuraTone, PlayerMapView } from "@/lib/battlemap/view-types";
 import { ENEMY_TURN_NAME, turnOwner } from "@/lib/dm/turn-owner";
 import { holdsFeature } from "@/lib/srd/feature-names";
+import { enemiesAhead } from "@/lib/dm/held-turn";
 
 export type { PlayerMapView } from "@/lib/battlemap/view-types";
 
@@ -100,7 +101,8 @@ export function sheetSenses(sheet: CharacterSheet): Senses {
 }
 
 // Whether this player's PC may move right now: open floor, or their own
-// slot in the initiative order.
+// slot in the initiative order once their turn has begun (a turn held for
+// the enemies before it waits for them, src/lib/dm/held-turn.ts).
 function canMoveNow(campaignId: string, characterId: string): boolean {
   const floor = getFloor(campaignId);
   if (floor.mode === "open") {
@@ -114,7 +116,7 @@ function canMoveNow(campaignId: string, characterId: string): boolean {
     return false;
   }
   const current = encounter.order[encounter.turnIndex];
-  return current?.kind === "pc" && current.characterId === characterId;
+  return current?.kind === "pc" && current.characterId === characterId && !enemiesAhead(encounter, characterId).length;
 }
 
 // Movement left this turn for a player character, in tiles, and the speed

@@ -40,6 +40,7 @@ const { companionReactors, typedReactors } = await import("../src/lib/player-cha
 const { buildEncounterState } = await import("../src/lib/dm/turn.ts");
 const { buildGameStateBlock } = await import("../src/lib/dm/prompt.ts");
 const { registerDmWaker } = await import("../src/lib/dm/wake.ts");
+const { buildPlayerMapView } = await import("../src/lib/battlemap/view.ts");
 // Loaded before the waker below, which takes its place in the registry.
 await import("../src/lib/dm/loop.ts");
 
@@ -952,6 +953,83 @@ await test("A card from another hero aims at its own hit's attacker", () => {
     { characterId: "m", attackerId: "g2", attacker: "Goblin 2" },
   ];
   assert.deepEqual(reactionAim(card, hits, "m", []), { id: "g2", name: "Goblin 2", kind: "enemy" }, "the first hit's attacker was every card's aim");
+});
+
+// ---- a held turn is not walked before it begins ----
+//
+// SRD 5.1, Your Turn: "On your turn, you can move a distance up to your
+// speed and take one action." The goblin before Mira in the order takes its
+// turn before hers begins, so her walk waits for it as her action does: the
+// move route refuses it, naming who acts first, and the board lights no
+// square; once nothing waits, the walk begins her turn (held-turn.ts).
+
+const tokenAt = (world, hero) => {
+  const tile = buildPlayerMapView(world.campaignId, world.owner.id).tokens.find((token) => token.refId === hero.id);
+  return tile ? { x: tile.x, y: tile.y } : null;
+};
+
+await test("Mira does not walk while the goblin before her is still to act in the AI's reply, and the board lights no square for her", async () => {
+  const table = await stage();
+  const { world, poppy, mira, g1, g2 } = table;
+  await passOrder(table, [g1], [g2]);
+  const turn = createDmTurn(world.campaignId, [], "ai");
+  world.say("player", "That's my turn.", world.sheet(poppy.id));
+  const ended = await invokeEngine(world.campaign(), { kind: "ai", turnId: turn.id }, { name: "end_turn", args: { characterId: poppy.id } });
+  assert.equal(ended.ok, true, ended.error);
+  assert.equal(world.encounter().legendary.turnStart, mira.id, "her turn is held for the goblin");
+  assert.equal(buildPlayerMapView(world.campaignId, world.owner.id).reachable.length, 0, "the board lights nothing for her yet");
+  // (4,6) keeps her beside both goblins: no opportunity attack either way.
+  const early = await route(world, "battle-map/move", { x: 4, y: 6 }, world.owner);
+  assert.equal(early.status, 409, JSON.stringify(early.body));
+  assert.ok(early.body.error.includes(g1.displayName), early.body.error);
+  assert.deepEqual(tokenAt(world, mira), { x: 5, y: 5 }, "she has not moved");
+  // The reply is narrated: the goblin the model left takes its turn (a 1
+  // misses), and hers begins.
+  world.dice(1, 1, 1);
+  tools.advanceAfterTurn(world.campaign(), turn);
+  world.clearDice();
+  assert.equal(world.encounter().legendary.turnStart, undefined, "her turn has begun");
+  assert.ok(buildPlayerMapView(world.campaignId, world.owner.id).reachable.length > 0, "the board lights her squares");
+  const walked = await route(world, "battle-map/move", { x: 4, y: 6 }, world.owner);
+  assert.equal(walked.status, 200, JSON.stringify(walked.body));
+  assert.deepEqual(tokenAt(world, mira), { x: 4, y: 6 });
+});
+
+await test("At a table a person runs, Mira's walk while the goblin before her is due says who acts first", async () => {
+  const table = await stage();
+  const { world, poppy, mira, g1, g2 } = table;
+  await passOrder(table, [g1], [g2], { human: true });
+  assert.equal(tools.endOwnTurn(world.campaignId, poppy.userId), true, "Poppy ends her turn");
+  const early = await route(world, "battle-map/move", { x: 4, y: 6 }, world.owner);
+  assert.equal(early.status, 409, JSON.stringify(early.body));
+  assert.ok(early.body.error.includes(g1.displayName), early.body.error);
+  assert.deepEqual(tokenAt(world, mira), { x: 5, y: 5 });
+});
+
+await test("A held turn nothing still waits on begins with Mira's walk: her reaction is back and the Shield she cast before it ends", async () => {
+  const table = await stage();
+  const { world, poppy, mira, g1, g2 } = table;
+  await passOrder(table, [g1], [g2]);
+  const turn = createDmTurn(world.campaignId, [], "ai");
+  const ai = { kind: "ai", turnId: turn.id };
+  world.say("player", "That's my turn.", world.sheet(poppy.id));
+  const ended = await invokeEngine(world.campaign(), ai, { name: "end_turn", args: { characterId: poppy.id } });
+  assert.equal(ended.ok, true, ended.error);
+  // The model plays the goblin (10 + 4 hits AC 12 for 3 + 2) and Mira
+  // answers with Shield; then the reply fails before its narration.
+  world.dice(10, 3);
+  const swing = await invokeEngine(world.campaign(), ai, { name: "enemy_attack", args: { enemyId: g1.id, targetCharacterId: mira.id } });
+  world.clearDice();
+  assert.equal(swing.ok, true, swing.error);
+  const shield = await react(world, mira, "Shield");
+  assert.equal(shield.ok, true, shield.error);
+  getDatabase().prepare("UPDATE dm_turns SET status = 'failed' WHERE id = ?").run(turn.id);
+  assert.equal(world.encounter().legendary.turnStart, mira.id);
+  const walked = await route(world, "battle-map/move", { x: 4, y: 6 }, world.owner);
+  assert.equal(walked.status, 200, JSON.stringify(walked.body));
+  assert.equal(world.encounter().legendary.turnStart, undefined, "the walk began her turn");
+  assert.equal(world.encounter().reactionsUsed.includes(mira.id), false, "her reaction is back with her turn");
+  assert.equal(shielded(world, mira), false, "Shield lasts until the start of her turn");
 });
 
 finish();

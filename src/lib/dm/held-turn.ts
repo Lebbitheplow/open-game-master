@@ -25,7 +25,8 @@
 
 import { AsyncLocalStorage } from "node:async_hooks";
 import { getCampaignById, type Campaign } from "@/lib/db/campaigns";
-import { getActiveEncounter, saveEncounter, turnKey, type Encounter } from "@/lib/db/encounters";
+import { getActiveEncounter, listEnemies, saveEncounter, turnKey, type Encounter } from "@/lib/db/encounters";
+import { getDmTurn } from "@/lib/db/dm-turns";
 import { activePublicEncounter } from "@/lib/db/encounter-view";
 import { publishPersisted } from "@/lib/events";
 import { endTurnStartHolds } from "@/lib/dm/condition-tick";
@@ -78,6 +79,35 @@ export function beginHeldTurnOf(encounter: Encounter, id: string) {
   }
   startHeldTurn(campaign, encounter);
   saveEncounter(encounter);
+}
+
+// The enemies a held turn still waits on, by name: those the pass left due,
+// and those an AI reply was handed while that reply still plays (its
+// narration begins the turn, advanceAfterNarration). Moving is part of a turn
+// as acting is (SRD 5.1, Your Turn: "On your turn, you can move a distance up
+// to your speed and take one action"), so until then the move route refuses
+// the walk and the board lights no square for it; a reply that ended without
+// its narration holds nobody, and the walk begins the turn
+// (beginHeldTurnOf). Empty when the turn is not held.
+export function enemiesAhead(encounter: Encounter, id: string): string[] {
+  if (encounter.legendary.turnStart !== id) {
+    return [];
+  }
+  const handoff = encounter.legendary.handoff;
+  const reply = handoff ? getDmTurn(handoff.turnId) : null;
+  const playing = Boolean(reply && (reply.status === "running" || reply.status === "awaiting_rolls"));
+  const waiting = new Set([...(encounter.legendary.due ?? []), ...(playing && handoff ? handoff.enemyIds : [])]);
+  return listEnemies(encounter.id)
+    .filter((enemy) => waiting.has(enemy.id) && enemy.status === "alive")
+    .map((enemy) => enemy.displayName);
+}
+
+// The refusal of a walk on a turn that has not begun.
+export function heldTurnLine(name: string, ahead: string[]): string {
+  const who = ahead.length > 1 ? `${ahead.slice(0, -1).join(", ")} and ${ahead[ahead.length - 1]}` : ahead[0];
+  return who
+    ? `${who} ${ahead.length > 1 ? "take their turns" : "takes its turn"} before ${name}'s: ${name} moves once their turn begins.`
+    : `The enemies before ${name} are taking their turns; ${name} moves once the GM hands the turn on.`;
 }
 
 // The enemies before the held character have acted: their turn begins.
