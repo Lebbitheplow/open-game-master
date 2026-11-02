@@ -4,6 +4,7 @@
 // (src/lib/dm/invoke.ts). The board's entries (pets, tokens, legendary
 // creatures) live in catalog-board.ts and are spread in at the end.
 import type { CatalogEntry } from "@/lib/dm/catalog-types";
+import { ATTACK_FEATURE_NAMES } from "@/lib/dm/action-parts-logic";
 import { sceneOptions } from "@/lib/ambience/catalog";
 import { BOARD_ADJUDICATIONS } from "@/lib/dm/catalog-board";
 import { ENCOUNTER_OUTCOMES, type EncounterOutcome } from "@/lib/dm/encounter-logic";
@@ -29,13 +30,6 @@ const OUTCOME_LABELS: Record<EncounterOutcome, string> = {
   party_defeated: "The party was defeated",
   truce: "A truce",
 };
-
-const BONUS_ATTACK = [
-  { value: "martial arts", label: "Martial Arts strike" },
-  { value: "frenzy", label: "Frenzy" },
-  // A subclass's bonus weapon attack (Battle Magic, War Magic, Sudden Strike): authored-effects.ts.
-  { value: "feature", label: "Subclass feature" },
-];
 
 // Open Hand Technique's three riders, the pc_attack schema's OPEN_HAND_CHOICES.
 const OPEN_HAND = [
@@ -163,10 +157,8 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
       { name: "level", label: "Spell slot level", kind: "number", min: 1, max: 9, help: "An attack spell of 1st level or higher: the slot cast from. Empty uses the spell's own level." },
       ...advantageFields(),
       { name: "twoHanded", label: "In both hands", kind: "boolean", help: "A versatile weapon rolls its bigger die in melee. Not with a shield on the arm. Not for an off-hand attack." },
-      { name: "offHand", label: "Off-hand attack", kind: "boolean", help: "The bonus action of two-weapon fighting, after an attack with a light weapon." },
       { name: "smite", label: "Divine Smite slot", kind: "number", min: 1, max: 9, help: "Paladin only. The slot is spent if the attack hits." },
       { name: "maneuver", label: "Maneuver", kind: "text", help: "Battle Master only. The Superiority Die is spent on a hit (on the roll for Precision Attack)." },
-      { name: "bonusAttack", label: "Bonus-action attack", kind: "select", options: BONUS_ATTACK, help: "Martial Arts' unarmed strike after the Attack action, or a raging Berserker's frenzy. Spends the bonus action." },
       { name: "stunningStrike", label: "Stunning Strike", kind: "boolean", help: "Monk 5+. One ki on a melee hit; the target saves CON or is stunned." },
       { name: "powerAttack", label: "Power attack", kind: "boolean", help: "Great Weapon Master (heavy melee) or Sharpshooter (ranged): -5 to hit for +10 damage. Powerful Attacker: disadvantage for +10. Deadeye: the proficiency bonus off the roll for twice it on the damage." },
       { name: "luck", label: "Spend a luck point", kind: "boolean", help: "Lucky: an extra d20 on this attack roll, the best kept; the point is spent." },
@@ -174,7 +166,6 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
       { name: "charged", label: "Charged 10 ft straight (Charger)", kind: "boolean", help: "Charger's bonus-action attack after a Dash: +5 damage when they ran at least 10 feet straight at the target." },
       { name: "reckless", label: "Reckless Attack", kind: "boolean", help: "Barbarian 2+, first attack of the turn. Attacks against them have advantage until their next turn." },
       { name: "nonlethal", label: "Knock out", kind: "boolean", help: "Melee only. A creature dropped to 0 falls unconscious instead of dying." },
-      { name: "hordeBreaker", label: "Horde Breaker", kind: "boolean", help: "Hunter ranger, once a turn: an extra attack on a different creature within 5 feet of one already attacked." },
       { name: "useInspiration", label: "Spend their Inspiration", kind: "boolean", help: "Advantage on this attack roll. Refused when they hold none." },
       { name: "strokeOfLuck", label: "Stroke of Luck", kind: "boolean", help: "Rogue 20: a miss becomes a hit and spends the use (once a short rest); a hit spends nothing." },
       {
@@ -186,8 +177,12 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
       },
       { name: "hurlThroughHell", label: "Hurl Through Hell", kind: "boolean", help: "Fiend warlock 14, on a hit: gone until the end of the warlock's next turn, then 10d10 psychic unless a fiend. Once a long rest." },
       { name: "rapidStrike", label: "Rapid Strike", kind: "boolean", help: "Samurai 15, once a turn: an attack with advantage gives it up for one more attack of the Attack action." },
-      { name: "whirlwind", label: "Whirlwind Attack", kind: "boolean", help: "Hunter 11: the action makes one melee attack against each creature within 5 feet; send one call per creature." },
-      { name: "volley", label: "Volley", kind: "boolean", help: "Hunter 11: the action makes one ranged attack against each creature within 10 feet of the first; send one call per creature." },
+      {
+        name: "feature",
+        label: "Made with",
+        kind: "text",
+        help: `The feature the attack is made with: ${ATTACK_FEATURE_NAMES.join(", ")}, or a feat's or subclass's bonus attack (Polearm Master, War Magic). Empty for an attack of the Attack action. The first Action Surge or Flurry of Blows attack spends it.`,
+      },
     ],
   },
   {

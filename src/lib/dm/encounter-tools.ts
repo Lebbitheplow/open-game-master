@@ -101,6 +101,7 @@ import {
   extraEncounterTools,
 } from "@/lib/dm/encounter-tools-extra";
 import { handlePcAttack, PC_ATTACK_PARKED, pcAttackTool } from "@/lib/dm/pc-attack";
+import { handlePcAttackParts } from "@/lib/dm/pc-attack-parts";
 import { companionShot, endTurnAsked } from "@/lib/dm/pc-attack-approach";
 import { backstopAttack, handleEnemyAttack } from "@/lib/dm/enemy-attack";
 import { isCompanionUserId } from "@/lib/db/users";
@@ -111,7 +112,6 @@ import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
 import {
   castAtEnemyTool,
   castAtPlayerTool,
-  handleCastAtEnemy,
   handleCastAtPlayer,
 } from "@/lib/dm/cast-tools";
 import {
@@ -138,7 +138,7 @@ import { lairCountPassed } from "@/lib/dm/legendary-logic";
 import { publishTitleCard } from "@/lib/dm/scene-state";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { VIGILANT_PREFIX } from "@/lib/srd/authored-effects-more";
-import { handleReaperCast } from "@/lib/dm/authored-reaper";
+import { handleCastAtEnemyTargets } from "@/lib/dm/cast-at-enemy-targets";
 import { sweepSummons } from "@/lib/dm/summon-store";
 import { endConcentrationOnFadedSummons } from "@/lib/dm/concentration-upkeep";
 import { afflictionsAtCombatStart } from "@/lib/dm/afflictions";
@@ -1251,7 +1251,7 @@ export function applyEncounterCall(
       if (unasked) {
         return { result: unasked };
       }
-      const result = handlePcAttack(
+      const result = handlePcAttackParts(
         campaign,
         turn,
         rawArguments,
@@ -1268,8 +1268,7 @@ export function applyEncounterCall(
       if (unasked) {
         return { result: unasked };
       }
-      // Improved Reaper's second target (src/lib/dm/authored-reaper.ts).
-      const result = handleReaperCast(campaign, turn, rawArguments, sheets, sheetsById) ?? handleCastAtEnemy(campaign, turn, rawArguments, sheets, sheetsById);
+      const result = handleCastAtEnemyTargets(campaign, turn, rawArguments, sheets, sheetsById);
       markResolvedFromArgs(turn, rawArguments, sheets, sheetsById, result);
       return { result };
     }

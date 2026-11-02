@@ -697,16 +697,19 @@ export function tradeCall(campaign: Campaign, args: ToolArgs): EngineCall {
     const priceCp = args.priceCp ?? (Number.isFinite(Number(args.price)) && Number(args.price) > 0 ? Math.round(Number(args.price) * 100) : undefined);
     return { name: "sell_item", args: { ...common, ...(priceCp !== undefined ? { priceCp } : {}) } };
   };
+  const srdName = typeof args.srdName === "string" ? args.srdName.trim() : "";
+  const shelved = (shop: Shop) => findStockLine(shop.stock, item) ?? (srdName ? findStockLine(shop.stock, srdName) : null);
   if (named) {
-    return atShop(named);
+    // The shelf's own name, by the item or its English name, as below: an
+    // item in the table's language was refused at a shop the call named.
+    const shop = action === "buy" ? resolveShop(campaign, named) : null;
+    return atShop(named, (shop && shelved(shop)?.itemName) || item);
   }
   const location = getCurrentLocation(campaign.id);
   const here = location ? listShopsAt(campaign.id, location.id, location.name) : [];
   if (!here.length) {
     return listPrice;
   }
-  const srdName = typeof args.srdName === "string" ? args.srdName.trim() : "";
-  const shelved = (shop: Shop) => findStockLine(shop.stock, item) ?? (srdName ? findStockLine(shop.stock, srdName) : null);
   if (action === "buy") {
     for (const shop of here) {
       const line = shelved(shop);

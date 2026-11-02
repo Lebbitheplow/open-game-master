@@ -1,6 +1,6 @@
 import { lashOutTarget } from "@/lib/dm/confusion";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
-import { hostileTo, unknownCombatantRef } from "@/lib/dm/combatant";
+import { hostileTo, standingFoesLine, unknownCombatantRef } from "@/lib/dm/combatant";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 // The refusals that come before a player's attack is built: whether the
 // attacker may attack now (their action on their turn, their one reaction
@@ -113,7 +113,8 @@ export function gatePcAttack(input: {
     };
   }
   if (enemy.status !== "alive") {
-    return { refused: { error: `${enemy.displayName} is already ${enemy.status}. Ask the player which living ${isSheetFoe(enemy) ? "foe" : "enemy"} in GAME STATE to target instead.`, retry: true } };
+    const standing = standingFoesLine(campaign.id, encounter);
+    return { refused: { error: `${enemy.displayName} is already ${enemy.status}.${standing ? ` Still standing: ${standing}.` : ""} Ask the player which living ${isSheetFoe(enemy) ? "foe" : "enemy"} to target instead.`, retry: true } };
   }
   // Resilient Sphere: nothing reaches in (condition-effects untargetable).
   const sealed = conditionUntargetable(enemy.conditions);

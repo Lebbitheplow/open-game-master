@@ -188,12 +188,24 @@ export function sheetsOnSide(campaignId: string, encounter: Encounter, side: Com
 // The refusal of a target nothing matched, listing who could be meant: the
 // enemies standing and, when any fight on the foes' side, those sheets too.
 export function unknownCombatantRef(campaignId: string, encounter: Encounter | null, field: string, ref: string | undefined, tail = ""): ToolError {
-  const records = encounter
-    ? combatantsOf(campaignId, encounter)
-        .filter((combatant) => !combatantDefeated(combatant) && (combatant.kind === "enemy" || combatant.side === "foe"))
-        .map((combatant) => ({ id: combatant.id, name: combatant.name }))
-    : [];
-  return unknownRef(field, ref, records, tail);
+  return unknownRef(field, ref, encounter ? foesStanding(campaignId, encounter) : [], tail);
+}
+
+function foesStanding(campaignId: string, encounter: Encounter): { id: string; name: string }[] {
+  return combatantsOf(campaignId, encounter)
+    .filter((combatant) => !combatantDefeated(combatant) && (combatant.kind === "enemy" || combatant.side === "foe"))
+    .map((combatant) => ({ id: combatant.id, name: combatant.name }));
+}
+
+// The foes a refused target can be swapped for, by name and id ("Goblin 2
+// (e_1)"), or "" when there are none. A declaration's part refused for its
+// target is aimed again in the next call (src/lib/dm/pc-attack-parts.ts),
+// and the refusal names where. `keep` narrows them (those within reach).
+export function standingFoesLine(campaignId: string, encounter: Encounter, keep: (id: string) => boolean = () => true): string {
+  return foesStanding(campaignId, encounter)
+    .filter((foe) => keep(foe.id))
+    .map((foe) => `${foe.name} (${foe.id})`)
+    .join(", ");
 }
 
 // The side each board token's creature fights on, for the board's passage

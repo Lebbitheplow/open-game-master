@@ -26,6 +26,7 @@ import {
   type Instant,
 } from "@/lib/dm/calendar";
 import type { ToolError } from "@/lib/dm/tool-errors";
+import { legsWithinDay } from "@/lib/srd/travel";
 
 // Reading and writing the campaign's in-world clock.
 //
@@ -211,6 +212,13 @@ export function setTravelPace(campaignId: string, pace: CampaignClock["travelPac
   const { travelPace: _was, ...rest } = current;
   void _was;
   setClock(campaignId, pace ? { ...rest, travelPace: pace } : rest);
+}
+
+// A stretch of marching that just ended and who marched it, kept for the
+// day after it (src/lib/srd/travel.ts forcedMarchSpan).
+export function recordMarch(campaignId: string, end: number, minutes: number, ids: string[]) {
+  const current = getClock(campaignId);
+  setClock(campaignId, { ...current, marched: [...legsWithinDay(current.marched ?? [], end), { end, minutes, ids }] });
 }
 
 // How much water the party finds each day, for the `supplies` variant

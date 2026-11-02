@@ -1,5 +1,5 @@
 // The bonus-action weapon attacks a feature grants with its own uses or its
-// own trigger, which pc_attack's bonusAttack "feature" refused before this
+// own trigger, which a feature's bonus attack in pc_attack refused before this
 // ("No feature of theirs grants a bonus-action weapon attack") while each
 // counter sat unspent (issue 233):
 //
@@ -17,6 +17,10 @@
 //     modifier (minimum of 1)", once a short rest.
 //   Pistol and Blade (steampunk catalog): "When you attack with a melee
 //     weapon, make one firearm attack as a bonus action."
+//   Swift Quiver (the authored spell, src/lib/srd/authored-spells.json): "a
+//     bonus action lets you attack twice with a weapon drawing ammunition
+//     from that quiver". Its guidance asked for the two attacks, and nothing
+//     but the Attack action's swings could pay for them.
 //
 // The bonus action itself is spent with the attack's other costs
 // (pc-attack-spend.ts); the use, the mark and the extras here.
@@ -40,8 +44,15 @@ export const MELEE_ATTACKED = "melee-attack-made";
 // leave them to pc_attack.
 export const BONUS_ATTACK_COUNTERS = ["sub_war_priest", "sub_unwavering_mark", "race_hungry_jaws"];
 
+// The turn's mark that one bonus action bought two attacks and the second is
+// still to come (Swift Quiver). Spent by that second attack.
+export const SECOND_BONUS_ATTACK = "bonus-attack-second:";
+
 export type FeatureBonusAttack = {
   feature: string;
+  // One bonus action buys two attacks (Swift Quiver): the second rides the
+  // first's bonus action.
+  pair?: boolean;
   // The counter one use of which the attack spends.
   counter?: string;
   advantage?: boolean;
@@ -120,6 +131,13 @@ export function featureBonusAttack(input: {
       refusals.push({ error: "Pistol and Blade's bonus attack is made with a firearm.", retry: true });
     } else {
       return { feature: "Pistol and Blade" };
+    }
+  }
+  if (sheet.conditions.some((entry) => textKey(entry) === "swift quiver")) {
+    if (!(profile.properties ?? []).includes("ammunition")) {
+      refusals.push({ error: "Swift Quiver's attacks are made with a weapon that draws ammunition from the quiver.", retry: true });
+    } else {
+      return { feature: "Swift Quiver", pair: true };
     }
   }
   return refusals.length ? { refused: refusals[0] } : null;

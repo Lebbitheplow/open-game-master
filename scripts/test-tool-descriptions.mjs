@@ -101,17 +101,15 @@ const MUST_KEEP = {
   "reveal_item.srdName": [/English/, /SRD or pack/, /omit/i],
   "set_condition.magical": [/magic/, /Fey Ancestry/],
   "declare_intent.kind": [/\bmove\b/],
-  "use_resource.variant": [/flurry of blows/, /patient defense/, /step of the wind/],
+  "use_resource.variant": [/patient defense/, /step of the wind/],
   "apply_hazard.rank": [/'front'/, /'rear'/],
   "start_encounter.ambush": [/'enemies'/, /'party'/],
   "start_encounter.from": [/'ahead'/, /'behind'/],
   "cast_at_enemy.variant": [/Polymorph/, /beast/, /any creature/],
-  "pc_attack.bonusAttack": [/martial arts/, /frenzy/, /feature/, /unarmed strike/],
+  "pc_attack.attacks.feature": [/feature/, /by name/, /omit/],
   "update_sheet": [/never a level/, /heal/, /modify_gold/, /set_condition/],
-  "pc_attack.whirlwind": [/Whirlwind/, /whirlwind true/],
-  "pc_attack.volley": [/Volley/, /volley true/],
   "request_roll.targetEnemyId": [/enemyId/, /no sheet/],
-  "purchase.srdName": [/Only when/, /English/],
+  "purchase.srdName": [/English/, /other words/],
   "modify_gold.delta": [/gold/, /negative/],
   "apply_damage.source": [/Required on an enemy/, /'hazard'/, /'environment'/],
   set_condition: [/duration/],
@@ -124,8 +122,8 @@ const MUST_KEEP = {
 
 test("what the engine reads survives the compact cut", () => {
   for (const [path, facts] of Object.entries(MUST_KEEP)) {
-    const [toolName, name] = path.split(".");
-    const { cut } = field(toolName, name);
+    const [toolName, ...name] = path.split(".");
+    const { cut } = field(toolName, name.length ? name.join(".") : undefined);
     for (const fact of facts) assert.match(cut, fact, `${path} keeps ${fact}: ${cut}`);
   }
 });
@@ -142,7 +140,8 @@ test("a field several tools share reads the same in each", () => {
     creature: ["request_roll", "group_check"],
     coins: ["modify_gold", "party_stash"],
     water: ["travel", "pass_time"],
-    improvised: ["pc_attack", "damage_object"],
+    // A list's entries are read at their path (pc_attack.attacks.weapon).
+    improvised: ["pc_attack.attacks", "damage_object"],
   };
   for (const [name, tools] of Object.entries(SHARED)) {
     const [first, ...rest] = tools.map((tool) => field(tool, name));

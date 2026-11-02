@@ -17,7 +17,7 @@ import { resourceLeft } from "@/lib/dm/attack-rules";
 import type { ManeuverPick } from "@/lib/dm/pc-attack-plan";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
-import { isIncapacitated, removeConditions, type ConditionMeta } from "@/lib/dm/condition-logic";
+import { addConditionInstance, isIncapacitated, removeConditions, type ConditionMeta } from "@/lib/dm/condition-logic";
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { applyDmMutation } from "@/lib/dm/mutations";
@@ -254,7 +254,7 @@ export function openCurvingShot(campaignId: string, sheet: CharacterSheet, enemy
     return null;
   }
   storeBudget(encounter, { ...budget, oncePerTurn: [...budget.oncePerTurn.filter((key) => !key.startsWith(CURVING_SHOT)), `${CURVING_SHOT}${enemyId}`] });
-  return "Curving Shot: the bonus action may reroll this arrow at a different creature within 60 feet of this one (pc_attack bonusAttack \"feature\" at it)";
+  return "Curving Shot: the bonus action may reroll this arrow at a different creature within 60 feet of this one (pc_attack feature \"Curving Shot\" at it)";
 }
 
 // Temporary hit points a hit gives the attacker (Hungry Jaws): they do not
@@ -297,15 +297,14 @@ export function stunningStrikeSave(
   if (save.success) {
     return `Stunning Strike: ${fresh.displayName} holds (CON save ${save.total ?? "failed outright"} vs DC ${dc}${save.legendaryResistance ? ", Legendary Resistance" : ""}); no stun.`;
   }
-  if (!fresh.conditions.includes("stunned")) {
-    patchEnemyConditions(fresh.id, [...fresh.conditions, "stunned"], {
-      ...fresh.conditionMeta,
-      stunned: untilTurnEnd(monkId, { source: monkId }),
-    });
-    // Stunned is out of action: its concentration and grapples end.
-    settleEnemyIncapacitation(fresh.id, isIncapacitated(fresh.conditions));
-    publishEncounter(campaign.id);
-  }
+  // A creature this monk stunned on an earlier turn is stunned again "until
+  // the end of your next turn": the same source's instance is replaced, so
+  // the stun runs on, and another source's keeps its own end.
+  const stunned = addConditionInstance(fresh.conditions, fresh.conditionMeta, "stunned", untilTurnEnd(monkId, { source: monkId }));
+  patchEnemyConditions(fresh.id, stunned.conditions, stunned.meta);
+  // Stunned is out of action: its concentration and grapples end.
+  settleEnemyIncapacitation(fresh.id, isIncapacitated(fresh.conditions));
+  publishEncounter(campaign.id);
   return `Stunning Strike: ${fresh.displayName} fails the CON save (${save.autoFailed ? "automatic" : save.total} vs DC ${dc}) and is stunned until the end of the monk's next turn.`;
 }
 

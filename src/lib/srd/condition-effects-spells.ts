@@ -55,7 +55,7 @@ export const STRIKE_CONDITION_EFFECTS: ConditionEffectRow[] = [
     id: "frenzied",
     match: ["frenzied", "frenzy"],
     summary:
-      "Frenzy: while the rage lasts, one melee weapon attack as a bonus action on each of their turns (pc_attack bonusAttack 'frenzy'); one level of exhaustion when the rage ends.",
+      "Frenzy: while the rage lasts, one melee weapon attack as a bonus action on each of their turns (a pc_attack entry with feature 'Frenzy'); one level of exhaustion when the rage ends.",
   },
 ];
 

@@ -231,7 +231,7 @@
    "uses": 1,
    "ability": "wis",
    "recharge": "long",
-   "guidance": "A bonus-action weapon attack after taking the Attack action, made with pc_attack (bonusAttack \"feature\"); the attack spends the use."
+   "guidance": "A bonus-action weapon attack after taking the Attack action, made with pc_attack (feature \"War Priest\"); the attack spends the use."
   },
   {
    "id": "sub_eyes_of_the_grave",
@@ -1794,7 +1794,7 @@
    "uses": 1,
    "ability": null,
    "recharge": "short",
-   "guidance": "A bonus-action bite, made with pc_attack (weapon \"bite\", bonusAttack \"feature\"): on a hit the lizardfolk also gains temporary hit points equal to their Constitution modifier (minimum 1). The attack spends the use."
+   "guidance": "A bonus-action bite, made with pc_attack (weapon \"bite\", feature \"Hungry Jaws\"): on a hit the lizardfolk also gains temporary hit points equal to their Constitution modifier (minimum 1). The attack spends the use."
   },
   {
    "id": "race_genasi_magic",
@@ -1968,7 +1968,7 @@
    "uses": 1,
    "ability": "str",
    "recharge": "long",
-   "guidance": "The bonus-action melee attack against a marked creature that damaged someone else, on the fighter's next turn: pc_attack bonusAttack \"feature\" at that creature, with advantage and +half the fighter level damage; the attack spends the use. The mark itself the server lays on every melee hit."
+   "guidance": "The bonus-action melee attack against a marked creature that damaged someone else, on the fighter's next turn: pc_attack feature \"Unwavering Mark\" at that creature, with advantage and +half the fighter level damage; the attack spends the use. The mark itself the server lays on every melee hit."
   },
   {
    "id": "sub_bulwark_of_force",
@@ -1991,7 +1991,7 @@
    "uses": 1,
    "ability": null,
    "recharge": "long",
-   "guidance": "Telekinesis once without a slot; while concentrating on it, a weapon attack as a bonus action (pc_attack bonusAttack 'feature')."
+   "guidance": "Telekinesis once without a slot; while concentrating on it, a weapon attack as a bonus action (pc_attack feature 'Telekinetic Master')."
   },
   {
    "id": "sub_elder_champion",

@@ -3,8 +3,8 @@
 // first from the same slot, at no further cost (the material components a
 // spell consumes are the caster's to provide for each). Reaper (Death cleric
 // 1) does the same for a necromancy cantrip, Moon Fire (Lunar Sorcery 1) for
-// sacred flame. cast_at_enemy with secondTargetEnemyId reaches
-// handleReaperCast, which casts once (the slot spent, if any) and opens one
+// sacred flame. cast_at_enemy with two targets for a spell that reaches one
+// (src/lib/dm/cast-at-enemy-targets.ts) reaches handleReaperCast, which casts once (the slot spent, if any) and opens one
 // more share of that casting for the second creature (cast-guard.ts open
 // casts, so nothing more is spent).
 
@@ -60,7 +60,7 @@ export function handleReaperCast(
   const first = resolveTargetFoe(campaign.id, encounter, String(rest.targetEnemyId ?? ""));
   const second = resolveTargetFoe(campaign.id, encounter, secondTargetEnemyId);
   if (!first || !second || second.status !== "alive" || second.id === first.id) {
-    return { error: "secondTargetEnemyId names a second living creature from GAME STATE, not the first target. Nothing was spent.", retry: true };
+    return { error: "The second target is a second living creature from GAME STATE, not the first. Nothing was spent.", retry: true };
   }
   const authors = spellAuthorsFor(campaign);
   const facts = spellFactsFor(spell, authors);

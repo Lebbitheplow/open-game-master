@@ -27,8 +27,10 @@ export const HAND_INTENT_ACTIONS = ["search", "escape", "stand-up", "stabilize",
 export const HAND_GEAR_ACTIONS = ["equip", "unequip", "drop", "pick_up", "hand", "use"] as const;
 export type HandGearAction = (typeof HAND_GEAR_ACTIONS)[number];
 
-// pc_attack's bonusAttack values (src/lib/dm/pc-attack-options.ts
-// BONUS_ATTACKS) and Open Hand Technique's riders (attack-choice-rules.ts).
+// The engine's bonusAttack values (src/lib/dm/pc-attack-options.ts
+// BONUS_ATTACKS), which a card's attack still carries flat
+// (src/lib/dm/intent-logic.ts directCardCall), and Open Hand Technique's
+// riders (attack-choice-rules.ts).
 const HAND_BONUS_ATTACKS = ["martial arts", "frenzy", "feature"] as const;
 const HAND_OPEN_HAND = ["prone", "push", "no reactions"] as const;
 

@@ -16,6 +16,7 @@
 // dispatchAdjudication. The engine's own paths call the handlers directly,
 // and the console and the party lead keep their free hand.
 
+import { splitParts } from "@/lib/dm/action-parts-logic";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getRoll, markRollApplied } from "@/lib/db/rolls";
@@ -105,7 +106,15 @@ export function gateAiCall(name: string, rawArguments: string, ctx: GateContext)
       return args.enemyId && args.action === "drop" && !enemyHoldsItem(ctx.campaign.id, String(args.enemyId), String(args.item ?? ""))
         ? itemFacts(ctx, name, args, rawArguments)
         : { args: rawArguments };
+    // Each of pc_attack's parts claims its own advantage.
     case "pc_attack":
+      for (const part of splitParts(name, args, null)) {
+        const claimed = claimSource(part.args, rawArguments);
+        if ("result" in claimed) {
+          return claimed;
+        }
+      }
+      return { args: rawArguments };
     case "enemy_attack":
     case "request_roll":
       return claimSource(args, rawArguments);

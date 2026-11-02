@@ -266,7 +266,7 @@ export function bonusStrikeCards(
     );
   }
   // A subclass's bonus weapon attack (Battle Magic, War Magic, Sudden Strike,
-  // Curving Shot...): pc_attack bonusAttack "feature", judged by the authored
+  // Curving Shot...): pc_attack's feature by its name, judged by the authored
   // layer's own check (src/lib/srd/authored-effects.ts).
   const offers = activeAuthored(sheet, "bonus_attack");
   if (offers.length) {

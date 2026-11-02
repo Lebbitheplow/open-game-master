@@ -25,13 +25,16 @@ export type TargetRule =
   | { kind: "both"; why: string }
   // Who the act is for, on the actor's own side (Help's ally, Protection's
   // covered ally): an ally is a character of the party's side by nature.
-  | { kind: "ally"; why: string };
+  | { kind: "ally"; why: string }
+  // A list of parts, each naming its creature by a parameter listed on its
+  // own (cast_at_enemy's targets[].targetEnemyId).
+  | { kind: "parts"; of: string };
 
 export const TARGET_PARAMS: Readonly<Record<string, TargetRule>> = {
-  "pc_attack.targetEnemyId": { kind: "combatant", file: "src/lib/dm/pc-attack-gate.ts" },
+  "pc_attack.attacks[].targetEnemyId": { kind: "combatant", file: "src/lib/dm/pc-attack-gate.ts" },
   "enemy_attack.targetCharacterId": { kind: "combatant", file: "src/lib/dm/enemy-attack.ts" },
-  "cast_at_enemy.targetEnemyId": { kind: "combatant", file: "src/lib/dm/cast-at-enemy.ts" },
-  "cast_at_enemy.secondTargetEnemyId": { kind: "combatant", file: "src/lib/dm/authored-reaper.ts" },
+  "cast_at_enemy.targets": { kind: "parts", of: "cast_at_enemy.targets[].targetEnemyId" },
+  "cast_at_enemy.targets[].targetEnemyId": { kind: "combatant", file: "src/lib/dm/cast-at-enemy.ts" },
   "cast_buff.targetEnemyId": { kind: "combatant", file: "src/lib/dm/cast-buff.ts" },
   "take_action.targetEnemyId": { kind: "combatant", file: "src/lib/dm/combat-actions.ts" },
   "use_reaction.targetEnemyId": { kind: "combatant", file: "src/lib/dm/reaction-tools.ts" },
@@ -44,6 +47,7 @@ export const TARGET_PARAMS: Readonly<Record<string, TargetRule>> = {
   "cast_at_player.characterId": { kind: "both", why: "the target is a character; an enemy target is cast_at_enemy, and a character on either side is reached here" },
   "aoe_damage.targets": { kind: "both", why: "names of enemies and characters mixed, each read by its kind; characterIds and enemyIds beside it" },
   "apply_damage.targets": { kind: "both", why: "each entry an enemyId or a characterId" },
+  "heal.targets": { kind: "both", why: "each entry heal's own characterId, the one healed: a character on either side" },
   "apply_damage.enemyId": { kind: "both", why: "beside characterId: a character on either side is reached by characterId" },
   "apply_damage.targets[].enemyId": { kind: "both", why: "beside targets[].characterId" },
   "enemy_attack.targetMount": { kind: "both", why: "names no creature itself: the mount of the character targetCharacterId resolves, on whichever side" },

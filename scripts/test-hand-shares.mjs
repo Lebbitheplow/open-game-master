@@ -103,15 +103,19 @@ test("the sentence names each creature with its share, and the message carries t
   assert.equal(composeSentence(card("Bless"), ally("k", "Kara"), [], { shares: [{ id: "r", name: "Rook", count: 1 }] }), "I cast Bless on Kara and Rook using a level 1 slot.");
 });
 
-test("the engine makes one call per share: darts by count, a call per ray, one Bless for every ally, one area for creatures that stand together", () => {
+test("the engine makes one call for the casting: darts by count, an attack per ray, one Bless for every ally, one heal for every creature healed, one area for creatures that stand together", () => {
   const base = { card: "spell", slotLevel: 1, targetKind: "enemy", targetId: "g1", targetName: "Goblin 1" };
   const darts = directCardCalls({ ...base, spell: "Magic Missile", shares: [{ id: "g1", count: 2 }, { id: "g2", count: 1 }] }, "s1", { inFight: true, resolution: "auto", shareKind: "darts" });
-  assert.deepEqual(darts.map((call) => [call.name, call.args.targetEnemyId, call.args.darts]), [["cast_at_enemy", "g1", 2], ["cast_at_enemy", "g2", 1]]);
+  assert.deepEqual(darts, [{ name: "cast_at_enemy", args: { characterId: "s1", spell: "Magic Missile", level: 1, targets: [{ targetEnemyId: "g1", darts: 2 }, { targetEnemyId: "g2", darts: 1 }] } }]);
   const rays = directCardCalls({ ...base, spell: "Scorching Ray", slotLevel: 2, shares: [{ id: "g1", count: 2 }, { id: "g2", count: 1 }] }, "s1", { inFight: true, resolution: "attack", shareKind: "attacks" });
-  assert.deepEqual(rays.map((call) => call.args.targetEnemyId), ["g1", "g1", "g2"]);
-  assert.ok(rays.every((call) => call.name === "pc_attack" && call.args.spell === "Scorching Ray" && call.args.level === 2));
+  assert.equal(rays.length, 1);
+  assert.equal(rays[0].name, "pc_attack");
+  assert.deepEqual(rays[0].args.attacks.map((part) => part.targetEnemyId), ["g1", "g1", "g2"]);
+  assert.ok(rays[0].args.attacks.every((part) => part.spell === "Scorching Ray" && part.level === 2));
   const bless = directCardCalls({ card: "spell", spell: "Bless", slotLevel: 1, targetKind: "ally", targetId: "k", shares: [{ id: "k", count: 1 }, { id: "r", count: 1 }] }, "s1", { inFight: true, resolution: "buff", shareKind: "targets" });
   assert.deepEqual(bless, [{ name: "cast_buff", args: { characterId: "s1", spell: "Bless", targetCharacterIds: ["k", "r"], level: 1 } }]);
+  const mass = directCardCalls({ card: "spell", spell: "Mass Healing Word", slotLevel: 3, targetKind: "ally", targetId: "k", shares: [{ id: "k", count: 1 }, { id: "r", count: 1 }, { id: "s1", count: 1 }] }, "s1", { inFight: true, resolution: "heal", shareKind: "targets" });
+  assert.deepEqual(mass, [{ name: "heal", args: { casterId: "s1", spell: "Mass Healing Word", level: 3, targets: [{ characterId: "k" }, { characterId: "r" }, { characterId: "s1" }] } }]);
   const splash = directCardCalls({ ...base, spell: "Acid Splash", slotLevel: null, shares: [{ id: "g1", count: 1 }, { id: "g2", count: 1 }] }, "s1", { inFight: true, resolution: "save", shareKind: "targets", cluster: true });
   assert.deepEqual(splash, [{ name: "aoe_damage", args: { casterCharacterId: "s1", spell: "Acid Splash", enemyIds: ["g1", "g2"] } }]);
   // A card from an older Hand, with no shares, is one call as before.
@@ -123,6 +127,12 @@ test("a model call at any creature the card shared its casting with answers it",
   const played = { intent, characterId: "s1", name: "Mira", resolution: "auto" };
   assert.equal(callMismatch(played, { name: "cast_at_enemy", args: { characterId: "s1", targetEnemyId: "g2", spell: "Magic Missile" }, result: { ok: true } }), null);
   assert.equal(callMismatch(played, { name: "cast_at_enemy", args: { characterId: "s1", targetEnemyId: "g9", spell: "Magic Missile" }, result: { ok: true } }), "target");
+  // A call carrying every creature names them in its parts.
+  assert.equal(callMismatch(played, { name: "cast_at_enemy", args: { characterId: "s1", spell: "Magic Missile", targets: [{ targetEnemyId: "g1", darts: 2 }, { targetEnemyId: "g2", darts: 1 }] }, result: { ok: true } }), null);
+  assert.equal(callMismatch(played, { name: "cast_at_enemy", args: { characterId: "s1", spell: "Magic Missile", targets: [{ targetEnemyId: "g9" }] }, result: { ok: true } }), "target");
+  const ray = { intent: { ...intent, spell: "Scorching Ray" }, characterId: "s1", name: "Mira", resolution: "attack" };
+  assert.equal(callMismatch(ray, { name: "pc_attack", args: { characterId: "s1", attacks: [{ targetEnemyId: "g2", spell: "Scorching Ray" }] }, result: { ok: true } }), null);
+  assert.equal(callMismatch(ray, { name: "pc_attack", args: { characterId: "s1", attacks: [{ targetEnemyId: "g2", spell: "Fire Bolt" }] }, result: { ok: true } }), "spell");
 });
 
 console.log(`hand-shares: ${passed} tests passed`);

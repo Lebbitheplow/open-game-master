@@ -52,7 +52,7 @@ export const resourceTools: ToolDef[] = [
     function: {
       name: "purchase",
       description:
-        "Resolve a character buying or selling an item in one audited step. A shop standing here that stocks the item (or buys it) trades it from its own shelf at its own prices; anywhere else the list price is paid, and a seller gets half. Loot no list has, or a spell scroll, is granted with grant_item (its tags, its spell) and paid for with modify_gold.",
+        "Resolve a character buying or selling items in one audited step. Every item of the trade goes in items, one entry each, in one call. A shop standing here that stocks the item (or buys it) trades it from its own shelf at its own prices; anywhere else the list price is paid, and a seller gets half. Loot no list has, or a spell scroll, is granted with grant_item (its tags, its spell) and paid for with modify_gold.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -60,25 +60,33 @@ export const resourceTools: ToolDef[] = [
           ...waypointProperty,
           characterId: { type: "string", description: "Exact characterId from GAME STATE." },
           action: { type: "string", enum: ["buy", "sell"] },
-          item: { type: "string", description: "Item name, without its worth: price carries that." },
-          qty: { type: "integer", minimum: 1, maximum: 99 },
           shop: {
             type: "string",
-            description: "A shop in SHOPS HERE the party picks; omit it and the server picks one that stocks (or buys) it.",
+            description: "A shop in SHOPS HERE the party picks. Omit it and the server picks one that stocks (or buys) it.",
           },
-          srdName: {
-            type: "string",
-            description: "Only when item is in the table's own words: the SRD or pack item's English name ('Longsword'). Send it with the first call, as grant_item does; omit it when item already is that English name.",
-          },
-          price: {
-            type: "number",
-            minimum: 0,
-            maximum: 100000,
-            description: "Gold each, for a thing no shelf or list prices.",
+          // As grant_item's: no additionalProperties on the entries, and a
+          // price's bounds left to the handler's schema, for the compact
+          // first call of a 16K window (src/lib/dm/mutations.ts).
+          items: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                item: { type: "string", description: "Item name, without its worth: price carries that." },
+                qty: { type: "integer", minimum: 1, maximum: 99 },
+                srdName: {
+                  type: "string",
+                  description:
+                    "The SRD or pack item's English name ('Longsword') when item is in other words. Sent with the first call: the server prices an item only by that name. Omit it when item already is that English name.",
+                },
+                price: { type: "number", description: "Gold each, for a thing no shelf or list prices." },
+              },
+              required: ["item"],
+            },
           },
           reason: { type: "string", description: "Short in-fiction cause." },
         },
-        required: ["characterId", "action", "item"],
+        required: ["characterId", "action", "items"],
       },
     },
   },
@@ -121,7 +129,7 @@ export const resourceTools: ToolDef[] = [
           variant: {
             type: "string",
             description:
-              "The chosen option; Ki Points: 'flurry of blows', 'patient defense', 'step of the wind'. Features with a choice: Starry Form's archer/chalice/dragon, Spirit Totem's bear/hawk/unicorn; Totem Spirit or Transmuter's Stone, outside a fight. Flurry of blows: after the Attack action, two unarmed strikes, each a pc_attack call; 'step of the wind dash' to Dash. The server spends the ki and the bonus action and applies the effect.",
+              "The chosen option; Ki Points: 'patient defense', 'step of the wind'. Features with a choice: Starry Form's archer/chalice/dragon, Spirit Totem's bear/hawk/unicorn; Totem Spirit or Transmuter's Stone, outside a fight. Flurry of Blows is pc_attack's attacks with feature \"Flurry of Blows\"; 'step of the wind dash' to Dash. The server spends the ki and the bonus action and applies the effect.",
           },
           formHp: {
             type: "integer",

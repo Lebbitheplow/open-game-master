@@ -204,7 +204,7 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike): Record<string, u
           attacksRemaining: attacksLeft(budget),
           extraAttack: `${sheet.name} has ${attacksLeft(budget)} more attack${
             attacksLeft(budget) === 1 ? "" : "s"
-          } this turn; call pc_attack again for each before ending their turn.`,
+          } this turn: one more entry each in pc_attack's attacks, before ending their turn.`,
         }
       : {}),
   };
@@ -373,7 +373,7 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike): Record<string, u
     budget.oncePerTurn.push(GREAT_WEAPON_MASTER_READY);
     // The budget was stored before the roll; the key goes on the stored copy.
     storeBudget(encounter, budget);
-    context.notes.push(`Great Weapon Master: ${crit ? "the critical hit" : "the kill"} opens a bonus-action melee attack this turn (bonusAttack "feature")`);
+    context.notes.push(`Great Weapon Master: ${crit ? "the critical hit" : "the kill"} opens a bonus-action melee attack this turn (an entry with feature "Great Weapon Master")`);
   }
   // Tavern Brawler: a hit with an unarmed strike or an improvised weapon
   // opens a bonus-action grapple (take_action grapple, action-tools.ts).
