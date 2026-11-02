@@ -43,10 +43,15 @@ export function storedRace(raw: unknown): string {
   if (told === "unknown") {
     return "";
   }
-  if (RACE_IDS.has(told)) {
-    return told;
+  // A people named for a band of them ("elves", "half-orcs", "wood elves")
+  // reads as one of them: the console's fight line says "bandit race elves".
+  for (const form of [told, told.replace(/ves$/, "f"), told.replace(/s$/, "")]) {
+    const read = RACE_IDS.has(form) ? form : (BASE_WORDS[form] ?? BY_NAME.get(form));
+    if (form && read) {
+      return read;
+    }
   }
-  return BASE_WORDS[told] ?? BY_NAME.get(told) ?? "";
+  return "";
 }
 
 // Whether a race was told that storedRace could not read: not blank, not

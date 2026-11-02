@@ -47,9 +47,24 @@ await test("an NPC's face reads their role, then their race and presentation, an
 });
 
 await test("a console fight line carries a race and a gender, and a monster's own name is left whole", () => {
-  assert.deepEqual(parseFightRoster("bandit race elf gender female x4"), [{ monster: "bandit", count: 4, race: "elf", gender: "female" }]);
-  assert.deepEqual(parseFightRoster("bandit as Raider race half-orc"), [{ monster: "bandit", count: 1, name: "Raider", race: "half-orc" }]);
-  assert.deepEqual(parseFightRoster("Race Car Golem x2"), [{ monster: "Race Car Golem", count: 2 }]);
+  const reads = (words) => Boolean(storedRace(words));
+  assert.deepEqual(parseFightRoster("bandit race elf gender female x4", reads), [{ monster: "bandit", count: 4, race: "elf", gender: "female" }]);
+  assert.deepEqual(parseFightRoster("bandit as Raider race half-orc", reads), [{ monster: "bandit", count: 1, name: "Raider", race: "half-orc" }]);
+  assert.deepEqual(parseFightRoster("Race Car Golem x2", reads), [{ monster: "Race Car Golem", count: 2 }]);
+  // Two words, the longest reading first.
+  assert.deepEqual(parseFightRoster("bandit race wood elf x2", reads), [{ monster: "bandit", count: 2, race: "wood elf" }]);
+  // A homebrew foe with the word in its name is that foe, not a "Serpent"
+  // told to be of the race "Warrior".
+  assert.deepEqual(parseFightRoster("Serpent Race Warrior cr 2 x2", reads), [{ monster: "Serpent Race Warrior", count: 2, cr: 2 }]);
+});
+
+await test("a band of a people reads as one of them", () => {
+  assert.equal(storedRace("elves"), "high_elf");
+  assert.equal(storedRace("Wood Elves"), "wood_elf");
+  assert.equal(storedRace("half-orcs"), "half_orc");
+  assert.equal(storedRace("dwarves"), "hill_dwarf");
+  assert.equal(storedRace("gnomes"), "rock_gnome");
+  assert.equal(storedRace("Warrior"), "");
 });
 
 await test("the fight view's race and gender pick the bandit plate for that race", () => {
@@ -88,8 +103,10 @@ await test("the NPC form's draft carries the race, and one the server does not k
 
 await test("start_encounter gives nameless foes the race and gender it was told, and the fight view carries them", async () => {
   // The console's lines, as a human GM types them.
-  const opened = await world.invoke("start_encounter", { enemies: "bandit race elf gender female x2\nbandit race somebody" });
+  const opened = await world.invoke("start_encounter", { enemies: "bandit race elves gender female x2" });
   assert.equal(opened.ok, true, opened.error);
+  const added = await world.invoke("add_enemies", { enemies: [{ monster: "bandit", race: "somebody" }] });
+  assert.equal(added.ok, true, added.error);
   const rows = world.enemies();
   assert.equal(rows.length, 3);
   assert.deepEqual(rows.slice(0, 2).map((row) => [row.race, row.gender]), [["high_elf", "Female"], ["high_elf", "Female"]]);

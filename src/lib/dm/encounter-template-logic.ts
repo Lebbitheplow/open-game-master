@@ -76,15 +76,16 @@ export function parseRoster(value: unknown): TemplateEnemy[] {
 // parseRoster: a saved roster names monsters, and an enemyId goes stale.
 //
 // A foe's look rides the same way, so the console fields the elf bandit the
-// AI GM can ("bandit race elf gender female x4"). Never at the start of the
-// line, which is the monster's own name; the race word is read where the
-// fight is made (encounter-spawn.ts toldLook), and one it cannot read only
-// leaves the face as it was.
+// AI GM can ("bandit race elf gender female x4", "race wood elf"). Never at
+// the start of the line, which is the monster's own name, and only a race
+// `readsRace` reads (the caller passes src/lib/npc-race.ts, which this
+// module cannot import): a homebrew "Serpent Race Warrior" keeps its whole
+// name instead of fielding a "Serpent" told to be of the race "Warrior".
 export type FightRequest = TemplateEnemy & { cr?: number; name?: string; returning?: string; race?: string; gender?: string };
 
 const CR_IN_LINE = /(?:^|\s|,|\()cr\s*[:=]?\s*(\d{1,2}\s*\/\s*\d{1,2}|\d{1,2}(?:\.\d+)?)\)?/i;
 const NAMED_AS = /^(.+?)\s+as\s+(.+)$/i;
-const RACE_IN_LINE = /(?:\s|,)race\s*[:=]?\s*([a-z][\w'-]*)/i;
+const RACE_IN_LINE = /(?:\s|,)race\s*[:=]?\s*([a-z][\w'-]*)(\s+[a-z][\w'-]*)?/i;
 const GENDER_IN_LINE = /(?:\s|,)gender\s*[:=]?\s*(female|male|nonbinary)\b/i;
 
 // The text without the part `found` matched, tidied the way the cr strip is.
@@ -98,7 +99,27 @@ function crValue(text: string): number | undefined {
   return Number.isFinite(value) ? value : undefined;
 }
 
-function fightLine(row: TemplateEnemy): FightRequest {
+// Whether a race word reads as a race. With none, nothing is read as one.
+export type RaceReader = (words: string) => boolean;
+
+// The race a line names, the longest reading first ("race wood elf" before
+// "race wood"), or null when what follows "race" is not one.
+function raceIn(text: string, readsRace: RaceReader): { race: string; rest: string } | null {
+  const found = RACE_IN_LINE.exec(text);
+  if (!found) {
+    return null;
+  }
+  const one = found[1];
+  const two = found[2] ? `${one} ${found[2].trim()}` : "";
+  const race = two && readsRace(two) ? two : readsRace(one) ? one : "";
+  if (!race) {
+    return null;
+  }
+  const end = found.index + found[0].length - (race === two ? 0 : (found[2]?.length ?? 0));
+  return { race, rest: `${text.slice(0, found.index)} ${text.slice(end)}`.replace(/[\s,]+$/, "").replace(/\s+/g, " ").trim() };
+}
+
+function fightLine(row: TemplateEnemy, readsRace: RaceReader): FightRequest {
   let monster = row.monster;
   let cr: number | undefined;
   const rated = CR_IN_LINE.exec(monster);
@@ -107,10 +128,10 @@ function fightLine(row: TemplateEnemy): FightRequest {
     monster = without(monster, rated);
   }
   let race = "";
-  const raced = RACE_IN_LINE.exec(monster);
+  const raced = raceIn(monster, readsRace);
   if (raced) {
-    race = raced[1];
-    monster = without(monster, raced);
+    race = raced.race;
+    monster = raced.rest;
   }
   let gender = "";
   const gendered = GENDER_IN_LINE.exec(monster);
@@ -135,12 +156,12 @@ function fightLine(row: TemplateEnemy): FightRequest {
   return out;
 }
 
-export function parseFightRoster(value: unknown): FightRequest[] {
+export function parseFightRoster(value: unknown, readsRace: RaceReader = () => false): FightRequest[] {
   if (Array.isArray(value)) {
     return value
       .flatMap((entry): FightRequest[] => {
         if (typeof entry === "string") {
-          return parseFightRoster(entry);
+          return parseFightRoster(entry, readsRace);
         }
         const row = (entry ?? {}) as Partial<FightRequest>;
         const out: FightRequest = {
@@ -166,7 +187,7 @@ export function parseFightRoster(value: unknown): FightRequest[] {
       })
       .filter((row) => row.monster);
   }
-  return parseRoster(value).map(fightLine).filter((row) => row.monster);
+  return parseRoster(value).map((row) => fightLine(row, readsRace)).filter((row) => row.monster);
 }
 
 // Back to the text a DM would have typed, so an edit round-trips.
