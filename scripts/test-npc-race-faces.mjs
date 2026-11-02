@@ -24,6 +24,9 @@ const { parseFightRoster } = await import("../src/lib/dm/encounter-template-logi
 const { applyEncounterCall } = await import("../src/lib/dm/encounter-tools.ts");
 const { handleAddEnemies } = await import("../src/lib/dm/encounter-spawn.ts");
 const { createDmTurn } = await import("../src/lib/db/dm-turns.ts");
+const { readBundle } = await import("../src/lib/workshop/bundle.ts");
+const { exportWorkshopBundle, importWorkshopBundle } = await import("../src/lib/db/workshop-bundle.ts");
+const { createWorkshop } = await import("../src/lib/db/workshops.ts");
 
 const BASE = "/assets/placeholders";
 
@@ -159,6 +162,22 @@ await test("an ally the GM puts on the board draws the face the Cast gives them;
   assert.equal(tokens.get("ally-ilya").face, `${BASE}/enemy-npc/archer-elf-neutral.webp`);
   assert.equal(tokens.get("ally-nobody").face, undefined);
   assert.equal(npcFace(castLookup(world.campaignId).byName("Brakka")), `${BASE}/character-race/half-orc-feminine.webp`);
+});
+
+await test("a workshop bundle carries an NPC's race out and back in, and one this server does not know reads as unrecorded", () => {
+  const shop = createWorkshop(world.owner.id, { title: "Race round trip" }).id;
+  createNpcFromDraft(shop, normalizeNpcDraft({ name: "Tamsin", race: "wood_elf", role: "archer", gender: "Female" }).draft);
+  const out = exportWorkshopBundle(shop, { name: "Race round trip", blurb: "One elf.", inspiredBy: "Original work" });
+  assert.ok(out.bundle, out.error);
+  assert.equal(out.bundle.npcs.find((entry) => entry.name === "Tamsin").race, "wood_elf");
+  const text = JSON.stringify(out.bundle);
+  const read = readBundle(text);
+  assert.ok(!("error" in read), read.error);
+  const landed = importWorkshopBundle(world.owner.id, read.bundle);
+  assert.ok(landed.workshopId, landed.error);
+  assert.equal(listNpcs(landed.workshopId).find((entry) => entry.name === "Tamsin").race, "wood_elf");
+  const odd = readBundle(text.replace('"race":"wood_elf"', '"race":"starborn"'));
+  assert.equal(odd.bundle.npcs.find((entry) => entry.name === "Tamsin").race, "");
 });
 
 await test("a weak model's flat call keeps the race and gender, for a start and for reinforcements", async () => {
