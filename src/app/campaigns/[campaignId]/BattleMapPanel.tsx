@@ -1024,6 +1024,10 @@ export function BattleMapPanel({
 
   const hudToken = hudTokenId ? tokensById.get(hudTokenId) : undefined;
   const plateToken = plateTokenId ? tokensById.get(plateTokenId) : undefined;
+  // Held only while its figure is on the board: once that figure is taken
+  // away or hidden from this viewer nothing is held, or hovering, which
+  // leaves a held plate be, stayed switched off for every other figure.
+  const plateHeld = platePinned && plateToken !== undefined;
   const myTurn = Boolean(view.turn && view.myTokenId && view.turn.tokenId === view.myTokenId);
   // A walk this turn that can still be taken back (the move route keeps it).
   const undoFeet = myTurn && !canDirect && view.board === "fight" ? view.undoMove?.feet ?? null : null;
@@ -1327,7 +1331,10 @@ export function BattleMapPanel({
           }
           onTokenClick={handleToken}
           onTokenHover={(tokenId) => {
-            if (!platePinned) setPlateTokenId(tokenId);
+            if (!plateHeld) {
+              setPlateTokenId(tokenId);
+              setPlatePinned(false);
+            }
             if (targeting) {
               setAimHoverId(tokenId && aimTargets.some((entry) => entry.token.id === tokenId) ? tokenId : null);
             }

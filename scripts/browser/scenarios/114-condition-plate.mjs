@@ -29,7 +29,7 @@ export default {
   name: "condition-plate",
   viewports: ["desktop", "phone"],
   async run(t) {
-    const { page, root, ids, viewport } = t;
+    const { page, root, ids, viewport, api, base } = t;
     const { id, ogre, wren } = ids.pileup[viewport];
     const perPage = viewport === "phone" ? 4 : 6;
     await t.open(`/campaigns/${id}`);
@@ -259,5 +259,50 @@ export default {
       await page.keyboard.press("Escape");
       await eventually(async () => !(await dial.isVisible().catch(() => false)), { label: "Escape closes the dial" });
     }
+
+    // A held figure that leaves the board lets its plate go, so hovering
+    // shows the other figures' plates again: held on, hovering stayed
+    // switched off for every figure. A barrel the DM sets down, holds and
+    // takes away again, zoomed back out so every figure is in the frame.
+    await zoomAt(600, 20);
+    const wrenFigure = frame.getByRole("img", { name: new RegExp(`^${wren.name}`) }).first();
+    const boardUrl = `${base}/api/campaigns/${id}`;
+    const map = await (await api.get(`${boardUrl}/battle-map`)).json();
+    const taken = new Set((map.view?.tokens ?? []).map((entry) => `${entry.x},${entry.y}`));
+    const ogreToken = (map.view?.tokens ?? []).find((entry) => entry.refId === ogre.id);
+    check(ogreToken, `${ogre.name}'s token on the board`);
+    let added = null;
+    for (const [dx, dy] of [[0, 2], [0, -2], [1, 2], [-1, 2], [0, 3], [0, -3]]) {
+      const [x, y] = [ogreToken.x + dx, ogreToken.y + dy];
+      if (x < 0 || y < 0 || x >= map.view.width || y >= map.view.height || taken.has(`${x},${y}`)) continue;
+      const response = await api.post(`${boardUrl}/dm/board`, { data: { do: "add", kind: "prop", name: "Barrel", x, y } });
+      if (response.ok()) {
+        added = { x, y };
+        break;
+      }
+    }
+    check(added, "a barrel set down near the ogre");
+    const barrel = frame.getByRole("img", { name: /^Barrel/ }).first();
+    await eventually(() => barrel.isVisible(), { timeoutMs: 15_000, label: "the barrel on the board" });
+    await untilStill(page);
+    const barrelDial = page.locator(`${root}[role="menu"][aria-label="Actions for Barrel"]`).first();
+    await t.tap(barrel);
+    await eventually(() => barrelDial.isVisible(), { timeoutMs: 10_000, label: "the barrel's dial" });
+    await t.tap(barrelDial.getByRole("menuitem", { name: "Details" }));
+    const heldBarrel = page.getByRole("dialog", { name: "Barrel: details" }).first();
+    await eventually(() => heldBarrel.isVisible(), { timeoutMs: 10_000, label: "the barrel's plate held open" });
+    const placed = await (await api.get(`${boardUrl}/battle-map`)).json();
+    const barrelToken = (placed.view?.tokens ?? []).find((entry) => entry.name === "Barrel");
+    check(barrelToken, "the barrel's token");
+    const removed = await api.post(`${boardUrl}/dm/board`, { data: { do: "remove", tokenId: barrelToken.id } });
+    check(removed.ok(), `the barrel taken away (${removed.status()})`);
+    await eventually(async () => !(await barrel.isVisible().catch(() => false)), { timeoutMs: 15_000, label: "the barrel leaves the board" });
+    check(!(await heldBarrel.isVisible().catch(() => false)), "the held plate goes with its figure");
+    await untilStill(page);
+    const wrenAt = await wrenFigure.boundingBox();
+    check(wrenAt, `${wren.name} on screen`);
+    await page.mouse.move(wrenAt.x + wrenAt.width / 2, wrenAt.y + wrenAt.height / 2);
+    const wrenPlate = page.locator('[role="tooltip"]').locator("visible=true").filter({ hasText: wren.name }).first();
+    await eventually(() => wrenPlate.isVisible(), { timeoutMs: 10_000, label: `${wren.name}'s hover plate once the held figure has gone` });
   },
 };
