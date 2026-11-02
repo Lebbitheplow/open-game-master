@@ -87,6 +87,21 @@ await test("a console fight line carries a race and a gender, and a monster's ow
   assert.deepEqual(parseFightRoster("Serpent Race Warrior cr 2 x2", reads), [{ monster: "Serpent Race Warrior", count: 2, cr: 2 }]);
 });
 
+// Every race of the SRD 5.1, as a GM or the AI would write it, reads as
+// its own stored id: the nine and their four subraces, the plain word on
+// the subrace the builder lists first.
+await test("every SRD 5.1 race and subrace reads as its own id", () => {
+  const srd = {
+    Dwarf: "hill_dwarf", "Hill Dwarf": "hill_dwarf", "Dwarf (Hill)": "hill_dwarf",
+    Elf: "high_elf", "High Elf": "high_elf", "Elf (High)": "high_elf",
+    Halfling: "lightfoot_halfling", "Lightfoot Halfling": "lightfoot_halfling",
+    Human: "human", Dragonborn: "dragonborn",
+    Gnome: "rock_gnome", "Rock Gnome": "rock_gnome",
+    "Half-Elf": "half_elf", "half elf": "half_elf", "Half-Orc": "half_orc", Tiefling: "tiefling",
+  };
+  for (const [told, id] of Object.entries(srd)) assert.equal(storedRace(told), id, told);
+});
+
 await test("a band of a people reads as one of them", () => {
   assert.equal(storedRace("elves"), "high_elf");
   assert.equal(storedRace("Wood Elves"), "wood_elf");
