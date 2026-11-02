@@ -217,6 +217,21 @@ test("an item that asks for attunement is in the table, even with nothing else t
   assert.equal(magicItemNamed("Bag of Holding"), null);
 });
 
+const { matchGear } = await import("../src/lib/srd/adventuring-gear.ts");
+const { SRD_WEAPONS } = await import("../src/lib/srd/weapons.ts");
+const { SRD_ARMOR } = await import("../src/lib/srd/armor.ts");
+const { textKey } = await import("../src/lib/language/text-logic.ts");
+// Being in the table makes a name magic to starting wealth, downtime
+// crafting and the trade price (src/lib/srd/starting-wealth.ts looksMagical,
+// src/lib/dm/lifestyle.ts), so no row may share its whole name with mundane
+// gear the lists price: that gear would stop being buyable or craftable.
+test("no magic item row shares its whole name with mundane gear the lists price", () => {
+  const mundane = new Set([...SRD_WEAPONS, ...SRD_ARMOR].map((row) => textKey(row.name)));
+  for (const item of items) {
+    assert.ok(!mundane.has(textKey(item.name)) && !matchGear(item.name), item.name);
+  }
+});
+
 const { gearDefFor } = await import("../src/lib/srd/magic-gear.ts");
 test("a workshop entry's line is its own snapshot, never the published row it shares a name with", () => {
   // A GM's own "Prayer Mat", carried by its homebrew: slug and made before

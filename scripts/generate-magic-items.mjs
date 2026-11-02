@@ -28,6 +28,7 @@ import Database from "better-sqlite3-multiple-ciphers";
 import { ADDED, ALIASES, DROPPED, EXTRA, REPLACED } from "./lib/magic-item-corrections.mjs";
 import { categoryBase, COUNTED_USES, DAILY_POWERS, GEAR_RIDERS, LAST_CHARGE_BECOMES } from "./lib/magic-item-riders.mjs";
 import { nameBase } from "./lib/name-base.mjs";
+import { PLAYED_DOCUMENTS_SQL } from "../src/lib/content/edition.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const contentDb = process.env.CONTENT_DB_PATH || join(root, "data", "content", "open5e.sqlite");
@@ -429,10 +430,12 @@ function gearOf(row, desc, match, rawDesc) {
 function collect() {
   const db = new Database(contentDb, { readonly: true });
   // The SRD's own wording first, so an item two documents describe is read
-  // from the SRD.
+  // from the SRD. Never a 2024 document's row (src/lib/content/edition.ts):
+  // the table is bundled into every server, so a pack built before the
+  // importer left them out would otherwise carry SRD 5.2 items into it.
   const rows = db
     .prepare(
-      `SELECT slug, name, category, rarity, document_slug, data_json FROM items WHERE kind = 'magic_item'
+      `SELECT slug, name, category, rarity, document_slug, data_json FROM items WHERE kind = 'magic_item' AND ${PLAYED_DOCUMENTS_SQL}
        ORDER BY CASE document_slug WHEN 'wotc-srd' THEN 0 ELSE 1 END, slug`,
     )
     .all();
