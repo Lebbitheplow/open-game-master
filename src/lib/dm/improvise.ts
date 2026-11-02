@@ -43,6 +43,7 @@ import { checkCeiling, rollCharacterCheck } from "@/lib/dm/contest-roll";
 import { applyEnemyDamage, unknownEnemyRef } from "@/lib/dm/enemy-damage";
 import {
   improvisedHold,
+  improvisedLasts,
   improvisedMaxSize,
   unshownWords,
   type ImprovisedCondition,
@@ -202,7 +203,7 @@ export function improviseAction(
     if (walkTo) {
       if (scene.distanceFt === undefined) {
         return {
-          error: "An improvised action on the battle map needs distanceFt: how far the thing used is from the character, as the narration places it (0 when they hold it). Nothing was spent.",
+          error: "An improvised action on the battle map needs distanceFt: how far the thing used is from the character, as the narration places it (0 when they hold it, 5 only when it is beside them, never a guess). Nothing was spent.",
           retry: true,
         };
       }
@@ -343,7 +344,7 @@ export function improviseAction(
     const maxSize = improvisedMaxSize(args.condition);
     const laid = applyRiderCondition(campaign, fresh, args.condition, { meta: improvisedHold(args.condition, fresh.id, sheet.id), ...(maxSize ? { maxSize } : {}) });
     if (laid.applied) {
-      landed.push(args.condition);
+      landed.push(improvisedLasts(args.condition, sheet.name));
       if (args.condition === "restrained") {
         said.push("It stays restrained until freed: its action and a DC 10 Strength check, which you clear with clear_condition on a success.");
       }

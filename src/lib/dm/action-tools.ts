@@ -24,6 +24,7 @@ import { improviseAction, sceneNarration } from "@/lib/dm/improvise";
 import { IMPROVISED_CONDITIONS, IMPROVISED_DAMAGE } from "@/lib/dm/improvise-logic";
 import { DIFFICULTY_TIERS } from "@/lib/srd/dc";
 import { SRD_SKILLS } from "@/lib/srd";
+import { skillIdOf } from "@/lib/srd/companion-build";
 import { ABILITIES } from "@/lib/schemas/abilities";
 import { READIABLE } from "@/lib/dm/readied-kinds";
 import { readiedReleaseFor } from "@/lib/dm/readied-release";
@@ -62,6 +63,10 @@ type ToolDef = {
 
 const SKILL_IDS = SRD_SKILLS.map((skill) => skill.id) as [string, ...string[]];
 
+// A skill written by its name ("Sleight of Hand") is its id; anything else
+// is left for the schema to refuse with the list.
+const skillKey = (value: unknown) => (typeof value === "string" ? (skillIdOf(value) ?? value) : value);
+
 export const ACTION_TOOL_NAMES = ["take_action", "use_reaction"] as const;
 
 export const actionTools: ToolDef[] = [
@@ -70,7 +75,7 @@ export const actionTools: ToolDef[] = [
     function: {
       name: "take_action",
       description:
-        "Resolve a character or an enemy taking a 5e action that is not an attack or a spell: Dodge, Dash, Disengage, Hide, Help, Grapple, Shove, Ready, Search, Use an Object, Escape (a grapple) or Improvise. Pin is the Grappler feat's: a grapple check against the creature they grapple, and a win restrains both until the grapple ends. Improvise is an action in a fight that no other tool names, the deed in reason; never hitting a creature (a weapon or a thrown object aimed at it, or a punch or kick: weapon 'unarmed strike'), which is pc_attack. One call decides it: against targetEnemyId a contest of checks, else a check against difficulty; a win lays its condition and damage. The server spends the action, rolls any check or contest it calls for and applies the real effect. Grapple and Shove each replace ONE attack of the Attack action, so a character with Extra Attack can grapple and still swing. Ready commits ONE action to the character's reaction until their next turn, named in `readied` (or a spell in `spell`). When you judge the trigger has come, release it off their turn with that action's own tool (pc_attack for an attack): the server spends the reaction and refuses any other action. Hide is for a fight; out of one, use request_roll for Stealth. Call it BEFORE narrating the action; narrate exactly what it reports.",
+        "Resolve a character or an enemy taking a 5e action that is not an attack or a spell. Pin is the Grappler feat's, on the creature they grapple. Improvise: a fight action no other tool names, the deed in reason; never a blow at a creature (weapon, thrown thing, punch, kick), which is pc_attack. One call rolls it, a contest against targetEnemyId or a check against difficulty, and a win lands condition and damage. The server spends the action, rolls any check or contest it calls for and applies the real effect. Grapple and Shove each replace ONE attack of the Attack action, so a character with Extra Attack can grapple and still swing. Ready commits ONE action (`readied`, or a spell in `spell`) to their reaction until their next turn; its result says how to release it. Call it BEFORE narrating the action; narrate exactly what it reports.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -79,14 +84,15 @@ export const actionTools: ToolDef[] = [
           action: { type: "string", enum: [...ACTIONS] },
           bonus: {
             type: "boolean",
-            description:
-              "Take it as a bonus action: Cunning Action, Fast Hands, Expeditious Retreat or a monk's ki. Cunning Action: Dash, Disengage or Hide; Expeditious Retreat: Dash; Fast Hands: Use an Object; ki: Dash, Disengage or Dodge (the server spends 1 ki).",
+            // Which feature takes which action is said by the refusal
+            // (bonus-routes.ts noBonusRoute, action-price.ts).
+            description: "As a bonus action: Cunning Action, Fast Hands, Expeditious Retreat or a monk's ki. The server checks the feature and spends the ki.",
           },
           mount: { type: "boolean", description: "The mount's own action (dash, disengage, dodge)." },
           targetEnemyId: {
             type: "string",
             description:
-              "Grapple, Shove, Pin, Help or Improvise: the enemy acted against, exact enemyId from GAME STATE. For Pin, the enemy they grapple. For Help, the enemy the ally attacks (within 5 feet of the helper); omit to help an ability check.",
+              "Grapple, Shove, Pin, Help or Improvise: the enemy acted against, exact enemyId from GAME STATE. For Help, the enemy the ally attacks (within 5 feet of the helper); omit to help an ability check.",
           },
           targetCharacterId: {
             type: "string",
@@ -104,44 +110,25 @@ export const actionTools: ToolDef[] = [
           readied: {
             type: "string",
             enum: [...READIABLE],
-            description:
-              "Ready only: the action the trigger releases, attack (the default) or another. Each is released with its own tool: move (up to their speed) with move_token, item with use_item, stabilize with stabilize, feature (a class feature that takes an action) with use_resource or its own tool, the others with take_action. For a spell pass `spell` instead.",
+            // The tool that releases each is named in the result of Ready (object-actions.ts readyAction).
+            description: "Ready only: the action the trigger releases, attack (the default) or another. The result names its release tool; a spell goes in `spell`.",
           },
-          skill: {
-            type: "string",
-            enum: SKILL_IDS,
-            description: "Search: look (perception, the default) or reason it out (investigation). Improvise: the character's check (athletics to topple, deception to bluff).",
-          },
-          ability: { type: "string", enum: [...ABILITIES], description: "Improvise: the check's ability when no skill fits." },
-          contestSkill: {
-            type: "string",
-            description: "Improvise: the creature's resisting skill or ability ('acrobatics', 'dex'), when not the usual pair. Usual: Athletics vs Athletics, Stealth vs Perception, Deception vs Insight.",
-          },
-          difficulty: {
-            type: "string",
-            enum: [...DIFFICULTY_TIERS],
-            description: "Improvise: how hard the attempt is; the server sets the DC. Required with no creature; against one the check must meet it and beat the creature's.",
-          },
-          condition: {
-            type: "string",
-            enum: [...IMPROVISED_CONDITIONS],
-            description: "Improvise: what a win does to the creature. prone (knocked down), restrained (tangled, as a net), blinded, deafened or frightened (until the end of its next turn).",
-          },
-          damage: {
-            type: "string",
-            enum: [...IMPROVISED_DAMAGE],
-            description: "Improvise: a win's damage, with damageType. 1d10 a falling bookcase, 2d10 a fire pit, 4d10 a collapsing tunnel, 10d10 crushing walls, 18d10 lava, 24d10 a god's jaws.",
-          },
-          damageType: { type: "string", description: "Improvise: the damage's type (bludgeoning, fire)." },
-          distanceFt: { type: "integer", minimum: 0, description: "Improvise on the battle map (required): feet from the character to the thing used, as narrated. Never a guess: 5 only when the narration puts it beside the character." },
+          // The eighteen skill ids are left out of the schema, since they
+          // cost the trimmed set of a 48K table its spare room, a model knows
+          // them, and a wrong one is refused with the list (takeActionSchema).
+          skill: { type: "string", description: "Search: perception (the default) or investigation. Improvise: the character's skill." },
+          ability: { type: "string", enum: [...ABILITIES], description: "Improvise: an ability instead of a skill." },
+          contestSkill: { type: "string", description: "Improvise: the creature's opposing skill or ability, if unusual." },
+          difficulty: { type: "string", enum: [...DIFFICULTY_TIERS], description: "Improvise: the DC; needed with no creature." },
+          condition: { type: "string", enum: [...IMPROVISED_CONDITIONS], description: "Improvise: what a win does to the creature." },
+          damage: { type: "string", enum: [...IMPROVISED_DAMAGE], description: "Improvise: a win's damage, with damageType: 1d10 a falling shelf, 4d10 a cave-in." },
+          damageType: { type: "string" },
+          distanceFt: { type: "integer", minimum: 0, description: "Improvise on the battle map (required): feet to the thing used, as narrated, never a guess." },
           item: {
             type: "string",
             description: "Use an Object only: the object, when it is one they carry. For consumables, use use_item.",
           },
-          scene: {
-            type: "string",
-            description: "Improvise (required): the thing used, copied from the narration ('the chandelier'), never the deed.",
-          },
+          scene: { type: "string", description: "Improvise (required): the thing used, in the narration's words." },
           enemyId: {
             type: "string",
             description: "The enemy taking Dash, Disengage, Dodge or Escape: exact enemyId from GAME STATE. Omit characterId then.",
@@ -149,8 +136,8 @@ export const actionTools: ToolDef[] = [
           toward: { type: "string", description: "Dash or Disengage: who to move beside (id or name); the server walks them there." },
           spell: {
             type: "string",
-            description:
-              "Ready only: a spell with a casting time of one action to ready instead of an attack. The server casts it now (slot, action, concentration); when the trigger comes, cast it with its own tool, released with the reaction and no second slot.",
+            // How it is released is in the result (readied-spell.ts readySpell).
+            description: "Ready only: a one-action spell to ready instead of an attack. The server casts it now (slot, concentration); the result says how to release it.",
           },
           level: {
             type: "integer",
@@ -221,11 +208,14 @@ const takeActionSchema = z.object({
   targetCharacterId: z.string().optional(),
   shove: z.enum(["prone", "push"]).optional(),
   trigger: z.string().max(200).optional(),
-  skill: z.enum(SKILL_IDS).optional(),
+  // The schema offers no skill enum (it cost a 48K table's trimmed set its
+  // room), so a skill by its name ("Sleight of Hand") is its id here, and a
+  // wrong one is refused with the list.
+  skill: z.preprocess(skillKey, z.enum(SKILL_IDS)).optional(),
   // An ability by its rules name ("Strength", "DEX") is its id, as every
   // other tool reads one (arg-coerce.ts); a skill name is left as it came.
   ability: z.preprocess(normalizeAbility, z.enum(ABILITIES)).optional(),
-  contestSkill: z.preprocess(normalizeAbility, z.enum([...SKILL_IDS, ...ABILITIES])).optional(),
+  contestSkill: z.preprocess((value) => skillKey(normalizeAbility(value)), z.enum([...SKILL_IDS, ...ABILITIES])).optional(),
   difficulty: z.enum(DIFFICULTY_TIERS).optional(),
   condition: z.enum(IMPROVISED_CONDITIONS).optional(),
   damage: z.enum(IMPROVISED_DAMAGE).optional(),

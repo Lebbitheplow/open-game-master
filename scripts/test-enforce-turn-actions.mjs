@@ -295,6 +295,8 @@ await test("How long each condition lasts: restrained as a net (the GM clears it
   world.clearDice();
   assert.equal(out.ok, true, out.error);
   assert.deepEqual(kit.enemy(enemy.id).conditionMeta.blinded, { untilTurnEndOf: enemy.id });
+  // The tool's schema names the conditions alone: the result says how long.
+  assert.match(out.result.applied, /blinded until the end of its next turn/);
 });
 
 await test("Restrained as a net holds a creature no larger than Large, as the net does (SRD 5.1, Net): a Huge one is not tangled, and the result never says it stays restrained.", async () => {
@@ -463,6 +465,17 @@ await test("An ability the model writes by its rules name (\"Strength\", \"DEX\"
   world.clearDice();
   assert.equal(result.ok, true, result.error);
   assert.match(result.contest, /^Strength \d+ vs .*DEX \d+$/);
+  // The schema offers no skill list, so a skill by its name is its id too.
+  await stage(fighter);
+  const [goblin] = world.enemies();
+  world.say("dm", "A heavy cart stands right beside the goblin.");
+  world.say("player", "I slip the cart's brake under the goblin's feet.", fighter);
+  const named = JSON.stringify({ characterId: fighter.id, action: "improvise", reason: "slips the cart's brake loose", skill: "Sleight of Hand", contestSkill: "Perception", targetEnemyId: goblin.id, condition: "prone", scene: "the cart", distanceFt: 5 });
+  world.dice(2, 15);
+  const slipped = applyEncounterCall(world.campaign(), createDmTurn(world.campaignId, []), "take_action", named, sheets, new Map(sheets.map((sheet) => [sheet.id, sheet])));
+  world.clearDice();
+  assert.equal(slipped.result.ok, true, slipped.result.error);
+  assert.match(slipped.result.contest, /^Sleight of Hand \d+ vs .*Perception \d+$/);
 });
 
 await test("A prone character's walk to the thing used is priced as the board prices it: standing up first when that fits, else crawling at double cost.", async () => {
