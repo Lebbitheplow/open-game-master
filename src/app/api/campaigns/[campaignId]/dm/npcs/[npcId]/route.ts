@@ -76,14 +76,16 @@ export async function PATCH(
         { status: 409 },
       );
     }
-    if (!updateNpcFromDraft(campaignId, npcId, outcome.draft)) {
+    const saved = updateNpcFromDraft(campaignId, npcId, outcome.draft);
+    if (!saved) {
       return Response.json({ error: "That NPC is not at this table." }, { status: 404 });
     }
     if (body.generatePortrait) {
       queueNpcPortrait(context.campaign, {
         id: npcId,
         gender: outcome.draft.gender,
-        race: outcome.draft.race ?? "",
+        // The saved row: an older app sends no race and keeps the stored one.
+        race: saved.race,
         role: outcome.draft.role,
         trait: outcome.draft.trait,
         personality: describePersonality(outcome.draft.personality),
