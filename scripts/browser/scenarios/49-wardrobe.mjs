@@ -64,6 +64,22 @@ export default {
     await t.tap(ring.getByRole("button", { name: "attune", exact: true }));
     await eventually(async () => (await gear())["Ring of Spell Storing"]?.attuning === true, { label: "the Ring of Spell Storing attuning" });
     await eventually(() => ring.getByRole("button", { name: "cancel", exact: true }).count(), { label: "the ring's attunement offered back" });
+    // The row is at its fullest here, with the attuning mark beside both
+    // buttons. The buttons keep their whole width and the name gives way: a
+    // flex row shrank all three, which cut the end off "cancel" on a phone.
+    const cut = await ring.evaluate((row) => [...row.querySelectorAll("button")].filter((button) => button.scrollWidth > button.clientWidth).map((button) => button.textContent));
+    check(cut.length === 0, `the attuning ring's buttons show their whole words (cut: ${cut.join(", ") || "none"})`);
+    // On the narrowest phone the row still fits and the name stays readable.
+    if (viewport === "phone") {
+      const size = page.viewportSize();
+      await page.setViewportSize({ width: 320, height: size.height });
+      await eventually(async () => {
+        const fit = await ring.evaluate((row) => ({ spill: row.scrollWidth - row.clientWidth, name: row.querySelector("span.truncate").clientWidth }));
+        return fit.spill <= 0 && fit.name >= 40 ? fit : null;
+      }, { timeoutMs: 3_000, label: "the attuning ring's row fitting a 320px phone with its name showing" });
+      await t.shot("attuning-320");
+      await page.setViewportSize(size);
+    }
     await t.shot("attuning");
 
     await rowOf(ELVENKIND).scrollIntoViewIfNeeded().catch(() => undefined);
