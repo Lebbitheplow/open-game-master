@@ -231,6 +231,20 @@ await test("a face painted for someone not yet introduced reaches no player's se
   assert.ok(!readFileSync(new URL("../src/lib/portrait.ts", import.meta.url), "utf8").includes('"npc_updated"'), "a painted face is not sent to every seat");
 });
 
+await test("a seat that loads the table after a rewind hears the next change, even one back to the cast sent before it (issue 733)", async () => {
+  const { world, kara, npc } = await table();
+  const { captureBoundarySnapshot, getBoundarySnapshot, restoreSnapshot } = await import("../src/lib/db/snapshots.ts");
+  const marla = npc("Marla Venn");
+  captureBoundarySnapshot(world.campaignId, 1, 0);
+  markNpcMet(marla.id);
+  await settled();
+  // The story rewinds to before they met, and every seat loads the table again.
+  getDatabase().transaction(() => restoreSnapshot(world.campaignId, getBoundarySnapshot(world.campaignId, 1).payload))();
+  assert.deepEqual(await snapshotCast(world, kara), [], "the rewound table has not met her");
+  await settled();
+  assert.deepEqual(await castsSent(world, kara, () => markNpcMet(marla.id)), [["Marla Venn"]], "meeting her again reaches the seat");
+});
+
 await test("two rows merged into one keep the earlier hearing", async () => {
   const { world, npc, gm } = await table();
   const keep = npc("Marla Venn");

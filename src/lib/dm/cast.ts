@@ -59,7 +59,14 @@ export function wholeCast(campaignId: string): CastMember[] {
 }
 
 // The cast one seat is sent in its snapshot, as cast_updated sends it.
+// A seat loading the table holds the cast as it stands now, which need not
+// be what the open seats were last sent: a rewind or an import wrote the
+// rows without telling them, and every seat reloads after it. So the next
+// change is sent whatever it is; held against the older cast, a change
+// back to it (meeting again someone a rewind unmet) was dropped, and the
+// reloaded seats never heard it (issue 733).
 export function castForSeat(campaignId: string, secretStory: boolean): CastMember[] {
+  lastSent().delete(campaignId);
   const cast = wholeCast(campaignId);
   return secretStory ? cast : knownCast(cast);
 }
