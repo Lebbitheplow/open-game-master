@@ -64,13 +64,18 @@ await test("a distance the board holds is met and adds no line", async () => {
   close();
 });
 
-await test("a failure placing the tokens leaves no map without them", async () => {
+await test("a failure placing the tokens leaves no map and no open fight, and the next try opens", async () => {
   const db = getDatabase();
   db.exec("CREATE TRIGGER refuse_tokens BEFORE INSERT ON battle_tokens BEGIN SELECT RAISE(ABORT, 'no tokens today'); END");
   const outcome = await open(60).catch((error) => ({ ok: false, error: String(error) }));
   db.exec("DROP TRIGGER refuse_tokens");
   assert.equal(outcome.ok, false);
-  assert.equal(getBattleMapForEncounter(world.encounter().id), null, "an empty map was left behind");
+  const row = db.prepare("SELECT id FROM encounters WHERE campaign_id = ? ORDER BY created_at DESC, rowid DESC LIMIT 1").get(world.campaignId);
+  assert.equal(getBattleMapForEncounter(row.id), null, "an empty map was left behind");
+  assert.equal(world.encounter(), null, "a fight stayed open with no board");
+  const again = await open(60);
+  assert.equal(again.ok, true, again.error);
+  assert.equal(listTokens(getBattleMapForEncounter(world.encounter().id).id).length, 7);
 });
 
 finish();
