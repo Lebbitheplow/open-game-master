@@ -847,6 +847,21 @@ await test("Hold Person from a 3rd-level slot on two creatures is one casting of
   assert.equal(slot() - before, 1, "one 3rd-level slot for both");
 });
 
+// An entry naming no darts took "every dart left": the first of the
+// creatures listed took all three, and the rest were refused (rev-749).
+await test("Magic Missile listed over creatures with no darts named shares the casting's darts among them", async () => {
+  const enemies = await stage(wizard, 2);
+  const ran = await agentTurn(wizard, "Iris splits her darts between the two.", [
+    ["cast_at_enemy", { characterId: wizard.id, spell: "Magic Missile", level: 1, targets: enemies.map((foe) => ({ targetEnemyId: foe.id })) }],
+  ]);
+  const cast = ran[0].result;
+  assert.deepEqual(errorsOf(cast.targets), [], JSON.stringify(cast).slice(0, 400));
+  assert.ok(world.enemies().every((foe) => foe.currentHp < 999), "both creatures took darts");
+  const { spreadDarts } = await import("../src/lib/dm/action-parts-logic.ts");
+  assert.deepEqual(spreadDarts([{ targetEnemyId: "a" }, { targetEnemyId: "b", darts: 1 }, { targetEnemyId: "c" }], 5).map((entry) => entry.darts), [2, 1, 2]);
+  assert.deepEqual(spreadDarts([{ targetEnemyId: "a" }], 3), [{ targetEnemyId: "a" }], "a lone creature takes every dart, as before");
+});
+
 await test("A rider sent as the word false inside a part is false: no ki spent", async () => {
   const enemies = await stage(monk, 1, { ac: 1 });
   const ki = () => world.sheet(monk.id).resources.ki.used;

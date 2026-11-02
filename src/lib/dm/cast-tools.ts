@@ -91,7 +91,7 @@ export const castAtEnemyTool: ToolDef = {
                 type: "integer",
                 minimum: 1,
                 maximum: 20,
-                description: "Magic Missile only: the darts that strike this creature. Default: every dart left.",
+                description: "Magic Missile only: the darts that strike this creature. Default: an even share of those left.",
               },
             },
             required: ["targetEnemyId"],

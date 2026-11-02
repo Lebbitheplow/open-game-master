@@ -245,6 +245,28 @@ export function splitParts(
   });
 }
 
+// Magic Missile's darts over a list of creatures: an entry that names none
+// takes an even share of what the entries naming theirs leave, the first
+// ones one more. Read alone it took "every dart left", so the first of the
+// creatures listed took all of them and the rest were refused. A lone
+// creature still takes every dart.
+export function spreadDarts<T extends { darts?: number }>(targets: readonly T[], total: number): T[] {
+  const open = targets.filter((target) => target.darts === undefined).length;
+  if (targets.length < 2 || !open) {
+    return [...targets];
+  }
+  const left = Math.max(0, total - targets.reduce((sum, target) => sum + (target.darts ?? 0), 0));
+  let place = 0;
+  return targets.map((target) => {
+    if (target.darts !== undefined) {
+      return target;
+    }
+    const share = Math.floor(left / open) + (place < left % open ? 1 : 0);
+    place += 1;
+    return share > 0 ? { ...target, darts: share } : target;
+  });
+}
+
 // A call's arguments as the entries that resolved, for what credits a call
 // with what it did (the waypoint ticks, src/lib/dm/waypoint-tick.ts): a list
 // partly refused names only its done entries, so a refused Sun Blade ticks

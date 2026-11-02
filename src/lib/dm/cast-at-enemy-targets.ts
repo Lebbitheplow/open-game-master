@@ -12,7 +12,7 @@ import { z } from "zod";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { spellMechanicsFor } from "@/lib/content";
-import { MAX_PARTS, partsResult } from "@/lib/dm/action-parts-logic";
+import { MAX_PARTS, partsResult, spreadDarts } from "@/lib/dm/action-parts-logic";
 import { handleReaperCast } from "@/lib/dm/authored-reaper";
 import { handleCastAtEnemy } from "@/lib/dm/cast-at-enemy";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
@@ -81,7 +81,8 @@ export function handleCastAtEnemyTargets(
       return reaped;
     }
   }
-  const outcomes = targets.map(
+  const aimed = resolved?.mech?.darts ? spreadDarts(targets, reach) : targets;
+  const outcomes = aimed.map(
     ({ targetEnemyId, darts }) =>
       handleCastAtEnemy(campaign, turn, JSON.stringify({ ...rest, targetEnemyId, ...(darts ? { darts } : {}) }), sheets, sheetsById) as Record<string, unknown>,
   );
