@@ -11,7 +11,7 @@ import { openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 
 const { test, finish } = suite("test-npc-race-faces");
-const { storedRace, NPC_RACE_OPTIONS } = await import("../src/lib/npc-race.ts");
+const { storedRace, raceWords, NPC_RACE_OPTIONS } = await import("../src/lib/npc-race.ts");
 const { npcPlaceholder, monsterPlaceholder } = await import("../src/lib/placeholders.ts");
 const { listNpcs, createNpcFromDraft } = await import("../src/lib/db/npcs.ts");
 const { normalizeNpcDraft, draftFrom } = await import("../src/lib/npcs/forge.ts");
@@ -19,7 +19,7 @@ const { activePublicEncounter } = await import("../src/lib/db/encounter-view.ts"
 const { createBattleMap, getBattleMapForEncounter, insertToken } = await import("../src/lib/db/battle-maps.ts");
 const { buildPlayerMapView } = await import("../src/lib/battlemap/view.ts");
 const { trackedNpcFace } = await import("../src/lib/db/npc-faces.ts");
-const { handleSetNpc } = await import("../src/lib/dm/social-tools.ts");
+const { handleSetNpc, npcRosterForPrompt } = await import("../src/lib/dm/social-tools.ts");
 const { parseFightRoster } = await import("../src/lib/dm/encounter-template-logic.ts");
 
 const BASE = "/assets/placeholders";
@@ -82,6 +82,10 @@ await test("set_npc records a race, keeps it when a later call leaves it out, an
   assert.equal(npc("Brakka").race, "half_orc");
   await world.invoke("set_npc", { name: "Brakka", attitude: "friendly", race: "Unknown" });
   assert.equal(npc("Brakka").race, "half_orc", "a later call without one, or with Unknown, never clears it");
+  // The narrator is told who they are, so it does not call the half-orc
+  // the board draws a human.
+  assert.equal(npcRosterForPrompt(world.campaignId).find((entry) => entry.name === "Brakka").identity, "Female, Half-Orc");
+  assert.equal(raceWords("wood_elf"), "Wood Elf");
   // The AI GM's own call, which a free word reaches; the console's Race is a
   // select, and refuses a value outside it as every select does.
   const odd = handleSetNpc(world.campaign(), JSON.stringify({ name: "Sss'thar", gender: "Male", race: "lizard-man" }));

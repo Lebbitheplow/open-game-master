@@ -62,6 +62,14 @@ export function unreadRace(raw: unknown): boolean {
   return Boolean(told) && told !== "unknown" && !storedRace(raw);
 }
 
+// A stored id as an image model or the narrator reads it: "Wood Elf" for
+// wood_elf (its name "Elf (Wood)" turned around), "" for none.
+export function raceWords(id: string | null | undefined): string {
+  const name = RACES.find((race) => race.id === id)?.name ?? "";
+  const sub = /^(.+?)\s*\((.+)\)$/.exec(name);
+  return sub ? `${sub[2]} ${sub[1]}` : name;
+}
+
 // The NPC form's choices, sorted by name as the builder sorts them.
 export const NPC_RACE_OPTIONS = RACES.map((race) => ({ value: race.id, label: race.name })).sort((a, b) => compareNames(a.label, b.label));
 

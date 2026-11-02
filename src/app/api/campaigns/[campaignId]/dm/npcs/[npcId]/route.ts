@@ -83,6 +83,7 @@ export async function PATCH(
       queueNpcPortrait(context.campaign, {
         id: npcId,
         gender: outcome.draft.gender,
+        race: outcome.draft.race ?? "",
         role: outcome.draft.role,
         trait: outcome.draft.trait,
         personality: describePersonality(outcome.draft.personality),

@@ -35,7 +35,7 @@ import { outwardApproval } from "@/lib/dm/scheme-logic";
 import { publishRelationshipsUpdated } from "@/lib/dm/relationship-tools";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { TOLD_GENDER_HELP, TOLD_GENDERS, toldGender } from "@/lib/gender";
-import { TOLD_RACE_HELP, storedRace, unreadRace } from "@/lib/npc-race";
+import { TOLD_RACE_HELP, raceWords, storedRace, unreadRace } from "@/lib/npc-race";
 import { rollExpression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
 import {
@@ -602,8 +602,10 @@ export function npcRosterForPrompt(campaignId: string, options: { romance?: bool
     witnessNote: renderWitnessNote(npc.name, facts),
     // The stat block they fight with (start_encounter takes their name).
     statBlock: npc.statBlock,
-    // Their gender, and at a romance table who they are drawn to (issue
-    // 501), so romance follows who people are. Blank says nothing.
+    // Their gender and their people, and at a romance table who they are
+    // drawn to (issue 501), so romance follows who people are and the
+    // narration does not call the elf whose face the board draws a human.
+    // Blank says nothing.
     identity: npcIdentity(npc, options.romance ?? false),
   }));
 }
@@ -612,7 +614,7 @@ function npcIdentity(npc: Npc, romance: boolean): string {
   const drawn = romance ? attractionWords(npc.attraction) : "";
   // Romance is exclusive unless someone is open to more (issue 642).
   const open = romance && openToMore(npc.attraction) ? "open to more than one partner" : "";
-  return [npc.gender, drawn ? `drawn to ${drawn}` : "", open].filter(Boolean).join(", ");
+  return [npc.gender, raceWords(npc.race), drawn ? `drawn to ${drawn}` : "", open].filter(Boolean).join(", ");
 }
 
 const ATTITUDE_LADDER = ["hostile", "indifferent", "friendly"] as const;
