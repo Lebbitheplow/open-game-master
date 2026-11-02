@@ -65,6 +65,7 @@ import { SkyLayer } from "@/components/SkyLayer";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { characterPlaceholder, monsterPlaceholder, npcPlaceholder } from "@/lib/placeholders";
 import { usePaintedMap } from "@/app/campaigns/[campaignId]/usePaintedMap";
+import { useDocked } from "@/app/campaigns/[campaignId]/SidePanel";
 import {
   FieldDie,
   InitiativeRail,
@@ -273,6 +274,7 @@ export function BattleMapPanel({
     [faceOfRef],
   );
   const [enlarged, setEnlarged] = useState(false);
+  const docked = useDocked();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [pointing, setPointing] = useState(false);
@@ -1260,6 +1262,14 @@ export function BattleMapPanel({
     }
   }
 
+  // Below the docked layout the board has no margin for the order to stand in,
+  // so it takes a row above the board. An addon's own view keeps its list on
+  // the frame: that view lays out its own board.
+  const orderAbove = !docked && !addonViewport;
+  const orderAboveBoard = orderAbove && !scene && encounter ? (
+    <InitiativeRail above encounter={encounter} round={view.round} faceOf={faceOfEntry} onOpen={() => setOrderOpen(true)} />
+  ) : null;
+
   // The painted picture is one canvas, and a DOM node sits in one place: the
   // board on screen carries it (the open tabletop covers the panel). Both
   // boards drawing it let the tabletop take it and close with it, leaving
@@ -1503,7 +1513,7 @@ export function BattleMapPanel({
       {/* The chrome of the stage (BoardChrome.tsx), fixed to the frame so it
           stays put while the camera moves under it. */}
       {!nativeHudActive ? <>
-      {!scene && encounter ? (
+      {!scene && encounter && !orderAbove ? (
         <InitiativeRail
           namesOnly={addonViewport}
           encounter={encounter}
@@ -1746,6 +1756,7 @@ export function BattleMapPanel({
           disabled={busy}
         />
       ) : null}
+      {orderAboveBoard}
       {gridWith(enlarged ? null : painted)}
       {canDirect && tool === "place" && !nativeBattlefieldActive ? (
         <PlaceTokenForm
@@ -1879,6 +1890,7 @@ export function BattleMapPanel({
             <div className="cine-tabletop-body">
               {chronicle}
               <div className="flex min-w-0 flex-1 flex-col gap-2">
+                {orderAboveBoard}
                 <div className="cine-board-frame">{gridWith(enlarged ? painted : null, true)}</div>
                 {underBoard}
               </div>

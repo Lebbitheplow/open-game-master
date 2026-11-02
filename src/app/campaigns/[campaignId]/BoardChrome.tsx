@@ -76,19 +76,23 @@ export type FaceLookup = (entry: { id: string; kind: string; name: string; face?
 
 // Top-left: the order as portrait plates, the current one framed and
 // breathing. Display only; a tap opens the order (the DM's editable panel,
-// or the plain list for a player).
+// or the plain list for a player). `above` is its place below the docked
+// layout: a row of its own over the board, because on a phone it lay on the
+// tiles of that corner, hid the figures standing there and took their taps.
 export function InitiativeRail({
   encounter,
   round,
   faceOf,
   onOpen,
   namesOnly = false,
+  above = false,
 }: {
   encounter: PublicEncounter;
   round: number;
   faceOf: FaceLookup;
   onOpen?: () => void;
   namesOnly?: boolean;
+  above?: boolean;
 }) {
   if (!encounter.orderReady || !encounter.order.length) {
     return null;
@@ -129,14 +133,17 @@ export function InitiativeRail({
     return { entry: order[at], at };
   });
   const more = order.length - shown.length;
-  return (
+  const strip = (
     <button
       type="button"
       onClick={onOpen}
       disabled={!onOpen}
       data-tour="battle-initiative"
       aria-label={`Round ${round}, initiative order. ${encounter.acting?.name ?? order[up]?.name ?? ""} is up. ${sidesLine(encounter)}Open the order.`}
-      className="absolute left-2 top-2 z-10 flex flex-col items-start gap-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 @md:left-3.5 @md:top-3.5 @md:gap-1.5"
+      className={cn(
+        "flex text-left outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60",
+        above ? "min-h-10 max-w-full items-center gap-2" : "absolute left-2 top-2 z-10 flex-col items-start gap-1 @md:left-3.5 @md:top-3.5 @md:gap-1.5",
+      )}
     >
       <span className="board-eyebrow">
         Round {round}
@@ -191,6 +198,10 @@ export function InitiativeRail({
       </span>
     </button>
   );
+  // A container narrower than @md keeps the small plates at any width (the
+  // table's row is a container too): on a phone on its side every pixel of this
+  // row comes off a board that is already short.
+  return above ? <div className="board-order-above @container max-w-[27rem]">{strip}</div> : strip;
 }
 
 // The action economy, as the projection carries it (src/lib/db/encounter-view.ts
