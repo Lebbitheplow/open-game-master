@@ -446,7 +446,7 @@ await test("Swift Quiver: one bonus action buys two attacks, and no third", asyn
 // A part refused for what owes nothing to its feature never buys the
 // feature: bought first, the Action Surge after the swing that dropped the
 // last foe spent a use on a fight already over, and a flurry aimed at a
-// creature the action's swings had killed spent the ki (rev-749).
+// creature the action's swings had killed spent the ki (PR 749 review).
 await test("A feature is bought only for a strike that can be made: the swing that ends the fight leaves Action Surge unspent, a flurry at a fallen creature leaves the ki", async () => {
   const lone = await stage(fighter, 1);
   kit.setEnemy(lone[0].id, { ac: 1, maxHp: 1, currentHp: 1 });
@@ -475,7 +475,7 @@ await test("A feature is bought only for a strike that can be made: the swing th
 
 // "Two swings at the goblin, then I end my turn": the first killed it, and
 // the turn ended on the second's refusal, which the next call could have
-// aimed at the other goblin (rev-749).
+// aimed at the other goblin (PR 749 review).
 await test("endTurn keeps the turn open while a part can be sent again; a part that names endTurn still ends it", async () => {
   const enemies = await stage(fighter, 2);
   kit.setEnemy(enemies[0].id, { ac: 1, maxHp: 1, currentHp: 1 });
@@ -497,7 +497,7 @@ await test("endTurn keeps the turn open while a part can be sent again; a part t
 // SRD 5.1, Way of the Open Hand: the technique rides "each of the attacks"
 // of Flurry of Blows. A strike declared as the flurry's after one swing was
 // counted as the Attack action's second swing: the ki was spent and both
-// riders refused (rev-749).
+// riders refused (PR 749 review).
 await test("A strike declared as Flurry of Blows is one of its strikes, with the Attack action's other swing still owed", async () => {
   const enemies = await stage(monk, 1, { ac: 1, stats: { saveMods: { str: -20, dex: -20, con: -20, int: -20, wis: -20, cha: -20 } } });
   const ran = await agentTurn(monk, "Kara strikes once, then a Flurry: prone, then push.", [
@@ -596,7 +596,7 @@ await test("Physical dice: the parts park in order and the resumed turn answers 
 // through the console's door (actions/route.ts: directCardCalls, then
 // invokeEngine as a person), whose form still requires the one creature a
 // call named before the share became a list: refused there, "Heal needs
-// character." and "Player attacks needs target." (rev-749).
+// character." and "Player attacks needs target." (PR 749 review).
 await test("The console takes the Hand's share of a casting as one call: Scorching Ray's rays, Magic Missile's darts, Mass Healing Word's creatures", async () => {
   const { directCardCalls } = await import("../src/lib/dm/intent-logic.ts");
   const share = (intent, context) => directCardCalls(intent, intent.caster, context)[0];
@@ -696,7 +696,7 @@ await test("Travel: back-to-back legs are one day's march and reach the forced-m
 });
 
 // Damage an object is immune to never adds up: twenty blows of poison drew
-// twenty roll cards of nothing and "20 blows and it still stands" (rev-749).
+// twenty roll cards of nothing and "20 blows and it still stands" (PR 749 review).
 await test("damage_object blows of a damage the object is immune to stop at the first, which says so", async () => {
   await kit.endFight();
   const out = await world.invoke("damage_object", { name: "the poisoned chest", material: "wood", size: "small", damage: "2d6", damageType: "poison", blows: 20 });
@@ -707,7 +707,7 @@ await test("damage_object blows of a damage the object is immune to stop at the 
 
 // A night camped with pass_time, or a long rest the one-in-24-hours rule
 // refused, closed no day: the next morning's 8 hours rolled four
-// forced-march saves (rev-749). A stop of a night's length ends the day.
+// forced-march saves (PR 749 review). A stop of a night's length ends the day.
 await test("Forced march: a night's stop between two legs ends the day, rested or not; back-to-back legs still share theirs", async () => {
   const { forcedMarchSpan } = await import("../src/lib/srd/travel.ts");
   assert.deepEqual(forcedMarchSpan([{ end: 480, minutes: 480, ids: ["a"] }], 480 + 12 * 60 + 480, 8), { from: 1, to: 0 }, "an 8-hour leg after a 12-hour stop");
@@ -803,7 +803,7 @@ await test("Mass Healing Word over six allies out of a fight is one casting too:
 
 // With no casterId each entry's creature was its own caster: the cleric
 // paid, and Brann, who casts nothing, rode the slot with a healing of 1d4
-// and no modifier, where his own call was refused (rev-749).
+// and no modifier, where his own call was refused (PR 749 review).
 await test("A heal list under a spell with no casterId is sent back before anything is spent", async () => {
   await kit.endFight();
   for (const hero of heroes) world.patch(hero.id, { currentHp: 1 });
@@ -819,7 +819,7 @@ await test("A heal list under a spell with no casterId is sent back before anyth
 
 // heal's schema reads "30" as 30; the casting's pool counted it as none, and
 // Mass Heal's second creature found nothing left of the 700 after the 9th
-// level slot was spent (rev-749).
+// level slot was spent (PR 749 review).
 await test("Mass Heal's amounts sent as words share the 700 hit points of one casting", async () => {
   await kit.endFight();
   for (const hero of heroes) world.patch(hero.id, { currentHp: 1 });
@@ -848,7 +848,7 @@ await test("Hold Person from a 3rd-level slot on two creatures is one casting of
 });
 
 // An entry naming no darts took "every dart left": the first of the
-// creatures listed took all three, and the rest were refused (rev-749).
+// creatures listed took all three, and the rest were refused (PR 749 review).
 await test("Magic Missile listed over creatures with no darts named shares the casting's darts among them", async () => {
   const enemies = await stage(wizard, 2);
   const ran = await agentTurn(wizard, "Iris splits her darts between the two.", [
@@ -875,7 +875,7 @@ await test("A rider sent as the word false inside a part is false: no ki spent",
 // The beat's steps ticked before the reply's calls ran (issue #31) stayed
 // ticked when the call naming them was refused: a list whose Sun Blade was
 // refused ticked "Recover the Sun Blade" with the blade nowhere on the sheet,
-// and so did a lone grant_item refused (rev-749).
+// and so did a lone grant_item refused (PR 749 review).
 await test("Waypoints: a step named only by a refused item opens again; one the same reply's beat landed on stays", async () => {
   const { setStoryArc, getCampaignById } = await import("../src/lib/db/campaigns.ts");
   const { normalizeStoryArc } = await import("../src/lib/dm/arc-logic.ts");
