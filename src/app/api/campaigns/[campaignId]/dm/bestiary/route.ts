@@ -3,7 +3,7 @@ import { isErrorResponse, requireDm } from "@/lib/campaign-api";
 import { documentTitle, getEntryDetail, searchMonsters } from "@/lib/content";
 import { withBestEffort } from "@/lib/content/entry-labels";
 import { rulebookPageIdFor } from "@/lib/rulebook/catalog-rows";
-import { reskinFor, rosterLabel } from "@/lib/bestiary";
+import { reskinFor, rosterLabel, searchSrdTable } from "@/lib/bestiary";
 import { tableAuthors } from "@/lib/db/homebrew";
 import { normalizeCreatureType, parseMonster } from "@/lib/bestiary/statblock";
 import {
@@ -70,6 +70,19 @@ export async function GET(
         art: reskinFor(context.campaign.gameSettings, entry.slug)?.art,
       }))
     : [];
+  // With no content pack, the roster still finds the SRD creatures the
+  // server would deploy from its bundled table. Not the forge's search: a
+  // block is copied from the pack alone (POST below).
+  const table = query.q && query.play
+    ? searchSrdTable(query.q, { limit: 25, maxCr: query.maxCr }).map((creature) => ({
+        slug: creature.slug,
+        name: creature.name,
+        source: "srd" as const,
+        cr: creature.cr,
+        type: normalizeCreatureType(creature.type) ?? "",
+        art: reskinFor(context.campaign.gameSettings, creature.slug)?.art,
+      }))
+    : [];
 
   // A search also says what a roster line should call each of the DM's own
   // monsters (MonsterRosterPicker): the ref when its name would deploy a
@@ -80,7 +93,7 @@ export async function GET(
   );
   return Response.json({
     monsters,
-    found,
+    found: [...found, ...table],
     // For the thumbnails: a high-rating monster draws this setting's boss
     // plate (src/lib/placeholders.ts).
     genre: context.campaign.gameSettings.genre,

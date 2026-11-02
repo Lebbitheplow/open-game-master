@@ -280,6 +280,54 @@ await test(
   },
 );
 
+// A table of its own, where the owner holds the GM seat the search asks for.
+const gmTable = await openWorld();
+const { setDmMode } = await import("../src/lib/db/campaigns.ts");
+setDmMode(gmTable.campaignId, "human", gmTable.owner.id);
+const bestiaryRoute = await gmTable.route("campaigns/[campaignId]/dm/bestiary");
+const rosterSearch = async (q, extra = "&play=1") => {
+  gmTable.signIn(gmTable.owner);
+  const response = await bestiaryRoute.GET(new Request(`http://localhost/api/test?q=${encodeURIComponent(q)}${extra}`), {
+    params: Promise.resolve({ campaignId: gmTable.campaignId }),
+  });
+  assert.equal(response.status, 200, `the GM's search answered ${response.status}`);
+  return (await response.json()).found ?? [];
+};
+
+await test(
+  "Without the content pack, a search for monsters to add (the encounter roster, a fight event's arrivals) finds the SRD creatures such a table deploys from its bundled blocks: goblin finds the Goblin at challenge 1/4, owlbear the Owlbear, and a challenge cap holds",
+  async () => {
+    const saved = globalThis.__odmContentDb;
+    globalThis.__odmContentDb = null;
+    let goblins;
+    let owlbears;
+    let capped;
+    let forge;
+    try {
+      goblins = await rosterSearch("goblin");
+      owlbears = await rosterSearch("owlbear");
+      capped = await rosterSearch("dragon", "&play=1&maxCr=2");
+      // The forge copies a block from the pack alone, so it is not offered
+      // one it could not copy.
+      forge = await rosterSearch("goblin", "");
+    } finally {
+      globalThis.__odmContentDb = saved;
+    }
+    const goblin = goblins.find((entry) => entry.name === "Goblin");
+    assert.ok(goblin && goblin.cr === 0.25 && goblin.type === "humanoid", `with no pack the roster's search for goblin found ${JSON.stringify(goblins)}`);
+    assert.ok(owlbears.some((entry) => entry.name === "Owlbear"), `and for owlbear ${JSON.stringify(owlbears)}`);
+    assert.ok(capped.length && capped.every((entry) => entry.cr <= 2), `a cap of challenge 2 holds: ${JSON.stringify(capped.map((entry) => [entry.name, entry.cr]))}`);
+    assert.equal(forge.filter((entry) => entry.source === "srd").length, 0, "the forge's search is not offered a block it cannot copy");
+    // What the roster then holds deploys from the same table.
+    globalThis.__odmContentDb = null;
+    try {
+      assert.equal(resolveMonster(goblin.name, settings)?.stats.maxHp, 7, "the Goblin picked deploys with its 7 hit points");
+    } finally {
+      globalThis.__odmContentDb = saved;
+    }
+  },
+);
+
 await test("Every legendary creature's page is read as printed: actions a round, each option and its cost, and Legendary Resistance (n/Day)", () => {
   let checked = 0;
   for (const [name, block] of BLOCKS) {
