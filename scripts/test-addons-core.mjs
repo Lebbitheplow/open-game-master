@@ -577,6 +577,17 @@ await test("character gender is optional and only travels with projected figures
   assert.equal(boardSnapshot(view, "hello-dungeon", { canDirect: false, appearance, looks }).tokens[0].character.gender, undefined);
 });
 
+await test("sex is optional, enum-checked and copied only from projected tokens", () => {
+  const appearance = { theme: "night", reducedMotion: false };
+  for (const sex of ["Female", "Male", "invalid", undefined]) {
+    const projected = { ...view, tokens: view.tokens.map(token => ({ ...token, sex })) };
+    const snapshot = boardSnapshot(projected, "hello-dungeon", { canDirect: false, appearance });
+    assert.equal(snapshot.tokens[0].sex, ["Female", "Male"].includes(sex) ? sex : undefined);
+    if (!["Female", "Male"].includes(sex)) assert.equal(Object.hasOwn(snapshot.tokens[0], "sex"), false);
+    assert.equal(snapshot.tokens.length, projected.tokens.length);
+  }
+});
+
 await test("a walk's first tap is named to the view as its aim, and nothing else is", () => {
   const appearance = { theme: "night", reducedMotion: false };
   assert.equal(boardSnapshot(view, "hello-dungeon", { canDirect: false, appearance }).moveAim, null);

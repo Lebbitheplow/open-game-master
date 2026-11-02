@@ -20,6 +20,7 @@ import { workshopClassName } from "@/lib/classes/workshop-registry";
 import { ancestryOf, findDraconicAncestry } from "@/lib/srd/racial-grants";
 import { npcRoleLabel } from "@/lib/placeholders";
 import { characterPortraitPrompt, idWords, npcPortraitPrompt, type CharacterLook } from "@/lib/portrait-prompt";
+import { raceWords } from "@/lib/npc-race";
 
 // One-shot portrait render at character creation. Status lives in memory
 // only: a restart mid-job simply drops the entry and the UI falls back to
@@ -188,6 +189,8 @@ export function queueNpcPortrait(
     // face needs. The name is deliberately absent: a render prompt is not
     // improved by a proper noun the model has never seen.
     gender: string;
+    // The stored race id (src/lib/npc-race.ts), "" when unrecorded.
+    race: string;
     // The stored role: a catalog id or the author's own words.
     role: string;
     trait: string;
@@ -200,7 +203,7 @@ export function queueNpcPortrait(
     enqueueMediaJob(`npc portrait ${npc.id}`, async () => {
       try {
         const { trait, role } = await toEnglishForImage(campaign, { trait: npc.trait, role: npcRoleLabel(npc.role) });
-        const prompt = npcPortraitPrompt({ gender: npc.gender, role, trait, personality: npc.personality }, style);
+        const prompt = npcPortraitPrompt({ gender: npc.gender, race: raceWords(npc.race), role, trait, personality: npc.personality }, style);
         const settings = configuredDefaultStorySettings();
         const image = await generateStoryImage(settings, {
           prompt,

@@ -57,6 +57,8 @@ import { undoableMove, undoOffer } from "@/lib/battlemap/move-undo";
 import type { AuraTone, PlayerMapView } from "@/lib/battlemap/view-types";
 import { ENEMY_TURN_NAME, turnOwner } from "@/lib/dm/turn-owner";
 import { holdsFeature } from "@/lib/srd/feature-names";
+import { foeLook, pickedGender, storedSex, type Sex } from "@/lib/actor-sex-logic";
+import { castLookup, npcFace } from "@/lib/db/npc-faces";
 
 export type { PlayerMapView } from "@/lib/battlemap/view-types";
 
@@ -317,6 +319,26 @@ export function buildPlayerMapView(
   // rim of a creature fighting on the side its kind does not.
   const sides = tokenSides(encounter);
   const viewerSide = sheet ? sides({ kind: "pc", refId: sheet.id }) : "party";
+  // Who a figure is, for its flat face and a 3D view's model, read after the
+  // filter below so a figure a viewer may not see carries nothing to them
+  // (src/lib/actor-sex-logic.ts). A foe: its Cast NPC's record, else its
+  // own row's look. A figure the GM placed: the Cast NPC of that name, with
+  // their face, else a stranger with a pick from its own ref (its flat face
+  // stays the one by name, which has no gender to disagree with).
+  const cast = castLookup(campaignId);
+  const lookOf = (token: (typeof tokens)[number]): { face?: string; sex?: Sex } => {
+    if (token.kind === "enemy") {
+      const enemy = enemiesById.get(token.refId);
+      const sex = enemy ? storedSex(foeLook(enemy, cast.byId(enemy.npcId)).gender) : undefined;
+      return sex ? { sex } : {};
+    }
+    if (token.kind === "npc") {
+      const npc = cast.byId(token.refId) ?? cast.byName(token.name);
+      const sex = storedSex(npc ? npc.gender : pickedGender(token.refId));
+      return { ...(npc ? { face: npcFace(npc) } : {}), ...(sex ? { sex } : {}) };
+    }
+    return {};
+  };
   const shownTokens = tokens
     .filter((token) => {
       // The DM hid it, so for everyone but the DM it is not on the board at
@@ -360,6 +382,7 @@ export function buildPlayerMapView(
       hidden: token.hidden,
       light: lightRemaining(token, clockInstant),
       stamp: token.stamp ?? "",
+      ...lookOf(token),
       ...offSide(token, sides(token)),
     }));
 

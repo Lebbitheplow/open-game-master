@@ -617,3 +617,13 @@ A board snapshot's optional budgetLeft is remaining movement in squares. The aut
 A separate host message { odm: 1, type: "ruler", mapId, ruler } carries the normal board's current hover or first-tap preview. ruler is null to clear it, otherwise { path: [{ x, y }, ...], label, overBudget }. Paths contain only in-bounds known terrain from this viewer's projection. Draw over-budget previews distinctly. The path is an existing native estimate from the same ruler the normal board uses; it is not movement authority. Continue forwarding tile taps to the host for normal aim/confirmation and server validation.
 
 Ruler updates are separate from snapshots so hovering does not require rebuilding terrain, figures or other expensive scene resources. Ignore messages for other map IDs. This additive message retains bridge version 1; older views may ignore it and older hosts do not send it.
+
+### Enemy and NPC sex
+
+Visible enemy and NPC tokens may include `sex: "Female" | "Male"`, supplied by the server's viewer projection after its normal visibility filtering. It is the same gender the flat board's face for that figure reads (`src/lib/actor-sex-logic.ts`), so a view's model and the plate on the tracker never disagree.
+
+- A Cast NPC, as an enemy or as a figure the GM placed by hand (linked by NPC id, else by whole name or alias, as `start_encounter` links one), has the gender the Cast records, read live: a gender the story records later changes the model at once. A Cast NPC recorded as Nonbinary, or not yet recorded, has no `sex`.
+- A nameless enemy has the `gender` its `start_encounter`/`add_enemies` entry was told (Female, Male or Nonbinary), else a stable Female or Male picked once from its own saved row id when it arrived. Renaming, damage, a new form and a return in a later fight never change it, and two enemies with one name are picked separately. One told Nonbinary has no `sex`.
+- A figure the GM placed by hand that the Cast does not know has a stable pick from its token's ref.
+
+No `sex` means a view keeps its ordinary model. PCs keep `character.gender`; props have none. Older hosts omit `sex`, so views should keep their ordinary model fallback: for example, select `monsters.bandit:Female` when a visible bandit's `sex` is `"Female"`, falling back to `monsters.bandit` when that variant or the field is absent. Hidden and fogged figures never enter a player's snapshot. The host sends no model paths or NPC records with this field. This optional addition keeps bridge version 1.

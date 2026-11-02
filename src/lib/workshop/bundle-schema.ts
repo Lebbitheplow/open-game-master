@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { storedSheetSchema } from "@/lib/schemas/sheet";
 import { GENDERS } from "@/lib/gender";
+import { storedRace } from "@/lib/npc-race";
 import { GENRES } from "@/lib/schemas/game-settings";
 import { BEAT_KINDS, BODY_MAX, ROUTE_KINDS, ROUTE_LABEL_MAX } from "@/lib/workshop/board";
 import { LORE_BODY_MAX } from "@/lib/dm/world-lore-logic";
@@ -130,6 +131,9 @@ const npcSchema = z.object({
   role: z.string().trim().max(40).default(""),
   // src/lib/gender.ts; bundles written before the field have none.
   gender: z.enum(["", ...GENDERS]).default(""),
+  // An SRD race id (src/lib/npc-race.ts); bundles written before the field
+  // have none, and one this server does not know reads as unrecorded.
+  race: z.string().max(40).default("").transform(storedRace),
   // Who they are drawn to (src/lib/attraction.ts); bundles written before
   // the field have none, and an unreadable one reads as undecided.
   attraction: z.unknown().optional(),

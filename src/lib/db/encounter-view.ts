@@ -6,6 +6,8 @@ import { enemyActionsView, type PublicEnemyActions, type PublicEnemyMovement } f
 import { enemyMoveBudget } from "@/lib/dm/enemy-speed";
 import { enemyActedThisRound, isSurprised } from "@/lib/dm/can-act";
 import { getCampaignById } from "@/lib/db/campaigns";
+import { castLookup, npcFace, type CastLookup } from "@/lib/db/npc-faces";
+import { foeLook } from "@/lib/actor-sex-logic";
 import { dmPlaysTurn } from "@/lib/dm/companion-command";
 import { freshLastHit, heaviestHit, type LastHit } from "@/lib/dm/last-hit";
 import { conditionNote, conditionNoteLine, namesLookup } from "@/lib/battlemap/condition-notes";
@@ -57,6 +59,9 @@ export type PublicEncounter = {
     id: string;
     name: string;
     hidden: boolean;
+    // An "npc" entry the Cast knows: their portrait or the plate their
+    // role, race and gender pick (src/lib/db/npc-faces.ts).
+    face?: string;
     // DM view only, like the enemy numbers below.
     initiative?: number;
     // Thief's Reflexes: the thief's second turn in the first round, a
@@ -80,6 +85,12 @@ export type PublicEncounter = {
     // groupKey has always been this same slug. Optional so a client talking
     // to an older server still renders.
     slug?: string;
+    // Who a humanoid foe is, for the face (enemyNpcPlaceholder): an SRD
+    // race id and a gender. A Cast NPC's come from their record, so an edit
+    // there shows at once; a nameless foe's from start_encounter. Absent
+    // when unrecorded, and nothing a player could not already see.
+    race?: string;
+    gender?: string;
     // Kept off the players' board and tracker by the DM. Only ever true in
     // the DM's own projection: a hidden enemy is absent from a player's.
     hidden: boolean;
@@ -286,6 +297,20 @@ function lastHitView(record: LastHit, hidden: Set<string>, showNumbers: boolean)
   };
 }
 
+// The face an initiative entry for a tracked NPC draws (npc-faces.ts).
+function entryFace(cast: CastLookup, npcId: string, name: string): { face?: string } {
+  const npc = cast.byId(npcId) ?? cast.byName(name);
+  return npc ? { face: npcFace(npc) } : {};
+}
+
+// Who a foe is, for its face: a Cast NPC's own record, read live so an edit
+// there shows in a running fight, else its row's look, the one a 3D board
+// view's model reads too (src/lib/actor-sex-logic.ts).
+function lookOf(cast: CastLookup, enemy: EncounterEnemy): { race?: string; gender?: string } {
+  const { race, gender } = foeLook(enemy, cast.byId(enemy.npcId));
+  return { ...(race ? { race } : {}), ...(gender ? { gender } : {}) };
+}
+
 // How far an enemy may still walk this turn, for the person running it: the
 // Monster Hand's roster and its Dash card (issue #621). Undefined with no
 // board or no rounds to count.
@@ -309,6 +334,7 @@ export function publicEncounter(
   // means the same thing in both places: an ambusher the players have not
   // met yet is neither on the map nor on the tracker.
   const hidden = new Set(options.hiddenRefIds ?? []);
+  const cast = castLookup(encounter.campaignId);
   // Names a condition's "until X's turn" or "from X" may show: the order as
   // this viewer sees it.
   const nameOf = namesLookup(
@@ -338,6 +364,7 @@ export function publicEncounter(
             ...(showNumbers ? { initiative: entry.initiative } : {}),
             ...(entry.kind === "pc" && entry.reflex ? { reflex: true } : {}),
             ...(entry.kind === "pc" && entry.extra ? { extra: entry.extra } : {}),
+            ...(entry.kind === "npc" ? entryFace(cast, entry.npcId, entry.name) : {}),
           }))
       : [],
     enemies: enemies
@@ -351,6 +378,7 @@ export function publicEncounter(
       cr: enemy.cr,
       type: creatureTypeOf(enemy.stats),
       slug: enemy.slug,
+      ...lookOf(cast, enemy),
       groupKey: enemy.slug,
       // Knocked out by a nonlethal blow (src/lib/dm/knockout.ts): alive at
       // 0 hit points, out of the fight, not dying.

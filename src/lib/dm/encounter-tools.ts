@@ -245,12 +245,10 @@ function parseStartArgs(rawArguments: string): { args: z.infer<typeof startArgsS
     .extend({ summary: z.string().optional() })
     .safeParse(raw);
   if (flat.success) {
-    return {
-      args: {
-        enemies: [{ monster: flat.data.monster, name: flat.data.name, count: flat.data.count, cr: flat.data.cr, returning: flat.data.returning }],
-        summary: flat.data.summary,
-      },
-    };
+    // Every field an enemy takes, so one added to enemyRequestSchema (a
+    // race, a gender) is not dropped from a weak model's flat call.
+    const { summary, ...enemy } = flat.data;
+    return { args: { enemies: [enemy], summary } };
   }
   return { fields: [...new Set(nested.error.issues.map((issue) => issue.path.join(".")).filter(Boolean))] };
 }
@@ -385,6 +383,8 @@ function handleStartEncounter(
       initiative: initiatives[index],
       stats: entry.stats,
       ...(entry.npcId ? { npcId: entry.npcId } : {}),
+      race: entry.race,
+      gender: entry.gender,
       ...(carry ? { arrives: carry.arrives } : {}),
     });
   });

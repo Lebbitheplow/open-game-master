@@ -124,6 +124,12 @@ export const SERVER_FEATURES = {
   // attraction's `open`, which an older host drops while saving the rest,
   // so the switch stays hidden there.
   openRelationships: true,
+  // An NPC's race (the Race select beside Gender in the NPC form and in the
+  // console's Write an NPC, set_npc's `race`) and a foe's race and gender on
+  // the console's fight line ("bandit race elf gender female"): an older host
+  // drops the race unread and reads that line as one unknown monster, so the
+  // selects stay hidden and the line's help says nothing of them there.
+  npcRace: true,
 } as const;
 export type ServerFeatures = { [K in keyof typeof SERVER_FEATURES]: boolean };
 

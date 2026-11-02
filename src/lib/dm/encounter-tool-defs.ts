@@ -3,6 +3,7 @@
 // offers them (encounterTools) and handles every call.
 
 import { sceneIds } from "@/lib/ambience/catalog";
+import { GENDERS } from "@/lib/gender";
 import { ENCOUNTER_OUTCOMES } from "@/lib/dm/encounter-logic";
 import { waypointProperty } from "@/lib/dm/waypoint-logic";
 import { ADVANTAGE_SOURCES } from "@/lib/dm/pc-attack-options";
@@ -44,6 +45,8 @@ export const startEncounterTool: ToolDef = {
                   "Only for an invented enemy with no matching monster: its challenge rating.",
               },
               returning: { type: "string", description: "An earlier fight's enemyId." },
+              race: { type: "string", description: "A humanoid's people (elf, dwarf...), for their face." },
+              gender: { type: "string", enum: [...GENDERS] },
             },
             required: ["monster"],
           },

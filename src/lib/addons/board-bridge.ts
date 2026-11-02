@@ -4,6 +4,7 @@ import type { FxEvent } from "@/lib/battlemap/fx-plan";
 import type { TokenIntent } from "@/lib/battlemap/intent";
 import type { PlayerMapView } from "@/lib/battlemap/view-types";
 import type { Gender } from "@/lib/gender";
+import { storedSex, type Sex } from "@/lib/actor-sex-logic";
 import type { Ruler } from "@/lib/battlemap/board-move";
 
 // The board view contract: what the table page posts into an addon's
@@ -52,6 +53,9 @@ export type BoardSnapshotToken = {
   // Null when it is neither (a prop, a bystander the DM put down by hand).
   creature: { type: string; slug: string; cr: number } | null;
   character: { race: string; class: string; gender?: Gender } | null;
+  // An enemy's or an NPC's Female or Male, the same gender its flat face
+  // reads (src/lib/actor-sex-logic.ts); absent otherwise and from older hosts.
+  sex?: Sex;
   // Auras around it, by reach in feet and what they do.
   auras: Array<{ radiusFeet: number; tone: string }>;
 };
@@ -167,6 +171,7 @@ export function boardSnapshot(
       id: token.id,
       kind: token.kind,
       name: token.name,
+      ...(storedSex(token.sex) ? { sex: storedSex(token.sex) } : {}),
       x: token.x,
       y: token.y,
       size: view.tokenFootprint[token.id] ?? 1,
