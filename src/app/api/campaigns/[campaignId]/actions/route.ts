@@ -16,6 +16,8 @@ import { countMessages, insertCampaignMessage, listRecentMessages } from "@/lib/
 import { getSheetById, getSheetForUser, listSheets } from "@/lib/db/sheets";
 import { aiTurnNamedBySeat, commandedSheet, dominatedRefusal, gmCompanionReactor, gmCompanionTurn } from "@/lib/dm/companion-command";
 import { openHits } from "@/lib/dm/last-hit";
+import { activePublicEncounter } from "@/lib/db/encounter-view";
+import { allyReactions } from "@/lib/battlemap/hand-react";
 import { aiTurnRefusal } from "@/lib/workshop/test-seats-logic";
 import { heroFell } from "@/lib/characters/fallen-logic";
 import { answerSpotlight } from "@/lib/dm/spotlight-answer";
@@ -187,7 +189,14 @@ export async function POST(
   if (typedReaction) {
     const reactor = named && named.campaignId === campaignId ? named : null;
     const encounterNow = getActiveEncounter(campaignId);
-    const hitOpen = encounterNow?.order.some((entry) => entry.kind === "pc" && openHits(campaignId, entry.characterId).length > 0);
+    // Any hero's open hit once let words through for a hero with nothing to
+    // answer: the hit must be on them, or on an ally a reaction they hold
+    // covers, as the Hand reads it (hand-react.ts allyReactions).
+    const hitOpen =
+      reactor !== null &&
+      encounterNow !== null &&
+      (openHits(campaignId, reactor.id).length > 0 ||
+        (activePublicEncounter(campaignId)?.lastHits ?? []).some((hit) => hit.characterId !== reactor.id && allyReactions(reactor, hit).length > 0));
     if (!reactor || !encounterNow || !hitOpen) {
       return Response.json(
         { error: `No hit is open for ${reactor?.name ?? "that character"} to answer now. Send it as the hero whose turn it is, or as table talk.` },

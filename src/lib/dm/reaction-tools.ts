@@ -39,7 +39,7 @@ import { devotedGuard } from "@/lib/dm/devoted-guard";
 import { reactionTimingOf, timingOfDoes, type ReactionTiming } from "@/lib/dm/reaction-kinds";
 import { authoredReactionNamed, heldReaction } from "@/lib/srd/authored-effects";
 import { removeConditions } from "@/lib/dm/condition-logic";
-import { attackerFoeId, freshLastHit, heaviestHit, heaviestRaw, openHitAimed, rerollAttacker, withHitAim, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
+import { attackerFoeId, freshLastHit, heaviestHit, heaviestRaw, hitIdOf, openHitAimed, openHits, rerollAttacker, withHitAim, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import type { RollAttacker } from "@/lib/db/rolls";
 import { rollAgainst } from "@/lib/roll-labels";
 import { opportunity, reactionSpell } from "@/lib/dm/reaction-spells";
@@ -439,6 +439,21 @@ function timingOfUseReaction(
   return reactionTimingOf(feature);
 }
 
+// The reactions that answer a hit on the reactor alone (SRD 5.1: Uncanny
+// Dodge "an attack against you", Deflect Missiles, Slow Fall, Shield,
+// Hellish Rebuke; Parry and Riposte, the Battle Master's own; Absorb
+// Elements). Cutting Words, Protection, Feather Fall and the authored
+// reactions for an ally take another's hit.
+function answersOwnHitOnly(campaign: Campaign, feature: string): boolean {
+  const name = feature.trim();
+  if (isNamed(name, "uncanny dodge", "deflect missiles", "deflect missile", "slow fall", "parry", "riposte")) {
+    return true;
+  }
+  const authors = spellAuthorsFor(campaign);
+  const spell = spellFactsFor(name, authors);
+  return spell?.castingTime === "reaction" && isNamed(spellEngineName(spell.name, authors), "shield", "absorb elements", "hellish rebuke");
+}
+
 export function handleUseReaction(
   campaign: Campaign,
   turn: DmTurn,
@@ -469,6 +484,17 @@ export function handleUseReaction(
         error: `No attack still open to a reaction matches hit "${args.hit}": it has been answered, its moment to answer has passed, or that creature made none. Nothing was spent.`,
         refused: "rules",
       };
+    }
+    // A reaction for the reactor alone answers only a hit on them: Uncanny
+    // Dodge sent with an ally's hit once halved one of the rogue's own hits
+    // in its place, quietly. The call is sent back with the reactor's own.
+    if (!own && answersOwnHitOnly(campaign, args.feature)) {
+      const mine = openHits(campaign.id, sheet.id);
+      const holder = getSheetById(aimed.characterId)?.name ?? "another character";
+      const listed = mine.map((record) => `hit "${hitIdOf(record)}" (${record.attacker.name}'s ${record.attack})`).join(", ");
+      return mine.length
+        ? { error: `Hit "${args.hit}" is on ${holder}, and ${args.feature.trim()} answers a hit on ${sheet.name}. ${sheet.name}'s open hits: ${listed}. Send one of those as hit. Nothing was spent.`, retry: true }
+        : { error: `Hit "${args.hit}" is on ${holder}, and ${args.feature.trim()} answers a hit on ${sheet.name}, who has none open. Nothing was spent.`, refused: "rules" };
     }
     if (!own && !args.targetCharacterId) {
       args = { ...args, targetCharacterId: aimed.characterId };

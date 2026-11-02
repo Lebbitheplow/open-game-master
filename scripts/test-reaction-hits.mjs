@@ -610,8 +610,8 @@ await test("Her earlier Shield still counts against a later attack on her at 0",
 
 // ---- what else happened between the hits stays ----
 // One AI reply ends Mira's turn and plays `plays` in order: a goblin's swing
-// at `target` ({ enemy, faces }) or any other call ({ call, faces }), each
-// with the dice it rolls.
+// at `target`, or at the play's own ({ enemy, faces, target }), or any other
+// call ({ call, faces }), each with the dice it rolls.
 async function replyOf(table, target, plays) {
   const { world, kit, mira, g1, g2 } = table;
   const turn = createDmTurn(world.campaignId, [], "ai");
@@ -624,7 +624,7 @@ async function replyOf(table, target, plays) {
   kit.place(g2.id, 4, 5);
   for (const play of plays) {
     world.dice(...(play.faces ?? []));
-    const call = play.call ?? { name: "enemy_attack", args: { enemyId: play.enemy.id, targetCharacterId: target.id } };
+    const call = play.call ?? { name: "enemy_attack", args: { enemyId: play.enemy.id, targetCharacterId: (play.target ?? target).id } };
     const out = await invokeEngine(world.campaign(), ai, call);
     world.clearDice();
     assert.equal(out.ok, true, `${call.name}: ${out.error}`);
@@ -734,6 +734,46 @@ await test("A corrected blow lands through the defenses the damage path applies:
   const out = await react(world, poppy, "Uncanny Dodge");
   assert.equal(out.ok, true, out.error);
   assert.equal(world.sheet(poppy.id).wildShape?.beastHp, 14, "the 6 halved to 3 still lands doubled: 6");
+});
+
+// ---- a reaction answers a hit it covers ----
+
+await test("A reaction for the reactor alone, sent with another hero's hit, is sent back with the reactor's own hits, and nothing is spent", async () => {
+  const table = await stage();
+  const { world, poppy, mira, g1, g2 } = table;
+  // One reply: the first goblin hits Poppy for 3 + 2, the second Mira (beside
+  // it) for 4 + 2.
+  table.kit.place(mira.id, 4, 4);
+  await replyOf(table, poppy, [
+    { enemy: g1, faces: [15, 3] },
+    { enemy: g2, faces: [12, 4], target: mira },
+  ]);
+  const [poppys] = openHits(world.campaignId, poppy.id);
+  const [miras] = openHits(world.campaignId, mira.id);
+  assert.equal(hp(world, poppy), 25);
+  const out = await react(world, poppy, "Uncanny Dodge", { hit: miras.id });
+  assert.equal(out.ok, false, "Uncanny Dodge halved Poppy's own hit in place of Mira's");
+  assert.equal(out.retry, true, JSON.stringify(out));
+  assert.ok(out.error.includes(poppys.id), out.error);
+  assert.equal(hp(world, poppy), 25, "nothing was halved");
+  assert.equal(world.encounter().reactionsUsed.includes(poppy.id), false);
+  // Sent with her own hit, it answers it.
+  const again = await react(world, poppy, "Uncanny Dodge", { hit: poppys.id });
+  assert.equal(again.ok, true, again.error);
+  assert.equal(hp(world, poppy), 28, "the 5 is halved to 2");
+});
+
+await test("Words typed as a hero's reaction pass only for a hit on them or on an ally a reaction of theirs covers", async () => {
+  const table = await stage();
+  const { world, poppy, mira, g1 } = table;
+  // Mira is hit; Poppy holds only Uncanny Dodge, which answers a hit on her.
+  await world.hitBy(mira.id, { enemyId: g1.id, name: g1.displayName, total: 18, vsAc: 12, raw: 6, attack: "Club" });
+  const refused = await route(world, "actions", { kind: "do", content: "Poppy leaps in.", characterId: poppy.id, reaction: true }, world.owner);
+  assert.equal(refused.status, 409, JSON.stringify(refused.body));
+  // With Protection, Mira's hit is one she can answer.
+  world.patch(poppy.id, { features: [{ name: "Uncanny Dodge", source: "class" }, { name: "Protection", source: "class" }] });
+  const covered = await route(world, "actions", { kind: "do", content: "Poppy throws up her shield.", characterId: poppy.id, reaction: true }, world.owner);
+  assert.equal(covered.status, 202, JSON.stringify(covered.body));
 });
 
 await test("The screens wire it: Speaking as on its host flag, Edit in chat names the card's hero, and the companions' reactions in the Hand", () => {

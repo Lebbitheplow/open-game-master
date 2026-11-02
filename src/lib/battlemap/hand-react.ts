@@ -287,21 +287,30 @@ export function reactionCards(
   // An ally's hit: Cutting Words from a Lore bard, Protection from a
   // protector with a shield. The engine checks the reach and the holder.
   for (const hit of hits) {
-    if (hit.characterId === sheet.id || !hit.hit || hit.source !== "attack") continue;
     const ally = party.find((entry) => entry.id === hit.characterId);
     if (!ally) continue;
     const prompt = what(hit, ally.name);
-    if (holdsFeature(sheet, "cutting words") && (sheet.resources.bardic_inspiration?.max ?? 0) > (sheet.resources.bardic_inspiration?.used ?? 0)) {
-      feature(hit, "Cutting Words", prompt, "Spend a Bardic Inspiration die off the roll or the damage.", "ally");
-    }
-    if (holdsFeature(sheet, "protection")) {
-      feature(hit, "Protection", prompt, "Impose disadvantage on the attack: it is rolled again.", "ally");
-    }
-    for (const held of subclassReactions(sheet, hit, "ally")) {
+    for (const held of allyReactions(sheet, hit)) {
       feature(hit, held.name, prompt, held.rules, "ally");
     }
   }
   return cards;
+}
+
+// The reactions the character holds that answer a hit on an ally: Cutting
+// Words with a die left, Protection, and the subclass reactions for an ally.
+// The cards above offer these, and the actions route takes words typed as a
+// reaction for an ally's hit only when one of them covers it.
+export function allyReactions(sheet: CharacterSheet, hit: PublicLastHit): Array<{ name: string; rules: string }> {
+  if (hit.characterId === sheet.id || !hit.hit || hit.source !== "attack") return [];
+  const bardic = sheet.resources.bardic_inspiration;
+  return [
+    ...(holdsFeature(sheet, "cutting words") && (bardic?.max ?? 0) > (bardic?.used ?? 0)
+      ? [{ name: "Cutting Words", rules: "Spend a Bardic Inspiration die off the roll or the damage." }]
+      : []),
+    ...(holdsFeature(sheet, "protection") ? [{ name: "Protection", rules: "Impose disadvantage on the attack: it is rolled again." }] : []),
+    ...subclassReactions(sheet, hit, "ally").map((held) => ({ name: held.name, rules: held.rules })),
+  ];
 }
 
 // The reaction cards the moment offers, then the hand without the cards they

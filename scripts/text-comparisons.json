@@ -1664,7 +1664,7 @@
     "lib/dm/reaction-spells.ts#str-list": [["english-source",1,"reference: SRD spell, condition and feature names"]],
     "lib/dm/reaction-spells.ts#toLowerCase": [["key",6,"damage types; condition labels (engine vocabulary); class id"],["english-source",1,"reference: SRD spell, condition and feature names"]],
     "lib/dm/reaction-spells.ts#toUpperCase": [["display",1,"ability abbreviation shown"]],
-    "lib/dm/reaction-tools.ts#str-eq": [["key",3,"reduction and casting time kinds"]],
+    "lib/dm/reaction-tools.ts#str-eq": [["key",4,"reduction and casting time kinds"]],
     "lib/dm/reaction-tools.ts#str-includes": [["key",4,"reactions already answered (engine record)"]],
     "lib/dm/reaction-tools.ts#toLowerCase": [["key",2,"condition labels (engine vocabulary)"]],
     "lib/dm/readied-kinds.ts#str-list": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
