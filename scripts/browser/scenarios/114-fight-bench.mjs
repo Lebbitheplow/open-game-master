@@ -479,14 +479,18 @@ export default {
       }, { timeoutMs: 60_000, label: "the AI-run test table" });
       tableId = (await t.url()).pathname.split("/")[2];
       await eventually(() => model.state.asked > 0, { timeoutMs: 60_000, label: "the AI GM asked to open the fight" });
-      await showBanner();
-      check(/the AI GM runs the enemies/.test((await banner.innerText()).replace(/\s+/g, " ")) || phone, "the banner says the AI GM runs it");
-      // Let the opening settle, then look for the monsters' Hand.
+      // The opening settles first: on a phone the table turns to the board
+      // when the fight's order lands, and a banner read before that went
+      // from under the read (it waited 30 seconds for a banner the board hid).
       await eventually(async () => {
         const data = await (await api.get(`${base}/api/campaigns/${tableId}`)).json();
         return data.encounter?.orderReady;
       }, { timeoutMs: 60_000, label: "the AI-run fight's order" });
       await untilStill(page).catch(() => undefined);
+      await showBanner();
+      // A phone leaves the sentence out while a Hand is dealt (hand.css).
+      if (!phone) check(/the AI GM runs the enemies/.test((await banner.innerText()).replace(/\s+/g, " ")), "the banner says the AI GM runs it");
+      // Then look for the monsters' Hand.
       check(!(await page.locator(`${root}section[aria-label="The monsters' hand"]`).locator("visible=true").count()), "no monsters' Hand at a test the AI runs");
       await t.shot("s7-ai-table");
       await openPanelTab(t, "dm");
