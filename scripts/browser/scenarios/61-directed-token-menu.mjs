@@ -73,11 +73,23 @@ export default {
     check(from, "the goblin's token on the board");
     await pick("Teleport");
     await eventually(() => board.getByText("Tap the tile it appears on").count(), { label: "the teleport hint" });
-    // The action ring stays open while it waits for the tile, and on a phone
-    // its buttons cover the squares beside the goblin: a tap there lands on
-    // the ring once its buttons have popped in. The first square along the
-    // row that is on top where the pointer lands is the one tapped.
+    // While it waits for the tile the dial keeps only its hint and Close, as
+    // it does while a target is chosen. Its sigils keep their size at any
+    // zoom, so on a zoomed-out board they lay over the very squares around
+    // the goblin a DM would pick, and a tap there landed on the ring.
     await untilStill(page);
+    check((await menu.getByRole("menuitem").count()) === 0, "no sigil of the dial waits over the board while the tile is chosen");
+    for (const dx of [-2, 2]) {
+      const square = frame.locator(`[data-tile-x="${from.x + dx}"][data-tile-y="${from.y}"]`);
+      if (!(await square.count())) continue;
+      const clear = await square.evaluate((node) => {
+        const box = node.getBoundingClientRect();
+        return document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2) === node;
+      });
+      check(clear, `the square ${dx > 0 ? "two right of" : "two left of"} the goblin is clear of the dial`);
+    }
+    // The first square along the row that is on top where the pointer lands
+    // is the one tapped.
     let destination = null;
     for (const dx of [-2, -3, -4, 2, 3, 4]) {
       const square = frame.locator(`[data-tile-x="${from.x + dx}"][data-tile-y="${from.y}"]`);

@@ -153,7 +153,7 @@ export function TokenHud({
   const centre = useRef<HTMLDivElement>(null);
   // Zoomed in, the figure grows and the sigils do not, so the arc widens to
   // clear it, as far as the frame has room (fitDial).
-  const [fit, setFit] = useState<{ side: DialSide; zoom: number; radius: number; fits: boolean } | null>(null);
+  const [fit, setFit] = useState<{ side: DialSide; zoom: number; radius: number; fits: boolean; close: number } | null>(null);
   // Again whenever the figure or the camera moves: a pan or a zoom changes
   // where the figure sits on screen without the figure moving.
   const [panX, panY, camZoom] = [camera?.x, camera?.y, camera?.zoom];
@@ -177,7 +177,7 @@ export function TokenHud({
     // Its size undone, the dial reaches the same on screen at any zoom.
     const next = fitDial({ x: at.left, y: at.top }, frame, half);
     setFit((current) =>
-      current && current.side === next.side && current.radius === next.radius && current.fits === next.fits && Math.abs(current.zoom - zoom) < 0.001
+      current && current.side === next.side && current.radius === next.radius && current.fits === next.fits && current.close === next.close && Math.abs(current.zoom - zoom) < 0.001
         ? current
         : { ...next, zoom },
     );
@@ -187,8 +187,10 @@ export function TokenHud({
   const spread = Math.min(Math.PI, actions.length * 0.52);
   const middle = DIAL_CENTRE[side];
   const start = middle - spread / 2;
-  // Close sits across the figure from the arc; the hint keeps above or below.
-  const closeAt = { x: -Math.cos(middle) * (radius + 16), y: -Math.sin(middle) * (radius + 16) };
+  // Close sits across the figure from the arc, drawn in to stay inside the
+  // frame (dial-side.ts); the hint keeps above or below.
+  const closeReach = fit?.close ?? radius + 16;
+  const closeAt = { x: -Math.cos(middle) * closeReach, y: -Math.sin(middle) * closeReach };
   const hintBelow = side === "down" || (side !== "up" && flip);
   return (
     <div

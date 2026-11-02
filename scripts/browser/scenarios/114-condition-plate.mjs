@@ -40,6 +40,12 @@ export default {
     const figure = frame.getByRole("img", { name: new RegExp(`^${ogre.name}`) }).first();
     await eventually(() => figure.isVisible(), { timeoutMs: 20_000, label: `${ogre.name} on the board` });
     await untilStill(page);
+    // Whatever scrolls the frame (focus on a control it cuts off), it goes
+    // straight back: the camera places everything in it.
+    await frame.evaluate((node) => {
+      node.scrollTop = 30;
+    });
+    await eventually(() => frame.evaluate((node) => node.scrollTop === 0 && node.scrollLeft === 0), { timeoutMs: 2_000, label: "the frame scrolled back" });
 
     const inWindow = async (locator) => {
       const box = await locator.boundingBox();
@@ -117,6 +123,8 @@ export default {
         const meets = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
         const sigils = [...(menu?.querySelectorAll('[role="menuitem"]') ?? [])].map((item) => ({ label: item.getAttribute("aria-label"), box: item.getBoundingClientRect() }));
         const names = [...(menu?.querySelectorAll("span.font-display") ?? [])].map((item) => ({ label: item.textContent, box: item.getBoundingClientRect() }));
+        // Close, across the figure from the arc, is on the board too.
+        const closes = [...(menu?.querySelectorAll('button[aria-label="Close"]') ?? [])].map((item) => ({ label: "Close", box: item.getBoundingClientRect() }));
         const off = (box) => !frame || box.left < frame.left || box.right > frame.right || box.top < frame.top || box.bottom > frame.bottom;
         // The figure the dial is on, by its round rim: the sigils ring it,
         // clear of it, unless the frame had no room for an arc that wide
@@ -142,7 +150,7 @@ export default {
           ...(body ? [] : ["no rim found on the figure"]),
           ...sigils.filter(({ box }) => Math.abs(box.width - 40) > 1).map(({ label, box }) => `${label} is ${Math.round(box.width)}px, not 40`),
           ...sigils.filter(({ box }) => onBody(box)).map(({ label }) => `${label} over the figure`),
-          ...(fits ? [...sigils, ...names] : []).filter(({ box }) => off(box) || cams.some((cam) => meets(box, cam))).map(({ label }) => `${label} off the board or under the camera buttons`),
+          ...(fits ? [...sigils, ...names, ...closes] : []).filter(({ box }) => off(box) || cams.some((cam) => meets(box, cam))).map(({ label }) => `${label} off the board or under the camera buttons`),
           // A name never runs under a sigil, its own or a neighbour's: the
           // sigils are round, so the name's nearest point against the circle.
           ...names
@@ -162,6 +170,18 @@ export default {
       const how = ["side", "radius", "fits"].map((key) => dial.getAttribute(`data-dial-${key}`));
       check(problems.length === 0, `${when}, the dial is whole, clear and full size (${problems.join(", ")}; ${(await Promise.all(how)).join(" ")})`);
       check((await dial.getAttribute("data-dial-fits")) === "true", `${when}, the board has room for the dial`);
+      // Tab reaches every button on the dial without scrolling the frame,
+      // which would leave every square off from where the board drew it.
+      const scrolled = await dial.evaluate((menu) => {
+        const frame = menu.closest(".board-view");
+        return [...menu.querySelectorAll("button")].flatMap((button) => {
+          button.focus();
+          const moved = frame.scrollTop || frame.scrollLeft ? [`${button.getAttribute("aria-label")} scrolled it ${frame.scrollLeft},${frame.scrollTop}`] : [];
+          frame.scrollTo(0, 0);
+          return moved;
+        });
+      });
+      check(scrolled.length === 0, `${when}, focus on the dial leaves the frame where it was (${scrolled.join(", ")})`);
     };
     await checkDial("at the board's own zoom");
     await t.shot("dial");
@@ -208,6 +228,7 @@ export default {
     await held.screenshot({ path: t.shotPath("held-plate") }).catch(() => {});
     await page.keyboard.press("Escape");
     await eventually(async () => !(await held.isVisible().catch(() => false)), { label: "Escape closes the held plate" });
+
 
     // The dial at the camera's far zooms: the board zooms at the pointer, so
     // the ogre stays under it. Zoomed out its sigils used to shrink with the

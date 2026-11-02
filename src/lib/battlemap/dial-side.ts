@@ -22,6 +22,10 @@ export const DIAL_RADIUS = 56;
 // a 24px gap), and a name above or below a sigil (the gap and its height).
 const NAME_ACROSS = 94;
 const NAME_UP = 40;
+// Close sits across the figure from the arc (TokenHud.tsx), a 28px round
+// centred 16px past the radius where the frame has the room.
+const CLOSE_GAP = 16;
+const CLOSE_HALF = 14;
 
 // The radius that clears a figure: its half-width on screen and a gap wide
 // enough for the condition badges along its rim.
@@ -61,16 +65,26 @@ export function fitDial(
   figure: { x: number; y: number },
   frame: Box,
   figureHalf = 0,
-): { side: DialSide; radius: number; fits: boolean } {
+): { side: DialSide; radius: number; fits: boolean; close: number } {
   const room = roomAround(figure, frame);
   const sideways: DialSide = room.left >= room.right ? "left" : "right";
   const order: DialSide[] = ["up", "down", sideways, sideways === "left" ? "right" : "left"];
   for (let radius = dialRadius(figureHalf); radius >= DIAL_RADIUS; radius -= 2) {
     const side = order.find((option) => fits(option, radius, room));
-    if (side) return { side, radius, fits: true };
+    if (side) return { side, radius, fits: true, close: closeReach(side, radius, room) };
   }
   const level = room.left >= DIAL_RADIUS + NAME_ACROSS && room.right >= DIAL_RADIUS + NAME_ACROSS;
-  return { side: level ? (room.top >= room.bottom ? "up" : "down") : sideways, radius: DIAL_RADIUS, fits: false };
+  const side: DialSide = level ? (room.top >= room.bottom ? "up" : "down") : sideways;
+  return { side, radius: DIAL_RADIUS, fits: false, close: closeReach(side, DIAL_RADIUS, room) };
+}
+
+// How far across the figure from the arc Close sits: its usual gap past the
+// radius, drawn in to stay whole inside the frame. Cut off by the frame it
+// was out of reach, and the keyboard's focus on it scrolled the frame, which
+// an overflow-hidden board never scrolls back.
+function closeReach(side: DialSide, radius: number, room: ReturnType<typeof roomAround>): number {
+  const far = { up: room.bottom, down: room.top, left: room.right, right: room.left }[side];
+  return Math.max(0, Math.min(radius + CLOSE_GAP, far - CLOSE_HALF - 2));
 }
 
 // The middle of the arc, in radians, for each side (screen y runs down).

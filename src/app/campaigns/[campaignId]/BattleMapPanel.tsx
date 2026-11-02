@@ -1283,6 +1283,15 @@ export function BattleMapPanel({
         if (action) { event.preventDefault(); controlAddonCamera(action); }
       }}
       onPointerDownCapture={onFramePointerDownCapture}
+      // The camera places everything in the frame, so the frame itself never
+      // scrolls: focus on a control the frame cuts off (a dial sigil at the
+      // edge, by Tab or a dialog handing focus back) scrolled it, and with
+      // overflow hidden nothing scrolled it back, leaving every square off
+      // from where the board drew it.
+      onScroll={(event) => {
+        const frame = event.currentTarget;
+        if (frame.scrollTop || frame.scrollLeft) frame.scrollTo(0, 0);
+      }}
       onPointerMove={(event) => {
         if (!addonViewport) { cam.frameProps.onPointerMove(event); onFramePointerMove(event); }
       }}
@@ -1425,7 +1434,11 @@ export function BattleMapPanel({
                 footprint={view.tokenFootprint[hudToken.id] ?? 1}
                 anchor={anchor}
                 camera={addonViewport ? undefined : cam.camera}
-                actions={targeting ? [] : hudActions}
+                // Choosing a target or a teleport's tile, the dial keeps only
+                // its hint and Close: its sigils hold their size at any zoom,
+                // so zoomed out they lay over the very squares around the
+                // figure that are being picked.
+                actions={targeting || teleporting === hudToken.id ? [] : hudActions}
                 hint={
                   targeting
                     ? targeting === "attack"
