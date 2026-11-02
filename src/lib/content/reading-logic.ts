@@ -31,7 +31,10 @@ export const READING_KINDS = ["spell", "monster", "feat", "race", "class", "back
 //   2: an SRD entry reads as checked (the SRD 5.1 text audit).
 //   3: the SRD 5.1 text audit's fixes changed spell and monster readings
 //      (spells read as hand-written rows, corrected monster blocks).
-export const READER_REVISION = 3;
+//   4: Mass Heal's note names heal's targets, one entry per creature (PR
+//      749); a pack's stored "one heal call per creature" sent the model to a
+//      call, and a slot, per creature out of a fight.
+export const READER_REVISION = 4;
 export type ReadingKind = (typeof READING_KINDS)[number];
 export type ReadingSource = "hand-written" | "parsed" | "missing";
 
