@@ -194,4 +194,24 @@ check("a closer on a line with anything else in it stays, and text with no orpha
   }
 });
 
+check("a line of closers that closes a bracket still open above it stays", () => {
+  for (const kept of [
+    "*(I turn to the door\nand listen.\n)*",
+    "*[I turn to the door\nand listen.\n]*",
+    "_(I turn to the door\n\nand listen.\n)_\n\nThe strap creaks.",
+    "*(He frowns (again)\nand listens.\n)*",
+    "*[(I turn\n])*",
+  ]) {
+    assert.equal(withoutOrphanClosers(kept), kept);
+  }
+  assert.equal(withoutOrphanClosers("Kara frowns :(\n\n)*\n\nThe strap creaks."), "Kara frowns :(\n\n)*\n\nThe strap creaks.", "an earlier open bracket fails safe");
+});
+
+check("a line of closers goes when the brackets above it are closed or of the other kind", () => {
+  assert.equal(withoutOrphanClosers("The door (the old one) creaks.\n\n)*\n\nThe strap creaks."), "The door (the old one) creaks.\n\nThe strap creaks.");
+  assert.equal(withoutOrphanClosers("*(I turn\nand listen.\n)*\n\n)*\n\nThe strap creaks."), "*(I turn\nand listen.\n)*\n\nThe strap creaks.", "the first closes the aside, the second nothing");
+  assert.equal(withoutOrphanClosers("*(I turn\n]*\nand listen.)*"), "*(I turn\nand listen.)*", "a ] closes no (");
+  assert.equal(withoutOrphanClosers(")*\n\n*(I turn\nand listen.\n)*"), "*(I turn\nand listen.\n)*", "an orphan above an aside goes, and the aside's closer stays");
+});
+
 console.log(`narration tidy: ${passed} checks passed`);
