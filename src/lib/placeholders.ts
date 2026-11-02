@@ -391,13 +391,27 @@ export function npcRoleLabel(role: string | null | undefined): string {
 // creature type unusable; hashing gives a cast list twelve different faces
 // that stay put per NPC, which reads better than twenty identical commoners
 // and claims no more than a name already does.
+//
+// What else is recorded about them comes next, never guessed: a role that is
+// one of the enemy roles (a bandit, an archer) draws its plate for their race
+// and presentation (enemyNpcPlaceholder), and a recorded race with no role
+// plate draws that race's portrait, so an elf ally on the board is an elf.
 export function npcPlaceholder(
   role: string | null | undefined,
   seed = "",
+  look: EnemyNpcLook = {},
 ): string {
   const id = String(role ?? "").trim().toLowerCase().replace(/[\s_]/g, "-");
   if (NPC_ROLES.has(id)) {
     return `${BASE}/npc/${id}.webp`;
+  }
+  const enemyRole = enemyNpcPlaceholder(role, look);
+  if (enemyRole) {
+    return enemyRole;
+  }
+  const family = raceFamily(recordedRace(look.race));
+  if (family) {
+    return `${BASE}/character-race/${family}-${normalizePresentation(look.presentation, look.gender)}.webp`;
   }
   if (seed) {
     return `${BASE}/npc/${GENERIC_NPC_ROLES[hash(seed) % GENERIC_NPC_ROLES.length].id}.webp`;

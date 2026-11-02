@@ -43,15 +43,18 @@ export function characterPortraitPrompt(look: CharacterLook, style = ""): string
     .join(". ");
 }
 
-// Who an NPC is at a glance: their gender and what they do ("Female
-// Merchant"). The name stays out: a render is not improved by a proper noun
-// the model has never seen.
-export function npcIdentity(npc: { gender: string; role: string }): string {
-  return [npc.gender, npc.role.trim()].filter(Boolean).join(" ");
+// Who an NPC is at a glance: their gender, their people and what they do
+// ("Female Wood Elf Merchant"). The name stays out: a render is not improved
+// by a proper noun the model has never seen. The people rides because the
+// placeholder an elf draws is an elf's, and a painted face replaces it.
+export function npcIdentity(npc: { gender: string; race?: string; role: string }): string {
+  return [npc.gender, npc.race?.trim(), npc.role.trim()].filter(Boolean).join(" ");
 }
 
 export type NpcLook = {
   gender: string;
+  // Their people in words ("Wood Elf", src/lib/npc-race.ts raceWords).
+  race?: string;
   // The role's label ("Merchant"), or the text the author typed.
   role: string;
   // Their distinguishing trait, in English.

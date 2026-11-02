@@ -78,9 +78,9 @@ export function EncounterPanel({
       }
       const enemy = enemiesById.get(entry.id);
       if (enemy) {
-        return [monsterPlaceholder(enemy.type, { cr: enemy.cr, genre, seed: enemy.name, slug: enemy.slug, name: enemy.name })];
+        return [monsterPlaceholder(enemy.type, { cr: enemy.cr, genre, seed: enemy.name, slug: enemy.slug, name: enemy.name, race: enemy.race, gender: enemy.gender })];
       }
-      return entry.kind === "npc" ? [npcPlaceholder(null, entry.name)] : [];
+      return entry.kind === "npc" ? [entry.face, npcPlaceholder(null, entry.name)] : [];
     };
   }, [sheets, encounter.enemies, genre]);
 

@@ -35,6 +35,7 @@ import { outwardApproval } from "@/lib/dm/scheme-logic";
 import { publishRelationshipsUpdated } from "@/lib/dm/relationship-tools";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { TOLD_GENDER_HELP, TOLD_GENDERS, toldGender } from "@/lib/gender";
+import { TOLD_RACE_HELP, raceWords, storedRace, unreadRace } from "@/lib/npc-race";
 import { rollExpression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
 import {
@@ -98,6 +99,7 @@ export const socialTools: ToolDef[] = [
             enum: [...TOLD_GENDERS],
             description: `${TOLD_GENDER_HELP} Give it when you register someone new; omit it on later calls.`,
           },
+          race: { type: "string", description: TOLD_RACE_HELP },
           drawnTo: {
             type: "array",
             items: { type: "string", enum: TOLD_ATTRACTION },
@@ -230,6 +232,7 @@ const setNpcSchema = z.object({
   trait: z.string().max(300).optional(),
   location: z.string().max(120).optional(),
   gender: z.enum(TOLD_GENDERS).optional(),
+  race: z.string().max(40).optional(),
   drawnTo: z.array(z.string().max(40)).max(6).optional(),
   goal: z.string().max(300).optional(),
   ambition: z.string().max(300).optional(),
@@ -246,6 +249,9 @@ export function handleSetNpc(campaign: Campaign, rawArguments: string): ToolResu
   // registration free to forget it: the result then asks, never refuses.
   const before = getNpcByName(campaign.id, args.name);
   const untold = !args.gender && !before;
+  // A race the SRD list does not have is left unrecorded and said so, never
+  // refused: registering the NPC matters more than their face.
+  const unknownRace = unreadRace(args.race);
   const registered = bootstrapAgency(
     campaign,
     upsertNpc({
@@ -255,6 +261,7 @@ export function handleSetNpc(campaign: Campaign, rawArguments: string): ToolResu
       trait: args.trait,
       location: args.location,
       gender: toldGender(args.gender),
+      race: storedRace(args.race),
       // Written once (upsertNpc): the first answer is who they are.
       attraction: attractionFromTold(args.drawnTo),
     }),
@@ -283,7 +290,9 @@ export function handleSetNpc(campaign: Campaign, rawArguments: string): ToolResu
     ...(npc.agency.goals.session ? { goal: npc.agency.goals.session.text } : {}),
     note: `${npc.name} is tracked as ${npc.attitude}. Their attitude persists until the story or a social_check changes it.${
       shifted ? ` The party has met them now, and how ${npc.name} feels about each character is tracked from here.` : ""
-    }${untold ? " Their gender is not recorded: pass gender on a set_npc for them (Unknown if the story has not shown it)." : ""}`,
+    }${untold ? " Their gender is not recorded: pass gender on a set_npc for them (Unknown if the story has not shown it)." : ""}${
+      unknownRace ? ` "${args.race}" is not a race the server knows, so none is recorded; give one of the SRD races (human, elf, dwarf, half-orc...) or omit it.` : ""
+    }`,
   };
 }
 
@@ -593,8 +602,10 @@ export function npcRosterForPrompt(campaignId: string, options: { romance?: bool
     witnessNote: renderWitnessNote(npc.name, facts),
     // The stat block they fight with (start_encounter takes their name).
     statBlock: npc.statBlock,
-    // Their gender, and at a romance table who they are drawn to (issue
-    // 501), so romance follows who people are. Blank says nothing.
+    // Their gender and their people, and at a romance table who they are
+    // drawn to (issue 501), so romance follows who people are and the
+    // narration does not call the elf whose face the board draws a human.
+    // Blank says nothing.
     identity: npcIdentity(npc, options.romance ?? false),
   }));
 }
@@ -603,7 +614,7 @@ function npcIdentity(npc: Npc, romance: boolean): string {
   const drawn = romance ? attractionWords(npc.attraction) : "";
   // Romance is exclusive unless someone is open to more (issue 642).
   const open = romance && openToMore(npc.attraction) ? "open to more than one partner" : "";
-  return [npc.gender, drawn ? `drawn to ${drawn}` : "", open].filter(Boolean).join(", ");
+  return [npc.gender, raceWords(npc.race), drawn ? `drawn to ${drawn}` : "", open].filter(Boolean).join(", ");
 }
 
 const ATTITUDE_LADDER = ["hostile", "indifferent", "friendly"] as const;

@@ -68,7 +68,8 @@ export function TokenFace({
   );
 }
 
-export type FaceLookup = (entry: { id: string; kind: string; name: string }) => Array<string | null | undefined>;
+// `face` is what the server found for an NPC the Cast knows (npc-faces.ts).
+export type FaceLookup = (entry: { id: string; kind: string; name: string; face?: string }) => Array<string | null | undefined>;
 
 // Top-left: the order as portrait plates, the current one framed and
 // breathing. Display only; a tap opens the order (the DM's editable panel,

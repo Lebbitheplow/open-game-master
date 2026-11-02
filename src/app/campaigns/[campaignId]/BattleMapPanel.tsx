@@ -210,13 +210,14 @@ export function BattleMapPanel({
       byRef.set(sheet.id, characterPlaceholder({ race: sheet.race, class: sheet.class, gender: sheet.gender }));
     }
     for (const enemy of encounter?.enemies ?? []) {
-      byRef.set(enemy.id, monsterPlaceholder(enemy.type, { cr: enemy.cr, genre, seed: enemy.name, slug: enemy.slug, name: enemy.name }));
+      byRef.set(enemy.id, monsterPlaceholder(enemy.type, { cr: enemy.cr, genre, seed: enemy.name, slug: enemy.slug, name: enemy.name, race: enemy.race, gender: enemy.gender }));
     }
-    // Somebody the DM put down by hand has no sheet and no stat block: they
-    // draw one of the neutral faces by their name, and keep it.
+    // Somebody the DM put down by hand has no sheet and no stat block: the
+    // face the Cast gives them when it knows them, else one of the neutral
+    // faces by their name, kept.
     for (const token of view.tokens) {
       if (token.kind === "npc" && !byRef.has(token.refId)) {
-        byRef.set(token.refId, npcPlaceholder(null, token.name));
+        byRef.set(token.refId, token.face || npcPlaceholder(null, token.name));
       }
     }
     return byRef;
@@ -264,9 +265,9 @@ export function BattleMapPanel({
   const anchorsOf = (expanded: boolean) => (addonView && (!drawActive || nativeBattlefieldActive) ? (expanded ? anchorStores.enlarged : anchorStores.inline) : null);
   // A slot the DM added to the order has no token to borrow a face from.
   const faceOfEntry = useCallback(
-    (entry: { id: string; kind: string; name: string }) => [
+    (entry: { id: string; kind: string; name: string; face?: string }) => [
       ...faceOfRef(entry.id),
-      entry.kind === "npc" ? npcPlaceholder(null, entry.name) : null,
+      entry.kind === "npc" ? entry.face || npcPlaceholder(null, entry.name) : null,
     ],
     [faceOfRef],
   );

@@ -151,19 +151,23 @@ export const MORE_TOOLS = "more_tools";
 export const ESSENTIAL_TOOLS = ["request_roll", "request_player_input", "record_event", "send_whisper"];
 // And in a fight, the actions no round runs without.
 export const ESSENTIAL_COMBAT_TOOLS = ["pc_attack", "enemy_attack", "end_turn"];
-// What a fight's call can spare when its window is tight, before it falls to
-// the essentials: lookups and notes, noticing and group checks, a new NPC, a
-// prepared fight. Each still runs when called by name.
-export const COMBAT_SPARE_TOOLS = [
+// What an exploring call gives up before the group the players' words (or
+// the model) opened: lookups, notes and a prepared fight. A 16K window has
+// had a few dozen tokens to spare, so one more argument on a core tool used
+// to push the shop out of the call where a player says "buy" (issue 746);
+// the moment's group is what the reply needs, and these still run when
+// called by name.
+export const EXPLORE_SPARE_TOOLS = [
   "recall_story",
   "search_lore",
   "read_card",
   "write_campaign_note",
   "run_prepared_encounter",
-  "set_npc",
-  "check_notice",
-  "group_check",
 ];
+// What a fight's call can spare when its window is tight, before it falls to
+// the essentials: lookups and notes, noticing and group checks, a new NPC, a
+// prepared fight. Each still runs when called by name.
+export const COMBAT_SPARE_TOOLS = [...EXPLORE_SPARE_TOOLS, "set_npc", "check_notice", "group_check"];
 
 const GROUP_IDS = Object.keys(TOOL_GROUPS) as ToolGroupId[];
 // A merged tool sits in every group its siblings sat in (apply_damage in the

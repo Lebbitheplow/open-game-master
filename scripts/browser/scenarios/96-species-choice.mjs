@@ -62,7 +62,10 @@ export default {
       const item = page.getByRole("menuitemradio", { name: row }).locator("visible=true").first();
       await eventually(() => item.count(), { timeoutMs: 10_000, label: `the row ${row}` });
       await t.tap(item);
-      await upTo(async () => (await page.getByRole("menuitemradio").locator("visible=true").count()) === 0, 2_000);
+      // Closed before anything else is typed or tapped: on a loaded runner a
+      // phone's menu still closing after two seconds took the keys meant for
+      // the next field.
+      await eventually(async () => (await page.getByRole("menuitemradio").locator("visible=true").count()) === 0, { timeoutMs: 10_000, label: `the menu closed after ${row}` });
     };
     try {
       // ---- made in Homebrew ----
@@ -91,9 +94,16 @@ export default {
       await eventually(() => label.isVisible(), { timeoutMs: 10_000, label: "the choice's label field" });
       await label.fill("Draconic ancestry");
       const newName = editor.getByLabel("New option's name");
+      const addButton = editor.getByRole("button", { name: /^Add option$/ });
       const addOption = async (name) => {
         await newName.fill(name);
+        // Tab reaches Add only once the name is in and Add is enabled; a Tab
+        // pressed before that skipped it, and Enter pressed the next button
+        // there is, Remove the choice (CI, PR 747: "the option Mirrorscale
+        // did not hold").
+        await eventually(() => addButton.isEnabled(), { timeoutMs: 10_000, label: `Add option, for ${name}` });
         await newName.press("Tab");
+        await eventually(() => addButton.evaluate((element) => element === document.activeElement), { timeoutMs: 5_000, label: `the focus on Add option, for ${name}` });
         await page.keyboard.press("Enter");
         await eventually(() => editor.locator(`[data-species-option="${name.toLowerCase()}"]`).count(), { timeoutMs: 10_000, label: `the option ${name}` });
       };

@@ -55,6 +55,10 @@ export type PlayerMapView = {
     // The painted object a prop or bystander is drawn as, or "" for the
     // plain figure (public/assets/props/manifest.json ids).
     stamp: string;
+    // An "npc" token the Cast knows by its name: their portrait, or the
+    // plate their role, race and gender pick (src/lib/db/npc-faces.ts).
+    // Absent for a bystander nobody tracks, who keeps a face by name.
+    face?: string;
     // The side a creature fights on when it is not its kind's (issue 503):
     // "foe" for a character turned against the party, "party" for a
     // creature the party dominates. The rim follows it. Absent otherwise.
