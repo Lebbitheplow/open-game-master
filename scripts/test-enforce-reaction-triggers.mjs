@@ -72,9 +72,12 @@ if (world.hasPack) {
     const enemy = await stage();
     const refused = await world.invoke("use_reaction", { characterId: wizard.id, feature: "Absorb Elements" });
     assert.equal(refused.ok, false, "Absorb Elements was cast with no elemental damage to answer");
-    // A fire bolt that took 10 of the wizard's 40.
+    // A fire bolt that took 10 of the wizard's 40, kept as the engine keeps a
+    // hit: the reaction replays the fight from where it left them.
     await world.hitBy(wizard.id, { enemyId: enemy.id, raw: 10, type: "fire", attack: "Fire Bolt" });
     world.patch(wizard.id, { currentHp: 30 });
+    const { freshLastHit, writeLastHit } = await import("../src/lib/dm/last-hit.ts");
+    writeLastHit(world.campaignId, { ...freshLastHit(world.campaignId, wizard.id), after: { currentHp: 30, tempHp: 0, beastHp: null } });
     const out = await world.invoke("use_reaction", { characterId: wizard.id, feature: "Absorb Elements", level: 2 });
     assert.equal(out.ok, true, out.error);
     const held = world.sheet(wizard.id).conditions;

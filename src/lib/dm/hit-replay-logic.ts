@@ -10,39 +10,64 @@
 // miss that leaves them standing turns the later blows back into hit point
 // damage, and a later blow that now misses takes back its failures. The hits
 // are replayed whole, from the earliest one changed, as the damage path
-// deals them (src/lib/dm/pc-damage.ts, death.ts applyDamageDeathHook): once
-// as they landed and once corrected. What differs is what the reaction gives
-// back.
+// deals them (src/lib/dm/pc-damage.ts, death.ts applyDamageDeathHook).
+//
+// Between two hits, and since the last, anything else may have changed them:
+// an area spell, a breath, healing, temporary hit points, the death saves
+// they rolled. That is a gap, read off where one hit left them and where the
+// next found them, and carried onto the corrected fight as the change it
+// made (carryGap). The corrected blows then take back only their own part:
+// replaying the hits alone from where the first found them erased the fire
+// and the healing between them.
 //
 // Pure.
+import type { Advantage } from "@/lib/dice";
 import { freshDeathTrack, isMassiveDamage, onDamageAtZero, type DeathTrack } from "@/lib/dm/death-logic";
 import { applyDamageMath, wildShapeDamageMath } from "@/lib/dm/mutation-math";
 
 // Where a character stands between blows. `wildShape` is a beast form's
-// pool while the form holds; its other fields ride along untouched.
+// pool while the form holds; its other fields ride along untouched. `ward`
+// is an abjurer's Arcane Ward's hit points, which take a blow first; null
+// with none raised.
 export type Standing<W extends { beastHp: number } = { beastHp: number }> = {
   currentHp: number;
   tempHp: number;
   wildShape: W | null;
   track: DeathTrack | null;
+  ward?: number | null;
 };
 
+// What of a blow gets through the character's defenses, given what of it
+// the ward let past (reaction-refund.ts builds it from pc-damage.ts).
+export type Landing = (past: number) => number;
+
 // One swing as the replay needs it: whether it hit, whether it was a
-// critical hit, and the damage that reached the character (after resistance).
+// critical hit, the damage sent to the damage path and what of it lands.
 // `ordinary`: a critical that came only from the character lying
 // unconscious at 0 within 5 ft, as the ordinary hit it is on them standing
 // (SRD 5.1); a replay that finds them standing when it lands deals that.
-export type ReplaySwing = { hit: boolean; crit: boolean; landed: number; ordinary?: number };
-
-export type Replay<W extends { beastHp: number }> = {
-  // Where they stood before and after each hit, in order.
-  steps: Array<{ before: Standing<W>; after: Standing<W> }>;
-  final: Standing<W>;
-  // The damage past 0 of the blow that dropped them (massive damage).
-  overkill: number;
+// `standingHit`: false when the swing hit them only for lying at 0 (its
+// advantage came from their unconsciousness), so on them standing it misses.
+export type ReplaySwing = {
+  hit: boolean;
+  crit: boolean;
+  raw: number;
+  land: Landing;
+  ordinary?: { raw: number; land: Landing };
+  standingHit?: boolean;
 };
 
+// What one swing did in a replay: the damage that got through the defenses
+// (the concentration save is made against it), whether they stood when it
+// landed, and whether it dropped them.
+export type SwingOutcome = { landed: number; standing: boolean; dropped: boolean };
+
 const killed = (): DeathTrack => ({ ...freshDeathTrack(), failures: 3, dead: true });
+
+// Up: above 0 hit points, or in a beast form.
+export function up(state: Standing): boolean {
+  return state.currentHp > 0 || state.wildShape !== null;
+}
 
 function blow<W extends { beastHp: number }>(state: Standing<W>, landed: number, crit: boolean, maxHp: number): { next: Standing<W>; overkill: number | null } {
   if (state.wildShape) {
@@ -81,47 +106,156 @@ function dropping<W extends { beastHp: number }>(state: Standing<W>, amount: num
   };
 }
 
-export function replayHits<W extends { beastHp: number }>(start: Standing<W>, hits: ReplaySwing[][], maxHp: number): Replay<W> {
-  let state: Standing<W> = { ...start };
-  let overkill = 0;
-  const steps = hits.map((swings) => {
-    const before = { ...state };
-    for (const swing of swings) {
-      const standing = state.currentHp > 0 || state.wildShape !== null;
-      const ordinary = standing && swing.ordinary !== undefined;
-      const landed = ordinary ? (swing.ordinary as number) : swing.landed;
-      if (!swing.hit || landed <= 0) {
-        continue;
-      }
-      const out = blow(state, landed, swing.crit && !ordinary, maxHp);
-      state = out.next;
-      if (out.overkill !== null) {
-        overkill = out.overkill;
-      }
-    }
-    return { before, after: { ...state } };
-  });
-  return { steps, final: state, overkill };
+// One blow as the damage path lands it: the ward takes it first, what it
+// lets past meets the defenses, and the rest lands. `pastZero` is what went
+// past 0 hit points (a blow that dropped them, or one that found them down).
+export function strike<W extends { beastHp: number }>(
+  state: Standing<W>,
+  raw: number,
+  land: Landing,
+  crit: boolean,
+  maxHp: number,
+): { next: Standing<W>; landed: number; dropped: boolean; pastZero: number } {
+  if (raw <= 0) {
+    return { next: state, landed: 0, dropped: false, pastZero: 0 };
+  }
+  const absorbed = state.ward ? Math.min(state.ward, raw) : 0;
+  const warded = absorbed ? { ...state, ward: (state.ward as number) - absorbed } : state;
+  const landed = land(raw - absorbed);
+  if (landed <= 0) {
+    return { next: warded, landed: 0, dropped: false, pastZero: 0 };
+  }
+  const wasUp = up(warded);
+  const out = blow(warded, landed, crit, maxHp);
+  const pastZero = out.overkill ?? (wasUp ? 0 : Math.max(0, landed - warded.tempHp));
+  return { next: out.next, landed, dropped: out.overkill !== null, pastZero };
 }
 
-// The death track a character at 0 is left with: the one they have now
-// (with the saves rolled since the hits), less the failures the corrected
-// blows no longer dealt, and alive again when it was those failures, or a
-// blow past their maximum, that killed them. Stability a blow broke comes
-// back when that blow is gone.
-export function trackAfter(current: DeathTrack | null, was: DeathTrack | null, now: DeathTrack | null): DeathTrack | null {
-  if (!now) {
+// One hit's swings in order, from where it found them.
+export function replayHit<W extends { beastHp: number }>(start: Standing<W>, swings: ReplaySwing[], maxHp: number): { after: Standing<W>; swings: SwingOutcome[]; dropped: boolean } {
+  let state: Standing<W> = { ...start };
+  let dropped = false;
+  const outcomes = swings.map((swing) => {
+    const standing = up(state);
+    if (!swing.hit || (standing && swing.standingHit === false)) {
+      return { landed: 0, standing, dropped: false };
+    }
+    const asOrdinary = standing && swing.ordinary !== undefined;
+    const raw = asOrdinary ? (swing.ordinary as { raw: number }).raw : swing.raw;
+    const land = asOrdinary ? (swing.ordinary as { land: Landing }).land : swing.land;
+    const out = strike(state, raw, land, swing.crit && !asOrdinary, maxHp);
+    state = out.next;
+    dropped = dropped || out.dropped;
+    return { landed: out.landed, standing, dropped: out.dropped };
+  });
+  return { after: state, swings: outcomes, dropped };
+}
+
+// Whether a recorded roll hits with another advantage: kept from the same
+// d20 faces (a roll without advantage reads the first die, as the engine's
+// Protection does), its modifiers unchanged, against the AC it met.
+export function hitsWith(
+  swing: { faces: number[]; natural: number | null; total: number; vsAc: number },
+  advantage: Advantage,
+): boolean {
+  if (swing.natural === null || !swing.faces.length) {
+    return true;
+  }
+  const kept =
+    advantage === "none" || swing.faces.length < 2
+      ? swing.faces[0]
+      : advantage === "advantage"
+        ? Math.max(...swing.faces)
+        : Math.min(...swing.faces);
+  if (kept === 20) {
+    return true;
+  }
+  if (kept === 1) {
+    return false;
+  }
+  return swing.total - swing.natural + kept >= swing.vsAc;
+}
+
+// What changed a character between two hits, or since the last: read off
+// where the hit left them (`from`) and where the next found them, or where
+// they stand now (`to`). `pastZero` is the damage that went past 0 hit
+// points in it, which the hit points alone cannot show (the audit's
+// overkill, reaction-refund.ts).
+export type Gap<W extends { beastHp: number } = { beastHp: number }> = {
+  from: Standing<W>;
+  to: Standing<W>;
+  pastZero: number;
+};
+
+// A gap carried onto where the corrected hits left them, as the change it
+// made: damage (with what went past 0) through the ward, temporary hit
+// points and the hit points, temporary hit points granted (the higher kept,
+// as they do not stack), healing, a form taken, a ward raised, and while
+// they lay at 0 through it the death saves they rolled and the failures it
+// dealt. A gap that dropped them drops the corrected fight only if its
+// damage reaches that far. Returns the damage it dealt and what of it went
+// past 0, for the concentration save it asks and the next reaction.
+export function carryGap<W extends { beastHp: number }>(
+  state: Standing<W>,
+  gap: Gap<W>,
+  maxHp: number,
+): { next: Standing<W>; dealt: number; pastZero: number } {
+  const { from, to } = gap;
+  let next: Standing<W> = { ...state };
+  const fromBeast = from.wildShape?.beastHp ?? 0;
+  const toBeast = to.wildShape?.beastHp ?? 0;
+  // A form taken between: they stand in it as they do now.
+  if (!from.wildShape && to.wildShape) {
+    next = { ...next, wildShape: to.wildShape };
+  }
+  const wardGained = Math.max(0, (to.ward ?? 0) - (from.ward ?? 0));
+  if (wardGained) {
+    next = { ...next, ward: (next.ward ?? 0) + wardGained };
+  }
+  const tempGranted = to.tempHp > from.tempHp;
+  if (tempGranted) {
+    next = { ...next, tempHp: Math.max(next.tempHp, to.tempHp) };
+  }
+  const tempLost = tempGranted ? 0 : from.tempHp - to.tempHp;
+  const beastLost = from.wildShape ? Math.max(0, fromBeast - (to.wildShape ? toBeast : 0)) : 0;
+  const wardLost = Math.max(0, (from.ward ?? 0) - (to.ward ?? 0));
+  const hpLost = Math.max(0, from.currentHp - to.currentHp);
+  const healed = Math.max(0, to.currentHp - from.currentHp);
+  const damage = tempLost + beastLost + wardLost + hpLost + gap.pastZero;
+  let dealt = 0;
+  let pastZero = 0;
+  if (!up(from) && !up(to) && !up(next)) {
+    // Down through it on both sides: its damage soaked into temporary hit
+    // points, and the rest is on the track as it moved.
+    next = { ...next, tempHp: Math.max(0, next.tempHp - tempLost), track: trackMoved(next.track, from.track, to.track) };
+    pastZero = gap.pastZero;
+  } else if (damage > 0) {
+    const out = strike(next, damage, (past) => past, false, maxHp);
+    next = out.next;
+    dealt = out.landed;
+    pastZero = out.pastZero;
+  }
+  if (healed > 0) {
+    next = up(next) ? { ...next, currentHp: Math.min(maxHp, next.currentHp + healed) } : { ...next, currentHp: Math.min(maxHp, healed), track: null };
+  }
+  return { next, dealt, pastZero };
+}
+
+// The track of a character still at 0 moved as theirs did in a gap: the
+// saves rolled and the failures dealt, stability won or lost, death.
+function trackMoved(current: DeathTrack | null, from: DeathTrack | null, to: DeathTrack | null): DeathTrack | null {
+  if (!to) {
     return current;
   }
-  if (!current || !was) {
-    return now;
+  if (!current || !from) {
+    return to;
   }
-  const failures = Math.max(0, Math.min(3, current.failures - (was.failures - now.failures)));
+  const failures = Math.max(0, Math.min(3, current.failures + to.failures - from.failures));
   return {
-    successes: current.successes,
+    successes: Math.max(0, Math.min(3, current.successes + to.successes - from.successes)),
     failures,
-    stable: was.stable === now.stable ? current.stable : now.stable,
-    dead: was.dead && !now.dead ? failures >= 3 : current.dead,
+    stable: from.stable === to.stable ? current.stable : to.stable,
+    dead: (to.dead && !from.dead) || current.dead || failures >= 3,
   };
 }
 
@@ -131,7 +265,9 @@ export function sameStanding(a: Standing, b: Standing): boolean {
     a.currentHp === b.currentHp &&
     a.tempHp === b.tempHp &&
     (a.wildShape?.beastHp ?? null) === (b.wildShape?.beastHp ?? null) &&
+    (a.ward ?? null) === (b.ward ?? null) &&
     (a.track?.failures ?? 0) === (b.track?.failures ?? 0) &&
+    (a.track?.successes ?? 0) === (b.track?.successes ?? 0) &&
     Boolean(a.track?.dead) === Boolean(b.track?.dead) &&
     Boolean(a.track?.stable) === Boolean(b.track?.stable)
   );

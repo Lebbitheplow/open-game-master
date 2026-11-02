@@ -48,7 +48,7 @@ import { wornArmorTurnsCrits } from "@/lib/srd/armor";
 import { resolveEnemyRef, unknownEnemyRef } from "@/lib/dm/enemy-damage";
 import { approachTarget, reachesThisTurn, spendEnemyAction, standUpIfProne } from "@/lib/dm/enemy-approach";
 import { blowByType, resolveOnHit, scaledParts } from "@/lib/dm/enemy-hit";
-import { applyPcDamage } from "@/lib/dm/pc-damage";
+import { applyPcDamage, type BlowFlags } from "@/lib/dm/pc-damage";
 import { effectOutcome } from "@/lib/dm/effect-tools";
 import { alternativeBlow, attackNamed, charmedBy, enemyAttackProfile, pastRangedLimit, plannedSwings, swingMode, type EnemyAttackProfile } from "@/lib/dm/enemy-profile";
 import { publishFx, tokenPosition } from "@/lib/dm/fx";
@@ -613,6 +613,28 @@ export function handleEnemyAttack(
       defended,
     });
     const { advantage, authored } = odds;
+    // At a target lying at 0, the roll it would have made at them standing:
+    // a reaction that leaves them up when this swing lands reads the hit
+    // again with it (last-hit.ts standingAdvantage).
+    const downed = (getSheetById(target.id) ?? target).currentHp <= 0;
+    const standingAdvantage = downed
+      ? enemySwingOdds({
+          campaign,
+          turn,
+          encounterId: encounter.id,
+          standing,
+          target,
+          requested: args,
+          ranged,
+          longRange: mode.longRange,
+          distance: spatial.distance,
+          outdoorsOnMap: Boolean(attackerPos && targetPos && boardForWeather?.outdoors),
+          underwater,
+          riders,
+          defended,
+          standingTarget: true,
+        }).advantage
+      : undefined;
     for (const note of odds.notes) {
       if (!notes.includes(note)) {
         notes.push(note);
@@ -731,21 +753,26 @@ export function handleEnemyAttack(
     const ordinary = ordinaryBlow
       ? { raw: shrunk(ordinaryBlow.amount), ...(ordinaryBlow.parts ? { parts: scaledParts(ordinaryBlow.parts, shrunk(ordinaryBlow.amount)) } : {}) }
       : undefined;
+    // What the blow is made of for the target's defenses, kept with the hit
+    // so a reaction's replay meets the same clauses (last-hit.ts flags).
+    const flags: BlowFlags = {
+      // Magic Weapons: its weapon attacks are magical; so is a spell attack,
+      // and a blow the block prints as magical ("magical bludgeoning").
+      ...(hasTrait(standing.stats, "magicWeapons") || attack.spellAttack || attack.magical ? { magical: true } : {}),
+      // Emissary of Redemption holds nothing against a creature the paladin attacked.
+      ...(authored.spurned.length ? { exceptFeatures: authored.spurned } : {}),
+    };
     // Damage lands through the damage path: the ward, each type's defenses,
     // temp HP, clamps, audit, concentration and the sheet_updated publish.
     const applied: Record<string, unknown> = dealt <= 0 ? {} : applyPcDamage(campaign, turn.id, getSheetById(target.id) ?? target, {
       amount: Math.min(dealt, 200),
       ...(blow.type ? { type: blow.type } : {}),
       ...(blow.parts ? { parts: scaledParts(blow.parts, dealt) } : {}),
-      // Magic Weapons: its weapon attacks are magical; so is a spell attack,
-      // and a blow the block prints as magical ("magical bludgeoning").
-      ...(hasTrait(standing.stats, "magicWeapons") || attack.spellAttack || attack.magical ? { magical: true } : {}),
+      ...flags,
       // Crits against a dying target count double death-save failures.
       ...(crit ? { crit: true } : {}),
       // Only a melee attack knocks out; a ranged one drops them dying.
       ...(args.nonlethal && !ranged ? { nonlethal: true } : {}),
-      // Emissary of Redemption holds nothing against a creature the paladin attacked.
-      ...(authored.spurned.length ? { exceptFeatures: authored.spurned } : {}),
       reason: `${enemy.displayName}'s ${attack.name}`,
     });
     totalDamage += dealt;
@@ -753,7 +780,19 @@ export function handleEnemyAttack(
     if (multiattackDefense) {
       defended = 4;
     }
-    hitLog.swing(hitOutcome, targetAc(), { hit: true, crit, raw: dealt, advantage, type: blow.type ?? "", ...(blow.parts ? { parts: scaledParts(blow.parts, dealt) } : {}), ranged, attack: attack.name, ...(ordinary ? { ordinary } : {}) });
+    hitLog.swing(hitOutcome, targetAc(), {
+      hit: true,
+      crit,
+      raw: dealt,
+      advantage,
+      type: blow.type ?? "",
+      ...(blow.parts ? { parts: scaledParts(blow.parts, dealt) } : {}),
+      ranged,
+      attack: attack.name,
+      ...(ordinary ? { ordinary } : {}),
+      ...(standingAdvantage ? { standingAdvantage } : {}),
+      flags,
+    });
     for (const type of attack.type.split("/")) {
       damageTypes.add(type);
     }

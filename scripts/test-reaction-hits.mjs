@@ -608,6 +608,134 @@ await test("Her earlier Shield still counts against a later attack on her at 0",
   assert.equal(track(world, mira)?.failures ?? 0, 0, JSON.stringify(later.result));
 });
 
+// ---- what else happened between the hits stays ----
+// One AI reply ends Mira's turn and plays `plays` in order: a goblin's swing
+// at `target` ({ enemy, faces }) or any other call ({ call, faces }), each
+// with the dice it rolls.
+async function replyOf(table, target, plays) {
+  const { world, kit, mira, g1, g2 } = table;
+  const turn = createDmTurn(world.campaignId, [], "ai");
+  const ai = { kind: "ai", turnId: turn.id };
+  world.say("player", "That's my turn.", world.sheet(mira.id));
+  const ended = await invokeEngine(world.campaign(), ai, { name: "end_turn", args: { characterId: mira.id } });
+  assert.equal(ended.ok, true, ended.error);
+  kit.place(target.id, 5, 5);
+  kit.place(g1.id, 5, 6);
+  kit.place(g2.id, 4, 5);
+  for (const play of plays) {
+    world.dice(...(play.faces ?? []));
+    const call = play.call ?? { name: "enemy_attack", args: { enemyId: play.enemy.id, targetCharacterId: target.id } };
+    const out = await invokeEngine(world.campaign(), ai, call);
+    world.clearDice();
+    assert.equal(out.ok, true, `${call.name}: ${out.error}`);
+  }
+  return turn;
+}
+
+await test("Shield takes back only the clubs: fire that landed between the two hits stays (issue 685 review)", async () => {
+  const table = await stage();
+  const { world, mira, g1, g2 } = table;
+  // 10 + 4 hits for 3 + 2; 2d6 fire for 10; 12 + 4 hits for 4 + 2: 30 - 5 - 10 - 6.
+  await replyOf(table, mira, [
+    { enemy: g1, faces: [10, 3] },
+    { call: { name: "apply_damage", args: { characterId: mira.id, dice: "2d6", type: "fire", reason: "a fire bolt" } }, faces: [5, 5] },
+    { enemy: g2, faces: [12, 4] },
+  ]);
+  assert.equal(hp(world, mira), 9);
+  const out = await react(world, mira, "Shield");
+  assert.equal(out.ok, true, out.error);
+  assert.equal(hp(world, mira), 20, "both clubs miss AC 17; the fire stays");
+  // The later hit is kept as the corrected fight has it: the fire found her
+  // at 30 and left her at 20 before the second club.
+  const [, second] = openHits(world.campaignId, mira.id);
+  assert.equal(second.before.currentHp, 20, JSON.stringify(second.before));
+  assert.equal(second.after.currentHp, 20);
+});
+
+await test("Shield takes back only the clubs: healing between the two hits stays", async () => {
+  const table = await stage();
+  const { world, mira, g1, g2 } = table;
+  world.patch(mira.id, { currentHp: 20 });
+  // 20 - 5 = 15, healed 2d4 + 2 = 10 to 25, then 25 - 6 = 19.
+  await replyOf(table, mira, [
+    { enemy: g1, faces: [10, 3] },
+    { call: { name: "heal", args: { characterId: mira.id, dice: "2d4+2", reason: "a potion" } }, faces: [4, 4] },
+    { enemy: g2, faces: [12, 4] },
+  ]);
+  assert.equal(hp(world, mira), 19);
+  const out = await react(world, mira, "Shield");
+  assert.equal(out.ok, true, out.error);
+  assert.equal(hp(world, mira), 30, "20 healed 10, and neither club lands");
+});
+
+await test("A concentration the damage between the hits broke stays broken when Shield turns the clubs away", async () => {
+  const table = await stage();
+  const { world, mira, g1, g2 } = table;
+  world.patch(mira.id, { concentratingOn: "Bless" });
+  // The first club's save is a 15 and holds; the fire's is a 2 and ends it;
+  // the second club finds her concentrating on nothing.
+  await replyOf(table, mira, [
+    { enemy: g1, faces: [10, 3, 15] },
+    { call: { name: "apply_damage", args: { characterId: mira.id, dice: "2d6", type: "fire", reason: "a fire bolt" } }, faces: [5, 5, 2] },
+    { enemy: g2, faces: [12, 4] },
+  ]);
+  assert.equal(world.sheet(mira.id).concentratingOn, null);
+  const out = await react(world, mira, "Shield");
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.sheet(mira.id).concentratingOn, null, "the fire broke it, and the fire stands");
+  assert.equal(hp(world, mira), 20);
+});
+
+await test("A concentration save is judged by the one blow that broke it, not the attacks' total (SRD 5.1: a save for each source)", async () => {
+  const table = await stage();
+  const { world, mira, g1, g2 } = table;
+  world.patch(mira.id, { concentratingOn: "Bless" });
+  // 15 + 4 = 19 hits for 5 and its save (a 12) holds; 10 + 4 = 14 hits for
+  // 6 and its save (a 9 against DC 10) ends Bless. Shield: the first still
+  // hits AC 17, the second misses, so the blow that broke it is gone.
+  await replyOf(table, mira, [
+    { enemy: g1, faces: [15, 3, 12] },
+    { enemy: g2, faces: [10, 4, 9] },
+  ]);
+  assert.equal(world.sheet(mira.id).concentratingOn, null);
+  const out = await react(world, mira, "Shield");
+  assert.equal(out.ok, true, out.error);
+  assert.equal(hp(world, mira), 25, "the first club's 5 stands");
+  assert.equal(world.sheet(mira.id).concentratingOn, "Bless", JSON.stringify(out));
+});
+
+await test("A blow that now finds her standing loses the advantage it had only because she lay at 0 (SRD 5.1, Unconscious)", async () => {
+  const table = await stage();
+  const { world, mira, g1, g2 } = table;
+  world.patch(mira.id, { currentHp: 6 });
+  // The first club drops her (10 + 4 hits for 5 + 2). The second rolls 3
+  // and 15 with advantage against her lying there: 19 hits even AC 17, a
+  // critical. Standing, its roll is the first die: 3 + 4 = 7, a miss.
+  await replyOf(table, mira, [
+    { enemy: g1, faces: [10, 5] },
+    { enemy: g2, faces: [3, 15, 2, 5] },
+  ]);
+  const [, h2] = openHits(world.campaignId, mira.id);
+  assert.equal(h2.swings[0].advantage, "advantage");
+  const out = await react(world, mira, "Shield");
+  assert.equal(out.ok, true, out.error);
+  assert.equal(hp(world, mira), 6, "neither club lands on her standing");
+  assert.equal(track(world, mira)?.failures ?? 0, 0);
+  assert.equal(h2.swings[0].standingAdvantage, "none", "the roll against her standing is kept with the hit");
+});
+
+await test("A corrected blow lands through the defenses the damage path applies: a form's vulnerability", async () => {
+  const table = await stage();
+  const { world, poppy } = table;
+  world.patch(poppy.id, { wildShape: { form: "Clay Ooze", beastHp: 20, beastMaxHp: 20, beastAc: 12, vulnerable: "bludgeoning" } });
+  // 15 + 4 hits for 4 + 2 = 6, doubled to 12 on the form; the second misses.
+  await oneReply(table, poppy, [[15, 4], [2]]);
+  assert.equal(world.sheet(poppy.id).wildShape?.beastHp, 8);
+  const out = await react(world, poppy, "Uncanny Dodge");
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.sheet(poppy.id).wildShape?.beastHp, 14, "the 6 halved to 3 still lands doubled: 6");
+});
+
 await test("The screens wire it: Speaking as on its host flag, Edit in chat names the card's hero, and the companions' reactions in the Hand", () => {
   const view = read("app/campaigns/[campaignId]/SessionView.tsx");
   assert.match(view, /hostOffers\(capabilities, "typedReactions"\)/);

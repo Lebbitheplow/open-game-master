@@ -35,9 +35,11 @@ import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { currentTurnId, owningTurnOf } from "@/lib/dm/job-control";
 import type { RollResult, Advantage } from "@/lib/dice";
-import type { RollAttacker } from "@/lib/db/rolls";
+import { listRecentRolls, type RollAttacker } from "@/lib/db/rolls";
 import { spellMechanicsFor } from "@/lib/content";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { wardOf } from "@/lib/dm/arcane-ward";
+import type { BlowFlags } from "@/lib/dm/pc-damage";
 
 export type SwingRecord = {
   // The attack this swing was, when a multiattack swings several (a
@@ -66,6 +68,25 @@ export type SwingRecord = {
   // target standing when it landed (reaction-refund.ts). Absent on a natural
   // 20, which is critical whatever the target.
   ordinary?: { raw: number; parts?: Array<{ amount: number; type: string }> };
+  // The advantage the swing would have had against the target standing, when
+  // it lay at 0 and that changed the roll (SRD 5.1, Unconscious: attack rolls
+  // against it have advantage). A reaction that leaves them standing when it
+  // landed reads the hit again with it (hit-replay-logic.ts hitsWith): the
+  // blow went back to ordinary damage and kept the advantage it had only
+  // because they were down.
+  standingAdvantage?: Advantage;
+  // What the blow was made of, as the damage path read it (a magic weapon, a
+  // feature its resistance did not hold against), so a replay meets the same
+  // clauses (pc-damage.ts blowDefenses).
+  flags?: BlowFlags;
+  // Resistance a reaction gave against this blow (Absorb Elements' type).
+  resists?: string[];
+  // The concentration save this swing's damage asked, when the character was
+  // concentrating as it landed: the save's total (null when none was rolled,
+  // as for a drop to 0, which ends it outright) and whether concentration
+  // ended with it. SRD 5.1: a separate save for each source of damage, so a
+  // reaction judges the one blow that broke it, not the whole attack.
+  concentration?: { save: number | null; broke: boolean };
 };
 
 export type HolderSnapshot = {
@@ -83,6 +104,12 @@ export type VitalsSnapshot = {
   conditionMeta: CharacterSheet["conditionMeta"];
   deathSaves: CharacterSheet["deathSaves"] | null;
   relentless: { max: number; used: number } | null;
+  // Relentless Rage's uses since the last rest, which raise its DC: given
+  // back with the drop that spent one. Absent on records written before it.
+  relentlessRage?: number | null;
+  // An abjurer's Arcane Ward's hit points, which take a blow first; null
+  // with no ward raised. Absent on records written before it.
+  ward?: number | null;
   concentratingOn: string | null;
   // The conditions the concentration spell held on every creature, so a
   // hit that is undone can put back what breaking it took away.
@@ -119,7 +146,14 @@ export type LastHit = {
   source: "attack" | "fall";
   swings: SwingRecord[];
   before: VitalsSnapshot;
-  after: { currentHp: number; tempHp: number; beastHp: number | null };
+  // Where the hit left them. `track` and `ward` are absent on records
+  // written before they were kept.
+  after: { currentHp: number; tempHp: number; beastHp: number | null; track?: CharacterSheet["deathSaves"] | null; ward?: number | null };
+  // The damage that went past 0 hit points after this hit and before the next
+  // (or since), up to `until`, in the fight as a reaction left it: the hit
+  // points alone do not show it (reaction-refund.ts). Absent until a reaction
+  // has answered a hit on them.
+  pastZeroAfter?: { amount: number; until: string };
   // The reactions already answered with it, so one cannot be taken twice.
   answered: string[];
   // When the attack began (the first swing) and when it was recorded.
@@ -489,6 +523,12 @@ function concentrationHeld(
   return { spell, names, holders };
 }
 
+// The Arcane Ward's hit points as a blow meets them, null with none raised.
+export function wardHpOf(sheet: CharacterSheet): number | null {
+  const ward = wardOf(sheet);
+  return ward?.raised ? ward.hp : null;
+}
+
 export function snapshotVitals(campaignId: string, sheet: CharacterSheet): VitalsSnapshot {
   const relentless = sheet.resources?.relentless_endurance ?? null;
   return {
@@ -499,6 +539,8 @@ export function snapshotVitals(campaignId: string, sheet: CharacterSheet): Vital
     conditionMeta: { ...sheet.conditionMeta },
     deathSaves: sheet.deathSaves ?? null,
     relentless: relentless ? { max: relentless.max, used: relentless.used } : null,
+    relentlessRage: sheet.resources?.relentless_rage?.used ?? null,
+    ward: wardHpOf(sheet),
     concentratingOn: sheet.concentratingOn ?? null,
     held: concentrationHeld(campaignId, sheet),
   };
@@ -527,6 +569,33 @@ export function openLastHit(campaignId: string, characterId: string) {
   const before = sheet ? snapshotVitals(campaignId, sheet) : null;
   const startedAt = nowIso();
   const swings: SwingRecord[] = [];
+  // The concentration each swing found, and when the swing before it ended,
+  // so a swing's own concentration save is read off the rolls since then.
+  let concentrating = before?.concentratingOn ?? null;
+  let since = startedAt;
+  // The save this swing's damage asked of a concentrating character, and
+  // whether concentration survived it (SwingRecord.concentration).
+  const concentrationOf = (hit: boolean, raw: number): SwingRecord["concentration"] => {
+    const now = getSheetById(characterId);
+    const was = concentrating;
+    const from = since;
+    concentrating = now?.concentratingOn ?? null;
+    since = nowIso();
+    if (!was || !hit || raw <= 0 || !now) {
+      return undefined;
+    }
+    // Oldest first: the last is this swing's save.
+    const save = listRecentRolls(campaignId, 40)
+      .filter(
+        (roll) =>
+          roll.characterId === characterId &&
+          roll.kind === "saving_throw" &&
+          roll.detail.startsWith("CON save to keep concentration") &&
+          roll.createdAt >= from,
+      )
+      .at(-1);
+    return { save: save ? save.total : null, broke: !now.concentratingOn };
+  };
   return {
     swing(
       outcome: RollResult,
@@ -541,8 +610,12 @@ export function openLastHit(campaignId: string, characterId: string) {
         ranged?: boolean;
         attack?: string;
         ordinary?: SwingRecord["ordinary"];
+        standingAdvantage?: Advantage;
+        flags?: BlowFlags;
       },
     ) {
+      const concentration = concentrationOf(result.hit, result.raw);
+      const flags = Object.fromEntries(Object.entries(result.flags ?? {}).filter(([, value]) => value !== undefined && value !== false && !(Array.isArray(value) && !value.length)));
       swings.push({
         ...(result.attack !== undefined ? { attack: result.attack } : {}),
         total: outcome.total,
@@ -557,6 +630,9 @@ export function openLastHit(campaignId: string, characterId: string) {
         ...(result.hit && result.parts?.length ? { parts: result.parts } : {}),
         ...(result.ranged !== undefined ? { ranged: result.ranged } : {}),
         ...(result.hit && result.ordinary ? { ordinary: result.ordinary } : {}),
+        ...(result.hit && result.standingAdvantage && result.standingAdvantage !== result.advantage ? { standingAdvantage: result.standingAdvantage } : {}),
+        ...(result.hit && Object.keys(flags).length ? { flags: flags as BlowFlags } : {}),
+        ...(concentration ? { concentration } : {}),
       });
     },
     close(what: {
@@ -585,16 +661,23 @@ export function openLastHit(campaignId: string, characterId: string) {
         source: what.source ?? "attack",
         swings,
         before,
-        after: {
-          currentHp: now.currentHp,
-          tempHp: now.tempHp,
-          beastHp: now.wildShape?.beastHp ?? null,
-        },
+        after: afterOf(now),
         answered: [],
         startedAt,
         at: nowIso(),
       });
     },
+  };
+}
+
+// Where a hit left the character.
+function afterOf(now: CharacterSheet): LastHit["after"] {
+  return {
+    currentHp: now.currentHp,
+    tempHp: now.tempHp,
+    beastHp: now.wildShape?.beastHp ?? null,
+    track: now.deathSaves ?? null,
+    ward: wardHpOf(now),
   };
 }
 
@@ -626,7 +709,7 @@ export function recordFall(
     source: "fall",
     swings: [{ total: 0, faces: [], natural: null, advantage: "none", vsAc: 0, hit: true, crit: false, raw }],
     before,
-    after: { currentHp: now.currentHp, tempHp: now.tempHp, beastHp: now.wildShape?.beastHp ?? null },
+    after: afterOf(now),
     answered: [],
     startedAt,
     at: nowIso(),

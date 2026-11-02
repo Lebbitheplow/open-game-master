@@ -311,7 +311,7 @@ export function resolveOpportunityAttacks(
       return { landed: applied, onHit: rider };
     });
     const updated = getSheetById(sheet.id);
-    hitLog.swing(hitOutcome, targetAc, { hit: true, crit, raw: rolled, advantage, ...(blow.type ? { type: blow.type } : {}), ...(blow.parts ? { parts: scaledParts(blow.parts, rolled) } : {}) });
+    hitLog.swing(hitOutcome, targetAc, { hit: true, crit, raw: rolled, advantage, ...(blow.type ? { type: blow.type } : {}), ...(blow.parts ? { parts: scaledParts(blow.parts, rolled) } : {}), ...(magical ? { flags: { magical: true } } : {}) });
     hitLog.close({ attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName }, attack: `${attack.name} (opportunity attack)`, type: attack.type, ranged: false });
     if (updated && updated.currentHp <= 0 && !updated.wildShape) {
       downed = true;

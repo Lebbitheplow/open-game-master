@@ -201,10 +201,13 @@ export function reactionSpell(ctx: Ctx, spellName: string): ToolResult {
     // Every hit it covers is re-checked together, so a later blow that now
     // misses gives back all it did and an earlier one undone turns the later
     // ones back into hit point damage (reaction-refund.ts settleHits).
+    // Each swing keeps the shielded AC it met, so a hit read again later (a
+    // blow that now finds her standing, Cutting Words after it) is read
+    // against it.
     const answers = covered.map((record) => ({
       record,
       corrected: record.swings.map((swing) =>
-        swing.hit && swing.natural !== 20 && swing.total < swing.vsAc + 5 ? { ...swing, hit: false, raw: 0 } : swing,
+        swing.hit && swing.natural !== 20 && swing.total < swing.vsAc + 5 ? { ...swing, vsAc: swing.vsAc + 5, hit: false, raw: 0 } : { ...swing, vsAc: swing.vsAc + 5 },
       ),
     }));
     const settled = answers.length ? settleHits(campaign, ctx.turn.id, answers, "shield", ctx.sheets, ctx.sheetsById) : null;
