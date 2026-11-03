@@ -713,8 +713,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
           return { error: `${attacker.displayName} cannot be charmed, so ${reaction.name} cannot sway it. Nothing was spent.`, refused: "rules" };
         }
         // Withstood once, it cannot be swayed again until the holder's long rest:
-        // the mark sits on the creature, naming each holder it has withstood,
-        // and is read from the meta, which a full conditions list cannot drop.
+        // the mark sits on the creature, naming each holder it has withstood. A
+        // creature already holding ten conditions has no room for it (encounters.ts
+        // keeps ten), so there the bar lasts only until the round's tick.
         const withstood = textKey(`withstood ${reaction.name}`);
         const marks = attacker.conditionMeta as ConditionMetaMap;
         const swayedBy = marks[withstood]?.sources ?? [];
@@ -733,7 +734,7 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
           // A character on the foes' side takes it on their sheet (patchEnemyConditions).
           patchEnemyConditions(attacker.id, [...attacker.conditions.filter((entry) => textKey(entry) !== withstood), withstood], {
             ...marks,
-            [withstood]: { source: ctx.sheet.id, sources: [...swayedBy, ctx.sheet.id], untilLongRest: true },
+            [withstood]: { source: ctx.sheet.id, sources: [...swayedBy, ctx.sheet.id].slice(-20), untilLongRest: true },
           } as typeof attacker.conditionMeta);
           publishEncounter(ctx.campaign.id);
           return { applied: `${attacker.displayName} resists (${does.save.ability.toUpperCase()} ${save.total} vs DC ${dc}) and keeps its target; ${reaction.name} cannot sway it again until ${ctx.sheet.name}'s long rest.` };

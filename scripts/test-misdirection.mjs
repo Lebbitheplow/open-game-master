@@ -269,7 +269,21 @@ await test("Instinctive Charm: each wizard's bar is their own, and a second wiza
   assert.match(again.error, /cannot be swayed again/);
 });
 
-await test("Instinctive Charm: the bar holds with the attacker's conditions list full, and on a character fighting for the foes.", async () => {
+await test("Instinctive Charm: the wizards a mark names stay within what the schema takes.", async () => {
+  const { attacker, beside } = await stage(charmer);
+  const mark = "withstood instinctive charm";
+  const others = Array.from({ length: 20 }, (_, at) => `wizard-${at}`);
+  kit.setEnemy(attacker.id, { conditions: [mark], conditionMeta: { [mark]: { source: others[19], sources: others, untilLongRest: true } } });
+  await strike(attacker, charmer);
+  world.dice(20);
+  assert.match((await react(charmer, "Instinctive Charm", { targetEnemyId: beside.id })).result.applied, /resists/);
+  world.clearDice();
+  const sources = world.enemies().find((enemy) => enemy.id === attacker.id).conditionMeta[mark].sources;
+  assert.equal(sources.length, 20);
+  assert.equal(sources.at(-1), charmer.id);
+});
+
+await test("Instinctive Charm: before the round's tick the bar refuses even with the attacker's conditions list full, and it holds on a character fighting for the foes.", async () => {
   const { attacker, beside } = await stage(charmer);
   const full = Array.from({ length: 10 }, (_, at) => `mark ${at}`);
   kit.setEnemy(attacker.id, { conditions: full, conditionMeta: {} });
