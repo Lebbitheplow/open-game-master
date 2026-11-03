@@ -82,6 +82,16 @@ await test("An ally beyond 10 feet gets no card when the board says so, and the 
   assert.equal(view.feet?.[friend.id], 15);
 });
 
+// Warding Maneuver covers "a creature you can see within 5 feet of you":
+// its ally card needs the same reach.
+await test("Warding Maneuver's ally card keeps to its 5 feet.", async () => {
+  const cavalier = world.addHero({ class: "fighter", subclass: "Cavalier", level: 7, maxHp: 60, proficiencies: TRAINED, portrait: { url: "/uploads/test.png" } });
+  const warding = (feet) =>
+    reactionCards(world.sheet(cavalier.id), { ...FRESH_TURN, myTurn: false }, [hit({ characterId: friend.id })], [{ id: friend.id, name: "Friend" }], "you", feet).filter((card) => card.name === "Warding Maneuver");
+  assert.equal(warding({ [friend.id]: 5 }).length, 1, "within 5 feet");
+  assert.equal(warding({ [friend.id]: 10 }).length, 0, "beyond 5 feet");
+});
+
 await test("No use left, no card.", async () => {
   await stage();
   world.patch(paladin.id, { resources: { ...world.sheet(paladin.id).resources, sub_glorious_defense: { ...uses(), used: uses().max } } });
