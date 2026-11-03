@@ -26,6 +26,7 @@ const rolls = await import("../src/lib/db/rolls.ts");
 const whispers = await import("../src/lib/db/dm-whispers.ts");
 const conscienceDb = await import("../src/lib/db/companion-conscience.ts");
 const pactsDb = await import("../src/lib/db/pacts.ts");
+const sheetsDb = await import("../src/lib/db/sheets.ts");
 const factions = await import("../src/lib/db/factions.ts");
 const { getClock } = await import("../src/lib/db/clock.ts");
 const { getParty } = await import("../src/lib/db/party.ts");
@@ -275,6 +276,29 @@ await test("theft moves inventory: the thief's Sleight of Hand beats the watch, 
   const lines = messages.listRecentMessages(t.world.campaignId, 12).map((message) => message.content).join("\n");
   assert.match(lines, /\[Revealed\] The pact made its move: Thorne, Seren/);
   assert.match(lines, /Thorne took Kael's Spyglass in the night/);
+});
+
+// With nothing priced to take, the fullest purse goes, all its coin: the
+// purse was chosen and taken by its gold alone, so 7 sp 5 cp was "nothing
+// worth taking" and a purse of gold and silver lost only the gold.
+await test("theft with nothing priced takes the fullest purse by all its coin, silver and copper too", async () => {
+  const t = await table({ kael: { equipment: [], gold: 0, copper: 75 }, brin: { equipment: [], gold: 0, copper: 40 } });
+  for (const name of ["Seren", "Thorne"]) {
+    const sheet = t.companion(name);
+    sheetsDb.patchSheet(sheet.id, { equipment: [], gold: 0, copper: 0 });
+  }
+  t.axes("Thorne", { drive: 2 });
+  t.rung("Seren", 2);
+  t.rung("Thorne", 2);
+  const pact = formPact(t, ["Thorne", "Seren"]);
+  assert.equal(pact.tactic, "theft");
+  const thorneRow = t.row("Thorne");
+  await longRest(t.world, [20]);
+  const kael = t.world.sheet(t.kael.id);
+  assert.deepEqual([kael.gold, kael.copper], [0, 0], "the whole purse is gone");
+  const left = conscienceDb.departedSheet(thorneRow.id).sheet;
+  assert.equal(left.gold * 100 + left.copper, 75, "and in the purse Thorne left with");
+  assert.match(messages.listRecentMessages(t.world.campaignId, 12).map((message) => message.content).join("\n"), /Thorne took Kael's purse \(7 sp 5 cp\) in the night/);
 });
 
 await test("a watch that sees the theft keeps the thing, and the pact walks out exposed", async () => {
