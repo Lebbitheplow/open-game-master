@@ -53,6 +53,30 @@ await test("Killed outright, it does not hold, and the use stays.", async () => 
   assert.equal(counter().used, 0);
 });
 
+// A hold returned before the concentration save, so a concentrating hero
+// held at 1 hit point kept the spell with no save at all.
+await test("Held at 1 hit point, the paladin still makes the concentration save.", async () => {
+  set(5);
+  world.patch(hero.id, { concentratingOn: "Bless" });
+  world.dice(1);
+  const out = await hurt(30);
+  world.clearDice();
+  assert.equal(world.sheet(hero.id).currentHp, 1);
+  assert.equal(out.result.concentration?.held, false, JSON.stringify(out));
+  assert.equal(world.sheet(hero.id).concentratingOn, null);
+});
+
+await test("Death Ward's hold makes the concentration save too.", async () => {
+  set(5, 1);
+  world.patch(hero.id, { concentratingOn: "Bless", conditions: ["death ward"], conditionMeta: {} });
+  world.dice(1);
+  const out = await hurt(30);
+  world.clearDice();
+  assert.equal(out.result.deathWard, true);
+  assert.equal(world.sheet(hero.id).currentHp, 1);
+  assert.equal(world.sheet(hero.id).concentratingOn, null);
+});
+
 await test("An enemy's hit is held the same way.", async () => {
   set(1);
   await kit.fight(1, { heroFaces: { [hero.id]: 19 } });
