@@ -163,8 +163,8 @@ export function layEnemyCondition(
   // "Falls unconscious for 10 minutes or until it takes damage": the first
   // damage ends it (src/lib/dm/spell-effects.ts reads the flag). The sleep
   // when the use lays one ("poisoned and unconscious ... wakes if it takes
-  // damage"), else its condition. Marked on the instance this enemy laid,
-  // after the condition went on the ordinary way, so a sleep that is not
+  // damage"), else every condition it lays. Marked on the instance this enemy
+  // laid, after the condition went on the ordinary way, so a sleep that is not
   // magic stays one Fey Ancestry does not turn.
   // "Until the end of the mummy lord's next turn": tied to that turn, the
   // target's or the creature's (turn-tie.ts), not counted as a round.
@@ -179,7 +179,7 @@ export function layEnemyCondition(
     );
   }
   const laid = [use?.condition, ...(use?.also ?? [])];
-  const wakes = condition === "unconscious" || (condition === use?.condition && !laid.includes("unconscious"));
+  const wakes = condition === "unconscious" || !laid.includes("unconscious");
   if (use?.endsOnDamage && wakes && !("error" in applied)) {
     const now = getSheetById(sheet.id);
     const meta = { ...((now?.conditionMeta ?? {}) as ConditionMetaMap) };

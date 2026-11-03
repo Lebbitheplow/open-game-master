@@ -193,6 +193,20 @@ await test("Drow Poison: a failure is poisoned for an hour, and unconscious as w
   assert.equal(world.sheet(dozy.id).conditionMeta.poisoned.rounds, 600);
 });
 
+// SRD 5.1, Poisons: "The poisoned creature is unconscious. The creature wakes
+// up if it takes damage." It wakes; the poison keeps its full duration.
+for (const [name, rounds] of [["Drow Poison", 600], ["Essence of Ether", 4800], ["Oil of Taggit", 14400]]) {
+  await test(`${name}: damage wakes the sleeper, who stays poisoned for the poison's full duration.`, async () => {
+    const sleeper = world.addHero({ class: "fighter", level: 5, maxHp: 44, abilities: { con: 10 } });
+    await afflict({ characterId: sleeper.id, kind: "poison", name }, [2]);
+    assert.equal(has(sleeper.id, "unconscious"), true);
+    await world.invoke("apply_damage", { characterId: sleeper.id, amount: 1, type: "bludgeoning", reason: "a slap" });
+    assert.equal(has(sleeper.id, "unconscious"), false, "the damage wakes them");
+    assert.equal(has(sleeper.id, "poisoned"), true, "the poison outlasts the sleep");
+    assert.equal(world.sheet(sleeper.id).conditionMeta.poisoned.rounds, rounds);
+  });
+}
+
 await test("Midnight Tears waits for midnight, then a DC 17 CON save against 9d6 poison.", async () => {
   const guest = world.addHero({ class: "fighter", level: 10, maxHp: 90 });
   world.patch(guest.id, { currentHp: 90 });
