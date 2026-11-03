@@ -1,10 +1,12 @@
 import type { Campaign } from "@/lib/db/campaigns";
-import { getActiveEncounter, listEnemies, patchEnemyConditions, setEnemyConcentration, type EncounterEnemy } from "@/lib/db/encounters";
+import { getActiveEncounter, getEnemy, listEnemies, patchEnemyConditions, setEnemyConcentration, type EncounterEnemy } from "@/lib/db/encounters";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { activePublicEncounter } from "@/lib/db/encounter-view";
 import { publishPersisted } from "@/lib/events";
 import { clearSpellConditionsByName } from "@/lib/dm/concentration";
-import { removeConditionInstances, type ConditionMeta, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { removeConditionInstances, removeConditions, type ConditionMeta, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { VOW_OF_ENMITY, vowedFoe } from "@/lib/srd/vow-of-enmity";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 import { releaseGrapplesHeldBy } from "@/lib/dm/set-condition";
 import type { ToolError } from "@/lib/dm/tool-errors";
 
@@ -79,6 +81,27 @@ export function endConditionsHeldBy(campaign: Campaign, sourceId: string): strin
   return freed;
 }
 
+// Vow of Enmity (Oath of Vengeance 3) lasts "1 minute or until it drops to 0
+// hit points or falls unconscious": the vows on `foeId` end. Without this the
+// vow outlived its creature, and one healed within the minute still gave
+// advantage. Returns lines for the result.
+export function endVowsOn(campaign: Campaign, foeId: string): string[] {
+  const ended: string[] = [];
+  for (const stale of listSheets(campaign.id)) {
+    const sheet = getSheetById(stale.id) ?? stale;
+    if (vowedFoe(sheet) !== foeId) {
+      continue;
+    }
+    const cleared = removeConditions(sheet.conditions, sheet.conditionMeta as ConditionMetaMap, [VOW_OF_ENMITY]);
+    const updated = patchSheet(sheet.id, { conditions: cleared.conditions, conditionMeta: cleared.meta });
+    if (updated) {
+      publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
+    }
+    ended.push(`${sheet.name}'s Vow of Enmity ends.`);
+  }
+  return ended;
+}
+
 // An enemy that became incapacitated (stunned, paralyzed, unconscious,
 // petrified, incapacitated): it loses its concentration, whose spell's
 // conditions end on everyone it held, and its grapples end. Returns lines
@@ -94,6 +117,10 @@ export function onEnemyIncapacitated(campaign: Campaign, enemy: EncounterEnemy):
   const released = releaseGrapplesHeldBy(campaign, enemy.id);
   if (released.length) {
     lines.push(`${released.join(" and ")} ${released.length === 1 ? "is" : "are"} no longer grappled by it.`);
+  }
+  // Unconscious, not merely stunned: a vow on it ends.
+  if ((getEnemy(enemy.id) ?? enemy).conditions.some((entry) => isConditionNamed(entry, "unconscious"))) {
+    lines.push(...endVowsOn(campaign, enemy.id));
   }
   return lines;
 }

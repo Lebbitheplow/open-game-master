@@ -8,6 +8,7 @@
 // request_roll (src/lib/dm/invoke-roll.ts), group_check and aoe_damage call
 // in here; cast_at_player and cast_at_enemy are meant to.
 
+import { recordSave } from "@/lib/dm/last-save";
 import { diehardSaveAdvantage, shieldMasterSaveBonus } from "@/lib/srd/feat-combat";
 import { LUCK_SPEND } from "@/lib/dm/roll-riders";
 import { spendLuckCounter } from "@/lib/srd/class-resources";
@@ -315,6 +316,11 @@ export function rollCharacterSave(
     source: "digital",
   });
   const moteLine = moteAfterRoll(campaign, sheet, mote, "saving_throw", outcome);
+  // A save made against a creature is kept for what answers it (Vigilant
+  // Rebuke, src/lib/dm/last-save.ts).
+  if (outcome.total >= dc && from) {
+    recordSave(campaign.id, sheet.id, ability, { id: from.id, name: from.displayName });
+  }
   return {
     success: outcome.total >= dc,
     total: outcome.total,

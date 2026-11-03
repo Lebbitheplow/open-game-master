@@ -2855,6 +2855,15 @@ function ensureSchema(db: SqliteDatabase) {
       PRIMARY KEY (campaign_id, character_id)
     );
 
+    -- The Intelligence, Wisdom and Charisma saves made this turn and who forced
+    -- them, for Vigilant Rebuke (src/lib/dm/last-save.ts). One row per
+    -- campaign; deleteCampaign clears it by hand.
+    CREATE TABLE IF NOT EXISTS last_saves (
+      campaign_id TEXT PRIMARY KEY,
+      payload_json TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
     -- Each move of the in-world clock a turn made (src/lib/db/clock-moves.ts):
     -- the clock as the move found it and the instant it left, so "Revert this
     -- turn" puts the time back with the sheets (issue #622). Older servers

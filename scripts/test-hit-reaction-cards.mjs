@@ -43,14 +43,23 @@ const strike = async (enemy, target) => {
   world.clearDice();
   assert.equal(out.ok, true, out.error);
 };
-const offered = (who, name) =>
+const offered = (who, name, feet) =>
   reactionCards(
     world.sheet(who.id),
     { ...FRESH_TURN, myTurn: false },
     activePublicEncounter(world.campaignId)?.lastHits ?? [],
     // As the Hand passes it: every sheet, the holder among them.
     world.sheets(),
+    "you",
+    feet,
   ).filter((card) => card.name === name);
+// The board's distances from the holder to each hero, as PlayerMapView.feet
+// measures them for the Hand (view.ts): tilesApart on the stored tokens.
+const { tilesApart } = await import("../src/lib/dm/board-reach.ts");
+const feetFrom = (who) => {
+  const me = kit.token(who.id);
+  return Object.fromEntries(world.sheets().filter((sheet) => sheet.id !== who.id && kit.token(sheet.id)).map((sheet) => [sheet.id, tilesApart(me, kit.token(sheet.id)) * 5]));
+};
 const play = (who, card) =>
   world.invoke("use_reaction", { characterId: who.id, feature: card.intent.feature, ...(card.intent.hit ? { hit: card.intent.hit } : {}), ...(card.answers?.characterId && card.answers.characterId !== who.id ? { targetCharacterId: card.answers.characterId } : {}) });
 const onOwnTurn = (who, name) => deriveHand(world.sheet(who.id), FRESH_TURN, {}).some((card) => card.name === name);
@@ -225,18 +234,17 @@ await test("A hero in the order twice (an extra turn, Thief's Reflexes) still ge
   assert.equal(offered(swarm, "Swarming Dispersal").length, 1);
 });
 
-await test("Warding Maneuver's card for an ally beyond 5 feet, or without a melee weapon or shield, says why.", async () => {
+await test("Warding Maneuver's card for an ally beyond 5 feet is not dealt, and one without a melee weapon or shield says why.", async () => {
   const cavalier = hero({ class: "fighter", subclass: "Cavalier" });
   const enemy = await stage(cavalier);
   kit.place(friend.id, 5, 9);
   kit.place(enemy.id, 5, 10);
   await strike(enemy, friend);
-  const [far] = offered(cavalier, "Warding Maneuver");
-  assert.match(far?.disabled ?? "", /within 5 feet/);
+  assert.equal(offered(cavalier, "Warding Maneuver", feetFrom(cavalier)).length, 0);
   kit.place(friend.id, 4, 5);
-  assert.equal(offered(cavalier, "Warding Maneuver")[0]?.disabled, null);
+  assert.equal(offered(cavalier, "Warding Maneuver", feetFrom(cavalier))[0]?.disabled, null);
   world.patch(cavalier.id, { equipment: [] });
-  assert.match(offered(cavalier, "Warding Maneuver")[0]?.disabled ?? "", /melee weapon or a shield/);
+  assert.match(offered(cavalier, "Warding Maneuver", feetFrom(cavalier))[0]?.disabled ?? "", /melee weapon or a shield/);
   const refused = await play(cavalier, offered(cavalier, "Warding Maneuver")[0]);
   assert.equal(refused.ok, false);
 });

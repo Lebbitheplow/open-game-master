@@ -34,9 +34,10 @@ import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import { attackerFoeId, freshLastHit, openHits, plainOfReroll, rerollAttacker, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { vowedFoe } from "@/lib/srd/vow-of-enmity";
 import { ENTROPIC_EDGE } from "@/lib/dm/reaction-kinds";
+import { answerSave, openSaves, type LastSave } from "@/lib/dm/last-save";
 import { rollAgainst } from "@/lib/roll-labels";
-import { applyPcDamage } from "@/lib/dm/pc-damage";
-import { READIED } from "@/lib/dm/object-actions";
+import { applyPcDamage, blowDefenses, meetDefenses } from "@/lib/dm/pc-damage";
+import { actingCombatantId } from "@/lib/dm/can-act";
 import { handlePcAttack } from "@/lib/dm/pc-attack";
 import { allyOf, noHit, settle, SPENT, spendReaction, type Ctx } from "@/lib/dm/reaction-tools";
 import { withinFeet } from "@/lib/dm/authored-saves";
@@ -194,6 +195,33 @@ function markEntropicEdge(ctx: Ctx, record: LastHit): string | null {
     publishPersisted(ctx.campaign.id, "sheet_updated", { sheet: updated });
   }
   return `${ctx.sheet.name}'s next attack roll against ${record.attacker.name} has advantage, if made before the end of their next turn.`;
+}
+
+// The save a reaction to a save answers: "you or a creature you can see
+// within 30 feet of you succeeds on an Intelligence, a Wisdom, or a Charisma
+// saving throw" (Vigilant Rebuke), from the saves the engine kept this turn
+// (last-save.ts). The creature named picks among them. A save rolled outside
+// the engine (a player's roll the GM asked for) keeps no record, so with none
+// open this turn the creature named is taken on the GM's word; with saves
+// open, one it did not force is refused.
+function savedAgainst(ctx: Ctx, name: string, rangeFt: number | undefined): { save: LastSave | null } | ToolError {
+  const named = ctx.args.targetEnemyId?.trim();
+  const open = openSaves(ctx.campaign.id);
+  const near = open.filter(
+    (save) => save.characterId === ctx.sheet.id || !ctx.encounter || !rangeFt || withinFeet(ctx.encounter.id, ctx.sheet.id, save.characterId, rangeFt),
+  );
+  const forcedBy = (save: LastSave) => {
+    if (!named || !ctx.encounter) return !named;
+    return save.forcer.id === named || resolveTargetFoe(ctx.encounter.campaignId, ctx.encounter, named)?.id === save.forcer.id;
+  };
+  const save = near.filter(forcedBy).at(-1) ?? null;
+  if (save || (named && !open.length)) {
+    return { save };
+  }
+  if (!named && !open.length) {
+    return { error: `${name} answers a successful INT, WIS or CHA save someone made against a creature, and the server kept none this turn. If the save was rolled at the table, name the creature that forced it in targetEnemyId. Nothing was spent.`, retry: true };
+  }
+  return { error: `${name} answers a successful INT, WIS or CHA save by ${ctx.sheet.name} or someone within ${rangeFt ?? 30} feet, and none open this turn was forced by ${named ? "that creature" : "a creature still in reach"}. Nothing was spent.`, refused: "rules" };
 }
 
 function psionicDie(level: number): string {
@@ -449,9 +477,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (!ally || ally.id === ctx.sheet.id || !encounter) {
         return { error: `${reaction.name} answers a hit on another creature: pass that ally's targetCharacterId. Nothing was spent.`, retry: true };
       }
-      if (!withinFeet(encounter.id, ctx.sheet.id, ally.id, does.rangeFt)) {
-        return { error: `${ally.name} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
-      }
+      // The reach is the attacker's ("an attacker within 30 feet of you deals
+      // damage with an attack against a creature other than you"), checked
+      // below; the creature it struck may stand anywhere.
       // The hit by the creature named, when one is: the heaviest hit on the ally
       // may be another attacker's, and it would take what this one is owed.
       const named = ctx.args.targetEnemyId;
@@ -470,7 +498,15 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (!withinFeet(encounter.id, ctx.sheet.id, enemy.id, does.rangeFt)) {
         return { error: `${enemy.displayName} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
       }
-      const dealt = hit.record.swings[hit.index].raw;
+      // "Radiant damage equal to the damage it just dealt": what the blow took
+      // off the ally once their resistances, immunities and vulnerabilities
+      // met it, as the damage path met it (the replay's own reading,
+      // reaction-refund.ts). The dice it rolled sent a resisted blow back
+      // whole.
+      const swing = hit.record.swings[hit.index];
+      const before = { ...ally, conditions: hit.record.before.conditions, conditionMeta: hit.record.before.conditionMeta, wildShape: hit.record.before.wildShape ?? null };
+      const defenses = blowDefenses(ctx.campaign.id, before, { ...(swing.flags ?? {}), ...(swing.resists?.length ? { resists: swing.resists } : {}) });
+      const dealt = meetDefenses(defenses, swing.raw, (swing.type ?? hit.record.type) || undefined, swing.parts, 0).amount;
       if (dealt <= 0) {
         return { error: `${enemy.displayName}'s hit dealt ${ally.name} no damage to send back. Nothing was spent.`, refused: "rules" };
       }
@@ -491,12 +527,14 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       return out;
     }
     case "strike_back": {
-      if (does.afterSave && !ctx.args.targetEnemyId) {
-        return { error: `${reaction.name} strikes the creature that forced a save someone just made: pass its targetEnemyId. Nothing was spent.`, retry: true };
-      }
+      // Vigilant Rebuke answers a save, not a hit (savedAgainst).
+      const saved = does.afterSave ? savedAgainst(ctx, reaction.name, does.rangeFt) : null;
+      if (saved && "error" in saved) return saved;
       // The open hit by the creature named, when one is.
-      const record = freshLastHit(ctx.campaign.id, ctx.sheet.id, (hit) => !ctx.args.targetEnemyId || hit.attacker.id === ctx.args.targetEnemyId) ?? freshLastHit(ctx.campaign.id, ctx.sheet.id);
-      const enemy = enemyTarget(ctx, attackerFoeId(record));
+      const record = does.afterSave
+        ? null
+        : (freshLastHit(ctx.campaign.id, ctx.sheet.id, (hit) => !ctx.args.targetEnemyId || hit.attacker.id === ctx.args.targetEnemyId) ?? freshLastHit(ctx.campaign.id, ctx.sheet.id));
+      const enemy = enemyTarget(ctx, saved?.save ? saved.save.forcer.id : attackerFoeId(record));
       if (!enemy || !encounter) {
         return { error: `${reaction.name} strikes a creature in the fight: pass targetEnemyId. Nothing was spent.`, retry: true };
       }
@@ -506,7 +544,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (does.melee && (!record || record.ranged || !record.swings.some((swing) => swing.hit))) {
         return noHit(ctx.sheet.name, reaction.name, "a melee attack that hit them");
       }
-      if (does.rangeFt && !withinFeet(encounter.id, ctx.sheet.id, enemy.id, does.rangeFt)) {
+      // An answer to a save reaches the creature that forced it wherever it
+      // is; its reach is the one who saved (savedAgainst).
+      if (does.rangeFt && !does.afterSave && !withinFeet(encounter.id, ctx.sheet.id, enemy.id, does.rangeFt)) {
         return { error: `${enemy.displayName} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
       }
       const type = strikeType(ctx, does, found.variant, reaction.name, enemy);
@@ -541,6 +581,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (does.melee && record) {
         settle(ctx, record, record.swings, label);
       }
+      if (saved?.save) {
+        answerSave(ctx.campaign.id, saved.save.id);
+      }
       return out;
     }
     case "attack": {
@@ -559,13 +602,17 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (!withinFeet(encounter.id, ctx.sheet.id, enemy.id, does.rangeFt)) {
         return { error: `${enemy.displayName} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}; ${reaction.name} is a melee attack. Nothing was spent.`, refused: "rules" };
       }
-      addSheetCondition(ctx.campaign, ctx.sheet, READIED, { untilTurnOf: ctx.sheet.id }, reaction.name);
-      const result = handlePcAttack(ctx.campaign, ctx.turn, JSON.stringify({ characterId: ctx.sheet.id, targetEnemyId: enemy.id }), ctx.sheets, ctx.sheetsById, new Set(), null);
-      const after = getSheetById(ctx.sheet.id);
-      if (after?.conditions.some((entry) => entry.toLowerCase() === READIED)) {
-        const cleared = removeConditions(after.conditions, after.conditionMeta, [READIED]);
-        patchSheet(after.id, { conditions: cleared.conditions, conditionMeta: cleared.meta });
+      // Each of these answers what another creature does (moves, attacks,
+      // forces a save, is commanded) on that creature's turn or its holder's,
+      // never on the reacting character's own: there it is refused, unless
+      // the engine has seen the trigger itself (the vowed creature's attack).
+      if (actingCombatantId(encounter) === ctx.sheet.id && !does.vowed) {
+        return { error: `${reaction.name} answers what another creature does on its turn, and it is ${ctx.sheet.name}'s own turn. Nothing was spent.`, refused: "rules" };
       }
+      // The attack is the reaction alone (pc-attack.ts reactionAttack). It
+      // borrowed the readied condition, so on the holder's own turn it spent
+      // their Action, and it took a readied action they already held.
+      const result = handlePcAttack(ctx.campaign, ctx.turn, JSON.stringify({ characterId: ctx.sheet.id, targetEnemyId: enemy.id }), ctx.sheets, ctx.sheetsById, new Set(), null, { reactionAttack: true });
       if (typeof result.error === "string") {
         return toolError(result);
       }

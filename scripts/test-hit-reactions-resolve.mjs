@@ -46,6 +46,13 @@ const react = async (who, feature, faces) => {
 const offered = (who, name) =>
   reactionCards(world.sheet(who.id), { ...FRESH_TURN, myTurn: false }, activePublicEncounter(world.campaignId)?.lastHits ?? [], world.sheets()).filter((card) => card.name === name);
 const onOwnTurn = (who, name) => deriveHand(world.sheet(who.id), FRESH_TURN, {}).some((card) => card.name === name);
+// The board's distances from the holder to each hero, as PlayerMapView.feet
+// measures them for the Hand (view.ts): tilesApart on the stored tokens.
+const { tilesApart } = await import("../src/lib/dm/board-reach.ts");
+const feetFrom = (who) => {
+  const me = kit.token(who.id);
+  return Object.fromEntries(world.sheets().filter((sheet) => sheet.id !== who.id && kit.token(sheet.id)).map((sheet) => [sheet.id, tilesApart(me, kit.token(sheet.id)) * 5]));
+};
 const used = (who, id) => world.sheet(who.id).resources[id].used;
 
 for (const [name, classId, subclass, counter] of [
@@ -185,7 +192,7 @@ await test("Wrath of the Storm deals thunder to a creature immune to lightning, 
   assert.equal(world.enemies()[0].currentHp, 300);
 });
 
-await test("Warding Flare's card for an ally beyond 30 feet says why, and one within it is open.", async () => {
+await test("Warding Flare's card for an ally beyond 30 feet is not dealt, and one within it is open.", async () => {
   const cleric = hero("cleric", "Light Domain");
   const ally = hero("fighter", "Champion");
   const enemy = await stage(cleric);
@@ -193,10 +200,13 @@ await test("Warding Flare's card for an ally beyond 30 feet says why, and one wi
   world.patch(ally.id, { currentHp: 50 });
   kit.freshRound();
   await strike(enemy, ally);
-  assert.equal(offered(cleric, "Warding Flare")[0]?.disabled, null);
+  const feet = () => feetFrom(cleric);
+  const flare = () =>
+    reactionCards(world.sheet(cleric.id), { ...FRESH_TURN, myTurn: false }, activePublicEncounter(world.campaignId)?.lastHits ?? [], world.sheets(), "you", feet()).filter((card) => card.name === "Warding Flare");
+  assert.equal(flare()[0]?.disabled, null);
   kit.place(ally.id, 5, 25);
-  const [far] = offered(cleric, "Warding Flare");
-  assert.match(far?.disabled ?? "", /within 30 feet/);
+  assert.ok((feet()?.[ally.id] ?? 0) > 30, JSON.stringify(feet()));
+  assert.equal(flare().length, 0);
 });
 
 await test("Illusory Self: offered on the hit, and the hit misses with no exhaustion.", async () => {

@@ -1421,6 +1421,7 @@ export function SessionView({
                     multiCharacter={campaign.gameSettings?.multiCharacter}
                     romanceCue={romanceCueAllowed(campaign.gameSettings)}
                     edges={state.battleMap?.edges}
+                    feet={state.battleMap?.feet}
                     drops={state.battleMap?.drops}
                     mounts={state.battleMap?.mounts}
                     sheets={sheets}

@@ -1,4 +1,5 @@
 import { isKnockedOut } from "@/lib/dm/knockout";
+import { openSaves, type LastSave } from "@/lib/dm/last-save";
 import { defaultSide, type CombatSide } from "@/lib/dm/combat-sides-logic";
 import { sideOf } from "@/lib/dm/combatant";
 import { lairChoices, legendaryProfile } from "@/lib/dm/legendary-logic";
@@ -17,7 +18,6 @@ import { creatureTypeOf } from "@/lib/bestiary/creature-type";
 import { isRegeneratingDown } from "@/lib/dm/regeneration";
 import { REGENERATION_STOPPED } from "@/lib/dm/monster-abilities";
 import { getBattleMapForEncounter, getTokenByRef, listHiddenRefIds, type BattleMap } from "@/lib/db/battle-maps";
-import { tilesApart } from "@/lib/dm/board-reach";
 import { ENEMY_TURN_NAME, turnOwner } from "@/lib/dm/turn-owner";
 import {
   getActiveEncounter,
@@ -160,7 +160,13 @@ export type PublicEncounter = {
   // hit still open on each character, oldest first, while the engine would
   // accept a reaction to it. Absent keys mean nothing to answer.
   lastHits?: PublicLastHit[];
+  // The Intelligence, Wisdom and Charisma saves characters made this turn
+  // against a creature, for Vigilant Rebuke (src/lib/dm/last-save.ts). A
+  // forcer hidden from this viewer is left out.
+  lastSaves?: PublicSave[];
 };
+
+export type PublicSave = { id: string; characterId: string; ability: string; forcerId: string; forcer: string };
 
 export type PublicTurn = {
   ownerId: string;
@@ -222,10 +228,6 @@ export type PublicLastHit = {
   // they stood (src/lib/dm/reaction-gate.ts), so a card for one the hit
   // dropped reads this, not the fall. Absent from an older host.
   stood?: { up: boolean; conditions: string[] };
-  // Feet from the character hit to each other hero on the board, for a card
-  // that covers an ally within reach (Protection, Warding Maneuver, Warding
-  // Flare). A hero off the board is not listed; absent off the map.
-  apart?: Record<string, number>;
 };
 
 function turnView(encounter: Encounter): { turn?: PublicTurn } {
@@ -293,9 +295,8 @@ function actingView(encounter: Encounter, hidden: Set<string>, showNumbers: bool
   };
 }
 
-function lastHitView(record: LastHit, hidden: Set<string>, showNumbers: boolean, apart?: (from: string) => Record<string, number>): PublicLastHit {
+function lastHitView(record: LastHit, hidden: Set<string>, showNumbers: boolean): PublicLastHit {
   const attackerId = record.attacker.id;
-  const reach = apart?.(record.characterId);
   const index = heaviestHit(record.swings);
   const answered = index >= 0 ? record.swings[index] : null;
   return {
@@ -315,23 +316,9 @@ function lastHitView(record: LastHit, hidden: Set<string>, showNumbers: boolean,
     damage: answered?.raw ?? 0,
     answered: record.answered,
     stood: { up: record.before.currentHp > 0, conditions: record.before.conditions },
-    ...(reach ? { apart: reach } : {}),
   };
 }
 
-// Feet between the heroes on the board, from one to each other, as the
-// engine measures a reach (attack-spatial.ts tilesBetween).
-function feetApart(mapId: string, heroIds: string[]): (from: string) => Record<string, number> {
-  const tokens = new Map(heroIds.flatMap((id) => {
-    const token = getTokenByRef(mapId, id);
-    return token ? [[id, token] as const] : [];
-  }));
-  return (from) => {
-    const origin = tokens.get(from);
-    if (!origin) return {};
-    return Object.fromEntries([...tokens].filter(([id]) => id !== from).map(([id, token]) => [id, tilesApart(origin, token) * 5]));
-  };
-}
 
 // The face an initiative entry for a tracked NPC draws (npc-faces.ts).
 function entryFace(cast: CastLookup, npcId: string, name: string): { face?: string } {
@@ -362,7 +349,7 @@ function movementView(encounter: Encounter, enemy: EncounterEnemy, map: BattleMa
 export function publicEncounter(
   encounter: Encounter,
   enemies: EncounterEnemy[],
-  options: { enemyNumbers?: boolean; hiddenRefIds?: string[]; lastHits?: LastHit[]; apart?: (from: string) => Record<string, number> } = {},
+  options: { enemyNumbers?: boolean; hiddenRefIds?: string[]; lastHits?: LastHit[]; lastSaves?: LastSave[] } = {},
 ): PublicEncounter {
   const showNumbers = options.enemyNumbers === true;
   const board = showNumbers ? getBattleMapForEncounter(encounter.id) : null;
@@ -465,10 +452,18 @@ export function publicEncounter(
     ...actingView(encounter, hidden, showNumbers),
     ...(showNumbers ? dmTurnView(encounter, enemies) : {}),
     ...(options.lastHits?.length
-      ? { lastHits: options.lastHits.map((record) => lastHitView(record, hidden, showNumbers, options.apart)) }
+      ? { lastHits: options.lastHits.map((record) => lastHitView(record, hidden, showNumbers)) }
       : {}),
     ...sidesView(encounter, enemies, hidden, showNumbers),
+    ...savesView(options.lastSaves, hidden, showNumbers),
   };
+}
+
+function savesView(saves: LastSave[] | undefined, hidden: Set<string>, showNumbers: boolean): { lastSaves?: PublicSave[] } {
+  const shown = (saves ?? []).filter((save) => showNumbers || !hidden.has(save.forcer.id));
+  return shown.length
+    ? { lastSaves: shown.map((save) => ({ id: save.id, characterId: save.characterId, ability: save.ability, forcerId: save.forcer.id, forcer: save.forcer.name })) }
+    : {};
 }
 
 // The side exceptions every client draws, a domination's included.
@@ -562,7 +557,7 @@ export function activePublicEncounter(
   return publicEncounter(encounter, listEnemies(encounter.id), {
     ...options,
     lastHits,
-    ...(map && lastHits.length ? { apart: feetApart(map.id, heroes) } : {}),
+    lastSaves: openSaves(campaignId),
     hiddenRefIds: map ? listHiddenRefIds(map.id) : [],
   });
 }

@@ -98,6 +98,8 @@ export const HIT_ANSWER_COUNTERS: ReadonlyArray<{
   id: string;
   // Also answers a hit on a creature within `rangeFt` of the holder.
   ally?: boolean;
+  // How near that creature stands, in feet, for the Hand to deal its card
+  // only inside the reach (hand-react.ts inReach).
   rangeFt?: number;
   // Taken only while wielding a melee weapon or a shield (maneuver-rules.ts).
   armed?: boolean;
@@ -115,7 +117,7 @@ export const HIT_ANSWER_COUNTERS: ReadonlyArray<{
   { id: "race_stones_endurance", answersDrop: true },
   { id: "sub_swarming_dispersal", answersDrop: true },
   { id: "sub_misty_escape", anyDamage: true },
-  { id: "sub_warding_maneuver", ally: true, rangeFt: 5, armed: true, attackOnly: true },
+  { id: "sub_warding_maneuver", ally: true, attackOnly: true, rangeFt: 5, armed: true },
   { id: "sub_one_with_the_word", answersDrop: true, whileHolding: "manifest mind" },
   { id: "sub_necrotic_husk", atZero: true },
   { id: "sub_strength_before_death", atZero: true },

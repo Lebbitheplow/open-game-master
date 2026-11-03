@@ -60,6 +60,14 @@ await test("It is offered on a hit on an ally, not on the paladin, and is no car
   assert.equal(deriveHand(world.sheet(paladin.id), FRESH_TURN, {}).some((card) => card.name === "Rebuke the Violent"), false);
 });
 
+await test("No card when the board puts the attacker beyond 30 feet, wherever the ally is.", async () => {
+  await stage();
+  const at = (feet) =>
+    reactionCards(world.sheet(paladin.id), { ...FRESH_TURN, myTurn: false }, [hit()], [{ id: friend.id, name: "Friend" }], "you", feet).filter((card) => card.name === "Rebuke the Violent");
+  assert.equal(at({ g1: 35, [friend.id]: 10 }).length, 0);
+  assert.equal(at({ g1: 30, [friend.id]: 60 }).length, 1);
+});
+
 await test("With Channel Divinity spent there is no card, and the reaction is refused.", async () => {
   const enemy = await stage();
   world.patch(paladin.id, { resources: { ...world.sheet(paladin.id).resources, channel_divinity: { ...channel(), used: channel().max } } });
@@ -135,11 +143,41 @@ await test("It refuses the paladin's own hit, no hit at all, and a creature out 
   assert.equal((await rebuke(2)).ok, false, "the ally was not hit");
   assert.equal(channel().used, 0);
 
+  // The reach is the attacker's: "an attacker within 30 feet of you".
   const far = await stage();
   await strike(far, friend);
-  kit.place(friend.id, 5, 25);
+  kit.place(far.id, 5, 25);
   assert.match((await rebuke(2)).error, /beyond 30 feet/);
   assert.equal(channel().used, 0);
+});
+
+// The ally once had to be within 30 feet too, which the feature never asks.
+await test("An ally struck beyond 30 feet is answered when the attacker is within it.", async () => {
+  const enemy = await stage();
+  kit.place(friend.id, 5, 12);
+  kit.place(enemy.id, 5, 11);
+  await strike(enemy, friend);
+  const before = enemyHp(enemy);
+  const out = await rebuke(2);
+  assert.equal(out.ok, true, out.error);
+  assert.equal(before - enemyHp(enemy), 6);
+});
+
+// "Radiant damage equal to the damage it just dealt": a blow the ally resisted
+// dealt half its dice, and the rolled amount went back whole.
+await test("It sends back the damage the ally took, not the dice the hit rolled.", async () => {
+  const brute = world.addHero({
+    class: "barbarian", level: 5, maxHp: 100, ac: 12, acOverride: true, proficiencies: TRAINED, portrait: { url: "/uploads/test.png" },
+  });
+  const enemy = await stage();
+  kit.place(brute.id, 7, 6);
+  world.patch(brute.id, { conditions: ["raging"], conditionMeta: { raging: { rounds: 10 } } });
+  await strike(enemy, brute);
+  assert.equal(world.sheet(brute.id).currentHp, 97, "the rage halves the club's 6");
+  const before = enemyHp(enemy);
+  const out = await rebuke(2, { targetCharacterId: brute.id });
+  assert.equal(out.ok, true, out.error);
+  assert.equal(before - enemyHp(enemy), 3);
 });
 
 await test("use_resource sends it to the reaction, spending nothing.", async () => {
