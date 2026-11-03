@@ -18,6 +18,7 @@ const {
   fromCopper,
   packCostCopper,
   parseCoins,
+  purseCoins,
   purseCopper,
   splitCopper,
   unreadCoins,
@@ -173,6 +174,28 @@ test("a hoard splits with the remainder to the first share", () => {
   // Never divides by zero, and never loses a coin.
   const shares = splitCopper(7, 0);
   assert.equal(shares.reduce((a, b) => a + b, 0), 7);
+});
+
+const { capacityProblem } = await import("../src/lib/dm/load-rules.ts");
+const { encumbranceFor } = await import("../src/lib/srd/encumbrance.ts");
+
+test("a sheet saved before copper was kept reads its gold, not 0 gp", () => {
+  assert.equal(purseCopper({ gold: 50 }), 5000);
+  assert.equal(formatPrice(purseCopper({ gold: 50 })), "50 gp");
+  assert.equal(purseCopper({ gold: 3, copper: 47 }), 347);
+});
+
+test("the coins a purse weighs are its gold pieces and its silver and copper, in the fewest coins", () => {
+  assert.equal(purseCoins({ gold: 0, copper: 75 }), 12, "7 sp 5 cp");
+  assert.equal(purseCoins({ gold: 12, copper: 0 }), 12);
+  assert.equal(purseCoins({ gold: 3, copper: 99 }), 3 + 9 + 9);
+  assert.equal(purseCoins({ gold: 0 }), 0);
+  // A Strength 1 carrier holds 15 lb: a 14.7 lb pack and 18 coins of silver
+  // and copper (0.36 lb) is past it, where the gold alone said it was not.
+  const sheet = { name: "Pip", abilities: { str: 1 }, race: "human", gold: 0, copper: 99, equipment: [] };
+  assert.ok(capacityProblem(sheet, [{ name: "Anvil", qty: 1, weight: 14.7 }], "the anvil"), "the coin weighs nothing");
+  assert.equal(capacityProblem({ ...sheet, copper: 0 }, [{ name: "Anvil", qty: 1, weight: 14.7 }], "the anvil"), null);
+  assert.equal(encumbranceFor({ strength: 10, equipment: [], coins: purseCoins({ gold: 50, copper: 0 }) }).carriedLb, 1);
 });
 
 console.log(`currency: ${passed} tests passed`);

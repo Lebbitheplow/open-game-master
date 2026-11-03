@@ -19,7 +19,7 @@ import {
   type DerivedPart,
 } from "@/lib/srd";
 import { attunementSlotsFor } from "@/lib/srd/armor";
-import { formatPrice, purseCopper } from "@/lib/srd/currency";
+import { formatPrice, purseCoins, purseCopper } from "@/lib/srd/currency";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
 import { magicItemRiders } from "@/lib/srd/magic-items";
 import type { WearConflict } from "@/lib/srd/wear-slots";
@@ -136,7 +136,7 @@ export function CharacterSheetDialog({
   const load = encumbranceFor({
     strength: sheet.abilities.str,
     equipment: sheet.equipment,
-    coins: sheet.gold,
+    coins: purseCoins(sheet),
     size: sizeForRace(sheet.race),
     wearer: sheet,
   });
@@ -316,7 +316,7 @@ export function CharacterSheetDialog({
               onOpenChange={setLoadOpen}
               name={sheet.name}
               equipment={sheet.equipment}
-              gold={sheet.gold}
+              purse={sheet}
               load={load}
             />
             <OtherSpeeds speeds={derived.speeds} />

@@ -39,8 +39,20 @@ export type Purse = { gold: number; copper: number };
 export const COPPER_PER_GOLD = DENOMINATION_COPPER.gp;
 
 // A purse's true value, which is the number every calculation should use.
+// A sheet saved before copper was kept has no copper at all (a library
+// character's stored JSON is read as it was written), and NaN would show
+// its 50 gp as "0 gp".
 export function purseCopper(purse: Purse): number {
-  return Math.round(purse.gold) * COPPER_PER_GOLD + Math.round(purse.copper);
+  return Math.round(Number(purse.gold) || 0) * COPPER_PER_GOLD + Math.round(Number(purse.copper) || 0);
+}
+
+// How many coins the purse is, for the load they weigh (50 to the pound,
+// whatever the metal): the gold pieces, and the remainder under a gold piece
+// in the fewest silver and copper. Counting only the gold left a pouch of
+// silver weightless.
+export function purseCoins(purse: Purse): number {
+  const remainder = purseCopper(purse) % COPPER_PER_GOLD;
+  return Math.max(0, Math.round(Number(purse.gold) || 0)) + Math.floor(remainder / DENOMINATION_COPPER.sp) + (remainder % DENOMINATION_COPPER.sp);
 }
 
 // The inverse. Negative totals clamp to empty rather than producing a debt:

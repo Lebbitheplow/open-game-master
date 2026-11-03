@@ -1275,7 +1275,7 @@ function dmMutation(
         return { result: outcome };
       }
       const noRoom = outcome.patch.equipment
-        ? grantProblem(sheet.name, sheet.equipment, outcome.patch.equipment, itemName) ?? capacityProblem(sheet, outcome.patch.equipment, itemName, outcome.patch.gold)
+        ? grantProblem(sheet.name, sheet.equipment, outcome.patch.equipment, itemName) ?? capacityProblem(sheet, outcome.patch.equipment, itemName, { gold: outcome.patch.gold ?? sheet.gold, copper: outcome.patch.copper ?? sheet.copper })
         : null;
       if (noRoom) {
         return { result: noRoom };

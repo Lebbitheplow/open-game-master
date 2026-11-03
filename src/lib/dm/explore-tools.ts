@@ -25,7 +25,7 @@ import { diseaseAt, hazardNamesAt, poisonAt } from "@/lib/srd/table-hazards";
 import { applyPoison } from "@/lib/dm/affliction-poisons";
 import { petrifiedRefusal } from "@/lib/dm/damage-logic";
 import { DISEASES, MADNESS_KINDS, POISONS, findDisease } from "@/lib/srd/afflictions";
-import { formatPrice } from "@/lib/srd/currency";
+import { formatPrice, purseCoins } from "@/lib/srd/currency";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { matchGear } from "@/lib/srd/adventuring-gear";
@@ -190,7 +190,7 @@ function handleLift(args: z.infer<typeof liftSchema>, sheets: CharacterSheet[], 
   const load = encumbranceFor({
     strength: sheet.abilities.str,
     equipment: weighed(sheet.equipment),
-    coins: sheet.gold ?? 0,
+    coins: purseCoins({ gold: sheet.gold ?? 0, copper: sheet.copper ?? 0 }),
     size: sizeForRace(sheet.race),
     wearer: sheet,
   });

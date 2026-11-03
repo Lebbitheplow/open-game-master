@@ -22,8 +22,9 @@ import { itemAbilityScore, type Wearer } from "@/lib/srd/magic-items";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { rowName } from "@/lib/srd/item-row";
+import { purseCoins, type Purse } from "@/lib/srd/currency";
 
-type Carrier = Pick<CharacterSheet, "name" | "abilities" | "race" | "gold"> & Partial<Wearer>;
+type Carrier = Pick<CharacterSheet, "name" | "abilities" | "race" | "gold"> & Partial<Pick<CharacterSheet, "copper">> & Partial<Wearer>;
 
 // Per-unit weights the rows lack, from the content pack.
 export function weighed(equipment: CarriedItem[]): CarriedItem[] {
@@ -36,11 +37,11 @@ export function weighed(equipment: CarriedItem[]): CarriedItem[] {
   });
 }
 
-function loadOf(sheet: Carrier, equipment: CarriedItem[], gold?: number) {
+function loadOf(sheet: Carrier, equipment: CarriedItem[], purse?: Purse) {
   return encumbranceFor({
     strength: sheet.abilities.str,
     equipment: weighed(equipment),
-    coins: gold ?? sheet.gold ?? 0,
+    coins: purseCoins(purse ?? { gold: sheet.gold ?? 0, copper: sheet.copper ?? 0 }),
     size: sheet.race ? sizeForRace(sheet.race) : undefined,
     wearer: sheet as Wearer,
   });
@@ -53,10 +54,10 @@ export function capacityProblem(
   sheet: Carrier & { equipment: CarriedItem[] },
   after: CarriedItem[],
   what: string,
-  gold?: number,
+  purse?: Purse,
 ): ToolError | null {
   const now = loadOf(sheet, sheet.equipment);
-  const then = loadOf(sheet, after, gold);
+  const then = loadOf(sheet, after, purse);
   if (!then.overCapacity || then.carriedLb <= now.carriedLb) {
     return null;
   }
