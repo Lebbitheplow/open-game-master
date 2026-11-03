@@ -23869,8 +23869,8 @@
       "key": "weapon-dagger",
       "label": "Dagger",
       "src": "/assets/icons/action/weapon-dagger.webp",
-      "bytes": 9740,
-      "provenance": "docs/art/gear-cards-2026-10-24.json"
+      "bytes": 3910,
+      "provenance": "docs/art/gear-revisions-2026-11-03.json"
     },
     {
       "id": "action-weapon-greatclub",
@@ -23878,8 +23878,8 @@
       "key": "weapon-greatclub",
       "label": "Greatclub",
       "src": "/assets/icons/action/weapon-greatclub.webp",
-      "bytes": 16476,
-      "provenance": "docs/art/gear-cards-2026-10-24.json"
+      "bytes": 8874,
+      "provenance": "docs/art/gear-revisions-2026-11-03.json"
     },
     {
       "id": "action-weapon-handaxe",
@@ -23896,8 +23896,8 @@
       "key": "weapon-javelin",
       "label": "Javelin",
       "src": "/assets/icons/action/weapon-javelin.webp",
-      "bytes": 6716,
-      "provenance": "docs/art/gear-cards-2026-10-24.json"
+      "bytes": 3642,
+      "provenance": "docs/art/gear-revisions-2026-11-03.json"
     },
     {
       "id": "action-weapon-light-hammer",
@@ -23905,8 +23905,8 @@
       "key": "weapon-light-hammer",
       "label": "Light Hammer",
       "src": "/assets/icons/action/weapon-light-hammer.webp",
-      "bytes": 17306,
-      "provenance": "docs/art/gear-cards-2026-10-24.json"
+      "bytes": 7194,
+      "provenance": "docs/art/gear-revisions-2026-11-03.json"
     },
     {
       "id": "action-weapon-mace",
@@ -23941,8 +23941,8 @@
       "key": "weapon-spear",
       "label": "Spear",
       "src": "/assets/icons/action/weapon-spear.webp",
-      "bytes": 6912,
-      "provenance": "docs/art/gear-cards-2026-10-24.json"
+      "bytes": 6618,
+      "provenance": "docs/art/gear-revisions-2026-11-03.json"
     },
     {
       "id": "action-weapon-light-crossbow",
@@ -23995,8 +23995,8 @@
       "key": "weapon-flail",
       "label": "Flail",
       "src": "/assets/icons/action/weapon-flail.webp",
-      "bytes": 17922,
-      "provenance": "docs/art/gear-cards-2026-10-24.json"
+      "bytes": 10190,
+      "provenance": "docs/art/gear-revisions-2026-11-03.json"
     },
     {
       "id": "action-weapon-glaive",
@@ -24022,8 +24022,8 @@
       "key": "weapon-greatsword",
       "label": "Greatsword",
       "src": "/assets/icons/action/weapon-greatsword.webp",
-      "bytes": 14610,
-      "provenance": "docs/art/gear-cards-2026-10-24.json"
+      "bytes": 6644,
+      "provenance": "docs/art/gear-revisions-2026-11-03.json"
     },
     {
       "id": "action-weapon-halberd",
@@ -24049,8 +24049,8 @@
       "key": "weapon-longsword",
       "label": "Longsword",
       "src": "/assets/icons/action/weapon-longsword.webp",
-      "bytes": 14766,
-      "provenance": "docs/art/gear-cards-2026-10-24.json"
+      "bytes": 4924,
+      "provenance": "docs/art/gear-revisions-2026-11-03.json"
     },
     {
       "id": "action-weapon-maul",
@@ -24058,8 +24058,8 @@
       "key": "weapon-maul",
       "label": "Maul",
       "src": "/assets/icons/action/weapon-maul.webp",
-      "bytes": 17186,
-      "provenance": "docs/art/gear-cards-2026-10-24.json"
+      "bytes": 7896,
+      "provenance": "docs/art/gear-revisions-2026-11-03.json"
     },
     {
       "id": "action-weapon-morningstar",
@@ -24076,8 +24076,8 @@
       "key": "weapon-pike",
       "label": "Pike",
       "src": "/assets/icons/action/weapon-pike.webp",
-      "bytes": 5258,
-      "provenance": "docs/art/gear-cards-2026-10-24.json"
+      "bytes": 5090,
+      "provenance": "docs/art/gear-revisions-2026-11-03.json"
     },
     {
       "id": "action-weapon-rapier",
@@ -24085,8 +24085,8 @@
       "key": "weapon-rapier",
       "label": "Rapier",
       "src": "/assets/icons/action/weapon-rapier.webp",
-      "bytes": 12654,
-      "provenance": "docs/art/gear-cards-2026-10-24.json"
+      "bytes": 8938,
+      "provenance": "docs/art/gear-revisions-2026-11-03.json"
     },
     {
       "id": "action-weapon-scimitar",
@@ -24103,8 +24103,8 @@
       "key": "weapon-shortsword",
       "label": "Shortsword",
       "src": "/assets/icons/action/weapon-shortsword.webp",
-      "bytes": 9858,
-      "provenance": "docs/art/gear-cards-2026-10-24.json"
+      "bytes": 4556,
+      "provenance": "docs/art/gear-revisions-2026-11-03.json"
     },
     {
       "id": "action-weapon-trident",
@@ -24139,8 +24139,8 @@
       "key": "weapon-whip",
       "label": "Whip",
       "src": "/assets/icons/action/weapon-whip.webp",
-      "bytes": 17094,
-      "provenance": "docs/art/gear-cards-2026-10-24.json"
+      "bytes": 7930,
+      "provenance": "docs/art/gear-revisions-2026-11-03.json"
     },
     {
       "id": "action-weapon-blowgun",
@@ -24148,8 +24148,8 @@
       "key": "weapon-blowgun",
       "label": "Blowgun",
       "src": "/assets/icons/action/weapon-blowgun.webp",
-      "bytes": 15612,
-      "provenance": "docs/art/gear-cards-2026-10-24.json"
+      "bytes": 10292,
+      "provenance": "docs/art/gear-revisions-2026-11-03.json"
     },
     {
       "id": "action-weapon-hand-crossbow",
@@ -24184,8 +24184,8 @@
       "key": "weapon-net",
       "label": "Net",
       "src": "/assets/icons/action/weapon-net.webp",
-      "bytes": 26554,
-      "provenance": "docs/art/gear-cards-2026-10-24.json"
+      "bytes": 24096,
+      "provenance": "docs/art/gear-revisions-2026-11-03.json"
     },
     {
       "id": "action-gear-potion-of-healing",
@@ -24211,8 +24211,8 @@
       "key": "gear-acid",
       "label": "Acid",
       "src": "/assets/icons/action/gear-acid.webp",
-      "bytes": 15724,
-      "provenance": "docs/art/gear-cards-2026-10-24.json"
+      "bytes": 7220,
+      "provenance": "docs/art/gear-revisions-2026-11-03.json"
     },
     {
       "id": "action-gear-alchemists-fire",
@@ -24238,8 +24238,8 @@
       "key": "gear-oil",
       "label": "Oil",
       "src": "/assets/icons/action/gear-oil.webp",
-      "bytes": 16956,
-      "provenance": "docs/art/gear-cards-2026-10-24.json"
+      "bytes": 9050,
+      "provenance": "docs/art/gear-revisions-2026-11-03.json"
     },
     {
       "id": "action-gear-antitoxin",
@@ -24247,8 +24247,8 @@
       "key": "gear-antitoxin",
       "label": "Antitoxin",
       "src": "/assets/icons/action/gear-antitoxin.webp",
-      "bytes": 15424,
-      "provenance": "docs/art/gear-cards-2026-10-24.json"
+      "bytes": 7048,
+      "provenance": "docs/art/gear-revisions-2026-11-03.json"
     },
     {
       "id": "action-gear-torch",
@@ -24265,8 +24265,8 @@
       "key": "gear-hooded-lantern",
       "label": "Hooded Lantern",
       "src": "/assets/icons/action/gear-hooded-lantern.webp",
-      "bytes": 10170,
-      "provenance": "docs/art/gear-cards-2026-10-24.json"
+      "bytes": 6858,
+      "provenance": "docs/art/gear-revisions-2026-11-03.json"
     },
     {
       "id": "action-gear-rope",
@@ -24283,8 +24283,8 @@
       "key": "gear-caltrops",
       "label": "Caltrops",
       "src": "/assets/icons/action/gear-caltrops.webp",
-      "bytes": 16896,
-      "provenance": "docs/art/gear-cards-2026-10-24.json"
+      "bytes": 8392,
+      "provenance": "docs/art/gear-revisions-2026-11-03.json"
     },
     {
       "id": "action-gear-ball-bearings",

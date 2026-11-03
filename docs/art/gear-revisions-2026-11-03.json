@@ -1,0 +1,420 @@
+{
+  "date": "2026-11-03",
+  "tool": "built-in image_gen",
+  "dimensions": [
+    256,
+    128
+  ],
+  "previousProvenance": "docs/art/gear-cards-2026-10-24.json",
+  "export": {
+    "format": "WebP",
+    "quality": 94,
+    "alphaQuality": 100,
+    "sheetGrid": [
+      2,
+      2
+    ],
+    "cellInsetPx": 8,
+    "scaledFamilies": "Keep transparent cell padding for the sword family and javelin/pike; do not trim and normalize these to equal widths.",
+    "otherAssets": "Trim transparent borders, contain within 720x336 and pad to 768x384, then reduce to 256x128."
+  },
+  "generations": [
+    {
+      "id": "swords",
+      "sourceFile": "exec-dce1029d-f4c7-4e0e-9b21-dafc71bb70fe.png",
+      "sourceSha256": "1548303f2633a04c8108561159bbd70f9775076f800211fbbc816ca2c1fbb0b8",
+      "prompt": "Create a production asset sheet containing exactly FOUR revised fantasy weapon illustrations, using the attached catalogue only as a painting/material style reference. Transparent background. WIDE canvas, precisely 2 columns x 2 rows, four equal cells with generous transparent gutters; each weapon fully inside its own cell, no overlap. NO text, labels, panels, frames, borders, shadows on a surface, or other objects. Each cell is a wide rectangular composition. Top left: a DAGGER, compact broad double-edged blade with a blade length only 1.35 times its single-hand leather grip, restrained simple steel crossguard. Top right: a SHORTSWORD, straight double-edged blade about 2.6 times its single-hand grip, plain functional guard, clearly a short sword not a dagger. Bottom left: a LONGSWORD, straight double-edged steel blade, clean distinct edges, about 3 times its generous hand-and-a-half leather grip, simple crossguard and pommel. Bottom right: a GREATSWORD, long imposing straight blade about 2.8 times a visibly long TWO-HANDED grip, broad blade at base and strong straight guard. All four point from lower left to upper right at a shallow diagonal. Beautiful hand-painted game illustration, crisp steel facets, rich dark brown leather, restrained brass accents, natural warm edge highlights on the object itself. Practical believable construction. IMPORTANT: absolutely NO floating gold streaks, swirls, motion lines, sparkles, magical glow, duplicate blade edges, or decorative trails. These are ordinary well-made steel weapons. Maintain enough blade thickness to read at 112x54 pixels. Objects should occupy most of each cell's width with at least 8 percent clear margin around each object. Only the FOUR requested weapons, no other catalogue objects."
+    },
+    {
+      "id": "blunts",
+      "sourceFile": "exec-97db879c-d70f-4222-83c2-591dd890bf8e.png",
+      "sourceSha256": "522a0e07991e1e16044fb32680aa14a553404cc3cc1594cfe835ffc105064e69",
+      "prompt": "Create exactly FOUR revised fantasy weapon illustrations as a transparent-background sprite sheet. Use attached catalogue as material/painting reference only. Wide canvas with exactly 2 columns x 2 rows, equal cells and wide empty transparent gutters. No text labels border panels or scenery. Each fully visible object fills a wide 2:1 rectangular composition within its cell, with 8 percent safe margin. Top left: GREATCLUB, thick heavy oak striking end, long two-hand leather grip, two iron reinforcement bands at the striking head, believable hefty wooden weapon. Top right: LIGHT HAMMER, small compact steel hammer head with two plain flat striking faces, short single-handed wood/leather handle, practical throwing hammer, head about one quarter of handle length. Bottom left: MAUL, massive rectangular steel sledgehammer head with two flat ends, straight long two-handed wooden shaft with long leather grip, convincing weight and attachment. Bottom right: FLAIL, a single leather-wrapped wooden handle, exactly one short iron chain visibly connected at its top to exactly one spiked steel ball, chain hangs in a gentle curve and ends at ball, complete object. Handles lower left, heads upper right. Keep flail chain links distinct and physically continuous. Premium painterly fantasy inventory art, polished steel with subtle warm reflections, rich wood grain and leather detail, restrained brass accents. Crucially REMOVE ALL ornamental floating golden swishes, sparks, streaks, speed lines, glow, auras, or motion trails. Static ordinary weapons with beautiful material lighting, not enchanted. Do not add extra objects, hands or limbs. Four illustrations only."
+    },
+    {
+      "id": "polearms",
+      "sourceFile": "exec-3d45cd0a-3f66-4850-b604-f216fa4d70a7.png",
+      "sourceSha256": "8cb9c3d811fa74b2296d212128088d4b55cb220f5adf326c6bd2349e2d36ecb7",
+      "prompt": "Draw exactly FOUR revised medieval fantasy equipment illustrations in a transparent 2-column x 2-row asset sheet, all four cells equal. Use attached catalogue only for matching painterly style, leather and metal rendering. NO labels text frames panels rules divider lines scenery ground or hands. Wide canvas. Each cell holds one fully visible illustration in a 2:1 rectangular composition with generous transparent margins and gutters, all ends inside the cell. TOP LEFT JAVELIN: light slim throwing shaft of plain ash wood, very small narrow iron point no longer than 8 percent of total weapon length, a short simple cord winding at balance point, no large ornamental spear blade. TOP RIGHT SPEAR: stout wooden shaft with a prominent broad leaf-shaped steel spearhead about 22 percent of the weapon's total length, socket visibly joins head to shaft, leather handgrip, clearly heavier than javelin. BOTTOM LEFT PIKE: exceptionally long straight slender wooden pole with a tiny tapered steel head only 5 percent of total length and short metal reinforcement strips at the tip, no leather sword handle, complete pole shown on shallow diagonal. BOTTOM RIGHT NET: a loose flexible THROWING NET, an open draping diamond mesh of knotted tan cord, irregular roughly circular perimeter with small dark iron weights attached along the edge, one short retrieval cord trailing in a loose coil to the left. The net lies in an informal loose partly spread fold, center sagging naturally. NO handle, rigid hoop, rod, wooden stick, landing-net frame or sack; it is a thrown weighted entangling net only. Warm natural reflected light, convincing materials, clear silhouettes. Absolutely no gold trails swirls sparkles glow motion lines or magical effects. No extra catalogue weapons."
+    },
+    {
+      "id": "special",
+      "sourceFile": "exec-93b7dcab-0baa-4942-899b-287b5ac3c2ee.png",
+      "sourceSha256": "e7704e9f9c26b462737c029c67b7ecf7513a43c88cec92c92b7e5e59235753fa",
+      "prompt": "Create exactly THREE revised fantasy equipment illustrations in a transparent-background asset sheet, two equal columns and two equal rows. Top left RAPier, top right WHIP, bottom left BLOWGUN; leave bottom right completely empty transparent. Use attached catalogue as painting/material reference only. No visible grid lines dividers panels borders labels text scenery or hands. Keep each object entirely in its own cell with broad clear gutters and 8 percent margin. Each object's composition wide 2:1. TOP LEFT: a fine rapier, one straight slender steel blade with crisp unambiguous edges, elegant continuous swept steel basket guard forming protective loops around a single one-hand leather grip, small rounded pommel. A straight ordinary blade, NO wavy blade and NO streaks along its edges. TOP RIGHT: a dark warm-brown braided leather bullwhip with one sturdy wrapped handle and a SINGLE continuous tapered lash curling in a graceful broad S, decreasing smoothly from thick at handle to thin at tip. Lash joins handle seamlessly, no extra loose loops, no duplicate lash, no disconnected cord. BOTTOM LEFT: one long hollow bamboo and brass blowgun with a CLEAR circular open bore at near left end, a modest widened mouthpiece, opposite end upper right; ONE small feathered dart lying separately parallel beneath it. Simple functional weapon, elegant painted wood and restrained brass rings. Rich polished fantasy game art with natural warm highlights physically on materials; NO floating golden strokes, sparks, swirls, motion trails, halos or magic anywhere. Ordinary well-made equipment, strong readable silhouette at small card size. Only those three objects/arrangements."
+    },
+    {
+      "id": "items",
+      "sourceFile": "exec-85cad50d-f9e8-4faa-8ce9-e6a135068258.png",
+      "sourceSha256": "968701232801d26b1dd0dfe3164d968e04e97b7a55e18b092ff048f84f61dacc",
+      "prompt": "Draw exactly FOUR revised common adventuring items in a 2-column x 2-row transparent asset sheet. Use attached item catalogue only as premium hand-painted fantasy style reference. No labels text grids panels dividers frames scenery or hands. Each object entirely inside its equal cell with 10 percent clear transparent margins and gutters. TOP LEFT OIL: a squat oval brown glazed earthenware oil flask, one short narrow pouring neck CLOSED with a cork, a small side loop handle, a small embossed oil-drop symbol on the flask body, no teapot spout. Natural ceramic reflections, NO spilled oil or flying droplets. TOP RIGHT ANTITOXIN: a small broad-shouldered clear glass medicine vial CLOSED with cork, clear amber herbal liquid, a modest pair of green leaves bound against neck with twine; an ordinary herbal remedy with no glow, gold swirls, magical symbols, sparkles or orbiting trails. BOTTOM LEFT HOODED LANTERN: sturdy brass and blackened iron medieval hand lantern with a carrying ring, a clearly visible cylindrical opaque METAL SHUTTER partially lifted vertically to expose the warm flame through the lower glass opening, broad protective metal hood and ventilation slots above. Make the adjustable hood an obvious solid mechanical part, not just an ordinary exposed glass lantern. Flame is enclosed behind glass. NO floating gold swishes or particles. BOTTOM RIGHT ACID: small squat thick clear glass flask containing vivid yellow-green liquid, tilted only slightly so liquid surface remains level, CLOSED securely with a simple cork and small red wax seal at neck, modest leather retaining strap around body. Corrosive alchemical liquid, no magical aura, no pouring through a sealed cork, no spills or detached droplets. Rich tactile materials and restrained warm illumination. Each composition wide rectangular 2:1, fill available space but preserve complete object silhouette. These four only."
+    },
+    {
+      "id": "caltrops",
+      "sourceFile": "exec-96775c58-5e33-48c4-994f-3b07b90dc403.png",
+      "sourceSha256": "4a9808d50bf692a440c6f5b6ea5baff64ee683e4ea3e45b20611658f0d664d13",
+      "prompt": "Revise the caltrops illustration from the reference catalogue into a beautiful physically believable standalone asset. One wide 2:1 rectangular transparent composition. A small dark-brown leather drawstring pouch rests open on its side in the right third. Exactly THREE large clearly separated forged iron CALTROPS spilled across the left and middle foreground. Each caltrop is a single solid tetrahedral four-pointed iron obstacle, FOUR conical spikes joined at one center: three points make a broad triangular footprint and the fourth spike points vertically up. Show the foreground caltrop particularly clearly from a slightly elevated three-quarter angle so its three base points and one upright spike are all distinguishable. These are three-dimensional pointed iron objects, NOT flat ninja throwing stars, NOT three-bladed stars, NOT crosses, NO flat triangular blade fins. Blunt dark steel shafts taper to sharp ends; bright natural edge highlights. Pouch is secondary, obstacles are large and readable at 112x54 card size. Rich hand-painted medieval game art matching the reference, realistic leather folds and simple metal geometry, restrained warm highlights. Full objects with generous safe margin. Absolutely NO gold magic trails, glow, swirls, speed lines, text, labels, borders, hands, background or extra objects."
+    },
+    {
+      "id": "itemsRepair",
+      "sourceFile": "exec-a2d5503b-4a66-465a-b443-a9a736dc103f.png",
+      "sourceSha256": "69f7b38ffe70db6d0597dd3f2cedc1e43a663f3702274642e995402a1f196e86",
+      "prompt": "Edit this four-item asset sheet. Preserve the actual oil flask, antitoxin vial, hooded lantern and green acid flask designs and their painting style. FIX THE TRANSPARENCY: remove every pale grey or white cloudy halo, backdrop, glow and drop shadow surrounding these objects, including inside the oil flask handle and lantern carrying ring. All space outside the actual physical objects must be truly transparent, with clean anti-aliased cutout edges. The objects are NOT luminous except the flame inside the lantern. Glass retains natural internal reflections but no white exterior fog. Place objects in a precise equal 2x2 grid, oil top left, antitoxin top right, lantern bottom left, acid bottom right. SHRINK each object enough to leave at least 12 percent empty transparent margin on ALL FOUR sides of its own cell. In particular the lantern ring must be wholly within the bottom-left cell, below the horizontal midpoint, and all bottle corks safely inside their cells. No divider lines, no frames, no text. Each cell is a wide rectangular card asset, entire sheet wide 2:1. Keep all mechanical and material detail on the objects. No gold swirls."
+    },
+    {
+      "id": "caltropsRepair",
+      "sourceFile": "exec-245ffc2f-cdc7-4841-a992-9862dc95fe4b.png",
+      "sourceSha256": "373c9b17bd7900aa7fe33b80538de05942bcb7c92d2e2e7cc05fdabd15033176",
+      "prompt": "Edit this caltrops-and-pouch illustration. Keep the brown leather pouch on the right but make it smaller, about one third of the width. REPLACE all the bladed star shapes with exactly THREE authentic simple iron caltrops, clearly separated, across left and middle. They are made from ROUND tapered iron rods, like sharpened nails welded at their middles, NOT flat plates or triangular fins. Each has exactly FOUR slender round spikes radiating tetrahedrally from a small central welded joint. One spike points up vertically, three spikes spread down and outward as tripod legs at 120 degrees. Show front caltrop with all four pointed rods visible: upright, lower left, lower right, and a fourth receding diagonally to the right rear. Make the receding spike a long distinct rod and distinct tip, not a tiny triangular flap. No broad metal webs between rods. Think four long steel nails joined at their blunt ends to form a three-dimensional jack. Simple strong silhouette, accurate welded rod construction, crisp edges and subtle metallic highlights, matte dark iron. Premium painted fantasy item art matching leather pouch. Transparent background, completely clean edges no outside halo glow sparks or shadows. Wide 2:1 composition, generous transparent padding around complete illustration. No text labels or border."
+    },
+    {
+      "id": "polesRepair",
+      "sourceFile": "exec-47234811-d0a1-4121-af7a-876bf34d7a17.png",
+      "sourceSha256": "a9972bdd8ab30fd6218595313c3ac81cd576b675e04c179a79cca920e9cdf60d",
+      "prompt": "This is a nonviolent fantasy inventory illustration for a tabletop game, showing only inanimate equipment, with no people, combat or injuries. Edit the attached four-object sheet only to improve readability at small icon size. Preserve the existing two-by-two arrangement, all four objects and their designs, painterly style, colors and transparency. In the top-left javelin and bottom-left pike, increase the wooden shaft thickness by about three times and enlarge their existing little metal tips enough to be distinguishable at 112x54 pixels. They should still look long and slender, but no longer disappear into a one-pixel hairline. Keep the top-right spear and bottom-right loose weighted net essentially unchanged. Every complete object should fit inside its own cell with clear empty margins. No text, no extra objects, no background, no decorative gold swishes. Transparent background and clean edges."
+    },
+    {
+      "id": "swordsScale",
+      "sourceFile": "exec-69acd9ef-66fa-4895-976f-453b54de2b55.png",
+      "sourceSha256": "8bf3663f35b5352bb2e4473a9d350d2582f088abbc05887cb50395429f08c6ca",
+      "prompt": "Revise this nonviolent fantasy game inventory sheet of four swords. Keep the exact 2 by 2 equal-cell layout, transparent background, painterly steel/leather style, and ordinary equipment without magical streaks. The key correction is RELATIVE SIZE ON THE PAGE: do NOT enlarge each sword to fill its cell. Leave deliberate empty transparent space around the smaller weapons. Top-left DAGGER should occupy only 40 percent of that cell's width. Top-right SHORTSWORD occupies 60 percent. Bottom-left LONGSWORD occupies 78 percent. Bottom-right GREATSWORD occupies 92 percent. All four have the SAME shallow diagonal angle, point towards upper right, and are centered within their cells. Keep their single-hand grip thickness roughly the same pixel thickness across the sheet, with grip lengths appropriate to each: dagger and shortsword have similar short one-hand grips; longsword has a hand-and-a-half grip; greatsword has a clearly long two-hand grip, longer blade and broader guard. Keep the dagger compact, blade around 1.5 times its grip length; shortsword blade around 3 times its grip; longsword blade around 3.5 times its longer grip; greatsword blade around 3 times its long two-hand grip. Rich wood-brown leather, subtle restrained warm metal accents, bright readable steel blades. Full silhouettes, straight blades, no cropped points, no perspective foreshortening. Minimum 5 percent clear gutter on every cell side. No labels text grid lines backgrounds frames decoration shadow or people. The dagger MUST look much smaller on the canvas than the greatsword; the entire purpose is visible scale progression, not four equally large icons."
+    },
+    {
+      "id": "polesDistinct",
+      "sourceFile": "exec-4a2e9853-bdbd-4be7-b5f5-0275e8864975.png",
+      "sourceSha256": "2af5c4b13ff47a89a6f5dabc4a810bf3d0ecb0540e5fb2f78ac0435c1fedf58b",
+      "prompt": "Edit the attached nonviolent tabletop-game inventory artwork sheet. Keep a transparent background and the same exact 2x2 equal cells. This is only a display of inanimate medieval equipment, no people or action. Top left JAVELIN: redesign as a visibly light, relatively short ash-wood throwing shaft with a narrow little leaf-shaped steel point and a short pale cord balance grip. It must occupy only 60 percent of its cell width, centered with ample transparent space. Warm pale ash wood, modest small head, slender shaft. Bottom left PIKE: redesign as a visibly much longer, more substantial dark oak pole, extending across 92 percent of its cell width. Add a distinctive narrow diamond-section steel point with a LONG SOCKET and two clearly visible long riveted iron reinforcement strips running down the upper shaft, about a quarter of the shaft length. No central cord or leather grip on the pike. Strong practical construction, enough thickness and edge highlights to remain visible at small card size. The pike's shaft should look heavier than the javelin, with darker wood and substantial iron fittings, but must not resemble a broad-bladed spear. Both complete silhouettes at the same shallow diagonal pointing upper right. No foreshortening, no cropped pole ends. The size difference MUST be visible in the image itself; do not scale the javelin up to fill its cell. Preserve the top-right broad-headed spear and bottom-right loose weighted net from the reference, as unchanged reference objects. No text gridlines panels backgrounds halos gold streaks or extra objects. Clean transparency, 5 percent clear margins on every cell, premium painted fantasy game style matching reference."
+    },
+    {
+      "id": "swordsReadable",
+      "sourceFile": "exec-0fe628b4-44f3-438e-bce4-ae9439470586.png",
+      "sourceSha256": "23e8dc3a20cbf49ebe6a153ff8ce82fb812b0b096f6770fb16ff6d26fddecf3d",
+      "prompt": "Edit this transparent four-sword inventory sheet. Preserve the same two by two equal-cell layout and the exact designs, painting style, angle and colors. The size hierarchy is correct but the top-left dagger is TOO SMALL for a game card. Enlarge ONLY that top-left dagger to 1.6 TIMES its current width and height, centered in its existing cell. It should span about 40 percent of its cell width, still clearly smaller than the shortsword. Enlarge the top-right shortsword by 1.2 TIMES its current width and height, centered in its cell, to span about 60 percent of its cell width. Leave the bottom-left longsword and bottom-right greatsword at their current sizes, without changing them. Result must have a readable compact dagger, intermediate shortsword, longer longsword, largest greatsword. Keep plenty of genuinely transparent padding and no halos. All four full objects, no labels, text, border, grid lines or background. Nonviolent fantasy game equipment catalogue, no action or people."
+    },
+    {
+      "id": "sizeBalance",
+      "sourceFile": "exec-2dbccc42-b1c9-400d-b2e0-b66ff84a74b6.png",
+      "sourceSha256": "13ab4ade317390e49afb89ce5a4d05d1eb61e954902f48db7f138d17da462d89",
+      "prompt": "Make a precise sizing correction to these two transparent fantasy inventory illustrations, without redesigning the objects. Create a WIDE 2:1 transparent asset sheet divided into an invisible 2x2 grid of equal cells, each cell itself 2:1. TOP LEFT: the dagger from reference 1, centered, enlarged to occupy FIFTY PERCENT (50%) of its cell width. TOP RIGHT: the javelin from reference 2, centered, enlarged to occupy SIXTY-EIGHT PERCENT (68%) of its cell width. BOTTOM LEFT and BOTTOM RIGHT remain entirely empty transparent. Preserve the same shapes, angles, proportions within each object, colors, painted metal/wood/leather style, and all fittings. Only their displayed sizes change. Dagger should now be a substantial readable icon rather than a tiny speck, yet leave enough clear space that it still reads smaller than a shortsword. Javelin should have a clearly readable steel point and cord grip rather than looking miniature, while still leaving room around it. Complete objects with no clipping. Keep original shallow diagonal from lower left to upper right. Exactly two objects, no other weapons. No text labels gridlines frames scenery, people, action, background, shadows, floating effects or halos. True clean transparent background. Nonviolent game inventory art. The two requested objects must be substantially larger relative to their individual cells than in the reference images."
+    }
+  ],
+  "records": [
+    {
+      "id": "weapon-dagger",
+      "label": "Dagger",
+      "category": "weapon",
+      "generation": "sizeBalance",
+      "cell": {
+        "column": 0,
+        "row": 0
+      },
+      "preserveCellPadding": true,
+      "previousAssetSha256": "8c8671450d3435aee688131cceadea913c80985ebc6acb2eb40d24b12a633458",
+      "assetSha256": "b52633e865e16c400e8d993cfad467a0a028f455f5699d23d9ee6200c9c91ed8",
+      "bytes": 3910,
+      "revision1": "Shorter, broader blade and a substantial single-hand grip.",
+      "revision2": "Reduced its displayed size compared with Revision 1 to distinguish it from the swords, with a moderate size that keeps the blade and grip readable."
+    },
+    {
+      "id": "weapon-shortsword",
+      "label": "Shortsword",
+      "category": "weapon",
+      "generation": "swordsReadable",
+      "cell": {
+        "column": 1,
+        "row": 0
+      },
+      "preserveCellPadding": true,
+      "previousAssetSha256": "acf560c9de4ab34e2e54a6e0544e80a3978b79a655dad01ceafea5fd3277eab7",
+      "assetSha256": "2ddf08eecc4df61a19f1cb85bde9fa383659a6391a7b526ca61c2a203b0c82a2",
+      "bytes": 4556,
+      "revision1": "Longer blade relative to the grip, distinct from the compact dagger.",
+      "revision2": "Reduced its displayed size to sit between the dagger and longsword, retaining a single-hand grip."
+    },
+    {
+      "id": "weapon-longsword",
+      "label": "Longsword",
+      "category": "weapon",
+      "generation": "swordsReadable",
+      "cell": {
+        "column": 0,
+        "row": 1
+      },
+      "preserveCellPadding": true,
+      "previousAssetSha256": "b65716adcddf57b62631227bb81340dcdaa3ed964e30082de1eb8da5da3e6c9d",
+      "assetSha256": "5b22332133a7d73481ff832498edc646a8b4521a4633ec23013cda18a6e88ab4",
+      "bytes": 4924,
+      "revision1": "Removed gold trails; clean steel edges and a hand-and-a-half grip.",
+      "revision2": "Set its displayed size between the shortsword and greatsword, retaining the longer hand-and-a-half grip."
+    },
+    {
+      "id": "weapon-greatsword",
+      "label": "Greatsword",
+      "category": "weapon",
+      "generation": "swordsReadable",
+      "cell": {
+        "column": 1,
+        "row": 1
+      },
+      "preserveCellPadding": true,
+      "previousAssetSha256": "69da9ea2eff7602926db9d73ae5772d2bb066f4e6742af40ddd97895b08f8ca0",
+      "assetSha256": "64cfe5683f2beeb3d6b11300903fc562d58eca25d324acfcc6fcdf57748f8ba8",
+      "bytes": 6644,
+      "revision1": "Removed gold trails; broader blade and a visibly longer two-handed grip.",
+      "revision2": "Made it the largest sword in the displayed family, with the longest grip. Preserved the intended spacing instead of enlarging every sword equally."
+    },
+    {
+      "id": "weapon-greatclub",
+      "label": "Greatclub",
+      "category": "weapon",
+      "generation": "blunts",
+      "cell": {
+        "column": 0,
+        "row": 0
+      },
+      "preserveCellPadding": false,
+      "previousAssetSha256": "402eb7b7eec23bd254e52ef515bae73bdbb45e36c41ef4344c580152c493a14a",
+      "assetSha256": "da05371931e8b716eff2293867cdcb24ef5942104ef1249e875cdedbd1614d8d",
+      "bytes": 8874,
+      "revision1": "Removed decorative streaks; clearer wood, reinforcement bands and long grip.",
+      "revision2": null
+    },
+    {
+      "id": "weapon-light-hammer",
+      "label": "Light Hammer",
+      "category": "weapon",
+      "generation": "blunts",
+      "cell": {
+        "column": 1,
+        "row": 0
+      },
+      "preserveCellPadding": false,
+      "previousAssetSha256": "00ae373167eb59e46241fd81db8b7d30687e1e2db863bb68e3bac8208cb79b4a",
+      "assetSha256": "2cae86a43719a34f47787309914dc33cfd878ac9a8996e754e7a76d44765e4c2",
+      "bytes": 7194,
+      "revision1": "Compact plain hammer head, with the surrounding streaks removed.",
+      "revision2": null
+    },
+    {
+      "id": "weapon-maul",
+      "label": "Maul",
+      "category": "weapon",
+      "generation": "blunts",
+      "cell": {
+        "column": 0,
+        "row": 1
+      },
+      "preserveCellPadding": false,
+      "previousAssetSha256": "e812128a8e7146482819236b970858e4345cda3088fff2d77c4c87862ced29a4",
+      "assetSha256": "c8a90fbaab124d9d79de53715cc15b29f9d36b1a6a9fed1c8e33e5a1a024c940",
+      "bytes": 7896,
+      "revision1": "A heavier sledgehammer head and long grip, without the gold trails.",
+      "revision2": null
+    },
+    {
+      "id": "weapon-flail",
+      "label": "Flail",
+      "category": "weapon",
+      "generation": "blunts",
+      "cell": {
+        "column": 1,
+        "row": 1
+      },
+      "preserveCellPadding": false,
+      "previousAssetSha256": "5e1fc4ce636fb0e25648762eec41f22a34d75de23da71b7269efdba4222235c9",
+      "assetSha256": "9adb8ecbf10a987706b31c21f1fcdfeb8cf0d0ca100cc6138cb62e2305e6d867",
+      "bytes": 10190,
+      "revision1": "One clearly connected chain and spiked ball; removed decorative swirls.",
+      "revision2": null
+    },
+    {
+      "id": "weapon-javelin",
+      "label": "Javelin",
+      "category": "weapon",
+      "generation": "sizeBalance",
+      "cell": {
+        "column": 1,
+        "row": 0
+      },
+      "preserveCellPadding": true,
+      "previousAssetSha256": "2452d4305ff63950730e384ba1e34873d681cf39dba1fa976444ad7f0a3b981f",
+      "assetSha256": "668bf0c818d8c6dca1072b9d6f0c6531458006357d1b86257c159cb61d6326aa",
+      "bytes": 3642,
+      "revision1": "Slender throwing shaft and a much smaller, lighter point.",
+      "revision2": "Made it lighter-looking and smaller than the reinforced pike, with pale wood and a short cord grip. Kept it large enough for the point and shaft to remain clear at card size."
+    },
+    {
+      "id": "weapon-spear",
+      "label": "Spear",
+      "category": "weapon",
+      "generation": "polearms",
+      "cell": {
+        "column": 1,
+        "row": 0
+      },
+      "preserveCellPadding": false,
+      "previousAssetSha256": "84740705355a2710b6c74463d9041079a9ddd5c1619523930a74d6c358cab5a8",
+      "assetSha256": "6a125f217e72bfac354c5cc0bf9ec9b922f3fa840f366815f33c2d7b62466a4e",
+      "bytes": 6618,
+      "revision1": "A broader leaf-shaped head on a stouter shaft.",
+      "revision2": null
+    },
+    {
+      "id": "weapon-pike",
+      "label": "Pike",
+      "category": "weapon",
+      "generation": "polesDistinct",
+      "cell": {
+        "column": 0,
+        "row": 1
+      },
+      "preserveCellPadding": true,
+      "previousAssetSha256": "ab57093f5d2e696cd43c2a376baa425341319e725d38da69223c0526b1ff4449",
+      "assetSha256": "e096b1f0556799bc4c2b1c77afaf6d0999978b816bde09fc635baac77f635ce9",
+      "bytes": 5090,
+      "revision1": "Long, thin pole with a small head; deliberately distinct from the spear.",
+      "revision2": "Made it larger than the javelin, with darker wood, a long steel socket and visible riveted reinforcement strips."
+    },
+    {
+      "id": "weapon-net",
+      "label": "Net",
+      "category": "weapon",
+      "generation": "polearms",
+      "cell": {
+        "column": 1,
+        "row": 1
+      },
+      "preserveCellPadding": false,
+      "previousAssetSha256": "2733a52051c50a53d48b27e02c92e3f201599a9da953e776cce5264de8cb4a71",
+      "assetSha256": "1225b16d5e17b31c6fe4490861830742fe623312d2b0fb1883712af4059b5dcf",
+      "bytes": 24096,
+      "revision1": "Loose weighted throwing mesh, without a rigid frame or handle.",
+      "revision2": null
+    },
+    {
+      "id": "weapon-rapier",
+      "label": "Rapier",
+      "category": "weapon",
+      "generation": "special",
+      "cell": {
+        "column": 0,
+        "row": 0
+      },
+      "preserveCellPadding": false,
+      "previousAssetSha256": "b2de9796d41f4946003e681d33267ada10cd7226df38202cba819e3f24156be0",
+      "assetSha256": "dabd6bea4fa577773b2a7635c87f7ddead9ec28fee166a47657fd95d724e4e94",
+      "bytes": 8938,
+      "revision1": "A straight clean blade and defined swept guard, without gold streaks.",
+      "revision2": null
+    },
+    {
+      "id": "weapon-whip",
+      "label": "Whip",
+      "category": "weapon",
+      "generation": "special",
+      "cell": {
+        "column": 1,
+        "row": 0
+      },
+      "preserveCellPadding": false,
+      "previousAssetSha256": "d7ff7657b80ccfd557f4c897c5a7ad30c31a0fef7f4fe0011a32d0cd7d9815cf",
+      "assetSha256": "3deb1385addb2c241082bb0d49304ca914e7a024b0c8a7d959d8cfa1f2cbb4d4",
+      "bytes": 7930,
+      "revision1": "One continuous tapered lash and a simpler silhouette, without gold accents floating beside it.",
+      "revision2": null
+    },
+    {
+      "id": "weapon-blowgun",
+      "label": "Blowgun",
+      "category": "weapon",
+      "generation": "special",
+      "cell": {
+        "column": 0,
+        "row": 1
+      },
+      "preserveCellPadding": false,
+      "previousAssetSha256": "813d9605a32d78337cca539e71bc7c07d1a8cf1113fac982134dd7f03364e82f",
+      "assetSha256": "c6e854516f3a962fa625a54d43ba78cfc10370fbba67e838247b13442b494cd5",
+      "bytes": 10292,
+      "revision1": "Clear hollow bore, simple fittings and a separate dart; removed decorative streaks.",
+      "revision2": null
+    },
+    {
+      "id": "gear-oil",
+      "label": "Oil",
+      "category": "gear",
+      "generation": "itemsRepair",
+      "cell": {
+        "column": 0,
+        "row": 0
+      },
+      "preserveCellPadding": false,
+      "previousAssetSha256": "7022c72e94cbadda9c59e30b82cd6eca1cf74eb289e3f9e039e82847706dc60e",
+      "assetSha256": "1f6200da61284f548d99e8bfd6edb4cb64b5d48e4602fc83ecf14dfcedaffcdf",
+      "bytes": 9050,
+      "revision1": "A corked ceramic oil flask replaces the teapot-like spout and flying oil.",
+      "revision2": null
+    },
+    {
+      "id": "gear-antitoxin",
+      "label": "Antitoxin",
+      "category": "gear",
+      "generation": "itemsRepair",
+      "cell": {
+        "column": 1,
+        "row": 0
+      },
+      "preserveCellPadding": false,
+      "previousAssetSha256": "8a7e189a168fce7d25e24e6141287548e9b431a24335a58ba690ac8f31b70de6",
+      "assetSha256": "c38744730328261d8f6f88e38ebbedc3d2eaaff11e0cf32bf5cf179bb319c4a4",
+      "bytes": 7048,
+      "revision1": "A sealed herbal medicine vial with natural materials instead of a magical aura.",
+      "revision2": null
+    },
+    {
+      "id": "gear-hooded-lantern",
+      "label": "Hooded Lantern",
+      "category": "gear",
+      "generation": "itemsRepair",
+      "cell": {
+        "column": 0,
+        "row": 1
+      },
+      "preserveCellPadding": false,
+      "previousAssetSha256": "fe4fae5623e7e2f99ccd4b38b4d9882ef8902e18378d926099f4cd29a78394ac",
+      "assetSha256": "66b639c399ecb25055b34bcd72b49c56e44301542231aee40a744d14df70d619",
+      "bytes": 6858,
+      "revision1": "A visible metal shutter makes the hood part of the lantern mechanism.",
+      "revision2": null
+    },
+    {
+      "id": "gear-acid",
+      "label": "Acid",
+      "category": "gear",
+      "generation": "itemsRepair",
+      "cell": {
+        "column": 1,
+        "row": 1
+      },
+      "preserveCellPadding": false,
+      "previousAssetSha256": "9c4af9860cb4a36bcbb13ce7d4067e08b641c0f98c5aa06ad8fdc42376f16ac3",
+      "assetSha256": "b3c9eae94f15c2d421f679da4e4f9e8f5bbd19db05c89e30418b5941bb0f375e",
+      "bytes": 7220,
+      "revision1": "A sealed flask with a level liquid surface, replacing liquid pouring past a sealed neck.",
+      "revision2": null
+    },
+    {
+      "id": "gear-caltrops",
+      "label": "Caltrops",
+      "category": "gear",
+      "generation": "caltropsRepair",
+      "cell": null,
+      "preserveCellPadding": false,
+      "previousAssetSha256": "1b07d186f12f98d33cb57e599385113631eebf5a9f845637d01a6633dbd0b445",
+      "assetSha256": "08a8ede7131deac37eb189482a9fd4d1d7d84a1e360dcdab7563c71099d952bc",
+      "bytes": 8392,
+      "revision1": "Four-pointed forged spikes with a smaller pouch, replacing broad star-like blades.",
+      "revision2": null
+    }
+  ]
+}
