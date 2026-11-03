@@ -280,7 +280,7 @@ export function authoredAttackSituation(input: {
   if (entropicQuarry(sheet) === enemy.id) {
     sources.push("advantage");
     notes.push("Entropic Ward: advantage, spent by this attack");
-    spent.push(sheet.conditions.find((entry) => entry.trim().toLowerCase() === ENTROPIC_EDGE)!);
+    spent.push(sheet.conditions.find((entry) => textKey(entry) === ENTROPIC_EDGE)!);
   }
   for (const { held } of activeAuthored(sheet, "auto_crit")) {
     if (encounter.surprisedIds.includes(enemy.id)) {

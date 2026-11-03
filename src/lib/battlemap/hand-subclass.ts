@@ -10,7 +10,8 @@
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { computeSheetDerived } from "@/lib/srd";
 import { authoredSpendFor, gateHolds, heldAuthored, resolveFormula, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
-import { resourceDef } from "@/lib/srd/class-resources";
+import { resourceDef, type ResourceDef } from "@/lib/srd/class-resources";
+import type { SpendAction } from "@/lib/srd/authored-effects-types";
 import { holdsFeature } from "@/lib/srd/trait-rules";
 import {
   costGate,
@@ -70,10 +71,15 @@ export function playedAsSpendCard(sheet: CharacterSheet, name: string): boolean 
 // the spend's own, else its same-named counter's; a spend that names none
 // costs nothing of the turn (Arcane Jolt rides the hit, Psychic Blades the
 // attack), and one with variants is priced by the variant played.
-function spendAction(spend: AuthoredSpend): string {
+function spendAction(spend: AuthoredSpend): SpendAction | NonNullable<ResourceDef["action"]> {
+  return spend.action ?? ownCounter(spend)?.action ?? (spend.does.kind === "variants" ? "action" : "none");
+}
+
+// The counter of a spend's own name (Elder Champion's sub_elder_champion),
+// or null for a spend paid from a shared pool (ki, Bardic Inspiration).
+function ownCounter(spend: AuthoredSpend) {
   const own = spend.pool ? resourceDef(spend.pool.id) : null;
-  const counter = own?.displayName === spend.name ? own : null;
-  return spend.action ?? counter?.action ?? (spend.does.kind === "variants" ? "action" : "none");
+  return own?.displayName === spend.name ? own : null;
 }
 
 // One card per spend the character holds that is played in a fight. `taken`
@@ -117,11 +123,10 @@ function aimsOf(does: SpendDoes, level: number, mods: Record<string, number>): A
 
 function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, spend: AuthoredSpend): HandCard[] {
   const does = spend.does;
-  const own = spend.pool ? resourceDef(spend.pool.id) : null;
   // The counter of this spend's own name. Its card's id, cost and uses line
   // carry over, so a seat the player arranged holds and Hidden Paths, whose
   // variants price themselves, stays a bonus action.
-  const counter = own?.displayName === spend.name ? own : null;
+  const counter = ownCounter(spend);
   const action = spendAction(spend);
   if (spend.fight === "out" || does.kind === "choose" || action === "reaction" || !gateHolds(spend.gate, sheet, held)) return [];
   const cost = COST[action] ?? "action";

@@ -19,6 +19,7 @@
 // tests read one table.
 import type { ReactionDoes } from "@/lib/srd/authored-effects-types";
 import { isNamed } from "@/lib/srd/feature-names";
+import { textKey } from "@/lib/language/text-logic";
 
 export type ReactionTiming = "answers" | "at_zero" | "after";
 
@@ -156,7 +157,7 @@ export function reachAtLevel(range: number | Array<[number, number]>, level: num
 export const ENTROPIC_EDGE = "entropic ward";
 
 export function entropicQuarry(sheet: { conditions: string[]; conditionMeta?: unknown }): string | null {
-  if (!sheet.conditions.some((entry) => entry.trim().toLowerCase() === ENTROPIC_EDGE)) return null;
+  if (!sheet.conditions.some((entry) => textKey(entry) === ENTROPIC_EDGE)) return null;
   const meta = (sheet.conditionMeta as Record<string, { quarry?: string } | undefined> | undefined)?.[ENTROPIC_EDGE];
   return meta?.quarry ?? null;
 }
