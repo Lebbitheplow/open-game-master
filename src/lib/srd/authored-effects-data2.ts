@@ -358,6 +358,11 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
       },
     ],
   },
+  "cleric::Sentinel at Death's Door": {
+    subclass: "Grave Domain",
+    counter: "sub_sentinel_at_deaths_door",
+    reactions: [{ name: "Sentinel at Death's Door", pool: { id: "sub_sentinel_at_deaths_door" }, does: { kind: "uncrit", rangeFt: 30 } }],
+  },
   "paladin::Vigilant Rebuke": {
     subclass: "Oath of the Watchers",
     reactions: [

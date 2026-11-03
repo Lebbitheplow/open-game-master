@@ -29,9 +29,10 @@ import { pcResistances, removeConditions, type ConditionMetaMap } from "@/lib/dm
 import { immuneToCondition } from "@/lib/dm/damage-logic";
 import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
 import { meetEnemyPart } from "@/lib/dm/enemy-defenses";
+import { scaledParts } from "@/lib/dm/enemy-hit";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
-import { attackerFoeId, freshLastHit, openHits, plainOfReroll, rerollAttacker, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
+import { attackerFoeId, critTurnsNormal, freshLastHit, openHits, plainOfReroll, rerollAttacker, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { vowedFoe } from "@/lib/srd/vow-of-enmity";
 import { ENTROPIC_EDGE } from "@/lib/dm/reaction-kinds";
 import { answerSave, openSaves, type LastSave } from "@/lib/dm/last-save";
@@ -107,17 +108,36 @@ function heaviest(swings: SwingRecord[], which: (swing: SwingRecord) => boolean 
   return best;
 }
 
-function lastHitOn(ctx: Ctx, target: CharacterSheet, label: string): { record: LastHit; index: number } | ToolError {
+// The critical as the normal hit it becomes: the same dice without the
+// critical's, and whatever a reaction already took off it, in proportion (the
+// record keeps the corrected raw, not what was done to it). The unconscious
+// target's `ordinary` goes with the critical it read back.
+function asNormalHit(swing: SwingRecord): SwingRecord {
+  const normal = swing.normal;
+  const raw = normal ? (normal.from > 0 ? Math.round((normal.raw * swing.raw) / normal.from) : 0) : swing.raw;
+  return {
+    ...swing,
+    crit: false,
+    raw,
+    ...(normal?.type !== undefined ? { type: normal.type } : {}),
+    parts: normal?.parts ? scaledParts(normal.parts, raw) : undefined,
+    normal: undefined,
+    ordinary: undefined,
+    plain: undefined,
+  };
+}
+
+function lastHitOn(ctx: Ctx, target: CharacterSheet, label: string, which?: (hit: LastHit) => (swing: SwingRecord) => boolean, what?: string): { record: LastHit; index: number } | ToolError {
   // Of several open hits, the heaviest blow it can still answer.
   const record = freshLastHit(
     ctx.campaign.id,
     target.id,
-    (hit) => hit.source === "attack" && !hit.answered.includes(label) && heaviest(hit.swings) >= 0,
-    (hit) => hit.swings[heaviest(hit.swings)]?.raw ?? -1,
+    (hit) => hit.source === "attack" && !hit.answered.includes(label) && heaviest(hit.swings, which?.(hit)) >= 0,
+    (hit) => hit.swings[heaviest(hit.swings, which?.(hit))]?.raw ?? -1,
   );
-  const index = record ? heaviest(record.swings) : -1;
+  const index = record ? heaviest(record.swings, which?.(record)) : -1;
   if (!record || index < 0) {
-    return noHit(target.name, label);
+    return noHit(target.name, label, what);
   }
   return { record, index };
 }
@@ -751,6 +771,16 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       }
       const settled = settle(ctx, hit.record, hit.record.swings.map((entry, at) => (at === hit.index ? { ...entry, hit: false, raw: 0 } : entry)), label);
       return { rolled: die, applied: `${does.die}: ${die}, the attack misses whatever it rolled: ${settled.given} hit points come back. HP ${settled.hp}.` };
+    }
+    case "uncrit": {
+      const target = allyOf(ctx) ?? ctx.sheet;
+      if (encounter && target.id !== ctx.sheet.id && !withinFeet(encounter.id, ctx.sheet.id, target.id, does.rangeFt)) {
+        return { error: `${target.name} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
+      }
+      const hit = lastHitOn(ctx, target, label, (entry) => (swing) => critTurnsNormal(entry, swing), `a critical hit on ${target.name}`);
+      if ("error" in hit) return hit;
+      const settled = settle(ctx, hit.record, hit.record.swings.map((entry, at) => (at === hit.index ? asNormalHit(entry) : entry)), label);
+      return { applied: [`The critical ${hit.record.swings[hit.index].attack ?? hit.record.attack} on ${target.name} is a normal hit: ${settled.given} hit points come back. HP ${settled.hp}.`, ...settled.notes].join(" ") };
     }
     // Skirmisher's move, Tipsy Sway (src/lib/dm/authored-reactions-more.ts).
     case "move":

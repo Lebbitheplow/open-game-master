@@ -750,25 +750,19 @@ export function handleEnemyAttack(
     // replays it as the ordinary hit it then was (reaction-refund.ts). A
     // natural 20 is critical whatever the target.
     const struck = getSheetById(target.id) ?? target;
-    const ordinaryRoll =
-      crit && !natCrit && struck.currentHp <= 0 && critOnlyWhileUnconscious(struck.conditions)
-        ? ordinaryOfCritical(damageOutcome, baseDamage, { multiplyNumeric: campaign.gameSettings.variantRules.criticalDamageMods })
-        : null;
-    const ordinaryBlow = ordinaryRoll ? blowByType(attack, ordinaryRoll, false) : null;
-    const ordinary = ordinaryBlow
-      ? { raw: shrunk(ordinaryBlow.amount), ...(ordinaryBlow.parts ? { parts: scaledParts(ordinaryBlow.parts, shrunk(ordinaryBlow.amount)) } : {}) }
+    const normalRoll = crit ? ordinaryOfCritical(damageOutcome, baseDamage, { multiplyNumeric: campaign.gameSettings.variantRules.criticalDamageMods }) : null;
+    const normalBlow = normalRoll ? blowByType(attack, normalRoll, false) : null;
+    const asNormal = normalBlow
+      ? { raw: shrunk(normalBlow.amount), ...(normalBlow.parts ? { parts: scaledParts(normalBlow.parts, shrunk(normalBlow.amount)) } : {}) }
       : undefined;
+    const ordinary = asNormal && !natCrit && struck.currentHp <= 0 && critOnlyWhileUnconscious(struck.conditions) ? asNormal : undefined;
     // A critical the natural 20 alone made keeps the blow without its doubled
     // dice too: a reaction that rolls the attack again at disadvantage
     // (Warding Flare, Shadowy Dodge, Protection) and keeps a lower roll that
     // still hits leaves an ordinary hit (last-hit.ts plainOfReroll).
-    const plainRoll = crit && natCrit && !odds.autoCrit
-      ? ordinaryOfCritical(damageOutcome, baseDamage, { multiplyNumeric: campaign.gameSettings.variantRules.criticalDamageMods })
-      : null;
-    const plainBlow = plainRoll ? blowByType(attack, plainRoll, false) : null;
-    const plain = plainBlow
-      ? { raw: shrunk(plainBlow.amount), ...(plainBlow.parts ? { parts: scaledParts(plainBlow.parts, shrunk(plainBlow.amount)) } : {}) }
-      : undefined;
+    const plain = asNormal && natCrit && !odds.autoCrit ? asNormal : undefined;
+    // Any critical's normal figure, for Sentinel at Death's Door (last-hit.ts).
+    const normal = asNormal ? { ...asNormal, type: normalBlow?.type ?? "", from: dealt } : undefined;
     // What the blow is made of for the target's defenses, kept with the hit
     // so a reaction's replay meets the same clauses (last-hit.ts flags).
     const flags: BlowFlags = {
@@ -807,6 +801,7 @@ export function handleEnemyAttack(
       attack: attack.name,
       ...(ordinary ? { ordinary } : {}),
       ...(plain ? { plain } : {}),
+      ...(normal ? { normal } : {}),
       ...(standingAdvantage ? { standingAdvantage } : {}),
       flags,
     });

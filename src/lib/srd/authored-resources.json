@@ -252,7 +252,8 @@
    "ability": "wis",
    "recharge": "long",
    "action": "reaction",
-   "guidance": "A reaction turning a critical hit against a creature within 30 feet into an ordinary hit."
+   "guidance": "Not spent with use_resource: use_reaction 'Sentinel at Death's Door' when a critical hit lands on the cleric or, with targetCharacterId, a creature within 30 feet. It becomes a normal hit.",
+   "passive": true
   },
   {
    "id": "sub_eyes_of_night",

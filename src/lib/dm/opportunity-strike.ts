@@ -37,7 +37,7 @@ import {
   mergeAdvantage,
   removeConditions,
 } from "@/lib/dm/condition-logic";
-import { critDamageExpression } from "@/lib/dm/encounter-logic";
+import { critDamageExpression, ordinaryOfCritical } from "@/lib/dm/encounter-logic";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { martialArtsApplies } from "@/lib/dm/pc-attack-options";
 import { shillelaghSwing } from "@/lib/dm/attack-features";
@@ -257,6 +257,11 @@ export function pcOpportunitySwing(input: {
     if (!("error" in applied)) {
       markRollApplied(damageRoll.id, enemy.id);
     }
+    // A critical's normal figure, for Sentinel at Death's Door (last-hit.ts); a
+    // natural 20's gear dice belong to the critical, so none is read past them.
+    const normalRoll = hitLog && crit && !critGear?.suffix
+      ? ordinaryOfCritical(damageOutcome, profile.damageExpression, { multiplyNumeric: campaign.gameSettings.variantRules.criticalDamageMods, extraDice: riders.critExtraDice })
+      : null;
     hitLog?.swing(hitOutcome, targetAc, {
       hit: true,
       crit,
@@ -264,6 +269,7 @@ export function pcOpportunitySwing(input: {
       advantage,
       type: profile.damageType,
       ranged: false,
+      ...(normalRoll ? { normal: { raw: Math.max(0, normalRoll.total), from: dealt } } : {}),
       // As the blow met the damage path, for a reaction's replay (last-hit.ts flags).
       flags: { ...(strikesAsMagic({ kind: "weapon", profile, riders, sheet }) ? { magical: true } : {}), ...(profile.material ?? {}) },
     });

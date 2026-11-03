@@ -319,7 +319,14 @@ export function resolveOpportunityAttacks(
       return { landed: applied, onHit: rider };
     });
     const updated = getSheetById(sheet.id);
-    hitLog.swing(hitOutcome, targetAc, { hit: true, crit, raw: rolled, advantage, ...(blow.type ? { type: blow.type } : {}), ...(blow.parts ? { parts: scaledParts(blow.parts, rolled) } : {}), ...(plain ? { plain } : {}), ...(magical ? { flags: { magical: true } } : {}) });
+    // A critical's normal figure, for Sentinel at Death's Door (last-hit.ts).
+    const normalRoll = crit
+      ? ordinaryOfCritical(damageOutcome, damageEffect > 0 ? `${attack.damage}+${damageEffect}` : damageEffect < 0 ? `${attack.damage}-${-damageEffect}` : attack.damage, { multiplyNumeric: campaign.gameSettings.variantRules.criticalDamageMods })
+      : null;
+    const normalBlow = normalRoll ? blowByType(attack, normalRoll, false) : null;
+    const normalRaw = normalBlow ? enfeebledBlow(enemy, attack, false, Math.max(0, normalBlow.amount)) : 0;
+    const normal = normalBlow ? { raw: normalRaw, type: normalBlow.type ?? "", ...(normalBlow.parts ? { parts: scaledParts(normalBlow.parts, normalRaw) } : {}), from: rolled } : undefined;
+    hitLog.swing(hitOutcome, targetAc, { hit: true, crit, raw: rolled, advantage, ...(blow.type ? { type: blow.type } : {}), ...(blow.parts ? { parts: scaledParts(blow.parts, rolled) } : {}), ...(plain ? { plain } : {}), ...(normal ? { normal } : {}), ...(magical ? { flags: { magical: true } } : {}) });
     hitLog.close({ attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName }, attack: `${attack.name} (opportunity attack)`, type: attack.type, ranged: false });
     if (updated && updated.currentHp <= 0 && !updated.wildShape) {
       downed = true;
