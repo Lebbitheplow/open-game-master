@@ -91,13 +91,14 @@ await test("A Font of Magic conversion in a fight is the sorcerer's bonus action
 });
 
 await test("Channel Divinity in a fight names its option, and each option costs its own.", async () => {
-  await stage(paladin);
+  const enemy = await stage(paladin);
+  kit.place(paladin.id, 7, 5);
   const nameless = await spend(paladin, "Channel Divinity");
   assert.equal(nameless.ok, false);
   assert.match(nameless.error, /Vow of Enmity \(bonus action\)/);
   assert.match(nameless.error, /Abjure Enemy \(action\)/);
   assert.equal(world.sheet(paladin.id).resources.channel_divinity.used, 0);
-  const vow = await spend(paladin, "Channel Divinity", { variant: "Vow of Enmity" });
+  const vow = await spend(paladin, "Channel Divinity", { variant: "Vow of Enmity", targetEnemyId: enemy.id });
   assert.equal(vow.ok, true, vow.error);
   assert.equal(budget().bonusUsed, true);
   assert.equal(budget().actionUsed, false);

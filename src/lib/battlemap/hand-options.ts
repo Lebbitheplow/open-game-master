@@ -7,6 +7,7 @@
 // Pure; scripts/test-hand-options.mjs drives it.
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { channelOptions, psionicOptions, type HeldOption } from "@/lib/dm/option-costs";
+import { VOW_OF_ENMITY } from "@/lib/srd/vow-of-enmity";
 import { maneuverDieFor } from "@/lib/dm/maneuver-rules";
 import { iconPath, isPainted, type IconRef } from "@/lib/icons";
 import {
@@ -99,6 +100,7 @@ export function optionCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] {
           cost: COST[option.cost],
           rules: `Channel Divinity. ${RULES[option.cost]}`,
           ritual: option.cost === "ritual",
+          ...(textKey(option.name) === VOW_OF_ENMITY ? { target: "enemy" as const } : {}),
         }),
       );
     }

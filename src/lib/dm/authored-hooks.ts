@@ -46,6 +46,7 @@ import { activeAuthored, resolveFormula } from "@/lib/srd/authored-effects";
 import { effectiveMaxHp, isIncapacitated, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { hurtEnemy } from "@/lib/dm/spell-aura";
 import { withinFeet } from "@/lib/dm/authored-saves";
+import { vowedFoe } from "@/lib/srd/vow-of-enmity";
 import { naturalWeaponOnHit } from "@/lib/dm/authored-attacks";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
@@ -267,6 +268,10 @@ export function authoredAttackSituation(input: {
       sources.push("advantage");
       notes.push(`${held.feature}: advantage`);
     }
+  }
+  if (vowedFoe(sheet) === enemy.id) {
+    sources.push("advantage");
+    notes.push("Vow of Enmity: advantage");
   }
   for (const { held } of activeAuthored(sheet, "auto_crit")) {
     if (encounter.surprisedIds.includes(enemy.id)) {

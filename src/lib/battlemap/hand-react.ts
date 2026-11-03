@@ -33,6 +33,7 @@ import { spellNames } from "@/lib/battlemap/hand-spells";
 import { COMMANDED } from "@/lib/dm/maneuver-rules";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
+import { vowedFoe } from "@/lib/srd/vow-of-enmity";
 import { holdsFeature, isNamed } from "@/lib/srd/feature-names";
 
 // A Battle Master maneuver's card wears its painting.
@@ -257,6 +258,15 @@ export function reactionCards(
       for (const held of subclassReactions(sheet, hit, "self")) {
         feature(hit, held.name, prompt, held.rules, held.target);
       }
+    }
+  }
+
+  // Soul of Vengeance answers the vowed creature's attack, hit or miss, whoever
+  // it was aimed at.
+  const vowed = vowedFoe(sheet);
+  if (vowed && holdsFeature(sheet, "soul of vengeance")) {
+    for (const hit of hits.filter((entry) => entry.source === "attack" && entry.attackerId === vowed)) {
+      feature(hit, "Soul of Vengeance", `${hit.attacker} attacked under your vow`, "A melee attack back at the creature under your vow.", "enemy");
     }
   }
 

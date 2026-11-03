@@ -409,7 +409,8 @@ export type ReactionDoes =
     }
   // One weapon attack with the reaction (the holder's own, or an ally's
   // when the feature belongs to someone else in the party).
-  | { kind: "attack"; rangeFt: number; onHitCondition?: { name: string; rounds: number } }
+  // `vowed`: only at the creature under the holder's Vow of Enmity, once it has attacked.
+  | { kind: "attack"; rangeFt: number; onHitCondition?: { name: string; rounds: number }; vowed?: boolean }
   // The creature saves or gains a condition (Beguiling Defenses, Raging Storm).
   | { kind: "save_condition"; save: Ability; dcAbility: Ability | "spell"; condition: string; rounds?: number; variants?: Record<string, string> }
   // The holder gains a condition (Tokens of the Departed's soul trinket).

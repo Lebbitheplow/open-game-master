@@ -26,6 +26,8 @@ import { matchResource } from "@/lib/srd/class-resources";
 import { classLevelOf, holdsFeature } from "@/lib/srd/trait-rules";
 import { effectiveMaxHp, incapacitatedBy, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { activeAuthored } from "@/lib/srd/authored-effects";
+import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
+import { VOW_OF_ENMITY } from "@/lib/srd/vow-of-enmity";
 import { withinFeet } from "@/lib/dm/authored-saves";
 import { rollFeatureSave } from "@/lib/dm/contest-roll";
 import { healDeathHook } from "@/lib/dm/death";
@@ -42,7 +44,7 @@ import { chooseFiendishResilience, stillnessOfMind } from "@/lib/dm/feature-hook
 export { applyInitiativeRefills } from "@/lib/dm/feature-hooks";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
-import { familyOf, isConditionNamed, isNamed } from "@/lib/srd/feature-names";
+import { familyOf, isConditionNamed, isNamed, nameChoice } from "@/lib/srd/feature-names";
 import { TURNED } from "@/lib/dm/flee-logic";
 import { swallowCoverBetween } from "@/lib/dm/swallow";
 
@@ -122,6 +124,7 @@ export function featureVariantSpend(
   variant: string | undefined,
   targetId: string | undefined,
   reason: string,
+  targetEnemyId?: string,
 ): ToolResult | null {
   if (isNamed(familyOf(resourceName), "Fiendish Resilience")) {
     return chooseFiendishResilience(campaign, turnId, sheet, variant, reason);
@@ -131,7 +134,9 @@ export function featureVariantSpend(
   }
   const def = matchResource(resourceName);
   // The option the variant names whole (src/lib/srd/feature-names.ts).
-  const wanted = variant ?? "";
+  // The sheet's own name carries the option too ("Channel Divinity: Vow of
+  // Enmity"): without it the generic path spent the use and did nothing.
+  const wanted = variant ?? nameChoice(resourceName) ?? "";
   if (def?.id === "channel_divinity") {
     if (isNamed(wanted, "turn the unholy")) {
       return spend(campaign, turnId, sheet, def.id, "action", reason, () =>
@@ -143,6 +148,12 @@ export function featureVariantSpend(
     }
     if (isNamed(wanted, "sacred weapon")) {
       return spend(campaign, turnId, sheet, def.id, "action", reason, () => sacredWeapon(sheet));
+    }
+    if (isNamed(wanted, "vow of enmity")) {
+      // Inside the spend, so a use or bonus action already gone answers first.
+      return spend(campaign, turnId, sheet, def.id, "bonus", reason, () =>
+        vowRefusal(campaign, sheet, targetEnemyId) ?? vowOfEnmity(sheet, targetEnemyId!),
+      );
     }
     if (isNamed(wanted, "preserve life")) {
       return spend(campaign, turnId, sheet, def.id, "action", reason, () =>
@@ -358,6 +369,32 @@ function emptyBody(sheet: CharacterSheet): Resolution {
       conditionMeta: { ...sheet.conditionMeta, invisible: { rounds: 10 }, "empty body": { rounds: 10 } },
     },
     result: { applied: "invisible and resistant to all damage except force, for a minute" },
+  };
+}
+
+// Vow of Enmity (Oath of Vengeance 3): a creature within 10 feet, and advantage
+// on the paladin's attacks against it for a minute (authored-hooks.ts reads the
+// vow). Before this the use was spent and nothing changed.
+function vowRefusal(campaign: Campaign, sheet: CharacterSheet, enemyId: string | undefined): ToolError | null {
+  const encounter = getActiveEncounter(campaign.id);
+  const enemy = encounter && enemyId ? resolveTargetFoe(campaign.id, encounter, enemyId) : null;
+  if (!encounter || !enemy || enemy.status !== "alive") {
+    return { error: "Vow of Enmity names a living creature in the fight: pass targetEnemyId. Nothing was spent.", retry: true };
+  }
+  if (!withinFeet(encounter.id, sheet.id, enemy.id, 10)) {
+    return { error: `${enemy.displayName} is beyond 10 feet of ${sheet.name}; Vow of Enmity reaches 10 feet. Nothing was spent.`, refused: "rules" };
+  }
+  return null;
+}
+
+function vowOfEnmity(sheet: CharacterSheet, enemyId: string): Resolution {
+  const held = sheet.conditions.filter((entry) => !isConditionNamed(entry, VOW_OF_ENMITY));
+  return {
+    patch: {
+      conditions: [...held, VOW_OF_ENMITY],
+      conditionMeta: { ...sheet.conditionMeta, [VOW_OF_ENMITY]: { rounds: 10, quarry: enemyId } },
+    },
+    result: { applied: `${sheet.name} has advantage on attacks against that creature for 10 rounds.` },
   };
 }
 
