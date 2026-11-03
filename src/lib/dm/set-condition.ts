@@ -390,7 +390,9 @@ export function handleSetCondition(
   const saveEnds =
     args.saveAbility && args.saveDc ? { ability: args.saveAbility, dc: args.saveDc } : undefined;
   const source = (args.sourceEnemyId ?? args.sourceCharacterId ?? "").trim().slice(0, 80);
-  const wakes = wakesOnDamage(normalized, sheet.currentHp);
+  // An effect's own meta says whether damage ends it; only a sleep laid by
+  // name has the rule to go by.
+  const wakes = !options?.spellEffect && wakesOnDamage(normalized, sheet.currentHp);
   const incoming: ConditionMeta | undefined =
     rounds || saveEnds || source || options?.spellEffect || wakes
       ? {
