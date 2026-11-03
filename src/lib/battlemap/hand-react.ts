@@ -31,6 +31,8 @@ import {
 } from "@/lib/battlemap/hand-core";
 import { spellNames } from "@/lib/battlemap/hand-spells";
 import { COMMANDED } from "@/lib/dm/maneuver-rules";
+import { HIT_ANSWER_COUNTERS } from "@/lib/dm/reaction-kinds";
+import { resourceDef } from "@/lib/srd/class-resources";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { vowedFoe } from "@/lib/srd/vow-of-enmity";
@@ -207,7 +209,7 @@ export function reactionCards(
   // the ids it always had.
   const tail = (hit: PublicLastHit) =>
     hit.id && hits.filter((other) => other.characterId === hit.characterId).length > 1 ? `~${hit.id}` : "";
-  const feature = (hit: PublicLastHit, name: string, prompt: string, rules: string, target: HandTarget = "none", icon?: HandCard["icon"]) => {
+  const feature = (hit: PublicLastHit, name: string, prompt: string, rules: string, target: HandTarget = "none", icon?: HandCard["icon"], fallen = false) => {
     if (answered(hit, name)) return;
     const card = base(
       `${textKey(name).replace(/\s+/g, "-")}:${hit.characterId}${tail(hit)}`,
@@ -217,8 +219,14 @@ export function reactionCards(
       aimedIntent({ card: "reaction", feature: name }, hit),
       { rules, ...(icon ? { icon } : {}), ...answering(hit) },
     );
-    cards.push(gated(card, standingGate(sheet, turn, "reaction"), costGate("reaction", turn, sheet, name)));
+    // A reaction to the fall itself is open to the one who has just fallen.
+    cards.push(gated(card, fallen ? null : standingGate(sheet, turn, "reaction"), costGate("reaction", turn, sheet, name)));
   };
+  const counterLeft = (id: string) => {
+    const state = sheet.resources[id];
+    return Boolean(state) && state.max > state.used;
+  };
+  const rulesOf = (guidance: string) => guidance.split(". ")[0].replace(/\.?$/, ".");
 
   const mine = hits.filter((hit) => hit.characterId === sheet.id && hit.hit);
   // Shield answers an attack, and a Magic Missile aimed at them.
@@ -267,6 +275,25 @@ export function reactionCards(
   if (vowed && holdsFeature(sheet, "soul of vengeance")) {
     for (const hit of hits.filter((entry) => entry.source === "attack" && entry.attackerId === vowed)) {
       feature(hit, "Soul of Vengeance", `${hit.attacker} attacked under your vow`, "A melee attack back at the creature under your vow.", "enemy");
+    }
+  }
+
+  for (const counter of HIT_ANSWER_COUNTERS) {
+    const def = resourceDef(counter.id);
+    if (!def || !counterLeft(counter.id)) continue;
+    if (counter.whileHolding && !sheet.conditions.some((entry) => textKey(entry) === counter.whileHolding)) continue;
+    if (counter.atZero && sheet.currentHp > 0) continue;
+    const dropped = sheet.currentHp <= 0;
+    if (dropped && sheet.deathSaves?.dead) continue;
+    for (const hit of mine) {
+      if (counter.attackOnly && hit.source !== "attack") continue;
+      feature(hit, def.displayName, what(hit, self), rulesOf(def.guidance), "none", undefined, dropped && (counter.atZero || counter.answersDrop));
+    }
+    if (counter.ally) {
+      for (const hit of hits) {
+        const ally = party.find((entry) => entry.id === hit.characterId);
+        if (ally && ally.id !== sheet.id && hit.hit && hit.source === "attack") feature(hit, def.displayName, what(hit, ally.name), rulesOf(def.guidance), "ally");
+      }
     }
   }
 
