@@ -32,6 +32,9 @@ export default {
       !(await strips.filter({ hasText: bench.far.name }).getByRole("button", { name: /^Glorious Defense/ }).count()),
       `no Glorious Defense for ${bench.far.name}, 25 feet off`,
     );
+    // The card in the Hand names its 10 feet, not "Self": it covers an ally.
+    const face = hand.locator(".hand-range", { hasText: /^10 ft$/ });
+    await eventually(async () => (await face.count()) > 0, { timeoutMs: 20_000, label: "the card's reach on its face" });
     await untilStill(page).catch(() => undefined);
     if (phone) {
       const box = await nearCard.boundingBox();
