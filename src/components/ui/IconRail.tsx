@@ -100,7 +100,7 @@ export function IconRail<T extends string>({
               !vertical && "shrink-0 grow basis-auto",
               // A lead who is not the active tab still reads warm, so the
               // ember cell stands out from the rest of the rail at a glance.
-              ember && !active && "text-ember-400/70 hover:text-ember-300",
+              ember && !active && "rail-ember text-ember-400/70 hover:text-ember-300",
               active && (ember ? ui.railCellActiveEmber : ui.railCellActive),
             )}
           >
