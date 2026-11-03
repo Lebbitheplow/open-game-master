@@ -33,7 +33,7 @@ import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import { attackerFoeId, freshLastHit, openHits, rerollAttacker, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { vowedFoe } from "@/lib/srd/vow-of-enmity";
 import { rollAgainst } from "@/lib/roll-labels";
-import { applyPcDamage } from "@/lib/dm/pc-damage";
+import { applyPcDamage, blowDefenses, meetDefenses } from "@/lib/dm/pc-damage";
 import { READIED } from "@/lib/dm/object-actions";
 import { handlePcAttack } from "@/lib/dm/pc-attack";
 import { allyOf, noHit, settle, SPENT, spendReaction, type Ctx } from "@/lib/dm/reaction-tools";
@@ -414,9 +414,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (!ally || ally.id === ctx.sheet.id || !encounter) {
         return { error: `${reaction.name} answers a hit on another creature: pass that ally's targetCharacterId. Nothing was spent.`, retry: true };
       }
-      if (!withinFeet(encounter.id, ctx.sheet.id, ally.id, does.rangeFt)) {
-        return { error: `${ally.name} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
-      }
+      // The reach is the attacker's ("an attacker within 30 feet of you deals
+      // damage with an attack against a creature other than you"), checked
+      // below; the creature it struck may stand anywhere.
       // The hit by the creature named, when one is: the heaviest hit on the ally
       // may be another attacker's, and it would take what this one is owed.
       const named = ctx.args.targetEnemyId;
@@ -435,7 +435,15 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (!withinFeet(encounter.id, ctx.sheet.id, enemy.id, does.rangeFt)) {
         return { error: `${enemy.displayName} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
       }
-      const dealt = hit.record.swings[hit.index].raw;
+      // "Radiant damage equal to the damage it just dealt": what the blow took
+      // off the ally once their resistances, immunities and vulnerabilities
+      // met it, as the damage path met it (the replay's own reading,
+      // reaction-refund.ts). The dice it rolled sent a resisted blow back
+      // whole.
+      const swing = hit.record.swings[hit.index];
+      const before = { ...ally, conditions: hit.record.before.conditions, conditionMeta: hit.record.before.conditionMeta, wildShape: hit.record.before.wildShape ?? null };
+      const defenses = blowDefenses(ctx.campaign.id, before, { ...(swing.flags ?? {}), ...(swing.resists?.length ? { resists: swing.resists } : {}) });
+      const dealt = meetDefenses(defenses, swing.raw, (swing.type ?? hit.record.type) || undefined, swing.parts, 0).amount;
       if (dealt <= 0) {
         return { error: `${enemy.displayName}'s hit dealt ${ally.name} no damage to send back. Nothing was spent.`, refused: "rules" };
       }
