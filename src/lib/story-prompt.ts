@@ -235,8 +235,9 @@ export function createStreamingArtifactFilter() {
         // Tool arguments glued to the prose as bare JSON, or a Harmony call
         // naming its tool ("to=functions.request_roll"), are salvaged or cut
         // once the call completes (src/lib/dm/json-salvage.ts); the prose
-        // before them streams, the call and anything after it wait.
-        const bareJsonAt = pending.search(/\{\s*"|\bto=functions\./);
+        // before them streams, the call and anything after it wait. So with
+        // a call an agent program wrote out as an invoke tag (issue 794).
+        const bareJsonAt = pending.search(/\{\s*"|\bto=functions\.|<(?:[\w-]+:)?(?:invoke\s+name\b|function_calls\b)/i);
         if (bareJsonAt >= 0 && !STREAM_SUPPRESS_OPEN.test(pending.slice(0, bareJsonAt))) {
           output += pending.slice(0, bareJsonAt).replace(new RegExp(STREAM_STRIP.source, "gi"), "");
           pending = "";
