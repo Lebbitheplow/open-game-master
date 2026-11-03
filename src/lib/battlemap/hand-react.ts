@@ -374,7 +374,7 @@ function subclassReactions(
             (does.kind === "resist_instance" && typed(does.types)) ||
             does.kind === "redirect" ||
             does.kind === "force_miss" ||
-            (does.kind === "strike_back" && Boolean(hit.attackerId))
+            (does.kind === "strike_back" && !does.afterSave && Boolean(hit.attackerId))
           : (does.kind === "reduce" && does.who !== "self" && typed(does.types)) ||
             does.kind === "take_for_ally" ||
             (does.kind === "resist_instance" && typed(does.types));

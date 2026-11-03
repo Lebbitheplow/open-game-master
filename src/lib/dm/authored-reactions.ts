@@ -375,6 +375,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       };
     }
     case "strike_back": {
+      if (does.afterSave && !ctx.args.targetEnemyId) {
+        return { error: `${reaction.name} strikes the creature that forced a save someone just made: pass its targetEnemyId. Nothing was spent.`, retry: true };
+      }
       // The open hit by the creature named, when one is.
       const record = freshLastHit(ctx.campaign.id, ctx.sheet.id, (hit) => !ctx.args.targetEnemyId || hit.attacker.id === ctx.args.targetEnemyId) ?? freshLastHit(ctx.campaign.id, ctx.sheet.id);
       const enemy = enemyTarget(ctx, attackerFoeId(record));
