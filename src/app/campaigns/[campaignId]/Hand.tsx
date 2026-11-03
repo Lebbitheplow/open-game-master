@@ -349,8 +349,8 @@ function HandInner({
   );
 
   const targets = useMemo<HandTargetChip[]>(
-    () => handTargets(encounter.enemies, sheets, sheet?.id, edges, encounter.sides),
-    [encounter.enemies, sheets, sheet?.id, edges, encounter.sides],
+    () => handTargets(encounter.enemies, sheets, sheet?.id, edges, encounter.sides, { round: encounter.round, orderReady: encounter.orderReady, order: encounter.order }),
+    [encounter.enemies, sheets, sheet?.id, edges, encounter.sides, encounter.round, encounter.orderReady, encounter.order],
   );
   const enemyTargets = useMemo(() => targets.filter((target) => target.kind === "enemy"), [targets]);
   const partyTargets = useMemo(() => targets.filter((target) => target.kind !== "enemy"), [targets]);
