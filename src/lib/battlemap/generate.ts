@@ -6,6 +6,7 @@ import {
   type MapLight,
   type XY,
 } from "@/lib/battlemap/types";
+import { nearestOpenTile } from "@/lib/battlemap/paint";
 
 // Seeded procedural battle-map generation. Deterministic under the seed so
 // a map can always be regenerated from its encounter. The place's scene kind
@@ -239,10 +240,19 @@ function carveInterior(tiles: string[], width: number, height: number, rng: () =
   }
 }
 
+// How far apart two sides stand, in tiles: the nearest of one to the nearest
+// of the other.
+export function tilesBetweenSides(party: XY[], enemies: XY[]): number {
+  return Math.min(...party.flatMap((pc) => enemies.map((enemy) => Math.max(Math.abs(pc.x - enemy.x), Math.abs(pc.y - enemy.y)))));
+}
+
 // Pick `count` distinct open tiles for the enemies at a stated distance from
 // the party: the nearest of them exactly that far from the nearest
 // character where the ground allows, the rest packed in behind it, none any
-// closer.
+// closer. A distance the board cannot hold for all of them gets the farthest
+// tiles it has: how far that is turns on the seed's walls and where the party
+// landed, so no one number holds for every board. Past it this list came back
+// empty and the fight opened with no tokens (issue 741).
 function pickSpawnsAtDistance(
   tiles: string[],
   width: number,
@@ -260,10 +270,7 @@ function pickSpawnsAtDistance(
       if (tiles[idx] !== TERRAIN.floor || taken.has(idx)) {
         continue;
       }
-      const away = Math.min(...party.map((spot) => Math.max(Math.abs(spot.x - x), Math.abs(spot.y - y))));
-      if (away >= distance) {
-        open.push({ x, y, away });
-      }
+      open.push({ x, y, away: tilesBetweenSides(party, [{ x, y }]) });
     }
   }
   // Deterministic shuffle, then nearest first: ties fall as the seed has them.
@@ -272,7 +279,9 @@ function pickSpawnsAtDistance(
     [open[i], open[j]] = [open[j], open[i]];
   }
   open.sort((a, b) => a.away - b.away);
-  const picked = open.slice(0, count).map(({ x, y }) => ({ x, y }));
+  const atRange = open.findIndex((spot) => spot.away >= distance);
+  const start = Math.max(0, Math.min(atRange < 0 ? open.length : atRange, open.length - count));
+  const picked = open.slice(start, start + count).map(({ x, y }) => ({ x, y }));
   for (const spot of picked) {
     taken.add(tileIndex(width, spot.x, spot.y));
   }
@@ -448,6 +457,25 @@ export function generateBattleMap(input: GenerateInput): GeneratedMap {
   }
 
   return { width, height, terrain: tiles.join(""), ambient, theme, lights, pcSpawns, enemySpawns };
+}
+
+// One tile for each of `count` tokens: the spawns the map gave, then the open
+// ground nearest them. A board with too few spawns stood the rest on the first
+// one, and one with none gave the token no tile at all, which threw after the
+// encounter and its map were written (issue 741). Only a board with no open
+// ground left stacks a token.
+export function spotsForTokens(map: Pick<GeneratedMap, "terrain" | "width" | "height">, spawns: XY[], count: number, taken: Set<number>): XY[] {
+  const anchor = spawns[0] ?? { x: Math.floor(map.width / 2), y: Math.floor(map.height / 2) };
+  const spots = spawns.slice(0, count);
+  for (const spot of spots) {
+    taken.add(tileIndex(map.width, spot.x, spot.y));
+  }
+  while (spots.length < count) {
+    const spot = nearestOpenTile(map.terrain, map.width, map.height, anchor, taken);
+    taken.add(tileIndex(map.width, spot.x, spot.y));
+    spots.push(spot);
+  }
+  return spots;
 }
 
 // Where a party stands on a map this file did not generate: an imported

@@ -115,7 +115,7 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
         kind: "number",
         min: 5,
         max: 600,
-        help: "How far the nearest enemy stands from the party. Empty, an ambush or a fight indoors opens 30 feet apart, anything else across the field.",
+        help: "How far the nearest enemy stands from the party, or as far as the board holds. Empty, an ambush or a fight indoors opens 30 feet apart, anything else across the field.",
       },
       {
         name: "lair",

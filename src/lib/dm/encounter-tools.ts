@@ -24,6 +24,7 @@ import {
 } from "@/lib/db/campaigns";
 import {
   createEncounter,
+  endEncounter,
   getActiveEncounter,
   getEncounter,
   getLatestEndedEncounter,
@@ -426,7 +427,15 @@ function handleStartEncounter(
   initLegendaryPools(encounter, enemies, args.lair === true, kept);
   saveEncounter(encounter);
   const caughtUnawares = Boolean(args.ambush) || (args.surprised !== undefined && args.surprised !== "none");
-  const placed = createBattleMapForEncounter(campaign, encounter, enemies, sheets, args.distanceFeet, args.scene, args.from, caughtUnawares);
+  // A board that could not be written ends the fight it was for: an open fight
+  // with no board has nobody to move and no way to go on (issue 741).
+  let placed: ReturnType<typeof createBattleMapForEncounter>;
+  try {
+    placed = createBattleMapForEncounter(campaign, encounter, enemies, sheets, args.distanceFeet, args.scene, args.from, caughtUnawares);
+  } catch (error) {
+    endEncounter(encounter.id, "the board could not be set");
+    throw error;
+  }
   // The characters named as foes take their side now the board exists.
   const against = foes.length ? fieldSheetFoes(campaign, foes) : [];
   // A mercenary wary of the party asks its share first (party-conduct.ts).
@@ -501,6 +510,7 @@ function handleStartEncounter(
       : {}),
     map: "A tactical battle map was generated; positions appear in GAME STATE on your next call.",
     ...(placed ? { formation: placed.formation } : {}),
+    ...(placed?.distance ? { distance: placed.distance } : {}),
     ...(ambushLines.length ? { ambush: ambushLines.join(" ") } : {}),
     ...(surprisedNames.length
       ? {

@@ -5,8 +5,8 @@ import { register } from "node:module";
 
 register("./lib/register-alias.mjs", import.meta.url);
 
-const { CLOSE_OPENING_TILES, generateBattleMap, fnv1a, mulberry32 } = await import("../src/lib/battlemap/generate.ts");
-const { TERRAIN, tileIndex } = await import("../src/lib/battlemap/types.ts");
+const { CLOSE_OPENING_TILES, generateBattleMap, fnv1a, mulberry32, spotsForTokens, tilesBetweenSides } = await import("../src/lib/battlemap/generate.ts");
+const { TERRAIN, blocksMove, tileIndex } = await import("../src/lib/battlemap/types.ts");
 
 let passed = 0;
 function test(name, fn) {
@@ -118,6 +118,70 @@ test("spawns never sit on walls or stack", () => {
     assert.ok(!taken.has(idx));
     taken.add(idx);
   }
+});
+
+// Issue 741: past the board's edge the enemies had no spawn at all, and the
+// fight opened with no tokens. A fight holds eight enemies at most.
+const LONG_SCENES = ["cave", "forest", "swamp", "tavern", "river", "dungeon", "plains", null];
+
+test("a long opening distance still gives every token its own walkable tile", () => {
+  for (const feet of [60, 100, 200, 600]) {
+    for (const scene of LONG_SCENES) {
+      for (let seed = 1; seed <= 40; seed += 1) {
+        for (const enemyCount of [1, 3, 8]) {
+          const map = generateBattleMap({ seed, scene, pcCount: 4, enemyCount, enemyDistanceTiles: feet / 5 });
+          const label = `${feet} ft, ${scene}, seed ${seed}, ${enemyCount} enemies`;
+          assert.equal(map.pcSpawns.length, 4, label);
+          assert.equal(map.enemySpawns.length, enemyCount, label);
+          const all = [...map.pcSpawns, ...map.enemySpawns].map((spot) => tileIndex(map.width, spot.x, spot.y));
+          assert.equal(new Set(all).size, all.length, `${label}: tokens stacked`);
+          all.forEach((tile) => assert.ok(!blocksMove(map.terrain[tile]), `${label}: on a wall`));
+        }
+      }
+    }
+  }
+});
+
+test("a distance the board cannot hold opens at the farthest it has, on the ground the seed drew", () => {
+  // The fallback that clears the board's middle is for a board with no room,
+  // not for a long distance: it changed the ground under the fight, opening a
+  // band of walls that the same seed drew at a distance the board holds.
+  const walls = (map) => [...map.terrain].filter((tile) => tile === TERRAIN.wall).length;
+  let same = 0;
+  let boards = 0;
+  for (const scene of LONG_SCENES) {
+    for (let seed = 1; seed <= 20; seed += 1) {
+      const far = generateBattleMap({ seed, scene, pcCount: 4, enemyCount: 3, enemyDistanceTiles: 120 });
+      const apart = tilesBetweenSides(far.pcSpawns, far.enemySpawns);
+      assert.ok(apart >= CLOSE_OPENING_TILES && apart < 120, `${scene}, seed ${seed}: ${apart} tiles`);
+      const held = generateBattleMap({ seed, scene, pcCount: 4, enemyCount: 3, enemyDistanceTiles: 4 });
+      boards += 1;
+      same += walls(held) === walls(far) ? 1 : 0;
+    }
+  }
+  // A corridor carved to a walled-off enemy can differ; the ground does not.
+  assert.ok(same >= boards * 0.8, `${same} of ${boards} boards kept their walls`);
+});
+
+test("a distance the board holds is kept exactly", () => {
+  for (const scene of ["forest", "plains", "river"]) {
+    for (let seed = 1; seed <= 20; seed += 1) {
+      const map = generateBattleMap({ seed, scene, pcCount: 4, enemyCount: 3, enemyDistanceTiles: 10 });
+      assert.equal(tilesBetweenSides(map.pcSpawns, map.enemySpawns), 10, `${scene}, seed ${seed}`);
+    }
+  }
+});
+
+test("a token with no spawn stands on open ground of its own, never on nothing", () => {
+  const map = generateBattleMap({ ...base, scene: "plains" });
+  const taken = new Set();
+  const party = spotsForTokens(map, map.pcSpawns.slice(0, 1), 4, taken);
+  const enemies = spotsForTokens(map, [], 3, taken);
+  const all = [...party, ...enemies];
+  assert.equal(all.length, 7);
+  assert.equal(new Set(all.map((spot) => tileIndex(map.width, spot.x, spot.y))).size, 7);
+  all.forEach((spot) => assert.ok(!blocksMove(map.terrain[tileIndex(map.width, spot.x, spot.y)])));
+  assert.deepEqual(party[0], map.pcSpawns[0]);
 });
 
 test("mulberry32 is deterministic", () => {
