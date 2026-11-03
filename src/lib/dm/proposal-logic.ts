@@ -6,6 +6,7 @@
 
 import type { ToolError } from "./tool-errors.ts";
 import { textKey } from "../language/text-logic.ts";
+import { coinMove, COPPER_PER_GOLD, formatPrice } from "../srd/currency.ts";
 import { lineNamed } from "../srd/item-row.ts";
 import { renamedArgs } from "./tool-merge-logic.ts";
 
@@ -31,6 +32,7 @@ export type ProposalArgs = {
   item?: string;
   qty?: number;
   delta?: number;
+  coins?: string;
   price?: number;
   action?: string;
   // apply_damage, heal, set_condition, clear_condition
@@ -92,16 +94,27 @@ export function proposalSummary(
     case "remove_item":
       return `Take ${itemName}${suffix} from ${characterName}`;
     case "modify_gold": {
+      // The coins are the amount when they are sent: "delta: -1, coins: 5 sp"
+      // takes five silver, and the card read "Take 1 gold" for it.
+      const move = String(args.coins ?? "").trim() ? coinMove(args.delta, args.coins) : null;
+      if (move && "copper" in move) {
+        const coin = formatPrice(Math.abs(move.copper));
+        return move.copper >= 0 ? `Give ${coin} to ${characterName}` : `Take ${coin} from ${characterName}`;
+      }
       const delta = Number(args.delta ?? 0);
       return delta >= 0
         ? `Give ${delta} gold to ${characterName}`
         : `Take ${Math.abs(delta)} gold from ${characterName}`;
     }
     case "purchase": {
+      // No price sent means the list price, which the server settles on
+      // approval: a torch must not read as bought for 0 gold. A part of a gold
+      // piece reads in the smaller coins.
       const price = Number(args.price ?? 0) * qty;
+      const worth = !price ? "" : Number.isInteger(price) ? ` for ${price} gold` : ` for ${formatPrice(price * COPPER_PER_GOLD)}`;
       return args.action === "sell"
-        ? `${characterName} sells ${itemName}${suffix} for ${price} gold`
-        : `${characterName} buys ${itemName}${suffix} for ${price} gold`;
+        ? `${characterName} sells ${itemName}${suffix}${worth}`
+        : `${characterName} buys ${itemName}${suffix}${worth}`;
     }
     case "apply_damage": {
       const amount = Math.max(1, Number(args.amount ?? 0));
@@ -211,13 +224,7 @@ export function storedOfferArgs(toolName: string, raw: string): OfferArgs {
 }
 
 export function purseWords(gold: number, copper: number): string {
-  const cp = Math.max(0, Math.round(gold * 100 + copper));
-  const gp = Math.floor(cp / 100);
-  const rest = cp % 100;
-  if (!rest) {
-    return `${gp} gp`;
-  }
-  return `${gp} gp ${rest} cp`;
+  return formatPrice(gold * COPPER_PER_GOLD + copper);
 }
 
 // Whether the offer could apply right now: a removal or a sale of what the
@@ -260,8 +267,12 @@ export function offerKey(toolName: string, args: OfferArgs): string | null {
     case "grant_item":
     case "remove_item":
       return `${toolName}|${textKey(String(args.item ?? ""))}|${qty}|${args.unidentified ? 1 : 0}`;
-    case "modify_gold":
-      return `${toolName}|${Number(args.delta ?? 0) || 0}|${String(args.coins ?? "").trim().toLowerCase()}`;
+    case "modify_gold": {
+      // The amount, however it was said: "-5 sp" twice is one offer, whether
+      // or not a delta came along with it.
+      const move = coinMove(args.delta, args.coins);
+      return "copper" in move ? `${toolName}|${move.copper}` : `${toolName}|${String(args.coins ?? "").trim().toLowerCase()}`;
+    }
     case "purchase":
       return `${toolName}|${args.action}|${textKey(String(args.item ?? ""))}|${qty}|${Number(args.price ?? 0) || 0}`;
     default:

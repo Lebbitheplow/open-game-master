@@ -33,12 +33,11 @@ import {
 import { capacityProblem } from "@/lib/dm/load-rules";
 import {
   addCopper,
+  coinMove,
   COPPER_PER_GOLD,
   formatPrice,
   formatPurse,
   fromCopper,
-  parseCoins,
-  unreadCoins,
   purseCopper,
 } from "@/lib/srd/currency";
 import { healDeathHook } from "@/lib/dm/death";
@@ -272,11 +271,11 @@ export const mutationTools: ToolDef[] = [
       type: "integer",
       minimum: -100000,
       maximum: 100000,
-      description: "Whole gold pieces: positive to gain, negative to spend or lose. coins overrides its size.",
+      description: "Whole gold pieces: positive to gain, negative to spend or lose. Omit it when coins says the amount.",
     },
-    coins: { type: "string", description: "Money in the coins' codes pp, gp, ep, sp and cp ('3 gp 4 sp'), whatever the table's language. Also '340 sp' or '2 pp 5 sp'. For anything under a gold piece or priced in another coin; whole coins only. It overrides delta's size; delta's sign still says gain or spend (-1 to spend it, 1 to gain it)." },
+    coins: { type: "string", description: "Money in the coins' codes pp, gp, ep, sp and cp ('3 gp 4 sp'), whatever the table's language. Start it with - to spend or + to gain: '-5 sp', '+340 sp'. For anything under a gold piece or priced in another coin; whole coins only. It overrides delta." },
     additional: { type: "boolean", description: "Only when a player just accepted this same amount and this is another sum from a different source." },
-  }, ["delta"]),
+  }, []),
   tool("grant_item", "Give a character items (loot, purchase, gift) the fiction actually put in their hands. Every item they take goes in items, one entry each, in one call.", {
     ...waypointProperty,
     // No additionalProperties on the entries (strict is off for every
@@ -1011,20 +1010,12 @@ function dmMutation(
       };
     }
     case "modify_gold": {
-      const delta = args.delta ?? 0;
-      // A coin string is signed by the delta's sign when one is given, so
-      // "delta: -1, coins: 5 sp" spends five silver rather than earning it.
-      const parsedCoins = args.coins?.trim() ? parseCoins(args.coins) : null;
       // Coins sent and unread are asked for again, never taken as the delta.
-      if (args.coins?.trim() && parsedCoins === null) {
-        return { result: { error: `modify_gold: ${unreadCoins(args.coins)}. Nothing changed.`, retry: true } };
+      const move = coinMove(args.delta, args.coins);
+      if ("problem" in move) {
+        return { result: { error: `modify_gold: ${move.problem}. Nothing changed.`, retry: true } };
       }
-      const coinDelta =
-        parsedCoins === null ? null : (delta < 0 ? -parsedCoins : parsedCoins);
-      if (!delta && coinDelta === null) {
-        return { result: { error: "modify_gold needs a nonzero delta, or coins like \"340 sp\".", retry: true } };
-      }
-      const moved = coinDelta ?? delta * COPPER_PER_GOLD;
+      const moved = move.copper;
       const tooMuch = goldProblem(moved / COPPER_PER_GOLD, "modify_gold");
       if (tooMuch) {
         return { result: tooMuch };
@@ -1037,9 +1028,6 @@ function dmMutation(
           },
         };
       }
-      // Denominations win over the plain gold delta when both are sent: a
-      // model that says "coins: 340 sp, delta: 34" meant the coins, and
-      // the two are the same number only by accident.
       const change = addCopper({ gold: sheet.gold, copper: sheet.copper }, moved);
       patchSheet(sheet.id, { gold: change.purse.gold, copper: change.purse.copper });
       audit(
@@ -1047,7 +1035,7 @@ function dmMutation(
         turnId,
         sheet,
         "modify_gold",
-        { delta: Math.trunc(change.applied / COPPER_PER_GOLD), copper: change.applied, gold: change.purse.gold },
+        { delta: Math.trunc(change.applied / COPPER_PER_GOLD), copper: change.applied, gold: change.purse.gold, purseCopper: purseCopper(change.purse) },
         reason,
         { gold: change.purse.gold, copper: change.purse.copper },
       );
