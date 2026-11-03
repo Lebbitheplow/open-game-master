@@ -114,6 +114,9 @@ export type CatalogField = {
   // Shown, and sent, only while another field holds one of these values: a
   // drake's essence only for a drake, a story pet's numbers only for one.
   onlyWhen?: { field: string; equals: string[] };
+  // Shown, and sent, only at a table with this variant rule on: a meal counts
+  // for nothing without the supplies variant (DmActionForm.tsx).
+  variant?: "supplies";
   // An empty input here is an answer, not a field left blank: the facade
   // passes "" on to the handler instead of dropping it (src/lib/dm/invoke.ts
   // normalizeArgs), and the handler decides what an empty answer means. A
@@ -130,6 +133,17 @@ export type CatalogField = {
   // `kind` there is how that server's form asked for it (a pick it cannot
   // fill reads as the text box it had).
   host?: { feature: string; older?: { label: string; help?: string; name?: string; kind?: FieldKind } };
+};
+
+// pass_time, travel and take_rest's meal (issue 793), one field in all three.
+export const MEAL_FIELD: CatalogField = {
+  name: "meal",
+  label: "Meal from the story",
+  kind: "text",
+  placeholder: "The host's dinner and the well",
+  variant: "supplies",
+  host: { feature: "suppliesMeal" },
+  help: "Only when the party eats and drinks from something other than their packs. Covers the next dawn: no ration, no thirst. Scarce water still applies.",
 };
 
 // The field as this host should show it, or null when it cannot use it.

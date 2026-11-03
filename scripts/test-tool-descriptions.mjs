@@ -57,6 +57,19 @@ const field = (toolName, name) => {
   return hit;
 };
 
+// The cut keeps what a meal is; the rest of the sentence-by-sentence rule
+// ("no meal in the story, no meal here") reads in the full profile and the
+// variant's own line.
+test("a meal's compact description stands alone, the same in all three tools", () => {
+  const cuts = ["pass_time", "travel", "take_rest"].map((name) => field(name, "meal"));
+  for (const entry of cuts) {
+    assert.match(entry.cut, /^Food and drink .*\.$/);
+    assert.ok(!entry.cut.endsWith("..."), entry.cut);
+    assert.match(entry.full, /no meal in the story, no meal here/);
+    assert.equal(entry.full, cuts[0].full);
+  }
+});
+
 test("a compact description is a whole sentence", () => {
   assert.ok(byName.size > 80, `the whole set is covered (${byName.size} tools)`);
   const cut = all.filter((entry) => entry.cut.endsWith("..."));

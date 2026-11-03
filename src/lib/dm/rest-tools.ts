@@ -23,6 +23,7 @@ import { advanceClock, getClock, openShortRestWindow, recordLongRests, setTravel
 import { getDmTurn } from "@/lib/db/dm-turns";
 import { partyChefDie, partySongOfRestDie, playerChoosesHitDice, spendHitDice } from "@/lib/dm/hit-dice";
 import { goingWithout } from "@/lib/dm/supplies";
+import { afterMeal, MEAL_PROPERTY, mealArg } from "@/lib/dm/supplies-logic";
 import { afflictedRestPatch, afflictionsAfterLongRest } from "@/lib/dm/afflictions";
 import { chargeLifestyle } from "@/lib/dm/lifestyle";
 import { dawnsBetween } from "@/lib/dm/item-charges";
@@ -73,6 +74,7 @@ export const takeRestTool: ToolDef = {
             required: ["characterId", "dice"],
           },
         },
+        meal: MEAL_PROPERTY,
         reason: { type: "string", description: "Short in-fiction description of the rest." },
       },
       required: ["kind"],
@@ -87,6 +89,7 @@ const restArgsSchema = z.object({
   spend: z
     .array(z.object({ characterId: z.string(), dice: z.number().int().min(1).max(20) }))
     .optional(),
+  meal: mealArg.optional(),
   reason: z.string().optional(),
 });
 
@@ -114,6 +117,7 @@ function parseRestArgs(rawArguments: string): z.infer<typeof restArgsSchema> | n
       kind: z.enum(["short", "long"]),
       characterId: z.string().optional(),
       dice: z.coerce.number().int().min(1).max(20).optional(),
+      meal: mealArg.optional(),
       reason: z.string().optional(),
     })
     .safeParse(raw);
@@ -124,6 +128,7 @@ function parseRestArgs(rawArguments: string): z.infer<typeof restArgsSchema> | n
         flat.data.characterId && flat.data.dice
           ? [{ characterId: flat.data.characterId, dice: flat.data.dice }]
           : undefined,
+      meal: flat.data.meal,
       reason: flat.data.reason,
     };
   }
@@ -182,7 +187,7 @@ export function handleTakeRest(
   if (!args) {
     return {
       error:
-        'Invalid take_rest arguments. Send {"kind":"short"} or {"kind":"long"}; a spend list is [{"characterId": "...", "dice": 1}] with whole dice of 1 or more. Nobody rested and no time passed.',
+        'Invalid take_rest arguments. Send {"kind":"short"} or {"kind":"long"}; a spend list is [{"characterId": "...", "dice": 1}] with whole dice of 1 or more; a meal names its source in at least 3 characters. Nobody rested and no time passed.',
       retry: true,
     };
   }
@@ -239,7 +244,7 @@ export function handleTakeRest(
   const restedMinutes = restMinutes(args.kind, variant);
   // A party at rest is no longer on the march.
   setTravelPace(campaign.id, null);
-  const clockAfter = advanceClock(campaign.id, restedMinutes, "minutes");
+  const clockAfter = advanceClock(campaign.id, restedMinutes, "minutes", { meal: Boolean(args.meal) });
   // The death saves those hours rolled for the dying (condition-tick.ts):
   // the GM narrates the rest from this result, and without them told a
   // character who died in the night that they still lay dying at dawn.
@@ -261,9 +266,11 @@ export function handleTakeRest(
       if (!sheet || sheet.deathSaves?.dead) {
         continue;
       }
-      // Under the supplies variant, going without keeps the exhaustion.
+      // Under the supplies variant, going without keeps the exhaustion. Read
+      // as the rest begins, so a meal the party lies down on lifts a level.
+      const hunger = args.meal ? afterMeal(starts.supplies ?? {}, [sheet.id], starts.waterRation) : starts.supplies;
       const starving =
-        campaign.gameSettings.variantRules.supplies === true && goingWithout(starts.supplies?.[sheet.id]);
+        campaign.gameSettings.variantRules.supplies === true && goingWithout(hunger?.[sheet.id]);
       // A disease shapes the rest itself: sewer plague restores no hit
       // points, cackle fever keeps its level of exhaustion (afflictions.ts).
       auditRest(campaign, turnId, sheet, "rest_long", afflictedRestPatch(sheet, longRestPatch(sheet, { keepExhaustion: starving })), reason);

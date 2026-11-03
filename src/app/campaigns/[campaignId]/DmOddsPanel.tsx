@@ -14,7 +14,7 @@ import { asPercent, forecastAttack, roundsToDrop } from "@/lib/srd/odds";
 // The only two table rules that change what a crit is worth. Named here so
 // the same shape threads down from the panel without dragging the whole
 // GameSettings type through three components.
-export type CritRules = { powerfulCritical: boolean; criticalDamageMods: boolean };
+export type CritRules = { powerfulCritical: boolean; criticalDamageMods: boolean; supplies?: boolean };
 
 type Roll = "none" | "advantage" | "disadvantage";
 const ROLLS = optionsFrom<Roll>([

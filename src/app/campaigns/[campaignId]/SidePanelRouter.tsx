@@ -368,6 +368,7 @@ export function SidePanelRouter({
         variantRules={{
           powerfulCritical: campaign?.gameSettings?.variantRules?.powerfulCritical ?? false,
           criticalDamageMods: campaign?.gameSettings?.variantRules?.criticalDamageMods ?? false,
+          supplies: campaign?.gameSettings?.variantRules?.supplies ?? false,
         }}
       />
 </Suspense>

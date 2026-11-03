@@ -3,6 +3,7 @@ import { rollCard } from "@/lib/dm/roll-card";
 import { type Campaign } from "@/lib/db/campaigns";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { chargeLifestyle } from "@/lib/dm/lifestyle";
+import { MEAL_PROPERTY, mealArg } from "@/lib/dm/supplies-logic";
 import { dawnsBetween } from "@/lib/dm/item-charges";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { publishWithSeq } from "@/lib/events";
@@ -95,6 +96,8 @@ const SIZES: ObjectSize[] = ["tiny", "small", "medium", "large"];
 
 // Scarce water under the `supplies` variant (src/lib/dm/supplies.ts): what
 // the party can find from now on, kept until the DM says otherwise.
+const MEAL_NOTE = "A meal, when sent, names its source in at least 3 characters.";
+
 const WATER_PROPERTY = {
   type: "string",
   enum: ["plenty", "half", "none"],
@@ -202,6 +205,7 @@ export const worldTools: ToolDef[] = [
             description: "Who is travelling: exact characterIds from GAME STATE. Omit for the whole party.",
           },
           water: WATER_PROPERTY,
+          meal: MEAL_PROPERTY,
           reason: { type: "string", description: "Short note on the journey." },
         },
         required: [],
@@ -225,6 +229,7 @@ export const worldTools: ToolDef[] = [
             description: "Unit of the amount. Default: 'hours'.",
           },
           water: WATER_PROPERTY,
+          meal: MEAL_PROPERTY,
           reason: { type: "string", description: "Short note on what filled the time." },
         },
         required: ["amount"],
@@ -530,6 +535,7 @@ const travelSchema = z.object({
   pace: z.enum(["fast", "normal", "slow"]).optional(),
   characterIds: z.array(z.string()).optional(),
   water: z.enum(["plenty", "half", "none"]).optional(),
+  meal: mealArg.optional(),
   reason: z.string().optional(),
 });
 
@@ -551,6 +557,7 @@ const passTimeSchema = z.object({
   amount: z.coerce.number().int().min(1).max(10000),
   unit: z.enum(ADVANCE_UNITS).default("hours"),
   water: z.enum(["plenty", "half", "none"]).optional(),
+  meal: mealArg.optional(),
   reason: z.string().max(200).optional(),
 });
 
@@ -577,13 +584,13 @@ export function handlePassTime(
   try {
     args = passTimeSchema.parse(JSON.parse(rawArguments || "{}"));
   } catch {
-    return { error: "Invalid arguments: pass_time needs an amount and a unit.", retry: true };
+    return { error: `Invalid arguments: pass_time needs an amount and a unit. ${MEAL_NOTE} No time passed.`, retry: true };
   }
   if (args.water) {
     setWaterRation(campaign.id, args.water);
   }
   const before = getClock(campaign.id);
-  const moved = advanceClock(campaign.id, args.amount, args.unit);
+  const moved = advanceClock(campaign.id, args.amount, args.unit, { meal: Boolean(args.meal) });
   if ("error" in moved) {
     return moved;
   }
@@ -638,7 +645,7 @@ export function handleTravel(
   try {
     args = travelSchema.parse(JSON.parse(rawArguments || "{}"));
   } catch {
-    return { error: "Invalid arguments: travel needs hours or miles.", retry: true };
+    return { error: `Invalid arguments: travel needs hours or miles. ${MEAL_NOTE} Nothing moved: the clock and the march are as they were.`, retry: true };
   }
   // Who travels, settled before anything moves. A forced march with no
   // traveller used to find out only after the clock, the world, the sky and
@@ -671,7 +678,8 @@ function travelDays(
   const legs: ToolResult[] = [];
   const nights: ToolResult[] = [];
   for (let count = 1; count <= args.days; count += 1) {
-    const leg = travelStretch(campaign, turn, { ...args, hours: NORMAL_TRAVEL_HOURS }, travellers, sheets, sheetsById);
+    // The meal is the journey's first: it covers one dawn, not one a day.
+    const leg = travelStretch(campaign, turn, { ...args, hours: NORMAL_TRAVEL_HOURS, meal: count === 1 ? args.meal : undefined }, travellers, sheets, sheetsById);
     legs.push(leg);
     if (typeof leg.error === "string" || count === args.days) {
       break;
@@ -741,7 +749,7 @@ function travelStretch(
   // The hours the party spent on the road are hours the world spent too, so
   // the clock moves with them. Before this the in-world date never changed
   // no matter how far anyone walked.
-  const moved = advanceClock(campaign.id, leg.minutes, "minutes");
+  const moved = advanceClock(campaign.id, leg.minutes, "minutes", { meal: Boolean(args.meal) });
   const now = "error" in moved ? "" : describeInstant(moved.clock.calendar, moved.clock.instant);
   // The hours past 8 this leg adds to each traveller's day (SRD 5.1, Forced
   // March), counted with the legs they marched before it that day: a hero

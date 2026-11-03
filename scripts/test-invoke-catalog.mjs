@@ -1197,6 +1197,23 @@ test("take_action's improvised action and its skills ask for the host", () => {
   assert.match(read("src/lib/use-capabilities.ts"), /features\?: \{[^}]*improvisedActions\?: boolean/);
 });
 
+// A meal from the story (issue 793): the same field on all three forms, waiting
+// for the host's flag since an older host drops it unread, and hidden from a
+// table that does not count food and water.
+test("pass_time, travel and take_rest ask for a meal, only under the supplies variant", () => {
+  for (const tool of ["pass_time", "travel", "take_rest"]) {
+    const meal = adjudication(tool).fields.find((entry) => entry.name === "meal");
+    assert.equal(meal?.kind, "text", tool);
+    assert.equal(meal.required, undefined, `${tool} needs no meal`);
+    assert.equal(meal.variant, "supplies", tool);
+    assert.equal(fieldForHost(meal, () => false), null, `${tool} hidden on an older host`);
+  }
+  assert.ok(read("src/lib/capabilities.ts").match(/^\s*suppliesMeal: true,$/m), "the server flags it");
+  assert.match(read("src/lib/use-capabilities.ts"), /features\?: \{[^}]*suppliesMeal\?: boolean/);
+  assert.match(read("src/app/campaigns/[campaignId]/DmActionForm.tsx"), /!field\.variant \|\| !variantRules \|\| variantRules\[field\.variant\]/);
+  assert.match(read("src/app/campaigns/[campaignId]/DmConsolePanel.tsx"), /entry=\{entry\}\s+sheets=\{sheets\}\s+encounter=\{encounter\}\s+variantRules=\{variantRules\}/);
+});
+
 // The fields a declaration's parts brought to the console (PR 749): an older
 // host strips them unread, so an app compiled with them asks first. There a
 // "Two-Weapon Fighting" or a flurry strike was swung as the Attack action's

@@ -3,7 +3,7 @@ import { getCampaignById } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { gutterBurntLights } from "@/lib/dm/light-timers";
 import { dawnsBetween, rechargeAtDawn } from "@/lib/dm/item-charges";
-import { upkeepAtDawns } from "@/lib/dm/supplies";
+import { mealAtTable, upkeepAtDawns } from "@/lib/dm/supplies";
 import { afflictionClockTick } from "@/lib/dm/afflictions";
 import { poisonClockTick } from "@/lib/dm/affliction-poisons";
 import { fireCalendarEvents } from "@/lib/dm/calendar-fire";
@@ -56,6 +56,10 @@ export function advanceClock(
   campaignId: string,
   amount: number,
   unit: AdvanceUnit,
+  // A meal the story named as this time began (issue 793): written here, past
+  // the last refusal and after `current` is read, so a clock that does not
+  // move eats nothing and "Revert this turn" takes the meal back with the time.
+  options: { meal?: boolean } = {},
 ): { clock: CampaignClock; minutes: number; deathSaves: string[] } | ToolError {
   const current = getClock(campaignId);
   const moved = advance(current.instant, amount, unit);
@@ -65,6 +69,11 @@ export function advanceClock(
   const clock = { ...current, instant: moved.instant };
   // Time moving on closes the choosing of hit dice after a short rest.
   delete clock.shortRest;
+  const fed = options.meal ? mealAtTable(campaignId, current.supplies ?? {}, current.waterRation) : null;
+  if (fed) {
+    clock.supplies = fed;
+    clock.mealAtDawn = true;
+  }
   // A Wild Shape lasts hours, and the hours are these.
   const lapsed = Object.entries(current.shapeEnds ?? {}).filter(([, ends]) => ends <= moved.instant);
   if (lapsed.length) {
@@ -116,9 +125,13 @@ export function advanceClock(
   // Every dawn crossed refills the wands and staffs that regain at dawn,
   // and, under the supplies variant, ends a day of eating and drinking.
   rechargeAtDawn(campaignId, current.instant, moved.instant);
-  const hunger = upkeepAtDawns(campaignId, dawnsBetween(current.instant, moved.instant), current.supplies ?? {});
-  if (hunger) {
-    setClock(campaignId, { ...getClock(campaignId), supplies: hunger });
+  const dawns = dawnsBetween(current.instant, moved.instant);
+  const hunger = upkeepAtDawns(campaignId, dawns, clock.supplies ?? {}, clock.mealAtDawn === true);
+  if (hunger || (dawns && clock.mealAtDawn)) {
+    // The dawn uses the meal up, with the variant since turned off as well.
+    const dawned = getClock(campaignId);
+    delete dawned.mealAtDawn;
+    setClock(campaignId, hunger ? { ...dawned, supplies: hunger } : dawned);
   }
   fireCalendarEvents(campaignId, current.calendar, current.instant, moved.instant);
   // A disease's symptoms, a long madness ending, a poison's daily save or

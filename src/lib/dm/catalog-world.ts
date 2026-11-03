@@ -4,7 +4,7 @@
 import { CHECK_KEY_FORM } from "@/lib/dm/catalog-roll";
 import { DEED_SEVERITIES } from "@/lib/dm/companion-values-logic";
 
-import type { CatalogEntry } from "@/lib/dm/catalog-types";
+import { MEAL_FIELD, type CatalogEntry } from "@/lib/dm/catalog-types";
 import { cueOptions, sceneOptions } from "@/lib/ambience/catalog";
 import { RELATIONSHIP_BEAT_NAMES } from "@/lib/dm/relationship-logic";
 import { NOTE_LIMIT_WORDS } from "@/lib/dm/relationship-note";
@@ -125,6 +125,7 @@ export const WORLD_ADJUDICATIONS: CatalogEntry[] = [
       },
       { name: "characterIds", label: "Who travels", kind: "characters", help: "Leave empty for the whole party." },
       { name: "water", label: "Water to be found", kind: "select", options: [{ value: "plenty", label: "Plenty" }, { value: "half", label: "Half (DC 15 CON a day)" }, { value: "none", label: "None" }], help: "Supplies variant only; holds until set to plenty." },
+      MEAL_FIELD,
       { name: "reason", label: "The journey", kind: "text", placeholder: "Toward the pass, by the old road" },
     ],
   },
@@ -293,6 +294,7 @@ export const WORLD_ADJUDICATIONS: CatalogEntry[] = [
         ],
       },
       { name: "water", label: "Water to be found", kind: "select", options: [{ value: "plenty", label: "Plenty" }, { value: "half", label: "Half (DC 15 CON a day)" }, { value: "none", label: "None" }], help: "Supplies variant only; holds until set to plenty." },
+      MEAL_FIELD,
       REASON,
     ],
   },

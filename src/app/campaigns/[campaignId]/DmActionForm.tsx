@@ -76,6 +76,7 @@ export function DmActionForm({
   sheets,
   encounter,
   initialArgs,
+  variantRules,
   onRan,
   glyph = "tab-dm",
 }: {
@@ -86,6 +87,9 @@ export function DmActionForm({
   // Suggested arguments from the assist rail. Advisory: the DM still presses
   // the button, and anything that does not fit its field is left blank.
   initialArgs?: Record<string, unknown>;
+  // The table's variant rules, for a field that only one of them lets matter.
+  // A form that is not told shows the field.
+  variantRules?: { supplies?: boolean };
   onRan?: () => void;
   // The painted glyph the console gave this action's plate, so the open form
   // wears the same face the row did.
@@ -111,8 +115,9 @@ export function DmActionForm({
     () =>
       entry.fields
         .map((field) => fieldForHost(field, (feature) => hostOffers(capabilities, feature as HostFeature)))
-        .filter((field): field is CatalogField => field !== null),
-    [entry, capabilities],
+        .filter((field): field is CatalogField => field !== null)
+        .filter((field) => !field.variant || !variantRules || variantRules[field.variant]),
+    [entry, capabilities, variantRules],
   );
 
   // A summoning's Kind and Each target's form read the engine's catalogue
