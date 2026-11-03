@@ -9,7 +9,7 @@
 // Pure; scripts/test-hand-engine.mjs drives it.
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { computeSheetDerived } from "@/lib/srd";
-import { authoredSpendFor, gateHolds, heldAuthored, type AuthoredSpend } from "@/lib/srd/authored-effects";
+import { authoredSpendFor, gateHolds, heldAuthored, resolveFormula, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
 import { resourceDef } from "@/lib/srd/class-resources";
 import { holdsFeature } from "@/lib/srd/trait-rules";
 import {
@@ -63,84 +63,130 @@ export function playedAsSpendCard(sheet: CharacterSheet, name: string): boolean 
   const found = authoredSpendFor(sheet, name);
   if (!found) return false;
   const { spend, held } = found;
-  return spend.fight !== "out" && spend.does.kind !== "choose" && spend.action !== "reaction" && gateHolds(spend.gate, sheet, held);
+  return spend.fight !== "out" && spend.does.kind !== "choose" && spendAction(spend) !== "reaction" && gateHolds(spend.gate, sheet, held);
+}
+
+// The turn's cost as the engine charges it (authored-spends.ts prepareCost):
+// the spend's own, else its same-named counter's; a spend that names none
+// costs nothing of the turn (Arcane Jolt rides the hit, Psychic Blades the
+// attack), and one with variants is priced by the variant played.
+function spendAction(spend: AuthoredSpend): string {
+  const own = spend.pool ? resourceDef(spend.pool.id) : null;
+  const counter = own?.displayName === spend.name ? own : null;
+  return spend.action ?? counter?.action ?? (spend.does.kind === "variants" ? "action" : "none");
 }
 
 // One card per spend the character holds that is played in a fight. `taken`
-// names the cards dealt before these so none shows twice.
+// names the cards dealt before these (a spend with a counter of its own name
+// is dealt where that counter's card sat, counterSpendCards) so none shows
+// twice.
 export function subclassSpendCards(sheet: CharacterSheet, turn: HandTurn, taken: Set<string>): HandCard[] {
   const cards: HandCard[] = [];
   for (const held of heldAuthored(sheet)) {
     for (const spend of held.entry.spends ?? []) {
-      const does = spend.does;
-      const own = spend.pool ? resourceDef(spend.pool.id) : null;
-      // The counter of this spend's own name. Its card's id, cost and uses line
-      // carry over, so a seat the player arranged holds and Hidden Paths, whose
-      // variants price themselves, stays a bonus action.
-      const counter = own?.displayName === spend.name ? own : null;
-      const action = spend.action ?? counter?.action ?? "action";
-      if (spend.fight === "out" || does.kind === "choose" || action === "reaction") continue;
-      if (taken.has(textKey(spend.name)) || !gateHolds(spend.gate, sheet, held)) continue;
-      taken.add(textKey(spend.name));
-      const cost = COST[action] ?? "action";
-      const pool = spend.pool;
-      const state = pool ? sheet.resources[pool.id] : undefined;
-      const left = state ? state.max - state.used : null;
-      const lines = linesOf(does);
-      const perUnit = Boolean(pool?.perUnit);
-      const card: HandCard = {
-        id: counter ? `feature:${counter.id}` : `feature:authored:${textKey(spend.name).replace(/\s+/g, "-")}`,
-        type: does.kind === "save_effect" ? (lines.condition ? "control" : "spell") : does.kind === "buff" ? "ward" : "feature",
-        name: spend.name,
-        cost,
-        range: targetOf(does) === "self" || targetOf(does) === "none" ? "Self" : "",
-        dice: lines.dice,
-        roll: does.kind === "save_effect" ? "no attack" : "no roll",
-        rules: `${held.feature}: the server resolves it.`,
-        // The counter's reminder, which its own card used to show on hover.
-        ...(counter ? { description: counter.guidance } : {}),
-        resource: counter && state && left !== null ? `Uses ${left}/${state.max}` : state && left !== null ? `${pool!.id.replace(/_/g, " ")} ${left}/${state.max}` : "",
-        condition: lines.condition,
-        icon: { kind: "feature", key: spend.name, family: `class-${primaryClass(sheet)}` },
-        target: targetOf(does),
-        toHit: null,
-        damage: null,
-        damageType: "",
-        heals: false,
-        save: null,
-        melee: false,
-        disabled: null,
-        spent: false,
-        // A spend by amount (Sharpen the Blade, Touch of the Long Death): the
-        // player says how much in the box.
-        compose: perUnit,
-        ...(perUnit ? { unit: pool!.id === "ki" ? "ki" : "points" } : {}),
-        ...(pool ? { pool: pool.id } : {}),
-        intent: { card: "feature", resourceId: spend.name },
-      };
-      if (does.kind === "variants") {
-        card.choice = {
-          arg: "variant",
-          label: "Choose",
-          options: Object.keys(does.options).map((value) => ({ value, label: value.replace(/^./, (c) => c.toUpperCase()) })),
-        };
-      }
-      const need = pool?.optional ? 0 : pool?.amount ?? 1;
-      const poolGate: Gate =
-        state && left !== null && left < need && !perUnit
-          ? { reason: `${spend.name} needs ${need} ${pool!.id.replace(/_/g, " ")} and ${sheet.name} has ${left}. It comes back after a rest.`, spent: true }
-          : null;
-      cards.push(
-        gated(
-          card,
-          standingGate(sheet, turn, cost === "bonus" ? "bonus" : cost === "free" ? "free" : "action"),
-          poolGate,
-          cost === "free" ? null : costGate(cost, turn, sheet, spend.name),
-        ),
-      );
+      if (taken.has(textKey(spend.name))) continue;
+      const dealt = spendCards(sheet, turn, held, spend);
+      if (dealt.length) taken.add(textKey(spend.name));
+      cards.push(...dealt);
     }
   }
   return cards;
+}
+
+// The cards of the spend a counter of its own name stands for, dealt in the
+// counter's place among the feature cards (hand-spells.ts featureCards): dealt
+// after every other feature, a level 20 paladin's capstone went behind More.
+export function counterSpendCards(sheet: CharacterSheet, turn: HandTurn, name: string): HandCard[] {
+  const found = authoredSpendFor(sheet, name);
+  return found ? spendCards(sheet, turn, found.held, found.spend) : [];
+}
+
+// The ways a spend aims, each its own card: one, or for a spend that either
+// burns a creature or heals one (Arcane Jolt: "either deal an extra 2d6 force
+// damage to the target, or ... restores a number of hit points equal to 2d6"),
+// one at an enemy and one at an ally, so each posts the target it needs.
+function aimsOf(does: SpendDoes, level: number, mods: Record<string, number>): Array<{ variant?: string; label?: string; target: HandTarget; dice: string; heals: boolean }> {
+  if (does.kind === "flames") {
+    const dice = resolveFormula(does.formula, level, mods);
+    const heal = { variant: "heal", label: "healing", target: "ally" as const, dice: `heals ${dice}`, heals: true };
+    return does.healOnly ? [{ ...heal, variant: undefined, label: undefined }] : [{ variant: "burn", label: "force", target: "enemy", dice: `+${dice} ${does.type}`, heals: false }, heal];
+  }
+  const lines = linesOf(does);
+  return [{ target: targetOf(does), dice: lines.dice, heals: false }];
+}
+
+function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, spend: AuthoredSpend): HandCard[] {
+  const does = spend.does;
+  const own = spend.pool ? resourceDef(spend.pool.id) : null;
+  // The counter of this spend's own name. Its card's id, cost and uses line
+  // carry over, so a seat the player arranged holds and Hidden Paths, whose
+  // variants price themselves, stays a bonus action.
+  const counter = own?.displayName === spend.name ? own : null;
+  const action = spendAction(spend);
+  if (spend.fight === "out" || does.kind === "choose" || action === "reaction" || !gateHolds(spend.gate, sheet, held)) return [];
+  const cost = COST[action] ?? "action";
+  const pool = spend.pool;
+  const state = pool ? sheet.resources[pool.id] : undefined;
+  const left = state ? state.max - state.used : null;
+  const lines = linesOf(does);
+  const perUnit = Boolean(pool?.perUnit);
+  const need = pool?.optional ? 0 : pool?.amount ?? 1;
+  const poolGate: Gate =
+    state && left !== null && left < need && !perUnit
+      ? {
+          // A counter of the spend's own name is its uses, not a raw id.
+          reason: counter
+            ? `${spend.name} has no use left (${left}/${state!.max}). It comes back after a rest.`
+            : `${spend.name} needs ${need} ${pool!.id.replace(/_/g, " ")} and ${sheet.name} has ${left}. It comes back after a rest.`,
+          spent: true,
+        }
+      : null;
+  const aims = aimsOf(does, held.level, computeSheetDerived(sheet).abilityMods);
+  return aims.map((aim) => {
+    const card: HandCard = {
+      id: `${counter ? `feature:${counter.id}` : `feature:authored:${textKey(spend.name).replace(/\s+/g, "-")}`}${aim.variant && aims.length > 1 ? `:${aim.variant}` : ""}`,
+      type: aim.heals ? "mend" : does.kind === "save_effect" ? (lines.condition ? "control" : "spell") : does.kind === "buff" ? "ward" : "feature",
+      name: aim.label && aims.length > 1 ? `${spend.name} (${aim.label})` : spend.name,
+      cost,
+      range: aim.target === "self" || aim.target === "none" ? "Self" : "",
+      dice: aim.dice,
+      roll: does.kind === "save_effect" ? "no attack" : "no roll",
+      rules: `${held.feature}: the server resolves it.`,
+      // The counter's reminder, which its own card used to show on hover.
+      ...(counter ? { description: counter.guidance } : {}),
+      resource: counter && state && left !== null ? `Uses ${left}/${state.max}` : state && left !== null ? `${pool!.id.replace(/_/g, " ")} ${left}/${state.max}` : "",
+      condition: lines.condition,
+      icon: { kind: "feature", key: spend.name, family: `class-${primaryClass(sheet)}` },
+      target: aim.target,
+      toHit: null,
+      damage: null,
+      damageType: "",
+      heals: aim.heals,
+      save: null,
+      melee: false,
+      disabled: null,
+      spent: false,
+      // A spend by amount (Sharpen the Blade, Touch of the Long Death): the
+      // player says how much in the box.
+      compose: perUnit,
+      ...(perUnit ? { unit: pool!.id === "ki" ? "ki" : "points" } : {}),
+      ...(pool ? { pool: pool.id } : {}),
+      intent: { card: "feature", resourceId: spend.name, ...(aim.variant ? { variant: aim.variant } : {}) },
+    };
+    if (does.kind === "variants") {
+      card.choice = {
+        arg: "variant",
+        label: "Choose",
+        options: Object.keys(does.options).map((value) => ({ value, label: value.replace(/^./, (c) => c.toUpperCase()) })),
+      };
+    }
+    return gated(
+      card,
+      standingGate(sheet, turn, cost === "bonus" ? "bonus" : cost === "free" ? "free" : "action"),
+      poolGate,
+      cost === "free" ? null : costGate(cost, turn, sheet, spend.name),
+    );
+  });
 }
 
 // Intimidating Presence (Berserker 10): the action, one creature within 30

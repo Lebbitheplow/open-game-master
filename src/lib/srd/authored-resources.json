@@ -1860,28 +1860,6 @@
    "guidance": "Elixirs brewed on a long rest (one, two from 6th level, three from 15th), each rolled on a d6: healing (2d4 + Intelligence), swiftness (+10 feet of speed for an hour), resilience (+1 AC for 10 minutes), boldness (a d4 on attacks and saves for a minute), flight (a 10-foot flying speed for 10 minutes) or transformation (alter self). A spell slot brews another of a chosen effect. From 9th level a drinker also gains 2d6 + Intelligence temporary hit points."
   },
   {
-   "id": "art_eldritch_cannon",
-   "displayName": "Eldritch Cannon",
-   "match": [
-    "eldritch cannon"
-   ],
-   "uses": 1,
-   "ability": null,
-   "scale": [
-    [
-     15,
-     2
-    ],
-    [
-     3,
-     1
-    ]
-   ],
-   "recharge": "long",
-   "action": "action",
-   "guidance": "An action builds a flamethrower, force ballista or protector cannon, and a bonus action activates it. A spell slot buys extra uses."
-  },
-  {
    "id": "art_spell_storing_item",
    "displayName": "Spell-Storing Item",
    "match": [
