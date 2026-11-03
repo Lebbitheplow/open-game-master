@@ -401,6 +401,9 @@ export type ReactionDoes =
   // Damage back at a creature: the attacker, or the named enemy.
   | {
       kind: "strike_back";
+      // It answers a save a creature made, not a hit: no record says who forced a
+      // save, so no card offers it, and the call names the creature.
+      afterSave?: boolean;
       amount: Formula;
       type: string;
       melee?: boolean;

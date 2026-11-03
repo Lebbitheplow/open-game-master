@@ -1,0 +1,63 @@
+// Vigilant Rebuke (Oath of the Watchers 15) answers a successful Intelligence,
+// Wisdom or Charisma save, and its card came up whenever an attack hit the
+// paladin, a trigger it does not have. No record says who forced a save, so it
+// has no card for now: the GM's call names the creature.
+import assert from "node:assert/strict";
+import { openWorld } from "./lib/enforce-world.mjs";
+import { suite } from "./lib/enforce-harness.mjs";
+import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
+
+const { test, finish } = suite("test-vigilant-rebuke");
+const world = await openWorld({ campaign: { maxPlayers: 10 } });
+const kit = await combatKit(world);
+const { FRESH_TURN } = await import("../src/lib/battlemap/hand.ts");
+const { reactionCards } = await import("../src/lib/battlemap/hand-react.ts");
+
+const paladin = world.addHero({
+  class: "paladin", subclass: "Oath of the Watchers", level: 15, maxHp: 100, abilities: { cha: 16 }, proficiencies: TRAINED,
+  portrait: { url: "/uploads/test.png" },
+});
+await kit.fight(1, { heroFaces: { [paladin.id]: 3 } });
+const [enemy] = world.enemies();
+kit.setEnemy(enemy.id, { maxHp: 300, currentHp: 300 });
+kit.place(paladin.id, 5, 5);
+kit.place(enemy.id, 5, 6);
+
+await test("A hit on the paladin offers no card.", () => {
+  const hit = { id: "h1", characterId: paladin.id, hit: true, hits: 1, source: "attack", ranged: false, attacker: "Goblin", attackerId: enemy.id, attack: "Club", type: "bludgeoning", damage: 5, answered: [] };
+  const cards = reactionCards(world.sheet(paladin.id), { ...FRESH_TURN, myTurn: false }, [hit], []);
+  assert.equal(cards.some((card) => card.name === "Vigilant Rebuke"), false);
+});
+
+await test("The call has to name the creature, and spends nothing until it does.", async () => {
+  const out = await world.invoke("use_reaction", { characterId: paladin.id, feature: "Vigilant Rebuke" });
+  assert.equal(out.ok, false);
+  assert.match(out.error, /targetEnemyId/);
+  assert.equal(world.encounter().reactionsUsed.includes(paladin.id), false);
+});
+
+await test("An open hit on the paladin does not stand in for the creature named.", async () => {
+  kit.freshRound();
+  world.dice(19, 4);
+  assert.equal((await world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: paladin.id })).ok, true);
+  world.clearDice();
+  const before = world.enemies()[0].currentHp;
+  const out = await world.invoke("use_reaction", { characterId: paladin.id, feature: "Vigilant Rebuke" });
+  assert.equal(out.ok, false);
+  assert.match(out.error, /targetEnemyId/);
+  assert.equal(world.enemies()[0].currentHp, before);
+  assert.equal(world.encounter().reactionsUsed.includes(paladin.id), false);
+});
+
+await test("Naming the creature deals 2d8 + Charisma force and spends the reaction.", async () => {
+  const before = world.enemies()[0].currentHp;
+  world.dice(4, 4);
+  const out = await world.invoke("use_reaction", { characterId: paladin.id, feature: "Vigilant Rebuke", targetEnemyId: enemy.id });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(before - world.enemies()[0].currentHp, 11);
+  assert.equal(world.encounter().reactionsUsed.includes(paladin.id), true);
+});
+
+world.close();
+finish();

@@ -316,7 +316,7 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
   "paladin::Vigilant Rebuke": {
     subclass: "Oath of the Watchers",
     reactions: [
-      { name: "Vigilant Rebuke", does: { kind: "strike_back", amount: (_level, mods) => `2d8+${mods.cha ?? 0}`, type: "force", rangeFt: 30 } },
+      { name: "Vigilant Rebuke", does: { kind: "strike_back", afterSave: true, amount: (_level, mods) => `2d8+${mods.cha ?? 0}`, type: "force", rangeFt: 30 } },
     ],
   },
   "paladin::Mortal Bulwark": {
