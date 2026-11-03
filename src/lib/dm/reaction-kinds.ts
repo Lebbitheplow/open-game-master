@@ -93,6 +93,34 @@ export function timingOfDoes(does: ReactionDoes): ReactionTiming {
 // The limited-use reactions src/lib/dm/reaction-counters.ts carries out when
 // use_resource spends them: their dice are rolled and applied there, not by
 // a counter's fx.
+// The limited-use reactions a hit calls for, which the engine resolves when it is
+// named. Each is a card when the hit comes (hand-react.ts) and none on the holder's
+// own turn: they sat in the Hand there, with no trigger to answer, and never came
+// up at the moment they are for.
+export const HIT_ANSWER_COUNTERS: ReadonlyArray<{
+  id: string;
+  // Also answers a hit on a creature near the holder (the engine holds the range).
+  ally?: boolean;
+  // Only an attack, not a fall or a missile's other damage.
+  attackOnly?: boolean;
+  // Taken as the hit drops the holder to 0, and only then.
+  atZero?: boolean;
+  // Acts on the hit itself, so it is open to a holder that hit has just dropped.
+  answersDrop?: boolean;
+  // Only while the holder has this condition.
+  whileHolding?: string;
+  // Also answers damage no hit records (an area spell, a zone), so its card stays.
+  anyDamage?: boolean;
+}> = [
+  { id: "race_stones_endurance", answersDrop: true },
+  { id: "sub_swarming_dispersal", answersDrop: true },
+  { id: "sub_misty_escape", anyDamage: true },
+  { id: "sub_warding_maneuver", ally: true, attackOnly: true },
+  { id: "sub_one_with_the_word", answersDrop: true, whileHolding: "manifest mind" },
+  { id: "sub_necrotic_husk", atZero: true },
+  { id: "sub_strength_before_death", atZero: true },
+];
+
 export const COUNTER_REACTION_IDS = [
   "race_stones_endurance",
   "sub_swarming_dispersal",

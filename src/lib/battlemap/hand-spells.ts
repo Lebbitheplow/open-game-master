@@ -9,6 +9,7 @@ import { heldAtWill, resourceDef, resourceLevel, type ResourceDef } from "@/lib/
 import { psionicOptions } from "@/lib/dm/option-costs";
 import { ACTION_SURGED } from "@/lib/dm/action-budget";
 import { BONUS_ATTACK_COUNTERS } from "@/lib/dm/feature-bonus-attacks";
+import { HIT_ANSWER_COUNTERS } from "@/lib/dm/reaction-kinds";
 import { isMeleeSpellAttack } from "@/lib/srd/melee-spell";
 import { bundledSpellFacts, type CastingTime, type SpellRange } from "@/lib/srd/spell-facts";
 import { aoeSpendFor } from "@/lib/srd/aoe-spend";
@@ -432,6 +433,8 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
     if (id === "channel_divinity" || (id === "sub_psionic_energy" && psionicOptions(sheet).length)) continue;
     // Spent by the bonus attack itself (hand-class.ts bonusStrikeCards).
     if (BONUS_ATTACK_COUNTERS.includes(id)) continue;
+    // Dealt when the hit that calls for it comes (hand-react.ts).
+    if (HIT_ANSWER_COUNTERS.some((counter) => counter.id === id && !counter.anyDamage)) continue;
     const level = resourceLevel(def, sheet);
     const effect = def.effect;
     const left = state.max - state.used;
