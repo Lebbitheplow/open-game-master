@@ -37,6 +37,8 @@ export type HandAim = {
   cr?: number;
   conditions?: string[];
   edge?: { cover: 0 | 2 | 5; flanking: boolean; adjacent: boolean; blocked?: boolean; hostileBeside?: boolean };
+  // The attacker's features that give advantage against it (hand-edge.ts).
+  advantage?: string[];
 };
 
 // What the player chose on the raised card beyond its target.
@@ -216,6 +218,7 @@ export function previewRows(
       if (edge?.flanking && card.melee) sources.push("advantage");
       if (choices.options?.includes("reckless")) sources.push("advantage");
       if (choices.options?.includes("useInspiration")) sources.push("advantage");
+      if (enemy?.advantage?.length) sources.push("advantage");
       // A ranged attack with a hostile creature beside the attacker is at
       // disadvantage; the board says whether one is.
       if (edge?.hostileBeside && !card.melee) sources.push("disadvantage");
@@ -236,6 +239,9 @@ export function previewRows(
       }
       if (edge?.flanking && card.melee) {
         rows.push({ key: "Flanking", value: "an ally opposite: advantage", tone: "muted" });
+      }
+      if (enemy?.advantage?.length) {
+        rows.push({ key: "Advantage", value: enemy.advantage.join(", "), tone: "muted" });
       }
     }
   } else if (card.roll) {
