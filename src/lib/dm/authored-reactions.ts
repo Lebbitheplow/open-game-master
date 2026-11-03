@@ -397,6 +397,52 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
         taken,
       };
     }
+    case "echo_hit": {
+      const ally = allyOf(ctx);
+      if (!ally || ally.id === ctx.sheet.id || !encounter) {
+        return { error: `${reaction.name} answers a hit on another creature: pass that ally's targetCharacterId. Nothing was spent.`, retry: true };
+      }
+      if (!withinFeet(encounter.id, ctx.sheet.id, ally.id, does.rangeFt)) {
+        return { error: `${ally.name} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
+      }
+      // The hit by the creature named, when one is: the heaviest hit on the ally
+      // may be another attacker's, and it would take what this one is owed.
+      const named = ctx.args.targetEnemyId;
+      const nearest = lastHitOn(ctx, ally, label);
+      if ("error" in nearest) return nearest;
+      const byNamed = named && attackerFoeId(nearest.record) !== named ? freshLastHit(ctx.campaign.id, ally.id, (entry) => attackerFoeId(entry) === named) : null;
+      if (named && attackerFoeId(nearest.record) !== named && !byNamed) {
+        return noHit(ally.name, reaction.name, "an attack by that creature");
+      }
+      const hit = byNamed ? { record: byNamed, index: heaviest(byNamed.swings) } : nearest;
+      const foeId = attackerFoeId(hit.record);
+      const enemy = foeId ? enemyTarget({ ...ctx, args: { ...ctx.args, targetEnemyId: undefined } }, foeId) : null;
+      if (!enemy) {
+        return { error: `${reaction.name} answers the creature that struck ${ally.name}, and it is not in the fight. Nothing was spent.`, refused: "rules" };
+      }
+      if (!withinFeet(encounter.id, ctx.sheet.id, enemy.id, does.rangeFt)) {
+        return { error: `${enemy.displayName} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
+      }
+      const dealt = hit.record.swings[hit.index].raw;
+      if (dealt <= 0) {
+        return { error: `${enemy.displayName}'s hit dealt ${ally.name} no damage to send back. Nothing was spent.`, refused: "rules" };
+      }
+      const dc = saveDc(holder, does.save.dcAbility);
+      const save = rollEnemySave(ctx.campaign.id, enemy, does.save.ability, dc, {
+        magical: true,
+        origin: { ref: holder.id },
+        record: { turn: ctx.turn, detail: `${enemy.displayName}: ${does.save.ability.toUpperCase()} save against ${reaction.name}` },
+      });
+      const amount = save.success ? Math.floor(dealt / 2) : dealt;
+      const out: Record<string, unknown> = { dealt, save: `${save.total ?? "failed"} vs DC ${dc}`, amount };
+      if (amount > 0) {
+        Object.assign(out, applyEnemyDamage(ctx.campaign, ctx.turn, encounter, enemy, amount, ctx.sheets, ctx.sheetsById, does.type, { magical: true }));
+        publishEncounter(ctx.campaign.id);
+      }
+      // The hit's swings stand; settling marks it answered, so its card goes.
+      settle(ctx, hit.record, hit.record.swings, label);
+      return out;
+    }
     case "strike_back": {
       if (does.afterSave && !ctx.args.targetEnemyId) {
         return { error: `${reaction.name} strikes the creature that forced a save someone just made: pass its targetEnemyId. Nothing was spent.`, retry: true };

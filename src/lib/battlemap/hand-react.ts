@@ -348,6 +348,8 @@ function reactionRules(does: ReactionDoes): string {
       return "Resistance to the damage of the attack that hit.";
     case "take_for_ally":
       return "Take the hit in your ally's place.";
+    case "echo_hit":
+      return `The same damage back at the attacker as ${does.type}, halved on a save.`;
     case "strike_back":
       return `Strike back: ${does.type} damage at the attacker.`;
     case "redirect":
@@ -390,6 +392,7 @@ function subclassReactions(
           : (does.kind === "reduce" && does.who !== "self" && typed(does.types)) ||
             does.kind === "take_for_ally" ||
             (does.kind === "ac_vs_hit" && Boolean(does.rangeFt)) ||
+            (does.kind === "echo_hit" && Boolean(hit.attackerId)) ||
             (does.kind === "resist_instance" && typed(does.types));
       if (!answers) continue;
       const rules = reactionRules(does);
