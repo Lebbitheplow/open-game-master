@@ -955,6 +955,23 @@ await test("An agent program's narration is checked against the live encounter, 
   assert.equal(fine.status, 201, JSON.stringify(fine.json));
 });
 
+// Issue 744: an agent program's prose is a model's and loses a line of
+// closers nobody opened; a person's passage through the same route is theirs.
+await test("An agent program's passage loses a line of stray closers, and a person's passage is stored as typed.", async () => {
+  const story = "The goblin backs toward the reeds, hissing.";
+  const last = () => listRecentMessages(agentWorld.campaignId, 50).at(-1);
+  routeModel.claims([[]]);
+  const agent = await agentCall(agentWorld, agentWorld.owner.id, "campaigns/[campaignId]/dm/narrate", { content: `)*\n\n${story}` });
+  assert.equal(agent.status, 201, JSON.stringify(agent.json));
+  assert.equal(last().content, story);
+  const typed = `)*\n\n${story}`;
+  const person = await agentCall(agentWorld, agentWorld.owner.id, "campaigns/[campaignId]/dm/narrate", { content: typed }, false);
+  assert.equal(person.status, 201, JSON.stringify(person.json));
+  assert.equal(last().content, typed);
+  const empty = await agentCall(agentWorld, agentWorld.owner.id, "campaigns/[campaignId]/dm/narrate", { content: ")*" });
+  assert.equal(empty.status, 400, JSON.stringify(empty.json));
+});
+
 await test("An agent program in the DM seat that whispers back answers the player's private message, so the player can send more.", async () => {
   const { listPendingPlayerWhispers } = await import("../src/lib/db/dm-whispers.ts");
   const asked = await agentCall(agentWorld, tamsinPlayer.id, "campaigns/[campaignId]/whispers", { message: "I slip a note to the innkeeper." }, false);
