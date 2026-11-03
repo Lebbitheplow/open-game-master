@@ -10,10 +10,19 @@ import { axeViolations, check, eventually, untilStill } from "../lib.mjs";
 // [red, green, blue, alpha] from a computed colour, the first stop of a gradient included.
 const read = (locator) => locator.evaluate((node) => {
   const style = getComputedStyle(node);
-  const parts = (text) => (/rgba?\(([^)]+)\)/.exec(text)?.[1] ?? "0, 0, 0, 0").split(/[,\s/]+/).map(Number);
-  return { color: parts(style.color), image: style.backgroundImage === "none" ? null : parts(style.backgroundImage), fill: parts(style.backgroundColor) };
+  // A canvas reads any colour the browser reports: Tailwind's come as oklab, not rgb.
+  const context = document.createElement("canvas").getContext("2d", { willReadFrequently: true });
+  const parts = (text) => {
+    context.clearRect(0, 0, 1, 1);
+    context.fillStyle = text;
+    context.fillRect(0, 0, 1, 1);
+    const [r, g, b, a] = context.getImageData(0, 0, 1, 1).data;
+    return [r, g, b, a / 255];
+  };
+  const firstStop = /(?:rgba?|oklab|oklch|lab|lch|color)\([^)]*\)|#[0-9a-f]+/i.exec(style.backgroundImage)?.[0];
+  return { color: parts(style.color), image: firstStop ? parts(firstStop) : null, fill: parts(style.backgroundColor) };
 });
-const solid = (colour) => colour[3] === undefined || colour[3] === 1;
+const solid = (colour) => colour[3] === 1;
 const lit = ([r, g, b]) => {
   const channel = (value) => (value / 255 <= 0.03928 ? value / 255 / 12.92 : ((value / 255 + 0.055) / 1.055) ** 2.4);
   return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
