@@ -295,7 +295,7 @@ export function reactionCards(
       const saver = save.characterId === sheet.id ? self : party.find((entry) => entry.id === save.characterId)?.name;
       if (!saver || (save.characterId !== sheet.id && !inReach(feet, save.characterId, held.rangeFt))) continue;
       const id = `${textKey(held.name).replace(/\s+/g, "-")}:${save.id}`;
-      const card = base(id, held.name, `${saver === "you" ? "You" : saver} made the ${save.ability.toUpperCase()} save ${save.forcer} forced`, "enemy", { card: "reaction", feature: held.name }, {
+      const card = base(id, held.name, `${save.characterId === sheet.id && self === "you" ? "You" : saver} made the ${save.ability.toUpperCase()} save ${save.forcer} forced`, "enemy", { card: "reaction", feature: held.name }, {
         rules: held.rules,
         answers: { characterId: save.characterId, attackerId: save.forcerId, attacker: save.forcer },
       });
@@ -416,7 +416,7 @@ function saveAnswers(sheet: CharacterSheet): Array<{ name: string; rangeFt: numb
     for (const reaction of held.entry.reactions ?? []) {
       const does = reaction.does;
       if (does.kind !== "strike_back" || !does.afterSave || (reaction.usedBy ?? "holder") !== "holder" || !gateHolds(reaction.gate, sheet, held)) continue;
-      out.push({ name: reaction.name, rangeFt: does.rangeFt, rules: `${does.type[0].toUpperCase()}${does.type.slice(1)} damage at the creature that forced the save.` });
+      out.push({ name: reaction.name, rangeFt: does.rangeFt, rules: `Strike back: ${does.type} damage at the creature that forced the save.` });
     }
   }
   return out;

@@ -6,6 +6,7 @@ import { publishPersisted } from "@/lib/events";
 import { clearSpellConditionsByName } from "@/lib/dm/concentration";
 import { removeConditionInstances, removeConditions, type ConditionMeta, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { VOW_OF_ENMITY, vowedFoe } from "@/lib/srd/vow-of-enmity";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 import { releaseGrapplesHeldBy } from "@/lib/dm/set-condition";
 import type { ToolError } from "@/lib/dm/tool-errors";
 
@@ -118,7 +119,7 @@ export function onEnemyIncapacitated(campaign: Campaign, enemy: EncounterEnemy):
     lines.push(`${released.join(" and ")} ${released.length === 1 ? "is" : "are"} no longer grappled by it.`);
   }
   // Unconscious, not merely stunned: a vow on it ends.
-  if ((getEnemy(enemy.id) ?? enemy).conditions.some((entry) => entry.toLowerCase() === "unconscious")) {
+  if ((getEnemy(enemy.id) ?? enemy).conditions.some((entry) => isConditionNamed(entry, "unconscious"))) {
     lines.push(...endVowsOn(campaign, enemy.id));
   }
   return lines;
