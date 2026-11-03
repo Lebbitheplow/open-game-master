@@ -11,7 +11,8 @@
 // faces, the total, the AC it met), the damage each hit rolled and its type,
 // whether the attack was ranged, who made it, and the character as they
 // stood before the first swing (hit points, temporary hit points, a beast
-// form's pool, the death track, conditions, Relentless Endurance, and the
+// form's pool, the death track, conditions, Relentless Endurance, Undying
+// Sentinel, and the
 // concentration the hit may have broken with the effects that went with
 // it). src/lib/dm/reaction-refund.ts turns a corrected outcome back into
 // state from it.
@@ -108,6 +109,8 @@ export type VitalsSnapshot = {
   // Relentless Rage's uses since the last rest, which raise its DC: given
   // back with the drop that spent one. Absent on records written before it.
   relentlessRage?: number | null;
+  // Undying Sentinel's uses spent, for the same refund.
+  undyingSentinel?: number | null;
   // An abjurer's Arcane Ward's hit points, which take a blow first; null
   // with no ward raised. Absent on records written before it.
   ward?: number | null;
@@ -578,6 +581,7 @@ export function snapshotVitals(campaignId: string, sheet: CharacterSheet): Vital
     deathSaves: sheet.deathSaves ?? null,
     relentless: relentless ? { max: relentless.max, used: relentless.used } : null,
     relentlessRage: sheet.resources?.relentless_rage?.used ?? null,
+    undyingSentinel: sheet.resources?.sub_undying_sentinel?.used ?? null,
     ward: wardHpOf(sheet),
     concentratingOn: sheet.concentratingOn ?? null,
     held: concentrationHeld(campaignId, sheet),

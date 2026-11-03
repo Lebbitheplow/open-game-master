@@ -18,7 +18,7 @@ import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { publishPersisted } from "@/lib/events";
-import { RAGING, spendRelentlessEndurance } from "@/lib/srd/class-resources";
+import { RAGING, spendRelentlessEndurance, spendUndyingSentinel } from "@/lib/srd/class-resources";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { applyDamageMath, wildShapeDamageMath } from "@/lib/dm/mutation-math";
 import { applyDamageDeathHook } from "@/lib/dm/death";
@@ -364,8 +364,24 @@ export function applyPcDamage(
   // instead, once per long rest. The server burns the use itself, so the
   // death engine never sees the drop. It answers being reduced to 0 "but not
   // killed outright", so massive damage goes past it to the death engine
-  // with the use unspent.
+  // with the use unspent. Undying Sentinel (Oath of the Ancients 15) holds the
+  // same way; without this line its use sat unspent while the paladin fell.
   if (math.dropped && !input.disintegrate && !isMassiveDamage(math.overkill, effectiveMaxHp(sheet))) {
+    const sentinel = spendUndyingSentinel(sheet.resources);
+    if (sentinel) {
+      const patch: FullPatchSheetInput = { currentHp: 1, resources: sentinel };
+      patchSheet(sheet.id, patch);
+      audit(campaign, turnId, sheet, "apply_damage", { undyingSentinel: true }, reason, patch);
+      publishSheet(campaign, sheet.id);
+      return {
+        ok: true,
+        hp: `1/${effectiveMaxHp(sheet)}`,
+        undyingSentinel: true,
+        ...shapeInfo,
+        ...proneInfo,
+        note: `${sheet.name} should have fallen, but Undying Sentinel holds them at 1 HP. The feature is now spent until a long rest.`,
+      };
+    }
     const spent = spendRelentlessEndurance(sheet.resources);
     if (spent) {
       const patch: FullPatchSheetInput = { currentHp: 1, resources: spent };

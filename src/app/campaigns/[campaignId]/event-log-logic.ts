@@ -165,6 +165,7 @@ export function describeKnownEntry(entry: { kind: string; delta: Delta }, name: 
           : `${name}'s ${form} form takes ${amount(delta.amount) ?? "some"} damage${amount(delta.beastHp) !== null ? ` (${amount(delta.beastHp)} beast HP)` : ""}`;
       }
       if (delta.relentlessEndurance) return `${name} holds on at 1 HP (Relentless Endurance)`;
+      if (delta.undyingSentinel) return `${name} holds on at 1 HP (Undying Sentinel)`;
       if (delta.relentlessRage) return `${name} holds on at 1 HP (Relentless Rage)`;
       if (delta.deathWard) return `${name} holds on at 1 HP (Death Ward)`;
       const type = word(delta.type);

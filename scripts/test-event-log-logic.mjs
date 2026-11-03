@@ -352,6 +352,7 @@ test("a death save's result, a pact's price, a trade and the gear moves read fro
   assert.equal(say("concentration_clock", { spell: "Bless", roundsLeft: 9 }), "Time runs on Corra Venn's Bless");
   assert.equal(say("clear_condition", { spell: "Lesser Restoration", ended: ["poisoned"], exhaustion: false }), "Corra Venn is no longer poisoned");
   assert.equal(say("apply_damage", { relentlessRage: true, dc: 10 }), "Corra Venn holds on at 1 HP (Relentless Rage)");
+  assert.equal(say("apply_damage", { undyingSentinel: true }), "Corra Venn holds on at 1 HP (Undying Sentinel)");
   // src/lib/dm/swallow.ts: the count toward a regurgitation, and the way out.
   assert.equal(say("set_condition", { condition: "swallowed", hurtInside: 12, swallower: "Purple Worm" }), "Corra Venn has dealt Purple Worm 12 damage from inside this turn");
   assert.equal(say("clear_condition", { condition: "swallowed, blinded, restrained" }), "Corra Venn is no longer swallowed, blinded, restrained");
