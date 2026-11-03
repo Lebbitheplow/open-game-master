@@ -216,7 +216,7 @@
    "ability": "wis",
    "recharge": "long",
    "action": "reaction",
-   "guidance": "Not spent with use_resource: use_reaction 'Wrath of the Storm' when a creature hits the cleric in melee. It takes 2d8 lightning, halved on a Dexterity save.",
+   "guidance": "Not spent with use_resource: use_reaction 'Wrath of the Storm' when a creature hits the cleric in melee. It takes 2d8 lightning or thunder (variant names one; else whichever hurts it more), halved on a Dexterity save.",
    "passive": true
   },
   {
@@ -757,7 +757,7 @@
    "ability": null,
    "recharge": "short",
    "action": "reaction",
-   "guidance": "Not spent with use_resource: use_reaction 'Entropic Ward' when an attack hits the warlock. The attack is rolled again at disadvantage; if it then misses, the warlock has advantage on their next attack against that creature, which the GM applies.",
+   "guidance": "Not spent with use_resource: use_reaction 'Entropic Ward' when an attack hits the warlock. The attack is rolled again at disadvantage; if it then misses, the warlock's next attack roll against that creature before the end of their next turn has advantage.",
    "passive": true
   },
   {
@@ -1858,28 +1858,6 @@
    ],
    "recharge": "long",
    "guidance": "Elixirs brewed on a long rest (one, two from 6th level, three from 15th), each rolled on a d6: healing (2d4 + Intelligence), swiftness (+10 feet of speed for an hour), resilience (+1 AC for 10 minutes), boldness (a d4 on attacks and saves for a minute), flight (a 10-foot flying speed for 10 minutes) or transformation (alter self). A spell slot brews another of a chosen effect. From 9th level a drinker also gains 2d6 + Intelligence temporary hit points."
-  },
-  {
-   "id": "art_eldritch_cannon",
-   "displayName": "Eldritch Cannon",
-   "match": [
-    "eldritch cannon"
-   ],
-   "uses": 1,
-   "ability": null,
-   "scale": [
-    [
-     15,
-     2
-    ],
-    [
-     3,
-     1
-    ]
-   ],
-   "recharge": "long",
-   "action": "action",
-   "guidance": "An action builds a flamethrower, force ballista or protector cannon, and a bonus action activates it. A spell slot buys extra uses."
   },
   {
    "id": "art_spell_storing_item",

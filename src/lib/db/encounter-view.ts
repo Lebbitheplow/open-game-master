@@ -223,6 +223,11 @@ export type PublicLastHit = {
   damage: number;
   // Reactions already taken against it.
   answered: string[];
+  // How the character stood as it landed: up or already at 0, and their
+  // conditions then. A reaction that answers the hit is asked of them as
+  // they stood (src/lib/dm/reaction-gate.ts), so a card for one the hit
+  // dropped reads this, not the fall. Absent from an older host.
+  stood?: { up: boolean; conditions: string[] };
 };
 
 function turnView(encounter: Encounter): { turn?: PublicTurn } {
@@ -310,8 +315,10 @@ function lastHitView(record: LastHit, hidden: Set<string>, showNumbers: boolean)
     hits: record.swings.filter((swing) => swing.hit).length,
     damage: answered?.raw ?? 0,
     answered: record.answered,
+    stood: { up: record.before.currentHp > 0, conditions: record.before.conditions },
   };
 }
+
 
 // The face an initiative entry for a tracked NPC draws (npc-faces.ts).
 function entryFace(cast: CastLookup, npcId: string, name: string): { face?: string } {
@@ -542,8 +549,11 @@ export function activePublicEncounter(
   }
   const map = getBattleMapForEncounter(encounter.id);
   // Only records a reaction may still answer: the engine's own freshness
-  // rule, asked per character in the order, every open hit of each.
-  const lastHits = encounter.order.flatMap((entry) => (entry.kind === "pc" ? openHits(campaignId, entry.characterId) : []));
+  // rule, asked per character in the order, every open hit of each. Once per
+  // character: an extra turn (Strength before Death, Thief's Reflexes) puts
+  // them in the order twice, and each of their hits came twice with its cards.
+  const heroes = [...new Set(encounter.order.flatMap((entry) => (entry.kind === "pc" ? [entry.characterId] : [])))];
+  const lastHits = heroes.flatMap((id) => openHits(campaignId, id));
   return publicEncounter(encounter, listEnemies(encounter.id), {
     ...options,
     lastHits,

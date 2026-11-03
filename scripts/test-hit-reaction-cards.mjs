@@ -12,6 +12,8 @@ const kit = await combatKit(world);
 const { deriveHand, FRESH_TURN } = await import("../src/lib/battlemap/hand.ts");
 const { reactionCards } = await import("../src/lib/battlemap/hand-react.ts");
 const { activePublicEncounter } = await import("../src/lib/db/encounter-view.ts");
+const { intentRefusal } = await import("../src/lib/dm/intent-check.ts");
+const { getCampaignById } = await import("../src/lib/db/campaigns.ts");
 
 const hero = (extra) =>
   world.addHero({
@@ -41,14 +43,23 @@ const strike = async (enemy, target) => {
   world.clearDice();
   assert.equal(out.ok, true, out.error);
 };
-const offered = (who, name) =>
+const offered = (who, name, feet) =>
   reactionCards(
     world.sheet(who.id),
     { ...FRESH_TURN, myTurn: false },
     activePublicEncounter(world.campaignId)?.lastHits ?? [],
     // As the Hand passes it: every sheet, the holder among them.
     world.sheets(),
+    "you",
+    feet,
   ).filter((card) => card.name === name);
+// The board's distances from the holder to each hero, as PlayerMapView.feet
+// measures them for the Hand (view.ts): tilesApart on the stored tokens.
+const { tilesApart } = await import("../src/lib/dm/board-reach.ts");
+const feetFrom = (who) => {
+  const me = kit.token(who.id);
+  return Object.fromEntries(world.sheets().filter((sheet) => sheet.id !== who.id && kit.token(sheet.id)).map((sheet) => [sheet.id, tilesApart(me, kit.token(sheet.id)) * 5]));
+};
 const play = (who, card) =>
   world.invoke("use_reaction", { characterId: who.id, feature: card.intent.feature, ...(card.intent.hit ? { hit: card.intent.hit } : {}), ...(card.answers?.characterId && card.answers.characterId !== who.id ? { targetCharacterId: card.answers.characterId } : {}) });
 const onOwnTurn = (who, name) => deriveHand(world.sheet(who.id), FRESH_TURN, {}).some((card) => card.name === name);
@@ -163,12 +174,80 @@ for (const [name, build, counter] of [
     const [card] = offered(who, name);
     assert.ok(card, "the fall offers it");
     assert.equal(card.disabled, null);
+    // The actions route asks the card first (intent-check.ts), as the engine
+    // would: open to the hero at 0, not refused for being down.
+    assert.equal(intentRefusal(getCampaignById(world.campaignId), world.sheet(who.id), card.intent), null);
     const out = await play(who, card);
     assert.equal(out.ok, true, out.error);
     assert.equal(world.sheet(who.id).resources[counter].used, 1);
     world.patch(who.id, { resources: { ...world.sheet(who.id).resources, [counter]: { ...world.sheet(who.id).resources[counter], used: 0 } }, deathSaves: null, conditions: [], conditionMeta: {}, exhaustion: 0 });
   });
 }
+
+await test("A holder stunned before the hit that dropped them gets the card shut, as the engine refuses it.", async () => {
+  const husk = hero({ class: "warlock", subclass: "The Undead" });
+  const enemy = await stage(husk, 1);
+  world.patch(husk.id, { conditions: ["stunned"], conditionMeta: { stunned: { rounds: 10 } } });
+  // Advantage against the stunned: two d20s.
+  world.dice(16, 16, 4);
+  const out = await world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: husk.id });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.sheet(husk.id).currentHp, 0);
+  const [card] = offered(husk, "Necrotic Husk");
+  assert.match(card?.disabled ?? "", /stunned/);
+  assert.match(intentRefusal(getCampaignById(world.campaignId), world.sheet(husk.id), card.intent) ?? "", /stunned/);
+  const played = await play(husk, card);
+  assert.equal(played.ok, false);
+  assert.equal(world.sheet(husk.id).resources.sub_necrotic_husk.used, 0);
+});
+
+await test("A blow that finds the holder already down offers no card for the fall, which the engine refuses.", async () => {
+  const husk = hero({ class: "warlock", subclass: "The Undead" });
+  const enemy = await stage(husk, 1);
+  await strike(enemy, husk);
+  assert.equal(world.sheet(husk.id).currentHp, 0);
+  // Down and within 5 feet: advantage, and a critical. The open hit is now
+  // this one, which did not drop them.
+  kit.freshRound();
+  world.dice(16, 16, 4, 4);
+  const again = await world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: husk.id });
+  world.clearDice();
+  assert.equal(again.ok, true, again.error);
+  const open = (activePublicEncounter(world.campaignId)?.lastHits ?? []).filter((hit) => hit.characterId === husk.id);
+  assert.ok(open.length >= 1 && open.every((hit) => hit.stood && !hit.stood.up), JSON.stringify(open.map((hit) => hit.stood)));
+  assert.equal(offered(husk, "Necrotic Husk").length, 0);
+  const refused = await world.invoke("use_reaction", { characterId: husk.id, feature: "Necrotic Husk", hit: open[0].id });
+  assert.equal(refused.ok, false);
+  assert.equal(world.sheet(husk.id).resources.sub_necrotic_husk.used, 0);
+});
+
+await test("A hero in the order twice (an extra turn, Thief's Reflexes) still gets each open hit once, with one card.", async () => {
+  const swarm = hero({ class: "ranger", subclass: "Swarmkeeper" });
+  const enemy = await stage(swarm);
+  await strike(enemy, swarm);
+  const encounter = world.encounter();
+  const own = encounter.order.find((entry) => entry.characterId === swarm.id);
+  kit.saveEncounter({ ...encounter, order: [...encounter.order, { ...own, reflex: true, extra: "Strength before Death" }] });
+  const hits = activePublicEncounter(world.campaignId)?.lastHits ?? [];
+  assert.equal(hits.filter((hit) => hit.characterId === swarm.id).length, 1, JSON.stringify(hits.map((hit) => hit.id)));
+  assert.equal(offered(swarm, "Swarming Dispersal").length, 1);
+});
+
+await test("Warding Maneuver's card for an ally beyond 5 feet is not dealt, and one without a melee weapon or shield says why.", async () => {
+  const cavalier = hero({ class: "fighter", subclass: "Cavalier" });
+  const enemy = await stage(cavalier);
+  kit.place(friend.id, 5, 9);
+  kit.place(enemy.id, 5, 10);
+  await strike(enemy, friend);
+  assert.equal(offered(cavalier, "Warding Maneuver", feetFrom(cavalier)).length, 0);
+  kit.place(friend.id, 4, 5);
+  assert.equal(offered(cavalier, "Warding Maneuver", feetFrom(cavalier))[0]?.disabled, null);
+  world.patch(cavalier.id, { equipment: [] });
+  assert.match(offered(cavalier, "Warding Maneuver", feetFrom(cavalier))[0]?.disabled ?? "", /melee weapon or a shield/);
+  const refused = await play(cavalier, offered(cavalier, "Warding Maneuver")[0]);
+  assert.equal(refused.ok, false);
+});
 
 world.close();
 finish();

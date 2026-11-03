@@ -287,7 +287,6 @@ test("a cost matches the text that names it", () => {
 // the book's own (2014 rules).
 test("the costs the authored summaries got wrong are the books'", () => {
   const books = {
-    art_eldritch_cannon: "action", // Tasha's: an action creates it, a bonus action activates it
     sub_call_the_hunt: "none", // Tasha's: used when entering the rage
     sub_eyes_of_night: "action",
     sub_shadow_lore: "action",

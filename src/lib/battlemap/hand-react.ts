@@ -30,8 +30,8 @@ import {
   type HandTurn,
 } from "@/lib/battlemap/hand-core";
 import { spellNames } from "@/lib/battlemap/hand-spells";
-import { COMMANDED } from "@/lib/dm/maneuver-rules";
-import { HIT_ANSWER_COUNTERS } from "@/lib/dm/reaction-kinds";
+import { COMMANDED, wieldsMeleeOrShield } from "@/lib/dm/maneuver-rules";
+import { HIT_ANSWER_COUNTERS, reachAtLevel } from "@/lib/dm/reaction-kinds";
 import { resourceDef } from "@/lib/srd/class-resources";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
@@ -219,7 +219,16 @@ export function reactionCards(
   // the ids it always had.
   const tail = (hit: PublicLastHit) =>
     hit.id && hits.filter((other) => other.characterId === hit.characterId).length > 1 ? `~${hit.id}` : "";
-  const feature = (hit: PublicLastHit, name: string, prompt: string, rules: string, target: HandTarget = "none", icon?: HandCard["icon"], fallen = false) => {
+  // `fallen`: the card answers the hit itself, so a holder that hit dropped
+  // is asked as they stood before it. `gate`: a refusal of the card's own.
+  const feature = (
+    hit: PublicLastHit,
+    name: string,
+    prompt: string,
+    rules: string,
+    target: HandTarget = "none",
+    more: { icon?: HandCard["icon"]; fallen?: boolean; gate?: Gate } = {},
+  ) => {
     if (answered(hit, name)) return;
     const card = base(
       `${textKey(name).replace(/\s+/g, "-")}:${hit.characterId}${tail(hit)}`,
@@ -227,10 +236,16 @@ export function reactionCards(
       prompt,
       target,
       aimedIntent({ card: "reaction", feature: name }, hit),
-      { rules, ...(icon ? { icon } : {}), ...answering(hit) },
+      { rules, ...(more.icon ? { icon: more.icon } : {}), ...answering(hit) },
     );
-    // A reaction to the fall itself is open to the one who has just fallen.
-    cards.push(gated(card, fallen ? null : standingGate(sheet, turn, "reaction"), costGate("reaction", turn, sheet, name)));
+    cards.push(
+      gated(
+        card,
+        more.fallen ? stoodGate(sheet, turn, hit) : standingGate(sheet, turn, "reaction"),
+        more.gate ?? null,
+        costGate("reaction", turn, sheet, name),
+      ),
+    );
   };
   const counterLeft = (id: string) => {
     const state = sheet.resources[id];
@@ -310,14 +325,23 @@ export function reactionCards(
     if (counter.atZero && sheet.currentHp > 0) continue;
     const dropped = sheet.currentHp <= 0;
     if (dropped && sheet.deathSaves?.dead) continue;
+    // Warding Maneuver's melee weapon or shield, as the engine asks it.
+    const gate: Gate = counter.armed && !wieldsMeleeOrShield(sheet)
+      ? { reason: `${def.displayName} needs ${sheet.name} wielding a melee weapon or a shield.`, spent: false }
+      : null;
     for (const hit of mine) {
       if (counter.attackOnly && hit.source !== "attack") continue;
-      feature(hit, def.displayName, what(hit, self), rulesOf(def.guidance), "none", undefined, dropped && (counter.atZero || counter.answersDrop));
+      // Taken as the hit that drops them lands: one that found them down
+      // already is not it (reaction-counters.ts droppedByFreshHit).
+      if (counter.atZero && hit.stood && !hit.stood.up) continue;
+      feature(hit, def.displayName, what(hit, self), rulesOf(def.guidance), "none", { fallen: dropped && (counter.atZero || counter.answersDrop), gate });
     }
     if (counter.ally) {
       for (const hit of hits) {
         const ally = party.find((entry) => entry.id === hit.characterId);
-        if (ally && ally.id !== sheet.id && hit.hit && hit.source === "attack" && inReach(feet, hit.characterId, counter.rangeFt)) feature(hit, def.displayName, what(hit, ally.name), rulesOf(def.guidance), "ally");
+        if (ally && ally.id !== sheet.id && hit.hit && hit.source === "attack" && inReach(feet, hit.characterId, counter.rangeFt)) {
+          feature(hit, def.displayName, what(hit, ally.name), rulesOf(def.guidance), "ally", { gate });
+        }
       }
     }
   }
@@ -329,12 +353,12 @@ export function reactionCards(
   if (dice && dice.max > dice.used) {
     for (const hit of mine) {
       if (hit.source === "attack" && !hit.ranged && knows("parry")) {
-        feature(hit, "Parry", what(hit, self), "A superiority die plus your Dexterity modifier off the melee hit.", "none", MANEUVER_ICON("Parry"));
+        feature(hit, "Parry", what(hit, self), "A superiority die plus your Dexterity modifier off the melee hit.", "none", { icon: MANEUVER_ICON("Parry") });
       }
     }
     if (knows("riposte")) {
       for (const missed of hits.filter((hit) => hit.characterId === sheet.id && !hit.hit && hit.source === "attack" && !hit.ranged && hit.attackerId)) {
-        feature(missed, "Riposte", `${missed.attacker}'s ${missed.attack} missed ${self}`, "A melee attack back with your reaction, the die on its hit.", "enemy", MANEUVER_ICON("Riposte"));
+        feature(missed, "Riposte", `${missed.attacker}'s ${missed.attack} missed ${self}`, "A melee attack back with your reaction, the die on its hit.", "enemy", { icon: MANEUVER_ICON("Riposte") });
       }
     }
   }
@@ -359,6 +383,17 @@ export function reactionCards(
   }
   return cards;
 }
+
+// A card answered as the holder stood when the hit landed, as the engine asks
+// it (src/lib/dm/reaction-gate.ts reactingSheet): open to one that very hit
+// dropped, and shut to one stunned or down before it. An older host sends no
+// standing, and the card is open as before.
+function stoodGate(sheet: CharacterSheet, turn: HandTurn, hit: PublicLastHit): Gate {
+  if (!hit.stood) return null;
+  if (!hit.stood.up) return standingGate(sheet, turn, "reaction");
+  return standingGate({ ...sheet, currentHp: Math.max(1, sheet.currentHp), conditions: hit.stood.conditions, deathSaves: null }, turn, "reaction");
+}
+
 
 // The reactions the character holds that answer a hit on an ally: Cutting
 // Words with a die left, Protection, and the subclass reactions for an ally.
@@ -398,14 +433,9 @@ function inReach(feet: Record<string, number> | undefined, id: string | null | u
 }
 
 // A reach that grows with the holder's level (Aura of the Guardian's 10
-// feet, then 30), as the engine reads it (authored-reactions.ts reachFeet).
+// feet, then 30), as the engine reads it (reaction-kinds.ts reachAtLevel).
 function reachAt(range: number | Array<[number, number]> | undefined, level: number): number | undefined {
-  if (range === undefined || typeof range === "number") return range;
-  let reach = range[0]?.[1];
-  for (const [at, value] of range) {
-    if (level >= at) reach = value;
-  }
-  return reach;
+  return range === undefined ? undefined : reachAtLevel(range, level);
 }
 
 // The reactions the character holds that answer a save (Vigilant Rebuke),
@@ -440,7 +470,7 @@ function reactionRules(does: ReactionDoes): string {
     case "echo_hit":
       return `The same damage back at the attacker as ${does.type}, halved on a save.`;
     case "strike_back":
-      return `Strike back: ${does.type} damage at the attacker.`;
+      return `Strike back: ${does.type}${does.orType ? ` or ${does.orType}` : ""} damage at the attacker.`;
     case "redirect":
       return "The hit lands on the creature beside you instead.";
     case "force_miss":

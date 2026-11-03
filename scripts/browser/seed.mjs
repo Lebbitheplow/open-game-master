@@ -2800,6 +2800,26 @@ const bench2Titles = {};
       turnOf(table, orla.id);
       at.revert = { id: table.id, orla: { id: orla.id, name: orla.name }, goblin: goblin.id };
     }
+    // ---- 11: a blow that drops a hero (#777): Necrotic Husk's card, open
+    // to her at 0, beside the lead's other hero whose turn it is ----
+    {
+      const table = tableFor(`Fall Table (${viewport})`, player, world.owner, { multiCharacter: "all_active" });
+      const corin = sheets.createSheet(table.id, world.owner.id, 10, heroInput({
+        name: "Corin Ashe", class: "fighter", level: 10, maxHp: 60, equipment: [{ name: "Longsword", qty: 1, equipped: true }],
+      }));
+      const mara = sheets.createSheet(table.id, world.owner.id, 10, heroInput({ name: "Mara Thorn", class: "warlock", subclass: "The Undead", level: 10, maxHp: 40 }));
+      const { rows, place } = await fightAt(table, player, [{ monster: "goblin", count: 1 }]);
+      const goblin = named(rows, "goblin", 0);
+      [[corin.id, -2, 0], [mara.id, 0, 0], [goblin.id, 1, 0]].forEach(([refId, dx, dy]) => place(refId, dx, dy));
+      sheets.patchSheet(mara.id, { currentHp: 1 });
+      turnOf(table, goblin.id, { legendary: { due: [goblin.id] } });
+      await pass(table, [[goblin.id, mara.id, [15, 3]]]);
+      if (sheets.getSheetById(mara.id).currentHp !== 0) {
+        throw new Error("the Fall Table's goblin did not drop Mara");
+      }
+      turnOf(table, corin.id);
+      at.fall = { id: table.id, corin: { id: corin.id, name: corin.name }, mara: { id: mara.id, name: mara.name } };
+    }
     // ---- 10: a paladin's reaction for an ally hit, inside its reach and out ----
     // Glorious Defense covers a creature within 10 feet: Bran stands beside
     // Sela, Tam 25 feet off, and a goblin's hit is open on each.

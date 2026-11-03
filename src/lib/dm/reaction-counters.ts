@@ -37,8 +37,7 @@ import { pcResistances, removeConditions } from "@/lib/dm/condition-logic";
 import { HOLDING_ON, PRONE, UNCONSCIOUS, exhaustionPatch } from "@/lib/dm/vitals-logic";
 import { tilesBetween } from "@/lib/dm/attack-spatial";
 import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
-import { acBreakdownFor } from "@/lib/srd";
-import { matchWeapon } from "@/lib/srd/weapons";
+import { wieldsMeleeOrShield } from "@/lib/dm/maneuver-rules";
 import type { ToolError } from "@/lib/dm/tool-errors";
 
 export const MANIFEST_MIND = "manifest mind";
@@ -170,8 +169,7 @@ export function planCounterReaction(input: Input): Plan | ToolError | null {
       if (apart !== null && apart > 1) {
         return { error: `${target.name} is ${apart * 5} ft from ${sheet.name}; Warding Maneuver covers a creature within 5 feet. Nothing was spent.`, refused: "rules" };
       }
-      const armed = Boolean(acBreakdownFor(sheet).shieldName) || sheet.equipment.some((item) => item.equipped && matchWeapon(item)?.kind === "melee");
-      if (!armed) {
+      if (!wieldsMeleeOrShield(sheet)) {
         return { error: `Warding Maneuver needs ${sheet.name} wielding a melee weapon or a shield. Nothing was spent.`, refused: "rules" };
       }
       const record = freshLastHit(campaign.id, target.id, (hit) => hit.source === "attack" && !hit.answered.includes("warding maneuver") && hit.swings.some((swing) => swing.hit), (hit) => heaviestRaw(hit));

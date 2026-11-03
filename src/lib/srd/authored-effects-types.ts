@@ -392,8 +392,10 @@ export type ReactionDoes =
   // The attack that hit is rolled again at disadvantage. `notVsAdvantage`:
   // not against an attack rolled with advantage (Shadowy Dodge).
   // `allyWith`: holding this feature, it may also answer a hit on an ally within
-  // `rangeFt` (Improved Flare). `onMiss`: what a miss earns, in words the GM applies.
-  | { kind: "disadv_vs_hit"; notVsAdvantage?: boolean; allyWith?: string; rangeFt?: number; onMiss?: string }
+  // `rangeFt` (Improved Flare). `advantageOnMiss`: a miss gives the holder
+  // advantage on their next attack roll against the attacker before the end
+  // of their next turn (Entropic Ward; authored-hooks.ts reads the mark).
+  | { kind: "disadv_vs_hit"; notVsAdvantage?: boolean; allyWith?: string; rangeFt?: number; advantageOnMiss?: boolean }
   // Resistance to the last hit's damage when it is one of these types.
   | { kind: "resist_instance"; types: string[]; who: "either"; rangeFt: number }
   // The holder takes the hit an ally in range took.
@@ -410,6 +412,10 @@ export type ReactionDoes =
       afterSave?: boolean;
       amount: Formula;
       type: string;
+      // Or this type, the holder's choice (Wrath of the Storm: "lightning or
+      // thunder damage (your choice)"): the one named after the feature, else
+      // whichever the creature's defenses let more of through.
+      orType?: string;
       melee?: boolean;
       rangeFt?: number;
       save?: { ability: Ability; dcAbility: Ability | "spell"; half?: boolean; onFail?: string; damageRegardless?: boolean };
