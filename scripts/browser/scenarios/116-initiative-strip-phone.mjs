@@ -3,7 +3,9 @@
 // goblins hid under it, and a tap on one opened the order instead. Below the
 // docked layout the strip now has a row of its own above the board, on the
 // panel and on the enlarged tabletop. The docked layout keeps it where it was.
-import { check, eventually, openPanelTab, untilStill } from "../lib.mjs";
+// A phone on its side has no height for that row: there the strip shares the
+// tools' row, or a player's heading, or the enlarged tabletop's head.
+import { check, eventually, newContext, openPanelTab, signIn, untilStill } from "../lib.mjs";
 
 // Under the old strip at 412 px wide: its round label, then its plates.
 const CORNER = [{ x: 0, y: 0 }, { x: 1, y: 2 }, { x: 3, y: 3 }];
@@ -94,7 +96,16 @@ export default {
       check(await onTop(figure), "the corner goblin is on top with the phone on its side");
       const sideways = await strip.boundingBox();
       check(sideways.height <= 44, `the strip keeps to one small row with the phone on its side (${sideways.height}px)`);
+      const tools = await board.locator(".board-tools").first().boundingBox();
+      const shared = sideways.y < tools.y + tools.height && tools.y < sideways.y + sideways.height;
+      check(shared && sideways.x + sideways.width <= tools.x, `the strip shares the tools' row with the phone on its side (${JSON.stringify({ sideways, tools })})`);
+      console.log(`[initiative-strip] the board with the phone on its side: ${Math.round((await frame.boundingBox()).height)}px tall`);
       await t.shot("corner-sideways");
+      await t.tap(strip);
+      const sidewaysOrder = page.getByRole("dialog").locator("visible=true").first();
+      await eventually(() => sidewaysOrder.isVisible(), { label: "the order from the tools' row" });
+      await page.keyboard.press("Escape");
+      await eventually(async () => !(await sidewaysOrder.isVisible().catch(() => false)), { label: "the order from the tools' row closed" });
       await page.setViewportSize({ width: 412, height: 892 });
       await untilStill(page);
 
@@ -127,7 +138,31 @@ export default {
       await untilStill(page);
       await t.shot("enlarged-corner-light");
       await page.evaluate(() => (document.documentElement.dataset.theme = "dark"));
+      await page.setViewportSize({ width: 892, height: 412 });
+      await untilStill(page);
+      check(await tableStrip.evaluate((node) => Boolean(node.closest(".cine-tabletop-head"))), "with the phone on its side the enlarged board's strip stands in its head");
+      check(await onTop(tableFrame.getByRole("img", { name: /^Goblin/ }).first()), "the corner goblin is on top on the enlarged board with the phone on its side");
+      await t.shot("enlarged-corner-sideways");
+      await page.setViewportSize({ width: 412, height: 892 });
+      await untilStill(page);
       await t.tap(page.locator(".cine-tabletop-close").first());
+
+      // A player has no tools' row: on its side the strip shares the heading.
+      const seat = await newContext(page.context().browser(), "phone", { app: false });
+      try {
+        await signIn(seat, base, ids.player, ids.password);
+        const player = await seat.newPage();
+        await player.setViewportSize({ width: 892, height: 412 });
+        await player.goto(`${base}/campaigns/${campaignId}`, { waitUntil: "networkidle", timeout: 120_000 });
+        await player.locator("nav.cine-bottombar").getByRole("button", { name: "Battle", exact: true }).click();
+        const panel = player.locator(".board-panel").locator("visible=true").first();
+        const playerStrip = panel.getByRole("button", { name: /open the order/i }).first();
+        await eventually(() => playerStrip.isVisible(), { timeoutMs: 30_000, label: "the player's strip" });
+        check(await playerStrip.evaluate((node) => Boolean(node.closest(".board-panel")?.querySelector("h3")?.parentElement?.contains(node))), "the player's strip shares the heading with the phone on its side");
+        await player.screenshot({ path: t.shotPath("player-sideways") }).catch(() => {});
+      } finally {
+        await seat.close();
+      }
     } finally {
       // The same goblin plays directed-token-menu, clear of the docked strip.
       await moveTo(start);

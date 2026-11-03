@@ -256,7 +256,7 @@ html[data-effects="low"] .board-view:focus > .board-keys-strip { animation-name:
 
 /* Off the board the label stands on the panel, which is parchment by day. The
    enlarged tabletop is a dialog outside the panel and keeps its night table. */
-html[data-theme="light"] .board-panel > .board-order-above .board-eyebrow { color: #7a5408; text-shadow: none; }
+html[data-theme="light"] .board-panel .board-order-above .board-eyebrow { color: #7a5408; text-shadow: none; }
 
 /* The tap-a-figure menu wears the Dial's sigil styling. */
 .token-sigil {

@@ -26,3 +26,20 @@ function readDocked() {
 export function useDocked(): boolean {
   return useSyncExternalStore(subscribeDocked, readDocked, () => true);
 }
+
+// A phone on its side: too short to give the board's order a row of its own.
+const SHORT_QUERY = "(max-height: 30rem)";
+
+function subscribeShort(callback: () => void) {
+  const media = window.matchMedia(SHORT_QUERY);
+  media.addEventListener("change", callback);
+  return () => media.removeEventListener("change", callback);
+}
+
+function readShort() {
+  return window.matchMedia(SHORT_QUERY).matches;
+}
+
+export function useShortWindow(): boolean {
+  return useSyncExternalStore(subscribeShort, readShort, () => false);
+}

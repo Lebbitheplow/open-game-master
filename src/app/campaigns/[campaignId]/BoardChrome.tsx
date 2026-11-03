@@ -200,8 +200,10 @@ export function InitiativeRail({
   );
   // A container narrower than @md keeps the small plates at any width (the
   // table's row is a container too): on a phone on its side every pixel of this
-  // row comes off a board that is already short.
-  return above ? <div className="board-order-above @container max-w-[27rem]">{strip}</div> : strip;
+  // row comes off a board that is already short. A container takes no width
+  // from what is in it, so it is told: the label, the plates and any "+n".
+  const width = `calc(5.5rem + ${Math.min(shown.length, NARROW) * 34}px${order.length > NARROW ? " + 1.75rem" : ""})`;
+  return above ? <div className="board-order-above @container max-w-full shrink-0" style={{ width }}>{strip}</div> : strip;
 }
 
 // The action economy, as the projection carries it (src/lib/db/encounter-view.ts
