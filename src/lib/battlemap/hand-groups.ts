@@ -16,7 +16,7 @@
 // Pure: scripts/test-hand-groups.mjs drives it.
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { IconRef } from "@/lib/icons";
-import { resourceDef } from "@/lib/srd/class-resources";
+import { resourceName } from "@/lib/srd/class-resources";
 import { lowestSlot, type HandCard, type HandCardType, type HandCost } from "@/lib/battlemap/hand-core";
 import { END_TURN_ID, isUrgentCard } from "@/lib/battlemap/hand-layout";
 import { textKey } from "@/lib/language/text-logic";
@@ -140,8 +140,7 @@ function spellLeft(sheet: Pick<CharacterSheet, "spellcasting"> | null): string {
 function poolInfo(pool: string) {
   const known = POOL_NAMES[pool];
   if (known) return known;
-  const name = resourceDef(pool)?.displayName ?? pool.replace(/^sub_/, "").replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
-  return { name, short: "Uses", noun: ["option", "options"] as [string, string] };
+  return { name: resourceName(pool), short: "Uses", noun: ["option", "options"] as [string, string] };
 }
 
 function spellSections(cards: HandCard[], sheet: Pick<CharacterSheet, "spellcasting"> | null): HandGroupSection[] {

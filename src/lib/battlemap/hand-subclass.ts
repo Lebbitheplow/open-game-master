@@ -10,7 +10,7 @@
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { computeSheetDerived } from "@/lib/srd";
 import { authoredSpendFor, gateHolds, heldAuthored, resolveFormula, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
-import { resourceDef, type ResourceDef } from "@/lib/srd/class-resources";
+import { resourceDef, resourceName, type ResourceDef } from "@/lib/srd/class-resources";
 import type { SpendAction } from "@/lib/srd/authored-effects-types";
 import { holdsFeature } from "@/lib/srd/trait-rules";
 import {
@@ -142,7 +142,7 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
           // A counter of the spend's own name is its uses, not a raw id.
           reason: counter
             ? `${spend.name} has no use left (${left}/${state!.max}). It comes back after a rest.`
-            : `${spend.name} needs ${need} ${pool!.id.replace(/_/g, " ")} and ${sheet.name} has ${left}. It comes back after a rest.`,
+            : `${spend.name} needs ${need} and ${sheet.name} has ${left} ${resourceName(pool!.id)} left. It comes back after a rest.`,
           spent: true,
         }
       : null;
@@ -159,7 +159,7 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
       rules: `${held.feature}: the server resolves it.`,
       // The counter's reminder, which its own card used to show on hover.
       ...(counter ? { description: counter.guidance } : {}),
-      resource: counter && state && left !== null ? `Uses ${left}/${state.max}` : state && left !== null ? `${pool!.id.replace(/_/g, " ")} ${left}/${state.max}` : "",
+      resource: counter && state && left !== null ? `Uses ${left}/${state.max}` : state && left !== null ? `${resourceName(pool!.id)} ${left}/${state.max}` : "",
       condition: lines.condition,
       icon: { kind: "feature", key: spend.name, family: `class-${primaryClass(sheet)}` },
       target: aim.target,

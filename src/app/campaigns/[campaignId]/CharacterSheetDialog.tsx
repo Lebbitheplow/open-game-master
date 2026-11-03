@@ -23,7 +23,7 @@ import { formatPrice, purseCoins, purseCopper } from "@/lib/srd/currency";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
 import { magicItemRiders } from "@/lib/srd/magic-items";
 import type { WearConflict } from "@/lib/srd/wear-slots";
-import { RESOURCE_DEFS } from "@/lib/srd/class-resources";
+import { RESOURCE_DEFS, resourceName } from "@/lib/srd/class-resources";
 import { GameTerm } from "@/components/ui/GameTerm";
 import {
   AbilityTiles,
@@ -54,7 +54,6 @@ function titleCase(value: string) {
   return value.replace(/[-_]/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-const RESOURCE_NAMES = new Map(RESOURCE_DEFS.map((def) => [def.id, def.displayName]));
 // Every resource already carries a line explaining what spending it does; it
 // was written for the DM model and reads just as well for the player.
 const RESOURCE_HELP = new Map(RESOURCE_DEFS.map((def) => [def.id, def.guidance]));
@@ -493,7 +492,7 @@ export function CharacterSheetDialog({
                     key={id}
                     id={id}
                     pool={pool}
-                    name={RESOURCE_NAMES.get(id) ?? titleCase(id)}
+                    name={resourceName(id)}
                     help={RESOURCE_HELP.get(id)}
                     spends={spends}
                     corrects={corrects}
