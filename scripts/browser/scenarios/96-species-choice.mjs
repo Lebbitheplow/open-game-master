@@ -61,11 +61,19 @@ export default {
       await t.tap(trigger);
       const item = page.getByRole("menuitemradio", { name: row }).locator("visible=true").first();
       await eventually(() => item.count(), { timeoutMs: 10_000, label: `the row ${row}` });
+      // The open trigger itself: its name can change with the pick.
+      const opener = await page.locator('button[aria-expanded="true"]').last().elementHandle();
       await t.tap(item);
       // Closed before anything else is typed or tapped: on a loaded runner a
       // phone's menu still closing after two seconds took the keys meant for
       // the next field.
       await eventually(async () => (await page.getByRole("menuitemradio").locator("visible=true").count()) === 0, { timeoutMs: 10_000, label: `the menu closed after ${row}` });
+      // Radix hands the focus back to the trigger a beat after the list is
+      // gone (about 120 ms here); a key pressed before that lands on the next
+      // field and the focus is then pulled back (CI, PR 783: "the focus on
+      // the new option, after Mirrorscale did not hold"). A trigger the pick
+      // replaced takes no focus back.
+      await upTo(() => opener?.evaluate((element) => element === document.activeElement || !element.isConnected) ?? true, 2_000);
     };
     try {
       // ---- made in Homebrew ----
