@@ -9,7 +9,7 @@
 // 18-table-layout's. A hit still open adds the box's Speaking as row: the Hand
 // fell to 0 px under it and the box went under the tab bar, on the runs whose
 // goblins went first and hit, so it is forced here on every run.
-import { check, eventually, untilStill } from "../lib.mjs";
+import { axeViolations, check, eventually, untilStill } from "../lib.mjs";
 
 const sheet = (name) => ({
   name,
@@ -166,6 +166,9 @@ export default {
           await page.evaluate((mode) => (document.documentElement.dataset.theme = mode), theme);
           await untilStill(page);
           await fits(size, theme);
+          // The bench's one sideways row: its buttons named and reachable.
+          const problems = await axeViolations(page, `${root}.test-fight-banner`.trim());
+          check(problems.length === 0, `the bench row passes axe at ${size.name} in the ${theme} theme: ${JSON.stringify(problems)}`);
           await t.shot(`${size.name}-${theme}-hit-open`);
         }
       }
