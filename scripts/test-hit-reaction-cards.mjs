@@ -12,6 +12,8 @@ const kit = await combatKit(world);
 const { deriveHand, FRESH_TURN } = await import("../src/lib/battlemap/hand.ts");
 const { reactionCards } = await import("../src/lib/battlemap/hand-react.ts");
 const { activePublicEncounter } = await import("../src/lib/db/encounter-view.ts");
+const { intentRefusal } = await import("../src/lib/dm/intent-check.ts");
+const { getCampaignById } = await import("../src/lib/db/campaigns.ts");
 
 const hero = (extra) =>
   world.addHero({
@@ -163,6 +165,9 @@ for (const [name, build, counter] of [
     const [card] = offered(who, name);
     assert.ok(card, "the fall offers it");
     assert.equal(card.disabled, null);
+    // The actions route asks the card first (intent-check.ts), as the engine
+    // would: open to the hero at 0, not refused for being down.
+    assert.equal(intentRefusal(getCampaignById(world.campaignId), world.sheet(who.id), card.intent), null);
     const out = await play(who, card);
     assert.equal(out.ok, true, out.error);
     assert.equal(world.sheet(who.id).resources[counter].used, 1);
@@ -182,6 +187,7 @@ await test("A holder stunned before the hit that dropped them gets the card shut
   assert.equal(world.sheet(husk.id).currentHp, 0);
   const [card] = offered(husk, "Necrotic Husk");
   assert.match(card?.disabled ?? "", /stunned/);
+  assert.match(intentRefusal(getCampaignById(world.campaignId), world.sheet(husk.id), card.intent) ?? "", /stunned/);
   const played = await play(husk, card);
   assert.equal(played.ok, false);
   assert.equal(world.sheet(husk.id).resources.sub_necrotic_husk.used, 0);
