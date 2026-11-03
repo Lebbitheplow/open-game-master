@@ -1,8 +1,9 @@
 // Three small labels that could hardly be read by day. A card's cost pill took
 // the plain tag's dark ink from a day rule that outranked its own, so "ACTION"
 // was dark on dark. The Hand's reaction prompt kept the night's pale sky text
-// on a washed-out wash. The lead's rail label kept a light ember made for the
-// night. The theme is the player's saved choice, applied as the page loads.
+// on a washed-out wash. The lead's rail label, and light ember text like "Lead
+// only", kept an ember made for the night. The theme is the player's saved
+// choice, applied as the page loads.
 import { axeViolations, check, eventually, untilStill } from "../lib.mjs";
 
 // [red, green, blue, alpha] from a computed colour.
@@ -87,6 +88,15 @@ export default {
       const parchment = [241, 235, 222];
       check(ratio(color, parchment) >= 4.5, `the rail's Lead reads by day (${color} on ${parchment})`);
       await t.shot("lead");
+      // The panel behind it: light ember text elsewhere, here its "Lead only" ribbon.
+      await t.tap(lead);
+      const ribbon = page.getByText("Lead only", { exact: true }).locator("visible=true").first();
+      await eventually(() => ribbon.isVisible(), { timeoutMs: 15_000, label: "the Lead only ribbon" });
+      const ribbonInk = (await read(ribbon)).color;
+      check(ratio(ribbonInk, parchment) >= 4.5, `"Lead only" reads by day (${ribbonInk} on ${parchment})`);
+      await page.mouse.move(4, 500);
+      await untilStill(page).catch(() => undefined);
+      await t.shot("lead-panel");
     }
     await setTheme("dark");
   },

@@ -1409,8 +1409,10 @@ html[data-theme="light"] .ts-below .ts-ghost:hover { background: rgba(255, 252, 
   background: linear-gradient(180deg, rgba(16, 13, 32, 0.92), rgba(10, 8, 23, 0.95));
   border-left-color: rgba(107, 99, 148, 0.3);
 }
-/* The lead's ember label is a light orange for the night. */
-html[data-theme="light"] .rail-ember { color: #9a3f10; }
+/* Ember stays a fill by day, but its light shades are for reading on the night:
+   on cream they all but vanish, an error message or "Lead only" among them. The
+   enlarged board keeps its night table. */
+html[data-theme="light"] :is(.rail-ember, .text-ember-300, .text-ember-400):not(.cine-tabletop *) { color: #9a3f10; }
 .cine-stage .cine-rail { background: transparent; border-left-color: rgba(212, 171, 58, 0.12); }
 .cine-stage .cine-rail .rail-glyph,
 .cine-stage .cine-bottombar .rail-glyph {
