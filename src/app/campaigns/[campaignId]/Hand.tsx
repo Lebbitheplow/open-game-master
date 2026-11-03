@@ -243,15 +243,15 @@ function HandInner({
   );
   const reactions = useMemo(
     // Under the monsters' hand the hero hit is named, as the others are.
-    () => (sheet && turn ? holdSentReactions(reactionCards(sheet, turn, hits ?? [], sheets, reactionsOnly ? sheet.name : "you", feet), reactionsSent, sheet.id) : []),
-    [sheet, turn, hits, sheets, reactionsOnly, reactionsSent, feet],
+    () => (sheet && turn ? holdSentReactions(reactionCards(sheet, turn, hits ?? [], sheets, reactionsOnly ? sheet.name : "you", feet, encounter.lastSaves), reactionsSent, sheet.id) : []),
+    [sheet, turn, hits, sheets, reactionsOnly, reactionsSent, feet, encounter.lastSaves],
   );
   // A player's other characters hit while this one acts (a person playing
   // several heroes), and the companions they play: their reactions too, each
   // card naming its hero.
   const othersReactions = useMemo(
     () =>
-      sheet && hits?.length
+      sheet && (hits?.length || encounter.lastSaves?.length)
         ? holdSentReactions(
             offTurnReactionCards(
               [
@@ -261,8 +261,9 @@ function HandInner({
                 sheet: other,
                 turn: turnFromEncounter(encounter, other, { myTurn: false, currentName: floorName }),
               })),
-              hits,
+              hits ?? [],
               sheets,
+              encounter.lastSaves,
             ),
             reactionsSent,
             sheet.id,

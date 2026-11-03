@@ -32,6 +32,7 @@ import { rollEnemySave } from "@/lib/dm/forced-save";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import { attackerFoeId, freshLastHit, openHits, rerollAttacker, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { vowedFoe } from "@/lib/srd/vow-of-enmity";
+import { answerSave, openSaves, type LastSave } from "@/lib/dm/last-save";
 import { rollAgainst } from "@/lib/roll-labels";
 import { applyPcDamage, blowDefenses, meetDefenses } from "@/lib/dm/pc-damage";
 import { actingCombatantId } from "@/lib/dm/can-act";
@@ -166,6 +167,33 @@ function strikeAttacker(ctx: Ctx, name: string, record: LastHit): Record<string,
   // The reaction and the use are already spent, whatever pc_attack's own refusal
   // says about the attack it did not make.
   return typeof result.error === "string" ? { attack: "No attack follows; the miss and the spent use stand.", attackRefused: result.error } : { attack: result };
+}
+
+// The save a reaction to a save answers: "you or a creature you can see
+// within 30 feet of you succeeds on an Intelligence, a Wisdom, or a Charisma
+// saving throw" (Vigilant Rebuke), from the saves the engine kept this turn
+// (last-save.ts). The creature named picks among them. A save rolled outside
+// the engine (a player's roll the GM asked for) keeps no record, so with none
+// open this turn the creature named is taken on the GM's word; with saves
+// open, one it did not force is refused.
+function savedAgainst(ctx: Ctx, name: string, rangeFt: number | undefined): { save: LastSave | null } | ToolError {
+  const named = ctx.args.targetEnemyId?.trim();
+  const open = openSaves(ctx.campaign.id);
+  const near = open.filter(
+    (save) => save.characterId === ctx.sheet.id || !ctx.encounter || !rangeFt || withinFeet(ctx.encounter.id, ctx.sheet.id, save.characterId, rangeFt),
+  );
+  const forcedBy = (save: LastSave) => {
+    if (!named || !ctx.encounter) return !named;
+    return save.forcer.id === named || resolveTargetFoe(ctx.encounter.campaignId, ctx.encounter, named)?.id === save.forcer.id;
+  };
+  const save = near.filter(forcedBy).at(-1) ?? null;
+  if (save || (named && !open.length)) {
+    return { save };
+  }
+  if (!named && !open.length) {
+    return { error: `${name} answers a successful INT, WIS or CHA save someone made against a creature, and the server kept none this turn. If the save was rolled at the table, name the creature that forced it in targetEnemyId. Nothing was spent.`, retry: true };
+  }
+  return { error: `${name} answers a successful INT, WIS or CHA save by ${ctx.sheet.name} or someone within ${rangeFt ?? 30} feet, and none open this turn was forced by ${named ? "that creature" : "a creature still in reach"}. Nothing was spent.`, refused: "rules" };
 }
 
 function psionicDie(level: number): string {
@@ -464,12 +492,14 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       return out;
     }
     case "strike_back": {
-      if (does.afterSave && !ctx.args.targetEnemyId) {
-        return { error: `${reaction.name} strikes the creature that forced a save someone just made: pass its targetEnemyId. Nothing was spent.`, retry: true };
-      }
+      // Vigilant Rebuke answers a save, not a hit (savedAgainst).
+      const saved = does.afterSave ? savedAgainst(ctx, reaction.name, does.rangeFt) : null;
+      if (saved && "error" in saved) return saved;
       // The open hit by the creature named, when one is.
-      const record = freshLastHit(ctx.campaign.id, ctx.sheet.id, (hit) => !ctx.args.targetEnemyId || hit.attacker.id === ctx.args.targetEnemyId) ?? freshLastHit(ctx.campaign.id, ctx.sheet.id);
-      const enemy = enemyTarget(ctx, attackerFoeId(record));
+      const record = does.afterSave
+        ? null
+        : (freshLastHit(ctx.campaign.id, ctx.sheet.id, (hit) => !ctx.args.targetEnemyId || hit.attacker.id === ctx.args.targetEnemyId) ?? freshLastHit(ctx.campaign.id, ctx.sheet.id));
+      const enemy = enemyTarget(ctx, saved?.save ? saved.save.forcer.id : attackerFoeId(record));
       if (!enemy || !encounter) {
         return { error: `${reaction.name} strikes a creature in the fight: pass targetEnemyId. Nothing was spent.`, retry: true };
       }
@@ -479,7 +509,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (does.melee && (!record || record.ranged || !record.swings.some((swing) => swing.hit))) {
         return noHit(ctx.sheet.name, reaction.name, "a melee attack that hit them");
       }
-      if (does.rangeFt && !withinFeet(encounter.id, ctx.sheet.id, enemy.id, does.rangeFt)) {
+      // An answer to a save reaches the creature that forced it wherever it
+      // is; its reach is the one who saved (savedAgainst).
+      if (does.rangeFt && !does.afterSave && !withinFeet(encounter.id, ctx.sheet.id, enemy.id, does.rangeFt)) {
         return { error: `${enemy.displayName} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
       }
       const expression = resolveFormula(does.amount, held.level, modsOf(holder));
@@ -509,6 +541,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       // back at a later turn's start cannot answer it again.
       if (does.melee && record) {
         settle(ctx, record, record.swings, label);
+      }
+      if (saved?.save) {
+        answerSave(ctx.campaign.id, saved.save.id);
       }
       return out;
     }
