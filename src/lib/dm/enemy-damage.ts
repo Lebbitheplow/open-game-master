@@ -12,6 +12,7 @@ import type { DmTurn } from "@/lib/db/dm-turns";
 import { patchEnemyConditions } from "@/lib/db/encounters";
 import { restoreOwnForm } from "@/lib/db/enemy-form";
 import { recordEncounterSummary } from "@/lib/dm/encounter-summary-store";
+import { atTheFight } from "@/lib/dm/fight-away-logic";
 import { getBattleMapForEncounter, removeTokenByRef } from "@/lib/db/battle-maps";
 import { publishEphemeral, publishPersisted, publishWithSeq } from "@/lib/events";
 import { closeFallenFoes } from "@/lib/dm/party-bonds";
@@ -172,7 +173,8 @@ export function finishEncounter(
   // The dead take no share: what the fight was worth is split among those
   // who lived through it. Only the party's side earns it: a character who
   // fought against the party has no share in beating itself.
-  const earners = sheets.filter((sheet) => !(getSheetById(sheet.id) ?? sheet).deathSaves?.dead && sheetSide(encounter, sheet.id) === "party");
+  // Nor does a character who never came (issue 740).
+  const earners = atTheFight(encounter, sheets).filter((sheet) => !(getSheetById(sheet.id) ?? sheet).deathSaves?.dead && sheetSide(encounter, sheet.id) === "party");
   const xpEach = earners.length ? Math.floor((totalXp * share) / earners.length) : 0;
   let xpResult: Record<string, unknown> = {};
   if (xpEach > 0) {

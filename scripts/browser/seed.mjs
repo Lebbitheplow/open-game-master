@@ -1569,6 +1569,31 @@ const gone = {};
   }
 }
 
+// Issue 740: per viewport, a table a person runs with three characters and no
+// fight yet, so the console's Start a fight can leave one out.
+const FAR_SCOUT_TITLE = "Far Scout Table";
+const farScout = {};
+for (const viewport of ["desktop", "phone"]) {
+  const table = campaigns.createCampaign(world.owner.id, {
+    title: `${FAR_SCOUT_TITLE} (${viewport})`,
+    description: "One of the party has gone far ahead along the road.",
+    theme: "high-fantasy",
+    maxPlayers: 6,
+    startingLevel: 3,
+    difficulty: "normal",
+    gameSettings: { ttsEnabled: false, dmMode: "human" },
+  });
+  const seat = (user, name, klass) => {
+    campaigns.joinByInviteCode(user.id, campaigns.getCampaignById(table.id).inviteCode);
+    return sheets.createSheet(table.id, user.id, 3, heroInput({ name, class: klass, level: 3 }));
+  };
+  const kael = seat(player, "Kael Ashvale", "rogue");
+  const ilse = seat(world.addUser("friend"), "Ilse Marrow", "cleric");
+  const cora = seat(world.addUser("friend"), "Cora Vale", "ranger");
+  campaigns.setCampaignStatus(table.id, "active");
+  farScout[viewport] = { id: table.id, kael: kael.id, ilse: ilse.id, cora: cora.id };
+}
+
 // Combat sides (issue 503): per viewport, a table a person runs where two of
 // the player's casters each hold an elemental by Conjure Elemental, in a
 // fight with a goblin. The scenario ends one concentration and then the
@@ -2852,6 +2877,7 @@ const ids = {
   dominate,
   pileup,
   conduct,
+  farScout,
   bondTables,
   knownTables,
   romanceTables,
@@ -2876,6 +2902,7 @@ const ids = {
     ...Object.fromEntries(Object.entries(turncoat).map(([viewport, table]) => [table.id, `${TURNCOAT_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(gone).map(([viewport, table]) => [table.id, `${GONE_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(conduct).map(([viewport, table]) => [table.id, `${CONDUCT_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(farScout).map(([viewport, table]) => [table.id, `${FAR_SCOUT_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.values(weekly).map((table) => [table.id, table.title])),
     ...Object.fromEntries(Object.entries(fallenTables).map(([viewport, id]) => [id, `The Fallen Watch (${viewport})`])),
     ...Object.fromEntries(Object.entries(clockTables).map(([viewport, table]) => [table.id, `Clock Table (${viewport})`])),

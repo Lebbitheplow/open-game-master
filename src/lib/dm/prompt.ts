@@ -178,6 +178,8 @@ export type DmEncounterState = {
   orderReady: boolean;
   order: Array<{ name: string; current: boolean }>;
   awaitingInitiative: string[];
+  // The characters this fight goes on without until they arrive (issue 740).
+  away?: string[];
   // What the combatant whose turn it is still has to spend, or null before
   // they have spent anything (src/lib/dm/action-budget.ts).
   turnBudget: string | null;
@@ -1099,6 +1101,11 @@ export function buildGameStateBlock(state: DmGameState): string {
         `Combat is starting. Initiative still needed from: ${
           encounter.awaitingInitiative.join(", ") || "nobody"
         }. Call request_roll with kind=initiative for each character listed.`,
+      );
+    }
+    if (encounter.away?.length) {
+      lines.push(
+        `Not at this fight: ${encounter.away.join(", ")}, with no place in the order and no token. When the story brings one here, call request_roll kind=initiative for them.`,
       );
     }
     lines.push(

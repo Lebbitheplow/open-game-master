@@ -32,6 +32,7 @@ import type { ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { fieldSheetFoes, sheetFoesByName, type SheetFoe, type SheetFoeEntry } from "@/lib/dm/sheet-foes";
 import { fightingParty, MAX_COMBATANTS } from "@/lib/dm/party-budget";
+import { atTheFight } from "@/lib/dm/fight-away-logic";
 import { arrivalsFor, returningRow, survivorNamed, unknownReturning } from "@/lib/dm/foe-return";
 import { initLegendaryPools } from "@/lib/dm/legendary-tools";
 import { isDefeated } from "@/lib/dm/knockout";
@@ -345,7 +346,7 @@ export function handleAddEnemies(
   }
   // Budget check over the whole living opposition, reinforcements included,
   // against the characters fighting it (src/lib/dm/party-budget.ts).
-  const partyLevels = fightingParty(campaign, sheets).map((sheet) => sheet.level);
+  const partyLevels = fightingParty(campaign, atTheFight(encounter, sheets)).map((sheet) => sheet.level);
   const evaluation = evaluateEncounter(partyLevels, [
     ...standing.map((enemy) => enemy.cr),
     ...arrivingStanding.map((entry) => entry.stats.cr),

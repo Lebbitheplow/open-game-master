@@ -128,7 +128,7 @@ import type { SpokenLine } from "@/lib/dm/speech";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { dispatchAdjudication } from "@/lib/dm/invoke-dispatch";
 import { playsWhole } from "@/lib/dm/legendary-play";
-import { gateAiCall } from "@/lib/dm/ai-gate";
+import { awayCall, gateAiCall } from "@/lib/dm/ai-gate";
 import { characterAwaitingPlayer } from "@/lib/dm/player-word";
 import { hitIdOf, openHits } from "@/lib/dm/last-hit";
 import { aiPlaysSheet } from "@/lib/dm/companion-command";
@@ -297,6 +297,7 @@ import {
 } from "@/lib/dm/companion-tools";
 import { dismissCompanion } from "@/lib/dm/companion-dismissal";
 import { fightNames, getActiveEncounter, listEnemies, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
+import { atTheFight } from "@/lib/dm/fight-away-logic";
 import { enemyMoveBudget, enemyMovementNote } from "@/lib/dm/enemy-speed";
 import { getBattleMapForEncounter, getTokenByRef, listTokens, type BattleMap } from "@/lib/db/battle-maps";
 import { pcMoveBudget } from "@/lib/battlemap/view";
@@ -461,7 +462,10 @@ export function buildEncounterState(campaignId: string, sheets: CharacterSheet[]
       : [],
     awaitingInitiative: encounter.orderReady
       ? []
-      : sheets.filter((sheet) => !staged.has(sheet.id)).map((sheet) => sheet.name),
+      : atTheFight(encounter, sheets).filter((sheet) => !staged.has(sheet.id)).map((sheet) => sheet.name),
+    // Named while they stay away, so the GM can still bring them in: nothing
+    // else in the state says they exist once the order has closed.
+    ...(encounter.awayIds.length ? { away: sheets.filter((sheet) => encounter.awayIds.includes(sheet.id)).map((sheet) => sheet.name) } : {}),
     turnBudget: encounter.turnBudget ? describeBudget(encounter.turnBudget) : null,
     // The printed lair options lair_action takes by number: a block's own
     // list never reaches its traits whole.
@@ -2578,7 +2582,7 @@ async function resolveModelCall(
   // (src/lib/dm/action-parts-logic.ts listedCalls).
   const each = listedCalls(toolCall.name, toolCall.rawArguments);
   if (each) {
-    const refused = listRefusal(toolCall.name, each);
+    const refused = listRefusal(toolCall.name, each) ?? awayCall(toolCall.name, JSON.parse(toolCall.rawArguments), { campaign, sheetsById });
     if (refused) {
       return refused;
     }
