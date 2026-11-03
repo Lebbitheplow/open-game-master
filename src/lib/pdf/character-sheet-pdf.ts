@@ -35,6 +35,7 @@ import {
 import { classListFor, slotTableFor } from "@/lib/srd/multiclass";
 import { weaponAttackProfile, weaponOf } from "@/lib/dm/attack-logic";
 import { matchWeapon } from "@/lib/srd/weapons";
+import { formatPrice, purseCopper } from "@/lib/srd/currency";
 
 // The subset of a character the sheet renders. The runtime CharacterSheet is
 // structurally assignable to this, so the in-session dialog passes its `sheet`
@@ -59,6 +60,8 @@ export type PdfCharacter = {
   proficiencies: Proficiencies;
   equipment: EquipmentItem[];
   gold: number;
+  // The coin under a gold piece; a sheet saved before it was kept has none.
+  copper?: number;
   feats: string[];
   features: SheetFeature[];
   spellcasting: Spellcasting;
@@ -101,6 +104,7 @@ export function libraryToPdfCharacter(character: {
     proficiencies: s.proficiencies,
     equipment: s.equipment,
     gold: s.gold,
+    copper: s.copper ?? 0,
     feats: s.feats,
     features: s.features,
     spellcasting: s.spellcasting,
@@ -421,7 +425,7 @@ function drawCombat(ctx: Ctx, c: PdfCharacter, derived: ReturnType<typeof comput
   }
   y -= rowsH + 8;
 
-  // Equipment + gold.
+  // Equipment + the purse, all of it: "3" for 3 gp 4 sp printed the gold alone.
   const eqH = y - MARGIN - 20;
   box(ctx, x, MARGIN + 18, w, eqH, true);
   heading(ctx, x + 4, y - 11, "Equipment");
@@ -430,8 +434,8 @@ function drawCombat(ctx: Ctx, c: PdfCharacter, derived: ReturnType<typeof comput
     .join("\n");
   field(ctx, x + 4, MARGIN + 22, w - 8, eqH - 18, eqText, { size: 8, multiline: true });
   box(ctx, x, MARGIN, w, 16, true);
-  caption(ctx, x + 4, MARGIN + 5, "Gold");
-  field(ctx, x + 30, MARGIN + 2, w - 34, 12, String(c.gold), { size: 9 });
+  caption(ctx, x + 4, MARGIN + 5, "Coin");
+  field(ctx, x + 30, MARGIN + 2, w - 34, 12, formatPrice(purseCopper({ gold: c.gold, copper: c.copper ?? 0 })), { size: 9 });
 }
 
 async function drawTraits(ctx: Ctx, c: PdfCharacter, portraitBytes?: Uint8Array) {
