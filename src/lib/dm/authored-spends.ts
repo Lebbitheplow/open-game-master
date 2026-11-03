@@ -16,6 +16,7 @@ import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
 import { authoredSpendFor, gateHolds, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
+import { resourceDef } from "@/lib/srd/class-resources";
 import type { SpendAction, SpendDoes } from "@/lib/srd/authored-effects-types";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
@@ -134,7 +135,10 @@ export function authoredFeatureSpend(
   reason: string,
 ): ToolResult | null {
   const sheet = getSheetById(stale.id) ?? stale;
-  const found = authoredSpendFor(sheet, resourceName);
+  // A counter's id names the same spend as the feature's name. Without this a
+  // call by id (sub_elder_champion) fell to the generic path, which spends the
+  // use and applies nothing.
+  const found = authoredSpendFor(sheet, resourceDef(resourceName)?.displayName ?? resourceName);
   if (!found) {
     return null;
   }
