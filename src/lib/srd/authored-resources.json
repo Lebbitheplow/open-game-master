@@ -1694,7 +1694,8 @@
    "uses": 1,
    "ability": null,
    "recharge": "long",
-   "guidance": "Triggers on its own: drop to 1 hit point instead of 0."
+   "passive": true,
+   "guidance": "This is not spent by choice: the server drops them to 1 hit point instead of 0 the next time damage would fell them without killing them outright, and burns the use."
   },
   {
    "id": "race_stones_endurance",

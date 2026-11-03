@@ -14,8 +14,8 @@
 // carried as the change it made. Only the corrected swings' own part is taken
 // back; everything else since stays. What the undone part of a blow set off
 // is undone too: the drop to 0 (unconscious, prone, the death track, a death
-// by massive damage), the rage it ended, the Relentless Endurance, Death Ward
-// or Relentless Rage that held them up, a Warding Bond's share, and the
+// by massive damage), the rage it ended, the Relentless Endurance, Undying
+// Sentinel, Death Ward or Relentless Rage that held them up, a Warding Bond's share, and the
 // concentration it broke with the effects that spell held.
 //
 // This module must not import mutations.ts' callers back; it calls the heal
@@ -440,6 +440,11 @@ export function settleHits(
     if (before.relentless && relentless && relentless.used > before.relentless.used) {
       patch.resources = { ...(patch.resources ?? sheet.resources), relentless_endurance: { ...before.relentless } };
       notes.push("Relentless Endurance was never needed and is unspent.");
+    }
+    const sentinel = sheet.resources?.sub_undying_sentinel;
+    if (typeof before.undyingSentinel === "number" && sentinel && sentinel.used > before.undyingSentinel) {
+      patch.resources = { ...(patch.resources ?? sheet.resources), sub_undying_sentinel: { ...sentinel, used: before.undyingSentinel } };
+      notes.push("Undying Sentinel was never needed and is unspent.");
     }
     const rage = sheet.resources?.relentless_rage;
     if (typeof before.relentlessRage === "number" && rage && rage.used > before.relentlessRage) {

@@ -1060,3 +1060,12 @@ export function spendRelentlessEndurance(resources: ResourceMap | undefined): Re
   }
   return { ...resources, relentless_endurance: { max: state.max, used: state.used + 1 } };
 }
+
+// Undying Sentinel (Oath of the Ancients 15), the same hold at 1 hit point.
+export function spendUndyingSentinel(resources: ResourceMap | undefined): ResourceMap | null {
+  const state = resources?.sub_undying_sentinel;
+  if (!state || state.used >= state.max) {
+    return null;
+  }
+  return { ...resources, sub_undying_sentinel: { max: state.max, used: state.used + 1 } };
+}
