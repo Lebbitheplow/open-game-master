@@ -235,7 +235,7 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
   },
   "paladin::Soul of Vengeance": {
     subclass: "Oath of Vengeance",
-    reactions: [{ name: "Soul of Vengeance", does: { kind: "attack", rangeFt: 5 } }],
+    reactions: [{ name: "Soul of Vengeance", does: { kind: "attack", rangeFt: 5, vowed: true } }],
   },
   "paladin::Avenging Angel": {
     subclass: "Oath of Vengeance",

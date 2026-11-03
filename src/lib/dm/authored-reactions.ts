@@ -30,7 +30,8 @@ import { immuneToCondition } from "@/lib/dm/damage-logic";
 import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
-import { attackerFoeId, freshLastHit, rerollAttacker, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
+import { attackerFoeId, freshLastHit, openHits, rerollAttacker, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
+import { vowedFoe } from "@/lib/srd/vow-of-enmity";
 import { rollAgainst } from "@/lib/roll-labels";
 import { READIED } from "@/lib/dm/object-actions";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
@@ -419,6 +420,14 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       const enemy = enemyTarget(ctx, null);
       if (!enemy || !encounter) {
         return { error: `${reaction.name} is one weapon attack at a creature in the fight: pass targetEnemyId. Nothing was spent.`, retry: true };
+      }
+      if (does.vowed) {
+        if (vowedFoe(ctx.sheet) !== enemy.id) {
+          return { error: `${reaction.name} answers the creature under ${ctx.sheet.name}'s Vow of Enmity, and ${enemy.displayName} is not. Nothing was spent.`, refused: "rules" };
+        }
+        if (!ctx.sheets.some((sheet) => openHits(ctx.campaign.id, sheet.id).some((hit) => hit.attacker.id === enemy.id))) {
+          return { error: `${reaction.name} answers ${enemy.displayName}'s attack, and the server has none on record. Nothing was spent.`, refused: "rules" };
+        }
       }
       if (!withinFeet(encounter.id, ctx.sheet.id, enemy.id, does.rangeFt)) {
         return { error: `${enemy.displayName} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}; ${reaction.name} is a melee attack. Nothing was spent.`, refused: "rules" };

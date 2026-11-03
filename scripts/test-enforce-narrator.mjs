@@ -332,7 +332,7 @@ await test("The feature rules match the feature engine: Inspiration, the Channel
   const text = systemText();
   assert.match(text, /set_condition condition "inspiration"/);
   assert.match(text, /pass useInspiration true on their request_roll/);
-  assert.match(text, /Channel Divinity variant 'turn undead', 'turn the unholy', 'sacred weapon' or 'preserve life'/);
+  assert.match(text, /Channel Divinity variant 'turn undead', 'turn the unholy', 'sacred weapon', 'preserve life' or 'vow of enmity'/);
   assert.match(text, /never set turned or frightened by hand/);
   assert.match(text, /'empty body' or 'diamond soul'/);
   assert.match(text, /Indomitable rerolls the last failed save by itself/);

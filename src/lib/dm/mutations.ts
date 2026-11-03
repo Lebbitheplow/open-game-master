@@ -1363,7 +1363,7 @@ function dmMutation(
       }
       // Channel Divinity's options and Indomitable resolve in the engine
       // (src/lib/dm/feature-spends.ts); everything else takes the generic path.
-      const featureSpend = featureVariantSpend(campaign, turnId, sheet, resourceName, args.variant, args.targetCharacterId, reason);
+      const featureSpend = featureVariantSpend(campaign, turnId, sheet, resourceName, args.variant, args.targetCharacterId, reason, args.targetEnemyId);
       if (featureSpend) {
         return { result: featureSpend };
       }
