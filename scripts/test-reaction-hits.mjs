@@ -23,8 +23,8 @@ import { suite } from "./lib/enforce-harness.mjs";
 import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
 
 const { getDatabase } = await import("../src/lib/db/core.ts");
-const { listMembers, setDmMode } = await import("../src/lib/db/campaigns.ts");
-const { listRecentMessages } = await import("../src/lib/db/messages.ts");
+const { allocateSeq, listMembers, setDmMode } = await import("../src/lib/db/campaigns.ts");
+const { insertCampaignMessage, listRecentMessages } = await import("../src/lib/db/messages.ts");
 const { createDmTurn } = await import("../src/lib/db/dm-turns.ts");
 const { createCompanionUser } = await import("../src/lib/db/users.ts");
 const { createSheet, markSheetAsCompanion, setCompanionCommander } = await import("../src/lib/db/sheets.ts");
@@ -114,6 +114,9 @@ async function oneReply(table, target, [first, second]) {
 const hp = (world, hero) => world.sheet(hero.id).currentHp;
 const hitsOn = (world, hero) => (activePublicEncounter(world.campaignId).lastHits ?? []).filter((hit) => hit.characterId === hero.id);
 const react = (world, hero, feature, args = {}) => world.invoke("use_reaction", { characterId: hero.id, feature, ...args });
+// The same call from the AI GM's turn, not a person's.
+const modelReacts = (world, hero, feature, args = {}) =>
+  invokeEngine(world.campaign(), { kind: "ai", turnId: createDmTurn(world.campaignId, [], "ai").id }, { name: "use_reaction", args: { characterId: hero.id, feature, ...args } });
 
 // ---- every open hit is kept ----
 
@@ -242,6 +245,74 @@ await test("A hit named that is no longer open is refused, and nothing is spent"
   assert.match(out.error, /No attack still open to a reaction matches/, JSON.stringify(out));
   assert.equal(world.sheet(mira.id).spellcasting.slots["1"].used, 0);
   assert.equal(world.encounter().reactionsUsed.includes(mira.id), false);
+});
+
+await test("A hit named wrongly is sent back with the hits still open, and none is answered in its place", async () => {
+  const table = await stage();
+  const { world, mira } = table;
+  await oneReply(table, mira, [[10, 3], [12, 4]]);
+  const [open] = hitsOn(world, mira);
+  const copied = open.id.slice(0, -1);
+  const before = hp(world, mira);
+  const out = await modelReacts(world, mira, "Shield", { hit: copied });
+  assert.equal(out.ok, false);
+  assert.equal(out.retry, true, JSON.stringify(out));
+  assert.equal(out.refused, undefined);
+  assert.ok(out.error.includes(`hit "${open.id}" on ${mira.name}`), out.error);
+  assert.equal(hp(world, mira), before);
+  assert.equal(world.sheet(mira.id).spellcasting.slots["1"].used, 0);
+  assert.equal(world.encounter().reactionsUsed.includes(mira.id), false);
+  const again = await react(world, mira, "Shield", { hit: open.id });
+  assert.equal(again.ok, true, again.error);
+  assert.equal(world.sheet(mira.id).spellcasting.slots["1"].used, 1);
+});
+
+await test("A reaction for the reactor alone lists only their own hits, and with none open it stays a refusal", async () => {
+  const table = await stage();
+  const { world, mira, poppy } = table;
+  await oneReply(table, poppy, [[15, 3], [16, 5]]);
+  const shield = await modelReacts(world, mira, "Shield", { hit: "hwrong000" });
+  assert.equal(shield.ok, false);
+  assert.equal(shield.refused, "rules", JSON.stringify(shield));
+  assert.equal(shield.retry, undefined);
+  assert.doesNotMatch(shield.error, /Open hits/);
+  assert.equal(world.sheet(mira.id).spellcasting.slots["1"].used, 0);
+});
+
+await test("A person who names a wrong hit is told no, and is not handed the model's list", async () => {
+  const table = await stage();
+  const { world, mira } = table;
+  await oneReply(table, mira, [[10, 3], [12, 4]]);
+  const out = await react(world, mira, "Shield", { hit: "hwrong000" });
+  assert.equal(out.ok, false);
+  assert.equal(out.refused, "rules", JSON.stringify(out));
+  assert.doesNotMatch(out.error, /Open hits/);
+});
+
+await test("A reactor whose reaction is spent is told no, whatever hit the model names", async () => {
+  const table = await stage();
+  const { world, mira } = table;
+  await oneReply(table, mira, [[10, 3], [12, 4]]);
+  const [first] = hitsOn(world, mira);
+  const answered = await react(world, mira, "Shield", { hit: first.id });
+  assert.equal(answered.ok, true, answered.error);
+  assert.ok(hitsOn(world, mira).length, "a hit is still open to list");
+  const out = await modelReacts(world, mira, "Shield", { hit: "hwrong000" });
+  assert.equal(out.ok, false);
+  assert.equal(out.refused, "rules", JSON.stringify(out));
+  assert.doesNotMatch(out.error, /Open hits/);
+});
+
+await test("A played card whose hit has closed stays a refusal, and no other hit is offered in its place", async () => {
+  const table = await stage();
+  const { world, mira } = table;
+  await oneReply(table, mira, [[10, 3], [12, 4]]);
+  insertCampaignMessage({ campaignId: world.campaignId, seq: allocateSeq(world.campaignId), authorType: "player", userId: world.owner.id, characterId: mira.id, content: "Mira casts Shield.", intent: { card: "reaction", feature: "Shield", spell: "Shield", hit: "hgone000" } });
+  const out = await modelReacts(world, mira, "Shield", { hit: "hgone000" });
+  assert.equal(out.ok, false);
+  assert.equal(out.refused, "rules", JSON.stringify(out));
+  assert.doesNotMatch(out.error, /Open hits/);
+  assert.equal(world.sheet(mira.id).spellcasting.slots["1"].used, 0);
 });
 
 await test("A later GM turn's attack on the same hero closes the hits of the reply before it", async () => {
