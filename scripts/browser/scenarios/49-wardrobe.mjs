@@ -67,7 +67,16 @@ export default {
     // The row is at its fullest here, with the attuning mark beside both
     // buttons. The buttons keep their whole width and the name gives way: a
     // flex row shrank all three, which cut the end off "cancel" on a phone.
-    const cut = await ring.evaluate((row) => [...row.querySelectorAll("button")].filter((button) => button.scrollWidth > button.clientWidth).map((button) => button.textContent));
+    // Measured on the words against the box inside the padding, unrounded:
+    // scrollWidth and clientWidth round apart by a pixel on a desktop font,
+    // which read a whole "cancel" as cut.
+    const cut = await ring.evaluate((row) => [...row.querySelectorAll("button")].filter((button) => {
+      const words = document.createRange();
+      words.selectNodeContents(button);
+      const style = getComputedStyle(button);
+      const inner = button.getBoundingClientRect().width - ["borderLeftWidth", "borderRightWidth", "paddingLeft", "paddingRight"].reduce((sum, key) => sum + parseFloat(style[key]), 0);
+      return words.getBoundingClientRect().width > inner + 0.5;
+    }).map((button) => button.textContent));
     check(cut.length === 0, `the attuning ring's buttons show their whole words (cut: ${cut.join(", ") || "none"})`);
     // On the narrowest phone the row still fits and the name stays readable.
     if (viewport === "phone") {
