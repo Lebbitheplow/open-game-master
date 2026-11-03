@@ -11,6 +11,7 @@ const world = await openWorld({ campaign: { maxPlayers: 20 } });
 const kit = await combatKit(world);
 const { deriveHand, FRESH_TURN } = await import("../src/lib/battlemap/hand.ts");
 const { reactionCards } = await import("../src/lib/battlemap/hand-react.ts");
+const { tilesApart } = await import("../src/lib/dm/board-reach.ts");
 const { activePublicEncounter } = await import("../src/lib/db/encounter-view.ts");
 const encounters = await import("../src/lib/db/encounters.ts");
 const { createDmTurn } = await import("../src/lib/db/dm-turns.ts");
@@ -109,6 +110,19 @@ await test("An ally beyond 60 feet is refused: nothing spent, the reaction kept,
   assert.equal(reached.ok, true, reached.error);
 });
 
+await test("The card is dealt for an ally at exactly 60 feet on the board, and not beyond.", async () => {
+  const enemy = await stage();
+  await strike(enemy, ally);
+  const card = (feet) => reactionCards(world.sheet(knight.id), { ...FRESH_TURN, myTurn: false }, hits(), world.sheets(), "you", feet).filter((entry) => entry.name === "Runic Shield");
+  const apart = () => ({ [ally.id]: tilesApart(kit.token(knight.id), kit.token(ally.id)) * 5 });
+  kit.place(ally.id, 5, 17);
+  assert.equal(apart()[ally.id], 60);
+  assert.equal(card(apart()).length, 1);
+  kit.place(ally.id, 5, 18);
+  assert.equal(apart()[ally.id], 65);
+  assert.equal(card(apart()).length, 0);
+});
+
 await test("A reroll that misses gives the hit points back, spends one use and the reaction, and answers the hit.", async () => {
   const enemy = await stage();
   await strike(enemy, ally);
@@ -151,6 +165,40 @@ await test("The new roll is the roll on record: a later reaction reads it, not t
   world.clearDice();
   assert.equal(words.ok, true, words.error);
   assert.equal(world.sheet(ally.id).currentHp, 50, "the words turn the rerolled 13 into a miss");
+});
+
+await test("A critical another reaction already cut, then rolled away: the ally never ends up worse off.", async () => {
+  // The club's 1d6+2 on a 20 with 4s: 10 as a critical, 6 as the plain blow.
+  const rogue = world.addHero({
+    user: world.owner, class: "rogue", level: 5, maxHp: 100, ac: 12, acOverride: true, proficiencies: TRAINED,
+    features: [{ name: "Uncanny Dodge", source: "class" }],
+    abilities: { str: 16, dex: 16, con: 16, int: 16, wis: 16, cha: 16 }, portrait: { url: "/uploads/test.png" },
+  });
+  let enemy = await stage();
+  kit.place(rogue.id, 5, 6);
+  world.patch(rogue.id, { currentHp: 50, conditions: [], conditionMeta: {} });
+  await strike(enemy, rogue, [20, 4, 4]);
+  assert.equal(world.sheet(rogue.id).currentHp, 40);
+  const dodged = await world.invoke("use_reaction", { characterId: rogue.id, feature: "Uncanny Dodge" });
+  assert.equal(dodged.ok, true, dodged.error);
+  assert.equal(world.sheet(rogue.id).currentHp, 45);
+  let out = await shield([15], rogue);
+  assert.equal(out.ok, true, out.error);
+  assert.match(out.result.applied, /no longer a critical/i);
+  assert.equal(world.sheet(rogue.id).currentHp, 49, "the 5 the dodge took off comes off the plain 6");
+
+  const bard = hero("bard", "College of Lore");
+  enemy = await stage();
+  kit.place(bard.id, 5, 6);
+  await strike(enemy, ally, [20, 4, 4]);
+  world.dice(6);
+  const words = await world.invoke("use_reaction", { characterId: bard.id, feature: "Cutting Words", targetCharacterId: ally.id });
+  world.clearDice();
+  assert.equal(words.ok, true, words.error);
+  assert.equal(world.sheet(ally.id).currentHp, 46);
+  out = await shield([15]);
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.sheet(ally.id).currentHp, 50, "the plain 6 less the 6 the words took");
 });
 
 await test("A natural 1 on the reroll misses whatever the total, and a natural 20 hits whatever the AC.", async () => {

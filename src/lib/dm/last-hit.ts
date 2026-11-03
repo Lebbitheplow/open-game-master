@@ -74,8 +74,9 @@ export type SwingRecord = {
   // dice, from the same roll (encounter-logic.ts ordinaryOfCritical). A
   // reaction that rolls the attack again and keeps a lower d20 that still
   // hits lands this instead (plainOfReroll). Absent on any other swing and on
-  // records written before it.
-  plain?: { raw: number; parts?: Array<{ amount: number; type: string }> };
+  // records written before it. `from` is the critical's damage as it landed, so
+  // what a reaction has since taken off the blow comes off this too.
+  plain?: { raw: number; parts?: Array<{ amount: number; type: string }>; from?: number };
   // The advantage the swing would have had against the target standing, when
   // it lay at 0 and that changed the roll (SRD 5.1, Unconscious: attack rolls
   // against it have advantage). A reaction that leaves them standing when it
@@ -196,13 +197,16 @@ export function attackerFoeId(record: Pick<LastHit, "attacker"> | null | undefin
 // d20 still hits: a critical the natural 20 alone made is no longer one when
 // the d20 kept is not a 20, and the blow lands without its critical dice (SRD
 // 5.1, Critical Hits: "If the d20 roll for an attack is a 20"). A record
-// written before the plain blow was kept stays as it was.
+// written before the plain blow was kept stays as it was. A reaction that has
+// already cut the blow (Uncanny Dodge, Cutting Words) keeps its cut, off the
+// plain blow too, as the ordinary blow takes it (reaction-refund.ts).
 export function plainOfReroll(swing: SwingRecord, kept: number): SwingRecord {
   if (!swing.crit || kept === 20 || !swing.plain) {
     return swing;
   }
   const { plain, ...rest } = swing;
-  const next: SwingRecord = { ...rest, crit: false, raw: plain.raw };
+  const cut = Math.max(0, (plain.from ?? swing.raw) - swing.raw);
+  const next: SwingRecord = { ...rest, crit: false, raw: Math.max(0, plain.raw - cut) };
   delete next.parts;
   return plain.parts ? { ...next, parts: plain.parts } : next;
 }
@@ -695,7 +699,7 @@ export function openLastHit(campaignId: string, characterId: string) {
         ...(result.hit && result.parts?.length ? { parts: result.parts } : {}),
         ...(result.ranged !== undefined ? { ranged: result.ranged } : {}),
         ...(result.hit && result.ordinary ? { ordinary: result.ordinary } : {}),
-        ...(result.hit && result.crit && result.plain ? { plain: result.plain } : {}),
+        ...(result.hit && result.crit && result.plain ? { plain: { ...result.plain, from: Math.max(0, result.raw) } } : {}),
         ...(result.hit && result.standingAdvantage && result.standingAdvantage !== result.advantage ? { standingAdvantage: result.standingAdvantage } : {}),
         ...(result.hit && Object.keys(flags).length ? { flags: flags as BlowFlags } : {}),
         ...(concentration ? { concentration } : {}),
