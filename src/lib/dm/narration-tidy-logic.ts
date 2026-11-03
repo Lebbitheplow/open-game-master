@@ -5,7 +5,7 @@
 // Dependency-free so scripts/test-narration-tidy.mjs can import it directly.
 
 import { textKey } from "../language/text-logic.ts";
-import { DM_TOOL_NAME_PATTERN } from "./tool-text.ts";
+import { DM_TOOL_NAME_PATTERN, withoutRollMarkers } from "./tool-text.ts";
 import type { TableLanguage } from "../schemas/game-settings-options.ts";
 
 // A sentence shorter than this may be said twice on purpose: a shouted
@@ -91,13 +91,66 @@ function leftOpen(text: string, open: string, close: string): boolean {
   return depth > 0;
 }
 
+function closesOpen(before: string, line: string): boolean {
+  return (line.includes(")") && leftOpen(before, "(", ")")) || (line.includes("]") && leftOpen(before, "[", "]"));
+}
+
 export function withoutOrphanClosers(text: string): string {
-  const out = text.replace(ORPHAN_CLOSERS, (line: string, at: number) => {
-    const before = text.slice(0, at);
-    const closes = (line.includes(")") && leftOpen(before, "(", ")")) || (line.includes("]") && leftOpen(before, "[", "]"));
-    return closes ? line : "";
-  });
+  const out = text.replace(ORPHAN_CLOSERS, (line: string, at: number) => (closesOpen(text.slice(0, at), line) ? line : ""));
   return out === text ? text : tidyBlankLines(out);
+}
+
+// The same lines as the reply streams to the table's draft (turn.ts): a line
+// that so far is only closers and markers is held until it ends, then shown
+// or dropped by the rule above. Without it the table watched a ")*" arrive
+// and then vanish when the stored passage replaced the draft.
+const ORPHAN_LINE = /^[ \t]*[)\]]+[*_]+[ \t\r]*$/;
+const MAY_BE_ORPHAN = /^[ \t]*[)\]]*[*_]*[ \t\r]*$/;
+
+export function createOrphanCloserFilter() {
+  let shown = "";
+  let held = "";
+  const drops = (line: string, before: string) => ORPHAN_LINE.test(line) && !closesOpen(before, line);
+  return {
+    push(chunk: string): string {
+      let text = held + chunk;
+      held = "";
+      let out = "";
+      while (text) {
+        const before = shown + out;
+        const atLineStart = !before || before.endsWith("\n");
+        const end = text.indexOf("\n");
+        if (end < 0) {
+          if (atLineStart && MAY_BE_ORPHAN.test(text)) {
+            held = text;
+          } else {
+            out += text;
+          }
+          break;
+        }
+        if (!atLineStart || !drops(text.slice(0, end), before)) {
+          out += text.slice(0, end + 1);
+        }
+        text = text.slice(end + 1);
+      }
+      shown += out;
+      return out;
+    },
+    flush(): string {
+      const out = held && !drops(held, shown) ? held : "";
+      held = "";
+      shown += out;
+      return out;
+    },
+  };
+}
+
+// What the table reads of a turn's parts (turn.ts finalize), and what a
+// reroll keeps of the parts before its own take (renarrate.ts). One tidy for
+// both: a reroll that reassembled the raw parts brought back the closer
+// lines, tool talk and fight bookkeeping the table never read.
+export function tableNarrationParts(parts: readonly string[], names: readonly string[], language: TableLanguage): string[] {
+  return withoutRepeatedSentences(parts.map((part) => withoutOrphanClosers(withoutToolTalk(withoutCombatBookkeeping(withoutRollMarkers(part), names, language)))));
 }
 
 // Whether a reply is mostly the last turn's narration said again: a player

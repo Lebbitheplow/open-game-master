@@ -276,6 +276,35 @@ console.log(`renarrate: ${passed} tests passed`);
     assert.equal(rerolled.message.content, story.join("\n\n"));
   });
 
+  // A reroll keeps the parts ahead of its take as the table read them, not
+  // as the model wrote them: the raw parts brought back tool talk and, on a
+  // turn stored before the draft dropped them, a line of stray closers.
+  await takes.test("A reroll of a turn in parts keeps the earlier parts as the table read them.", async () => {
+    const { getDmTurn, saveDmTurn } = await import("../src/lib/db/dm-turns.ts");
+    const first = "Mother Hesk presses a cold iron key into your palm.";
+    const second = "Behind her the river fog swallows the quay.";
+    model.script([
+      reply({ text: `${first} The next step is to call modify_gold for Kara.`, calls: [call("modify_gold", { characterId: kara.id, delta: 10, reason: "the council's advance" })] }),
+      reply({ text: second }),
+    ]);
+    model.claims([[], []]);
+    const said = await model.turn(world, "I take the key.", kara.id);
+    assert.equal(said.content, `${first}\n\n${second}`);
+    const take = "The fog parts for a moment, and a lantern swings on the far bank.";
+    model.script([reply({ text: take })]);
+    model.claims([[]]);
+    let rerolled = await runRenarrate({ campaignId: world.campaignId, messageId: said.id, guidance: "" });
+    assert.ok("message" in rerolled, rerolled.error);
+    assert.equal(rerolled.message.content, `${first}\n\n${take}`);
+    const turn = getDmTurn(said.dmTurnId);
+    saveDmTurn({ ...turn, narrationParts: [`)*\n\n${turn.narrationParts[0]}`, ...turn.narrationParts.slice(1)] });
+    model.script([reply({ text: `${first} ${take}` })]);
+    model.claims([[]]);
+    rerolled = await runRenarrate({ campaignId: world.campaignId, messageId: said.id, guidance: "" });
+    assert.ok("message" in rerolled, rerolled.error);
+    assert.equal(rerolled.message.content, `${first}\n\n${take}`, "a sentence the parts ahead already said is said once");
+  });
+
   model.close();
   world.close();
   takes.finish();

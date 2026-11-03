@@ -126,6 +126,19 @@ await test("A fight announced in prose and sent back to start_encounter leaves t
   assert.equal(message?.content.trim(), story);
 });
 
+// Issue 744: the stored passage drops a line of closers nobody opened, and the
+// draft showed it as it streamed, then lost it when the passage landed.
+await test("A line of closers nobody opened never reaches the draft, and the draft is what the table keeps.", async () => {
+  const story = ["The hammer hangs from the strap.", "The strap creaks. What do you do?"];
+  model.script([reply({ text: `)*\n\n${story[0]}\n\n]*\n\n${story[1]}` })]);
+  model.claims([[]]);
+  const { message, sent, resets, draft } = await draftTurn("I lift the hammer.");
+  assert.doesNotMatch(sent.map((event) => event.text).join(""), /[)\]][*_]/, "the closers streamed to the table");
+  assert.deepEqual(resets, [], "no reset: what streamed is what was kept");
+  assert.equal(message?.content.trim(), story.join("\n\n"));
+  assert.equal(draft.replace(/\s+/g, " ").trim(), story.join(" "));
+});
+
 model.close();
 world.close();
 finish();

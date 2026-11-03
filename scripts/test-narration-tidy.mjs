@@ -6,8 +6,10 @@ import assert from "node:assert/strict";
 import {
   closingQuestion,
   closingVarietyNote,
+  createOrphanCloserFilter,
   repeatedClosing,
   repeatsNarration,
+  tableNarrationParts,
   withoutCombatBookkeeping,
   withoutOrphanClosers,
   withoutRepeatedSentences,
@@ -212,6 +214,45 @@ check("a line of closers goes when the brackets above it are closed or of the ot
   assert.equal(withoutOrphanClosers("*(I turn\nand listen.\n)*\n\n)*\n\nThe strap creaks."), "*(I turn\nand listen.\n)*\n\nThe strap creaks.", "the first closes the aside, the second nothing");
   assert.equal(withoutOrphanClosers("*(I turn\n]*\nand listen.)*"), "*(I turn\nand listen.)*", "a ] closes no (");
   assert.equal(withoutOrphanClosers(")*\n\n*(I turn\nand listen.\n)*"), "*(I turn\nand listen.\n)*", "an orphan above an aside goes, and the aside's closer stays");
+});
+
+// The draft as the reply streams (turn.ts): every way the chunks can split,
+// the table is shown what the stored passage keeps of those lines, and never
+// a ")*" that then vanishes.
+function streamed(text, size) {
+  const filter = createOrphanCloserFilter();
+  let out = "";
+  for (let at = 0; at < text.length; at += size) {
+    out += filter.push(text.slice(at, at + size));
+  }
+  return out + filter.flush();
+}
+
+check("a streamed line of closers nobody opened never reaches the draft, however the chunks split", () => {
+  const cases = [
+    [")*\n\nThe hammer hangs from the strap.", "\nThe hammer hangs from the strap."],
+    ["The hammer hangs.\n\n]*\n\nThe strap creaks.", "The hammer hangs.\n\n\nThe strap creaks."],
+    ["The hammer hangs.\n)_", "The hammer hangs.\n"],
+    ["*(I turn to the door\nand listen.\n)*\nThe strap creaks.", "*(I turn to the door\nand listen.\n)*\nThe strap creaks."],
+    ["Kara frowns :(\n)*\nThe strap creaks.", "Kara frowns :(\n)*\nThe strap creaks."],
+    ["*The door* creaks.\n**Kara** waits.\n***\n)* she says.", "*The door* creaks.\n**Kara** waits.\n***\n)* she says."],
+    ["The door creaks open)*\nand stops.", "The door creaks open)*\nand stops."],
+  ];
+  for (const [text, shown] of cases) {
+    for (const size of [1, 2, 3, 7, text.length]) {
+      assert.equal(streamed(text, size), shown, `${JSON.stringify(text)} in chunks of ${size}`);
+    }
+    assert.equal(streamed(text, 1).replace(/\s+/g, " ").trim(), withoutOrphanClosers(text).replace(/\s+/g, " ").trim(), "what streamed is what is kept");
+  }
+});
+
+check("a turn's parts read as the table read them, for finalize and for a reroll's parts ahead of its take", () => {
+  const parts = [
+    ")*\n\nThe hammer hangs from the strap. The next step is to call move_token for Bram. [roll:abc]",
+    "The hammer hangs from the strap. The strap creaks and the door gives way.",
+  ];
+  assert.deepEqual(tableNarrationParts(parts, [], "english"), ["The hammer hangs from the strap.", "The strap creaks and the door gives way."]);
+  assert.deepEqual(tableNarrationParts(["**Round 1:** The goblin snarls."], ["Goblin"], "english"), ["The goblin snarls."]);
 });
 
 console.log(`narration tidy: ${passed} checks passed`);
