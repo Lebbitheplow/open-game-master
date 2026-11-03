@@ -15,6 +15,7 @@ import { featureSaveProficiencies, featureSkillProficiencies } from "@/lib/srd/t
 import { authoredAcBonus, authoredSaveModifier, authoredSpeeds } from "@/lib/srd/authored-effects";
 import { effectiveAbilities, itemSpeeds, magicItemRiders, type Wearer, type WornMagicItem } from "@/lib/srd/magic-items";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
+import { purseCoins } from "@/lib/srd/currency";
 import { allSpellNames } from "@/lib/srd/spell-lists";
 import { hpBonusPerLevel, speciesRulesFor, type SpeciesRules } from "@/lib/srd/race-id";
 import { racialSpellAbility } from "@/lib/srd/racial-grants";
@@ -280,6 +281,7 @@ export function speedFor(
     speed: number;
     wildShape?: CharacterSheet["wildShape"];
     gold?: number;
+    copper?: number;
     race?: string;
     feats?: string[];
   },
@@ -327,7 +329,7 @@ export function speedFor(
     ? encumbranceFor({
         strength: source.abilities.str,
         equipment,
-        coins: source.gold ?? 0,
+        coins: purseCoins({ gold: source.gold ?? 0, copper: source.copper ?? 0 }),
         size: source.race ? sizeForRace(source.race) : undefined,
         wearer: source,
       })

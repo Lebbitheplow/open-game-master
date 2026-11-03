@@ -9,6 +9,7 @@ import { listRollsSince } from "@/lib/db/rolls";
 import { listAuditSince } from "@/lib/db/sheet-audit";
 import { publishPersisted } from "@/lib/events";
 import { sheetSide } from "@/lib/dm/combatant";
+import { atTheFight } from "@/lib/dm/fight-away-logic";
 import {
   absentFighters,
   computeEncounterSummary,
@@ -47,7 +48,10 @@ export function recordEncounterSummary(
       startedAt: encounter.createdAt,
       endedAt,
       enemies,
-      sheets: [...sheets, ...departedFighters(campaignId, encounter, sheets, rolls, audits)],
+      // One the fight went on without has no line on its card (issue 740),
+      // and still has a sheet, so a roll of theirs during it does not read as
+      // a fighter who has left the party.
+      sheets: [...atTheFight(encounter, sheets), ...departedFighters(campaignId, encounter, sheets, rolls, audits)],
       rolls,
       audits,
     });

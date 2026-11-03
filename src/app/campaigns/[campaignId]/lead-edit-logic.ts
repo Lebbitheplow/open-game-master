@@ -7,6 +7,30 @@ import { EXPERTISE_CAP, type CharacterSheet, type EquipmentItem, type Proficienc
 import { SRD_SKILLS } from "@/lib/srd";
 import { expertiseSlotsFor } from "@/lib/srd/features";
 import { findNamed } from "@/lib/language/text-logic";
+import { DENOMINATION_COPPER, fromCopper } from "@/lib/srd/currency";
+
+// The purse as the dialog's three fields. The sheet stores the coin under a
+// gold piece as copper; a person counts it as silver and copper.
+export function coinFields(sheet: Pick<CharacterSheet, "gold" | "copper">): { gold: number; silver: number; copper: number } {
+  return { gold: sheet.gold, silver: Math.floor(sheet.copper / 10), copper: sheet.copper % 10 };
+}
+
+// What those fields change on the sheet. They may hold any count ("34 silver"
+// is a fair thing to type), so they are worth what they add up to and the
+// sheet keeps its gold-and-remainder form.
+export function coinCorrection(
+  fields: { gold: unknown; silver: unknown; copper: unknown },
+  sheet: Pick<CharacterSheet, "gold" | "copper">,
+): { gold?: number; copper?: number } {
+  const count = (value: unknown) => Math.max(0, Math.round(Number(value) || 0));
+  const next = fromCopper(
+    count(fields.gold) * DENOMINATION_COPPER.gp + count(fields.silver) * DENOMINATION_COPPER.sp + count(fields.copper),
+  );
+  return {
+    ...(next.gold !== sheet.gold ? { gold: next.gold } : {}),
+    ...(next.copper !== sheet.copper ? { copper: next.copper } : {}),
+  };
+}
 
 // The highest spell level this sheet can actually cast, read from the slots
 // it has stored: the multiclass table, a third caster's slots and a

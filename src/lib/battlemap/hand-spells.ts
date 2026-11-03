@@ -5,10 +5,12 @@ import { BEST_EFFORT_NOTE, BEST_EFFORT_SHORT } from "@/lib/content/reading-logic
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { bonusCastOf, casterStateProblem, componentProblem, focusProblem, materialPlan, slotPlan, turnCharge } from "@/lib/dm/cast-rules";
 import { computeSheetDerived, spellAttackFor, spellSaveDcFor } from "@/lib/srd";
+import { counterSpendCards, playedAsSpendCard } from "@/lib/battlemap/hand-subclass";
 import { heldAtWill, resourceDef, resourceLevel, type ResourceDef } from "@/lib/srd/class-resources";
 import { psionicOptions } from "@/lib/dm/option-costs";
 import { ACTION_SURGED } from "@/lib/dm/action-budget";
 import { BONUS_ATTACK_COUNTERS } from "@/lib/dm/feature-bonus-attacks";
+import { HIT_ANSWER_COUNTERS } from "@/lib/dm/reaction-kinds";
 import { isMeleeSpellAttack } from "@/lib/srd/melee-spell";
 import { bundledSpellFacts, type CastingTime, type SpellRange } from "@/lib/srd/spell-facts";
 import { aoeSpendFor } from "@/lib/srd/aoe-spend";
@@ -432,6 +434,14 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
     if (id === "channel_divinity" || (id === "sub_psionic_energy" && psionicOptions(sheet).length)) continue;
     // Spent by the bonus attack itself (hand-class.ts bonusStrikeCards).
     if (BONUS_ATTACK_COUNTERS.includes(id)) continue;
+    // A spend the server resolves is its own card, dealt here in its
+    // counter's place (hand-subclass.ts counterSpendCards).
+    if (playedAsSpendCard(sheet, def.displayName)) {
+      cards.push(...counterSpendCards(sheet, turn, def.displayName));
+      continue;
+    }
+    // Dealt when the hit that calls for it comes (hand-react.ts).
+    if (HIT_ANSWER_COUNTERS.some((counter) => counter.id === id && !counter.anyDamage)) continue;
     const level = resourceLevel(def, sheet);
     const effect = def.effect;
     const left = state.max - state.used;

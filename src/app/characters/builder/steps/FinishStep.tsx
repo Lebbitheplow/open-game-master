@@ -3,6 +3,7 @@
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { contentSlug } from "@/lib/help";
 import { formatModifier, proficiencyBonus } from "@/lib/srd";
+import { formatPrice, purseCopper } from "@/lib/srd/currency";
 import { racialFeatCount } from "@/lib/srd/race-id";
 import { ui } from "@/lib/ui";
 import { HpExplainerButton } from "../AbilityExplainers";
@@ -120,7 +121,7 @@ export function FinishStep({
             </Field>
             <Field label="Gold" className="col-span-2">
               <span key={`${purse.gold}-${purse.copper}`} className="reveal font-mono text-base text-amber-100">
-                {purse.gold} gp{purse.copper ? ` ${purse.copper} cp` : ""}
+                {formatPrice(purseCopper(purse))}
               </span>
               <span className="mt-1 block text-sm text-stone-500">
                 {purse.wealth?.rolled

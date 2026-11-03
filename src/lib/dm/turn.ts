@@ -112,11 +112,11 @@ import {
 } from "@/lib/dm/engine-boundary";
 import { withoutAsides, type PartRead } from "@/lib/dm/claims-logic";
 import {
+  createOrphanCloserFilter,
   REPEATED_NARRATION_PROMPT,
   repeatsNarration,
-  withoutCombatBookkeeping,
-  withoutRepeatedSentences,
-  withoutToolTalk,
+  tableNarrationParts,
+  withoutOrphanClosers,
 } from "@/lib/dm/narration-tidy-logic";
 import { liveStateFor, readAsides, readReply, readTurnEndInWords, registeringNames, ruledFor, turnOverFor } from "@/lib/dm/claims";
 import { modelTextLines } from "@/lib/dm/speech-lines";
@@ -127,7 +127,7 @@ import type { SpokenLine } from "@/lib/dm/speech";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { dispatchAdjudication } from "@/lib/dm/invoke-dispatch";
 import { playsWhole } from "@/lib/dm/legendary-play";
-import { gateAiCall } from "@/lib/dm/ai-gate";
+import { awayCall, gateAiCall } from "@/lib/dm/ai-gate";
 import { characterAwaitingPlayer } from "@/lib/dm/player-word";
 import { hitIdOf, openHits } from "@/lib/dm/last-hit";
 import { aiPlaysSheet } from "@/lib/dm/companion-command";
@@ -296,6 +296,7 @@ import {
 } from "@/lib/dm/companion-tools";
 import { dismissCompanion } from "@/lib/dm/companion-dismissal";
 import { fightNames, getActiveEncounter, listEnemies, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
+import { atTheFight } from "@/lib/dm/fight-away-logic";
 import { enemyMoveBudget, enemyMovementNote } from "@/lib/dm/enemy-speed";
 import { getBattleMapForEncounter, getTokenByRef, listTokens, type BattleMap } from "@/lib/db/battle-maps";
 import { pcMoveBudget } from "@/lib/battlemap/view";
@@ -460,7 +461,10 @@ export function buildEncounterState(campaignId: string, sheets: CharacterSheet[]
       : [],
     awaitingInitiative: encounter.orderReady
       ? []
-      : sheets.filter((sheet) => !staged.has(sheet.id)).map((sheet) => sheet.name),
+      : atTheFight(encounter, sheets).filter((sheet) => !staged.has(sheet.id)).map((sheet) => sheet.name),
+    // Named while they stay away, so the GM can still bring them in: nothing
+    // else in the state says they exist once the order has closed.
+    ...(encounter.awayIds.length ? { away: sheets.filter((sheet) => encounter.awayIds.includes(sheet.id)).map((sheet) => sheet.name) } : {}),
     turnBudget: encounter.turnBudget ? describeBudget(encounter.turnBudget) : null,
     // The printed lair options lair_action takes by number: a block's own
     // list never reaches its traits whole.
@@ -1702,6 +1706,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     // Fresh reasoning-artifact filter per model call; each call is its own
     // stream. Withheld trailing text is flushed after the call completes.
     const filter = createStreamingArtifactFilter();
+    const closers = createOrphanCloserFilter();
     const batcher = createDeltaBatcher((text) => {
       shown += text;
       narrationShown(campaignId, turn.id);
@@ -1741,7 +1746,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       // when it runs long, on a server that sets no budget of its own.
       ...(tuning.briefRules ? { reasoningBudgetChars: SMALL_MODEL_REASONING_CHARS } : {}),
       onDelta: (text) => {
-        const visible = filter.push(text);
+        const visible = closers.push(filter.push(text));
         if (visible) {
           batcher.push(visible);
         }
@@ -1767,7 +1772,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       break;
     }
 
-    batcher.push(filter.flush());
+    batcher.push(closers.push(filter.flush()) + closers.flush());
     batcher.flush();
     noteTurnCall(turn, callTask, tools, reply);
     setJobStage("resolving");
@@ -1888,17 +1893,18 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     // Hand-written "[roll:...]" markers rolled nothing (real markers are
     // appended by finalize() from actual roll ids); drop them before the
     // text is persisted so players never see dead bookkeeping tokens.
-    const prose = withoutRollMarkers(visibleText ?? "").trim();
+    // A line of stray closers goes here, as the draft dropped it (issue 744):
+    // a part kept as the model wrote it would differ from what streamed, and
+    // the draft would be reset to show it.
+    const prose = withoutOrphanClosers(withoutRollMarkers(visibleText ?? "")).trim();
     // The narrator's asides ("I'll check how the table records that before
     // she answers") are the model talking to itself, not the story: the
     // sentences the reader quoted as asides are cut from what the table
     // reads, and the echoed message keeps the reply whole for the model's
     // own context. The final call's prose was not read above, so its asides
     // are read on their own: it goes to the table as it is.
-    const narration = withoutAsides(
-      prose,
-      read ? claims : finalCall && prose ? await readAsides(campaign, sheets, turn, prose) : [],
-      campaign.gameSettings.tableLanguage,
+    const narration = withoutOrphanClosers(
+      withoutAsides(prose, read ? claims : finalCall && prose ? await readAsides(campaign, sheets, turn, prose) : [], campaign.gameSettings.tableLanguage),
     );
     // Nothing of the story left: the reply was only the model's plan. Beside
     // tool calls nothing of it is kept, and the turn owes the narration of
@@ -2577,7 +2583,7 @@ async function resolveModelCall(
   // (src/lib/dm/action-parts-logic.ts listedCalls).
   const each = listedCalls(toolCall.name, toolCall.rawArguments);
   if (each) {
-    const refused = listRefusal(toolCall.name, each);
+    const refused = listRefusal(toolCall.name, each) ?? awayCall(toolCall.name, JSON.parse(toolCall.rawArguments), { campaign, sheetsById });
     if (refused) {
       return refused;
     }
@@ -3001,6 +3007,7 @@ async function narrateAfterToolLeak(context: TurnContext, turn: DmTurn) {
   const { campaign, sheets } = context;
   const campaignId = campaign.id;
   const filter = createStreamingArtifactFilter();
+  const closers = createOrphanCloserFilter();
   let shown = "";
   const shownFrom = turn.narrationParts.length;
   const batcher = createDeltaBatcher((text) => {
@@ -3016,7 +3023,7 @@ async function narrateAfterToolLeak(context: TurnContext, turn: DmTurn) {
       thinking: false,
       ...turnCallOptions(campaign, turn, "tools_closed_rescue"),
       onDelta: (text) => {
-        const visible = filter.push(text);
+        const visible = closers.push(filter.push(text));
         if (visible) {
           batcher.push(visible);
         }
@@ -3033,7 +3040,7 @@ async function narrateAfterToolLeak(context: TurnContext, turn: DmTurn) {
     rescue = await ask(tools);
   }
   const { message, error } = rescue;
-  batcher.push(filter.flush());
+  batcher.push(closers.push(filter.flush()) + closers.flush());
   batcher.flush();
   noteTurnCall(turn, "tools_closed_rescue", tools, rescue);
   turn.callIndex += 1;
@@ -3045,11 +3052,11 @@ async function narrateAfterToolLeak(context: TurnContext, turn: DmTurn) {
   const failure = error
     ? ((await error.json().catch(() => null)) as { code?: string; error?: string } | null)
     : null;
-  const prose = error ? "" : stripToolText(extractStoryText(message?.content)).trim();
+  const prose = error ? "" : withoutOrphanClosers(stripToolText(extractStoryText(message?.content))).trim();
   // Read for the narrator's asides like the final call: a reply that was
   // only a plan keeps nothing, and finalize writes the empty-turn line
   // rather than the plan. There is no second rescue.
-  const narration = prose ? withoutAsides(prose, await readAsides(campaign, sheets, turn, prose), campaign.gameSettings.tableLanguage) : "";
+  const narration = prose ? withoutOrphanClosers(withoutAsides(prose, await readAsides(campaign, sheets, turn, prose), campaign.gameSettings.tableLanguage)) : "";
   if (narration) {
     turn.narrationParts.push(narration);
   }
@@ -3573,12 +3580,7 @@ function finalize(context: TurnContext, turn: DmTurn, failed: string, spoken: re
   // says each sentence once (src/lib/dm/narration-tidy-logic.ts). Any
   // marker already in a part is the model's own (the rescue's and the
   // guard's rewrite included), never one of the real ones placed below.
-  const combatants = fightNames(campaignId, turn.createdAt);
-  const narrationParts = withoutRepeatedSentences(
-    turn.narrationParts.map((part) =>
-      withoutToolTalk(withoutCombatBookkeeping(withoutRollMarkers(part), combatants, campaignLanguage(campaignId))),
-    ),
-  );
+  const narrationParts = tableNarrationParts(turn.narrationParts, fightNames(campaignId, turn.createdAt), campaignLanguage(campaignId));
   let content = narrationParts.join("\n\n").trim();
   if (!content) {
     // A refused player action says why instead of the bare fallback line.

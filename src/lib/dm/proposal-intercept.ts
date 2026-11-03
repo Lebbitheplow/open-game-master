@@ -6,6 +6,7 @@ import {
   listRecentItemProposals,
   type ItemProposal,
 } from "@/lib/db/item-proposals";
+import { coinMove } from "@/lib/srd/currency";
 import { publishPersisted } from "@/lib/events";
 import {
   duplicateOfferProblem,
@@ -77,8 +78,11 @@ export function maybeProposeItemChange(
   if ((toolName === "grant_item" || toolName === "remove_item") && !String(args.item ?? "").trim()) {
     return { error: `${toolName} needs an item name.`, retry: true };
   }
-  if (toolName === "modify_gold" && !Number(args.delta ?? 0)) {
-    return { error: "modify_gold needs a nonzero delta.", retry: true };
+  if (toolName === "modify_gold") {
+    const move = coinMove(args.delta, args.coins);
+    if ("problem" in move) {
+      return { error: `modify_gold: ${move.problem}. No offer was made.`, retry: true };
+    }
   }
   if (toolName === "purchase" && (!String(args.item ?? "").trim() || (args.action !== "buy" && args.action !== "sell"))) {
     return { error: "purchase needs item and action buy|sell.", retry: true };

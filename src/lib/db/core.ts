@@ -1998,6 +1998,12 @@ function ensureSchema(db: SqliteDatabase) {
     // only by setEncounterSides, never by saveEncounter, so a handler holding
     // a stale Encounter cannot put a turncoat back.
     ["sides_json", `TEXT NOT NULL DEFAULT '{}'`],
+    // The characters start_encounter left out of this fight, by sheet id
+    // (issue 740, src/lib/dm/fight-away-logic.ts). On the fight's own row, so
+    // it ends and reverts with the fight. Written only by setEncounterAway,
+    // never by saveEncounter, so a handler holding a stale Encounter cannot
+    // send back someone who has arrived.
+    ["away_ids_json", `TEXT NOT NULL DEFAULT '[]'`],
     // The action economy of whichever combatant is currently acting: action,
     // bonus action, reaction, attacks made, and movement spent. Rebuilt from
     // scratch whenever the initiative pointer moves, so it never needs a
@@ -2847,6 +2853,15 @@ function ensureSchema(db: SqliteDatabase) {
       payload_json TEXT NOT NULL,
       created_at TEXT NOT NULL,
       PRIMARY KEY (campaign_id, character_id)
+    );
+
+    -- The Intelligence, Wisdom and Charisma saves made this turn and who forced
+    -- them, for Vigilant Rebuke (src/lib/dm/last-save.ts). One row per
+    -- campaign; deleteCampaign clears it by hand.
+    CREATE TABLE IF NOT EXISTS last_saves (
+      campaign_id TEXT PRIMARY KEY,
+      payload_json TEXT NOT NULL,
+      created_at TEXT NOT NULL
     );
 
     -- Each move of the in-world clock a turn made (src/lib/db/clock-moves.ts):

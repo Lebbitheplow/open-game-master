@@ -235,6 +235,11 @@ export function handleEnemyAttack(
   if (aimed.id === found.id) {
     return { error: `${found.displayName} cannot attack itself. Name the creature it attacks.`, retry: true };
   }
+  // With no token there is no reach to fail, so the blow would land on someone
+  // the fight goes on without.
+  if (encounter.awayIds.includes(aimed.id)) {
+    return { error: `${aimed.name} is not at this fight. Name someone who is, or call request_roll kind=initiative for them first if the story has brought them here.`, retry: true, stop: "target" };
+  }
   // Confusion's lash-out (confusion.ts): one melee attack on the creature
   // its d10 picked, and no other, whichever side it is on.
   const lash = lashOutTarget(found, encounter.round);
@@ -753,6 +758,17 @@ export function handleEnemyAttack(
     const ordinary = ordinaryBlow
       ? { raw: shrunk(ordinaryBlow.amount), ...(ordinaryBlow.parts ? { parts: scaledParts(ordinaryBlow.parts, shrunk(ordinaryBlow.amount)) } : {}) }
       : undefined;
+    // A critical the natural 20 alone made keeps the blow without its doubled
+    // dice too: a reaction that rolls the attack again at disadvantage
+    // (Warding Flare, Shadowy Dodge, Protection) and keeps a lower roll that
+    // still hits leaves an ordinary hit (last-hit.ts plainOfReroll).
+    const plainRoll = crit && natCrit && !odds.autoCrit
+      ? ordinaryOfCritical(damageOutcome, baseDamage, { multiplyNumeric: campaign.gameSettings.variantRules.criticalDamageMods })
+      : null;
+    const plainBlow = plainRoll ? blowByType(attack, plainRoll, false) : null;
+    const plain = plainBlow
+      ? { raw: shrunk(plainBlow.amount), ...(plainBlow.parts ? { parts: scaledParts(plainBlow.parts, shrunk(plainBlow.amount)) } : {}) }
+      : undefined;
     // What the blow is made of for the target's defenses, kept with the hit
     // so a reaction's replay meets the same clauses (last-hit.ts flags).
     const flags: BlowFlags = {
@@ -790,6 +806,7 @@ export function handleEnemyAttack(
       ranged,
       attack: attack.name,
       ...(ordinary ? { ordinary } : {}),
+      ...(plain ? { plain } : {}),
       ...(standingAdvantage ? { standingAdvantage } : {}),
       flags,
     });

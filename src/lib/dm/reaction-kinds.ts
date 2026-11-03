@@ -19,6 +19,7 @@
 // tests read one table.
 import type { ReactionDoes } from "@/lib/srd/authored-effects-types";
 import { isNamed } from "@/lib/srd/feature-names";
+import { textKey } from "@/lib/language/text-logic";
 
 export type ReactionTiming = "answers" | "at_zero" | "after";
 
@@ -90,6 +91,39 @@ export function timingOfDoes(does: ReactionDoes): ReactionTiming {
   }
 }
 
+// The limited-use reactions a hit calls for, which the engine resolves when it is
+// named. Each is a card when the hit comes (hand-react.ts) and none on the holder's
+// own turn: they sat in the Hand there, with no trigger to answer, and never came
+// up at the moment they are for.
+export const HIT_ANSWER_COUNTERS: ReadonlyArray<{
+  id: string;
+  // Also answers a hit on a creature within `rangeFt` of the holder.
+  ally?: boolean;
+  // How near that creature stands, in feet, for the Hand to deal its card
+  // only inside the reach (hand-react.ts inReach).
+  rangeFt?: number;
+  // Taken only while wielding a melee weapon or a shield (maneuver-rules.ts).
+  armed?: boolean;
+  // Only an attack, not a fall or a missile's other damage.
+  attackOnly?: boolean;
+  // Taken as the hit drops the holder to 0, and only then.
+  atZero?: boolean;
+  // Acts on the hit itself, so it is open to a holder that hit has just dropped.
+  answersDrop?: boolean;
+  // Only while the holder has this condition.
+  whileHolding?: string;
+  // Also answers damage no hit records (an area spell, a zone), so its card stays.
+  anyDamage?: boolean;
+}> = [
+  { id: "race_stones_endurance", answersDrop: true },
+  { id: "sub_swarming_dispersal", answersDrop: true },
+  { id: "sub_misty_escape", anyDamage: true },
+  { id: "sub_warding_maneuver", ally: true, attackOnly: true, rangeFt: 5, armed: true },
+  { id: "sub_one_with_the_word", answersDrop: true, whileHolding: "manifest mind" },
+  { id: "sub_necrotic_husk", atZero: true },
+  { id: "sub_strength_before_death", atZero: true },
+];
+
 // The limited-use reactions src/lib/dm/reaction-counters.ts carries out when
 // use_resource spends them: their dice are rolled and applied there, not by
 // a counter's fx.
@@ -101,3 +135,29 @@ export const COUNTER_REACTION_IDS = [
   "sub_necrotic_husk",
   "sub_strength_before_death",
 ];
+
+// A reach that grows with the holder's level ([[level, feet], ...], the last
+// row reached), as a feature's authored range is written.
+export function reachAtLevel(range: number | Array<[number, number]>, level: number): number {
+  if (typeof range === "number") {
+    return range;
+  }
+  let feet = range[0]?.[1] ?? 5;
+  for (const [at, value] of range) {
+    if (level >= at) {
+      feet = value;
+    }
+  }
+  return feet;
+}
+
+// The mark a miss under Entropic Ward leaves on the warlock: the creature
+// that missed is its `quarry`, and the warlock's next attack roll against it
+// has advantage before the end of their next turn (authored-hooks.ts).
+export const ENTROPIC_EDGE = "entropic ward";
+
+export function entropicQuarry(sheet: { conditions: string[]; conditionMeta?: unknown }): string | null {
+  if (!sheet.conditions.some((entry) => textKey(entry) === ENTROPIC_EDGE)) return null;
+  const meta = (sheet.conditionMeta as Record<string, { quarry?: string } | undefined> | undefined)?.[ENTROPIC_EDGE];
+  return meta?.quarry ?? null;
+}

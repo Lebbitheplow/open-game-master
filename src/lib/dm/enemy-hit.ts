@@ -129,7 +129,9 @@ export function resolveOnHit(
       rider.dc,
       `${target.name}: ${rider.save.toUpperCase()} save vs ${enemy.displayName}'s ${attack.name}`,
       saveAgainst({ condition: rider.condition, damageType: rider.damageType }),
-      undefined,
+      // The attacker forced it (Supernatural Defense against its prey,
+      // Vigilant Rebuke after a success).
+      enemy,
       undefined,
       undefined,
       // Cover between the attacker and the target counts on a DEX rider.

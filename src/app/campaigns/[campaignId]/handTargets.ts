@@ -4,6 +4,7 @@ import { effectiveMaxHp } from "@/lib/dm/condition-logic";
 import type { PublicEncounter } from "@/lib/db/encounter-view";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { effectiveAcFor } from "@/lib/srd";
+import { featureAdvantage, type EdgeClock } from "@/lib/battlemap/hand-edge";
 
 // Split from Hand.tsx, which offers these chips on the aim bar.
 // The chips a raised card can be aimed at: the living creatures on the other
@@ -23,7 +24,15 @@ export function handTargets(
   selfId: string | undefined,
   edges: Record<string, TargetEdge> | undefined,
   sides?: PublicEncounter["sides"],
+  clock?: EdgeClock,
 ): HandTargetChip[] {
+  const self = sheets.find((entry) => entry.id === selfId);
+  // The features that give this character advantage against it (Vow of
+  // Enmity, Assassinate), so the preview's odds are the roll's.
+  const featured = (id: string, type?: string) => {
+    const features = self ? featureAdvantage(self, { id, type }, clock) : [];
+    return features.length ? { advantage: features } : {};
+  };
   const sideOf = (id: string, kind: "sheet" | "enemy") => sides?.[id] ?? (kind === "sheet" ? "party" : "foe");
   const mine = selfId ? sideOf(selfId, "sheet") : "party";
   const enemyChips: HandTargetChip[] = enemies
@@ -36,6 +45,7 @@ export function handTargets(
       cr: enemy.cr,
       conditions: enemy.conditions,
       ...(edges?.[enemy.id] ? { edge: edges[enemy.id] } : {}),
+      ...featured(enemy.id, enemy.type),
       note: [
         enemy.knockedOut ? "knocked out" : enemy.regenerating ? (enemy.regenerating.stopped ? "down, dies at its turn" : "down, regenerates at its turn") : enemy.health,
         edges?.[enemy.id]?.cover ? `${edges[enemy.id].cover === 2 ? "half" : "3/4"} cover` : null,
@@ -56,6 +66,7 @@ export function handTargets(
       ac: effectiveAcFor(entry),
       conditions: entry.conditions,
       ...(edges?.[entry.id] ? { edge: edges[entry.id] } : {}),
+      ...featured(entry.id),
       note: `${entry.currentHp}/${effectiveMaxHp(entry)} hp`,
     }));
   const party: HandTargetChip[] = living

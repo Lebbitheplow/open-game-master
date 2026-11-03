@@ -277,7 +277,7 @@ await test("The screens hand the GM seat a dominated hero's Hand, its Do and its
   assert.match(composer, /runsDominated=\{gmDominated\}/);
   const hand = read("app/campaigns/[campaignId]/Hand.tsx");
   assert.match(hand, /runsDominated && !reactionsOnly \? gmTurnDominated\(sheets, turnId, encounter\.sides\)/);
-  assert.match(hand, /handTargets\(encounter\.enemies, sheets, sheet\?\.id, edges, encounter\.sides\)/);
+  assert.match(hand, /handTargets\(encounter\.enemies, sheets, sheet\?\.id, edges, encounter\.sides[,)]/);
   const view = read("app/campaigns/[campaignId]/SessionView.tsx");
   assert.match(view, /const gmDominated = gmCompanions && hostOffers\(capabilities, "gmDominatedTurns"\)/);
   assert.match(view, /heldHero && turnSheet\?\.id === heldHero\.id/, "the box opens on the dominated hero's turn");

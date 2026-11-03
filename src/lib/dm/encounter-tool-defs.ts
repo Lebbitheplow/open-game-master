@@ -52,6 +52,12 @@ export const startEncounterTool: ToolDef = {
           },
         },
         summary: { type: "string", description: "One line on what this fight is." },
+        absent: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "Those too far away to reach it in a few rounds, or unaware of it; behind a door is NOT absent. They roll no initiative and get no place in the order and no token until request_roll kind=initiative brings them in. Someone close but out of sight hears the fight, rolls initiative now and acts on their own turn. Omit it when everyone is near.",
+        },
         ambush: {
           type: "string",
           enum: ["enemies", "party"],
@@ -74,7 +80,7 @@ export const startEncounterTool: ToolDef = {
           type: "integer",
           minimum: 5,
           description:
-            "Feet from the party to the nearest enemy as the fight opens, when the story has said. 5 for a foe at arm's length, 10 for one two paces off, 30 across a room. The battle map places them there. Omit it and an ambush or a fight indoors opens 30 feet apart, anything else across the field.",
+            "Feet from the party to the nearest enemy as the fight opens, when the story has said. 5 for a foe at arm's length, 10 for one two paces off, 30 across a room. The battle map places them there, or as far off as it holds and the result says so. Omit it and an ambush or a fight indoors opens 30 feet apart, anything else across the field.",
         },
         lair: {
           type: "boolean",

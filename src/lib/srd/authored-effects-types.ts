@@ -385,11 +385,17 @@ export type ReactionDoes =
   // `reflect`: with that feature held, the damage prevented strikes the
   // attacker (Spirit Shield with Vengeful Ancestors).
   | { kind: "reduce"; amount: Formula | "half" | "slot5" | "psionic_int" | "ward"; who: "self" | "ally" | "either"; rangeFt?: number; types?: string[]; reflect?: { feature: string; type: string } }
-  // A bonus to AC (or the Bardic Inspiration die) against the last hit.
-  | { kind: "ac_vs_hit"; amount: number | "bardic" }
+  // A bonus to AC (the Bardic Inspiration die, or the holder's Charisma modifier,
+  // at least 1) against the last hit. `rangeFt`: it may cover an ally that near.
+  // `strikeOnMiss`: a miss it causes lets the holder attack the attacker.
+  | { kind: "ac_vs_hit"; amount: number | "bardic" | "cha"; rangeFt?: number; strikeOnMiss?: boolean }
   // The attack that hit is rolled again at disadvantage. `notVsAdvantage`:
   // not against an attack rolled with advantage (Shadowy Dodge).
-  | { kind: "disadv_vs_hit"; notVsAdvantage?: boolean }
+  // `allyWith`: holding this feature, it may also answer a hit on an ally within
+  // `rangeFt` (Improved Flare). `advantageOnMiss`: a miss gives the holder
+  // advantage on their next attack roll against the attacker before the end
+  // of their next turn (Entropic Ward; authored-hooks.ts reads the mark).
+  | { kind: "disadv_vs_hit"; notVsAdvantage?: boolean; allyWith?: string; rangeFt?: number; advantageOnMiss?: boolean }
   // Resistance to the last hit's damage when it is one of these types.
   | { kind: "resist_instance"; types: string[]; who: "either"; rangeFt: number }
   // The holder takes the hit an ally in range took.
@@ -401,15 +407,26 @@ export type ReactionDoes =
   // Damage back at a creature: the attacker, or the named enemy.
   | {
       kind: "strike_back";
+      // It answers a save a creature made, not a hit: no record says who forced a
+      // save, so no card offers it, and the call names the creature.
+      afterSave?: boolean;
       amount: Formula;
       type: string;
+      // Or this type, the holder's choice (Wrath of the Storm: "lightning or
+      // thunder damage (your choice)"): the one named after the feature, else
+      // whichever the creature's defenses let more of through.
+      orType?: string;
       melee?: boolean;
       rangeFt?: number;
       save?: { ability: Ability; dcAbility: Ability | "spell"; half?: boolean; onFail?: string; damageRegardless?: boolean };
     }
+  // The damage a hit dealt another creature, back at whoever dealt it, on a
+  // save for half (Rebuke the Violent). `rangeFt`: how near the attacker is.
+  | { kind: "echo_hit"; type: string; rangeFt: number; save: { ability: Ability; dcAbility: Ability | "spell" } }
   // One weapon attack with the reaction (the holder's own, or an ally's
   // when the feature belongs to someone else in the party).
-  | { kind: "attack"; rangeFt: number; onHitCondition?: { name: string; rounds: number } }
+  // `vowed`: only at the creature under the holder's Vow of Enmity, once it has attacked.
+  | { kind: "attack"; rangeFt: number; onHitCondition?: { name: string; rounds: number }; vowed?: boolean }
   // The creature saves or gains a condition (Beguiling Defenses, Raging Storm).
   | { kind: "save_condition"; save: Ability; dcAbility: Ability | "spell"; condition: string; rounds?: number; variants?: Record<string, string> }
   // The holder gains a condition (Tokens of the Departed's soul trinket).

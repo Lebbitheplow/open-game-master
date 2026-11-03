@@ -196,13 +196,13 @@ export const PARTY_ADJUDICATIONS: CatalogEntry[] = [
     summary: "Adds or removes coin; a negative number spends it.",
     fields: [
       { name: "characterId", label: "Character", kind: "character", required: true },
-      { name: "delta", label: "Change in gold", kind: "number", required: true, min: -100000, max: 100000 },
+      { name: "delta", label: "Change in gold", kind: "number", min: -100000, max: 100000 },
       {
         name: "coins",
         label: "Or in coins",
         kind: "text",
-        placeholder: "340 sp",
-        help: "Overrides the amount above; the sign of the change still says gain or spend.",
+        placeholder: "-5 sp",
+        help: "Overrides the amount above. Start with - to spend or + to gain.",
       },
       {
         name: "additional",

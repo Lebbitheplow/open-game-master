@@ -28,7 +28,9 @@ export type PreparedFit =
 
 // Each row resolved once, the way start_encounter resolves it, then judged
 // against the party fighting now (src/lib/dm/party-budget.ts).
-export function preparedFit(campaign: Campaign, rows: TemplateEnemy[]): PreparedFit {
+// `levels`: the party at the fight, when start_encounter's absent leaves
+// someone out of it (issue 740); the whole fighting party otherwise.
+export function preparedFit(campaign: Campaign, rows: TemplateEnemy[], levels: number[] = partyLevelsFor(campaign)): PreparedFit {
   const authors = spellAuthorsFor(campaign);
   const resolved: ResolvedEnemyRequest[] = [];
   for (const row of rows) {
@@ -38,7 +40,6 @@ export function preparedFit(campaign: Campaign, rows: TemplateEnemy[]): Prepared
     }
     resolved.push(outcome.resolved[0]);
   }
-  const levels = partyLevelsFor(campaign);
   const byRow = new Map(rows.map((row, index) => [row.monster, resolved[index]]));
   const judge = (shaped: TemplateEnemy[]) => {
     const budget = rosterBudget(

@@ -458,7 +458,7 @@ export function handleBuyItem(campaign: Campaign, rawArguments: string, at: Trad
   const paid = addCopper(purse, -total);
   const items = grantItemMath(sheet.equipment, line.itemName, args.qty, line.srdName ? { srdName: line.srdName } : {});
   // Strength x 15 pounds is all a character can carry (src/lib/dm/load-rules.ts).
-  const tooHeavy = capacityProblem(sheet, items.equipment, line.itemName, paid.purse.gold);
+  const tooHeavy = capacityProblem(sheet, items.equipment, line.itemName, paid.purse);
   if (tooHeavy) {
     return { ...tooHeavy, error: `${tooHeavy.error} Nothing was bought.` };
   }

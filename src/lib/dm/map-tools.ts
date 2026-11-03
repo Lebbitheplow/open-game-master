@@ -1,6 +1,7 @@
 import { readiedHeld } from "@/lib/dm/readied-kinds";
 import { carriedLight, lightPlacement } from "@/lib/dm/light-timers";
 import { getClock } from "@/lib/db/clock";
+import { getDatabase } from "@/lib/db/core";
 import type { Campaign } from "@/lib/db/campaigns";
 import {
   getActiveBoard,
@@ -29,7 +30,7 @@ import {
 } from "@/lib/db/battle-maps";
 import { planTeleportFx } from "@/lib/battlemap/fx-plan";
 import { publishFx } from "@/lib/dm/fx";
-import { generateBattleMap, fnv1a } from "@/lib/battlemap/generate";
+import { generateBattleMap, fnv1a, spotsForTokens, tilesBetweenSides } from "@/lib/battlemap/generate";
 import { findPath, squeezedAt, walkPathWithBudget } from "@/lib/battlemap/movement";
 import { coverBetween, hasLineOfSight } from "@/lib/battlemap/los";
 import { footprintLookup, occupiedTiles } from "@/lib/battlemap/view";
@@ -118,47 +119,64 @@ export function createBattleMapForEncounter(
   // One side caught the other unawares: the board opens close
   // (battlemap/generate.ts CLOSE_OPENING_TILES) unless distanceFeet said.
   ambush = false,
-): { map: BattleMap; formation: string } | null {
+): { map: BattleMap; formation: string; distance?: string } | null {
   const location = getCurrentLocation(campaign.id);
+  const askedTiles = distanceFeet ? Math.max(1, Math.round(distanceFeet / TILE_FEET)) : undefined;
   const generated = generateBattleMap({
     seed: fnv1a(encounter.id),
     scene: scene ?? location?.ambience?.bed ?? null,
     pcCount: sheets.length,
     enemyCount: enemies.length,
-    enemyDistanceTiles: distanceFeet ? Math.max(1, Math.round(distanceFeet / 5)) : undefined,
+    enemyDistanceTiles: askedTiles,
     ambush,
   });
-  const map = createBattleMap({
-    encounterId: encounter.id,
-    campaignId: campaign.id,
-    width: generated.width,
-    height: generated.height,
-    terrain: generated.terrain,
-    ambient: generated.ambient,
-    theme: generated.theme,
-    lights: generated.lights,
-    seed: fnv1a(encounter.id),
-  });
+  // Every token's tile is settled before anything is written, and the map and
+  // its tokens are written together: a failure leaves no board without its
+  // tokens (issue 741).
+  const taken = new Set<number>();
+  const partySpots = spotsForTokens(generated, generated.pcSpawns, sheets.length, taken);
+  const enemySpots = spotsForTokens(generated, generated.enemySpawns, enemies.length, taken);
   // The party stands by its travel formation: the front of it nearest the
   // enemy, or the rear when they came from behind (formation-logic.ts).
-  const formation = placeByFormation(sheets, generated.pcSpawns, generated.enemySpawns, getParty(campaign.id).marchingOrder, from);
-  placeTokens(map.id, campaign.id, [
-    ...sheets.map((sheet) => ({
-      kind: "pc" as const,
-      refId: sheet.id,
-      name: sheet.name,
-      spot: formation.spots.get(sheet.id) ?? generated.pcSpawns[0],
-      ...carriedLightFields(campaign.id, sheet),
-    })),
-    ...enemies.map((enemy, index) => ({
-      kind: "enemy" as const,
-      refId: enemy.id,
-      name: enemy.displayName,
-      spot: generated.enemySpawns[index] ?? generated.enemySpawns[0],
-    })),
-  ]);
+  const formation = placeByFormation(sheets, partySpots, enemySpots, getParty(campaign.id).marchingOrder, from);
+  const map = getDatabase().transaction(() => {
+    const created = createBattleMap({
+      encounterId: encounter.id,
+      campaignId: campaign.id,
+      width: generated.width,
+      height: generated.height,
+      terrain: generated.terrain,
+      ambient: generated.ambient,
+      theme: generated.theme,
+      lights: generated.lights,
+      seed: fnv1a(encounter.id),
+    });
+    placeTokens(created.id, campaign.id, [
+      ...sheets.map((sheet) => ({
+        kind: "pc" as const,
+        refId: sheet.id,
+        name: sheet.name,
+        spot: formation.spots.get(sheet.id) ?? partySpots[0],
+        ...carriedLightFields(campaign.id, sheet),
+      })),
+      ...enemies.map((enemy, index) => ({
+        kind: "enemy" as const,
+        refId: enemy.id,
+        name: enemy.displayName,
+        spot: enemySpots[index],
+      })),
+    ]);
+    return created;
+  })();
   publishBattleMapUpdate(campaign.id);
-  return { map, formation: formation.line };
+  // The tool promises the board places them at the distance asked, so a
+  // distance past the board's edge is said out loud: range and movement run
+  // on the tiles, and a GM narrating 200 feet would misread both.
+  const apart = askedTiles && partySpots.length && enemySpots.length ? tilesBetweenSides(partySpots, enemySpots) : undefined;
+  const distance = askedTiles && apart !== undefined && apart < askedTiles
+    ? `This board cannot hold ${distanceFeet} feet: the nearest enemy stands ${apart * TILE_FEET} feet from the party on it. Range and movement go by the board, so narrate them that far off.`
+    : undefined;
+  return { map, formation: formation.line, ...(distance ? { distance } : {}) };
 }
 
 // ---- teleports and set_movement ----

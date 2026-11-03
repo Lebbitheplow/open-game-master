@@ -11,7 +11,8 @@
 // faces, the total, the AC it met), the damage each hit rolled and its type,
 // whether the attack was ranged, who made it, and the character as they
 // stood before the first swing (hit points, temporary hit points, a beast
-// form's pool, the death track, conditions, Relentless Endurance, and the
+// form's pool, the death track, conditions, Relentless Endurance, Undying
+// Sentinel, and the
 // concentration the hit may have broken with the effects that went with
 // it). src/lib/dm/reaction-refund.ts turns a corrected outcome back into
 // state from it.
@@ -69,6 +70,12 @@ export type SwingRecord = {
   // target standing when it landed (reaction-refund.ts). Absent on a natural
   // 20, which is critical whatever the target.
   ordinary?: { raw: number; parts?: Array<{ amount: number; type: string }> };
+  // A critical the natural 20 alone made: the blow without its critical
+  // dice, from the same roll (encounter-logic.ts ordinaryOfCritical). A
+  // reaction that rolls the attack again and keeps a lower d20 that still
+  // hits lands this instead (plainOfReroll). Absent on any other swing and on
+  // records written before it.
+  plain?: { raw: number; parts?: Array<{ amount: number; type: string }> };
   // The advantage the swing would have had against the target standing, when
   // it lay at 0 and that changed the roll (SRD 5.1, Unconscious: attack rolls
   // against it have advantage). A reaction that leaves them standing when it
@@ -108,6 +115,8 @@ export type VitalsSnapshot = {
   // Relentless Rage's uses since the last rest, which raise its DC: given
   // back with the drop that spent one. Absent on records written before it.
   relentlessRage?: number | null;
+  // Undying Sentinel's uses spent, for the same refund.
+  undyingSentinel?: number | null;
   // An abjurer's Arcane Ward's hit points, which take a blow first; null
   // with no ward raised. Absent on records written before it.
   ward?: number | null;
@@ -181,6 +190,21 @@ export function rerollAttacker(record: LastHit): RollAttacker | null {
 export function attackerFoeId(record: Pick<LastHit, "attacker"> | null | undefined): string | null {
   const attacker = record?.attacker;
   return attacker && (attacker.kind === "enemy" || attacker.kind === "sheet") && attacker.id ? attacker.id : null;
+}
+
+// A swing rolled again (Warding Flare, Shadowy Dodge, Protection) whose kept
+// d20 still hits: a critical the natural 20 alone made is no longer one when
+// the d20 kept is not a 20, and the blow lands without its critical dice (SRD
+// 5.1, Critical Hits: "If the d20 roll for an attack is a 20"). A record
+// written before the plain blow was kept stays as it was.
+export function plainOfReroll(swing: SwingRecord, kept: number): SwingRecord {
+  if (!swing.crit || kept === 20 || !swing.plain) {
+    return swing;
+  }
+  const { plain, ...rest } = swing;
+  const next: SwingRecord = { ...rest, crit: false, raw: plain.raw };
+  delete next.parts;
+  return plain.parts ? { ...next, parts: plain.parts } : next;
 }
 
 // The hit swing a one-attack reaction answers (Uncanny Dodge, Deflect
@@ -578,6 +602,7 @@ export function snapshotVitals(campaignId: string, sheet: CharacterSheet): Vital
     deathSaves: sheet.deathSaves ?? null,
     relentless: relentless ? { max: relentless.max, used: relentless.used } : null,
     relentlessRage: sheet.resources?.relentless_rage?.used ?? null,
+    undyingSentinel: sheet.resources?.sub_undying_sentinel?.used ?? null,
     ward: wardHpOf(sheet),
     concentratingOn: sheet.concentratingOn ?? null,
     held: concentrationHeld(campaignId, sheet),
@@ -649,6 +674,7 @@ export function openLastHit(campaignId: string, characterId: string) {
         ranged?: boolean;
         attack?: string;
         ordinary?: SwingRecord["ordinary"];
+        plain?: SwingRecord["plain"];
         standingAdvantage?: Advantage;
         flags?: BlowFlags;
       },
@@ -669,6 +695,7 @@ export function openLastHit(campaignId: string, characterId: string) {
         ...(result.hit && result.parts?.length ? { parts: result.parts } : {}),
         ...(result.ranged !== undefined ? { ranged: result.ranged } : {}),
         ...(result.hit && result.ordinary ? { ordinary: result.ordinary } : {}),
+        ...(result.hit && result.crit && result.plain ? { plain: result.plain } : {}),
         ...(result.hit && result.standingAdvantage && result.standingAdvantage !== result.advantage ? { standingAdvantage: result.standingAdvantage } : {}),
         ...(result.hit && Object.keys(flags).length ? { flags: flags as BlowFlags } : {}),
         ...(concentration ? { concentration } : {}),

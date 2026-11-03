@@ -12,6 +12,7 @@ import type { DmTurn } from "@/lib/db/dm-turns";
 import { patchEnemyConditions } from "@/lib/db/encounters";
 import { restoreOwnForm } from "@/lib/db/enemy-form";
 import { recordEncounterSummary } from "@/lib/dm/encounter-summary-store";
+import { atTheFight } from "@/lib/dm/fight-away-logic";
 import { getBattleMapForEncounter, removeTokenByRef } from "@/lib/db/battle-maps";
 import { publishEphemeral, publishPersisted, publishWithSeq } from "@/lib/events";
 import { closeFallenFoes } from "@/lib/dm/party-bonds";
@@ -27,7 +28,7 @@ import { BURNING_OIL_DAMAGE, COVERED_IN_OIL, oilCatches } from "@/lib/srd/gear-w
 import { enemyDefenseLines } from "@/lib/dm/enemy-defenses";
 import { authoredIgnoresResistance } from "@/lib/dm/authored-saves";
 import { isKnockedOut, knockedOutConditions } from "@/lib/dm/knockout";
-import { endConditionsHeldBy } from "@/lib/dm/enemy-conditions";
+import { endConditionsHeldBy, endVowsOn } from "@/lib/dm/enemy-conditions";
 import { enemyHpCap, hasTrait, REGENERATION_STOPPED, regenerationOf } from "@/lib/dm/monster-abilities";
 import { absorbs } from "@/lib/dm/monster-traits";
 import { fallsRegenerating, regeneratingDown } from "@/lib/dm/regeneration";
@@ -172,7 +173,8 @@ export function finishEncounter(
   // The dead take no share: what the fight was worth is split among those
   // who lived through it. Only the party's side earns it: a character who
   // fought against the party has no share in beating itself.
-  const earners = sheets.filter((sheet) => !(getSheetById(sheet.id) ?? sheet).deathSaves?.dead && sheetSide(encounter, sheet.id) === "party");
+  // Nor does a character who never came (issue 740).
+  const earners = atTheFight(encounter, sheets).filter((sheet) => !(getSheetById(sheet.id) ?? sheet).deathSaves?.dead && sheetSide(encounter, sheet.id) === "party");
   const xpEach = earners.length ? Math.floor((totalXp * share) / earners.length) : 0;
   let xpResult: Record<string, unknown> = {};
   if (xpEach > 0) {
@@ -345,6 +347,10 @@ export function applySheetFoeBlow(
   holdVictory = false,
 ): Record<string, unknown> {
   const landed = applySheetFoeDamage(campaign, turn, view, blow);
+  const vows = landed.down || landed.dead ? endVowsOn(campaign, view.id) : [];
+  if (vows.length) {
+    landed.vowEnded = vows;
+  }
   if ((landed.down || landed.dead) && !holdVictory) {
     Object.assign(landed, autoEndOnVictory(campaign, turn, encounter, sheets, sheetsById));
   }
@@ -562,6 +568,10 @@ export function applyEnemyDamage(
     const freed = endConditionsHeldBy(campaign, enemy.id);
     if (freed.length) {
       base.released = `${freed.join("; ")}: no longer held by ${updated.displayName}.`;
+    }
+    const vows = endVowsOn(campaign, enemy.id);
+    if (vows.length) {
+      base.vowEnded = vows;
     }
   }
   // Damage the acting creature deals the one that swallowed it, from

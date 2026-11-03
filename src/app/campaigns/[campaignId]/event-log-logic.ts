@@ -3,6 +3,7 @@ import type { CharacterEvent } from "@/lib/db/character-events";
 import type { ClockTurn } from "@/lib/db/clock-moves";
 import type { TurnChangeView } from "@/lib/db/turn-changes";
 import { quietTick } from "@/lib/sheet-audit-logic";
+import { COPPER_PER_GOLD, formatPrice } from "@/lib/srd/currency";
 
 // What the event log lists and which turns it offers to revert. Pure, so a
 // suite reads it without a browser (scripts/test-event-log-logic.mjs). The
@@ -165,6 +166,7 @@ export function describeKnownEntry(entry: { kind: string; delta: Delta }, name: 
           : `${name}'s ${form} form takes ${amount(delta.amount) ?? "some"} damage${amount(delta.beastHp) !== null ? ` (${amount(delta.beastHp)} beast HP)` : ""}`;
       }
       if (delta.relentlessEndurance) return `${name} holds on at 1 HP (Relentless Endurance)`;
+      if (delta.undyingSentinel) return `${name} holds on at 1 HP (Undying Sentinel)`;
       if (delta.relentlessRage) return `${name} holds on at 1 HP (Relentless Rage)`;
       if (delta.deathWard) return `${name} holds on at 1 HP (Death Ward)`;
       const type = word(delta.type);
@@ -198,9 +200,17 @@ export function describeKnownEntry(entry: { kind: string; delta: Delta }, name: 
     }
     case "modify_gold": {
       const change = amount(delta.delta);
-      const purse = amount(delta.gold);
+      const copper = amount(delta.copper);
+      const purse = amount(delta.purseCopper);
+      const held = purse !== null ? formatPrice(purse) : amount(delta.gold) !== null ? `${amount(delta.gold)} gp` : null;
+      const after = held ? ` (${held})` : "";
+      // Five silver spent was "gains 0 gold": the whole-gold figure rounds a
+      // part of a gold piece away, and the copper it came from is recorded.
+      if (copper !== null && copper % COPPER_PER_GOLD !== 0) {
+        return `${name} ${copper >= 0 ? "gains" : "loses"} ${formatPrice(Math.abs(copper))}${after}`;
+      }
       if (change === null) return `${name}'s purse changes`;
-      return `${name} ${change >= 0 ? "gains" : "loses"} ${Math.abs(change)} gold${purse !== null ? ` (${purse} gp)` : ""}`;
+      return `${name} ${change >= 0 ? "gains" : "loses"} ${Math.abs(change)} gold${after}`;
     }
     case "grant_item":
       return `${name} receives ${item}${times(qty)}`;

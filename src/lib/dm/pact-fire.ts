@@ -10,6 +10,7 @@ import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { d20Expression } from "@/lib/dice";
 import { computeSheetDerived } from "@/lib/srd";
+import { addCopper, formatPrice, purseCopper } from "@/lib/srd/currency";
 import { passiveScore } from "@/lib/dm/check-tools";
 import { moveToSide } from "@/lib/dm/combat-sides";
 import { fightingParty } from "@/lib/dm/party-budget";
@@ -235,18 +236,22 @@ function theft(campaign: Campaign, turnId: string, thief: CharacterSheet, party:
       return { exposed: false, line: `${thief.name} took ${loot.sheet.name}'s ${row.name} in the night.` };
     }
   }
-  const purse = [...party].sort((a, b) => b.gold - a.gold)[0];
-  if (purse && purse.gold > 0) {
-    patchSheet(purse.id, { gold: 0 });
+  // The fullest purse by all its coin, and all of it goes: sorting and
+  // taking the gold alone left the silver behind and passed over a purse of
+  // only silver.
+  const purse = [...party].sort((a, b) => purseCopper(b) - purseCopper(a))[0];
+  const taken = purse ? purseCopper(purse) : 0;
+  if (purse && taken > 0) {
+    patchSheet(purse.id, { gold: 0, copper: 0 });
     const fresh = getSheetById(thief.id) ?? thief;
-    patchSheet(fresh.id, { gold: fresh.gold + purse.gold });
+    patchSheet(fresh.id, addCopper(fresh, taken).purse);
     for (const id of [purse.id, thief.id]) {
       const updated = getSheetById(id);
       if (updated) {
         publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
       }
     }
-    return { exposed: false, line: `${thief.name} took ${purse.name}'s purse (${purse.gold} gp) in the night.` };
+    return { exposed: false, line: `${thief.name} took ${purse.name}'s purse (${formatPrice(taken)}) in the night.` };
   }
   return { exposed: false, line: `${thief.name} went through the party's packs and found nothing worth taking.` };
 }

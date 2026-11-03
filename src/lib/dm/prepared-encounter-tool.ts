@@ -6,6 +6,8 @@ import { getPreparedMap } from "@/lib/db/prepared-maps";
 import { describeExtras, formatRoster, rosterSummary, savedMapNote } from "@/lib/dm/encounter-template-logic";
 import { preparedFit } from "@/lib/dm/prepared-fit";
 import { fightingParty } from "@/lib/dm/party-budget";
+import { atTheFight, resolveAwayNames, withFollowers } from "@/lib/dm/fight-away-logic";
+import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { applyTemplateExtras, applyTemplateMap } from "@/lib/dm/template-apply";
 import { firedEventsBlock, firedEventsNote } from "@/lib/dm/fight-events";
 import type { ToolDef } from "@/lib/dm/encounter-tool-defs";
@@ -80,6 +82,11 @@ export const runPreparedEncounterTool: ToolDef = {
           minimum: 5,
           description: "How far the nearest enemy stands as it opens, when the story has said.",
         },
+        absent: {
+          type: "array",
+          items: { type: "string" },
+          description: "Those not at it, as for start_encounter.",
+        },
       },
       required: ["name"],
     },
@@ -108,6 +115,15 @@ export function preparedFightsBlock(campaign: Campaign): string {
   });
   const more = ready.length > LISTED ? `\n(${ready.length - LISTED} more are prepared; run any by its exact name.)` : "";
   return `Prepared fights (secret; the table's prep. When the story reaches one, start it with ${RUN_PREPARED_ENCOUNTER} rather than inventing a roster):\n${lines.join("\n")}${more}`;
+}
+
+// The sheets an `absent` names with what goes with them, read as
+// start_encounter reads it; none when it names nobody it can place, which
+// start_encounter then refuses.
+function awayIdsAsked(absent: unknown, party: CharacterSheet[]): string[] {
+  const names = typeof absent === "string" ? [absent] : Array.isArray(absent) ? absent.filter((name): name is string => typeof name === "string") : [];
+  const away = names.length ? resolveAwayNames(names, party) : null;
+  return away && "ids" in away ? withFollowers(away.ids, party) : [];
 }
 
 function findTemplate(campaignId: string, name: string): EncounterTemplate | null {
@@ -148,8 +164,12 @@ export function runPreparedEncounter(
     };
   }
   // With nobody to fight it there is no party to fit it to: start_encounter
-  // says so itself.
-  const fit = fightingParty(campaign).length ? preparedFit(campaign, template.enemies) : ({ kind: "fits" } as const);
+  // says so itself, as it does of a name in absent that fits nobody. The fit
+  // is to who is at the fight: measured against someone away, it ran whole
+  // and start_encounter refused it as too deadly, which this tool cannot cut.
+  const party = fightingParty(campaign);
+  const here = atTheFight({ awayIds: awayIdsAsked(args.absent, party) }, party);
+  const fit = here.length ? preparedFit(campaign, template.enemies, here.map((sheet) => sheet.level)) : ({ kind: "fits" } as const);
   if (fit.kind === "unknown" || fit.kind === "held") {
     setTemplateCued(template.id, false);
     return {
@@ -169,6 +189,9 @@ export function runPreparedEncounter(
       ...(args.ambush ? { ambush: args.ambush } : {}),
       ...(args.surprised ? { surprised: args.surprised } : {}),
       ...(typeof args.distanceFeet === "number" ? { distanceFeet: args.distanceFeet } : {}),
+      // Who it goes on without (issue 740), checked there: without it a
+      // prepared fight staged someone the story has far away.
+      ...(args.absent !== undefined && args.absent !== null ? { absent: args.absent } : {}),
     }),
   );
   if (typeof started.error === "string") {

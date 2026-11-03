@@ -10,7 +10,7 @@ import { handleLairAction, handleLegendaryAction, handleLegendaryResist, legenda
 import { declareIntentTool, handleDeclareIntent } from "@/lib/dm/intent-tools";
 import { canonicalCondition } from "@/lib/dm/mutations";
 import { conditionNameRefusal } from "@/lib/dm/set-condition";
-import { instancesOf, pruneMeta, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { instancesOf, pruneMeta, wakesOnDamage, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { petrifiedRefusal } from "@/lib/dm/damage-logic";
 import { AI_BIND_REFUSAL, AI_CLEAR_REFUSAL, bindsCreature, engineKept } from "@/lib/dm/ai-boundary";
 import { rollEnemySave } from "@/lib/dm/forced-save";
@@ -240,14 +240,16 @@ function handleEnemyCondition(
       }
     }
     const source = (args.sourceCharacterId ?? args.sourceEnemyId ?? "").trim();
+    const wakes = wakesOnDamage(wanted, enemy.currentHp);
     const incoming =
-      args.rounds || (args.saveAbility && args.saveDc) || source
+      args.rounds || (args.saveAbility && args.saveDc) || source || wakes
         ? {
             ...(source ? { source } : {}),
             ...(args.rounds ? { rounds: args.rounds } : {}),
             ...(args.saveAbility && args.saveDc
               ? { saveEnds: { ability: args.saveAbility, dc: args.saveDc } }
               : {}),
+            ...(wakes ? { endsOnDamage: true } : {}),
           }
         : undefined;
     const laid = layEnemyConditionInstance(campaign, enemy, wanted, incoming);
@@ -267,6 +269,7 @@ function handleEnemyCondition(
             duration: `until it succeeds on a ${args.saveAbility.toUpperCase()} save (DC ${args.saveDc}), re-rolled automatically at the end of each of its turns`,
           }
         : {}),
+      ...(wakes ? { wakes: "Any damage wakes it, and the server ends it then." } : {}),
     };
   }
 

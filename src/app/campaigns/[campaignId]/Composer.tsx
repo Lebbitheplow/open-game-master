@@ -100,6 +100,7 @@ function ComposerInner({
   multiCharacter,
   romanceCue = true,
   edges,
+  feet,
   drops,
   mounts,
   genre,
@@ -170,6 +171,9 @@ function ComposerInner({
   // The board's cover and flanking from this character to each enemy, for
   // the Hand's hit preview (src/lib/battlemap/view-tactics.ts).
   edges?: Record<string, TargetEdge>;
+  // How far each creature on the board stands from this character, for the
+  // reactions with a reach (PlayerMapView.feet).
+  feet?: Record<string, number>;
   // What lies on the board and who rides what, for the Hand's gear cards.
   drops?: PlayerMapView["drops"];
   mounts?: PlayerMapView["mounts"];
@@ -358,6 +362,7 @@ function ComposerInner({
             composerRef={composerRef}
             trackAmmo={trackAmmo}
             edges={edges}
+            feet={feet}
             drops={drops}
             mounts={mounts}
             genre={genre}

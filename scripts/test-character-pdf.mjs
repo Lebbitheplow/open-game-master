@@ -39,6 +39,21 @@ const sheet = createSheetSchema.parse({
   features: [{ name: "Second Wind", source: "class", level: 1 }],
 });
 
+// The purse prints whole: the field held String(gold), so 3 gp 4 sp 7 cp
+// printed "3", and a library character saved before copper was kept still
+// prints its gold.
+await test("the purse prints all its coin, and a sheet with no copper prints its gold", async () => {
+  const texts = async (purse) => {
+    const doc = await PDFDocument.load(await buildCharacterSheetPdf(libraryToPdfCharacter({ name: sheet.name, race: sheet.race, class: sheet.class, subclass: "", background: "soldier", level: 1, sheet: { ...sheet, ...purse } })));
+    return doc.getForm().getFields().map((field) => (typeof field.getText === "function" ? field.getText() : ""));
+  };
+  assert.ok((await texts({ gold: 3, copper: 47 })).includes("3 gp 4 sp 7 cp"));
+  const old = { ...sheet, gold: 50 };
+  delete old.copper;
+  const doc = await PDFDocument.load(await buildCharacterSheetPdf(libraryToPdfCharacter({ name: sheet.name, race: sheet.race, class: sheet.class, subclass: "", background: "soldier", level: 1, sheet: old })));
+  assert.ok(doc.getForm().getFields().some((field) => typeof field.getText === "function" && field.getText() === "50 gp"));
+});
+
 await test("a fighter builds to a PDF with a fillable form", async () => {
   const character = libraryToPdfCharacter({
     name: sheet.name,

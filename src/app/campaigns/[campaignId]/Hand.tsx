@@ -139,6 +139,7 @@ function HandInner({
   trackAmmo,
   leaving,
   edges,
+  feet,
   drops,
   mounts,
   genre,
@@ -169,6 +170,9 @@ function HandInner({
   // The board's verdict from this character to each enemy (cover, flanking),
   // keyed by enemy id; absent off the map.
   edges?: Record<string, TargetEdge>;
+  // How far each creature on the board stands from this character, in feet
+  // (PlayerMapView.feet): a reaction whose reach a hit lies beyond is not dealt.
+  feet?: Record<string, number>;
   // What lies on the board, and who rides what (issue #424): the gear cards'
   // Pick up and Dismount.
   drops?: PlayerMapView["drops"];
@@ -239,15 +243,15 @@ function HandInner({
   );
   const reactions = useMemo(
     // Under the monsters' hand the hero hit is named, as the others are.
-    () => (sheet && turn ? holdSentReactions(reactionCards(sheet, turn, hits ?? [], sheets, reactionsOnly ? sheet.name : "you"), reactionsSent, sheet.id) : []),
-    [sheet, turn, hits, sheets, reactionsOnly, reactionsSent],
+    () => (sheet && turn ? holdSentReactions(reactionCards(sheet, turn, hits ?? [], sheets, reactionsOnly ? sheet.name : "you", feet, encounter.lastSaves), reactionsSent, sheet.id) : []),
+    [sheet, turn, hits, sheets, reactionsOnly, reactionsSent, feet, encounter.lastSaves],
   );
   // A player's other characters hit while this one acts (a person playing
   // several heroes), and the companions they play: their reactions too, each
   // card naming its hero.
   const othersReactions = useMemo(
     () =>
-      sheet && hits?.length
+      sheet && (hits?.length || encounter.lastSaves?.length)
         ? holdSentReactions(
             offTurnReactionCards(
               [
@@ -257,8 +261,9 @@ function HandInner({
                 sheet: other,
                 turn: turnFromEncounter(encounter, other, { myTurn: false, currentName: floorName }),
               })),
-              hits,
+              hits ?? [],
               sheets,
+              encounter.lastSaves,
             ),
             reactionsSent,
             sheet.id,
@@ -349,8 +354,8 @@ function HandInner({
   );
 
   const targets = useMemo<HandTargetChip[]>(
-    () => handTargets(encounter.enemies, sheets, sheet?.id, edges, encounter.sides),
-    [encounter.enemies, sheets, sheet?.id, edges, encounter.sides],
+    () => handTargets(encounter.enemies, sheets, sheet?.id, edges, encounter.sides, { round: encounter.round, orderReady: encounter.orderReady, order: encounter.order }),
+    [encounter.enemies, sheets, sheet?.id, edges, encounter.sides, encounter.round, encounter.orderReady, encounter.order],
   );
   const enemyTargets = useMemo(() => targets.filter((target) => target.kind === "enemy"), [targets]);
   const partyTargets = useMemo(() => targets.filter((target) => target.kind !== "enemy"), [targets]);

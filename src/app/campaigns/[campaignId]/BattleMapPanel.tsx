@@ -65,6 +65,7 @@ import { SkyLayer } from "@/components/SkyLayer";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { characterPlaceholder, monsterPlaceholder, npcPlaceholder } from "@/lib/placeholders";
 import { usePaintedMap } from "@/app/campaigns/[campaignId]/usePaintedMap";
+import { useDocked, useShortWindow } from "@/app/campaigns/[campaignId]/useDocked";
 import {
   FieldDie,
   InitiativeRail,
@@ -273,6 +274,8 @@ export function BattleMapPanel({
     [faceOfRef],
   );
   const [enlarged, setEnlarged] = useState(false);
+  const docked = useDocked();
+  const shortWindow = useShortWindow();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [pointing, setPointing] = useState(false);
@@ -1260,6 +1263,18 @@ export function BattleMapPanel({
     }
   }
 
+  // Below the docked layout the board has no margin for the order to stand in,
+  // so it takes a row above the board. An addon's own view keeps its list on
+  // the frame: that view lays out its own board.
+  const orderAbove = !docked && !addonViewport;
+  const orderAboveBoard = orderAbove && !scene && encounter ? (
+    <InitiativeRail above encounter={encounter} round={view.round} faceOf={faceOfEntry} onOpen={() => setOrderOpen(true)} />
+  ) : null;
+  // On a phone on its side that row would come off a board already short, so
+  // the order shares a row that is there anyway: the tools, or for a player
+  // the heading. The native battlefield draws neither, so it keeps its own.
+  const orderInRow = shortWindow && !nativeBattlefieldActive;
+
   // The painted picture is one canvas, and a DOM node sits in one place: the
   // board on screen carries it (the open tabletop covers the panel). Both
   // boards drawing it let the tabletop take it and close with it, leaving
@@ -1503,7 +1518,7 @@ export function BattleMapPanel({
       {/* The chrome of the stage (BoardChrome.tsx), fixed to the frame so it
           stays put while the camera moves under it. */}
       {!nativeHudActive ? <>
-      {!scene && encounter ? (
+      {!scene && encounter && !orderAbove ? (
         <InitiativeRail
           namesOnly={addonViewport}
           encounter={encounter}
@@ -1721,6 +1736,7 @@ export function BattleMapPanel({
             </>
           )}
         </h3>
+        {orderInRow && !canDirect ? orderAboveBoard : null}
         <div className="flex items-center gap-1">
           {playerTools}
           <button
@@ -1735,17 +1751,23 @@ export function BattleMapPanel({
         </div>
       </div> : null}
       {canDirect && !nativeBattlefieldActive ? (
-        <BoardToolRail
-          tool={tool}
-          onTool={(next) => {
-            setTool(next);
-            setHeld(null);
-            setTeleporting(null);
-            setMeasureOrigin(null);
-          }}
-          disabled={busy}
-        />
+        <div className="flex items-center gap-2">
+          {orderInRow ? orderAboveBoard : null}
+          <div className="min-w-0 flex-1">
+            <BoardToolRail
+              tool={tool}
+              onTool={(next) => {
+                setTool(next);
+                setHeld(null);
+                setTeleporting(null);
+                setMeasureOrigin(null);
+              }}
+              disabled={busy}
+            />
+          </div>
+        </div>
       ) : null}
+      {orderInRow ? null : orderAboveBoard}
       {gridWith(enlarged ? null : painted)}
       {canDirect && tool === "place" && !nativeBattlefieldActive ? (
         <PlaceTokenForm
@@ -1861,6 +1883,7 @@ export function BattleMapPanel({
                     On a narrow phone the strip scrolls rather than pushing
                     the close off the edge: it is the only way back. */}
                 <div className="flex min-w-0 items-center gap-2 overflow-x-auto">
+                  {orderInRow ? orderAboveBoard : null}
                   <PlayAsStrip
                     campaignId={campaignId}
                     sheets={sheets}
@@ -1879,6 +1902,7 @@ export function BattleMapPanel({
             <div className="cine-tabletop-body">
               {chronicle}
               <div className="flex min-w-0 flex-1 flex-col gap-2">
+                {orderInRow ? null : orderAboveBoard}
                 <div className="cine-board-frame">{gridWith(enlarged ? painted : null, true)}</div>
                 {underBoard}
               </div>

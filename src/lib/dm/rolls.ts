@@ -12,6 +12,7 @@ import {
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { heldHelp } from "@/lib/dm/help-logic";
 import { encumbranceCovers, encumbranceFor } from "@/lib/srd/encumbrance";
+import { purseCoins } from "@/lib/srd/currency";
 import { conditionRollRiders } from "@/lib/srd/condition-effects";
 import {
   defenseRiders,
@@ -448,7 +449,7 @@ export function resolveRollExpression(
       ? encumbranceFor({
           strength: sheet.abilities.str,
           equipment: sheet.equipment ?? [],
-          coins: sheet.gold ?? 0,
+          coins: purseCoins({ gold: sheet.gold ?? 0, copper: sheet.copper ?? 0 }),
         })
       : null;
   const overloaded =

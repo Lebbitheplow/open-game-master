@@ -16,6 +16,8 @@ import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { canAct, type ActKind } from "@/lib/dm/can-act";
+import { reactionRefusal } from "@/lib/dm/reaction-gate";
+import { withHitAim } from "@/lib/dm/last-hit";
 import { freshBudget, spendAction } from "@/lib/dm/action-budget";
 import { castSpell } from "@/lib/dm/cast-guard";
 import type { MessageIntent } from "@/lib/dm/intent-logic";
@@ -112,9 +114,20 @@ export function intentRefusal(
     }
   }
   const encounter = getActiveEncounter(campaign.id);
-  const able = canAct({ sheet, encounter, kind: kindOf(intent) });
-  if (!able.ok) {
-    return able.error;
+  // A reaction is asked as use_reaction asks it (reaction-gate.ts), of the hit
+  // its card answers: one that answers the blow that dropped them, or is
+  // taken as they drop (Necrotic Husk, Stone's Endurance), is open to a hero
+  // at 0, where a bare canAct refused every card a fallen hero's Hand offers.
+  if (intent.card === "reaction") {
+    const refused = withHitAim(intent.hit, () => reactionRefusal(campaign.id, sheet, encounter, intent.feature ?? "The reaction"));
+    if (refused) {
+      return refused.error;
+    }
+  } else {
+    const able = canAct({ sheet, encounter, kind: kindOf(intent) });
+    if (!able.ok) {
+      return able.error;
+    }
   }
   // A reaction (Uncanny Dodge, Shield) needs the reaction the fight still
   // holds for them; the spend function says so in the engine's words.

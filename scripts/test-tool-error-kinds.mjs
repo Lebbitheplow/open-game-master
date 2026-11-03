@@ -509,7 +509,7 @@ await test("a reaction the rules know that the character lacks is the rules, bef
   const world = await openWorld();
   const kara = world.addHero(fighter({ level: 5 }));
   await fightDummies(world, 1, { heroFaces: { [kara.id]: 20 } });
-  for (const feature of ["Riposte", "Warding Flare", "Hellish Rebuke"]) {
+  for (const feature of ["Riposte", "Infectious Inspiration", "Hellish Rebuke"]) {
     expect(await aiEncounter(world, "use_reaction", { characterId: kara.id, feature }), "rules", /no reaction called|cannot cast spells/);
   }
   expect(await aiEncounter(world, "use_reaction", { characterId: kara.id, feature: "Uncany Dodge" }), "retry", /Kara's features are/);

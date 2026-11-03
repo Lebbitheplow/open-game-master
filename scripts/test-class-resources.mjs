@@ -186,7 +186,11 @@ test("the passive defs are the ones something else spends", () => {
   // (src/lib/dm/caster-features.ts). The Arcane Ward's pool and its
   // raised-today mark are kept by the abjuration cast and the damage path.
   // Psionic Recovery is spent by its authored spend, which returns a die.
-  assert.deepEqual(passive, ["relentless_endurance", "inspiration", "relentless_rage", "signature_spell_1", "signature_spell_2", "overchannel", "sub_psionic_recovery", "sub_arcane_ward", "sub_arcane_ward_raised"]);
+  // Glorious Defense is spent by its reaction, when a hit offers it.
+  // Undying Sentinel is burned by the damage path, as Relentless Endurance is.
+  // Warding Flare, Wrath of the Storm, Entropic Ward and Illusory Self are spent by
+  // their reactions, when a hit offers them.
+  assert.deepEqual(passive, ["relentless_endurance", "inspiration", "relentless_rage", "signature_spell_1", "signature_spell_2", "overchannel", "sub_psionic_recovery", "sub_warding_flare", "sub_wrath_of_the_storm", "sub_entropic_ward", "sub_illusory_self", "sub_glorious_defense", "sub_undying_sentinel", "sub_arcane_ward", "sub_arcane_ward_raised"]);
 });
 
 test("Relentless Endurance spends once, then refuses", () => {
@@ -283,7 +287,6 @@ test("a cost matches the text that names it", () => {
 // the book's own (2014 rules).
 test("the costs the authored summaries got wrong are the books'", () => {
   const books = {
-    art_eldritch_cannon: "action", // Tasha's: an action creates it, a bonus action activates it
     sub_call_the_hunt: "none", // Tasha's: used when entering the rage
     sub_eyes_of_night: "action",
     sub_shadow_lore: "action",
