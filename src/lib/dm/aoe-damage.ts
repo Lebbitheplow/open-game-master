@@ -28,6 +28,7 @@ import { charmedBy } from "@/lib/dm/enemy-profile";
 import { planAoeSpell, type AoeSpellPlan } from "@/lib/dm/aoe-spell";
 import { freeRepeatOf, markRepeatStruck, repeatStrikesProblem } from "@/lib/dm/area-casting";
 import { aoePool } from "@/lib/dm/spell-pool";
+import { commanderOf } from "@/lib/dm/companion-command";
 import { spellConditionMeta } from "@/lib/dm/spell-effects";
 import { afterEnemySave, concentrationShaken, layAreaConditions, spellAutoSave, spellSaveOptions } from "@/lib/dm/spell-riders";
 import { applyEnemyDamage, publishEncounter, resolveEnemyRef } from "@/lib/dm/enemy-damage";
@@ -685,12 +686,13 @@ export function handleAoeDamage(
     : [];
 
   // Casting an area spell is the character's action, not their whole turn:
-  // a human caster may still move or use a bonus action, so only end_turn
-  // advances past them. Companion casters resolve here so the auto-act
-  // backstop cannot act them a second time.
+  // a caster a person plays, a commanded companion included, may still move
+  // or use a bonus action, so only end_turn advances past them (issue 761).
+  // A companion the GM plays resolves here so the auto-act backstop cannot
+  // act it a second time.
   if (args.casterCharacterId) {
     const caster = resolveSheetRef(args.casterCharacterId, sheets, sheetsById);
-    if (caster?.isCompanion && !turn.resolvedCharacterIds.includes(caster.id)) {
+    if (caster?.isCompanion && !commanderOf(campaign, caster) && !turn.resolvedCharacterIds.includes(caster.id)) {
       turn.resolvedCharacterIds.push(caster.id);
     }
   }

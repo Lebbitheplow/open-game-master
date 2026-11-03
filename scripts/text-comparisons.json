@@ -1359,7 +1359,6 @@
     "lib/dm/encounter-tools.ts#str-eq": [["key",9,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/encounter-tools.ts#str-includes": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/encounter-tools.ts#toLowerCase": [["key",1,"condition labels (engine vocabulary)"]],
-    "lib/dm/encounter-tools.ts#str-list": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/enemy-actions-view.ts#toUpperCase": [["display",2,"ability abbreviation shown"]],
     "lib/dm/enemy-actions-view.ts#str-key": [["key",1,"ability ids to their names, shown"]],
     "lib/dm/enemy-actions.ts#toLowerCase": [["key",1,"condition labels (engine vocabulary)"]],
