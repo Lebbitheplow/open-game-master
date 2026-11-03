@@ -45,7 +45,7 @@ import { noneNamed, toolError, type ToolError, type ToolResult } from "@/lib/dm/
 import { swallowCoverError } from "@/lib/dm/swallow";
 import { spentSlotRefusal } from "@/lib/dm/cast-rules";
 import { textKey } from "@/lib/language/text-logic";
-import { isConditionNamed } from "@/lib/srd/feature-names";
+import { isConditionNamed, holdsFeature } from "@/lib/srd/feature-names";
 
 type Found = { reaction: AuthoredReaction; held: HeldAuthored; holder: CharacterSheet; variant: string };
 
@@ -321,7 +321,17 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       return { ...struck, applied: `AC ${swing.vsAc} + ${bonus} turns the ${swing.total} into a miss: ${settled.given} hit points come back. HP ${settled.hp}.` };
     }
     case "disadv_vs_hit": {
-      const hit = lastHitOn(ctx, ctx.sheet, label);
+      const named = allyOf(ctx);
+      const covered = named && does.allyWith ? named : ctx.sheet;
+      if (covered.id !== ctx.sheet.id) {
+        if (!holdsFeature(ctx.sheet, does.allyWith!)) {
+          return { error: `${reaction.name} covers only ${ctx.sheet.name} until they hold ${does.allyWith}. Nothing was spent.`, refused: "rules" };
+        }
+        if (does.rangeFt && encounter && !withinFeet(encounter.id, ctx.sheet.id, covered.id, does.rangeFt)) {
+          return { error: `${covered.name} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
+        }
+      }
+      const hit = lastHitOn(ctx, covered, label);
       if ("error" in hit) return hit;
       const swing = hit.record.swings[hit.index];
       if (swing.natural === null) {
@@ -340,10 +350,12 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       const total = swing.total - swing.natural + kept;
       const missed = kept !== 20 && (kept === 1 || total < swing.vsAc);
       if (!missed) {
+        // Answered all the same: the reaction is spent on it.
+        settle(ctx, hit.record, hit.record.swings, label);
         return { applied: `Rolled again at disadvantage: ${total} against AC ${swing.vsAc} still hits.` };
       }
       const settled = settle(ctx, hit.record, hit.record.swings.map((entry, at) => (at === hit.index ? { ...entry, hit: false, raw: 0 } : entry)), label);
-      return { applied: `Rolled again at disadvantage: ${total} against AC ${swing.vsAc} misses, and ${settled.given} hit points come back. HP ${settled.hp}.` };
+      return { ...(does.onMiss ? { onMiss: does.onMiss } : {}), applied: `Rolled again at disadvantage: ${total} against AC ${swing.vsAc} misses, and ${settled.given} hit points come back. HP ${settled.hp}.` };
     }
     case "resist_instance": {
       const target = allyOf(ctx) ?? ctx.sheet;
@@ -485,6 +497,11 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
         Object.assign(out, applyEnemyDamage(ctx.campaign, ctx.turn, encounter, enemy, amount, ctx.sheets, ctx.sheetsById, does.type, { magical: true }));
         publishEncounter(ctx.campaign.id);
       }
+      // A reaction to one melee hit answers that hit: its card goes, and a reaction
+      // back at a later turn's start cannot answer it again.
+      if (does.melee && record) {
+        settle(ctx, record, record.swings, label);
+      }
       return out;
     }
     case "attack": {
@@ -621,6 +638,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       const hit = lastHitOn(ctx, target, label);
       if ("error" in hit) return hit;
       const settled = settle(ctx, hit.record, hit.record.swings.map((entry, at) => (at === hit.index ? { ...entry, hit: false, raw: 0 } : entry)), label);
+      if (!does.exhaustion) {
+        return { applied: `The attack misses: ${settled.given} hit points come back to ${target.name}. HP ${settled.hp}.` };
+      }
       const now = getSheetById(ctx.sheet.id) ?? ctx.sheet;
       const updated = patchSheet(now.id, { exhaustion: Math.min(6, (now.exhaustion ?? 0) + does.exhaustion) });
       if (updated) {

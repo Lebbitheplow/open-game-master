@@ -203,7 +203,8 @@
    "ability": "wis",
    "recharge": "long",
    "action": "reaction",
-   "guidance": "A reaction imposing disadvantage on one attack roll, against the cleric and, from 6th level, an ally within 30 feet."
+   "guidance": "Not spent with use_resource: use_reaction 'Warding Flare' when an attack hits the cleric or, with Improved Flare, a creature within 30 feet. The attack is rolled again at disadvantage.",
+   "passive": true
   },
   {
    "id": "sub_wrath_of_the_storm",
@@ -215,12 +216,8 @@
    "ability": "wis",
    "recharge": "long",
    "action": "reaction",
-   "guidance": "A reaction dealing 2d8 lightning or thunder damage to a creature that hit the cleric in melee, halved on a Dexterity save.",
-   "fx": {
-    "kind": "enemy_save",
-    "save": "dex",
-    "dice": "2d8"
-   }
+   "guidance": "Not spent with use_resource: use_reaction 'Wrath of the Storm' when a creature hits the cleric in melee. It takes 2d8 lightning, halved on a Dexterity save.",
+   "passive": true
   },
   {
    "id": "sub_war_priest",
@@ -760,7 +757,8 @@
    "ability": null,
    "recharge": "short",
    "action": "reaction",
-   "guidance": "A reaction imposing disadvantage on an attack; if it then misses, the warlock has advantage on their next attack against that creature."
+   "guidance": "Not spent with use_resource: use_reaction 'Entropic Ward' when an attack hits the warlock. The attack is rolled again at disadvantage; if it then misses, the warlock has advantage on their next attack against that creature, which the GM applies.",
+   "passive": true
   },
   {
    "id": "sub_healing_light",
@@ -1137,7 +1135,8 @@
    "ability": null,
    "recharge": "short",
    "action": "reaction",
-   "guidance": "A reaction interposing an illusory duplicate so an attack that would hit misses instead."
+   "guidance": "Not spent with use_resource: use_reaction 'Illusory Self' when an attack hits the wizard. An illusory duplicate takes it, and the attack misses.",
+   "passive": true
   },
   {
    "id": "sub_benign_transposition",

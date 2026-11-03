@@ -391,7 +391,9 @@ export type ReactionDoes =
   | { kind: "ac_vs_hit"; amount: number | "bardic" | "cha"; rangeFt?: number; strikeOnMiss?: boolean }
   // The attack that hit is rolled again at disadvantage. `notVsAdvantage`:
   // not against an attack rolled with advantage (Shadowy Dodge).
-  | { kind: "disadv_vs_hit"; notVsAdvantage?: boolean }
+  // `allyWith`: holding this feature, it may also answer a hit on an ally within
+  // `rangeFt` (Improved Flare). `onMiss`: what a miss earns, in words the GM applies.
+  | { kind: "disadv_vs_hit"; notVsAdvantage?: boolean; allyWith?: string; rangeFt?: number; onMiss?: string }
   // Resistance to the last hit's damage when it is one of these types.
   | { kind: "resist_instance"; types: string[]; who: "either"; rangeFt: number }
   // The holder takes the hit an ally in range took.

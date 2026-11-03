@@ -188,7 +188,9 @@ test("the passive defs are the ones something else spends", () => {
   // Psionic Recovery is spent by its authored spend, which returns a die.
   // Glorious Defense is spent by its reaction, when a hit offers it.
   // Undying Sentinel is burned by the damage path, as Relentless Endurance is.
-  assert.deepEqual(passive, ["relentless_endurance", "inspiration", "relentless_rage", "signature_spell_1", "signature_spell_2", "overchannel", "sub_psionic_recovery", "sub_glorious_defense", "sub_undying_sentinel", "sub_arcane_ward", "sub_arcane_ward_raised"]);
+  // Warding Flare, Wrath of the Storm, Entropic Ward and Illusory Self are spent by
+  // their reactions, when a hit offers them.
+  assert.deepEqual(passive, ["relentless_endurance", "inspiration", "relentless_rage", "signature_spell_1", "signature_spell_2", "overchannel", "sub_psionic_recovery", "sub_warding_flare", "sub_wrath_of_the_storm", "sub_entropic_ward", "sub_illusory_self", "sub_glorious_defense", "sub_undying_sentinel", "sub_arcane_ward", "sub_arcane_ward_raised"]);
 });
 
 test("Relentless Endurance spends once, then refuses", () => {

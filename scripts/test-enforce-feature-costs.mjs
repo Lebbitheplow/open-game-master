@@ -41,7 +41,7 @@ const hexblade = world.addHero({
   abilities: { cha: 16 },
   spellcasting: casting("cha", { 1: [2, 0] }, { known: ["Wrathful Smite"] }),
 });
-const cleric = world.addHero({ class: "cleric", subclass: "Light Domain", level: 3, abilities: { wis: 16 } });
+const cleric = world.addHero({ class: "cleric", subclass: "Grave Domain", level: 6, abilities: { wis: 16 } });
 const chronurgist = world.addHero({
   class: "wizard",
   subclass: "Chronurgy Magic",
@@ -110,12 +110,12 @@ await test("a spend with no roll reaches the table with the new count", async ()
 
 await test("a reaction feature spends the reaction, on the character's turn or off it", async () => {
   await stage(hexblade);
-  const flare = await spend(cleric, "Warding Flare");
+  const flare = await spend(cleric, "Sentinel at Death's Door");
   assert.equal(flare.ok, true, flare.error);
   assert.equal(flare.result.cost, "their reaction");
   assert.ok(world.encounter().reactionsUsed.includes(cleric.id));
-  await refusedUnchanged(world, cleric.id, () => spend(cleric, "Warding Flare"), "a second reaction off their turn");
-  assert.equal(used(cleric, "sub_warding_flare"), 1);
+  await refusedUnchanged(world, cleric.id, () => spend(cleric, "Sentinel at Death's Door"), "a second reaction off their turn");
+  assert.equal(used(cleric, "sub_sentinel_at_deaths_door"), 1);
 
   kit.giveTurn(chronurgist.id);
   const shift = await spend(chronurgist, "Chronal Shift");
@@ -132,7 +132,7 @@ await test("a reaction feature spends the reaction, on the character's turn or o
 
   // The reaction comes back when their next turn starts.
   kit.giveTurn(cleric.id);
-  const again = await spend(cleric, "Warding Flare");
+  const again = await spend(cleric, "Sentinel at Death's Door");
   assert.equal(again.ok, true, again.error);
 });
 
@@ -143,7 +143,7 @@ await test("a refused spend costs nothing and tells the table nothing, whatever 
   // before anything is written.
   for (const [who, name, id] of [
     [hexblade, "Hexblade's Curse", "sub_hexblades_curse"],
-    [cleric, "Warding Flare", "sub_warding_flare"],
+    [cleric, "Sentinel at Death's Door", "sub_sentinel_at_deaths_door"],
   ]) {
     world.patch(who.id, { resources: { ...world.sheet(who.id).resources, [id]: { ...world.sheet(who.id).resources[id], used: world.sheet(who.id).resources[id].max } } });
     const budget = world.encounter().turnBudget;
@@ -168,7 +168,7 @@ await test("every spend that rolls nothing reaches the table", async () => {
   assert.equal(updatesSince(world.campaignId, seq).at(-1)?.turn?.bonusUsed, true, "use_resource");
 
   seq = lastSeq(world.campaignId);
-  const flare = await spend(cleric, "Warding Flare");
+  const flare = await spend(cleric, "Sentinel at Death's Door");
   assert.equal(flare.ok, true, flare.error);
   assert.ok(updatesSince(world.campaignId, seq).at(-1)?.reactionsUsed?.includes(cleric.id), "a reaction feature");
 
@@ -240,19 +240,19 @@ await test("a reaction feature is refused to the surprised and the unconscious, 
   await stage(hexblade);
   const live = world.encounter();
   encounters.saveEncounter({ ...live, round: 1, surprisedIds: [cleric.id] });
-  const surprised = await spend(cleric, "Warding Flare");
+  const surprised = await spend(cleric, "Sentinel at Death's Door");
   assert.match(String(surprised.error), /surprised/);
-  assert.equal(used(cleric, "sub_warding_flare"), 0);
+  assert.equal(used(cleric, "sub_sentinel_at_deaths_door"), 0);
 
   // Down since an earlier hit: no reaction at all.
   encounters.saveEncounter({ ...world.encounter(), surprisedIds: [] });
   world.patch(cleric.id, { currentHp: 0, conditions: ["unconscious"] });
-  await refusedUnchanged(world, cleric.id, () => spend(cleric, "Warding Flare"), "an unconscious cleric");
+  await refusedUnchanged(world, cleric.id, () => spend(cleric, "Sentinel at Death's Door"), "an unconscious cleric");
   world.patch(cleric.id, { currentHp: world.sheet(cleric.id).maxHp, conditions: [] });
 
   // Slowed: no reactions at all.
   world.patch(cleric.id, { conditions: ["slowed"] });
-  const slowed = await spend(cleric, "Warding Flare");
+  const slowed = await spend(cleric, "Sentinel at Death's Door");
   assert.match(String(slowed.error), /cannot take reactions/);
   world.patch(cleric.id, { conditions: [] });
 });

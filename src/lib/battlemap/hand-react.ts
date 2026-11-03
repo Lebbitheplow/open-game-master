@@ -382,7 +382,9 @@ function reactionRules(does: ReactionDoes): string {
     case "redirect":
       return "The hit lands on the creature beside you instead.";
     case "force_miss":
-      return `The hit becomes a miss, for ${does.exhaustion} level${does.exhaustion === 1 ? "" : "s"} of exhaustion.`;
+      return does.exhaustion
+        ? `The hit becomes a miss, for ${does.exhaustion} level${does.exhaustion === 1 ? "" : "s"} of exhaustion.`
+        : "The hit becomes a miss.";
     default:
       return "";
   }
@@ -415,11 +417,12 @@ function subclassReactions(
             (does.kind === "resist_instance" && typed(does.types)) ||
             does.kind === "redirect" ||
             does.kind === "force_miss" ||
-            (does.kind === "strike_back" && !does.afterSave && Boolean(hit.attackerId))
+            (does.kind === "strike_back" && !does.afterSave && Boolean(hit.attackerId) && !(does.melee && hit.ranged))
           : (does.kind === "reduce" && does.who !== "self" && typed(does.types)) ||
             does.kind === "take_for_ally" ||
             (does.kind === "ac_vs_hit" && Boolean(does.rangeFt)) ||
             (does.kind === "echo_hit" && Boolean(hit.attackerId)) ||
+            (does.kind === "disadv_vs_hit" && Boolean(does.allyWith) && holdsFeature(sheet, does.allyWith!)) ||
             (does.kind === "resist_instance" && typed(does.types));
       if (!answers) continue;
       const rules = reactionRules(does);
