@@ -5,7 +5,8 @@ import { BEST_EFFORT_NOTE, BEST_EFFORT_SHORT } from "@/lib/content/reading-logic
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { bonusCastOf, casterStateProblem, componentProblem, focusProblem, materialPlan, slotPlan, turnCharge } from "@/lib/dm/cast-rules";
 import { computeSheetDerived, spellAttackFor, spellSaveDcFor } from "@/lib/srd";
-import { counterSpendCards, playedAsSpendCard } from "@/lib/battlemap/hand-subclass";
+import { counterSpendCards, pickLabel, playedAsSpendCard } from "@/lib/battlemap/hand-subclass";
+import { nameChoice } from "@/lib/srd/feature-names";
 import { heldAtWill, resourceDef, resourceLevel, type ResourceDef } from "@/lib/srd/class-resources";
 import { psionicOptions } from "@/lib/dm/option-costs";
 import { ACTION_SURGED } from "@/lib/dm/action-budget";
@@ -474,8 +475,10 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
       type = "ward";
       target = "self";
     } else if (effect.kind === "condition" || effect.kind === "buff") {
-      dice = effect.condition;
-      condition = effect.condition;
+      // A feature with variants names none on its face: the player picks.
+      const variants = effect.kind === "buff" && Boolean(effect.variants?.length);
+      dice = variants ? "" : effect.condition;
+      condition = variants ? "" : effect.condition;
       type = "ward";
       target = effect.kind === "buff" && effect.target === "ally" ? "ally" : "self";
     } else if (effect.kind === "inspire") {
@@ -527,6 +530,17 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
       spent: false,
       compose,
       pool: id,
+      // The engine refuses these without a variant, so a card with none sent the
+      // GM a sentence that named no choice while its face showed the first one.
+      ...(effect.kind === "buff" && effect.variants?.length
+        ? {
+            choice: {
+              arg: "variant",
+              label: "Choose",
+              options: effect.variants.map((value) => ({ value, label: pickLabel(nameChoice(value) ?? value) })),
+            },
+          }
+        : {}),
       intent:
         cost === "reaction"
           ? { card: "reaction", feature: def.displayName }

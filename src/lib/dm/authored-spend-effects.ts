@@ -231,7 +231,10 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
         return quarry;
       }
       let patch: FullPatchSheetInput | undefined;
-      if (!does.target || does.target === "self" || (does.target === "ally" && !ctx.args.targetCharacterId)) {
+      // An ally other than the holder has returned above, so "ally" here is the
+      // holder, named or not. Aimed at themselves from the Hand's "(you)" chip, it
+      // answered ok and landed nothing.
+      if (!does.target || does.target === "self" || does.target === "ally") {
         const kept = sheet.conditions.filter((entry) => textKey(entry) !== textKey(condition));
         patch = {
           conditions: [...kept, condition],
