@@ -1,4 +1,5 @@
 import { isKnockedOut } from "@/lib/dm/knockout";
+import { openSaves, type LastSave } from "@/lib/dm/last-save";
 import { defaultSide, type CombatSide } from "@/lib/dm/combat-sides-logic";
 import { sideOf } from "@/lib/dm/combatant";
 import { lairChoices, legendaryProfile } from "@/lib/dm/legendary-logic";
@@ -159,7 +160,13 @@ export type PublicEncounter = {
   // hit still open on each character, oldest first, while the engine would
   // accept a reaction to it. Absent keys mean nothing to answer.
   lastHits?: PublicLastHit[];
+  // The Intelligence, Wisdom and Charisma saves characters made this turn
+  // against a creature, for Vigilant Rebuke (src/lib/dm/last-save.ts). A
+  // forcer hidden from this viewer is left out.
+  lastSaves?: PublicSave[];
 };
+
+export type PublicSave = { id: string; characterId: string; ability: string; forcerId: string; forcer: string };
 
 export type PublicTurn = {
   ownerId: string;
@@ -335,7 +342,7 @@ function movementView(encounter: Encounter, enemy: EncounterEnemy, map: BattleMa
 export function publicEncounter(
   encounter: Encounter,
   enemies: EncounterEnemy[],
-  options: { enemyNumbers?: boolean; hiddenRefIds?: string[]; lastHits?: LastHit[] } = {},
+  options: { enemyNumbers?: boolean; hiddenRefIds?: string[]; lastHits?: LastHit[]; lastSaves?: LastSave[] } = {},
 ): PublicEncounter {
   const showNumbers = options.enemyNumbers === true;
   const board = showNumbers ? getBattleMapForEncounter(encounter.id) : null;
@@ -441,7 +448,15 @@ export function publicEncounter(
       ? { lastHits: options.lastHits.map((record) => lastHitView(record, hidden, showNumbers)) }
       : {}),
     ...sidesView(encounter, enemies, hidden, showNumbers),
+    ...savesView(options.lastSaves, hidden, showNumbers),
   };
+}
+
+function savesView(saves: LastSave[] | undefined, hidden: Set<string>, showNumbers: boolean): { lastSaves?: PublicSave[] } {
+  const shown = (saves ?? []).filter((save) => showNumbers || !hidden.has(save.forcer.id));
+  return shown.length
+    ? { lastSaves: shown.map((save) => ({ id: save.id, characterId: save.characterId, ability: save.ability, forcerId: save.forcer.id, forcer: save.forcer.name })) }
+    : {};
 }
 
 // The side exceptions every client draws, a domination's included.
@@ -532,6 +547,7 @@ export function activePublicEncounter(
   return publicEncounter(encounter, listEnemies(encounter.id), {
     ...options,
     lastHits,
+    lastSaves: openSaves(campaignId),
     hiddenRefIds: map ? listHiddenRefIds(map.id) : [],
   });
 }

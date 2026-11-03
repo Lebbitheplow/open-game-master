@@ -12,7 +12,7 @@
 //
 // Pure; scripts/test-hand-engine.mjs drives it.
 import { casterStateProblem, componentProblem, focusProblem } from "@/lib/dm/cast-rules";
-import type { PublicLastHit } from "@/lib/db/encounter-view";
+import type { PublicLastHit, PublicSave } from "@/lib/db/encounter-view";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { bundledSpellFacts } from "@/lib/srd/spell-facts";
 import { gateHolds, heldAuthored, type AuthoredReaction } from "@/lib/srd/authored-effects";
@@ -147,9 +147,10 @@ export function offTurnReactionCards(
   heroes: Array<{ sheet: CharacterSheet; turn: HandTurn }>,
   hits: PublicLastHit[],
   party: Array<Pick<CharacterSheet, "id" | "name">>,
+  saves: PublicSave[] = [],
 ): HandCard[] {
   return heroes.flatMap(({ sheet, turn }) =>
-    reactionCards(sheet, turn, hits, party, sheet.name).map((card) => ({
+    reactionCards(sheet, turn, hits, party, sheet.name, undefined, saves).map((card) => ({
       ...card,
       id: `${card.id}@${sheet.id}`,
       actor: { id: sheet.id, name: sheet.name },
@@ -207,6 +208,9 @@ export function reactionCards(
   // card the engine refused. Absent, every card is dealt and the engine
   // judges the reach.
   feet?: Record<string, number>,
+  // The Intelligence, Wisdom and Charisma saves made this turn against a
+  // creature (PublicEncounter.lastSaves), which Vigilant Rebuke answers.
+  saves: PublicSave[] = [],
 ): HandCard[] {
   const cards: HandCard[] = [];
   const answered = (hit: PublicLastHit, name: string) =>
@@ -281,6 +285,21 @@ export function reactionCards(
   if (vowed && holdsFeature(sheet, "soul of vengeance")) {
     for (const hit of hits.filter((entry) => entry.source === "attack" && entry.attackerId === vowed && inReach(feet, entry.attackerId, SOUL_OF_VENGEANCE_FT))) {
       feature(hit, "Soul of Vengeance", `${hit.attacker} attacked under your vow`, "A melee attack back at the creature under your vow.", "enemy");
+    }
+  }
+
+  // Vigilant Rebuke: a success by the character or one within its reach,
+  // and the creature that forced the save takes the damage.
+  for (const held of saveAnswers(sheet)) {
+    for (const save of saves) {
+      const saver = save.characterId === sheet.id ? self : party.find((entry) => entry.id === save.characterId)?.name;
+      if (!saver || (save.characterId !== sheet.id && !inReach(feet, save.characterId, held.rangeFt))) continue;
+      const id = `${textKey(held.name).replace(/\s+/g, "-")}:${save.id}`;
+      const card = base(id, held.name, `${saver === "you" ? "You" : saver} made the ${save.ability.toUpperCase()} save ${save.forcer} forced`, "enemy", { card: "reaction", feature: held.name }, {
+        rules: held.rules,
+        answers: { characterId: save.characterId, attackerId: save.forcerId, attacker: save.forcer },
+      });
+      cards.push(gated(card, standingGate(sheet, turn, "reaction"), costGate("reaction", turn, sheet, held.name)));
     }
   }
 
@@ -387,6 +406,20 @@ function reachAt(range: number | Array<[number, number]> | undefined, level: num
     if (level >= at) reach = value;
   }
   return reach;
+}
+
+// The reactions the character holds that answer a save (Vigilant Rebuke),
+// with their reach and their line.
+function saveAnswers(sheet: CharacterSheet): Array<{ name: string; rangeFt: number | undefined; rules: string }> {
+  const out: Array<{ name: string; rangeFt: number | undefined; rules: string }> = [];
+  for (const held of heldAuthored(sheet)) {
+    for (const reaction of held.entry.reactions ?? []) {
+      const does = reaction.does;
+      if (does.kind !== "strike_back" || !does.afterSave || (reaction.usedBy ?? "holder") !== "holder" || !gateHolds(reaction.gate, sheet, held)) continue;
+      out.push({ name: reaction.name, rangeFt: does.rangeFt, rules: `${does.type[0].toUpperCase()}${does.type.slice(1)} damage at the creature that forced the save.` });
+    }
+  }
+  return out;
 }
 
 // What a subclass reaction does, in a line for its card.

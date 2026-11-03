@@ -3,6 +3,7 @@ import { type Campaign } from "@/lib/db/campaigns";
 import type { TurnBudget } from "@/lib/dm/action-budget";
 import {
   getEncounter,
+  getEnemy,
   listEnemies,
   orderEntryId,
   patchEnemyConditions,
@@ -60,6 +61,14 @@ import { tableNoteSeq } from "@/lib/dm/narration-slot";
 // the road or over a night's rest (issue #30). Must not import
 // encounter-tools or enemy-damage (the imports point the other way, and the
 // clock path would close a cycle through map-tools).
+
+// The living enemy a condition instance names as its source
+// (condition-logic.ts instanceIdentity: "spell|source").
+function forcerOf(key: string) {
+  const source = key.split("|")[1];
+  const enemy = source ? getEnemy(source) : null;
+  return enemy && enemy.status === "alive" ? enemy : null;
+}
 
 export function tickEncounterConditions(campaign: Campaign, encounter: Encounter) {
   const lines: string[] = [];
@@ -526,6 +535,8 @@ function tickSheetConditions(
         due.dc,
         `${due.ability.toUpperCase()} save to end ${due.name}`,
         { against: listedAgainst(due.name) },
+        // The creature whose effect it is (its source), which forced it.
+        forcerOf(due.key),
       );
       // A carrier the save spent (an inspiration die) is gone from the
       // stored sheet; the conditions this tick writes back must not restore it.
