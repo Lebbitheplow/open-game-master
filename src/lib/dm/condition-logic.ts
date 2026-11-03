@@ -334,6 +334,16 @@ export function critOnlyWhileUnconscious(targetConditions: string[]): boolean {
   return has(targetConditions, ["unconscious"]) !== null && has(targetConditions, ["paralyzed"]) === null;
 }
 
+// Unconscious laid on a creature that still has hit points is sleep, and
+// every such sleep in SRD 5.1 (Sleep, Eyebite's Asleep, Symbol's Sleep, a
+// drow's poison) ends when the sleeper takes damage. Laid by set_condition
+// with a duration or a save and nothing else, a sleeper slept on through
+// every blow (issue 761). At 0 hit points it is the dying's, which damage
+// does not end.
+export function wakesOnDamage(condition: string, currentHp: number): boolean {
+  return condition === "unconscious" && currentHp > 0;
+}
+
 export function isIncapacitated(conditions: string[]): boolean {
   return has(conditions, INCAPACITATING) !== null;
 }
