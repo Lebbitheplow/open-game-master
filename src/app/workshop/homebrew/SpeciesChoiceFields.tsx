@@ -2,6 +2,7 @@
 
 import { ArrowDown, ArrowUp, Plus, X } from "lucide-react";
 import { useState } from "react";
+import { flushSync } from "react-dom";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
 import { NumberStepper } from "@/components/ui/NumberStepper";
@@ -226,6 +227,7 @@ export function SpeciesChoiceFields({ data, set }: Props) {
     putOptions([...options, { id, name }]);
     setFresh(id);
     setNewName("");
+    return id;
   };
   const baseAsi = raceMechanics({ asi: data.asi }).asi;
   return (
@@ -284,7 +286,20 @@ export function SpeciesChoiceFields({ data, set }: Props) {
       </ul>
       <div className="flex flex-wrap items-end gap-2">
         <TextField label="New option's name" value={newName} onChange={setNewName} placeholder="Ashen" maxLength={L.name} className="min-w-48 grow sm:grow-0" />
-        <button type="button" onClick={add} disabled={!name || full} className={cn(ui.btnSmall, addChip)}>
+        <button
+          type="button"
+          onClick={(event) => {
+            if (event.detail !== 0) return void add();
+            // Add turns itself off as the name clears, which drops the focus to
+            // the page. A keyboard goes on to the option it just opened; a tap
+            // stays put, as nothing there needs a phone's keyboard.
+            const row = event.currentTarget.closest("[data-species-choice]");
+            const id = flushSync(add);
+            row?.querySelector<HTMLElement>(`[data-species-option="${CSS.escape(id ?? "")}"] button`)?.focus();
+          }}
+          disabled={!name || full}
+          className={cn(ui.btnSmall, addChip)}
+        >
           <Plus className="size-3" /> Add option
         </button>
         <span className="pb-2 text-[11px] text-stone-400" data-species-option-count>

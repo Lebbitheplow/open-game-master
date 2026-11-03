@@ -106,8 +106,21 @@ export default {
         await eventually(() => addButton.evaluate((element) => element === document.activeElement), { timeoutMs: 5_000, label: `the focus on Add option, for ${name}` });
         await page.keyboard.press("Enter");
         await eventually(() => editor.locator(`[data-species-option="${name.toLowerCase()}"]`).count(), { timeoutMs: 10_000, label: `the option ${name}` });
+        // Add turns itself off as the name clears: the keyboard goes on to the
+        // option it just opened, on screen, not to the top of the page.
+        const opened = editor.locator(`[data-species-option="${name.toLowerCase()}"] button`).first();
+        await eventually(
+          () =>
+            opened.evaluate((element) => {
+              const box = element.getBoundingClientRect();
+              return element === document.activeElement && element.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2));
+            }),
+          { timeoutMs: 5_000, label: `the focus on the new option, after ${name}` },
+        );
       };
       await addOption("Ashen");
+      await untilStill(page);
+      await t.shot("option-added");
       // One option is not a choice: the editor says so and holds the save.
       const findings = editor.locator("ul.panel");
       await eventually(async () => /A choice holds 2 to 16 options; this one has 1\./.test(await findings.innerText()), { timeoutMs: 10_000, label: "the one-option refusal" });
