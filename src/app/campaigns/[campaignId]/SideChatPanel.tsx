@@ -295,7 +295,10 @@ function ThreadView({
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  // Whether the reader is at the newest line. A reader who scrolled back
+  // stays there when a line arrives; one at the end follows it.
+  const atEndRef = useRef(true);
   const lastSeqRef = useRef(0);
 
   const markRead = useCallback(
@@ -344,8 +347,12 @@ function ThreadView({
     }
   }, [thread.lastSeq, load]);
 
+  // The list scrolls itself and nothing else: scrollIntoView also moved every
+  // scroller up to the window, and it pulled a reader who had scrolled back
+  // to the end with each new line (the transcript's issue 760, here too).
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ block: "end" });
+    const list = listRef.current;
+    if (list && atEndRef.current) list.scrollTo({ top: list.scrollHeight });
   }, [messages.length]);
 
   async function send(event: FormEvent) {
@@ -369,6 +376,8 @@ function ThreadView({
         return;
       }
       setInput("");
+      // Your own line is always shown.
+      atEndRef.current = true;
       const message = data.message as SideMessage;
       setMessages((current) => [...current, message]);
       lastSeqRef.current = Math.max(lastSeqRef.current, message.seq);
@@ -397,7 +406,18 @@ function ThreadView({
         </p>
       ) : null}
 
-      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+      <div
+        ref={listRef}
+        onScroll={(event) => {
+          const list = event.currentTarget;
+          atEndRef.current = list.scrollHeight - list.scrollTop - list.clientHeight < 48;
+        }}
+        // Its own window on the thread: the chat tab's column has no height
+        // of its own to give (it scrolls as one with the whispers above), so
+        // an unbounded list grew the panel instead, and the newest line was
+        // reached only by moving the panel and the column around it.
+        className="min-h-0 max-h-[55dvh] flex-1 space-y-2 overflow-y-auto pr-1"
+      >
         {messages.map((message) => {
           const mine = message.authorUserId === meUserId;
           return (
@@ -418,7 +438,6 @@ function ThreadView({
             </div>
           );
         })}
-        <div ref={bottomRef} />
       </div>
 
       <form onSubmit={send} className="mt-2">
