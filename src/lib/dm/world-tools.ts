@@ -94,10 +94,10 @@ const MATERIALS: ObjectMaterial[] = [
 ];
 const SIZES: ObjectSize[] = ["tiny", "small", "medium", "large"];
 
-// Scarce water under the `supplies` variant (src/lib/dm/supplies.ts): what
-// the party can find from now on, kept until the DM says otherwise.
 const MEAL_NOTE = "A meal, when sent, names its source in at least 3 characters.";
 
+// Scarce water under the `supplies` variant (src/lib/dm/supplies.ts): what
+// the party can find from now on, kept until the DM says otherwise.
 const WATER_PROPERTY = {
   type: "string",
   enum: ["plenty", "half", "none"],

@@ -7,10 +7,10 @@ import type { CampaignClock, Instant } from "@/lib/dm/calendar";
 //
 // What comes back is what the moving itself changed (src/lib/db/clock.ts
 // advanceClock): the instant, the Wild Shapes whose hours ran out, the days
-// of food and water counted, a meal it brought, the hit dice window it closed, the diseases and
-// poisons it ran on, the downtime the days paid for, and the stretches
-// marched (travel records each after its move). What the world did
-// with the time (its weather, its calendar's events, a companion who left)
+// of food and water counted, a meal it brought, the hit dice window it
+// closed, the diseases and poisons it ran on, the downtime the days paid for,
+// and the stretches marched (travel records each after its move). What the
+// world did with the time (its weather, its calendar's events, a companion who left)
 // stays: the chapter rewind is what takes those back.
 
 export type RecordedClockMove = {
