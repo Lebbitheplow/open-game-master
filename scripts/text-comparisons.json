@@ -1112,6 +1112,7 @@
     "lib/dm/affliction-poisons.ts#toLowerCase": [["key",1,"condition label (engine vocabulary)"]],
     "lib/dm/afflictions.ts#str-eq": [["key",5,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/afflictions.ts#toUpperCase": [["display",6,"ability abbreviation shown in a roll note"]],
+    "lib/dm/after-roll-logic.ts#re-word": [["english-source",1,"the held die's condition name, which use_resource writes in English"]],
     "lib/dm/agent-turn.ts#str-eq": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/ai-boundary.ts#str-list": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/ai-boundary.ts#toLowerCase": [["key",1,"condition label (engine vocabulary)"]],

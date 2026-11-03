@@ -363,7 +363,7 @@ const SRD_RESOURCE_DEFS: ResourceDef[] = [
     recharge: "long",
     effect: { kind: "narrative" },
     guidance:
-      "Lucky (or Level Up's Fortunate): three luck points a long rest. One spent on their own attack roll, ability check or saving throw rolls an extra d20 and keeps the best (pc_attack luck: true, request_roll luck: true; the server spends the point), or on an attack made against them (use_reaction 'lucky' after the hit: the attacker's d20 is rolled again and the lower kept; no reaction is spent).",
+      "Lucky (or Level Up's Fortunate): three luck points a long rest. On their own ability check or saving throw the player chooses after they see the roll: request_roll offers it and waits, so do not spend it for them. On their attack roll, or when they say so before the roll, a point rolls an extra d20 and keeps the best (pc_attack luck: true, request_roll luck: true; the server spends the point), or on an attack made against them (use_reaction 'lucky' after the hit: the attacker's d20 is rolled again and the lower kept; no reaction is spent).",
   },
   {
     id: "ki_inner_resilience",
@@ -458,7 +458,7 @@ const SRD_RESOURCE_DEFS: ResourceDef[] = [
     action: "bonus",
     effect: { kind: "inspire", die: inspirationDie },
     guidance:
-      "The target keeps the inspiration die for up to 10 minutes and adds it to one ability check, attack roll, or saving throw. The server hands it to them and spends it on their next roll automatically. From bard 5 (Font of Inspiration) the uses come back on a short rest too.",
+      "The target keeps the inspiration die for up to 10 minutes and adds it to one ability check, attack roll, or saving throw. The server hands it to them. On a check or save from request_roll they choose after they see the roll: the server offers it and waits, so do not spend it for them. Any other d20 roll they make takes it automatically. From bard 5 (Font of Inspiration) the uses come back on a short rest too.",
   },
   {
     id: "wild_shape",

@@ -20,6 +20,7 @@
 //   - Primal Champion: +4 STR and CON, to 24.
 //   - Wholeness of Body, Survivor, Dark One's Own Luck, Channel Divinity
 //     options, Use Magic Device, Song of Rest, CON items and hit points.
+import { call } from "./lib/enforce-campaign.mjs";
 import assert from "node:assert/strict";
 import { openWorld } from "./lib/enforce-world.mjs";
 import { abilityMod, suite } from "./lib/enforce-harness.mjs";
@@ -321,10 +322,23 @@ await test("F:M17: Dark One's Own Luck adds a d10 to the warlock's next check or
   const warlock = world.addHero({ class: "warlock", subclass: "The Fiend", level: 6, abilities: { cha: 16 }, features: klass("warlock", "Dark One's Own Luck") });
   const spent = await world.invoke("use_resource", { characterId: warlock.id, resource: "Dark One's Own Luck" });
   assert.equal(spent.ok, true, spent.error);
-  world.dice(10, 7);
-  const saved = await world.invoke("request_roll", { characterId: warlock.id, kind: "saving_throw", ability: "wis", dc: 15, reason: "x" });
+  world.dice(2, 7);
+  await world.invoke("request_roll", { characterId: warlock.id, kind: "saving_throw", ability: "wis", dc: 9, reason: "x" });
+  // The warlock adds it after they see the roll (src/lib/dm/after-roll.ts).
+  const { listOpenPendingRolls, getPendingRoll } = await import("../src/lib/db/dm-turns.ts");
+  const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
+  const [waiting] = listOpenPendingRolls(world.campaignId);
+  world.signIn({ id: waiting.userId });
+  const chosen = await call(
+    await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]/after-roll"),
+    "POST",
+    { use: "own_luck" },
+    { campaignId: world.campaignId, pendingRollId: waiting.id },
+  );
+  assert.equal(chosen.status, 200);
   world.clearDice();
-  const d10 = saved.result.dice.find((term) => term.sides === 10);
+  const saved = listRecentRolls(world.campaignId, 40).find((roll) => roll.id === getPendingRoll(waiting.id).rollId);
+  const d10 = saved.breakdown.terms.find((term) => term.sides === 10);
   assert.equal(d10?.subtotal, 7, "the d10 rides the save");
   assert.ok(!world.sheet(warlock.id).conditions.some((name) => name.includes("own luck")), "the die is spent");
 });

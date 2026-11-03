@@ -129,7 +129,7 @@ export const LATE_RESOURCE_DEFS: ResourceDef[] = [
       target: "self",
     },
     guidance:
-      "The warlock adds a d10 to one ability check or saving throw. The server holds the die on them and adds it to their next check or save.",
+      "The warlock adds a d10 to one ability check or saving throw. On a check or save from request_roll the player chooses after they see the roll: the server offers it and waits, so there is nothing to call.",
   },
   {
     id: "hurl_through_hell",

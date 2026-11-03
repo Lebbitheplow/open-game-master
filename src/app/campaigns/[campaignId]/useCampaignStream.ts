@@ -1,5 +1,6 @@
 "use client";
 
+import type { ThrownRoll } from "@/lib/dm/after-roll-logic";
 import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import { isHaltedTurnNotice, type CampaignMember, type SessionUser } from "@/lib/campaign-types";
 import type { CoordinationPhase } from "@/lib/dm/coordination-logic";
@@ -89,6 +90,8 @@ export type PendingRoll = {
   advantage: string;
   dc: number | null;
   reason: string;
+  // The dice already thrown, waiting on the roller's after-the-roll choice.
+  thrown?: ThrownRoll | null;
   createdAt: string;
 };
 
