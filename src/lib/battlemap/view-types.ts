@@ -136,6 +136,12 @@ export type PlayerMapView = {
   // enemy's id: cover, flanking, reach, shooting in melee (view-tactics.ts).
   // Empty for the DM and for a viewer with no token.
   edges: Record<string, TargetEdge>;
+  // From the viewer's own character to every creature on the board they can
+  // see, in feet, keyed by the creature's id: the Hand offers a reaction with
+  // a reach (Glorious Defense's 10 feet, Rebuke the Violent's 30) only when
+  // the creature is inside it. Absent for the DM, a viewer with no token, and
+  // older hosts, which offer every reaction as before.
+  feet?: Record<string, number>;
   tokenHealth: Record<string, HealthWord>;
   tokenAuras: Record<string, Array<{ id: string; radiusFeet: number; tone: AuraTone }>>;
   tokenFootprint: Record<string, Footprint>;

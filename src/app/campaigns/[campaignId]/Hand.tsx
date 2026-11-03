@@ -139,6 +139,7 @@ function HandInner({
   trackAmmo,
   leaving,
   edges,
+  feet,
   drops,
   mounts,
   genre,
@@ -169,6 +170,9 @@ function HandInner({
   // The board's verdict from this character to each enemy (cover, flanking),
   // keyed by enemy id; absent off the map.
   edges?: Record<string, TargetEdge>;
+  // How far each creature on the board stands from this character, in feet
+  // (PlayerMapView.feet): a reaction whose reach a hit lies beyond is not dealt.
+  feet?: Record<string, number>;
   // What lies on the board, and who rides what (issue #424): the gear cards'
   // Pick up and Dismount.
   drops?: PlayerMapView["drops"];
@@ -239,8 +243,8 @@ function HandInner({
   );
   const reactions = useMemo(
     // Under the monsters' hand the hero hit is named, as the others are.
-    () => (sheet && turn ? holdSentReactions(reactionCards(sheet, turn, hits ?? [], sheets, reactionsOnly ? sheet.name : "you"), reactionsSent, sheet.id) : []),
-    [sheet, turn, hits, sheets, reactionsOnly, reactionsSent],
+    () => (sheet && turn ? holdSentReactions(reactionCards(sheet, turn, hits ?? [], sheets, reactionsOnly ? sheet.name : "you", feet), reactionsSent, sheet.id) : []),
+    [sheet, turn, hits, sheets, reactionsOnly, reactionsSent, feet],
   );
   // A player's other characters hit while this one acts (a person playing
   // several heroes), and the companions they play: their reactions too, each
