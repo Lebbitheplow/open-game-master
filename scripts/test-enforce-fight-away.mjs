@@ -27,7 +27,7 @@ const { getEncounter, getLatestEndedEncounter, listEnemies, saveEncounter } = aw
 const { deleteSheetById, listSheets } = await import("../src/lib/db/sheets.ts");
 const { fieldedSheets } = await import("../src/lib/dm/roster.ts");
 const { allySaveAura } = await import("../src/lib/dm/aura.ts");
-const { standingOn } = await import("../src/lib/dm/combatant.ts");
+const { sideOf, standingOn } = await import("../src/lib/dm/combatant.ts");
 const { buildEncounterState } = await import("../src/lib/dm/turn.ts");
 const { adjudication } = await import("../src/lib/dm/invoke-catalog.ts");
 const { blocksMove, tileAt } = await import("../src/lib/battlemap/types.ts");
@@ -36,6 +36,12 @@ const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
 const { dmTurnTools } = await import("../src/lib/dm/turn.ts");
 const { markSheetAsCompanion } = await import("../src/lib/db/sheets.ts");
 const { FULL_CASTER_SLOTS, slotsOf } = await import("./lib/enforce-spells.mjs");
+const { moveToSide } = await import("../src/lib/dm/combat-sides.ts");
+const { insertEncounterTemplate } = await import("../src/lib/db/encounter-templates.ts");
+const { EMPTY_TEMPLATE_MAP } = await import("../src/lib/dm/encounter-template-logic.ts");
+const { spawnSummons } = await import("../src/lib/dm/summon-store.ts");
+const { summonRecord } = await import("../src/lib/dm/summon-rules.ts");
+const { findSummonForm } = await import("../src/lib/srd/summon-forms.ts");
 const klass = (classId, ...names) => names.map((name) => ({ name, source: "class", classId }));
 
 const alice = world.addHero({ name: "Alice Smith", level: 3, maxHp: 30 });
@@ -477,6 +483,86 @@ await test("A party companion has a sheet of its own and stays in the fight unle
   await kit.endFight();
   world.patch(cora.id, { pets: [] });
   deleteSheetById(world.campaignId, pal.userId, pal.id);
+});
+
+await test("Reverting the turn that brought someone in sends them away again: off the order, off the board, and back on the list, so their next roll brings a token again.", async () => {
+  await kit.endFight();
+  opensWithout({ absent: [cora.name] });
+  const rolled = await world.invoke("request_roll", { characterId: cora.id, kind: "initiative", reason: "initiative" });
+  assert.equal(rolled.ok, true, rolled.error);
+  assert.ok(tokenOf(cora.id));
+  world.signIn(world.owner);
+  const handler = await world.route("campaigns/[campaignId]/audit/revert-turn");
+  const revert = (confirm) =>
+    handler.POST(new Request("http://test/", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ turnId: rolled.turnId, ...(confirm ? { confirm: true } : {}) }) }), {
+      params: Promise.resolve({ campaignId: world.campaignId }),
+    });
+  let response = await revert(false);
+  if (response.status === 409) {
+    response = await revert(true);
+  }
+  assert.equal(response.status, 200, JSON.stringify(await response.clone().json().catch(() => ({}))));
+  assert.equal(orderIds().includes(cora.id), false, "still in the order");
+  assert.equal(tokenOf(cora.id), null, "still on the board");
+  assert.deepEqual(world.encounter().awayIds, [cora.id], "neither away nor at the fight");
+  assert.deepEqual(buildEncounterState(world.campaignId, world.sheets()).away, ["Cora Vale"], "the GM is no longer told they can be brought in");
+  await arrive(cora.id);
+  assert.ok(tokenOf(cora.id), "the second arrival has no token");
+});
+
+await test("A creature one who is away calls up during the fight is with them: no slot and no token until they arrive, and then it comes with them.", async () => {
+  await kit.endFight();
+  const moss = world.addHero({ name: "Moss", class: "druid", level: 5, maxHp: 30, abilities: { wis: 16, con: 14 }, spellcasting: { ability: "wis", slots: slotsOf(FULL_CASTER_SLOTS[4]), known: [], prepared: ["Conjure Animals"], cantrips: [] } });
+  opensWithout({ absent: ["Moss"] });
+  // Its own turn never comes while it is away, so nothing a tool casts reaches
+  // here today; the store is what any later path that calls one up goes
+  // through.
+  const form = findSummonForm("wolf");
+  const record = summonRecord(form, { spell: "Conjure Animals", casterId: moss.id, casterName: "Moss", concentration: true, castId: "away1" });
+  spawnSummons(world.campaign(), world.sheet(moss.id), { form, count: 2, record, rounds: 600, slotLevel: 3, initiative: "group" });
+  const ids = world.sheets().filter((sheet) => sheet.summon?.casterId === moss.id).map((sheet) => sheet.id);
+  assert.equal(ids.length, 2);
+  for (const id of ids) {
+    assert.equal(orderIds().includes(id), false, "a wolf took a slot at a fight its maker is not at");
+    assert.equal(tokenOf(id), null, "a wolf stands on the board of a fight its maker is not at");
+    assert.ok(world.encounter().awayIds.includes(id), "a wolf is not with its maker");
+  }
+  await arrive(moss.id);
+  for (const id of ids) {
+    assert.ok(orderIds().includes(id), "a wolf did not come with its maker");
+    assert.ok(tokenOf(id), "a wolf came with no token");
+  }
+  await kit.endFight();
+  for (const sheet of world.sheets().filter((entry) => entry.summon?.casterId === moss.id || entry.id === moss.id)) {
+    deleteSheetById(world.campaignId, sheet.userId, sheet.id);
+  }
+});
+
+await test("One who is away and turns on the party does so where they are: no slot, no token, still away until their roll brings them in on that side.", async () => {
+  await coraAway();
+  const moved = moveToSide(world.campaign(), cora.id, "foe", { quiet: true });
+  assert.equal(moved.ok, true, moved.error);
+  assert.equal(orderIds().includes(cora.id), false, "a change of side rolled them into the order");
+  assert.equal(tokenOf(cora.id), null, "a change of side put them on the board");
+  assert.deepEqual(world.encounter().awayIds, [cora.id]);
+  await arrive(cora.id);
+  assert.ok(orderIds().includes(cora.id));
+  assert.equal(sideOf(world.encounter(), "sheet", cora.id), "foe", "they did not arrive on the side they turned to");
+  await kit.endFight();
+});
+
+await test("A prepared fight takes absent too, and is fitted to who is there: one too big for them alone runs cut down rather than refused.", async () => {
+  await kit.endFight();
+  insertEncounterTemplate({ campaignId: world.campaignId, name: "Goblin pack", enemies: [{ monster: "goblin", count: 8 }], battlefield: "", map: EMPTY_TEMPLATE_MAP, notes: "", createdByUserId: world.owner.id });
+  const ran = ai("run_prepared_encounter", { name: "Goblin pack", absent: [alice.name, cora.name] });
+  assert.equal(ran.ok, true, ran.error);
+  assert.deepEqual([...world.encounter().awayIds].sort(), [alice.id, cora.id].sort(), "the prepared fight staged those who are away");
+  assert.deepEqual(orderIds(), [bram.id]);
+  assert.match(String(ran.result.scaled ?? ""), /runs without/, "fitted to the whole party, not to who is there");
+  await kit.endFight();
+  const wrong = ai("run_prepared_encounter", { name: "Goblin pack", absent: ["Nobody"] });
+  assert.match(wrong.error ?? "", /"Nobody"/);
+  assert.equal(world.encounter(), null);
 });
 
 await test("What the GM reads says who is absent and who is not, with someone behind a door as the case who still rolls.", () => {

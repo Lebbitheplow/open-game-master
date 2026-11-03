@@ -28,7 +28,8 @@ export function isFightTable(table: string): table is FightTable {
 //     and summary have already closed.
 //   - Of the fight's own row only the turn's working parts go back: the
 //     order, the round and whose turn it is, the action, reactions and
-//     legendary actions spent, the targets and declared intents. Its
+//     legendary actions spent, the targets and declared intents, who it
+//     goes on without. Its
 //     standing (on or ended) and its summary are not a turn's to undo.
 
 // The fight row's columns a revert writes back.
@@ -46,6 +47,10 @@ export const FIGHT_COLUMNS = [
   "targets_json",
   "intents_json",
   "sides_json",
+  // Who the fight goes on without (issue 740): an arrival the turn made goes
+  // back with the slot and token it was given, or they stayed off the list
+  // with neither, and their next initiative roll brought no token.
+  "away_ids_json",
 ] as const;
 
 // Columns never written back: who the row is and when it was made.

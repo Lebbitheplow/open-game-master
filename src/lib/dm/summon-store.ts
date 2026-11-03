@@ -22,7 +22,7 @@ import {
   setSheetSummon,
 } from "@/lib/db/sheets";
 import { createCompanionUser, deleteCompanionUser } from "@/lib/db/users";
-import { getActiveEncounter, saveEncounter, type OrderEntry } from "@/lib/db/encounters";
+import { getActiveEncounter, saveEncounter, setEncounterAway, type OrderEntry } from "@/lib/db/encounters";
 import {
   getBattleMapForEncounter,
   insertToken,
@@ -162,6 +162,15 @@ function placeInFight(
 ) {
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter || !created.length) {
+    return;
+  }
+  // Called up by a caster the fight goes on without (issue 740), it is with
+  // them, not here: it arrives with its maker's initiative roll
+  // (encounter-tools.ts recordInitiativeRoll). Placed here, it took a slot
+  // and stood on the board for someone who was not there.
+  if (encounter.awayIds.includes(caster.id)) {
+    setEncounterAway(encounter.id, [...encounter.awayIds, ...created.map((sheet) => sheet.id)]);
+    publishEncounterState(campaign.id);
     return;
   }
   if (encounter.orderReady) {
