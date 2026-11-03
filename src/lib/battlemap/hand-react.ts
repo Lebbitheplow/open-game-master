@@ -201,6 +201,12 @@ export function reactionCards(
   hits: PublicLastHit[],
   party: Array<Pick<CharacterSheet, "id" | "name">>,
   self = "you",
+  // How far each creature stands from the character, in feet, when the
+  // board says (PlayerMapView.feet). A reaction with a reach is dealt only
+  // for a hit inside it: an ally beyond Glorious Defense's 10 feet got a
+  // card the engine refused. Absent, every card is dealt and the engine
+  // judges the reach.
+  feet?: Record<string, number>,
 ): HandCard[] {
   const cards: HandCard[] = [];
   const answered = (hit: PublicLastHit, name: string) =>
@@ -263,7 +269,7 @@ export function reactionCards(
       feature(hit, "Slow Fall", prompt, "Take five times your monk level off the fall.");
     }
     if (hit.source === "attack") {
-      for (const held of subclassReactions(sheet, hit, "self")) {
+      for (const held of subclassReactions(sheet, hit, "self", feet)) {
         feature(hit, held.name, prompt, held.rules, held.target);
       }
     }
@@ -273,7 +279,7 @@ export function reactionCards(
   // it was aimed at.
   const vowed = vowedFoe(sheet);
   if (vowed && holdsFeature(sheet, "soul of vengeance")) {
-    for (const hit of hits.filter((entry) => entry.source === "attack" && entry.attackerId === vowed)) {
+    for (const hit of hits.filter((entry) => entry.source === "attack" && entry.attackerId === vowed && inReach(feet, entry.attackerId, SOUL_OF_VENGEANCE_FT))) {
       feature(hit, "Soul of Vengeance", `${hit.attacker} attacked under your vow`, "A melee attack back at the creature under your vow.", "enemy");
     }
   }
@@ -328,7 +334,7 @@ export function reactionCards(
     const ally = party.find((entry) => entry.id === hit.characterId);
     if (!ally) continue;
     const prompt = what(hit, ally.name);
-    for (const held of allyReactions(sheet, hit)) {
+    for (const held of allyReactions(sheet, hit, feet)) {
       feature(hit, held.name, prompt, held.rules, "ally");
     }
   }
@@ -339,15 +345,16 @@ export function reactionCards(
 // Words with a die left, Protection, and the subclass reactions for an ally.
 // The cards above offer these, and the actions route takes words typed as a
 // reaction for an ally's hit only when one of them covers it.
-export function allyReactions(sheet: CharacterSheet, hit: PublicLastHit): Array<{ name: string; rules: string }> {
+export function allyReactions(sheet: CharacterSheet, hit: PublicLastHit, feet?: Record<string, number>): Array<{ name: string; rules: string }> {
   if (hit.characterId === sheet.id || !hit.hit || hit.source !== "attack") return [];
   const bardic = sheet.resources.bardic_inspiration;
   return [
     ...(holdsFeature(sheet, "cutting words") && (bardic?.max ?? 0) > (bardic?.used ?? 0)
       ? [{ name: "Cutting Words", rules: "Spend a Bardic Inspiration die off the roll or the damage." }]
       : []),
-    ...(holdsFeature(sheet, "protection") ? [{ name: "Protection", rules: "Impose disadvantage on the attack: it is rolled again." }] : []),
-    ...subclassReactions(sheet, hit, "ally").map((held) => ({ name: held.name, rules: held.rules })),
+    // Protection: "a target other than you that is within 5 feet of you".
+    ...(holdsFeature(sheet, "protection") && inReach(feet, hit.characterId, 5) ? [{ name: "Protection", rules: "Impose disadvantage on the attack: it is rolled again." }] : []),
+    ...subclassReactions(sheet, hit, "ally", feet).map((held) => ({ name: held.name, rules: held.rules })),
   ];
 }
 
@@ -358,6 +365,28 @@ export function withReactions(reactions: HandCard[], hand: HandCard[]): HandCard
   if (!reactions.length) return hand;
   const offered = new Set(reactions.map((card) => textKey(card.name)));
   return [...reactions, ...hand.filter((card) => !(card.cost === "reaction" && offered.has(textKey(card.name))))];
+}
+
+// Soul of Vengeance's melee attack (authored-effects-data2.ts): the vowed
+// creature within this reach.
+const SOUL_OF_VENGEANCE_FT = 5;
+
+// Whether the creature `id` stands within `reach` feet, as far as the board
+// says: with no distance known, the engine judges it.
+function inReach(feet: Record<string, number> | undefined, id: string | null | undefined, reach: number | undefined): boolean {
+  const apart = id ? feet?.[id] : undefined;
+  return apart === undefined || reach === undefined || apart <= reach;
+}
+
+// A reach that grows with the holder's level (Aura of the Guardian's 10
+// feet, then 30), as the engine reads it (authored-reactions.ts reachFeet).
+function reachAt(range: number | Array<[number, number]> | undefined, level: number): number | undefined {
+  if (range === undefined || typeof range === "number") return range;
+  let reach = range[0]?.[1];
+  for (const [at, value] of range) {
+    if (level >= at) reach = value;
+  }
+  return reach;
 }
 
 // What a subclass reaction does, in a line for its card.
@@ -397,6 +426,7 @@ function subclassReactions(
   sheet: CharacterSheet,
   hit: PublicLastHit,
   whose: "self" | "ally",
+  feet?: Record<string, number>,
 ): Array<{ name: string; rules: string; target: HandTarget }> {
   const out: Array<{ name: string; rules: string; target: HandTarget }> = [];
   for (const held of heldAuthored(sheet)) {
@@ -425,6 +455,12 @@ function subclassReactions(
             (does.kind === "disadv_vs_hit" && Boolean(does.allyWith) && holdsFeature(sheet, does.allyWith!)) ||
             (does.kind === "resist_instance" && typed(does.types));
       if (!answers) continue;
+      // Within its reach: the ally it covers, or for Rebuke the Violent the
+      // attacker ("an attacker within 30 feet of you").
+      if (whose === "ally") {
+        const reach = "rangeFt" in does ? reachAt(does.rangeFt as number | Array<[number, number]> | undefined, held.level) : undefined;
+        if (!inReach(feet, does.kind === "echo_hit" ? hit.attackerId : hit.characterId, reach)) continue;
+      }
       const rules = reactionRules(does);
       if (!rules) continue;
       out.push({ name: reaction.name, rules, target: does.kind === "strike_back" ? "enemy" : whose === "ally" ? "ally" : "none" });

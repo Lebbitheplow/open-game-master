@@ -67,6 +67,21 @@ await test("It is offered on a hit on the paladin or an ally, and is no card on 
   assert.equal(deriveHand(world.sheet(paladin.id), FRESH_TURN, {}).some((card) => card.name === "Glorious Defense"), false);
 });
 
+// The card went to an ally beyond 10 feet, and the engine refused it. The
+// board's distances (PlayerMapView.feet) keep it in the reach.
+await test("An ally beyond 10 feet gets no card when the board says so, and the view carries the distance.", async () => {
+  await stage();
+  const near = (feet) =>
+    reactionCards(world.sheet(paladin.id), { ...FRESH_TURN, myTurn: false }, [hit({ characterId: friend.id })], [{ id: friend.id, name: "Friend" }], "you", feet).filter((card) => card.name === "Glorious Defense");
+  assert.equal(near({ [friend.id]: 10 }).length, 1, "within 10 feet");
+  assert.equal(near({ [friend.id]: 15 }).length, 0, "beyond 10 feet");
+  assert.equal(near(undefined).length, 1, "no board: the engine judges");
+  const { buildPlayerMapView } = await import("../src/lib/battlemap/view.ts");
+  kit.place(friend.id, 5, 8);
+  const view = buildPlayerMapView(world.campaignId, world.sheet(paladin.id).userId);
+  assert.equal(view.feet?.[friend.id], 15);
+});
+
 await test("No use left, no card.", async () => {
   await stage();
   world.patch(paladin.id, { resources: { ...world.sheet(paladin.id).resources, sub_glorious_defense: { ...uses(), used: uses().max } } });

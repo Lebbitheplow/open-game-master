@@ -11,7 +11,7 @@ import { listEffects } from "@/lib/db/active-effects";
 import { applyField, resolveField } from "@/lib/dm/effects-logic";
 import { getActiveBoard, getActiveEncounter, getEnemy, listEnemies, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { listDroppedItems } from "@/lib/db/dropped-items";
-import { tokenFootprint } from "@/lib/dm/board-reach";
+import { tilesApart, tokenFootprint } from "@/lib/dm/board-reach";
 import { speedFor } from "@/lib/srd";
 import { getMounts } from "@/lib/db/mounts";
 import { mountActionTaken } from "@/lib/srd/mounts";
@@ -618,6 +618,14 @@ export function buildPlayerMapView(
             flankingRule: getCampaignById(campaignId)?.gameSettings.variantRules.flanking === true,
           })
         : {},
+    ...(sheet && myToken && encounter.kind === "fight"
+      ? (() => {
+          // Measured on the stored tokens, footprints and all, as withinFeet
+          // measures them; only those this viewer is shown.
+          const shown = new Set(shownTokens.map((token) => token.id));
+          return { feet: Object.fromEntries(tokens.filter((token) => token.id !== myToken.id && shown.has(token.id)).map((token) => [token.refId, tilesApart(myToken, token) * 5])) };
+        })()
+      : {}),
     ...(fullVision
       ? {
           doors: map.doors,

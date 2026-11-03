@@ -60,6 +60,14 @@ await test("It is offered on a hit on an ally, not on the paladin, and is no car
   assert.equal(deriveHand(world.sheet(paladin.id), FRESH_TURN, {}).some((card) => card.name === "Rebuke the Violent"), false);
 });
 
+await test("No card when the board puts the attacker beyond 30 feet, wherever the ally is.", async () => {
+  await stage();
+  const at = (feet) =>
+    reactionCards(world.sheet(paladin.id), { ...FRESH_TURN, myTurn: false }, [hit()], [{ id: friend.id, name: "Friend" }], "you", feet).filter((card) => card.name === "Rebuke the Violent");
+  assert.equal(at({ g1: 35, [friend.id]: 10 }).length, 0);
+  assert.equal(at({ g1: 30, [friend.id]: 60 }).length, 1);
+});
+
 await test("With Channel Divinity spent there is no card, and the reaction is refused.", async () => {
   const enemy = await stage();
   world.patch(paladin.id, { resources: { ...world.sheet(paladin.id).resources, channel_divinity: { ...channel(), used: channel().max } } });
