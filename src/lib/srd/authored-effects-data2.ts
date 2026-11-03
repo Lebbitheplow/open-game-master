@@ -313,6 +313,33 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
       { name: "Living Legend Reroll", aliases: ["Living Legend save"], action: "reaction", gate: { condition: "living legend" }, does: { kind: "reroll_save" } },
     ],
   },
+  // Reactions that spent their use and changed nothing: the hit now answers to them.
+  "cleric::Warding Flare": {
+    subclass: "Light Domain",
+    counter: "sub_warding_flare",
+    reactions: [{ name: "Warding Flare", pool: { id: "sub_warding_flare" }, does: { kind: "disadv_vs_hit", allyWith: "improved flare", rangeFt: 30 } }],
+  },
+  "warlock::Entropic Ward": {
+    subclass: "The Great Old One",
+    counter: "sub_entropic_ward",
+    reactions: [{ name: "Entropic Ward", pool: { id: "sub_entropic_ward" }, does: { kind: "disadv_vs_hit", onMiss: "advantage on the warlock's next attack against that creature, which the GM applies" } }],
+  },
+  "wizard::Illusory Self": {
+    subclass: "School of Illusion",
+    counter: "sub_illusory_self",
+    reactions: [{ name: "Illusory Self", pool: { id: "sub_illusory_self" }, does: { kind: "force_miss", exhaustion: 0 } }],
+  },
+  "cleric::Wrath of the Storm": {
+    subclass: "Tempest Domain",
+    counter: "sub_wrath_of_the_storm",
+    reactions: [
+      {
+        name: "Wrath of the Storm",
+        pool: { id: "sub_wrath_of_the_storm" },
+        does: { kind: "strike_back", amount: "2d8", type: "lightning", melee: true, save: { ability: "dex", dcAbility: "spell", half: true } },
+      },
+    ],
+  },
   "paladin::Vigilant Rebuke": {
     subclass: "Oath of the Watchers",
     reactions: [
