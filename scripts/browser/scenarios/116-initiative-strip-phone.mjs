@@ -5,7 +5,7 @@
 // panel and on the enlarged tabletop. The docked layout keeps it where it was.
 // A phone on its side has no height for that row: there the strip shares the
 // tools' row, or a player's heading, or the enlarged tabletop's head.
-import { check, eventually, newContext, openPanelTab, signIn, untilStill } from "../lib.mjs";
+import { axeViolations, check, eventually, newContext, openPanelTab, signIn, untilStill } from "../lib.mjs";
 
 // Under the old strip at 412 px wide: its round label, then its plates.
 const CORNER = [{ x: 0, y: 0 }, { x: 1, y: 2 }, { x: 3, y: 3 }];
@@ -77,6 +77,26 @@ export default {
         check(plates.x - field.x < 24 && plates.y - field.y < 24, `the docked strip is in the board's corner (${plates.x - field.x}, ${plates.y - field.y})`);
         await walkTheCorner(frame, "the docked board");
         await t.shot("docked");
+        // A frame the board fills leaves no margin for the strip: the resting
+        // view sits below or beside it, so the goblin on 0,0 is not under it
+        // (camera-fit.ts `clear`). Window heights walk the frame's shape
+        // through the one where the board's top meets the frame's.
+        await moveTo({ x: 0, y: 0 });
+        const size = page.viewportSize();
+        const figure = frame.getByRole("img", { name: /^Goblin/ }).first();
+        const covered = [];
+        try {
+          for (let height = 800; height <= 1400; height += 50) {
+            await page.setViewportSize({ width: 1100, height });
+            await untilStill(page);
+            const [goblinBox, stripBox] = [await figure.boundingBox(), await strip.boundingBox()];
+            if (goblinBox && stripBox && goblinBox.x < stripBox.x + stripBox.width && goblinBox.y < stripBox.y + stripBox.height) covered.push(`1100x${height}`);
+          }
+          check(covered.length === 0, `the goblin on 0,0 is clear of the docked strip at every window (under it at ${covered.join(", ")})`);
+          await t.shot("docked-filled");
+        } finally {
+          await page.setViewportSize(size);
+        }
         return;
       }
 
@@ -88,6 +108,12 @@ export default {
       await page.evaluate(() => (document.documentElement.dataset.theme = "light"));
       await untilStill(page);
       await t.shot("corner-light");
+      for (const theme of ["light", "dark"]) {
+        await page.evaluate((mode) => (document.documentElement.dataset.theme = mode), theme);
+        await untilStill(page);
+        const problems = await axeViolations(page, `${root}.board-panel .board-order-above`.trim());
+        check(problems.length === 0, `the order's row passes axe in the ${theme} theme: ${JSON.stringify(problems)}`);
+      }
       await page.evaluate(() => (document.documentElement.dataset.theme = "dark"));
 
       // A phone on its side has the least height to give the row.

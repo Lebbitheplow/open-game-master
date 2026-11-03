@@ -139,6 +139,9 @@ export function InitiativeRail({
       onClick={onOpen}
       disabled={!onOpen}
       data-tour="battle-initiative"
+      // On the board, the resting view keeps the tiles out from under it
+      // (useBoardCamera.ts, camera-fit.ts).
+      data-fit-clear={above || namesOnly ? undefined : ""}
       aria-label={`Round ${round}, initiative order. ${encounter.acting?.name ?? order[up]?.name ?? ""} is up. ${sidesLine(encounter)}Open the order.`}
       className={cn(
         "flex text-left outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60",
