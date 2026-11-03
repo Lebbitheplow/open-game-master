@@ -2585,7 +2585,7 @@ button.cine-chronicle-earlier:focus-visible { outline: 2px solid #f4e0a6; outlin
 
 /* ---- the fight stage: the board on the table, the scroll beside it ---- */
 
-/* Docked (the only time the stage is drawn, SidePanel.tsx useDocked): the
+/* Docked (the only time the stage is drawn, useDocked.ts): the
    scroll is a column of its own, the full height of the stage, and the
    board, the Ask strip, the Hand and the desk share the column beside it
    (issue 213). The scroll used to be only as tall as the board's row, with

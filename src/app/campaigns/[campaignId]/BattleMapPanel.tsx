@@ -65,7 +65,7 @@ import { SkyLayer } from "@/components/SkyLayer";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { characterPlaceholder, monsterPlaceholder, npcPlaceholder } from "@/lib/placeholders";
 import { usePaintedMap } from "@/app/campaigns/[campaignId]/usePaintedMap";
-import { useDocked } from "@/app/campaigns/[campaignId]/SidePanel";
+import { useDocked } from "@/app/campaigns/[campaignId]/useDocked";
 import {
   FieldDie,
   InitiativeRail,
