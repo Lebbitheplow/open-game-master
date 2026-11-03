@@ -212,5 +212,50 @@ await test("Soul of Vengeance is refused without a vow and without an attack, an
   assert.equal(out.result.attack.target, near.displayName);
 });
 
+// A reaction's attack borrowed the readied condition: on the holder's own
+// turn it spent their Action, and off it it took a readied action they held.
+await test("Soul of Vengeance on the paladin's own turn spends no Action, and off it leaves a readied action alone.", async () => {
+  const { near } = await stage();
+  await vow(near.id);
+  kit.giveTurn(paladin.id);
+  world.dice(18, 4);
+  assert.equal((await world.invoke("enemy_attack", { enemyId: near.id, targetCharacterId: paladin.id })).ok, true);
+  world.dice(15, 3, 4, 4);
+  const own = await world.invoke("use_reaction", { characterId: paladin.id, feature: "Soul of Vengeance", targetEnemyId: near.id });
+  world.clearDice();
+  assert.equal(own.ok, true, own.error);
+  const budget = world.encounter().turnBudget;
+  assert.ok(!budget || (budget.actionUsed === false && budget.attacksMade === 0), JSON.stringify(budget));
+
+  const again = await stage();
+  assert.equal((await vow(again.near.id)).ok, true, "the vow");
+  kit.giveTurn(friend.id);
+  const sheet = world.sheet(paladin.id);
+  world.patch(paladin.id, {
+    conditions: [...sheet.conditions, "readied"],
+    conditionMeta: { ...sheet.conditionMeta, readied: { untilTurnOf: paladin.id, holds: "move", trigger: "when the goblin moves" } },
+  });
+  world.dice(18, 4);
+  assert.equal((await world.invoke("enemy_attack", { enemyId: again.near.id, targetCharacterId: paladin.id })).ok, true);
+  world.dice(15, 3, 4, 4);
+  const off = await world.invoke("use_reaction", { characterId: paladin.id, feature: "Soul of Vengeance", targetEnemyId: again.near.id });
+  world.clearDice();
+  assert.equal(off.ok, true, off.error);
+  assert.equal(world.sheet(paladin.id).conditionMeta.readied?.holds, "move", "the readied move is still held");
+});
+
+await test("An attack reaction whose trigger the engine has not seen is refused on the holder's own turn.", async () => {
+  const shadow = world.addHero({
+    class: "monk", subclass: "Way of Shadow", level: 17, maxHp: 100, proficiencies: TRAINED, portrait: { url: "/uploads/test.png" },
+  });
+  const { near } = await stage();
+  kit.place(shadow.id, 6, 5);
+  kit.giveTurn(shadow.id);
+  const out = await world.invoke("use_reaction", { characterId: shadow.id, feature: "Opportunist", targetEnemyId: near.id });
+  assert.equal(out.ok, false);
+  assert.match(out.error, /own turn/);
+  assert.equal(world.encounter().reactionsUsed.includes(shadow.id), false);
+});
+
 world.close();
 finish();

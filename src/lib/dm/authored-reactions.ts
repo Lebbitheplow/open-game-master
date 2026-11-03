@@ -34,7 +34,7 @@ import { attackerFoeId, freshLastHit, openHits, rerollAttacker, type LastHit, ty
 import { vowedFoe } from "@/lib/srd/vow-of-enmity";
 import { rollAgainst } from "@/lib/roll-labels";
 import { applyPcDamage, blowDefenses, meetDefenses } from "@/lib/dm/pc-damage";
-import { READIED } from "@/lib/dm/object-actions";
+import { actingCombatantId } from "@/lib/dm/can-act";
 import { handlePcAttack } from "@/lib/dm/pc-attack";
 import { allyOf, noHit, settle, SPENT, spendReaction, type Ctx } from "@/lib/dm/reaction-tools";
 import { withinFeet } from "@/lib/dm/authored-saves";
@@ -528,13 +528,17 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (!withinFeet(encounter.id, ctx.sheet.id, enemy.id, does.rangeFt)) {
         return { error: `${enemy.displayName} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}; ${reaction.name} is a melee attack. Nothing was spent.`, refused: "rules" };
       }
-      addSheetCondition(ctx.campaign, ctx.sheet, READIED, { untilTurnOf: ctx.sheet.id }, reaction.name);
-      const result = handlePcAttack(ctx.campaign, ctx.turn, JSON.stringify({ characterId: ctx.sheet.id, targetEnemyId: enemy.id }), ctx.sheets, ctx.sheetsById, new Set(), null);
-      const after = getSheetById(ctx.sheet.id);
-      if (after?.conditions.some((entry) => entry.toLowerCase() === READIED)) {
-        const cleared = removeConditions(after.conditions, after.conditionMeta, [READIED]);
-        patchSheet(after.id, { conditions: cleared.conditions, conditionMeta: cleared.meta });
+      // Each of these answers what another creature does (moves, attacks,
+      // forces a save, is commanded) on that creature's turn or its holder's,
+      // never on the reacting character's own: there it is refused, unless
+      // the engine has seen the trigger itself (the vowed creature's attack).
+      if (actingCombatantId(encounter) === ctx.sheet.id && !does.vowed) {
+        return { error: `${reaction.name} answers what another creature does on its turn, and it is ${ctx.sheet.name}'s own turn. Nothing was spent.`, refused: "rules" };
       }
+      // The attack is the reaction alone (pc-attack.ts reactionAttack). It
+      // borrowed the readied condition, so on the holder's own turn it spent
+      // their Action, and it took a readied action they already held.
+      const result = handlePcAttack(ctx.campaign, ctx.turn, JSON.stringify({ characterId: ctx.sheet.id, targetEnemyId: enemy.id }), ctx.sheets, ctx.sheetsById, new Set(), null, { reactionAttack: true });
       if (typeof result.error === "string") {
         return toolError(result);
       }
