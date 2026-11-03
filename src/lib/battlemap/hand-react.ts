@@ -317,7 +317,7 @@ export function reactionCards(
     if (counter.ally) {
       for (const hit of hits) {
         const ally = party.find((entry) => entry.id === hit.characterId);
-        if (ally && ally.id !== sheet.id && hit.hit && hit.source === "attack") feature(hit, def.displayName, what(hit, ally.name), rulesOf(def.guidance), "ally");
+        if (ally && ally.id !== sheet.id && hit.hit && hit.source === "attack" && inReach(feet, hit.characterId, counter.rangeFt)) feature(hit, def.displayName, what(hit, ally.name), rulesOf(def.guidance), "ally");
       }
     }
   }

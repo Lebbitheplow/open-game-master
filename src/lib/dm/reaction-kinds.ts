@@ -101,6 +101,9 @@ export const HIT_ANSWER_COUNTERS: ReadonlyArray<{
   id: string;
   // Also answers a hit on a creature near the holder (the engine holds the range).
   ally?: boolean;
+  // How near that creature stands, in feet, for the Hand to deal its card
+  // only inside the reach (hand-react.ts inReach).
+  rangeFt?: number;
   // Only an attack, not a fall or a missile's other damage.
   attackOnly?: boolean;
   // Taken as the hit drops the holder to 0, and only then.
@@ -115,7 +118,7 @@ export const HIT_ANSWER_COUNTERS: ReadonlyArray<{
   { id: "race_stones_endurance", answersDrop: true },
   { id: "sub_swarming_dispersal", answersDrop: true },
   { id: "sub_misty_escape", anyDamage: true },
-  { id: "sub_warding_maneuver", ally: true, attackOnly: true },
+  { id: "sub_warding_maneuver", ally: true, attackOnly: true, rangeFt: 5 },
   { id: "sub_one_with_the_word", answersDrop: true, whileHolding: "manifest mind" },
   { id: "sub_necrotic_husk", atZero: true },
   { id: "sub_strength_before_death", atZero: true },
