@@ -46,7 +46,7 @@ import {
 import type { HandShare } from "@/lib/battlemap/hand-intent";
 import { offeredBoardControl, type BoardControl, type BoardPanel } from "@/lib/addons/board-bridge";
 import { describePick, hasPick, pickHint } from "@/lib/battlemap/hand-area";
-import { holdSentReactions, reactionAim, reactionCards, reactionStrips, withReactions, offTurnReactionCards } from "@/lib/battlemap/hand-react";
+import { holdSentReactions, reactionAim, reactionCards, reactionPicks, reactionStrips, withReactions, offTurnReactionCards } from "@/lib/battlemap/hand-react";
 import { readSummonControl, summonBoardControls } from "@/lib/battlemap/hand-summon";
 import { liveNotice, turnCharacterId, turnFromEncounter, turnPips, turnSignature, type HandNotice } from "@/lib/battlemap/hand-table";
 
@@ -241,10 +241,17 @@ function HandInner({
     () => (aimsHits ? encounter.lastHits : encounter.lastHits?.map((hit) => ({ ...hit, id: undefined }))),
     [encounter.lastHits, aimsHits],
   );
+  // The board measures from the viewer's own acting character, so its distances
+  // say nothing of a companion or dominated hero the GM seat plays.
+  const ownFeet = sheet?.userId === meUserId ? feet : undefined;
+  const foes = useMemo(
+    () => handTargets(encounter.enemies, sheets, sheet?.id, undefined, encounter.sides).filter((target) => target.kind === "enemy"),
+    [encounter.enemies, sheets, sheet?.id, encounter.sides],
+  );
   const reactions = useMemo(
     // Under the monsters' hand the hero hit is named, as the others are.
-    () => (sheet && turn ? holdSentReactions(reactionCards(sheet, turn, hits ?? [], sheets, reactionsOnly ? sheet.name : "you", feet, encounter.lastSaves), reactionsSent, sheet.id) : []),
-    [sheet, turn, hits, sheets, reactionsOnly, reactionsSent, feet, encounter.lastSaves],
+    () => (sheet && turn ? holdSentReactions(reactionCards(sheet, turn, hits ?? [], sheets, reactionsOnly ? sheet.name : "you", feet, encounter.lastSaves, ownFeet ? foes : undefined), reactionsSent, sheet.id) : []),
+    [sheet, turn, hits, sheets, reactionsOnly, reactionsSent, feet, encounter.lastSaves, ownFeet, foes],
   );
   // A player's other characters hit while this one acts (a person playing
   // several heroes), and the companions they play: their reactions too, each
@@ -371,10 +378,10 @@ function HandInner({
   const offered = useMemo(() => fixedChip
     ? [fixedChip]
     : picked?.target === "enemy"
-      ? enemyTargets
+      ? reactionPicks(picked, enemyTargets, picked.actor ? undefined : ownFeet)
       : picked?.target === "ally"
         ? partyTargets
-        : [], [fixedChip, picked?.target, enemyTargets, partyTargets]);
+        : [], [fixedChip, picked, enemyTargets, partyTargets, ownFeet]);
   const self = partyTargets.find((target) => target.kind === "self") ?? null;
   const aim =
     picked?.target === "self"
