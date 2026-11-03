@@ -307,17 +307,19 @@ export function LeadEditDialog({
                 ["HP", currentHp, setCurrentHp, "rest-hp"],
                 ["Temp HP", tempHp, setTempHp, "rest-temp-hp"],
                 ["Max HP", maxHp, setMaxHp, "rest-hp"],
-                ["Gold", gold, setGold, "coin-gp"],
-                ["Silver", silver, setSilver, "coin-sp"],
-                ["Copper", copper, setCopper, "coin-cp"],
+                // A purse holds no fewer than none of a coin: stepping
+                // Silver below 0 showed "-1" and saved as nothing.
+                ["Gold", gold, setGold, "coin-gp", 0],
+                ["Silver", silver, setSilver, "coin-sp", 0],
+                ["Copper", copper, setCopper, "coin-cp", 0],
                 ["XP", xp, setXp, "rest-xp"],
-              ] as Array<[string, string, (value: string) => void, string]>
-            ).map(([label, value, setter, glyph]) => (
+              ] as Array<[string, string, (value: string) => void, string, number?]>
+            ).map(([label, value, setter, glyph, min]) => (
               <div key={label} className="space-y-1">
                 <span className="flex items-center gap-1 text-stone-400">
                   <GameIcon icon={{ kind: "glyph", key: glyph }} size="size-4" /> {label}
                 </span>
-                <NumberStepper size="sm" value={Number(value) || 0} onChange={(next) => setter(String(next))} label={label} />
+                <NumberStepper size="sm" value={Number(value) || 0} min={min} onChange={(next) => setter(String(next))} label={label} />
               </div>
             ))}
           </div>

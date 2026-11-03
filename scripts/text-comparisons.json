@@ -175,6 +175,7 @@
     "app/campaigns/[campaignId]/DmWorkbenchPanel.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/DmWorkbenchPanel.tsx#str-key": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/EncounterPanel.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
+    "app/campaigns/[campaignId]/TradeDialog.tsx#str-list": [["key",3,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/event-log-logic.ts#str-case": [["key",12,"audit row kinds the server writes, and fields its rows store"]],
     "app/campaigns/[campaignId]/event-log-logic.ts#str-eq": [["key",5,"audit row kinds the server writes, and fields its rows store"]],
     "app/campaigns/[campaignId]/FactionsPanel.tsx#str-eq": [["key",4,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],

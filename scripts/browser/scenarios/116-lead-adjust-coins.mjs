@@ -2,8 +2,9 @@
 // changed: the sheet printed whole gold, and the lead's Adjust dialog edited
 // whole gold only. Here the lead raises Pip's silver in the dialog, the save
 // lands on the sheet's coin under a gold piece (viewports share one world, so
-// each pass works from what it finds), the full sheet reads the coins, and
-// the new fields pass axe and are a finger's height on a phone.
+// each pass works from what it finds), the full sheet reads the coins, the
+// new fields pass axe and are a finger's height on a phone, and a trade
+// offers a silver piece.
 import { axeViolations, check, eventually, untilStill } from "../lib.mjs";
 
 const scenario = {
@@ -82,6 +83,46 @@ const scenario = {
     await tile.scrollIntoViewIfNeeded();
     await untilStill(page);
     await t.shot("sheet-coin");
+    await page.keyboard.press("Escape");
+    await eventually(async () => !(await sheet.isVisible().catch(() => false)), { label: "the sheet closing" });
+
+    // A trade offers coin under a gold piece too: the field was whole gold
+    // and stopped at the gold a purse held. The offer is caught before it
+    // reaches the server, so the shared world keeps no trade.
+    let offered = null;
+    await page.route("**/item-proposals", async (route) => {
+      if (route.request().method() !== "POST") return route.fallback();
+      offered = route.request().postDataJSON();
+      await route.fulfill({ status: 201, contentType: "application/json", body: "{}" });
+    });
+    await t.tap(card.getByRole("button", { name: /^Options for / }));
+    await t.tap(page.getByRole("menuitem", { name: "Trade" }));
+    const trade = page.getByRole("dialog", { name: /^Trade with / });
+    await eventually(() => trade.count(), { label: "the Trade dialog" });
+    // Pip holds at least the silver and copper raised above.
+    const pipSilver = trade.getByRole("button", { name: "Raise Silver Pip Thistle gives" });
+    await eventually(() => pipSilver.count(), { label: "a silver stepper for what Pip gives" });
+    check(await trade.getByRole("button", { name: "Raise Copper Kell Brand gives" }).count(), "and a copper stepper for what Kell gives");
+    await pipSilver.scrollIntoViewIfNeeded();
+    if (t.viewport === "phone") {
+      const box = await pipSilver.locator("xpath=..").boundingBox();
+      check(Boolean(box && box.height >= 39.5), `the trade's coin stepper is a finger's height on a phone (${box?.height}px)`);
+    }
+    const tradeFound = serious(await axeViolations(page, '[role="dialog"]'));
+    check(!tradeFound.length, `axe finds nothing serious in the Trade dialog (${tradeFound.map((violation) => violation.id).join(", ")})`);
+    await page.evaluate(() => (document.documentElement.dataset.theme = "light"));
+    await untilStill(page);
+    const tradeDay = serious(await axeViolations(page, '[role="dialog"]'));
+    check(!tradeDay.length, `and nothing serious in it by day (${tradeDay.map((violation) => violation.id).join(", ")})`);
+    await t.shot("trade-coins-day");
+    await page.evaluate((mode) => (document.documentElement.dataset.theme = mode), theme);
+    await t.tap(pipSilver);
+    await untilStill(page);
+    await t.shot("trade-coins");
+    await t.tap(trade.getByRole("button", { name: "Offer the trade" }));
+    await eventually(() => offered, { label: "the offer" });
+    check(offered.wantCp === 10 && offered.giveCp === 0, `one silver asked of Pip is 10 copper (${JSON.stringify(offered)})`);
+    await page.unroute("**/item-proposals");
   },
 };
 
