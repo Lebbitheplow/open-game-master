@@ -2108,7 +2108,7 @@
     "lib/srd/condition-effect-queries.ts#whole": [["identity",1,"condition instances by whole name or key"]],
     "lib/srd/condition-effects.ts#partial": [["key",1,"the SRD row's creature type against ODM's type words"],["key",3,"ODM's own condition parameters (\"(+2)\", \"(1d4 fire)\")"],["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "lib/srd/currency.ts#number": [["key",1,"the pack's own cost notation (fixed English, ',' thousands)"]],
-    "lib/srd/currency.ts#partial": [["pattern",2,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
+    "lib/srd/currency.ts#partial": [["pattern",3,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "lib/srd/encumbrance.ts#keyed": [["identity",2,"SRD, spell, feature, subclass, hazard and magic rows by textKey (or armorKey/gearKey/rowKey/featureKey/priceKey, textKey-based); row tables keyed by the row's own name; the workshop's tables"]],
     "lib/srd/familiar-forms.ts#whole": [["key",2,"a pet's kind (schema enum): only a familiar's attacks are repaired from the table"],["identity",2,"Find Familiar by textKey of the spell's name; the kind a caster names (fey owl), word by word by textKey against the spell's own kinds"]],
     "lib/srd/feat-combat.ts#normalizer": [["key",1,"slugs, hosts, file names, ids, env values, display text, throttle keys, model ids (src/: every site read)"]],

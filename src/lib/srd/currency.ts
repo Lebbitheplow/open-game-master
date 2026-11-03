@@ -153,6 +153,32 @@ export function unreadCoins(text: string): string {
     : `"${text}" is not an amount in the coins' codes: write it with pp, gp, ep, sp and cp, like "3 gp 4 sp"`;
 }
 
+// What a coin change moves, in copper, from the two ways it can be said: a
+// whole-gold delta, or coins in the codes. Coins win over the delta's size.
+// Their direction is their own written sign, else the delta's sign, and with
+// neither it is asked for again: "5 sp" with a zero delta used to pay the
+// character five silver when the fiction had them hand it over.
+export type CoinMove = { copper: number } | { problem: string };
+
+export function coinMove(delta: unknown, coins: unknown): CoinMove {
+  const whole = Number(delta ?? 0) || 0;
+  const written = String(coins ?? "").trim();
+  if (!written) {
+    return whole
+      ? { copper: whole * COPPER_PER_GOLD }
+      : { problem: 'needs a nonzero delta, or signed coins like "-5 sp"' };
+  }
+  const amount = written.replace(/^[-\u2212+]\s*/u, "");
+  const copper = parseCoins(amount);
+  if (copper === null) {
+    return { problem: unreadCoins(amount) };
+  }
+  const sign = amount === written ? Math.sign(whole) : written.startsWith("+") ? 1 : -1;
+  return sign
+    ? { copper: sign * copper }
+    : { problem: `"${written}" does not say gain or spend: write "-${written}" to spend it or "+${written}" to gain it` };
+}
+
 export type PurseChange = {
   purse: Purse;
   // What actually moved, in copper. Smaller than the request when the purse

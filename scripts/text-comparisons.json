@@ -190,7 +190,7 @@
     "app/campaigns/[campaignId]/InlineMessageEditor.tsx#str-eq": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/ItemProposalBar.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/LeadEditDialog.tsx#str-key": [["key",1,"ability ids"]],
-    "app/campaigns/[campaignId]/LeadEditDialog.tsx#str-list": [["key",5,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
+    "app/campaigns/[campaignId]/LeadEditDialog.tsx#str-list": [["key",7,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/LeadEditParts.tsx#str-eq": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/LeadEditParts.tsx#str-list": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/LeadFloorControl.tsx#toUpperCase": [["display",1,"initial"]],

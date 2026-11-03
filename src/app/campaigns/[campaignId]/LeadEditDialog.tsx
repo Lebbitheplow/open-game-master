@@ -28,7 +28,7 @@ import {
   type ItemRow,
   type SlotEdits,
 } from "./LeadEditParts";
-import { earnedExpertise, expertiseOverCap, skillLevelsOf, trainingFrom, type SkillLevel } from "./lead-edit-logic";
+import { coinCorrection, coinFields, earnedExpertise, expertiseOverCap, skillLevelsOf, trainingFrom, type SkillLevel } from "./lead-edit-logic";
 import { acBreakdownFor, effectiveAcFor, SRD_SKILLS } from "@/lib/srd";
 import { ABILITY_NAMES } from "@/lib/srd/legality/types";
 import { isCantripName } from "@/lib/srd/spell-lists";
@@ -73,7 +73,9 @@ export function LeadEditDialog({
   // Lines the server held when it saved (a counter cannot hold more spent
   // than it has); shown before the dialog closes (U:UC12).
   const [held, setHeld] = useState<string[]>([]);
-  const [gold, setGold] = useState(String(sheet.gold));
+  const [gold, setGold] = useState(String(coinFields(sheet).gold));
+  const [silver, setSilver] = useState(String(coinFields(sheet).silver));
+  const [copper, setCopper] = useState(String(coinFields(sheet).copper));
   const [xp, setXp] = useState(String(sheet.xp));
   const [conditions, setConditions] = useState(sheet.conditions.join(", "));
   const [items, setItems] = useState<ItemRow[]>(() => itemRowsOf(sheet.equipment));
@@ -158,7 +160,6 @@ export function LeadEditDialog({
       ["maxHp", maxHp, sheet.maxHp],
       // An unpinned AC is the armor engine's; only a pinned one is sent.
       ...(pinned ? ([["ac", ac, sheet.ac]] as Array<[string, string, number]>) : []),
-      ["gold", gold, sheet.gold],
       ["xp", xp, sheet.xp],
     ];
     for (const [key, raw, previous] of numbers) {
@@ -167,6 +168,7 @@ export function LeadEditDialog({
         patch[key] = value;
       }
     }
+    Object.assign(patch, coinCorrection({ gold, silver, copper }, sheet));
     if (pinned !== sheet.acOverride) {
       patch.acOverride = pinned;
     }
@@ -306,6 +308,8 @@ export function LeadEditDialog({
                 ["Temp HP", tempHp, setTempHp, "rest-temp-hp"],
                 ["Max HP", maxHp, setMaxHp, "rest-hp"],
                 ["Gold", gold, setGold, "coin-gp"],
+                ["Silver", silver, setSilver, "coin-sp"],
+                ["Copper", copper, setCopper, "coin-cp"],
                 ["XP", xp, setXp, "rest-xp"],
               ] as Array<[string, string, (value: string) => void, string]>
             ).map(([label, value, setter, glyph]) => (

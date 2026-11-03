@@ -19,6 +19,7 @@ import {
   type DerivedPart,
 } from "@/lib/srd";
 import { attunementSlotsFor } from "@/lib/srd/armor";
+import { formatPrice, purseCopper } from "@/lib/srd/currency";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
 import { magicItemRiders } from "@/lib/srd/magic-items";
 import type { WearConflict } from "@/lib/srd/wear-slots";
@@ -282,7 +283,7 @@ export function CharacterSheetDialog({
                   title: explainParts(derived.parts.passivePerception),
                 },
                 { glyph: "rest-proficiency", label: "Proficiency", value: formatModifier(derived.proficiencyBonus) },
-                { glyph: "coin-gp", label: "Gold", value: `${sheet.gold} gp` },
+                { glyph: "coin-gp", label: "Coin", value: formatPrice(purseCopper(sheet)) },
                 { glyph: "rest-xp", label: "Experience", value: `${sheet.xp} XP` },
                 {
                   glyph: `die-${sheet.hitDice.die}`,

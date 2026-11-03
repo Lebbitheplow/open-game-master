@@ -378,4 +378,13 @@ test("an undo's conflict warning names the character and the fields in words, ne
   assert.equal(fieldWords("featureUses"), "feature uses");
 });
 
+test("coin under a gold piece reads as the coins that moved, never as 0 gold", () => {
+  const entry = (delta) => describeAuditEntry({ kind: "modify_gold", delta }, "Nysa");
+  assert.equal(entry({ delta: 0, copper: -50, gold: 2, purseCopper: 290 }), "Nysa loses 5 sp (2 gp 9 sp)");
+  assert.equal(entry({ delta: 1, copper: 150, gold: 4, purseCopper: 440 }), "Nysa gains 1 gp 5 sp (4 gp 4 sp)");
+  assert.equal(entry({ delta: -3, copper: -300, gold: 2, purseCopper: 240 }), "Nysa loses 3 gold (2 gp 4 sp)");
+  // A row written before the purse was recorded still reads.
+  assert.equal(entry({ delta: 7, gold: 12 }), "Nysa gains 7 gold (12 gp)");
+});
+
 console.log(`\n${passed} event-log tests passed.`);
