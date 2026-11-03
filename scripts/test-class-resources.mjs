@@ -186,7 +186,8 @@ test("the passive defs are the ones something else spends", () => {
   // (src/lib/dm/caster-features.ts). The Arcane Ward's pool and its
   // raised-today mark are kept by the abjuration cast and the damage path.
   // Psionic Recovery is spent by its authored spend, which returns a die.
-  assert.deepEqual(passive, ["relentless_endurance", "inspiration", "relentless_rage", "signature_spell_1", "signature_spell_2", "overchannel", "sub_psionic_recovery", "sub_arcane_ward", "sub_arcane_ward_raised"]);
+  // Runic Shield is spent by its reaction, when a hit on an ally offers it.
+  assert.deepEqual(passive, ["relentless_endurance", "inspiration", "relentless_rage", "signature_spell_1", "signature_spell_2", "overchannel", "sub_psionic_recovery", "sub_runic_shield", "sub_arcane_ward", "sub_arcane_ward_raised"]);
 });
 
 test("Relentless Endurance spends once, then refuses", () => {

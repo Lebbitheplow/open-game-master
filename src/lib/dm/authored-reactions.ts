@@ -322,6 +322,39 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       const settled = settle(ctx, hit.record, hit.record.swings.map((entry, at) => (at === hit.index ? { ...entry, hit: false, raw: 0 } : entry)), label);
       return { applied: `Rolled again at disadvantage: ${total} against AC ${swing.vsAc} misses, and ${settled.given} hit points come back. HP ${settled.hp}.` };
     }
+    case "reroll_hit": {
+      const ally = allyOf(ctx);
+      if (!ally || ally.id === ctx.sheet.id) {
+        return { error: `${reaction.name} protects another creature: pass the ally's targetCharacterId. Nothing was spent.`, retry: true };
+      }
+      if (encounter && !withinFeet(encounter.id, ctx.sheet.id, ally.id, does.rangeFt)) {
+        return { error: `${ally.name} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
+      }
+      const hit = lastHitOn(ctx, ally, label);
+      if ("error" in hit) return hit;
+      const swing = hit.record.swings[hit.index];
+      if (swing.natural === null) {
+        return { error: `${reaction.name} answers an attack roll, and this hit had none on record. Nothing was spent.`, refused: "rules" };
+      }
+      // One d20 in place of the die that counted, even from a roll with advantage:
+      // the new roll is the one used, so the other die does not save the hit.
+      const natural = rollCard(ctx.campaign, ctx.turn, null, "attack", rollAgainst(`${swing.attack ?? hit.record.attack} again (${reaction.name})`, ally.name), "1d20", rerollAttacker(hit.record)).total;
+      const total = swing.total - swing.natural + natural;
+      const lands = natural === 20 || (natural !== 1 && total >= swing.vsAc);
+      if (!lands) {
+        const settled = settle(ctx, hit.record, hit.record.swings.map((entry, at) => (at === hit.index ? { ...entry, hit: false, raw: 0 } : entry)), label);
+        return { applied: `Rolled again: ${total} against AC ${swing.vsAc} misses ${ally.name}, and ${settled.given} hit points come back. HP ${settled.hp}.`, ...(settled.notes.length ? { notes: settled.notes } : {}) };
+      }
+      // The new roll goes on the record, so a later reaction (Shield, Cutting Words)
+      // reads it and not the first. The damage was rolled with the first roll and
+      // stands, so a critical gained or lost is said rather than changed. A ranged
+      // natural 20 rolled away is no critical on a downed ally's death track, where
+      // a melee blow beside them stays one whatever the die (SRD 5.1, Unconscious).
+      const crit = swing.crit && !(swing.natural === 20 && natural !== 20 && (swing.ranged ?? hit.record.ranged));
+      settle(ctx, hit.record, hit.record.swings.map((entry, at) => (at === hit.index ? { ...entry, total, natural, faces: [natural], advantage: "none" as const, crit } : entry)), label);
+      const critical = natural === 20 ? " It is a natural 20, and the hit is not raised to a critical: the damage already rolled stands." : swing.natural === 20 ? " The damage of the first roll's critical stands." : "";
+      return { applied: `Rolled again: ${total} against AC ${swing.vsAc} still hits ${ally.name}.${critical}` };
+    }
     case "resist_instance": {
       const target = allyOf(ctx) ?? ctx.sheet;
       if (encounter && target.id !== ctx.sheet.id && !withinFeet(encounter.id, ctx.sheet.id, target.id, does.rangeFt)) {

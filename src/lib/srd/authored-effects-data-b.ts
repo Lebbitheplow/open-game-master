@@ -266,6 +266,12 @@ export const AUTHORED_DATA_A2: Record<string, AuthoredEntry> = {
     counter: "sub_telekinetic_master",
     effects: [{ kind: "bonus_attack", after: "telekinesis" }],
   },
+  // Spent its use and changed nothing: the hit on an ally now answers to it.
+  "fighter::Runic Shield": {
+    subclass: "Rune Knight",
+    counter: "sub_runic_shield",
+    reactions: [{ name: "Runic Shield", pool: { id: "sub_runic_shield" }, does: { kind: "reroll_hit", rangeFt: 60 } }],
+  },
   "fighter::Great Stature": {
     subclass: "Rune Knight",
     spends: [

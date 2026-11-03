@@ -390,6 +390,9 @@ export type ReactionDoes =
   // The attack that hit is rolled again at disadvantage. `notVsAdvantage`:
   // not against an attack rolled with advantage (Shadowy Dodge).
   | { kind: "disadv_vs_hit"; notVsAdvantage?: boolean }
+  // The attacker rolls the d20 that hit an ally in range again and must use the
+  // new roll, high or low (Runic Shield).
+  | { kind: "reroll_hit"; rangeFt: number }
   // Resistance to the last hit's damage when it is one of these types.
   | { kind: "resist_instance"; types: string[]; who: "either"; rangeFt: number }
   // The holder takes the hit an ally in range took.
