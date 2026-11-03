@@ -103,7 +103,14 @@ export default {
         // did not hold").
         await eventually(() => addButton.isEnabled(), { timeoutMs: 10_000, label: `Add option, for ${name}` });
         await newName.press("Tab");
-        await eventually(() => addButton.evaluate((element) => element === document.activeElement), { timeoutMs: 5_000, label: `the focus on Add option, for ${name}` });
+        // Runs here do not reproduce a miss, and CI keeps no pictures of one:
+        // the failure itself says where the focus went (PR 775).
+        await eventually(() => addButton.evaluate((element) => element === document.activeElement), { timeoutMs: 5_000, label: `the focus on Add option, for ${name}` }).catch(async (error) => {
+          const held = await newName.inputValue().catch(() => "gone");
+          const enabled = await addButton.isEnabled({ timeout: 1_000 }).catch(() => "gone");
+          const focus = await page.evaluate(() => document.activeElement?.outerHTML.slice(0, 160));
+          throw new Error(`${error.message}: the name field holds "${held}", Add enabled is ${enabled}, the focus is on ${focus}`);
+        });
         await page.keyboard.press("Enter");
         await eventually(() => editor.locator(`[data-species-option="${name.toLowerCase()}"]`).count(), { timeoutMs: 10_000, label: `the option ${name}` });
       };
