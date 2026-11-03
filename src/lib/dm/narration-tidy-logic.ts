@@ -67,6 +67,39 @@ export function withoutToolTalk(text: string): string {
   return tidyBlankLines(out);
 }
 
+// A line of nothing but the closers of an aside or a quote nobody opened:
+// ")*", "]*", ")_", ")*_" (issue 744). The table read a stray ")*" above the
+// paragraph. A model can clip its own aside this way, and withoutSentences
+// (claims-logic.ts) cannot see that one. A closer beside any other word is
+// the sentence's own, so only a whole line goes; ":)" has a colon, and "(like
+// this)*" opens what it closes. A line that does close a bracket still open
+// above it ends a multi-line aside, and stays; a "(" that never closed earlier
+// in the text keeps a stray line too, which beats unclosing an aside.
+const ORPHAN_CLOSERS = /^[ \t]*[)\]]+[*_]+[ \t]*(?:\r?\n|$)/gm;
+
+// A closer with nothing open cancels nothing: an orphan above an aside must
+// not hide that aside's opener.
+function leftOpen(text: string, open: string, close: string): boolean {
+  let depth = 0;
+  for (const char of text) {
+    if (char === open) {
+      depth += 1;
+    } else if (char === close && depth > 0) {
+      depth -= 1;
+    }
+  }
+  return depth > 0;
+}
+
+export function withoutOrphanClosers(text: string): string {
+  const out = text.replace(ORPHAN_CLOSERS, (line: string, at: number) => {
+    const before = text.slice(0, at);
+    const closes = (line.includes(")") && leftOpen(before, "(", ")")) || (line.includes("]") && leftOpen(before, "[", "]"));
+    return closes ? line : "";
+  });
+  return out === text ? text : tidyBlankLines(out);
+}
+
 // Whether a reply is mostly the last turn's narration said again: a player
 // who repeats a line ("I attack it") got back the paragraph the model wrote
 // last time, with no tool, so the new action never happened (gpt-oss-20b and
