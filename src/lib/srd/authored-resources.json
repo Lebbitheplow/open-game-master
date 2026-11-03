@@ -154,7 +154,8 @@
    "ability": null,
    "recharge": "short",
    "action": "reaction",
-   "guidance": "A reaction making the echo the target of an attack aimed at another creature."
+   "guidance": "Use use_reaction 'Shadow Martyr' when an attack hits another creature, with that creature's targetCharacterId. The echo takes the attack and the hit becomes a miss. The server does not track the echo: refuse it when none is out, and remove the echo when the attack beats its AC.",
+   "passive": true
   },
   {
    "id": "sub_warding_maneuver",
@@ -1486,7 +1487,7 @@
    "proficiency": 1,
    "recharge": "long",
    "action": "reaction",
-   "guidance": "A reaction when the ranger or their drake takes damage within 30 feet of each other: the one hurt resists that damage. The server gives back the resisted half (use_reaction 'Reflexive Resistance')."
+   "guidance": "A reaction when the ranger or their drake takes damage within 30 feet of each other: the one hurt resists that damage. For an attack that hit the ranger, the server gives back the resisted half (use_reaction 'Reflexive Resistance'). For the drake, halve the damage before apply_damage and spend this with use_resource."
   },
   {
    "id": "sub_wails_from_the_grave",

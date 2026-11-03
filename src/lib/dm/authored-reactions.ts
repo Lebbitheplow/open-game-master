@@ -422,6 +422,12 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
     }
     case "resist_instance": {
       const target = allyOf(ctx) ?? ctx.sheet;
+      if (does.bond && target.id !== ctx.sheet.id) {
+        return { error: `${reaction.name} covers only ${ctx.sheet.name} and their ${does.bond}, not ${target.name}. Nothing was spent.`, refused: "rules" };
+      }
+      if (does.bond && !(ctx.sheet.pets ?? []).some((pet) => pet.kind === does.bond && pet.hp > 0)) {
+        return { error: `${reaction.name} needs ${ctx.sheet.name}'s ${does.bond} up and out, and it is not: summon_pet first. Nothing was spent.`, refused: "rules" };
+      }
       if (encounter && target.id !== ctx.sheet.id && !withinFeet(encounter.id, ctx.sheet.id, target.id, does.rangeFt)) {
         return { error: `${target.name} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
       }
@@ -733,6 +739,16 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
         publishPersisted(ctx.campaign.id, "sheet_updated", { sheet: updated });
       }
       return { applied: `The attack misses by the wizard's word: ${settled.given} hit points come back to ${target.name}. ${ctx.sheet.name} gains ${does.exhaustion} level of exhaustion.` };
+    }
+    case "echo_takes_hit": {
+      const ally = allyOf(ctx);
+      if (!ally || ally.id === ctx.sheet.id) {
+        return { error: `${reaction.name} sends the echo into an attack that hit another creature: pass that ally's targetCharacterId. Nothing was spent.`, retry: true };
+      }
+      const hit = lastHitOn(ctx, ally, label);
+      if ("error" in hit) return hit;
+      const settled = settle(ctx, hit.record, hit.record.swings.map((entry, at) => (at === hit.index ? { ...entry, hit: false, raw: 0 } : entry)), label);
+      return { applied: `${ctx.sheet.name}'s echo takes the attack: ${settled.given} hit points come back to ${ally.name}. HP ${settled.hp}. The echo has AC ${14 + computeSheetDerived(ctx.sheet).proficiencyBonus} and 1 hit point, and the server does not track it: the GM removes it if the attack beats that AC.` };
     }
     case "chance_miss": {
       const hit = lastHitOn(ctx, ctx.sheet, label);

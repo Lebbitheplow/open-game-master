@@ -477,6 +477,8 @@ function reactionRules(does: ReactionDoes): string {
       return does.exhaustion
         ? `The hit becomes a miss, for ${does.exhaustion} level${does.exhaustion === 1 ? "" : "s"} of exhaustion.`
         : "The hit becomes a miss.";
+    case "echo_takes_hit":
+      return "Your echo takes the attack: the hit becomes a miss.";
     default:
       return "";
   }
@@ -502,6 +504,7 @@ function subclassReactions(
       }
       const does = reaction.does;
       const typed = (types?: string[]) => !types?.length || types.includes(hit.type);
+      if (does.kind === "resist_instance" && does.bond && !(sheet.pets ?? []).some((pet) => pet.kind === does.bond && pet.hp > 0)) continue;
       const answers =
         whose === "self"
           ? (does.kind === "reduce" && does.who !== "ally" && typed(does.types)) ||
@@ -516,7 +519,8 @@ function subclassReactions(
             (does.kind === "ac_vs_hit" && Boolean(does.rangeFt)) ||
             (does.kind === "echo_hit" && Boolean(hit.attackerId)) ||
             (does.kind === "disadv_vs_hit" && Boolean(does.allyWith) && holdsFeature(sheet, does.allyWith!)) ||
-            (does.kind === "resist_instance" && typed(does.types));
+            does.kind === "echo_takes_hit" ||
+            (does.kind === "resist_instance" && !does.bond && typed(does.types));
       if (!answers) continue;
       // Within its reach: the ally it covers, or for Rebuke the Violent the
       // attacker ("an attacker within 30 feet of you").

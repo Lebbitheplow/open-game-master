@@ -194,6 +194,11 @@ export const AUTHORED_DATA_A2: Record<string, AuthoredEntry> = {
     narrated:
       "The echo is a position on the board, not a creature the engine tracks; attacks from its space are ordinary pc_attack calls.",
   },
+  "fighter::Shadow Martyr": {
+    subclass: "Echo Knight",
+    counter: "sub_shadow_martyr",
+    reactions: [{ name: "Shadow Martyr", pool: { id: "sub_shadow_martyr" }, does: { kind: "echo_takes_hit" } }],
+  },
   "fighter::Legion of One": {
     subclass: "Echo Knight",
     effects: [{ kind: "init_refill", resource: "sub_unleash_incarnation" }],

@@ -397,7 +397,9 @@ export type ReactionDoes =
   // of their next turn (Entropic Ward; authored-hooks.ts reads the mark).
   | { kind: "disadv_vs_hit"; notVsAdvantage?: boolean; allyWith?: string; rangeFt?: number; advantageOnMiss?: boolean }
   // Resistance to the last hit's damage when it is one of these types.
-  | { kind: "resist_instance"; types: string[]; who: "either"; rangeFt: number }
+  // `bond`: only for the holder, and only while that creature is on their sheet and up
+  // (a Drakewarden's drake); no other ally.
+  | { kind: "resist_instance"; types: string[]; who: "either"; rangeFt: number; bond?: "drake" }
   // The holder takes the hit an ally in range took.
   // `share`: "halved", the holder takes half of it and the ally none
   // (Penance Shared); "split", each takes half (Blood Bond).
@@ -442,6 +444,9 @@ export type ReactionDoes =
   | { kind: "chance_miss"; die: string; min: number; vsMark?: string }
   // The last hit is declared a miss, for a level of exhaustion.
   | { kind: "force_miss"; exhaustion: number }
+  // The holder's echo takes the attack that hit another creature, and the hit
+  // becomes a miss for them. The echo is no creature the engine tracks.
+  | { kind: "echo_takes_hit" }
   // A move off the holder's turn, up to half their speed, drawing no
   // opportunity attack: when an enemy stands within 5 feet (Skirmisher), or
   // right after the holder's opportunity attack hit, as part of that same
