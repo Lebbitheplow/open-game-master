@@ -31,7 +31,7 @@ import {
 } from "@/lib/battlemap/hand-core";
 import { spellNames } from "@/lib/battlemap/hand-spells";
 import { COMMANDED, wieldsMeleeOrShield } from "@/lib/dm/maneuver-rules";
-import { HIT_ANSWER_COUNTERS, reachAtLevel } from "@/lib/dm/reaction-kinds";
+import { HIT_ANSWER_COUNTERS, reachAtLevel, reactionTimingOf, timingOfDoes } from "@/lib/dm/reaction-kinds";
 import { resourceDef } from "@/lib/srd/class-resources";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
@@ -129,7 +129,7 @@ function spellReaction(
   const problem = (refusal: ToolError | null): Gate => (refusal ? { reason: refusal.error, spent: false } : null);
   return gated(
     card,
-    standingGate(sheet, turn, "reaction"),
+    droppedByThisHit(sheet, hit) && reactionTimingOf(spell) === "answers" ? stoodGate(sheet, turn, hit) : standingGate(sheet, turn, "reaction"),
     problem(casterStateProblem(sheet)),
     problem(componentProblem(sheet, facts) ?? focusProblem(sheet, facts)),
     slot ? null : { reason: `${sheet.name} has no spell slot left for ${spell}.`, spent: true },
@@ -220,7 +220,8 @@ export function reactionCards(
   const tail = (hit: PublicLastHit) =>
     hit.id && hits.filter((other) => other.characterId === hit.characterId).length > 1 ? `~${hit.id}` : "";
   // `fallen`: the card answers the hit itself, so a holder that hit dropped
-  // is asked as they stood before it. `gate`: a refusal of the card's own.
+  // is asked as they stood before it. Left out, the engine's table says, by the
+  // card's name (reaction-kinds.ts). `gate`: a refusal of the card's own.
   const feature = (
     hit: PublicLastHit,
     name: string,
@@ -241,7 +242,7 @@ export function reactionCards(
     cards.push(
       gated(
         card,
-        more.fallen ? stoodGate(sheet, turn, hit) : standingGate(sheet, turn, "reaction"),
+        (more.fallen ?? (droppedByThisHit(sheet, hit) && reactionTimingOf(name) === "answers")) ? stoodGate(sheet, turn, hit) : standingGate(sheet, turn, "reaction"),
         more.gate ?? null,
         costGate("reaction", turn, sheet, name),
       ),
@@ -388,6 +389,10 @@ export function reactionCards(
 // it (src/lib/dm/reaction-gate.ts reactingSheet): open to one that very hit
 // dropped, and shut to one stunned or down before it. An older host sends no
 // standing, and the card is open as before.
+function droppedByThisHit(sheet: CharacterSheet, hit: PublicLastHit): boolean {
+  return hit.characterId === sheet.id && sheet.currentHp <= 0;
+}
+
 function stoodGate(sheet: CharacterSheet, turn: HandTurn, hit: PublicLastHit): Gate {
   if (!hit.stood) return null;
   if (!hit.stood.up) return standingGate(sheet, turn, "reaction");
@@ -530,8 +535,8 @@ function subclassReactions(
       }
       const rules = reactionRules(does, hit);
       if (!rules) continue;
-      // Sentinel at Death's Door answers the critical that dropped its holder.
-      out.push({ name: reaction.name, rules, target: does.kind === "strike_back" ? "enemy" : whose === "ally" ? "ally" : "none", fallen: does.kind === "uncrit" });
+      // Asked by what it does to the hit, as the engine asks it (reaction-tools.ts).
+      out.push({ name: reaction.name, rules, target: does.kind === "strike_back" ? "enemy" : whose === "ally" ? "ally" : "none", fallen: timingOfDoes(does) === "answers" });
     }
   }
   return out;

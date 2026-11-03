@@ -89,6 +89,19 @@ function payDie(
   return typeof spent.error === "string" ? { ...toolError(spent), error: `${label}: ${spent.error}` } : null;
 }
 
+// The die for a Parry by one the blow dropped. The reaction was judged as they
+// stood before it (reaction-gate.ts), which use_resource, asked of a counter that
+// is no reaction of its own, reads as someone at 0 spending it by choice.
+function payDieAsTheyStood(campaign: Campaign, sheet: CharacterSheet, label: string): ToolError | null {
+  const state = sheet.resources.sub_superiority_dice;
+  if (!state || state.used >= state.max) {
+    return { error: `${label}: ${sheet.name} has no Superiority Dice left.`, refused: "rules" };
+  }
+  const updated = patchSheet(sheet.id, { resources: { ...sheet.resources, sub_superiority_dice: { max: state.max, used: state.used + 1 } } });
+  if (updated) publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
+  return null;
+}
+
 // ---- use_reaction ----
 
 export function maneuverReaction(ctx: Ctx): Record<string, unknown> | null {
@@ -126,7 +139,7 @@ function parry(ctx: Ctx): ToolResult {
   if (!record || index < 0) {
     return noHit(sheet.name, "Parry", "damage from a melee attack");
   }
-  const refused = payDie(campaign, ctx.turn.id, sheet, "Parry", ctx.sheets, ctx.sheetsById);
+  const refused = sheet.currentHp > 0 ? payDie(campaign, ctx.turn.id, sheet, "Parry", ctx.sheets, ctx.sheetsById) : payDieAsTheyStood(campaign, sheet, "Parry");
   if (refused) {
     return { ...refused, error: `${refused.error} Nothing was spent.` };
   }

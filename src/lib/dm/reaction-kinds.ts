@@ -119,7 +119,7 @@ export const HIT_ANSWER_COUNTERS: ReadonlyArray<{
   { id: "race_stones_endurance", answersDrop: true },
   { id: "sub_swarming_dispersal", answersDrop: true },
   { id: "sub_misty_escape", anyDamage: true },
-  { id: "sub_warding_maneuver", ally: true, attackOnly: true, rangeFt: 5, armed: true },
+  { id: "sub_warding_maneuver", ally: true, attackOnly: true, rangeFt: 5, armed: true, answersDrop: true },
   { id: "sub_one_with_the_word", answersDrop: true, whileHolding: "manifest mind" },
   { id: "sub_necrotic_husk", atZero: true },
   { id: "sub_strength_before_death", atZero: true },
