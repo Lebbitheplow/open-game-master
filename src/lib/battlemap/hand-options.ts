@@ -7,6 +7,7 @@
 // Pure; scripts/test-hand-options.mjs drives it.
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { channelOptions, psionicOptions, type HeldOption } from "@/lib/dm/option-costs";
+import { heldReaction } from "@/lib/srd/authored-effects";
 import { maneuverDieFor } from "@/lib/dm/maneuver-rules";
 import { iconPath, isPainted, type IconRef } from "@/lib/icons";
 import {
@@ -93,6 +94,8 @@ export function optionCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] {
   const cards: HandCard[] = [];
   if (sheet.resources.channel_divinity) {
     for (const option of channelOptions(sheet)) {
+      // Offered when its trigger comes (hand-react.ts), as a reaction card.
+      if (heldReaction(sheet, option.name)) continue;
       cards.push(
         card(sheet, turn, { id: "channel_divinity", label: "Channel Divinity" }, {
           name: option.name,

@@ -407,6 +407,9 @@ export type ReactionDoes =
       rangeFt?: number;
       save?: { ability: Ability; dcAbility: Ability | "spell"; half?: boolean; onFail?: string; damageRegardless?: boolean };
     }
+  // The damage of the hit on another creature in range, back at whoever dealt it,
+  // on a save for half (Rebuke the Violent).
+  | { kind: "echo_hit"; type: string; rangeFt: number; save: { ability: Ability; dcAbility: Ability | "spell" } }
   // One weapon attack with the reaction (the holder's own, or an ally's
   // when the feature belongs to someone else in the party).
   | { kind: "attack"; rangeFt: number; onHitCondition?: { name: string; rounds: number } }

@@ -287,6 +287,17 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
     subclass: "Oath of Redemption",
     reactions: [{ name: "Aura of the Guardian", does: { kind: "take_for_ally", rangeFt: AURA_REACH } }],
   },
+  "paladin::Channel Divinity: Rebuke the Violent": {
+    subclass: "Oath of Redemption",
+    reactions: [
+      {
+        name: "Rebuke the Violent",
+        aliases: ["Channel Divinity: Rebuke the Violent"],
+        pool: { id: "channel_divinity" },
+        does: { kind: "echo_hit", type: "radiant", rangeFt: 30, save: { ability: "wis", dcAbility: "spell" } },
+      },
+    ],
+  },
   "paladin::Protective Spirit": {
     subclass: "Oath of Redemption",
     effects: [{ kind: "turn_heal", when: "end", belowHalf: true, formula: (level) => `1d6+${Math.floor(level / 2)}` }],
