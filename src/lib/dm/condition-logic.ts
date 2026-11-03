@@ -75,6 +75,9 @@ export type ConditionMeta = {
   // Ends when the creature finishes a long rest (a succubus's Draining Kiss,
   // a wight's Life Drain): src/lib/dm/rest-logic.ts.
   untilLongRest?: boolean;
+  // Each character a creature has withstood, where one mark answers several
+  // (Instinctive Charm).
+  sources?: string[];
   // A knocked-out creature's 1d4 hours to coming to with 1 hit point (SRD
   // 5.1, Knocking a Creature Out), on its unconscious: counted against the
   // world clock between fights (foe-carry-logic.ts, issue #667). Not a count

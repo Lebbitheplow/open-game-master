@@ -177,5 +177,183 @@ await test("Instinctive Charm: a failed save turns the blow onto the pick.", asy
   assert.equal(world.enemies().find((enemy) => enemy.id === beside.id).currentHp, 94);
 });
 
+await test("Instinctive Charm: the attacker makes the save, not the creature picked to take the blow.", async () => {
+  const { attacker, beside } = await stage(charmer);
+  // Only the attacker can pass this save: a 20 from it keeps its target.
+  const stats = attacker.stats;
+  kit.setEnemy(beside.id, { stats: { ...beside.stats, conditionImmune: "" } });
+  kit.setEnemy(attacker.id, { stats: { ...stats, conditionImmune: "" } });
+  await strike(attacker, charmer);
+  world.dice(20);
+  const out = await react(charmer, "Instinctive Charm", { targetEnemyId: beside.id });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.match(out.result.applied, new RegExp(`${attacker.displayName} resists`));
+  assert.equal(world.sheet(charmer.id).currentHp, 44, "it keeps its target");
+  assert.ok(world.enemies().find((enemy) => enemy.id === attacker.id).conditions.includes("withstood instinctive charm"));
+  assert.equal(world.enemies().find((enemy) => enemy.id === beside.id).conditions.includes("withstood instinctive charm"), false);
+});
+
+await test("Instinctive Charm: an attacker beyond 30 feet is refused, whoever is picked.", async () => {
+  const { attacker, beside } = await stage(charmer);
+  const ranged = { ...attacker.stats, attacks: [{ name: "Shortbow", toHit: 4, damage: "1d6+2", type: "piercing" }] };
+  kit.setEnemy(attacker.id, { stats: ranged });
+  kit.place(attacker.id, 5, 12);
+  await strike(attacker, charmer);
+  const out = await react(charmer, "Instinctive Charm", { targetEnemyId: beside.id });
+  assert.equal(out.ok, false);
+  assert.match(out.error, new RegExp(`${attacker.displayName} is beyond 30 feet`));
+  assert.equal(reactionSpent(charmer), false);
+});
+
+await test("Instinctive Charm: an attacker that resisted cannot be swayed again, with nothing spent, though another can.", async () => {
+  const encounters = await import("../src/lib/db/encounters.ts");
+  const nextRound = () => {
+    kit.freshRound();
+    encounters.saveEncounter({ ...world.encounter(), reactionsUsed: [] });
+    world.patch(charmer.id, { currentHp: 50 });
+  };
+  const { attacker, beside } = await stage(charmer);
+  await strike(attacker, charmer);
+  world.dice(20);
+  const first = await react(charmer, "Instinctive Charm", { targetEnemyId: beside.id });
+  world.clearDice();
+  assert.equal(first.ok, true, first.error);
+  nextRound();
+  await strike(attacker, charmer);
+  // A 1 would fail the save, were it rolled.
+  world.dice(1);
+  const again = await react(charmer, "Instinctive Charm", { targetEnemyId: beside.id });
+  world.clearDice();
+  assert.equal(again.ok, false);
+  assert.match(again.error, /cannot be swayed again/);
+  assert.equal(world.sheet(charmer.id).currentHp, 44, "the blow stands");
+  assert.equal(reactionSpent(charmer), false);
+  nextRound();
+  await strike(beside, charmer);
+  world.dice(1);
+  const other = await react(charmer, "Instinctive Charm", { targetEnemyId: attacker.id });
+  world.clearDice();
+  assert.equal(other.ok, true, other.error);
+  assert.match(other.result.applied, /lands on/);
+});
+
+const nextRound = async (...heroes) => {
+  const encounters = await import("../src/lib/db/encounters.ts");
+  kit.freshRound();
+  encounters.saveEncounter({ ...world.encounter(), reactionsUsed: [] });
+  for (const who of heroes) world.patch(who.id, { currentHp: 50 });
+};
+
+await test("Instinctive Charm: each wizard's bar is their own, and a second wizard's does not erase the first's.", async () => {
+  const second = hero({ class: "wizard", subclass: "School of Enchantment", spellcasting: { ability: "int", slots: { 1: { max: 2, used: 0 } }, prepared: [], known: [], cantrips: [] } });
+  const { attacker, beside } = await stage(charmer);
+  kit.place(second.id, 4, 6);
+  world.patch(second.id, { currentHp: 50, conditions: [], conditionMeta: {} });
+  const resist = async (who) => {
+    await strike(attacker, who);
+    world.dice(20);
+    const out = await react(who, "Instinctive Charm", { targetEnemyId: beside.id });
+    world.clearDice();
+    return out;
+  };
+  assert.match((await resist(charmer)).result.applied, /resists/);
+  await nextRound(charmer, second);
+  assert.match((await resist(second)).result.applied, /resists/, "the first wizard's bar is no bar to the second");
+  await nextRound(charmer, second);
+  await strike(attacker, charmer);
+  world.dice(1);
+  const again = await react(charmer, "Instinctive Charm", { targetEnemyId: beside.id });
+  world.clearDice();
+  assert.equal(again.ok, false);
+  assert.match(again.error, /cannot be swayed again/);
+});
+
+await test("Instinctive Charm: the bar holds with the attacker's conditions list full, and on a character fighting for the foes.", async () => {
+  const { attacker, beside } = await stage(charmer);
+  const full = Array.from({ length: 10 }, (_, at) => `mark ${at}`);
+  kit.setEnemy(attacker.id, { conditions: full, conditionMeta: {} });
+  await strike(attacker, charmer);
+  world.dice(20);
+  assert.match((await react(charmer, "Instinctive Charm", { targetEnemyId: beside.id })).result.applied, /resists/);
+  world.clearDice();
+  await nextRound(charmer);
+  await strike(attacker, charmer);
+  world.dice(1);
+  const barred = await react(charmer, "Instinctive Charm", { targetEnemyId: beside.id });
+  world.clearDice();
+  assert.match(barred.error ?? "", /cannot be swayed again/);
+
+  // A guest leaves with the fight it joined, so this one joins between fights.
+  await kit.endFight();
+  const { moveToSide } = await import("../src/lib/dm/combat-sides.ts");
+  const joined = await world.invoke("add_companion", { gender: "Unknown", name: "Aldric", class: "fighter", race: "human", level: 3, personality: "Grim.", kind: "guest" });
+  assert.equal(joined.ok, true, joined.error);
+  const turncoat = joined.result.characterId;
+  world.patch(turncoat, { proficiencies: TRAINED, maxHp: 30, currentHp: 30, ac: 12, acOverride: true, equipment: [{ name: "Longsword", qty: 1 }], conditions: [], conditionMeta: {} });
+  await kit.fight(2, { heroFaces: { [charmer.id]: 3, [turncoat]: 2 } });
+  const fresh = { beside: world.enemies()[0] };
+  kit.setEnemy(fresh.beside.id, { maxHp: 100, currentHp: 100 });
+  moveToSide(world.campaign(), turncoat, "foe");
+  kit.place(charmer.id, 5, 5);
+  kit.place(turncoat, 5, 6);
+  kit.place(fresh.beside.id, 4, 5);
+  kit.place(world.enemies()[1].id, 12, 12);
+  kit.freshRound();
+  world.patch(charmer.id, { currentHp: 50, conditions: [], conditionMeta: {} });
+  kit.giveTurn(turncoat);
+  const blow = await kit.swing(turncoat, charmer.id, [15, 5]);
+  assert.equal(blow.ok, true, blow.error);
+  world.dice(20);
+  const first = await react(charmer, "Instinctive Charm", { targetEnemyId: fresh.beside.id });
+  world.clearDice();
+  assert.match(first.result.applied, /resists/);
+  assert.ok(world.sheet(turncoat).conditions.includes("withstood instinctive charm"), "the mark is on their sheet");
+  await nextRound(charmer);
+  kit.giveTurn(turncoat);
+  const second = await kit.swing(turncoat, charmer.id, [15, 5]);
+  assert.equal(second.ok, true, second.error);
+  world.dice(1);
+  const refused = await react(charmer, "Instinctive Charm", { targetEnemyId: fresh.beside.id });
+  world.clearDice();
+  assert.match(refused.error ?? "", /cannot be swayed again/);
+});
+
+await test("Instinctive Charm: the mark ends at a long rest, not on a timer.", async () => {
+  const { carryConditions } = await import("../src/lib/dm/foe-carry-logic.ts");
+  const { attacker, beside } = await stage(charmer);
+  await strike(attacker, charmer);
+  world.dice(20);
+  await react(charmer, "Instinctive Charm", { targetEnemyId: beside.id });
+  world.clearDice();
+  const held = world.enemies().find((enemy) => enemy.id === attacker.id);
+  const mark = "withstood instinctive charm";
+  assert.equal(held.conditionMeta[mark].untilLongRest, true);
+  assert.equal(carryConditions(held.conditions, held.conditionMeta, 60, 0).conditions.includes(mark), true, "an hour later it holds");
+  assert.equal(carryConditions(held.conditions, held.conditionMeta, 480, 1).conditions.includes(mark), false, "a long rest ends it");
+});
+
+await test("Instinctive Charm: a creature immune to being charmed is refused, with nothing spent and no save.", async () => {
+  const { attacker, beside } = await stage(charmer);
+  kit.setEnemy(attacker.id, { stats: { ...attacker.stats, conditionImmune: "charmed" } });
+  await strike(attacker, charmer);
+  // A 1 would fail the save, were it rolled.
+  world.dice(1);
+  const out = await react(charmer, "Instinctive Charm", { targetEnemyId: beside.id });
+  world.clearDice();
+  assert.equal(out.ok, false);
+  assert.match(out.error, /cannot be charmed/);
+  assert.equal(world.sheet(charmer.id).currentHp, 44);
+  assert.equal(reactionSpent(charmer), false);
+});
+
+await test("Misdirection needs no save, so an attacker immune to being charmed is no bar.", async () => {
+  const { attacker, beside } = await stage();
+  kit.setEnemy(attacker.id, { stats: { ...attacker.stats, conditionImmune: "charmed" } });
+  await strike(attacker);
+  const out = await react(rogue, "Misdirection", { targetEnemyId: beside.id });
+  assert.equal(out.ok, true, out.error);
+});
+
 world.close();
 finish();

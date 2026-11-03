@@ -699,12 +699,27 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       // Instinctive Charm: the attacker saves first, and keeps its target on
       // a success.
       if (does.save) {
-        const attacker = attackerFoeId(hit.record) !== null ? enemyTarget(ctx, hit.record.attacker.id) : null;
+        // The attacker by its own id: targetEnemyId here is who takes the blow.
+        const foeId = attackerFoeId(hit.record);
+        const foe = foeId ? resolveTargetFoe(encounter.campaignId, encounter, foeId) : null;
+        const attacker = foe?.status === "alive" ? foe : null;
         if (!attacker) {
           return { error: `${reaction.name} answers a creature's attack on ${ctx.sheet.name}; this one had no attacker in the fight on record. Nothing was spent.`, refused: "rules" };
         }
         if (does.rangeFt && !withinFeet(encounter.id, ctx.sheet.id, attacker.id, does.rangeFt)) {
           return { error: `${attacker.displayName} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
+        }
+        if (immuneToCondition(attacker, "charmed")) {
+          return { error: `${attacker.displayName} cannot be charmed, so ${reaction.name} cannot sway it. Nothing was spent.`, refused: "rules" };
+        }
+        // Withstood once, it cannot be swayed again until the holder's long rest:
+        // the mark sits on the creature, naming each holder it has withstood,
+        // and is read from the meta, which a full conditions list cannot drop.
+        const withstood = textKey(`withstood ${reaction.name}`);
+        const marks = attacker.conditionMeta as ConditionMetaMap;
+        const swayedBy = marks[withstood]?.sources ?? [];
+        if (swayedBy.includes(ctx.sheet.id)) {
+          return { error: `${attacker.displayName} has already resisted ${reaction.name}, and cannot be swayed again until ${ctx.sheet.name}'s long rest. Nothing was spent.`, refused: "rules" };
         }
         const dc = saveDc(holder, does.save.dcAbility);
         const save = rollEnemySave(ctx.campaign.id, attacker, does.save.ability, dc, {
@@ -715,6 +730,12 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
           record: { turn: ctx.turn, detail: `${attacker.displayName}: ${does.save.ability.toUpperCase()} save against ${reaction.name}` },
         });
         if (save.success) {
+          // A character on the foes' side takes it on their sheet (patchEnemyConditions).
+          patchEnemyConditions(attacker.id, [...attacker.conditions.filter((entry) => textKey(entry) !== withstood), withstood], {
+            ...marks,
+            [withstood]: { source: ctx.sheet.id, sources: [...swayedBy, ctx.sheet.id], untilLongRest: true },
+          } as typeof attacker.conditionMeta);
+          publishEncounter(ctx.campaign.id);
           return { applied: `${attacker.displayName} resists (${does.save.ability.toUpperCase()} ${save.total} vs DC ${dc}) and keeps its target; ${reaction.name} cannot sway it again until ${ctx.sheet.name}'s long rest.` };
         }
       }
