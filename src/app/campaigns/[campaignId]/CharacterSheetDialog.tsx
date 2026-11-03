@@ -20,6 +20,7 @@ import {
 } from "@/lib/srd";
 import { attunementSlotsFor } from "@/lib/srd/armor";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
+import { formatPurse } from "@/lib/srd/currency";
 import { magicItemRiders } from "@/lib/srd/magic-items";
 import type { WearConflict } from "@/lib/srd/wear-slots";
 import { RESOURCE_DEFS } from "@/lib/srd/class-resources";
@@ -282,7 +283,10 @@ export function CharacterSheetDialog({
                   title: explainParts(derived.parts.passivePerception),
                 },
                 { glyph: "rest-proficiency", label: "Proficiency", value: formatModifier(derived.proficiencyBonus) },
-                { glyph: "coin-gp", label: "Gold", value: `${sheet.gold} gp` },
+                // The whole purse, coppers under the gold pieces included:
+                // the sheet used to hide everything below 1 gp (the coin the
+                // DM granted in smaller change was invisible here).
+                { glyph: "coin-gp", label: "Gold", value: formatPurse({ gold: sheet.gold, copper: sheet.copper }) },
                 { glyph: "rest-xp", label: "Experience", value: `${sheet.xp} XP` },
                 {
                   glyph: `die-${sheet.hitDice.die}`,

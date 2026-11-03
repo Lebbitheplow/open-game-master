@@ -37,14 +37,17 @@ export function draftStepKey(stored: { v?: unknown; step?: unknown }): string | 
 
 // A draft saved before a race could offer more than one cantrip kept its
 // pick as `racialCantrip`; it comes back as the one-name list the builder
-// keeps now. Pure, for scripts/test-racial-cantrip-count.mjs.
+// keeps now. One saved before the purse carried its small change gets the
+// copper the builder starts a new character with. Pure, for
+// scripts/test-racial-cantrip-count.mjs.
 export function migrateDraftFields(fields: BuilderDraftFields): BuilderDraftFields {
   const { racialCantrip, ...rest } = fields as BuilderDraftFields & { racialCantrip?: unknown };
+  const withCopper = { ...rest, copper: Number.isFinite(rest.copper) ? rest.copper : 0 };
   if (Array.isArray(rest.racialCantrips)) {
-    return rest;
+    return withCopper;
   }
   const one = typeof racialCantrip === "string" ? racialCantrip.trim() : "";
-  return { ...rest, racialCantrips: one ? [one] : [] };
+  return { ...withCopper, racialCantrips: one ? [one] : [] };
 }
 
 // The door a draft belongs to: the library's new character, a table's join

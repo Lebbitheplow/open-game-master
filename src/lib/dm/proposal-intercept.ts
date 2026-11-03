@@ -23,6 +23,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
 import { listPriceCp, saleValueCp } from "@/lib/dm/trade-value";
 import { lineNamed } from "@/lib/srd/item-row";
+import { parseCoins } from "@/lib/srd/currency";
 
 // What a purchase offered for approval will charge or pay each, in gold, as
 // purchase-math.ts settles it on approval: the list price to buy, the sale
@@ -77,8 +78,8 @@ export function maybeProposeItemChange(
   if ((toolName === "grant_item" || toolName === "remove_item") && !String(args.item ?? "").trim()) {
     return { error: `${toolName} needs an item name.`, retry: true };
   }
-  if (toolName === "modify_gold" && !Number(args.delta ?? 0)) {
-    return { error: "modify_gold needs a nonzero delta.", retry: true };
+  if (toolName === "modify_gold" && !Number(args.delta ?? 0) && !parseCoins(String(args.coins ?? ""))) {
+    return { error: "modify_gold needs a nonzero delta or coins.", retry: true };
   }
   if (toolName === "purchase" && (!String(args.item ?? "").trim() || (args.action !== "buy" && args.action !== "sell"))) {
     return { error: "purchase needs item and action buy|sell.", retry: true };

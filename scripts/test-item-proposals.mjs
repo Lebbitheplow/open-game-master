@@ -77,15 +77,23 @@ test("proposalSummary phrasings", () => {
     proposalSummary("remove_item", { item: "Rope" }, "Avery"),
     "Take Rope from Avery",
   );
-  assert.equal(proposalSummary("modify_gold", { delta: 50 }, "Avery"), "Give 50 gold to Avery");
-  assert.equal(proposalSummary("modify_gold", { delta: -25 }, "Avery"), "Take 25 gold from Avery");
+  assert.equal(proposalSummary("modify_gold", { delta: 50 }, "Avery"), "Give 50 gp to Avery");
+  assert.equal(proposalSummary("modify_gold", { delta: -25 }, "Avery"), "Take 25 gp from Avery");
+  // The coins' codes carry an offer under a gold piece (issue: sub-GP coin
+  // offers), with the delta's sign still saying gain or spend.
+  assert.equal(proposalSummary("modify_gold", { delta: -1, coins: "5 sp" }, "Avery"), "Take 5 sp from Avery");
+  assert.equal(proposalSummary("modify_gold", { coins: "2 gp 3 sp" }, "Avery"), "Give 2 gp 3 sp to Avery");
   assert.equal(
     proposalSummary("purchase", { item: "Longsword", price: 15, qty: 1, action: "buy" }, "Avery"),
-    "Avery buys Longsword for 15 gold",
+    "Avery buys Longsword for 15 gp",
   );
   assert.equal(
     proposalSummary("purchase", { item: "Gem", price: 10, qty: 3, action: "sell" }, "Avery"),
-    "Avery sells Gem x3 for 30 gold",
+    "Avery sells Gem x3 for 30 gp",
+  );
+  assert.equal(
+    proposalSummary("purchase", { item: "Torch", price: 0.01, qty: 3, action: "buy" }, "Avery"),
+    "Avery buys Torch x3 for 3 cp",
   );
 });
 

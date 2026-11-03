@@ -69,7 +69,9 @@ function pay(campaignId: string, sheet: CharacterSheet, copper: number, why: str
   patchSheetAudited(campaignId, sheet.id, { gold: paid.gold, copper: paid.copper }, {
     kind: "modify_gold",
     reason: `${formatPrice(copper)} for ${why}`,
-    delta: { delta: -copper / 100, gold: paid.gold },
+    // The exact copper, so the log says "45 cp" and not "0.45 gold"
+    // (src/app/campaigns/[campaignId]/event-log-logic.ts modify_gold).
+    delta: { delta: -copper / 100, copper: -copper, gold: paid.gold, purseCp: purseOf(paid) },
   });
 }
 

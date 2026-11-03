@@ -16,6 +16,7 @@ import { Ribbon } from "@/components/ui/Ribbon";
 import { cn } from "@/lib/cn";
 import type { CreateSheetInput } from "@/lib/schemas/sheet";
 import { computeSheetDerived, formatModifier, speedFor, type DerivedPart } from "@/lib/srd";
+import { formatPurse } from "@/lib/srd/currency";
 import { ui } from "@/lib/ui";
 
 export type CharacterEvent = {
@@ -95,7 +96,7 @@ export function SheetSections({ sheet, level = 1 }: { sheet: CreateSheetInput; l
                 value: `${speedFor(sheet)} ft`,
                 title: speedFor(sheet) === sheet.speed ? "Their walking speed." : `Base ${sheet.speed} ft, changed by what they wear and their features.`,
               },
-              { glyph: "coin-gp", label: "Gold", value: `${sheet.gold} gp` },
+              { glyph: "coin-gp", label: "Gold", value: formatPurse({ gold: sheet.gold, copper: sheet.copper ?? 0 }) },
               {
                 glyph: "rest-initiative",
                 label: <GameTerm id="initiative">Initiative</GameTerm>,

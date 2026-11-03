@@ -1047,7 +1047,12 @@ function dmMutation(
         turnId,
         sheet,
         "modify_gold",
-        { delta: Math.trunc(change.applied / COPPER_PER_GOLD), copper: change.applied, gold: change.purse.gold },
+        {
+          delta: Math.trunc(change.applied / COPPER_PER_GOLD),
+          copper: change.applied,
+          gold: change.purse.gold,
+          purseCp: purseCopper(change.purse),
+        },
         reason,
         { gold: change.purse.gold, copper: change.purse.copper },
       );

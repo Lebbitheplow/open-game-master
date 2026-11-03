@@ -177,6 +177,7 @@ function freshFields(proposal: HeroProposal, level: number, ids: { classId: stri
     appearance: "",
     portrait: null,
     gold: 0,
+    copper: 0,
     hpOverride: null,
     acOverride: null,
   };

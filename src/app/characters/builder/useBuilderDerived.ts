@@ -800,7 +800,7 @@ export function useBuilderDerived({
         ? []
         : [...kitNames(autoLoadout), ...backgroundKit.names];
     const coinCopper = keepsStoredGear
-      ? state.gold * 100
+      ? state.gold * 100 + state.copper
       : Math.round(
           (wealthMethod === "rolled" ? (rules?.wealthRoll ?? 0) : (background?.purse ?? 0)) * 100,
         );
@@ -834,7 +834,7 @@ export function useBuilderDerived({
       gold: Math.floor(left / 100),
       copper: left % 100,
     };
-  }, [equipment, fullEquipment, autoLoadout, removedAutoNames, startingKit, backgroundKit, background, keepsStoredGear, wealthMethod, rules?.wealthRoll, state.gold]);
+  }, [equipment, fullEquipment, autoLoadout, removedAutoNames, startingKit, backgroundKit, background, keepsStoredGear, wealthMethod, rules?.wealthRoll, state.gold, state.copper]);
 
   // AC is derived from the gear above, never typed: equipping a breastplate
   // moves the number here and on the sheet. Pinning an armor class is a

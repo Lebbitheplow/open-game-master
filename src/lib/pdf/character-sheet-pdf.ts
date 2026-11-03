@@ -32,6 +32,7 @@ import {
   SRD_SKILLS,
   XP_THRESHOLDS,
 } from "@/lib/srd";
+import { formatPurse } from "@/lib/srd/currency";
 import { classListFor, slotTableFor } from "@/lib/srd/multiclass";
 import { weaponAttackProfile, weaponOf } from "@/lib/dm/attack-logic";
 import { matchWeapon } from "@/lib/srd/weapons";
@@ -59,6 +60,9 @@ export type PdfCharacter = {
   proficiencies: Proficiencies;
   equipment: EquipmentItem[];
   gold: number;
+  // The 0 to 99 copper under the gold pieces (src/lib/srd/currency.ts), so
+  // the printed purse matches the sheet's.
+  copper: number;
   feats: string[];
   features: SheetFeature[];
   spellcasting: Spellcasting;
@@ -101,6 +105,7 @@ export function libraryToPdfCharacter(character: {
     proficiencies: s.proficiencies,
     equipment: s.equipment,
     gold: s.gold,
+    copper: s.copper ?? 0,
     feats: s.feats,
     features: s.features,
     spellcasting: s.spellcasting,
@@ -431,7 +436,7 @@ function drawCombat(ctx: Ctx, c: PdfCharacter, derived: ReturnType<typeof comput
   field(ctx, x + 4, MARGIN + 22, w - 8, eqH - 18, eqText, { size: 8, multiline: true });
   box(ctx, x, MARGIN, w, 16, true);
   caption(ctx, x + 4, MARGIN + 5, "Gold");
-  field(ctx, x + 30, MARGIN + 2, w - 34, 12, String(c.gold), { size: 9 });
+  field(ctx, x + 30, MARGIN + 2, w - 34, 12, formatPurse({ gold: c.gold, copper: c.copper ?? 0 }), { size: 9 });
 }
 
 async function drawTraits(ctx: Ctx, c: PdfCharacter, portraitBytes?: Uint8Array) {

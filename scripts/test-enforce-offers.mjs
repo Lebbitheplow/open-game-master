@@ -119,7 +119,7 @@ await test("an accepted award says the new purse, and the same sum again is refu
   const done = await answer(nysaUser, row.id, "approve");
   assert.equal(done.status, 200, done.body.error);
   assert.equal(sheet().gold, 12);
-  assert.equal(settledLine(), "Nysa accepted the offer: Give 7 gold to Nysa. Nysa's purse now holds 12 gp.");
+  assert.equal(settledLine(), "Nysa accepted the offer: Give 7 gp to Nysa. Nysa's purse now holds 12 gp.");
   assert.match(offer("modify_gold", { delta: 7 }).error, /that coin is claimed/);
 });
 

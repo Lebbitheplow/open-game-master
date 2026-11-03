@@ -3,6 +3,7 @@ import type { CharacterEvent } from "@/lib/db/character-events";
 import type { ClockTurn } from "@/lib/db/clock-moves";
 import type { TurnChangeView } from "@/lib/db/turn-changes";
 import { quietTick } from "@/lib/sheet-audit-logic";
+import { formatCopper, formatPrice } from "@/lib/srd/currency";
 
 // What the event log lists and which turns it offers to revert. Pure, so a
 // suite reads it without a browser (scripts/test-event-log-logic.mjs). The
@@ -119,7 +120,6 @@ const word = (value: unknown): string | null => (typeof value === "string" && va
 const amount = (value: unknown): number | null => (typeof value === "number" && Number.isFinite(value) ? value : null);
 const words = (value: unknown): string[] => (Array.isArray(value) ? value.map(word).filter((entry): entry is string => entry !== null) : []);
 const times = (qty: number | null) => (qty !== null && qty > 1 ? ` x${qty}` : "");
-const gold = (copper: number) => `${Math.round(copper) / 100} gold`;
 
 function deathState(name: string, delta: Delta): string {
   const revived = word(delta.revived);
@@ -197,10 +197,18 @@ export function describeKnownEntry(entry: { kind: string; delta: Delta }, name: 
       return xp !== null ? `${name} gains ${xp} XP${total !== null ? ` (${total} total)` : ""}` : `${name} gains XP`;
     }
     case "modify_gold": {
+      // `copper` is the exact sum moved and `purseCp` the purse after it
+      // (src/lib/dm/mutations.ts); older rows only carry the whole-gold
+      // `delta` and the gold pieces left, which is what they used to say.
+      const movedCp = amount(delta.copper);
       const change = amount(delta.delta);
+      const purseCp = amount(delta.purseCp);
       const purse = amount(delta.gold);
-      if (change === null) return `${name}'s purse changes`;
-      return `${name} ${change >= 0 ? "gains" : "loses"} ${Math.abs(change)} gold${purse !== null ? ` (${purse} gp)` : ""}`;
+      if (movedCp === null && change === null) return `${name}'s purse changes`;
+      const moved = movedCp !== null ? formatPrice(Math.abs(movedCp)) : `${Math.abs(change ?? 0)} gold`;
+      const direction = (movedCp ?? change ?? 0) >= 0 ? "gains" : "loses";
+      const purseWords = purseCp !== null ? ` (${formatCopper(purseCp)})` : purse !== null ? ` (${purse} gp)` : "";
+      return `${name} ${direction} ${moved}${purseWords}`;
     }
     case "grant_item":
       return `${name} receives ${item}${times(qty)}`;
@@ -226,7 +234,12 @@ export function describeKnownEntry(entry: { kind: string; delta: Delta }, name: 
       const count = qty ?? 1;
       const eachCp = amount(delta.priceCp);
       const eachGold = amount(delta.price);
-      const price = eachCp !== null ? ` for ${gold(eachCp * count)}` : eachGold !== null ? ` for ${eachGold * count} gold` : "";
+      const price =
+        eachCp !== null
+          ? ` for ${formatPrice(eachCp * count)}`
+          : eachGold !== null
+            ? ` for ${formatPrice(Math.round(eachGold * 100) * count)}`
+            : "";
       return `${name} ${selling ? "sells" : "buys"} ${item}${times(qty)}${price}`;
     }
     case "gear": {

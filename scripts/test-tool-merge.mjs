@@ -151,7 +151,7 @@ await test("a purchase staged as an offer names the price the engine will charge
   const offerAi = await aiEngine(offers);
   const staged = ok(await offerAi.invoke("purchase", { characterId: buyer.id, item: "Longsword", price: 10, action: "buy" }));
   // The list price wins over the call's 10 where a pack prices it.
-  assert.match(staged.proposed, offers.hasPack ? /buys Longsword for 15 gold/ : /buys Longsword for 10 gold/);
+  assert.match(staged.proposed, offers.hasPack ? /buys Longsword for 15 gp/ : /buys Longsword for 10 gp/);
   // From the console, where nothing asks for the item's row first.
   const unpriced = await offers.invoke("purchase", { characterId: buyer.id, item: "A carved idol", action: "buy" });
   assert.equal(unpriced.ok, false);

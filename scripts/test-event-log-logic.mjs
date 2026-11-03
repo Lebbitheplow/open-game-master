@@ -346,7 +346,12 @@ test("a death save's result, a pact's price, a trade and the gear moves read fro
   assert.equal(say("reveal_item", { from: "Unknown ring", to: "Ring of Warmth" }), "Corra Venn's Unknown ring turns out to be Ring of Warmth");
   assert.equal(say("gear", { item: "Chain mail", equipped: false }), "Corra Venn takes off Chain mail");
   assert.equal(say("hand_item", { name: "Rope", to: "Bram", qty: 2 }), "Corra Venn hands Rope x2 to Bram");
-  assert.equal(say("purchase", { item: "Torch", qty: 3, action: "buy", priceCp: 1, shop: "s" }), "Corra Venn buys Torch x3 for 0.03 gold");
+  assert.equal(say("purchase", { item: "Torch", qty: 3, action: "buy", priceCp: 1, shop: "s" }), "Corra Venn buys Torch x3 for 3 cp");
+  // modify_gold: `copper`/`purseCp` are the exact sum and purse (new rows);
+  // a row written before them keeps its whole-gold wording.
+  assert.equal(say("modify_gold", { delta: 5, gold: 12 }), "Corra Venn gains 5 gold (12 gp)");
+  assert.equal(say("modify_gold", { delta: -3, gold: 2, copper: -300, purseCp: 200 }), "Corra Venn loses 3 gp (2 gp)");
+  assert.equal(say("modify_gold", { delta: 0, copper: -45, purseCp: 1255, gold: 12 }), "Corra Venn loses 4 sp 5 cp (1 pp 2 gp 5 sp 5 cp)");
   assert.equal(say("concentration", { concentratingOn: "Bless", concentrationRounds: 10 }), "Corra Venn concentrates on Bless");
   assert.equal(say("concentration", { concentratingOn: null }), "Corra Venn stops concentrating");
   assert.equal(say("concentration_clock", { spell: "Bless", roundsLeft: 9 }), "Time runs on Corra Venn's Bless");

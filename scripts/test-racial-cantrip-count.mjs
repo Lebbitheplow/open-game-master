@@ -182,8 +182,9 @@ await test("the picks are read back from either shape, and a draft saved before 
   const migrated = migrateDraftFields({ name: "Ilvane", racialCantrip: "Light" });
   assert.deepEqual(migrated.racialCantrips, ["Light"]);
   assert.ok(!("racialCantrip" in migrated), "the old field is left behind");
+  assert.equal(migrated.copper, 0, "a draft older than the purse's small change gets one");
   assert.deepEqual(migrateDraftFields({ name: "Ilvane", racialCantrip: "" }).racialCantrips, []);
-  const current = { name: "Ilvane", racialCantrips: ["Fire Bolt", "Light"] };
+  const current = { name: "Ilvane", racialCantrips: ["Fire Bolt", "Light"], copper: 0 };
   assert.deepEqual(migrateDraftFields(current), current);
 });
 

@@ -30,6 +30,7 @@ import {
 } from "./LeadEditParts";
 import { earnedExpertise, expertiseOverCap, skillLevelsOf, trainingFrom, type SkillLevel } from "./lead-edit-logic";
 import { acBreakdownFor, effectiveAcFor, SRD_SKILLS } from "@/lib/srd";
+import { fromCopper } from "@/lib/srd/currency";
 import { ABILITY_NAMES } from "@/lib/srd/legality/types";
 import { isCantripName } from "@/lib/srd/spell-lists";
 import { spellStyleFor } from "@/lib/srd/spell-prep";
@@ -74,6 +75,9 @@ export function LeadEditDialog({
   // than it has); shown before the dialog closes (U:UC12).
   const [held, setHeld] = useState<string[]>([]);
   const [gold, setGold] = useState(String(sheet.gold));
+  // The copper under the gold pieces (src/lib/srd/currency.ts): the purse
+  // could always hold it, the lead just could not see or correct it.
+  const [copper, setCopper] = useState(String(sheet.copper));
   const [xp, setXp] = useState(String(sheet.xp));
   const [conditions, setConditions] = useState(sheet.conditions.join(", "));
   const [items, setItems] = useState<ItemRow[]>(() => itemRowsOf(sheet.equipment));
@@ -158,7 +162,6 @@ export function LeadEditDialog({
       ["maxHp", maxHp, sheet.maxHp],
       // An unpinned AC is the armor engine's; only a pinned one is sent.
       ...(pinned ? ([["ac", ac, sheet.ac]] as Array<[string, string, number]>) : []),
-      ["gold", gold, sheet.gold],
       ["xp", xp, sheet.xp],
     ];
     for (const [key, raw, previous] of numbers) {
@@ -166,6 +169,14 @@ export function LeadEditDialog({
       if (Number.isFinite(value) && value !== previous) {
         patch[key] = value;
       }
+    }
+    // The purse is one sum in copper, so typing 120 copper or 1.2 gold is
+    // "1 gp 20 cp" whichever box it was typed into (fromCopper carries).
+    const purseDraft = Math.round((Number(gold) || 0) * 100 + (Number(copper) || 0));
+    if (Number.isFinite(purseDraft) && purseDraft !== sheet.gold * 100 + sheet.copper) {
+      const next = fromCopper(purseDraft);
+      patch.gold = next.gold;
+      patch.copper = next.copper;
     }
     if (pinned !== sheet.acOverride) {
       patch.acOverride = pinned;
@@ -306,6 +317,7 @@ export function LeadEditDialog({
                 ["Temp HP", tempHp, setTempHp, "rest-temp-hp"],
                 ["Max HP", maxHp, setMaxHp, "rest-hp"],
                 ["Gold", gold, setGold, "coin-gp"],
+                ["Copper", copper, setCopper, "coin-purse"],
                 ["XP", xp, setXp, "rest-xp"],
               ] as Array<[string, string, (value: string) => void, string]>
             ).map(([label, value, setter, glyph]) => (

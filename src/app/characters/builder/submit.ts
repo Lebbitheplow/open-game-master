@@ -937,7 +937,10 @@ function keepUnedited(
   const kept = {
     ...built,
     notes: initial.notes,
-    copper: initial.copper,
+    // Small change is the purse's own now (the builder carries it through
+    // the gear sum), so the built copper stands; only its absence falls
+    // back to what play left in the pouch.
+    copper: built.copper ?? initial.copper,
     features: [...built.features, ...grantedInPlay(initial, built)],
     equipment: keptItemDetails(initial.equipment ?? [], built.equipment),
   };

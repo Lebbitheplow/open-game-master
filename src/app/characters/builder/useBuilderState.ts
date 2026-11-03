@@ -120,6 +120,8 @@ export type BuilderDraftFields = {
   appearance: string;
   portrait: SheetAttachment | null;
   gold: number;
+  // The copper remainder of a stored purse, alongside gold (src/lib/srd/currency.ts).
+  copper: number;
   hpOverride: number | null;
   acOverride: number | null;
 };
@@ -330,6 +332,9 @@ export function useBuilderState({
   // A stored character's own coin; a new one's purse is its background's
   // (useBuilderDerived), not a number typed here.
   const [gold, setGold] = useState(initial?.gold ?? 0);
+  // The 0 to 99 copper under the gold (src/lib/srd/currency.ts), so an edit
+  // of a stored sheet starts from the whole purse, not its gold alone.
+  const [copper, setCopper] = useState(initial?.copper ?? 0);
   const [hpOverride, setHpOverride] = useState<number | null>(initial?.maxHp ?? null);
   // The level and Constitution the stored hit points (hpOverride) stand on.
   // The server keeps them only while both stand (builderHp.ts).
@@ -924,6 +929,7 @@ export function useBuilderState({
     appearance: setAppearance,
     portrait: setPortrait,
     gold: setGold,
+    copper: setCopper,
     hpOverride: setHpOverride,
     acOverride: setAcOverride,
   };
@@ -1010,6 +1016,7 @@ export function useBuilderState({
     appearance,
     portrait,
     gold,
+    copper,
     hpOverride,
     acOverride,
   };
@@ -1091,6 +1098,7 @@ export function useBuilderState({
     appearance, setAppearance,
     portrait, setPortrait,
     gold, setGold,
+    copper, setCopper,
     hpOverride, setHpOverride,
     acOverride, setAcOverride,
     localError, setLocalError,

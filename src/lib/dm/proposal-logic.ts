@@ -7,6 +7,7 @@
 import type { ToolError } from "./tool-errors.ts";
 import { textKey } from "../language/text-logic.ts";
 import { lineNamed } from "../srd/item-row.ts";
+import { formatPrice, parseCoins } from "../srd/currency.ts";
 import { renamedArgs } from "./tool-merge-logic.ts";
 
 export const PROPOSAL_TOOL_NAMES = new Set([
@@ -31,6 +32,9 @@ export type ProposalArgs = {
   item?: string;
   qty?: number;
   delta?: number;
+  // modify_gold: the amount in the coins' codes, which wins over delta's
+  // size (src/lib/dm/mutations.ts); the summary reads it for the same sum.
+  coins?: string;
   price?: number;
   action?: string;
   // apply_damage, heal, set_condition, clear_condition
@@ -92,16 +96,22 @@ export function proposalSummary(
     case "remove_item":
       return `Take ${itemName}${suffix} from ${characterName}`;
     case "modify_gold": {
+      // The same sum the handler works (src/lib/dm/mutations.ts): coins win
+      // over the gold delta's size, the delta's sign still says gain or
+      // spend, so an offer of "5 sp" is not rounded to a gold piece here.
       const delta = Number(args.delta ?? 0);
-      return delta >= 0
-        ? `Give ${delta} gold to ${characterName}`
-        : `Take ${Math.abs(delta)} gold from ${characterName}`;
+      const coins = String(args.coins ?? "").trim();
+      const parsedCoins = coins ? parseCoins(coins) : null;
+      const movedCp = parsedCoins !== null ? (delta < 0 ? -parsedCoins : parsedCoins) : delta * 100;
+      return movedCp >= 0
+        ? `Give ${formatPrice(movedCp)} to ${characterName}`
+        : `Take ${formatPrice(-movedCp)} from ${characterName}`;
     }
     case "purchase": {
-      const price = Number(args.price ?? 0) * qty;
+      const price = Math.round(Number(args.price ?? 0) * 100) * qty;
       return args.action === "sell"
-        ? `${characterName} sells ${itemName}${suffix} for ${price} gold`
-        : `${characterName} buys ${itemName}${suffix} for ${price} gold`;
+        ? `${characterName} sells ${itemName}${suffix} for ${formatPrice(price)}`
+        : `${characterName} buys ${itemName}${suffix} for ${formatPrice(price)}`;
     }
     case "apply_damage": {
       const amount = Math.max(1, Number(args.amount ?? 0));
