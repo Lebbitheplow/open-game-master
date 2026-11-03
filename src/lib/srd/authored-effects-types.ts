@@ -385,8 +385,10 @@ export type ReactionDoes =
   // `reflect`: with that feature held, the damage prevented strikes the
   // attacker (Spirit Shield with Vengeful Ancestors).
   | { kind: "reduce"; amount: Formula | "half" | "slot5" | "psionic_int" | "ward"; who: "self" | "ally" | "either"; rangeFt?: number; types?: string[]; reflect?: { feature: string; type: string } }
-  // A bonus to AC (or the Bardic Inspiration die) against the last hit.
-  | { kind: "ac_vs_hit"; amount: number | "bardic" }
+  // A bonus to AC (the Bardic Inspiration die, or the holder's Charisma modifier,
+  // at least 1) against the last hit. `rangeFt`: it may cover an ally that near.
+  // `strikeOnMiss`: a miss it causes lets the holder attack the attacker.
+  | { kind: "ac_vs_hit"; amount: number | "bardic" | "cha"; rangeFt?: number; strikeOnMiss?: boolean }
   // The attack that hit is rolled again at disadvantage. `notVsAdvantage`:
   // not against an attack rolled with advantage (Shadowy Dodge).
   | { kind: "disadv_vs_hit"; notVsAdvantage?: boolean }

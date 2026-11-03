@@ -329,7 +329,9 @@ function reactionRules(does: ReactionDoes): string {
     case "reduce":
       return does.amount === "half" ? "Halve the damage of the attack that hit." : "Take damage off the attack that hit.";
     case "ac_vs_hit":
-      return "Raise the AC against the attack that hit: a swing it beats misses.";
+      return does.strikeOnMiss
+        ? "Raise the AC against the attack that hit: a swing it beats misses, and you attack the attacker."
+        : "Raise the AC against the attack that hit: a swing it beats misses.";
     case "disadv_vs_hit":
       return "The attack that hit is rolled again at disadvantage.";
     case "resist_instance":
@@ -377,6 +379,7 @@ function subclassReactions(
             (does.kind === "strike_back" && Boolean(hit.attackerId))
           : (does.kind === "reduce" && does.who !== "self" && typed(does.types)) ||
             does.kind === "take_for_ally" ||
+            (does.kind === "ac_vs_hit" && Boolean(does.rangeFt)) ||
             (does.kind === "resist_instance" && typed(does.types));
       if (!answers) continue;
       const rules = reactionRules(does);

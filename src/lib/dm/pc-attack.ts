@@ -294,8 +294,9 @@ export function handlePcAttack(
   realDiceUserIds: Set<string>,
   toolCallId: string | null,
   // The engine's own attacks (Confusion's random target): `anySide` lets the
-  // target be an ally (pc-attack-gate.ts).
-  engine: { anySide?: boolean } = {},
+  // target be an ally (pc-attack-gate.ts). `reactionAttack`: a reaction feature's
+  // attack, paid for by its caller, which touches neither the turn nor a readied action.
+  engine: { anySide?: boolean; reactionAttack?: boolean } = {},
 ): ToolResult {
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter) {
@@ -331,9 +332,9 @@ export function handlePcAttack(
   // attacks spent, a feature they lack) refuses it where they stand. The
   // attack is then planned from where it is made.
   if (args.approach) {
-    const dry = planPcAttack({ campaign, turn, encounter, sheet, args, sheets, sheetsById, anySide: engine.anySide });
+    const dry = planPcAttack({ campaign, turn, encounter, sheet, args, sheets, sheetsById, anySide: engine.anySide, reactionAttack: engine.reactionAttack });
     if ("refused" in dry) {
-      const beside = planPcAttack({ campaign, turn, encounter, sheet, args, sheets, sheetsById, skipReach: true, anySide: engine.anySide });
+      const beside = planPcAttack({ campaign, turn, encounter, sheet, args, sheets, sheetsById, skipReach: true, anySide: engine.anySide, reactionAttack: engine.reactionAttack });
       if ("refused" in beside) {
         return beside.refused;
       }
@@ -360,7 +361,7 @@ function attackFrom(
   sheetsById: Map<string, CharacterSheet>,
   realDiceUserIds: Set<string>,
   toolCallId: string | null,
-  engine: { anySide?: boolean } = {},
+  engine: { anySide?: boolean; reactionAttack?: boolean } = {},
 ): ToolResult {
   // The walk may have changed the fight: read it again.
   const encounter = getActiveEncounter(campaign.id);
@@ -370,7 +371,7 @@ function attackFrom(
   // ---- refusals: everything that can stop this attack, before any spend ----
   // Asked in one place, in order, by planPcAttack (src/lib/dm/pc-attack-plan.ts).
 
-  const plan = planPcAttack({ campaign, turn, encounter, sheet: getSheetById(sheet.id) ?? sheet, args, sheets, sheetsById, anySide: engine.anySide });
+  const plan = planPcAttack({ campaign, turn, encounter, sheet: getSheetById(sheet.id) ?? sheet, args, sheets, sheetsById, anySide: engine.anySide, reactionAttack: engine.reactionAttack });
   if ("refused" in plan) {
     return plan.refused;
   }
@@ -450,7 +451,7 @@ function spendPcAttack(plan: AttackPlan): ToolError | null {
     // with it.
     if (plan.extras.giantKiller) {
       spendGiantKiller(campaign.id, sheet.id, plan.enemy.id);
-    } else {
+    } else if (!plan.extras.reactionAttack) {
       spendReadied(campaign, sheet.id);
     }
     // An attack made off their own turn shows on no turn budget, so a rage
@@ -462,8 +463,13 @@ function spendPcAttack(plan: AttackPlan): ToolError | null {
         conditionMeta: { ...meta, [ragingAs]: { ...meta[ragingAs], stoked: true } },
       });
     }
+    if (plan.extras.turnRiders) {
+      storeBudget(encounter, plan.extras.turnRiders);
+    }
     context.notes.push(
-      `made off their own turn: ${sheet.name}'s reaction is spent until their next turn starts`,
+      plan.extras.reactionAttack
+        ? `made as a reaction: ${sheet.name}'s reaction is spent until their next turn starts`
+        : `made off their own turn: ${sheet.name}'s reaction is spent until their next turn starts`,
     );
   }
   // The weapon drawn for this attack is in hand from now on (issue #424).
