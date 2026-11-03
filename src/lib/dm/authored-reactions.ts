@@ -28,16 +28,19 @@ import { addSheetCondition, rollCard } from "@/lib/dm/action-common";
 import { pcResistances, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { immuneToCondition } from "@/lib/dm/damage-logic";
 import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
+import { meetEnemyPart } from "@/lib/dm/enemy-defenses";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
-import { attackerFoeId, freshLastHit, openHits, rerollAttacker, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
+import { attackerFoeId, freshLastHit, openHits, plainOfReroll, rerollAttacker, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { vowedFoe } from "@/lib/srd/vow-of-enmity";
+import { ENTROPIC_EDGE } from "@/lib/dm/reaction-kinds";
 import { rollAgainst } from "@/lib/roll-labels";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { READIED } from "@/lib/dm/object-actions";
 import { handlePcAttack } from "@/lib/dm/pc-attack";
 import { allyOf, noHit, settle, SPENT, spendReaction, type Ctx } from "@/lib/dm/reaction-tools";
 import { withinFeet } from "@/lib/dm/authored-saves";
+import { reachAtLevel } from "@/lib/dm/reaction-kinds";
 import { resolveMoreReaction } from "@/lib/dm/authored-reactions-more";
 import { projectWard } from "@/lib/dm/arcane-ward";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -130,19 +133,6 @@ function saveDc(holder: CharacterSheet, ability: string): number {
   return 8 + derived.proficiencyBonus + (derived.abilityMods[ability as keyof typeof derived.abilityMods] ?? 0);
 }
 
-function reachFeet(range: number | Array<[number, number]>, level: number): number {
-  if (typeof range === "number") {
-    return range;
-  }
-  let feet = range[0]?.[1] ?? 5;
-  for (const [at, value] of range) {
-    if (level >= at) {
-      feet = value;
-    }
-  }
-  return feet;
-}
-
 function enemyTarget(ctx: Ctx, fallbackId: string | null): EncounterEnemy | null {
   const encounter = ctx.encounter;
   const ref = ctx.args.targetEnemyId ?? fallbackId;
@@ -166,6 +156,44 @@ function strikeAttacker(ctx: Ctx, name: string, record: LastHit): Record<string,
   // The reaction and the use are already spent, whatever pc_attack's own refusal
   // says about the attack it did not make.
   return typeof result.error === "string" ? { attack: "No attack follows; the miss and the spent use stand.", attackRefused: result.error } : { attack: result };
+}
+
+// The damage type a strike back deals: its own, or with a second the holder
+// may choose (Wrath of the Storm), the one named after the feature ("Wrath of
+// the Storm thunder"), else whichever the creature's defenses let more of
+// through, its own type on a tie.
+function strikeType(ctx: Ctx, does: Extract<AuthoredReaction["does"], { kind: "strike_back" }>, variant: string, name: string, enemy: EncounterEnemy): string | ToolError {
+  if (!does.orType) {
+    return does.type;
+  }
+  const types = [does.type, does.orType];
+  if (variant) {
+    const named = types.find((type) => textKey(type) === variant);
+    return named ?? noneNamed(`${name} deals`, variant, types.map((type) => `${name} ${type}`));
+  }
+  const through = (type: string) => meetEnemyPart(ctx.campaign.id, enemy, 16, type, { magical: true }).amount;
+  return through(does.orType) > through(does.type) ? does.orType : does.type;
+}
+
+// Entropic Ward's miss: the warlock's next attack roll against the creature
+// has advantage if made before the end of their next turn. The mark names the
+// creature (`quarry`), lasts to the end of the warlock's next turn, and the
+// attack against it spends it (authored-hooks.ts authoredAttackSituation).
+function markEntropicEdge(ctx: Ctx, record: LastHit): string | null {
+  const foe = attackerFoeId(record);
+  if (!foe) {
+    return null;
+  }
+  const now = getSheetById(ctx.sheet.id) ?? ctx.sheet;
+  const kept = now.conditions.filter((entry) => textKey(entry) !== ENTROPIC_EDGE);
+  const updated = patchSheet(now.id, {
+    conditions: [...kept, ENTROPIC_EDGE],
+    conditionMeta: { ...now.conditionMeta, [ENTROPIC_EDGE]: { quarry: foe, untilTurnEndOf: now.id, source: "Entropic Ward" } },
+  });
+  if (updated) {
+    publishPersisted(ctx.campaign.id, "sheet_updated", { sheet: updated });
+  }
+  return `${ctx.sheet.name}'s next attack roll against ${record.attacker.name} has advantage, if made before the end of their next turn.`;
 }
 
 function psionicDie(level: number): string {
@@ -350,12 +378,19 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       const total = swing.total - swing.natural + kept;
       const missed = kept !== 20 && (kept === 1 || total < swing.vsAc);
       if (!missed) {
-        // Answered all the same: the reaction is spent on it.
-        settle(ctx, hit.record, hit.record.swings, label);
-        return { applied: `Rolled again at disadvantage: ${total} against AC ${swing.vsAc} still hits.` };
+        // Answered all the same: the reaction is spent on it. A critical the
+        // kept die no longer makes lands as an ordinary hit (plainOfReroll).
+        const plain = plainOfReroll(swing, kept);
+        const settled = settle(ctx, hit.record, hit.record.swings.map((entry, at) => (at === hit.index ? plain : entry)), label);
+        return {
+          applied: plain === swing
+            ? `Rolled again at disadvantage: ${total} against AC ${swing.vsAc} still hits.`
+            : `Rolled again at disadvantage: ${total} against AC ${swing.vsAc} still hits, no longer a critical: ${settled.given} hit points come back. HP ${settled.hp}.`,
+        };
       }
       const settled = settle(ctx, hit.record, hit.record.swings.map((entry, at) => (at === hit.index ? { ...entry, hit: false, raw: 0 } : entry)), label);
-      return { ...(does.onMiss ? { onMiss: does.onMiss } : {}), applied: `Rolled again at disadvantage: ${total} against AC ${swing.vsAc} misses, and ${settled.given} hit points come back. HP ${settled.hp}.` };
+      const edge = does.advantageOnMiss ? markEntropicEdge(ctx, hit.record) : null;
+      return { ...(edge ? { next: edge } : {}), applied: `Rolled again at disadvantage: ${total} against AC ${swing.vsAc} misses, and ${settled.given} hit points come back. HP ${settled.hp}.` };
     }
     case "resist_instance": {
       const target = allyOf(ctx) ?? ctx.sheet;
@@ -381,7 +416,7 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (!ally || ally.id === ctx.sheet.id) {
         return { error: `${reaction.name} takes the hit an ally took: pass the ally's targetCharacterId. Nothing was spent.`, retry: true };
       }
-      const feet = reachFeet(does.rangeFt, held.level);
+      const feet = reachAtLevel(does.rangeFt, held.level);
       if (encounter && !withinFeet(encounter.id, ctx.sheet.id, ally.id, feet)) {
         return { error: `${ally.name} is beyond ${feet} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
       }
@@ -474,9 +509,13 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (does.rangeFt && !withinFeet(encounter.id, ctx.sheet.id, enemy.id, does.rangeFt)) {
         return { error: `${enemy.displayName} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
       }
+      const type = strikeType(ctx, does, found.variant, reaction.name, enemy);
+      if (typeof type !== "string") {
+        return type;
+      }
       const expression = resolveFormula(does.amount, held.level, modsOf(holder));
       let amount = rollCard(ctx.campaign, ctx.turn, holder.id, "damage", rollAgainst(reaction.name, enemy.displayName), expression, { kind: "sheet", id: holder.id, name: holder.name }).total;
-      const out: Record<string, unknown> = { rolled: `${expression}: ${amount}` };
+      const out: Record<string, unknown> = { rolled: `${expression}: ${amount}`, ...(does.orType ? { type } : {}) };
       if (does.save) {
         const dc = saveDc(holder, does.save.dcAbility);
         const save = rollEnemySave(ctx.campaign.id, enemy, does.save.ability, dc, {
@@ -494,7 +533,7 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
         }
       }
       if (amount > 0) {
-        Object.assign(out, applyEnemyDamage(ctx.campaign, ctx.turn, encounter, enemy, amount, ctx.sheets, ctx.sheetsById, does.type, { magical: true }));
+        Object.assign(out, applyEnemyDamage(ctx.campaign, ctx.turn, encounter, enemy, amount, ctx.sheets, ctx.sheetsById, type, { magical: true }));
         publishEncounter(ctx.campaign.id);
       }
       // A reaction to one melee hit answers that hit: its card goes, and a reaction

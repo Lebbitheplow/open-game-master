@@ -17,6 +17,7 @@ import { creatureTypeOf } from "@/lib/bestiary/creature-type";
 import { isRegeneratingDown } from "@/lib/dm/regeneration";
 import { REGENERATION_STOPPED } from "@/lib/dm/monster-abilities";
 import { getBattleMapForEncounter, getTokenByRef, listHiddenRefIds, type BattleMap } from "@/lib/db/battle-maps";
+import { tilesApart } from "@/lib/dm/board-reach";
 import { ENEMY_TURN_NAME, turnOwner } from "@/lib/dm/turn-owner";
 import {
   getActiveEncounter,
@@ -216,6 +217,15 @@ export type PublicLastHit = {
   damage: number;
   // Reactions already taken against it.
   answered: string[];
+  // How the character stood as it landed: up or already at 0, and their
+  // conditions then. A reaction that answers the hit is asked of them as
+  // they stood (src/lib/dm/reaction-gate.ts), so a card for one the hit
+  // dropped reads this, not the fall. Absent from an older host.
+  stood?: { up: boolean; conditions: string[] };
+  // Feet from the character hit to each other hero on the board, for a card
+  // that covers an ally within reach (Protection, Warding Maneuver, Warding
+  // Flare). A hero off the board is not listed; absent off the map.
+  apart?: Record<string, number>;
 };
 
 function turnView(encounter: Encounter): { turn?: PublicTurn } {
@@ -283,8 +293,9 @@ function actingView(encounter: Encounter, hidden: Set<string>, showNumbers: bool
   };
 }
 
-function lastHitView(record: LastHit, hidden: Set<string>, showNumbers: boolean): PublicLastHit {
+function lastHitView(record: LastHit, hidden: Set<string>, showNumbers: boolean, apart?: (from: string) => Record<string, number>): PublicLastHit {
   const attackerId = record.attacker.id;
+  const reach = apart?.(record.characterId);
   const index = heaviestHit(record.swings);
   const answered = index >= 0 ? record.swings[index] : null;
   return {
@@ -303,6 +314,22 @@ function lastHitView(record: LastHit, hidden: Set<string>, showNumbers: boolean)
     hits: record.swings.filter((swing) => swing.hit).length,
     damage: answered?.raw ?? 0,
     answered: record.answered,
+    stood: { up: record.before.currentHp > 0, conditions: record.before.conditions },
+    ...(reach ? { apart: reach } : {}),
+  };
+}
+
+// Feet between the heroes on the board, from one to each other, as the
+// engine measures a reach (attack-spatial.ts tilesBetween).
+function feetApart(mapId: string, heroIds: string[]): (from: string) => Record<string, number> {
+  const tokens = new Map(heroIds.flatMap((id) => {
+    const token = getTokenByRef(mapId, id);
+    return token ? [[id, token] as const] : [];
+  }));
+  return (from) => {
+    const origin = tokens.get(from);
+    if (!origin) return {};
+    return Object.fromEntries([...tokens].filter(([id]) => id !== from).map(([id, token]) => [id, tilesApart(origin, token) * 5]));
   };
 }
 
@@ -335,7 +362,7 @@ function movementView(encounter: Encounter, enemy: EncounterEnemy, map: BattleMa
 export function publicEncounter(
   encounter: Encounter,
   enemies: EncounterEnemy[],
-  options: { enemyNumbers?: boolean; hiddenRefIds?: string[]; lastHits?: LastHit[] } = {},
+  options: { enemyNumbers?: boolean; hiddenRefIds?: string[]; lastHits?: LastHit[]; apart?: (from: string) => Record<string, number> } = {},
 ): PublicEncounter {
   const showNumbers = options.enemyNumbers === true;
   const board = showNumbers ? getBattleMapForEncounter(encounter.id) : null;
@@ -438,7 +465,7 @@ export function publicEncounter(
     ...actingView(encounter, hidden, showNumbers),
     ...(showNumbers ? dmTurnView(encounter, enemies) : {}),
     ...(options.lastHits?.length
-      ? { lastHits: options.lastHits.map((record) => lastHitView(record, hidden, showNumbers)) }
+      ? { lastHits: options.lastHits.map((record) => lastHitView(record, hidden, showNumbers, options.apart)) }
       : {}),
     ...sidesView(encounter, enemies, hidden, showNumbers),
   };
@@ -527,11 +554,15 @@ export function activePublicEncounter(
   }
   const map = getBattleMapForEncounter(encounter.id);
   // Only records a reaction may still answer: the engine's own freshness
-  // rule, asked per character in the order, every open hit of each.
-  const lastHits = encounter.order.flatMap((entry) => (entry.kind === "pc" ? openHits(campaignId, entry.characterId) : []));
+  // rule, asked per character in the order, every open hit of each. Once per
+  // character: an extra turn (Strength before Death, Thief's Reflexes) puts
+  // them in the order twice, and each of their hits came twice with its cards.
+  const heroes = [...new Set(encounter.order.flatMap((entry) => (entry.kind === "pc" ? [entry.characterId] : [])))];
+  const lastHits = heroes.flatMap((id) => openHits(campaignId, id));
   return publicEncounter(encounter, listEnemies(encounter.id), {
     ...options,
     lastHits,
+    ...(map && lastHits.length ? { apart: feetApart(map.id, heroes) } : {}),
     hiddenRefIds: map ? listHiddenRefIds(map.id) : [],
   });
 }

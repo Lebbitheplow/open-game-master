@@ -269,6 +269,8 @@ export function attackSituation(input: {
     attackRiders.notes.push(`spends their Bardic Inspiration die: +1${inspiration.die} to the attack roll`);
     attackRiders.spent.push(inspiration.condition);
   }
+  // A mark an authored feature leaves for one attack (Entropic Ward's).
+  attackRiders.spent.push(...authored.spent);
   conditionContext.notes.push(...attackRiders.notes, ...input.onHitNotes);
   for (const rider of input.featureRiders) {
     conditionContext.notes.push(

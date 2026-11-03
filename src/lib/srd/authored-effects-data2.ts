@@ -340,7 +340,7 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
   "warlock::Entropic Ward": {
     subclass: "The Great Old One",
     counter: "sub_entropic_ward",
-    reactions: [{ name: "Entropic Ward", pool: { id: "sub_entropic_ward" }, does: { kind: "disadv_vs_hit", onMiss: "advantage on the warlock's next attack against that creature, which the GM applies" } }],
+    reactions: [{ name: "Entropic Ward", pool: { id: "sub_entropic_ward" }, does: { kind: "disadv_vs_hit", advantageOnMiss: true } }],
   },
   "wizard::Illusory Self": {
     subclass: "School of Illusion",
@@ -354,7 +354,7 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
       {
         name: "Wrath of the Storm",
         pool: { id: "sub_wrath_of_the_storm" },
-        does: { kind: "strike_back", amount: "2d8", type: "lightning", melee: true, save: { ability: "dex", dcAbility: "spell", half: true } },
+        does: { kind: "strike_back", amount: "2d8", type: "lightning", orType: "thunder", melee: true, save: { ability: "dex", dcAbility: "spell", half: true } },
       },
     ],
   },

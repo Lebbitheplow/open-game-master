@@ -39,7 +39,7 @@ import { devotedGuard } from "@/lib/dm/devoted-guard";
 import { reactionTimingOf, timingOfDoes, type ReactionTiming } from "@/lib/dm/reaction-kinds";
 import { authoredReactionNamed, heldReaction } from "@/lib/srd/authored-effects";
 import { removeConditions } from "@/lib/dm/condition-logic";
-import { attackerFoeId, freshLastHit, heaviestHit, heaviestRaw, hitIdOf, openHitAimed, openHits, reactedLate, rerollAttacker, withHitAim, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
+import { attackerFoeId, freshLastHit, heaviestHit, heaviestRaw, hitIdOf, openHitAimed, openHits, plainOfReroll, reactedLate, rerollAttacker, withHitAim, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import type { RollAttacker } from "@/lib/db/rolls";
 import { rollAgainst } from "@/lib/roll-labels";
 import { opportunity, reactionSpell } from "@/lib/dm/reaction-spells";
@@ -354,7 +354,11 @@ function protection(ctx: Ctx): ToolResult {
       const settled = settle(ctx, record, record.swings.map((swing, at) => (at === index ? { ...swing, hit: false, raw: 0 } : swing)), "protection");
       reread = ` The attack is rolled again at disadvantage: ${total} against AC ${first.vsAc} misses, and ${settled.given} hit points come back to ${ally.name}.`;
     } else {
-      reread = ` The attack is rolled again at disadvantage: ${total} against AC ${first.vsAc} still hits.`;
+      // Still a hit, and answered all the same; a critical the kept die no
+      // longer makes lands as an ordinary hit (last-hit.ts plainOfReroll).
+      const plain = plainOfReroll(first, kept);
+      const settled = settle(ctx, record, record.swings.map((swing, at) => (at === index ? plain : swing)), "protection");
+      reread = ` The attack is rolled again at disadvantage: ${total} against AC ${first.vsAc} still hits${plain !== first ? `, no longer a critical: ${settled.given} hit points come back to ${ally.name}` : ""}.`;
     }
   }
   return {

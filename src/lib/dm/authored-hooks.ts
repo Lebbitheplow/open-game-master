@@ -47,6 +47,7 @@ import { effectiveMaxHp, isIncapacitated, removeConditions, type ConditionMetaMa
 import { hurtEnemy } from "@/lib/dm/spell-aura";
 import { withinFeet } from "@/lib/dm/authored-saves";
 import { vowedFoe } from "@/lib/srd/vow-of-enmity";
+import { ENTROPIC_EDGE, entropicQuarry } from "@/lib/dm/reaction-kinds";
 import { naturalWeaponOnHit } from "@/lib/dm/authored-attacks";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
@@ -240,10 +241,12 @@ export function authoredAttackSituation(input: {
   sheet: CharacterSheet;
   enemy: EncounterEnemy;
   melee: boolean;
-}): { sources: Advantage[]; notes: string[]; autoCrit: string | null } {
+}): { sources: Advantage[]; notes: string[]; autoCrit: string | null; spent: string[] } {
   const { encounter, sheet, enemy } = input;
   const sources: Advantage[] = [];
   const notes: string[] = [];
+  // Marks this attack uses up, cleared with the attack's other one-shots.
+  const spent: string[] = [];
   let autoCrit: string | null = null;
   const type = textKey(enemy.stats.type ?? "");
   for (const { effect, held } of activeAuthored(sheet, "attack_adv")) {
@@ -273,6 +276,12 @@ export function authoredAttackSituation(input: {
     sources.push("advantage");
     notes.push("Vow of Enmity: advantage");
   }
+  // Entropic Ward's miss: this creature's next attack roll from the warlock.
+  if (entropicQuarry(sheet) === enemy.id) {
+    sources.push("advantage");
+    notes.push("Entropic Ward: advantage, spent by this attack");
+    spent.push(sheet.conditions.find((entry) => entry.trim().toLowerCase() === ENTROPIC_EDGE)!);
+  }
   for (const { held } of activeAuthored(sheet, "auto_crit")) {
     if (encounter.surprisedIds.includes(enemy.id)) {
       autoCrit = held.feature;
@@ -294,7 +303,7 @@ export function authoredAttackSituation(input: {
       }
     }
   }
-  return { sources, notes, autoCrit };
+  return { sources, notes, autoCrit, spent };
 }
 
 // A character's attack has hit (and may have killed). Returns the lines for
