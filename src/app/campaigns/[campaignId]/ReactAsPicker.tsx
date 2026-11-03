@@ -29,7 +29,7 @@ export function ReactAsPicker({
     ...reactors.map((hero) => ({ value: hero.id, label: `${hero.name}, a reaction`, hint: "Answering a hit, not their turn" })),
   ];
   return (
-    <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[11px] text-stone-400">
+    <div data-react-as className="mb-2 flex flex-wrap items-center gap-1.5 text-[11px] text-stone-400">
       <GameIcon icon={{ kind: "glyph", key: "tab-party" }} size="size-5" className="shrink-0" />
       Speaking as
       <Select
