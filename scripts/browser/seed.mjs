@@ -1740,6 +1740,16 @@ const pileup = {};
     const ogreCharm = charmBy("Dominate Monster", sela.id);
     encounterRows.patchEnemyConditions(ogre.id, ogreCharm.conditions, ogreCharm.conditionMeta);
     sheets.patchSheet(bran.id, charmBy("Dominate Person", mage.id));
+    // Sela opens the fight, whatever the dice said. The order is rolled, and
+    // with Bran ahead of both enemies it is his turn, which the GM plays from
+    // the party's Hand (gmTurnDominated), so the monsters' hand this table
+    // shows was not there on about one seed in four.
+    const opening = encounterRows.getActiveEncounter(table.id);
+    const fixedOrder = [sela.id, bran.id, ogre.id, mage.id].map((id, index) => ({
+      ...opening.order.find((entry) => (entry.characterId ?? entry.enemyId) === id),
+      initiative: 20 - index * 5,
+    }));
+    encounterRows.saveEncounter({ ...opening, order: fixedOrder, turnIndex: 0, turnBudget: null });
     const held = campaigns.createCampaign(player.id, {
       title: `Held Table (${viewport})`,
       description: "A mage's voice in Tamsin's head.",
