@@ -33,8 +33,8 @@ import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import { attackerFoeId, freshLastHit, openHits, rerollAttacker, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { vowedFoe } from "@/lib/srd/vow-of-enmity";
 import { rollAgainst } from "@/lib/roll-labels";
-import { READIED } from "@/lib/dm/object-actions";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
+import { READIED } from "@/lib/dm/object-actions";
 import { handlePcAttack } from "@/lib/dm/pc-attack";
 import { allyOf, noHit, settle, SPENT, spendReaction, type Ctx } from "@/lib/dm/reaction-tools";
 import { withinFeet } from "@/lib/dm/authored-saves";
@@ -151,6 +151,21 @@ function enemyTarget(ctx: Ctx, fallbackId: string | null): EncounterEnemy | null
   }
   const enemy = resolveTargetFoe(encounter.campaignId, encounter, ref);
   return enemy && enemy.status === "alive" ? enemy : null;
+}
+
+// The attack a reaction's miss earns, against whoever made the attack. A hit
+// already turned aside stays so, whatever becomes of this: out of reach it is
+// reported, not refused.
+function strikeAttacker(ctx: Ctx, name: string, record: LastHit): Record<string, unknown> {
+  const foeId = attackerFoeId(record);
+  const enemy = foeId ? enemyTarget({ ...ctx, args: { ...ctx.args, targetEnemyId: undefined } }, foeId) : null;
+  if (!enemy) {
+    return { attack: `${name} earns an attack, and the attacker is not there to take it.` };
+  }
+  const result = handlePcAttack(ctx.campaign, ctx.turn, JSON.stringify({ characterId: ctx.sheet.id, targetEnemyId: enemy.id }), ctx.sheets, ctx.sheetsById, new Set(), null, { reactionAttack: true });
+  // The reaction and the use are already spent, whatever pc_attack's own refusal
+  // says about the attack it did not make.
+  return typeof result.error === "string" ? { attack: "No attack follows; the miss and the spent use stand.", attackRefused: result.error } : { attack: result };
 }
 
 function psionicDie(level: number): string {
@@ -280,10 +295,16 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
         }
         const die = /\((d\d+)\)/i.exec(spentDie)![1];
         bonus = rollCard(ctx.campaign, ctx.turn, ctx.sheet.id, "custom", `${ctx.sheet.name}: ${reaction.name}`, `1${die}`, null).total;
-      } else {
+      } else if (typeof does.amount === "number") {
         bonus = does.amount;
+      } else {
+        bonus = Math.max(1, modsOf(holder).cha ?? 0);
       }
-      const hit = lastHitOn(ctx, ctx.sheet, label);
+      const covered = does.rangeFt ? (allyOf(ctx) ?? ctx.sheet) : ctx.sheet;
+      if (does.rangeFt && encounter && covered.id !== ctx.sheet.id && !withinFeet(encounter.id, ctx.sheet.id, covered.id, does.rangeFt)) {
+        return { error: `${covered.name} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
+      }
+      const hit = lastHitOn(ctx, covered, label);
       if ("error" in hit) return hit;
       const swing = hit.record.swings[hit.index];
       const missed = swing.natural !== 20 && swing.total < swing.vsAc + bonus;
@@ -296,7 +317,8 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       }
       const corrected = hit.record.swings.map((entry, at) => (at === hit.index ? { ...entry, hit: false, raw: 0 } : entry));
       const settled = settle(ctx, hit.record, corrected, label);
-      return { applied: `AC ${swing.vsAc} + ${bonus} turns the ${swing.total} into a miss: ${settled.given} hit points come back. HP ${settled.hp}.` };
+      const struck = does.strikeOnMiss ? strikeAttacker(ctx, reaction.name, hit.record) : {};
+      return { ...struck, applied: `AC ${swing.vsAc} + ${bonus} turns the ${swing.total} into a miss: ${settled.given} hit points come back. HP ${settled.hp}.` };
     }
     case "disadv_vs_hit": {
       const hit = lastHitOn(ctx, ctx.sheet, label);

@@ -302,6 +302,13 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
     subclass: "Oath of Glory",
     effects: [{ kind: "speed", amount: 10, note: "The allies' 10 feet within 5 feet of the paladin are narrated." }],
   },
+  "paladin::Glorious Defense": {
+    subclass: "Oath of Glory",
+    counter: "sub_glorious_defense",
+    reactions: [
+      { name: "Glorious Defense", pool: { id: "sub_glorious_defense" }, does: { kind: "ac_vs_hit", amount: "cha", rangeFt: 10, strikeOnMiss: true } },
+    ],
+  },
   // Advantage on Charisma checks (the condition), once a turn a missed
   // weapon attack hits instead (the DM rules the hit), and a reaction that
   // rerolls a failed save.

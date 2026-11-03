@@ -32,6 +32,8 @@ export function gatePcAttack(input: {
   // A target the rules chose, whichever side it is on (Confusion's random
   // creature in reach, spell-turn-start.ts); never the model's to set.
   anySide?: boolean;
+  // A reaction feature's attack: off the turn even on the holder's own turn.
+  reactionAttack?: boolean;
 }): { enemy: EncounterEnemy; giantKiller: boolean } | { refused: ToolError } {
   const { campaign, encounter, sheet, args } = input;
 
@@ -49,7 +51,7 @@ export function gatePcAttack(input: {
       return { refused: refusal };
     }
   }
-  const onTurn = actingCombatantId(encounter) === sheet.id && !held && !releasesReadiedOffTurn(encounter, sheet);
+  const onTurn = !input.reactionAttack && actingCombatantId(encounter) === sheet.id && !held && !releasesReadiedOffTurn(encounter, sheet);
   let giantKiller = false;
   const allowed = canAct({ sheet, encounter, kind: onTurn ? "attack" : "reaction" });
   if (!allowed.ok) {
@@ -86,7 +88,7 @@ export function gatePcAttack(input: {
     // attack-roll spell) releases here, a readied move or Help does not.
     const held = readiedHeld(sheet);
     const readiedStrike = held !== null && (held.holds === "attack" || held.holds === "spell");
-    if (actingCombatantId(encounter) !== null && !readiedStrike && !giantKiller) {
+    if (actingCombatantId(encounter) !== null && !readiedStrike && !giantKiller && !input.reactionAttack) {
       return {
         refused: {
           error: held
