@@ -2800,6 +2800,29 @@ const bench2Titles = {};
       turnOf(table, orla.id);
       at.revert = { id: table.id, orla: { id: orla.id, name: orla.name }, goblin: goblin.id };
     }
+    // ---- 10: a paladin's reaction for an ally hit, inside its reach and out ----
+    // Glorious Defense covers a creature within 10 feet: Bran stands beside
+    // Sela, Tam 25 feet off, and a goblin's hit is open on each.
+    {
+      const table = tableFor(`Paladin Reactions Table (${viewport})`, player, world.owner);
+      const sela = sheets.createSheet(table.id, world.owner.id, 15, heroInput({
+        name: "Sela Brightvow", class: "paladin", subclass: "Oath of Glory", level: 15, maxHp: 120, abilities: { str: 16, cha: 16 },
+      }));
+      const ally = (name) => {
+        const bot = createCompanionUser(name);
+        const sheet = sheets.createSheet(table.id, bot.id, 5, heroInput({ name, class: "fighter", level: 5, maxHp: 44 }));
+        sheets.markSheetAsCompanion(sheet.id, "party", "Steady, and slow to speak.");
+        return sheet;
+      };
+      const [near, far] = [ally("Bran Holt"), ally("Tam Reed")];
+      const { rows, place } = await fightAt(table, player, [{ monster: "goblin", count: 2 }]);
+      const [g1, g2] = [named(rows, "goblin", 0), named(rows, "goblin", 1)];
+      [[sela.id, 0, 0], [near.id, 1, 0], [g1.id, 2, 0], [far.id, -5, 0], [g2.id, -6, 0]].forEach(([refId, dx, dy]) => place(refId, dx, dy));
+      turnOf(table, g1.id, { legendary: { due: [g1.id, g2.id] } });
+      await pass(table, [[g1.id, near.id, [15, 3]], [g2.id, far.id, [15, 3]]]);
+      turnOf(table, sela.id);
+      at.paladin = { id: table.id, sela: { id: sela.id, name: sela.name }, near: { id: near.id, name: near.name }, far: { id: far.id, name: far.name } };
+    }
     bench2[viewport] = at;
   }
 }
