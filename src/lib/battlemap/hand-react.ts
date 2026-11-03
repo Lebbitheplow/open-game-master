@@ -289,7 +289,7 @@ export function reactionCards(
     }
     if (hit.source === "attack") {
       for (const held of subclassReactions(sheet, hit, "self", feet)) {
-        feature(hit, held.name, prompt, held.rules, held.target);
+        feature(hit, held.name, prompt, held.rules, held.target, { fallen: held.fallen && sheet.currentHp <= 0 });
       }
     }
   }
@@ -492,8 +492,8 @@ function subclassReactions(
   hit: PublicLastHit,
   whose: "self" | "ally",
   feet?: Record<string, number>,
-): Array<{ name: string; rules: string; target: HandTarget }> {
-  const out: Array<{ name: string; rules: string; target: HandTarget }> = [];
+): Array<{ name: string; rules: string; target: HandTarget; fallen?: boolean }> {
+  const out: Array<{ name: string; rules: string; target: HandTarget; fallen?: boolean }> = [];
   for (const held of heldAuthored(sheet)) {
     for (const reaction of held.entry.reactions ?? []) {
       if ((reaction.usedBy ?? "holder") !== "holder" || !gateHolds(reaction.gate, sheet, held)) continue;
@@ -530,7 +530,8 @@ function subclassReactions(
       }
       const rules = reactionRules(does, hit);
       if (!rules) continue;
-      out.push({ name: reaction.name, rules, target: does.kind === "strike_back" ? "enemy" : whose === "ally" ? "ally" : "none" });
+      // Sentinel at Death's Door answers the critical that dropped its holder.
+      out.push({ name: reaction.name, rules, target: does.kind === "strike_back" ? "enemy" : whose === "ally" ? "ally" : "none", fallen: does.kind === "uncrit" });
     }
   }
   return out;

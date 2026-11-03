@@ -266,6 +266,35 @@ await test("A critical that dropped them to 0 leaves them standing when the norm
   assert.equal(world.sheet(ally.id).conditions.includes("unconscious"), false);
 });
 
+await test("A critical that dropped the cleric still offers their own card, and it stands them back up.", async () => {
+  const enemy = await stage();
+  world.patch(cleric.id, { currentHp: 8 });
+  await crit(enemy, cleric);
+  assert.equal(world.sheet(cleric.id).currentHp, 0);
+  const [card] = offered();
+  assert.ok(card, "the card is offered");
+  assert.equal(card.disabled, null, card.disabled);
+  const out = await react();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.sheet(cleric.id).currentHp, 2);
+  assert.equal(used(), 1);
+});
+
+await test("A cleric already down when the critical landed has no reaction to take.", async () => {
+  const enemy = await stage();
+  world.patch(cleric.id, { currentHp: 0, conditions: ["unconscious", "prone"], deathSaves: { successes: 0, failures: 0 } });
+  kit.place(enemy.id, 5, 8);
+  kit.freshRound();
+  world.dice(16, 16, 4, 3);
+  const struck = await world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: cleric.id });
+  world.clearDice();
+  assert.equal(struck.ok, true, struck.error);
+  for (const card of offered()) assert.ok(card.disabled, "the card is shut");
+  const out = await react();
+  assert.equal(out.ok, false);
+  assert.equal(used(), 0);
+});
+
 await test("An unconscious target's automatic critical: normal damage, one death-save failure, and they stay down.", async () => {
   const enemy = await stage();
   world.patch(ally.id, { currentHp: 0, conditions: ["unconscious", "prone"], deathSaves: { successes: 0, failures: 0 } });
