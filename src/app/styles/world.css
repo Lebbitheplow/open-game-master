@@ -1821,7 +1821,33 @@ html[data-theme="light"] .cine-quest-body { color: #2d2419; }
    text. By day both are parchment. The board itself keeps its dark surround. */
 html[data-theme="light"] .cine-board-frame { box-shadow: 0 0 30px rgba(122, 88, 20, 0.2), 0 18px 40px rgba(60, 44, 16, 0.3); }
 html[data-theme="light"] .cine-board-frame > :not(.board-view) { background: #f1ebde; border-color: rgba(122, 88, 20, 0.5); }
-html[data-theme="light"] .cine-board-frame > .board-panel > .board-view { background: #0d0b1c; }
+html[data-theme="light"] .board-panel > .board-view { background: #0d0b1c; }
+/* The enlarged board is a night table by day too: what stands on its starfield
+   keeps the night's ink. */
+html[data-theme="light"] .cine-tabletop {
+  --color-stone-950: #0d0b1c;
+  --color-stone-900: #151229;
+  --color-stone-800: #211b3a;
+  --color-stone-700: #302853;
+  --color-stone-600: #575170;
+  --color-stone-500: #8f8aab;
+  --color-stone-400: #aeaac6;
+  --color-stone-300: #c9c6db;
+  --color-stone-200: #dedbec;
+  --color-stone-100: #edeaf7;
+  --color-stone-50: #f7f6fc;
+  --color-amber-950: #2b2008;
+  --color-amber-900: #4a390f;
+  --color-amber-800: #6d5517;
+  --color-amber-700: #95761f;
+  --color-amber-600: #b8922a;
+  --color-amber-500: #d4ab3a;
+  --color-amber-400: #e3c15c;
+  --color-amber-300: #ecd287;
+  --color-amber-200: #f4e0a6;
+  --color-amber-100: #f9ecc8;
+  --color-amber-50: #fdf7e7;
+}
 html[data-theme="light"] .cine-chronicle-page {
   background: linear-gradient(180deg, #fbf5e4, #efe4c6);
   border-left-color: rgba(122, 88, 20, 0.3);

@@ -4,7 +4,8 @@
 // vanished, and the page's see-through gradient washed out the chronicle. On a
 // phone the story's system line kept its pale night ink on the cream too. The
 // theme is the player's saved choice, applied as the page loads, and axe reads
-// the frame and the chronicle by day.
+// the frame and the chronicle by day. The board stays night in every seat, and
+// the enlarged board's table with it.
 import { axeViolations, check, eventually, untilStill } from "../lib.mjs";
 
 // [red, green, blue, alpha] from a computed colour, the first stop of a gradient included.
@@ -28,6 +29,8 @@ const lit = ([r, g, b]) => {
   return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
 };
 const ratio = (one, two) => (Math.max(lit(one), lit(two)) + 0.05) / (Math.min(lit(one), lit(two)) + 0.05);
+// A see-through colour over what is behind it.
+const over = (top, under) => [0, 1, 2].map((i) => Math.round(top[i] * top[3] + under[i] * (1 - top[3])));
 
 export default {
   name: "day-board",
@@ -56,6 +59,12 @@ export default {
       const cream = [244, 239, 228];
       check(ratio(color, cream) >= 4.5, `the system line reads by day (${color} on ${cream})`);
       await t.shot("light");
+      // The docked board keeps its dark window too, for the gold labels round a small map.
+      await t.tap(page.locator(`${root}nav.cine-bottombar`).getByRole("button", { name: "Battle", exact: true }).locator("visible=true").first());
+      const docked = page.locator(`${root}.board-dock .board-view`).locator("visible=true").first();
+      await eventually(() => docked.isVisible(), { timeoutMs: 30_000, label: "the docked board" });
+      const dockedFill = (await read(docked)).fill;
+      check(solid(dockedFill) && lit(dockedFill) < 0.05, `the docked board's window stays dark by day (${dockedFill})`);
       await setTheme("dark");
       return;
     }
@@ -78,7 +87,7 @@ export default {
     const roundInk = (await read(round)).color;
     check(ratio(roundInk, framed) >= 4.5, `the panel's round reads by day (${roundInk} on ${framed})`);
     const walk = await read(panel.getByRole("radio", { name: "Walk" }).or(panel.getByRole("button", { name: "Walk", exact: true })).first());
-    const behindWalk = walk.image ?? (walk.fill[3] === 0 ? framed : walk.fill);
+    const behindWalk = walk.image ?? over(walk.fill, framed);
     check(ratio(walk.color, behindWalk) >= 4.5, `Walk reads by day (${walk.color} on ${behindWalk})`);
     for (const line of [".cine-chronicle-eyebrow", ".cine-chronicle-system", ".cine-chronicle-roll-math", ".cine-chronicle-roll-head"]) {
       const ink = chronicle.locator(line).first();
@@ -94,6 +103,19 @@ export default {
       check(faults.length === 0, `the ${target} passes axe by day: ${JSON.stringify(faults).slice(0, 500)}`);
     }
     await t.shot("light");
+
+    // The enlarged board stands on a night table, and what is under it keeps night ink.
+    await t.tap(page.getByRole("button", { name: "Enlarge battle map" }).locator("visible=true").first());
+    const close = page.getByRole("button", { name: "Close the board" }).first();
+    await eventually(() => close.isVisible(), { timeoutMs: 15_000, label: "the enlarged board" });
+    const jump = page.locator(".cine-tabletop").getByRole("radio", { name: "Jump" }).or(page.locator(".cine-tabletop").getByRole("button", { name: "Jump", exact: true })).first();
+    await eventually(() => jump.isVisible(), { timeoutMs: 15_000, label: "the move row under the enlarged board" });
+    await page.waitForTimeout(1500);
+    await untilStill(page).catch(() => undefined);
+    const jumpInk = (await read(jump)).color;
+    check(lit(jumpInk) > 0.4, `the enlarged board's move row keeps night ink by day (${jumpInk})`);
+    await t.shot("enlarged");
+    await t.tap(close);
     await setTheme("dark");
   },
 };
