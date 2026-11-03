@@ -1683,6 +1683,10 @@ const pileup = {};
     const ogreCharm = charmBy("Dominate Monster", sela.id);
     encounterRows.patchEnemyConditions(ogre.id, ogreCharm.conditions, ogreCharm.conditionMeta);
     sheets.patchSheet(bran.id, charmBy("Dominate Person", mage.id));
+    // A monster's turn, whatever initiative rolled: the scenario plays the monsters'
+    // hand, which a hero who won the roll keeps off the table.
+    const fought = encounterRows.getActiveEncounter(table.id);
+    encounterRows.saveEncounter({ ...fought, turnIndex: fought.order.findIndex((entry) => entry.kind === "enemy"), turnBudget: null });
     const held = campaigns.createCampaign(player.id, {
       title: `Held Table (${viewport})`,
       description: "A mage's voice in Tamsin's head.",
