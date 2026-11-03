@@ -48,7 +48,7 @@ const CHANNEL_DIVINITY: Array<[string, Cost]> = [
   ["vow of enmity", "bonus"],
   ["conquering presence", "action"],
   ["emissary of peace", "bonus"],
-  ["rebuke the violent", "reaction"],
+  ["rebuke the violent", "use_reaction"],
   ["peerless athlete", "bonus"],
   ["inspiring smite", "bonus"],
   ["watcher's will", "action"],

@@ -77,7 +77,10 @@ function Increases({ option, put }: { option: Data; put: (asi: Data | undefined)
     <div className="col-span-2 space-y-1.5 sm:col-span-4">
       <span className="text-[11px] text-stone-400">Ability score increases (+3 in all at most)</span>
       {rows.map(([ability, value], index) => (
-        <div key={ability} className="live-in flex flex-wrap items-center gap-1.5">
+        // Keyed by place, not by ability: a row keyed by the ability it
+        // picks remounted with the pick, and the keyboard's focus, back on
+        // the picker as the menu closed, fell to the dialog instead.
+        <div key={index} className="live-in flex flex-wrap items-center gap-1.5">
           <span className="w-44">
             <Select<Ability>
               value={ability}

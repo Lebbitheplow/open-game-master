@@ -204,7 +204,8 @@
    "ability": "wis",
    "recharge": "long",
    "action": "reaction",
-   "guidance": "A reaction imposing disadvantage on one attack roll, against the cleric and, from 6th level, an ally within 30 feet."
+   "guidance": "Not spent with use_resource: use_reaction 'Warding Flare' when an attack hits the cleric or, with Improved Flare, a creature within 30 feet. The attack is rolled again at disadvantage.",
+   "passive": true
   },
   {
    "id": "sub_wrath_of_the_storm",
@@ -216,12 +217,8 @@
    "ability": "wis",
    "recharge": "long",
    "action": "reaction",
-   "guidance": "A reaction dealing 2d8 lightning or thunder damage to a creature that hit the cleric in melee, halved on a Dexterity save.",
-   "fx": {
-    "kind": "enemy_save",
-    "save": "dex",
-    "dice": "2d8"
-   }
+   "guidance": "Not spent with use_resource: use_reaction 'Wrath of the Storm' when a creature hits the cleric in melee. It takes 2d8 lightning or thunder (variant names one; else whichever hurts it more), halved on a Dexterity save.",
+   "passive": true
   },
   {
    "id": "sub_war_priest",
@@ -761,7 +758,8 @@
    "ability": null,
    "recharge": "short",
    "action": "reaction",
-   "guidance": "A reaction imposing disadvantage on an attack; if it then misses, the warlock has advantage on their next attack against that creature."
+   "guidance": "Not spent with use_resource: use_reaction 'Entropic Ward' when an attack hits the warlock. The attack is rolled again at disadvantage; if it then misses, the warlock's next attack roll against that creature before the end of their next turn has advantage.",
+   "passive": true
   },
   {
    "id": "sub_healing_light",
@@ -1138,7 +1136,8 @@
    "ability": null,
    "recharge": "short",
    "action": "reaction",
-   "guidance": "A reaction interposing an illusory duplicate so an attack that would hit misses instead."
+   "guidance": "Not spent with use_resource: use_reaction 'Illusory Self' when an attack hits the wizard. An illusory duplicate takes it, and the attack misses.",
+   "passive": true
   },
   {
    "id": "sub_benign_transposition",
@@ -1684,7 +1683,8 @@
    "ability": "cha",
    "recharge": "long",
    "action": "reaction",
-   "guidance": "A reaction adding the paladin's Charisma modifier to the AC of themselves or an ally within 10 feet; if the attack then misses, they may attack the attacker."
+   "passive": true,
+   "guidance": "Not spent with use_resource: use_reaction 'Glorious Defense' when an attack hits the paladin or an ally within 10 feet. It adds their Charisma modifier to that AC, and a resulting miss lets them attack the attacker."
   },
   {
    "id": "sub_undying_sentinel",
@@ -1695,7 +1695,8 @@
    "uses": 1,
    "ability": null,
    "recharge": "long",
-   "guidance": "Triggers on its own: drop to 1 hit point instead of 0."
+   "passive": true,
+   "guidance": "This is not spent by choice: the server drops them to 1 hit point instead of 0 the next time damage would fell them without killing them outright, and burns the use."
   },
   {
    "id": "race_stones_endurance",
@@ -1858,28 +1859,6 @@
    ],
    "recharge": "long",
    "guidance": "Elixirs brewed on a long rest (one, two from 6th level, three from 15th), each rolled on a d6: healing (2d4 + Intelligence), swiftness (+10 feet of speed for an hour), resilience (+1 AC for 10 minutes), boldness (a d4 on attacks and saves for a minute), flight (a 10-foot flying speed for 10 minutes) or transformation (alter self). A spell slot brews another of a chosen effect. From 9th level a drinker also gains 2d6 + Intelligence temporary hit points."
-  },
-  {
-   "id": "art_eldritch_cannon",
-   "displayName": "Eldritch Cannon",
-   "match": [
-    "eldritch cannon"
-   ],
-   "uses": 1,
-   "ability": null,
-   "scale": [
-    [
-     15,
-     2
-    ],
-    [
-     3,
-     1
-    ]
-   ],
-   "recharge": "long",
-   "action": "action",
-   "guidance": "An action builds a flamethrower, force ballista or protector cannon, and a bonus action activates it. A spell slot buys extra uses."
   },
   {
    "id": "art_spell_storing_item",

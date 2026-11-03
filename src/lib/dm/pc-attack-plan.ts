@@ -155,6 +155,10 @@ export type AttackExtras = {
   tempHp?: { amount: number; feature: string };
   // The reaction attack is Giant Killer's.
   giantKiller: boolean;
+  // A reaction feature's attack (pc-attack.ts): no readied action spends with it.
+  reactionAttack: boolean;
+  // The holder's own turn, kept for its once-a-turn riders alone.
+  turnRiders: TurnBudget | null;
 };
 
 export function planPcAttack(input: {
@@ -170,6 +174,7 @@ export function planPcAttack(input: {
   skipReach?: boolean;
   // A target the rules chose, on either side (pc-attack-gate.ts).
   anySide?: boolean;
+  reactionAttack?: boolean;
 }): AttackPlan | { refused: ToolError } {
   const { campaign, turn, encounter, sheet, sheets, sheetsById } = input;
   // A Flurry of Blows strike is a bonus-action unarmed strike the ki already
@@ -186,7 +191,7 @@ export function planPcAttack(input: {
 
   // Whether the attacker may attack now and the target can be attacked at
   // all (src/lib/dm/pc-attack-gate.ts).
-  const gate = gatePcAttack({ campaign, encounter, sheet, args, anySide: input.anySide });
+  const gate = gatePcAttack({ campaign, encounter, sheet, args, anySide: input.anySide, reactionAttack: input.reactionAttack });
   if ("refused" in gate) {
     return gate;
   }
@@ -288,7 +293,7 @@ export function planPcAttack(input: {
     featNotes.push("Sharpshooter: no disadvantage at long range");
     geometry = { ...geometry, spatials: { ...geometry.spatials, longRange: false } };
   }
-  let budget = budgetFor(
+  let budget = input.reactionAttack ? null : budgetFor(
     encounter,
     sheet.id,
     attacksAllowedFor(sheet),
@@ -629,9 +634,13 @@ export function planPcAttack(input: {
   context.notes.push(...marks.notes);
   let droppedRiders: string[] = [];
   let hitClaims: string[] = [];
-  if (budget) {
+  // A reaction attack on the holder's own turn spends none of the turn, and a
+  // once-a-turn rider is still once a turn: Sneak Attack landed twice without this.
+  const turnRiders = input.reactionAttack ? budgetFor(encounter, sheet.id, attacksAllowedFor(sheet), conditionTurnShape(sheet.conditions)) : null;
+  const riderBudget = budget ?? turnRiders;
+  if (riderBudget) {
     const claimed = claimOncePerTurnRiders({
-      budget,
+      budget: riderBudget,
       profile,
       notes: context.notes,
       sneak: sneak.sneak,
@@ -704,6 +713,8 @@ export function planPcAttack(input: {
       luck: args.luck === true && luckPointsLeft(sheet.resources) > 0,
       poison: carriesPoison(sheet, weaponAttack, profile.damageType),
       giantKiller,
+      reactionAttack: Boolean(input.reactionAttack),
+      turnRiders,
       ...(options.featureBonus?.tempHpOnHit ? { tempHp: { amount: options.featureBonus.tempHpOnHit, feature: options.featureBonus.feature } } : {}),
     },
   };

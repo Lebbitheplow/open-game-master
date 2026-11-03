@@ -1046,6 +1046,38 @@ const directed = {};
   }
 }
 
+// A fight opened from farther off than any board holds, per viewport (issue
+// 741): it threw after the map was written and left a black board.
+const longOpening = {};
+{
+  const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
+  for (const viewport of ["desktop", "phone"]) {
+    const table = campaigns.createCampaign(world.owner.id, {
+      title: `Long Opening (${viewport})`,
+      description: "A table whose fight opened two hundred feet off.",
+      theme: "high-fantasy",
+      maxPlayers: 6,
+      startingLevel: 3,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human" },
+    });
+    const seated = campaigns.joinByInviteCode(player.id, campaigns.getCampaignById(table.id).inviteCode);
+    if ("error" in seated) {
+      throw new Error(`could not seat the player at the long opening table: ${seated.error}`);
+    }
+    campaigns.setCampaignStatus(table.id, "active");
+    sheets.createSheet(table.id, player.id, 3, heroInput({ name: "Ilse Marr", class: "fighter", level: 3 }));
+    const started = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: world.owner.id }, {
+      name: "start_encounter",
+      args: { enemies: [{ monster: "goblin", count: 2 }], distanceFeet: 200 },
+    });
+    if (!started.ok) {
+      throw new Error(`the long opening table's fight did not start: ${started.error}`);
+    }
+    longOpening[viewport] = table.id;
+  }
+}
+
 // A person's table where two goblins act before the hero, per viewport
 // (table function audit 2026-10-26, T11 and T09): the goblins win
 // initiative, so the fight opens held for their turns, and the second is
@@ -1537,6 +1569,31 @@ const gone = {};
   }
 }
 
+// Issue 740: per viewport, a table a person runs with three characters and no
+// fight yet, so the console's Start a fight can leave one out.
+const FAR_SCOUT_TITLE = "Far Scout Table";
+const farScout = {};
+for (const viewport of ["desktop", "phone"]) {
+  const table = campaigns.createCampaign(world.owner.id, {
+    title: `${FAR_SCOUT_TITLE} (${viewport})`,
+    description: "One of the party has gone far ahead along the road.",
+    theme: "high-fantasy",
+    maxPlayers: 6,
+    startingLevel: 3,
+    difficulty: "normal",
+    gameSettings: { ttsEnabled: false, dmMode: "human" },
+  });
+  const seat = (user, name, klass) => {
+    campaigns.joinByInviteCode(user.id, campaigns.getCampaignById(table.id).inviteCode);
+    return sheets.createSheet(table.id, user.id, 3, heroInput({ name, class: klass, level: 3 }));
+  };
+  const kael = seat(player, "Kael Ashvale", "rogue");
+  const ilse = seat(world.addUser("friend"), "Ilse Marrow", "cleric");
+  const cora = seat(world.addUser("friend"), "Cora Vale", "ranger");
+  campaigns.setCampaignStatus(table.id, "active");
+  farScout[viewport] = { id: table.id, kael: kael.id, ilse: ilse.id, cora: cora.id };
+}
+
 // Combat sides (issue 503): per viewport, a table a person runs where two of
 // the player's casters each hold an elemental by Conjure Elemental, in a
 // fight with a goblin. The scenario ends one concentration and then the
@@ -1683,6 +1740,16 @@ const pileup = {};
     const ogreCharm = charmBy("Dominate Monster", sela.id);
     encounterRows.patchEnemyConditions(ogre.id, ogreCharm.conditions, ogreCharm.conditionMeta);
     sheets.patchSheet(bran.id, charmBy("Dominate Person", mage.id));
+    // Sela opens the fight, whatever the dice said. The order is rolled, and
+    // with Bran ahead of both enemies it is his turn, which the GM plays from
+    // the party's Hand (gmTurnDominated), so the monsters' hand this table
+    // shows was not there on about one seed in four.
+    const opening = encounterRows.getActiveEncounter(table.id);
+    const fixedOrder = [sela.id, bran.id, ogre.id, mage.id].map((id, index) => ({
+      ...opening.order.find((entry) => (entry.characterId ?? entry.enemyId) === id),
+      initiative: 20 - index * 5,
+    }));
+    encounterRows.saveEncounter({ ...opening, order: fixedOrder, turnIndex: 0, turnBudget: null });
     const held = campaigns.createCampaign(player.id, {
       title: `Held Table (${viewport})`,
       description: "A mage's voice in Tamsin's head.",
@@ -2733,6 +2800,49 @@ const bench2Titles = {};
       turnOf(table, orla.id);
       at.revert = { id: table.id, orla: { id: orla.id, name: orla.name }, goblin: goblin.id };
     }
+    // ---- 11: a blow that drops a hero (#777): Necrotic Husk's card, open
+    // to her at 0, beside the lead's other hero whose turn it is ----
+    {
+      const table = tableFor(`Fall Table (${viewport})`, player, world.owner, { multiCharacter: "all_active" });
+      const corin = sheets.createSheet(table.id, world.owner.id, 10, heroInput({
+        name: "Corin Ashe", class: "fighter", level: 10, maxHp: 60, equipment: [{ name: "Longsword", qty: 1, equipped: true }],
+      }));
+      const mara = sheets.createSheet(table.id, world.owner.id, 10, heroInput({ name: "Mara Thorn", class: "warlock", subclass: "The Undead", level: 10, maxHp: 40 }));
+      const { rows, place } = await fightAt(table, player, [{ monster: "goblin", count: 1 }]);
+      const goblin = named(rows, "goblin", 0);
+      [[corin.id, -2, 0], [mara.id, 0, 0], [goblin.id, 1, 0]].forEach(([refId, dx, dy]) => place(refId, dx, dy));
+      sheets.patchSheet(mara.id, { currentHp: 1 });
+      turnOf(table, goblin.id, { legendary: { due: [goblin.id] } });
+      await pass(table, [[goblin.id, mara.id, [15, 3]]]);
+      if (sheets.getSheetById(mara.id).currentHp !== 0) {
+        throw new Error("the Fall Table's goblin did not drop Mara");
+      }
+      turnOf(table, corin.id);
+      at.fall = { id: table.id, corin: { id: corin.id, name: corin.name }, mara: { id: mara.id, name: mara.name } };
+    }
+    // ---- 10: a paladin's reaction for an ally hit, inside its reach and out ----
+    // Glorious Defense covers a creature within 10 feet: Bran stands beside
+    // Sela, Tam 25 feet off, and a goblin's hit is open on each.
+    {
+      const table = tableFor(`Paladin Reactions Table (${viewport})`, player, world.owner);
+      const sela = sheets.createSheet(table.id, world.owner.id, 15, heroInput({
+        name: "Sela Brightvow", class: "paladin", subclass: "Oath of Glory", level: 15, maxHp: 120, abilities: { str: 16, cha: 16 },
+      }));
+      const ally = (name) => {
+        const bot = createCompanionUser(name);
+        const sheet = sheets.createSheet(table.id, bot.id, 5, heroInput({ name, class: "fighter", level: 5, maxHp: 44 }));
+        sheets.markSheetAsCompanion(sheet.id, "party", "Steady, and slow to speak.");
+        return sheet;
+      };
+      const [near, far] = [ally("Bran Holt"), ally("Tam Reed")];
+      const { rows, place } = await fightAt(table, player, [{ monster: "goblin", count: 2 }]);
+      const [g1, g2] = [named(rows, "goblin", 0), named(rows, "goblin", 1)];
+      [[sela.id, 0, 0], [near.id, 1, 0], [g1.id, 2, 0], [far.id, -5, 0], [g2.id, -6, 0]].forEach(([refId, dx, dy]) => place(refId, dx, dy));
+      turnOf(table, g1.id, { legendary: { due: [g1.id, g2.id] } });
+      await pass(table, [[g1.id, near.id, [15, 3]], [g2.id, far.id, [15, 3]]]);
+      turnOf(table, sela.id);
+      at.paladin = { id: table.id, sela: { id: sela.id, name: sela.name }, near: { id: near.id, name: near.name }, far: { id: far.id, name: far.name } };
+    }
     bench2[viewport] = at;
   }
 }
@@ -2803,6 +2913,7 @@ const ids = {
   wardrobe,
   spotlightTables,
   directed,
+  longOpening,
   enemyTurns,
   enemyMoves,
   levelTableId: levelTable.id,
@@ -2819,6 +2930,7 @@ const ids = {
   dominate,
   pileup,
   conduct,
+  farScout,
   bondTables,
   knownTables,
   romanceTables,
@@ -2843,6 +2955,7 @@ const ids = {
     ...Object.fromEntries(Object.entries(turncoat).map(([viewport, table]) => [table.id, `${TURNCOAT_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(gone).map(([viewport, table]) => [table.id, `${GONE_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(conduct).map(([viewport, table]) => [table.id, `${CONDUCT_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(farScout).map(([viewport, table]) => [table.id, `${FAR_SCOUT_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.values(weekly).map((table) => [table.id, table.title])),
     ...Object.fromEntries(Object.entries(fallenTables).map(([viewport, id]) => [id, `The Fallen Watch (${viewport})`])),
     ...Object.fromEntries(Object.entries(clockTables).map(([viewport, table]) => [table.id, `Clock Table (${viewport})`])),

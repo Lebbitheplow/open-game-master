@@ -220,6 +220,29 @@ await test("F16: temporary hit points from another source stay when False Life e
   world.close();
 });
 
+// Issue 761: a sleeper set_condition laid with a duration or a save slept on
+// through every blow. SRD 5.1 Sleep, Eyebite and Symbol, and a drow's poison:
+// the sleeper wakes when it takes damage.
+await test("761: unconscious laid by set_condition on a creature with hit points ends when it takes damage, with a save or a duration or neither", async () => {
+  const { world, sheets: [hero], enemies: [foe] } = await table([FIGHTER]);
+  for (const lifetime of [{ saveAbility: "wis", saveDc: 15 }, { rounds: 10 }, {}]) {
+    const laid = await world.invoke("set_condition", { enemyId: foe.id, condition: "unconscious", reason: "a sleeping draught", ...lifetime });
+    assert.equal(laid.ok, true, laid.error);
+    assert.ok(enemyOf(world, foe.id).conditions.includes("unconscious"));
+    const hit = await world.invoke("damage_enemy", { enemyId: foe.id, amount: 1 });
+    assert.equal(hit.ok, true, hit.error);
+    assert.equal(enemyOf(world, foe.id).conditions.includes("unconscious"), false, `the creature slept through the blow (${JSON.stringify(lifetime)})`);
+  }
+  for (const lifetime of [{ saveAbility: "con", saveDc: 13 }, { rounds: 10 }, {}]) {
+    const laid = await world.invoke("set_condition", { characterId: hero.id, condition: "unconscious", reason: "a drow's dart", ...lifetime });
+    assert.equal(laid.ok, true, laid.error);
+    assert.ok(world.sheet(hero.id).conditions.includes("unconscious"));
+    const hit = await world.invoke("apply_damage", { characterId: hero.id, amount: 1, type: "bludgeoning", reason: "a kick" });
+    assert.equal(hit.ok, true, hit.error);
+    assert.equal(world.sheet(hero.id).conditions.includes("unconscious"), false, `the hero slept through the blow (${JSON.stringify(lifetime)})`);
+  }
+});
+
 await test("F23: Black Tentacles crushes a restrained character at the start of its turn", async () => {
   const { world, sheets: [fighter], enemies: [foe] } = await table([FIGHTER]);
   await layMap(world, field(12), { [fighter.id]: { x: 5, y: 2 }, [foe.id]: { x: 9, y: 2 } });

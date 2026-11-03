@@ -180,14 +180,14 @@ await test("An attack with advantage is rolled again on one die and uses it: the
   assert.equal(world.sheet(ally.id).currentHp, 50);
 });
 
-await test("Where the reroll changes a critical, the reply says the damage stands as it was rolled.", async () => {
+await test("A natural 20 rolled away lands as an ordinary hit, and a natural 20 gained is said and not raised.", async () => {
   let enemy = await stage();
   await strike(enemy, ally, [20, 4, 4]);
-  const hurt = world.sheet(ally.id).currentHp;
+  assert.equal(world.sheet(ally.id).currentHp, 40, "4 + 4 + 2, a critical");
   let out = await shield([15]);
   assert.match(out.result.applied, /still hits/);
-  assert.match(out.result.applied, /critical/i);
-  assert.equal(world.sheet(ally.id).currentHp, hurt);
+  assert.match(out.result.applied, /no longer a critical/i);
+  assert.equal(world.sheet(ally.id).currentHp, 44, "the critical's die comes back");
 
   enemy = await stage();
   await strike(enemy, ally);

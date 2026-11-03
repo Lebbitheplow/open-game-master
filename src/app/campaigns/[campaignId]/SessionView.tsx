@@ -99,7 +99,8 @@ import {
 import { AudioWaitingBanner } from "@/app/campaigns/[campaignId]/AudioWaitingBanner";
 import { turnCharacterId, turnFromEncounter, turnHudBudget } from "@/lib/battlemap/hand-table";
 
-import { TabPane, useDocked } from "@/app/campaigns/[campaignId]/SidePanel";
+import { TabPane } from "@/app/campaigns/[campaignId]/SidePanel";
+import { useDocked } from "@/app/campaigns/[campaignId]/useDocked";
 import type { SidePanelRouterProps } from "@/app/campaigns/[campaignId]/SidePanelRouter";
 import { TableRow } from "@/app/campaigns/[campaignId]/TableLayout";
 import { ChronicleSplitter } from "@/app/campaigns/[campaignId]/TableLayoutParts";
@@ -1420,6 +1421,7 @@ export function SessionView({
                     multiCharacter={campaign.gameSettings?.multiCharacter}
                     romanceCue={romanceCueAllowed(campaign.gameSettings)}
                     edges={state.battleMap?.edges}
+                    feet={state.battleMap?.feet}
                     drops={state.battleMap?.drops}
                     mounts={state.battleMap?.mounts}
                     sheets={sheets}

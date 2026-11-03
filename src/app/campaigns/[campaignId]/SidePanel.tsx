@@ -1,9 +1,10 @@
 "use client";
 
 import { ChevronsLeft, ChevronsRight } from "lucide-react";
-import { memo, useMemo, useSyncExternalStore, type ReactNode } from "react";
+import { memo, useMemo, type ReactNode } from "react";
 import { tabPane } from "@/lib/table-layout";
 import { usePaneShown, useTableLayoutApi } from "@/app/campaigns/[campaignId]/table-layout-context";
+import { useDocked } from "@/app/campaigns/[campaignId]/useDocked";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
 import { IconRail, type IconRailItem } from "@/components/ui/IconRail";
@@ -13,29 +14,6 @@ import {
   type SidePanelRouterProps,
 } from "@/app/campaigns/[campaignId]/SidePanelRouter";
 import type { PanelTab, PanelTabDef } from "@/app/campaigns/[campaignId]/SessionTabs";
-
-// Whether the aside is docked (Tailwind's lg, where `hidden` no longer
-// applies) or is the phone's full-screen panel. The panels' animation loops
-// key on this, so a board behind the chat on a phone costs no frames.
-// A book-style fold opened flat docks too, one column per leaf, however
-// narrow the whole is (world.css lays the columns on the leaves).
-const DOCKED_QUERY = "(min-width: 64rem), (horizontal-viewport-segments: 2)";
-
-function subscribeDocked(callback: () => void) {
-  const media = window.matchMedia(DOCKED_QUERY);
-  media.addEventListener("change", callback);
-  return () => media.removeEventListener("change", callback);
-}
-
-function readDocked() {
-  return window.matchMedia(DOCKED_QUERY).matches;
-}
-
-// Whether the two columns are side by side (the fight stage only makes
-// sense then; a phone keeps its bottom bar and its Battle tab).
-export function useDocked(): boolean {
-  return useSyncExternalStore(subscribeDocked, readDocked, () => true);
-}
 
 // The session's context column: party sheets, the current area map, story
 // chapters, table notes, and the stat-change log. From lg up it is docked
@@ -77,7 +55,7 @@ function SidePanelInner({
   const wide = layout?.panelWide ?? false;
   // The server snapshot says docked so the first client render matches the
   // lg layout most desktops hydrate into; a phone corrects it at once.
-  const docked = useSyncExternalStore(subscribeDocked, readDocked, () => true);
+  const docked = useDocked();
   // Hidden in the arrangement, or under a maximized pane: still mounted,
   // but its animation loops rest as on a phone.
   const shown = usePaneShown("panel");

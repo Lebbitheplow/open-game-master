@@ -23347,7 +23347,7 @@
       "key": "blinded",
       "label": "blinded",
       "src": "/assets/icons/condition/blinded.webp",
-      "bytes": 1964,
+      "bytes": 5996,
       "seed": 1361190970
     },
     {
@@ -23356,7 +23356,7 @@
       "key": "charmed",
       "label": "charmed",
       "src": "/assets/icons/condition/charmed.webp",
-      "bytes": 2038,
+      "bytes": 6168,
       "seed": 474075557
     },
     {
@@ -23365,7 +23365,7 @@
       "key": "deafened",
       "label": "deafened",
       "src": "/assets/icons/condition/deafened.webp",
-      "bytes": 2128,
+      "bytes": 5024,
       "seed": 1095897952
     },
     {
@@ -23374,7 +23374,7 @@
       "key": "frightened",
       "label": "frightened",
       "src": "/assets/icons/condition/frightened.webp",
-      "bytes": 2924,
+      "bytes": 6778,
       "seed": 939988371
     },
     {
@@ -23383,7 +23383,7 @@
       "key": "grappled",
       "label": "grappled",
       "src": "/assets/icons/condition/grappled.webp",
-      "bytes": 2418,
+      "bytes": 5666,
       "seed": 1767445284
     },
     {
@@ -23392,7 +23392,7 @@
       "key": "incapacitated",
       "label": "incapacitated",
       "src": "/assets/icons/condition/incapacitated.webp",
-      "bytes": 2910,
+      "bytes": 6486,
       "seed": 1306021583
     },
     {
@@ -23401,7 +23401,7 @@
       "key": "invisible",
       "label": "invisible",
       "src": "/assets/icons/condition/invisible.webp",
-      "bytes": 1560,
+      "bytes": 4606,
       "seed": 1117149101
     },
     {
@@ -23410,7 +23410,7 @@
       "key": "paralyzed",
       "label": "paralyzed",
       "src": "/assets/icons/condition/paralyzed.webp",
-      "bytes": 5370,
+      "bytes": 7364,
       "seed": 1047792752
     },
     {
@@ -23419,7 +23419,7 @@
       "key": "petrified",
       "label": "petrified",
       "src": "/assets/icons/condition/petrified.webp",
-      "bytes": 1656,
+      "bytes": 6858,
       "seed": 584419765
     },
     {
@@ -23428,7 +23428,7 @@
       "key": "poisoned",
       "label": "poisoned",
       "src": "/assets/icons/condition/poisoned.webp",
-      "bytes": 2488,
+      "bytes": 5200,
       "seed": 1147947173
     },
     {
@@ -23437,7 +23437,7 @@
       "key": "prone",
       "label": "prone",
       "src": "/assets/icons/condition/prone.webp",
-      "bytes": 1348,
+      "bytes": 4666,
       "seed": 206283513
     },
     {
@@ -23446,7 +23446,7 @@
       "key": "restrained",
       "label": "restrained",
       "src": "/assets/icons/condition/restrained.webp",
-      "bytes": 2330,
+      "bytes": 8010,
       "seed": 1307618072
     },
     {
@@ -23455,7 +23455,7 @@
       "key": "stunned",
       "label": "stunned",
       "src": "/assets/icons/condition/stunned.webp",
-      "bytes": 4424,
+      "bytes": 7186,
       "seed": 1183183041
     },
     {
@@ -23464,7 +23464,7 @@
       "key": "unconscious",
       "label": "unconscious",
       "src": "/assets/icons/condition/unconscious.webp",
-      "bytes": 1956,
+      "bytes": 5684,
       "seed": 523941704
     },
     {
@@ -23473,7 +23473,7 @@
       "key": "exhaustion",
       "label": "exhaustion",
       "src": "/assets/icons/condition/exhaustion.webp",
-      "bytes": 2584,
+      "bytes": 6084,
       "seed": 1338478153
     },
     {
@@ -23482,7 +23482,7 @@
       "key": "concentrating",
       "label": "concentrating",
       "src": "/assets/icons/condition/concentrating.webp",
-      "bytes": 3220,
+      "bytes": 7590,
       "seed": 290599380
     },
     {
@@ -23491,7 +23491,7 @@
       "key": "dodging",
       "label": "dodging",
       "src": "/assets/icons/condition/dodging.webp",
-      "bytes": 1950,
+      "bytes": 5810,
       "seed": 214458055
     },
     {
@@ -23500,7 +23500,7 @@
       "key": "raging",
       "label": "raging",
       "src": "/assets/icons/condition/raging.webp",
-      "bytes": 4814,
+      "bytes": 7776,
       "seed": 1078972284
     },
     {
@@ -23509,7 +23509,7 @@
       "key": "hidden",
       "label": "hidden",
       "src": "/assets/icons/condition/hidden.webp",
-      "bytes": 2966,
+      "bytes": 4628,
       "seed": 922199054
     },
     {
@@ -23518,7 +23518,7 @@
       "key": "blessed",
       "label": "blessed",
       "src": "/assets/icons/condition/blessed.webp",
-      "bytes": 2088,
+      "bytes": 8426,
       "seed": 1655860869
     },
     {
@@ -23527,7 +23527,7 @@
       "key": "hasted",
       "label": "hasted",
       "src": "/assets/icons/condition/hasted.webp",
-      "bytes": 3952,
+      "bytes": 6662,
       "seed": 848366857
     },
     {
@@ -23536,7 +23536,7 @@
       "key": "slowed",
       "label": "slowed",
       "src": "/assets/icons/condition/slowed.webp",
-      "bytes": 2970,
+      "bytes": 7648,
       "seed": 740223109
     },
     {
@@ -23545,7 +23545,7 @@
       "key": "cursed",
       "label": "cursed",
       "src": "/assets/icons/condition/cursed.webp",
-      "bytes": 6046,
+      "bytes": 6742,
       "seed": 1623661344
     },
     {
@@ -23554,7 +23554,7 @@
       "key": "marked",
       "label": "marked",
       "src": "/assets/icons/condition/marked.webp",
-      "bytes": 1938,
+      "bytes": 8106,
       "seed": 1876679534
     },
     {
@@ -23563,7 +23563,7 @@
       "key": "shielded",
       "label": "shielded",
       "src": "/assets/icons/condition/shielded.webp",
-      "bytes": 2450,
+      "bytes": 5642,
       "seed": 1049084766
     },
     {
@@ -23572,7 +23572,7 @@
       "key": "flying",
       "label": "flying",
       "src": "/assets/icons/condition/flying.webp",
-      "bytes": 2876,
+      "bytes": 6772,
       "seed": 1890449443
     },
     {
@@ -23581,7 +23581,7 @@
       "key": "burrowing",
       "label": "burrowing",
       "src": "/assets/icons/condition/burrowing.webp",
-      "bytes": 3610,
+      "bytes": 6802,
       "seed": 1515108043
     },
     {

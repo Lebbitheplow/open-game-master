@@ -215,6 +215,21 @@ await test("The board's squares quoted are cut without the reader, and the turn 
   assert.equal(withoutAsides(fiction, [], "english"), fiction, "words like order and numbers in prose stay");
 });
 
+// Issue 744: a sentence ends at its full stop, so cutting "*(I'll check.)*"
+// left its ")*" behind, on a line of its own or beside the story.
+await test("A cut aside takes the closers it opened with it, and closers it did not open stay.", () => {
+  const aside = [{ kind: "aside", quote: "I'll set the hour first." }];
+  const story = "The hammer hangs from the strap.";
+  for (const [open, close] of [["*(", ")*"], ["*[", "]*"], ["_(", ")_"], ["*_(", ")_*"], ["**(", ")**"], ["(", ")"]]) {
+    const wrapped = `${open}I'll set the hour first.${close}`;
+    assert.equal(withoutAsides(`${wrapped}\n\n${story}`, aside, "english"), story, wrapped);
+    assert.equal(withoutAsides(`${story} ${wrapped}`, aside, "english"), story, wrapped);
+  }
+  assert.equal(withoutAsides("*(I'll set the hour first.)*", aside, "english"), "", "nothing of the story is left");
+  assert.equal(withoutAsides("*(The bell tolls. I'll set the hour first.)*", aside, "english"), "*(The bell tolls.)*", "the aside opened in a sentence that stays");
+  assert.equal(withoutAsides("A door (the old one) I'll set the hour first.)* creaks.", [{ kind: "aside", quote: "A door (the old one) I'll set the hour first." }], "english"), ")* creaks.", "the cut sentence closed its own bracket");
+});
+
 await test("A claim of a kind not asked, about a creature the engine does not know, or by someone outside the party never acts.", () => {
   const text = "The ogre falls. The dragon dies. Mira casts Fireball. Vex casts Fireball.";
   const ctx = context(text, ["dies", "cast"]);

@@ -511,6 +511,10 @@
    it is left as it was. */
 @media (max-width: 63.98rem) and (min-height: 560px) {
   .cine-chat:has(.hand) > .session-transcript { min-height: 4.5rem; }
+  /* The Hand gives way down to its name, never to nothing: at 0 px a hero's
+     cards and the reactions they answer a hit with were gone with no sign
+     they were ever there. */
+  .session-desk:has(.hand) > div > .session-compose-hand > .hand { min-height: 1.25rem; }
   /* The newest line sits on the bottom edge, not 2rem above it. */
   .cine-chat:has(.hand) > .session-transcript > div > :nth-last-child(2) { margin-bottom: 0; }
   .cine-chat:has(.hand) .test-fight-say { display: none; }
@@ -527,6 +531,14 @@
   .cine-chat:has(.hand) .test-fight-banner > :first-child:not(.session-banner-body) { display: none; }
   .cine-chat:has(.hand) .test-fight-banner > .session-banner-body { flex: 0 1 auto; }
   .cine-chat:has(.hand) .test-fight-banner > .session-banner-actions { display: contents; }
+  /* An open hit adds the box's Speaking as row, 48 px a 375 by 667 phone did
+     not have: the Hand went to 0 px, and on a 360 by 640 phone the box went
+     under the tab bar too. While that row shows, the five buttons take one
+     row that scrolls sideways. */
+  .cine-chat:has(.hand):has([data-react-as]) .test-fight-banner { flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
+  .cine-chat:has(.hand):has([data-react-as]) .test-fight-banner::-webkit-scrollbar { display: none; }
+  .cine-chat:has(.hand):has([data-react-as]) .test-fight-banner > *,
+  .cine-chat:has(.hand):has([data-react-as]) .test-fight-banner > .session-banner-actions > * { flex-shrink: 0; white-space: nowrap; }
 }
 @keyframes hand-rail-in {
   from { opacity: 0; transform: translateX(28px); }

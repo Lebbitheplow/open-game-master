@@ -332,7 +332,7 @@ await test("The feature rules match the feature engine: Inspiration, the Channel
   const text = systemText();
   assert.match(text, /set_condition condition "inspiration"/);
   assert.match(text, /pass useInspiration true on their request_roll/);
-  assert.match(text, /Channel Divinity variant 'turn undead', 'turn the unholy', 'sacred weapon' or 'preserve life'/);
+  assert.match(text, /Channel Divinity variant 'turn undead', 'turn the unholy', 'sacred weapon', 'preserve life' or 'vow of enmity'/);
   assert.match(text, /never set turned or frightened by hand/);
   assert.match(text, /'empty body' or 'diamond soul'/);
   assert.match(text, /Indomitable rerolls the last failed save by itself/);
@@ -953,6 +953,23 @@ await test("An agent program's narration is checked against the live encounter, 
     content: "The goblin snarls and circles Tamsin, looking for an opening.",
   });
   assert.equal(fine.status, 201, JSON.stringify(fine.json));
+});
+
+// Issue 744: an agent program's prose is a model's and loses a line of
+// closers nobody opened; a person's passage through the same route is theirs.
+await test("An agent program's passage loses a line of stray closers, and a person's passage is stored as typed.", async () => {
+  const story = "The goblin backs toward the reeds, hissing.";
+  const last = () => listRecentMessages(agentWorld.campaignId, 50).at(-1);
+  routeModel.claims([[]]);
+  const agent = await agentCall(agentWorld, agentWorld.owner.id, "campaigns/[campaignId]/dm/narrate", { content: `)*\n\n${story}` });
+  assert.equal(agent.status, 201, JSON.stringify(agent.json));
+  assert.equal(last().content, story);
+  const typed = `)*\n\n${story}`;
+  const person = await agentCall(agentWorld, agentWorld.owner.id, "campaigns/[campaignId]/dm/narrate", { content: typed }, false);
+  assert.equal(person.status, 201, JSON.stringify(person.json));
+  assert.equal(last().content, typed);
+  const empty = await agentCall(agentWorld, agentWorld.owner.id, "campaigns/[campaignId]/dm/narrate", { content: ")*" });
+  assert.equal(empty.status, 400, JSON.stringify(empty.json));
 });
 
 await test("An agent program in the DM seat that whispers back answers the player's private message, so the player can send more.", async () => {

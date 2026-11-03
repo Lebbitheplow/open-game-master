@@ -259,7 +259,7 @@ function ChipPicks({
             onClick={() => onChange(on ? picked.filter((id) => id !== choice.id) : [...picked, choice.id])}
             className={cn(
               ui.btnSmall,
-              "min-h-9 px-2.5 py-1 text-xs",
+              "min-h-10 px-2.5 py-1 text-xs sm:min-h-9",
               on && "border-amber-500/70 bg-amber-400/10 text-amber-100 shadow-glow-gold",
             )}
           >

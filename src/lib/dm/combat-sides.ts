@@ -156,6 +156,12 @@ onDominationShift((campaignId) => {
 // side it joins: at the start of a fight (Phase 3's return) or one arriving
 // mid-fight.
 function joinFight(campaign: Campaign, encounter: Encounter, sheet: CharacterSheet, side: CombatSide) {
+  // One the fight goes on without (issue 740) changes side where they are:
+  // a turn of heart is no arrival. Their initiative roll brings them in on
+  // the side they hold then.
+  if (encounter.awayIds.includes(sheet.id)) {
+    return;
+  }
   const fresh = getSheetById(sheet.id) ?? sheet;
   const inOrder = encounter.order.some((entry) => entry.kind === "pc" && entry.characterId === fresh.id);
   if (encounter.orderReady && !inOrder) {

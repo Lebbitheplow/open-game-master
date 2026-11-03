@@ -108,6 +108,10 @@ export type Encounter = {
   // saveEncounter leaves it alone. Read sides through src/lib/dm/combatant.ts,
   // which also knows a domination's.
   sides: SideExceptions;
+  // The characters this fight goes on without until they arrive (issue 740,
+  // src/lib/dm/fight-away-logic.ts). Written only by setEncounterAway;
+  // saveEncounter leaves it alone.
+  awayIds: string[];
   // Legendary action and resistance pools per enemy, and whether this
   // fight is in a lair (src/lib/dm/legendary-logic.ts).
   legendary: LegendaryState;
@@ -181,6 +185,7 @@ type EncounterRow = {
   targets_json: string | null;
   intents_json: string | null;
   sides_json?: string | null;
+  away_ids_json?: string | null;
   outcome: string;
   summary: string;
   legendary_json: string | null;
@@ -279,6 +284,7 @@ function mapEncounter(row: EncounterRow): Encounter {
     targets: normalizeTargets(parseJson<unknown>(row.targets_json ?? "{}", {})),
     intents: normalizeIntents(parseJson<unknown>(row.intents_json ?? "{}", {})),
     sides: normalizeSides(parseJson<unknown>(row.sides_json ?? "{}", {})),
+    awayIds: parseJson<string[]>(row.away_ids_json ?? "[]", []),
     legendary: normalizeLegendaryState(parseJson<unknown>(row.legendary_json ?? "{}", {})),
     outcome: row.outcome,
     summary: row.summary,
@@ -447,6 +453,15 @@ export function setEncounterSides(encounterId: string, sides: SideExceptions) {
   getDatabase()
     .prepare(`UPDATE encounters SET sides_json = ?, updated_at = ? WHERE id = ?`)
     .run(JSON.stringify(sides), nowIso(), encounterId);
+}
+
+// The one writer of who a fight goes on without, apart from saveEncounter for
+// the reason setEncounterSides is.
+export function setEncounterAway(encounterId: string, awayIds: string[]) {
+  keepRow("encounters", encounterId);
+  getDatabase()
+    .prepare(`UPDATE encounters SET away_ids_json = ?, updated_at = ? WHERE id = ?`)
+    .run(JSON.stringify(awayIds), nowIso(), encounterId);
 }
 
 export function setEncounterSummary(encounterId: string, summary: EncounterSummary, line: string) {

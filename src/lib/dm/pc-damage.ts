@@ -18,7 +18,7 @@ import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { publishPersisted } from "@/lib/events";
-import { RAGING, spendRelentlessEndurance } from "@/lib/srd/class-resources";
+import { RAGING, spendRelentlessEndurance, spendUndyingSentinel } from "@/lib/srd/class-resources";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { applyDamageMath, wildShapeDamageMath } from "@/lib/dm/mutation-math";
 import { applyDamageDeathHook } from "@/lib/dm/death";
@@ -353,33 +353,62 @@ export function applyPcDamage(
   }
   const bond = wardingBondShare(campaign, turnId, sheet, input, adjusted.amount);
   const proneInfo = { ...landProne(campaign, turnId, sheet.id, input, adjusted.amount, reason), ...bond };
+  // A hero held at 1 hit point (Death Ward, Undying Sentinel, Relentless
+  // Endurance, Relentless Rage) still took the blow: the concentration save,
+  // the stress of damage and what their defences did ride the hold as they
+  // ride any other hit. Each hold returned before them, so a concentrating
+  // paladin held up kept the spell with no save.
+  const tookIt = (held: Record<string, unknown>): ToolResult => {
+    afflictionStress(campaign, turnId, sheet.id, "damage");
+    return {
+      ...held,
+      ...shapeInfo,
+      ...proneInfo,
+      ...(adjusted.note ? { resistance: `${sheet.name} is ${adjusted.note}` } : {}),
+      ...byType,
+      ...(math.absorbed ? { tempHpAbsorbed: math.absorbed } : {}),
+      ...concentrationDamageHook(campaign, turnId, sheet, sheet.wildShape ? adjusted.amount : carried),
+    };
+  };
   const ward = math.dropped ? deathWardPatch(getSheetById(sheet.id) ?? sheet) : null;
   if (ward) {
     patchSheet(sheet.id, ward);
     audit(campaign, turnId, sheet, "apply_damage", { deathWard: true }, reason, ward);
     publishSheet(campaign, sheet.id);
-    return { ok: true, hp: `1/${effectiveMaxHp(sheet)}`, deathWard: true, ...shapeInfo, ...proneInfo, note: `Death Ward holds ${sheet.name} at 1 HP instead of 0, and the spell ends.` };
+    return tookIt({ ok: true, hp: `1/${effectiveMaxHp(sheet)}`, deathWard: true, note: `Death Ward holds ${sheet.name} at 1 HP instead of 0, and the spell ends.` });
   }
   // Relentless Endurance: a half-orc who would drop stays up at 1 HP
   // instead, once per long rest. The server burns the use itself, so the
   // death engine never sees the drop. It answers being reduced to 0 "but not
   // killed outright", so massive damage goes past it to the death engine
-  // with the use unspent.
+  // with the use unspent. Undying Sentinel (Oath of the Ancients 15) holds the
+  // same way; without this line its use sat unspent while the paladin fell.
   if (math.dropped && !input.disintegrate && !isMassiveDamage(math.overkill, effectiveMaxHp(sheet))) {
+    const sentinel = spendUndyingSentinel(sheet.resources);
+    if (sentinel) {
+      const patch: FullPatchSheetInput = { currentHp: 1, resources: sentinel };
+      patchSheet(sheet.id, patch);
+      audit(campaign, turnId, sheet, "apply_damage", { undyingSentinel: true }, reason, patch);
+      publishSheet(campaign, sheet.id);
+      return tookIt({
+        ok: true,
+        hp: `1/${effectiveMaxHp(sheet)}`,
+        undyingSentinel: true,
+        note: `${sheet.name} should have fallen, but Undying Sentinel holds them at 1 HP. The feature is now spent until a long rest.`,
+      });
+    }
     const spent = spendRelentlessEndurance(sheet.resources);
     if (spent) {
       const patch: FullPatchSheetInput = { currentHp: 1, resources: spent };
       patchSheet(sheet.id, patch);
       audit(campaign, turnId, sheet, "apply_damage", { relentlessEndurance: true }, reason, patch);
       publishSheet(campaign, sheet.id);
-      return {
+      return tookIt({
         ok: true,
         hp: `1/${effectiveMaxHp(sheet)}`,
         relentlessEndurance: true,
-        ...shapeInfo,
-        ...proneInfo,
         note: `${sheet.name} should have fallen, but Relentless Endurance holds them at 1 HP. The feature is now spent until a long rest.`,
-      };
+      });
     }
   }
   // Relentless Rage (barbarian 11): raging and dropped to 0 but not killed
@@ -387,7 +416,7 @@ export function applyPcDamage(
   // every use since their last rest, which the counter keeps.
   const relentless = relentlessRage(campaign, turnId, sheet, math, reason);
   if (relentless) {
-    return { ...relentless, ...shapeInfo, ...proneInfo };
+    return tookIt(relentless);
   }
   // A barbarian knocked unconscious stops raging. Checked after Relentless
   // Endurance, which keeps them on their feet still raging.

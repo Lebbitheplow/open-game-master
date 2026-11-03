@@ -12,7 +12,7 @@
 //
 // Pure; scripts/test-hand-engine.mjs drives it.
 import { casterStateProblem, componentProblem, focusProblem } from "@/lib/dm/cast-rules";
-import type { PublicLastHit } from "@/lib/db/encounter-view";
+import type { PublicLastHit, PublicSave } from "@/lib/db/encounter-view";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { bundledSpellFacts } from "@/lib/srd/spell-facts";
 import { gateHolds, heldAuthored, type AuthoredReaction } from "@/lib/srd/authored-effects";
@@ -30,9 +30,12 @@ import {
   type HandTurn,
 } from "@/lib/battlemap/hand-core";
 import { spellNames } from "@/lib/battlemap/hand-spells";
-import { COMMANDED } from "@/lib/dm/maneuver-rules";
+import { COMMANDED, wieldsMeleeOrShield } from "@/lib/dm/maneuver-rules";
+import { HIT_ANSWER_COUNTERS, reachAtLevel } from "@/lib/dm/reaction-kinds";
+import { resourceDef } from "@/lib/srd/class-resources";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
+import { vowedFoe } from "@/lib/srd/vow-of-enmity";
 import { holdsFeature, isNamed } from "@/lib/srd/feature-names";
 
 // A Battle Master maneuver's card wears its painting.
@@ -144,9 +147,10 @@ export function offTurnReactionCards(
   heroes: Array<{ sheet: CharacterSheet; turn: HandTurn }>,
   hits: PublicLastHit[],
   party: Array<Pick<CharacterSheet, "id" | "name">>,
+  saves: PublicSave[] = [],
 ): HandCard[] {
   return heroes.flatMap(({ sheet, turn }) =>
-    reactionCards(sheet, turn, hits, party, sheet.name).map((card) => ({
+    reactionCards(sheet, turn, hits, party, sheet.name, undefined, saves).map((card) => ({
       ...card,
       id: `${card.id}@${sheet.id}`,
       actor: { id: sheet.id, name: sheet.name },
@@ -198,6 +202,15 @@ export function reactionCards(
   hits: PublicLastHit[],
   party: Array<Pick<CharacterSheet, "id" | "name">>,
   self = "you",
+  // How far each creature stands from the character, in feet, when the
+  // board says (PlayerMapView.feet). A reaction with a reach is dealt only
+  // for a hit inside it: an ally beyond Glorious Defense's 10 feet got a
+  // card the engine refused. Absent, every card is dealt and the engine
+  // judges the reach.
+  feet?: Record<string, number>,
+  // The Intelligence, Wisdom and Charisma saves made this turn against a
+  // creature (PublicEncounter.lastSaves), which Vigilant Rebuke answers.
+  saves: PublicSave[] = [],
 ): HandCard[] {
   const cards: HandCard[] = [];
   const answered = (hit: PublicLastHit, name: string) =>
@@ -206,7 +219,16 @@ export function reactionCards(
   // the ids it always had.
   const tail = (hit: PublicLastHit) =>
     hit.id && hits.filter((other) => other.characterId === hit.characterId).length > 1 ? `~${hit.id}` : "";
-  const feature = (hit: PublicLastHit, name: string, prompt: string, rules: string, target: HandTarget = "none", icon?: HandCard["icon"]) => {
+  // `fallen`: the card answers the hit itself, so a holder that hit dropped
+  // is asked as they stood before it. `gate`: a refusal of the card's own.
+  const feature = (
+    hit: PublicLastHit,
+    name: string,
+    prompt: string,
+    rules: string,
+    target: HandTarget = "none",
+    more: { icon?: HandCard["icon"]; fallen?: boolean; gate?: Gate } = {},
+  ) => {
     if (answered(hit, name)) return;
     const card = base(
       `${textKey(name).replace(/\s+/g, "-")}:${hit.characterId}${tail(hit)}`,
@@ -214,10 +236,22 @@ export function reactionCards(
       prompt,
       target,
       aimedIntent({ card: "reaction", feature: name }, hit),
-      { rules, ...(icon ? { icon } : {}), ...answering(hit) },
+      { rules, ...(more.icon ? { icon: more.icon } : {}), ...answering(hit) },
     );
-    cards.push(gated(card, standingGate(sheet, turn, "reaction"), costGate("reaction", turn, sheet, name)));
+    cards.push(
+      gated(
+        card,
+        more.fallen ? stoodGate(sheet, turn, hit) : standingGate(sheet, turn, "reaction"),
+        more.gate ?? null,
+        costGate("reaction", turn, sheet, name),
+      ),
+    );
   };
+  const counterLeft = (id: string) => {
+    const state = sheet.resources[id];
+    return Boolean(state) && state.max > state.used;
+  };
+  const rulesOf = (guidance: string) => guidance.split(". ")[0].replace(/\.?$/, ".");
 
   const mine = hits.filter((hit) => hit.characterId === sheet.id && hit.hit);
   // Shield answers an attack, and a Magic Missile aimed at them.
@@ -254,8 +288,60 @@ export function reactionCards(
       feature(hit, "Slow Fall", prompt, "Take five times your monk level off the fall.");
     }
     if (hit.source === "attack") {
-      for (const held of subclassReactions(sheet, hit, "self")) {
+      for (const held of subclassReactions(sheet, hit, "self", feet)) {
         feature(hit, held.name, prompt, held.rules, held.target);
+      }
+    }
+  }
+
+  // Soul of Vengeance answers the vowed creature's attack, hit or miss, whoever
+  // it was aimed at.
+  const vowed = vowedFoe(sheet);
+  if (vowed && holdsFeature(sheet, "soul of vengeance")) {
+    for (const hit of hits.filter((entry) => entry.source === "attack" && entry.attackerId === vowed && inReach(feet, entry.attackerId, SOUL_OF_VENGEANCE_FT))) {
+      feature(hit, "Soul of Vengeance", `${hit.attacker} attacked under your vow`, "A melee attack back at the creature under your vow.", "enemy");
+    }
+  }
+
+  // Vigilant Rebuke: a success by the character or one within its reach,
+  // and the creature that forced the save takes the damage.
+  for (const held of saveAnswers(sheet)) {
+    for (const save of saves) {
+      const saver = save.characterId === sheet.id ? self : party.find((entry) => entry.id === save.characterId)?.name;
+      if (!saver || (save.characterId !== sheet.id && !inReach(feet, save.characterId, held.rangeFt))) continue;
+      const id = `${textKey(held.name).replace(/\s+/g, "-")}:${save.id}`;
+      const card = base(id, held.name, `${save.characterId === sheet.id && self === "you" ? "You" : saver} made the ${save.ability.toUpperCase()} save ${save.forcer} forced`, "enemy", { card: "reaction", feature: held.name }, {
+        rules: held.rules,
+        answers: { characterId: save.characterId, attackerId: save.forcerId, attacker: save.forcer },
+      });
+      cards.push(gated(card, standingGate(sheet, turn, "reaction"), costGate("reaction", turn, sheet, held.name)));
+    }
+  }
+
+  for (const counter of HIT_ANSWER_COUNTERS) {
+    const def = resourceDef(counter.id);
+    if (!def || !counterLeft(counter.id)) continue;
+    if (counter.whileHolding && !sheet.conditions.some((entry) => textKey(entry) === counter.whileHolding)) continue;
+    if (counter.atZero && sheet.currentHp > 0) continue;
+    const dropped = sheet.currentHp <= 0;
+    if (dropped && sheet.deathSaves?.dead) continue;
+    // Warding Maneuver's melee weapon or shield, as the engine asks it.
+    const gate: Gate = counter.armed && !wieldsMeleeOrShield(sheet)
+      ? { reason: `${def.displayName} needs ${sheet.name} wielding a melee weapon or a shield.`, spent: false }
+      : null;
+    for (const hit of mine) {
+      if (counter.attackOnly && hit.source !== "attack") continue;
+      // Taken as the hit that drops them lands: one that found them down
+      // already is not it (reaction-counters.ts droppedByFreshHit).
+      if (counter.atZero && hit.stood && !hit.stood.up) continue;
+      feature(hit, def.displayName, what(hit, self), rulesOf(def.guidance), "none", { fallen: dropped && (counter.atZero || counter.answersDrop), gate });
+    }
+    if (counter.ally) {
+      for (const hit of hits) {
+        const ally = party.find((entry) => entry.id === hit.characterId);
+        if (ally && ally.id !== sheet.id && hit.hit && hit.source === "attack" && inReach(feet, hit.characterId, counter.rangeFt)) {
+          feature(hit, def.displayName, what(hit, ally.name), rulesOf(def.guidance), "ally", { gate });
+        }
       }
     }
   }
@@ -267,12 +353,12 @@ export function reactionCards(
   if (dice && dice.max > dice.used) {
     for (const hit of mine) {
       if (hit.source === "attack" && !hit.ranged && knows("parry")) {
-        feature(hit, "Parry", what(hit, self), "A superiority die plus your Dexterity modifier off the melee hit.", "none", MANEUVER_ICON("Parry"));
+        feature(hit, "Parry", what(hit, self), "A superiority die plus your Dexterity modifier off the melee hit.", "none", { icon: MANEUVER_ICON("Parry") });
       }
     }
     if (knows("riposte")) {
       for (const missed of hits.filter((hit) => hit.characterId === sheet.id && !hit.hit && hit.source === "attack" && !hit.ranged && hit.attackerId)) {
-        feature(missed, "Riposte", `${missed.attacker}'s ${missed.attack} missed ${self}`, "A melee attack back with your reaction, the die on its hit.", "enemy", MANEUVER_ICON("Riposte"));
+        feature(missed, "Riposte", `${missed.attacker}'s ${missed.attack} missed ${self}`, "A melee attack back with your reaction, the die on its hit.", "enemy", { icon: MANEUVER_ICON("Riposte") });
       }
     }
   }
@@ -291,26 +377,38 @@ export function reactionCards(
     const ally = party.find((entry) => entry.id === hit.characterId);
     if (!ally) continue;
     const prompt = what(hit, ally.name);
-    for (const held of allyReactions(sheet, hit)) {
+    for (const held of allyReactions(sheet, hit, feet)) {
       feature(hit, held.name, prompt, held.rules, "ally");
     }
   }
   return cards;
 }
 
+// A card answered as the holder stood when the hit landed, as the engine asks
+// it (src/lib/dm/reaction-gate.ts reactingSheet): open to one that very hit
+// dropped, and shut to one stunned or down before it. An older host sends no
+// standing, and the card is open as before.
+function stoodGate(sheet: CharacterSheet, turn: HandTurn, hit: PublicLastHit): Gate {
+  if (!hit.stood) return null;
+  if (!hit.stood.up) return standingGate(sheet, turn, "reaction");
+  return standingGate({ ...sheet, currentHp: Math.max(1, sheet.currentHp), conditions: hit.stood.conditions, deathSaves: null }, turn, "reaction");
+}
+
+
 // The reactions the character holds that answer a hit on an ally: Cutting
 // Words with a die left, Protection, and the subclass reactions for an ally.
 // The cards above offer these, and the actions route takes words typed as a
 // reaction for an ally's hit only when one of them covers it.
-export function allyReactions(sheet: CharacterSheet, hit: PublicLastHit): Array<{ name: string; rules: string }> {
+export function allyReactions(sheet: CharacterSheet, hit: PublicLastHit, feet?: Record<string, number>): Array<{ name: string; rules: string }> {
   if (hit.characterId === sheet.id || !hit.hit || hit.source !== "attack") return [];
   const bardic = sheet.resources.bardic_inspiration;
   return [
     ...(holdsFeature(sheet, "cutting words") && (bardic?.max ?? 0) > (bardic?.used ?? 0)
       ? [{ name: "Cutting Words", rules: "Spend a Bardic Inspiration die off the roll or the damage." }]
       : []),
-    ...(holdsFeature(sheet, "protection") ? [{ name: "Protection", rules: "Impose disadvantage on the attack: it is rolled again." }] : []),
-    ...subclassReactions(sheet, hit, "ally").map((held) => ({ name: held.name, rules: held.rules })),
+    // Protection: "a target other than you that is within 5 feet of you".
+    ...(holdsFeature(sheet, "protection") && inReach(feet, hit.characterId, 5) ? [{ name: "Protection", rules: "Impose disadvantage on the attack: it is rolled again." }] : []),
+    ...subclassReactions(sheet, hit, "ally", feet).map((held) => ({ name: held.name, rules: held.rules })),
   ];
 }
 
@@ -323,13 +421,46 @@ export function withReactions(reactions: HandCard[], hand: HandCard[]): HandCard
   return [...reactions, ...hand.filter((card) => !(card.cost === "reaction" && offered.has(textKey(card.name))))];
 }
 
+// Soul of Vengeance's melee attack (authored-effects-data2.ts): the vowed
+// creature within this reach.
+const SOUL_OF_VENGEANCE_FT = 5;
+
+// Whether the creature `id` stands within `reach` feet, as far as the board
+// says: with no distance known, the engine judges it.
+function inReach(feet: Record<string, number> | undefined, id: string | null | undefined, reach: number | undefined): boolean {
+  const apart = id ? feet?.[id] : undefined;
+  return apart === undefined || reach === undefined || apart <= reach;
+}
+
+// A reach that grows with the holder's level (Aura of the Guardian's 10
+// feet, then 30), as the engine reads it (reaction-kinds.ts reachAtLevel).
+function reachAt(range: number | Array<[number, number]> | undefined, level: number): number | undefined {
+  return range === undefined ? undefined : reachAtLevel(range, level);
+}
+
+// The reactions the character holds that answer a save (Vigilant Rebuke),
+// with their reach and their line.
+function saveAnswers(sheet: CharacterSheet): Array<{ name: string; rangeFt: number | undefined; rules: string }> {
+  const out: Array<{ name: string; rangeFt: number | undefined; rules: string }> = [];
+  for (const held of heldAuthored(sheet)) {
+    for (const reaction of held.entry.reactions ?? []) {
+      const does = reaction.does;
+      if (does.kind !== "strike_back" || !does.afterSave || (reaction.usedBy ?? "holder") !== "holder" || !gateHolds(reaction.gate, sheet, held)) continue;
+      out.push({ name: reaction.name, rangeFt: does.rangeFt, rules: `Strike back: ${does.type} damage at the creature that forced the save.` });
+    }
+  }
+  return out;
+}
+
 // What a subclass reaction does, in a line for its card.
 function reactionRules(does: ReactionDoes): string {
   switch (does.kind) {
     case "reduce":
       return does.amount === "half" ? "Halve the damage of the attack that hit." : "Take damage off the attack that hit.";
     case "ac_vs_hit":
-      return "Raise the AC against the attack that hit: a swing it beats misses.";
+      return does.strikeOnMiss
+        ? "Raise the AC against the attack that hit: a swing it beats misses, and you attack the attacker."
+        : "Raise the AC against the attack that hit: a swing it beats misses.";
     case "disadv_vs_hit":
       return "The attack that hit is rolled again at disadvantage.";
     case "reroll_hit":
@@ -338,12 +469,16 @@ function reactionRules(does: ReactionDoes): string {
       return "Resistance to the damage of the attack that hit.";
     case "take_for_ally":
       return "Take the hit in your ally's place.";
+    case "echo_hit":
+      return `The same damage back at the attacker as ${does.type}, halved on a save.`;
     case "strike_back":
-      return `Strike back: ${does.type} damage at the attacker.`;
+      return `Strike back: ${does.type}${does.orType ? ` or ${does.orType}` : ""} damage at the attacker.`;
     case "redirect":
       return "The hit lands on the creature beside you instead.";
     case "force_miss":
-      return `The hit becomes a miss, for ${does.exhaustion} level${does.exhaustion === 1 ? "" : "s"} of exhaustion.`;
+      return does.exhaustion
+        ? `The hit becomes a miss, for ${does.exhaustion} level${does.exhaustion === 1 ? "" : "s"} of exhaustion.`
+        : "The hit becomes a miss.";
     default:
       return "";
   }
@@ -356,6 +491,7 @@ function subclassReactions(
   sheet: CharacterSheet,
   hit: PublicLastHit,
   whose: "self" | "ally",
+  feet?: Record<string, number>,
 ): Array<{ name: string; rules: string; target: HandTarget }> {
   const out: Array<{ name: string; rules: string; target: HandTarget }> = [];
   for (const held of heldAuthored(sheet)) {
@@ -376,12 +512,21 @@ function subclassReactions(
             (does.kind === "resist_instance" && typed(does.types)) ||
             does.kind === "redirect" ||
             does.kind === "force_miss" ||
-            (does.kind === "strike_back" && Boolean(hit.attackerId))
+            (does.kind === "strike_back" && !does.afterSave && Boolean(hit.attackerId) && !(does.melee && hit.ranged))
           : (does.kind === "reduce" && does.who !== "self" && typed(does.types)) ||
             does.kind === "take_for_ally" ||
             does.kind === "reroll_hit" ||
+            (does.kind === "ac_vs_hit" && Boolean(does.rangeFt)) ||
+            (does.kind === "echo_hit" && Boolean(hit.attackerId)) ||
+            (does.kind === "disadv_vs_hit" && Boolean(does.allyWith) && holdsFeature(sheet, does.allyWith!)) ||
             (does.kind === "resist_instance" && typed(does.types));
       if (!answers) continue;
+      // Within its reach: the ally it covers, or for Rebuke the Violent the
+      // attacker ("an attacker within 30 feet of you").
+      if (whose === "ally") {
+        const reach = "rangeFt" in does ? reachAt(does.rangeFt as number | Array<[number, number]> | undefined, held.level) : undefined;
+        if (!inReach(feet, does.kind === "echo_hit" ? hit.attackerId : hit.characterId, reach)) continue;
+      }
       const rules = reactionRules(does);
       if (!rules) continue;
       out.push({ name: reaction.name, rules, target: does.kind === "strike_back" ? "enemy" : whose === "ally" ? "ally" : "none" });

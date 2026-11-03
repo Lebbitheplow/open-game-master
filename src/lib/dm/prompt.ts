@@ -65,7 +65,7 @@ import { renderQuestsForPrompt } from "@/lib/dm/quest-logic";
 import { describeEffect } from "@/lib/dm/effects-logic";
 import { getMounts } from "@/lib/db/mounts";
 import { describeMount } from "@/lib/srd/mounts";
-import { formatCopper } from "@/lib/srd/currency";
+import { formatCopper, formatPrice, purseCoins, purseCopper } from "@/lib/srd/currency";
 import { coverPromptBlock } from "@/lib/dm/delegation";
 import { ENGINE_BOUNDARY_CHECK, ENGINE_BOUNDARY_RULES } from "@/lib/dm/engine-boundary";
 import { normalizeGm, normalizeSafety, renderGmBlock, renderSafetyBlock } from "@/lib/dm/safety-logic";
@@ -178,6 +178,8 @@ export type DmEncounterState = {
   orderReady: boolean;
   order: Array<{ name: string; current: boolean }>;
   awaitingInitiative: string[];
+  // The characters this fight goes on without until they arrive (issue 740).
+  away?: string[];
   // What the combatant whose turn it is still has to spend, or null before
   // they have spent anything (src/lib/dm/action-budget.ts).
   turnBudget: string | null;
@@ -638,7 +640,7 @@ export function describeSheet(
     ? encumbranceFor({
         strength: sheet.abilities.str,
         equipment: sheet.equipment ?? [],
-        coins: sheet.gold ?? 0,
+        coins: purseCoins({ gold: sheet.gold ?? 0, copper: sheet.copper ?? 0 }),
         size: sizeForRace(sheet.race),
       })
     : null;
@@ -786,14 +788,15 @@ export function describeSheet(
   } else {
     lines.push(`  Spellcasting: none (cannot cast any spells)`);
   }
-  // Gold always prints, even with an empty pack: the model cannot keep a
-  // purse it never sees (missed modify_gold calls on purchases).
+  // The purse always prints, even with an empty pack: the model cannot keep a
+  // purse it never sees (missed modify_gold calls on purchases). All of it, so
+  // a hero with only silver left does not read as having nothing.
   lines.push(
     `  Equipment (complete inventory, they carry nothing else): ${
       sheet.equipment.length
         ? sheet.equipment.map((item) => describeEquipmentItem(item, sheet.equipment)).join(", ")
         : "none"
-    } | Gold: ${sheet.gold}`,
+    } | Purse: ${formatPrice(purseCopper({ gold: sheet.gold, copper: sheet.copper ?? 0 }))}`,
   );
   // What the hands hold and the body wears, on a sheet that says (issue
   // #424): an attack with anything else draws it first, the turn's free
@@ -1099,6 +1102,11 @@ export function buildGameStateBlock(state: DmGameState): string {
         `Combat is starting. Initiative still needed from: ${
           encounter.awaitingInitiative.join(", ") || "nobody"
         }. Call request_roll with kind=initiative for each character listed.`,
+      );
+    }
+    if (encounter.away?.length) {
+      lines.push(
+        `Not at this fight: ${encounter.away.join(", ")}, with no place in the order and no token. When the story brings one here, call request_roll kind=initiative for them.`,
       );
     }
     lines.push(

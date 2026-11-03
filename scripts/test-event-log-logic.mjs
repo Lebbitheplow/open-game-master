@@ -352,6 +352,7 @@ test("a death save's result, a pact's price, a trade and the gear moves read fro
   assert.equal(say("concentration_clock", { spell: "Bless", roundsLeft: 9 }), "Time runs on Corra Venn's Bless");
   assert.equal(say("clear_condition", { spell: "Lesser Restoration", ended: ["poisoned"], exhaustion: false }), "Corra Venn is no longer poisoned");
   assert.equal(say("apply_damage", { relentlessRage: true, dc: 10 }), "Corra Venn holds on at 1 HP (Relentless Rage)");
+  assert.equal(say("apply_damage", { undyingSentinel: true }), "Corra Venn holds on at 1 HP (Undying Sentinel)");
   // src/lib/dm/swallow.ts: the count toward a regurgitation, and the way out.
   assert.equal(say("set_condition", { condition: "swallowed", hurtInside: 12, swallower: "Purple Worm" }), "Corra Venn has dealt Purple Worm 12 damage from inside this turn");
   assert.equal(say("clear_condition", { condition: "swallowed, blinded, restrained" }), "Corra Venn is no longer swallowed, blinded, restrained");
@@ -376,6 +377,15 @@ test("an undo's conflict warning names the character and the fields in words, ne
   assert.equal(undoConflictLine("Kara", "  ", ["gold"]), "A later change to Kara (no reason given) also changed their gold.");
   assert.equal(fieldWords("hitDiceRemaining"), "hit dice");
   assert.equal(fieldWords("featureUses"), "feature uses");
+});
+
+test("coin under a gold piece reads as the coins that moved, never as 0 gold", () => {
+  const entry = (delta) => describeAuditEntry({ kind: "modify_gold", delta }, "Nysa");
+  assert.equal(entry({ delta: 0, copper: -50, gold: 2, purseCopper: 290 }), "Nysa loses 5 sp (2 gp 9 sp)");
+  assert.equal(entry({ delta: 1, copper: 150, gold: 4, purseCopper: 440 }), "Nysa gains 1 gp 5 sp (4 gp 4 sp)");
+  assert.equal(entry({ delta: -3, copper: -300, gold: 2, purseCopper: 240 }), "Nysa loses 3 gold (2 gp 4 sp)");
+  // A row written before the purse was recorded still reads.
+  assert.equal(entry({ delta: 7, gold: 12 }), "Nysa gains 7 gold (12 gp)");
 });
 
 console.log(`\n${passed} event-log tests passed.`);

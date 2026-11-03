@@ -70,7 +70,7 @@ import { handleRequestRoll } from "@/lib/dm/invoke-roll";
 import { handleSplitDamage } from "@/lib/dm/split-damage";
 import { strictBooleanArgs } from "@/lib/dm/arg-coerce";
 import { listedCalls, listRefusal, oneCasting, PART_LISTS, partsResult, type OneCasting } from "@/lib/dm/action-parts-logic";
-import { gateAiCall } from "@/lib/dm/ai-gate";
+import { awayCall, gateAiCall } from "@/lib/dm/ai-gate";
 import { conductGate } from "@/lib/dm/party-conduct";
 import { characterCallUnasked } from "@/lib/dm/player-word";
 import { EXPLORE_TOOL_NAMES, handleExploreCall } from "@/lib/dm/explore-tools";
@@ -120,7 +120,7 @@ async function dispatchCall(
   // program and the console as for the model's turn loop (turn.ts).
   const each = listedCalls(name, sentArguments);
   if (each) {
-    const refused = listRefusal(name, each);
+    const refused = listRefusal(name, each) ?? awayCall(name, JSON.parse(sentArguments), context);
     if (refused) {
       return refused;
     }

@@ -1,4 +1,5 @@
 import { isKnockedOut } from "@/lib/dm/knockout";
+import { openSaves, type LastSave } from "@/lib/dm/last-save";
 import { defaultSide, type CombatSide } from "@/lib/dm/combat-sides-logic";
 import { sideOf } from "@/lib/dm/combatant";
 import { lairChoices, legendaryProfile } from "@/lib/dm/legendary-logic";
@@ -159,7 +160,13 @@ export type PublicEncounter = {
   // hit still open on each character, oldest first, while the engine would
   // accept a reaction to it. Absent keys mean nothing to answer.
   lastHits?: PublicLastHit[];
+  // The Intelligence, Wisdom and Charisma saves characters made this turn
+  // against a creature, for Vigilant Rebuke (src/lib/dm/last-save.ts). A
+  // forcer hidden from this viewer is left out.
+  lastSaves?: PublicSave[];
 };
+
+export type PublicSave = { id: string; characterId: string; ability: string; forcerId: string; forcer: string };
 
 export type PublicTurn = {
   ownerId: string;
@@ -216,6 +223,11 @@ export type PublicLastHit = {
   damage: number;
   // Reactions already taken against it.
   answered: string[];
+  // How the character stood as it landed: up or already at 0, and their
+  // conditions then. A reaction that answers the hit is asked of them as
+  // they stood (src/lib/dm/reaction-gate.ts), so a card for one the hit
+  // dropped reads this, not the fall. Absent from an older host.
+  stood?: { up: boolean; conditions: string[] };
 };
 
 function turnView(encounter: Encounter): { turn?: PublicTurn } {
@@ -303,8 +315,10 @@ function lastHitView(record: LastHit, hidden: Set<string>, showNumbers: boolean)
     hits: record.swings.filter((swing) => swing.hit).length,
     damage: answered?.raw ?? 0,
     answered: record.answered,
+    stood: { up: record.before.currentHp > 0, conditions: record.before.conditions },
   };
 }
+
 
 // The face an initiative entry for a tracked NPC draws (npc-faces.ts).
 function entryFace(cast: CastLookup, npcId: string, name: string): { face?: string } {
@@ -335,7 +349,7 @@ function movementView(encounter: Encounter, enemy: EncounterEnemy, map: BattleMa
 export function publicEncounter(
   encounter: Encounter,
   enemies: EncounterEnemy[],
-  options: { enemyNumbers?: boolean; hiddenRefIds?: string[]; lastHits?: LastHit[] } = {},
+  options: { enemyNumbers?: boolean; hiddenRefIds?: string[]; lastHits?: LastHit[]; lastSaves?: LastSave[] } = {},
 ): PublicEncounter {
   const showNumbers = options.enemyNumbers === true;
   const board = showNumbers ? getBattleMapForEncounter(encounter.id) : null;
@@ -441,7 +455,15 @@ export function publicEncounter(
       ? { lastHits: options.lastHits.map((record) => lastHitView(record, hidden, showNumbers)) }
       : {}),
     ...sidesView(encounter, enemies, hidden, showNumbers),
+    ...savesView(options.lastSaves, hidden, showNumbers),
   };
+}
+
+function savesView(saves: LastSave[] | undefined, hidden: Set<string>, showNumbers: boolean): { lastSaves?: PublicSave[] } {
+  const shown = (saves ?? []).filter((save) => showNumbers || !hidden.has(save.forcer.id));
+  return shown.length
+    ? { lastSaves: shown.map((save) => ({ id: save.id, characterId: save.characterId, ability: save.ability, forcerId: save.forcer.id, forcer: save.forcer.name })) }
+    : {};
 }
 
 // The side exceptions every client draws, a domination's included.
@@ -527,11 +549,15 @@ export function activePublicEncounter(
   }
   const map = getBattleMapForEncounter(encounter.id);
   // Only records a reaction may still answer: the engine's own freshness
-  // rule, asked per character in the order, every open hit of each.
-  const lastHits = encounter.order.flatMap((entry) => (entry.kind === "pc" ? openHits(campaignId, entry.characterId) : []));
+  // rule, asked per character in the order, every open hit of each. Once per
+  // character: an extra turn (Strength before Death, Thief's Reflexes) puts
+  // them in the order twice, and each of their hits came twice with its cards.
+  const heroes = [...new Set(encounter.order.flatMap((entry) => (entry.kind === "pc" ? [entry.characterId] : [])))];
+  const lastHits = heroes.flatMap((id) => openHits(campaignId, id));
   return publicEncounter(encounter, listEnemies(encounter.id), {
     ...options,
     lastHits,
+    lastSaves: openSaves(campaignId),
     hiddenRefIds: map ? listHiddenRefIds(map.id) : [],
   });
 }

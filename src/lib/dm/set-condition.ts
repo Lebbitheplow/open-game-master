@@ -31,6 +31,7 @@ import {
   describeExhaustion,
   isIncapacitated,
   removeConditions,
+  wakesOnDamage,
   type ConditionMeta,
   type ConditionMetaMap,
   type SaveAbilityId,
@@ -389,13 +390,15 @@ export function handleSetCondition(
   const saveEnds =
     args.saveAbility && args.saveDc ? { ability: args.saveAbility, dc: args.saveDc } : undefined;
   const source = (args.sourceEnemyId ?? args.sourceCharacterId ?? "").trim().slice(0, 80);
+  const wakes = wakesOnDamage(normalized, sheet.currentHp);
   const incoming: ConditionMeta | undefined =
-    rounds || saveEnds || source || options?.spellEffect
+    rounds || saveEnds || source || options?.spellEffect || wakes
       ? {
           ...(rounds ? { rounds } : {}),
           ...(saveEnds ? { saveEnds } : {}),
           ...(source ? { source } : {}),
           ...(options?.spellEffect ?? {}),
+          ...(wakes ? { endsOnDamage: true } : {}),
         }
       : undefined;
   const meta = sheet.conditionMeta as ConditionMetaMap;

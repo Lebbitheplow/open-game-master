@@ -33,6 +33,7 @@ import { sizeForRace } from "@/lib/srd";
 import { wearsUntrainedArmor } from "@/lib/srd/armor";
 import { conditionRollRiders } from "@/lib/srd/condition-effects";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
+import { purseCoins } from "@/lib/srd/currency";
 import type { CombatRiders } from "@/lib/srd/feature-effects";
 import { weatherRangedRider } from "@/lib/srd/weather";
 import { isImmersed, underwaterSwing } from "@/lib/dm/underwater";
@@ -269,6 +270,8 @@ export function attackSituation(input: {
     attackRiders.notes.push(`spends their Bardic Inspiration die: +1${inspiration.die} to the attack roll`);
     attackRiders.spent.push(inspiration.condition);
   }
+  // A mark an authored feature leaves for one attack (Entropic Ward's).
+  attackRiders.spent.push(...authored.spent);
   conditionContext.notes.push(...attackRiders.notes, ...input.onHitNotes);
   for (const rider of input.featureRiders) {
     conditionContext.notes.push(
@@ -307,7 +310,7 @@ export function attackSituation(input: {
     ? encumbranceFor({
         strength: sheet.abilities.str,
         equipment: sheet.equipment ?? [],
-        coins: sheet.gold ?? 0,
+        coins: purseCoins({ gold: sheet.gold ?? 0, copper: sheet.copper ?? 0 }),
       })
     : null;
   if (load?.disadvantage && load.note) {
