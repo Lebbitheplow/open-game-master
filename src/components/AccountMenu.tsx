@@ -252,9 +252,15 @@ export function AccountMenu({
                 <BookOpen className="size-4" /> App guide
               </DropdownMenu.Item>
             ) : null}
-            <DropdownMenu.Item onSelect={logout} className={itemClass}>
-              <LogOut className="size-4" /> Log out
-            </DropdownMenu.Item>
+            {/* Inside the app there is no account to sign out of: the app
+                owns sign-in (and can renew the session on its own), so a
+                logout here would only strand the player. "App home" is the
+                way back. */}
+            {shell ? null : (
+              <DropdownMenu.Item onSelect={logout} className={itemClass}>
+                <LogOut className="size-4" /> Log out
+              </DropdownMenu.Item>
+            )}
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
