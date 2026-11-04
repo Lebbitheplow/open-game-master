@@ -264,6 +264,26 @@ export function heaviestHit(swings: SwingRecord[], which: (swing: SwingRecord) =
   return best;
 }
 
+// An answer on a hit, keyed by the reaction and the one who took it, so a
+// second holder of the same feature (two Rune Knights, two Lore bards) can
+// answer the hit as well, and neither the same hit twice. A key written
+// before holders were kept is the bare reaction, and answers for everyone.
+export function answerKey(label: string, holderId: string): string {
+  return `${label}@${holderId}`;
+}
+
+// The reaction an answer key names, without its holder.
+export function answerLabel(key: string): string {
+  const at = key.lastIndexOf("@");
+  return at > 0 ? key.slice(0, at) : key;
+}
+
+// Whether the hit holds this answer: the key itself, or the bare reaction an
+// older record kept.
+export function answeredBy(record: Pick<LastHit, "answered">, key: string): boolean {
+  return record.answered.includes(key) || record.answered.includes(answerLabel(key));
+}
+
 // Whether a swing is a critical that can become a normal hit: its normal
 // figure is on record, and it is not a critical only for the target lying at 0
 // when a reaction has since left them standing as it landed, which the replay

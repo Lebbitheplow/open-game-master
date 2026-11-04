@@ -32,7 +32,7 @@ import { meetEnemyPart } from "@/lib/dm/enemy-defenses";
 import { scaledParts } from "@/lib/dm/enemy-hit";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
-import { attackerFoeId, carryCuts, critTurnsNormal, cutBlow, freshLastHit, openHits, plainOfReroll, rerollAttacker, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
+import { answerKey, answerLabel, answeredBy, attackerFoeId, carryCuts, critTurnsNormal, cutBlow, freshLastHit, openHits, plainOfReroll, rerollAttacker, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { vowedFoe } from "@/lib/srd/vow-of-enmity";
 import { ENTROPIC_EDGE } from "@/lib/dm/reaction-kinds";
 import { answerSave, openSaves, type LastSave } from "@/lib/dm/last-save";
@@ -134,12 +134,12 @@ function lastHitOn(ctx: Ctx, target: CharacterSheet, label: string, which?: (hit
   const record = freshLastHit(
     ctx.campaign.id,
     target.id,
-    (hit) => hit.source === "attack" && !hit.answered.includes(label) && heaviest(hit.swings, which?.(hit)) >= 0,
+    (hit) => hit.source === "attack" && !answeredBy(hit, label) && heaviest(hit.swings, which?.(hit)) >= 0,
     (hit) => hit.swings[heaviest(hit.swings, which?.(hit))]?.raw ?? -1,
   );
   const index = record ? heaviest(record.swings, which?.(record)) : -1;
   if (!record || index < 0) {
-    return noHit(target.name, label, what);
+    return noHit(target.name, answerLabel(label), what);
   }
   return { record, index };
 }
@@ -313,7 +313,8 @@ export function authoredReaction(ctx: Ctx): ToolResult | null {
 function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
   const { reaction, held, holder } = found;
   const does = reaction.does;
-  const label = textKey(reaction.name);
+  // Kept on the hit with its holder (last-hit.ts answerKey).
+  const label = answerKey(textKey(reaction.name), holder.id);
   const encounter = ctx.encounter;
   switch (does.kind) {
     case "reduce": {
@@ -514,7 +515,7 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (encounter && !withinFeet(encounter.id, ctx.sheet.id, ally.id, feet)) {
         return { error: `${ally.name} is beyond ${feet} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
       }
-      const record = freshLastHit(ctx.campaign.id, ally.id, (hit) => hit.source === "attack" && !hit.answered.includes(label) && hit.swings.some((swing) => swing.hit));
+      const record = freshLastHit(ctx.campaign.id, ally.id, (hit) => hit.source === "attack" && !answeredBy(hit, label) && hit.swings.some((swing) => swing.hit));
       if (!record) {
         return noHit(ally.name, reaction.name, `an attack that hit ${ally.name}`);
       }

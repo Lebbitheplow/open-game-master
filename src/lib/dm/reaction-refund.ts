@@ -48,7 +48,7 @@ import {
   type SwingOutcome,
 } from "@/lib/dm/hit-replay-logic";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
-import { carryCuts, hitIdOf, openHits, wardHpOf, writeLastHit, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
+import { answerLabel, carryCuts, hitIdOf, openHits, wardHpOf, writeLastHit, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { applyDmMutation } from "@/lib/dm/mutations";
 import { blowDefenses, meetDefenses } from "@/lib/dm/pc-damage";
 import { PRONE } from "@/lib/dm/vitals-logic";
@@ -507,7 +507,7 @@ function bondShareBack(campaign: Campaign, turnId: string, steps: Step[], label:
   for (const [casterId, amount] of back) {
     const caster = getSheetById(casterId);
     if (caster && !caster.deathSaves?.dead) {
-      applyDmMutation(campaign, turnId, "heal", JSON.stringify({ characterId: casterId, amount, reason: `${label}: the Warding Bond's share of a blow undone` }), sheets, sheetsById);
+      applyDmMutation(campaign, turnId, "heal", JSON.stringify({ characterId: casterId, amount, reason: `${answerLabel(label)}: the Warding Bond's share of a blow undone` }), sheets, sheetsById);
     }
   }
 }

@@ -40,7 +40,7 @@ import { devotedGuard } from "@/lib/dm/devoted-guard";
 import { reactionTimingOf, timingOfDoes, type ReactionTiming } from "@/lib/dm/reaction-kinds";
 import { authoredReactionNamed, heldReaction } from "@/lib/srd/authored-effects";
 import { removeConditions } from "@/lib/dm/condition-logic";
-import { attackerFoeId, cutBlow, freshLastHit, heaviestHit, heaviestRaw, hitIdOf, openHitAimed, openHits, plainOfReroll, reactedLate, rerollAttacker, withHitAim, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
+import { answerKey, answeredBy, attackerFoeId, cutBlow, freshLastHit, heaviestHit, heaviestRaw, hitIdOf, openHitAimed, openHits, plainOfReroll, reactedLate, rerollAttacker, withHitAim, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import type { RollAttacker } from "@/lib/db/rolls";
 import { rollAgainst } from "@/lib/roll-labels";
 import { opportunity, reactionSpell } from "@/lib/dm/reaction-spells";
@@ -257,7 +257,7 @@ function cuttingWords(ctx: Ctx): ToolResult {
   const record = freshLastHit(
     campaign.id,
     target.id,
-    (hit) => hit.source === "attack" && attackerFoeId(hit) !== null && !hit.answered.includes("cutting words") && heaviestHit(hit.swings) >= 0,
+    (hit) => hit.source === "attack" && attackerFoeId(hit) !== null && !answeredBy(hit, answerKey("cutting words", sheet.id)) && heaviestHit(hit.swings) >= 0,
     (hit) => heaviestRaw(hit),
   );
   const index = record ? heaviestHit(record.swings) : -1;
@@ -293,7 +293,7 @@ function cuttingWords(ctx: Ctx): ToolResult {
   const corrected = record.swings.map((entry, at) =>
     at !== index ? entry : missed ? { ...entry, hit: false, raw: 0 } : cutBlow(entry, die),
   );
-  const settled = settle(ctx, record, corrected, "cutting words");
+  const settled = settle(ctx, record, corrected, answerKey("cutting words", sheet.id));
   return {
     ok: true,
     reaction: "Cutting Words",
@@ -338,7 +338,7 @@ function protection(ctx: Ctx): ToolResult {
   // The hit the prompt names (heaviestHit), not the routine's first swing:
   // after a multiattack whose first swing missed, Protection rolled nothing
   // again and the hit that landed stood.
-  const record = freshLastHit(campaign.id, ally.id, (hit) => hit.source === "attack" && !hit.answered.includes("protection") && heaviestHit(hit.swings) >= 0, (hit) => heaviestRaw(hit));
+  const record = freshLastHit(campaign.id, ally.id, (hit) => hit.source === "attack" && !answeredBy(hit, answerKey("protection", sheet.id)) && heaviestHit(hit.swings) >= 0, (hit) => heaviestRaw(hit));
   const index = record ? heaviestHit(record.swings) : -1;
   const first = record && index >= 0 ? record.swings[index] : null;
   let reread = "";
@@ -352,13 +352,13 @@ function protection(ctx: Ctx): ToolResult {
     const total = first.total - first.natural + kept;
     const missed = kept !== 20 && (kept === 1 || total < first.vsAc);
     if (missed) {
-      const settled = settle(ctx, record, record.swings.map((swing, at) => (at === index ? { ...swing, hit: false, raw: 0 } : swing)), "protection");
+      const settled = settle(ctx, record, record.swings.map((swing, at) => (at === index ? { ...swing, hit: false, raw: 0 } : swing)), answerKey("protection", sheet.id));
       reread = ` The attack is rolled again at disadvantage: ${total} against AC ${first.vsAc} misses, and ${settled.given} hit points come back to ${ally.name}.`;
     } else {
       // Still a hit, and answered all the same; a critical the kept die no
       // longer makes lands as an ordinary hit (last-hit.ts plainOfReroll).
       const plain = plainOfReroll(first, kept);
-      const settled = settle(ctx, record, record.swings.map((swing, at) => (at === index ? plain : swing)), "protection");
+      const settled = settle(ctx, record, record.swings.map((swing, at) => (at === index ? plain : swing)), answerKey("protection", sheet.id));
       reread = ` The attack is rolled again at disadvantage: ${total} against AC ${first.vsAc} still hits${plain !== first ? `, no longer a critical: ${settled.given} hit points come back to ${ally.name}` : ""}.`;
     }
   }

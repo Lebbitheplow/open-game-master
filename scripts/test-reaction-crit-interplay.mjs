@@ -31,7 +31,9 @@ const knight = hero("fighter", "Rune Knight");
 const bard = hero("bard", "College of Lore");
 const rogue = hero("rogue", "Thief", 5, { features: [{ name: "Uncanny Dodge", source: "class" }] });
 const ally = hero("fighter", "Champion", 1);
-const everyone = [cleric, knight, bard, rogue, ally];
+const knight2 = hero("fighter", "Rune Knight");
+const bard2 = hero("bard", "College of Lore");
+const everyone = [cleric, knight, bard, rogue, ally, knight2, bard2];
 
 async function stage(foes = 1) {
   await kit.endFight();
@@ -150,6 +152,40 @@ await test("A critical made by lying at 0, cut by Cutting Words, then the hit th
   const rune = await react(knight, "Runic Shield", ally, [2], earlier.id);
   assert.equal(rune.ok, true, rune.error);
   assert.equal(hp(ally), 2, "5 less the ordinary 6 less the words' 3");
+});
+
+await test("Two Rune Knights each answer the same hit once: the second still has a card after the first, and neither answers twice.", async () => {
+  const enemy = await stage();
+  world.dice(16, 4);
+  await world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: ally.id });
+  world.clearDice();
+  assert.equal(hp(ally), 44);
+  const first = await react(knight, "Runic Shield", ally, [15]);
+  assert.equal(first.ok, true, first.error);
+  assert.match(first.result.applied, /still hits/);
+  assert.equal(cards(knight, "Runic Shield").length, 0, "the first knight has answered it");
+  assert.equal(cards(knight2, "Runic Shield").length, 1, "the second knight still may");
+  const again = await react(knight, "Runic Shield", ally, [2]);
+  assert.equal(again.ok, false, "the first knight cannot answer the same hit twice");
+  const second = await react(knight2, "Runic Shield", ally, [2]);
+  assert.equal(second.ok, true, second.error);
+  assert.equal(hp(ally), 50, "the second reroll misses");
+});
+
+await test("Two Lore bards each take Cutting Words off the same hit.", async () => {
+  const enemy = await stage();
+  world.dice(20, 6, 6);
+  await world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: ally.id });
+  world.clearDice();
+  assert.equal(hp(ally), 36, "6 + 6 + 2, a critical");
+  const first = await react(bard, "Cutting Words", ally, [3]);
+  assert.equal(first.ok, true, first.error);
+  assert.equal(cards(bard2, "Cutting Words").length, 1, "the second bard still has a card");
+  const second = await react(bard2, "Cutting Words", ally, [4]);
+  assert.equal(second.ok, true, second.error);
+  assert.equal(hp(ally), 43);
+  const twice = await react(bard, "Cutting Words", ally, [4]);
+  assert.equal(twice.ok, false);
 });
 
 world.close();

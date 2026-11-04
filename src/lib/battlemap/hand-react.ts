@@ -218,8 +218,10 @@ export function reactionCards(
   foes?: Array<{ id: string }>,
 ): HandCard[] {
   const cards: HandCard[] = [];
+  // By this holder, or by anyone on a key that names no holder (an older
+  // record, or a host that sends names only).
   const answered = (hit: PublicLastHit, name: string) =>
-    hit.answered.some((entry) => textKey(entry) === textKey(name));
+    (hit.answeredBy ?? hit.answered).some((entry) => textKey(entry) === textKey(name) || entry === `${textKey(name)}@${sheet.id}`);
   // A hit among several on its character tags its cards' ids; one hit keeps
   // the ids it always had.
   const tail = (hit: PublicLastHit) =>
