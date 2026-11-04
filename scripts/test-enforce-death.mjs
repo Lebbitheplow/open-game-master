@@ -1082,17 +1082,30 @@ await test("A hero who dies in the death saves Prayer of Healing's ten minutes r
 // among the marchers, holding up.
 await test("A hero who dies in the death saves a long road rolls is left out of its forced march saves.", async () => {
   // The table's seats are taken by now: the owner plays both.
-  const walker = world.addHero({ name: "Walker", class: "fighter", level: 4, maxHp: 40, user: world.owner });
+  // The sky a leg of four hours rolls comes from Math.random, which the dice
+  // queue does not hold (src/lib/srd/weather.ts rollWeather). A bitterly cold
+  // draw (about one run in forty) made the cold a hazard: its hourly saves ran
+  // before the march's, took the queued 19s, and the walker, failing on
+  // unqueued dice, died of exhaustion and left the march with her. The worst
+  // sky is held here on every run, and the walker is dressed for it.
+  const { getClock, setClock } = await import("../src/lib/db/clock.ts");
+  const walker = world.addHero({ name: "Walker", class: "fighter", level: 4, maxHp: 40, user: world.owner, equipment: [{ name: "Cold weather clothes", qty: 1, tags: ["cold_weather_gear"] }] });
   const carried = world.addHero({ name: "Carried", class: "fighter", level: 4, maxHp: 30, user: world.owner });
   world.patch(carried.id, { currentHp: 0, deathSaves: { successes: 0, failures: 2, stable: false, dead: false } });
+  setClock(world.campaignId, { ...getClock(world.campaignId), weather: { sky: "snow", temperature: "frigid", wind: "calm", precipitation: 2 } });
+  const random = Math.random;
+  Math.random = () => 0.02;
   // Her first save on the road fails; the walker's two Constitution saves pass.
   world.dice(5, 19, 19);
-  const marched = await world.invoke("travel", { hours: 10, characterIds: [walker.id, carried.id] });
+  const marched = await world.invoke("travel", { hours: 10, characterIds: [walker.id, carried.id] }).finally(() => {
+    Math.random = random;
+  });
   world.clearDice();
+  assert.match(marched.result.weather ?? "", /bitterly cold/, "the worst sky, held");
   assert.equal(marched.ok, true, marched.error);
   assert.equal(world.sheet(carried.id).deathSaves?.dead, true, "the road's hours rolled her death save");
   const names = (marched.result.results ?? []).map((entry) => entry.name);
-  assert.deepEqual(names, ["Walker"], `the dead are among the marchers: ${JSON.stringify(marched.result.results)}`);
+  assert.deepEqual(names, ["Walker"], `the dead are among the marchers: ${JSON.stringify(marched.result)}`);
 });
 
 await test("A held Bardic Inspiration die is added to a death save only when it turns a failure into a success.", async () => {
