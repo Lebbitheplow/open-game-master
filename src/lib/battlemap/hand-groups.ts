@@ -95,6 +95,15 @@ export function groupKeyOf(card: HandCard): HandGroupKey | null {
     : null;
 }
 
+// A spell in a Ring of Spell Storing is a spell and an item's ability, and a player
+// may look for it under either (src/lib/battlemap/hand-ring.ts): one card, listed
+// in both groups where both have folded. Every other card has one home.
+export function groupKeysOf(card: HandCard): HandGroupKey[] {
+  if (card.id.startsWith("spell:ring:")) return ["spells", "items"];
+  const key = groupKeyOf(card);
+  return key ? [key] : [];
+}
+
 const PIP_COSTS: HandCost[] = ["action", "bonus", "reaction"];
 
 const plural = (count: number, noun: [string, string]) => `${count} ${count === 1 ? noun[0] : noun[1]}`;
@@ -214,11 +223,11 @@ export function groupHand(
 ): { units: HandUnit[]; groups: HandGroup[] } {
   const buckets = new Map<HandGroupKey, HandCard[]>();
   for (const card of cards) {
-    const key = groupKeyOf(card);
-    if (!key) continue;
-    const bucket = buckets.get(key);
-    if (bucket) bucket.push(card);
-    else buckets.set(key, [card]);
+    for (const key of groupKeysOf(card)) {
+      const bucket = buckets.get(key);
+      if (bucket) bucket.push(card);
+      else buckets.set(key, [card]);
+    }
   }
   const folded = new Map<HandGroupKey, HandGroup>();
   for (const [key, members] of buckets) {
@@ -227,13 +236,16 @@ export function groupHand(
   const units: HandUnit[] = [];
   const placed = new Set<HandGroupKey>();
   for (const card of cards) {
-    const key = groupKeyOf(card);
-    const group = key ? folded.get(key) : undefined;
-    if (!group) {
+    // Loose only while no group that holds it has folded.
+    const holding = groupKeysOf(card).flatMap((key) => folded.get(key) ?? []);
+    if (!holding.length) {
       units.push(card);
-    } else if (!placed.has(group.key)) {
-      placed.add(group.key);
-      units.push(group);
+    }
+    for (const group of holding) {
+      if (!placed.has(group.key)) {
+        placed.add(group.key);
+        units.push(group);
+      }
     }
   }
   return { units, groups: [...folded.values()] };

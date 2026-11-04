@@ -723,7 +723,7 @@
     "lib/battlemap/hand-gear.ts#first": [["key",1,"a card's first gear line by kind (tags)"]],
     "lib/battlemap/hand-gear.ts#partial": [["key",1,"two copies of one card name (dedupe)"]],
     "lib/battlemap/hand-gear.ts#whole": [["identity",1,"a hand card's weapon by the carried line's whole name (the card carries it)"]],
-    "lib/battlemap/hand-groups.ts#partial": [["key",7,"card ids (spell:, gear:, basic:dash:bonus) and a group's own key"],["search",3,"the Hand's filter box (issue 528): a word typed is the start of a word on a card"]],
+    "lib/battlemap/hand-groups.ts#partial": [["key",8,"card ids (spell:, gear:, basic:dash:bonus) and a group's own key"],["search",3,"the Hand's filter box (issue 528): a word typed is the start of a word on a card"]],
     "lib/battlemap/hand-ring.ts#partial": [["key",2,"two copies of one stored spell (dedupe) and the budget's own mark for a spell drawn"]],
     "lib/battlemap/hand-layout.ts#partial": [["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "lib/battlemap/hand-options.ts#partial": [["key",1,"ODM's own \"Maneuver:\" feature format; the maneuver itself by isNamed"]],

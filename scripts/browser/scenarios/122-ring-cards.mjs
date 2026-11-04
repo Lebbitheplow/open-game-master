@@ -5,7 +5,9 @@
 // when the attack lands. The rules behind it are scripts/test-hand-ring.mjs; this
 // is what only a page can see: the cards on a real table, read by axe in the day and
 // night themes, at phone width, and the card gone from the Hand as the spell goes.
-// The lead runs this table and plays at it, so a card resolves as it is played.
+// A fighter's cards fold under Items; at a wizard's table the same card is under
+// Spells and under Items. The lead runs these tables and plays at them, so a card
+// resolves as it is played.
 import { axeViolations, check, eventually, untilStill } from "../lib.mjs";
 
 const RING = "Ring of Spell Storing";
@@ -23,11 +25,36 @@ const scenario = {
     const spellsNow = async () => (await ringNow()).storedSpells?.map((entry) => entry.spell) ?? [];
     const card = (spell) => page.locator(`${root}button.hand-card[aria-label^="Ring: ${spell},"]`).locator("visible=true").first();
     const labelOf = async (spell) => (await card(spell).getAttribute("aria-label")) ?? "";
+    const groupCard = (key) => page.locator(`${root}button.hand-group-card[data-group-id="group:${key}"]`).locator("visible=true").first();
+    const back = page.locator(`${root}.hand-back`).locator("visible=true");
+    const openGroup = async (key) => {
+      await eventually(() => groupCard(key).count(), { timeoutMs: 30_000, label: `the ${key} group` });
+      await t.tap(groupCard(key));
+      await eventually(() => back.count(), { label: `the ${key} group open` });
+    };
+    const closeGroup = async () => {
+      await t.tap(back.first());
+      await eventually(async () => (await back.count()) === 0, { label: "the main hand again" });
+    };
+    const toTableTab = async () => {
+      if (viewport !== "phone") return;
+      // The phone's Table tab holds the Hand.
+      const tab = page.locator(`${root}nav.cine-bottombar`).getByRole("button", { name: "Table", exact: true });
+      if (await tab.count()) await t.tap(tab);
+    };
     // A card that cannot be played gives its seat in the fan to one that can, so a
     // grey one is read where it went: the row behind More, which says why as well.
     const greyRow = (spell) => page.locator("li.hand-more-row").filter({ hasText: `Ring: ${spell}` }).locator("visible=true").first();
     const whyGrey = async (spell) => {
       if (await card(spell).count()) return labelOf(spell);
+      // Played, a card leaves its group shut: the spell is read inside it again.
+      if (!(await back.count()) && (await groupCard("items").count())) {
+        await openGroup("items");
+        await eventually(() => card(spell).count(), { label: `${spell}'s card under Items` });
+        const label = await labelOf(spell);
+        await closeGroup();
+        return label;
+      }
       const more = page.locator(`${root}button.hand-more`).locator("visible=true").first();
       await eventually(() => more.count(), { label: `the way to ${spell}'s card behind More` });
       await t.tap(more);
@@ -63,16 +90,28 @@ const scenario = {
       await page.evaluate(() => (document.documentElement.dataset.theme = "dark"));
     };
 
-    await t.open(`/campaigns/${table.id}`);
-    if (viewport === "phone") {
-      // The phone's Table tab holds the Hand.
-      const tab = page.locator(`${root}nav.cine-bottombar`).getByRole("button", { name: "Table", exact: true });
-      if (await tab.count()) await t.tap(tab);
+    // ---- a wizard's table: the one card under both Spells and Items ----
+    await t.open(`/campaigns/${table.study}`);
+    await toTableTab();
+    for (const key of ["spells", "items"]) {
+      await openGroup(key);
+      // Spells opens by level, and Knock is a level 2 spell.
+      if (key === "spells") await t.tap(page.locator(`${root}[aria-label="Your hand"]`).getByRole("tab", { name: /Level 2/ }).first());
+      await eventually(() => card("Knock").count(), { label: `the ring's Knock card under ${key}` });
+      check((await card("Knock").innerText()).includes("Level 2"), `it names its level under ${key}`);
+      await inBothThemes(`under-${key}`);
+      await closeGroup();
     }
+    check((await page.locator(`${root}.hand-fan button.hand-card:not(.hand-group-card)[aria-label^="Ring: "]`).count()) === 0, "and not loose in the fan as well");
+
+    // ---- a fighter's table: under Items ----
+    await t.open(`/campaigns/${table.id}`);
+    await toTableTab();
+    await openGroup("items");
     await eventually(() => card("Knock").count(), { timeoutMs: 30_000, label: "the ring's Knock card" });
 
     // ---- a card for each spell, naming it and its level ----
-    for (const [spell, level] of [["Knock", 2], ["Hold Person", 2]]) {
+    for (const [spell, level] of [["Knock", 2], ["Hold Person", 2], ["Shield", 1]]) {
       await eventually(() => card(spell).count(), { label: `the ring's ${spell} card` });
       const words = await card(spell).innerText();
       check(words.includes(spell) && words.includes(`Level ${level}`), `${spell}'s card names it and its level (${words})`);
@@ -80,7 +119,6 @@ const scenario = {
     check(!(await labelOf("Knock")).includes("."), `Knock can be played (${await labelOf("Knock")})`);
     const shieldWords = await whyGrey("Shield");
     check(/cast as a reaction: its card comes up when an attack hits you/.test(shieldWords), `Shield waits for its trigger (${shieldWords})`);
-    check(shieldWords.includes("Level 1"), `Shield's row names its level (${shieldWords})`);
     const box = await card("Knock").boundingBox();
     check((box?.height ?? 0) >= 40, `a card a finger can press (${box?.height}px)`);
     check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "the hand does not push the page sideways");

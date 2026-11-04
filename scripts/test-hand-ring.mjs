@@ -14,7 +14,7 @@ const world = await openWorld({ campaign: { maxPlayers: 20 } });
 const kit = await combatKit(world);
 const { deriveHand, FRESH_TURN, spellsToLookUp, handSpellsToLookUp } = await import("../src/lib/battlemap/hand.ts");
 const { reactionCards, withReactions } = await import("../src/lib/battlemap/hand-react.ts");
-const { groupKeyOf } = await import("../src/lib/battlemap/hand-groups.ts");
+const { groupHand, groupKeysOf, isGroup } = await import("../src/lib/battlemap/hand-groups.ts");
 const { composeSentence, intentBody, afterCommit } = await import("../src/lib/battlemap/hand-play.ts");
 const { threeThingsToTry } = await import("../src/lib/characters/hero-tips.ts");
 const { activePublicEncounter } = await import("../src/lib/db/encounter-view.ts");
@@ -375,11 +375,46 @@ await test("A mystery ring deals nothing until it is named, nor does a workshop 
   assert.deepEqual(cards.map((card) => card.intent.item), [RING, `${RING} (2)`]);
 });
 
-await test("They sit under Spells, take no Ready pick and are no first-turn tip; the summoning door still lists the sheet's own spells only", async () => {
+await test("One card sits under both Spells and Items once both have folded, and stands loose once while neither has", async () => {
+  const groupsOf = (who) => {
+    const { units, groups } = groupHand(handOf(who), world.sheet(who.id));
+    return { units, holding: (name) => groups.filter((group) => group.cards.some((card) => card.name === name)).map((group) => group.key) };
+  };
+  const armed = [{ name: "Longsword", qty: 1, equipped: true }];
+
+  // Neither folded: the ring's one spell and a stow and a drop are three items.
+  await stage(brute, [...armed, ring([stored("Knock", 2)])]);
+  const loose = groupsOf(brute);
+  assert.deepEqual(loose.holding("Ring: Knock"), []);
+  assert.equal(loose.units.filter((unit) => !isGroup(unit) && unit.name === "Ring: Knock").length, 1, "dealt once");
+
+  // A fighter's two spells fold Items and not Spells: inside it, and not loose too.
+  await stage(brute, [...armed, ring([stored("Knock", 2), stored("Hold Person", 2)])]);
+  const items = groupsOf(brute);
+  assert.deepEqual(items.holding("Ring: Knock"), ["items"]);
+  assert.equal(items.units.filter((unit) => !isGroup(unit) && unit.name === "Ring: Knock").length, 0);
+
+  // A caster's own spells fold Spells too: the same card under both.
+  world.patch(mage.id, { spellcasting: { ...world.sheet(mage.id).spellcasting, prepared: ["Shield", "Fireball", "Sleep", "Magic Missile"], spellbook: ["Shield", "Fireball", "Sleep", "Magic Missile"] } });
+  await stage(mage, [...armed, ring([stored("Knock", 2), stored("Hold Person", 2)])]);
+  const both = groupsOf(mage);
+  assert.deepEqual(both.holding("Ring: Knock").sort(), ["items", "spells"]);
+  assert.equal(both.units.filter((unit) => !isGroup(unit) && unit.name === "Ring: Knock").length, 0);
+  assert.equal(both.units.filter(isGroup).filter((group) => group.key === "items" || group.key === "spells").length, 2, "each group once");
+  const { groups } = groupHand(handOf(mage), world.sheet(mage.id));
+  const [inSpells, inItems] = ["spells", "items"].map((key) => groups.find((group) => group.key === key).cards.find((card) => card.name === "Ring: Knock"));
+  assert.equal(inSpells, inItems, "one card, not two copies");
+
+  // Its spell gone, it goes from both.
+  world.patch(mage.id, { equipment: [...armed, ring([stored("Hold Person", 2)])] });
+  assert.deepEqual(groupsOf(mage).holding("Ring: Knock"), []);
+});
+
+await test("They belong to Spells and Items, take no Ready pick and are no first-turn tip; the summoning door still lists the sheet's own spells only", async () => {
   await stage(mage, [ring([stored("Hold Person", 2)])]);
   const sheet = world.sheet(mage.id);
   const card = cardFor(mage, "Hold Person");
-  assert.equal(groupKeyOf(card), "spells");
+  assert.deepEqual(groupKeysOf(card), ["spells", "items"]);
   const ready = handOf(mage).find((entry) => entry.id === "basic:ready");
   assert.ok(!ready.choice.options.some((option) => option.value === "Hold Person"), "readying it would ask for a spell the sheet does not hold");
   assert.ok(!threeThingsToTry(sheet).some((tip) => /Hold Person/.test(JSON.stringify(tip))));
