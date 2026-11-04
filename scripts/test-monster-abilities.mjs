@@ -277,6 +277,49 @@ await test("A monster's poison sleep ends on damage and leaves the poison; condi
   assert.deepEqual(world.sheet(tank.id).conditions, [], "both are the one effect, and the damage ends it");
 });
 
+// SRD 5.1 Couatl, Drow and Sprite: a poisoned hit's sleep. The pack's text
+// was dropped unread, so the bite and the bolts poisoned and slept nobody.
+// A couatl's sleeper wakes only to a shake ("Another creature can use an
+// action to shake the target awake"), not to the damage set_condition's rule
+// would end it on; a drow's wakes when hurt and stays poisoned.
+await test("A poisoned hit's sleep lands: a couatl's holds through damage, a drow's ends on it and leaves the poison, a sprite's needs a low enough save.", async () => {
+  const { readAttackText, asleepOnFailure } = await import("../src/lib/bestiary/attack-text.ts");
+  const couatlText = "Melee Weapon Attack: +8 to hit, reach 5 ft., one creature. Hit: 8 (1d6 + 5) piercing damage, and the target must succeed on a DC 13 Constitution saving throw or be poisoned for 24 hours. Until this poison ends, the target is unconscious. Another creature can use an action to shake the target awake.";
+  const drowText = "Ranged Weapon Attack: +4 to hit, range 30/120 ft., one target. Hit: 5 (1d6 + 2) piercing damage, and the target must succeed on a DC 13 Constitution saving throw or be poisoned for 1 hour. If the saving throw fails by 5 or more, the target is also unconscious while poisoned in this way. The target wakes up if it takes damage or if another creature takes an action to shake it awake.";
+  const spriteText = "Ranged Weapon Attack: +6 to hit, range 40/160 ft., one target. Hit: 1 piercing damage, and the target must succeed on a DC 10 Constitution saving throw or become poisoned for 1 minute. If its saving throw result is 5 or lower, the poisoned target falls unconscious for the same duration, or until it takes damage or another creature takes an action to shake it awake.";
+  const couatl = readAttackText(couatlText).onHit;
+  assert.deepEqual([couatl.condition, couatl.alsoCondition, couatl.wakesOnDamage], ["poisoned", "unconscious", undefined]);
+  assert.ok(couatl.manual.some((line) => /shake the target awake/.test(line)), "the shake is the GM's");
+  const drow = readAttackText(drowText).onHit;
+  assert.deepEqual([drow.unconsciousFailBy, drow.wakesOnDamage], [5, true]);
+  const sprite = readAttackText(spriteText).onHit;
+  assert.deepEqual([sprite.unconsciousAtMost, sprite.wakesOnDamage], [5, true]);
+  assert.deepEqual([asleepOnFailure(drow, 8), asleepOnFailure(drow, 9), asleepOnFailure(drow, null)], [true, false, true]);
+  assert.deepEqual([asleepOnFailure(sprite, 5), asleepOnFailure(sprite, 6)], [true, false]);
+
+  const biter = await stage({
+    name: "Couatl", size: "Medium", type: "Celestial", armor_class: 19, hit_points: 97, cr: 4,
+    actions: [{ name: "Bite", desc: couatlText, attack_bonus: 8, damage_dice: "1d6", damage_bonus: 5 }],
+  });
+  const bit = await mk.forced([15, 3, 1], () => world.invoke("enemy_attack", { enemyId: biter.id, targetCharacterId: tank.id, attack: "Bite" }));
+  assert.equal(bit.ok, true, bit.error);
+  assert.deepEqual(["poisoned", "unconscious"].map((name) => world.sheet(tank.id).conditions.includes(name)), [true, true], JSON.stringify(bit.result));
+  assert.equal(world.sheet(tank.id).conditionMeta.unconscious.rounds, 14400, "asleep while the poison lasts");
+  await world.invoke("apply_damage", { characterId: tank.id, amount: 1, type: "bludgeoning", reason: "a slap" });
+  assert.equal(world.sheet(tank.id).conditions.includes("unconscious"), true, "SRD 5.1: only a shake wakes a couatl's sleeper");
+
+  const archer = await stage({
+    name: "Drow", size: "Medium", type: "Humanoid", armor_class: 15, hit_points: 13, cr: 0.25,
+    actions: [{ name: "Hand Crossbow", desc: drowText, attack_bonus: 4, damage_dice: "1d6", damage_bonus: 2 }],
+  });
+  const shot = await mk.forced([15, 3, 1], () => world.invoke("enemy_attack", { enemyId: archer.id, targetCharacterId: tank.id, attack: "Hand Crossbow" }));
+  assert.equal(shot.ok, true, shot.error);
+  assert.deepEqual(["poisoned", "unconscious"].map((name) => world.sheet(tank.id).conditions.includes(name)), [true, true], JSON.stringify(shot.result));
+  await world.invoke("apply_damage", { characterId: tank.id, amount: 1, type: "bludgeoning", reason: "a slap" });
+  assert.equal(world.sheet(tank.id).conditions.includes("unconscious"), false, "the damage wakes them");
+  assert.equal(world.sheet(tank.id).conditions.includes("poisoned"), true, "the poison outlasts the sleep");
+});
+
 await test("A failure by the margin adds its condition, and the conditions listed with the first land with it.", async () => {
   const medusa = await stage({
     name: "Gazer", size: "Medium", type: "Monstrosity", armor_class: 15, hit_points: 120, cr: 6,

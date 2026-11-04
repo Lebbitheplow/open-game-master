@@ -12,6 +12,7 @@ import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { isValidExpression, rollExpression, type RollResult } from "@/lib/dice";
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
 import type { EnemyAttack, TypedDice } from "@/lib/bestiary/statblock";
+import { asleepOnFailure } from "@/lib/bestiary/attack-text";
 import { durationArgsFor, effectiveMaxHp, maxHpRiders, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { handleSetCondition } from "@/lib/dm/set-condition";
 import { swallowCreature } from "@/lib/dm/swallow";
@@ -120,6 +121,7 @@ export function resolveOnHit(
   }
   const out: Record<string, unknown> = {};
   let saved = false;
+  let saveTotal: number | null = null;
   if (rider.save && rider.dc) {
     const save = rollCharacterSave(
       campaign,
@@ -138,6 +140,7 @@ export function resolveOnHit(
       { origin: { ref: enemy.id } },
     );
     saved = save.success;
+    saveTotal = save.total;
     out.riderSave = save.total === null ? "failed automatically" : `${save.total} vs DC ${rider.dc}`;
     out.riderSaved = saved;
   }
@@ -181,16 +184,31 @@ export function resolveOnHit(
       out.riderDamage = 0;
     }
   }
-  const conditions = rider.condition && !saved ? [rider.condition, ...(rider.alsoCondition ? [rider.alsoCondition] : [])] : [];
+  const asleep = Boolean(rider.save && rider.dc) && asleepOnFailure(rider, saveTotal);
+  const conditions = rider.condition && !saved ? [rider.condition, ...(rider.alsoCondition ? [rider.alsoCondition] : []), ...(asleep ? ["unconscious"] : [])] : [];
   const standing = getSheetById(target.id);
   for (const condition of conditions) {
     if (!standing || (standing.currentHp <= 0 && condition === "prone")) {
       continue;
     }
-    // The rider's own words for how long it lasts: a count (an hour of
-    // poison is 600 rounds), a repeat save, or a long rest
-    // (src/lib/dm/monster-abilities.ts parseSaveEffect).
-    const applied = rider.untilLongRest
+    // A poison's sleep (a drow's bolt, a couatl's bite) lasts as the poison
+    // does and ends on damage only when the block says so: laid with its own
+    // word, so set_condition's rule that a sleeper wakes when hurt does not
+    // wake a couatl's, which only a shake ends.
+    const sleep = condition === "unconscious" && (asleep || rider.alsoCondition === "unconscious");
+    const applied = sleep
+      ? handleSetCondition(
+          campaign,
+          turn.id,
+          getSheetById(target.id) ?? target,
+          { condition, sourceEnemyId: enemy.id, ...(rider.rounds && !rider.untilLongRest ? durationArgsFor(rider.rounds) : {}) },
+          `${enemy.displayName}'s ${attack.name}`,
+          { spellEffect: { source: enemy.id, ...(rider.untilLongRest ? { untilLongRest: true } : {}), ...(rider.wakesOnDamage ? { endsOnDamage: true } : {}) } },
+        )
+      : // The rider's own words for how long it lasts: a count (an hour of
+        // poison is 600 rounds), a repeat save, or a long rest
+        // (src/lib/dm/monster-abilities.ts parseSaveEffect).
+        rider.untilLongRest
       ? handleSetCondition(campaign, turn.id, getSheetById(target.id) ?? target, { condition, sourceEnemyId: enemy.id }, `${enemy.displayName}'s ${attack.name}`, {
           spellEffect: { source: enemy.id, untilLongRest: true },
         })

@@ -173,6 +173,8 @@ function onHitLine(attack: EnemyAttack): string | undefined {
   const parts = [
     rider.condition ? (rider.save && rider.dc ? `${rider.condition} on a failed ${rider.save.toUpperCase()} ${rider.dc}` : rider.condition) : "",
     rider.alsoCondition ?? "",
+    rider.unconsciousFailBy ? `unconscious too on a fail by ${rider.unconsciousFailBy}` : "",
+    rider.unconsciousAtMost ? `unconscious too on ${rider.unconsciousAtMost} or lower` : "",
     rider.damage ? `${rider.damage} ${rider.damageType ?? ""}`.trim() : "",
   ].filter(Boolean);
   return parts.length ? parts.join(", ") : undefined;
