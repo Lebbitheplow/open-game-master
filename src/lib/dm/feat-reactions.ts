@@ -22,7 +22,6 @@ import { settle, spendReaction, SPENT, type Ctx } from "@/lib/dm/reaction-tools"
 import { proficiencyBonus } from "@/lib/srd";
 import { luckPointsLeft, spendLuckCounter } from "@/lib/srd/class-resources";
 import { rollExpression } from "@/lib/dice";
-import { publishPersisted } from "@/lib/events";
 import { reactionPatch } from "@/lib/dm/reaction-refund";
 import { defensiveDuelistBonus, hasMageSlayer, hasSentinel } from "@/lib/srd/feat-combat";
 import { listSheets } from "@/lib/db/sheets";

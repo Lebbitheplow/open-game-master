@@ -309,7 +309,7 @@ await test("Runic Shield's natural 20 makes a hit a critical, which Sentinel can
   world.clearDice();
   const { openHits, writeLastHit } = await import("../src/lib/dm/last-hit.ts");
   for (const record of openHits(world.campaignId, ally.id)) {
-    writeLastHit(world.campaignId, { ...record, swings: record.swings.map(({ critical: _kept, ...swing }) => swing) });
+    writeLastHit(world.campaignId, { ...record, swings: record.swings.map((swing) => { const kept = { ...swing }; delete kept.critical; return kept; }) });
   }
   const old = await react(knight, "Runic Shield", ally, [20]);
   assert.equal(old.ok, true, old.error);
