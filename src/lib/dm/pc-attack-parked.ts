@@ -3,6 +3,8 @@
 // hit, parks the damage roll too. Split from pc-attack.ts, which has
 // already refused or paid for everything the parked roll carries.
 
+import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { holdsFeature } from "@/lib/srd/feature-names";
 import { getFoe, resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { tryParry } from "@/lib/dm/enemy-reactions";
 import { getCampaignById } from "@/lib/db/campaigns";
@@ -19,7 +21,7 @@ import { publishPersisted } from "@/lib/events";
 import { adjudicateHit } from "@/lib/dm/attack-logic";
 import { critDamageExpression } from "@/lib/dm/encounter-logic";
 import { claimHitRiders, liveTypedRiders, strikesAsMagic } from "@/lib/dm/pc-attack-damage";
-import { budgetApplies } from "@/lib/dm/action-budget";
+import { budgetApplies, WEAPON_HIT } from "@/lib/dm/action-budget";
 import type { AttackPlan } from "@/lib/dm/pc-attack-plan";
 import type { Strike } from "@/lib/dm/pc-attack-resolve";
 import { clearHitSpent, gainTempHp, spendOnHit, stunningStrikeSave, type ParkedAttack } from "@/lib/dm/pc-attack-riders";
@@ -65,6 +67,17 @@ function claimParkedFoeSlayer(campaignId: string): boolean {
   }
   storeBudget(encounter, { ...budget, oncePerTurn: [...budget.oncePerTurn, FOE_SLAYER] });
   return true;
+}
+
+// A weapon's hit opens Arcane Jolt this turn, as it does for a roll the server
+// makes (pc-attack-resolve.ts): at a physical-dice table the card never opened.
+function markParkedWeaponHit(campaignId: string, sheet: CharacterSheet, enemyId: string) {
+  const encounter = getActiveEncounter(campaignId);
+  const budget = encounter?.turnBudget;
+  const mark = `${WEAPON_HIT}${enemyId}`;
+  if (encounter && budget && holdsFeature(sheet, "arcane jolt") && budgetApplies(budget, sheet.id, encounter.round) && !budget.oncePerTurn.includes(mark)) {
+    storeBudget(encounter, { ...budget, oncePerTurn: [...budget.oncePerTurn, mark] });
+  }
 }
 
 // Physical dice: park the to-hit roll for the player; the submit route
@@ -210,6 +223,9 @@ export function resolvePendingPcAttack(pending: PendingRoll, roll: StoredRoll): 
   // Sneak Attack and the other once-a-turn riders are spent by the hit.
   if (encounter?.turnBudget && budgetApplies(encounter.turnBudget, pending.characterId ?? "", encounter.round)) {
     claimHitRiders(encounter, encounter.turnBudget, parked.hitClaims);
+  }
+  if (sheet && !parked.spell) {
+    markParkedWeaponHit(pending.campaignId, sheet, enemy.id);
   }
   const spellRider = spellAttackRider(parked.spell);
   const spellLine = spellRider && sheet ? applySpellHitCondition(campaign, spellRider, enemy.id, sheet.id) : null;

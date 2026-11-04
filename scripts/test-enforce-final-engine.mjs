@@ -616,8 +616,16 @@ await test("Arcane Jolt: once a turn, after a magic weapon hit, the Battle Smith
   const [enemy] = await stage(battleSmith);
   const uses = world.sheet(battleSmith.id).resources.art_arcane_jolt;
   assert.ok(uses, "the Battle Smith holds Arcane Jolt uses");
-  const hp = kit.enemy(enemy.id).currentHp;
   world.clearDice();
+  const early = await spend(battleSmith, "Arcane Jolt", { variant: "burn", targetEnemyId: enemy.id });
+  assert.equal(early.ok, false, "no hit yet");
+  assert.match(early.error, /rides a weapon hit/);
+  assert.equal(world.sheet(battleSmith.id).resources.art_arcane_jolt.used, uses.used, "the refusal spends nothing");
+  world.dice(18, 4);
+  const struck = await world.invoke("pc_attack", { characterId: battleSmith.id, targetEnemyId: enemy.id, weapon: "Longsword +1" });
+  world.clearDice();
+  assert.equal(struck.ok, true, struck.error);
+  const hp = kit.enemy(enemy.id).currentHp;
   world.dice(4, 4);
   const jolt = await spend(battleSmith, "Arcane Jolt", { variant: "burn", targetEnemyId: enemy.id });
   world.clearDice();
@@ -626,6 +634,95 @@ await test("Arcane Jolt: once a turn, after a magic weapon hit, the Battle Smith
   assert.equal(world.sheet(battleSmith.id).resources.art_arcane_jolt.used, uses.used + 1);
   const again = await spend(battleSmith, "Arcane Jolt", { variant: "burn", targetEnemyId: enemy.id });
   assert.equal(again.ok, false, "once a turn");
+});
+
+await test("Arcane Jolt: a miss opens nothing, a burn goes to the creature hit, and a heal needs only the hit.", async () => {
+  const plain = hero({ class: "artificer", subclass: "Battle Smith", level: 9, abilities: { int: 16 }, equipment: [{ name: "Longsword", qty: 1 }] });
+  let [enemy] = await stage(plain);
+  world.clearDice();
+  world.dice(2, 4);
+  const missed = await world.invoke("pc_attack", { characterId: plain.id, targetEnemyId: enemy.id, weapon: "Longsword" });
+  world.clearDice();
+  assert.equal(missed.ok, true, missed.error);
+  const none = await spend(plain, "Arcane Jolt", { variant: "heal", targetCharacterId: plain.id });
+  assert.equal(none.ok, false, "a miss rides nothing");
+  assert.match(none.error, /rides a weapon hit/);
+  // An infused weapon reads as a plain one, so a plain name still opens it.
+  world.dice(18, 4);
+  await world.invoke("pc_attack", { characterId: plain.id, targetEnemyId: enemy.id, weapon: "Longsword" });
+  world.clearDice();
+  world.dice(4, 4);
+  const opened = await spend(plain, "Arcane Jolt", { variant: "burn", targetEnemyId: enemy.id });
+  world.clearDice();
+  assert.equal(opened.ok, true, opened.error);
+
+  const foes = await stage(battleSmith, { enemies: 2 });
+  [enemy] = foes;
+  const other = foes[1];
+  world.clearDice();
+  world.dice(18, 4);
+  await world.invoke("pc_attack", { characterId: battleSmith.id, targetEnemyId: enemy.id, weapon: "Longsword +1" });
+  world.clearDice();
+  const wrong = await spend(battleSmith, "Arcane Jolt", { variant: "burn", targetEnemyId: other.id });
+  assert.equal(wrong.ok, false);
+  assert.match(wrong.error, /burns the creature the hit landed on/);
+  world.dice(4, 4);
+  const healed = await spend(battleSmith, "Arcane Jolt", { variant: "heal", targetCharacterId: battleSmith.id });
+  world.clearDice();
+  assert.equal(healed.ok, true, healed.error);
+});
+
+await test("Arcane Jolt's mark does not bring back a fight its hit ended.", async () => {
+  const [enemy] = await stage(battleSmith, { hp: 1 });
+  world.clearDice();
+  world.dice(18, 4);
+  const out = await world.invoke("pc_attack", { characterId: battleSmith.id, targetEnemyId: enemy.id, weapon: "Longsword +1" });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(out.result.encounterOver, true, JSON.stringify(out.result).slice(0, 300));
+  assert.equal(world.encounter()?.status === "active", false, "the fight stays over");
+});
+
+await test("Arcane Jolt's mark keeps what the blow wrote: a concentrating legendary creature's failed save can still be turned.", async () => {
+  const encounters = await import("../src/lib/db/encounters.ts");
+  const [enemy] = await stage(battleSmith);
+  encounters.setEnemyConcentration(enemy.id, "Hold Person");
+  const encounter = world.encounter();
+  encounters.saveEncounter({ ...encounter, legendary: { ...encounter.legendary, pools: { ...encounter.legendary?.pools, [enemy.id]: { actions: 0, resistances: 3 } } } });
+  world.clearDice();
+  world.dice(18, 4, 1);
+  const out = await world.invoke("pc_attack", { characterId: battleSmith.id, targetEnemyId: enemy.id, weapon: "Longsword +1" });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.ok(world.encounter().legendary.failedSave, "the failed save is on record");
+  assert.ok(world.encounter().turnBudget.oncePerTurn.includes(`weapon-hit:${enemy.id}`), "and so is the mark");
+});
+
+await test("At a physical-dice table a hit opens Arcane Jolt too, and a miss does not.", async () => {
+  const { handlePcAttack, resolvePendingPcAttack, PC_ATTACK_PARKED } = await import("../src/lib/dm/pc-attack.ts");
+  const { createDmTurn, listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
+  const { insertRoll } = await import("../src/lib/db/rolls.ts");
+  const { rollExpression } = await import("../src/lib/dice.ts");
+  for (const [face, opens] of [[2, false], [18, true]]) {
+    const [enemy] = await stage(battleSmith);
+    world.clearDice();
+    const turn = createDmTurn(world.campaignId, [], "human_dm");
+    const sheets = world.sheets();
+    const seen = new Set(listOpenPendingRolls(world.campaignId).map((entry) => entry.id));
+    const parked = handlePcAttack(
+      world.campaign(), turn,
+      JSON.stringify({ characterId: battleSmith.id, targetEnemyId: enemy.id, weapon: "Longsword +1" }),
+      sheets, new Map(sheets.map((sheet) => [sheet.id, sheet])), new Set([world.sheet(battleSmith.id).userId]), null,
+    );
+    assert.equal(parked[PC_ATTACK_PARKED], true, JSON.stringify(parked));
+    const pending = listOpenPendingRolls(world.campaignId).find((entry) => !seen.has(entry.id));
+    world.dice(face);
+    const roll = insertRoll({ campaignId: world.campaignId, characterId: battleSmith.id, requestedBy: "dm", kind: "attack", detail: pending.detail, result: rollExpression(pending.expression) });
+    world.clearDice();
+    resolvePendingPcAttack(pending, roll);
+    const marks = world.encounter().turnBudget.oncePerTurn;
+    assert.equal(marks.includes(`weapon-hit:${enemy.id}`), opens, `a ${face}: ${JSON.stringify(marks)}`);
+  }
 });
 
 await test("The prompt and the tool schemas name the final round's subclass hooks: the weapons a feature makes, rapidStrike, Improved Reaper's second target, the reaction moves and Tipsy Sway.", () => {

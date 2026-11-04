@@ -2,6 +2,7 @@
 // has checked the gate, the pool and the turn). Each resolver refuses before
 // it writes; the caller then spends the pool and the turn.
 
+import { WEAPON_HIT } from "@/lib/dm/action-budget";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getBattleMapForEncounter } from "@/lib/db/battle-maps";
@@ -41,6 +42,8 @@ const damageDice = (ctx: SpendContext, enemy: EncounterEnemy, dice: string) =>
   rollCard(ctx.campaign, ctx.turn, ctx.sheet.id, "damage", rollAgainst(ctx.spend.name, enemy.displayName), dice, sheetAttacker(ctx.sheet)).total;
 
 export type SpendContext = {
+  // The once-per-turn marks of the holder's own turn; absent off it.
+  marks?: string[];
   campaign: Campaign;
   turnId: string;
   turn: DmTurn | null;
@@ -428,6 +431,9 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       const enemy = targetEnemy(ctx);
       if ("error" in enemy) {
         return enemy;
+      }
+      if (ctx.spend.afterWeaponHit && ctx.marks && !ctx.marks.includes(`${WEAPON_HIT}${enemy.id}`)) {
+        return { error: `${ctx.spend.name} burns the creature the hit landed on, and ${enemy.displayName} is not one ${sheet.name} has hit this turn. Nothing was spent.`, refused: "rules" };
       }
       // Rolled once the burn is sure to land: a refusal above spends nothing.
       const rolled = damageDice(ctx, enemy, formula(ctx, does.formula));

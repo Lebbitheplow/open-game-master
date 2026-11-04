@@ -4,6 +4,7 @@
 // Split from pc-attack.ts, which has already refused or paid for everything
 // this rolls; nothing here refuses the attack.
 
+import { getActiveEncounter } from "@/lib/db/encounters";
 import { settleAttackDie } from "@/lib/dm/forced-save";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { openLastHit } from "@/lib/dm/last-hit";
@@ -23,7 +24,7 @@ import { insertRoll, landRoll, type StoredRoll } from "@/lib/db/rolls";
 import { d20Expression, rollExpression, type DiceTerm } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
 import { planAttackFx, type RollVisibility } from "@/lib/battlemap/fx-plan";
-import { attacksLeft } from "@/lib/dm/action-budget";
+import { attacksLeft, WEAPON_HIT } from "@/lib/dm/action-budget";
 import { adjudicateHit } from "@/lib/dm/attack-logic";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { darkOnesBlessing } from "@/lib/dm/feature-hooks";
@@ -399,6 +400,17 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike): Record<string, u
   });
   closeLog();
 
+  // A weapon's hit opens Arcane Jolt this turn, at the creature it hit. Stored on
+  // the encounter as it now stands: `encounter` predates the blow, and saving it
+  // would undo what the blow wrote (a legendary creature's failed save, the end of
+  // the fight).
+  if (plan.weaponAttack && budget && !applied.encounterOver && holdsFeature(sheet, "arcane jolt") && !budget.oncePerTurn.includes(`${WEAPON_HIT}${enemy.id}`)) {
+    budget.oncePerTurn.push(`${WEAPON_HIT}${enemy.id}`);
+    const live = getActiveEncounter(campaign.id);
+    if (live?.turnBudget) {
+      storeBudget(live, { ...live.turnBudget, oncePerTurn: [...live.turnBudget.oncePerTurn, `${WEAPON_HIT}${enemy.id}`] });
+    }
+  }
   // Great Weapon Master: a melee weapon crit or kill opens a bonus-action
   // melee attack this turn (pc-attack-options.ts reads the key).
   if (

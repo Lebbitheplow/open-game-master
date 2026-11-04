@@ -376,6 +376,12 @@ export type AuthoredSpend = {
   // The turn key oncePerTurn claims, when the spend shares its once-a-turn
   // with a rider (Gathered Swarm's push and its damage: "rider:gathered swarm").
   onceKey?: string;
+  // Rides a weapon's hit (Arcane Jolt): on the holder's own turn one must have
+  // landed, and a burn goes to the creature it hit. Off their turn (their steel
+  // defender's hit, an opportunity attack) the engine has no record to ask. Any
+  // weapon counts: an infused or attuned weapon reads as a plain one here, so
+  // asking for a magic one would shut the feature for the artificers it is for.
+  afterWeaponHit?: boolean;
   // Chosen outside a fight only, or only in one.
   fight?: "in" | "out";
   does: SpendDoes;

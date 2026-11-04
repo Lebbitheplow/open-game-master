@@ -7,6 +7,7 @@
 // offered for a spend use_resource would refuse for want of the feature.
 //
 // Pure; scripts/test-hand-engine.mjs drives it.
+import { WEAPON_HIT } from "@/lib/dm/action-budget";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { computeSheetDerived } from "@/lib/srd";
 import { authoredSpendFor, gateHolds, heldAuthored, resolveFormula, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
@@ -205,6 +206,9 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
       card,
       standingGate(sheet, turn, cost === "bonus" ? "bonus" : cost === "free" ? "free" : "action"),
       poolGate,
+      spend.afterWeaponHit && turn.myTurn && !(turn.marks ?? []).some((mark) => mark.startsWith(WEAPON_HIT))
+        ? { reason: `${spend.name} rides a weapon hit: land one this turn first.`, spent: false }
+        : null,
       cost === "free" ? null : costGate(cost, turn, sheet, spend.name),
     );
   });

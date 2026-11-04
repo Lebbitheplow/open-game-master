@@ -87,6 +87,10 @@ export type StruckSwing = { target: string; hit: boolean; damage?: number };
 // this turn before anything else spends it (turn-budget.ts budgetFor).
 export const CASTING_HELD = "casting:held";
 
+// The creatures a character's weapon hit on their own turn, one budget key each,
+// for the spend that rides such a hit (Arcane Jolt).
+export const WEAPON_HIT = "weapon-hit:";
+
 export function freshBudget(input: {
   ownerId: string;
   round: number;
