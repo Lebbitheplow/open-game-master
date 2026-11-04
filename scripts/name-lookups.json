@@ -602,6 +602,8 @@
     "components/ui/Slider.tsx#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "lib/battlemap/hand-edge.ts#partial": [["key",1,"the SRD row's creature type, as authored-hooks.ts reads it"]],
     "lib/battlemap/hand-edge.ts#whole": [["key",1,"order entries by id"]],
+    "lib/dm/enemy-spell-pool.ts#fallback": [["key",1,"the reason a spell passes a creature over: a creature type the spell spares, else a condition it skips (Sleep: undead, already unconscious)"]],
+    "lib/dm/enemy-spell-pool.ts#partial": [["key",1,"a spell's spared creature types read in a creature's type word, and the conditions it skips (engine vocabulary)"]],
     "lib/dm/enemy-use-on-enemy.ts#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "lib/dm/enemy-use-on-enemy.ts#whole": [["key",1,"the condition this enemy laid, by its engine name"]],
     "lib/npc-race.ts#fallback": [["key",1,"a told race as an id, else the people's plain word, else the SRD name; never a near race"]],

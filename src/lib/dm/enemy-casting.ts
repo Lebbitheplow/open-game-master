@@ -1,7 +1,7 @@
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, saveEncounter, turnKey, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import type { EnemyAttack, SaveAbility } from "@/lib/bestiary/statblock";
-import type { SpellCondition } from "@/lib/srd/spell-mech-types";
+import type { SpellCondition, SpellMech } from "@/lib/srd/spell-mech-types";
 import type { TurnTie } from "@/lib/dm/save-effect";
 import { spellDamageFor, spellFactsFor, spellMechanicsFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
@@ -76,6 +76,10 @@ export type EnemyUse = {
   // the spell and its caster and ends with the enemy's concentration.
   spellCondition?: SpellCondition;
   slotLevel?: number;
+  // Sleep's and Color Spray's pool of hit points, rolled instead of a save
+  // (src/lib/dm/enemy-spell-pool.ts), and the spell's own level it scales from.
+  hitPointPool?: NonNullable<SpellMech["hitPointPool"]>;
+  spellLevel?: number;
   // The numbers the caller sent that the block overrode.
   corrections: string[];
   // Spends the action (or the legendary purchase), the recharge, the use
@@ -191,6 +195,11 @@ export function prepareEnemyUse(campaign: Campaign, input: Input): EnemyUse | To
     }
     if (mech?.damageType) {
       use.damageType = mech.damageType;
+    }
+    if (mech?.hitPointPool) {
+      use.hitPointPool = mech.hitPointPool;
+      use.spellLevel = level || 1;
+      use.slotLevel = slot ?? (level || undefined);
     }
     if (mech?.condition) {
       use.spellCondition = mech.condition;

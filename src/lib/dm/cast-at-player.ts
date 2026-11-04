@@ -40,6 +40,7 @@ import { saveAgainst } from "@/lib/dm/roll-about";
 import { swallowCover } from "@/lib/dm/swallow";
 import { openLastHit } from "@/lib/dm/last-hit";
 import { tieToTurn } from "@/lib/dm/turn-tie";
+import { enemySpellPool } from "@/lib/dm/enemy-spell-pool";
 import { isConditionNamed, isNamed } from "@/lib/srd/feature-names";
 
 // cast_at_player: a save forced on ONE character, by an enemy's spell or
@@ -366,6 +367,15 @@ export function handleCastAtPlayer(
   // "Each dart hits a creature of your choice"): no save is asked, and the
   // darts land as one hit kept for Shield to answer. It once asked for a
   // save the spell does not allow, and nothing kept it for Shield.
+  // Sleep or Color Spray from a creature: its pool of hit points against this
+  // one character, no save (src/lib/dm/enemy-spell-pool.ts).
+  if (use?.hitPointPool) {
+    if (ward) {
+      use.commit();
+      return { ok: true, target: sheet.name, source: use.name, ...castToNoEffect(ward) };
+    }
+    return enemySpellPool(campaign, turn, use, { sheets: [getSheetById(sheet.id) ?? sheet], enemies: [] });
+  }
   const castName = use?.name || args.spell;
   const unsaved = castName && !use?.save && !args.saveAbility ? spellMechanicsFor({ spell: castName, userIds: spellAuthorsFor(campaign) }) : null;
   if (castName && unsaved?.mech.resolution === "auto") {
