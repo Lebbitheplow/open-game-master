@@ -1809,11 +1809,80 @@ html[data-theme="light"] .cine-stage .cine-chat .session-dm-body { text-shadow: 
 html[data-theme="light"] .cine-stage .cine-chat .session-recap-text { color: var(--color-stone-100); }
 html[data-theme="light"] .cine-stage .cine-chat .session-bubble { color: var(--color-stone-200); }
 html[data-theme="light"] .cine-stage .cine-chat .session-bubble-ooc { color: var(--color-stone-500); }
+html[data-theme="light"] .cine-stage .cine-chat .session-sysline { color: var(--color-stone-500); }
 html[data-theme="light"] .cine-stage .cine-chat .session-dm .section-head-title { color: #6f500f; }
 html[data-theme="light"] .cine-stage .cine-bottombar { background: linear-gradient(180deg, rgba(251, 245, 228, 0.96), rgba(239, 228, 198, 0.98)); }
 html[data-theme="light"] .cine-quest { background: linear-gradient(180deg, #fbf5e4, #efe4c6); border-color: rgba(122, 88, 20, 0.4); }
 html[data-theme="light"] .cine-quest-eyebrow { color: #6f500f; }
 html[data-theme="light"] .cine-quest-body { color: #2d2419; }
+/* The board's frame and the chronicle were painted for the night alone: their
+   controls take the day's dark ink from the tokens, which vanished on the
+   frame's fixed navy, and the page's see-through gradient washed out its pale
+   text. By day both are parchment. The board itself keeps its dark surround. */
+html[data-theme="light"] .cine-board-frame { box-shadow: 0 0 30px rgba(122, 88, 20, 0.2), 0 18px 40px rgba(60, 44, 16, 0.3); }
+html[data-theme="light"] .cine-board-frame > :not(.board-view) { background: #f1ebde; border-color: rgba(122, 88, 20, 0.5); }
+html[data-theme="light"] .board-panel > .board-view { background: #0d0b1c; }
+/* The enlarged board is a night table by day too: what stands on its starfield
+   keeps the night's ink. */
+html[data-theme="light"] .cine-tabletop {
+  --color-stone-950: #0d0b1c;
+  --color-stone-900: #151229;
+  --color-stone-800: #211b3a;
+  --color-stone-700: #302853;
+  --color-stone-600: #575170;
+  --color-stone-500: #8f8aab;
+  --color-stone-400: #aeaac6;
+  --color-stone-300: #c9c6db;
+  --color-stone-200: #dedbec;
+  --color-stone-100: #edeaf7;
+  --color-stone-50: #f7f6fc;
+  --color-amber-950: #2b2008;
+  --color-amber-900: #4a390f;
+  --color-amber-800: #6d5517;
+  --color-amber-700: #95761f;
+  --color-amber-600: #b8922a;
+  --color-amber-500: #d4ab3a;
+  --color-amber-400: #e3c15c;
+  --color-amber-300: #ecd287;
+  --color-amber-200: #f4e0a6;
+  --color-amber-100: #f9ecc8;
+  --color-amber-50: #fdf7e7;
+}
+html[data-theme="light"] .cine-chronicle-page {
+  background: linear-gradient(180deg, #fbf5e4, #efe4c6);
+  border-left-color: rgba(122, 88, 20, 0.3);
+  border-right-color: rgba(122, 88, 20, 0.3);
+}
+html[data-theme="light"] .cine-chronicle-log { scrollbar-color: rgba(122, 88, 20, 0.4) transparent; }
+html[data-theme="light"] .cine-chronicle-eyebrow { color: #6f500f; }
+html[data-theme="light"] .cine-chronicle-text { color: #2d2419; }
+html[data-theme="light"] .cine-chronicle-cap { color: #7a5408; text-shadow: none; }
+html[data-theme="light"] .cine-chronicle-line { color: #55493a; }
+html[data-theme="light"] :is(.cine-chronicle-system, .cine-chronicle-quiet) { color: #5f5442; }
+html[data-theme="light"] .cine-chronicle-earlier { background: #fbf5e4; border-color: rgba(122, 88, 20, 0.4); color: #6f500f; }
+html[data-theme="light"] button.cine-chronicle-earlier:hover { color: #3f3427; border-color: rgba(122, 88, 20, 0.8); }
+html[data-theme="light"] button.cine-chronicle-earlier:focus-visible { outline-color: #7a5408; }
+html[data-theme="light"] .cine-chronicle-latest { background: linear-gradient(180deg, #fbf5e4, #efe4c6); border-color: rgba(122, 88, 20, 0.6); box-shadow: 0 4px 14px rgba(60, 44, 16, 0.3); color: #6f500f; }
+html[data-theme="light"] .cine-chronicle-latest:hover { color: #3f3427; border-color: #7a5408; }
+html[data-theme="light"] .cine-chronicle-latest:focus-visible { outline-color: #7a5408; }
+html[data-theme="light"] .cine-chronicle-roll { background: rgba(201, 164, 68, 0.14); border-color: rgba(122, 88, 20, 0.45); }
+html[data-theme="light"] .cine-chronicle-roll[data-crit="nat1"] { background: rgba(224, 112, 58, 0.12); border-color: rgba(168, 70, 24, 0.55); }
+html[data-theme="light"] .cine-chronicle-roll[data-crit="nat20"] { background: rgba(201, 164, 68, 0.26); border-color: #9a7420; box-shadow: 0 0 10px rgba(154, 116, 32, 0.25); }
+html[data-theme="light"] .cine-chronicle-roll-head { color: #6f500f; }
+html[data-theme="light"] .cine-chronicle-roll[data-crit="nat1"] .cine-chronicle-roll-head { color: #8f3a12; }
+html[data-theme="light"] .cine-chronicle-roll-math { color: #3f3427; }
+html[data-theme="light"] .cine-chronicle-desk { border-top-color: rgba(122, 88, 20, 0.4); }
+html[data-theme="light"] .cine-chronicle-mode { color: #5f5442; }
+html[data-theme="light"] .cine-chronicle-mode:hover { color: #2d2419; }
+html[data-theme="light"] .cine-chronicle-mode[data-on] { color: #6f500f; border-bottom-color: #9a7420; }
+html[data-theme="light"] .cine-chronicle-mode[data-on][data-mode="lead"] { color: #8f3a12; border-bottom-color: #a84618; }
+html[data-theme="light"] .cine-chronicle-mode:focus-visible { outline-color: #7a5408; }
+html[data-theme="light"] .cine-chronicle-well { border-bottom-color: rgba(122, 88, 20, 0.45); }
+html[data-theme="light"] .cine-chronicle-well:focus-within { border-bottom-color: #7a5408; }
+html[data-theme="light"] .cine-chronicle-input { color: #221a10; }
+html[data-theme="light"] .cine-chronicle-input::placeholder { color: #5f5442; }
+html[data-theme="light"] .cine-chronicle-send { color: #6f500f; }
+html[data-theme="light"] .cine-chronicle-send:hover:not(:disabled) { color: #3f3427; }
 html[data-theme="light"] .cine-stage .cine-header .session-title + p { color: #dedbec; }
 /* The day theme's glass header is parchment; over the painting it must stay
    night, or its gold title and ivory names vanish into it. */
