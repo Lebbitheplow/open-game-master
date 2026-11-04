@@ -23,7 +23,7 @@ import { advanceClock, getClock, openShortRestWindow, recordLongRests, setTravel
 import { getDmTurn } from "@/lib/db/dm-turns";
 import { partyChefDie, partySongOfRestDie, playerChoosesHitDice, spendHitDice } from "@/lib/dm/hit-dice";
 import { goingWithout } from "@/lib/dm/supplies";
-import { afterMeal, MEAL_PROPERTY, mealArg } from "@/lib/dm/supplies-logic";
+import { MEAL_PROPERTY, MEAL_REFUSAL, mealArg, mealRefused } from "@/lib/dm/supplies-logic";
 import { afflictedRestPatch, afflictionsAfterLongRest } from "@/lib/dm/afflictions";
 import { chargeLifestyle } from "@/lib/dm/lifestyle";
 import { dawnsBetween } from "@/lib/dm/item-charges";
@@ -55,7 +55,7 @@ export const takeRestTool: ToolDef = {
   function: {
     name: "take_rest",
     description:
-      "Resolve the party's rest; a short rest also attunes an item waiting to be attuned. Not usable during combat.",
+      "The party rests; a short rest also attunes a waiting item. Not usable during combat.",
     parameters: {
       type: "object",
       additionalProperties: false,
@@ -64,7 +64,7 @@ export const takeRestTool: ToolDef = {
         spend: {
           type: "array",
           description:
-            "Short rest only: hit dice to spend for a character whose player is not at the table. The server otherwise spends toward half HP for them. A connected player chooses their own hit dice on their sheet after the rest; the server rolls them.",
+            "Short rest: hit dice for a character with no player present. The server otherwise spends toward half HP for them. A connected player chooses their own hit dice on their sheet after the rest; the server rolls them.",
           items: {
             type: "object",
             properties: {
@@ -75,7 +75,7 @@ export const takeRestTool: ToolDef = {
           },
         },
         meal: MEAL_PROPERTY,
-        reason: { type: "string", description: "Short in-fiction description of the rest." },
+        reason: { type: "string", description: "The rest, in a few words." },
       },
       required: ["kind"],
     },
@@ -187,7 +187,7 @@ export function handleTakeRest(
   if (!args) {
     return {
       error:
-        'Invalid take_rest arguments. Send {"kind":"short"} or {"kind":"long"}; a spend list is [{"characterId": "...", "dice": 1}] with whole dice of 1 or more; a meal names its source in at least 3 characters. Nobody rested and no time passed.',
+        `Invalid take_rest arguments. Send {"kind":"short"} or {"kind":"long"}; a spend list is [{"characterId": "...", "dice": 1}] with whole dice of 1 or more.${mealRefused(rawArguments) ? ` ${MEAL_REFUSAL}` : ""} Nobody rested and no time passed.`,
       retry: true,
     };
   }
@@ -244,7 +244,10 @@ export function handleTakeRest(
   const restedMinutes = restMinutes(args.kind, variant);
   // A party at rest is no longer on the march.
   setTravelPace(campaign.id, null);
-  const clockAfter = advanceClock(campaign.id, restedMinutes, "minutes", { meal: Boolean(args.meal) });
+  // A long rest charges the resters' lifestyle for its dawns (below), so
+  // those dawns feed them.
+  const lifestyle = args.kind === "long" ? Object.fromEntries(resting.map((id) => [id, 0])) : undefined;
+  const clockAfter = advanceClock(campaign.id, restedMinutes, "minutes", { meal: Boolean(args.meal), lifestyle });
   // The death saves those hours rolled for the dying (condition-tick.ts):
   // the GM narrates the rest from this result, and without them told a
   // character who died in the night that they still lay dying at dawn.
@@ -267,8 +270,11 @@ export function handleTakeRest(
         continue;
       }
       // Under the supplies variant, going without keeps the exhaustion. Read
-      // as the rest begins, so a meal the party lies down on lifts a level.
-      const hunger = args.meal ? afterMeal(starts.supplies ?? {}, [sheet.id], starts.waterRation) : starts.supplies;
+      // as the rest ends: a meal the party lies down on, or the ration, water
+      // or lifestyle of a dawn it crossed, is food and drink taken, and lifts
+      // a level (SRD 5.1: "provided that the creature has also ingested some
+      // food and drink"). Read as it began, a dry hero fed at that dawn kept it.
+      const hunger = "error" in clockAfter ? starts.supplies : clockAfter.clock.supplies;
       const starving =
         campaign.gameSettings.variantRules.supplies === true && goingWithout(hunger?.[sheet.id]);
       // A disease shapes the rest itself: sewer plague restores no hit

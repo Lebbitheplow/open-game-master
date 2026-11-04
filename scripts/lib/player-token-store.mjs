@@ -18,22 +18,48 @@ export function validToken(value) {
   return typeof value === "string" && TOKEN.test(value);
 }
 
+// A program that did not finish in its time and was stopped. Told apart from
+// a refusal, so the message says it was slow rather than that it said no.
+export class RunTimeout extends Error {
+  constructor(command, timeout) {
+    super(`${command} did not finish within ${Math.round(timeout / 1000)} seconds.`);
+    this.name = "RunTimeout";
+  }
+}
+
 // Runs a program with text on its standard input; resolves its exit code and
 // standard output. Standard error is dropped: it can echo what it was given.
+// One stopped for running past `timeout` rejects with RunTimeout: it used to
+// resolve as an ordinary failure, so a slow PowerShell read as "Windows could
+// not protect the token".
 export function runWithInput(command, args, input, timeout = 20_000) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, { windowsHide: true, stdio: ["pipe", "pipe", "ignore"] });
     let stdout = "";
-    const timer = setTimeout(() => child.kill(), timeout);
+    let late = false;
+    const timer = setTimeout(() => { late = true; child.kill(); }, timeout);
     child.stdout.setEncoding("utf8");
     child.stdout.on("data", (chunk) => { if (stdout.length < 16_384) stdout += chunk; });
     child.on("error", (error) => { clearTimeout(timer); reject(error); });
-    child.on("close", (code) => { clearTimeout(timer); resolve({ code, stdout }); });
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      if (late) reject(new RunTimeout(command, timeout));
+      else resolve({ code, stdout });
+    });
     child.stdin.end(input);
   });
 }
 
 const POWERSHELL = "powershell.exe";
+// Windows PowerShell starting cold and loading System.Security can take well
+// over twenty seconds on a busy machine (a CI runner with four suites at
+// once was stopped at twenty mid-protect). Setup waits on a person anyway.
+const POWERSHELL_TIMEOUT = 90_000;
+// What a stopped program means to the person running setup.
+const slow = (error, what) => {
+  if (error instanceof RunTimeout) throw new Error(`${what} took too long: ${error.message} Try again; nothing was saved.`);
+  throw error;
+};
 const PS_START = "$ErrorActionPreference='Stop';Add-Type -AssemblyName System.Security;$i=[Console]::In.ReadToEnd().Trim();";
 const PS_SCOPE = "[Security.Cryptography.DataProtectionScope]::CurrentUser";
 const PROTECT = `${PS_START}$p=[Security.Cryptography.ProtectedData]::Protect([Text.Encoding]::UTF8.GetBytes($i),$null,${PS_SCOPE});[Console]::Out.Write([Convert]::ToBase64String($p))`;
@@ -53,7 +79,7 @@ export function tokenStore(directory, { platform = process.platform, run = runWi
     return {
       where: "Windows' protected storage for this user (DPAPI)",
       async save(token) {
-        const { code, stdout } = await run(POWERSHELL, ["-NoProfile", "-NonInteractive", "-Command", PROTECT], token);
+        const { code, stdout } = await run(POWERSHELL, ["-NoProfile", "-NonInteractive", "-Command", PROTECT], token, POWERSHELL_TIMEOUT).catch((error) => slow(error, "Protecting the token"));
         if (code !== 0 || !stdout.trim()) throw new Error("Windows could not protect the token.");
         mkdirSync(directory, { recursive: true, mode: 0o700 });
         writeFileSync(`${file}.tmp`, stdout.trim(), { mode: 0o600 });
@@ -61,7 +87,7 @@ export function tokenStore(directory, { platform = process.platform, run = runWi
       },
       async read() {
         if (!existsSync(file)) throw new Error("No token is saved for this receiver. Run --setup or --save-token.");
-        const { code, stdout } = await run(POWERSHELL, ["-NoProfile", "-NonInteractive", "-Command", UNPROTECT], readFileSync(file, "utf8"));
+        const { code, stdout } = await run(POWERSHELL, ["-NoProfile", "-NonInteractive", "-Command", UNPROTECT], readFileSync(file, "utf8"), POWERSHELL_TIMEOUT).catch((error) => slow(error, "Reading the protected token"));
         if (code !== 0) throw new Error("Windows could not unprotect the token; it was saved by another user account.");
         return checked(stdout.trim());
       },
@@ -92,7 +118,8 @@ export function tokenStore(directory, { platform = process.platform, run = runWi
       let result;
       try {
         result = await run("secret-tool", ["store", "--label=ODM player receiver", "service", TOKEN_SERVICE, "account", account], checkedInput(token));
-      } catch {
+      } catch (error) {
+        if (error instanceof RunTimeout) slow(error, "The keyring (waiting on an unlock prompt?)");
         throw new Error("secret-tool is not installed. Install libsecret-tools (or your distribution's libsecret package), or give the config an authCommand.");
       }
       if (result.code !== 0) throw new Error("The keyring did not take the token. Is a keyring unlocked in this session?");
@@ -101,7 +128,8 @@ export function tokenStore(directory, { platform = process.platform, run = runWi
       let result;
       try {
         result = await run("secret-tool", ["lookup", "service", TOKEN_SERVICE, "account", account], "");
-      } catch {
+      } catch (error) {
+        if (error instanceof RunTimeout) slow(error, "The keyring (waiting on an unlock prompt?)");
         throw new Error("secret-tool is not installed, so no saved token can be read.");
       }
       if (result.code !== 0) throw new Error("No token is saved for this receiver. Run --setup or --save-token.");

@@ -21,6 +21,8 @@ import { enemyStatsFromSummon } from "@/lib/dm/summon-rules";
 import { attacksAllowedFor } from "@/lib/dm/turn-budget";
 import { acBreakdownFor, computeSheetDerived, sizeForRace } from "@/lib/srd";
 import { combatRiders } from "@/lib/srd/feature-effects";
+import { magicItemRiders } from "@/lib/srd/magic-items";
+import { martialArtsApplies } from "@/lib/dm/pc-attack-options";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 // ODM keeps no size on a sheet: the race says it (srd sizeForRace).
@@ -35,7 +37,13 @@ function weaponAttack(sheet: CharacterSheet, derived: ReturnType<typeof computeS
     const resolved = resolveAttackWeapon(sheet.equipment, sheet.proficiencies.weapons, undefined, {
       shieldOnArm: acBreakdownFor(sheet).shieldName !== null,
     });
-    const profile = weaponAttackProfile(derived, sheet.proficiencies.weapons, resolved, { riders: combatRiders(sheet) });
+    // Swung as pc_attack swings it: a worn item's bonus (a pair of wraps,
+    // Bracers of Archery) and Martial Arts only out of armor.
+    const profile = weaponAttackProfile(derived, sheet.proficiencies.weapons, resolved, {
+      riders: combatRiders(sheet),
+      martialArts: martialArtsApplies(sheet),
+      worn: magicItemRiders(sheet.equipment, sheet).weaponRiders,
+    });
     return {
       name: profile.weapon,
       toHit: profile.toHit,

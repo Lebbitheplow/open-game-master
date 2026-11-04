@@ -59,7 +59,10 @@ export function advanceClock(
   // A meal the story named as this time began (issue 793): written here, past
   // the last refusal and after `current` is read, so a clock that does not
   // move eats nothing and "Revert this turn" takes the meal back with the time.
-  options: { meal?: boolean } = {},
+  // `lifestyle`: whose lifestyle the caller charges for the dawns crossed, by
+  // character id, with the copper a day their work covers (supplies.ts
+  // upkeepAtDawns); only they are fed by it.
+  options: { meal?: boolean; lifestyle?: Record<string, number> } = {},
 ): { clock: CampaignClock; minutes: number; deathSaves: string[] } | ToolError {
   const current = getClock(campaignId);
   const moved = advance(current.instant, amount, unit);
@@ -126,7 +129,7 @@ export function advanceClock(
   // and, under the supplies variant, ends a day of eating and drinking.
   rechargeAtDawn(campaignId, current.instant, moved.instant);
   const dawns = dawnsBetween(current.instant, moved.instant);
-  const hunger = upkeepAtDawns(campaignId, dawns, clock.supplies ?? {}, clock.mealAtDawn === true);
+  const hunger = upkeepAtDawns(campaignId, dawns, clock.supplies ?? {}, clock.mealAtDawn === true, options.lifestyle);
   if (hunger || (dawns && clock.mealAtDawn)) {
     // The dawn uses the meal up, with the variant since turned off as well.
     const dawned = getClock(campaignId);

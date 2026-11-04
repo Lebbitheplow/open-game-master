@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 
 register("./lib/register-alias.mjs", import.meta.url);
 const { receiverConfig, receiverUrl, receiverCommands, receiverFileName, receiverSlug } = await import("../src/lib/agents/receiver-config.ts");
-const { tokenStore, saveToken, promptSecret, validToken } = await import("./lib/player-token-store.mjs");
+const { tokenStore, saveToken, promptSecret, validToken, runWithInput, RunTimeout } = await import("./lib/player-token-store.mjs");
 const { takeReceiverLock, LockRefused } = await import("./lib/player-webhook-receiver.mjs");
 
 let passed = 0;
@@ -110,6 +110,25 @@ await test("separate receiver directories keep separate store entries", async ()
     return fake.calls.at(-1).args[2];
   });
   assert.notEqual(accounts[0], accounts[1]);
+});
+
+// A program stopped for running too long (Windows PowerShell starting cold on
+// a busy machine) is told apart from one that refused: it rejected as an
+// ordinary failure, so the stop read as "Windows could not protect the token".
+await test("a program stopped for running past its time says so, on every platform's store", async () => {
+  await assert.rejects(runWithInput(process.execPath, ["-e", "setTimeout(() => {}, 5000)"], "", 300), RunTimeout);
+  const answered = await runWithInput(process.execPath, ["-e", "process.stdout.write('ok')"], "", 30_000);
+  assert.deepEqual(answered, { code: 0, stdout: "ok" });
+  const stopped = async (command) => { throw new RunTimeout(command, 90_000); };
+  for (const platform of ["win32", "linux"]) {
+    const store = tokenStore(fs.mkdtempSync(path.join(os.tmpdir(), `odm-token-slow-${platform}-`)), { platform, run: stopped });
+    await assert.rejects(store.save(TOKEN), /took too long: .* did not finish within 90 seconds/, `${platform} reported a slow store as a refusal`);
+  }
+  // PowerShell is given longer than the default twenty seconds.
+  let asked = 0;
+  const timed = async (command, args, input, timeout) => { asked = timeout; return { code: 1, stdout: "" }; };
+  await assert.rejects(tokenStore(os.tmpdir(), { platform: "win32", run: timed }).save(TOKEN), /could not protect/);
+  assert.ok(asked >= 60_000, `PowerShell was given ${asked} ms`);
 });
 
 await test("a store that says yes but keeps nothing is caught at setup", async () => {

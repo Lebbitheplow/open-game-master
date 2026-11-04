@@ -114,8 +114,9 @@ export type CatalogField = {
   // Shown, and sent, only while another field holds one of these values: a
   // drake's essence only for a drake, a story pet's numbers only for one.
   onlyWhen?: { field: string; equals: string[] };
-  // Shown, and sent, only at a table with this variant rule on: a meal counts
-  // for nothing without the supplies variant (DmActionForm.tsx).
+  // Shown, and sent, only at a table with this variant rule on: a meal or
+  // scarce water counts for nothing without the supplies variant
+  // (DmActionForm.tsx).
   variant?: "supplies";
   // An empty input here is an answer, not a field left blank: the facade
   // passes "" on to the handler instead of dropping it (src/lib/dm/invoke.ts

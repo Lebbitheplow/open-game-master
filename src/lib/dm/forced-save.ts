@@ -278,6 +278,9 @@ export function rollCharacterSave(
       ability,
       dc,
       ...resists,
+      // The creature forcing it, subtype and all, for what answers its
+      // kind (Demon Armor's curse against a demon's spells and abilities).
+      ...(from?.stats?.type ? { sourceType: from.stats.type } : {}),
       ...(claimed ? { advantage: claimed.advantage, advantageReason: claimed.reason } : {}),
     } as RollArgs,
     sheet,

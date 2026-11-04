@@ -27,7 +27,7 @@ import type { ItemTag } from "@/lib/schemas/item-tags";
 import { textKey } from "@/lib/language/text-logic";
 import { isWorkshopRow, magicItemBonus, rowName, type RowItem } from "@/lib/srd/item-row";
 import { compositeGearNamed } from "@/lib/srd/magic-gear";
-import { isNamed } from "@/lib/srd/feature-names";
+import { isNamed, nameChoice } from "@/lib/srd/feature-names";
 import { alignmentIs } from "@/lib/srd/alignment";
 
 // The minimal item shape the magic-item engine reads: a name and its worn
@@ -482,4 +482,21 @@ export function settleAttunement<T extends WornMagicItem>(
     kept.push(item);
     return item;
   });
+}
+
+// Demon Armor's curse (SRD 5.1): "While wearing the armor, you have
+// disadvantage on attack rolls against demons and on saving throws against
+// their spells and special abilities". Wearing it is enough, attuned or not,
+// and only a demon draws it ("fiend (demon)"; a devil does not). `creatureType`
+// is the demon's full type, the one attacked or the one forcing the save.
+// Returns the line that says why, or null.
+export function cursedAgainst(equipment: WornMagicItem[], creatureType: string | undefined): string | null {
+  // The subtype in the type's parentheses, as Favored Enemy reads it
+  // (src/lib/dm/attack-features.ts isFavoredEnemy).
+  const subtypes = (nameChoice(creatureType ?? "") ?? "").split(",").map(textKey);
+  if (!subtypes.includes("demon")) {
+    return null;
+  }
+  const armor = equipment.find((item) => matchMagicItem(item)?.match === "demon armor" && countsAsWorn(item, equipment));
+  return armor ? `${armor.name}'s curse: disadvantage against a demon` : null;
 }

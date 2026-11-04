@@ -304,8 +304,12 @@ await test("Vigilant Defender: the fighter makes an opportunity attack on every 
   assert.equal(await walkAway(cavalier, 2), 2, "an opportunity attack on each creature's turn");
 });
 
+// One wearer for Demon Armor's tests, so the fights after them meet no
+// extra fighter in reach.
+const demonWearer = hero({ class: "fighter", level: 18, abilities: { str: 16 }, equipment: [{ name: "Demon Armor", qty: 1, equipped: true, attuned: true }] });
+
 await test("Demon Armor: 'clawed gauntlets turn unarmed strikes with your hands into magic weapons that deal slashing damage, with a +1 bonus to attack rolls and damage rolls and a damage die of 1d8', on the turn and on an opportunity attack.", async () => {
-  const wearer = hero({ class: "fighter", level: 18, abilities: { str: 16 }, equipment: [{ name: "Demon Armor", qty: 1, equipped: true, attuned: true }] });
+  const wearer = demonWearer;
   const [enemy] = await stage(wearer);
   const out = await kit.swing(wearer.id, enemy.id, [15, 5], { weapon: "unarmed strike" });
   assert.equal(out.ok, true, out.error);
@@ -325,6 +329,50 @@ await test("Demon Armor: 'clawed gauntlets turn unarmed strikes with your hands 
   const swing = newRolls(before).find((roll) => roll.kind === "attack" && roll.characterId === wearer.id);
   assert.ok(swing, "no opportunity attack was rolled");
   assert.equal(swing.total, 25, "the opportunity attack lost the gauntlets' bonus");
+});
+
+await test("Demon Armor's curse: 'While wearing the armor, you have disadvantage on attack rolls against demons', on the turn and on an opportunity attack; a devil is no demon.", async () => {
+  const wearer = demonWearer;
+  const [demon] = await stage(wearer, { stats: { type: "fiend (demon)" } });
+  // The lower of 18 and 2: 2 + 3 (Strength) + 6 (proficiency) + 1.
+  const cursed = await kit.swing(wearer.id, demon.id, [18, 2, 5], { weapon: "unarmed strike" });
+  assert.equal(cursed.ok, true, cursed.error);
+  assert.equal(cursed.toHit?.total, 12, "the curse gave no disadvantage against a demon");
+  const before = new Set(kit.lastRolls(60).map((roll) => roll.id));
+  kit.place(wearer.id, 5, 5);
+  kit.place(demon.id, 5, 6);
+  kit.freshRound();
+  world.clearDice();
+  world.dice(18, 2, 4);
+  await world.invoke("move_token", { token: demon.id, x: 1, y: 10 });
+  world.clearDice();
+  const swing = newRolls(before).find((roll) => roll.kind === "attack" && roll.characterId === wearer.id);
+  assert.ok(swing, "no opportunity attack was rolled");
+  assert.equal(swing.total, 12, "the opportunity attack against a demon lost the curse");
+  const [devil] = await stage(wearer, { stats: { type: "fiend (devil)" } });
+  const plain = await kit.swing(wearer.id, devil.id, [18, 2, 5], { weapon: "unarmed strike" });
+  assert.equal(plain.toHit?.total, 28, "a devil drew the demons' curse");
+});
+
+await test("Demon Armor's curse: 'disadvantage ... on saving throws against their spells and special abilities', a demon's spell and its ability alike; a devil's spell is saved against with one d20.", async () => {
+  const wearer = demonWearer;
+  async function forced(type, args) {
+    const [caster] = await stage(wearer, { stats: { type, ...(args.spell ? { spells: [args.spell] } : {}) } });
+    world.clearDice();
+    world.dice(20, 2);
+    const before = new Set(kit.lastRolls(60).map((roll) => roll.id));
+    const out = await world.invoke("cast_at_player", { characterId: wearer.id, saveAbility: "wis", dc: 15, casterEnemyId: caster.id, ...args });
+    world.clearDice();
+    assert.equal(out.ok, true, out.error);
+    return newRolls(before).find((roll) => roll.kind === "saving_throw" && roll.characterId === wearer.id) ?? null;
+  }
+  const spell = await forced("fiend (demon)", { spell: "Hold Person", condition: "paralyzed" });
+  assert.equal(d20Faces(spell).length, 2, "a demon's spell: the wearer rolls two d20s");
+  assert.ok(spell.total < 15, `the lower d20 is kept (${spell.total})`);
+  const ability = await forced("fiend (demon)", { enemyAbility: "Abyssal Stare", condition: "frightened" });
+  assert.equal(d20Faces(ability).length, 2, "a demon's special ability: two d20s");
+  const devil = await forced("fiend (devil)", { spell: "Hold Person", condition: "paralyzed" });
+  assert.equal(d20Faces(devil).length, 1, "a devil draws no curse");
 });
 
 const samurai = hero({ class: "fighter", subclass: "Samurai", level: 15, abilities: { str: 16 }, equipment: [{ name: "Longsword", qty: 1 }] });

@@ -1212,8 +1212,21 @@ test("pass_time, travel and take_rest ask for a meal, only under the supplies va
   }
   assert.ok(read("src/lib/capabilities.ts").match(/^\s*suppliesMeal: true,$/m), "the server flags it");
   assert.match(read("src/lib/use-capabilities.ts"), /features\?: \{[^}]*suppliesMeal\?: boolean/);
-  assert.match(read("src/app/campaigns/[campaignId]/DmActionForm.tsx"), /!field\.variant \|\| !variantRules \|\| variantRules\[field\.variant\]/);
-  assert.match(read("src/app/campaigns/[campaignId]/DmConsolePanel.tsx"), /entry=\{entry\}\s+sheets=\{sheets\}\s+encounter=\{encounter\}\s+variantRules=\{variantRules\}/);
+  assert.match(read("src/app/campaigns/[campaignId]/DmActionForm.tsx"), /!field\.variant \|\| variantRules\[field\.variant\]/);
+  // The water to be found counts for nothing without the variant either.
+  for (const tool of ["pass_time", "travel"]) {
+    assert.equal(adjudication(tool).fields.find((entry) => entry.name === "water")?.variant, "supplies", `${tool}'s water`);
+  }
+  // Every form is told the table's rules: the assist rail's suggestions and
+  // the held asks showed the meal at a table without the variant.
+  for (const file of ["DmConsolePanel", "DmAssistPanel", "HeldAsks"]) {
+    const source = read(`src/app/campaigns/[campaignId]/${file}.tsx`);
+    const forms = source.split("<DmActionForm").slice(1).map((rest) => rest.slice(0, rest.indexOf("/>")));
+    assert.ok(forms.length, `${file} opens a form`);
+    for (const form of forms) {
+      assert.match(form, /variantRules=\{variantRules\}/, `a form in ${file} is not told the table's rules`);
+    }
+  }
 });
 
 // The fields a declaration's parts brought to the console (PR 749): an older

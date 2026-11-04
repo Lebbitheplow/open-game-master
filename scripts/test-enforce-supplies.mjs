@@ -62,8 +62,8 @@ const RATIONS = { name: "Rations (1 day)", qty: 1 };
 const WATERSKIN = { name: "Waterskin", qty: 1 };
 const DAY = 24 * 60;
 const worlds = [];
-async function table(variant = true) {
-  const world = await openWorld({ gameSettings: { variantRules: { ...RULES, supplies: variant } } });
+async function table(variant = true, settings = {}) {
+  const world = await openWorld({ gameSettings: { variantRules: { ...RULES, supplies: variant }, ...settings } });
   worlds.push(world);
   // A sheet is created without these two, so they are written after it.
   const hero = ({ exhaustion, deathSaves, ...overrides } = {}) => {
@@ -170,6 +170,47 @@ await test("A lifestyle of squalid or better feeds and waters at every dawn; wre
     assert.equal(qty(world, unkept.id, "Rations (1 day)"), 0, "stays on supplies");
     assert.ok(world.sheet(unkept.id).exhaustion >= 1, "goes dry with no waterskin");
   }
+});
+
+await test("A lifestyle feeds only on the dawns it is paid for: a march of hours or the GM's clock crosses a dawn on the pack.", async () => {
+  // A table a person runs, whose clock control is the GM's own.
+  const { world, hero } = await table(true, { dmMode: "human" });
+  setClockInstant(world.campaignId, 10 * DAY + 20 * 60);
+  const townie = hero({ abilities: { con: 30 }, gold: 50, equipment: [{ ...RATIONS, qty: 3 }, WATERSKIN] });
+  await world.invoke("set_lifestyle", { characterIds: [townie.id], lifestyle: "modest" });
+  const marched = await world.invoke("travel", { hours: 12 });
+  assert.equal(marched.ok, true, marched.error);
+  assert.equal(world.sheet(townie.id).gold, 50, "the march paid no lifestyle");
+  assert.equal(qty(world, townie.id, "Rations (1 day)"), 2, "the dawn on the road was fed free");
+  const route = await world.route("campaigns/[campaignId]/dm/clock");
+  world.signIn(world.owner);
+  const moved = await route.POST(
+    new Request("http://test/", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ do: "advance", amount: 1, unit: "days" }) }),
+    { params: Promise.resolve({ campaignId: world.campaignId }) },
+  );
+  assert.equal(moved.status, 200, await moved.clone().text());
+  assert.equal(qty(world, townie.id, "Rations (1 day)"), 1, "the GM's clock fed them free");
+});
+
+await test("Work that keeps a character fed them: a profession's modest lifestyle with an empty purse costs no ration.", async () => {
+  const { world, hero } = await table();
+  setClockInstant(world.campaignId, 10 * DAY + 8 * 60);
+  const smith = hero({ gold: 0, equipment: [{ ...RATIONS, qty: 3 }, WATERSKIN] });
+  await world.invoke("set_lifestyle", { characterIds: [smith.id], lifestyle: "modest" });
+  const out = await world.invoke("downtime", { days: 2, characterId: smith.id, activity: "profession" });
+  assert.equal(out.ok, true, out.error);
+  assert.equal(qty(world, smith.id, "Rations (1 day)"), 3, "the work kept them, and they ate from the pack");
+});
+
+await test("A long rest whose dawn a lifestyle pays for lifts a level from a character who went dry, as their ration and water at that dawn do.", async () => {
+  const { world, hero, clock, without } = await table();
+  const townie = hero({ exhaustion: 1, gold: 50, equipment: [] });
+  without(townie.id, { food: 0, water: 1 });
+  await world.invoke("set_lifestyle", { characterIds: [townie.id], lifestyle: "modest" });
+  const rested = await world.invoke("take_rest", { kind: "long" });
+  assert.equal(rested.ok, true, rested.error);
+  assert.deepEqual(clock().supplies[townie.id], { food: 0, water: 0 });
+  assert.equal(world.sheet(townie.id).exhaustion ?? 0, 0, "fed and watered at the rest's dawn, and the rest lifted nothing");
 });
 
 await test("Scarce water stands against a meal and against a lifestyle: none still costs the level, half still asks the save.", async () => {

@@ -70,6 +70,10 @@ export const rollArgsSchema = z.object({
   against: z.enum([...SAVE_AGAINST, NONE]).optional(),
   magical: z.boolean().optional(),
   casterType: z.enum(CREATURE_TYPES).optional(),
+  // The full type of the creature forcing the save (roll-about.ts
+  // SaveAgainst), set by the engine from the creature it knows; no tool
+  // offers it.
+  sourceType: z.string().max(120).optional(),
   // kind=ability_check only: the tool the check is made with ("thieves'
   // tools"); a character proficient in it adds their proficiency bonus.
   tool: z.string().max(40).optional(),

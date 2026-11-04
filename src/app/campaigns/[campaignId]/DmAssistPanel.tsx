@@ -71,12 +71,14 @@ function IntentSuggest({
   campaignId,
   sheets,
   encounter,
+  variantRules,
   intent,
   onIntentChange,
 }: {
   campaignId: string;
   sheets: CharacterSheet[];
   encounter: PublicEncounter | null;
+  variantRules: CritRules;
   intent: string;
   onIntentChange: (next: string) => void;
 }) {
@@ -162,6 +164,7 @@ function IntentSuggest({
                     sheets={sheets}
                     encounter={encounter}
                     initialArgs={suggestion.args}
+                    variantRules={variantRules}
                     glyph={adjudicationGlyph(suggestion.name, "tab-dm")}
                   />
                   <CloseForm onClick={() => setOpen(null)} />
@@ -382,6 +385,7 @@ export function DmAssistPanel({
         campaignId={campaignId}
         sheets={sheets}
         encounter={encounter}
+        variantRules={variantRules}
         intent={intent}
         onIntentChange={onIntentChange}
       />

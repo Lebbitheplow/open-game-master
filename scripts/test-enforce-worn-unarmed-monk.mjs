@@ -71,6 +71,62 @@ await test("Stunning Strike rides a strike made in wraps.", async () => {
   assert.equal(kit.enemy(enemy.id).conditions.includes("stunned"), true, "the strike did not stun");
 });
 
+// An Open Hand monk in the same wraps: Open Hand Technique rides a flurry
+// strike and Quivering Palm an unarmed hit, each made in them.
+const palm = world.addHero({
+  user: world.owner, class: "monk", subclass: "Way of the Open Hand", level: 17, abilities: { str: 10, dex: 16, wis: 16 }, proficiencies: TRAINED, maxHp: 120,
+});
+world.patch(palm.id, { equipment: [{ name: "Tested Wraps", qty: 1, equipped: true, attuned: true }] });
+async function stagePalm() {
+  await kit.endFight();
+  await kit.fight(1, { heroFaces: { [palm.id]: 19, [monk.id]: 2 } });
+  const [enemy] = world.enemies();
+  kit.setEnemy(enemy.id, { maxHp: 400 });
+  kit.place(palm.id, 5, 5);
+  kit.place(enemy.id, 5, 6);
+  kit.giveTurn(palm.id);
+  world.patch(palm.id, { resources: { ...world.sheet(palm.id).resources, ki: { max: 17, used: 0 } } });
+  return enemy;
+}
+// 10 + 3 (Dexterity) + 6 (proficiency) + 3 (wraps).
+const PALM_HIT = 10 + 3 + 6 + 3;
+
+await test("Open Hand Technique knocks a creature prone off a flurry strike made in wraps, which carries their bonus.", async () => {
+  const enemy = await stagePalm();
+  for (const label of ["the first attack", "Extra Attack"]) {
+    const out = await kit.swing(palm.id, enemy.id, [10, 4], { weapon: "unarmed strike" });
+    assert.equal(out.toHit?.total, PALM_HIT, label);
+  }
+  const flurry = await world.invoke("use_resource", { characterId: palm.id, resource: "Ki", variant: "flurry of blows" });
+  assert.equal(flurry.ok, true, flurry.error);
+  const strike = await kit.swing(palm.id, enemy.id, [10, 4, 1], { weapon: "unarmed strike", openHand: "prone" });
+  assert.equal(strike.ok, true, strike.error);
+  assert.equal(strike.toHit?.total, PALM_HIT, "the flurry strike lost the wraps' bonus");
+  assert.equal(strike.damage?.total, 4 + 3 + 3);
+  assert.ok(kit.enemy(enemy.id).conditions.some((entry) => /prone/i.test(entry)), "the flurry hit did not knock it prone");
+});
+
+await test("Quivering Palm sets its vibrations off an unarmed hit made in wraps.", async () => {
+  const enemy = await stagePalm();
+  const hit = await kit.swing(palm.id, enemy.id, [10, 4], { weapon: "unarmed strike" });
+  assert.equal(hit.result.hit, true, hit.error);
+  assert.equal(hit.toHit?.total, PALM_HIT);
+  const set = await world.invoke("use_resource", { characterId: palm.id, resource: "Quivering Palm", targetEnemyId: enemy.id });
+  assert.equal(set.ok, true, set.error);
+  assert.equal(world.sheet(palm.id).resources.ki.used, 3, "3 ki");
+});
+
+await test("The wraps ride the monk's stat block as a turncoat and as a companion's rated block, as they ride the monk's own swing.", async () => {
+  const { sheetEnemyStats } = await import("../src/lib/dm/sheet-foe-stats.ts");
+  const { sheetStatBlock } = await import("../src/lib/dm/companion-statblock.ts");
+  const sheet = world.sheet(monk.id);
+  const turncoat = sheetEnemyStats(sheet).attacks[0];
+  assert.equal(turncoat.toHit, 3 + 3 + 3, `the turncoat's strike (${JSON.stringify(turncoat)})`);
+  assert.match(turncoat.damage, /\+6$/, "the turncoat's strike lost the wraps' damage");
+  const rated = sheetStatBlock(sheet).stats.attacks[0];
+  assert.equal(rated.toHit, 3 + 3 + 3, `the companion's rated strike (${JSON.stringify(rated)})`);
+});
+
 await kit.endFight();
 world.close();
 finish();

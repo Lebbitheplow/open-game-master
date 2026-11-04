@@ -196,7 +196,7 @@ export function downtimeProblem(campaign: Campaign, sheet: CharacterSheet, entry
 }
 
 // What `days` of this activity cover of the lifestyle, in copper a day.
-function coverOf(sheet: CharacterSheet, entry: DowntimeEntry): number {
+export function coverOf(sheet: CharacterSheet, entry: DowntimeEntry): number {
   if (entry.activity === "crafting") {
     return LIFESTYLE_COST_CP.modest;
   }
