@@ -339,6 +339,8 @@ export function castSpell(
   if (
     mech?.repeat &&
     via !== "slot" &&
+    // Witch Bolt's beam strikes through cast_at_enemy: an attack is a new casting.
+    !(via === "attack" && mech.repeatDice) &&
     sheet.concentratingOn &&
     textKey(sheet.concentratingOn) === textKey(name)
   ) {

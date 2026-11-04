@@ -707,8 +707,15 @@
       "components": "V, S, M (a twig from a lightning-struck tree)",
       "duration": "Concentration, up to 1 minute",
       "concentration": true,
-      "desc": "A beam of crackling energy lances toward a creature within range. Make a ranged spell attack; on a hit the target takes 1d12 lightning damage and the beam remains connected. On each of your later turns you can use your action to deal 1d12 lightning damage automatically, and the spell ends if the target moves more than 30 feet away or gains total cover.",
-      "higher_level": "The initial damage increases by 1d12 for each slot level above 1st."
+      "desc": "A beam of crackling energy lances toward a creature within range. Make a ranged spell attack; on a hit the target takes 1d12 lightning damage and the beam remains connected. On each of your later turns you can use your action to deal 1d12 lightning damage automatically. The spell ends if you spend your action on anything else, if the target moves more than 30 feet away, or if it gains total cover.",
+      "higher_level": "The initial damage increases by 1d12 for each slot level above 1st.",
+      "mech": {
+        "resolution": "attack",
+        "attack": "ranged",
+        "damageType": "lightning",
+        "repeat": "action",
+        "repeatDice": "1d12"
+      }
     },
     {
       "name": "Wrathful Smite",

@@ -334,7 +334,7 @@ export async function POST(
   const dmSeats = campaignSeats(campaign);
   const direct =
     intent && kind === "do" && hasHumanDm(dmSeats) && isDmSeat(dmSeats, user.id)
-      ? directCardCalls(intent, sheet.id, directContextFor(campaignId, intent, tableAuthors(campaignId)))
+      ? directCardCalls(intent, sheet.id, directContextFor(campaignId, intent, tableAuthors(campaignId), sheet.id))
       : null;
   if (direct) {
     // A casting shared out among creatures is one call with every creature

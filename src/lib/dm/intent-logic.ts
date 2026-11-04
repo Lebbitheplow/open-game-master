@@ -122,6 +122,9 @@ export type DirectContext = {
   selfOnly?: boolean;
   // Dispel Magic: cast_buff resolves it against a target.
   dispel?: boolean;
+  // Aimed at what the caster's held beam is connected to (Witch Bolt,
+  // src/lib/dm/witch-bolt.ts): cast_at_enemy strikes, with no slot and no roll.
+  beam?: boolean;
 };
 
 export type DirectCall = { name: string; args: Record<string, unknown> };
@@ -246,6 +249,9 @@ export function directCardCall(intent: MessageIntent, characterId: string, conte
       }
       switch (context.resolution) {
         case "attack":
+          if (context.beam && inFight && atEnemy(intent)) {
+            return { name: "cast_at_enemy", args: { characterId, targetEnemyId: intent.targetId, spell } };
+          }
           return inFight && atEnemy(intent) ? { name: "pc_attack", args: { characterId, targetEnemyId: intent.targetId, spell, ...level } } : null;
         case "save":
         case "auto":

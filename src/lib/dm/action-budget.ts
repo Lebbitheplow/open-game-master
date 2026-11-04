@@ -59,6 +59,9 @@ export type TurnBudget = {
   // This turn's action went on casting a spell (an attack-roll spell through
   // pc_attack), so the swings of Extra Attack are not there to take.
   castThisAction?: boolean;
+  // Actions this turn that went on a held beam (src/lib/dm/witch-bolt.ts), so
+  // an action spent on anything else can be told from them.
+  beamActions?: number;
   // Flurry of Blows: bonus-action unarmed strikes still to make this turn,
   // bought with 1 ki after the Attack action (src/lib/dm/bonus-actions.ts).
   flurryStrikes?: number;
@@ -216,6 +219,13 @@ export const ACTION_SURGED = "action surge";
 // Step of the Wind: "your jump distance is doubled for the turn"
 // (jump-move.ts reads it).
 export const WIND_STEP = "step of the wind";
+
+// The whole actions this turn has spent: its own, and the one Action Surge
+// added once that is gone. Haste's restricted extra action is not one of them.
+export function actionsSpent(budget: TurnBudget): number {
+  const surged = budget.oncePerTurn.includes(ACTION_SURGED) ? 1 : 0;
+  return Math.max(0, (budget.actionUsed ? 1 : 0) + surged - (budget.grantedActions ?? 0));
+}
 
 // Grants one more action this turn. Called when Action Surge is spent
 // (src/lib/dm/action-tools.ts grantActionSurge).

@@ -205,7 +205,10 @@ function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, 
     row ??
     (fact.desc ? parseSpellMech({ desc: fact.desc, higherLevel: fact.higherLevel }) : bakedSpellMech(name)) ??
     { resolution: "utility" };
-  const slot = fact.level > 0 ? lowestSlot(sheet, fact.level) : null;
+  // Witch Bolt's beam while it holds: the card is its strike, with no slot and
+  // no roll. Aimed anywhere else it is a new casting (src/lib/dm/intent-logic.ts).
+  const beam = mech.repeatDice && sheet.concentratingOn && textKey(sheet.concentratingOn) === textKey(name) ? mech.repeatDice : null;
+  const slot = fact.level > 0 && !beam ? lowestSlot(sheet, fact.level) : null;
   const derived = computeSheetDerived(sheet);
   const abilityMod = sheet.spellcasting ? derived.abilityMods[sheet.spellcasting.ability] : 0;
   const scaled = scaledSpellDice({
@@ -226,7 +229,7 @@ function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, 
     desc: fact.desc,
     higherLevel: fact.higherLevel,
   });
-  let damage: string | null = mech.resolution === "heal" || mech.resolution === "buff" ? null : rolled?.dice ?? null;
+  let damage: string | null = beam ?? (mech.resolution === "heal" || mech.resolution === "buff" ? null : rolled?.dice ?? null);
   let heals = false;
   if (mech.resolution === "heal") {
     // upcastDamage reads a healing step too, so a higher slot heals more.
@@ -239,7 +242,7 @@ function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, 
   if (rider && damage) {
     damage = addFlat(damage, derived.abilityMods[rider.ability as keyof typeof derived.abilityMods] ?? 0);
   }
-  const toHit = mech.resolution === "attack" ? spellAttackFor(sheet, name) : null;
+  const toHit = mech.resolution === "attack" && !beam ? spellAttackFor(sheet, name) : null;
   // The engine's own facts (casting time, components, material cost, range)
   // for the engine's own gates below.
   const facts = fact.facts ?? bundledSpellFacts(name);
@@ -269,6 +272,9 @@ function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, 
   const roll =
     toHit !== null ? `${signed(toHit)} to hit` : save ? (typed ? `DC ${save.dc}${mech.halfOnSave ? ", half on a save" : ""}` : "no attack") : "no roll";
   const notes: string[] = [];
+  if (beam) {
+    notes.push("Beam connected: free at its target. Others: new casting, beam ends.");
+  }
   if (fact.concentration && sheet.concentratingOn && textKey(sheet.concentratingOn) !== textKey(name)) {
     notes.push(`Ends your concentration on ${sheet.concentratingOn}.`);
   }
@@ -290,7 +296,8 @@ function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, 
   const slotRefusal = fact.level > 0 && !slot ? slotPlan(sheet, name, facts, fact.level) : null;
   const charge = turnCharge({
     who: sheet.name,
-    facts,
+    // Not a casting: charged as cast-repeat.ts charges it.
+    facts: beam && facts ? { ...facts, level: 0 } : facts,
     spell: name,
     slotLevel: slot?.level ?? null,
     inFight: true,
@@ -300,6 +307,7 @@ function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, 
     // Embodiment of the Law is the engine's to decide).
     bonusCast: bonusCastOf(sheet, facts, null),
   });
+  const chargeGate: Gate = "error" in charge ? { reason: charge.error, spent: charge.error.includes("already used") } : null;
   const melee = mech.resolution === "attack" && isMeleeSpellAttack(engine, facts?.range.kind);
   if (melee) notes.unshift("Melee spell attack: a creature beside you.");
   // A feature that moves the spell to the bonus action shows it there.
@@ -314,8 +322,8 @@ function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, 
     roll,
     rules: notes.slice(0, 2).join(" "),
     description: [fact.desc, fact.higherLevel ? `At higher levels: ${fact.higherLevel}` : "", ...notes.map((note) => (note === BEST_EFFORT_SHORT ? BEST_EFFORT_NOTE : note))].filter(Boolean).join("\n\n"),
-    resource: fact.level === 0 ? "Cantrip" : slot ? slotLine(slot) : `Level ${fact.level} · no slots`,
-    condition: mech.condition?.name ?? (fact.concentration ? "Concentration" : ""),
+    resource: beam ? "No slot" : fact.level === 0 ? "Cantrip" : slot ? slotLine(slot) : `Level ${fact.level} · no slots`,
+    condition: beam ? "" : mech.condition?.name ?? (fact.concentration ? "Concentration" : ""),
     icon: { kind: "spell", key: name, family: fact.school ? `spell-${fact.school.toLowerCase()}` : null },
     target,
     toHit,
@@ -339,6 +347,10 @@ function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, 
         ? { card: "reaction", feature: name, spell: name, slotLevel: slot?.level ?? null }
         : { card: "spell", spell: name, slotLevel: slot?.level ?? null },
   };
+  // The beam asks only what its cost does: no slot, components or material.
+  if (beam) {
+    return gated(card, standingGate(sheet, turn), chargeGate);
+  }
   const choice = cost === "reaction" ? undefined : spellChoice(mech);
   if (choice) card.choice = choice;
   // A summoning spell that calls more than one creature from this slot asks
@@ -377,13 +389,19 @@ function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, 
     cost === "reaction" ? costGate("reaction", turn, sheet, name) : null,
     "error" in material ? { reason: material.error, spent: false } : null,
     slotRefusal && "error" in slotRefusal ? { reason: slotRefusal.error, spent: true } : null,
-    "error" in charge ? { reason: charge.error, spent: charge.error.includes("already used") } : null,
+    chargeGate,
   );
 }
 
 export function spellCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, options: HandOptions): HandCard[] {
   const rows: Array<{ level: number; card: HandCard }> = [];
-  for (const name of spellNames(sheet)) {
+  const names = spellNames(sheet);
+  // A beam held from a scroll or an item, its spell on no list of theirs.
+  const held = sheet.concentratingOn;
+  if (held && spellMechFor([held])?.repeatDice && !names.some((name) => textKey(name) === textKey(held))) {
+    names.push(held);
+  }
+  for (const name of names) {
     const fact = factFor(name, options);
     if (!fact) continue;
     const card = spellCard(sheet, turn, riders, name, fact, options);

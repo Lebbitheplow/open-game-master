@@ -2894,7 +2894,7 @@ function directCards(context: TurnContext): DirectCard[] {
     if (!message.intent || !message.characterId || message.cardResolvedAt) {
       return [];
     }
-    const calls = directCardCalls(message.intent, message.characterId, directContextFor(context.campaign.id, message.intent, authors));
+    const calls = directCardCalls(message.intent, message.characterId, directContextFor(context.campaign.id, message.intent, authors, message.characterId));
     return (calls ?? []).map((call, index) => ({ messageId: message.id, index, ...call }));
   });
 }
