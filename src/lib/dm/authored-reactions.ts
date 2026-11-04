@@ -52,6 +52,8 @@ import { spentSlotRefusal } from "@/lib/dm/cast-rules";
 import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed, holdsFeature } from "@/lib/srd/feature-names";
 import { resourceName } from "@/lib/srd/class-resources";
+import { blowLandsOn, redirectTaker } from "@/lib/dm/redirect-target";
+import type { Combatant } from "@/lib/dm/combatant";
 
 type Found = { reaction: AuthoredReaction; held: HeldAuthored; holder: CharacterSheet; variant: string };
 
@@ -153,6 +155,21 @@ function saveDc(holder: CharacterSheet, ability: string): number {
     return derived.spellSaveDc ?? 8 + derived.proficiencyBonus + Math.max(derived.abilityMods.int, derived.abilityMods.wis, derived.abilityMods.cha);
   }
   return 8 + derived.proficiencyBonus + (derived.abilityMods[ability as keyof typeof derived.abilityMods] ?? 0);
+}
+
+// The creature a redirect turns the attack onto, or why there is none
+// (redirect-target.ts).
+function takerOf(ctx: Ctx, encounter: NonNullable<Ctx["encounter"]>, record: LastHit, reaction: string, closest: boolean): Combatant | ToolError {
+  return redirectTaker({
+    campaignId: ctx.campaign.id,
+    encounter,
+    holder: ctx.sheet,
+    attackerId: attackerFoeId(record),
+    attackerName: record.attacker.name,
+    named: ctx.args.targetEnemyId ?? ctx.args.targetCharacterId ?? null,
+    reaction,
+    closest,
+  });
 }
 
 function enemyTarget(ctx: Ctx, fallbackId: string | null): EncounterEnemy | null {
@@ -749,20 +766,17 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
     case "redirect": {
       const hit = lastHitOn(ctx, ctx.sheet, label);
       if ("error" in hit) return hit;
-      // Who takes the blow, settled before anything is rolled: someone beside the
-      // holder, and not the attacker itself.
-      const enemy = enemyTarget(ctx, null);
-      if (!enemy || !encounter) {
-        return { error: `${reaction.name} turns the attack onto the creature beside ${ctx.sheet.name}: pass its targetEnemyId. Nothing was spent.`, retry: true };
+      if (!encounter) {
+        return { error: `${reaction.name} turns an attack in a fight; there is no active encounter. Nothing was spent.`, refused: "rules" };
       }
-      if (enemy.id === attackerFoeId(hit.record)) {
-        return { error: `${reaction.name} turns the attack onto another creature, not ${enemy.displayName}, who made it. Nothing was spent.`, refused: "rules" };
-      }
-      if (!withinFeet(encounter.id, ctx.sheet.id, enemy.id, 5)) {
-        return { error: `${enemy.displayName} is not within 5 feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
-      }
+      // Who takes the blow, settled before anything is rolled: for
+      // Misdirection a creature beside the holder giving cover, for
+      // Instinctive Charm the one closest to the attacker (redirect-target.ts).
+      const taker = does.save ? null : takerOf(ctx, encounter, hit.record, reaction.name, false);
+      if (taker && "error" in taker) return taker;
       // Instinctive Charm: the attacker saves first, and keeps its target on
-      // a success.
+      // a success. What bars the attacker is asked before who is closest to it.
+      let charmed: Combatant | null = null;
       if (does.save) {
         // The attacker by its own id: targetEnemyId here is who takes the blow.
         const foeId = attackerFoeId(hit.record);
@@ -787,6 +801,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
         if (swayedBy.includes(ctx.sheet.id)) {
           return { error: `${attacker.displayName} has already resisted ${reaction.name}, and cannot be swayed again until ${ctx.sheet.name}'s long rest. Nothing was spent.`, refused: "rules" };
         }
+        const closest = takerOf(ctx, encounter, hit.record, reaction.name, true);
+        if ("error" in closest) return closest;
+        charmed = closest;
         const dc = saveDc(holder, does.save.dcAbility);
         const save = rollEnemySave(ctx.campaign.id, attacker, does.save.ability, dc, {
           magical: true,
@@ -805,11 +822,22 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
           return { applied: `${attacker.displayName} resists (${does.save.ability.toUpperCase()} ${save.total} vs DC ${dc}) and keeps its target; ${reaction.name} cannot sway it again until ${ctx.sheet.name}'s long rest.` };
         }
       }
+      const target = taker ?? charmed;
+      if (!target) return { error: `${reaction.name} found no creature to turn the attack onto. Nothing was spent.`, refused: "rules" };
       const swing = hit.record.swings[hit.index];
       const settled = settle(ctx, hit.record, hit.record.swings.map((entry, at) => (at === hit.index ? { ...entry, hit: false, raw: 0 } : entry)), label);
-      const applied = applyEnemyDamage(ctx.campaign, ctx.turn, encounter, enemy, swing.raw, ctx.sheets, ctx.sheetsById, swing.type ?? hit.record.type);
+      // The attack now targets that creature: its roll meets their AC.
+      const meets = blowLandsOn(ctx.campaign.id, target, swing);
+      if (!meets.lands || swing.raw < 1) {
+        publishEncounter(ctx.campaign.id);
+        return { applied: `The attack turns onto ${target.name} and misses (${swing.total} against AC ${meets.ac}): ${settled.given} hit points come back to ${ctx.sheet.name}.` };
+      }
+      const type = swing.type ?? hit.record.type;
+      const applied = target.kind === "enemy"
+        ? applyEnemyDamage(ctx.campaign, ctx.turn, encounter, target.enemy, swing.raw, ctx.sheets, ctx.sheetsById, type)
+        : applyPcDamage(ctx.campaign, ctx.turn.id, getSheetById(target.id) ?? target.sheet, { amount: swing.raw, type, crit: swing.crit, reason: `${hit.record.attacker.name}'s ${hit.record.attack}, turned by ${reaction.name}` });
       publishEncounter(ctx.campaign.id);
-      return { applied: `The blow lands on ${enemy.displayName} instead: ${settled.given} hit points come back to ${ctx.sheet.name}.`, redirected: applied };
+      return { applied: `The blow lands on ${target.name} instead: ${settled.given} hit points come back to ${ctx.sheet.name}.`, redirected: applied };
     }
     case "force_miss": {
       const target = allyOf(ctx) ?? ctx.sheet;

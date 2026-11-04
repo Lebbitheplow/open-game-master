@@ -212,8 +212,8 @@ export function reactionCards(
   // The Intelligence, Wisdom and Charisma saves made this turn against a
   // creature (PublicEncounter.lastSaves), which Vigilant Rebuke answers.
   saves: PublicSave[] = [],
-  // The creatures the Hand offers as foes, for a redirect's card to know
-  // whether one stands beside the character (reactionPicks).
+  // The creatures the Hand offers to aim at, friend or foe, for a redirect's
+  // card to know whether one stands beside the character (reactionPicks).
   foes?: Array<{ id: string }>,
 ): HandCard[] {
   const cards: HandCard[] = [];
@@ -296,7 +296,7 @@ export function reactionCards(
       for (const held of subclassReactions(sheet, hit, "self", feet)) {
         // A redirect needs someone else beside the holder to take the blow. With
         // no foes or distances given, it is open and the engine judges.
-        const beside = !held.pickWithin || !foes || !feet || pickableFoes(foes, held.pickWithin, hit.attackerId, feet).length > 0;
+        const beside = !held.pickWithin || !foes || !feet || pickableFoes(foes, held.pickWithin, { characterId: hit.characterId, attackerId: hit.attackerId, attacker: hit.attacker }, feet).length > 0;
         feature(hit, held.name, prompt, held.rules, held.target, {
           fallen: held.fallen && sheet.currentHp <= 0,
           range: held.range,
@@ -439,7 +439,7 @@ export function withReactions(reactions: HandCard[], hand: HandCard[]): HandCard
   return [...reactions, ...hand.filter((card) => !(card.cost === "reaction" && offered.has(textKey(card.name))))];
 }
 
-// A redirect lands on a creature this near the holder (authored-reactions.ts).
+// Misdirection's creature stands this near the holder (redirect-target.ts).
 const REDIRECT_FT = 5;
 
 // Soul of Vengeance's melee attack (authored-effects-data2.ts): the vowed
@@ -502,7 +502,9 @@ function reactionRules(does: ReactionDoes, hit: PublicLastHit): string {
     case "strike_back":
       return `Strike back: ${does.type}${does.orType ? ` or ${does.orType}` : ""} damage at the attacker.`;
     case "redirect":
-      return "The hit lands on the creature beside you instead.";
+      return does.save
+        ? "The attacker saves or turns the attack onto the creature closest to it."
+        : "The attack turns onto a creature beside you that gives you cover.";
     case "force_miss":
       return does.exhaustion
         ? `The hit becomes a miss, for ${does.exhaustion} level${does.exhaustion === 1 ? "" : "s"} of exhaustion.`
@@ -561,15 +563,26 @@ function subclassReactions(
       if (whose === "ally") {
         if (!inReach(feet, does.kind === "echo_hit" ? hit.attackerId : hit.characterId, reach)) continue;
       }
+      // Instinctive Charm sways an attacker within its 30 feet.
+      const charm = does.kind === "redirect" && Boolean(does.save);
+      if (charm && !inReach(feet, hit.attackerId, reach)) continue;
       const rules = reactionRules(does, hit);
       if (!rules) continue;
-      const target: HandTarget = does.kind === "strike_back" || does.kind === "redirect" ? "enemy" : whose === "ally" ? "ally" : "none";
+      // Misdirection's player picks the creature giving cover; Instinctive
+      // Charm's attacker turns on the creature closest to it, which the
+      // engine finds on the board (redirect-target.ts), so its card asks
+      // for nobody.
+      const misdirects = does.kind === "redirect" && !charm;
+      const target: HandTarget = does.kind === "strike_back" || misdirects ? "enemy" : whose === "ally" ? "ally" : "none";
       // A redirect lands on a creature beside the holder (use_reaction's 5 feet),
-      // a melee strike back has no reach of its own on record, and Shadow
-      // Martyr's only bar is seeing the ally and the attacker.
+      // Instinctive Charm reaches the attacker, a melee strike back has no
+      // reach of its own on record, and Shadow Martyr's only bar is seeing
+      // the ally and the attacker.
       const range =
-        does.kind === "redirect"
+        misdirects
           ? reachLabel(REDIRECT_FT)
+          : charm
+            ? reachLabel(reach)
           : target === "none"
             ? "Self"
             : does.kind === "strike_back" && does.melee && reach === undefined
@@ -584,22 +597,25 @@ function subclassReactions(
         range,
         // Asked by what it does to the hit, as the engine asks it (reaction-tools.ts).
         fallen: timingOfDoes(does) === "answers",
-        ...(does.kind === "redirect" ? { pickWithin: REDIRECT_FT } : {}),
+        ...(misdirects ? { pickWithin: REDIRECT_FT } : {}),
       });
     }
   }
   return out;
 }
 
-// The foes a card's player may pick from: for a redirect those beside the holder
-// other than the attacker. A foe the board gives no distance for is offered, and
-// the engine judges it, as inReach does.
+// The creatures a card's player may pick from: for a redirect those beside the
+// holder other than the attacker, friend or foe. One the board gives no distance
+// for is offered, and the engine judges it, as inReach does; so does whether it
+// stands between the attacker and the holder, which the Hand cannot see.
 export function reactionPicks<T extends { id: string }>(card: HandCard, foes: T[], feet?: Record<string, number>): T[] {
-  return card.pickWithin === undefined ? foes : pickableFoes(foes, card.pickWithin, card.answers?.attackerId, feet);
+  return card.pickWithin === undefined ? foes : pickableFoes(foes, card.pickWithin, card.answers, feet);
 }
 
-function pickableFoes<T extends { id: string }>(foes: T[], within: number, attackerId: string | null | undefined, feet?: Record<string, number>): T[] {
-  return foes.filter((foe) => foe.id !== attackerId && !((feet?.[foe.id] ?? 0) > within));
+// Neither the attacker nor the holder, whose own hit a redirect answers (the
+// holder of another hero's card is a chip like any ally's).
+function pickableFoes<T extends { id: string }>(foes: T[], within: number, hit: HandCard["answers"], feet?: Record<string, number>): T[] {
+  return foes.filter((foe) => foe.id !== hit?.attackerId && foe.id !== hit?.characterId && !((feet?.[foe.id] ?? 0) > within));
 }
 
 // The ally or attacker a reaction card is aimed at, fixed by the hit it

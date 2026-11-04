@@ -244,14 +244,15 @@ function HandInner({
   // The board measures from the viewer's own acting character, so its distances
   // say nothing of a companion or dominated hero the GM seat plays.
   const ownFeet = sheet?.userId === meUserId ? feet : undefined;
-  const foes = useMemo(
-    () => handTargets(encounter.enemies, sheets, sheet?.id, undefined, encounter.sides).filter((target) => target.kind === "enemy"),
+  // Everyone a redirect may turn a blow onto, friend or foe (Misdirection).
+  const creatures = useMemo(
+    () => handTargets(encounter.enemies, sheets, sheet?.id, undefined, encounter.sides),
     [encounter.enemies, sheets, sheet?.id, encounter.sides],
   );
   const reactions = useMemo(
     // Under the monsters' hand the hero hit is named, as the others are.
-    () => (sheet && turn ? holdSentReactions(reactionCards(sheet, turn, hits ?? [], sheets, reactionsOnly ? sheet.name : "you", feet, encounter.lastSaves, ownFeet ? foes : undefined), reactionsSent, sheet.id) : []),
-    [sheet, turn, hits, sheets, reactionsOnly, reactionsSent, feet, encounter.lastSaves, ownFeet, foes],
+    () => (sheet && turn ? holdSentReactions(reactionCards(sheet, turn, hits ?? [], sheets, reactionsOnly ? sheet.name : "you", feet, encounter.lastSaves, ownFeet ? creatures : undefined), reactionsSent, sheet.id) : []),
+    [sheet, turn, hits, sheets, reactionsOnly, reactionsSent, feet, encounter.lastSaves, ownFeet, creatures],
   );
   // A player's other characters hit while this one acts (a person playing
   // several heroes), and the companions they play: their reactions too, each
@@ -366,11 +367,15 @@ function HandInner({
   );
   const enemyTargets = useMemo(() => targets.filter((target) => target.kind === "enemy"), [targets]);
   const partyTargets = useMemo(() => targets.filter((target) => target.kind !== "enemy"), [targets]);
+  // A redirect's creature may be friend or foe, the acting hero too when the
+  // card is another hero's (reactionPicks leaves out the holder and the attacker).
+  const redirects = picked?.pickWithin !== undefined;
+  const pickable = useMemo(() => (redirects ? [...enemyTargets, ...partyTargets] : enemyTargets), [redirects, enemyTargets, partyTargets]);
 
   // A tap on the board while a card is raised arrives as the HUD's own
   // sentence in the message box; it is read here rather than stored, so the
   // board needs to know nothing about the Hand.
-  const boardName = !boardNative && picked?.target === "enemy" ? targetFromComposedText(input, enemyTargets.map((target) => target.name)) : null;
+  const boardName = !boardNative && picked?.target === "enemy" ? targetFromComposedText(input, pickable.map((target) => target.name)) : null;
   // A reaction answers one recorded attack: its target is fixed by it (the
   // attacker for Hellish Rebuke, the ally for Cutting Words), not picked.
   const fixed = picked?.intent.card === "reaction" && sheet ? reactionAim(picked, hits ?? [], picked.actor?.id ?? sheet.id, sheets) : null;
@@ -378,10 +383,10 @@ function HandInner({
   const offered = useMemo(() => fixedChip
     ? [fixedChip]
     : picked?.target === "enemy"
-      ? reactionPicks(picked, enemyTargets, picked.actor ? undefined : ownFeet)
+      ? reactionPicks(picked, pickable, picked.actor ? undefined : ownFeet)
       : picked?.target === "ally"
         ? partyTargets
-        : [], [fixedChip, picked, enemyTargets, partyTargets, ownFeet]);
+        : [], [fixedChip, picked, pickable, partyTargets, ownFeet]);
   const self = partyTargets.find((target) => target.kind === "self") ?? null;
   const aim =
     picked?.target === "self"

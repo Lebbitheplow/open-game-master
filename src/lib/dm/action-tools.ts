@@ -176,7 +176,7 @@ export const actionTools: ToolDef[] = [
           targetEnemyId: {
             type: "string",
             description:
-              "The enemy the reaction answers: exact enemyId from GAME STATE. Hellish Rebuke's attacker, Counterspell's caster, Deflect Missiles' shooter (to throw the missile back, 1 ki), an opportunity attack's target off the map, the creature beside the holder that Misdirection or Instinctive Charm turns the blow onto.",
+              "The enemy the reaction answers: exact enemyId from GAME STATE. Hellish Rebuke's attacker, Counterspell's caster, Deflect Missiles' shooter (to throw the missile back, 1 ki), an opportunity attack's target off the map, the creature Misdirection turns the blow onto (a character: targetCharacterId).",
           },
           spell: {
             type: "string",
