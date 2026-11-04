@@ -142,9 +142,6 @@ function enemyRider(onHit: CreatureOnHit): OnHitRider | undefined {
   if (onHit.exempt?.length) {
     return { manual: [`On a hit: ${onHitWords(onHit)}.`, ...manual] };
   }
-  if (onHit.unconsciousFailBy || onHit.unconsciousAtMost) {
-    manual.unshift(onHit.unconsciousFailBy ? `The target falls unconscious too if it fails the save by ${onHit.unconsciousFailBy} or more.` : `The target falls unconscious too on a save of ${onHit.unconsciousAtMost} or lower.`);
-  }
   const rider: OnHitRider = {
     ...(onHit.save ? { save: onHit.save } : {}),
     ...(onHit.dc ? { dc: onHit.dc } : {}),
@@ -157,6 +154,10 @@ function enemyRider(onHit: CreatureOnHit): OnHitRider | undefined {
     ...(onHit.repeatSave ? { repeatSave: true } : {}),
     ...(onHit.maxSize ? { maxSize: onHit.maxSize } : {}),
     ...(onHit.drainMaxHp ? { drainMaxHp: onHit.drainMaxHp } : {}),
+    // The sleep is the engine's on either side (enemy-hit.ts): a margin's
+    // wakes on damage, as natural-onhit.ts plays it for the party's own.
+    ...(onHit.unconsciousFailBy ? { unconsciousFailBy: onHit.unconsciousFailBy, wakesOnDamage: true } : {}),
+    ...(onHit.unconsciousAtMost ? { unconsciousAtMost: onHit.unconsciousAtMost, wakesOnDamage: true } : {}),
     ...(manual.length ? { manual: manual.slice(0, 6) } : {}),
   };
   return Object.keys(rider).length ? rider : undefined;
@@ -235,6 +236,8 @@ function creatureRider(onHit: OnHitRider): CreatureOnHit | undefined {
     ...(onHit.repeatSave ? { repeatSave: true } : {}),
     ...(onHit.maxSize ? { maxSize: onHit.maxSize } : {}),
     ...(onHit.drainMaxHp === "all" ? { drainMaxHp: "all" as const } : {}),
+    ...(onHit.unconsciousFailBy ? { unconsciousFailBy: onHit.unconsciousFailBy } : {}),
+    ...(onHit.unconsciousAtMost ? { unconsciousAtMost: onHit.unconsciousAtMost } : {}),
     ...(manual.length ? { manual: manual.slice(0, 6) } : {}),
   };
   return Object.keys(rider).length ? rider : undefined;

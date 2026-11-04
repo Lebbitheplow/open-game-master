@@ -57,7 +57,7 @@ export const startEncounterTool: ToolDef = {
           type: "array",
           items: { type: "string" },
           description:
-            "Those too far away to reach it in a few rounds, or unaware of it; behind a door is NOT absent. They roll no initiative and get no place in the order and no token until request_roll kind=initiative brings them in. Someone close but out of sight hears the fight, rolls initiative now and acts on their own turn. Omit it when everyone is near.",
+            "Too far to reach it in a few rounds, or unaware of it; behind a door is NOT absent. They roll no initiative and get no place in the order and no token until request_roll kind=initiative brings them in. Someone close but out of sight hears the fight, rolls initiative now and acts on their own turn. Omit it when everyone is near.",
         },
         ambush: {
           type: "string",
@@ -75,34 +75,34 @@ export const startEncounterTool: ToolDef = {
           type: "string",
           enum: sceneIds(),
           description:
-            "The battle map's ground, when it differs from the place's own. Such as the road outside town for an ambush. Omit it and the map follows the place.",
+            "The map's ground, if not the place's own. Such as the road outside town for an ambush. Omit it and the map follows the place.",
         },
         distanceFeet: {
           type: "integer",
           minimum: 5,
           description:
-            "Feet from the party to the nearest enemy as the fight opens, when the story has said. 5 for a foe at arm's length, 10 for one two paces off, 30 across a room. The battle map places them there, or as far off as it holds and the result says so. Omit it and an ambush or a fight indoors opens 30 feet apart, anything else across the field.",
+            "Feet to the nearest enemy at the start, when the story says. 5 for a foe at arm's length, 10 for one two paces off, 30 across a room. The battle map places them there, or as far off as it holds and the result says so. Omit it and an ambush or a fight indoors opens 30 feet apart, anything else across the field.",
         },
         lair: {
           type: "boolean",
-          description: "True in a legendary creature's lair: the lair acts on initiative 20 (lair_action).",
+          description: "True in a legendary creature's lair. The lair then acts on initiative 20 (lair_action).",
         },
         from: {
           type: "string",
           enum: ["ahead", "behind"],
           description:
-            "Where the enemy comes from against the travel formation: 'ahead' (the default) or 'behind'. The formation (GAME STATE) only places the party, with no surprise or bonus: ahead puts its front nearest them, behind its rear.",
+            "Against the travel formation: 'ahead' (the default) or 'behind'. The formation (GAME STATE) only places the party, with no surprise or bonus: ahead puts its front nearest them, behind its rear.",
         },
         building: {
           type: "object",
           description:
-            "The party inside a building, enemies outside on enemySide. A besieged house, a barricaded inn: the door faces them. The board draws it on the outdoor ground of scene, or on open ground if the place itself is indoors or underground; a scene that is indoors or underground is refused. Enemies open 30 feet from the party unless distanceFeet says, and the result says how far when a wall keeps them farther.",
+            "Party inside a building, enemies outside on enemySide. A besieged house, a barricaded inn: the door faces them. The board draws it on the outdoor ground of scene, or on open ground if the place itself is indoors or underground; a scene that is indoors or underground is refused. Enemies open 30 feet from the party unless distanceFeet says, and the result says how far when a wall keeps them farther.",
           properties: {
             enemySide: { type: "string", enum: [...BUILDING_SIDES] },
             openings: {
               type: "integer",
               maximum: MAX_OPENINGS,
-              description: "One door, the rest windows, at least 1. Default: 2. A window is seen and shot through, and only a flier or a jump crosses it.",
+              description: "A door, then windows. At least 1. Default: 2. A window is seen and shot through, and only a flier or a jump crosses it.",
             },
           },
           required: ["enemySide"],

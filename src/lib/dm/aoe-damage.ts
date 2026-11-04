@@ -22,6 +22,9 @@ import { trackEnemyConcentration } from "@/lib/dm/cast-tools";
 import { prepareEnemyUse, type EnemyUse } from "@/lib/dm/enemy-casting";
 import { layEnemyCondition, layFailedSaveExtras } from "@/lib/dm/cast-at-player";
 import { layEnemyConditionInstance } from "@/lib/dm/enemy-condition-lay";
+import { layEnemyUseOnEnemy } from "@/lib/dm/enemy-use-on-enemy";
+import { enemySpellPool } from "@/lib/dm/enemy-spell-pool";
+import { wakesOnDamage } from "@/lib/dm/condition-logic";
 import { canonicalCondition, castBarred } from "@/lib/dm/mutations";
 import { conditionNameRefusal } from "@/lib/dm/set-condition";
 import { charmedBy } from "@/lib/dm/enemy-profile";
@@ -404,10 +407,11 @@ export function handleAoeDamage(
     args.saveAbility = prepared.save ?? args.saveAbility;
     args.dc = prepared.dc ?? args.dc;
     corrections.push(...prepared.corrections);
-    if ((!args.saveAbility || !args.dc) && (enemyTargets.length || pcTargets.length)) {
+    // Sleep and Color Spray ask for no save: a pool of hit points (below).
+    if (!prepared.hitPointPool && (!args.saveAbility || !args.dc) && (enemyTargets.length || pcTargets.length)) {
       return { error: `${prepared.enemy.displayName}'s block gives ${prepared.name} no save and DC; send saveAbility and dc with it. Nothing was spent.`, retry: true };
     }
-    if (args.damage === undefined && !prepared.condition && !zoneRowFor(prepared.name)) {
+    if (args.damage === undefined && !prepared.condition && !prepared.hitPointPool && !zoneRowFor(prepared.name)) {
       return { error: `${prepared.name} forces no save with damage or a condition on ${prepared.enemy.displayName}'s block; narrate what it does, or use its attacks.`, retry: true };
     }
     // One breath, one cone: everyone caught fits one placement of the shape
@@ -427,6 +431,10 @@ export function handleAoeDamage(
       if (problem) {
         return problem;
       }
+    }
+    if (prepared.hitPointPool) {
+      const pooled = enemySpellPool(campaign, turn, prepared, { sheets: pcTargets, enemies: enemyTargets });
+      return corrections.length && !("error" in pooled) ? { ...pooled, corrected: corrections } : pooled;
     }
     prepared.commit();
   }
@@ -573,11 +581,24 @@ export function handleAoeDamage(
         const incoming = {
           ...(awayCaster ? { source: awayCaster.id } : {}),
           ...(args.rounds ? { rounds: args.rounds } : { saveEnds: { ability, dc: saveDc } }),
+          // A sleep the area lays by name wakes when hurt, as set_condition's
+          // does on a creature and as the same area's does on a character.
+          ...(wakesOnDamage(laysCondition, enemy.currentHp) ? { endsOnDamage: true } : {}),
         };
         if (layEnemyConditionInstance(campaign, getEnemy(enemy.id) ?? enemy, laysCondition, incoming)) {
           laid = [laysCondition];
           row.conditionApplied = laysCondition;
         }
+      }
+    }
+    if (!success && !plan && enemyUse?.condition) {
+      const used = layEnemyUseOnEnemy(campaign, getEnemy(enemy.id) ?? enemy, enemyUse, { ability, dc: saveDc });
+      if (used.laid.length) {
+        laid = [...laid, ...used.laid];
+        row.conditionApplied = laid.join(", ");
+      }
+      if (used.refused.length) {
+        row.conditionRefused = `${enemy.displayName} is immune to ${used.refused.join(" and ")}.`;
       }
     }
     const hpBefore = enemy.currentHp;

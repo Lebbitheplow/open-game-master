@@ -36,7 +36,9 @@ export const READING_KINDS = ["spell", "monster", "feat", "race", "class", "back
 //      call, and a slot, per creature out of a fight.
 //   5: issue 685's monster reader keeps each legendary option's whole line
 //      (fullLegendary) and reads a Swallow as the attack it is.
-export const READER_REVISION = 5;
+//   6: the monster reader takes a poisoned hit's sleep (a couatl's bite, a
+//      drow's bolt) and the second condition a hit's failed save lays.
+export const READER_REVISION = 6;
 export type ReadingKind = (typeof READING_KINDS)[number];
 export type ReadingSource = "hand-written" | "parsed" | "missing";
 

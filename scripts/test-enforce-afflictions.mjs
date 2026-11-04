@@ -155,6 +155,21 @@ await test("Long-term madness 96-100: no blow wakes the sleeper, and a sleep lai
   assert.equal(has(dozing.id, "unconscious"), false, "the draught's sleeper slept through the blow");
 });
 
+// A trap's block has no word on damage: the sleep a trap lays on everyone it
+// catches wakes when hurt, as the sleep its failed save lays does. With PR 788
+// an effect's own meta is its only word, and afflictCondition's said nothing.
+await test("A trap that leaves its victims asleep: damage wakes them, as set_condition's sleep does.", async () => {
+  const { springTrapOn } = await import("../src/lib/dm/trap-run.ts");
+  const { createDmTurn } = await import("../src/lib/db/dm-turns.ts");
+  const { listSheets } = await import("../src/lib/db/sheets.ts");
+  const napper = world.addHero({ class: "fighter", level: 3, maxHp: 30 });
+  const sheets = listSheets(world.campaignId);
+  springTrapOn(world.campaign(), createDmTurn(world.campaignId, [], "ai"), world.sheet(napper.id), "Sleeping gas", { kind: "mechanical", trigger: "", conditionsAlways: ["unconscious"], rounds: 100, summary: "" }, sheets, new Map(sheets.map((sheet) => [sheet.id, sheet])));
+  assert.equal(has(napper.id, "unconscious"), true);
+  await world.invoke("apply_damage", { characterId: napper.id, amount: 2, type: "bludgeoning", reason: "a slap" });
+  assert.equal(has(napper.id, "unconscious"), false, "the gas's sleeper slept through the blow");
+});
+
 await test("Essence of Ether: the sleeper wakes when hurt.", async () => {
   const dozy = world.addHero({ class: "fighter", level: 3, maxHp: 30 });
   await afflict({ characterId: dozy.id, kind: "poison", name: "Essence of Ether" }, [2]);

@@ -156,6 +156,19 @@ function checkOnHit(raw: unknown, attack: string): Checked<OnHitRider | null> {
   if (source.swallow === true) {
     rider.swallow = true;
   }
+  // A poison's sleep on a bad save (attack-text.ts), kept when a pack
+  // creature is borrowed into the workshop.
+  const failBy = clamp(source.unconsciousFailBy, 1, 30);
+  if (failBy !== null) {
+    rider.unconsciousFailBy = failBy;
+  }
+  const atMost = clamp(source.unconsciousAtMost, 1, 30);
+  if (atMost !== null && failBy === null) {
+    rider.unconsciousAtMost = atMost;
+  }
+  if (source.wakesOnDamage === true) {
+    rider.wakesOnDamage = true;
+  }
   const manual = (Array.isArray(source.manual) ? source.manual : [])
     .slice(0, MANUAL_CLAUSES)
     .map((clause) => text(clause, MANUAL_CLAUSE_MAX))
