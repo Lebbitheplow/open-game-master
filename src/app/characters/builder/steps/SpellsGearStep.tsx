@@ -363,10 +363,7 @@ export function SpellsSection({
   function focusTile(name: string) {
     const find = () => deskRef.current?.querySelector<HTMLElement>(`li[data-spell="${CSS.escape(name)}"] button`);
     find()?.focus();
-    window.setTimeout(() => {
-      const tile = find();
-      if (tile && tile !== document.activeElement) tile.focus();
-    }, 0);
+    window.setTimeout(() => find()?.focus(), 0);
   }
   function cancelSwap() {
     if (swap) {
