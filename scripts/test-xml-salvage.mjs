@@ -273,13 +273,20 @@ test("the draft never shows the block, however the chunks split it", () => {
 });
 
 test("the draft keeps prose that only looks like the dialect", () => {
-  const text = "The scroll says to <invoke the gods> before dawn. 3 < 5.";
-  for (const size of [1, 4, text.length]) {
-    const chunks = [];
-    for (let at = 0; at < text.length; at += size) {
-      chunks.push(text.slice(at, at + size));
+  // The second line names a "name" with no "=": stripToolText keeps it, so
+  // the draft must not hold everything after it back either.
+  for (const text of [
+    "The scroll says to <invoke the gods> before dawn. 3 < 5.",
+    'The priest cries "<invoke name of the drowned king>" and the water stills.',
+  ]) {
+    assert.equal(stripToolText(text), text);
+    for (const size of [1, 4, text.length]) {
+      const chunks = [];
+      for (let at = 0; at < text.length; at += size) {
+        chunks.push(text.slice(at, at + size));
+      }
+      assert.equal(streamed(chunks), text, `chunks of ${size}`);
     }
-    assert.equal(streamed(chunks), text, `chunks of ${size}`);
   }
 });
 

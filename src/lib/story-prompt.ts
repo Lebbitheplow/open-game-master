@@ -236,8 +236,10 @@ export function createStreamingArtifactFilter() {
         // naming its tool ("to=functions.request_roll"), are salvaged or cut
         // once the call completes (src/lib/dm/json-salvage.ts); the prose
         // before them streams, the call and anything after it wait. So with
-        // a call an agent program wrote out as an invoke tag (issue 794).
-        const bareJsonAt = pending.search(/\{\s*"|\bto=functions\.|<(?:[\w-]+:)?(?:invoke\s+name\b|function_calls\b)/i);
+        // a call an agent program wrote out as an invoke tag (issue 794),
+        // known by its name attribute as stripToolText knows it: a "name"
+        // with no "=" is prose, and holding it would stall the draft.
+        const bareJsonAt = pending.search(/\{\s*"|\bto=functions\.|<(?:[\w-]+:)?(?:invoke\s+name\s*=|function_calls\b)/i);
         if (bareJsonAt >= 0 && !STREAM_SUPPRESS_OPEN.test(pending.slice(0, bareJsonAt))) {
           output += pending.slice(0, bareJsonAt).replace(new RegExp(STREAM_STRIP.source, "gi"), "");
           pending = "";
