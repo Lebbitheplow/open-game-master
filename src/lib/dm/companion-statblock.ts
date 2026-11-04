@@ -7,6 +7,7 @@ import { PACT, type SlotPool, type Wear } from "@/lib/dm/return-wear-logic";
 import { computeSheetDerived } from "@/lib/srd";
 import { xpForCr } from "@/lib/srd/encounter-math";
 import { combatRiders } from "@/lib/srd/feature-effects";
+import { magicItemRiders } from "@/lib/srd/magic-items";
 import { averageOf } from "@/lib/srd/odds";
 import { spellLevelOf } from "@/lib/srd/spell-lists";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -95,7 +96,9 @@ function bestAttack(sheet: SheetForStats): { attack: EnemyAttack; sneak: number 
   const derived = computeSheetDerived(sheet);
   const riders = combatRiders({ class: sheet.class, level: sheet.level, features: sheet.features, classes: sheet.classes });
   const resolved = resolveAttackWeapon(sheet.equipment, sheet.proficiencies.weapons, undefined);
-  const profile = weaponAttackProfile(derived, sheet.proficiencies.weapons, resolved, { riders });
+  // What the sheet's worn items add, as its own swing has it (a pair of
+  // wraps, Bracers of Archery): rated without them, the block read weaker.
+  const profile = weaponAttackProfile(derived, sheet.proficiencies.weapons, resolved, { riders, worn: magicItemRiders(sheet.equipment, sheet).weaponRiders });
   return {
     attack: {
       name: profile.weapon,
