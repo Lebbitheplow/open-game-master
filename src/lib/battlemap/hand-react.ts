@@ -465,6 +465,8 @@ function reactionRules(does: ReactionDoes, hit: PublicLastHit): string {
         : "Raise the AC against the attack that hit: a swing it beats misses.";
     case "disadv_vs_hit":
       return "The attack that hit is rolled again at disadvantage.";
+    case "reroll_hit":
+      return "The attacker rolls the d20 again and must use the new roll.";
     case "resist_instance":
       return "Resistance to the damage of the attack that hit.";
     case "take_for_ally":
@@ -520,6 +522,7 @@ function subclassReactions(
           : (does.kind === "reduce" && does.who !== "self" && typed(does.types)) ||
             does.kind === "take_for_ally" ||
             does.kind === "uncrit" ||
+            does.kind === "reroll_hit" ||
             (does.kind === "ac_vs_hit" && Boolean(does.rangeFt)) ||
             (does.kind === "echo_hit" && Boolean(hit.attackerId)) ||
             (does.kind === "disadv_vs_hit" && Boolean(does.allyWith) && holdsFeature(sheet, does.allyWith!)) ||

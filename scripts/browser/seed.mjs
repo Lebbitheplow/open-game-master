@@ -2914,6 +2914,47 @@ const bench2Titles = {};
       turnOf(table, ranger.id);
       at.drake = { id: table.id, ranger: { id: ranger.id, name: ranger.name }, ally: { id: ally.id, name: ally.name } };
     }
+    // ---- 13: Runic Shield for an ally hit, inside its reach and out ----
+    // It covers a creature within 60 feet: Bran stands beside Runa, Tam 65 feet
+    // off, and a goblin's hit is open on each.
+    {
+      const table = tableFor(`Runic Shield Table (${viewport})`, player, world.owner);
+      const runa = sheets.createSheet(table.id, world.owner.id, 7, heroInput({
+        name: "Runa Stonehand", class: "fighter", subclass: "Rune Knight", level: 7, maxHp: 70,
+      }));
+      const ally = (name) => {
+        const bot = createCompanionUser(name);
+        const sheet = sheets.createSheet(table.id, bot.id, 5, heroInput({ name, class: "fighter", level: 5, maxHp: 44 }));
+        sheets.markSheetAsCompanion(sheet.id, "party", "Steady, and slow to speak.");
+        return sheet;
+      };
+      const [near, far] = [ally("Bran Holt"), ally("Tam Reed")];
+      const { rows, place } = await fightAt(table, player, [{ monster: "goblin", count: 2 }]);
+      const [g1, g2] = [named(rows, "goblin", 0), named(rows, "goblin", 1)];
+      [[runa.id, 0, 0], [near.id, 1, 0], [g1.id, 2, 0], [far.id, -13, 0], [g2.id, -14, 0]].forEach(([refId, dx, dy]) => place(refId, dx, dy));
+      turnOf(table, g1.id, { legendary: { due: [g1.id, g2.id] } });
+      await pass(table, [[g1.id, near.id, [15, 3]], [g2.id, far.id, [15, 3]]]);
+      turnOf(table, runa.id);
+      at.runic = { id: table.id, runa: { id: runa.id, name: runa.name }, near: { id: near.id, name: near.name }, far: { id: far.id, name: far.name } };
+    }
+    // ---- 14: the same reaction played from the GM's own seat, which the engine
+    // resolves as it is played (the actions route's direct card calls) ----
+    {
+      const table = tableFor(`Runic Shield GM Table (${viewport})`, world.owner, player);
+      const runa = sheets.createSheet(table.id, world.owner.id, 7, heroInput({
+        name: "Runa Stonehand", class: "fighter", subclass: "Rune Knight", level: 7, maxHp: 70,
+      }));
+      const bot = createCompanionUser("Bran Holt");
+      const near = sheets.createSheet(table.id, bot.id, 5, heroInput({ name: "Bran Holt", class: "fighter", level: 5, maxHp: 44 }));
+      sheets.markSheetAsCompanion(near.id, "party", "Steady, and slow to speak.");
+      const { rows, place } = await fightAt(table, world.owner, [{ monster: "goblin", count: 1 }]);
+      const goblin = named(rows, "goblin", 0);
+      [[runa.id, 0, 0], [near.id, 1, 0], [goblin.id, 2, 0]].forEach(([refId, dx, dy]) => place(refId, dx, dy));
+      turnOf(table, goblin.id, { legendary: { due: [goblin.id] } });
+      await pass(table, [[goblin.id, near.id, [15, 3]]]);
+      turnOf(table, runa.id);
+      at.runicGm = { id: table.id, runa: { id: runa.id, name: runa.name }, near: { id: near.id, name: near.name } };
+    }
     bench2[viewport] = at;
   }
 }

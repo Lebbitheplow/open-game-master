@@ -116,7 +116,8 @@
    "proficiency": 1,
    "recharge": "long",
    "action": "reaction",
-   "guidance": "A reaction forcing an attacker to reroll a hit against an ally within 60 feet."
+   "guidance": "Not spent with use_resource: use_reaction 'Runic Shield' when an attack hits an ally within 60 feet. The attacker rolls the d20 again and must use the new roll.",
+   "passive": true
   },
   {
    "id": "sub_unleash_incarnation",
