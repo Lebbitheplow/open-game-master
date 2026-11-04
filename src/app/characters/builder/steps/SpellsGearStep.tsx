@@ -357,9 +357,15 @@ export function SpellsSection({
   }
   // The tile by its spell, not whatever held focus at the tap: a tap on a
   // phone (WebKit) never focuses the button it lands on.
+  // At once, so focus leaves the question before it goes rather than falling
+  // to the page until a timer runs, and again once the change has rendered,
+  // for a tile the change re-made.
   function focusTile(name: string) {
+    const find = () => deskRef.current?.querySelector<HTMLElement>(`li[data-spell="${CSS.escape(name)}"] button`);
+    find()?.focus();
     window.setTimeout(() => {
-      deskRef.current?.querySelector<HTMLElement>(`li[data-spell="${CSS.escape(name)}"] button`)?.focus();
+      const tile = find();
+      if (tile && tile !== document.activeElement) tile.focus();
     }, 0);
   }
   function cancelSwap() {

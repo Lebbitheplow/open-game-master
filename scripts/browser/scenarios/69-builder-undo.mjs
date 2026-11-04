@@ -4,7 +4,7 @@
 // the card that was chosen. The button is reached by keyboard, and pressing
 // it returns the fighter with its subclass and fighting style; another
 // change offered again ends when the player leaves the step.
-import { check, eventually, currentStep, upTo } from "../lib.mjs";
+import { check, eventually, currentStep } from "../lib.mjs";
 
 export default {
   name: "builder-undo",
@@ -44,8 +44,21 @@ export default {
     }
     if (!reached) found.push("Shift+Tab never reached Put it back");
     await t.shot("offered");
+    // Focus leaves the button for the step's heading in the same press, before
+    // the bar goes. Moved on a timer, it sat on the page until the browser got
+    // to that timer after the re-render's frame, some 50 to 300 ms: this key's
+    // own keyup landed on the body every time, and a check made in that gap on
+    // CI read "focus fell to the page".
+    await page.evaluate(() => {
+      document.addEventListener("keyup", (event) => (window.__putBackKeyUp = event.target), { capture: true, once: true });
+    });
     if (reached) {
       await page.keyboard.press("Enter");
+      const keyUp = await page.evaluate(
+        (step) => (document.querySelector(step)?.contains(window.__putBackKeyUp) ? "" : `${window.__putBackKeyUp?.tagName}`),
+        active,
+      );
+      if (keyUp) found.push(`the Enter that pressed Put it back came up on ${keyUp}, outside the step`);
     } else {
       await t.tap(bar.locator("button").first());
     }
@@ -56,14 +69,8 @@ export default {
     if (!/Champion/.test(subclassText)) found.push(`the subclass reads "${subclassText}" after Put it back`);
     const back = (await said.textContent())?.trim() ?? "";
     if (back !== "Put back Fighter and its picks.") found.push(`after Put it back the live region says "${back}"`);
-    // The builder moves focus on a zero-delay timer as the button goes (putBack,
-    // CharacterBuilder.tsx). Checked at once, this failed now and then in CI at
-    // desktop width and was not reproduced, so it allows a late landing and says
-    // where focus was if it never lands in the step.
-    const landed = await upTo(() => page.locator(active).evaluate((node) => node.contains(document.activeElement)), 3_000);
-    if (!landed) {
-      const where = await page.evaluate(() => `${document.activeElement?.tagName}.${document.activeElement?.className}; heading: ${document.querySelectorAll("section[data-active] .wizard-step-heading").length}`);
-      found.push(`focus left the step after Put it back (on ${where})`);
+    if (!(await page.locator(active).evaluate((node) => node.contains(document.activeElement)))) {
+      found.push("focus left the step after Put it back");
     }
 
     // Offered again, then the step is left: the undo goes.
