@@ -5,7 +5,7 @@
 // page can see: the numbers where a parked roll stands, finger-sized, inside
 // the phone's width, in the day and night themes and in the app shell.
 import { request } from "playwright-core";
-import { axeViolations, check, eventually, untilStill } from "../lib.mjs";
+import { axeViolations, check, eventually, openPanelTab, untilStill } from "../lib.mjs";
 
 const GROUP = '[role="group"][aria-label="Use a number Portent foretold"]';
 
@@ -63,6 +63,25 @@ const scenario = {
       const hero = snapshot.sheets.find((sheet) => sheet.id === table.hero);
       check(JSON.stringify(hero?.foretold) === "[3]", `the 17 is gone and the 3 stays (${JSON.stringify(hero?.foretold)})`);
       check(hero?.resources?.sub_portent?.used === 1, `one use spent (${JSON.stringify(hero?.resources?.sub_portent)})`);
+
+      // The sheet lists what is left.
+      await openPanelTab(t, "party");
+      const card = page.locator(`${root}[data-party-card="${table.hero}"]`).locator("visible=true").first();
+      await eventually(() => card.count(), { timeoutMs: 30_000, label: "the hero's party card" });
+      await untilStill(page);
+      await t.tap(card.getByRole("button", { name: `Options for ${hero.name}` }));
+      await t.tap(page.getByRole("menuitem", { name: "View sheet" }));
+      const dialog = page.getByRole("dialog").filter({ hasText: hero.name }).first();
+      await eventually(() => dialog.count(), { label: "the hero's sheet" });
+      const line = dialog.getByText("Foretold rolls: 3", { exact: true });
+      await eventually(() => line.count(), { timeoutMs: 15_000, label: "the foretold line on the sheet" });
+      await line.scrollIntoViewIfNeeded();
+      await untilStill(page);
+      await t.shot("sheet");
+      await page.evaluate(() => (document.documentElement.dataset.theme = "light"));
+      await untilStill(page);
+      await t.shot("sheet-day");
+      await page.evaluate(() => (document.documentElement.dataset.theme = "dark"));
     } finally {
       await gm.dispose();
     }
