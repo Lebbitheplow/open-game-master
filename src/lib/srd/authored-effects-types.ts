@@ -285,6 +285,9 @@ export type SpendDoes =
       condition: string | Array<[number, string]>;
       rounds: number;
       target?: "self" | "ally" | "enemy" | "allies";
+      // An ally other than the holder ("a willing creature other than
+      // yourself": Blessing of the Trickster): the holder is no target.
+      othersOnly?: boolean;
       variants?: Record<string, string>;
       tempHp?: Formula;
       rangeFt?: number;

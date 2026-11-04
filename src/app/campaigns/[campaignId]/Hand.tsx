@@ -380,7 +380,7 @@ function HandInner({
     : picked?.target === "enemy"
       ? reactionPicks(picked, enemyTargets, picked.actor ? undefined : ownFeet)
       : picked?.target === "ally"
-        ? partyTargets
+        ? picked.othersOnly ? partyTargets.filter((target) => target.kind !== "self") : partyTargets
         : [], [fixedChip, picked, enemyTargets, partyTargets, ownFeet]);
   const self = partyTargets.find((target) => target.kind === "self") ?? null;
   const aim =

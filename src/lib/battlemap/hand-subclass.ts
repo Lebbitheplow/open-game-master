@@ -182,6 +182,7 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
       ...(perUnit ? { unit: pool!.id === "ki" ? "ki" : "points" } : {}),
       ...(pool ? { pool: pool.id } : {}),
       intent: { card: "feature", resourceId: spend.name, ...(aim.variant ? { variant: aim.variant } : {}) },
+      ...(does.kind === "buff" && does.othersOnly ? { othersOnly: true } : {}),
     };
     if (does.kind === "buff" && does.variants) {
       // One pick per outcome: Adjust Density's "halve" is another word for "lighter".
