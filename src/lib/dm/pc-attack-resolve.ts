@@ -4,6 +4,7 @@
 // Split from pc-attack.ts, which has already refused or paid for everything
 // this rolls; nothing here refuses the attack.
 
+import { getActiveEncounter } from "@/lib/db/encounters";
 import { settleAttackDie } from "@/lib/dm/forced-save";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { openLastHit } from "@/lib/dm/last-hit";
@@ -402,19 +403,16 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike): Record<string, u
   // Great Weapon Master: a melee weapon crit or kill opens a bonus-action
   // melee attack this turn (pc-attack-options.ts reads the key).
   if (
-    plan.weaponAttack && !profile.ranged && !plan.atRange && (crit || applied.dead) && budget &&
+    plan.weaponAttack && !profile.ranged && !plan.atRange && (crit || applied.dead) && budget && !applied.encounterOver &&
     holdsFeat(sheet, "Great Weapon Master") && !budget.oncePerTurn.includes(GREAT_WEAPON_MASTER_READY)
   ) {
-    budget.oncePerTurn.push(GREAT_WEAPON_MASTER_READY);
-    // The budget was stored before the roll; the key goes on the stored copy.
-    storeBudget(encounter, budget);
+    markLiveTurn(campaign.id, budget, GREAT_WEAPON_MASTER_READY);
     context.notes.push(`Great Weapon Master: ${crit ? "the critical hit" : "the kill"} opens a bonus-action melee attack this turn (an entry with feature "Great Weapon Master")`);
   }
   // Tavern Brawler: a hit with an unarmed strike or an improvised weapon
   // opens a bonus-action grapple (take_action grapple, action-tools.ts).
-  if ((profile.unarmed || profile.improvised) && !profile.ranged && budget && brawlerUnarmed(sheet) && !budget.oncePerTurn.includes(TAVERN_GRAPPLE_READY)) {
-    budget.oncePerTurn.push(TAVERN_GRAPPLE_READY);
-    storeBudget(encounter, budget);
+  if ((profile.unarmed || profile.improvised) && !profile.ranged && budget && !applied.encounterOver && brawlerUnarmed(sheet) && !budget.oncePerTurn.includes(TAVERN_GRAPPLE_READY)) {
+    markLiveTurn(campaign.id, budget, TAVERN_GRAPPLE_READY);
     context.notes.push("Tavern Brawler: the hit opens a bonus-action grapple this turn (take_action grapple)");
   }
   // What the hit leaves on the target: Stunning Sniper's stun, Slasher's
@@ -477,6 +475,19 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike): Record<string, u
         ? `The blow lands and does no harm: its damage came to 0. Narrate a hit that fails to hurt ${enemy.displayName}.`
         : `The server already applied this damage to ${enemy.displayName}. Do NOT call apply_damage for this hit; narrate from this state.`,
   };
+}
+
+// A mark a landed blow earns goes on the encounter as it now stands. The plan's
+// copy predates the blow, and storing it undid what the blow wrote: the end of
+// the fight (which then stood open for end_encounter to pay its XP again) and a
+// legendary creature's failed save. The plan's budget takes the mark too, since
+// what this attack stores later (Slasher, Crusher) still writes that copy.
+function markLiveTurn(campaignId: string, budget: TurnBudget, key: string) {
+  budget.oncePerTurn.push(key);
+  const live = getActiveEncounter(campaignId);
+  if (live?.turnBudget?.ownerId === budget.ownerId) {
+    storeBudget(live, { ...live.turnBudget, oncePerTurn: [...live.turnBudget.oncePerTurn, key] });
+  }
 }
 
 // Pays for a rescued miss: Foe Slayer's once a turn, or Stroke of Luck's use.
