@@ -38,6 +38,9 @@ const warlock = hero({ class: "warlock", spellcasting: { ability: "cha", slots, 
 const light = hero({ class: "cleric", subclass: "Light Domain" });
 const stalker = hero({ class: "ranger", subclass: "Gloom Stalker" });
 const friend = hero({ class: "fighter", subclass: "Champion" });
+const hexblade = hero({ class: "warlock", subclass: "The Hexblade" });
+const runeKnight = hero({ class: "fighter", subclass: "Rune Knight" });
+const echoKnight = hero({ class: "fighter", subclass: "Echo Knight" });
 
 async function stage(who, hp = 8) {
   await kit.endFight();
@@ -152,6 +155,50 @@ await test("A holder who is down has no card for a hit on someone else.", async 
     assert.ok(card.disabled, `${card.name} is shut`);
     assert.ok(intentRefusal(getCampaignById(world.campaignId), world.sheet(light.id), card.intent), `${card.name} is refused`);
   }
+});
+
+await test("Armor of Hexes turns the cursed creature's hit aside: a card for a warlock that hit dropped, and none against another attacker.", async () => {
+  const enemy = await stage(hexblade);
+  const curse = (quarry) => world.patch(hexblade.id, { currentHp: 8, conditions: ["hexblade's curse"], conditionMeta: { "hexblade's curse": { quarry } } });
+  curse(enemy.id);
+  await strike(enemy, hexblade);
+  assert.equal(world.sheet(hexblade.id).currentHp, 0);
+  const card = cardOf(hexblade, "Armor of Hexes");
+  assert.ok(card, "Armor of Hexes is offered");
+  assert.equal(card.disabled, null, card.disabled);
+  assert.equal(intentRefusal(getCampaignById(world.campaignId), world.sheet(hexblade.id), card.intent), null);
+  world.dice(5);
+  const out = await world.invoke("use_reaction", { characterId: hexblade.id, feature: "Armor of Hexes" });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.sheet(hexblade.id).currentHp, 8, "a 5 on the d6 turns the hit into a miss");
+
+  const other = await stage(hexblade, 50);
+  curse("someone-else");
+  await strike(other, hexblade, [16, 4]);
+  assert.equal(cardOf(hexblade, "Armor of Hexes"), undefined, "no card against a creature the curse does not name");
+});
+
+await test("A fallen Rune Knight or Echo Knight is refused for an ally's hit for being down, not for following damage.", async () => {
+  const enemy = await stage(friend, 50);
+  for (const who of [runeKnight, echoKnight]) {
+    world.patch(who.id, { currentHp: 0, conditions: ["unconscious", "prone"], conditionMeta: {}, deathSaves: { successes: 0, failures: 0, stable: false } });
+  }
+  await strike(enemy, friend, [16, 4]);
+  for (const [who, name] of [[runeKnight, "Runic Shield"], [echoKnight, "Shadow Martyr"]]) {
+    const card = cardOf(who, name);
+    assert.ok(card, `${name} is dealt, shut`);
+    assert.match(card.disabled, /at 0 HP/);
+    const refused = intentRefusal(getCampaignById(world.campaignId), world.sheet(who.id), { ...card.intent, targetKind: "ally", targetId: friend.id }) ?? "";
+    assert.match(refused, /at 0 HP/);
+    assert.doesNotMatch(refused, /follows the damage/);
+    world.dice(2);
+    const out = await world.invoke("use_reaction", { characterId: who.id, feature: name, targetCharacterId: friend.id });
+    world.clearDice();
+    assert.equal(out.ok, false);
+    assert.doesNotMatch(out.error, /follows the damage/);
+  }
+  assert.equal(world.sheet(friend.id).currentHp, 44);
 });
 
 await test("A standing holder's card is open as before.", async () => {

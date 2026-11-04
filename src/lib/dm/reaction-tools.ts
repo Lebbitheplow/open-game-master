@@ -428,8 +428,7 @@ export function timingOfUseReaction(
   sheets: CharacterSheet[],
   sheetsById: Map<string, CharacterSheet>,
 ): ReactionTiming {
-  const other = args.targetCharacterId ? resolveSheetRef(args.targetCharacterId, sheets, sheetsById) : null;
-  if (other && other.id !== sheet.id) {
+  if (reactsForAnother(sheet, args, sheets, sheetsById)) {
     return "after";
   }
   const feature = args.feature.trim();
@@ -443,6 +442,17 @@ export function timingOfUseReaction(
     return reactionTimingOf(spellEngineName(spell.name, authors));
   }
   return reactionTimingOf(feature);
+}
+
+// Whether the call names another creature the reaction answers for.
+export function reactsForAnother(
+  sheet: CharacterSheet,
+  args: Pick<Args, "targetCharacterId">,
+  sheets: CharacterSheet[],
+  sheetsById: Map<string, CharacterSheet>,
+): boolean {
+  const other = args.targetCharacterId ? resolveSheetRef(args.targetCharacterId, sheets, sheetsById) : null;
+  return Boolean(other && other.id !== sheet.id);
 }
 
 // The reactions that answer a hit on the reactor alone (SRD 5.1: Uncanny
@@ -538,7 +548,7 @@ function useReaction(
 ): ToolResult {
   const encounter = getActiveEncounter(campaign.id);
   const feature = args.feature.trim();
-  const refused = reactionRefusal(campaign.id, sheet, encounter, feature, timingOfUseReaction(campaign, sheet, args, sheets, sheetsById));
+  const refused = reactionRefusal(campaign.id, sheet, encounter, feature, timingOfUseReaction(campaign, sheet, args, sheets, sheetsById), reactsForAnother(sheet, args, sheets, sheetsById));
   if (refused) {
     return refused;
   }

@@ -36,7 +36,7 @@ import { resourceDef } from "@/lib/srd/class-resources";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { vowedFoe } from "@/lib/srd/vow-of-enmity";
-import { holdsFeature, isNamed } from "@/lib/srd/feature-names";
+import { holdsFeature, isConditionNamed, isNamed } from "@/lib/srd/feature-names";
 
 // A Battle Master maneuver's card wears its painting.
 const MANEUVER_ICON = (name: string): HandCard["icon"] => ({ kind: "option", key: `Maneuver: ${name}`, family: "option-maneuver" });
@@ -509,6 +509,8 @@ function reactionRules(does: ReactionDoes, hit: PublicLastHit): string {
         : "The hit becomes a miss.";
     case "echo_takes_hit":
       return "Your echo takes the attack: the hit becomes a miss.";
+    case "chance_miss":
+      return `Roll ${does.die}: on ${does.min} or higher the attack misses.`;
     default:
       return "";
   }
@@ -544,6 +546,7 @@ function subclassReactions(
             does.kind === "redirect" ||
             does.kind === "force_miss" ||
             does.kind === "uncrit" ||
+            (does.kind === "chance_miss" && (!does.vsMark || markedBy(sheet, does.vsMark, hit.attackerId))) ||
             (does.kind === "strike_back" && !does.afterSave && Boolean(hit.attackerId) && !(does.melee && hit.ranged))
           : (does.kind === "reduce" && does.who !== "self" && typed(does.types)) ||
             does.kind === "take_for_ally" ||
@@ -586,6 +589,14 @@ function subclassReactions(
     }
   }
   return out;
+}
+
+// Whether the holder's mark (Armor of Hexes' Hexblade's Curse) names this
+// attacker, as use_reaction asks it (authored-reactions.ts chance_miss).
+function markedBy(sheet: CharacterSheet, mark: string, attackerId: string | null | undefined): boolean {
+  const held = sheet.conditions.find((entry) => isConditionNamed(entry, mark));
+  const quarry = held ? (sheet.conditionMeta as Record<string, { quarry?: string } | undefined> | undefined)?.[held]?.quarry : undefined;
+  return Boolean(quarry && quarry === attackerId);
 }
 
 // The foes a card's player may pick from: for a redirect those beside the holder
