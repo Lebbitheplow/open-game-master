@@ -343,6 +343,19 @@ await test("An attack still takes a held die as it always did, and no pause: tha
   await kit.endFight();
 });
 
+await test("A halfling's Lucky trait holds no luck points, and a stored counter goes at the next resync; the feat holds them.", async () => {
+  const { populateResources } = await import("../src/lib/srd/class-resources.ts");
+  const halfling = world.addHero({ user: who.player, race: "halfling", class: "fighter", level: 5, proficiencies: TRAINED, features: [{ name: "Lucky", source: "race", level: 1 }] });
+  const sheet = world.sheet(halfling.id);
+  assert.ok(sheet.features.some((feature) => feature.source === "race" && /^lucky/i.test(feature.name)), "the trait is on the sheet");
+  assert.equal(sheet.resources.luck_points, undefined, "no points from the trait: this was the bug");
+  // A row written before the fix keeps its counter until the boot resync,
+  // which drops it (src/lib/db/core.ts reads populateResources).
+  const resynced = populateResources(sheet.features, 5, {}, { ...sheet.resources, luck_points: { max: 3, used: 1 } }, undefined, []);
+  assert.equal(resynced.luck_points, undefined);
+  assert.equal(populateResources(sheet.features, 5, {}, {}, undefined, ["Lucky"]).luck_points?.max, 3, "the feat still holds three");
+});
+
 // ---- the AI's turn ----
 
 const table = await openWorld({ gameSettings: { ttsEnabled: false } });

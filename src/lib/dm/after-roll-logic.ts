@@ -15,8 +15,7 @@
 
 import type { DiceTerm, DieResult, RollResult } from "@/lib/dice";
 import { luckPointsLeft } from "@/lib/srd/class-resources";
-import { hasHalflingLuck } from "@/lib/srd/feature-effects";
-import { holdsFeature, isNamed } from "@/lib/srd/feature-names";
+import { holdsFeature } from "@/lib/srd/feature-names";
 import { textKey } from "@/lib/language/text-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -88,11 +87,11 @@ function leadD20(outcome: RollResult): DiceTerm | null {
   return lead && lead.kind === "dice" && lead.sides === 20 && lead.sign === 1 ? lead : null;
 }
 
-// A luck point the character can spend. A halfling's own Lucky trait shares
-// the feat's name and comes with a counter of its own for no reason of the
-// rules: the trait rerolls a natural 1 by itself, and offers no point.
+// A luck point the character can spend. Only the feat holds them: a
+// halfling's Lucky trait gets no counter (src/lib/srd/class-resources.ts
+// featOnly).
 export function holdsLuckPoint(sheet: CharacterSheet): boolean {
-  return luckPointsLeft(sheet.resources) > 0 && (!hasHalflingLuck(sheet) || sheet.feats.some((feat) => isNamed(feat, "lucky", "fortunate")));
+  return luckPointsLeft(sheet.resources) > 0;
 }
 
 // The die the warlock would add: one already called up and held on them

@@ -2268,7 +2268,7 @@
     "lib/srd/class-resources.ts#[a-z]": [["display",1,"an SRD spell name title-cased"],["english-source",1,"the use count the builder writes on a feature name (\"(3 uses)\")"]],
     "lib/srd/class-resources.ts#\\b": [["key",4,"the engine's own dice formula"]],
     "lib/srd/class-resources.ts#re-word": [["key",2,"resource formula tokens"],["english-source",2,"the use count the builder writes on a feature name (\"(3 uses)\")"],["key",1,"a subclass counter's id prefix (sub_) dropped for its shown name"]],
-    "lib/srd/class-resources.ts#str-eq": [["key",3,"formula tokens and class ids"]],
+    "lib/srd/class-resources.ts#str-eq": [["key",3,"formula tokens and class ids"],["key",1,"a feature's source, the sheet schema's enum"]],
     "lib/srd/class-resources.ts#str-list": [["english-source",3,"reference: SRD feature names and ODM's resource rows (bundled data)"],["key",1,"class ids"]],
     "lib/srd/class-resources.ts#toLowerCase": [["key",8,"class ids"]],
     "lib/srd/class-resources.ts#toUpperCase": [["display",1,"an SRD spell name title-cased"],["display",1,"a counter's id capitalised as its shown name"]],
