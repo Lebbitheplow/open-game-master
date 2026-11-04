@@ -81,5 +81,19 @@ await test("A card paid from a shared pool names the pool, ready or spent.", () 
   assert.ok(checked >= 5, `only ${checked} cards checked`);
 });
 
+// The engine's own words name the pool too: a refusal shown on a card, or to
+// the GM, read "psionic energy" for Psionic Energy Dice.
+await test("The engine names a pool by its name when it refuses a spend.", async () => {
+  const hero = world.addHero({ user: world.owner, class: "fighter", subclass: "Psi Warrior", level: 7, abilities, maxHp: 80, proficiencies: TRAINED });
+  const full = await world.invoke("use_resource", { characterId: hero.id, resource: "Psionic Recovery" });
+  assert.equal(full.ok, false);
+  assert.match(full.error, /Psionic Energy Dice is full/, full.error);
+  const { sub_psionic_energy: _gone, ...rest } = world.sheet(hero.id).resources;
+  world.patch(hero.id, { resources: rest });
+  const none = await world.invoke("use_resource", { characterId: hero.id, resource: "Psionic Recovery" });
+  assert.equal(none.ok, false);
+  assert.match(none.error, /no Psionic Energy Dice to restore/, none.error);
+});
+
 world.close();
 finish();

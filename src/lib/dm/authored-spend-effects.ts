@@ -34,6 +34,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { creditFeatureTeleport } from "@/lib/dm/feature-teleport";
 import { isConditionNamed, isNamed, nameChoice } from "@/lib/srd/feature-names";
 import { swallowCoverBetween, swallowCoverError } from "@/lib/dm/swallow";
+import { resourceName } from "@/lib/srd/class-resources";
 
 // A spend's damage on one enemy, as the holder's dice card.
 const damageDice = (ctx: SpendContext, enemy: EncounterEnemy, dice: string) =>
@@ -390,14 +391,14 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
     case "restore": {
       const state = sheet.resources[does.pool];
       if (!state) {
-        return { error: `${sheet.name} has no ${does.pool.replace(/^sub_/, "").replace(/_/g, " ")} to restore. Nothing was spent.`, refused: "rules" };
+        return { error: `${sheet.name} has no ${resourceName(does.pool)} to restore. Nothing was spent.`, refused: "rules" };
       }
       if (state.used <= 0) {
-        return { error: `${sheet.name}'s ${does.pool.replace(/^sub_/, "").replace(/_/g, " ")} is full; ${ctx.spend.name} has nothing to bring back. Nothing was spent.`, refused: "rules" };
+        return { error: `${sheet.name}'s ${resourceName(does.pool)} is full; ${ctx.spend.name} has nothing to bring back. Nothing was spent.`, refused: "rules" };
       }
       const back = Math.min(does.amount, state.used);
       const resources = { ...sheet.resources, [does.pool]: { max: state.max, used: state.used - back } };
-      return { patch: { resources }, result: { restored: `${back} ${does.pool.replace(/^sub_/, "").replace(/_/g, " ")} back (${state.max - state.used + back}/${state.max}).` } };
+      return { patch: { resources }, result: { restored: `${back} ${resourceName(does.pool)} back (${state.max - state.used + back}/${state.max}).` } };
     }
     case "flames": {
       const wanted = does.healOnly ? "heal" : textKey(ctx.args.variant ?? "");

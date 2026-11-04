@@ -51,6 +51,7 @@ import { swallowCoverError } from "@/lib/dm/swallow";
 import { spentSlotRefusal } from "@/lib/dm/cast-rules";
 import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed, holdsFeature } from "@/lib/srd/feature-names";
+import { resourceName } from "@/lib/srd/class-resources";
 
 type Found = { reaction: AuthoredReaction; held: HeldAuthored; holder: CharacterSheet; variant: string };
 
@@ -281,7 +282,7 @@ export function authoredReaction(ctx: Ctx): ToolResult | null {
     const state = holder.resources?.[pool.id];
     const amount = pool.amount ?? 1;
     if (!state || state.max - state.used < amount) {
-      return { error: `${holder.name} has nothing left to spend on ${reaction.name} (${pool.id.replace(/^sub_/, "").replace(/_/g, " ")}). Nothing was spent.`, refused: "rules" };
+      return { error: `${holder.name} has nothing left to spend on ${reaction.name} (${resourceName(pool.id)}). Nothing was spent.`, refused: "rules" };
     }
     paid = () => {
       const now = getSheetById(holder.id) ?? holder;
