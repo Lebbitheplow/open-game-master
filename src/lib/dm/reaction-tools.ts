@@ -44,7 +44,7 @@ import { answerKey, answeredBy, attackerFoeId, cutBlow, freshLastHit, heaviestHi
 import type { RollAttacker } from "@/lib/db/rolls";
 import { rollAgainst } from "@/lib/roll-labels";
 import { opportunity, reactionSpell } from "@/lib/dm/reaction-spells";
-import { settleLastHit } from "@/lib/dm/reaction-refund";
+import { reactionPatch, settleLastHit } from "@/lib/dm/reaction-refund";
 import { asReaction, lateReaction } from "@/lib/dm/held-turn";
 import { authoredReaction } from "@/lib/dm/authored-reactions";
 import { freeAuthoredReaction } from "@/lib/dm/authored-reactions-more";
@@ -216,10 +216,7 @@ function throwBack(ctx: Ctx, record: LastHit, monkLevel: number): Record<string,
   if ("error" in ki) {
     return { error: `${ki.error} The missile was caught and kept.` };
   }
-  const paid = patchSheet(sheet.id, { resources: ki.resources });
-  if (paid) {
-    publishPersisted(campaign.id, "sheet_updated", { sheet: paid });
-  }
+  reactionPatch(campaign, ctx.turn.id, sheet.id, { resources: ki.resources }, "Deflect Missiles: a ki point to throw it back");
   const derived = computeSheetDerived(sheet);
   const bonus = derived.abilityMods.dex + derived.proficiencyBonus;
   const thrower: RollAttacker = { kind: "sheet", id: sheet.id, name: sheet.name };
@@ -278,12 +275,10 @@ function cuttingWords(ctx: Ctx): ToolResult {
     return walled;
   }
   spendReaction(ctx);
-  const spentPool = patchSheet(sheet.id, {
+  // Audited, so "Revert this turn" gives the die back with the reaction.
+  reactionPatch(campaign, ctx.turn.id, sheet.id, {
     resources: { ...sheet.resources, bardic_inspiration: { max: pool.max, used: pool.used + 1 } },
-  });
-  if (spentPool) {
-    publishPersisted(campaign.id, "sheet_updated", { sheet: spentPool });
-  }
+  }, "Cutting Words: a Bardic Inspiration die");
   const dieExpression = bardDie(sheet);
   const die = rollCard(campaign, ctx.turn, sheet.id, "custom", `${sheet.name}: Cutting Words`, dieExpression, null).total;
   const swing = record.swings[index];

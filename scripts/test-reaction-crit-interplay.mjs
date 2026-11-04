@@ -20,6 +20,9 @@ const { reactionCards } = await import("../src/lib/battlemap/hand-react.ts");
 const { activePublicEncounter } = await import("../src/lib/db/encounter-view.ts");
 const { onPersonsTurn } = await import("../src/lib/dm/invoke.ts");
 const { handleEnemyAttack } = await import("../src/lib/dm/enemy-attack.ts");
+const { createDmTurn } = await import("../src/lib/db/dm-turns.ts");
+const { invokeEngine } = await import("../src/lib/dm/invoke.ts");
+const revertRoute = await world.route("campaigns/[campaignId]/audit/revert-turn");
 
 const hero = (classId, subclass, level = 20, more = {}) =>
   world.addHero({
@@ -187,6 +190,52 @@ await test("Two Lore bards each take Cutting Words off the same hit.", async () 
   const twice = await react(bard, "Cutting Words", ally, [4]);
   assert.equal(twice.ok, false);
 });
+
+// A reaction played in a GM turn of its own, then that turn reverted.
+async function reactInTurn(holder, feature, target, faces) {
+  const turnId = createDmTurn(world.campaignId, [], "ai").id;
+  world.dice(...faces);
+  const out = await invokeEngine(world.campaign(), { kind: "ai", turnId }, { name: "use_reaction", args: { characterId: holder.id, feature, ...(target ? { targetCharacterId: target.id } : {}) } });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  return turnId;
+}
+async function revert(turnId) {
+  world.signIn(world.owner);
+  const response = await revertRoute.POST(
+    new Request("http://test/", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ turnId, confirm: true }) }),
+    { params: Promise.resolve({ campaignId: world.campaignId }) },
+  );
+  assert.equal(response.status, 200, JSON.stringify(await response.clone().json()));
+}
+const reacted = (who) => world.encounter().reactionsUsed.includes(who.id);
+
+for (const { name, holder, target, faces, resource, struck } of [
+  { name: "Runic Shield", holder: knight, target: ally, faces: [2], resource: "sub_runic_shield", struck: () => ally },
+  { name: "Uncanny Dodge", holder: rogue, target: null, faces: [], resource: null, struck: () => rogue },
+  { name: "Cutting Words", holder: bard, target: ally, faces: [3], resource: "bardic_inspiration", struck: () => ally },
+]) {
+  await test(`Reverting the turn that played ${name} takes back its hit points, its use and the reaction, and the hit is open to it again.`, async () => {
+    const enemy = await stage();
+    const victim = struck();
+    world.dice(16, 4);
+    await world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: victim.id });
+    world.clearDice();
+    assert.equal(hp(victim), 44);
+    const usedBefore = resource ? world.sheet(holder.id).resources[resource].used : 0;
+    const turnId = await reactInTurn(holder, name, target, faces);
+    assert.notEqual(hp(victim), 44, "the reaction gave something back");
+    assert.ok(reacted(holder));
+    await revert(turnId);
+    assert.equal(hp(victim), 44, "the hit points it gave back are taken back");
+    if (resource) assert.equal(world.sheet(holder.id).resources[resource].used, usedBefore, "the use is given back");
+    assert.equal(reacted(holder), false, "the reaction is given back");
+    assert.equal(cards(holder, name).length, 1, "the hit offers the card again");
+    const again = await react(holder, name, target, faces);
+    assert.equal(again.ok, true, again.error);
+    assert.notEqual(hp(victim), 44);
+  });
+}
 
 world.close();
 finish();

@@ -9,7 +9,7 @@ import { listAuditForTurn } from "@/lib/db/sheet-audit";
 import { liveTurnChanges } from "@/lib/db/turn-changes";
 import { REVERT_WINDOW_TURNS, revertWindowStart } from "@/lib/db/turn-rows";
 import { describeInstant } from "@/lib/dm/calendar";
-import { forgetTurnHits } from "@/lib/dm/last-hit";
+import { forgetTurnAnswers, forgetTurnHits } from "@/lib/dm/last-hit";
 import { turnStillPlaying } from "@/lib/dm/queue";
 import { publishSceneState } from "@/lib/dm/scene-state";
 import { currentScene } from "@/lib/dm/sky";
@@ -123,6 +123,9 @@ export async function POST(
     // The turn's blows are taken back with the hit points they took: no
     // reaction may answer one again.
     forgetTurnHits(campaignId, turnId);
+    // And a reaction the turn took puts the hit it answered back as it was,
+    // open to be answered again (the refund and the spend are its audit rows).
+    forgetTurnAnswers(campaignId, turnId);
     // After the sheets too: the fight's events, the test dice, the cards.
     const takenBack = changes.length ? takeBackTurnChanges(context.campaign, turnId, changes) : 0;
     if (takenBack) {

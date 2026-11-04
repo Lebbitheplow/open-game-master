@@ -184,6 +184,10 @@ export type LastHit = {
   // one AI reply, or one call from the console. Absent out of any turn and
   // on records written before it.
   dmTurn?: string;
+  // The record as it stood before a later GM turn's reaction rewrote it (its
+  // swings, its answers), one entry a turn, so reverting that turn puts the
+  // hit back (forgetTurnAnswers). Absent until a reaction answers it.
+  undo?: Array<{ turnId: string; was: LastHit }>;
   // Who made it: an enemy, a character fighting on the other side (a
   // turncoat's pc_attack, issue 503), or a hazard, which is nobody.
   attacker: { kind: "enemy" | "sheet" | "hazard"; id: string | null; name: string };
@@ -356,9 +360,44 @@ export function writeLastHit(campaignId: string, record: LastHit) {
   const at = hits.findIndex((entry) => hitIdOf(entry) === id);
   const next =
     at >= 0
-      ? hits.map((entry, index) => (index === at ? record : entry))
+      ? hits.map((entry, index) => (index === at ? withUndo(entry, record) : entry))
       : [...hits.filter((entry) => stillKept(entry, record)), record].slice(-MAX_KEPT);
   saveHits(campaignId, record.characterId, next);
+}
+
+// A hit rewritten by a GM turn other than the one that made it keeps what it
+// was, once for that turn: "Revert this turn" puts it back, answers and all.
+// A hit its own turn rewrites needs none (forgetTurnHits drops it whole).
+function withUndo(was: LastHit, next: LastHit): LastHit {
+  const turnId = rollingTurn().dmTurn;
+  const undo = was.undo ?? [];
+  if (!turnId || turnId === was.dmTurn || undo.some((entry) => entry.turnId === turnId)) {
+    return { ...next, ...(undo.length ? { undo } : {}) };
+  }
+  const plain: LastHit = { ...was };
+  delete plain.undo;
+  return { ...next, undo: [...undo, { turnId, was: plain }] };
+}
+
+// What a reverted GM turn's reactions did to the hits they answered, taken
+// back: each hit as it stood before that turn rewrote it, with the answers
+// it held then (a later turn's on top of it go with it).
+export function forgetTurnAnswers(campaignId: string, turnId: string) {
+  const rows = db()
+    .prepare(`SELECT character_id, payload_json FROM last_hits WHERE campaign_id = ?`)
+    .all(campaignId) as Array<{ character_id: string; payload_json: string }>;
+  for (const row of rows) {
+    const hits = hitsIn(row.payload_json);
+    let changed = false;
+    const next = hits.map((record) => {
+      const at = record.undo?.findIndex((entry) => entry.turnId === turnId) ?? -1;
+      if (at < 0) return record;
+      changed = true;
+      const earlier = record.undo!.slice(0, at);
+      return { ...record.undo![at].was, ...(earlier.length ? { undo: earlier } : {}) };
+    });
+    if (changed) saveHits(campaignId, row.character_id, next);
+  }
 }
 
 // Whether the enemies a pass walked past are taking their turns: held for

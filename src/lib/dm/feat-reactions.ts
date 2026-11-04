@@ -23,6 +23,7 @@ import { proficiencyBonus } from "@/lib/srd";
 import { luckPointsLeft, spendLuckCounter } from "@/lib/srd/class-resources";
 import { rollExpression } from "@/lib/dice";
 import { publishPersisted } from "@/lib/events";
+import { reactionPatch } from "@/lib/dm/reaction-refund";
 import { defensiveDuelistBonus, hasMageSlayer, hasSentinel } from "@/lib/srd/feat-combat";
 import { listSheets } from "@/lib/db/sheets";
 import type { ToolResult } from "@/lib/dm/tool-errors";
@@ -221,10 +222,8 @@ export function lucky(ctx: Ctx): ToolResult {
     return { error: `${record.attacker.name}'s ${record.attack} has no d20 on record to roll again. Nothing was spent.`, refused: "rules" };
   }
   const spent = spendLuckCounter(fresh.resources);
-  const patched = spent ? patchSheet(sheet.id, { resources: spent }) : null;
-  if (patched) {
-    publishPersisted(campaign.id, "sheet_updated", { sheet: patched });
-  }
+  // Audited, so "Revert this turn" gives the point back with the reaction.
+  if (spent) reactionPatch(campaign, ctx.turn.id, sheet.id, { resources: spent }, "Lucky: a luck point");
   const swing = record.swings[index] as SwingRecord & { natural: number };
   const attack = swing.attack ?? record.attack;
   const again = rollExpression("1d20").total;
@@ -270,13 +269,10 @@ export function reservesRecovery(ctx: Ctx, which: "ki" | "sorcery_points"): Tool
   const conMod = Math.floor((fresh.abilities.con - 10) / 2);
   const outcome = rollExpression(`1${fresh.hitDice.die}${conMod >= 0 ? `+${conMod}` : conMod}`);
   const regained = Math.min(state.max, Math.max(1, Math.floor(outcome.total / 2)));
-  const patched = patchSheet(sheet.id, {
+  reactionPatch(campaign, ctx.turn.id, sheet.id, {
     hitDice: { ...fresh.hitDice, spent: fresh.hitDice.spent + 1 },
     resources: { ...(fresh.resources ?? {}), [which]: { ...state, used: Math.max(0, state.max - regained) } },
-  });
-  if (patched) {
-    publishPersisted(campaign.id, "sheet_updated", { sheet: patched });
-  }
+  }, `${feat}: a Hit Die spent`);
   return {
     ok: true,
     reaction: feat,

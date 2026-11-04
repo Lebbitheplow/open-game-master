@@ -49,6 +49,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { noneNamed, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { swallowCoverError } from "@/lib/dm/swallow";
 import { spentSlotRefusal } from "@/lib/dm/cast-rules";
+import { reactionPatch } from "@/lib/dm/reaction-refund";
 import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed, holdsFeature } from "@/lib/srd/feature-names";
 
@@ -275,8 +276,8 @@ export function authoredReaction(ctx: Ctx): ToolResult | null {
     paid = () => {
       const now = getSheetById(ctx.sheet.id) ?? ctx.sheet;
       const slots = { ...now.spellcasting!.slots, [String(level)]: { max: slot.max, used: slot.used + 1 } };
-      const updated = patchSheet(now.id, { spellcasting: { ...now.spellcasting!, slots } });
-      if (updated) publishPersisted(ctx.campaign.id, "sheet_updated", { sheet: updated });
+      // Audited, so "Revert this turn" gives the slot back with the reaction.
+      reactionPatch(ctx.campaign, ctx.turn.id, now.id, { spellcasting: { ...now.spellcasting!, slots } }, `${reaction.name}: a level ${level} slot`);
     };
   } else if (reaction.pool) {
     const pool = reaction.pool;
@@ -288,8 +289,8 @@ export function authoredReaction(ctx: Ctx): ToolResult | null {
     paid = () => {
       const now = getSheetById(holder.id) ?? holder;
       const current = now.resources[pool.id];
-      const updated = patchSheet(now.id, { resources: { ...now.resources, [pool.id]: { max: current.max, used: current.used + amount } } });
-      if (updated) publishPersisted(ctx.campaign.id, "sheet_updated", { sheet: updated });
+      // Audited, so "Revert this turn" gives the use back with the reaction.
+      reactionPatch(ctx.campaign, ctx.turn.id, now.id, { resources: { ...now.resources, [pool.id]: { max: current.max, used: current.used + amount } } }, `${reaction.name}: a use spent`);
     };
   }
   // The ally it covers and the creature it answers are both across no
@@ -389,7 +390,7 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       const missed = swing.natural !== 20 && swing.total < swing.vsAc + bonus;
       if (spentDie) {
         const cleared = removeConditions(ctx.sheet.conditions, ctx.sheet.conditionMeta, [spentDie]);
-        patchSheet(ctx.sheet.id, { conditions: cleared.conditions, conditionMeta: cleared.meta });
+        reactionPatch(ctx.campaign, ctx.turn.id, ctx.sheet.id, { conditions: cleared.conditions, conditionMeta: cleared.meta }, `${reaction.name}: the Bardic Inspiration die spent`);
       }
       if (!missed) {
         return { applied: `AC ${swing.vsAc} + ${bonus} against ${swing.total}: the hit still lands.` };
@@ -822,10 +823,7 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
         return { applied: `The attack misses: ${settled.given} hit points come back to ${target.name}. HP ${settled.hp}.` };
       }
       const now = getSheetById(ctx.sheet.id) ?? ctx.sheet;
-      const updated = patchSheet(now.id, { exhaustion: Math.min(6, (now.exhaustion ?? 0) + does.exhaustion) });
-      if (updated) {
-        publishPersisted(ctx.campaign.id, "sheet_updated", { sheet: updated });
-      }
+      reactionPatch(ctx.campaign, ctx.turn.id, now.id, { exhaustion: Math.min(6, (now.exhaustion ?? 0) + does.exhaustion) }, `${reaction.name}: exhaustion`);
       return { applied: `The attack misses by the wizard's word: ${settled.given} hit points come back to ${target.name}. ${ctx.sheet.name} gains ${does.exhaustion} level of exhaustion.` };
     }
     case "echo_takes_hit": {

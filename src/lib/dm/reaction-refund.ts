@@ -49,7 +49,7 @@ import {
 } from "@/lib/dm/hit-replay-logic";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { answerLabel, carryCuts, hitIdOf, openHits, wardHpOf, writeLastHit, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
-import { applyDmMutation } from "@/lib/dm/mutations";
+import { applyDmMutation, audit } from "@/lib/dm/mutations";
 import { blowDefenses, meetDefenses } from "@/lib/dm/pc-damage";
 import { PRONE } from "@/lib/dm/vitals-logic";
 
@@ -102,6 +102,23 @@ function replaySwing(campaignId: string, sheet: CharacterSheet, record: LastHit,
   };
 }
 
+// The audit kind of what a reaction itself writes to a sheet: the hit points
+// it gives back, the use or die it spends, the concentration it restores.
+// Kept so "Revert this turn" takes it back with the reaction; never read as
+// a change between hits (changesAfter), since the corrected hit carries it.
+export const REACTION_AUDIT = "reaction";
+
+// A reaction's own change to a sheet, written and kept in the audit.
+export function reactionPatch(campaign: Campaign, turnId: string, sheetId: string, patch: FullPatchSheetInput, reason: string): CharacterSheet | null {
+  const before = getSheetById(sheetId);
+  const updated = patchSheet(sheetId, patch);
+  if (before && updated) {
+    audit(campaign, turnId, before, REACTION_AUDIT, { reaction: reason }, reason, patch as Record<string, unknown>);
+    publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
+  }
+  return updated;
+}
+
 // The sheet fields a change between two hits can move that the replay
 // carries (Standing).
 const STANDING_FIELDS = ["currentHp", "tempHp", "wildShape", "deathSaves", "resources"];
@@ -122,7 +139,7 @@ function changesAfter(campaignId: string, record: LastHit, next: LastHit | null)
   let running: CharacterSheet | null = null;
   let lastRead: Standing<Shape> | null = null;
   for (const entry of listAuditSince(campaignId, record.startedAt)) {
-    if (entry.characterId !== record.characterId || !after(entry) || !beforeNext(entry) || !entry.patchKeys.some((key) => STANDING_FIELDS.includes(key))) {
+    if (entry.characterId !== record.characterId || entry.kind === REACTION_AUDIT || !after(entry) || !beforeNext(entry) || !entry.patchKeys.some((key) => STANDING_FIELDS.includes(key))) {
       continue;
     }
     const image = getAuditPreImage(entry.id);
@@ -143,16 +160,13 @@ function changesAfter(campaignId: string, record: LastHit, next: LastHit | null)
 
 // Puts back the concentration the attack broke, with the conditions the
 // spell held on every creature and without the lethargy Haste's end laid.
-function restoreConcentration(campaign: Campaign, record: LastHit): string | null {
+function restoreConcentration(campaign: Campaign, turnId: string, record: LastHit, label: string): string | null {
   const spell = record.before.concentratingOn;
   const held = record.before.held;
   if (!spell) {
     return null;
   }
-  const patched = patchSheet(record.characterId, { concentratingOn: spell });
-  if (patched) {
-    publishPersisted(campaign.id, "sheet_updated", { sheet: patched });
-  }
+  reactionPatch(campaign, turnId, record.characterId, { concentratingOn: spell }, `${answerLabel(label)}: concentration kept`);
   const encounter = getActiveEncounter(campaign.id);
   for (const holder of held?.holders ?? []) {
     const wanted = holder.conditions.filter((name) => held!.names.includes(name.toLowerCase()));
@@ -171,13 +185,10 @@ function restoreConcentration(campaign: Campaign, record: LastHit): string | nul
       for (const name of missing) {
         meta[name] = holder.meta[name] ?? {};
       }
-      const updated = patchSheet(holder.id, {
+      reactionPatch(campaign, turnId, holder.id, {
         conditions: [...base.conditions, ...missing],
         conditionMeta: meta as FullPatchSheetInput["conditionMeta"],
-      });
-      if (updated) {
-        publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
-      }
+      }, `${answerLabel(label)}: concentration kept`);
     } else if (encounter) {
       const enemy = getEnemy(holder.id);
       if (!enemy || enemy.status !== "alive") {
@@ -466,13 +477,10 @@ export function settleHits(
   }
   patch.conditions = conditions;
   patch.conditionMeta = meta as FullPatchSheetInput["conditionMeta"];
-  const updated = patchSheet(sheet.id, patch);
-  if (updated) {
-    publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
-  }
+  reactionPatch(campaign, turnId, sheet.id, patch, `${answerLabel(label)}: the blow corrected`);
 
   bondShareBack(campaign, turnId, steps, label, sheets, sheetsById);
-  concentrationBack(campaign, turnId, steps, final, notes);
+  concentrationBack(campaign, turnId, steps, final, notes, label);
   keep();
   const after = getSheetById(sheet.id) ?? sheet;
   const held = (entry: CharacterSheet) => entry.currentHp + entry.tempHp + (entry.wildShape?.beastHp ?? 0);
@@ -520,7 +528,7 @@ function bondShareBack(campaign: Campaign, turnId: string, steps: Step[], label:
 // still concentrating (a later blow, the damage in a gap), ask theirs now.
 // A break nothing in this fight made (damage between the hits, the GM)
 // stands.
-function concentrationBack(campaign: Campaign, turnId: string, steps: Step[], final: Standing<Shape>, notes: string[]) {
+function concentrationBack(campaign: Campaign, turnId: string, steps: Step[], final: Standing<Shape>, notes: string[], label: string) {
   const first = steps[0]?.record;
   const spell = first?.before.concentratingOn;
   const sheet = first ? getSheetById(first.characterId) : null;
@@ -561,7 +569,7 @@ function concentrationBack(campaign: Campaign, turnId: string, steps: Step[], fi
     });
     asked.push(...gap.dealt);
   }
-  const restored = restoreConcentration(campaign, first);
+  const restored = restoreConcentration(campaign, turnId, first, label);
   if (!restored) {
     return;
   }
