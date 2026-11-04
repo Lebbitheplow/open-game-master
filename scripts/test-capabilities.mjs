@@ -400,6 +400,20 @@ check("the server flags the GM's dominated-hero turns and the legendary cards, a
   assert.match(hand, /legendaryCards: hostOffers\(capabilities, "legendaryCards"\)/);
 });
 
+// Every server feature is in the apps' hand-written features type, so a screen
+// that asks hostOffers for it type-checks without a cast. fightInBuilding (PR
+// 786) was flagged by the server and read by the console through a cast, and
+// missing from the type.
+check("every server feature flag is in the apps' features type", () => {
+  const block = /export const SERVER_FEATURES = \{([\s\S]*?)\n\}/.exec(source);
+  assert.ok(block, "SERVER_FEATURES not found");
+  const flags = [...block[1].matchAll(/^\s*([A-Za-z]+): true,$/gm)].map((match) => match[1]);
+  assert.ok(flags.length > 10, `only ${flags.length} flags read`);
+  const client = readFileSync(path.join(root, "src/lib/use-capabilities.ts"), "utf8");
+  const typed = /features\?: \{([^}]*)\}/.exec(client)?.[1] ?? "";
+  assert.deepEqual(flags.filter((flag) => !typed.includes(`${flag}?: boolean`)), []);
+});
+
 if (failures) {
   console.error(`\n${failures} capability check(s) failed.`);
   process.exit(1);
