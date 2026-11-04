@@ -15,7 +15,7 @@ import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { addSheetCondition } from "@/lib/dm/action-common";
 import { tilesBetween } from "@/lib/dm/attack-spatial";
 import { removeConditions } from "@/lib/dm/condition-logic";
-import { attackerFoeId, freshLastHit, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
+import { attackerFoeId, freshLastHit, plainOfReroll, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { READIED } from "@/lib/dm/object-actions";
 import { handlePcAttack } from "@/lib/dm/pc-attack";
 import { settle, spendReaction, SPENT, type Ctx } from "@/lib/dm/reaction-tools";
@@ -179,13 +179,18 @@ function luckyTarget(swings: SwingRecord[]): number {
     }
     const bonus = swing.total - swing.natural;
     let misses = 0;
+    let saved = 0;
     for (let face = 1; face <= 20; face += 1) {
       const kept = Math.min(swing.natural, face);
       if (kept === 1 || (kept !== 20 && bonus + kept < swing.vsAc)) {
         misses += 1;
+      } else {
+        // A natural 20 rolled away that still hits saves the critical's extra
+        // dice: scored at nothing, the point went on a lighter swing's die.
+        saved += Math.max(0, swing.raw - plainOfReroll(swing, kept).raw);
       }
     }
-    const worth = misses * swing.raw;
+    const worth = misses * swing.raw + saved;
     if (best < 0 || worth > bestWorth) {
       best = index;
       bestWorth = worth;
@@ -231,15 +236,22 @@ export function lucky(ctx: Ctx): ToolResult {
   const natural = Math.min(swing.natural, again);
   const total = swing.total - swing.natural + natural;
   const stillHits = natural === 20 || (natural !== 1 && total >= swing.vsAc);
-  const corrected = record.swings.map((entry, at) => (at === index && !stillHits ? { ...entry, hit: false, natural, total, raw: 0 } : at === index ? { ...entry, natural, total } : entry));
+  // A natural 20 rolled away that still hits lands as an ordinary hit, as every
+  // other reroll of a hit does (last-hit.ts plainOfReroll): Lucky alone kept the
+  // critical's extra dice, so the point changed nothing.
+  const plain = stillHits ? plainOfReroll(swing, natural) : swing;
+  const corrected = record.swings.map((entry, at) => (at === index && !stillHits ? { ...entry, hit: false, natural, total, raw: 0 } : at === index ? { ...plain, natural, total } : entry));
   const settled = settle(ctx, record, corrected, "lucky");
   return {
     ok: true,
     reaction: "Lucky",
     luckPointsLeft: luckPointsLeft(getSheetById(sheet.id)?.resources),
     applied: stillHits
-      ? `Lucky: ${record.attacker.name}'s d20 for the ${attack} rolled again (${swing.natural} and ${again}); the ${natural} still hits.`
+      ? `Lucky: ${record.attacker.name}'s d20 for the ${attack} rolled again (${swing.natural} and ${again}); the ${natural} still hits${plain !== swing ? `, no longer a critical: ${settled.given} hit points come back. HP ${settled.hp}` : ""}.`
       : `Lucky: ${record.attacker.name}'s d20 rolled again (${swing.natural} and ${again}); with the ${natural} the ${attack} misses: ${settled.given} hit points come back. HP ${settled.hp}.`,
+    // What the correction undid beyond hit points: a death-save failure taken
+    // back, concentration kept.
+    ...(settled.notes.length ? { notes: settled.notes } : {}),
   };
 }
 
