@@ -21,6 +21,7 @@ import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { markReactionUsed } from "@/lib/dm/turn-budget";
 import type { DmTurn } from "@/lib/db/dm-turns";
+import { listRecentMessages } from "@/lib/db/messages";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { d20Expression } from "@/lib/dice";
 import { publishPersisted } from "@/lib/events";
@@ -485,10 +486,22 @@ export function handleUseReaction(
     const own = openHitAimed(campaign.id, args.hit, sheet.id);
     const aimed = own ?? openHitAimed(campaign.id, args.hit);
     if (!aimed) {
-      return {
-        error: `No attack still open to a reaction matches hit "${args.hit}": it has been answered, its moment to answer has passed, or that creature made none. Nothing was spent.`,
-        refused: "rules",
-      };
+      const why = `No attack still open to a reaction matches hit "${args.hit}": it has been answered, its moment to answer has passed, or that creature made none.`;
+      // A model can copy an id wrongly, and told only "no" it gave up with the
+      // hit still standing. It is sent back with the hits that are open, and
+      // never given one of them unasked: that is the quiet answer above. A
+      // person is told no, as is a card's hit that closed under the player,
+      // who chose that one, and a reactor whose reaction is already spent.
+      const encounter = getActiveEncounter(campaign.id);
+      const offers = turn.actor === "ai"
+        && !listRecentMessages(campaign.id, 50).some((message) => message.intent?.hit === args.hit)
+        && !(encounter && (encounter.reactionsUsed.includes(sheet.id) || reactedLate(campaign.id, encounter, sheet.id)));
+      const listed = !offers ? [] : (answersOwnHitOnly(campaign, args.feature) ? [sheet] : sheets).flatMap((holder) =>
+        openHits(campaign.id, holder.id).map((record) => `hit "${hitIdOf(record)}" on ${holder.name} (${record.source === "fall" ? "a fall" : `${record.attacker.name}'s ${record.attack}`})`),
+      );
+      return listed.length
+        ? { error: `${why} Open hits: ${listed.join(", ")}. Send the one this reaction answers as hit. Nothing was spent.`, retry: true }
+        : { error: `${why} Nothing was spent.`, refused: "rules" };
     }
     // A reaction for the reactor alone answers only a hit on them: Uncanny
     // Dodge sent with an ally's hit once halved one of the rogue's own hits
