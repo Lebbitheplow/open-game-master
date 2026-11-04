@@ -5,6 +5,7 @@ import { ui } from "@/lib/ui";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { CloseForm } from "@/app/campaigns/[campaignId]/DmConsoleParts";
 import { DmActionForm } from "@/app/campaigns/[campaignId]/DmActionForm";
+import type { CritRules } from "@/app/campaigns/[campaignId]/DmOddsPanel";
 import type { BondView } from "@/app/campaigns/[campaignId]/CompanionBondLine";
 import type { CatalogEntry } from "@/lib/dm/invoke-catalog";
 import type { PublicEncounter } from "@/lib/db/encounter-view";
@@ -33,6 +34,7 @@ export function HeldAsks({
   entry,
   sheets,
   encounter,
+  variantRules,
 }: {
   campaignId: string;
   asks: readonly HeldAsk[];
@@ -42,6 +44,7 @@ export function HeldAsks({
   entry: CatalogEntry | null;
   sheets: CharacterSheet[];
   encounter: PublicEncounter | null;
+  variantRules: CritRules;
 }) {
   const shown = answering && !asks.some((ask) => ask.id === answering.id) ? [...asks, answering] : asks;
   if (!shown.length) {
@@ -63,6 +66,7 @@ export function HeldAsks({
                 sheets={sheets}
                 encounter={encounter}
                 glyph="tab-bonds"
+                variantRules={variantRules}
                 initialArgs={{ characterId: ask.characterId, subject: ask.subjectName, to: ask.heldStep.to, initiator: "player" }}
               />
               <CloseForm onClick={() => onAnswer(null)} />

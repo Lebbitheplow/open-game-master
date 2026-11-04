@@ -87,9 +87,10 @@ export function DmActionForm({
   // Suggested arguments from the assist rail. Advisory: the DM still presses
   // the button, and anything that does not fit its field is left blank.
   initialArgs?: Record<string, unknown>;
-  // The table's variant rules, for a field that only one of them lets matter.
-  // A form that is not told shows the field.
-  variantRules?: { supplies?: boolean };
+  // The table's variant rules, for a field that only one of them lets matter
+  // (the meal and the water, only under supplies). Every caller passes them:
+  // the assist rail's suggestions showed a meal at a table without the rule.
+  variantRules: { supplies?: boolean };
   onRan?: () => void;
   // The painted glyph the console gave this action's plate, so the open form
   // wears the same face the row did.
@@ -116,7 +117,7 @@ export function DmActionForm({
       entry.fields
         .map((field) => fieldForHost(field, (feature) => hostOffers(capabilities, feature as HostFeature)))
         .filter((field): field is CatalogField => field !== null)
-        .filter((field) => !field.variant || !variantRules || variantRules[field.variant]),
+        .filter((field) => !field.variant || variantRules[field.variant]),
     [entry, capabilities, variantRules],
   );
 

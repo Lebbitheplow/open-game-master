@@ -395,6 +395,7 @@ export function DmConsolePanel({
           entry={romanceEntry}
           sheets={sheets}
           encounter={encounter}
+          variantRules={variantRules}
         />
         {waiting || answering ? null : (
           <EmptyState size="sm" art="scrolls" title="Nothing waiting. Everything the party has said has been answered." />
