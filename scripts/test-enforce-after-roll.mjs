@@ -291,6 +291,29 @@ await test("A spend is filed under the turn it served, so an undo of the turn ca
   await choose(pending.id, { keep: true });
 });
 
+await test("A turn cannot be reverted while its roll waits on the card; once it lands, its revert gives the luck point back.", async () => {
+  hero(LUCKY);
+  world.dice(3);
+  await check();
+  world.clearDice();
+  const [pending] = open();
+  const revert = await world.route("campaigns/[campaignId]/audit/revert-turn");
+  world.signIn(world.owner);
+  const early = await call(revert, "POST", { turnId: pending.turnId, confirm: true }, { campaignId: world.campaignId });
+  assert.equal(early.status, 409, "a waiting turn is still being played");
+  world.dice(2);
+  await choose(pending.id, { use: "lucky" });
+  world.clearDice();
+  await choose(pending.id, { die: 0 });
+  await choose(pending.id, { keep: true });
+  assert.equal(open().length, 0);
+  assert.equal(world.sheet(who.sheet.id).resources.luck_points.used, 1);
+  world.signIn(world.owner);
+  const done = await call(revert, "POST", { turnId: pending.turnId, confirm: true }, { campaignId: world.campaignId });
+  assert.equal(done.status, 200, JSON.stringify(done.body ?? done));
+  assert.equal(world.sheet(who.sheet.id).resources.luck_points.used, 0, "the player's spend on the turn's roll goes with the turn");
+});
+
 await test("Only the roller chooses; whoever runs the story may keep the dice for them.", async () => {
   hero(LUCKY);
   world.dice(3);
