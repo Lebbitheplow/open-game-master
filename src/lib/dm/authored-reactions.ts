@@ -834,8 +834,19 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       }
       const hit = lastHitOn(ctx, ally, label);
       if ("error" in hit) return hit;
+      const swing = hit.record.swings[hit.index];
       const settled = settle(ctx, hit.record, hit.record.swings.map((entry, at) => (at === hit.index ? { ...entry, hit: false, raw: 0 } : entry)), label);
-      return { applied: `${ctx.sheet.name}'s echo takes the attack: ${settled.given} hit points come back to ${ally.name}. HP ${settled.hp}. The echo has AC ${14 + computeSheetDerived(ctx.sheet).proficiencyBonus} and 1 hit point, and the server does not track it: the GM removes it if the attack beats that AC.` };
+      // The same attack roll, made against the echo instead (AC 14 + the
+      // proficiency bonus, 1 hit point). The echo is no creature the server
+      // keeps, so what becomes of it is said for the GM to show on the board.
+      const echoAc = 14 + computeSheetDerived(ctx.sheet).proficiencyBonus;
+      const echo =
+        swing.natural === null
+          ? `The echo has AC ${echoAc} and 1 hit point; the attack had no roll on record, so the GM judges whether it hits the echo.`
+          : swing.natural === 20 || (swing.natural !== 1 && swing.total >= echoAc)
+            ? `The attack's ${swing.total} hits the echo (AC ${echoAc}, 1 hit point) and destroys it: the server does not track the echo, so take it off the board.`
+            : `The attack's ${swing.total} misses the echo (AC ${echoAc}), which stays where it is.`;
+      return { applied: `${ctx.sheet.name}'s echo takes the attack: ${settled.given} hit points come back to ${ally.name}. HP ${settled.hp}. ${echo}` };
     }
     case "chance_miss": {
       const hit = lastHitOn(ctx, ctx.sheet, label);

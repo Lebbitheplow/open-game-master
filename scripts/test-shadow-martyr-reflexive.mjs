@@ -95,6 +95,26 @@ await test("Shadow Martyr: the ally takes no damage, one use is spent, and the h
   assert.equal(world.sheet(friend.id).currentHp, 50);
 });
 
+await test("Shadow Martyr: the same roll is made against the echo, AC 14 + proficiency, and the reply says whether it is destroyed.", async () => {
+  // A 20th-level knight: the echo's AC is 20.
+  let [enemy] = await stage(knight, friend);
+  setUsed(knight, COUNTER, 0);
+  await strike(enemy, friend);
+  let out = await martyr(knight, friend);
+  assert.equal(out.ok, true, out.error);
+  assert.match(out.result.applied, /20 hits the echo \(AC 20, 1 hit point\) and destroys it/);
+  [enemy] = await stage(knight, friend);
+  setUsed(knight, COUNTER, 0);
+  world.dice(12, 4);
+  await world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: friend.id });
+  world.clearDice();
+  assert.equal(world.sheet(friend.id).currentHp, 44, "16 hits the ally's AC 12");
+  out = await martyr(knight, friend);
+  assert.equal(out.ok, true, out.error);
+  assert.match(out.result.applied, /16 misses the echo \(AC 20\), which stays/);
+  assert.equal(world.sheet(friend.id).currentHp, 50);
+});
+
 await test("Shadow Martyr: a played card reaches the engine with the ally and the hit it names.", async () => {
   const [enemy] = await stage(knight, friend);
   setUsed(knight, COUNTER, 0);

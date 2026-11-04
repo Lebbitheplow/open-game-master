@@ -155,7 +155,7 @@
    "ability": null,
    "recharge": "short",
    "action": "reaction",
-   "guidance": "Use use_reaction 'Shadow Martyr' when an attack hits another creature, with that creature's targetCharacterId. The echo takes the attack and the hit becomes a miss. The server does not track the echo: refuse it when none is out, and remove the echo when the attack beats its AC.",
+   "guidance": "Use use_reaction 'Shadow Martyr' when an attack hits another creature, with that creature's targetCharacterId. The echo takes the attack and the hit becomes a miss. The server does not track the echo: refuse it when none is out, and remove the echo when the reply says so.",
    "passive": true
   },
   {
