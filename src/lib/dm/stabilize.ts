@@ -33,7 +33,7 @@ import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { chebyshev } from "@/lib/battlemap/types";
 import { findCarriedItem } from "@/lib/dm/item-logic";
 import { resolveRollExpression } from "@/lib/dm/rolls";
-import { rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
+import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import { readiedReleaseFor } from "@/lib/dm/readied-release";
 import { STABILIZE_DC, SUFFOCATING, type StabilizeMethod } from "@/lib/dm/vitals-logic";
@@ -218,7 +218,7 @@ export function handleStabilize(
         ...(survivorTended(sheet) ? { advantage: "advantage" as const, advantageReason: "Survivor: Medicine checks to stabilize them have advantage" } : {}),
       },
       healer,
-      rollExtrasFor(campaign, healer, "skill_check"),
+      { ...rollExtrasFor(campaign, healer, "skill_check"), keepHeldDie: heldDieWaits(healer, STABILIZE_DC) },
     );
     if ("error" in resolved) {
       return toolError(resolved);
@@ -232,7 +232,8 @@ export function handleStabilize(
       storeBudget(encounter, spent.budget);
     }
     readied?.release();
-    const outcome = rollExpression(resolved.expression, undefined, { purpose: { roller: "hero", kind: "check", who: healer.name } });
+    const thrown = rollExpression(resolved.expression, undefined, { purpose: { roller: "hero", kind: "check", who: healer.name } });
+    const outcome = heldDieWaits(healer, STABILIZE_DC) ? settleHeldDie(campaign.id, healer.id, thrown, STABILIZE_DC) : thrown;
     const roll = insertRoll({
       campaignId: campaign.id,
       characterId: healer.id,

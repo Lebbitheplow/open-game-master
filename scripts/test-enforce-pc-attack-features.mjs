@@ -240,13 +240,21 @@ await test("A Life cleric's Divine Strike deals radiant damage, so a creature re
 
 // ---- Bardic Inspiration ----
 
-await test("A held Bardic Inspiration die is added to the holder's attack roll and spent by it.", async () => {
+await test("A held Bardic Inspiration die is added to the holder's attack roll that misses and that it turns into a hit, and spent by it; a hit keeps it.", async () => {
+  // SRD 5.1: the holder may decide once the d20 is rolled (forced-save.ts settleAttackDie).
   const [enemy] = await stage(fighter);
+  kit.setEnemy(enemy.id, { maxHp: 400, ac: 18 });
+  const bonus = abilityMod(16) + proficiencyBonus(5);
   world.patch(fighter.id, { conditions: ["bardic inspiration (d8)"] });
+  const hit = await kit.swing(fighter.id, enemy.id, [17, 4], { weapon: "Longsword" });
+  assert.equal(hit.ok, true, hit.error);
+  assert.equal(dieCount(hit.toHit, 8), 0, "a hit needs no die");
+  assert.deepEqual(world.sheet(fighter.id).conditions, ["bardic inspiration (d8)"]);
+  kit.freshTurn();
   const swing = await kit.swing(fighter.id, enemy.id, [10, 6, 4], { weapon: "Longsword" });
   assert.equal(swing.ok, true, swing.error);
   assert.equal(dieCount(swing.toHit, 8), 1);
-  assert.equal(swing.toHit.total, 10 + 6 + abilityMod(16) + proficiencyBonus(5));
+  assert.equal(swing.toHit.total, 10 + 6 + bonus);
   assert.equal(world.sheet(fighter.id).conditions.length, 0);
 });
 

@@ -19,7 +19,7 @@ import { publishWithSeq } from "@/lib/events";
 import { spendAction } from "@/lib/dm/action-budget";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
-import { rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
+import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
 import { carriedItemsMatching } from "@/lib/dm/item-logic";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
 import { rollExpression } from "@/lib/dice";
@@ -54,12 +54,14 @@ function publishRoll(campaign: Campaign, sheet: CharacterSheet, detail: string, 
 // The ability check a cast waits on (Amulet of the Planes), rolled as
 // request_roll rolls one, on a card the table sees. True on a success.
 function rollCastCheck(campaign: Campaign, sheet: CharacterSheet, check: NonNullable<ItemSpellCast["check"]>, detail: string): { total: number; success: boolean } {
-  const resolved = resolveRollExpression({ kind: "ability_check", ability: check.ability, dc: check.dc } as unknown as RollArgs, sheet, rollExtrasFor(campaign, sheet, "ability_check"));
+  const waits = heldDieWaits(sheet, check.dc);
+  const resolved = resolveRollExpression({ kind: "ability_check", ability: check.ability, dc: check.dc } as unknown as RollArgs, sheet, { ...rollExtrasFor(campaign, sheet, "ability_check"), keepHeldDie: waits });
   if ("error" in resolved || "autoFail" in resolved) {
     return { total: 0, success: false };
   }
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-  const outcome = rollExpression(resolved.expression);
+  const thrown = rollExpression(resolved.expression);
+  const outcome = waits ? settleHeldDie(campaign.id, sheet.id, thrown, check.dc) : thrown;
   const roll = insertRoll({ campaignId: campaign.id, characterId: sheet.id, requestedBy: "dm", kind: "ability_check", detail, dc: check.dc, result: outcome });
   publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
   return { total: outcome.total, success: outcome.total >= check.dc };

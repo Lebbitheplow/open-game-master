@@ -1,7 +1,7 @@
 // The after-the-roll card (src/lib/dm/after-roll-logic.ts) on a real parked
 // roll: the GM's seat asks the lead's hero, who holds the Lucky feat, for a
 // check with no Difficulty Class (which always asks), and the lead answers
-// the card from the keyboard. The rules behind the card are held by
+// the card from the keyboard: one luck point, a die picked, and it lands. The rules behind the card are held by
 // scripts/test-enforce-after-roll.mjs; this is what only a page can see: the
 // card where a parked roll stands, finger-sized, inside the phone's width, in
 // the day and night themes and in the app shell, and the turn going on.
@@ -61,11 +61,8 @@ const scenario = {
       await t.shot("dice");
       await die.focus();
       await page.keyboard.press("Enter");
-      // No Difficulty Class: a point is still left, so the card asks again;
-      // keeping the roll lands it and the card goes.
-      await eventually(() => keep.count(), { timeoutMs: 15_000, label: "the card back on its options" });
-      await keep.focus();
-      await page.keyboard.press("Enter");
+      // One luck point a roll: with the die picked nothing else is on offer,
+      // so the roll lands and the card goes.
       await eventually(async () => !(await choices.count()) && !(await dice.count()), { timeoutMs: 15_000, label: "the card gone once the roll lands" });
 
       const snapshot = await (await gm.get(`${base}/api/campaigns/${table.id}`)).json();

@@ -463,7 +463,7 @@ const SRD_RESOURCE_DEFS: ResourceDef[] = [
     action: "bonus",
     effect: { kind: "inspire", die: inspirationDie },
     guidance:
-      "The target keeps the inspiration die for up to 10 minutes and adds it to one ability check, attack roll, or saving throw. The server hands it to them. On a check or save from request_roll they choose after they see the roll: the server offers it and waits, so do not spend it for them. Any other d20 roll they make takes it automatically. From bard 5 (Font of Inspiration) the uses come back on a short rest too.",
+      "The target keeps the inspiration die for up to 10 minutes and adds it to one ability check, attack roll, or saving throw. The server hands it to them. On a check or save from request_roll they choose after they see the roll: the server offers it and waits, so do not spend it for them. Any other d20 roll takes it only to turn a failure into a success. From bard 5 (Font of Inspiration) the uses come back on a short rest too.",
   },
   {
     id: "wild_shape",

@@ -373,7 +373,7 @@ await test("A roll behind the GM's screen never waits: its card would show the t
   assert.equal(open().length, 0);
 });
 
-await test("An attack still takes a held die as it always did, and no pause: that path is the next change.", async () => {
+await test("An attack does not pause: a held die is added by the engine to a miss it turns into a hit (forced-save.ts settleAttackDie).", async () => {
   await kit.endFight();
   hero({ conditions: ["bardic inspiration (d8)"] });
   await kit.fight(1, { heroFaces: { [who.sheet.id]: 19, [who.leadSheet.id]: 2, [who.otherSheet.id]: 2 } });

@@ -2,8 +2,9 @@
 // what it did. The Lucky feat, a held Bardic Inspiration die and Dark One's Own
 // Luck are decided after the die lands and before the outcome. Rolled up front,
 // a Bardic Inspiration die was spent on a natural 20 and a luck point was spent
-// blind. This covers the checks and saves request_roll throws; an attack roll
-// still takes them as it always did.
+// blind. This covers the checks and saves request_roll throws; the rolls that
+// cannot wait add a held die only where it carries the roll
+// (src/lib/dm/forced-save.ts settleHeldDie).
 //
 // A pause costs the whole table its narration, so it is only offered when an
 // ability can change the result: never on a roll that already succeeds, and

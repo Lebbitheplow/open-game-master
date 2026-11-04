@@ -11,6 +11,8 @@ import {
   type PendingRoll,
 } from "@/lib/db/dm-turns";
 import { insertRoll, type StoredRoll } from "@/lib/db/rolls";
+import { getSheetById } from "@/lib/db/sheets";
+import { settleAttackDie } from "@/lib/dm/forced-save";
 import type { RollResult } from "@/lib/dice";
 import { recordInitiativeRoll, settleTurn, turnHolder } from "@/lib/dm/encounter-tools";
 import { applyInitiativeRefills } from "@/lib/dm/feature-hooks";
@@ -31,8 +33,16 @@ export type RollLanding = {
   source: "digital" | "physical";
 };
 
-function landOne(campaign: Campaign, pending: PendingRoll, outcome: RollResult, landing: RollLanding): StoredRoll | null {
+function landOne(campaign: Campaign, pending: PendingRoll, thrown: RollResult, landing: RollLanding): StoredRoll | null {
   const campaignId = campaign.id;
+  // A parked to-hit roll takes a held Bardic Inspiration die the way the
+  // digital one does: only on a miss it turns into a hit (forced-save.ts).
+  const attacker = pending.kind === "attack" && pending.attack && pending.characterId ? getSheetById(pending.characterId) : null;
+  const outcome = attacker && pending.attack ? settleAttackDie(campaignId, attacker, thrown, pending.attack.targetAc, pending.attack.critRange ?? 20) : thrown;
+  if (outcome !== thrown) {
+    // The server threw that die: the roll is no longer the player's alone.
+    landing = { ...landing, physical: false };
+  }
   const roll = insertRoll({
     campaignId,
     characterId: pending.characterId,

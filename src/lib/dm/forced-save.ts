@@ -146,10 +146,12 @@ export function heldDieWaits(sheet: Pick<CharacterSheet, "conditions" | "conditi
 }
 
 // The roll with what the holder would add to it (heldDieWaits). `natural1`:
-// a natural 1 fails whatever the total (a death save), so nothing is spent.
-export function settleHeldDie(campaignId: string, sheetId: string, outcome: RollResult, dc: number, natural1 = false): RollResult {
+// a natural 1 fails whatever the total (a death save, an attack), so nothing
+// is spent. `attack`: only Bardic Inspiration rides an attack roll; Dark One's
+// Own Luck is for checks and saves.
+export function settleHeldDie(campaignId: string, sheetId: string, outcome: RollResult, dc: number, natural1 = false, attack = false): RollResult {
   let settled = outcome;
-  for (const held of [heldBardicDie, heldOwnLuckDie]) {
+  for (const held of attack ? [heldBardicDie] : [heldBardicDie, heldOwnLuckDie]) {
     if (settled.total >= dc || (natural1 && outcome.natural === 1)) {
       break;
     }
@@ -162,6 +164,17 @@ export function settleHeldDie(campaignId: string, sheetId: string, outcome: Roll
     spendRollCarriers(campaignId, sheetId, die.condition);
   }
   return settled;
+}
+
+// An attack roll's held Bardic Inspiration die (settleHeldDie): added only to
+// a roll that misses `ac` and is no natural 1 or critical, when the die can
+// lift it to a hit. The same object back when nothing was added.
+export function settleAttackDie(campaignId: string, sheet: Pick<CharacterSheet, "id" | "conditions" | "conditionMeta">, outcome: RollResult, ac: number, critRange = 20): RollResult {
+  const natural = outcome.natural ?? 0;
+  if (!heldDieWaits(sheet, ac) || natural === 1 || natural >= critRange) {
+    return outcome;
+  }
+  return settleHeldDie(campaignId, sheet.id, outcome, ac, true, true);
 }
 
 // What a spent carrier is called on the event log.
