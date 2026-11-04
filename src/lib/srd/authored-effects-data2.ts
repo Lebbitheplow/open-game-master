@@ -482,6 +482,7 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
           types: ["acid", "bludgeoning", "cold", "fire", "force", "lightning", "necrotic", "piercing", "poison", "psychic", "radiant", "slashing", "thunder"],
           who: "either",
           rangeFt: 30,
+          bond: "drake",
         },
       },
     ],

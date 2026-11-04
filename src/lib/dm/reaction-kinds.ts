@@ -85,6 +85,7 @@ export function timingOfDoes(does: ReactionDoes): ReactionTiming {
     case "redirect":
     case "force_miss":
     case "uncrit":
+    case "echo_takes_hit":
     case "attack_penalty":
       return "answers";
     default:

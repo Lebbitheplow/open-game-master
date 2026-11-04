@@ -2876,6 +2876,44 @@ const bench2Titles = {};
       turnOf(table, sela.id);
       at.paladin = { id: table.id, sela: { id: sela.id, name: sela.name }, near: { id: near.id, name: near.name }, far: { id: far.id, name: far.name } };
     }
+    // ---- 11: Shadow Martyr answers an ally's hit, not the fighter's own ----
+    {
+      const table = tableFor(`Echo Reactions Table (${viewport})`, player, world.owner);
+      const knight = sheets.createSheet(table.id, world.owner.id, 15, heroInput({
+        name: "Vesna Greymark", class: "fighter", subclass: "Echo Knight", level: 15, maxHp: 120, abilities: { str: 16, con: 14 },
+      }));
+      const bot = createCompanionUser("Odo Fenn");
+      const ally = sheets.createSheet(table.id, bot.id, 5, heroInput({ name: "Odo Fenn", class: "fighter", level: 5, maxHp: 44 }));
+      sheets.markSheetAsCompanion(ally.id, "party", "Steady, and slow to speak.");
+      const { rows, place } = await fightAt(table, player, [{ monster: "goblin", count: 2 }]);
+      const [g1, g2] = [named(rows, "goblin", 0), named(rows, "goblin", 1)];
+      [[knight.id, 0, 0], [g1.id, 1, 0], [ally.id, -2, 0], [g2.id, -3, 0]].forEach(([refId, dx, dy]) => place(refId, dx, dy));
+      turnOf(table, g1.id, { legendary: { due: [g1.id, g2.id] } });
+      await pass(table, [[g1.id, knight.id, [15, 3]], [g2.id, ally.id, [15, 3]]]);
+      turnOf(table, knight.id);
+      at.echo = { id: table.id, knight: { id: knight.id, name: knight.name }, ally: { id: ally.id, name: ally.name } };
+    }
+    // ---- 12: Reflexive Resistance answers the ranger's hit, not an ally's ----
+    {
+      const table = tableFor(`Drake Reactions Table (${viewport})`, player, world.owner);
+      const ranger = sheets.createSheet(table.id, world.owner.id, 15, heroInput({
+        name: "Ilse Marrow", class: "ranger", subclass: "Drakewarden", level: 15, maxHp: 120, abilities: { dex: 16, wis: 14 },
+      }));
+      const bot = createCompanionUser("Pell Arden");
+      const ally = sheets.createSheet(table.id, bot.id, 5, heroInput({ name: "Pell Arden", class: "fighter", level: 5, maxHp: 44 }));
+      sheets.markSheetAsCompanion(ally.id, "party", "Steady, and slow to speak.");
+      const bonded = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: player.id }, { name: "summon_pet", args: { characterId: ranger.id, kind: "drake", form: "drake", essence: "fire" } });
+      if (!bonded.ok) {
+        throw new Error(`the drake did not come: ${bonded.error}`);
+      }
+      const { rows, place } = await fightAt(table, player, [{ monster: "goblin", count: 2 }]);
+      const [g1, g2] = [named(rows, "goblin", 0), named(rows, "goblin", 1)];
+      [[ranger.id, 0, 0], [g1.id, 1, 0], [ally.id, -2, 0], [g2.id, -3, 0]].forEach(([refId, dx, dy]) => place(refId, dx, dy));
+      turnOf(table, g1.id, { legendary: { due: [g1.id, g2.id] } });
+      await pass(table, [[g1.id, ranger.id, [15, 3]], [g2.id, ally.id, [15, 3]]]);
+      turnOf(table, ranger.id);
+      at.drake = { id: table.id, ranger: { id: ranger.id, name: ranger.name }, ally: { id: ally.id, name: ally.name } };
+    }
     bench2[viewport] = at;
   }
 }
