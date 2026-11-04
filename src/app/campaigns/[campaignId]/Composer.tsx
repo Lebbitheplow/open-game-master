@@ -23,6 +23,7 @@ import {
   DirectorArmedBanner,
   DirectorPresets,
 } from "@/app/campaigns/[campaignId]/DirectorPanel";
+import { AfterRollCard } from "@/app/campaigns/[campaignId]/AfterRollCard";
 import { PendingRollCard } from "@/app/campaigns/[campaignId]/PendingRollCard";
 import { DmStatusLine } from "@/app/campaigns/[campaignId]/DmStatusLine";
 import { PushToTalk } from "@/app/campaigns/[campaignId]/PushToTalk";
@@ -260,7 +261,16 @@ function ComposerInner({
     <form onSubmit={onSubmit} className="glass session-desk cine-desk border-t border-stone-700/40 px-3 pb-3 pt-2.5">
       <div className="session-desk-body mx-auto max-w-3xl sm:px-3">
         <div className="session-compose-notices">
-        {pendingRolls.map((pending) => (
+        {pendingRolls.map((pending) => pending.thrown ? (
+          <AfterRollCard
+            key={pending.id}
+            campaignId={campaignId}
+            pending={pending}
+            sheets={sheets}
+            meUserId={meUserId}
+            steersStory={steersStory}
+          />
+        ) : (
           <PendingRollCard
             // Inspiration rewrites the parked roll's dice: the card starts
             // over with the new faces (and files in again).

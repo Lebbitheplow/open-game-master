@@ -32,9 +32,11 @@ import {
   rolled,
   setUsed,
 } from "./lib/enforce-resources.mjs";
+import { call } from "./lib/enforce-campaign.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 
 const { test, finish } = suite("test-enforce-resource-spend");
+const { getPendingRoll, listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
 const world = await openTable();
 const { skipCurrentTurn } = await import("../src/lib/dm/encounter-tools.ts");
 
@@ -296,14 +298,25 @@ await test("Bardic Inspiration is a die another creature holds and spends on one
 
   world.diceLog();
   world.dice(10, 6);
-  const check = await world.invoke("request_roll", {
+  await world.invoke("request_roll", {
     characterId: friend.id,
     kind: "ability_check",
     ability: "str",
     reason: "test",
   });
+  // The holder spends it after they see the d20 (src/lib/dm/after-roll.ts).
+  const [waiting] = listOpenPendingRolls(world.campaignId);
+  assert.deepEqual(world.sheet(friend.id).conditions, ["bardic inspiration (d8)"]);
+  world.signIn({ id: waiting.userId });
+  const chosen = await call(
+    await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]/after-roll"),
+    "POST",
+    { use: "bardic" },
+    { campaignId: world.campaignId, pendingRollId: waiting.id },
+  );
+  assert.equal(chosen.status, 200);
   assert.deepEqual(rolled(world), [[20, 10], [8, 6]]);
-  assert.equal(check.result.total, 10 + 2 + 6);
+  assert.equal(getPendingRoll(waiting.id).status, "fallback");
   assert.deepEqual(world.sheet(friend.id).conditions, []);
 
   // The next roll has no die to add.

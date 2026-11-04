@@ -4,6 +4,7 @@ import type { Advantage } from "@/lib/dice";
 import type { RollKind, RollVisibility } from "@/lib/db/rolls";
 import type { ContextTrace } from "@/lib/dm/context-budget";
 import { parkReasonFor, type ParkReason } from "@/lib/dice/held-rolls";
+import type { ThrownRoll } from "@/lib/dm/after-roll-logic";
 import { writeTurnQuality } from "@/lib/db/turn-ledger";
 import { currentTurnId, releaseStandIn, standInFor } from "@/lib/dm/job-control";
 import type { GuardReport } from "@/lib/narrator-quality";
@@ -378,6 +379,9 @@ export type PendingRoll = {
   // roll the server throws when the player releases it. Null on a roll
   // parked before the reason was recorded.
   parkedFor: ParkReason | null;
+  // The dice already thrown, waiting on the player's after-the-roll choice
+  // (src/lib/dm/after-roll-logic.ts). Null until then.
+  thrown: ThrownRoll | null;
   // Who may read the roll once it lands; the DM's screen, kept while the
   // roll waits.
   visibility: RollVisibility;
@@ -388,6 +392,7 @@ export type PendingRoll = {
 
 type PendingRow = {
   parked_for?: string | null;
+  thrown_json?: string | null;
   id: string;
   campaign_id: string;
   turn_id: string;
@@ -427,7 +432,8 @@ function mapPending(row: PendingRow): PendingRoll {
     attack: parseJson<PendingAttack | null>(row.attack_json, null),
     combatNote: row.combat_note ?? null,
     parkedFor:
-      row.parked_for === "real_dice" || row.parked_for === "held" ? row.parked_for : null,
+      row.parked_for === "real_dice" || row.parked_for === "held" || row.parked_for === "after_roll" ? row.parked_for : null,
+    thrown: parseJson<ThrownRoll | null>(row.thrown_json ?? null, null),
     visibility: row.visibility ?? "public",
     status: row.status,
     rollId: row.roll_id,
@@ -448,6 +454,9 @@ function ensureParkColumn() {
   const columns = db.prepare(`PRAGMA table_info(pending_rolls)`).all() as Array<{ name: string }>;
   if (!columns.some((column) => column.name === "parked_for")) {
     db.exec(`ALTER TABLE pending_rolls ADD COLUMN parked_for TEXT`);
+  }
+  if (!columns.some((column) => column.name === "thrown_json")) {
+    db.exec(`ALTER TABLE pending_rolls ADD COLUMN thrown_json TEXT`);
   }
   parkColumnReady.add(db);
 }
@@ -490,6 +499,7 @@ export function createPendingRoll(input: {
   // Left out by every caller today: the reason is read from the table's dice
   // policy and the player's preferences as the roll is parked.
   parkedFor?: ParkReason;
+  thrown?: ThrownRoll;
   visibility?: RollVisibility;
 }): PendingRoll {
   const id = crypto.randomUUID();
@@ -505,9 +515,9 @@ export function createPendingRoll(input: {
         INSERT INTO pending_rolls (
           id, campaign_id, turn_id, tool_call_id, user_id, character_id, kind,
           detail, expression, advantage, dc, reason, target_enemy_id, attack_json, parked_for,
-          visibility, status, created_at
+          thrown_json, visibility, status, created_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
       `,
     )
     .run(
@@ -526,6 +536,7 @@ export function createPendingRoll(input: {
       input.targetEnemyId ?? null,
       input.attack ? JSON.stringify(input.attack) : null,
       parkedFor,
+      input.thrown ? JSON.stringify(input.thrown) : null,
       input.visibility ?? "public",
       nowIso(),
     );
@@ -580,6 +591,17 @@ export function setPendingAdvantage(id: string, expression: string, advantage: A
   const result = getDatabase()
     .prepare(`UPDATE pending_rolls SET expression = ?, advantage = ? WHERE id = ? AND status = 'pending'`)
     .run(expression, advantage, id);
+  return result.changes > 0 ? getPendingRoll(id) : null;
+}
+
+// The dice as they stand while the player decides. Only a roll still waiting
+// takes it, so a choice racing the roll's landing changes nothing.
+export function setPendingThrown(id: string, thrown: ThrownRoll): PendingRoll | null {
+  // A roll parked by an older build reaches here with no column to write.
+  ensureParkColumn();
+  const result = getDatabase()
+    .prepare(`UPDATE pending_rolls SET thrown_json = ? WHERE id = ? AND status = 'pending'`)
+    .run(JSON.stringify(thrown), id);
   return result.changes > 0 ? getPendingRoll(id) : null;
 }
 

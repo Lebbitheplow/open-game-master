@@ -319,6 +319,8 @@ export function resolveRollExpression(
     // The roller moved no more than half their speed this turn (Supreme
     // Sneak, src/lib/srd/check-traits.ts); the caller reads the board.
     movedLittle?: boolean;
+    // The roll can wait on its player (src/lib/dm/after-roll.ts).
+    keepHeldDie?: boolean;
     // A death saving throw (src/lib/dm/death.ts): a saving throw tied to no
     // ability, so no ability modifier and no proficiency, while every rider
     // a save takes (Bless, an aura, exhaustion, Lucky) still applies.
@@ -420,6 +422,7 @@ export function resolveRollExpression(
     kind: derivationKind,
     ability: derivationAbility,
     movedLittle: extras?.movedLittle,
+    keepHeldDie: extras?.keepHeldDie,
   });
   if ("error" in riders) {
     return riders;

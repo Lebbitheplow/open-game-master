@@ -169,7 +169,9 @@ await test("a die spent on a player's own roll is the player's, and its undo is 
   assert.equal(undone.status, 200, await undone.clone().text());
   assert.equal(rows(world.campaignId).length, before, "a player's own spend, undone, was counted as fixing the AI");
 
-  world.patch(hero.id, { conditions: ["bardic inspiration (d6)"], conditionMeta: {} });
+  // A mote's die still rides the next roll: an ordinary die now waits for its
+  // holder to spend it (src/lib/dm/after-roll-logic.ts holdsMoteDie).
+  world.patch(hero.id, { conditions: ["bardic inspiration (d6)"], conditionMeta: { "bardic inspiration (d6)": { mote: true } } });
   const turn = createDmTurn(world.campaignId, [], "ai");
   const asked = await invokeEngine(world.campaign(), { kind: "ai", turnId: turn.id }, {
     name: "request_roll",

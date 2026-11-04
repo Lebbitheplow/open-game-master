@@ -20,7 +20,10 @@ export type HeldRollMember = {
 // parked, because the two reasons are answered differently: real dice are
 // typed by the player and believed, a held roll is thrown by the server the
 // moment the player lets it go.
-export type ParkReason = "real_dice" | "held";
+//
+// The third reason is the game's own: the server has thrown the dice and the
+// roll waits on what the player does with them (src/lib/dm/after-roll.ts).
+export type ParkReason = "real_dice" | "held" | "after_roll";
 
 type DicePreferences = Pick<HeldRollMember, "useRealDice" | "holdRolls">;
 
@@ -50,7 +53,7 @@ export function mayTypeFaces(
   dicePolicy: string,
   member: DicePreferences | null | undefined,
 ): boolean {
-  if (parkedFor === "held") {
+  if (parkedFor === "held" || parkedFor === "after_roll") {
     return false;
   }
   return parkReasonFor(dicePolicy, member) === "real_dice";

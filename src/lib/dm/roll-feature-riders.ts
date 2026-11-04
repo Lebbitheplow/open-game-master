@@ -120,6 +120,9 @@ export function rollFeatureRiders(
     ability: "str" | "dex" | "con" | "int" | "wis" | "cha" | undefined;
     // The roller moved no more than half their speed this turn (Supreme Sneak).
     movedLittle?: boolean;
+    // The roll can wait on its player: a held die is theirs to spend after
+    // they see the d20 (src/lib/dm/after-roll.ts), not on every next roll.
+    keepHeldDie?: boolean;
   },
 ): RollFeatureRiders | ToolError {
   const { kind: derivationKind, ability: derivationAbility } = context;
@@ -188,7 +191,7 @@ export function rollFeatureRiders(
   // A held Bardic Inspiration die rides along on the next d20 the character
   // rolls and is spent by doing so; the caller clears the condition.
   const inspiration =
-    sheet && derivationKind && derivationKind !== "initiative"
+    sheet && derivationKind && derivationKind !== "initiative" && !context.keepHeldDie
       ? findInspiration(sheet.conditions, sheet.conditionMeta as Record<string, { mote?: boolean }>)
       : null;
   // Mote of Potential: on an ability check the mote's die is rolled twice and
