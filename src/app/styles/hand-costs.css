@@ -64,7 +64,8 @@ html[data-theme="light"] {
   background: currentColor;
   clip-path: var(--cost-clip);
 }
-html[data-theme="light"] .hand-cost { color: #4a3e2d; border-color: rgba(109, 99, 80, 0.55); }
+/* The plain tag only: this outranks the rule above, and a cost pill keeps its own ink. */
+html[data-theme="light"] .hand-cost:not([data-cost="action"], [data-cost="bonus"], [data-cost="reaction"]) { color: #4a3e2d; border-color: rgba(109, 99, 80, 0.55); }
 
 /* ---- the corner notch and the left edge of a card ----
    In the fan each card shows little more than its left side, so the cost is

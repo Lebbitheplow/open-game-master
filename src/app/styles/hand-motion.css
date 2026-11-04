@@ -79,6 +79,14 @@
   30% { box-shadow: 0 0 0 3px rgba(125, 211, 252, 0.28); }
   100% { box-shadow: 0 0 0 0 rgba(125, 211, 252, 0); }
 }
+/* The prompt's sky is written for the night in its classes; by day its pale
+   text sat on a washed-out wash. */
+html[data-theme="light"] .hand-react { background: #e2eff5; border-color: rgba(3, 105, 161, 0.45); }
+html[data-theme="light"] .hand-react-title { color: #0c3a52; }
+html[data-theme="light"] .hand-react-title svg { color: #0369a1; }
+html[data-theme="light"] .hand-react-chip:not([aria-disabled="true"]) { background: #cfe4ee; border-color: rgba(3, 105, 161, 0.6); color: #0c3a52; }
+html[data-theme="light"] .hand-react-chip:not([aria-disabled="true"]):hover { border-color: #0369a1; }
+html[data-theme="light"] .hand-react-chip:not([aria-disabled="true"]) .font-mono { color: #0c4a6e; }
 .hand-trigger { animation: hand-file-in var(--dur-move) var(--ease-settle) backwards; }
 /* A spell's pick (Command's word, Bestow Curse's curse) and a readied spell
    file in like the trigger; the chosen chip answers with the same spring as a
