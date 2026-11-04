@@ -88,6 +88,26 @@ for (const [name, build, counter] of CARDS) {
   });
 }
 
+await test("Lucky comes up on a hit against its holder, costs no reaction, stays open once the reaction is spent, and plays.", async () => {
+  const rogue = hero({ class: "rogue", feats: ["Lucky"] });
+  const enemy = await stage(rogue);
+  assert.equal(offered(rogue, "Lucky").length, 0, "no hit yet");
+  await strike(enemy, rogue);
+  const dodge = await play(rogue, offered(rogue, "Uncanny Dodge")[0]);
+  assert.equal(dodge.ok, true, dodge.error);
+  const [card] = reactionCards(world.sheet(rogue.id), { ...FRESH_TURN, myTurn: false, reactionUsed: true }, activePublicEncounter(world.campaignId)?.lastHits ?? [], world.sheets(), "you").filter((entry) => entry.name === "Lucky");
+  assert.ok(card, "the hit offers Lucky");
+  assert.equal(card.cost, "free");
+  assert.equal(card.disabled, null, "a spent reaction does not bar it");
+  assert.equal(intentRefusal(getCampaignById(world.campaignId), world.sheet(rogue.id), card.intent), null, "nor does the card's own check, as the Hand plays it");
+  world.dice(2);
+  const out = await play(rogue, card);
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.sheet(rogue.id).resources.luck_points.used, 1);
+  assert.equal(offered(rogue, "Lucky").length, 0, "the hit is answered");
+});
+
 await test("A hit on the holder deals one card, not one more as their own ally.", async () => {
   const cavalier = hero({ class: "fighter", subclass: "Cavalier" });
   const enemy = await stage(cavalier);

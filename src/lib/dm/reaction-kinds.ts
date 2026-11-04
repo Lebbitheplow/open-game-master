@@ -59,6 +59,13 @@ const ANSWERS = [
   "ice pick",
 ];
 
+// Answered from the reaction strip but no reaction: Lucky spends a luck
+// point (src/lib/dm/feat-reactions.ts), so neither a reaction already used
+// nor a condition that bars reactions keeps it from the character.
+export function spendsNoReaction(name: string): boolean {
+  return isNamed(name, "lucky", "fortunate", "luck point", "luck points");
+}
+
 // By the reaction's whole name (src/lib/srd/feature-names.ts): Shield of
 // Faith is no Shield.
 export function reactionTimingOf(name: string): ReactionTiming {

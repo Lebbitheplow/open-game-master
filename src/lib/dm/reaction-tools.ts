@@ -37,7 +37,7 @@ import { addSheetCondition, rollCard } from "@/lib/dm/action-common";
 import { tilesBetween } from "@/lib/dm/attack-spatial";
 import { reactionRefusal } from "@/lib/dm/reaction-gate";
 import { devotedGuard } from "@/lib/dm/devoted-guard";
-import { reactionTimingOf, timingOfDoes, type ReactionTiming } from "@/lib/dm/reaction-kinds";
+import { reactionTimingOf, timingOfDoes, type ReactionTiming, spendsNoReaction } from "@/lib/dm/reaction-kinds";
 import { authoredReactionNamed, heldReaction } from "@/lib/srd/authored-effects";
 import { removeConditions } from "@/lib/dm/condition-logic";
 import { attackerFoeId, freshLastHit, heaviestHit, heaviestRaw, hitIdOf, openHitAimed, openHits, plainOfReroll, reactedLate, rerollAttacker, withHitAim, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
@@ -541,7 +541,7 @@ function useReaction(
   // Lucky against an attack spends a luck point and no reaction: a reaction
   // already used, or a condition that bars reactions, refused it, so the
   // point could not be spent where the feat allows it.
-  if (isNamed(feature, "lucky", "fortunate", "luck point", "luck points")) {
+  if (spendsNoReaction(feature)) {
     return lucky({ campaign, turn, sheet, args, sheets, sheetsById, encounter });
   }
   const refused = reactionRefusal(campaign.id, sheet, encounter, feature, timingOfUseReaction(campaign, sheet, args, sheets, sheetsById));
