@@ -179,10 +179,21 @@ const KIND_LINES: Record<Exclude<ClaimKind, "bond">, string> = {
 // readTurnEndInWords): gpt-oss-20b as the reader found "then I end my turn"
 // in one reading and missed it in the next. A miss here costs what a table in
 // any other language pays: the reader's reading alone.
-const ENGLISH_ENDS_TURN = /\b(?:end(?:s|ing)?|finish(?:es|ing)?) (?:my|the|his|her|their) turn\b|\bthat'?s (?:it for )?my turn\b|\bmy turn is (?:over|done)\b/i;
+const ENGLISH_ENDS_TURN = /\b(?:end(?:s|ing)?|finish(?:es|ing)?) (?:my|the|his|her|their) turn\b|\bthat'?s (?:it for )?my turn\b|\bmy turn is (?:over|done)\b/gi;
+
+// Words before the phrase, in its own clause, that say the turn is not ending
+// now: "Don't end my turn yet" and "I'll tell you when I end my turn" ended it
+// on the very words meant to keep it open, and a question only
+// asks. A miss costs the same reader's reading as above.
+const ENGLISH_NOT_YET = /\b(?:don['’]?t|do not|doesn['’]?t|does not|not|never|won['’]?t|will not|can['’]?t|cannot|before|when|whenever|until|till|once|if|unless|without|hold off|wait to)\b/i;
 
 export function englishEndsTurn(text: string): boolean {
-  return ENGLISH_ENDS_TURN.test(text);
+  return [...text.matchAll(ENGLISH_ENDS_TURN)].some((match) => {
+    const before = text.slice(0, match.index);
+    const clause = before.slice(Math.max(...[".", "!", "?", ";", ",", "\n"].map((mark) => before.lastIndexOf(mark))) + 1);
+    const asks = /^[^.!;\n]*\?/.test(text.slice(match.index + match[0].length));
+    return !asks && !ENGLISH_NOT_YET.test(clause);
+  });
 }
 
 // The reader's instructions. Every claim kind about the game is listed so the

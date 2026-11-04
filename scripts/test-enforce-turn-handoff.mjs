@@ -187,6 +187,21 @@ await test("The player's words end nothing when the DM only asked them a questio
   assert.equal(current(), avery.id);
 });
 
+await test("The player's words that keep the turn open keep it, though the DM ruled on what they did", async () => {
+  const goblin = await stage();
+  kit.place(goblin.id, 15, 5);
+  await playerTurn(
+    "I close in on the goblin and attack it. Don't end my turn yet, I want to move after.",
+    [
+      reply({ calls: [call("pc_attack", { characterId: avery.id, targetEnemyId: goblin.id, weapon: "Longsword" })] }),
+      reply({ text: "The goblin is too far off for Avery's blade to reach. What does Avery do?" }),
+    ],
+    [[], []],
+  );
+  assert.equal(wordsRead(), true, "the phrase answered for the reader");
+  assert.equal(current(), avery.id, "the words that kept the turn open ended it");
+});
+
 await test("A later reply that recalls this turn's own swing is not sent back as a blow nobody rolled", async () => {
   const goblin = await stage();
   world.say("player", "I cut at the goblin.", world.sheet(avery.id));
