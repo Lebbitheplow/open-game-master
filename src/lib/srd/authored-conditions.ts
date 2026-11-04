@@ -181,6 +181,18 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
     saveFlatAbility: "dex",
   },
   {
+    id: "abjured_still",
+    match: ["abjured still"],
+    summary: "Abjure Enemy: speed 0 for a minute or until it takes damage.",
+    speedMultiplier: 0,
+  },
+  {
+    id: "abjured_slowed",
+    match: ["abjured slowed"],
+    summary: "Abjure Enemy: half speed for a minute or until it takes damage.",
+    speedMultiplier: 0.5,
+  },
+  {
     id: "held_in_place",
     match: ["held in place"],
     summary: "Held in place (Hold the Line): speed 0 for the rest of the turn.",

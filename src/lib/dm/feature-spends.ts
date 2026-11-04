@@ -26,9 +26,9 @@ import { matchResource } from "@/lib/srd/class-resources";
 import { classLevelOf, holdsFeature } from "@/lib/srd/trait-rules";
 import { effectiveMaxHp, incapacitatedBy, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { activeAuthored } from "@/lib/srd/authored-effects";
-import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
+import { foesOfSheet, resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { VOW_OF_ENMITY } from "@/lib/srd/vow-of-enmity";
-import { withinFeet } from "@/lib/dm/authored-saves";
+import { seesOnBoard, withinFeet } from "@/lib/dm/authored-saves";
 import { rollFeatureSave } from "@/lib/dm/contest-roll";
 import { healDeathHook } from "@/lib/dm/death";
 import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
@@ -46,9 +46,20 @@ import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
 import { familyOf, isConditionNamed, isNamed, nameChoice } from "@/lib/srd/feature-names";
 import { TURNED } from "@/lib/dm/flee-logic";
+import { channelOptions } from "@/lib/dm/option-costs";
+import { CHANNEL_FEAR, channelFear } from "@/lib/dm/channel-fear";
 import { swallowCoverBetween } from "@/lib/dm/swallow";
 
 type Ability = "str" | "dex" | "con" | "int" | "wis" | "cha";
+
+// The turnings beyond Turn Undead and Turn the Unholy, each by its own creature
+// types, within 30 feet. Banishing (Arcane Abjuration from 5th level) rests on a
+// creature's plane of origin, which no stat block records, so it stays the GM's.
+const CHANNEL_TURNINGS = [
+  { name: "Turn the Faithless", beyond: true, types: /fey|fiend/i, note: "A creature that failed drops any disguise or illusion: its true form shows." },
+  { name: "Abjure the Extraplanar", beyond: true, types: /aberration|celestial|elemental|fey|fiend/i },
+  { name: "Arcane Abjuration", beyond: true, types: /celestial|elemental|fey|fiend/i, single: true, note: "From 5th level a creature that failed, away from its plane of origin, at or under the limit for this level (CR 1/2 at 5th, 1 at 8th, 2 at 11th, 3 at 14th, 4 at 17th) is banished for a minute instead: that is the GM's call." },
+];
 
 // Destroy Undead's challenge rating threshold by cleric level (SRD 5.1).
 export function destroyUndeadCr(clericLevel: number): number | null {
@@ -142,6 +153,19 @@ export function featureVariantSpend(
       return spend(campaign, turnId, sheet, def.id, "action", reason, () =>
         turnUndead(campaign, turnId, sheet, { types: /undead|fiend/i, destroy: false, name: "Turn the Unholy" }),
       );
+    }
+    // The other turnings run as Turn the Unholy does. Each is refused to a sheet
+    // that does not hold it, so a call cannot spend the use on another's option.
+    const turning = CHANNEL_TURNINGS.find((entry) => isNamed(wanted, entry.name));
+    const fear = CHANNEL_FEAR.find((entry) => isNamed(wanted, entry.name));
+    if ((turning || fear) && !channelOptions(sheet).some((entry) => isNamed(entry.name, (turning ?? fear)!.name))) {
+      return { error: `${sheet.name} does not hold ${(turning ?? fear)!.name}. Nothing was spent.`, refused: "rules" };
+    }
+    if (turning) {
+      return spend(campaign, turnId, sheet, def.id, "action", reason, () => turnUndead(campaign, turnId, sheet, { ...turning, destroy: false, target: targetEnemyId }));
+    }
+    if (fear) {
+      return spend(campaign, turnId, sheet, def.id, "action", reason, () => channelFear(campaign, getSheetById(sheet.id) ?? sheet, fear, targetEnemyId));
     }
     if (isNamed(wanted, "turn undead", "destroy undead")) {
       return spend(campaign, turnId, sheet, def.id, "action", reason, () => turnUndead(campaign, turnId, sheet));
@@ -273,7 +297,8 @@ function turnUndead(
   campaign: Campaign,
   turnId: string,
   sheet: CharacterSheet,
-  kind: { types: RegExp; destroy: boolean; name: string } = { types: /undead/i, destroy: true, name: "Turn Undead" },
+  // `beyond`: a turning of other creatures than undead (CHANNEL_TURNINGS).
+  kind: { types: RegExp; destroy: boolean; name: string; single?: boolean; target?: string; note?: string; beyond?: boolean } = { types: /undead/i, destroy: true, name: "Turn Undead" },
 ): Resolution {
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter) {
@@ -283,9 +308,15 @@ function turnUndead(
   const dc = derived.spellSaveDc ?? 8 + derived.proficiencyBonus + Math.max(derived.abilityMods.wis, derived.abilityMods.cha);
   const destroyAt = kind.destroy ? destroyUndeadCr(classLevelOf(sheet, "cleric")) : null;
   // Nothing across a swallower's wall sees or hears the cleric (swallow.ts).
-  const undead = listEnemies(encounter.id).filter(
+  const named = kind.single && kind.target ? resolveTargetFoe(campaign.id, encounter, kind.target) : null;
+  if (kind.single && !named) {
+    return { error: `${kind.name} names one creature in the fight: pass targetEnemyId. Channel Divinity was not spent.`, retry: true };
+  }
+  const undead = (kind.beyond ? foesOfSheet(campaign.id, encounter, sheet.id) : listEnemies(encounter.id)).filter(
     (enemy) =>
       enemy.status === "alive" &&
+      (!kind.beyond || (enemy.currentHp > 0 && seesOnBoard(encounter.id, sheet.id, enemy.id))) &&
+      (!named || enemy.id === named.id) &&
       kind.types.test(String(enemy.stats.type ?? "")) &&
       within(campaign.id, sheet.id, enemy.id, TURN_RANGE_FEET) &&
       !swallowCoverBetween(sheet.id, enemy.id),
@@ -300,13 +331,14 @@ function turnUndead(
   const fielded = listEnemies(encounter.id);
   for (const enemy of undead) {
     // Its block's own answer to turning, and an ally's Turn Defiance.
-    const defence = turnDefence(encounter.id, enemy, fielded);
+    // Those lines answer effects that turn undead, not these.
+    const defence: ReturnType<typeof turnDefence> = kind.beyond ? {} : turnDefence(encounter.id, enemy, fielded);
     if (defence.immune) {
       outcomes.push(`${enemy.displayName} cannot be turned (${defence.immune}).`);
       continue;
     }
     // Turned: a legendary creature spends a resistance to stand its ground.
-    const save = rollEnemySave(campaign.id, enemy, "wis", dc, { resist: true, advantage: Boolean(defence.advantage), disadvantage: Boolean(defence.disadvantage) });
+    const save = rollEnemySave(campaign.id, enemy, "wis", dc, { resist: true, advantage: Boolean(defence.advantage), disadvantage: Boolean(defence.disadvantage), ...(kind.beyond ? { magical: true, against: TURNED, record: { detail: `${enemy.displayName}: WIS save against ${kind.name}` } } : {}) });
     const lean = [defence.advantage ? `advantage from ${defence.advantage}` : "", defence.disadvantage ? `disadvantage from ${defence.disadvantage}` : ""].filter(Boolean).join(", ");
     if (save.success) {
       outcomes.push(`${enemy.displayName} resists (WIS ${save.total ?? "failed outright"} vs DC ${dc}${lean ? `, ${lean}` : ""})${save.legendaryResistance ? " with Legendary Resistance" : ""}.`);
@@ -320,9 +352,12 @@ function turnUndead(
       outcomes.push(`${enemy.displayName} is destroyed (CR ${cr} at or under ${destroyAt}).`);
       continue;
     }
-    const conditions = enemy.conditions.includes(TURNED) ? enemy.conditions : [...enemy.conditions, TURNED];
+    // As it stands after the save, which can spend a condition it held (Unsettling
+    // Words' die): the read before the save would write that back.
+    const standing = resolveTargetFoe(campaign.id, encounter, enemy.id) ?? enemy;
+    const conditions = standing.conditions.includes(TURNED) ? standing.conditions : [...standing.conditions, TURNED];
     const meta: ConditionMetaMap = {
-      ...(enemy.conditionMeta as ConditionMetaMap),
+      ...(standing.conditionMeta as ConditionMetaMap),
       // "If the creature takes any damage" the turning ends (SRD 5.1): the
       // damage path ends what is marked so (spell-effects.ts settleOnDamage).
       [TURNED]: { rounds: 10, source: sheet.id, endsOnDamage: true },
@@ -334,7 +369,8 @@ function turnUndead(
   return {
     result: {
       turnUndead: outcomes,
-      note: "A turned undead runs from the cleric on its turns: take_action dash with its enemyId, then move_token away (cornered, take_action dodge). It makes no attacks or reactions; any damage ends it. A turn you skip runs it for you. Do not set frightened by hand.",
+      ...(kind.note ? { also: kind.note } : {}),
+      note: (kind.beyond ? "A turned creature runs from whoever turned it on its turns:" : "A turned undead runs from the cleric on its turns:") + " take_action dash with its enemyId, then move_token away (cornered, take_action dodge). It makes no attacks or reactions; any damage ends it. A turn you skip runs it for you. Do not set frightened by hand.",
     },
   };
 }

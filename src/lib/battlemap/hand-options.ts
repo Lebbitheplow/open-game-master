@@ -83,6 +83,9 @@ function card(
   );
 }
 
+// The options aimed at one creature, which the engine asks for by id.
+const AIMED_OPTIONS = [VOW_OF_ENMITY, textKey("Arcane Abjuration"), textKey("Abjure Enemy")];
+
 const RULES: Record<HeldOption["cost"], string> = {
   action: "Takes their action.",
   bonus: "Takes their bonus action.",
@@ -103,7 +106,7 @@ export function optionCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] {
           cost: COST[option.cost],
           rules: `Channel Divinity. ${RULES[option.cost]}`,
           ritual: option.cost === "ritual",
-          ...(textKey(option.name) === VOW_OF_ENMITY ? { target: "enemy" as const } : {}),
+          ...(AIMED_OPTIONS.includes(textKey(option.name)) ? { target: "enemy" as const } : {}),
         }),
       );
     }
