@@ -9,6 +9,8 @@
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { getBattleMapForEncounter } from "@/lib/db/battle-maps";
 import { getActiveEncounter, saveEncounter, type EncounterEnemy } from "@/lib/db/encounters";
+import type { Campaign } from "@/lib/db/campaigns";
+import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { spellEngineName, spellFactsFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { tilesBetween } from "@/lib/dm/attack-spatial";
@@ -33,7 +35,7 @@ import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
 import { swallowCoverError } from "@/lib/dm/swallow";
 import { takeItemCast } from "@/lib/srd/item-cast-credit";
 import { spellHeldProblem } from "@/lib/dm/cast-rules";
-import { textKey } from "@/lib/language/text-logic";
+import { findNamed, textKey } from "@/lib/language/text-logic";
 
 // ---- reaction spells ----
 
@@ -62,6 +64,34 @@ function spentLine(ctx: Ctx, cast: Record<string, unknown>): string {
   return `${ctx.sheet.name}'s reaction${
     typeof cast.slotLevel === "number" && !cast.fromItem ? ` and a level-${cast.slotLevel} slot are` : " is"
   } spent.`;
+}
+
+// What each reaction spell a card can play answers: the moment, in words, and
+// whether the server has one open. By the spell the table's copy runs as.
+const TRIGGERS: Array<{ spell: string; when: (name: string) => string; open: (campaignId: string, sheetId: string, targetEnemyId?: string) => boolean }> = [
+  { spell: "Shield", when: (name) => `${name} is hit by an attack`, open: (campaignId, sheetId) => shieldAnswers(campaignId, sheetId).length > 0 },
+  { spell: "Feather Fall", when: (name) => `${name} falls`, open: (campaignId, sheetId) => Boolean(freshLastHit(campaignId, sheetId, (hit) => hit.source === "fall")) },
+  { spell: "Absorb Elements", when: (name) => `${name} takes acid, cold, fire, lightning or thunder damage`, open: (campaignId, sheetId) => Boolean(freshLastHit(campaignId, sheetId, absorbable)) },
+  {
+    spell: "Hellish Rebuke",
+    when: (name) => `a creature damages ${name}`,
+    open: (campaignId, sheetId, targetEnemyId) =>
+      Boolean(freshLastHit(campaignId, sheetId, (hit) => attackerFoeId(hit) !== null && hit.swings.some((swing) => swing.hit && swing.raw > 0) && (!targetEnemyId || hit.attacker.id === targetEnemyId))),
+  },
+];
+
+// Whether what this reaction spell answers has happened, for a card about to draw
+// it out of a ring (intent-check.ts). Null when it has. A spell whose trigger the
+// server cannot see (Counterspell names the spell it answers, and the rest are the
+// GM's call) is no card's to play: the player says so in words.
+export function reactionTriggerProblem(campaign: Campaign, sheet: CharacterSheet, spellName: string, args: { targetEnemyId?: string }): ToolError | null {
+  const trigger = findNamed(TRIGGERS, spellEngineName(spellName, spellAuthorsFor(campaign)), (row) => [row.spell]);
+  if (!trigger) {
+    return { error: `${spellName} is cast when its trigger comes, and no card can name that: say it in your own words when it does. Nothing was spent.`, refused: "rules" };
+  }
+  return trigger.open(campaign.id, sheet.id, args.targetEnemyId)
+    ? null
+    : { error: `${spellName} is cast when ${trigger.when(sheet.name)}, and the server has no such thing this turn. Nothing was spent.`, refused: "rules" };
 }
 
 export function reactionSpell(ctx: Ctx, spellName: string): ToolResult {

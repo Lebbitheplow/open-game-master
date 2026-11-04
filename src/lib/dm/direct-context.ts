@@ -8,6 +8,7 @@
 import { getBattleMapForEncounter } from "@/lib/db/battle-maps";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
+import { completedCastingOf } from "@/lib/dm/long-casting-logic";
 import { getFoe } from "@/lib/dm/sheet-foe";
 import { beamConnected, beamHeld } from "@/lib/dm/witch-bolt";
 import { spellEngineName, spellFactsFor, spellMechanicsFor } from "@/lib/content";
@@ -46,10 +47,15 @@ export function directContextFor(campaignId: string, intent: MessageIntent, auth
   // Find Familiar binds a pet of the form named (familiar-cast.ts).
   const familiar = Boolean(cast && runsAs && isFindFamiliar(runsAs));
   const facts = cast ? spellFactsFor(cast, authors) : null;
+  // A casting of a minute or more out of a ring is begun in a fight, and resolved
+  // by the card played once it is done (long-casting.ts).
+  const wearer = cast && intent.item && encounter && typeof facts?.castingTime === "number" ? getSheetById(characterId) : null;
+  const ringBegins = Boolean(wearer && cast && !completedCastingOf(wearer, cast));
   const pick = cast && zone ? (board ? (areaFor({ spell: cast, runsAs })?.pick ?? "point") : "off") : null;
   // Witch Bolt's card at what its beam is connected to is the beam's strike;
-  // at anything else it is a new casting (src/lib/dm/witch-bolt.ts).
-  const caster = cast && known && mech?.repeatDice ? getSheetById(characterId) : null;
+  // at anything else it is a new casting (src/lib/dm/witch-bolt.ts). So is a
+  // ring's card of that spell, wherever it is aimed.
+  const caster = cast && known && mech?.repeatDice && !intent.item ? getSheetById(characterId) : null;
   const foe = caster && intent.targetId ? getFoe(intent.targetId) : null;
   const beam = Boolean(caster && foe && known && beamHeld(caster, known.name, mech) && beamConnected(caster, foe, known.name));
   return {
@@ -65,5 +71,6 @@ export function directContextFor(campaignId: string, intent: MessageIntent, auth
     ...(facts?.range.kind === "self" ? { selfOnly: true } : {}),
     ...(mech?.dispel ? { dispel: true } : {}),
     ...(beam ? { beam: true } : {}),
+    ...(ringBegins ? { ringBegins: true } : {}),
   };
 }

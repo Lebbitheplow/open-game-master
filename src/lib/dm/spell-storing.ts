@@ -35,7 +35,7 @@ import type { CastResult, CastStoring } from "@/lib/dm/cast-guard";
 import { scrollNumbers } from "@/lib/dm/consumables";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { beginHeldCasting } from "@/lib/dm/long-casting";
-import { castingRoundsOf } from "@/lib/dm/long-casting-logic";
+import { castingRoundsOf, completedCastingOf } from "@/lib/dm/long-casting-logic";
 import { readiedReleaseFor } from "@/lib/dm/readied-release";
 import { creditStoredSpell, putInRing, storeRefusal, storerNamed } from "@/lib/dm/ring-store";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
@@ -44,10 +44,9 @@ import { tilesBetween } from "@/lib/dm/attack-spatial";
 import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import { isWorn } from "@/lib/srd/armor";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { takeItemCast } from "@/lib/srd/item-cast-credit";
-import { storedSpellNamed, storedSpellsOf, storeLevelsFree, type StoredSpell } from "@/lib/srd/spell-storing";
+import { ringBarrier, ringDrawnMark, storedSpellNamed, storedSpellsOf, storeLevelsFree, type StoredSpell } from "@/lib/srd/spell-storing";
 
 export type StoreRequest = {
   storeIn: string;
@@ -128,8 +127,9 @@ export function storeSpell(
 }
 
 // Casts a stored spell back out. Null for anything but a Ring of Spell Storing,
-// so use_item goes on as it always has.
-export function releaseStoredSpell(campaign: Campaign, sheet: CharacterSheet, itemName: string, spell: string | undefined, turnId: string): ToolResult | null {
+// so use_item goes on as it always has. A dry run asks every refusal and writes
+// nothing, for a card asked before it is posted (intent-check.ts).
+export function releaseStoredSpell(campaign: Campaign, sheet: CharacterSheet, itemName: string, spell: string | undefined, turnId: string, { dryRun = false }: { dryRun?: boolean } = {}): ToolResult | null {
   const ring = storerNamed(sheet, itemName);
   if (!ring) {
     return null;
@@ -137,11 +137,9 @@ export function releaseStoredSpell(campaign: Campaign, sheet: CharacterSheet, it
   if (sheet.deathSaves?.dead || sheet.currentHp <= 0) {
     return { error: `${sheet.name} is ${sheet.deathSaves?.dead ? "dead" : "unconscious at 0 hit points"} and cannot use ${ring.name}.`, refused: "rules" };
   }
-  if (!ring.attuned) {
-    return { error: `${ring.name} works only for someone attuned to it, and ${sheet.name} is not; attuning takes a short rest with the item. Nothing was spent.`, refused: "rules" };
-  }
-  if (!isWorn(ring, sheet.equipment)) {
-    return { error: `${ring.name} casts its spells only while it is worn, and ${sheet.name} is not wearing it. Nothing was spent.`, refused: "rules" };
+  const barrier = ringBarrier(sheet, ring);
+  if (barrier) {
+    return { error: barrier, refused: "rules" };
   }
   const held = storedSpellsOf(ring);
   if (!held.length) {
@@ -175,6 +173,14 @@ export function releaseStoredSpell(campaign: Campaign, sheet: CharacterSheet, it
   if (takeItemCast(sheet.id, entry.spell, { dryRun: true })) {
     return { ...summary, note: resolveNote };
   }
+  // A casting held across turns has been paid for, turn by turn: its card finishes
+  // it (long-casting.ts). The credit it left may have run out meanwhile.
+  if (completedCastingOf(sheet, entry.spell)) {
+    if (!dryRun) {
+      creditStoredSpell(sheet.id, ring, entry);
+    }
+    return { ...summary, note: resolveNote };
+  }
   const encounter = getActiveEncounter(campaign.id);
   // Off their turn, a use they readied: their reaction (readied-release.ts).
   // A reaction spell spends its own, when use_reaction casts it.
@@ -199,9 +205,14 @@ export function releaseStoredSpell(campaign: Campaign, sheet: CharacterSheet, it
       if (!paid.ok) {
         return toolError(paid);
       }
-      storeBudget(encounter, paid.budget);
-      spent = paid.budget;
+      spent = { ...paid.budget, oncePerTurn: [...paid.budget.oncePerTurn, ringDrawnMark(entry.spell)] };
+      if (!dryRun) {
+        storeBudget(encounter, spent);
+      }
     }
+  }
+  if (dryRun) {
+    return { ...summary, dryRun: true };
   }
   readied?.release();
   // SRD 5.1: "otherwise treated as if you cast the spell", so one of a minute

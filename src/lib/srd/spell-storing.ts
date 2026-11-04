@@ -9,7 +9,8 @@
 //
 // Pure: the row in, the words and the numbers out.
 
-import { findNamed } from "@/lib/language/text-logic";
+import { findNamed, textKey } from "@/lib/language/text-logic";
+import { isWorn } from "@/lib/srd/armor";
 import { isWorkshopRow, type RowItem } from "@/lib/srd/item-row";
 import { matchMagicItem } from "@/lib/srd/magic-items";
 import type { EquipmentItem } from "@/lib/schemas/sheet";
@@ -47,6 +48,23 @@ export function storerHolding<T extends StorerRow>(equipment: readonly T[], spel
 function storedWords(entry: StoredSpell): string {
   const numbers = [entry.saveDc ? `save DC ${entry.saveDc}` : "", entry.attackBonus ? `attack +${entry.attackBonus}` : ""].filter(Boolean);
   return `${entry.spell} (level ${entry.level}${numbers.length ? `, ${numbers.join(", ")}` : ""})`;
+}
+
+// Why its wearer cannot cast from this ring as they stand, or null: the ring's
+// own two conditions, in the words the card greys with and use_item refuses with.
+export function ringBarrier(sheet: { name: string; equipment: readonly EquipmentItem[] }, ring: EquipmentItem): string | null {
+  if (!ring.attuned) {
+    return `${ring.name} works only for someone attuned to it, and ${sheet.name} is not; attuning takes a short rest with the item. Nothing was spent.`;
+  }
+  return isWorn(ring, sheet.equipment) ? null : `${ring.name} casts its spells only while it is worn, and ${sheet.name} is not wearing it. Nothing was spent.`;
+}
+
+// The once-a-turn mark use_item leaves on the budget when it has paid for this
+// spell and the spell's tool has not cast it yet. The Hand cannot see the credit,
+// which is in the server's memory, so without this a card sent back after its
+// tool refused (a target out of range) stood greyed for the action it had paid.
+export function ringDrawnMark(spell: string): string {
+  return `ring drawn:${textKey(spell)}`;
 }
 
 // The ring's words on the model's GAME STATE line.
