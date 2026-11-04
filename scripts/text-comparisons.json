@@ -1615,7 +1615,6 @@
     "lib/dm/pc-attack-plan.ts#toLowerCase": [["key",1,"condition label (engine vocabulary)"]],
     "lib/dm/pc-attack-profile.ts#str-includes": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/pc-attack-profile.ts#toLowerCase": [["key",4,"damage type; SRD weapon names as proficiency keys"]],
-    "lib/dm/pc-attack-resolve.ts#re-word": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/pc-attack-resolve.ts#str-eq": [["key",4,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/pc-attack-resolve.ts#toUpperCase": [["display",2,"ability abbreviation shown"]],
     "lib/dm/pc-attack-riders.ts#re-word": [["english-source",1,"the \"Maneuver:\" prefix the builder writes"]],

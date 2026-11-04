@@ -16,7 +16,7 @@ import { holdsFeature } from "@/lib/srd/feature-names";
 import { textKey } from "@/lib/language/text-logic";
 import { BRUTAL_ATTACK_USED, brawlerUnarmed, brutalAttackApplies, CRUSHER_USED, damageTypeFeat, GREAT_WEAPON_MASTER_READY, PIERCER_USED, SAVAGE_ATTACKER_USED, savageAttackerApplies, SLASHER_USED, TAVERN_GRAPPLE_READY, type DamageTypeFeat } from "@/lib/srd/feat-combat";
 import { holdsFeat } from "@/lib/srd/feat-effects";
-import { tryParry } from "@/lib/dm/enemy-reactions";
+import { attackerUnseen, tryParry } from "@/lib/dm/enemy-reactions";
 import { allocateSeq } from "@/lib/db/campaigns";
 import { patchEnemyConditions, recordEncounterTarget, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { insertRoll, landRoll, type StoredRoll } from "@/lib/db/rolls";
@@ -152,7 +152,7 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike): Record<string, u
   // Parry: the creature's reaction lifts its AC against a melee hit it sees (enemy-reactions.ts).
   const metTotal = totalAReactionMeets({ total: hitOutcome.total, ac: plan.effectiveAc, hit: judged.hit, crit: judged.crit, natural1: hitOutcome.crit === "nat1", foeSlayer: plan.extras.foeSlayer });
   const parry = metTotal !== null
-    ? tryParry({ encounter, enemy, total: metTotal, natural20: false, ac: plan.effectiveAc, melee: !plan.atRange, attackerUnseen: sheet.conditions.some((entry) => /^(invisible|hidden)$/i.test(entry.trim())) })
+    ? tryParry({ encounter, enemy, total: metTotal, natural20: false, ac: plan.effectiveAc, melee: !plan.atRange, attackerUnseen: attackerUnseen(sheet.conditions, enemy.conditions) })
     : null;
   if (parry) {
     context.notes.push(parry.note);

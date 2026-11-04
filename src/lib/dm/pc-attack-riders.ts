@@ -118,6 +118,11 @@ export type ParkedAttack = PendingAttack & {
   material?: WeaponMaterial;
   onHit?: OnHitSpends;
   nonlethal?: boolean;
+  // A creature cannot Parry an attacker it could not see. Read when the attack
+  // is made: the attack itself can end hiding.
+  attackerUnseen?: boolean;
+  // The creature's AC, without cover, when the roll parked (parkedTargetAc).
+  plainAc?: number;
   hitSpent?: string[];
   // The once-per-turn riders the hit spends (Sneak Attack): pc-attack-damage.ts claimHitRiders.
   hitClaims?: string[];

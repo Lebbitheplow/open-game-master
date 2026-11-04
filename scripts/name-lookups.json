@@ -1592,7 +1592,7 @@
     "lib/dm/pc-attack-profile.ts#whole": [["identity",1,"the resolved line by its own name"]],
     "lib/dm/pc-attack-resolve.ts#fallback": [["key",1,"the lowest kept die"]],
     "lib/dm/pc-attack-resolve.ts#first": [["key",1,"the lowest kept die"]],
-    "lib/dm/pc-attack-resolve.ts#partial": [["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["parse",2,"damage text"]],
+    "lib/dm/pc-attack-resolve.ts#partial": [["parse",2,"damage text"]],
     "lib/dm/pc-attack-resolve.ts#whole": [["identity",1,"condition instances by whole name or key"]],
     "lib/dm/pc-attack-resolve.ts#whole-single": [["identity",1,"a spell by its whole name"]],
     "lib/dm/pc-attack-riders.ts#partial": [["identity",2,"a mark by whole name, its \"(note)\" dropped"],["key",1,"turn-budget keys"],["key",1,"ODM's own \"Maneuver: \" feature names"]],
