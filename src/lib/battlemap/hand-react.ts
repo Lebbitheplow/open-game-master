@@ -565,7 +565,8 @@ function subclassReactions(
       if (!rules) continue;
       const target: HandTarget = does.kind === "strike_back" || does.kind === "redirect" ? "enemy" : whose === "ally" ? "ally" : "none";
       // A redirect lands on a creature beside the holder (use_reaction's 5 feet),
-      // and a melee strike back has no reach of its own on record.
+      // a melee strike back has no reach of its own on record, and Shadow
+      // Martyr's only bar is seeing the ally and the attacker.
       const range =
         does.kind === "redirect"
           ? reachLabel(REDIRECT_FT)
@@ -573,7 +574,9 @@ function subclassReactions(
             ? "Self"
             : does.kind === "strike_back" && does.melee && reach === undefined
               ? "Melee"
-              : reachLabel(reach);
+              : does.kind === "echo_takes_hit"
+                ? "Sight"
+                : reachLabel(reach);
       out.push({
         name: reaction.name,
         rules,

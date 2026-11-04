@@ -54,6 +54,10 @@ for (const [name, range, extra] of [
   ["Glorious Defense", "10 ft", { class: "paladin", subclass: "Oath of Glory" }],
   ["Protection", "5 ft", { class: "fighter", features: [{ name: "Fighting Style: Protection", source: "class", level: 1 }] }],
   ["Warding Maneuver", "5 ft", { class: "fighter", subclass: "Cavalier" }],
+  ["Runic Shield", "60 ft", { class: "fighter", subclass: "Rune Knight" }],
+  // "A creature you can see attacks a target other than you that you can see":
+  // no feet on record, and a blank corner said nothing.
+  ["Shadow Martyr", "Sight", { class: "fighter", subclass: "Echo Knight" }],
 ]) {
   await test(`${name} on an ally's hit names its reach, ${range}.`, async () => {
     const who = hero(extra);
@@ -94,6 +98,21 @@ await test("A reaction that turns the hit onto a creature beside the holder name
   const who = hero({ class: "rogue", subclass: "Mastermind" });
   await strike(await stage(who), who);
   assert.equal(card(who, "Misdirection").range, "5 ft");
+});
+
+await test("Sentinel at Death's Door names its 30 feet on an ally's critical, and Self on the holder's own.", async () => {
+  const who = hero({ class: "cleric", subclass: "Grave Domain" });
+  const crit = async (target) => {
+    const enemy = await stage(who);
+    world.dice(20, 4, 3);
+    const out = await world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: target.id });
+    world.clearDice();
+    assert.equal(out.ok, true, out.error);
+  };
+  await crit(friend);
+  assert.equal(card(who, "Sentinel at Death's Door").range, "30 ft");
+  await crit(who);
+  assert.equal(card(who, "Sentinel at Death's Door").range, "Self");
 });
 
 await test("A melee strike back with no reach on record says Melee.", async () => {
