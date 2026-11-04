@@ -48,6 +48,7 @@ import { computeSheetDerived } from "@/lib/srd";
 import { conditionRollRiders } from "@/lib/srd/condition-effects";
 import { conditionsSpentAgainst } from "@/lib/srd/condition-effect-queries";
 import { combatRiders } from "@/lib/srd/feature-effects";
+import { magicItemRiders } from "@/lib/srd/magic-items";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { markOpportunityHit } from "@/lib/dm/authored-reactions-more";
 
@@ -106,6 +107,8 @@ export function pcOpportunitySwing(input: {
   let profile = weaponAttackProfile(shillelagh?.derived ?? derived, sheet.proficiencies.weapons, shillelagh?.resolved ?? resolved, {
     riders,
     martialArts: martialArtsApplies(sheet),
+    // A worn item's bonus rides the reaction's swing as it does the turn's.
+    worn: magicItemRiders(sheet.equipment, sheet).weaponRiders,
   });
   if (shillelagh) {
     profile = { ...profile, magicWeapon: true };

@@ -77,10 +77,14 @@ export type MagicItemEffect =
   | { kind: "speed"; mode: "fly" | "swim" | "climb"; feet: number | "walk" }
   // Weapon training and damage the item adds to attacks with these weapons,
   // on a ranged attack only when `ranged` (Bracers of Archery).
-  | { kind: "weapon_rider"; weapons: string[]; ranged?: boolean; damage?: number; proficient?: boolean };
+  | { kind: "weapon_rider"; weapons: string[]; ranged?: boolean; attack?: number; damage?: number; proficient?: boolean; unarmed?: UnarmedForm };
 
 // A worn item's rider on attacks with some weapons, with the item it is from.
-export type WornWeaponRider = { weapons: string[]; ranged?: boolean; damage?: number; proficient?: boolean; source: string };
+// What an item makes of the unarmed strike itself (SRD 5.1, Demon Armor: "a
+// damage die of 1d8" that deals "slashing damage").
+export type UnarmedForm = { die: string; damageType: string };
+
+export type WornWeaponRider = { weapons: string[]; ranged?: boolean; attack?: number; damage?: number; proficient?: boolean; unarmed?: UnarmedForm; source: string };
 
 // Who an item lets attune, read from the pack's "requires attunement by ..."
 // line. `text` is that line's own wording, for the refusal.
@@ -341,7 +345,7 @@ export function magicItemRiders(equipment: WornMagicItem[], wearer?: Wearer): Ma
           contributed = true;
           break;
         case "weapon_rider":
-          riders.weaponRiders.push({ weapons: effect.weapons, ranged: effect.ranged, damage: effect.damage, proficient: effect.proficient, source: item.name });
+          riders.weaponRiders.push({ weapons: effect.weapons, ranged: effect.ranged, attack: effect.attack, damage: effect.damage, proficient: effect.proficient, unarmed: effect.unarmed, source: item.name });
           contributed = true;
           break;
       }

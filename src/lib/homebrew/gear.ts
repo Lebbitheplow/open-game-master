@@ -369,6 +369,6 @@ export function describeEffect(effect: MagicItemEffect): string {
     case "speed":
       return `${effect.mode} speed ${effect.feet === "walk" ? "equal to walking" : `${effect.feet} ft`}`;
     case "weapon_rider":
-      return `with ${effect.weapons.join(" or ")}${effect.proficient ? ", proficient" : ""}${effect.damage ? `, +${effect.damage} damage${effect.ranged ? " at range" : ""}` : ""}`;
+      return `with ${effect.weapons.join(" or ")}${effect.proficient ? ", proficient" : ""}${effect.unarmed ? `, 1${effect.unarmed.die} ${effect.unarmed.damageType}` : ""}${effect.attack ? `, +${effect.attack} to hit${effect.ranged ? " at range" : ""}` : ""}${effect.damage ? `, +${effect.damage} damage${effect.ranged ? " at range" : ""}` : ""}`;
   }
 }
