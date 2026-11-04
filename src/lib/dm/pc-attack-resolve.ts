@@ -480,10 +480,8 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike): Record<string, u
 // A mark a landed blow earns goes on the encounter as it now stands. The plan's
 // copy predates the blow, and storing it undid what the blow wrote: the end of
 // the fight (which then stood open for end_encounter to pay its XP again) and a
-// legendary creature's failed save. The plan's budget takes the mark too, since
-// what this attack stores later (Slasher, Crusher) still writes that copy.
+// legendary creature's failed save.
 function markLiveTurn(campaignId: string, budget: TurnBudget, key: string) {
-  budget.oncePerTurn.push(key);
   const live = getActiveEncounter(campaignId);
   if (live?.turnBudget?.ownerId === budget.ownerId) {
     storeBudget(live, { ...live.turnBudget, oncePerTurn: [...live.turnBudget.oncePerTurn, key] });
@@ -504,11 +502,18 @@ function payRescue(plan: AttackPlan, rescued: "foe slayer" | "stroke of luck"): 
   return true;
 }
 
-// Foe Slayer is once on each of the ranger's turns: the turn remembers it.
+// Foe Slayer is once on each of the ranger's turns: the turn remembers it. The
+// mark goes on the turn's budget itself: written on a copy, the next store of
+// that budget (Brutal Attack, Savage Attacker, Piercer, the riders' claim after a
+// rescued miss) dropped it and the bonus rode a second attack. The encounter's
+// budget comes first: a cast has moved the turn on from the plan's
+// (pc-attack-spell.ts), and storing that one would undo the cast.
 function claimFoeSlayer(plan: AttackPlan) {
-  const live = plan.encounter.turnBudget ?? plan.budget;
+  const { encounter } = plan;
+  const live = encounter.turnBudget ?? plan.budget;
   if (live && !live.oncePerTurn.includes(FOE_SLAYER)) {
-    storeBudget(plan.encounter, { ...live, oncePerTurn: [...live.oncePerTurn, FOE_SLAYER] });
+    live.oncePerTurn.push(FOE_SLAYER);
+    storeBudget(encounter, live);
   }
 }
 
@@ -748,8 +753,7 @@ function featHitMarks(input: {
   if (typeFeat === "Slasher") {
     if (unused && leave("hamstrung")) {
       notes.push(`Slasher: ${enemy.displayName}'s speed is reduced by 10 feet until the start of ${sheet.name}'s next turn`);
-      budget.oncePerTurn.push(usedKey);
-      storeBudget(encounter, budget);
+      markLiveTurn(campaign.id, budget, usedKey);
     }
     if (crit && leave("shaken")) {
       notes.push(`Slasher: the critical hit puts ${enemy.displayName}'s attack rolls at disadvantage until the start of ${sheet.name}'s next turn`);
@@ -762,8 +766,7 @@ function featHitMarks(input: {
           ? `Crusher: ${enemy.displayName} is moved 5 feet to (${pushed.at.x},${pushed.at.y})`
           : `Crusher: ${enemy.displayName} could not be moved 5 feet (${pushed.reason})`,
       );
-      budget.oncePerTurn.push(usedKey);
-      storeBudget(encounter, budget);
+      markLiveTurn(campaign.id, budget, usedKey);
     }
     if (crit && leave("exposed")) {
       notes.push(`Crusher: the critical hit leaves ${enemy.displayName} exposed; attacks against it have advantage until the start of ${sheet.name}'s next turn`);
