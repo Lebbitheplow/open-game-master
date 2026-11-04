@@ -288,5 +288,48 @@ await test("With the wall gone the same reaction is taken.", async () => {
   assert.equal(out.ok, true, out.error);
 });
 
+await test("Runic Shield's natural 20 makes a hit a critical, which Sentinel can turn back; a hit that kept no roll stays as it was.", async () => {
+  let enemy = await stage();
+  world.dice(16, 4);
+  await world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: ally.id });
+  world.clearDice();
+  assert.equal(hp(ally), 44);
+  const rune = await react(knight, "Runic Shield", ally, [20, 6]);
+  assert.equal(rune.ok, true, rune.error);
+  assert.equal(hp(ally), 38, "4 + 6 + 2, a critical");
+  assert.equal(cards(cleric, "Sentinel at Death's Door").length, 1, "a critical now, Sentinel answers it");
+  const sentinel = await react(cleric, "Sentinel at Death's Door", ally);
+  assert.equal(sentinel.ok, true, sentinel.error);
+  assert.equal(hp(ally), 44, "back to the normal 4 + 2");
+
+  // A record written before the roll was kept: the damage stands, and it says so.
+  enemy = await stage();
+  world.dice(16, 4);
+  await world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: ally.id });
+  world.clearDice();
+  const { openHits, writeLastHit } = await import("../src/lib/dm/last-hit.ts");
+  for (const record of openHits(world.campaignId, ally.id)) {
+    writeLastHit(world.campaignId, { ...record, swings: record.swings.map(({ critical: _kept, ...swing }) => swing) });
+  }
+  const old = await react(knight, "Runic Shield", ally, [20]);
+  assert.equal(old.ok, true, old.error);
+  assert.match(old.result.applied, /not raised to a critical/);
+  assert.equal(hp(ally), 44);
+});
+
+await test("A downed ally a ranged hit found: Runic Shield's natural 20 makes it a critical, two death-save failures.", async () => {
+  const enemy = await stage();
+  kit.setEnemy(enemy.id, { stats: { ...enemy.stats, attacks: [{ name: "Shortbow", toHit: 4, damage: "1d6+2", type: "piercing" }] } });
+  kit.place(enemy.id, 8, 12);
+  world.patch(ally.id, { currentHp: 0, deathSaves: { successes: 0, failures: 0, stable: false }, conditions: ["unconscious", "prone"], conditionMeta: {} });
+  world.dice(15, 3, 4);
+  await world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: ally.id });
+  world.clearDice();
+  assert.equal(world.sheet(ally.id).deathSaves.failures, 1);
+  const rune = await react(knight, "Runic Shield", ally, [20, 5]);
+  assert.equal(rune.ok, true, rune.error);
+  assert.equal(world.sheet(ally.id).deathSaves.failures, 2, "a critical on someone at 0 is two failures");
+});
+
 world.close();
 finish();

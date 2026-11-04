@@ -97,6 +97,14 @@ export type SwingRecord = {
   // blow went back to ordinary damage and kept the advantage it had only
   // because they were down.
   standingAdvantage?: Advantage;
+  // A hit that was no critical, kept so a reaction that rolls the attack
+  // again and comes up 20 (Runic Shield) can make it one: the damage roll as
+  // it fell (its expression and dice), the critical damage variants in play,
+  // the attack (for its typed parts), and what shrank the blow as it landed
+  // (`scale`, the damage dealt over the damage rolled). Absent on a critical,
+  // on attacks that keep none (only an enemy's enemy_attack does) and on
+  // older records, which keep the hit as it was.
+  critical?: CriticalRecipe;
   // What the blow was made of, as the damage path read it (a magic weapon, a
   // feature its resistance did not hold against), so a replay meets the same
   // clauses (pc-damage.ts blowDefenses).
@@ -109,6 +117,16 @@ export type SwingRecord = {
   // ended with it. SRD 5.1: a separate save for each source of damage, so a
   // reaction judges the one blow that broke it, not the whole attack.
   concentration?: { save: number | null; broke: boolean };
+};
+
+export type CriticalRecipe = {
+  expression: string;
+  terms: RollResult["terms"];
+  powerful?: boolean;
+  doubleFlat?: boolean;
+  attack: string;
+  scale: number;
+  from: number;
 };
 
 // A flat amount off the blow (Cutting Words, Deflect Missiles, Parry), or half
@@ -787,6 +805,7 @@ export function openLastHit(campaignId: string, characterId: string) {
         plain?: SwingRecord["plain"];
         normal?: SwingRecord["normal"];
         standingAdvantage?: Advantage;
+        critical?: CriticalRecipe;
         flags?: BlowFlags;
       },
     ) {
@@ -809,6 +828,7 @@ export function openLastHit(campaignId: string, characterId: string) {
         ...(result.hit && result.crit && result.plain ? { plain: { ...result.plain, from: Math.max(0, result.raw) } } : {}),
         ...(result.hit && result.crit && result.normal ? { normal: result.normal } : {}),
         ...(result.hit && result.standingAdvantage && result.standingAdvantage !== result.advantage ? { standingAdvantage: result.standingAdvantage } : {}),
+        ...(result.hit && !result.crit && result.critical ? { critical: result.critical } : {}),
         ...(result.hit && Object.keys(flags).length ? { flags: flags as BlowFlags } : {}),
         ...(concentration ? { concentration } : {}),
       });

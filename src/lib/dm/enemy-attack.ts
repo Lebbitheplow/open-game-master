@@ -803,6 +803,21 @@ export function handleEnemyAttack(
       ...(plain ? { plain } : {}),
       ...(normal ? { normal } : {}),
       ...(standingAdvantage ? { standingAdvantage } : {}),
+      // A hit that was no critical keeps its roll, so a reroll that comes up
+      // 20 can make it one (authored-reactions.ts raiseToCritical).
+      ...(!crit
+        ? {
+            critical: {
+              expression: baseDamage,
+              terms: damageOutcome.terms,
+              ...(campaign.gameSettings.variantRules.powerfulCritical ? { powerful: true } : {}),
+              ...(campaign.gameSettings.variantRules.criticalDamageMods ? { doubleFlat: true } : {}),
+              attack: attack.name,
+              scale: blow.amount > 0 ? Math.min(1, dealt / blow.amount) : 1,
+              from: dealt,
+            },
+          }
+        : {}),
       flags,
     });
     for (const type of attack.type.split("/")) {

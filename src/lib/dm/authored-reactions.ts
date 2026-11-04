@@ -50,6 +50,7 @@ import { noneNamed, toolError, type ToolError, type ToolResult } from "@/lib/dm/
 import { swallowCoverError } from "@/lib/dm/swallow";
 import { spentSlotRefusal } from "@/lib/dm/cast-rules";
 import { reactionPatch } from "@/lib/dm/reaction-refund";
+import { raiseToCritical } from "@/lib/dm/critical-raise";
 import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed, holdsFeature } from "@/lib/srd/feature-names";
 
@@ -484,16 +485,20 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       // The new roll goes on the record, so a later reaction (Shield, Cutting Words)
       // reads it and not the first. A critical the natural 20 alone made is lost
       // with it (plainOfReroll); a melee blow beside a downed ally stays one whatever
-      // the die. A natural 20 gained is said, not raised: its dice were never rolled.
-      const plain = plainOfReroll(swing, natural);
+      // the die. A natural 20 gained makes the hit a critical, its dice rolled again
+      // (critical-raise.ts), where the hit kept its roll; an older one is said, not raised.
+      const raised = natural === 20 && !swing.crit ? raiseToCritical(ctx.campaign, ctx.turn, hit.record, swing, reaction.name) : null;
+      const plain = raised ?? plainOfReroll(swing, natural);
       const settled = settle(ctx, hit.record, hit.record.swings.map((entry, at) => (at === hit.index ? { ...plain, total, natural, faces: [natural], advantage: "none" as const } : entry)), label);
-      const critical = plain !== swing
-        ? ` No longer a critical: ${settled.given} hit points come back. HP ${settled.hp}.`
-        : natural === 20 && !swing.crit
-          ? " It is a natural 20, and the hit is not raised to a critical: the damage already rolled stands."
-          : swing.crit && natural !== 20
-            ? " It stays a critical, and its damage stands."
-            : "";
+      const critical = raised
+        ? ` It is a natural 20, and the hit becomes a critical: ${Math.max(0, raised.raw - swing.raw)} more damage. HP ${settled.hp}.`
+        : plain !== swing
+          ? ` No longer a critical: ${settled.given} hit points come back. HP ${settled.hp}.`
+          : natural === 20 && !swing.crit
+            ? " It is a natural 20, and the hit is not raised to a critical: the damage already rolled stands."
+            : swing.crit && natural !== 20
+              ? " It stays a critical, and its damage stands."
+              : "";
       return { applied: `Rolled again: ${total} against AC ${swing.vsAc} still hits ${ally.name}.${critical}`, ...(settled.notes.length ? { notes: settled.notes } : {}) };
     }
     case "resist_instance": {
