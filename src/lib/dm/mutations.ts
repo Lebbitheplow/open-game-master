@@ -516,7 +516,7 @@ type MutationOutcome = { result: ToolResult };
 
 // `sheet` is the freshly resolved pre-mutation state; it doubles as the
 // undo pre-image. `patch` is exactly what patchSheet was given.
-function audit(
+export function audit(
   campaign: Campaign,
   turnId: string,
   sheet: CharacterSheet,

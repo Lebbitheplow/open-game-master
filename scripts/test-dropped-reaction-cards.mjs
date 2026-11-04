@@ -15,6 +15,8 @@ const kit = await combatKit(world);
 const { FRESH_TURN } = await import("../src/lib/battlemap/hand.ts");
 const { reactionCards } = await import("../src/lib/battlemap/hand-react.ts");
 const { activePublicEncounter } = await import("../src/lib/db/encounter-view.ts");
+const { intentRefusal } = await import("../src/lib/dm/intent-check.ts");
+const { getCampaignById } = await import("../src/lib/db/campaigns.ts");
 
 const hero = (extra) =>
   world.addHero({
@@ -34,6 +36,7 @@ world.patch(master.id, {
 const wizard = hero({ class: "wizard", spellcasting: { ability: "int", slots, prepared: ["Shield"], known: [], cantrips: [] } });
 const warlock = hero({ class: "warlock", spellcasting: { ability: "cha", slots, prepared: [], known: ["Hellish Rebuke"], cantrips: [] } });
 const light = hero({ class: "cleric", subclass: "Light Domain" });
+const stalker = hero({ class: "ranger", subclass: "Gloom Stalker" });
 const friend = hero({ class: "fighter", subclass: "Champion" });
 
 async function stage(who, hp = 8) {
@@ -66,6 +69,8 @@ const OPEN = [
   { name: "Parry", who: master, faces: [20, 4, 3] },
   { name: "Shield", who: wizard, hp: 6, faces: [10, 4] },
   { name: "Warding Flare", who: light, faces: [20, 4, 3] },
+  // By what it does to the hit, not by a name on the engine's list.
+  { name: "Shadowy Dodge", who: stalker, faces: [20, 4, 3] },
 ];
 for (const { name, who, hp, faces } of OPEN) {
   await test(`${name} is open to a holder the hit just dropped, and the engine takes it.`, async () => {
@@ -75,9 +80,11 @@ for (const { name, who, hp, faces } of OPEN) {
     const card = cardOf(who, name);
     assert.ok(card, `${name} is offered`);
     assert.equal(card.disabled, null, card.disabled);
+    // The route the player's card takes, then the call the GM makes.
+    assert.equal(intentRefusal(getCampaignById(world.campaignId), world.sheet(who.id), card.intent), null);
     const out = await world.invoke("use_reaction", { characterId: who.id, feature: name });
     assert.equal(out.ok, true, out.error);
-    assert.ok(world.sheet(who.id).currentHp > 0 || name === "Warding Flare", `${name} leaves them up (${world.sheet(who.id).currentHp})`);
+    assert.ok(world.encounter().reactionsUsed.includes(who.id), `${name} spends the reaction`);
   });
 }
 
@@ -94,6 +101,7 @@ await test("Parry spends its one die on a holder the blow dropped, and none with
   await strike(enemy, master);
   const none = await world.invoke("use_reaction", { characterId: master.id, feature: "Parry" });
   assert.equal(none.ok, false);
+  assert.match(none.error, /Superiority Dice/);
   assert.equal(world.sheet(master.id).currentHp, 0);
 });
 
@@ -104,6 +112,7 @@ await test("Hellish Rebuke follows the damage: shut to a holder the hit dropped,
   const card = cardOf(warlock, "Hellish Rebuke");
   assert.ok(card, "the card is shown, with its reason");
   assert.match(card.disabled, /at 0 HP/);
+  assert.match(intentRefusal(getCampaignById(world.campaignId), world.sheet(warlock.id), card.intent) ?? "", /follows the damage/);
   const out = await world.invoke("use_reaction", { characterId: warlock.id, feature: "Hellish Rebuke", targetEnemyId: world.enemies()[0].id });
   assert.equal(out.ok, false);
 });
@@ -116,6 +125,7 @@ await test("Deflect Missiles and Slow Fall, read from the hit that dropped the m
   const deflect = cardOf(monk, "Deflect Missiles", [{ ...blow, ranged: true }]);
   assert.ok(deflect, "Deflect Missiles is offered");
   assert.equal(deflect.disabled, null, deflect.disabled);
+  assert.equal(intentRefusal(getCampaignById(world.campaignId), world.sheet(monk.id), deflect.intent), null);
   const fall = cardOf(monk, "Slow Fall", [{ ...blow, source: "fall" }]);
   assert.ok(fall, "Slow Fall is offered");
   assert.equal(fall.disabled, null, fall.disabled);
@@ -136,8 +146,11 @@ await test("A holder who is down has no card for a hit on someone else.", async 
   const enemy = await stage(light);
   await strike(enemy, friend, [16, 4]);
   world.patch(light.id, { currentHp: 0, conditions: ["unconscious", "prone"], deathSaves: { successes: 0, failures: 0 } });
-  for (const card of reactionCards(world.sheet(light.id), { ...FRESH_TURN, myTurn: false }, hits(), world.sheets())) {
+  const cards = reactionCards(world.sheet(light.id), { ...FRESH_TURN, myTurn: false }, hits(), world.sheets());
+  assert.ok(cards.length > 0, "a card is dealt, shut");
+  for (const card of cards) {
     assert.ok(card.disabled, `${card.name} is shut`);
+    assert.ok(intentRefusal(getCampaignById(world.campaignId), world.sheet(light.id), card.intent), `${card.name} is refused`);
   }
 });
 

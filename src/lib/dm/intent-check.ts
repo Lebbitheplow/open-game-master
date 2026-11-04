@@ -17,6 +17,8 @@ import { getActiveEncounter } from "@/lib/db/encounters";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { canAct, type ActKind } from "@/lib/dm/can-act";
 import { reactionRefusal } from "@/lib/dm/reaction-gate";
+import { timingOfUseReaction } from "@/lib/dm/reaction-tools";
+import { listSheets } from "@/lib/db/sheets";
 import { withHitAim } from "@/lib/dm/last-hit";
 import { freshBudget, spendAction } from "@/lib/dm/action-budget";
 import { castSpell } from "@/lib/dm/cast-guard";
@@ -119,7 +121,15 @@ export function intentRefusal(
   // taken as they drop (Necrotic Husk, Stone's Endurance), is open to a hero
   // at 0, where a bare canAct refused every card a fallen hero's Hand offers.
   if (intent.card === "reaction") {
-    const refused = withHitAim(intent.hit, () => reactionRefusal(campaign.id, sheet, encounter, intent.feature ?? "The reaction"));
+    const sheets = listSheets(campaign.id);
+    const timing = timingOfUseReaction(
+      campaign,
+      sheet,
+      { feature: intent.feature ?? "", ...(intent.targetKind === "ally" && intent.targetId ? { targetCharacterId: intent.targetId } : {}) },
+      sheets,
+      new Map(sheets.map((entry) => [entry.id, entry])),
+    );
+    const refused = withHitAim(intent.hit, () => reactionRefusal(campaign.id, sheet, encounter, intent.feature ?? "The reaction", timing));
     if (refused) {
       return refused.error;
     }

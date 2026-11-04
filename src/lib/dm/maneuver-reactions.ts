@@ -33,7 +33,7 @@ import { addSheetCondition } from "@/lib/dm/action-common";
 import { removeConditions } from "@/lib/dm/condition-logic";
 import { attackerFoeId, freshLastHit, writeLastHit, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { COMMANDED, GRAPPLING_STRIKE, MANEUVERED, SUPERIORITY_STRIKE, maneuverDieFor, markedDie, maneuverUse } from "@/lib/dm/maneuver-rules";
-import { applyDmMutation } from "@/lib/dm/mutations";
+import { applyDmMutation, audit } from "@/lib/dm/mutations";
 import { READIED } from "@/lib/dm/object-actions";
 import { handlePcAttack } from "@/lib/dm/pc-attack";
 import { rollCard } from "@/lib/dm/roll-card";
@@ -92,12 +92,14 @@ function payDie(
 // The die for a Parry by one the blow dropped. The reaction was judged as they
 // stood before it (reaction-gate.ts), which use_resource, asked of a counter that
 // is no reaction of its own, reads as someone at 0 spending it by choice.
-function payDieAsTheyStood(campaign: Campaign, sheet: CharacterSheet, label: string): ToolError | null {
+function payDieAsTheyStood(campaign: Campaign, turnId: string, sheet: CharacterSheet, label: string): ToolError | null {
   const state = sheet.resources.sub_superiority_dice;
   if (!state || state.used >= state.max) {
     return { error: `${label}: ${sheet.name} has no Superiority Dice left.`, refused: "rules" };
   }
-  const updated = patchSheet(sheet.id, { resources: { ...sheet.resources, sub_superiority_dice: { max: state.max, used: state.used + 1 } } });
+  const patch = { resources: { ...sheet.resources, sub_superiority_dice: { max: state.max, used: state.used + 1 } } };
+  const updated = patchSheet(sheet.id, patch);
+  audit(campaign, turnId, sheet, "use_resource", { resource: "Superiority Dice", spent: 1 }, label, patch);
   if (updated) publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
   return null;
 }
@@ -139,7 +141,7 @@ function parry(ctx: Ctx): ToolResult {
   if (!record || index < 0) {
     return noHit(sheet.name, "Parry", "damage from a melee attack");
   }
-  const refused = sheet.currentHp > 0 ? payDie(campaign, ctx.turn.id, sheet, "Parry", ctx.sheets, ctx.sheetsById) : payDieAsTheyStood(campaign, sheet, "Parry");
+  const refused = sheet.currentHp > 0 ? payDie(campaign, ctx.turn.id, sheet, "Parry", ctx.sheets, ctx.sheetsById) : payDieAsTheyStood(campaign, ctx.turn.id, sheet, "Parry");
   if (refused) {
     return { ...refused, error: `${refused.error} Nothing was spent.` };
   }
