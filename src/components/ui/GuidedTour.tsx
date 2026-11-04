@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronRight, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import type { TourEnd } from "@/lib/tours/account-logic";
 import { placeCard, resolveSteps, skipVanished, type ResolvedStep, type TourStep } from "@/lib/tours/logic";
@@ -151,7 +151,11 @@ export function GuidedTour({
     [index, total, onClose],
   );
 
-  useEffect(() => {
+  // Listening from a layout effect, so the keys are heard from the moment
+  // the card is in the page: a passive effect runs after the paint, and an
+  // Escape in between (a person quick on the key, the apps' back gesture)
+  // was lost and the tour stayed open (tours-account on #799's run).
+  useLayoutEffect(() => {
     if (!current) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
