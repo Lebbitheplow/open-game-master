@@ -84,7 +84,11 @@ export default {
     check(resolved.ok() && outcome.resolved === true, `the engine resolved it from the GM's seat (${resolved.status()} ${JSON.stringify(outcome).slice(0, 200)})`);
     const after = await state();
     const hp = sheetOf(after, gm.near.id)?.currentHp;
-    check(hp === hurt || hp === 44, `${gm.near.name}'s blow stands or comes back whole (${hurt} to ${hp})`);
+    // A reroll that misses gives the hit points back; one that hits leaves the
+    // blow as it was, unless it comes up 20 and raises the hit to a critical,
+    // which adds the scimitar's second d6 (1 to 6) to it (critical-raise.ts).
+    const raised = typeof hp === "number" && hp < hurt && hurt - hp <= 6;
+    check(hp === hurt || hp === 44 || raised, `${gm.near.name}'s blow stands, comes back whole or turns critical (${hurt} to ${hp})`);
     check(sheetOf(after, gm.runa.id)?.resources?.sub_runic_shield?.used === 1, "one use of Runic Shield is spent");
     await eventually(async () => (await gmCard.getAttribute("aria-disabled", { timeout: 1_000 }).catch(() => "true")) === "true", { label: "the card shut once answered" });
     await untilStill(page).catch(() => undefined);
