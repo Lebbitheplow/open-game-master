@@ -289,7 +289,7 @@ export function reactionCards(
     }
     if (hit.source === "attack") {
       for (const held of subclassReactions(sheet, hit, "self", feet)) {
-        feature(hit, held.name, prompt, held.rules, held.target);
+        feature(hit, held.name, prompt, held.rules, held.target, { fallen: held.fallen && sheet.currentHp <= 0 });
       }
     }
   }
@@ -453,8 +453,10 @@ function saveAnswers(sheet: CharacterSheet): Array<{ name: string; rangeFt: numb
 }
 
 // What a subclass reaction does, in a line for its card.
-function reactionRules(does: ReactionDoes): string {
+function reactionRules(does: ReactionDoes, hit: PublicLastHit): string {
   switch (does.kind) {
+    case "uncrit":
+      return hit.crit ? `The critical ${hit.crit.attack} (${hit.crit.damage}) becomes a normal hit.` : "";
     case "reduce":
       return does.amount === "half" ? "Halve the damage of the attack that hit." : "Take damage off the attack that hit.";
     case "ac_vs_hit":
@@ -490,8 +492,8 @@ function subclassReactions(
   hit: PublicLastHit,
   whose: "self" | "ally",
   feet?: Record<string, number>,
-): Array<{ name: string; rules: string; target: HandTarget }> {
-  const out: Array<{ name: string; rules: string; target: HandTarget }> = [];
+): Array<{ name: string; rules: string; target: HandTarget; fallen?: boolean }> {
+  const out: Array<{ name: string; rules: string; target: HandTarget; fallen?: boolean }> = [];
   for (const held of heldAuthored(sheet)) {
     for (const reaction of held.entry.reactions ?? []) {
       if ((reaction.usedBy ?? "holder") !== "holder" || !gateHolds(reaction.gate, sheet, held)) continue;
@@ -510,9 +512,11 @@ function subclassReactions(
             (does.kind === "resist_instance" && typed(does.types)) ||
             does.kind === "redirect" ||
             does.kind === "force_miss" ||
+            does.kind === "uncrit" ||
             (does.kind === "strike_back" && !does.afterSave && Boolean(hit.attackerId) && !(does.melee && hit.ranged))
           : (does.kind === "reduce" && does.who !== "self" && typed(does.types)) ||
             does.kind === "take_for_ally" ||
+            does.kind === "uncrit" ||
             (does.kind === "ac_vs_hit" && Boolean(does.rangeFt)) ||
             (does.kind === "echo_hit" && Boolean(hit.attackerId)) ||
             (does.kind === "disadv_vs_hit" && Boolean(does.allyWith) && holdsFeature(sheet, does.allyWith!)) ||
@@ -524,9 +528,10 @@ function subclassReactions(
         const reach = "rangeFt" in does ? reachAt(does.rangeFt as number | Array<[number, number]> | undefined, held.level) : undefined;
         if (!inReach(feet, does.kind === "echo_hit" ? hit.attackerId : hit.characterId, reach)) continue;
       }
-      const rules = reactionRules(does);
+      const rules = reactionRules(does, hit);
       if (!rules) continue;
-      out.push({ name: reaction.name, rules, target: does.kind === "strike_back" ? "enemy" : whose === "ally" ? "ally" : "none" });
+      // Sentinel at Death's Door answers the critical that dropped its holder.
+      out.push({ name: reaction.name, rules, target: does.kind === "strike_back" ? "enemy" : whose === "ally" ? "ally" : "none", fallen: does.kind === "uncrit" });
     }
   }
   return out;

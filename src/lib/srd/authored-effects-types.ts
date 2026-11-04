@@ -442,6 +442,10 @@ export type ReactionDoes =
   | { kind: "chance_miss"; die: string; min: number; vsMark?: string }
   // The last hit is declared a miss, for a level of exhaustion.
   | { kind: "force_miss"; exhaustion: number }
+  // A critical hit on the holder or a creature in range becomes a normal hit:
+  // the same dice without the critical's, and a death-save failure for one blow
+  // at 0 rather than two (Sentinel at Death's Door).
+  | { kind: "uncrit"; rangeFt: number }
   // A move off the holder's turn, up to half their speed, drawing no
   // opportunity attack: when an enemy stands within 5 feet (Skirmisher), or
   // right after the holder's opportunity attack hit, as part of that same

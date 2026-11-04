@@ -76,6 +76,11 @@ export type SwingRecord = {
   // hits lands this instead (plainOfReroll). Absent on any other swing and on
   // records written before it.
   plain?: { raw: number; parts?: Array<{ amount: number; type: string }> };
+  // Any critical's blow as a normal hit, from the same dice, for the reaction
+  // that turns it into one (Sentinel at Death's Door). `from` is the critical's
+  // raw as it landed: a reaction that cut the blow first cuts this in proportion.
+  // Absent where the dice do not line up (ordinaryOfCritical) and on older records.
+  normal?: { raw: number; type?: string; parts?: Array<{ amount: number; type: string }>; from: number };
   // The advantage the swing would have had against the target standing, when
   // it lay at 0 and that changed the roll (SRD 5.1, Unconscious: attack rolls
   // against it have advantage). A reaction that leaves them standing when it
@@ -220,6 +225,15 @@ export function heaviestHit(swings: SwingRecord[], which: (swing: SwingRecord) =
     }
   });
   return best;
+}
+
+// Whether a swing is a critical that can become a normal hit: its normal
+// figure is on record, and it is not a critical only for the target lying at 0
+// when a reaction has since left them standing as it landed, which the replay
+// already deals as ordinary (reaction-refund.ts).
+export function critTurnsNormal(record: Pick<LastHit, "before">, swing: SwingRecord): boolean {
+  const standing = record.before.currentHp > 0 || Boolean(record.before.wildShape);
+  return swing.hit && swing.crit && Boolean(swing.normal) && !(swing.ordinary && standing);
 }
 
 const db = getDatabase;
@@ -675,6 +689,7 @@ export function openLastHit(campaignId: string, characterId: string) {
         attack?: string;
         ordinary?: SwingRecord["ordinary"];
         plain?: SwingRecord["plain"];
+        normal?: SwingRecord["normal"];
         standingAdvantage?: Advantage;
         flags?: BlowFlags;
       },
@@ -696,6 +711,7 @@ export function openLastHit(campaignId: string, characterId: string) {
         ...(result.ranged !== undefined ? { ranged: result.ranged } : {}),
         ...(result.hit && result.ordinary ? { ordinary: result.ordinary } : {}),
         ...(result.hit && result.crit && result.plain ? { plain: result.plain } : {}),
+        ...(result.hit && result.crit && result.normal ? { normal: result.normal } : {}),
         ...(result.hit && result.standingAdvantage && result.standingAdvantage !== result.advantage ? { standingAdvantage: result.standingAdvantage } : {}),
         ...(result.hit && Object.keys(flags).length ? { flags: flags as BlowFlags } : {}),
         ...(concentration ? { concentration } : {}),

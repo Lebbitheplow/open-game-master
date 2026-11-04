@@ -371,6 +371,12 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike): Record<string, u
     hitLog && crit && !stunShot && hitOutcome.crit !== "nat20" && enemy.currentHp <= 0 && critOnlyWhileUnconscious(enemy.conditions)
       ? ordinaryOfCritical(damageOutcome, profile.damageExpression, { multiplyNumeric: strike.critOptions?.multiplyNumeric, extraDice: critExtraDice })
       : null;
+  // A critical's normal figure, for Sentinel at Death's Door (last-hit.ts); a
+  // natural 20's gear dice belong to the critical, so none is read past them.
+  const normalRoll =
+    hitLog && crit && !stunShot && !critGear?.suffix
+      ? ordinaryOfCritical(damageOutcome, profile.damageExpression, { multiplyNumeric: strike.critOptions?.multiplyNumeric, extraDice: critExtraDice })
+      : null;
   hitLog?.swing(hitOutcome, plan.effectiveAc, {
     hit: true,
     crit,
@@ -379,6 +385,7 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike): Record<string, u
     type: profile.damageType,
     ranged: profile.ranged,
     ...(ordinaryRoll ? { ordinary: { raw: Math.max(0, ordinaryRoll.total) } } : {}),
+    ...(normalRoll ? { normal: { raw: Math.max(0, normalRoll.total), from: dealt } } : {}),
     // What the blow is made of, as the damage path met it (pc-attack-damage.ts
     // landBlow): a reaction's replay meets the same clauses (a magic weapon
     // past Stoneskin, a silvered blade past a form's resistance).

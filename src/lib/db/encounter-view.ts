@@ -11,7 +11,7 @@ import { castLookup, npcFace, type CastLookup } from "@/lib/db/npc-faces";
 import { foeLook } from "@/lib/actor-sex-logic";
 import { dmPlaysTurn } from "@/lib/dm/companion-command";
 import { aiRunsTestTable } from "@/lib/workshop/test-seats-logic";
-import { heaviestHit, hitIdOf, openHits, reactedLate, type LastHit } from "@/lib/dm/last-hit";
+import { critTurnsNormal, heaviestHit, hitIdOf, openHits, reactedLate, type LastHit } from "@/lib/dm/last-hit";
 import { conditionNote, conditionNoteLine, namesLookup } from "@/lib/battlemap/condition-notes";
 import { healthState, type HealthState } from "@/lib/bestiary/health";
 import { creatureTypeOf } from "@/lib/bestiary/creature-type";
@@ -221,6 +221,9 @@ export type PublicLastHit = {
   hit: boolean;
   hits: number;
   damage: number;
+  // The heaviest critical among its swings that can become a normal hit
+  // (Sentinel at Death's Door), which need not be the hit named above.
+  crit?: { attack: string; damage: number };
   // Reactions already taken against it.
   answered: string[];
   // How the character stood as it landed: up or already at 0, and their
@@ -299,6 +302,7 @@ function lastHitView(record: LastHit, hidden: Set<string>, showNumbers: boolean)
   const attackerId = record.attacker.id;
   const index = heaviestHit(record.swings);
   const answered = index >= 0 ? record.swings[index] : null;
+  const critical = record.swings[heaviestHit(record.swings, (swing) => critTurnsNormal(record, swing))];
   return {
     id: hitIdOf(record),
     characterId: record.characterId,
@@ -314,6 +318,7 @@ function lastHitView(record: LastHit, hidden: Set<string>, showNumbers: boolean)
     hit: record.source === "fall" || record.swings.some((swing) => swing.hit),
     hits: record.swings.filter((swing) => swing.hit).length,
     damage: answered?.raw ?? 0,
+    ...(critical ? { crit: { attack: critical.attack ?? record.attack, damage: critical.raw } } : {}),
     answered: record.answered,
     stood: { up: record.before.currentHp > 0, conditions: record.before.conditions },
   };
