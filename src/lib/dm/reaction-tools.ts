@@ -502,10 +502,10 @@ export function handleUseReaction(
       const encounter = getActiveEncounter(campaign.id);
       const offers = turn.actor === "ai"
         && !(encounter && (encounter.reactionsUsed.includes(sheet.id) || reactedLate(campaign.id, encounter, sheet.id)));
-      const sent = args.hit.trim().toLowerCase();
+      const sent = args.hit.trim();
       const listed = !offers ? [] : (answersOwnHitOnly(campaign, args.feature) ? [sheet] : sheets).flatMap((holder) =>
         openHits(campaign.id, holder.id)
-          .filter((record) => levenshtein(hitIdOf(record).toLowerCase(), sent) <= MISCOPIED_HIT)
+          .filter((record) => levenshtein(hitIdOf(record), sent) <= MISCOPIED_HIT)
           .map((record) => `hit "${hitIdOf(record)}" on ${holder.name} (${record.source === "fall" ? "a fall" : `${record.attacker.name}'s ${record.attack}`})`),
       );
       return listed.length

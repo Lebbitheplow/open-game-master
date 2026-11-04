@@ -88,7 +88,8 @@ await test("The engine names a pool by its name when it refuses a spend.", async
   const full = await world.invoke("use_resource", { characterId: hero.id, resource: "Psionic Recovery" });
   assert.equal(full.ok, false);
   assert.match(full.error, /Psionic Energy Dice is full/, full.error);
-  const { sub_psionic_energy: _gone, ...rest } = world.sheet(hero.id).resources;
+  const rest = { ...world.sheet(hero.id).resources };
+  delete rest.sub_psionic_energy;
   world.patch(hero.id, { resources: rest });
   const none = await world.invoke("use_resource", { characterId: hero.id, resource: "Psionic Recovery" });
   assert.equal(none.ok, false);
