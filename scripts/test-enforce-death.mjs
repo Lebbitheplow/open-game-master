@@ -1095,5 +1095,29 @@ await test("A hero who dies in the death saves a long road rolls is left out of 
   assert.deepEqual(names, ["Walker"], `the dead are among the marchers: ${JSON.stringify(marched.result.results)}`);
 });
 
+await test("A held Bardic Inspiration die is added to a death save only when it turns a failure into a success.", async () => {
+  const { rollDeathSave } = await import("../src/lib/dm/death.ts");
+  const dying = world.addHero({ ...FIGHTER, name: "Inspired" });
+  const fall = (conditions) => world.patch(dying.id, { currentHp: 0, conditions, conditionMeta: {}, deathSaves: { successes: 0, failures: 0, stable: false, dead: false } });
+  fall(["unconscious", "bardic inspiration (d4)"]);
+  world.dice(15);
+  rollDeathSave(world.campaign(), dying.id);
+  world.clearDice();
+  assert.equal(world.sheet(dying.id).deathSaves.successes, 1);
+  assert.ok(world.sheet(dying.id).conditions.includes("bardic inspiration (d4)"), "a save that succeeds keeps the die: it rode every death save before");
+  fall(["unconscious", "bardic inspiration (d4)"]);
+  world.dice(8, 3);
+  rollDeathSave(world.campaign(), dying.id);
+  world.clearDice();
+  assert.equal(world.sheet(dying.id).deathSaves.successes, 1, "8 and the d4's 3 make 11, a success");
+  assert.ok(!world.sheet(dying.id).conditions.includes("bardic inspiration (d4)"), "spent where it carried the save");
+  fall(["unconscious", "bardic inspiration (d4)"]);
+  world.dice(1);
+  rollDeathSave(world.campaign(), dying.id);
+  world.clearDice();
+  assert.equal(world.sheet(dying.id).deathSaves.failures, 2, "a natural 1 is two failures whatever is added");
+  assert.ok(world.sheet(dying.id).conditions.includes("bardic inspiration (d4)"), "so nothing is spent on it");
+});
+
 world.close();
 finish();

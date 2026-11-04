@@ -19,7 +19,8 @@ import { insertRoll } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
 import { patchSheetAudited, type AuditActor } from "@/lib/dm/audited-patch";
 import { currentTurnId } from "@/lib/dm/job-control";
-import { d20Expression, rollExpression } from "@/lib/dice";
+import { d20Expression, rollExpression, type RollResult } from "@/lib/dice";
+import { heldBardicDie, heldOwnLuckDie, holdsMoteDie, sidesOf, withBonusDie } from "@/lib/dm/after-roll-logic";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { saveModFor } from "@/lib/bestiary/enemy-numbers";
 import type { SaveAbility } from "@/lib/bestiary/statblock";
@@ -130,6 +131,37 @@ export function spendRollCarriers(campaignId: string, sheetId: string, spent: st
     delta: { resource: carriers.map(carrierWords).join(" and "), spent: 1 },
     actor: actor ?? (currentTurnId() ? "dm" : "player"),
   });
+}
+
+// A held Bardic Inspiration or Dark One's Own Luck die on a roll that cannot
+// wait for its holder (a save the engine forces, a death save, a check rolled
+// with its DC): the holder may decide once the d20 is rolled (SRD 5.1, Bardic
+// Inspiration), so the die is added when the d20 falls short and could be
+// carried over, as they would choose. Riding every such roll, it was spent on
+// a natural 20 and on rolls it could not save. A roll with no DC cannot be
+// judged, and a mote's die bursts at the throw (authored-mote.ts): both keep
+// the die riding the roll as before.
+export function heldDieWaits(sheet: Pick<CharacterSheet, "conditions" | "conditionMeta">, dc: number | null | undefined): boolean {
+  return typeof dc === "number" && !holdsMoteDie(sheet);
+}
+
+// The roll with what the holder would add to it (heldDieWaits). `natural1`:
+// a natural 1 fails whatever the total (a death save), so nothing is spent.
+export function settleHeldDie(campaignId: string, sheetId: string, outcome: RollResult, dc: number, natural1 = false): RollResult {
+  let settled = outcome;
+  for (const held of [heldBardicDie, heldOwnLuckDie]) {
+    if (settled.total >= dc || (natural1 && outcome.natural === 1)) {
+      break;
+    }
+    const sheet = getSheetById(sheetId);
+    const die = sheet ? held(sheet) : null;
+    if (!die || settled.total + sidesOf(die.die) < dc) {
+      continue;
+    }
+    settled = withBonusDie(settled, { sides: sidesOf(die.die), value: rollExpression(`1${die.die}`).total, kept: true });
+    spendRollCarriers(campaignId, sheetId, die.condition);
+  }
+  return settled;
 }
 
 // What a spent carrier is called on the event log.
@@ -272,6 +304,7 @@ export function rollCharacterSave(
   // Diehard: advantage against what would exhaust them.
   const diehard = diehardSaveAdvantage(sheet, resists?.against);
   const claimed = claim ?? (diehard ? { advantage: "advantage" as const, reason: "Diehard: advantage against exhaustion" } : null);
+  const waits = heldDieWaits(sheet, dc);
   const resolved = resolveRollExpression(
     {
       kind: "saving_throw",
@@ -281,7 +314,7 @@ export function rollCharacterSave(
       ...(claimed ? { advantage: claimed.advantage, advantageReason: claimed.reason } : {}),
     } as RollArgs,
     sheet,
-    rollExtrasFor(campaign, sheet, "saving_throw"),
+    { ...rollExtrasFor(campaign, sheet, "saving_throw"), keepHeldDie: waits },
   );
   if ("error" in resolved) {
     return { success: false, total: null, autoFailed: true, notes: [resolved.error] };
@@ -292,15 +325,16 @@ export function rollCharacterSave(
   const mote = moteOf(sheet, resolved.spendInspiration);
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
   const versus = authoredSaveDieVs(sheet, sheet.id, from ? { conditions: from.conditions, meta: from.conditionMeta as Record<string, { source?: string }> } : null);
-  const outcome = rollExpression(
+  const thrown = rollExpression(
     `${resolved.expression}${versus ? `+${versus.die}` : ""}${shieldSave ? `+${shieldSave}` : ""}${covered ? `+${covered}` : ""}${extra?.die ? `+${extra.die}` : ""}`,
     undefined,
     { purpose: { roller: "hero", kind: "save", who: sheet.name } },
   );
   // A floor under the d20 (Starry Form's dragon: a 9 or lower counts as 10).
-  if (extra?.floor && outcome.natural !== undefined && outcome.natural < extra.floor) {
-    outcome.total = outcome.total - outcome.natural + extra.floor;
+  if (extra?.floor && thrown.natural !== undefined && thrown.natural < extra.floor) {
+    thrown.total = thrown.total - thrown.natural + extra.floor;
   }
+  const outcome = waits ? settleHeldDie(campaign.id, sheet.id, thrown, dc) : thrown;
   const roll = insertRoll({
     campaignId: campaign.id,
     characterId: sheet.id,

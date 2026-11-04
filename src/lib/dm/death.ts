@@ -13,7 +13,7 @@ import type { CharacterSheet, DeathSaves, FullPatchSheetInput } from "@/lib/sche
 import { effectiveMaxHp } from "@/lib/dm/condition-logic";
 import { conditionDeathSaveAdvantage } from "@/lib/srd/condition-effect-queries";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
-import { rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
+import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
 import {
   downConditions,
   stableTimer,
@@ -314,24 +314,27 @@ export function rollDeathSave(campaign: Campaign, characterId: string, turnId: s
   // (src/lib/srd/feat-combat.ts).
   const feat = deathSaveFeat(sheet, track);
   const claim = hope ?? feat;
+  const waits = heldDieWaits(sheet, 10);
   const resolved = resolveRollExpression(
     {
       kind: "saving_throw",
       ...(claim ? { advantage: "advantage", advantageReason: `${claim}: advantage` } : {}),
     } as RollArgs,
     sheet,
-    { ...rollExtrasFor(campaign, sheet, "saving_throw"), death: true },
+    { ...rollExtrasFor(campaign, sheet, "saving_throw"), death: true, keepHeldDie: waits },
   );
   if ("error" in resolved || "autoFail" in resolved) {
     return null;
   }
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
+  const thrown = rollExpression(resolved.expression, undefined, { purpose: { roller: "hero", kind: "death_save", who: sheet.name } });
+  // A held die is added only to a death save it turns into a success.
+  const outcome = waits ? settleHeldDie(campaign.id, sheet.id, thrown, 10, true) : thrown;
   // What the save spent (an inspiration die, a luck point) is gone from the
   // stored sheet. The writes below start from it: from the copy read before
   // the spend, a natural 20 or a third success wrote the spent carrier back
   // with the conditions, and the audit's pre-image still held it (#622).
   const current = getSheetById(characterId) ?? sheet;
-  const outcome = rollExpression(resolved.expression, undefined, { purpose: { roller: "hero", kind: "death_save", who: sheet.name } });
   const advantage = /^2d20kh1/.test(resolved.expression) ? "advantage" : /^2d20kl1/.test(resolved.expression) ? "disadvantage" : "none";
   const notes = [...(resolved.conditionNotes ?? []), ...(hope ? [`${hope}: advantage`] : []), ...(feat ? [`${feat}: advantage`] : [])];
   const roll = insertRoll({
