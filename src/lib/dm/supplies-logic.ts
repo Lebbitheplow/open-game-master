@@ -14,7 +14,7 @@ export const mealArg = z.string().trim().min(3).max(200);
 export const MEAL_PROPERTY = {
   type: "string",
   description:
-    "Food and drink the story gives the party from outside their packs: the host's dinner and the well. Only for the supplies variant, and only when the story has them eat and drink from something other than their packs: no meal in the story, no meal here. Everyone living is back to no days without, and the next dawn costs no ration and no thirst. Scarce water still applies.",
+    "Food and drink from outside the packs. Only for the supplies variant, and only when the story has the party eat and drink from something else (a host's dinner, a well): no meal in the story, no meal here. Everyone living is back to no days without, and the next dawn costs no ration and no thirst. Scarce water still applies.",
 };
 
 // A meal now. SRD 5.1, Food and Water: "A normal day of eating resets the
@@ -34,6 +34,20 @@ export function afterMeal(
   }
   return next;
 }
+
+// Whether a refused call's meal is what it got wrong, so its refusal says so.
+// Only then: every other refusal keeps its words, since a lean window's next
+// call carries the refusal and has no room to spare (issue 746).
+export function mealRefused(rawArguments: string): boolean {
+  try {
+    const raw = JSON.parse(rawArguments || "{}") as Record<string, unknown> | null;
+    return Boolean(raw && typeof raw === "object" && raw.meal !== undefined && !mealArg.safeParse(raw.meal).success);
+  } catch {
+    return false;
+  }
+}
+
+export const MEAL_REFUSAL = "A meal names its source in at least 3 characters.";
 
 // A lifestyle of squalid or better pays for food and water, so its dawn costs
 // no ration (SRD 5.1, Lifestyle Expenses). Wretched is free and buys nothing,

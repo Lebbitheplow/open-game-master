@@ -3,7 +3,7 @@ import { rollCard } from "@/lib/dm/roll-card";
 import { type Campaign } from "@/lib/db/campaigns";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { chargeLifestyle } from "@/lib/dm/lifestyle";
-import { MEAL_PROPERTY, mealArg } from "@/lib/dm/supplies-logic";
+import { MEAL_PROPERTY, MEAL_REFUSAL, mealArg, mealRefused } from "@/lib/dm/supplies-logic";
 import { dawnsBetween } from "@/lib/dm/item-charges";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { publishWithSeq } from "@/lib/events";
@@ -93,8 +93,6 @@ const MATERIALS: ObjectMaterial[] = [
   "adamantine",
 ];
 const SIZES: ObjectSize[] = ["tiny", "small", "medium", "large"];
-
-const MEAL_NOTE = "A meal, when sent, names its source in at least 3 characters.";
 
 // Scarce water under the `supplies` variant (src/lib/dm/supplies.ts): what
 // the party can find from now on, kept until the DM says otherwise.
@@ -584,7 +582,7 @@ export function handlePassTime(
   try {
     args = passTimeSchema.parse(JSON.parse(rawArguments || "{}"));
   } catch {
-    return { error: `Invalid arguments: pass_time needs an amount and a unit. ${MEAL_NOTE} No time passed.`, retry: true };
+    return { error: `Invalid arguments: pass_time needs an amount and a unit.${mealRefused(rawArguments) ? ` ${MEAL_REFUSAL}` : ""}`, retry: true };
   }
   if (args.water) {
     setWaterRation(campaign.id, args.water);
@@ -645,7 +643,7 @@ export function handleTravel(
   try {
     args = travelSchema.parse(JSON.parse(rawArguments || "{}"));
   } catch {
-    return { error: `Invalid arguments: travel needs hours or miles. ${MEAL_NOTE} Nothing moved: the clock and the march are as they were.`, retry: true };
+    return { error: `Invalid arguments: travel needs hours or miles.${mealRefused(rawArguments) ? ` ${MEAL_REFUSAL}` : ""}`, retry: true };
   }
   // Who travels, settled before anything moves. A forced march with no
   // traveller used to find out only after the clock, the world, the sky and
