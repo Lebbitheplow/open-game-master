@@ -444,6 +444,22 @@ export function timingOfUseReaction(
   return reactionTimingOf(feature);
 }
 
+// Unaimed, a reaction to their own hit by someone at 0 answers the hit that
+// dropped them, the one the gate judged them by (reaction-gate.ts). The
+// heaviest or latest open hit can be a later one that found them down
+// already, which they could not have answered.
+function droppingHit(
+  campaign: Campaign,
+  sheet: CharacterSheet,
+  args: Pick<Args, "targetCharacterId">,
+  sheets: CharacterSheet[],
+  sheetsById: Map<string, CharacterSheet>,
+): string | undefined {
+  if (sheet.currentHp > 0 || reactsForAnother(sheet, args, sheets, sheetsById)) return undefined;
+  const dropping = freshLastHit(campaign.id, sheet.id, (hit) => hit.before.currentHp > 0);
+  return dropping ? hitIdOf(dropping) : undefined;
+}
+
 // Whether the call names another creature the reaction answers for.
 export function reactsForAnother(
   sheet: CharacterSheet,
@@ -529,7 +545,7 @@ export function handleUseReaction(
     }
   }
   const aimedArgs = args;
-  const result = withHitAim(args.hit, () => asReaction(sheet.id, () => useReaction(campaign, turn, sheet, aimedArgs, sheets, sheetsById)));
+  const result = withHitAim(args.hit ?? droppingHit(campaign, sheet, args, sheets, sheetsById), () => asReaction(sheet.id, () => useReaction(campaign, turn, sheet, aimedArgs, sheets, sheetsById)));
   // Taken against the enemies' pass after the engine began the reactor's
   // turn: it belongs before that turn (src/lib/dm/held-turn.ts).
   if (!("error" in result) && lateReaction(campaign, sheet.id)) {

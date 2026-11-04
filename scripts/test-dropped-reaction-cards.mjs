@@ -259,6 +259,29 @@ await test("A condition that stops reactions, put on by the blow that dropped th
   assert.equal(out.ok, true, out.error);
 });
 
+await test("Unaimed, a dropped holder's reaction answers the hit that dropped them, not a heavier one that found them down.", async () => {
+  await stage(rogue, 8, 2);
+  const [first, second] = world.enemies();
+  kit.place(second.id, 4, 6);
+  const campaign = world.campaign();
+  onPersonsTurn(campaign, (turn) => {
+    // The first drops the rogue (9 of 8); the second, beside them at 0, is a
+    // critical on a 15: 6 + 6 + 2 = 14.
+    for (const [enemy, faces] of [[first, [20, 4, 3]], [second, [15, 2, 6, 6]]]) {
+      world.dice(...faces);
+      const sheets = world.sheets();
+      const out = handleEnemyAttack(campaign, turn, JSON.stringify({ enemyId: enemy.id, targetCharacterId: rogue.id }), sheets, new Map(sheets.map((entry) => [entry.id, entry])));
+      world.clearDice();
+      assert.equal(typeof out.error, "undefined", out.error);
+    }
+  });
+  const out = await world.invoke("use_reaction", { characterId: rogue.id, feature: "Uncanny Dodge" });
+  assert.equal(out.ok, true, out.error);
+  const open = hits().filter((hit) => hit.characterId === rogue.id);
+  assert.deepEqual(open.find((hit) => hit.attackerId === first.id)?.answered, ["uncanny dodge"], "the hit that dropped them is answered");
+  assert.deepEqual(open.find((hit) => hit.attackerId === second.id)?.answered, [], "the later hit is not");
+});
+
 await test("A standing holder's card is open as before.", async () => {
   const enemy = await stage(rogue, 50);
   await strike(enemy, rogue, [16, 4]);
