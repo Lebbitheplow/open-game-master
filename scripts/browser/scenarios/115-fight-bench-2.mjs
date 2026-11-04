@@ -24,7 +24,7 @@
 // 10. the Test fight sheet's refusal where only administrators start tables.
 import http from "node:http";
 import { request } from "playwright-core";
-import { axeViolations, check, enterApp, eventually, freePort, hydrated, newContext, openPanelTab, settle, signIn, untilStill } from "../lib.mjs";
+import { axeViolations, check, enterApp, eventually, freePort, hydrated, newContext, openPanelTab, settle, signIn, untilStill, seeAllTours } from "../lib.mjs";
 
 // A stand-in narrator for the steered table, as in fight-bench.
 function narrator(port) {
@@ -684,6 +684,9 @@ export default {
         await theirs.evaluate((to) => window.odmShell.navigation.push(to), `/workshop/${workshopId}?system=encounters`);
       } else {
         await signIn(other, base, ids.player, ids.password);
+        // The player's account has seen every tour at its current version too
+        // (a revised tour outlives the browser's version-1 flags).
+        await seeAllTours(other.request, base);
         await theirs.goto(`${base}/workshop/${workshopId}?system=encounters`, { waitUntil: "networkidle", timeout: 120_000 });
         await hydrated(theirs);
         await settle(theirs);

@@ -3,7 +3,7 @@
 // her builder says she now has the 2014 Goliath's traits. An Orc's Primal
 // Intuition offers only its seven skills. An apothecary's shelf names how
 // magic is priced, and the term opens on the 2014 values.
-import { check, eventually, untilStill } from "../lib.mjs";
+import { check, eventually, untilStill, upTo } from "../lib.mjs";
 
 const PRIMAL_INTUITION = ["Animal Handling", "Insight", "Intimidation", "Medicine", "Nature", "Perception", "Survival"];
 
@@ -114,8 +114,18 @@ export default {
     await eventually(() => trains.count(), { timeoutMs: 20_000, label: "the species form's training group" });
     // The group opens on a tap and says so; read once, a tap that landed
     // while the editor was still arriving left it shut with nothing said.
-    if ((await trains.first().getAttribute("aria-expanded")) !== "true") await t.tap(trains.first());
-    await eventually(async () => (await trains.first().getAttribute("aria-expanded")) === "true", { label: "the training group open" });
+    // Tapped again while it still reads shut (main CI on 0.32.2: one tap,
+    // and the group never said it opened in 15 s), with a pause after each
+    // tap so a slow render is not taken for a miss and shut again.
+    await eventually(
+      async () => {
+        if ((await trains.first().getAttribute("aria-expanded")) === "true") return true;
+        await t.tap(trains.first()).catch(() => undefined);
+        await upTo(async () => (await trains.first().getAttribute("aria-expanded")) === "true", 2_000);
+        return false;
+      },
+      { timeoutMs: 30_000, label: "the training group open" },
+    );
     const pickedFrom = editor.getByText("Picked from (none ticked: any skill)");
     check((await pickedFrom.count()) === 0, "no skill list before there is a pick");
     const raise = editor.getByRole("button", { name: "Raise Skills of the player's choice" });
