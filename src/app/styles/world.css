@@ -1413,6 +1413,10 @@ html[data-theme="light"] .ts-below .ts-ghost:hover { background: rgba(255, 252, 
    on cream they all but vanish, an error message or "Lead only" among them. The
    enlarged board keeps its night table. */
 html[data-theme="light"] :is(.rail-ember, .text-ember-300, .text-ember-400):not(.cine-tabletop *) { color: #9a3f10; }
+/* Gold text a shade see-through (an eyebrow's text-amber-400/80) is dimmed for
+   the night's glow; on parchment the cream through it took it under 4.5:1. By
+   day it is the full ink. */
+html[data-theme="light"] :is(.text-amber-300\/70, .text-amber-300\/80, .text-amber-300\/85, .text-amber-300\/90, .text-amber-400\/60, .text-amber-400\/70, .text-amber-400\/80, .text-amber-400\/90, .text-amber-500\/70, .text-amber-500\/80):not(.cine-tabletop *) { color: var(--color-amber-400); }
 .cine-stage .cine-rail { background: transparent; border-left-color: rgba(212, 171, 58, 0.12); }
 .cine-stage .cine-rail .rail-glyph,
 .cine-stage .cine-bottombar .rail-glyph {
@@ -1851,6 +1855,39 @@ html[data-theme="light"] .cine-tabletop {
   --color-amber-200: #f4e0a6;
   --color-amber-100: #f9ecc8;
   --color-amber-50: #fdf7e7;
+  --color-sky-950: oklch(29.3% 0.066 243.157);
+  --color-sky-900: oklch(39.1% 0.09 240.876);
+  --color-sky-800: oklch(44.3% 0.11 240.79);
+  --color-sky-700: oklch(50% 0.134 242.749);
+  --color-sky-600: oklch(58.8% 0.158 241.966);
+  --color-sky-500: oklch(68.5% 0.169 237.323);
+  --color-sky-400: oklch(74.6% 0.16 232.661);
+  --color-sky-300: oklch(82.8% 0.111 230.318);
+  --color-sky-200: oklch(90.1% 0.058 230.902);
+  --color-sky-100: oklch(95.1% 0.026 236.824);
+  --color-sky-50: oklch(97.7% 0.013 236.62);
+  --color-orange-950: oklch(26.6% 0.079 36.259);
+  --color-orange-900: oklch(40.8% 0.123 38.172);
+  --color-orange-800: oklch(47% 0.157 37.304);
+  --color-orange-700: oklch(55.3% 0.195 38.402);
+  --color-orange-600: oklch(64.6% 0.222 41.116);
+  --color-orange-500: oklch(70.5% 0.213 47.604);
+  --color-orange-400: oklch(75% 0.183 55.934);
+  --color-orange-300: oklch(83.7% 0.128 66.29);
+  --color-orange-200: oklch(90.1% 0.076 70.697);
+  --color-orange-100: oklch(95.4% 0.038 75.164);
+  --color-orange-50: oklch(98% 0.016 73.684);
+  --color-lime-950: oklch(27.4% 0.072 132.109);
+  --color-lime-900: oklch(40.5% 0.101 131.063);
+  --color-lime-800: oklch(45.3% 0.124 130.933);
+  --color-lime-700: oklch(53.2% 0.157 131.589);
+  --color-lime-600: oklch(64.8% 0.2 131.684);
+  --color-lime-500: oklch(76.8% 0.233 130.85);
+  --color-lime-400: oklch(84.1% 0.238 128.85);
+  --color-lime-300: oklch(89.7% 0.196 126.665);
+  --color-lime-200: oklch(93.8% 0.127 124.321);
+  --color-lime-100: oklch(96.7% 0.067 122.328);
+  --color-lime-50: oklch(98.6% 0.031 120.757);
 }
 html[data-theme="light"] .cine-chronicle-page {
   background: linear-gradient(180deg, #fbf5e4, #efe4c6);
@@ -2342,6 +2379,19 @@ html:not([data-theme="light"]) .cine-lobby .lobby-hero-art + div { margin-top: -
 html:not([data-theme="light"]) .cine-lobby .lobby-hero-art + div > p:first-child { text-shadow: 0 1px 8px rgba(4, 2, 12, 0.9); }
 html[data-theme="light"] .cine-lobby .lobby-hero-art { -webkit-mask-image: none; mask-image: none; }
 html[data-theme="light"] .cine-lobby .lobby-hero-art::after { display: block; }
+/* By day the cover is not faded under the eyebrow, so the eyebrow sits below
+   its edge: pulled up into it, the cover's dark rim cut through the words. */
+html[data-theme="light"] .cine-lobby .lobby-hero-art + div { margin-top: 0; padding-top: 0.75rem; }
+/* By day the lobby's painting lies under parchment, as the table's does under
+   its panels: the section heads, the way back and the open seats sit on the
+   page itself, and their dark ink was on the night scrim. */
+html[data-theme="light"] .cine-lobby .cine-backdrop { background: var(--background); }
+html[data-theme="light"] .cine-lobby .cine-scrim-stack {
+  background: linear-gradient(180deg, rgba(244, 239, 228, 0.8), rgba(244, 239, 228, 0.9) 40%, rgba(244, 239, 228, 0.96));
+}
+html[data-theme="light"] .cine-lobby .cine-scrim-vignette {
+  background: radial-gradient(ellipse 80% 70% at 50% 40%, transparent 50%, rgba(244, 239, 228, 0.6) 100%);
+}
 
 /* ---- the table on phones and narrow folds ---- */
 
