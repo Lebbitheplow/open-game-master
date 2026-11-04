@@ -18,6 +18,7 @@ import { recordInitiativeRoll, settleTurn, turnHolder } from "@/lib/dm/encounter
 import { applyInitiativeRefills } from "@/lib/dm/feature-hooks";
 import { applyPendingDamageRoll } from "@/lib/dm/enemy-damage";
 import { resolvePendingPcAttack } from "@/lib/dm/pc-attack";
+import { parkedTargetAc } from "@/lib/dm/pc-attack-parked";
 import { resumeDmTurn } from "@/lib/dm/turn";
 import { resumeHumanTurn } from "@/lib/dm/invoke";
 import { enqueueDmJob } from "@/lib/dm/queue";
@@ -38,7 +39,7 @@ function landOne(campaign: Campaign, pending: PendingRoll, thrown: RollResult, l
   // A parked to-hit roll takes a held Bardic Inspiration die the way the
   // digital one does: only on a miss it turns into a hit (forced-save.ts).
   const attacker = pending.kind === "attack" && pending.attack && pending.characterId ? getSheetById(pending.characterId) : null;
-  const outcome = attacker && pending.attack ? settleAttackDie(campaignId, attacker, thrown, pending.attack.targetAc, pending.attack.critRange ?? 20) : thrown;
+  const outcome = attacker && pending.attack ? settleAttackDie(campaignId, attacker, thrown, parkedTargetAc(campaignId, pending.attack), pending.attack.critRange ?? 20) : thrown;
   if (outcome !== thrown) {
     // The server threw that die: the roll is no longer the player's alone.
     landing = { ...landing, physical: false };

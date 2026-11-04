@@ -7,12 +7,14 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { holdsFeature } from "@/lib/srd/feature-names";
 import { getFoe, resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { breakConcentration } from "@/lib/dm/concentration";
-import { tryParry } from "@/lib/dm/enemy-reactions";
+import { enemyAcWithEffects } from "@/lib/dm/ac-effects";
+import { attackerUnseen, tryParry } from "@/lib/dm/enemy-reactions";
 import { getCampaignById } from "@/lib/db/campaigns";
 import {
   createPendingRoll,
   getDmTurn,
   publicPendingRoll,
+  type PendingAttack,
   type PendingRoll,
 } from "@/lib/db/dm-turns";
 import { getActiveEncounter } from "@/lib/db/encounters";
@@ -56,6 +58,16 @@ function parkedExtras(plan: AttackPlan): Pick<ParkedAttack, "extras"> | null {
     ...(plan.profile.creatureOnHit ? { creature: plan.profile.creatureOnHit } : {}),
   };
   return Object.keys(kept).length ? { extras: kept } : null;
+}
+
+// The AC a parked roll meets when it lands. The parts of an attack park
+// together, so the creature may have changed its AC since: a Shield an earlier
+// part drew stands against this one. What the parked AC holds beyond the
+// creature's own (cover) is kept.
+export function parkedTargetAc(campaignId: string, attack: PendingAttack): number {
+  const { plainAc } = attack as ParkedAttack;
+  const foe = attack.targetEnemyId ? getFoe(attack.targetEnemyId) : null;
+  return plainAc === undefined || !foe ? attack.targetAc : attack.targetAc - plainAc + enemyAcWithEffects(campaignId, foe);
 }
 
 // Foe Slayer is once on each of the ranger's turns: the live turn remembers
@@ -105,6 +117,8 @@ export function parkPcAttack(plan: AttackPlan, strike: Strike, toolCallId: strin
   const parked: ParkedAttack = {
     magical: strikesAsMagic(plan),
     ...(plan.atRange ? {} : { melee: true }),
+    ...(attackerUnseen(sheet.conditions, enemy.conditions) ? { attackerUnseen: true } : {}),
+    plainAc: enemyAcWithEffects(campaign.id, enemy),
     ...(parkedRiders.length ? { riders: parkedRiders } : {}),
     ...(critExtraDice ? { critExtraDice } : {}),
     attacker: sheet.name,
@@ -171,19 +185,20 @@ export function resolvePendingPcAttack(pending: PendingRoll, roll: StoredRoll): 
       return `${context.attacker}'s ${context.weapon} attack was still unrolled when their turn ended, so it does not land. No damage roll happens; narrate the moment passing.`;
     }
   }
-  const judged = adjudicateHit(roll.total, roll.breakdown.crit, context.targetAc, {
+  const targetAc = parkedTargetAc(pending.campaignId, context);
+  const judged = adjudicateHit(roll.total, roll.breakdown.crit, targetAc, {
     natural: roll.breakdown.natural,
     critRange: context.critRange,
   });
-  // Parry: the creature's reaction lifts its AC against a melee hit (enemy-reactions.ts).
+  // Parry or Shield: the creature's reaction lifts its AC (enemy-reactions.ts).
   const parryFoe = fight && context.targetEnemyId ? getFoe(context.targetEnemyId) : null;
   const extras = (context as ParkedAttack).extras;
   // An attack's parts park together, so an earlier part may have spent it since,
   // and the turn may have gone with its budget.
   const foeSlayer = fight?.turnBudget && !fight.turnBudget.oncePerTurn.includes(FOE_SLAYER) ? (extras?.foeSlayer ?? 0) : 0;
-  const metTotal = totalAReactionMeets({ total: roll.total, ac: context.targetAc, hit: judged.hit, crit: judged.crit, natural1: roll.breakdown.crit === "nat1", foeSlayer });
-  const parry = metTotal !== null && fight && parryFoe && (context as ParkedAttack).melee
-    ? tryParry({ encounter: fight, enemy: parryFoe, total: metTotal, natural20: false, ac: context.targetAc, melee: true, attackerUnseen: false })
+  const metTotal = totalAReactionMeets({ total: roll.total, ac: targetAc, hit: judged.hit, crit: judged.crit, natural1: roll.breakdown.crit === "nat1", foeSlayer });
+  const parry = metTotal !== null && fight && parryFoe
+    ? tryParry({ encounter: fight, enemy: parryFoe, total: metTotal, natural20: false, ac: targetAc, melee: (context as ParkedAttack).melee === true, attackerUnseen: (context as ParkedAttack).attackerUnseen === true })
     : null;
   // Foe Slayer's bonus lifted the near miss the reaction answered: it went on
   // this roll, so it is spent, and cannot draw a second reaction or lift again.
@@ -199,7 +214,7 @@ export function resolvePendingPcAttack(pending: PendingRoll, roll: StoredRoll): 
     ? null
     : rescueMiss({
         total: roll.total,
-        ac: context.targetAc + (parry?.bonus ?? 0),
+        ac: targetAc + (parry?.bonus ?? 0),
         natural1: roll.breakdown.crit === "nat1",
         foeSlayer,
         strokeOfLuck: extras?.strokeOfLuck === true,
@@ -218,7 +233,7 @@ export function resolvePendingPcAttack(pending: PendingRoll, roll: StoredRoll): 
     if (missed?.beam && pending.characterId) {
       breakConcentration(campaign, null, pending.characterId, `${missed.beam} missed`);
     }
-    return `${context.attacker}'s ${context.weapon} attack rolled ${roll.total} vs AC ${context.targetAc}: MISS${
+    return `${context.attacker}'s ${context.weapon} attack rolled ${roll.total} vs AC ${targetAc}: MISS${
       roll.breakdown.crit === "nat1" ? " (natural 1)" : ""
     }${parryNote ? ` (${parryNote})` : ""}. No damage roll happens; narrate the miss.`;
   }
@@ -227,7 +242,7 @@ export function resolvePendingPcAttack(pending: PendingRoll, roll: StoredRoll): 
   const encounter = getActiveEncounter(pending.campaignId);
   const enemy = encounter ? resolveTargetFoe(pending.campaignId, encounter, context.targetEnemyId) : null;
   if (!enemy || enemy.status !== "alive") {
-    return `${context.attacker}'s ${context.weapon} attack rolled ${roll.total} vs AC ${context.targetAc}: HIT, but the target is already gone; narrate around it.`;
+    return `${context.attacker}'s ${context.weapon} attack rolled ${roll.total} vs AC ${targetAc}: HIT, but the target is already gone; narrate around it.`;
   }
   const sheets = listSheets(pending.campaignId);
   const sheet = sheets.find((entry) => entry.id === pending.characterId);
@@ -353,7 +368,7 @@ export function resolvePendingPcAttack(pending: PendingRoll, roll: StoredRoll): 
   publishPersisted(pending.campaignId, "roll_pending", {
     pendingRoll: publicPendingRoll(damagePending),
   });
-  return `${context.attacker}'s ${context.weapon} attack rolled ${roll.total} vs AC ${context.targetAc}: HIT${
+  return `${context.attacker}'s ${context.weapon} attack rolled ${roll.total} vs AC ${targetAc}: HIT${
     crit ? " (CRITICAL: damage dice are doubled)" : ""
   }.${spentNotes.length ? ` ${spentNotes.join("; ")}.` : ""}${spellLine ? ` ${spellLine}.` : ""} ${context.attacker} now rolls damage (${expression})${
     context.rerollBelow
