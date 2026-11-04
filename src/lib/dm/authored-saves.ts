@@ -24,6 +24,8 @@ import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { getActiveEncounter, patchEnemyConditions, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { tilesApart } from "@/lib/dm/board-reach";
+import { hasLineOfSight } from "@/lib/battlemap/los";
+import { sightTerrainFor } from "@/lib/dm/zone-rules";
 
 import type { Advantage } from "@/lib/dice";
 import { activeAuthored, hasCondition } from "@/lib/srd/authored-effects";
@@ -55,6 +57,34 @@ export function withinFeet(encounterId: string, fromRef: string, toRef: string, 
   }
   return tilesApart(from, to) <= Math.floor(feet / 5);
 
+}
+
+// Whether one creature can see another on the board: line of sight between
+// their tokens through walls and the zones that block sight (zone-rules.ts),
+// for a reaction whose text says "a creature you can see". Off the board, or
+// with a token missing, it is open: nothing says they cannot.
+export function seesOnBoard(encounterId: string, fromRef: string, toRef: string): boolean {
+  const map = getBattleMapForEncounter(encounterId);
+  if (!map || fromRef === toRef) {
+    return true;
+  }
+  const from = getTokenByRef(map.id, fromRef);
+  const to = getTokenByRef(map.id, toRef);
+  // A token off the board's edge (a creature parked out of the scene) is not
+  // judged: nothing on the board stands between.
+  const off = (token: { x: number; y: number }) => token.x < 0 || token.y < 0 || token.x >= map.width || token.y >= map.height;
+  if (!from || !to || off(from) || off(to)) {
+    return true;
+  }
+  return hasLineOfSight(sightTerrainFor(map), map.width, from.x, from.y, to.x, to.y);
+}
+
+// The refusal for a reaction its holder cannot see the creature for, or null.
+export function unseenRefusal(encounterId: string | undefined, holder: { id: string; name: string }, seen: { id: string | null; name: string }, feature: string): { error: string; refused: "rules" } | null {
+  if (!encounterId || !seen.id || seesOnBoard(encounterId, holder.id, seen.id)) {
+    return null;
+  }
+  return { error: `${holder.name} has no line of sight to ${seen.name}, and ${feature} answers a creature they can see. Nothing was spent.`, refused: "rules" };
 }
 
 function sourcedMark(enemy: EncounterEnemy, name: string): { condition: string; source: string | undefined } | null {

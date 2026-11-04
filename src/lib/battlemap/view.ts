@@ -31,6 +31,7 @@ import {
 } from "@/lib/db/battle-maps";
 import {
   darkvisionTilesFromText,
+  hasLineOfSight,
   perceivesToken,
   visibleTiles,
   type Viewer,
@@ -623,7 +624,16 @@ export function buildPlayerMapView(
           // Measured on the stored tokens, footprints and all, as withinFeet
           // measures them; only those this viewer is shown.
           const shown = new Set(shownTokens.map((token) => token.id));
-          return { feet: Object.fromEntries(tokens.filter((token) => token.id !== myToken.id && shown.has(token.id)).map((token) => [token.refId, tilesApart(myToken, token) * 5])) };
+          const others = tokens.filter((token) => token.id !== myToken.id && shown.has(token.id));
+          // Line of sight as the engine reads it (authored-saves.ts seesOnBoard).
+          const sight = sightTerrainFor(map);
+          return {
+            feet: Object.fromEntries(others.map((token) => [token.refId, tilesApart(myToken, token) * 5])),
+            unseen: others
+              .filter((token) => token.x >= 0 && token.y >= 0 && token.x < map.width && token.y < map.height)
+              .filter((token) => !hasLineOfSight(sight, map.width, myToken.x, myToken.y, token.x, token.y))
+              .map((token) => token.refId),
+          };
         })()
       : {}),
     ...(fullVision

@@ -24,7 +24,7 @@ import { luckPointsLeft } from "@/lib/srd/class-resources";
 import { spendRollCarriers } from "@/lib/dm/forced-save";
 import { LUCK_SPEND } from "@/lib/dm/roll-riders";
 import { rollExpression } from "@/lib/dice";
-import { publishPersisted } from "@/lib/events";
+import { reactionPatch } from "@/lib/dm/reaction-refund";
 import { defensiveDuelistBonus, hasMageSlayer, hasSentinel } from "@/lib/srd/feat-combat";
 import { listSheets } from "@/lib/db/sheets";
 import type { ToolResult } from "@/lib/dm/tool-errors";
@@ -270,13 +270,10 @@ export function reservesRecovery(ctx: Ctx, which: "ki" | "sorcery_points"): Tool
   const conMod = Math.floor((fresh.abilities.con - 10) / 2);
   const outcome = rollExpression(`1${fresh.hitDice.die}${conMod >= 0 ? `+${conMod}` : conMod}`);
   const regained = Math.min(state.max, Math.max(1, Math.floor(outcome.total / 2)));
-  const patched = patchSheet(sheet.id, {
+  reactionPatch(campaign, ctx.turn.id, sheet.id, {
     hitDice: { ...fresh.hitDice, spent: fresh.hitDice.spent + 1 },
     resources: { ...(fresh.resources ?? {}), [which]: { ...state, used: Math.max(0, state.max - regained) } },
-  });
-  if (patched) {
-    publishPersisted(campaign.id, "sheet_updated", { sheet: patched });
-  }
+  }, `${feat}: a Hit Die spent`);
   return {
     ok: true,
     reaction: feat,

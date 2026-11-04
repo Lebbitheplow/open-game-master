@@ -97,15 +97,18 @@ await test("A hit on the holder offers no card, and the reaction refuses it with
 
 await test("An ally beyond 60 feet is refused: nothing spent, the reaction kept, the hit standing. Exactly 60 feet reaches.", async () => {
   const enemy = await stage();
-  kit.place(ally.id, 5, 18);
-  kit.place(enemy.id, 5, 19);
+  // On open ground and on the board (20 by 15): the knight must see the ally too.
+  kit.openField();
+  kit.place(knight.id, 1, 5);
+  kit.place(ally.id, 14, 5);
+  kit.place(enemy.id, 14, 6);
   await strike(enemy, ally);
   const out = await shield([2]);
   assert.match(out.error, /beyond 60 feet/);
   assert.equal(used(), 0);
   assert.equal(world.sheet(ally.id).currentHp, 44);
   assert.ok(reactionKept());
-  kit.place(ally.id, 5, 17);
+  kit.place(ally.id, 13, 5);
   const reached = await shield([2]);
   assert.equal(reached.ok, true, reached.error);
 });
@@ -185,7 +188,7 @@ await test("A critical another reaction already cut, then rolled away: the ally 
   let out = await shield([15], rogue);
   assert.equal(out.ok, true, out.error);
   assert.match(out.result.applied, /no longer a critical/i);
-  assert.equal(world.sheet(rogue.id).currentHp, 49, "the 5 the dodge took off comes off the plain 6");
+  assert.equal(world.sheet(rogue.id).currentHp, 47, "the dodge halves the plain 6 as it halved the critical");
 
   const bard = hero("bard", "College of Lore");
   enemy = await stage();
@@ -228,7 +231,7 @@ await test("An attack with advantage is rolled again on one die and uses it: the
   assert.equal(world.sheet(ally.id).currentHp, 50);
 });
 
-await test("A natural 20 rolled away lands as an ordinary hit, and a natural 20 gained is said and not raised.", async () => {
+await test("A natural 20 rolled away lands as an ordinary hit, and a natural 20 gained makes the hit a critical.", async () => {
   let enemy = await stage();
   await strike(enemy, ally, [20, 4, 4]);
   assert.equal(world.sheet(ally.id).currentHp, 40, "4 + 4 + 2, a critical");
@@ -237,11 +240,12 @@ await test("A natural 20 rolled away lands as an ordinary hit, and a natural 20 
   assert.match(out.result.applied, /no longer a critical/i);
   assert.equal(world.sheet(ally.id).currentHp, 44, "the critical's die comes back");
 
+  // The club's 4 + 2 stands, and the critical's die is rolled now: a 5, for 11.
   enemy = await stage();
   await strike(enemy, ally);
-  out = await shield([20]);
-  assert.match(out.result.applied, /critical/i);
-  assert.equal(world.sheet(ally.id).currentHp, 44);
+  out = await shield([20, 5]);
+  assert.match(out.result.applied, /becomes a critical: 5 more damage/);
+  assert.equal(world.sheet(ally.id).currentHp, 39);
 });
 
 // Two goblins in one GM turn leave two open hits on the ally, of 6 and of 3.

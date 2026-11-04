@@ -32,7 +32,7 @@ import { meetEnemyPart } from "@/lib/dm/enemy-defenses";
 import { scaledParts } from "@/lib/dm/enemy-hit";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
-import { attackerFoeId, critTurnsNormal, freshLastHit, openHits, plainOfReroll, rerollAttacker, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
+import { answerKey, answerLabel, answeredBy, attackerFoeId, carryCuts, critTurnsNormal, cutBlow, freshLastHit, openHits, plainOfReroll, rerollAttacker, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { vowedFoe } from "@/lib/srd/vow-of-enmity";
 import { ENTROPIC_EDGE } from "@/lib/dm/reaction-kinds";
 import { answerSave, openSaves, type LastSave } from "@/lib/dm/last-save";
@@ -41,7 +41,7 @@ import { applyPcDamage, blowDefenses, meetDefenses } from "@/lib/dm/pc-damage";
 import { actingCombatantId } from "@/lib/dm/can-act";
 import { handlePcAttack } from "@/lib/dm/pc-attack";
 import { allyOf, noHit, settle, SPENT, spendReaction, type Ctx } from "@/lib/dm/reaction-tools";
-import { withinFeet } from "@/lib/dm/authored-saves";
+import { unseenRefusal, withinFeet } from "@/lib/dm/authored-saves";
 import { reachAtLevel } from "@/lib/dm/reaction-kinds";
 import { resolveMoreReaction } from "@/lib/dm/authored-reactions-more";
 import { projectWard } from "@/lib/dm/arcane-ward";
@@ -49,6 +49,8 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { noneNamed, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { swallowCoverError } from "@/lib/dm/swallow";
 import { spentSlotRefusal } from "@/lib/dm/cast-rules";
+import { reactionPatch } from "@/lib/dm/reaction-refund";
+import { raiseToCritical } from "@/lib/dm/critical-raise";
 import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed, holdsFeature } from "@/lib/srd/feature-names";
 import { resourceName } from "@/lib/srd/class-resources";
@@ -112,12 +114,14 @@ function heaviest(swings: SwingRecord[], which: (swing: SwingRecord) => boolean 
 }
 
 // The critical as the normal hit it becomes: the same dice without the
-// critical's, and whatever a reaction already took off it, in proportion (the
-// record keeps the corrected raw, not what was done to it). The unconscious
-// target's `ordinary` goes with the critical it read back.
+// critical's, and whatever a reaction already took off it taken off this the
+// same way (last-hit.ts carryCuts), or in proportion on a record that kept no
+// cuts. The unconscious target's `ordinary` goes with the critical it read back.
 function asNormalHit(swing: SwingRecord): SwingRecord {
   const normal = swing.normal;
-  const raw = normal ? (normal.from > 0 ? Math.round((normal.raw * swing.raw) / normal.from) : 0) : swing.raw;
+  const raw = normal
+    ? (carryCuts(swing, normal.raw, normal.from) ?? (normal.from > 0 ? Math.round((normal.raw * swing.raw) / normal.from) : 0))
+    : swing.raw;
   return {
     ...swing,
     crit: false,
@@ -130,17 +134,24 @@ function asNormalHit(swing: SwingRecord): SwingRecord {
   };
 }
 
+// "A creature you can see": the one the hit fell on (authored `sees`), asked
+// after the reach, which says more when both fail.
+function unseenTarget(ctx: Ctx, found: Found, seen: CharacterSheet): ToolError | null {
+  if (found.reaction.sees !== "target" || seen.id === found.holder.id) return null;
+  return unseenRefusal(ctx.encounter?.id, found.holder, seen, found.reaction.name);
+}
+
 function lastHitOn(ctx: Ctx, target: CharacterSheet, label: string, which?: (hit: LastHit) => (swing: SwingRecord) => boolean, what?: string): { record: LastHit; index: number } | ToolError {
   // Of several open hits, the heaviest blow it can still answer.
   const record = freshLastHit(
     ctx.campaign.id,
     target.id,
-    (hit) => hit.source === "attack" && !hit.answered.includes(label) && heaviest(hit.swings, which?.(hit)) >= 0,
+    (hit) => hit.source === "attack" && !answeredBy(hit, label) && heaviest(hit.swings, which?.(hit)) >= 0,
     (hit) => hit.swings[heaviest(hit.swings, which?.(hit))]?.raw ?? -1,
   );
   const index = record ? heaviest(record.swings, which?.(record)) : -1;
   if (!record || index < 0) {
-    return noHit(target.name, label, what);
+    return noHit(target.name, answerLabel(label), what);
   }
   return { record, index };
 }
@@ -291,8 +302,8 @@ export function authoredReaction(ctx: Ctx): ToolResult | null {
     paid = () => {
       const now = getSheetById(ctx.sheet.id) ?? ctx.sheet;
       const slots = { ...now.spellcasting!.slots, [String(level)]: { max: slot.max, used: slot.used + 1 } };
-      const updated = patchSheet(now.id, { spellcasting: { ...now.spellcasting!, slots } });
-      if (updated) publishPersisted(ctx.campaign.id, "sheet_updated", { sheet: updated });
+      // Audited, so "Revert this turn" gives the slot back with the reaction.
+      reactionPatch(ctx.campaign, ctx.turn.id, now.id, { spellcasting: { ...now.spellcasting!, slots } }, `${reaction.name}: a level ${level} slot`);
     };
   } else if (reaction.pool) {
     const pool = reaction.pool;
@@ -304,8 +315,8 @@ export function authoredReaction(ctx: Ctx): ToolResult | null {
     paid = () => {
       const now = getSheetById(holder.id) ?? holder;
       const current = now.resources[pool.id];
-      const updated = patchSheet(now.id, { resources: { ...now.resources, [pool.id]: { max: current.max, used: current.used + amount } } });
-      if (updated) publishPersisted(ctx.campaign.id, "sheet_updated", { sheet: updated });
+      // Audited, so "Revert this turn" gives the use back with the reaction.
+      reactionPatch(ctx.campaign, ctx.turn.id, now.id, { resources: { ...now.resources, [pool.id]: { max: current.max, used: current.used + amount } } }, `${reaction.name}: a use spent`);
     };
   }
   // The ally it covers and the creature it answers are both across no
@@ -329,7 +340,8 @@ export function authoredReaction(ctx: Ctx): ToolResult | null {
 function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
   const { reaction, held, holder } = found;
   const does = reaction.does;
-  const label = textKey(reaction.name);
+  // Kept on the hit with its holder (last-hit.ts answerKey).
+  const label = answerKey(textKey(reaction.name), holder.id);
   const encounter = ctx.encounter;
   switch (does.kind) {
     case "reduce": {
@@ -365,7 +377,7 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
         reduction = Math.max(0, rollCard(ctx.campaign, ctx.turn, holder.id, "custom", `${holder.name}: ${reaction.name}`, expression, null).total);
         rolled = `${expression}: ${reduction}`;
       }
-      const corrected = hit.record.swings.map((entry, at) => (at === hit.index ? { ...entry, raw: Math.max(0, entry.raw - reduction) } : entry));
+      const corrected = hit.record.swings.map((entry, at) => (at === hit.index ? cutBlow(entry, does.amount === "half" ? "half" : reduction) : entry));
       const settled = settle(ctx, hit.record, corrected, label);
       // Vengeful Ancestors: what Spirit Shield prevented strikes the attacker.
       const reflected: Record<string, unknown> = {};
@@ -398,13 +410,15 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (does.rangeFt && encounter && covered.id !== ctx.sheet.id && !withinFeet(encounter.id, ctx.sheet.id, covered.id, does.rangeFt)) {
         return { error: `${covered.name} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
       }
+      const hidden = unseenTarget(ctx, found, covered);
+      if (hidden) return hidden;
       const hit = lastHitOn(ctx, covered, label);
       if ("error" in hit) return hit;
       const swing = hit.record.swings[hit.index];
       const missed = swing.natural !== 20 && swing.total < swing.vsAc + bonus;
       if (spentDie) {
         const cleared = removeConditions(ctx.sheet.conditions, ctx.sheet.conditionMeta, [spentDie]);
-        patchSheet(ctx.sheet.id, { conditions: cleared.conditions, conditionMeta: cleared.meta });
+        reactionPatch(ctx.campaign, ctx.turn.id, ctx.sheet.id, { conditions: cleared.conditions, conditionMeta: cleared.meta }, `${reaction.name}: the Bardic Inspiration die spent`);
       }
       if (!missed) {
         return { applied: `AC ${swing.vsAc} + ${bonus} against ${swing.total}: the hit still lands.` };
@@ -431,6 +445,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (swing.natural === null) {
         return { error: `${reaction.name} answers an attack roll, and this hit had none on record. Nothing was spent.`, refused: "rules" };
       }
+      // Warding Flare: "a creature ... that you can see" attacks.
+      const unseen = reaction.sees === "attacker" ? unseenRefusal(encounter?.id, ctx.sheet, hit.record.attacker, reaction.name) : null;
+      if (unseen) return unseen;
       // Shadowy Dodge: only against an attack roll made without advantage.
       if (does.notVsAdvantage && swing.advantage === "advantage") {
         return { error: `${reaction.name} answers an attack roll made without advantage, and this one had advantage. Nothing was spent.`, refused: "rules" };
@@ -466,6 +483,8 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (encounter && !withinFeet(encounter.id, ctx.sheet.id, ally.id, does.rangeFt)) {
         return { error: `${ally.name} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
       }
+      const hidden = unseenTarget(ctx, found, ally);
+      if (hidden) return hidden;
       const hit = lastHitOn(ctx, ally, label);
       if ("error" in hit) return hit;
       const swing = hit.record.swings[hit.index];
@@ -484,16 +503,20 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       // The new roll goes on the record, so a later reaction (Shield, Cutting Words)
       // reads it and not the first. A critical the natural 20 alone made is lost
       // with it (plainOfReroll); a melee blow beside a downed ally stays one whatever
-      // the die. A natural 20 gained is said, not raised: its dice were never rolled.
-      const plain = plainOfReroll(swing, natural);
+      // the die. A natural 20 gained makes the hit a critical, its dice rolled again
+      // (critical-raise.ts), where the hit kept its roll; an older one is said, not raised.
+      const raised = natural === 20 && !swing.crit ? raiseToCritical(ctx.campaign, ctx.turn, hit.record, swing, reaction.name) : null;
+      const plain = raised ?? plainOfReroll(swing, natural);
       const settled = settle(ctx, hit.record, hit.record.swings.map((entry, at) => (at === hit.index ? { ...plain, total, natural, faces: [natural], advantage: "none" as const } : entry)), label);
-      const critical = plain !== swing
-        ? ` No longer a critical: ${settled.given} hit points come back. HP ${settled.hp}.`
-        : natural === 20 && !swing.crit
-          ? " It is a natural 20, and the hit is not raised to a critical: the damage already rolled stands."
-          : swing.crit && natural !== 20
-            ? " It stays a critical, and its damage stands."
-            : "";
+      const critical = raised
+        ? ` It is a natural 20, and the hit becomes a critical: ${Math.max(0, raised.raw - swing.raw)} more damage. HP ${settled.hp}.`
+        : plain !== swing
+          ? ` No longer a critical: ${settled.given} hit points come back. HP ${settled.hp}.`
+          : natural === 20 && !swing.crit
+            ? " It is a natural 20, and the hit is not raised to a critical: the damage already rolled stands."
+            : swing.crit && natural !== 20
+              ? " It stays a critical, and its damage stands."
+              : "";
       return { applied: `Rolled again: ${total} against AC ${swing.vsAc} still hits ${ally.name}.${critical}`, ...(settled.notes.length ? { notes: settled.notes } : {}) };
     }
     case "resist_instance": {
@@ -517,7 +540,7 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (pcResistances(target).includes(type)) {
         return { applied: `${target.name} already resists ${type} damage: ${reaction.name} changes nothing.` };
       }
-      const corrected = hit.record.swings.map((entry) => (textKey(entry.type ?? hit.record.type) === type && entry.hit ? { ...entry, raw: Math.floor(entry.raw / 2) } : entry));
+      const corrected = hit.record.swings.map((entry) => (textKey(entry.type ?? hit.record.type) === type && entry.hit ? cutBlow(entry, "half") : entry));
       const settled = settle(ctx, hit.record, corrected, label);
       return { applied: `${target.name} resists this ${type} damage: ${settled.given} hit points come back. HP ${settled.hp}.` };
     }
@@ -530,7 +553,7 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (encounter && !withinFeet(encounter.id, ctx.sheet.id, ally.id, feet)) {
         return { error: `${ally.name} is beyond ${feet} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
       }
-      const record = freshLastHit(ctx.campaign.id, ally.id, (hit) => hit.source === "attack" && !hit.answered.includes(label) && hit.swings.some((swing) => swing.hit));
+      const record = freshLastHit(ctx.campaign.id, ally.id, (hit) => hit.source === "attack" && !answeredBy(hit, label) && hit.swings.some((swing) => swing.hit));
       if (!record) {
         return noHit(ally.name, reaction.name, `an attack that hit ${ally.name}`);
       }
@@ -541,7 +564,7 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       const share_ = does.share ?? (does.resistFrom && held.level >= does.resistFrom ? "halved" : undefined);
       const kept = share_ === "split" ? Math.ceil(raw / 2) : 0;
       const corrected = share_ === "split"
-        ? record.swings.map((swing) => (swing.hit ? { ...swing, raw: Math.ceil(swing.raw / 2) } : swing))
+        ? record.swings.map((swing) => (swing.hit ? cutBlow(swing, "half_up") : swing))
         : record.swings.map((swing) => ({ ...swing, hit: false, raw: 0 }));
       const settled = settle(ctx, record, corrected, label);
       const share = share_ ? Math.floor(raw / 2) : raw;
@@ -848,10 +871,7 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
         return { applied: `The attack misses: ${settled.given} hit points come back to ${target.name}. HP ${settled.hp}.` };
       }
       const now = getSheetById(ctx.sheet.id) ?? ctx.sheet;
-      const updated = patchSheet(now.id, { exhaustion: Math.min(6, (now.exhaustion ?? 0) + does.exhaustion) });
-      if (updated) {
-        publishPersisted(ctx.campaign.id, "sheet_updated", { sheet: updated });
-      }
+      reactionPatch(ctx.campaign, ctx.turn.id, now.id, { exhaustion: Math.min(6, (now.exhaustion ?? 0) + does.exhaustion) }, `${reaction.name}: exhaustion`);
       return { applied: `The attack misses by the wizard's word: ${settled.given} hit points come back to ${target.name}. ${ctx.sheet.name} gains ${does.exhaustion} level of exhaustion.` };
     }
     case "echo_takes_hit": {
@@ -859,10 +879,23 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (!ally || ally.id === ctx.sheet.id) {
         return { error: `${reaction.name} sends the echo into an attack that hit another creature: pass that ally's targetCharacterId. Nothing was spent.`, retry: true };
       }
+      const hidden = unseenTarget(ctx, found, ally);
+      if (hidden) return hidden;
       const hit = lastHitOn(ctx, ally, label);
       if ("error" in hit) return hit;
+      const swing = hit.record.swings[hit.index];
       const settled = settle(ctx, hit.record, hit.record.swings.map((entry, at) => (at === hit.index ? { ...entry, hit: false, raw: 0 } : entry)), label);
-      return { applied: `${ctx.sheet.name}'s echo takes the attack: ${settled.given} hit points come back to ${ally.name}. HP ${settled.hp}. The echo has AC ${14 + computeSheetDerived(ctx.sheet).proficiencyBonus} and 1 hit point, and the server does not track it: the GM removes it if the attack beats that AC.` };
+      // The same attack roll, made against the echo instead (AC 14 + the
+      // proficiency bonus, 1 hit point). The echo is no creature the server
+      // keeps, so what becomes of it is said for the GM to show on the board.
+      const echoAc = 14 + computeSheetDerived(ctx.sheet).proficiencyBonus;
+      const echo =
+        swing.natural === null
+          ? `The echo has AC ${echoAc} and 1 hit point; the attack had no roll on record, so the GM judges whether it hits the echo.`
+          : swing.natural === 20 || (swing.natural !== 1 && swing.total >= echoAc)
+            ? `The attack's ${swing.total} hits the echo (AC ${echoAc}, 1 hit point) and destroys it: the server does not track the echo, so take it off the board.`
+            : `The attack's ${swing.total} misses the echo (AC ${echoAc}), which stays where it is.`;
+      return { applied: `${ctx.sheet.name}'s echo takes the attack: ${settled.given} hit points come back to ${ally.name}. HP ${settled.hp}. ${echo}` };
     }
     case "chance_miss": {
       const hit = lastHitOn(ctx, ctx.sheet, label);
@@ -887,6 +920,8 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (encounter && target.id !== ctx.sheet.id && !withinFeet(encounter.id, ctx.sheet.id, target.id, does.rangeFt)) {
         return { error: `${target.name} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
       }
+      const hidden = unseenTarget(ctx, found, target);
+      if (hidden) return hidden;
       const hit = lastHitOn(ctx, target, label, (entry) => (swing) => critTurnsNormal(entry, swing), `a critical hit on ${target.name}`);
       if ("error" in hit) return hit;
       const settled = settle(ctx, hit.record, hit.record.swings.map((entry, at) => (at === hit.index ? asNormalHit(entry) : entry)), label);

@@ -11,7 +11,7 @@ import { castLookup, npcFace, type CastLookup } from "@/lib/db/npc-faces";
 import { foeLook } from "@/lib/actor-sex-logic";
 import { dmPlaysTurn } from "@/lib/dm/companion-command";
 import { aiRunsTestTable } from "@/lib/workshop/test-seats-logic";
-import { critTurnsNormal, heaviestHit, hitIdOf, openHits, reactedLate, type LastHit } from "@/lib/dm/last-hit";
+import { answerLabel, critTurnsNormal, heaviestHit, hitIdOf, openHits, reactedLate, type LastHit } from "@/lib/dm/last-hit";
 import { conditionNote, conditionNoteLine, namesLookup } from "@/lib/battlemap/condition-notes";
 import { healthState, type HealthState } from "@/lib/bestiary/health";
 import { creatureTypeOf } from "@/lib/bestiary/creature-type";
@@ -224,8 +224,11 @@ export type PublicLastHit = {
   // The heaviest critical among its swings that can become a normal hit
   // (Sentinel at Death's Door), which need not be the hit named above.
   crit?: { attack: string; damage: number };
-  // Reactions already taken against it.
+  // Reactions already taken against it, by name. `answeredBy` keeps who took
+  // each (last-hit.ts answerKey), so a second holder of the same feature is
+  // still offered it; an older host sends names only.
   answered: string[];
+  answeredBy?: string[];
   // How the character stood as it landed: up or already at 0, and their
   // conditions then. A reaction that answers the hit is asked of them as
   // they stood (src/lib/dm/reaction-gate.ts), so a card for one the hit
@@ -319,7 +322,8 @@ function lastHitView(record: LastHit, hidden: Set<string>, showNumbers: boolean)
     hits: record.swings.filter((swing) => swing.hit).length,
     damage: answered?.raw ?? 0,
     ...(critical ? { crit: { attack: critical.attack ?? record.attack, damage: critical.raw } } : {}),
-    answered: record.answered,
+    answered: [...new Set(record.answered.map(answerLabel))],
+    answeredBy: record.answered,
     stood: { up: record.before.currentHp > 0, conditions: record.before.conditions },
   };
 }

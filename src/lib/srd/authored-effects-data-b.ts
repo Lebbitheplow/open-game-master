@@ -197,7 +197,7 @@ export const AUTHORED_DATA_A2: Record<string, AuthoredEntry> = {
   "fighter::Shadow Martyr": {
     subclass: "Echo Knight",
     counter: "sub_shadow_martyr",
-    reactions: [{ name: "Shadow Martyr", pool: { id: "sub_shadow_martyr" }, does: { kind: "echo_takes_hit" } }],
+    reactions: [{ name: "Shadow Martyr", pool: { id: "sub_shadow_martyr" }, sees: "target", does: { kind: "echo_takes_hit" } }],
   },
   "fighter::Legion of One": {
     subclass: "Echo Knight",
@@ -275,7 +275,7 @@ export const AUTHORED_DATA_A2: Record<string, AuthoredEntry> = {
   "fighter::Runic Shield": {
     subclass: "Rune Knight",
     counter: "sub_runic_shield",
-    reactions: [{ name: "Runic Shield", pool: { id: "sub_runic_shield" }, does: { kind: "reroll_hit", rangeFt: 60 } }],
+    reactions: [{ name: "Runic Shield", pool: { id: "sub_runic_shield" }, sees: "target", does: { kind: "reroll_hit", rangeFt: 60 } }],
   },
   "fighter::Great Stature": {
     subclass: "Rune Knight",

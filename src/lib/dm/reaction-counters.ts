@@ -31,7 +31,8 @@ import { classLevelFor } from "@/lib/srd/multiclass";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { rollCard } from "@/lib/dm/roll-card";
-import { freshLastHit, heaviestRaw, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
+import { answerKey, answeredBy, cutBlow, freshLastHit, heaviestRaw, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
+import { unseenRefusal } from "@/lib/dm/authored-saves";
 import { settleLastHit } from "@/lib/dm/reaction-refund";
 import { pcResistances, removeConditions } from "@/lib/dm/condition-logic";
 import { HOLDING_ON, PRONE, UNCONSCIOUS, exhaustionPatch } from "@/lib/dm/vitals-logic";
@@ -71,7 +72,7 @@ function lessDamage(swings: SwingRecord[], amount: number): SwingRecord[] {
   for (const { index } of order) {
     if (left <= 0) break;
     const take = Math.min(left, next[index].raw);
-    next[index].raw -= take;
+    if (take > 0) next[index] = cutBlow(next[index], take);
     left -= take;
   }
   return next;
@@ -129,7 +130,7 @@ export function planCounterReaction(input: Input): Plan | ToolError | null {
       return {
         apply: () => {
           const corrected = record.swings.map((swing) =>
-            swing.hit && !resisted.includes((swing.type ?? record.type).toLowerCase()) ? { ...swing, raw: Math.floor(swing.raw / 2) } : swing,
+            swing.hit && !resisted.includes((swing.type ?? record.type).toLowerCase()) ? cutBlow(swing, "half") : swing,
           );
           const settled = settle(input, record, corrected, "swarming dispersal");
           return { applied: `${sheet.name} resists that damage: ${settled.given} hit points come back. HP ${settled.hp}. They vanish into the swarm and reappear up to 30 feet away (move_token forced on the map).` };
@@ -164,6 +165,11 @@ export function planCounterReaction(input: Input): Plan | ToolError | null {
       if (!target) {
         return { error: "Warding Maneuver protects the fighter or a creature within 5 feet: pass that creature's targetCharacterId. Nothing was spent.", retry: true };
       }
+      // Asked as they stood before the blow only for their own hit
+      // (reaction-kinds.ts): for another creature's, a fighter at 0 is down.
+      if (target.id !== sheet.id && sheet.currentHp <= 0) {
+        return { error: `${sheet.name} is at 0 HP and cannot take a reaction, so Warding Maneuver does not cover ${target.name}. Nothing was spent.`, refused: "rules" };
+      }
       const encounter = getActiveEncounter(campaign.id);
       const apart = encounter && target.id !== sheet.id ? tilesBetween(encounter.id, sheet.id, target.id) : null;
       if (apart !== null && apart > 1) {
@@ -172,7 +178,10 @@ export function planCounterReaction(input: Input): Plan | ToolError | null {
       if (!wieldsMeleeOrShield(sheet)) {
         return { error: `Warding Maneuver needs ${sheet.name} wielding a melee weapon or a shield. Nothing was spent.`, refused: "rules" };
       }
-      const record = freshLastHit(campaign.id, target.id, (hit) => hit.source === "attack" && !hit.answered.includes("warding maneuver") && hit.swings.some((swing) => swing.hit), (hit) => heaviestRaw(hit));
+      // "You or a creature you can see within 5 feet of you."
+      const unseen = target.id === sheet.id ? null : unseenRefusal(encounter?.id, sheet, target, "Warding Maneuver");
+      if (unseen) return unseen;
+      const record = freshLastHit(campaign.id, target.id, (hit) => hit.source === "attack" && !answeredBy(hit, answerKey("warding maneuver", sheet.id)) && hit.swings.some((swing) => swing.hit), (hit) => heaviestRaw(hit));
       const index = record
         ? record.swings.reduce((best, swing, at) => (swing.hit && (best < 0 || swing.raw > record.swings[best].raw) ? at : best), -1)
         : -1;
@@ -185,9 +194,9 @@ export function planCounterReaction(input: Input): Plan | ToolError | null {
           const swing = record.swings[index];
           const missed = swing.natural !== 20 && swing.total < swing.vsAc + die;
           const corrected = record.swings.map((entry, at) =>
-            at !== index ? entry : missed ? { ...entry, hit: false, raw: 0 } : { ...entry, raw: Math.floor(entry.raw / 2) },
+            at !== index ? entry : missed ? { ...entry, hit: false, raw: 0 } : cutBlow(entry, "half"),
           );
-          const settled = settle(input, record, corrected, "warding maneuver");
+          const settled = settle(input, record, corrected, answerKey("warding maneuver", sheet.id));
           return {
             rolled: `1d8: ${die}`,
             applied: missed

@@ -83,6 +83,13 @@ export type SwingRecord = {
   // raw as it landed: a reaction that cut the blow first cuts this in proportion.
   // Absent where the dice do not line up (ordinaryOfCritical) and on older records.
   normal?: { raw: number; type?: string; parts?: Array<{ amount: number; type: string }>; from: number };
+  // What reactions took off the blow, in the order taken (cutBlow). A reaction
+  // that turns the blow into another one (Sentinel at Death's Door's normal
+  // hit, a reroll's plain one, the ordinary blow a standing target takes)
+  // takes the same off that one (carryCuts): a halving halves it and a flat
+  // cut takes the same amount, as the rules take each off whatever the attack
+  // deals. Absent on a blow nothing cut and on older records.
+  cuts?: BlowCut[];
   // The advantage the swing would have had against the target standing, when
   // it lay at 0 and that changed the roll (SRD 5.1, Unconscious: attack rolls
   // against it have advantage). A reaction that leaves them standing when it
@@ -90,6 +97,14 @@ export type SwingRecord = {
   // blow went back to ordinary damage and kept the advantage it had only
   // because they were down.
   standingAdvantage?: Advantage;
+  // A hit that was no critical, kept so a reaction that rolls the attack
+  // again and comes up 20 (Runic Shield) can make it one: the damage roll as
+  // it fell (its expression and dice), the critical damage variants in play,
+  // the attack (for its typed parts), and what shrank the blow as it landed
+  // (`scale`, the damage dealt over the damage rolled). Absent on a critical,
+  // on attacks that keep none (only an enemy's enemy_attack does) and on
+  // older records, which keep the hit as it was.
+  critical?: CriticalRecipe;
   // What the blow was made of, as the damage path read it (a magic weapon, a
   // feature its resistance did not hold against), so a replay meets the same
   // clauses (pc-damage.ts blowDefenses).
@@ -103,6 +118,40 @@ export type SwingRecord = {
   // reaction judges the one blow that broke it, not the whole attack.
   concentration?: { save: number | null; broke: boolean };
 };
+
+export type CriticalRecipe = {
+  expression: string;
+  terms: RollResult["terms"];
+  powerful?: boolean;
+  doubleFlat?: boolean;
+  attack: string;
+  scale: number;
+  from: number;
+};
+
+// A flat amount off the blow (Cutting Words, Deflect Missiles, Parry), or half
+// of it rounded down (Uncanny Dodge, a resistance) or up (the half an ally
+// keeps of a split blow).
+export type BlowCut = number | "half" | "half_up";
+
+function cutOf(raw: number, cut: BlowCut): number {
+  return cut === "half" ? Math.floor(raw / 2) : cut === "half_up" ? Math.ceil(raw / 2) : Math.max(0, raw - cut);
+}
+
+// The swing with a reaction's cut taken off its damage, the cut kept with it.
+export function cutBlow(swing: SwingRecord, cut: BlowCut): SwingRecord {
+  return { ...swing, raw: cutOf(swing.raw, cut), cuts: [...(swing.cuts ?? []), cut] };
+}
+
+// Another figure of the same blow (its normal, plain or ordinary damage, as
+// rolled) with the swing's cuts taken off it in their order. `from` is the
+// blow's own damage before any cut. Null when the cuts on record do not lead
+// from `from` to the damage the swing holds (a record written before they were
+// kept, or a cut no reaction recorded): the caller keeps its own reading.
+export function carryCuts(swing: SwingRecord, figure: number, from: number): number | null {
+  const cuts = swing.cuts ?? [];
+  return cuts.reduce(cutOf, from) === swing.raw ? cuts.reduce(cutOf, figure) : null;
+}
 
 export type HolderSnapshot = {
   kind: "sheet" | "enemy";
@@ -153,6 +202,10 @@ export type LastHit = {
   // one AI reply, or one call from the console. Absent out of any turn and
   // on records written before it.
   dmTurn?: string;
+  // The record as it stood before a later GM turn's reaction rewrote it (its
+  // swings, its answers), one entry a turn, so reverting that turn puts the
+  // hit back (forgetTurnAnswers). Absent until a reaction answers it.
+  undo?: Array<{ turnId: string; was: LastHit }>;
   // Who made it: an enemy, a character fighting on the other side (a
   // turncoat's pc_attack, issue 503), or a hazard, which is nobody.
   attacker: { kind: "enemy" | "sheet" | "hazard"; id: string | null; name: string };
@@ -204,15 +257,16 @@ export function attackerFoeId(record: Pick<LastHit, "attacker"> | null | undefin
 // the d20 kept is not a 20, and the blow lands without its critical dice (SRD
 // 5.1, Critical Hits: "If the d20 roll for an attack is a 20"). A record
 // written before the plain blow was kept stays as it was. A reaction that has
-// already cut the blow (Uncanny Dodge, Cutting Words) keeps its cut, off the
-// plain blow too, as the ordinary blow takes it (reaction-refund.ts).
+// already cut the blow (Uncanny Dodge, Cutting Words) cuts the plain blow the
+// same way (carryCuts); a record that kept no cuts takes the amount it lost.
 export function plainOfReroll(swing: SwingRecord, kept: number): SwingRecord {
   if (!swing.crit || kept === 20 || !swing.plain) {
     return swing;
   }
   const { plain, ...rest } = swing;
-  const cut = Math.max(0, (plain.from ?? swing.raw) - swing.raw);
-  const next: SwingRecord = { ...rest, crit: false, raw: Math.max(0, plain.raw - cut) };
+  const from = plain.from ?? swing.raw;
+  const raw = carryCuts(swing, plain.raw, from) ?? Math.max(0, plain.raw - Math.max(0, from - swing.raw));
+  const next: SwingRecord = { ...rest, crit: false, raw };
   delete next.parts;
   return plain.parts ? { ...next, parts: plain.parts } : next;
 }
@@ -230,6 +284,26 @@ export function heaviestHit(swings: SwingRecord[], which: (swing: SwingRecord) =
     }
   });
   return best;
+}
+
+// An answer on a hit, keyed by the reaction and the one who took it, so a
+// second holder of the same feature (two Rune Knights, two Lore bards) can
+// answer the hit as well, and neither the same hit twice. A key written
+// before holders were kept is the bare reaction, and answers for everyone.
+export function answerKey(label: string, holderId: string): string {
+  return `${label}@${holderId}`;
+}
+
+// The reaction an answer key names, without its holder.
+export function answerLabel(key: string): string {
+  const at = key.lastIndexOf("@");
+  return at > 0 ? key.slice(0, at) : key;
+}
+
+// Whether the hit holds this answer: the key itself, or the bare reaction an
+// older record kept.
+export function answeredBy(record: Pick<LastHit, "answered">, key: string): boolean {
+  return record.answered.includes(key) || record.answered.includes(answerLabel(key));
 }
 
 // Whether a swing is a critical that can become a normal hit: its normal
@@ -304,9 +378,44 @@ export function writeLastHit(campaignId: string, record: LastHit) {
   const at = hits.findIndex((entry) => hitIdOf(entry) === id);
   const next =
     at >= 0
-      ? hits.map((entry, index) => (index === at ? record : entry))
+      ? hits.map((entry, index) => (index === at ? withUndo(entry, record) : entry))
       : [...hits.filter((entry) => stillKept(entry, record)), record].slice(-MAX_KEPT);
   saveHits(campaignId, record.characterId, next);
+}
+
+// A hit rewritten by a GM turn other than the one that made it keeps what it
+// was, once for that turn: "Revert this turn" puts it back, answers and all.
+// A hit its own turn rewrites needs none (forgetTurnHits drops it whole).
+function withUndo(was: LastHit, next: LastHit): LastHit {
+  const turnId = rollingTurn().dmTurn;
+  const undo = was.undo ?? [];
+  if (!turnId || turnId === was.dmTurn || undo.some((entry) => entry.turnId === turnId)) {
+    return { ...next, ...(undo.length ? { undo } : {}) };
+  }
+  const plain: LastHit = { ...was };
+  delete plain.undo;
+  return { ...next, undo: [...undo, { turnId, was: plain }] };
+}
+
+// What a reverted GM turn's reactions did to the hits they answered, taken
+// back: each hit as it stood before that turn rewrote it, with the answers
+// it held then (a later turn's on top of it go with it).
+export function forgetTurnAnswers(campaignId: string, turnId: string) {
+  const rows = db()
+    .prepare(`SELECT character_id, payload_json FROM last_hits WHERE campaign_id = ?`)
+    .all(campaignId) as Array<{ character_id: string; payload_json: string }>;
+  for (const row of rows) {
+    const hits = hitsIn(row.payload_json);
+    let changed = false;
+    const next = hits.map((record) => {
+      const at = record.undo?.findIndex((entry) => entry.turnId === turnId) ?? -1;
+      if (at < 0) return record;
+      changed = true;
+      const earlier = record.undo!.slice(0, at);
+      return { ...record.undo![at].was, ...(earlier.length ? { undo: earlier } : {}) };
+    });
+    if (changed) saveHits(campaignId, row.character_id, next);
+  }
 }
 
 // Whether the enemies a pass walked past are taking their turns: held for
@@ -696,6 +805,7 @@ export function openLastHit(campaignId: string, characterId: string) {
         plain?: SwingRecord["plain"];
         normal?: SwingRecord["normal"];
         standingAdvantage?: Advantage;
+        critical?: CriticalRecipe;
         flags?: BlowFlags;
       },
     ) {
@@ -718,6 +828,7 @@ export function openLastHit(campaignId: string, characterId: string) {
         ...(result.hit && result.crit && result.plain ? { plain: { ...result.plain, from: Math.max(0, result.raw) } } : {}),
         ...(result.hit && result.crit && result.normal ? { normal: result.normal } : {}),
         ...(result.hit && result.standingAdvantage && result.standingAdvantage !== result.advantage ? { standingAdvantage: result.standingAdvantage } : {}),
+        ...(result.hit && !result.crit && result.critical ? { critical: result.critical } : {}),
         ...(result.hit && Object.keys(flags).length ? { flags: flags as BlowFlags } : {}),
         ...(concentration ? { concentration } : {}),
       });

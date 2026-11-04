@@ -140,6 +140,7 @@ function HandInner({
   leaving,
   edges,
   feet,
+  unseen,
   drops,
   mounts,
   genre,
@@ -173,6 +174,9 @@ function HandInner({
   // How far each creature on the board stands from this character, in feet
   // (PlayerMapView.feet): a reaction whose reach a hit lies beyond is not dealt.
   feet?: Record<string, number>;
+  // Who on the board this character has no line of sight to
+  // (PlayerMapView.unseen): a reaction that needs its creature seen is not dealt.
+  unseen?: string[];
   // What lies on the board, and who rides what (issue #424): the gear cards'
   // Pick up and Dismount.
   drops?: PlayerMapView["drops"];
@@ -251,8 +255,8 @@ function HandInner({
   );
   const reactions = useMemo(
     // Under the monsters' hand the hero hit is named, as the others are.
-    () => (sheet && turn ? holdSentReactions(reactionCards(sheet, turn, hits ?? [], sheets, reactionsOnly ? sheet.name : "you", feet, encounter.lastSaves, ownFeet ? creatures : undefined), reactionsSent, sheet.id) : []),
-    [sheet, turn, hits, sheets, reactionsOnly, reactionsSent, feet, encounter.lastSaves, ownFeet, creatures],
+    () => (sheet && turn ? holdSentReactions(reactionCards(sheet, turn, hits ?? [], sheets, reactionsOnly ? sheet.name : "you", feet, encounter.lastSaves, ownFeet ? creatures : undefined, ownFeet && unseen ? new Set(unseen) : undefined), reactionsSent, sheet.id) : []),
+    [sheet, turn, hits, sheets, reactionsOnly, reactionsSent, feet, encounter.lastSaves, ownFeet, creatures, unseen],
   );
   // A player's other characters hit while this one acts (a person playing
   // several heroes), and the companions they play: their reactions too, each

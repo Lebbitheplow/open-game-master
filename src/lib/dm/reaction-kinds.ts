@@ -80,17 +80,20 @@ export function reactionTimingOf(name: string): ReactionTiming {
 
 // An authored reaction's timing, from what it does to the hit: lowering it,
 // raising the AC against it, rolling it again, resisting it, taking it in an
-// ally's place or turning it aside all act on the triggering attack; striking
+// ally's place, turning it aside or into a miss (Armor of Hexes' d6) or into a
+// normal hit all act on the triggering attack; striking
 // back, attacking, a save, a move or a condition follow it.
 export function timingOfDoes(does: ReactionDoes): ReactionTiming {
   switch (does.kind) {
     case "reduce":
     case "ac_vs_hit":
     case "disadv_vs_hit":
+    case "reroll_hit":
     case "resist_instance":
     case "take_for_ally":
     case "redirect":
     case "force_miss":
+    case "chance_miss":
     case "uncrit":
     case "echo_takes_hit":
     case "attack_penalty":

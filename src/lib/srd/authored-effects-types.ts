@@ -474,6 +474,11 @@ export type AuthoredReaction = {
   // Who takes the reaction: the feature's holder (default), a creature
   // holding the holder's Bardic Inspiration, or any ally of the holder.
   usedBy?: "holder" | "inspired" | "party";
+  // Its text needs the holder to see a creature: the one the hit fell on
+  // ("a creature you can see", Runic Shield, Sentinel at Death's Door) or the
+  // attacker (Warding Flare). On a board, line of sight decides; off one, it
+  // is open.
+  sees?: "target" | "attacker";
   does: ReactionDoes;
 };
 

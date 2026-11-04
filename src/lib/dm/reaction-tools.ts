@@ -40,11 +40,12 @@ import { devotedGuard } from "@/lib/dm/devoted-guard";
 import { reactionTimingOf, timingOfDoes, type ReactionTiming, spendsNoReaction } from "@/lib/dm/reaction-kinds";
 import { authoredReactionNamed, heldReaction } from "@/lib/srd/authored-effects";
 import { removeConditions } from "@/lib/dm/condition-logic";
-import { attackerFoeId, freshLastHit, heaviestHit, heaviestRaw, hitIdOf, openHitAimed, openHits, plainOfReroll, reactedLate, rerollAttacker, withHitAim, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
+import { answerKey, answeredBy, attackerFoeId, cutBlow, freshLastHit, heaviestHit, heaviestRaw, hitIdOf, openHitAimed, openHits, plainOfReroll, reactedLate, rerollAttacker, withHitAim, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import type { RollAttacker } from "@/lib/db/rolls";
 import { rollAgainst } from "@/lib/roll-labels";
 import { opportunity, reactionSpell } from "@/lib/dm/reaction-spells";
-import { settleLastHit } from "@/lib/dm/reaction-refund";
+import { reactionPatch, settleLastHit } from "@/lib/dm/reaction-refund";
+import { unseenRefusal } from "@/lib/dm/authored-saves";
 import { asReaction, lateReaction } from "@/lib/dm/held-turn";
 import { authoredReaction } from "@/lib/dm/authored-reactions";
 import { freeAuthoredReaction } from "@/lib/dm/authored-reactions-more";
@@ -137,9 +138,12 @@ function uncannyDodge(ctx: Ctx): ToolResult {
   if (!record || index < 0) {
     return noHit(sheet.name, "Uncanny Dodge");
   }
+  // "An attacker that you can see."
+  const unseen = unseenRefusal(ctx.encounter?.id, sheet, record.attacker, "Uncanny Dodge");
+  if (unseen) return unseen;
   const dodged = record.swings[index];
   const halved = Math.floor(dodged.raw / 2);
-  const corrected = record.swings.map((swing, at) => (at === index ? { ...swing, raw: halved } : swing));
+  const corrected = record.swings.map((swing, at) => (at === index ? cutBlow(swing, "half") : swing));
   spendReaction(ctx);
   const settled = settle(ctx, record, corrected, "uncanny dodge");
   return {
@@ -173,7 +177,7 @@ function deflectMissiles(ctx: Ctx): ToolResult {
   const die = rollCard(campaign, ctx.turn, sheet.id, "custom", `${sheet.name}: Deflect Missiles`, "1d10", null).total;
   const reduction = die + dex + (monk || sheet.level);
   const corrected = record.swings.map((swing, at) =>
-    at === index ? { ...swing, raw: Math.max(0, swing.raw - reduction) } : swing,
+    at === index ? cutBlow(swing, reduction) : swing,
   );
   const caught = corrected[index].raw === 0;
   const settled = settle(ctx, record, corrected, "deflect missiles");
@@ -216,10 +220,7 @@ function throwBack(ctx: Ctx, record: LastHit, monkLevel: number): Record<string,
   if ("error" in ki) {
     return { error: `${ki.error} The missile was caught and kept.` };
   }
-  const paid = patchSheet(sheet.id, { resources: ki.resources });
-  if (paid) {
-    publishPersisted(campaign.id, "sheet_updated", { sheet: paid });
-  }
+  reactionPatch(campaign, ctx.turn.id, sheet.id, { resources: ki.resources }, "Deflect Missiles: a ki point to throw it back");
   const derived = computeSheetDerived(sheet);
   const bonus = derived.abilityMods.dex + derived.proficiencyBonus;
   const thrower: RollAttacker = { kind: "sheet", id: sheet.id, name: sheet.name };
@@ -257,7 +258,7 @@ function cuttingWords(ctx: Ctx): ToolResult {
   const record = freshLastHit(
     campaign.id,
     target.id,
-    (hit) => hit.source === "attack" && attackerFoeId(hit) !== null && !hit.answered.includes("cutting words") && heaviestHit(hit.swings) >= 0,
+    (hit) => hit.source === "attack" && attackerFoeId(hit) !== null && !answeredBy(hit, answerKey("cutting words", sheet.id)) && heaviestHit(hit.swings) >= 0,
     (hit) => heaviestRaw(hit),
   );
   const index = record ? heaviestHit(record.swings) : -1;
@@ -272,18 +273,19 @@ function cuttingWords(ctx: Ctx): ToolResult {
       refused: "rules",
     };
   }
+  // "A creature that you can see" makes the roll.
+  const unseen = unseenRefusal(encounter?.id, sheet, record.attacker, "Cutting Words");
+  if (unseen) return unseen;
   // The words reach no creature across a swallower's wall (swallow.ts).
   const walled = record.attacker.id ? swallowCoverError(sheet.id, record.attacker.id) : null;
   if (walled) {
     return walled;
   }
   spendReaction(ctx);
-  const spentPool = patchSheet(sheet.id, {
+  // Audited, so "Revert this turn" gives the die back with the reaction.
+  reactionPatch(campaign, ctx.turn.id, sheet.id, {
     resources: { ...sheet.resources, bardic_inspiration: { max: pool.max, used: pool.used + 1 } },
-  });
-  if (spentPool) {
-    publishPersisted(campaign.id, "sheet_updated", { sheet: spentPool });
-  }
+  }, "Cutting Words: a Bardic Inspiration die");
   const dieExpression = bardDie(sheet);
   const die = rollCard(campaign, ctx.turn, sheet.id, "custom", `${sheet.name}: Cutting Words`, dieExpression, null).total;
   const swing = record.swings[index];
@@ -291,9 +293,9 @@ function cuttingWords(ctx: Ctx): ToolResult {
   // hits whatever the total), otherwise off the damage.
   const missed = swing.natural !== 20 && swing.total - die < swing.vsAc;
   const corrected = record.swings.map((entry, at) =>
-    at !== index ? entry : missed ? { ...entry, hit: false, raw: 0 } : { ...entry, raw: Math.max(0, entry.raw - die) },
+    at !== index ? entry : missed ? { ...entry, hit: false, raw: 0 } : cutBlow(entry, die),
   );
-  const settled = settle(ctx, record, corrected, "cutting words");
+  const settled = settle(ctx, record, corrected, answerKey("cutting words", sheet.id));
   return {
     ok: true,
     reaction: "Cutting Words",
@@ -329,6 +331,10 @@ function protection(ctx: Ctx): ToolResult {
   if (walled) {
     return walled;
   }
+  // "A creature you can see attacks a target other than you."
+  const attacked = freshLastHit(campaign.id, ally.id, (hit) => hit.source === "attack" && heaviestHit(hit.swings) >= 0);
+  const unseen = attacked ? unseenRefusal(encounter?.id, sheet, attacked.attacker, "Protection") : null;
+  if (unseen) return unseen;
   spendReaction(ctx);
   addSheetCondition(campaign, ally, "protected", { untilTurnOf: sheet.id });
   // The attack that called for it, already rolled: rolled again at
@@ -338,7 +344,7 @@ function protection(ctx: Ctx): ToolResult {
   // The hit the prompt names (heaviestHit), not the routine's first swing:
   // after a multiattack whose first swing missed, Protection rolled nothing
   // again and the hit that landed stood.
-  const record = freshLastHit(campaign.id, ally.id, (hit) => hit.source === "attack" && !hit.answered.includes("protection") && heaviestHit(hit.swings) >= 0, (hit) => heaviestRaw(hit));
+  const record = freshLastHit(campaign.id, ally.id, (hit) => hit.source === "attack" && !answeredBy(hit, answerKey("protection", sheet.id)) && heaviestHit(hit.swings) >= 0, (hit) => heaviestRaw(hit));
   const index = record ? heaviestHit(record.swings) : -1;
   const first = record && index >= 0 ? record.swings[index] : null;
   let reread = "";
@@ -352,13 +358,13 @@ function protection(ctx: Ctx): ToolResult {
     const total = first.total - first.natural + kept;
     const missed = kept !== 20 && (kept === 1 || total < first.vsAc);
     if (missed) {
-      const settled = settle(ctx, record, record.swings.map((swing, at) => (at === index ? { ...swing, hit: false, raw: 0 } : swing)), "protection");
+      const settled = settle(ctx, record, record.swings.map((swing, at) => (at === index ? { ...swing, hit: false, raw: 0 } : swing)), answerKey("protection", sheet.id));
       reread = ` The attack is rolled again at disadvantage: ${total} against AC ${first.vsAc} misses, and ${settled.given} hit points come back to ${ally.name}.`;
     } else {
       // Still a hit, and answered all the same; a critical the kept die no
       // longer makes lands as an ordinary hit (last-hit.ts plainOfReroll).
       const plain = plainOfReroll(first, kept);
-      const settled = settle(ctx, record, record.swings.map((swing, at) => (at === index ? plain : swing)), "protection");
+      const settled = settle(ctx, record, record.swings.map((swing, at) => (at === index ? plain : swing)), answerKey("protection", sheet.id));
       reread = ` The attack is rolled again at disadvantage: ${total} against AC ${first.vsAc} still hits${plain !== first ? `, no longer a critical: ${settled.given} hit points come back to ${ally.name}` : ""}.`;
     }
   }
@@ -428,8 +434,7 @@ export function timingOfUseReaction(
   sheets: CharacterSheet[],
   sheetsById: Map<string, CharacterSheet>,
 ): ReactionTiming {
-  const other = args.targetCharacterId ? resolveSheetRef(args.targetCharacterId, sheets, sheetsById) : null;
-  if (other && other.id !== sheet.id) {
+  if (reactsForAnother(sheet, args, sheets, sheetsById)) {
     return "after";
   }
   const feature = args.feature.trim();
@@ -443,6 +448,33 @@ export function timingOfUseReaction(
     return reactionTimingOf(spellEngineName(spell.name, authors));
   }
   return reactionTimingOf(feature);
+}
+
+// Unaimed, a reaction to their own hit by someone at 0 answers the hit that
+// dropped them, the one the gate judged them by (reaction-gate.ts). The
+// heaviest or latest open hit can be a later one that found them down
+// already, which they could not have answered.
+function droppingHit(
+  campaign: Campaign,
+  sheet: CharacterSheet,
+  args: Pick<Args, "targetCharacterId">,
+  sheets: CharacterSheet[],
+  sheetsById: Map<string, CharacterSheet>,
+): string | undefined {
+  if (sheet.currentHp > 0 || reactsForAnother(sheet, args, sheets, sheetsById)) return undefined;
+  const dropping = freshLastHit(campaign.id, sheet.id, (hit) => hit.before.currentHp > 0);
+  return dropping ? hitIdOf(dropping) : undefined;
+}
+
+// Whether the call names another creature the reaction answers for.
+export function reactsForAnother(
+  sheet: CharacterSheet,
+  args: Pick<Args, "targetCharacterId">,
+  sheets: CharacterSheet[],
+  sheetsById: Map<string, CharacterSheet>,
+): boolean {
+  const other = args.targetCharacterId ? resolveSheetRef(args.targetCharacterId, sheets, sheetsById) : null;
+  return Boolean(other && other.id !== sheet.id);
 }
 
 // The reactions that answer a hit on the reactor alone (SRD 5.1: Uncanny
@@ -528,7 +560,7 @@ export function handleUseReaction(
     }
   }
   const aimedArgs = args;
-  const result = withHitAim(args.hit, () => asReaction(sheet.id, () => useReaction(campaign, turn, sheet, aimedArgs, sheets, sheetsById)));
+  const result = withHitAim(args.hit ?? droppingHit(campaign, sheet, args, sheets, sheetsById), () => asReaction(sheet.id, () => useReaction(campaign, turn, sheet, aimedArgs, sheets, sheetsById)));
   // Taken against the enemies' pass after the engine began the reactor's
   // turn: it belongs before that turn (src/lib/dm/held-turn.ts).
   if (!("error" in result) && lateReaction(campaign, sheet.id)) {
@@ -553,7 +585,7 @@ function useReaction(
   if (spendsNoReaction(feature)) {
     return lucky({ campaign, turn, sheet, args, sheets, sheetsById, encounter });
   }
-  const refused = reactionRefusal(campaign.id, sheet, encounter, feature, timingOfUseReaction(campaign, sheet, args, sheets, sheetsById));
+  const refused = reactionRefusal(campaign.id, sheet, encounter, feature, timingOfUseReaction(campaign, sheet, args, sheets, sheetsById), reactsForAnother(sheet, args, sheets, sheetsById));
   if (refused) {
     return refused;
   }
