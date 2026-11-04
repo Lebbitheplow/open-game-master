@@ -4,7 +4,7 @@
 // the card that was chosen. The button is reached by keyboard, and pressing
 // it returns the fighter with its subclass and fighting style; another
 // change offered again ends when the player leaves the step.
-import { check, eventually, currentStep } from "../lib.mjs";
+import { check, eventually, currentStep, upTo } from "../lib.mjs";
 
 export default {
   name: "builder-undo",
@@ -56,8 +56,15 @@ export default {
     if (!/Champion/.test(subclassText)) found.push(`the subclass reads "${subclassText}" after Put it back`);
     const back = (await said.textContent())?.trim() ?? "";
     if (back !== "Put back Fighter and its picks.") found.push(`after Put it back the live region says "${back}"`);
-    const lost = await page.evaluate(() => document.activeElement === document.body);
-    if (lost) found.push("focus fell to the page after Put it back");
+    // The builder moves focus on a zero-delay timer as the button goes (putBack,
+    // CharacterBuilder.tsx). Checked at once, this failed now and then in CI at
+    // desktop width and was not reproduced, so it allows a late landing and says
+    // where focus was if it never lands in the step.
+    const landed = await upTo(() => page.locator(active).evaluate((node) => node.contains(document.activeElement)), 3_000);
+    if (!landed) {
+      const where = await page.evaluate(() => `${document.activeElement?.tagName}.${document.activeElement?.className}; heading: ${document.querySelectorAll("section[data-active] .wizard-step-heading").length}`);
+      found.push(`focus left the step after Put it back (on ${where})`);
+    }
 
     // Offered again, then the step is left: the undo goes.
     await t.tap(card("Rogue"));
