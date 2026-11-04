@@ -810,6 +810,13 @@ export function resourceDef(id: string): ResourceDef | null {
   return RESOURCE_DEFS.find((def) => def.id === id) ?? null;
 }
 
+// What a player reads for a counter. Its id printed bare read "Sub Shadow
+// Martyr 1/1" on the party roster. A counter with no row reads as its id's
+// words.
+export function resourceName(id: string): string {
+  return resourceDef(id)?.displayName ?? id.replace(/^sub_/, "").replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+}
+
 // The counter behind a feat's free cast, made from its id: the spell is in
 // the id, the rule is the same for every one of them.
 function freeCastDef(id: string): ResourceDef {
