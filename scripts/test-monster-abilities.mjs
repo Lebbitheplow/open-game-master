@@ -254,6 +254,29 @@ await test("Either breath spends the one recharge, and one d6 brings both back; 
   assert.equal(sheet.conditionMeta.unconscious.endsOnDamage, true);
 });
 
+await test("A monster's poison sleep ends on damage and leaves the poison; conditions the damage ends all together end together.", async () => {
+  const fungus = await stage({
+    name: "Sporeling", size: "Medium", type: "Plant", armor_class: 12, hit_points: 120, cr: 4,
+    actions: [
+      { name: "Sleep Spores", desc: "One creature must succeed on a DC 13 Constitution saving throw or be poisoned and unconscious for 1 minute. A creature wakes up if it takes damage." },
+      { name: "Daze Spores", desc: "One creature must succeed on a DC 13 Wisdom saving throw or be blinded and deafened for 1 minute. The effect ends if the creature takes damage." },
+    ],
+  });
+  const slept = await mk.forced([1], () => world.invoke("cast_at_player", { characterId: tank.id, casterEnemyId: fungus.id, enemyAbility: "Sleep Spores", saveAbility: "con", dc: 13 }));
+  assert.equal(slept.ok, true, slept.error);
+  assert.ok(world.sheet(tank.id).conditions.includes("unconscious"));
+  await world.invoke("apply_damage", { characterId: tank.id, amount: 1, type: "bludgeoning", reason: "a slap" });
+  assert.equal(world.sheet(tank.id).conditions.includes("unconscious"), false, "the damage wakes them");
+  assert.equal(world.sheet(tank.id).conditions.includes("poisoned"), true, "the poison outlasts the sleep");
+  world.patch(tank.id, { conditions: [], conditionMeta: {} });
+  kit.freshRound();
+  const dazed = await mk.forced([1], () => world.invoke("cast_at_player", { characterId: tank.id, casterEnemyId: fungus.id, enemyAbility: "Daze Spores", saveAbility: "wis", dc: 13 }));
+  assert.equal(dazed.ok, true, dazed.error);
+  assert.ok(["blinded", "deafened"].every((name) => world.sheet(tank.id).conditions.includes(name)));
+  await world.invoke("apply_damage", { characterId: tank.id, amount: 1, type: "bludgeoning", reason: "a slap" });
+  assert.deepEqual(world.sheet(tank.id).conditions, [], "both are the one effect, and the damage ends it");
+});
+
 await test("A failure by the margin adds its condition, and the conditions listed with the first land with it.", async () => {
   const medusa = await stage({
     name: "Gazer", size: "Medium", type: "Monstrosity", armor_class: 15, hit_points: 120, cr: 6,

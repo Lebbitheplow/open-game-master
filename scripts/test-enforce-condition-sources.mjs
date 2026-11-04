@@ -91,6 +91,19 @@ await test("F13: the same two in the other order", async () => {
   assert.equal(now.conditionMeta.incapacitated.spell, "Hideous Laughter");
 });
 
+await test("Damage ends a spell's conditions together, while a sleep with no spell behind it ends alone", async () => {
+  const { world, enemies: [charmed, poisoned, turned] } = await table([FIGHTER], 3);
+  layOnEnemy(charmed.id, [["charmed", { spell: "Hypnotic Pattern", source: "a", rounds: 10 }], ["incapacitated", { spell: "Hypnotic Pattern", source: "a", rounds: 10, endsOnDamage: true }]]);
+  layOnEnemy(poisoned.id, [["poisoned", { source: "Drow Poison", rounds: 600 }], ["unconscious", { source: "Drow Poison", rounds: 600, endsOnDamage: true }]]);
+  layOnEnemy(turned.id, [["turned", { source: "priest", rounds: 10, endsOnDamage: true }], ["grappled", { source: "priest" }]]);
+  for (const foe of [charmed, poisoned, turned]) {
+    spellEffectsOnEnemyDamage(foe.id);
+  }
+  assert.deepEqual(enemyOf(world, charmed.id).conditions, [], "the pattern's charm goes with its incapacitation");
+  assert.deepEqual(enemyOf(world, poisoned.id).conditions, ["poisoned"], "the sleeper wakes still poisoned");
+  assert.deepEqual(enemyOf(world, turned.id).conditions, ["grappled"], "the priest's grapple is not part of the turning");
+});
+
 await test("F13: casting ends Invisibility and leaves Greater Invisibility", async () => {
   const world = await openWorld();
   const hero = world.addHero(FIGHTER);
