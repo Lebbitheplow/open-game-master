@@ -14,6 +14,7 @@ import { insertWhisper } from "@/lib/db/dm-whispers";
 import { listActiveFacts } from "@/lib/db/facts";
 import { listQuests } from "@/lib/db/quests";
 import { recapMaterial, renderRecapMaterial, sessionTranscript } from "@/lib/dm/recap-logic";
+import { stripToolText } from "@/lib/dm/tool-text";
 import { hasHumanDm } from "@/lib/dm/viewer";
 import { publishEphemeral } from "@/lib/events";
 import { publishWithSeq } from "@/lib/events";
@@ -111,7 +112,10 @@ export async function runResumeRecap(campaignId: string, session?: RecapSession)
   if (error) {
     return;
   }
-  const recap = stripReasoningArtifacts(extractStoryText(message?.content) ?? "").trim();
+  // The session banner shows the recap as stored, so a call the model wrote
+  // into it as text (an agent program on the harness provider, issue 794)
+  // is cut here, as every other narration call cuts it.
+  const recap = stripToolText(stripReasoningArtifacts(extractStoryText(message?.content) ?? "")).trim();
   if (!recap) {
     return;
   }
