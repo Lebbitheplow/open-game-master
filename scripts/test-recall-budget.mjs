@@ -62,6 +62,13 @@ const server = http.createServer(async (req, res) => {
   res.writeHead(response.status, Object.fromEntries(response.headers));
   res.end(Buffer.from(await response.arrayBuffer()));
 });
+// Node closes an idle keep-alive socket after five seconds, and the fake
+// agent's next MCP call can be written onto the socket as it closes: a turn
+// whose prompt build held the event loop that long (a slow Windows runner)
+// failed with "fetch failed" before any reply (test-recall-budget on #792).
+// This door never closes idle sockets, as the narrator's does
+// (scripts/lib/enforce-narrator.mjs).
+server.keepAliveTimeout = 0;
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 process.env.HARNESS_MCP_URL = `http://127.0.0.1:${server.address().port}/api/mcp`;
 
