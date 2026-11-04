@@ -301,6 +301,11 @@ export function describeKnownEntry(entry: { kind: string; delta: Delta }, name: 
       const level = amount(delta.level);
       return level !== null ? `${name} expends a level ${level} spell slot` : `${name} expends a spell slot`;
     }
+    // What a reaction itself did to the sheet (reaction-refund.ts reactionPatch).
+    case "reaction": {
+      const what = word(delta.reaction);
+      return what ? `${name}: ${what}` : `${name} takes a reaction`;
+    }
     case "use_resource": {
       const resource = word(delta.resource) ?? "a feature";
       const from = word(delta.from);
