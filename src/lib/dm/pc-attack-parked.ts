@@ -40,7 +40,8 @@ import {
   spendFeatureUse,
 } from "@/lib/dm/attack-onhit";
 import { storeBudget } from "@/lib/dm/turn-budget";
-import { SAVAGE_ATTACKER_USED, savageAttackerApplies } from "@/lib/srd/feat-combat";
+import { brawlerUnarmed, SAVAGE_ATTACKER_USED, savageAttackerApplies } from "@/lib/srd/feat-combat";
+import { holdsFeat } from "@/lib/srd/feat-effects";
 import { landNaturalOnHit } from "@/lib/dm/natural-onhit";
 import { rollAgainst } from "@/lib/roll-labels";
 import { markCritRange } from "@/lib/dm/attack-marks";
@@ -135,6 +136,10 @@ export function parkPcAttack(plan: AttackPlan, strike: Strike, toolCallId: strin
       : {}),
     ...(strike.rerollBelow ? { rerollBelow: strike.rerollBelow } : {}),
     ...(claimSavageAttacker(plan) ? { savageAttacker: true } : {}),
+    // Only the damage stage knows a kill, so the bonus actions wait for it.
+    ...(plan.budget ? { blowRound: plan.budget.round } : {}),
+    ...(plan.weaponAttack && !profile.ranged && !plan.atRange && holdsFeat(sheet, "Great Weapon Master") ? { opensGreatWeapon: true } : {}),
+    ...((profile.unarmed || profile.improvised) && !profile.ranged && brawlerUnarmed(sheet) ? { opensGrapple: true } : {}),
     ...(strike.hasOnHit ? { onHit: strike.onHitSpends } : {}),
     ...(plan.options.nonlethal ? { nonlethal: true } : {}),
     ...(plan.hitSpent.length ? { hitSpent: plan.hitSpent } : {}),

@@ -132,6 +132,12 @@ export type ParkedAttack = PendingAttack & {
   spell?: string;
   // A melee attack, which a monster's Parry answers (enemy-reactions.ts).
   melee?: boolean;
+  // What the blow can open on its turn once its damage has landed, and the
+  // round of that turn; no round, no turn of its own to open anything on
+  // (src/lib/dm/enemy-blow.ts openParkedBonus).
+  blowRound?: number;
+  opensGreatWeapon?: boolean;
+  opensGrapple?: boolean;
   // A magic weapon's dice on a natural 20 (src/lib/dm/gear-attack.ts).
   critGear?: { suffix: string; typed: Array<{ dice: string; type: string }>; notes: string[] };
   // What rides the roll and the hit beyond the damage
