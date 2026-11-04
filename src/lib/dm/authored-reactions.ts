@@ -41,7 +41,7 @@ import { applyPcDamage, blowDefenses, meetDefenses } from "@/lib/dm/pc-damage";
 import { actingCombatantId } from "@/lib/dm/can-act";
 import { handlePcAttack } from "@/lib/dm/pc-attack";
 import { allyOf, noHit, settle, SPENT, spendReaction, type Ctx } from "@/lib/dm/reaction-tools";
-import { withinFeet } from "@/lib/dm/authored-saves";
+import { unseenRefusal, withinFeet } from "@/lib/dm/authored-saves";
 import { reachAtLevel } from "@/lib/dm/reaction-kinds";
 import { resolveMoreReaction } from "@/lib/dm/authored-reactions-more";
 import { projectWard } from "@/lib/dm/arcane-ward";
@@ -302,6 +302,12 @@ export function authoredReaction(ctx: Ctx): ToolResult | null {
   if (walled) {
     return walled;
   }
+  // "A creature you can see": the one the hit fell on (authored `sees`).
+  if (reaction.sees === "target") {
+    const seen = ally ?? ctx.sheet;
+    const unseen = seen.id === holder.id ? null : unseenRefusal(ctx.encounter?.id, holder, seen, reaction.name);
+    if (unseen) return unseen;
+  }
   const outcome = resolve(ctx, found);
   if ("error" in outcome) {
     return outcome;
@@ -417,6 +423,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (swing.natural === null) {
         return { error: `${reaction.name} answers an attack roll, and this hit had none on record. Nothing was spent.`, refused: "rules" };
       }
+      // Warding Flare: "a creature ... that you can see" attacks.
+      const unseen = reaction.sees === "attacker" ? unseenRefusal(encounter?.id, ctx.sheet, hit.record.attacker, reaction.name) : null;
+      if (unseen) return unseen;
       // Shadowy Dodge: only against an attack roll made without advantage.
       if (does.notVsAdvantage && swing.advantage === "advantage") {
         return { error: `${reaction.name} answers an attack roll made without advantage, and this one had advantage. Nothing was spent.`, refused: "rules" };

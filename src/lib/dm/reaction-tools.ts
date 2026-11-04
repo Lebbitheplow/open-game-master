@@ -45,6 +45,7 @@ import type { RollAttacker } from "@/lib/db/rolls";
 import { rollAgainst } from "@/lib/roll-labels";
 import { opportunity, reactionSpell } from "@/lib/dm/reaction-spells";
 import { reactionPatch, settleLastHit } from "@/lib/dm/reaction-refund";
+import { unseenRefusal } from "@/lib/dm/authored-saves";
 import { asReaction, lateReaction } from "@/lib/dm/held-turn";
 import { authoredReaction } from "@/lib/dm/authored-reactions";
 import { freeAuthoredReaction } from "@/lib/dm/authored-reactions-more";
@@ -137,6 +138,9 @@ function uncannyDodge(ctx: Ctx): ToolResult {
   if (!record || index < 0) {
     return noHit(sheet.name, "Uncanny Dodge");
   }
+  // "An attacker that you can see."
+  const unseen = unseenRefusal(ctx.encounter?.id, sheet, record.attacker, "Uncanny Dodge");
+  if (unseen) return unseen;
   const dodged = record.swings[index];
   const halved = Math.floor(dodged.raw / 2);
   const corrected = record.swings.map((swing, at) => (at === index ? cutBlow(swing, "half") : swing));
@@ -269,6 +273,9 @@ function cuttingWords(ctx: Ctx): ToolResult {
       refused: "rules",
     };
   }
+  // "A creature that you can see" makes the roll.
+  const unseen = unseenRefusal(encounter?.id, sheet, record.attacker, "Cutting Words");
+  if (unseen) return unseen;
   // The words reach no creature across a swallower's wall (swallow.ts).
   const walled = record.attacker.id ? swallowCoverError(sheet.id, record.attacker.id) : null;
   if (walled) {
@@ -324,6 +331,10 @@ function protection(ctx: Ctx): ToolResult {
   if (walled) {
     return walled;
   }
+  // "A creature you can see attacks a target other than you."
+  const attacked = freshLastHit(campaign.id, ally.id, (hit) => hit.source === "attack" && heaviestHit(hit.swings) >= 0);
+  const unseen = attacked ? unseenRefusal(encounter?.id, sheet, attacked.attacker, "Protection") : null;
+  if (unseen) return unseen;
   spendReaction(ctx);
   addSheetCondition(campaign, ally, "protected", { untilTurnOf: sheet.id });
   // The attack that called for it, already rolled: rolled again at

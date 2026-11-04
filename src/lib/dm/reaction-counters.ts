@@ -32,6 +32,7 @@ import { isConditionNamed } from "@/lib/srd/feature-names";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { rollCard } from "@/lib/dm/roll-card";
 import { answerKey, answeredBy, cutBlow, freshLastHit, heaviestRaw, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
+import { unseenRefusal } from "@/lib/dm/authored-saves";
 import { settleLastHit } from "@/lib/dm/reaction-refund";
 import { pcResistances, removeConditions } from "@/lib/dm/condition-logic";
 import { HOLDING_ON, PRONE, UNCONSCIOUS, exhaustionPatch } from "@/lib/dm/vitals-logic";
@@ -177,6 +178,9 @@ export function planCounterReaction(input: Input): Plan | ToolError | null {
       if (!wieldsMeleeOrShield(sheet)) {
         return { error: `Warding Maneuver needs ${sheet.name} wielding a melee weapon or a shield. Nothing was spent.`, refused: "rules" };
       }
+      // "You or a creature you can see within 5 feet of you."
+      const unseen = target.id === sheet.id ? null : unseenRefusal(encounter?.id, sheet, target, "Warding Maneuver");
+      if (unseen) return unseen;
       const record = freshLastHit(campaign.id, target.id, (hit) => hit.source === "attack" && !answeredBy(hit, answerKey("warding maneuver", sheet.id)) && hit.swings.some((swing) => swing.hit), (hit) => heaviestRaw(hit));
       const index = record
         ? record.swings.reduce((best, swing, at) => (swing.hit && (best < 0 || swing.raw > record.swings[best].raw) ? at : best), -1)

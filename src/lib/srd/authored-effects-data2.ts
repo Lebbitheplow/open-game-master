@@ -317,7 +317,7 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
     subclass: "Oath of Glory",
     counter: "sub_glorious_defense",
     reactions: [
-      { name: "Glorious Defense", pool: { id: "sub_glorious_defense" }, does: { kind: "ac_vs_hit", amount: "cha", rangeFt: 10, strikeOnMiss: true } },
+      { name: "Glorious Defense", pool: { id: "sub_glorious_defense" }, sees: "target", does: { kind: "ac_vs_hit", amount: "cha", rangeFt: 10, strikeOnMiss: true } },
     ],
   },
   // Advantage on Charisma checks (the condition), once a turn a missed
@@ -335,7 +335,7 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
   "cleric::Warding Flare": {
     subclass: "Light Domain",
     counter: "sub_warding_flare",
-    reactions: [{ name: "Warding Flare", pool: { id: "sub_warding_flare" }, does: { kind: "disadv_vs_hit", allyWith: "improved flare", rangeFt: 30 } }],
+    reactions: [{ name: "Warding Flare", pool: { id: "sub_warding_flare" }, sees: "attacker", does: { kind: "disadv_vs_hit", allyWith: "improved flare", rangeFt: 30 } }],
   },
   "warlock::Entropic Ward": {
     subclass: "The Great Old One",
@@ -361,7 +361,7 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
   "cleric::Sentinel at Death's Door": {
     subclass: "Grave Domain",
     counter: "sub_sentinel_at_deaths_door",
-    reactions: [{ name: "Sentinel at Death's Door", pool: { id: "sub_sentinel_at_deaths_door" }, does: { kind: "uncrit", rangeFt: 30 } }],
+    reactions: [{ name: "Sentinel at Death's Door", pool: { id: "sub_sentinel_at_deaths_door" }, sees: "target", does: { kind: "uncrit", rangeFt: 30 } }],
   },
   "paladin::Vigilant Rebuke": {
     subclass: "Oath of the Watchers",

@@ -101,6 +101,7 @@ function ComposerInner({
   romanceCue = true,
   edges,
   feet,
+  unseen,
   drops,
   mounts,
   genre,
@@ -174,6 +175,8 @@ function ComposerInner({
   // How far each creature on the board stands from this character, for the
   // reactions with a reach (PlayerMapView.feet).
   feet?: Record<string, number>;
+  // Who on the board this character has no line of sight to (PlayerMapView.unseen).
+  unseen?: string[];
   // What lies on the board and who rides what, for the Hand's gear cards.
   drops?: PlayerMapView["drops"];
   mounts?: PlayerMapView["mounts"];
@@ -363,6 +366,7 @@ function ComposerInner({
             trackAmmo={trackAmmo}
             edges={edges}
             feet={feet}
+            unseen={unseen}
             drops={drops}
             mounts={mounts}
             genre={genre}

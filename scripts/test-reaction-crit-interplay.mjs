@@ -23,6 +23,7 @@ const { handleEnemyAttack } = await import("../src/lib/dm/enemy-attack.ts");
 const { createDmTurn } = await import("../src/lib/db/dm-turns.ts");
 const { invokeEngine } = await import("../src/lib/dm/invoke.ts");
 const revertRoute = await world.route("campaigns/[campaignId]/audit/revert-turn");
+const { buildPlayerMapView } = await import("../src/lib/battlemap/view.ts");
 
 const hero = (classId, subclass, level = 20, more = {}) =>
   world.addHero({
@@ -36,7 +37,12 @@ const rogue = hero("rogue", "Thief", 5, { features: [{ name: "Uncanny Dodge", so
 const ally = hero("fighter", "Champion", 1);
 const knight2 = hero("fighter", "Rune Knight");
 const bard2 = hero("bard", "College of Lore");
-const everyone = [cleric, knight, bard, rogue, ally, knight2, bard2];
+// A knight of their own player, whose board view measures from them.
+const seer = world.addHero({
+  class: "fighter", subclass: "Rune Knight", level: 20, maxHp: 100, ac: 12, acOverride: true, proficiencies: TRAINED,
+  abilities: { str: 16, dex: 16, con: 16, int: 16, wis: 16, cha: 16 }, portrait: { url: "/uploads/test.png" },
+});
+const everyone = [cleric, knight, bard, rogue, ally, knight2, bard2, seer];
 
 async function stage(foes = 1) {
   await kit.endFight();
@@ -236,6 +242,51 @@ for (const { name, holder, target, faces, resource, struck } of [
     assert.notEqual(hp(victim), 44);
   });
 }
+
+// A wall along row 5 between the holders above it and the ally below it.
+async function walled() {
+  const enemy = await stage();
+  kit.openField(Array.from({ length: 12 }, (_, x) => [x, 5, "#"]));
+  for (const [who, x] of [[seer, 1], [knight, 2], [bard, 3], [cleric, 4]]) kit.place(who.id, x, 3);
+  kit.place(ally.id, 2, 8);
+  kit.place(enemy.id, 3, 8);
+  world.dice(20, 4, 3);
+  const out = await world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: ally.id });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(hp(ally), 41);
+  return enemy;
+}
+
+await test("Behind a wall, the reactions that need their creature seen are not dealt and are refused with nothing spent.", async () => {
+  const enemy = await walled();
+  const view = buildPlayerMapView(world.campaignId, seer.userId);
+  assert.ok(view?.unseen?.includes(ally.id), "the board says the knight cannot see the ally");
+  assert.equal(view?.feet?.[enemy.id], undefined, "nor the goblin, which the board does not show at all");
+  const unseen = new Set(view.unseen);
+  const dealt = (who, name) => reactionCards(world.sheet(who.id), { ...FRESH_TURN, myTurn: false }, hits(), world.sheets(), "you", view.feet, [], undefined, unseen).filter((card) => card.name === name);
+  assert.equal(dealt(seer, "Runic Shield").length, 0, "no Runic Shield for an ally out of sight");
+  assert.equal(dealt(bard, "Cutting Words").length, 0, "no Cutting Words against an attacker out of sight");
+  assert.equal(dealt(cleric, "Sentinel at Death's Door").length, 0, "no Sentinel for a critical out of sight");
+  for (const [who, name, faces] of [[knight, "Runic Shield", [2]], [bard, "Cutting Words", [5]], [cleric, "Sentinel at Death's Door", []]]) {
+    const out = await react(who, name, ally, faces);
+    assert.equal(out.ok, false, `${name} went through behind a wall`);
+    assert.match(out.error, /line of sight/);
+  }
+  assert.equal(hp(ally), 41);
+  assert.equal(world.sheet(knight.id).resources.sub_runic_shield.used, 0);
+  assert.equal(world.sheet(bard.id).resources.bardic_inspiration.used, 0);
+  assert.equal(world.encounter().reactionsUsed.length, 0);
+});
+
+await test("With the wall gone the same reaction is taken.", async () => {
+  await walled();
+  kit.openField();
+  const view = buildPlayerMapView(world.campaignId, seer.userId);
+  assert.equal(view?.unseen?.includes(ally.id), false);
+  const out = await react(knight, "Runic Shield", ally, [2]);
+  assert.equal(out.ok, true, out.error);
+});
 
 world.close();
 finish();

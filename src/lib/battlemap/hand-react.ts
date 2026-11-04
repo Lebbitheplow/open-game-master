@@ -216,7 +216,16 @@ export function reactionCards(
   // The creatures the Hand offers as foes, for a redirect's card to know
   // whether one stands beside the character (reactionPicks).
   foes?: Array<{ id: string }>,
+  // Who on the board the character has no line of sight to (PlayerMapView.unseen):
+  // a reaction whose text needs its creature seen is not dealt for them.
+  unseen?: Unseen,
 ): HandCard[] {
+  // A creature the board does not show this character at all (fog, out of
+  // sight) is as unseen as one behind a wall; with no board, nothing is.
+  if (unseen && feet) {
+    const walled = unseen;
+    unseen = { has: (id: string) => walled.has(id) || !(id in feet) };
+  }
   const cards: HandCard[] = [];
   // By this holder, or by anyone on a key that names no holder (an older
   // record, or a host that sends names only).
@@ -282,7 +291,7 @@ export function reactionCards(
   for (const hit of mine) {
     const prompt = what(hit, self);
     if (hit.source === "attack") {
-      if (holdsFeature(sheet, "uncanny dodge")) {
+      if (holdsFeature(sheet, "uncanny dodge") && !hidden(unseen, hit.attackerId)) {
         feature(hit, "Uncanny Dodge", prompt, "Halve the damage of the attack that hit you.");
       }
       if (hit.ranged && holdsFeature(sheet, "deflect missiles")) {
@@ -297,7 +306,7 @@ export function reactionCards(
       feature(hit, "Slow Fall", prompt, "Take five times your monk level off the fall.");
     }
     if (hit.source === "attack") {
-      for (const held of subclassReactions(sheet, hit, "self", feet)) {
+      for (const held of subclassReactions(sheet, hit, "self", feet, unseen)) {
         // A redirect needs someone else beside the holder to take the blow. With
         // no foes or distances given, it is open and the engine judges.
         const beside = !held.pickWithin || !foes || !feet || pickableFoes(foes, held.pickWithin, hit.attackerId, feet).length > 0;
@@ -357,7 +366,7 @@ export function reactionCards(
     if (counter.ally) {
       for (const hit of hits) {
         const ally = party.find((entry) => entry.id === hit.characterId);
-        if (ally && ally.id !== sheet.id && hit.hit && hit.source === "attack" && inReach(feet, hit.characterId, counter.rangeFt)) {
+        if (ally && ally.id !== sheet.id && hit.hit && hit.source === "attack" && inReach(feet, hit.characterId, counter.rangeFt) && !hidden(unseen, hit.characterId)) {
           feature(hit, def.displayName, what(hit, ally.name), rulesOf(def.guidance), "ally", { gate, range: reachLabel(counter.rangeFt) });
         }
       }
@@ -395,7 +404,7 @@ export function reactionCards(
     const ally = party.find((entry) => entry.id === hit.characterId);
     if (!ally) continue;
     const prompt = what(hit, ally.name);
-    for (const held of allyReactions(sheet, hit, feet)) {
+    for (const held of allyReactions(sheet, hit, feet, unseen)) {
       feature(hit, held.name, prompt, held.rules, "ally", { range: held.range });
     }
   }
@@ -427,16 +436,18 @@ function stoodGate(sheet: CharacterSheet, turn: HandTurn, hit: PublicLastHit): G
 // Words with a die left, Protection, and the subclass reactions for an ally.
 // The cards above offer these, and the actions route takes words typed as a
 // reaction for an ally's hit only when one of them covers it.
-export function allyReactions(sheet: CharacterSheet, hit: PublicLastHit, feet?: Record<string, number>): Array<{ name: string; rules: string; range: string }> {
+export function allyReactions(sheet: CharacterSheet, hit: PublicLastHit, feet?: Record<string, number>, unseen?: Unseen): Array<{ name: string; rules: string; range: string }> {
   if (hit.characterId === sheet.id || !hit.hit || hit.source !== "attack") return [];
+  // Cutting Words and Protection: "a creature (that) you can see" attacks.
+  const attackerSeen = !hidden(unseen, hit.attackerId);
   const bardic = sheet.resources.bardic_inspiration;
   return [
-    ...(holdsFeature(sheet, "cutting words") && (bardic?.max ?? 0) > (bardic?.used ?? 0)
+    ...(holdsFeature(sheet, "cutting words") && attackerSeen && (bardic?.max ?? 0) > (bardic?.used ?? 0)
       ? [{ name: "Cutting Words", rules: "Spend a Bardic Inspiration die off the roll or the damage.", range: reachLabel(60) }]
       : []),
     // Protection: "a target other than you that is within 5 feet of you".
-    ...(holdsFeature(sheet, "protection") && inReach(feet, hit.characterId, 5) ? [{ name: "Protection", rules: "Impose disadvantage on the attack: it is rolled again.", range: reachLabel(5) }] : []),
-    ...subclassReactions(sheet, hit, "ally", feet).map((held) => ({ name: held.name, rules: held.rules, range: held.range })),
+    ...(holdsFeature(sheet, "protection") && attackerSeen && inReach(feet, hit.characterId, 5) ? [{ name: "Protection", rules: "Impose disadvantage on the attack: it is rolled again.", range: reachLabel(5) }] : []),
+    ...subclassReactions(sheet, hit, "ally", feet, unseen).map((held) => ({ name: held.name, rules: held.rules, range: held.range })),
   ];
 }
 
@@ -455,6 +466,14 @@ const REDIRECT_FT = 5;
 // Soul of Vengeance's melee attack (authored-effects-data2.ts): the vowed
 // creature within this reach.
 const SOUL_OF_VENGEANCE_FT = 5;
+
+// The creatures the character has no line of sight to on the board.
+type Unseen = { has(id: string): boolean };
+
+// Whether the board says the character cannot see the creature `id`.
+function hidden(unseen: Unseen | undefined, id: string | null | undefined): boolean {
+  return Boolean(id && unseen?.has(id));
+}
 
 // Whether the creature `id` stands within `reach` feet, as far as the board
 // says: with no distance known, the engine judges it.
@@ -534,11 +553,15 @@ function subclassReactions(
   hit: PublicLastHit,
   whose: "self" | "ally",
   feet?: Record<string, number>,
+  unseen?: Unseen,
 ): Array<{ name: string; rules: string; target: HandTarget; range: string; fallen?: boolean; pickWithin?: number }> {
   const out: Array<{ name: string; rules: string; target: HandTarget; range: string; fallen?: boolean; pickWithin?: number }> = [];
   for (const held of heldAuthored(sheet)) {
     for (const reaction of held.entry.reactions ?? []) {
       if ((reaction.usedBy ?? "holder") !== "holder" || !gateHolds(reaction.gate, sheet, held)) continue;
+      // "A creature you can see", as the engine asks it (authored-reactions.ts).
+      if (reaction.sees === "target" && whose === "ally" && hidden(unseen, hit.characterId)) continue;
+      if (reaction.sees === "attacker" && hidden(unseen, hit.attackerId)) continue;
       const pool = reaction.pool;
       if (pool && "id" in pool) {
         const state = sheet.resources[pool.id];

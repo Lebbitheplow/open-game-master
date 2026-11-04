@@ -142,6 +142,11 @@ export type PlayerMapView = {
   // the creature is inside it. Absent for the DM, a viewer with no token, and
   // older hosts, which offer every reaction as before.
   feet?: Record<string, number>;
+  // The creatures among those this viewer's own character has no line of
+  // sight to on the board, by id: a reaction whose text needs its creature
+  // seen (Runic Shield, Cutting Words) is not dealt for them. Absent off the
+  // map and from older hosts, and every card is dealt as before.
+  unseen?: string[];
   tokenHealth: Record<string, HealthWord>;
   tokenAuras: Record<string, Array<{ id: string; radiusFeet: number; tone: AuraTone }>>;
   tokenFootprint: Record<string, Footprint>;
