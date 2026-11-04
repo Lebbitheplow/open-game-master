@@ -154,8 +154,22 @@ export default {
       const fighting = await fightNow();
       const fresh = fighting.enemies.find((enemy) => enemy.status === "alive" && !enemy.actions?.acted);
       check(fresh, "a goblin that has not acted");
+      // The board is drawn from the fight's random id, and about one in 60 leaves
+      // a new goblin no firing position this turn. Beside the hero it always has one.
+      const heroId = fighting.order[fighting.turnIndex].id;
+      const board = (await (await api.get(`${base}/api/campaigns/${tableId}/battle-map`)).json()).view;
+      const at = board.tokens.find((token) => token.refId === heroId);
+      const goblinToken = board.tokens.find((token) => token.refId === fresh.id);
+      check(at && goblinToken, "the hero and the goblin on the board");
+      let beside = false;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
+        if (beside) break;
+        const moved = await api.post(`${base}/api/campaigns/${tableId}/dm/invoke`, { data: { name: "move_token", args: { token: goblinToken.id, x: at.x + dx, y: at.y + dy, teleport: true } } });
+        beside = moved.ok();
+      }
+      check(beside, "the goblin beside the hero");
       const struck = await api.post(`${base}/api/campaigns/${tableId}/dm/invoke`, {
-        data: { name: "enemy_attack", args: { enemyId: fresh.id, targetCharacterId: fighting.order[fighting.turnIndex].id, attack: "Shortbow" } },
+        data: { name: "enemy_attack", args: { enemyId: fresh.id, targetCharacterId: heroId, attack: "Shortbow" } },
       });
       check(struck.ok(), `the goblin's attack (${struck.status()}: ${(await struck.text()).slice(0, 200)})`);
       const speaking = page.locator(`${root}[data-react-as]`).locator("visible=true").first();
