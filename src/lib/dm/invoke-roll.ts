@@ -13,6 +13,7 @@
 // an enemy applies itself.
 import { afterRollOptions, canWaitOnRoll } from "@/lib/dm/after-roll-logic";
 import { rollsCanWait } from "@/lib/dm/after-roll";
+import { LUCK_SPEND } from "@/lib/dm/roll-riders";
 import { claimedAdvantage } from "@/lib/dm/pc-attack-options";
 import { askedFields, unnamedTraitFields } from "@/lib/dm/roll-feature-riders";
 import { rollExpression } from "@/lib/dice";
@@ -221,7 +222,8 @@ export function handleRequestRoll(
     // The server threw it: the dice wait on the player when something they
     // hold could change the result, and the model waits with them.
     const options = canWait && sheet && fresh
-      ? afterRollOptions(fresh, { kind: args.kind, outcome, dc: args.dc ?? null })
+      // A luck point spent before the throw (luck: true) was this roll's one.
+      ? afterRollOptions(fresh, { kind: args.kind, outcome, dc: args.dc ?? null, spent: resolved.spendInspiration?.split("|").includes(LUCK_SPEND) ? ["lucky"] : [] })
       : [];
     if (sheet && options.length) {
       const pending = createPendingRoll({

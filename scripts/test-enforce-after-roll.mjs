@@ -117,11 +117,9 @@ await test("Lucky: the point rolls another d20 and the player chooses, even a lo
   assert.equal((await choose(pending.id, { keep: false })).status, 400, "a bad body is refused");
   // The lower of the two: the feat says the character chooses.
   await choose(pending.id, { die: 0 });
-  const [again] = open();
-  assert.ok(again, "still short, and there are points left: the choice is still open");
-  assert.equal(again.thrown.outcome.total, 3);
-  await choose(pending.id, { keep: true });
+  assert.equal(open().length, 0, "one luck point a roll: still short, with points left, the roll lands");
   assert.equal(landed(pending.id).total, 3);
+  assert.equal(world.sheet(who.sheet.id).resources.luck_points.used, 1);
 });
 
 await test("Lucky at disadvantage: any of the dice can be the one, the high one too.", async () => {
@@ -155,6 +153,32 @@ await test("Bardic Inspiration: the die is added only when the player spends it,
   assert.equal(open().length, 0);
   assert.equal(landed(pending.id).total, 18);
   assert.ok(!world.sheet(who.sheet.id).conditions.includes("bardic inspiration (d8)"));
+});
+
+await test("Each of them rides a roll once: no second luck point with no DC, none after a point spent before the throw, and each die once.", async () => {
+  hero({ ...LUCKY, conditions: ["bardic inspiration (d8)"] });
+  world.dice(3);
+  await check({ dc: undefined });
+  world.clearDice();
+  const [pending] = open();
+  world.dice(4);
+  await choose(pending.id, { use: "lucky" });
+  world.clearDice();
+  await choose(pending.id, { die: 1 });
+  const [after] = open();
+  assert.deepEqual(after.thrown.options.map((option) => option.id), ["bardic"], "no DC still asks, but the luck point is not offered twice");
+  world.dice(2);
+  await choose(pending.id, { use: "bardic" });
+  world.clearDice();
+  assert.equal(open().length, 0, "nothing is left to offer: it lands");
+  assert.equal(world.sheet(who.sheet.id).resources.luck_points.used, 1);
+
+  hero(LUCKY);
+  world.dice(2, 3);
+  await check({ luck: true });
+  world.clearDice();
+  assert.equal(open().length, 0, "the point spent before the throw was this roll's one");
+  assert.equal(world.sheet(who.sheet.id).resources.luck_points.used, 1);
 });
 
 await test("A die too small to reach the target is not offered, so nobody waits on it.", async () => {
