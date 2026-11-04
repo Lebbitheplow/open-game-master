@@ -1781,6 +1781,14 @@ html[data-theme="light"] .bell-panel {
   background-color: #fbf6e9;
 }
 
+/* A dialog by day too: it floats over the overlay's dark veil, which read
+   through the day panel's glass and turned it grey. By night the smokier panel
+   above is nearly opaque, so only the day needs the sheet. */
+html[data-theme="light"] [role="dialog"].panel,
+html[data-theme="light"] [role="alertdialog"].panel {
+  background-color: #fbf6e9;
+}
+
 /* ---------------------------------------------------------------------------
    The small motions the Motion Kit puts on everything, for the controls that
    are plain HTML rather than a kit component. Press and hover lift come from
