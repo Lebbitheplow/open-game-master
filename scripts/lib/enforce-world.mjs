@@ -198,6 +198,13 @@ export function heroInput(overrides = {}) {
   };
 }
 
+// Every world a suite opens shares the one database, and usernames are
+// unique in it. The count runs across worlds: one kept per world restarted at
+// 1, so each world's "owner-1-" and "player-2-" met the last world's, told
+// apart only by 24 random bits, and a suite opening many worlds drew a
+// UNIQUE failure now and then (test-enforce-long-rest on CI).
+let usersMade = 0;
+
 export async function openWorld(options = {}) {
   const { createUser } = await import("../../src/lib/db/users.ts");
   const campaigns = await import("../../src/lib/db/campaigns.ts");
@@ -210,10 +217,9 @@ export async function openWorld(options = {}) {
   const { rollExtrasFor } = await import("../../src/lib/dm/forced-save.ts");
   const { mintSession } = await import("../../src/lib/auth.ts");
 
-  let userCount = 0;
   function addUser(label = "player") {
-    userCount += 1;
-    return createUser(`${label}-${userCount}-${randomBytes(3).toString("hex")}`, "x");
+    usersMade += 1;
+    return createUser(`${label}-${usersMade}-${randomBytes(3).toString("hex")}`, "x");
   }
 
   const owner = addUser("owner");
