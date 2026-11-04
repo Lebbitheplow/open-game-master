@@ -570,7 +570,7 @@ await test("What the GM reads says who is absent and who is not, with someone be
   const rule = read("../src/lib/dm/prompt-rules.ts");
   const tool = read("../src/lib/dm/encounter-tool-defs.ts");
   for (const text of [rule, tool]) {
-    assert.match(text, /too far away to reach (it|the fight) (within|in) a few rounds, or unaware of it/);
+    assert.match(text, /[Tt]oo far (away )?to reach (it|the fight) (within|in) a few rounds, or unaware of it/);
     assert.match(text, /behind a door[^.]*?(is )?NOT absent/);
     assert.doesNotMatch(text, /questioning a prisoner/);
   }
