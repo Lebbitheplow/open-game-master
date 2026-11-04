@@ -20,6 +20,8 @@ import { suite } from "./lib/enforce-harness.mjs";
 import { fightDummies, wizard } from "./lib/enforce-spells.mjs";
 import { handOnDue } from "./lib/enforce-zones.mjs";
 import { nextTurn } from "./lib/enforce-spell-tail.mjs";
+import { combatKit } from "./lib/enforce-combat.mjs";
+import { board, zonesOf } from "./lib/enforce-zones.mjs";
 
 const { test, finish } = suite("test-enforce-spell-storing");
 const { magicItemLine } = await import("../src/lib/dm/item-summary.ts");
@@ -326,6 +328,116 @@ await test("A stored healing spell adds its original caster's modifier, not the 
   // A 3 on the d8 and the modifier of 5, never the 8 a fighter's proficiency
   // would make of a save DC of 19.
   assert.equal(world.sheet(fighter.id).currentHp - 1, 8, JSON.stringify(out));
+});
+
+// ---- what a stored spell does after its first cast ----
+
+// Past the minute a used credit lends its numbers, and the five a waiting one
+// lasts, so only what the sheet keeps can answer.
+const realNow = Date.now;
+async function laterOn(run) {
+  Date.now = () => realNow() + 10 * 60 * 1000;
+  try {
+    return await run();
+  } finally {
+    Date.now = realNow;
+  }
+}
+const stored = (spell, level) => ring({ storedSpells: [{ spell, level, saveDc: 19, attackBonus: 11, abilityMod: 5, by: "Mage" }] });
+const lightning = (hero, enemy) => ({ characterId: hero.id, targetEnemyId: enemy.id, spell: "Call Lightning", saveAbility: "dex" });
+
+async function alone(hero) {
+  const world = await openWorld();
+  worlds.push(world);
+  const sheet = world.addHero(hero);
+  const [enemy] = await fightDummies(world, 1, { heroFaces: { [sheet.id]: 20 } });
+  return { world, sheet, enemy };
+}
+
+await test("A fighter's stored Call Lightning keeps calling bolts: no Spellcasting feature asked, the stored DC, and the level it was stored at", async () => {
+  const { world, sheet, enemy } = await alone({ class: "fighter", level: 5, name: "Brute", equipment: [stored("Call Lightning", 5)] });
+  await world.invoke("use_item", { characterId: sheet.id, item: RING, spell: "Call Lightning" });
+  const first = payload(await world.invoke("cast_at_enemy", lightning(sheet, enemy)));
+  assert.equal(first.dc, 19, JSON.stringify(first));
+  nextRound(world);
+  const next = await laterOn(() => world.invoke("cast_at_enemy", lightning(sheet, enemy)));
+  assert.notEqual(next.ok, false, JSON.stringify(next));
+  assert.equal(payload(next).dc, 19, JSON.stringify(next));
+  assert.match(String(payload(next).repeat), /no slot is spent/);
+  assert.match(String(payload(next).scaling), /level 5/, JSON.stringify(next));
+});
+
+await test("When the spell ends its numbers end: a fighter whose concentration broke calls no more bolts", async () => {
+  const { world, sheet, enemy } = await alone({ class: "fighter", level: 5, name: "Brute", equipment: [stored("Call Lightning", 3)] });
+  await world.invoke("use_item", { characterId: sheet.id, item: RING, spell: "Call Lightning" });
+  await world.invoke("cast_at_enemy", lightning(sheet, enemy));
+  world.patch(sheet.id, { concentratingOn: null });
+  nextRound(world);
+  const next = await laterOn(() => world.invoke("cast_at_enemy", lightning(sheet, enemy)));
+  assert.equal(next.ok, false, JSON.stringify(next));
+});
+
+await test("A wizard's next bolt from the ring keeps the stored DC, and a later casting from their own slot is theirs again", async () => {
+  const { world, sheet, enemy } = await alone(wizard(5, { name: "Mage", equipment: [stored("Call Lightning", 3)], spellcasting: { prepared: ["Call Lightning"] } }));
+  await world.invoke("use_item", { characterId: sheet.id, item: RING, spell: "Call Lightning" });
+  await world.invoke("cast_at_enemy", lightning(sheet, enemy));
+  nextRound(world);
+  const next = await laterOn(() => world.invoke("cast_at_enemy", lightning(sheet, enemy)));
+  assert.equal(payload(next).dc, 19, JSON.stringify(next));
+  assert.equal(used(world, sheet, 3), 0);
+  world.patch(sheet.id, { concentratingOn: null });
+  nextRound(world);
+  const own = await laterOn(() => world.invoke("cast_at_enemy", lightning(sheet, enemy)));
+  assert.notEqual(own.ok, false, JSON.stringify(own));
+  assert.equal(used(world, sheet, 3), 1, "a new casting spends their slot");
+  assert.equal(payload(own).dc, 14, JSON.stringify(own));
+  nextRound(world);
+  const after = await laterOn(() => world.invoke("cast_at_enemy", lightning(sheet, enemy)));
+  assert.equal(payload(after).dc, 14, "the ring's numbers did not come back");
+});
+
+await test("A fighter's stored Moonbeam comes again on later turns with the stored DC", async () => {
+  const { world, sheet, enemy } = await alone({ class: "fighter", level: 5, name: "Brute", equipment: [stored("Moonbeam", 2)] });
+  const beam = { characterId: sheet.id, targetEnemyId: enemy.id, spell: "Moonbeam", saveAbility: "con" };
+  await world.invoke("use_item", { characterId: sheet.id, item: RING, spell: "Moonbeam" });
+  const first = await world.invoke("cast_at_enemy", beam);
+  assert.equal(payload(first).dc, 19, JSON.stringify(first));
+  nextRound(world);
+  const next = await laterOn(() => world.invoke("cast_at_enemy", beam));
+  assert.notEqual(next.ok, false, JSON.stringify(next));
+  assert.equal(payload(next).dc, 19, JSON.stringify(next));
+});
+
+await test("A fighter's stored Spiritual Weapon strikes with the stored attack bonus and modifier, at the level it was stored at", async () => {
+  const { world, sheet, enemy } = await alone({ class: "fighter", level: 5, name: "Brute", equipment: [stored("Spiritual Weapon", 4)] });
+  const kit = await combatKit(world);
+  await world.invoke("use_item", { characterId: sheet.id, item: RING, spell: "Spiritual Weapon" });
+  const cast = await world.invoke("cast_buff", { characterId: sheet.id, spell: "Spiritual Weapon" });
+  assert.notEqual(cast.ok, false, JSON.stringify(cast));
+  nextRound(world);
+  // Level 4 is 2d8: a 3 and a 3, and the stored modifier of 5.
+  const swing = await laterOn(() => kit.swing(sheet.id, enemy.id, [15, 3, 3], { weapon: "Spiritual Weapon" }));
+  assert.equal(swing.ok, true, JSON.stringify(swing));
+  assert.equal(swing.result.weapon, "Spiritual Weapon", JSON.stringify(swing));
+  assert.equal(swing.result.damage, 11, JSON.stringify(swing));
+  assert.equal(swing.result.rolled, 26, "15 on the die and the stored +11");
+});
+
+await test("A stored area spell is laid on the board like any other cast, and one out of reach stays in the ring", async () => {
+  const { world, sheets: [hero] } = await board(
+    [{ class: "fighter", level: 5, name: "Brute", equipment: [stored("Web", 2)] }],
+    { 0: { x: 2, y: 8 }, e0: { x: 10, y: 4 } },
+  );
+  worlds.push(world);
+  const before = zonesOf(world).length;
+  await world.invoke("use_item", { characterId: hero.id, item: RING, spell: "Web" });
+  const far = await world.invoke("use_spell_slot", { characterId: hero.id, spell: "Web", atX: 16, atY: 8 });
+  assert.equal(far.ok, false, JSON.stringify(far));
+  assert.equal(held(world, hero).length, 1, "a refused square loses nothing");
+  const cast = await world.invoke("use_spell_slot", { characterId: hero.id, spell: "Web", atX: 6, atY: 8 });
+  assert.equal(cast.ok, true, JSON.stringify(cast));
+  assert.equal(zonesOf(world).length, before + 1, "the web is on the board");
+  assert.deepEqual(held(world, hero), []);
 });
 
 await test("GAME STATE says what the ring holds and what is free, and a mystery ring gives nothing away", () => {

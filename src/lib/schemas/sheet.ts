@@ -228,6 +228,21 @@ export const equipmentItemSchema = z.object({
     )
     .max(5)
     .optional(),
+  // A spell this item cast that is still running, with the numbers it was cast
+  // with: its later effects use them, not the user's own
+  // (src/lib/srd/item-cast-credit.ts runningItemSpell).
+  castRunning: z
+    .array(
+      z.object({
+        spell: z.string().trim().min(1).max(80),
+        level: z.number().int().min(0).max(9),
+        saveDc: z.number().int().min(1).max(50).optional(),
+        attackBonus: z.number().int().min(-10).max(50).optional(),
+        abilityMod: z.number().int().min(-5).max(20).optional(),
+      }),
+    )
+    .max(6)
+    .optional(),
   // Pounds per unit, for the optional encumbrance rule. Filled in from the
   // content pack when a sheet is read (src/lib/db/sheets.ts), so rows
   // written before the field still get weighed; a value a player typed

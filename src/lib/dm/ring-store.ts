@@ -4,13 +4,14 @@
 // src/lib/srd/spell-storing.ts.
 
 import type { Campaign } from "@/lib/db/campaigns";
-import { getSheetById } from "@/lib/db/sheets";
+import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { writeCharges } from "@/lib/dm/item-charges";
 import { carriedItemsMatching } from "@/lib/dm/item-logic";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
+import { findNamed } from "@/lib/language/text-logic";
 import { computeSheetDerived, spellAttackFor, spellSaveDcFor } from "@/lib/srd";
-import { recordItemCast } from "@/lib/srd/item-cast-credit";
+import { recordItemCast, runningItemSpell, type ItemCast } from "@/lib/srd/item-cast-credit";
 import {
   isSpellStorer,
   SPELL_STORE_LEVELS,
@@ -73,6 +74,37 @@ export function takeFromRing(campaign: Campaign, turnId: string | null, sheetId:
   if (sheet && ring && entry) {
     writeCharges(campaign.id, sheet, withStored(sheet.equipment, ring, storedSpellsOf(ring).filter((other) => other !== entry)), "use_item", `${entry.spell} cast from ${ring.name}`, turnId);
   }
+}
+
+// The item's numbers ride on its row while the spell holds, for its later
+// effects (item-cast-credit.ts runningItemSpell). What has ended goes as this
+// is written, and a scroll used up has no row: its spell keeps the old way.
+export function noteRunning(sheetId: string, cast: ItemCast) {
+  const sheet = getSheetById(sheetId);
+  const row = sheet ? findNamed(sheet.equipment, cast.item, (item) => [item.name]) : null;
+  if (!sheet || !row) {
+    return;
+  }
+  const kept = (row.castRunning ?? []).filter((entry) => !findNamed([entry], cast.spell, (one) => [one.spell]) && runningItemSpell(sheet, entry.spell));
+  const entry = {
+    spell: cast.spell,
+    level: cast.level,
+    ...(cast.saveDc ? { saveDc: cast.saveDc } : {}),
+    ...(cast.attackBonus ? { attackBonus: cast.attackBonus } : {}),
+    ...(cast.abilityMod !== undefined ? { abilityMod: cast.abilityMod } : {}),
+  };
+  patchSheet(sheet.id, { equipment: sheet.equipment.map((item) => (item === row ? { ...item, castRunning: [...kept, entry] } : item)) });
+}
+
+// A new casting from their own slots: an item's numbers for the spell are done.
+export function equipmentWithoutRunning(equipment: readonly EquipmentItem[], spell: string): EquipmentItem[] | null {
+  if (!equipment.some((item) => findNamed(item.castRunning ?? [], spell, (entry) => [entry.spell]))) {
+    return null;
+  }
+  return equipment.map((item) => {
+    const left = (item.castRunning ?? []).filter((entry) => !findNamed([entry], spell, (one) => [one.spell]));
+    return item.castRunning ? { ...item, castRunning: left.length ? left : undefined } : item;
+  });
 }
 
 // The credit the spell's own tool takes (src/lib/srd/item-cast-credit.ts). The

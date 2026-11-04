@@ -14,8 +14,12 @@
 // reply to resolve the spell it just paid for, short enough that a scroll
 // read and never resolved does not pay for a cast an hour later. A restart
 // forgets them, which costs only the old behaviour (the cast spends a slot).
+//
+// A spell that runs on (Call Lightning's next bolt, a Spiritual Weapon's next
+// strike) outlasts its credit, so the item's row keeps its numbers while the
+// spell holds: runningItemSpell, written by src/lib/dm/item-casts.ts.
 
-import { textKey } from "@/lib/language/text-logic";
+import { findNamed, textKey } from "@/lib/language/text-logic";
 
 const WINDOW_MS = 5 * 60 * 1000;
 // A credit taken by the cast still lends its DC for a minute: the tool that
@@ -75,6 +79,36 @@ export function takeItemCast(
     credit.usedAt = now;
   }
   return { spell: credit.spell, level: credit.level, item: credit.item, saveDc: credit.saveDc, attackBonus: credit.attackBonus, abilityMod: credit.abilityMod, storedIn: credit.storedIn };
+}
+
+export type RunningItemSpell = { spell: string; level: number; saveDc?: number; attackBonus?: number; abilityMod?: number };
+
+type RunningHolder = {
+  concentratingOn?: string | null;
+  conditions?: readonly string[];
+  conditionMeta?: Record<string, { spell?: string } | undefined>;
+  equipment?: ReadonlyArray<{ castRunning?: RunningItemSpell[] }>;
+};
+
+// A spell an item cast that this character still holds: by their concentration
+// or by a condition it laid on them. Pure: read off the sheet, so it survives a
+// restart and ends when the spell does.
+export function runningItemSpell(sheet: RunningHolder, spell: string): RunningItemSpell | null {
+  const entry = findNamed((sheet.equipment ?? []).flatMap((row) => row.castRunning ?? []), spell, (running) => [running.spell]);
+  if (!entry) {
+    return null;
+  }
+  const holding = [
+    ...(sheet.concentratingOn ? [sheet.concentratingOn] : []),
+    ...(sheet.conditions ?? []),
+    ...Object.values(sheet.conditionMeta ?? {}).flatMap((meta) => (meta?.spell ? [meta.spell] : [])),
+  ];
+  return findNamed(holding, spell, (name) => [name]) ? entry : null;
+}
+
+// Whether an item pays for this spell now: a cast waiting, or one still running.
+export function paidByItem(sheet: RunningHolder & { id: string }, spell: string): { level: number } | null {
+  return takeItemCast(sheet.id, spell, { dryRun: true }) ?? runningItemSpell(sheet, spell);
 }
 
 // The item's own numbers for this spell while its credit stands (waiting, or

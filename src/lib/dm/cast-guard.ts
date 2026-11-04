@@ -84,7 +84,7 @@ import { castTempHp } from "@/lib/dm/authored-spells";
 import { authoredSlotRefund } from "@/lib/srd/authored-effects-more";
 import { takeItemCast } from "@/lib/srd/item-cast-credit";
 import { storerHolding } from "@/lib/srd/spell-storing";
-import { casterNumbers, putInRing, storeRefusal } from "@/lib/dm/ring-store";
+import { casterNumbers, equipmentWithoutRunning, putInRing, storeRefusal } from "@/lib/dm/ring-store";
 import { castFromItem } from "@/lib/dm/item-casts";
 import { summonSlotProblem } from "@/lib/srd/summon-spells";
 import { spellSupportLine } from "@/lib/srd/spell-support";
@@ -361,6 +361,15 @@ export function castSpell(
 
   // A spell use_item just cast from a scroll or a wand: no slot, no
   // components, the action already paid (src/lib/dm/item-casts.ts).
+  // Its area is laid as any cast's is (below), so a square out of reach is said
+  // before the credit is taken.
+  const lays = !input.storing && (via === "slot" || via === "buff");
+  if (lays && input.at && takeItemCast(sheet.id, name, { dryRun: true })) {
+    const placed = placementReachProblem(campaign, { casterId: sheet.id, casterName: sheet.name, spell: name, runsAs: facts?.runsAs, facts, at: input.at });
+    if (placed) {
+      return placed;
+    }
+  }
   const fromItem = input.storing ? null : takeItemCast(sheet.id, name, { dryRun: Boolean(input.dryRun) });
   if (fromItem) {
     const itemCast = castFromItem(campaign, turnId, sheet, facts, name, fromItem, input);
@@ -371,6 +380,10 @@ export function castSpell(
         // A stored spell takes the time it takes (spell-storing.ts); in a
         // fight it was held across turns, so it is `completing` there.
         advanceClock(campaign.id, facts.castingTime, "minutes");
+      }
+      const area = lays ? placeSpellZone(campaign, { spell: name, runsAs: facts?.runsAs, caster: { kind: "pc", id: sheet.id, name: sheet.name }, slotLevel: fromItem.level, dc: spellSaveDcFor(sheet, name), at: input.at, toward: input.toward, named: Boolean(input.at) }) : null;
+      if (area) {
+        return { ...itemCast, area };
       }
     }
     return itemCast;
@@ -576,6 +589,11 @@ export function castSpell(
     const row = slots[String(refund.level)];
     patch.spellcasting = { ...patch.spellcasting, slots: { ...slots, [String(refund.level)]: { ...row, used: row.used - 1 } } };
     result.slotRefund = `${refund.feature}: a spent level ${refund.level} slot comes back.`;
+  }
+  // Cast from their own slots now: an item's numbers for it are over.
+  const freed = input.storing ? null : equipmentWithoutRunning(patch.equipment ?? sheet.equipment, name);
+  if (freed) {
+    patch.equipment = freed;
   }
   if (Object.keys(patch).length) {
     patchSheet(sheet.id, patch);
