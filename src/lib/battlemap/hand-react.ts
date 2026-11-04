@@ -212,6 +212,9 @@ export function reactionCards(
   // The Intelligence, Wisdom and Charisma saves made this turn against a
   // creature (PublicEncounter.lastSaves), which Vigilant Rebuke answers.
   saves: PublicSave[] = [],
+  // The creatures the Hand offers as foes, for a redirect's card to know
+  // whether one stands beside the character (reactionPicks).
+  foes?: Array<{ id: string }>,
 ): HandCard[] {
   const cards: HandCard[] = [];
   const answered = (hit: PublicLastHit, name: string) =>
@@ -228,7 +231,7 @@ export function reactionCards(
     prompt: string,
     rules: string,
     target: HandTarget = "none",
-    more: { icon?: HandCard["icon"]; fallen?: boolean; gate?: Gate; range?: string } = {},
+    more: { icon?: HandCard["icon"]; fallen?: boolean; gate?: Gate; range?: string; pickWithin?: number } = {},
   ) => {
     if (answered(hit, name)) return;
     const card = base(
@@ -237,7 +240,7 @@ export function reactionCards(
       prompt,
       target,
       aimedIntent({ card: "reaction", feature: name }, hit),
-      { rules, ...(more.icon ? { icon: more.icon } : {}), ...(more.range ? { range: more.range } : {}), ...answering(hit) },
+      { rules, ...(more.icon ? { icon: more.icon } : {}), ...(more.range ? { range: more.range } : {}), ...(more.pickWithin ? { pickWithin: more.pickWithin } : {}), ...answering(hit) },
     );
     cards.push(
       gated(
@@ -290,7 +293,15 @@ export function reactionCards(
     }
     if (hit.source === "attack") {
       for (const held of subclassReactions(sheet, hit, "self", feet)) {
-        feature(hit, held.name, prompt, held.rules, held.target, { fallen: held.fallen && sheet.currentHp <= 0, range: held.range });
+        // A redirect needs someone else beside the holder to take the blow. With
+        // no foes or distances given, it is open and the engine judges.
+        const beside = !held.pickWithin || !foes || !feet || pickableFoes(foes, held.pickWithin, hit.attackerId, feet).length > 0;
+        feature(hit, held.name, prompt, held.rules, held.target, {
+          fallen: held.fallen && sheet.currentHp <= 0,
+          range: held.range,
+          pickWithin: held.pickWithin,
+          gate: beside ? null : { reason: `No other creature stands within ${held.pickWithin} feet of ${sheet.name} to take the hit.`, spent: false },
+        });
       }
     }
   }
@@ -423,6 +434,9 @@ export function withReactions(reactions: HandCard[], hand: HandCard[]): HandCard
   return [...reactions, ...hand.filter((card) => !(card.cost === "reaction" && offered.has(textKey(card.name))))];
 }
 
+// A redirect lands on a creature this near the holder (authored-reactions.ts).
+const REDIRECT_FT = 5;
+
 // Soul of Vengeance's melee attack (authored-effects-data2.ts): the vowed
 // creature within this reach.
 const SOUL_OF_VENGEANCE_FT = 5;
@@ -503,8 +517,8 @@ function subclassReactions(
   hit: PublicLastHit,
   whose: "self" | "ally",
   feet?: Record<string, number>,
-): Array<{ name: string; rules: string; target: HandTarget; range: string; fallen?: boolean }> {
-  const out: Array<{ name: string; rules: string; target: HandTarget; range: string; fallen?: boolean }> = [];
+): Array<{ name: string; rules: string; target: HandTarget; range: string; fallen?: boolean; pickWithin?: number }> {
+  const out: Array<{ name: string; rules: string; target: HandTarget; range: string; fallen?: boolean; pickWithin?: number }> = [];
   for (const held of heldAuthored(sheet)) {
     for (const reaction of held.entry.reactions ?? []) {
       if ((reaction.usedBy ?? "holder") !== "holder" || !gateHolds(reaction.gate, sheet, held)) continue;
@@ -544,22 +558,40 @@ function subclassReactions(
       }
       const rules = reactionRules(does, hit);
       if (!rules) continue;
-      const target: HandTarget = does.kind === "strike_back" ? "enemy" : whose === "ally" ? "ally" : "none";
+      const target: HandTarget = does.kind === "strike_back" || does.kind === "redirect" ? "enemy" : whose === "ally" ? "ally" : "none";
       // A redirect lands on a creature beside the holder (use_reaction's 5 feet),
       // and a melee strike back has no reach of its own on record.
       const range =
         does.kind === "redirect"
-          ? reachLabel(5)
+          ? reachLabel(REDIRECT_FT)
           : target === "none"
             ? "Self"
             : does.kind === "strike_back" && does.melee && reach === undefined
               ? "Melee"
               : reachLabel(reach);
-      // Sentinel at Death's Door answers the critical that dropped its holder.
-      out.push({ name: reaction.name, rules, target, range, fallen: does.kind === "uncrit" });
+      out.push({
+        name: reaction.name,
+        rules,
+        target,
+        range,
+        // Sentinel at Death's Door answers the critical that dropped its holder.
+        fallen: does.kind === "uncrit",
+        ...(does.kind === "redirect" ? { pickWithin: REDIRECT_FT } : {}),
+      });
     }
   }
   return out;
+}
+
+// The foes a card's player may pick from: for a redirect those beside the holder
+// other than the attacker. A foe the board gives no distance for is offered, and
+// the engine judges it, as inReach does.
+export function reactionPicks<T extends { id: string }>(card: HandCard, foes: T[], feet?: Record<string, number>): T[] {
+  return card.pickWithin === undefined ? foes : pickableFoes(foes, card.pickWithin, card.answers?.attackerId, feet);
+}
+
+function pickableFoes<T extends { id: string }>(foes: T[], within: number, attackerId: string | null | undefined, feet?: Record<string, number>): T[] {
+  return foes.filter((foe) => foe.id !== attackerId && !((feet?.[foe.id] ?? 0) > within));
 }
 
 // The ally or attacker a reaction card is aimed at, fixed by the hit it
@@ -573,6 +605,9 @@ export function reactionAim(
   // The card's own id, without the hero another character's card names
   // (offTurnReactionCards); that hero is `sheetId` here.
   const id = card.id.split("@")[0];
+  if (card.pickWithin !== undefined) {
+    return null;
+  }
   // Commander's Strike's target is the player's pick.
   if (card.target === "enemy" && id === "reaction:commanders-strike") {
     return null;

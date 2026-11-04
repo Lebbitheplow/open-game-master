@@ -16,6 +16,9 @@ const conditionInstanceSchema = z.object({
     rounds: z.number().int().min(1).max(ROUND_CEILING).optional(),
     // What put the condition there: the spell, feature or hazard by name.
     source: z.string().trim().min(1).max(80).optional(),
+    // Each character a creature has withstood, where one mark answers several
+    // (Instinctive Charm).
+    sources: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
     // Set by the engine on a condition it has renewed (a rage kept going).
     stoked: z.boolean().optional(),
     // "Until the start of your next turn" (Dodge, Shield, the Protection

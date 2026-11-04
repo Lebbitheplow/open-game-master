@@ -181,6 +181,10 @@ export type HandCard = {
   // hit's id when the host gives one, and who made it. Its aim is fixed by
   // it (reactionAim), not picked.
   answers?: { characterId: string; hitId?: string; attackerId: string | null; attacker: string };
+  // A reaction whose creature the player picks, from those this near the holder
+  // other than the attacker (Misdirection): no aim is fixed by the hit
+  // (reactionPicks).
+  pickWithin?: number;
 };
 
 export type HandShares = { count: number; unit: "dart" | "ray" | "beam" | "creature"; stack: boolean };
