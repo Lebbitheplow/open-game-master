@@ -30,7 +30,7 @@ import type { AttackPlan } from "@/lib/dm/pc-attack-plan";
 import type { AttackKind } from "@/lib/dm/pc-attack-profile";
 import type { OnHitSpends } from "@/lib/dm/pc-attack-riders";
 import { conditionOnHitDice } from "@/lib/srd/condition-effects";
-import { cursedAttackAgainst } from "@/lib/srd/magic-items";
+import { cursedAgainst } from "@/lib/srd/magic-items";
 import { conditionStrikesMagical } from "@/lib/srd/condition-effect-queries";
 import { effectsFor, type CombatRiders } from "@/lib/srd/feature-effects";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -137,7 +137,7 @@ export function foldDamageRiders(input: {
   let attackEffect = effectOutcome(campaignId, { kind: "character", id: sheet.id }, "attack");
   // A cursed item worn against the creature its curse names (Demon Armor):
   // folded here so the turn's swing and the reaction's both roll it.
-  const curse = cursedAttackAgainst(sheet.equipment, input.enemy?.stats?.type);
+  const curse = cursedAgainst(sheet.equipment, input.enemy?.stats?.type);
   if (curse) {
     attackEffect = { ...attackEffect, disadvantage: true, sources: [...attackEffect.sources, curse] };
   }

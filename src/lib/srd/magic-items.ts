@@ -485,13 +485,15 @@ export function settleAttunement<T extends WornMagicItem>(
 }
 
 // Demon Armor's curse (SRD 5.1): "While wearing the armor, you have
-// disadvantage on attack rolls against demons". Wearing it is enough, attuned
-// or not, and only a demon draws it ("fiend (demon)"; a devil does not).
+// disadvantage on attack rolls against demons and on saving throws against
+// their spells and special abilities". Wearing it is enough, attuned or not,
+// and only a demon draws it ("fiend (demon)"; a devil does not). `creatureType`
+// is the demon's full type, the one attacked or the one forcing the save.
 // Returns the line that says why, or null.
-export function cursedAttackAgainst(equipment: WornMagicItem[], targetType: string | undefined): string | null {
+export function cursedAgainst(equipment: WornMagicItem[], creatureType: string | undefined): string | null {
   // The subtype in the type's parentheses, as Favored Enemy reads it
   // (src/lib/dm/attack-features.ts isFavoredEnemy).
-  const subtypes = (nameChoice(targetType ?? "") ?? "").split(",").map(textKey);
+  const subtypes = (nameChoice(creatureType ?? "") ?? "").split(",").map(textKey);
   if (!subtypes.includes("demon")) {
     return null;
   }
