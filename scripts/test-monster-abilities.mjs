@@ -326,6 +326,21 @@ await test("A poisoned hit's sleep lands: a couatl's holds through damage, a dro
   assert.equal(world.sheet(tank.id).conditions.includes("poisoned"), true, "the poison outlasts the sleep");
 });
 
+// A sleep that lasts until a long rest keeps the block's word on damage: laid
+// with its own meta, set_condition's wake rule (0.32.1) no longer covers it.
+await test("A monster's sleep until a long rest that the text ends on damage wakes when the sleeper is hurt.", async () => {
+  const sandman = await stage({
+    name: "Dream Moth", size: "Small", type: "Fey", armor_class: 12, hit_points: 120, cr: 2,
+    actions: [{ name: "Slumber Dust", desc: "One creature within 10 feet must succeed on a DC 13 Constitution saving throw or fall unconscious until it finishes a long rest. The creature wakes up if it takes damage." }],
+  });
+  const dusted = await mk.forced([1], () => world.invoke("cast_at_player", { characterId: tank.id, casterEnemyId: sandman.id, enemyAbility: "Slumber Dust", saveAbility: "con", dc: 13 }));
+  assert.equal(dusted.ok, true, dusted.error);
+  assert.equal(world.sheet(tank.id).conditions.includes("unconscious"), true, JSON.stringify(dusted.result));
+  assert.equal(world.sheet(tank.id).conditionMeta.unconscious.untilLongRest, true);
+  await world.invoke("apply_damage", { characterId: tank.id, amount: 1, type: "bludgeoning", reason: "a slap" });
+  assert.equal(world.sheet(tank.id).conditions.includes("unconscious"), false, "the creature wakes up if it takes damage");
+});
+
 await test("A failure by the margin adds its condition, and the conditions listed with the first land with it.", async () => {
   const medusa = await stage({
     name: "Gazer", size: "Medium", type: "Monstrosity", armor_class: 15, hit_points: 120, cr: 6,

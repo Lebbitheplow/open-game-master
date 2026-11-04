@@ -142,9 +142,13 @@ export function layEnemyCondition(
   // gives no word for at all falls back to a save each turn, so it cannot
   // last forever by omission.
   const lasting = Boolean(use?.untilLongRest || use?.lasting);
+  const laid = [use?.condition, ...(use?.also ?? [])];
+  const wakes = condition === "unconscious" || !laid.includes("unconscious");
   if (use?.untilLongRest) {
+    // Its own word on damage too: laid with its own meta, it no longer takes
+    // set_condition's rule that a sleeper wakes when hurt.
     return handleSetCondition(campaign, turn.id, fresh, { condition, sourceEnemyId: use.enemy.id }, reason, {
-      spellEffect: { source: use.enemy.id, untilLongRest: true },
+      spellEffect: { source: use.enemy.id, untilLongRest: true, ...(use.endsOnDamage && wakes ? { endsOnDamage: true } : {}) },
     });
   }
   const applied = applyDmMutation(
@@ -180,8 +184,6 @@ export function layEnemyCondition(
       `${condition} lasts until the ${use.until.edge} of ${use.until.whose === "source" ? `${use.enemy.displayName}'s` : "their"} next turn`,
     );
   }
-  const laid = [use?.condition, ...(use?.also ?? [])];
-  const wakes = condition === "unconscious" || !laid.includes("unconscious");
   if (use?.endsOnDamage && wakes && !("error" in applied)) {
     const now = getSheetById(sheet.id);
     const meta = { ...((now?.conditionMeta ?? {}) as ConditionMetaMap) };
