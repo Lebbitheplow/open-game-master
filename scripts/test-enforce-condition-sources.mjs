@@ -256,6 +256,18 @@ await test("761: unconscious laid by set_condition on a creature with hit points
   }
 });
 
+await test("761: an area that lays unconscious by name wakes the creature it caught when hurt, as it does a character", async () => {
+  const { world, enemies: [foe] } = await table([FIGHTER]);
+  world.dice(1);
+  const gas = await world.invoke("aoe_damage", { condition: "unconscious", rounds: 10, saveAbility: "con", dc: 30, enemyIds: [foe.id], reason: "sleeping gas" });
+  world.clearDice();
+  assert.equal(gas.ok, true, gas.error);
+  assert.ok(enemyOf(world, foe.id).conditions.includes("unconscious"), JSON.stringify(gas.result));
+  const hit = await world.invoke("damage_enemy", { enemyId: foe.id, amount: 1 });
+  assert.equal(hit.ok, true, hit.error);
+  assert.equal(enemyOf(world, foe.id).conditions.includes("unconscious"), false, "the creature slept through the blow");
+});
+
 await test("761: a monster's Eyebite lays its Asleep with that form's minute, and the sleeper wakes when hurt", async () => {
   const { world, sheets: [hero], enemies: [foe] } = await table([FIGHTER], 1, { spells: ["Eyebite"] });
   world.dice(1);

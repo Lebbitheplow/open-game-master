@@ -341,6 +341,31 @@ await test("A monster's sleep until a long rest that the text ends on damage wak
   assert.equal(world.sheet(tank.id).conditions.includes("unconscious"), false, "the creature wakes up if it takes damage");
 });
 
+// A creature caught in another's area ability takes its condition too, as a
+// character does (cast-at-player.ts layEnemyCondition): a brass dragon's
+// sleep breath across a goblin slept nobody, and the goblin wakes when hurt.
+await test("A monster's area ability lays its condition on another creature caught in it, and a sleep laid there ends on damage.", async () => {
+  await kit.endFight();
+  world.patch(tank.id, { currentHp: 300, conditions: [], conditionMeta: {} });
+  await kit.fight(2, { heroFaces: { [tank.id]: 19 } });
+  const [wyrm, goblin] = world.enemies();
+  mk.stage(wyrm.id, {
+    name: "Brass Wyrmling", size: "Medium", type: "Dragon", armor_class: 16, hit_points: 160, cr: 1,
+    actions: [{ name: "Sleep Breath", desc: "The dragon exhales sleep gas in a 15-foot cone. Each creature in that area must succeed on a DC 11 Constitution saving throw or fall unconscious for 1 minute. This effect ends for a creature if the creature takes damage or someone uses an action to wake it." }],
+  });
+  kit.place(tank.id, 9, 9);
+  kit.place(wyrm.id, 5, 5);
+  kit.place(goblin.id, 5, 6);
+  kit.freshRound();
+  const breath = await mk.forced([1], () => world.invoke("aoe_damage", { casterEnemyId: wyrm.id, enemyAbility: "Sleep Breath", enemyIds: [goblin.id], saveAbility: "con", dc: 11 }));
+  assert.equal(breath.ok, true, breath.error);
+  const slept = world.enemies().find((enemy) => enemy.id === goblin.id);
+  assert.ok(slept.conditions.includes("unconscious"), `the goblin slept through the breath: ${JSON.stringify(breath.result)}`);
+  assert.equal(slept.conditionMeta.unconscious.rounds, 10);
+  await world.invoke("apply_damage", { enemyId: goblin.id, amount: 1, type: "bludgeoning", reason: "a kick" });
+  assert.equal(world.enemies().find((enemy) => enemy.id === goblin.id).conditions.includes("unconscious"), false, "the effect ends if the creature takes damage");
+});
+
 await test("A failure by the margin adds its condition, and the conditions listed with the first land with it.", async () => {
   const medusa = await stage({
     name: "Gazer", size: "Medium", type: "Monstrosity", armor_class: 15, hit_points: 120, cr: 6,

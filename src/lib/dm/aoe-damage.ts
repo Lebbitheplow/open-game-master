@@ -22,6 +22,8 @@ import { trackEnemyConcentration } from "@/lib/dm/cast-tools";
 import { prepareEnemyUse, type EnemyUse } from "@/lib/dm/enemy-casting";
 import { layEnemyCondition, layFailedSaveExtras } from "@/lib/dm/cast-at-player";
 import { layEnemyConditionInstance } from "@/lib/dm/enemy-condition-lay";
+import { layEnemyUseOnEnemy } from "@/lib/dm/enemy-use-on-enemy";
+import { wakesOnDamage } from "@/lib/dm/condition-logic";
 import { canonicalCondition, castBarred } from "@/lib/dm/mutations";
 import { conditionNameRefusal } from "@/lib/dm/set-condition";
 import { charmedBy } from "@/lib/dm/enemy-profile";
@@ -573,11 +575,24 @@ export function handleAoeDamage(
         const incoming = {
           ...(awayCaster ? { source: awayCaster.id } : {}),
           ...(args.rounds ? { rounds: args.rounds } : { saveEnds: { ability, dc: saveDc } }),
+          // A sleep the area lays by name wakes when hurt, as set_condition's
+          // does on a creature and as the same area's does on a character.
+          ...(wakesOnDamage(laysCondition, enemy.currentHp) ? { endsOnDamage: true } : {}),
         };
         if (layEnemyConditionInstance(campaign, getEnemy(enemy.id) ?? enemy, laysCondition, incoming)) {
           laid = [laysCondition];
           row.conditionApplied = laysCondition;
         }
+      }
+    }
+    if (!success && !plan && enemyUse?.condition) {
+      const used = layEnemyUseOnEnemy(campaign, getEnemy(enemy.id) ?? enemy, enemyUse, { ability, dc: saveDc });
+      if (used.laid.length) {
+        laid = [...laid, ...used.laid];
+        row.conditionApplied = laid.join(", ");
+      }
+      if (used.refused.length) {
+        row.conditionRefused = `${enemy.displayName} is immune to ${used.refused.join(" and ")}.`;
       }
     }
     const hpBefore = enemy.currentHp;
