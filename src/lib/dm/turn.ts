@@ -1787,11 +1787,13 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     // empty last call is caught after the loop instead.
     // A reply that is only an object of arguments no offered tool takes (a
     // small model's call written as JSON, with no name and a key the tool
-    // lacks: Gemma4 e4b at 24K) says and does nothing either.
+    // lacks: Gemma4 e4b at 24K) says and does nothing either, and so does a
+    // reply that was only a call written as text and not run (issue 794).
     const replyText = extractReplyText(message?.content);
     const onlyStrayJson = (text: string) => {
-      const salvaged = salvageJsonToolCalls(text, tools);
-      return !salvaged.calls.length && !extractStoryText(salvaged.text).trim();
+      const xml = salvageXmlToolCalls(text);
+      const salvaged = salvageJsonToolCalls(xml.text, tools);
+      return !xml.calls.length && !salvaged.calls.length && !extractStoryText(salvaged.text).trim();
     };
     lastReplyEmpty =
       !extractToolCalls(message?.tool_calls).length && (!replyText.trim() || onlyStrayJson(replyText));

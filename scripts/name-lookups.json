@@ -1674,7 +1674,7 @@
     "lib/dm/rollback-logic.ts#partial": [["key",1,"column names"]],
     "lib/dm/rolls.ts#keyed": [["key",5,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "lib/dm/rolls.ts#number": [["key",2,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
-    "lib/dm/rolls.ts#partial": [["pattern",17,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["parse",3,"tool calls salvaged from text"]],
+    "lib/dm/rolls.ts#partial": [["pattern",17,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["parse",7,"tool calls salvaged from text"]],
     "lib/dm/rolls.ts#whole": [["identity",1,"a sheet by whole name"]],
     "lib/dm/romance-scene-logic.ts#helper": [["search",2,"the scene's subject and the character named together in a narration's paragraph, for whether it played the scene: a miss only leaves it due a reply longer (issue 643)"]],
     "lib/dm/romance-scene-logic.ts#keyed": [["key",5,"a pair's scene counts by the scene key it wrote, and a rung's scene and label by the rung (issue 643)"]],

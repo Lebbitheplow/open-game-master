@@ -23,7 +23,7 @@ import { strengthCheckFloor } from "@/lib/srd/trait-rules";
 import { computeAbilityScore, INSPIRATION_SPEND, toolProficiencyBonus } from "@/lib/dm/roll-riders";
 import { rollFeatureRiders } from "@/lib/dm/roll-feature-riders";
 import type { RollArgs } from "@/lib/dm/roll-args";
-import { DM_TOOL_NAME_PATTERN, toolTextRegex, xmlToolCallRegex } from "@/lib/dm/tool-text";
+import { DM_TOOL_NAME_PATTERN, invokeToolCallRegex, toolTextRegex, xmlToolCallRegex } from "@/lib/dm/tool-text";
 import { acBreakdownFor, computeSheetDerived, findSkill } from "@/lib/srd";
 import { withoutSentences, type NarrationClaim } from "@/lib/dm/claims-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -114,6 +114,13 @@ function coerceLeakValue(raw: string): unknown {
   return value;
 }
 
+// The Anthropic-style dialect an agent program writes as text is read from
+// prose, not called (issue 794). Only a call that hands the floor over and
+// changes nothing in the game runs from it: damage, gold or conditions
+// written this way are stripped and never applied, and widening this list is
+// a decision of its own.
+const INVOKE_TEXT_TOOLS: ReadonlySet<string> = new Set(["request_player_input"]);
+
 // qwen3.6's chat template instructs the model to emit tool calls in an XML
 // dialect: <tool_call><function=name><parameter=key>value</parameter>...
 // </function></tool_call>. llama-server normally extracts these into
@@ -123,11 +130,12 @@ function coerceLeakValue(raw: string): unknown {
 // calls, all tags are stripped from the narration, and unknown tool names
 // are stripped but never dispatched. A JSON body inside <tool_call>
 // ({"name":...,"arguments":{...}}, the older Qwen dialect) is also accepted.
+// The Anthropic-style dialect is parsed here too, under INVOKE_TEXT_TOOLS.
 export function salvageXmlToolCalls(text: string): {
   text: string;
   calls: ParsedToolCall[];
 } {
-  if (!text || !/<\/?(?:tool_call|function[=>]|parameter=)/i.test(text)) {
+  if (!text || (!/<\/?(?:tool_call|function[=>]|parameter=)/i.test(text) && !invokeToolCallRegex().test(text))) {
     return { text, calls: [] };
   }
   const calls: ParsedToolCall[] = [];
@@ -191,6 +199,22 @@ export function salvageXmlToolCalls(text: string): {
   // Bare <function=...> blocks outside any <tool_call> wrapper.
   if (!sawWrappedFunction && !text.includes("<tool_call")) {
     parseFunctionBlocks(text);
+  }
+
+  // Only a block that closed: a call cut off mid-argument is not one to act on.
+  const invokeRe = /<(?:[\w-]+:)?invoke\s+name\s*=\s*["']?([^"'\s>]+)["']?[^>]*>([\s\S]*?)<\/(?:[\w-]+:)?invoke\s*>/gi;
+  for (const invoke of text.matchAll(invokeRe)) {
+    // The harness shows its tools as mcp__odm__name or odm_name (harness/render.ts).
+    const name = invoke[1].replace(/^(?:mcp__.+?__|odm_)/, "");
+    if (!INVOKE_TEXT_TOOLS.has(name)) {
+      continue;
+    }
+    const args: Record<string, unknown> = {};
+    const paramRe = /<(?:[\w-]+:)?parameter\s+name\s*=\s*["']?([^"'\s>]+)["']?[^>]*>([\s\S]*?)(?:<\/(?:[\w-]+:)?parameter\s*>|(?=<(?:[\w-]+:)?parameter\s)|$)/gi;
+    for (const param of invoke[2].matchAll(paramRe)) {
+      args[param[1]] = coerceLeakValue(param[2]);
+    }
+    addCall(name, args);
   }
 
   const cleaned = text

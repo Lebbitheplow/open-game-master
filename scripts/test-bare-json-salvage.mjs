@@ -37,7 +37,7 @@ const { createStreamingArtifactFilter, extractReplyText, extractStoryText } = aw
 const { createUser } = await import("../src/lib/db/users.ts");
 const { createCampaign, getCampaignById, getFloor, setCampaignStatus, updateStorySettings, allocateSeq } =
   await import("../src/lib/db/campaigns.ts");
-const { createSheet } = await import("../src/lib/db/sheets.ts");
+const { createSheet, getSheetById } = await import("../src/lib/db/sheets.ts");
 const { createSheetSchema } = await import("../src/lib/schemas/sheet.ts");
 const { insertCampaignMessage, listRecentMessages } = await import("../src/lib/db/messages.ts");
 const { getDmTurn } = await import("../src/lib/db/dm-turns.ts");
@@ -159,6 +159,10 @@ const toolCall = (name, args) => ({
   ],
 });
 const askJson = () => JSON.stringify({ characterIds: [sheetId], prompt: QUESTION });
+const invokeAskText = () =>
+  `<invoke name="mcp__odm__request_player_input">\n<parameter name="characterIds">["${sheetId}"]</parameter>\n<parameter name="prompt">${QUESTION}</parameter>\n</invoke>`;
+const invokeDamageText = () =>
+  `<invoke name="mcp__odm__apply_damage">\n<parameter name="characterId">${sheetId}</parameter>\n<parameter name="amount">5</parameter>\n</invoke>`;
 const server = http.createServer((req, res) => {
   const chunks = [];
   req.on("data", (chunk) => chunks.push(chunk));
@@ -183,6 +187,18 @@ const server = http.createServer((req, res) => {
       sse(res, [{ content: '{\n"characterId": "Avery",\n"kind": "investigation",\n"summary": "Avery scans the ford.",\n"waypoint": 1\n}' }]);
     } else if (reply === "narrate-json-ask") {
       sse(res, [{ content: `${NARRATION} What will you do?` }, { content: askJson() }]);
+    } else if (reply === "invoke-ask") {
+      sse(res, [{ content: invokeAskText() }]);
+    } else if (reply === "narrate-invoke-ask") {
+      // Split inside the tag, as a provider's chunks may.
+      const block = invokeAskText();
+      sse(res, [{ content: `${NARRATION}\n\n${block.slice(0, 4)}` }, { content: block.slice(4) }]);
+    } else if (reply === "invoke-damage") {
+      sse(res, [{ content: invokeDamageText() }]);
+    } else if (reply === "narrate-invoke-damage") {
+      sse(res, [{ content: `${NARRATION}\n\n${invokeDamageText()}` }]);
+    } else if (reply === "qwen-unknown") {
+      sse(res, [{ content: "<tool_call><function=dance_wildly><parameter=style>jig</parameter></function></tool_call>" }]);
     } else if (reply === "unknown-tool") {
       sse(res, [toolCall("dance_wildly", { style: "jig" })]);
     } else if (reply === "last-turn") {
@@ -359,6 +375,44 @@ assert.equal(unknown.text, NARRATION, `expected narration, got: ${unknown.text}`
 assert.equal(unknown.calls, 2);
 assert.match(toolResults(unknown.requests[1]).get("call_dance_wildly_0")?.error ?? "", /no action called "dance_wildly"/);
 console.log("ok: a reply of an unknown tool and no prose is narrated, and the tool result says it does not exist");
+
+// Issue 794: an agent program's call written as Anthropic-style text. The
+// input request reaches the real loop and the floor; the block reaches nobody.
+const invokeAsk = await run("Invoke text beside prose", ["narrate-invoke-ask"]);
+assert.equal(invokeAsk.text, NARRATION, `expected clean prose, got: ${invokeAsk.text}`);
+assert.equal(invokeAsk.calls, 1, "narration was already there; no extra call");
+const invokeFloor = getFloor(invokeAsk.campaign.id);
+assert.equal(invokeFloor.mode, "spotlight");
+assert.equal(invokeFloor.prompt, QUESTION);
+console.log("ok: an input request written as invoke text hands the players the floor, and they never read it");
+
+const invokeOnly = await run("Invoke text alone", ["invoke-ask", "narrate"]);
+assert.equal(invokeOnly.text, NARRATION, `expected narration, got: ${invokeOnly.text}`);
+assert.equal(invokeOnly.calls, 2, "the salvaged question gets the question-only narration call");
+assert.match(toolResults(invokeOnly.requests[1]).get("xml-salvaged-0")?.note ?? "", /The floor is theirs/);
+assert.equal(getFloor(invokeOnly.campaign.id).mode, "spotlight");
+console.log("ok: a reply that is only the invoke text runs as the call and is narrated");
+
+// A mutation written as text never runs: Bram keeps his hit points beside it
+// or alone, and a reply that was only the block is asked again, not closed on
+// the empty-turn line.
+const invokeHurt = await run("Mutation as invoke text beside prose", ["narrate-invoke-damage"]);
+assert.equal(invokeHurt.text, NARRATION);
+assert.equal(invokeHurt.calls, 1);
+assert.equal(getSheetById(sheetId).currentHp, getSheetById(sheetId).maxHp, "the damage written as text did not land");
+assert.equal(getFloor(invokeHurt.campaign.id).mode === "spotlight", false);
+console.log("ok: a mutation written as invoke text is cut from the prose and does not run");
+
+const invokeHurtOnly = await run("Mutation as invoke text alone", ["invoke-damage", "narrate"]);
+assert.equal(invokeHurtOnly.text, NARRATION, `expected narration, got: ${invokeHurtOnly.text}`);
+assert.equal(invokeHurtOnly.calls, 2, "a reply that was only the block is asked again");
+assert.equal(getSheetById(sheetId).currentHp, getSheetById(sheetId).maxHp, "the retry did not run it either");
+console.log("ok: a reply that is only a mutation written as text is asked again");
+
+const qwenStray = await run("Qwen unknown tool alone", ["qwen-unknown", "narrate"]);
+assert.equal(qwenStray.text, NARRATION, `expected narration, got: ${qwenStray.text}`);
+assert.equal(qwenStray.calls, 2);
+console.log("ok: a reply that is only a call to no known tool in the XML dialect is asked again");
 
 server.close();
 removeTempDir(dir);
