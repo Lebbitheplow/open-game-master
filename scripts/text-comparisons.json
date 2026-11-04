@@ -1189,7 +1189,7 @@
     "lib/dm/authored-hooks.ts#re-word": [["key",1,"creature types (engine vocabulary)"]],
     "lib/dm/authored-mote.ts#re-word": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/authored-mote.ts#toLowerCase": [["key",1,"die notation"]],
-    "lib/dm/authored-reactions.ts#re-word": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
+    "lib/dm/authored-reactions.ts#re-word": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/authored-reactions.ts#str-eq": [["key",4,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"],["key",1,"a reduction's amount kind (half), kept as the cut on record"]],
     "lib/dm/authored-reactions.ts#toUpperCase": [["display",8,"ability abbreviation shown in a roll note"]],
     "lib/dm/authored-saves.ts#re-word": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
