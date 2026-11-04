@@ -184,6 +184,36 @@ await test("a creature larger than the door still walks in, and no token stands 
   }
 });
 
+// Four Gargantuan creatures do not fit in the yard of a board 15 tiles deep,
+// and eight fit nowhere apart. Each still gets ground its size can stand on,
+// outside the house: before, the short spawn list left the board to put the
+// rest on single tiles near the first enemy, and each later enemy took the
+// spot drawn for the one before it.
+await test("a roster too big for the yard stands beside the house, each on ground its size fits", () => {
+  for (const side of BUILDING_SIDES) {
+    for (const seed of SEEDS) {
+      for (const footprints of [[4, 4, 4, 4], [4, 1, 4, 1, 4, 1, 4, 1], new Array(8).fill(4)]) {
+        const map = draw(seed, "forest", side, 2, 8, footprints);
+        const label = `${side} seed ${seed} roster ${footprints}\n${board(map)}`;
+        assert.equal(map.enemySpawns.length, footprints.length, `enemies short: ${label}`);
+        const held = new Set();
+        map.enemySpawns.forEach((spot, index) => {
+          for (const tile of footprintTiles(spot, footprints[index])) {
+            assert.ok(tile.x > 0 && tile.y > 0 && tile.x < map.width - 1 && tile.y < map.height - 1, `off the board: ${label}`);
+            assert.ok(!blocksMove(map.terrain[tileIndex(map.width, tile.x, tile.y)]), `in a wall or a fence: ${label}`);
+            const { x0, y0, x1, y1 } = map.building;
+            assert.ok(!(tile.x >= x0 && tile.x <= x1 && tile.y >= y0 && tile.y <= y1), `inside the house: ${label}`);
+            const at = tileIndex(map.width, tile.x, tile.y);
+            // Only a roster no board seats apart shares ground.
+            assert.ok(footprints.length === 8 && footprints.every((size) => size === 4) || !held.has(at), `two on one tile: ${label}`);
+            held.add(at);
+          }
+        });
+      }
+    }
+  }
+});
+
 await test("the party's size grows the building, and the smallest and largest boards hold it", () => {
   const area = (map) => (map.building.x1 - map.building.x0 - 1) * (map.building.y1 - map.building.y0 - 1);
   assert.equal(area(draw(7, null, "east", 2, 1, [1])), 16, "the smallest house");

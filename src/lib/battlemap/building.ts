@@ -274,6 +274,45 @@ export function drawBuilding(
       }
     }
   }
+  // A yard too small for the roster (four Gargantuan creatures on a board 15
+  // tiles deep): whoever is left stands beside or behind the house, on ground
+  // cleared under them. Left out, the board would put them on single tiles
+  // near the first enemy (spotsForTokens), inside the walls or half in a
+  // fence, and every later enemy would take the spot meant for the one before.
+  const box = { x0: Math.min(frame.at(left, back).x, frame.at(right, front).x), x1: Math.max(frame.at(left, back).x, frame.at(right, front).x), y0: Math.min(frame.at(left, back).y, frame.at(right, front).y), y1: Math.max(frame.at(left, back).y, frame.at(right, front).y) };
+  // A board that cannot seat the roster apart at all (eight Gargantuan
+  // creatures) lets the last share ground, as a board with no building does,
+  // but never inside the house or across its doorstep.
+  const besideHouse = (anchor: XY, footprint: Footprint, apart: boolean) =>
+    footprintTiles(anchor, footprint).every((tile) => {
+      const index = tileIndex(width, tile.x, tile.y);
+      const inHouse = tile.x >= box.x0 && tile.x <= box.x1 && tile.y >= box.y0 && tile.y <= box.y1;
+      return tile.x >= 1 && tile.y >= 1 && tile.x < width - 1 && tile.y < height - 1 && !inHouse && !(apart && taken.has(index)) && !doorstep.has(index);
+    });
+  const everywhere: XY[] = [];
+  for (let y = 1; y < height - 1; y += 1) {
+    for (let x = 1; x < width - 1; x += 1) {
+      everywhere.push({ x, y });
+    }
+  }
+  for (const index of order.filter((entry) => !enemySpots[entry])) {
+    const footprint = input.enemyFootprints[index];
+    const apart = everywhere.some((anchor) => besideHouse(anchor, footprint, true));
+    const [pick] = everywhere
+      .filter((anchor) => besideHouse(anchor, footprint, apart))
+      .map((anchor) => ({ anchor, away: pcSpawns.length ? tilesBetweenSides(pcSpawns, footprintTiles(anchor, footprint)) : 0 }))
+      .sort((a, b) => rank(a.away) - rank(b.away));
+    if (pick) {
+      enemySpots[index] = pick.anchor;
+      for (const tile of footprintTiles(pick.anchor, footprint)) {
+        const at = tileIndex(width, tile.x, tile.y);
+        taken.add(at);
+        if (blocksMove(tiles[at])) {
+          tiles[at] = TERRAIN.floor;
+        }
+      }
+    }
+  }
   const enemySpawns = enemySpots.flatMap((spot) => (spot ? [spot] : []));
 
   // Every enemy can walk to the door: a fence or a thicket that cut one off
