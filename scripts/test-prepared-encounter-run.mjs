@@ -18,6 +18,7 @@ const { getEncounterTemplate, insertEncounterTemplate, setTemplateCued } = await
 );
 const { listDmPrepNotes } = await import("../src/lib/db/notes.ts");
 const { preparedFightsBlock } = await import("../src/lib/dm/prepared-encounter-tool.ts");
+const { endEncounter } = await import("../src/lib/db/encounters.ts");
 
 const world = await openWorld({ gameSettings: { dmMode: "ai" } });
 world.addHero({ class: "fighter", level: 3, name: "Sword" });
@@ -76,6 +77,41 @@ await test("running it takes the cue down, and a second fight is refused while t
   assert.equal(preparedFightsBlock(world.campaign()), "", "the list should wait while a fight is on");
   const again = await run({ name: "Goblins at the ford" });
   assert.match(again.error, /already active/);
+});
+
+// Issue 743: a prepared fight the story opens with the party barricaded in
+// takes building as start_encounter does. Its indoor scene gives way to open
+// ground for the yard; a fight with its own saved board keeps that board and
+// the storyteller is told no building was drawn.
+const prepare = (name, map) =>
+  insertEncounterTemplate({
+    campaignId: world.campaignId,
+    name,
+    enemies: [{ monster: "goblin", count: 2 }],
+    battlefield: "",
+    map: { mapId: null, scene: null, seed: null, theme: null, ambient: null, width: null, height: null, ...map },
+    notes: name,
+    extras: {},
+    createdByUserId: world.owner.id,
+  });
+
+await test("a prepared fight takes building: the party stands inside, the enemies out in the yard", async () => {
+  endEncounter(world.encounter().id, "test");
+  prepare("Mob at the inn", { scene: "tavern" });
+  const out = await run({ name: "Mob at the inn", building: { enemySide: "east", openings: 3 } });
+  assert.equal(out.error, undefined, JSON.stringify(out));
+  assert.match(String(out.building), /inside a building with the enemies outside to the east/);
+  const board = getBattleMapForEncounter(world.encounter().id);
+  assert.notEqual(board.theme, "interior", "the yard is drawn as more inn");
+  assert.ok(board.terrain.includes("+"), "the house has its door");
+});
+
+await test("a prepared fight with its own saved board keeps it, and says no building was drawn", async () => {
+  endEncounter(world.encounter().id, "test");
+  prepare("Ambush on the hill", { seed: 77 });
+  const out = await run({ name: "Ambush on the hill", building: { enemySide: "north" } });
+  assert.equal(out.error, undefined, JSON.stringify(out));
+  assert.match(String(out.building), /No building was drawn/);
 });
 
 finish();
