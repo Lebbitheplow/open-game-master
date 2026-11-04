@@ -30,6 +30,7 @@ import type { AttackPlan } from "@/lib/dm/pc-attack-plan";
 import type { AttackKind } from "@/lib/dm/pc-attack-profile";
 import type { OnHitSpends } from "@/lib/dm/pc-attack-riders";
 import { conditionOnHitDice } from "@/lib/srd/condition-effects";
+import { cursedAttackAgainst } from "@/lib/srd/magic-items";
 import { conditionStrikesMagical } from "@/lib/srd/condition-effect-queries";
 import { effectsFor, type CombatRiders } from "@/lib/srd/feature-effects";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -48,8 +49,9 @@ export function foldDamageRiders(input: {
   profile: AttackProfile;
   riders: CombatRiders;
   kind: AttackKind;
-  // The target, for the riders that read it (Colossus Slayer).
-  enemy?: Pick<EncounterEnemy, "currentHp" | "maxHp">;
+  // The target, for the riders that read it (Colossus Slayer, Demon
+  // Armor's curse).
+  enemy?: Pick<EncounterEnemy, "currentHp" | "maxHp"> & { stats?: { type?: string } };
   // The marking conditions (Hunter's Mark, Hex) whose die rides a hit on
   // this target (src/lib/dm/attack-marks.ts). Absent: every one does.
   marked?: Set<string>;
@@ -132,7 +134,13 @@ export function foldDamageRiders(input: {
   ];
 
   // Lasting effects on the attacker's attack and damage rolls (set_effect).
-  const attackEffect = effectOutcome(campaignId, { kind: "character", id: sheet.id }, "attack");
+  let attackEffect = effectOutcome(campaignId, { kind: "character", id: sheet.id }, "attack");
+  // A cursed item worn against the creature its curse names (Demon Armor):
+  // folded here so the turn's swing and the reaction's both roll it.
+  const curse = cursedAttackAgainst(sheet.equipment, input.enemy?.stats?.type);
+  if (curse) {
+    attackEffect = { ...attackEffect, disadvantage: true, sources: [...attackEffect.sources, curse] };
+  }
   const damageEffect = effectOutcome(campaignId, { kind: "character", id: sheet.id }, "damage");
   if (attackEffect.bonus) {
     profile = { ...profile, toHit: profile.toHit + attackEffect.bonus };

@@ -327,6 +327,29 @@ await test("Demon Armor: 'clawed gauntlets turn unarmed strikes with your hands 
   assert.equal(swing.total, 25, "the opportunity attack lost the gauntlets' bonus");
 });
 
+await test("Demon Armor's curse: 'While wearing the armor, you have disadvantage on attack rolls against demons', on the turn and on an opportunity attack; a devil is no demon.", async () => {
+  const wearer = hero({ class: "fighter", level: 18, abilities: { str: 16 }, equipment: [{ name: "Demon Armor", qty: 1, equipped: true, attuned: true }] });
+  const [demon] = await stage(wearer, { stats: { type: "fiend (demon)" } });
+  // The lower of 18 and 2: 2 + 3 (Strength) + 6 (proficiency) + 1.
+  const cursed = await kit.swing(wearer.id, demon.id, [18, 2, 5], { weapon: "unarmed strike" });
+  assert.equal(cursed.ok, true, cursed.error);
+  assert.equal(cursed.toHit?.total, 12, "the curse gave no disadvantage against a demon");
+  const before = new Set(kit.lastRolls(60).map((roll) => roll.id));
+  kit.place(wearer.id, 5, 5);
+  kit.place(demon.id, 5, 6);
+  kit.freshRound();
+  world.clearDice();
+  world.dice(18, 2, 4);
+  await world.invoke("move_token", { token: demon.id, x: 1, y: 10 });
+  world.clearDice();
+  const swing = newRolls(before).find((roll) => roll.kind === "attack" && roll.characterId === wearer.id);
+  assert.ok(swing, "no opportunity attack was rolled");
+  assert.equal(swing.total, 12, "the opportunity attack against a demon lost the curse");
+  const [devil] = await stage(wearer, { stats: { type: "fiend (devil)" } });
+  const plain = await kit.swing(wearer.id, devil.id, [18, 2, 5], { weapon: "unarmed strike" });
+  assert.equal(plain.toHit?.total, 28, "a devil drew the demons' curse");
+});
+
 const samurai = hero({ class: "fighter", subclass: "Samurai", level: 15, abilities: { str: 16 }, equipment: [{ name: "Longsword", qty: 1 }] });
 
 await test("Rapid Strike: once a turn, an attack with advantage forgoes it for one more attack of the Attack action; with no advantage there is nothing to trade.", async () => {

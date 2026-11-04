@@ -2231,7 +2231,7 @@
     "lib/srd/magic-items.ts#bypass": [["key",4,"a homebrew def labelled, a rider's source shown, the +N its own name carries, by the item's own name"]],
     "lib/srd/magic-items.ts#keyed": [["identity",4,"SRD, spell, feature, subclass, hazard and magic rows by textKey (or armorKey/gearKey/rowKey/featureKey/priceKey, textKey-based); row tables keyed by the row's own name; the workshop's tables"]],
     "lib/srd/magic-items.ts#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
-    "lib/srd/magic-items.ts#partial": [["key",1,"the magic-item index"],["authoring",1,"the species read from the race's words"],["identity",1,"ODM's own condition with its die note, whole"]],
+    "lib/srd/magic-items.ts#partial": [["key",1,"the magic-item index"],["authoring",1,"the species read from the race's words"],["identity",1,"ODM's own condition with its die note, whole"],["parse",1,"the subtypes a creature type lists in brackets (Demon Armor's demons)"]],
     "lib/srd/magic-items.ts#whole": [["key",2,"class names"]],
     "lib/srd/melee-spell.ts#partial": [["identity",1,"two spells by whole name"]],
     "lib/srd/mounts.ts#fallback": [["identity",2,"a mount or vehicle by slug or whole name"]],
