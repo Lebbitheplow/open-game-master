@@ -28,7 +28,7 @@ import { textKey } from "@/lib/language/text-logic";
 
 type SpendDoes = AuthoredSpend["does"];
 
-const COST: Record<string, HandCost> = { action: "action", bonus: "bonus", none: "free" };
+const COST: Record<string, HandCost> = { action: "action", bonus: "bonus", reaction: "reaction", none: "free" };
 
 // A variant's word as a pick reads on a card: "bear" as "Bear".
 export const pickLabel = (value: string) => value.replace(/^./, (c) => c.toUpperCase());
@@ -69,7 +69,14 @@ export function playedAsSpendCard(sheet: CharacterSheet, name: string): boolean 
   const found = authoredSpendFor(sheet, name);
   if (!found) return false;
   const { spend, held } = found;
-  return spend.fight !== "out" && spend.does.kind !== "choose" && spendAction(spend) !== "reaction" && gateHolds(spend.gate, sheet, held);
+  return spend.fight !== "out" && spend.does.kind !== "choose" && (spendAction(spend) !== "reaction" || aimedReaction(spend)) && gateHolds(spend.gate, sheet, held);
+}
+
+// A reaction that heals one creature or burns another (Cauterizing Flames): one
+// card per aim, as Arcane Jolt has. As one plain reaction card it sent neither
+// the pick nor a target, and the engine refused it every time.
+function aimedReaction(spend: AuthoredSpend): boolean {
+  return spendAction(spend) === "reaction" && spend.does.kind === "flames";
 }
 
 // The turn's cost as the engine charges it (authored-spends.ts prepareCost):
@@ -120,7 +127,7 @@ function aimsOf(does: SpendDoes, level: number, mods: Record<string, number>): A
   if (does.kind === "flames") {
     const dice = resolveFormula(does.formula, level, mods);
     const heal = { variant: "heal", label: "healing", target: "ally" as const, dice: `heals ${dice}`, heals: true };
-    return does.healOnly ? [{ ...heal, variant: undefined, label: undefined }] : [{ variant: "burn", label: "force", target: "enemy", dice: `+${dice} ${does.type}`, heals: false }, heal];
+    return does.healOnly ? [{ ...heal, variant: undefined, label: undefined }] : [{ variant: "burn", label: does.type, target: "enemy", dice: `+${dice} ${does.type}`, heals: false }, heal];
   }
   const lines = linesOf(does);
   return [{ target: targetOf(does), dice: lines.dice, heals: false }];
@@ -133,7 +140,7 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
   // variants price themselves, stays a bonus action.
   const counter = ownCounter(spend);
   const action = spendAction(spend);
-  if (spend.fight === "out" || does.kind === "choose" || action === "reaction" || !gateHolds(spend.gate, sheet, held)) return [];
+  if (spend.fight === "out" || does.kind === "choose" || (action === "reaction" && !aimedReaction(spend)) || !gateHolds(spend.gate, sheet, held)) return [];
   const cost = COST[action] ?? "action";
   const pool = spend.pool;
   const state = pool ? sheet.resources[pool.id] : undefined;
@@ -159,7 +166,8 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
       name: aim.label && aims.length > 1 ? `${spend.name} (${aim.label})` : spend.name,
       cost,
       range: aim.target === "self" || aim.target === "none" ? "Self" : "",
-      dice: aim.dice,
+      // A reaction's fire is the whole of it, not a rider's extra damage.
+      dice: action === "reaction" ? aim.dice.replace(/^\+/, "") : aim.dice,
       roll: does.kind === "save_effect" ? "no attack" : "no roll",
       rules: `${held.feature}: the server resolves it.`,
       // The counter's reminder, which its own card used to show on hover.
@@ -181,7 +189,10 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
       compose: perUnit,
       ...(perUnit ? { unit: pool!.id === "ki" ? "ki" : "points" } : {}),
       ...(pool ? { pool: pool.id } : {}),
-      intent: { card: "feature", resourceId: spend.name, ...(aim.variant ? { variant: aim.variant } : {}) },
+      intent:
+        action === "reaction"
+          ? { card: "reaction", feature: spend.name, ...(aim.variant ? { variant: aim.variant } : {}) }
+          : { card: "feature", resourceId: spend.name, ...(aim.variant ? { variant: aim.variant } : {}) },
       ...(does.kind === "buff" && does.othersOnly ? { othersOnly: true } : {}),
     };
     if (does.kind === "buff" && does.variants) {
@@ -203,7 +214,7 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
     }
     return gated(
       card,
-      standingGate(sheet, turn, cost === "bonus" ? "bonus" : cost === "free" ? "free" : "action"),
+      standingGate(sheet, turn, cost === "reaction" ? "reaction" : cost === "bonus" ? "bonus" : cost === "free" ? "free" : "action"),
       poolGate,
       cost === "free" ? null : costGate(cost, turn, sheet, spend.name),
     );

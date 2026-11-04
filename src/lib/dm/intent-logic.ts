@@ -316,7 +316,7 @@ export function directCardCall(intent: MessageIntent, characterId: string, conte
     }
     case "reaction":
       return intent.feature
-        ? { name: "use_reaction", args: { characterId, feature: intent.feature, ...(intent.spell ? { spell: intent.spell } : {}), ...level, ...targetArgs(intent), ...(intent.hit ? { hit: intent.hit } : {}) } }
+        ? { name: "use_reaction", args: { characterId, feature: intent.feature, ...(intent.spell ? { spell: intent.spell } : {}), ...level, ...variant, ...targetArgs(intent), ...(intent.hit ? { hit: intent.hit } : {}) } }
         : null;
     case "gear": {
       if (!intent.item) {
