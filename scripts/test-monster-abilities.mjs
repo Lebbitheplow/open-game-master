@@ -296,6 +296,12 @@ await test("A poisoned hit's sleep lands: a couatl's holds through damage, a dro
   assert.deepEqual([sprite.unconsciousAtMost, sprite.wakesOnDamage], [5, true]);
   assert.deepEqual([asleepOnFailure(drow, 8), asleepOnFailure(drow, 9), asleepOnFailure(drow, null)], [true, false, true]);
   assert.deepEqual([asleepOnFailure(sprite, 5), asleepOnFailure(sprite, 6)], [true, false]);
+  // SRD 5.1 Homunculus: no word of damage, so only the poison's end wakes it.
+  const homunculus = readAttackText("Melee Weapon Attack: +4 to hit, reach 5 ft., one creature. Hit: 1 piercing damage, and the target must succeed on a DC 10 Constitution saving throw or be poisoned for 1 minute. If the saving throw fails by 5 or more, the target is instead poisoned for 5 (1d10) minutes and unconscious while poisoned in this way.").onHit;
+  assert.deepEqual([homunculus.unconsciousFailBy, homunculus.wakesOnDamage], [5, undefined]);
+  // Two conditions one failure lays (Tome of Beasts' lemurfolk): both land.
+  const blowgun = readAttackText("Ranged Weapon Attack: +4 to hit, range 20/80 ft., one target. Hit: 4 (1d4 + 2) piercing damage, and the target must succeed on a DC 13 Constitution saving throw or be poisoned and unconscious for 1 hour. Another creature can use an action to shake the target awake.").onHit;
+  assert.deepEqual([blowgun.condition, blowgun.alsoCondition, blowgun.wakesOnDamage], ["poisoned", "unconscious", undefined]);
 
   const biter = await stage({
     name: "Couatl", size: "Medium", type: "Celestial", armor_class: 19, hit_points: 97, cr: 4,

@@ -389,6 +389,9 @@ function readOnHit(hit: string, effectOnly: boolean): OnHitRider | null {
       ...(laid.until ? { until: laid.until } : {}),
       ...(laid.untilLongRest ? { untilLongRest: true } : {}),
       ...(laid.lasting ? { lasting: true } : {}),
+      // "Poisoned and unconscious for 1d4 hours" (a lemurfolk's blowgun): the
+      // second condition a failure lays with the first.
+      ...(laid.condition && laid.also?.length ? { alsoCondition: laid.also[0] } : {}),
     });
     if (/repeat the saving throw/i.test(rest)) {
       rider.repeatSave = true;
@@ -421,17 +424,22 @@ function readOnHit(hit: string, effectOnly: boolean): OnHitRider | null {
   // The sleep a poisoned hit can bring. Read here, not left in `manual`:
   // the text was dropped unread, so a drow's bolt or a couatl's bite poisoned
   // and never put anyone to sleep.
-  const failBy = /\bfails by (\d{1,2}) or more,? the (?:target|creature) (?:is (?:also )?|(?:also )?falls )unconscious\b/i.exec(hit);
-  const atMost = /\bsaving throw result is (\d{1,2}) or lower,? the (?:poisoned )?(?:target|creature) (?:is (?:also )?|(?:also )?falls )unconscious\b/i.exec(hit);
+  // The wordings: SRD 5.1's drow, pseudodragon, sprite, homunculus and
+  // couatl, and the other books' ("If the save fails by 5 or more", "A
+  // poisoned target is also unconscious while poisoned in this way", "On a
+  // failure  it falls unconscious").
+  const failBy = /\bfails?(?: the (?:saving throw|save))? by (\d{1,2}) or more\b[^.]*?\bunconscious\b/i.exec(hit);
+  const atMost = /\bsaving throw result is (\d{1,2}) or lower\b[^.]*?\bunconscious\b/i.exec(hit);
+  const always = /\b(?:until this poison ends, the (?:target|creature) is unconscious|(?:target|creature) is (?:also )?unconscious (?:while poisoned (?:in )?this way|until the poisoned condition ends)|while poisoned (?:in )?this way, the (?:target|creature) is unconscious|on a fail(?:ure|ed save)\W+(?:it|the target) falls unconscious)\b/i;
   if (failBy) {
     rider.unconsciousFailBy = Number(failBy[1]);
   } else if (atMost) {
     rider.unconsciousAtMost = Number(atMost[1]);
-  } else if (!rider.alsoCondition && /\buntil this poison ends, the (?:target|creature) is unconscious\b/i.test(hit)) {
+  } else if (!rider.alsoCondition && rider.condition && rider.condition !== "unconscious" && always.test(hit)) {
     rider.alsoCondition = "unconscious";
   }
   const asleep = Boolean(failBy || atMost || rider.alsoCondition === "unconscious");
-  if (asleep && /\b(?:wakes? up if it takes damage|until it takes damage)\b/i.test(hit)) {
+  if (asleep && /\b(?:wakes? up if it takes damage|until it takes damage|if it takes damage\b[^.]*\bwakes? up|ends for (?:the )?target if it takes damage|until it is no longer poisoned\W+it takes damage)\b/i.test(hit)) {
     rider.wakesOnDamage = true;
   }
   // "is swallowed", and the purple worm's "or be swallowed by the worm".
