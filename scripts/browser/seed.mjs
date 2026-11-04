@@ -2283,6 +2283,30 @@ const noticeTables = {};
   }
 }
 
+// PR 782: the after-the-roll card on a real parked roll. A table the player
+// runs, with the lead's hero holding the Lucky feat, one per viewport: the
+// scenario asks for a check from the GM's seat and the lead answers the card.
+const AFTER_ROLL_TITLE = "Lucky Table";
+const afterRollTables = {};
+for (const viewport of ["desktop", "phone"]) {
+  const table = campaigns.createCampaign(player.id, {
+    title: `${AFTER_ROLL_TITLE} (${viewport})`,
+    description: "A gate that will not lift.",
+    theme: "high-fantasy",
+    maxPlayers: 6,
+    startingLevel: 3,
+    difficulty: "normal",
+    gameSettings: { ttsEnabled: false, dmMode: "human" },
+  });
+  const seated = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+  if ("error" in seated) {
+    throw new Error(`could not seat the lead at the lucky table: ${seated.error}`);
+  }
+  campaigns.setCampaignStatus(table.id, "active");
+  const hero = sheets.createSheet(table.id, world.owner.id, 3, heroInput({ name: "Tamsin Reed", class: "fighter", level: 3, feats: ["Lucky"] }));
+  afterRollTables[viewport] = { id: table.id, hero: hero.id };
+}
+
 // Issue 530: a running campaign the lead steers, one per viewport, to step
 // out of play to its prep and back without ending anything.
 const PREP_RETURN_TITLE = "Waystation Table";
@@ -3003,6 +3027,7 @@ const ids = {
   qualityTurnIds,
   spellbook,
   noticeTables,
+  afterRollTables,
   recapTables,
   prepReturn,
   prepReturnTitle: PREP_RETURN_TITLE,
@@ -3111,6 +3136,7 @@ const ids = {
     ...Object.fromEntries(Object.entries(chipTables).map(([viewport, table]) => [table.id, `Chip Table (${viewport})`])),
     ...Object.fromEntries(Object.entries(spellbook).map(([viewport, table]) => [table.id, `${SPELLBOOK_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(noticeTables).map(([viewport, table]) => [table.id, `${NOTICE_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(afterRollTables).map(([viewport, table]) => [table.id, `${AFTER_ROLL_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(recapTables).map(([viewport, id]) => [id, `${RECAP_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(prepReturn).map(([viewport, id]) => [id, `${PREP_RETURN_TITLE} (${viewport})`])),
     [world.campaignId]: TITLE,

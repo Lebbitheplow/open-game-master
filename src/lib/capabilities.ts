@@ -213,6 +213,10 @@ export const SERVER_FEATURES = {
   // The meal field on the console's pass_time, travel and take_rest (issue
   // 793): an older host drops `meal` unread and the party eats from the pack.
   suppliesMeal: true,
+  // The after-the-roll card (src/lib/dm/after-roll.ts): a parked roll's
+  // `thrown` dice and POST /api/campaigns/[id]/pending-rolls/[id]/after-roll.
+  // An older host never parks a roll that way, so the card never draws there.
+  afterRollChoice: true,
 } as const;
 export type ServerFeatures = { [K in keyof typeof SERVER_FEATURES]: boolean };
 

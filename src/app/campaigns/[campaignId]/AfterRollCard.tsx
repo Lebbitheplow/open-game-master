@@ -9,7 +9,10 @@ import { ROLL_KIND_LABELS } from "@/lib/roll-labels";
 
 const STEP_IN_AFTER_MS = 3 * 60 * 1000;
 
-const OPTION = "motion-press inline-flex min-h-9 items-center rounded-full border border-amber-300/60 px-3 py-1 text-xs font-semibold disabled:opacity-50";
+// A finger-sized target (40px, the kit's own) with a ring for the keyboard.
+const RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70";
+const OPTION = `motion-press inline-flex min-h-10 items-center rounded-full border border-amber-300/60 px-3 py-1 text-xs font-semibold disabled:opacity-50 ${RING}`;
+const PLAIN = `motion-press inline-flex min-h-10 items-center px-1 text-xs underline decoration-dotted underline-offset-2 disabled:opacity-50 ${RING}`;
 
 // The dice have landed and the game has not yet said what they did: the roller
 // may spend something on them (src/lib/dm/after-roll-logic.ts). Everyone else
@@ -70,8 +73,8 @@ export function AfterRollCard({
 
   if (pending.userId !== meUserId) {
     return (
-      <CheckFrame className="mb-2 flex items-center justify-between gap-2 px-3 py-2 text-xs">
-        <span className="min-w-0">
+      <CheckFrame className="mb-2 flex animate-fade-up items-center justify-between gap-2 px-3 py-2 text-xs">
+        <span className="min-w-0" role="status">
           {character?.name ?? "A player"} rolled {thrown.outcome.total} and is deciding what to do with it.
         </span>
         {steersStory && stale ? (
@@ -79,7 +82,7 @@ export function AfterRollCard({
             type="button"
             disabled={busy}
             onClick={() => void choose({ keep: true })}
-            className="motion-press shrink-0 font-medium underline decoration-dotted underline-offset-2 disabled:opacity-50"
+            className={`${PLAIN} shrink-0 font-medium`}
           >
             Keep the roll for them
           </button>
@@ -104,7 +107,7 @@ export function AfterRollCard({
         {thrown.choosing ? "Choose which die counts." : "Before the game says what happens, you can still change it."}
       </p>
       {pending.reason ? <p className="check-dim mt-0.5 text-xs">{pending.reason}</p> : null}
-      <div className="mt-2 flex flex-wrap items-center gap-2">
+      <div className="mt-2 flex flex-wrap items-center gap-2" role="group" aria-label={thrown.choosing ? "Choose which die counts" : "Change this roll, or keep it"}>
         {thrown.choosing
           ? d20s.map((die, index) => (
               <button
@@ -112,10 +115,9 @@ export function AfterRollCard({
                 type="button"
                 disabled={busy}
                 onClick={() => void choose({ die: index })}
-                title={`Use this die: a total of ${die.value + others}.`}
                 className={OPTION}
               >
-                {die.value}
+                Use the {die.value} (total {die.value + others})
               </button>
             ))
           : thrown.options.map((option) => (
@@ -124,7 +126,6 @@ export function AfterRollCard({
                 type="button"
                 disabled={busy}
                 onClick={() => void choose({ use: option.id })}
-                title={option.note}
                 className={OPTION}
               >
                 {option.label}
@@ -135,13 +136,13 @@ export function AfterRollCard({
             type="button"
             disabled={busy}
             onClick={() => void choose({ keep: true })}
-            className="check-dim text-xs hover:underline disabled:opacity-50"
+            className={`${PLAIN} check-dim`}
           >
             {busy ? <Loader2 className="size-4 animate-spin" /> : "Keep this roll"}
           </button>
         )}
       </div>
-      {error ? <p className="mt-1.5 text-xs text-red-400">{error}</p> : null}
+      {error ? <p role="alert" className="mt-1.5 text-xs text-red-400">{error}</p> : null}
     </CheckFrame>
   );
 }

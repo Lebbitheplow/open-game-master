@@ -116,15 +116,15 @@ export function afterRollOptions(
   const options: AfterRollOption[] = [];
   // A fresh d20 can land at best a 20.
   if (holdsLuckPoint(sheet) && (outcome.natural === undefined || reaches(20 - outcome.natural))) {
-    options.push({ id: "lucky", label: "Lucky", note: "Spend a luck point: roll another d20, then choose which die counts." });
+    options.push({ id: "lucky", label: "Lucky: roll another d20", note: "Spend a luck point: roll another d20, then choose which die counts." });
   }
   const bardic = heldBardicDie(sheet);
   if (bardic && !taken.has("bardic") && reaches(sidesOf(bardic.die))) {
-    options.push({ id: "bardic", label: `Bardic Inspiration (${bardic.die})`, note: `Spend your Bardic Inspiration die: add 1${bardic.die} to this roll.` });
+    options.push({ id: "bardic", label: `Add Bardic Inspiration (${bardic.die})`, note: `Spend your Bardic Inspiration die: add 1${bardic.die} to this roll.` });
   }
   const own = ownLuckDie(sheet);
   if (own && !taken.has("own_luck") && reaches(sidesOf(own))) {
-    options.push({ id: "own_luck", label: `Dark One's Own Luck (${own})`, note: `Add 1${own} to this check or save.` });
+    options.push({ id: "own_luck", label: `Add Dark One's Own Luck (${own})`, note: `Add 1${own} to this check or save.` });
   }
   return options;
 }
