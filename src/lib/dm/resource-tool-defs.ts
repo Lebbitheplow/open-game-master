@@ -39,7 +39,7 @@ export const resourceTools: ToolDef[] = [
           spell: {
             type: "string",
             description:
-              "The spell the item casts (Wand of Fireballs: Fireball; Hat of Disguise: Disguise Self). A scroll needs none.",
+              "The spell the item casts (Wand of Fireballs: Fireball; a Ring of Spell Storing: one it holds). A scroll needs none.",
           },
           reason: { type: "string", description: "Short in-fiction cause." },
         },

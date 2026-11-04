@@ -28,6 +28,12 @@ export type ItemCast = {
   item: string;
   saveDc?: number;
   attackBonus?: number;
+  // A healing spell's modifier, when it is not the user's own (a stored
+  // spell keeps its original caster's).
+  abilityMod?: number;
+  // The Ring of Spell Storing it comes from: it leaves the ring when it is
+  // cast (src/lib/dm/item-casts.ts).
+  storedIn?: string;
 };
 
 type Credit = ItemCast & { key: string; at: number; usedAt?: number };
@@ -68,7 +74,7 @@ export function takeItemCast(
   if (!dryRun) {
     credit.usedAt = now;
   }
-  return { spell: credit.spell, level: credit.level, item: credit.item, saveDc: credit.saveDc, attackBonus: credit.attackBonus };
+  return { spell: credit.spell, level: credit.level, item: credit.item, saveDc: credit.saveDc, attackBonus: credit.attackBonus, abilityMod: credit.abilityMod, storedIn: credit.storedIn };
 }
 
 // The item's own numbers for this spell while its credit stands (waiting, or
@@ -77,11 +83,11 @@ export function itemCastNumbers(
   sheetId: string | undefined,
   spell: string,
   now = Date.now(),
-): { saveDc?: number; attackBonus?: number } | null {
+): { saveDc?: number; attackBonus?: number; abilityMod?: number } | null {
   if (!sheetId || !spell.trim()) {
     return null;
   }
   const key = textKey(spell);
   const credit = [...live(sheetId, now)].reverse().find((entry) => entry.key === key);
-  return credit ? { saveDc: credit.saveDc, attackBonus: credit.attackBonus } : null;
+  return credit ? { saveDc: credit.saveDc, attackBonus: credit.attackBonus, abilityMod: credit.abilityMod } : null;
 }

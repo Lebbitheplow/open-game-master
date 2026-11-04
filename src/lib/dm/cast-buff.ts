@@ -49,6 +49,8 @@ import { textKey } from "@/lib/language/text-logic";
 import { nameChoice } from "@/lib/srd/feature-names";
 import { castsSpells } from "@/lib/srd";
 import { grantedCastOf } from "@/lib/dm/cast-rules";
+import { takeItemCast } from "@/lib/srd/item-cast-credit";
+import type { CastingSheet } from "@/lib/srd";
 
 // Temporary hit points a chosen variant grants on top of its condition.
 const VARIANT_TEMP_HP: Record<string, string> = {
@@ -131,7 +133,8 @@ export function handleCastBuff(
   if (sheet.currentHp <= 0 && spellFactsFor(args.spell, spellAuthorsFor(campaign))?.castingTime !== "reaction") {
     return { error: `${sheet.name} is at 0 HP and cannot cast.`, refused: "rules" };
   }
-  if (!castsSpells(sheet)) {
+  // A spell an item just paid for needs no Spellcasting feature.
+  if (!castsSpells(sheet) && !takeItemCast(sheet.id, args.spell ?? "", { dryRun: true })) {
     return { error: `${sheet.name} cannot cast spells.`, refused: "rules" };
   }
   const barred = castBarred(campaign, turn.id, { characterId: sheet.id, spell: args.spell, ...(args.level ? { level: args.level } : {}), via: "buff" }, sheets, sheetsById);
@@ -203,7 +206,7 @@ export function handleCastBuff(
     } else return castShapeAtEnemy(
       campaign,
       turn,
-      { caster: sheet, enemy, spell: resolvedMech.name, runsAs: engine, variant: args.variant, level: args.level, reason: args.reason, authors },
+      { caster: sheet as CastingSheet<CharacterSheet>, enemy, spell: resolvedMech.name, runsAs: engine, variant: args.variant, level: args.level, reason: args.reason, authors },
       (cast) => applyDmMutation(campaign, turn.id, "use_spell_slot", JSON.stringify(cast), sheets, sheetsById).result,
     );
   }
@@ -387,7 +390,7 @@ export function handleCastBuff(
     return cast;
   }
   // A target fighting against the caster saves as an unwilling creature.
-  for (const [id, line] of unwillingResist(campaign, turn, sheet, { name: resolvedMech.name, engine }, targetSheets)) warded.set(id, line);
+  for (const [id, line] of unwillingResist(campaign, turn, sheet as CastingSheet<CharacterSheet>, { name: resolvedMech.name, engine }, targetSheets)) warded.set(id, line);
   const slotLevel = typeof cast.slotLevel === "number" ? cast.slotLevel : null;
   const above = Math.max(0, (slotLevel ?? resolvedMech.spellLevel) - resolvedMech.spellLevel);
   if (buff.bySlot?.length) {

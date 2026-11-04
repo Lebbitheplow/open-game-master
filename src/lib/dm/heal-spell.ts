@@ -23,6 +23,7 @@
 // This module does not import mutations.ts: the cast is handed in.
 
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import { itemCastNumbers } from "@/lib/srd/item-cast-credit";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
@@ -218,7 +219,8 @@ export function castHealingSpell(
   const derived = computeSheetDerived(caster);
   const dc = spellSaveDcFor(caster, input.spell);
   // Regenerate's 4d8 + 15 carries its own bonus: no modifier rides it.
-  const modifier = dc !== null && !mech?.healNoModifier ? dc - 8 - derived.proficiencyBonus : 0;
+  // A spell a ring stored keeps its original caster's modifier.
+  const modifier = dc !== null && !mech?.healNoModifier ? (itemCastNumbers(caster.id, input.spell)?.abilityMod ?? dc - 8 - derived.proficiencyBonus) : 0;
   const riders: string[] = [];
   // Signed: a WIS 8 cleric's Cure Wounds is 1d8 - 1 (the floor is on the total).
   let bonus = modifier;

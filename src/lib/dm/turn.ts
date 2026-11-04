@@ -134,7 +134,8 @@ import { aiPlaysSheet } from "@/lib/dm/companion-command";
 import { enemiesDue, enemiesOwedTurn, personRunsTable } from "@/lib/dm/enemies-due";
 import { noteTurnHead, settleTurnWarmup, turnHeadKey, warmNextTurn } from "@/lib/dm/turn-warmup";
 import { directContextFor } from "@/lib/dm/direct-context";
-import { castCarded, castDeclared, castRolled, castToolHint, namedCreature, slotlessCastCall, unpaidCastPrompt, type CastCreature } from "@/lib/dm/slotless-cast-logic";
+import { castCarded, castDeclared, castRolled, castToolHint, namedCreature, slotlessCastCall, storedCastHint, unpaidCastPrompt, type CastCreature } from "@/lib/dm/slotless-cast-logic";
+import { storerHolding } from "@/lib/srd/spell-storing";
 import type { SlotlessCast } from "@/lib/dm/narration-guard";
 import { DIRECT_CALL_ID_PREFIX, directCardCalls, intentAnswered, intentCorrection, intentNeedsTool, returnedCardNote, returnReason, unresolvedCards, type MessageIntent, type PlayedCard, type TurnCall } from "@/lib/dm/intent-logic";
 import type { SpellMech } from "@/lib/srd/spell-mech-types";
@@ -2334,7 +2335,9 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
         });
         answerRanAbove(fightOwnsFloor(campaignId), false);
         const owedMech = spellMechanicsFor({ spell: owed.spell, userIds: spellAuthorsFor(campaign) })?.mech ?? null;
-        turn.conversation.push({ role: "user", content: unpaidCastPrompt(owed, castToolHint(owedMech, castFillsArea(campaign, owed.spell, owedMech))) });
+        const owedTool = castToolHint(owedMech, castFillsArea(campaign, owed.spell, owedMech));
+        const owedRing = storerHolding(context.sheetsById.get(owed.casterId)?.equipment ?? [], owed.spell);
+        turn.conversation.push({ role: "user", content: unpaidCastPrompt(owed, owedRing ? storedCastHint(owedRing, owed.spell, owedTool) : owedTool) });
         saveDmTurn(turn);
         continue;
       }
@@ -2842,6 +2845,12 @@ function castSlotlessFor(context: TurnContext, turn: DmTurn): (cast: { casterId:
     const sheet = context.sheetsById.get(cast.casterId);
     const lines = linesOf(context, turn, cast.casterId);
     if (done.has(key) || !sheet || !castDeclared(cast.spell, lines) || castCarded(cast.spell, lines)) {
+      return null;
+    }
+    // Held in a ring they carry, the server cannot tell the ring from their
+    // own slots, and casting it here would spend a slot they may have meant
+    // to keep (src/lib/dm/spell-storing.ts).
+    if (storerHolding(sheet.equipment, cast.spell)) {
       return null;
     }
     done.add(key);

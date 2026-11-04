@@ -57,6 +57,11 @@ export type ConditionMeta = {
   // A casting of a minute or more held across turns is a ritual: it spends
   // no slot when it completes (src/lib/dm/long-casting-logic.ts).
   ritual?: boolean;
+  // A casting going into a Ring of Spell Storing, or coming out of one
+  // (src/lib/dm/spell-storing.ts).
+  storeIn?: string;
+  storeInHolder?: string;
+  fromRing?: string;
   endsOnDamage?: boolean;
   saveOnDamage?: { ability: SaveAbilityId; dc: number; advantage?: boolean };
   // Hunter's Mark and Hex: the enemyId of the marked creature, the only one

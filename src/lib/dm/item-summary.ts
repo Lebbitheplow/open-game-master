@@ -14,6 +14,7 @@ import { gearDefOfRow } from "@/lib/srd/magic-gear";
 import { matchMagicItem, type MagicItemEffect } from "@/lib/srd/magic-items";
 import type { EquipmentItem } from "@/lib/schemas/sheet";
 import { textKey } from "@/lib/language/text-logic";
+import { isSpellStorer, storedSpellsLine } from "@/lib/srd/spell-storing";
 import { isWorkshopRow, magicItemBonus, rowName } from "@/lib/srd/item-row";
 
 function effectWords(effect: MagicItemEffect): string {
@@ -49,7 +50,7 @@ function effectWords(effect: MagicItemEffect): string {
 
 // The first sentence of a magic item's text: the content pack's row, else
 // the bundled SRD 5.1 book's page (src/lib/rulebook/catalog-rows.ts), so a
-// table with no pack still tells the model what a Ring of Spell Storing does
+// table with no pack still tells the model what a Bag of Holding does
 // instead of calling it "magic". The pack marks italics with underscores and
 // the book with asterisks; both are dropped, as the model reads them as text.
 function itemSentence(name: string): string | null {
@@ -101,6 +102,9 @@ export function magicItemLine(item: EquipmentItem, equipment: readonly Equipment
   }
   for (const effect of worn?.effects ?? []) {
     parts.push(effectWords(effect));
+  }
+  if (isSpellStorer(item)) {
+    parts.push(storedSpellsLine(item));
   }
   const rule = chargeRuleOf(item);
   if (rule) {

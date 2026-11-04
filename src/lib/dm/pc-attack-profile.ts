@@ -42,6 +42,8 @@ import { noneNamed, type ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { weaponMaterial } from "@/lib/dm/damage-logic";
 import { hasName, namesOf } from "@/lib/dm/cast-rules";
+import { takeItemCast } from "@/lib/srd/item-cast-credit";
+import { scrollNumbers } from "@/lib/dm/consumables";
 import { magicItemRiders } from "@/lib/srd/magic-items";
 
 export type AttackKind = "weapon" | "spell" | "natural" | "granted";
@@ -168,7 +170,10 @@ export function buildAttackProfile(
     kind = "granted";
   } else if (args.spell?.trim()) {
     const spellName = args.spell.trim();
-    if (!castsSpells(sheet)) {
+    // A spell an item just paid for needs no Spellcasting feature and is on no
+    // list of theirs.
+    const fromItem = takeItemCast(sheet.id, spellName, { dryRun: true });
+    if (!castsSpells(sheet) && !fromItem) {
       return { error: `${sheet.name} cannot cast spells.`, refused: "rules" };
     }
     // The content pack knows how a known spell resolves; a save or buff
@@ -181,7 +186,7 @@ export function buildAttackProfile(
     const mechDamageType = resolvedMech?.mech.damageType;
     const spellList = allSpellNames(sheet.spellcasting);
     const spellNames = namesOf(spellName, spellFactsFor(spellName, sheetSpellAuthors(sheet)));
-    const onList = hasName(spellList, spellNames);
+    const onList = Boolean(fromItem) || hasName(spellList, spellNames);
     if (!onList) {
       // A spell the rules know is one they lack; a name nobody knows is the
       // call's to fix, from their list.
@@ -213,7 +218,7 @@ export function buildAttackProfile(
     }
     // Multiclass: the to-hit follows the class whose list carries the spell.
     const spellProfile = spellAttackProfile(
-      { spellAttack: spellAttackFor(sheet, spellName) },
+      { spellAttack: spellAttackFor(sheet, spellName) ?? scrollNumbers(fromItem?.level ?? 1).attackBonus },
       spellName,
       damageArg,
       // A known spell deals its own damage type; the caller's word counts
