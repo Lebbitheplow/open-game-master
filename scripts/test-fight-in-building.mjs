@@ -504,11 +504,11 @@ await test("the other settings' field skins keep their own built walls", () => {
 
 await test("the GM is told when to use it, and the compact cut keeps what the engine reads", () => {
   const compact = compactTool(startEncounterTool).function.parameters.properties.building;
-  assert.match(compact.description, /party inside a building, enemies outside on enemySide/);
+  assert.match(compact.description, /Party inside a building, enemies outside on enemySide/);
   assert.deepEqual(compact.properties.enemySide.enum, BUILDING_SIDES);
   assert.equal(compact.properties.openings.maximum, MAX_OPENINGS);
   assert.deepEqual(compact.required, ["enemySide"]);
-  assert.match(compact.properties.openings.description, /One door, the rest windows/);
+  assert.match(compact.properties.openings.description, /A door, then windows/);
 });
 
 await test("the console's two questions meet the handler's one argument", () => {
