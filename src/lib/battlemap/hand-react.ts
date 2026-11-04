@@ -54,7 +54,8 @@ function base(
     type: "ward",
     name,
     cost: "reaction",
-    range: "Self",
+    // A card aimed at someone else is not "Self": each names its reach, or none.
+    range: target === "none" ? "Self" : "",
     dice: "",
     roll: "no roll",
     rules: "",
@@ -124,7 +125,7 @@ function spellReaction(
     prompt,
     target,
     aimedIntent({ card: "reaction", feature: spell, spell, slotLevel: slot?.level ?? null }, hit),
-    { type: "spell", rules, resource: slot ? slotLine(slot) : "No slots", icon: { kind: "spell", key: spell, family: null }, ...answering(hit) },
+    { type: "spell", rules, resource: slot ? slotLine(slot) : "No slots", icon: { kind: "spell", key: spell, family: null }, ...(target !== "none" && facts?.range.kind === "feet" ? { range: reachLabel(facts.range.feet) } : {}), ...answering(hit) },
   );
   const problem = (refusal: ToolError | null): Gate => (refusal ? { reason: refusal.error, spent: false } : null);
   return gated(
@@ -227,7 +228,7 @@ export function reactionCards(
     prompt: string,
     rules: string,
     target: HandTarget = "none",
-    more: { icon?: HandCard["icon"]; fallen?: boolean; gate?: Gate } = {},
+    more: { icon?: HandCard["icon"]; fallen?: boolean; gate?: Gate; range?: string } = {},
   ) => {
     if (answered(hit, name)) return;
     const card = base(
@@ -236,7 +237,7 @@ export function reactionCards(
       prompt,
       target,
       aimedIntent({ card: "reaction", feature: name }, hit),
-      { rules, ...(more.icon ? { icon: more.icon } : {}), ...answering(hit) },
+      { rules, ...(more.icon ? { icon: more.icon } : {}), ...(more.range ? { range: more.range } : {}), ...answering(hit) },
     );
     cards.push(
       gated(
@@ -289,7 +290,7 @@ export function reactionCards(
     }
     if (hit.source === "attack") {
       for (const held of subclassReactions(sheet, hit, "self", feet)) {
-        feature(hit, held.name, prompt, held.rules, held.target, { fallen: held.fallen && sheet.currentHp <= 0 });
+        feature(hit, held.name, prompt, held.rules, held.target, { fallen: held.fallen && sheet.currentHp <= 0, range: held.range });
       }
     }
   }
@@ -299,7 +300,7 @@ export function reactionCards(
   const vowed = vowedFoe(sheet);
   if (vowed && holdsFeature(sheet, "soul of vengeance")) {
     for (const hit of hits.filter((entry) => entry.source === "attack" && entry.attackerId === vowed && inReach(feet, entry.attackerId, SOUL_OF_VENGEANCE_FT))) {
-      feature(hit, "Soul of Vengeance", `${hit.attacker} attacked under your vow`, "A melee attack back at the creature under your vow.", "enemy");
+      feature(hit, "Soul of Vengeance", `${hit.attacker} attacked under your vow`, "A melee attack back at the creature under your vow.", "enemy", { range: reachLabel(SOUL_OF_VENGEANCE_FT) });
     }
   }
 
@@ -312,6 +313,7 @@ export function reactionCards(
       const id = `${textKey(held.name).replace(/\s+/g, "-")}:${save.id}`;
       const card = base(id, held.name, `${save.characterId === sheet.id && self === "you" ? "You" : saver} made the ${save.ability.toUpperCase()} save ${save.forcer} forced`, "enemy", { card: "reaction", feature: held.name }, {
         rules: held.rules,
+        range: reachLabel(held.rangeFt),
         answers: { characterId: save.characterId, attackerId: save.forcerId, attacker: save.forcer },
       });
       cards.push(gated(card, standingGate(sheet, turn, "reaction"), costGate("reaction", turn, sheet, held.name)));
@@ -340,7 +342,7 @@ export function reactionCards(
       for (const hit of hits) {
         const ally = party.find((entry) => entry.id === hit.characterId);
         if (ally && ally.id !== sheet.id && hit.hit && hit.source === "attack" && inReach(feet, hit.characterId, counter.rangeFt)) {
-          feature(hit, def.displayName, what(hit, ally.name), rulesOf(def.guidance), "ally", { gate });
+          feature(hit, def.displayName, what(hit, ally.name), rulesOf(def.guidance), "ally", { gate, range: reachLabel(counter.rangeFt) });
         }
       }
     }
@@ -358,7 +360,7 @@ export function reactionCards(
     }
     if (knows("riposte")) {
       for (const missed of hits.filter((hit) => hit.characterId === sheet.id && !hit.hit && hit.source === "attack" && !hit.ranged && hit.attackerId)) {
-        feature(missed, "Riposte", `${missed.attacker}'s ${missed.attack} missed ${self}`, "A melee attack back with your reaction, the die on its hit.", "enemy", { icon: MANEUVER_ICON("Riposte") });
+        feature(missed, "Riposte", `${missed.attacker}'s ${missed.attack} missed ${self}`, "A melee attack back with your reaction, the die on its hit.", "enemy", { icon: MANEUVER_ICON("Riposte"), range: "Melee" });
       }
     }
   }
@@ -378,7 +380,7 @@ export function reactionCards(
     if (!ally) continue;
     const prompt = what(hit, ally.name);
     for (const held of allyReactions(sheet, hit, feet)) {
-      feature(hit, held.name, prompt, held.rules, "ally");
+      feature(hit, held.name, prompt, held.rules, "ally", { range: held.range });
     }
   }
   return cards;
@@ -399,16 +401,16 @@ function stoodGate(sheet: CharacterSheet, turn: HandTurn, hit: PublicLastHit): G
 // Words with a die left, Protection, and the subclass reactions for an ally.
 // The cards above offer these, and the actions route takes words typed as a
 // reaction for an ally's hit only when one of them covers it.
-export function allyReactions(sheet: CharacterSheet, hit: PublicLastHit, feet?: Record<string, number>): Array<{ name: string; rules: string }> {
+export function allyReactions(sheet: CharacterSheet, hit: PublicLastHit, feet?: Record<string, number>): Array<{ name: string; rules: string; range: string }> {
   if (hit.characterId === sheet.id || !hit.hit || hit.source !== "attack") return [];
   const bardic = sheet.resources.bardic_inspiration;
   return [
     ...(holdsFeature(sheet, "cutting words") && (bardic?.max ?? 0) > (bardic?.used ?? 0)
-      ? [{ name: "Cutting Words", rules: "Spend a Bardic Inspiration die off the roll or the damage." }]
+      ? [{ name: "Cutting Words", rules: "Spend a Bardic Inspiration die off the roll or the damage.", range: reachLabel(60) }]
       : []),
     // Protection: "a target other than you that is within 5 feet of you".
-    ...(holdsFeature(sheet, "protection") && inReach(feet, hit.characterId, 5) ? [{ name: "Protection", rules: "Impose disadvantage on the attack: it is rolled again." }] : []),
-    ...subclassReactions(sheet, hit, "ally", feet).map((held) => ({ name: held.name, rules: held.rules })),
+    ...(holdsFeature(sheet, "protection") && inReach(feet, hit.characterId, 5) ? [{ name: "Protection", rules: "Impose disadvantage on the attack: it is rolled again.", range: reachLabel(5) }] : []),
+    ...subclassReactions(sheet, hit, "ally", feet).map((held) => ({ name: held.name, rules: held.rules, range: held.range })),
   ];
 }
 
@@ -434,6 +436,11 @@ function inReach(feet: Record<string, number> | undefined, id: string | null | u
 
 // A reach that grows with the holder's level (Aura of the Guardian's 10
 // feet, then 30), as the engine reads it (reaction-kinds.ts reachAtLevel).
+// A reach as a card prints it; no reach on record prints none.
+function reachLabel(feet: number | undefined): string {
+  return feet === undefined ? "" : `${feet} ft`;
+}
+
 function reachAt(range: number | Array<[number, number]> | undefined, level: number): number | undefined {
   return range === undefined ? undefined : reachAtLevel(range, level);
 }
@@ -496,8 +503,8 @@ function subclassReactions(
   hit: PublicLastHit,
   whose: "self" | "ally",
   feet?: Record<string, number>,
-): Array<{ name: string; rules: string; target: HandTarget; fallen?: boolean }> {
-  const out: Array<{ name: string; rules: string; target: HandTarget; fallen?: boolean }> = [];
+): Array<{ name: string; rules: string; target: HandTarget; range: string; fallen?: boolean }> {
+  const out: Array<{ name: string; rules: string; target: HandTarget; range: string; fallen?: boolean }> = [];
   for (const held of heldAuthored(sheet)) {
     for (const reaction of held.entry.reactions ?? []) {
       if ((reaction.usedBy ?? "holder") !== "holder" || !gateHolds(reaction.gate, sheet, held)) continue;
@@ -531,14 +538,25 @@ function subclassReactions(
       if (!answers) continue;
       // Within its reach: the ally it covers, or for Rebuke the Violent the
       // attacker ("an attacker within 30 feet of you").
+      const reach = "rangeFt" in does ? reachAt(does.rangeFt as number | Array<[number, number]> | undefined, held.level) : undefined;
       if (whose === "ally") {
-        const reach = "rangeFt" in does ? reachAt(does.rangeFt as number | Array<[number, number]> | undefined, held.level) : undefined;
         if (!inReach(feet, does.kind === "echo_hit" ? hit.attackerId : hit.characterId, reach)) continue;
       }
       const rules = reactionRules(does, hit);
       if (!rules) continue;
+      const target: HandTarget = does.kind === "strike_back" ? "enemy" : whose === "ally" ? "ally" : "none";
+      // A redirect lands on a creature beside the holder (use_reaction's 5 feet),
+      // and a melee strike back has no reach of its own on record.
+      const range =
+        does.kind === "redirect"
+          ? reachLabel(5)
+          : target === "none"
+            ? "Self"
+            : does.kind === "strike_back" && does.melee && reach === undefined
+              ? "Melee"
+              : reachLabel(reach);
       // Sentinel at Death's Door answers the critical that dropped its holder.
-      out.push({ name: reaction.name, rules, target: does.kind === "strike_back" ? "enemy" : whose === "ally" ? "ally" : "none", fallen: does.kind === "uncrit" });
+      out.push({ name: reaction.name, rules, target, range, fallen: does.kind === "uncrit" });
     }
   }
   return out;
