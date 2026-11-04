@@ -125,6 +125,33 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
         help: "How far the nearest enemy stands from the party, or as far as the board holds. Empty, an ambush or a fight indoors opens 30 feet apart, anything else across the field.",
       },
       {
+        name: "buildingEnemySide",
+        label: "Party inside a building, enemies to the",
+        kind: "select",
+        options: [
+          { value: "north", label: "North" },
+          { value: "east", label: "East" },
+          { value: "south", label: "South" },
+          { value: "west", label: "West" },
+        ],
+        help: "Draws a building around the party on the outdoor ground, with the door facing the enemies. Blank: no building.",
+        host: { feature: "fightInBuilding" },
+      },
+      {
+        name: "buildingOpenings",
+        label: "Ways in",
+        kind: "select",
+        options: [
+          { value: "1", label: "A door only" },
+          { value: "2", label: "A door and a window" },
+          { value: "3", label: "A door and two windows" },
+          { value: "4", label: "A door and three windows" },
+        ],
+        help: "A window is seen and shot through, and only a flier or a jump crosses it. Blank: a door and a window.",
+        onlyWhen: { field: "buildingEnemySide", equals: ["north", "east", "south", "west"] },
+        host: { feature: "fightInBuilding" },
+      },
+      {
         name: "lair",
         label: "In a legendary creature's lair",
         kind: "boolean",

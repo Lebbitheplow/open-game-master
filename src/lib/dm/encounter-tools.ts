@@ -51,6 +51,7 @@ import { suggestEnemies } from "@/lib/bestiary";
 import { enemyRequestSchema, groupInitiatives, resolveEnemyRequests } from "@/lib/dm/encounter-spawn";
 import { arrivalsFor, unknownReturning } from "@/lib/dm/foe-return";
 import { isKnockedOut } from "@/lib/dm/knockout";
+import { BUILDING_SIDES, MAX_OPENINGS, holdsBuilding } from "@/lib/battlemap/building";
 import { fieldSheetFoes, sheetFoeIds, turnedFoes } from "@/lib/dm/sheet-foes";
 import { askShares, conductGate } from "@/lib/dm/party-conduct";
 import { registerFightStarter } from "@/lib/dm/turncoat";
@@ -221,6 +222,18 @@ const absentArg = {
   absent: z.preprocess((value) => (value === null ? undefined : typeof value === "string" ? [value] : value), z.array(z.string().max(200)).max(40).optional()),
 };
 
+// The party inside a building, the enemies outside (issue 743). Unlike the
+// fields below, a wrong shape here is refused rather than read as none: a fight
+// the story set behind walls would open on a meadow and nobody would be told.
+// Null alone is how a weak caller leaves a field out.
+const buildingArgSchema = z.preprocess(
+  (value) => (value === null ? undefined : value),
+  z.object({
+    enemySide: z.enum(BUILDING_SIDES),
+    openings: z.number().int().min(1).max(MAX_OPENINGS).nullish(),
+  }).strict().optional(),
+);
+
 const startArgsSchema = z.object({
   enemies: z.array(enemyRequestSchema).min(1).max(8),
   summary: z.string().optional(),
@@ -243,6 +256,7 @@ const startArgsSchema = z.object({
   // 230): ahead puts its front nearest them, behind its rear. Anything else
   // a weak caller sends reads as ahead.
   from: z.preprocess((value) => (value === "behind" || value === "ahead" ? value : undefined), z.enum(["ahead", "behind"]).optional()),
+  building: buildingArgSchema,
 });
 
 // Accepts the documented {enemies:[...]} shape, or flat monster/name/count
@@ -260,13 +274,13 @@ function parseStartArgs(rawArguments: string): { args: z.infer<typeof startArgsS
     return { args: nested.data };
   }
   const flat = enemyRequestSchema
-    .extend({ summary: z.string().optional(), ...absentArg })
+    .extend({ summary: z.string().optional(), ...absentArg, building: buildingArgSchema })
     .safeParse(raw);
   if (flat.success) {
     // Every field an enemy takes, so one added to enemyRequestSchema (a
     // race, a gender) is not dropped from a weak model's flat call.
-    const { summary, absent, ...enemy } = flat.data;
-    return { args: { enemies: [enemy], summary, absent } };
+    const { summary, absent, building, ...enemy } = flat.data;
+    return { args: { enemies: [enemy], summary, absent, building } };
   }
   return { fields: [...new Set(nested.error.issues.map((issue) => issue.path.join(".")).filter(Boolean))] };
 }
@@ -289,13 +303,19 @@ function handleStartEncounter(
   const parsed = parseStartArgs(rawArguments);
   if (!("args" in parsed)) {
     return {
-      error: `Invalid start_encounter arguments${parsed.fields.length ? ` (fix or leave out: ${parsed.fields.join(", ")})` : ""}. Send {"enemies":[{"monster":"goblin","count":3}],"summary":"..."}.${parsed.fields.some((field) => field.split(".")[0] === "absent") ? ' absent is a list of character names: {"absent":["Alice","Bob"]}. No fight was started.' : ""}`,
+      error: `Invalid start_encounter arguments${parsed.fields.length ? ` (fix or leave out: ${parsed.fields.join(", ")})` : ""}. Send {"enemies":[{"monster":"goblin","count":3}],"summary":"..."}.${parsed.fields.some((field) => field.split(".")[0] === "absent") ? ' absent is a list of character names: {"absent":["Alice","Bob"]}. No fight was started.' : ""}${parsed.fields.some((field) => field.split(".")[0] === "building") ? ` building takes {"enemySide":"north","openings":2}: enemySide is north, east, south or west, openings is 1 to ${MAX_OPENINGS}. No fight was started.` : ""}`,
       retry: true,
     };
   }
   const args = parsed.args;
   if (args.scene !== undefined && !sceneIds().includes(args.scene)) {
     return { error: `Unknown scene "${args.scene}"; use one of: ${sceneIds().join(", ")}.`, retry: true };
+  }
+  if (args.building && args.scene !== undefined && !holdsBuilding(args.scene)) {
+    return {
+      error: `A building is drawn on outdoor ground, and scene "${args.scene}" is already indoors or underground. Leave scene out, or name the ground outside the building.`,
+      retry: true,
+    };
   }
   if (getActiveEncounter(campaign.id)) {
     return {
@@ -460,7 +480,7 @@ function handleStartEncounter(
   // with no board has nobody to move and no way to go on (issue 741).
   let placed: ReturnType<typeof createBattleMapForEncounter>;
   try {
-    placed = createBattleMapForEncounter(campaign, encounter, enemies, sheets, args.distanceFeet, args.scene, args.from, caughtUnawares);
+    placed = createBattleMapForEncounter(campaign, encounter, enemies, sheets, args.distanceFeet, args.scene, args.from, caughtUnawares, args.building);
   } catch (error) {
     endEncounter(encounter.id, "the board could not be set");
     throw error;
@@ -540,6 +560,7 @@ function handleStartEncounter(
     map: "A tactical battle map was generated; positions appear in GAME STATE on your next call.",
     ...(placed ? { formation: placed.formation } : {}),
     ...(placed?.distance ? { distance: placed.distance } : {}),
+    ...(placed?.building ? { building: placed.building } : {}),
     ...(ambushLines.length ? { ambush: ambushLines.join(" ") } : {}),
     ...(awaySheets.length
       ? { absent: `${awaySheets.map((sheet) => sheet.name).join(", ")}: not at this fight, with no initiative and no token. When the story brings one here, ${actor === "ai" ? "call request_roll kind=initiative for them" : "ask for their initiative"} and they join the order and the board.` }

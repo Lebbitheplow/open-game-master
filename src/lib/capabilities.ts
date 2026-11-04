@@ -153,6 +153,10 @@ export const SERVER_FEATURES = {
   // older host strips the field unread and stages everyone the console's
   // "Not at this fight" named, so it stays hidden there.
   fightAbsent: true,
+  // A fight with the party inside a building (issue 743): the console's two
+  // questions. An older host drops start_encounter's building unread and opens
+  // the fight on open ground, so they stay hidden there.
+  fightInBuilding: true,
   // A declaration's parts in one call (PR 749): the console's "Made with"
   // on an attack, a journey's Days and a blow's Blows. An older host strips
   // all three unread (a flurry strike swung as the Attack action's, one day
