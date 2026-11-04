@@ -5,6 +5,7 @@ import type { RollKind, RollVisibility } from "@/lib/db/rolls";
 import type { ContextTrace } from "@/lib/dm/context-budget";
 import { parkReasonFor, type ParkReason } from "@/lib/dice/held-rolls";
 import type { ThrownRoll } from "@/lib/dm/after-roll-logic";
+import type { RollTag } from "@/lib/dice-script-logic";
 import { writeTurnQuality } from "@/lib/db/turn-ledger";
 import { currentTurnId, releaseStandIn, standInFor } from "@/lib/dm/job-control";
 import type { GuardReport } from "@/lib/narrator-quality";
@@ -387,6 +388,8 @@ export type PendingRoll = {
   // roll the server throws when the player releases it. Null on a roll
   // parked before the reason was recorded.
   parkedFor: ParkReason | null;
+  // A stop before another creature's roll (src/lib/dm/foresight.ts).
+  watch: WatchStop | null;
   // The dice already thrown, waiting on the player's after-the-roll choice
   // (src/lib/dm/after-roll-logic.ts). Null until then.
   thrown: ThrownRoll | null;
@@ -402,6 +405,7 @@ type PendingRow = {
   parked_for?: string | null;
   thrown_json?: string | null;
   carry_json?: string | null;
+  watch_json?: string | null;
   id: string;
   campaign_id: string;
   turn_id: string;
@@ -442,8 +446,9 @@ function mapPending(row: PendingRow): PendingRoll {
     attack: parseJson<PendingAttack | null>(row.attack_json, null),
     combatNote: row.combat_note ?? null,
     parkedFor:
-      row.parked_for === "real_dice" || row.parked_for === "held" || row.parked_for === "after_roll" || row.parked_for === "foretold" ? row.parked_for : null,
+      row.parked_for === "real_dice" || row.parked_for === "held" || row.parked_for === "after_roll" || row.parked_for === "foretold" || row.parked_for === "watch" ? row.parked_for : null,
     thrown: parseJson<ThrownRoll | null>(row.thrown_json ?? null, null),
+    watch: parseJson<WatchStop | null>(row.watch_json ?? null, null),
     visibility: row.visibility ?? "public",
     status: row.status,
     rollId: row.roll_id,
@@ -471,6 +476,9 @@ function ensureParkColumn() {
   if (!columns.some((column) => column.name === "carry_json")) {
     db.exec(`ALTER TABLE pending_rolls ADD COLUMN carry_json TEXT`);
   }
+  if (!columns.some((column) => column.name === "watch_json")) {
+    db.exec(`ALTER TABLE pending_rolls ADD COLUMN watch_json TEXT`);
+  }
   parkColumnReady.add(db);
 }
 
@@ -493,6 +501,74 @@ export function dicePreferencesOf(campaignId: string, userId: string) {
       ? { useRealDice: Boolean(member.use_real_dice), holdRolls: Boolean(member.hold_rolls) }
       : null,
   };
+}
+
+// The calls a watch stop holds back, what the first is about to roll, and what
+// the watcher chose. Null face: let it roll.
+export type HeldCall = { id?: string; name: string; rawArguments: string };
+export type WatchStop = {
+  calls: HeldCall[];
+  tag: RollTag;
+  line: string;
+  face: number | null;
+  deadline: string;
+  // A resumed turn has begun running the calls: if they are still here after a
+  // restart, the process died among them, and they do not run twice.
+  taken?: boolean;
+};
+
+export function setPendingWatch(id: string, watch: WatchStop): PendingRoll | null {
+  ensureParkColumn();
+  const result = getDatabase().prepare(`UPDATE pending_rolls SET watch_json = ? WHERE id = ? AND status = 'pending'`).run(JSON.stringify(watch), id);
+  return result.changes > 0 ? getPendingRoll(id) : null;
+}
+
+// The watcher's answer closes the stop: no roll is written against it, and the
+// resumed turn runs what it held (src/lib/dm/turn.ts).
+export function resolvePendingWatch(id: string, face: number | null): PendingRoll | null {
+  const pending = getPendingRoll(id);
+  if (!pending?.watch) {
+    return null;
+  }
+  const result = getDatabase()
+    .prepare(`UPDATE pending_rolls SET status = 'fallback', watch_json = ? WHERE id = ? AND status = 'pending'`)
+    .run(JSON.stringify({ ...pending.watch, face }), id);
+  return result.changes > 0 ? getPendingRoll(id) : null;
+}
+
+// Every stop still open, whatever the table: a restart lets them go.
+export function listOpenWatchStops(): PendingRoll[] {
+  ensureParkColumn();
+  const rows = getDatabase().prepare(`SELECT * FROM pending_rolls WHERE status = 'pending' AND parked_for = 'watch'`).all() as PendingRow[];
+  return rows.map(mapPending);
+}
+
+// The held calls are the resumed turn's now, once. A stop already taken comes
+// back marked, for its turn to answer what never ran.
+export function takeHeldCalls(id: string): WatchStop | null {
+  const pending = getPendingRoll(id);
+  if (!pending?.watch?.calls.length) {
+    return null;
+  }
+  if (!pending.watch.taken) {
+    getDatabase().prepare(`UPDATE pending_rolls SET watch_json = ? WHERE id = ?`).run(JSON.stringify({ ...pending.watch, taken: true }), id);
+  }
+  return pending.watch;
+}
+
+export function dropHeldCalls(id: string) {
+  const pending = getPendingRoll(id);
+  if (pending?.watch) {
+    getDatabase().prepare(`UPDATE pending_rolls SET watch_json = ? WHERE id = ?`).run(JSON.stringify({ ...pending.watch, calls: [] }), id);
+  }
+}
+
+// The numbers a stop of this turn has chosen and its calls have yet to use: not
+// paid for yet, so not free to spend again.
+export function foretoldPromised(turnId: string, characterId: string): number[] {
+  return listPendingForTurn(turnId)
+    .filter((entry) => entry.characterId === characterId && entry.status !== "pending" && entry.watch?.calls.length && entry.watch.face !== null)
+    .map((entry) => entry.watch?.face as number);
 }
 
 export function createPendingRoll(input: {
@@ -568,6 +644,11 @@ export function publicPendingRoll(pending: PendingRoll): Omit<PendingRoll, "atta
   const rest: Partial<PendingRoll> = { ...pending };
   delete rest.attack;
   delete rest.combatNote;
+  // A stop's held calls are the model's own words, and may name what the table
+  // has not seen: the card reads its line and its time.
+  if (pending.watch) {
+    rest.watch = { line: pending.watch.line, deadline: pending.watch.deadline } as WatchStop;
+  }
   return rest as Omit<PendingRoll, "attack" | "combatNote">;
 }
 

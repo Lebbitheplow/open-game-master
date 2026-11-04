@@ -83,6 +83,8 @@ export type NarrationStatus = {
 export type PendingRoll = {
   id: string;
   parkedFor?: string | null;
+  status?: string;
+  watch?: { line: string; deadline: string } | null;
   userId: string;
   characterId: string | null;
   kind: string;
@@ -648,7 +650,10 @@ export function campaignReducer(state: CampaignState, action: Action): CampaignS
         case "roll_pending": {
           const pending = payload.pendingRoll as PendingRoll | undefined;
           if (pending) {
-            next.pendingRolls = upsertBy(state.pendingRolls, pending, (entry) => entry.id);
+            // A watch stop closes with no roll to say so.
+            next.pendingRolls = pending.status && pending.status !== "pending"
+              ? state.pendingRolls.filter((entry) => entry.id !== pending.id)
+              : upsertBy(state.pendingRolls, pending, (entry) => entry.id);
           }
           return next;
         }

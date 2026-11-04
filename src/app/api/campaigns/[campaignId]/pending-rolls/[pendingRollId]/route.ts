@@ -66,6 +66,10 @@ export async function POST(
     return Response.json({ error: "That roll was already resolved." }, { status: 409 });
   }
 
+  // A watch stop holds no roll, and is answered on its own route.
+  if (pending.parkedFor === "watch") {
+    return Response.json({ error: "That is a stop for Portent, not a roll." }, { status: 409 });
+  }
   // A screen that knows nothing of Portent shows this roll as one to type in:
   // the server throws it, so the table is never left on a refused answer.
   const isFallback = "fallback" in parsed.data || pending.parkedFor === "foretold";

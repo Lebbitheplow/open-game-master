@@ -840,6 +840,8 @@ export type CharacterSheet = {
   // The numbers Portent foretold at the last long rest, kept until used
   // (src/lib/dm/foretold-logic.ts).
   foretold?: number[];
+  // The fight its player is watching for Portent (src/lib/dm/foresight.ts).
+  watchingEncounterId?: string | null;
   exhaustion: number;
   deathSaves: DeathSaves;
   // Spell this character is concentrating on; null when none. Managed by
