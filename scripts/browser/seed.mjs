@@ -2679,9 +2679,9 @@ const bench2Titles = {};
   // then the damage die's), so every hit stays open for a reaction.
   const pass = async (table, swings) => {
     const turn = createDmTurn(table.id, [], "ai");
-    for (const [enemyId, targetId, faces] of swings) {
+    for (const [enemyId, targetId, faces, attack] of swings) {
       dice(...faces);
-      const out = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "ai", turnId: turn.id }, { name: "enemy_attack", args: { enemyId, targetCharacterId: targetId } });
+      const out = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "ai", turnId: turn.id }, { name: "enemy_attack", args: { enemyId, targetCharacterId: targetId, ...(attack ? { attack } : {}) } });
       clearDice();
       if (!out.ok) {
         throw new Error(`a goblin's swing at ${table.title} failed: ${out.error}`);
@@ -2956,8 +2956,9 @@ const bench2Titles = {};
       at.runicGm = { id: table.id, runa: { id: runa.id, name: runa.name }, near: { id: near.id, name: near.name } };
     }
     // ---- 15: Misdirection from the GM's own seat, which the engine resolves as
-    // it is played: a goblin's hit on Vex, another goblin beside them to take it,
-    // and a third 25 feet off ----
+    // it is played: a goblin's arrow from 15 feet hits Vex, another goblin stands
+    // beside them in its line (the cover Misdirection needs), and a third 25 feet
+    // off ----
     {
       const table = tableFor(`Misdirection Table (${viewport})`, world.owner, player);
       const vex = sheets.createSheet(table.id, world.owner.id, 13, heroInput({
@@ -2965,15 +2966,16 @@ const bench2Titles = {};
       }));
       const { rows, place } = await fightAt(table, world.owner, [{ monster: "goblin", count: 3 }]);
       const [striker, beside, far] = [named(rows, "goblin", 0), named(rows, "goblin", 1), named(rows, "goblin", 2)];
-      [[vex.id, 0, 0], [striker.id, 1, 0], [beside.id, -1, 0], [far.id, 5, 0]].forEach(([refId, dx, dy]) => place(refId, dx, dy));
+      [[vex.id, 0, 0], [striker.id, 3, 0], [beside.id, 1, 0], [far.id, 0, 5]].forEach(([refId, dx, dy]) => place(refId, dx, dy));
       turnOf(table, striker.id, { legendary: { due: [striker.id] } });
-      await pass(table, [[striker.id, vex.id, [15, 3]]]);
+      await pass(table, [[striker.id, vex.id, [15, 3], "Shortbow"]]);
       turnOf(table, vex.id);
       at.misdirection = { id: table.id, vex: { id: vex.id, name: vex.name }, striker: striker.id, beside: beside.id, far: far.id };
     }
     // ---- 16: the same card for a hero off their turn: the lead plays Vex and
-    // Brom, it is Brom's turn, and the board measures from Brom. A goblin hits Vex,
-    // another stands beside Vex, and the third beside Brom, 50 feet from Vex ----
+    // Brom, it is Brom's turn, and the board measures from Brom. A goblin's arrow
+    // hits Vex, another stands beside Vex in its line, and the third beside Brom,
+    // 50 feet from Vex ----
     {
       const table = tableFor(`Misdirection Off Turn Table (${viewport})`, world.owner, player, { multiCharacter: "all_active" });
       const vex = sheets.createSheet(table.id, world.owner.id, 13, heroInput({
@@ -2982,9 +2984,9 @@ const bench2Titles = {};
       const brom = sheets.createSheet(table.id, world.owner.id, 13, heroInput({ name: "Brom Ashe", class: "fighter", level: 13, maxHp: 90 }));
       const { rows, place } = await fightAt(table, world.owner, [{ monster: "goblin", count: 3 }]);
       const [striker, beside, byBrom] = [named(rows, "goblin", 0), named(rows, "goblin", 1), named(rows, "goblin", 2)];
-      [[vex.id, 0, 0], [striker.id, 1, 0], [beside.id, -1, 0], [brom.id, 10, 0], [byBrom.id, 11, 0]].forEach(([refId, dx, dy]) => place(refId, dx, dy));
+      [[vex.id, 0, 0], [striker.id, 3, 0], [beside.id, 1, 0], [brom.id, 10, 0], [byBrom.id, 11, 0]].forEach(([refId, dx, dy]) => place(refId, dx, dy));
       turnOf(table, striker.id, { legendary: { due: [striker.id] } });
-      await pass(table, [[striker.id, vex.id, [15, 3]]]);
+      await pass(table, [[striker.id, vex.id, [15, 3], "Shortbow"]]);
       turnOf(table, brom.id);
       at.misdirectionOff = { id: table.id, vex: { id: vex.id, name: vex.name }, striker: striker.id, beside: beside.id, byBrom: byBrom.id };
     }

@@ -16,7 +16,7 @@ import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
 import { authoredSpendFor, gateHolds, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
-import { resourceDef } from "@/lib/srd/class-resources";
+import { resourceDef, resourceName as counterName } from "@/lib/srd/class-resources";
 import type { SpendAction, SpendDoes } from "@/lib/srd/authored-effects-types";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
@@ -180,7 +180,7 @@ export function authoredFeatureSpend(
       return {
         error: state
           ? `${sheet.name} has ${state.max - state.used}/${state.max} left of what ${spend.name} spends, and it takes ${units}. Nothing was spent.`
-          : `${sheet.name} has no ${spend.pool.id.replace(/^sub_/, "").replace(/_/g, " ")} to spend on ${spend.name}.`,
+          : `${sheet.name} has no ${counterName(spend.pool.id)} to spend on ${spend.name}.`,
         refused: "rules",
       };
     }

@@ -1,7 +1,8 @@
 // Misdirection turns a hit onto another creature, and its card named none, so the
-// engine refused it. The card now offers the creature beside the holder, not the
+// engine refused it. The card now offers the creatures beside the holder, not the
 // attacker and not one 25 feet off, and from the GM's own seat the engine resolves
-// the pick: the blow comes off the rogue and lands on that goblin. On a desktop and
+// the pick: the arrow comes off the rogue and lands on the goblin in its line,
+// whose body gave the rogue cover. On a desktop and
 // a phone, day and night, the Hand through axe (the seed's bench2.misdirection).
 import { axeViolations, check, eventually, untilStill } from "../lib.mjs";
 
@@ -72,8 +73,8 @@ export default {
     await t.shot("misdirection-resolved");
 
     // Off their turn the board's distances are the acting hero's, so they do not
-    // judge the pick: both other goblins are offered, not the attacker, and the
-    // goblin beside Vex takes the blow.
+    // judge the pick: both other goblins and Brom are offered, not the attacker
+    // nor Vex, and the goblin beside Vex takes the blow.
     const off = ids.bench2[t.viewport].misdirectionOff;
     const offState = async () => await (await api.get(`${base}/api/campaigns/${off.id}`)).json();
     const offBefore = await offState();
@@ -93,8 +94,9 @@ export default {
     const offPicks = hand.locator('[role="group"][aria-label="Targets"]').locator("visible=true").first();
     await eventually(() => offPicks.isVisible(), { timeoutMs: 20_000, label: "the creatures to pick from, off turn" });
     const offered = offPicks.getByRole("button");
-    check((await offered.count()) === 2, `both other goblins are offered (${await offPicks.innerText()})`);
+    check((await offered.count()) === 3, `both other goblins and Brom are offered (${await offPicks.innerText()})`);
     check(!(await offPicks.innerText()).includes(nameOf(off.striker)), "not the attacker");
+    check(!(await offPicks.innerText()).includes(off.vex.name), "not Vex, whose hit it answers");
     await t.shot("misdirection-off-turn");
     await t.tap(offPicks.getByRole("button", { name: new RegExp(`^${nameOf(off.beside)}`) }).first());
     const offSend = hand.locator("div", { has: page.getByRole("button", { name: "Back", exact: true }) }).last().getByRole("button").last();

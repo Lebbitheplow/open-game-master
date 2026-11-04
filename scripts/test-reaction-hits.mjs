@@ -31,7 +31,7 @@ const { createSheet, markSheetAsCompanion, setCompanionCommander } = await impor
 const { activePublicEncounter } = await import("../src/lib/db/encounter-view.ts");
 const tools = await import("../src/lib/dm/encounter-tools.ts");
 const { invokeEngine } = await import("../src/lib/dm/invoke.ts");
-const { openHits, snapshotVitals } = await import("../src/lib/dm/last-hit.ts");
+const { openHits, recordFall, snapshotVitals } = await import("../src/lib/dm/last-hit.ts");
 const { describeIntent, directCardCall, intentNeedsTool } = await import("../src/lib/dm/intent-logic.ts");
 const { characterAwaitingPlayer, declaredThisTurn } = await import("../src/lib/dm/player-word.ts");
 const { holdSentReactions, offTurnReactionCards, reactionAim, reactionCards, reactionStrips } = await import("../src/lib/battlemap/hand-react.ts");
@@ -313,6 +313,50 @@ await test("A played card whose hit has closed stays a refusal, and no other hit
   assert.equal(out.refused, "rules", JSON.stringify(out));
   assert.doesNotMatch(out.error, /Open hits/);
   assert.equal(world.sheet(mira.id).spellcasting.slots["1"].used, 0);
+});
+
+await test("The model naming a hit that has closed is told no, and is not offered the later hit open on the same hero", async () => {
+  const table = await stage();
+  const { world, kit, poppy, g1 } = table;
+  await oneReply(table, poppy, [[15, 3], [16, 5]]);
+  const [closing] = hitsOn(world, poppy);
+  kit.freshRound();
+  world.dice(15, 1);
+  const later = await world.invoke("enemy_attack", { enemyId: g1.id, targetCharacterId: poppy.id });
+  world.clearDice();
+  assert.equal(later.ok, true, later.error);
+  const [open] = hitsOn(world, poppy);
+  assert.notEqual(open.id, closing.id);
+  const before = hp(world, poppy);
+  const out = await modelReacts(world, poppy, "Uncanny Dodge", { hit: closing.id });
+  assert.equal(out.ok, false);
+  assert.equal(out.refused, "rules", JSON.stringify(out));
+  assert.equal(out.retry, undefined);
+  assert.equal(out.error.includes(open.id), false, out.error);
+  assert.equal(hp(world, poppy), before);
+  assert.equal(world.encounter().reactionsUsed.includes(poppy.id), false);
+});
+
+await test("With two hits open, a slip of one id is sent back with that hit alone", async () => {
+  const table = await stage();
+  const { world, mira } = table;
+  await oneReply(table, mira, [[10, 3], [12, 4]]);
+  const [first, second] = hitsOn(world, mira);
+  const out = await modelReacts(world, mira, "Shield", { hit: second.id.slice(0, -1) });
+  assert.equal(out.retry, true, JSON.stringify(out));
+  assert.ok(out.error.includes(`hit "${second.id}" on ${mira.name}`), out.error);
+  assert.equal(out.error.includes(first.id), false, out.error);
+});
+
+await test("A slip of a fall's id names the fall as GAME STATE does", async () => {
+  const table = await stage();
+  const { world, poppy } = table;
+  world.patch(poppy.id, { features: [{ name: "Slow Fall", source: "class" }] });
+  recordFall(world.campaignId, poppy.id, snapshotVitals(world.campaignId, world.sheet(poppy.id)), 7, new Date().toISOString());
+  const [fall] = hitsOn(world, poppy);
+  const out = await modelReacts(world, poppy, "Slow Fall", { hit: fall.id.slice(1) });
+  assert.equal(out.retry, true, JSON.stringify(out));
+  assert.ok(out.error.includes(`hit "${fall.id}" on ${poppy.name} (a fall)`), out.error);
 });
 
 await test("A later GM turn's attack on the same hero closes the hits of the reply before it", async () => {

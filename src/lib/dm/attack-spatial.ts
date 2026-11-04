@@ -250,6 +250,27 @@ export function squaresBetween(
   return out;
 }
 
+// Whether one creature stands in the line between an attacker and its target,
+// giving the target cover against it (Misdirection: "a creature within 5 feet
+// that is giving you cover"). Toe to toe nobody does. With no board, or no
+// token for the attacker or the target, there is nothing to measure and the
+// fiction decides.
+export function coversAgainst(encounterId: string, attackerRef: string, targetRef: string, coverRef: string): boolean {
+  const map = getBattleMapForEncounter(encounterId);
+  const attacker = map ? getTokenByRef(map.id, attackerRef) : null;
+  const target = map ? getTokenByRef(map.id, targetRef) : null;
+  if (!map || !attacker || !target) {
+    return true;
+  }
+  const cover = getTokenByRef(map.id, coverRef);
+  if (!cover || tilesApart(attacker, target) <= 1) {
+    return false;
+  }
+  const ends = nearestSquares(attacker, target);
+  const line = squaresBetween(ends.from, ends.to);
+  return footprintTiles(cover, tokenFootprint(cover)).some((tile) => line.some((square) => square.x === tile.x && square.y === tile.y));
+}
+
 // The creature standing in the line between an attacker and its target,
 // which gives the target half cover (SRD 5.1: "another creature"), or null.
 // Toe to toe nothing stands between them.
