@@ -538,6 +538,12 @@ function useReaction(
 ): ToolResult {
   const encounter = getActiveEncounter(campaign.id);
   const feature = args.feature.trim();
+  // Lucky against an attack spends a luck point and no reaction: a reaction
+  // already used, or a condition that bars reactions, refused it, so the
+  // point could not be spent where the feat allows it.
+  if (isNamed(feature, "lucky", "fortunate", "luck point", "luck points")) {
+    return lucky({ campaign, turn, sheet, args, sheets, sheetsById, encounter });
+  }
   const refused = reactionRefusal(campaign.id, sheet, encounter, feature, timingOfUseReaction(campaign, sheet, args, sheets, sheetsById));
   if (refused) {
     return refused;
@@ -644,9 +650,6 @@ function useReaction(
   }
   if (isNamed(feature, "sentinel", "guarded warrior")) {
     return sentinel(ctx);
-  }
-  if (isNamed(feature, "lucky", "fortunate", "luck point")) {
-    return lucky(ctx);
   }
   if (isNamed(feature, "boundless reserves")) {
     return reservesRecovery(ctx, "ki");

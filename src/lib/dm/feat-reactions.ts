@@ -20,7 +20,9 @@ import { READIED } from "@/lib/dm/object-actions";
 import { handlePcAttack } from "@/lib/dm/pc-attack";
 import { settle, spendReaction, SPENT, type Ctx } from "@/lib/dm/reaction-tools";
 import { proficiencyBonus } from "@/lib/srd";
-import { luckPointsLeft, spendLuckCounter } from "@/lib/srd/class-resources";
+import { luckPointsLeft } from "@/lib/srd/class-resources";
+import { spendRollCarriers } from "@/lib/dm/forced-save";
+import { LUCK_SPEND } from "@/lib/dm/roll-riders";
 import { rollExpression } from "@/lib/dice";
 import { publishPersisted } from "@/lib/events";
 import { defensiveDuelistBonus, hasMageSlayer, hasSentinel } from "@/lib/srd/feat-combat";
@@ -220,11 +222,9 @@ export function lucky(ctx: Ctx): ToolResult {
   if (index === -1) {
     return { error: `${record.attacker.name}'s ${record.attack} has no d20 on record to roll again. Nothing was spent.`, refused: "rules" };
   }
-  const spent = spendLuckCounter(fresh.resources);
-  const patched = spent ? patchSheet(sheet.id, { resources: spent }) : null;
-  if (patched) {
-    publishPersisted(campaign.id, "sheet_updated", { sheet: patched });
-  }
+  // Audited, so an undo of the hit (or of the turn) gives the point back:
+  // a bare patch spent it with no row to undo.
+  spendRollCarriers(campaign.id, sheet.id, LUCK_SPEND);
   const swing = record.swings[index] as SwingRecord & { natural: number };
   const attack = swing.attack ?? record.attack;
   const again = rollExpression("1d20").total;
@@ -236,7 +236,7 @@ export function lucky(ctx: Ctx): ToolResult {
   return {
     ok: true,
     reaction: "Lucky",
-    luckPointsLeft: luckPointsLeft(spent ?? fresh.resources),
+    luckPointsLeft: luckPointsLeft(getSheetById(sheet.id)?.resources),
     applied: stillHits
       ? `Lucky: ${record.attacker.name}'s d20 for the ${attack} rolled again (${swing.natural} and ${again}); the ${natural} still hits.`
       : `Lucky: ${record.attacker.name}'s d20 rolled again (${swing.natural} and ${again}); with the ${natural} the ${attack} misses: ${settled.given} hit points come back. HP ${settled.hp}.`,
