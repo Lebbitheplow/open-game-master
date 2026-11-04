@@ -1117,6 +1117,7 @@
     "lib/dm/attack-logic.ts#number": [["key",2,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "lib/dm/attack-logic.ts#partial": [["pattern",4,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "lib/dm/attack-logic.ts#whole": [["identity",1,"a worn item's weapons (Bracers of Archery: longbow, shortbow) against the SRD weapon's own name, both by textKey"]],
+    "lib/dm/attack-logic.ts#whole-single": [["identity",1,"a worn item's weapons against the one word the unarmed strike goes by, which no sheet or pack writes"]],
     "lib/dm/attack-marks.ts#keyed": [["key",3,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "lib/dm/attack-marks.ts#partial": [["identity",1,"the enemy a mark's \"(note)\" names, by whole display name"]],
     "lib/dm/attack-marks.ts#whole": [["identity",1,"the enemy a mark's \"(note)\" names, by whole display name"],["identity",1,"condition instances by whole name or key"]],

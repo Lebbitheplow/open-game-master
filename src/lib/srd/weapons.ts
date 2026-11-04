@@ -97,6 +97,10 @@ const WEAPON_ROWS: SrdWeapon[] = [
   { name: "Hurled Vial", category: "simple", kind: "ranged", damage: "1d6 acid", properties: ["thrown"], rangeFt: 20 },
 ];
 
+// The word a worn item's rider names the unarmed strike by, beside the SRD
+// weapons' keys. An unarmed strike is no row of the table, so it gets its own.
+export const UNARMED_STRIKE_KEY = "unarmed strike";
+
 export const SRD_WEAPONS: SrdWeapon[] = WEAPON_ROWS.map((weapon) =>
   LONG_RANGE_FT[weapon.name] ? { ...weapon, longRangeFt: LONG_RANGE_FT[weapon.name] } : weapon,
 );

@@ -2913,7 +2913,20 @@
         "demon-armor-a5e"
       ],
       "requiresAttunement": true,
-      "effects": [],
+      "effects": [
+        {
+          "kind": "weapon_rider",
+          "weapons": [
+            "unarmed strike"
+          ],
+          "attack": 1,
+          "damage": 1,
+          "unarmed": {
+            "die": "d8",
+            "damageType": "slashing"
+          }
+        }
+      ],
       "base": {
         "kind": "armor",
         "name": "Plate"

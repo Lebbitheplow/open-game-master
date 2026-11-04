@@ -43,7 +43,7 @@ function effectWords(effect: MagicItemEffect): string {
     case "speed":
       return `${effect.mode} ${effect.feet === "walk" ? "= walking" : `${effect.feet} ft`}`;
     case "weapon_rider":
-      return `${effect.weapons.join(", ")}${effect.proficient ? ": proficient" : ""}${effect.damage ? `, +${effect.damage} damage${effect.ranged ? " at range" : ""}` : ""}`;
+      return `${effect.weapons.join(", ")}${effect.proficient ? ": proficient" : ""}${effect.unarmed ? `, 1${effect.unarmed.die} ${effect.unarmed.damageType}` : ""}${effect.attack ? `, +${effect.attack} to hit${effect.ranged ? " at range" : ""}` : ""}${effect.damage ? `, +${effect.damage} damage${effect.ranged ? " at range" : ""}` : ""}`;
   }
 }
 

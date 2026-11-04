@@ -304,6 +304,29 @@ await test("Vigilant Defender: the fighter makes an opportunity attack on every 
   assert.equal(await walkAway(cavalier, 2), 2, "an opportunity attack on each creature's turn");
 });
 
+await test("Demon Armor: 'clawed gauntlets turn unarmed strikes with your hands into magic weapons that deal slashing damage, with a +1 bonus to attack rolls and damage rolls and a damage die of 1d8', on the turn and on an opportunity attack.", async () => {
+  const wearer = hero({ class: "fighter", level: 18, abilities: { str: 16 }, equipment: [{ name: "Demon Armor", qty: 1, equipped: true, attuned: true }] });
+  const [enemy] = await stage(wearer);
+  const out = await kit.swing(wearer.id, enemy.id, [15, 5], { weapon: "unarmed strike" });
+  assert.equal(out.ok, true, out.error);
+  // 15 + 3 (Strength) + 6 (proficiency) + 1, and 5 + 3 + 1.
+  assert.equal(out.toHit?.total, 25);
+  assert.equal(out.damage?.total, 9);
+  assert.equal(out.result.damageType, "slashing");
+  // The reaction's swing reads the same gauntlets.
+  const before = new Set(kit.lastRolls(60).map((roll) => roll.id));
+  kit.place(wearer.id, 5, 5);
+  kit.place(enemy.id, 5, 6);
+  kit.freshRound();
+  world.clearDice();
+  world.dice(15, 4);
+  await world.invoke("move_token", { token: enemy.id, x: 1, y: 10 });
+  world.clearDice();
+  const swing = newRolls(before).find((roll) => roll.kind === "attack" && roll.characterId === wearer.id);
+  assert.ok(swing, "no opportunity attack was rolled");
+  assert.equal(swing.total, 25, "the opportunity attack lost the gauntlets' bonus");
+});
+
 const samurai = hero({ class: "fighter", subclass: "Samurai", level: 15, abilities: { str: 16 }, equipment: [{ name: "Longsword", qty: 1 }] });
 
 await test("Rapid Strike: once a turn, an attack with advantage forgoes it for one more attack of the Attack action; with no advantage there is nothing to trade.", async () => {
