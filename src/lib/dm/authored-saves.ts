@@ -70,7 +70,10 @@ export function seesOnBoard(encounterId: string, fromRef: string, toRef: string)
   }
   const from = getTokenByRef(map.id, fromRef);
   const to = getTokenByRef(map.id, toRef);
-  if (!from || !to) {
+  // A token off the board's edge (a creature parked out of the scene) is not
+  // judged: nothing on the board stands between.
+  const off = (token: { x: number; y: number }) => token.x < 0 || token.y < 0 || token.x >= map.width || token.y >= map.height;
+  if (!from || !to || off(from) || off(to)) {
     return true;
   }
   return hasLineOfSight(sightTerrainFor(map), map.width, from.x, from.y, to.x, to.y);

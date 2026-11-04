@@ -130,6 +130,13 @@ function asNormalHit(swing: SwingRecord): SwingRecord {
   };
 }
 
+// "A creature you can see": the one the hit fell on (authored `sees`), asked
+// after the reach, which says more when both fail.
+function unseenTarget(ctx: Ctx, found: Found, seen: CharacterSheet): ToolError | null {
+  if (found.reaction.sees !== "target" || seen.id === found.holder.id) return null;
+  return unseenRefusal(ctx.encounter?.id, found.holder, seen, found.reaction.name);
+}
+
 function lastHitOn(ctx: Ctx, target: CharacterSheet, label: string, which?: (hit: LastHit) => (swing: SwingRecord) => boolean, what?: string): { record: LastHit; index: number } | ToolError {
   // Of several open hits, the heaviest blow it can still answer.
   const record = freshLastHit(
@@ -302,12 +309,6 @@ export function authoredReaction(ctx: Ctx): ToolResult | null {
   if (walled) {
     return walled;
   }
-  // "A creature you can see": the one the hit fell on (authored `sees`).
-  if (reaction.sees === "target") {
-    const seen = ally ?? ctx.sheet;
-    const unseen = seen.id === holder.id ? null : unseenRefusal(ctx.encounter?.id, holder, seen, reaction.name);
-    if (unseen) return unseen;
-  }
   const outcome = resolve(ctx, found);
   if ("error" in outcome) {
     return outcome;
@@ -390,6 +391,8 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (does.rangeFt && encounter && covered.id !== ctx.sheet.id && !withinFeet(encounter.id, ctx.sheet.id, covered.id, does.rangeFt)) {
         return { error: `${covered.name} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
       }
+      const hidden = unseenTarget(ctx, found, covered);
+      if (hidden) return hidden;
       const hit = lastHitOn(ctx, covered, label);
       if ("error" in hit) return hit;
       const swing = hit.record.swings[hit.index];
@@ -461,6 +464,8 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (encounter && !withinFeet(encounter.id, ctx.sheet.id, ally.id, does.rangeFt)) {
         return { error: `${ally.name} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
       }
+      const hidden = unseenTarget(ctx, found, ally);
+      if (hidden) return hidden;
       const hit = lastHitOn(ctx, ally, label);
       if ("error" in hit) return hit;
       const swing = hit.record.swings[hit.index];
@@ -840,6 +845,8 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (!ally || ally.id === ctx.sheet.id) {
         return { error: `${reaction.name} sends the echo into an attack that hit another creature: pass that ally's targetCharacterId. Nothing was spent.`, retry: true };
       }
+      const hidden = unseenTarget(ctx, found, ally);
+      if (hidden) return hidden;
       const hit = lastHitOn(ctx, ally, label);
       if ("error" in hit) return hit;
       const swing = hit.record.swings[hit.index];
@@ -879,6 +886,8 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (encounter && target.id !== ctx.sheet.id && !withinFeet(encounter.id, ctx.sheet.id, target.id, does.rangeFt)) {
         return { error: `${target.name} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
       }
+      const hidden = unseenTarget(ctx, found, target);
+      if (hidden) return hidden;
       const hit = lastHitOn(ctx, target, label, (entry) => (swing) => critTurnsNormal(entry, swing), `a critical hit on ${target.name}`);
       if ("error" in hit) return hit;
       const settled = settle(ctx, hit.record, hit.record.swings.map((entry, at) => (at === hit.index ? asNormalHit(entry) : entry)), label);

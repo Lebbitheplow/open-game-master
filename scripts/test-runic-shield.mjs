@@ -97,15 +97,18 @@ await test("A hit on the holder offers no card, and the reaction refuses it with
 
 await test("An ally beyond 60 feet is refused: nothing spent, the reaction kept, the hit standing. Exactly 60 feet reaches.", async () => {
   const enemy = await stage();
-  kit.place(ally.id, 5, 18);
-  kit.place(enemy.id, 5, 19);
+  // On open ground and on the board (20 by 15): the knight must see the ally too.
+  kit.openField();
+  kit.place(knight.id, 1, 5);
+  kit.place(ally.id, 14, 5);
+  kit.place(enemy.id, 14, 6);
   await strike(enemy, ally);
   const out = await shield([2]);
   assert.match(out.error, /beyond 60 feet/);
   assert.equal(used(), 0);
   assert.equal(world.sheet(ally.id).currentHp, 44);
   assert.ok(reactionKept());
-  kit.place(ally.id, 5, 17);
+  kit.place(ally.id, 13, 5);
   const reached = await shield([2]);
   assert.equal(reached.ok, true, reached.error);
 });

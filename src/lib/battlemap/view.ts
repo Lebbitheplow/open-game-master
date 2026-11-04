@@ -629,7 +629,10 @@ export function buildPlayerMapView(
           const sight = sightTerrainFor(map);
           return {
             feet: Object.fromEntries(others.map((token) => [token.refId, tilesApart(myToken, token) * 5])),
-            unseen: others.filter((token) => !hasLineOfSight(sight, map.width, myToken.x, myToken.y, token.x, token.y)).map((token) => token.refId),
+            unseen: others
+              .filter((token) => token.x >= 0 && token.y >= 0 && token.x < map.width && token.y < map.height)
+              .filter((token) => !hasLineOfSight(sight, map.width, myToken.x, myToken.y, token.x, token.y))
+              .map((token) => token.refId),
           };
         })()
       : {}),
