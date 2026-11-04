@@ -421,10 +421,10 @@ function slowFall(ctx: Ctx): ToolResult {
 // creature is judged as the reactor is now; one for themselves by what it
 // does to the hit: an authored reaction by its effect, a spell and every
 // named feature by the table.
-function timingOfUseReaction(
+export function timingOfUseReaction(
   campaign: Campaign,
   sheet: CharacterSheet,
-  args: Args,
+  args: Pick<Args, "feature" | "targetCharacterId">,
   sheets: CharacterSheet[],
   sheetsById: Map<string, CharacterSheet>,
 ): ReactionTiming {
