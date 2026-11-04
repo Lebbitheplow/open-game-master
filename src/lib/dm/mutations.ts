@@ -1702,6 +1702,7 @@ function dmMutation(
           result: storeSpell(
             campaign,
             turnId,
+            sheet,
             holder,
             { storeIn: args.storeIn.trim(), spell, ...(args.level !== undefined ? { level: args.level } : {}), ...(args.storedBy ? { storedBy: args.storedBy } : {}) },
             (input) =>

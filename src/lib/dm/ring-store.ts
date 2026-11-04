@@ -12,6 +12,7 @@ import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
 import { findNamed } from "@/lib/language/text-logic";
 import { computeSheetDerived, spellAttackFor, spellSaveDcFor } from "@/lib/srd";
 import { recordItemCast, runningItemSpell, type ItemCast } from "@/lib/srd/item-cast-credit";
+import { rowName } from "@/lib/srd/item-row";
 import {
   isSpellStorer,
   SPELL_STORE_LEVELS,
@@ -27,6 +28,34 @@ export function storerNamed(sheet: CharacterSheet, itemName: string): EquipmentI
 
 function withStored(equipment: readonly EquipmentItem[], ring: EquipmentItem, storedSpells: StoredSpell[]): EquipmentItem[] {
   return equipment.map((item) => (item === ring ? { ...item, storedSpells: storedSpells.length ? storedSpells : undefined } : item));
+}
+
+// A second ring on one row: this one takes the spell, and the rest of the stack
+// becomes a row of its own under a name of its own, since the sheet and the
+// tools tell rows apart by name. The ring being worn stays what it is; the others
+// are in the pack, unworn and unattuned.
+function splitStack(equipment: readonly EquipmentItem[], ring: EquipmentItem): { equipment: EquipmentItem[]; ring: EquipmentItem } {
+  if (ring.qty <= 1) {
+    return { equipment: [...equipment], ring };
+  }
+  let number = 2;
+  while (findNamed(equipment, `${ring.name} (${number})`, (item) => [item.name])) {
+    number += 1;
+  }
+  const one = { ...ring, qty: 1 };
+  const rest: EquipmentItem = {
+    ...ring,
+    name: `${ring.name} (${number})`,
+    srdName: rowName(ring),
+    qty: ring.qty - 1,
+    equipped: false,
+    attuned: undefined,
+    attuning: undefined,
+    layered: undefined,
+    storedSpells: undefined,
+    castRunning: undefined,
+  };
+  return { equipment: equipment.flatMap((item) => (item === ring ? [one, rest] : [item])), ring: one };
 }
 
 // Why this spell at this level cannot go in the ring as it stands, or null. A
@@ -62,7 +91,8 @@ export function putInRing(campaign: Campaign, turnId: string | null, holderId: s
   const holder = getSheetById(holderId);
   const ring = holder ? storerNamed(holder, ringName) : null;
   if (holder && ring) {
-    writeCharges(campaign.id, holder, withStored(holder.equipment, ring, [...storedSpellsOf(ring), entry]), "use_spell_slot", `${entry.spell} stored in ${ring.name}`, turnId);
+    const split = splitStack(holder.equipment, ring);
+    writeCharges(campaign.id, holder, withStored(split.equipment, split.ring, [...storedSpellsOf(ring), entry]), "use_spell_slot", `${entry.spell} stored in ${ring.name}`, turnId);
   }
 }
 

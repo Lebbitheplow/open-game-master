@@ -12,6 +12,10 @@
 // person standing there would know, and a DM's wrong call should not cost a
 // player a slot.
 //
+// SRD 5.1: the caster casts it "by touching the ring as the spell is cast", so
+// on a mapped fight someone else's ring must be beside them. No map, no distance
+// to hold them to.
+//
 // A reaction spell cast into the ring has no trigger to answer, so in a fight
 // it takes the caster's action rather than their reaction. A spell of a minute
 // or more is held across turns as any other casting is (long-casting.ts), going
@@ -35,6 +39,8 @@ import { castingRoundsOf } from "@/lib/dm/long-casting-logic";
 import { readiedReleaseFor } from "@/lib/dm/readied-release";
 import { creditStoredSpell, putInRing, storeRefusal, storerNamed } from "@/lib/dm/ring-store";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
+import { swallowCoverError } from "@/lib/dm/swallow";
+import { tilesBetween } from "@/lib/dm/attack-spatial";
 import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -56,6 +62,7 @@ export type StoreRequest = {
 export function storeSpell(
   campaign: Campaign,
   turnId: string,
+  caster: CharacterSheet,
   holder: CharacterSheet,
   request: StoreRequest,
   cast: (input: { spell: string; level?: number; dryRun?: boolean; storing: CastStoring }) => CastResult,
@@ -91,6 +98,17 @@ export function storeSpell(
     return { ok: true, storedIn: ring.name, holder: holder.name, spell: name, level, levelsFree: storeLevelsFree(ring) - level, saveDc: entry.saveDc, attackBonus: entry.attackBonus, note: waits };
   }
 
+  if (caster.id !== holder.id) {
+    const walled = swallowCoverError(caster.id, holder.id);
+    if (walled) {
+      return walled;
+    }
+    const encounter = getActiveEncounter(campaign.id);
+    const apart = encounter ? tilesBetween(encounter.id, caster.id, holder.id) : null;
+    if (apart !== null && apart > 1) {
+      return { error: `${caster.name} must touch ${ring.name} to cast a spell into it, and ${holder.name} is ${apart * 5} ft away. They must move next to them first. Nothing was spent.`, refused: "rules" };
+    }
+  }
   // The guard asks whether it fits, by the slot it will really use: a warlock's
   // pact slot sets its own level.
   const asked = { spell: name, ...(request.level !== undefined ? { level: request.level } : {}), storing: { ring: ring.name, holderId: holder.id } };

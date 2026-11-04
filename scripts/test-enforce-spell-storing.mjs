@@ -21,7 +21,7 @@ import { fightDummies, wizard } from "./lib/enforce-spells.mjs";
 import { handOnDue } from "./lib/enforce-zones.mjs";
 import { nextTurn } from "./lib/enforce-spell-tail.mjs";
 import { combatKit } from "./lib/enforce-combat.mjs";
-import { board, zonesOf } from "./lib/enforce-zones.mjs";
+import { board, place, zonesOf } from "./lib/enforce-zones.mjs";
 
 const { test, finish } = suite("test-enforce-spell-storing");
 const { magicItemLine } = await import("../src/lib/dm/item-summary.ts");
@@ -438,6 +438,43 @@ await test("A stored area spell is laid on the board like any other cast, and on
   assert.equal(cast.ok, true, JSON.stringify(cast));
   assert.equal(zonesOf(world).length, before + 1, "the web is on the board");
   assert.deepEqual(held(world, hero), []);
+});
+
+await test("A caster must touch someone else's ring: on a mapped fight it must be beside them, and nothing is spent until it is", async () => {
+  const { world, sheets: [mage, fighter] } = await board(
+    [wizard(9, { name: "Mage" }), { class: "fighter", level: 5, name: "Brute", equipment: [ring()] }],
+    { 0: { x: 2, y: 8 }, 1: { x: 9, y: 8 }, e0: { x: 18, y: 4 } },
+  );
+  worlds.push(world);
+  const asked = { characterId: mage.id, spell: "Magic Missile", storeIn: RING, storeInCharacterId: fighter.id };
+  const far = await world.invoke("use_spell_slot", asked);
+  assert.equal(far.ok, false, JSON.stringify(far));
+  assert.match(far.error, /must touch/);
+  assert.equal(used(world, mage, 1), 0);
+  assert.deepEqual(held(world, fighter), []);
+  place(world, mage.id, 8, 8);
+  const near = await world.invoke("use_spell_slot", asked);
+  assert.equal(near.ok, true, JSON.stringify(near));
+  assert.equal(held(world, fighter)[0].spell, "Magic Missile");
+});
+
+await test("Two rings on one row split as one takes a spell: each keeps its own, and the other is in the pack unattuned", async () => {
+  const { world, mage, fighter } = await table({ fighterRing: ring({ qty: 2 }) });
+  const first = await world.invoke("use_spell_slot", { characterId: mage.id, spell: "Fireball", level: 3, storeIn: RING, storeInCharacterId: fighter.id });
+  assert.equal(first.ok, true, JSON.stringify(first));
+  const [one, other] = world.sheet(fighter.id).equipment.filter((item) => item.name.startsWith(RING));
+  assert.deepEqual([one.name, one.qty, one.equipped, one.attuned], [RING, 1, true, true]);
+  assert.deepEqual(one.storedSpells.map((entry) => entry.spell), ["Fireball"]);
+  assert.deepEqual([other.name, other.qty, other.equipped ?? false, other.attuned ?? false, other.storedSpells ?? null], [`${RING} (2)`, 1, false, false, null]);
+  // Five levels each: this one has two left, and the other all five.
+  const second = await world.invoke("use_spell_slot", { characterId: mage.id, spell: "Fireball", level: 3, storeIn: `${RING} (2)`, storeInCharacterId: fighter.id });
+  assert.equal(second.ok, true, JSON.stringify(second));
+  const after = world.sheet(fighter.id).equipment.filter((item) => item.name.startsWith(RING));
+  assert.deepEqual(after.map((item) => (item.storedSpells ?? []).map((entry) => entry.spell)), [["Fireball"], ["Fireball"]]);
+  assert.match(magicItemLine(after[1], after), /holds Fireball/, "the split ring is still a Ring of Spell Storing");
+  // The unworn one casts nothing until it is put on and attuned.
+  const unworn = await world.invoke("use_item", { characterId: fighter.id, item: `${RING} (2)`, spell: "Fireball" });
+  assert.equal(unworn.ok, false, JSON.stringify(unworn));
 });
 
 await test("GAME STATE says what the ring holds and what is free, and a mystery ring gives nothing away", () => {
