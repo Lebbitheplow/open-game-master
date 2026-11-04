@@ -261,7 +261,7 @@ function ComposerInner({
     <form onSubmit={onSubmit} className="glass session-desk cine-desk border-t border-stone-700/40 px-3 pb-3 pt-2.5">
       <div className="session-desk-body mx-auto max-w-3xl sm:px-3">
         <div className="session-compose-notices">
-        {pendingRolls.map((pending) => pending.thrown ? (
+        {pendingRolls.map((pending) => pending.thrown && hostOffers(capabilities, "afterRollChoice") ? (
           <AfterRollCard
             key={pending.id}
             campaignId={campaignId}

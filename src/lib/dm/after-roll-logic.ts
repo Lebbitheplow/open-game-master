@@ -2,8 +2,9 @@
 // what it did. The Lucky feat, a held Bardic Inspiration die and Dark One's Own
 // Luck are decided after the die lands and before the outcome. Rolled up front,
 // a Bardic Inspiration die was spent on a natural 20 and a luck point was spent
-// blind. This covers the checks and saves request_roll throws; an attack roll
-// still takes them as it always did.
+// blind. This covers the checks and saves request_roll throws; the rolls that
+// cannot wait add a held die only where it carries the roll
+// (src/lib/dm/forced-save.ts settleHeldDie).
 //
 // A pause costs the whole table its narration, so it is only offered when an
 // ability can change the result: never on a roll that already succeeds, and
@@ -15,8 +16,7 @@
 
 import type { DiceTerm, DieResult, RollResult } from "@/lib/dice";
 import { luckPointsLeft } from "@/lib/srd/class-resources";
-import { hasHalflingLuck } from "@/lib/srd/feature-effects";
-import { holdsFeature, isNamed } from "@/lib/srd/feature-names";
+import { holdsFeature } from "@/lib/srd/feature-names";
 import { textKey } from "@/lib/language/text-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -36,8 +36,8 @@ const OWN_LUCK_DIE = "d10";
 export type ThrownRoll = {
   outcome: RollResult;
   options: AfterRollOption[];
-  // What this roll has already taken. A die rides one roll once; only a luck
-  // point may be spent again.
+  // What this roll has already taken: each of them rides a roll once, a luck
+  // point too (with no DC the card would ask again after every pick).
   spent?: AfterRollId[];
   // A luck point's extra d20 has landed: the player picks the die to keep.
   choosing: boolean;
@@ -88,11 +88,11 @@ function leadD20(outcome: RollResult): DiceTerm | null {
   return lead && lead.kind === "dice" && lead.sides === 20 && lead.sign === 1 ? lead : null;
 }
 
-// A luck point the character can spend. A halfling's own Lucky trait shares
-// the feat's name and comes with a counter of its own for no reason of the
-// rules: the trait rerolls a natural 1 by itself, and offers no point.
+// A luck point the character can spend. Only the feat holds them: a
+// halfling's Lucky trait gets no counter (src/lib/srd/class-resources.ts
+// featOnly).
 export function holdsLuckPoint(sheet: CharacterSheet): boolean {
-  return luckPointsLeft(sheet.resources) > 0 && (!hasHalflingLuck(sheet) || sheet.feats.some((feat) => isNamed(feat, "lucky", "fortunate")));
+  return luckPointsLeft(sheet.resources) > 0;
 }
 
 // The die the warlock would add: one already called up and held on them
@@ -116,18 +116,25 @@ export function afterRollOptions(
   const taken = new Set(roll.spent ?? []);
   const options: AfterRollOption[] = [];
   // A fresh d20 can land at best a 20.
-  if (holdsLuckPoint(sheet) && (outcome.natural === undefined || reaches(20 - outcome.natural))) {
-    options.push({ id: "lucky", label: "Lucky", note: "Spend a luck point: roll another d20, then choose which die counts." });
+  if (holdsLuckPoint(sheet) && !taken.has("lucky") && (outcome.natural === undefined || reaches(20 - outcome.natural))) {
+    options.push({ id: "lucky", label: "Lucky: roll another d20", note: "Spend a luck point: roll another d20, then choose which die counts." });
   }
   const bardic = heldBardicDie(sheet);
   if (bardic && !taken.has("bardic") && reaches(sidesOf(bardic.die))) {
-    options.push({ id: "bardic", label: `Bardic Inspiration (${bardic.die})`, note: `Spend your Bardic Inspiration die: add 1${bardic.die} to this roll.` });
+    options.push({ id: "bardic", label: `Add Bardic Inspiration (${bardic.die})`, note: `Spend your Bardic Inspiration die: add 1${bardic.die} to this roll.` });
   }
   const own = ownLuckDie(sheet);
   if (own && !taken.has("own_luck") && reaches(sidesOf(own))) {
-    options.push({ id: "own_luck", label: `Dark One's Own Luck (${own})`, note: `Add 1${own} to this check or save.` });
+    options.push({ id: "own_luck", label: `Add Dark One's Own Luck (${own})`, note: `Add 1${own} to this check or save.` });
   }
   return options;
+}
+
+// A luck point spent before the throw (request_roll luck: true) put one d20
+// more in the pool than the advantage asks for: that was the roll's one.
+export function luckRodeThrow(expression: string, advantage: string): boolean {
+  const match = /^(\d+)d20/.exec(expression.replace(/\s+/g, ""));
+  return match ? Number(match[1]) > (advantage === "none" ? 1 : 2) : false;
 }
 
 // The roll with a bonus die added, the way the dice engine would have written

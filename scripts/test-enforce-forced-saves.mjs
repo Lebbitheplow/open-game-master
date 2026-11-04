@@ -128,14 +128,25 @@ await test("a lasting effect on saves applies to a forced save", async () => {
   }
 });
 
-await test("a forced save spends the inspiration die it adds", async () => {
+await test("a forced save adds a held inspiration die once the d20 falls short and the die can carry it, and spends it then only", async () => {
+  // SRD 5.1 Bardic Inspiration: the holder may decide after the d20 is rolled.
   reset();
   world.patch(scout.id, { conditions: ["bardic inspiration (d6)"] });
-  world.dice(10, 4, 1);
-  const out = await hex(scout, { saveAbility: "con", dc: 10, damage: "1d4" });
+  world.dice(10, 1);
+  const passed = await hex(scout, { saveAbility: "con", dc: 10, damage: "1d4" });
   world.clearDice();
-  assert.equal(out.result.save, 10 + 4 + abilityMod(14));
-  assert.deepEqual(world.sheet(scout.id).conditions, [], "the inspiration die was rolled and kept");
+  assert.equal(passed.result.save, 10 + abilityMod(14));
+  assert.deepEqual(world.sheet(scout.id).conditions, ["bardic inspiration (d6)"], "a save that passes keeps the die: it rode every save before");
+  world.dice(1, 1);
+  const hopeless = await hex(scout, { saveAbility: "con", dc: 10, damage: "1d4" });
+  world.clearDice();
+  assert.equal(hopeless.result.save, 1 + abilityMod(14));
+  assert.deepEqual(world.sheet(scout.id).conditions, ["bardic inspiration (d6)"], "a d6 cannot lift 3 to 10: kept");
+  world.dice(5, 4, 1);
+  const carried = await hex(scout, { saveAbility: "con", dc: 10, damage: "1d4" });
+  world.clearDice();
+  assert.equal(carried.result.save, 5 + 4 + abilityMod(14));
+  assert.deepEqual(world.sheet(scout.id).conditions, [], "the die that carried the save is spent");
 });
 
 await test("The DM console's forms for Cast at a player and Cast at an enemy reach the engine.", async () => {

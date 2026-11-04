@@ -17,6 +17,7 @@ import { getActiveEncounter } from "@/lib/db/encounters";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { canAct, type ActKind } from "@/lib/dm/can-act";
 import { reactionRefusal } from "@/lib/dm/reaction-gate";
+import { spendsNoReaction } from "@/lib/dm/reaction-kinds";
 import { timingOfUseReaction } from "@/lib/dm/reaction-tools";
 import { listSheets } from "@/lib/db/sheets";
 import { withHitAim } from "@/lib/dm/last-hit";
@@ -120,6 +121,12 @@ export function intentRefusal(
   // its card answers: one that answers the blow that dropped them, or is
   // taken as they drop (Necrotic Husk, Stone's Endurance), is open to a hero
   // at 0, where a bare canAct refused every card a fallen hero's Hand offers.
+  // Lucky is no reaction (reaction-kinds.ts spendsNoReaction): use_reaction
+  // judges it alone, and its card stays open after the reaction is spent.
+  const noReaction = intent.card === "reaction" && spendsNoReaction(intent.feature ?? "");
+  if (noReaction) {
+    return null;
+  }
   if (intent.card === "reaction") {
     const sheets = listSheets(campaign.id);
     const timing = timingOfUseReaction(

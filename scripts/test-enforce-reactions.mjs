@@ -242,6 +242,25 @@ await test("A luck point after a multiattack rolls the d20 of the hit worth turn
   assert.equal(hp(rogue), 27);
 });
 
+await test("Lucky takes no reaction: a rogue who already used Uncanny Dodge still spends a luck point, and the spend is audited", async () => {
+  const { listRecentAudit } = await import("../src/lib/db/sheet-audit.ts");
+  const enemy = await stage();
+  const before = world.sheet(rogue.id);
+  world.patch(rogue.id, { feats: [...before.feats, "Lucky"], resources: { ...before.resources, luck_points: { max: 3, used: 0 } } });
+  kit.setEnemy(enemy.id, { stats: { ...SLASH_THEN_STAB, routines: [[{ attack: "Scimitar", count: 1 }]] } });
+  await enemyHits(enemy, rogue, [15, 6]);
+  const dodged = await react(rogue, "Uncanny Dodge");
+  assert.equal(dodged.ok, true, dodged.error);
+  world.dice(2);
+  const out = await react(rogue, "Lucky");
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.sheet(rogue.id).resources.luck_points.used, 1);
+  const row = listRecentAudit(world.campaignId, 20).find((entry) => entry.characterId === rogue.id && entry.kind === "use_resource" && /luck point/.test(JSON.stringify(entry.delta)));
+  assert.ok(row, "the point's spend has an audit row");
+  world.patch(rogue.id, { feats: before.feats, resources: before.resources });
+});
+
 await test("A routine that shoots and stabs offers Deflect Missiles or Parry by the hit it names, not by its last swing", async () => {
   const enemy = await stage();
   const BLADE = { name: "Glaive", toHit: 4, damage: "1d6+2", type: "slashing", mode: "melee", reach: 10 };

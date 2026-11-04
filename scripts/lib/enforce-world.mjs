@@ -95,6 +95,13 @@ function mulberry32(seed) {
   };
 }
 
+// Math.random decides what the dice queue does not hold: the sky a long leg
+// rolls (src/lib/srd/weather.ts rollWeather), a world tick's choices. Seeded,
+// every run of a suite reads the same sky; left real, about one road in forty
+// turned bitterly cold, and the cold's hourly saves took the dice a test had
+// queued for something else (test-enforce-death's march, a full run's flake).
+Math.random = mulberry32(0x0d1ce);
+
 crypto.randomInt = function forcedRandomInt(min, max, callback) {
   const die = min === 1 && typeof max === "number" && typeof callback !== "function";
   if (die && queue.length && queue[0] === null) {

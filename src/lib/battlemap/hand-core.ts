@@ -133,6 +133,9 @@ export type HandCard = {
   // hit points when absent (Lay on Hands).
   unit?: string;
   intent: HandIntent;
+  // An ally card the holder cannot aim at themselves (Blessing of the
+  // Trickster's "other than yourself"): the aim bar leaves out their chip.
+  othersOnly?: boolean;
   // The class options this attack may carry, each already judged by the
   // engine's checkAttackOptions (Reckless Attack, Stunning Strike, knock out).
   options?: HandAttackOption[];

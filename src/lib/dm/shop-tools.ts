@@ -19,7 +19,7 @@ import { SRD_WEAPONS } from "@/lib/srd/weapons";
 import { rollExpression } from "@/lib/dice";
 import { grantItemMath, removeItemMath } from "@/lib/dm/mutation-math";
 import { resolveRollExpression, resolveSheetRef, type RollArgs, unknownSheetRef } from "@/lib/dm/rolls";
-import { rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
+import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
 import { sheetsAgainstParty } from "@/lib/dm/combat-sides";
 import { canAct } from "@/lib/dm/can-act";
 import { incapacitatedBy } from "@/lib/dm/condition-logic";
@@ -602,17 +602,19 @@ export function handleHaggle(campaign: Campaign, rawArguments: string, at: Trade
   }
   // Held carriers and lasting effects ride the haggling check, and the
   // carrier is spent by it.
+  const dc = haggleDc(shop.size);
+  const waits = heldDieWaits(sheet, dc);
   const resolved = resolveRollExpression(
     { kind: "skill_check", skill } as unknown as RollArgs,
     sheet,
-    rollExtrasFor(campaign, sheet, "skill_check"),
+    { ...rollExtrasFor(campaign, sheet, "skill_check"), keepHeldDie: waits },
   );
   if ("error" in resolved || "autoFail" in resolved) {
     return "error" in resolved ? resolved : { error: `${sheet.name} cannot make that check.`, refused: "rules" };
   }
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-  const dc = haggleDc(shop.size);
-  const rolled = rollExpression(resolved.expression);
+  const thrown = rollExpression(resolved.expression);
+  const rolled = waits ? settleHeldDie(campaign.id, sheet.id, thrown, dc) : thrown;
   const roll = insertRoll({ campaignId: campaign.id, characterId: sheet.id, requestedBy: "dm", kind: "skill_check", detail: `${sheet.name}: haggling at ${shop.name} (${SKILL_LABEL[skill]})`, dc, result: rolled });
   publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
   const steps = haggleSteps(skill, rolled.total, dc);

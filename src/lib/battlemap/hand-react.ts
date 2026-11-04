@@ -32,7 +32,7 @@ import {
 import { spellNames } from "@/lib/battlemap/hand-spells";
 import { COMMANDED, wieldsMeleeOrShield } from "@/lib/dm/maneuver-rules";
 import { HIT_ANSWER_COUNTERS, reachAtLevel, reactionTimingOf, timingOfDoes } from "@/lib/dm/reaction-kinds";
-import { resourceDef } from "@/lib/srd/class-resources";
+import { LUCK_POINTS, resourceDef } from "@/lib/srd/class-resources";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { vowedFoe } from "@/lib/srd/vow-of-enmity";
@@ -283,6 +283,17 @@ export function reactionCards(
       }
       if (hit.ranged && holdsFeature(sheet, "deflect missiles")) {
         feature(hit, "Deflect Missiles", prompt, "Take 1d10 + DEX + monk level off a ranged weapon hit.");
+      }
+      // Lucky (src/lib/dm/feat-reactions.ts lucky): a luck point and no
+      // reaction, so the card stays open once the reaction is spent.
+      if (counterLeft(LUCK_POINTS) && !answered(hit, "Lucky")) {
+        cards.push({
+          ...base(`lucky:${hit.characterId}${tail(hit)}`, "Lucky", prompt, "none", aimedIntent({ card: "reaction", feature: "Lucky" }, hit), {
+            rules: "Spend a luck point: the attacker's d20 is rolled again and the lower one counts.",
+            ...answering(hit),
+          }),
+          cost: "free",
+        });
       }
       if (hit.attackerId && !answered(hit, "Hellish Rebuke")) {
         const rebuke = spellReaction(sheet, turn, "Hellish Rebuke", prompt, `${hit.attacker} makes a DEX save against 2d10 fire.`, "enemy", hit, tail(hit));

@@ -239,6 +239,10 @@ export type ResourceDef = {
   // The character level the counter starts at (a tiefling's hellish rebuke
   // at 3rd); below it the sheet holds no counter.
   minLevel?: number;
+  // A feat's counter: a species trait of the same name is not the feat. A
+  // halfling's Lucky trait rerolls a natural 1 and has no luck points, and
+  // read as the feat it gave every halfling three to spend.
+  featOnly?: boolean;
   // When the refill depends on the level the counter is held at (Bardic
   // Inspiration comes back on a short rest from bard 5, Font of
   // Inspiration). Overrides `recharge` for rests that know the sheet.
@@ -358,6 +362,7 @@ const SRD_RESOURCE_DEFS: ResourceDef[] = [
     id: "luck_points",
     match: ["lucky", "fortunate"],
     exact: true,
+    featOnly: true,
     displayName: "Luck Points",
     maxFor: () => 3,
     recharge: "long",
@@ -458,7 +463,7 @@ const SRD_RESOURCE_DEFS: ResourceDef[] = [
     action: "bonus",
     effect: { kind: "inspire", die: inspirationDie },
     guidance:
-      "The target keeps the inspiration die for up to 10 minutes and adds it to one ability check, attack roll, or saving throw. The server hands it to them. On a check or save from request_roll they choose after they see the roll: the server offers it and waits, so do not spend it for them. Any other d20 roll they make takes it automatically. From bard 5 (Font of Inspiration) the uses come back on a short rest too.",
+      "The target keeps the inspiration die for up to 10 minutes and adds it to one ability check, attack roll, or saving throw. The server hands it to them. On a check or save from request_roll they choose after they see the roll: the server offers it and waits, so do not spend it for them. Any other d20 roll takes it only to turn a failure into a success. From bard 5 (Font of Inspiration) the uses come back on a short rest too.",
   },
   {
     id: "wild_shape",
@@ -911,7 +916,10 @@ const withoutUses = (name: string) => name.replace(/\s*\((?:\d+|[a-z]+) uses?\)\
 // class that granted the feature is one the counter was written for.
 // A feature that names no class (story grants, sheets written before the
 // class was kept) is matched on its name alone.
-function featureHolds(def: ResourceDef, feature: { name: string; classId?: string }): boolean {
+function featureHolds(def: ResourceDef, feature: { name: string; classId?: string; source?: string }): boolean {
+  if (def.featOnly && feature.source === "race") {
+    return false;
+  }
   if (def.grantedBy?.length && feature.classId) {
     const granting = feature.classId.toLowerCase();
     if (!def.grantedBy.some((classId) => classId.toLowerCase() === granting)) {
@@ -987,7 +995,7 @@ export function resourceLevel(
 // uses. Resources whose feature disappeared are dropped. On multiclass
 // sheets each counter is sized by ITS class's level (ki = monk level).
 export function populateResources(
-  features: Array<{ name: string; classId?: string }>,
+  features: Array<{ name: string; classId?: string; source?: string }>,
   level: number,
   abilityMods: Record<string, number>,
   existing: ResourceMap | undefined,
@@ -999,7 +1007,7 @@ export function populateResources(
   campaignId?: string,
 ): ResourceMap {
   const out: ResourceMap = {};
-  const held_all: Array<{ name: string; classId?: string }> = [
+  const held_all: Array<{ name: string; classId?: string; source?: string }> = [
     ...features,
     ...(feats ?? []).map((name) => ({ name: tableFeat(name, campaignId)?.runsAs ?? name })),
   ];

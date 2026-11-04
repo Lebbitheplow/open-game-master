@@ -216,6 +216,11 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
         }
         lines.push(`${touched.map((entry) => entry.name).join(", ")}: ${condition} for ${does.rounds} rounds.`);
       } else if (does.target === "ally") {
+        // "Other than yourself": named or not, the holder is refused before
+        // the use is paid, where it once landed on them.
+        if (does.othersOnly && (!ctx.args.targetCharacterId || ctx.args.targetCharacterId === sheet.id)) {
+          return { error: `${ctx.spend.name} goes to a willing creature other than ${sheet.name}: pass targetCharacterId of an ally. Nothing was spent.`, retry: true };
+        }
         const ally = ctx.args.targetCharacterId ? getSheetById(ctx.args.targetCharacterId) : sheet;
         if (!ally || ally.campaignId !== campaign.id) {
           return { error: `${ctx.spend.name} goes to a creature at the table: pass targetCharacterId. Nothing was spent.`, retry: true };

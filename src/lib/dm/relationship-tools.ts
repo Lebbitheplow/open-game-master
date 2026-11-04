@@ -55,7 +55,7 @@ import type { DmTurn } from "@/lib/db/dm-turns";
 import { rollExpression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
 import { resolveRollExpression, unknownSheetRef } from "@/lib/dm/rolls";
-import { rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
+import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
 import type { RollArgs } from "@/lib/dm/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
@@ -336,19 +336,22 @@ export function handleRelationshipBeat(
   if (spec.skill) {
     // Held carriers and lasting effects ride the check, and the carrier is
     // spent by it.
+    // An NPC keeping up an act takes a charm as the warmth they show would
+    // (src/lib/dm/scheme-logic.ts): every outward rule reads the act.
+    const target = beatDc(outwardApproval(relationship));
+    const waits = heldDieWaits(sheet, target);
     const resolved = resolveRollExpression(
       { kind: "skill_check", skill: spec.skill } as unknown as RollArgs,
       sheet,
-      rollExtrasFor(campaign, sheet, "skill_check"),
+      { ...rollExtrasFor(campaign, sheet, "skill_check"), keepHeldDie: waits },
     );
     if ("error" in resolved || "autoFail" in resolved) {
       return "error" in resolved ? resolved : { error: `${sheet.name} cannot make that check.`, refused: "rules" };
     }
     spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-    // An NPC keeping up an act takes a charm as the warmth they show would
-    // (src/lib/dm/scheme-logic.ts): every outward rule reads the act.
-    dc = beatDc(outwardApproval(relationship));
-    const rolled = rollExpression(resolved.expression);
+    dc = target;
+    const thrown = rollExpression(resolved.expression);
+    const rolled = waits ? settleHeldDie(campaign.id, sheet.id, thrown, target) : thrown;
     rollTotal = rolled.total;
     const roll = insertRoll({
       campaignId: campaign.id,

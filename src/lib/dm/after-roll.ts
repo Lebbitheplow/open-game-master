@@ -16,6 +16,7 @@ import {
   heldBardicDie,
   heldOwnLuckDie,
   holdsMoteDie,
+  luckRodeThrow,
   ownLuckDie,
   sidesOf,
   withBonusDie,
@@ -52,7 +53,8 @@ export function optionsForPending(pending: PendingRoll, outcome: RollResult, spe
   if (!sheet || !rollsCanWait(sheet)) {
     return [];
   }
-  return afterRollOptions(sheet, { kind: pending.kind, outcome, dc: pending.dc, spent });
+  const upFront: AfterRollId[] = luckRodeThrow(pending.expression, pending.advantage) ? ["lucky"] : [];
+  return afterRollOptions(sheet, { kind: pending.kind, outcome, dc: pending.dc, spent: [...spent, ...upFront] });
 }
 
 // The player's choice, paid for and on the dice. Null when the choice is no

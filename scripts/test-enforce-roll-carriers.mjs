@@ -22,56 +22,66 @@ const INSPIRED = "bardic inspiration (d8)";
 const hold = (id, condition = INSPIRED) => world.patch(id, { conditions: [condition], conditionMeta: {} });
 const holds = (id, condition = INSPIRED) => world.sheet(id).conditions.includes(condition);
 const d8Rolled = () => world.diceLog().some((die) => die.sides === 8);
+const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
+// A held die is the holder's to add once the d20 is rolled (SRD 5.1), so the
+// engine adds it only to a roll it carries past its DC (forced-save.ts
+// settleHeldDie): a natural 20 keeps it, and a d20 one short of the DC takes
+// the d8's 8 and spends it.
+async function settles(id, run) {
+  hold(id);
+  world.dice(20);
+  const passed = await run();
+  world.clearDice();
+  assert.equal(passed.ok, true, passed.error);
+  assert.ok(holds(id), "a roll that passes keeps the die");
+  const first = listRecentRolls(world.campaignId, 40)
+    .filter((roll) => roll.characterId === id && roll.dc !== null)
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))[0];
+  const face = first.dc - (first.total - 20) - 1;
+  assert.ok(face >= 2 && face <= 19, `a d20 one short of DC ${first.dc} (${face})`);
+  hold(id);
+  world.diceLog();
+  world.dice(face, 8);
+  const carried = await run();
+  world.clearDice();
+  assert.equal(carried.ok, true, carried.error);
+  assert.ok(d8Rolled(), "the inspiration die did not ride the check");
+  assert.equal(holds(id), false, "the die is still held after the check it carried");
+}
 
 const bard = world.addHero({ class: "bard", level: 5, abilities: { cha: 16 }, proficiencies: profs(["persuasion", "medicine"]) });
 
-await test("A Bardic Inspiration die held by a character is spent by the social_check it rides.", async () => {
-  await world.invoke("set_npc", { name: "Guard Captain", attitude: "indifferent" });
-  hold(bard.id);
-  world.diceLog();
-  world.dice(10, 8);
-  const out = await world.invoke("social_check", { characterId: bard.id, npc: "Guard Captain", approach: "persuade" });
-  world.clearDice();
-  assert.equal(out.ok, true, out.error);
-  assert.ok(d8Rolled(), "the inspiration die did not ride the check");
-  assert.equal(holds(bard.id), false, "the die is still held after the check");
+await test("A Bardic Inspiration die held by a character is spent by the social_check it carries, and kept by one that passes.", async () => {
+  // A won check warms the captain, which lowers the next DC: each throw
+  // meets them indifferent.
+  await settles(bard.id, async () => {
+    await world.invoke("set_npc", { name: "Guard Captain", attitude: "indifferent" });
+    return world.invoke("social_check", { characterId: bard.id, npc: "Guard Captain", approach: "persuade" });
+  });
 });
 
-await test("A Bardic Inspiration die held by a character is spent by the haggling check it rides.", async () => {
-  const opened = await world.invoke("open_shop", { name: "Marla's Sundries", kind: "general", size: "town" });
-  assert.equal(opened.ok, true, opened.error);
-  hold(bard.id);
-  world.diceLog();
-  world.dice(10, 8);
-  const out = await world.invoke("haggle", { characterId: bard.id, shop: "Marla's Sundries" });
-  world.clearDice();
-  assert.equal(out.ok, true, out.error);
-  assert.ok(d8Rolled());
-  assert.equal(holds(bard.id), false);
+await test("A Bardic Inspiration die held by a character is spent by the haggling check it carries, and kept by one that passes.", async () => {
+  // One try at each counter: each throw haggles at a stall of its own.
+  let stall = 0;
+  await settles(bard.id, async () => {
+    stall += 1;
+    const opened = await world.invoke("open_shop", { name: `Marla's Sundries ${stall}`, kind: "general", size: "town" });
+    assert.equal(opened.ok, true, opened.error);
+    return world.invoke("haggle", { characterId: bard.id, shop: `Marla's Sundries ${stall}` });
+  });
 });
 
-await test("A Bardic Inspiration die held by a character is spent by the relationship beat's check it rides.", async () => {
-  hold(bard.id);
-  world.diceLog();
-  world.dice(10, 8);
-  const out = await world.invoke("relationship_beat", { characterId: bard.id, subject: "Guard Captain", beat: "gift" });
-  world.clearDice();
-  assert.equal(out.ok, true, out.error);
-  assert.ok(d8Rolled());
-  assert.equal(holds(bard.id), false);
+await test("A Bardic Inspiration die held by a character is spent by the relationship beat's check it carries, and kept by one that passes.", async () => {
+  await settles(bard.id, () => world.invoke("relationship_beat", { characterId: bard.id, subject: "Guard Captain", beat: "gift" }));
 });
 
-await test("A Bardic Inspiration die held by the healer is spent by the Medicine check that stabilizes a dying friend.", async () => {
+await test("A Bardic Inspiration die held by the healer is spent by the Medicine check it carries to stabilize a dying friend, and kept by one that passes.", async () => {
   const fallen = world.addHero({ class: "fighter", level: 5 });
-  world.patch(fallen.id, { currentHp: 0, conditions: ["unconscious", "prone"], deathSaves: { successes: 0, failures: 0, stable: false, dead: false } });
-  hold(bard.id);
-  world.diceLog();
-  world.dice(10, 8);
-  const out = await world.invoke("stabilize", { characterId: fallen.id, healerId: bard.id, method: "check" });
-  world.clearDice();
-  assert.equal(out.ok, true, out.error);
-  assert.ok(d8Rolled());
-  assert.equal(holds(bard.id), false);
+  const down = () => world.patch(fallen.id, { currentHp: 0, conditions: ["unconscious", "prone"], deathSaves: { successes: 0, failures: 0, stable: false, dead: false } });
+  await settles(bard.id, () => {
+    down();
+    return world.invoke("stabilize", { characterId: fallen.id, healerId: bard.id, method: "check" });
+  });
 });
 
 await test("A Bardic Inspiration die held by a traveller is spent by the first forced-march save it rides.", async () => {

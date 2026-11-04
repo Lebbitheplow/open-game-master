@@ -342,7 +342,7 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
       {
         name: "Blessing of the Trickster",
         action: "action",
-        does: { kind: "buff", target: "ally", condition: "blessing of the trickster", rounds: 600 },
+        does: { kind: "buff", target: "ally", othersOnly: true, condition: "blessing of the trickster", rounds: 600 },
       },
     ],
   },

@@ -15,7 +15,7 @@ import { insertRoll } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
 import { rollExpression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
-import { rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
+import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
 import { applyDmMutation } from "@/lib/dm/mutations";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -54,7 +54,8 @@ export function hourlyConSaves(input: {
       dc,
       ...(input.disadvantage ? { advantage: "disadvantage" } : {}),
     } as unknown as RollArgs;
-    const resolved = resolveRollExpression(args, sheet, rollExtrasFor(campaign, sheet, "saving_throw"));
+    const waits = heldDieWaits(sheet, dc);
+    const resolved = resolveRollExpression(args, sheet, { ...rollExtrasFor(campaign, sheet, "saving_throw"), keepHeldDie: waits });
     if ("error" in resolved) {
       break;
     }
@@ -64,7 +65,8 @@ export function hourlyConSaves(input: {
       failed = true;
     } else {
       spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-      const rolled = rollExpression(resolved.expression);
+      const thrown = rollExpression(resolved.expression);
+      const rolled = waits ? settleHeldDie(campaign.id, sheet.id, thrown, dc) : thrown;
       save = rolled.total;
       const roll = insertRoll({
         campaignId: campaign.id,

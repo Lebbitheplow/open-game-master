@@ -45,7 +45,7 @@ import {
   socialCheckDc,
 } from "@/lib/dm/social";
 import { resolveRollExpression, resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
-import { rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
+import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
 import type { RollArgs } from "@/lib/dm/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { waypointProperty } from "@/lib/dm/waypoint-logic";
@@ -426,19 +426,20 @@ export function handleSocialCheck(
 
   // Held carriers (Bardic Inspiration, Help, Guidance) and lasting effects
   // ride this check like any other, and the carrier is spent by it.
+  // A faction's member leans on the party's standing with that faction
+  // (docs/vtt-parity-implementation-plan.md section 6).
+  const factionOffset = npc.factionId ? reputationDcOffset(getParty(campaign.id).reputation[npc.factionId] ?? 0) : 0;
+  const dc = Math.max(5, socialCheckDc(npc.attitude) + factionOffset);
+  const waits = heldDieWaits(sheet, dc);
   const resolved = resolveRollExpression(
     { kind: "skill_check", skill } as unknown as RollArgs,
     sheet,
-    rollExtrasFor(campaign, sheet, "skill_check"),
+    { ...rollExtrasFor(campaign, sheet, "skill_check"), keepHeldDie: waits },
   );
   if ("error" in resolved || "autoFail" in resolved) {
     return "error" in resolved ? resolved : { error: `${sheet.name} cannot make that check.`, refused: "rules" };
   }
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-  // A faction's member leans on the party's standing with that faction
-  // (docs/vtt-parity-implementation-plan.md section 6).
-  const factionOffset = npc.factionId ? reputationDcOffset(getParty(campaign.id).reputation[npc.factionId] ?? 0) : 0;
-  const dc = Math.max(5, socialCheckDc(npc.attitude) + factionOffset);
   // Attitude is how this NPC feels about the PARTY; the approval meter is how
   // they feel about THIS character. Standing with someone makes them easier
   // to sway, bounded to +/-4 so a friendship never trivializes a hard ask.
@@ -453,11 +454,12 @@ export function handleSocialCheck(
   // An NPC keeping up an act is swayed as the warmth they show would be
   // (src/lib/dm/scheme-logic.ts): the roll's modifier is on the table.
   const standingModifier = approvalRollModifier(outwardApproval(relationship));
-  const rolled = rollExpression(
+  const thrown = rollExpression(
     standingModifier === 0
       ? resolved.expression
       : `${resolved.expression}${standingModifier > 0 ? "+" : ""}${standingModifier}`,
   );
+  const rolled = waits ? settleHeldDie(campaign.id, sheet.id, thrown, dc) : thrown;
   const roll = insertRoll({
     campaignId: campaign.id,
     characterId: sheet.id,

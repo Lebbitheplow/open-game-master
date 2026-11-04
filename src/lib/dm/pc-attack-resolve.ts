@@ -4,6 +4,7 @@
 // Split from pc-attack.ts, which has already refused or paid for everything
 // this rolls; nothing here refuses the attack.
 
+import { settleAttackDie } from "@/lib/dm/forced-save";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { openLastHit } from "@/lib/dm/last-hit";
 import { getFoe } from "@/lib/dm/sheet-foe";
@@ -123,7 +124,14 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike): Record<string, u
   const hitLog = isSheetFoe(enemy) ? openLastHit(campaign.id, enemy.id) : null;
   const closeLog = () =>
     hitLog?.close({ attacker: { kind: "sheet", id: sheet.id, name: sheet.name }, attack: plan.profile.weapon, type: plan.profile.damageType, ranged: plan.profile.ranged });
-  const hitOutcome = rollExpression(strike.toHitExpression, undefined, { purpose: { roller: "hero", kind: "attack", who: sheet.name } });
+  const thrown = rollExpression(strike.toHitExpression, undefined, { purpose: { roller: "hero", kind: "attack", who: sheet.name } });
+  // Improved and Superior Critical are written for weapon attacks; a mark
+  // (Hexblade's Curse) for every attack on its creature.
+  const critRange = Math.min(plan.weaponAttack ? riders.critRange : 20, markCritRange(plan.marks.applies));
+  const hitOutcome = settleAttackDie(campaign.id, sheet, thrown, plan.effectiveAc, critRange);
+  if (hitOutcome !== thrown) {
+    context.notes.push(`spends their Bardic Inspiration die on the miss: ${thrown.total} becomes ${hitOutcome.total}`);
+  }
   const hitRoll = insertRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
@@ -139,9 +147,7 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike): Record<string, u
 
   const judged = adjudicateHit(hitOutcome.total, hitOutcome.crit, plan.effectiveAc, {
     natural: hitOutcome.natural,
-    // Improved and Superior Critical are written for weapon attacks; a mark
-    // (Hexblade's Curse) for every attack on its creature.
-    critRange: Math.min(plan.weaponAttack ? riders.critRange : 20, markCritRange(plan.marks.applies)),
+    critRange,
   });
   // Parry: the creature's reaction lifts its AC against a melee hit it sees (enemy-reactions.ts).
   const parry = judged.hit && !judged.crit

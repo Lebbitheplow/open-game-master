@@ -11,7 +11,8 @@ import type { CampaignState } from "@/app/campaigns/[campaignId]/useCampaignStre
 const STATUS_WORDS: Record<Exclude<CampaignState["dmStatus"], "idle">, string> = {
   thinking: "GM at work...",
   rolling: "GM rolling dice...",
-  awaiting_rolls: "Waiting on real dice...",
+  // Real dice, a held roll, or a player deciding on their thrown d20.
+  awaiting_rolls: "Waiting on a roll...",
   narrating: "GM narrating...",
   writing_chapter: "GM writing the chapter...",
   plotting_arc: "GM plotting the story arc...",

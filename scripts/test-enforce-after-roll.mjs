@@ -117,11 +117,9 @@ await test("Lucky: the point rolls another d20 and the player chooses, even a lo
   assert.equal((await choose(pending.id, { keep: false })).status, 400, "a bad body is refused");
   // The lower of the two: the feat says the character chooses.
   await choose(pending.id, { die: 0 });
-  const [again] = open();
-  assert.ok(again, "still short, and there are points left: the choice is still open");
-  assert.equal(again.thrown.outcome.total, 3);
-  await choose(pending.id, { keep: true });
+  assert.equal(open().length, 0, "one luck point a roll: still short, with points left, the roll lands");
   assert.equal(landed(pending.id).total, 3);
+  assert.equal(world.sheet(who.sheet.id).resources.luck_points.used, 1);
 });
 
 await test("Lucky at disadvantage: any of the dice can be the one, the high one too.", async () => {
@@ -155,6 +153,32 @@ await test("Bardic Inspiration: the die is added only when the player spends it,
   assert.equal(open().length, 0);
   assert.equal(landed(pending.id).total, 18);
   assert.ok(!world.sheet(who.sheet.id).conditions.includes("bardic inspiration (d8)"));
+});
+
+await test("Each of them rides a roll once: no second luck point with no DC, none after a point spent before the throw, and each die once.", async () => {
+  hero({ ...LUCKY, conditions: ["bardic inspiration (d8)"] });
+  world.dice(3);
+  await check({ dc: undefined });
+  world.clearDice();
+  const [pending] = open();
+  world.dice(4);
+  await choose(pending.id, { use: "lucky" });
+  world.clearDice();
+  await choose(pending.id, { die: 1 });
+  const [after] = open();
+  assert.deepEqual(after.thrown.options.map((option) => option.id), ["bardic"], "no DC still asks, but the luck point is not offered twice");
+  world.dice(2);
+  await choose(pending.id, { use: "bardic" });
+  world.clearDice();
+  assert.equal(open().length, 0, "nothing is left to offer: it lands");
+  assert.equal(world.sheet(who.sheet.id).resources.luck_points.used, 1);
+
+  hero(LUCKY);
+  world.dice(2, 3);
+  await check({ luck: true });
+  world.clearDice();
+  assert.equal(open().length, 0, "the point spent before the throw was this roll's one");
+  assert.equal(world.sheet(who.sheet.id).resources.luck_points.used, 1);
 });
 
 await test("A die too small to reach the target is not offered, so nobody waits on it.", async () => {
@@ -291,6 +315,29 @@ await test("A spend is filed under the turn it served, so an undo of the turn ca
   await choose(pending.id, { keep: true });
 });
 
+await test("A turn cannot be reverted while its roll waits on the card; once it lands, its revert gives the luck point back.", async () => {
+  hero(LUCKY);
+  world.dice(3);
+  await check();
+  world.clearDice();
+  const [pending] = open();
+  const revert = await world.route("campaigns/[campaignId]/audit/revert-turn");
+  world.signIn(world.owner);
+  const early = await call(revert, "POST", { turnId: pending.turnId, confirm: true }, { campaignId: world.campaignId });
+  assert.equal(early.status, 409, "a waiting turn is still being played");
+  world.dice(2);
+  await choose(pending.id, { use: "lucky" });
+  world.clearDice();
+  await choose(pending.id, { die: 0 });
+  await choose(pending.id, { keep: true });
+  assert.equal(open().length, 0);
+  assert.equal(world.sheet(who.sheet.id).resources.luck_points.used, 1);
+  world.signIn(world.owner);
+  const done = await call(revert, "POST", { turnId: pending.turnId, confirm: true }, { campaignId: world.campaignId });
+  assert.equal(done.status, 200, JSON.stringify(done.body ?? done));
+  assert.equal(world.sheet(who.sheet.id).resources.luck_points.used, 0, "the player's spend on the turn's roll goes with the turn");
+});
+
 await test("Only the roller chooses; whoever runs the story may keep the dice for them.", async () => {
   hero(LUCKY);
   world.dice(3);
@@ -326,7 +373,7 @@ await test("A roll behind the GM's screen never waits: its card would show the t
   assert.equal(open().length, 0);
 });
 
-await test("An attack still takes a held die as it always did, and no pause: that path is the next change.", async () => {
+await test("An attack does not pause: a held die is added by the engine to a miss it turns into a hit (forced-save.ts settleAttackDie).", async () => {
   await kit.endFight();
   hero({ conditions: ["bardic inspiration (d8)"] });
   await kit.fight(1, { heroFaces: { [who.sheet.id]: 19, [who.leadSheet.id]: 2, [who.otherSheet.id]: 2 } });
@@ -341,6 +388,19 @@ await test("An attack still takes a held die as it always did, and no pause: tha
   assert.equal(open().length, 0);
   assert.ok(!world.sheet(who.sheet.id).conditions.includes("bardic inspiration (d8)"));
   await kit.endFight();
+});
+
+await test("A halfling's Lucky trait holds no luck points, and a stored counter goes at the next resync; the feat holds them.", async () => {
+  const { populateResources } = await import("../src/lib/srd/class-resources.ts");
+  const halfling = world.addHero({ user: who.player, race: "halfling", class: "fighter", level: 5, proficiencies: TRAINED, features: [{ name: "Lucky", source: "race", level: 1 }] });
+  const sheet = world.sheet(halfling.id);
+  assert.ok(sheet.features.some((feature) => feature.source === "race" && /^lucky/i.test(feature.name)), "the trait is on the sheet");
+  assert.equal(sheet.resources.luck_points, undefined, "no points from the trait: this was the bug");
+  // A row written before the fix keeps its counter until the boot resync,
+  // which drops it (src/lib/db/core.ts reads populateResources).
+  const resynced = populateResources(sheet.features, 5, {}, { ...sheet.resources, luck_points: { max: 3, used: 1 } }, undefined, []);
+  assert.equal(resynced.luck_points, undefined);
+  assert.equal(populateResources(sheet.features, 5, {}, {}, undefined, ["Lucky"]).luck_points?.max, 3, "the feat still holds three");
 });
 
 // ---- the AI's turn ----

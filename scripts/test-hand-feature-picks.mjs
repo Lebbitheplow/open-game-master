@@ -88,6 +88,24 @@ await test("A buff for an ally lands on the ally, or on the holder aimed at them
   }
 });
 
+await test("Blessing of the Trickster goes to a creature other than the cleric: the holder, named or not, is refused.", async () => {
+  const cleric = hero("cleric", "Trickery Domain");
+  const friend = hero("fighter", "Champion");
+  const dealt = card(cleric, "Blessing of the Trickster");
+  assert.equal(dealt.othersOnly, true, "the Hand leaves out the cleric's own chip");
+  for (const aim of [{ targetCharacterId: cleric.id }, {}]) {
+    await stage(cleric);
+    const out = await world.invoke("use_resource", { characterId: cleric.id, resource: "Blessing of the Trickster", ...aim });
+    assert.ok(out.error, `aimed ${JSON.stringify(aim)}: it landed on the cleric`);
+    assert.ok(!world.sheet(cleric.id).conditions.includes("blessing of the trickster"));
+  }
+  await stage(cleric);
+  world.patch(friend.id, { conditions: [], conditionMeta: {} });
+  const out = await world.invoke("use_resource", { characterId: cleric.id, resource: "Blessing of the Trickster", targetCharacterId: friend.id });
+  assert.equal(out.ok, true, out.error);
+  assert.ok(world.sheet(friend.id).conditions.includes("blessing of the trickster"));
+});
+
 await test("Revelation in Flesh, spent by amount, still leaves the blank and names its pick.", () => {
   const who = hero("sorcerer", "Aberrant Mind");
   const dealt = card(who, "Revelation in Flesh");
