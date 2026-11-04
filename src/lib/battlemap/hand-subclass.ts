@@ -30,6 +30,9 @@ type SpendDoes = AuthoredSpend["does"];
 
 const COST: Record<string, HandCost> = { action: "action", bonus: "bonus", none: "free" };
 
+// A variant's word as a pick reads on a card: "bear" as "Bear".
+export const pickLabel = (value: string) => value.replace(/^./, (c) => c.toUpperCase());
+
 function targetOf(does: SpendDoes): HandTarget {
   if (does.kind === "buff") {
     // A quarry (Hexblade's Curse) marks a creature, and the engine asks which.
@@ -42,6 +45,8 @@ function targetOf(does: SpendDoes): HandTarget {
 function linesOf(does: SpendDoes): { dice: string; condition: string } {
   switch (does.kind) {
     case "buff":
+      // A buff with variants names none on its face: the player picks.
+      if (does.variants) return { dice: "", condition: "" };
       return { dice: typeof does.condition === "string" ? does.condition : does.condition[0]?.[1] ?? "", condition: typeof does.condition === "string" ? does.condition : "" };
     case "save_effect":
       return { dice: `${does.save.toUpperCase()} save`, condition: does.condition ?? "" };
@@ -178,11 +183,21 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
       ...(pool ? { pool: pool.id } : {}),
       intent: { card: "feature", resourceId: spend.name, ...(aim.variant ? { variant: aim.variant } : {}) },
     };
+    if (does.kind === "buff" && does.variants) {
+      // One pick per outcome: Adjust Density's "halve" is another word for "lighter".
+      const seen = new Set<string>();
+      const options = Object.entries(does.variants).filter(([, outcome]) => !seen.has(outcome) && Boolean(seen.add(outcome)));
+      card.choice = {
+        arg: "variant",
+        label: "Choose",
+        options: options.map(([value]) => ({ value, label: pickLabel(value) })),
+      };
+    }
     if (does.kind === "variants") {
       card.choice = {
         arg: "variant",
         label: "Choose",
-        options: Object.keys(does.options).map((value) => ({ value, label: value.replace(/^./, (c) => c.toUpperCase()) })),
+        options: Object.keys(does.options).map((value) => ({ value, label: pickLabel(value) })),
       };
     }
     return gated(
