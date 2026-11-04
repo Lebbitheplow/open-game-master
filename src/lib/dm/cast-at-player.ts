@@ -125,8 +125,10 @@ export function layEnemyCondition(
   if (use?.spellCondition) {
     // The whole of what the spell lays, as a character's spell lays it on a
     // monster: Hypnotic Pattern's charmed creature is incapacitated too.
+    // A spell of several forms keeps each form's lifetime in its own rules
+    // (Eyebite's Asleep: a minute, or until the sleeper takes damage).
     const spellEffect = spellConditionMeta(
-      use.spellCondition,
+      { ...use.spellCondition, ...use.spellCondition.variantRules?.[condition] },
       { spell: use.name, casterId: use.enemy.id, slotLevel: use.slotLevel },
       { ability: save.ability, dc: save.dc },
     );

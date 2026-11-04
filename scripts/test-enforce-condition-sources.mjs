@@ -243,6 +243,19 @@ await test("761: unconscious laid by set_condition on a creature with hit points
   }
 });
 
+await test("761: a monster's Eyebite lays its Asleep with that form's minute, and the sleeper wakes when hurt", async () => {
+  const { world, sheets: [hero], enemies: [foe] } = await table([FIGHTER], 1, { spells: ["Eyebite"] });
+  world.dice(1);
+  const cast = await world.invoke("cast_at_player", { characterId: hero.id, casterEnemyId: foe.id, spell: "Eyebite", saveAbility: "wis", dc: 20 });
+  world.clearDice();
+  assert.equal(cast.ok, true, cast.error);
+  assert.ok(world.sheet(hero.id).conditions.includes("unconscious"));
+  assert.equal(world.sheet(hero.id).conditionMeta.unconscious.rounds, 10);
+  const hit = await world.invoke("apply_damage", { characterId: hero.id, amount: 1, type: "bludgeoning", reason: "a kick" });
+  assert.equal(hit.ok, true, hit.error);
+  assert.equal(world.sheet(hero.id).conditions.includes("unconscious"), false, "the hero slept through the blow");
+});
+
 await test("F23: Black Tentacles crushes a restrained character at the start of its turn", async () => {
   const { world, sheets: [fighter], enemies: [foe] } = await table([FIGHTER]);
   await layMap(world, field(12), { [fighter.id]: { x: 5, y: 2 }, [foe.id]: { x: 9, y: 2 } });

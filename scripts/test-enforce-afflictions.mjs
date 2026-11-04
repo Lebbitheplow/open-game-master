@@ -141,6 +141,28 @@ await test("Short-term madness 01-20: paralyzed for 1d10 minutes, and it ends wh
   assert.equal(has(shaken.id, "paralyzed"), false);
 });
 
+await test("Long-term madness 96-100: no blow wakes the sleeper, and a sleep laid by name still ends on one.", async () => {
+  const sleeper = world.addHero({ class: "fighter", level: 3, maxHp: 30 });
+  await afflict({ characterId: sleeper.id, kind: "madness", duration: "long" }, [98, 2]);
+  assert.equal(has(sleeper.id, "unconscious"), true);
+  await world.invoke("apply_damage", { characterId: sleeper.id, amount: 2, type: "bludgeoning", reason: "a slap" });
+  assert.equal(has(sleeper.id, "unconscious"), true, "SRD 5.1: no amount of jostling or damage can wake the character");
+
+  const dozing = world.addHero({ class: "fighter", level: 3, maxHp: 30 });
+  await world.invoke("set_condition", { characterId: dozing.id, condition: "unconscious", reason: "a sleeping draught" });
+  assert.equal(has(dozing.id, "unconscious"), true);
+  await world.invoke("apply_damage", { characterId: dozing.id, amount: 2, type: "bludgeoning", reason: "a slap" });
+  assert.equal(has(dozing.id, "unconscious"), false, "the draught's sleeper slept through the blow");
+});
+
+await test("Essence of Ether: the sleeper wakes when hurt.", async () => {
+  const dozy = world.addHero({ class: "fighter", level: 3, maxHp: 30 });
+  await afflict({ characterId: dozy.id, kind: "poison", name: "Essence of Ether" }, [2]);
+  assert.equal(has(dozy.id, "unconscious"), true);
+  await world.invoke("apply_damage", { characterId: dozy.id, amount: 2, type: "bludgeoning", reason: "a slap" });
+  assert.equal(has(dozy.id, "unconscious"), false, "SRD 5.1: the creature wakes up if it takes damage");
+});
+
 await test("Long-term madness 21-30: paranoid, disadvantage on Wisdom checks, for 1d10 x 10 hours by the clock.", async () => {
   const paranoid = world.addHero({ class: "fighter", level: 3, maxHp: 30 });
   await afflict({ characterId: paranoid.id, kind: "madness", duration: "long" }, [25, 2]);
