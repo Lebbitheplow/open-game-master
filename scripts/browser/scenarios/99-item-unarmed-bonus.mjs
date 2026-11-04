@@ -1,7 +1,8 @@
 // A workshop item can add to unarmed strikes. A monk's wraps had nothing to
 // set: the weapon effect listed only the SRD's weapons and had no bonus to
 // hit, so "+3 to unarmed attacks" could only be written as prose nothing read.
-// Here the form sets both, on desktop and phone, and the entry keeps them.
+// Here the form sets both, on desktop and phone, and the entry keeps them; then
+// the Hand's Unarmed strike card shows Demon Armor's gauntlets.
 import { axeViolations, check, eventually, untilStill } from "../lib.mjs";
 
 async function pick(t, trigger, choice) {
@@ -15,13 +16,14 @@ export default {
   name: "item-unarmed-bonus",
   viewports: ["desktop", "phone"],
   async run(t) {
-    const { page, base, root, api } = t;
+    const { page, base, root, api, ids } = t;
     const stamp = `${t.viewport}${t.app ? "a" : "w"}${Date.now().toString(36).slice(-4)}`;
     const made = await api.post(`${base}/api/workshops`, { data: { title: `Wraps ${stamp}`, description: "" } });
     check(made.ok(), "a workshop for the check");
     const workshopId = (await made.json()).workshop.id;
     const name = `Tested Wraps ${stamp}`;
     let entryId = null;
+    let equipmentBefore = null;
     try {
       await t.open(`/workshop/${workshopId}?system=homebrew`);
       const kinds = page.locator(`${root}[data-tour="homebrew-kinds"]`).locator("visible=true").first();
@@ -79,7 +81,37 @@ export default {
       check(effect?.kind === "weapon_rider", "the item keeps the effect");
       check(effect.weapons.join() === "unarmed strike", `it names the unarmed strike (${effect.weapons})`);
       check(effect.attack === 3 && effect.damage === 3, `at +3 and +3 (${effect.attack}, ${effect.damage})`);
+
+      // ---- the Hand: the card says what the strike will roll ----
+      // Demon Armor, the SRD item that reaches a fist, on the seat in the fight.
+      const table = ids.campaignId;
+      const sheetOf = async () => ((await (await api.get(`${base}/api/campaigns/${table}`)).json()).sheets ?? []).find((sheet) => sheet.id === ids.tavi);
+      equipmentBefore = (await sheetOf()).equipment;
+      const worn = await api.patch(`${base}/api/campaigns/${table}/sheets/${ids.tavi}`, {
+        data: { equipment: [...equipmentBefore, { name: "Demon Armor", qty: 1, equipped: true, attuned: true }], reason: "Trying on the gauntlets" },
+      });
+      check(worn.ok(), `Tavi wears the armor (${worn.status()})`);
+      const put = await api.post(`${base}/api/campaigns/${table}/sheet/usage`, { data: { gear: { "Demon Armor": { equipped: true, attuned: true } } } });
+      check(put.ok(), `and is attuned to it (${put.status()}: ${await put.text()})`);
+      await t.open(`/campaigns/${table}`);
+      if (t.viewport === "phone") {
+        // The phone's Table tab holds the Hand.
+        const tab = page.locator(`${root}button, ${root}[role="tab"]`).filter({ hasText: /^s*tables*$/i }).locator("visible=true");
+        if (await tab.count()) await t.tap(tab.first());
+      }
+      const card = page.locator(`${root}button.hand-card[aria-label^="Unarmed strike"]`).locator("visible=true").first();
+      await eventually(() => card.count(), { timeoutMs: 30_000, label: "the Unarmed strike card" });
+      const label = await card.innerText();
+      check(/1d8/i.test(label) && /slashing/i.test(label), `the card shows the gauntlets (${label})`);
+      await card.scrollIntoViewIfNeeded();
+      if (t.viewport === "desktop") await card.hover();
+      // The fight's opening banner covers the page for its first seconds.
+      await page.waitForTimeout(6_000);
+      await t.shot("hand-card");
     } finally {
+      if (equipmentBefore) {
+        await api.patch(`${base}/api/campaigns/${ids.campaignId}/sheets/${ids.tavi}`, { data: { equipment: equipmentBefore, reason: "Back as it was" } }).catch(() => {});
+      }
       if (entryId) await api.delete(`${base}/api/homebrew/${entryId}`).catch(() => {});
       await api.delete(`${base}/api/workshops/${workshopId}`).catch(() => {});
     }
