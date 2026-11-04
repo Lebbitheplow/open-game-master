@@ -164,6 +164,11 @@ export function planCounterReaction(input: Input): Plan | ToolError | null {
       if (!target) {
         return { error: "Warding Maneuver protects the fighter or a creature within 5 feet: pass that creature's targetCharacterId. Nothing was spent.", retry: true };
       }
+      // Asked as they stood before the blow only for their own hit
+      // (reaction-kinds.ts): for another creature's, a fighter at 0 is down.
+      if (target.id !== sheet.id && sheet.currentHp <= 0) {
+        return { error: `${sheet.name} is at 0 HP and cannot take a reaction, so Warding Maneuver does not cover ${target.name}. Nothing was spent.`, refused: "rules" };
+      }
       const encounter = getActiveEncounter(campaign.id);
       const apart = encounter && target.id !== sheet.id ? tilesBetween(encounter.id, sheet.id, target.id) : null;
       if (apart !== null && apart > 1) {
@@ -185,7 +190,7 @@ export function planCounterReaction(input: Input): Plan | ToolError | null {
           const swing = record.swings[index];
           const missed = swing.natural !== 20 && swing.total < swing.vsAc + die;
           const corrected = record.swings.map((entry, at) =>
-            at !== index ? entry : missed ? { ...entry, hit: false, raw: 0 } : { ...entry, raw: Math.floor(entry.raw / 2) },
+            at !== index ? entry : missed ? { ...entry, hit: false, raw: 0 } : cutBlow(entry, "half"),
           );
           const settled = settle(input, record, corrected, "warding maneuver");
           return {

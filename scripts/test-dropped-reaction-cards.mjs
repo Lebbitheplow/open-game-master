@@ -17,6 +17,8 @@ const { reactionCards } = await import("../src/lib/battlemap/hand-react.ts");
 const { activePublicEncounter } = await import("../src/lib/db/encounter-view.ts");
 const { intentRefusal } = await import("../src/lib/dm/intent-check.ts");
 const { getCampaignById } = await import("../src/lib/db/campaigns.ts");
+const { onPersonsTurn } = await import("../src/lib/dm/invoke.ts");
+const { handleEnemyAttack } = await import("../src/lib/dm/enemy-attack.ts");
 
 const hero = (extra) =>
   world.addHero({
@@ -41,10 +43,11 @@ const friend = hero({ class: "fighter", subclass: "Champion" });
 const hexblade = hero({ class: "warlock", subclass: "The Hexblade" });
 const runeKnight = hero({ class: "fighter", subclass: "Rune Knight" });
 const echoKnight = hero({ class: "fighter", subclass: "Echo Knight" });
+const cavalier = hero({ class: "fighter", subclass: "Cavalier" });
 
-async function stage(who, hp = 8) {
+async function stage(who, hp = 8, foes = 1) {
   await kit.endFight();
-  await kit.fight(1, { heroFaces: { [who.id]: 3, [friend.id]: 2 } });
+  await kit.fight(foes, { heroFaces: { [who.id]: 3, [friend.id]: 2 } });
   const [enemy] = world.enemies();
   kit.setEnemy(enemy.id, { maxHp: 300, currentHp: 300 });
   kit.place(who.id, 5, 5);
@@ -199,6 +202,61 @@ await test("A fallen Rune Knight or Echo Knight is refused for an ally's hit for
     assert.doesNotMatch(out.error, /follows the damage/);
   }
   assert.equal(world.sheet(friend.id).currentHp, 44);
+});
+
+await test("Warding Maneuver for an ally is refused through use_resource to a fighter the last hit dropped, with nothing spent.", async () => {
+  await stage(cavalier, 8, 2);
+  const [first, second] = world.enemies();
+  kit.place(second.id, 4, 6);
+  const fresh = { ...world.sheet(cavalier.id).resources, sub_warding_maneuver: { ...world.sheet(cavalier.id).resources.sub_warding_maneuver, used: 0 } };
+  world.patch(cavalier.id, { resources: fresh });
+  // One pass of the enemies: the first drops the fighter, the second hits the friend beside them.
+  const campaign = world.campaign();
+  onPersonsTurn(campaign, (turn) => {
+    for (const [enemy, target, faces] of [[first, cavalier, [20, 4, 3]], [second, friend, [16, 4]]]) {
+      world.dice(...faces);
+      const sheets = world.sheets();
+      const out = handleEnemyAttack(campaign, turn, JSON.stringify({ enemyId: enemy.id, targetCharacterId: target.id }), sheets, new Map(sheets.map((entry) => [entry.id, entry])));
+      world.clearDice();
+      assert.equal(typeof out.error, "undefined", out.error);
+    }
+  });
+  assert.equal(world.sheet(cavalier.id).currentHp, 0, "the hit drops the fighter");
+  assert.equal(world.sheet(friend.id).currentHp, 44);
+  world.dice(8);
+  const out = await world.invoke("use_resource", { characterId: cavalier.id, resource: "Warding Maneuver", targetCharacterId: friend.id });
+  world.clearDice();
+  assert.equal(out.ok, false, JSON.stringify(out));
+  assert.match(out.error, /at 0 HP/);
+  assert.equal(world.sheet(cavalier.id).resources.sub_warding_maneuver.used, 0);
+  assert.equal(world.sheet(friend.id).currentHp, 44);
+});
+
+await test("Deflect Missiles, played by a monk a ranged hit dropped, takes the blow down.", async () => {
+  const enemy = await stage(monk);
+  kit.setEnemy(enemy.id, { stats: { ...enemy.stats, attacks: [{ name: "Shortbow", toHit: 4, damage: "1d6+2", type: "piercing" }] } });
+  kit.place(enemy.id, 5, 9);
+  await strike(enemy, monk);
+  assert.equal(world.sheet(monk.id).currentHp, 0);
+  const card = cardOf(monk, "Deflect Missiles");
+  assert.ok(card, "Deflect Missiles is offered");
+  assert.equal(card.disabled, null, card.disabled);
+  world.dice(5);
+  const out = await world.invoke("use_reaction", { characterId: monk.id, feature: "Deflect Missiles" });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.sheet(monk.id).currentHp, 8, "1d10 + DEX + monk level takes all 9 off");
+});
+
+await test("A condition that stops reactions, put on by the blow that dropped them, is read as they stood, as the engine reads it.", async () => {
+  const enemy = await stage(rogue);
+  await strike(enemy, rogue);
+  assert.equal(world.sheet(rogue.id).currentHp, 0);
+  world.patch(rogue.id, { conditions: [...world.sheet(rogue.id).conditions, "slowed"] });
+  const card = cardOf(rogue, "Uncanny Dodge");
+  assert.equal(card.disabled, null, card.disabled);
+  const out = await world.invoke("use_reaction", { characterId: rogue.id, feature: "Uncanny Dodge" });
+  assert.equal(out.ok, true, out.error);
 });
 
 await test("A standing holder's card is open as before.", async () => {

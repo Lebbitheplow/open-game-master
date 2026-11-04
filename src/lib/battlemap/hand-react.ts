@@ -128,13 +128,14 @@ function spellReaction(
     { type: "spell", rules, resource: slot ? slotLine(slot) : "No slots", icon: { kind: "spell", key: spell, family: null }, ...(target !== "none" && facts?.range.kind === "feet" ? { range: reachLabel(facts.range.feet) } : {}), ...answering(hit) },
   );
   const problem = (refusal: ToolError | null): Gate => (refusal ? { reason: refusal.error, spent: false } : null);
+  const fallen = droppedByThisHit(sheet, hit) && reactionTimingOf(spell) === "answers";
   return gated(
     card,
-    droppedByThisHit(sheet, hit) && reactionTimingOf(spell) === "answers" ? stoodGate(sheet, turn, hit) : standingGate(sheet, turn, "reaction"),
+    fallen ? stoodGate(sheet, turn, hit) : standingGate(sheet, turn, "reaction"),
     problem(casterStateProblem(sheet)),
     problem(componentProblem(sheet, facts) ?? focusProblem(sheet, facts)),
     slot ? null : { reason: `${sheet.name} has no spell slot left for ${spell}.`, spent: true },
-    costGate("reaction", turn, sheet, spell),
+    costGate("reaction", turn, fallen ? asTheyStood(sheet, hit) : sheet, spell),
   );
 }
 
@@ -243,12 +244,13 @@ export function reactionCards(
       aimedIntent({ card: "reaction", feature: name }, hit),
       { rules, ...(more.icon ? { icon: more.icon } : {}), ...(more.range ? { range: more.range } : {}), ...(more.pickWithin ? { pickWithin: more.pickWithin } : {}), ...answering(hit) },
     );
+    const fallen = more.fallen ?? (droppedByThisHit(sheet, hit) && reactionTimingOf(name) === "answers");
     cards.push(
       gated(
         card,
-        (more.fallen ?? (droppedByThisHit(sheet, hit) && reactionTimingOf(name) === "answers")) ? stoodGate(sheet, turn, hit) : standingGate(sheet, turn, "reaction"),
+        fallen ? stoodGate(sheet, turn, hit) : standingGate(sheet, turn, "reaction"),
         more.gate ?? null,
-        costGate("reaction", turn, sheet, name),
+        costGate("reaction", turn, fallen ? asTheyStood(sheet, hit) : sheet, name),
       ),
     );
   };
@@ -404,6 +406,12 @@ export function reactionCards(
 // standing, and the card is open as before.
 function droppedByThisHit(sheet: CharacterSheet, hit: PublicLastHit): boolean {
   return hit.characterId === sheet.id && sheet.currentHp <= 0;
+}
+
+// The conditions that switch reactions off (slowed) are read as they stood
+// too, as the engine reads them (reaction-gate.ts reactionRefusal).
+function asTheyStood(sheet: CharacterSheet, hit: PublicLastHit): CharacterSheet {
+  return hit.stood ? { ...sheet, conditions: hit.stood.conditions } : sheet;
 }
 
 function stoodGate(sheet: CharacterSheet, turn: HandTurn, hit: PublicLastHit): Gate {
