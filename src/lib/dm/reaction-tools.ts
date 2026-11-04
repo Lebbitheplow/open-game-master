@@ -21,7 +21,7 @@ import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { markReactionUsed } from "@/lib/dm/turn-budget";
 import type { DmTurn } from "@/lib/db/dm-turns";
-import { listRecentMessages } from "@/lib/db/messages";
+import { levenshtein } from "@/lib/dm/entity-logic";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { d20Expression } from "@/lib/dice";
 import { publishPersisted } from "@/lib/events";
@@ -460,6 +460,11 @@ function answersOwnHitOnly(campaign: Campaign, feature: string): boolean {
   return spell?.castingTime === "reaction" && isNamed(spellEngineName(spell.name, authors), "shield", "absorb elements", "hellish rebuke");
 }
 
+// How far a hit id the model sent may stray from an open hit's and still be
+// taken for a slip of it: the misses seen dropped one character of nine.
+// Two random ids this close are about one in a billion.
+const MISCOPIED_HIT = 2;
+
 export function handleUseReaction(
   campaign: Campaign,
   turn: DmTurn,
@@ -488,19 +493,23 @@ export function handleUseReaction(
     if (!aimed) {
       const why = `No attack still open to a reaction matches hit "${args.hit}": it has been answered, its moment to answer has passed, or that creature made none.`;
       // A model can copy an id wrongly, and told only "no" it gave up with the
-      // hit still standing. It is sent back with the hits that are open, and
-      // never given one of them unasked: that is the quiet answer above. A
-      // person is told no, as is a card's hit that closed under the player,
-      // who chose that one, and a reactor whose reaction is already spent.
+      // hit still standing. It is sent back with the open hits its id is a
+      // slip of (a character or two off), and never given one unasked: that
+      // is the quiet answer above. An id of a hit that has closed, a card's
+      // or the model's own from earlier, resembles no open one (ids are
+      // random), so it is told no rather than offered another hit to spend
+      // the reaction on. So is a person, and a reactor already spent.
       const encounter = getActiveEncounter(campaign.id);
       const offers = turn.actor === "ai"
-        && !listRecentMessages(campaign.id, 50).some((message) => message.intent?.hit === args.hit)
         && !(encounter && (encounter.reactionsUsed.includes(sheet.id) || reactedLate(campaign.id, encounter, sheet.id)));
+      const sent = args.hit.trim().toLowerCase();
       const listed = !offers ? [] : (answersOwnHitOnly(campaign, args.feature) ? [sheet] : sheets).flatMap((holder) =>
-        openHits(campaign.id, holder.id).map((record) => `hit "${hitIdOf(record)}" on ${holder.name} (${record.source === "fall" ? "a fall" : `${record.attacker.name}'s ${record.attack}`})`),
+        openHits(campaign.id, holder.id)
+          .filter((record) => levenshtein(hitIdOf(record).toLowerCase(), sent) <= MISCOPIED_HIT)
+          .map((record) => `hit "${hitIdOf(record)}" on ${holder.name} (${record.source === "fall" ? "a fall" : `${record.attacker.name}'s ${record.attack}`})`),
       );
       return listed.length
-        ? { error: `${why} Open hits: ${listed.join(", ")}. Send the one this reaction answers as hit. Nothing was spent.`, retry: true }
+        ? { error: `${why} Open hits like it: ${listed.join(", ")}. Send the one this reaction answers as hit. Nothing was spent.`, retry: true }
         : { error: `${why} Nothing was spent.`, refused: "rules" };
     }
     // A reaction for the reactor alone answers only a hit on them: Uncanny
