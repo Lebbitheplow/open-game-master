@@ -32,7 +32,7 @@ import { meetEnemyPart } from "@/lib/dm/enemy-defenses";
 import { scaledParts } from "@/lib/dm/enemy-hit";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
-import { attackerFoeId, critTurnsNormal, freshLastHit, openHits, plainOfReroll, rerollAttacker, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
+import { attackerFoeId, carryCuts, critTurnsNormal, cutBlow, freshLastHit, openHits, plainOfReroll, rerollAttacker, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { vowedFoe } from "@/lib/srd/vow-of-enmity";
 import { ENTROPIC_EDGE } from "@/lib/dm/reaction-kinds";
 import { answerSave, openSaves, type LastSave } from "@/lib/dm/last-save";
@@ -109,12 +109,14 @@ function heaviest(swings: SwingRecord[], which: (swing: SwingRecord) => boolean 
 }
 
 // The critical as the normal hit it becomes: the same dice without the
-// critical's, and whatever a reaction already took off it, in proportion (the
-// record keeps the corrected raw, not what was done to it). The unconscious
-// target's `ordinary` goes with the critical it read back.
+// critical's, and whatever a reaction already took off it taken off this the
+// same way (last-hit.ts carryCuts), or in proportion on a record that kept no
+// cuts. The unconscious target's `ordinary` goes with the critical it read back.
 function asNormalHit(swing: SwingRecord): SwingRecord {
   const normal = swing.normal;
-  const raw = normal ? (normal.from > 0 ? Math.round((normal.raw * swing.raw) / normal.from) : 0) : swing.raw;
+  const raw = normal
+    ? (carryCuts(swing, normal.raw, normal.from) ?? (normal.from > 0 ? Math.round((normal.raw * swing.raw) / normal.from) : 0))
+    : swing.raw;
   return {
     ...swing,
     crit: false,
@@ -347,7 +349,7 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
         reduction = Math.max(0, rollCard(ctx.campaign, ctx.turn, holder.id, "custom", `${holder.name}: ${reaction.name}`, expression, null).total);
         rolled = `${expression}: ${reduction}`;
       }
-      const corrected = hit.record.swings.map((entry, at) => (at === hit.index ? { ...entry, raw: Math.max(0, entry.raw - reduction) } : entry));
+      const corrected = hit.record.swings.map((entry, at) => (at === hit.index ? cutBlow(entry, does.amount === "half" ? "half" : reduction) : entry));
       const settled = settle(ctx, hit.record, corrected, label);
       // Vengeful Ancestors: what Spirit Shield prevented strikes the attacker.
       const reflected: Record<string, unknown> = {};
@@ -499,7 +501,7 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (pcResistances(target).includes(type)) {
         return { applied: `${target.name} already resists ${type} damage: ${reaction.name} changes nothing.` };
       }
-      const corrected = hit.record.swings.map((entry) => (textKey(entry.type ?? hit.record.type) === type && entry.hit ? { ...entry, raw: Math.floor(entry.raw / 2) } : entry));
+      const corrected = hit.record.swings.map((entry) => (textKey(entry.type ?? hit.record.type) === type && entry.hit ? cutBlow(entry, "half") : entry));
       const settled = settle(ctx, hit.record, corrected, label);
       return { applied: `${target.name} resists this ${type} damage: ${settled.given} hit points come back. HP ${settled.hp}.` };
     }
@@ -523,7 +525,7 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       const share_ = does.share ?? (does.resistFrom && held.level >= does.resistFrom ? "halved" : undefined);
       const kept = share_ === "split" ? Math.ceil(raw / 2) : 0;
       const corrected = share_ === "split"
-        ? record.swings.map((swing) => (swing.hit ? { ...swing, raw: Math.ceil(swing.raw / 2) } : swing))
+        ? record.swings.map((swing) => (swing.hit ? cutBlow(swing, "half_up") : swing))
         : record.swings.map((swing) => ({ ...swing, hit: false, raw: 0 }));
       const settled = settle(ctx, record, corrected, label);
       const share = share_ ? Math.floor(raw / 2) : raw;

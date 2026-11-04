@@ -48,7 +48,7 @@ import {
   type SwingOutcome,
 } from "@/lib/dm/hit-replay-logic";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
-import { hitIdOf, openHits, wardHpOf, writeLastHit, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
+import { carryCuts, hitIdOf, openHits, wardHpOf, writeLastHit, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { applyDmMutation } from "@/lib/dm/mutations";
 import { blowDefenses, meetDefenses } from "@/lib/dm/pc-damage";
 import { PRONE } from "@/lib/dm/vitals-logic";
@@ -86,14 +86,18 @@ function replaySwing(campaignId: string, sheet: CharacterSheet, record: LastHit,
     const scaled = parts?.length ? scaledParts(parts, raw) : undefined;
     return (past: number) => meetDefenses(defenses, raw, type || undefined, scaled, raw - past).amount;
   };
+  // Every cut a reaction took off the blow comes off the ordinary one the same
+  // way (last-hit.ts carryCuts), the ones before this correction with this
+  // one; a record that kept no cuts takes off what this correction took.
   const cut = landedAs ? Math.max(0, landedAs.raw - swing.raw) : 0;
-  const ordinaryRaw = swing.ordinary ? Math.max(0, swing.ordinary.raw - cut) : 0;
+  const carried = swing.ordinary && swing.normal ? carryCuts(swing, swing.ordinary.raw, swing.normal.from) : null;
+  const ordinaryRaw = swing.ordinary ? (carried ?? Math.max(0, swing.ordinary.raw - cut)) : 0;
   return {
     hit: swing.hit,
     crit: swing.crit,
     raw: swing.hit ? swing.raw : 0,
     land: landing(swing.raw, swing.parts),
-    ...(swing.hit && swing.ordinary ? { ordinary: { raw: ordinaryRaw, land: landing(ordinaryRaw, cut ? undefined : swing.ordinary.parts) } } : {}),
+    ...(swing.hit && swing.ordinary ? { ordinary: { raw: ordinaryRaw, land: landing(ordinaryRaw, ordinaryRaw !== swing.ordinary.raw ? undefined : swing.ordinary.parts) } } : {}),
     ...(swing.hit && swing.standingAdvantage ? { standingHit: hitsWith(swing, swing.standingAdvantage) } : {}),
   };
 }

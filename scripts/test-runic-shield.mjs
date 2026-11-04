@@ -185,7 +185,7 @@ await test("A critical another reaction already cut, then rolled away: the ally 
   let out = await shield([15], rogue);
   assert.equal(out.ok, true, out.error);
   assert.match(out.result.applied, /no longer a critical/i);
-  assert.equal(world.sheet(rogue.id).currentHp, 49, "the 5 the dodge took off comes off the plain 6");
+  assert.equal(world.sheet(rogue.id).currentHp, 47, "the dodge halves the plain 6 as it halved the critical");
 
   const bard = hero("bard", "College of Lore");
   enemy = await stage();

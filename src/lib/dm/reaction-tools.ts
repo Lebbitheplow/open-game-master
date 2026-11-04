@@ -40,7 +40,7 @@ import { devotedGuard } from "@/lib/dm/devoted-guard";
 import { reactionTimingOf, timingOfDoes, type ReactionTiming } from "@/lib/dm/reaction-kinds";
 import { authoredReactionNamed, heldReaction } from "@/lib/srd/authored-effects";
 import { removeConditions } from "@/lib/dm/condition-logic";
-import { attackerFoeId, freshLastHit, heaviestHit, heaviestRaw, hitIdOf, openHitAimed, openHits, plainOfReroll, reactedLate, rerollAttacker, withHitAim, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
+import { attackerFoeId, cutBlow, freshLastHit, heaviestHit, heaviestRaw, hitIdOf, openHitAimed, openHits, plainOfReroll, reactedLate, rerollAttacker, withHitAim, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import type { RollAttacker } from "@/lib/db/rolls";
 import { rollAgainst } from "@/lib/roll-labels";
 import { opportunity, reactionSpell } from "@/lib/dm/reaction-spells";
@@ -139,7 +139,7 @@ function uncannyDodge(ctx: Ctx): ToolResult {
   }
   const dodged = record.swings[index];
   const halved = Math.floor(dodged.raw / 2);
-  const corrected = record.swings.map((swing, at) => (at === index ? { ...swing, raw: halved } : swing));
+  const corrected = record.swings.map((swing, at) => (at === index ? cutBlow(swing, "half") : swing));
   spendReaction(ctx);
   const settled = settle(ctx, record, corrected, "uncanny dodge");
   return {
@@ -173,7 +173,7 @@ function deflectMissiles(ctx: Ctx): ToolResult {
   const die = rollCard(campaign, ctx.turn, sheet.id, "custom", `${sheet.name}: Deflect Missiles`, "1d10", null).total;
   const reduction = die + dex + (monk || sheet.level);
   const corrected = record.swings.map((swing, at) =>
-    at === index ? { ...swing, raw: Math.max(0, swing.raw - reduction) } : swing,
+    at === index ? cutBlow(swing, reduction) : swing,
   );
   const caught = corrected[index].raw === 0;
   const settled = settle(ctx, record, corrected, "deflect missiles");
@@ -291,7 +291,7 @@ function cuttingWords(ctx: Ctx): ToolResult {
   // hits whatever the total), otherwise off the damage.
   const missed = swing.natural !== 20 && swing.total - die < swing.vsAc;
   const corrected = record.swings.map((entry, at) =>
-    at !== index ? entry : missed ? { ...entry, hit: false, raw: 0 } : { ...entry, raw: Math.max(0, entry.raw - die) },
+    at !== index ? entry : missed ? { ...entry, hit: false, raw: 0 } : cutBlow(entry, die),
   );
   const settled = settle(ctx, record, corrected, "cutting words");
   return {

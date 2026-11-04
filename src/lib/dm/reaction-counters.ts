@@ -31,7 +31,7 @@ import { classLevelFor } from "@/lib/srd/multiclass";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { rollCard } from "@/lib/dm/roll-card";
-import { freshLastHit, heaviestRaw, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
+import { cutBlow, freshLastHit, heaviestRaw, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { settleLastHit } from "@/lib/dm/reaction-refund";
 import { pcResistances, removeConditions } from "@/lib/dm/condition-logic";
 import { HOLDING_ON, PRONE, UNCONSCIOUS, exhaustionPatch } from "@/lib/dm/vitals-logic";
@@ -71,7 +71,7 @@ function lessDamage(swings: SwingRecord[], amount: number): SwingRecord[] {
   for (const { index } of order) {
     if (left <= 0) break;
     const take = Math.min(left, next[index].raw);
-    next[index].raw -= take;
+    if (take > 0) next[index] = cutBlow(next[index], take);
     left -= take;
   }
   return next;
@@ -129,7 +129,7 @@ export function planCounterReaction(input: Input): Plan | ToolError | null {
       return {
         apply: () => {
           const corrected = record.swings.map((swing) =>
-            swing.hit && !resisted.includes((swing.type ?? record.type).toLowerCase()) ? { ...swing, raw: Math.floor(swing.raw / 2) } : swing,
+            swing.hit && !resisted.includes((swing.type ?? record.type).toLowerCase()) ? cutBlow(swing, "half") : swing,
           );
           const settled = settle(input, record, corrected, "swarming dispersal");
           return { applied: `${sheet.name} resists that damage: ${settled.given} hit points come back. HP ${settled.hp}. They vanish into the swarm and reappear up to 30 feet away (move_token forced on the map).` };

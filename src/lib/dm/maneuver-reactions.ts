@@ -31,7 +31,7 @@ import { computeSheetDerived } from "@/lib/srd";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { addSheetCondition } from "@/lib/dm/action-common";
 import { removeConditions } from "@/lib/dm/condition-logic";
-import { attackerFoeId, freshLastHit, writeLastHit, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
+import { attackerFoeId, cutBlow, freshLastHit, writeLastHit, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { COMMANDED, GRAPPLING_STRIKE, MANEUVERED, SUPERIORITY_STRIKE, maneuverDieFor, markedDie, maneuverUse } from "@/lib/dm/maneuver-rules";
 import { applyDmMutation, audit } from "@/lib/dm/mutations";
 import { READIED } from "@/lib/dm/object-actions";
@@ -149,7 +149,7 @@ function parry(ctx: Ctx): ToolResult {
   const dex = computeSheetDerived(sheet).abilityMods.dex;
   const expression = `1${maneuverDieFor(sheet)}${dex >= 0 ? "+" : ""}${dex}`;
   const rolled = Math.max(0, rollCard(campaign, ctx.turn, sheet.id, "custom", `${sheet.name}: Parry`, expression, null).total);
-  const corrected = record.swings.map((swing, at) => (at === index ? { ...swing, raw: Math.max(0, swing.raw - rolled) } : swing));
+  const corrected = record.swings.map((swing, at) => (at === index ? cutBlow(swing, rolled) : swing));
   const settled = settle(ctx, record, corrected, "parry");
   return {
     ok: true,

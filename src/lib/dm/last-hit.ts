@@ -83,6 +83,13 @@ export type SwingRecord = {
   // raw as it landed: a reaction that cut the blow first cuts this in proportion.
   // Absent where the dice do not line up (ordinaryOfCritical) and on older records.
   normal?: { raw: number; type?: string; parts?: Array<{ amount: number; type: string }>; from: number };
+  // What reactions took off the blow, in the order taken (cutBlow). A reaction
+  // that turns the blow into another one (Sentinel at Death's Door's normal
+  // hit, a reroll's plain one, the ordinary blow a standing target takes)
+  // takes the same off that one (carryCuts): a halving halves it and a flat
+  // cut takes the same amount, as the rules take each off whatever the attack
+  // deals. Absent on a blow nothing cut and on older records.
+  cuts?: BlowCut[];
   // The advantage the swing would have had against the target standing, when
   // it lay at 0 and that changed the roll (SRD 5.1, Unconscious: attack rolls
   // against it have advantage). A reaction that leaves them standing when it
@@ -103,6 +110,30 @@ export type SwingRecord = {
   // reaction judges the one blow that broke it, not the whole attack.
   concentration?: { save: number | null; broke: boolean };
 };
+
+// A flat amount off the blow (Cutting Words, Deflect Missiles, Parry), or half
+// of it rounded down (Uncanny Dodge, a resistance) or up (the half an ally
+// keeps of a split blow).
+export type BlowCut = number | "half" | "half_up";
+
+function cutOf(raw: number, cut: BlowCut): number {
+  return cut === "half" ? Math.floor(raw / 2) : cut === "half_up" ? Math.ceil(raw / 2) : Math.max(0, raw - cut);
+}
+
+// The swing with a reaction's cut taken off its damage, the cut kept with it.
+export function cutBlow(swing: SwingRecord, cut: BlowCut): SwingRecord {
+  return { ...swing, raw: cutOf(swing.raw, cut), cuts: [...(swing.cuts ?? []), cut] };
+}
+
+// Another figure of the same blow (its normal, plain or ordinary damage, as
+// rolled) with the swing's cuts taken off it in their order. `from` is the
+// blow's own damage before any cut. Null when the cuts on record do not lead
+// from `from` to the damage the swing holds (a record written before they were
+// kept, or a cut no reaction recorded): the caller keeps its own reading.
+export function carryCuts(swing: SwingRecord, figure: number, from: number): number | null {
+  const cuts = swing.cuts ?? [];
+  return cuts.reduce(cutOf, from) === swing.raw ? cuts.reduce(cutOf, figure) : null;
+}
 
 export type HolderSnapshot = {
   kind: "sheet" | "enemy";
@@ -204,15 +235,16 @@ export function attackerFoeId(record: Pick<LastHit, "attacker"> | null | undefin
 // the d20 kept is not a 20, and the blow lands without its critical dice (SRD
 // 5.1, Critical Hits: "If the d20 roll for an attack is a 20"). A record
 // written before the plain blow was kept stays as it was. A reaction that has
-// already cut the blow (Uncanny Dodge, Cutting Words) keeps its cut, off the
-// plain blow too, as the ordinary blow takes it (reaction-refund.ts).
+// already cut the blow (Uncanny Dodge, Cutting Words) cuts the plain blow the
+// same way (carryCuts); a record that kept no cuts takes the amount it lost.
 export function plainOfReroll(swing: SwingRecord, kept: number): SwingRecord {
   if (!swing.crit || kept === 20 || !swing.plain) {
     return swing;
   }
   const { plain, ...rest } = swing;
-  const cut = Math.max(0, (plain.from ?? swing.raw) - swing.raw);
-  const next: SwingRecord = { ...rest, crit: false, raw: Math.max(0, plain.raw - cut) };
+  const from = plain.from ?? swing.raw;
+  const raw = carryCuts(swing, plain.raw, from) ?? Math.max(0, plain.raw - Math.max(0, from - swing.raw));
+  const next: SwingRecord = { ...rest, crit: false, raw };
   delete next.parts;
   return plain.parts ? { ...next, parts: plain.parts } : next;
 }
