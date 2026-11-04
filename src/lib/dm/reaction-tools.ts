@@ -61,7 +61,8 @@ import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
 import { swallowCoverBetween, swallowCoverError } from "@/lib/dm/swallow";
 import { engineFeatNamed } from "@/lib/srd/feat-effects";
 import { isPublishedFeatureName } from "@/lib/srd/features";
-import { holdsFeature, isNamed } from "@/lib/srd/feature-names";
+import { choiceIn, holdsFeature, isNamed } from "@/lib/srd/feature-names";
+import { channelOptions } from "@/lib/dm/option-costs";
 import { subclassNamed } from "@/lib/srd/subclass-name";
 
 const useReactionSchema = z.object({
@@ -714,11 +715,29 @@ function useReaction(
           retry: true,
         };
   }
+  // A Channel Divinity option taken as a reaction (War God's Blessing) spends a
+  // use like any other option: this path spent only the reaction, so a cleric
+  // could bless every round. Rebuke the Violent pays through its own row.
+  const option = choiceIn(held.name, "Channel Divinity");
+  const isChannel = option !== null;
+  // An option that is no reaction (Vow of Enmity, Turn Undead) does nothing here:
+  // its effect is use_resource's, so spending on it here would burn the use.
+  if (isChannel && channelOptions(sheet).find((entry) => isNamed(entry.name, option))?.cost !== "reaction") {
+    return { error: `${option} is not a reaction: use_resource with resource "Channel Divinity" and variant "${option}". Nothing was spent.`, retry: true };
+  }
+  const channel = isChannel ? sheet.resources?.channel_divinity : null;
+  if (isChannel && (!channel || channel.max - channel.used < 1)) {
+    return { error: `${sheet.name} has no Channel Divinity left for ${held.name}; it comes back on a rest. Nothing was spent.`, refused: "rules" };
+  }
+  if (channel) {
+    reactionPatch(campaign, ctx.turn.id, sheet.id, { resources: { ...sheet.resources, channel_divinity: { max: channel.max, used: channel.used + 1 } } }, `${held.name}: a use spent`);
+  }
   spendReaction(ctx);
   return {
     ok: true,
     reaction: held.name,
     spent: SPENT(sheet.name),
+    ...(channel ? { left: `${channel.max - channel.used - 1}/${channel.max}` } : {}),
     note: `${held.name} is resolved from its own text; anything it rolls or changes goes through its own tool.`,
   };
 }
