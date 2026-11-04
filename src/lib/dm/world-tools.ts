@@ -588,7 +588,10 @@ export function handlePassTime(
     setWaterRation(campaign.id, args.water);
   }
   const before = getClock(campaign.id);
-  const moved = advanceClock(campaign.id, args.amount, args.unit, { meal: Boolean(args.meal) });
+  // Every character's lifestyle is charged for the dawns below, so those
+  // dawns feed whoever keeps one up.
+  const lifestyle = Object.fromEntries(listSheets(campaign.id).map((sheet) => [sheet.id, 0]));
+  const moved = advanceClock(campaign.id, args.amount, args.unit, { meal: Boolean(args.meal), lifestyle });
   if ("error" in moved) {
     return moved;
   }

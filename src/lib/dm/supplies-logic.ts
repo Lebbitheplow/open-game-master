@@ -49,9 +49,13 @@ export function mealRefused(rawArguments: string): boolean {
 
 export const MEAL_REFUSAL = "A meal names its source in at least 3 characters.";
 
-// A lifestyle of squalid or better pays for food and water, so its dawn costs
-// no ration (SRD 5.1, Lifestyle Expenses). Wretched is free and buys nothing,
-// and a character with none chosen is on the road, living off their supplies.
-export function lifestyleFeeds(lived: Lifestyle | null): boolean {
-  return lived !== null && lived !== "wretched";
+// A lifestyle of squalid or better pays for food and water, so a dawn it paid
+// for costs no ration (SRD 5.1, Lifestyle Expenses). `lived` is the lifestyle
+// the purse kept up (lifestyle.ts livedLifestyle), null with none chosen.
+// Wretched is free and buys nothing, and a character with none chosen is on
+// the road, living off their supplies, unless their downtime work keeps them
+// (`coveredCp`, SRD 5.1 Practicing a Profession: "a modest lifestyle without
+// having to pay").
+export function lifestyleFeeds(lived: Lifestyle | null, coveredCp = 0): boolean {
+  return lived === null ? coveredCp > 0 : lived !== "wretched";
 }

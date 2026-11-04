@@ -113,12 +113,17 @@ export function mealAtTable(
 
 // Every dawn between two instants, the day's upkeep for the table, when the
 // variant is on. Returns the new hunger by character for the clock. `meal`
-// covers the first of the dawns only.
+// covers the first of the dawns only. `paid` holds the characters whose
+// lifestyle these dawns are charged to (lifestyle.ts chargeLifestyle), each
+// with the copper a day their work covers: only those dawns are fed by it. A
+// march of hours, the GM's clock or a spell's casting time charges none, and
+// a lifestyle fed free on them before.
 export function upkeepAtDawns(
   campaignId: string,
   dawns: number,
   hunger: Record<string, Hunger>,
   meal = false,
+  paid: Record<string, number> = {},
 ): Record<string, Hunger> | null {
   const campaign = getCampaignById(campaignId);
   if (!dawns || !campaign?.gameSettings.variantRules.supplies) {
@@ -133,8 +138,9 @@ export function upkeepAtDawns(
     let sheet = stale;
     // What the days will cost the purse (lifestyle.ts chargeLifestyle): one
     // that cannot keep a lifestyle up lives wretched, and eats from the pack.
-    const chosen = lifestyleOf(campaignId, stale.id);
-    const kept = lifestyleFeeds(chosen && livedLifestyle(chosen, purseOf(stale), dawns));
+    const covered = paid[stale.id];
+    const chosen = covered === undefined ? null : lifestyleOf(campaignId, stale.id);
+    const kept = covered !== undefined && lifestyleFeeds(chosen && livedLifestyle(chosen, purseOf(stale), dawns, covered), covered);
     for (let day = 0; day < Math.min(dawns, 30); day += 1) {
       const upkeep = dayOfUpkeep(sheet, next[sheet.id] ?? { food: 0, water: 0 }, waterRation, kept || (meal && day === 0));
       next[sheet.id] = upkeep.hunger;
