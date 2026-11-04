@@ -14,6 +14,7 @@
 import { afterRollOptions, canWaitOnRoll } from "@/lib/dm/after-roll-logic";
 import { rollsCanWait } from "@/lib/dm/after-roll";
 import { LUCK_SPEND } from "@/lib/dm/roll-riders";
+import { foretoldLeft } from "@/lib/dm/foretold-logic";
 import { claimedAdvantage } from "@/lib/dm/pc-attack-options";
 import { askedFields, unnamedTraitFields } from "@/lib/dm/roll-feature-riders";
 import { rollExpression } from "@/lib/dice";
@@ -191,7 +192,11 @@ export function handleRequestRoll(
     spendRollCarriers(campaignId, sheet.id, resolved.spendInspiration);
   }
 
-  if (sheet && realDiceUserIds.has(sheet.userId)) {
+  const contestLine = gated.contest ? `${gated.contest.name} rolled ${gated.contest.skill} ${gated.contest.total}; ${gated.contest.answering ? "a tie goes to the character" : "the character must beat it"}.` : null;
+  // Portent replaces the d20 before it is thrown, so a wizard holding a number
+  // decides here: the roll waits unthrown, and the model waits with it.
+  const foretelling = canWait && fresh ? foretoldLeft(fresh).length > 0 : false;
+  if (sheet && (foretelling || realDiceUserIds.has(sheet.userId))) {
     const pending = createPendingRoll({
       campaignId,
       turnId: turn.id,
@@ -207,18 +212,24 @@ export function handleRequestRoll(
       targetEnemyId: args.kind === "damage" ? args.targetEnemyId ?? null : null,
       // The screen holds while the player's dice are on their way.
       visibility: model ? "public" : args.visibility ?? "public",
+      ...(realDiceUserIds.has(sheet.userId) ? {} : { parkedFor: "foretold" as const }),
     });
+    if (foretelling) {
+      const told = [contestLine, ...(resolved.conditionNotes ?? [])].filter(Boolean).join("; ");
+      if (told) {
+        setPendingCombatNote(pending.id, told);
+      }
+    }
     publishPersisted(campaignId, "roll_pending", { pendingRoll: publicPendingRoll(pending) });
     return {
       ok: true,
       parked: true,
-      note: `Waiting on ${sheet.name} to enter ${resolved.expression}.`,
+      note: foretelling ? `Waiting on ${sheet.name} to roll or to use Portent.` : `Waiting on ${sheet.name} to enter ${resolved.expression}.`,
     };
   }
 
   try {
     const outcome = rollExpression(resolved.expression, undefined, { purpose: sheet ? heroRollTag(args.kind, sheet.name) : undefined });
-    const contestLine = gated.contest ? `${gated.contest.name} rolled ${gated.contest.skill} ${gated.contest.total}; ${gated.contest.answering ? "a tie goes to the character" : "the character must beat it"}.` : null;
     // The server threw it: the dice wait on the player when something they
     // hold could change the result, and the model waits with them.
     const options = canWait && sheet && fresh

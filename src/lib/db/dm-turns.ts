@@ -432,7 +432,7 @@ function mapPending(row: PendingRow): PendingRoll {
     attack: parseJson<PendingAttack | null>(row.attack_json, null),
     combatNote: row.combat_note ?? null,
     parkedFor:
-      row.parked_for === "real_dice" || row.parked_for === "held" || row.parked_for === "after_roll" ? row.parked_for : null,
+      row.parked_for === "real_dice" || row.parked_for === "held" || row.parked_for === "after_roll" || row.parked_for === "foretold" ? row.parked_for : null,
     thrown: parseJson<ThrownRoll | null>(row.thrown_json ?? null, null),
     visibility: row.visibility ?? "public",
     status: row.status,

@@ -709,6 +709,7 @@ export const fullPatchSheetSchema = patchSheetSchema.extend({
   concentrationRounds: z.number().int().min(0).max(ROUND_CEILING).nullable().optional(),
   conditionMeta: conditionMetaSchema.optional(),
   resources: resourcesSchema.optional(),
+  foretold: z.array(z.number().int().min(1).max(20)).max(3).optional(),
   wildShape: wildShapeSchema.optional(),
   // Bound creatures (familiars, animal companions, drakes); managed by the
   // pet engine (src/lib/dm/pet-tools.ts), never player-patchable directly.
@@ -796,6 +797,9 @@ export type CharacterSheet = {
   // A creature a spell or feature made: its attacks, Multiattack and who
   // made it (src/lib/schemas/summon.ts). Absent or null on every other sheet.
   summon?: SheetSummon | null;
+  // The numbers Portent foretold at the last long rest, kept until used
+  // (src/lib/dm/foretold-logic.ts).
+  foretold?: number[];
   exhaustion: number;
   deathSaves: DeathSaves;
   // Spell this character is concentrating on; null when none. Managed by

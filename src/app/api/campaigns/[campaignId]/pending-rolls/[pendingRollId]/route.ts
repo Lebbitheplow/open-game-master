@@ -66,7 +66,9 @@ export async function POST(
     return Response.json({ error: "That roll was already resolved." }, { status: 409 });
   }
 
-  const isFallback = "fallback" in parsed.data;
+  // A screen that knows nothing of Portent shows this roll as one to type in:
+  // the server throws it, so the table is never left on a refused answer.
+  const isFallback = "fallback" in parsed.data || pending.parkedFor === "foretold";
   const isRoller = pending.userId === context.user.id;
   // Whoever runs the story can force the digital fallback when a player is
   // away from their physical dice: the lead in an AI campaign, the DM in a

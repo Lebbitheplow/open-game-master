@@ -24,6 +24,7 @@ import { encumbranceFor } from "@/lib/srd/encumbrance";
 import { magicItemRiders } from "@/lib/srd/magic-items";
 import type { WearConflict } from "@/lib/srd/wear-slots";
 import { RESOURCE_DEFS, resourceName } from "@/lib/srd/class-resources";
+import { foretoldLeft } from "@/lib/dm/foretold-logic";
 import { GameTerm } from "@/components/ui/GameTerm";
 import {
   AbilityTiles,
@@ -502,6 +503,9 @@ export function CharacterSheetDialog({
                     onRecover={() => adjustUsage({ resources: { [id]: pool.used - 1 } })}
                   />
                 ))}
+                {foretoldLeft(sheet).length ? (
+                  <p className="text-xs">Foretold rolls: {foretoldLeft(sheet).join(", ")}</p>
+                ) : null}
               </div>
               {spends ? (
                 <p className="reveal mt-1.5 text-[11px] text-stone-500">

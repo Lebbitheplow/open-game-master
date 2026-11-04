@@ -82,6 +82,7 @@ export type NarrationStatus = {
 
 export type PendingRoll = {
   id: string;
+  parkedFor?: string | null;
   userId: string;
   characterId: string | null;
   kind: string;
