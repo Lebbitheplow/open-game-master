@@ -90,7 +90,14 @@ export default {
     await tall(swap.locator('button[aria-label^="Sanctuary:"]').first(), "a swap choice");
     await tall(swap.locator("button").filter({ hasText: "Cancel" }).first(), "the swap's Cancel");
     await t.shot("swap");
+    // Focus goes back to the tile in the same press as the question goes, so
+    // the Escape's own keyup lands on it rather than on the page.
+    await page.evaluate(() => {
+      document.addEventListener("keyup", (event) => (window.__swapKeyUp = event.target), { capture: true, once: true });
+    });
     await page.keyboard.press("Escape");
+    const keyUpOn = await tile("Detect Magic").evaluate((node) => (node.contains(window.__swapKeyUp) ? "" : `${window.__swapKeyUp?.tagName}`));
+    if (keyUpOn) found.push(`the Escape that called off the swap came up on ${keyUpOn}, not the tile`);
     await eventually(async () => (await swap.count()) === 0, { timeoutMs: 5_000, label: "Escape closing the swap" });
     await eventually(() => tile("Detect Magic").evaluate((node) => node.contains(document.activeElement)), {
       timeoutMs: 3_000,
