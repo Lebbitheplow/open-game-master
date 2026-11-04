@@ -7,11 +7,11 @@ import type { CampaignClock, Instant } from "@/lib/dm/calendar";
 //
 // What comes back is what the moving itself changed (src/lib/db/clock.ts
 // advanceClock): the instant, the Wild Shapes whose hours ran out, the days
-// of food and water counted, the hit dice window it closed, the diseases and
-// poisons it ran on, the downtime the days paid for, and the stretches
-// marched (travel records each after its move). What the world did
-// with the time (its weather, its calendar's events, a companion who left)
-// stays: the chapter rewind is what takes those back.
+// of food and water counted, a meal it brought, the hit dice window it
+// closed, the diseases and poisons it ran on, the downtime the days paid for,
+// and the stretches marched (travel records each after its move). What the
+// world did with the time (its weather, its calendar's events, a companion
+// who left) stays: the chapter rewind is what takes those back.
 
 export type RecordedClockMove = {
   // The clock as the move found it.
@@ -42,7 +42,7 @@ function withLapsedShapes(current: CampaignClock, moves: RecordedClockMove[]): R
   return Object.keys(shapeEnds).length ? shapeEnds : undefined;
 }
 
-type Restored = "shapeEnds" | "supplies" | "shortRest" | "afflictions" | "downtime" | "marched";
+type Restored = "shapeEnds" | "supplies" | "mealAtDawn" | "shortRest" | "afflictions" | "downtime" | "marched";
 
 // Sets `key` to `value`, or leaves it off when there is none, so a restored
 // clock reads as the one that was saved.
@@ -68,6 +68,7 @@ export function rewindClock(current: CampaignClock, moves: RecordedClockMove[]):
   }
   next.instant = first.instant;
   put(next, "supplies", first.supplies);
+  put(next, "mealAtDawn", first.mealAtDawn);
   put(next, "shortRest", first.shortRest);
   put(next, "afflictions", first.afflictions);
   put(next, "downtime", first.downtime);

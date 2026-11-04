@@ -20,6 +20,9 @@ export type MarchState = {
   // a level of exhaustion whatever they carry. Absent: enough (a waterskin
   // is refilled on the way).
   waterRation?: "half" | "none";
+  // A meal the story named under the `supplies` variant (issue 793): the next
+  // dawn costs no ration and no thirst, and clears this.
+  mealAtDawn?: true;
   // The short rest a party has just finished, while its players choose how
   // many hit dice to spend (SRD 5.1: the player decides, one die at a time).
   // `ids` are the characters still choosing, `sung` those whose Song of Rest
@@ -99,6 +102,7 @@ export function normalizeMarch(record: Record<string, unknown>): MarchState {
     : undefined;
   const supplies = normalizeSupplies(record.supplies);
   const waterRation = record.waterRation === "half" || record.waterRation === "none" ? record.waterRation : undefined;
+  const mealAtDawn = record.mealAtDawn === true ? (true as const) : undefined;
   const objectsRaw = record.objects && typeof record.objects === "object" ? Object.entries(record.objects as Record<string, unknown>) : [];
   const objectEntries = objectsRaw
     .filter(([name]) => name.length <= 60)
@@ -122,6 +126,7 @@ export function normalizeMarch(record: Record<string, unknown>): MarchState {
     ...(travelPace ? { travelPace } : {}),
     ...(supplies ? { supplies } : {}),
     ...(waterRation ? { waterRation } : {}),
+    ...(mealAtDawn ? { mealAtDawn } : {}),
     ...(shortRest ? { shortRest } : {}),
     ...(objects ? { objects } : {}),
     ...(marched.length ? { marched } : {}),

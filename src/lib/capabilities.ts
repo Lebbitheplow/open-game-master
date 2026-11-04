@@ -210,6 +210,9 @@ export const SERVER_FEATURES = {
   // answers with a 404 and drops unread, so its summon cards ask nothing
   // and wait for the GM as before.
   summonPicker: true,
+  // The meal field on the console's pass_time, travel and take_rest (issue
+  // 793): an older host drops `meal` unread and the party eats from the pack.
+  suppliesMeal: true,
 } as const;
 export type ServerFeatures = { [K in keyof typeof SERVER_FEATURES]: boolean };
 

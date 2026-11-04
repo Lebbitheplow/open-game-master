@@ -474,6 +474,7 @@ export function DmConsolePanel({
                         entry={entry}
                         sheets={sheets}
                         encounter={encounter}
+                        variantRules={variantRules}
                         glyph={actionGlyph(entry.name, active?.category ?? "table")}
                       />
                       <CloseForm onClick={() => setOpenAction("")} />

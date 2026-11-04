@@ -2,7 +2,7 @@
 // resources, conditions and rests. Names match the tool names the AI DM is
 // offered exactly, because both callers reach the same engine
 // (src/lib/dm/invoke.ts).
-import type { CatalogEntry, CatalogField } from "@/lib/dm/catalog-types";
+import { MEAL_FIELD, type CatalogEntry, type CatalogField } from "@/lib/dm/catalog-types";
 import { ALIGNMENT_CODES } from "@/lib/dm/companion-values-logic";
 import { ITEM_TAGS } from "@/lib/schemas/item-tags";
 import { UPDATE_SHEET_FIELDS } from "@/lib/dm/update-sheet-args";
@@ -580,6 +580,7 @@ export const PARTY_ADJUDICATIONS: CatalogEntry[] = [
         kind: "hitDice",
         help: "Short rest, for a character with no player at the table. A connected player spends their own on their sheet.",
       },
+      MEAL_FIELD,
       REASON,
     ],
   },
