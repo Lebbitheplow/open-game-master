@@ -106,7 +106,12 @@ const favored = world.addHero({
   feats: ["Great Weapon Master"],
 });
 world.patch(favored.id, { features: [...world.sheet(favored.id).features, { name: "Foe Slayer", description: "" }, { name: "Favored Enemy: humanoids", description: "" }] });
-const heroes = [greatWeapon, plain, sharpshooter, gunner, adept, evoker, duelist, slayer, powerful, deadeye, polearm, lucky, brawler, piercer, savage, favored];
+const favoredMage = world.addHero({
+  class: "wizard", level: 5, maxHp: 30, abilities: { int: 16, wis: 16 }, proficiencies: TRAINED,
+  spellcasting: { ability: "int", slots: { 1: { max: 4, used: 0 }, 2: { max: 3, used: 0 } }, prepared: ["Scorching Ray"], known: ["Scorching Ray"], cantrips: ["Fire Bolt"] },
+});
+world.patch(favoredMage.id, { features: [...world.sheet(favoredMage.id).features, { name: "Foe Slayer", description: "" }, { name: "Favored Enemy: humanoids", description: "" }] });
+const heroes = [greatWeapon, plain, sharpshooter, gunner, adept, evoker, duelist, slayer, powerful, deadeye, polearm, lucky, brawler, piercer, savage, favored, favoredMage];
 const base = new Map(heroes.map((hero) => [hero.id, world.sheet(hero.id)]));
 
 async function stage(hero, { count = 1, apart = 1 } = {}) {
@@ -189,8 +194,11 @@ async function fightStaysOver(hero, faces, args, note) {
 // One hit that leaves the fight running, on a concentrating legendary creature
 // that fails the save: the mark goes on, and the failed save stays on record
 // for legendary_resist to turn.
-async function markKeepsTheBlow(hero, faces, args, mark) {
+async function markKeepsTheBlow(hero, faces, args, mark, feats) {
   const [enemy] = await stage(hero);
+  if (feats) {
+    world.patch(hero.id, { feats });
+  }
   encounters.setEnemyConcentration(enemy.id, "Hold Person");
   const encounter = world.encounter();
   encounters.saveEncounter({ ...encounter, legendary: { ...encounter.legendary, pools: { ...encounter.legendary?.pools, [enemy.id]: { actions: 0, resistances: 3 } } } });
@@ -241,6 +249,62 @@ await test("Great Weapon Master's mark does not take Foe Slayer's once-a-turn ma
   assert.equal(blow.ok, true, blow.error);
   assert.ok((blow.result.conditionEffects ?? []).some((line) => /Foe Slayer: \+3 damage/.test(line)), JSON.stringify(blow.result.conditionEffects));
   assert.ok(marks().includes("foe-slayer") && marks().includes("great weapon master"), JSON.stringify(marks()));
+});
+
+await test("Slasher's and Crusher's marks keep what the blow wrote: a concentrating legendary creature's failed save can still be turned", async () => {
+  await markKeepsTheBlow(greatWeapon, [15, 3, 3, 1], { weapon: "Greatsword" }, "slasher:used", ["Slasher"]);
+  await markKeepsTheBlow(brawler, [15, 3, 1], { weapon: "unarmed strike" }, "crusher:used", ["Tavern Brawler", "Crusher"]);
+  // With Great Weapon Master's mark before it: both stay on the turn.
+  await markKeepsTheBlow(greatWeapon, [20, 3, 3, 3, 3, 1], { weapon: "Greatsword" }, "slasher:used", ["Great Weapon Master", "Slasher"]);
+  assert.ok(marks().includes("great weapon master"), JSON.stringify(marks()));
+});
+
+await test("Foe Slayer stays once a turn when another feat's mark follows it, whether it rode the damage or turned a near miss", async () => {
+  const usedOn = (blow) => (blow.result.conditionEffects ?? []).some((line) => /Foe Slayer/.test(line));
+  // +6 to hit against AC 13: a 15 hits on its own, and a 5 is 11, turned by +3.
+  for (const [feats, first] of [
+    [["Savage Attacker"], [15, 3, 3, 3, 3]],
+    [["Brutal Attack"], [15, 3, 3, 3, 3]],
+    [["Slasher"], [15, 3, 3]],
+    [["Savage Attacker"], [5, 3, 3, 3, 3]],
+  ]) {
+    const [enemy] = await stage(favored);
+    world.patch(favored.id, { feats });
+    const blow = await kit.swing(favored.id, enemy.id, first, { weapon: "Greatsword" });
+    assert.equal(blow.ok, true, blow.error);
+    assert.equal(blow.result.hit, true, JSON.stringify(blow.result).slice(0, 300));
+    assert.ok(usedOn(blow), JSON.stringify(blow.result.conditionEffects));
+    assert.ok(marks().includes("foe-slayer"), `${feats}: ${JSON.stringify(marks())}`);
+    const next = await kit.swing(favored.id, enemy.id, [15, 3, 3], { weapon: "Greatsword" });
+    assert.equal(next.ok, true, next.error);
+    assert.equal(usedOn(next), false, `${feats}: ${JSON.stringify(next.result.conditionEffects)}`);
+  }
+});
+
+await test("Foe Slayer on a spell attack leaves the turn the cast wrote: the action stays spent, and a second ray stays the same casting", async () => {
+  const fireBolt = { spell: "Fire Bolt", damage: "2d10", damageType: "fire" };
+  // +6 to hit against AC 13: a 15 hits on its own, and a 5 is 11, turned by +3.
+  for (const faces of [[15, 3, 3], [5, 3, 3]]) {
+    const [enemy] = await stage(favoredMage, { apart: 3 });
+    const bolt = await kit.swing(favoredMage.id, enemy.id, faces, fireBolt);
+    assert.equal(bolt.ok, true, bolt.error);
+    assert.equal(bolt.result.hit, true, JSON.stringify(bolt.result).slice(0, 300));
+    assert.ok(marks().includes("foe-slayer"), JSON.stringify(marks()));
+    assert.equal(world.encounter().turnBudget.actionUsed, true, "the cast spent the action");
+    const again = await kit.swing(favoredMage.id, enemy.id, [15, 3, 3], fireBolt);
+    assert.equal(again.ok, false, "no second action");
+    assert.match(again.error ?? "", /action/);
+  }
+  const [enemy] = await stage(favoredMage, { apart: 3 });
+  const slots = () => world.sheet(favoredMage.id).spellcasting.slots[2].used;
+  const spent = slots();
+  const first = await kit.swing(favoredMage.id, enemy.id, [15, 3, 3], { spell: "Scorching Ray" });
+  assert.equal(first.ok, true, first.error);
+  assert.ok(marks().includes("foe-slayer") && marks().includes("spell:levelled"), JSON.stringify(marks()));
+  const second = await kit.swing(favoredMage.id, enemy.id, [15, 3, 3], { spell: "Scorching Ray" });
+  assert.equal(second.ok, true, second.error);
+  assert.ok(!(second.result.conditionEffects ?? []).some((line) => /Foe Slayer/.test(line)), JSON.stringify(second.result.conditionEffects));
+  assert.equal(slots() - spent, 1, "one casting, one slot");
 });
 
 await test("Tavern Brawler's hit that ends the fight leaves it over, its XP paid once", async () => {
