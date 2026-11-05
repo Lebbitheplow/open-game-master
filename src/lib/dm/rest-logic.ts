@@ -1,4 +1,5 @@
 import { easeOrdeal } from "@/lib/dm/ordeal";
+import { PORTENT, rollForetold } from "@/lib/dm/foretold-logic";
 import { effectiveMaxHp, pruneMeta, removeConditionInstances, removeConditions } from "@/lib/dm/condition-logic";
 import type { RollResult } from "@/lib/dice";
 import { RAGING, recoveringPrefix, resourceDef } from "@/lib/srd/class-resources";
@@ -62,6 +63,9 @@ export function longRestPatch(
     wildShape: null,
     // Every limited-use class resource refills on a long rest.
     resources: refillResources(sheet.resources, "long", sheet),
+    // Portent: "When you finish a long rest, roll two d20s", and last night's
+    // numbers are gone.
+    ...(sheet.resources?.[PORTENT] ? { foretold: rollForetold(Math.min(3, sheet.resources[PORTENT].max)) } : {}),
   };
   // Multiclass sheets recover into their per-class pools (patchSheet keeps
   // the summed hitDice mirror in sync); single-class sheets patch the

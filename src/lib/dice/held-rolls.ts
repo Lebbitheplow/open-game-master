@@ -23,7 +23,10 @@ export type HeldRollMember = {
 //
 // The third reason is the game's own: the server has thrown the dice and the
 // roll waits on what the player does with them (src/lib/dm/after-roll.ts).
-export type ParkReason = "real_dice" | "held" | "after_roll";
+//
+// The fourth is too: no die is thrown yet, and the player may replace it with
+// a number Portent foretold (src/lib/dm/foretold-logic.ts).
+export type ParkReason = "real_dice" | "held" | "after_roll" | "foretold";
 
 type DicePreferences = Pick<HeldRollMember, "useRealDice" | "holdRolls">;
 
@@ -53,7 +56,7 @@ export function mayTypeFaces(
   dicePolicy: string,
   member: DicePreferences | null | undefined,
 ): boolean {
-  if (parkedFor === "held" || parkedFor === "after_roll") {
+  if (parkedFor === "held" || parkedFor === "after_roll" || parkedFor === "foretold") {
     return false;
   }
   return parkReasonFor(dicePolicy, member) === "real_dice";

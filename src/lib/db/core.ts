@@ -1651,6 +1651,8 @@ function ensureSchema(db: SqliteDatabase) {
     ["pets_json", `TEXT`],
     // A creature a spell or feature made (src/lib/schemas/summon.ts); NULL = not one.
     ["summon_json", `TEXT`],
+    // The numbers Portent foretold at the last long rest (src/lib/dm/foretold-logic.ts).
+    ["foretold_json", `TEXT`],
     // AI companion party member: owned by an unloginable bot user row so
     // UNIQUE(campaign_id, user_id) and the users FK stay satisfied. The DM
     // drives these sheets (src/lib/dm/companion-tools.ts).

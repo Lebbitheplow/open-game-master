@@ -1126,7 +1126,7 @@
     ]
    ],
    "recharge": "long",
-   "guidance": "Rolled after each long rest and kept as fixed numbers. Spend one to replace the result of an attack, check or save by the wizard or a creature they can see, declared before the roll."
+   "guidance": "The server rolls these after each long rest and keeps the numbers. On the wizard's own ability check or saving throw from request_roll it offers them before the roll and waits, so do not spend one for them. On any other roll the wizard or a creature they can see makes, a number replaces the d20 when declared before the roll; never invent one."
   },
   {
    "id": "sub_illusory_self",

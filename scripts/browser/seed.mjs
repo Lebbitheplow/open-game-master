@@ -2307,6 +2307,30 @@ for (const viewport of ["desktop", "phone"]) {
   afterRollTables[viewport] = { id: table.id, hero: hero.id };
 }
 
+// Portent's numbers on a real parked roll: a table the player runs, with the
+// lead's hero a School of Divination wizard holding two numbers.
+const PORTENT_TITLE = "Seer's Table";
+const portentTables = {};
+for (const viewport of ["desktop", "phone"]) {
+  const table = campaigns.createCampaign(player.id, {
+    title: `${PORTENT_TITLE} (${viewport})`,
+    description: "Runes that will not read.",
+    theme: "high-fantasy",
+    maxPlayers: 6,
+    startingLevel: 5,
+    difficulty: "normal",
+    gameSettings: { ttsEnabled: false, dmMode: "human" },
+  });
+  const seated = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+  if ("error" in seated) {
+    throw new Error(`could not seat the lead at the seer's table: ${seated.error}`);
+  }
+  campaigns.setCampaignStatus(table.id, "active");
+  const hero = sheets.createSheet(table.id, world.owner.id, 5, heroInput({ name: "Ione Vale", class: "wizard", subclass: "School of Divination", level: 5 }));
+  sheets.patchSheet(hero.id, { resources: { ...hero.resources, sub_portent: { max: 2, used: 0 } }, foretold: [17, 3] });
+  portentTables[viewport] = { id: table.id, hero: hero.id };
+}
+
 // Issue 530: a running campaign the lead steers, one per viewport, to step
 // out of play to its prep and back without ending anything.
 const PREP_RETURN_TITLE = "Waystation Table";
@@ -3030,6 +3054,7 @@ const ids = {
   spellbook,
   noticeTables,
   afterRollTables,
+  portentTables,
   recapTables,
   prepReturn,
   prepReturnTitle: PREP_RETURN_TITLE,
@@ -3139,6 +3164,7 @@ const ids = {
     ...Object.fromEntries(Object.entries(spellbook).map(([viewport, table]) => [table.id, `${SPELLBOOK_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(noticeTables).map(([viewport, table]) => [table.id, `${NOTICE_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(afterRollTables).map(([viewport, table]) => [table.id, `${AFTER_ROLL_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(portentTables).map(([viewport, table]) => [table.id, `${PORTENT_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(recapTables).map(([viewport, id]) => [id, `${RECAP_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(prepReturn).map(([viewport, id]) => [id, `${PREP_RETURN_TITLE} (${viewport})`])),
     [world.campaignId]: TITLE,
