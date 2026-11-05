@@ -21,7 +21,7 @@
 // pronouns as the one exception (src/lib/dm/speech-prose.ts). Pure.
 
 import { genderMark, type Gender, type GenderMark } from "@/lib/gender";
-import { commonWords, textKey } from "@/lib/language/text-logic";
+import { commonWords, textKey, words } from "@/lib/language/text-logic";
 import {
   aboutSubject,
   genderOf,
@@ -205,6 +205,22 @@ function lookBack(before: string, previous: Speaker | null, afterLine: boolean, 
   return null;
 }
 
+// Whether the sentence straight after a line opens on somebody other than
+// `speaker`: someone the table knows, or a word the story only ever writes with
+// a capital, which is how a name reads when its owner has no row yet. After a
+// line that ends its own sentence no word list tells a tag from an action, so
+// "Who's asking?" Fella says. and "No." Fella flinches. read alike, and the
+// first of those wore the face of whoever the prose before it was about.
+function opensOnSomeoneElse(after: string, speaker: Speaker, reading: Reading): boolean {
+  const next = (sentencesOf(after)[0]?.text ?? "").replace(LEAD, "");
+  const subject = subjectOf(next, reading, false);
+  if (subject.kind === "name") {
+    return keyOf(subject.speaker) !== keyOf(speaker);
+  }
+  const first = words(next)[0] ?? "";
+  return subject.kind === "other" && /^\p{Lu}/u.test(first) && !reading.common.has(textKey(first));
+}
+
 // Who said the line at [start, end), when the prose around it says.
 function whoSaid(
   text: string,
@@ -227,9 +243,11 @@ function whoSaid(
     }
     return tag.kind === "pronoun" ? back(tag) : null;
   }
-  // Prose before the line in its own paragraph: whoever that is about.
+  // Prose before the line in its own paragraph: whoever that is about, unless
+  // the words after it may be saying somebody else spoke it.
   if (text.slice(Math.max(boundary, lineStart), line.start).trim()) {
-    return back(null);
+    const about = back(null);
+    return about && opensOnSomeoneElse(after, about, context.reading) ? null : about;
   }
   // The line opens its paragraph. An action after it in the same paragraph
   // is the speaker's own ("Not tonight." Venn frowns.).
