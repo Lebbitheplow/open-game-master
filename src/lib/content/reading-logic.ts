@@ -38,7 +38,8 @@ export const READING_KINDS = ["spell", "monster", "feat", "race", "class", "back
 //      (fullLegendary) and reads a Swallow as the attack it is.
 //   6: the monster reader takes a poisoned hit's sleep (a couatl's bite, a
 //      drow's bolt) and the second condition a hit's failed save lays.
-export const READER_REVISION = 6;
+//   7: Witch Bolt's reading carries the beam's damage on later turns (PR 821).
+export const READER_REVISION = 7;
 export type ReadingKind = (typeof READING_KINDS)[number];
 export type ReadingSource = "hand-written" | "parsed" | "missing";
 

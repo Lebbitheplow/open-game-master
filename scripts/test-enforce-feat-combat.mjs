@@ -11,7 +11,7 @@ import { abilityMod, proficiencyBonus, suite } from "./lib/enforce-harness.mjs";
 import { combatKit, d20Faces, TRAINED } from "./lib/enforce-combat.mjs";
 
 const { test, finish } = suite("test-enforce-feat-combat");
-const world = await openWorld({ campaign: { maxPlayers: 20 } });
+const world = await openWorld({ campaign: { maxPlayers: 30 } });
 const kit = await combatKit(world);
 const encounters = await import("../src/lib/db/encounters.ts");
 
