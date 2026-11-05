@@ -565,6 +565,7 @@ function saveArea(ctx: SpendContext, does: Extract<SpendDoes, { kind: "save_area
           source: sheet.id,
           ...(does.untilNextTurnEnds ? { untilTurnEndOf: sheet.id } : does.rounds ? { rounds: does.rounds } : {}),
           ...(does.endsOnDamage ? { endsOnDamage: true } : {}),
+          ...(does.leashFeet ? { leashFeet: does.leashFeet } : {}),
         });
         parts.push(`is ${does.condition}`);
       }

@@ -347,6 +347,9 @@ export type SpendDoes =
       // Until the end of the holder's next turn, not a count of rounds.
       untilNextTurnEnds?: boolean;
       endsOnDamage?: boolean;
+      // Held while the holder stands within this many feet and is neither down
+      // nor incapacitated, with no count of rounds (src/lib/dm/condition-leash.ts).
+      leashFeet?: number;
       onFail?: string;
       types?: string[];
       // Only creatures the holder can see (a wall or a heavily obscured space

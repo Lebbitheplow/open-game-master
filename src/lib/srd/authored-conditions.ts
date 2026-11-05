@@ -131,7 +131,7 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
       { kind: "save", ability: "cha" },
     ],
   },
-  summaryOnly("champion_challenge", "champion challenge", "Champion Challenge: cannot willingly move more than 30 feet from the paladin who challenged it."),
+  summaryOnly("champion_challenge", "champion challenge", "Champion Challenge: cannot willingly move more than 30 feet from the paladin who challenged it; ends if the paladin is incapacitated or dies, or it is more than 30 feet away."),
   summaryOnly(
     "corona_of_light",
     "corona of light",

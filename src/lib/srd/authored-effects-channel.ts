@@ -105,9 +105,10 @@ export const AUTHORED_DATA_CHANNEL: Record<string, AuthoredEntry> = {
         name: "Champion Challenge",
         pool: POOL,
         action: "bonus",
-        // Creatures the paladin can see. The text gives no duration; a minute
-        // stands in until the GM ends it.
-        does: { kind: "save_area", save: "wis", dcAbility: "spell", rangeFt: 30, condition: "champion challenge", rounds: 10, sight: true },
+        // Creatures the paladin can see. No count of rounds: it ends when the
+        // paladin is incapacitated or dies, or the creature is more than 30 feet
+        // away (SCAG, Oath of the Crown).
+        does: { kind: "save_area", save: "wis", dcAbility: "spell", rangeFt: 30, condition: "champion challenge", leashFeet: 30, sight: true },
       },
     ],
   },

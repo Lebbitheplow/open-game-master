@@ -190,6 +190,55 @@ await test("Champion Challenge marks the foes in reach that fail, as a bonus act
   assert.equal(foe(far.id).conditions.includes("champion challenge"), false);
 });
 
+// Champion Challenge has no count of rounds: it ends when the paladin is
+// incapacitated or dies, or the creature is more than 30 feet away (SCAG, Oath of
+// the Crown). Checked as each turn ends (src/lib/dm/condition-leash.ts).
+async function challenged() {
+  const [near, beside] = await stage(crown);
+  const out = await channel(crown, "champion challenge", [2, 2]);
+  assert.equal(out.ok, true, out.error);
+  return [near, beside];
+}
+const held = (id) => foe(id).conditions.includes("champion challenge");
+const turnEnds = async () => {
+  const { endTurns } = await import("../src/lib/dm/turn-end.ts");
+  endTurns(world.campaign(), world.encounter().id, [crown.id]);
+};
+
+await test("Champion Challenge counts no rounds, and holds through a turn's end while the paladin stands within 30 feet.", async () => {
+  const [near] = await challenged();
+  const meta = foe(near.id).conditionMeta["champion challenge"];
+  assert.equal(meta.rounds, undefined, "no count of rounds");
+  assert.equal(meta.leashFeet, 30);
+  kit.place(near.id, 5, 11);
+  await turnEnds();
+  assert.ok(held(near.id), "30 feet away still holds");
+});
+
+await test("Champion Challenge ends on a creature more than 30 feet away, and only on that one.", async () => {
+  const [near, beside] = await challenged();
+  kit.place(near.id, 5, 12);
+  await turnEnds();
+  assert.equal(held(near.id), false, "35 feet away is let go");
+  assert.ok(held(beside.id), "the one beside the paladin stays challenged");
+});
+
+await test("Champion Challenge ends when the paladin is incapacitated.", async () => {
+  const [near, beside] = await challenged();
+  world.patch(crown.id, { conditions: ["stunned"], conditionMeta: { stunned: { rounds: 1 } } });
+  await turnEnds();
+  assert.equal(held(near.id), false);
+  assert.equal(held(beside.id), false);
+});
+
+await test("Champion Challenge ends when the paladin drops to 0 hit points.", async () => {
+  const [near] = await challenged();
+  world.patch(crown.id, { currentHp: 0 });
+  await turnEnds();
+  assert.equal(held(near.id), false);
+  world.patch(crown.id, { currentHp: 100 });
+});
+
 await test("A row is reached by its own name, by variant, and after the pool's name, and a spent pool refuses all three.", async () => {
   await stage(glory);
   const forms = [{ resource: "Peerless Athlete" }, { resource: "Channel Divinity", variant: "peerless athlete" }, { resource: "Channel Divinity: Peerless Athlete" }];

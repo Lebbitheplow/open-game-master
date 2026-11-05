@@ -63,6 +63,9 @@ export type ConditionMeta = {
   storeInHolder?: string;
   fromRing?: string;
   endsOnDamage?: boolean;
+  // Held while its source stands within this many feet: ends when the source
+  // is down, dead or incapacitated, or farther (src/lib/dm/condition-leash.ts).
+  leashFeet?: number;
   saveOnDamage?: { ability: SaveAbilityId; dc: number; advantage?: boolean };
   // Hunter's Mark and Hex: the enemyId of the marked creature, the only one
   // the extra die rides against.
