@@ -66,26 +66,41 @@ export async function modelLines(campaign: Campaign, text: string, label: string
 // structural reading never gives a model's line to a party character: the
 // DM does not speak for one (src/lib/dm/prompt.ts), and on recorded
 // narration nearly every line it gave the wrong person went to a party
-// character named beside the speaker. A speaker the reply itself registered
+// character named beside the speaker. The reader did the same with a newcomer
+// who had no row yet: offered only the player they were talking to, it put
+// the newcomer's line under that player's name. So it gives a player's
+// character a line only where the words around it say so too; an AI companion,
+// who does speak, needs no such check. A speaker the reply itself registered
 // had no row when it was read, and is found by name now that its tools have
 // run.
 export function modelTextLines(campaign: Pick<Campaign, "id" | "gameSettings">, text: string, read: readonly SpokenLine[]): SpokenLine[] {
-  const resolved = read.map(({ line, speaker }): SpokenLine => {
+  const sheets = listSheets(campaign.id);
+  const fromWords = personLines(campaign, text);
+  const mayTake = (sheetId: string, line: string) =>
+    sheets.some((sheet) => sheet.id === sheetId && sheet.isCompanion) ||
+    fromWords.some((entry) => entry.line === line && entry.speaker.id === sheetId);
+  const resolved = read.flatMap(({ line, speaker }): SpokenLine[] => {
+    if (speaker.kind === "pc") {
+      return mayTake(speaker.id, line) ? [{ line, speaker: storedSpeaker(speaker) }] : [];
+    }
     if (speaker.kind !== "npc" || speaker.id) {
-      return { line, speaker: storedSpeaker(speaker) };
+      return [{ line, speaker: storedSpeaker(speaker) }];
     }
     // A companion in the party speaks as their sheet, never as their row.
     const found = getNpcByName(campaign.id, speaker.name);
     const npc = found && !standsBehindLiveCompanion(found) ? found : null;
     if (npc) {
-      return { line, speaker: { kind: "npc", id: npc.id, name: npc.name } };
+      return [{ line, speaker: { kind: "npc", id: npc.id, name: npc.name } }];
     }
-    const sheet = listSheets(campaign.id).find((entry) => textKey(entry.name) === textKey(speaker.name));
-    return { line, speaker: sheet ? { kind: "pc", id: sheet.id, name: sheet.name } : storedSpeaker(speaker) };
+    const sheet = sheets.find((entry) => textKey(entry.name) === textKey(speaker.name));
+    if (sheet && !mayTake(sheet.id, line)) {
+      return [];
+    }
+    return [{ line, speaker: sheet ? { kind: "pc", id: sheet.id, name: sheet.name } : storedSpeaker(speaker) }];
   });
   return mergeLines(
     resolved,
-    personLines(campaign, text).filter((entry) => entry.speaker.kind !== "pc"),
+    fromWords.filter((entry) => entry.speaker.kind !== "pc"),
   );
 }
 

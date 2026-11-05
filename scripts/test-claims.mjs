@@ -429,6 +429,29 @@ await test("Who speaks is read from the public cast, the party and an NPC the re
   model.close();
 });
 
+await test("The reader gives a player's character a line only where the words say so too; an AI companion needs no such check.", async () => {
+  const { modelTextLines } = await import("../src/lib/dm/speech-lines.ts");
+  const npcs = await import("../src/lib/db/npcs.ts");
+  const { markSheetAsCompanion } = await import("../src/lib/db/sheets.ts");
+  const hero = { kind: "pc", id: mira.id, name: "Mira" };
+  const stored = (text, read) => modelTextLines(world.campaign(), text, read).map((entry) => [entry.line, entry.speaker.name]);
+  // A newcomer with no row yet, and the player's character the only name to
+  // hand: the reader's answer is dropped and the line stays the narrator's.
+  assert.deepEqual(stored('Fella looks at Mira. "Who\'s asking?"', [{ line: "Who's asking?", speaker: hero }]), []);
+  assert.deepEqual(stored('Fella looks at Mira. "Who\'s asking?"', [{ line: "Who's asking?", speaker: { kind: "npc", id: "", name: "Mira" } }]), [], "the same, found by name");
+  assert.deepEqual(stored('Mira raises her sword. "Let us go."', [{ line: "Let us go.", speaker: hero }]), [["Let us go.", "Mira"]], "the words tie this one to her");
+  assert.deepEqual(stored('"Who\'s asking?" Fella says to Mira.', [{ line: "Who's asking?", speaker: hero }]), [], "a tag naming someone else");
+  // What the words around a dropped line say still counts.
+  const gerda = npcs.upsertNpc({ campaignId: world.campaignId, name: "Gerda" });
+  assert.deepEqual(stored('"Who\'s asking?" says Gerda, eyeing Mira.', [{ line: "Who's asking?", speaker: hero }]), [["Who's asking?", "Gerda"]]);
+  assert.deepEqual(stored('"Hello," says Gerda.', [{ line: "Hello,", speaker: { kind: "npc", id: gerda.id, name: "Gerda" } }]), [["Hello,", "Gerda"]]);
+  const ally = world.addHero({ name: "Tobin", class: "fighter", level: 5 });
+  markSheetAsCompanion(ally.id, "party", "steady");
+  const tobin = { kind: "pc", id: ally.id, name: "Tobin" };
+  assert.deepEqual(stored('Fella nods to Tobin. "Agreed."', [{ line: "Agreed.", speaker: tobin }]), [["Agreed.", "Tobin"]], "a companion takes the reader's word");
+  assert.deepEqual(stored('Fella nods to Tobin. "Agreed."', [{ line: "Agreed.", speaker: { kind: "npc", id: "", name: "Tobin" } }]), [["Agreed.", "Tobin"]], "a companion the reply itself added");
+});
+
 await test("A call that names the character as its actor, a healer or a caster among them, is a ruling for them.", () => {
   const exchange = (name, args) => [
     { role: "assistant", content: "", tool_calls: [{ id: "c1", type: "function", function: { name, arguments: JSON.stringify(args) } }] },
