@@ -24,18 +24,23 @@ import { carriedItemsMatching } from "@/lib/dm/item-logic";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
 import { rollExpression } from "@/lib/dice";
 import { itemSpellCast, itemSpellsOfRow, type ItemSpellCast } from "@/lib/srd/item-spells";
-import { recordItemCast } from "@/lib/srd/item-cast-credit";
+import { itemBarrier } from "@/lib/srd/item-barrier";
+import { dropItemCast, recordItemCast, spellDrawnMark, takeItemCast, type ItemCast } from "@/lib/srd/item-cast-credit";
 import {
   chargeMax,
   chargeRuleOf,
+  chargesLeft,
   equipmentAfterSpend,
   spendChargesMath,
   writeCharges,
 } from "@/lib/dm/item-charges";
+import { chargesShort } from "@/lib/srd/item-charge-rules";
+import { linesNamed } from "@/lib/srd/item-row";
+import { getSheetById } from "@/lib/db/sheets";
+import { textKey } from "@/lib/language/text-logic";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
-import { gearDefOfRow } from "@/lib/srd/magic-gear";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
-import type { CharacterSheet } from "@/lib/schemas/sheet";
+import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
 import type { RollResult } from "@/lib/dice";
 import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
 
@@ -69,12 +74,74 @@ function rollCastCheck(campaign: Campaign, sheet: CharacterSheet, check: NonNull
 
 const ABILITY_WORD = { str: "Strength", dex: "Dexterity", con: "Constitution", int: "Intelligence", wis: "Wisdom", cha: "Charisma" } as const;
 
+// A cast of this spell from this item that this same turn has already paid for and
+// not yet resolved: the model told by the correction to call use_item and the spell's
+// tool again, after the tool sent the card's cast back. A wand spends its charge at
+// use_item, not when the spell is cast, so that charged it twice. Only the same turn:
+// a model that narrates a wand's spell with no tool still pays for each use, and a
+// card that goes back has its payment returned (takeBackItemCast) and pays afresh.
+export function paidItemCast(sheet: CharacterSheet, itemName: string, spell: string | undefined, turnId: string): ToolResult | null {
+  const named = spell?.trim();
+  const credit = named && turnId ? takeItemCast(sheet.id, named, { dryRun: true }) : null;
+  if (!credit || credit.storedIn || credit.turnId !== turnId || !linesNamed([credit.paid?.row ?? { name: credit.item }], itemName).length) {
+    return null;
+  }
+  return {
+    ok: true,
+    used: credit.paid?.row.name ?? credit.item,
+    spellCast: credit.spell,
+    spellLevel: credit.level,
+    ...(credit.saveDc ? { saveDc: credit.saveDc } : {}),
+    ...(credit.attackBonus ? { attackBonus: credit.attackBonus } : {}),
+    note: `${credit.spell} from ${credit.item} is paid for already, and nothing more is spent. Resolve it now with the spell's own tool (aoe_damage, cast_at_enemy, heal, cast_buff) naming the spell: that cast spends no slot and uses the item's numbers.`,
+  };
+}
+
+// The row put back as it stood, or its charges returned: the cast they paid for
+// did not happen.
+function equipmentWithPaymentBack(equipment: readonly EquipmentItem[], paid: NonNullable<ItemCast["paid"]>): EquipmentItem[] {
+  const { row, charges } = paid;
+  // Two scrolls under one name are told apart by what they hold.
+  const line = linesNamed(equipment, row.name).find((entry) => textKey(entry.spell ?? "") === textKey(row.spell ?? ""));
+  if (!line) {
+    return [...equipment, row];
+  }
+  return equipment.map((item) => {
+    if (item !== line) return item;
+    return charges !== undefined ? { ...item, charges: (item.charges ?? 0) + charges } : { ...item, qty: item.qty + 1 };
+  });
+}
+
+// A cast from an item that is still waiting when its card has been settled: the
+// spell's tool refused, or never came. What use_item spent comes back and the
+// credit goes, so the next play pays afresh. The action stays spent on this spell
+// for the turn, as a ring's does (spellDrawnMark), so a replay costs no second one.
+// Nothing happens for a cast that went off, whose credit is taken, or for a spell in
+// a ring, which spends nothing until it is cast. A typed use is the GM's to settle
+// and does not come here.
+export function takeBackItemCast(campaign: Campaign, characterId: string, spell: string): boolean {
+  const credit = takeItemCast(characterId, spell, { dryRun: true });
+  const sheet = getSheetById(characterId);
+  if (!credit?.paid || !sheet) {
+    return false;
+  }
+  dropItemCast(characterId, spell);
+  writeCharges(campaign.id, sheet, equipmentWithPaymentBack(sheet.equipment, credit.paid), "use_item", `${credit.paid.row.name}: ${credit.spell} was not cast, so what it spent comes back`);
+  const encounter = getActiveEncounter(campaign.id);
+  const budget = encounter ? budgetFor(encounter, characterId, attacksAllowedFor(sheet), conditionTurnShape(sheet.conditions)) : null;
+  if (encounter && budget && (budget.actionUsed || budget.bonusUsed)) {
+    storeBudget(encounter, { ...budget, oncePerTurn: [...budget.oncePerTurn, spellDrawnMark(credit.spell)] });
+  }
+  return true;
+}
+
 // Spends charges from a carried charged item, or casts the at-will spell of
 // one with none. Null for an item that is neither, so use_item treats it as
 // it always has. With `spell`, the item casts that spell
 // (src/lib/srd/item-spells.ts): the table sets the cost and the level, and
 // the tool that resolves the spell next spends no slot for it
-// (src/lib/srd/item-cast-credit.ts).
+// (src/lib/srd/item-cast-credit.ts). A dry run asks every refusal and writes
+// nothing, for a card asked before it is posted (intent-check.ts).
 export function chargedItemUse(
   campaign: Campaign,
   turnId: string,
@@ -82,6 +149,7 @@ export function chargedItemUse(
   itemName: string,
   charges: number | undefined,
   spell?: string,
+  { dryRun = false }: { dryRun?: boolean } = {},
 ): ToolResult | null {
   // A name that fits a charged or spell-casting item and something else as
   // well is a guess: "healing" with a Staff of Healing and a potion in the
@@ -124,12 +192,9 @@ export function chargedItemUse(
       refused: "rules",
     };
   }
-  const def = gearDefOfRow(carried);
-  if (def?.requiresAttunement && !carried.attuned) {
-    return {
-      error: `${carried.name} works only for someone attuned to it, and ${sheet.name} is not; attuning takes a short rest with the item. Nothing was spent.`,
-      refused: "rules",
-    };
+  const barrier = itemBarrier(sheet, carried);
+  if (barrier) {
+    return { error: barrier, refused: "rules" };
   }
   // In a fight, activating the item is the character's action, or the bonus
   // action its text names (Ring of Jumping, a prayer bead).
@@ -152,13 +217,22 @@ export function chargedItemUse(
       return heldOff;
     }
     budget = budgetFor(encounter, sheet.id, attacksAllowedFor(sheet), conditionTurnShape(sheet.conditions));
-    if (budget) {
+    // The action was paid for this spell this turn, and what the item spent came
+    // back when the cast did not happen (takeBackItemCast): this play is on it.
+    const mark = cast ? spellDrawnMark(cast.spell) : "";
+    if (budget?.oncePerTurn.includes(mark)) {
+      budget = { ...budget, oncePerTurn: budget.oncePerTurn.filter((entry) => entry !== mark) };
+    } else if (budget) {
       const spent = spendAction(budget, kind, `using ${carried.name}`, sheet.name);
       if (!spent.ok) {
         return toolError(spent);
       }
       budget = spent.budget;
     }
+  }
+  if (dryRun) {
+    const short = rule ? chargesShort(carried, rule, count) : null;
+    return short ? { error: `${short} Nothing was spent.`, refused: "rules" } : { ok: true, dryRun: true, used: carried.name };
   }
   // An item with no charges spends none: it is only gone when the cast uses
   // it up.
@@ -193,12 +267,18 @@ export function chargedItemUse(
   const check = cast?.check && !("failed" in math && math.failed) ? rollCastCheck(campaign, sheet, cast.check, `${sheet.name}: ${carried.name}, ${ABILITY_WORD[cast.check.ability]} check`) : null;
   const casts = cast && !("failed" in math && math.failed) && (!check || check.success) ? cast : null;
   if (casts) {
+    // What comes back if the cast never happens. A last charge's die that took the
+    // item has fallen for the table to see, and is not taken back.
+    const fellToDie = "d20" in math && math.d20 && (math.destroyed || becomes);
+    const given = rule && !("regained" in math && math.regained) ? chargesLeft(carried, rule, "initial" in math ? math.initial?.total : undefined) - math.charges : 0;
     recordItemCast(sheet.id, {
       spell: casts.spell,
       level: casts.level,
       item: carried.name,
       ...(casts.dc ? { saveDc: casts.dc } : {}),
       ...(casts.attackBonus ? { attackBonus: casts.attackBonus } : {}),
+      ...(fellToDie || !(given > 0 || destroyed) ? {} : { paid: { row: carried, ...(destroyed ? {} : { charges: given }) } }),
+      turnId,
     });
   }
   const most = rule ? chargeMax(rule) : 0;

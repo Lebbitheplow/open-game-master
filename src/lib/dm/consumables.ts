@@ -31,9 +31,10 @@ import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
 import { handleSetCondition } from "@/lib/dm/set-condition";
 import { checklistSpell } from "@/lib/srd/spell-lists";
+import { highestSlotLevel, scrollCheckDc, scrollNumbers, scrollSpell, scrollUnreadable } from "@/lib/srd/scrolls";
 import { recordItemCast } from "@/lib/srd/item-cast-credit";
 import { afflictCondition, afflictionConditionsFor } from "@/lib/dm/afflictions";
-import type { CharacterSheet } from "@/lib/schemas/sheet";
+import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
 import { rollCard } from "@/lib/dm/roll-card";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
@@ -91,11 +92,7 @@ export function potionPlan(item: TaggedItem): PotionPlan | null {
   return plan ?? (hasItemTag(item, "potion") ? { kind: "narrated" } : null);
 }
 
-// The spell a scroll holds: the one the tool that gave it named, never a
-// spell read in its name.
-export function scrollSpell(item: ScrollItem): string | null {
-  return item.identified === false ? null : (item.spell ?? null);
-}
+export { scrollNumbers, scrollSpell };
 
 // The spell a tool gives a scroll, as the spell lists name it, or why it
 // cannot: only a scroll holds one, and only a spell the table knows (the
@@ -120,30 +117,6 @@ export function scrollSpellFor(
   return { spell: known.name };
 }
 
-// SRD 5.1 Spell Scroll table: the save DC and attack bonus by spell level.
-export function scrollNumbers(level: number): { saveDc: number; attackBonus: number } {
-  if (level <= 2) return { saveDc: 13, attackBonus: 5 };
-  if (level <= 4) return { saveDc: 15, attackBonus: 7 };
-  if (level <= 6) return { saveDc: 17, attackBonus: 9 };
-  if (level <= 8) return { saveDc: 18, attackBonus: 10 };
-  return { saveDc: 19, attackBonus: 11 };
-}
-
-function classSlugs(sheet: CharacterSheet): string[] {
-  const ids = sheet.classes?.length ? sheet.classes.map((entry) => entry.id) : [sheet.class];
-  return ids.map((id) => id.trim().toLowerCase());
-}
-
-// The highest spell level this character can cast with a slot.
-function highestSlotLevel(sheet: CharacterSheet): number {
-  const slots = sheet.spellcasting?.slots ?? {};
-  const fromSlots = Object.entries(slots)
-    .filter(([, slot]) => slot.max > 0)
-    .map(([level]) => Number(level));
-  const pact = (sheet.spellcasting as { pact?: { level?: number } } | null)?.pact?.level ?? 0;
-  return Math.max(0, pact, ...fromSlots);
-}
-
 // A refusal that must come before the item is spent: a scroll whose spell
 // is not on the reader's class list cannot be read, and stays in the pack.
 export function consumableRefusal(sheet: CharacterSheet, item: ScrollItem): ToolError | null {
@@ -152,27 +125,19 @@ export function consumableRefusal(sheet: CharacterSheet, item: ScrollItem): Tool
   if (coat) {
     return coat;
   }
-  const spell = scrollSpell(item);
-  if (!spell) {
-    return null;
-  }
-  const known = checklistSpell(spell);
-  if (!known) {
-    return null;
-  }
-  if (!sheet.spellcasting || !known.classes.some((slug) => classSlugs(sheet).includes(slug))) {
-    return { error: `${known.name} is not on ${sheet.name}'s class spell list, so the scroll is unintelligible to them; it stays in the pack for someone who can read it.`, refused: "rules" };
+  const unreadable = scrollUnreadable(sheet, item);
+  if (unreadable) {
+    return { error: unreadable, refused: "rules" };
   }
   // A scroll above what they can cast needs a spellcasting ability check.
   // One that cannot be made at all (no spellcasting ability on the sheet)
   // leaves the scroll unread and whole, rather than spent on a check of 0.
-  if (known.level > highestSlotLevel(sheet)) {
-    const resolved = resolveRollExpression(
-      { kind: "ability_check", ability: sheet.spellcasting.ability, dc: 10 + known.level } as unknown as RollArgs,
-      sheet,
-    );
+  const dc = scrollCheckDc(sheet, item);
+  if (dc !== null && sheet.spellcasting) {
+    const resolved = resolveRollExpression({ kind: "ability_check", ability: sheet.spellcasting.ability, dc } as unknown as RollArgs, sheet);
     if ("error" in resolved) {
-      return { error: `${sheet.name} cannot make the spellcasting ability check a scroll of ${known.name} needs (${resolved.error}); the scroll stays in the pack.`, refused: "rules" };
+      const name = checklistSpell(scrollSpell(item) ?? "")?.name ?? scrollSpell(item);
+      return { error: `${sheet.name} cannot make the spellcasting ability check a scroll of ${name} needs (${resolved.error}); the scroll stays in the pack.`, refused: "rules" };
     }
   }
   return null;
@@ -206,7 +171,7 @@ export function applyConsumable(
   const reason = itemName;
   const spell = scrollSpell(item);
   if (spell) {
-    return readScroll(campaign, turnId, user, spell);
+    return readScroll(campaign, turnId, user, spell, item);
   }
   const coated = coatWithPoison(campaign, user, item);
   if (coated) {
@@ -294,7 +259,7 @@ function rollSave(campaign: Campaign, sheet: CharacterSheet, dc: number, detail:
 
 // Reading a scroll the reader's class can cast from: a spell above what they
 // can cast needs a check against DC 10 + its level first.
-function readScroll(campaign: Campaign, turnId: string, reader: CharacterSheet, spell: string): Record<string, unknown> {
+function readScroll(campaign: Campaign, turnId: string, reader: CharacterSheet, spell: string, scroll: ScrollItem): Record<string, unknown> {
   const known = checklistSpell(spell);
   const level = known?.level ?? 1;
   const numbers = scrollNumbers(level);
@@ -322,10 +287,9 @@ function readScroll(campaign: Campaign, turnId: string, reader: CharacterSheet, 
       };
     }
   }
-  void turnId;
   // The spell is cast from the scroll: the tool that resolves it next spends
   // no slot and uses the scroll's numbers (src/lib/srd/item-cast-credit.ts).
-  recordItemCast(reader.id, { spell: name, level, item: `Spell Scroll (${name})`, saveDc: numbers.saveDc, attackBonus: numbers.attackBonus });
+  recordItemCast(reader.id, { spell: name, level, item: `Spell Scroll (${name})`, saveDc: numbers.saveDc, attackBonus: numbers.attackBonus, paid: { row: scroll as EquipmentItem }, turnId });
   return {
     spellCast: name,
     spellLevel: level,

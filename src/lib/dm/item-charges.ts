@@ -32,7 +32,7 @@ const DUSK_HOUR = 18;
 
 // The pure reads (the rule, the most, the count now) live in
 // src/lib/srd/item-charge-rules.ts so the sheet can show them too.
-import { chargeMax, chargeRuleOf, chargesLeft } from "@/lib/srd/item-charge-rules";
+import { chargeMax, chargeRuleOf, chargesLeft, chargesShort } from "@/lib/srd/item-charge-rules";
 import type { ToolError } from "@/lib/dm/tool-errors";
 export { chargeMax, chargeRuleOf, chargesLeft };
 
@@ -93,16 +93,9 @@ export function spendChargesMath(
       ...(torn ? { failed: true } : {}),
     };
   }
-  if (count > left) {
-    const regains = rule.regain
-      ? rule.regain === "all"
-        ? `It regains all its charges at ${rule.regainAtDusk ? "dusk" : "dawn"}.`
-        : `It regains ${rule.regain} charges at ${rule.regainAtDusk ? "dusk" : "dawn"}.`
-      : "It does not regain charges.";
-    return {
-      error: `${item.name} has ${left} charge${left === 1 ? "" : "s"} left and this use needs ${count}. ${regains}`,
-      refused: "rules",
-    };
+  const short = chargesShort(item, rule, count, initial?.total);
+  if (short) {
+    return { error: short, refused: "rules" };
   }
   let after = left - count;
   const notes: string[] = [];

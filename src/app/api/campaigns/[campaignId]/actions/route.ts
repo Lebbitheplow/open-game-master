@@ -33,7 +33,8 @@ import { runResumeRecap } from "@/lib/dm/recap";
 import { RECAP_AFTER_MS } from "@/lib/dm/session-hold-logic";
 import { sessionHoldOn } from "@/lib/dm/session-hold";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
-import { TYPED_REACTION, directCardCalls, isTypedReaction, parseMessageIntent } from "@/lib/dm/intent-logic";
+import { TYPED_REACTION, directCardCalls, drawStopsCast, isStoredCast, isTypedReaction, parseMessageIntent } from "@/lib/dm/intent-logic";
+import { takeBackItemCast } from "@/lib/dm/item-use";
 import { refusedPartsLine } from "@/lib/dm/action-parts-logic";
 import { directContextFor } from "@/lib/dm/direct-context";
 import { addressesDm } from "@/lib/dm/ooc-question";
@@ -346,11 +347,21 @@ export async function POST(
     for (const call of direct) {
       const resolved = await invokeEngine(campaign, { kind: "human", userId: user.id }, call);
       if (!resolved.ok) {
+        // The spell did not happen: what its item spent comes back.
+        if (intent && isStoredCast(intent)) {
+          takeBackItemCast(campaign, sheet.id, intent.spell ?? "");
+        }
         return Response.json({ error: resolved.error }, { status: 409 });
       }
       const line = refusedPartsLine(resolved.result);
       if (line) {
         refused.push(line);
+      }
+      // A scroll misread: the item's use failed, and no spell's tool follows it.
+      const stop = drawStopsCast(call.name, resolved.result);
+      if (stop) {
+        refused.push(stop.error);
+        break;
       }
     }
     return Response.json({ resolved: true, ...(refused.length ? { refused: refused.join(" ") } : {}) });

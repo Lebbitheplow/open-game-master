@@ -45,8 +45,8 @@ import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
-import { takeItemCast } from "@/lib/srd/item-cast-credit";
-import { ringBarrier, ringDrawnMark, storedSpellNamed, storedSpellsOf, storeLevelsFree, type StoredSpell } from "@/lib/srd/spell-storing";
+import { spellDrawnMark, takeItemCast } from "@/lib/srd/item-cast-credit";
+import { ringBarrier, storedSpellNamed, storedSpellsOf, storeLevelsFree, type StoredSpell } from "@/lib/srd/spell-storing";
 
 export type StoreRequest = {
   storeIn: string;
@@ -205,7 +205,7 @@ export function releaseStoredSpell(campaign: Campaign, sheet: CharacterSheet, it
       if (!paid.ok) {
         return toolError(paid);
       }
-      spent = { ...paid.budget, oncePerTurn: [...paid.budget.oncePerTurn, ringDrawnMark(entry.spell)] };
+      spent = { ...paid.budget, oncePerTurn: [...paid.budget.oncePerTurn, spellDrawnMark(entry.spell)] };
       if (!dryRun) {
         storeBudget(encounter, spent);
       }

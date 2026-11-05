@@ -204,12 +204,22 @@ function spellShares(mech: SpellMech, spellLevel: number, slotLevel: number | nu
 // A spell cast out of a Ring of Spell Storing (hand-ring.ts): its own level and
 // numbers, and the ring's gates in place of the caster's. `holds`: played now it
 // only begins a casting held across turns, so it aims at nothing yet. `free`: that
-// casting is done, and this card resolves it.
-export type StoredCard = { ring: string; entry: StoredSpell; holds: boolean; free: boolean; gates: Gate[] };
+// casting is done, and this card resolves it. `item`: any other item's card
+// (hand-items.ts), which says what it spends, and costs what use_item charges
+// whatever the spell's casting time.
+export type StoredCard = {
+  ring: string;
+  entry: Pick<StoredSpell, "spell" | "level" | "saveDc" | "attackBonus" | "abilityMod">;
+  holds: boolean;
+  free: boolean;
+  gates: Gate[];
+  item?: { id: string; name: string; cost: HandCost; resource: string; note: string };
+  fromItem: NonNullable<HandCard["fromItem"]>;
+};
 
 export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, name: string, fact: SpellFact, options: HandOptions = {}, stored?: StoredCard): HandCard | null {
   const blasts = options.blasts !== false;
-  const cost = castingCost(fact.castingTime) ?? (stored ? "action" : null);
+  const cost = stored?.item?.cost ?? castingCost(fact.castingTime) ?? (stored ? "action" : null);
   if (!cost) return null;
   // The mechanics row the engine reads; the prose is parsed only for what the
   // card shows when no row exists (its target, its save). With no pack there
@@ -348,22 +358,23 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
   const melee = mech.resolution === "attack" && isMeleeSpellAttack(engine, facts?.range.kind);
   if (melee) notes.unshift("Melee spell attack: a creature beside you.");
   if (stored) {
-    notes.unshift(stored.holds ? `Out of ${stored.ring}, with no slot. It takes turns to cast: this begins it and holds your action each turn.` : `Out of ${stored.ring}, with no slot.`);
+    notes.unshift(stored.item?.note ?? (stored.holds ? `Out of ${stored.ring}, with no slot. It takes turns to cast: this begins it and holds your action each turn.` : `Out of ${stored.ring}, with no slot.`));
   }
   // A feature that moves the spell to the bonus action shows it there.
   const shownCost: HandCost = stored?.free ? "free" : !stored && !("error" in charge) && charge.kind === "budget" && charge.cost === "bonus action" ? "bonus" : cost;
   const fromRing = stored ? { item: stored.ring } : {};
   const card: HandCard = {
-    id: stored ? `spell:ring:${textKey(stored.ring)}:${textKey(name)}` : `spell:${textKey(name)}`,
+    id: stored?.item?.id ?? (stored ? `spell:ring:${textKey(stored.ring)}:${textKey(name)}` : `spell:${textKey(name)}`),
     type,
-    name: stored ? ringCardName(name) : name,
+    name: stored?.item?.name ?? (stored ? ringCardName(name) : name),
     cost: shownCost,
     range: feet(fact.range),
     dice,
     roll,
     rules: notes.slice(0, 2).join(" "),
     description: [fact.desc, fact.higherLevel ? `At higher levels: ${fact.higherLevel}` : "", ...notes.map((note) => (note === BEST_EFFORT_SHORT ? BEST_EFFORT_NOTE : note))].filter(Boolean).join("\n\n"),
-    resource: beam ? "No slot" : stored ? `Level ${stored.entry.level}` : fact.level === 0 ? "Cantrip" : free?.free ? free.line : slot ? slotLine(slot) : `Level ${fact.level} · no slots`,
+    resource: beam ? "No slot" : (stored?.item?.resource ?? (stored ? `Level ${stored.entry.level}` : fact.level === 0 ? "Cantrip" : free?.free ? free.line : slot ? slotLine(slot) : `Level ${fact.level} · no slots`)),
+    ...(stored ? { fromItem: stored.fromItem } : {}),
     condition: beam ? "" : mech.condition?.name ?? (fact.concentration ? "Concentration" : ""),
     icon: { kind: "spell", key: name, family: fact.school ? `spell-${fact.school.toLowerCase()}` : null },
     target,
@@ -426,7 +437,10 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
   if (shared) card.shares = shared;
   // No components, no slot and no room in the turn's spell rule: the ring asks
   // what use_item asks (src/lib/dm/spell-storing.ts).
-  if (stored) return gated(card, ...stored.gates);
+  // An item with no numbers of its own casts with its user's, and a fighter has
+  // none: the spell's tool would refuse it after the item had paid.
+  const noNumbers = stored?.item && ((save === null && mech.resolution === "save" && mech.save) || (toHit === null && mech.resolution === "attack"));
+  if (stored) return gated(card, ...stored.gates, noNumbers ? { reason: `${stored.ring} casts ${name} with its user's own spell numbers, and ${sheet.name} has none.`, spent: false } : null);
   return gated(
     card,
     standingGate(sheet, turn, cost === "reaction" ? "reaction" : "cast"),

@@ -59,14 +59,6 @@ export function ringBarrier(sheet: { name: string; equipment: readonly Equipment
   return isWorn(ring, sheet.equipment) ? null : `${ring.name} casts its spells only while it is worn, and ${sheet.name} is not wearing it. Nothing was spent.`;
 }
 
-// The once-a-turn mark use_item leaves on the budget when it has paid for this
-// spell and the spell's tool has not cast it yet. The Hand cannot see the credit,
-// which is in the server's memory, so without this a card sent back after its
-// tool refused (a target out of range) stood greyed for the action it had paid.
-export function ringDrawnMark(spell: string): string {
-  return `ring drawn:${textKey(spell)}`;
-}
-
 // The ring's words on the model's GAME STATE line.
 export function storedSpellsLine(item: StorerRow): string {
   const held = storedSpellsOf(item);
