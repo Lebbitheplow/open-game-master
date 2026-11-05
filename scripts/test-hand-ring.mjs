@@ -5,7 +5,7 @@
 // release uses (use_item, then the spell's own), spending no slot. A fighter with
 // no Spellcasting feature holds them as a wizard does.
 import assert from "node:assert/strict";
-import { openWorld } from "./lib/enforce-world.mjs";
+import { clearDice, dice, openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
 
@@ -420,6 +420,34 @@ await test("They belong to Spells and Items, take no Ready pick and are no first
   assert.ok(!threeThingsToTry(sheet).some((tip) => /Hold Person/.test(JSON.stringify(tip))));
   assert.ok(!spellsToLookUp(sheet).includes("Hold Person"));
   assert.ok(handSpellsToLookUp(sheet).includes("Hold Person"), "the card reads the pack's words");
+});
+
+await test("A ring's Witch Bolt is a new casting even at what the held beam is connected to, and the beam's own card still strikes", async () => {
+  const goblin = await stage(brute, [ring([stored("Witch Bolt", 2)])]);
+  kit.place(goblin.id, 8, 5);
+  dice(15, 5);
+  const first = await play(brute, cardFor(brute, "Witch Bolt"), aimAt(goblin));
+  clearDice();
+  assert.deepEqual(first.calls.map((call) => call.name), ["use_item", "pc_attack"]);
+  assert.equal(world.sheet(brute.id).concentratingOn, "Witch Bolt", JSON.stringify(first.results));
+  assert.ok(world.enemies().find((entry) => entry.id === goblin.id).conditions.includes("witch bolt"), "the hit connected it");
+
+  // The same ring filled again, and a new turn with the beam still held.
+  world.patch(brute.id, { equipment: [ring([stored("Witch Bolt", 1)])] });
+  kit.giveTurn(brute.id);
+  const card = cardFor(brute, "Witch Bolt");
+  assert.equal(card.resource, "Level 1", "not the beam's No slot");
+  assert.equal(card.toHit, 7, "it rolls, with the numbers it was stored with");
+  const intent = parseMessageIntent(intentBody(card, aimAt(goblin), [], {}));
+  const calls = directCardCalls(intent, brute.id, directContextFor(world.campaignId, intent, [], brute.id));
+  assert.deepEqual(calls.map((call) => call.name), ["use_item", "pc_attack"], "drawn and cast: no credit left waiting behind a strike");
+
+  // The beam's own card, its spell on no list of a fighter's.
+  const strike = handOf(brute).find((entry) => entry.name === "Witch Bolt");
+  assert.equal(strike.resource, "No slot");
+  const aimed = parseMessageIntent(intentBody(strike, aimAt(goblin), [], {}));
+  const struck = directCardCalls(aimed, brute.id, directContextFor(world.campaignId, aimed, [], brute.id));
+  assert.deepEqual(struck.map((call) => call.name), ["cast_at_enemy"]);
 });
 
 finish();
