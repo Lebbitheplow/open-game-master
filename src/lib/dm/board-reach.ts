@@ -12,7 +12,7 @@ import type { BattleToken, XY } from "@/lib/battlemap/types";
 import {
   footprintDistance,
   footprintForSize,
-  nearestFootprintTile,
+  footprintTiles,
   type Footprint,
 } from "@/lib/battlemap/footprint";
 
@@ -32,12 +32,9 @@ export function tilesApart(a: BattleToken, b: BattleToken): number {
   return footprintDistance(a, tokenFootprint(a), b, tokenFootprint(b));
 }
 
-// The two squares a line between two tokens is drawn through: the target's
-// square nearest the attacker, and the attacker's square nearest that one.
-// Sight and cover are read along it, so a wall beside an ogre's far corner
-// does not shelter the corner the attacker stands against.
-export function nearestSquares(a: BattleToken, b: BattleToken): { from: XY; to: XY } {
-  const to = nearestFootprintTile(b, tokenFootprint(b), a);
-  const from = nearestFootprintTile(a, tokenFootprint(a), to);
-  return { from, to };
+// The squares a token stands on, which sight and cover are measured to: a
+// wall beside an ogre's far corner does not shelter the corner the attacker
+// can see (src/lib/battlemap/sight-lines.ts).
+export function spaceOf(token: BattleToken): XY[] {
+  return footprintTiles(token, tokenFootprint(token));
 }

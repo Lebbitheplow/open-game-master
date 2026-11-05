@@ -197,7 +197,6 @@ Bane on a character, Haste, Mage Armor, Shield: dice, AC, advantage, expiry by r
 
 - Somatic components and free hands: no hand state exists on a sheet.
 - Spell areas (cone, line, sphere): the caller names the enemies caught.
-- Half and three quarters cover adding to Dexterity saves against spells.
 - Counterspell and Dispel Magic ability checks; identifying a spell being cast.
 - Scrolls and casting from items (the magic items suites own those).
 - Metamagic shaping (declared in "Deliberate omissions").

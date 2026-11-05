@@ -11,22 +11,13 @@ import {
   TERRAIN,
 } from "@/lib/battlemap/types";
 import { ambientAt, magicalDarknessAt, type LightZone } from "@/lib/battlemap/scene";
+import { anyLineClear, blockedLines, wallInView, type Blocks, type XY } from "@/lib/battlemap/sight-lines";
 
-// Field of view via recursive shadowcasting over 8 octants (the classic
-// Bjorn Bergstrom algorithm). Walls are opaque; a blocking tile is itself
-// visible so players can see the wall that stops their sight.
-
-const OCTANTS: Array<[number, number, number, number]> = [
-  [1, 0, 0, 1],
-  [0, 1, 1, 0],
-  [0, -1, 1, 0],
-  [-1, 0, 0, 1],
-  [-1, 0, 0, -1],
-  [0, -1, -1, 0],
-  [0, 1, -1, 0],
-  [1, 0, 0, -1],
-];
-
+// What a tile can see, by the same corner lines an attack is measured along
+// (src/lib/battlemap/sight-lines.ts): fog of war drawn by another method let a
+// player see a target they were then told they could not shoot, or shoot one
+// the fog still hid. A blocking tile is itself visible so players can see the
+// wall that stops their sight.
 export function computeFov(
   terrain: string,
   width: number,
@@ -39,69 +30,37 @@ export function computeFov(
   if (!inBounds(width, height, originX, originY)) {
     return visible;
   }
-  visible.add(tileIndex(width, originX, originY));
-
-  function castOctant(
-    row: number,
-    startSlope: number,
-    endSlope: number,
-    xx: number,
-    xy: number,
-    yx: number,
-    yy: number,
-  ) {
-    if (startSlope < endSlope) {
-      return;
-    }
-    let nextStart = startSlope;
-    for (let i = row; i <= radius; i += 1) {
-      let blocked = false;
-      for (let dx = -i; dx <= 0; dx += 1) {
-        const dy = -i;
-        const leftSlope = (dx - 0.5) / (dy + 0.5);
-        const rightSlope = (dx + 0.5) / (dy - 0.5);
-        if (rightSlope > nextStart) {
-          continue;
-        }
-        if (leftSlope < endSlope) {
-          break;
-        }
-        const currentX = originX + dx * xx + dy * xy;
-        const currentY = originY + dx * yx + dy * yy;
-        if (!inBounds(width, height, currentX, currentY)) {
-          continue;
-        }
-        if (chebyshev(originX, originY, currentX, currentY) <= radius) {
-          visible.add(tileIndex(width, currentX, currentY));
-        }
-        const opaque = blocksSight(tileAt(terrain, width, currentX, currentY));
-        if (blocked) {
-          if (opaque) {
-            nextStart = rightSlope;
-          } else {
-            blocked = false;
-          }
-        } else if (opaque && i < radius) {
-          blocked = true;
-          castOctant(i + 1, nextStart, leftSlope, xx, xy, yx, yy);
-          nextStart = rightSlope;
-        }
-      }
-      if (blocked) {
-        break;
+  const blocks = wallsOn(terrain, width);
+  const origin = [{ x: originX, y: originY }];
+  const top = Math.max(0, originY - radius);
+  const bottom = Math.min(height - 1, originY + radius);
+  const left = Math.max(0, originX - radius);
+  const right = Math.min(width - 1, originX + radius);
+  for (let y = top; y <= bottom; y += 1) {
+    for (let x = left; x <= right; x += 1) {
+      const square = { x, y };
+      if (blocks(x, y) ? wallInView(origin[0], square, blocks) : anyLineClear(origin, [square], blocks)) {
+        visible.add(tileIndex(width, x, y));
       }
     }
-  }
-
-  for (const [xx, xy, yx, yy] of OCTANTS) {
-    castOctant(1, 1, 0, xx, xy, yx, yy);
   }
   return visible;
 }
 
-// Pairwise line of sight along a Bresenham ray between tile centers.
-// Endpoints never block themselves: the attacker's own tile is ignored and
-// a target standing in a doorway is still visible.
+// The squares a line stops at, for sight.
+function wallsOn(terrain: string, width: number): Blocks {
+  return (x, y) => x >= 0 && x < width && y >= 0 && blocksSight(terrain[y * width + x] ?? TERRAIN.floor);
+}
+
+// Line of sight between two spaces, a list of squares each: a Large creature
+// is seen if any of its four squares is. No line means total cover (SRD 5.1,
+// Cover), so this is what refuses a shot, and it answers the same whichever
+// creature asks.
+export function hasLineOfSightBetween(terrain: string, width: number, from: XY[], to: XY[]): boolean {
+  return anyLineClear(from, to, wallsOn(terrain, width));
+}
+
+// The same between two single squares.
 export function hasLineOfSight(
   terrain: string,
   width: number,
@@ -110,31 +69,7 @@ export function hasLineOfSight(
   toX: number,
   toY: number,
 ): boolean {
-  let x = fromX;
-  let y = fromY;
-  const dx = Math.abs(toX - fromX);
-  const dy = Math.abs(toY - fromY);
-  const sx = fromX < toX ? 1 : -1;
-  const sy = fromY < toY ? 1 : -1;
-  let err = dx - dy;
-  while (x !== toX || y !== toY) {
-    const e2 = 2 * err;
-    if (e2 > -dy) {
-      err -= dy;
-      x += sx;
-    }
-    if (e2 < dx) {
-      err += dx;
-      y += sy;
-    }
-    if (x === toX && y === toY) {
-      break;
-    }
-    if (blocksSight(tileAt(terrain, width, x, y))) {
-      return false;
-    }
-  }
-  return true;
+  return hasLineOfSightBetween(terrain, width, [{ x: fromX, y: fromY }], [{ x: toX, y: toY }]);
 }
 
 export type Viewer = {
@@ -260,8 +195,11 @@ export function perceivesToken(
   viewer: Viewer,
   target: { x: number; y: number; movement?: "walk" | "fly" | "burrow" },
   visible: Set<number>,
+  // The squares it stands on: an ogre round a corner shows by the square that
+  // sticks out, as it can be shot by that square.
+  space: XY[] = [target],
 ): boolean {
-  if (visible.has(tileIndex(map.width, target.x, target.y))) {
+  if (space.some((square) => inBounds(map.width, map.height, square.x, square.y) && visible.has(tileIndex(map.width, square.x, square.y)))) {
     return true;
   }
   const distance = chebyshev(viewer.x, viewer.y, target.x, target.y);
@@ -288,15 +226,60 @@ export function darkvisionTilesFromText(texts: string[]): number {
   return bare ? 12 : 0;
 }
 
-// Cover from terrain, as the AC bonus the SRD grants the target: 0 for none,
-// +2 for half cover, +5 for three-quarters. A target with total cover cannot
-// be attacked at all, which hasLineOfSight already refuses.
-//
-// The approximation: a blocking tile orthogonally adjacent to the target and
-// lying on the ATTACKER'S side of it is something the target is tucked
-// behind. One such tile is half cover; two (a corner) is three-quarters.
-// Cheap, deterministic, and it matches what players expect from fighting
-// someone around a corner or out of an arrow slit.
+// Cover from terrain between two spaces, as the bonus the SRD grants the
+// target: 0 for none, +2 for half cover, +5 for three-quarters, counted along
+// the corner lines (src/lib/battlemap/sight-lines.ts). Cover depends on who
+// is tucked behind what, so unlike sight it can differ between two creatures.
+// Every line blocked also answers 5; whether that target has total cover is
+// hasLineOfSightBetween's to say, and that is what refuses the attack.
+export function coverBetweenSpaces(
+  terrain: string,
+  width: number,
+  height: number,
+  from: XY[],
+  to: XY[],
+): 0 | 2 | 5 {
+  let near: { from: XY; to: XY; apart: number } | null = null;
+  for (const a of from) {
+    for (const b of to) {
+      const apart = chebyshev(a.x, a.y, b.x, b.y);
+      if (!near || apart < near.apart) {
+        near = { from: a, to: b, apart };
+      }
+    }
+  }
+  if (!near || near.apart <= 1) {
+    // Toe to toe: nothing is between them.
+    return 0;
+  }
+  const blocked = blockedLines(from, to, wallsOn(terrain, width));
+  if (blocked >= 3) {
+    return 5;
+  }
+  if (blocked > 0) {
+    return 2;
+  }
+  // A low wall stops no line, since everything sees over it. A fence or ledge
+  // directly in front of the target is half cover, never more.
+  const towardX = Math.sign(near.from.x - near.to.x);
+  const towardY = Math.sign(near.from.y - near.to.y);
+  for (const [dx, dy] of [
+    [towardX, 0],
+    [0, towardY],
+  ]) {
+    if (dx === 0 && dy === 0) {
+      continue;
+    }
+    const x = near.to.x + dx;
+    const y = near.to.y + dy;
+    if (inBounds(width, height, x, y) && tileAt(terrain, width, x, y) === TERRAIN.lowwall) {
+      return 2;
+    }
+  }
+  return 0;
+}
+
+// The same between two single squares.
 export function coverBetween(
   terrain: string,
   width: number,
@@ -306,36 +289,5 @@ export function coverBetween(
   toX: number,
   toY: number,
 ): 0 | 2 | 5 {
-  if (chebyshev(fromX, fromY, toX, toY) <= 1) {
-    // Toe to toe: nothing is between them.
-    return 0;
-  }
-  const towardX = Math.sign(fromX - toX);
-  const towardY = Math.sign(fromY - toY);
-  let shields = 0;
-  let lowwalls = 0;
-  for (const [dx, dy] of [
-    [towardX, 0],
-    [0, towardY],
-  ]) {
-    if (dx === 0 && dy === 0) {
-      continue;
-    }
-    const x = toX + dx;
-    const y = toY + dy;
-    if (!inBounds(width, height, x, y)) {
-      continue;
-    }
-    const between = tileAt(terrain, width, x, y);
-    if (blocksSight(between)) {
-      shields += 1;
-    } else if (between === TERRAIN.lowwall) {
-      // A fence or ledge directly in front: half cover, never more.
-      lowwalls += 1;
-    }
-  }
-  if (shields === 0) {
-    return lowwalls > 0 ? 2 : 0;
-  }
-  return shields === 1 ? 2 : 5;
+  return coverBetweenSpaces(terrain, width, height, [{ x: fromX, y: fromY }], [{ x: toX, y: toY }]);
 }

@@ -33,12 +33,12 @@ import { publishFx } from "@/lib/dm/fx";
 import { buildingSkin, drawBuilding, holdsBuilding, type BuildingPlan } from "@/lib/battlemap/building";
 import { generateBattleMap, fnv1a, spotsForTokens, tilesBetweenSides } from "@/lib/battlemap/generate";
 import { findPath, squeezedAt, walkPathWithBudget } from "@/lib/battlemap/movement";
-import { coverBetween, hasLineOfSight } from "@/lib/battlemap/los";
+import { coverBetweenSpaces, hasLineOfSightBetween } from "@/lib/battlemap/los";
 import { footprintLookup, occupiedTiles } from "@/lib/battlemap/view";
 import { footprintForSize } from "@/lib/battlemap/footprint";
 import { openSquaresBeside } from "@/lib/dm/companion-approach";
 import { aiPlaysSheet } from "@/lib/dm/companion-command";
-import { nearestSquares, tilesApart } from "@/lib/dm/board-reach";
+import { spaceOf, tilesApart } from "@/lib/dm/board-reach";
 
 import {
   blocksMove,
@@ -940,14 +940,12 @@ export function pcAttackSpatials(
   if (!attacker || !target) {
     return none;
   }
-  // Nearest square to nearest square: a Large target's space is four
-  // squares, and the sight and cover lines go to the one the attacker faces
-  // (src/lib/dm/board-reach.ts).
+  // Nearest square to nearest square: a Large target's space is four squares.
+  // Cover is read to the one of them the attacker sees best.
   const distance = tilesApart(attacker, target);
-  const line = nearestSquares(attacker, target);
   return {
     // Blade Barrier's three-quarters cover counts as a wall's (zone-rules.ts).
-    cover: Math.max(coverBetween(map.terrain, map.width, map.height, line.from.x, line.from.y, line.to.x, line.to.y), zoneCoverBetween(encounterId, characterId, enemyId, from)) as 0 | 2 | 5,
+    cover: Math.max(coverBetweenSpaces(map.terrain, map.width, map.height, spaceOf(attacker), spaceOf(target)), zoneCoverBetween(encounterId, characterId, enemyId, from)) as 0 | 2 | 5,
 
     // Past the weapon's normal range but inside its long range: the SRD
     // penalty is disadvantage, and checkPcAttackRange allows up to double.
@@ -983,16 +981,8 @@ export function checkPcAttackRange(
     return null;
   }
   const distance = tilesApart(attacker, target);
-  const line = nearestSquares(attacker, target);
   const maxTiles = options.longRangeTiles ?? options.rangeTiles * 2;
-  const sighted = hasLineOfSight(
-    map.terrain,
-    map.width,
-    line.from.x,
-    line.from.y,
-    line.to.x,
-    line.to.y,
-  );
+  const sighted = hasLineOfSightBetween(map.terrain, map.width, spaceOf(attacker), spaceOf(target));
 
   if (!options.ranged && distance <= options.reachTiles) {
     // In reach. Toe to toe nothing can stand between; a reach weapon at 10
