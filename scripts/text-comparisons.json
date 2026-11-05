@@ -1439,7 +1439,7 @@
     "lib/dm/feature-hooks.ts#toLowerCase": [["key",2,"tool-argument variant; condition labels (engine vocabulary)"]],
     "lib/dm/feature-spends.ts#\\b": [["key",5,"the engine's own roll detail string"]],
     "lib/dm/feature-spends.ts#re-affix": [["english-source",1,"reference: SRD feature and option names the model writes in use_resource (the directive pins them), and the detail line the engine writes"]],
-    "lib/dm/feature-spends.ts#re-word": [["english-source",4,"reference: SRD feature and option names the model writes in use_resource (the directive pins them), and the detail line the engine writes"]],
+    "lib/dm/feature-spends.ts#re-word": [["english-source",7,"reference: SRD feature and option names the model writes in use_resource (the directive pins them), the detail line the engine writes, and a stat block's creature types"]],
     "lib/dm/feature-spends.ts#str-eq": [["key",5,"resource ids and costs"]],
     "lib/dm/feature-spends.ts#str-list": [["key",3,"condition labels (engine vocabulary)"]],
     "lib/dm/feature-spends.ts#toLowerCase": [["key",3,"condition labels (engine vocabulary); the engine's own roll detail string"]],

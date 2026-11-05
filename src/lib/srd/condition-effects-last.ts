@@ -108,7 +108,7 @@ export const LAST_CONDITION_EFFECTS: ConditionEffectRow[] = [
     // nothing read the condition, and a turned zombie still struck).
     id: "turned",
     match: ["turned"],
-    summary: "Turned (Turn Undead): it runs as far from the cleric as it can and never willingly within 30 feet of them; its action is only a Dash, an escape, or a Dodge when cornered; no reactions. Any damage ends it.",
+    summary: "Turned: it runs as far from whoever turned it as it can and never willingly within 30 feet of them; its action is only a Dash, an escape, or a Dodge when cornered; no reactions. Any damage ends it.",
     noAttacks: true,
     noCasting: true,
     noReactions: true,

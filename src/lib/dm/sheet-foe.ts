@@ -23,7 +23,7 @@ import { enemyAcWithEffects } from "@/lib/dm/ac-effects";
 import { getActiveEncounter, getEnemy, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
 import { SHEET_FOE_SLUG } from "@/lib/dm/combat-sides-logic";
-import { combatantsOf, resolveCombatant } from "@/lib/dm/combatant";
+import { combatantsOf, hostileTo, resolveCombatant } from "@/lib/dm/combatant";
 import { effectiveMaxHp } from "@/lib/dm/condition-logic";
 import { sheetEnemyStats } from "@/lib/dm/sheet-foe-stats";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -72,6 +72,15 @@ export function getFoe(id: string): EncounterEnemy | null {
 
 // The target a foe path names, by id or name, through resolveCombatant: the
 // enemy row, or the foe view of a sheet.
+// Every creature in the fight opposed to this character, standing or not: a turned
+// companion or hostile summon, no enemy a Dominate spell has moved to their side,
+// and the party when the character is themself on the foes' side.
+export function foesOfSheet(campaignId: string, encounter: Encounter, sheetId: string): EncounterEnemy[] {
+  return combatantsOf(campaignId, encounter)
+    .filter((combatant) => hostileTo(encounter, { kind: "sheet", id: sheetId }, { kind: combatant.kind, id: combatant.id }))
+    .map((combatant) => (combatant.kind === "enemy" ? combatant.enemy : sheetFoeView(encounter.id, combatant.sheet)));
+}
+
 export function resolveTargetFoe(campaignId: string, encounter: Encounter, ref: string | null | undefined): EncounterEnemy | null {
   const combatant = resolveCombatant(campaignId, encounter, ref);
   if (!combatant) {
