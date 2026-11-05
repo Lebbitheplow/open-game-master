@@ -182,6 +182,51 @@ await test("Arcane Jolt is played from its cards: the force card burns the creat
   }
 });
 
+await test("Cauterizing Flames is played from its cards: the fire card burns the creature, the healing card heals the ally, and each takes the reaction.", async () => {
+  const druid = world.addHero({ user: world.owner, class: "druid", subclass: "Circle of Wildfire", level: 10, abilities, maxHp: 60, proficiencies: TRAINED, portrait: { url: "/uploads/test.png" } });
+  const ally = world.addHero({ user: world.owner, class: "fighter", subclass: "Champion", level: 5, abilities, maxHp: 60, proficiencies: TRAINED, portrait: { url: "/uploads/test.png" } });
+  const offTurn = { ...FRESH_TURN, myTurn: false };
+  const flames = (turn) => deriveHand(world.sheet(druid.id), turn, {}).filter((entry) => entry.intent.card === "reaction" && entry.intent.feature === "Cauterizing Flames");
+  for (const [variant, target] of [["burn", "enemy"], ["heal", "ally"]]) {
+    const enemy = await stage(druid);
+    kit.place(ally.id, 4, 5);
+    world.patch(ally.id, { currentHp: 20 });
+    assert.equal(flames(FRESH_TURN).length, 2, "a card for each aim");
+    const card = flames(offTurn).find((entry) => entry.intent.variant === variant);
+    assert.ok(card, variant);
+    assert.equal(card.cost, "reaction", variant);
+    assert.equal(card.disabled, null, `${variant}: ${card.disabled}`);
+    assert.equal(card.target, target);
+    assert.equal(card.name, variant === "burn" ? "Cauterizing Flames (fire)" : "Cauterizing Flames (healing)");
+    assert.match(card.dice, variant === "burn" ? /^2d10\+3 fire$/ : /^heals 2d10\+3$/);
+    assert.match(card.resource, /^Uses \d+\/\d+$/);
+    // Nothing fixes the aim, even with the creature's hit open on the druid.
+    const { reactionAim } = await import("../src/lib/battlemap/hand-react.ts");
+    assert.equal(reactionAim(card, [{ characterId: druid.id, attackerId: enemy.id, attacker: "Goblin" }], druid.id, world.sheets()), null, variant);
+    const intent = { ...card.intent, targetId: target === "enemy" ? enemy.id : ally.id, targetKind: target };
+    const call = directCardCall(intent, druid.id, { inFight: true });
+    assert.equal(call.name, "use_reaction");
+    // Played off the druid's turn, as its trigger comes.
+    kit.giveTurn(ally.id);
+    const out = await play(druid, call.name, call.args);
+    assert.equal(out.ok, true, `${variant}: ${out.error}`);
+    assert.equal(world.sheet(druid.id).resources.sub_cauterizing_flames.used, 1);
+    assert.ok(world.encounter().reactionsUsed.includes(druid.id), "the reaction is spent");
+    if (variant === "burn") assert.ok(world.enemies()[0].currentHp < 300, "the creature burns");
+    else assert.ok(world.sheet(ally.id).currentHp > 20, "the ally heals");
+    assert.equal(flames({ ...FRESH_TURN, reactionUsed: true }).every((entry) => entry.disabled), true, "the reaction is gone");
+  }
+});
+
+await test("use_reaction names the way a counted reaction with two ways goes, and asks when none is named.", async () => {
+  const druid = world.sheets().find((sheet) => sheet.subclass === "Circle of Wildfire") ?? world.addHero({ user: world.owner, class: "druid", subclass: "Circle of Wildfire", level: 10, abilities, maxHp: 60, proficiencies: TRAINED, portrait: { url: "/uploads/test.png" } });
+  await stage(druid);
+  const asked = await world.invoke("use_reaction", { characterId: druid.id, feature: "Cauterizing Flames" });
+  assert.equal(asked.ok, false);
+  assert.match(asked.error, /takes variant "heal" or "burn"/);
+  assert.equal(world.sheet(druid.id).resources.sub_cauterizing_flames.used, 0, "the refusal costs nothing");
+});
+
 await test("An Artillerist holds one Eldritch Cannon counter, and the card and the spend use it.", () => {
   const build = builds.find((entry) => entry.subclass === "Artillerist");
   assert.ok(build, "an Artillerist");

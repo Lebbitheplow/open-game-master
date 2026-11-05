@@ -556,6 +556,7 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
       { name: "targetCharacterId", label: "Ally covered", kind: "character", help: "Protection, Cutting Words, Feather Fall." },
       { name: "targetEnemyId", label: "Enemy answered", kind: "enemy", help: "Hellish Rebuke, Counterspell, Deflect Missiles' throw back." },
       { name: "spell", label: "Spell countered", kind: "text", help: "Counterspell only: the enemy's spell as its block names it." },
+      { name: "variant", label: "Which way", kind: "text", help: "Cauterizing Flames only: heal or burn." },
       { name: "level", label: "Slot level", kind: "number", min: 1, max: 9, help: "A reaction spell cast from a higher slot; Song of Defense's slot." },
       { name: "x", label: "Move to column", kind: "number", min: 0, max: 200, help: "Skirmisher, Relentless Avenger: the square they move to, drawing no opportunity attacks." },
       { name: "y", label: "Move to row", kind: "number", min: 0, max: 200 },

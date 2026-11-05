@@ -41,7 +41,7 @@ export type HandIntent = (
   | { card: "spell"; spell: string; slotLevel: number | null }
   | { card: "feature"; resourceId: string }
   | { card: "basic"; action: BasicActionId }
-  | { card: "reaction"; feature: string; spell?: string; slotLevel?: number | null; hit?: string }
+  | { card: "reaction"; feature: string; spell?: string; slotLevel?: number | null; hit?: string; variant?: string }
   // A gear card (issue #424, hand-gear.ts): a shield, a weapon, a thing
   // dropped, picked up, handed over or drunk. `item` rides as the extra.
   | { card: "gear"; action: HandGearAction }

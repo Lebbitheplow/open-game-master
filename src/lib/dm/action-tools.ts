@@ -182,6 +182,10 @@ export const actionTools: ToolDef[] = [
             type: "string",
             description: "Counterspell only: the spell the enemy is casting, as its stat block names it.",
           },
+          variant: {
+            type: "string",
+            description: "Cauterizing Flames only: 'heal' (targetCharacterId) or 'burn' (targetEnemyId).",
+          },
           level: {
             type: "integer",
             minimum: 1,

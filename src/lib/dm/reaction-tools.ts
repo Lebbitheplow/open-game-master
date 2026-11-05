@@ -72,6 +72,9 @@ const useReactionSchema = z.object({
   targetEnemyId: z.string().optional(),
   // Counterspell: the spell being countered.
   spell: z.string().max(80).optional(),
+  // The way a counted reaction goes, when it has two (Cauterizing Flames: heal
+  // or burn), for the spend it hands to use_resource.
+  variant: z.string().max(40).optional(),
   // A reaction spell cast from a higher slot (Counterspell at 5th).
   level: z.coerce.number().int().min(1).max(9).optional(),
   // A reaction that moves the character (Skirmisher, Relentless Avenger):
@@ -654,6 +657,7 @@ function useReaction(
       JSON.stringify({
         characterId: sheet.id,
         resource: feature,
+        ...(args.variant ? { variant: args.variant } : {}),
         ...(args.targetCharacterId ? { targetCharacterId: args.targetCharacterId } : {}),
         ...(args.targetEnemyId ? { targetEnemyId: args.targetEnemyId } : {}),
         reason: args.reason ?? feature,

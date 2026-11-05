@@ -687,8 +687,10 @@ export function reactionAim(
   if (card.pickWithin !== undefined) {
     return null;
   }
-  // Commander's Strike's target is the player's pick.
-  if (card.target === "enemy" && id === "reaction:commanders-strike") {
+  // Commander's Strike's target is the player's pick, and so is the creature a
+  // reaction with two aims is spent on (Cauterizing Flames answers no hit, so an
+  // open hit's attacker would be the wrong creature).
+  if ((card.target === "enemy" && id === "reaction:commanders-strike") || (card.intent?.card === "reaction" && card.intent.variant)) {
     return null;
   }
   if (card.target === "enemy") {
