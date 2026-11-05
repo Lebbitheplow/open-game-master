@@ -117,7 +117,7 @@ export function parkPcAttack(plan: AttackPlan, strike: Strike, toolCallId: strin
   const parked: ParkedAttack = {
     magical: strikesAsMagic(plan),
     ...(plan.atRange ? {} : { melee: true }),
-    ...(attackerUnseen(sheet.conditions, enemy.conditions) ? { attackerUnseen: true } : {}),
+    ...(attackerUnseen(sheet.conditions, enemy.conditions, plan.sight) ? { attackerUnseen: true } : {}),
     plainAc: enemyAcWithEffects(campaign.id, enemy),
     ...(parkedRiders.length ? { riders: parkedRiders } : {}),
     ...(critExtraDice ? { critExtraDice } : {}),
