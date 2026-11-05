@@ -60,7 +60,7 @@ function castReactionSpell(ctx: Ctx, spell: string): Record<string, unknown> | T
 
 function spentLine(ctx: Ctx, cast: Record<string, unknown>): string {
   return `${ctx.sheet.name}'s reaction${
-    typeof cast.slotLevel === "number" ? ` and a level-${cast.slotLevel} slot are` : " is"
+    typeof cast.slotLevel === "number" && !cast.fromItem ? ` and a level-${cast.slotLevel} slot are` : " is"
   } spent.`;
 }
 

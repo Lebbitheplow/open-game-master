@@ -15,6 +15,7 @@ import type { SpellFacts } from "@/lib/srd/spell-facts";
 import type { ItemCast } from "@/lib/srd/item-cast-credit";
 import { droppedLine, setConcentration } from "@/lib/dm/concentration";
 import { endInvisibilityOnCast } from "@/lib/dm/attack-marks";
+import { noteRunning, takeFromRing } from "@/lib/dm/ring-store";
 
 export function castFromItem(
   campaign: Campaign,
@@ -47,6 +48,10 @@ export function castFromItem(
       result.droppedConcentration = droppedLine(displaced, name);
     }
   }
+  if (cast.storedIn) {
+    takeFromRing(campaign, turnId, sheet.id, cast.storedIn, name);
+  }
+  noteRunning(sheet.id, cast);
   // Casting a spell from an item is casting a spell: Invisibility ends.
   endInvisibilityOnCast(campaign.id, sheet.id);
   return result;

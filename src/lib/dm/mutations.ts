@@ -56,6 +56,7 @@ import { BONUS_ATTACK_COUNTERS } from "@/lib/dm/feature-bonus-attacks";
 import { matchResource } from "@/lib/srd/class-resources";
 import { prepareUseItem } from "@/lib/dm/object-actions";
 import { chargedItemUse } from "@/lib/dm/item-use";
+import { releaseStoredSpell, storeSpell } from "@/lib/dm/spell-storing";
 import { applyConsumable, consumableRefusal, scrollSpellFor } from "@/lib/dm/consumables";
 import { castSpell } from "@/lib/dm/cast-guard";
 import { characterCallUnasked } from "@/lib/dm/player-word";
@@ -332,6 +333,15 @@ export const mutationTools: ToolDef[] = [
       maximum: 100,
       description: "How many, for a material priced per creature, corpse or Hit Die of the target. Astral Projection, Create Undead and Imprisonment price it this way.",
     },
+    storeIn: {
+      type: "string",
+      description: "A Ring of Spell Storing, to cast the spell into it, with no effect until the wearer casts it.",
+    },
+    storeInCharacterId: { type: "string", description: "Who carries that ring, if not the caster." },
+    storedBy: {
+      type: "string",
+      description: "An NPC caster's name, for a ring found full too. characterId then only carries the ring.",
+    },
     ...ZONE_ARGS,
   }, ["spell"]),
   tool(
@@ -430,6 +440,10 @@ const argsSchema = z.object({
   // use_spell_slot: homebrew concentration flag + ritual casting.
   concentration: z.boolean().optional(),
   ritual: z.coerce.boolean().optional(),
+  // use_spell_slot: cast into a Ring of Spell Storing (src/lib/dm/spell-storing.ts).
+  storeIn: z.string().max(80).optional(),
+  storeInCharacterId: z.string().max(80).optional(),
+  storedBy: z.string().max(80).optional(),
   // use_spell_slot, internal: which cast tool is calling, and a check that
   // writes nothing (src/lib/dm/cast-guard.ts). Not in the tool schema.
   via: z.enum(["slot", "enemy", "buff", "aoe", "attack", "heal", "reaction"]).optional(),
@@ -1196,6 +1210,11 @@ function dmMutation(
       if (kitStabilize) {
         return { result: kitStabilize };
       }
+      // A Ring of Spell Storing casts what it holds; null for anything else.
+      const released = releaseStoredSpell(campaign, sheet, itemName, args.spell, turnId);
+      if (released) {
+        return { result: released };
+      }
       // A charged item (a wand, a staff) spends charges and stays in the
       // pack (src/lib/dm/item-use.ts); null for anything else.
       const charged = chargedItemUse(campaign, turnId, sheet, itemName, args.charges, args.spell);
@@ -1579,7 +1598,8 @@ function dmMutation(
       return { result: { ok: true, cleared: removed.join(", ") } };
     }
     case "use_spell_slot": {
-      const unasked = characterCallUnasked(campaign.id, getDmTurn(turnId), rawArguments, "characterId");
+      // storedBy is an NPC's casting: the character only carries the ring.
+      const unasked = args.storedBy ? null : characterCallUnasked(campaign.id, getDmTurn(turnId), rawArguments, "characterId");
       if (unasked) {
         return { result: unasked };
       }
@@ -1667,6 +1687,30 @@ function dmMutation(
             slot: `level ${level}: ${math.max - math.used}/${math.max} left`,
             note: "A bonus action; the healing lands on the beast form's pool.",
           },
+        };
+      }
+      // Cast into a Ring of Spell Storing, paid for through the same guard.
+      if (args.storeIn?.trim()) {
+        if (!spell) {
+          return { result: { error: "storeIn needs the spell being stored.", retry: true } };
+        }
+        const holder = args.storeInCharacterId ? resolve(args.storeInCharacterId) : sheet;
+        if (!holder) {
+          return { result: unknownSheetRef("storeInCharacterId", args.storeInCharacterId, sheets) };
+        }
+        return {
+          result: storeSpell(
+            campaign,
+            turnId,
+            sheet,
+            holder,
+            { storeIn: args.storeIn.trim(), spell, ...(args.level !== undefined ? { level: args.level } : {}), ...(args.storedBy ? { storedBy: args.storedBy } : {}) },
+            (input) =>
+              castSpell(campaign, turnId, sheet, input, {
+                record: (delta, patch) => audit(campaign, turnId, sheet, "use_spell_slot", delta, reason, patch),
+                publish: () => publishSheet(campaign, sheet.id),
+              }),
+          ),
         };
       }
       // Everything else is a cast, and every cast goes through the one guard

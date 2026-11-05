@@ -60,6 +60,15 @@ export default {
     // Its details say it requires attunement, and only items the magic item
     // table holds offer the button, so a ring left out could never be attuned.
     const ring = rowOf("Ring of Spell Storing");
+    // What the ring holds is read under its row (src/lib/srd/spell-storing.ts).
+    await eventually(() => sheet.getByText("Holds Fireball (level 3)").count(), { label: "what the Ring of Spell Storing holds" });
+    await t.shot("stored");
+    const storedTheme = await page.evaluate(() => document.documentElement.dataset.theme ?? "");
+    await page.evaluate(() => (document.documentElement.dataset.theme = "light"));
+    // Past the theme's fade, so the shot shows the day colors.
+    await page.waitForTimeout(800);
+    await t.shot("stored-day");
+    await page.evaluate((mode) => (document.documentElement.dataset.theme = mode), storedTheme);
     await ring.scrollIntoViewIfNeeded().catch(() => undefined);
     await t.tap(ring.getByRole("button", { name: "attune", exact: true }));
     await eventually(async () => (await gear())["Ring of Spell Storing"]?.attuning === true, { label: "the Ring of Spell Storing attuning" });

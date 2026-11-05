@@ -48,6 +48,10 @@ const conditionInstanceSchema = z.object({
     // A casting held across turns cast as a ritual, which spends no slot
     // when it completes (src/lib/dm/long-casting-logic.ts).
     ritual: z.boolean().optional(),
+  // A casting going into a Ring of Spell Storing, or coming out of one.
+  storeIn: z.string().max(80).optional(),
+  storeInHolder: z.string().max(80).optional(),
+  fromRing: z.string().max(80).optional(),
     // Ends when the creature takes damage (Sleep, Hypnotic Pattern), or
     // gives it a new save when it does (Hideous Laughter, Dominate Person).
     endsOnDamage: z.boolean().optional(),

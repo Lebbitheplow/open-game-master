@@ -26,7 +26,7 @@ import type {
   CharacterSheet,
   Proficiencies,
 } from "@/lib/schemas/sheet";
-import { itemCastNumbers } from "@/lib/srd/item-cast-credit";
+import { itemCastNumbers, runningItemSpell } from "@/lib/srd/item-cast-credit";
 
 import type { SrdBackground, SrdClass, SrdRace, SrdSkill } from "@/lib/srd/srd-types";
 import { textKey } from "@/lib/language/text-logic";
@@ -648,7 +648,7 @@ export function spellSaveDcFor(
 ): number | null {
   // A spell cast from a scroll or a wand carries the item's DC
   // (src/lib/srd/item-cast-credit.ts).
-  const fromItem = itemCastNumbers((sheet as { id?: string }).id, spellName)?.saveDc;
+  const fromItem = itemCastNumbers((sheet as { id?: string }).id, spellName)?.saveDc ?? runningItemSpell(sheet as Parameters<typeof runningItemSpell>[0], spellName)?.saveDc;
   if (fromItem) {
     return fromItem;
   }
@@ -676,7 +676,7 @@ export function spellAttackFor(
   sheet: DerivedSheet,
   spellName: string,
 ): number | null {
-  const fromItem = itemCastNumbers((sheet as { id?: string }).id, spellName)?.attackBonus;
+  const fromItem = itemCastNumbers((sheet as { id?: string }).id, spellName)?.attackBonus ?? runningItemSpell(sheet as Parameters<typeof runningItemSpell>[0], spellName)?.attackBonus;
   if (fromItem) {
     return fromItem;
   }

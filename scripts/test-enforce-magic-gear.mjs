@@ -303,7 +303,7 @@ await test("the GAME STATE line for a magic item says what the engine applies, i
   // An item in the table only for its attunement keeps its sentence from the
   // pack, with its state, so the model has something to narrate it from.
   const ring = magicItemLine({ name: "Ring of Spell Storing", qty: 1, attuned: true, equipped: true });
-  assert.match(ring, /^Ring of Spell Storing: .*spells.* \(narrated\); attuned, worn$/i);
+  assert.match(ring, /^Ring of Spell Storing: holds no spells; 5 of 5 levels free; attuned, worn$/i);
   assert.match(magicItemLine({ name: "Ring of Spell Storing", qty: 1, equipped: true }), /; not attuned, worn$/);
   // With no content pack (CI runs this suite without one) the sentence comes
   // from the bundled SRD book, for an item in the table and for one the
@@ -333,11 +333,13 @@ await test("use_item never uses up a magic item the table holds, and asks attune
     { name: "Ring of Spell Storing", qty: 1, equipped: true, attuned: true },
     { name: "Ioun Stone of Protection", qty: 1, equipped: true, attuned: true },
   ]);
-  for (const name of ["Prayer Mat", "Ring of Spell Storing", "Ioun Stone of Protection"]) {
+  for (const name of ["Prayer Mat", "Ioun Stone of Protection"]) {
     const out = await use(name);
     assert.equal(out.ok, false, name);
     assert.match(out.error, /kept, not consumed/, name);
   }
+  // The ring casts what it holds (test-enforce-spell-storing), and it holds nothing.
+  assert.match((await use("Ring of Spell Storing")).error, /holds no spells/);
   assert.deepEqual(sheet().equipment.map((item) => [item.name, item.qty]), [["Prayer Mat", 1], ["Ring of Spell Storing", 1], ["Ioun Stone of Protection", 1]]);
 });
 

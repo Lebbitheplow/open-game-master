@@ -155,6 +155,7 @@ export function SheetGearRow({
       </button>
       ) : null}
     </div>
+    {status.stored ? <p className="ml-8 text-[11px] text-stone-400">{status.stored}</p> : null}
     {conflict ? (
       <div role="group" aria-label={`Wear ${item.name}?`} className="reveal ml-8 space-y-1.5 rounded border border-amber-800/60 bg-amber-950/30 px-2 py-1.5 text-[11px] text-amber-100">
         <p>{swapQuestion(conflict)}</p>
