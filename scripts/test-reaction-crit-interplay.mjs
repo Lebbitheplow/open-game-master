@@ -42,7 +42,8 @@ const seer = world.addHero({
   class: "fighter", subclass: "Rune Knight", level: 20, maxHp: 100, ac: 12, acOverride: true, proficiencies: TRAINED,
   abilities: { str: 16, dex: 16, con: 16, int: 16, wis: 16, cha: 16 }, portrait: { url: "/uploads/test.png" },
 });
-const everyone = [cleric, knight, bard, rogue, ally, knight2, bard2, seer];
+const lucky = hero("fighter", "Champion", 5, { feats: ["Lucky"], resources: { luck_points: { max: 3, used: 0 } } });
+const everyone = [cleric, knight, bard, rogue, ally, knight2, bard2, seer, lucky];
 
 async function stage(foes = 1) {
   await kit.endFight();
@@ -329,6 +330,106 @@ await test("A downed ally a ranged hit found: Runic Shield's natural 20 makes it
   const rune = await react(knight, "Runic Shield", ally, [20, 5]);
   assert.equal(rune.ok, true, rune.error);
   assert.equal(world.sheet(ally.id).deathSaves.failures, 2, "a critical on someone at 0 is two failures");
+});
+
+// Beside the goblin: the line of heroes stage() lays out ends out of its reach.
+const beside = async (who) => {
+  const enemy = await stage();
+  kit.place(who.id, 8, 7);
+  return enemy;
+};
+
+await test("Lucky rolls a natural 20 away and it still hits: the plain 6 lands, not the critical 9, and the point is spent.", async () => {
+  const enemy = await beside(lucky);
+  await crit(enemy, lucky);
+  assert.equal(hp(lucky), 41);
+  const out = await react(lucky, "Lucky", null, [15]);
+  assert.equal(out.ok, true, out.error);
+  assert.match(out.result.applied, /still hits, no longer a critical: 3 hit points come back/);
+  assert.equal(hp(lucky), 44);
+  assert.equal(world.sheet(lucky.id).resources.luck_points.used, 1);
+});
+
+await test("Uncanny Dodge on the critical 9, then Lucky rolls the 20 away: half the plain 6.", async () => {
+  const enemy = await beside(lucky);
+  world.patch(lucky.id, { features: [{ name: "Uncanny Dodge", source: "class" }] });
+  await crit(enemy, lucky);
+  const dodge = await react(lucky, "Uncanny Dodge");
+  assert.equal(dodge.ok, true, dodge.error);
+  assert.equal(hp(lucky), 46);
+  const out = await react(lucky, "Lucky", null, [15]);
+  assert.equal(out.ok, true, out.error);
+  assert.equal(hp(lucky), 47);
+  world.patch(lucky.id, { features: [] });
+});
+
+await test("Lucky rolls another 20: still the critical, and nothing comes back.", async () => {
+  const enemy = await beside(lucky);
+  await crit(enemy, lucky);
+  const out = await react(lucky, "Lucky", null, [20]);
+  assert.equal(out.ok, true, out.error);
+  assert.doesNotMatch(out.result.applied, /no longer a critical/);
+  assert.equal(hp(lucky), 41);
+});
+
+await test("On a routine Lucky goes to the natural 20 it can make ordinary, not a lighter swing that may miss.", async () => {
+  const enemy = await beside(lucky);
+  kit.setEnemy(enemy.id, { stats: { ...enemy.stats, attacks: [{ name: "Bite", toHit: 10, damage: "1d6+2", type: "piercing" }, { name: "Claw", toHit: 4, damage: "1d4", type: "slashing" }], routines: [[{ attack: "Bite", count: 1 }, { attack: "Claw", count: 1 }]] } });
+  world.dice(20, 4, 3, 15, 2);
+  const out = await world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: lucky.id });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(hp(lucky), 39);
+  const answer = await react(lucky, "Lucky", null, [15]);
+  assert.equal(answer.ok, true, answer.error);
+  assert.match(answer.result.applied, /Bite rolled again/);
+  assert.equal(hp(lucky), 42);
+});
+
+await test("A downed hero's Lucky on a ranged critical: one failure comes off, and the reply says so.", async () => {
+  const enemy = await beside(lucky);
+  kit.setEnemy(enemy.id, { stats: { ...enemy.stats, attacks: [{ name: "Shortbow", toHit: 4, damage: "1d6+2", type: "piercing" }] } });
+  kit.place(enemy.id, 8, 13);
+  world.patch(lucky.id, { currentHp: 0, conditions: ["unconscious", "prone"], deathSaves: { successes: 0, failures: 0, stable: false, dead: false } });
+  await crit(enemy, lucky);
+  assert.equal(world.sheet(lucky.id).deathSaves.failures, 2);
+  const out = await react(lucky, "Lucky", null, [15]);
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.sheet(lucky.id).deathSaves.failures, 1);
+  assert.ok(out.result.notes?.length, "the reply carries what was taken back");
+});
+
+await test("Runic Shield's natural 20 raised the hit to a critical, then Lucky rolls that 20 away: the blow it was before.", async () => {
+  const enemy = await beside(lucky);
+  world.dice(16, 4);
+  await world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: lucky.id });
+  world.clearDice();
+  assert.equal(hp(lucky), 44);
+  const rune = await react(knight, "Runic Shield", lucky, [20, 3]);
+  assert.equal(rune.ok, true, rune.error);
+  assert.equal(hp(lucky), 41);
+  const out = await react(lucky, "Lucky", null, [15]);
+  assert.equal(out.ok, true, out.error);
+  assert.match(out.result.applied, /no longer a critical/);
+  assert.equal(hp(lucky), 44);
+});
+
+await test("Lucky on a roll with advantage leaves the roll's dice as they were, so Shadowy Dodge still reads it as advantage.", async () => {
+  const enemy = await beside(lucky);
+  const { freshLastHit } = await import("../src/lib/dm/last-hit.ts");
+  // Restrained: the goblin rolls with advantage, a 20 and a 5.
+  world.patch(lucky.id, { conditions: ["restrained"] });
+  world.dice(20, 5, 4, 3);
+  await world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: lucky.id });
+  world.clearDice();
+  const before = freshLastHit(world.campaignId, lucky.id).swings[0];
+  await react(lucky, "Lucky", null, [15]);
+  const after = freshLastHit(world.campaignId, lucky.id).swings[0];
+  assert.equal(before.advantage, "advantage");
+  assert.deepEqual(after.faces, before.faces);
+  assert.equal(after.advantage, before.advantage);
+  assert.equal(after.crit, false);
+  assert.equal(after.natural, 15);
 });
 
 world.close();

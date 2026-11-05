@@ -69,6 +69,9 @@ export function raiseToCritical(campaign: { id: string }, turn: DmTurn | null, r
     raw,
     // The blow it was, for Sentinel at Death's Door to turn it back.
     normal: { raw: recipe.from, ...(swing.type !== undefined ? { type: swing.type } : {}), ...(swing.parts ? { parts: swing.parts } : {}), from: uncut },
+    // And for a reroll that rolls the 20 away (Lucky, a second Runic Shield): only
+    // the natural 20 made this critical.
+    plain: { raw: recipe.from, ...(swing.parts ? { parts: swing.parts } : {}), from: uncut },
   };
   delete raised.critical;
   delete raised.parts;
