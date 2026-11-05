@@ -37,7 +37,7 @@ function waitingCardCalls(campaign: Campaign, message: CampaignMessage | null): 
   if (message.cardReturned) {
     return { error: "That card went back to its player's hand.", status: 409 };
   }
-  const calls = directCardCalls(message.intent, message.characterId, directContextFor(campaign.id, message.intent, tableAuthors(campaign.id)));
+  const calls = directCardCalls(message.intent, message.characterId, directContextFor(campaign.id, message.intent, tableAuthors(campaign.id), message.characterId));
   return calls ?? { error: "The engine cannot resolve that card on its own: it needs your ruling. Answer it from the console.", status: 409 };
 }
 

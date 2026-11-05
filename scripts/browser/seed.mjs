@@ -2222,6 +2222,76 @@ const spellbook = {};
     spellbook[viewport] = { id: table.id, wizard: wizard.id };
   }
 }
+// Witch Bolt's beam (scenario witch-bolt-hand): per viewport, a
+// wizard's turn with the beam already connected to a goblin.
+const witchBolt = {};
+{
+  const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
+  const encounterRows = await import("../../src/lib/db/encounters.ts");
+  const { initiativeFloorFor } = await import("../../src/lib/dm/encounter-tools.ts");
+  for (const viewport of ["desktop", "phone"]) {
+    const table = campaigns.createCampaign(player.id, {
+      title: `Beam Table (${viewport})`,
+      description: "A wizard, a goblin and a beam between them.",
+      theme: "high-fantasy",
+      maxPlayers: 6,
+      startingLevel: 5,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human" },
+    });
+    const seated = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+    if ("error" in seated) {
+      throw new Error(`could not seat the lead at the beam table: ${seated.error}`);
+    }
+    campaigns.setCampaignStatus(table.id, "active");
+    const wizard = sheets.createSheet(
+      table.id,
+      world.owner.id,
+      5,
+      heroInput({
+        name: "Sera Vane",
+        class: "wizard",
+        level: 5,
+        maxHp: 32,
+        abilities: { int: 18, con: 14, dex: 14 },
+        equipment: [{ name: "Component pouch", qty: 1 }],
+        spellcasting: {
+          ability: "int",
+          slots: { 1: { max: 4, used: 1 }, 2: { max: 3, used: 0 }, 3: { max: 2, used: 0 } },
+          known: [],
+          cantrips: ["Fire Bolt"],
+          prepared: ["Witch Bolt", "Magic Missile"],
+        },
+      }),
+    );
+    const started = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: player.id }, {
+      name: "start_encounter",
+      args: { enemies: [{ monster: "goblin", count: 1 }] },
+    });
+    if (!started.ok) {
+      throw new Error(`the beam table's fight did not start: ${started.error}`);
+    }
+    const encounter = encounterRows.getActiveEncounter(table.id);
+    const place = encounter.order.findIndex((entry) => entry.characterId === wizard.id);
+    if (place < 0) {
+      throw new Error("the beam table's wizard has no place in the order");
+    }
+    encounterRows.saveEncounter({
+      ...encounter,
+      orderReady: true,
+      round: Math.max(2, encounter.round),
+      turnIndex: place,
+      turnBudget: null,
+      legendary: { ...encounter.legendary, due: [] },
+    });
+    campaigns.setFloor(table.id, initiativeFloorFor(table.id) ?? { mode: "open" });
+    // Last turn's hit, as connectBeam leaves it.
+    sheets.patchSheet(wizard.id, { concentratingOn: "Witch Bolt" });
+    const [goblin] = encounterRows.listEnemies(encounter.id);
+    encounterRows.patchEnemyConditions(goblin.id, ["witch bolt"], { "witch bolt": { spell: "Witch Bolt", source: wizard.id } });
+    witchBolt[viewport] = { id: table.id, wizard: wizard.id, goblin: goblin.id };
+  }
+}
 
 // Issue 668: a Hand notice ("already used their bonus action this turn")
 // stayed into the next round while the chip was lit again. A fight a
@@ -3052,6 +3122,7 @@ const ids = {
   singleClassTableId: singleClassTable.id,
   qualityTurnIds,
   spellbook,
+  witchBolt,
   noticeTables,
   afterRollTables,
   portentTables,

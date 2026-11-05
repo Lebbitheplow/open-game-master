@@ -26,6 +26,7 @@ import { isValidExpression } from "@/lib/dice";
 import { spellSaveDcFor, castsSpells } from "@/lib/srd";
 import { spellDamageFor, spellFactsFor, spellMechanicsFor } from "@/lib/content";
 import { castRedirect } from "@/lib/dm/cast-redirect";
+import { beamHeld, beamProblem, noteBeamAction } from "@/lib/dm/witch-bolt";
 
 export { castRedirect };
 import { conditionEffectsFor } from "@/lib/srd/condition-effects";
@@ -183,7 +184,17 @@ export function handleCastAtEnemy(
   // arguments are corrected rather than trusted. Unknown spells resolve only
   // when the table's own homebrew defines them (src/lib/dm/spell-authors.ts).
   const authors = spellAuthorsFor(campaign);
-  const resolvedMech = spellMechanicsFor({ spell: args.spell, userIds: authors });
+  const asKnown = spellMechanicsFor({ spell: args.spell, userIds: authors });
+  // Witch Bolt's beam: while it holds, its damage lands by itself and only on
+  // what it is connected to (src/lib/dm/witch-bolt.ts).
+  const beam = asKnown && beamHeld(sheet, asKnown.name, asKnown.mech) ? asKnown.mech.repeatDice : undefined;
+  if (beam && asKnown) {
+    const cut = beamProblem(campaign, turn.id, sheet, encounter.id, enemy, asKnown.name, spellFactsFor(args.spell, authors));
+    if (cut) {
+      return cut;
+    }
+  }
+  const resolvedMech = asKnown && beam ? { ...asKnown, mech: { ...asKnown.mech, resolution: "auto" as const } } : asKnown;
   if (resolvedMech?.mech.dispel) {
     return handleDispelMagic(campaign, turn, sheets, sheetsById, {
       caster: sheet,
@@ -247,13 +258,15 @@ export function handleCastAtEnemy(
   // What the spell rolls from the slot the caller named; checked here so a
   // cast that could not resolve spends nothing. A spell that deals no damage
   // takes none, whatever dice the caller sends.
-  const named = spellDamageFor({
-    spell: args.spell,
-    userIds: authors,
-    casterLevel: sheet.level,
-    slotLevel: args.level,
-    ...(args.darts ? { darts: args.darts } : {}),
-  });
+  const named = beam
+    ? { dice: beam, note: `${beam} from the beam`, spellLevel: asKnown?.spellLevel ?? 1 }
+    : spellDamageFor({
+        spell: args.spell,
+        userIds: authors,
+        casterLevel: sheet.level,
+        slotLevel: args.level,
+        ...(args.darts ? { darts: args.darts } : {}),
+      });
   const callerDice = mech?.noDamage ? undefined : args.damage;
   // The spell's own condition wins over the model's guess; the caster
   // chooses among a spell's variants (Blindness/Deafness).
@@ -375,11 +388,14 @@ export function handleCastAtEnemy(
   if ("error" in cast) {
     return cast;
   }
+  if (beam) {
+    noteBeamAction(campaign.id, sheet.id);
+  }
   const slotLevel = typeof cast.slotLevel === "number" ? cast.slotLevel : undefined;
   // The darts this call throws: what the casting still held, in a fight.
   const darts = mech?.darts && typeof cast.uses === "number" ? cast.uses : args.darts;
   const scaled =
-    slotLevel === args.level && darts === args.darts
+    beam || (slotLevel === args.level && darts === args.darts)
       ? named
       : spellDamageFor({
           spell: args.spell,

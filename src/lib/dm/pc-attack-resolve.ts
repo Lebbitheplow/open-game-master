@@ -6,6 +6,7 @@
 
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { settleAttackDie } from "@/lib/dm/forced-save";
+import { breakConcentration } from "@/lib/dm/concentration";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { openLastHit } from "@/lib/dm/last-hit";
 import { getFoe } from "@/lib/dm/sheet-foe";
@@ -229,6 +230,10 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike): Record<string, u
     closeLog();
     // Acid Arrow: a miss still deals half the damage.
     const grazed = spellRider?.halfOnMiss && hitOutcome.crit !== "nat1" ? missDamage(plan) : null;
+    // Witch Bolt's beam connects on a hit: a miss leaves nothing to hold.
+    if (spellRider?.beam) {
+      breakConcentration(campaign, turn.id, sheet.id, `${spellRider.beam} missed`);
+    }
     const curving = plan.weaponAttack && profile.ranged ? openCurvingShot(campaign.id, sheet, enemy.id, profile.base) : null;
     if (curving) {
       context.notes.push(curving);

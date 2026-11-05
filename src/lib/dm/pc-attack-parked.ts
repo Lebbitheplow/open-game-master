@@ -6,6 +6,7 @@
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { holdsFeature } from "@/lib/srd/feature-names";
 import { getFoe, resolveTargetFoe } from "@/lib/dm/sheet-foe";
+import { breakConcentration } from "@/lib/dm/concentration";
 import { tryParry } from "@/lib/dm/enemy-reactions";
 import { getCampaignById } from "@/lib/db/campaigns";
 import {
@@ -212,6 +213,11 @@ export function resolvePendingPcAttack(pending: PendingRoll, roll: StoredRoll): 
   const hit = adjudicated.hit || Boolean(rescueNote);
   const crit = adjudicated.crit || (hit && context.autoCrit === true);
   if (!hit) {
+    // Witch Bolt's beam connects on a hit: a miss leaves nothing to hold.
+    const missed = spellAttackRider((context as ParkedAttack).spell);
+    if (missed?.beam && pending.characterId) {
+      breakConcentration(campaign, null, pending.characterId, `${missed.beam} missed`);
+    }
     return `${context.attacker}'s ${context.weapon} attack rolled ${roll.total} vs AC ${context.targetAc}: MISS${
       roll.breakdown.crit === "nat1" ? " (natural 1)" : ""
     }${parryNote ? ` (${parryNote})` : ""}. No damage roll happens; narrate the miss.`;

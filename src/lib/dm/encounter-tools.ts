@@ -158,6 +158,7 @@ import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
 import { holdsFeat } from "@/lib/srd/feat-effects";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
 import { swallowTurnEnd } from "@/lib/dm/swallow";
+import { beamTurnEnd } from "@/lib/dm/witch-bolt";
 import { actorOfCall, withActor } from "@/lib/dm/acting-party";
 
 // Server-authoritative combat: enemies spawn from real stat blocks, their
@@ -1720,6 +1721,8 @@ function advancePointer(
   // regurgitates (src/lib/dm/swallow.ts), before any turn starts: what the
   // turns now starting do (an aura, a zone) counts toward the next.
   const swallowEnd = swallowTurnEnd(campaign, encounter);
+  // Witch Bolt's beam ends with an action spent on anything else (witch-bolt.ts).
+  const beamEnd = leaving?.kind === "pc" ? beamTurnEnd(campaign, encounter, leaving.characterId) : null;
   // A save that ends a condition "at the end of each of its turns" (SRD 5.1,
   // Hold Person) is made as the turn ends: by the character whose turn it
   // was, by the characters the pointer walks past (their turns start and end
@@ -1778,7 +1781,7 @@ function advancePointer(
   }
   // What the turns now starting bring, posted as one table note
   // (src/lib/dm/turn-start-effects.ts).
-  turnStartEffects(campaign, encounter, starting, enemiesById, [...turnEnd.lines, ...swallowEnd]);
+  turnStartEffects(campaign, encounter, starting, enemiesById, [...turnEnd.lines, ...swallowEnd, ...(beamEnd ? [beamEnd] : [])]);
   if (wraps) {
     encounter.round += 1;
     // Surprise costs exactly one turn, so it is spent by the time round 1
