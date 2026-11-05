@@ -123,6 +123,9 @@ export type ParkedAttack = PendingAttack & {
   attackerUnseen?: boolean;
   // The creature's AC, without cover, when the roll parked (parkedTargetAc).
   plainAc?: number;
+  // A damage roll for a spell that deals half on a miss (Acid Arrow): the
+  // damage stage lands half of what the dice show (enemy-blow.ts).
+  halfOnMiss?: boolean;
   hitSpent?: string[];
   // The once-per-turn riders the hit spends (Sneak Attack): pc-attack-damage.ts claimHitRiders.
   hitClaims?: string[];
