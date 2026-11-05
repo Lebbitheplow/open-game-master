@@ -106,6 +106,28 @@ export function strokeOfLuckProblem(sheet: Sheet, asked: boolean | undefined): T
   return null;
 }
 
+// The total a creature's defensive reaction answers (enemy-reactions.ts), or
+// null when there is nothing to answer: a critical hit, or a roll that misses
+// anyway. A hit answers as rolled, and a near miss at what Foe Slayer lifts it
+// to: answering only the hit let a roll one lower through untouched.
+export function totalAReactionMeets(input: {
+  total: number;
+  ac: number;
+  hit: boolean;
+  crit: boolean;
+  natural1: boolean;
+  foeSlayer: number;
+}): number | null {
+  if (input.crit) {
+    return null;
+  }
+  if (input.hit) {
+    return input.total;
+  }
+  const reach = input.total + input.foeSlayer;
+  return input.foeSlayer > 0 && !input.natural1 && reach >= input.ac ? reach : null;
+}
+
 // What becomes of a missed attack roll: Foe Slayer's bonus turns a miss by
 // no more than itself into a hit (never a natural 1), and a declared Stroke
 // of Luck turns any miss into a hit. Foe Slayer is tried first: it costs

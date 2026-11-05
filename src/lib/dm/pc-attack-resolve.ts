@@ -46,7 +46,7 @@ import {
 } from "@/lib/dm/pc-attack-riders";
 import { applySpellHitCondition, healCasterHalf, spellAttackRider } from "@/lib/dm/spell-attack-riders";
 import { hasElvenAccuracy, hasHalflingLuck } from "@/lib/srd/feature-effects";
-import { FOE_SLAYER, rescueMiss, STROKE_OF_LUCK } from "@/lib/dm/attack-features";
+import { FOE_SLAYER, rescueMiss, STROKE_OF_LUCK, totalAReactionMeets } from "@/lib/dm/attack-features";
 import {
   HURL_THROUGH_HELL,
   hurlThroughHell,
@@ -151,20 +151,28 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike): Record<string, u
     critRange,
   });
   // Parry: the creature's reaction lifts its AC against a melee hit it sees (enemy-reactions.ts).
-  const parry = judged.hit && !judged.crit
-    ? tryParry({ encounter, enemy, total: hitOutcome.total, natural20: false, ac: plan.effectiveAc, melee: !plan.atRange, attackerUnseen: sheet.conditions.some((entry) => /^(invisible|hidden)$/i.test(entry.trim())) })
+  const metTotal = totalAReactionMeets({ total: hitOutcome.total, ac: plan.effectiveAc, hit: judged.hit, crit: judged.crit, natural1: hitOutcome.crit === "nat1", foeSlayer: plan.extras.foeSlayer });
+  const parry = metTotal !== null
+    ? tryParry({ encounter, enemy, total: metTotal, natural20: false, ac: plan.effectiveAc, melee: !plan.atRange, attackerUnseen: sheet.conditions.some((entry) => /^(invisible|hidden)$/i.test(entry.trim())) })
     : null;
   if (parry) {
     context.notes.push(parry.note);
+    // Foe Slayer's bonus lifted the near miss the reaction answered: it went on
+    // this roll, so it is spent, and cannot draw a second reaction or lift again.
+    if (metTotal !== hitOutcome.total) {
+      claimFoeSlayer(plan);
+      context.notes.push(`Foe Slayer: +${plan.extras.foeSlayer} lifted ${hitOutcome.total} to ${metTotal} before the reaction, and is spent`);
+    }
   }
   const adjudicated = parry ? { ...judged, hit: false, crit: false } : judged;
   // Foe Slayer turns a near miss into a hit, and a declared Stroke of Luck
-  // any miss (src/lib/dm/attack-features.ts).
+  // any miss (src/lib/dm/attack-features.ts). A reaction's raised AC is the
+  // figure a roll has to reach: one it turned has already met the plain AC.
   const rescued = adjudicated.hit
     ? null
     : rescueMiss({
         total: hitOutcome.total,
-        ac: plan.effectiveAc,
+        ac: plan.effectiveAc + (parry?.bonus ?? 0),
         natural1: hitOutcome.crit === "nat1",
         foeSlayer: plan.extras.foeSlayer,
         strokeOfLuck: plan.extras.strokeOfLuck,
