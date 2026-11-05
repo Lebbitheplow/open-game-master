@@ -98,7 +98,7 @@ await test("A fighter holds a wand's spell as a card naming the item and the spe
   assert.equal(card.target, "enemy");
   assert.equal(card.shares?.count, 3, "darts as a level 1 Magic Missile's are shared out");
   assert.equal(card.cost, "action");
-  assert.match(card.rules, /with no slot, 1 charge/);
+  assert.match(card.rules, /No slot: 1 charge/);
   assert.match(card.rules, /More charges cast it higher/);
 });
 
@@ -278,7 +278,7 @@ await test("A scroll is a card: it names the spell, reads with the scroll's numb
   await stage(mage, [scroll("Magic Missile", { qty: 2 }), scroll("Web")]);
   const missile = cardNamed(mage, "Scroll: Magic Missile");
   assert.equal(missile.resource, "Scroll ×2");
-  assert.match(missile.rules, /no slot, and it is used up/);
+  assert.match(missile.rules, /No slot: the scroll is used up/);
   assert.equal(missile.disabled, null, missile.disabled);
   const web = cardNamed(mage, "Scroll: Web");
   assert.equal(web.resource, "Scroll, one use");

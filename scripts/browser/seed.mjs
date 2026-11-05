@@ -3012,6 +3012,9 @@ const resolveTables = {};
 // the lead runs and plays at, so a card resolves as it is played, in a fight on
 // the fighter's turn with two goblins beside them. One per viewport: the spells go.
 const ringTables = {};
+// Spells magic items cast, in the Hand (scenario 123-item-cards): a fighter with a
+// wand and a scroll they cannot read, and a wizard with a staff, a wand and a scroll.
+const itemTables = {};
 {
   const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
   const maps = await import("../../src/lib/db/battle-maps.ts");
@@ -3124,6 +3127,68 @@ const ringTables = {};
     );
     await ringFight(study.id, wizardHero.id);
     ringTables[viewport] = { id: table.id, hero: hero.id, study: study.id };
+
+    const itemTable = campaigns.createCampaign(world.owner.id, {
+      title: `Item Table (${viewport})`,
+      description: "Goblins in a lane, a borrowed wand and a scroll in a script nobody here reads.",
+      theme: "high-fantasy",
+      maxPlayers: 4,
+      startingLevel: 5,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human" },
+    });
+    campaigns.setCampaignStatus(itemTable.id, "active");
+    const scrollRow = (spell) => ({ name: `Spell Scroll (${spell})`, qty: 1, tags: ["consumable", "scroll", "carried"], spell });
+    const itemHero = sheets.createSheet(
+      itemTable.id,
+      world.owner.id,
+      5,
+      heroInput({
+        name: "Dov Harrow",
+        class: "fighter",
+        level: 5,
+        maxHp: 44,
+        equipment: [{ name: "Longsword", qty: 1, equipped: true }, { name: "Wand of Magic Missiles", qty: 1, charges: 5 }, scrollRow("Magic Missile")],
+      }),
+    );
+    await ringFight(itemTable.id, itemHero.id);
+    const itemStudy = campaigns.createCampaign(world.owner.id, {
+      title: `Item Study (${viewport})`,
+      description: "A wizard with a staff, a wand and one scroll left.",
+      theme: "high-fantasy",
+      maxPlayers: 4,
+      startingLevel: 5,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human" },
+    });
+    campaigns.setCampaignStatus(itemStudy.id, "active");
+    const itemMage = sheets.createSheet(
+      itemStudy.id,
+      world.owner.id,
+      5,
+      heroInput({
+        name: "Sera Vane",
+        class: "wizard",
+        level: 5,
+        abilities: { int: 16 },
+        equipment: [
+          { name: "Dagger", qty: 1, equipped: true },
+          { name: "Staff of Fire", qty: 1, equipped: true, attuned: true, charges: 7 },
+          { name: "Wand of Magic Missiles", qty: 1, charges: 3 },
+          scrollRow("Magic Missile"),
+        ],
+        spellcasting: {
+          ability: "int",
+          slots: { 1: { max: 4, used: 0 }, 2: { max: 3, used: 0 } },
+          known: [],
+          prepared: ["Shield", "Sleep", "Thunderwave", "Mage Armor"],
+          cantrips: [],
+          spellbook: ["Shield", "Sleep", "Thunderwave", "Mage Armor"],
+        },
+      }),
+    );
+    await ringFight(itemStudy.id, itemMage.id);
+    itemTables[viewport] = { id: itemTable.id, hero: itemHero.id, study: itemStudy.id, mage: itemMage.id };
   }
 }
 
@@ -3545,6 +3610,7 @@ const ids = {
   clockTables,
   resolveTables,
   ringTables,
+  itemTables,
   bench2,
   weekly,
   multiclassTableId: multiclassTable.id,
@@ -3666,6 +3732,7 @@ const ids = {
     ...Object.fromEntries(Object.entries(clockTables).map(([viewport, table]) => [table.id, `Clock Table (${viewport})`])),
     ...Object.fromEntries(Object.entries(resolveTables).map(([viewport, table]) => [table.id, `${RESOLVE_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(ringTables).flatMap(([viewport, table]) => [[table.id, `Ring Table (${viewport})`], [table.study, `Ring Study (${viewport})`]])),
+    ...Object.fromEntries(Object.entries(itemTables).flatMap(([viewport, table]) => [[table.id, `Item Table (${viewport})`], [table.study, `Item Study (${viewport})`]])),
     ...bench2Titles,
     ...Object.fromEntries(Object.entries(pactTables).flatMap(([kind, tables]) => Object.entries(tables).map(([viewport, table]) => [table.id, `Pact ${kind.charAt(0).toUpperCase()}${kind.slice(1)} (${viewport})`]))),
     ...Object.fromEntries(Object.entries(chipTables).map(([viewport, table]) => [table.id, `Chip Table (${viewport})`])),

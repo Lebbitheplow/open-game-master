@@ -78,20 +78,21 @@ function resourceLine({ item, entry, scroll }: ItemCastRow): string {
 
 const WORDS = { str: "Strength", dex: "Dexterity", con: "Constitution", int: "Intelligence", wis: "Wisdom", cha: "Charisma" } as const;
 
-// What the card's face says of paying for it: no slot, and what it does take.
+// What the card's face says of paying for it: no slot, and what it does take. The
+// item is in the card's name, and the face has room for a line or two.
 function paying(sheet: CharacterSheet, { item, entry, scroll }: ItemCastRow): string {
   if (scroll) {
     const dc = scrollCheckDc(sheet, item);
     const ability = sheet.spellcasting ? WORDS[sheet.spellcasting.ability] : "";
-    return `From ${item.name}, with no slot, and it is used up.${dc !== null ? ` A DC ${dc} ${ability} check first: a failure loses the scroll and casts nothing.` : ""}`;
+    return `No slot: the scroll is used up.${dc !== null ? ` A DC ${dc} ${ability} check first: a failure loses the scroll and casts nothing.` : ""}`;
   }
   const rule = chargeRuleOf(item);
   const left = rule && chargeCount(item)?.left === 0;
   const risk = entry.charges && rule?.overuseRisk && left ? ` Used again before dawn: a ${rule.overuseRisk}% chance it tears and casts nothing.` : "";
   const check = entry.check ? ` A DC ${entry.check.dc} ${WORDS[entry.check.ability]} check first: a failure casts nothing.` : "";
   const higher = entry.perCharge ? " More charges cast it higher: say so in your own words." : "";
-  const spends = entry.usesUp ? "and using it destroys it" : entry.charges ? `${plural(entry.charges, "charge")}` : "at will";
-  return `From ${item.name}, with no slot, ${spends}.${risk}${check}${higher}`;
+  const spends = entry.usesUp ? "using it destroys it" : entry.charges ? plural(entry.charges, "charge") : "at will";
+  return `No slot: ${spends}.${risk}${check}${higher}`;
 }
 
 function gatesFor(sheet: CharacterSheet, turn: HandTurn, row: ItemCastRow, fact: SpellFact, cost: HandCost): Gate[] {
@@ -126,7 +127,6 @@ export function itemSpellCards(sheet: CharacterSheet, turn: HandTurn, riders: Co
     const fact: SpellFact = factFor(entry.spell, options) ?? { level: entry.level, school: "", castingTime: "", range: "", desc: "", higherLevel: "", concentration: false };
     const cost: HandCost = entry.bonusAction ? "bonus" : "action";
     const count = chargeCount(item);
-    // Worded for a card, not a table's own row: the scroll's name may be a tongue's.
     const ability = sheet.spellcasting ? computeSheetDerived(sheet).abilityMods[sheet.spellcasting.ability] : 0;
     const card = spellCard(sheet, turn, riders, entry.spell, fact, options, {
       ring: item.name,
