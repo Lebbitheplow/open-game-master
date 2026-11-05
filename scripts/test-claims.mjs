@@ -80,6 +80,24 @@ await test("The plain English ways a player ends their turn are read beside the 
   for (const said of ["I attack the goblin.", "Whose turn is it?", "I wait for my turn.", "It's my turn now, right?"]) {
     assert.equal(englishEndsTurn(said), false, said);
   }
+  // The words that keep a turn open, and a question, end nothing.
+  for (const said of [
+    "I cast Web over the goblins. Don't end my turn yet, I want to move after.",
+    "Don’t end her turn yet.",
+    "I throw a dagger at the nearest goblin. I'm not ending my turn yet.",
+    "I'll tell you when I end my turn.",
+    "Before I end my turn, I cast Web.",
+    "Before Tamsin ends her turn, she casts Web.",
+    "Should I end my turn?",
+    "If I move there, can I end my turn after?",
+    "I won't end my turn until I've moved.",
+  ]) {
+    assert.equal(englishEndsTurn(said), false, said);
+  }
+  // A keeping word in another clause, or on an earlier line, leaves the end said.
+  for (const said of ["I wasn't sure, but I end my turn.", "Before moving I checked the door. That's my turn.", "Don't end it yet.\n\nOkay, I end my turn."]) {
+    assert.equal(englishEndsTurn(said), true, said);
+  }
 });
 
 await test("The request lists the kinds, the refs and the narration; the instructions name every skill id.", () => {
