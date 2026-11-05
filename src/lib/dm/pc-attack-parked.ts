@@ -146,6 +146,36 @@ export function parkPcAttack(plan: AttackPlan, strike: Strike, toolCallId: strin
   publishPersisted(campaign.id, "roll_pending", { pendingRoll: publicPendingRoll(pending) });
 }
 
+// A missed spell's half damage: the player rolls the spell's dice, and the
+// damage stage halves what they enter. As on the server's dice, only the
+// damage's own type lands (pc-attack-resolve.ts missDamage). Null when the
+// target is gone.
+function parkHalfOnMiss(pending: PendingRoll, context: PendingAttack): string | null {
+  const encounter = getActiveEncounter(pending.campaignId);
+  const enemy = encounter ? resolveTargetFoe(pending.campaignId, encounter, context.targetEnemyId) : null;
+  if (!enemy || enemy.status !== "alive") {
+    return null;
+  }
+  const parked: ParkedAttack = { ...context, riders: undefined, halfOnMiss: true };
+  const damagePending = createPendingRoll({
+    campaignId: pending.campaignId,
+    turnId: pending.turnId,
+    toolCallId: null,
+    userId: pending.userId,
+    characterId: pending.characterId,
+    kind: "damage",
+    detail: rollAgainst(`${context.weapon} (half on a miss)`, enemy.displayName),
+    expression: context.damageExpression,
+    advantage: "none",
+    dc: null,
+    reason: `${context.weapon} half damage against ${enemy.displayName}`,
+    targetEnemyId: enemy.id,
+    attack: parked,
+  });
+  publishPersisted(pending.campaignId, "roll_pending", { pendingRoll: publicPendingRoll(damagePending) });
+  return `The spell still deals half its damage: ${context.attacker} now rolls damage (${context.damageExpression}), and the server will apply half of it to ${enemy.displayName} automatically.`;
+}
+
 // Physical-dice adjudication, called from the pending-rolls submit route
 // when a parked pc_attack to-hit roll lands. Returns the combat note the
 // resumed turn surfaces to the model; on a hit it parks the damage roll so
@@ -214,9 +244,12 @@ export function resolvePendingPcAttack(pending: PendingRoll, roll: StoredRoll): 
   const hit = adjudicated.hit || Boolean(rescueNote);
   const crit = adjudicated.crit || (hit && context.autoCrit === true);
   if (!hit) {
-    return `${context.attacker}'s ${context.weapon} attack rolled ${roll.total} vs AC ${targetAc}: MISS${
+    const missed = `${context.attacker}'s ${context.weapon} attack rolled ${roll.total} vs AC ${targetAc}: MISS${
       roll.breakdown.crit === "nat1" ? " (natural 1)" : ""
-    }${parryNote ? ` (${parryNote})` : ""}. No damage roll happens; narrate the miss.`;
+    }${parryNote ? ` (${parryNote})` : ""}.`;
+    // Acid Arrow: a miss still deals half the damage, as on the server's dice.
+    const grazed = spellAttackRider((context as ParkedAttack).spell)?.halfOnMiss && roll.breakdown.crit !== "nat1" ? parkHalfOnMiss(pending, context) : null;
+    return `${missed} ${grazed ?? "No damage roll happens; narrate the miss."}`;
   }
   // Verify the target still stands before asking for damage dice (the lead
   // may have force-ended the encounter while the roll sat parked).

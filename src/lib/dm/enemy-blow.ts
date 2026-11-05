@@ -31,6 +31,8 @@ export type DamageBlow = {
   critExtraDice?: number;
   // A silvered or adamantine weapon's material (damage-logic.ts).
   material?: WeaponMaterial;
+  // A spell's half damage on a miss (Acid Arrow): half the total, rounded down.
+  halfOnMiss?: boolean;
 };
 
 // One rolled damage total landing on an enemy. With typed riders the blow is
@@ -48,7 +50,7 @@ function applyBlow(
   damageType: string | undefined,
   blow: DamageBlow | undefined,
 ): Record<string, unknown> {
-  const amount = Math.max(1, roll.total);
+  const amount = Math.max(1, blow?.halfOnMiss ? Math.floor(roll.total / 2) : roll.total);
   const magical = blow?.magical === true;
   const material = blow?.material ?? {};
   const parts =
@@ -241,6 +243,7 @@ export function applyPendingDamageRoll(pending: PendingRoll, roll: StoredRoll): 
           critExtraDice: pending.attack.critExtraDice,
           nonlethal: (pending.attack as { nonlethal?: boolean }).nonlethal === true,
           material: (pending.attack as { material?: WeaponMaterial }).material,
+          halfOnMiss: (pending.attack as { halfOnMiss?: boolean }).halfOnMiss === true,
         }
       : undefined,
   );
@@ -253,13 +256,19 @@ export function applyPendingDamageRoll(pending: PendingRoll, roll: StoredRoll): 
   const byType = Array.isArray(applied.damageByType)
     ? ` (${(applied.damageByType as string[]).join(", ")})`
     : "";
+  const halved = (pending.attack as { halfOnMiss?: boolean } | undefined)?.halfOnMiss === true;
   const parts = [
-    `The server already applied this ${roll.total} damage${byType} to ${String(applied.name)} (now ${
+    `The server already applied ${halved ? "half of " : ""}this ${roll.total} damage${byType} to ${String(applied.name)} (now ${
       applied.dead ? "SLAIN" : String(applied.health)
     }).`,
   ];
   if (applied.encounterOver) {
     parts.push(`The encounter ended: ${String(applied.outcome)}. XP was awarded automatically.`);
+  }
+  // A miss opens nothing a hit's blow does.
+  if (halved) {
+    parts.push("Do NOT call apply_damage for this miss; narrate from this state.");
+    return parts.join(" ");
   }
   parts.push("Do NOT call apply_damage for this hit; narrate from this state.");
   return parts.join(" ");
