@@ -42,6 +42,8 @@ import { noneNamed, type ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { weaponMaterial } from "@/lib/dm/damage-logic";
 import { hasName, namesOf } from "@/lib/dm/cast-rules";
+import { paidByItem, runningItemSpell } from "@/lib/srd/item-cast-credit";
+import { scrollNumbers } from "@/lib/dm/consumables";
 import { magicItemRiders } from "@/lib/srd/magic-items";
 
 export type AttackKind = "weapon" | "spell" | "natural" | "granted";
@@ -111,9 +113,6 @@ export function buildAttackProfile(
   // A lineage's bite or claws (src/lib/srd/racial-weapons.ts).
   const racial = !granted && !natural && !args.spell?.trim() && !sheet.wildShape ? racialNaturalWeapon(sheet.features, weaponName) : null;
   if (granted) {
-    if (derived.spellAttack === null) {
-      return { error: `${sheet.name}'s sheet has no spell attack bonus (no spellcasting ability), so ${granted.attack.name} cannot be rolled.`, refused: "rules" };
-    }
     const grantedMeta = (sheet.conditionMeta as ConditionMetaMap)[granted.condition];
     // The spell the attack comes from: the one the casting recorded on the
     // condition, else a spell of the attack's own name (Spiritual Weapon).
@@ -122,21 +121,28 @@ export function buildAttackProfile(
     // Cast from a higher slot, a scaling attack (Spiritual Weapon) rolls the
     // slot's dice: the level the condition carries, else the caster's last
     // casting of the spell on the audit trail.
+    const fromItemCast = grantedSpell ? runningItemSpell(sheet, grantedSpell) : null;
+    // A spell an item cast strikes with the numbers it was cast with.
+    if (derived.spellAttack === null && fromItemCast?.attackBonus === undefined) {
+      return { error: `${sheet.name}'s sheet has no spell attack bonus (no spellcasting ability), so ${granted.attack.name} cannot be rolled.`, refused: "rules" };
+    }
     const slotLevel =
       grantedMeta?.slotLevel ??
+      fromItemCast?.level ??
       (granted.attack.upcast ? lastCastSlot(sheet.id, granted.attack.name) : null);
     const dice = grantedAttackDice(granted.attack, sheet.level, slotLevel);
     // A multiclass caster's spell attack and modifier are those of the class
     // whose list carries the spell (a cleric and wizard's Spiritual Weapon
     // rolls with Wisdom), as a cast spell's are.
     const ability = grantedSpell ? spellAbilityFor(sheet, grantedSpell) : (sheet.spellcasting?.ability ?? null);
-    const abilityMod = granted.attack.abilityToDamage && ability ? derived.abilityMods[ability] : 0;
+    // A spell an item cast keeps the modifier it was stored with.
+    const abilityMod = granted.attack.abilityToDamage ? (fromItemCast?.abilityMod ?? (ability ? derived.abilityMods[ability] : 0)) : 0;
     // A ranged one reaches its own range and no farther: a spell attack has
     // no long range (SRD 5.1, Range), so Crown of Stars' 120 feet is all of it.
     const rangeTiles = Math.max(1, Math.round((granted.attack.rangeFeet ?? 60) / 5));
     profile = {
       weapon: granted.attack.name,
-      toHit: grantedSpell ? (spellAttackFor(sheet, grantedSpell) ?? derived.spellAttack) : derived.spellAttack,
+      toHit: (grantedSpell ? spellAttackFor(sheet, grantedSpell) : null) ?? derived.spellAttack ?? 0,
       damageExpression:
         abilityMod > 0 ? `${dice}+${abilityMod}` : abilityMod < 0 ? `${dice}${abilityMod}` : dice,
       damageType: granted.attack.type,
@@ -168,7 +174,10 @@ export function buildAttackProfile(
     kind = "granted";
   } else if (args.spell?.trim()) {
     const spellName = args.spell.trim();
-    if (!castsSpells(sheet)) {
+    // A spell an item paid for needs no Spellcasting feature and is on no list
+    // of theirs, as it runs on too.
+    const fromItem = paidByItem(sheet, spellName);
+    if (!castsSpells(sheet) && !fromItem) {
       return { error: `${sheet.name} cannot cast spells.`, refused: "rules" };
     }
     // The content pack knows how a known spell resolves; a save or buff
@@ -181,7 +190,7 @@ export function buildAttackProfile(
     const mechDamageType = resolvedMech?.mech.damageType;
     const spellList = allSpellNames(sheet.spellcasting);
     const spellNames = namesOf(spellName, spellFactsFor(spellName, sheetSpellAuthors(sheet)));
-    const onList = hasName(spellList, spellNames);
+    const onList = Boolean(fromItem) || hasName(spellList, spellNames);
     if (!onList) {
       // A spell the rules know is one they lack; a name nobody knows is the
       // call's to fix, from their list.
@@ -213,7 +222,7 @@ export function buildAttackProfile(
     }
     // Multiclass: the to-hit follows the class whose list carries the spell.
     const spellProfile = spellAttackProfile(
-      { spellAttack: spellAttackFor(sheet, spellName) },
+      { spellAttack: spellAttackFor(sheet, spellName) ?? scrollNumbers(fromItem?.level ?? 1).attackBonus },
       spellName,
       damageArg,
       // A known spell deals its own damage type; the caller's word counts

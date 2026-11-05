@@ -194,6 +194,11 @@ export const AUTHORED_DATA_A2: Record<string, AuthoredEntry> = {
     narrated:
       "The echo is a position on the board, not a creature the engine tracks; attacks from its space are ordinary pc_attack calls.",
   },
+  "fighter::Shadow Martyr": {
+    subclass: "Echo Knight",
+    counter: "sub_shadow_martyr",
+    reactions: [{ name: "Shadow Martyr", pool: { id: "sub_shadow_martyr" }, sees: "target", does: { kind: "echo_takes_hit" } }],
+  },
   "fighter::Legion of One": {
     subclass: "Echo Knight",
     effects: [{ kind: "init_refill", resource: "sub_unleash_incarnation" }],
@@ -265,6 +270,12 @@ export const AUTHORED_DATA_A2: Record<string, AuthoredEntry> = {
     subclass: "Psi Warrior",
     counter: "sub_telekinetic_master",
     effects: [{ kind: "bonus_attack", after: "telekinesis" }],
+  },
+  // Spent its use and changed nothing: the hit on an ally now answers to it.
+  "fighter::Runic Shield": {
+    subclass: "Rune Knight",
+    counter: "sub_runic_shield",
+    reactions: [{ name: "Runic Shield", pool: { id: "sub_runic_shield" }, sees: "target", does: { kind: "reroll_hit", rangeFt: 60 } }],
   },
   "fighter::Great Stature": {
     subclass: "Rune Knight",

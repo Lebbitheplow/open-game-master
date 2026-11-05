@@ -181,6 +181,18 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
     saveFlatAbility: "dex",
   },
   {
+    id: "abjured_still",
+    match: ["abjured still"],
+    summary: "Abjure Enemy: speed 0 for a minute or until it takes damage.",
+    speedMultiplier: 0,
+  },
+  {
+    id: "abjured_slowed",
+    match: ["abjured slowed"],
+    summary: "Abjure Enemy: half speed for a minute or until it takes damage.",
+    speedMultiplier: 0.5,
+  },
+  {
     id: "held_in_place",
     match: ["held in place"],
     summary: "Held in place (Hold the Line): speed 0 for the rest of the turn.",
@@ -195,6 +207,7 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
   summaryOnly("storm_aura", "storm aura", "Storm Aura: the raging Storm Herald's 10-foot aura (desert, sea or tundra)."),
   summaryOnly("fanatical_focus_spent", "fanatical focus spent", "Fanatical Focus is spent until this rage ends."),
   summaryOnly("elder_champion", "elder champion", "Elder Champion: 10 hit points at the start of each turn, and enemies within 10 feet save at disadvantage against the paladin."),
+  summaryOnly("vow_of_enmity", "vow of enmity", "Vow of Enmity: advantage on attacks against the creature vowed against, for a minute."),
   summaryOnly("avenging_angel", "avenging angel", "Avenging Angel: a 60-foot flying speed for an hour, and a 30-foot aura of menace that frightens enemies who fail a Wisdom save."),
   {
     id: "menaced_by_an_avenging_angel",
@@ -316,6 +329,7 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
   summaryOnly("emissary_lapsed", "emissary lapsed", "Emissary of Redemption is set aside until a long rest: the paladin attacked or harmed a creature."),
   summaryOnly("spurned_by_redemption", "spurned by redemption", "The Redemption paladin attacked this creature: their Emissary of Redemption holds nothing against it until their long rest."),
   summaryOnly("withstood_among_the_dead", "withstood among the dead", "This undead made its save against the Undying warlock's Among the Dead and may attack them for 24 hours."),
+  summaryOnly("withstood_instinctive_charm", "withstood instinctive charm", "This creature resisted the Enchantment wizard's Instinctive Charm, which cannot sway it again until their long rest."),
   summaryOnly("pulled_by_perfected_armor", "pulled by perfected armor", "Perfected Armor: pulled up to 25 feet toward the Guardian armorer (move_token forced); if it lands within 5 feet, they may attack it as part of the reaction."),
   {
     id: "hearth_of_moonlight_and_shadow",

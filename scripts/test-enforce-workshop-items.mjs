@@ -18,6 +18,7 @@ const { armorOfRow } = await import("../src/lib/srd/armor.ts");
 const { attunementRefusal } = await import("../src/lib/dm/usage-rules.ts");
 const { attunementProblem } = await import("../src/lib/srd/magic-items.ts");
 const { itemCheckRiders } = await import("../src/lib/srd/item-check-riders.ts");
+const { describeEffect, normalizeEffects } = await import("../src/lib/homebrew/gear.ts");
 
 const world = await openWorld();
 const kit = await gearKit(world);
@@ -73,6 +74,30 @@ await test("A workshop sword's bonus and its fire dice ride every hit while it i
   assert.equal(lit.result.rolled, 10 + 3 + PB + 2);
   assert.deepEqual(lit.damageDice.sort(), [6, 6, 8], "the fire did not ride the hit");
   assert.equal(lit.result.damage, 5 + 3 + 2 + 3 + 4);
+});
+
+await test("A workshop pair of wraps adds its bonus to unarmed strikes while it is attuned, and not before.", async () => {
+  await brew("Tested Wraps", {
+    itemKind: "magic_item",
+    requiresAttunement: true,
+    effects: [{ kind: "weapon_rider", weapons: ["unarmed strike"], attack: 3, damage: 3 }],
+  });
+  carry([{ name: "Tested Wraps", qty: 1, equipped: true }]);
+  const plain = await kit.swing(keeper.id, { weapon: "unarmed strike" }, 10);
+  assert.equal(plain.ok, true, plain.error);
+  assert.equal(plain.result.rolled, 10 + 3 + PB, "the unattuned wraps added their bonus");
+  assert.equal(plain.result.damage, 1 + 3);
+  world.patch(keeper.id, { equipment: sheet().equipment.map((item) => ({ ...item, attuned: true })) });
+  const wrapped = await kit.swing(keeper.id, { weapon: "unarmed strike" }, 10);
+  assert.equal(wrapped.ok, true, wrapped.error);
+  assert.equal(wrapped.result.rolled, 10 + 3 + PB + 3, "the wraps did not add to the attack roll");
+  assert.equal(wrapped.result.damage, 1 + 3 + 3, "the wraps did not add to the damage");
+});
+
+await test("Saving a weapon's bonus to hit alone keeps it, and the summary says it.", () => {
+  const [effect] = normalizeEffects([{ kind: "weapon_rider", weapons: ["Unarmed Strike"], attack: 9 }]);
+  assert.deepEqual(effect, { kind: "weapon_rider", weapons: ["unarmed strike"], attack: 3 });
+  assert.match(describeEffect(effect), /\+3 to hit/);
 });
 
 await test("Workshop armour's +1 and its mithral-like riders reach the armour class and the Stealth check.", async () => {
@@ -144,7 +169,10 @@ await test("Every stepper in a standing effect's row says what it sets, in words
   assert.ok(captioned(raised, "Raised by"), "the raised score's amount has no caption");
   assert.ok(captioned(raised, "To at most"), "the raised score's ceiling has no caption");
   assert.ok(captioned(effect({ kind: "speed", mode: "fly", feet: 30 }), "Feet"), "the speed's feet have no caption");
-  assert.ok(captioned(effect({ kind: "weapon_rider", weapons: ["longbow"], damage: 2 }), "Extra damage"), "the weapon's extra damage has no caption");
+  const rider = effect({ kind: "weapon_rider", weapons: ["longbow"], damage: 2 });
+  assert.ok(captioned(rider, "Extra damage"), "the weapon's extra damage has no caption");
+  assert.ok(captioned(rider, "Bonus to hit"), "the weapon's bonus to hit has no caption");
+  assert.ok(rider.includes("Unarmed strike"), "the unarmed strike cannot be picked");
   const form = renderToStaticMarkup(
     createElement(ItemFields, {
       data: { itemKind: "magic_item", effects: [{ kind: "spell_attack_bonus", amount: 1 }, { kind: "set_ability", ability: "str", score: 19 }] },

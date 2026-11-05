@@ -83,6 +83,11 @@ export type EnemyStats = {
   // does not resolve to be named to the DM (src/lib/dm/monster-traits.ts).
   // Absent on rows written before it.
   fullTraits?: string[];
+  // Each legendary option as printed, uncut ("Wing Attack (Costs 2 Actions).
+  // The dragon beats its wings. ... The dragon can then fly up to half its
+  // flying speed."): the trait lines cut a long one short, and what an
+  // option does is read from all of it (src/lib/dm/legendary-route-logic.ts).
+  fullLegendary?: string[];
   resist: string;
   immune: string;
   vulnerable: string;
@@ -280,6 +285,13 @@ export function parseMonster(raw: Record<string, unknown>, crFromRow: number): E
     const desc = asString(entry.desc).replace(/\s+/g, " ").trim();
     return name && desc ? `${label}${name}: ${desc}` : null;
   };
+  const fullLegendary = (Array.isArray(data.legendary_actions) ? (data.legendary_actions as RawAction[]) : [])
+    .map((entry) => {
+      const name = asString(entry.name);
+      const desc = asString(entry.desc).replace(/\s+/g, " ").trim();
+      return name && desc ? `${name}. ${desc}` : null;
+    })
+    .filter((entry): entry is string => entry !== null);
   const fullTraits = [
     ...[...nonAttackActions, ...specials].map((entry) => fullLine(entry)),
     ...nonAttackBonus.map((entry) => fullLine(entry, "Bonus action: ")),
@@ -380,6 +392,7 @@ export function parseMonster(raw: Record<string, unknown>, crFromRow: number): E
     attacks,
     traits,
     ...(fullTraits.length ? { fullTraits } : {}),
+    ...(fullLegendary.length ? { fullLegendary } : {}),
     ...defences,
     cr,
     xp,

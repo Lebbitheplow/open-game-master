@@ -13,7 +13,10 @@ import { noteDominationShift } from "@/lib/db/side-watch";
 import { noteGrounding } from "@/lib/db/flight-watch";
 import { publishPersisted } from "@/lib/events";
 import { isKnockedOut } from "@/lib/dm/knockout";
+import { storedGender, type Gender } from "@/lib/gender";
 import { isConditionNamed } from "@/lib/srd/feature-names";
+import { pickedGender } from "@/lib/actor-sex-logic";
+import { keepNew, keepRow } from "@/lib/db/turn-rows";
 
 // Server-authoritative combat state. Enemy HP lives here and changes ONLY
 // through the encounter tools; the AI DM narrates from tool results, never
@@ -105,6 +108,10 @@ export type Encounter = {
   // saveEncounter leaves it alone. Read sides through src/lib/dm/combatant.ts,
   // which also knows a domination's.
   sides: SideExceptions;
+  // The characters this fight goes on without until they arrive (issue 740,
+  // src/lib/dm/fight-away-logic.ts). Written only by setEncounterAway;
+  // saveEncounter leaves it alone.
+  awayIds: string[];
   // Legendary action and resistance pools per enemy, and whether this
   // fight is in a lair (src/lib/dm/legendary-logic.ts).
   legendary: LegendaryState;
@@ -151,6 +158,12 @@ export type EncounterEnemy = {
   // back from it as that fight left it (src/lib/dm/foe-return.ts). Empty
   // for a creature that arrived fresh.
   carriedFrom?: string;
+  // Who a nameless foe is: a race id (src/lib/npc-race.ts) as
+  // start_encounter told it, and a gender as told or picked when it arrived
+  // (insertEnemy). Its flat face and a 3D view's model read them through
+  // src/lib/actor-sex-logic.ts foeLook; a Cast NPC's are the Cast's.
+  race?: string;
+  gender?: Gender;
   createdAt: string;
   updatedAt: string;
 };
@@ -172,6 +185,7 @@ type EncounterRow = {
   targets_json: string | null;
   intents_json: string | null;
   sides_json?: string | null;
+  away_ids_json?: string | null;
   outcome: string;
   summary: string;
   legendary_json: string | null;
@@ -201,6 +215,8 @@ type EnemyRow = {
   stat_json: string;
   npc_id?: string | null;
   carried_from?: string | null;
+  race?: string | null;
+  gender?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -243,6 +259,7 @@ export function recordEncounterTarget(
   if (!list.includes(targetRef)) {
     pairs[attackerRef] = [...list, targetRef].slice(-6);
   }
+  keepRow("encounters", encounterId);
   db.prepare(`UPDATE encounters SET targets_json = ? WHERE id = ?`).run(
     JSON.stringify({ round, pairs }),
     encounterId,
@@ -267,6 +284,7 @@ function mapEncounter(row: EncounterRow): Encounter {
     targets: normalizeTargets(parseJson<unknown>(row.targets_json ?? "{}", {})),
     intents: normalizeIntents(parseJson<unknown>(row.intents_json ?? "{}", {})),
     sides: normalizeSides(parseJson<unknown>(row.sides_json ?? "{}", {})),
+    awayIds: parseJson<string[]>(row.away_ids_json ?? "[]", []),
     legendary: normalizeLegendaryState(parseJson<unknown>(row.legendary_json ?? "{}", {})),
     outcome: row.outcome,
     summary: row.summary,
@@ -311,6 +329,8 @@ function mapEnemy(row: EnemyRow): EncounterEnemy {
     }),
     ...(row.npc_id ? { npcId: row.npc_id } : {}),
     ...(row.carried_from ? { carriedFrom: row.carried_from } : {}),
+    ...(row.race ? { race: row.race } : {}),
+    ...(storedGender(row.gender) ? { gender: storedGender(row.gender) } : {}),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -344,6 +364,8 @@ export function createEncounter(
        VALUES (?, ?, 'active', ?, ?, ?, ?)`,
     )
     .run(id, campaignId, kind, summary.slice(0, 300), now, now);
+  // A fight a GM turn began goes with the turn's revert (issue 685).
+  keepNew("encounters", id, campaignId);
   return getEncounter(id);
 }
 
@@ -397,6 +419,8 @@ export function getActiveBoard(campaignId: string): Encounter | null {
 }
 
 export function saveEncounter(encounter: Encounter) {
+  // The fight as the GM turn found it, kept for its revert (issue 685).
+  keepRow("encounters", encounter.id);
   getDatabase()
     .prepare(
       `UPDATE encounters SET status = ?, round = ?, turn_index = ?, order_ready = ?,
@@ -425,12 +449,23 @@ export function saveEncounter(encounter: Encounter) {
 // Kept apart from saveEncounter, as the target lines are, so a handler that
 // read the encounter before a side changed cannot write the old sides back.
 export function setEncounterSides(encounterId: string, sides: SideExceptions) {
+  keepRow("encounters", encounterId);
   getDatabase()
     .prepare(`UPDATE encounters SET sides_json = ?, updated_at = ? WHERE id = ?`)
     .run(JSON.stringify(sides), nowIso(), encounterId);
 }
 
+// The one writer of who a fight goes on without, apart from saveEncounter for
+// the reason setEncounterSides is.
+export function setEncounterAway(encounterId: string, awayIds: string[]) {
+  keepRow("encounters", encounterId);
+  getDatabase()
+    .prepare(`UPDATE encounters SET away_ids_json = ?, updated_at = ? WHERE id = ?`)
+    .run(JSON.stringify(awayIds), nowIso(), encounterId);
+}
+
 export function setEncounterSummary(encounterId: string, summary: EncounterSummary, line: string) {
+  keepRow("encounters", encounterId);
   getDatabase()
     .prepare(`UPDATE encounters SET summary_json = ?, summary = ?, updated_at = ? WHERE id = ?`)
     .run(JSON.stringify(summary), line.slice(0, 600), nowIso(), encounterId);
@@ -439,6 +474,7 @@ export function setEncounterSummary(encounterId: string, summary: EncounterSumma
 // `endedInstant`: the world clock's instant the fight ended at, for a foe
 // who comes back to a later one (issue #667). A scene closing passes none.
 export function endEncounter(id: string, outcome: string, endedInstant?: number) {
+  keepRow("encounters", id);
   getDatabase()
     .prepare(`UPDATE encounters SET status = 'ended', outcome = ?, ended_instant = COALESCE(?, ended_instant), updated_at = ? WHERE id = ?`)
     .run(outcome.slice(0, 60), endedInstant ?? null, nowIso(), id);
@@ -453,6 +489,12 @@ export function insertEnemy(input: {
   stats: EnemyStats;
   // The Cast NPC this enemy is, so their next fight finds them (issue #667).
   npcId?: string;
+  // Who a nameless foe is, for its face and a 3D view's model
+  // (src/lib/actor-sex-logic.ts); "" or absent for unspecified. A nameless
+  // foe told no gender takes a pick from its own id here, once, and keeps
+  // it; a Cast NPC's look is the Cast's, read live, so theirs stays "".
+  race?: string;
+  gender?: Gender;
   // A creature come back from an earlier fight as it left them
   // (src/lib/dm/foe-return.ts): its hit points, its conditions, the XP the
   // earlier fight did not already pay, and the row it came from. Absent, it
@@ -479,8 +521,8 @@ export function insertEnemy(input: {
       `INSERT INTO encounter_enemies (
         id, encounter_id, campaign_id, slug, display_name, max_hp, current_hp,
         ac, initiative, status, cr, xp, stat_json, conditions_json, condition_meta_json,
-        npc_id, carried_from, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'alive', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        npc_id, carried_from, race, gender, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'alive', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       id,
@@ -499,9 +541,13 @@ export function insertEnemy(input: {
       JSON.stringify(arrives ? arrives.conditionMeta : {}),
       input.npcId ?? "",
       arrives?.carriedFrom ?? "",
+      input.race ?? "",
+      input.gender || (input.npcId ? "" : pickedGender(id)),
       now,
       now,
     );
+  // A creature a GM turn brought in leaves with the turn's revert (issue 685).
+  keepNew("encounter_enemies", id, input.campaignId);
   const enemy = getEnemy(id);
   if (!enemy) {
     throw new Error("Failed to create encounter enemy.");
@@ -523,6 +569,19 @@ export function listEnemies(encounterId: string): EncounterEnemy[] {
   return rows.map(mapEnemy);
 }
 
+// Everyone in the running fight, and in a fight that ended since `since`,
+// by the names the prose would use, or none. `since` is the start of the
+// turn being posted: the order a turn recites as its fight ends names that
+// fight, which is no longer running when the turn's narration is posted.
+export function fightNames(campaignId: string, since: string): string[] {
+  const rows = getDatabase()
+    .prepare(`SELECT * FROM encounters WHERE campaign_id = ? AND kind = 'fight' AND (status = 'active' OR updated_at >= ?)`)
+    .all(campaignId, since) as EncounterRow[];
+  return rows
+    .map(mapEncounter)
+    .flatMap((encounter) => [...encounter.order.map((entry) => entry.name), ...listEnemies(encounter.id).map((enemy) => enemy.displayName)]);
+}
+
 // A prepared encounter's overrides: this one is called Snik, that one has
 // 3 hit points. Written before anybody has acted, so the stat snapshot
 // keeps the printed block. The damage a creature already carries stays
@@ -532,6 +591,7 @@ export function patchEnemyIdentity(
   enemyId: string,
   patch: { displayName?: string; maxHp?: number },
 ): EncounterEnemy | null {
+  keepRow("encounter_enemies", enemyId);
   const existing = getEnemy(enemyId);
   if (!existing) {
     return null;
@@ -552,6 +612,7 @@ export function patchEnemyIdentity(
 // The maximum moved by `delta` (an active effect's maxHp, effects-logic.ts):
 // a raise lifts the current hit points with it, a drop only caps them.
 export function shiftEnemyMaxHp(enemyId: string, delta: number): EncounterEnemy | null {
+  keepRow("encounter_enemies", enemyId);
   const existing = getEnemy(enemyId);
   if (!existing || !delta) {
     return existing;
@@ -568,6 +629,7 @@ export function shiftEnemyMaxHp(enemyId: string, delta: number): EncounterEnemy 
 // stat snapshot stay exactly as the fight left them (patchEnemyIdentity
 // above may set a new maximum, which is right only before anybody has acted).
 export function renameEnemy(enemyId: string, displayName: string) {
+  keepRow("encounter_enemies", enemyId);
   getDatabase()
     .prepare(`UPDATE encounter_enemies SET display_name = ?, updated_at = ? WHERE id = ?`)
     .run(displayName.trim().slice(0, 80), nowIso(), enemyId);
@@ -578,6 +640,7 @@ export function patchEnemyHp(
   currentHp: number,
   status: EnemyStatus,
 ): EncounterEnemy | null {
+  keepRow("encounter_enemies", enemyId);
   const before = getEnemy(enemyId);
   getDatabase()
     .prepare(
@@ -634,6 +697,7 @@ export function patchEnemyConditions(
   conditions: string[],
   conditionMeta?: ConditionMetaMap,
 ): EncounterEnemy | null {
+  keepRow("encounter_enemies", enemyId);
   if (sheetBehind(enemyId)) {
     patchSheetAsFoe(enemyId, { conditions, ...(conditionMeta !== undefined ? { conditionMeta } : {}) });
     return null;
@@ -666,7 +730,17 @@ export function patchEnemyConditions(
 }
 
 // A fresh initiative count, for a DM's reset of the order.
+// Who a foe is, laid back from a saved fight set-up (src/lib/workshop/
+// fight-setup.ts): a field left undefined stays as the row has it.
+export function setEnemyLook(enemyId: string, look: { gender?: Gender; race?: string }) {
+  keepRow("encounter_enemies", enemyId);
+  getDatabase()
+    .prepare(`UPDATE encounter_enemies SET gender = COALESCE(?, gender), race = COALESCE(?, race), updated_at = ? WHERE id = ?`)
+    .run(look.gender ?? null, look.race ?? null, nowIso(), enemyId);
+}
+
 export function setEnemyInitiative(enemyId: string, initiative: number) {
+  keepRow("encounter_enemies", enemyId);
   getDatabase()
     .prepare(`UPDATE encounter_enemies SET initiative = ?, updated_at = ? WHERE id = ?`)
     .run(initiative, nowIso(), enemyId);
@@ -679,6 +753,7 @@ export function setEnemyConcentration(
   // (src/lib/dm/concentration-clock.ts); null for none or no clock.
   rounds: number | null = null,
 ): EncounterEnemy | null {
+  keepRow("encounter_enemies", enemyId);
   getDatabase()
     .prepare(`UPDATE encounter_enemies SET concentration = ?, concentration_rounds = ?, updated_at = ? WHERE id = ?`)
     .run(spell, spell ? rounds : null, nowIso(), enemyId);
@@ -687,6 +762,7 @@ export function setEnemyConcentration(
 
 // The rounds an enemy's concentration has left, without touching the spell.
 export function setEnemyConcentrationRounds(enemyId: string, rounds: number | null) {
+  keepRow("encounter_enemies", enemyId);
   getDatabase()
     .prepare(`UPDATE encounter_enemies SET concentration_rounds = ?, updated_at = ? WHERE id = ?`)
     .run(rounds, nowIso(), enemyId);

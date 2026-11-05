@@ -33,6 +33,9 @@ export type ZoneMoment = "enter" | "start" | "end" | "each5";
 
 export type ZoneTrigger = {
   on: ZoneMoment[];
+  // Spares the creature that made it ("each creature other than the
+  // kraken"), as an aura spares its caster.
+  others?: boolean;
   // "hostile": only creatures hostile to the caster (Spirit Guardians,
   // Guardian of Faith). Everyone otherwise.
   who?: "hostile";
@@ -174,6 +177,12 @@ export type ZoneRow = {
   // Gear spread on the ground, not a spell (zones-gear.ts): its saves and
   // damage are not magical.
   mundane?: boolean;
+  // SRD 5.1: the creatures standing in the area when it appears are caught
+  // then (Entangle's and Grease's saves, a Wall of Fire's burn, a wall that
+  // shoves them aside). Laid with nobody named they never would be, so a
+  // card that lays one stays with the GM to name them (intent-logic.ts
+  // directCardCall, issue 685).
+  catchesWhenLaid?: boolean;
   // What it does, one line for GAME STATE and the board's label.
   summary: string;
 };
@@ -183,11 +192,13 @@ const MINUTE = 10;
 export const ZONE_ROWS: Record<string, ZoneRow> = {
   entangle: {
     shape: "cube", feet: 20, level: 1, concentration: true, rounds: MINUTE,
+    catchesWhenLaid: true,
     difficult: 2, tone: "nature",
     summary: "difficult terrain",
   },
   grease: {
     shape: "cube", feet: 10, level: 1, concentration: false, rounds: MINUTE,
+    catchesWhenLaid: true,
     difficult: 2, tone: "stone",
     trigger: { on: ["enter", "end"], save: "dex", condition: "prone" },
     summary: "difficult terrain; entering or ending a turn there: DEX save or prone",
@@ -264,6 +275,7 @@ export const ZONE_ROWS: Record<string, ZoneRow> = {
   },
   "wind wall": {
     shape: "wall", feet: 50, level: 3, concentration: true, rounds: MINUTE,
+    catchesWhenLaid: true,
     deflectsMissiles: true, stopsSmallFlyers: true, keepsGasesOut: true, tone: "storm",
     summary: "arrows, bolts and other ranged weapon attacks through it miss; a Small or smaller flyer or a creature in gaseous form cannot pass it; gases stop at it",
   },
@@ -278,6 +290,7 @@ export const ZONE_ROWS: Record<string, ZoneRow> = {
   // holds through the round after the casting).
   "ice storm": {
     shape: "sphere", feet: 20, level: 4, concentration: false, rounds: 2,
+    catchesWhenLaid: true,
     difficult: 2, tone: "frost",
     summary: "hail-strewn ground: difficult terrain until the end of the caster's next turn",
   },
@@ -289,6 +302,7 @@ export const ZONE_ROWS: Record<string, ZoneRow> = {
   },
   "wall of fire": {
     shape: "wall", feet: 60, level: 4, concentration: true, rounds: MINUTE,
+    catchesWhenLaid: true,
     opaque: true, hotSideFeet: 10, tone: "fire",
     trigger: { on: ["enter", "end"], dice: "5d8", perSlot: "1d8", type: "fire" },
     summary: "opaque; entering it, or ending a turn in it or within 10 feet of its burning side: 5d8 fire",
@@ -301,12 +315,14 @@ export const ZONE_ROWS: Record<string, ZoneRow> = {
   },
   "insect plague": {
     shape: "sphere", feet: 20, level: 5, concentration: true, rounds: 10 * MINUTE,
+    catchesWhenLaid: true,
     difficult: 2, obscured: "light", tone: "nature",
     trigger: { on: ["enter", "end"], save: "con", dice: "4d10", perSlot: "1d10", type: "piercing", half: true },
     summary: "difficult terrain, lightly obscured; entering or ending a turn there: CON save, 4d10 piercing (half on a success)",
   },
   "wall of stone": {
     shape: "wall", feet: 100, level: 5, concentration: true, rounds: 10 * MINUTE,
+    catchesWhenLaid: true,
     blocks: {}, tone: "stone",
     summary: "a stone wall: nothing walks or sees through it",
   },
@@ -322,11 +338,13 @@ export const ZONE_ROWS: Record<string, ZoneRow> = {
   },
   "wall of force": {
     shape: "wall", feet: 100, level: 5, concentration: true, rounds: 10 * MINUTE,
+    catchesWhenLaid: true,
     blocks: { see: true }, tone: "force",
     summary: "an invisible wall: nothing passes through it, sight does",
   },
   "wall of ice": {
     shape: "wall", feet: 100, level: 6, concentration: true, rounds: 10 * MINUTE,
+    catchesWhenLaid: true,
     blocks: {}, tone: "frost",
     sections: { feet: 10, ac: 12, hp: 30, vulnerable: "fire", leaves: "frigid air" },
     summary: "a wall of ice: nothing walks or sees through it; each 10-foot section (section 1 at its first end) has AC 12 and 30 hit points, double damage from fire, and breaks with damage_object, leaving frigid air",
@@ -362,6 +380,7 @@ export const ZONE_ROWS: Record<string, ZoneRow> = {
   },
   "wall of thorns": {
     shape: "wall", feet: 60, level: 6, concentration: true, rounds: 10 * MINUTE,
+    catchesWhenLaid: true,
     difficult: 4, opaque: true, tone: "nature",
     trigger: { on: ["enter", "end"], save: "dex", dice: "7d8", perSlot: "1d8", type: "slashing", half: true },
     summary: "blocks sight; every foot moved through it costs 4; entering it or ending a turn in it: DEX save, 7d8 slashing (half on a success)",
@@ -428,6 +447,7 @@ export const ZONE_ROWS: Record<string, ZoneRow> = {
   },
   "incendiary cloud": {
     shape: "sphere", feet: 20, level: 8, concentration: true, rounds: MINUTE,
+    catchesWhenLaid: true,
     obscured: "heavy", drifts: 10, gas: true, tone: "fire",
     trigger: { on: ["enter", "end"], save: "dex", dice: "10d8", type: "fire", half: true },
     summary: "heavily obscured; entering or ending a turn there: DEX save, 10d8 fire (half on a success); drifts 10 feet away from the caster each of the caster's turns",
@@ -469,7 +489,23 @@ export const LIGHT_SPELLS: Record<string, { radiusTiles: number; dimTiles: numbe
 
 // The spells' areas and the gear spread on the ground (zones-gear.ts), one
 // table.
-const AREA_ROWS: Record<string, ZoneRow> = { ...ZONE_ROWS, ...GEAR_ZONE_ROWS };
+// A creature's own lasting area, laid by its legendary action rather than a
+// spell (src/lib/dm/legendary-route-logic.ts "cloud"): its DC is the block's,
+// carried on the area. SRD 5.1, the kraken's Ink Cloud: "Each creature other
+// than the kraken that ends its turn there must succeed on a DC 23
+// Constitution saving throw, taking 16 (3d10) poison damage on a failed
+// save, or half as much damage on a successful one", and the cloud "disappears
+// at the end of the kraken's next turn".
+export const CREATURE_ZONE_ROWS: Record<string, ZoneRow> = {
+  "ink cloud": {
+    shape: "sphere", feet: 60, level: 0, concentration: false, rounds: 1,
+    obscured: "heavy", gas: true, mundane: true, tone: "poison",
+    trigger: { on: ["end"], others: true, save: "con", dice: "3d10", type: "poison", half: true },
+    summary: "heavily obscured; anyone but its maker ending a turn there: CON save, 3d10 poison (half on a success)",
+  },
+};
+
+const AREA_ROWS: Record<string, ZoneRow> = { ...ZONE_ROWS, ...GEAR_ZONE_ROWS, ...CREATURE_ZONE_ROWS };
 
 export function zoneRowFor(spell: ZoneNamed): ZoneRow | null {
   return AREA_ROWS[zoneKey(spell)] ?? null;

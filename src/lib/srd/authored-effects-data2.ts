@@ -235,7 +235,7 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
   },
   "paladin::Soul of Vengeance": {
     subclass: "Oath of Vengeance",
-    reactions: [{ name: "Soul of Vengeance", does: { kind: "attack", rangeFt: 5 } }],
+    reactions: [{ name: "Soul of Vengeance", does: { kind: "attack", rangeFt: 5, vowed: true } }],
   },
   "paladin::Avenging Angel": {
     subclass: "Oath of Vengeance",
@@ -287,6 +287,17 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
     subclass: "Oath of Redemption",
     reactions: [{ name: "Aura of the Guardian", does: { kind: "take_for_ally", rangeFt: AURA_REACH } }],
   },
+  "paladin::Channel Divinity: Rebuke the Violent": {
+    subclass: "Oath of Redemption",
+    reactions: [
+      {
+        name: "Rebuke the Violent",
+        aliases: ["Channel Divinity: Rebuke the Violent"],
+        pool: { id: "channel_divinity" },
+        does: { kind: "echo_hit", type: "radiant", rangeFt: 30, save: { ability: "wis", dcAbility: "spell" } },
+      },
+    ],
+  },
   "paladin::Protective Spirit": {
     subclass: "Oath of Redemption",
     effects: [{ kind: "turn_heal", when: "end", belowHalf: true, formula: (level) => `1d6+${Math.floor(level / 2)}` }],
@@ -302,6 +313,13 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
     subclass: "Oath of Glory",
     effects: [{ kind: "speed", amount: 10, note: "The allies' 10 feet within 5 feet of the paladin are narrated." }],
   },
+  "paladin::Glorious Defense": {
+    subclass: "Oath of Glory",
+    counter: "sub_glorious_defense",
+    reactions: [
+      { name: "Glorious Defense", pool: { id: "sub_glorious_defense" }, sees: "target", does: { kind: "ac_vs_hit", amount: "cha", rangeFt: 10, strikeOnMiss: true } },
+    ],
+  },
   // Advantage on Charisma checks (the condition), once a turn a missed
   // weapon attack hits instead (the DM rules the hit), and a reaction that
   // rerolls a failed save.
@@ -313,10 +331,42 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
       { name: "Living Legend Reroll", aliases: ["Living Legend save"], action: "reaction", gate: { condition: "living legend" }, does: { kind: "reroll_save" } },
     ],
   },
+  // Reactions that spent their use and changed nothing: the hit now answers to them.
+  "cleric::Warding Flare": {
+    subclass: "Light Domain",
+    counter: "sub_warding_flare",
+    reactions: [{ name: "Warding Flare", pool: { id: "sub_warding_flare" }, sees: "attacker", does: { kind: "disadv_vs_hit", allyWith: "improved flare", rangeFt: 30 } }],
+  },
+  "warlock::Entropic Ward": {
+    subclass: "The Great Old One",
+    counter: "sub_entropic_ward",
+    reactions: [{ name: "Entropic Ward", pool: { id: "sub_entropic_ward" }, does: { kind: "disadv_vs_hit", advantageOnMiss: true } }],
+  },
+  "wizard::Illusory Self": {
+    subclass: "School of Illusion",
+    counter: "sub_illusory_self",
+    reactions: [{ name: "Illusory Self", pool: { id: "sub_illusory_self" }, does: { kind: "force_miss", exhaustion: 0 } }],
+  },
+  "cleric::Wrath of the Storm": {
+    subclass: "Tempest Domain",
+    counter: "sub_wrath_of_the_storm",
+    reactions: [
+      {
+        name: "Wrath of the Storm",
+        pool: { id: "sub_wrath_of_the_storm" },
+        does: { kind: "strike_back", amount: "2d8", type: "lightning", orType: "thunder", melee: true, save: { ability: "dex", dcAbility: "spell", half: true } },
+      },
+    ],
+  },
+  "cleric::Sentinel at Death's Door": {
+    subclass: "Grave Domain",
+    counter: "sub_sentinel_at_deaths_door",
+    reactions: [{ name: "Sentinel at Death's Door", pool: { id: "sub_sentinel_at_deaths_door" }, sees: "target", does: { kind: "uncrit", rangeFt: 30 } }],
+  },
   "paladin::Vigilant Rebuke": {
     subclass: "Oath of the Watchers",
     reactions: [
-      { name: "Vigilant Rebuke", does: { kind: "strike_back", amount: (_level, mods) => `2d8+${mods.cha ?? 0}`, type: "force", rangeFt: 30 } },
+      { name: "Vigilant Rebuke", does: { kind: "strike_back", afterSave: true, amount: (_level, mods) => `2d8+${mods.cha ?? 0}`, type: "force", rangeFt: 30 } },
     ],
   },
   "paladin::Mortal Bulwark": {
@@ -432,6 +482,7 @@ export const AUTHORED_DATA_B: Record<string, AuthoredEntry> = {
           types: ["acid", "bludgeoning", "cold", "fire", "force", "lightning", "necrotic", "piercing", "poison", "psychic", "radiant", "slashing", "thunder"],
           who: "either",
           rangeFt: 30,
+          bond: "drake",
         },
       },
     ],

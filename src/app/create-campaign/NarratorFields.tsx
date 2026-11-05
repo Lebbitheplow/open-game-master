@@ -3,7 +3,7 @@
 import { InfoButton } from "@/components/ui/InfoDialog";
 import { Select } from "@/components/ui/Select";
 import { Slider } from "@/components/ui/Slider";
-import { VoicePicker } from "@/components/VoicePicker";
+import { NarratorLanguageNote, VoicePicker } from "@/components/VoicePicker";
 import { VoicePreviewButton } from "@/components/VoicePreviewButton";
 import type { GameSettings } from "@/lib/schemas/game-settings";
 import { COMPANION_LABELS } from "@/lib/schemas/game-settings-options";
@@ -39,7 +39,7 @@ export function NarrationFields(props: StepProps & { onFlip?: () => void }) {
           <div className="block">
             <FieldLabel>Narrator voice</FieldLabel>
             <div className="flex flex-wrap items-center gap-2">
-              <VoicePicker value={draft.ttsVoice} onChange={(ttsVoice) => patch({ ttsVoice })} label="Narrator voice" className="grow" />
+              <VoicePicker value={draft.ttsVoice} onChange={(ttsVoice) => patch({ ttsVoice })} label="Narrator voice" className="grow" language={draft.tableLanguage} />
               <VoicePreviewButton voice={draft.ttsVoice} />
               <span className="flex items-center gap-2 text-xs text-stone-400">
                 Pace
@@ -57,6 +57,7 @@ export function NarrationFields(props: StepProps & { onFlip?: () => void }) {
                 <span className="w-8 text-stone-500">{draft.ttsSpeed.toFixed(2)}</span>
               </span>
             </div>
+            <NarratorLanguageNote language={draft.tableLanguage} />
           </div>
           <div>
             <FieldLabel className="mb-1.5">

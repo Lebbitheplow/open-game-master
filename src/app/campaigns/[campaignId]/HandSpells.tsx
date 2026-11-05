@@ -7,6 +7,8 @@ import { normalizeSpellMech } from "@/lib/homebrew/gear";
 import { factsFromRow } from "@/lib/srd/spell-facts";
 import { scopeQuery } from "@/lib/content-scope";
 import { textKey } from "@/lib/language/text-logic";
+import type { SummonCatalogue } from "@/lib/srd/summon-spells";
+import type { PetFormCatalogue } from "@/lib/dm/pet-form-logic";
 
 // What the content pack says about the spells on a sheet, for the Hand's
 // spell cards: level, casting time, range and the prose the mechanics are
@@ -120,4 +122,120 @@ export function useHandSpells(sheet: CharacterSheet | null): Record<string, Spel
     // `version` is the cache's change signal.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wanted, scope, version]);
+}
+
+// The creatures each summoning spell on the sheet can call (issue 685), for
+// its card's creature picker (src/lib/battlemap/hand-summon.ts): asked of
+// the table's server (GET /api/campaigns/[id]/summons), which answers from
+// the stat blocks the cast spawns, a workshop copy as the spell it runs as.
+// The answer is the character's own (Pact of the Chain's familiar forms,
+// whether they may cast it as a ritual). Once per spell per character per
+// page; nothing is asked where the host has no picker (`enabled`), and a
+// spell that makes no creatures is remembered as such. Keyed by textKey of
+// the spell's name as the sheet holds it.
+const summonCache = new Map<string, SummonCatalogue | null>();
+const SUMMON_BATCH = 60;
+
+export function useHandSummons(sheet: CharacterSheet | null, enabled: boolean): Record<string, SummonCatalogue> {
+  const campaignId = sheet?.campaignId ?? null;
+  const characterId = sheet?.id ?? "";
+  const names = useMemo(() => (sheet && enabled ? spellsToLookUp(sheet) : []), [sheet, enabled]);
+  const wanted = names.join("\n");
+  const [version, setVersion] = useState(0);
+
+  useEffect(() => {
+    if (!campaignId) return;
+    const missing = wanted.split("\n").filter((name) => name && !summonCache.has(`${characterId}|${textKey(name)}`));
+    if (!missing.length) return;
+    let live = true;
+    const batches: string[][] = [];
+    for (let at = 0; at < missing.length; at += SUMMON_BATCH) batches.push(missing.slice(at, at + SUMMON_BATCH));
+    void Promise.all(
+      batches.map(async (batch) => {
+        try {
+          const query = [...batch.map((name) => `spell=${encodeURIComponent(name)}`), `characterId=${encodeURIComponent(characterId)}`].join("&");
+          const response = await fetch(`/api/campaigns/${campaignId}/summons?${query}`);
+          if (!response.ok) return;
+          const body = (await response.json()) as { summons?: Record<string, SummonCatalogue> };
+          for (const name of batch) summonCache.set(`${characterId}|${textKey(name)}`, body.summons?.[name] ?? null);
+        } catch {
+          // Offline or refused: left out of the cache so a later turn retries.
+        }
+      }),
+    ).then(() => {
+      if (live) setVersion((current) => current + 1);
+    });
+    return () => {
+      live = false;
+    };
+  }, [wanted, campaignId, characterId]);
+
+  return useMemo(() => {
+    const out: Record<string, SummonCatalogue> = {};
+    for (const name of wanted.split("\n")) {
+      const found = campaignId ? summonCache.get(`${characterId}|${textKey(name)}`) : null;
+      if (found) out[textKey(name)] = found;
+    }
+    return out;
+    // `version` is the cache's change signal.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wanted, campaignId, characterId, version]);
+}
+
+// One spell's summoning catalogue, for the GM console's summon fields
+// (DmActionForm.tsx): the spell the form names, as the caster the form names
+// would cast it. Shares the cache above; null until it is known, or when the
+// spell makes no creatures.
+export function useSummonCatalogue(campaignId: string, spell: string, characterId: string, enabled: boolean): SummonCatalogue | null {
+  const name = spell.trim();
+  const key = `${characterId}|${textKey(name)}`;
+  const [, setVersion] = useState(0);
+  useEffect(() => {
+    if (!enabled || !name || summonCache.has(key)) return;
+    let live = true;
+    const query = [`spell=${encodeURIComponent(name)}`, ...(characterId ? [`characterId=${encodeURIComponent(characterId)}`] : [])].join("&");
+    void fetch(`/api/campaigns/${campaignId}/summons?${query}`)
+      .then(async (response) => {
+        if (!response.ok) return;
+        const body = (await response.json()) as { summons?: Record<string, SummonCatalogue> };
+        summonCache.set(key, body.summons?.[name] ?? null);
+        if (live) setVersion((current) => current + 1);
+      })
+      .catch(() => {
+        // Offline or refused: asked again when the spell or caster changes.
+      });
+    return () => {
+      live = false;
+    };
+  }, [campaignId, name, characterId, key, enabled]);
+  return enabled && name ? (summonCache.get(key) ?? null) : null;
+}
+
+// Summon a pet's creatures for the GM console (src/lib/dm/pet-form-logic.ts),
+// as the pet's owner may have them (Pact of the Chain's familiar forms only
+// with the pact), once per owner per page: the table's own monsters change
+// in the workshop rarely within a session, and a fresh page reads them again.
+const petForms = new Map<string, PetFormCatalogue | null>();
+
+export function usePetForms(campaignId: string, ownerId: string, enabled: boolean): PetFormCatalogue | null {
+  const key = `${campaignId}|${ownerId}`;
+  const [, setVersion] = useState(0);
+  useEffect(() => {
+    if (!enabled || petForms.has(key)) return;
+    let live = true;
+    void fetch(`/api/campaigns/${campaignId}/dm/pet-forms${ownerId ? `?characterId=${encodeURIComponent(ownerId)}` : ""}`)
+      .then(async (response) => {
+        if (!response.ok) return;
+        const body = (await response.json()) as { catalogue?: PetFormCatalogue };
+        petForms.set(key, body.catalogue ?? null);
+        if (live) setVersion((current) => current + 1);
+      })
+      .catch(() => {
+        // Offline: asked again when the form opens next.
+      });
+    return () => {
+      live = false;
+    };
+  }, [campaignId, ownerId, key, enabled]);
+  return enabled ? (petForms.get(key) ?? null) : null;
 }

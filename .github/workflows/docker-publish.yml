@@ -27,10 +27,13 @@ name: Publish Docker image
 
 on:
   release:
-    # prereleased: a beta was published. released: a release is stable,
-    # published that way or promoted from a beta. Each publish fires exactly
-    # one of the two.
-    types: [prereleased, released]
+    # published: a release went out. A beta whose assets gh uploads to a draft
+    # first fires only this one (GitHub sends no prereleased for a draft made
+    # public, so 0.32.0, the first beta, built no image), and the job takes a
+    # published prerelease as the beta. released: a release is stable,
+    # published that way or promoted from a beta; a stable publish fires
+    # published too, which the job leaves to released.
+    types: [published, released]
   workflow_dispatch:
     inputs:
       tag:
@@ -54,6 +57,7 @@ concurrency:
 
 jobs:
   publish:
+    if: ${{ github.event_name != 'release' || github.event.action == 'released' || github.event.release.prerelease }}
     runs-on: ubuntu-latest
     # The build bakes the Open5e pack and the MiniLM model, so it is slower than
     # a plain next build.

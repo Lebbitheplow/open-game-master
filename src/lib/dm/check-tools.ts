@@ -1,4 +1,5 @@
 import { dungeonDelverNotices, hasDungeonDelver } from "@/lib/srd/feat-combat";
+import { heroRollTag } from "@/lib/dice-script-logic";
 import { CHECK_KEY_PROPERTIES, named, NONE } from "@/lib/dm/roll-about";
 import { CHECK_KEY_FIELDS } from "@/lib/dm/roll-args";
 import { askedFields, unnamedTraitFields } from "@/lib/dm/roll-feature-riders";
@@ -14,7 +15,7 @@ import { dcForDifficulty, difficultyOfDc, normalizeDifficulty } from "@/lib/srd/
 import { strictnessShift } from "@/lib/dm/safety-logic";
 import { resolveRollExpression, resolveSheetRef } from "@/lib/dm/rolls";
 import { itemCheckRiders } from "@/lib/srd/item-check-riders";
-import { rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
+import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
 import { rollEffectExtras } from "@/lib/dm/effect-tools";
 import { exhaustionRollState, mergeAdvantage, rollDerivation, type AdvantageState } from "@/lib/dm/condition-logic";
 import { conditionRollRiders } from "@/lib/srd/condition-effects";
@@ -272,10 +273,11 @@ export function handleGroupCheck(
       results.push({ name: sheet.name, total: 0, success: false });
       continue;
     }
+    const waits = heldDieWaits(sheet, dc.dc);
     const resolved = resolveRollExpression(
       rollArgs,
       sheet,
-      rollExtrasFor(campaign, sheet, rollArgs.kind),
+      { ...rollExtrasFor(campaign, sheet, rollArgs.kind), keepHeldDie: waits },
     );
     if ("error" in resolved || "autoFail" in resolved) {
       // An auto-fail (paralysis) or an unresolvable skill counts as a failed
@@ -285,7 +287,8 @@ export function handleGroupCheck(
     }
     // An inspiration die or a held Help is spent by the roll it rides.
     spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-    const rolled = rollExpression(resolved.expression);
+    const thrown = rollExpression(resolved.expression, undefined, { purpose: heroRollTag(rollArgs.kind, sheet.name) });
+    const rolled = waits ? settleHeldDie(campaign.id, sheet.id, thrown, dc.dc) : thrown;
     const roll = insertRoll({
       campaignId: campaign.id,
       characterId: sheet.id,

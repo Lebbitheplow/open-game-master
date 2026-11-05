@@ -71,8 +71,11 @@ await test("a companion built by hand is painted from its appearance, and a drag
   assert.equal(companionLook(featured, { personality: "Stern." }).ancestry, "gold");
 });
 
-await test("an NPC is painted as who they are at a glance: gender and role", () => {
+await test("an NPC is painted as who they are at a glance: gender, people and role", () => {
   assert.equal(npcIdentity({ gender: "Female", role: "Merchant" }), "Female Merchant");
+  // Their people rides with the rest: an elf whose plate is an elf's is
+  // not painted over as a human.
+  assert.equal(npcIdentity({ gender: "Female", race: "Wood Elf", role: "Archer" }), "Female Wood Elf Archer");
   assert.equal(npcIdentity({ gender: "", role: "" }), "");
   const prompt = npcPortraitPrompt({ gender: "Male", role: "Guard", trait: "a broken nose", personality: "gruff" });
   assert.match(prompt, /\. Male Guard\. /);
@@ -146,13 +149,13 @@ await test("every painter reads the shared prompt and the fields it needs", () =
   const portrait = read("src/lib/portrait.ts");
   assert.doesNotMatch(portrait, /gender: ""/, "no painter blanks the gender");
   assert.match(portrait, /characterPortraitPrompt\(libraryLook\(character\)\)/);
-  assert.match(portrait, /npcPortraitPrompt\(\{ gender: npc\.gender, role,/);
+  assert.match(portrait, /npcPortraitPrompt\(\{ gender: npc\.gender, race: raceWords\(npc\.race\), role,/);
   const tools = read("src/lib/dm/companion-tools.ts");
   assert.match(tools, /queueCompanionPortrait\(campaign, sheet, \{\n\s+personality,\n\s+appearance: input\.appearance,\n\s+ancestry: input\.racialChoices\?\.ancestry,/);
   for (const route of ["src/app/api/campaigns/[campaignId]/dm/npcs/route.ts", "src/app/api/campaigns/[campaignId]/dm/npcs/[npcId]/route.ts"]) {
-    assert.match(read(route), /gender: (npc|outcome\.draft)\.gender,\n\s+role: (npc|outcome\.draft)\.role,/, route);
+    assert.match(read(route), /gender: (npc|outcome\.draft|saved)\.gender,\n\s+race: (npc|outcome\.draft|saved)\.race( \?\? "")?,\n\s+role: (npc|outcome\.draft|saved)\.role,/, route);
   }
-  assert.match(read("src/lib/dm/world-ai.ts"), /npcIdentity\(\{ gender: npc\.gender, role: npcRoleLabel\(npc\.role\) \}\)/);
+  assert.match(read("src/lib/dm/world-ai.ts"), /npcIdentity\(\{ gender: npc\.gender, race: raceWords\(npc\.race\), role: npcRoleLabel\(npc\.role\) \}\)/);
 });
 
 await test("a companion's portrait can be painted again by whoever runs the story, and only for a companion", async () => {

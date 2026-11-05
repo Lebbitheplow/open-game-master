@@ -76,6 +76,22 @@ await test("Shield answers a turncoat's hit as it answers an enemy's: the Hand i
   assert.equal(world.sheet(wizard.id).spellcasting.slots["1"].used, 1);
 });
 
+await test("A turncoat's magic blow, halved by Uncanny Dodge, lands through Stoneskin as the damage path landed it: whole, the magic weapon past it", async () => {
+  const turncoat = await stage();
+  world.patch(turncoat.id, { conditions: ["magic weapon"], conditionMeta: { "magic weapon": { rounds: 600, source: turncoat.id } } });
+  world.patch(rogue.id, { conditions: ["stoneskin"], conditionMeta: { stoneskin: { rounds: 600 } } });
+  kit.place(rogue.id, 4, 2);
+  kit.giveTurn(turncoat.id);
+  const blow = await kit.swing(turncoat.id, rogue.id, [12, 3]);
+  assert.equal(blow.ok, true, blow.error);
+  assert.equal(blow.result.hit, true, JSON.stringify(blow.result));
+  const dealt = 30 - hp(rogue);
+  assert.ok(dealt >= 6, `the magic weapon is not halved by Stoneskin: ${dealt}`);
+  const out = await react(rogue, "Uncanny Dodge");
+  assert.equal(out.ok, true, out.error);
+  assert.equal(hp(rogue), 30 - Math.floor(dealt / 2), JSON.stringify(out));
+});
+
 await test("Uncanny Dodge halves a turncoat's hit", async () => {
   const turncoat = await stage();
   kit.place(rogue.id, 4, 2);

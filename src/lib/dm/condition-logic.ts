@@ -57,6 +57,11 @@ export type ConditionMeta = {
   // A casting of a minute or more held across turns is a ritual: it spends
   // no slot when it completes (src/lib/dm/long-casting-logic.ts).
   ritual?: boolean;
+  // A casting going into a Ring of Spell Storing, or coming out of one
+  // (src/lib/dm/spell-storing.ts).
+  storeIn?: string;
+  storeInHolder?: string;
+  fromRing?: string;
   endsOnDamage?: boolean;
   saveOnDamage?: { ability: SaveAbilityId; dc: number; advantage?: boolean };
   // Hunter's Mark and Hex: the enemyId of the marked creature, the only one
@@ -75,6 +80,9 @@ export type ConditionMeta = {
   // Ends when the creature finishes a long rest (a succubus's Draining Kiss,
   // a wight's Life Drain): src/lib/dm/rest-logic.ts.
   untilLongRest?: boolean;
+  // Each character a creature has withstood, where one mark answers several
+  // (Instinctive Charm).
+  sources?: string[];
   // A knocked-out creature's 1d4 hours to coming to with 1 hit point (SRD
   // 5.1, Knocking a Creature Out), on its unconscious: counted against the
   // world clock between fights (foe-carry-logic.ts, issue #667). Not a count
@@ -89,6 +97,12 @@ export type ConditionMeta = {
   // Confusion's lash-out: the creature its d10 picked for this round's melee
   // attack (src/lib/dm/confusion.ts).
   lashOut?: { target: string; round: number };
+  // Swallowed whole (src/lib/dm/swallow.ts): the damage dealt the swallower
+  // from inside, by the creature whose turn it landed in (the swallower's
+  // own, the character's the pointer rests on, another creature's), each
+  // read at its turn's end for a regurgitation; and the feet of movement out
+  // of its corpse.
+  swallow?: { turns?: Record<string, number>; escapeFeet?: number };
   // Further sources of the same condition. SRD 5.1: the effects of the same
   // spell (or the same condition) don't combine, but each keeps its own
   // source and lifetime, so ending one leaves the others holding. Each entry
@@ -318,6 +332,26 @@ const CHECK_DISADVANTAGE = ["poisoned", "frightened"];
 function has(conditions: string[], names: string[]): string | null {
   const lowered = conditions.map((entry) => entry.toLowerCase());
   return names.find((name) => lowered.includes(name)) ?? null;
+}
+
+// Whether a hit within 5 ft is critical only because the target is
+// unconscious (paralysis would make it critical all the same): the blow a
+// reaction later finds landing on a target standing is an ordinary hit
+// (issue 685, src/lib/dm/reaction-refund.ts).
+export function critOnlyWhileUnconscious(targetConditions: string[]): boolean {
+  return has(targetConditions, ["unconscious"]) !== null && has(targetConditions, ["paralyzed"]) === null;
+}
+
+// Unconscious laid by name on a creature that still has hit points is sleep,
+// and the sleep the table usually means (Sleep, Eyebite's Asleep, Symbol's
+// Sleep, a drow's poison) ends when the sleeper takes damage. Laid by
+// set_condition with a duration or a save and nothing else, a sleeper slept
+// on through every blow (issue 761). Not every sleep in SRD 5.1 ends so: long-
+// term madness's "No amount of jostling or damage can wake the character" is
+// one, so an effect that lays its own carries its own word (set-condition.ts).
+// At 0 hit points it is the dying's, which damage does not end.
+export function wakesOnDamage(condition: string, currentHp: number): boolean {
+  return condition === "unconscious" && currentHp > 0;
 }
 
 export function isIncapacitated(conditions: string[]): boolean {

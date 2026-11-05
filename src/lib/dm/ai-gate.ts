@@ -16,9 +16,12 @@
 // dispatchAdjudication. The engine's own paths call the handlers directly,
 // and the console and the party lead keep their free hand.
 
+import { splitParts } from "@/lib/dm/action-parts-logic";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
+import { getActiveEncounter } from "@/lib/db/encounters";
 import { getRoll, markRollApplied } from "@/lib/db/rolls";
+import { awayRefusal, canCrossAway } from "@/lib/dm/fight-away-logic";
 import { isValidExpression } from "@/lib/dice";
 import { spellFactsFor } from "@/lib/content";
 import { rollAgainst } from "@/lib/roll-labels";
@@ -30,7 +33,7 @@ import { instancesOf, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { AI_BIND_REFUSAL, AI_CLEAR_REFUSAL, AI_NUMBER_REFUSAL, bindsCreature, engineKept } from "@/lib/dm/ai-boundary";
 import type { SaveAbility } from "@/lib/bestiary/statblock";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
 import { listedAgainst } from "@/lib/dm/roll-about";
 import { heldSaveTraits } from "@/lib/srd/trait-rules";
 import { unnamedRollKeys } from "@/lib/srd/roll-keys";
@@ -55,6 +58,14 @@ const SAVE_ABILITIES = new Set(["str", "dex", "con", "int", "wis", "cha"]);
 
 const NUMBER_TOOLS = new Set(["apply_damage", "heal", "damage_enemy", "split_damage", "damage_pet"]);
 
+// A call that lists its parts is asked whole, before it is split: a part
+// refused later would come after the others had landed and spent.
+export function awayCall(name: string, args: Record<string, unknown>, ctx: Pick<GateContext, "campaign" | "sheetsById">): ToolError | null {
+  const awayIds = canCrossAway(name, args) ? (getActiveEncounter(ctx.campaign.id)?.awayIds ?? []) : [];
+  const error = awayIds.length ? awayRefusal(name, args, awayIds.flatMap((id) => ctx.sheetsById.get(id) ?? [])) : null;
+  return error ? { error, retry: true } : null;
+}
+
 export function gateAiCall(name: string, rawArguments: string, ctx: GateContext): GateOutcome {
   let args: Record<string, unknown>;
   try {
@@ -64,6 +75,11 @@ export function gateAiCall(name: string, rawArguments: string, ctx: GateContext)
   }
   if (!args || typeof args !== "object" || Array.isArray(args)) {
     return { args: rawArguments };
+  }
+  // Reach does not cross the edge of a fight (issue 740), whoever sends it.
+  const beyond = awayCall(name, args, ctx);
+  if (beyond) {
+    return { result: beyond };
   }
   // Dice sent to a damage or healing tool are rolled by the server whoever
   // sends them (the console's forms take dice too).
@@ -105,7 +121,15 @@ export function gateAiCall(name: string, rawArguments: string, ctx: GateContext)
       return args.enemyId && args.action === "drop" && !enemyHoldsItem(ctx.campaign.id, String(args.enemyId), String(args.item ?? ""))
         ? itemFacts(ctx, name, args, rawArguments)
         : { args: rawArguments };
+    // Each of pc_attack's parts claims its own advantage.
     case "pc_attack":
+      for (const part of splitParts(name, args, null)) {
+        const claimed = claimSource(part.args, rawArguments);
+        if ("result" in claimed) {
+          return claimed;
+        }
+      }
+      return { args: rawArguments };
     case "enemy_attack":
     case "request_roll":
       return claimSource(args, rawArguments);

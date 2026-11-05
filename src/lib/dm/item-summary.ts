@@ -6,14 +6,16 @@
 // shown.
 
 import { searchItems } from "@/lib/content";
+import { bundledItemRows } from "@/lib/rulebook/catalog-rows";
 import { chargeMax, chargeRuleOf, chargesLeft } from "@/lib/dm/item-charges";
 import { armorOfRow, isWorn } from "@/lib/srd/armor";
-import { oneOfKind, wornButIdle } from "@/lib/srd/wear-slots";
+import { oneOfKind, wearSlotOf, wornButIdle } from "@/lib/srd/wear-slots";
 import { gearDefOfRow } from "@/lib/srd/magic-gear";
 import { matchMagicItem, type MagicItemEffect } from "@/lib/srd/magic-items";
 import type { EquipmentItem } from "@/lib/schemas/sheet";
 import { textKey } from "@/lib/language/text-logic";
-import { magicItemBonus, rowName } from "@/lib/srd/item-row";
+import { isSpellStorer, storedSpellsLine } from "@/lib/srd/spell-storing";
+import { isWorkshopRow, magicItemBonus, rowName } from "@/lib/srd/item-row";
 
 function effectWords(effect: MagicItemEffect): string {
   switch (effect.kind) {
@@ -42,17 +44,24 @@ function effectWords(effect: MagicItemEffect): string {
     case "speed":
       return `${effect.mode} ${effect.feet === "walk" ? "= walking" : `${effect.feet} ft`}`;
     case "weapon_rider":
-      return `${effect.weapons.join(", ")}${effect.proficient ? ": proficient" : ""}${effect.damage ? `, +${effect.damage} damage${effect.ranged ? " at range" : ""}` : ""}`;
+      return `${effect.weapons.join(", ")}${effect.proficient ? ": proficient" : ""}${effect.unarmed ? `, 1${effect.unarmed.die} ${effect.unarmed.damageType}` : ""}${effect.attack ? `, +${effect.attack} to hit${effect.ranged ? " at range" : ""}` : ""}${effect.damage ? `, +${effect.damage} damage${effect.ranged ? " at range" : ""}` : ""}`;
   }
 }
 
-// The pack's first sentence for a magic item the engine does not hold.
-function packSentence(name: string): string | null {
+// The first sentence of a magic item's text: the content pack's row, else
+// the bundled SRD 5.1 book's page (src/lib/rulebook/catalog-rows.ts), so a
+// table with no pack still tells the model what a Bag of Holding does
+// instead of calling it "magic". The pack marks italics with underscores and
+// the book with asterisks; both are dropped, as the model reads them as text.
+function itemSentence(name: string): string | null {
   const wanted = textKey(name);
-  const row = searchItems({ q: name.trim(), kind: "magic_item", limit: 5 }).find(
-    (item) => textKey(item.name) === wanted,
-  );
-  const desc = String(row?.data?.desc ?? "").replace(/\s+/g, " ").trim();
+  const row =
+    searchItems({ q: name.trim(), kind: "magic_item", limit: 5 }).find((item) => textKey(item.name) === wanted) ??
+    bundledItemRows(name.trim()).find((item) => textKey(item.name) === wanted);
+  const desc = String(row?.data?.desc ?? "")
+    .replace(/(\*+|_+)(?=\S)([^*_]+?)(?<=\S)\1/g, "$2")
+    .replace(/\s+/g, " ")
+    .trim();
   if (!desc) {
     return null;
   }
@@ -69,9 +78,11 @@ export function magicItemLine(item: EquipmentItem, equipment: readonly Equipment
   // A workshop item's own magic rides on its line (gearDefOfRow); its effects
   // are the ones magic-items.ts reads off the same line.
   const def = gearDefOfRow(item);
-  const worn = item.gear?.magic ? { effects: item.gear.magic.effects, requiresAttunement: item.gear.magic.requiresAttunement } : matchMagicItem(item);
+  const listed = item.gear?.magic ? null : matchMagicItem(item);
+  const worn = item.gear?.magic ? { effects: item.gear.magic.effects, requiresAttunement: item.gear.magic.requiresAttunement } : listed;
   if (!def && !worn && !magicItemBonus(item.name)) {
-    const sentence = packSentence(rowName(item));
+    // A workshop entry is not the published item it may share a name with.
+    const sentence = isWorkshopRow(item) ? null : itemSentence(rowName(item));
     return sentence ? `${item.name}: ${sentence} (narrated)` : null;
   }
   const parts: string[] = [];
@@ -92,6 +103,9 @@ export function magicItemLine(item: EquipmentItem, equipment: readonly Equipment
   for (const effect of worn?.effects ?? []) {
     parts.push(effectWords(effect));
   }
+  if (isSpellStorer(item)) {
+    parts.push(storedSpellsLine(item));
+  }
   const rule = chargeRuleOf(item);
   if (rule) {
     const most = chargeMax(rule);
@@ -105,11 +119,17 @@ export function magicItemLine(item: EquipmentItem, equipment: readonly Equipment
   } else if (def?.requiresAttunement || worn?.requiresAttunement) {
     state.push("not attuned");
   }
+  // A row the sheet offers no wear toggle (noWear: a Crystal Ball, a Cube of
+  // Force) is never said to be worn: nothing puts it on.
   const idle = wornButIdle(item, equipment);
   if (idle) {
     state.push(`worn, not in effect (${oneOfKind(idle) ?? "one of its kind"} at a time)`);
-  } else if (isWorn(item, equipment)) {
+  } else if (isWorn(item, equipment) && !(listed?.noWear && !wearSlotOf(item))) {
     state.push("worn");
   }
-  return `${item.name}: ${parts.join(", ") || "magic"}${state.length ? `; ${state.join(", ")}` : ""}`;
+  // An item in the table only for its attunement has nothing above to say, so
+  // the model still gets the pack's sentence to narrate it from.
+  const sentence = parts.length || isWorkshopRow(item) ? null : itemSentence(rowName(item));
+  const says = parts.join(", ") || (sentence ? `${sentence} (narrated)` : "magic");
+  return `${item.name}: ${says}${state.length ? `; ${state.join(", ")}` : ""}`;
 }

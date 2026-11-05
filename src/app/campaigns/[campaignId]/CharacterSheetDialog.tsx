@@ -19,10 +19,12 @@ import {
   type DerivedPart,
 } from "@/lib/srd";
 import { attunementSlotsFor } from "@/lib/srd/armor";
+import { formatPrice, purseCoins, purseCopper } from "@/lib/srd/currency";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
 import { magicItemRiders } from "@/lib/srd/magic-items";
 import type { WearConflict } from "@/lib/srd/wear-slots";
-import { RESOURCE_DEFS } from "@/lib/srd/class-resources";
+import { RESOURCE_DEFS, resourceName } from "@/lib/srd/class-resources";
+import { foretoldLeft } from "@/lib/dm/foretold-logic";
 import { GameTerm } from "@/components/ui/GameTerm";
 import {
   AbilityTiles,
@@ -36,6 +38,7 @@ import {
   SkillRows,
   VitalTiles, TrainingLines } from "@/components/sheet/SheetParts";
 import { SheetSpells } from "@/components/sheet/SheetSpells";
+import { SummonDoor } from "@/app/campaigns/[campaignId]/SummonDoor";
 import { DefensesLine, HitDiceSpend, StateTags } from "@/components/sheet/SheetState";
 import { SheetBetween } from "@/components/sheet/SheetBetween";
 import { conditionDetail, hitDiceLine, itemStatus, maxHpView, otherSpeedsLine, speedView, wearableGear } from "@/components/sheet/sheet-state";
@@ -52,7 +55,6 @@ function titleCase(value: string) {
   return value.replace(/[-_]/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-const RESOURCE_NAMES = new Map(RESOURCE_DEFS.map((def) => [def.id, def.displayName]));
 // Every resource already carries a line explaining what spending it does; it
 // was written for the DM model and reads just as well for the player.
 const RESOURCE_HELP = new Map(RESOURCE_DEFS.map((def) => [def.id, def.guidance]));
@@ -134,7 +136,7 @@ export function CharacterSheetDialog({
   const load = encumbranceFor({
     strength: sheet.abilities.str,
     equipment: sheet.equipment,
-    coins: sheet.gold,
+    coins: purseCoins(sheet),
     size: sizeForRace(sheet.race),
     wearer: sheet,
   });
@@ -281,7 +283,7 @@ export function CharacterSheetDialog({
                   title: explainParts(derived.parts.passivePerception),
                 },
                 { glyph: "rest-proficiency", label: "Proficiency", value: formatModifier(derived.proficiencyBonus) },
-                { glyph: "coin-gp", label: "Gold", value: `${sheet.gold} gp` },
+                { glyph: "coin-gp", label: "Coin", value: formatPrice(purseCopper(sheet)) },
                 { glyph: "rest-xp", label: "Experience", value: `${sheet.xp} XP` },
                 {
                   glyph: `die-${sheet.hitDice.die}`,
@@ -314,7 +316,7 @@ export function CharacterSheetDialog({
               onOpenChange={setLoadOpen}
               name={sheet.name}
               equipment={sheet.equipment}
-              gold={sheet.gold}
+              purse={sheet}
               load={load}
             />
             <OtherSpeeds speeds={derived.speeds} />
@@ -445,6 +447,8 @@ export function CharacterSheetDialog({
               ) : null}
               <div className="reveal mt-3">
                 <SheetSpells sheet={sheet} editable={mine} />
+                {/* Summoning spells cast from here, the creature picked (issue 685). */}
+                <SummonDoor sheet={sheet} mine={mine} inCombat={inCombat} />
               </div>
             </SheetBlock>
           ) : null}
@@ -489,7 +493,7 @@ export function CharacterSheetDialog({
                     key={id}
                     id={id}
                     pool={pool}
-                    name={RESOURCE_NAMES.get(id) ?? titleCase(id)}
+                    name={resourceName(id)}
                     help={RESOURCE_HELP.get(id)}
                     spends={spends}
                     corrects={corrects}
@@ -499,6 +503,9 @@ export function CharacterSheetDialog({
                     onRecover={() => adjustUsage({ resources: { [id]: pool.used - 1 } })}
                   />
                 ))}
+                {foretoldLeft(sheet).length ? (
+                  <p className="text-xs">Foretold rolls: {foretoldLeft(sheet).join(", ")}</p>
+                ) : null}
               </div>
               {spends ? (
                 <p className="reveal mt-1.5 text-[11px] text-stone-500">

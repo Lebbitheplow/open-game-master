@@ -11,6 +11,7 @@ import type {
 } from "@/lib/dm/monster-abilities";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
+import type { TurnTie } from "@/lib/dm/save-effect";
 
 // The parts of a stat block the engine runs beyond the six numbers and the
 // attack names: an attack's reach, range, rider dice and on-hit effect; the
@@ -125,6 +126,10 @@ function checkOnHit(raw: unknown, attack: string): Checked<OnHitRider | null> {
   if (rounds !== null) {
     rider.rounds = rounds;
   }
+  const riderTie = turnTie(source.until);
+  if (riderTie) {
+    rider.until = riderTie;
+  }
   if (source.repeatSave === true) {
     rider.repeatSave = true;
   }
@@ -151,6 +156,19 @@ function checkOnHit(raw: unknown, attack: string): Checked<OnHitRider | null> {
   if (source.swallow === true) {
     rider.swallow = true;
   }
+  // A poison's sleep on a bad save (attack-text.ts), kept when a pack
+  // creature is borrowed into the workshop.
+  const failBy = clamp(source.unconsciousFailBy, 1, 30);
+  if (failBy !== null) {
+    rider.unconsciousFailBy = failBy;
+  }
+  const atMost = clamp(source.unconsciousAtMost, 1, 30);
+  if (atMost !== null && failBy === null) {
+    rider.unconsciousAtMost = atMost;
+  }
+  if (source.wakesOnDamage === true) {
+    rider.wakesOnDamage = true;
+  }
   const manual = (Array.isArray(source.manual) ? source.manual : [])
     .slice(0, MANUAL_CLAUSES)
     .map((clause) => text(clause, MANUAL_CLAUSE_MAX))
@@ -169,6 +187,18 @@ const MANUAL_CLAUSE_MAX = 1_000;
 // The printed half of an attack line, kept beside the four fields
 // checkAttack already holds. Reach and range are in feet; a reach is a
 // multiple of five, a long range never shorter than the normal one.
+// A duration tied to a turn ("until the end of its next turn", save-effect.ts
+// TurnTie), kept as the block reads it: dropped here, a mummy or a ghast
+// started from the book and saved in the workshop held its condition for a
+// round instead of until that turn.
+function turnTie(value: unknown): TurnTie | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const { edge, whose } = value as Record<string, unknown>;
+  return (edge === "start" || edge === "end") && (whose === "target" || whose === "source") ? { edge, whose } : null;
+}
+
 export function checkAttackExtras(raw: Raw, attack: string): Checked<Partial<EnemyAttack>> {
   const out: Partial<EnemyAttack> = {};
   const mode = MODES.find((entry) => entry === raw.mode);
@@ -283,6 +313,10 @@ export function checkSpecials(raw: unknown): Checked<MonsterAbility[]> {
     const rounds = clamp(source.rounds, 1, ROUND_CEILING);
     if (rounds !== null) {
       ability.rounds = rounds;
+    }
+    const abilityTie = turnTie(source.until);
+    if (abilityTie) {
+      ability.until = abilityTie;
     }
     if (source.repeatSave === true) {
       ability.repeatSave = true;

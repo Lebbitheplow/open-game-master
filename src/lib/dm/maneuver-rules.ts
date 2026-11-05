@@ -35,6 +35,8 @@ import { holdsFeat } from "@/lib/srd/feat-effects";
 import { classLevelFor } from "@/lib/srd/multiclass";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { isNamed } from "@/lib/srd/feature-names";
+import { acBreakdownFor } from "@/lib/srd";
+import { matchWeapon } from "@/lib/srd/weapons";
 
 export type ManeuverUse =
   | "swing"
@@ -118,4 +120,11 @@ export function superiorityDie(level: number): string {
 export function maneuverDieFor(sheet: CharacterSheet): string {
   const fighter = classLevelFor(sheet, "fighter");
   return fighter ? superiorityDie(fighter) : holdsFeat(sheet, "Martial Adept") ? "d6" : superiorityDie(sheet.level);
+}
+
+// Warding Maneuver (Cavalier 3) is taken "while wielding a melee weapon or a
+// shield": the engine (reaction-counters.ts) and its card in the Hand ask it
+// the same way.
+export function wieldsMeleeOrShield(sheet: CharacterSheet): boolean {
+  return Boolean(acBreakdownFor(sheet).shieldName) || sheet.equipment.some((item) => item.equipped && matchWeapon(item)?.kind === "melee");
 }

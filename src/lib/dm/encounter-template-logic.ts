@@ -8,6 +8,7 @@
 // live form can never read differently.
 
 import { textKey } from "../language/text-logic.ts";
+import { describeFightEvent, normalizeFightEvents, type FightEvent } from "./fight-event-logic.ts";
 
 export type TemplateEnemy = { monster: string; count: number };
 
@@ -74,10 +75,24 @@ export function parseRoster(value: unknown): TemplateEnemy[] {
 // to drop all three, so a human GM could not field an invented foe though
 // the refusal told them to pass a challenge rating. Templates keep to
 // parseRoster: a saved roster names monsters, and an enemyId goes stale.
-export type FightRequest = TemplateEnemy & { cr?: number; name?: string; returning?: string };
+//
+// A foe's look rides the same way, so the console fields the elf bandit the
+// AI GM can ("bandit race elf gender female x4", "race wood elf"). Never at
+// the start of the line, which is the monster's own name, and only a race
+// `readsRace` reads (the caller passes src/lib/npc-race.ts, which this
+// module cannot import): a homebrew "Serpent Race Warrior" keeps its whole
+// name instead of fielding a "Serpent" told to be of the race "Warrior".
+export type FightRequest = TemplateEnemy & { cr?: number; name?: string; returning?: string; race?: string; gender?: string };
 
 const CR_IN_LINE = /(?:^|\s|,|\()cr\s*[:=]?\s*(\d{1,2}\s*\/\s*\d{1,2}|\d{1,2}(?:\.\d+)?)\)?/i;
 const NAMED_AS = /^(.+?)\s+as\s+(.+)$/i;
+const RACE_IN_LINE = /(?:\s|,)race\s*[:=]?\s*([a-z][\w'-]*)(\s+[a-z][\w'-]*)?/i;
+const GENDER_IN_LINE = /(?:\s|,)gender\s*[:=]?\s*(female|male|nonbinary)\b/i;
+
+// The text without the part `found` matched, tidied the way the cr strip is.
+function without(text: string, found: RegExpExecArray): string {
+  return `${text.slice(0, found.index)} ${text.slice(found.index + found[0].length)}`.replace(/[\s,]+$/, "").replace(/\s+/g, " ").trim();
+}
 
 function crValue(text: string): number | undefined {
   const [top, bottom] = text.split("/").map((part) => Number(part.trim()));
@@ -85,13 +100,45 @@ function crValue(text: string): number | undefined {
   return Number.isFinite(value) ? value : undefined;
 }
 
-function fightLine(row: TemplateEnemy): FightRequest {
+// Whether a race word reads as a race. With none, nothing is read as one.
+export type RaceReader = (words: string) => boolean;
+
+// The race a line names, the longest reading first ("race wood elf" before
+// "race wood"), or null when what follows "race" is not one.
+function raceIn(text: string, readsRace: RaceReader): { race: string; rest: string } | null {
+  const found = RACE_IN_LINE.exec(text);
+  if (!found) {
+    return null;
+  }
+  const one = found[1];
+  const two = found[2] ? `${one} ${found[2].trim()}` : "";
+  const race = two && readsRace(two) ? two : readsRace(one) ? one : "";
+  if (!race) {
+    return null;
+  }
+  const end = found.index + found[0].length - (race === two ? 0 : (found[2]?.length ?? 0));
+  return { race, rest: `${text.slice(0, found.index)} ${text.slice(end)}`.replace(/[\s,]+$/, "").replace(/\s+/g, " ").trim() };
+}
+
+function fightLine(row: TemplateEnemy, readsRace: RaceReader): FightRequest {
   let monster = row.monster;
   let cr: number | undefined;
   const rated = CR_IN_LINE.exec(monster);
   if (rated) {
     cr = crValue(rated[1]);
-    monster = `${monster.slice(0, rated.index)} ${monster.slice(rated.index + rated[0].length)}`.replace(/[\s,]+$/, "").replace(/\s+/g, " ").trim();
+    monster = without(monster, rated);
+  }
+  let race = "";
+  const raced = raceIn(monster, readsRace);
+  if (raced) {
+    race = raced.race;
+    monster = raced.rest;
+  }
+  let gender = "";
+  const gendered = GENDER_IN_LINE.exec(monster);
+  if (gendered) {
+    gender = gendered[1];
+    monster = without(monster, gendered);
   }
   const named = NAMED_AS.exec(monster);
   const out: FightRequest = { monster: named ? named[1].trim() : monster, count: row.count };
@@ -101,15 +148,21 @@ function fightLine(row: TemplateEnemy): FightRequest {
   if (cr !== undefined) {
     out.cr = cr;
   }
+  if (race) {
+    out.race = race;
+  }
+  if (gender) {
+    out.gender = gender;
+  }
   return out;
 }
 
-export function parseFightRoster(value: unknown): FightRequest[] {
+export function parseFightRoster(value: unknown, readsRace: RaceReader = () => false): FightRequest[] {
   if (Array.isArray(value)) {
     return value
       .flatMap((entry): FightRequest[] => {
         if (typeof entry === "string") {
-          return parseFightRoster(entry);
+          return parseFightRoster(entry, readsRace);
         }
         const row = (entry ?? {}) as Partial<FightRequest>;
         const out: FightRequest = {
@@ -125,11 +178,17 @@ export function parseFightRoster(value: unknown): FightRequest[] {
         if (typeof row.returning === "string" && row.returning.trim()) {
           out.returning = row.returning.trim();
         }
+        if (typeof row.race === "string" && row.race.trim()) {
+          out.race = row.race.trim();
+        }
+        if (typeof row.gender === "string" && row.gender.trim()) {
+          out.gender = row.gender.trim();
+        }
         return [out];
       })
       .filter((row) => row.monster);
   }
-  return parseRoster(value).map(fightLine).filter((row) => row.monster);
+  return parseRoster(value).map((row) => fightLine(row, readsRace)).filter((row) => row.monster);
 }
 
 // Back to the text a DM would have typed, so an edit round-trips.
@@ -286,6 +345,20 @@ function optionalInt(value: unknown, min: number, max: number): number | null {
   return Math.min(max, Math.max(min, number));
 }
 
+// What a deploy says when the fight's saved map could not be laid
+// (deployTemplate's mapError): the fight stands, on the generator's board.
+// One sentence for the AI's prepared fight (prepared-encounter-tool.ts) and
+// a test table's chronicle (src/lib/workshop/test-fight.ts), so the two say
+// it alike.
+export function savedMapNote(mapError: string): string {
+  return `Its saved map could not be used (${mapError}); the fight is on a generated one.`;
+}
+
+// A test of a fight whose kept map was since removed from the workshop's
+// maps: the copy arrives with no map to lay (src/lib/db/content-copy.ts
+// binds it to nothing), so the deploy itself has no failure to report.
+export const MAP_GONE_FROM_WORKSHOP = "the map it was drawn on is no longer in the workshop's maps";
+
 export function normalizeTemplateMap(
   raw: unknown,
   allowed: { themes: string[]; ambients: string[]; scenes: string[] },
@@ -334,6 +407,8 @@ export type TemplateExtras = {
   rewards: string;
   // "When the shaman drops, the wolves flee." One line each.
   phases: string[];
+  // What the server does when, at the table (fight-event-logic.ts).
+  events: FightEvent[];
 };
 
 export const EXTRAS_LIMITS = {
@@ -352,6 +427,7 @@ export const EMPTY_TEMPLATE_EXTRAS: TemplateExtras = {
   overrides: [],
   rewards: "",
   phases: [],
+  events: [],
 };
 
 export type RosterSlot = { slot: number; monster: string; label: string };
@@ -442,6 +518,7 @@ export function normalizeTemplateExtras(
       .map((line) => (typeof line === "string" ? line.trim().slice(0, EXTRAS_LIMITS.phaseText) : ""))
       .filter(Boolean)
       .slice(0, EXTRAS_LIMITS.phases),
+    events: normalizeFightEvents(source.events, slotCount),
   };
 }
 
@@ -472,8 +549,8 @@ export function matchSlots<T extends { id: string; slug: string; displayName: st
 }
 
 // The note the DM gets when the fight opens: the parts of the plan the
-// board cannot show.
-export function describeExtras(extras: TemplateExtras): string[] {
+// board cannot show. The roster names the creatures an event speaks of.
+export function describeExtras(extras: TemplateExtras, roster: TemplateEnemy[] = []): string[] {
   const lines: string[] = [];
   if (extras.rewards) {
     lines.push(`Worth: ${extras.rewards}`);
@@ -481,5 +558,8 @@ export function describeExtras(extras: TemplateExtras): string[] {
   extras.phases.forEach((phase, index) => {
     lines.push(`Phase ${index + 1}: ${phase}`);
   });
+  const slots = expandRoster(roster);
+  const label = (slot: number) => slots[slot]?.label ?? `creature ${slot + 1}`;
+  (extras.events ?? []).forEach((event) => lines.push(`Event: ${describeFightEvent(event, label)}`));
   return lines;
 }

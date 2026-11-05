@@ -22,8 +22,15 @@ const { test, finish } = suite("test-enforce-currency");
 const { getParty, setParty } = await import("../src/lib/db/party.ts");
 const { emptyParty } = await import("../src/lib/dm/party-logic.ts");
 
+const { describeSheet } = await import("../src/lib/dm/prompt.ts");
+const { coinCorrection, coinFields } = await import("../src/app/campaigns/[campaignId]/lead-edit-logic.ts");
+const { maybeProposeItemChange } = await import("../src/lib/dm/proposal-intercept.ts");
+
 const world = await openWorld();
+const sheetRoute = await world.route("campaigns/[campaignId]/sheets/[sheetId]");
 const heroes = [1, 2, 3, 4].map(() => world.addHero({ class: "fighter", level: 3 }));
+// A player's own character: only those are staged as offers.
+const playerHero = world.addHero({ user: world.addUser("nysa"), name: "Nysa", class: "rogue", level: 2 });
 const [hero] = heroes;
 const copperOf = (id) => {
   const sheet = world.sheet(id);
@@ -78,6 +85,57 @@ await test("coins written in a language's words are asked for again, never moved
     assert.match(refused.error, /pp, gp, ep, sp and cp/, coins);
     assert.equal(copperOf(hero.id), 1000, `${coins}: nothing moved`);
   }
+});
+
+await test("signed coins need no delta, and coins with no direction move nothing", async () => {
+  purse(hero.id, 3, 40);
+  assert.equal((await act("modify_gold", { coins: "-5 sp" })).ok, true);
+  assert.equal(copperOf(hero.id), 290);
+  assert.equal((await act("modify_gold", { coins: "+1 gp 5 sp" })).ok, true);
+  assert.equal(copperOf(hero.id), 440);
+  for (const args of [{ coins: "5 sp" }, { delta: 0, coins: "5 sp" }]) {
+    const refused = await act("modify_gold", args);
+    assert.equal(refused.retry, true);
+    assert.match(refused.error, /does not say gain or spend/);
+    assert.equal(copperOf(hero.id), 440, "nothing moved");
+  }
+  wellFormed();
+});
+
+await test("the GM's game state shows the whole purse, so silver is never read as nothing", () => {
+  purse(hero.id, 0, 75);
+  assert.match(describeSheet(world.sheet(hero.id), "Sam", true), /Purse: 7 sp 5 cp/);
+  purse(hero.id, 12, 0);
+  assert.match(describeSheet(world.sheet(hero.id), "Sam", true), /Purse: 12 gp/);
+});
+
+await test("an offer of coins says the coins, and accepting it moves those coins", async () => {
+  purse(hero.id, 3, 40);
+  const sheets = new Map(world.sheets().map((entry) => [entry.id, entry]));
+  const offer = (args) =>
+    maybeProposeItemChange({ ...world.campaign(), gameSettings: { ...world.campaign().gameSettings, inventoryApprovals: true } }, "", "modify_gold", JSON.stringify({ characterId: playerHero.id, reason: "test", ...args }), sheets);
+  assert.match(offer({ coins: "5 sp" }).error, /does not say gain or spend/, "refused when offered, not when accepted");
+  assert.match(offer({ delta: -1, coins: "5 silver" }).error, /pp, gp, ep, sp and cp/);
+  assert.equal(offer({ delta: -1, coins: "5 sp" }).proposed, "Take 5 sp from Nysa");
+});
+
+await test("the lead's three coin fields read the purse and write back what they add up to", async () => {
+  const sheet = { gold: 3, copper: 47 };
+  assert.deepEqual(coinFields(sheet), { gold: 3, silver: 4, copper: 7 });
+  assert.deepEqual(coinCorrection({ gold: "3", silver: "4", copper: "7" }, sheet), {}, "nothing changed, nothing sent");
+  assert.deepEqual(coinCorrection({ gold: "3", silver: "9", copper: "7" }, sheet), { copper: 97 });
+  assert.deepEqual(coinCorrection({ gold: "3", silver: "34", copper: "7" }, sheet), { gold: 6 });
+  assert.deepEqual(coinCorrection({ gold: "", silver: "-2", copper: "x" }, sheet), { gold: 0, copper: 0 });
+  // The correction route stores it and the purse stays well formed.
+  purse(hero.id, 3, 47);
+  world.signIn(world.owner);
+  const saved = await sheetRoute.PATCH(
+    new Request("http://test/", { method: "PATCH", body: JSON.stringify(coinCorrection({ gold: 3, silver: 34, copper: 7 }, world.sheet(hero.id))) }),
+    { params: Promise.resolve({ campaignId: world.campaignId, sheetId: hero.id }) },
+  );
+  assert.equal(saved.status, 200);
+  assert.equal(copperOf(hero.id), 647);
+  wellFormed();
 });
 
 await test("a whole-gold change is worth 100 copper a piece, up and down", async () => {

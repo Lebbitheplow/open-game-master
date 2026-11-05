@@ -44,8 +44,21 @@ export default {
     }
     if (!reached) found.push("Shift+Tab never reached Put it back");
     await t.shot("offered");
+    // Focus leaves the button for the step's heading in the same press, before
+    // the bar goes. Moved on a timer, it sat on the page until the browser got
+    // to that timer after the re-render's frame, some 50 to 300 ms: this key's
+    // own keyup landed on the body every time, and a check made in that gap on
+    // CI read "focus fell to the page".
+    await page.evaluate(() => {
+      document.addEventListener("keyup", (event) => (window.__putBackKeyUp = event.target), { capture: true, once: true });
+    });
     if (reached) {
       await page.keyboard.press("Enter");
+      const keyUp = await page.evaluate(
+        (step) => (document.querySelector(step)?.contains(window.__putBackKeyUp) ? "" : `${window.__putBackKeyUp?.tagName}`),
+        active,
+      );
+      if (keyUp) found.push(`the Enter that pressed Put it back came up on ${keyUp}, outside the step`);
     } else {
       await t.tap(bar.locator("button").first());
     }
@@ -56,8 +69,9 @@ export default {
     if (!/Champion/.test(subclassText)) found.push(`the subclass reads "${subclassText}" after Put it back`);
     const back = (await said.textContent())?.trim() ?? "";
     if (back !== "Put back Fighter and its picks.") found.push(`after Put it back the live region says "${back}"`);
-    const lost = await page.evaluate(() => document.activeElement === document.body);
-    if (lost) found.push("focus fell to the page after Put it back");
+    if (!(await page.locator(active).evaluate((node) => node.contains(document.activeElement)))) {
+      found.push("focus left the step after Put it back");
+    }
 
     // Offered again, then the step is left: the undo goes.
     await t.tap(card("Rogue"));

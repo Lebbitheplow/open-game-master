@@ -17,18 +17,26 @@
 // on half the water is a DC 15 Constitution save against a level of
 // exhaustion, and a day with none is a level whatever is carried; a
 // character already exhausted takes two levels in either case.
+//
+// Food and water can also come from the world (issue 793). A meal the story
+// names (pass_time, travel or take_rest with `meal`) puts every living
+// character's counts back to zero now and covers the next dawn, and a
+// lifestyle of squalid or better covers every dawn it can pay for. Neither
+// spends a ration or needs a waterskin, and neither outranks scarce water: on
+// "half" the day's save is still rolled, and on "none" the day still costs its
+// level.
 
 import { getCampaignById } from "@/lib/db/campaigns";
 import { getClock } from "@/lib/db/clock";
-import { characterSave } from "@/lib/dm/between-io";
+import { characterSave, lifestyleOf } from "@/lib/dm/between-io";
+import { livedLifestyle, purseOf } from "@/lib/dm/lifestyle";
+import { afterMeal, lifestyleFeeds, type Hunger } from "@/lib/dm/supplies-logic";
 import { listSheets } from "@/lib/db/sheets";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
 import { exhaustionPatch } from "@/lib/dm/vitals-logic";
 import { abilityMod } from "@/lib/srd";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
 import { hasItemTag } from "@/lib/srd/item-tags";
-
-export type Hunger = { food: number; water: number };
 
 // How many days a character can go without food before each further day
 // costs a level of exhaustion.
@@ -43,12 +51,17 @@ export function dayOfUpkeep(
   hunger: Hunger,
   // How much water there is to be found ("half", "none"), when scarce.
   waterRation?: "half" | "none",
+  // A meal or a lifestyle feeds and waters them today, whatever is in the pack.
+  fed = false,
 ): { equipment: EquipmentItem[] | null; hunger: Hunger; exhaustion: number; notes: string[]; halfWater: boolean } {
   const notes: string[] = [];
   let equipment: EquipmentItem[] | null = null;
   let food = hunger.food;
-  const ration = sheet.equipment.find((item) => hasItemTag(item, "food") && item.qty > 0);
-  if (ration) {
+  const ration = fed ? undefined : sheet.equipment.find((item) => hasItemTag(item, "food") && item.qty > 0);
+  if (fed) {
+    food = 0;
+    notes.push("ate without touching the pack");
+  } else if (ration) {
     equipment = sheet.equipment.flatMap((item) =>
       item !== ration ? [item] : item.qty > 1 ? [{ ...item, qty: item.qty - 1 }] : [],
     );
@@ -58,7 +71,7 @@ export function dayOfUpkeep(
     food += 1;
     notes.push(`went a day without food (${food})`);
   }
-  const drank = waterRation !== "none" && sheet.equipment.some((item) => hasItemTag(item, "water"));
+  const drank = waterRation !== "none" && (fed || sheet.equipment.some((item) => hasItemTag(item, "water")));
   // Half the water: the day's save is the caller's to roll.
   const halfWater = drank && waterRation === "half";
   const water = drank ? 0 : hunger.water + 1;
@@ -84,12 +97,33 @@ export function goingWithout(hunger: Hunger | undefined): boolean {
   return Boolean(hunger && (hunger.food > 0 || hunger.water > 0));
 }
 
+// A meal the story names, when the variant is on: the counts as they stand
+// after it. Null with the variant off, so the meal writes nothing.
+export function mealAtTable(
+  campaignId: string,
+  hunger: Record<string, Hunger>,
+  waterRation: "half" | "none" | undefined,
+): Record<string, Hunger> | null {
+  if (!getCampaignById(campaignId)?.gameSettings.variantRules.supplies) {
+    return null;
+  }
+  const living = listSheets(campaignId).filter((sheet) => !sheet.deathSaves?.dead).map((sheet) => sheet.id);
+  return afterMeal(hunger, living, waterRation);
+}
+
 // Every dawn between two instants, the day's upkeep for the table, when the
-// variant is on. Returns the new hunger by character for the clock.
+// variant is on. Returns the new hunger by character for the clock. `meal`
+// covers the first of the dawns only. `paid` holds the characters whose
+// lifestyle these dawns are charged to (lifestyle.ts chargeLifestyle), each
+// with the copper a day their work covers: only those dawns are fed by it. A
+// march of hours, the GM's clock or a spell's casting time charges none, and
+// a lifestyle fed free on them before.
 export function upkeepAtDawns(
   campaignId: string,
   dawns: number,
   hunger: Record<string, Hunger>,
+  meal = false,
+  paid: Record<string, number> = {},
 ): Record<string, Hunger> | null {
   const campaign = getCampaignById(campaignId);
   if (!dawns || !campaign?.gameSettings.variantRules.supplies) {
@@ -102,8 +136,13 @@ export function upkeepAtDawns(
       continue;
     }
     let sheet = stale;
+    // What the days will cost the purse (lifestyle.ts chargeLifestyle): one
+    // that cannot keep a lifestyle up lives wretched, and eats from the pack.
+    const covered = paid[stale.id];
+    const chosen = covered === undefined ? null : lifestyleOf(campaignId, stale.id);
+    const kept = covered !== undefined && lifestyleFeeds(chosen && livedLifestyle(chosen, purseOf(stale), dawns, covered), covered);
     for (let day = 0; day < Math.min(dawns, 30); day += 1) {
-      const upkeep = dayOfUpkeep(sheet, next[sheet.id] ?? { food: 0, water: 0 }, waterRation);
+      const upkeep = dayOfUpkeep(sheet, next[sheet.id] ?? { food: 0, water: 0 }, waterRation, kept || (meal && day === 0));
       next[sheet.id] = upkeep.hunger;
       if (upkeep.halfWater) {
         const save = characterSave(campaign, sheet, { ability: "con", dc: 15, detail: `${sheet.name}: CON save on half water`, against: "exhaustion" });

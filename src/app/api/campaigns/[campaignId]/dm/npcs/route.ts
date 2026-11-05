@@ -2,6 +2,7 @@ import { z } from "zod";
 import { isErrorResponse, requireDm, requirePrepAuthority } from "@/lib/campaign-api";
 import { createNpcFromDraft, listNpcs } from "@/lib/db/npcs";
 import { publishCast } from "@/lib/dm/cast";
+import { knownBeforeOpen, openMarkedAtBegunTable } from "@/lib/dm/known-before";
 import { describePersonality, normalizeNpcDraft, relationGraph } from "@/lib/npcs/forge";
 import { queueNpcPortrait } from "@/lib/portrait";
 import { recordsChanged } from "@/lib/workshop/record-events";
@@ -51,6 +52,10 @@ export async function GET(
     graph: relationGraph(
       npcs.map((npc) => ({ name: npc.name, relations: npc.agency.relations })),
     ),
+    // Whether "known before the story" can still matter (issue 731): in a
+    // workshop, and at a table whose GM has not yet narrated. A host without
+    // the field sends nothing, and the form leaves the control out.
+    knownBeforeOpen: knownBeforeOpen(context.campaign),
   });
 }
 
@@ -83,10 +88,14 @@ export async function POST(
 
   const npc = createNpcFromDraft(campaignId, outcome.draft);
   publishCast(campaignId);
+  // Someone the party knew before the story, marked before the GM's first
+  // narration, is known from now (issue 731).
+  openMarkedAtBegunTable(context.campaign, npc);
   if (parsed.data.portrait) {
     queueNpcPortrait(context.campaign, {
       id: npc.id,
       gender: npc.gender,
+      race: npc.race,
       role: npc.role,
       trait: npc.trait,
       // The axes as adjectives, which is what a render prompt can use;

@@ -65,7 +65,7 @@ import { renderQuestsForPrompt } from "@/lib/dm/quest-logic";
 import { describeEffect } from "@/lib/dm/effects-logic";
 import { getMounts } from "@/lib/db/mounts";
 import { describeMount } from "@/lib/srd/mounts";
-import { formatCopper } from "@/lib/srd/currency";
+import { formatCopper, formatPrice, purseCoins, purseCopper } from "@/lib/srd/currency";
 import { coverPromptBlock } from "@/lib/dm/delegation";
 import { ENGINE_BOUNDARY_CHECK, ENGINE_BOUNDARY_RULES } from "@/lib/dm/engine-boundary";
 import { normalizeGm, normalizeSafety, renderGmBlock, renderSafetyBlock } from "@/lib/dm/safety-logic";
@@ -178,6 +178,8 @@ export type DmEncounterState = {
   orderReady: boolean;
   order: Array<{ name: string; current: boolean }>;
   awaitingInitiative: string[];
+  // The characters this fight goes on without until they arrive (issue 740).
+  away?: string[];
   // What the combatant whose turn it is still has to spend, or null before
   // they have spent anything (src/lib/dm/action-budget.ts).
   turnBudget: string | null;
@@ -195,6 +197,10 @@ export type DmEncounterState = {
   // `round`: the round the current character's turn is in, the next one
   // when the enemies due close this one.
   enemiesDue?: { before: string; enemies: Array<{ enemyId: string; name: string }>; round: number };
+  // The hits a reaction may still answer, by character (turn.ts
+  // openHitsForState); `ai` marks a companion nobody commands, whose
+  // reactions are the AI's. Absent when none are open.
+  openHits?: Array<{ characterId: string; name: string; ai: boolean; hits: Array<{ hitId: string; what: string }> }>;
   // A lair fight's printed options, numbered as lair_action takes them
   // (src/lib/dm/legendary-tools.ts); absent when the lair prints none.
   lairOptions?: string[];
@@ -634,7 +640,7 @@ export function describeSheet(
     ? encumbranceFor({
         strength: sheet.abilities.str,
         equipment: sheet.equipment ?? [],
-        coins: sheet.gold ?? 0,
+        coins: purseCoins({ gold: sheet.gold ?? 0, copper: sheet.copper ?? 0 }),
         size: sizeForRace(sheet.race),
       })
     : null;
@@ -690,7 +696,7 @@ export function describeSheet(
     // What it shrugs off, so the damage the DM routes at it carries a type.
     const defenses = defenseWords(pet);
     lines.push(
-      `  Pet: ${pet.name} (${pet.form}, ${pet.kind.replaceAll("_", " ")}): ${pet.hp}/${pet.maxHp} HP, AC ${pet.ac}, speed ${pet.speed} ft.${attacks}${defenses ? ` Defenses: ${defenses}.` : ""}${pet.notes ? ` ${pet.notes}` : ""}`,
+      `  Pet: ${pet.name} (${pet.form}, ${pet.creatureType ? `a ${pet.creatureType} ` : ""}${pet.kind.replaceAll("_", " ")}): ${pet.hp}/${pet.maxHp} HP, AC ${pet.ac}, speed ${pet.speed} ft.${attacks}${defenses ? ` Defenses: ${defenses}.` : ""}${pet.notes ? ` ${pet.notes}` : ""}`,
     );
   }
   // A creature a spell made: its stat block's attacks and how it ends
@@ -782,14 +788,15 @@ export function describeSheet(
   } else {
     lines.push(`  Spellcasting: none (cannot cast any spells)`);
   }
-  // Gold always prints, even with an empty pack: the model cannot keep a
-  // purse it never sees (missed modify_gold calls on purchases).
+  // The purse always prints, even with an empty pack: the model cannot keep a
+  // purse it never sees (missed modify_gold calls on purchases). All of it, so
+  // a hero with only silver left does not read as having nothing.
   lines.push(
     `  Equipment (complete inventory, they carry nothing else): ${
       sheet.equipment.length
         ? sheet.equipment.map((item) => describeEquipmentItem(item, sheet.equipment)).join(", ")
         : "none"
-    } | Gold: ${sheet.gold}`,
+    } | Purse: ${formatPrice(purseCopper({ gold: sheet.gold, copper: sheet.copper ?? 0 }))}`,
   );
   // What the hands hold and the body wears, on a sheet that says (issue
   // #424): an attack with anything else draws it first, the turn's free
@@ -1081,11 +1088,25 @@ export function buildGameStateBlock(state: DmGameState): string {
           `Waiting on ${name}'s player: they have not declared an action this turn. Set the scene and ask what ${name} does; the server refuses any action or end_turn for ${name} until they do.`,
         );
       }
+      if (encounter.openHits?.length) {
+        const who = encounter.openHits.map(
+          (entry) =>
+            `${entry.name} [characterId=${entry.characterId}${entry.ai ? ", yours to react for" : ""}]: ${entry.hits.map((hit) => `hitId=${hit.hitId} ${hit.what}`).join("; ")}`,
+        );
+        lines.push(
+          `Open hits a reaction may still answer (use_reaction; name the one answered in hit when a character has several): ${who.join(". ")}. A player's character, and a companion a player commands, reacts only when their player says so. A companion marked yours to react for is played by you: when a reaction on its sheet fits (Shield, Uncanny Dodge, Parry, Protection for an ally), you may take it with use_reaction and its characterId.`,
+        );
+      }
     } else {
       lines.push(
         `Combat is starting. Initiative still needed from: ${
           encounter.awaitingInitiative.join(", ") || "nobody"
         }. Call request_roll with kind=initiative for each character listed.`,
+      );
+    }
+    if (encounter.away?.length) {
+      lines.push(
+        `Not at this fight: ${encounter.away.join(", ")}, with no place in the order and no token. When the story brings one here, call request_roll kind=initiative for them.`,
       );
     }
     lines.push(
@@ -1595,12 +1616,12 @@ export const requestPlayerInputTool = {
 // Location tools: the DM keeps a structured record of where the party is
 // and how areas connect, feeding GAME STATE and the map renderer.
 
-// A place's kind from a fixed list, so its sound, battle map and picture
-// never depend on reading its name in some language.
+// A place's kind from a fixed list, so its sound, battle map, picture and
+// light never depend on reading its name in some language.
 const sceneProperty = {
   type: "string",
   enum: sceneIds(),
-  description: "What kind of place this is, for its sound, battle map and picture. Set it when the party arrives somewhere new.",
+  description: "What kind of place this is, for its sound, battle map, picture and light. Set it when the party arrives somewhere new.",
 } as const;
 
 // What both location tools write about a place, worded once.
@@ -1894,7 +1915,7 @@ export function buildDmMessages(
     // parsing the sentence (src/lib/dm/intent-logic.ts).
     const card =
       message.authorType === "player" && message.intent
-        ? `\n${describeIntent(message.intent, message.characterId, { resolved: state.engineCardIds?.has(message.id) ?? false })}`
+        ? `\n${describeIntent(message.intent, message.characterId, { resolved: (state.engineCardIds?.has(message.id) ?? false) || Boolean(message.cardResolvedAt) })}`
         : "";
     return { message, id: message.id, seq: message.seq, text: `${content}${card}` };
   });

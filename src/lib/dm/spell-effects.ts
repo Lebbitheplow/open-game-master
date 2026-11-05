@@ -216,13 +216,16 @@ export function spellEffectsOnEnemyDamage(enemyId: string): string[] {
 // creature: every instance that ends on damage goes, with the conditions its
 // spell laid beside it (Hypnotic Pattern's charm and incapacitation); every
 // spell that grants a save on damage saves once (`save` rolls it) and goes on
-// a success. Other sources of the same condition keep holding.
+// a success. Other sources of the same condition keep holding. Only a spell
+// ties conditions together: a source with no spell says who or what laid a
+// condition, not that its conditions are one effect, and a drow poison's
+// sleeper wakes still poisoned (SRD 5.1, Poisons).
 export function settleOnDamage(
   conditions: string[],
   meta: ConditionMetaMap,
   save: (entry: ConditionMeta, name: string) => boolean,
 ): { conditions: string[]; meta: ConditionMetaMap; changed: boolean; endedByDamage: string[] } {
-  const tagOf = (entry: ConditionMeta) => (entry.spell || entry.source ? `${textKey(entry.spell ?? "")}|${entry.source ?? ""}` : null);
+  const tagOf = (entry: ConditionMeta) => (entry.spell ? `${textKey(entry.spell)}|${entry.source ?? ""}` : null);
   const ending = new Set<string>();
   const byDamage = new Set<string>();
   for (const name of conditions) {

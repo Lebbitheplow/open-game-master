@@ -16,10 +16,12 @@ import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
 import { authoredSpendFor, gateHolds, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
+import { resourceDef, resourceName as counterName } from "@/lib/srd/class-resources";
 import type { SpendAction, SpendDoes } from "@/lib/srd/authored-effects-types";
 import { canAct } from "@/lib/dm/can-act";
+import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
-import { spendAction } from "@/lib/dm/action-budget";
+import { WEAPON_HIT, spendAction } from "@/lib/dm/action-budget";
 import { attacksAllowedFor, budgetFor, prepareReaction, storeBudget } from "@/lib/dm/turn-budget";
 import { resolveSpendEffect, type SpendContext } from "@/lib/dm/authored-spend-effects";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
@@ -65,7 +67,8 @@ function prepareCost(
   cost: SpendAction | undefined,
   label: string,
   onceKey: string | null,
-): ToolError | { commit: () => ToolResult } {
+  afterWeaponHit = false,
+): ToolError | { commit: () => ToolResult; marks?: string[] } {
   const encounter = getActiveEncounter(campaign.id);
   const inFight = encounter !== null && (encounter.kind ?? "fight") === "fight";
   if (!inFight || !encounter) {
@@ -75,11 +78,16 @@ function prepareCost(
   if (onceKey && budget?.oncePerTurn.includes(onceKey)) {
     return { error: `${label} is used once a turn, and ${sheet.name} has used it this turn.`, refused: "rules" };
   }
+  // Before this the use could be spent with no attack made at all.
+  if (afterWeaponHit && budget && !budget.oncePerTurn.some((mark) => mark.startsWith(WEAPON_HIT))) {
+    return { error: `${label} rides a weapon hit, and ${sheet.name} has landed none this turn: pc_attack first. Nothing was spent.`, refused: "rules" };
+  }
   if (cost === "reaction") {
     return prepareReaction(encounter, sheet, label);
   }
   if (!cost || cost === "none") {
     return {
+      ...(budget ? { marks: budget.oncePerTurn } : {}),
       commit: () => {
         const live = getActiveEncounter(campaign.id);
         if (onceKey && live && budget) {
@@ -92,6 +100,10 @@ function prepareCost(
   const able = canAct({ sheet, encounter, kind: cost });
   if (!able.ok) {
     return toolError(able);
+  }
+  const heldOff = heldTurnRefusal(encounter, sheet);
+  if (heldOff) {
+    return heldOff;
   }
   if (!budget) {
     return { commit: () => ({}) };
@@ -129,7 +141,10 @@ export function authoredFeatureSpend(
   reason: string,
 ): ToolResult | null {
   const sheet = getSheetById(stale.id) ?? stale;
-  const found = authoredSpendFor(sheet, resourceName);
+  // A counter's id names the same spend as the feature's name. Without this a
+  // call by id (sub_elder_champion) fell to the generic path, which spends the
+  // use and applies nothing.
+  const found = authoredSpendFor(sheet, resourceDef(resourceName)?.displayName ?? resourceName);
   if (!found) {
     return null;
   }
@@ -171,13 +186,13 @@ export function authoredFeatureSpend(
       return {
         error: state
           ? `${sheet.name} has ${state.max - state.used}/${state.max} left of what ${spend.name} spends, and it takes ${units}. Nothing was spent.`
-          : `${sheet.name} has no ${spend.pool.id.replace(/^sub_/, "").replace(/_/g, " ")} to spend on ${spend.name}.`,
+          : `${sheet.name} has no ${counterName(spend.pool.id)} to spend on ${spend.name}.`,
         refused: "rules",
       };
     }
   }
   const onceKey = spend.oncePerTurn ? (spend.onceKey ?? `authored:${textKey(spend.name)}`) : null;
-  const charge = prepareCost(campaign, sheet, picked.action, spend.name, onceKey);
+  const charge = prepareCost(campaign, sheet, picked.action, spend.name, onceKey, spend.afterWeaponHit);
   if ("error" in charge) {
     return charge;
   }
@@ -193,6 +208,7 @@ export function authoredFeatureSpend(
     units,
     mods: computeSheetDerived(sheet).abilityMods,
     reason,
+    ...("marks" in charge && charge.marks ? { marks: charge.marks } : {}),
   };
   const outcome = resolveSpendEffect(ctx, picked.does);
   if ("error" in outcome) {

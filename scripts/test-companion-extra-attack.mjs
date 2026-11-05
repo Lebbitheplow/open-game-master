@@ -9,7 +9,8 @@
 //   - A companion the GM plays has the swings the model left made by the
 //     server before the turn passes, on the creature it last struck while
 //     that one stands, and every swing when the model made none.
-//   - A companion with one attack still has its turn end on that attack.
+//   - A companion the GM plays with one attack still has its turn end on
+//     that attack; a commanded one keeps it (test-companion-turn-stays.mjs).
 import assert from "node:assert/strict";
 import { openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
@@ -85,8 +86,8 @@ function dmTurnEnds(world, turn) {
   tools.advanceAfterTurn(world.campaign(), getDmTurn(turn.id));
 }
 
-await test("A commanded companion with Extra Attack keeps the turn after its first attack, and the second ends it", async () => {
-  const { world, tamsin, goblin } = await table({ commanded: true });
+await test("A commanded companion with Extra Attack keeps the turn after its first attack, and its commander ends it", async () => {
+  const { world, kit, tamsin, goblin } = await table({ commanded: true });
   world.say("player", "Tamsin attacks the goblin.", world.sheet(tamsin.id));
   const turn = createDmTurn(world.campaignId, [], "ai");
   const first = await modelAttacks(world, turn, tamsin, goblin);
@@ -107,8 +108,10 @@ await test("A commanded companion with Extra Attack keeps the turn after its fir
   assert.equal(second.ok, true, second.error);
   assert.equal(second.result.attacksRemaining, undefined, "no attack is left");
   dmTurnEnds(world, next);
-  assert.notEqual(current(world)?.characterId, tamsin.id, "the turn ends with the Attack action spent");
+  assert.equal(current(world)?.characterId, tamsin.id, "the Attack action is spent, and her movement is still her commander's");
   assert.equal(swingsBy(world, tamsin.id).length, 2);
+  assert.equal(kit.endTurn(world.owner.id), true, "the commander ends her turn");
+  assert.notEqual(current(world)?.characterId, tamsin.id);
 });
 
 await test("A companion the GM plays makes the attack the model left, at the same target, before the turn passes", async () => {
@@ -146,20 +149,15 @@ await test("A companion the GM plays whose sword cannot reach the goblin this tu
   assert.deepEqual([kit.token(tamsin.id).x, kit.token(tamsin.id).y], [5, 5], "she walked up for nothing");
 });
 
-await test("A companion with one attack still has its turn end on it, commanded or not", async () => {
-  for (const commanded of [true, false]) {
-    const { world, tamsin, goblin } = await table({ level: 1, commanded });
-    if (commanded) {
-      world.say("player", "Tamsin attacks the goblin.", world.sheet(tamsin.id));
-    }
-    const turn = createDmTurn(world.campaignId, [], "ai");
-    const first = await modelAttacks(world, turn, tamsin, goblin);
-    assert.equal(first.ok, true, first.error);
-    assert.equal(first.result.attacksRemaining, undefined);
-    dmTurnEnds(world, turn);
-    assert.notEqual(current(world)?.characterId, tamsin.id, `the turn stayed (${commanded ? "commanded" : "GM's"})`);
-    assert.equal(swingsBy(world, tamsin.id).length, 1, `a second attack was made (${commanded ? "commanded" : "GM's"})`);
-  }
+await test("A companion the GM plays with one attack has its turn end on it", async () => {
+  const { world, tamsin, goblin } = await table({ level: 1 });
+  const turn = createDmTurn(world.campaignId, [], "ai");
+  const first = await modelAttacks(world, turn, tamsin, goblin);
+  assert.equal(first.ok, true, first.error);
+  assert.equal(first.result.attacksRemaining, undefined);
+  dmTurnEnds(world, turn);
+  assert.notEqual(current(world)?.characterId, tamsin.id, "the turn stayed");
+  assert.equal(swingsBy(world, tamsin.id).length, 1, "a second attack was made");
 });
 
 finish();

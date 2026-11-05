@@ -4,15 +4,20 @@
 // accept these forms (src/lib/dm/pet-tools.ts buildPet); the DM console's
 // picker in the browser reads their names alone (srd-creature-names.json).
 
-import { findNamed, namesHolding } from "@/lib/language/text-logic";
+import { findNamed, namesHolding, textKey, words } from "@/lib/language/text-logic";
 import type { SheetPet } from "@/lib/schemas/sheet";
 import { CHAIN_FORM_NAMES, FAMILIAR_FORM_NAMES, SRD_CREATURES, senseWords, traitName, type SrdCreature } from "@/lib/srd/srd-creatures";
 import { findBeastForm } from "@/lib/srd/beast-forms";
+import type { SummonCatalogue } from "@/lib/srd/summon-spells";
 
 export type FamiliarForm = Pick<SheetPet, "form" | "hp" | "maxHp" | "ac" | "speed" | "notes" | "attacks" | "resist" | "immune" | "vulnerable"> & {
   // The other names the spell gives the form ("toad" for the frog).
   aliases: string[];
   chainOnly?: boolean;
+  // The form's own creature type and challenge rating, for the summon
+  // picker's notes (the familiar itself is a celestial, fey or fiend).
+  creatureType: string;
+  cr: number;
 };
 
 // The form's movement, senses and traits by name, short enough for the pet
@@ -55,6 +60,8 @@ function familiarForm(creature: SrdCreature, aliases: string[], chainOnly: boole
     ...creatureDefenses(creature),
     aliases,
     ...(chainOnly ? { chainOnly: true } : {}),
+    creatureType: creature.type,
+    cr: creature.cr,
   };
 }
 
@@ -120,6 +127,45 @@ export function repairedPets(pets: SheetPet[]): SheetPet[] {
     return next;
   });
   return changed ? out : pets;
+}
+
+// The kinds a familiar may be instead of a beast, the caster's choice (SRD
+// 5.1 Find Familiar: "a celestial, fey, or fiend (your choice)"); the first
+// when none is named.
+export const FAMILIAR_KINDS = ["celestial", "fey", "fiend"];
+
+export const isFindFamiliar = (spell: string) => textKey(spell) === "find familiar";
+
+// The kind the caster chose the familiar to be instead of a beast (SRD 5.1:
+// "a celestial, fey, or fiend (your choice)"), read off the form asked for
+// ("fey owl", the summon picker's kind and form), and the form without it;
+// the first kind when none is named.
+export function familiarKindOf(variant: string): { kind: string; form: string } {
+  const said = words(variant);
+  const kind = FAMILIAR_KINDS.find((entry) => said.some((word) => textKey(word) === entry)) ?? FAMILIAR_KINDS[0];
+  return { kind, form: said.filter((word) => !FAMILIAR_KINDS.includes(textKey(word))).join(" ") };
+}
+
+// What the summon picker reads for Find Familiar (GET /api/campaigns/[id]/
+// summons, src/lib/battlemap/hand-summon.ts): each form with its block's
+// numbers, one familiar from any slot, Pact of the Chain's four marked so
+// the route offers them only to a caster with the pact.
+export function familiarCatalogue(): SummonCatalogue {
+  const counts = Object.fromEntries(Array.from({ length: 9 }, (_, index) => [String(index + 1), [1]]));
+  return {
+    spell: "Find Familiar",
+    calls: "forms",
+    kinds: FAMILIAR_KINDS,
+    forms: FAMILIAR_FORMS.map((entry) => ({
+      name: entry.form,
+      type: entry.creatureType,
+      cr: entry.cr,
+      ac: entry.ac,
+      hp: entry.maxHp,
+      counts,
+      ...(entry.chainOnly ? { chainOnly: true } : {}),
+    })),
+  };
 }
 
 // Every form's name, the Pact of the Chain forms included.

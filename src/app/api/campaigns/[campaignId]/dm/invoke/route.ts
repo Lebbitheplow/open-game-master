@@ -4,6 +4,7 @@ import { consoleAdjudications } from "@/lib/dm/invoke-catalog";
 import { invokeEngine } from "@/lib/dm/invoke";
 import { agentTurnBegunBefore, agentTurnFor, isAgentRequest, recordAgentCall } from "@/lib/dm/agent-turn";
 import { refuseDuringBreak } from "@/lib/dm/table-break";
+import { enemyCallRefusal } from "@/lib/workshop/test-seats-logic";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -53,6 +54,9 @@ const BREAK_OPEN = new Set([
 const invokeSchema = z.object({
   name: z.string().trim().min(1).max(60),
   args: z.record(z.string(), z.unknown()).default({}),
+  // A card of the monsters' Hand (MonsterHand.tsx), not the console's form:
+  // the same call, which a table the AI runs takes from the form only.
+  hand: z.boolean().optional(),
 });
 
 export async function POST(
@@ -87,13 +91,25 @@ export async function POST(
   if (paused) {
     return paused;
   }
+  // At a test fight the AI GM runs, the author holds the console beside it
+  // (issue 685): set-ups and corrections go through, and an enemy's own
+  // attack, action or ability is refused, so the author and the AI never
+  // both play the same monster. The monsters' Hand is these same calls. At a
+  // live table the AI runs with a person steering, the console's forms stay
+  // the steering seat's to correct with, and a monsters' Hand card is
+  // refused the same way: the AI's turn plays those creatures.
+  const { hand, ...call } = parsed.data;
+  const foes = agentCall ? null : enemyCallRefusal(campaign, call.name, call.args, { hand });
+  if (foes) {
+    return Response.json({ error: foes }, { status: 409 });
+  }
   // A connected agent program gets the AI's rails, not the console's
   // correction power (src/lib/dm/agent-turn.ts).
   const agent = agentCall ? agentTurnFor(campaignId) : null;
   const outcome = await invokeEngine(
     campaign,
     agent ? { kind: "ai", turnId: agent.id } : { kind: "human", userId: user.id },
-    parsed.data,
+    call,
   );
   if (agent) {
     recordAgentCall(agent.id, parsed.data.name, parsed.data.args, outcome.ok ? outcome.result : { error: outcome.error });

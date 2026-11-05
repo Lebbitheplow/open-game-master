@@ -11,6 +11,7 @@ import { getActiveEncounter } from "@/lib/db/encounters";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { actingCombatantId, canAct } from "@/lib/dm/can-act";
+import { releasesReadiedOffTurn } from "@/lib/dm/held-turn";
 import { removeConditions } from "@/lib/dm/condition-logic";
 import { READIED, READIED_WORDS, RELEASE_TOOLS, readiedHeld, type Readiable, type ReadiedHeld } from "@/lib/dm/readied-kinds";
 import { markReactionUsed } from "@/lib/dm/turn-budget";
@@ -35,7 +36,7 @@ export function readiedReleaseFor(
   if (!held || !encounter || (encounter.kind ?? "fight") !== "fight" || !encounter.orderReady) {
     return null;
   }
-  if (actingCombatantId(encounter) === sheet.id) {
+  if (actingCombatantId(encounter) === sheet.id && !releasesReadiedOffTurn(encounter, sheet)) {
     return null;
   }
   if (held.holds !== door) {

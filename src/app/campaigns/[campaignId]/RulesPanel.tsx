@@ -64,7 +64,7 @@ export const VARIANT_TOGGLES: Array<{
   {
     key: "supplies",
     label: "Food and water",
-    tip: "Each dawn every character eats a ration from their pack and drinks; going without costs exhaustion on the SRD's schedule, and that exhaustion stays until they eat. Off: the party is assumed supplied.",
+    tip: "Each dawn every character eats a ration from their pack and drinks, unless a lifestyle or a meal in the story covers it; going without costs exhaustion on the SRD's schedule, and that exhaustion stays until they eat. Off: the party is assumed supplied.",
   },
 ];
 

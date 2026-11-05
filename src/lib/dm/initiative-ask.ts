@@ -4,6 +4,7 @@ import { getActiveEncounter, listEnemies } from "@/lib/db/encounters";
 import { listSheets } from "@/lib/db/sheets";
 import { handleRequestRoll } from "@/lib/dm/invoke-roll";
 import { fieldedSheets } from "@/lib/dm/roster";
+import { atTheFight } from "@/lib/dm/fight-away-logic";
 
 // Asking the table for initiative when a person runs it (issue 63).
 //
@@ -52,7 +53,8 @@ export function askForInitiative(
   const sheets = listSheets(campaign.id);
   const sheetsById = new Map(sheets.map((sheet) => [sheet.id, sheet]));
   const ask: InitiativeAsk = { rolled: [], waiting: [], combat: null };
-  for (const sheet of fieldedSheets(campaign, sheets)) {
+  // Asking one who is away would bring them to the fight.
+  for (const sheet of atTheFight(encounter, fieldedSheets(campaign, sheets))) {
     if (placed.has(sheet.id) || asked.has(sheet.id) || sheet.deathSaves?.dead) {
       continue;
     }

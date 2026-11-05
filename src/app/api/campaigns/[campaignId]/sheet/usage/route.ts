@@ -10,6 +10,8 @@ import { publishPersisted } from "@/lib/events";
 import { spendAction } from "@/lib/dm/action-budget";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import { canAct } from "@/lib/dm/can-act";
+import { heldTurnRefusal } from "@/lib/dm/held-turn";
+import { dominatedRefusal } from "@/lib/dm/companion-command";
 import { recordManualTicks } from "@/lib/dm/manual-ticks";
 import { attunementRefusal, gearChanges, gearPatch, usageLowers, usageSpendsHitDice } from "@/lib/dm/usage-rules";
 import { acBreakdownFor } from "@/lib/srd";
@@ -149,6 +151,13 @@ export async function POST(
     : { armor: [], shields: [], attunement: [], held: [] };
   let wornEquipment: FullPatchSheetInput["equipment"] | null = null;
   if (parsed.data.gear) {
+    // In a fight, drawing a weapon or strapping on a shield is the character
+    // acting, which a dominated character's player no longer does: the GM
+    // plays them until the charm ends (src/lib/dm/companion-command.ts).
+    const held = encounter && !corrects ? dominatedRefusal(campaignId, sheet) : null;
+    if (held) {
+      return Response.json({ error: held, dominated: true }, { status: 409 });
+    }
     if (Object.keys(parsed.data.gear).some((name) => !sheet.equipment.some((item) => item.name === name))) {
       return Response.json(
         { error: `${sheet.name} does not carry one of those items.` },
@@ -209,6 +218,10 @@ export async function POST(
       if (!able.ok) {
         return refuse(able.error);
       }
+      const heldOff = heldTurnRefusal(encounter, sheet);
+      if (heldOff) {
+        return refuse(heldOff.error);
+      }
       const budget = budgetFor(encounter, sheet.id, attacksAllowedFor(sheet));
       if (!budget) {
         return refuse(
@@ -227,6 +240,10 @@ export async function POST(
       const able = canAct({ sheet, encounter, kind: "free" });
       if (!able.ok) {
         return refuse(able.error);
+      }
+      const heldOff = heldTurnRefusal(encounter, sheet);
+      if (heldOff) {
+        return refuse(heldOff.error);
       }
       let budget = shieldBudget?.ok ? shieldBudget.budget : budgetFor(encounter, sheet.id, attacksAllowedFor(sheet));
       if (!budget) {

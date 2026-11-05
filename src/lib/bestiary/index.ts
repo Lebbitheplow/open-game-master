@@ -13,7 +13,7 @@ import horrorJson from "@/lib/bestiary/horror.json";
 import mysteryJson from "@/lib/bestiary/mystery.json";
 import postApocalypticJson from "@/lib/bestiary/post-apocalyptic.json";
 import steampunkJson from "@/lib/bestiary/steampunk.json";
-import { findNamed, textKey } from "@/lib/language/text-logic";
+import { byName, findNamed, textKey } from "@/lib/language/text-logic";
 import { SRD_CREATURES, senseWords, type SrdCreature } from "@/lib/srd/srd-creatures";
 import { enemyAttackOf } from "@/lib/srd/creature-attacks";
 import { proficiencyBonus } from "@/lib/srd";
@@ -143,6 +143,22 @@ function fromSrdTable(ref: string, slug: string): { name: string; slug: string; 
   }
   const creature = SRD_CREATURES.find((entry) => entry.slug === slug) ?? findNamed(SRD_CREATURES, ref, (entry) => [entry.name]);
   return creature ? { name: creature.name, slug: creature.slug, stats: tableStats(creature) } : null;
+}
+
+// What a search for monsters to add finds in that table on a server with no
+// content pack: the creatures whose names hold what was typed, by name, as
+// the pack's own search answers (src/lib/content/index.ts). They are the
+// blocks such a server deploys (fromSrdTable above), so without them the
+// encounter roster and a fight event's arrivals found no goblin to add while
+// a goblin typed by hand fought. With the pack, its rows answer instead.
+export function searchSrdTable(q: string, options: { limit?: number; maxCr?: number } = {}): SrdCreature[] {
+  const needle = textKey(q);
+  if (!needle || getContentDb()) {
+    return [];
+  }
+  return SRD_CREATURES.filter((creature) => textKey(creature.name).includes(needle) && (options.maxCr === undefined || creature.cr <= options.maxCr))
+    .sort(byName)
+    .slice(0, options.limit ?? 25);
 }
 
 function tableStats(creature: SrdCreature): EnemyStats {

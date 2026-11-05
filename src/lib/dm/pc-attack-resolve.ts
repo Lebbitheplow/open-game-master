@@ -4,6 +4,9 @@
 // Split from pc-attack.ts, which has already refused or paid for everything
 // this rolls; nothing here refuses the attack.
 
+import { getActiveEncounter } from "@/lib/db/encounters";
+import { settleAttackDie } from "@/lib/dm/forced-save";
+import { breakConcentration } from "@/lib/dm/concentration";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { openLastHit } from "@/lib/dm/last-hit";
 import { getFoe } from "@/lib/dm/sheet-foe";
@@ -22,15 +25,16 @@ import { insertRoll, landRoll, type StoredRoll } from "@/lib/db/rolls";
 import { d20Expression, rollExpression, type DiceTerm } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
 import { planAttackFx, type RollVisibility } from "@/lib/battlemap/fx-plan";
-import { attacksLeft } from "@/lib/dm/action-budget";
+import { attacksLeft, WEAPON_HIT } from "@/lib/dm/action-budget";
 import { adjudicateHit } from "@/lib/dm/attack-logic";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { darkOnesBlessing } from "@/lib/dm/feature-hooks";
 import { authoredOnHit } from "@/lib/dm/authored-hooks";
-import { critDamageExpression } from "@/lib/dm/encounter-logic";
+import { critDamageExpression, ordinaryOfCritical } from "@/lib/dm/encounter-logic";
+import { critOnlyWhileUnconscious } from "@/lib/dm/condition-logic";
 import { gearCritRiders } from "@/lib/dm/gear-attack";
 import { publishFx, tokenPosition } from "@/lib/dm/fx";
-import { applyHitDamage, claimHitRiders, type strikeDamage } from "@/lib/dm/pc-attack-damage";
+import { applyHitDamage, blowSource, claimHitRiders, strikesAsMagic, type strikeDamage } from "@/lib/dm/pc-attack-damage";
 import type { AttackPlan, ManeuverPick } from "@/lib/dm/pc-attack-plan";
 import {
   applyRiderCondition,
@@ -43,7 +47,7 @@ import {
 } from "@/lib/dm/pc-attack-riders";
 import { applySpellHitCondition, healCasterHalf, spellAttackRider } from "@/lib/dm/spell-attack-riders";
 import { hasElvenAccuracy, hasHalflingLuck } from "@/lib/srd/feature-effects";
-import { FOE_SLAYER, rescueMiss, STROKE_OF_LUCK } from "@/lib/dm/attack-features";
+import { FOE_SLAYER, rescueMiss, STROKE_OF_LUCK, totalAReactionMeets } from "@/lib/dm/attack-features";
 import {
   HURL_THROUGH_HELL,
   hurlThroughHell,
@@ -122,7 +126,14 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike): Record<string, u
   const hitLog = isSheetFoe(enemy) ? openLastHit(campaign.id, enemy.id) : null;
   const closeLog = () =>
     hitLog?.close({ attacker: { kind: "sheet", id: sheet.id, name: sheet.name }, attack: plan.profile.weapon, type: plan.profile.damageType, ranged: plan.profile.ranged });
-  const hitOutcome = rollExpression(strike.toHitExpression);
+  const thrown = rollExpression(strike.toHitExpression, undefined, { purpose: { roller: "hero", kind: "attack", who: sheet.name } });
+  // Improved and Superior Critical are written for weapon attacks; a mark
+  // (Hexblade's Curse) for every attack on its creature.
+  const critRange = Math.min(plan.weaponAttack ? riders.critRange : 20, markCritRange(plan.marks.applies));
+  const hitOutcome = settleAttackDie(campaign.id, sheet, thrown, plan.effectiveAc, critRange);
+  if (hitOutcome !== thrown) {
+    context.notes.push(`spends their Bardic Inspiration die on the miss: ${thrown.total} becomes ${hitOutcome.total}`);
+  }
   const hitRoll = insertRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
@@ -138,25 +149,31 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike): Record<string, u
 
   const judged = adjudicateHit(hitOutcome.total, hitOutcome.crit, plan.effectiveAc, {
     natural: hitOutcome.natural,
-    // Improved and Superior Critical are written for weapon attacks; a mark
-    // (Hexblade's Curse) for every attack on its creature.
-    critRange: Math.min(plan.weaponAttack ? riders.critRange : 20, markCritRange(plan.marks.applies)),
+    critRange,
   });
   // Parry: the creature's reaction lifts its AC against a melee hit it sees (enemy-reactions.ts).
-  const parry = judged.hit && !judged.crit
-    ? tryParry({ encounter, enemy, total: hitOutcome.total, natural20: false, ac: plan.effectiveAc, melee: !plan.atRange, attackerUnseen: sheet.conditions.some((entry) => /^(invisible|hidden)$/i.test(entry.trim())) })
+  const metTotal = totalAReactionMeets({ total: hitOutcome.total, ac: plan.effectiveAc, hit: judged.hit, crit: judged.crit, natural1: hitOutcome.crit === "nat1", foeSlayer: plan.extras.foeSlayer });
+  const parry = metTotal !== null
+    ? tryParry({ encounter, enemy, total: metTotal, natural20: false, ac: plan.effectiveAc, melee: !plan.atRange, attackerUnseen: sheet.conditions.some((entry) => /^(invisible|hidden)$/i.test(entry.trim())) })
     : null;
   if (parry) {
     context.notes.push(parry.note);
+    // Foe Slayer's bonus lifted the near miss the reaction answered: it went on
+    // this roll, so it is spent, and cannot draw a second reaction or lift again.
+    if (metTotal !== hitOutcome.total) {
+      claimFoeSlayer(plan);
+      context.notes.push(`Foe Slayer: +${plan.extras.foeSlayer} lifted ${hitOutcome.total} to ${metTotal} before the reaction, and is spent`);
+    }
   }
   const adjudicated = parry ? { ...judged, hit: false, crit: false } : judged;
   // Foe Slayer turns a near miss into a hit, and a declared Stroke of Luck
-  // any miss (src/lib/dm/attack-features.ts).
+  // any miss (src/lib/dm/attack-features.ts). A reaction's raised AC is the
+  // figure a roll has to reach: one it turned has already met the plain AC.
   const rescued = adjudicated.hit
     ? null
     : rescueMiss({
         total: hitOutcome.total,
-        ac: plan.effectiveAc,
+        ac: plan.effectiveAc + (parry?.bonus ?? 0),
         natural1: hitOutcome.crit === "nat1",
         foeSlayer: plan.extras.foeSlayer,
         strokeOfLuck: plan.extras.strokeOfLuck,
@@ -204,7 +221,7 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike): Record<string, u
           attacksRemaining: attacksLeft(budget),
           extraAttack: `${sheet.name} has ${attacksLeft(budget)} more attack${
             attacksLeft(budget) === 1 ? "" : "s"
-          } this turn; call pc_attack again for each before ending their turn.`,
+          } this turn: one more entry each in pc_attack's attacks, before ending their turn.`,
         }
       : {}),
   };
@@ -213,6 +230,10 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike): Record<string, u
     closeLog();
     // Acid Arrow: a miss still deals half the damage.
     const grazed = spellRider?.halfOnMiss && hitOutcome.crit !== "nat1" ? missDamage(plan) : null;
+    // Witch Bolt's beam connects on a hit: a miss leaves nothing to hold.
+    if (spellRider?.beam) {
+      breakConcentration(campaign, turn.id, sheet.id, `${spellRider.beam} missed`);
+    }
     const curving = plan.weaponAttack && profile.ranged ? openCurvingShot(campaign.id, sheet, enemy.id, profile.base) : null;
     if (curving) {
       context.notes.push(curving);
@@ -281,6 +302,7 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike): Record<string, u
     : profile.damageExpression;
   let damageOutcome = rollExpression(damageExpression, undefined, {
     rerollBelow: strike.rerollBelow,
+    purpose: { roller: "hero", kind: "damage", who: sheet.name },
   });
   if (stunShot) {
     context.notes.push("Stunning Sniper: the critical hit's damage is not doubled; the target is stunned instead");
@@ -361,25 +383,60 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike): Record<string, u
       critExtraDice,
     }),
   );
-  hitLog?.swing(hitOutcome, plan.effectiveAc, { hit: true, crit, raw: dealt, advantage: plan.advantage, type: profile.damageType, ranged: profile.ranged });
+  // A critical that came only from the character it struck lying unconscious
+  // at 0 within 5 ft (SRD 5.1) keeps its ordinary damage from the same dice,
+  // for a reaction that later leaves them standing when it landed
+  // (reaction-refund.ts). A natural 20 is critical whatever the target.
+  const ordinaryRoll =
+    hitLog && crit && !stunShot && hitOutcome.crit !== "nat20" && enemy.currentHp <= 0 && critOnlyWhileUnconscious(enemy.conditions)
+      ? ordinaryOfCritical(damageOutcome, profile.damageExpression, { multiplyNumeric: strike.critOptions?.multiplyNumeric, extraDice: critExtraDice })
+      : null;
+  // A critical's normal figure, for Sentinel at Death's Door (last-hit.ts); a
+  // natural 20's gear dice belong to the critical, so none is read past them.
+  const normalRoll =
+    hitLog && crit && !stunShot && !critGear?.suffix
+      ? ordinaryOfCritical(damageOutcome, profile.damageExpression, { multiplyNumeric: strike.critOptions?.multiplyNumeric, extraDice: critExtraDice })
+      : null;
+  hitLog?.swing(hitOutcome, plan.effectiveAc, {
+    hit: true,
+    crit,
+    raw: dealt,
+    advantage: plan.advantage,
+    type: profile.damageType,
+    ranged: profile.ranged,
+    ...(ordinaryRoll ? { ordinary: { raw: Math.max(0, ordinaryRoll.total) } } : {}),
+    ...(normalRoll ? { normal: { raw: Math.max(0, normalRoll.total), from: dealt } } : {}),
+    // What the blow is made of, as the damage path met it (pc-attack-damage.ts
+    // landBlow): a reaction's replay meets the same clauses (a magic weapon
+    // past Stoneskin, a silvered blade past a form's resistance).
+    flags: { ...(strikesAsMagic(plan) ? { magical: true } : {}), ...(profile.material ?? {}), ...blowSource(plan) },
+  });
   closeLog();
 
+  // A weapon's hit opens Arcane Jolt this turn, at the creature it hit. Stored on
+  // the encounter as it now stands: `encounter` predates the blow, and saving it
+  // would undo what the blow wrote (a legendary creature's failed save, the end of
+  // the fight).
+  if (plan.weaponAttack && budget && !applied.encounterOver && holdsFeature(sheet, "arcane jolt") && !budget.oncePerTurn.includes(`${WEAPON_HIT}${enemy.id}`)) {
+    budget.oncePerTurn.push(`${WEAPON_HIT}${enemy.id}`);
+    const live = getActiveEncounter(campaign.id);
+    if (live?.turnBudget) {
+      storeBudget(live, { ...live.turnBudget, oncePerTurn: [...live.turnBudget.oncePerTurn, `${WEAPON_HIT}${enemy.id}`] });
+    }
+  }
   // Great Weapon Master: a melee weapon crit or kill opens a bonus-action
   // melee attack this turn (pc-attack-options.ts reads the key).
   if (
-    plan.weaponAttack && !profile.ranged && !plan.atRange && (crit || applied.dead) && budget &&
+    plan.weaponAttack && !profile.ranged && !plan.atRange && (crit || applied.dead) && budget && !applied.encounterOver &&
     holdsFeat(sheet, "Great Weapon Master") && !budget.oncePerTurn.includes(GREAT_WEAPON_MASTER_READY)
   ) {
-    budget.oncePerTurn.push(GREAT_WEAPON_MASTER_READY);
-    // The budget was stored before the roll; the key goes on the stored copy.
-    storeBudget(encounter, budget);
-    context.notes.push(`Great Weapon Master: ${crit ? "the critical hit" : "the kill"} opens a bonus-action melee attack this turn (bonusAttack "feature")`);
+    markLiveTurn(campaign.id, budget, GREAT_WEAPON_MASTER_READY);
+    context.notes.push(`Great Weapon Master: ${crit ? "the critical hit" : "the kill"} opens a bonus-action melee attack this turn (an entry with feature "Great Weapon Master")`);
   }
   // Tavern Brawler: a hit with an unarmed strike or an improvised weapon
   // opens a bonus-action grapple (take_action grapple, action-tools.ts).
-  if ((profile.unarmed || profile.improvised) && !profile.ranged && budget && brawlerUnarmed(sheet) && !budget.oncePerTurn.includes(TAVERN_GRAPPLE_READY)) {
-    budget.oncePerTurn.push(TAVERN_GRAPPLE_READY);
-    storeBudget(encounter, budget);
+  if ((profile.unarmed || profile.improvised) && !profile.ranged && budget && !applied.encounterOver && brawlerUnarmed(sheet) && !budget.oncePerTurn.includes(TAVERN_GRAPPLE_READY)) {
+    markLiveTurn(campaign.id, budget, TAVERN_GRAPPLE_READY);
     context.notes.push("Tavern Brawler: the hit opens a bonus-action grapple this turn (take_action grapple)");
   }
   // What the hit leaves on the target: Stunning Sniper's stun, Slasher's
@@ -444,6 +501,17 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike): Record<string, u
   };
 }
 
+// A mark a landed blow earns goes on the encounter as it now stands. The plan's
+// copy predates the blow, and storing it undid what the blow wrote: the end of
+// the fight (which then stood open for end_encounter to pay its XP again) and a
+// legendary creature's failed save.
+function markLiveTurn(campaignId: string, budget: TurnBudget, key: string) {
+  const live = getActiveEncounter(campaignId);
+  if (live?.turnBudget?.ownerId === budget.ownerId) {
+    storeBudget(live, { ...live.turnBudget, oncePerTurn: [...live.turnBudget.oncePerTurn, key] });
+  }
+}
+
 // Pays for a rescued miss: Foe Slayer's once a turn, or Stroke of Luck's use.
 function payRescue(plan: AttackPlan, rescued: "foe slayer" | "stroke of luck"): boolean {
   if (rescued === "foe slayer") {
@@ -458,11 +526,18 @@ function payRescue(plan: AttackPlan, rescued: "foe slayer" | "stroke of luck"): 
   return true;
 }
 
-// Foe Slayer is once on each of the ranger's turns: the turn remembers it.
+// Foe Slayer is once on each of the ranger's turns: the turn remembers it. The
+// mark goes on the turn's budget itself: written on a copy, the next store of
+// that budget (Brutal Attack, Savage Attacker, Piercer, the riders' claim after a
+// rescued miss) dropped it and the bonus rode a second attack. The encounter's
+// budget comes first: a cast has moved the turn on from the plan's
+// (pc-attack-spell.ts), and storing that one would undo the cast.
 function claimFoeSlayer(plan: AttackPlan) {
-  const live = plan.encounter.turnBudget ?? plan.budget;
+  const { encounter } = plan;
+  const live = encounter.turnBudget ?? plan.budget;
   if (live && !live.oncePerTurn.includes(FOE_SLAYER)) {
-    storeBudget(plan.encounter, { ...live, oncePerTurn: [...live.oncePerTurn, FOE_SLAYER] });
+    live.oncePerTurn.push(FOE_SLAYER);
+    storeBudget(encounter, live);
   }
 }
 
@@ -702,8 +777,7 @@ function featHitMarks(input: {
   if (typeFeat === "Slasher") {
     if (unused && leave("hamstrung")) {
       notes.push(`Slasher: ${enemy.displayName}'s speed is reduced by 10 feet until the start of ${sheet.name}'s next turn`);
-      budget.oncePerTurn.push(usedKey);
-      storeBudget(encounter, budget);
+      markLiveTurn(campaign.id, budget, usedKey);
     }
     if (crit && leave("shaken")) {
       notes.push(`Slasher: the critical hit puts ${enemy.displayName}'s attack rolls at disadvantage until the start of ${sheet.name}'s next turn`);
@@ -716,8 +790,7 @@ function featHitMarks(input: {
           ? `Crusher: ${enemy.displayName} is moved 5 feet to (${pushed.at.x},${pushed.at.y})`
           : `Crusher: ${enemy.displayName} could not be moved 5 feet (${pushed.reason})`,
       );
-      budget.oncePerTurn.push(usedKey);
-      storeBudget(encounter, budget);
+      markLiveTurn(campaign.id, budget, usedKey);
     }
     if (crit && leave("exposed")) {
       notes.push(`Crusher: the critical hit leaves ${enemy.displayName} exposed; attacks against it have advantage until the start of ${sheet.name}'s next turn`);

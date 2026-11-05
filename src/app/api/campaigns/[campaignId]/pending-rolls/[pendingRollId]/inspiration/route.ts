@@ -40,6 +40,10 @@ export async function POST(
   if (pending.userId !== context.user.id) {
     return Response.json({ error: "This is not your roll." }, { status: 403 });
   }
+  // Advantage is chosen before the d20 is thrown, and these dice are thrown.
+  if (pending.thrown) {
+    return Response.json({ error: "The dice have already landed, so Inspiration can no longer give this roll advantage." }, { status: 409 });
+  }
   const sheet = pending.characterId ? getSheetById(pending.characterId) : null;
   if (sheet && sheet.userId !== context.user.id) {
     return Response.json({ error: "Only the character's own player spends their Inspiration." }, { status: 403 });

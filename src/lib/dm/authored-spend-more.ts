@@ -24,6 +24,7 @@ import { pushTokenAway } from "@/lib/dm/map-tools";
 import type { SpendContext } from "@/lib/dm/authored-spend-effects";
 import type { FullPatchSheetInput } from "@/lib/schemas/sheet";
 import type { ToolError } from "@/lib/dm/tool-errors";
+import { swallowCoverError } from "@/lib/dm/swallow";
 
 type Resolution = ToolError | { result: Record<string, unknown> };
 
@@ -39,6 +40,11 @@ export function swarmPush(ctx: SpendContext, does: Extract<SpendDoes, { kind: "s
   const enemy = ref ? resolveTargetFoe(encounter.campaignId, encounter, ref) : null;
   if (!enemy || enemy.status !== "alive") {
     return { error: `${ctx.spend.name} moves the creature ${ctx.sheet.name} just hit: pass its targetEnemyId. Nothing was spent.`, retry: true };
+  }
+  // Not across a swallower's wall (swallow.ts).
+  const walled = swallowCoverError(ctx.sheet.id, enemy.id);
+  if (walled) {
+    return walled;
   }
   if (!pairs?.includes(enemy.id)) {
     return { error: `${ctx.spend.name} follows ${ctx.sheet.name}'s hit on ${enemy.displayName} this turn, and they have not attacked it this round. Nothing was spent.`, refused: "rules" };

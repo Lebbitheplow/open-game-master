@@ -15,7 +15,7 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3-multiple-ciphers";
-import { tagsOfPackItem } from "./lib/item-tag-rules.mjs";
+import { inMagicTable, tagsOfPackItem, unplaced, usedUpWords } from "./lib/item-tag-rules.mjs";
 import { ADDED, RETAGGED } from "./lib/item-tag-corrections.mjs";
 import { nameBase } from "./lib/name-base.mjs";
 
@@ -39,10 +39,25 @@ const rows = db
   .all();
 db.close();
 
+// A magic item outside the magic item table that no word of its name or
+// category places is kept or used up by its own text (scripts/lib/
+// item-tag-rules.mjs usedUpWords). The table is scripts/generate-magic-items.mjs's
+// output, so run that first. An item two documents describe is used up when
+// either text says so: the SRD's Feather Token is "single use", and the
+// other document gives its kinds in a roll table.
+const inTable = inMagicTable(JSON.parse(readFileSync(join(root, "src", "lib", "classes", "magic-items.json"), "utf8")).items);
+const nameTags = (row) => RETAGGED[row.name.toLowerCase()] ?? tagsOfPackItem(row.name, row.kind, row.category);
+const readsText = (row) => row.kind === "magic_item" && !RETAGGED[row.name.toLowerCase()] && !inTable(row.name, row.slug) && unplaced(nameTags(row));
+const usedUp = new Set(
+  rows
+    .filter((row) => readsText(row) && usedUpWords(row.name, row.category ?? "", String(JSON.parse(row.data_json || "{}").desc ?? "")))
+    .map((row) => row.name.toLowerCase()),
+);
+
 // Another document's weapon or armor is swung or worn as the SRD one it is
 // built on (scripts/lib/name-base.mjs), which the engines read off the row.
 const items = rows.map((row) => {
-  const tags = RETAGGED[row.name.toLowerCase()] ?? tagsOfPackItem(row.name, row.kind, row.category);
+  const tags = readsText(row) ? [...nameTags(row), usedUp.has(row.name.toLowerCase()) ? "consumable" : "durable"] : nameTags(row);
   const base = !row.srd && (row.kind === "weapon" || row.kind === "armor") ? nameBase(row.name, row.kind) : null;
   return base ? [row.name, row.slug, tags, base] : [row.name, row.slug, tags];
 });

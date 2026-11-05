@@ -1,9 +1,11 @@
 import { proficiencyBonus } from "@/lib/srd";
-import { beastFormsHolding, findBeastForm, findShapeForm, formatCr, wildShapeCapsFor } from "@/lib/srd/beast-forms";
+import { BEAST_FORMS, SHAPE_FORMS, beastFormsHolding, findBeastForm, findShapeForm, formatCr, wildShapeCapsFor, type BeastForm } from "@/lib/srd/beast-forms";
 import { isNamed } from "@/lib/srd/feature-names";
 import { featureChoiceOf } from "@/lib/srd/features";
 import { classLevelFor } from "@/lib/srd/multiclass";
-import { creatureDefenses, familiarOffer, familiarFormsHolding, findFamiliarForm } from "@/lib/srd/familiar-forms";
+import { creatureDefenses, familiarOffer, familiarFormsHolding, findFamiliarForm, FAMILIAR_FORMS } from "@/lib/srd/familiar-forms";
+import type { PetFormCatalogue } from "@/lib/dm/pet-form-logic";
+import { findSummonForm } from "@/lib/srd/summon-forms";
 import { creatureAttackOf, type CreatureAttack } from "@/lib/srd/creature-attacks";
 import { traitLine } from "@/lib/srd/srd-creatures";
 import { sizeRank } from "@/lib/bestiary/statblock";
@@ -131,6 +133,9 @@ export function buildPet(
   args: {
     kind: SheetPet["kind"];
     form: string;
+    // A familiar's celestial, fey or fiend (the caster's choice); celestial
+    // when none is named.
+    creatureType?: SheetPet["creatureType"];
     name?: string;
     essence?: string;
     hp?: number;
@@ -167,6 +172,7 @@ export function buildPet(
       name: args.name?.trim() || form.form,
       kind: "familiar",
       form: form.form,
+      creatureType: args.creatureType ?? "celestial",
       hp: form.hp,
       maxHp: form.maxHp,
       ac: form.ac,
@@ -268,7 +274,7 @@ export function buildPet(
   }
   if (!args.hp || !args.ac) {
     return {
-      error: `"${args.form.trim()}" names no stat block the table knows. Name an SRD creature (mastiff, wolf, riding horse) or a monster the table made in the workshop, or send its hp and ac for a pet that cannot attack.`,
+      error: `"${args.form.trim()}" names no stat block the table knows. Pick an SRD creature (mastiff, wolf, riding horse) or one of this table's monsters (to give it a stat block, build it in the workshop's Bestiary or the console's, then pick it), or send its hp and ac for a pet that cannot attack.`,
       retry: true,
     };
   }
@@ -283,6 +289,34 @@ export function buildPet(
     attacks: [],
     notes: "",
   };
+}
+
+// The creature type a pet is, for every rule that reads one: a familiar's
+// celestial, fey or fiend (the caster's choice, on the record), else its
+// form's own (a pet stored before the record kept a kind reads as its form,
+// as it always did); a drake is a dragon.
+// Every creature Summon a pet can name, by kind (pet-form-logic.ts), from
+// the same tables buildPet reads; the table's own monsters come from the
+// caller, which knows its authors.
+export function petFormCatalogue(tableMonsters: readonly string[]): PetFormCatalogue {
+  const fits = (form: BeastForm) => form.cr <= 0.25 && sizeRank(form.size) <= sizeRank("Medium");
+  return {
+    familiar: FAMILIAR_FORMS.map((form) => ({ name: form.form, ...(form.chainOnly ? { chainOnly: true } : {}) })),
+    companion: BEAST_FORMS.filter(fits).map((form) => form.name),
+    drake: ["Drake"],
+    table: [...tableMonsters],
+    srd: SHAPE_FORMS.map((form) => form.name),
+  };
+}
+
+export function petCreatureType(pet: Pick<SheetPet, "kind" | "form" | "creatureType">): string {
+  if (pet.creatureType) {
+    return pet.creatureType;
+  }
+  if (pet.kind === "drake") {
+    return "dragon";
+  }
+  return (pet.kind === "familiar" ? findFamiliarForm(pet.form)?.creatureType : findSummonForm(pet.form)?.type) ?? "beast";
 }
 
 // The words a pet's defenses read in a summon's result and in GAME STATE.

@@ -239,6 +239,10 @@ export type ResourceDef = {
   // The character level the counter starts at (a tiefling's hellish rebuke
   // at 3rd); below it the sheet holds no counter.
   minLevel?: number;
+  // A feat's counter: a species trait of the same name is not the feat. A
+  // halfling's Lucky trait rerolls a natural 1 and has no luck points, and
+  // read as the feat it gave every halfling three to spend.
+  featOnly?: boolean;
   // When the refill depends on the level the counter is held at (Bardic
   // Inspiration comes back on a short rest from bard 5, Font of
   // Inspiration). Overrides `recharge` for rests that know the sheet.
@@ -340,7 +344,7 @@ const SRD_RESOURCE_DEFS: ResourceDef[] = [
     recharge: "short",
     effect: { kind: "narrative" },
     guidance:
-      "Ki fuels Flurry of Blows (a bonus-action pair of unarmed strikes: resolve each with pc_attack), Patient Defense (Dodge), and Step of the Wind (Dash or Disengage, doubled jump).",
+      "Ki fuels Flurry of Blows (a bonus-action pair of unarmed strikes: two pc_attack entries with feature 'Flurry of Blows', which spend the ki), Patient Defense (Dodge), and Step of the Wind (Dash or Disengage, doubled jump).",
   },
   {
     id: "sorcery_points",
@@ -358,12 +362,13 @@ const SRD_RESOURCE_DEFS: ResourceDef[] = [
     id: "luck_points",
     match: ["lucky", "fortunate"],
     exact: true,
+    featOnly: true,
     displayName: "Luck Points",
     maxFor: () => 3,
     recharge: "long",
     effect: { kind: "narrative" },
     guidance:
-      "Lucky (or Level Up's Fortunate): three luck points a long rest. One spent on their own attack roll, ability check or saving throw rolls an extra d20 and keeps the best (pc_attack luck: true, request_roll luck: true; the server spends the point), or on an attack made against them (use_reaction 'lucky' after the hit: the attacker's d20 is rolled again and the lower kept; no reaction is spent).",
+      "Lucky (or Level Up's Fortunate): three luck points a long rest. On their own ability check or saving throw the player chooses after they see the roll: request_roll offers it and waits, so do not spend it for them. On their attack roll, or when they say so before the roll, a point rolls an extra d20 and keeps the best (pc_attack luck: true, request_roll luck: true; the server spends the point), or on an attack made against them (use_reaction 'lucky' after the hit: the attacker's d20 is rolled again and the lower kept; no reaction is spent).",
   },
   {
     id: "ki_inner_resilience",
@@ -443,7 +448,7 @@ const SRD_RESOURCE_DEFS: ResourceDef[] = [
     recharge: "short",
     effect: { kind: "narrative" },
     guidance:
-      "Divine power channelled into a subclass effect. In a fight, name the option in variant: each costs what its own text says (most an action; Vow of Enmity, Champion Challenge, Turn the Tide, Emissary of Peace, Peerless Athlete and Inspiring Smite a bonus action; War God's Blessing and Rebuke the Violent a reaction; Guided Strike, Destructive Wrath and Touch of Death nothing more than the roll they ride; Artisan's Blessing is an hour's ritual). The server resolves these itself: 'turn undead' (every undead within 30 feet makes a WIS save against the spell DC; a failure is turned for a minute, and from cleric 5 an undead at or under the Destroy Undead CR is destroyed instead), 'sacred weapon' (Oath of Devotion: +CHA to weapon attack rolls for a minute), 'preserve life' (Life Domain: heals up to 5 x cleric level split among targetCharacterIds, none past half their maximum). Never apply turned or frightened by hand: the save decides it.",
+      "Divine power channelled into a subclass effect. In a fight, name the option in variant: each costs what its own text says (most an action; Vow of Enmity, Champion Challenge, Turn the Tide, Emissary of Peace, Peerless Athlete and Inspiring Smite a bonus action; War God's Blessing a reaction; Rebuke the Violent goes through use_reaction, for the ally the attack hit; Guided Strike, Destructive Wrath and Touch of Death nothing more than the roll they ride; Artisan's Blessing is an hour's ritual). The server resolves these itself: 'vow of enmity' (pass targetEnemyId, a creature within 10 feet: the paladin has advantage on attacks against it for a minute), 'turn undead' (every undead within 30 feet makes a WIS save against the spell DC; a failure is turned for a minute, and from cleric 5 an undead at or under the Destroy Undead CR is destroyed instead), 'sacred weapon' (Oath of Devotion: +CHA to weapon attack rolls for a minute), 'preserve life' (Life Domain: heals up to 5 x cleric level split among targetCharacterIds, none past half their maximum), 'turn the faithless', 'abjure the extraplanar' and 'arcane abjuration' (targetEnemyId; each by its creature types, turned on a failed WIS save), 'conquering presence' and 'dreadful aspect' (every enemy within 30 feet, frightened on a failed WIS save), 'abjure enemy' (targetEnemyId within 60 feet: frightened and speed 0 on a failed WIS save, half speed on a success). Never apply turned or frightened by hand: the save decides it.",
   },
   {
     id: "bardic_inspiration",
@@ -458,7 +463,7 @@ const SRD_RESOURCE_DEFS: ResourceDef[] = [
     action: "bonus",
     effect: { kind: "inspire", die: inspirationDie },
     guidance:
-      "The target keeps the inspiration die for up to 10 minutes and adds it to one ability check, attack roll, or saving throw. The server hands it to them and spends it on their next roll automatically. From bard 5 (Font of Inspiration) the uses come back on a short rest too.",
+      "The target keeps the inspiration die for up to 10 minutes and adds it to one ability check, attack roll, or saving throw. The server hands it to them. On a check or save from request_roll they choose after they see the roll: the server offers it and waits, so do not spend it for them. Any other d20 roll takes it only to turn a failure into a success. From bard 5 (Font of Inspiration) the uses come back on a short rest too.",
   },
   {
     id: "wild_shape",
@@ -810,6 +815,13 @@ export function resourceDef(id: string): ResourceDef | null {
   return RESOURCE_DEFS.find((def) => def.id === id) ?? null;
 }
 
+// What a player reads for a counter. Its id printed bare read "Sub Shadow
+// Martyr 1/1" on the party roster. A counter with no row reads as its id's
+// words.
+export function resourceName(id: string): string {
+  return resourceDef(id)?.displayName ?? id.replace(/^sub_/, "").replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+}
+
 // The counter behind a feat's free cast, made from its id: the spell is in
 // the id, the rule is the same for every one of them.
 function freeCastDef(id: string): ResourceDef {
@@ -904,7 +916,10 @@ const withoutUses = (name: string) => name.replace(/\s*\((?:\d+|[a-z]+) uses?\)\
 // class that granted the feature is one the counter was written for.
 // A feature that names no class (story grants, sheets written before the
 // class was kept) is matched on its name alone.
-function featureHolds(def: ResourceDef, feature: { name: string; classId?: string }): boolean {
+function featureHolds(def: ResourceDef, feature: { name: string; classId?: string; source?: string }): boolean {
+  if (def.featOnly && feature.source === "race") {
+    return false;
+  }
   if (def.grantedBy?.length && feature.classId) {
     const granting = feature.classId.toLowerCase();
     if (!def.grantedBy.some((classId) => classId.toLowerCase() === granting)) {
@@ -980,7 +995,7 @@ export function resourceLevel(
 // uses. Resources whose feature disappeared are dropped. On multiclass
 // sheets each counter is sized by ITS class's level (ki = monk level).
 export function populateResources(
-  features: Array<{ name: string; classId?: string }>,
+  features: Array<{ name: string; classId?: string; source?: string }>,
   level: number,
   abilityMods: Record<string, number>,
   existing: ResourceMap | undefined,
@@ -992,7 +1007,7 @@ export function populateResources(
   campaignId?: string,
 ): ResourceMap {
   const out: ResourceMap = {};
-  const held_all: Array<{ name: string; classId?: string }> = [
+  const held_all: Array<{ name: string; classId?: string; source?: string }> = [
     ...features,
     ...(feats ?? []).map((name) => ({ name: tableFeat(name, campaignId)?.runsAs ?? name })),
   ];
@@ -1059,4 +1074,13 @@ export function spendRelentlessEndurance(resources: ResourceMap | undefined): Re
     return null;
   }
   return { ...resources, relentless_endurance: { max: state.max, used: state.used + 1 } };
+}
+
+// Undying Sentinel (Oath of the Ancients 15), the same hold at 1 hit point.
+export function spendUndyingSentinel(resources: ResourceMap | undefined): ResourceMap | null {
+  const state = resources?.sub_undying_sentinel;
+  if (!state || state.used >= state.max) {
+    return null;
+  }
+  return { ...resources, sub_undying_sentinel: { max: state.max, used: state.used + 1 } };
 }

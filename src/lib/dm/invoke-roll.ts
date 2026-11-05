@@ -7,17 +7,23 @@
 // resumed with the result, the refusals are worded for a model, and a field
 // it leaves unnamed that the character's traits would read is asked for.
 // Everything else is shared: the expression comes from the sheet, conditions
-// can decide the roll outright, an inspiration die is spent whether the
-// dice are physical or digital, an initiative roll feeds the encounter, and
-// a damage roll aimed at an enemy applies itself.
+// can decide the roll outright, a held die waits for its holder to spend it
+// after the dice land (src/lib/dm/after-roll.ts) whether they are physical or
+// digital, an initiative roll feeds the encounter, and a damage roll aimed at
+// an enemy applies itself.
+import { afterRollOptions, canWaitOnRoll } from "@/lib/dm/after-roll-logic";
+import { rollsCanWait } from "@/lib/dm/after-roll";
+import { LUCK_SPEND } from "@/lib/dm/roll-riders";
+import { foretoldLeft } from "@/lib/dm/foretold-logic";
 import { claimedAdvantage } from "@/lib/dm/pc-attack-options";
 import { askedFields, unnamedTraitFields } from "@/lib/dm/roll-feature-riders";
 import { rollExpression } from "@/lib/dice";
+import { heroRollTag } from "@/lib/dice-script-logic";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getFoe } from "@/lib/dm/sheet-foe";
 import { charmedBy } from "@/lib/dm/enemy-profile";
 import { insertRoll } from "@/lib/db/rolls";
-import { createPendingRoll, publicPendingRoll, type DmTurn } from "@/lib/db/dm-turns";
+import { createPendingRoll, publicPendingRoll, setPendingCombatNote, type DmTurn } from "@/lib/db/dm-turns";
 import { getSheetById } from "@/lib/db/sheets";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { allocateSeq } from "@/lib/db/campaigns";
@@ -144,8 +150,12 @@ export function handleRequestRoll(
   // enemy row, or a character fighting on the other side (sheet-foe.ts).
   const aimedAt = sheet && args.againstEnemyId ? getFoe(args.againstEnemyId.trim()) : null;
   const charmedTarget = sheet && aimedAt && charmedBy(aimedAt.conditions, aimedAt.conditionMeta, sheet.id) ? aimedAt.displayName : undefined;
+  // A check or a save in the open can wait on its player once its dice land
+  // (src/lib/dm/after-roll.ts): a roll behind the screen cannot.
+  const fresh = sheet ? (getSheetById(sheet.id) ?? sheet) : null;
+  const canWait = (Boolean(model) || (args.visibility ?? "public") === "public") && canWaitOnRoll(args.kind) && rollsCanWait(fresh);
   const extras = sheet
-    ? { ...rollExtrasFor(campaign, sheet, args.kind), ...(charmedTarget ? { charmedTarget } : {}) }
+    ? { ...rollExtrasFor(campaign, sheet, args.kind), ...(charmedTarget ? { charmedTarget } : {}), keepHeldDie: canWait }
     : { encumbrance: campaign.gameSettings.variantRules.encumbrance };
   // A trait of the character's that a field the model left unnamed would
   // call on (src/lib/dm/roll-about.ts): it names the field, or 'none', before
@@ -182,7 +192,11 @@ export function handleRequestRoll(
     spendRollCarriers(campaignId, sheet.id, resolved.spendInspiration);
   }
 
-  if (sheet && realDiceUserIds.has(sheet.userId)) {
+  const contestLine = gated.contest ? `${gated.contest.name} rolled ${gated.contest.skill} ${gated.contest.total}; ${gated.contest.answering ? "a tie goes to the character" : "the character must beat it"}.` : null;
+  // Portent replaces the d20 before it is thrown, so a wizard holding a number
+  // decides here: the roll waits unthrown, and the model waits with it.
+  const foretelling = canWait && fresh ? foretoldLeft(fresh).length > 0 : false;
+  if (sheet && (foretelling || realDiceUserIds.has(sheet.userId))) {
     const pending = createPendingRoll({
       campaignId,
       turnId: turn.id,
@@ -198,17 +212,59 @@ export function handleRequestRoll(
       targetEnemyId: args.kind === "damage" ? args.targetEnemyId ?? null : null,
       // The screen holds while the player's dice are on their way.
       visibility: model ? "public" : args.visibility ?? "public",
+      ...(realDiceUserIds.has(sheet.userId) ? {} : { parkedFor: "foretold" as const }),
     });
+    if (foretelling) {
+      const told = [contestLine, ...(resolved.conditionNotes ?? [])].filter(Boolean).join("; ");
+      if (told) {
+        setPendingCombatNote(pending.id, told);
+      }
+    }
     publishPersisted(campaignId, "roll_pending", { pendingRoll: publicPendingRoll(pending) });
     return {
       ok: true,
       parked: true,
-      note: `Waiting on ${sheet.name} to enter ${resolved.expression}.`,
+      note: foretelling ? `Waiting on ${sheet.name} to roll or to use Portent.` : `Waiting on ${sheet.name} to enter ${resolved.expression}.`,
     };
   }
 
   try {
-    const outcome = rollExpression(resolved.expression);
+    const outcome = rollExpression(resolved.expression, undefined, { purpose: sheet ? heroRollTag(args.kind, sheet.name) : undefined });
+    // The server threw it: the dice wait on the player when something they
+    // hold could change the result, and the model waits with them.
+    const options = canWait && sheet && fresh
+      // A luck point spent before the throw (luck: true) was this roll's one.
+      ? afterRollOptions(fresh, { kind: args.kind, outcome, dc: args.dc ?? null, spent: resolved.spendInspiration?.split("|").includes(LUCK_SPEND) ? ["lucky"] : [] })
+      : [];
+    if (sheet && options.length) {
+      const pending = createPendingRoll({
+        campaignId,
+        turnId: turn.id,
+        toolCallId: model?.toolCallId ?? null,
+        userId: sheet.userId,
+        characterId: sheet.id,
+        kind: args.kind,
+        detail: resolved.detail,
+        expression: resolved.expression,
+        advantage: args.advantage ?? "none",
+        dc: args.dc ?? null,
+        reason: args.reason?.slice(0, 200) ?? "",
+        parkedFor: "after_roll",
+        thrown: { outcome, options, choosing: false, landing: { status: "fallback", physical: false, source: "digital" } },
+      });
+      // What the digital answer would have told the model, for the answer the
+      // resumed turn writes.
+      const told = [contestLine, ...(resolved.conditionNotes ?? [])].filter(Boolean).join("; ");
+      if (told) {
+        setPendingCombatNote(pending.id, told);
+      }
+      publishPersisted(campaignId, "roll_pending", { pendingRoll: publicPendingRoll(pending) });
+      return {
+        ok: true,
+        parked: true,
+        note: `Waiting on ${sheet.name} to decide what to do with their roll.`,
+      };
+    }
     const roll = insertRoll({
       campaignId,
       characterId: sheet?.id ?? null,
@@ -255,7 +311,7 @@ export function handleRequestRoll(
       total: roll.total,
       dice: outcome.terms,
       ...(args.dc !== undefined ? { dc: args.dc, success: roll.total >= args.dc } : {}),
-      ...(gated.contest ? { contest: `${gated.contest.name} rolled ${gated.contest.skill} ${gated.contest.total}; ${gated.contest.answering ? "a tie goes to the character" : "the character must beat it"}.` } : {}),
+      ...(contestLine ? { contest: contestLine } : {}),
       ...(outcome.crit ? { crit: outcome.crit } : {}),
       ...(resolved.conditionNotes ? { conditionEffects: resolved.conditionNotes } : {}),
       ...(combatNote ? { combat: combatNote } : {}),

@@ -5,6 +5,7 @@
 // the board, the conditions, the effects and the settings are looked at,
 // nothing is written and nothing is refused.
 
+import { holdsMoteDie } from "@/lib/dm/after-roll-logic";
 import { liftsSmallHeavyPenalty } from "@/lib/srd/feat-combat";
 import { shootsFreelyInMelee } from "@/lib/srd/feat-combat";
 import type { Campaign } from "@/lib/db/campaigns";
@@ -33,6 +34,7 @@ import { sizeForRace } from "@/lib/srd";
 import { wearsUntrainedArmor } from "@/lib/srd/armor";
 import { conditionRollRiders } from "@/lib/srd/condition-effects";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
+import { purseCoins } from "@/lib/srd/currency";
 import type { CombatRiders } from "@/lib/srd/feature-effects";
 import { weatherRangedRider } from "@/lib/srd/weather";
 import { isImmersed, underwaterSwing } from "@/lib/dm/underwater";
@@ -261,14 +263,18 @@ export function attackSituation(input: {
   // Effect conditions on the attacker's own roll: Bless's +1d4, Bane's
   // -1d4, True Strike's one-shot advantage.
   const attackRiders = conditionRollRiders(sheet.conditions, "attack");
-  // A held Bardic Inspiration die rides the attack roll and is spent by it,
-  // as it is by a check or a save (src/lib/dm/rolls.ts).
-  const inspiration = heldInspiration(sheet.conditions);
+  // A held Bardic Inspiration die is the holder's to add once the d20 is
+  // rolled (SRD 5.1): the attack adds it only to a miss it can turn into a
+  // hit (forced-save.ts settleHeldDie). A mote's die bursts at the throw
+  // (authored-mote.ts), so it still rides the roll from the start.
+  const inspiration = holdsMoteDie(sheet) ? heldInspiration(sheet.conditions) : null;
   if (inspiration) {
     attackRiders.diceSuffix += `+1${inspiration.die}`;
     attackRiders.notes.push(`spends their Bardic Inspiration die: +1${inspiration.die} to the attack roll`);
     attackRiders.spent.push(inspiration.condition);
   }
+  // A mark an authored feature leaves for one attack (Entropic Ward's).
+  attackRiders.spent.push(...authored.spent);
   conditionContext.notes.push(...attackRiders.notes, ...input.onHitNotes);
   for (const rider of input.featureRiders) {
     conditionContext.notes.push(
@@ -307,7 +313,7 @@ export function attackSituation(input: {
     ? encumbranceFor({
         strength: sheet.abilities.str,
         equipment: sheet.equipment ?? [],
-        coins: sheet.gold ?? 0,
+        coins: purseCoins({ gold: sheet.gold ?? 0, copper: sheet.copper ?? 0 }),
       })
     : null;
   if (load?.disadvantage && load.note) {

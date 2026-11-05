@@ -75,6 +75,14 @@ export const CONDITION_EFFECTS: ConditionEffectRow[] = [
     acBonus: 5,
   },
   {
+    // A unicorn's legendary action (SRD 5.1), laid by legendary-play.ts until
+    // the end of the unicorn's next turn.
+    id: "shimmering_shield",
+    match: ["shimmering shield"],
+    summary: "Shimmering Shield: +2 AC until the end of the unicorn's next turn.",
+    acBonus: 2,
+  },
+  {
     id: "mage_armor",
     match: ["mage armor"],
     summary: "Mage Armor: base AC 13 + DEX while wearing no armor.",
@@ -541,7 +549,7 @@ export const CONDITION_EFFECTS: ConditionEffectRow[] = [
     id: "swift_quiver",
     match: ["swift quiver"],
     summary:
-      "Swift Quiver: a bonus action makes two attacks with a weapon fed by the quiver (resolve each with pc_attack).",
+      "Swift Quiver: a bonus action makes two attacks with a weapon fed by the quiver (two entries in pc_attack's attacks, each with feature Swift Quiver).",
   },
   {
     id: "holy_weapon",

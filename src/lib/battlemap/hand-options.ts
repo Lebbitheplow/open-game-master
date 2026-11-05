@@ -7,6 +7,8 @@
 // Pure; scripts/test-hand-options.mjs drives it.
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { channelOptions, psionicOptions, type HeldOption } from "@/lib/dm/option-costs";
+import { VOW_OF_ENMITY } from "@/lib/srd/vow-of-enmity";
+import { heldReaction } from "@/lib/srd/authored-effects";
 import { maneuverDieFor } from "@/lib/dm/maneuver-rules";
 import { iconPath, isPainted, type IconRef } from "@/lib/icons";
 import {
@@ -81,6 +83,9 @@ function card(
   );
 }
 
+// The options aimed at one creature, which the engine asks for by id.
+const AIMED_OPTIONS = [VOW_OF_ENMITY, textKey("Arcane Abjuration"), textKey("Abjure Enemy")];
+
 const RULES: Record<HeldOption["cost"], string> = {
   action: "Takes their action.",
   bonus: "Takes their bonus action.",
@@ -93,12 +98,15 @@ export function optionCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] {
   const cards: HandCard[] = [];
   if (sheet.resources.channel_divinity) {
     for (const option of channelOptions(sheet)) {
+      // Offered when its trigger comes (hand-react.ts), as a reaction card.
+      if (heldReaction(sheet, option.name)) continue;
       cards.push(
         card(sheet, turn, { id: "channel_divinity", label: "Channel Divinity" }, {
           name: option.name,
           cost: COST[option.cost],
           rules: `Channel Divinity. ${RULES[option.cost]}`,
           ritual: option.cost === "ritual",
+          ...(AIMED_OPTIONS.includes(textKey(option.name)) ? { target: "enemy" as const } : {}),
         }),
       );
     }

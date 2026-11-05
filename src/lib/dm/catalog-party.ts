@@ -2,7 +2,7 @@
 // resources, conditions and rests. Names match the tool names the AI DM is
 // offered exactly, because both callers reach the same engine
 // (src/lib/dm/invoke.ts).
-import type { CatalogEntry, CatalogField } from "@/lib/dm/catalog-types";
+import { MEAL_FIELD, type CatalogEntry, type CatalogField } from "@/lib/dm/catalog-types";
 import { ALIGNMENT_CODES } from "@/lib/dm/companion-values-logic";
 import { ITEM_TAGS } from "@/lib/schemas/item-tags";
 import { UPDATE_SHEET_FIELDS } from "@/lib/dm/update-sheet-args";
@@ -196,13 +196,13 @@ export const PARTY_ADJUDICATIONS: CatalogEntry[] = [
     summary: "Adds or removes coin; a negative number spends it.",
     fields: [
       { name: "characterId", label: "Character", kind: "character", required: true },
-      { name: "delta", label: "Change in gold", kind: "number", required: true, min: -100000, max: 100000 },
+      { name: "delta", label: "Change in gold", kind: "number", min: -100000, max: 100000 },
       {
         name: "coins",
         label: "Or in coins",
         kind: "text",
-        placeholder: "340 sp",
-        help: "Overrides the amount above; the sign of the change still says gain or spend.",
+        placeholder: "-5 sp",
+        help: "Overrides the amount above. Start with - to spend or + to gain.",
       },
       {
         name: "additional",
@@ -504,6 +504,9 @@ export const PARTY_ADJUDICATIONS: CatalogEntry[] = [
       { name: "concentration", label: "Concentration", kind: "boolean" },
       { name: "ritual", label: "Cast as a ritual", kind: "boolean" },
       { name: "units", label: "Creatures, corpses or Hit Dice", kind: "number", min: 1, max: 100, help: "For a material priced per one (Astral Projection, Create Undead, Imprisonment)." },
+      { name: "storeIn", label: "Store in", kind: "text", help: "A Ring of Spell Storing's name, to cast the spell into it instead of casting it now." },
+      { name: "storeInCharacterId", label: "Ring carried by", kind: "character", help: "When someone other than the caster carries the ring." },
+      { name: "storedBy", label: "Stored by someone else", kind: "text", help: "An NPC's name, or who filled a ring the party found. The character above then carries the ring, and spends nothing." },
       ...AREA_PLACEMENT_FIELDS,
     ],
   },
@@ -580,6 +583,7 @@ export const PARTY_ADJUDICATIONS: CatalogEntry[] = [
         kind: "hitDice",
         help: "Short rest, for a character with no player at the table. A connected player spends their own on their sheet.",
       },
+      MEAL_FIELD,
       REASON,
     ],
   },

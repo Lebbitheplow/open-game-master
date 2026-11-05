@@ -13,6 +13,7 @@ import type { AmbientLight, TokenKind } from "@/lib/battlemap/types";
 import type { TargetEdge } from "@/lib/battlemap/view-tactics";
 import type { ViewZone } from "@/lib/dm/zone-view";
 import type { MapAddonView } from "@/lib/addons/map-view";
+import type { Sex } from "@/lib/actor-sex-logic";
 
 export type PlayerMapView = {
   mapId: string;
@@ -41,6 +42,11 @@ export type PlayerMapView = {
     kind: TokenKind;
     refId: string;
     name: string;
+    // The model a 3D board view draws an enemy or an NPC as: the gender
+    // their flat face reads, when it is Female or Male; absent for one
+    // recorded as Nonbinary or a Cast NPC whose gender is not recorded
+    // (src/lib/actor-sex-logic.ts).
+    sex?: Sex;
     x: number;
     y: number;
     mine: boolean;
@@ -55,6 +61,10 @@ export type PlayerMapView = {
     // The painted object a prop or bystander is drawn as, or "" for the
     // plain figure (public/assets/props/manifest.json ids).
     stamp: string;
+    // An "npc" token the Cast knows by its name: their portrait, or the
+    // plate their role, race and gender pick (src/lib/db/npc-faces.ts).
+    // Absent for a bystander nobody tracks, who keeps a face by name.
+    face?: string;
     // The side a creature fights on when it is not its kind's (issue 503):
     // "foe" for a character turned against the party, "party" for a
     // creature the party dominates. The rim follows it. Absent otherwise.
@@ -126,6 +136,17 @@ export type PlayerMapView = {
   // enemy's id: cover, flanking, reach, shooting in melee (view-tactics.ts).
   // Empty for the DM and for a viewer with no token.
   edges: Record<string, TargetEdge>;
+  // From the viewer's own character to every creature on the board they can
+  // see, in feet, keyed by the creature's id: the Hand offers a reaction with
+  // a reach (Glorious Defense's 10 feet, Rebuke the Violent's 30) only when
+  // the creature is inside it. Absent for the DM, a viewer with no token, and
+  // older hosts, which offer every reaction as before.
+  feet?: Record<string, number>;
+  // The creatures among those this viewer's own character has no line of
+  // sight to on the board, by id: a reaction whose text needs its creature
+  // seen (Runic Shield, Cutting Words) is not dealt for them. Absent off the
+  // map and from older hosts, and every card is dealt as before.
+  unseen?: string[];
   tokenHealth: Record<string, HealthWord>;
   tokenAuras: Record<string, Array<{ id: string; radiusFeet: number; tone: AuraTone }>>;
   tokenFootprint: Record<string, Footprint>;

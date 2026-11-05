@@ -19,6 +19,7 @@ import { describeDistances } from "@/lib/battlemap/serialize";
 import { standUpTiles } from "@/lib/srd/authored-effects-more";
 import { budgetApplies } from "@/lib/dm/action-budget";
 import { canAct } from "@/lib/dm/can-act";
+import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { removeConditions } from "@/lib/dm/condition-logic";
 import { awayFromFear, fearSourceAt } from "@/lib/dm/enemy-approach";
 import { abilityNames } from "@/lib/dm/monster-abilities";
@@ -33,6 +34,7 @@ import { toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors
 import { textKey } from "@/lib/language/text-logic";
 import { takeFeatureTeleport } from "@/lib/dm/feature-teleport";
 import { unknownEnemyRef } from "@/lib/dm/enemy-damage";
+import { swallowWalk } from "@/lib/dm/swallow";
 
 // The rules behind two board moves the model can make: a teleport, which
 // the AI makes only through the spell or ability that does it (cast and
@@ -189,9 +191,19 @@ export function walkCharacter(
     if (!allowed.ok) {
       return toolError(allowed);
     }
+    const heldOff = heldTurnRefusal(encounter, sheet);
+    if (heldOff) {
+      return heldOff;
+    }
   }
   if (destination.x < 0 || destination.y < 0 || destination.x >= map.width || destination.y >= map.height) {
     return { error: `(${destination.x},${destination.y}) is outside the ${map.width}x${map.height} map.`, retry: true };
+  }
+  // Swallowed: no walk inside a living creature, and out of a dead one the
+  // walk is the climb out of its corpse (src/lib/dm/swallow.ts).
+  const inside = options.dryRun ? null : swallowWalk(campaign, encounter, map, sheet, token);
+  if (inside) {
+    return inside;
   }
   const budget = pcMoveBudget(campaign.id, encounter, map, sheet, token);
   const speed = budget.speed;

@@ -15,6 +15,7 @@
 // can load it directly.
 
 import { containsPhrase, findNamed, namesHolding, textKey } from "@/lib/language/text-logic";
+import { PART_LISTS } from "@/lib/dm/action-parts-logic";
 
 export type AdjudicationCategory =
   | "combat"
@@ -45,6 +46,15 @@ export const CATEGORY_LABELS: Record<AdjudicationCategory, string> = {
 //   own [{ characterId, dice }].
 // - "list": several words typed in one box (a companion's spells), sent as
 //   a list.
+// - "summonKind", "summonMix": a summoning spell's choices, drawn from the
+//   engine's catalogue for the spell the form names (GET /api/campaigns/[id]/
+//   summons, issue 685): the kind its creature is (Find Steed's celestial,
+//   fey or fiend), sent as one of them, and each target's own form (Animate
+//   Dead, Animate Objects), sent as [{ variant, count }]. Shown only for a
+//   spell that has them.
+// - "petForm": Summon a pet's creature, picked from what the engine takes
+//   for the pet's kind (GET /api/campaigns/[id]/dm/pet-forms,
+//   pet-form-logic.ts), a story pet's "Not in the list" opening a text box.
 export type FieldKind =
   | "character"
   | "characters"
@@ -59,7 +69,10 @@ export type FieldKind =
   | "number"
   | "boolean"
   | "select"
-  | "dice";
+  | "dice"
+  | "summonKind"
+  | "summonMix"
+  | "petForm";
 
 export type CatalogField = {
   name: string;
@@ -69,7 +82,10 @@ export type CatalogField = {
   // Required unless one of these other fields is filled (damage, or the
   // dice the server rolls for it; a character, or an enemy instead).
   requiredUnless?: string | string[];
-  options?: Array<{ value: string; label: string }>;
+  // `host`: the server feature an option needs (src/lib/capabilities.ts
+  // SERVER_FEATURES), left out of the select on a host without it, as a
+  // field's own `host` below leaves the field out.
+  options?: Array<{ value: string; label: string; host?: string }>;
   min?: number;
   max?: number;
   placeholder?: string;
@@ -98,6 +114,10 @@ export type CatalogField = {
   // Shown, and sent, only while another field holds one of these values: a
   // drake's essence only for a drake, a story pet's numbers only for one.
   onlyWhen?: { field: string; equals: string[] };
+  // Shown, and sent, only at a table with this variant rule on: a meal or
+  // scarce water counts for nothing without the supplies variant
+  // (DmActionForm.tsx).
+  variant?: "supplies";
   // An empty input here is an answer, not a field left blank: the facade
   // passes "" on to the handler instead of dropping it (src/lib/dm/invoke.ts
   // normalizeArgs), and the handler decides what an empty answer means. A
@@ -111,15 +131,29 @@ export type CatalogField = {
   // `older` says (what that server does with it), or is not shown. `name`
   // there is the key that server reads the value under, when it was renamed
   // since (take_action's enemyId was escapingEnemyId before issue #621).
-  host?: { feature: string; older?: { label: string; help?: string; name?: string } };
+  // `kind` there is how that server's form asked for it (a pick it cannot
+  // fill reads as the text box it had).
+  host?: { feature: string; older?: { label: string; help?: string; name?: string; kind?: FieldKind } };
+};
+
+// pass_time, travel and take_rest's meal (issue 793), one field in all three.
+export const MEAL_FIELD: CatalogField = {
+  name: "meal",
+  label: "Meal from the story",
+  kind: "text",
+  placeholder: "The host's dinner and the well",
+  variant: "supplies",
+  host: { feature: "suppliesMeal" },
+  help: "Only when the party eats and drinks from something other than their packs. Covers the next dawn: no ration, no thirst. Scarce water still applies.",
 };
 
 // The field as this host should show it, or null when it cannot use it.
 export function fieldForHost(field: CatalogField, offers: (feature: string) => boolean): CatalogField | null {
-  if (!field.host || offers(field.host.feature)) {
-    return field;
+  const shown = !field.host || offers(field.host.feature) ? field : field.host.older ? { ...field, ...field.host.older } : null;
+  if (!shown?.options?.some((option) => option.host && !offers(option.host))) {
+    return shown;
   }
-  return field.host.older ? { ...field, ...field.host.older } : null;
+  return { ...shown, options: shown.options.filter((option) => !option.host || offers(option.host)) };
 }
 
 // Whether a field can matter with the values the form holds now.
@@ -286,6 +320,15 @@ export function checkArgs(
   entry: CatalogEntry,
   args: Record<string, unknown>,
 ): string | null {
+  // A call carrying a declaration's parts names in each part what the
+  // form's one field names: the Hand's share of a casting at a table a
+  // person runs is one heal with targets, one pc_attack with attacks, one
+  // cast_at_enemy with targets (actions/route.ts directCardCalls), and each
+  // part is checked by the handler as the one call it stands for. A
+  // purchase is left out: its shop is chosen before its list is split
+  // (tool-merge.ts tradeCall), so a list sent here would skip the shelf.
+  const list = entry.name === "purchase" ? undefined : PART_LISTS[entry.name];
+  const listed = list !== undefined && Array.isArray(args[list.key]) && (args[list.key] as unknown[]).length > 0;
   for (const field of entry.fields) {
     const value = args[field.name];
     const missing =
@@ -293,7 +336,7 @@ export function checkArgs(
       value === null ||
       (typeof value === "string" && value.trim() === "") ||
       (Array.isArray(value) && value.length === 0);
-    if (field.required && missing) {
+    if (field.required && missing && !(listed && field.name === list?.bare)) {
       return `${entry.label} needs ${field.label.toLowerCase()}.`;
     }
     const others = field.requiredUnless === undefined ? [] : [field.requiredUnless].flat();
@@ -310,7 +353,7 @@ export function checkArgs(
     if (field.kind === "boolean" && typeof value !== "boolean") {
       return `${field.label} must be true or false.`;
     }
-    if (field.kind === "hitDice" || field.kind === "shares") {
+    if (field.kind === "hitDice" || field.kind === "shares" || field.kind === "summonMix") {
       if (!Array.isArray(value) || value.some((row) => !row || typeof row !== "object")) {
         return `${field.label} must be a list of rows.`;
       }

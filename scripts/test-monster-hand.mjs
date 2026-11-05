@@ -9,9 +9,10 @@ import { register } from "node:module";
 register("./lib/register-alias.mjs", import.meta.url);
 
 const { enemyActionsView } = await import("../src/lib/dm/enemy-actions-view.ts");
-const { deriveMonsterHand, monsterInvoke, monsterSentence, swingsLine, takesManyTargets } = await import(
+const { deriveMonsterHand, lairTitle, monsterCalls, monsterInvoke, monsterSentence, rollsMonsterAttack, swingsLine, takesManyTargets } = await import(
   "../src/lib/battlemap/monster-hand.ts"
 );
+const { lairChoices, lairResolution, lairSave } = await import("../src/lib/dm/legendary-logic.ts");
 const { previewRows } = await import("../src/lib/battlemap/hand-play.ts");
 const { monsterAttackIcon } = await import("../src/lib/battlemap/attack-art.ts");
 const { cardArtwork } = await import("../src/lib/battlemap/card-art.ts");
@@ -291,6 +292,177 @@ test("a move card says why it cannot be played: the action spent, no speed, a Di
   // Nimble Escape may still pay a Disengage with the bonus action: the server says no if not.
   const acted = enemyActionsView(encounter({ legendary: { pools: {}, lair: false, lairUsedRound: 0, acted: { round: 1, ids: ["e1"] } } }), enemy(), moving);
   assert.equal(deriveMonsterHand({ ...drake, actions: acted }, { enemyActions: true }).find((card) => card.name === "Disengage").disabled, null);
+});
+
+// Issue 685 audit, 4.G: a legendary creature's legendary actions and the
+// lair's were console forms only at a table a person runs. They are cards
+// of the monsters' Hand now, offered only while they can be taken (SRD 5.1:
+// one at a time, at the end of another creature's turn, from what is left
+// this round; the lair on initiative count 20, losing ties, once a round).
+const dragonBlock = {
+  ...enemy().stats,
+  attacks: [{ name: "Tail", toHit: 11, damage: "2d8+6", type: "bludgeoning", mode: "melee", reach: 15 }],
+  routines: undefined,
+  attacksPerTurn: 1,
+  specials: [],
+  traits: [
+    "Legendary Resistance (3/Day). If the dragon fails a saving throw, it can choose to succeed instead.",
+    "The dragon can take 3 legendary actions, choosing from the options below.",
+    "Legendary action: Detect. The dragon makes a Wisdom (Perception) check.",
+    "Legendary action: Tail Attack. The dragon makes a tail attack.",
+    "Legendary action: Wing Attack (Costs 2 Actions). The dragon beats its wings. Each creature within 10 feet of the dragon must succeed on a DC 22 Dexterity saving throw or take 15 (2d6 + 8) bludgeoning damage and be knocked prone.",
+    "Lair action: Magma erupts from a point on the ground. Each creature in the geyser's area must make a DC 15 Dexterity saving throw, taking 21 (6d6) fire damage on a failed save, or half as much damage on a successful one.",
+    "Lair action: The ground shakes; each creature makes a DC 15 Dex save or falls prone.",
+  ],
+};
+const dragon = (overrides = {}) => enemy({ displayName: "Vermithrax", stats: dragonBlock, ...overrides });
+const lairFight = (legendary = {}) => encounter({ round: 2, legendary: { pools: {}, lair: true, lairUsedRound: 0, lairDue: 2, ...legendary } });
+
+test("a legendary creature's options are projected at the end of another creature's turn, with their costs and what each buys", () => {
+  const view = enemyActionsView(encounter(), dragon());
+  assert.equal(view.legendary.left, 3);
+  assert.equal(view.legendary.max, 3);
+  const [detect, tail, wing] = view.legendary.options;
+  assert.deepEqual([detect.name, detect.cost, detect.routes.length, detect.routes[0].target, detect.routes[0].how], ["Detect", 1, 1, "none", "A Wisdom (perception) check the server rolls"]);
+  const [swing] = tail.routes;
+  assert.deepEqual([tail.name, tail.cost, swing.attack.name, swing.attack.swings, swing.target, swing.pick], ["Tail Attack", 1, "Tail", ["Tail"], "one", "foes"], "one swing, never the routine");
+  const [beat] = wing.routes;
+  assert.deepEqual([wing.name, wing.cost, beat.ability.save, beat.ability.dc, beat.ability.damage, beat.ability.condition, beat.target], ["Wing Attack", 2, "dex", 22, "2d6+8", "prone", "many"]);
+  assert.ok([detect, tail, wing].every((option) => option.refusal === null));
+  // The lair's lines are the lair's, not abilities of the creature's turn.
+  assert.deepEqual(view.abilities.map((ability) => ability.name), []);
+});
+
+test("no legendary action is offered on the creature's own turn, twice at one turn's end, with none left, or while it cannot act", () => {
+  // Its turn handed to the AI, or walked past and held for a person (due).
+  assert.equal(enemyActionsView(encounter({ legendary: { pools: {}, lair: false, lairUsedRound: 0, due: ["e1"] } }), dragon()).legendary, undefined);
+  assert.equal(enemyActionsView(encounter({ legendary: { pools: {}, lair: false, lairUsedRound: 0, handoff: { turnId: "t", enemyIds: ["e1"] } } }), dragon()).legendary, undefined);
+  // Due with its action taken and nobody after it: still its own turn, whose
+  // end is no moment for one (SRD 5.1: at the end of another creature's turn).
+  assert.equal(enemyActionsView(encounter({ legendary: { pools: {}, lair: false, lairUsedRound: 0, due: ["e1"], acted: { round: 1, ids: ["e1"] } } }), dragon()).legendary, undefined);
+  // Another creature held with it has acted since: that turn's end is open.
+  assert.ok(enemyActionsView(encounter({ legendary: { pools: {}, lair: false, lairUsedRound: 0, due: ["e1", "e2"], acted: { round: 1, ids: ["e1", "e2"] } } }), dragon()).legendary);
+  // Handed on: the turn is over, and the next turn's end is open.
+  assert.ok(enemyActionsView(encounter({ legendary: { pools: {}, lair: false, lairUsedRound: 0, acted: { round: 1, ids: ["e1"] } } }), dragon()).legendary);
+  // One already taken at the end of this turn.
+  assert.equal(enemyActionsView(encounter({ legendary: { pools: {}, lair: false, lairUsedRound: 0, opportunities: { key: "1:s1:0", ids: ["e1"] } } }), dragon()).legendary, undefined);
+  // None left this round.
+  assert.equal(enemyActionsView(encounter({ legendary: { pools: { e1: { actions: 0, resistances: 3 } }, lair: false, lairUsedRound: 0 } }), dragon()).legendary, undefined);
+  assert.equal(enemyActionsView(encounter(), dragon({ conditions: ["stunned"] })).legendary, undefined);
+  assert.equal(enemyActionsView(encounter({ orderReady: false }), dragon()).legendary, undefined);
+  // A creature with no legendary lines has none.
+  assert.equal(enemyActionsView(encounter(), enemy()).legendary, undefined);
+});
+
+test("an option costing more than is left is held with legendary_action's own sentence", () => {
+  const view = enemyActionsView(encounter({ legendary: { pools: { e1: { actions: 1, resistances: 3 } }, lair: false, lairUsedRound: 0 } }), dragon());
+  const wing = view.legendary.options.find((option) => option.name === "Wing Attack");
+  assert.equal(wing.refusal, "Wing Attack costs 2; only 1 legendary action left this round. Pick a cheaper one, or wait for the next round.");
+  const cards = deriveMonsterHand({ id: "e1", name: "Vermithrax", status: "alive", conditions: [], actions: view }, { legendaryCards: true });
+  const card = cards.find((entry) => entry.name === "Wing Attack");
+  assert.equal(card.disabled, wing.refusal);
+  assert.equal(card.resource, "Costs 2 · 1/3 left");
+});
+
+test("the legendary cards come only from a host that offers them, and each plays legendary_action then what it buys", () => {
+  const actions = enemyActionsView(encounter(), dragon());
+  const held = { id: "e1", name: "Vermithrax", status: "alive", conditions: [], actions };
+  assert.equal(deriveMonsterHand(held).some((card) => card.cost === "legendary"), false, "an older host's hand changed");
+  const cards = deriveMonsterHand(held, { legendaryCards: true });
+  const [detect, tail, wing] = cards.filter((card) => card.cost === "legendary");
+  assert.deepEqual([detect.name, tail.name, wing.name], ["Detect", "Tail Attack", "Wing Attack"]);
+  assert.equal(cards.at(-1).name, "Flee", "Flee stays last");
+  // Detect: the spend alone, no target; the server rolls the check.
+  assert.equal(detect.target, "none");
+  assert.deepEqual(monsterCalls(detect, []), [{ name: "legendary_action", args: { enemyId: "e1", action: "Detect" } }]);
+  // Tail Attack: one call, the spend and its swing together, with the Roll pills.
+  assert.equal(rollsMonsterAttack(tail), true);
+  assert.equal(tail.roll, "+11 to hit");
+  assert.equal(monsterCalls(tail, []), null, "an attack needs its target");
+  assert.deepEqual(monsterCalls(tail, ["s1"], "advantage"), [
+    { name: "legendary_action", args: { enemyId: "e1", action: "Tail Attack", targetCharacterId: "s1", advantage: "advantage" } },
+  ]);
+  // Wing Attack: one call, its save on everyone caught.
+  assert.equal(takesManyTargets(wing), true);
+  assert.equal(wing.roll, "DEX save DC 22");
+  assert.deepEqual(monsterCalls(wing, ["s1", "e2"], "none", new Set(["e2"])), [
+    { name: "legendary_action", args: { enemyId: "e1", action: "Wing Attack", characterIds: ["s1"], enemyIds: ["e2"] } },
+  ]);
+  assert.equal(monsterSentence("Vermithrax", tail, ["Kael"]), "Vermithrax spends a legendary action: Tail Attack on Kael.");
+});
+
+test("an option with two ways to play is two cards, and a move or a spell asks for its square or its spell", () => {
+  const actions = {
+    speed: "30 ft.", attacks: [], abilities: [], refusal: null, acted: false, manual: [],
+    legendary: {
+      left: 3, max: 3,
+      options: [
+        { name: "Attack", cost: 1, text: "", refusal: null, routes: [
+          { use: "Rotting Fist", how: "One Rotting Fist attack", target: "one", rows: true, pick: "foes", attack: { name: "Rotting Fist", toHit: 9, damage: "3d6+4", type: "bludgeoning", range: "5 ft", melee: true, swings: ["Rotting Fist"] } },
+          { use: "Dreadful Glare", how: "WIS save DC 16 on one creature", target: "one", most: 1, rows: true, pick: "foes", ability: { name: "Dreadful Glare", save: "wis", dc: 16, condition: "frightened" } },
+        ] },
+        { name: "Move", cost: 1, text: "", refusal: null, routes: [{ use: "Move", how: "Moves up to 30 ft without opportunity attacks", target: "none", rows: false, pick: "foes", square: { feet: 30, optional: false } }] },
+        { name: "Cantrip", cost: 1, text: "", refusal: null, routes: [{ use: "Cantrip", how: "Casts a cantrip from its list", target: "many", rows: true, pick: "foes", spells: ["Ray of Frost"] }] },
+        { name: "Shimmering Shield", cost: 2, text: "", refusal: null, routes: [{ use: "Shimmering Shield", how: "+2 AC", target: "one", rows: true, pick: "allies" }] },
+        { name: "Hum", cost: 1, text: "The creature hums.", refusal: null, routes: [] },
+      ],
+    },
+  };
+  const cards = deriveMonsterHand({ id: "m1", name: "Mummy Lord", status: "alive", conditions: [], actions }, { legendaryCards: true }).filter((card) => card.cost === "legendary");
+  assert.deepEqual(cards.map((card) => card.name), ["Attack: Rotting Fist", "Attack: Dreadful Glare", "Move", "Cantrip", "Shimmering Shield", "Hum"]);
+  assert.deepEqual(monsterCalls(cards[1], ["s1"]), [{ name: "legendary_action", args: { enemyId: "m1", action: "Attack", use: "Dreadful Glare", targetCharacterId: "s1" } }]);
+  assert.deepEqual(cards[2].intent.square, { feet: 30, optional: false });
+  assert.deepEqual(monsterCalls(cards[2], [], "none", new Set(), { square: { x: 4, y: 7 } }), [{ name: "legendary_action", args: { enemyId: "m1", action: "Move", x: 4, y: 7 } }]);
+  assert.deepEqual(cards[3].intent.spells, ["Ray of Frost"]);
+  assert.deepEqual(monsterCalls(cards[3], ["s1"], "none", new Set(), { spell: "Ray of Frost" }), [{ name: "legendary_action", args: { enemyId: "m1", action: "Cantrip", characterIds: ["s1"], spell: "Ray of Frost" } }]);
+  assert.equal(cards[4].intent.pick, "allies", "a shield goes on its own side");
+  // The line the server cannot read: the spend, and the card says the rest is the GM's.
+  assert.equal(cards[5].target, "none");
+  assert.match(cards[5].rules, /cannot read this option: playing it spends the action, and you resolve the rest by hand/);
+  assert.deepEqual(monsterCalls(cards[5], []), [{ name: "legendary_action", args: { enemyId: "m1", action: "Hum" } }]);
+});
+
+test("the lair's options are offered on its initiative count 20 only, on the card of the creature that prints them, numbered as lair_action takes them", () => {
+  // The count has not passed: no lair cards.
+  assert.equal(lairChoices([dragon()], { lair: true, lairUsedRound: 0 }), null);
+  assert.equal(enemyActionsView(encounter(), dragon(), undefined, lairChoices([dragon()], encounter().legendary)).lair, undefined);
+  // It passed, and the lair has acted on it: none either.
+  assert.equal(lairChoices([dragon()], { lair: true, lairUsedRound: 2, lairDue: 2 }), null);
+  const fight = lairFight();
+  const choices = lairChoices([enemy({ id: "e0", displayName: "Goblin" }), dragon()], fight.legendary);
+  assert.deepEqual(choices.map((choice) => [choice.number, choice.enemyId]), [[1, "e1"], [2, "e1"]]);
+  const view = enemyActionsView(fight, dragon(), undefined, choices);
+  assert.deepEqual(view.lair.map((option) => option.number), [1, 2]);
+  const [magma, shake] = deriveMonsterHand({ id: "e1", name: "Vermithrax", status: "alive", conditions: [], actions: view }, { legendaryCards: true }).filter((card) => card.cost === "lair");
+  assert.equal(magma.name, "Lair: Magma erupts from a…");
+  assert.equal(shake.name, "Lair: The ground shakes");
+  assert.equal(shake.roll, "DEX save DC 15");
+  assert.equal(takesManyTargets(shake), true);
+  assert.deepEqual(monsterCalls(shake, ["s1"], "none", new Set(["e2"])), [
+    { name: "lair_action", args: { action: "2" } },
+    { name: "aoe_damage", args: { characterIds: ["s1"], dc: 15, saveAbility: "dex", condition: "prone", reason: "The lair acts" } },
+  ]);
+  assert.deepEqual(monsterCalls(magma, ["s1", "e2"], "none", new Set(["e2"]))[1].args, {
+    characterIds: ["s1"], enemyIds: ["e2"], dc: 15, saveAbility: "dex", damage: "6d6", type: "fire", halfOnSave: true, reason: "The lair acts",
+  });
+  assert.equal(monsterSentence("Vermithrax", shake, ["Kael"]), "The lair acts on Kael.");
+});
+
+test("a lair option the block forbids two rounds running is held with lair_action's own sentence", () => {
+  const block = { ...dragonBlock, traits: [...dragonBlock.traits, "The dragon can't use the same effect two rounds in a row."] };
+  const shaken = "The ground shakes; each creature makes a DC 15 Dex save or falls prone.";
+  const fight = lairFight({ lairUsedRound: 1, lairLast: shaken });
+  const choices = lairChoices([dragon({ stats: block })], fight.legendary);
+  assert.equal(choices[0].refusal, null);
+  assert.match(choices[1].refusal, /^The lair cannot use the same effect two rounds in a row; it used this one last round\. Choose another: Magma erupts/);
+});
+
+test("a lair line's save as aoe_damage takes it: no damage on a success unless the line halves it", () => {
+  assert.equal(lairSave("Each creature makes a DC 13 Strength saving throw or takes 10 (3d6) bludgeoning damage.").halfOnSave, false);
+  assert.match(lairResolution("Each creature makes a DC 13 Strength saving throw or takes 10 (3d6) bludgeoning damage."), /type "bludgeoning", halfOnSave false/);
+  assert.equal(lairSave(dragonBlock.traits[5].replace(/^Lair action: /, "")).halfOnSave, true);
+  assert.doesNotMatch(lairResolution(dragonBlock.traits[5].replace(/^Lair action: /, "")), /halfOnSave/);
+  assert.equal(lairTitle("Magma erupts."), "Magma erupts");
 });
 
 console.log(`\n${passed} monster hand checks passed`);

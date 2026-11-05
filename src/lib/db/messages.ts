@@ -43,6 +43,9 @@ export type CampaignMessage = {
   // Why that card did not happen: no call of the turn carried it out, so it
   // went back to its player's hand (issue 570). Absent when it happened.
   cardReturned?: string;
+  // When the GM resolved that card as played from the console's waiting
+  // list (issue 685): it is answered. Absent otherwise.
+  cardResolvedAt?: string;
   // A system line's icon, stored by its writer. Absent on other messages and
   // on lines written before it, which draw the neutral bell.
   glyph?: SystemGlyph;
@@ -78,6 +81,7 @@ type MessageRow = {
   speaker_json: string | null;
   intent_json?: string | null;
   card_returned?: string | null;
+  card_resolved_at?: string | null;
   glyph?: string | null;
   speech_json?: string | null;
   shop_id?: string | null;
@@ -110,6 +114,7 @@ function mapMessage(row: MessageRow): CampaignMessage {
     speaker: normalizeSpeaker(parseJson<unknown>(row.speaker_json ?? "null", null)) ?? undefined,
     intent: parseMessageIntent(parseJson<unknown>(row.intent_json ?? "null", null)) ?? undefined,
     ...(row.card_returned ? { cardReturned: row.card_returned } : {}),
+    ...(row.card_resolved_at ? { cardResolvedAt: row.card_resolved_at } : {}),
     glyph: isSystemGlyph(row.glyph) ? row.glyph : undefined,
     speech: normalizeSpokenLines(parseJson<unknown>(row.speech_json ?? "null", null)),
     shopId: row.shop_id ?? undefined,
@@ -231,6 +236,21 @@ export function listRecentMessages(campaignId: string, limit = 100): CampaignMes
   return rows.map(mapMessage);
 }
 
+// The GM's own messages from `sinceSeq` on, the newest `limit` of them, in
+// ascending seq order (src/lib/dm/improvise.ts reads the place's narration).
+export function listDmMessagesSince(campaignId: string, sinceSeq: number, limit: number): CampaignMessage[] {
+  const rows = getDatabase()
+    .prepare(
+      `
+        SELECT * FROM (
+          SELECT * FROM campaign_messages WHERE campaign_id = ? AND author_type = 'dm' AND seq >= ? ORDER BY seq DESC LIMIT ?
+        ) ORDER BY seq ASC
+      `,
+    )
+    .all(campaignId, sinceSeq, limit) as MessageRow[];
+  return rows.map(mapMessage);
+}
+
 // A page of transcript ending just before `beforeSeq` (the newest page when
 // null), ascending, and whether anything older is left to page to.
 export function listMessagesBefore(
@@ -325,6 +345,26 @@ export function markCardReturned(messageId: string, reason: string): CampaignMes
     .prepare(`UPDATE campaign_messages SET card_returned = ? WHERE id = ? AND author_type = 'player'`)
     .run(reason.slice(0, 300), messageId);
   return result.changes > 0 ? getCampaignMessage(messageId) : null;
+}
+
+// The GM resolving a waiting card as played (issue 685,
+// src/lib/dm/resolve-card.ts) claims it first, in one statement, so two
+// presses or two GM seats cannot both cast it: false when it was answered
+// already, returned to its player, or is no player's card. The claim is let
+// go again when the engine refuses the card's first call, since nothing
+// happened.
+export function claimCardResolution(messageId: string): boolean {
+  return (
+    getDatabase()
+      .prepare(
+        `UPDATE campaign_messages SET card_resolved_at = ? WHERE id = ? AND author_type = 'player' AND intent_json IS NOT NULL AND card_resolved_at IS NULL AND card_returned IS NULL`,
+      )
+      .run(nowIso(), messageId).changes > 0
+  );
+}
+
+export function releaseCardResolution(messageId: string): void {
+  getDatabase().prepare(`UPDATE campaign_messages SET card_resolved_at = NULL WHERE id = ?`).run(messageId);
 }
 
 // Lore-check accept: replaces a message's text in place (the lead applying

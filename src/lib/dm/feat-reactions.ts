@@ -15,14 +15,16 @@ import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { addSheetCondition } from "@/lib/dm/action-common";
 import { tilesBetween } from "@/lib/dm/attack-spatial";
 import { removeConditions } from "@/lib/dm/condition-logic";
-import { attackerFoeId, freshLastHit, type SwingRecord } from "@/lib/dm/last-hit";
+import { attackerFoeId, freshLastHit, plainOfReroll, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { READIED } from "@/lib/dm/object-actions";
 import { handlePcAttack } from "@/lib/dm/pc-attack";
 import { settle, spendReaction, SPENT, type Ctx } from "@/lib/dm/reaction-tools";
 import { proficiencyBonus } from "@/lib/srd";
-import { luckPointsLeft, spendLuckCounter } from "@/lib/srd/class-resources";
+import { luckPointsLeft } from "@/lib/srd/class-resources";
+import { spendRollCarriers } from "@/lib/dm/forced-save";
+import { LUCK_SPEND } from "@/lib/dm/roll-riders";
 import { rollExpression } from "@/lib/dice";
-import { publishPersisted } from "@/lib/events";
+import { reactionPatch } from "@/lib/dm/reaction-refund";
 import { defensiveDuelistBonus, hasMageSlayer, hasSentinel } from "@/lib/srd/feat-combat";
 import { listSheets } from "@/lib/db/sheets";
 import type { ToolResult } from "@/lib/dm/tool-errors";
@@ -38,7 +40,11 @@ export function defensiveDuelist(ctx: Ctx): ToolResult {
       refused: "rules",
     };
   }
-  const record = freshLastHit(campaign.id, sheet.id);
+  // Of several open hits, a melee hit it can still answer; failing that the
+  // latest, whose refusal says why.
+  const fits = (hit: LastHit) =>
+    hit.source === "attack" && attackerFoeId(hit) !== null && !hit.ranged && !hit.answered.includes("defensive duelist") && hit.swings.some((swing) => swing.hit);
+  const record = freshLastHit(campaign.id, sheet.id, fits) ?? freshLastHit(campaign.id, sheet.id);
   if (!record || record.source !== "attack" || attackerFoeId(record) === null) {
     return { error: `Defensive Duelist answers a melee weapon attack that just hit ${sheet.name}, and the server has no such attack on record. Nothing was spent.`, refused: "rules" };
   }
@@ -132,8 +138,7 @@ export function sentinel(ctx: Ctx): ToolResult {
     if (ally.id === sheet.id) {
       return false;
     }
-    const record = freshLastHit(campaign.id, ally.id);
-    return record?.source === "attack" && attackerFoeId(record) !== null && record.attacker.id === args.targetEnemyId;
+    return freshLastHit(campaign.id, ally.id, (hit) => hit.source === "attack" && attackerFoeId(hit) !== null && hit.attacker.id === args.targetEnemyId) !== null;
   });
   if (!struckAlly) {
     return { error: `Sentinel answers an attack on someone other than ${sheet.name}, and the server has no such attack by that creature on record. Nothing was spent.`, refused: "rules" };
@@ -174,13 +179,18 @@ function luckyTarget(swings: SwingRecord[]): number {
     }
     const bonus = swing.total - swing.natural;
     let misses = 0;
+    let saved = 0;
     for (let face = 1; face <= 20; face += 1) {
       const kept = Math.min(swing.natural, face);
       if (kept === 1 || (kept !== 20 && bonus + kept < swing.vsAc)) {
         misses += 1;
+      } else {
+        // A natural 20 rolled away that still hits saves the critical's extra
+        // dice: scored at nothing, the point went on a lighter swing's die.
+        saved += Math.max(0, swing.raw - plainOfReroll(swing, kept).raw);
       }
     }
-    const worth = misses * swing.raw;
+    const worth = misses * swing.raw + saved;
     if (best < 0 || worth > bestWorth) {
       best = index;
       bestWorth = worth;
@@ -201,7 +211,8 @@ export function lucky(ctx: Ctx): ToolResult {
   if (luckPointsLeft(fresh.resources) === 0) {
     return { error: `${sheet.name} has no luck point to spend${sheet.feats.some((feat) => isNamed(feat, "lucky", "fortunate")) ? " (they come back with a long rest)" : ": Lucky is not among their feats"}. Nothing was spent.`, refused: "rules" };
   }
-  const record = freshLastHit(campaign.id, sheet.id);
+  const fits = (hit: LastHit) => hit.source === "attack" && attackerFoeId(hit) !== null && !hit.answered.includes("lucky") && hit.swings.some((swing) => swing.hit);
+  const record = freshLastHit(campaign.id, sheet.id, fits) ?? freshLastHit(campaign.id, sheet.id);
   if (!record || record.source !== "attack" || attackerFoeId(record) === null) {
     return { error: `Lucky answers an attack that just hit ${sheet.name}, and the server has no such attack on record. Nothing was spent.`, refused: "rules" };
   }
@@ -216,26 +227,31 @@ export function lucky(ctx: Ctx): ToolResult {
   if (index === -1) {
     return { error: `${record.attacker.name}'s ${record.attack} has no d20 on record to roll again. Nothing was spent.`, refused: "rules" };
   }
-  const spent = spendLuckCounter(fresh.resources);
-  const patched = spent ? patchSheet(sheet.id, { resources: spent }) : null;
-  if (patched) {
-    publishPersisted(campaign.id, "sheet_updated", { sheet: patched });
-  }
+  // Audited, so an undo of the hit (or of the turn) gives the point back:
+  // a bare patch spent it with no row to undo.
+  spendRollCarriers(campaign.id, sheet.id, LUCK_SPEND);
   const swing = record.swings[index] as SwingRecord & { natural: number };
   const attack = swing.attack ?? record.attack;
   const again = rollExpression("1d20").total;
   const natural = Math.min(swing.natural, again);
   const total = swing.total - swing.natural + natural;
   const stillHits = natural === 20 || (natural !== 1 && total >= swing.vsAc);
-  const corrected = record.swings.map((entry, at) => (at === index && !stillHits ? { ...entry, hit: false, natural, total, raw: 0 } : at === index ? { ...entry, natural, total } : entry));
+  // A natural 20 rolled away that still hits lands as an ordinary hit, as every
+  // other reroll of a hit does (last-hit.ts plainOfReroll): Lucky alone kept the
+  // critical's extra dice, so the point changed nothing.
+  const plain = stillHits ? plainOfReroll(swing, natural) : swing;
+  const corrected = record.swings.map((entry, at) => (at === index && !stillHits ? { ...entry, hit: false, natural, total, raw: 0 } : at === index ? { ...plain, natural, total } : entry));
   const settled = settle(ctx, record, corrected, "lucky");
   return {
     ok: true,
     reaction: "Lucky",
-    luckPointsLeft: luckPointsLeft(spent ?? fresh.resources),
+    luckPointsLeft: luckPointsLeft(getSheetById(sheet.id)?.resources),
     applied: stillHits
-      ? `Lucky: ${record.attacker.name}'s d20 for the ${attack} rolled again (${swing.natural} and ${again}); the ${natural} still hits.`
+      ? `Lucky: ${record.attacker.name}'s d20 for the ${attack} rolled again (${swing.natural} and ${again}); the ${natural} still hits${plain !== swing ? `, no longer a critical: ${settled.given} hit points come back. HP ${settled.hp}` : ""}.`
       : `Lucky: ${record.attacker.name}'s d20 rolled again (${swing.natural} and ${again}); with the ${natural} the ${attack} misses: ${settled.given} hit points come back. HP ${settled.hp}.`,
+    // What the correction undid beyond hit points: a death-save failure taken
+    // back, concentration kept.
+    ...(settled.notes.length ? { notes: settled.notes } : {}),
   };
 }
 
@@ -266,13 +282,10 @@ export function reservesRecovery(ctx: Ctx, which: "ki" | "sorcery_points"): Tool
   const conMod = Math.floor((fresh.abilities.con - 10) / 2);
   const outcome = rollExpression(`1${fresh.hitDice.die}${conMod >= 0 ? `+${conMod}` : conMod}`);
   const regained = Math.min(state.max, Math.max(1, Math.floor(outcome.total / 2)));
-  const patched = patchSheet(sheet.id, {
+  reactionPatch(campaign, ctx.turn.id, sheet.id, {
     hitDice: { ...fresh.hitDice, spent: fresh.hitDice.spent + 1 },
     resources: { ...(fresh.resources ?? {}), [which]: { ...state, used: Math.max(0, state.max - regained) } },
-  });
-  if (patched) {
-    publishPersisted(campaign.id, "sheet_updated", { sheet: patched });
-  }
+  }, `${feat}: a Hit Die spent`);
   return {
     ok: true,
     reaction: feat,

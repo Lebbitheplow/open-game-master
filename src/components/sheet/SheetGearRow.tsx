@@ -87,7 +87,9 @@ export function SheetGearRow({
       ) : null}
       {status.attuning ? (
         <span className="motion-pop shrink-0 rounded-full border border-sky-800/60 px-1.5 text-[10px] text-sky-300" title="Attuning takes a short rest; the next rest completes it.">
-          attunes at the next rest
+          {/* A phone's row has no room for the whole sentence beside a name; the sheet's item chip above says it in full. */}
+          <span className="sm:hidden">attuning</span>
+          <span className="hidden sm:inline">attunes at the next rest</span>
         </span>
       ) : null}
       {status.cursed ? (
@@ -117,7 +119,7 @@ export function SheetGearRow({
         }
         onClick={() => onGear({ equipped: !worn })}
         className={cn(
-          "motion-press rounded border px-1.5 py-0.5",
+          "motion-press shrink-0 rounded border px-1.5 py-0.5",
           worn
             ? "border-amber-700/70 bg-amber-950/40 text-amber-200"
             : "border-stone-700 text-stone-400",
@@ -143,7 +145,7 @@ export function SheetGearRow({
         }
         onClick={() => onGear({ attuned: !(item.attuned || item.attuning) })}
         className={cn(
-          "motion-press rounded border px-1.5 py-0.5 disabled:opacity-40",
+          "motion-press shrink-0 rounded border px-1.5 py-0.5 disabled:opacity-40",
           item.attuned
             ? "border-sky-800/70 bg-sky-950/40 text-sky-200"
             : "border-stone-700 text-stone-400",
@@ -153,6 +155,7 @@ export function SheetGearRow({
       </button>
       ) : null}
     </div>
+    {status.stored ? <p className="ml-8 text-[11px] text-stone-400">{status.stored}</p> : null}
     {conflict ? (
       <div role="group" aria-label={`Wear ${item.name}?`} className="reveal ml-8 space-y-1.5 rounded border border-amber-800/60 bg-amber-950/30 px-2 py-1.5 text-[11px] text-amber-100">
         <p>{swapQuestion(conflict)}</p>

@@ -94,6 +94,11 @@ export type SaveAgainst = {
   magical?: boolean;
   // The creature type of the spell's caster (Holy Nimbus).
   casterType?: CreatureType;
+  // The full type, subtype and all ("fiend (demon)"), of the creature whose
+  // spell or ability forced the save (Demon Armor's curse). The engine sets
+  // it from the creature it knows (forced-save.ts rollCharacterSave); a save
+  // with no known source has none.
+  sourceType?: string;
 };
 
 // An engine's own condition or damage type as a save's `against`, or none

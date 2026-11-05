@@ -7,7 +7,7 @@
 import assert from "node:assert/strict";
 import { openWorld } from "./lib/enforce-world.mjs";
 
-const { upsertNpc, markNpcMet, mergeNpcs, getNpcById } = await import("../src/lib/db/npcs.ts");
+const { upsertNpc, markNpcMet, mergeNpcs, getNpcById, getNpcByName, renameNpc, setNpcArchived, patchNpcAgency, setNpcPortrait } = await import("../src/lib/db/npcs.ts");
 const { castForSeat, wholeCast, publishCast } = await import("../src/lib/dm/cast.ts");
 const { insertCampaignMessage, updateMessageContent } = await import("../src/lib/db/messages.ts");
 const { allocateSeq } = await import("../src/lib/db/campaigns.ts");
@@ -133,6 +133,186 @@ await test("someone the party met through a rule is known without being named", 
   const stranger = npc("Toblen Stonehill");
   markNpcMet(stranger.id);
   assert.deepEqual(castForSeat(world.campaignId, false).map((member) => member.name), ["Toblen Stonehill"]);
+});
+
+// The casts a seat is sent while `body` runs and once the work in hand is
+// done: a write to a person sends the cast on the next turn of the loop.
+async function castsSent(world, user, body) {
+  const heard = [];
+  const stop = subscribe(world.campaignId, (chunk) => heard.push(chunk), user.id);
+  try {
+    await body();
+    await new Promise((resolve) => setImmediate(resolve));
+  } finally {
+    stop();
+  }
+  return heard
+    .filter((chunk) => /^event: cast_updated$/m.test(chunk))
+    .map((chunk) => JSON.parse(/data: (.*)\n/.exec(chunk)[1]).cast.map((member) => member.name).sort());
+}
+
+// A tick for writes made outside castsSent, so their cast is already sent.
+const settled = () => new Promise((resolve) => setImmediate(resolve));
+
+await test("a person met through a rule reaches every open seat at once, and only once (issue 733)", async () => {
+  const { world, kara, npc } = await table();
+  const stranger = npc("Toblen Stonehill");
+  await settled();
+  const sent = await castsSent(world, kara, () => {
+    markNpcMet(stranger.id);
+    markNpcMet(stranger.id);
+  });
+  assert.deepEqual(sent, [["Toblen Stonehill"]], "one cast, with him in it");
+  assert.deepEqual(await castsSent(world, kara, () => markNpcMet(stranger.id)), [], "meeting him again sends nothing");
+});
+
+await test("a reaction roll and a relationship beat each tell the open seats who the party met (issue 733)", async () => {
+  const { world, kara, karaHero, npc } = await table();
+  npc("Iarno Albrek");
+  npc("Daran Edermath");
+  await settled();
+  const rolled = await castsSent(world, kara, async () => {
+    const out = await world.invoke("npc_reaction", { name: "Iarno Albrek", gender: "Male" });
+    assert.ok(out.ok, out.error);
+  });
+  assert.deepEqual(rolled.at(-1), ["Iarno Albrek"]);
+  const helped = await castsSent(world, kara, async () => {
+    const out = await world.invoke("relationship_beat", { characterId: karaHero.id, subject: "Daran Edermath", beat: "helped" });
+    assert.ok(out.ok, out.error);
+  });
+  assert.deepEqual(helped.at(-1), ["Daran Edermath", "Iarno Albrek"]);
+});
+
+await test("people met together in one call are sent in one cast", async () => {
+  const { world, kara, npc } = await table();
+  const a = npc("Linene Graywind");
+  const b = npc("Halia Thornton");
+  await settled();
+  assert.deepEqual(await castsSent(world, kara, () => {
+    markNpcMet(a.id);
+    markNpcMet(b.id);
+  }), [["Halia Thornton", "Linene Graywind"]]);
+});
+
+await test("a rename, a merge and an archive reach the open seats; a change no seat sees sends nothing (issue 733)", async () => {
+  const { world, kara, npc } = await table();
+  const marla = npc("Marla");
+  const twin = npc("Marla Venn");
+  const old = npc("Old Petch");
+  for (const person of [marla, twin, old]) {
+    markNpcMet(person.id);
+  }
+  await settled();
+  assert.deepEqual(await castsSent(world, kara, () => renameNpc(marla.id, "Marla Brook", ["Marla"])), [["Marla Brook", "Marla Venn", "Old Petch"]]);
+  assert.deepEqual(await castsSent(world, kara, () => mergeNpcs(world.campaignId, marla.id, twin.id, ["Marla", "Marla Venn"])), [["Marla Brook", "Old Petch"]]);
+  assert.deepEqual(await castsSent(world, kara, () => setNpcArchived(old.id, true)), [["Marla Brook"]]);
+  assert.deepEqual(await castsSent(world, kara, () => patchNpcAgency(marla.id, { goals: { scene: "find her brother" } })), [], "what they want is no seat's to see");
+});
+
+await test("a face painted for someone not yet introduced reaches no player's seat; a known person's reaches every seat (issue 733)", async () => {
+  const { world, kara, npc } = await table();
+  const stranger = npc("Iarno Albrek");
+  const known = npc("Sildar Hallwinter");
+  markNpcMet(known.id);
+  await settled();
+  const heard = [];
+  const stop = subscribe(world.campaignId, (chunk) => heard.push(chunk), kara.id);
+  try {
+    setNpcPortrait(stranger.id, "/uploads/iarno.webp");
+    setNpcPortrait(known.id, "/uploads/sildar.webp");
+    await settled();
+  } finally {
+    stop();
+  }
+  const sent = heard.join("");
+  assert.ok(!sent.includes("iarno.webp") && !sent.includes("Iarno"), "the stranger's face is not sent to a player");
+  assert.ok(sent.includes("sildar.webp"), "the known person's new face is");
+  const { readFileSync } = await import("node:fs");
+  assert.ok(!readFileSync(new URL("../src/lib/portrait.ts", import.meta.url), "utf8").includes('"npc_updated"'), "a painted face is not sent to every seat");
+});
+
+await test("a seat that loads the table after a rewind hears the next change, even one back to the cast sent before it (issue 733)", async () => {
+  const { world, kara, npc } = await table();
+  const { captureBoundarySnapshot, getBoundarySnapshot, restoreSnapshot } = await import("../src/lib/db/snapshots.ts");
+  const marla = npc("Marla Venn");
+  captureBoundarySnapshot(world.campaignId, 1, 0);
+  markNpcMet(marla.id);
+  await settled();
+  // The story rewinds to before they met, and every seat loads the table again.
+  getDatabase().transaction(() => restoreSnapshot(world.campaignId, getBoundarySnapshot(world.campaignId, 1).payload))();
+  assert.deepEqual(await snapshotCast(world, kara), [], "the rewound table has not met her");
+  await settled();
+  assert.deepEqual(await castsSent(world, kara, () => markNpcMet(marla.id)), [["Marla Venn"]], "meeting her again reaches the seat");
+});
+
+await test("a change only the story's seats can see is sent to them alone (issue 733)", async () => {
+  const { world, kara, npc } = await table();
+  markNpcMet(npc("Sildar Hallwinter").id);
+  await settled();
+  assert.deepEqual(await castsSent(world, kara, () => npc("Glasstaff")), [], "a player's seat is sent nothing when someone not yet introduced is registered");
+  assert.deepEqual(await castsSent(world, kara, () => {
+    npc("Halia Thornton");
+    publishCast(world.campaignId);
+  }), [], "nor when the GM's people panel writes one and sends the cast itself");
+  assert.deepEqual(await castsSent(world, world.owner, () => npc("Nezznar")), [["Glasstaff", "Halia Thornton", "Nezznar", "Sildar Hallwinter"]], "the GM seat is sent the whole cast");
+  assert.deepEqual(await castsSent(world, kara, () => markNpcMet(getNpcByName(world.campaignId, "Glasstaff").id)), [["Glasstaff", "Sildar Hallwinter"]], "and a player's seat the next change it can see");
+});
+
+await test("what each table was last sent is kept as a short digest, however large its cast", async () => {
+  const { world, npc } = await table();
+  for (const name of ["Ander Holt", "Bryn Marsh", "Cael Dusk", "Dara Vane", "Esk Thornton", "Fen Alderleaf", "Gwyn Stonehill", "Hale Graywind"]) {
+    markNpcMet(npc(name).id);
+  }
+  await settled();
+  const kept = JSON.stringify(globalThis.__odmCastSent?.get(world.campaignId) ?? null);
+  assert.ok(kept !== "null" && kept.length <= 128, `kept ${kept.length} characters for one table`);
+});
+
+await test("a face painted for the workshop's cast tells the workshop's tools to read the cast again (issue 733)", async () => {
+  const fs = await import("node:fs");
+  const os = await import("node:os");
+  const path = await import("node:path");
+  const scriptDir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-cast-paint-"));
+  const scriptFile = path.join(scriptDir, "fake-script.json");
+  fs.writeFileSync(scriptFile, JSON.stringify([[{ paint: [48, 48] }, { text: "done" }]]));
+  process.env.HARNESS_FAKE = "1";
+  process.env.HARNESS_FAKE_SCRIPT = scriptFile;
+  try {
+    const world = await openWorld();
+    const { saveGlobalConfig } = await import("../src/lib/db/app-settings.ts");
+    const { createWorkshop } = await import("../src/lib/db/workshops.ts");
+    saveGlobalConfig({ harness: { id: "codex", images: "native", imagesVerifiedAt: new Date().toISOString() }, images: { defaultBackend: "harness" } });
+    const workshopId = createWorkshop(world.owner.id, { title: "Saltmarch" }).id;
+    world.signIn(world.owner);
+    const route = await world.route("campaigns/[campaignId]/dm/npcs");
+    const response = await route.POST(
+      new Request("http://test/api", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ draft: { name: "Mira Fenn", gender: "Female" }, portrait: true }) }),
+      { params: Promise.resolve({ campaignId: workshopId }) },
+    );
+    assert.equal(response.status, 201);
+    const { npc } = await response.json();
+    // Heard from here: only what the painting job sends once the face lands.
+    const heard = [];
+    const stop = subscribe(workshopId, (chunk) => heard.push(chunk), world.owner.id);
+    try {
+      const until = Date.now() + 20_000;
+      while (!getNpcById(npc.id).portraitUrl && Date.now() < until) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      assert.ok(getNpcById(npc.id).portraitUrl, "the face was painted");
+      await settled();
+    } finally {
+      stop();
+    }
+    const pinged = heard
+      .filter((chunk) => /^event: records_changed$/m.test(chunk))
+      .some((chunk) => JSON.parse(/data: (.*)\n/.exec(chunk)[1]).kinds.includes("npc"));
+    assert.ok(pinged, "the workshop's Cast tool hears that a person changed");
+  } finally {
+    delete process.env.HARNESS_FAKE;
+    delete process.env.HARNESS_FAKE_SCRIPT;
+    fs.rmSync(scriptDir, { recursive: true, force: true });
+  }
 });
 
 await test("two rows merged into one keep the earlier hearing", async () => {

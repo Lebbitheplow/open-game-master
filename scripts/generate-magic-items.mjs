@@ -28,10 +28,23 @@ import Database from "better-sqlite3-multiple-ciphers";
 import { ADDED, ALIASES, DROPPED, EXTRA, REPLACED } from "./lib/magic-item-corrections.mjs";
 import { categoryBase, COUNTED_USES, DAILY_POWERS, GEAR_RIDERS, LAST_CHARGE_BECOMES } from "./lib/magic-item-riders.mjs";
 import { nameBase } from "./lib/name-base.mjs";
+import { PLAYED_DOCUMENTS_SQL } from "../src/lib/content/edition.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const contentDb = process.env.CONTENT_DB_PATH || join(root, "data", "content", "open5e.sqlite");
 const outPath = join(root, "src", "lib", "classes", "magic-items.json");
+
+// A rod, staff or wand in hand is a focus (src/lib/dm/cast-rules.ts), a
+// weapon is wielded, armor and a ring are worn: each keeps its wear toggle.
+const HELD_CATEGORY = /^(?:rod|staff|wand|weapon|armor|ring)/i;
+// What an item's own text says about wearing it: "While wearing this cloak",
+// "worn as a helm", a stone that "orbits your head". One that works "while
+// wearing or carrying" it works from the pack. Read only for a row nothing
+// else in the table puts on the body; "don't" and a "worn cloth purse" are
+// not wearing.
+const WORN_TEXT =
+  /\b(?:wear|wears|wearing|wearer|donned|dons)\b|\bdon\b(?!['’])|\b(?:is|are|be|been|being|when|while|if|once|commonly|typically|usually) worn\b|\bworn (?:as|around|on|over|under|beneath|by|attached|item)\b|\borbit(?:s|ing)? (?:around )?your head\b|\battached to your\b/i;
+const CARRIED_TEXT = /\b(?:wear(?:ing)?|hold(?:ing)?) or carry(?:ing)?\b|\bcarry(?:ing)? or wear(?:ing)?\b/i;
 
 const ABILITY = {
   strength: "str",
@@ -417,10 +430,12 @@ function gearOf(row, desc, match, rawDesc) {
 function collect() {
   const db = new Database(contentDb, { readonly: true });
   // The SRD's own wording first, so an item two documents describe is read
-  // from the SRD.
+  // from the SRD. Never a 2024 document's row (src/lib/content/edition.ts):
+  // the table is bundled into every server, so a pack built before the
+  // importer left them out would otherwise carry SRD 5.2 items into it.
   const rows = db
     .prepare(
-      `SELECT slug, name, category, rarity, document_slug, data_json FROM items WHERE kind = 'magic_item'
+      `SELECT slug, name, category, rarity, document_slug, data_json FROM items WHERE kind = 'magic_item' AND ${PLAYED_DOCUMENTS_SQL}
        ORDER BY CASE document_slug WHEN 'wotc-srd' THEN 0 ELSE 1 END, slug`,
     )
     .all();
@@ -452,23 +467,36 @@ function collect() {
     const restriction = attunedBy(attunement);
     const gear = gearOf(row, desc, match, rawDesc);
     const aliases = srd ? ALIASES[match] : undefined;
+    const requiresAttunement = /requires attunement/i.test(attunement);
     // A row with no effect is kept only when the engine has something to
-    // enforce about it: who may attune, the item a magic weapon or armor is
-    // built on, its bonus, its charges, and for an SRD item that casts a
-    // spell and asks for attunement (a Hat of Disguise, a Crystal Ball), that
-    // use_item must find it attuned before the cast (src/lib/dm/item-use.ts).
-    const castsAttuned = srd && /requires attunement/i.test(attunement) && CAST.test(desc);
-    if (!effects.length && !restriction && !Object.keys(gear).length && !castsAttuned) {
+    // enforce about it: that it asks for attunement (the sheet's attune button,
+    // the one-copy rule and use_item's check all read this table, so a Ring of
+    // Spell Storing left out could never be attuned), who may attune, the item
+    // a magic weapon or armor is built on, its bonus, its charges.
+    if (!effects.length && !requiresAttunement && !restriction && !Object.keys(gear).length) {
       continue;
     }
     out.push({
       name: row.name.trim(),
       match,
       slugs: slugs.get(match) ?? [],
-      requiresAttunement: /requires attunement/i.test(attunement),
+      requiresAttunement,
       ...(aliases ? { aliases } : {}),
       ...(restriction ? { attunedBy: restriction } : {}),
       ...(parsed.carried && effects.length ? { carried: true } : {}),
+      // Nothing reads whether this one is worn and its text never puts it on,
+      // so the sheet offers it no wear toggle and the GM's line no "worn": a
+      // Crystal Ball is attuned to and a Cube of Force pressed, not put on.
+      // Wings of Flying ("While wearing this cloak") and a mask keep theirs,
+      // since whether it is worn is whether its magic is on.
+      ...(!effects.length &&
+      !gear.base &&
+      !gear.weapon &&
+      !gear.armor &&
+      !HELD_CATEGORY.test(row.category || "") &&
+      (!WORN_TEXT.test(desc) || CARRIED_TEXT.test(desc))
+        ? { noWear: true }
+        : {}),
       effects,
       ...gear,
     });

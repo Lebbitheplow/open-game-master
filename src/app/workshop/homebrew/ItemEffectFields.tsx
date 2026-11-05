@@ -9,7 +9,7 @@
 import type { ComponentProps } from "react";
 import { IMMUNE_CONDITIONS, SPEED_MODES } from "@/lib/homebrew/item-data";
 import type { MagicItemEffect } from "@/lib/srd/magic-items";
-import { SRD_WEAPONS } from "@/lib/srd/weapons";
+import { SRD_WEAPONS, UNARMED_STRIKE_KEY } from "@/lib/srd/weapons";
 import { textKey } from "@/lib/language/text-logic";
 import { CheckField, ToggleChips } from "@/app/workshop/homebrew/fields";
 import { DAMAGE_TYPES } from "@/app/workshop/homebrew/types";
@@ -19,9 +19,10 @@ import { Select } from "@/components/ui/Select";
 
 const ABILITIES = ["str", "dex", "con", "int", "wis", "cha"] as const;
 const SPEED_LABELS: Record<(typeof SPEED_MODES)[number], string> = { fly: "Flying", swim: "Swimming", climb: "Climbing" };
-// The SRD's own weapons, by the key the attack engine matches them on.
-const WEAPON_KEYS = SRD_WEAPONS.filter((weapon) => weapon.category === "simple" || weapon.category === "martial").map((weapon) => textKey(weapon.name));
-const WEAPON_LABELS = Object.fromEntries(SRD_WEAPONS.map((weapon) => [textKey(weapon.name), weapon.name]));
+// The unarmed strike, then the SRD's own weapons, by the key the attack engine
+// matches them on.
+const WEAPON_KEYS = [UNARMED_STRIKE_KEY, ...SRD_WEAPONS.filter((weapon) => weapon.category === "simple" || weapon.category === "martial").map((weapon) => textKey(weapon.name))];
+const WEAPON_LABELS = { [UNARMED_STRIKE_KEY]: "Unarmed strike", ...Object.fromEntries(SRD_WEAPONS.map((weapon) => [textKey(weapon.name), weapon.name])) };
 
 export const MORE_EFFECT_LABELS = {
   increase_ability: "Raises an ability score",
@@ -31,7 +32,7 @@ export const MORE_EFFECT_LABELS = {
   spell_dc_bonus: "Spell save DC bonus",
   spell_save_advantage: "Advantage on saves against spells",
   speed: "A speed",
-  weapon_rider: "Training and damage with weapons",
+  weapon_rider: "Training and bonuses with weapons",
 } as const;
 
 // What a newly picked kind starts as, each the SRD's commonest.
@@ -118,10 +119,14 @@ export function MoreEffectFields({ effect, update }: { effect: MagicItemEffect; 
     case "weapon_rider":
       return (
         <>
-          <ToggleChips options={WEAPON_KEYS} selected={effect.weapons} labels={WEAPON_LABELS} max={8} onChange={(weapons) => update({ ...effect, weapons })} />
+          <ToggleChips options={WEAPON_KEYS} selected={effect.weapons} labels={WEAPON_LABELS} max={8} onChange={(weapons) => update({ ...effect, weapons, ranged: weapons.includes(UNARMED_STRIKE_KEY) ? undefined : effect.ranged })} />
           <CheckField label="Trained with them" checked={effect.proficient === true} onChange={(on) => update({ ...effect, proficient: on || undefined })} />
+          <EffectStepper label="Bonus to hit" value={effect.attack ?? 0} min={0} max={3} onChange={(attack) => update({ ...effect, attack: attack || undefined })} />
           <EffectStepper label="Extra damage" value={effect.damage ?? 0} min={0} max={3} onChange={(damage) => update({ ...effect, damage: damage || undefined })} />
-          <CheckField label="Only at range" checked={effect.ranged === true} onChange={(on) => update({ ...effect, ranged: on || undefined })} />
+          {/* A fist is never at range: left on, the effect would silently never apply. */}
+          {effect.weapons.includes(UNARMED_STRIKE_KEY) ? null : (
+            <CheckField label="Only at range" checked={effect.ranged === true} onChange={(on) => update({ ...effect, ranged: on || undefined })} />
+          )}
         </>
       );
     default:

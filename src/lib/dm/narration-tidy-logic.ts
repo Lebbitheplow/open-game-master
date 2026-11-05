@@ -5,7 +5,7 @@
 // Dependency-free so scripts/test-narration-tidy.mjs can import it directly.
 
 import { textKey } from "../language/text-logic.ts";
-import { DM_TOOL_NAME_PATTERN } from "./tool-text.ts";
+import { DM_TOOL_NAME_PATTERN, withoutRollMarkers } from "./tool-text.ts";
 import type { TableLanguage } from "../schemas/game-settings-options.ts";
 
 // A sentence shorter than this may be said twice on purpose: a shouted
@@ -67,6 +67,92 @@ export function withoutToolTalk(text: string): string {
   return tidyBlankLines(out);
 }
 
+// A line of nothing but the closers of an aside or a quote nobody opened:
+// ")*", "]*", ")_", ")*_" (issue 744). The table read a stray ")*" above the
+// paragraph. A model can clip its own aside this way, and withoutSentences
+// (claims-logic.ts) cannot see that one. A closer beside any other word is
+// the sentence's own, so only a whole line goes; ":)" has a colon, and "(like
+// this)*" opens what it closes. A line that does close a bracket still open
+// above it ends a multi-line aside, and stays; a "(" that never closed earlier
+// in the text keeps a stray line too, which beats unclosing an aside.
+const ORPHAN_CLOSERS = /^[ \t]*[)\]]+[*_]+[ \t]*(?:\r?\n|$)/gm;
+
+// A closer with nothing open cancels nothing: an orphan above an aside must
+// not hide that aside's opener.
+function leftOpen(text: string, open: string, close: string): boolean {
+  let depth = 0;
+  for (const char of text) {
+    if (char === open) {
+      depth += 1;
+    } else if (char === close && depth > 0) {
+      depth -= 1;
+    }
+  }
+  return depth > 0;
+}
+
+function closesOpen(before: string, line: string): boolean {
+  return (line.includes(")") && leftOpen(before, "(", ")")) || (line.includes("]") && leftOpen(before, "[", "]"));
+}
+
+export function withoutOrphanClosers(text: string): string {
+  const out = text.replace(ORPHAN_CLOSERS, (line: string, at: number) => (closesOpen(text.slice(0, at), line) ? line : ""));
+  return out === text ? text : tidyBlankLines(out);
+}
+
+// The same lines as the reply streams to the table's draft (turn.ts): a line
+// that so far is only closers and markers is held until it ends, then shown
+// or dropped by the rule above. Without it the table watched a ")*" arrive
+// and then vanish when the stored passage replaced the draft.
+const ORPHAN_LINE = /^[ \t]*[)\]]+[*_]+[ \t\r]*$/;
+const MAY_BE_ORPHAN = /^[ \t]*[)\]]*[*_]*[ \t\r]*$/;
+
+export function createOrphanCloserFilter() {
+  let shown = "";
+  let held = "";
+  const drops = (line: string, before: string) => ORPHAN_LINE.test(line) && !closesOpen(before, line);
+  return {
+    push(chunk: string): string {
+      let text = held + chunk;
+      held = "";
+      let out = "";
+      while (text) {
+        const before = shown + out;
+        const atLineStart = !before || before.endsWith("\n");
+        const end = text.indexOf("\n");
+        if (end < 0) {
+          if (atLineStart && MAY_BE_ORPHAN.test(text)) {
+            held = text;
+          } else {
+            out += text;
+          }
+          break;
+        }
+        if (!atLineStart || !drops(text.slice(0, end), before)) {
+          out += text.slice(0, end + 1);
+        }
+        text = text.slice(end + 1);
+      }
+      shown += out;
+      return out;
+    },
+    flush(): string {
+      const out = held && !drops(held, shown) ? held : "";
+      held = "";
+      shown += out;
+      return out;
+    },
+  };
+}
+
+// What the table reads of a turn's parts (turn.ts finalize), and what a
+// reroll keeps of the parts before its own take (renarrate.ts). One tidy for
+// both: a reroll that reassembled the raw parts brought back the closer
+// lines, tool talk and fight bookkeeping the table never read.
+export function tableNarrationParts(parts: readonly string[], names: readonly string[], language: TableLanguage): string[] {
+  return withoutRepeatedSentences(parts.map((part) => withoutOrphanClosers(withoutToolTalk(withoutCombatBookkeeping(withoutRollMarkers(part), names, language)))));
+}
+
 // Whether a reply is mostly the last turn's narration said again: a player
 // who repeats a line ("I attack it") got back the paragraph the model wrote
 // last time, with no tool, so the new action never happened (gpt-oss-20b and
@@ -119,6 +205,11 @@ export const REPEATED_NARRATION_PROMPT =
 // at an English table: "**Bram's Turn**", "**Round 1:**", "**Combat
 // begins.**", "**End of Avery's Turn.**".
 const ENGLISH_COMBAT_HEADING = /\*\*[^*\n]{0,40}?\b(?:turn|round|combat|initiative)\b[^*\n]{0,30}?\*\*[ \t]*[.:!]?/gi;
+// An item number alone on its line: what cutting a sentence that quoted a
+// board square leaves of "1. Shadow 1 (moves to (7,13))" (dm/claims-logic.ts
+// metaQuotes, at every table). It counts as an item of the order it sat in.
+const LONE_NUMBER = /^[ \t]*\d{1,2}\.[ \t]*\n/gm;
+const BARE_ITEM = /^\d{1,2}\.[ \t]*(?=\n)/;
 // What is left of a recited order once its names went: "1. 2. **Avery** **Bram**".
 const NUMBERS_LEFT = /(?:^|(?<=\s))\d{1,2}\.(?:\s+\d{1,2}\.)+(?:\s+\*\*[^*\n]{1,40}\*\*)*/g;
 // A bulleted line in a fight is a summary of it, not the story: "* **Masked
@@ -127,8 +218,18 @@ const BULLET_LINE = /^[ \t]*[*•-][ \t]+(.+)$/gm;
 const ITEM_NUMBER = /^\d{1,2}\.[ \t]*(?:\*\*)?[ \t]*/;
 const ITEM_TAIL = /^(?:\*\*)?(?:[ \t]*\([^)\n]{1,12}\))?(?:\*\*)?/;
 
-// Where a numbered item naming one of the fight's own combatants ends, or -1:
-// "2. **Silent Cultist 2** (CURRENT)".
+// Where an item of a recited order ends and whether it names one of the
+// fight's own combatants ("2. **Silent Cultist 2** (CURRENT)"), or null. A
+// lone number is an item with no name.
+function itemEnd(text: string, at: number, names: readonly string[]): { end: number; named: boolean } | null {
+  const bare = BARE_ITEM.exec(text.slice(at));
+  if (bare) {
+    return { end: at + bare[0].length, named: false };
+  }
+  const end = namedItemEnd(text, at, names);
+  return end < 0 ? null : { end, named: true };
+}
+
 function namedItemEnd(text: string, at: number, names: readonly string[]): number {
   const number = ITEM_NUMBER.exec(text.slice(at));
   if (!number) {
@@ -155,19 +256,21 @@ function withoutNamedRuns(text: string, names: readonly string[]): string {
       break;
     }
     const start = from + found;
-    let end = namedItemEnd(text, start, names);
+    let item = itemEnd(text, start, names);
     let items = 0;
+    let named = 0;
     let runEnd = start;
-    while (end > 0) {
+    while (item) {
       items += 1;
-      runEnd = end;
+      named += item.named ? 1 : 0;
+      runEnd = item.end;
       const gap = /^\s*/.exec(text.slice(runEnd))?.[0].length ?? 0;
-      end = namedItemEnd(text, runEnd + gap, names);
+      item = itemEnd(text, runEnd + gap, names);
     }
-    if (items >= 2) {
+    if (items >= 2 && named >= 1) {
       // The clause that introduced the list goes with it: "The updated
-      // order is:".
-      out = (out + text.slice(from, start)).replace(/[^.!?\n]*:\s*$/, "");
+      // order is:", or a bold heading of its own, "**Ordine di iniziativa:**".
+      out = (out + text.slice(from, start)).replace(/[^.!?\n]*:(?:\*\*)?\s*$/, "");
       from = runEnd;
     } else {
       out += text.slice(from, start + 1);
@@ -190,7 +293,10 @@ export function withoutCombatBookkeeping(text: string, names: readonly string[],
   }
   const keys = known.map((name) => textKey(name));
   const unbulleted = text.replace(BULLET_LINE, (line, body: string) => (keys.some((key) => ` ${textKey(body)} `.includes(` ${key} `)) ? "" : line));
-  const headed = language === "english" ? unbulleted.replace(ENGLISH_COMBAT_HEADING, "") : unbulleted;
-  const stripped = withoutNamedRuns(headed, known).replace(NUMBERS_LEFT, "");
+  // The order goes by its names before the English headings do: a bold
+  // "**Avery (your turn)**" item is a heading's shape and, cut first, would
+  // break the run it sits in.
+  const unlisted = withoutNamedRuns(unbulleted, known).replace(LONE_NUMBER, "");
+  const stripped = (language === "english" ? unlisted.replace(ENGLISH_COMBAT_HEADING, "") : unlisted).replace(NUMBERS_LEFT, "");
   return tidyBlankLines(stripped.replace(/\*\*\s*\*\*/g, ""));
 }

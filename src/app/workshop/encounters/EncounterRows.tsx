@@ -154,6 +154,7 @@ export function EncounterRows({
   deployLabel = "Deploy",
   onDuplicate,
   onDelete,
+  onRemoveSetup,
 }: {
   encounters: PreparedEncounter[];
   maps: MapOption[];
@@ -166,6 +167,8 @@ export function EncounterRows({
   deployLabel?: string;
   onDuplicate: (encounter: PreparedEncounter) => void;
   onDelete: (encounter: PreparedEncounter) => void;
+  // Forget the set-up a test saved (issue 685); absent where nothing can.
+  onRemoveSetup?: (encounter: PreparedEncounter) => void;
 }) {
   // A linked map that has since been forgotten still says so, rather than
   // silently reading as the generator's choice, because deploy will fall
@@ -188,6 +191,9 @@ export function EncounterRows({
             { id: "open", label: "Open", glyph: "system-encounters", onSelect: () => onOpen(encounter) },
             { id: "deploy", label: deployLabel, glyph: "tab-battle", disabled: busy, onSelect: () => onDeploy(encounter) },
             { id: "duplicate", label: "Duplicate", glyph: "ui-duplicate", disabled: busy, onSelect: () => onDuplicate(encounter) },
+            ...(encounter.setup && onRemoveSetup
+              ? [{ id: "remove-setup", label: "Remove its set-up", glyph: "ui-delete", disabled: busy, onSelect: () => onRemoveSetup(encounter) } satisfies ContextMenuItem]
+              : []),
             { id: "delete", label: "Delete", glyph: "ui-delete", tone: "danger", separated: true, onSelect: () => onDelete(encounter) },
           ];
           return (
@@ -217,6 +223,23 @@ export function EncounterRows({
                 <RowMenu items={items} label={encounter.name} />
               </div>
               <BudgetBar readout={encounter.readout} thresholds={thresholds} />
+              {encounter.setup?.length ? (
+                // The moment a test saved (issue 685): what the next test,
+                // and a live table's foes, start from.
+                <details className="reveal group rounded-md border border-amber-500/25 bg-amber-500/5 px-2.5" data-encounter-setup={encounter.id}>
+                  <summary className="flex min-h-10 cursor-pointer list-none items-center gap-1.5 text-xs text-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40">
+                    <GameIcon icon={{ kind: "glyph", key: "tab-battle" }} size="size-4" />
+                    Starts from a saved set-up
+                    <span className="ml-auto text-[10px] text-amber-200/70 group-open:hidden">Show</span>
+                    <span className="ml-auto hidden text-[10px] text-amber-200/70 group-open:inline">Hide</span>
+                  </summary>
+                  <ul className="space-y-0.5 pb-2 text-[11px] text-stone-300">
+                    {encounter.setup.map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                </details>
+              ) : null}
               <div className="flex flex-wrap items-center gap-1.5">
                 <button type="button" disabled={busy} onClick={() => onDeploy(encounter)} className={cn(ui.btnSecondary, "h-9")} data-encounter-deploy={encounter.id}>
                   <Swords className="size-3.5" /> {deployLabel}

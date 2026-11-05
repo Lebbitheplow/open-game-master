@@ -435,8 +435,16 @@ await test("a console form sends the arguments its tool takes, under the names t
   for (const name of MUTATION_TOOL_NAMES.filter((tool) => tool !== "update_sheet" && !isRetiredTool(tool))) {
     const parameters = mutationTools.find((tool) => tool.function.name === name).function.parameters;
     const fields = adjudication(name).fields.map((field) => field.name);
-    const unread = fields.filter((field) => !(field in parameters.properties));
-    const unsent = (parameters.required ?? []).filter((argument) => !fields.includes(argument));
+    // A list the form does not offer as a list (grant_item's items) is its
+    // one entry, sent flat: the handler resolves one item per call.
+    const flat = (key) => {
+      const entry = parameters.properties[key];
+      return entry?.type === "array" && entry.items?.properties && !fields.includes(key) ? entry.items : null;
+    };
+    const keys = Object.keys(parameters.properties).flatMap((key) => (flat(key) ? Object.keys(flat(key).properties) : [key]));
+    const required = (parameters.required ?? []).flatMap((key) => (flat(key) ? (flat(key).required ?? []) : [key]));
+    const unread = fields.filter((field) => !keys.includes(field));
+    const unsent = required.filter((argument) => !fields.includes(argument));
     if (unread.length || unsent.length) {
       drift.push(`${name} sends ${unread.join(", ") || "nothing"} unread and never sends ${unsent.join(", ") || "nothing"}`);
     }

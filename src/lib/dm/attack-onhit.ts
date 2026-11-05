@@ -68,7 +68,7 @@ function damageEnemy(campaign: Campaign, enemy: EncounterEnemy, amount: number, 
 
 // Spends one use of a feature's counter the hit (or the miss it rescued)
 // paid for, with its audit row. False when none was left.
-export function spendFeatureUse(campaign: Campaign, sheetId: string, resourceId: string, label: string): boolean {
+export function spendFeatureUse(campaign: Campaign, sheetId: string, resourceId: string, label: string, actor?: "player"): boolean {
   const sheet = getSheetById(sheetId);
   const state = sheet?.resources?.[resourceId];
   if (!sheet || !state || state.max - state.used <= 0) {
@@ -80,6 +80,7 @@ export function spendFeatureUse(campaign: Campaign, sheetId: string, resourceId:
     campaignId: campaign.id,
     characterId: sheet.id,
     turnId: null,
+    ...(actor ? { actor } : {}),
     kind: "use_resource",
     delta: { resource: label, spent: 1 },
     reason: label,

@@ -300,6 +300,57 @@ await test("the GAME STATE line for a magic item says what the engine applies, i
   assert.match(magicItemLine({ name: "Wand of Magic Missiles", qty: 1, charges: 3 }), /3\/7 charges/);
   assert.match(magicItemLine({ name: "Ring of Protection", qty: 1, attuning: true }), /attuning at the next rest/);
   assert.equal(magicItemLine({ name: "Rope", qty: 1 }), null);
+  // An item in the table only for its attunement keeps its sentence from the
+  // pack, with its state, so the model has something to narrate it from.
+  const ring = magicItemLine({ name: "Ring of Spell Storing", qty: 1, attuned: true, equipped: true });
+  assert.match(ring, /^Ring of Spell Storing: holds no spells; 5 of 5 levels free; attuned, worn$/i);
+  assert.match(magicItemLine({ name: "Ring of Spell Storing", qty: 1, equipped: true }), /; not attuned, worn$/);
+  // With no content pack (CI runs this suite without one) the sentence comes
+  // from the bundled SRD book, for an item in the table and for one the
+  // engine only narrates, without the book's italics marks.
+  assert.match(magicItemLine({ name: "Bag of Holding", qty: 1 }), /^Bag of Holding: This bag has an interior space .* \(narrated\)$/);
+  // Nothing puts a Crystal Ball on, so its line never says it is worn.
+  assert.match(magicItemLine({ name: "Crystal Ball", qty: 1 }), /^Crystal Ball: The typical crystal ball, a very rare item, .* \(narrated\); not attuned$/);
+  assert.match(magicItemLine({ name: "Wings of Flying", qty: 1, attuned: true, equipped: true }), /; attuned, worn$/);
+  // A GM's own item carried by its workshop slug is not the published item
+  // it shares a name with: no pack sentence, no attunement to ask for.
+  assert.equal(magicItemLine({ name: "Prayer Mat", qty: 1, slug: "homebrew:rug" }), null);
+  assert.equal(magicItemLine({ name: "Ring of Spell Storing", qty: 1, slug: "homebrew:ring" }), null);
+});
+
+await test("use_item never uses up a magic item the table holds, and asks attunement before its magic (SRD 5.1, Attunement): a Prayer Mat, a Ring of Spell Storing and an Ioun Stone stay in the pack", async () => {
+  const use = (item) => world.invoke("use_item", { characterId: hero.id, item });
+  // A Prayer Mat and an Ioun Stone carry no durable word in their names, and
+  // use_item took them out of the pack as if drunk.
+  carry([{ name: "Prayer Mat", qty: 1 }, { name: "Ring of Spell Storing", qty: 1, equipped: true }, { name: "Ioun Stone of Protection", qty: 1, equipped: true }]);
+  for (const name of ["Prayer Mat", "Ring of Spell Storing", "Ioun Stone of Protection"]) {
+    const out = await use(name);
+    assert.equal(out.ok, false, name);
+    assert.match(out.error, /works only for someone attuned to it/, name);
+  }
+  carry([
+    { name: "Prayer Mat", qty: 1, attuned: true },
+    { name: "Ring of Spell Storing", qty: 1, equipped: true, attuned: true },
+    { name: "Ioun Stone of Protection", qty: 1, equipped: true, attuned: true },
+  ]);
+  for (const name of ["Prayer Mat", "Ioun Stone of Protection"]) {
+    const out = await use(name);
+    assert.equal(out.ok, false, name);
+    assert.match(out.error, /kept, not consumed/, name);
+  }
+  // The ring casts what it holds (test-enforce-spell-storing), and it holds nothing.
+  assert.match((await use("Ring of Spell Storing")).error, /holds no spells/);
+  assert.deepEqual(sheet().equipment.map((item) => [item.name, item.qty]), [["Prayer Mat", 1], ["Ring of Spell Storing", 1], ["Ioun Stone of Protection", 1]]);
+});
+
+await test("use_item keeps a pack magic item outside the table that its text keeps, and uses up one its text uses up: an Apron of the Eager Artisan stays, an Air Seed is thrown", async () => {
+  carry([{ name: "Apron of the Eager Artisan", qty: 1 }, { name: "Air Seed", qty: 2 }]);
+  const apron = await world.invoke("use_item", { characterId: hero.id, item: "Apron of the Eager Artisan" });
+  assert.equal(apron.ok, false);
+  assert.match(apron.error, /kept, not consumed/);
+  const seed = await world.invoke("use_item", { characterId: hero.id, item: "Air Seed" });
+  assert.equal(seed.ok, true, seed.error);
+  assert.deepEqual(sheet().equipment.map((item) => [item.name, item.qty]), [["Apron of the Eager Artisan", 1], ["Air Seed", 1]]);
 });
 
 await test("a magic item's charges and its pending attunement are optional fields: an old row with neither still loads", () => {

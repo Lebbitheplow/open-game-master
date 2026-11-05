@@ -18,6 +18,7 @@ import { getBattleMapForEncounter, getTokenByRef, listTokens } from "@/lib/db/ba
 import { listEnemies } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
 import { coverBetween, hasLineOfSight } from "@/lib/battlemap/los";
+import { blockedLines } from "@/lib/battlemap/sight-lines";
 import { chebyshev } from "@/lib/battlemap/types";
 import { conditionSeesInvisible } from "@/lib/srd/condition-effect-queries";
 import { normalizeClock } from "@/lib/dm/calendar";
@@ -32,17 +33,6 @@ const rank = (size: string | undefined) => {
   const at = SIZES.indexOf((size ?? "medium").toLowerCase());
   return at < 0 ? 2 : at;
 };
-
-// The squares a straight sight line crosses between two points, ends
-// excluded, stepped the way the board's line of sight steps.
-function squaresBetween(ax: number, ay: number, bx: number, by: number): Array<[number, number]> {
-  const steps = Math.max(Math.abs(bx - ax), Math.abs(by - ay));
-  const out: Array<[number, number]> = [];
-  for (let step = 1; step < steps; step += 1) {
-    out.push([Math.round(ax + ((bx - ax) * step) / steps), Math.round(ay + ((by - ay) * step) / steps)]);
-  }
-  return out;
-}
 
 // Mask of the Wild's cover: the sky's weather that lightly obscures (fog,
 // heavy rain, driving snow), or dim light on an outdoor board.
@@ -79,20 +69,20 @@ export function seenClearlyDespiteTraits(
   const stealthy = holdsFeature(sheet, "naturally stealthy");
   const mySize = rank(sizeForRace(sheet.race));
   const tokens = listTokens(map.id);
-  // A creature one size larger than the hider standing in a square the sight
-  // line crosses.
+  // A creature one size larger than the hider standing in the sight lines.
   const screened = (fromX: number, fromY: number) =>
-    squaresBetween(fromX, fromY, hider.x, hider.y).some(([x, y]) =>
-      tokens.some((token) => {
-        if (token.x !== x || token.y !== y || token.refId === sheet.id) {
-          return false;
-        }
-        const other = getSheetById(token.refId);
-        const enemy = other ? null : listEnemies(encounterId).find((entry) => entry.id === token.refId);
-        const size = other ? sizeForRace(other.race) : (enemy?.stats.size as string | undefined);
-        return rank(size) > mySize;
-      }),
-    );
+    tokens.some((token) => {
+      if (token.refId === sheet.id || (token.x === fromX && token.y === fromY)) {
+        return false;
+      }
+      const other = getSheetById(token.refId);
+      const enemy = other ? null : listEnemies(encounterId).find((entry) => entry.id === token.refId);
+      const size = other ? sizeForRace(other.race) : (enemy?.stats.size as string | undefined);
+      return (
+        rank(size) > mySize &&
+        blockedLines([{ x: fromX, y: fromY }], [{ x: hider.x, y: hider.y }], (x, y) => x === token.x && y === token.y) > 0
+      );
+    });
   // "For the purpose of hiding, the creature is heavily obscured" (SRD 5.1,
   // Conditions, Invisible): only a watcher that sees the invisible (See
   // Invisibility, truesight) or needs no sight (blindsight) in range sees it.

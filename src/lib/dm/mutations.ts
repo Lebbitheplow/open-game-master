@@ -33,12 +33,11 @@ import {
 import { capacityProblem } from "@/lib/dm/load-rules";
 import {
   addCopper,
+  coinMove,
   COPPER_PER_GOLD,
   formatPrice,
   formatPurse,
   fromCopper,
-  parseCoins,
-  unreadCoins,
   purseCopper,
 } from "@/lib/srd/currency";
 import { healDeathHook } from "@/lib/dm/death";
@@ -49,7 +48,7 @@ import { combatFeatureSpend } from "@/lib/dm/combat-features";
 import { srdFeatureSpend } from "@/lib/dm/srd-feature-spends";
 import { handleStabilize } from "@/lib/dm/stabilize";
 import { canonicalCondition, handleSetCondition } from "@/lib/dm/set-condition";
-import { exhaustionPatch, namesExhaustion, PRONE, regainBlockedBy, STABILIZE_METHODS, SUFFOCATING } from "@/lib/dm/vitals-logic";
+import { exhaustionPatch, namesExhaustion, NEGATIVE_ENERGY, PRONE, regainBlockedBy, STABILIZE_METHODS, SUFFOCATING } from "@/lib/dm/vitals-logic";
 import { castMarkCharge, prepareResourceCharge } from "@/lib/dm/resource-turn";
 import { planCounterReaction } from "@/lib/dm/reaction-counters";
 import { channelOptions, channelOptionsHeld, optionCost } from "@/lib/dm/option-costs";
@@ -57,14 +56,17 @@ import { BONUS_ATTACK_COUNTERS } from "@/lib/dm/feature-bonus-attacks";
 import { matchResource } from "@/lib/srd/class-resources";
 import { prepareUseItem } from "@/lib/dm/object-actions";
 import { chargedItemUse } from "@/lib/dm/item-use";
+import { releaseStoredSpell, storeSpell } from "@/lib/dm/spell-storing";
 import { applyConsumable, consumableRefusal, scrollSpellFor } from "@/lib/dm/consumables";
 import { castSpell } from "@/lib/dm/cast-guard";
 import { characterCallUnasked } from "@/lib/dm/player-word";
 import { ZONE_ARGS, zoneArgsSchema, zonePlacement } from "@/lib/dm/zone-args";
 import { castHealingSpell } from "@/lib/dm/heal-spell";
+import type { OneCasting } from "@/lib/dm/action-parts-logic";
 import { advanceClock, recordShapeEnd } from "@/lib/db/clock";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { canAct } from "@/lib/dm/can-act";
+import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { spendAction } from "@/lib/dm/action-budget";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
@@ -110,9 +112,11 @@ import { textKey } from "@/lib/language/text-logic";
 import { ITEM_TAGS } from "@/lib/schemas/item-tags";
 import { holdsFeature, isConditionNamed, isNamed } from "@/lib/srd/feature-names";
 import { unknownSheetRef } from "@/lib/dm/rolls";
+import { swallowCoverError } from "@/lib/dm/swallow";
 import { classWords } from "@/lib/sheet-words";
 import { healCeiling } from "@/lib/dm/afflictions";
 import { spreadGear } from "@/lib/dm/gear-zones";
+import { actorOfCall, withActor } from "@/lib/dm/acting-party";
 
 // DM stat authority: the model changes sheets ONLY through these tools.
 // Every mutation is server-clamped, audit-logged, and published live.
@@ -152,7 +156,7 @@ const characterProperty = {
 const ITEM_SRD_NAME_PROPERTY = {
   type: "string",
   description:
-    "English SRD or pack name ('Potion of Healing') when item is the table's own; omit for invented loot. The server reads what it does from that name. A magic weapon or armor names its base as the SRD writes it ('Flame Tongue Scimitar', 'Mithral Half Plate'). Also omit when item already is that English name, and while it is unidentified.",
+    "English SRD or pack name ('Potion of Healing') when item is the table's own; omit for invented loot. Send it with the first call: the server knows an item only by that name and refuses one it cannot read. A magic weapon or armor names its base as the SRD writes it ('Flame Tongue Scimitar', 'Mithral Half Plate'). Also omit when item already is that English name, and while it is unidentified.",
 };
 
 const ITEM_TAGS_PROPERTY = {
@@ -179,7 +183,7 @@ const ITEM_WORTH_PROPERTY = {
     "Gold pieces one is worth, for a thing no SRD or pack row prices: a gem, a trade good, invented loot. A gem is 10 to 5,000 gp, an art object 25 to 7,500 gp; the server prices a sale and a spell's costly material by it. Write item without its worth. Omit for an SRD item, and while it is unidentified.",
 };
 
-function tool(name: string, description: string, extra: Record<string, unknown>, required: string[]): ToolDef {
+function tool(name: string, description: string, extra: Record<string, unknown>, required: string[], characterRequired = true): ToolDef {
   return {
     type: "function",
     function: {
@@ -189,7 +193,7 @@ function tool(name: string, description: string, extra: Record<string, unknown>,
         type: "object",
         additionalProperties: false,
         properties: { ...characterProperty, ...extra },
-        required: ["characterId", ...required],
+        required: characterRequired ? ["characterId", ...required] : required,
       },
     },
   };
@@ -202,13 +206,13 @@ export const mutationTools: ToolDef[] = [
     dice: { type: "string", description: "Dice the server rolls for healing that is not a spell ('2d4+2'). Instead of amount." },
     spell: {
       type: "string",
-      description: "Healing spell being cast (Cure Wounds, Healing Word, Prayer of Healing).",
+      description: "Healing spell being cast.",
     },
     level: {
       type: "integer",
       minimum: 1,
       maximum: 9,
-      description: "Slot level the healing spell was cast at, for upcast scaling.",
+      description: "The slot level it is cast from, for a higher one.",
     },
     casterId: {
       type: "string",
@@ -218,7 +222,12 @@ export const mutationTools: ToolDef[] = [
       type: "boolean",
       description: "True for TEMPORARY HP instead of healing (they do not stack; the higher value wins).",
     },
-  }, []),
+    // Instead of characterId, so neither is required. Kept small: the
+    // compact first call of a 16K window holds it beside an opened group
+    // (scripts/test-tool-profiles.mjs); each entry is a heal call's own
+    // arguments, checked as that call.
+    targets: { type: "array", description: "Instead of characterId: {characterId, amount} for each creature one spell heals." },
+  }, [], false),
   tool(
     "stabilize",
     "Stabilize a DYING character at 0 HP without healing. It takes the healer's action, within 5 feet on a battle map: 'check' rolls their DC 10 Medicine check; 'kit' (a use of a healer's kit they carry) and 'spell' (Spare the Dying) need none. A stable character stops making death saves and stays unconscious at 0 HP.",
@@ -263,22 +272,35 @@ export const mutationTools: ToolDef[] = [
       type: "integer",
       minimum: -100000,
       maximum: 100000,
-      description: "Whole gold pieces: positive to gain, negative to spend or lose. coins overrides its size.",
+      description: "Whole gold pieces: positive to gain, negative to spend or lose. Omit it when coins says the amount.",
     },
-    coins: { type: "string", description: "Money in the coins' codes pp, gp, ep, sp and cp ('3 gp 4 sp'), whatever the table's language. Also '340 sp' or '2 pp 5 sp'. For anything under a gold piece or priced in another coin; whole coins only. It overrides delta's size; delta's sign still says gain or spend (-1 to spend it, 1 to gain it)." },
+    coins: { type: "string", description: "Money in the coins' codes pp, gp, ep, sp and cp ('3 gp 4 sp'), whatever the table's language. Start it with - to spend or + to gain: '-5 sp', '+340 sp'. For anything under a gold piece or priced in another coin; whole coins only. It overrides delta." },
     additional: { type: "boolean", description: "Only when a player just accepted this same amount and this is another sum from a different source." },
-  }, ["delta"]),
-  tool("grant_item", "Give a character an item (loot, purchase, gift), only one the fiction actually put in their hands.", {
+  }, []),
+  tool("grant_item", "Give a character items (loot, purchase, gift) the fiction actually put in their hands. Every item they take goes in items, one entry each, in one call.", {
     ...waypointProperty,
-    unidentified: { type: "boolean", description: "True when the party cannot tell what it is yet; item then describes it, not its true name. E.g. 'an ornate silver ring'; reveal_item names it later." },
-    item: { type: "string", description: "The item's name in the table's words ('Spada lunga')." },
-    qty: { type: "integer", minimum: 1, maximum: 99 },
-    additional: { type: "boolean", description: "Only when a player just accepted this same item and this is another one from a different source." },
-    srdName: ITEM_SRD_NAME_PROPERTY,
-    tags: ITEM_TAGS_PROPERTY,
-    worth: ITEM_WORTH_PROPERTY,
-    spell: ITEM_SPELL_PROPERTY,
-  }, ["item"]),
+    // No additionalProperties on the entries (strict is off for every
+    // backend), and worth's bounds left to the handler's schema: the compact
+    // first call of a 16K window has no room for them beside an opened group
+    // (scripts/test-tool-profiles.mjs).
+    items: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          unidentified: { type: "boolean", description: "True when the party cannot tell what it is yet; item then describes it, not its true name. E.g. 'an ornate silver ring'; reveal_item names it later." },
+          item: { type: "string", description: "The item's name in the table's words." },
+          qty: { type: "integer", minimum: 1, maximum: 99 },
+          additional: { type: "boolean", description: "Only when a player just accepted this same item and this is another one from a different source." },
+          srdName: ITEM_SRD_NAME_PROPERTY,
+          tags: ITEM_TAGS_PROPERTY,
+          worth: { type: "number", description: ITEM_WORTH_PROPERTY.description },
+          spell: ITEM_SPELL_PROPERTY,
+        },
+        required: ["item"],
+      },
+    },
+  }, ["items"]),
   tool("remove_item", "Take an item from a character for good (stolen, destroyed, burned up). Something dropped, set down or knocked away is NOT removed: use handle_item drop, which leaves it where it fell. For consumables being USED, use use_item; for sales, use purchase.", {
     item: { type: "string", description: "The item as named on the character's sheet." },
     qty: { type: "integer", minimum: 1, maximum: 99 },
@@ -310,6 +332,15 @@ export const mutationTools: ToolDef[] = [
       minimum: 1,
       maximum: 100,
       description: "How many, for a material priced per creature, corpse or Hit Die of the target. Astral Projection, Create Undead and Imprisonment price it this way.",
+    },
+    storeIn: {
+      type: "string",
+      description: "A Ring of Spell Storing, to cast the spell into it, with no effect until the wearer casts it.",
+    },
+    storeInCharacterId: { type: "string", description: "Who carries that ring, if not the caster." },
+    storedBy: {
+      type: "string",
+      description: "An NPC caster's name, for a ring found full too. characterId then only carries the ring.",
     },
     ...ZONE_ARGS,
   }, ["spell"]),
@@ -409,6 +440,10 @@ const argsSchema = z.object({
   // use_spell_slot: homebrew concentration flag + ritual casting.
   concentration: z.boolean().optional(),
   ritual: z.coerce.boolean().optional(),
+  // use_spell_slot: cast into a Ring of Spell Storing (src/lib/dm/spell-storing.ts).
+  storeIn: z.string().max(80).optional(),
+  storeInCharacterId: z.string().max(80).optional(),
+  storedBy: z.string().max(80).optional(),
   // use_spell_slot, internal: which cast tool is calling, and a check that
   // writes nothing (src/lib/dm/cast-guard.ts). Not in the tool schema.
   via: z.enum(["slot", "enemy", "buff", "aoe", "attack", "heal", "reaction"]).optional(),
@@ -495,7 +530,7 @@ type MutationOutcome = { result: ToolResult };
 
 // `sheet` is the freshly resolved pre-mutation state; it doubles as the
 // undo pre-image. `patch` is exactly what patchSheet was given.
-function audit(
+export function audit(
   campaign: Campaign,
   turnId: string,
   sheet: CharacterSheet,
@@ -544,7 +579,22 @@ export function castBarred(
 
 // Applies one mutation tool call. Returns the compact tool result the model
 // narrates from. Never throws: errors come back as {error} results.
+// Whose call it is, for what its damage counts toward (acting-party.ts): a
+// feature's spend or an item's use that hurts a creature.
 export function applyDmMutation(
+  campaign: Campaign,
+  turnId: string,
+  toolName: string,
+  rawArguments: string,
+  sheets: CharacterSheet[],
+  sheetsById: Map<string, CharacterSheet>,
+  turn?: DmTurn,
+  casting?: OneCasting,
+): MutationOutcome {
+  return withActor(actorOfCall(toolName, rawArguments), () => dmMutation(campaign, turnId, toolName, rawArguments, sheets, sheetsById, turn, casting));
+}
+
+function dmMutation(
   campaign: Campaign,
   turnId: string,
   toolName: string,
@@ -554,6 +604,9 @@ export function applyDmMutation(
   // The live turn, for a mutation that rolls dice the GM's message shows
   // (stabilize's Medicine check).
   turn?: DmTurn,
+  // One entry of a heal list: the casting its entries share
+  // (src/lib/dm/action-parts-logic.ts OneCasting).
+  casting?: OneCasting,
 ): MutationOutcome {
   let raw: unknown;
   try {
@@ -815,7 +868,7 @@ export function applyDmMutation(
         const outcome = castHealingSpell(
           campaign,
           turnId,
-          { target: sheet, caster, spell: healSpell, level: args.level, amount: args.amount, reason },
+          { target: sheet, caster, spell: healSpell, level: args.level, amount: args.amount, reason, casting },
           (castArgs) =>
             applyDmMutation(campaign, turnId, "use_spell_slot", JSON.stringify(castArgs), sheets, sheetsById).result,
         );
@@ -828,6 +881,16 @@ export function applyDmMutation(
         if (outcome) {
           amount = outcome.amount;
           healNote = outcome.note;
+        }
+      }
+      // Healing from a named healer that is no spell (a potion poured, a
+      // touch) crosses no swallower's wall either (swallow.ts); a spell's
+      // reach asked it above.
+      if (!healSpell && args.casterId) {
+        const healer = resolve(args.casterId);
+        const inside = healer ? swallowCoverError(healer.id, sheet.id) : null;
+        if (inside) {
+          return { result: inside };
         }
       }
       // A healing spell that takes longer than an action (Prayer of Healing's
@@ -869,7 +932,9 @@ export function applyDmMutation(
             error:
               blocked === SUFFOCATING
                 ? `${target.name} is still without air and cannot regain hit points until they can breathe. Get them to air, clear the suffocating condition, then heal them.`
-                : `${target.name} is gripped by Chill Touch and cannot regain hit points until its caster's next turn starts.`,
+                : blocked === NEGATIVE_ENERGY
+                  ? `${target.name} is in the grip of negative energy and cannot regain hit points until it lifts at the end of its source's next turn.`
+                  : `${target.name} is gripped by Chill Touch and cannot regain hit points until its caster's next turn starts.`,
             refused: "rules",
           },
         };
@@ -959,20 +1024,12 @@ export function applyDmMutation(
       };
     }
     case "modify_gold": {
-      const delta = args.delta ?? 0;
-      // A coin string is signed by the delta's sign when one is given, so
-      // "delta: -1, coins: 5 sp" spends five silver rather than earning it.
-      const parsedCoins = args.coins?.trim() ? parseCoins(args.coins) : null;
       // Coins sent and unread are asked for again, never taken as the delta.
-      if (args.coins?.trim() && parsedCoins === null) {
-        return { result: { error: `modify_gold: ${unreadCoins(args.coins)}. Nothing changed.`, retry: true } };
+      const move = coinMove(args.delta, args.coins);
+      if ("problem" in move) {
+        return { result: { error: `modify_gold: ${move.problem}. Nothing changed.`, retry: true } };
       }
-      const coinDelta =
-        parsedCoins === null ? null : (delta < 0 ? -parsedCoins : parsedCoins);
-      if (!delta && coinDelta === null) {
-        return { result: { error: "modify_gold needs a nonzero delta, or coins like \"340 sp\".", retry: true } };
-      }
-      const moved = coinDelta ?? delta * COPPER_PER_GOLD;
+      const moved = move.copper;
       const tooMuch = goldProblem(moved / COPPER_PER_GOLD, "modify_gold");
       if (tooMuch) {
         return { result: tooMuch };
@@ -985,9 +1042,6 @@ export function applyDmMutation(
           },
         };
       }
-      // Denominations win over the plain gold delta when both are sent: a
-      // model that says "coins: 340 sp, delta: 34" meant the coins, and
-      // the two are the same number only by accident.
       const change = addCopper({ gold: sheet.gold, copper: sheet.copper }, moved);
       patchSheet(sheet.id, { gold: change.purse.gold, copper: change.purse.copper });
       audit(
@@ -995,7 +1049,7 @@ export function applyDmMutation(
         turnId,
         sheet,
         "modify_gold",
-        { delta: Math.trunc(change.applied / COPPER_PER_GOLD), copper: change.applied, gold: change.purse.gold },
+        { delta: Math.trunc(change.applied / COPPER_PER_GOLD), copper: change.applied, gold: change.purse.gold, purseCopper: purseCopper(change.purse) },
         reason,
         { gold: change.purse.gold, copper: change.purse.copper },
       );
@@ -1128,6 +1182,12 @@ export function applyDmMutation(
       if (!target) {
         return { result: unknownSheetRef("targetCharacterId", args.targetCharacterId, sheets) };
       }
+      // An item used on someone (a potion poured, a kit's bandage) crosses
+      // no swallower's wall (swallow.ts).
+      const walled = swallowCoverError(sheet.id, target.id);
+      if (walled) {
+        return { result: walled };
+      }
       // A Healer's kit use heals (src/lib/dm/stabilize.ts); null otherwise.
       const kitHeal = healerKitUse(campaign, turnId, sheet, target, itemName);
       if (kitHeal) {
@@ -1149,6 +1209,11 @@ export function applyDmMutation(
       const kitStabilize = healerKitStabilize(campaign, turnId, sheet, target, itemName);
       if (kitStabilize) {
         return { result: kitStabilize };
+      }
+      // A Ring of Spell Storing casts what it holds; null for anything else.
+      const released = releaseStoredSpell(campaign, sheet, itemName, args.spell, turnId);
+      if (released) {
+        return { result: released };
       }
       // A charged item (a wand, a staff) spends charges and stays in the
       // pack (src/lib/dm/item-use.ts); null for anything else.
@@ -1229,7 +1294,7 @@ export function applyDmMutation(
         return { result: outcome };
       }
       const noRoom = outcome.patch.equipment
-        ? grantProblem(sheet.name, sheet.equipment, outcome.patch.equipment, itemName) ?? capacityProblem(sheet, outcome.patch.equipment, itemName, outcome.patch.gold)
+        ? grantProblem(sheet.name, sheet.equipment, outcome.patch.equipment, itemName) ?? capacityProblem(sheet, outcome.patch.equipment, itemName, { gold: outcome.patch.gold ?? sheet.gold, copper: outcome.patch.copper ?? sheet.copper })
         : null;
       if (noRoom) {
         return { result: noRoom };
@@ -1279,6 +1344,13 @@ export function applyDmMutation(
           },
         };
       }
+      // A feature aimed across a swallower's wall (Lay on Hands, Bardic
+      // Inspiration, a Rally, Intimidating Presence) does not reach
+      // (swallow.ts).
+      const walled = swallowCoverError(sheet.id, target.id) ?? (args.targetEnemyId ? swallowCoverError(sheet.id, args.targetEnemyId.trim()) : null);
+      if (walled) {
+        return { result: walled };
+      }
       // Intimidating Presence, Holy Nimbus and Divine Intervention resolve in
       // the fight (src/lib/dm/combat-features.ts).
       const combatSpend = combatFeatureSpend(campaign, turnId, sheet, resourceName, args.targetEnemyId);
@@ -1298,7 +1370,7 @@ export function applyDmMutation(
       }
       // Channel Divinity's options and Indomitable resolve in the engine
       // (src/lib/dm/feature-spends.ts); everything else takes the generic path.
-      const featureSpend = featureVariantSpend(campaign, turnId, sheet, resourceName, args.variant, args.targetCharacterId, reason);
+      const featureSpend = featureVariantSpend(campaign, turnId, sheet, resourceName, args.variant, args.targetCharacterId, reason, args.targetEnemyId);
       if (featureSpend) {
         return { result: featureSpend };
       }
@@ -1325,7 +1397,7 @@ export function applyDmMutation(
       if (counter && BONUS_ATTACK_COUNTERS.includes(counter.id)) {
         return {
           result: {
-            error: `${counter.displayName} is spent by its bonus-action attack: pc_attack with bonusAttack "feature"${counter.id === "race_hungry_jaws" ? ' and weapon "bite"' : ""}. Nothing was spent.`,
+            error: `${counter.displayName} is spent by its bonus-action attack: a pc_attack entry with feature "${counter.displayName}"${counter.id === "race_hungry_jaws" ? ' and weapon "bite"' : ""}. Nothing was spent.`,
             retry: true,
           },
         };
@@ -1448,6 +1520,16 @@ export function applyDmMutation(
       return { result: outcome.result };
     }
     case "set_condition": {
+      // A condition a creature lays from the other side of a swallower's
+      // wall does not land (swallow.ts): a legendary action's prone on a
+      // hero inside a worm, a goblin's fear from outside it. Inspiration,
+      // passed between players, is no creature's effect. The swallow's own
+      // conditions are laid past this door (swallow.ts swallowCreature).
+      const layer = (args.sourceEnemyId ?? args.sourceCharacterId ?? "").trim();
+      const walled = layer && !isConditionNamed(args.condition ?? "", "inspiration") ? swallowCoverError(layer, sheet.id) : null;
+      if (walled) {
+        return { result: walled };
+      }
       return { result: handleSetCondition(campaign, turnId, sheet, args, reason) };
     }
     case "clear_condition": {
@@ -1516,7 +1598,8 @@ export function applyDmMutation(
       return { result: { ok: true, cleared: removed.join(", ") } };
     }
     case "use_spell_slot": {
-      const unasked = characterCallUnasked(campaign.id, getDmTurn(turnId), rawArguments, "characterId");
+      // storedBy is an NPC's casting: the character only carries the ring.
+      const unasked = args.storedBy ? null : characterCallUnasked(campaign.id, getDmTurn(turnId), rawArguments, "characterId");
       if (unasked) {
         return { result: unasked };
       }
@@ -1548,6 +1631,10 @@ export function applyDmMutation(
         const able = fighting ? canAct({ sheet, encounter: fighting, kind: "bonus" }) : null;
         if (able && !able.ok) {
           return { result: toolError(able) };
+        }
+        const heldOff = heldTurnRefusal(fighting, sheet);
+        if (heldOff) {
+          return { result: heldOff };
         }
         const budget = fighting ? budgetFor(fighting, sheet.id, attacksAllowedFor(sheet), conditionTurnShape(sheet.conditions)) : null;
         const bonus = budget ? spendAction(budget, "bonus", "Combat Wild Shape", sheet.name) : null;
@@ -1600,6 +1687,30 @@ export function applyDmMutation(
             slot: `level ${level}: ${math.max - math.used}/${math.max} left`,
             note: "A bonus action; the healing lands on the beast form's pool.",
           },
+        };
+      }
+      // Cast into a Ring of Spell Storing, paid for through the same guard.
+      if (args.storeIn?.trim()) {
+        if (!spell) {
+          return { result: { error: "storeIn needs the spell being stored.", retry: true } };
+        }
+        const holder = args.storeInCharacterId ? resolve(args.storeInCharacterId) : sheet;
+        if (!holder) {
+          return { result: unknownSheetRef("storeInCharacterId", args.storeInCharacterId, sheets) };
+        }
+        return {
+          result: storeSpell(
+            campaign,
+            turnId,
+            sheet,
+            holder,
+            { storeIn: args.storeIn.trim(), spell, ...(args.level !== undefined ? { level: args.level } : {}), ...(args.storedBy ? { storedBy: args.storedBy } : {}) },
+            (input) =>
+              castSpell(campaign, turnId, sheet, input, {
+                record: (delta, patch) => audit(campaign, turnId, sheet, "use_spell_slot", delta, reason, patch),
+                publish: () => publishSheet(campaign, sheet.id),
+              }),
+          ),
         };
       }
       // Everything else is a cast, and every cast goes through the one guard

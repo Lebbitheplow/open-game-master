@@ -1,14 +1,21 @@
 import type { Campaign } from "@/lib/db/campaigns";
-import { listEncounterTemplates, setTemplateCued, type EncounterTemplate } from "@/lib/db/encounter-templates";
+import { getTemplateSetup, listEncounterTemplates, setTemplateCued, type EncounterTemplate } from "@/lib/db/encounter-templates";
+import { layFightSetup } from "@/lib/workshop/fight-setup";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getPreparedMap } from "@/lib/db/prepared-maps";
-import { describeExtras, formatRoster, rosterSummary } from "@/lib/dm/encounter-template-logic";
+import { describeExtras, formatRoster, rosterSummary, savedMapNote } from "@/lib/dm/encounter-template-logic";
 import { preparedFit } from "@/lib/dm/prepared-fit";
 import { fightingParty } from "@/lib/dm/party-budget";
+import { atTheFight, resolveAwayNames, withFollowers } from "@/lib/dm/fight-away-logic";
+import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { applyTemplateExtras, applyTemplateMap } from "@/lib/dm/template-apply";
+import { firedEventsBlock, firedEventsNote } from "@/lib/dm/fight-events";
 import type { ToolDef } from "@/lib/dm/encounter-tool-defs";
+import { BUILDING_SIDES, MAX_OPENINGS, holdsBuilding } from "@/lib/battlemap/building";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { findNamed } from "@/lib/language/text-logic";
+import { recordTurnChange } from "@/lib/db/turn-changes";
+import { currentTurnId, owningTurnOf } from "@/lib/dm/job-control";
 
 // The prepared fights, offered to the AI storyteller (#154).
 //
@@ -76,17 +83,33 @@ export const runPreparedEncounterTool: ToolDef = {
           minimum: 5,
           description: "How far the nearest enemy stands as it opens, when the story has said.",
         },
+        absent: {
+          type: "array",
+          items: { type: "string" },
+          description: "Those not at it, as for start_encounter.",
+        },
+        building: {
+          type: "object",
+          description: "Party inside a building, as for start_encounter. A fight with its own saved map or positions keeps them.",
+          properties: {
+            enemySide: { type: "string", enum: [...BUILDING_SIDES] },
+            openings: { type: "integer", maximum: MAX_OPENINGS },
+          },
+          required: ["enemySide"],
+        },
       },
       required: ["name"],
     },
   },
 };
 
-// The block in GAME STATE. Empty when there is nothing to run or a fight is
-// already on, so a table without prep pays nothing for this.
+// The block in GAME STATE. Empty when there is nothing to run, so a table
+// without prep pays nothing for this. While a fight is on it holds what that
+// fight's prepared events have done instead (src/lib/dm/fight-events.ts),
+// empty until one has.
 export function preparedFightsBlock(campaign: Campaign): string {
   if (getActiveEncounter(campaign.id)) {
-    return "";
+    return firedEventsBlock(campaign.id);
   }
   const ready = readyTemplates(campaign.id);
   if (!ready.length) {
@@ -96,12 +119,21 @@ export function preparedFightsBlock(campaign: Campaign): string {
   const ordered = [...ready.filter((template) => template.cued), ...ready.filter((template) => !template.cued)];
   const lines = ordered.slice(0, LISTED).map((template) => {
     const map = template.map.mapId ? getPreparedMap(campaign.id, template.map.mapId)?.name : "";
-    const plan = describeExtras(template.extras)[0] ?? "";
+    const plan = describeExtras(template.extras, template.enemies)[0] ?? "";
     const note = template.notes.split("\n")[0]?.trim().slice(0, 120) ?? "";
     return `- ${template.cued ? "[CUED by the party lead: run this one as soon as the scene allows] " : ""}${template.name}: ${formatRoster(template.enemies)}${template.battlefield ? ` | ${template.battlefield.slice(0, 100)}` : ""}${map ? ` | on the map "${map}"` : ""}${note ? ` | ${note}` : ""}${plan ? ` | ${plan.slice(0, 100)}` : ""}`;
   });
   const more = ready.length > LISTED ? `\n(${ready.length - LISTED} more are prepared; run any by its exact name.)` : "";
   return `Prepared fights (secret; the table's prep. When the story reaches one, start it with ${RUN_PREPARED_ENCOUNTER} rather than inventing a roster):\n${lines.join("\n")}${more}`;
+}
+
+// The sheets an `absent` names with what goes with them, read as
+// start_encounter reads it; none when it names nobody it can place, which
+// start_encounter then refuses.
+function awayIdsAsked(absent: unknown, party: CharacterSheet[]): string[] {
+  const names = typeof absent === "string" ? [absent] : Array.isArray(absent) ? absent.filter((name): name is string => typeof name === "string") : [];
+  const away = names.length ? resolveAwayNames(names, party) : null;
+  return away && "ids" in away ? withFollowers(away.ids, party) : [];
 }
 
 function findTemplate(campaignId: string, name: string): EncounterTemplate | null {
@@ -142,8 +174,12 @@ export function runPreparedEncounter(
     };
   }
   // With nobody to fight it there is no party to fit it to: start_encounter
-  // says so itself.
-  const fit = fightingParty(campaign).length ? preparedFit(campaign, template.enemies) : ({ kind: "fits" } as const);
+  // says so itself, as it does of a name in absent that fits nobody. The fit
+  // is to who is at the fight: measured against someone away, it ran whole
+  // and start_encounter refused it as too deadly, which this tool cannot cut.
+  const party = fightingParty(campaign);
+  const here = atTheFight({ awayIds: awayIdsAsked(args.absent, party) }, party);
+  const fit = here.length ? preparedFit(campaign, template.enemies, here.map((sheet) => sheet.level)) : ({ kind: "fits" } as const);
   if (fit.kind === "unknown" || fit.kind === "held") {
     setTemplateCued(template.id, false);
     return {
@@ -155,14 +191,34 @@ export function runPreparedEncounter(
     };
   }
   const roster = fit.kind === "scaled" ? fit.rows : template.enemies;
+  // The party inside a building (issue 743), drawn as start_encounter draws
+  // it on the board it generates. A prepared fight that lays its own map, its
+  // own opening positions or a saved test's moment keeps them: the building
+  // would be drawn and then replaced, or have enemies set down inside its
+  // walls, so it is left out and the result says why. Its ground is the
+  // fight's scene when that is outdoors, else open ground, as for a place that
+  // is itself indoors.
+  const askedBuilding = args.building !== undefined && args.building !== null ? args.building : undefined;
+  const map = template.map;
+  const ownLayout =
+    Boolean(map.mapId) ||
+    [map.seed, map.theme, map.ambient, map.width, map.height].some((value) => value !== null) ||
+    template.extras.placements.length > 0 ||
+    Boolean(getTemplateSetup(template.id));
+  const building = askedBuilding !== undefined && !ownLayout ? askedBuilding : undefined;
+  const scene = template.map.scene && !(building && !holdsBuilding(template.map.scene)) ? template.map.scene : undefined;
   const started = start(
     JSON.stringify({
       enemies: roster,
       summary: template.notes.split("\n")[0]?.slice(0, 200) || template.name,
-      ...(template.map.scene ? { scene: template.map.scene } : {}),
+      ...(scene ? { scene } : {}),
+      ...(building ? { building } : {}),
       ...(args.ambush ? { ambush: args.ambush } : {}),
       ...(args.surprised ? { surprised: args.surprised } : {}),
       ...(typeof args.distanceFeet === "number" ? { distanceFeet: args.distanceFeet } : {}),
+      // Who it goes on without (issue 740), checked there: without it a
+      // prepared fight staged someone the story has far away.
+      ...(args.absent !== undefined && args.absent !== null ? { absent: args.absent } : {}),
     }),
   );
   if (typeof started.error === "string") {
@@ -174,11 +230,27 @@ export function runPreparedEncounter(
     return started;
   }
   const mapError = applyTemplateMap(campaign, template);
-  applyTemplateExtras(campaign, campaign.ownerUserId, template);
+  // The events that open the fight have happened by now; the model is told
+  // so in the result, to narrate them.
+  const opened = applyTemplateExtras(campaign, campaign.ownerUserId, template);
+  // The foes as a test of the fight was saved to start (issue 685), as a
+  // GM's Deploy lays them: after the opening events, since a saved moment
+  // already holds what its own test's opening did.
+  const setup = getTemplateSetup(template.id);
+  if (setup) {
+    layFightSetup(campaign, template, setup);
+  }
+  // The cue goes with the fight it began: "Revert this turn" takes the fight
+  // away and cues the prepared fight again (turn-revert.ts). Before, the fight
+  // went and the lead's cue stayed spent.
+  const turnId = currentTurnId();
+  if (template.cued && turnId) {
+    recordTurnChange(campaign.id, owningTurnOf(turnId), "cue", { templateId: template.id });
+  }
   setTemplateCued(template.id, false);
   // The plan rides back with the fight: what it is worth and when it
   // turns, so the storyteller can pay it out and play its phases.
-  const plan = describeExtras(template.extras);
+  const plan = describeExtras(template.extras, template.enemies);
   return {
     ...started,
     prepared: template.name,
@@ -186,6 +258,10 @@ export function runPreparedEncounter(
       ? { scaled: `As prepared it is beyond the party as it stands, so it runs without ${rosterSummary(fit.dropped)}. Narrate the fight that is here.` }
       : {}),
     ...(plan.length ? { plan } : {}),
-    ...(mapError ? { mapNote: `Its saved map could not be used (${mapError}); the fight is on a generated one.` } : {}),
+    ...(opened.length ? { fightEvents: firedEventsNote(opened) } : {}),
+    ...(mapError ? { mapNote: savedMapNote(mapError) } : {}),
+    ...(askedBuilding !== undefined && !building
+      ? { building: "No building was drawn: this prepared fight lays out its own saved map and positions. Narrate the board as it stands." }
+      : {}),
   };
 }

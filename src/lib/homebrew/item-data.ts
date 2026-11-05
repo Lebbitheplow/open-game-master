@@ -54,6 +54,7 @@ export const EFFECT_KINDS = [
   "weapon_rider",
 ] as const;
 export const SPEED_MODES = ["fly", "swim", "climb"] as const;
+const UNARMED_DICE = ["d4", "d6", "d8", "d10", "d12"] as const;
 // The conditions an item can keep off its wearer (SRD 5.1, Appendix A),
 // besides exhaustion, which comes in levels.
 export const IMMUNE_CONDITIONS = [
@@ -305,14 +306,23 @@ export function normalizeEffects(raw: unknown): MagicItemEffect[] {
       }
       case "weapon_rider": {
         const weapons = words(source.weapons, 8);
+        const attack = clamp(source.attack, 0, GEAR_LIMITS.bonusMax, 0);
         const damage = clamp(source.damage, 0, GEAR_LIMITS.bonusMax, 0);
-        if (weapons.length && (damage || source.proficient === true)) {
+        // Kept for a copy of Demon Armor, whose gauntlets set the strike's die
+        // and type; the form has no control for it, and its edits keep it.
+        const form = source.unarmed as { die?: unknown; damageType?: unknown } | undefined;
+        const die = oneOf(form?.die, UNARMED_DICE, "");
+        const [damageType] = words([form?.damageType ?? ""], 1);
+        const unarmed = die && damageType ? { die, damageType } : null;
+        if (weapons.length && (attack || damage || unarmed || source.proficient === true)) {
           out.push({
             kind: "weapon_rider",
             weapons,
             ...(source.ranged === true ? { ranged: true } : {}),
+            ...(attack ? { attack } : {}),
             ...(damage ? { damage } : {}),
             ...(source.proficient === true ? { proficient: true } : {}),
+            ...(unarmed ? { unarmed } : {}),
           });
         }
         break;

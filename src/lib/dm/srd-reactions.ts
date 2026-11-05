@@ -30,6 +30,7 @@ import { READIED } from "@/lib/dm/object-actions";
 import { handlePcAttack } from "@/lib/dm/pc-attack";
 import { noHit, SPENT, spendReaction, type Ctx } from "@/lib/dm/reaction-tools";
 import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { swallowCoverError } from "@/lib/dm/swallow";
 import { textKey } from "@/lib/language/text-logic";
 import { isNamed } from "@/lib/srd/feature-names";
 
@@ -48,7 +49,12 @@ function retaliation(ctx: Ctx): ToolResult {
   if (!holdsFeature(sheet, "retaliation")) {
     return { error: `${sheet.name} does not have Retaliation (a Berserker's 14th level feature). Nothing was spent.`, refused: "rules" };
   }
-  const record = freshLastHit(campaign.id, sheet.id);
+  // Of several open hits, one that damaged them (by the creature named,
+  // when one is).
+  const record = freshLastHit(campaign.id, sheet.id, (hit) =>
+    Boolean(hit.source === "attack" && attackerFoeId(hit) !== null && hit.attacker.id && !hit.answered.includes("retaliation")
+      && hit.swings.some((swing) => swing.hit && swing.raw > 0) && (!ctx.args.targetEnemyId || hit.attacker.id === ctx.args.targetEnemyId)),
+  ) ?? freshLastHit(campaign.id, sheet.id);
   const damaged = record && record.source === "attack" && attackerFoeId(record) !== null && record.attacker.id && !record.answered.includes("retaliation")
     ? record.swings.some((swing) => swing.hit && swing.raw > 0)
     : false;
@@ -83,7 +89,9 @@ function standAgainstTheTide(ctx: Ctx): ToolResult {
   if (!holdsFeature(sheet, "stand against the tide", "superior hunter's defense: stand against the tide")) {
     return { error: `${sheet.name} does not have Stand Against the Tide (a Hunter's Superior Hunter's Defense pick). Nothing was spent.`, refused: "rules" };
   }
-  const record = freshLastHit(campaign.id, sheet.id);
+  const record = freshLastHit(campaign.id, sheet.id, (hit) =>
+    hit.source === "attack" && !hit.ranged && !hit.answered.includes("stand against the tide") && hit.swings.some((swing) => !swing.hit && !(swing.ranged ?? false)),
+  ) ?? freshLastHit(campaign.id, sheet.id);
   const missed = record && record.source === "attack" && !record.ranged && !record.answered.includes("stand against the tide")
     ? record.swings.some((swing) => !swing.hit && !(swing.ranged ?? false))
     : false;
@@ -98,6 +106,12 @@ function standAgainstTheTide(ctx: Ctx): ToolResult {
   const attack = (attacker?.stats.attacks ?? []).find((entry) => textKey(entry.name) === textKey(record.attack));
   if (!attacker || !attack) {
     return { error: `The server has no record of ${record.attacker.name}'s ${record.attack} to repeat. Nothing was spent.`, refused: "rules" };
+  }
+  // The turned attack reaches no creature across a swallower's wall
+  // (swallow.ts).
+  const walled = swallowCoverError(attacker.id, target.id);
+  if (walled) {
+    return walled;
   }
   const ac = enemyAcWithEffects(campaign.id, target);
   const bonus = Number(attack.toHit ?? 0);

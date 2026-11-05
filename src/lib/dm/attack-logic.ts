@@ -3,6 +3,7 @@ import {
   isWeaponProficient,
   matchWeapon,
   weaponNamed,
+  UNARMED_STRIKE_KEY,
   type SrdWeapon,
 } from "@/lib/srd/weapons";
 import { lineNamed, magicItemBonus, withoutBonus } from "@/lib/srd/item-row";
@@ -346,8 +347,9 @@ export type AttackStance = {
   martialArts?: boolean;
   // Tavern Brawler: the unarmed strike deals 1d4 (src/lib/srd/feat-combat.ts).
   brawler?: boolean;
-  // What worn items add to attacks with some weapons (Bracers of Archery),
-  // from src/lib/srd/magic-items.ts magicItemRiders(...).weaponRiders.
+  // What worn items add to attacks with some weapons (Bracers of Archery) or
+  // with the unarmed strike (UNARMED_STRIKE_KEY), from
+  // src/lib/srd/magic-items.ts magicItemRiders(...).weaponRiders.
   worn?: WornWeaponRider[];
 };
 
@@ -384,6 +386,24 @@ function offHandModifier(mod: number, stance: AttackStance): number {
   return Math.min(0, mod);
 }
 
+// What the worn riders that reach a swing add to it. A bonus to the attack
+// roll marks the swing as magical, as a +1 weapon's does; damage alone does
+// not (Bracers of Archery's arrows stay nonmagical, SRD 5.1).
+function wornRiderTotals(riders: WornWeaponRider[]): { attack: number; damage: number; notes: string[] } {
+  const totals = { attack: 0, damage: 0, notes: [] as string[] };
+  for (const rider of riders) {
+    if (rider.attack) {
+      totals.attack += rider.attack;
+      totals.notes.push(`${rider.source}: +${rider.attack} to hit`);
+    }
+    if (rider.damage) {
+      totals.damage += rider.damage;
+      totals.notes.push(`${rider.source}: +${rider.damage} damage`);
+    }
+  }
+  return totals;
+}
+
 // Derives the full attack profile from the sheet's numbers and the weapon's
 // SRD properties: finesse picks the better of STR/DEX, ranged weapons use
 // DEX, thrown weapons use STR (or finesse), proficiency adds the bonus only
@@ -410,20 +430,35 @@ export function weaponAttackProfile(
     const martial = resolved.unarmed ? martialArtsDie : null;
     const useDex = Boolean(martial) && derived.abilityMods.dex > derived.abilityMods.str;
     const mod = useDex ? derived.abilityMods.dex : derived.abilityMods.str;
-    const dice = martial ? `1${martial}` : resolved.unarmed ? (stance.brawler ? "1d4" : "1") : "1d4";
+    // A worn item's bonus to unarmed strikes (Demon Armor's gauntlets, a
+    // homebrew pair of wraps). This branch once answered 0 whatever was worn,
+    // so no item could reach a fist.
+    // "Only at range" keeps a rider off it, as a fist is never at range, and
+    // an improvised object is not an unarmed strike.
+    const fistRiders = resolved.unarmed ? (stance.worn ?? []).filter((rider) => rider.weapons.includes(UNARMED_STRIKE_KEY) && !rider.ranged) : [];
+    const fist = wornRiderTotals(fistRiders);
+    notes.push(...fist.notes);
+    const ownDice = martial ? `1${martial}` : resolved.unarmed ? (stance.brawler ? "1d4" : "1") : "1d4";
+    // An item's die stands in when it beats the strike's own, as the Martial
+    // Arts die does for a weapon's (martialDice).
+    const form = fistRiders.find((rider) => rider.unarmed)?.unarmed ?? null;
+    const dice = !form ? ownDice : ownDice === "1" ? `1${form.die}` : martialDice(ownDice, form.die);
+    if (form && dice === `1${form.die}`) {
+      notes.push(`${fistRiders.find((rider) => rider.unarmed)?.source}: 1${form.die} ${form.damageType}`);
+    }
     if (martial) {
-      notes.push(`Martial Arts: 1${martial}${useDex ? " with DEX" : ""}`);
+      notes.push(`Martial Arts: ${dice}${useDex ? " with DEX" : ""}`);
     } else if (resolved.unarmed && stance.brawler) {
-      notes.push("Tavern Brawler: the unarmed strike deals 1d4");
+      notes.push(`Tavern Brawler: the unarmed strike deals ${dice}`);
     }
     // A thrown melee weapon keeps its own type (a longsword's edge still
     // cuts); a bow or a crossbow swung in melee is a club.
     const from = resolved.improvisedFrom;
-    const damageType = from?.kind === "melee" ? splitDamage(from.damage).type || "bludgeoning" : "bludgeoning";
+    const damageType = form?.damageType ?? (from?.kind === "melee" ? splitDamage(from.damage).type || "bludgeoning" : "bludgeoning");
     return {
       weapon: resolved.displayName,
-      toHit: mod + (resolved.unarmed ? derived.proficiencyBonus : 0),
-      damageExpression: withModifier(dice, offHandModifier(mod, stance)),
+      toHit: mod + fist.attack + (resolved.unarmed ? derived.proficiencyBonus : 0),
+      damageExpression: withModifier(dice, offHandModifier(mod, stance) + fist.damage),
       damageType,
       ranged: false,
       thrown: !resolved.unarmed,
@@ -441,6 +476,7 @@ export function weaponAttackProfile(
       heavy: false,
       ...(resolved.unarmed ? { unarmed: true } : {}),
       ...(martial ? { martialArts: true } : {}),
+      ...(fist.attack > 0 ? { magicWeapon: true } : {}),
       riderNotes: notes,
     };
   }
@@ -509,12 +545,10 @@ export function weaponAttackProfile(
       notes.push(`Dueling: +${riders.oneHandedMeleeDamageBonus} damage`);
     }
   }
-  for (const rider of wornRiders) {
-    if (rider.damage) {
-      damageBonus += rider.damage;
-      notes.push(`${rider.source}: +${rider.damage} damage`);
-    }
-  }
+  const wornTotals = wornRiderTotals(wornRiders);
+  toHitBonus += wornTotals.attack;
+  damageBonus += wornTotals.damage;
+  notes.push(...wornTotals.notes);
   const abilityToDamage = offHandModifier(mod, stance);
   if (stance.offHand && riders?.twoWeaponKeepsAbility) {
     notes.push("Two-Weapon Fighting: off-hand keeps its modifier");
@@ -547,7 +581,7 @@ export function weaponAttackProfile(
     ...(monkWeapon ? { martialArts: true } : {}),
     riderNotes: notes,
     ...gearParts.fields,
-    ...(magicBonus > 0 ? { magicWeapon: true } : {}),
+    ...(magicBonus > 0 || wornTotals.attack > 0 ? { magicWeapon: true } : {}),
   };
 }
 

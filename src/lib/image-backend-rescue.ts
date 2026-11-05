@@ -80,7 +80,10 @@ export async function campaignPictures(): Promise<CampaignPictures[]> {
   const out: CampaignPictures[] = [];
   for (const { id } of ids) {
     const campaign = getCampaignById(id);
-    if (!campaign) {
+    // A test fight (src/lib/workshop/test-fight.ts) copies its workshop's
+    // backend when it starts and is gone when it ends: the workshop is the
+    // one to move, and the test table read as a stranded "campaign".
+    if (!campaign || campaign.kind === "playtest") {
       continue;
     }
     out.push({

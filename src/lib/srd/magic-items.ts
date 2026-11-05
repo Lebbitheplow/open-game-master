@@ -25,9 +25,9 @@ import { countsAsWorn } from "@/lib/srd/wear-slots";
 import type { Ability } from "@/lib/schemas/sheet";
 import type { ItemTag } from "@/lib/schemas/item-tags";
 import { textKey } from "@/lib/language/text-logic";
-import { magicItemBonus, rowName, type RowItem } from "@/lib/srd/item-row";
+import { isWorkshopRow, magicItemBonus, rowName, type RowItem } from "@/lib/srd/item-row";
 import { compositeGearNamed } from "@/lib/srd/magic-gear";
-import { isNamed } from "@/lib/srd/feature-names";
+import { isNamed, nameChoice } from "@/lib/srd/feature-names";
 import { alignmentIs } from "@/lib/srd/alignment";
 
 // The minimal item shape the magic-item engine reads: a name and its worn
@@ -77,10 +77,14 @@ export type MagicItemEffect =
   | { kind: "speed"; mode: "fly" | "swim" | "climb"; feet: number | "walk" }
   // Weapon training and damage the item adds to attacks with these weapons,
   // on a ranged attack only when `ranged` (Bracers of Archery).
-  | { kind: "weapon_rider"; weapons: string[]; ranged?: boolean; damage?: number; proficient?: boolean };
+  | { kind: "weapon_rider"; weapons: string[]; ranged?: boolean; attack?: number; damage?: number; proficient?: boolean; unarmed?: UnarmedForm };
 
 // A worn item's rider on attacks with some weapons, with the item it is from.
-export type WornWeaponRider = { weapons: string[]; ranged?: boolean; damage?: number; proficient?: boolean; source: string };
+// What an item makes of the unarmed strike itself (SRD 5.1, Demon Armor: "a
+// damage die of 1d8" that deals "slashing damage").
+export type UnarmedForm = { die: string; damageType: string };
+
+export type WornWeaponRider = { weapons: string[]; ranged?: boolean; attack?: number; damage?: number; proficient?: boolean; unarmed?: UnarmedForm; source: string };
 
 // Who an item lets attune, read from the pack's "requires attunement by ..."
 // line. `text` is that line's own wording, for the refusal.
@@ -101,6 +105,11 @@ export type MagicItemDef = {
   attunedBy?: AttunementRule;
   // Works from the pack: the item's text asks only that it be on the person.
   carried?: boolean;
+  // Nothing reads whether it is worn and its own text never puts it on (a
+  // Crystal Ball, a Cube of Force): the sheet offers no wear toggle and the
+  // GM's line never says "worn", unless the item has a place on the body or
+  // is tagged a focus (isWornGear).
+  noWear?: boolean;
   effects: MagicItemEffect[];
 };
 
@@ -140,8 +149,12 @@ for (const item of MAGIC_ITEMS) {
 }
 
 // The magic item a sheet entry is, if any: by its pack slug, or by its row's
-// name (src/lib/srd/item-row.ts).
+// name (src/lib/srd/item-row.ts). A workshop entry's line is none of the
+// table's (isWorkshopRow): its magic is its own `gear.magic`.
 export function matchMagicItem(item: RowItem): MagicItemDef | null {
+  if (isWorkshopRow(item)) {
+    return null;
+  }
   if (item.slug) {
     const known = bySlug.get(item.slug.trim().toLowerCase());
     if (known) {
@@ -332,7 +345,7 @@ export function magicItemRiders(equipment: WornMagicItem[], wearer?: Wearer): Ma
           contributed = true;
           break;
         case "weapon_rider":
-          riders.weaponRiders.push({ weapons: effect.weapons, ranged: effect.ranged, damage: effect.damage, proficient: effect.proficient, source: item.name });
+          riders.weaponRiders.push({ weapons: effect.weapons, ranged: effect.ranged, attack: effect.attack, damage: effect.damage, proficient: effect.proficient, unarmed: effect.unarmed, source: item.name });
           contributed = true;
           break;
       }
@@ -469,4 +482,21 @@ export function settleAttunement<T extends WornMagicItem>(
     kept.push(item);
     return item;
   });
+}
+
+// Demon Armor's curse (SRD 5.1): "While wearing the armor, you have
+// disadvantage on attack rolls against demons and on saving throws against
+// their spells and special abilities". Wearing it is enough, attuned or not,
+// and only a demon draws it ("fiend (demon)"; a devil does not). `creatureType`
+// is the demon's full type, the one attacked or the one forcing the save.
+// Returns the line that says why, or null.
+export function cursedAgainst(equipment: WornMagicItem[], creatureType: string | undefined): string | null {
+  // The subtype in the type's parentheses, as Favored Enemy reads it
+  // (src/lib/dm/attack-features.ts isFavoredEnemy).
+  const subtypes = (nameChoice(creatureType ?? "") ?? "").split(",").map(textKey);
+  if (!subtypes.includes("demon")) {
+    return null;
+  }
+  const armor = equipment.find((item) => matchMagicItem(item)?.match === "demon armor" && countsAsWorn(item, equipment));
+  return armor ? `${armor.name}'s curse: disadvantage against a demon` : null;
 }

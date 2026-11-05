@@ -172,7 +172,7 @@ await test("Every tool the rules name is one the turn offers, and every other sn
   // that names it stands either way.
   const unknown = named.filter((word) => !tools.has(word) && !argumentWords.has(word) && word !== "complete_beat");
   assert.deepEqual(unknown, [], `the prompt names ${unknown.join(", ")}, which no offered tool knows`);
-  for (const option of ["reckless", "stunningStrike", "nonlethal", "bonusAttack", "advantageReason", "useInspiration", "damageType"]) {
+  for (const option of ["reckless", "stunningStrike", "nonlethal", "feature", "advantageReason", "useInspiration", "damageType"]) {
     assert.ok(argumentWords.has(option), `the prompt teaches ${option}, which no tool takes`);
   }
 });
@@ -292,7 +292,7 @@ await test("Potions in a fight are the user's action on their own turn, within 5
 
 await test("pc_attack's class options and the advantage rule are in the prompt, and it never invites advantage for what the server applies.", () => {
   const rule = ruleLine(systemText(), "- Enemy HP and AC in GAME STATE");
-  for (const option of ["reckless", "stunningStrike", "nonlethal", "bonusAttack \"martial arts\" or \"frenzy\""]) {
+  for (const option of ["reckless", "stunningStrike", "nonlethal", "feature with the name of what the attack is made with: \"Martial Arts\", \"Frenzy\""]) {
     assert.ok(rule.includes(option), `pc_attack option ${option} missing from the rule`);
   }
   assert.match(rule, /A knocked-out enemy is out of the fight but alive/);
@@ -332,7 +332,7 @@ await test("The feature rules match the feature engine: Inspiration, the Channel
   const text = systemText();
   assert.match(text, /set_condition condition "inspiration"/);
   assert.match(text, /pass useInspiration true on their request_roll/);
-  assert.match(text, /Channel Divinity variant 'turn undead', 'turn the unholy', 'sacred weapon' or 'preserve life'/);
+  assert.match(text, /Channel Divinity variant 'turn undead', 'turn the unholy', 'turn the faithless', 'abjure the extraplanar', 'conquering presence', 'dreadful aspect', 'sacred weapon', 'preserve life', or 'vow of enmity', 'arcane abjuration' or 'abjure enemy' with targetEnemyId/);
   assert.match(text, /never set turned or frightened by hand/);
   assert.match(text, /'empty body' or 'diamond soul'/);
   assert.match(text, /Indomitable rerolls the last failed save by itself/);
@@ -953,6 +953,23 @@ await test("An agent program's narration is checked against the live encounter, 
     content: "The goblin snarls and circles Tamsin, looking for an opening.",
   });
   assert.equal(fine.status, 201, JSON.stringify(fine.json));
+});
+
+// Issue 744: an agent program's prose is a model's and loses a line of
+// closers nobody opened; a person's passage through the same route is theirs.
+await test("An agent program's passage loses a line of stray closers, and a person's passage is stored as typed.", async () => {
+  const story = "The goblin backs toward the reeds, hissing.";
+  const last = () => listRecentMessages(agentWorld.campaignId, 50).at(-1);
+  routeModel.claims([[]]);
+  const agent = await agentCall(agentWorld, agentWorld.owner.id, "campaigns/[campaignId]/dm/narrate", { content: `)*\n\n${story}` });
+  assert.equal(agent.status, 201, JSON.stringify(agent.json));
+  assert.equal(last().content, story);
+  const typed = `)*\n\n${story}`;
+  const person = await agentCall(agentWorld, agentWorld.owner.id, "campaigns/[campaignId]/dm/narrate", { content: typed }, false);
+  assert.equal(person.status, 201, JSON.stringify(person.json));
+  assert.equal(last().content, typed);
+  const empty = await agentCall(agentWorld, agentWorld.owner.id, "campaigns/[campaignId]/dm/narrate", { content: ")*" });
+  assert.equal(empty.status, 400, JSON.stringify(empty.json));
 });
 
 await test("An agent program in the DM seat that whispers back answers the player's private message, so the player can send more.", async () => {

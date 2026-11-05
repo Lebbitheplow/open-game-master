@@ -16,6 +16,9 @@ const conditionInstanceSchema = z.object({
     rounds: z.number().int().min(1).max(ROUND_CEILING).optional(),
     // What put the condition there: the spell, feature or hazard by name.
     source: z.string().trim().min(1).max(80).optional(),
+    // Each character a creature has withstood, where one mark answers several
+    // (Instinctive Charm).
+    sources: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
     // Set by the engine on a condition it has renewed (a rage kept going).
     stoked: z.boolean().optional(),
     // "Until the start of your next turn" (Dodge, Shield, the Protection
@@ -45,6 +48,10 @@ const conditionInstanceSchema = z.object({
     // A casting held across turns cast as a ritual, which spends no slot
     // when it completes (src/lib/dm/long-casting-logic.ts).
     ritual: z.boolean().optional(),
+  // A casting going into a Ring of Spell Storing, or coming out of one.
+  storeIn: z.string().max(80).optional(),
+  storeInHolder: z.string().max(80).optional(),
+  fromRing: z.string().max(80).optional(),
     // Ends when the creature takes damage (Sleep, Hypnotic Pattern), or
     // gives it a new save when it does (Hideous Laughter, Dominate Person).
     endsOnDamage: z.boolean().optional(),
@@ -80,6 +87,16 @@ const conditionInstanceSchema = z.object({
     // Confusion's lash-out: the creature its d10 picked for this round's
     // melee attack (src/lib/dm/confusion.ts).
     lashOut: z.object({ target: z.string().trim().min(1).max(80), round: z.number().int().min(0) }).optional(),
+    // Swallowed whole (src/lib/dm/swallow.ts): the damage the creature dealt
+    // its swallower, by the creature whose turn it landed in, each read at
+    // its turn's end for a regurgitation, and once the swallower dies the
+    // feet of movement out of its corpse.
+    swallow: z
+      .object({
+        turns: z.record(z.string().trim().min(1).max(80), z.number().int().min(0).max(100_000)).optional(),
+        escapeFeet: z.number().int().min(0).max(120).optional(),
+      })
+      .optional(),
 });
 
 // Duration/save metadata for active conditions, keyed by condition name.

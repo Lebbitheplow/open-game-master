@@ -19,7 +19,7 @@ import { SRD_WEAPONS } from "@/lib/srd/weapons";
 import { rollExpression } from "@/lib/dice";
 import { grantItemMath, removeItemMath } from "@/lib/dm/mutation-math";
 import { resolveRollExpression, resolveSheetRef, type RollArgs, unknownSheetRef } from "@/lib/dm/rolls";
-import { rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
+import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
 import { sheetsAgainstParty } from "@/lib/dm/combat-sides";
 import { canAct } from "@/lib/dm/can-act";
 import { incapacitatedBy } from "@/lib/dm/condition-logic";
@@ -458,7 +458,7 @@ export function handleBuyItem(campaign: Campaign, rawArguments: string, at: Trad
   const paid = addCopper(purse, -total);
   const items = grantItemMath(sheet.equipment, line.itemName, args.qty, line.srdName ? { srdName: line.srdName } : {});
   // Strength x 15 pounds is all a character can carry (src/lib/dm/load-rules.ts).
-  const tooHeavy = capacityProblem(sheet, items.equipment, line.itemName, paid.purse.gold);
+  const tooHeavy = capacityProblem(sheet, items.equipment, line.itemName, paid.purse);
   if (tooHeavy) {
     return { ...tooHeavy, error: `${tooHeavy.error} Nothing was bought.` };
   }
@@ -602,17 +602,19 @@ export function handleHaggle(campaign: Campaign, rawArguments: string, at: Trade
   }
   // Held carriers and lasting effects ride the haggling check, and the
   // carrier is spent by it.
+  const dc = haggleDc(shop.size);
+  const waits = heldDieWaits(sheet, dc);
   const resolved = resolveRollExpression(
     { kind: "skill_check", skill } as unknown as RollArgs,
     sheet,
-    rollExtrasFor(campaign, sheet, "skill_check"),
+    { ...rollExtrasFor(campaign, sheet, "skill_check"), keepHeldDie: waits },
   );
   if ("error" in resolved || "autoFail" in resolved) {
     return "error" in resolved ? resolved : { error: `${sheet.name} cannot make that check.`, refused: "rules" };
   }
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-  const dc = haggleDc(shop.size);
-  const rolled = rollExpression(resolved.expression);
+  const thrown = rollExpression(resolved.expression);
+  const rolled = waits ? settleHeldDie(campaign.id, sheet.id, thrown, dc) : thrown;
   const roll = insertRoll({ campaignId: campaign.id, characterId: sheet.id, requestedBy: "dm", kind: "skill_check", detail: `${sheet.name}: haggling at ${shop.name} (${SKILL_LABEL[skill]})`, dc, result: rolled });
   publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
   const steps = haggleSteps(skill, rolled.total, dc);
@@ -697,16 +699,19 @@ export function tradeCall(campaign: Campaign, args: ToolArgs): EngineCall {
     const priceCp = args.priceCp ?? (Number.isFinite(Number(args.price)) && Number(args.price) > 0 ? Math.round(Number(args.price) * 100) : undefined);
     return { name: "sell_item", args: { ...common, ...(priceCp !== undefined ? { priceCp } : {}) } };
   };
+  const srdName = typeof args.srdName === "string" ? args.srdName.trim() : "";
+  const shelved = (shop: Shop) => findStockLine(shop.stock, item) ?? (srdName ? findStockLine(shop.stock, srdName) : null);
   if (named) {
-    return atShop(named);
+    // The shelf's own name, by the item or its English name, as below: an
+    // item in the table's language was refused at a shop the call named.
+    const shop = action === "buy" ? resolveShop(campaign, named) : null;
+    return atShop(named, (shop && shelved(shop)?.itemName) || item);
   }
   const location = getCurrentLocation(campaign.id);
   const here = location ? listShopsAt(campaign.id, location.id, location.name) : [];
   if (!here.length) {
     return listPrice;
   }
-  const srdName = typeof args.srdName === "string" ? args.srdName.trim() : "";
-  const shelved = (shop: Shop) => findStockLine(shop.stock, item) ?? (srdName ? findStockLine(shop.stock, srdName) : null);
   if (action === "buy") {
     for (const shop of here) {
       const line = shelved(shop);

@@ -192,7 +192,11 @@ export function materialPlan(sheet: Holder, facts: SpellFacts | null, ctx: Mater
     const name = short ? title(short) : `${facts.name} component`;
     const copper = missing.qty * missing.gp * COPPER_PER_GOLD;
     const stated = /\d\s*gp/i.test(component.what);
-    const printed = `${pieces > 1 ? `${pieces} × ` : ""}${component.what.replace(/\.$/, "")}${stated ? "" : ` worth ${component.gp} gp${pieces > 1 ? " each" : ""}`}${component.consumed && !/consum/i.test(component.what) ? ", which the spell consumes" : ""}`;
+    // A component whose words the facts lack (the bundled facts of a spell
+    // the table has not fetched yet) is still a component: "needs  worth 10
+    // gp" read as if a word had fallen out.
+    const what = component.what.replace(/\.$/, "") || "a material component";
+    const printed = `${pieces > 1 ? `${pieces} × ` : ""}${what}${stated ? "" : ` worth ${component.gp} gp${pieces > 1 ? " each" : ""}`}${component.consumed && !/consum/i.test(component.what) ? ", which the spell consumes" : ""}`;
     if (ctx.inFight) {
       return {
         error: `${facts.name} needs ${printed}, and ${sheet.name} does not carry it (a line on the sheet with its worth, like "${name}" with worth ${missing.gp}). There is no buying one in the middle of a fight. Nothing was spent.`,

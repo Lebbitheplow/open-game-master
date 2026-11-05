@@ -19,6 +19,8 @@ import {
 } from "@/lib/npcs/forge";
 import { npcRoleOptions } from "@/lib/placeholders";
 import { GENDERS, type Gender } from "@/lib/gender";
+import { NPC_RACE_OPTIONS } from "@/lib/npc-race";
+import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 import { AttractionPicker, NPC_ATTRACTION_HINT } from "@/components/AttractionPicker";
 import {
   GOAL_FIELDS,
@@ -29,6 +31,17 @@ import {
 } from "@/app/campaigns/[campaignId]/NpcFields";
 import { DictateField } from "@/components/DictateField";
 import { appendDictation } from "@/lib/dictation";
+import { KNOWN_BEFORE_HOW_CHARS, type KnownBeforeGrade } from "@/lib/dm/known-before-logic";
+
+// "Before the story" (issue 731): whether the whole party already knows this
+// person when the story begins, and how. Each grade says in plain words the
+// standing every hero's bond opens at.
+const KNOWN_BEFORE_OPTIONS: Array<{ value: KnownBeforeGrade | "none"; label: string; hint: string }> = [
+  { value: "none", label: "No, they meet in the story", hint: "The party meets them in play, as strangers" },
+  { value: "acquainted", label: "Acquainted", hint: "They know each other; bonds open at Neutral" },
+  { value: "friend", label: "Friends", hint: "On good terms, a patron or an old contact; bonds open at Cordial" },
+  { value: "close", label: "Close", hint: "A mentor or old friend to them all; bonds open at Friendly" },
+];
 
 // The four sections of the NPC form: who they are on the surface, who they
 // are underneath, what they want, and how they feel about everyone else.
@@ -52,6 +65,7 @@ export function NpcEditorFields({
   genre,
   places = [],
   factions = [],
+  knownBeforeOpen = false,
 }: {
   draft: NpcDraft;
   onChange: (draft: NpcDraft) => void;
@@ -64,9 +78,18 @@ export function NpcEditorFields({
   places?: readonly string[];
   // The world's factions, for the membership picker.
   factions?: ReadonlyArray<{ id: string; name: string }>;
+  // Whether "Before the story" can still matter: in a workshop, and at a
+  // table whose GM has not yet narrated (the people route says; an older
+  // host never does, and the section stays out).
+  knownBeforeOpen?: boolean;
 }) {
   const roleListId = useId();
   const placeListId = useId();
+  const knownLabelId = useId();
+  const howId = useId();
+  const howHintId = useId();
+  const known = draft.knownBefore ?? null;
+  const keepsRace = hostOffers(useCapabilities(), "npcRace");
   const roles = npcRoleOptions(genre);
   return (
     <>
@@ -126,6 +149,20 @@ export function NpcEditorFields({
             options={[{ value: "", label: "Unspecified" }, ...GENDERS.map((gender) => ({ value: gender, label: gender }))]}
           />
           </span>
+          {/* Beside the gender because the two pick the stand-in face
+              together: an elf bandit draws the elf bandit, not a human one.
+              An older host drops the race unsaved, so it waits for one that
+              keeps it (the apps can open an older server). */}
+          {keepsRace ? (
+            <span className="w-full sm:w-48">
+            <Select<string>
+              label="Race"
+              value={draft.race ?? ""}
+              onChange={(race) => onChange({ ...draft, race })}
+              options={[{ value: "", label: "Unspecified" }, ...NPC_RACE_OPTIONS]}
+            />
+            </span>
+          ) : null}
         </div>
 
         {/* Who they are drawn to, beside the gender (issue 501): identity,
@@ -262,6 +299,50 @@ export function NpcEditorFields({
           ) : null}
         </div>
       </section>
+
+      {/* Only an author's word, with its reason, gives the party a history
+          with someone (issue 731); a person hostile to the party has none. */}
+      {knownBeforeOpen && draft.attitude !== "hostile" ? (
+        <section className="panel space-y-2 rounded-xl p-3" data-tour="cast-known-before">
+          <SectionHead title="Before the story" glyph="tab-bonds" className="mb-0" />
+          <p id={knownLabelId} className="text-xs text-stone-300">
+            Does the whole party already know them when the story begins?
+          </p>
+          <span className="block sm:max-w-md" aria-describedby={knownLabelId}>
+            <Select<KnownBeforeGrade | "none">
+              label="Does the whole party already know them when the story begins?"
+              value={known?.grade ?? "none"}
+              onChange={(grade) =>
+                onChange({ ...draft, knownBefore: grade === "none" ? null : { grade, how: known?.how ?? "" } })
+              }
+              options={KNOWN_BEFORE_OPTIONS.map((option) => ({ ...option, icon: { kind: "glyph" as const, key: option.value === "none" ? "attitude-neutral" : "tab-bonds" } }))}
+            />
+          </span>
+          {known ? (
+            <div className="pop-in space-y-1">
+              <label htmlFor={howId} className="block text-xs text-stone-300">
+                How the party knows them
+              </label>
+              <input
+                id={howId}
+                value={known.how}
+                maxLength={KNOWN_BEFORE_HOW_CHARS}
+                onChange={(event) => onChange({ ...draft, knownBefore: { grade: known.grade, how: event.target.value } })}
+                placeholder="She hired you twice to guard her caravans"
+                aria-describedby={howHintId}
+                aria-invalid={!known.how.trim()}
+                className={ui.input}
+              />
+              <p id={howHintId} className="text-[11px] text-stone-500">
+                {known.how.trim() ? "" : "Needed. "}
+                Use only what the adventure&apos;s opening says the whole party shares. Every hero in the party as the
+                story begins starts with this bond, and this line is its first memory on the Bonds tab and for the GM. A
+                hero who joins later meets them fresh.
+              </p>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
       <section className="panel space-y-2 rounded-xl p-3">
         <SectionHead title="Who they are" glyph="tab-bonds" className="mb-0" aside={suggest("personality")} />

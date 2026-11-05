@@ -318,6 +318,78 @@ await test("Create Undead makes three ghouls from a 6th level slot and refuses w
   assert.equal(made[0].maxHp, 22);
 });
 
+// SRD 5.1, Create Undead: "an 8th-level spell slot, you can animate or
+// reassert control over five ghouls or two ghasts or wights"; a 6th level
+// slot reasserts the three a 6th level casting makes.
+await test("Create Undead reasserts control by kind, as its slot prints: an 8th level casting holds two of five wights, and a 6th level casting none, spending nothing.", async () => {
+  const { world, sheets: [wizard] } = await outOfFight([WIZARD(["Create Undead"], 17, { gold: 10000 })]);
+  const fresh = () => {
+    const sheet = world.sheet(wizard.id);
+    const slots = Object.fromEntries(Object.entries(sheet.spellcasting.slots).map(([level, slot]) => [level, { ...slot, used: 0 }]));
+    world.patch(wizard.id, { spellcasting: { ...sheet.spellcasting, slots } });
+  };
+  const nine = await world.invoke("cast_buff", { characterId: wizard.id, spell: "Create Undead", level: 9, variant: "wight", count: 3 });
+  assert.equal(nine.ok, true, nine.error);
+  const eight = await world.invoke("cast_buff", { characterId: wizard.id, spell: "Create Undead", level: 8, variant: "wight", count: 2 });
+  assert.equal(eight.ok, true, eight.error);
+  assert.equal(summonsOf(world, "Create Undead").length, 5, "five wights");
+  fresh();
+  const held = await world.invoke("cast_buff", { characterId: wizard.id, spell: "Create Undead", level: 8, variant: "reassert control" });
+  assert.equal(held.ok, true, held.error);
+  assert.equal(held.result.reasserted.length, 2, `two wights held, not five: ${held.result.reasserted.join(", ")}`);
+  assert.match(held.result.note, /3 more are beyond this casting's hold \(up to 5 Ghoul, or up to 2 Ghast or Wight\)/);
+  fresh();
+  const low = await world.invoke("cast_buff", { characterId: wizard.id, spell: "Create Undead", level: 6, variant: "reassert control" });
+  assert.equal(low.ok, false, JSON.stringify(low).slice(0, 300));
+  assert.match(low.error, /Create Undead from a level 6 slot reasserts control over up to 3 Ghoul, and .* are Wight, Wight, Wight, Wight, Wight\. Nothing was spent/);
+  assert.equal(slotsLeft(world, wizard.id, 6), 1, "the slot is kept");
+});
+
+// SRD 5.1: the casting "reasserts your control over up to" so many "creatures
+// you have animated with this spell": the caster chooses which. With three
+// ghouls and two ghasts, an 8th level casting holds the five ghouls' option
+// unless the caster names the ghasts; Animate Dead's four from a 3rd level
+// slot likewise take the zombies first when named. The engine used to pick
+// the option holding most, and the oldest four, whatever the caster said.
+await test("A reasserting casting holds the undead the caster names: Create Undead's two ghasts over three ghouls, Animate Dead's zombies before its skeletons.", async () => {
+  const { world, sheets: [wizard] } = await outOfFight([WIZARD(["Create Undead", "Animate Dead"], 17, { gold: 10000 })]);
+  const fresh = () => {
+    const sheet = world.sheet(wizard.id);
+    const slots = Object.fromEntries(Object.entries(sheet.spellcasting.slots).map(([level, slot]) => [level, { ...slot, used: 0 }]));
+    world.patch(wizard.id, { spellcasting: { ...sheet.spellcasting, slots } });
+  };
+  const ghouls = await world.invoke("cast_buff", { characterId: wizard.id, spell: "Create Undead", level: 6, variant: "ghoul", count: 3 });
+  assert.equal(ghouls.ok, true, ghouls.error);
+  const ghasts = await world.invoke("cast_buff", { characterId: wizard.id, spell: "Create Undead", level: 8, variant: "ghast", count: 2 });
+  assert.equal(ghasts.ok, true, ghasts.error);
+  fresh();
+  const most = await world.invoke("cast_buff", { characterId: wizard.id, spell: "Create Undead", level: 8, variant: "reassert control" });
+  assert.equal(most.ok, true, most.error);
+  assert.equal(most.result.reasserted.length, 3, `named none: the option holding most, the ghouls: ${most.result.reasserted.join(", ")}`);
+  fresh();
+  const named = await world.invoke("cast_buff", { characterId: wizard.id, spell: "Create Undead", level: 8, variant: "reassert control ghast" });
+  assert.equal(named.ok, true, named.error);
+  const heldForms = named.result.reasserted.map((name) => world.sheets().find((sheet) => sheet.name === name)?.summon?.form);
+  assert.deepEqual(heldForms, ["Ghast", "Ghast"], `the ghasts, as named: ${named.result.reasserted.join(", ")}`);
+  fresh();
+  const none = await world.invoke("cast_buff", { characterId: wizard.id, spell: "Create Undead", level: 8, variant: "reassert control mummy" });
+  assert.equal(none.ok, false, "a kind the caster has none of holds nothing");
+  assert.match(none.error, /Nothing was spent/);
+  fresh();
+  // Three skeletons from a 4th level slot, then a zombie from each of two
+  // 3rd level castings: five, of which a 3rd level casting holds four.
+  for (const [form, level, count] of [["skeleton", 4, 3], ["zombie", 3, 1], ["zombie", 3, 1]]) {
+    const raised = await world.invoke("cast_buff", { characterId: wizard.id, spell: "Animate Dead", level, variant: form, count });
+    assert.equal(raised.ok, true, raised.error);
+    fresh();
+  }
+  const zombies = await world.invoke("cast_buff", { characterId: wizard.id, spell: "Animate Dead", level: 3, variant: "reassert control zombie" });
+  assert.equal(zombies.ok, true, zombies.error);
+  const held = zombies.result.reasserted.map((name) => world.sheets().find((sheet) => sheet.name === name)?.summon?.form);
+  assert.equal(held.length, 4);
+  assert.equal(held.filter((form) => form === "Zombie").length, 2, `both zombies among the four: ${held.join(", ")}`);
+});
+
 await test("Phantom Steed's horse has a speed of 100 feet and disappears when it takes any damage.", async () => {
   const { world, sheets: [wizard] } = await outOfFight([WIZARD(["Phantom Steed"], 5)]);
   const cast = await world.invoke("cast_buff", { characterId: wizard.id, spell: "Phantom Steed", level: 3 });

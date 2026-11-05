@@ -79,6 +79,10 @@ export const EXTRA = {
   // "you have proficiency with the longbow and shortbow, and you gain a +2
   // bonus to damage rolls on ranged attacks made with such weapons."
   "bracers of archery": [{ kind: "weapon_rider", weapons: ["longbow", "shortbow"], ranged: true, damage: 2, proficient: true }],
+  // "the armor's clawed gauntlets turn unarmed strikes with your hands into
+  // magic weapons that deal slashing damage, with a +1 bonus to attack rolls
+  // and damage rolls and a damage die of 1d8."
+  "demon armor": [{ kind: "weapon_rider", weapons: ["unarmed strike"], attack: 1, damage: 1, unarmed: { die: "d8", damageType: "slashing" } }],
 };
 
 // Other names a sheet writes an SRD row by: a family's row is named with

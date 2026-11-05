@@ -46,6 +46,8 @@ import { activeAuthored, resolveFormula } from "@/lib/srd/authored-effects";
 import { effectiveMaxHp, isIncapacitated, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { hurtEnemy } from "@/lib/dm/spell-aura";
 import { withinFeet } from "@/lib/dm/authored-saves";
+import { vowedFoe } from "@/lib/srd/vow-of-enmity";
+import { ENTROPIC_EDGE, entropicQuarry } from "@/lib/dm/reaction-kinds";
 import { naturalWeaponOnHit } from "@/lib/dm/authored-attacks";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
@@ -208,7 +210,7 @@ export function authoredAfterHit(
       if (updated) {
         publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
       }
-      lines.push(`Unwavering Mark: ${input.attacker.displayName} struck someone other than ${cavalier.name}, who may make a bonus-action melee attack against it on their next turn, with advantage and +half their fighter level damage (pc_attack bonusAttack "feature").`);
+      lines.push(`Unwavering Mark: ${input.attacker.displayName} struck someone other than ${cavalier.name}, who may make a bonus-action melee attack against it on their next turn, with advantage and +half their fighter level damage (a pc_attack entry with feature "Unwavering Mark").`);
     }
   }
   const spurned = featuresSetAside(input.attacker, target);
@@ -239,10 +241,12 @@ export function authoredAttackSituation(input: {
   sheet: CharacterSheet;
   enemy: EncounterEnemy;
   melee: boolean;
-}): { sources: Advantage[]; notes: string[]; autoCrit: string | null } {
+}): { sources: Advantage[]; notes: string[]; autoCrit: string | null; spent: string[] } {
   const { encounter, sheet, enemy } = input;
   const sources: Advantage[] = [];
   const notes: string[] = [];
+  // Marks this attack uses up, cleared with the attack's other one-shots.
+  const spent: string[] = [];
   let autoCrit: string | null = null;
   const type = textKey(enemy.stats.type ?? "");
   for (const { effect, held } of activeAuthored(sheet, "attack_adv")) {
@@ -268,6 +272,16 @@ export function authoredAttackSituation(input: {
       notes.push(`${held.feature}: advantage`);
     }
   }
+  if (vowedFoe(sheet) === enemy.id) {
+    sources.push("advantage");
+    notes.push("Vow of Enmity: advantage");
+  }
+  // Entropic Ward's miss: this creature's next attack roll from the warlock.
+  if (entropicQuarry(sheet) === enemy.id) {
+    sources.push("advantage");
+    notes.push("Entropic Ward: advantage, spent by this attack");
+    spent.push(sheet.conditions.find((entry) => textKey(entry) === ENTROPIC_EDGE)!);
+  }
   for (const { held } of activeAuthored(sheet, "auto_crit")) {
     if (encounter.surprisedIds.includes(enemy.id)) {
       autoCrit = held.feature;
@@ -289,7 +303,7 @@ export function authoredAttackSituation(input: {
       }
     }
   }
-  return { sources, notes, autoCrit };
+  return { sources, notes, autoCrit, spent };
 }
 
 // A character's attack has hit (and may have killed). Returns the lines for

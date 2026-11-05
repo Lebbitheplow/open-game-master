@@ -13,7 +13,7 @@ import { insertRoll } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
 import { d20Expression, rollExpression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
-import { rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
+import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -29,15 +29,14 @@ export type CharacterCheck = {
   autoFailed?: boolean;
 };
 
-export function rollCharacterCheck(
-  campaign: Campaign,
-  stale: CharacterSheet,
-  // `charmedTarget`: the creature the check is aimed at, when this
-  // character charmed it (rolls.ts: advantage on a Charisma check with it).
-  check: { skill?: string; ability?: Ability; advantage?: "advantage" | "disadvantage"; dc?: number; charmedTarget?: string },
-  detail: string,
-): CharacterCheck {
-  const sheet = getSheetById(stale.id) ?? stale;
+// `charmedTarget`: the creature the check is aimed at, when this character
+// charmed it (rolls.ts: advantage on a Charisma check with it).
+type CheckAsked = { skill?: string; ability?: Ability; advantage?: "advantage" | "disadvantage"; dc?: number; charmedTarget?: string };
+
+// The check as the resolver builds it, before any die is rolled.
+// `keepHeldDie`: a held die is settled after the d20 (forced-save.ts
+// heldDieWaits) rather than baked in.
+function resolveCheck(campaign: Campaign, sheet: CharacterSheet, check: CheckAsked, keepHeldDie = false) {
   const args = (
     check.skill
       ? { kind: "skill_check", skill: check.skill }
@@ -46,8 +45,32 @@ export function rollCharacterCheck(
   const resolved = resolveRollExpression(
     { ...args, ...(check.advantage ? { advantage: check.advantage } : {}) },
     sheet,
-    { ...rollExtrasFor(campaign, sheet, args.kind), ...(check.charmedTarget ? { charmedTarget: check.charmedTarget } : {}) },
+    { ...rollExtrasFor(campaign, sheet, args.kind), ...(check.charmedTarget ? { charmedTarget: check.charmedTarget } : {}), keepHeldDie },
   );
+  return resolved;
+}
+
+// The most the check can total, every die at its highest. Nothing is
+// rolled or spent: an improvised attempt whose DC is past it is impossible
+// for the character (src/lib/dm/improvise.ts). The skill is a validated id,
+// and with no sense named (`by`) no condition fails a check unrolled.
+export function checkCeiling(campaign: Campaign, stale: CharacterSheet, check: CheckAsked): number {
+  const resolved = resolveCheck(campaign, getSheetById(stale.id) ?? stale, check);
+  if ("error" in resolved || "autoFail" in resolved) {
+    throw new Error(`checkCeiling: ${"error" in resolved ? resolved.error : resolved.notes.join("; ")}`);
+  }
+  return rollExpression(resolved.expression, (sides) => sides).total;
+}
+
+export function rollCharacterCheck(
+  campaign: Campaign,
+  stale: CharacterSheet,
+  check: CheckAsked,
+  detail: string,
+): CharacterCheck {
+  const sheet = getSheetById(stale.id) ?? stale;
+  const waits = heldDieWaits(sheet, check.dc);
+  const resolved = resolveCheck(campaign, sheet, check, waits);
   if ("error" in resolved) {
     // An unknown skill: fall back to the plain ability, never to nothing.
     const outcome = rollCard(campaign, null, sheet.id, check.skill ? "skill_check" : "ability_check", `${detail}: ${check.skill ?? check.ability ?? "check"}`, d20Expression(0, check.advantage ?? "none"), null);
@@ -57,7 +80,8 @@ export function rollCharacterCheck(
     return { total: 1, expression: "", notes: resolved.notes, rollId: null, autoFailed: true };
   }
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-  const outcome = rollExpression(resolved.expression);
+  const thrown = rollExpression(resolved.expression);
+  const outcome = waits && check.dc ? settleHeldDie(campaign.id, sheet.id, thrown, check.dc) : thrown;
   const roll = insertRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
@@ -97,7 +121,8 @@ export function rollFeatureSave(
     dc,
     ...(against ? { against } : {}),
   } as RollArgs;
-  const resolved = resolveRollExpression(args, sheet, rollExtrasFor(campaign, sheet, "saving_throw"));
+  const waits = heldDieWaits(sheet, dc);
+  const resolved = resolveRollExpression(args, sheet, { ...rollExtrasFor(campaign, sheet, "saving_throw"), keepHeldDie: waits });
   if ("error" in resolved) {
     return { success: false, total: null, notes: [resolved.error] };
   }
@@ -105,7 +130,8 @@ export function rollFeatureSave(
     return { success: false, total: null, notes: resolved.notes };
   }
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-  const outcome = rollExpression(resolved.expression);
+  const thrown = rollExpression(resolved.expression);
+  const outcome = waits ? settleHeldDie(campaign.id, sheet.id, thrown, dc) : thrown;
   const roll = insertRoll({
     campaignId: campaign.id,
     characterId: sheet.id,

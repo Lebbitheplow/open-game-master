@@ -77,7 +77,7 @@ function dmTurnEnds(world, turn) {
   tools.advanceAfterTurn(world.campaign(), getDmTurn(turn.id));
 }
 
-await test("A commanded companion's typed Dash to Kara walks it beside her in the same call, and its turn then ends", async () => {
+await test("A commanded companion's typed Dash to Kara walks it beside her in the same call, and its turn waits on the commander", async () => {
   const { world, kit, kara, rowan } = await table();
   world.say("player", "Rowan dashes to Kara.", world.sheet(rowan.id));
   const turn = createDmTurn(world.campaignId, [], "ai");
@@ -87,7 +87,8 @@ await test("A commanded companion's typed Dash to Kara walks it beside her in th
   assert.equal(tilesApart(kit.token(rowan.id), kit.token(kara.id)), 1, "Rowan stands beside Kara");
   assert.equal(done.result.moveOwed, undefined);
   dmTurnEnds(world, turn);
-  assert.notEqual(current(world)?.characterId, rowan.id, "the Dash and its walk were the turn");
+  assert.equal(current(world)?.characterId, rowan.id, "what is left of the turn is the commander's, as a player's own is");
+  assert.equal(kit.endTurn(world.owner.id), true, "the commander ends it");
 });
 
 await test("A commanded companion's Dash with nowhere named keeps its turn for the commander, with the doubled movement", async () => {

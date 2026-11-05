@@ -22,6 +22,8 @@ import { summonSpellFor } from "@/lib/srd/summon-spells";
 import { addConditionInstance, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { breakConcentration, droppedLine, setConcentration } from "@/lib/dm/concentration";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
+import { creditStoredSpell, storerNamed } from "@/lib/dm/ring-store";
+import { storedSpellNamed } from "@/lib/srd/spell-storing";
 import { endInvisibilityOnCast } from "@/lib/dm/attack-marks";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import type { SpellFacts } from "@/lib/srd/spell-facts";
@@ -48,7 +50,14 @@ import {
 // The cast door, as cast-guard.ts registers it: completes the casting the
 // "casting complete" mark holds, spending its slot and no action.
 type Completion = (campaign: Campaign, sheetId: string, spell: string) => ToolResult;
-let completion: Completion | null = null;
+// A `var` with no initializer, never a `let`: a module that loads this one
+// first (the encounter route does) reaches cast-guard.ts through this
+// module's own imports, and cast-guard.ts registers the door before this
+// body runs. A `let` cannot be written until then, so the route threw as it
+// loaded (scripts/test-long-casting-load-order.mjs); an initializer would
+// wipe the door once this body ran.
+// eslint-disable-next-line no-var
+var completion: Completion | undefined;
 
 export function registerCastingCompletion(run: Completion) {
   completion = run;
@@ -68,7 +77,7 @@ export function beginLongCasting(
   campaign: Campaign,
   turnId: string | null,
   sheetId: string,
-  input: { spell: string; rounds: number; slotLevel: number | null; ritual: boolean },
+  input: { spell: string; rounds: number; slotLevel: number | null; ritual: boolean; storing?: { ring: string; holderId: string }; fromRing?: string },
 ): { displaced: string | null; failedCasting: string | null } {
   const dropped = setConcentration(campaign, turnId, sheetId, castingLabel(input.spell));
   const fresh = getSheetById(sheetId);
@@ -77,7 +86,7 @@ export function beginLongCasting(
     writeConditions(
       campaign,
       sheetId,
-      addConditionInstance(cleared.conditions, cleared.meta, CASTING, castingInstance(sheetId, input.spell, input.rounds, input.slotLevel, input.ritual)),
+      addConditionInstance(cleared.conditions, cleared.meta, CASTING, castingInstance(sheetId, input.spell, input.rounds, input.slotLevel, input.ritual, { ...(input.storing ? { storing: input.storing } : {}), ...(input.fromRing ? { fromRing: input.fromRing } : {}) })),
     );
   }
   return dropped;
@@ -93,7 +102,7 @@ export function beginHeldCasting(
   sheet: CharacterSheet,
   encounter: Encounter,
   spent: { budget: TurnBudget; note?: string } | null,
-  cast: { name: string; facts: SpellFacts | null; slotLevel: number | null; ritual: boolean; rounds: number },
+  cast: { name: string; facts: SpellFacts | null; slotLevel: number | null; ritual: boolean; rounds: number; storing?: { ring: string; holderId: string }; fromRing?: string },
 ): ToolResult {
   if (spent) {
     storeBudget(encounter, spent.budget);
@@ -105,6 +114,8 @@ export function beginHeldCasting(
     rounds: cast.rounds,
     slotLevel: cast.slotLevel,
     ritual: cast.ritual,
+    ...(cast.storing ? { storing: cast.storing } : {}),
+    ...(cast.fromRing ? { fromRing: cast.fromRing } : {}),
   });
   return {
     ok: true,
@@ -141,6 +152,18 @@ export function finishCasting(campaign: Campaign, sheetId: string, held: HeldCas
   if (textKey(sheet.concentratingOn ?? "") !== textKey(held.label)) {
     return failLine(sheet.name, held.spell, "their concentration on it was gone");
   }
+  // A spell coming out of a ring: the credit the cast door takes, as use_item
+  // writes it for one cast at once (spell-storing.ts). A ring gone from them
+  // meanwhile leaves nothing to cast.
+  if (held.fromRing) {
+    const ring = storerNamed(sheet, held.fromRing);
+    const stored = ring ? storedSpellNamed(ring, held.spell) : null;
+    if (!ring || !stored) {
+      breakConcentration(campaign, null, sheetId, `the casting of ${held.spell} has no ring to come from`);
+      return failLine(sheet.name, held.spell, `${held.fromRing} no longer holds it`);
+    }
+    creditStoredSpell(sheetId, ring, stored);
+  }
   // The mark the cast door completes it by (cast-guard.ts), laid before the
   // concentration on the casting is let go.
   writeConditions(campaign, sheetId, addConditionInstance(sheet.conditions, sheet.conditionMeta as ConditionMetaMap, CASTING_COMPLETE, completeMark(sheetId, held, inFight)));
@@ -149,7 +172,8 @@ export function finishCasting(campaign: Campaign, sheetId: string, held: HeldCas
   breakConcentration(campaign, null, sheetId, `the casting of ${held.spell} is complete`);
   const authors = spellAuthorsFor(campaign);
   const engine = spellEngineName(held.spell, authors);
-  const tool = resolvingTool({
+  // A spell going into a ring has no effect to resolve: the door stores it.
+  const tool = held.storing ? null : resolvingTool({
     summons: Boolean(summonSpellFor(engine)) || textKey(engine) === "find familiar",
     resolution: spellMechanicsFor({ spell: held.spell, userIds: authors })?.mech.resolution ?? null,
   });
@@ -162,7 +186,8 @@ export function finishCasting(campaign: Campaign, sheetId: string, held: HeldCas
     return `${sheet.name} finishes casting ${held.spell}, but it cannot take effect: ${done.error}`;
   }
   const manual = typeof done.manual === "string" ? ` ${done.manual}` : "";
-  return `${completeLine(sheet.name, held.spell, String(done.slot ?? "no slot"))}${manual}`;
+  const stored = held.storing ? ` It has no effect now: it waits in ${held.storing.ring}.` : "";
+  return `${completeLine(sheet.name, held.spell, String(done.slot ?? "no slot"))}${stored}${manual}`;
 }
 
 // The fight is over with castings still going. Their remaining rounds pass

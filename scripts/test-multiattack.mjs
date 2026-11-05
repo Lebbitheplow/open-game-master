@@ -415,7 +415,8 @@ await test("A document's shortened save and duration is read spelled out, by att
     },
     5,
   );
-  assert.deepEqual(hag.attacks[0].onHit, { save: "str", dc: 16, condition: "restrained", rounds: 1 });
+  // "Until the end of its next turn": a round, tied to the target's turn's end.
+  assert.deepEqual(hag.attacks[0].onHit, { save: "str", dc: 16, condition: "restrained", rounds: 1, until: { edge: "end", whose: "target" } });
   assert.deepEqual([hag.specials?.[0]?.save, hag.specials?.[0]?.dc, hag.specials?.[0]?.condition, hag.specials?.[0]?.rounds], ["con", 13, "poisoned", 600]);
   assert.equal(correctedMonsterData({ document__slug: "tob3", slug: "test", reactions: [{ name: "Shriek", desc: "DC 12 Wis save or be frightened for 2 mins." }] }).reactions[0].desc, "DC 12 Wisdom saving throw or be frightened for 2 minutes.");
   // An action's name is looked up among the corrections as their own key only.

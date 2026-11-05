@@ -328,8 +328,13 @@ export function payloadForViewer(
 
   // The whole cast rides only live: cast_updated is ephemeral, and a fresh
   // load reads it from the snapshot, which asks the same right.
+  // A change to the part only the story's seats see (src/lib/dm/cast.ts
+  // syncCast) reaches no other seat at all.
   if (castOf(type, stored)) {
-    return holds(viewer, "secretStory") && castOf(type, original) ? original : tablePayload(type, stored);
+    if (holds(viewer, "secretStory") && castOf(type, original)) {
+      return original;
+    }
+    return (stored as Payload).storyOnly === true ? null : tablePayload(type, stored);
   }
 
   // The figure rides only live: an effect is ephemeral and never replayed.

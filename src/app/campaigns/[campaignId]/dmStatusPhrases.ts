@@ -24,11 +24,11 @@ export const DM_STATUS_PHRASES: Record<Exclude<DmStatus, "idle">, string[]> = {
     "Praying to the RNG gods…",
   ],
   awaiting_rolls: [
-    "The table waits on real dice…",
+    "The table waits on a roll…",
     "Grab your dice, the table waits…",
     "The GM taps the table, waiting on a roll…",
     "The party holds its breath for a roll…",
-    "Real dice required, no pressure…",
+    "A roll hangs in the air…",
     "Someone find the d20 that rolled under the couch…",
   ],
   narrating: [

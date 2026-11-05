@@ -116,7 +116,8 @@
    "proficiency": 1,
    "recharge": "long",
    "action": "reaction",
-   "guidance": "A reaction forcing an attacker to reroll a hit against an ally within 60 feet."
+   "guidance": "Not spent with use_resource: use_reaction 'Runic Shield' when an attack hits an ally within 60 feet. The attacker rolls the d20 again and must use the new roll.",
+   "passive": true
   },
   {
    "id": "sub_unleash_incarnation",
@@ -154,7 +155,8 @@
    "ability": null,
    "recharge": "short",
    "action": "reaction",
-   "guidance": "A reaction making the echo the target of an attack aimed at another creature."
+   "guidance": "Use use_reaction 'Shadow Martyr' when an attack hits another creature, with that creature's targetCharacterId. The echo takes the attack and the hit becomes a miss. The server does not track the echo: refuse it when none is out, and remove the echo when the reply says so.",
+   "passive": true
   },
   {
    "id": "sub_warding_maneuver",
@@ -203,7 +205,8 @@
    "ability": "wis",
    "recharge": "long",
    "action": "reaction",
-   "guidance": "A reaction imposing disadvantage on one attack roll, against the cleric and, from 6th level, an ally within 30 feet."
+   "guidance": "Not spent with use_resource: use_reaction 'Warding Flare' when an attack hits the cleric or, with Improved Flare, a creature within 30 feet. The attack is rolled again at disadvantage.",
+   "passive": true
   },
   {
    "id": "sub_wrath_of_the_storm",
@@ -215,12 +218,8 @@
    "ability": "wis",
    "recharge": "long",
    "action": "reaction",
-   "guidance": "A reaction dealing 2d8 lightning or thunder damage to a creature that hit the cleric in melee, halved on a Dexterity save.",
-   "fx": {
-    "kind": "enemy_save",
-    "save": "dex",
-    "dice": "2d8"
-   }
+   "guidance": "Not spent with use_resource: use_reaction 'Wrath of the Storm' when a creature hits the cleric in melee. It takes 2d8 lightning or thunder (variant names one; else whichever hurts it more), halved on a Dexterity save.",
+   "passive": true
   },
   {
    "id": "sub_war_priest",
@@ -231,7 +230,7 @@
    "uses": 1,
    "ability": "wis",
    "recharge": "long",
-   "guidance": "A bonus-action weapon attack after taking the Attack action, made with pc_attack (bonusAttack \"feature\"); the attack spends the use."
+   "guidance": "A bonus-action weapon attack after taking the Attack action, made with pc_attack (feature \"War Priest\"); the attack spends the use."
   },
   {
    "id": "sub_eyes_of_the_grave",
@@ -255,7 +254,8 @@
    "ability": "wis",
    "recharge": "long",
    "action": "reaction",
-   "guidance": "A reaction turning a critical hit against a creature within 30 feet into an ordinary hit."
+   "guidance": "Not spent with use_resource: use_reaction 'Sentinel at Death's Door' when a critical hit lands on the cleric or, with targetCharacterId, a creature within 30 feet. It becomes a normal hit.",
+   "passive": true
   },
   {
    "id": "sub_eyes_of_night",
@@ -760,7 +760,8 @@
    "ability": null,
    "recharge": "short",
    "action": "reaction",
-   "guidance": "A reaction imposing disadvantage on an attack; if it then misses, the warlock has advantage on their next attack against that creature."
+   "guidance": "Not spent with use_resource: use_reaction 'Entropic Ward' when an attack hits the warlock. The attack is rolled again at disadvantage; if it then misses, the warlock's next attack roll against that creature before the end of their next turn has advantage.",
+   "passive": true
   },
   {
    "id": "sub_healing_light",
@@ -1125,7 +1126,7 @@
     ]
    ],
    "recharge": "long",
-   "guidance": "Rolled after each long rest and kept as fixed numbers. Spend one to replace the result of an attack, check or save by the wizard or a creature they can see, declared before the roll."
+   "guidance": "The server rolls these after each long rest and keeps the numbers. On the wizard's own ability check or saving throw from request_roll it offers them before the roll and waits, so do not spend one for them. On any other roll the wizard or a creature they can see makes, a number replaces the d20 when declared before the roll; never invent one."
   },
   {
    "id": "sub_illusory_self",
@@ -1137,7 +1138,8 @@
    "ability": null,
    "recharge": "short",
    "action": "reaction",
-   "guidance": "A reaction interposing an illusory duplicate so an attack that would hit misses instead."
+   "guidance": "Not spent with use_resource: use_reaction 'Illusory Self' when an attack hits the wizard. An illusory duplicate takes it, and the attack misses.",
+   "passive": true
   },
   {
    "id": "sub_benign_transposition",
@@ -1487,7 +1489,7 @@
    "proficiency": 1,
    "recharge": "long",
    "action": "reaction",
-   "guidance": "A reaction when the ranger or their drake takes damage within 30 feet of each other: the one hurt resists that damage. The server gives back the resisted half (use_reaction 'Reflexive Resistance')."
+   "guidance": "A reaction when the ranger or their drake takes damage within 30 feet of each other: the one hurt resists that damage. For an attack that hit the ranger, the server gives back the resisted half (use_reaction 'Reflexive Resistance'). For the drake, halve the damage before apply_damage and spend this with use_resource."
   },
   {
    "id": "sub_wails_from_the_grave",
@@ -1683,7 +1685,8 @@
    "ability": "cha",
    "recharge": "long",
    "action": "reaction",
-   "guidance": "A reaction adding the paladin's Charisma modifier to the AC of themselves or an ally within 10 feet; if the attack then misses, they may attack the attacker."
+   "passive": true,
+   "guidance": "Not spent with use_resource: use_reaction 'Glorious Defense' when an attack hits the paladin or an ally within 10 feet. It adds their Charisma modifier to that AC, and a resulting miss lets them attack the attacker."
   },
   {
    "id": "sub_undying_sentinel",
@@ -1694,7 +1697,8 @@
    "uses": 1,
    "ability": null,
    "recharge": "long",
-   "guidance": "Triggers on its own: drop to 1 hit point instead of 0."
+   "passive": true,
+   "guidance": "This is not spent by choice: the server drops them to 1 hit point instead of 0 the next time damage would fell them without killing them outright, and burns the use."
   },
   {
    "id": "race_stones_endurance",
@@ -1794,7 +1798,7 @@
    "uses": 1,
    "ability": null,
    "recharge": "short",
-   "guidance": "A bonus-action bite, made with pc_attack (weapon \"bite\", bonusAttack \"feature\"): on a hit the lizardfolk also gains temporary hit points equal to their Constitution modifier (minimum 1). The attack spends the use."
+   "guidance": "A bonus-action bite, made with pc_attack (weapon \"bite\", feature \"Hungry Jaws\"): on a hit the lizardfolk also gains temporary hit points equal to their Constitution modifier (minimum 1). The attack spends the use."
   },
   {
    "id": "race_genasi_magic",
@@ -1857,28 +1861,6 @@
    ],
    "recharge": "long",
    "guidance": "Elixirs brewed on a long rest (one, two from 6th level, three from 15th), each rolled on a d6: healing (2d4 + Intelligence), swiftness (+10 feet of speed for an hour), resilience (+1 AC for 10 minutes), boldness (a d4 on attacks and saves for a minute), flight (a 10-foot flying speed for 10 minutes) or transformation (alter self). A spell slot brews another of a chosen effect. From 9th level a drinker also gains 2d6 + Intelligence temporary hit points."
-  },
-  {
-   "id": "art_eldritch_cannon",
-   "displayName": "Eldritch Cannon",
-   "match": [
-    "eldritch cannon"
-   ],
-   "uses": 1,
-   "ability": null,
-   "scale": [
-    [
-     15,
-     2
-    ],
-    [
-     3,
-     1
-    ]
-   ],
-   "recharge": "long",
-   "action": "action",
-   "guidance": "An action builds a flamethrower, force ballista or protector cannon, and a bonus action activates it. A spell slot buys extra uses."
   },
   {
    "id": "art_spell_storing_item",
@@ -1968,7 +1950,7 @@
    "uses": 1,
    "ability": "str",
    "recharge": "long",
-   "guidance": "The bonus-action melee attack against a marked creature that damaged someone else, on the fighter's next turn: pc_attack bonusAttack \"feature\" at that creature, with advantage and +half the fighter level damage; the attack spends the use. The mark itself the server lays on every melee hit."
+   "guidance": "The bonus-action melee attack against a marked creature that damaged someone else, on the fighter's next turn: pc_attack feature \"Unwavering Mark\" at that creature, with advantage and +half the fighter level damage; the attack spends the use. The mark itself the server lays on every melee hit."
   },
   {
    "id": "sub_bulwark_of_force",
@@ -1991,7 +1973,7 @@
    "uses": 1,
    "ability": null,
    "recharge": "long",
-   "guidance": "Telekinesis once without a slot; while concentrating on it, a weapon attack as a bonus action (pc_attack bonusAttack 'feature')."
+   "guidance": "Telekinesis once without a slot; while concentrating on it, a weapon attack as a bonus action (pc_attack feature 'Telekinetic Master')."
   },
   {
    "id": "sub_elder_champion",

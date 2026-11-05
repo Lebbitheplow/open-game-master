@@ -3,7 +3,10 @@
 // hit, parks the damage roll too. Split from pc-attack.ts, which has
 // already refused or paid for everything the parked roll carries.
 
+import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { holdsFeature } from "@/lib/srd/feature-names";
 import { getFoe, resolveTargetFoe } from "@/lib/dm/sheet-foe";
+import { breakConcentration } from "@/lib/dm/concentration";
 import { tryParry } from "@/lib/dm/enemy-reactions";
 import { getCampaignById } from "@/lib/db/campaigns";
 import {
@@ -19,14 +22,14 @@ import { publishPersisted } from "@/lib/events";
 import { adjudicateHit } from "@/lib/dm/attack-logic";
 import { critDamageExpression } from "@/lib/dm/encounter-logic";
 import { claimHitRiders, liveTypedRiders, strikesAsMagic } from "@/lib/dm/pc-attack-damage";
-import { budgetApplies } from "@/lib/dm/action-budget";
+import { budgetApplies, WEAPON_HIT } from "@/lib/dm/action-budget";
 import type { AttackPlan } from "@/lib/dm/pc-attack-plan";
 import type { Strike } from "@/lib/dm/pc-attack-resolve";
 import { clearHitSpent, gainTempHp, spendOnHit, stunningStrikeSave, type ParkedAttack } from "@/lib/dm/pc-attack-riders";
 import { authoredOnHit } from "@/lib/dm/authored-hooks";
 import { applySpellHitCondition, spellAttackRider } from "@/lib/dm/spell-attack-riders";
 import { gearCritRiders } from "@/lib/dm/gear-attack";
-import { FOE_SLAYER, rescueMiss, STROKE_OF_LUCK } from "@/lib/dm/attack-features";
+import { FOE_SLAYER, rescueMiss, STROKE_OF_LUCK, totalAReactionMeets } from "@/lib/dm/attack-features";
 import {
   HURL_THROUGH_HELL,
   hurlThroughHell,
@@ -65,6 +68,17 @@ function claimParkedFoeSlayer(campaignId: string): boolean {
   }
   storeBudget(encounter, { ...budget, oncePerTurn: [...budget.oncePerTurn, FOE_SLAYER] });
   return true;
+}
+
+// A weapon's hit opens Arcane Jolt this turn, as it does for a roll the server
+// makes (pc-attack-resolve.ts): at a physical-dice table the card never opened.
+function markParkedWeaponHit(campaignId: string, sheet: CharacterSheet, enemyId: string) {
+  const encounter = getActiveEncounter(campaignId);
+  const budget = encounter?.turnBudget;
+  const mark = `${WEAPON_HIT}${enemyId}`;
+  if (encounter && budget && holdsFeature(sheet, "arcane jolt") && budgetApplies(budget, sheet.id, encounter.round) && !budget.oncePerTurn.includes(mark)) {
+    storeBudget(encounter, { ...budget, oncePerTurn: [...budget.oncePerTurn, mark] });
+  }
 }
 
 // Physical dice: park the to-hit roll for the player; the submit route
@@ -163,20 +177,31 @@ export function resolvePendingPcAttack(pending: PendingRoll, roll: StoredRoll): 
   });
   // Parry: the creature's reaction lifts its AC against a melee hit (enemy-reactions.ts).
   const parryFoe = fight && context.targetEnemyId ? getFoe(context.targetEnemyId) : null;
-  const parry = judged.hit && !judged.crit && fight && parryFoe && (context as ParkedAttack).melee
-    ? tryParry({ encounter: fight, enemy: parryFoe, total: roll.total, natural20: false, ac: context.targetAc, melee: true, attackerUnseen: false })
+  const extras = (context as ParkedAttack).extras;
+  // An attack's parts park together, so an earlier part may have spent it since,
+  // and the turn may have gone with its budget.
+  const foeSlayer = fight?.turnBudget && !fight.turnBudget.oncePerTurn.includes(FOE_SLAYER) ? (extras?.foeSlayer ?? 0) : 0;
+  const metTotal = totalAReactionMeets({ total: roll.total, ac: context.targetAc, hit: judged.hit, crit: judged.crit, natural1: roll.breakdown.crit === "nat1", foeSlayer });
+  const parry = metTotal !== null && fight && parryFoe && (context as ParkedAttack).melee
+    ? tryParry({ encounter: fight, enemy: parryFoe, total: metTotal, natural20: false, ac: context.targetAc, melee: true, attackerUnseen: false })
+    : null;
+  // Foe Slayer's bonus lifted the near miss the reaction answered: it went on
+  // this roll, so it is spent, and cannot draw a second reaction or lift again.
+  const liftSpent = parry && metTotal !== roll.total && claimParkedFoeSlayer(pending.campaignId);
+  const parryNote = parry
+    ? `${parry.note}${liftSpent ? `; Foe Slayer: +${foeSlayer} lifted ${roll.total} to ${metTotal} before the reaction, and is spent` : ""}`
     : null;
   const adjudicated = parry ? { ...judged, hit: false, crit: false } : judged;
-  const extras = (context as ParkedAttack).extras;
   // Foe Slayer turns a near miss into a hit, and a declared Stroke of Luck
-  // any miss (src/lib/dm/attack-features.ts).
+  // any miss (src/lib/dm/attack-features.ts). A reaction's raised AC is the
+  // figure a roll has to reach: one it turned has already met the plain AC.
   const rescued = adjudicated.hit
     ? null
     : rescueMiss({
         total: roll.total,
-        ac: context.targetAc,
+        ac: context.targetAc + (parry?.bonus ?? 0),
         natural1: roll.breakdown.crit === "nat1",
-        foeSlayer: extras?.foeSlayer ?? 0,
+        foeSlayer,
         strokeOfLuck: extras?.strokeOfLuck === true,
       });
   const rescueNote =
@@ -188,9 +213,14 @@ export function resolvePendingPcAttack(pending: PendingRoll, roll: StoredRoll): 
   const hit = adjudicated.hit || Boolean(rescueNote);
   const crit = adjudicated.crit || (hit && context.autoCrit === true);
   if (!hit) {
+    // Witch Bolt's beam connects on a hit: a miss leaves nothing to hold.
+    const missed = spellAttackRider((context as ParkedAttack).spell);
+    if (missed?.beam && pending.characterId) {
+      breakConcentration(campaign, null, pending.characterId, `${missed.beam} missed`);
+    }
     return `${context.attacker}'s ${context.weapon} attack rolled ${roll.total} vs AC ${context.targetAc}: MISS${
       roll.breakdown.crit === "nat1" ? " (natural 1)" : ""
-    }${parry ? ` (${parry.note})` : ""}. No damage roll happens; narrate the miss.`;
+    }${parryNote ? ` (${parryNote})` : ""}. No damage roll happens; narrate the miss.`;
   }
   // Verify the target still stands before asking for damage dice (the lead
   // may have force-ended the encounter while the roll sat parked).
@@ -211,6 +241,9 @@ export function resolvePendingPcAttack(pending: PendingRoll, roll: StoredRoll): 
   if (encounter?.turnBudget && budgetApplies(encounter.turnBudget, pending.characterId ?? "", encounter.round)) {
     claimHitRiders(encounter, encounter.turnBudget, parked.hitClaims);
   }
+  if (sheet && !parked.spell) {
+    markParkedWeaponHit(pending.campaignId, sheet, enemy.id);
+  }
   const spellRider = spellAttackRider(parked.spell);
   const spellLine = spellRider && sheet ? applySpellHitCondition(campaign, spellRider, enemy.id, sheet.id) : null;
   // Authored subclass features on a hit (a guardian's mark, Order's Wrath): authored-hooks.ts.
@@ -220,7 +253,8 @@ export function resolvePendingPcAttack(pending: PendingRoll, roll: StoredRoll): 
   const onHit = (context as ParkedAttack).onHit;
   let damage = context.damageExpression;
   let critDamage = context.critDamageExpression;
-  const spentNotes: string[] = [...authoredLines];
+  // A reaction the rescued miss got past is still spent, and the GM is told so.
+  const spentNotes: string[] = [...(parryNote ? [parryNote] : []), ...authoredLines];
   if (onHit) {
     const paid = spendOnHit(
       campaign,

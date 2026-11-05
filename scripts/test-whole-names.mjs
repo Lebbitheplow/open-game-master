@@ -265,12 +265,12 @@ await test("finding 11: purchase is gated as grant_item is, and the bought line 
 
 await test("purchase carries srdName, described in its own field, which the compact profile keeps with the field. Loot no list has, and a spell scroll, are granted with grant_item and paid for with modify_gold, at every table.", async () => {
   const purchase = resourceTools.find((entry) => entry.function.name === "purchase");
-  assert.match(purchase.function.parameters.properties.srdName.description, /the SRD or pack item's English name \('Longsword'\)\. Send it with the first call/);
+  assert.match(purchase.function.parameters.properties.items.items.properties.srdName.description, /the SRD or pack item's English name \('Longsword'\) when item is in other words\. Sent with the first call/i);
   const compact = compactTool(purchase);
-  assert.deepEqual(Object.keys(compact.function.parameters.properties), Object.keys(purchase.function.parameters.properties));
-  assert.match(compact.function.parameters.properties.srdName.description, /English name \('Longsword'\)/, "the compact field keeps what it is");
+  assert.deepEqual(Object.keys(compact.function.parameters.properties.items.items.properties), Object.keys(purchase.function.parameters.properties.items.items.properties));
+  assert.match(compact.function.parameters.properties.items.items.properties.srdName.description, /English name \('Longsword'\)/, "the compact field keeps what it is");
   // At a shop or not since buy_item and sell_item folded into it (issue #471).
-  assert.equal(compact.function.description, "Resolve a character buying or selling an item in one audited step.");
+  assert.equal(compact.function.description, "Resolve a character buying or selling items in one audited step.");
   world.patch(hero.id, { gold: 500 });
   for (const item of ["Portafortuna", "Porte-bonheur", "Amuleto de la suerte", "Glücksbringer", "Lucky charm"]) {
     const asked = await ai("purchase", { characterId: hero.id, item, price: 1, action: "buy", reason: "the market" }, hero);

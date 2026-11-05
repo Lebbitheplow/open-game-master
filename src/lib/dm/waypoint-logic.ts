@@ -42,6 +42,11 @@ export function signalFromToolCall(
     args = {};
   }
   const text = (key: string) => (typeof args[key] === "string" ? (args[key] as string).trim() : "");
+  // grant_item and purchase name every item in items, one entry each.
+  const itemNames = () =>
+    [args, ...(Array.isArray(args.items) ? args.items : [])]
+      .map((entry) => (typeof entry === "object" && entry !== null && typeof (entry as Record<string, unknown>).item === "string" ? String((entry as Record<string, unknown>).item).trim() : ""))
+      .filter(Boolean);
   switch (name) {
     case "move_party":
     case "update_location":
@@ -52,11 +57,11 @@ export function signalFromToolCall(
     case "social_check":
       return text("npc") ? { kind: "npc", names: [text("npc")] } : null;
     case "grant_item":
-      return text("item") ? { kind: "item", names: [text("item")] } : null;
+      return itemNames().length ? { kind: "item", names: itemNames() } : null;
     // A purchase is an item gained only when it buys (issue #471: buy_item,
     // a purchase at a shop, is still sent by older callers).
     case "purchase":
-      return args.action === "buy" && text("item") ? { kind: "item", names: [text("item")] } : null;
+      return args.action === "buy" && itemNames().length ? { kind: "item", names: itemNames() } : null;
     case "buy_item":
       return text("item") ? { kind: "item", names: [text("item")] } : null;
     case "tick_objective":

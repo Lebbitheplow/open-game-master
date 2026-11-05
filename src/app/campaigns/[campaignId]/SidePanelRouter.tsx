@@ -35,6 +35,7 @@ import type { Chapter } from "@/lib/db/chapters";
 import type { PublicEncounter } from "@/lib/db/encounter-view";
 import type { CharacterEvent } from "@/lib/db/character-events";
 import type { ClockTurn } from "@/lib/db/clock-moves";
+import type { TurnChangeView } from "@/lib/db/turn-changes";
 import type { Note } from "@/lib/db/notes";
 import type { WorldFact } from "@/lib/db/facts";
 import type { DmWhisper, InboxWhisper } from "@/lib/db/dm-whispers";
@@ -108,6 +109,8 @@ export type SidePanelRouterProps = {
   characterEvents: CharacterEvent[];
   // The GM turns whose time the event log can still put back (issue #622).
   clockTurns?: ClockTurn[];
+  // What else those turns kept for their revert (issue 685).
+  turnChanges?: TurnChangeView[];
   refreshNotes: () => Promise<void>;
   refreshFacts: () => Promise<void>;
   // Bumped by SessionView on pin/unpin so the pins list refetches.
@@ -162,6 +165,8 @@ export type SidePanelRouterProps = {
   // Bumped by the relationships_updated ephemeral; the Bonds panel refetches
   // its own scoped view when it changes.
   relationshipsVersion: number;
+  // Bumped by cast_updated; the GM console's people list reads again.
+  castVersion?: number;
   // Lasting companions whose sheet just went (issue 503): the Party panel's
   // Gone list.
   departingSheets?: DepartingSheet[];
@@ -218,6 +223,7 @@ export function SidePanelRouter({
   facts,
   characterEvents,
   clockTurns,
+  turnChanges,
   refreshNotes,
   refreshFacts,
   pinsVersion,
@@ -251,6 +257,7 @@ export function SidePanelRouter({
   stageBoard = false,
   tab: rawTab,
   relationshipsVersion,
+  castVersion = 0,
   departingSheets = [],
   factionsVersion = 0,
   worldVersion = 0,
@@ -357,9 +364,11 @@ export function SidePanelRouter({
         )}
         cover={dmCover ?? null}
         bondsKey={relationshipsVersion}
+        castKey={castVersion}
         variantRules={{
           powerfulCritical: campaign?.gameSettings?.variantRules?.powerfulCritical ?? false,
           criticalDamageMods: campaign?.gameSettings?.variantRules?.criticalDamageMods ?? false,
+          supplies: campaign?.gameSettings?.variantRules?.supplies ?? false,
         }}
       />
 </Suspense>
@@ -640,6 +649,7 @@ export function SidePanelRouter({
               sheets={sheets}
               characterEvents={characterEvents}
               clockTurns={clockTurns}
+              turnChanges={turnChanges}
               steersStory={steersStory}
             />
           ) : (

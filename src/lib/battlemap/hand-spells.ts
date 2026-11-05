@@ -5,10 +5,13 @@ import { BEST_EFFORT_NOTE, BEST_EFFORT_SHORT } from "@/lib/content/reading-logic
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { bonusCastOf, casterStateProblem, componentProblem, focusProblem, materialPlan, slotPlan, turnCharge } from "@/lib/dm/cast-rules";
 import { computeSheetDerived, spellAttackFor, spellSaveDcFor } from "@/lib/srd";
+import { counterSpendCards, pickLabel, playedAsSpendCard } from "@/lib/battlemap/hand-subclass";
+import { nameChoice } from "@/lib/srd/feature-names";
 import { heldAtWill, resourceDef, resourceLevel, type ResourceDef } from "@/lib/srd/class-resources";
 import { psionicOptions } from "@/lib/dm/option-costs";
 import { ACTION_SURGED } from "@/lib/dm/action-budget";
 import { BONUS_ATTACK_COUNTERS } from "@/lib/dm/feature-bonus-attacks";
+import { HIT_ANSWER_COUNTERS } from "@/lib/dm/reaction-kinds";
 import { isMeleeSpellAttack } from "@/lib/srd/melee-spell";
 import { bundledSpellFacts, type CastingTime, type SpellRange } from "@/lib/srd/spell-facts";
 import { aoeSpendFor } from "@/lib/srd/aoe-spend";
@@ -19,6 +22,7 @@ import { mechSpellDamage } from "@/lib/srd/spell-dice";
 import { bakedSpellMech } from "@/lib/content/baked-spells";
 import { allSpellNames } from "@/lib/srd/spell-lists";
 import { areaFor, blastAreaFor } from "@/lib/battlemap/hand-area";
+import { summonPick } from "@/lib/battlemap/hand-summon";
 import {
   SAVE_LABEL,
   addFlat,
@@ -185,7 +189,8 @@ function spellShares(mech: SpellMech, spellLevel: number, slotLevel: number | nu
   return { count, unit: "creature", stack: false };
 }
 
-function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, name: string, fact: SpellFact, blasts = true): HandCard | null {
+function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, name: string, fact: SpellFact, options: HandOptions = {}): HandCard | null {
+  const blasts = options.blasts !== false;
   const cost = castingCost(fact.castingTime);
   if (!cost) return null;
   // The mechanics row the engine reads; the prose is parsed only for what the
@@ -200,7 +205,10 @@ function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, 
     row ??
     (fact.desc ? parseSpellMech({ desc: fact.desc, higherLevel: fact.higherLevel }) : bakedSpellMech(name)) ??
     { resolution: "utility" };
-  const slot = fact.level > 0 ? lowestSlot(sheet, fact.level) : null;
+  // Witch Bolt's beam while it holds: the card is its strike, with no slot and
+  // no roll. Aimed anywhere else it is a new casting (src/lib/dm/intent-logic.ts).
+  const beam = mech.repeatDice && sheet.concentratingOn && textKey(sheet.concentratingOn) === textKey(name) ? mech.repeatDice : null;
+  const slot = fact.level > 0 && !beam ? lowestSlot(sheet, fact.level) : null;
   const derived = computeSheetDerived(sheet);
   const abilityMod = sheet.spellcasting ? derived.abilityMods[sheet.spellcasting.ability] : 0;
   const scaled = scaledSpellDice({
@@ -221,7 +229,7 @@ function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, 
     desc: fact.desc,
     higherLevel: fact.higherLevel,
   });
-  let damage: string | null = mech.resolution === "heal" || mech.resolution === "buff" ? null : rolled?.dice ?? null;
+  let damage: string | null = beam ?? (mech.resolution === "heal" || mech.resolution === "buff" ? null : rolled?.dice ?? null);
   let heals = false;
   if (mech.resolution === "heal") {
     // upcastDamage reads a healing step too, so a higher slot heals more.
@@ -234,7 +242,7 @@ function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, 
   if (rider && damage) {
     damage = addFlat(damage, derived.abilityMods[rider.ability as keyof typeof derived.abilityMods] ?? 0);
   }
-  const toHit = mech.resolution === "attack" ? spellAttackFor(sheet, name) : null;
+  const toHit = mech.resolution === "attack" && !beam ? spellAttackFor(sheet, name) : null;
   // The engine's own facts (casting time, components, material cost, range)
   // for the engine's own gates below.
   const facts = fact.facts ?? bundledSpellFacts(name);
@@ -264,6 +272,9 @@ function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, 
   const roll =
     toHit !== null ? `${signed(toHit)} to hit` : save ? (typed ? `DC ${save.dc}${mech.halfOnSave ? ", half on a save" : ""}` : "no attack") : "no roll";
   const notes: string[] = [];
+  if (beam) {
+    notes.push("Beam connected: free at its target. Others: new casting, beam ends.");
+  }
   if (fact.concentration && sheet.concentratingOn && textKey(sheet.concentratingOn) !== textKey(name)) {
     notes.push(`Ends your concentration on ${sheet.concentratingOn}.`);
   }
@@ -285,7 +296,8 @@ function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, 
   const slotRefusal = fact.level > 0 && !slot ? slotPlan(sheet, name, facts, fact.level) : null;
   const charge = turnCharge({
     who: sheet.name,
-    facts,
+    // Not a casting: charged as cast-repeat.ts charges it.
+    facts: beam && facts ? { ...facts, level: 0 } : facts,
     spell: name,
     slotLevel: slot?.level ?? null,
     inFight: true,
@@ -295,6 +307,7 @@ function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, 
     // Embodiment of the Law is the engine's to decide).
     bonusCast: bonusCastOf(sheet, facts, null),
   });
+  const chargeGate: Gate = "error" in charge ? { reason: charge.error, spent: charge.error.includes("already used") } : null;
   const melee = mech.resolution === "attack" && isMeleeSpellAttack(engine, facts?.range.kind);
   if (melee) notes.unshift("Melee spell attack: a creature beside you.");
   // A feature that moves the spell to the bonus action shows it there.
@@ -309,8 +322,8 @@ function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, 
     roll,
     rules: notes.slice(0, 2).join(" "),
     description: [fact.desc, fact.higherLevel ? `At higher levels: ${fact.higherLevel}` : "", ...notes.map((note) => (note === BEST_EFFORT_SHORT ? BEST_EFFORT_NOTE : note))].filter(Boolean).join("\n\n"),
-    resource: fact.level === 0 ? "Cantrip" : slot ? slotLine(slot) : `Level ${fact.level} · no slots`,
-    condition: mech.condition?.name ?? (fact.concentration ? "Concentration" : ""),
+    resource: beam ? "No slot" : fact.level === 0 ? "Cantrip" : slot ? slotLine(slot) : `Level ${fact.level} · no slots`,
+    condition: beam ? "" : mech.condition?.name ?? (fact.concentration ? "Concentration" : ""),
     icon: { kind: "spell", key: name, family: fact.school ? `spell-${fact.school.toLowerCase()}` : null },
     target,
     toHit,
@@ -334,8 +347,19 @@ function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, 
         ? { card: "reaction", feature: name, spell: name, slotLevel: slot?.level ?? null }
         : { card: "spell", spell: name, slotLevel: slot?.level ?? null },
   };
+  // The beam asks only what its cost does: no slot, components or material.
+  if (beam) {
+    return gated(card, standingGate(sheet, turn), chargeGate);
+  }
   const choice = cost === "reaction" ? undefined : spellChoice(mech);
   if (choice) card.choice = choice;
+  // A summoning spell that calls more than one creature from this slot asks
+  // which, and how many where the spell lets its caster choose (issue 685).
+  const summoning = cost === "reaction" ? null : summonPick(options.summons?.[textKey(name)], slot?.level ?? fact.level);
+  if (summoning) {
+    card.choice = summoning.choice;
+    card.summon = summoning.summon;
+  }
   // Web, Moonbeam, a wall: the square it is laid on is picked on the board.
   // So is an instant blast's (Fireball, Burning Hands), whose squares the
   // engine then catches everyone on (issue 570); a blast around the caster
@@ -365,16 +389,22 @@ function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, 
     cost === "reaction" ? costGate("reaction", turn, sheet, name) : null,
     "error" in material ? { reason: material.error, spent: false } : null,
     slotRefusal && "error" in slotRefusal ? { reason: slotRefusal.error, spent: true } : null,
-    "error" in charge ? { reason: charge.error, spent: charge.error.includes("already used") } : null,
+    chargeGate,
   );
 }
 
 export function spellCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, options: HandOptions): HandCard[] {
   const rows: Array<{ level: number; card: HandCard }> = [];
-  for (const name of spellNames(sheet)) {
+  const names = spellNames(sheet);
+  // A beam held from a scroll or an item, its spell on no list of theirs.
+  const held = sheet.concentratingOn;
+  if (held && spellMechFor([held])?.repeatDice && !names.some((name) => textKey(name) === textKey(held))) {
+    names.push(held);
+  }
+  for (const name of names) {
     const fact = factFor(name, options);
     if (!fact) continue;
-    const card = spellCard(sheet, turn, riders, name, fact, options.blasts !== false);
+    const card = spellCard(sheet, turn, riders, name, fact, options);
     if (card) rows.push({ level: fact.level, card });
   }
   // Attacks first inside a level, so the cantrip that hurts leads the hand.
@@ -423,6 +453,14 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
     if (id === "channel_divinity" || (id === "sub_psionic_energy" && psionicOptions(sheet).length)) continue;
     // Spent by the bonus attack itself (hand-class.ts bonusStrikeCards).
     if (BONUS_ATTACK_COUNTERS.includes(id)) continue;
+    // A spend the server resolves is its own card, dealt here in its
+    // counter's place (hand-subclass.ts counterSpendCards).
+    if (playedAsSpendCard(sheet, def.displayName)) {
+      cards.push(...counterSpendCards(sheet, turn, def.displayName));
+      continue;
+    }
+    // Dealt when the hit that calls for it comes (hand-react.ts).
+    if (HIT_ANSWER_COUNTERS.some((counter) => counter.id === id && !counter.anyDamage)) continue;
     const level = resourceLevel(def, sheet);
     const effect = def.effect;
     const left = state.max - state.used;
@@ -455,8 +493,10 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
       type = "ward";
       target = "self";
     } else if (effect.kind === "condition" || effect.kind === "buff") {
-      dice = effect.condition;
-      condition = effect.condition;
+      // A feature with variants names none on its face: the player picks.
+      const variants = effect.kind === "buff" && Boolean(effect.variants?.length);
+      dice = variants ? "" : effect.condition;
+      condition = variants ? "" : effect.condition;
       type = "ward";
       target = effect.kind === "buff" && effect.target === "ally" ? "ally" : "self";
     } else if (effect.kind === "inspire") {
@@ -508,6 +548,17 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
       spent: false,
       compose,
       pool: id,
+      // The engine refuses these without a variant, so a card with none sent the
+      // GM a sentence that named no choice while its face showed the first one.
+      ...(effect.kind === "buff" && effect.variants?.length
+        ? {
+            choice: {
+              arg: "variant",
+              label: "Choose",
+              options: effect.variants.map((value) => ({ value, label: pickLabel(nameChoice(value) ?? value) })),
+            },
+          }
+        : {}),
       intent:
         cost === "reaction"
           ? { card: "reaction", feature: def.displayName }

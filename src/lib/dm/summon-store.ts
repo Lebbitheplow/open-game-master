@@ -22,7 +22,7 @@ import {
   setSheetSummon,
 } from "@/lib/db/sheets";
 import { createCompanionUser, deleteCompanionUser } from "@/lib/db/users";
-import { getActiveEncounter, saveEncounter, type OrderEntry } from "@/lib/db/encounters";
+import { getActiveEncounter, saveEncounter, setEncounterAway, type OrderEntry } from "@/lib/db/encounters";
 import {
   getBattleMapForEncounter,
   insertToken,
@@ -34,6 +34,9 @@ import { findSpawnTiles } from "@/lib/battlemap/tactics";
 import { occupiedTiles } from "@/lib/battlemap/view";
 import { nameArrivals } from "@/lib/dm/encounter-logic";
 import { publishEphemeral, publishPersisted } from "@/lib/events";
+import { recordTurnChange } from "@/lib/db/turn-changes";
+import { keepNew, keepWithCascade } from "@/lib/db/turn-rows";
+import { currentTurnId } from "@/lib/dm/job-control";
 import { d20Expression } from "@/lib/dice";
 import { createSheetSchema, type CharacterSheet } from "@/lib/schemas/sheet";
 import type { SheetSummon } from "@/lib/schemas/summon";
@@ -117,6 +120,12 @@ export function spawnSummons(campaign: Campaign, caster: CharacterSheet, input: 
     });
     const user = createCompanionUser(name);
     const sheet = createSheet(campaign.id, user.id, level, draft);
+    // A creature a GM turn called up goes with the turn's revert (issue 685,
+    // src/lib/dm/turn-revert.ts); sent away in the same turn, it is not
+    // brought back by it either.
+    keepNew("users", user.id, campaign.id);
+    keepNew("character_sheets", sheet.id, campaign.id);
+    noteUnderTurn(campaign.id, { sheetId: sheet.id, userId: user.id, name: sheet.name, line: "" });
     markSheetAsCompanion(sheet.id, "guest", `${form.name}, obeying ${caster.name}. ${record.traits}`.slice(0, 500));
     setSheetSummon(sheet.id, record);
     // A creature is its stat block: no class features or counters of the
@@ -153,6 +162,15 @@ function placeInFight(
 ) {
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter || !created.length) {
+    return;
+  }
+  // Called up by a caster the fight goes on without (issue 740), it is with
+  // them, not here: it arrives with its maker's initiative roll
+  // (encounter-tools.ts recordInitiativeRoll). Placed here, it took a slot
+  // and stood on the board for someone who was not there.
+  if (encounter.awayIds.includes(caster.id)) {
+    setEncounterAway(encounter.id, [...encounter.awayIds, ...created.map((sheet) => sheet.id)]);
+    publishEncounterState(campaign.id);
     return;
   }
   if (encounter.orderReady) {
@@ -225,11 +243,23 @@ function placeInFight(
 
 // Takes a summoned creature off the table: its initiative entry, its token,
 // its sheet and the bot user behind it.
+// A summon's coming, under the GM turn it happened in.
+function noteUnderTurn(campaignId: string, payload: Record<string, unknown>) {
+  const turnId = currentTurnId();
+  if (turnId) {
+    recordTurnChange(campaignId, turnId, "summon", payload);
+  }
+}
+
 export function removeSummon(
   campaign: Campaign,
   sheet: Pick<CharacterSheet, "id" | "userId" | "name">,
   replaceWith?: OrderEntry,
 ) {
+  // Sent away in a GM turn, the creature is kept whole as the turn found it:
+  // its bot user and every row the user's delete takes with it (its sheet),
+  // so the turn's revert brings it back as it was (src/lib/db/turn-rows.ts).
+  keepWithCascade("users", sheet.userId, campaign.id);
   const encounter = getActiveEncounter(campaign.id);
   if (encounter) {
     const index = encounter.order.findIndex((entry) => entry.kind === "pc" && entry.characterId === sheet.id);

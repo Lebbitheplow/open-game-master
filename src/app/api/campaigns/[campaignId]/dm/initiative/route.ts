@@ -9,6 +9,7 @@ import { correctionsField } from "@/lib/correction-reasons";
 import { getDatabase } from "@/lib/db/core";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { recordFightCorrection } from "@/lib/db/turn-ledger";
+import { AI_RUNS_TURNS, aiRunsTestTable } from "@/lib/workshop/test-seats-logic";
 
 // The edits that correct the order the AI kept (issue #460). Stepping the
 // turn on is a turn ending, and a delay is a combatant's own choice, so
@@ -79,6 +80,11 @@ export async function POST(
   }
   if (body.op === "enemies" || body.op === "companion") {
     const campaign = context.campaign;
+    // At a test the AI GM runs, those turns are the AI's (issue 685): the
+    // author's console would play them a second time.
+    if (aiRunsTestTable(campaign)) {
+      return Response.json({ error: AI_RUNS_TURNS }, { status: 409 });
+    }
     const error = onPersonsTurn(campaign, (turn) =>
       body.op === "enemies" ? handOnEnemyTurns(campaign, turn, body.play) : playCompanionTurn(campaign, turn),
     );

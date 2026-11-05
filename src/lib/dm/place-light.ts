@@ -5,6 +5,7 @@
 // "darkness: sees nothing" while a request_roll Perception by sight beside it
 // rolled as in daylight. A board keeps its own light (null here).
 import { getActiveBattleMap, sheetDarkvisionTiles } from "@/lib/battlemap/view";
+import { campaignLanguage } from "@/lib/db/campaigns";
 import { getClock } from "@/lib/db/clock";
 import { getCurrentLocation } from "@/lib/db/locations";
 import { getPreparedMap } from "@/lib/db/prepared-maps";
@@ -14,9 +15,10 @@ import { lightSeenBy, offBoardLight, type Light } from "@/lib/dm/notice-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 // The light of the place off the board: the one the DM names, else the
-// current location's (an unlit cave is dark at noon, a lit inn is not dark
-// at midnight), else the sky's by the hour. Null on a board, or where the
-// place's words do not settle it.
+// current location's by its scene (an unlit cave is dark at noon, a lit inn
+// is not dark at midnight), or at an English table by the words of a place
+// with no scene, else the sky's by the hour. Null on a board, or where
+// neither settles it.
 export function offBoardAmbient(campaignId: string, named: Light | null = null): Light | null {
   if (getActiveBattleMap(campaignId)) {
     return null;
@@ -28,11 +30,13 @@ export function offBoardAmbient(campaignId: string, named: Light | null = null):
     named,
     place: place
       ? {
+          scene: place.ambience?.bed || null,
+          outdoors: place.preparedMapId ? getPreparedMap(campaignId, place.preparedMapId)?.outdoors ?? null : null,
           name: place.name,
           description: place.layoutDescription,
-          outdoors: place.preparedMapId ? getPreparedMap(campaignId, place.preparedMapId)?.outdoors ?? null : null,
         }
       : null,
+    language: campaignLanguage(campaignId),
   });
 }
 

@@ -35,6 +35,7 @@ import { outwardApproval } from "@/lib/dm/scheme-logic";
 import { publishRelationshipsUpdated } from "@/lib/dm/relationship-tools";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { TOLD_GENDER_HELP, TOLD_GENDERS, toldGender } from "@/lib/gender";
+import { TOLD_RACE_HELP, raceWords, storedRace, unreadRace } from "@/lib/npc-race";
 import { rollExpression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
 import {
@@ -44,7 +45,7 @@ import {
   socialCheckDc,
 } from "@/lib/dm/social";
 import { resolveRollExpression, resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
-import { rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
+import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
 import type { RollArgs } from "@/lib/dm/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { waypointProperty } from "@/lib/dm/waypoint-logic";
@@ -98,6 +99,7 @@ export const socialTools: ToolDef[] = [
             enum: [...TOLD_GENDERS],
             description: `${TOLD_GENDER_HELP} Give it when you register someone new; omit it on later calls.`,
           },
+          race: { type: "string", description: TOLD_RACE_HELP },
           drawnTo: {
             type: "array",
             items: { type: "string", enum: TOLD_ATTRACTION },
@@ -230,6 +232,7 @@ const setNpcSchema = z.object({
   trait: z.string().max(300).optional(),
   location: z.string().max(120).optional(),
   gender: z.enum(TOLD_GENDERS).optional(),
+  race: z.string().max(40).optional(),
   drawnTo: z.array(z.string().max(40)).max(6).optional(),
   goal: z.string().max(300).optional(),
   ambition: z.string().max(300).optional(),
@@ -246,6 +249,9 @@ export function handleSetNpc(campaign: Campaign, rawArguments: string): ToolResu
   // registration free to forget it: the result then asks, never refuses.
   const before = getNpcByName(campaign.id, args.name);
   const untold = !args.gender && !before;
+  // A race the SRD list does not have is left unrecorded and said so, never
+  // refused: registering the NPC matters more than their face.
+  const unknownRace = unreadRace(args.race);
   const registered = bootstrapAgency(
     campaign,
     upsertNpc({
@@ -255,6 +261,7 @@ export function handleSetNpc(campaign: Campaign, rawArguments: string): ToolResu
       trait: args.trait,
       location: args.location,
       gender: toldGender(args.gender),
+      race: storedRace(args.race),
       // Written once (upsertNpc): the first answer is who they are.
       attraction: attractionFromTold(args.drawnTo),
     }),
@@ -283,7 +290,9 @@ export function handleSetNpc(campaign: Campaign, rawArguments: string): ToolResu
     ...(npc.agency.goals.session ? { goal: npc.agency.goals.session.text } : {}),
     note: `${npc.name} is tracked as ${npc.attitude}. Their attitude persists until the story or a social_check changes it.${
       shifted ? ` The party has met them now, and how ${npc.name} feels about each character is tracked from here.` : ""
-    }${untold ? " Their gender is not recorded: pass gender on a set_npc for them (Unknown if the story has not shown it)." : ""}`,
+    }${untold ? " Their gender is not recorded: pass gender on a set_npc for them (Unknown if the story has not shown it)." : ""}${
+      unknownRace ? ` "${args.race}" is not a race the server knows, so none is recorded; give one of the SRD races (human, elf, dwarf, half-orc...) or omit it.` : ""
+    }`,
   };
 }
 
@@ -417,19 +426,20 @@ export function handleSocialCheck(
 
   // Held carriers (Bardic Inspiration, Help, Guidance) and lasting effects
   // ride this check like any other, and the carrier is spent by it.
+  // A faction's member leans on the party's standing with that faction
+  // (docs/vtt-parity-implementation-plan.md section 6).
+  const factionOffset = npc.factionId ? reputationDcOffset(getParty(campaign.id).reputation[npc.factionId] ?? 0) : 0;
+  const dc = Math.max(5, socialCheckDc(npc.attitude) + factionOffset);
+  const waits = heldDieWaits(sheet, dc);
   const resolved = resolveRollExpression(
     { kind: "skill_check", skill } as unknown as RollArgs,
     sheet,
-    rollExtrasFor(campaign, sheet, "skill_check"),
+    { ...rollExtrasFor(campaign, sheet, "skill_check"), keepHeldDie: waits },
   );
   if ("error" in resolved || "autoFail" in resolved) {
     return "error" in resolved ? resolved : { error: `${sheet.name} cannot make that check.`, refused: "rules" };
   }
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-  // A faction's member leans on the party's standing with that faction
-  // (docs/vtt-parity-implementation-plan.md section 6).
-  const factionOffset = npc.factionId ? reputationDcOffset(getParty(campaign.id).reputation[npc.factionId] ?? 0) : 0;
-  const dc = Math.max(5, socialCheckDc(npc.attitude) + factionOffset);
   // Attitude is how this NPC feels about the PARTY; the approval meter is how
   // they feel about THIS character. Standing with someone makes them easier
   // to sway, bounded to +/-4 so a friendship never trivializes a hard ask.
@@ -444,11 +454,12 @@ export function handleSocialCheck(
   // An NPC keeping up an act is swayed as the warmth they show would be
   // (src/lib/dm/scheme-logic.ts): the roll's modifier is on the table.
   const standingModifier = approvalRollModifier(outwardApproval(relationship));
-  const rolled = rollExpression(
+  const thrown = rollExpression(
     standingModifier === 0
       ? resolved.expression
       : `${resolved.expression}${standingModifier > 0 ? "+" : ""}${standingModifier}`,
   );
+  const rolled = waits ? settleHeldDie(campaign.id, sheet.id, thrown, dc) : thrown;
   const roll = insertRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
@@ -593,8 +604,10 @@ export function npcRosterForPrompt(campaignId: string, options: { romance?: bool
     witnessNote: renderWitnessNote(npc.name, facts),
     // The stat block they fight with (start_encounter takes their name).
     statBlock: npc.statBlock,
-    // Their gender, and at a romance table who they are drawn to (issue
-    // 501), so romance follows who people are. Blank says nothing.
+    // Their gender and their people, and at a romance table who they are
+    // drawn to (issue 501), so romance follows who people are and the
+    // narration does not call the elf whose face the board draws a human.
+    // Blank says nothing.
     identity: npcIdentity(npc, options.romance ?? false),
   }));
 }
@@ -603,7 +616,7 @@ function npcIdentity(npc: Npc, romance: boolean): string {
   const drawn = romance ? attractionWords(npc.attraction) : "";
   // Romance is exclusive unless someone is open to more (issue 642).
   const open = romance && openToMore(npc.attraction) ? "open to more than one partner" : "";
-  return [npc.gender, drawn ? `drawn to ${drawn}` : "", open].filter(Boolean).join(", ");
+  return [npc.gender, raceWords(npc.race), drawn ? `drawn to ${drawn}` : "", open].filter(Boolean).join(", ");
 }
 
 const ATTITUDE_LADDER = ["hostile", "indifferent", "friendly"] as const;

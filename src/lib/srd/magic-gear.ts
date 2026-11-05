@@ -10,7 +10,7 @@
 
 import magicItemsJson from "@/lib/classes/magic-items.json";
 import { textKey } from "@/lib/language/text-logic";
-import { rowName, type RowItem } from "@/lib/srd/item-row";
+import { isWorkshopRow, rowName, type RowItem } from "@/lib/srd/item-row";
 import { armorSpellings, SRD_ARMOR } from "@/lib/srd/armor-table";
 import { SRD_WEAPONS } from "@/lib/srd/weapons";
 
@@ -193,7 +193,9 @@ export function compositeGearNamed(name: string): CompositeGear | null {
 // among other words is none: a "Longsword of Warning" the table does not
 // know stays a longsword.
 export function gearDefFor(item: RowItem): GearDef | null {
-  return lookUp(rowName(item), item.slug);
+  // A workshop entry's line runs as its own block (gearDefOfRow), never as a
+  // table row it shares a name with (isWorkshopRow).
+  return isWorkshopRow(item) ? null : lookUp(rowName(item), item.slug);
 }
 
 // The same for a name nobody carries: an attack's weapon, a catalog entry.

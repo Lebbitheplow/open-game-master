@@ -61,7 +61,9 @@ export type CardScore = {
   corrected: boolean;
 };
 
-function textOf(content: unknown): string {
+// The three readers below serve the test fight's turn trace too
+// (turn-trace-logic.ts), which reads the same stored conversations.
+export function textOf(content: unknown): string {
   if (typeof content === "string") {
     return content;
   }
@@ -71,7 +73,7 @@ function textOf(content: unknown): string {
   return "";
 }
 
-function argsOf(raw: unknown): Record<string, unknown> {
+export function argsOf(raw: unknown): Record<string, unknown> {
   if (typeof raw !== "string") {
     return raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
   }
@@ -83,7 +85,7 @@ function argsOf(raw: unknown): Record<string, unknown> {
   }
 }
 
-function resultOf(content: unknown): Record<string, unknown> | null {
+export function resultOf(content: unknown): Record<string, unknown> | null {
   const text = textOf(content);
   if (!text) {
     return null;

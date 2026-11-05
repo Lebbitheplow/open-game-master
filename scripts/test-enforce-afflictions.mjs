@@ -141,6 +141,43 @@ await test("Short-term madness 01-20: paralyzed for 1d10 minutes, and it ends wh
   assert.equal(has(shaken.id, "paralyzed"), false);
 });
 
+await test("Long-term madness 96-100: no blow wakes the sleeper, and a sleep laid by name still ends on one.", async () => {
+  const sleeper = world.addHero({ class: "fighter", level: 3, maxHp: 30 });
+  await afflict({ characterId: sleeper.id, kind: "madness", duration: "long" }, [98, 2]);
+  assert.equal(has(sleeper.id, "unconscious"), true);
+  await world.invoke("apply_damage", { characterId: sleeper.id, amount: 2, type: "bludgeoning", reason: "a slap" });
+  assert.equal(has(sleeper.id, "unconscious"), true, "SRD 5.1: no amount of jostling or damage can wake the character");
+
+  const dozing = world.addHero({ class: "fighter", level: 3, maxHp: 30 });
+  await world.invoke("set_condition", { characterId: dozing.id, condition: "unconscious", reason: "a sleeping draught" });
+  assert.equal(has(dozing.id, "unconscious"), true);
+  await world.invoke("apply_damage", { characterId: dozing.id, amount: 2, type: "bludgeoning", reason: "a slap" });
+  assert.equal(has(dozing.id, "unconscious"), false, "the draught's sleeper slept through the blow");
+});
+
+// A trap's block has no word on damage: the sleep a trap lays on everyone it
+// catches wakes when hurt, as the sleep its failed save lays does. With PR 788
+// an effect's own meta is its only word, and afflictCondition's said nothing.
+await test("A trap that leaves its victims asleep: damage wakes them, as set_condition's sleep does.", async () => {
+  const { springTrapOn } = await import("../src/lib/dm/trap-run.ts");
+  const { createDmTurn } = await import("../src/lib/db/dm-turns.ts");
+  const { listSheets } = await import("../src/lib/db/sheets.ts");
+  const napper = world.addHero({ class: "fighter", level: 3, maxHp: 30 });
+  const sheets = listSheets(world.campaignId);
+  springTrapOn(world.campaign(), createDmTurn(world.campaignId, [], "ai"), world.sheet(napper.id), "Sleeping gas", { kind: "mechanical", trigger: "", conditionsAlways: ["unconscious"], rounds: 100, summary: "" }, sheets, new Map(sheets.map((sheet) => [sheet.id, sheet])));
+  assert.equal(has(napper.id, "unconscious"), true);
+  await world.invoke("apply_damage", { characterId: napper.id, amount: 2, type: "bludgeoning", reason: "a slap" });
+  assert.equal(has(napper.id, "unconscious"), false, "the gas's sleeper slept through the blow");
+});
+
+await test("Essence of Ether: the sleeper wakes when hurt.", async () => {
+  const dozy = world.addHero({ class: "fighter", level: 3, maxHp: 30 });
+  await afflict({ characterId: dozy.id, kind: "poison", name: "Essence of Ether" }, [2]);
+  assert.equal(has(dozy.id, "unconscious"), true);
+  await world.invoke("apply_damage", { characterId: dozy.id, amount: 2, type: "bludgeoning", reason: "a slap" });
+  assert.equal(has(dozy.id, "unconscious"), false, "SRD 5.1: the creature wakes up if it takes damage");
+});
+
 await test("Long-term madness 21-30: paranoid, disadvantage on Wisdom checks, for 1d10 x 10 hours by the clock.", async () => {
   const paranoid = world.addHero({ class: "fighter", level: 3, maxHp: 30 });
   await afflict({ characterId: paranoid.id, kind: "madness", duration: "long" }, [25, 2]);
@@ -192,6 +229,20 @@ await test("Drow Poison: a failure is poisoned for an hour, and unconscious as w
   assert.equal(has(dozy.id, "unconscious"), true);
   assert.equal(world.sheet(dozy.id).conditionMeta.poisoned.rounds, 600);
 });
+
+// SRD 5.1, Poisons: "The poisoned creature is unconscious. The creature wakes
+// up if it takes damage." It wakes; the poison keeps its full duration.
+for (const [name, rounds] of [["Drow Poison", 600], ["Essence of Ether", 4800], ["Oil of Taggit", 14400]]) {
+  await test(`${name}: damage wakes the sleeper, who stays poisoned for the poison's full duration.`, async () => {
+    const sleeper = world.addHero({ class: "fighter", level: 5, maxHp: 44, abilities: { con: 10 } });
+    await afflict({ characterId: sleeper.id, kind: "poison", name }, [2]);
+    assert.equal(has(sleeper.id, "unconscious"), true);
+    await world.invoke("apply_damage", { characterId: sleeper.id, amount: 1, type: "bludgeoning", reason: "a slap" });
+    assert.equal(has(sleeper.id, "unconscious"), false, "the damage wakes them");
+    assert.equal(has(sleeper.id, "poisoned"), true, "the poison outlasts the sleep");
+    assert.equal(world.sheet(sleeper.id).conditionMeta.poisoned.rounds, rounds);
+  });
+}
 
 await test("Midnight Tears waits for midnight, then a DC 17 CON save against 9d6 poison.", async () => {
   const guest = world.addHero({ class: "fighter", level: 10, maxHp: 90 });

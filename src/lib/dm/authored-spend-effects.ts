@@ -2,6 +2,7 @@
 // has checked the gate, the pool and the turn). Each resolver refuses before
 // it writes; the caller then spends the pool and the turn.
 
+import { WEAPON_HIT } from "@/lib/dm/action-budget";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getBattleMapForEncounter } from "@/lib/db/battle-maps";
@@ -33,12 +34,16 @@ import { namedOption, type ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { creditFeatureTeleport } from "@/lib/dm/feature-teleport";
 import { isConditionNamed, isNamed, nameChoice } from "@/lib/srd/feature-names";
+import { swallowCoverBetween, swallowCoverError } from "@/lib/dm/swallow";
+import { resourceName } from "@/lib/srd/class-resources";
 
 // A spend's damage on one enemy, as the holder's dice card.
 const damageDice = (ctx: SpendContext, enemy: EncounterEnemy, dice: string) =>
   rollCard(ctx.campaign, ctx.turn, ctx.sheet.id, "damage", rollAgainst(ctx.spend.name, enemy.displayName), dice, sheetAttacker(ctx.sheet)).total;
 
 export type SpendContext = {
+  // The once-per-turn marks of the holder's own turn; absent off it.
+  marks?: string[];
   campaign: Campaign;
   turnId: string;
   turn: DmTurn | null;
@@ -99,7 +104,9 @@ function targetEnemy(ctx: SpendContext): EncounterEnemy | ToolError {
   if (!enemy || enemy.status !== "alive") {
     return { error: `${ctx.spend.name} needs a living creature: pass targetEnemyId from GAME STATE. Nothing was spent.`, retry: true };
   }
-  return enemy;
+  // Not across a swallower's wall, the creature attacked last included
+  // (swallow.ts).
+  return swallowCoverError(ctx.sheet.id, enemy.id) ?? enemy;
 }
 
 function damageEnemy(ctx: SpendContext, enemy: EncounterEnemy, amount: number, type: string): Record<string, unknown> {
@@ -153,7 +160,9 @@ function alliesInReach(ctx: SpendContext, rangeFt: number, withSelf: boolean): C
   const party = listSheets(ctx.campaign.id)
     .map((stale) => getSheetById(stale.id) ?? stale)
     .filter((entry) => !entry.deathSaves?.dead && entry.id !== ctx.sheet.id)
-    .filter((entry) => !encounter || withinFeet(encounter.id, ctx.sheet.id, entry.id, rangeFt));
+    .filter((entry) => !encounter || withinFeet(encounter.id, ctx.sheet.id, entry.id, rangeFt))
+    // Nobody across a swallower's wall is in reach (swallow.ts).
+    .filter((entry) => !swallowCoverBetween(ctx.sheet.id, entry.id));
   return withSelf ? [ctx.sheet, ...party] : party;
 }
 
@@ -210,6 +219,11 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
         }
         lines.push(`${touched.map((entry) => entry.name).join(", ")}: ${condition} for ${does.rounds} rounds.`);
       } else if (does.target === "ally") {
+        // "Other than yourself": named or not, the holder is refused before
+        // the use is paid, where it once landed on them.
+        if (does.othersOnly && (!ctx.args.targetCharacterId || ctx.args.targetCharacterId === sheet.id)) {
+          return { error: `${ctx.spend.name} goes to a willing creature other than ${sheet.name}: pass targetCharacterId of an ally. Nothing was spent.`, retry: true };
+        }
         const ally = ctx.args.targetCharacterId ? getSheetById(ctx.args.targetCharacterId) : sheet;
         if (!ally || ally.campaignId !== campaign.id) {
           return { error: `${ctx.spend.name} goes to a creature at the table: pass targetCharacterId. Nothing was spent.`, retry: true };
@@ -226,7 +240,10 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
         return quarry;
       }
       let patch: FullPatchSheetInput | undefined;
-      if (!does.target || does.target === "self" || (does.target === "ally" && !ctx.args.targetCharacterId)) {
+      // An ally other than the holder has returned above, so "ally" here is the
+      // holder, named or not. Aimed at themselves from the Hand's "(you)" chip, it
+      // answered ok and landed nothing.
+      if (!does.target || does.target === "self" || does.target === "ally") {
         const kept = sheet.conditions.filter((entry) => textKey(entry) !== textKey(condition));
         patch = {
           conditions: [...kept, condition],
@@ -382,14 +399,14 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
     case "restore": {
       const state = sheet.resources[does.pool];
       if (!state) {
-        return { error: `${sheet.name} has no ${does.pool.replace(/^sub_/, "").replace(/_/g, " ")} to restore. Nothing was spent.`, refused: "rules" };
+        return { error: `${sheet.name} has no ${resourceName(does.pool)} to restore. Nothing was spent.`, refused: "rules" };
       }
       if (state.used <= 0) {
-        return { error: `${sheet.name}'s ${does.pool.replace(/^sub_/, "").replace(/_/g, " ")} is full; ${ctx.spend.name} has nothing to bring back. Nothing was spent.`, refused: "rules" };
+        return { error: `${sheet.name}'s ${resourceName(does.pool)} is full; ${ctx.spend.name} has nothing to bring back. Nothing was spent.`, refused: "rules" };
       }
       const back = Math.min(does.amount, state.used);
       const resources = { ...sheet.resources, [does.pool]: { max: state.max, used: state.used - back } };
-      return { patch: { resources }, result: { restored: `${back} ${does.pool.replace(/^sub_/, "").replace(/_/g, " ")} back (${state.max - state.used + back}/${state.max}).` } };
+      return { patch: { resources }, result: { restored: `${back} ${resourceName(does.pool)} back (${state.max - state.used + back}/${state.max}).` } };
     }
     case "flames": {
       const wanted = does.healOnly ? "heal" : textKey(ctx.args.variant ?? "");
@@ -414,6 +431,9 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       const enemy = targetEnemy(ctx);
       if ("error" in enemy) {
         return enemy;
+      }
+      if (ctx.spend.afterWeaponHit && ctx.marks && !ctx.marks.includes(`${WEAPON_HIT}${enemy.id}`)) {
+        return { error: `${ctx.spend.name} burns the creature the hit landed on, and ${enemy.displayName} is not one ${sheet.name} has hit this turn. Nothing was spent.`, refused: "rules" };
       }
       // Rolled once the burn is sure to land: a refusal above spends nothing.
       const rolled = damageDice(ctx, enemy, formula(ctx, does.formula));
@@ -457,8 +477,9 @@ function burst(ctx: SpendContext, spec: NonNullable<Extract<SpendDoes, { kind: "
   }
   const lines: string[] = [];
   const dc = saveDc(ctx, spec.dcAbility);
+  // Nobody across a swallower's wall is in the burst (swallow.ts).
   const enemies = (ctx.args.targetEnemyId ? [resolveTargetFoe(encounter.campaignId, encounter, ctx.args.targetEnemyId)] : listEnemiesNear(ctx, encounter, spec.rangeFt)).filter(
-    (enemy): enemy is EncounterEnemy => Boolean(enemy && enemy.status === "alive"),
+    (enemy): enemy is EncounterEnemy => Boolean(enemy && enemy.status === "alive" && !swallowCoverBetween(ctx.sheet.id, enemy.id)),
   );
   for (const enemy of enemies) {
     const save = rollEnemySave(ctx.campaign.id, enemy, spec.save, dc, {

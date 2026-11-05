@@ -175,8 +175,14 @@ export async function newContext(browser, viewport, { app, toursSeen = true }) {
   // shell's own tour of its home (client src/renderer/tour.ts
   // maybeStartAppTour, 600 ms after it paints, over the Add a server button)
   // is not the server's, so it counts as seen in every context.
+  // Every tour the registry knows, not a hand list: a second player's
+  // context (fight-bench-2's player on the workshop's encounters) met the
+  // Encounters tour, which the list left out, over its first click.
   const keys = ["odm.tour.app"];
-  if (toursSeen) keys.push(...["table-player", "table-dm", "workshop-shelf", "workshop-hub"].map((id) => `odm:tour:${id}`));
+  if (toursSeen) {
+    const { TOUR_IDS } = await import("../../src/lib/tours/registry.ts");
+    keys.push(...TOUR_IDS.map((id) => `odm:tour:${id}`));
+  }
   await context.addInitScript((keys) => {
     try {
       for (const key of keys) localStorage.setItem(key, "done");

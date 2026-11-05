@@ -272,17 +272,17 @@ export const FEATURE_EFFECTS: FeatureDef[] = ([
     match: ["extra attack"],
     effects: [{ kind: "extra_attack", attacks: 1 }],
     guidance:
-      "Extra Attack: they attack twice whenever they take the Attack action. Resolve each swing with its own pc_attack call.",
+      "Extra Attack: they attack twice whenever they take the Attack action. Both swings go in one pc_attack, an entry each.",
   },
   {
     match: ["extra attack (2)"],
     effects: [{ kind: "extra_attack", attacks: 2 }],
-    guidance: "Extra Attack: three attacks per Attack action, one pc_attack call each.",
+    guidance: "Extra Attack: three attacks per Attack action, an entry each in one pc_attack.",
   },
   {
     match: ["extra attack (3)"],
     effects: [{ kind: "extra_attack", attacks: 3 }],
-    guidance: "Extra Attack: four attacks per Attack action, one pc_attack call each.",
+    guidance: "Extra Attack: four attacks per Attack action, an entry each in one pc_attack.",
   },
   {
     match: ["sneak attack"],

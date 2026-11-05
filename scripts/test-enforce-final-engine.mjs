@@ -128,15 +128,15 @@ function systemText() {
 }
 const offered = (name) => dmTurnToolCatalogue(world.campaign(), true, false).find((entry) => entry.function.name === name)?.function;
 
-await test("The prompt sends subclass features to use_resource by name, their choices as the variant, their reactions to use_reaction, and their bonus attack to bonusAttack \"feature\"; the rest the server applies.", () => {
+await test("The prompt sends subclass features to use_resource by name, their choices as the variant, their reactions to use_reaction, and their bonus attack to a pc_attack part's feature by name; the rest the server applies.", () => {
   const text = systemText();
   assert.match(text, /spend one with use_resource by its own name \(Kensei's Shot/);
   assert.match(text, /A subclass choice \(Totem Spirit, Aspect of the Beast, Totemic Attunement, Transmuter's Stone, Elemental Gift, Armor Model\) is made once with use_resource and the option as the variant, outside a fight/);
   assert.match(text, /Subclass reactions go through use_reaction by name \(Spectral Defense/);
-  assert.match(text, /bonusAttack "feature"/);
+  assert.match(text, /a subclass's or feat's bonus-action weapon attack by its name \(Battle Magic, War Magic/);
   assert.match(text, /never add them by hand and never pass advantage for them/);
-  const bonus = offered("pc_attack").parameters.properties.bonusAttack;
-  assert.ok((bonus.enum ?? []).includes("feature"), "pc_attack's bonusAttack does not take feature");
+  const feature = offered("pc_attack").parameters.properties.attacks.items.properties.feature;
+  assert.match(feature.description, /Any other feat or feature granting a bonus weapon attack by its name/, "pc_attack's feature takes no subclass attack");
   const reaction = JSON.stringify(offered("use_reaction"));
   for (const name of ["Spectral Defense", "Spirit Shield", "Divine Allegiance", "Storm's Fury", "Opportunist"]) {
     assert.ok(reaction.includes(name), `use_reaction never names ${name}`);
@@ -302,6 +302,77 @@ await test("Vigilant Defender: the fighter makes an opportunity attack on every 
   const plain = hero({ class: "fighter", level: 18, abilities: { str: 16 }, equipment: [{ name: "Longsword", qty: 1 }] });
   assert.equal(await walkAway(plain, 2), 1, "one reaction, one opportunity attack a round");
   assert.equal(await walkAway(cavalier, 2), 2, "an opportunity attack on each creature's turn");
+});
+
+// One wearer for Demon Armor's tests, so the fights after them meet no
+// extra fighter in reach.
+const demonWearer = hero({ class: "fighter", level: 18, abilities: { str: 16 }, equipment: [{ name: "Demon Armor", qty: 1, equipped: true, attuned: true }] });
+
+await test("Demon Armor: 'clawed gauntlets turn unarmed strikes with your hands into magic weapons that deal slashing damage, with a +1 bonus to attack rolls and damage rolls and a damage die of 1d8', on the turn and on an opportunity attack.", async () => {
+  const wearer = demonWearer;
+  const [enemy] = await stage(wearer);
+  const out = await kit.swing(wearer.id, enemy.id, [15, 5], { weapon: "unarmed strike" });
+  assert.equal(out.ok, true, out.error);
+  // 15 + 3 (Strength) + 6 (proficiency) + 1, and 5 + 3 + 1.
+  assert.equal(out.toHit?.total, 25);
+  assert.equal(out.damage?.total, 9);
+  assert.equal(out.result.damageType, "slashing");
+  // The reaction's swing reads the same gauntlets.
+  const before = new Set(kit.lastRolls(60).map((roll) => roll.id));
+  kit.place(wearer.id, 5, 5);
+  kit.place(enemy.id, 5, 6);
+  kit.freshRound();
+  world.clearDice();
+  world.dice(15, 4);
+  await world.invoke("move_token", { token: enemy.id, x: 1, y: 10 });
+  world.clearDice();
+  const swing = newRolls(before).find((roll) => roll.kind === "attack" && roll.characterId === wearer.id);
+  assert.ok(swing, "no opportunity attack was rolled");
+  assert.equal(swing.total, 25, "the opportunity attack lost the gauntlets' bonus");
+});
+
+await test("Demon Armor's curse: 'While wearing the armor, you have disadvantage on attack rolls against demons', on the turn and on an opportunity attack; a devil is no demon.", async () => {
+  const wearer = demonWearer;
+  const [demon] = await stage(wearer, { stats: { type: "fiend (demon)" } });
+  // The lower of 18 and 2: 2 + 3 (Strength) + 6 (proficiency) + 1.
+  const cursed = await kit.swing(wearer.id, demon.id, [18, 2, 5], { weapon: "unarmed strike" });
+  assert.equal(cursed.ok, true, cursed.error);
+  assert.equal(cursed.toHit?.total, 12, "the curse gave no disadvantage against a demon");
+  const before = new Set(kit.lastRolls(60).map((roll) => roll.id));
+  kit.place(wearer.id, 5, 5);
+  kit.place(demon.id, 5, 6);
+  kit.freshRound();
+  world.clearDice();
+  world.dice(18, 2, 4);
+  await world.invoke("move_token", { token: demon.id, x: 1, y: 10 });
+  world.clearDice();
+  const swing = newRolls(before).find((roll) => roll.kind === "attack" && roll.characterId === wearer.id);
+  assert.ok(swing, "no opportunity attack was rolled");
+  assert.equal(swing.total, 12, "the opportunity attack against a demon lost the curse");
+  const [devil] = await stage(wearer, { stats: { type: "fiend (devil)" } });
+  const plain = await kit.swing(wearer.id, devil.id, [18, 2, 5], { weapon: "unarmed strike" });
+  assert.equal(plain.toHit?.total, 28, "a devil drew the demons' curse");
+});
+
+await test("Demon Armor's curse: 'disadvantage ... on saving throws against their spells and special abilities', a demon's spell and its ability alike; a devil's spell is saved against with one d20.", async () => {
+  const wearer = demonWearer;
+  async function forced(type, args) {
+    const [caster] = await stage(wearer, { stats: { type, ...(args.spell ? { spells: [args.spell] } : {}) } });
+    world.clearDice();
+    world.dice(20, 2);
+    const before = new Set(kit.lastRolls(60).map((roll) => roll.id));
+    const out = await world.invoke("cast_at_player", { characterId: wearer.id, saveAbility: "wis", dc: 15, casterEnemyId: caster.id, ...args });
+    world.clearDice();
+    assert.equal(out.ok, true, out.error);
+    return newRolls(before).find((roll) => roll.kind === "saving_throw" && roll.characterId === wearer.id) ?? null;
+  }
+  const spell = await forced("fiend (demon)", { spell: "Hold Person", condition: "paralyzed" });
+  assert.equal(d20Faces(spell).length, 2, "a demon's spell: the wearer rolls two d20s");
+  assert.ok(spell.total < 15, `the lower d20 is kept (${spell.total})`);
+  const ability = await forced("fiend (demon)", { enemyAbility: "Abyssal Stare", condition: "frightened" });
+  assert.equal(d20Faces(ability).length, 2, "a demon's special ability: two d20s");
+  const devil = await forced("fiend (devil)", { spell: "Hold Person", condition: "paralyzed" });
+  assert.equal(d20Faces(devil).length, 1, "a devil draws no curse");
 });
 
 const samurai = hero({ class: "fighter", subclass: "Samurai", level: 15, abilities: { str: 16 }, equipment: [{ name: "Longsword", qty: 1 }] });
@@ -545,8 +616,16 @@ await test("Arcane Jolt: once a turn, after a magic weapon hit, the Battle Smith
   const [enemy] = await stage(battleSmith);
   const uses = world.sheet(battleSmith.id).resources.art_arcane_jolt;
   assert.ok(uses, "the Battle Smith holds Arcane Jolt uses");
-  const hp = kit.enemy(enemy.id).currentHp;
   world.clearDice();
+  const early = await spend(battleSmith, "Arcane Jolt", { variant: "burn", targetEnemyId: enemy.id });
+  assert.equal(early.ok, false, "no hit yet");
+  assert.match(early.error, /rides a weapon hit/);
+  assert.equal(world.sheet(battleSmith.id).resources.art_arcane_jolt.used, uses.used, "the refusal spends nothing");
+  world.dice(18, 4);
+  const struck = await world.invoke("pc_attack", { characterId: battleSmith.id, targetEnemyId: enemy.id, weapon: "Longsword +1" });
+  world.clearDice();
+  assert.equal(struck.ok, true, struck.error);
+  const hp = kit.enemy(enemy.id).currentHp;
   world.dice(4, 4);
   const jolt = await spend(battleSmith, "Arcane Jolt", { variant: "burn", targetEnemyId: enemy.id });
   world.clearDice();
@@ -557,16 +636,105 @@ await test("Arcane Jolt: once a turn, after a magic weapon hit, the Battle Smith
   assert.equal(again.ok, false, "once a turn");
 });
 
-await test("The prompt and the tool schemas name the final round's subclass hooks: the weapons a feature makes, rapidStrike, secondTargetEnemyId, the reaction moves and Tipsy Sway.", () => {
+await test("Arcane Jolt: a miss opens nothing, a burn goes to the creature hit, and a heal needs only the hit.", async () => {
+  const plain = hero({ class: "artificer", subclass: "Battle Smith", level: 9, abilities: { int: 16 }, equipment: [{ name: "Longsword", qty: 1 }] });
+  let [enemy] = await stage(plain);
+  world.clearDice();
+  world.dice(2, 4);
+  const missed = await world.invoke("pc_attack", { characterId: plain.id, targetEnemyId: enemy.id, weapon: "Longsword" });
+  world.clearDice();
+  assert.equal(missed.ok, true, missed.error);
+  const none = await spend(plain, "Arcane Jolt", { variant: "heal", targetCharacterId: plain.id });
+  assert.equal(none.ok, false, "a miss rides nothing");
+  assert.match(none.error, /rides a weapon hit/);
+  // An infused weapon reads as a plain one, so a plain name still opens it.
+  world.dice(18, 4);
+  await world.invoke("pc_attack", { characterId: plain.id, targetEnemyId: enemy.id, weapon: "Longsword" });
+  world.clearDice();
+  world.dice(4, 4);
+  const opened = await spend(plain, "Arcane Jolt", { variant: "burn", targetEnemyId: enemy.id });
+  world.clearDice();
+  assert.equal(opened.ok, true, opened.error);
+
+  const foes = await stage(battleSmith, { enemies: 2 });
+  [enemy] = foes;
+  const other = foes[1];
+  world.clearDice();
+  world.dice(18, 4);
+  await world.invoke("pc_attack", { characterId: battleSmith.id, targetEnemyId: enemy.id, weapon: "Longsword +1" });
+  world.clearDice();
+  const wrong = await spend(battleSmith, "Arcane Jolt", { variant: "burn", targetEnemyId: other.id });
+  assert.equal(wrong.ok, false);
+  assert.match(wrong.error, /burns the creature the hit landed on/);
+  world.dice(4, 4);
+  const healed = await spend(battleSmith, "Arcane Jolt", { variant: "heal", targetCharacterId: battleSmith.id });
+  world.clearDice();
+  assert.equal(healed.ok, true, healed.error);
+});
+
+await test("Arcane Jolt's mark does not bring back a fight its hit ended.", async () => {
+  const [enemy] = await stage(battleSmith, { hp: 1 });
+  world.clearDice();
+  world.dice(18, 4);
+  const out = await world.invoke("pc_attack", { characterId: battleSmith.id, targetEnemyId: enemy.id, weapon: "Longsword +1" });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(out.result.encounterOver, true, JSON.stringify(out.result).slice(0, 300));
+  assert.equal(world.encounter()?.status === "active", false, "the fight stays over");
+});
+
+await test("Arcane Jolt's mark keeps what the blow wrote: a concentrating legendary creature's failed save can still be turned.", async () => {
+  const encounters = await import("../src/lib/db/encounters.ts");
+  const [enemy] = await stage(battleSmith);
+  encounters.setEnemyConcentration(enemy.id, "Hold Person");
+  const encounter = world.encounter();
+  encounters.saveEncounter({ ...encounter, legendary: { ...encounter.legendary, pools: { ...encounter.legendary?.pools, [enemy.id]: { actions: 0, resistances: 3 } } } });
+  world.clearDice();
+  world.dice(18, 4, 1);
+  const out = await world.invoke("pc_attack", { characterId: battleSmith.id, targetEnemyId: enemy.id, weapon: "Longsword +1" });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.ok(world.encounter().legendary.failedSave, "the failed save is on record");
+  assert.ok(world.encounter().turnBudget.oncePerTurn.includes(`weapon-hit:${enemy.id}`), "and so is the mark");
+});
+
+await test("At a physical-dice table a hit opens Arcane Jolt too, and a miss does not.", async () => {
+  const { handlePcAttack, resolvePendingPcAttack, PC_ATTACK_PARKED } = await import("../src/lib/dm/pc-attack.ts");
+  const { createDmTurn, listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
+  const { insertRoll } = await import("../src/lib/db/rolls.ts");
+  const { rollExpression } = await import("../src/lib/dice.ts");
+  for (const [face, opens] of [[2, false], [18, true]]) {
+    const [enemy] = await stage(battleSmith);
+    world.clearDice();
+    const turn = createDmTurn(world.campaignId, [], "human_dm");
+    const sheets = world.sheets();
+    const seen = new Set(listOpenPendingRolls(world.campaignId).map((entry) => entry.id));
+    const parked = handlePcAttack(
+      world.campaign(), turn,
+      JSON.stringify({ characterId: battleSmith.id, targetEnemyId: enemy.id, weapon: "Longsword +1" }),
+      sheets, new Map(sheets.map((sheet) => [sheet.id, sheet])), new Set([world.sheet(battleSmith.id).userId]), null,
+    );
+    assert.equal(parked[PC_ATTACK_PARKED], true, JSON.stringify(parked));
+    const pending = listOpenPendingRolls(world.campaignId).find((entry) => !seen.has(entry.id));
+    world.dice(face);
+    const roll = insertRoll({ campaignId: world.campaignId, characterId: battleSmith.id, requestedBy: "dm", kind: "attack", detail: pending.detail, result: rollExpression(pending.expression) });
+    world.clearDice();
+    resolvePendingPcAttack(pending, roll);
+    const marks = world.encounter().turnBudget.oncePerTurn;
+    assert.equal(marks.includes(`weapon-hit:${enemy.id}`), opens, `a ${face}: ${JSON.stringify(marks)}`);
+  }
+});
+
+await test("The prompt and the tool schemas name the final round's subclass hooks: the weapons a feature makes, rapidStrike, Improved Reaper's second target, the reaction moves and Tipsy Sway.", () => {
   const text = systemText();
-  assert.match(text, /a weapon a subclass feature makes is named as the weapon \(a raging Path of the Beast barbarian's bite, claws or tail, a Soulknife's psychic blade with offHand for the second blade, a Sun Soul monk's radiant sun bolt\)/);
+  assert.match(text, /a weapon a subclass feature makes is named as the weapon \(a raging Path of the Beast barbarian's bite, claws or tail, a Soulknife's psychic blade with feature "Two-Weapon Fighting" for the second blade, a Sun Soul monk's radiant sun bolt\)/);
   assert.match(text, /rapidStrike is a Samurai's Rapid Strike on an attack that has advantage/);
-  assert.match(text, /Improved Reaper is secondTargetEnemyId on that call/);
+  assert.match(text, /Improved Reaper is a second entry in targets/);
   assert.match(text, /is use_reaction with the square's x and y, never move_token/);
-  const attack = offered("pc_attack").parameters.properties;
+  const attack = offered("pc_attack").parameters.properties.attacks.items.properties;
   assert.ok(attack.rapidStrike, "pc_attack takes no rapidStrike");
   assert.match(attack.weapon.description, /psychic blade/);
-  assert.ok(offered("cast_at_enemy").parameters.properties.secondTargetEnemyId, "cast_at_enemy takes no secondTargetEnemyId");
+  assert.match(offered("cast_at_enemy").parameters.properties.targets.description, /Improved Reaper/, "cast_at_enemy's targets name no second target");
   const reaction = offered("use_reaction");
   assert.ok(reaction.parameters.properties.x && reaction.parameters.properties.y, "use_reaction takes no square");
   for (const name of ["Tipsy Sway", "Skirmisher", "Relentless Avenger"]) {

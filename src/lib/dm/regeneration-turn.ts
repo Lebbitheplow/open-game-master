@@ -10,6 +10,7 @@ import { getEnemy, listEnemies, patchEnemyConditions, patchEnemyHp, type Encount
 import { listSheets } from "@/lib/db/sheets";
 import { applyEnemyDamage } from "@/lib/dm/enemy-damage";
 import { enemyHpCap, REGENERATION_STOPPED, regenerationOf } from "@/lib/dm/monster-abilities";
+import { regainBlockedBy } from "@/lib/dm/vitals-logic";
 import { withOpportunityTurn } from "@/lib/dm/opportunity-strike";
 import { fallsRegenerating, isRegeneratingDown, risenConditions } from "@/lib/dm/regeneration";
 
@@ -18,8 +19,8 @@ export function regenerationTurnStart(campaign: Campaign, encounter: Encounter, 
     return [];
   }
   const regeneration = regenerationOf(enemy.stats);
-  // Chill Touch: a creature it struck cannot regain hit points.
-  const stopped = enemy.conditions.includes(REGENERATION_STOPPED) || enemy.conditions.includes("chill touch");
+  // Chill Touch, negative energy: a creature they hold cannot regain hit points.
+  const stopped = enemy.conditions.includes(REGENERATION_STOPPED) || regainBlockedBy({ conditions: enemy.conditions, currentHp: 1 }) !== null;
   if (stopped || !regeneration) {
     // Its death is a blow like any other's end: the token goes, what it
     // held lets go. The fight's end waits for the next DM turn, as after an

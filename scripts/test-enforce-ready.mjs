@@ -126,6 +126,38 @@ await test("A readied Help releases through take_action help with the reaction, 
   actionUntouched(ally);
 });
 
+await test("A readied improvised action releases through take_action improvise with the reaction, and the acting character's turn keeps its action.", async () => {
+  await stage(fighter);
+  assert.equal((await act(fighter, "ready", { trigger: "when the ogre steps under the chandelier", readied: "improvise" })).ok, true);
+  assert.equal(kit.endTurn(fighter.userId), true);
+  const cut = await act(fighter, "improvise", { reason: "cuts the chandelier's rope", skill: "athletics", difficulty: "easy" });
+  assert.equal(cut.ok, true, cut.error);
+  assert.match(String(cut.result.cost), /reaction/);
+  assert.ok(reacted(fighter));
+  assert.ok(!held(fighter));
+  actionUntouched(ally);
+});
+
+await test("A readied improvised action the model releases reaches 5 feet: the reaction moves no one, so a thing farther off is refused and nothing is spent.", async () => {
+  await stage(fighter);
+  assert.equal((await act(fighter, "ready", { trigger: "when the ogre steps under the chandelier", readied: "improvise" })).ok, true);
+  assert.equal(kit.endTurn(fighter.userId), true);
+  world.say("dm", "A chandelier hangs from a rope twenty feet across the hall.");
+  const { invokeEngine } = await import("../src/lib/dm/invoke.ts");
+  const release = (distanceFt) =>
+    invokeEngine(world.campaign(), { kind: "ai", turnId: createDmTurn(world.campaignId, []).id }, {
+      name: "take_action",
+      args: { characterId: fighter.id, action: "improvise", reason: "cuts the chandelier's rope", skill: "athletics", difficulty: "easy", scene: "the chandelier's rope", distanceFt },
+    });
+  const far = await release(20);
+  assert.equal(far.ok, false);
+  assert.match(far.error, /20 ft .*reach 5 ft with the reaction/);
+  assert.ok(!reacted(fighter) && held(fighter));
+  const near = await release(5);
+  assert.equal(near.ok, true, near.error);
+  assert.ok(reacted(fighter));
+});
+
 await test("Releasing a different action than the one readied is refused and spends nothing; so is a release with the reaction gone.", async () => {
   const enemy = await stage(fighter);
   assert.equal((await act(fighter, "ready", { trigger: "when the ogre swings at Pip", readied: "help" })).ok, true);

@@ -93,6 +93,18 @@ export function claimNarrationSeq(campaignId: string, by: "person" | "line" = "p
   return slot.seq;
 }
 
+// The seq the running turn's narration already holds, claiming none: a
+// place the turn moves the party to starts there, so its narration counts
+// as the place's (src/lib/db/campaigns.ts markSceneStart).
+export function heldNarrationSeq(campaignId: string): number | null {
+  const slot = slots().get(campaignId);
+  if (!slot || slot.seq === null) {
+    return null;
+  }
+  const status = getDmTurn(slot.turnId)?.status;
+  return status === "running" || status === "awaiting_rolls" ? slot.seq : null;
+}
+
 // The seq for a server note posted to the table. While a turn's narration
 // is on screen the note goes below it, and so below the rolls that caused
 // it, the way a person's message does (issue 668); it shows live under the

@@ -22,10 +22,10 @@ register("./lib/register-alias.mjs", import.meta.url);
 
 const { saveGlobalConfig } = await import("../src/lib/db/app-settings.ts");
 const { createUser, getSessionUser, deleteSessionsForUser } = await import("../src/lib/db/users.ts");
-const { createCampaign, setCampaignStatus, updateStorySettings, allocateSeq } = await import(
+const { createCampaign, setCampaignStatus, updateStorySettings, allocateSeq, getFloor, setFloor } = await import(
   "../src/lib/db/campaigns.ts"
 );
-const { createSheet } = await import("../src/lib/db/sheets.ts");
+const { createSheet, getSheetById } = await import("../src/lib/db/sheets.ts");
 const { createSheetSchema } = await import("../src/lib/schemas/sheet.ts");
 const { insertCampaignMessage, getLatestDmMessage } = await import("../src/lib/db/messages.ts");
 const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
@@ -63,6 +63,13 @@ const server = http.createServer(async (req, res) => {
   res.writeHead(200, { "content-type": "application/json" });
   res.end(JSON.stringify({ campaigns: [{ id: "c-pinned", title: "Pinned" }, { id: "c-other", title: "Other" }] }));
 });
+// Node closes an idle keep-alive socket after five seconds, and the fake
+// agent's next MCP call can be written onto the socket as it closes: a turn
+// whose prompt build held the event loop that long (a slow Windows runner)
+// failed with "fetch failed" before any reply (test-recall-budget on #792).
+// This door never closes idle sockets, as the narrator's does
+// (scripts/lib/enforce-narrator.mjs).
+server.keepAliveTimeout = 0;
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 const port = server.address().port;
 process.env.HARNESS_MCP_URL = `http://127.0.0.1:${port}/api/mcp`;
@@ -266,6 +273,35 @@ await test("a program that writes nothing after its tool call keeps what it wrot
   say("I look around.");
   await startDmTurn(campaign.id);
   assert.ok(getLatestDmMessage(campaign.id).content.includes("The fog lifts off the river"));
+});
+
+// Issue 794: a program sometimes writes a call into its final message as
+// text instead of making it. Through the real bridge, the block reaches
+// nobody; an input request written so still hands the players the floor.
+await test("an input request the program wrote as text reaches nobody and still hands over the floor", async () => {
+  script([[{ text: `The ferryman points at the two roads.\n\n<invoke name="mcp__odm__request_player_input">\n<parameter name="characterIds">["${avery.id}"]</parameter>\n<parameter name="prompt">Which way, and when do you leave?</parameter>\n</invoke>` }]]);
+  say("I ask the ferryman which road is safer.");
+  await startDmTurn(campaign.id);
+  const content = getLatestDmMessage(campaign.id).content;
+  assert.ok(content.includes("The ferryman points at the two roads."), content);
+  assert.ok(!/invoke|parameter/.test(content), `the written call reached the players: ${content}`);
+  const floor = getFloor(campaign.id);
+  assert.equal(floor.prompt, "Which way, and when do you leave?");
+  setFloor(campaign.id, { mode: "open" });
+});
+
+// A reply that was only a mutation written as text says and does nothing: the
+// loop asks again, the finished program has nothing new to answer, and the
+// tools-closed call gets the narration. The damage never lands.
+await test("a reply that is only a mutation written as text is narrated by the tools-closed call", async () => {
+  script([[{ text: `<invoke name="mcp__odm__apply_damage">\n<parameter name="characterId">${avery.id}</parameter>\n<parameter name="amount">5</parameter>\n</invoke>` }], [{ text: "The current tugs at the ferry, and Avery keeps her feet." }]]);
+  say("I step onto the ferry.");
+  const before = getSheetById(avery.id).currentHp;
+  await startDmTurn(campaign.id);
+  const content = getLatestDmMessage(campaign.id).content;
+  assert.ok(content.includes("Avery keeps her feet"), content);
+  assert.ok(!/invoke|parameter/.test(content), `the written call reached the players: ${content}`);
+  assert.equal(getSheetById(avery.id).currentHp, before, "the damage written as text landed");
 });
 
 await test("a signed-out program halts the turn with a message the table can act on", async () => {

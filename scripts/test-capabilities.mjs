@@ -378,7 +378,40 @@ check("the server flags the GM's companion turns, and the apps' composer and tab
   const view = readFileSync(path.join(root, "src/app/campaigns/[campaignId]/SessionView.tsx"), "utf8");
   assert.match(view, /hostOffers\(capabilities, "gmCompanionTurns"\)/);
   assert.match(view, /\(gmCompanions \? gmTurnCompanion\(sheets, turnCharacterId\(state\.encounter\)\) : null\)/);
-  assert.match(view, /const gmPlaysTurn = Boolean\(gmCompanions && turnSheet\?\.isCompanion\)/);
+  assert.match(view, /const gmPlaysTurn = Boolean\(gmCompanions && \(turnSheet\?\.isCompanion \|\| \(heldHero && turnSheet\?\.id === heldHero\.id\)\)\)/);
+});
+
+// Issue 685 audit, 4.G: a dominated hero's turn played card by card from the
+// GM seat, and a legendary creature's legendary and lair actions as cards.
+// An older host refuses the first (its actions route takes the GM's cards for
+// a companion only) and sends no `legendary` or `lair` for the second, so the
+// screens offer each only on a host that says it has it.
+check("the server flags the GM's dominated-hero turns and the legendary cards, and the screens ask for them", () => {
+  assert.match(source, /^\s*gmDominatedTurns: true,$/m);
+  assert.match(source, /^\s*legendaryCards: true,$/m);
+  const client = readFileSync(path.join(root, "src/lib/use-capabilities.ts"), "utf8");
+  assert.match(client, /features\?: \{[^}]*gmDominatedTurns\?: boolean/);
+  assert.match(client, /features\?: \{[^}]*legendaryCards\?: boolean/);
+  const composer = readFileSync(path.join(root, "src/app/campaigns/[campaignId]/Composer.tsx"), "utf8");
+  assert.match(composer, /const gmDominated = gmCompanions && hostOffers\(capabilities, "gmDominatedTurns"\)/);
+  const view = readFileSync(path.join(root, "src/app/campaigns/[campaignId]/SessionView.tsx"), "utf8");
+  assert.match(view, /const gmDominated = gmCompanions && hostOffers\(capabilities, "gmDominatedTurns"\)/);
+  const hand = readFileSync(path.join(root, "src/app/campaigns/[campaignId]/MonsterHand.tsx"), "utf8");
+  assert.match(hand, /legendaryCards: hostOffers\(capabilities, "legendaryCards"\)/);
+});
+
+// Every server feature is in the apps' hand-written features type, so a screen
+// that asks hostOffers for it type-checks without a cast. fightInBuilding (PR
+// 786) was flagged by the server and read by the console through a cast, and
+// missing from the type.
+check("every server feature flag is in the apps' features type", () => {
+  const block = /export const SERVER_FEATURES = \{([\s\S]*?)\n\}/.exec(source);
+  assert.ok(block, "SERVER_FEATURES not found");
+  const flags = [...block[1].matchAll(/^\s*([A-Za-z]+): true,$/gm)].map((match) => match[1]);
+  assert.ok(flags.length > 10, `only ${flags.length} flags read`);
+  const client = readFileSync(path.join(root, "src/lib/use-capabilities.ts"), "utf8");
+  const typed = /features\?: \{([^}]*)\}/.exec(client)?.[1] ?? "";
+  assert.deepEqual(flags.filter((flag) => !typed.includes(`${flag}?: boolean`)), []);
 });
 
 if (failures) {

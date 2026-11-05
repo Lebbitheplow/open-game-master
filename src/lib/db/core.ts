@@ -1,6 +1,7 @@
 import { openDatabase, type SqliteDatabase } from "./driver.ts";
 import { fileSubAreasByName } from "./place-parents-backfill.ts";
 import { backfillNpcHeard } from "./npc-heard-backfill.ts";
+import { repairSkewedPersonalities } from "./npc-personality-repair.ts";
 import { createHash } from "node:crypto";
 import { mkdirSync, statSync } from "node:fs";
 import path from "node:path";
@@ -18,6 +19,7 @@ import { registerTableHazardReader } from "@/lib/srd/table-hazards";
 import { tableHazardsFrom } from "@/lib/db/table-hazards";
 import { ROW_TEXT, settleLoreTexts } from "@/lib/worldforge/account";
 import { backfillLegacyItemRows } from "@/lib/db/item-row-backfill";
+import { backfillNarratorVoices } from "@/lib/db/narrator-voice-backfill";
 
 const dbPath =
   process.env.SQLITE_DB_PATH || path.join(/*turbopackIgnore: true*/ process.cwd(), "data", "local-roleplay.sqlite");
@@ -1649,6 +1651,8 @@ function ensureSchema(db: SqliteDatabase) {
     ["pets_json", `TEXT`],
     // A creature a spell or feature made (src/lib/schemas/summon.ts); NULL = not one.
     ["summon_json", `TEXT`],
+    // The numbers Portent foretold at the last long rest (src/lib/dm/foretold-logic.ts).
+    ["foretold_json", `TEXT`],
     // AI companion party member: owned by an unloginable bot user row so
     // UNIQUE(campaign_id, user_id) and the users FK stay satisfied. The DM
     // drives these sheets (src/lib/dm/companion-tools.ts).
@@ -1753,6 +1757,11 @@ function ensureSchema(db: SqliteDatabase) {
     // back to its player, and the line says so. Null when it happened, on
     // typed lines, and on messages written before it.
     ["card_returned", `TEXT`],
+    // When the GM resolved this player message's card as played from the
+    // console's "Waiting on you" list (issue 685, src/lib/dm/resolve-card.ts):
+    // set once, which is what answers the card, so a second press or an AI
+    // turn under cover does not cast it again. Null on every other message.
+    ["card_resolved_at", `TEXT`],
     // A system line's icon, stored by the code that writes the line
     // (src/lib/system-glyphs.ts) rather than read from its words, which only
     // worked in English. Null on other messages and on lines written before
@@ -1804,6 +1813,14 @@ function ensureSchema(db: SqliteDatabase) {
     // conversation and is never handed back to the model, which is what the
     // pending-roll resume path branches on.
     ["actor", `TEXT NOT NULL DEFAULT 'ai'`],
+    // When the lead reverted this turn ("Revert this turn"), so the test
+    // fight's turn trace reads its calls as taken back, as the event log
+    // strikes its rows (issue 685). Null on a turn that stands.
+    ["reverted_at", `TEXT`],
+    // The turn a stand-in turn was opened inside (dm-turns.ts
+    // openStandInTurn): its rolls are that turn's, and that turn's revert
+    // marks it too. Null on every other turn.
+    ["owner_turn_id", `TEXT`],
   ]);
 
   addColumns("battle_maps", [
@@ -1983,6 +2000,12 @@ function ensureSchema(db: SqliteDatabase) {
     // only by setEncounterSides, never by saveEncounter, so a handler holding
     // a stale Encounter cannot put a turncoat back.
     ["sides_json", `TEXT NOT NULL DEFAULT '{}'`],
+    // The characters start_encounter left out of this fight, by sheet id
+    // (issue 740, src/lib/dm/fight-away-logic.ts). On the fight's own row, so
+    // it ends and reverts with the fight. Written only by setEncounterAway,
+    // never by saveEncounter, so a handler holding a stale Encounter cannot
+    // send back someone who has arrived.
+    ["away_ids_json", `TEXT NOT NULL DEFAULT '[]'`],
     // The action economy of whichever combatant is currently acting: action,
     // bonus action, reaction, attacks made, and movement spent. Rebuilt from
     // scratch whenever the initiative pointer moves, so it never needs a
@@ -2060,6 +2083,11 @@ function ensureSchema(db: SqliteDatabase) {
   // storyteller to run when the scene reaches it (src/lib/dm/prepared-
   // encounter-tool.ts, #154). Play state: a copy never carries it.
   addColumns("encounter_templates", [["cued", `INTEGER NOT NULL DEFAULT 0`]]);
+  // The moment a test of this fight was saved to start from (issue 685,
+  // src/lib/workshop/fight-setup-logic.ts): the foes' state wherever it is
+  // deployed, and on a test table the party's, the order and the dice. Empty
+  // for a fight with none.
+  addColumns("encounter_templates", [["setup_json", `TEXT NOT NULL DEFAULT ''`]]);
   // What an arrow on the storyboard means, keyed by the card it points at:
   // one route of several, or a scene that only happens if something holds
   // (src/lib/workshop/board.ts). An arrow with no entry is the plain "then
@@ -2091,6 +2119,11 @@ function ensureSchema(db: SqliteDatabase) {
     // (src/lib/dm/foe-return.ts).
     ["npc_id", `TEXT NOT NULL DEFAULT ''`],
     ["carried_from", `TEXT NOT NULL DEFAULT ''`],
+    // Who a nameless foe is as start_encounter told it (an SRD race id and a
+    // gender, '' for unspecified), so an elf bandit draws the elf bandit
+    // plate (src/lib/placeholders.ts). A Cast NPC's own record wins.
+    ["race", `TEXT NOT NULL DEFAULT ''`],
+    ["gender", `TEXT NOT NULL DEFAULT ''`],
   ]);
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_encounter_enemies_npc ON encounter_enemies(campaign_id, npc_id);
@@ -2291,6 +2324,9 @@ function ensureSchema(db: SqliteDatabase) {
     // One of the builder's genders or '' (src/lib/gender.ts): what the voice
     // cast and the speech reader's pronouns read, never their prose.
     ["gender", `TEXT NOT NULL DEFAULT ''`],
+    // An SRD race id or '' (src/lib/npc-race.ts): which race's face they
+    // draw before a portrait exists. No rule reads it.
+    ["race", `TEXT NOT NULL DEFAULT ''`],
     // Who they are drawn to (src/lib/attraction.ts, issue 501): {genders,
     // note}, '' = undecided. The DM's set_npc writes it once.
     ["attraction_json", `TEXT NOT NULL DEFAULT ''`],
@@ -2345,6 +2381,13 @@ function ensureSchema(db: SqliteDatabase) {
     // (issue 501). Bumped after every successful AI turn, whatever the
     // world-simulation setting says.
     ["ai_turns", `INTEGER NOT NULL DEFAULT 0`],
+  ]);
+
+  addColumns("campaigns", [
+    // Where the narration of the place the party is in starts (move_party,
+    // markSceneStart): what an improvised action may use is what the GM told
+    // of this place (src/lib/dm/improvise.ts). 0 reads the whole story.
+    ["scene_since_seq", `INTEGER NOT NULL DEFAULT 0`],
   ]);
 
   addColumns("library_characters", [
@@ -2462,6 +2505,20 @@ function ensureSchema(db: SqliteDatabase) {
     db.prepare(
       `INSERT INTO app_settings (key, value_json, updated_at) VALUES (?, ?, ?)`,
     ).run("sheet_portrait_backfill_done", "true", new Date().toISOString());
+  }
+
+  // Tables in a language Kokoro speaks that still have the English narrator
+  // every campaign once started on move to their own language's narrator
+  // (src/lib/db/narrator-voice-backfill.ts). One-time, so a table that picks
+  // the English voice again keeps it.
+  const narratorMarker = db.prepare(`SELECT key FROM app_settings WHERE key = 'narrator_language_backfill_done'`).get();
+  if (!narratorMarker) {
+    backfillNarratorVoices(db);
+    db.prepare(`INSERT INTO app_settings (key, value_json, updated_at) VALUES (?, ?, ?)`).run(
+      "narrator_language_backfill_done",
+      "true",
+      new Date().toISOString(),
+    );
   }
 
   // Workshops imported from a bundle before 0.24.9 were written with the
@@ -2776,6 +2833,17 @@ function ensureSchema(db: SqliteDatabase) {
       PRIMARY KEY (campaign_id, workshop_id)
     );
 
+    -- What a test table was opened from (src/lib/workshop/test-fight.ts):
+    -- the workshop's prepared fight, by its own id (a copy plays at the
+    -- table), and the party it was seated with, so "Save as this fight's
+    -- set-up" knows where the moment goes and whose it is (issue 685).
+    CREATE TABLE IF NOT EXISTS test_fight_runs (
+      campaign_id TEXT PRIMARY KEY REFERENCES campaigns(id) ON DELETE CASCADE,
+      template_id TEXT NOT NULL,
+      party_json TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
     -- The last attack against each character, for the reactions that answer
     -- it (src/lib/dm/last-hit.ts). No foreign keys: deleteCampaign clears a
     -- table's rows by hand. That module used to make the table on first use,
@@ -2787,6 +2855,15 @@ function ensureSchema(db: SqliteDatabase) {
       payload_json TEXT NOT NULL,
       created_at TEXT NOT NULL,
       PRIMARY KEY (campaign_id, character_id)
+    );
+
+    -- The Intelligence, Wisdom and Charisma saves made this turn and who forced
+    -- them, for Vigilant Rebuke (src/lib/dm/last-save.ts). One row per
+    -- campaign; deleteCampaign clears it by hand.
+    CREATE TABLE IF NOT EXISTS last_saves (
+      campaign_id TEXT PRIMARY KEY,
+      payload_json TEXT NOT NULL,
+      created_at TEXT NOT NULL
     );
 
     -- Each move of the in-world clock a turn made (src/lib/db/clock-moves.ts):
@@ -2806,6 +2883,82 @@ function ensureSchema(db: SqliteDatabase) {
     );
 
     CREATE INDEX IF NOT EXISTS idx_clock_moves_turn ON clock_moves(campaign_id, turn_id);
+
+    -- A test table's dice script (issue 685, src/lib/db/dice-scripts.ts):
+    -- its seed and how far the seed's sequence has got, the faces still
+    -- forced, and the ones spent. Only a test table (kind 'playtest') is
+    -- given a row. Older servers ignore it, so it needs no schema revision.
+    CREATE TABLE IF NOT EXISTS dice_scripts (
+      campaign_id TEXT PRIMARY KEY REFERENCES campaigns(id) ON DELETE CASCADE,
+      seed INTEGER,
+      seed_state INTEGER,
+      seeded_rolls INTEGER NOT NULL DEFAULT 0,
+      queue_json TEXT NOT NULL DEFAULT '[]',
+      used_json TEXT NOT NULL DEFAULT '[]',
+      updated_at TEXT NOT NULL
+    );
+    -- A prepared fight's events, armed on the fight it started, one row each
+    -- (src/lib/db/fight-events.ts says why not a field of the encounter).
+    -- Older servers ignore it, so it needs no schema revision.
+    CREATE TABLE IF NOT EXISTS fight_events (
+      id TEXT PRIMARY KEY,
+      campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+      encounter_id TEXT NOT NULL REFERENCES encounters(id) ON DELETE CASCADE,
+      template_name TEXT NOT NULL DEFAULT '',
+      position INTEGER NOT NULL DEFAULT 0,
+      event_json TEXT NOT NULL,
+      slots_json TEXT NOT NULL DEFAULT '{}',
+      entry_json TEXT NOT NULL DEFAULT 'null',
+      fired_at TEXT,
+      lines_json TEXT NOT NULL DEFAULT '[]',
+      created_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_fight_events_encounter ON fight_events(encounter_id, position);
+
+    -- What a turn changed beyond the sheets and the clock, kept so "Revert
+    -- this turn" takes it back with them (issue 685,
+    -- src/lib/db/turn-changes.ts): a prepared fight's event that fired, a test
+    -- table's dice it spent, a card the GM resolved as played. Older servers
+    -- ignore it, so it needs no schema revision.
+    CREATE TABLE IF NOT EXISTS turn_changes (
+      id TEXT PRIMARY KEY,
+      campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+      turn_id TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      payload_json TEXT NOT NULL,
+      -- Its place in the campaign's log, beside the sheet changes.
+      seq INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      reverted_at TEXT
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_turn_changes_turn ON turn_changes(campaign_id, turn_id);
+
+    -- Each fight and board row a turn wrote (an enemy, the fight's order, a
+    -- token, the board, an effect, a dropped item), as the turn found it and
+    -- as it left it, so "Revert this turn" puts it back and asks first about
+    -- one changed again since (issue 685, src/lib/db/turn-rows.ts). A row
+    -- the turn made has no "before". Older servers ignore it, so it needs no
+    -- schema revision.
+    CREATE TABLE IF NOT EXISTS turn_rows (
+      campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+      turn_id TEXT NOT NULL,
+      tbl TEXT NOT NULL,
+      row_id TEXT NOT NULL,
+      before_json TEXT,
+      after_json TEXT,
+      sealed INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      reverted_at TEXT,
+      PRIMARY KEY (turn_id, tbl, row_id)
+    );
+
+    -- What "Revert this turn" can still reach is the table's newest turns
+    -- (src/lib/db/turn-rows.ts pruneOutOfReach): read by campaign and time.
+    CREATE INDEX IF NOT EXISTS idx_turn_rows_campaign ON turn_rows(campaign_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_turn_changes_campaign ON turn_changes(campaign_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_dm_turns_campaign ON dm_turns(campaign_id, created_at);
   `);
   // Clock-driven disease and poison rows were once filed under the literal
   // turn "clock", one false turn per campaign that "Revert this turn" undid
@@ -2869,6 +3022,10 @@ function ensureSchema(db: SqliteDatabase) {
     ["conduct_json", `TEXT NOT NULL DEFAULT ''`],
     ["agenda_json", `TEXT NOT NULL DEFAULT ''`],
   ]);
+  // Someone the party already knows when the story begins, and how (issue
+  // 731, src/lib/dm/known-before-logic.ts): {grade, how}, or '' for anyone
+  // the party meets in play. A module carries it to the tables made from it.
+  addColumns("npcs", [["known_before_json", `TEXT NOT NULL DEFAULT ''`]]);
   // When the party first dealt with an NPC (src/lib/db/npcs.ts Npc.metAt),
   // which a reaction roll reads: it is for strangers. The rows already
   // played get it once, from what play recorded about them.
@@ -2884,6 +3041,17 @@ function ensureSchema(db: SqliteDatabase) {
   if (!npcColumns.some((column) => column.name === "heard_at")) {
     addColumns("npcs", [["heard_at", `TEXT NOT NULL DEFAULT ''`]]);
     backfillNpcHeard(db);
+  }
+  // Personalities saved from the skewed name hash move onto the corrected
+  // spread, keeping what play drifted (issue 732,
+  // src/lib/db/npc-personality-repair.ts). One pass, guarded by an
+  // app_settings marker.
+  const personalityMarker = db.prepare(`SELECT key FROM app_settings WHERE key = 'npc_personality_repair_done'`).get();
+  if (!personalityMarker) {
+    db.transaction(() => {
+      repairSkewedPersonalities(db);
+      db.prepare(`INSERT INTO app_settings (key, value_json, updated_at) VALUES (?, ?, ?)`).run("npc_personality_repair_done", "true", new Date().toISOString());
+    })();
   }
 }
 

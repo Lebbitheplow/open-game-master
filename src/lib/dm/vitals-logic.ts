@@ -73,12 +73,21 @@ export function wakeConditions(held: Held): { conditions: string[]; conditionMet
   return { conditions: cleared.conditions, conditionMeta: cleared.meta };
 }
 
+// A mummy lord's Channel Negative Energy (SRD 5.1, a legendary action):
+// creatures in range "can't regain hit points until the end of the mummy
+// lord's next turn". Laid as this condition for that round.
+export const NEGATIVE_ENERGY = "negative energy";
+
 // What keeps a creature from regaining hit points now, or null: Chill
-// Touch's grip until its caster's next turn, or no air at 0 hit points.
+// Touch's grip until its caster's next turn, negative energy, or no air at
+// 0 hit points.
 export function regainBlockedBy(sheet: { conditions: string[]; currentHp: number }): string | null {
   const held = sheet.conditions.map((entry) => entry.trim().toLowerCase());
   if (held.includes("chill touch")) {
     return "chill touch";
+  }
+  if (held.includes(NEGATIVE_ENERGY)) {
+    return NEGATIVE_ENERGY;
   }
   return sheet.currentHp <= 0 && held.includes(SUFFOCATING) ? SUFFOCATING : null;
 }

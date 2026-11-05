@@ -26,6 +26,18 @@ const PAN_SLOP = 6;
 // figure (its own drag), a control, or a surface that reads the drag itself.
 const NO_PAN = "[data-token-id], [data-no-pan], button, a, input, select, textarea";
 
+// The chrome the resting view keeps clear, a direct child of the frame
+// standing in its top left corner (the docked initiative strip).
+const CLEAR_SELECTOR = ":scope > [data-fit-clear]";
+// Room between that chrome and the first tile.
+const CLEAR_GAP = 6;
+
+function cornerToClear(frame: HTMLElement | null): { width: number; height: number } | null {
+  const corner = frame?.querySelector<HTMLElement>(CLEAR_SELECTOR);
+  if (!corner || !corner.offsetWidth) return null;
+  return { width: corner.offsetLeft + corner.offsetWidth + CLEAR_GAP, height: corner.offsetTop + corner.offsetHeight + CLEAR_GAP };
+}
+
 export function useBoardCamera(
   boardWidth: number,
   boardHeight: number,
@@ -146,7 +158,7 @@ export function useBoardCamera(
 
   const fit = useCallback((): Camera => {
     const m = metrics();
-    return m ? fitCamera(m, { width: boardWidth, height: boardHeight }) : IDENTITY;
+    return m ? fitCamera(m, { width: boardWidth, height: boardHeight }, cornerToClear(frameRef.current)) : IDENTITY;
   }, [metrics, boardWidth, boardHeight]);
   const clampZoom = useCallback((zoom: number) => clampZoomTo(zoom, minZoomFor(fit())), [fit]);
 
@@ -296,6 +308,16 @@ export function useBoardCamera(
     if (!frameEl || options.enabled === false) {
       return;
     }
+    // The corner's chrome comes and goes with the fight's order and changes
+    // size with it: the view resting on the fit moves out from under it.
+    const watched = new Set<Element>();
+    const watchCorner = () => {
+      const corner = frameEl.querySelector(CLEAR_SELECTOR);
+      if (corner && !watched.has(corner)) {
+        watched.add(corner);
+        observer.observe(corner);
+      }
+    };
     const observer = new ResizeObserver(() => {
       if (!enabledRef.current) return;
       const width = frameEl.clientWidth;
@@ -322,7 +344,14 @@ export function useBoardCamera(
       );
     });
     observer.observe(frameEl);
-    return () => observer.disconnect();
+    watchCorner();
+    // The order's strip mounts once the order is rolled, after the frame.
+    const mounted = new MutationObserver(watchCorner);
+    mounted.observe(frameEl, { childList: true });
+    return () => {
+      observer.disconnect();
+      mounted.disconnect();
+    };
   }, [frameEl, fit, options.enabled]);
 
   const pointers = useRef(new Map<number, { x: number; y: number }>());

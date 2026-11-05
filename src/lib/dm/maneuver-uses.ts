@@ -23,6 +23,7 @@ import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { spendAction, spendAttack } from "@/lib/dm/action-budget";
 import { canAct } from "@/lib/dm/can-act";
+import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { COMMANDED, SUPERIORITY_STRIKE, maneuverDieFor } from "@/lib/dm/maneuver-rules";
 import { reactionRefusal } from "@/lib/dm/reaction-gate";
 import type { ResourceCharge } from "@/lib/dm/resource-turn";
@@ -88,6 +89,10 @@ export function commandersStrikeCharge(campaign: Campaign, sheet: CharacterSheet
   const able = canAct({ sheet, encounter, kind: "action" });
   if (!able.ok) {
     return toolError(able);
+  }
+  const heldOff = heldTurnRefusal(encounter, sheet);
+  if (heldOff) {
+    return heldOff;
   }
   const budget = budgetFor(encounter, sheet.id, attacksAllowedFor(sheet), conditionTurnShape(sheet.conditions));
   if (!budget) {

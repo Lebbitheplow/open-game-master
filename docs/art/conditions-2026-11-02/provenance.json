@@ -1,0 +1,536 @@
+{
+  "date": "2026-11-02",
+  "basis": "Three-voter majority choices, followed by four requested replacements and an approved style-unification pass.",
+  "votes": "Original votes only. Repaints and requested replacements have not inherited votes.",
+  "subjectBasis": "Original symbolic fantasy condition illustrations; selected concepts supplied in the comparison picker and repainted with OpenAI image_gen. No named franchise characters.",
+  "encoding": {
+    "format": "WebP",
+    "width": 128,
+    "height": 128,
+    "quality": 90,
+    "alphaQuality": 100,
+    "effort": 6,
+    "trimThreshold": 12,
+    "note": "Existing approved WebP files copied byte-for-byte; no additional encoding during integration."
+  },
+  "sourceArchive": "Original generated PNG files remain in the private artwork workspace; hashes and prompts are recorded here.",
+  "baseCommit": "281928336f8f88353d224d4293ef79c2422aa0fc",
+  "totalBytes": 174380,
+  "previousBytes": 76978,
+  "deltaBytes": 97402,
+  "records": [
+    {
+      "id": "blessed",
+      "path": "public/assets/icons/condition/blessed.webp",
+      "sha256": "de08ffada152178b5007e255090819f26a8e8e1f36a16864ebf188765512cc77",
+      "bytes": 8426,
+      "upstreamSha256": "f569805d7d1b77f374de8decd7161719df341747f4d15e9897f54d49d2ece5dc",
+      "selectedBaseSha256": "de08ffada152178b5007e255090819f26a8e8e1f36a16864ebf188765512cc77",
+      "originalVoteWinner": "codex",
+      "originalVoteScore": "3-0",
+      "requestedRevision": false,
+      "repaintedForUnification": false,
+      "contentBox": 104,
+      "source": {
+        "generator": "OpenAI image_gen",
+        "prompt": "Create a production sprite sheet of TWELVE original hand-painted fantasy RPG status icons on a genuinely TRANSPARENT background, arranged in an exact regular grid of THREE equal columns and FOUR equal rows. Portrait 3:4 canvas. Each square cell contains exactly one standalone icon, centered, with at least 10% transparent padding on every side. No text, labels, letters, grid lines, borders, plates, scenery or watermarks. Premium sculptural painted game UI art, simplified chunky forms, crisp silhouettes, bright ivory highlights, saturated midtones, extremely few details. Must be identifiable reduced to 20px. No dark black silhouettes. Consistent warm directional lighting. Every icon occupies about 80% of its cell. These are original symbolic designs, not known characters. Exact order left to right, top to bottom: ROW 1: (1) BLESSED: large luminous golden eight-point sunburst with bright ivory center and a pair of small upward-swept gold wings, strong welcoming holy radiance. (2) BLINDED: one large ivory human eye covered completely by one broad crimson cloth blindfold tied at one side, no visible pupil. (3) DEAFENED: one large warm ivory human ear with a thick red diagonal slash floating across it, instantly clear. ROW 2: (4) DODGING: bright teal upper body of an adventurer leaning sharply to the left, a single large ivory arrow missing past their right shoulder, two broad gold motion sweeps, clear evasive movement. (5) EXHAUSTION: close-up weary adult face, sagging closed eyelids, deeply drooping brows, head resting heavily on one broad palm, warm pale face with russet sleeve, large bold forms. (6) HIDDEN: close-up of a teal hood with a bright ivory cloth mask covering lower face, only two alert amber eyes visible in deep hood shadow, hood edges brightly lit, strong triangular outline, no torso. ROW 3: (7) INCAPACITATED: one large open ivory gauntleted hand with limp drooping fingers pointing downward, a bold red circular prohibition ring and slash behind the hand, clear inability to act, simple. (8) INVISIBLE: one translucent icy cyan head-and-shoulders silhouette dissolving into three broad separated pale blue wisps along its right edge, luminous clear contour and transparent interior, no hood. (9) PETRIFIED: one large grey stone classical humanoid head and shoulders, bright grey stone face and thick pedestal, two broad cracks and rigid blank stone eyes, unmistakably a stone statue. ROW 4: (10) PRONE: compact side view of one adult adventurer lying face-down horizontally, one bent arm with palm planted, face looking to the side while conscious, amber tunic and ivory head, broad clear body silhouette, no ground/scenery. (11) RESTRAINED: two large warm ivory wrists side by side upright, bound together by three thick intact golden hemp rope loops with a large central knot, no breaking ropes, hands and binding fill cell. (12) UNCONSCIOUS: close-up adult head tilted sideways resting on one open palm, both eyes fully closed, relaxed neutral mouth, bright ivory face and blue hair, a single large pale crescent moon above the forehead; no letters. Preserve exact grid positions and generous clear separation between icons.\n",
+        "sourceSha256": "913265da186f71022ff157c8d3b110d3ccfa3983d790679114ed61eede1cdbe6",
+        "crop": {
+          "left": 0,
+          "top": 0,
+          "width": 390,
+          "height": 373
+        }
+      }
+    },
+    {
+      "id": "blinded",
+      "path": "public/assets/icons/condition/blinded.webp",
+      "sha256": "2ea1975016f56f870a3e38a032a659d02e157ed90ce3a274586ff9cbae8681b2",
+      "bytes": 5996,
+      "upstreamSha256": "b34e2750f49477327a00ef65054c871aecba51aca111e38301ec00a4d85bc7bf",
+      "selectedBaseSha256": "73aa44ae09d682d70a420146c2ba32e29a9e1caccc6887e97cf0ff89c4318982",
+      "originalVoteWinner": "codex",
+      "originalVoteScore": "3-0",
+      "requestedRevision": false,
+      "repaintedForUnification": true,
+      "contentBox": 104,
+      "source": {
+        "generator": "OpenAI image_gen",
+        "prompt": "Repaint ONE fantasy tabletop RPG CONDITION ICON. First reference is the selected design: preserve its central metaphor, pose, identifying colors and silhouette. Second reference is ONLY the painting/material/lighting style reference, not the subject to copy. Unify with that premium hand-painted fantasy adventure style: confident broad brushwork, sculptural simplified shapes, warm upper-left highlights, clean deep but readable shadows, natural matte cloth/skin/bone and restrained metal sheen. Not photorealistic, no comic ink outlines, no plastic toy rendering. Strong readable midtones, crisp clean silhouette, very few details. Designed for a 20px circular badge. Isolated on genuinely transparent square canvas; subject centered within 78% canvas, all extremities inside a circular safe area, wide empty transparent margin. No card, frame, border, scenery, ground plane, lettering, watermark, sparks or debris. Render one icon only. BLINDED: retain the dominant bold RED CLOTH BLINDFOLD covering BOTH eyes and the simple isolated head portrait. For the user's requested cast variety, portray a mature adult woman with rich medium-brown skin, a long angular face, broad nose, full lips, and black hair in a compact braided bun, with a few silver strands at temples. Neutral closed mouth, subtle tension in brow. No visible eyes through the cloth. Red band and simple trailing knot at side; limited hair mass. A small hint of a worn brown leather adventurer collar below the chin. Same warm painted skin and fabric rendering as style anchor; clean face planes, no beauty makeup, no generic young male face.",
+        "sourceSha256": "51d2ba753d9e8003b3d8e3bd6b079aed6880f08c91f62b8c84944c77c38689df"
+      }
+    },
+    {
+      "id": "burrowing",
+      "path": "public/assets/icons/condition/burrowing.webp",
+      "sha256": "0c9af5808281a6d26db6cb346bc58fa2f1e3569e79ff57befb42776e21ec3a47",
+      "bytes": 6802,
+      "upstreamSha256": "3d12c54346ee7ab287754345491bcd7ced073b8bce4e871ad5ddfa44c09e21cb",
+      "selectedBaseSha256": "0c9af5808281a6d26db6cb346bc58fa2f1e3569e79ff57befb42776e21ec3a47",
+      "originalVoteWinner": "codex",
+      "originalVoteScore": "3-0",
+      "requestedRevision": false,
+      "repaintedForUnification": false,
+      "contentBox": 104,
+      "source": {
+        "generator": "OpenAI image_gen",
+        "prompt": "Create ONE original fantasy tabletop RPG status icon, isolated on a genuinely transparent square canvas. Premium hand-painted sculptural game art with bright midtones, crisp silhouette, broad simplified forms and few details. Recognizable at 20px. Subject occupies the central 78% of the square with a clean transparent margin; fits safely inside a circular badge. One dominant visual idea. No text, letters, written runes, framing plate, border, scenery, checkerboard, watermark, detached dust or tiny sparks. No copied game art or known franchise characters. BURROWING: two powerful brown digging paws with three broad ivory claws each, parting a compact low mound of warm ochre soil. Claws point down into the earth; one small dark tunnel opening centered below them. Large clean claws and mound silhouette, very few big soil chunks, no animal face or extra tools.",
+        "sourceSha256": "b6deb163f5ec13dec7121bcbda445b2a9ffba508713480f44a0e499af24414c8"
+      }
+    },
+    {
+      "id": "charmed",
+      "path": "public/assets/icons/condition/charmed.webp",
+      "sha256": "ca916d0ca162fe8e254a992da9e762ade3efa81639b13fd246c56fba5714c047",
+      "bytes": 6168,
+      "upstreamSha256": "2460136f8ab1f82112005e9e386128c4a5a97846a4b0160f815e1da80bde3634",
+      "selectedBaseSha256": "ca916d0ca162fe8e254a992da9e762ade3efa81639b13fd246c56fba5714c047",
+      "originalVoteWinner": "codex",
+      "originalVoteScore": "3-0",
+      "requestedRevision": false,
+      "repaintedForUnification": false,
+      "contentBox": 104,
+      "source": {
+        "generator": "OpenAI image_gen",
+        "prompt": "Create ONE original fantasy tabletop RPG status icon, isolated on a genuinely transparent square canvas. Premium hand-painted sculptural game art with bright midtones, crisp silhouette, broad simplified forms and few details. Recognizable at 20px. Subject occupies the central 78% of the square with a clean transparent margin; fits safely inside a circular badge. One dominant visual idea. No text, letters, written runes, framing plate, border, scenery, checkerboard, watermark, detached dust or tiny sparks. No copied game art or known franchise characters. CHARMED: one large polished crimson heart, subtly sculpted like a painted gemstone rather than realistic anatomy, with one broad luminous pink spiral curling across its front. Simple unmistakable heart outline, luminous rose highlights and deep ruby shadows. No wings or faces.",
+        "sourceSha256": "464310891ceb46025d29584480202bf5451f6024e54d4f9af31bf1423b9ca9b3"
+      }
+    },
+    {
+      "id": "concentrating",
+      "path": "public/assets/icons/condition/concentrating.webp",
+      "sha256": "c921165cb2f960daf94d8223b3ac14606448cf11915d6cd8985cfc75ec533638",
+      "bytes": 7590,
+      "upstreamSha256": "f3f0052a7b5d389a134d4383947a5f9c03871b6fd7bc519a6b8e4c9efd8aec87",
+      "selectedBaseSha256": "c921165cb2f960daf94d8223b3ac14606448cf11915d6cd8985cfc75ec533638",
+      "originalVoteWinner": "codex",
+      "originalVoteScore": "2-1",
+      "requestedRevision": false,
+      "repaintedForUnification": false,
+      "contentBox": 104,
+      "source": {
+        "generator": "OpenAI image_gen",
+        "prompt": "Create ONE original fantasy tabletop RPG status icon, isolated on a genuinely transparent square canvas. Premium hand-painted sculptural game art with bright midtones, crisp silhouette, broad simplified forms and few details. Recognizable at 20px. Subject occupies the central 78% of the square with a clean transparent margin; fits safely inside a circular badge. One dominant visual idea. No text, letters, written runes, framing plate, border, scenery, checkerboard, watermark, detached dust or tiny sparks. No copied game art or known franchise characters. CONCENTRATING: one large violet-white magical orb held motionless inside two simple thin golden circular bands crossing at right angles like an armillary focus. Orb dominates, bright violet center, clearly structured focused energy, three broad shapes only. No eye, target reticle, heart, hand or runes.",
+        "sourceSha256": "0df494e1695fce181fdd67b207bbc5f0e1689625158b31f99767c5c24e742e5e"
+      }
+    },
+    {
+      "id": "cursed",
+      "path": "public/assets/icons/condition/cursed.webp",
+      "sha256": "d4a5ec3ba0cd8a177f7525a20f2b5f3013988ddde963994bb012a358b0d6393b",
+      "bytes": 6742,
+      "upstreamSha256": "9d2da75f37e720e5de7c949cfd649abd8c2c3e786c7f786c27480218ff2e3926",
+      "selectedBaseSha256": "8c5c734282e685b629b0fb1455268fa9e0705295ffd8c95913f6933a1cc088ec",
+      "originalVoteWinner": "grok",
+      "originalVoteScore": "3-0",
+      "requestedRevision": false,
+      "repaintedForUnification": true,
+      "contentBox": 104,
+      "source": {
+        "generator": "OpenAI image_gen",
+        "prompt": "Repaint ONE fantasy tabletop RPG CONDITION ICON. First reference is the selected design: preserve its central metaphor, pose, identifying colors and silhouette. Second reference is ONLY the painting/material/lighting style reference, not the subject to copy. Unify with that premium hand-painted fantasy adventure style: confident broad brushwork, sculptural simplified shapes, warm upper-left highlights, clean deep but readable shadows, natural matte cloth/skin/bone and restrained metal sheen. Not photorealistic, no comic ink outlines, no plastic toy rendering. Strong readable midtones, crisp clean silhouette, very few details. Designed for a 20px circular badge. Isolated on genuinely transparent square canvas; subject centered within 78% canvas, all extremities inside a circular safe area, wide empty transparent margin. No card, frame, border, scenery, ground plane, lettering, watermark, sparks or debris. Render one icon only. CURSED: retain the selected front-facing cursed skull with violet eyes and a purple supernatural halo, including one simple dark angular sigil on its forehead. Replace the fine photographic cracks, noisy smoke and tiny spidery tendrils with broad painted bone planes and THREE or FOUR large coherent purple flame curls. Pale lavender-ivory bone, deep purple sockets. Clearly a haunted skull, distinct from a green poison skull. Large readable brow, cheekbones and jaw; simplify teeth into a few broad blocks. No additional tiny symbols.",
+        "sourceSha256": "8785d1a9eb1ac8639a21568b138f004dc0ac0d44ae6c9a510518e05ff26505fd"
+      }
+    },
+    {
+      "id": "deafened",
+      "path": "public/assets/icons/condition/deafened.webp",
+      "sha256": "0dc2f7a7041b5c61560a8b0c1a691e63444756b5a54e59311d20af31f394de65",
+      "bytes": 5024,
+      "upstreamSha256": "bb34fa33e6bcba47144601ec7058fb92c6003bb464c872fec94911e0324480d9",
+      "selectedBaseSha256": "45a7dc30b0e5ec8fddb6f1101984fa33e8e5a72a0d21eb11e1911d04d3218b85",
+      "originalVoteWinner": "codex",
+      "originalVoteScore": "2-1",
+      "requestedRevision": false,
+      "repaintedForUnification": true,
+      "contentBox": 100,
+      "source": {
+        "generator": "OpenAI image_gen",
+        "prompt": "Repaint ONE fantasy tabletop RPG CONDITION ICON. First reference is the selected design: preserve its central metaphor, pose, identifying colors and silhouette. Second reference is ONLY the painting/material/lighting style reference, not the subject to copy. Unify with that premium hand-painted fantasy adventure style: confident broad brushwork, sculptural simplified shapes, warm upper-left highlights, clean deep but readable shadows, natural matte cloth/skin/bone and restrained metal sheen. Not photorealistic, no comic ink outlines, no plastic toy rendering. Strong readable midtones, crisp clean silhouette, very few details. Designed for a 20px circular badge. Isolated on genuinely transparent square canvas; subject centered within 78% canvas, all extremities inside a circular safe area, wide empty transparent margin. No card, frame, border, scenery, ground plane, lettering, watermark, sparks or debris. Render one icon only. DEAFENED: preserve the selected recognizable human EAR crossed by ONE thick RED diagonal slash from upper left to lower right. Same composition and generous slash width. Paint the ear with natural warm tan skin and broad sculptural highlight/shadow planes, reduce plastic gloss; paint slash as a simple brushed crimson-red band with just enough thickness to fit the painted objects. No head, face, hair, sound-wave lines, extra icons or background. Ear and slash are the only two forms. Do NOT copy the human from the style reference.",
+        "sourceSha256": "ff1f397ea78730c25da52e5835d4b9a1bb8e628e8cadbdcf2c56e2fff26608cf"
+      }
+    },
+    {
+      "id": "dodging",
+      "path": "public/assets/icons/condition/dodging.webp",
+      "sha256": "fd2277a38eb515f7a8f5286809b1db24fdd857a86579d73577da862017a93249",
+      "bytes": 5810,
+      "upstreamSha256": "48d8695b535e9fb92153912697eeccf14deafa8249dc62f025c4470cc8937c60",
+      "selectedBaseSha256": "08f23b39fef1c3ea05548d11616bdc6bc8b158d28901f628992335dd874ffda9",
+      "originalVoteWinner": "codex",
+      "originalVoteScore": "3-0",
+      "requestedRevision": false,
+      "repaintedForUnification": true,
+      "contentBox": 92,
+      "source": {
+        "generator": "OpenAI image_gen",
+        "prompt": "Repaint ONE fantasy tabletop RPG CONDITION ICON. First reference is the selected design: preserve its central metaphor, pose, identifying colors and silhouette. Second reference is ONLY the painting/material/lighting style reference, not the subject to copy. Unify with that premium hand-painted fantasy adventure style: confident broad brushwork, sculptural simplified shapes, warm upper-left highlights, clean deep but readable shadows, natural matte cloth/skin/bone and restrained metal sheen. Not photorealistic, no comic ink outlines, no plastic toy rendering. Strong readable midtones, crisp clean silhouette, very few details. Designed for a 20px circular badge. Isolated on genuinely transparent square canvas; subject centered within 78% canvas, all extremities inside a circular safe area, wide empty transparent margin. No card, frame, border, scenery, ground plane, lettering, watermark, sparks or debris. Render one icon only. DODGING: preserve the selected composition: a visible adult adventurer's head and upper torso leaning sharply LEFT out of the path of ONE long gold arrow passing on their RIGHT, the arrow pointing diagonally downward-right. One arm extends outward for balance. Make this a stocky olive-skinned adult man with a shaved head, square jaw, strong hooked nose, and short dark goatee, clearly different from the other portraits. A worn teal laced tunic, short leather shoulder vest and simple wrist bracer identify a fantasy adventurer. Keep the pose and single separate arrow readable as a dodge, not a fighter shooting an arrow. No weapon in hand, no multiple arrows, no motion clutter. Wide margin so the arrowhead and balance hand survive a circular crop.",
+        "sourceSha256": "63145b9d2279e8fe4d4aceb1e50ff763aa60999a3d12b0f29accb8bbb08fbeda"
+      }
+    },
+    {
+      "id": "exhaustion",
+      "path": "public/assets/icons/condition/exhaustion.webp",
+      "sha256": "a0b2e5e6c2d796e3fe7942b3979a92363c72acd2396b9d1064221cef0d229b6e",
+      "bytes": 6084,
+      "upstreamSha256": "e1bf6c123d07d8fc071f15f0cb0a9ef5c2b56ae93c6f7199aefdc635277334b9",
+      "selectedBaseSha256": "0add3e371b2758eb8fa2b4bc3d18ef60f1709506c86759666b512f100a6b946c",
+      "originalVoteWinner": "grok",
+      "originalVoteScore": "2-1",
+      "requestedRevision": false,
+      "repaintedForUnification": true,
+      "contentBox": 104,
+      "source": {
+        "generator": "OpenAI image_gen",
+        "prompt": "Repaint ONE fantasy tabletop RPG CONDITION ICON. First reference is the selected design: preserve its central metaphor, pose, identifying colors and silhouette. Second reference is ONLY the painting/material/lighting style reference, not the subject to copy. Unify with that premium hand-painted fantasy adventure style: confident broad brushwork, sculptural simplified shapes, warm upper-left highlights, clean deep but readable shadows, natural matte cloth/skin/bone and restrained metal sheen. Not photorealistic, no comic ink outlines, no plastic toy rendering. Strong readable midtones, crisp clean silhouette, very few details. Designed for a 20px circular badge. Isolated on genuinely transparent square canvas; subject centered within 78% canvas, all extremities inside a circular safe area, wide empty transparent margin. No card, frame, border, scenery, ground plane, lettering, watermark, sparks or debris. Render one icon only. EXHAUSTION: preserve the selected exhausted red-clad adventurer hunched forward and relying heavily on a vertical wooden walking staff, whole body curled into a compact diagonal silhouette. Head hangs low but eyes are open and he is awake; both hands loosely grip the staff and weight leans into it, knees bent. Make the man a weathered middle-aged human with a long face, pronounced hooked nose, short salt-and-pepper beard and thinning receding dark hair, not the handsome young male face from other icons. Worn brick-red travel tunic, tan trousers, simple leather boots and belt. Replace cartoon line art and tiny sweat droplets with the shared painterly style; no floating droplets or action lines. The staff must remain visibly distinct, not merge into a third leg.",
+        "sourceSha256": "9fdb76e305af7802782dadc5db5b4a1f908744cbf9f1871f101713e04cee1a38"
+      }
+    },
+    {
+      "id": "flying",
+      "path": "public/assets/icons/condition/flying.webp",
+      "sha256": "7bf5c54c415bab323c65ee234eb692049f971a4921a8e79ac26978993ff43d6c",
+      "bytes": 6772,
+      "upstreamSha256": "ca5be2e35320dff9c135e91940748c468049d8683cf060091bf3288896e60187",
+      "selectedBaseSha256": "7bf5c54c415bab323c65ee234eb692049f971a4921a8e79ac26978993ff43d6c",
+      "originalVoteWinner": "codex",
+      "originalVoteScore": "3-0",
+      "requestedRevision": false,
+      "repaintedForUnification": false,
+      "contentBox": 104,
+      "source": {
+        "generator": "OpenAI image_gen",
+        "prompt": "Create ONE original fantasy tabletop RPG status icon, isolated on a genuinely transparent square canvas. Premium hand-painted sculptural game art with bright midtones, crisp silhouette, broad simplified forms and few details. Recognizable at 20px. Subject occupies the central 78% of the square with a clean transparent margin; fits safely inside a circular badge. One dominant visual idea. No text, letters, written runes, framing plate, border, scenery, checkerboard, watermark, detached dust or tiny sparks. No copied game art or known franchise characters. FLYING: a symmetrical pair of large open ivory feathered wings rising upward, joined at their bases, with a small gold feather-shaped connector. Three to four broad feather groups per wing, warm golden highlights and cool blue-grey shading, clear uplifted wing silhouette. No body, halo, heart, boot or dragon.",
+        "sourceSha256": "6157250efad87174813ce9caf9f64753a87655aef2706045d6cdfaff0a1f4f0b"
+      }
+    },
+    {
+      "id": "frightened",
+      "path": "public/assets/icons/condition/frightened.webp",
+      "sha256": "e0e80e977bac769de11c37b5bff7a409714525a2a27118aece03bf866cebc269",
+      "bytes": 6778,
+      "upstreamSha256": "c948ef9e53241981ec7f1bbc1d60d596f38e5e604a897e901862e9e1c753ef7a",
+      "selectedBaseSha256": "7b21dd54ea45ba26c169e6f18d7ff00b1f3f7649dafd49f1e891b11db1b1c349",
+      "originalVoteWinner": "codex",
+      "originalVoteScore": "2-1",
+      "requestedRevision": false,
+      "repaintedForUnification": true,
+      "contentBox": 104,
+      "source": {
+        "generator": "OpenAI image_gen",
+        "prompt": "Repaint ONE fantasy tabletop RPG CONDITION ICON. First reference is the selected design: preserve its central metaphor, pose, identifying colors and silhouette. Second reference is ONLY the painting/material/lighting style reference, not the subject to copy. Unify with that premium hand-painted fantasy adventure style: confident broad brushwork, sculptural simplified shapes, warm upper-left highlights, clean deep but readable shadows, natural matte cloth/skin/bone and restrained metal sheen. Not photorealistic, no comic ink outlines, no plastic toy rendering. Strong readable midtones, crisp clean silhouette, very few details. Designed for a 20px circular badge. Isolated on genuinely transparent square canvas; subject centered within 78% canvas, all extremities inside a circular safe area, wide empty transparent margin. No card, frame, border, scenery, ground plane, lettering, watermark, sparks or debris. Render one icon only. FRIGHTENED: preserve the selected recoiling face, eyes wide with fear, parted gasping mouth and ONE hand raised close to the cheek. For cast variety use a young adult East Asian woman with a broad square face, straight dark eyebrows, black hair secured in a compact high bun and a few loose strands, no makeup, no beard, no resemblance to the brown-haired male hero. Clothing visible only as a dark indigo travel cloak with a simple leather collar. Keep the fearful expression readable, not rage or stunned; normal pupils, no stars. Warm pale-golden skin midtones with cool shadow planes. One coherent hand with five anatomically correct fingers. Same painted style as anchor.",
+        "sourceSha256": "0eb13d7dab90d10aabc29279e100966fc42b409550aba37ebcda2ee9cefeb990"
+      }
+    },
+    {
+      "id": "grappled",
+      "path": "public/assets/icons/condition/grappled.webp",
+      "sha256": "86b14034313bb6a44cfea93952001380889354dfd8d4a0ae33630307c2b60011",
+      "bytes": 5666,
+      "upstreamSha256": "24a34432725e5bca94b7beedb7fa10973e9e97a7b8690f1a50550cdd64dd5739",
+      "selectedBaseSha256": "86b14034313bb6a44cfea93952001380889354dfd8d4a0ae33630307c2b60011",
+      "originalVoteWinner": "codex",
+      "originalVoteScore": "3-0",
+      "requestedRevision": false,
+      "repaintedForUnification": false,
+      "contentBox": 104,
+      "source": {
+        "generator": "OpenAI image_gen",
+        "prompt": "Create ONE original fantasy tabletop RPG status icon, isolated on a genuinely transparent square canvas. Premium hand-painted sculptural game art with bright midtones, crisp silhouette, broad simplified forms and few details. Recognizable at 20px. Subject occupies the central 78% of the square with a clean transparent margin; fits safely inside a circular badge. One dominant visual idea. No text, letters, written runes, framing plate, border, scenery, checkerboard, watermark, detached dust or tiny sparks. No copied game art or known franchise characters. GRAPPLED: a large warm ivory hand firmly GRIPPING another person's wrist. Show the gripping hand wrapped around the other forearm from the side, with the captured hand visible above. Two hands total, one leather cuff on the gripper and one plain teal sleeve on the captured arm. Large obvious grasp, no rope, cuffs, chains or weapons.",
+        "sourceSha256": "f4ad1905d7e8ea20d3c2a8533f79edd60fde9f8991259f44625f0a55229df099"
+      }
+    },
+    {
+      "id": "hasted",
+      "path": "public/assets/icons/condition/hasted.webp",
+      "sha256": "e9264c1c089389f777afd23a002930822c5cc3fb48f51da583ac2f7cfae4ef31",
+      "bytes": 6662,
+      "upstreamSha256": "776135995e04dd02e25b20d1b7b406618cd2ec5fa60eb0d40e0648912776f442",
+      "selectedBaseSha256": "e9264c1c089389f777afd23a002930822c5cc3fb48f51da583ac2f7cfae4ef31",
+      "originalVoteWinner": "codex",
+      "originalVoteScore": "2-1",
+      "requestedRevision": false,
+      "repaintedForUnification": false,
+      "contentBox": 104,
+      "source": {
+        "generator": "OpenAI image_gen",
+        "prompt": "Create ONE original fantasy tabletop RPG status icon, isolated on a genuinely transparent square canvas. Premium hand-painted sculptural game art with bright midtones, crisp silhouette, broad simplified forms and few details. Recognizable at 20px. Subject occupies the central 78% of the square with a clean transparent margin; fits safely inside a circular badge. One dominant visual idea. No text, letters, written runes, framing plate, border, scenery, checkerboard, watermark, detached dust or tiny sparks. No copied game art or known franchise characters. HASTED: one large brown leather adventurer boot pointing diagonally forward-right, with a single sweeping ivory feathered wing attached to its ankle and two broad golden speed strokes trailing behind to the left. Simple dynamic winged-boot silhouette, warm brass trim, bright highlights. No clock, face or scenery.",
+        "sourceSha256": "5107df5a83c61e9028b9dd425590afc527d1d4210c49aed4d6387a19d81ac6a2"
+      }
+    },
+    {
+      "id": "hidden",
+      "path": "public/assets/icons/condition/hidden.webp",
+      "sha256": "8de7d8bdcc069957b33e9ce8c2eca2e1d2694400390dcb807adbf2ed5c6a2ffa",
+      "bytes": 4628,
+      "upstreamSha256": "e08698660f753c3d8b445e8d11a4be9a571984b9cd8a9a898b7e2bd3118467f7",
+      "selectedBaseSha256": "3b71fc3a808801c387d93d51538c69584448d94c752648818bce56833b3de18f",
+      "originalVoteWinner": "grok",
+      "originalVoteScore": "2-1",
+      "requestedRevision": false,
+      "repaintedForUnification": true,
+      "contentBox": 100,
+      "source": {
+        "generator": "OpenAI image_gen",
+        "prompt": "Repaint ONE fantasy tabletop RPG CONDITION ICON. First reference is the selected design: preserve its central metaphor, pose, identifying colors and silhouette. Second reference is ONLY the painting/material/lighting style reference, not the subject to copy. Unify with that premium hand-painted fantasy adventure style: confident broad brushwork, sculptural simplified shapes, warm upper-left highlights, clean deep but readable shadows, natural matte cloth/skin/bone and restrained metal sheen. Not photorealistic, no comic ink outlines, no plastic toy rendering. Strong readable midtones, crisp clean silhouette, very few details. Designed for a 20px circular badge. Isolated on genuinely transparent square canvas; subject centered within 78% canvas, all extremities inside a circular safe area, wide empty transparent margin. No card, frame, border, scenery, ground plane, lettering, watermark, sparks or debris. Render one icon only. HIDDEN: preserve the selected concept: a purple-hooded adventurer peeking from BEHIND a narrow vertical broken stone wall, one eye and half the face visible at its right edge, one hand curled around that edge. Torso remains concealed. A wary woman with medium brown skin, a broad cheek and straight brow; keep facial detail simple. Rough grey stone rendered in two or three broad lit planes, dark plum weathered hood with small warm lit edge, warm readable visible skin. Broaden the visible eye/face and stone enough for a tiny icon, not a razor-thin slit. No weapons, magic, full background or extra masonry.",
+        "sourceSha256": "f86d99573901f4c3defaaeecb04fef3d71845ec2af982e9c1bd4a381cc4d2d63"
+      }
+    },
+    {
+      "id": "incapacitated",
+      "path": "public/assets/icons/condition/incapacitated.webp",
+      "sha256": "2a1c65780089f943eb3a1eaa32d9cb0b5b0a7ed7753cfdf964a97d8df56aa0e6",
+      "bytes": 6486,
+      "upstreamSha256": "32e23b571c389fbbb41b8cac7c7eacc7e8413f77616a556bea5de4d069dbd03e",
+      "selectedBaseSha256": "4417c282444647395a7f95ed1ff144343770b89e21665b834a768baadbd6e21a",
+      "originalVoteWinner": "grok",
+      "originalVoteScore": "2-1",
+      "requestedRevision": false,
+      "repaintedForUnification": true,
+      "contentBox": 100,
+      "source": {
+        "generator": "OpenAI image_gen",
+        "prompt": "Repaint ONE fantasy tabletop RPG CONDITION ICON. First reference is the selected design: preserve its central metaphor, pose, identifying colors and silhouette. Second reference is ONLY the painting/material/lighting style reference, not the subject to copy. Unify with that premium hand-painted fantasy adventure style: confident broad brushwork, sculptural simplified shapes, warm upper-left highlights, clean deep but readable shadows, natural matte cloth/skin/bone and restrained metal sheen. Not photorealistic, no comic ink outlines, no plastic toy rendering. Strong readable midtones, crisp clean silhouette, very few details. Designed for a 20px circular badge. Isolated on genuinely transparent square canvas; subject centered within 78% canvas, all extremities inside a circular safe area, wide empty transparent margin. No card, frame, border, scenery, ground plane, lettering, watermark, sparks or debris. Render one icon only. INCAPACITATED: preserve the selected seated slumped adventurer with knees drawn toward chest, head tilted sideways, BOTH arms completely slack, hands hanging loosely near boots, with THREE simple gold stars above his head. He has unfocused half-open eyes and is unable to act. Preserve curly copper-red hair and freckles; make him a believable young adult human with a broad round face, small upturned nose and stocky build, not a child and not the narrow-faced brown-haired hero. Worn forest-green leather vest over ivory linen sleeves, plain brown trousers and boots. Preserve the compact seated silhouette and stars. Replace flat comic linework with the same broad sculptural painting as style reference. No blue orbit ring, no spiral eyes, no bolts, no injuries.",
+        "sourceSha256": "823cd0a0e682a392d282ef0efcc95b6eff5e6da7f867a262d5f910e788c819ad"
+      }
+    },
+    {
+      "id": "invisible",
+      "path": "public/assets/icons/condition/invisible.webp",
+      "sha256": "e7f8dd724f318a9fa19e2549eeeee94fe369d4848ce9f733a64413f1b7fdf25d",
+      "bytes": 4606,
+      "upstreamSha256": "917e927d56acf811f86da5ea259b9de50d05aee30075f19be9764d453a045aa5",
+      "selectedBaseSha256": "1713d3f3b28d22e1a84593bc5c21c965375416f3888e7bb5d0e11ca150e6af78",
+      "originalVoteWinner": "codex",
+      "originalVoteScore": "3-0",
+      "requestedRevision": false,
+      "repaintedForUnification": true,
+      "contentBox": 88,
+      "source": {
+        "generator": "OpenAI image_gen",
+        "prompt": "Repaint ONE fantasy tabletop RPG CONDITION ICON. First reference is the selected design: preserve its central metaphor, pose, identifying colors and silhouette. Second reference is ONLY the painting/material/lighting style reference, not the subject to copy. Unify with that premium hand-painted fantasy adventure style: confident broad brushwork, sculptural simplified shapes, warm upper-left highlights, clean deep but readable shadows, natural matte cloth/skin/bone and restrained metal sheen. Not photorealistic, no comic ink outlines, no plastic toy rendering. Strong readable midtones, crisp clean silhouette, very few details. Designed for a 20px circular badge. Isolated on genuinely transparent square canvas; subject centered within 78% canvas, all extremities inside a circular safe area, wide empty transparent margin. No card, frame, border, scenery, ground plane, lettering, watermark, sparks or debris. Render one icon only. INVISIBLE: preserve exactly the selected EMPTY broken cyan-blue head-and-shoulders OUTLINE. The entire face and interior remain truly transparent: no eyes, nose, mouth, filled head, ghost, clothing or actual person. Keep the distinctive gaps at the crown and on each side of the neck. Repaint the thick contour as a softly luminous blue painted magical brushstroke with broad light and shadow variation, subtle hand-painted texture and slightly irregular natural edge. Keep it crisp and simple so the empty silhouette still reads at 16px. Integrate the contour's lighting/material treatment with the painted set without adding any new objects. Do NOT draw the woman from the second style reference.",
+        "sourceSha256": "dc1331566e1f70e37437a867096b2f44c132af595299cc9979d5145e8cb3eb5e"
+      }
+    },
+    {
+      "id": "marked",
+      "path": "public/assets/icons/condition/marked.webp",
+      "sha256": "3185c3fd5b4a870aa250671dbc182f4bf0c0fd5e76719c5f504d092ad4a99d44",
+      "bytes": 8106,
+      "upstreamSha256": "95c5d825053bb256b0d2f9e3a7d5b31ecaf33020c3435f84092be8d4364e506e",
+      "selectedBaseSha256": "740a08d844db995db2f22c8d249b02d7162d9bca286da7951b513e2ff914d10e",
+      "originalVoteWinner": "codex",
+      "originalVoteScore": "3-0",
+      "requestedRevision": false,
+      "repaintedForUnification": true,
+      "contentBox": 104,
+      "source": {
+        "generator": "OpenAI image_gen",
+        "prompt": "Repaint ONE fantasy tabletop RPG CONDITION ICON. First reference is the selected design: preserve its central metaphor, pose, identifying colors and silhouette. Second reference is ONLY the painting/material/lighting style reference, not the subject to copy. Unify with that premium hand-painted fantasy adventure style: confident broad brushwork, sculptural simplified shapes, warm upper-left highlights, clean deep but readable shadows, natural matte cloth/skin/bone and restrained metal sheen. Not photorealistic, no comic ink outlines, no plastic toy rendering. Strong readable midtones, crisp clean silhouette, very few details. Designed for a 20px circular badge. Isolated on genuinely transparent square canvas; subject centered within 78% canvas, all extremities inside a circular safe area, wide empty transparent margin. No card, frame, border, scenery, ground plane, lettering, watermark, sparks or debris. Render one icon only. MARKED: preserve precisely the selected simple crimson circular targeting reticle: one thick red ring, FOUR inward-pointing cardinal notches, and ONE small central red dot, with transparent empty space inside. Repaint as a hand-painted red enamel-and-metal fantasy emblem with broad softly brushed highlights from upper left and restrained warm edge wear. Less glossy plastic and less geometrically sterile, but keep ring and four notches clean, symmetric and unmistakable at 16px. No arrows, extra concentric rings, characters, glowing particles, spikes, rune symbols or surrounding frame. Do NOT copy the human from the style reference.",
+        "sourceSha256": "894950e02341d68bed1da4b017f7535bfd04259f6f28dd060e19c35b192172eb"
+      }
+    },
+    {
+      "id": "paralyzed",
+      "path": "public/assets/icons/condition/paralyzed.webp",
+      "sha256": "13bb7b0f1aa615efabe96d8e932ecba22d878a8757146fe106ef34834ec9eb6e",
+      "bytes": 7364,
+      "upstreamSha256": "3803e2822fdc3e37ded9345934e7171c64893fcbe6511ab7e81e74417a55b86d",
+      "selectedBaseSha256": "13bb7b0f1aa615efabe96d8e932ecba22d878a8757146fe106ef34834ec9eb6e",
+      "originalVoteWinner": "grok",
+      "originalVoteScore": "3-0",
+      "requestedRevision": true,
+      "repaintedForUnification": false,
+      "contentBox": 104,
+      "source": {
+        "generator": "OpenAI image_gen",
+        "editHistory": [
+          {
+            "version": "paralyzed-v2",
+            "prompt": "Revise this fantasy RPG PARALYZED condition icon. Keep ONLY its cohesive premium hand-painted rendering, teal clothing color and transparent background. REPLACE the character, pose and tension marks. ONE isolated icon, square transparent canvas, no labels, frame, scenery or ground. New character: an older dark-skinned woman approximately 55, short close-cropped salt-and-pepper tightly coiled hair, broad rounded face, broad nose, full lips, visible mature cheek and forehead lines, sturdy build. She must have genuinely different skull proportions and features from the young narrow-faced male reference, not a recoloring or gender-swap of that same face. Warm clear light across deep brown skin so features remain readable at tiny size. Simple teal sleeveless fantasy tunic with muted ivory neckline, no armor ornament. Pose: front-facing figure shown from crown through upper thighs, BOTH ARMS HELD DEAD STRAIGHT DOWN ALONG HER SIDES, elbows fully extended, shoulders rigidly drawn upward, hands held stiff alongside thighs with fingers straight together. NO bent elbows, no raised hands, no prayer gesture. Head tilted upward slightly, chin raised, eyes open wide looking a little above the viewer, tense raised inner brows and slightly parted lips expressing discomfort and alarm: awake and trapped in a motionless body, not shouting. Plain rigid silhouette. On EACH side of her body, outside the arm with clear transparent separation, place TWO VERY PROMINENT long thick ivory-gold angular SQUIGGLY muscle-lock lines, each extending approximately from shoulder height to wrist height, with 4 broad bends. They should be about 3 times the length and twice the weight of the old short squiggles. Long rounded-end zigzag contour marks, NOT arrow-shaped lightning bolts, not lightning branching across the person. They frame both arms and dominate as a recognisable simple cue at 20px. Compact centered arrangement, fit all marks and full hands well within middle 80% canvas, keep generous transparent border for circular crop. Broad painted forms, crisp silhouette, no fine detail or tiny glints, strong midtone contrast. No electricity arcs, glowing rings, runes, chains, ropes, frozen ice, extra limbs, text, numbers or watermark.",
+            "sourceSha256": "b3da2fc7fe1ce3c15479060ee7b06625f206db8edd982e15d23945ce288bac33"
+          },
+          {
+            "version": "paralyzed-v3",
+            "prompt": "Edit this single transparent fantasy RPG PARALYZED status icon. Make a precise costume revision. Preserve the SAME older dark-skinned woman, her distinct broad mature face, short salt-and-pepper coiled hair, sturdy build, slightly raised head and alarmed upward gaze. Preserve the rigid raised shoulders, BOTH ARMS LOCKED STRAIGHT DOWN AT HER SIDES with hands by the thighs, composition and anatomy. Preserve the FOUR prominent thick ivory-gold squiggly tension marks in their positions and lengths. Preserve the hand-painted sculptural game-art rendering, broad shapes and strong contrast. Replace the modern-looking sleeveless top and matching pants with convincing practical medieval fantasy ADVENTURER clothing: a weathered deep teal woven tunic with a short split neckline closed by three clearly visible crossed leather laces over an ivory linen undershirt; sleeves rolled to just above the elbows; a broad worn brown leather belt with one plain aged-brass buckle around the waist; sturdy scuffed brown leather forearm bracers secured by simple straps, wrists and hands exposed; dark earthy brown travel trousers visible below the tunic hem. Use subtle stitched edging and travel wear, but no ornamental clutter. Costume must clearly read as a seasoned tabletop fantasy adventurer at icon size, with the laced neckline, belt and bracers the dominant costume cues. No modern tank top, athletic wear, zippers or plastic. No weapons, held objects, shoulder armor, cape, jewelry, backpack or extra props. Keep the arms straight, not bent and not holding the belt. No new effects or extra symbols. Keep transparent background and generous clear space around the entire silhouette. Output ONE isolated square icon, no text, borders, panels or watermark.",
+            "sourceSha256": "8d0e1700846c5a71bf72981f939f6f44f58ec973b793b14301e9faadbb62b287"
+          },
+          {
+            "version": "paralyzed-v4",
+            "prompt": "Make one focused edit to this transparent fantasy RPG PARALYZED condition icon: make this SAME woman a YOUNG ADULT about 28–30 years old. Preserve her distinct broad face, broad nose, full lips, dark brown skin tone, eye shape, sturdy build and recognizable individual identity. Youthful adult skin with fewer age creases and firmer cheek contours; remove gray from the hair so it is natural dark brown-black, keeping the same short tightly coiled hairstyle. Keep the alarmed upward gaze, tense raised eyebrows, slightly parted lips, head raised a little, shoulders rigid, and BOTH ARMS DEAD STRAIGHT AT HER SIDES. Preserve exactly the practical medieval fantasy costume: worn teal laced tunic over rolled ivory linen sleeves, broad brown belt with brass buckle, scuffed leather forearm bracers, brown travel trousers. Preserve the four long prominent thick ivory-gold squiggly paralysis/tension marks around the figure, with their existing shapes and placement. Preserve the hand-painted game illustration style, lighting, composition, transparent square background and clean isolated silhouette. No redesign, no generic narrow-faced beauty template, no lighter skin, no makeup, no long straight hair, no additional objects, no text or frame. Only age the existing character down while retaining the approved costume and pose.",
+            "sourceSha256": "0888603dd5baa8dd178bf0a27ebc19975967c90ce84337874019c710e01e1e88"
+          }
+        ]
+      }
+    },
+    {
+      "id": "petrified",
+      "path": "public/assets/icons/condition/petrified.webp",
+      "sha256": "73c22378e7aa6ed0a0d38674e0d097548484f306674fe8b24a08ec868bde01c7",
+      "bytes": 6858,
+      "upstreamSha256": "c930b96c01cf9cfad5f2e9705f6326d5d2fd8bd27d7ab3f28ccd26f6653f9867",
+      "selectedBaseSha256": "73c22378e7aa6ed0a0d38674e0d097548484f306674fe8b24a08ec868bde01c7",
+      "originalVoteWinner": "codex",
+      "originalVoteScore": "3-0",
+      "requestedRevision": false,
+      "repaintedForUnification": false,
+      "contentBox": 104,
+      "source": {
+        "generator": "OpenAI image_gen",
+        "prompt": "Create a production sprite sheet of TWELVE original hand-painted fantasy RPG status icons on a genuinely TRANSPARENT background, arranged in an exact regular grid of THREE equal columns and FOUR equal rows. Portrait 3:4 canvas. Each square cell contains exactly one standalone icon, centered, with at least 10% transparent padding on every side. No text, labels, letters, grid lines, borders, plates, scenery or watermarks. Premium sculptural painted game UI art, simplified chunky forms, crisp silhouettes, bright ivory highlights, saturated midtones, extremely few details. Must be identifiable reduced to 20px. No dark black silhouettes. Consistent warm directional lighting. Every icon occupies about 80% of its cell. These are original symbolic designs, not known characters. Exact order left to right, top to bottom: ROW 1: (1) BLESSED: large luminous golden eight-point sunburst with bright ivory center and a pair of small upward-swept gold wings, strong welcoming holy radiance. (2) BLINDED: one large ivory human eye covered completely by one broad crimson cloth blindfold tied at one side, no visible pupil. (3) DEAFENED: one large warm ivory human ear with a thick red diagonal slash floating across it, instantly clear. ROW 2: (4) DODGING: bright teal upper body of an adventurer leaning sharply to the left, a single large ivory arrow missing past their right shoulder, two broad gold motion sweeps, clear evasive movement. (5) EXHAUSTION: close-up weary adult face, sagging closed eyelids, deeply drooping brows, head resting heavily on one broad palm, warm pale face with russet sleeve, large bold forms. (6) HIDDEN: close-up of a teal hood with a bright ivory cloth mask covering lower face, only two alert amber eyes visible in deep hood shadow, hood edges brightly lit, strong triangular outline, no torso. ROW 3: (7) INCAPACITATED: one large open ivory gauntleted hand with limp drooping fingers pointing downward, a bold red circular prohibition ring and slash behind the hand, clear inability to act, simple. (8) INVISIBLE: one translucent icy cyan head-and-shoulders silhouette dissolving into three broad separated pale blue wisps along its right edge, luminous clear contour and transparent interior, no hood. (9) PETRIFIED: one large grey stone classical humanoid head and shoulders, bright grey stone face and thick pedestal, two broad cracks and rigid blank stone eyes, unmistakably a stone statue. ROW 4: (10) PRONE: compact side view of one adult adventurer lying face-down horizontally, one bent arm with palm planted, face looking to the side while conscious, amber tunic and ivory head, broad clear body silhouette, no ground/scenery. (11) RESTRAINED: two large warm ivory wrists side by side upright, bound together by three thick intact golden hemp rope loops with a large central knot, no breaking ropes, hands and binding fill cell. (12) UNCONSCIOUS: close-up adult head tilted sideways resting on one open palm, both eyes fully closed, relaxed neutral mouth, bright ivory face and blue hair, a single large pale crescent moon above the forehead; no letters. Preserve exact grid positions and generous clear separation between icons.\n",
+        "sourceSha256": "913265da186f71022ff157c8d3b110d3ccfa3983d790679114ed61eede1cdbe6",
+        "crop": {
+          "left": 773,
+          "top": 716,
+          "width": 313,
+          "height": 354
+        }
+      }
+    },
+    {
+      "id": "poisoned",
+      "path": "public/assets/icons/condition/poisoned.webp",
+      "sha256": "ef1686dddfdad1e3c749fc15fbe0bc9fbd74bc4ba8b96b5aca2f31f0d98cf733",
+      "bytes": 5200,
+      "upstreamSha256": "ba6323c7ded00a1b84e5bb1d0905ef318bd541a752ef8c76ccc813e1f392810b",
+      "selectedBaseSha256": "ef1686dddfdad1e3c749fc15fbe0bc9fbd74bc4ba8b96b5aca2f31f0d98cf733",
+      "originalVoteWinner": "codex",
+      "originalVoteScore": "2-1",
+      "requestedRevision": false,
+      "repaintedForUnification": false,
+      "contentBox": 104,
+      "source": {
+        "generator": "OpenAI image_gen",
+        "prompt": "Create ONE original fantasy tabletop RPG status icon, isolated on a genuinely transparent square canvas. Premium hand-painted sculptural game art with bright midtones, crisp silhouette, broad simplified forms and few details. Recognizable at 20px. Subject occupies the central 78% of the square with a clean transparent margin; fits safely inside a circular badge. One dominant visual idea. No text, letters, written runes, framing plate, border, scenery, checkerboard, watermark, detached dust or tiny sparks. No copied game art or known franchise characters. POISONED: a large pale ivory skull with deep charcoal eye sockets, resting above a single vivid green teardrop of venom. Skull and green droplet are two bold dominant shapes, three simple teeth, clean painted bone, jade-green reflected light. Non-graphic symbolic skull, no blood, bottle or scenery.",
+        "sourceSha256": "7177f3ee2551c9ec068874e268a316a4f28e9770ccc4ed18a303bbb5c6fd67e8"
+      }
+    },
+    {
+      "id": "prone",
+      "path": "public/assets/icons/condition/prone.webp",
+      "sha256": "5f0f6b8c4f93f13310553125674c3c133f5e134de6cbb8afff2e197a25c83b18",
+      "bytes": 4666,
+      "upstreamSha256": "ed37352b3b67ba9e8653de32e882179e6eeed97b27c4c4f003713794e8b1d684",
+      "selectedBaseSha256": "5f0f6b8c4f93f13310553125674c3c133f5e134de6cbb8afff2e197a25c83b18",
+      "originalVoteWinner": "grok",
+      "originalVoteScore": "3-0",
+      "requestedRevision": true,
+      "repaintedForUnification": false,
+      "contentBox": 104,
+      "source": {
+        "generator": "OpenAI image_gen",
+        "prompt": "Create ONE revised fantasy RPG condition icon on a genuinely transparent square canvas. Cohesive premium hand-painted game illustration, broad sculptural forms, crisp silhouette, bright readable midtones, warm skin highlights, soft painted shadows. Simplify detail for a 20px circular badge. Central composition occupying 78% of the canvas with generous transparent margin. No frame, lettering, watermark, scenery, ground plane, dust, or tiny sparkles. This is a new art pass: retain the illustrated fantasy look of the reference while changing the pose and visual meaning as specified. Anatomically coherent human figure, clean edges. PRONE: an alert young adult man in a mustard-gold tunic lying flat on his stomach. His legs and hips lie flat extending away to upper left; his head is at the front right. Show both elbows planted beneath the shoulders and forearms braced, lifting ONLY his head and upper chest slightly. Eyes clearly open, chin elevated, focused watchful expression. Both hands flat and supporting him, no reaching hand. He is down but fully awake and capable of action. A strong low horizontal/diagonal silhouette. No weapon, crossbow, helmet, magical marks, sleep symbols, kneeling, crawling, or push-up pose. Make the raised alert head and load-bearing forearms unmistakable.",
+        "sourceSha256": "b54514a2a779601d996f5804f86c885d6fd6cc00d8a4f0c8a2a7307a1170aad0"
+      }
+    },
+    {
+      "id": "raging",
+      "path": "public/assets/icons/condition/raging.webp",
+      "sha256": "f3c28b394cd0d49f9b02195c8b49124f42418de40124be1c99a072fc870a2e9e",
+      "bytes": 7776,
+      "upstreamSha256": "3d8855caab9212788d933d67ae908640c21ebe0dbfc733ba051b39f6c6c90ba9",
+      "selectedBaseSha256": "b24b8c2c38628fb7ae1dee4181e79414878868d68bb2eae913f382b79e71ace9",
+      "originalVoteWinner": "codex",
+      "originalVoteScore": "2-1",
+      "requestedRevision": false,
+      "repaintedForUnification": true,
+      "contentBox": 104,
+      "source": {
+        "generator": "OpenAI image_gen",
+        "prompt": "Repaint ONE fantasy tabletop RPG CONDITION ICON. First reference is the selected design: preserve its central metaphor, pose, identifying colors and silhouette. Second reference is ONLY the painting/material/lighting style reference, not the subject to copy. Unify with that premium hand-painted fantasy adventure style: confident broad brushwork, sculptural simplified shapes, warm upper-left highlights, clean deep but readable shadows, natural matte cloth/skin/bone and restrained metal sheen. Not photorealistic, no comic ink outlines, no plastic toy rendering. Strong readable midtones, crisp clean silhouette, very few details. Designed for a 20px circular badge. Isolated on genuinely transparent square canvas; subject centered within 78% canvas, all extremities inside a circular safe area, wide empty transparent margin. No card, frame, border, scenery, ground plane, lettering, watermark, sparks or debris. Render one icon only. RAGING: retain a snarling human head surrounded by TWO bold red-orange flames. Eyebrows lowered in furious concentration, eyes focused, teeth clenched and bared. For the user's requested distinct faces portray a middle-aged dark-brown-skinned bald male warrior with a broad square jaw, a wide flat nose, close-cropped salt-and-pepper beard, and one old eyebrow scar; not the same handsome narrow-faced youth. Strong red-orange light on the skin, bright warm highlights that retain readable facial planes. A hint of battered brown leather collar. Compact flame shapes and simple broad teeth; no horns, fangs, demon traits, skulls, shouting open mouth, blood or tiny embers. Preserve the selected red color family and angry face concept.",
+        "sourceSha256": "05e8f0ca24ad21ae0f3358fb6665f59f5d3d80063812c944852b965277c55685"
+      }
+    },
+    {
+      "id": "restrained",
+      "path": "public/assets/icons/condition/restrained.webp",
+      "sha256": "cc608ed58b3b68d90cc18b4d61855ccaa928dd890f062a55d4c853b019fc3082",
+      "bytes": 8010,
+      "upstreamSha256": "495f252a91bd1c5f999233a11937c6cb112b975294f24abde47cd96498355986",
+      "selectedBaseSha256": "cc608ed58b3b68d90cc18b4d61855ccaa928dd890f062a55d4c853b019fc3082",
+      "originalVoteWinner": "codex",
+      "originalVoteScore": "3-0",
+      "requestedRevision": false,
+      "repaintedForUnification": false,
+      "contentBox": 104,
+      "source": {
+        "generator": "OpenAI image_gen",
+        "prompt": "Clean and upscale this original fantasy RPG RESTRAINED status icon. Preserve the exact composition: TWO upright human fists side by side, TWO wrists tightly bound together with three thick golden hemp rope loops and one large central knot. Keep the existing fist pose, believable anatomy, intact rope, warm ivory skin, gold rope color and crisp sculptural painterly style. Isolate only the fists, forearms and rope. Remove every detached stray speck, colored sliver, and tiny floating fragment outside the subject, especially beside the right forearm. The background must be genuinely transparent with a clean 12% margin on all sides. No new objects, frame, scenery, checkerboard, glow, sparks or text. Do not turn the rope into metal, break it, loosen it, add fingers, or add extra wraps. This is a careful production cleanup of the existing icon, not a redesign. Square canvas.",
+        "sourceSha256": "9ce2adb3b8c2462533ffcb6d6ae4f3fa3a6192dbf576d1b7f93ca40c06cf21bf"
+      }
+    },
+    {
+      "id": "shielded",
+      "path": "public/assets/icons/condition/shielded.webp",
+      "sha256": "8c8f7e8be41c815c9e030469d6fa639b81471889b507fb8632c44271313910e2",
+      "bytes": 5642,
+      "upstreamSha256": "b99436ad07eecfc0b13c7b143673e9ad54224f1b3b918ff61e02c9a9c4bf2be7",
+      "selectedBaseSha256": "8c8f7e8be41c815c9e030469d6fa639b81471889b507fb8632c44271313910e2",
+      "originalVoteWinner": "codex",
+      "originalVoteScore": "2-1",
+      "requestedRevision": false,
+      "repaintedForUnification": false,
+      "contentBox": 104,
+      "source": {
+        "generator": "OpenAI image_gen",
+        "prompt": "Create ONE original fantasy tabletop RPG status icon, isolated on a genuinely transparent square canvas. Premium hand-painted sculptural game art with bright midtones, crisp silhouette, broad simplified forms and few details. Recognizable at 20px. Subject occupies the central 78% of the square with a clean transparent margin; fits safely inside a circular badge. One dominant visual idea. No text, letters, written runes, framing plate, border, scenery, checkerboard, watermark, detached dust or tiny sparks. No copied game art or known franchise characters. SHIELDED: one large rich sapphire-blue kite shield with a thick silver rim and one broad ivory highlight. Simple slightly convex metal surface, a single small pale-blue central diamond boss, strong protective shield silhouette. No heraldic letters, wings, checkmark, weapon or decorative filigree.",
+        "sourceSha256": "1150b54f045a51a5cb52123009617a03d62dd478b4c4ff2791dfd7193845e66c"
+      }
+    },
+    {
+      "id": "slowed",
+      "path": "public/assets/icons/condition/slowed.webp",
+      "sha256": "8f287b32e82c642fac5ee367cd07757853d7a0973dbb34fc6ab68f2e8e801a5f",
+      "bytes": 7648,
+      "upstreamSha256": "df7facb05c3d22713076750bab120db5b3f5c586cf87a66ebbff2b215ce01aa8",
+      "selectedBaseSha256": "8f287b32e82c642fac5ee367cd07757853d7a0973dbb34fc6ab68f2e8e801a5f",
+      "originalVoteWinner": "codex",
+      "originalVoteScore": "3-0",
+      "requestedRevision": false,
+      "repaintedForUnification": false,
+      "contentBox": 104,
+      "source": {
+        "generator": "OpenAI image_gen",
+        "prompt": "Create ONE original fantasy tabletop RPG status icon, isolated on a genuinely transparent square canvas. Premium hand-painted sculptural game art with bright midtones, crisp silhouette, broad simplified forms and few details. Recognizable at 20px. Subject occupies the central 78% of the square with a clean transparent margin; fits safely inside a circular badge. One dominant visual idea. No text, letters, written runes, framing plate, border, scenery, checkerboard, watermark, detached dust or tiny sparks. No copied game art or known franchise characters. SLOWED: a single squat brass-framed hourglass, broad clear glass chambers and a thick stream of amber sand, most sand piled heavily in the bottom chamber. Cool blue shadows and warm gold highlights, large clean silhouette, no numbers, clock hands, arrows or extra objects.",
+        "sourceSha256": "eea12b883d92bf23f610931a27dfdde3d6d332dae27ecccc6a9262679b92147f"
+      }
+    },
+    {
+      "id": "stunned",
+      "path": "public/assets/icons/condition/stunned.webp",
+      "sha256": "a3438d76bdfb1dd88fdc0a1fdaaea78cb2f6ef31702306b0ea79ebc52365c3bd",
+      "bytes": 7186,
+      "upstreamSha256": "4f1f0a8fe424fc2582a36c4ffab42b2ffd862289d7eda795fb50793fd05d3c8e",
+      "selectedBaseSha256": "a3438d76bdfb1dd88fdc0a1fdaaea78cb2f6ef31702306b0ea79ebc52365c3bd",
+      "originalVoteWinner": "grok",
+      "originalVoteScore": "2-1",
+      "requestedRevision": true,
+      "repaintedForUnification": false,
+      "contentBox": 104,
+      "source": {
+        "generator": "OpenAI image_gen",
+        "prompt": "Create ONE revised fantasy RPG condition icon on a genuinely transparent square canvas. Cohesive premium hand-painted game illustration, broad sculptural forms, crisp silhouette, bright readable midtones, warm skin highlights, soft painted shadows. Simplify detail for a 20px circular badge. Central composition occupying 78% of the canvas with generous transparent margin. No frame, lettering, watermark, scenery, ground plane, dust, or tiny sparkles. This is a new art pass: retain the illustrated fantasy look of the reference while changing the pose and visual meaning as specified. Anatomically coherent human figure, clean edges. STUNNED: the second reference is a comparison sheet. Use ONLY the expressive face concept in its middle GROK column, row 26 labelled stunned: a dazed adult human with raised uneven eyebrows, unfocused eyes and slack open mouth. Create a single isolated new icon, NEVER reproduce the comparison sheet or its text. Blend that emphatic dazed expression into the painterly sculptural rendering of the first reference. Brown tousled hair, head tilted slightly, strong simplified facial features. Make each iris a simple small golden spiral suggesting disorientation, with clear white eye shapes. Replace ALL lightning bolts with exactly THREE large five-point golden stars arranged around the crown, joined by one short restrained curved blue orbit stroke. Stars must be bold and separated from hair, not tiny. No lightning, sparks, injury, blood, tongue, grotesque face or lettering. Compact head portrait, not whole body.",
+        "sourceSha256": "b19215f1e099a98156731b193f5b773abb1789a7deb28b8031c622210eeba677"
+      }
+    },
+    {
+      "id": "unconscious",
+      "path": "public/assets/icons/condition/unconscious.webp",
+      "sha256": "96b2af9ce2057bccb08fbdb133b21cbb6f7b8bb4746972921dcac8e38d571db5",
+      "bytes": 5684,
+      "upstreamSha256": "9fcc67a94d2a006cc4aaa95d1db871a9995fee364262bfdeed8ed86598267229",
+      "selectedBaseSha256": "96b2af9ce2057bccb08fbdb133b21cbb6f7b8bb4746972921dcac8e38d571db5",
+      "originalVoteWinner": "codex",
+      "originalVoteScore": "3-0",
+      "requestedRevision": true,
+      "repaintedForUnification": false,
+      "contentBox": 104,
+      "source": {
+        "generator": "OpenAI image_gen",
+        "prompt": "Create ONE revised fantasy RPG condition icon on a genuinely transparent square canvas. Cohesive premium hand-painted game illustration, broad sculptural forms, crisp silhouette, bright readable midtones, warm skin highlights, soft painted shadows. Simplify detail for a 20px circular badge. Central composition occupying 78% of the canvas with generous transparent margin. No frame, lettering, watermark, scenery, ground plane, dust, or tiny sparkles. This is a new art pass: retain the illustrated fantasy look of the reference while changing the pose and visual meaning as specified. Anatomically coherent human figure, clean edges. UNCONSCIOUS: revise the existing blue-clad collapsed man so he is clearly unresponsive and limp. Compact three-quarter view of head, shoulders, upper torso and one entire arm, collapsed diagonally on his side/back. His head has fallen sideways under its own weight, cheek tilted toward shoulder, eyes firmly closed, mouth slightly slack, natural living skin tone. His nearest arm hangs loosely down across the lower foreground, elbow soft, wrist dropped, fingers naturally curved and relaxed; it must look unsupported, not reaching toward the viewer and not bracing against the ground. Strong asymmetrical sagging silhouette; head upper left and loose hand lower right. Do not add Z letters, dream bubbles, stars, moons, ghosts, skulls, wounds, pillows or beds. Not peaceful comfortable sleeping, not visibly dead. The blue tunic and limp unresponsive pose are the identifying cues.",
+        "sourceSha256": "f572d6553165e3cf0f6e8ac325aee37b9ab288996fb01cc492cc80611c228717"
+      }
+    }
+  ]
+}

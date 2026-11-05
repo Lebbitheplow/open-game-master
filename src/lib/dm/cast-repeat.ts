@@ -9,9 +9,11 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { SpellFacts } from "@/lib/srd/spell-facts";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { canAct } from "@/lib/dm/can-act";
+import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import type { CastInput, CastResult } from "@/lib/dm/cast-guard";
 import { turnCharge } from "@/lib/dm/cast-rules";
 import { lastCastSlot } from "@/lib/dm/spell-effects";
+import { runningItemSpell } from "@/lib/srd/item-cast-credit";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import { toolError } from "@/lib/dm/tool-errors";
 
@@ -31,7 +33,8 @@ export function repeatSpell(
   if (sheet.deathSaves?.dead || sheet.currentHp <= 0) {
     return { error: `${sheet.name} is ${sheet.deathSaves?.dead ? "dead" : "at 0 HP"}, and ${name} ended with their concentration.`, refused: "rules" };
   }
-  const slotLevel = lastCastSlot(sheet.id, name) ?? facts?.level ?? null;
+  // A spell an item cast has no slot on the audit trail: the item's level.
+  const slotLevel = runningItemSpell(sheet, name)?.level ?? lastCastSlot(sheet.id, name) ?? facts?.level ?? null;
   const repeatNote = `${name} is already cast and held by ${sheet.name}'s concentration: this is its effect again, and no slot is spent.`;
   if (cost === "free" || !fight) {
     return input.dryRun
@@ -41,6 +44,10 @@ export function repeatSpell(
   const able = canAct({ sheet, encounter: fight, kind: cost === "bonus" ? "bonus" : "action" });
   if (!able.ok) {
     return toolError(able);
+  }
+  const heldOff = heldTurnRefusal(fight, sheet);
+  if (heldOff) {
+    return heldOff;
   }
   const budget = budgetFor(fight, sheet.id, attacksAllowedFor(sheet), conditionTurnShape(sheet.conditions));
   // Not a casting: the bonus-action spell rule and the levelled spell mark

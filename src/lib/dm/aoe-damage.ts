@@ -10,7 +10,7 @@ import { elementalAdeptApplies, floorDamageDice } from "@/lib/srd/feat-combat";
 import { z } from "zod";
 import { immuneToCondition } from "@/lib/dm/damage-logic";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
-import { getActiveEncounter, getEnemy, type EncounterEnemy } from "@/lib/db/encounters";
+import { getActiveEncounter, getEnemy, listEnemies, type EncounterEnemy } from "@/lib/db/encounters";
 import { insertRoll, type RollAttacker } from "@/lib/db/rolls";
 import { getBattleMapForEncounter, listHiddenRefIds } from "@/lib/db/battle-maps";
 import { rollOn } from "@/lib/roll-labels";
@@ -22,12 +22,16 @@ import { trackEnemyConcentration } from "@/lib/dm/cast-tools";
 import { prepareEnemyUse, type EnemyUse } from "@/lib/dm/enemy-casting";
 import { layEnemyCondition, layFailedSaveExtras } from "@/lib/dm/cast-at-player";
 import { layEnemyConditionInstance } from "@/lib/dm/enemy-condition-lay";
+import { layEnemyUseOnEnemy } from "@/lib/dm/enemy-use-on-enemy";
+import { enemySpellPool } from "@/lib/dm/enemy-spell-pool";
+import { wakesOnDamage } from "@/lib/dm/condition-logic";
 import { canonicalCondition, castBarred } from "@/lib/dm/mutations";
 import { conditionNameRefusal } from "@/lib/dm/set-condition";
 import { charmedBy } from "@/lib/dm/enemy-profile";
 import { planAoeSpell, type AoeSpellPlan } from "@/lib/dm/aoe-spell";
 import { freeRepeatOf, markRepeatStruck, repeatStrikesProblem } from "@/lib/dm/area-casting";
 import { aoePool } from "@/lib/dm/spell-pool";
+import { commanderOf } from "@/lib/dm/companion-command";
 import { spellConditionMeta } from "@/lib/dm/spell-effects";
 import { afterEnemySave, concentrationShaken, layAreaConditions, spellAutoSave, spellSaveOptions } from "@/lib/dm/spell-riders";
 import { applyEnemyDamage, publishEncounter, resolveEnemyRef } from "@/lib/dm/enemy-damage";
@@ -49,7 +53,8 @@ import { spellWardOn } from "@/lib/dm/cast-reach";
 import { partsTaken, partsTotal, splitDamageExpression, type DamagePart } from "@/lib/dm/aoe-parts";
 import { castingHold, outOfReach } from "@/lib/dm/spell-planes";
 import { castPrismaticSpray, isPrismaticSpray } from "@/lib/dm/prismatic";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import { unknownRef, type ToolResult } from "@/lib/dm/tool-errors";
+import { swallowCover } from "@/lib/dm/swallow";
 
 export { aoeDamageTool } from "@/lib/dm/aoe-damage-tool";
 const aoeArgsSchema = z.object({
@@ -233,6 +238,28 @@ export function handleAoeDamage(
       return args.casterCharacterId ? { error, refused: "rules" } : { error, retry: true };
     }
   }
+  // Swallowed (src/lib/dm/swallow.ts): an area from outside reaches nobody
+  // inside a creature, and a swallowed caster's reaches only that creature.
+  // A blast laid on the board leaves them out; one named is refused, to be
+  // aimed again.
+  const coverFrom = args.casterEnemyId
+    ? { kind: "enemy" as const, id: resolveEnemyRef(encounter.id, args.casterEnemyId)?.id ?? args.casterEnemyId }
+    : args.casterCharacterId
+      ? { kind: "sheet" as const, id: resolveSheetRef(args.casterCharacterId, sheets, sheetsById)?.id ?? args.casterCharacterId }
+      : null;
+  const covered = [
+    ...enemyTargets.filter((enemy) => swallowCover(coverFrom, { kind: "enemy", id: enemy.id })),
+    ...pcTargets.filter((sheet) => swallowCover(coverFrom, { kind: "sheet", id: sheet.id })),
+  ];
+  if (covered.length && !caughtByArea) {
+    const first = covered[0];
+    const why = swallowCover(coverFrom, "displayName" in first ? { kind: "enemy", id: first.id } : { kind: "sheet", id: first.id });
+    return { error: `${why} Aim the area without ${covered.map((entry) => ("displayName" in entry ? entry.displayName : entry.name)).join(", ")}. Nothing was spent.`, retry: true };
+  }
+  if (covered.length) {
+    enemyTargets.splice(0, enemyTargets.length, ...enemyTargets.filter((enemy) => !covered.includes(enemy)));
+    pcTargets.splice(0, pcTargets.length, ...pcTargets.filter((sheet) => !covered.includes(sheet)));
+  }
   // A Globe of Invulnerability or an Antimagic Field keeps the creatures
   // inside it out of a spell's area from outside (src/lib/dm/zone-rules.ts):
   // the spell is cast all the same, and catches only the others, or nobody.
@@ -261,6 +288,15 @@ export function handleAoeDamage(
   // in it yet) catches nobody (src/lib/dm/zone-cast.ts).
   const areaOnly = Boolean(args.spell && zoneRowFor(engineSpell));
   if (!enemyTargets.length && !pcTargets.length && !areaOnly && !shielded.length) {
+    // Only ids that named nobody: refused with the creatures there are, as
+    // every other id is (tool-errors.ts unknownRef).
+    if (unmatched.length) {
+      const living = listEnemies(encounter.id).filter((enemy) => enemy.status === "alive");
+      return unknownRef("target", unmatched.join(", "), [
+        ...living.map((enemy) => ({ id: enemy.id, name: enemy.displayName })),
+        ...sheets.map((sheet) => ({ id: sheet.id, name: sheet.name })),
+      ]);
+    }
     return {
       error:
         "aoe_damage needs at least one valid target: enemyIds and/or characterIds from GAME STATE.",
@@ -371,10 +407,11 @@ export function handleAoeDamage(
     args.saveAbility = prepared.save ?? args.saveAbility;
     args.dc = prepared.dc ?? args.dc;
     corrections.push(...prepared.corrections);
-    if ((!args.saveAbility || !args.dc) && (enemyTargets.length || pcTargets.length)) {
+    // Sleep and Color Spray ask for no save: a pool of hit points (below).
+    if (!prepared.hitPointPool && (!args.saveAbility || !args.dc) && (enemyTargets.length || pcTargets.length)) {
       return { error: `${prepared.enemy.displayName}'s block gives ${prepared.name} no save and DC; send saveAbility and dc with it. Nothing was spent.`, retry: true };
     }
-    if (args.damage === undefined && !prepared.condition && !zoneRowFor(prepared.name)) {
+    if (args.damage === undefined && !prepared.condition && !prepared.hitPointPool && !zoneRowFor(prepared.name)) {
       return { error: `${prepared.name} forces no save with damage or a condition on ${prepared.enemy.displayName}'s block; narrate what it does, or use its attacks.`, retry: true };
     }
     // One breath, one cone: everyone caught fits one placement of the shape
@@ -394,6 +431,10 @@ export function handleAoeDamage(
       if (problem) {
         return problem;
       }
+    }
+    if (prepared.hitPointPool) {
+      const pooled = enemySpellPool(campaign, turn, prepared, { sheets: pcTargets, enemies: enemyTargets });
+      return corrections.length && !("error" in pooled) ? { ...pooled, corrected: corrections } : pooled;
     }
     prepared.commit();
   }
@@ -540,11 +581,24 @@ export function handleAoeDamage(
         const incoming = {
           ...(awayCaster ? { source: awayCaster.id } : {}),
           ...(args.rounds ? { rounds: args.rounds } : { saveEnds: { ability, dc: saveDc } }),
+          // A sleep the area lays by name wakes when hurt, as set_condition's
+          // does on a creature and as the same area's does on a character.
+          ...(wakesOnDamage(laysCondition, enemy.currentHp) ? { endsOnDamage: true } : {}),
         };
         if (layEnemyConditionInstance(campaign, getEnemy(enemy.id) ?? enemy, laysCondition, incoming)) {
           laid = [laysCondition];
           row.conditionApplied = laysCondition;
         }
+      }
+    }
+    if (!success && !plan && enemyUse?.condition) {
+      const used = layEnemyUseOnEnemy(campaign, getEnemy(enemy.id) ?? enemy, enemyUse, { ability, dc: saveDc });
+      if (used.laid.length) {
+        laid = [...laid, ...used.laid];
+        row.conditionApplied = laid.join(", ");
+      }
+      if (used.refused.length) {
+        row.conditionRefused = `${enemy.displayName} is immune to ${used.refused.join(" and ")}.`;
       }
     }
     const hpBefore = enemy.currentHp;
@@ -653,12 +707,13 @@ export function handleAoeDamage(
     : [];
 
   // Casting an area spell is the character's action, not their whole turn:
-  // a human caster may still move or use a bonus action, so only end_turn
-  // advances past them. Companion casters resolve here so the auto-act
-  // backstop cannot act them a second time.
+  // a caster a person plays, a commanded companion included, may still move
+  // or use a bonus action, so only end_turn advances past them (issue 761).
+  // A companion the GM plays resolves here so the auto-act backstop cannot
+  // act it a second time.
   if (args.casterCharacterId) {
     const caster = resolveSheetRef(args.casterCharacterId, sheets, sheetsById);
-    if (caster?.isCompanion && !turn.resolvedCharacterIds.includes(caster.id)) {
+    if (caster?.isCompanion && !commanderOf(campaign, caster) && !turn.resolvedCharacterIds.includes(caster.id)) {
       turn.resolvedCharacterIds.push(caster.id);
     }
   }

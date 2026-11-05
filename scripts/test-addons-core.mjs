@@ -85,6 +85,30 @@ await test("native battlefield controls have a bounded explicit contract", () =>
   assert.equal(readViewMessage(draw)?.points.length,2);
   for(const points of [[{x:1,y:2}],Array(65).fill({x:1,y:2}),[{x:Infinity,y:2},{x:2,y:2}]])assert.equal(readViewMessage({...draw,points}),null);
 });
+await test("a summoning card's number and each target's form cross the native bridge as offered controls (issue 685)", async () => {
+  const { summonBoardControls, readSummonControl } = await import("../src/lib/battlemap/hand-summon.ts");
+  const hudWith = (controls) => nativeBoardHud({ selection: null, turn: "", stats: [], hint: "", notices: [], error: "", pending: false, prompt: null, controls: [], panel: { title: "Conjure Animals", lines: [], controls } });
+  const animals = { summon: { forms: { Wolf: { counts: [1, 2, 4, 8] }, "Giant Elk": { counts: [1] } } } };
+  assert.deepEqual(summonBoardControls(animals, {}), [], "no number before a creature is picked");
+  assert.deepEqual(summonBoardControls(animals, { form: "Giant Elk" }), [], "one number: nothing to ask");
+  const [count] = summonBoardControls(animals, { form: "Wolf" });
+  assert.equal(count.id, "hand-count");
+  assert.equal(count.value, "8", "the most until another is picked");
+  const sent = hudWith([count]);
+  const reply = readViewMessage({ odm: 1, type: "board-control", revision: 2, mapId: "map-1", actionId: "hand-count", value: "4" });
+  assert.deepEqual(reply, { type: "board-control", revision: 2, mapId: "map-1", actionId: "hand-count", value: "4" });
+  assert.ok(offeredBoardControl(sent, "hand-count", "4"));
+  assert.equal(offeredBoardControl(sent, "hand-count", "3"), null, "a number the spell does not print is refused");
+  assert.deepEqual(readSummonControl("hand-count", reply.value), { count: 4 });
+  const dead = { summon: { forms: { Skeleton: { counts: [1, 2, 3] }, Zombie: { counts: [1, 2, 3] } }, mix: { budget: 3, cost: {} } } };
+  const [mix] = summonBoardControls(dead, { mix: { Skeleton: 3 } });
+  assert.equal(mix.id, "hand-mix");
+  const full = hudWith([mix]);
+  assert.equal(readViewMessage({ odm: 1, type: "board-control", revision: 2, mapId: "map-1", actionId: "hand-mix", value: "Skeleton:-" })?.value, "Skeleton:-");
+  assert.ok(offeredBoardControl(full, "hand-mix", "Skeleton:-"));
+  assert.equal(offeredBoardControl(full, "hand-mix", "Zombie:+"), null, "the slot's budget is spent");
+  assert.deepEqual(readSummonControl("hand-mix", "Skeleton:-"), { form: "Skeleton", delta: -1 });
+});
 async function test(name, fn) {
   await fn();
   passed += 1;
@@ -575,6 +599,17 @@ await test("character gender is optional and only travels with projected figures
   }
   const looks = new Map([["c1", { character: { race: "elf", class: "wizard" } }]]);
   assert.equal(boardSnapshot(view, "hello-dungeon", { canDirect: false, appearance, looks }).tokens[0].character.gender, undefined);
+});
+
+await test("sex is optional, enum-checked and copied only from projected tokens", () => {
+  const appearance = { theme: "night", reducedMotion: false };
+  for (const sex of ["Female", "Male", "invalid", undefined]) {
+    const projected = { ...view, tokens: view.tokens.map(token => ({ ...token, sex })) };
+    const snapshot = boardSnapshot(projected, "hello-dungeon", { canDirect: false, appearance });
+    assert.equal(snapshot.tokens[0].sex, ["Female", "Male"].includes(sex) ? sex : undefined);
+    if (!["Female", "Male"].includes(sex)) assert.equal(Object.hasOwn(snapshot.tokens[0], "sex"), false);
+    assert.equal(snapshot.tokens.length, projected.tokens.length);
+  }
 });
 
 await test("a walk's first tap is named to the view as its aim, and nothing else is", () => {

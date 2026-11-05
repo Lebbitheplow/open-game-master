@@ -1,4 +1,5 @@
 import { backfillNpcHeard } from "@/lib/db/npc-heard-backfill";
+import { repairSkewedPersonalities } from "@/lib/db/npc-personality-repair";
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { restoreCompanionUser } from "@/lib/db/users";
 import {
@@ -233,6 +234,12 @@ export function restoreSnapshot(campaignId: string, payload: SnapshotPayload) {
       `UPDATE campaigns SET ${campaignSets.map((column) => `${column} = ?`).join(", ")} WHERE id = ?`,
     ).run(...campaignSets.map((column) => payload.campaign?.[column] ?? null), campaignId);
   }
+  // A snapshot from before where the party's place starts in the transcript
+  // was kept reads the whole story: the start it would restore is unknown,
+  // and the one standing may lie past every message the rewind leaves.
+  if (!held.has("scene_since_seq")) {
+    db.prepare(`UPDATE campaigns SET scene_since_seq = 0 WHERE id = ?`).run(campaignId);
+  }
   // Lore/rules text is lead-owned and survives a rewind; only the
   // prompt-facing flags roll back, for entries that still exist.
   const updateLore = db.prepare(
@@ -251,4 +258,7 @@ export function restoreSnapshot(campaignId: string, payload: SnapshotPayload) {
   // (issue 650): a snapshot taken before npcs had heard_at brings every NPC
   // back unheard, and the players would lose names and faces they were shown.
   backfillNpcHeard(db, campaignId);
+  // A snapshot taken before issue 732 brings back personalities saved from
+  // the skewed name hash; they move onto the corrected spread again.
+  repairSkewedPersonalities(db, campaignId);
 }

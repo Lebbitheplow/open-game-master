@@ -9,6 +9,7 @@ register("./lib/register-alias.mjs", import.meta.url);
 const {
   addCopper,
   breakdown,
+  coinMove,
   COPPER_PER_GOLD,
   DENOMINATION_COPPER,
   formatCopper,
@@ -17,6 +18,7 @@ const {
   fromCopper,
   packCostCopper,
   parseCoins,
+  purseCoins,
   purseCopper,
   splitCopper,
   unreadCoins,
@@ -52,6 +54,22 @@ test("the Market shows prices in gold and the purse in its coins", () => {
   assert.match(panel, /coin-purse" \}\} size="size-5" \/> \{formatCopper\(purse\)\}/);
   assert.doesNotMatch(panel, /formatCopper\(line\./, "a price still counts out in platinum");
   assert.match(read("src/app/campaigns/[campaignId]/MarketShopEditor.tsx"), /value=\{draft \?\? formatPrice\(value\)\}/);
+});
+
+test("a coin change says its own direction, or is asked for again", () => {
+  assert.deepEqual(coinMove(-3, undefined), { copper: -300 });
+  assert.deepEqual(coinMove(-1, "5 sp"), { copper: -50 });
+  assert.deepEqual(coinMove(1, "5 sp"), { copper: 50 });
+  assert.deepEqual(coinMove(undefined, "-5 sp"), { copper: -50 });
+  assert.deepEqual(coinMove(undefined, "\u22125 sp"), { copper: -50 });
+  assert.deepEqual(coinMove(undefined, "+3 gp 4 sp"), { copper: 340 });
+  // The written sign wins over a delta that says otherwise.
+  assert.deepEqual(coinMove(5, "-5 sp"), { copper: -50 });
+  // No direction at all never turns a payment into an earning.
+  assert.match(coinMove(0, "5 sp").problem, /does not say gain or spend/);
+  assert.match(coinMove(undefined, "5 sp").problem, /"-5 sp" to spend it/);
+  assert.match(coinMove(0, undefined).problem, /nonzero delta/);
+  assert.match(coinMove(-1, "5 silver").problem, /pp, gp, ep, sp and cp/);
 });
 
 test("the denominations are the PHB's", () => {
@@ -156,6 +174,28 @@ test("a hoard splits with the remainder to the first share", () => {
   // Never divides by zero, and never loses a coin.
   const shares = splitCopper(7, 0);
   assert.equal(shares.reduce((a, b) => a + b, 0), 7);
+});
+
+const { capacityProblem } = await import("../src/lib/dm/load-rules.ts");
+const { encumbranceFor } = await import("../src/lib/srd/encumbrance.ts");
+
+test("a sheet saved before copper was kept reads its gold, not 0 gp", () => {
+  assert.equal(purseCopper({ gold: 50 }), 5000);
+  assert.equal(formatPrice(purseCopper({ gold: 50 })), "50 gp");
+  assert.equal(purseCopper({ gold: 3, copper: 47 }), 347);
+});
+
+test("the coins a purse weighs are its gold pieces and its silver and copper, in the fewest coins", () => {
+  assert.equal(purseCoins({ gold: 0, copper: 75 }), 12, "7 sp 5 cp");
+  assert.equal(purseCoins({ gold: 12, copper: 0 }), 12);
+  assert.equal(purseCoins({ gold: 3, copper: 99 }), 3 + 9 + 9);
+  assert.equal(purseCoins({ gold: 0 }), 0);
+  // A Strength 1 carrier holds 15 lb: a 14.7 lb pack and 18 coins of silver
+  // and copper (0.36 lb) is past it, where the gold alone said it was not.
+  const sheet = { name: "Pip", abilities: { str: 1 }, race: "human", gold: 0, copper: 99, equipment: [] };
+  assert.ok(capacityProblem(sheet, [{ name: "Anvil", qty: 1, weight: 14.7 }], "the anvil"), "the coin weighs nothing");
+  assert.equal(capacityProblem({ ...sheet, copper: 0 }, [{ name: "Anvil", qty: 1, weight: 14.7 }], "the anvil"), null);
+  assert.equal(encumbranceFor({ strength: 10, equipment: [], coins: purseCoins({ gold: 50, copper: 0 }) }).carriedLb, 1);
 });
 
 console.log(`currency: ${passed} tests passed`);

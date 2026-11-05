@@ -71,7 +71,9 @@ export async function sttAvailable(): Promise<boolean> {
   return Boolean(base) && Boolean(await whisperModelFor(base));
 }
 
-export async function transcribeAudio(audio: Blob, filename = "ring.webm"): Promise<{ text: string } | { error: string }> {
+// `language` is Whisper's code for the ring's table (whisperLanguageCode),
+// null to let it guess.
+export async function transcribeAudio(audio: Blob, filename: string, language: string | null): Promise<{ text: string } | { error: string }> {
   const base = sttUrl();
   const model = base ? await whisperModelFor(base) : "";
   if (!base || !model) {
@@ -81,6 +83,9 @@ export async function transcribeAudio(audio: Blob, filename = "ring.webm"): Prom
   form.append("file", audio, filename);
   form.append("model", model);
   form.append("response_format", "json");
+  if (language) {
+    form.append("language", language);
+  }
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 60_000);
   try {

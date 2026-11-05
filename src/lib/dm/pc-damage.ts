@@ -18,7 +18,7 @@ import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { publishPersisted } from "@/lib/events";
-import { RAGING, spendRelentlessEndurance } from "@/lib/srd/class-resources";
+import { RAGING, spendRelentlessEndurance, spendUndyingSentinel } from "@/lib/srd/class-resources";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { applyDamageMath, wildShapeDamageMath } from "@/lib/dm/mutation-math";
 import { applyDamageDeathHook } from "@/lib/dm/death";
@@ -86,6 +86,79 @@ export type PcDamageInput = {
   exceptFeatures?: string[];
   reason?: string;
 };
+
+// What a blow is made of and where it comes from, for the clauses of the
+// defenses that name them (a lycanthrope's "that aren't silvered", a form's
+// "from nonmagical attacks"), and the type a feature sets its resistance
+// aside for. A hit keeps them (last-hit.ts SwingRecord.flags), so a reaction
+// that replays it meets the same clauses.
+export type BlowFlags = Pick<PcDamageInput, "magical" | "spell" | "silvered" | "adamantine" | "goodWielder" | "ignoreResistanceTo" | "exceptFeatures">;
+
+export type BlowDefenses = {
+  resisted: string;
+  immune: string;
+  vulnerable: string;
+  flags: { magical: boolean; spell: boolean; silvered?: boolean; adamantine?: boolean; goodWielder?: boolean };
+};
+
+// The defenses a character meets a blow with: their own resistances, an
+// ally's aura (Aura of Warding, Shielding Storm), a summoned creature's block,
+// the water, a form's block, immunity and vulnerability. `resists` adds what
+// a reaction gave against this blow (Absorb Elements). The damage path and
+// the hit replay (reaction-refund.ts) both read it, so a blow a reaction
+// corrects lands what a fresh blow would: the replay once read the sheet's
+// own resistances alone, and a form, an aura, a vulnerability or a magic
+// weapon came out different.
+export function blowDefenses(campaignId: string, sheet: CharacterSheet, input: BlowFlags & { resists?: string[] }): BlowDefenses {
+  // Racial, feature and condition resistances halve matching damage types
+  // server-side, on what comes through the ward.
+  // Immunities from features (Purity of Body: poison) take all of it.
+  // An ally's aura adds its own (Aura of Warding, Shielding Storm): authored-saves.ts.
+  // A summoned creature keeps its stat block's (summon-rules.ts).
+  // A character in another creature's form keeps that block's too (a fire
+  // elemental is immune to fire: beast-forms.ts wildShapeRecord), each its
+  // own clause so a "from nonmagical attacks" binds only its own types.
+  const shape = sheet.wildShape;
+  const ignored = (input.ignoreResistanceTo ?? "").trim();
+  const resistedLine = [
+    [pcResistances(sheet, { magical: input.magical === true, spell: input.spell === true, except: input.exceptFeatures }), ...authoredAuraResistances(campaignId, sheet, { spell: input.spell === true }), summonResistances(sheet), immersedResistance(campaignId, sheet.id), ...(input.resists ?? [])].filter(Boolean).join(", "),
+    shape?.resist ?? "",
+  ].filter(Boolean).join("; ");
+  const resisted = ignored ? resistedLine.replace(new RegExp(`\\b${ignored}\\b`, "gi"), "") : resistedLine;
+  // Inside Silence, thunder does nothing (zone-rules.ts).
+  const immune = `${summonImmunities(sheet)}${pcImmunities(sheet)}${silencedImmunity(campaignId, sheet.id)}${shape?.immune ? `; ${shape.immune}` : ""}`;
+  const vulnerable = [summonVulnerabilities(sheet), shape?.vulnerable ?? ""].filter(Boolean).join("; ");
+  return {
+    resisted,
+    immune,
+    vulnerable,
+    flags: { magical: input.magical === true, spell: input.spell === true, silvered: input.silvered, adamantine: input.adamantine, goodWielder: input.goodWielder },
+  };
+}
+
+// What of a blow comes through the defenses once an Arcane Ward took
+// `absorbed` of it: a blow of several types part by part (each meets
+// resistance, immunity and vulnerability on its own, then the hit lands
+// once), else the whole of what is left.
+export function meetDefenses(
+  defenses: BlowDefenses,
+  amount: number,
+  type: string | undefined,
+  parts: Array<{ amount: number; type: string }> | undefined,
+  absorbed: number,
+): { amount: number; note: string | null; met: Array<{ amount: number; type: string; note: string | null }> | null } {
+  const { resisted, immune, vulnerable, flags } = defenses;
+  const met = parts?.length
+    ? partsPast(parts, absorbed).map((part) => ({ ...part, ...damageAdjust(part.amount, part.type, resisted, immune, vulnerable, flags) }))
+    : null;
+  const overflow = amount - absorbed;
+  const adjusted = met
+    ? { amount: met.reduce((sum, part) => sum + part.amount, 0), note: met.map((part) => part.note).filter(Boolean).join("; ") || null }
+    : overflow > 0
+      ? damageAdjust(overflow, type, resisted, immune, vulnerable, flags)
+      : { amount: 0, note: null };
+  return { ...adjusted, met };
+}
 
 // What of a blow's typed parts comes through after the ward took `absorbed`
 // of it, taken off the parts in order.
@@ -162,44 +235,7 @@ export function applyPcDamage(
   // none of the wizard's own resistances, immunities or vulnerabilities
   // (Sage Advice Compendium; arcane-ward.ts).
   const arcaneWard = absorbByWard(campaign, sheet, amount);
-  const overflow = amount - (arcaneWard?.absorbed ?? 0);
-  // Racial, feature and condition resistances halve matching damage types
-  // server-side, on what comes through the ward.
-  // Immunities from features (Purity of Body: poison) take all of it.
-  // An ally's aura adds its own (Aura of Warding, Shielding Storm): authored-saves.ts.
-  // A summoned creature keeps its stat block's (summon-rules.ts).
-  // A character in another creature's form keeps that block's too (a fire
-  // elemental is immune to fire: beast-forms.ts wildShapeRecord), each its
-  // own clause so a "from nonmagical attacks" binds only its own types.
-  const shape = sheet.wildShape;
-  const ignored = (input.ignoreResistanceTo ?? "").trim();
-  const resistedLine = [
-    [pcResistances(sheet, { magical: input.magical === true, spell: input.spell === true, except: input.exceptFeatures }), ...authoredAuraResistances(campaign.id, sheet, { spell: input.spell === true }), summonResistances(sheet), immersedResistance(campaign.id, sheet.id)].filter(Boolean).join(", "),
-    shape?.resist ?? "",
-  ].filter(Boolean).join("; ");
-  const resisted = ignored ? resistedLine.replace(new RegExp(`\\b${ignored}\\b`, "gi"), "") : resistedLine;
-  // What the blow is made of and where it comes from, for the clauses of a
-  // block that name them.
-  const blowFlags = {
-    magical: input.magical === true,
-    spell: input.spell === true,
-    silvered: input.silvered,
-    adamantine: input.adamantine,
-    goodWielder: input.goodWielder,
-  };
-  // Inside Silence, thunder does nothing (zone-rules.ts).
-  const immune = `${summonImmunities(sheet)}${pcImmunities(sheet)}${silencedImmunity(campaign.id, sheet.id)}${shape?.immune ? `; ${shape.immune}` : ""}`;
-  const vulnerable = [summonVulnerabilities(sheet), shape?.vulnerable ?? ""].filter(Boolean).join("; ");
-  // A blow of several types: each part meets resistance, immunity and
-  // vulnerability on its own, then the hit lands once.
-  const met = input.parts?.length
-    ? partsPast(input.parts, arcaneWard?.absorbed ?? 0).map((part) => ({ ...part, ...damageAdjust(part.amount, part.type, resisted, immune, vulnerable, blowFlags) }))
-    : null;
-  const adjusted = met
-    ? { amount: met.reduce((sum, part) => sum + part.amount, 0), note: met.map((part) => part.note).filter(Boolean).join("; ") || null }
-    : overflow > 0
-      ? damageAdjust(overflow, input.type, resisted, immune, vulnerable, blowFlags)
-      : { amount: 0, note: null };
+  const { met, ...adjusted } = meetDefenses(blowDefenses(campaign.id, sheet, input), amount, input.type, input.parts, arcaneWard?.absorbed ?? 0);
   const byType = met ? { damageByType: met.map((part) => `${part.amount} ${part.type}${part.note ? ` (${part.note})` : ""}`) } : {};
   if (adjusted.amount <= 0) {
     return {
@@ -317,33 +353,62 @@ export function applyPcDamage(
   }
   const bond = wardingBondShare(campaign, turnId, sheet, input, adjusted.amount);
   const proneInfo = { ...landProne(campaign, turnId, sheet.id, input, adjusted.amount, reason), ...bond };
+  // A hero held at 1 hit point (Death Ward, Undying Sentinel, Relentless
+  // Endurance, Relentless Rage) still took the blow: the concentration save,
+  // the stress of damage and what their defences did ride the hold as they
+  // ride any other hit. Each hold returned before them, so a concentrating
+  // paladin held up kept the spell with no save.
+  const tookIt = (held: Record<string, unknown>): ToolResult => {
+    afflictionStress(campaign, turnId, sheet.id, "damage");
+    return {
+      ...held,
+      ...shapeInfo,
+      ...proneInfo,
+      ...(adjusted.note ? { resistance: `${sheet.name} is ${adjusted.note}` } : {}),
+      ...byType,
+      ...(math.absorbed ? { tempHpAbsorbed: math.absorbed } : {}),
+      ...concentrationDamageHook(campaign, turnId, sheet, sheet.wildShape ? adjusted.amount : carried),
+    };
+  };
   const ward = math.dropped ? deathWardPatch(getSheetById(sheet.id) ?? sheet) : null;
   if (ward) {
     patchSheet(sheet.id, ward);
     audit(campaign, turnId, sheet, "apply_damage", { deathWard: true }, reason, ward);
     publishSheet(campaign, sheet.id);
-    return { ok: true, hp: `1/${effectiveMaxHp(sheet)}`, deathWard: true, ...shapeInfo, ...proneInfo, note: `Death Ward holds ${sheet.name} at 1 HP instead of 0, and the spell ends.` };
+    return tookIt({ ok: true, hp: `1/${effectiveMaxHp(sheet)}`, deathWard: true, note: `Death Ward holds ${sheet.name} at 1 HP instead of 0, and the spell ends.` });
   }
   // Relentless Endurance: a half-orc who would drop stays up at 1 HP
   // instead, once per long rest. The server burns the use itself, so the
   // death engine never sees the drop. It answers being reduced to 0 "but not
   // killed outright", so massive damage goes past it to the death engine
-  // with the use unspent.
+  // with the use unspent. Undying Sentinel (Oath of the Ancients 15) holds the
+  // same way; without this line its use sat unspent while the paladin fell.
   if (math.dropped && !input.disintegrate && !isMassiveDamage(math.overkill, effectiveMaxHp(sheet))) {
+    const sentinel = spendUndyingSentinel(sheet.resources);
+    if (sentinel) {
+      const patch: FullPatchSheetInput = { currentHp: 1, resources: sentinel };
+      patchSheet(sheet.id, patch);
+      audit(campaign, turnId, sheet, "apply_damage", { undyingSentinel: true }, reason, patch);
+      publishSheet(campaign, sheet.id);
+      return tookIt({
+        ok: true,
+        hp: `1/${effectiveMaxHp(sheet)}`,
+        undyingSentinel: true,
+        note: `${sheet.name} should have fallen, but Undying Sentinel holds them at 1 HP. The feature is now spent until a long rest.`,
+      });
+    }
     const spent = spendRelentlessEndurance(sheet.resources);
     if (spent) {
       const patch: FullPatchSheetInput = { currentHp: 1, resources: spent };
       patchSheet(sheet.id, patch);
       audit(campaign, turnId, sheet, "apply_damage", { relentlessEndurance: true }, reason, patch);
       publishSheet(campaign, sheet.id);
-      return {
+      return tookIt({
         ok: true,
         hp: `1/${effectiveMaxHp(sheet)}`,
         relentlessEndurance: true,
-        ...shapeInfo,
-        ...proneInfo,
         note: `${sheet.name} should have fallen, but Relentless Endurance holds them at 1 HP. The feature is now spent until a long rest.`,
-      };
+      });
     }
   }
   // Relentless Rage (barbarian 11): raging and dropped to 0 but not killed
@@ -351,7 +416,7 @@ export function applyPcDamage(
   // every use since their last rest, which the counter keeps.
   const relentless = relentlessRage(campaign, turnId, sheet, math, reason);
   if (relentless) {
-    return { ...relentless, ...shapeInfo, ...proneInfo };
+    return tookIt(relentless);
   }
   // A barbarian knocked unconscious stops raging. Checked after Relentless
   // Endurance, which keeps them on their feet still raging.

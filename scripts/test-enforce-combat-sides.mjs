@@ -85,6 +85,16 @@ await test("pc_attack refuses a companion fighting beside the attacker: an ally 
   assert.equal(world.sheet(aldric.id).currentHp, 30);
 });
 
+await test("An improvised action refuses a companion fighting beside the character, and spends nothing.", async () => {
+  await stage();
+  kit.giveTurn(hero.id);
+  const refused = await world.invoke("take_action", { characterId: hero.id, action: "improvise", reason: "trips him with a rope", targetEnemyId: aldric.id, skill: "athletics", condition: "prone" });
+  assert.equal(refused.ok, false);
+  assert.match(refused.error, /side/i);
+  assert.ok(!world.sheet(aldric.id).conditions.includes("prone"));
+  assert.ok(!world.encounter().turnBudget?.actionUsed);
+});
+
 await test("A companion moved to the foes' side keeps its sheet, shows on the foes' side to every client, and pc_attack strikes it through its own Armor Class and hit points.", async () => {
   await stage();
   const moved = moveToSide(world.campaign(), aldric.id, "foe", { reason: "He draws on Mira." });

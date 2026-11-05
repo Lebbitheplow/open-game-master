@@ -151,10 +151,27 @@ export default {
       // A second account in the first browser meets its own first tour.
       await one.clearCookies();
       await signIn(one, base, ids.sharer, ids.password);
+      // Escape the moment the card is in the page, before the browser has
+      // painted it: the tour listened for keys from a passive effect, which
+      // runs after the paint, so an Escape in that gap was lost and the
+      // tour stayed (#799's run: "the sharer's own record did not hold").
+      // A person pressing Escape as the card appears, or the apps' back
+      // gesture, met the same gap.
+      await tab.addInitScript((selector) => {
+        new MutationObserver((records, observer) => {
+          const card = document.querySelector(selector);
+          if (!card) return;
+          observer.disconnect();
+          (document.activeElement instanceof HTMLElement ? document.activeElement : document.body).dispatchEvent(
+            new KeyboardEvent("keydown", { key: "Escape", code: "Escape", bubbles: true, cancelable: true }),
+          );
+          window.__tourEscapeTaken = true;
+        }).observe(document, { childList: true, subtree: true });
+      }, TOUR);
       await tab.goto(table, load);
-      check(await tourOpens(tab, 20_000), "another account in the same browser gets its own first tour");
-      await tab.keyboard.press("Escape");
+      await eventually(() => tab.evaluate(() => window.__tourEscapeTaken === true), { timeoutMs: 20_000, label: "another account in the same browser gets its own first tour" });
       await eventually(async () => (await finished(one, base))["table-player"]?.how === "ended", { label: "the sharer's own record" });
+      check((await tab.locator(TOUR).count()) === 0, "the Escape sent as the card arrived closed it");
 
       // The old per-browser flag: kept closed for the account that finds
       // it, carried to that account, and gone from the browser.

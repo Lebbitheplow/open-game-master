@@ -82,4 +82,19 @@ await test("A resume recap whose reply loops is posted once.", async () => {
   world.close();
 });
 
+// The recap is drawn from the story model, which on the harness provider is
+// an agent program that sometimes writes a call into its reply as text
+// (issue 794). The session banner shows the recap as it is stored, so the
+// block is cut before it is posted.
+await test("A resume recap with a call written as text is posted without it.", async () => {
+  const { world, model } = await table();
+  model.script([reply({ text: `${PASSAGE}\n\n<invoke name="mcp__odm__request_player_input">\n<parameter name="prompt">Where to?</parameter>\n</invoke>` })]);
+  await runResumeRecap(world.campaignId);
+  const recap = listRecentMessages(world.campaignId, 20).find((message) => message.content.startsWith("Previously: "));
+  assert.ok(recap, "no recap was posted");
+  assert.equal(recap.content, `Previously: ${PASSAGE}`);
+  model.close();
+  world.close();
+});
+
 finish();

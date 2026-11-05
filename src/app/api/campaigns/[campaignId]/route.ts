@@ -31,6 +31,7 @@ import { publicItemProposal } from "@/lib/dm/proposal-intercept";
 import { listLocations } from "@/lib/db/locations";
 import { listRecentAuditChanges } from "@/lib/db/sheet-audit";
 import { listLiveClockTurns } from "@/lib/db/clock-moves";
+import { listTurnChangeViews } from "@/lib/db/turn-rows";
 import { insertCampaignMessage, listRecentMessages } from "@/lib/db/messages";
 import { listRollsVisibleTo } from "@/lib/db/rolls";
 import { getSheetForUser, listSheets } from "@/lib/db/sheets";
@@ -39,6 +40,7 @@ import { subclassExtrasAtTable } from "@/lib/db/subclass-extras";
 import { tableFeatsFrom } from "@/lib/db/table-feats";
 import { getDatabase } from "@/lib/db/core";
 import { requestDmTurn } from "@/lib/dm/loop";
+import { openPreStoryTies } from "@/lib/dm/known-before";
 import { hasHumanDm, isPrimaryDm, lobbyBlocker, narratorIsAi } from "@/lib/dm/viewer";
 import { auditEntryForViewer, sheetForViewer } from "@/lib/dm/sheet-view";
 import { enqueueDmJob, resumeDmQueue, runningDmJob } from "@/lib/dm/queue";
@@ -178,6 +180,10 @@ export async function GET(
     // The turns whose time the event log can still put back (issue #622);
     // an app reading an older host gets none and keeps its old rule.
     clockTurns: listLiveClockTurns(campaignId),
+    // What else those turns kept for their revert (issue 685): the fight and
+    // the board, a prepared event, a test die, a card. An older host sends
+    // none.
+    turnChanges: listTurnChangeViews(campaignId),
     encounter: activePublicEncounter(campaignId, { enemyNumbers: caps.enemyNumbers }),
     // An owner-only offer (a pact's approach, issue 503) only to its player
     // and the storyteller.
@@ -339,6 +345,10 @@ export async function PATCH(
     // because a human DM's plan lives in their own notes, not in an outline
     // the server invented.
     const humanDm = hasHumanDm(campaignSeats(campaign));
+    // The people the party already knows (issue 731) are met and open their
+    // bonds now, before the opening narration reads them and before chapter
+    // 1's rewind point is taken.
+    openPreStoryTies(campaign);
     const seq = allocateSeq(campaignId);
     const message = insertCampaignMessage({
       campaignId,

@@ -29,7 +29,7 @@ import { matchWeapon } from "@/lib/srd/weapons";
 import { magicWeaponOfRow } from "@/lib/dm/gear-attack";
 import { combatRiders } from "@/lib/srd/feature-effects";
 import { conditionBlocksReactions } from "@/lib/srd/condition-effects";
-import { critDamageExpression } from "@/lib/dm/encounter-logic";
+import { critDamageExpression, ordinaryOfCritical } from "@/lib/dm/encounter-logic";
 
 import { openLastHit } from "@/lib/dm/last-hit";
 import {
@@ -227,7 +227,9 @@ export function resolveOpportunityAttacks(
       ...(attackEffect.disadvantage ? ["disadvantage" as const] : []),
     ]);
     const targetAc = acWithEffects(campaign.id, sheet);
-    const hitOutcome = rollExpression(d20Expression(attack.toHit + attackEffect.bonus, advantage));
+    const hitOutcome = rollExpression(d20Expression(attack.toHit + attackEffect.bonus, advantage), undefined, {
+      purpose: { roller: "enemy", kind: "attack", who: enemy.displayName },
+    });
     const hitRoll = insertRoll({
       campaignId: campaign.id,
       characterId: null,
@@ -259,6 +261,8 @@ export function resolveOpportunityAttacks(
       : attack.damage;
     const damageOutcome = rollExpression(
       damageEffect > 0 ? `${rolledDamage}+${damageEffect}` : damageEffect < 0 ? `${rolledDamage}-${-damageEffect}` : rolledDamage,
+      undefined,
+      { purpose: { roller: "enemy", kind: "damage", who: enemy.displayName } },
     );
     const damageRoll = insertRoll({
       campaignId: campaign.id,
@@ -288,6 +292,14 @@ export function resolveOpportunityAttacks(
     const magical = hasTrait(enemy.stats, "magicWeapons") || attack.magical === true;
     const blow = blowByType(attack, damageOutcome, crit);
     const rolled = enfeebledBlow(enemy, attack, false, Math.max(0, blow.amount));
+    // The blow without its critical dice when the natural 20 alone made it one,
+    // for a reaction that rolls the attack again (last-hit.ts plainOfReroll).
+    const plainRoll = adjudicated.crit && !context.autoCrit
+      ? ordinaryOfCritical(damageOutcome, damageEffect > 0 ? `${attack.damage}+${damageEffect}` : damageEffect < 0 ? `${attack.damage}-${-damageEffect}` : attack.damage, { multiplyNumeric: campaign.gameSettings.variantRules.criticalDamageMods })
+      : null;
+    const plainBlow = plainRoll ? blowByType(attack, plainRoll, false) : null;
+    const plainRaw = plainBlow ? enfeebledBlow(enemy, attack, false, Math.max(0, plainBlow.amount)) : 0;
+    const plain = plainBlow ? { raw: plainRaw, ...(plainBlow.parts ? { parts: scaledParts(plainBlow.parts, plainRaw) } : {}) } : undefined;
     const { landed, onHit } = withOpportunityTurn(campaign.id, (turn) => {
       const hitSheets = listSheets(campaign.id);
       const hitSheetsById = new Map(hitSheets.map((entry) => [entry.id, entry]));
@@ -307,7 +319,14 @@ export function resolveOpportunityAttacks(
       return { landed: applied, onHit: rider };
     });
     const updated = getSheetById(sheet.id);
-    hitLog.swing(hitOutcome, targetAc, { hit: true, crit, raw: rolled, advantage, ...(blow.type ? { type: blow.type } : {}), ...(blow.parts ? { parts: scaledParts(blow.parts, rolled) } : {}) });
+    // A critical's normal figure, for Sentinel at Death's Door (last-hit.ts).
+    const normalRoll = crit
+      ? ordinaryOfCritical(damageOutcome, damageEffect > 0 ? `${attack.damage}+${damageEffect}` : damageEffect < 0 ? `${attack.damage}-${-damageEffect}` : attack.damage, { multiplyNumeric: campaign.gameSettings.variantRules.criticalDamageMods })
+      : null;
+    const normalBlow = normalRoll ? blowByType(attack, normalRoll, false) : null;
+    const normalRaw = normalBlow ? enfeebledBlow(enemy, attack, false, Math.max(0, normalBlow.amount)) : 0;
+    const normal = normalBlow ? { raw: normalRaw, type: normalBlow.type ?? "", ...(normalBlow.parts ? { parts: scaledParts(normalBlow.parts, normalRaw) } : {}), from: rolled } : undefined;
+    hitLog.swing(hitOutcome, targetAc, { hit: true, crit, raw: rolled, advantage, ...(blow.type ? { type: blow.type } : {}), ...(blow.parts ? { parts: scaledParts(blow.parts, rolled) } : {}), ...(plain ? { plain } : {}), ...(normal ? { normal } : {}), ...(magical ? { flags: { magical: true } } : {}) });
     hitLog.close({ attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName }, attack: `${attack.name} (opportunity attack)`, type: attack.type, ranged: false });
     if (updated && updated.currentHp <= 0 && !updated.wildShape) {
       downed = true;

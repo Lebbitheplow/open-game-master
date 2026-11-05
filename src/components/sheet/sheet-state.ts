@@ -35,6 +35,7 @@ import { matchWeapon } from "@/lib/srd/weapons";
 import { checkRidersOf } from "@/lib/srd/item-check-riders";
 import type { ItemTag } from "@/lib/schemas/item-tags";
 import { magicItemBonus } from "@/lib/srd/item-row";
+import { isSpellStorer, storedSpellsSummary } from "@/lib/srd/spell-storing";
 
 // ---- hit points ----
 
@@ -173,6 +174,8 @@ export function defensesView(sheet: CharacterSheet): { resist: string; immune: s
 export type ItemStatus = {
   // "4/7 charges", or null for an item with none.
   charges: string | null;
+  // What a Ring of Spell Storing holds, in a line under its row.
+  stored: string | null;
   // Asked to attune; the next short or long rest completes it.
   attuning: boolean;
   // Attuned and cursed: the wearer cannot end it.
@@ -186,7 +189,8 @@ export function itemStatus(sheet: CharacterSheet, item: EquipmentItem): ItemStat
   const charges = rule ? `${chargesLeft(item, rule)}/${chargeMax(rule)} charges` : null;
   const cursed = Boolean(item.attuned && gearDefFor(item)?.cursed);
   const refusal = attunementRefusal(sheet, { [item.name]: { attuned: !(item.attuned || item.attuning) } });
-  return { charges, attuning: Boolean(item.attuning), cursed, attuneRefusal: refusal };
+  const stored = isSpellStorer(item) ? storedSpellsSummary(item) : null;
+  return { charges, stored, attuning: Boolean(item.attuning), cursed, attuneRefusal: refusal };
 }
 
 // ---- counters ----
@@ -246,9 +250,10 @@ export function isWornGear(item: Pick<EquipmentItem, "name" | "slug" | "srdName"
   if (item.gear?.armor || item.gear?.weapon || matchArmor(item) || matchWeapon(item) || gearDefFor(item)?.base) {
     return true;
   }
-  const magic = item.gear?.magic ?? matchMagicItem(item);
+  const listed = item.gear?.magic ? null : matchMagicItem(item);
+  const magic = item.gear?.magic ?? listed;
   const riders = item.gear?.checks ? { carried: item.gear.magic?.carried === true } : checkRidersOf(item);
-  if ((magic && !magic.carried) || (riders && !riders.carried)) {
+  if ((magic && !magic.carried && !listed?.noWear) || (riders && !riders.carried)) {
     return true;
   }
   const tags = item.identified === false ? [] : (item.tags ?? item.gear?.tags ?? []);

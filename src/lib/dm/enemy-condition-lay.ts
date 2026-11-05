@@ -8,6 +8,7 @@ import type { Campaign } from "@/lib/db/campaigns";
 import { patchEnemyConditions, type EncounterEnemy } from "@/lib/db/encounters";
 import { addConditionInstance, isIncapacitated, type ConditionMeta, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { onEnemyIncapacitated } from "@/lib/dm/enemy-conditions";
+import { swallowerAway } from "@/lib/dm/swallow";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { planConditionFx } from "@/lib/battlemap/fx-plan";
 import { publishFx, tokenPosition } from "@/lib/dm/fx";
@@ -29,6 +30,11 @@ export function layEnemyConditionInstance(
   // An incapacitated creature loses its concentration (and the spell's
   // hold on its targets) and lets go of whoever it grapples.
   const released = isIncapacitated([condition]) ? onEnemyIncapacitated(campaign, enemy) : [];
+  // One sent off this plane (banished) leaves what it swallowed here.
+  const behind = swallowerAway(campaign, enemy.id);
+  if (behind) {
+    released.push(behind);
+  }
   publishEncounter(campaign.id);
   const pos = tokenPosition(campaign.id, enemy.id);
   if (pos && !pos.hidden) {

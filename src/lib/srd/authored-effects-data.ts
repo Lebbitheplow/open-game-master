@@ -342,7 +342,7 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
       {
         name: "Blessing of the Trickster",
         action: "action",
-        does: { kind: "buff", target: "ally", condition: "blessing of the trickster", rounds: 600 },
+        does: { kind: "buff", target: "ally", othersOnly: true, condition: "blessing of the trickster", rounds: 600 },
       },
     ],
   },
@@ -350,7 +350,7 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
     subclass: "Death Domain",
     effects: [{ kind: "ignore_resist", types: ["necrotic"] }],
   },
-  // cast_at_enemy secondTargetEnemyId (src/lib/dm/authored-reaper.ts): a
+  // cast_at_enemy's second target (src/lib/dm/authored-reaper.ts): a
   // necromancy cantrip from 1st level, a 1st to 5th level necromancy spell
   // from 17th, at no further cost.
   "cleric::Reaper": {

@@ -35,6 +35,7 @@ import { hurtEnemy } from "@/lib/dm/spell-aura";
 import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import { rollAgainst } from "@/lib/roll-labels";
 import { textKey } from "@/lib/language/text-logic";
+import { withActor, withTurnOf } from "@/lib/dm/acting-party";
 
 type TurnEndHook = (campaign: Campaign, enemy: EncounterEnemy, meta: ConditionMeta) => string | null;
 
@@ -161,6 +162,12 @@ const HOOKS: Record<string, TurnEndHook> = {
 };
 
 // What the end of a spell's mark does, or null for a mark that only ends.
+// The mark's caster is whose damage it is (acting-party.ts).
 export function spellTurnEndHook(condition: string): TurnEndHook | null {
-  return HOOKS[condition.trim().toLowerCase()] ?? null;
+  const hook = HOOKS[condition.trim().toLowerCase()];
+  if (!hook) {
+    return null;
+  }
+  return (campaign, enemy, meta) =>
+    withTurnOf(enemy.id, () => withActor(meta.source ? { kind: getSheetById(meta.source) ? "sheet" : "enemy", ref: meta.source } : null, () => hook(campaign, enemy, meta)));
 }

@@ -69,6 +69,8 @@ export type HeldCasting = {
   slotLevel: number | null;
   ritual: boolean;
   rounds: number;
+  storing?: { ring: string; holderId: string };
+  fromRing?: string;
 };
 
 type Holder = Pick<CharacterSheet, "id" | "conditions" | "conditionMeta">;
@@ -76,6 +78,20 @@ type Holder = Pick<CharacterSheet, "id" | "conditions" | "conditionMeta">;
 function instanceOf(sheet: Holder, name: string): ConditionMeta | null {
   const key = sheet.conditions.find((entry) => entry.trim().toLowerCase() === name);
   return key ? ((sheet.conditionMeta as ConditionMetaMap)[key] ?? null) : null;
+}
+
+function ringFieldsOf(meta: ConditionMeta): Pick<HeldCasting, "storing" | "fromRing"> {
+  return {
+    ...(meta.storeIn && meta.storeInHolder ? { storing: { ring: meta.storeIn, holderId: meta.storeInHolder } } : {}),
+    ...(meta.fromRing ? { fromRing: meta.fromRing } : {}),
+  };
+}
+
+function ringMeta(held: Pick<HeldCasting, "storing" | "fromRing">): Partial<ConditionMeta> {
+  return {
+    ...(held.storing ? { storeIn: held.storing.ring, storeInHolder: held.storing.holderId } : {}),
+    ...(held.fromRing ? { fromRing: held.fromRing } : {}),
+  };
 }
 
 // The casting a character is in the middle of, or null.
@@ -90,6 +106,7 @@ export function castingOf(sheet: Holder): HeldCasting | null {
     slotLevel: meta.slotLevel ?? null,
     ritual: meta.ritual === true,
     rounds: meta.rounds ?? 0,
+    ...ringFieldsOf(meta),
   };
 }
 
@@ -100,17 +117,18 @@ export function castingHeldBy(sheet: Holder, concentratingOn: string | null | un
 }
 
 // The "casting" instance a casting begins with.
-export function castingInstance(casterId: string, spell: string, rounds: number, slotLevel: number | null, ritual: boolean): ConditionMeta {
+export function castingInstance(casterId: string, spell: string, rounds: number, slotLevel: number | null, ritual: boolean, ring: Pick<HeldCasting, "storing" | "fromRing"> = {}): ConditionMeta {
   return {
     spell: castingLabel(spell),
     source: casterId,
     rounds,
     ...(slotLevel ? { slotLevel } : {}),
     ...(ritual ? { ritual: true } : {}),
+    ...ringMeta(ring),
   };
 }
 
-export type CompletedCasting = { spell: string; slotLevel: number | null; ritual: boolean };
+export type CompletedCasting = { spell: string; slotLevel: number | null; ritual: boolean; storing?: { ring: string; holderId: string } };
 
 // A finished casting of this spell waiting to be resolved, or null.
 export function completedCastingOf(sheet: Holder, spell: string): CompletedCasting | null {
@@ -118,7 +136,8 @@ export function completedCastingOf(sheet: Holder, spell: string): CompletedCasti
   if (!meta?.spell || textKey(meta.spell) !== textKey(spell)) {
     return null;
   }
-  return { spell: meta.spell, slotLevel: meta.slotLevel ?? null, ritual: meta.ritual === true };
+  const { storing } = ringFieldsOf(meta);
+  return { spell: meta.spell, slotLevel: meta.slotLevel ?? null, ritual: meta.ritual === true, ...(storing ? { storing } : {}) };
 }
 
 // The mark a finished casting leaves. In a fight it lasts the caster's turn
@@ -130,6 +149,7 @@ export function completeMark(casterId: string, held: HeldCasting, inFight: boole
     source: casterId,
     ...(held.slotLevel ? { slotLevel: held.slotLevel } : {}),
     ...(held.ritual ? { ritual: true } : {}),
+    ...ringMeta(held),
     ...(inFight ? { untilTurnEndOf: casterId, turnBegun: true } : { rounds: ROUNDS_PER_MINUTE }),
   };
 }

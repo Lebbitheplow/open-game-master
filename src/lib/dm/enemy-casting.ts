@@ -1,7 +1,8 @@
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, saveEncounter, turnKey, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
-import type { SaveAbility } from "@/lib/bestiary/statblock";
-import type { SpellCondition } from "@/lib/srd/spell-mech-types";
+import type { EnemyAttack, SaveAbility } from "@/lib/bestiary/statblock";
+import type { SpellCondition, SpellMech } from "@/lib/srd/spell-mech-types";
+import type { TurnTie } from "@/lib/dm/save-effect";
 import { spellDamageFor, spellFactsFor, spellMechanicsFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { canEnemyAct, markEnemyBonus } from "@/lib/dm/can-act";
@@ -46,6 +47,9 @@ export type EnemyUse = {
   halfOnSave?: boolean;
   condition?: string;
   rounds?: number;
+  // The turn the condition lasts until, the target's or the creature's own
+  // (save-effect.ts SaveEffect.until).
+  until?: TurnTie;
   // The condition ends on a save at the end of each of the holder's turns.
   saveEnds?: boolean;
   // The block gives it no count and no save: a long rest or a cure ends it.
@@ -72,6 +76,10 @@ export type EnemyUse = {
   // the spell and its caster and ends with the enemy's concentration.
   spellCondition?: SpellCondition;
   slotLevel?: number;
+  // Sleep's and Color Spray's pool of hit points, rolled instead of a save
+  // (src/lib/dm/enemy-spell-pool.ts), and the spell's own level it scales from.
+  hitPointPool?: NonNullable<SpellMech["hitPointPool"]>;
+  spellLevel?: number;
   // The numbers the caller sent that the block overrode.
   corrections: string[];
   // Spends the action (or the legendary purchase), the recharge, the use
@@ -154,8 +162,13 @@ export function prepareEnemyUse(campaign: Campaign, input: Input): EnemyUse | To
     if (resolved?.concentration) {
       use.spell = use.name;
     }
+    // A legendary action that buys a cantrip, or a spell "using a spell
+    // slot as normal" (a sphinx's Cast a Spell): the slot is spent below as
+    // for any casting, and the creature's own action is not.
     if (level === 0 && bought.includes("cantrip")) {
       legendary = "cantrip";
+    } else if (bought.includes("spell")) {
+      legendary = "spell";
     }
     const ledger = ledgerOf(encounter, enemy.id);
     let slot: number | null = null;
@@ -182,6 +195,11 @@ export function prepareEnemyUse(campaign: Campaign, input: Input): EnemyUse | To
     }
     if (mech?.damageType) {
       use.damageType = mech.damageType;
+    }
+    if (mech?.hitPointPool) {
+      use.hitPointPool = mech.hitPointPool;
+      use.spellLevel = level || 1;
+      use.slotLevel = slot ?? (level || undefined);
     }
     if (mech?.condition) {
       use.spellCondition = mech.condition;
@@ -213,11 +231,14 @@ export function prepareEnemyUse(campaign: Campaign, input: Input): EnemyUse | To
     } else {
       use.name = ability.name;
       const key = abilityKey(ability.name);
-      if (ability.legendaryCost) {
-        if (!bought.includes(key)) {
-          return { error: `${ability.name} is one of ${enemy.displayName}'s legendary actions: spend it with legendary_action at the end of another creature's turn first.`, retry: true };
-        }
+      // Bought by a legendary action: its own line (Wing Attack), or an
+      // action of the block's the line uses (the kraken's Lightning Storm,
+      // the mummy lord's Dreadful Glare), which then spends the legendary
+      // action and not the creature's own.
+      if (bought.includes(key)) {
         legendary = key;
+      } else if (ability.legendaryCost) {
+        return { error: `${ability.name} is one of ${enemy.displayName}'s legendary actions: spend it with legendary_action at the end of another creature's turn first.`, retry: true };
       }
       const refusal = abilityRefusal(enemy.displayName, ability, ledgerOf(encounter, enemy.id), now);
       if (refusal) {
@@ -240,6 +261,7 @@ export function prepareEnemyUse(campaign: Campaign, input: Input): EnemyUse | To
         ...(ability.halfOnSave !== undefined ? { halfOnSave: ability.halfOnSave } : { halfOnSave: false }),
         ...(ability.condition ? { condition: ability.condition } : {}),
         ...(ability.rounds ? { rounds: ability.rounds } : {}),
+        ...(ability.until ? { until: ability.until } : {}),
         ...(ability.repeatSave ? { saveEnds: true } : {}),
         ...(ability.untilLongRest ? { untilLongRest: true } : {}),
         ...(ability.lasting ? { lasting: true } : {}),
@@ -309,6 +331,50 @@ export function prepareEnemyUse(campaign: Campaign, input: Input): EnemyUse | To
       }
       live.legendary.abilities = abilities;
       saveEncounter(live);
+    },
+  };
+}
+
+// A spell from its list cast with an attack roll (Ray of Frost, Fire Bolt,
+// Guiding Bolt): what enemy_attack rolls it as, the spell attack bonus its
+// spellcasting prints (or the DC's less 8, the same proficiency and
+// modifier), the dice and type the spell deals at its caster level, and the
+// use that pays for it as any casting is paid (its action, the legendary
+// action that bought it, a slot). cast_at_player and aoe_damage roll saves
+// only, so an attack spell had no way to be cast (issue 685 audit: a lich's
+// legendary Cantrip).
+export function enemySpellAttack(
+  campaign: Campaign,
+  enemy: EncounterEnemy,
+  spell: string,
+  targetId: string,
+): { attack: EnemyAttack; use: EnemyUse } | ToolError {
+  const authors = spellAuthorsFor(campaign);
+  const mech = spellMechanicsFor({ spell, userIds: authors })?.mech;
+  if (!mech?.attack) {
+    return { error: `${spell} is not cast with an attack roll: cast it with cast_at_player or aoe_damage and spell. Nothing was spent.`, retry: true };
+  }
+  const use = prepareEnemyUse(campaign, { casterEnemyId: enemy.id, spell, targetIds: [targetId], sent: {} });
+  if ("error" in use) {
+    return use;
+  }
+  const casting = enemy.stats.spellcasting;
+  const toHit = casting?.attack ?? (casting?.dc ? casting.dc - 8 : null);
+  if (toHit === null) {
+    return { error: `${enemy.displayName}'s block prints no spell attack bonus for ${use.name}. Nothing was spent.`, retry: true };
+  }
+  const range = spellFactsFor(spell, authors)?.range;
+  const feet = range?.kind === "feet" ? range.feet : 5;
+  return {
+    use,
+    attack: {
+      name: use.name,
+      toHit,
+      damage: use.damage ?? "0",
+      type: use.damageType ?? "force",
+      mode: mech.attack === "melee" ? "melee" : "ranged",
+      ...(mech.attack === "melee" ? { reach: feet } : { range: { normal: feet, long: feet } }),
+      spellAttack: true,
     },
   };
 }

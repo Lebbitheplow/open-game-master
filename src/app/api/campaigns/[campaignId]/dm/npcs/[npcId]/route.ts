@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { publishCast } from "@/lib/dm/cast";
+import { openMarkedAtBegunTable } from "@/lib/dm/known-before";
 import { isErrorResponse, requireDm } from "@/lib/campaign-api";
 import {
   deleteNpc,
@@ -76,14 +77,20 @@ export async function PATCH(
         { status: 409 },
       );
     }
-    if (!updateNpcFromDraft(campaignId, npcId, outcome.draft)) {
+    const saved = updateNpcFromDraft(campaignId, npcId, outcome.draft);
+    if (!saved) {
       return Response.json({ error: "That NPC is not at this table." }, { status: 404 });
     }
+    // Someone the party knew before the story, marked before the GM's first
+    // narration, is known from now (issue 731).
+    openMarkedAtBegunTable(context.campaign, saved);
     if (body.generatePortrait) {
+      // The saved row: an older app sends no race, and the row kept its own.
       queueNpcPortrait(context.campaign, {
         id: npcId,
-        gender: outcome.draft.gender,
-        role: outcome.draft.role,
+        gender: saved.gender,
+        race: saved.race,
+        role: saved.role,
         trait: outcome.draft.trait,
         personality: describePersonality(outcome.draft.personality),
       });

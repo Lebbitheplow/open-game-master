@@ -44,8 +44,10 @@ export const magicItemEffectSchema = z.discriminatedUnion("kind", [
     kind: z.literal("weapon_rider"),
     weapons: z.array(z.string()),
     ranged: z.boolean().optional(),
+    attack: z.number().optional(),
     damage: z.number().optional(),
     proficient: z.boolean().optional(),
+    unarmed: z.object({ die: z.string(), damageType: z.string() }).optional(),
   }),
 ]);
 

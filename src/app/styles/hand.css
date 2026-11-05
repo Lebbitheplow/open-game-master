@@ -239,6 +239,11 @@
 .hand-foot { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 4px; min-width: 0; }
 .hand-resource { font-family: var(--font-geist-mono), monospace; font-size: 9px; color: var(--hand-gold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hand-cond { font-family: var(--font-geist-mono), monospace; font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: #ff9d5c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* A legendary card's cost and what is left, stacked at the left edge. */
+.hand-resource[data-lines] { display: flex; flex-direction: column; line-height: 1.25; overflow: visible; }
+/* Its slot is wide enough that the next card leaves those lines showing,
+   however tight the fan draws. */
+.hand-slot:has(> .hand-card[data-cost="legendary"]) { min-width: 60px; }
 
 /* Card types, the mockup's ribbon table. */
 .hand-card[data-type="attack"] { --ribbon-bg: linear-gradient(180deg, rgba(198, 90, 36, 0.5), rgba(69, 20, 6, 0.35)); --ribbon-edge: rgba(224, 112, 58, 0.45); --ribbon-ink: #ffd0ad; --tone: #ff9d5c; --tone-rgb: 255, 157, 92; }
@@ -506,9 +511,34 @@
    it is left as it was. */
 @media (max-width: 63.98rem) and (min-height: 560px) {
   .cine-chat:has(.hand) > .session-transcript { min-height: 4.5rem; }
+  /* The Hand gives way down to its name, never to nothing: at 0 px a hero's
+     cards and the reactions they answer a hit with were gone with no sign
+     they were ever there. */
+  .session-desk:has(.hand) > div > .session-compose-hand > .hand { min-height: 1.25rem; }
   /* The newest line sits on the bottom edge, not 2rem above it. */
   .cine-chat:has(.hand) > .session-transcript > div > :nth-last-child(2) { margin-bottom: 0; }
   .cine-chat:has(.hand) .test-fight-say { display: none; }
+}
+/* The test bench's five buttons (issue 685) wrapped to two rows under the
+   banner's title on a phone, a third row the chronicle paid for. With the
+   sentence left out (above), the title sits on the first row beside the
+   buttons and the glyph goes, so all five keep their place, in their order,
+   in two rows. Its spacing is trimmed too, so the two rows take no more than
+   the title and the one row of Back and End took before (a 360 by 640
+   phone's Hand kept its name in view by 4 px). */
+@media (max-width: 480px) and (min-height: 560px) {
+  .cine-chat:has(.hand) .test-fight-banner { gap: 0.25rem 0.35rem; padding-block: 0.3rem; margin-bottom: 0.35rem; }
+  .cine-chat:has(.hand) .test-fight-banner > :first-child:not(.session-banner-body) { display: none; }
+  .cine-chat:has(.hand) .test-fight-banner > .session-banner-body { flex: 0 1 auto; }
+  .cine-chat:has(.hand) .test-fight-banner > .session-banner-actions { display: contents; }
+  /* An open hit adds the box's Speaking as row, 48 px a 375 by 667 phone did
+     not have: the Hand went to 0 px, and on a 360 by 640 phone the box went
+     under the tab bar too. While that row shows, the five buttons take one
+     row that scrolls sideways. */
+  .cine-chat:has(.hand):has([data-react-as]) .test-fight-banner { flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
+  .cine-chat:has(.hand):has([data-react-as]) .test-fight-banner::-webkit-scrollbar { display: none; }
+  .cine-chat:has(.hand):has([data-react-as]) .test-fight-banner > *,
+  .cine-chat:has(.hand):has([data-react-as]) .test-fight-banner > .session-banner-actions > * { flex-shrink: 0; white-space: nowrap; }
 }
 @keyframes hand-rail-in {
   from { opacity: 0; transform: translateX(28px); }

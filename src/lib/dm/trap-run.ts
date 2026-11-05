@@ -4,6 +4,8 @@ import { getSheetById } from "@/lib/db/sheets";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { handleCastAtPlayer } from "@/lib/dm/cast-tools";
 import { afflictCondition } from "@/lib/dm/afflictions";
+import { canonicalCondition } from "@/lib/dm/set-condition";
+import { wakesOnDamage } from "@/lib/dm/condition-logic";
 import { openFall } from "@/lib/dm/last-hit";
 import { rollCard } from "@/lib/dm/roll-card";
 import { rollOn } from "@/lib/roll-labels";
@@ -86,7 +88,11 @@ export function springTrapOn(
     }
   }
   for (const condition of trap.conditionsAlways ?? []) {
-    if (afflictCondition(campaign, turn.id, victim.id, condition, { ...(trap.rounds ? { rounds: trap.rounds } : {}), source: name })) {
+    // A trap's block has no word on damage, so a sleep it lays wakes when
+    // hurt, as one laid by name does (set-condition.ts) and as the sleep the
+    // same trap's failed save lays through cast_at_player does.
+    const wakes = wakesOnDamage(canonicalCondition(condition), sheet().currentHp);
+    if (afflictCondition(campaign, turn.id, victim.id, condition, { ...(trap.rounds ? { rounds: trap.rounds } : {}), ...(wakes ? { endsOnDamage: true } : {}), source: name })) {
       lines.push(`${victim.name} is ${condition}.`);
     }
   }

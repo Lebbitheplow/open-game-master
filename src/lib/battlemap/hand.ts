@@ -499,7 +499,8 @@ export function deriveHand(sheet: CharacterSheet, turn: HandTurn = FRESH_TURN, o
   const riders = combatRiders(sheet);
   const spells = spellCards(sheet, turn, riders, options);
   const features = featureCards(sheet, turn);
-  const taken = new Set(features.map((card) => textKey(card.name)));
+  // By name, and by the spend a card plays (Arcane Jolt's two cards are one spend, and so are Cauterizing Flames' two reactions).
+  const taken = new Set(features.flatMap((card) => [textKey(card.name), ...(card.intent.card === "reaction" ? [textKey(card.intent.feature)] : []), ...(card.intent.card === "feature" && card.intent.resourceId ? [textKey(card.intent.resourceId)] : [])]));
   return [
     ...attackCards(sheet, turn, riders, options),
     ...riderCards(sheet, turn, riders),

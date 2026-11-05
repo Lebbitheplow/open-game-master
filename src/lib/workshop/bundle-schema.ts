@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { storedSheetSchema } from "@/lib/schemas/sheet";
 import { GENDERS } from "@/lib/gender";
+import { storedRace } from "@/lib/npc-race";
 import { GENRES } from "@/lib/schemas/game-settings";
 import { BEAT_KINDS, BODY_MAX, ROUTE_KINDS, ROUTE_LABEL_MAX } from "@/lib/workshop/board";
 import { LORE_BODY_MAX } from "@/lib/dm/world-lore-logic";
@@ -130,6 +131,9 @@ const npcSchema = z.object({
   role: z.string().trim().max(40).default(""),
   // src/lib/gender.ts; bundles written before the field have none.
   gender: z.enum(["", ...GENDERS]).default(""),
+  // An SRD race id (src/lib/npc-race.ts); bundles written before the field
+  // have none, and one this server does not know reads as unrecorded.
+  race: z.string().max(40).default("").transform(storedRace),
   // Who they are drawn to (src/lib/attraction.ts); bundles written before
   // the field have none, and an unreadable one reads as undecided.
   attraction: z.unknown().optional(),
@@ -147,6 +151,18 @@ const npcSchema = z.object({
   // of one of the bundle's own monsters (a "homebrew:" id means nothing on
   // another machine, so the export writes the name).
   statBlock: z.string().trim().max(80).default(""),
+  // The party already knows them when the story begins (issue 731,
+  // src/lib/dm/known-before-logic.ts): "acquainted", "friend" or "close",
+  // and `source`, how the party knows them, which every hero's bond opens
+  // with as its first memory. A tie with no source is dropped on import (no
+  // reason, no tie), and one this version cannot read is left out rather
+  // than refusing the whole module. A long source is clipped on import as
+  // the form clips it (KNOWN_BEFORE_HOW_CHARS), so the bound here is the
+  // other text fields' and a long quote from an opening keeps its tie.
+  knownAtStart: z
+    .object({ grade: z.enum(["acquainted", "friend", "close"]), source: z.string().trim().max(4_000).default("") })
+    .optional()
+    .catch(undefined),
   ref: refSchema,
   shared: sharedSchema,
 });
@@ -185,6 +201,9 @@ const encounterSchema = z.object({
     })
     .default({ map: null, scene: null, seed: null, theme: null, ambient: null, width: null, height: null }),
   extras: z.record(z.string(), z.unknown()).default({}),
+  // A test's saved moment (src/lib/workshop/fight-setup-logic.ts), checked by
+  // its own schema on import; absent from an older bundle.
+  setup: z.unknown().nullable().default(null),
   ref: refSchema,
   shared: sharedSchema,
 });

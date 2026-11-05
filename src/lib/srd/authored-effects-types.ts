@@ -285,6 +285,9 @@ export type SpendDoes =
       condition: string | Array<[number, string]>;
       rounds: number;
       target?: "self" | "ally" | "enemy" | "allies";
+      // An ally other than the holder ("a willing creature other than
+      // yourself": Blessing of the Trickster): the holder is no target.
+      othersOnly?: boolean;
       variants?: Record<string, string>;
       tempHp?: Formula;
       rangeFt?: number;
@@ -373,6 +376,12 @@ export type AuthoredSpend = {
   // The turn key oncePerTurn claims, when the spend shares its once-a-turn
   // with a rider (Gathered Swarm's push and its damage: "rider:gathered swarm").
   onceKey?: string;
+  // Rides a weapon's hit (Arcane Jolt): on the holder's own turn one must have
+  // landed, and a burn goes to the creature it hit. Off their turn (their steel
+  // defender's hit, an opportunity attack) the engine has no record to ask. Any
+  // weapon counts: an infused or attuned weapon reads as a plain one here, so
+  // asking for a magic one would shut the feature for the artificers it is for.
+  afterWeaponHit?: boolean;
   // Chosen outside a fight only, or only in one.
   fight?: "in" | "out";
   does: SpendDoes;
@@ -385,13 +394,24 @@ export type ReactionDoes =
   // `reflect`: with that feature held, the damage prevented strikes the
   // attacker (Spirit Shield with Vengeful Ancestors).
   | { kind: "reduce"; amount: Formula | "half" | "slot5" | "psionic_int" | "ward"; who: "self" | "ally" | "either"; rangeFt?: number; types?: string[]; reflect?: { feature: string; type: string } }
-  // A bonus to AC (or the Bardic Inspiration die) against the last hit.
-  | { kind: "ac_vs_hit"; amount: number | "bardic" }
+  // A bonus to AC (the Bardic Inspiration die, or the holder's Charisma modifier,
+  // at least 1) against the last hit. `rangeFt`: it may cover an ally that near.
+  // `strikeOnMiss`: a miss it causes lets the holder attack the attacker.
+  | { kind: "ac_vs_hit"; amount: number | "bardic" | "cha"; rangeFt?: number; strikeOnMiss?: boolean }
   // The attack that hit is rolled again at disadvantage. `notVsAdvantage`:
   // not against an attack rolled with advantage (Shadowy Dodge).
-  | { kind: "disadv_vs_hit"; notVsAdvantage?: boolean }
+  // `allyWith`: holding this feature, it may also answer a hit on an ally within
+  // `rangeFt` (Improved Flare). `advantageOnMiss`: a miss gives the holder
+  // advantage on their next attack roll against the attacker before the end
+  // of their next turn (Entropic Ward; authored-hooks.ts reads the mark).
+  | { kind: "disadv_vs_hit"; notVsAdvantage?: boolean; allyWith?: string; rangeFt?: number; advantageOnMiss?: boolean }
+  // The attacker rolls the d20 that hit an ally in range again and must use the
+  // new roll, high or low (Runic Shield).
+  | { kind: "reroll_hit"; rangeFt: number }
   // Resistance to the last hit's damage when it is one of these types.
-  | { kind: "resist_instance"; types: string[]; who: "either"; rangeFt: number }
+  // `bond`: only for the holder, and only while that creature is on their sheet and up
+  // (a Drakewarden's drake); no other ally.
+  | { kind: "resist_instance"; types: string[]; who: "either"; rangeFt: number; bond?: "drake" }
   // The holder takes the hit an ally in range took.
   // `share`: "halved", the holder takes half of it and the ally none
   // (Penance Shared); "split", each takes half (Blood Bond).
@@ -401,15 +421,26 @@ export type ReactionDoes =
   // Damage back at a creature: the attacker, or the named enemy.
   | {
       kind: "strike_back";
+      // It answers a save a creature made, not a hit: no record says who forced a
+      // save, so no card offers it, and the call names the creature.
+      afterSave?: boolean;
       amount: Formula;
       type: string;
+      // Or this type, the holder's choice (Wrath of the Storm: "lightning or
+      // thunder damage (your choice)"): the one named after the feature, else
+      // whichever the creature's defenses let more of through.
+      orType?: string;
       melee?: boolean;
       rangeFt?: number;
       save?: { ability: Ability; dcAbility: Ability | "spell"; half?: boolean; onFail?: string; damageRegardless?: boolean };
     }
+  // The damage a hit dealt another creature, back at whoever dealt it, on a
+  // save for half (Rebuke the Violent). `rangeFt`: how near the attacker is.
+  | { kind: "echo_hit"; type: string; rangeFt: number; save: { ability: Ability; dcAbility: Ability | "spell" } }
   // One weapon attack with the reaction (the holder's own, or an ally's
   // when the feature belongs to someone else in the party).
-  | { kind: "attack"; rangeFt: number; onHitCondition?: { name: string; rounds: number } }
+  // `vowed`: only at the creature under the holder's Vow of Enmity, once it has attacked.
+  | { kind: "attack"; rangeFt: number; onHitCondition?: { name: string; rounds: number }; vowed?: boolean }
   // The creature saves or gains a condition (Beguiling Defenses, Raging Storm).
   | { kind: "save_condition"; save: Ability; dcAbility: Ability | "spell"; condition: string; rounds?: number; variants?: Record<string, string> }
   // The holder gains a condition (Tokens of the Departed's soul trinket).
@@ -425,6 +456,13 @@ export type ReactionDoes =
   | { kind: "chance_miss"; die: string; min: number; vsMark?: string }
   // The last hit is declared a miss, for a level of exhaustion.
   | { kind: "force_miss"; exhaustion: number }
+  // A critical hit on the holder or a creature in range becomes a normal hit:
+  // the same dice without the critical's, and a death-save failure for one blow
+  // at 0 rather than two (Sentinel at Death's Door).
+  | { kind: "uncrit"; rangeFt: number }
+  // The holder's echo takes the attack that hit another creature, and the hit
+  // becomes a miss for them. The echo is no creature the engine tracks.
+  | { kind: "echo_takes_hit" }
   // A move off the holder's turn, up to half their speed, drawing no
   // opportunity attack: when an enemy stands within 5 feet (Skirmisher), or
   // right after the holder's opportunity attack hit, as part of that same
@@ -442,6 +480,11 @@ export type AuthoredReaction = {
   // Who takes the reaction: the feature's holder (default), a creature
   // holding the holder's Bardic Inspiration, or any ally of the holder.
   usedBy?: "holder" | "inspired" | "party";
+  // Its text needs the holder to see a creature: the one the hit fell on
+  // ("a creature you can see", Runic Shield, Sentinel at Death's Door) or the
+  // attacker (Warding Flare). On a board, line of sight decides; off one, it
+  // is open.
+  sees?: "target" | "attacker";
   does: ReactionDoes;
 };
 

@@ -18,6 +18,7 @@ const { checkClaims, claimKindsFor, englishEndsTurn, namedSpeakers, parseReaderR
   "../src/lib/dm/claims-logic.ts"
 );
 const { leveledSpellNames, readClaims, ruledFor } = await import("../src/lib/dm/claims.ts");
+const { withoutCombatBookkeeping } = await import("../src/lib/dm/narration-tidy-logic.ts");
 const { guardOutcomes, normalizeSpellName } = await import("../src/lib/dm/engine-boundary.ts");
 const campaigns = await import("../src/lib/db/campaigns.ts");
 
@@ -78,6 +79,24 @@ await test("The plain English ways a player ends their turn are read beside the 
   }
   for (const said of ["I attack the goblin.", "Whose turn is it?", "I wait for my turn.", "It's my turn now, right?"]) {
     assert.equal(englishEndsTurn(said), false, said);
+  }
+  // The words that keep a turn open, and a question, end nothing.
+  for (const said of [
+    "I cast Web over the goblins. Don't end my turn yet, I want to move after.",
+    "Don’t end her turn yet.",
+    "I throw a dagger at the nearest goblin. I'm not ending my turn yet.",
+    "I'll tell you when I end my turn.",
+    "Before I end my turn, I cast Web.",
+    "Before Tamsin ends her turn, she casts Web.",
+    "Should I end my turn?",
+    "If I move there, can I end my turn after?",
+    "I won't end my turn until I've moved.",
+  ]) {
+    assert.equal(englishEndsTurn(said), false, said);
+  }
+  // A keeping word in another clause, or on an earlier line, leaves the end said.
+  for (const said of ["I wasn't sure, but I end my turn.", "Before moving I checked the door. That's my turn.", "Don't end it yet.\n\nOkay, I end my turn."]) {
+    assert.equal(englishEndsTurn(said), true, said);
   }
 });
 
@@ -195,23 +214,38 @@ await test("What a small model writes about the turn is cut without the reader; 
 });
 
 // Qwen3.5 9B on the short rules copied the game state into the story: the
-// turn order as a list and the board squares it reads.
-await test("The turn order recited and the board's squares quoted are cut without the reader; the scene around them stays.", () => {
-  const order =
-    "The shadows circle, claws drawn.\n\n**Initiative order:**\n1. Shadow Aberration 1 (moves to (7,13))\n2. **Avery (your turn)**\n3. Bram\n\nThe purple mist swirls around the wagons. What do you do?";
-  assert.equal(withoutAsides(order, [], "english"), "The shadows circle, claws drawn.\n\nThe purple mist swirls around the wagons. What do you do?");
-  const inline = "**Current Initiative:** 1. Shadow 1 (at 7,13) 2. Avery (your turn)\nThe river roars.";
-  assert.equal(withoutAsides(inline, [], "english").trim(), "The river roars.");
-  const squares = "Avery, you're up. You're currently at (15,1) with the nearest enemy at (7,11). The mist thickens.";
-  assert.equal(withoutAsides(squares, [], "english").trim(), "Avery, you're up. The mist thickens.");
+// turn order as a list and the board squares it reads. The squares go with
+// the asides; the order goes by the fight's own names when the table reads
+// the turn (narration-tidy-logic.ts), at every table alike.
+await test("The board's squares quoted are cut without the reader, and the turn order recited goes by the fight's names, at a table in any language; the scene around them stays.", () => {
+  const fight = ["Shadow Aberration 1", "Shadow 1", "Avery", "Bram"];
+  const read = (text, language) => withoutCombatBookkeeping(withoutAsides(text, [], language), fight, language).trim();
+  for (const language of ["english", "italian", "french", "spanish", "german"]) {
+    const order =
+      "The shadows circle, claws drawn.\n\n**Initiative order:**\n1. Shadow Aberration 1 (moves to (7,13))\n2. **Avery (your turn)**\n3. Bram\n\nThe purple mist swirls around the wagons. What do you do?";
+    assert.equal(read(order, language), "The shadows circle, claws drawn.\n\nThe purple mist swirls around the wagons. What do you do?", language);
+    const inline = "**Current Initiative:** 1. Shadow 1 (at 7,13) 2. Avery (your turn)\nThe river roars.";
+    assert.equal(read(inline, language), "The river roars.", language);
+    const squares = "Avery, you're up. You're currently at (15,1) with the nearest enemy at (7,11). The mist thickens.";
+    assert.equal(withoutAsides(squares, [], language).trim(), "Avery, you're up. The mist thickens.", language);
+  }
   const fiction = "The old map marks two wells, a mill and the ford. The order of the watch changes at dusk.\nInitiative wins fights, the old sergeant says.";
   assert.equal(withoutAsides(fiction, [], "english"), fiction, "words like order and numbers in prose stay");
-  // The recited order's English heading is read at an English table only;
-  // at every table the board's squares quoted still go.
-  for (const language of ["italian", "french", "spanish", "german"]) {
-    const ordine = "Le ombre girano attorno.\n\n**Initiative order:**\n1. Ombra 1\n2. Avery\n\nAvery, sei a (15,1). La nebbia si addensa.";
-    assert.equal(withoutAsides(ordine, [], language), "Le ombre girano attorno.\n\n**Initiative order:**\n1. Ombra 1\n2. Avery\n\n La nebbia si addensa.", language);
+});
+
+// Issue 744: a sentence ends at its full stop, so cutting "*(I'll check.)*"
+// left its ")*" behind, on a line of its own or beside the story.
+await test("A cut aside takes the closers it opened with it, and closers it did not open stay.", () => {
+  const aside = [{ kind: "aside", quote: "I'll set the hour first." }];
+  const story = "The hammer hangs from the strap.";
+  for (const [open, close] of [["*(", ")*"], ["*[", "]*"], ["_(", ")_"], ["*_(", ")_*"], ["**(", ")**"], ["(", ")"]]) {
+    const wrapped = `${open}I'll set the hour first.${close}`;
+    assert.equal(withoutAsides(`${wrapped}\n\n${story}`, aside, "english"), story, wrapped);
+    assert.equal(withoutAsides(`${story} ${wrapped}`, aside, "english"), story, wrapped);
   }
+  assert.equal(withoutAsides("*(I'll set the hour first.)*", aside, "english"), "", "nothing of the story is left");
+  assert.equal(withoutAsides("*(The bell tolls. I'll set the hour first.)*", aside, "english"), "*(The bell tolls.)*", "the aside opened in a sentence that stays");
+  assert.equal(withoutAsides("A door (the old one) I'll set the hour first.)* creaks.", [{ kind: "aside", quote: "A door (the old one) I'll set the hour first." }], "english"), ")* creaks.", "the cut sentence closed its own bracket");
 });
 
 await test("A claim of a kind not asked, about a creature the engine does not know, or by someone outside the party never acts.", () => {

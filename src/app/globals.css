@@ -263,7 +263,8 @@
   --color-stone-800: #e4dccb;
   --color-stone-700: #cbc0a8;
   --color-stone-600: #8f8468;
-  --color-stone-500: #6d6350;
+  /* Hint text on the darker parchment panels reads at 4.5:1 with this one. */
+  --color-stone-500: #645a48;
   --color-stone-400: #55493a;
   --color-stone-300: #3f3427;
   --color-stone-200: #2d2419;
@@ -332,6 +333,42 @@
   --color-red-200: #6b1c15;
   --color-red-100: #551510;
   --color-red-50: #40100c;
+  /* Sky (notices, the pending spell, the reaction prompt), orange and lime
+     were left on Tailwind's night shades, so their light text all but
+     vanished on cream: they turn as red does, deep ink and pale washes. */
+  --color-sky-950: #eef7fc;
+  --color-sky-900: #d9eef9;
+  --color-sky-800: #b5ddf2;
+  --color-sky-700: #7cc3e8;
+  --color-sky-600: #2f9fd6;
+  --color-sky-500: #0b7fb8;
+  --color-sky-400: #076796;
+  --color-sky-300: #075378;
+  --color-sky-200: #064362;
+  --color-sky-100: #05354e;
+  --color-sky-50: #04283b;
+  --color-orange-950: #fdf3ea;
+  --color-orange-900: #fbe3cf;
+  --color-orange-800: #f5c7a0;
+  --color-orange-700: #eba06a;
+  --color-orange-600: #d9762f;
+  --color-orange-500: #b95b17;
+  --color-orange-400: #9a4a12;
+  --color-orange-300: #7d3c0f;
+  --color-orange-200: #66310c;
+  --color-orange-100: #51270a;
+  --color-orange-50: #3d1d07;
+  --color-lime-950: #f3f9e8;
+  --color-lime-900: #e3f1c9;
+  --color-lime-800: #c8e39a;
+  --color-lime-700: #a3cd5c;
+  --color-lime-600: #6fa52a;
+  --color-lime-500: #538419;
+  --color-lime-400: #436b14;
+  --color-lime-300: #365711;
+  --color-lime-200: #2c470e;
+  --color-lime-100: #23380b;
+  --color-lime-50: #1a2a08;
   --shadow-elev-1: 0 1px 2px rgba(60, 40, 10, 0.12), 0 2px 8px rgba(60, 40, 10, 0.08);
   --shadow-elev-2: 0 2px 6px rgba(60, 40, 10, 0.14), 0 12px 32px rgba(60, 40, 10, 0.12);
   --shadow-glow-gold: 0 0 20px rgba(166, 132, 42, 0.18);
@@ -1741,6 +1778,14 @@ button[data-busy="true"]::after {
 html[data-theme="light"] [role="menu"].panel,
 html[data-theme="light"] .panel[data-radix-menu-content],
 html[data-theme="light"] .bell-panel {
+  background-color: #fbf6e9;
+}
+
+/* A dialog by day too: it floats over the overlay's dark veil, which read
+   through the day panel's glass and turned it grey. By night the smokier panel
+   above is nearly opaque, so only the day needs the sheet. */
+html[data-theme="light"] [role="dialog"].panel,
+html[data-theme="light"] [role="alertdialog"].panel {
   background-color: #fbf6e9;
 }
 

@@ -17,7 +17,7 @@ export const EXPLORE_ADJUDICATIONS: CatalogEntry[] = [
     summary: "Checks a heavy load against the character's Strength: 30 x Strength at most, 5 feet of speed past their carrying capacity.",
     fields: [
       { name: "characterId", label: "Character", kind: "character", required: true },
-      { name: "weightLb", label: "Weight (lb)", kind: "number", required: true, min: 1, max: 100000 },
+      { name: "weightLb", label: "Weight (lb)", kind: "number", required: true, min: 1 },
       {
         name: "how",
         label: "How",

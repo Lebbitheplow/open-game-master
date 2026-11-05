@@ -10,7 +10,8 @@ import { SectionHead } from "@/components/ui/SectionHead";
 import { ActionPlate, CloseForm, DeskCard, adjudicationGlyph } from "@/app/campaigns/[campaignId]/DmConsoleParts";
 import { CommandPalette, type PaletteCommand } from "@/components/CommandPalette";
 import { consoleAdjudications, type AdjudicationCategory } from "@/lib/dm/invoke-catalog";
-import { offersImages, useCapabilities } from "@/lib/use-capabilities";
+import { hostOffers, offersImages, useCapabilities } from "@/lib/use-capabilities";
+import { QueuedAction, useResolvableCards } from "@/app/campaigns/[campaignId]/DmQueuedAction";
 import { DmActionForm } from "@/app/campaigns/[campaignId]/DmActionForm";
 import { DmBeatComposer } from "@/app/campaigns/[campaignId]/DmBeatComposer";
 import { DmDelegationPanel } from "@/app/campaigns/[campaignId]/DmDelegationPanel";
@@ -166,6 +167,7 @@ export function DmConsolePanel({
   delegations,
   cover,
   bondsKey = 0,
+  castKey = 0,
 }: {
   campaignId: string;
   sheets: CharacterSheet[];
@@ -186,6 +188,8 @@ export function DmConsolePanel({
   // Bumped by relationships_updated: a romantic step asked in a fight is
   // owed its answer once the fight is over (issue 640, HeldAsks.tsx).
   bondsKey?: number;
+  // Bumped by cast_updated: the people list reads again (issue 733).
+  castKey?: number;
 }) {
   // Illustrate stays in the catalog (the AI DM and the dispatcher still know
   // it) but leaves the console on a server with no image backend, where the
@@ -221,17 +225,22 @@ export function DmConsolePanel({
     () => new Map(messages.map((message) => [message.id, message])),
     [messages],
   );
+  // A card the GM resolved as played is answered (issue 685).
   const queue = useMemo(
     () =>
       intents
-        .map((intent) => ({
-          intent,
-          message: messagesById.get(intent.messageId) ?? null,
-          name: sheetsById.get(intent.characterId)?.name ?? "Someone",
-        }))
-        .filter((row) => row.message)
+        .flatMap((intent) => {
+          const message = messagesById.get(intent.messageId);
+          return message && !message.cardResolvedAt ? [{ intent, message, name: sheetsById.get(intent.characterId)?.name ?? "Someone" }] : [];
+        })
         .sort((a, b) => a.intent.seq - b.intent.seq),
     [intents, messagesById, sheetsById],
+  );
+  const resolvable = useResolvableCards(
+    campaignId,
+    queue.filter((row) => row.message.intent).map((row) => row.message.id),
+    encounter?.id ?? "",
+    hostOffers(capabilities, "resolveAsPlayed"),
   );
 
   const active = groups.find((group) => group.category === category) ?? null;
@@ -363,20 +372,17 @@ export function DmConsolePanel({
                 key={intent.messageId}
                 className="rounded-lg border border-amber-500/20 bg-stone-950/50 px-2.5 py-2"
               >
-                <p className="font-display text-[11px] tracking-[0.12em] text-amber-200/90">{name}</p>
-                <p className="whitespace-pre-wrap text-sm text-stone-200">{message?.content}</p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAssistIntent(message?.content ?? "");
+                <QueuedAction
+                  campaignId={campaignId}
+                  name={name}
+                  message={message}
+                  resolvable={resolvable.has(message.id)}
+                  onAsk={(words) => {
+                    setAssistIntent(words);
                     setCategory("assist");
                     setOpenAction("");
                   }}
-                  className={cn(ui.btnSmall, "mt-1.5 min-h-9 px-2 py-1 text-xs")}
-                >
-                  <GameIcon icon={{ kind: "glyph", key: "die-d20" }} size="size-5" />
-                  What should I press?
-                </button>
+                />
               </li>
             ))}
           </ul>
@@ -389,6 +395,7 @@ export function DmConsolePanel({
           entry={romanceEntry}
           sheets={sheets}
           encounter={encounter}
+          variantRules={variantRules}
         />
         {waiting || answering ? null : (
           <EmptyState size="sm" art="scrolls" title="Nothing waiting. Everything the party has said has been answered." />
@@ -439,7 +446,7 @@ export function DmConsolePanel({
               <DmEncounterPrepPanel campaignId={campaignId} />
             </div>
           ) : category === "cast" ? (
-            <DmNpcForgePanel campaignId={campaignId} />
+            <DmNpcForgePanel campaignId={campaignId} refreshKey={castKey} />
           ) : category === "bestiary" ? (
             <div className="reveal space-y-4">
               <DmBestiaryPanel campaignId={campaignId} />
@@ -468,6 +475,7 @@ export function DmConsolePanel({
                         entry={entry}
                         sheets={sheets}
                         encounter={encounter}
+                        variantRules={variantRules}
                         glyph={actionGlyph(entry.name, active?.category ?? "table")}
                       />
                       <CloseForm onClick={() => setOpenAction("")} />

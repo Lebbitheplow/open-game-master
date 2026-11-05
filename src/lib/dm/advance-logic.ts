@@ -67,18 +67,82 @@ export function windowTurnsLeft(readyUntil: number, aiTurns: number): number {
 
 // ---- the table's own limits ----
 
-// One word list for lines and veils, matched as the start of a word so
-// "romances" and "flirting" count and "aromantic" does not.
-const ROMANCE_WORDS = /(^|[^\p{L}])(romanc|romantic|flirt|seduc|love interest)/iu;
+// The words a table writes a romance line or veil in, in each of its
+// languages, matched as the start of a word of the line's textKey (one
+// Unicode form, lower case, one space between words), so "romances" and
+// "Romantik" count and "aromantic" does not. A line is read in every language at once:
+// a table may play in Italian and write its lines in English. Each stem is
+// one no other table language uses for something else ("romanz" would read
+// the Italian novel, "sedut" the Italian sitting, a bare "love" or "amore"
+// the loved ones a line spares), so a line about spiders or a seance never
+// switches romance off. This is the engine's half of the line: the model
+// reads every line and veil as written (safety-logic.ts), and the Romance
+// switch under Bonds and romance turns the whole ladder off.
+const ROMANCE_STEMS = [
+  // romance, romantic, románc, romántico, romântico, romanttinen,
+  // romanssi, romanse, romansa, rómánsaíocht, Romanze, романтика
+  "r[oó]m[aáâ]n(?:c|tt?i|ss|s[ae]|ze)",
+  "романт",
+  // flirt, flört, flørt, flerte, флирт; coqueteo, coquettish
+  "fl(?:i|ö|ø|e)rt",
+  "флирт",
+  "coquet",
+  // seduction, séduire, seduzione, sedurre, sedução, verführen, verleiden,
+  // forføre, förföra, vietellä, csábítás, merayu, соблазн
+  "s[eé]du[cçzri]",
+  "verf(?:ü|ue)hr",
+  "verleid",
+  "forfør",
+  "förför",
+  "viet(?:el|te)l",
+  "csábít",
+  "(?:me)?rayu",
+  "соблазн",
+  // a love story or affair: love interest, storia d'amore, histoire
+  // d'amour, historia de amor, história de amor, amorous, amoroso,
+  // amoureux, amorío, Liebesgeschichte, Liebelei, Liebschaft,
+  // liefdesrelatie, kærlighedshistorie, kjærlighetshistorie,
+  // kärlekshistoria, rakkaustarina, szerelmi, asmara, любовный, courtship,
+  // corteggiamento, cortejo, paquera, ухаживание, suirí, cliúsaíocht
+  "love (?:interest|affair|stor|scene)",
+  "stori[ae] d amore",
+  "histoires? d amour",
+  "hist[oó]rias? de amor",
+  "amor(?:os|ous)",
+  "amoureu",
+  "amor[ií]o",
+  "liebes",
+  "liebelei",
+  "liebschaft",
+  "liefdes",
+  "kærligheds",
+  "kjærlighets",
+  "kärleks",
+  "rakkaus(?:tarin|suhte|kohtau)",
+  "szerelmi",
+  "asmara",
+  "любовн",
+  "courtship",
+  "courting",
+  "corteggi",
+  "cortej",
+  "paquer",
+  "ухажив",
+  "suirí",
+  "cliús",
+];
+const ROMANCE_WORDS = new RegExp(`(?:^| )(?:${ROMANCE_STEMS.join("|")})`, "u");
 
 export function namesRomance(text: string): boolean {
-  return ROMANCE_WORDS.test(text);
+  return ROMANCE_WORDS.test(textKey(text));
 }
 
 export type SafetyLike = { boundaries?: string; lines?: string[]; veils?: string[] };
 
 // Why advances are off at this table, or null. A family table never has
-// them, and a line or veil naming romance is the table saying so.
+// them, and a line or veil naming romance, in any table language, is the
+// table saying so. The Safety panel also points a table that wants no
+// romance at all to the Romance switch, which turns off what a veil allows.
 export function romanceSafetyBlock(safety: SafetyLike | null | undefined): string | null {
   if (!safety) {
     return null;

@@ -17,6 +17,7 @@ import { heldFeatChecks } from "@/lib/srd/feat-combat";
 import { unnamedRollKeys, type RollGap, type RollKey } from "@/lib/srd/roll-keys";
 import { lostSenses } from "@/lib/srd/sense-checks";
 import { itemCheckRiders } from "@/lib/srd/item-check-riders";
+import { cursedAgainst } from "@/lib/srd/magic-items";
 import { heldSaveTraits, initiativeAdvantage, traitSaveAdvantages } from "@/lib/srd/trait-rules";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolError } from "@/lib/dm/tool-errors";
@@ -120,6 +121,9 @@ export function rollFeatureRiders(
     ability: "str" | "dex" | "con" | "int" | "wis" | "cha" | undefined;
     // The roller moved no more than half their speed this turn (Supreme Sneak).
     movedLittle?: boolean;
+    // The roll can wait on its player: a held die is theirs to spend after
+    // they see the d20 (src/lib/dm/after-roll.ts), not on every next roll.
+    keepHeldDie?: boolean;
   },
 ): RollFeatureRiders | ToolError {
   const { kind: derivationKind, ability: derivationAbility } = context;
@@ -134,6 +138,9 @@ export function rollFeatureRiders(
     sheet && derivationKind === "saving_throw"
       ? traitSaveAdvantages(sheet, derivationAbility, { against: named(args.against), magical: args.magical, casterType: args.casterType })
       : [];
+  // A cursed item against the creature forcing the save (Demon Armor
+  // against a demon's spells and special abilities).
+  const cursedSave = sheet && derivationKind === "saving_throw" ? cursedAgainst(sheet.equipment ?? [], args.sourceType) : null;
   // Feral Instinct: advantage on initiative.
   const feral = sheet && derivationKind === "initiative" ? initiativeAdvantage(sheet) : null;
   // Magic items that ride checks (Stone of Good Luck, Cloak of Elvenkind).
@@ -188,7 +195,7 @@ export function rollFeatureRiders(
   // A held Bardic Inspiration die rides along on the next d20 the character
   // rolls and is spent by doing so; the caller clears the condition.
   const inspiration =
-    sheet && derivationKind && derivationKind !== "initiative"
+    sheet && derivationKind && derivationKind !== "initiative" && !context.keepHeldDie
       ? findInspiration(sheet.conditions, sheet.conditionMeta as Record<string, { mote?: boolean }>)
       : null;
   // Mote of Potential: on an ability check the mote's die is rolled twice and
@@ -198,6 +205,7 @@ export function rollFeatureRiders(
   return {
     advantageSources: [
       ...(traitSaves.length ? ["advantage" as const] : []),
+      ...(cursedSave ? ["disadvantage" as const] : []),
       ...(feral ? ["advantage" as const] : []),
       ...(itemChecks.advantage ? ["advantage" as const] : []),
       ...(authoredRolls.advantage.length ? ["advantage" as const] : []),
@@ -215,6 +223,7 @@ export function rollFeatureRiders(
       : [],
     notes: [
       ...traitSaves,
+      ...(cursedSave ? [cursedSave] : []),
       ...(feral ? [feral] : []),
       ...itemChecks.notes,
       ...authoredRolls.advantage,

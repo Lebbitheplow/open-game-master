@@ -18,10 +18,18 @@ export type NativeDictationHandlers = {
   onError?: (message: string) => void;
 };
 
+export type NativeDictationOptions = {
+  // The table's language as a BCP 47 tag ("it"), for a take made on a
+  // campaign's page (src/lib/stt-logic.ts deviceSpeechLanguage); unsaid, the
+  // phone hears its own language. A shell built before this was sent ignores
+  // it, and so hears the phone's language as it always did.
+  language?: string;
+};
+
 export type NativeDictation = {
   // Resolves once the recognizer is listening; rejects with a sentence to
   // show when it cannot (no permission, no recognizer on this device).
-  start(handlers: NativeDictationHandlers): Promise<void>;
+  start(handlers: NativeDictationHandlers, options?: NativeDictationOptions): Promise<void>;
   // Ends the take and resolves with everything that was said.
   stop(): Promise<string>;
   // Ends the take and throws it away.

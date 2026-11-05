@@ -11,6 +11,7 @@ import { handReady, shareList, type HandAim, type PreviewRow } from "@/lib/battl
 import type { HandShare } from "@/lib/battlemap/hand-intent";
 import { describePick, hasPick, pickHint, type AreaPick } from "@/lib/battlemap/hand-area";
 import { HandPreviewRows, typeLabel, typeTone } from "@/app/campaigns/[campaignId]/HandCardFace";
+import { HandSummonPick } from "@/app/campaigns/[campaignId]/HandSummonPick";
 
 // What a target chip shows beside the name: a health word for an enemy, hit
 // points for one of the party (players already see each other's).
@@ -179,6 +180,7 @@ export function HandAimBar({
   onTrigger,
   choice = null,
   onChoice,
+  count = null, onCount, kind = null, onKind, mix = {}, onStepMix,
   areaPick = {},
   onClearArea,
   shares = [],
@@ -208,6 +210,11 @@ export function HandAimBar({
   // The card's one pick (a spell's form, a readied spell); null for the default.
   choice?: string | null;
   onChoice?: (value: string) => void;
+  // How many a summoning card brings of the creature picked (null for the
+  // most), its kind, and a per-target spell's forms.
+  count?: number | null; onCount?: (value: number) => void;
+  kind?: string | null; onKind?: (value: string) => void;
+  mix?: Record<string, number>; onStepMix?: (form: string, delta: 1 | -1) => void;
   // Where an area spell is laid, picked on the board; the Clear takes it back.
   areaPick?: AreaPick;
   onClearArea?: () => void;
@@ -230,7 +237,7 @@ export function HandAimBar({
   // An area spell laid on a square picked on the board needs no creature
   // named: the area catches whoever stands in it.
   const areaPicked = hasPick(card.area, areaPick);
-  const ready = handReady(card, aim, { trigger: trigger ?? "", area: areaPick });
+  const ready = handReady(card, aim, { trigger: trigger ?? "", area: areaPick, ...(choice !== null ? { choice } : {}), mix });
   // Once the card can go, its button is brought into view. On a short phone
   // the Hand scrolls in what the message box leaves it (hand.css), and the
   // button sat below the fold after the target was picked.
@@ -361,7 +368,9 @@ export function HandAimBar({
         </div>
       ) : null}
 
-      {card.choice ? (
+      {card.summon ? (
+        <HandSummonPick card={card} choices={{ form: choice, ...(count !== null ? { count } : {}), ...(kind !== null ? { kind } : {}), mix }} onForm={onChoice} onCount={onCount} onKind={onKind} onStep={onStepMix} />
+      ) : card.choice ? (
         <div className="hand-choice mt-2 flex flex-wrap items-center gap-1.5">
           <span className="text-[11px] uppercase tracking-wider text-stone-500">{card.choice.label}</span>
           <div className="flex flex-wrap items-center gap-1.5" role="radiogroup" aria-label={card.choice.label} data-pill-group>
@@ -454,6 +463,8 @@ export function HandAimBar({
                   ? "Send this to the Game Master."
                   : needsTrigger
                     ? "Name the trigger first."
+                    : card.summon
+                      ? "Choose the creature first."
                     : card.area
                       ? "Pick a target, or a square on the board."
                       : "Pick a target first.")

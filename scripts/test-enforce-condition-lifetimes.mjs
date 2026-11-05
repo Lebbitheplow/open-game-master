@@ -18,6 +18,7 @@ import assert from "node:assert/strict";
 import { openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { kit as conditionsKit } from "./lib/enforce-conditions.mjs";
+import { combatKit } from "./lib/enforce-combat.mjs";
 import { caster, closeTables, enemyOf, table } from "./lib/enforce-spell-kit.mjs";
 
 const { test, finish } = suite("test-enforce-condition-lifetimes");
@@ -127,6 +128,28 @@ test("A monster's condition for 1 minute is ten rounds; for 1 hour, six hundred"
   assert.equal(minute.rounds, 10);
   const hour = parseSaveEffect("The target must succeed on a DC 13 Wisdom saving throw or be frightened for 1 hour.");
   assert.equal(hour.rounds, 600);
+});
+
+await test("A monster's hit that stuns \"until the end of the brute's next turn\" is tied to that turn's end, not counted as a round", async () => {
+  const { readAttackText } = await import("../src/lib/bestiary/attack-text.ts");
+  const read = readAttackText("Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) bludgeoning damage, and the target must succeed on a DC 13 Constitution saving throw or be stunned until the end of the brute's next turn.");
+  assert.deepEqual(read.onHit?.until, { edge: "end", whose: "source" }, JSON.stringify(read.onHit));
+  const world = await openWorld();
+  const kit = await combatKit(world);
+  const hero = world.addHero({ name: "Kara", maxHp: 40 });
+  await kit.fight(1, { heroFaces: { [hero.id]: 19 }, enemyFace: 1 });
+  const [brute] = world.enemies();
+  kit.setEnemy(brute.id, { stats: { ...brute.stats, attacks: [{ name: "Slam", toHit: 4, damage: "1d6+2", type: "bludgeoning", mode: "melee", onHit: read.onHit }] } });
+  kit.place(hero.id, 5, 5);
+  kit.place(brute.id, 5, 6);
+  // 15 + 4 hits; 3 + 2 damage; Kara's CON save is a 1.
+  world.dice(15, 3, 1);
+  const out = await world.invoke("enemy_attack", { enemyId: brute.id, targetCharacterId: hero.id });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  const meta = world.sheet(hero.id).conditionMeta.stunned;
+  assert.equal(meta?.untilTurnEndOf, brute.id, JSON.stringify(meta));
+  assert.equal(meta?.rounds, undefined, "no round's count");
 });
 
 closeTables();

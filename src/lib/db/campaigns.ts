@@ -21,6 +21,7 @@ import { MINUTES_PER_DAY, daysPerYear, defaultClock, normalizeCalendarDefinition
 import { packFor } from "@/lib/worlds/preset";
 import { closeStreamsForCampaign } from "@/lib/live-streams";
 import { dropDmQueue } from "@/lib/dm/queue";
+import { forgetDiceTable } from "@/lib/db/dice-scripts";
 import type { PartyState } from "@/lib/dm/party-logic";
 import { partyFromJson } from "@/lib/db/party";
 import {
@@ -430,6 +431,12 @@ export function deleteCampaign(campaignId: string) {
   // The last attack on each of its characters (src/lib/dm/last-hit.ts),
   // keyed the same way.
   db.prepare(`DELETE FROM last_hits WHERE campaign_id = ?`).run(campaignId);
+  // The saves made this turn (src/lib/dm/last-save.ts), keyed the same way.
+  db.prepare(`DELETE FROM last_saves WHERE campaign_id = ?`).run(campaignId);
+  // A test table's dice script goes with the row (ON DELETE CASCADE); the
+  // dice's note that this id was a test table goes too
+  // (src/lib/db/dice-scripts.ts).
+  forgetDiceTable(campaignId);
   // Anyone still at the table stops hearing it now (src/lib/live-streams.ts),
   // and turns still waiting for it are not run against rows that are gone.
   closeStreamsForCampaign(campaignId);
@@ -979,6 +986,26 @@ export function setCampaignScene(campaignId: string, scene: string) {
   getDatabase()
     .prepare(`UPDATE campaigns SET scene = ?, updated_at = ? WHERE id = ?`)
     .run(scene.slice(0, 2000), nowIso(), campaignId);
+}
+
+// The party came to a new place: its narration starts at `seq`, or at the
+// next message's when null.
+export function markSceneStart(campaignId: string, seq: number | null) {
+  getDatabase()
+    .prepare(`UPDATE campaigns SET scene_since_seq = COALESCE(?, next_seq) WHERE id = ?`)
+    .run(seq, campaignId);
+}
+
+// The seq the current place's narration starts at; 0 before the party ever
+// moved, which reads the whole story.
+export function sceneSinceSeq(campaignId: string): number {
+  const row = getDatabase()
+    .prepare(`SELECT scene_since_seq FROM campaigns WHERE id = ?`)
+    .get(campaignId) as { scene_since_seq: number } | undefined;
+  if (!row) {
+    throw new Error("Campaign not found.");
+  }
+  return row.scene_since_seq;
 }
 
 export function getCampaignSummaryState(campaignId: string) {

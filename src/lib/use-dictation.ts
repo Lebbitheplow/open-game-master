@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useParams } from "next/navigation";
 import { readMicId } from "@/app/campaigns/[campaignId]/useVoicePrefs";
 import {
   DICTATION_BITRATE,
@@ -12,6 +13,8 @@ import {
   pickRecorderType,
 } from "@/lib/dictation";
 import { nativeDictation, subscribeNativeDictation, type NativeDictation } from "@/lib/native-dictation";
+import { tableLanguageOf } from "@/lib/dictation-language";
+import { deviceSpeechLanguage } from "@/lib/stt-logic";
 import { micBlockMessage, micBlockReason } from "@/lib/secure-context";
 import { encodeWav, SPEECH_SAMPLE_RATE, splitForUpload } from "@/lib/speech-wav";
 import { subscribeCapabilities, useCapabilities } from "@/lib/use-capabilities";
@@ -41,6 +44,9 @@ export function useDictation({
   // later says so with an event.
   const hasNative = useSyncExternalStore(subscribeNativeDictation, hasNativeDictation, noNativeOnServer);
   const engine = pickDictationEngine(capabilities?.stt, hasNative);
+  // The campaign page the take is made on, if any: the server hears it in
+  // that table's language. A page outside a campaign (the workshop) has none.
+  const { campaignId } = useParams<{ campaignId?: string }>();
 
   const [state, setState] = useState<DictationState>("idle");
   const [hint, setHint] = useState("");
@@ -116,13 +122,16 @@ export function useDictation({
   const upload = useCallback(async (blob: Blob, name: string, signal: AbortSignal): Promise<string> => {
     const form = new FormData();
     form.set("audio", blob, name);
+    if (campaignId) {
+      form.set("campaignId", campaignId);
+    }
     const response = await fetch("/api/stt", { method: "POST", body: form, signal });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       throw new Error(data.error || "Transcription failed.");
     }
     return String(data.text ?? "").trim();
-  }, []);
+  }, [campaignId]);
 
   const send = useCallback(
     async (blob: Blob, type: string, asWav: boolean) => {
@@ -234,15 +243,21 @@ export function useDictation({
       setHint("");
       setPartial("");
       setState("starting");
+      // The table's language, as the server's engines hear a clip from this
+      // page; a page outside a campaign leaves the phone its own.
+      const language = deviceSpeechLanguage(tableLanguageOf(campaignId));
       try {
-        await bridge.start({
-          onLevel: setLevel,
-          onPartial: setPartial,
-          onError: (message) => {
-            nativeErrorRef.current = message;
-            stopRef.current();
+        await bridge.start(
+          {
+            onLevel: setLevel,
+            onPartial: setPartial,
+            onError: (message) => {
+              nativeErrorRef.current = message;
+              stopRef.current();
+            },
           },
-        });
+          language ? { language } : {},
+        );
       } catch (error) {
         activeRef.current = false;
         setHint(errorText(error, "This device's speech recognizer is unavailable."));
@@ -259,7 +274,7 @@ export function useDictation({
       setState("recording");
       startTimer(stop);
     },
-    [setLevel, startTimer, stop],
+    [campaignId, setLevel, startTimer, stop],
   );
 
   const start = useCallback(async () => {

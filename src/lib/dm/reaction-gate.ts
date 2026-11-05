@@ -31,8 +31,12 @@ export function reactingSheet(
   if (timing === "after") {
     return { sheet, beforeDrop: false };
   }
-  const answering = freshLastHit(campaignId, sheet.id);
-  const before = answering && answering.before.currentHp > 0 && sheet.currentHp <= 0 ? answering.before : null;
+  // Of several open hits, the one that dropped them (a later one found them
+  // already down), unless the call is aimed at another (last-hit.ts
+  // withHitAim): a reaction to a blow that landed on them down is asked of
+  // them down.
+  const answering = sheet.currentHp <= 0 ? freshLastHit(campaignId, sheet.id, (hit) => hit.before.currentHp > 0) : null;
+  const before = answering ? answering.before : null;
   return before
     ? {
         sheet: { ...sheet, currentHp: before.currentHp, conditions: before.conditions, deathSaves: before.deathSaves },
@@ -43,13 +47,16 @@ export function reactingSheet(
 
 // The refusal for a reaction the character cannot take, or null. The timing
 // is the reaction's own (reaction-kinds.ts); a caller that does not name one
-// gets the feature's by its label.
+// gets the feature's by its label. `forAnother`: it answers a hit on someone
+// else (Runic Shield, Shadow Martyr, Cutting Words), which a reactor at 0 is
+// refused for being down, not for following any damage of their own.
 export function reactionRefusal(
   campaignId: string,
   sheet: CharacterSheet,
   encounter: Encounter | null,
   label: string,
   timing: ReactionTiming = reactionTimingOf(label),
+  forAnother = false,
 ): ToolError | null {
   const standing = reactingSheet(campaignId, sheet, timing);
   if (timing === "at_zero" && !standing.beforeDrop) {
@@ -59,7 +66,7 @@ export function reactionRefusal(
   }
   const allowed = canAct({ sheet: standing.sheet, encounter, kind: "reaction" });
   if (!allowed.ok) {
-    return sheet.currentHp <= 0 && timing === "after" && !sheet.deathSaves?.dead
+    return sheet.currentHp <= 0 && timing === "after" && !forAnother && !sheet.deathSaves?.dead
       ? { ...toolError(allowed), error: `${allowed.error} ${label} follows the damage rather than changing it, so a character that damage dropped is already unconscious and cannot take it.` }
       : toolError(allowed);
   }

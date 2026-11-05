@@ -23,6 +23,7 @@ import { spendAction, type TurnBudget } from "@/lib/dm/action-budget";
 import { dualWields } from "@/lib/dm/attack-rules";
 import { hasFastHands } from "@/lib/dm/bonus-routes";
 import { canAct } from "@/lib/dm/can-act";
+import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { armorChangeMinutes } from "@/lib/dm/don-doff";
 import { drawRow, gearKindOf, handsFor, handsFullError, handsFullFor, holdIfFree, inHand, spendInteraction } from "@/lib/dm/gear-hands";
 import { lineNamed } from "@/lib/srd/item-row";
@@ -36,6 +37,7 @@ import { addRowMath, handedOverRow, removeItemMath } from "@/lib/dm/mutation-mat
 import { characterCallUnasked } from "@/lib/dm/player-word";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
 import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { swallowCoverError } from "@/lib/dm/swallow";
 import { storeBudget } from "@/lib/dm/turn-budget";
 import { gearPatch, implicitlyWorn } from "@/lib/dm/usage-rules";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
@@ -161,6 +163,11 @@ export function handleItemCall(
       if (!to || to.id === sheet.id) {
         return retry("hand needs toCharacterId: the ally who receives it.");
       }
+      // Nothing passes a swallower's wall, either way (swallow.ts).
+      const inside = swallowCoverError(sheet.id, to.id);
+      if (inside) {
+        return inside;
+      }
       return handOver(campaign, turn, encounter, sheet, to, row, qty, reason);
     }
   }
@@ -212,6 +219,10 @@ function changeWear(
     const able = canAct({ sheet, encounter, kind: kind === "shield" ? "action" : "free" });
     if (!able.ok) {
       return toolError(able);
+    }
+    const heldOff = heldTurnRefusal(encounter, sheet);
+    if (heldOff) {
+      return heldOff;
     }
     const own = ownBudget(encounter, sheet);
     if (!own) {
@@ -287,6 +298,10 @@ function handOver(
     const able = canAct({ sheet, encounter, kind: "free" });
     if (!able.ok) {
       return toolError(able);
+    }
+    const heldOff = heldTurnRefusal(encounter, sheet);
+    if (heldOff) {
+      return heldOff;
     }
     const own = ownBudget(encounter, sheet);
     if (!own) {

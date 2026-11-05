@@ -122,3 +122,98 @@ export function tagsOfPackItem(name, kind, category) {
   add("carried", CARRIED_ONLY.test(name));
   return [...tags];
 }
+
+// ---- a magic item no word of its name places ----
+//
+// A Prayer Mat, an Apron of the Eager Artisan or a Bow of Accuracy has no word
+// in its name that says whether it is kept or used up, and use_item took any
+// such item out of the pack as if drunk (src/lib/dm/item-logic.ts). SRD 5.1,
+// Magic Items, Consumables: "Some items are used up when they are
+// activated"; the rest are kept. So an item nothing above places is read from
+// its own text: used up when the text says using it uses it up (it "is
+// destroyed", "crumbles", "for one use", eaten or drunk, shattering on
+// impact, ammunition spent by the shot), kept otherwise.
+
+const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+// The nouns the item's own text calls it by: the last word of its name
+// before any "of" ("Air Seed", "Feather Token", "Iron Bands of Binding"), in
+// the singular and the plural.
+function headNouns(name) {
+  const before = name.toLowerCase().replace(/[’']s\b/g, "").split(/\s+of\s+/)[0];
+  const heads = before.split(/\s+(?:and|&)\s+/).map((part) => part.split(/[^a-z]+/).filter(Boolean).pop()).filter((w) => w && w.length >= 3);
+  return [...new Set(heads.flatMap((w) => [w, w.replace(/(?:es|s)$/, "")]).filter((w) => w.length >= 3))];
+}
+const SPENT = "(?:(?:is|are) (?:then |also |immediately |instantly |permanently |completely |irrevocably )?(?:destroyed|consumed|used up|expended|absorbed)|crumbles?|vanish(?:es)?|disappears?|disintegrates?|dissolves?|shatters?|evaporates?|melts? away|burns? (?:away|up)|turns? (?:in)?to (?:dust|ash(?:es)?|powder)|loses (?:all )?(?:of )?(?:its )?magic(?:al properties)?|becomes? (?:a )?(?:mundane|nonmagical))\\b";
+const EAT = "(?:eat|eats|eating|drink|drinks|drinking|consume|consumes|consuming|swallow|swallows|swallowing|ingest|ingests|ingesting|chew|chews|chewing|quaff|quaffs|imbibe|imbibes)";
+const CONTAINER = "(?:bottle|vial|jar|flask|phial|globe|urn|jug|box|container)";
+const GENERIC = [
+  /\b(?:shatters|crumbles|explodes|bursts|breaks)\b[^.]{0,40}?\bon impact\b/i,
+  /\bthrow (?:the|this|a|an|one) [^.]*?\bit (?:shatters|explodes|breaks|bursts)\b/i,
+  /\bpour (?:out )?(?:all )?(?:of )?the (?:contents|liquid)\b/i,
+  /\bdrains (?:the [a-z’']+|its) magic\b/i,
+  /\bloses (?:all )?(?:of )?(?:its )?magic(?:al)?(?: properties)? and becomes (?:a )?(?:mundane|nonmagical)\b/i,
+  /^afterwards?,? [^.]*?\b(?:becomes (?:a )?(?:mundane|nonmagical)|is destroyed|crumbles)\b/i,
+  /\b(?:single[- ]use|for (?:a single|one) use|can (?:only )?be used (?:only )?once|can(?:not|'t|’t) be used again(?! until| for| before))/i,
+];
+// Words before the match that make it a condition or the end of many uses,
+// not what using the item does: "If the stake is removed", "On a 1", "When
+// the shaker is empty", "Once you've used all four symbols", "20 times", a
+// "50 percent chance", a roll table's row.
+const IF_BEFORE = /\b(?:if|unless|should|exposed|reduced to|drops? to|hit points|whenever|empty|used all|\d+ times|last charge|chance|check)\b|\bon an? (?:1|roll|result|success)\b|\b(?:when|until|after) $/i;
+// A second, destructive use beside a lasting one ("Alternatively, you can
+// break the whistle"): the item is kept, and the GM removes it when broken.
+const DUAL = /\b(?:alternatively|additionally|instead of)\b/i;
+
+// The words of an item's own text that say using it uses it up, or null for
+// an item that is kept. Ammunition is spent by the shot.
+export function usedUpWords(name, category, desc) {
+  if (/ammunition|\barrows?\b|\bbolts?\b|\bbullets?\b/i.test(category)) {
+    return `its category, "${category}"`;
+  }
+  if (/\b(?:ammunition|arrows?|bolts?|bullets?|sling stones?)\b/i.test(name)) {
+    return `its name, "${name}"`;
+  }
+  const nouns = headNouns(name).map(esc).join("|");
+  // "the seed", "this item", never "the liquid in the retort" or "the
+  // writing on the parchment".
+  const noun = `(?:the|this|that|each|its|one|a|an) (?:magic(?:al)? )?(?:item|${nouns})(?:s|es)?`;
+  const self = `(?<!\\b(?:in|of|from|into|inside|within|on|onto|with|to|by|at) )\\b${noun}`;
+  const own = [
+    new RegExp(`${self}(?: (?!(?:the|a|an|its)\\b)[a-z’']+){0,6}? ${SPENT}`, "i"),
+    new RegExp(`${self} [^,.;]*? and (?:is|are) (?:then )?(?:destroyed|consumed)\\b`, "i"),
+    new RegExp(`${self} (?:is|are) (?:eaten|drunk|swallowed|ingested|chewed)\\b`, "i"),
+    new RegExp(`\\b${EAT} (?:all of |some of )?${self}\\b`, "i"),
+    new RegExp(`\\b(?:destroy|destroys|destroying) (?:it|them|${noun}|the ${CONTAINER})\\b`, "i"),
+  ];
+  const named = new RegExp(`\\b(?:${nouns})`, "i");
+  const pronoun = /\b(?:it|they) (?:is|are) (?:then |also )?(?:destroyed|consumed|used up)\b|\b(?:it|they) (?:crumbles?|vanish(?:es)?|disintegrates?|dissolves?|becomes? (?:a )?(?:mundane|nonmagical))\b/i;
+  // A roll table's rows are outcomes the dice pick, not what using it does.
+  const prose = desc.split("\n").filter((line) => !line.trim().startsWith("|")).join(" ").replace(/\s+/g, " ").replace(/[_*]/g, "");
+  for (const sentence of prose.split(/(?<=[.!?])\s+/)) {
+    if (DUAL.test(sentence)) {
+      return null;
+    }
+    const hits = [...own, ...GENERIC, ...(named.test(sentence) ? [pronoun] : [])].map((re) => re.exec(sentence)).filter(Boolean);
+    const hit = hits.sort((a, b) => a.index - b.index).find((m) => !IF_BEFORE.test(sentence.slice(0, m.index)));
+    if (hit) {
+      return hit[0].trim();
+    }
+  }
+  return null;
+}
+
+// Whether the rules above left an item unplaced: no word of its name or
+// category says it is used up or kept.
+export function unplaced(tags) {
+  return !tags.some((tag) => tag === "consumable" || tag === "durable" || tag === "kept");
+}
+
+// The magic item table's rows (src/lib/classes/magic-items.json), by slug or
+// whole name: use_item keeps each of them unless its tags call it consumable
+// (src/lib/dm/item-logic.ts), so only the rest are read from their text.
+export function inMagicTable(tableItems) {
+  const key = (name) => name.toLowerCase().replace(/[’`]/g, "'").replace(/[^a-z0-9']+/g, " ").trim();
+  const names = new Set(tableItems.flatMap((row) => [row.name, ...(row.aliases ?? [])]).map(key));
+  const slugs = new Set(tableItems.flatMap((row) => row.slugs ?? []));
+  return (name, slug) => slugs.has(slug) || names.has(key(name));
+}

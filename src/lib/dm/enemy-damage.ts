@@ -1,4 +1,5 @@
 import { settleDroppedOnFightEnd } from "@/lib/db/dropped-items";
+import { disarmFightEvents } from "@/lib/db/fight-events";
 import { endFightEffects } from "@/lib/db/active-effects";
 import { getFloor, setFloor, type Campaign } from "@/lib/db/campaigns";
 import { burnWebUnder } from "@/lib/dm/zone-cast";
@@ -11,6 +12,7 @@ import type { DmTurn } from "@/lib/db/dm-turns";
 import { patchEnemyConditions } from "@/lib/db/encounters";
 import { restoreOwnForm } from "@/lib/db/enemy-form";
 import { recordEncounterSummary } from "@/lib/dm/encounter-summary-store";
+import { atTheFight } from "@/lib/dm/fight-away-logic";
 import { getBattleMapForEncounter, removeTokenByRef } from "@/lib/db/battle-maps";
 import { publishEphemeral, publishPersisted, publishWithSeq } from "@/lib/events";
 import { closeFallenFoes } from "@/lib/dm/party-bonds";
@@ -26,7 +28,7 @@ import { BURNING_OIL_DAMAGE, COVERED_IN_OIL, oilCatches } from "@/lib/srd/gear-w
 import { enemyDefenseLines } from "@/lib/dm/enemy-defenses";
 import { authoredIgnoresResistance } from "@/lib/dm/authored-saves";
 import { isKnockedOut, knockedOutConditions } from "@/lib/dm/knockout";
-import { endConditionsHeldBy } from "@/lib/dm/enemy-conditions";
+import { endConditionsHeldBy, endVowsOn } from "@/lib/dm/enemy-conditions";
 import { enemyHpCap, hasTrait, REGENERATION_STOPPED, regenerationOf } from "@/lib/dm/monster-abilities";
 import { absorbs } from "@/lib/dm/monster-traits";
 import { fallsRegenerating, regeneratingDown } from "@/lib/dm/regeneration";
@@ -51,6 +53,7 @@ import { getClock } from "@/lib/db/clock";
 import { outcomeShare, wakeHoursOf } from "@/lib/dm/foe-carry-logic";
 import { releaseHeldSteps } from "@/lib/dm/romance-held";
 import { finishCastingsAtFightEnd } from "@/lib/dm/long-casting";
+import { freeFromCorpse, noteBlowFromInside, swallowFightEnd } from "@/lib/dm/swallow";
 
 // The single server-side path for damage landing on an enemy. Used by the
 // damage_enemy tool AND by damage rolls carrying targetEnemyId, which the
@@ -128,7 +131,7 @@ export function finishEncounter(
   if (outcome !== "party_defeated") {
     sayFightOver(campaign, encounter, true);
   }
-  const itemsLeft = settleFightState(campaign, encounter.id);
+  const { itemsLeft, swallowedOut } = settleFightState(campaign, encounter.id);
   // A spell of a minute or more still being cast takes effect as the fight
   // ends, its slot spent then (long-casting.ts finishCastingsAtFightEnd).
   const castingsFinished = finishCastingsAtFightEnd(campaign);
@@ -170,7 +173,8 @@ export function finishEncounter(
   // The dead take no share: what the fight was worth is split among those
   // who lived through it. Only the party's side earns it: a character who
   // fought against the party has no share in beating itself.
-  const earners = sheets.filter((sheet) => !(getSheetById(sheet.id) ?? sheet).deathSaves?.dead && sheetSide(encounter, sheet.id) === "party");
+  // Nor does a character who never came (issue 740).
+  const earners = atTheFight(encounter, sheets).filter((sheet) => !(getSheetById(sheet.id) ?? sheet).deathSaves?.dead && sheetSide(encounter, sheet.id) === "party");
   const xpEach = earners.length ? Math.floor((totalXp * share) / earners.length) : 0;
   let xpResult: Record<string, unknown> = {};
   if (xpEach > 0) {
@@ -218,6 +222,7 @@ export function finishEncounter(
     ...(itemsLeft.length
       ? { itemsLeft: `On the ground after the fight: ${itemsLeft.join("; ")}. The party can collect them (handle_item pick_up).` }
       : {}),
+    ...(swallowedOut ? { swallowedOut } : {}),
     outcome,
     ...(guestsGone.length
       ? {
@@ -249,14 +254,17 @@ export function finishEncounter(
 
 // What ends with a fight's state, however the fight ends: right after the
 // encounter row closes, before the experience is shared out.
-export function settleFightState(campaign: Campaign, encounterId: string): string[] {
+export function settleFightState(campaign: Campaign, encounterId: string): { itemsLeft: string[]; swallowedOut: string | null } {
   // An effect set "until the fight ends" ends now (active-effects.ts).
   endFightEffects(campaign.id);
   // A frenzy outliving its rage costs its level of exhaustion (frenzy.ts).
   settleFrenzies(campaign);
+  // Whoever is still inside a creature that swallowed them comes out, prone
+  // (swallow.ts swallowFightEnd).
+  const swallowedOut = swallowFightEnd(campaign, encounterId);
   // What was dropped stays where it fell; what a fallen enemy held lies with
   // it (src/lib/db/dropped-items.ts, issue #424). Returns what lies there.
-  return settleDroppedOnFightEnd(campaign.id, encounterId);
+  return { itemsLeft: settleDroppedOnFightEnd(campaign.id, encounterId), swallowedOut };
 }
 
 // What follows any fight's end, the lead's force-end included (issue 657):
@@ -270,6 +278,8 @@ export function afterTheFight(
   encounter: Encounter,
   enemies: readonly EncounterEnemy[],
 ): { guestsGone: string[]; turncoats: string[]; foesMourned: string[]; answersOwed: string[] } {
+  // What the fight's plan still held can no longer happen (fight-events.ts).
+  disarmFightEvents(encounter.id);
   const floor = getFloor(campaign.id);
   if (floor.mode === "initiative" || (floor.mode === "hold" && floor.next.mode === "initiative")) {
     setFloor(campaign.id, { mode: "open" });
@@ -337,6 +347,10 @@ export function applySheetFoeBlow(
   holdVictory = false,
 ): Record<string, unknown> {
   const landed = applySheetFoeDamage(campaign, turn, view, blow);
+  const vows = landed.down || landed.dead ? endVowsOn(campaign, view.id) : [];
+  if (vows.length) {
+    landed.vowEnded = vows;
+  }
   if ((landed.down || landed.dead) && !holdVictory) {
     Object.assign(landed, autoEndOnVictory(campaign, turn, encounter, sheets, sheetsById));
   }
@@ -554,6 +568,21 @@ export function applyEnemyDamage(
     const freed = endConditionsHeldBy(campaign, enemy.id);
     if (freed.length) {
       base.released = `${freed.join("; ")}: no longer held by ${updated.displayName}.`;
+    }
+    const vows = endVowsOn(campaign, enemy.id);
+    if (vows.length) {
+      base.vowEnded = vows;
+    }
+  }
+  // Damage the acting creature deals the one that swallowed it, from
+  // whatever it did (acting-party.ts), counts toward its regurgitation.
+  noteBlowFromInside(campaign, encounter.id, enemy.id, Math.max(0, enemy.currentHp - updated.currentHp));
+  // One that dies frees what it swallowed, who climb out of the corpse
+  // (src/lib/dm/swallow.ts).
+  if (updated.status === "dead") {
+    const corpse = freeFromCorpse(campaign, updated);
+    if (corpse) {
+      base.swallowedFreed = corpse;
     }
   }
   // Enemy concentration: damage forces the CON save (DC 10 or half the

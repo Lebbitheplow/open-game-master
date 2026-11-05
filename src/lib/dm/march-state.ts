@@ -20,6 +20,9 @@ export type MarchState = {
   // a level of exhaustion whatever they carry. Absent: enough (a waterskin
   // is refilled on the way).
   waterRation?: "half" | "none";
+  // A meal the story named under the `supplies` variant (issue 793): the next
+  // dawn costs no ration and no thirst, and clears this.
+  mealAtDawn?: true;
   // The short rest a party has just finished, while its players choose how
   // many hit dice to spend (SRD 5.1: the player decides, one die at a time).
   // `ids` are the characters still choosing, `sung` those whose Song of Rest
@@ -30,6 +33,10 @@ export type MarchState = {
   // naming it decided it is, so a later call that names no material or size
   // does not make the iron gate a wooden one (src/lib/dm/object-damage.ts).
   objects?: Record<string, ObjectRecord>;
+  // The stretches marched in the last day (end instant, minutes, who), so a
+  // leg's forced march counts the hours each traveller marched before it
+  // that day (src/lib/srd/travel.ts forcedMarchSpan). Absent: none.
+  marched?: Array<{ end: number; minutes: number; ids: string[] }>;
 };
 
 // One named object as the clock keeps it. A clock written before the
@@ -95,6 +102,7 @@ export function normalizeMarch(record: Record<string, unknown>): MarchState {
     : undefined;
   const supplies = normalizeSupplies(record.supplies);
   const waterRation = record.waterRation === "half" || record.waterRation === "none" ? record.waterRation : undefined;
+  const mealAtDawn = record.mealAtDawn === true ? (true as const) : undefined;
   const objectsRaw = record.objects && typeof record.objects === "object" ? Object.entries(record.objects as Record<string, unknown>) : [];
   const objectEntries = objectsRaw
     .filter(([name]) => name.length <= 60)
@@ -106,11 +114,21 @@ export function normalizeMarch(record: Record<string, unknown>): MarchState {
   const ids = (list: unknown) =>
     Array.isArray(list) ? list.filter((id): id is string => typeof id === "string" && id.length <= 80).slice(0, 20) : [];
   const shortRest = restRaw && ids(restRaw.ids).length ? { ids: ids(restRaw.ids), sung: ids(restRaw.sung) } : undefined;
+  const marched = (Array.isArray(record.marched) ? record.marched : [])
+    .map((leg: { end?: unknown; minutes?: unknown; ids?: unknown } | null) => ({
+      end: bounded(leg?.end, 0, Number.MAX_SAFE_INTEGER),
+      minutes: bounded(leg?.minutes, 1, 48 * 60),
+      ids: ids(leg?.ids),
+    }))
+    .filter((leg): leg is { end: number; minutes: number; ids: string[] } => leg.end !== undefined && leg.minutes !== undefined && leg.ids.length > 0)
+    .slice(-12);
   return {
     ...(travelPace ? { travelPace } : {}),
     ...(supplies ? { supplies } : {}),
     ...(waterRation ? { waterRation } : {}),
+    ...(mealAtDawn ? { mealAtDawn } : {}),
     ...(shortRest ? { shortRest } : {}),
     ...(objects ? { objects } : {}),
+    ...(marched.length ? { marched } : {}),
   };
 }

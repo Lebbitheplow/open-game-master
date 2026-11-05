@@ -371,4 +371,46 @@ test("the heavy property lands on the profile for the Small-creature rule", () =
   assert.equal(shortsword.heavy, false);
 });
 
+test("A worn item's bonus reaches the unarmed strike it names, and nothing else", () => {
+  const wraps = [{ weapons: ["unarmed strike"], attack: 3, damage: 3, source: "Wraps" }];
+  const fist = resolveAttackWeapon([], [], "unarmed strike");
+  const bare = weaponAttackProfile(derived, [], fist);
+  const wrapped = weaponAttackProfile(derived, [], fist, { worn: wraps });
+  assert.equal(wrapped.toHit, bare.toHit + 3);
+  assert.equal(wrapped.damageExpression, "1+6");
+  assert.equal(wrapped.magicWeapon, true);
+  assert.equal(bare.magicWeapon, undefined);
+  // A monk keeps the Martial Arts die and adds the bonus to it.
+  const monk = weaponAttackProfile(derived, [], fist, { riders: ridersFor("monk", 5, "Martial Arts"), worn: wraps });
+  assert.equal(monk.damageExpression, "1d6+6");
+  // A longsword and an improvised object are not unarmed strikes.
+  const sword = weaponAttackProfile(derived, ["martial"], resolveAttackWeapon([{ name: "Longsword" }], ["martial"], "Longsword"), { worn: wraps });
+  assert.equal(sword.toHit, 6);
+  const object = weaponAttackProfile(derived, [], { displayName: "Chair", srd: null, unarmed: false, carried: true, bareObject: true }, { worn: wraps });
+  assert.equal(object.damageExpression, "1d4+3");
+  // A rider kept to ranged attacks never reaches a fist.
+  const atRange = weaponAttackProfile(derived, [], fist, { worn: [{ ...wraps[0], ranged: true }] });
+  assert.equal(atRange.toHit, bare.toHit);
+});
+
+test("A worn item's bonus to hit reaches the weapons it names and makes the swing magical; damage alone does not", () => {
+  const sword = resolveAttackWeapon([{ name: "Longsword" }], ["martial"], "Longsword");
+  const aimed = weaponAttackProfile(derived, ["martial"], sword, { worn: [{ weapons: ["longsword"], attack: 2, source: "Glove" }] });
+  assert.equal(aimed.toHit, 8);
+  assert.equal(aimed.magicWeapon, true);
+  const heavy = weaponAttackProfile(derived, ["martial"], sword, { worn: [{ weapons: ["longsword"], damage: 2, source: "Glove" }] });
+  assert.equal(heavy.toHit, 6);
+  assert.equal(heavy.magicWeapon, undefined);
+});
+
+test("An item that remakes the unarmed strike sets its die and type, unless the monk's die is bigger", () => {
+  const gauntlets = [{ weapons: ["unarmed strike"], attack: 1, damage: 1, unarmed: { die: "d8", damageType: "slashing" }, source: "Demon Armor" }];
+  const fist = resolveAttackWeapon([], [], "unarmed strike");
+  const plain = weaponAttackProfile(derived, [], fist, { worn: gauntlets });
+  assert.equal(plain.damageExpression, "1d8+4");
+  assert.equal(plain.damageType, "slashing");
+  const master = weaponAttackProfile(derived, [], fist, { riders: ridersFor("monk", 17, "Martial Arts"), worn: gauntlets });
+  assert.equal(master.damageExpression, "1d10+4");
+});
+
 console.log(`test-attack-logic: ${passed} tests passed`);

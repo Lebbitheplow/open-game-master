@@ -5,6 +5,7 @@
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { claimOncePerTurn, spendAction, spendAttack } from "@/lib/dm/action-budget";
 import { canAct } from "@/lib/dm/can-act";
+import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import type { CharacterSheet, SheetPet } from "@/lib/schemas/sheet";
@@ -26,6 +27,10 @@ export function petAttackCost(
   const allowed = canAct({ sheet, encounter, kind: pet.kind === "drake" ? "bonus" : "action" });
   if (!allowed.ok) {
     return { ...toolError(allowed), error: `${allowed.error} ${pet.name} attacks when ${sheet.name} commands it on their turn.` };
+  }
+  const heldOff = heldTurnRefusal(encounter, sheet);
+  if (heldOff) {
+    return heldOff;
   }
   const budget = budgetFor(encounter, sheet.id, attacksAllowedFor(sheet), conditionTurnShape(sheet.conditions));
   if (!budget) {

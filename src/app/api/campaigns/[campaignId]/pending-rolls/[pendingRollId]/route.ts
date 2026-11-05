@@ -1,28 +1,18 @@
 import { z } from "zod";
 import { isErrorResponse, requireMember, steersStory } from "@/lib/campaign-api";
 import { refuseDuringBreak } from "@/lib/dm/table-break";
-import { allocateSeq } from "@/lib/db/campaigns";
 import {
   dicePreferencesOf,
-  getDmTurn,
   getPendingRoll,
-  listPendingForTurn,
-  resolvePendingRoll,
-  setPendingCombatNote,
+  publicPendingRoll,
+  setPendingThrown,
 } from "@/lib/db/dm-turns";
-import { insertRoll } from "@/lib/db/rolls";
 import { defaultRng, expressionDice, rollExpression, rollExpressionWithDice } from "@/lib/dice";
+import { heroRollTag } from "@/lib/dice-script-logic";
 import { mayTypeFaces } from "@/lib/dice/held-rolls";
-import { recordInitiativeRoll, settleTurn, turnHolder } from "@/lib/dm/encounter-tools";
-import { applyInitiativeRefills } from "@/lib/dm/feature-hooks";
-import { applyPendingDamageRoll } from "@/lib/dm/enemy-damage";
-import { resolvePendingPcAttack } from "@/lib/dm/pc-attack";
-import { resumeDmTurn } from "@/lib/dm/turn";
-import { resumeHumanTurn } from "@/lib/dm/invoke";
-import { enqueueDmJob } from "@/lib/dm/queue";
-import { runInTurnScope } from "@/lib/dm/job-control";
-import { postPersonsRecord, startPersonsRecord } from "@/lib/dm/persons-record";
-import { publishWithSeq } from "@/lib/events";
+import { optionsForPending } from "@/lib/dm/after-roll";
+import { landPendingRoll } from "@/lib/dm/pending-roll-land";
+import { publishPersisted } from "@/lib/events";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -76,7 +66,9 @@ export async function POST(
     return Response.json({ error: "That roll was already resolved." }, { status: 409 });
   }
 
-  const isFallback = "fallback" in parsed.data;
+  // A screen that knows nothing of Portent shows this roll as one to type in:
+  // the server throws it, so the table is never left on a refused answer.
+  const isFallback = "fallback" in parsed.data || pending.parkedFor === "foretold";
   const isRoller = pending.userId === context.user.id;
   // Whoever runs the story can force the digital fallback when a player is
   // away from their physical dice: the lead in an AI campaign, the DM in a
@@ -84,6 +76,15 @@ export async function POST(
   const canForceFallback = steersStory(context);
   if (isFallback ? !isRoller && !canForceFallback : !isRoller) {
     return Response.json({ error: "This is not your roll." }, { status: 403 });
+  }
+
+  // The dice are already thrown and wait on the player's choice. A card from
+  // an older screen, or an agent seat answering the roll it was woken for,
+  // has no such choice to make: its answer keeps the dice as they lie, so the
+  // table is never left waiting on a button the answerer cannot see.
+  if (pending.thrown) {
+    const kept = landPendingRoll(context.campaign, pending, pending.thrown.outcome, pending.thrown.landing);
+    return kept ? Response.json({ roll: kept }) : Response.json({ error: "That roll was already resolved." }, { status: 409 });
   }
 
   // The faces the player typed or their Pixels dice reported. A "digital"
@@ -114,7 +115,7 @@ export async function POST(
   let outcome;
   try {
     if (isFallback) {
-      outcome = rollExpression(pending.expression);
+      outcome = rollExpression(pending.expression, undefined, { purpose: heroRollTag(pending.kind) });
     } else {
       // Per-index sides come from the expression itself, so each server-drawn
       // face matches the die it stands in for ("2d20kh1+1d4" -> [20, 20, 4]).
@@ -138,108 +139,36 @@ export async function POST(
     );
   }
 
-  const roll = insertRoll({
-    campaignId,
-    characterId: pending.characterId,
-    requestedBy: "player",
-    kind: pending.kind,
-    // "(physical)" marks a roll made entirely with real dice; once any face
-    // was drawn by the server the label would overclaim, so a mixed or fully
-    // digital submission keeps the plain detail.
-    detail:
-      isFallback || anyDigital
-        ? pending.detail
-        : `${pending.detail || pending.kind} (physical)`.trim(),
-    advantage: pending.advantage,
-    dc: pending.dc,
-    result: outcome,
-    // A parked pc_attack roll (to-hit or damage) is the PC's own; any other
-    // parked roll is a roll tool's free text about its sheet.
-    attacker:
-      pending.attack && pending.characterId
-        ? { kind: "sheet", id: pending.characterId, name: pending.attack.attacker }
-        : null,
-    // A roll the DM asked for behind the screen lands behind it.
-    visibility: pending.visibility,
-  });
-
-  const resolved = resolvePendingRoll(
-    pendingRollId,
-    isFallback ? "fallback" : "submitted",
-    roll.id,
-  );
-  if (!resolved) {
-    return Response.json({ error: "That roll was already resolved." }, { status: 409 });
+  // Something the character holds could still change this roll: its dice wait
+  // on the player, the way the server's own throw does.
+  // Only for the roller: whoever runs the story pressed fallback because the
+  // player is away, and the roll must not go back to waiting on them.
+  const options = isRoller ? optionsForPending(pending, outcome) : [];
+  if (options.length) {
+    const waiting = setPendingThrown(pendingRollId, {
+      outcome,
+      options,
+      choosing: false,
+      landing: {
+        status: isFallback ? "fallback" : "submitted",
+        physical: !isFallback && !anyDigital,
+        source: isFallback || allDigital ? "digital" : "physical",
+      },
+    });
+    if (!waiting) {
+      return Response.json({ error: "That roll was already resolved." }, { status: 409 });
+    }
+    publishPersisted(campaignId, "roll_pending", { pendingRoll: publicPendingRoll(waiting) });
+    return Response.json({ pendingRoll: publicPendingRoll(waiting) });
   }
 
-  publishWithSeq(campaignId, allocateSeq(campaignId), "roll_result", {
-    roll,
-    pendingRollId,
-    // Real dice already rolled on a real table; the overlay animates only
-    // rolls where every face was drawn digitally (a mixed submission still
-    // happened at the table).
+  const roll = landPendingRoll(context.campaign, pending, outcome, {
+    status: isFallback ? "fallback" : "submitted",
+    physical: !isFallback && !anyDigital,
     source: isFallback || allDigital ? "digital" : "physical",
   });
-
-  // A person's turn has no narration to carry the dice entered for it: they
-  // and what they did go to the chronicle now (issue 713).
-  const parkedOn = getDmTurn(pending.turnId);
-  const record = parkedOn?.actor === "human_dm" ? startPersonsRecord(context.campaign, parkedOn) : null;
-  // What the roll does lands in the player's request, but it is the parked
-  // turn's work: the order the last initiative locks (and the death saves
-  // the pointer then rolls), the damage it lands. Filed under that turn, its
-  // revert takes them with the rest (issue #622).
-  runInTurnScope(pending.turnId, () => {
-    const holder = turnHolder(campaignId);
-    // Combat initiative submitted from a physical table: record it; the last
-    // one locks the order. The note rides pending_rolls.combat_note so the
-    // resumed DM turn narrates what actually happened.
-    if (pending.kind === "initiative") {
-      const note = recordInitiativeRoll(campaignId, pending.characterId, roll.total);
-      if (note) {
-        setPendingCombatNote(pendingRollId, note);
-      }
-      // Superior Inspiration, Perfect Self: a use back on rolling initiative,
-      // for dice entered at the table as for dice the server threw.
-      if (pending.characterId) {
-        applyInitiativeRefills(context.campaign, pending.characterId);
-      }
-    } else if (pending.kind === "attack" && pending.attack) {
-      // A parked pc_attack to-hit roll: the server adjudicates it against the
-      // stored enemy AC and, on a hit, parks the damage roll so the turn stays
-      // paused until the player rolls their damage dice.
-      const note = resolvePendingPcAttack(pending, roll);
-      if (note) {
-        setPendingCombatNote(pendingRollId, note);
-      }
-    } else if (pending.kind === "damage" && pending.targetEnemyId) {
-      // Targeted damage applies server-side the moment the dice land; the
-      // enemy card updates now, not when the model gets around to it.
-      const note = applyPendingDamageRoll(pending, roll);
-      if (note) {
-        setPendingCombatNote(pendingRollId, note);
-      }
-    }
-
-    // A combatant who left the fight during the call takes no turn with them.
-    settleTurn(context.campaign, holder);
-  });
-  const after = record ? getDmTurn(pending.turnId) : null;
-  if (record && after) {
-    postPersonsRecord(context.campaign, after, record, { rollIds: [roll.id] });
+  if (!roll) {
+    return Response.json({ error: "That roll was already resolved." }, { status: 409 });
   }
-
-  const remaining = listPendingForTurn(pending.turnId).filter(
-    (entry) => entry.status === "pending",
-  );
-  if (!remaining.length) {
-    // A turn a person opened has no model waiting on the answer: the roll
-    // already published itself and applied what it applies, so closing the
-    // turn is the whole of "resuming" it.
-    if (!resumeHumanTurn(pending.turnId)) {
-      enqueueDmJob(campaignId, () => resumeDmTurn(campaignId, pending.turnId), { kind: "turn" });
-    }
-  }
-
   return Response.json({ roll });
 }

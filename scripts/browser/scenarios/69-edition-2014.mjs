@@ -3,7 +3,7 @@
 // her builder says she now has the 2014 Goliath's traits. An Orc's Primal
 // Intuition offers only its seven skills. An apothecary's shelf names how
 // magic is priced, and the term opens on the 2014 values.
-import { check, eventually, untilStill } from "../lib.mjs";
+import { check, eventually, untilStill, upTo } from "../lib.mjs";
 
 const PRIMAL_INTUITION = ["Animal Handling", "Insight", "Intimidation", "Medicine", "Nature", "Perception", "Survival"];
 
@@ -104,13 +104,32 @@ export default {
     const fresh = visible('[data-tour="homebrew-new"]').first();
     await eventually(() => fresh.isVisible(), { timeoutMs: 10_000, label: "New" });
     await t.tap(fresh);
-    const editor = page.getByRole("dialog").last();
+    // The editor by its own name, not the last dialog on the page: the
+    // locator is read again at every step, and a dialog that opens later (a
+    // term's explanation, an entry's ⓘ) became "the last" and held none of
+    // the form (edition-2014-desktop on #804's run waited 30 s for a stepper
+    // in it).
+    const editor = page.getByRole("dialog", { name: /^New species/i });
     const trains = editor.getByRole("button", { name: /What it trains/ });
     await eventually(() => trains.count(), { timeoutMs: 20_000, label: "the species form's training group" });
-    if ((await trains.first().getAttribute("aria-expanded")) !== "true") await t.tap(trains.first());
+    // The group opens on a tap and says so; read once, a tap that landed
+    // while the editor was still arriving left it shut with nothing said.
+    // Tapped again while it still reads shut (main CI on 0.32.2: one tap,
+    // and the group never said it opened in 15 s), with a pause after each
+    // tap so a slow render is not taken for a miss and shut again.
+    await eventually(
+      async () => {
+        if ((await trains.first().getAttribute("aria-expanded")) === "true") return true;
+        await t.tap(trains.first()).catch(() => undefined);
+        await upTo(async () => (await trains.first().getAttribute("aria-expanded")) === "true", 2_000);
+        return false;
+      },
+      { timeoutMs: 30_000, label: "the training group open" },
+    );
     const pickedFrom = editor.getByText("Picked from (none ticked: any skill)");
     check((await pickedFrom.count()) === 0, "no skill list before there is a pick");
     const raise = editor.getByRole("button", { name: "Raise Skills of the player's choice" });
+    await eventually(() => raise.isVisible(), { label: "the stepper for skills of the player's choice" });
     await t.tap(raise);
     await t.tap(raise);
     await eventually(() => pickedFrom.isVisible(), { label: "the skill list once there is a pick" });

@@ -1,4 +1,5 @@
 import { CONDITION_WORDS, conditionName, parseSaveEffect, SAVE_DC } from "@/lib/dm/monster-abilities";
+import type { TurnTie } from "@/lib/dm/save-effect";
 import type { SaveAbility } from "@/lib/bestiary/statblock";
 
 // What an attack's printed line says beyond its bonus and dice (SRD 5.1,
@@ -28,6 +29,9 @@ export type OnHitRider = {
   halfOnSave?: boolean;
   escapeDc?: number;
   rounds?: number;
+  // The turn it lasts until, the target's or the attacker's own
+  // (save-effect.ts SaveEffect.until).
+  until?: TurnTie;
   // No count and no repeat save: a long rest ends it, or a cure does.
   untilLongRest?: boolean;
   lasting?: boolean;
@@ -41,6 +45,15 @@ export type OnHitRider = {
   drainHeals?: boolean;
   // Swallowed whole (a purple worm, a kraken): blinded and restrained.
   swallow?: boolean;
+  // A poison's sleep on a bad enough save: failed by this much (a drow's
+  // hand crossbow, a pseudodragon's sting) or rolled this or lower (a
+  // sprite's shortbow). A couatl's bite sleeps on any failure, as its
+  // alsoCondition. `wakesOnDamage` when the text says damage wakes the
+  // sleeper; without it only the condition's end or a shake does (SRD 5.1,
+  // Couatl: "Another creature can use an action to shake the target awake").
+  unconsciousFailBy?: number;
+  unconsciousAtMost?: number;
+  wakesOnDamage?: boolean;
   // Clauses no engine models (a disease, a curse, lycanthropy, petrification
   // by stages, a drained Strength): the DM's to resolve, said so on the hit.
   manual?: string[];
@@ -101,6 +114,16 @@ export function diceTermsOf(expression: string): string {
     .filter((term) => /d/i.test(term))
     .map((term) => term.replace(/^\+/, ""))
     .join("+");
+}
+
+// Whether a failed save against a hit also puts the target to sleep: its
+// margin or its total against the rider's (attack-text.ts OnHitRider). A save
+// failed without a roll (`total` null) fails by any margin.
+export function asleepOnFailure(rider: Pick<OnHitRider, "dc" | "unconsciousFailBy" | "unconsciousAtMost">, total: number | null): boolean {
+  if (rider.unconsciousFailBy !== undefined) {
+    return total === null || (rider.dc ?? 0) - total >= rider.unconsciousFailBy;
+  }
+  return rider.unconsciousAtMost !== undefined && (total === null || total <= rider.unconsciousAtMost);
 }
 
 export function readAttackText(desc: string): AttackText {
@@ -334,7 +357,12 @@ function hitClause(text: string): string {
 // What a hit does besides its damage.
 function readOnHit(hit: string, effectOnly: boolean): OnHitRider | null {
   const rider: OnHitRider = {};
-  const dcAt = hit.search(SAVE_DC);
+  // A swallower's own save at the end of a turn it was hurt from inside
+  // ("must succeed on a DC 25 Constitution saving throw ... or regurgitate")
+  // is the creature's, not the target's: the hit's save is read before it
+  // (a kraken's bite asked the target that save to stay out).
+  const regurgitation = hit.search(/\bIf the [^.]*? takes \d+ damage or more on a single turn\b/i);
+  const dcAt = (regurgitation >= 0 ? hit.slice(0, regurgitation) : hit).search(SAVE_DC);
   if (dcAt >= 0) {
     // The save's damage is its own sentence's, or an "On a failure, ..."
     // sentence's right after it (A5e, and Tome of Beasts 3's spelled-out
@@ -358,8 +386,12 @@ function readOnHit(hit: string, effectOnly: boolean): OnHitRider | null {
       // "On a success, it takes half the damage" comes after the failure's.
       ...(struck.halfOnSave || (struck.damage && followed.halfOnSave) ? { halfOnSave: true } : {}),
       ...(laid.rounds ? { rounds: laid.rounds } : {}),
+      ...(laid.until ? { until: laid.until } : {}),
       ...(laid.untilLongRest ? { untilLongRest: true } : {}),
       ...(laid.lasting ? { lasting: true } : {}),
+      // "Poisoned and unconscious for 1d4 hours" (a lemurfolk's blowgun): the
+      // second condition a failure lays with the first.
+      ...(laid.condition && laid.also?.length ? { alsoCondition: laid.also[0] } : {}),
     });
     if (/repeat the saving throw/i.test(rest)) {
       rider.repeatSave = true;
@@ -389,7 +421,29 @@ function readOnHit(hit: string, effectOnly: boolean): OnHitRider | null {
       rider.drainHeals = true;
     }
   }
-  if (/\bis swallowed\b/i.test(hit)) {
+  // The sleep a poisoned hit can bring. Read here, not left in `manual`:
+  // the text was dropped unread, so a drow's bolt or a couatl's bite poisoned
+  // and never put anyone to sleep.
+  // The wordings: SRD 5.1's drow, pseudodragon, sprite, homunculus and
+  // couatl, and the other books' ("If the save fails by 5 or more", "A
+  // poisoned target is also unconscious while poisoned in this way", "On a
+  // failure  it falls unconscious").
+  const failBy = /\bfails?(?: the (?:saving throw|save))? by (\d{1,2}) or more\b[^.]*?\bunconscious\b/i.exec(hit);
+  const atMost = /\bsaving throw result is (\d{1,2}) or lower\b[^.]*?\bunconscious\b/i.exec(hit);
+  const always = /\b(?:until this poison ends, the (?:target|creature) is unconscious|(?:target|creature) is (?:also )?unconscious (?:while poisoned (?:in )?this way|until the poisoned condition ends)|while poisoned (?:in )?this way, the (?:target|creature) is unconscious|on a fail(?:ure|ed save)\W+(?:it|the target) falls unconscious)\b/i;
+  if (failBy) {
+    rider.unconsciousFailBy = Number(failBy[1]);
+  } else if (atMost) {
+    rider.unconsciousAtMost = Number(atMost[1]);
+  } else if (!rider.alsoCondition && rider.condition && rider.condition !== "unconscious" && always.test(hit)) {
+    rider.alsoCondition = "unconscious";
+  }
+  const asleep = Boolean(failBy || atMost || rider.alsoCondition === "unconscious");
+  if (asleep && /\b(?:wakes? up if it takes damage|until it takes damage|if it takes damage\b[^.]*\bwakes? up|ends for (?:the )?target if it takes damage|until it is no longer poisoned\W+it takes damage)\b/i.test(hit)) {
+    rider.wakesOnDamage = true;
+  }
+  // "is swallowed", and the purple worm's "or be swallowed by the worm".
+  if (/\b(?:is|be) swallowed\b/i.test(hit)) {
     rider.swallow = true;
   }
   const sentences = hit.split(/(?<=\.)\s+/).map((sentence) => sentence.trim()).filter(Boolean);
@@ -404,6 +458,11 @@ function readOnHit(hit: string, effectOnly: boolean): OnHitRider | null {
   // is still rolled, and the GM is told the rest.
   const unmodelled = /\b(?:pushed|pulled|knocked back|flung|hurled|speed (?:is )?(?:halved|reduced)|half (?:its )?speed|drops?\b[^.]*\b(?:weapon|holding|held)|can't take reactions|can't regain hit points|teleport\w*|infernal wound|saving throw or die|lasts until removed|at the start of each of the target's turns, the target takes)\b/i;
   manual = [...manual, ...sentences.filter((sentence) => unmodelled.test(sentence) && !manual.includes(sentence))];
+  // Shaking a sleeper awake is the GM's to do (clear_condition) when the
+  // story has someone spend the action on it.
+  if (asleep) {
+    manual = [...manual, ...sentences.filter((sentence) => /\bshake (?:the target|it|them) awake\b/i.test(sentence) && !manual.includes(sentence))];
+  }
   // A hit that only lays an effect: the condition its first sentence names
   // ("The target is restrained by webbing", "it is knocked prone"), and what
   // else it says (the webbing's escape, an attachment, a sleep) for the DM.
@@ -413,6 +472,11 @@ function readOnHit(hit: string, effectOnly: boolean): OnHitRider | null {
       rider.condition = conditionName(laid[1]);
     }
     manual = [...new Set([...manual, ...sentences.slice(laid ? 1 : 0)])];
+  }
+  // A swallow is the engine's to play (src/lib/dm/swallow.ts): its acid,
+  // cover, regurgitation and corpse are not left to the GM.
+  if (rider.swallow) {
+    manual = manual.filter((sentence) => !/\b(?:swallowed|regurgitate|escape from the corpse)\b/i.test(sentence));
   }
   manual = manual.slice(0, 3);
   if (manual.length) {

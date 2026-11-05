@@ -43,6 +43,8 @@ export const STRIPPED_COLUMNS: ReadonlySet<string> = new Set(["embedding"]);
 // campaigns columns that hold in-place world state; restored on rewind.
 export const CAMPAIGN_SNAPSHOT_COLUMNS = [
   "scene",
+  // Where the narration of the party's place starts, rewound with it.
+  "scene_since_seq",
   "quest_log_json",
   "story_summary",
   "story_summary_count",

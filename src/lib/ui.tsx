@@ -63,7 +63,7 @@ export const ui = {
   railCellActive:
     "bg-amber-400/10 text-amber-300 shadow-[0_1px_0_rgba(244,224,166,0.15)_inset,0_0_16px_rgba(212,171,58,0.12)] hover:bg-amber-400/10 hover:text-amber-300",
   railCellActiveEmber:
-    "bg-ember-500/10 text-ember-300 shadow-[0_1px_0_rgba(255,190,143,0.15)_inset,0_0_16px_rgba(224,112,58,0.18)] hover:bg-ember-500/10 hover:text-ember-300",
+    "rail-ember bg-ember-500/10 text-ember-300 shadow-[0_1px_0_rgba(255,190,143,0.15)_inset,0_0_16px_rgba(224,112,58,0.18)] hover:bg-ember-500/10 hover:text-ember-300",
 } as const;
 
 // 48px pixel-art tile with the gold glow, framed on indigo night.

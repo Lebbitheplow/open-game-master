@@ -39,8 +39,20 @@ export type Purse = { gold: number; copper: number };
 export const COPPER_PER_GOLD = DENOMINATION_COPPER.gp;
 
 // A purse's true value, which is the number every calculation should use.
+// A sheet saved before copper was kept has no copper at all (a library
+// character's stored JSON is read as it was written), and NaN would show
+// its 50 gp as "0 gp".
 export function purseCopper(purse: Purse): number {
-  return Math.round(purse.gold) * COPPER_PER_GOLD + Math.round(purse.copper);
+  return Math.round(Number(purse.gold) || 0) * COPPER_PER_GOLD + Math.round(Number(purse.copper) || 0);
+}
+
+// How many coins the purse is, for the load they weigh (50 to the pound,
+// whatever the metal): the gold pieces, and the remainder under a gold piece
+// in the fewest silver and copper. Counting only the gold left a pouch of
+// silver weightless.
+export function purseCoins(purse: Purse): number {
+  const remainder = purseCopper(purse) % COPPER_PER_GOLD;
+  return Math.max(0, Math.round(Number(purse.gold) || 0)) + Math.floor(remainder / DENOMINATION_COPPER.sp) + (remainder % DENOMINATION_COPPER.sp);
 }
 
 // The inverse. Negative totals clamp to empty rather than producing a debt:
@@ -151,6 +163,32 @@ export function unreadCoins(text: string): string {
   return number
     ? `Coins come in whole numbers: ${number.unread}. Write a part of a coin in smaller coins, like "1 gp 5 sp"`
     : `"${text}" is not an amount in the coins' codes: write it with pp, gp, ep, sp and cp, like "3 gp 4 sp"`;
+}
+
+// What a coin change moves, in copper, from the two ways it can be said: a
+// whole-gold delta, or coins in the codes. Coins win over the delta's size.
+// Their direction is their own written sign, else the delta's sign, and with
+// neither it is asked for again: "5 sp" with a zero delta used to pay the
+// character five silver when the fiction had them hand it over.
+export type CoinMove = { copper: number } | { problem: string };
+
+export function coinMove(delta: unknown, coins: unknown): CoinMove {
+  const whole = Number(delta ?? 0) || 0;
+  const written = String(coins ?? "").trim();
+  if (!written) {
+    return whole
+      ? { copper: whole * COPPER_PER_GOLD }
+      : { problem: 'needs a nonzero delta, or signed coins like "-5 sp"' };
+  }
+  const amount = written.replace(/^[-\u2212+]\s*/u, "");
+  const copper = parseCoins(amount);
+  if (copper === null) {
+    return { problem: unreadCoins(amount) };
+  }
+  const sign = amount === written ? Math.sign(whole) : written.startsWith("+") ? 1 : -1;
+  return sign
+    ? { copper: sign * copper }
+    : { problem: `"${written}" does not say gain or spend: write "-${written}" to spend it or "+${written}" to gain it` };
 }
 
 export type PurseChange = {

@@ -6,6 +6,7 @@ import { InfoButton } from "@/components/ui/InfoDialog";
 import { cn } from "@/lib/cn";
 import { contentSlug } from "@/lib/help";
 import { gearFromHomebrewData, type HomebrewGear } from "@/lib/homebrew/gear";
+import { formatPrice, purseCopper } from "@/lib/srd/currency";
 import { packRowPrice } from "@/lib/srd/starting-wealth";
 import CatalogBrowser, { type CatalogSection } from "./CatalogBrowser";
 import ContentPicker, { type PickerEntry } from "./ContentPicker";
@@ -244,7 +245,7 @@ export default function EquipmentSection({
             <Coins className="size-3.5 self-center text-amber-300/80" />
             <span className="text-xs text-stone-400">Coin left after the gear</span>
             <span key={`${purse.gold}-${purse.copper}`} className="reveal font-mono text-sm text-amber-200">
-              {purse.gold} gp{purse.copper ? ` ${purse.copper} cp` : ""}
+              {formatPrice(purseCopper(purse))}
             </span>
           </div>
         )}

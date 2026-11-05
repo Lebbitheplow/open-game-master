@@ -232,6 +232,27 @@ console.log(`continue-scene: ${passed} tests passed`);
     assert.equal(model.readerRequests.length, 1, "the continuation was read for asides");
   });
 
+  await continues.test("A line of orphan closers leaves a continuation (issue 744).", async () => {
+    const before = messages.getCampaignMessage(first.id).content;
+    const more = "The strap creaks and the hammer swings once.";
+    model.script([reply({ text: `)*\n\n${more}` })]);
+    model.claims([[]]);
+    const continued = await runContinueScene({ campaignId: world.campaignId, messageId: first.id });
+    assert.ok("message" in continued, continued.error);
+    assert.equal(continued.message.content, `${before}\n\n${more}`);
+  });
+
+  await continues.test("In a fight a continuation loses the fight's bookkeeping, as a turn's own narration does.", async () => {
+    await world.invoke("start_encounter", { enemies: "goblin", summary: "A goblin bursts from the reeds." });
+    const before = messages.getCampaignMessage(first.id);
+    const story = "The goblin snarls and circles Kara on the slick planks.";
+    model.script([reply({ text: `**Round 1:** ${story}\n\nTurn order: 1. Kara 2. Goblin` })]);
+    model.claims([[]]);
+    const continued = await runContinueScene({ campaignId: world.campaignId, messageId: first.id });
+    assert.ok("message" in continued, continued.error);
+    assert.equal(continued.message.content, `${before.content}\n\n${story}`);
+  });
+
   model.close();
   world.close();
   continues.finish();

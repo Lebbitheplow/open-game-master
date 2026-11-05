@@ -8,6 +8,8 @@ import {
   type CampaignMessage,
 } from "@/lib/db/messages";
 import { withoutAsides } from "@/lib/dm/claims-logic";
+import { fightNames } from "@/lib/db/encounters";
+import { withoutCombatBookkeeping, withoutOrphanClosers, withoutToolTalk } from "@/lib/dm/narration-tidy-logic";
 import { readAsides } from "@/lib/dm/claims";
 import { enqueueDmJob } from "@/lib/dm/queue";
 import { requestDmMessage } from "@/lib/dm/model";
@@ -122,6 +124,9 @@ export async function runContinueScene(input: {
   // adds nothing.
   if (continuation) {
     continuation = withoutAsides(continuation, await readAsides(campaign, listSheets(campaign.id), turn, continuation), campaign.gameSettings.tableLanguage);
+    // And the fight's bookkeeping and tool talk, as a turn's own parts lose
+    // them before the table reads them (turn.ts, narration-tidy-logic.ts).
+    continuation = withoutOrphanClosers(withoutToolTalk(withoutCombatBookkeeping(continuation, fightNames(campaign.id, turn.createdAt), campaign.gameSettings.tableLanguage))).trim();
   }
   if (!continuation) {
     return { error: "The GM returned nothing; try again.", status: 502 };

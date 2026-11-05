@@ -40,6 +40,7 @@ import type { Note } from "@/lib/db/notes";
 import type { Genre, LastingCompanionBlock } from "@/lib/schemas/game-settings";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { computeSheetDerived, formatModifier } from "@/lib/srd";
+import { resourceName } from "@/lib/srd/class-resources";
 import { usePackArt } from "@/lib/worlds/use-pack-art";
 import { textKey } from "@/lib/language/text-logic";
 import { heroFell, livingHero, switchesHeroes } from "@/lib/characters/fallen-logic";
@@ -731,7 +732,7 @@ export function PartyPanel({
                 <span className="flex min-w-0 items-center gap-1 truncate">
                   <PawPrint className="size-3 shrink-0 text-stone-500" />
                   {pet.name}
-                  {textKey(pet.name) !== textKey(pet.form) ? ` (${pet.form})` : ""}
+                  {textKey(pet.name) !== textKey(pet.form) ? ` (${pet.form}${pet.creatureType ? `, ${pet.creatureType}` : ""})` : pet.creatureType ? ` (${pet.creatureType})` : ""}
                 </span>
                 <span className={cn("font-mono", pet.hp <= 0 && "text-red-400")}>
                   {pet.hp}/{pet.maxHp}
@@ -834,10 +835,10 @@ export function PartyPanel({
                 {Object.entries(sheet.resources).map(([id, state]) => (
                   <span
                     key={id}
-                    className="rounded-full border border-stone-700/50 bg-stone-950/60 px-2 py-0.5 text-[10px] capitalize text-stone-300"
+                    className="rounded-full border border-stone-700/50 bg-stone-950/60 px-2 py-0.5 text-[10px] text-stone-300"
                     title="Limited-use resource: remaining/max"
                   >
-                    {id.replaceAll("_", " ")} {state.max - state.used}/{state.max}
+                    {resourceName(id)} {state.max - state.used}/{state.max}
                   </span>
                 ))}
               </div>

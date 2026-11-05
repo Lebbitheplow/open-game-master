@@ -4,6 +4,7 @@ import type { FxEvent } from "@/lib/battlemap/fx-plan";
 import type { TokenIntent } from "@/lib/battlemap/intent";
 import type { PlayerMapView } from "@/lib/battlemap/view-types";
 import type { Gender } from "@/lib/gender";
+import { storedSex, type Sex } from "@/lib/actor-sex-logic";
 import type { Ruler } from "@/lib/battlemap/board-move";
 
 // The board view contract: what the table page posts into an addon's
@@ -52,6 +53,9 @@ export type BoardSnapshotToken = {
   // Null when it is neither (a prop, a bystander the DM put down by hand).
   creature: { type: string; slug: string; cr: number } | null;
   character: { race: string; class: string; gender?: Gender } | null;
+  // An enemy's or an NPC's Female or Male, the same gender its flat face
+  // reads (src/lib/actor-sex-logic.ts); absent otherwise and from older hosts.
+  sex?: Sex;
   // Auras around it, by reach in feet and what they do.
   auras: Array<{ radiusFeet: number; tone: string }>;
 };
@@ -167,6 +171,7 @@ export function boardSnapshot(
       id: token.id,
       kind: token.kind,
       name: token.name,
+      ...(storedSex(token.sex) ? { sex: storedSex(token.sex) } : {}),
       x: token.x,
       y: token.y,
       size: view.tokenFootprint[token.id] ?? 1,
@@ -256,7 +261,7 @@ export type ViewCameraState = { x: number; y: number; zoom: number };
 
 // Host-owned presentation only; callbacks and gameplay rules never cross the bridge.
 export type BoardActionMenu = { tokenId: string; hint?: string; actions: Array<{ id: string; label: string; disabled: string | null }> };
-export const BOARD_VALUE_CONTROLS = ["prompt-submit", "move-mode", "view", "play-as", "tool", "place-kind", "place-name", "measure-shape", "measure-size", "draw-kind", "draw-tone", "hand-card", "hand-target", "hand-option", "hand-rider", "hand-choice", "hand-share", "hand-trigger", "order-entry", "order-name", "order-score"] as const;
+export const BOARD_VALUE_CONTROLS = ["prompt-submit", "move-mode", "view", "play-as", "tool", "place-kind", "place-name", "measure-shape", "measure-size", "draw-kind", "draw-tone", "hand-card", "hand-target", "hand-option", "hand-rider", "hand-choice", "hand-count", "hand-mix", "hand-share", "hand-trigger", "order-entry", "order-name", "order-score"] as const;
 export const BOARD_CONTROL_IDS = ["end-turn", "undo-move", "zoom-in", "zoom-out", "fit", "follow-turn", "camera-pull", "camera-lock", "camera-free", "camera-release", "cancel", "prompt-cancel", "order", "panel-close", "tools", "enlarge", "point", "draw", "draw-ttl", "draw-erase", "measure-clear", "measure-copy", "hand-back", "hand-play", "hand-edit", "hand-area-clear", "hand-confirm", "hand-keep", "order-up", "order-down", "order-delay", "order-remove", "order-take", "order-back", "order-forward", "order-reset", "order-insert", "order-enemies-play", "order-enemies-pass", "order-companion", "confirm", ...BOARD_VALUE_CONTROLS] as const;
 export type BoardControlId = typeof BOARD_CONTROL_IDS[number];
 export type BoardControl = { id: BoardControlId; label: string; disabled: string | null; value?: string; options?: Array<{ value: string; label: string; disabled: string | null }>; input?: { value: string; numeric?: boolean } };

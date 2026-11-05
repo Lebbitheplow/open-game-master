@@ -59,6 +59,9 @@ export type TurnBudget = {
   // This turn's action went on casting a spell (an attack-roll spell through
   // pc_attack), so the swings of Extra Attack are not there to take.
   castThisAction?: boolean;
+  // Actions this turn that went on a held beam (src/lib/dm/witch-bolt.ts), so
+  // an action spent on anything else can be told from them.
+  beamActions?: number;
   // Flurry of Blows: bonus-action unarmed strikes still to make this turn,
   // bought with 1 ki after the Attack action (src/lib/dm/bonus-actions.ts).
   flurryStrikes?: number;
@@ -86,6 +89,10 @@ export type StruckSwing = { target: string; hit: boolean; damage?: number };
 // the once-per-turn list, so the action comes back if the casting ends on
 // this turn before anything else spends it (turn-budget.ts budgetFor).
 export const CASTING_HELD = "casting:held";
+
+// The creatures a character's weapon hit on their own turn, one budget key each,
+// for the spend that rides such a hit (Arcane Jolt).
+export const WEAPON_HIT = "weapon-hit:";
 
 export function freshBudget(input: {
   ownerId: string;
@@ -217,6 +224,13 @@ export const ACTION_SURGED = "action surge";
 // (jump-move.ts reads it).
 export const WIND_STEP = "step of the wind";
 
+// The whole actions this turn has spent: its own, and the one Action Surge
+// added once that is gone. Haste's restricted extra action is not one of them.
+export function actionsSpent(budget: TurnBudget): number {
+  const surged = budget.oncePerTurn.includes(ACTION_SURGED) ? 1 : 0;
+  return Math.max(0, (budget.actionUsed ? 1 : 0) + surged - (budget.grantedActions ?? 0));
+}
+
 // Grants one more action this turn. Called when Action Surge is spent
 // (src/lib/dm/action-tools.ts grantActionSurge).
 export function grantAction(budget: TurnBudget): TurnBudget {
@@ -301,8 +315,9 @@ export function spendAction(
 // What kind of attack a swing is, for the spends that care. `unarmed` lets
 // a Flurry of Blows strike be spent once the Attack action's own swings are
 // gone; `hasteOk: false` keeps Haste's extra action, which buys one WEAPON
-// attack, from paying for a grapple or a shove.
-export type AttackSpendOptions = { unarmed?: boolean; hasteOk?: boolean };
+// attack, from paying for a grapple or a shove. `flurry` is an unarmed
+// strike the player declared as one of Flurry of Blows'.
+export type AttackSpendOptions = { unarmed?: boolean; hasteOk?: boolean; flurry?: boolean };
 
 // One swing of the Attack action. The first attack spends the action; the
 // rest come free until Extra Attack runs out. Off-hand attacks are a bonus
@@ -318,11 +333,14 @@ export function spendAttack(
   }
   const swingsGone = budget.attacksMade >= budget.attacksAllowed || budget.castThisAction === true;
   // Flurry of Blows is spent only once the Attack action has no swing left
-  // to give, so a monk with Extra Attack uses both before the flurry.
+  // to give, so a monk with Extra Attack uses both before the flurry. A
+  // strike declared as the flurry's is one of its strikes whatever is left:
+  // counted as the action's swing, a monk's one swing and then a flurry spent
+  // the ki and had its Open Hand Technique refused on both strikes.
   if (
     options.unarmed &&
     (budget.flurryStrikes ?? 0) > 0 &&
-    (swingsGone || (budget.attacksMade === 0 && budget.actionUsed))
+    (swingsGone || (budget.attacksMade === 0 && budget.actionUsed) || options.flurry)
   ) {
     const left = (budget.flurryStrikes ?? 0) - 1;
     return {

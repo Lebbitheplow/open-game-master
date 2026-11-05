@@ -110,21 +110,74 @@ test("a window opened after turn 8 is open for the next three AI turns and then 
 
 // ---- the table's own limits ----
 
-test("one word list for lines and veils, matched at the start of a word", () => {
-  for (const said of ["Romance", "no romantic subplots", "Flirting", "seduction", "love interests"]) {
+// A line or veil naming romance, in each of the table languages: the engine
+// reads it as the table saying no NPC makes a romantic advance, as it always
+// did for an English one (a table may also write its lines in English).
+const ROMANCE_SAID = [
+  ["romance", "no romantic subplots", "Flirting", "seduction", "love interests", "amorous advances", "courtship"],
+  ["romanticismo", "niente storie d'amore", "seduzione", "flirt", "relazioni amorose", "corteggiamento"],
+  ["romance", "pas d'intrigues romantiques", "Séduction", "flirt", "histoires d'amour", "intrigues amoureuses"],
+  ["romance", "nada romántico", "seducción", "coqueteo", "amoríos", "historias de amor"],
+  ["Romantik", "keine Liebesgeschichten", "Verführung", "Flirten", "Romanze", "Liebelei"],
+  ["romântico", "sedução", "flerte", "histórias de amor"],
+  ["romantiek", "verleiding", "liefdesrelaties"],
+  ["romantik", "forførelse", "kærlighedshistorier"],
+  ["romantikk", "flørting", "romanse"],
+  ["kärlekshistorier", "förförelse", "flört"],
+  ["romanttinen", "viettely", "rakkaustarina", "romanssi"],
+  ["romantika", "románc", "csábítás", "szerelmi szál"],
+  ["romansa", "kisah asmara", "merayu"],
+  ["романтика", "флирт", "соблазнение", "любовная линия"],
+  ["rómánsaíocht", "suirí", "cliúsaíocht"],
+];
+// Lines that say nothing of romance, and words one stem away from it in
+// another table language: none of them switches romance off.
+const NOT_ROMANCE = [
+  "spiders",
+  "aromantic characters",
+  "gore",
+  "the death of loved ones",
+  "harm to children",
+  "Romans",
+  "Roman legions",
+  "Romania",
+  "romanzi",
+  "una seduta spiritica",
+  "amore per gli animali",
+  "Liebe zu Tieren",
+  "Folter",
+];
+
+test("one word list for lines and veils, in every table language, matched at the start of a word", () => {
+  for (const said of ROMANCE_SAID.flat()) {
     assert.equal(logic.namesRomance(said), true, said);
+    assert.equal(logic.namesRomance(said.normalize("NFD")), true, `${said}, typed decomposed`);
   }
-  for (const said of ["spiders", "aromantic characters", "gore"]) {
+  for (const said of NOT_ROMANCE) {
     assert.equal(logic.namesRomance(said), false, said);
   }
 });
 
-test("a family table, or a line or veil naming romance, rules advances out", () => {
+test("a family table, or a line or veil naming romance in any table language, rules advances out", () => {
   assert.match(logic.romanceSafetyBlock({ boundaries: "family", lines: [], veils: [] }), /family table/);
-  assert.match(logic.romanceSafetyBlock({ boundaries: "standard", lines: ["romance"], veils: [] }), /line at "romance"/);
-  assert.match(logic.romanceSafetyBlock({ boundaries: "mature", lines: [], veils: ["Seduction scenes"] }), /veiled "Seduction scenes"/);
-  assert.equal(logic.romanceSafetyBlock({ boundaries: "standard", lines: ["spiders"], veils: ["torture"] }), null);
+  for (const said of ROMANCE_SAID.flat()) {
+    assert.match(logic.romanceSafetyBlock({ boundaries: "standard", lines: [said], veils: [] }), /drew a line/, `line: ${said}`);
+    assert.match(logic.romanceSafetyBlock({ boundaries: "mature", lines: [], veils: [said] }), /veiled/, `veil: ${said}`);
+  }
+  assert.equal(logic.romanceSafetyBlock({ boundaries: "standard", lines: NOT_ROMANCE, veils: ["torture"] }), null);
   assert.equal(logic.romanceSafetyBlock(undefined), null);
+});
+
+test("with Romance off, or a line naming romance in any language, no player character is open to advances", () => {
+  const sheets = [{ name: "Kael", isCompanion: false, openToAdvances: true, deathSaves: null }];
+  const settings = (romance, lines) => ({ gameSettings: { relationships: "on", romance, safety: { boundaries: "standard", lines, veils: [] } } });
+  for (const said of ROMANCE_SAID.flat()) {
+    assert.deepEqual(logic.openToAdvanceNames(settings("on", [said]), sheets), [], said);
+  }
+  assert.deepEqual(logic.openToAdvanceNames(settings("on", ["spiders"]), sheets), ["Kael"]);
+  for (const lines of [[], ["spiders"], ["Romantik"]]) {
+    assert.deepEqual(logic.openToAdvanceNames(settings("off", lines), sheets), [], lines.join());
+  }
 });
 
 // ---- presence ----

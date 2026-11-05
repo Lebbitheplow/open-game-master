@@ -15,6 +15,7 @@
 // made strikes from is the engine's to judge: it moves the weapon and
 // measures the reach from it. Pure.
 import { computeSheetDerived, spellAbilityFor, spellAttackFor } from "@/lib/srd";
+import { runningItemSpell } from "@/lib/srd/item-cast-credit";
 import { activeConditionEffects } from "@/lib/srd/condition-effects";
 import type { GrantedAttack } from "@/lib/srd/condition-effect-types";
 import { grantedAttackDice } from "@/lib/srd/granted-attacks";
@@ -78,9 +79,12 @@ export function grantedAttackCards(sheet: CharacterSheet, turn: HandTurn, allowe
     seen.add(textKey(attack.name));
     const meta = metaOf[condition];
     const spell = meta?.spell ?? attack.name;
-    const dice = grantedAttackDice(attack, sheet.level, meta?.slotLevel ?? null);
+    // A spell an item cast strikes with the numbers it was cast with.
+    const fromItemCast = runningItemSpell(sheet, spell);
+    const dice = grantedAttackDice(attack, sheet.level, meta?.slotLevel ?? fromItemCast?.level ?? null);
     const ability = sheet.spellcasting ? spellAbilityFor(sheet, spell) : null;
-    const damage = attack.abilityToDamage && ability ? addFlat(dice, derived.abilityMods[ability]) : dice;
+    const modifier = fromItemCast?.abilityMod ?? (ability ? derived.abilityMods[ability] : null);
+    const damage = attack.abilityToDamage && modifier !== null ? addFlat(dice, modifier) : dice;
     const toHit = spellAttackFor(sheet, spell) ?? derived.spellAttack;
     const rides = ridesActivation(attack, meta, turn);
     const cost = rides ? "free" : attack.bonusAction ? "bonus" : "action";

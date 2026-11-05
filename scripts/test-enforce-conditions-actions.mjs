@@ -143,6 +143,18 @@ await test("A prone creature's only movement is to crawl at double cost, unless 
   }
 });
 
+await test("Standing up on a move keeps what the move ended: One with Shadows' invisibility stays gone.", async () => {
+  kit.reset(hero.id, { conditions: ["prone", "invisible"], conditionMeta: { invisible: { source: "One with Shadows" } } });
+  goHome();
+  try {
+    assert.equal(await walk(world.owner, step.x, step.y), 200);
+    assert.deepEqual(world.sheet(hero.id).conditions, [], "the move ends the invisibility and standing ends prone");
+  } finally {
+    kit.reset(hero.id);
+    goHome();
+  }
+});
+
 kit.offBoard();
 
 // ---- actions ----

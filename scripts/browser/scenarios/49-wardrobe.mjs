@@ -57,6 +57,49 @@ export default {
     const rowOf = (name) => sheet.locator(`[data-gear-row="${name}"]`).first();
     const before = await gear();
     check(before[PROTECTION]?.equipped === true && before[ELVENKIND]?.equipped === false, "Vex starts in the Cloak of Protection");
+    // Its details say it requires attunement, and only items the magic item
+    // table holds offer the button, so a ring left out could never be attuned.
+    const ring = rowOf("Ring of Spell Storing");
+    // What the ring holds is read under its row (src/lib/srd/spell-storing.ts).
+    await eventually(() => sheet.getByText("Holds Fireball (level 3)").count(), { label: "what the Ring of Spell Storing holds" });
+    await t.shot("stored");
+    const storedTheme = await page.evaluate(() => document.documentElement.dataset.theme ?? "");
+    await page.evaluate(() => (document.documentElement.dataset.theme = "light"));
+    // Past the theme's fade, so the shot shows the day colors.
+    await page.waitForTimeout(800);
+    await t.shot("stored-day");
+    await page.evaluate((mode) => (document.documentElement.dataset.theme = mode), storedTheme);
+    await ring.scrollIntoViewIfNeeded().catch(() => undefined);
+    await t.tap(ring.getByRole("button", { name: "attune", exact: true }));
+    await eventually(async () => (await gear())["Ring of Spell Storing"]?.attuning === true, { label: "the Ring of Spell Storing attuning" });
+    await eventually(() => ring.getByRole("button", { name: "cancel", exact: true }).count(), { label: "the ring's attunement offered back" });
+    // The row is at its fullest here, with the attuning mark beside both
+    // buttons. The buttons keep their whole width and the name gives way: a
+    // flex row shrank all three, which cut the end off "cancel" on a phone.
+    // Measured on the words against the box inside the padding, unrounded:
+    // scrollWidth and clientWidth round apart by a pixel on a desktop font,
+    // which read a whole "cancel" as cut.
+    const cut = await ring.evaluate((row) => [...row.querySelectorAll("button")].filter((button) => {
+      const words = document.createRange();
+      words.selectNodeContents(button);
+      const style = getComputedStyle(button);
+      const inner = button.getBoundingClientRect().width - ["borderLeftWidth", "borderRightWidth", "paddingLeft", "paddingRight"].reduce((sum, key) => sum + parseFloat(style[key]), 0);
+      return words.getBoundingClientRect().width > inner + 0.5;
+    }).map((button) => button.textContent));
+    check(cut.length === 0, `the attuning ring's buttons show their whole words (cut: ${cut.join(", ") || "none"})`);
+    // On the narrowest phone the row still fits and the name stays readable.
+    if (viewport === "phone") {
+      const size = page.viewportSize();
+      await page.setViewportSize({ width: 320, height: size.height });
+      await eventually(async () => {
+        const fit = await ring.evaluate((row) => ({ spill: row.scrollWidth - row.clientWidth, name: row.querySelector("span.truncate").clientWidth }));
+        return fit.spill <= 0 && fit.name >= 40 ? fit : null;
+      }, { timeoutMs: 3_000, label: "the attuning ring's row fitting a 320px phone with its name showing" });
+      await t.shot("attuning-320");
+      await page.setViewportSize(size);
+    }
+    await t.shot("attuning");
+
     await rowOf(ELVENKIND).scrollIntoViewIfNeeded().catch(() => undefined);
     await t.tap(rowOf(ELVENKIND).getByRole("button", { name: "wear", exact: true }));
     const ask = sheet.getByRole("group", { name: `Wear ${ELVENKIND}?` });

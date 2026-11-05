@@ -4,11 +4,12 @@
 import { CHECK_KEY_FORM } from "@/lib/dm/catalog-roll";
 import { DEED_SEVERITIES } from "@/lib/dm/companion-values-logic";
 
-import type { CatalogEntry } from "@/lib/dm/catalog-types";
+import { MEAL_FIELD, type CatalogEntry } from "@/lib/dm/catalog-types";
 import { cueOptions, sceneOptions } from "@/lib/ambience/catalog";
 import { RELATIONSHIP_BEAT_NAMES } from "@/lib/dm/relationship-logic";
 import { NOTE_LIMIT_WORDS } from "@/lib/dm/relationship-note";
 import { TOLD_GENDERS } from "@/lib/gender";
+import { NPC_RACE_OPTIONS } from "@/lib/npc-race";
 import {
   ABILITY_OPTIONS as ABILITIES,
   DIFFICULTY_OPTIONS as DIFFICULTIES,
@@ -38,14 +39,14 @@ const NOTE = {
   help: NOTE_LIMIT_WORDS,
 };
 
-// The kind of place, from the ambience beds: its sound, battle map and
+// The kind of place, from the ambience beds: its sound, battle map, light and
 // stand-in picture follow it.
 const SCENE_FIELD = {
   name: "scene",
   label: "Kind of place",
   kind: "select",
   options: sceneOptions(),
-  help: "Sets the place's sound, battle map and picture. Blank keeps what it was.",
+  help: "Sets the place's sound, battle map, picture and light. Blank keeps what it was.",
 } as const;
 
 export const GENDER_FIELD = {
@@ -53,6 +54,15 @@ export const GENDER_FIELD = {
   label: "Gender",
   kind: "select",
   options: TOLD_GENDERS.map((gender) => ({ value: gender, label: gender })),
+} as const;
+
+// Which race's face an NPC or a foe draws (src/lib/npc-race.ts).
+export const RACE_FIELD = {
+  name: "race",
+  label: "Race",
+  kind: "select",
+  options: NPC_RACE_OPTIONS,
+  host: { feature: "npcRace" },
 } as const;
 
 // Who an NPC or companion could fall for (issue 501), the words the DM's
@@ -97,9 +107,10 @@ export const WORLD_ADJUDICATIONS: CatalogEntry[] = [
     name: "travel",
     label: "Travel",
     category: "world",
-    summary: "Hours (or miles) on the road at a pace, with the distance covered and the forced-march saves that come with it.",
+    summary: "Hours, miles or whole days on the road at a pace, with the distance covered and the forced-march saves that come with it.",
     fields: [
-      { name: "hours", label: "Hours", kind: "number", min: 1, max: 48, help: "Give hours or miles." },
+      { name: "days", label: "Days", kind: "number", min: 1, max: 30, help: "A journey of whole days: 8 hours on the road each, and a night's rest between them. Or give hours or miles.", host: { feature: "actionParts" } },
+      { name: "hours", label: "Or hours", kind: "number", min: 1, max: 48, help: "One stretch of marching." },
       { name: "miles", label: "Or miles", kind: "number", min: 1, max: 200, help: "The server works out the hours the pace and the ground need." },
       { name: "terrain", label: "Ground", kind: "select", options: [{ value: "normal", label: "Normal" }, { value: "difficult", label: "Difficult (half the distance)" }] },
       {
@@ -113,7 +124,8 @@ export const WORLD_ADJUDICATIONS: CatalogEntry[] = [
         ],
       },
       { name: "characterIds", label: "Who travels", kind: "characters", help: "Leave empty for the whole party." },
-      { name: "water", label: "Water to be found", kind: "select", options: [{ value: "plenty", label: "Plenty" }, { value: "half", label: "Half (DC 15 CON a day)" }, { value: "none", label: "None" }], help: "Supplies variant only; holds until set to plenty." },
+      { name: "water", label: "Water to be found", kind: "select", options: [{ value: "plenty", label: "Plenty" }, { value: "half", label: "Half (DC 15 CON a day)" }, { value: "none", label: "None" }], help: "Holds until set to plenty.", variant: "supplies" },
+      MEAL_FIELD,
       { name: "reason", label: "The journey", kind: "text", placeholder: "Toward the pass, by the old road" },
     ],
   },
@@ -281,7 +293,8 @@ export const WORLD_ADJUDICATIONS: CatalogEntry[] = [
           { value: "weeks", label: "weeks" },
         ],
       },
-      { name: "water", label: "Water to be found", kind: "select", options: [{ value: "plenty", label: "Plenty" }, { value: "half", label: "Half (DC 15 CON a day)" }, { value: "none", label: "None" }], help: "Supplies variant only; holds until set to plenty." },
+      { name: "water", label: "Water to be found", kind: "select", options: [{ value: "plenty", label: "Plenty" }, { value: "half", label: "Half (DC 15 CON a day)" }, { value: "none", label: "None" }], help: "Holds until set to plenty.", variant: "supplies" },
+      MEAL_FIELD,
       REASON,
     ],
   },
@@ -316,6 +329,7 @@ export const WORLD_ADJUDICATIONS: CatalogEntry[] = [
       { name: "ac", label: "Its armor class", kind: "number", min: 1, max: 30, help: "Overrides the material's." },
       { name: "hp", label: "Its hit points", kind: "number", min: 1, max: 1000, help: "Overrides the size's." },
       { name: "threshold", label: "Damage threshold", kind: "number", min: 1, max: 100, help: "A castle wall's or a ship's: a blow below it does nothing." },
+      { name: "blows", label: "Blows", kind: "number", min: 1, max: 20, help: "Struck again and again until it breaks or the blows run out; a named object only, outside a fight.", host: { feature: "actionParts" } },
       REASON,
     ],
   },
@@ -408,6 +422,7 @@ export const SOCIAL_ADJUDICATIONS: CatalogEntry[] = [
       { name: "trait", label: "Trait", kind: "text" },
       { name: "location", label: "Found at", kind: "text" },
       GENDER_FIELD,
+      RACE_FIELD,
       DRAWN_TO_FIELD,
       { name: "goal", label: "Wants", kind: "text" },
       { name: "ambition", label: "Long game", kind: "text" },

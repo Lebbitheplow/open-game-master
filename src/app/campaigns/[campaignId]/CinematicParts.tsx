@@ -91,7 +91,7 @@ export function SceneBackdrop({
 // the painted plate for their class and race, the bestiary plate for a foe.
 // The same order the board's tokens follow.
 export function facesFor(
-  entry: { id: string; kind: "pc" | "enemy" | "npc"; name: string },
+  entry: { id: string; kind: "pc" | "enemy" | "npc"; name: string; face?: string },
   sheets: ReadonlyArray<CharacterSheet>,
   enemies: PublicEncounter["enemies"] | undefined,
   genre: string | null | undefined,
@@ -103,10 +103,10 @@ export function facesFor(
       // the board and the chronicle draw (src/lib/speaker-faces.ts).
       return [sheet.portrait?.url, characterPlaceholder({ race: sheet.race, class: sheet.class, gender: sheet.gender, genre })];
     }
-    return [npcPlaceholder(null, entry.name)];
+    return [entry.kind === "npc" ? entry.face : null, npcPlaceholder(null, entry.name)];
   }
   const enemy = enemies?.find((candidate) => candidate.id === entry.id);
-  return [enemy ? monsterPlaceholder(enemy.type, { cr: enemy.cr, genre, seed: enemy.name, slug: enemy.slug, name: enemy.name }) : null];
+  return [enemy ? monsterPlaceholder(enemy.type, { cr: enemy.cr, genre, seed: enemy.name, slug: enemy.slug, name: enemy.name, race: enemy.race, gender: enemy.gender }) : null];
 }
 
 // ---- the initiative ribbon along the top ----

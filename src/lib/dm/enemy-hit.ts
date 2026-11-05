@@ -1,3 +1,4 @@
+import { tieToTurn } from "@/lib/dm/turn-tie";
 import type { Campaign } from "@/lib/db/campaigns";
 import { saveDamageTaken } from "@/lib/srd/trait-rules";
 import type { DmTurn } from "@/lib/db/dm-turns";
@@ -11,8 +12,11 @@ import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { isValidExpression, rollExpression, type RollResult } from "@/lib/dice";
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
 import type { EnemyAttack, TypedDice } from "@/lib/bestiary/statblock";
+import { asleepOnFailure } from "@/lib/bestiary/attack-text";
 import { durationArgsFor, effectiveMaxHp, maxHpRiders, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { handleSetCondition } from "@/lib/dm/set-condition";
+import { swallowCreature } from "@/lib/dm/swallow";
+import { swallowRuleOf } from "@/lib/dm/swallow-logic";
 import { damageParts } from "@/lib/dm/damage-parts";
 import { rollCharacterSave } from "@/lib/dm/forced-save";
 import { applyDmMutation } from "@/lib/dm/mutations";
@@ -117,6 +121,7 @@ export function resolveOnHit(
   }
   const out: Record<string, unknown> = {};
   let saved = false;
+  let saveTotal: number | null = null;
   if (rider.save && rider.dc) {
     const save = rollCharacterSave(
       campaign,
@@ -126,13 +131,16 @@ export function resolveOnHit(
       rider.dc,
       `${target.name}: ${rider.save.toUpperCase()} save vs ${enemy.displayName}'s ${attack.name}`,
       saveAgainst({ condition: rider.condition, damageType: rider.damageType }),
-      undefined,
+      // The attacker forced it (Supernatural Defense against its prey,
+      // Vigilant Rebuke after a success).
+      enemy,
       undefined,
       undefined,
       // Cover between the attacker and the target counts on a DEX rider.
       { origin: { ref: enemy.id } },
     );
     saved = save.success;
+    saveTotal = save.total;
     out.riderSave = save.total === null ? "failed automatically" : `${save.total} vs DC ${rider.dc}`;
     out.riderSaved = saved;
   }
@@ -176,16 +184,31 @@ export function resolveOnHit(
       out.riderDamage = 0;
     }
   }
-  const conditions = rider.condition && !saved ? [rider.condition, ...(rider.alsoCondition ? [rider.alsoCondition] : [])] : [];
+  const asleep = Boolean(rider.save && rider.dc) && asleepOnFailure(rider, saveTotal);
+  const conditions = rider.condition && !saved ? [rider.condition, ...(rider.alsoCondition ? [rider.alsoCondition] : []), ...(asleep ? ["unconscious"] : [])] : [];
   const standing = getSheetById(target.id);
   for (const condition of conditions) {
     if (!standing || (standing.currentHp <= 0 && condition === "prone")) {
       continue;
     }
-    // The rider's own words for how long it lasts: a count (an hour of
-    // poison is 600 rounds), a repeat save, or a long rest
-    // (src/lib/dm/monster-abilities.ts parseSaveEffect).
-    const applied = rider.untilLongRest
+    // A poison's sleep (a drow's bolt, a couatl's bite) lasts as the poison
+    // does and ends on damage only when the block says so: laid with its own
+    // word, so set_condition's rule that a sleeper wakes when hurt does not
+    // wake a couatl's, which only a shake ends.
+    const sleep = condition === "unconscious" && (asleep || rider.alsoCondition === "unconscious");
+    const applied = sleep
+      ? handleSetCondition(
+          campaign,
+          turn.id,
+          getSheetById(target.id) ?? target,
+          { condition, sourceEnemyId: enemy.id, ...(rider.rounds && !rider.untilLongRest ? durationArgsFor(rider.rounds) : {}) },
+          `${enemy.displayName}'s ${attack.name}`,
+          { spellEffect: { source: enemy.id, ...(rider.untilLongRest ? { untilLongRest: true } : {}), ...(rider.wakesOnDamage ? { endsOnDamage: true } : {}) } },
+        )
+      : // The rider's own words for how long it lasts: a count (an hour of
+        // poison is 600 rounds), a repeat save, or a long rest
+        // (src/lib/dm/monster-abilities.ts parseSaveEffect).
+        rider.untilLongRest
       ? handleSetCondition(campaign, turn.id, getSheetById(target.id) ?? target, { condition, sourceEnemyId: enemy.id }, `${enemy.displayName}'s ${attack.name}`, {
           spellEffect: { source: enemy.id, untilLongRest: true },
         })
@@ -206,6 +229,17 @@ export function resolveOnHit(
         ).result;
     if (!("error" in applied)) {
       out.riderCondition = [...((out.riderCondition as string[] | undefined) ?? []), condition];
+      // "Until the end of the otyugh's next turn": tied to that turn (turn-tie.ts).
+      if (rider.until && !rider.untilLongRest) {
+        tieToTurn(
+          campaign,
+          { kind: "sheet", id: target.id },
+          condition,
+          enemy.id,
+          { edge: rider.until.edge, turnOf: rider.until.whose === "source" ? enemy.id : target.id },
+          `${condition} lasts until the ${rider.until.edge} of ${rider.until.whose === "source" ? `${enemy.displayName}'s` : "their"} next turn`,
+        );
+      }
     }
   }
   if (rider.escapeDc && ((out.riderCondition as string[] | undefined) ?? []).includes("grappled")) {
@@ -241,17 +275,17 @@ export function resolveOnHit(
       }
     }
   }
-  // Swallowed whole: blinded and restrained, with the creature as source.
+  // Swallowed whole: blinded, restrained and swallowed, held by the
+  // creature, and from here on its acid, the cover, the regurgitation and its
+  // corpse are the engine's (src/lib/dm/swallow.ts), read from the block.
   if (rider.swallow && !saved && (!rider.maxSize || sizeRank(characterSize(target)) <= sizeRank(rider.maxSize))) {
-    for (const condition of ["blinded", "restrained"]) {
-      const applied = handleSetCondition(campaign, turn.id, getSheetById(target.id) ?? target, { condition, sourceEnemyId: enemy.id }, `swallowed by ${enemy.displayName}`, {
-        spellEffect: { source: enemy.id },
-      });
-      if (!("error" in applied)) {
-        out.riderCondition = [...((out.riderCondition as string[] | undefined) ?? []), condition];
-      }
+    const swallowed = swallowCreature(campaign, turn.id, enemy, { kind: "sheet", id: target.id }, swallowRuleOf(enemy.stats, attack.name));
+    if ("swallowed" in swallowed) {
+      out.riderCondition = [...((out.riderCondition as string[] | undefined) ?? []), "blinded", "restrained"];
+      out.swallowed = swallowed.swallowed;
+    } else {
+      out.notSwallowed = swallowed.notSwallowed;
     }
-    out.swallowed = `${target.name} is swallowed: blinded and restrained inside ${enemy.displayName}, with total cover from everything outside it. Its stomach's damage each turn and the way out are the GM's to resolve from the block.`;
   }
   if (rider.manual?.length) {
     out.manual = `The server does not model this part of ${attack.name}; resolve it by hand: ${rider.manual.join(" ")}`;

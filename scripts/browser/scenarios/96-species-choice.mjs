@@ -58,11 +58,24 @@ export default {
     let characterId = null;
     // Pick from a kit select: its trigger, then the row.
     const pick = async (trigger, row) => {
+      // The field itself, before the pick: one that remounts with it is not
+      // the field the focus should come back to.
+      const field = await trigger.elementHandle();
       await t.tap(trigger);
       const item = page.getByRole("menuitemradio", { name: row }).locator("visible=true").first();
       await eventually(() => item.count(), { timeoutMs: 10_000, label: `the row ${row}` });
       await t.tap(item);
-      await upTo(async () => (await page.getByRole("menuitemradio").locator("visible=true").count()) === 0, 2_000);
+      // Closed before anything else is typed or tapped: on a loaded runner a
+      // phone's menu still closing after two seconds took the keys meant for
+      // the next field.
+      await eventually(async () => (await page.getByRole("menuitemradio").locator("visible=true").count()) === 0, { timeoutMs: 10_000, label: `the menu closed after ${row}` });
+      // And the focus back on its field, as a closed menu leaves it (Radix
+      // hands it back a beat after the rows go): taken for a free focus, the
+      // next field's Tab landed on Add and was then pulled back here (CI on
+      // PR 763, "the focus on Add option, for Mirrorscale did not hold").
+      // An increase's row keyed by its ability remounted with the pick, and
+      // the focus fell to the dialog instead.
+      await eventually(() => field.evaluate((element) => element.isConnected && element === document.activeElement), { timeoutMs: 10_000, label: `the focus back on the menu's field after ${row}` });
     };
     try {
       // ---- made in Homebrew ----
@@ -91,13 +104,40 @@ export default {
       await eventually(() => label.isVisible(), { timeoutMs: 10_000, label: "the choice's label field" });
       await label.fill("Draconic ancestry");
       const newName = editor.getByLabel("New option's name");
+      const addButton = editor.getByRole("button", { name: /^Add option$/ });
       const addOption = async (name) => {
         await newName.fill(name);
+        // Tab reaches Add only once the name is in and Add is enabled; a Tab
+        // pressed before that skipped it, and Enter pressed the next button
+        // there is, Remove the choice (CI, PR 747: "the option Mirrorscale
+        // did not hold").
+        await eventually(() => addButton.isEnabled(), { timeoutMs: 10_000, label: `Add option, for ${name}` });
         await newName.press("Tab");
+        // Runs here do not reproduce a miss, and CI keeps no pictures of one:
+        // the failure itself says where the focus went (PR 775).
+        await eventually(() => addButton.evaluate((element) => element === document.activeElement), { timeoutMs: 5_000, label: `the focus on Add option, for ${name}` }).catch(async (error) => {
+          const held = await newName.inputValue().catch(() => "gone");
+          const enabled = await addButton.isEnabled({ timeout: 1_000 }).catch(() => "gone");
+          const focus = await page.evaluate(() => document.activeElement?.outerHTML.slice(0, 160));
+          throw new Error(`${error.message}: the name field holds "${held}", Add enabled is ${enabled}, the focus is on ${focus}`);
+        });
         await page.keyboard.press("Enter");
         await eventually(() => editor.locator(`[data-species-option="${name.toLowerCase()}"]`).count(), { timeoutMs: 10_000, label: `the option ${name}` });
+        // Add turns itself off as the name clears: the keyboard goes on to the
+        // option it just opened, on screen, not to the top of the page.
+        const opened = editor.locator(`[data-species-option="${name.toLowerCase()}"] button`).first();
+        await eventually(
+          () =>
+            opened.evaluate((element) => {
+              const box = element.getBoundingClientRect();
+              return element === document.activeElement && element.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2));
+            }),
+          { timeoutMs: 5_000, label: `the focus on the new option, after ${name}` },
+        );
       };
       await addOption("Ashen");
+      await untilStill(page);
+      await t.shot("option-added");
       // One option is not a choice: the editor says so and holds the save.
       const findings = editor.locator("ul.panel");
       await eventually(async () => /A choice holds 2 to 16 options; this one has 1\./.test(await findings.innerText()), { timeoutMs: 10_000, label: "the one-option refusal" });

@@ -6,8 +6,10 @@
 // under a short window), so a sent line is always seen.
 // Measured on the phones the issue names, day and night; a phone on its
 // side is only photographed (hand.css says why); the desktop arrangement is
-// 18-table-layout's.
-import { check, eventually, untilStill } from "../lib.mjs";
+// 18-table-layout's. A hit still open adds the box's Speaking as row: the Hand
+// fell to 0 px under it and the box went under the tab bar, on the runs whose
+// goblins went first and hit, so it is forced here on every run.
+import { axeViolations, check, eventually, untilStill } from "../lib.mjs";
 
 const sheet = (name) => ({
   name,
@@ -100,21 +102,29 @@ export default {
         { width: 375, height: 667, name: "375x667" },
         { width: 360, height: 640, name: "360x640" },
       ];
+      // Not filtered on visible either: a Hand 0 px tall is what this measures,
+      // and a filtered locator waits 30 s for it and says nothing of why.
+      const handBox = page.locator(`${root}.cine-chat section[aria-label="Your hand"]`).first();
+      const tabs = page.locator(`${root}nav.cine-bottombar`).locator("visible=true").first();
+      const fits = async (size, theme) => {
+        const height = await log.evaluate((node) => node.getBoundingClientRect().height);
+        check(height >= THREE_LINES, `the chronicle keeps about three lines at ${size.name} in the ${theme} theme (${Math.round(height)} px)`);
+        // The Hand gave way, but its name stays in view and its cards
+        // scroll inside its own box.
+        const strip = await handBox.evaluate((node) => node.getBoundingClientRect().height);
+        check(strip >= 16, `the Hand keeps its name in view at ${size.name} (${Math.round(strip)} px)`);
+        check(await handBox.evaluate((node) => getComputedStyle(node).overflowY === "auto"), "the Hand scrolls inside its own box");
+        const field = await box.boundingBox();
+        const bar = await tabs.boundingBox();
+        check(field && bar && field.y >= 0 && field.y + field.height <= bar.y + 1, `the box is above the tab bar at ${size.name} (${JSON.stringify(field)}, the bar at ${bar?.y})`);
+      };
       let sent = 0;
       for (const size of sizes) {
         await page.setViewportSize({ width: size.width, height: size.height });
         for (const theme of ["dark", "light"]) {
           await page.evaluate((mode) => (document.documentElement.dataset.theme = mode), theme);
           await untilStill(page);
-          const height = await log.evaluate((node) => node.getBoundingClientRect().height);
-          check(height >= THREE_LINES, `the chronicle keeps about three lines at ${size.name} in the ${theme} theme (${Math.round(height)} px)`);
-          // The Hand gave way, but its name stays in view and its cards
-          // scroll inside its own box.
-          const strip = await hand.evaluate((node) => node.getBoundingClientRect().height);
-          check(strip >= 16, `the Hand keeps its name in view at ${size.name} (${Math.round(strip)} px)`);
-          check(await hand.evaluate((node) => getComputedStyle(node).overflowY === "auto"), "the Hand scrolls inside its own box");
-          const field = await box.boundingBox();
-          check(field && field.y >= 0 && field.y + field.height <= size.height, `the box is on screen at ${size.name} (${JSON.stringify(field)})`);
+          await fits(size, theme);
           // A line sent with Enter lands where it can be read.
           sent += 1;
           const words = `A line sent at ${size.name} ${theme} ${stamp}-${sent}`;
@@ -134,6 +144,53 @@ export default {
         }
       }
       await page.evaluate(() => (document.documentElement.dataset.theme = "dark"));
+
+      // A hit still open on the hero whose turn it is: a goblin that has not
+      // acted, its die set to hit, whichever way the order and the dice fell.
+      const added = await api.post(`${base}/api/campaigns/${tableId}/dm/invoke`, { data: { name: "add_enemies", args: { enemies: [{ monster: "goblin", count: 1 }] } } });
+      check(added.ok(), `a fresh goblin (${added.status()}: ${(await added.text()).slice(0, 200)})`);
+      const scripted = await api.put(`${base}/api/campaigns/${tableId}/dice-script`, { data: { seed: null, queue: [{ roller: "enemy", kind: "attack", face: 20 }] } });
+      check(scripted.ok(), `the goblin's die (${scripted.status()})`);
+      const fighting = await fightNow();
+      const fresh = fighting.enemies.find((enemy) => enemy.status === "alive" && !enemy.actions?.acted);
+      check(fresh, "a goblin that has not acted");
+      // The board is drawn from the fight's random id, and about one in 60 leaves
+      // a new goblin no firing position this turn. Beside the hero it always has one.
+      const heroId = fighting.order[fighting.turnIndex].id;
+      const board = (await (await api.get(`${base}/api/campaigns/${tableId}/battle-map`)).json()).view;
+      const at = board.tokens.find((token) => token.refId === heroId);
+      const goblinToken = board.tokens.find((token) => token.refId === fresh.id);
+      check(at && goblinToken, "the hero and the goblin on the board");
+      let beside = false;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
+        if (beside) break;
+        const moved = await api.post(`${base}/api/campaigns/${tableId}/dm/invoke`, { data: { name: "move_token", args: { token: goblinToken.id, x: at.x + dx, y: at.y + dy, teleport: true } } });
+        beside = moved.ok();
+      }
+      check(beside, "the goblin beside the hero");
+      const struck = await api.post(`${base}/api/campaigns/${tableId}/dm/invoke`, {
+        data: { name: "enemy_attack", args: { enemyId: fresh.id, targetCharacterId: heroId, attack: "Shortbow" } },
+      });
+      check(struck.ok(), `the goblin's attack (${struck.status()}: ${(await struck.text()).slice(0, 200)})`);
+      const speaking = page.locator(`${root}[data-react-as]`).locator("visible=true").first();
+      await eventually(() => speaking.isVisible(), { timeoutMs: 15_000, label: "Speaking as, with a hit open" });
+      for (const size of sizes) {
+        await page.setViewportSize({ width: size.width, height: size.height });
+        for (const theme of ["dark", "light"]) {
+          await page.evaluate((mode) => (document.documentElement.dataset.theme = mode), theme);
+          await untilStill(page);
+          await fits(size, theme);
+          // The bench's one sideways row: its buttons named and reachable.
+          const problems = await axeViolations(page, `${root}.test-fight-banner`.trim());
+          check(problems.length === 0, `the bench row passes axe at ${size.name} in the ${theme} theme: ${JSON.stringify(problems)}`);
+          await t.shot(`${size.name}-${theme}-hit-open`);
+        }
+      }
+      await page.evaluate(() => (document.documentElement.dataset.theme = "dark"));
+      // All five of the test bench's buttons are still there, on one row.
+      const bench = page.locator(`${root}.test-fight-banner`).locator("visible=true").first();
+      check((await bench.getByRole("button").count()) + (await bench.getByRole("link").count()) === 5, "the test bench keeps its five buttons with a hit open");
+
       // A phone on its side is shorter than the box and the round alone
       // (hand.css): it keeps the arrangement it had, seen here for the record.
       await page.setViewportSize({ width: 667, height: 375 });

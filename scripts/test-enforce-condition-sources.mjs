@@ -91,6 +91,19 @@ await test("F13: the same two in the other order", async () => {
   assert.equal(now.conditionMeta.incapacitated.spell, "Hideous Laughter");
 });
 
+await test("Damage ends a spell's conditions together, while a sleep with no spell behind it ends alone", async () => {
+  const { world, enemies: [charmed, poisoned, turned] } = await table([FIGHTER], 3);
+  layOnEnemy(charmed.id, [["charmed", { spell: "Hypnotic Pattern", source: "a", rounds: 10 }], ["incapacitated", { spell: "Hypnotic Pattern", source: "a", rounds: 10, endsOnDamage: true }]]);
+  layOnEnemy(poisoned.id, [["poisoned", { source: "Drow Poison", rounds: 600 }], ["unconscious", { source: "Drow Poison", rounds: 600, endsOnDamage: true }]]);
+  layOnEnemy(turned.id, [["turned", { source: "priest", rounds: 10, endsOnDamage: true }], ["grappled", { source: "priest" }]]);
+  for (const foe of [charmed, poisoned, turned]) {
+    spellEffectsOnEnemyDamage(foe.id);
+  }
+  assert.deepEqual(enemyOf(world, charmed.id).conditions, [], "the pattern's charm goes with its incapacitation");
+  assert.deepEqual(enemyOf(world, poisoned.id).conditions, ["poisoned"], "the sleeper wakes still poisoned");
+  assert.deepEqual(enemyOf(world, turned.id).conditions, ["grappled"], "the priest's grapple is not part of the turning");
+});
+
 await test("F13: casting ends Invisibility and leaves Greater Invisibility", async () => {
   const world = await openWorld();
   const hero = world.addHero(FIGHTER);
@@ -218,6 +231,89 @@ await test("F16: temporary hit points from another source stay when False Life e
   await world.invoke("pass_time", { amount: 2, unit: "hours" });
   assert.equal(world.sheet(mage.id).tempHp, 12);
   world.close();
+});
+
+// Issue 761: a sleeper set_condition laid with a duration or a save slept on
+// through every blow. SRD 5.1 Sleep, Eyebite and Symbol, and a drow's poison:
+// the sleeper wakes when it takes damage.
+await test("761: unconscious laid by set_condition on a creature with hit points ends when it takes damage, with a save or a duration or neither", async () => {
+  const { world, sheets: [hero], enemies: [foe] } = await table([FIGHTER]);
+  for (const lifetime of [{ saveAbility: "wis", saveDc: 15 }, { rounds: 10 }, {}]) {
+    const laid = await world.invoke("set_condition", { enemyId: foe.id, condition: "unconscious", reason: "a sleeping draught", ...lifetime });
+    assert.equal(laid.ok, true, laid.error);
+    assert.ok(enemyOf(world, foe.id).conditions.includes("unconscious"));
+    const hit = await world.invoke("damage_enemy", { enemyId: foe.id, amount: 1 });
+    assert.equal(hit.ok, true, hit.error);
+    assert.equal(enemyOf(world, foe.id).conditions.includes("unconscious"), false, `the creature slept through the blow (${JSON.stringify(lifetime)})`);
+  }
+  for (const lifetime of [{ saveAbility: "con", saveDc: 13 }, { rounds: 10 }, {}]) {
+    const laid = await world.invoke("set_condition", { characterId: hero.id, condition: "unconscious", reason: "a drow's dart", ...lifetime });
+    assert.equal(laid.ok, true, laid.error);
+    assert.ok(world.sheet(hero.id).conditions.includes("unconscious"));
+    const hit = await world.invoke("apply_damage", { characterId: hero.id, amount: 1, type: "bludgeoning", reason: "a kick" });
+    assert.equal(hit.ok, true, hit.error);
+    assert.equal(world.sheet(hero.id).conditions.includes("unconscious"), false, `the hero slept through the blow (${JSON.stringify(lifetime)})`);
+  }
+});
+
+await test("761: an area that lays unconscious by name wakes the creature it caught when hurt, as it does a character", async () => {
+  const { world, enemies: [foe] } = await table([FIGHTER]);
+  world.dice(1);
+  const gas = await world.invoke("aoe_damage", { condition: "unconscious", rounds: 10, saveAbility: "con", dc: 30, enemyIds: [foe.id], reason: "sleeping gas" });
+  world.clearDice();
+  assert.equal(gas.ok, true, gas.error);
+  assert.ok(enemyOf(world, foe.id).conditions.includes("unconscious"), JSON.stringify(gas.result));
+  const hit = await world.invoke("damage_enemy", { enemyId: foe.id, amount: 1 });
+  assert.equal(hit.ok, true, hit.error);
+  assert.equal(enemyOf(world, foe.id).conditions.includes("unconscious"), false, "the creature slept through the blow");
+});
+
+// SRD 5.1 Sleep cast by a creature: no save, a 5d8 pool spent from the lowest
+// current hit points up; an elf's Fey Ancestry keeps magic from putting it to
+// sleep and spends nothing; the sleeper wakes when hurt. Refused before ("no
+// save and DC"), so a mage's Sleep did nothing to the party.
+await test("A monster's Sleep spends its pool on the party from the fewest hit points up, passes over an elf, and the sleeper wakes when hurt", async () => {
+  const ELF = { ...FIGHTER, race: "high_elf", features: [{ name: "Fey Ancestry (adv. vs charm, immune to magical sleep)", source: "race" }] };
+  const { world, sheets: [low, high, elf], enemies: [mage] } = await table([FIGHTER, FIGHTER, ELF], 1, { spells: ["Sleep"] });
+  world.patch(low.id, { currentHp: 6 });
+  world.patch(high.id, { currentHp: 30 });
+  world.patch(elf.id, { currentHp: 3 });
+  world.dice(2, 2, 2, 2, 2);
+  const cast = await world.invoke("aoe_damage", { casterEnemyId: mage.id, spell: "Sleep", characterIds: [low.id, high.id, elf.id] });
+  world.clearDice();
+  assert.equal(cast.ok, true, cast.error);
+  const asleep = (id) => world.sheet(id).conditions.includes("unconscious");
+  assert.deepEqual([asleep(low.id), asleep(high.id), asleep(elf.id)], [true, false, false], JSON.stringify(cast.result));
+  assert.match(String(cast.result.pool), /5d8: 10 hit points, 4 left/);
+  assert.equal(world.sheet(low.id).conditionMeta.unconscious.rounds, 10);
+  const hit = await world.invoke("apply_damage", { characterId: low.id, amount: 1, type: "bludgeoning", reason: "a kick" });
+  assert.equal(hit.ok, true, hit.error);
+  assert.equal(asleep(low.id), false, "the sleeper slept through the blow");
+
+});
+
+await test("A monster's Sleep at one character (cast_at_player) runs the same pool, with no save asked", async () => {
+  const { world, sheets: [hero], enemies: [mage] } = await table([FIGHTER], 1, { spells: ["Sleep"] });
+  world.patch(hero.id, { currentHp: 6 });
+  world.dice(2, 2, 2, 2, 2);
+  const single = await world.invoke("cast_at_player", { characterId: hero.id, casterEnemyId: mage.id, spell: "Sleep" });
+  world.clearDice();
+  assert.equal(single.ok, true, single.error);
+  assert.equal(world.sheet(hero.id).conditions.includes("unconscious"), true, JSON.stringify(single.result));
+  assert.equal(world.sheet(hero.id).conditionMeta.unconscious.endsOnDamage, true);
+});
+
+await test("761: a monster's Eyebite lays its Asleep with that form's minute, and the sleeper wakes when hurt", async () => {
+  const { world, sheets: [hero], enemies: [foe] } = await table([FIGHTER], 1, { spells: ["Eyebite"] });
+  world.dice(1);
+  const cast = await world.invoke("cast_at_player", { characterId: hero.id, casterEnemyId: foe.id, spell: "Eyebite", saveAbility: "wis", dc: 20 });
+  world.clearDice();
+  assert.equal(cast.ok, true, cast.error);
+  assert.ok(world.sheet(hero.id).conditions.includes("unconscious"));
+  assert.equal(world.sheet(hero.id).conditionMeta.unconscious.rounds, 10);
+  const hit = await world.invoke("apply_damage", { characterId: hero.id, amount: 1, type: "bludgeoning", reason: "a kick" });
+  assert.equal(hit.ok, true, hit.error);
+  assert.equal(world.sheet(hero.id).conditions.includes("unconscious"), false, "the hero slept through the blow");
 });
 
 await test("F23: Black Tentacles crushes a restrained character at the start of its turn", async () => {

@@ -179,10 +179,21 @@ const KIND_LINES: Record<Exclude<ClaimKind, "bond">, string> = {
 // readTurnEndInWords): gpt-oss-20b as the reader found "then I end my turn"
 // in one reading and missed it in the next. A miss here costs what a table in
 // any other language pays: the reader's reading alone.
-const ENGLISH_ENDS_TURN = /\b(?:end(?:s|ing)?|finish(?:es|ing)?) (?:my|the|his|her|their) turn\b|\bthat'?s (?:it for )?my turn\b|\bmy turn is (?:over|done)\b/i;
+const ENGLISH_ENDS_TURN = /\b(?:end(?:s|ing)?|finish(?:es|ing)?) (?:my|the|his|her|their) turn\b|\bthat'?s (?:it for )?my turn\b|\bmy turn is (?:over|done)\b/gi;
+
+// Words before the phrase, in its own clause, that say the turn is not ending
+// now: "Don't end my turn yet" and "I'll tell you when I end my turn" ended it
+// on the very words meant to keep it open, and a question only
+// asks. A miss costs the same reader's reading as above.
+const ENGLISH_NOT_YET = /\b(?:don['’]?t|do not|doesn['’]?t|does not|not|never|won['’]?t|will not|can['’]?t|cannot|before|when|whenever|until|till|once|if|unless|without|hold off|wait to)\b/i;
 
 export function englishEndsTurn(text: string): boolean {
-  return ENGLISH_ENDS_TURN.test(text);
+  return [...text.matchAll(ENGLISH_ENDS_TURN)].some((match) => {
+    const before = text.slice(0, match.index);
+    const clause = before.slice(Math.max(...[".", "!", "?", ";", ",", "\n"].map((mark) => before.lastIndexOf(mark))) + 1);
+    const asks = /^[^.!;\n]*\?/.test(text.slice(match.index + match[0].length));
+    return !asks && !ENGLISH_NOT_YET.test(clause);
+  });
 }
 
 // The reader's instructions. Every claim kind about the game is listed so the
@@ -472,6 +483,8 @@ export function checkClaims(raw: readonly unknown[], context: ClaimContext): Nar
   return kept;
 }
 
+const count = (text: string, pattern: RegExp) => text.match(pattern)?.length ?? 0;
+
 // The passage with every sentence that holds one of the quotes cut out: how
 // a roll asked in words (rolls.ts rollAsksFromClaims) and the narrator's
 // asides leave the narration. A sentence runs to its end mark or the end of
@@ -493,6 +506,12 @@ export function withoutSentences(text: string, quotes: readonly string[]): strin
     let end = sentence.index + sentence[0].length;
     if (text.slice(end, end + 2) === "**") {
       end += 2;
+    }
+    // And the closers of a bracket the sentence left open: a sentence stops at
+    // its full stop, so cutting "*(I'll set the hour first.)*" left ")*" in the
+    // story (issue 744). One opened in a sentence that stays keeps its closers.
+    if (count(sentence[0], /[([]/g) > count(sentence[0], /[)\]]/g)) {
+      end += /^[)\]]+[*_]*/.exec(text.slice(end))?.[0].length ?? 0;
     }
     removals.set(sentence.index, end);
     return true;
@@ -535,11 +554,10 @@ export function withoutSentences(text: string, quotes: readonly string[]): strin
 const ENGLISH_META_SENTENCE =
   /\btool[ -]?calls?\b|\b(?:the|this|a) tool'?s? (?:output|result)s?\b|\bcalling the (?:necessary |right |appropriate |correct )?tools?\b|\bnarrate the results?\b|\bunwarranted assumption\b|\bmy (?:previous|last|earlier) (?:response|reply|narration|message)\b/i;
 const ECHOED_LINE = /^[ \t]*(?:\[[^\]\n]{1,80}\|\s*attempt\][^\n]*|[^\n|[\]]{1,60}\s\|\s*attempt\b[^\n]*|\[Table note\][^\n]*)$/gim;
-// The game state copied into the story by a small model (Qwen3.5 9B): the
-// turn order recited as a numbered list under its English heading (read only
-// at an English table), and the board squares it reads, "(7,13)", at every
-// table. The board shows both; the prose never needs them.
-const ENGLISH_ORDER_BLOCK = /^[ \t]*\**[ \t]*(?:current[ \t]+)?(?:initiative(?:[ \t]+order)?|turn[ \t]+order)[ \t]*(?::\**|\**[ \t]*:)[^\n]*(?:\n[ \t]*\d+\.[^\n]*)*/gim;
+// The board squares a small model (Qwen3.5 9B) copied into the story,
+// "(7,13)": the board shows them; the prose never needs them. The turn order
+// it recited beside them goes by the fight's own names when the table reads
+// the turn (narration-tidy-logic.ts withoutCombatBookkeeping).
 const GRID_SQUARE = /\(\s*\d{1,3}\s*,\s*\d{1,3}\s*\)/;
 
 export function metaQuotes(text: string, language: TableLanguage): string[] {
@@ -553,16 +571,10 @@ export function metaQuotes(text: string, language: TableLanguage): string[] {
 }
 
 export function withoutAsides(text: string, claims: readonly NarrationClaim[], language: TableLanguage): string {
-  // A recited turn order under its English heading goes whole, heading and
-  // list, at an English table only (cut sentence by sentence, its "3." would
-  // match the wrong line); at any table the reader's asides and the board
-  // squares quoted still go.
-  const unlisted = language === "english" ? text.replace(ENGLISH_ORDER_BLOCK, "").replace(/\n{3,}/g, "\n\n").trim() : text.trim();
-  const source = unlisted === text.trim() ? text : unlisted;
-  const quotes = [...claims.flatMap((claim) => (claim.kind === "aside" ? [claim.quote] : [])), ...metaQuotes(source, language)];
+  const quotes = [...claims.flatMap((claim) => (claim.kind === "aside" ? [claim.quote] : [])), ...metaQuotes(text, language)];
   if (!quotes.length) {
-    return words(source).length ? source : "";
+    return words(text).length ? text : "";
   }
-  const kept = withoutSentences(source, quotes);
+  const kept = withoutSentences(text, quotes);
   return words(kept).length ? kept : "";
 }

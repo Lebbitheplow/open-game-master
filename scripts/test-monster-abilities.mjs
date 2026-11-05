@@ -254,6 +254,118 @@ await test("Either breath spends the one recharge, and one d6 brings both back; 
   assert.equal(sheet.conditionMeta.unconscious.endsOnDamage, true);
 });
 
+await test("A monster's poison sleep ends on damage and leaves the poison; conditions the damage ends all together end together.", async () => {
+  const fungus = await stage({
+    name: "Sporeling", size: "Medium", type: "Plant", armor_class: 12, hit_points: 120, cr: 4,
+    actions: [
+      { name: "Sleep Spores", desc: "One creature must succeed on a DC 13 Constitution saving throw or be poisoned and unconscious for 1 minute. A creature wakes up if it takes damage." },
+      { name: "Daze Spores", desc: "One creature must succeed on a DC 13 Wisdom saving throw or be blinded and deafened for 1 minute. The effect ends if the creature takes damage." },
+    ],
+  });
+  const slept = await mk.forced([1], () => world.invoke("cast_at_player", { characterId: tank.id, casterEnemyId: fungus.id, enemyAbility: "Sleep Spores", saveAbility: "con", dc: 13 }));
+  assert.equal(slept.ok, true, slept.error);
+  assert.ok(world.sheet(tank.id).conditions.includes("unconscious"));
+  await world.invoke("apply_damage", { characterId: tank.id, amount: 1, type: "bludgeoning", reason: "a slap" });
+  assert.equal(world.sheet(tank.id).conditions.includes("unconscious"), false, "the damage wakes them");
+  assert.equal(world.sheet(tank.id).conditions.includes("poisoned"), true, "the poison outlasts the sleep");
+  world.patch(tank.id, { conditions: [], conditionMeta: {} });
+  kit.freshRound();
+  const dazed = await mk.forced([1], () => world.invoke("cast_at_player", { characterId: tank.id, casterEnemyId: fungus.id, enemyAbility: "Daze Spores", saveAbility: "wis", dc: 13 }));
+  assert.equal(dazed.ok, true, dazed.error);
+  assert.ok(["blinded", "deafened"].every((name) => world.sheet(tank.id).conditions.includes(name)));
+  await world.invoke("apply_damage", { characterId: tank.id, amount: 1, type: "bludgeoning", reason: "a slap" });
+  assert.deepEqual(world.sheet(tank.id).conditions, [], "both are the one effect, and the damage ends it");
+});
+
+// SRD 5.1 Couatl, Drow and Sprite: a poisoned hit's sleep. The pack's text
+// was dropped unread, so the bite and the bolts poisoned and slept nobody.
+// A couatl's sleeper wakes only to a shake ("Another creature can use an
+// action to shake the target awake"), not to the damage set_condition's rule
+// would end it on; a drow's wakes when hurt and stays poisoned.
+await test("A poisoned hit's sleep lands: a couatl's holds through damage, a drow's ends on it and leaves the poison, a sprite's needs a low enough save.", async () => {
+  const { readAttackText, asleepOnFailure } = await import("../src/lib/bestiary/attack-text.ts");
+  const couatlText = "Melee Weapon Attack: +8 to hit, reach 5 ft., one creature. Hit: 8 (1d6 + 5) piercing damage, and the target must succeed on a DC 13 Constitution saving throw or be poisoned for 24 hours. Until this poison ends, the target is unconscious. Another creature can use an action to shake the target awake.";
+  const drowText = "Ranged Weapon Attack: +4 to hit, range 30/120 ft., one target. Hit: 5 (1d6 + 2) piercing damage, and the target must succeed on a DC 13 Constitution saving throw or be poisoned for 1 hour. If the saving throw fails by 5 or more, the target is also unconscious while poisoned in this way. The target wakes up if it takes damage or if another creature takes an action to shake it awake.";
+  const spriteText = "Ranged Weapon Attack: +6 to hit, range 40/160 ft., one target. Hit: 1 piercing damage, and the target must succeed on a DC 10 Constitution saving throw or become poisoned for 1 minute. If its saving throw result is 5 or lower, the poisoned target falls unconscious for the same duration, or until it takes damage or another creature takes an action to shake it awake.";
+  const couatl = readAttackText(couatlText).onHit;
+  assert.deepEqual([couatl.condition, couatl.alsoCondition, couatl.wakesOnDamage], ["poisoned", "unconscious", undefined]);
+  assert.ok(couatl.manual.some((line) => /shake the target awake/.test(line)), "the shake is the GM's");
+  const drow = readAttackText(drowText).onHit;
+  assert.deepEqual([drow.unconsciousFailBy, drow.wakesOnDamage], [5, true]);
+  const sprite = readAttackText(spriteText).onHit;
+  assert.deepEqual([sprite.unconsciousAtMost, sprite.wakesOnDamage], [5, true]);
+  assert.deepEqual([asleepOnFailure(drow, 8), asleepOnFailure(drow, 9), asleepOnFailure(drow, null)], [true, false, true]);
+  assert.deepEqual([asleepOnFailure(sprite, 5), asleepOnFailure(sprite, 6)], [true, false]);
+  // SRD 5.1 Homunculus: no word of damage, so only the poison's end wakes it.
+  const homunculus = readAttackText("Melee Weapon Attack: +4 to hit, reach 5 ft., one creature. Hit: 1 piercing damage, and the target must succeed on a DC 10 Constitution saving throw or be poisoned for 1 minute. If the saving throw fails by 5 or more, the target is instead poisoned for 5 (1d10) minutes and unconscious while poisoned in this way.").onHit;
+  assert.deepEqual([homunculus.unconsciousFailBy, homunculus.wakesOnDamage], [5, undefined]);
+  // Two conditions one failure lays (Tome of Beasts' lemurfolk): both land.
+  const blowgun = readAttackText("Ranged Weapon Attack: +4 to hit, range 20/80 ft., one target. Hit: 4 (1d4 + 2) piercing damage, and the target must succeed on a DC 13 Constitution saving throw or be poisoned and unconscious for 1 hour. Another creature can use an action to shake the target awake.").onHit;
+  assert.deepEqual([blowgun.condition, blowgun.alsoCondition, blowgun.wakesOnDamage], ["poisoned", "unconscious", undefined]);
+
+  const biter = await stage({
+    name: "Couatl", size: "Medium", type: "Celestial", armor_class: 19, hit_points: 97, cr: 4,
+    actions: [{ name: "Bite", desc: couatlText, attack_bonus: 8, damage_dice: "1d6", damage_bonus: 5 }],
+  });
+  const bit = await mk.forced([15, 3, 1], () => world.invoke("enemy_attack", { enemyId: biter.id, targetCharacterId: tank.id, attack: "Bite" }));
+  assert.equal(bit.ok, true, bit.error);
+  assert.deepEqual(["poisoned", "unconscious"].map((name) => world.sheet(tank.id).conditions.includes(name)), [true, true], JSON.stringify(bit.result));
+  assert.equal(world.sheet(tank.id).conditionMeta.unconscious.rounds, 14400, "asleep while the poison lasts");
+  await world.invoke("apply_damage", { characterId: tank.id, amount: 1, type: "bludgeoning", reason: "a slap" });
+  assert.equal(world.sheet(tank.id).conditions.includes("unconscious"), true, "SRD 5.1: only a shake wakes a couatl's sleeper");
+
+  const archer = await stage({
+    name: "Drow", size: "Medium", type: "Humanoid", armor_class: 15, hit_points: 13, cr: 0.25,
+    actions: [{ name: "Hand Crossbow", desc: drowText, attack_bonus: 4, damage_dice: "1d6", damage_bonus: 2 }],
+  });
+  const shot = await mk.forced([15, 3, 1], () => world.invoke("enemy_attack", { enemyId: archer.id, targetCharacterId: tank.id, attack: "Hand Crossbow" }));
+  assert.equal(shot.ok, true, shot.error);
+  assert.deepEqual(["poisoned", "unconscious"].map((name) => world.sheet(tank.id).conditions.includes(name)), [true, true], JSON.stringify(shot.result));
+  await world.invoke("apply_damage", { characterId: tank.id, amount: 1, type: "bludgeoning", reason: "a slap" });
+  assert.equal(world.sheet(tank.id).conditions.includes("unconscious"), false, "the damage wakes them");
+  assert.equal(world.sheet(tank.id).conditions.includes("poisoned"), true, "the poison outlasts the sleep");
+});
+
+// A sleep that lasts until a long rest keeps the block's word on damage: laid
+// with its own meta, set_condition's wake rule (0.32.1) no longer covers it.
+await test("A monster's sleep until a long rest that the text ends on damage wakes when the sleeper is hurt.", async () => {
+  const sandman = await stage({
+    name: "Dream Moth", size: "Small", type: "Fey", armor_class: 12, hit_points: 120, cr: 2,
+    actions: [{ name: "Slumber Dust", desc: "One creature within 10 feet must succeed on a DC 13 Constitution saving throw or fall unconscious until it finishes a long rest. The creature wakes up if it takes damage." }],
+  });
+  const dusted = await mk.forced([1], () => world.invoke("cast_at_player", { characterId: tank.id, casterEnemyId: sandman.id, enemyAbility: "Slumber Dust", saveAbility: "con", dc: 13 }));
+  assert.equal(dusted.ok, true, dusted.error);
+  assert.equal(world.sheet(tank.id).conditions.includes("unconscious"), true, JSON.stringify(dusted.result));
+  assert.equal(world.sheet(tank.id).conditionMeta.unconscious.untilLongRest, true);
+  await world.invoke("apply_damage", { characterId: tank.id, amount: 1, type: "bludgeoning", reason: "a slap" });
+  assert.equal(world.sheet(tank.id).conditions.includes("unconscious"), false, "the creature wakes up if it takes damage");
+});
+
+// A creature caught in another's area ability takes its condition too, as a
+// character does (cast-at-player.ts layEnemyCondition): a brass dragon's
+// sleep breath across a goblin slept nobody, and the goblin wakes when hurt.
+await test("A monster's area ability lays its condition on another creature caught in it, and a sleep laid there ends on damage.", async () => {
+  await kit.endFight();
+  world.patch(tank.id, { currentHp: 300, conditions: [], conditionMeta: {} });
+  await kit.fight(2, { heroFaces: { [tank.id]: 19 } });
+  const [wyrm, goblin] = world.enemies();
+  mk.stage(wyrm.id, {
+    name: "Brass Wyrmling", size: "Medium", type: "Dragon", armor_class: 16, hit_points: 160, cr: 1,
+    actions: [{ name: "Sleep Breath", desc: "The dragon exhales sleep gas in a 15-foot cone. Each creature in that area must succeed on a DC 11 Constitution saving throw or fall unconscious for 1 minute. This effect ends for a creature if the creature takes damage or someone uses an action to wake it." }],
+  });
+  kit.place(tank.id, 9, 9);
+  kit.place(wyrm.id, 5, 5);
+  kit.place(goblin.id, 5, 6);
+  kit.freshRound();
+  const breath = await mk.forced([1], () => world.invoke("aoe_damage", { casterEnemyId: wyrm.id, enemyAbility: "Sleep Breath", enemyIds: [goblin.id], saveAbility: "con", dc: 11 }));
+  assert.equal(breath.ok, true, breath.error);
+  const slept = world.enemies().find((enemy) => enemy.id === goblin.id);
+  assert.ok(slept.conditions.includes("unconscious"), `the goblin slept through the breath: ${JSON.stringify(breath.result)}`);
+  assert.equal(slept.conditionMeta.unconscious.rounds, 10);
+  await world.invoke("apply_damage", { enemyId: goblin.id, amount: 1, type: "bludgeoning", reason: "a kick" });
+  assert.equal(world.enemies().find((enemy) => enemy.id === goblin.id).conditions.includes("unconscious"), false, "the effect ends if the creature takes damage");
+});
+
 await test("A failure by the margin adds its condition, and the conditions listed with the first land with it.", async () => {
   const medusa = await stage({
     name: "Gazer", size: "Medium", type: "Monstrosity", armor_class: 15, hit_points: 120, cr: 6,

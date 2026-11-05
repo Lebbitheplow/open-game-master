@@ -188,11 +188,15 @@ await test("one reaction a round", async () => {
 });
 
 await test("a reaction comes back at the start of its owner's turn, not at the round wrap", async () => {
-  // Order: the veteran, the novice, the enemy. The novice reacted on the
-  // veteran's turn above; their own turn starting hands it back.
+  // Order: the veteran, the enemy, the novice. The novice reacted on the
+  // veteran's turn above; their own turn starting hands it back, and it
+  // starts after the enemy before them has had its turn (SRD 5.1): the
+  // pointer naming the novice is not that start.
   assert.equal(kit.endTurn(veteran.userId), true);
   assert.equal(world.encounter().round, 1);
   assert.equal(kit.current().characterId, novice.id);
+  assert.deepEqual(world.encounter().reactionsUsed, [novice.id], "the enemy before them has not had its turn");
+  kit.handOnEnemies();
   assert.deepEqual(world.encounter().reactionsUsed, []);
   // Spent on their own turn, it stays spent through the round wrap and
   // the veteran's whole next turn.
@@ -203,6 +207,8 @@ await test("a reaction comes back at the start of its owner's turn, not at the r
   assert.equal(kit.current().characterId, veteran.id);
   assert.deepEqual(world.encounter().reactionsUsed, [novice.id]);
   assert.equal(kit.endTurn(veteran.userId), true);
+  assert.deepEqual(world.encounter().reactionsUsed, [novice.id], "nor this round");
+  kit.handOnEnemies();
   assert.deepEqual(world.encounter().reactionsUsed, []);
 });
 
@@ -260,6 +266,8 @@ await test("Haste's extra action is one weapon attack, Dash, Disengage, Hide or 
   assert.equal((await hit(veteran, enemy)).ok, true);
   const dodge = await world.invoke("take_action", { characterId: veteran.id, action: "dodge" });
   assert.equal(dodge.ok, false, "the hasted action bought a Dodge");
+  const improvised = await world.invoke("take_action", { characterId: veteran.id, action: "improvise", reason: "topples the shelf onto the goblin" });
+  assert.equal(improvised.ok, false, "the hasted action bought an improvised action");
 });
 
 await test("Casting a spell is its own action. Extra Attack belongs to the Attack action and gives no second casting.", async () => {

@@ -49,6 +49,8 @@ import { textKey } from "@/lib/language/text-logic";
 import { nameChoice } from "@/lib/srd/feature-names";
 import { castsSpells } from "@/lib/srd";
 import { grantedCastOf } from "@/lib/dm/cast-rules";
+import { paidByItem } from "@/lib/srd/item-cast-credit";
+import type { CastingSheet } from "@/lib/srd";
 
 // Temporary hit points a chosen variant grants on top of its condition.
 const VARIANT_TEMP_HP: Record<string, string> = {
@@ -70,12 +72,28 @@ const castBuffSchema = z.object({
   endSpell: z.string().max(80).optional(),
   // A summoning spell: fewer creatures than the slot allows.
   count: z.coerce.number().int().min(1).max(40).optional(),
+  // A summoning spell whose targets each take their own form (Animate Dead's
+  // skeletons and zombies, Animate Objects' sizes): each form and how many.
+  mix: z.array(z.object({ variant: z.string().trim().min(1).max(40), count: z.coerce.number().int().min(1).max(40) })).min(1).max(6).optional(),
+  // A summoning ritual (Find Familiar, Unseen Servant, Phantom Steed) cast as
+  // one: no slot, ten minutes longer.
+  ritual: z.boolean().optional(),
+  // What a Find Steed or Find Familiar creature is instead of its own kind
+  // (SRD 5.1: celestial, fey or fiend, the caster's choice).
+  kind: z.enum(["celestial", "fey", "fiend"]).optional(),
   reason: z.string().optional(),
   // Where a buff that leaves something on the board appears (Spiritual
   // Weapon's weapon, issue 659): the Hand's board pick carried these, and
   // the schema dropped them, so the weapon appeared beside its caster.
   ...zoneArgsSchema,
 });
+
+// A creature's kind picked apart from it (the console's Kind, the model's
+// kind) joins its name as the engine reads a kind said with it ("fey
+// warhorse": summon-spells.ts chosenKind, familiar-forms.ts familiarKindOf).
+function withKind(kind: string | undefined, variant: string | undefined): string | undefined {
+  return kind && variant ? `${kind} ${variant}` : variant;
+}
 
 // The four placement arguments the call named, passed on to the cast
 // guard, which lays the area (src/lib/dm/zone-cast.ts).
@@ -115,7 +133,8 @@ export function handleCastBuff(
   if (sheet.currentHp <= 0 && spellFactsFor(args.spell, spellAuthorsFor(campaign))?.castingTime !== "reaction") {
     return { error: `${sheet.name} is at 0 HP and cannot cast.`, refused: "rules" };
   }
-  if (!castsSpells(sheet)) {
+  // A spell an item paid for needs no Spellcasting feature, as it runs on too.
+  if (!castsSpells(sheet) && !paidByItem(sheet, args.spell ?? "")) {
     return { error: `${sheet.name} cannot cast spells.`, refused: "rules" };
   }
   const barred = castBarred(campaign, turn.id, { characterId: sheet.id, spell: args.spell, ...(args.level ? { level: args.level } : {}), via: "buff" }, sheets, sheetsById);
@@ -135,13 +154,13 @@ export function handleCastBuff(
   if (summoning) {
     return castSummon(
       campaign,
-      { caster: sheet, spell: summoning, castAs, level: args.level, variant: args.variant, count: args.count, reason: args.reason },
+      { caster: sheet, spell: summoning, castAs, level: args.level, variant: withKind(args.kind, args.variant), count: args.count, mix: args.mix, ritual: args.ritual, reason: args.reason },
       (cast) => applyDmMutation(campaign, turn.id, "use_spell_slot", JSON.stringify(cast), sheets, sheetsById).result,
     );
   }
   // Find Familiar binds a pet once the casting is paid (familiar-cast.ts).
   if (isFindFamiliar(engine)) {
-    return castFindFamiliar(campaign, { caster: sheet, castAs, variant: args.variant, level: args.level, reason: args.reason, sheets, sheetsById }, (cast) =>
+    return castFindFamiliar(campaign, { caster: sheet, castAs, variant: withKind(args.kind, args.variant), level: args.level, ritual: args.ritual, reason: args.reason, sheets, sheetsById }, (cast) =>
       applyDmMutation(campaign, turn.id, "use_spell_slot", JSON.stringify(cast), sheets, sheetsById).result,
     );
   }
@@ -187,7 +206,7 @@ export function handleCastBuff(
     } else return castShapeAtEnemy(
       campaign,
       turn,
-      { caster: sheet, enemy, spell: resolvedMech.name, runsAs: engine, variant: args.variant, level: args.level, reason: args.reason, authors },
+      { caster: sheet as CastingSheet<CharacterSheet>, enemy, spell: resolvedMech.name, runsAs: engine, variant: args.variant, level: args.level, reason: args.reason, authors },
       (cast) => applyDmMutation(campaign, turn.id, "use_spell_slot", JSON.stringify(cast), sheets, sheetsById).result,
     );
   }
@@ -371,7 +390,7 @@ export function handleCastBuff(
     return cast;
   }
   // A target fighting against the caster saves as an unwilling creature.
-  for (const [id, line] of unwillingResist(campaign, turn, sheet, { name: resolvedMech.name, engine }, targetSheets)) warded.set(id, line);
+  for (const [id, line] of unwillingResist(campaign, turn, sheet as CastingSheet<CharacterSheet>, { name: resolvedMech.name, engine }, targetSheets)) warded.set(id, line);
   const slotLevel = typeof cast.slotLevel === "number" ? cast.slotLevel : null;
   const above = Math.max(0, (slotLevel ?? resolvedMech.spellLevel) - resolvedMech.spellLevel);
   if (buff.bySlot?.length) {

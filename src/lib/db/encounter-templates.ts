@@ -2,12 +2,14 @@ import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { byName } from "@/lib/language/text-logic";
 import {
   EMPTY_TEMPLATE_MAP,
+  expandRoster,
   normalizeTemplateExtras,
   parseRoster,
   type TemplateEnemy,
   type TemplateExtras,
   type TemplateMap,
 } from "@/lib/dm/encounter-template-logic";
+import { fitSetupToRoster, parseFightSetup, type FightSetup } from "@/lib/workshop/fight-setup-logic";
 
 // Storage for prepared encounters. Rows are text: a roster, a battlefield
 // hint, saved map settings and the DM's notes. Nothing here is a live
@@ -126,6 +128,16 @@ export function updateEncounterTemplate(
     extras: TemplateExtras;
   },
 ): EncounterTemplate | null {
+  // A roster edited under a saved set-up keeps the foes still in it, by kind
+  // and number, and drops the rest (fight-setup-logic.ts fitSetupToRoster):
+  // the set-up the Workshop describes is then the one a test lays, from
+  // every door that edits a roster.
+  const before = getEncounterTemplate(id);
+  const setup = before ? getTemplateSetup(id) : null;
+  const fitted = before && setup ? fitSetupToRoster(setup, expandRoster(before.enemies), expandRoster(patch.enemies)) : null;
+  if (fitted?.dropped.length) {
+    setTemplateSetup(id, fitted.setup);
+  }
   getDatabase()
     .prepare(
       `UPDATE encounter_templates SET name = ?, enemies_json = ?, battlefield = ?,
@@ -150,4 +162,20 @@ export function setTemplateCued(id: string, cued: boolean) {
 
 export function deleteEncounterTemplate(id: string) {
   getDatabase().prepare(`DELETE FROM encounter_templates WHERE id = ?`).run(id);
+}
+
+// A prepared fight's set-up (src/lib/workshop/fight-setup-logic.ts), apart
+// from the row the editor saves: the editor never sends it, and a save of
+// the form must not drop a set-up a test wrote.
+export function getTemplateSetup(id: string): FightSetup | null {
+  const row = getDatabase().prepare(`SELECT setup_json FROM encounter_templates WHERE id = ?`).get(id) as
+    | { setup_json: string | null }
+    | undefined;
+  return row?.setup_json ? parseFightSetup(parseJson<unknown>(row.setup_json, null)) : null;
+}
+
+export function setTemplateSetup(id: string, setup: FightSetup | null) {
+  getDatabase()
+    .prepare(`UPDATE encounter_templates SET setup_json = ?, updated_at = ? WHERE id = ?`)
+    .run(setup ? JSON.stringify(setup) : "", nowIso(), id);
 }

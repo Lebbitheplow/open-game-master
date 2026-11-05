@@ -29,6 +29,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { sideOf } from "@/lib/dm/combatant";
 import { dominatorOf } from "@/lib/dm/combat-sides-logic";
+import { isPlaytest } from "@/lib/workshop/kind";
 
 type CommandFields = Pick<CharacterSheet, "isCompanion" | "commandedBy" | "summon">;
 type HeldFields = Pick<CharacterSheet, "isCompanion" | "conditions" | "conditionMeta"> & { id: string };
@@ -60,13 +61,20 @@ export function commandable(sheet: Pick<CharacterSheet, "isCompanion" | "summon"
   return sheet.isCompanion && !sheet.summon;
 }
 
+// Whether this member could command a companion: a player, not a GM seat.
+// At a test fight (src/lib/workshop/test-fight.ts) the author holds a GM
+// seat and every hero, so they are its one player as well: the allies they
+// seated may follow them in fights (issue 685), as at a one-player table.
+function mayCommand(campaign: Campaign, userId: string): boolean {
+  return isPlaytest(campaign) || !isDmSeat(campaignSeats(campaign), userId);
+}
+
 // The players at the table who could command a companion: members holding a
 // party slot (not the DM seats).
 export function commandingPlayers(campaign: Campaign): string[] {
-  const seats = campaignSeats(campaign);
   return listMembers(campaign.id)
     .map((member) => member.userId)
-    .filter((id) => !isDmSeat(seats, id) && !isCompanionUserId(id));
+    .filter((id) => mayCommand(campaign, id) && !isCompanionUserId(id));
 }
 
 // The player commanding this companion in fights now, or null for the DM. A
@@ -80,7 +88,7 @@ export function commanderOf(campaign: Campaign, sheet: CommandFields & { id?: st
   if (!userId || !commandable(sheet)) {
     return null;
   }
-  if (isDmSeat(campaignSeats(campaign), userId) || !isCampaignMember(campaign.id, userId)) {
+  if (!mayCommand(campaign, userId) || !isCampaignMember(campaign.id, userId)) {
     return null;
   }
   if (sheet.id && againstTheParty(campaign.id, sheet.id)) {
@@ -131,11 +139,15 @@ export function dmPlaysTurn(campaign: Campaign, entry: { characterId: string; us
   return holder === DOMINATED_TURN || (isCompanionUserId(entry.userId) && holder === entry.userId);
 }
 
-// The companion a person in the GM seat plays now: the fight's pointer rests
-// on a companion nobody commands, at a table a person runs. That person
-// plays its turn with its Hand and ends it with End turn, as they would a
-// hero's (src/lib/player-characters.ts gmTurnCompanion is the Hand's view of
-// it). Null on any other turn, at a table the AI runs, and for a player.
+// The character a person in the GM seat plays now, at a table a person runs:
+// the fight's pointer rests on a companion nobody commands, or on a player's
+// hero the other side dominates (issue 685 audit, 4.G: the GM played that
+// one only through "Play their turn for me", its basic turn). That person
+// plays the turn with its Hand and ends it with End turn, as they would a
+// hero's (src/lib/player-characters.ts gmTurnCompanion and gmTurnDominated
+// are the Hand's view of it); the hero's own player is refused it with
+// dominatedRefusal. Null on any other turn, at a table the AI runs, and for
+// a player.
 export function gmCompanionTurn(campaign: Campaign, userId: string): CharacterSheet | null {
   const seats = campaignSeats(campaign);
   if (!hasHumanDm(seats) || !isDmSeat(seats, userId)) {
@@ -143,11 +155,50 @@ export function gmCompanionTurn(campaign: Campaign, userId: string): CharacterSh
   }
   const encounter = getActiveEncounter(campaign.id);
   const current = encounter?.orderReady ? encounter.order[encounter.turnIndex] : undefined;
-  if (current?.kind !== "pc" || !current.characterId || !isCompanionUserId(current.userId)) {
+  if (current?.kind !== "pc" || !current.characterId || !dmPlaysTurn(campaign, current)) {
     return null;
   }
   const sheet = getSheetById(current.characterId);
-  return sheet?.isCompanion && dmPlaysTurn(campaign, current) ? sheet : null;
+  if (!sheet || sheet.campaignId !== campaign.id) {
+    return null;
+  }
+  return isCompanionUserId(current.userId) ? (sheet.isCompanion ? sheet : null) : dominatedByFoe(campaign.id, sheet) ? sheet : null;
+}
+
+// The character whose turn the AI plays at a table it runs, when a person in
+// the GM seat there names it: an ally nobody commands, or a hero the other
+// side dominates, while the pointer rests on it. The steering seat at such a
+// table is shown no Hand for it (SessionView.tsx), and the actions route
+// refuses its move with the reason (test-seats-logic.ts aiTurnRefusal).
+export function aiTurnNamedBySeat(campaign: Campaign, userId: string, characterId: unknown): CharacterSheet | null {
+  const seats = campaignSeats(campaign);
+  if (typeof characterId !== "string" || hasHumanDm(seats) || !isDmSeat(seats, userId)) {
+    return null;
+  }
+  const encounter = getActiveEncounter(campaign.id);
+  const current = encounter?.orderReady ? encounter.order[encounter.turnIndex] : undefined;
+  if (current?.kind !== "pc" || current.characterId !== characterId || !dmPlaysTurn(campaign, current)) {
+    return null;
+  }
+  return getSheetById(characterId);
+}
+
+// A companion nobody commands whose reaction a person in the GM seat plays
+// between its turns, at a table a person runs (issue 685): one fighting now,
+// as gmCompanionTurn hands that seat its turns. Null at a table the AI runs,
+// whose GM plays it, and for a companion a player commands, who plays it.
+export function gmCompanionReactor(campaign: Campaign, userId: string, characterId: string): CharacterSheet | null {
+  const seats = campaignSeats(campaign);
+  if (!hasHumanDm(seats) || !isDmSeat(seats, userId)) {
+    return null;
+  }
+  const encounter = getActiveEncounter(campaign.id);
+  const entry = encounter?.order.find((candidate) => candidate.kind === "pc" && candidate.characterId === characterId);
+  if (entry?.kind !== "pc" || !isCompanionUserId(entry.userId)) {
+    return null;
+  }
+  const sheet = getSheetById(characterId);
+  return sheet?.isCompanion && sheet.campaignId === campaign.id && dmPlaysTurn(campaign, entry) ? sheet : null;
 }
 
 // The player a companion joining this table follows in fights: the one

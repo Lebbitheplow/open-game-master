@@ -15,6 +15,7 @@ import type { Speaker } from "@/lib/dm/speech";
 import { agentTurnBegunBefore, closeAgentTurn, isAgentRequest, readAgentNarration } from "@/lib/dm/agent-turn";
 import { refuseDuringBreak } from "@/lib/dm/table-break";
 import { narratedLines } from "@/lib/dm/speech-lines";
+import { withoutOrphanClosers } from "@/lib/dm/narration-tidy-logic";
 import { NARRATION_MAX_CHARS, textLength, tooLongMessage } from "@/lib/text-limits";
 
 export const runtime = "nodejs";
@@ -88,10 +89,17 @@ export async function POST(
   } else if (parsed.data.speaker?.kind === "monster" && parsed.data.speaker.name) {
     speaker = { kind: "monster", id: parsed.data.speaker.id ?? "", name: parsed.data.speaker.name };
   }
-  // A connected agent program's prose is checked like the storyteller's,
-  // and a contradiction comes back to it as the rewrite prompt.
+  // A connected agent program's prose is a model's: it loses a line of
+  // closers nobody opened, as the storyteller's does (issue 744). A person's
+  // passage is stored as they typed it.
   const agent = isAgentRequest(request);
-  const read = agent ? await readAgentNarration(campaign, parsed.data.content) : null;
+  const content = agent ? withoutOrphanClosers(parsed.data.content).trim() : parsed.data.content;
+  if (!content) {
+    return Response.json({ error: "Write something to narrate." }, { status: 400 });
+  }
+  // The agent's prose is checked like the storyteller's, and a contradiction
+  // comes back to it as the rewrite prompt.
+  const read = agent ? await readAgentNarration(campaign, content) : null;
   if (read?.problem) {
     return Response.json({ error: read.problem }, { status: 409 });
   }
@@ -109,9 +117,9 @@ export async function POST(
     seq,
     authorType: "dm",
     userId: user.id,
-    content: parsed.data.content,
+    content,
     speaker,
-    speech: narratedLines(campaign, parsed.data.content, { speaker, agentLines: read?.lines ?? null }),
+    speech: narratedLines(campaign, content, { speaker, agentLines: read?.lines ?? null }),
   });
   publishWithSeq(campaignId, seq, "message_added", { message });
   // Whoever spoke to the party in it, or the person narrated as, has met
@@ -142,7 +150,7 @@ export async function POST(
     void enqueueNarrationAudio(
       campaignId,
       message.id,
-      parsed.data.content,
+      content,
       message.speech,
       campaign.gameSettings,
       speaker,

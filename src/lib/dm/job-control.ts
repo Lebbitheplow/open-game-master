@@ -119,23 +119,78 @@ function turnScopes() {
   return (globalThis.__odmTurnScopeStorage ??= new AsyncLocalStorage<TurnScope>());
 }
 
+// When a turn's work is done (its last open scope closes, or the queue job
+// driving it settles), what it changed is read once more as it left it: the
+// revert asks the lead first about anything changed again since
+// (src/lib/db/turn-rows.ts registers here; this module stays free of the
+// database). A turn whose job is still running is not done when a scope
+// inside it closes.
+declare global {
+  var __odmTurnDoneHooks: Array<(turnId: string) => void> | undefined;
+  var __odmOpenTurnScopes: Map<string, number> | undefined;
+}
+
+export function onTurnWorkDone(hook: (turnId: string) => void): void {
+  const hooks = (globalThis.__odmTurnDoneHooks ??= []);
+  if (!hooks.includes(hook)) {
+    hooks.push(hook);
+  }
+}
+
+export function turnWorkDone(turnId: string): void {
+  for (const hook of globalThis.__odmTurnDoneHooks ?? []) {
+    try {
+      hook(turnId);
+    } catch (error) {
+      console.error("[job-control] a hook for a turn's end failed", error);
+    }
+  }
+}
+
+function openScopes() {
+  return (globalThis.__odmOpenTurnScopes ??= new Map<string, number>());
+}
+
+function scopeClosed(turnId: string) {
+  const left = (openScopes().get(turnId) ?? 1) - 1;
+  if (left > 0) {
+    openScopes().set(turnId, left);
+    return;
+  }
+  openScopes().delete(turnId);
+  const control = currentDmJob();
+  if (control && control.turnId === turnId && !control.settled) {
+    return;
+  }
+  turnWorkDone(turnId);
+}
+
+// Whether some work of this turn is running now (a console call, a parked
+// roll being answered): "Revert this turn" waits for it to finish.
+export function turnScopeOpen(turnId: string): boolean {
+  return openScopes().has(turnId);
+}
+
 // Runs `fn` as part of this turn. The scope closes when `fn` returns (or its
 // promise settles), so a timer it started that fires later is nobody's turn.
 export function runInTurnScope<T>(turnId: string, fn: () => T): T {
   const scope: TurnScope = { turnId, open: true };
+  openScopes().set(turnId, (openScopes().get(turnId) ?? 0) + 1);
+  const close = () => {
+    scope.open = false;
+    scopeClosed(turnId);
+  };
   let out: T;
   try {
     out = turnScopes().run(scope, fn);
   } catch (error) {
-    scope.open = false;
+    close();
     throw error;
   }
   if (out instanceof Promise) {
-    return out.finally(() => {
-      scope.open = false;
-    }) as T;
+    return out.finally(close) as T;
   }
-  scope.open = false;
+  close();
   return out;
 }
 

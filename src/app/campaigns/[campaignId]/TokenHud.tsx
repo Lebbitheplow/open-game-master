@@ -17,7 +17,9 @@ import {
   Wand2,
   X,
 } from "lucide-react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
+import { DIAL_CENTRE, DIAL_RADIUS, fitDial, type DialSide } from "@/lib/battlemap/dial-side";
 import type { StageToken } from "@/app/campaigns/[campaignId]/BoardStage";
 import type { HudGateId } from "@/lib/battlemap/hand-hud";
 
@@ -28,6 +30,13 @@ import type { HudGateId } from "@/lib/battlemap/hand-hud";
 //
 // Positioned in the board's own coordinate space as percentages, so it
 // rides with the camera and never needs measuring.
+
+// How far a sigil's name leans off its anchor, from -1 to 1: fully past 30
+// degrees off the axis, so a diagonal name's corner, not its middle, meets
+// the anchor.
+function lean(component: number): number {
+  return Math.max(-1, Math.min(1, component / 0.5));
+}
 
 export type HudAction = {
   id: string;
@@ -112,11 +121,15 @@ export function TokenHud({
   hint,
   onClose,
   anchor,
+  camera,
 }: {
   token: StageToken;
   boardWidth: number;
   boardHeight: number;
   footprint: number;
+  // The board camera, to measure the dial again as it pans and zooms (an
+  // addon's board view has none).
+  camera?: { x: number; y: number; zoom: number };
   actions: HudAction[];
   // A line under the arc: "tap an enemy" while a target is being chosen.
   hint?: string;
@@ -129,18 +142,76 @@ export function TokenHud({
   const cy = anchor ? ((anchor[1] + anchor[2]) / 2) * 100 : ((token.y + footprint / 2) / boardHeight) * 100;
   // The arc opens upward, or downward near the top edge so it stays on the board.
   const flip = anchor ? cy < 100 / 3 : token.y < boardHeight / 3;
-  const radius = 56;
+  // Then, measured where the figure sits in the frame on screen, away from
+  // an edge it would cross: near the right edge it no longer runs under the
+  // camera buttons (dial-side.ts).
+  //
+  // The dial rides inside the camera's layer, so the camera's zoom scaled it:
+  // zoomed out to a third, a 40px sigil drew at 13px. It undoes the zoom about
+  // the figure's centre, so it keeps its size on screen at any zoom while it
+  // still rides with the figure as the board pans.
+  const centre = useRef<HTMLDivElement>(null);
+  // Zoomed in, the figure grows and the sigils do not, so the arc widens to
+  // clear it, as far as the frame has room (fitDial).
+  const [fit, setFit] = useState<{ side: DialSide; zoom: number; radius: number; fits: boolean; close: number } | null>(null);
+  // Again whenever the figure or the camera moves: a pan or a zoom changes
+  // where the figure sits on screen without the figure moving.
+  const [panX, panY, camZoom] = [camera?.x, camera?.y, camera?.zoom];
+  const across = anchor ? anchor[2] - anchor[1] : footprint / boardWidth;
+  useLayoutEffect(() => {
+    const at = centre.current?.getBoundingClientRect();
+    const view = centre.current?.closest(".board-view");
+    const box = view?.getBoundingClientRect();
+    // The camera buttons stand inside the frame's right edge: room on the
+    // right ends where they begin.
+    const cams = view?.querySelector(".board-cam")?.getBoundingClientRect();
+    const frame = box && { left: box.left, top: box.top, bottom: box.bottom, right: cams?.width ? Math.min(box.right, cams.left) : box.right };
+    // The camera's zoom: the dial's layer on screen against its own size.
+    const layer = centre.current?.parentElement;
+    const shown = layer?.getBoundingClientRect();
+    const zoom = layer && shown && layer.offsetWidth ? shown.width / layer.offsetWidth : 1;
+    if (!at || !frame || !shown || !(zoom > 0)) return;
+    // The figure's half-width on screen (an addon's anchor is a share of
+    // the board's height).
+    const half = ((anchor ? shown.height : shown.width) * across) / 2;
+    // Its size undone, the dial reaches the same on screen at any zoom.
+    const next = fitDial({ x: at.left, y: at.top }, frame, half);
+    setFit((current) =>
+      current && current.side === next.side && current.radius === next.radius && current.fits === next.fits && current.close === next.close && Math.abs(current.zoom - zoom) < 0.001
+        ? current
+        : { ...next, zoom },
+    );
+  }, [cx, cy, panX, panY, camZoom, across, anchor]);
+  const side = fit?.side ?? (flip ? "down" : "up");
+  const radius = fit?.radius ?? DIAL_RADIUS;
   const spread = Math.min(Math.PI, actions.length * 0.52);
-  const start = (flip ? Math.PI / 2 : -Math.PI / 2) - spread / 2;
+  const middle = DIAL_CENTRE[side];
+  const start = middle - spread / 2;
+  // Close sits across the figure from the arc, drawn in to stay inside the
+  // frame (dial-side.ts); the hint keeps above or below.
+  const closeReach = fit?.close ?? radius + 16;
+  const closeAt = { x: -Math.cos(middle) * closeReach, y: -Math.sin(middle) * closeReach };
+  const hintBelow = side === "down" || (side !== "up" && flip);
   return (
     <div
       className="pointer-events-none absolute inset-0 z-20"
       role="menu"
       aria-label={`Actions for ${token.name}`}
+      data-dial-side={side}
+      data-dial-radius={radius}
+      data-dial-fits={fit ? String(fit.fits) : undefined}
     >
       <div
+        ref={centre}
         className="absolute"
-        style={{ left: `${cx}%`, top: `${cy}%`, width: 0, height: 0 }}
+        style={{
+          left: `${cx}%`,
+          top: `${cy}%`,
+          width: 0,
+          height: 0,
+          // About its own point, the figure's centre (it has no size).
+          ...(fit && fit.zoom !== 1 ? { scale: String(1 / fit.zoom), transformOrigin: "0 0" } : {}),
+        }}
       >
         {actions.map((action, index) => {
           const angle = start + (actions.length === 1 ? spread / 2 : (index / (actions.length - 1)) * spread);
@@ -195,7 +266,7 @@ export function TokenHud({
           }}
           aria-label="Close"
           className="token-sigil pointer-events-auto fx-pop absolute flex size-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[rgba(107,99,148,0.6)] text-[#aeaac6] hover:text-white"
-          style={{ left: 0, top: flip ? -radius - 16 : radius + 16 }}
+          style={{ left: closeAt.x, top: closeAt.y }}
         >
           <X className="size-3.5" />
         </button>
@@ -203,22 +274,33 @@ export function TokenHud({
           <p
             data-native-board-occluder
             className="fx-pop pointer-events-none absolute -translate-x-1/2 whitespace-nowrap rounded-md border border-[rgba(224,112,58,0.5)] bg-[rgba(13,11,28,0.94)] px-2 py-0.5 text-[11px] text-[#ffbe8f] shadow-elev-1"
-            style={{ left: 0, top: flip ? radius + 18 : -radius - 30 }}
+            style={{ left: 0, top: hintBelow ? radius + 18 : -radius - 30 }}
           >
             {hint}
           </p>
         ) : null}
         {actions.map((action, index) => {
           const angle = start + (actions.length === 1 ? spread / 2 : (index / (actions.length - 1)) * spread);
-          const x = Math.cos(angle) * (radius + 28);
-          const y = Math.sin(angle) * (radius + 28);
+          // Just beyond the sigil's rim, and anchored by the side that faces
+          // it: a name beside a sigil starts (or ends) there, one above it
+          // sits on it. Centred on a fixed radius, a name to either side ran
+          // back under its own sigil ("Pick up", "Details").
+          const x = Math.cos(angle) * (radius + 24);
+          const y = Math.sin(angle) * (radius + 24);
           return (
             <span
               data-native-board-occluder
               key={`label-${action.id}`}
               // Each name arrives with its sigil, on the same stagger.
-              className="fx-pop pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap font-display text-[9px] font-semibold uppercase tracking-[0.14em] text-[#dedbec] drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]"
-              style={{ left: x, top: y, animationDelay: `${index * 22}ms` }}
+              className="fx-pop pointer-events-none absolute whitespace-nowrap font-display text-[9px] font-semibold uppercase tracking-[0.14em] text-[#dedbec] drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]"
+              style={{
+                left: x,
+                top: y,
+                // A diagonal name is held by its corner nearest the sigil, a
+                // name straight above or beside one by the middle of its edge.
+                translate: `${-50 + 50 * lean(Math.cos(angle))}% ${-50 + 50 * lean(Math.sin(angle))}%`,
+                animationDelay: `${index * 22}ms`,
+              }}
             >
               {action.label}
             </span>

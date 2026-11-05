@@ -1,9 +1,10 @@
 // Pure helpers for spotting DM tool calls that leaked into narration as
-// literal text. Three leak shapes exist: bracket style
+// literal text. Four leak shapes exist: bracket style
 // ("[request_roll characterId=... kind=custom]"), the model's NATIVE
 // XML dialect ("<tool_call><function=enemy_attack><parameter=enemyId>..."),
-// which reaches us whenever llama-server's extraction misses it, and bare
-// JSON arguments (findBareJsonObjects below). Kept
+// which reaches us whenever llama-server's extraction misses it, an agent
+// program's call written out in the Anthropic style (invokeToolCallRegex
+// below), and bare JSON arguments (findBareJsonObjects below). Kept
 // dependency-free so client components can import it; the name list mirrors
 // the tools registered in src/lib/dm/prompt.ts, src/lib/dm/mutations.ts
 // (MUTATION_TOOL_NAMES), src/lib/dm/encounter-tools.ts, src/lib/dm/
@@ -16,13 +17,37 @@ export function toolTextRegex(): RegExp {
   return new RegExp(`\\[(${DM_TOOL_NAME_PATTERN})\\b([^\\]]*)\\]`, "g");
 }
 
-// XML tool-call leaks: whole <tool_call> blocks, bare <function=...> blocks
+// An agent program behind the harness provider sometimes writes a call into
+// its final message instead of making it (issue 794): an invoke tag with a
+// name attribute holding parameter tags with theirs, perhaps in a
+// function_calls wrapper, the tags perhaps namespaced. A tag only counts with
+// its name attribute, so "<invoke the gods>" in a story stays. An invoke that
+// never closes is output cut short, and nothing after it is story.
+const NS = "(?:[\\w-]+:)?";
+const INVOKE_PATTERNS = [
+  `<${NS}function_calls\\b[^>]*>[\\s\\S]*?</${NS}function_calls\\s*>`,
+  `<${NS}invoke\\s+name\\s*=[^>]*>[\\s\\S]*?</${NS}invoke\\s*>`,
+  `<${NS}invoke(?:\\s+name\\s*(?:=[\\s\\S]*)?|\\s*)$`,
+  `<${NS}parameter\\s+name\\s*=[^>]*>[\\s\\S]*?</${NS}parameter\\s*>`,
+  `</?${NS}function_calls\\b[^>]*(?:>|$)`,
+  `</${NS}invoke\\s*>`,
+  `<${NS}parameter\\s+name\\s*=[^>]*>`,
+  `</${NS}parameter\\s*>`,
+];
+
+export function invokeToolCallRegex(): RegExp {
+  return new RegExp(INVOKE_PATTERNS.join("|"), "gi");
+}
+
+// XML tool-call leaks: the Anthropic-style dialect above, whole <tool_call>
+// blocks, bare <function=...> blocks
 // (the wrapper is sometimes dropped), then any orphaned tags left behind by
 // truncation. Order matters: block patterns first so orphan matching only
 // sees leftovers.
 export function xmlToolCallRegex(): RegExp {
   return new RegExp(
     [
+      ...INVOKE_PATTERNS,
       "<tool_call>[\\s\\S]*?</tool_call>",
       "<function=[^>]*>[\\s\\S]*?</function>",
       "<parameter=[^>]*>[\\s\\S]*?</parameter>",

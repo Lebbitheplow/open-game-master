@@ -76,9 +76,10 @@ export function cooledNote(change: RungChange, character: string, subject: strin
 // Whether this table hears romance lines at all, by the settings it already
 // has (no setting of its own). Romance off: the ladder is not played, and a
 // rung left from before it went off slips without a word. A safety line drawn
-// at romance keeps it off the page in any form (safety-logic.ts), a table
-// line included; a veil allows the summary after the fact a line is, and a
-// family table hears of a wedding as any other does.
+// at romance, in any table language (advance-logic.ts namesRomance), keeps it
+// off the page in any form (safety-logic.ts), a table line included; a veil
+// allows the summary after the fact a line is, and a family table hears of a
+// wedding as any other does.
 export function romanceLinesAllowed(settings: {
   relationships?: string;
   romance?: string;

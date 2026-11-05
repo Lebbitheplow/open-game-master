@@ -19,6 +19,7 @@ import { removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logi
 import { rollCharacterCheck } from "@/lib/dm/contest-roll";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
+import { swallowCoverError } from "@/lib/dm/swallow";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { featUsable, holdsFeat } from "@/lib/srd/feat-use";
 import { isConditionNamed } from "@/lib/srd/feature-names";
@@ -65,6 +66,11 @@ export function pin(
   const enemy = targetEnemyId ? resolveTargetFoe(campaign.id, encounter, targetEnemyId) : null;
   if (!enemy || enemy.status !== "alive") {
     return { error: "pin needs a living targetEnemyId from GAME STATE: the creature they grapple.", retry: true };
+  }
+  // Swallowed (swallow.ts): hands do not cross the swallower's wall.
+  const inside = swallowCoverError(sheet.id, enemy.id);
+  if (inside) {
+    return inside;
   }
   if (!heldFrom(enemy, GRAPPLED, sheet.id)) {
     return {

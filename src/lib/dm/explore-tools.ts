@@ -18,14 +18,14 @@ import { encumbranceFor } from "@/lib/srd/encumbrance";
 import { sizeForRace } from "@/lib/srd";
 import { LIFESTYLES } from "@/lib/dm/between-state";
 import { tableNote, writeLifestyle } from "@/lib/dm/between-io";
-import { LIFESTYLE_COST_CP, downtimeProblem, spendDowntime, type DowntimeEntry } from "@/lib/dm/lifestyle";
+import { LIFESTYLE_COST_CP, coverOf, downtimeProblem, spendDowntime, type DowntimeEntry } from "@/lib/dm/lifestyle";
 import { srdNameFor } from "@/lib/dm/item-logic";
 import { infectDisease, infectWorkshopDisease, inflictMadness } from "@/lib/dm/afflictions";
 import { diseaseAt, hazardNamesAt, poisonAt } from "@/lib/srd/table-hazards";
 import { applyPoison } from "@/lib/dm/affliction-poisons";
 import { petrifiedRefusal } from "@/lib/dm/damage-logic";
 import { DISEASES, MADNESS_KINDS, POISONS, findDisease } from "@/lib/srd/afflictions";
-import { formatPrice } from "@/lib/srd/currency";
+import { formatPrice, purseCoins } from "@/lib/srd/currency";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { matchGear } from "@/lib/srd/adventuring-gear";
@@ -158,7 +158,7 @@ const BLOCK_AND_TACKLE = matchGear("Block and Tackle");
 
 const liftSchema = z.object({
   characterId: z.string(),
-  weightLb: z.coerce.number().min(1).max(100000),
+  weightLb: z.coerce.number().min(1),
   how: z.enum(["lift", "push", "drag"]).optional(),
   reason: z.string().max(200).optional(),
 });
@@ -190,7 +190,7 @@ function handleLift(args: z.infer<typeof liftSchema>, sheets: CharacterSheet[], 
   const load = encumbranceFor({
     strength: sheet.abilities.str,
     equipment: weighed(sheet.equipment),
-    coins: sheet.gold ?? 0,
+    coins: purseCoins({ gold: sheet.gold ?? 0, copper: sheet.copper ?? 0 }),
     size: sizeForRace(sheet.race),
     wearer: sheet,
   });
@@ -312,6 +312,7 @@ export function handleExploreCall(
       return { error: "downtime needs a characterId and an activity, or activities.", retry: true };
     }
     const resolved: DowntimeEntry[] = [];
+    const lifestyle: Record<string, number> = {};
     for (const entry of entries) {
       const stale = resolveSheetRef(entry.characterId, sheets, sheetsById);
       const sheet = stale ? (getSheetById(stale.id) ?? stale) : null;
@@ -328,8 +329,11 @@ export function handleExploreCall(
         return { ...problem, error: `${problem.error} No time passed.` };
       }
       resolved.push(fixed);
+      // Their lifestyle is charged for the days, less what their work covers
+      // (spendDowntime), so those dawns feed them.
+      lifestyle[sheet.id] = coverOf(sheet, fixed);
     }
-    const moved = advanceClock(campaign.id, args.days, "days");
+    const moved = advanceClock(campaign.id, args.days, "days", { lifestyle });
     if ("error" in moved) {
       return moved;
     }

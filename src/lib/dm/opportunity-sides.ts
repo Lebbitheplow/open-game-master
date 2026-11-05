@@ -89,7 +89,7 @@ export function enemiesStrikeWalker(campaignId: string, walkerId: string, steps:
     });
     const advantage = mergeAdvantage(context.sources);
     const vsAc = enemyAcWithEffects(campaign.id, walker);
-    const toHit = rollExpression(d20Expression(attack.toHit, advantage));
+    const toHit = rollExpression(d20Expression(attack.toHit, advantage), undefined, { purpose: { roller: "enemy", kind: "attack", who: reactor.displayName } });
     const label = rollAgainst(`${attack.name} (opportunity attack)`, walker.displayName);
     const hitRoll = insertRoll({ campaignId, characterId: null, requestedBy: "dm", kind: "attack", detail: label, advantage, result: toHit, attacker: { kind: "enemy", id: reactor.id, name: reactor.displayName } });
     publishWithSeq(campaignId, allocateSeq(campaignId), "roll_result", { roll: hitRoll, source: "digital" });
@@ -103,6 +103,8 @@ export function enemiesStrikeWalker(campaignId: string, walkerId: string, steps:
       crit
         ? critDamageExpression(attack.damage, 0, { powerfulCritical: campaign.gameSettings.variantRules.powerfulCritical, multiplyNumeric: campaign.gameSettings.variantRules.criticalDamageMods })
         : attack.damage,
+      undefined,
+      { purpose: { roller: "enemy", kind: "damage", who: reactor.displayName } },
     );
     const damageRoll = insertRoll({ campaignId, characterId: null, requestedBy: "dm", kind: "damage", detail: label, result: damage, attacker: { kind: "enemy", id: reactor.id, name: reactor.displayName } });
     publishWithSeq(campaignId, allocateSeq(campaignId), "roll_result", { roll: damageRoll, source: "digital" });

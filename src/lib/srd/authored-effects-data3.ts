@@ -130,7 +130,7 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
           longRangeFt: 120,
           second: "1d4",
         },
-        note: "The published blade keeps its d6 at every level; the second blade is pc_attack offHand with the psychic blade, a d4.",
+        note: "The published blade keeps its d6 at every level; the second blade is pc_attack feature Two-Weapon Fighting with the psychic blade, a d4.",
       },
     ],
   },
@@ -233,7 +233,7 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
     spends: [{ name: "Lunar Phase", aliases: ["Moon Phase"], fight: "out", does: { kind: "choose", options: LUNAR_PHASES } }],
   },
   // Sacred flame at one creature or two within 5 feet of each other
-  // (cast_at_enemy secondTargetEnemyId, src/lib/dm/authored-reaper.ts).
+  // (cast_at_enemy's second target, src/lib/dm/authored-reaper.ts).
   "sorcerer::Moon Fire": {
     subclass: "Lunar Sorcery",
     effects: [{ kind: "twin_spell", school: "evocation", minLevel: 0, maxLevel: 0, spells: ["sacred flame"] }],
@@ -604,6 +604,7 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
         name: "Arcane Jolt",
         pool: { id: "art_arcane_jolt" },
         oncePerTurn: true,
+        afterWeaponHit: true,
         does: { kind: "flames", formula: [[9, "2d6"], [15, "4d6"]], type: "force" },
       },
     ],

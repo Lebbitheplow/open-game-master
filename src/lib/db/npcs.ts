@@ -7,7 +7,9 @@ import { namesHeard } from "@/lib/dm/cast-logic";
 import { normalizeNpcVoice, type NpcDraft, type NpcVoice } from "@/lib/npcs/forge";
 import { isUploadedImagePath } from "@/lib/uploads";
 import { storedGender, type Gender } from "@/lib/gender";
+import { storedRace } from "@/lib/npc-race";
 import { attractionJson, keptAttraction, normalizeAttraction, type Attraction } from "@/lib/attraction";
+import { knownBeforeColumn, parseKnownBefore, type KnownBefore } from "@/lib/dm/known-before-logic";
 import {
   parseBonds,
   parseGoals,
@@ -26,6 +28,33 @@ import {
 // (src/lib/dm/npc-logic.ts).
 
 export type Attitude = "hostile" | "indifferent" | "friendly";
+
+declare global {
+  var __odmCastTouched: ((campaignId: string) => void) | undefined;
+}
+
+// Told when a write may have changed the cast the seats are sent: a name or
+// alias, a face, a voice, who is on the roster, who the table has met or
+// heard named. src/lib/dm/cast.ts sends the cast again when what a seat sees
+// did change, so a person met through a rule (a reaction roll, a social
+// check, a first relationship beat) reaches every open seat's @ menu without
+// a reload (issue 733). Registered, not imported, because cast.ts imports
+// this module.
+export function onCastTouched(listener: (campaignId: string) => void): void {
+  globalThis.__odmCastTouched = listener;
+}
+
+export function touchCast(campaignId: string): void {
+  const listener = globalThis.__odmCastTouched;
+  if (listener) {
+    listener(campaignId);
+    return;
+  }
+  // cast.ts registers as it loads; a route that has not loaded it yet does now.
+  void import("@/lib/dm/cast")
+    .then(() => globalThis.__odmCastTouched?.(campaignId))
+    .catch(() => undefined);
+}
 
 export type Npc = {
   id: string;
@@ -52,6 +81,9 @@ export type Npc = {
   statBlock: string;
   // src/lib/gender.ts; "" for unspecified.
   gender: Gender;
+  // An SRD race id (src/lib/npc-race.ts); "" for unrecorded. Picks the
+  // placeholder face with role and gender; no rule reads it.
+  race: string;
   // Who they are drawn to (src/lib/attraction.ts); blank = undecided.
   attraction: Attraction;
   // The lasting AI companion this row stands behind (#503 Phase 0.1), by
@@ -71,6 +103,10 @@ export type Npc = {
   // then. Met or heard, the table knows them, and only then is their name
   // sent to every seat (src/lib/dm/cast-logic.ts, issue 650).
   heardAt: string;
+  // The party already knows them when the story begins, and how (issue 731,
+  // src/lib/dm/known-before-logic.ts): an author's mark, opened into every
+  // hero's bond as the table begins. Null for everyone else.
+  knownBefore: KnownBefore | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -93,6 +129,7 @@ type NpcRow = {
   portrait_url: string | null;
   role: string | null;
   gender: string | null;
+  race?: string | null;
   voice_json: string | null;
   faction_id: string | null;
   stat_block?: string | null;
@@ -101,6 +138,7 @@ type NpcRow = {
   archived: number;
   met_at?: string | null;
   heard_at?: string | null;
+  known_before_json?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -115,6 +153,7 @@ function mapNpc(row: NpcRow): Npc {
     location: row.location,
     role: row.role ?? "",
     gender: storedGender(row.gender),
+    race: storedRace(row.race),
     attraction: normalizeAttraction(row.attraction_json ?? ""),
     companionSheetId: row.companion_sheet_id ?? "",
     lastShiftTurn: row.last_shift_turn,
@@ -136,6 +175,7 @@ function mapNpc(row: NpcRow): Npc {
     archived: row.archived === 1,
     metAt: row.met_at ?? "",
     heardAt: row.heard_at ?? "",
+    knownBefore: parseKnownBefore(row.known_before_json ?? ""),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -190,12 +230,22 @@ export function getNpcByName(campaignId: string, name: string): Npc | null {
   return found && !found.match.needsConfirmation ? found.npc : null;
 }
 
+// getNpcByName over a roster already read, for a reader that names many at
+// once (every figure on a board, src/lib/db/npc-faces.ts).
+export function npcNamedIn(npcs: Npc[], name: string): Npc | null {
+  const found = matchRosterIn(npcs, name.trim());
+  return found && !found.match.needsConfirmation ? found.npc : null;
+}
+
 // The roster's best match for a name, across every name and alias.
 function matchRoster(campaignId: string, name: string): { npc: Npc; match: EntityMatch } | null {
+  return matchRosterIn(listNpcs(campaignId), name);
+}
+
+function matchRosterIn(npcs: Npc[], name: string): { npc: Npc; match: EntityMatch } | null {
   // Aliases are matched alongside canonical names, then mapped back. Every
   // canonical name is listed first, so it wins a tie with another NPC's
   // alias.
-  const npcs = listNpcs(campaignId);
   const ownerByName = new Map<string, Npc>(npcs.map((npc) => [npc.name, npc]));
   for (const npc of npcs) {
     for (const alias of npc.aliases) {
@@ -247,6 +297,7 @@ export function upsertNpc(input: {
   trait?: string;
   location?: string;
   gender?: Gender;
+  race?: string;
   attraction?: Attraction | null;
 }): Npc {
   const db = getDatabase();
@@ -263,24 +314,26 @@ export function upsertNpc(input: {
     const attraction = keptAttraction(existing.attraction, input.attraction);
     db.prepare(
       `UPDATE npcs
-       SET attitude = ?, trait = ?, location = ?, gender = ?, attraction_json = ?, aliases_json = ?, updated_at = ?
+       SET attitude = ?, trait = ?, location = ?, gender = ?, race = ?, attraction_json = ?, aliases_json = ?, updated_at = ?
        WHERE id = ?`,
     ).run(
       input.attitude ?? existing.attitude,
       input.trait ?? existing.trait,
       input.location ?? existing.location,
       input.gender ?? existing.gender,
+      input.race || existing.race,
       attractionJson(attraction),
       JSON.stringify(aliases),
       now,
       existing.id,
     );
+    touchCast(input.campaignId);
     return mapNpc(db.prepare(`SELECT * FROM npcs WHERE id = ?`).get(existing.id) as NpcRow);
   }
   const id = crypto.randomUUID();
   db.prepare(
-    `INSERT INTO npcs (id, campaign_id, name, attitude, trait, location, gender, attraction_json, last_shift_turn, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?)`,
+    `INSERT INTO npcs (id, campaign_id, name, attitude, trait, location, gender, race, attraction_json, last_shift_turn, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?)`,
   ).run(
     id,
     input.campaignId,
@@ -289,10 +342,12 @@ export function upsertNpc(input: {
     input.trait ?? "",
     input.location ?? "",
     input.gender ?? "",
+    input.race ?? "",
     attractionJson(input.attraction),
     now,
     now,
   );
+  touchCast(input.campaignId);
   return mapNpc(
     db.prepare(`SELECT * FROM npcs WHERE id = ?`).get(id) as NpcRow,
   );
@@ -312,10 +367,10 @@ export function createNpcFromDraft(campaignId: string, draft: NpcDraft): Npc {
   const id = crypto.randomUUID();
   db.prepare(
     `INSERT INTO npcs
-       (id, campaign_id, name, attitude, trait, location, role, gender, attraction_json, last_shift_turn,
+       (id, campaign_id, name, attitude, trait, location, role, gender, race, attraction_json, last_shift_turn,
         aliases_json, personality_json, goals_json, relations_json,
-        bonds_json, pressure_json, arc_cast_id, portrait_url, voice_json, faction_id, stat_block, archived, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?, ?, ?, '[]', '', '', '', ?, ?, ?, 0, ?, ?)`,
+        bonds_json, pressure_json, arc_cast_id, portrait_url, voice_json, faction_id, stat_block, archived, known_before_json, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?, ?, ?, '[]', '', '', '', ?, ?, ?, 0, ?, ?, ?)`,
   ).run(
     id,
     campaignId,
@@ -325,6 +380,7 @@ export function createNpcFromDraft(campaignId: string, draft: NpcDraft): Npc {
     draft.location,
     draft.role,
     draft.gender,
+    draft.race ?? "",
     attractionJson(draft.attraction),
     JSON.stringify(draft.aliases),
     draft.personality ? JSON.stringify(draft.personality) : "",
@@ -333,9 +389,11 @@ export function createNpcFromDraft(campaignId: string, draft: NpcDraft): Npc {
     draft.voice ? JSON.stringify(draft.voice) : null,
     draft.factionId,
     draft.statBlock ?? "",
+    knownBeforeColumn(draft.knownBefore),
     now,
     now,
   );
+  touchCast(campaignId);
   return mapNpc(db.prepare(`SELECT * FROM npcs WHERE id = ?`).get(id) as NpcRow);
 }
 
@@ -353,7 +411,7 @@ export function updateNpcFromDraft(campaignId: string, npcId: string, draft: Npc
   }
   db.prepare(
     `UPDATE npcs
-     SET name = ?, attitude = ?, trait = ?, location = ?, role = ?, gender = ?, attraction_json = ?, aliases_json = ?,
+     SET name = ?, attitude = ?, trait = ?, location = ?, role = ?, gender = ?, race = ?, attraction_json = ?, aliases_json = ?,
          personality_json = ?, goals_json = ?, relations_json = ?, voice_json = ?, faction_id = ?, stat_block = ?, updated_at = ?
      WHERE id = ?`,
   ).run(
@@ -363,6 +421,8 @@ export function updateNpcFromDraft(campaignId: string, npcId: string, draft: Npc
     draft.location,
     draft.role,
     draft.gender,
+    // No race in the draft (an older app's form) keeps the stored one.
+    draft.race ?? row.race ?? "",
     attractionJson(draft.attraction),
     JSON.stringify(draft.aliases),
     draft.personality ? JSON.stringify(draft.personality) : "",
@@ -374,19 +434,28 @@ export function updateNpcFromDraft(campaignId: string, npcId: string, draft: Npc
     nowIso(),
     npcId,
   );
+  // Who the party knew before the story, when the form said: a form from an
+  // app built before the field says nothing, and keeps it.
+  if (draft.knownBefore !== undefined) {
+    db.prepare(`UPDATE npcs SET known_before_json = ? WHERE id = ?`).run(knownBeforeColumn(draft.knownBefore), npcId);
+  }
   // Renamed in the NPC editor: their bonds follow, as renameNpc's do.
   followBonds(mapNpc(row), draft.name);
+  touchCast(campaignId);
   return mapNpc(db.prepare(`SELECT * FROM npcs WHERE id = ?`).get(npcId) as NpcRow);
 }
 
 // Their read-aloud voice alone, for the table's voices panel (issue 97):
 // the rest of the record is left exactly as it stands.
 export function setNpcVoice(campaignId: string, npcId: string, voice: NpcVoice | null): boolean {
-  return (
+  const changed =
     getDatabase()
       .prepare(`UPDATE npcs SET voice_json = ?, updated_at = ? WHERE id = ? AND campaign_id = ?`)
-      .run(voice ? JSON.stringify(voice) : null, nowIso(), npcId, campaignId).changes > 0
-  );
+      .run(voice ? JSON.stringify(voice) : null, nowIso(), npcId, campaignId).changes > 0;
+  if (changed) {
+    touchCast(campaignId);
+  }
+  return changed;
 }
 
 // "" takes the face away. Nothing validates the path here: the routes accept
@@ -398,8 +467,7 @@ export function setNpcPortrait(npcId: string, url: string): Npc | null {
     nowIso(),
     npcId,
   );
-  const row = db.prepare(`SELECT * FROM npcs WHERE id = ?`).get(npcId) as NpcRow | undefined;
-  return row ? mapNpc(row) : null;
+  return touchedRow(npcId);
 }
 
 // The faction they belong to, or where they live, as one World link says
@@ -424,8 +492,7 @@ export function setNpcAttitude(id: string, attitude: Attitude, turnId: string): 
   db.prepare(
     `UPDATE npcs SET attitude = ?, last_shift_turn = ?, met_at = CASE WHEN met_at = '' THEN ? ELSE met_at END, updated_at = ? WHERE id = ?`,
   ).run(attitude, turnId, now, now, id);
-  const row = db.prepare(`SELECT * FROM npcs WHERE id = ?`).get(id) as NpcRow | undefined;
-  return row ? mapNpc(row) : null;
+  return touchedRow(id);
 }
 
 // The party has now dealt with them (see Npc.metAt). The first meeting is
@@ -433,8 +500,17 @@ export function setNpcAttitude(id: string, attitude: Attitude, turnId: string): 
 export function markNpcMet(id: string): Npc | null {
   const db = getDatabase();
   db.prepare(`UPDATE npcs SET met_at = ? WHERE id = ? AND met_at = ''`).run(nowIso(), id);
-  const row = db.prepare(`SELECT * FROM npcs WHERE id = ?`).get(id) as NpcRow | undefined;
-  return row ? mapNpc(row) : null;
+  return touchedRow(id);
+}
+
+// The row as it stands after a write, with the cast told of it.
+function touchedRow(id: string): Npc | null {
+  const row = getDatabase().prepare(`SELECT * FROM npcs WHERE id = ?`).get(id) as NpcRow | undefined;
+  if (!row) {
+    return null;
+  }
+  touchCast(row.campaign_id);
+  return mapNpc(row);
 }
 
 // The story has now said these people's names to the table (see
@@ -455,11 +531,18 @@ export function markNpcsHeard(campaignId: string, key: string): string[] {
   for (const npc of heard) {
     mark.run(now, npc.id);
   }
+  touchCast(campaignId);
   return heard.map((npc) => npc.id);
 }
 
 export function deleteNpc(id: string): boolean {
-  return getDatabase().prepare(`DELETE FROM npcs WHERE id = ?`).run(id).changes > 0;
+  const db = getDatabase();
+  const row = db.prepare(`SELECT campaign_id FROM npcs WHERE id = ?`).get(id) as { campaign_id: string } | undefined;
+  const deleted = db.prepare(`DELETE FROM npcs WHERE id = ?`).run(id).changes > 0;
+  if (deleted && row) {
+    touchCast(row.campaign_id);
+  }
+  return deleted;
 }
 
 // Writes any subset of the agency state; untouched pieces keep their column.
@@ -501,6 +584,7 @@ export function setNpcArchived(npcId: string, archived: boolean) {
   getDatabase()
     .prepare(`UPDATE npcs SET archived = ?, updated_at = ? WHERE id = ?`)
     .run(archived ? 1 : 0, nowIso(), npcId);
+  touchedRow(npcId);
 }
 
 export function getNpcById(npcId: string): Npc | null {
@@ -530,7 +614,7 @@ export function renameNpc(npcId: string, name: string, aliases: string[]): Npc |
   ).run(name, nowIso(), npc.campaignId, npc.name);
   // Bonds are kept by name too, for the same reason (issue 580).
   followBonds(npc, name);
-  return getNpcById(npcId);
+  return touchedRow(npcId);
 }
 
 // An NPC's bonds follow a new name (issue 580), and the Bonds panel hears of
@@ -592,7 +676,7 @@ export function mergeNpcs(
     db.prepare(`DELETE FROM npcs WHERE id = ?`).run(mergeId);
   });
   apply();
-  return getNpcById(keepId);
+  return touchedRow(keepId);
 }
 
 // Pairs the lead has already looked at and rejected.

@@ -1,7 +1,9 @@
+import { parseFightSetup, portableSetup } from "@/lib/workshop/fight-setup-logic";
 import { createHash } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { getDatabase, nowIso } from "@/lib/db/core";
+import { repairSkewedPersonalities } from "@/lib/db/npc-personality-repair";
 import { createCampaign } from "@/lib/db/campaigns";
 import { WORKSHOP_GAME_SETTINGS, getWorkshopForUser } from "@/lib/db/workshops";
 import { setHouseRules } from "@/lib/db/rules";
@@ -19,6 +21,7 @@ import { normalizeAmbience } from "@/lib/battlemap/scene";
 import { MAP_THEMES } from "@/lib/battlemap/generate";
 import { sceneIds } from "@/lib/ambience/catalog";
 import { normalizeNpcVoice } from "@/lib/npcs/forge";
+import { knownBeforeColumn, readKnownBefore } from "@/lib/dm/known-before-logic";
 import { attractionJson, normalizeAttraction } from "@/lib/attraction";
 import { textKey } from "@/lib/language/text-logic";
 import {
@@ -374,10 +377,10 @@ function writeBundleRows(
       const voice = npc.voice ? normalizeNpcVoice(npc.voice) : null;
       db.prepare(
         `INSERT INTO npcs
-           (id, campaign_id, name, attitude, trait, location, role, gender, attraction_json, last_shift_turn,
+           (id, campaign_id, name, attitude, trait, location, role, gender, race, attraction_json, last_shift_turn,
             aliases_json, personality_json, goals_json, relations_json, bonds_json,
-            pressure_json, arc_cast_id, portrait_url, voice_json, stat_block, archived, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?, ?, ?, '[]', '', '', ?, ?, ?, 0, ?, ?)`,
+            pressure_json, arc_cast_id, portrait_url, voice_json, stat_block, archived, known_before_json, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?, ?, ?, '[]', '', '', ?, ?, ?, 0, ?, ?, ?)`,
       ).run(
         id,
         workshop.id,
@@ -387,6 +390,7 @@ function writeBundleRows(
         npc.location,
         npc.role,
         npc.gender,
+        npc.race,
         attractionJson(normalizeAttraction(npc.attraction)),
         JSON.stringify(npc.aliases),
         npc.personality,
@@ -399,6 +403,10 @@ function writeBundleRows(
         npcPortraits[index],
         voice ? JSON.stringify(voice) : null,
         npc.statBlock ?? "",
+        // Never for someone hostile to the party (known-before-logic.ts).
+        npc.attitude === "hostile" || !npc.knownAtStart
+          ? ""
+          : knownBeforeColumn(readKnownBefore({ grade: npc.knownAtStart.grade, how: npc.knownAtStart.source })),
         now,
         now,
       );
@@ -459,9 +467,9 @@ function writeBundleRows(
       const id = crypto.randomUUID();
       db.prepare(
         `INSERT INTO encounter_templates
-           (id, campaign_id, name, enemies_json, battlefield, map_json, notes, extras_json,
+           (id, campaign_id, name, enemies_json, battlefield, map_json, notes, extras_json, setup_json,
             created_by_user_id, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ).run(
         id,
         workshop.id,
@@ -471,6 +479,12 @@ function writeBundleRows(
         JSON.stringify(map),
         encounter.notes,
         JSON.stringify(normalizeTemplateExtras(encounter.extras, Math.min(slots, EXTRAS_LIMITS.slots))),
+        // A bundle exported before set-ups travelled without their party
+        // still carries its author's character ids and names: they stay out.
+        (() => {
+          const setup = parseFightSetup(encounter.setup);
+          return setup ? JSON.stringify(portableSetup(setup)) : "";
+        })(),
         userId,
         now,
         now,
@@ -572,6 +586,10 @@ function writeBundleRows(
   if (bundle.world) {
     copied += worldFromBundle(workshop.id, bundle.world, { npc: ids.npcs, location: ids.locations, faction: ids.factions, lore: ids.lore }, shelf.entryFor, { maps: ids.maps, encounters: ids.encounters }, saveWorldImage);
   }
+
+  // A module exported before issue 732 carries the personalities its NPCs
+  // were saved with from the skewed name hash.
+  repairSkewedPersonalities(getDatabase(), workshop.id);
 
   return { workshopId: workshop.id, copied, linkedShared, droppedLinks, shelf: { reused: shelf.reused, renamed: shelf.renamed, refused: shelf.refused } };
 }

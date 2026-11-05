@@ -28,6 +28,7 @@ import { effectiveMaxHp, type ConditionMetaMap } from "@/lib/dm/condition-logic"
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { untilTurnEnd } from "@/lib/dm/turn-end";
 import { layEnfeeblement } from "@/lib/dm/spell-retort";
+import { connectBeam } from "@/lib/dm/witch-bolt";
 import { layAreaConditions } from "@/lib/dm/spell-riders";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { spellMechanicsFor } from "@/lib/content";
@@ -49,6 +50,8 @@ type SpellAttackRider = {
   // The hit lays a condition the target shakes off with a save at the end of
   // each of its turns (Ray of Enfeeblement), against the caster's DC.
   saveEnds?: { condition: string; ability: "con" };
+  // The hit connects a beam, and a miss ends the spell (src/lib/dm/witch-bolt.ts).
+  beam?: string;
   // The hit lays the spell row's own condition with its end-of-turn mark
   // (Contagion's poison and its count of saves), named by the spell.
   rowCondition?: string;
@@ -65,6 +68,7 @@ const RIDERS: SpellAttackRider[] = [
   { match: /^(?:melf's )?acid arrow$/i, halfOnMiss: true, onHit: { condition: "acid arrow", until: "target", at: "end" } },
   { match: /^ray of enfeeblement$/i, saveEnds: { condition: "enfeebled", ability: "con" } },
   { match: /^contagion$/i, rowCondition: "Contagion" },
+  { match: /^witch bolt$/i, beam: "Witch Bolt" },
 ];
 
 export function spellAttackRider(spell: string | undefined): SpellAttackRider | null {
@@ -83,6 +87,9 @@ export function applySpellHitCondition(
   enemyId: string,
   casterId: string,
 ): string | null {
+  if (rider.beam) {
+    return connectBeam(campaign, enemyId, casterId, rider.beam);
+  }
   if (rider.saveEnds) {
     return layEnfeeblement(campaign, rider.saveEnds, enemyId, casterId);
   }

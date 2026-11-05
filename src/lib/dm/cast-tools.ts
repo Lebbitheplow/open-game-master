@@ -71,13 +71,32 @@ export const castAtEnemyTool: ToolDef = {
   function: {
     name: "cast_at_enemy",
     description:
-      "Resolve a player casting a saving-throw or automatic spell at ONE enemy (Hold Person, Hypnotic Pattern, Magic Missile, Heat Metal, Dispel Magic on a hasted enemy). The server spends the slot (a warlock's pact slot when no level is named), takes the save, DC, damage and conditions from the spell, rolls the enemy's save and applies the result. An area or multi-target spell may go one enemy per call in the same turn for one slot (aoe_damage resolves the whole area in one call). Polymorph or True Polymorph is refused before the slot on a beast above the target's challenge rating, a shapechanger or a creature at 0 HP. For attack-roll spells, use pc_attack.",
+      "Resolve a player casting a saving-throw or automatic spell at enemies (Hold Person, Hypnotic Pattern, Magic Missile, Heat Metal, Dispel Magic on a hasted enemy). targets lists every creature the casting reaches, one entry each, in one call: the server spends the slot once (a warlock's pact slot when no level is named), takes the save, DC, damage and conditions from the spell, rolls each creature's save and applies the result. A creature refused (out of reach, down) costs nothing, and the casting still holds its share for another call this turn. aoe_damage resolves a whole area by its shape instead. Polymorph or True Polymorph is refused before the slot on a beast above the target's challenge rating, a shapechanger or a creature at 0 HP. For attack-roll spells, use pc_attack.",
     parameters: {
       type: "object",
       additionalProperties: false,
       properties: {
         characterId: { type: "string", description: "Exact characterId from GAME STATE." },
-        targetEnemyId: { type: "string", description: "Exact enemyId from GAME STATE." },
+        targets: {
+          type: "array",
+          minItems: 1,
+          description:
+            "Each creature the casting reaches, in order. Two for a spell that targets one is a Death cleric's Improved Reaper (or Reaper, Moon Fire): the second within 5 feet of the first, at no further cost.",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              targetEnemyId: { type: "string", description: "Exact enemyId from GAME STATE." },
+              darts: {
+                type: "integer",
+                minimum: 1,
+                maximum: 20,
+                description: "Magic Missile only: the darts that strike this creature. Default: an even share of those left.",
+              },
+            },
+            required: ["targetEnemyId"],
+          },
+        },
         spell: { type: "string", description: "Exact spell name from the caster's list." },
         saveAbility: {
           type: "string",
@@ -111,13 +130,6 @@ export const castAtEnemyTool: ToolDef = {
           description:
             "Rounds the condition lasts, for a spell the server does not know. Omit for save-ends (a save at the end of each round).",
         },
-        darts: {
-          type: "integer",
-          minimum: 1,
-          maximum: 20,
-          description:
-            "Magic Missile only: the darts that strike this enemy. Default: all of them. The rest go to other enemies in more calls this turn, with no second slot.",
-        },
         endSpell: {
           type: "string",
           description: "Dispel Magic only: the spell to end on the target when it holds several; omit to end them all.",
@@ -127,11 +139,6 @@ export const castAtEnemyTool: ToolDef = {
           description:
             "Evoker's Overchannel (14th level): a 1st to 5th level wizard spell deals its maximum damage. The first use each long rest is free; later ones cost the wizard necrotic damage the server rolls.",
         },
-        secondTargetEnemyId: {
-          type: "string",
-          description:
-            "Improved Reaper only: a second enemy within 5 feet of the first, exact enemyId from GAME STATE. A Death cleric's 17th-level feature for a 1st to 5th level necromancy spell; the server rolls both saves and the HP it costs.",
-        },
         variant: {
           type: "string",
           description: "Polymorph and True Polymorph only: the form (a beast; any creature for True).",
@@ -139,7 +146,7 @@ export const castAtEnemyTool: ToolDef = {
         reason: { type: "string", description: "Short in-fiction cause." },
         ...ZONE_ARGS,
       },
-      required: ["characterId", "targetEnemyId", "spell"],
+      required: ["characterId", "targets", "spell"],
     },
   },
 };
@@ -183,13 +190,31 @@ export const castBuffTool: ToolDef = {
         variant: {
           type: "string",
           description:
-            "For a spell with a choice: the chosen option, or the beast or creature made ('wolf', 'skeleton'). Enlarge/Reduce, Protection from Energy's damage type, Enhance Ability's effect, Fire Shield's warm or chill, a form, or a summoning's creature (Animate Dead 'skeleton' or 'reassert control', Find Steed 'warhorse' or 'fey warhorse', Animate Objects 'tiny').",
+            "A spell's choice, or the creature made ('wolf'). Enlarge or Reduce, Protection from Energy's damage type, Enhance Ability's effect, Fire Shield's warm or chill, a form; Animate Dead 'skeleton' or 'reassert control zombie', Find Steed 'fey warhorse', Find Familiar 'fiend owl' (celestial when no kind is named), Animate Objects 'tiny'.",
         },
         count: {
           type: "integer",
           minimum: 1,
           maximum: 40,
           description: "A summoning spell only: fewer creatures than the slot allows. Default: the most.",
+        },
+        // The bounds are the handler's (cast-buff.ts), which says them when a
+        // call passes them and holds the forms to the slot's budget; in every
+        // fight call's tools they only spent the model's window. So is `kind`
+        // (the console's and the Hand's), as the model names a kind in
+        // variant, which is what the handler makes of the two.
+        mix: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: { variant: { type: "string" }, count: { type: "integer" } },
+            required: ["variant", "count"],
+          },
+          description: "Animate Dead or Animate Objects, instead of variant: each form and how many.",
+        },
+        ritual: {
+          type: "boolean",
+          description: "Cast as a ritual (Find Familiar, Unseen Servant, Phantom Steed): no slot.",
         },
         endSpell: {
           type: "string",

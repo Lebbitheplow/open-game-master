@@ -26,6 +26,7 @@ import { classLevelFor } from "@/lib/srd/multiclass";
 import { authoredFlurryStrikes } from "@/lib/srd/authored-economy";
 import { dashCount, spendAction, WIND_STEP } from "@/lib/dm/action-budget";
 import { canAct } from "@/lib/dm/can-act";
+import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { DODGING } from "@/lib/dm/condition-logic";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import { QUICKENED } from "@/lib/dm/cast-rules";
@@ -117,6 +118,10 @@ export function spendKiTechnique(
   if (!allowed.ok) {
     return toolError(allowed);
   }
+  const heldOff = heldTurnRefusal(encounter, sheet);
+  if (heldOff) {
+    return heldOff;
+  }
   const budget = inFight
     ? budgetFor(encounter, sheet.id, attacksAllowedFor(sheet), conditionTurnShape(sheet.conditions))
     : null;
@@ -161,7 +166,7 @@ export function spendKiTechnique(
     }
     applied = `${sheet.name} takes the Dodge action as a bonus action: attacks against them roll at disadvantage until their next turn, and they have advantage on Dexterity saves. The server applies it.`;
   } else if (technique === "flurry") {
-    applied = `${sheet.name} has ${flags.flurryStrikes === 2 ? "two" : flags.flurryStrikes} Flurry of Blows strikes this turn: resolve each with pc_attack using weapon "unarmed strike". The server spends them.`;
+    applied = `${sheet.name} has ${flags.flurryStrikes === 2 ? "two" : flags.flurryStrikes} Flurry of Blows strikes this turn: resolve them as pc_attack entries with feature "Flurry of Blows". The server spends them.`;
   } else {
     // Nothing walks with it (issue #666): said, so the GM moves them or
     // sends the Dash through take_action with somewhere to go.

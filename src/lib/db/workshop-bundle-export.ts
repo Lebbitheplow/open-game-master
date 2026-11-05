@@ -1,3 +1,4 @@
+import { parseFightSetup, portableSetup } from "@/lib/workshop/fight-setup-logic";
 import { createHash } from "node:crypto";
 import { compareNames } from "@/lib/language/text-logic";
 import { readFileSync } from "node:fs";
@@ -16,7 +17,9 @@ import { normalizeStock } from "@/lib/db/shops";
 import { clampMarkup } from "@/lib/dm/shop-logic";
 import { storedSheetSchema } from "@/lib/schemas/sheet";
 import { storedGender } from "@/lib/gender";
+import { storedRace } from "@/lib/npc-race";
 import { normalizeAttraction } from "@/lib/attraction";
+import { parseKnownBefore } from "@/lib/dm/known-before-logic";
 import { isUploadedImagePath } from "@/lib/uploads";
 import { normalizeMapSkin } from "@/lib/battlemap/skins";
 import { normalizeRoutes } from "@/lib/workshop/board";
@@ -48,6 +51,13 @@ type Row = Record<string, unknown>;
 
 function allRows(sql: string, ...args: unknown[]): Row[] {
   return getDatabase().prepare(sql).all(...args) as Row[];
+}
+
+// Who the party already knows when the story begins, in the bundle's words
+// (issue 731): absent for everyone else.
+function knownAtStartOf(column: string): { knownAtStart?: { grade: "acquainted" | "friend" | "close"; source: string } } {
+  const known = parseKnownBefore(column);
+  return known ? { knownAtStart: { grade: known.grade, source: known.how } } : {};
 }
 
 function str(value: unknown, fallback = ""): string {
@@ -130,7 +140,7 @@ export const BUNDLE_COLUMNS: Record<string, { carried: string[]; left: Record<st
     left: { ...IDENTITY },
   },
   encounter_templates: {
-    carried: ["name", "enemies_json", "battlefield", "map_json", "notes", "extras_json"],
+    carried: ["name", "enemies_json", "battlefield", "map_json", "notes", "extras_json", "setup_json"],
     left: { ...IDENTITY, created_by_user_id: "the importer", cued: "a lead's cue is the source table's play" },
   },
   locations: {
@@ -138,7 +148,7 @@ export const BUNDLE_COLUMNS: Record<string, { carried: string[]; left: Record<st
     left: { ...IDENTITY, visited: "play", is_current: "play", map_image_json: "a legacy column nothing reads" },
   },
   npcs: {
-    carried: ["name", "attitude", "trait", "location", "role", "gender", "attraction_json", "aliases_json", "personality_json", "goals_json", "relations_json", "portrait_url", "voice_json", "faction_id", "stat_block"],
+    carried: ["name", "attitude", "trait", "location", "role", "gender", "race", "attraction_json", "aliases_json", "personality_json", "goals_json", "relations_json", "portrait_url", "voice_json", "faction_id", "stat_block", "known_before_json"],
     left: {
       ...IDENTITY,
       last_shift_turn: "the source table's clock",
@@ -386,6 +396,7 @@ export function exportWorkshopBundle(
       location: str(row.location),
       role: str(row.role),
       gender: storedGender(row.gender),
+      race: storedRace(row.race),
       attraction: normalizeAttraction(str(row.attraction_json)),
       aliases: parseJson<string[]>(str(row.aliases_json, "[]"), []),
       personality: str(row.personality_json),
@@ -394,6 +405,7 @@ export function exportWorkshopBundle(
       portrait: loadImage(row.portrait_url, budget),
       voice: row.voice_json ? parseJson<Record<string, unknown> | null>(str(row.voice_json), null) : null,
       statBlock: portableStatBlock(str(row.stat_block)),
+      ...knownAtStartOf(str(row.known_before_json)),
       ref: refFor(row.home, "npcs", str(row.id)),
       shared: row.home !== workshopId,
     })),
@@ -429,6 +441,13 @@ export function exportWorkshopBundle(
           height: number(map.height),
         },
         extras: parseJson<Record<string, unknown>>(str(row.extras_json, "{}"), {}),
+        // The moment a test of it was saved to start from (issue 685): a
+        // scenario travels with the fight it opens, without the author's
+        // library characters' ids and names (portableSetup).
+        setup: (() => {
+          const setup = parseFightSetup(parseJson<unknown>(str(row.setup_json, ""), null));
+          return setup ? portableSetup(setup) : null;
+        })(),
         ref: refFor(row.home, "encounters", str(row.id)),
         shared: row.home !== workshopId,
       };

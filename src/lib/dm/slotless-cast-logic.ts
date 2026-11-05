@@ -42,7 +42,7 @@ export function namedCreature(lines: readonly PlayerLine[], creatures: readonly 
 export function castToolHint(mech: SpellMech | null, area: boolean): string {
   switch (mech?.resolution) {
     case "attack":
-      return "pc_attack with spell";
+      return "pc_attack with the spell in each entry of attacks";
     case "save":
     case "auto":
       return area ? "aoe_damage with spell and casterCharacterId" : "cast_at_enemy";
@@ -96,6 +96,13 @@ export function castRolled(toolName: string): boolean {
 
 // The one corrective call for a cast the reply narrated with nothing behind
 // it, which its caster's player asked for.
+// A spell a ring they carry holds is cast from the ring, or from their own
+// slots if they have them: sending the model straight to the spell's tool
+// would spend a real slot on a spell the player meant to take from the ring.
+export function storedCastHint(ring: { name: string }, spell: string, tool: string): string {
+  return `use_item with item "${ring.name}" and spell "${spell}" if it comes from the ring, and then ${tool}; or, if it does not, ${tool}`;
+}
+
 export function unpaidCastPrompt(cast: { caster: string; casterId: string; spell: string; quote: string }, tool: string): string {
   return `[System] Your narration has ${cast.caster} casting ${cast.spell} ("${cast.quote}"), but no tool cast it this turn, so it has not happened: no slot was spent and nothing was rolled. ${cast.caster}'s player asked for it: cast it now with ${tool} for characterId=${cast.casterId}, then narrate from the result. If the rules forbid it, the tool refuses and that refusal is what you narrate.`;
 }

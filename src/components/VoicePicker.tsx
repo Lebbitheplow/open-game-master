@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { Select, type SelectOption } from "@/components/ui/Select";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
-import { TTS_VOICES } from "@/lib/tts-voices";
+import { NARRATOR_DEFAULTS, TTS_VOICES, voicesFirstIn } from "@/lib/tts-voices";
+import { TABLE_LANGUAGE_NAMES, type TableLanguage } from "@/lib/schemas/game-settings-options";
 
 // The narrator voice pickers (campaign settings, the campaign creator, the
 // cast editor) offer what this server's speech backend really has, asked of
@@ -80,6 +81,9 @@ export function VoicePicker({
   // An entry ahead of the voices, for a picker that may also choose none
   // ("The narrator's voice" in the cast editor). Its value is "".
   noneLabel,
+  // The table's language, whose voices are offered first; none outside a
+  // campaign (the workshop's cast).
+  language,
 }: {
   value: string;
   onChange: (voice: string) => void;
@@ -87,6 +91,7 @@ export function VoicePicker({
   size?: "sm" | "md";
   className?: string;
   noneLabel?: string;
+  language?: TableLanguage;
 }) {
   const list = useTtsVoices();
   const listed = list.voices.some((voice) => voice.id === value);
@@ -104,7 +109,7 @@ export function VoicePicker({
 
   const options: SelectOption<string>[] = [
     ...(noneLabel ? [{ value: "", label: noneLabel }] : []),
-    ...list.voices.map((voice) => ({ value: voice.id, label: voice.label })),
+    ...(language ? voicesFirstIn(language, list.voices) : list.voices).map((voice) => ({ value: voice.id, label: voice.label })),
     { value: CUSTOM, label: "Custom voice…", hint: "Type any voice this server understands" },
   ];
 
@@ -149,5 +154,20 @@ export function VoicePicker({
         />
       ) : null}
     </span>
+  );
+}
+
+// Said under a narrator picker at a table whose language Kokoro has no voice
+// for: whichever voice is picked reads the story with its own language's
+// sounds. Nothing on an OpenAI backend, whose voices are not by language.
+export function NarratorLanguageNote({ language }: { language: TableLanguage }) {
+  const list = useTtsVoices();
+  if (list.provider === "openai" || NARRATOR_DEFAULTS[language]) {
+    return null;
+  }
+  return (
+    <p className="text-xs text-stone-500">
+      Kokoro has no {TABLE_LANGUAGE_NAMES[language].english} voice, so the narration is read by a voice of another language.
+    </p>
   );
 }

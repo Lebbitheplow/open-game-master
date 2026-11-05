@@ -24,6 +24,8 @@ const { ADJUDICATIONS, ADJUDICATION_NAMES, adjudication, checkArgs, consoleAdjud
 // Names retired into a merged tool (issue #471): still engine actions, never
 // offered, so neither a form of their own nor a tool the scan should count.
 const { RETIRED_TOOLS } = await import("../src/lib/dm/tool-merge-logic.ts");
+const { consoleSummonShown, mixRecord } = await import("../src/lib/battlemap/hand-summon.ts");
+const { summonCatalogue, summonSpellFor } = await import("../src/lib/srd/summon-spells.ts");
 
 let passed = 0;
 function test(name, fn) {
@@ -331,6 +333,14 @@ function closingBrace(source, from) {
   let depth = 0;
   for (let index = from; index < source.length; index += 1) {
     const char = source[index];
+    // A comment's words are no code: an apostrophe in one opens no string.
+    if (source.startsWith("//", index)) {
+      index = source.indexOf("\n", index);
+      if (index < 0) {
+        break;
+      }
+      continue;
+    }
     if (char === '"' || char === "'" || char === "`") {
       index += 1;
       while (index < source.length && source[index] !== char) {
@@ -358,6 +368,13 @@ function topLevelKeys(objectText) {
   let depth = 0;
   for (let index = 0; index < objectText.length; index += 1) {
     const char = objectText[index];
+    if (objectText.startsWith("//", index)) {
+      index = objectText.indexOf("\n", index);
+      if (index < 0) {
+        break;
+      }
+      continue;
+    }
     if (char === '"' || char === "'" || char === "`") {
       // Escaped quotes stay inside the string: a description that quotes
       // "thieves' tools" must not end it early and hide the keys after it.
@@ -443,6 +460,23 @@ function expandSpreads(keys, source, depth = 0) {
   return out;
 }
 
+// The keys of each list argument's items (pc_attack's attacks), for a form
+// that sends one item flat (partsOf below).
+function listItems(properties) {
+  const items = {};
+  for (const match of properties.matchAll(/\b([A-Za-z_]+):\s*\{\s*\n\s*type:\s*"array"/g)) {
+    const list = properties.slice(match.index + match[0].indexOf("{"));
+    const inner = list.slice(0, closingBrace(list, 0) + 1);
+    const at = inner.indexOf("items:");
+    const props = at < 0 ? -1 : inner.indexOf("properties:", at);
+    if (props >= 0) {
+      const from = inner.indexOf("{", props);
+      items[match[1]] = topLevelKeys(inner.slice(from, closingBrace(inner, from) + 1));
+    }
+  }
+  return items;
+}
+
 function toolProperties(name) {
   for (const relative of DEFINITION_SOURCES) {
     const source = read(relative);
@@ -456,8 +490,9 @@ function toolProperties(name) {
         continue;
       }
       const open = body.indexOf("{", at);
-      const keys = expandSpreads(topLevelKeys(body.slice(open, closingBrace(body, open) + 1)), source);
-      return { keys, open: keys.includes("...") };
+      const properties = body.slice(open, closingBrace(body, open) + 1);
+      const keys = expandSpreads(topLevelKeys(properties), source);
+      return { keys, items: listItems(properties), open: keys.includes("...") };
     }
     // mutations.ts: tool("x", "description", { ...properties }, [required]),
     // every one of which also takes characterId.
@@ -465,9 +500,10 @@ function toolProperties(name) {
     if (helper) {
       const open = source.indexOf("{", helper.index);
       const close = closingBrace(source, open);
-      const keys = expandSpreads(topLevelKeys(source.slice(open, close + 1)), source);
+      const properties = source.slice(open, close + 1);
+      const keys = expandSpreads(topLevelKeys(properties), source);
       // characterProperty, which the helper spreads into every one of them.
-      return { keys: ["characterId", "reason", ...keys], open: keys.includes("...") };
+      return { keys: ["characterId", "reason", ...keys], items: listItems(properties), open: keys.includes("...") };
     }
   }
   return null;
@@ -477,24 +513,44 @@ function toolProperties(name) {
 // (src/lib/dm/invoke.ts normalizeArgs): the form's own names for them.
 const FOLDED_BY_THE_FACADE = {
   set_effect: ["field", "mode", "value"],
+  start_encounter: ["buildingEnemySide", "buildingOpenings"],
 };
 
 // What a handler folds itself: update_sheet turns the form's one named field
 // and its value into the sheet's own key (src/lib/dm/update-sheet-args.ts).
 const FOLDED_BY_THE_HANDLER = {
   update_sheet: ["field", "value"],
+  // The form's second creature is Improved Reaper's, read from the one-target
+  // shape (src/lib/dm/authored-reaper.ts); the model lists both in targets.
+  cast_at_enemy: ["secondTargetEnemyId"],
 };
 
 // Fields only a person is offered: the handler reads them, and the model's
 // tool definition leaves them out on purpose (who may see a roll or a quest,
-// which handout to take down, an uploaded picture no prompt names).
+// which handout to take down, an uploaded picture no prompt names, a
+// legendary option played whole in one call: the console's dispatch reads its
+// characters, enemy rows, square and spell in src/lib/dm/legendary-play.ts;
+// the model names one target, and makes a move, a jump or a spell with the
+// call its `next` names).
 const FOR_A_PERSON_ONLY = {
   request_roll: ["visibility"],
+  legendary_action: ["characterIds", "enemyIds", "x", "y", "spell"],
   set_quest: ["visibility"],
   dismiss_handout: ["handoutId"],
   show_handout: ["imagePath"],
   add_companion: ["background", "skills"],
+  // The console's Kind picker; the storyteller names the kind in variant.
+  cast_buff: ["kind"],
 };
+
+// A tool that takes a declaration's parts as a list (pc_attack's attacks,
+// cast_at_enemy's targets) also reads one part sent flat, as a list of one
+// (src/lib/dm/pc-attack-parts.ts, cast-at-enemy-targets.ts): a form that
+// offers no list field sends one part, so the list's keys are the item's.
+function partsOf(entry, found) {
+  const offered = new Set(entry.fields.map((field) => field.name));
+  return found.keys.flatMap((key) => (found.items?.[key] && !offered.has(key) ? found.items[key] : [key]));
+}
 
 function formDrift(entry) {
   const found = toolProperties(entry.name);
@@ -506,9 +562,10 @@ function formDrift(entry) {
     ...(FOLDED_BY_THE_HANDLER[entry.name] ?? []),
     ...(FOR_A_PERSON_ONLY[entry.name] ?? []),
   ];
+  const keys = partsOf(entry, found);
   return entry.fields
     .map((field) => field.name)
-    .filter((field) => !found.keys.includes(field) && !folded.includes(field));
+    .filter((field) => !keys.includes(field) && !folded.includes(field));
 }
 
 const { COMBAT_ADJUDICATIONS } = await import("../src/lib/dm/catalog-combat.ts");
@@ -544,8 +601,10 @@ const OLDER_FORM_NAMES = [
 test("an older form's field names reach the names the handler reads", () => {
   for (const [name, sent, read] of OLDER_FORM_NAMES) {
     assert.deepEqual(normalizeArgs(adjudication(name), sent), read, name);
+    const found = toolProperties(name);
+    const defined = [...found.keys, ...Object.values(found.items).flat()];
     for (const key of Object.keys(read)) {
-      assert.ok(toolProperties(name).keys.includes(key), `${name} defines no ${key}`);
+      assert.ok(defined.includes(key), `${name} defines no ${key}`);
     }
     // The model is offered only the new name; afflict keeps name for a disease or a poison.
     for (const key of Object.keys(sent).filter((key) => !(key in read) && !(name === "afflict" && key === "name"))) {
@@ -556,12 +615,15 @@ test("an older form's field names reach the names the handler reads", () => {
 
 test("the property scan reads the tools it is pointed at", () => {
   assert.deepEqual(toolProperties("take_action").keys.sort(), [
-    "action", "bonus", "characterId", "enemyId", "item", "level", "mount", "readied", "reason", "shove", "skill",
-    "spell", "targetCharacterId", "targetEnemyId", "toward", "trigger",
+    "ability", "action", "bonus", "characterId", "condition", "contestSkill", "damage", "damageType", "difficulty", "distanceFt",
+    "enemyId", "item", "level", "mount", "readied", "reason", "scene", "shove", "skill", "spell", "targetCharacterId",
+    "targetEnemyId", "toward", "trigger",
   ]);
   assert.ok(toolProperties("apply_damage").keys.includes("amount"));
   assert.ok(toolProperties("apply_damage").keys.includes("characterId"));
-  assert.ok(toolProperties("pc_attack").keys.includes("targetEnemyId"));
+  assert.ok(toolProperties("pc_attack").keys.includes("attacks"));
+  assert.ok(toolProperties("pc_attack").items.attacks.includes("targetEnemyId"));
+  assert.ok(toolProperties("cast_at_enemy").items.targets.includes("darts"));
 });
 
 // The spell-area placement every area tool spreads in (src/lib/dm/zone-args.ts
@@ -617,6 +679,26 @@ const HANDLER_FILLS_IN = {
   end_encounter: ["outcome"],
 };
 
+// What a tool requires, as a form sends it. The last `required` in the
+// definition is the tool's own; any before it belong to the items of an
+// array argument. A required list of parts (pc_attack's attacks) that the
+// form does not offer as a list is its one part, sent flat (partsOf): what
+// each part requires.
+function requiredNames(entry, source, from) {
+  const body = source.slice(from, closingBrace(source, source.indexOf("{", from)) + 1);
+  const required = [...body.matchAll(/required:\s*\[([^\]]*)\]/g)].at(-1);
+  const names = required ? [...required[1].matchAll(/"([A-Za-z_]+)"/g)].map((match) => match[1]) : [];
+  return names.flatMap((name) => {
+    const at = new RegExp(`\\b${name}:\\s*\\{\\s*\\n\\s*type:\\s*"array"`).exec(body);
+    if (!at || entry.fields.some((field) => field.name === name)) {
+      return [name];
+    }
+    const list = body.slice(at.index, closingBrace(body, body.indexOf("{", at.index)) + 1);
+    const items = /required:\s*\[([^\]]*)\]/.exec(list);
+    return items ? [...items[1].matchAll(/"([A-Za-z_]+)"/g)].map((match) => match[1]) : [];
+  });
+}
+
 test("every combat form offers what its handler requires", () => {
   const missing = {};
   for (const entry of COMBAT_ADJUDICATIONS) {
@@ -626,12 +708,7 @@ test("every combat form offers what its handler requires", () => {
       if (!defined) {
         continue;
       }
-      const end = closingBrace(source, source.indexOf("{", defined.index));
-      // The last `required` in the definition is the tool's own; any before
-      // it belong to the items of an array argument.
-      const lists = [...source.slice(defined.index, end + 1).matchAll(/required:\s*\[([^\]]*)\]/g)];
-      const required = lists.at(-1);
-      const names = required ? [...required[1].matchAll(/"([A-Za-z_]+)"/g)].map((match) => match[1]) : [];
+      const names = requiredNames(entry, source, defined.index);
       const offered = entry.fields.filter((field) => field.required).map((field) => field.name);
       const tolerated = HANDLER_FILLS_IN[entry.name] ?? [];
       const absent = names.filter((name) => !offered.includes(name) && !tolerated.includes(name));
@@ -689,10 +766,7 @@ test("every other form requires what its handler requires", () => {
       if (!defined) {
         continue;
       }
-      const end = closingBrace(source, source.indexOf("{", defined.index));
-      const lists = [...source.slice(defined.index, end + 1).matchAll(/required:\s*\[([^\]]*)\]/g)];
-      const required = lists.at(-1);
-      const names = required ? [...required[1].matchAll(/"([A-Za-z_]+)"/g)].map((match) => match[1]) : [];
+      const names = requiredNames(entry, source, defined.index);
       const absent = names.filter((name) => !offered.includes(name) && !tolerated.includes(name));
       if (absent.length) {
         missing[entry.name] = absent;
@@ -722,6 +796,9 @@ const OMITTED_ON_PURPOSE = {
   // A person runs one character's downtime per form; the model may batch
   // several in activities, each with the same fields the form offers.
   downtime: ["activities"],
+  // A person heals one creature per form; the model may name every creature
+  // one spell heals in targets, each the call the form makes.
+  heal: ["targets"],
   // A person's advantage stands as their ruling; only the AI names where it
   // comes from (src/lib/dm/pc-attack-options.ts claimedAdvantage). A person
   // walks the token on the board and ends the turn from the initiative bar;
@@ -731,8 +808,10 @@ const OMITTED_ON_PURPOSE = {
   // A controlled mount's own Dash, Disengage or Dodge, and an attack aimed
   // at it (SRD 5.1, Controlling a Mount): a person at the console narrates
   // the mount's action and rules the swing at it; the model, which cannot,
-  // names it on the call.
-  take_action: ["mount"],
+  // names it on the call. Only the AI shows the scene holds what an
+  // improvised action uses, and how far it is (src/lib/dm/improvise.ts); a
+  // person running the table knows it.
+  take_action: ["mount", "scene", "distanceFt"],
   enemy_attack: ["advantageSource", "targetMount"],
   request_roll: ["advantageSource"],
   // What a companion holds to is set by the class and alignment the form
@@ -767,11 +846,12 @@ function formOmissions(entry) {
   const aliases = {
     cast_at_enemy: { targetEnemyId: "enemyIds" },
     cast_at_player: { characterId: "characterIds" },
+    start_encounter: { building: "buildingEnemySide" },
   };
   // waypoint tags the AI DM's call with the [NOW] step it accomplishes; a
   // person's console call never ticks a step (src/lib/dm/waypoint-tick.ts),
   // the arc panel does, so no form offers it.
-  return found.keys.filter(
+  return partsOf(entry, found).filter(
     (key) =>
       key !== "..." &&
       key !== "reason" &&
@@ -813,10 +893,7 @@ test("no form requires a field its handler leaves optional", () => {
       if (!defined) {
         continue;
       }
-      const end = closingBrace(source, source.indexOf("{", defined.index));
-      const lists = [...source.slice(defined.index, end + 1).matchAll(/required:\s*\[([^\]]*)\]/g)];
-      const required = lists.at(-1);
-      const names = required ? [...required[1].matchAll(/"([A-Za-z_]+)"/g)].map((match) => match[1]) : [];
+      const names = requiredNames(entry, source, defined.index);
       const tolerated = REQUIRED_BY_THE_FORM_ONLY[entry.name] ?? [];
       const extra = entry.fields
         .filter((field) => field.required && !names.includes(field.name) && !tolerated.includes(field.name))
@@ -1099,6 +1176,77 @@ test("take_action's destination fields ask for the host, and the enemy field rea
   assert.match(read("src/lib/use-capabilities.ts"), /features\?: \{[^}]*moveWithAction\?: boolean/);
 });
 
+// The console compiled into the apps can open an older server, whose
+// take_action refuses "improvise" outright and whose Search takes only
+// Perception or Investigation: there the console offers no improvised action
+// (nor one to ready), and Search keeps the two skills that host reads.
+test("take_action's improvised action and its skills ask for the host", () => {
+  const fields = adjudication("take_action").fields;
+  const named = (name) => fields.find((field) => field.name === name);
+  const values = (field) => field.options.map((option) => option.value);
+  for (const name of ["action", "readied"]) {
+    assert.ok(values(fieldForHost(named(name), () => true)).includes("improvise"), `${name} offers it on a host that has it`);
+    assert.ok(!values(fieldForHost(named(name), () => false)).includes("improvise"), `${name} offers it to an older host`);
+    assert.ok(values(fieldForHost(named(name), () => false)).includes("dodge"), `${name} keeps the rest on an older host`);
+  }
+  assert.equal(values(fieldForHost(named("skill"), () => true)).length, 18);
+  const older = fieldForHost(named("skill"), () => false);
+  assert.deepEqual(values(older), ["investigation", "perception"]);
+  assert.equal(older.label, "Search with");
+  // The skill reads only for the actions that take one.
+  assert.deepEqual(named("skill").onlyWhen, { field: "action", equals: ["search", "improvise"] });
+  assert.ok(read("src/lib/capabilities.ts").match(/^\s*improvisedActions: true,$/m), "the server flags it");
+  assert.match(read("src/lib/use-capabilities.ts"), /features\?: \{[^}]*improvisedActions\?: boolean/);
+});
+
+// A meal from the story (issue 793): the same field on all three forms, waiting
+// for the host's flag since an older host drops it unread, and hidden from a
+// table that does not count food and water.
+test("pass_time, travel and take_rest ask for a meal, only under the supplies variant", () => {
+  for (const tool of ["pass_time", "travel", "take_rest"]) {
+    const meal = adjudication(tool).fields.find((entry) => entry.name === "meal");
+    assert.equal(meal?.kind, "text", tool);
+    assert.equal(meal.required, undefined, `${tool} needs no meal`);
+    assert.equal(meal.variant, "supplies", tool);
+    assert.equal(fieldForHost(meal, () => false), null, `${tool} hidden on an older host`);
+  }
+  assert.ok(read("src/lib/capabilities.ts").match(/^\s*suppliesMeal: true,$/m), "the server flags it");
+  assert.match(read("src/lib/use-capabilities.ts"), /features\?: \{[^}]*suppliesMeal\?: boolean/);
+  assert.match(read("src/app/campaigns/[campaignId]/DmActionForm.tsx"), /!field\.variant \|\| variantRules\[field\.variant\]/);
+  // The water to be found counts for nothing without the variant either.
+  for (const tool of ["pass_time", "travel"]) {
+    assert.equal(adjudication(tool).fields.find((entry) => entry.name === "water")?.variant, "supplies", `${tool}'s water`);
+  }
+  // Every form is told the table's rules: the assist rail's suggestions and
+  // the held asks showed the meal at a table without the variant.
+  for (const file of ["DmConsolePanel", "DmAssistPanel", "HeldAsks"]) {
+    const source = read(`src/app/campaigns/[campaignId]/${file}.tsx`);
+    const forms = source.split("<DmActionForm").slice(1).map((rest) => rest.slice(0, rest.indexOf("/>")));
+    assert.ok(forms.length, `${file} opens a form`);
+    for (const form of forms) {
+      assert.match(form, /variantRules=\{variantRules\}/, `a form in ${file} is not told the table's rules`);
+    }
+  }
+});
+
+// The fields a declaration's parts brought to the console (PR 749): an older
+// host strips them unread, so an app compiled with them asks first. There a
+// "Two-Weapon Fighting" or a flurry strike was swung as the Attack action's
+// own swing, and Days or Blows came back as one stretch or one blow
+// (PR 749 review); the attack's field is that host's bonusAttack.
+test("pc_attack's Made with, travel's Days and damage_object's Blows ask for the host", () => {
+  const field = (tool, name) => adjudication(tool).fields.find((entry) => entry.name === name);
+  for (const [tool, name] of [["pc_attack", "feature"], ["travel", "days"], ["damage_object", "blows"]]) {
+    assert.ok(field(tool, name), `${tool} ${name}`);
+    assert.equal(fieldForHost(field(tool, name), () => true)?.name, name, `${tool} ${name} on a host that has it`);
+  }
+  assert.equal(fieldForHost(field("pc_attack", "feature"), () => false)?.name, "bonusAttack");
+  assert.equal(fieldForHost(field("travel", "days"), () => false), null);
+  assert.equal(fieldForHost(field("damage_object", "blows"), () => false), null);
+  assert.ok(read("src/lib/capabilities.ts").match(/^\s*actionParts: true,$/m), "the server flags it");
+  assert.match(read("src/lib/use-capabilities.ts"), /features\?: \{[^}]*actionParts\?: boolean/);
+});
+
 // The console's Background and Skills for a new companion: an older host's
 // add_companion strips both unread and recruits by the class list's first
 // skills, so the app's console shows them only to a host that reads them.
@@ -1130,6 +1278,32 @@ test("the console's enemy lines carry an invented foe's challenge rating, a resk
     { monster: "goblin", count: 1, returning: "e1" },
     { monster: "Bog Thing", count: 1, cr: 3, name: "The Bog" },
   ]);
+});
+
+test("cast_buff's form picks a summoning's kind and each target's form from the catalogue, never typed (issue 685)", () => {
+  const entry = adjudication("cast_buff");
+  const kind = entry.fields.find((field) => field.name === "kind");
+  const mix = entry.fields.find((field) => field.name === "mix");
+  assert.equal(kind?.kind, "summonKind", "Find Steed's kind is a pick, not a word in Another choice");
+  assert.equal(mix?.kind, "summonMix", "Animate Dead's bones and corpses are steppers");
+  assert.equal(kind.host?.feature, "summonPicker");
+  assert.equal(mix.host?.feature, "summonPicker");
+  assert.equal(checkArgs(entry, { characterId: "c1", spell: "Animate Dead", mix: [{ variant: "Skeleton", count: 2 }] }), null);
+  assert.match(checkArgs(entry, { characterId: "c1", spell: "Animate Dead", mix: ["two skeletons"] }) ?? "", /list of rows/);
+  const familiar = adjudication("summon_pet").fields.find((field) => field.name === "creatureType");
+  assert.deepEqual(familiar?.options.map((option) => option.value), ["celestial", "fey", "fiend"]);
+  assert.deepEqual(familiar?.onlyWhen, { field: "kind", equals: ["familiar"] });
+  // Summon a pet's Creature is a pick over what the engine takes; an older
+  // host keeps the text box it had.
+  const creature = adjudication("summon_pet").fields.find((field) => field.name === "form");
+  assert.equal(creature?.kind, "petForm");
+  assert.equal(creature.host?.feature, "summonPicker");
+  assert.equal(creature.host?.older?.kind, "text");
+  assert.equal(consoleSummonShown("summonKind", summonCatalogue(summonSpellFor("Find Steed"))), true);
+  assert.equal(consoleSummonShown("summonKind", summonCatalogue(summonSpellFor("Conjure Animals"))), false, "no kind to pick");
+  assert.equal(consoleSummonShown("summonMix", summonCatalogue(summonSpellFor("Animate Dead"))), true);
+  assert.equal(consoleSummonShown("summonMix", null), false, "no spell named yet");
+  assert.deepEqual(mixRecord([{ variant: "Skeleton", count: 2 }]), { Skeleton: 2 });
 });
 
 console.log(`invoke-catalog: ${passed} tests passed`);

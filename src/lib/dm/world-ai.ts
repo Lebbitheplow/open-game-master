@@ -27,6 +27,7 @@ import { getHomebrew, tableAuthors } from "@/lib/db/homebrew";
 import { getNpcById } from "@/lib/db/npcs";
 import { npcRoleLabel } from "@/lib/placeholders";
 import { npcIdentity } from "@/lib/portrait-prompt";
+import { raceWords } from "@/lib/npc-race";
 import { describeHomebrew } from "@/lib/homebrew/gear";
 
 // WorldForge's AI tools against the workshop's own models: the forge (notes
@@ -165,7 +166,7 @@ export async function paintEntry(campaign: Campaign, ref: string, account: { id:
   // the words (issue 569: a woman painted as a man because only the tagline
   // and the article were read).
   const npc = entity.shelf === "npc" ? getNpcById(parseRef(ref)?.id ?? "") : null;
-  const who = npc ? npcIdentity({ gender: npc.gender, role: npcRoleLabel(npc.role) }) : "";
+  const who = npc ? npcIdentity({ gender: npc.gender, race: raceWords(npc.race), role: npcRoleLabel(npc.role) }) : "";
   const about = [who ? `${who}.` : "", entity.tagline, accountOf(entity)].filter(Boolean).join(" ");
   const id = opened.job.id;
   void enqueueMediaJob(`world picture ${ref}`, async () => {

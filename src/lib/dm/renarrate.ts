@@ -9,6 +9,8 @@ import {
   type CampaignMessage,
 } from "@/lib/db/messages";
 import { withoutAsides } from "@/lib/dm/claims-logic";
+import { fightNames } from "@/lib/db/encounters";
+import { tableNarrationParts, withoutCombatBookkeeping, withoutOrphanClosers, withoutRepeatedSentences, withoutToolTalk } from "@/lib/dm/narration-tidy-logic";
 import { readAsides } from "@/lib/dm/claims";
 import { enqueueDmJob } from "@/lib/dm/queue";
 import { requestDmMessage } from "@/lib/dm/model";
@@ -99,12 +101,19 @@ export async function runRenarrate(input: {
     return { error: `That is all ${MAX_VARIANTS} takes; pick one.`, status: 409 };
   }
 
+  // The parts ahead of the take as the table read them: finalize tidied them
+  // on the way to the message (turn.ts), and the raw parts brought back a
+  // closer line, tool talk or the fight's bookkeeping the table never saw.
+  // The last stands for the take a reroll replaces.
+  const names = fightNames(campaign.id, turn.createdAt);
+  const language = campaign.gameSettings.tableLanguage;
+  const parts = [...tableNarrationParts(turn.narrationParts.slice(0, -1), names, language), ""];
   const prompt = buildRenarrateMessages(
     turn.conversation,
     input.guidance,
     // Reroll from the take currently on screen, so successive rerolls keep
     // moving away from what the table just read.
-    extractFinalTake(turn.narrationParts, turn.rollIds, message.content),
+    extractFinalTake(parts, turn.rollIds, message.content),
   );
   let narration = "";
   let failure = "";
@@ -146,13 +155,18 @@ export async function runRenarrate(input: {
   // sentences the reader quotes, and a take that was only the model's plan
   // is no take at all.
   if (narration) {
-    narration = withoutAsides(narration, await readAsides(campaign, listSheets(campaign.id), turn, narration), campaign.gameSettings.tableLanguage);
+    narration = withoutAsides(narration, await readAsides(campaign, listSheets(campaign.id), turn, narration), language);
+    // And the fight's bookkeeping and tool talk, as a turn's own parts lose
+    // them before the table reads them (turn.ts, narration-tidy-logic.ts),
+    // and a sentence the parts ahead of it already said.
+    narration = withoutOrphanClosers(withoutToolTalk(withoutCombatBookkeeping(narration, names, language)));
+    narration = withoutRepeatedSentences([...parts.slice(0, -1), narration]).slice(parts.length - 1).join("\n\n").trim();
   }
   if (!narration) {
     return { error: "The GM returned nothing; try again.", status: 502 };
   }
 
-  const content = assembleVariantContent(turn.narrationParts, turn.rollIds, narration);
+  const content = assembleVariantContent(parts, turn.rollIds, narration);
   const spoken = await modelLines(campaign, narration, `renarrate ${input.messageId}`);
   // Re-read after the model call: the message may have moved on while the
   // model was working (a lore-check rewrite, or a double-tapped reroll).

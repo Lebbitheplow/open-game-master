@@ -24,6 +24,8 @@ import { CheckDie, CheckFrame, ModifierBreakdown } from "@/app/campaigns/[campai
 import { findSkill } from "@/lib/srd";
 import { heldInspiration } from "@/lib/dm/roll-riders";
 import { INSPIRED_KINDS } from "@/lib/dm/pending-inspiration";
+import { canWaitOnRoll } from "@/lib/dm/after-roll-logic";
+import { foretoldLeft } from "@/lib/dm/foretold-logic";
 import { ROLL_KIND_LABELS } from "@/lib/roll-labels";
 
 const ABILITY_NAMES: Record<string, string> = {
@@ -89,7 +91,9 @@ export function PendingRollCard({
   // Held without real dice: no faces to type, the whole roll is digital
   // and released by the roller (a shake here, a tap anywhere).
   const roller = members.find((member) => member.userId === pending.userId);
-  const heldOnly = Boolean(roller?.holdRolls && !roller?.useRealDice);
+  // A roll waiting on Portent is the server's to throw, as a held roll is.
+  const foretelling = pending.parkedFor === "foretold";
+  const heldOnly = foretelling || Boolean(roller?.holdRolls && !roller?.useRealDice);
   const shakeOn = useShakeToRoll();
   const [canShake] = useState(() => supportsShake());
   const shakeActive = mine && shakeOn && canShake;
@@ -249,6 +253,28 @@ export function PendingRollCard({
     Boolean(character && heldInspiration(character)) &&
     (INSPIRED_KINDS as readonly string[]).includes(pending.kind) &&
     pending.advantage !== "advantage";
+  // Portent: a number foretold at the last long rest, instead of this d20.
+  const foretold = character && canWaitOnRoll(pending.kind) && !pending.thrown ? [...new Set(foretoldLeft(character))] : [];
+  async function foretell(value: number) {
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/campaigns/${campaignId}/pending-rolls/${pending.id}/portent`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ value }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        setError(data.error || "Could not use your Portent.");
+      }
+    } catch {
+      setError("Could not reach the server.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function inspire() {
     setBusy(true);
     setError("");
@@ -340,6 +366,23 @@ export function PendingRollCard({
               <Sparkles className="size-3.5" /> Spend Inspiration
             </button>
           ) : null}
+          {foretold.length ? (
+            <div role="group" aria-label="Use a number Portent foretold" className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <span className="text-xs">Portent, instead of rolling:</span>
+              {foretold.map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void foretell(value)}
+                  title={`The foretold ${value} becomes this roll's d20, and is gone until your next long rest.`}
+                  className="motion-press inline-flex min-h-10 items-center justify-center rounded-full border border-amber-400/60 px-3 py-1 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 disabled:opacity-50"
+                >
+                  Use the {value}
+                </button>
+              ))}
+            </div>
+          ) : null}
       {heldOnly ? (
         <>
           {advantageNote ? (
@@ -351,7 +394,7 @@ export function PendingRollCard({
                 <Smartphone className="size-5 animate-bounce" style={{ color: "var(--check-vine)" }} />
                 Shake to roll {diceSummary}
               </span>
-            ) : (
+            ) : foretelling ? null : (
               <span className="text-xs">
                 Your rolls wait for you{canShake ? "" : " (shake to roll is on on your phone)"}.
               </span>
@@ -364,7 +407,7 @@ export function PendingRollCard({
             >
               {busy ? <Loader2 className="size-4 animate-spin" /> : "Roll now"}
             </button>
-            {!shakeActive ? (
+            {!shakeActive && !foretelling ? (
               <button
                 type="button"
                 disabled={busy}

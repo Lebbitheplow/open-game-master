@@ -12,6 +12,7 @@ import type { DmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter, getEnemy, patchEnemyConditions, patchEnemyHp, shiftEnemyMaxHp, type EncounterEnemy } from "@/lib/db/encounters";
 import { insertRoll } from "@/lib/db/rolls";
 import type { EnemyAttack } from "@/lib/bestiary/statblock";
+import { asleepOnFailure } from "@/lib/bestiary/attack-text";
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
 import { isValidExpression, rollExpression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
@@ -23,6 +24,8 @@ import { rollEnemySave } from "@/lib/dm/forced-save";
 import { enemyHpCap } from "@/lib/dm/monster-abilities";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { isConditionNamed } from "@/lib/srd/feature-names";
+import { swallowCreature } from "@/lib/dm/swallow";
+import { swallowRuleOf } from "@/lib/dm/swallow-logic";
 
 type Sheets = { sheets: CharacterSheet[]; sheetsById: Map<string, CharacterSheet> };
 
@@ -45,6 +48,7 @@ export function resolveRowOnHit(
   }
   const out: Record<string, unknown> = {};
   let saved = false;
+  let saveTotal: number | null = null;
   if (rider.save && rider.dc) {
     const save = rollEnemySave(campaign.id, target, rider.save, rider.dc, {
       record: { turn, detail: `${target.displayName}: ${rider.save.toUpperCase()} save vs ${attacker.displayName}'s ${attack.name}` },
@@ -52,6 +56,7 @@ export function resolveRowOnHit(
       origin: { ref: attacker.id },
     });
     saved = save.success;
+    saveTotal = save.total;
     out.riderSave = `${save.total ?? "failed automatically"} vs DC ${rider.dc}`;
     out.riderSaved = saved;
   }
@@ -74,7 +79,9 @@ export function resolveRowOnHit(
       applyEnemyDamage(campaign, turn, encounter, getEnemy(targetId) ?? target, amount, sheets, sheetsById, rider.damageType, { holdVictory: true });
     }
   }
-  const conditions = rider.condition && !saved ? [rider.condition, ...(rider.alsoCondition ? [rider.alsoCondition] : [])] : [];
+  // A poison's sleep on a bad enough save, as on a character (enemy-hit.ts).
+  const asleep = Boolean(rider.save && rider.dc) && asleepOnFailure(rider, saveTotal);
+  const conditions = rider.condition && !saved ? [rider.condition, ...(rider.alsoCondition ? [rider.alsoCondition] : []), ...(asleep ? ["unconscious"] : [])] : [];
   for (const condition of conditions) {
     const now = getEnemy(targetId);
     if (!now || now.status !== "alive" || (now.currentHp <= 0 && condition === "prone")) {
@@ -93,6 +100,7 @@ export function resolveRowOnHit(
         ...(rider.repeatSave && rider.save && rider.dc ? { saveEnds: { ability: rider.save, dc: rider.dc } } : {}),
         ...(rider.untilLongRest ? { untilLongRest: true } : {}),
         ...(condition === "grappled" && rider.escapeDc ? { escapeDc: rider.escapeDc } : {}),
+        ...(condition === "unconscious" && rider.wakesOnDamage ? { endsOnDamage: true } : {}),
       },
     };
     const held = now.conditions.some((entry) => isConditionNamed(entry, condition));
@@ -118,8 +126,14 @@ export function resolveRowOnHit(
       }
     }
   }
+  // Swallowed whole, as a character is (swallow.ts).
   if (rider.swallow && !saved) {
-    out.swallowed = `${attacker.displayName}'s ${attack.name} can swallow ${target.displayName}: resolve it from the block.`;
+    const swallowed = swallowCreature(campaign, turn.id, attacker, { kind: "enemy", id: target.id }, swallowRuleOf(attacker.stats, attack.name));
+    if ("swallowed" in swallowed) {
+      out.swallowed = swallowed.swallowed;
+    } else {
+      out.notSwallowed = swallowed.notSwallowed;
+    }
   }
   if (rider.manual?.length) {
     out.manual = `The server does not model this part of ${attack.name}; resolve it by hand: ${rider.manual.join(" ")}`;

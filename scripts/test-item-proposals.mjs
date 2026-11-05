@@ -79,6 +79,12 @@ test("proposalSummary phrasings", () => {
   );
   assert.equal(proposalSummary("modify_gold", { delta: 50 }, "Avery"), "Give 50 gold to Avery");
   assert.equal(proposalSummary("modify_gold", { delta: -25 }, "Avery"), "Take 25 gold from Avery");
+  // The coins are the amount; delta only signs them.
+  assert.equal(proposalSummary("modify_gold", { delta: -1, coins: "5 sp" }, "Avery"), "Take 5 sp from Avery");
+  assert.equal(proposalSummary("modify_gold", { coins: "+1 gp 5 sp" }, "Avery"), "Give 1 gp 5 sp to Avery");
+  // A list price is the server's to settle, and part of a gold piece reads in its coins.
+  assert.equal(proposalSummary("purchase", { item: "Torch", action: "buy" }, "Avery"), "Avery buys Torch");
+  assert.equal(proposalSummary("purchase", { item: "Torch", action: "buy", price: 0.1, qty: 5 }, "Avery"), "Avery buys Torch x5 for 5 sp");
   assert.equal(
     proposalSummary("purchase", { item: "Longsword", price: 15, qty: 1, action: "buy" }, "Avery"),
     "Avery buys Longsword for 15 gold",
@@ -165,6 +171,8 @@ check("an offer's key is what it is, not who made it or when", () => {
   assert.notEqual(offerKey("grant_item", { item: "Coin purse", qty: 2 }), offerKey("grant_item", { item: "Coin purse" }));
   assert.notEqual(offerKey("grant_item", { item: "ring", unidentified: true }), offerKey("grant_item", { item: "ring" }));
   assert.equal(offerKey("modify_gold", { delta: 15 }), offerKey("modify_gold", { delta: 15, reason: "loot" }));
+  assert.equal(offerKey("modify_gold", { delta: -1, coins: "5 sp" }), offerKey("modify_gold", { coins: "-5 sp" }));
+  assert.notEqual(offerKey("modify_gold", { coins: "+5 sp" }), offerKey("modify_gold", { coins: "-5 sp" }));
   assert.equal(offerKey("apply_damage", { amount: 3 }), null);
 });
 

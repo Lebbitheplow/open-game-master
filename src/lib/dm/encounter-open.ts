@@ -7,7 +7,7 @@ import { publishWithSeq } from "@/lib/events";
 import { watchfulPassivePerception } from "@/lib/bestiary/enemy-numbers";
 import { passiveScore } from "@/lib/dm/check-tools";
 import { applyInitiativeRefills } from "@/lib/dm/feature-spends";
-import { rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
+import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { dmRoll } from "@/lib/dm/roll-card";
@@ -69,12 +69,16 @@ export function decideAmbush(
       ],
     };
   }
+  // The Stealth that stays hidden from every one of them: a held die is
+  // added only to a roll it lifts to that (forced-save.ts heldDieWaits).
+  const unseen = enemies.length ? Math.max(...enemies.map((enemy) => watchfulPassivePerception(enemy.stats))) : null;
   for (const stale of sheets) {
     const sheet = getSheetById(stale.id) ?? stale;
+    const waits = heldDieWaits(sheet, unseen);
     const resolved = resolveRollExpression(
       { kind: "skill_check", skill: "stealth", characterId: sheet.id } as RollArgs,
       sheet,
-      rollExtrasFor(campaign, sheet, "skill_check"),
+      { ...rollExtrasFor(campaign, sheet, "skill_check"), keepHeldDie: waits },
     );
     if ("error" in resolved || "autoFail" in resolved) {
       // A character who cannot hide gives the ambush away.
@@ -82,7 +86,8 @@ export function decideAmbush(
       continue;
     }
     spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-    const outcome = rollExpression(resolved.expression);
+    const thrown = rollExpression(resolved.expression, undefined, { purpose: { roller: "hero", kind: "check", who: sheet.name } });
+    const outcome = waits && unseen !== null ? settleHeldDie(campaign.id, sheet.id, thrown, unseen) : thrown;
     publish(
       campaign,
       insertRoll({
@@ -140,7 +145,7 @@ export function rollOpeningInitiative(
       continue;
     }
     spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-    const outcome = rollExpression(resolved.expression);
+    const outcome = rollExpression(resolved.expression, undefined, { purpose: { roller: "hero", kind: "initiative", who: sheet.name } });
     const roll = insertRoll({
       campaignId: campaign.id,
       characterId: sheet.id,

@@ -26,18 +26,20 @@ import type { CharacterSheet, EquipmentItem, FullPatchSheetInput } from "@/lib/s
 import { allSpellNames } from "@/lib/srd/spell-lists";
 import { spendAction } from "@/lib/dm/action-budget";
 import { canAct } from "@/lib/dm/can-act";
+import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { rollStableTimer } from "@/lib/dm/death";
 import { tableNote } from "@/lib/dm/between-io";
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { chebyshev } from "@/lib/battlemap/types";
 import { findCarriedItem } from "@/lib/dm/item-logic";
 import { resolveRollExpression } from "@/lib/dm/rolls";
-import { rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
+import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import { readiedReleaseFor } from "@/lib/dm/readied-release";
 import { STABILIZE_DC, SUFFOCATING, type StabilizeMethod } from "@/lib/dm/vitals-logic";
 import { toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
+import { swallowCoverBetween } from "@/lib/dm/swallow";
 
 // A healer's kit holds ten uses (SRD 5.1, Adventuring Gear). The count lives
 // on the row's `charges`; a row with none recorded is a full kit, so every
@@ -63,8 +65,14 @@ export function kitAfterUse(equipment: EquipmentItem[], row: EquipmentItem): { e
 
 // On a mapped fight the healer must be beside the dying creature: tending
 // them, a kit and Spare the Dying are all touch. Null when that holds or
-// there is no board to read.
+// there is no board to read. A swallowed creature is out of every touch from
+// outside its swallower, board or no board, and touches nobody outside it
+// (swallow.ts).
 function outOfTouch(encounterId: string | undefined, healer: CharacterSheet, sheet: CharacterSheet): ToolError | null {
+  const inside = swallowCoverBetween(healer.id, sheet.id);
+  if (inside) {
+    return { error: `${inside} Nothing was spent.`, refused: "rules" };
+  }
   const map = encounterId ? getBattleMapForEncounter(encounterId) : null;
   const from = map ? getTokenByRef(map.id, healer.id) : null;
   const to = map ? getTokenByRef(map.id, sheet.id) : null;
@@ -151,6 +159,10 @@ export function handleStabilize(
     if (!able.ok) {
       return toolError(able);
     }
+    const heldOff = heldTurnRefusal(encounter, healer);
+    if (heldOff) {
+      return heldOff;
+    }
   }
   const far = outOfTouch(encounter?.id, healer, sheet);
   if (far) {
@@ -206,7 +218,7 @@ export function handleStabilize(
         ...(survivorTended(sheet) ? { advantage: "advantage" as const, advantageReason: "Survivor: Medicine checks to stabilize them have advantage" } : {}),
       },
       healer,
-      rollExtrasFor(campaign, healer, "skill_check"),
+      { ...rollExtrasFor(campaign, healer, "skill_check"), keepHeldDie: heldDieWaits(healer, STABILIZE_DC) },
     );
     if ("error" in resolved) {
       return toolError(resolved);
@@ -220,7 +232,8 @@ export function handleStabilize(
       storeBudget(encounter, spent.budget);
     }
     readied?.release();
-    const outcome = rollExpression(resolved.expression);
+    const thrown = rollExpression(resolved.expression, undefined, { purpose: { roller: "hero", kind: "check", who: healer.name } });
+    const outcome = heldDieWaits(healer, STABILIZE_DC) ? settleHeldDie(campaign.id, healer.id, thrown, STABILIZE_DC) : thrown;
     const roll = insertRoll({
       campaignId: campaign.id,
       characterId: healer.id,
@@ -350,6 +363,10 @@ export function healerKitUse(
     const able = canAct({ sheet: healer, encounter, kind: "action" });
     if (!able.ok) {
       return toolError(able);
+    }
+    const heldOff = heldTurnRefusal(encounter, healer);
+    if (heldOff) {
+      return heldOff;
     }
     const far = outOfTouch(encounter.id, healer, target);
     if (far && healer.id !== target.id) {

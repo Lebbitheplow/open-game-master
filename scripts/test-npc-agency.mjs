@@ -14,9 +14,12 @@ import {
   parsePressure,
   parseRelations,
   pressureState,
+  repairSkewedPersonality,
   shiftRelation,
   tickPressure,
 } from "../src/lib/dm/npc-logic.ts";
+import { RELATIONSHIP_BEATS, beatDelta } from "../src/lib/dm/relationship-logic.ts";
+import { textKey } from "../src/lib/language/text-logic.ts";
 import { detectGoalCollisions } from "../src/lib/dm/npc-goal-logic.ts";
 
 let passed = 0;
@@ -62,6 +65,112 @@ test("derived personality is deterministic and attitude-leaning", () => {
   assert.deepEqual(a, b);
   const hostile = derivePersonality("Marla", "hostile", "fence");
   assert.ok(a.warmth > hostile.warmth);
+});
+
+// A spread of ordinary names, about half of whose seeds pass 2^31.
+const NAMES = ["Daran", "Sildar", "Toblen", "Linene", "Halia", "Qelline", "Harbin", "Garaele", "Elmar", "Gundren", "Reidoth", "Agatha", "Mira", "Bren", "Ostrava", "Kell", "Talia", "Varis", "Oren", "Pell", "Ysolde", "Corin", "Maren", "Orla"]
+  .flatMap((first) => ["Edermath", "Hallwinter", "Stonehill", "Graywind", "Thornton", "Alderleaf", "Dusk", "Vane", "Marsh", "Holt"].map((last) => `${first} ${last}`));
+const KINDNESSES = Object.keys(RELATIONSHIP_BEATS).filter((beat) => RELATIONSHIP_BEATS[beat].base > 0);
+
+// What derivePersonality gave before issue 732: `>>` read a seed past 2^31
+// as negative. Written out here so the repair is tested against the real
+// old output, not against its own copy.
+function skewed(name, attitude, trait) {
+  let hash = 5381;
+  const key = `${textKey(name)}|${textKey(trait)}`;
+  for (let index = 0; index < key.length; index += 1) {
+    hash = (hash * 33) ^ key.charCodeAt(index);
+  }
+  const seed = hash >>> 0;
+  const axis = (index) => ((seed >> (index * 4)) % 3) - 1;
+  const lean = attitude === "friendly" ? 1 : attitude === "hostile" ? -1 : 0;
+  return {
+    drive: clampAxis(axis(0)),
+    diligence: clampAxis(axis(1)),
+    boldness: clampAxis(axis(2)),
+    warmth: clampAxis(axis(3) + lean * 2),
+    empathy: clampAxis(axis(4) + lean),
+    composure: clampAxis(axis(5)),
+  };
+}
+const SKEWED_NAMES = NAMES.filter((name) => JSON.stringify(skewed(name, "friendly", "")) !== JSON.stringify(derivePersonality(name, "friendly", "")));
+
+test("the name spreads every axis over -1..1 before the attitude's lean (issue 732)", () => {
+  assert.ok(SKEWED_NAMES.length > NAMES.length / 4, "the sample holds names the old shift skewed");
+  for (const name of NAMES) {
+    for (const [attitude, lean] of [["friendly", 1], ["indifferent", 0], ["hostile", -1]]) {
+      const personality = derivePersonality(name, attitude, "");
+      for (const axis of ["drive", "diligence", "boldness", "composure"]) {
+        assert.ok(Math.abs(personality[axis]) <= 1, `${name} ${axis} ${personality[axis]}`);
+      }
+      assert.ok(Math.abs(personality.warmth - lean * 2) <= 1, `${name} warmth ${personality.warmth} (${attitude})`);
+      assert.ok(Math.abs(personality.empathy - lean) <= 1, `${name} empathy ${personality.empathy} (${attitude})`);
+    }
+  }
+});
+
+test("a kindness never lands as an irritation on a friendly or indifferent NPC by their name alone (issue 732)", () => {
+  const context = (personality) => ({ approval: 0, repeats: 0, hostile: false, personality });
+  // The issue's own case: helped landed as -3.
+  assert.ok(beatDelta("helped", null, context(derivePersonality("Daran Edermath", "friendly", ""))) > 0);
+  for (const name of NAMES) {
+    for (const attitude of ["friendly", "indifferent"]) {
+      const personality = derivePersonality(name, attitude, "");
+      for (const beat of KINDNESSES) {
+        assert.ok(beatDelta(beat, null, context(personality)) > 0, `${beat} toward ${name} (${attitude})`);
+      }
+    }
+  }
+});
+
+test("a personality saved from the skewed hash moves onto the corrected spread, keeping its drift (issue 732)", () => {
+  const name = SKEWED_NAMES[0];
+  const seeds = [{ name, trait: "" }];
+  const fixed = derivePersonality(name, "friendly", "");
+  assert.deepEqual(repairSkewedPersonality(skewed(name, "friendly", ""), seeds, "friendly"), fixed);
+  // Registered hostile, befriended since: the hostile spread is still found.
+  assert.deepEqual(repairSkewedPersonality(skewed(name, "hostile", ""), seeds, "friendly"), derivePersonality(name, "hostile", ""));
+  // A social check warmed them a step: the step stays.
+  const warmed = driftPersonality(skewed(name, "friendly", ""), "persuade", "up");
+  const repaired = repairSkewedPersonality(warmed, seeds, "friendly");
+  assert.equal(repaired.warmth, clampAxis(fixed.warmth + warmed.warmth - skewed(name, "friendly", "").warmth));
+  assert.equal(repaired.drive, fixed.drive);
+  // Never moved twice, and nothing to do for a hand-set personality, an
+  // unseeded name, or a seed the old shift read correctly.
+  assert.equal(repairSkewedPersonality(fixed, seeds, "friendly"), null);
+  assert.equal(repairSkewedPersonality({ drive: 2, diligence: 2, boldness: 2, warmth: 2, empathy: 2, composure: 2 }, seeds, "friendly"), null);
+  assert.equal(repairSkewedPersonality(skewed(name, "friendly", ""), [{ name: "Someone Else", trait: "" }], "friendly"), null);
+  const straight = NAMES.find((entry) => !SKEWED_NAMES.includes(entry));
+  assert.equal(repairSkewedPersonality(derivePersonality(straight, "friendly", ""), [{ name: straight, trait: "" }], "friendly"), null);
+  // Seeded under an old name the NPC still answers to.
+  assert.deepEqual(repairSkewedPersonality(skewed(name, "friendly", "fence"), [{ name: "New Name", trait: "fence" }, { name, trait: "fence" }], "friendly"), derivePersonality(name, "friendly", "fence"));
+});
+
+test("a hand-set personality that play could not have reached from the skewed spread stays as it was set (issue 732)", () => {
+  // An author's timid, idle sort whose drive, diligence and boldness happen
+  // to read like the old spread of their name, but whose composure sits
+  // above it: play only ever lowers composure (driftPersonality), so this
+  // was set by hand, not seeded and drifted.
+  for (const name of SKEWED_NAMES) {
+    const old = skewed(name, "friendly", "");
+    const authored = { ...old, composure: clampAxis(old.composure + 2) };
+    assert.equal(repairSkewedPersonality(authored, [{ name, trait: "" }], "friendly"), null, name);
+  }
+});
+
+test("a personality on a corrected spread is never moved again, whichever name it answers to (issue 732)", () => {
+  // One name whose corrected spread puts drive, diligence, boldness and
+  // composure at -1, and a second name the same person answers to whose old
+  // spread reads the same there: the second name must not move a
+  // personality the first one already put right.
+  const first = "Agatha Thornton";
+  const second = "Garaele Graywind";
+  const low = (personality) => ["drive", "diligence", "boldness", "composure"].every((axis) => personality[axis] === -1);
+  const settled = derivePersonality(first, "friendly", "");
+  assert.ok(low(settled), "the first name's corrected spread sits at -1");
+  assert.ok(low(skewed(second, "friendly", "")), "the second name's old spread sits at -1 too");
+  assert.notDeepEqual(skewed(second, "friendly", ""), derivePersonality(second, "friendly", ""), "the old shift skewed the second name");
+  assert.equal(repairSkewedPersonality(settled, [{ name: first, trait: "" }, { name: second, trait: "" }], "friendly"), null);
 });
 
 test("drift moves the right axes and clamps", () => {

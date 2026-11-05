@@ -17,6 +17,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import { rollAgainst } from "@/lib/roll-labels";
 import { textKey } from "@/lib/language/text-logic";
+import { withActor } from "@/lib/dm/acting-party";
 
 function fielded(campaignId: string): CharacterSheet[] {
   return listSheets(campaignId)
@@ -108,7 +109,8 @@ export function authoredTurnStart(campaign: Campaign, encounter: Encounter, comb
         }
         const amount = rollCard(campaign, null, holder.id, "damage", rollAgainst(held.feature, live.displayName), resolveFormula(effect.formula, held.level, modsOf(holder)), sheetAttacker(holder)).total;
         if (amount > 0) {
-          lines.push(hurtEnemy(campaign, encounter, live, amount, effect.type, held.feature));
+          // The feature's holder is whose damage it is (acting-party.ts).
+          lines.push(withActor({ kind: "sheet", ref: holder.id }, () => hurtEnemy(campaign, encounter, live, amount, effect.type, held.feature)));
         }
       }
     }

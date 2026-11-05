@@ -1,6 +1,10 @@
 import { textKey } from "@/lib/language/text-logic";
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
+import { keepNew, keepRow } from "@/lib/db/turn-rows";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
+import { allocateSeq } from "@/lib/db/campaigns";
+import { insertSheetAudit } from "@/lib/db/sheet-audit";
+import { currentTurnId } from "@/lib/dm/job-control";
 import { getActiveEncounter, shiftEnemyMaxHp } from "@/lib/db/encounters";
 import { getBattleMapForEncounter, listHiddenRefIds } from "@/lib/db/battle-maps";
 import { publishPersisted } from "@/lib/events";
@@ -111,6 +115,13 @@ function maxHpBonuses(campaignId: string): Map<string, number> {
 // change made in two calls (a removal, then a grant) clamps the current hit
 // points to the lower maximum in between and raises them again after, so
 // whatever is one change at the table goes through here once.
+// "Revert this turn" writes effect rows back through the same rule
+// (src/lib/dm/turn-revert.ts), so a hero's maximum follows the effects it
+// gets back or loses.
+export function effectsFollowingMaxHp<T>(campaignId: string, change: () => T): T {
+  return followingMaxHp(campaignId, change);
+}
+
 function followingMaxHp<T>(campaignId: string, change: () => T): T {
   const before = maxHpBonuses(campaignId);
   const out = change();
@@ -130,9 +141,27 @@ function followingMaxHp<T>(campaignId: string, change: () => T): T {
     // shiftEnemyMaxHp): set_effect refuses a drain with no room, but a bonus
     // lifted from under one could still take it there.
     const maxHp = sheet ? Math.max(1, sheet.maxHp + delta) : 0;
-    const updated = sheet
-      ? patchSheet(id, { maxHp, currentHp: delta > 0 ? sheet.currentHp + delta : Math.min(sheet.currentHp, maxHp) })
-      : null;
+    const patch = sheet ? { maxHp, currentHp: delta > 0 ? sheet.currentHp + delta : Math.min(sheet.currentHp, maxHp) } : null;
+    const updated = sheet && patch ? patchSheet(id, patch) : null;
+    if (sheet && patch && updated && currentTurnId()) {
+      // Inside a GM turn the move is audited like any change the turn makes
+      // to a sheet, so "Revert this turn" puts the maximum and the hit points
+      // back exactly (turn-revert.ts writes the effect rows back raw). Undone
+      // by the effect's own end, Aid's 5 hit points came back as a clamp to
+      // the old maximum: a hero at 25 of 30 given Aid and then hit, reverted,
+      // stood at 30 of 30.
+      const entry = insertSheetAudit({
+        campaignId,
+        characterId: id,
+        kind: "set_effect",
+        delta: patch,
+        reason: delta > 0 ? `an effect raised the hit point maximum by ${delta}` : `an effect lowered the hit point maximum by ${-delta}`,
+        seq: allocateSeq(campaignId),
+        before: sheet,
+        patch,
+      });
+      publishPersisted(campaignId, "sheet_audit", { entry, characterName: sheet.name });
+    }
     if (updated) {
       publishPersisted(campaignId, "sheet_updated", { sheet: updated });
     }
@@ -181,6 +210,8 @@ function writeEffect(input: EffectInput, id: string, now: string) {
       now,
       input.aura ? JSON.stringify(input.aura) : null,
     );
+  // An effect a GM turn started ends with the turn's revert (issue 685).
+  keepNew("active_effects", id, input.campaignId);
 }
 
 export function insertEffect(input: EffectInput): ActiveEffect {
@@ -191,6 +222,7 @@ export function insertEffect(input: EffectInput): ActiveEffect {
 }
 
 export function deleteEffect(campaignId: string, effectId: string): boolean {
+  keepRow("active_effects", effectId);
   const result = followingMaxHp(campaignId, () => getDatabase()
     .prepare(`DELETE FROM active_effects WHERE campaign_id = ? AND id = ?`)
     .run(campaignId, effectId));
@@ -223,6 +255,7 @@ export function deleteEffectsByName(
 ): number {
   const db = getDatabase();
   const ids = idsByName(campaignId, target, name);
+  ids.forEach((id) => keepRow("active_effects", id));
   const remove = db.prepare(`DELETE FROM active_effects WHERE campaign_id = ? AND id = ?`);
   followingMaxHp(campaignId, () => db.transaction(() => {
     for (const id of ids) {
@@ -248,6 +281,7 @@ export function replaceEffectsByName(input: EffectInput): ActiveEffect {
   const id = crypto.randomUUID();
   const now = nowIso();
   const replaced = idsByName(input.campaignId, { kind: input.targetKind, id: input.targetId }, input.name);
+  replaced.forEach((old) => keepRow("active_effects", old));
   const remove = db.prepare(`DELETE FROM active_effects WHERE campaign_id = ? AND id = ?`);
   followingMaxHp(input.campaignId, () => db.transaction(() => {
     for (const old of replaced) {
@@ -263,6 +297,7 @@ function persistTick(
   result: { kept: ActiveEffect[]; expired: ActiveEffect[] },
 ): ActiveEffect[] {
   const db = getDatabase();
+  [...result.kept, ...result.expired].forEach((effect) => keepRow("active_effects", effect.id));
   const update = db.prepare(`UPDATE active_effects SET remaining = ? WHERE id = ?`);
   const remove = db.prepare(`DELETE FROM active_effects WHERE id = ?`);
   const run = db.transaction(() => {
