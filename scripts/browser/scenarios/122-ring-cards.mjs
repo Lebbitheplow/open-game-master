@@ -37,6 +37,8 @@ const scenario = {
       await eventually(async () => (await back.count()) === 0, { label: "the main hand again" });
     };
     const toTableTab = async () => {
+      // The fight's opening banner fills the screen for its first moments.
+      await page.waitForTimeout(3_000);
       if (viewport !== "phone") return;
       // The phone's Table tab holds the Hand.
       const tab = page.locator(`${root}nav.cine-bottombar`).getByRole("button", { name: "Table", exact: true });
@@ -77,7 +79,17 @@ const scenario = {
       });
       check(patched.ok(), `${reason} (${patched.status()})`);
     };
+    // A thrown die lies over the page until it clears, and hides what a shot is of.
+    const diceClear = () =>
+      eventually(
+        async () => {
+          const overlay = page.locator(`${root}#dice-overlay`);
+          return (await overlay.count()) === 0 || (await overlay.getAttribute("data-dice")) === "idle";
+        },
+        { timeoutMs: 30_000, label: "the dice clearing" },
+      );
     const inBothThemes = async (shot, selector = hand) => {
+      await diceClear();
       await untilStill(page);
       const night = await axeViolations(page, selector);
       check(!night.length, `axe on ${shot} by night: ${night.map((entry) => entry.id).join(", ")}`);
@@ -186,6 +198,7 @@ const scenario = {
     check(answered.ok(), `Shield was taken (${answered.status()}): ${(await answered.text()).slice(0, 240)}`);
     await eventually(async () => !(await spellsNow()).includes("Shield"), { timeoutMs: 20_000, label: "Shield out of the ring" });
     check((await heroNow()).conditions.includes("shielded"), "the fighter is shielded");
+    await diceClear();
     await untilStill(page);
     await t.shot("reaction-cast");
   },
