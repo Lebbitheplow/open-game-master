@@ -11,7 +11,7 @@ import { listEffects } from "@/lib/db/active-effects";
 import { applyField, resolveField } from "@/lib/dm/effects-logic";
 import { getActiveBoard, getActiveEncounter, getEnemy, listEnemies, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { listDroppedItems } from "@/lib/db/dropped-items";
-import { tilesApart, tokenFootprint } from "@/lib/dm/board-reach";
+import { spaceOf, tilesApart, tokenFootprint } from "@/lib/dm/board-reach";
 import { speedFor } from "@/lib/srd";
 import { getMounts } from "@/lib/db/mounts";
 import { mountActionTaken } from "@/lib/srd/mounts";
@@ -31,7 +31,7 @@ import {
 } from "@/lib/db/battle-maps";
 import {
   darkvisionTilesFromText,
-  hasLineOfSight,
+  hasLineOfSightBetween,
   perceivesToken,
   visibleTiles,
   type Viewer,
@@ -357,18 +357,18 @@ export function buildPlayerMapView(
         }
         // Seen, or felt through the ground by tremorsense. The DM sees all.
         // A creature fighting at the viewer's side is drawn as an ally is.
-        return fullVision || sides(token) === viewerSide || (viewer ? perceivesToken(vision, viewer, token, visible) : false);
+        return fullVision || sides(token) === viewerSide || (viewer ? perceivesToken(vision, viewer, token, visible, spaceOf(token)) : false);
       }
       // A character fighting against the viewer's side is fog-gated as an
       // enemy is: the party does not see through a turncoat's eyes.
       if (token.kind === "pc" && sides(token) !== viewerSide) {
-        return fullVision || (viewer ? perceivesToken(vision, viewer, token, visible) : false);
+        return fullVision || (viewer ? perceivesToken(vision, viewer, token, visible, spaceOf(token)) : false);
       }
       // Allies are always drawn: the party coordinates aloud at the table.
       // The DM's own NPCs and props are things standing in the room, so they
       // follow the same rule the enemies do and appear when they are seen.
       if (token.kind === "npc" || token.kind === "prop") {
-        return fullVision || (viewer ? perceivesToken(vision, viewer, token, visible) : false);
+        return fullVision || (viewer ? perceivesToken(vision, viewer, token, visible, spaceOf(token)) : false);
       }
       return true;
     })
@@ -631,7 +631,7 @@ export function buildPlayerMapView(
             feet: Object.fromEntries(others.map((token) => [token.refId, tilesApart(myToken, token) * 5])),
             unseen: others
               .filter((token) => token.x >= 0 && token.y >= 0 && token.x < map.width && token.y < map.height)
-              .filter((token) => !hasLineOfSight(sight, map.width, myToken.x, myToken.y, token.x, token.y))
+              .filter((token) => !hasLineOfSightBetween(sight, map.width, spaceOf(myToken), spaceOf(token)))
               .map((token) => token.refId),
           };
         })()

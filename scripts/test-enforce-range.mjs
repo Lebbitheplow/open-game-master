@@ -7,9 +7,12 @@
 // ODM's own rules, pinned here as it documents them:
 //   - One square is 5 feet and distance is counted Chebyshev: a diagonal
 //     step is one square.
-//   - Cover is read from the squares next to the target on the attacker's
-//     side: one blocking square is half cover (+2), two are three-quarters
-//     (+5), a low wall is half cover and never more (los.ts coverBetween).
+//   - Cover is read along lines from a corner of the attacker's space to the
+//     four corners of one square of the target's, from the corner that sees
+//     most: one or two lines blocked is half cover (+2), three is
+//     three-quarters (+5), and no line that gets through at all is total
+//     cover. A low wall right in front of the target is half cover and never
+//     more (battlemap/sight-lines.ts, los.ts coverBetween).
 //   - An enemy out of melee reach walks up to its target along a legal path
 //     as part of enemy_attack, out of its own speed (approachForAttack).
 //     A player is moved only when the attack says their player closes in
@@ -26,6 +29,8 @@ import { combatKit, d20Faces, TRAINED } from "./lib/enforce-combat.mjs";
 const { test, finish } = suite("test-enforce-range");
 const world = await openWorld();
 const kit = await combatKit(world);
+const { buildPlayerMapView } = await import("../src/lib/battlemap/view.ts");
+const { seesOnBoard } = await import("../src/lib/dm/authored-saves.ts");
 
 const hero = world.addHero({
   class: "fighter", level: 5, abilities: { str: 16, dex: 14 }, proficiencies: TRAINED,
@@ -161,6 +166,25 @@ await test("a token named by one letter is no enemy whose name holds that letter
   assert.equal(kit.token(enemy.id).x, 12);
 });
 
+await test("a Large creature half behind a pillar is one the board shows, a reaction sees and an arrow can reach", async () => {
+  // A pillar straight between them hides the corner its token is anchored on;
+  // its squares in the next column stick out.
+  const enemy = await stage([8, 10], [8, 4], [[8, 7, "#"]]);
+  const seen = () => {
+    const view = buildPlayerMapView(world.campaignId, hero.userId);
+    return { shown: view.tokens.some((token) => token.refId === enemy.id), unseen: (view.unseen ?? []).includes(enemy.id) };
+  };
+  assert.deepEqual(seen(), { shown: false, unseen: false }, "Medium: out of sight, so not on this player's board at all");
+  assert.equal(seesOnBoard(world.encounter().id, hero.id, enemy.id), false, "Medium");
+  await refused(enemy, { weapon: "Shortbow" }, "Medium, straight behind the pillar");
+
+  kit.setEnemy(enemy.id, { maxHp: 400, stats: { size: "Large" } });
+  assert.deepEqual(seen(), { shown: true, unseen: false }, "Large");
+  assert.equal(seesOnBoard(world.encounter().id, hero.id, enemy.id), true, "Large");
+  const swing = await kit.swing(hero.id, enemy.id, [15, 4], { weapon: "Shortbow" });
+  assert.equal(swing.ok, true, swing.error);
+});
+
 await test("reach against a Large creature is measured to its nearest square (issue #186)", async () => {
   // The dummy at (5,5) fills (5,5) to (6,6). A hero at (7,6) stands against
   // its lower-right square: 5 feet, not the 10 the anchors are apart.
@@ -270,8 +294,14 @@ await test("half cover: +2 to the Armor Class to meet", async () => {
   assert.equal(kit.enemy(enemy.id).currentHp, 400);
 });
 
+await test("a target walled in on both near sides has total cover: no line reaches past the sealed corner", async () => {
+  const enemy = await stage([2, 2], [8, 8], [[7, 8, "#"], [8, 7, "#"]]);
+  await refused(enemy, { weapon: "Shortbow" }, "shot into a sealed corner");
+});
+
 await test("three-quarters cover: +5", async () => {
-  const paint = [[7, 8, "#"], [8, 7, "#"]];
+  // A pillar square on the slant between them leaves one corner of the target to shoot at.
+  const paint = [[6, 6, "#"]];
   let enemy = await stage([2, 2], [8, 8], paint);
   let swing = await kit.swing(hero.id, enemy.id, [18 - TO_HIT_DEX, 4], { weapon: "Shortbow" });
   assert.equal(swing.result.vsAc, 13 + 5);

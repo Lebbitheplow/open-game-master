@@ -23,8 +23,8 @@ import { sideOf } from "@/lib/dm/combatant";
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { getActiveEncounter, patchEnemyConditions, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
-import { tilesApart } from "@/lib/dm/board-reach";
-import { hasLineOfSight } from "@/lib/battlemap/los";
+import { spaceOf, tilesApart } from "@/lib/dm/board-reach";
+import { hasLineOfSightBetween } from "@/lib/battlemap/los";
 import { sightTerrainFor } from "@/lib/dm/zone-rules";
 
 import type { Advantage } from "@/lib/dice";
@@ -76,7 +76,7 @@ export function seesOnBoard(encounterId: string, fromRef: string, toRef: string)
   if (!from || !to || off(from) || off(to)) {
     return true;
   }
-  return hasLineOfSight(sightTerrainFor(map), map.width, from.x, from.y, to.x, to.y);
+  return hasLineOfSightBetween(sightTerrainFor(map), map.width, spaceOf(from), spaceOf(to));
 }
 
 // The refusal for a reaction its holder cannot see the creature for, or null.
