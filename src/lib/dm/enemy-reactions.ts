@@ -12,6 +12,7 @@ import { getEnemy, listEnemies, patchEnemyConditions, saveEncounter, type Encoun
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { canEnemyAct } from "@/lib/dm/can-act";
 import { conditionBlocksReactions } from "@/lib/srd/condition-effects";
+import type { Sight } from "@/lib/dm/attack-light";
 import { conditionSeesInvisible } from "@/lib/srd/condition-effect-queries";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { enemyAttackProfile } from "@/lib/dm/enemy-profile";
@@ -41,12 +42,13 @@ type DefenseInput = {
   attackerUnseen: boolean;
 };
 
-// Whether the attacker's conditions keep a creature from seeing them, which
-// Parry needs. See Invisibility and True Seeing see the invisible, as they do
-// for the attack's advantage (condition-logic.ts).
-export function attackerUnseen(attacker: string[], creature: string[]): boolean {
+// Whether a creature cannot see its attacker, which Parry needs: the attacker's
+// conditions keep it from seeing them, or the light does (attack-light.ts, null
+// off the board, where nothing says it cannot). See Invisibility and True Seeing
+// see the invisible, as they do for the attack's advantage (condition-logic.ts).
+export function attackerUnseen(attacker: string[], creature: string[], sight: Sight | null): boolean {
   const holds = (name: string) => attacker.some((entry) => isConditionNamed(entry, name));
-  return holds("hidden") || (holds("invisible") && !conditionSeesInvisible(creature));
+  return sight?.targetSees === false || holds("hidden") || (holds("invisible") && !conditionSeesInvisible(creature));
 }
 
 // The creature's defensive reaction against a hit, when one turns it into a

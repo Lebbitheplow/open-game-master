@@ -44,14 +44,15 @@ export function characterSenses(sheet: Pick<CharacterSheet, "features" | "race">
   return { ...senses, darkvision: Math.max(named, authored), truesight: Math.max(senses.truesight, seeing) };
 }
 
-export function enemySenses(enemy: Pick<EncounterEnemy, "stats">): Senses {
+export function enemySenses(enemy: Pick<EncounterEnemy, "stats"> & { conditions?: string[] }): Senses {
   const block = sensesFromBlock(enemy.stats.senses);
   const text = sensesFromText(enemy.stats.traits ?? []);
   return {
     darkvision: Math.max(block.darkvision, text.darkvision, darkvisionTilesFromText(enemy.stats.traits ?? [])),
     blindsight: Math.max(block.blindsight, text.blindsight),
     tremorsense: Math.max(block.tremorsense, text.tremorsense),
-    truesight: Math.max(block.truesight, text.truesight),
+    // True Seeing's truesight, in squares, as on a character.
+    truesight: Math.max(block.truesight, text.truesight, Math.floor(conditionTruesightFeet(enemy.conditions ?? []) / 5)),
     devilsSight: Math.max(block.devilsSight, text.devilsSight),
   };
 }

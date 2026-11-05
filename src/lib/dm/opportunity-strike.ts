@@ -186,7 +186,7 @@ export function pcOpportunitySwing(input: {
     critRange: riders.critRange,
   });
   // Parry: the creature's reaction lifts its AC against a melee hit (enemy-reactions.ts).
-  const parry = judged.hit && !judged.crit ? tryParry({ encounter, enemy, total: hitOutcome.total, natural20: false, ac: targetAc, melee: true, attackerUnseen: attackerUnseen(sheet.conditions, enemy.conditions) }) : null;
+  const parry = judged.hit && !judged.crit ? tryParry({ encounter, enemy, total: hitOutcome.total, natural20: false, ac: targetAc, melee: true, attackerUnseen: attackerUnseen(sheet.conditions, enemy.conditions, sight) }) : null;
   const adjudicated = parry ? { ...judged, hit: false, crit: false } : judged;
   spendAttackCarriers(campaign, sheet, enemy, attackRiders.spent);
   // Relentless Avenger answers the hit (src/lib/dm/authored-reactions-more.ts).

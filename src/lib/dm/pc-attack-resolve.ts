@@ -152,7 +152,7 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike): Record<string, u
   // Parry: the creature's reaction lifts its AC against a melee hit it sees (enemy-reactions.ts).
   const metTotal = totalAReactionMeets({ total: hitOutcome.total, ac: plan.effectiveAc, hit: judged.hit, crit: judged.crit, natural1: hitOutcome.crit === "nat1", foeSlayer: plan.extras.foeSlayer });
   const parry = metTotal !== null
-    ? tryParry({ encounter, enemy, total: metTotal, natural20: false, ac: plan.effectiveAc, melee: !plan.atRange, attackerUnseen: attackerUnseen(sheet.conditions, enemy.conditions) })
+    ? tryParry({ encounter, enemy, total: metTotal, natural20: false, ac: plan.effectiveAc, melee: !plan.atRange, attackerUnseen: attackerUnseen(sheet.conditions, enemy.conditions, plan.sight) })
     : null;
   if (parry) {
     context.notes.push(parry.note);

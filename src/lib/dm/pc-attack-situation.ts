@@ -362,5 +362,5 @@ export function attackSituation(input: {
     ...(gale.disadvantage ? ["disadvantage" as const] : []),
     ...(underwater?.disadvantage ? ["disadvantage" as const] : []),
   ];
-  return { context: conditionContext, advantage: mergeAdvantage(sources), sources, helped, attackRiders };
+  return { context: conditionContext, advantage: mergeAdvantage(sources), sources, helped, attackRiders, sight };
 }
