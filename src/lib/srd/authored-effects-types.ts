@@ -352,6 +352,9 @@ export type SpendDoes =
       leashFeet?: number;
       onFail?: string;
       types?: string[];
+      // The creatures of the user's choice in reach, named in targetEnemyIds
+      // (every one when none is named): "each creature of your choice".
+      chosen?: boolean;
       // Only creatures the holder can see (a wall or a heavily obscured space
       // hides one). Without it every creature in reach is caught: Radiance of the
       // Dawn's text asks no sight, and Order's Demand's "see or hear" carries

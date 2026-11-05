@@ -34,6 +34,7 @@ export type AuthoredSpendArgs = {
   variant?: string;
   targetCharacterId?: string;
   targetEnemyId?: string;
+  targetEnemyIds?: string[];
 };
 
 function audit(campaign: Campaign, turnId: string, sheet: CharacterSheet, delta: Record<string, unknown>, reason: string, patch: Record<string, unknown>) {

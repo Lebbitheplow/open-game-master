@@ -319,8 +319,28 @@ function compactSchema(value: unknown): unknown {
   );
 }
 
+// Arguments the compact set leaves off its tools: each is a choice the Hand
+// makes for the player and sends itself (a card the engine resolves with no
+// model call), and a 16K window has no room for it. A model that names one
+// anyway is still heard: the server reads every argument it knows.
+export const COMPACT_OMITS: Record<string, string[]> = {
+  // The creatures of the user's choice an area feature takes (Order's Demand,
+  // Champion Challenge, Dreadful Aspect); without it, every foe in reach.
+  use_resource: ["targetEnemyIds"],
+};
+
+function withoutOmitted(name: string, parameters: unknown): unknown {
+  const omit = COMPACT_OMITS[name];
+  const schema = parameters as { properties?: Record<string, unknown> } | undefined;
+  if (!omit || !schema?.properties) {
+    return parameters;
+  }
+  return { ...schema, properties: Object.fromEntries(Object.entries(schema.properties).filter(([key]) => !omit.includes(key))) };
+}
+
 // A tool with its descriptions cut to their first sentence; names, kinds,
-// enums and what is required are untouched. The cut is safe because every
+// enums and what is required are untouched, but for the few arguments
+// COMPACT_OMITS names. The cut is safe because every
 // description is written to be cut: its first sentence stands alone, within
 // the caps above, and carries what the model must get right (what the tool
 // does or the field is, and the values, codes or ids the engine reads); what
@@ -332,7 +352,7 @@ export function compactTool<T extends ToolDefLike>(tool: T): T {
     function: {
       ...tool.function,
       ...(tool.function.description ? { description: firstSentence(tool.function.description, 200) } : {}),
-      ...(tool.function.parameters ? { parameters: compactSchema(tool.function.parameters) } : {}),
+      ...(tool.function.parameters ? { parameters: compactSchema(withoutOmitted(tool.function.name, tool.function.parameters)) } : {}),
     },
   };
 }

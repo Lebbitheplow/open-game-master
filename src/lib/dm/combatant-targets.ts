@@ -39,6 +39,9 @@ export const TARGET_PARAMS: Readonly<Record<string, TargetRule>> = {
   "take_action.targetEnemyId": { kind: "combatant", file: "src/lib/dm/combat-actions.ts" },
   "use_reaction.targetEnemyId": { kind: "combatant", file: "src/lib/dm/reaction-tools.ts" },
   "use_resource.targetEnemyId": { kind: "combatant", file: "src/lib/dm/srd-feature-spends.ts" },
+  // The creatures of the user's choice an area feature takes (chosen-targets.ts):
+  // each resolved through resolveTargetFoe, here and in authored-spend-effects.ts.
+  "use_resource.targetEnemyIds": { kind: "combatant", file: "src/lib/dm/channel-fear.ts" },
   "pet_attack.targetEnemyId": { kind: "combatant", file: "src/lib/dm/pet-tools.ts" },
   "request_roll.targetEnemyId": { kind: "combatant", file: "src/lib/dm/enemy-blow.ts" },
   "request_roll.againstEnemyId": { kind: "combatant", file: "src/lib/dm/roll-gates.ts" },

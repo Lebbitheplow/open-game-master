@@ -276,7 +276,7 @@ await test("The Hand deals each row once, with its cost and aim, and the card's 
     [light, "Radiance of the Dawn", "action", "none"],
     [ancients, "Nature's Wrath", "action", "enemy"],
     [glory, "Peerless Athlete", "bonus", "self"],
-    [crown, "Champion Challenge", "bonus", "none"],
+    [crown, "Champion Challenge", "bonus", "enemy"],
   ]) {
     const hand = deriveHand(world.sheet(who.id), FRESH_TURN, {}).filter((card) => card.name === name);
     assert.equal(hand.length, 1, name);

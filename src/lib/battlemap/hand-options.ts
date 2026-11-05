@@ -12,6 +12,8 @@ import { authoredSpendFor, heldReaction } from "@/lib/srd/authored-effects";
 import { maneuverDieFor } from "@/lib/dm/maneuver-rules";
 import { iconPath, isPainted, type IconRef } from "@/lib/icons";
 import {
+  CHOSEN_CREATURES,
+  type HandShares,
   costGate,
   gated,
   primaryClass,
@@ -36,7 +38,7 @@ function card(
   sheet: CharacterSheet,
   turn: HandTurn,
   pool: { id: string; label: string },
-  option: { name: string; cost: HandCost; rules: string; target?: HandTarget; dice?: string; ritual?: boolean; icon?: IconRef },
+  option: { name: string; cost: HandCost; rules: string; target?: HandTarget; dice?: string; ritual?: boolean; icon?: IconRef; shares?: HandShares },
 ): HandCard {
   const state = sheet.resources[pool.id];
   const left = state ? state.max - state.used : 0;
@@ -59,6 +61,7 @@ function card(
       family: `class-${primaryClass(sheet)}`,
     },
     target: option.target ?? "none",
+    ...(option.shares ? { shares: option.shares } : {}),
     toHit: null,
     damage: null,
     damageType: "",
@@ -85,6 +88,9 @@ function card(
 
 // The options aimed at one creature, which the engine asks for by id.
 const AIMED_OPTIONS = [VOW_OF_ENMITY, textKey("Arcane Abjuration"), textKey("Abjure Enemy")];
+// The options that take the creatures of the player's choice (channel-fear.ts
+// chosen): aimed at one, the others added.
+const CHOSEN_OPTIONS = [textKey("Dreadful Aspect")];
 
 const RULES: Record<HeldOption["cost"], string> = {
   action: "Takes their action.",
@@ -110,6 +116,7 @@ export function optionCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] {
           rules: `Channel Divinity. ${RULES[option.cost]}`,
           ritual: option.cost === "ritual",
           ...(AIMED_OPTIONS.includes(textKey(option.name)) ? { target: "enemy" as const } : {}),
+          ...(CHOSEN_OPTIONS.includes(textKey(option.name)) ? { target: "enemy" as const, shares: CHOSEN_CREATURES } : {}),
         }),
       );
     }

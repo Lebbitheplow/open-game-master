@@ -122,6 +122,11 @@ export const resourceTools: ToolDef[] = [
             description:
               "The creature a feature is aimed at: exact enemyId from GAME STATE. Intimidating Presence and the subclass features aimed at a creature use it (Touch of the Long Death, Psychic Blades, Unsettling Words, Hound of Ill Omen, Versatile Trickster, Mighty Impel, Elemental Fury, Storm Aura's sea, Insightful Fighting, Cauterizing Flames' burn): the server rolls their saves and damage.",
           },
+          targetEnemyIds: {
+            type: "array",
+            items: { type: "string" },
+            description: "The creatures of the user's choice an area feature takes, exact enemyIds. Default: every foe in reach.",
+          },
           form: {
             type: "string",
             description: "Wild Shape only: the beast being assumed ('dire wolf').",

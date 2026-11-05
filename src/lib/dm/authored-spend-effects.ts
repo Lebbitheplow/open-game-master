@@ -6,6 +6,7 @@ import { WEAPON_HIT } from "@/lib/dm/action-budget";
 import { saveModFor } from "@/lib/bestiary/enemy-numbers";
 import { layEnemyConditionInstance } from "@/lib/dm/enemy-condition-lay";
 import { foesOfSheet, resolveTargetFoe } from "@/lib/dm/sheet-foe";
+import { chosenTargets } from "@/lib/dm/chosen-targets";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getBattleMapForEncounter } from "@/lib/db/battle-maps";
 import type { DmTurn } from "@/lib/db/dm-turns";
@@ -54,7 +55,7 @@ export type SpendContext = {
   sheet: CharacterSheet;
   held: HeldAuthored;
   spend: AuthoredSpend;
-  args: { amount?: number; variant?: string; targetCharacterId?: string; targetEnemyId?: string };
+  args: { amount?: number; variant?: string; targetCharacterId?: string; targetEnemyId?: string; targetEnemyIds?: string[] };
   units: number;
   mods: Record<string, number>;
   reason: string;
@@ -523,7 +524,7 @@ function saveArea(ctx: SpendContext, does: Extract<SpendDoes, { kind: "save_area
   if (!encounter) {
     return { result: { applied: [`${ctx.spend.name}: there is no fight, so no creature on the board saves; the GM resolves it in the story.`] } };
   }
-  const targets = foesOfSheet(campaign.id, encounter, sheet.id).filter(
+  let targets = foesOfSheet(campaign.id, encounter, sheet.id).filter(
     (enemy) =>
       enemy.status === "alive" &&
       enemy.currentHp > 0 &&
@@ -535,6 +536,11 @@ function saveArea(ctx: SpendContext, does: Extract<SpendDoes, { kind: "save_area
   if (!targets.length) {
     return { error: `Nothing ${ctx.spend.name} affects is within ${does.rangeFt} feet of ${sheet.name}. Nothing was spent.`, refused: "rules" };
   }
+  const chosen = chosenTargets(ctx.spend.name, Boolean(does.chosen), targets, ctx.args, (ref) => resolveTargetFoe(campaign.id, encounter, ref)?.id ?? null);
+  if ("error" in chosen) {
+    return chosen;
+  }
+  targets = chosen;
   const dc = saveDc(ctx, does.dcAbility);
   const rolled = does.dice ? rollCard(campaign, ctx.turn, sheet.id, "damage", ctx.spend.name, formula(ctx, does.dice), sheetAttacker(sheet)).total : 0;
   const lines: string[] = [];

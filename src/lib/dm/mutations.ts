@@ -483,6 +483,9 @@ const argsSchema = z.object({
   targetCharacterId: z.string().optional(),
   // use_resource: the creature a feature is aimed at (Intimidating Presence).
   targetEnemyId: z.string().optional(),
+  // use_resource: the creatures of the user's choice an area feature takes
+  // (Order's Demand, Champion Challenge, Dreadful Aspect).
+  targetEnemyIds: z.array(z.string().trim().min(1).max(80)).max(30).optional(),
   // purchase: gold each, for a thing no list prices (half a gold piece is 0.5).
   price: z.coerce.number().min(0).max(100000).optional(),
   resource: z.string().optional(),
@@ -1370,7 +1373,7 @@ function dmMutation(
       }
       // Channel Divinity's options and Indomitable resolve in the engine
       // (src/lib/dm/feature-spends.ts); everything else takes the generic path.
-      const featureSpend = featureVariantSpend(campaign, turnId, sheet, resourceName, args.variant, args.targetCharacterId, reason, args.targetEnemyId);
+      const featureSpend = featureVariantSpend(campaign, turnId, sheet, resourceName, args.variant, args.targetCharacterId, reason, args.targetEnemyId, args.targetEnemyIds);
       if (featureSpend) {
         return { result: featureSpend };
       }
