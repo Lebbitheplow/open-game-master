@@ -166,7 +166,14 @@ await test("Arcane Jolt is played from its cards: the force card burns the creat
     kit.place(ally.id, 4, 5);
     world.patch(ally.id, { currentHp: 20 });
     const turn = { ...FRESH_TURN, actionUsed: true };
-    const card = deriveHand(world.sheet(build.hero.id), turn, {}).find((entry) => entry.intent.card === "feature" && entry.intent.resourceId === "Arcane Jolt" && entry.intent.variant === variant);
+    const jolted = (played) => deriveHand(world.sheet(build.hero.id), played, {}).find((entry) => entry.intent.card === "feature" && entry.intent.resourceId === "Arcane Jolt" && entry.intent.variant === variant);
+    assert.match(jolted(turn).disabled, /rides a weapon hit/, "shut before any hit");
+    world.patch(build.hero.id, { equipment: [{ name: "Longsword +1", qty: 1, equipped: true }] });
+    world.dice(18, 4);
+    const struck = await world.invoke("pc_attack", { characterId: build.hero.id, targetEnemyId: enemy.id, weapon: "Longsword +1" });
+    world.clearDice();
+    assert.equal(struck.ok, true, struck.error);
+    const card = jolted({ ...turn, marks: [`weapon-hit:${enemy.id}`] });
     assert.ok(card, variant);
     assert.equal(card.cost, "free", variant);
     assert.equal(card.disabled, null, `${variant}: ${card.disabled}`);

@@ -604,6 +604,7 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
         name: "Arcane Jolt",
         pool: { id: "art_arcane_jolt" },
         oncePerTurn: true,
+        afterWeaponHit: true,
         does: { kind: "flames", formula: [[9, "2d6"], [15, "4d6"]], type: "force" },
       },
     ],
