@@ -43,12 +43,9 @@ on:
 
 env:
   DOCKERHUB_IMAGE: lebbi/open-game-master
-  # The GHCR name from before the rename to Open Game Master. Every release
-  # still goes to it too, so an install whose compose file or `docker pull`
-  # names it keeps updating; delete this once those installs have moved.
-  # Docker Hub gets only lebbi/open-game-master: lebbi/open-dungeon-master
-  # stopped receiving releases at 0.32.3.
-  LEGACY_GHCR_IMAGE: ghcr.io/lebbitheplow/open-dungeon-master
+  # Releases go to the Open Game Master names only. The names from before the
+  # rename (lebbi/open-dungeon-master, ghcr.io/lebbitheplow/open-dungeon-master)
+  # stopped receiving them at 0.32.3 (docs/docker.md).
 
 # A beta promoted while its own image is still building waits for that build,
 # then finds the image and retags it instead of building it a second time.
@@ -78,9 +75,6 @@ jobs:
         run: |
           # GHCR rejects uppercase in a repository path; the owner may have it.
           images="ghcr.io/$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')"
-          if [ -n "$LEGACY_GHCR_IMAGE" ]; then
-            images="$(printf '%s\n%s' "$images" "$LEGACY_GHCR_IMAGE")"
-          fi
           if [ "$HAS_DOCKERHUB" = "true" ]; then
             images="$(printf '%s\n%s' "$images" "$DOCKERHUB_IMAGE")"
           else

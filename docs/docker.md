@@ -124,10 +124,9 @@ too, so the About dialog compares against the betas. Set
 For a server people rely on, pin `ODM_IMAGE_TAG` and move it on purpose rather than
 following `latest`.
 
-Docker Hub's `lebbi/open-dungeon-master`, the name from before the rename, stopped
-receiving releases at 0.32.3; an install that pulls it stays on that version. Releases
-still go out to the old GHCR name (`ghcr.io/lebbitheplow/open-dungeon-master`) for now.
-To move an install over, download the compose file again (or change `ODM_IMAGE` in
+The image names from before the rename (`lebbi/open-dungeon-master` and
+`ghcr.io/lebbitheplow/open-dungeon-master`) stopped receiving releases at 0.32.3; an
+install that pulls them stays on that version. To move one over, download the compose file again (or change `ODM_IMAGE` in
 `.env`) and run `docker compose pull && docker compose up -d`; the service and its
 volumes keep their names, so nothing else changes.
 
@@ -183,10 +182,8 @@ it can be re-run by hand from the Actions tab.
 
 **GHCR needs no setup** - it authenticates with the built-in `GITHUB_TOKEN`. A brand new
 package is private, so make it public once (Packages > open-game-master > Package
-settings > Change visibility) for other people to pull it. Each release is also pushed to
-the GHCR name from before the rename (`LEGACY_GHCR_IMAGE` in the workflow); delete that
-line once the installs that use it have moved. Docker Hub gets only
-`lebbi/open-game-master`.
+settings > Change visibility) for other people to pull it. Releases go to the Open Game
+Master names only (`ghcr.io/lebbitheplow/open-game-master` and `lebbi/open-game-master`).
 
 **Docker Hub is optional.** Set two repository secrets and it publishes there too;
 without them the workflow succeeds and publishes to GHCR only.
