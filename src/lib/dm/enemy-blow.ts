@@ -17,10 +17,6 @@ import { applyEnemyDamage, applySheetFoeBlow } from "@/lib/dm/enemy-damage";
 import { meetEnemyPart, type EnemyPartFlags } from "@/lib/dm/enemy-defenses";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { enemyHpCap } from "@/lib/dm/monster-abilities";
-import { budgetApplies } from "@/lib/dm/action-budget";
-import type { ParkedAttack } from "@/lib/dm/pc-attack-riders";
-import { storeBudget } from "@/lib/dm/turn-budget";
-import { GREAT_WEAPON_MASTER_READY, TAVERN_GRAPPLE_READY } from "@/lib/srd/feat-combat";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 // How a parked attack's damage roll is resolved (carried on the pending
@@ -35,8 +31,6 @@ export type DamageBlow = {
   critExtraDice?: number;
   // A silvered or adamantine weapon's material (damage-logic.ts).
   material?: WeaponMaterial;
-  // A spell's half damage on a miss (Acid Arrow): half the total, rounded down.
-  halfOnMiss?: boolean;
 };
 
 // One rolled damage total landing on an enemy. With typed riders the blow is
@@ -54,7 +48,7 @@ function applyBlow(
   damageType: string | undefined,
   blow: DamageBlow | undefined,
 ): Record<string, unknown> {
-  const amount = Math.max(1, blow?.halfOnMiss ? Math.floor(roll.total / 2) : roll.total);
+  const amount = Math.max(1, roll.total);
   const magical = blow?.magical === true;
   const material = blow?.material ?? {};
   const parts =
@@ -247,7 +241,6 @@ export function applyPendingDamageRoll(pending: PendingRoll, roll: StoredRoll): 
           critExtraDice: pending.attack.critExtraDice,
           nonlethal: (pending.attack as { nonlethal?: boolean }).nonlethal === true,
           material: (pending.attack as { material?: WeaponMaterial }).material,
-          halfOnMiss: (pending.attack as { halfOnMiss?: boolean }).halfOnMiss === true,
         }
       : undefined,
   );
@@ -260,51 +253,14 @@ export function applyPendingDamageRoll(pending: PendingRoll, roll: StoredRoll): 
   const byType = Array.isArray(applied.damageByType)
     ? ` (${(applied.damageByType as string[]).join(", ")})`
     : "";
-  const halved = (pending.attack as { halfOnMiss?: boolean } | undefined)?.halfOnMiss === true;
   const parts = [
-    `The server already applied ${halved ? "half of " : ""}this ${roll.total} damage${byType} to ${String(applied.name)} (now ${
+    `The server already applied this ${roll.total} damage${byType} to ${String(applied.name)} (now ${
       applied.dead ? "SLAIN" : String(applied.health)
     }).`,
   ];
   if (applied.encounterOver) {
     parts.push(`The encounter ended: ${String(applied.outcome)}. XP was awarded automatically.`);
   }
-  // A miss opens nothing a hit's blow does.
-  if (halved) {
-    parts.push("Do NOT call apply_damage for this miss; narrate from this state.");
-    return parts.join(" ");
-  }
   parts.push("Do NOT call apply_damage for this hit; narrate from this state.");
-  parts.push(...openParkedBonus(campaign.id, pending, applied.dead === true));
   return parts.join(" ");
-}
-
-// What a blow on real dice opens once its damage has landed, as rollPcAttack
-// does for the server's dice: Great Weapon Master's bonus attack on a critical
-// hit or a kill, Tavern Brawler's bonus grapple on a hit. Written on the
-// encounter as the blow left it, so a fight the blow ended (no active encounter)
-// opens nothing. The turn must be the one the attack was made on, as near as a
-// budget tells: a damage roll can land once the turn has passed, even once it
-// has come round again.
-function openParkedBonus(campaignId: string, pending: PendingRoll, dead: boolean): string[] {
-  const attack = pending.attack as ParkedAttack | null;
-  const encounter = getActiveEncounter(campaignId);
-  const budget = encounter?.turnBudget ?? null;
-  if (attack?.blowRound === undefined || !encounter || !budgetApplies(budget, pending.characterId ?? "", attack.blowRound)) {
-    return [];
-  }
-  const keys: string[] = [];
-  const notes: string[] = [];
-  if (attack.opensGreatWeapon && (attack.crit || dead) && !budget.oncePerTurn.includes(GREAT_WEAPON_MASTER_READY)) {
-    keys.push(GREAT_WEAPON_MASTER_READY);
-    notes.push(`Great Weapon Master: ${attack.crit ? "the critical hit" : "the kill"} opens a bonus-action melee attack this turn (an entry with feature "Great Weapon Master").`);
-  }
-  if (attack.opensGrapple && !budget.oncePerTurn.includes(TAVERN_GRAPPLE_READY)) {
-    keys.push(TAVERN_GRAPPLE_READY);
-    notes.push("Tavern Brawler: the hit opens a bonus-action grapple this turn (take_action grapple).");
-  }
-  if (keys.length) {
-    storeBudget(encounter, { ...budget, oncePerTurn: [...budget.oncePerTurn, ...keys] });
-  }
-  return notes;
 }

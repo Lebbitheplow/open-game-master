@@ -210,6 +210,8 @@ export function handleRequestRoll(
       dc: args.dc ?? null,
       reason: args.reason?.slice(0, 200) ?? "",
       targetEnemyId: args.kind === "damage" ? args.targetEnemyId ?? null : null,
+      // The mote the spent inspiration die carried, set off as the roll lands.
+      ...(mote ? { carry: { mote } } : {}),
       // The screen holds while the player's dice are on their way.
       visibility: model ? "public" : args.visibility ?? "public",
       ...(realDiceUserIds.has(sheet.userId) ? {} : { parkedFor: "foretold" as const }),

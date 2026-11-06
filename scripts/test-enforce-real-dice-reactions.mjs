@@ -182,7 +182,7 @@ await test("With real dice, Foe Slayer's bonus has to reach a Shield an earlier 
     const [enemy] = await stage(strong, { spellcasting: SHIELD });
     const [first, second] = await twoParts(strong, enemy, 7, face, { weapon: "Longsword" });
     assert.match(first, /casts Shield/, first);
-    assert.match(second, hits ? /Foe Slayer: \+3 turns the miss into a hit/ : /vs AC 18: MISS/, second);
+    assert.match(second, hits ? /Foe Slayer: \+3 (to the attack roll )?turns the miss into a hit/ : /vs AC 18: MISS/, second);
   }
 });
 

@@ -302,7 +302,7 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
     // The die this bard gives carries the mote: a check rolls the die twice
     // and keeps the higher, a save gives the roller temporary hit points,
     // an attack's burst deals the die in thunder (rolls.ts, forced-save.ts,
-    // pc-attack-resolve.ts through src/lib/dm/authored-mote.ts).
+    // attack-swing.ts through src/lib/dm/authored-mote.ts).
     effects: [{ kind: "mote" }],
   },
 

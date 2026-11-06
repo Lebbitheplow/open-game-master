@@ -19,7 +19,7 @@ import { planPcAttack, type AttackPlan } from "@/lib/dm/pc-attack-plan";
 import { rollPcAttack, strikeToHit } from "@/lib/dm/pc-attack-resolve";
 import { castAttackSpell } from "@/lib/dm/pc-attack-spell";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
-import { markReactionUsed, noteSwing, storeBudget } from "@/lib/dm/turn-budget";
+import { markReactionUsed, storeBudget } from "@/lib/dm/turn-budget";
 import { spendReadied } from "@/lib/dm/object-actions";
 import { spendGiantKiller } from "@/lib/dm/reaction-attacks";
 import { withAmmoCount } from "@/lib/srd/ammunition";
@@ -27,7 +27,7 @@ import { lineNamed } from "@/lib/srd/item-row";
 import { OPEN_HAND_CHOICES } from "@/lib/dm/attack-choice-rules";
 import { spendInspirationCounter } from "@/lib/dm/roll-riders";
 import { spendLuckCounter } from "@/lib/srd/class-resources";
-import { moteBurst, moteOf } from "@/lib/dm/authored-mote";
+import { moteOf } from "@/lib/dm/authored-mote";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { invalidArguments, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { attacksLeft } from "@/lib/dm/action-budget";
@@ -404,13 +404,10 @@ function attackFrom(
   // Physical dice: park the to-hit roll for the player; the submit route
   // adjudicates it and, on a hit, parks the damage roll too.
   if (realDiceUserIds.has(sheet.userId)) {
-    parkPcAttack(plan, strike, toolCallId);
+    parkPcAttack(plan, strike, toolCallId, mote);
     return { [PC_ATTACK_PARKED]: true };
   }
-  const rolled = rollPcAttack(plan, strike);
-  noteSwing(campaign.id, sheet.id, rolled);
-  const burst = moteBurst(campaign, turn, mote, plan.enemy);
-  return burst ? { ...rolled, mote: burst } : rolled;
+  return rollPcAttack(plan, strike, mote);
 }
 
 // What the attack costs, paid now that nothing can refuse it: the turn

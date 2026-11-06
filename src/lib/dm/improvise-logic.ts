@@ -71,7 +71,7 @@ export function improvisedLasts(condition: ImprovisedCondition, actorName: strin
 // The largest creature a condition takes, where what it copies has one: a
 // net holds a creature Large or smaller (SRD 5.1, Net: "A net has no effect
 // on creatures that are formless, or creatures that are Huge or larger"), as
-// pc_attack's net lays it (pc-attack-resolve.ts).
+// pc_attack's net lays it (attack-swing.ts).
 export function improvisedMaxSize(condition: ImprovisedCondition): string | undefined {
   return condition === "restrained" ? "Large" : undefined;
 }
