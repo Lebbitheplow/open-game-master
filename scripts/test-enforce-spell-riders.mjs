@@ -273,6 +273,25 @@ await test("Elemental Affinity adds the sorcerer's Charisma to a spell of the an
   assert.equal(now.maxHp - now.currentHp, 7);
 });
 
+await test("A Draconic Bloodline sorcerer picks a dragon at 1st level, and the pick is the one Elemental Affinity reads", async () => {
+  const { openOptionSlots, optionFeatureName, optionSlotsFor } = await import("../src/lib/srd/options.ts");
+  const { dragonAncestorType } = await import("../src/lib/srd/spell-damage-riders.ts");
+  const { DRACONIC_ANCESTRIES } = await import("../src/lib/srd/racial-grants.ts");
+  const [slot] = openOptionSlots({ classId: "sorcerer", subclass: "Draconic Bloodline", level: 1, features: [{ name: "Dragon Ancestor" }] }).filter((entry) => entry.kind === "dragon_ancestor");
+  assert.ok(slot, "the builder and the level-up offer the pick");
+  assert.equal(slot.label, "Dragon Ancestor");
+  assert.equal(slot.remaining, 1);
+  assert.deepEqual(slot.options.map((option) => option.n), DRACONIC_ANCESTRIES.map((entry) => entry.dragon), "the SRD's ten dragons");
+  for (const entry of DRACONIC_ANCESTRIES) {
+    const feature = { name: optionFeatureName("dragon_ancestor", entry.dragon), source: "choice" };
+    assert.equal(dragonAncestorType({ features: [feature] }), entry.damageType, feature.name);
+  }
+  const chosen = openOptionSlots({ classId: "sorcerer", subclass: "Draconic Bloodline", level: 6, features: [{ name: "Dragon Ancestor" }, { name: "Dragon Ancestor: Red" }] });
+  assert.equal(chosen.find((entry) => entry.kind === "dragon_ancestor").remaining, 0, "one dragon, chosen once");
+  assert.equal(optionSlotsFor("sorcerer", "Wild Magic", 1, "dragon_ancestor"), 0, "another origin has no dragon");
+  assert.equal(optionSlotsFor("sorcerer", "Storm-Blooded", 1, "dragon_ancestor", [{ name: "Dragon Ancestor" }]), 1, "a workshop origin that borrows Dragon Ancestor opens it too");
+});
+
 await test("Potent Cantrip: a save against the evoker's cantrip still takes half", async () => {
   const evoker = caster("wizard", "int", [], ["Acid Splash"], 6, { subclass: "School of Evocation", features: [{ name: "Potent Cantrip", source: "class", level: 6 }] });
   const { world, sheets: [wizard], enemies: [goblin] } = await table([evoker]);

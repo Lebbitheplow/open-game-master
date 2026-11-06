@@ -103,7 +103,7 @@ const CLASSES = {
   sorcerer: {
     die: 6, saves: ["con", "cha"], count: 2, armor: [], weapons: MAGE_WEAPONS, tools: [],
     skills: ["arcana", "deception", "insight", "intimidation", "persuasion", "religion"],
-    subclassAt: 1, features: ["Spellcasting", "Sorcerous Origin"], cantrips: 4, spells: 2, pick: { subclass: "Draconic Bloodline" },
+    subclassAt: 1, features: ["Spellcasting", "Sorcerous Origin"], cantrips: 4, spells: 2, pick: { subclass: "Draconic Bloodline", optionPicks: ["Dragon Ancestor: Red"] },
   },
   warlock: {
     die: 8, saves: ["wis", "cha"], count: 2, armor: ["light"], weapons: ["simple"], tools: [],

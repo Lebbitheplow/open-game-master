@@ -1,6 +1,6 @@
 // The pick-lists that hang off a class feature: invocations, maneuvers,
-// metamagic, pact boons, infusions, runes, elemental disciplines and the
-// Hunter ranger's four choices.
+// metamagic, pact boons, infusions, runes, elemental disciplines, the
+// Hunter ranger's four choices and a Draconic Bloodline sorcerer's dragon.
 //
 // Before this existed a warlock's sheet said "Eldritch Invocations" and
 // stopped, so the player never chose any and never got the abilities. The
@@ -29,7 +29,8 @@ export type OptionKind =
   | "hunters_prey"
   | "defensive_tactics"
   | "hunter_multiattack"
-  | "superior_hunters_defense";
+  | "superior_hunters_defense"
+  | "dragon_ancestor";
 
 export type OptionDef = {
   k: OptionKind;
@@ -158,6 +159,11 @@ const GRANTS: Grant[] = [
   { kind: "defensive_tactics", classId: "ranger", subclass: "Hunter", opens: ["Defensive Tactics"], steps: [[7, 1]] },
   { kind: "hunter_multiattack", classId: "ranger", subclass: "Hunter", opens: ["Multiattack"], opensInClass: true, steps: [[11, 1]] },
   { kind: "superior_hunters_defense", classId: "ranger", subclass: "Hunter", opens: ["Superior Hunter's Defense"], steps: [[15, 1]] },
+  // A Draconic Bloodline sorcerer's dragon, chosen at 1st level. Elemental
+  // Affinity reads it by name for its damage type
+  // (src/lib/srd/spell-damage-riders.ts dragonAncestorType), and nothing let a
+  // player choose it, so the feature never did anything.
+  { kind: "dragon_ancestor", classId: "sorcerer", subclass: "Draconic Bloodline", opens: ["Dragon Ancestor"], steps: [[1, 1]] },
   {
     kind: "discipline",
     classId: "monk",
