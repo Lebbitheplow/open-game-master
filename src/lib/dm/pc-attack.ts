@@ -25,6 +25,7 @@ import { spendReadied } from "@/lib/dm/object-actions";
 import { spendGiantKiller } from "@/lib/dm/reaction-attacks";
 import { withAmmoCount } from "@/lib/srd/ammunition";
 import { lineNamed } from "@/lib/srd/item-row";
+import { throwToGround } from "@/lib/dm/gear-ground";
 import { OPEN_HAND_CHOICES } from "@/lib/dm/attack-choice-rules";
 import { spendInspirationCounter } from "@/lib/dm/roll-riders";
 import { spendLuckCounter } from "@/lib/srd/class-resources";
@@ -510,6 +511,14 @@ function spendPcAttack(plan: AttackPlan): ToolError | null {
     if (index >= 0) {
       patchSheet(sheet.id, { equipment: withAmmoCount(now.equipment, index, (now.equipment[index].qty ?? 1) - 1) });
       context.notes.push(`one ${plan.profile.weapon} spent`);
+    }
+  }
+  // A net is not spent but no longer held: it leaves the hand whatever the
+  // roll and lies at the creature it was thrown at (gear-ground.ts).
+  if (plan.special === "net") {
+    const thrown = throwToGround(campaign, turn, sheet, plan.profile.weapon, plan.enemy.id);
+    if (thrown) {
+      context.notes.push(thrown);
     }
   }
   if (plan.maneuver?.precision) {

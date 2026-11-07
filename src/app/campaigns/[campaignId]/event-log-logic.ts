@@ -250,6 +250,9 @@ export function describeKnownEntry(entry: { kind: string; delta: Delta }, name: 
     }
     case "drop_item":
       return `${name} drops ${item}${times(amount(delta.dropped))}`;
+    // A net thrown, now on the ground (src/lib/dm/gear-ground.ts throwToGround).
+    case "throw_item":
+      return `${name} throws ${item}`;
     case "pick_up_item":
       return `${name} picks up ${item}${times(amount(delta.taken))}`;
     case "use_item":

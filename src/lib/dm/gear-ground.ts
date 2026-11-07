@@ -91,6 +91,42 @@ export function drop(
   };
 }
 
+// A net thrown leaves the thrower's hands and pack, hit or miss, and lies
+// where it landed: at the square of the creature it was thrown at (over it,
+// while it holds it restrained), for anyone within 5 ft to take up again.
+// Kept on the sheet, it stayed in hand after the throw and filled a hand
+// the thrower no longer used. Null when the sheet carries no such line.
+export function throwToGround(campaign: Campaign, turn: DmTurn | null, sheet: CharacterSheet, name: string, targetRefId: string): string | null {
+  const fresh = getSheetById(sheet.id) ?? sheet;
+  const index = lineNamed(fresh.equipment, name);
+  if (index < 0) {
+    return null;
+  }
+  const row = fresh.equipment[index];
+  // The hand that held one is empty now: a second net on the line is
+  // drawn before it is thrown.
+  const equipment =
+    row.qty > 1
+      ? fresh.equipment.map((item, at) => (at === index ? { ...item, qty: item.qty - 1, ...(item.equipped === true ? { equipped: false } : {}) } : item))
+      : fresh.equipment.filter((_, at) => at !== index);
+  const target = standing(campaign.id, targetRefId);
+  const { map, token } = target.token ? target : standing(campaign.id, sheet.id);
+  const fell = insertDroppedItem({
+    campaignId: campaign.id,
+    mapId: map && token ? map.id : null,
+    x: token?.x ?? null,
+    y: token?.y ?? null,
+    place: placeName(campaign.id),
+    item: handedOverRow(row, 1),
+    droppedBy: sheet.name,
+  });
+  saveEquipment(campaign, turn, fresh, equipment, "throw_item", { name: row.name, thrown: 1 }, `Threw ${row.name}`);
+  if (map) {
+    publishBattleMapUpdate(campaign.id);
+  }
+  return `${row.name} leaves ${sheet.name}'s hands and lies ${token ? `at (${token.x},${token.y})` : "where it landed"}; anyone within 5 ft can pick it up (handle_item pick_up, item "${fell.id}")`;
+}
+
 // The items a creature standing here may take: on the live board within
 // 5 ft (a dead enemy's hold lies with its body), or, with no fight on, the
 // ones left at this place.
