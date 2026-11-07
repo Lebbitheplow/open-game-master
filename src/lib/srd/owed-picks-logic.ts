@@ -23,23 +23,28 @@ import {
   fightingStyleChoices,
   fightingStyleFeatureName,
   fightingStyleSlots,
+  newStyleFits,
   FIGHTING_STYLES,
 } from "@/lib/srd/feature-effects";
-import { populateFeaturesForClasses } from "@/lib/srd/features";
+import { classFeaturesFor, populateFeaturesForClasses } from "@/lib/srd/features";
 import { classListFor } from "@/lib/srd/multiclass";
 import {
   findOptionByFeatureName,
   openOptionSlots,
   optionFeatureName,
+  optionReqProblem,
   remainingWords,
   slotTakes,
   type OptionSlot,
 } from "@/lib/srd/options";
 import { applySubclassTraining, grantsForHeldTraining, subclassGrants, type SubclassGrant } from "@/lib/srd/subclass-training";
 import { textKey } from "@/lib/language/text-logic";
+import { dedupeNames, spellbookOf } from "@/lib/srd/spell-prep";
+import { featsAsRun } from "@/lib/srd/feat-effects";
+import type { SubclassExtras } from "@/lib/srd/subclass-tables";
 
 export type OwedSheet = Pick<CharacterSheet, "class" | "subclass" | "level" | "classes" | "features" | "proficiencies"> &
-  Partial<Pick<CharacterSheet, "name" | "feats" | "spellcasting" | "featChoices" | "race">>;
+  Partial<Pick<CharacterSheet, "name" | "feats" | "spellcasting" | "featChoices" | "race" | "campaignId">>;
 
 export type OwedPickSlots = {
   // The pick-lists with picks left, merged across classes as the builder
@@ -51,17 +56,40 @@ export type OwedPickSlots = {
   training: SubclassGrant[];
 };
 
-// Every spell a wizard's spellbook holds, whichever list carries it.
-export function spellbookOf(sheet: Pick<OwedSheet, "spellcasting">): string[] {
+// Every spell a wizard's spellbook holds, whichever list carries it: the
+// book, and what is prepared or waiting from it (spell-prep.ts spellbookOf,
+// the one reading every path shares). A Shield only in the prepared list is
+// in the book (issue #833 review).
+export function sheetSpellbook(sheet: Pick<OwedSheet, "spellcasting">): string[] {
   const casting = sheet.spellcasting;
   if (!casting) {
     return [];
   }
-  return [...(casting.spellbook ?? []), ...(casting.casters ?? []).flatMap((caster) => caster.spellbook ?? [])];
+  const lists = casting.casters?.length ? casting.casters : [casting];
+  return dedupeNames(
+    lists.flatMap((list) => spellbookOf({ spellbook: list.spellbook ?? [], prepared: list.prepared ?? [], pending: list.pending ?? [] })),
+  );
 }
 
-export function owedPickSlots(stated: OwedSheet): OwedPickSlots {
+// Every cantrip the sheet knows, whichever list holds it (an invocation's
+// "Eldritch Blast cantrip" prerequisite).
+export function sheetCantrips(sheet: Pick<OwedSheet, "spellcasting">): string[] {
+  const casting = sheet.spellcasting;
+  if (!casting) {
+    return [];
+  }
+  return dedupeNames([...(casting.cantrips ?? []), ...(casting.casters ?? []).flatMap((caster) => caster.cantrips ?? [])]);
+}
+
+// The table's own catalog where the sheet's picks read it: its workshop and
+// pack subclasses (whose features open picks, and which the regrant must
+// keep), and the workshop feats run as the feats they copy (Martial Adept's
+// maneuvers). Without them the server regranted a workshop subclass bare.
+export type OwedContext = { extras?: SubclassExtras; campaignId?: string | null };
+
+export function owedPickSlots(stated: OwedSheet, context: OwedContext = {}): OwedPickSlots {
   const classes = classListFor(stated);
+  const feats = featsAsRun(stated.feats, context.campaignId ?? stated.campaignId);
   // The features as the class tables grant them, whatever the sheet lists:
   // a join's preview reads a sheet the regrant has not written yet, and owed
   // what the seated sheet then owes (src/lib/characters/join-changes.ts).
@@ -71,10 +99,11 @@ export function owedPickSlots(stated: OwedSheet): OwedPickSlots {
       stated.features,
       classes.map((entry) => ({ id: entry.id, subclass: entry.subclass ?? "", level: entry.level })),
       stated.race ?? "",
-      stated.feats,
+      feats,
+      context.extras,
     ),
   };
-  const spellbook = spellbookOf(sheet);
+  const spellbook = sheetSpellbook(sheet);
   const slots = classes.flatMap((entry, index) =>
     openOptionSlots({
       classId: entry.id,
@@ -82,8 +111,8 @@ export function owedPickSlots(stated: OwedSheet): OwedPickSlots {
       level: entry.level,
       features: sheet.features,
       // A feat's own picks are counted once, with the first class.
-      feats: index === 0 ? sheet.feats : [],
-      ...(spellbook.length ? { spellbook } : {}),
+      feats: index === 0 ? feats : [],
+      spellbook,
     }),
   );
   const options = slots
@@ -97,11 +126,19 @@ export function owedPickSlots(stated: OwedSheet): OwedPickSlots {
       return merged.map((entry) => (entry === held ? { ...held, total, remaining: Math.max(0, total - spent) } : entry));
     }, [])
     .filter((slot) => slot.remaining > 0 && slot.options.some((option) => slotTakes(slot, option)));
-  const styleSlots = fightingStyleSlots(sheet.features);
-  const chosenStyles = chosenFightingStyles(sheet.features).map(textKey);
-  const styleChoices = fightingStyleChoices(sheet.features, sheet.class).filter((style) => !chosenStyles.includes(textKey(style.name)));
+  // Each class's Fighting Style is a slot of its own (a paladin 2 / ranger 2
+  // has two), though the sheet lists the feature once by name.
+  const slotFeatures = classes.flatMap((entry) =>
+    classFeaturesFor(entry.id, entry.subclass ?? "", entry.level, context.extras).map((feature) => ({ ...feature, classId: entry.id })),
+  );
+  const styleSlots = fightingStyleSlots(slotFeatures);
+  const heldStyles = chosenFightingStyles(sheet.features);
+  const chosenStyles = heldStyles.map(textKey);
+  const styleChoices = fightingStyleChoices(slotFeatures).filter(
+    (style) => !chosenStyles.includes(textKey(style.name)) && newStyleFits(heldStyles, style.name, slotFeatures),
+  );
   const styleCount = styleChoices.length ? Math.max(0, styleSlots - chosenStyles.length) : 0;
-  const training = grantsForHeldTraining(subclassGrants(classes), sheet.proficiencies).filter(
+  const training = grantsForHeldTraining(subclassGrants(classes, context.extras), sheet.proficiencies).filter(
     (grant) => grant.optional && featPicksOwed(grant.name, grant.spec, featChoice(sheet.featChoices ?? {}, grant.name)) !== null,
   );
   return { options, styles: { count: styleCount, choices: styleChoices }, training };
@@ -109,8 +146,8 @@ export function owedPickSlots(stated: OwedSheet): OwedPickSlots {
 
 // The owed picks in words, for the sheet's and the join's "Earned and not
 // yet made" line.
-export function owedPickLines(sheet: OwedSheet): string[] {
-  const owed = owedPickSlots(sheet);
+export function owedPickLines(sheet: OwedSheet, context: OwedContext = {}): string[] {
+  const owed = owedPickSlots(sheet, context);
   const lines = owed.options.map((slot) => {
     const words = remainingWords(slot);
     return `${slot.label}: ${words.replace(" still to choose", " to choose")}`;
@@ -133,7 +170,7 @@ export type OwedPicksApplied =
 // The sheet with the picks made, or why one cannot be. Each pick is judged
 // against what is owed after the ones before it, so two picks of one list
 // cannot both take its last slot.
-export function applyOwedPicks(sheet: OwedSheet, request: OwedPicksRequest): OwedPicksApplied {
+export function applyOwedPicks(sheet: OwedSheet, request: OwedPicksRequest, context: OwedContext = {}): OwedPicksApplied {
   const asked = request.features ?? [];
   const choices = request.featChoices ?? {};
   if (!asked.length && !Object.keys(choices).length) {
@@ -145,7 +182,7 @@ export function applyOwedPicks(sheet: OwedSheet, request: OwedPicksRequest): Owe
     const name = raw.trim();
     const option = findOptionByFeatureName(name);
     if (option) {
-      const slot = owedPickSlots({ ...sheet, features }).options.find((entry) => entry.kind === option.k);
+      const slot = owedPickSlots({ ...sheet, features }, context).options.find((entry) => entry.kind === option.k);
       if (!slot) {
         return { ok: false, error: `${sheet.name ?? "This character"} owes no ${option.k.replace(/_/g, " ")} pick: none of their classes has one left at its level.` };
       }
@@ -158,6 +195,15 @@ export function applyOwedPicks(sheet: OwedSheet, request: OwedPicksRequest): Owe
       if (!slotTakes(slot, option)) {
         return { ok: false, error: `${slot.label} has only half a pick left, which takes one more humanoid race.` };
       }
+      // Its prerequisite, as the level-up holds it (options.ts optionReqProblem).
+      const unmet = optionReqProblem(option, {
+        classLevel: (classId) => classListFor(sheet).find((entry) => textKey(entry.id) === textKey(classId))?.level ?? 0,
+        features,
+        cantrips: sheetCantrips(sheet),
+      });
+      if (unmet) {
+        return { ok: false, error: unmet };
+      }
       const feature = optionFeatureName(option.k, option.n);
       features = [...features, { name: feature, source: "choice" }];
       made.push(feature);
@@ -166,7 +212,7 @@ export function applyOwedPicks(sheet: OwedSheet, request: OwedPicksRequest): Owe
     const [style] = chosenFightingStyles([{ name }]);
     const known = style ? FIGHTING_STYLES.find((entry) => textKey(entry.name) === textKey(style)) : undefined;
     if (known) {
-      const owed = owedPickSlots({ ...sheet, features }).styles;
+      const owed = owedPickSlots({ ...sheet, features }, context).styles;
       if (owed.count <= 0) {
         return { ok: false, error: "No fighting style is owed: every slot this character's classes give is chosen." };
       }
@@ -184,7 +230,7 @@ export function applyOwedPicks(sheet: OwedSheet, request: OwedPicksRequest): Owe
   // a pick it would drop is refused rather than lost.
   if (made.length) {
     const classes = classListFor(sheet).map((entry) => ({ id: entry.id, subclass: entry.subclass ?? "", level: entry.level }));
-    const kept = populateFeaturesForClasses(features, classes, sheet.race ?? "", sheet.feats);
+    const kept = populateFeaturesForClasses(features, classes, sheet.race ?? "", featsAsRun(sheet.feats, context.campaignId ?? sheet.campaignId), context.extras);
     const dropped = made.find((name) => !kept.some((feature) => textKey(feature.name) === textKey(name)));
     if (dropped) {
       return { ok: false, error: `${dropped} is not a pick this character's classes have room for.` };
@@ -195,7 +241,7 @@ export function applyOwedPicks(sheet: OwedSheet, request: OwedPicksRequest): Owe
   let featChoices: FeatChoices | undefined;
   const keys = Object.keys(choices);
   if (keys.length) {
-    const owed = owedPickSlots(sheet).training;
+    const owed = owedPickSlots(sheet, context).training;
     let merged: FeatChoices = { ...(sheet.featChoices ?? {}) };
     const grants: SubclassGrant[] = [];
     for (const key of keys) {

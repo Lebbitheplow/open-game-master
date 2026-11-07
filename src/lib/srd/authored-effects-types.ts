@@ -22,6 +22,8 @@ export type Gate = {
   raging?: boolean;
   // The holder wears heavy armor.
   heavyArmor?: boolean;
+  // The holder wears no body armor (Dragon Wings).
+  unarmored?: boolean;
   // The holder is concentrating on a spell.
   concentrating?: boolean;
   // The holder has (or has not) a condition, by name or "name (" prefix.

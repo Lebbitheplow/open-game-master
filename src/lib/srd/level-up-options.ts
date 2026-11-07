@@ -31,7 +31,7 @@ import type { HpMethod } from "@/lib/srd/hit-points";
 import { MULTICLASS_CAP, canMulticlassInto, classListFor, multiclassGrantsFor } from "@/lib/srd/multiclass";
 import { openOptionSlots, optionFeatureName } from "@/lib/srd/options";
 import { owedChoices, subclassOwed } from "@/lib/srd/owed-choices";
-import { spellbookOf as sheetSpellbook } from "@/lib/srd/owed-picks-logic";
+import { sheetSpellbook } from "@/lib/srd/owed-picks-logic";
 import {
   casterViewsOf,
   dedupeNames,
@@ -362,7 +362,7 @@ export function levelUpOptions(sheet: CharacterSheet, context: LevelUpOptionsCon
     xpForNextLevel: sheet.level >= 20 ? null : XP_THRESHOLDS[next - 1],
     ready: !notReady,
     ...(notReady ? { notReady } : {}),
-    owedFromEarlierLevels: owedChoices(sheet),
+    owedFromEarlierLevels: owedChoices(sheet, { extras: context.subclassExtras, campaignId: sheet.campaignId }),
     levelUpClass: klass.id,
     classLevelAfter,
     countedUnderSubclass: subclassNow || null,

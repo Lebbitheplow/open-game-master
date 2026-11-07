@@ -36,8 +36,10 @@ import { applyFeatIncrease, featSaveProficiency, featsAsRun } from "@/lib/srd/fe
 import { applyFeatGrants, featGrantSpec } from "@/lib/srd/feat-grants";
 import { elementalAdeptFeatureName } from "@/lib/srd/feat-combat";
 import { featSpellGrants, freeCastFeatures, withFeatSpells } from "@/lib/srd/feat-spells";
+import { chosenFightingStyles, fightingStyleChoices, newStyleFits } from "@/lib/srd/feature-effects";
 import {
   bundledSubclassName,
+  classFeaturesFor,
   expertiseAllowed,
   expertiseSlotsFor,
   populateFeaturesForClasses,
@@ -62,8 +64,8 @@ import { casterViewsOf, dedupeNames, withCasterViews, type CasterView } from "@/
 import { isThirdCaster } from "@/lib/srd/third-caster";
 import { featureHitPoints, holdsFeature, withPrimalChampion } from "@/lib/srd/trait-rules";
 import { isChoiceFeature, unmetPrerequisite } from "@/lib/srd/legality/features";
-import { findOptionByFeatureName, pickInSpellbook } from "@/lib/srd/options";
-import { spellbookOf } from "@/lib/srd/owed-picks-logic";
+import { findOptionByFeatureName, optionReqProblem, pickInSpellbook } from "@/lib/srd/options";
+import { sheetCantrips, sheetSpellbook } from "@/lib/srd/owed-picks-logic";
 import { castingClassesOf } from "@/lib/srd/legality/spells";
 import {
   ABILITY_NAMES,
@@ -502,11 +504,44 @@ export function buildLevelUp(
     .map((feature) => ({ name: feature.name, source: "choice" as const }));
   // Spell Mastery and Signature Spells name spells in the spellbook (SRD
   // 5.1): one written there before, or with this level.
-  const book = [...spellbookOf(sheet), ...(request.levelUpSpells ?? [])];
+  // The book as it stands after this level: the sheet's, the lists the
+  // single-class flow sends whole, and the multiclass path's new spells.
+  const book = [
+    ...sheetSpellbook(sheet),
+    ...(request.spellcasting ? sheetSpellbook({ spellcasting: request.spellcasting }) : []),
+    ...(request.levelUpSpells ?? []),
+  ];
+  const cantrips = [...sheetCantrips(sheet), ...(request.spellcasting ? sheetCantrips({ spellcasting: request.spellcasting }) : []), ...(request.levelUpSpells ?? [])];
+  const featuresWithPicks = [...sheet.features, ...picked];
   for (const pick of picked) {
     const option = findOptionByFeatureName(pick.name);
     if (option && !pickInSpellbook(option, book)) {
       return refuse(`${option.n} is not in ${sheet.name}'s spellbook; ${pick.name.split(":")[0]} names a spell written there.`);
+    }
+    // An invocation's level, pact boon or cantrip (options.ts optionReqProblem),
+    // by the class levels after this one.
+    const unmet = option
+      ? optionReqProblem(option, {
+          classLevel: (id) => classes.find((entry) => textKey(entry.id) === textKey(id))?.level ?? 0,
+          features: featuresWithPicks,
+          cantrips,
+        })
+      : null;
+    if (unmet) {
+      return refuse(unmet);
+    }
+    // A new fighting style is one the slot's class offers (a paladin's four);
+    // one the sheet holds stays (features.ts pruneChoiceFeatures).
+    const [style] = chosenFightingStyles([pick]);
+    if (style !== undefined) {
+      const after = classes.flatMap((entry) =>
+        classFeaturesFor(entry.id, entry.subclass ?? "", entry.level, context.subclassExtras).map((feature) => ({ ...feature, classId: entry.id })),
+      );
+      const heldStyles = chosenFightingStyles(featuresWithPicks.filter((feature) => feature.name !== pick.name));
+      if (!newStyleFits(heldStyles, style, after)) {
+        const open = fightingStyleChoices(after).filter((entry) => newStyleFits(heldStyles, entry.name, after));
+        return refuse(`${style} is not a fighting style ${sheet.name}'s classes offer; pick one of ${open.map((entry) => entry.name).join(", ") || "none"}.`);
+      }
     }
   }
   const elementPicks = featsTaken.flatMap((name) => {

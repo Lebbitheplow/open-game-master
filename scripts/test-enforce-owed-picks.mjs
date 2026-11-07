@@ -202,16 +202,24 @@ await test("A paladin's and a ranger's Fighting Style offer their four SRD style
   const paladin = sheetOf({ class: "paladin", level: 2 });
   assert.equal(applyOwedPicks(paladin, { features: ["Fighting Style: Archery"] }).ok, false);
   assert.equal(applyOwedPicks(paladin, { features: ["Fighting Style: Protection"] }).ok, true);
+  // A style the sheet already holds stays through a regrant, even one the
+  // class's list would not offer now (a paladin saved with Archery before the
+  // lists were the class's): the lists hold new picks, never strip a sheet.
   const kept = populateFeaturesForClasses([{ name: "Fighting Style: Archery", source: "choice" }], [{ id: "paladin", subclass: "", level: 2 }], "human");
-  assert.ok(!kept.some((feature) => feature.name === "Fighting Style: Archery"), "the regrant drops a style the class does not offer");
-  // Each slot holds one style of its own class: a paladin 2 / ranger 2 keeps
-  // Archery (the ranger's) and Protection (the paladin's), never two of the
-  // ranger's four.
+  assert.ok(kept.some((feature) => feature.name === "Fighting Style: Archery"), "the regrant dropped a held style");
   const split = [{ id: "paladin", subclass: "", level: 2 }, { id: "ranger", subclass: "", level: 2 }];
   const two = (a, b) => populateFeaturesForClasses([{ name: `Fighting Style: ${a}`, source: "choice" }, { name: `Fighting Style: ${b}`, source: "choice" }], split, "human")
     .filter((feature) => feature.name.startsWith("Fighting Style:")).map((feature) => feature.name);
   assert.deepEqual(two("Archery", "Protection"), ["Fighting Style: Archery", "Fighting Style: Protection"]);
-  assert.deepEqual(two("Archery", "Two-Weapon Fighting"), ["Fighting Style: Archery"]);
+  assert.deepEqual(two("Archery", "Two-Weapon Fighting"), ["Fighting Style: Archery", "Fighting Style: Two-Weapon Fighting"], "two held styles, one slot each");
+  // A new pick is held to each class's list: the paladin 2 / ranger 2 with
+  // Archery owes the paladin's style, and the ranger's Two-Weapon Fighting
+  // does not fill it.
+  const both = sheetOf({ class: "paladin", level: 4, classes: [{ id: "paladin", subclass: "", level: 2 }, { id: "ranger", subclass: "", level: 2 }] });
+  assert.equal(owedPickSlots(both).styles.count, 2, "each class's Fighting Style is a slot");
+  const multi = sheetOf({ class: "paladin", level: 4, classes: [{ id: "paladin", subclass: "", level: 2 }, { id: "ranger", subclass: "", level: 2 }], features: [{ name: "Fighting Style: Archery", source: "choice" }] });
+  assert.equal(applyOwedPicks(multi, { features: ["Fighting Style: Two-Weapon Fighting"] }).ok, false, "a second ranger style for the paladin's slot");
+  assert.equal(applyOwedPicks(multi, { features: ["Fighting Style: Protection"] }).ok, true);
 });
 
 await test("Every pick-list wears a painted icon: its own option's, or its kind's (no new art, issue #833).", async () => {

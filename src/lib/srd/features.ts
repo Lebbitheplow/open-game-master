@@ -571,10 +571,11 @@ function pruneChoiceFeatures(
   granted: SheetFeature[],
   feats?: string[],
 ): SheetFeature[] {
-  // A style the slots do not allow (Archery on a Swords bard, on a paladin)
-  // is not kept, and each slot holds one style its own class offers
-  // (feature-effects.ts fittingFightingStyles).
-  const fitting = fittingFightingStyles(chosenFightingStyles(features), granted);
+  // A style the slots do not allow (Archery on a Swords bard) is not kept;
+  // a class's own slot keeps any style the sheet holds, since a paladin's
+  // Archery was legal when chosen and new picks are held to the class's list
+  // where they are made (feature-effects.ts fittingFightingStyles).
+  const fitting = fittingFightingStyles(chosenFightingStyles(features), granted, undefined, false);
   const stylesHeld = new Set<string>();
   const perKind = new Map<string, number>();
   return features.filter((feature) => {

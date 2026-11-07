@@ -83,7 +83,7 @@ import { useFeatDescs } from "@/app/characters/builder/useFeatDescs";
 import { authoredFeatDesc, featAbilityIncrease } from "@/lib/srd/feat-effects";
 import { featGrantSpec, featOwed, type FeatChoices, type FeatPicks } from "@/lib/srd/feat-grants";
 import { grantsForHeldTraining, subclassGrants } from "@/lib/srd/subclass-training";
-import { spellbookOf } from "@/lib/srd/owed-picks-logic";
+import { sheetSpellbook } from "@/lib/srd/owed-picks-logic";
 import FeatChoicesFields from "@/app/characters/builder/FeatChoicesFields";
 import { useArchetypeOptions, useWorldPack } from "@/app/characters/builder/useBuilderOptions";
 import { TableScopeNote } from "@/app/characters/builder/TableScopeNote";
@@ -399,7 +399,7 @@ export function LevelUpDialog({
     feats: [...sheet.feats, ...featsPicked],
     // Spell Mastery and Signature Spells pick from the spellbook, the spells
     // written with this level included (the route checks the same book).
-    spellbook: [...spellbookOf(sheet), ...spellPicks],
+    spellbook: [...sheetSpellbook(sheet), ...spellPicks],
   });
   const needsOptions = openSlots.some((slot) => slot.remaining > 0);
 

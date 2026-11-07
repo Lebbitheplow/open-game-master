@@ -195,6 +195,17 @@ export function wearsHeavy(sheet: AuthoredSheet): boolean {
   );
 }
 
+// Any body armor on, light to heavy (a shield is not worn on the body):
+// Dragon Wings cannot come through it (SRD 5.1). The sheet's fly speed, the
+// board's and the spend read this one answer (issue #833 review).
+export function wearsBodyArmor(sheet: Pick<AuthoredSheet, "equipment">): boolean {
+  const items = sheet.equipment ?? [];
+  return items.some((item) => {
+    const category = item.gear?.armor?.category ?? matchArmor(item)?.category;
+    return isWorn(item, items) && (category === "light" || category === "medium" || category === "heavy");
+  });
+}
+
 export function gateHolds(gate: Gate | undefined, sheet: AuthoredSheet, held: HeldAuthored): boolean {
   if (!gate) {
     return true;
@@ -203,6 +214,9 @@ export function gateHolds(gate: Gate | undefined, sheet: AuthoredSheet, held: He
     return false;
   }
   if (gate.heavyArmor && !wearsHeavy(sheet)) {
+    return false;
+  }
+  if (gate.unarmored && wearsBodyArmor(sheet)) {
     return false;
   }
   if (gate.concentrating && !sheet.concentratingOn) {

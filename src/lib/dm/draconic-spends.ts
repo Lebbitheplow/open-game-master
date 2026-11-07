@@ -26,6 +26,7 @@ import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { acBreakdownFor, computeSheetDerived } from "@/lib/srd";
 import { holdsFeature } from "@/lib/srd/trait-rules";
+import { wearsBodyArmor } from "@/lib/srd/authored-effects";
 import { dragonAncestorColor, dragonAncestorType } from "@/lib/srd/dragon-ancestor";
 import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { setConcentration } from "@/lib/dm/concentration";
@@ -36,14 +37,20 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { swallowCoverBetween } from "@/lib/dm/swallow";
+import { AFFINITY_CAST, affinityCastType } from "@/lib/dm/affinity-cast";
 
 // The condition names the three features leave.
 export const ELEMENTAL_AFFINITY = "elemental affinity";
 export const DRAGON_WINGS = "dragon wings";
 export const DRACONIC_PRESENCE = "draconic presence";
-// The mark a creature carries for 24 hours once it withstood the aura, its
-// source the sorcerer.
+// The mark a creature carries for 24 hours once it withstood the aura, one
+// per sorcerer ("withstood draconic presence (Ysolde)"): a second sorcerer's
+// aura is not the first's, and one shared mark let each overwrite the other's
+// immunity (issue #833 review).
 export const PRESENCE_WITHSTOOD = "withstood draconic presence";
+export function presenceMark(sheet: Pick<CharacterSheet, "name">): string {
+  return `${PRESENCE_WITHSTOOD} (${sheet.name})`;
+}
 
 const HOUR_ROUNDS = 600;
 const DAY_ROUNDS = 14400;
@@ -88,10 +95,20 @@ export function elementalAffinityResistance(campaign: Campaign, sheet: Character
       refused: "rules",
     };
   }
+  // SRD 5.1: the point is spent "when you cast a spell that deals damage of
+  // the type", so only after such a spell (src/lib/dm/affinity-cast.ts).
+  if (affinityCastType(sheet) !== type) {
+    return {
+      error: `Elemental Affinity's resistance comes with a spell that deals ${type} damage, ${sheet.name}'s dragon's type, as it is cast; ${sheet.name} has cast none this turn. Nothing was spent.`,
+      refused: "rules",
+    };
+  }
   if (poolLeft(sheet, "sorcery_points") < 1) {
     return { error: `${sheet.name} has no sorcery point left for Elemental Affinity's resistance. Nothing was spent.`, refused: "rules" };
   }
   spendPoints(campaign, sheet, 1);
+  // The cast's mark goes with the spend: one resistance per spell.
+  setOwnCondition(campaign, sheet, `${AFFINITY_CAST} (${type})`, null, AFFINITY_CAST);
   setOwnCondition(campaign, sheet, `${ELEMENTAL_AFFINITY} (${type})`, { rounds: HOUR_ROUNDS, source: sheet.id }, ELEMENTAL_AFFINITY);
   return {
     ok: true,
@@ -120,8 +137,8 @@ export function dragonWings(campaign: Campaign, sheet: CharacterSheet, variant: 
     return { error: `${sheet.name}'s dragon wings are already out; they stay until dismissed with a bonus action.`, refused: "rules" };
   }
   if (!dismiss) {
-    const armor = acBreakdownFor(sheet).armorName;
-    if (armor) {
+    if (wearsBodyArmor(sheet)) {
+      const armor = acBreakdownFor(sheet).armorName ?? "armor";
       return {
         error: `${sheet.name} is wearing ${armor}, and dragon wings cannot sprout through armor unless it is made for them. They take it off first. Nothing was spent.`,
         refused: "rules",
@@ -211,7 +228,8 @@ export function draconicPresenceTurnStart(campaign: Campaign, encounter: Encount
       }
       const meta = (enemy.conditionMeta ?? {}) as ConditionMetaMap;
       const held = enemy.conditions.some((entry) => entry === condition && meta[condition]?.spell === "Draconic Presence" && meta[condition]?.source === sheet.id);
-      const immune = enemy.conditions.some((entry) => textKey(entry) === PRESENCE_WITHSTOOD && meta[entry]?.source === sheet.id);
+      const mark = presenceMark(sheet);
+      const immune = enemy.conditions.some((entry) => textKey(entry) === textKey(mark) && meta[entry]?.source === sheet.id);
       if (held || immune) {
         continue;
       }
@@ -221,9 +239,9 @@ export function draconicPresenceTurnStart(campaign: Campaign, encounter: Encount
       }
       const save = rollEnemySave(campaign.id, enemy, "wis", dc, { magical: true, resist: true, against: condition, record: { detail: `${enemy.displayName}: WIS save against Draconic Presence` } });
       if (save.success) {
-        patchEnemyConditions(enemy.id, [...enemy.conditions.filter((entry) => textKey(entry) !== PRESENCE_WITHSTOOD), PRESENCE_WITHSTOOD], {
+        patchEnemyConditions(enemy.id, [...enemy.conditions.filter((entry) => textKey(entry) !== textKey(mark)), mark], {
           ...meta,
-          [PRESENCE_WITHSTOOD]: { source: sheet.id, rounds: DAY_ROUNDS },
+          [mark]: { source: sheet.id, rounds: DAY_ROUNDS },
         } as typeof enemy.conditionMeta);
         lines.push(`${enemy.displayName} starts its turn in ${sheet.name}'s Draconic Presence and withstands it (WIS ${save.total} vs DC ${dc}); it is immune to it for 24 hours.`);
       } else {

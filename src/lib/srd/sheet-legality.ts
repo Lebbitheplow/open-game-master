@@ -29,7 +29,8 @@ import { earnedAsiCountFor } from "@/lib/srd/asi";
 import { legacyAsiTaken, readAsiLedger, withAsiLedger } from "@/lib/srd/asi-ledger";
 import { backgroundFeatureFor } from "@/lib/backgrounds";
 import { attunementSlotsFor, matchArmor } from "@/lib/srd/armor";
-import { racialTraitsFor, subclassLevelFor } from "@/lib/srd/features";
+import { classFeaturesFor, racialTraitsFor, subclassLevelFor } from "@/lib/srd/features";
+import { chosenFightingStyles, fightingStyleChoices, fightingStyleSlots, newStyleFits } from "@/lib/srd/feature-effects";
 import {
   derivedMaxHp,
   hpBonusPerLevelFor,
@@ -67,6 +68,7 @@ import { abilityProblems, baseSpans } from "@/lib/srd/legality/abilities";
 import { applyHalfFeats, halfFeatPicks, halfFeatPoints } from "@/lib/srd/legality/half-feats";
 import { judgeFeats, judgeFeatures } from "@/lib/srd/legality/features";
 import { findOptionByFeatureName, pickInSpellbook } from "@/lib/srd/options";
+import { sheetSpellbook } from "@/lib/srd/owed-picks-logic";
 import { judgeProficiencies } from "@/lib/srd/legality/proficiencies";
 import { applySubclassTraining, autoSubclassPicks, subclassFixedTraining, subclassGrants } from "@/lib/srd/subclass-training";
 import { castingClassesOf, judgeSpellcasting } from "@/lib/srd/legality/spells";
@@ -697,13 +699,32 @@ export function legalizeSheet(input: CreateSheetInput, context: LegalityContext)
   problems.push(...featured.problems);
   // Spell Mastery and Signature Spells name spells in the spellbook (SRD
   // 5.1, issue #833): a pick of a spell the book does not hold is refused.
+  // A new fighting style is one its slot's class offers (a paladin's four);
+  // one the stored character holds stays, as the regrant keeps it.
   if (!policy.trustsHeld) {
-    const casting = input.spellcasting;
-    const book = casting ? [...(casting.spellbook ?? []), ...(casting.casters ?? []).flatMap((caster) => caster.spellbook ?? [])] : [];
+    const book = sheetSpellbook({ spellcasting: input.spellcasting ?? null });
+    const heldNames = new Set((held?.features ?? []).map((feature) => textKey(feature.name)));
+    const classFeatures = classes.flatMap((entry) =>
+      classFeaturesFor(entry.id, entry.subclass ?? "", entry.level, context.subclassExtras).map((feature) => ({ ...feature, classId: entry.id })),
+    );
+    const classStyles = fightingStyleChoices(classFeatures);
+    const styleSlots = fightingStyleSlots(classFeatures);
+    const placedStyles = chosenFightingStyles((held?.features ?? []).filter((feature) => feature.source === "choice"));
     for (const feature of featured.features) {
       const option = feature.source === "choice" ? findOptionByFeatureName(feature.name) : null;
       if (option && !pickInSpellbook(option, book)) {
         problems.push(`${option.n} is not in the spellbook; ${feature.name.split(":")[0]} names a spell written there.`);
+      }
+      const [style] = feature.source === "choice" ? chosenFightingStyles([feature]) : [];
+      // A style with no slot to take (a wizard's, a fighter's third) is
+      // dropped by the regrant, as any pick no class opens; one that would
+      // take a free slot its class does not offer is refused.
+      if (style !== undefined && !heldNames.has(textKey(feature.name)) && placedStyles.length < styleSlots) {
+        if (!newStyleFits(placedStyles, style, classFeatures)) {
+          problems.push(`${style} is not a fighting style this character's classes offer; pick one of ${classStyles.map((entry) => entry.name).join(", ")}.`);
+        } else {
+          placedStyles.push(style);
+        }
       }
     }
   }

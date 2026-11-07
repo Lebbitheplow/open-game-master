@@ -51,3 +51,19 @@ export function dragonAncestorType(sheet: { features: ReadonlyArray<{ name: stri
   const color = dragonAncestorColor(sheet);
   return color ? DRAGON_TYPES[textKey(color)] : null;
 }
+
+// The mark a spell of the dragon's damage type leaves on the sorcerer as it
+// is cast (src/lib/dm/affinity-cast.ts): Elemental Affinity's resistance is
+// bought then, and the Hand deals its card only while it is held.
+export const AFFINITY_CAST = "affinity cast";
+
+// The mark a sheet holds, by its damage type, or null.
+export function affinityCastType(sheet: { conditions?: ReadonlyArray<string> }): string | null {
+  for (const condition of sheet.conditions ?? []) {
+    const match = /^affinity cast \(([^)]+)\)$/i.exec(condition.trim());
+    if (match) {
+      return textKey(match[1]);
+    }
+  }
+  return null;
+}

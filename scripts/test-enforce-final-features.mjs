@@ -218,11 +218,24 @@ await test("Draconic Presence: 5 sorcery points and the action raise a 60-foot a
   draconicPresenceTurnStart(world.campaign(), encounter(), [other.id]);
   world.clearDice();
   assert.ok(!kit.enemy(other.id).conditions.includes("frightened"));
-  assert.ok(kit.enemy(other.id).conditions.includes("withstood draconic presence"));
+  const mark = `withstood draconic presence (${dragon.name})`;
+  assert.ok(kit.enemy(other.id).conditions.includes(mark));
   world.dice(1);
   draconicPresenceTurnStart(world.campaign(), encounter(), [other.id]);
   world.clearDice();
   assert.ok(!kit.enemy(other.id).conditions.includes("frightened"), "immune for 24 hours after a success");
+  // The immunity is to that sorcerer's presence: "immune to this sorcerer's
+  // Draconic Presence". A second Draconic sorcerer's aura still reaches it,
+  // and withstanding that one leaves the first immunity standing.
+  const second = hero({ class: "sorcerer", subclass: "Draconic Bloodline", level: 18, abilities: { cha: 18 } });
+  world.patch(second.id, { conditions: ["draconic presence"], conditionMeta: { "draconic presence": { aura: "fear", rounds: 10 } }, concentratingOn: "Draconic Presence" });
+  world.dice(20);
+  draconicPresenceTurnStart(world.campaign(), encounter(), [other.id]);
+  world.clearDice();
+  const both = kit.enemy(other.id).conditions;
+  assert.ok(both.includes(`withstood draconic presence (${second.name})`), `the second presence was not rolled against: ${both.join(", ")}`);
+  assert.ok(both.includes(mark), "the first immunity was overwritten");
+  world.patch(second.id, { conditions: [], conditionMeta: {}, concentratingOn: null });
   breakConcentration(world.campaign(), null, dragon.id, "the test ends it");
   assert.ok(!kit.enemy(near.id).conditions.includes("frightened"), "the fear ends with the aura");
 });
@@ -238,6 +251,10 @@ await test("Dragon Wings: a bonus action brings the wings out (a flying speed eq
   assert.ok(aloft.conditions.includes("dragon wings"));
   assert.equal(flyingSpeedOf({ conditions: aloft.conditions, features: aloft.features, walkingFeet: 30 }), 30);
   assert.equal(flyingSpeedOf({ conditions: aloft.conditions, features: aloft.features, walkingFeet: 30, armored: true }), null, "armor keeps them in");
+  // The authored effect behind the sheet's speeds reads the armor the same way.
+  const { authoredSpeeds } = await import("../src/lib/srd/authored-effects.ts");
+  assert.equal(authoredSpeeds(aloft, 30).fly, 30, "the sheet's flying speed with the wings out");
+  assert.equal(authoredSpeeds({ ...aloft, equipment: [{ name: "Chain Mail", qty: 1, equipped: true }] }, 30).fly, undefined, "none through chain mail");
   const away = await spend(dragon, "dragon_wings");
   assert.equal(away.ok, true, away.error);
   assert.ok(!world.sheet(dragon.id).conditions.includes("dragon wings"), "the Hand card's id folds them away");

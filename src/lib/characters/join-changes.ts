@@ -1,5 +1,6 @@
 import type { CreateSheetInput } from "@/lib/schemas/sheet";
 import { owedChoices } from "@/lib/srd/owed-choices";
+import type { OwedContext } from "@/lib/srd/owed-picks-logic";
 import { textKey } from "@/lib/language/text-logic";
 import type { OwedPicks } from "@/lib/characters/seat-picks";
 import { classLevelWords } from "@/lib/characters/class-words";
@@ -92,6 +93,8 @@ export function joinChanges(
   storedLevel: number,
   seated: Sheet,
   tableLevel: number,
+  // The table's catalog, for the picks its workshop subclasses open.
+  owedContext: OwedContext = {},
 ): JoinChanges {
   const changes: string[] = [];
   if (storedLevel === tableLevel) {
@@ -150,7 +153,7 @@ export function joinChanges(
     spellcasting: seated.spellcasting,
     featChoices: seated.featChoices,
     race: seated.race,
-  } as Parameters<typeof owedChoices>[0]);
+  } as Parameters<typeof owedChoices>[0], owedContext);
 
   return { changes, owed };
 }

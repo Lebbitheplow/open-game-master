@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { isErrorResponse, requireMember } from "@/lib/campaign-api";
-import { ownSheetFor } from "@/lib/character-seat";
-import { patchSheet } from "@/lib/db/sheets";
+import { getSheetForUser, ownLivingSheet, patchSheet } from "@/lib/db/sheets";
+import { tableAuthors } from "@/lib/db/homebrew";
+import { subclassExtrasFor } from "@/lib/db/subclass-extras";
 import { publishPersisted } from "@/lib/events";
 import { featChoicesSchema } from "@/lib/schemas/sheet";
 import { applyOwedPicks } from "@/lib/srd/owed-picks-logic";
@@ -34,11 +35,25 @@ export async function POST(request: Request, { params }: { params: Promise<{ cam
   if (!parsed.success) {
     return Response.json({ error: parsed.error.issues[0]?.message || "Say which owed pick to make." }, { status: 400 });
   }
-  const sheet = ownSheetFor(campaignId, context.user.id, parsed.data.characterId);
-  if (!sheet || sheet.isCompanion) {
-    return Response.json({ error: "That is not one of your characters." }, { status: 404 });
+  // A living character of the player's own, as the level-up reads it: the
+  // dead make no picks.
+  const named = parsed.data.characterId;
+  const seated = named ? null : getSheetForUser(campaignId, context.user.id);
+  const sheet = named
+    ? ownLivingSheet(campaignId, context.user.id, named)
+    : seated && !seated.isCompanion && seated.deathSaves?.dead !== true
+      ? seated
+      : null;
+  if (!sheet) {
+    return Response.json({ error: "That is not one of your living characters." }, { status: 404 });
   }
-  const applied = applyOwedPicks(sheet, { features: parsed.data.features, featChoices: parsed.data.featChoices });
+  // The table's workshop and pack subclasses and its workshop feats, so the
+  // regrant keeps what they grant (owed-picks-logic.ts OwedContext).
+  const applied = applyOwedPicks(
+    sheet,
+    { features: parsed.data.features, featChoices: parsed.data.featChoices },
+    { extras: subclassExtrasFor(tableAuthors(campaignId)), campaignId },
+  );
   if (!applied.ok) {
     return Response.json({ error: applied.error }, { status: 400 });
   }

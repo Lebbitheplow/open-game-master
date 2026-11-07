@@ -941,7 +941,7 @@ const CLASS_STYLES: Record<string, FightingStyleId[]> = {
 // The styles one slot allows, or undefined when the feature opens none. The
 // slot's class is the feature's own (a multiclass sheet tags each), else the
 // class the caller names (a single-class builder's features carry none).
-function slotStyles(feature: { name: string; classId?: string }, classId?: string): FightingStyleId[] | null | undefined {
+function slotStyles(feature: { name: string; classId?: string }, classId?: string, byClass = true): FightingStyleId[] | null | undefined {
   const key = textKey(feature.name);
   if (!STYLE_SLOTS.has(key)) {
     return undefined;
@@ -950,7 +950,7 @@ function slotStyles(feature: { name: string; classId?: string }, classId?: strin
   if (only) {
     return only;
   }
-  return CLASS_STYLES[textKey(feature.classId ?? classId ?? "")] ?? null;
+  return byClass ? (CLASS_STYLES[textKey(feature.classId ?? classId ?? "")] ?? null) : null;
 }
 
 export function fightingStyleSlots(features: Array<{ name: string }>): number {
@@ -980,12 +980,17 @@ export function fightingStyleChoices(
 // allows: a paladin 2 / ranger 2 keeps Protection (the paladin's) and
 // Archery (the ranger's), never Archery and Two-Weapon Fighting, both the
 // ranger's. Earlier picks first; returned as textKeys of the style names.
+// `byClass` false: a class's own slot holds any style. The regrant keeps a
+// style the sheet already holds that way (a paladin's Archery saved before
+// the class lists, legal when it was chosen); new picks are held to the
+// lists where they are made (the level-up, the sheet's owed picks, a save).
 export function fittingFightingStyles(
   chosen: string[],
   features: Array<{ name: string; classId?: string }>,
   classId?: string,
+  byClass = true,
 ): Set<string> {
-  const slots = features.map((feature) => slotStyles(feature, classId)).filter((only) => only !== undefined);
+  const slots = features.map((feature) => slotStyles(feature, classId, byClass)).filter((only) => only !== undefined);
   const holder: Array<string | null> = slots.map(() => null);
   const idOf = (name: string) => FIGHTING_STYLES.find((style) => textKey(style.name) === textKey(name))?.id;
   const fits = (slot: number, name: string) => {
@@ -1014,6 +1019,22 @@ export function fittingFightingStyles(
     }
   }
   return new Set(holder.filter((held): held is string => held !== null).map(textKey));
+}
+
+// Whether a new style takes a slot its class offers, the held styles placed
+// first: a paladin 2 / ranger 2 holding Archery owes the paladin's style, so
+// Two-Weapon Fighting (the ranger's again) does not fit and Protection does.
+// One a lone paladin holds outside the list (saved before the lists) takes
+// no slot here, so the paladin may still pick one of the four.
+export function newStyleFits(
+  held: string[],
+  style: string,
+  features: Array<{ name: string; classId?: string }>,
+  classId?: string,
+): boolean {
+  const before = fittingFightingStyles(held, features, classId).size;
+  const after = fittingFightingStyles([...held, style], features, classId);
+  return after.size > before && after.has(textKey(style));
 }
 
 export function chosenFightingStyles(features: Array<{ name: string }>): string[] {

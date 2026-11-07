@@ -15,12 +15,12 @@ import { classListFor } from "@/lib/srd/multiclass";
 import { SRD_CLASSES } from "@/lib/srd";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { classWords } from "@/lib/sheet-words";
-import { owedPickLines } from "@/lib/srd/owed-picks-logic";
+import { owedPickLines, type OwedContext } from "@/lib/srd/owed-picks-logic";
 
 type Owing = Pick<CharacterSheet, "class" | "subclass" | "level" | "classes" | "features" | "proficiencies"> &
-  Partial<Pick<CharacterSheet, "feats" | "spellcasting" | "featChoices" | "race">>;
+  Partial<Pick<CharacterSheet, "feats" | "spellcasting" | "featChoices" | "race" | "campaignId">>;
 
-export function owedChoices(sheet: Owing): string[] {
+export function owedChoices(sheet: Owing, context: OwedContext = {}): string[] {
   const classes = classListFor(sheet);
   const out: string[] = [];
   // The first class's skill picks: as many of its list as it offers.
@@ -52,7 +52,7 @@ export function owedChoices(sheet: Owing): string[] {
       out.push(`a subclass for ${classWords(entry.id)} (due at ${classWords(entry.id)} level ${subclassLevelFor(entry.id)})`);
     }
   }
-  out.push(...owedPickLines(sheet));
+  out.push(...owedPickLines(sheet, context));
   return out;
 }
 

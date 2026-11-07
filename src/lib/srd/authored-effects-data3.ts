@@ -156,7 +156,8 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
   // then. The card that brings them out is class-resources.ts's.
   "sorcerer::Dragon Wings": {
     subclass: "Draconic Bloodline",
-    effects: [{ kind: "move", fly: "walk", gate: { condition: "dragon wings" } }],
+    // Not through armor, as the board and the spend read it (wearsBodyArmor).
+    effects: [{ kind: "move", fly: "walk", gate: { condition: "dragon wings", unarmored: true } }],
   },
   "sorcerer::Hound of Ill Omen": {
     subclass: "Shadow Magic",

@@ -4,6 +4,7 @@
 // the features that answer one. Split from cast-at-enemy.ts, which has
 // checked and paid for the cast and rolled the save before calling this.
 
+import { markAffinityCast } from "@/lib/dm/affinity-cast";
 import { elementalAdeptApplies, floorDamageDice } from "@/lib/srd/feat-combat";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { Encounter, EncounterEnemy } from "@/lib/db/encounters";
@@ -52,6 +53,9 @@ export function landSpellDamage(input: {
     level: spellLevel,
     classes: facts?.classes,
   });
+  // A spell of a Draconic sorcerer's dragon's type opens Elemental Affinity's
+  // resistance (src/lib/dm/affinity-cast.ts).
+  markAffinityCast(campaign, sheet, damageType);
   // Blight on a plant: the dice's maximum, rolled as no dice at all.
   // A subclass feature's die rides the roll (Enhanced Bond, Arcane Firearm).
   // Elemental Adept: on a spell of its type every 1 on the dice is a 2

@@ -19,6 +19,7 @@ import subclassesJson from "@/lib/srd/subclasses.json";
 import { subclassNamed } from "@/lib/srd/subclass-name";
 import { textKey } from "@/lib/language/text-logic";
 import { choiceIn } from "@/lib/srd/feature-names";
+import { sameRulesKey } from "@/lib/srd/name-forms";
 import { checklistSpellsOn } from "@/lib/srd/spell-lists";
 
 export type OptionKind =
@@ -67,6 +68,9 @@ type KindMeta = {
   // in the spellbook where it is known (Spell Mastery, Signature Spells).
   spellLevel?: number;
   spellList?: string;
+  // Other feature names the engines read this kind's picks from ("Favored
+  // Enemy Improvement: orcs", check-traits.ts), counted toward its slots.
+  families?: string[];
 };
 
 const KINDS = (optionsJson as { kinds: Record<OptionKind, KindMeta> }).kinds;
@@ -115,7 +119,13 @@ export function optionFeatureName(kind: OptionKind, name: string): string {
 
 function optionOfKind(kind: OptionKind, name: string): OptionDef | null {
   const wanted = textKey(name);
-  return optionsOfKind(kind).find((option) => textKey(option.n) === wanted) ?? null;
+  const options = optionsOfKind(kind);
+  // A stored kind's pick may be written in the singular or the plural, as
+  // the engines read it ("Favored Enemy: orc" is Orcs, name-forms.ts).
+  return (
+    options.find((option) => textKey(option.n) === wanted) ??
+    (KINDS[kind]?.stored ? (options.find((option) => sameRulesKey(textKey(option.n), wanted)) ?? null) : null)
+  );
 }
 
 // The choices one feature records for a kind: after the prefix ("Dragon
@@ -128,7 +138,13 @@ function choicesIn(name: string, kind: OptionKind): string[] {
   const meta = KINDS[kind];
   const trimmed = name.trim();
   const bracket = /^(.*?)\s*\(([^()]+)\)\s*$/.exec(trimmed);
-  const raw = choiceIn(trimmed, meta.prefix) ?? (meta.stored && bracket && textKey(bracket[1]) === textKey(meta.grantedBy) ? bracket[2] : null);
+  const families = [meta.grantedBy, ...(meta.families ?? [])];
+  const raw =
+    choiceIn(trimmed, meta.prefix) ??
+    (meta.stored
+      ? (families.map((family) => choiceIn(trimmed, family)).find(Boolean) ??
+        (bracket && families.some((family) => textKey(bracket[1]) === textKey(family)) ? bracket[2] : null))
+      : null);
   if (!raw) {
     return [];
   }
@@ -388,10 +404,12 @@ export function remainingWords(slot: Pick<OptionSlot, "remaining">): string {
 
 // The spells a spellbook holds, for the kinds that pick from it. Undefined:
 // the book is not known yet (a builder before its spell step), and every
-// spell of the level is offered.
+// spell of the level is offered; an empty book offers none.
 function optionsFor(kind: OptionKind, spellbook: readonly string[] | undefined): OptionDef[] {
   const options = optionsOfKind(kind);
-  if (KINDS[kind].spellLevel === undefined || !spellbook?.length) {
+  // A known book filters even when it is empty (no spell to master yet), as
+  // the route, the level-up and the save judge it (pickInSpellbook).
+  if (KINDS[kind].spellLevel === undefined || spellbook === undefined) {
     return options;
   }
   const book = new Set(spellbook.map(textKey));
@@ -454,4 +472,41 @@ export function optionKindOpenedBy(feature: string): OptionKind | null {
 // Spells), so a caller that fills picks waits for the book.
 export function picksFromSpellbook(kind: OptionKind): boolean {
   return KINDS[kind]?.spellLevel !== undefined;
+}
+
+// What an option's prerequisite ("level 5, Pact of the Blade", "Eldritch
+// Blast cantrip") asks that the character does not have, or null. The level
+// is the one of the class whose feature opens the kind (a warlock's for an
+// invocation, so Eldritch Adept takes none with a level). A requirement the
+// table judges ("hex or a curse feature") is met here. The owed picks and the
+// level-up both ask (issue #833 review).
+export function optionReqProblem(
+  option: Pick<OptionDef, "k" | "n" | "req">,
+  facts: { classLevel: (classId: string) => number; features: Array<{ name: string }>; cantrips: readonly string[] },
+): string | null {
+  const req = (option.req ?? "").trim();
+  if (!req) {
+    return null;
+  }
+  const classId = GRANTS.find((grant) => grant.kind === option.k)?.classId ?? "";
+  for (const part of req.split(",").map((piece) => piece.trim()).filter(Boolean)) {
+    const level = /^level (\d+)$/i.exec(part);
+    if (level) {
+      if (facts.classLevel(classId) < Number(level[1])) {
+        return `${option.n} needs ${classId} level ${level[1]}.`;
+      }
+      continue;
+    }
+    if (/^pact of the /i.test(part)) {
+      if (!chosenOptions(facts.features, "pact_boon").some((boon) => textKey(boon) === textKey(part))) {
+        return `${option.n} needs the ${part}.`;
+      }
+      continue;
+    }
+    const cantrip = /^(.+) cantrip$/i.exec(part);
+    if (cantrip && !facts.cantrips.some((name) => textKey(name) === textKey(cantrip[1]))) {
+      return `${option.n} needs the ${cantrip[1]} cantrip.`;
+    }
+  }
+  return null;
 }
