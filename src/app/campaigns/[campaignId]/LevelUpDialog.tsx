@@ -24,6 +24,7 @@ import {
   openOptionSlots,
   optionFeatureName,
   optionSlotsFor,
+  slotTakes,
   type OptionSlot,
 } from "@/lib/srd/options";
 import {
@@ -82,6 +83,7 @@ import { useFeatDescs } from "@/app/characters/builder/useFeatDescs";
 import { authoredFeatDesc, featAbilityIncrease } from "@/lib/srd/feat-effects";
 import { featGrantSpec, featOwed, type FeatChoices, type FeatPicks } from "@/lib/srd/feat-grants";
 import { grantsForHeldTraining, subclassGrants } from "@/lib/srd/subclass-training";
+import { spellbookOf } from "@/lib/srd/owed-picks-logic";
 import FeatChoicesFields from "@/app/characters/builder/FeatChoicesFields";
 import { useArchetypeOptions, useWorldPack } from "@/app/characters/builder/useBuilderOptions";
 import { TableScopeNote } from "@/app/characters/builder/TableScopeNote";
@@ -395,6 +397,9 @@ export function LevelUpDialog({
     level: classLevelAfter,
     features: [...sheet.features, ...grantedAfter, ...optionPicks.map((name) => ({ name }))],
     feats: [...sheet.feats, ...featsPicked],
+    // Spell Mastery and Signature Spells pick from the spellbook, the spells
+    // written with this level included (the route checks the same book).
+    spellbook: [...spellbookOf(sheet), ...spellPicks],
   });
   const needsOptions = openSlots.some((slot) => slot.remaining > 0);
 
@@ -404,7 +409,9 @@ export function LevelUpDialog({
       if (current.includes(featureName)) {
         return current.filter((entry) => entry !== featureName);
       }
-      return slot.remaining > 0 ? [...current, featureName] : current;
+      // A favored enemy's humanoid race is half a pick (options.ts slotTakes).
+      const option = slot.options.find((entry) => entry.n === name);
+      return option && slotTakes(slot, option) ? [...current, featureName] : current;
     });
   }
 
@@ -1298,7 +1305,7 @@ export function LevelUpDialog({
                     .map((slot) => (
                       <div key={slot.kind}>
                         <p className="mb-1 mt-2 text-xs uppercase tracking-wide text-amber-200/80">
-                          {slot.label}: {slot.chosen.length}/{slot.total} chosen
+                          {slot.label}: {slot.total - slot.remaining}/{slot.total} chosen
                         </p>
                         <div className="max-h-56 space-y-1.5 overflow-y-auto pr-1">
                           {slot.options.map((option) => {

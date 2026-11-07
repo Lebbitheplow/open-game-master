@@ -7,6 +7,8 @@ import { replayAnimation } from "@/lib/motion/replay";
 import { featureChoices } from "@/lib/battlemap/hand-subclass";
 import { otherSpeedsLine } from "@/components/sheet/sheet-state";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { optionKindOpenedBy } from "@/lib/srd/options";
+import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 
 // Flying and swimming speeds a subclass grants (SheetDerived.speeds), as
 // chips under the vitals; nothing when the character has none.
@@ -45,7 +47,11 @@ export function FeatureChoicePicker({
   mine: boolean;
   inCombat: boolean;
 }) {
-  const choices = featureChoices(sheet);
+  // A choice the sheet's owed picks make too (a Land druid's terrain is a
+  // pick-list since issue #833, OwedPicks.tsx) is asked there only, where the
+  // host takes it; asked in both places it read as two choices.
+  const owedHere = hostOffers(useCapabilities(), "owedPicks");
+  const choices = featureChoices(sheet).filter((choice) => !(owedHere && !choice.chosen && optionKindOpenedBy(choice.feature)));
   const campaignId = sheet.campaignId;
   const [busy, setBusy] = useState<string | null>(null);
   const [sent, setSent] = useState<Record<string, string>>({});

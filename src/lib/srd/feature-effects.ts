@@ -920,33 +920,100 @@ export function combatRiders(sheet: {
 // How many fighting styles the character has earned but not yet chosen.
 // "Fighting Style" and "Additional Fighting Style" each grant one.
 // The features that open a fighting style pick, and the styles each allows:
-// a class's own slot opens every style, the College of Swords' Fighting
-// Style (Blade) only Dueling or Two-Weapon Fighting.
+// the College of Swords' Fighting Style (Blade) only Dueling or Two-Weapon
+// Fighting, and a class's own slot the styles its class lists.
 const STYLE_SLOTS = new Map<string, FightingStyleId[] | null>([
   [textKey("Fighting Style"), null],
   [textKey("Additional Fighting Style"), null],
   [textKey("Fighting Style (Blade)"), ["dueling", "two_weapon_fighting"]],
 ]);
 
+// SRD 5.1: a paladin's Fighting Style is Defense, Dueling, Great Weapon
+// Fighting or Protection, a ranger's Archery, Defense, Dueling or Two-Weapon
+// Fighting; a fighter (and a class this table does not list) has all six.
+// Every class's slot offered all six, so a paladin could take Archery
+// (issue #833).
+const CLASS_STYLES: Record<string, FightingStyleId[]> = {
+  paladin: ["defense", "dueling", "great_weapon_fighting", "protection"],
+  ranger: ["archery", "defense", "dueling", "two_weapon_fighting"],
+};
+
+// The styles one slot allows, or undefined when the feature opens none. The
+// slot's class is the feature's own (a multiclass sheet tags each), else the
+// class the caller names (a single-class builder's features carry none).
+function slotStyles(feature: { name: string; classId?: string }, classId?: string): FightingStyleId[] | null | undefined {
+  const key = textKey(feature.name);
+  if (!STYLE_SLOTS.has(key)) {
+    return undefined;
+  }
+  const only = STYLE_SLOTS.get(key);
+  if (only) {
+    return only;
+  }
+  return CLASS_STYLES[textKey(feature.classId ?? classId ?? "")] ?? null;
+}
+
 export function fightingStyleSlots(features: Array<{ name: string }>): number {
   return features.filter((feature) => STYLE_SLOTS.has(textKey(feature.name))).length;
 }
 
 // The styles the character's slots let them pick from.
-export function fightingStyleChoices(features: Array<{ name: string }>): typeof FIGHTING_STYLES {
+export function fightingStyleChoices(
+  features: Array<{ name: string; classId?: string }>,
+  classId?: string,
+): typeof FIGHTING_STYLES {
   const allowed = new Set<FightingStyleId>();
   for (const feature of features) {
-    const key = textKey(feature.name);
-    if (!STYLE_SLOTS.has(key)) {
+    const only = slotStyles(feature, classId);
+    if (only === undefined) {
       continue;
     }
-    const only = STYLE_SLOTS.get(key);
-    if (!only) {
+    if (only === null) {
       return FIGHTING_STYLES;
     }
     only.forEach((id) => allowed.add(id));
   }
   return FIGHTING_STYLES.filter((style) => allowed.has(style.id));
+}
+
+// The chosen styles the slots can hold, each slot holding one style it
+// allows: a paladin 2 / ranger 2 keeps Protection (the paladin's) and
+// Archery (the ranger's), never Archery and Two-Weapon Fighting, both the
+// ranger's. Earlier picks first; returned as textKeys of the style names.
+export function fittingFightingStyles(
+  chosen: string[],
+  features: Array<{ name: string; classId?: string }>,
+  classId?: string,
+): Set<string> {
+  const slots = features.map((feature) => slotStyles(feature, classId)).filter((only) => only !== undefined);
+  const holder: Array<string | null> = slots.map(() => null);
+  const idOf = (name: string) => FIGHTING_STYLES.find((style) => textKey(style.name) === textKey(name))?.id;
+  const fits = (slot: number, name: string) => {
+    const id = idOf(name);
+    const only = slots[slot];
+    return Boolean(id) && (only === null || Boolean(only?.includes(id as FightingStyleId)));
+  };
+  // One augmenting path per style (a bipartite match; three slots at most).
+  const place = (name: string, seen: Set<number>): boolean => {
+    for (let slot = 0; slot < slots.length; slot += 1) {
+      if (seen.has(slot) || !fits(slot, name)) {
+        continue;
+      }
+      seen.add(slot);
+      const current = holder[slot];
+      if (current === null || place(current, seen)) {
+        holder[slot] = name;
+        return true;
+      }
+    }
+    return false;
+  };
+  for (const name of chosen) {
+    if (!holder.some((held) => held !== null && textKey(held) === textKey(name))) {
+      place(name, new Set());
+    }
+  }
+  return new Set(holder.filter((held): held is string => held !== null).map(textKey));
 }
 
 export function chosenFightingStyles(features: Array<{ name: string }>): string[] {

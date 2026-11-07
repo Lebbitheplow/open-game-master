@@ -66,6 +66,7 @@ import { judgeStartingGear, wealthCeilingGold } from "@/lib/srd/starting-wealth"
 import { abilityProblems, baseSpans } from "@/lib/srd/legality/abilities";
 import { applyHalfFeats, halfFeatPicks, halfFeatPoints } from "@/lib/srd/legality/half-feats";
 import { judgeFeats, judgeFeatures } from "@/lib/srd/legality/features";
+import { findOptionByFeatureName, pickInSpellbook } from "@/lib/srd/options";
 import { judgeProficiencies } from "@/lib/srd/legality/proficiencies";
 import { applySubclassTraining, autoSubclassPicks, subclassFixedTraining, subclassGrants } from "@/lib/srd/subclass-training";
 import { castingClassesOf, judgeSpellcasting } from "@/lib/srd/legality/spells";
@@ -694,6 +695,18 @@ export function legalizeSheet(input: CreateSheetInput, context: LegalityContext)
         sameBackground: (held?.background ?? "") === input.background,
       });
   problems.push(...featured.problems);
+  // Spell Mastery and Signature Spells name spells in the spellbook (SRD
+  // 5.1, issue #833): a pick of a spell the book does not hold is refused.
+  if (!policy.trustsHeld) {
+    const casting = input.spellcasting;
+    const book = casting ? [...(casting.spellbook ?? []), ...(casting.casters ?? []).flatMap((caster) => caster.spellbook ?? [])] : [];
+    for (const feature of featured.features) {
+      const option = feature.source === "choice" ? findOptionByFeatureName(feature.name) : null;
+      if (option && !pickInSpellbook(option, book)) {
+        problems.push(`${option.n} is not in the spellbook; ${feature.name.split(":")[0]} names a spell written there.`);
+      }
+    }
+  }
   // The ledger of improvements taken. A character made here, or arriving
   // in a file, has taken all it has earned: what it left unspent is not
   // owed again. A stored one keeps its own count, or the old table's.

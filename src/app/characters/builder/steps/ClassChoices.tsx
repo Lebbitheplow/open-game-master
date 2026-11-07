@@ -12,6 +12,9 @@ import type { BuilderState } from "../useBuilderState";
 import { PickPill, StepPanel } from "./shared";
 import { textKey } from "@/lib/language/text-logic";
 import { splitToolGrants } from "@/lib/srd/tool-choices";
+import { remainingWords } from "@/lib/srd/options";
+import { featChoice } from "@/lib/schemas/sheet";
+import FeatChoicesFields, { knownTraining } from "../FeatChoicesFields";
 
 const optionCard = (selected: boolean) =>
   cn(
@@ -148,7 +151,7 @@ export function ClassChoices({
           help={
             <>
               {slot.remaining > 0 ? (
-                <span className="text-amber-300">{slot.remaining} still to choose. </span>
+                <span className="text-amber-300">{remainingWords(slot)}. </span>
               ) : null}
               These are real abilities your character gets. Tap the info button on any one to
               read what it does.
@@ -185,6 +188,24 @@ export function ClassChoices({
           </div>
         </StepPanel>
       ))}
+
+      {/* What the class itself teaches beside its picks: a ranger's Favored
+          Enemy language (src/lib/srd/subclass-training.ts CLASS_TABLE). It
+          may wait, but asked here it is made with the character. */}
+      {derived.subclassTraining
+        .filter((grant) => grant.optional)
+        .map((grant) => (
+          <StepPanel key={grant.name} anchor="options" title={grant.name}>
+            <FeatChoicesFields
+              feat={grant.name}
+              spec={grant.spec}
+              picks={featChoice(state.featChoices, grant.name)}
+              known={knownTraining(derived)}
+              onChange={(picks) => state.setFeatPicks(grant.name, picks)}
+              source="subclass"
+            />
+          </StepPanel>
+        ))}
     </>
   );
 }

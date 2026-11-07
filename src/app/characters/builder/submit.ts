@@ -291,7 +291,9 @@ export function callingBlocks(
   owed.push(...multiclassBlocks(state, derived));
   // What the subclass's training leaves to the player: a Lore bard's three
   // skills, a Knowledge cleric's languages and skills (issue 251).
-  for (const grant of derived.subclassTraining ?? []) {
+  // A pick that may wait (a ranger's Favored Enemy language) is asked on the
+  // class step and owed when left, never a block (subclass-training.ts).
+  for (const grant of (derived.subclassTraining ?? []).filter((entry) => !entry.optional)) {
     const left = featOwed(grant.name, grant.spec, featChoice(state.featChoices, grant.name));
     if (left) {
       owed.push(block("subclass", left));

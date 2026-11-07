@@ -39,6 +39,7 @@ import type {
   Gate,
 } from "@/lib/srd/authored-effects-types";
 import { textKey } from "@/lib/language/text-logic";
+import { choiceIn } from "@/lib/srd/feature-names";
 import type { CheckAbout } from "@/lib/dm/roll-about";
 import { keyFits, type RollKey } from "@/lib/srd/roll-keys";
 
@@ -155,6 +156,19 @@ export function heldAuthored(sheet: AuthoredSheet): HeldAuthored[] {
     if (genre && (!genre.classes || genre.classes.some((id) => candidates.includes(textKey(id))))) {
       const classId = candidates[0] ?? "";
       out.push({ key: `genre::${full}`, classId, feature: genre.feature, entry: genre.entry, name: feature.name, choice: null, level: classLevel(sheet, classId) });
+    }
+  }
+  // A pick the builder, the level-up or the sheet's owed picks wrote beside
+  // the feature ("Circle Spells: Forest", src/lib/srd/options.ts) is the
+  // option chosen for it, as "Circle Spells (Forest)" is: the Land druid
+  // built with a terrain was asked for it again in play (issue #833).
+  for (const held of out) {
+    if (held.choice || !held.entry.spends?.some((spend) => spend.does.kind === "choose")) {
+      continue;
+    }
+    const named = (sheet.features ?? []).map((feature) => choiceIn(feature.name, held.feature)).find(Boolean);
+    if (named) {
+      held.choice = textKey(named);
     }
   }
   return out;

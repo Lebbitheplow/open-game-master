@@ -217,6 +217,12 @@ export const SERVER_FEATURES = {
   // `thrown` dice and POST /api/campaigns/[id]/pending-rolls/[id]/after-roll.
   // An older host never parks a roll that way, so the card never draws there.
   afterRollChoice: true,
+  // The owed picks on a character sheet (issue #833): POST
+  // /api/campaigns/[id]/sheet/owed makes a pick the character's levels
+  // earned and no level-up offered (a dragon ancestor, a favored enemy, a
+  // fighting style), outside a level-up. An older host answers 404, so the
+  // sheet only lists the pick as owed there.
+  owedPicks: true,
 } as const;
 export type ServerFeatures = { [K in keyof typeof SERVER_FEATURES]: boolean };
 

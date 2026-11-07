@@ -1,7 +1,7 @@
 import type { Ability } from "@/lib/schemas/sheet";
 import { classFeaturesFor, expertiseSlotsFor, racialTraitsFor, subclassLevelFor } from "@/lib/srd/features";
 import { fightingStyleChoices, fightingStyleSlots, type FightingStyleId } from "@/lib/srd/feature-effects";
-import { findOptionByFeatureName, optionSlotsFor } from "@/lib/srd/options";
+import { findOptionByFeatureName, optionCost, optionSlotsFor } from "@/lib/srd/options";
 import { innateCantripsFor, repeatedGrants } from "@/lib/srd/racial-grants";
 import { withSpeciesVariant } from "@/lib/content/species-variants";
 import { spellLevelOf } from "@/lib/srd/spell-lists";
@@ -330,7 +330,9 @@ export function reconcilePicks(
   note("expertise", "expertise", picks.expertisePicks, expertisePicks);
 
   const featuresOf = classes.map((entry) => classFeaturesFor(entry.klass.id, entry.subclass, entry.level));
-  const features = featuresOf.flat();
+  // Each with the class that grants it: a paladin's and a ranger's Fighting
+  // Style offer their own four styles (feature-effects.ts fightingStyleChoices).
+  const features = featuresOf.flatMap((list, index) => list.map((feature) => ({ ...feature, classId: classes[index].klass.id })));
   // Only the styles the slots allow (a Swords bard: Dueling or Two-Weapon
   // Fighting); a pick may name the style rather than its id.
   const allowedStyles = new Set(fightingStyleChoices(features).flatMap((style) => [style.id, textKey(style.name)]));
@@ -348,10 +350,11 @@ export function reconcilePicks(
       (sum, entry, index) => sum + optionSlotsFor(entry.klass.id, entry.subclass, entry.level, option.k, featuresOf[index]),
       0,
     );
-    if (taken >= slots) {
+    // A favored enemy's humanoid race is half a pick (options.ts optionCost).
+    if (taken + optionCost(option) > slots) {
       return false;
     }
-    perKind.set(option.k, taken + 1);
+    perKind.set(option.k, taken + optionCost(option));
     return true;
   });
   note("class option", "options", picks.optionPicks, optionPicks);

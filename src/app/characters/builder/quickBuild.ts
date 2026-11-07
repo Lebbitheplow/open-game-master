@@ -26,7 +26,7 @@ import { authoredFeatDesc } from "@/lib/srd/feat-effects";
 import type { FeatChoices, FeatPicks, FeatGrantSpec } from "@/lib/srd/feat-grants";
 import { FIGHTING_STYLES, type FightingStyleId } from "@/lib/srd/feature-effects";
 import { expertiseAllowed, expertiseSlotsFor, subclassLevelFor, subclassNamesFor } from "@/lib/srd/features";
-import { optionFeatureName } from "@/lib/srd/options";
+import { optionFeatureName, picksFromSpellbook } from "@/lib/srd/options";
 import { racialFeatCount } from "@/lib/srd/race-id";
 import { DRACONIC_ANCESTRIES, findDraconicAncestry, repeatedGrants, takesDraconicAncestry } from "@/lib/srd/racial-grants";
 import { racialCantripsOf } from "@/lib/srd/racial-cantrips";
@@ -306,6 +306,9 @@ function fillFeatPicks(
     }
   };
   top("languages", spec.languages, STANDARD_LANGUAGES.filter((language) => !held.languages.has(textKey(language))));
+  // Held from here on, so the next grant picks another: a ranger's three
+  // Favored Enemy languages were all the same one.
+  for (const language of out.languages ?? []) held.languages.add(textKey(language));
   top("skills", spec.skills + (spec.anyKinds.includes("skills") ? spec.any : 0), skillOrder(ctx, held.skills));
   for (const skill of out.skills ?? []) held.skills.add(skill);
   top("expertise", spec.expertise, [...held.skills]);
@@ -553,11 +556,13 @@ export function fillRound(ctx: FillContext): FillRound {
     }
   }
   // What the subclass's training leaves open (a Lore bard's three skills).
-  if (fields.subclass && wants("subclass")) {
+  // And what the class itself leaves open (a ranger's Favored Enemy
+  // language), with or without a subclass.
+  if (wants("subclass")) {
     let featChoices: FeatChoices = fields.featChoices;
     const held = { skills: proficient, languages, tools };
     const added: string[] = [];
-    for (const grant of derived.subclassTraining ?? []) {
+    for (const grant of (derived.subclassTraining ?? []).filter((entry) => fields.subclass || entry.optional)) {
       const picks = fillFeatPicks(grant.spec, featChoice(featChoices, grant.name), ctx, held);
       if (picks) {
         featChoices = withFeatChoice(featChoices, grant.name, picks);
@@ -594,9 +599,31 @@ export function fillRound(ctx: FillContext): FillRound {
   if (wants("options")) {
     const picks = [...fields.optionPicks];
     const added: string[] = [];
+    // A sensible first choice where the list has one, the same every time: a
+    // dragonborn sorcerer's own dragon, else red (fire, the most common damage
+    // among sorcerer spells); undead and the forest for a ranger and a druid.
+    // Taking the first of each list made every quick sorcerer a black dragon's
+    // heir (issue #833). Half picks (a humanoid race) are left to the player.
+    const ancestry = findDraconicAncestry(patch.racialAncestry ?? fields.racialAncestry)?.dragon;
+    const preferred: Partial<Record<string, string[]>> = {
+      dragon_ancestor: [...(ancestry ? [ancestry] : []), "Red"],
+      favored_enemy: ["Undead", "Fiends", "Monstrosities"],
+      favored_terrain: ["Forest", "Mountain", "Grassland"],
+      land_circle: ["Forest"],
+    };
     for (const slot of derived.optionSlots) {
-      const open = slot.options.filter((option) => !option.req && !slot.chosen.includes(option.n));
-      for (const option of open.slice(0, slot.remaining)) {
+      const first = preferred[slot.kind] ?? [];
+      const rank = (name: string) => (first.includes(name) ? first.indexOf(name) : first.length);
+      // Spell Mastery and Signature Spells take spells the book holds: none
+      // until the spell round has written it.
+      const book = new Set(fields.spells.map(textKey));
+      const open = slot.options
+        .filter((option) => !option.req && !option.half && !slot.chosen.includes(option.n))
+        .filter((option) => !picksFromSpellbook(slot.kind) || book.has(textKey(option.n)))
+        .map((option, index) => ({ option, index }))
+        .sort((a, b) => rank(a.option.n) - rank(b.option.n) || a.index - b.index)
+        .map((entry) => entry.option);
+      for (const option of open.slice(0, Math.floor(slot.remaining))) {
         picks.push(optionFeatureName(slot.kind, option.n));
         added.push(option.n);
       }

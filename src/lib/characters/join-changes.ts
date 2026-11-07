@@ -42,7 +42,8 @@ export type JoinPreview = JoinChanges & {
 type Sheet = Pick<
   CreateSheetInput,
   "class" | "subclass" | "classes" | "maxHp" | "asiChoices" | "feats" | "features" | "proficiencies" | "spellcasting"
->;
+> &
+  Partial<Pick<CreateSheetInput, "featChoices" | "race">>;
 
 const ORDINAL = ["", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th"];
 
@@ -143,6 +144,12 @@ export function joinChanges(
     classes: seated.classes,
     features: seated.features ?? [],
     proficiencies: seated.proficiencies,
+    // The picks a class feature opens (a dragon ancestor), read off the same
+    // sheet (owed-picks-logic.ts): the spellbook for Spell Mastery's.
+    feats: seated.feats,
+    spellcasting: seated.spellcasting,
+    featChoices: seated.featChoices,
+    race: seated.race,
   } as Parameters<typeof owedChoices>[0]);
 
   return { changes, owed };

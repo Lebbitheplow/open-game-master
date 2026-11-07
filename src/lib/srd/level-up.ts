@@ -62,6 +62,8 @@ import { casterViewsOf, dedupeNames, withCasterViews, type CasterView } from "@/
 import { isThirdCaster } from "@/lib/srd/third-caster";
 import { featureHitPoints, holdsFeature, withPrimalChampion } from "@/lib/srd/trait-rules";
 import { isChoiceFeature, unmetPrerequisite } from "@/lib/srd/legality/features";
+import { findOptionByFeatureName, pickInSpellbook } from "@/lib/srd/options";
+import { spellbookOf } from "@/lib/srd/owed-picks-logic";
 import { castingClassesOf } from "@/lib/srd/legality/spells";
 import {
   ABILITY_NAMES,
@@ -498,6 +500,15 @@ export function buildLevelUp(
         !heldNames.has(textKey(feature.name)),
     )
     .map((feature) => ({ name: feature.name, source: "choice" as const }));
+  // Spell Mastery and Signature Spells name spells in the spellbook (SRD
+  // 5.1): one written there before, or with this level.
+  const book = [...spellbookOf(sheet), ...(request.levelUpSpells ?? [])];
+  for (const pick of picked) {
+    const option = findOptionByFeatureName(pick.name);
+    if (option && !pickInSpellbook(option, book)) {
+      return refuse(`${option.n} is not in ${sheet.name}'s spellbook; ${pick.name.split(":")[0]} names a spell written there.`);
+    }
+  }
   const elementPicks = featsTaken.flatMap((name) => {
     const spec = featGrantSpec(context.featOf(name)?.desc ?? "");
     const picked = textKey(featChoice(request.featChoices, name)?.damageType ?? "");

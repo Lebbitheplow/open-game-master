@@ -20,7 +20,7 @@ import {
 import { suggestArmor } from "@/lib/srd/armor";
 import { classFeaturesFor, subclassSpellsFor } from "@/lib/srd/features";
 import { fightingStyleChoices, fightingStyleSlots } from "@/lib/srd/feature-effects";
-import { openOptionSlots, optionFeatureName, type OptionSlot } from "@/lib/srd/options";
+import { openOptionSlots, optionFeatureName, slotTakes, type OptionSlot } from "@/lib/srd/options";
 import { spellStyleFor, spellbookAllowance, type SpellStyle } from "@/lib/srd/spell-prep";
 import {
   chooseKitOption as withKitOption,
@@ -523,7 +523,9 @@ export function useBuilderDerived({
   );
   const subclassTraining = useMemo(
     () =>
-      klass && classList.some((entry) => entry.subclass)
+      // A base class's own grants too, before any subclass (a ranger's
+      // Favored Enemy language, src/lib/srd/subclass-training.ts CLASS_TABLE).
+      klass
         ? grantsForHeldTraining(subclassGrants(classList), {
             skills: proficientSkills,
             languages: [...(race?.languages ?? []), ...(background?.knownLanguages ?? []), ...bonusLanguages.filter(Boolean), ...classLanguages],
@@ -902,7 +904,7 @@ export function useBuilderDerived({
   // as "choice"-sourced features so the level-up regrant preserves them.
   const styleSlots = useMemo(() => fightingStyleSlots(grantedFeatures), [grantedFeatures]);
   // The styles those slots allow (a Swords bard: Dueling or Two-Weapon Fighting).
-  const styleChoices = useMemo(() => fightingStyleChoices(grantedFeatures), [grantedFeatures]);
+  const styleChoices = useMemo(() => fightingStyleChoices(grantedFeatures, klass?.id), [grantedFeatures, klass?.id]);
 
   // Invocations, maneuvers, metamagic, pact boons, infusions, runes and
   // elemental disciplines: the pick-lists that used to be feature names with
@@ -922,6 +924,9 @@ export function useBuilderDerived({
         features,
         // A feat's own picks are counted once, with the first class.
         feats: index === 0 ? featNames : [],
+        // A wizard's Spell Mastery and Signature Spells pick from the book
+        // written on the spell step (for a wizard `spells` is the book).
+        ...(spells.length ? { spellbook: spells } : {}),
       }),
     );
     return slots.reduce<typeof slots>((merged, slot) => {
@@ -932,7 +937,7 @@ export function useBuilderDerived({
       const total = held.total + slot.total;
       return merged.map((entry) => (entry === held ? { ...held, total, remaining: Math.max(0, total - held.chosen.length) } : entry));
     }, []);
-  }, [classList, grantedFeatures, optionPicks, featNames]);
+  }, [classList, grantedFeatures, optionPicks, featNames, spells]);
   // Expertise each class has earned at its own level: a rogue's two at its
   // 1st, a bard's at its 3rd.
   const expertiseSlots = useMemo(
@@ -1357,7 +1362,9 @@ export function builderActions(
         if (current.includes(featureName)) {
           return current.filter((entry) => entry !== featureName);
         }
-        return slot.chosen.length < slot.total ? [...current, featureName] : current;
+        // A favored enemy's humanoid race is half a pick (options.ts slotTakes).
+        const option = slot.options.find((entry) => entry.n === optionName);
+        return option && slotTakes(slot, option) ? [...current, featureName] : current;
       });
     },
   };

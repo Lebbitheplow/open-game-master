@@ -98,10 +98,13 @@ export function signatureCounter(
   if (!facts || facts.level !== 3 || (named !== undefined && named !== 3)) {
     return null;
   }
-  const chosen = sheet.features
-    .map((feature) => SIGNATURE.exec(feature.name.trim())?.[1] ?? null)
-    .find((list): list is string => Boolean(list));
-  const spells = (chosen ?? "").split(/,|\band\b/).map(textKey).filter(Boolean);
+  // Every feature that names them, in order: one "Signature Spells:
+  // Fireball, Counterspell", or one pick each as the builder and the level-up
+  // write them ("Signature Spells: Fireball", src/lib/srd/options.ts).
+  const spells = sheet.features
+    .flatMap((feature) => (SIGNATURE.exec(feature.name.trim())?.[1] ?? "").split(/,|\band\b/))
+    .map(textKey)
+    .filter(Boolean);
   const index = spells.indexOf(textKey(facts.name));
   if (index < 0 || index > 1) {
     return null;

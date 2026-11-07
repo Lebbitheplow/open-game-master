@@ -6,8 +6,8 @@ import classesJson from "@/lib/srd/classes.json";
 import { CUSTOM_CLASS_FEATURES, findCustomClass } from "@/lib/classes";
 import { workshopClassDef } from "@/lib/classes/workshop-registry";
 import type { SheetFeature } from "@/lib/schemas/sheet";
-import { chosenFightingStyles, fightingStyleChoices, fightingStyleSlots } from "@/lib/srd/feature-effects";
-import { findOptionByFeatureName, isOptionName, optionSlotsFor } from "@/lib/srd/options";
+import { chosenFightingStyles, fittingFightingStyles } from "@/lib/srd/feature-effects";
+import { findOptionByFeatureName, isOptionName, optionCost, optionSlotsFor } from "@/lib/srd/options";
 import { featOptionSlots } from "@/lib/srd/feat-combat";
 import { srdRaceId } from "@/lib/srd/race-id";
 import { subclassNamedBare, subclassNamedExactly } from "@/lib/srd/subclass-name";
@@ -388,11 +388,13 @@ function spellsBy(table: Record<string, string[]> | undefined, level: number): s
 }
 
 // The option a sheet chose for a feature: "Forest" of "Circle Spells
-// (Forest)". Null when the feature carries none.
+// (Forest)", or of "Circle Spells: Forest", the pick the builder and the
+// level-up write (src/lib/srd/options.ts land_circle, issue #833). Null when
+// the feature carries none.
 export function featureChoiceOf(features: ReadonlyArray<{ name: string }> | undefined, feature: string): string | null {
   const wanted = textKey(feature);
   for (const held of features ?? []) {
-    const parts = /^(.*?)\s*\(([^)]+)\)\s*$/.exec(held.name.trim());
+    const parts = /^(.*?)\s*\(([^)]+)\)\s*$/.exec(held.name.trim()) ?? /^([^:]+):\s*(.+)$/.exec(held.name.trim());
     if (parts && textKey(parts[1]) === wanted) {
       return parts[2].trim();
     }
@@ -569,11 +571,11 @@ function pruneChoiceFeatures(
   granted: SheetFeature[],
   feats?: string[],
 ): SheetFeature[] {
-  const styleSlots = fightingStyleSlots(granted);
-  const styles = new Set(chosenFightingStyles(features).map((name) => textKey(name)));
-  // A style the slots do not allow (Archery on a Swords bard) is not kept.
-  const allowedStyles = new Set(fightingStyleChoices(granted).map((style) => textKey(style.name)));
-  let stylesKept = 0;
+  // A style the slots do not allow (Archery on a Swords bard, on a paladin)
+  // is not kept, and each slot holds one style its own class offers
+  // (feature-effects.ts fittingFightingStyles).
+  const fitting = fittingFightingStyles(chosenFightingStyles(features), granted);
+  const stylesHeld = new Set<string>();
   const perKind = new Map<string, number>();
   return features.filter((feature) => {
     if (feature.source !== "choice") {
@@ -598,18 +600,19 @@ function pruneChoiceFeatures(
         ) +
         featOptionSlots(feats, option.k);
       const taken = perKind.get(option.k) ?? 0;
-      if (taken >= total) {
+      // A favored enemy's humanoid race is half a pick (options.ts optionCost).
+      if (taken + optionCost(option) > total) {
         return false;
       }
-      perKind.set(option.k, taken + 1);
+      perKind.set(option.k, taken + optionCost(option));
       return true;
     }
     const bare = chosenFightingStyles([feature])[0];
-    if (bare !== undefined && styles.has(textKey(bare))) {
-      if (stylesKept >= styleSlots || !allowedStyles.has(textKey(bare))) {
+    if (bare !== undefined) {
+      if (!fitting.has(textKey(bare)) || stylesHeld.has(textKey(bare))) {
         return false;
       }
-      stylesKept += 1;
+      stylesHeld.add(textKey(bare));
       return true;
     }
     return true;

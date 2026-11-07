@@ -54,6 +54,10 @@ export type SubclassGrant = {
   saves?: SaveGrant;
   skillOtherwise?: { skill: string; from: string[] };
   languageOtherwise?: string;
+  // A pick that may wait: left out, it is owed rather than refused (a
+  // ranger's Favored Enemy language). A builder older than the grant has no
+  // picker for it, and a sheet saved before it holds none.
+  optional?: true;
 };
 
 type TableEntry = {
@@ -182,6 +186,10 @@ const TABLE: Record<string, TableEntry> = {
   "barbarian|path of the giant|giant's power": { languages: ["Giant"] },
   "druid|circle of the shepherd|speech of the woods": { languages: ["Sylvan"] },
   "sorcerer|storm sorcery|wind speaker": { languages: ["Primordial"] },
+  // SRD 5.1, Dragon Ancestor: "You can speak, read, and write Draconic."
+  // Nothing granted it, so a Draconic sorcerer could not read a dragon's
+  // hoard-runes they were born to (issue #833).
+  "sorcerer|draconic bloodline|dragon ancestor": { languages: ["Draconic"] },
   "monk|way of the ascendant dragon|draconic disciple": { languages: ["Draconic"], languageOtherwise: "Draconic" },
   "ranger|drakewarden|draconic gift": { languages: ["Draconic"], languageOtherwise: "Draconic" },
   "monk|way of the drunken master|bonus proficiencies (drunken master)": { skills: ["performance"], tools: ["brewer's supplies"] },
@@ -221,6 +229,17 @@ const TABLE: Record<string, TableEntry> = {
   "artificer|battle smith|tool proficiency (battle smith)": { tools: ["smith's tools"] },
   "artificer|battle smith|battle ready": { weapons: ["martial"] },
 };
+
+// What a base class's own features train the character in, by the class
+// level they arrive at. SRD 5.1, Ranger, Favored Enemy: "You also learn one
+// language of your choice that is spoken by your favored enemies", at 1st
+// level and with each favored enemy after (6th and 14th). The grant's name
+// keys its pick in featChoices, so each level's is its own.
+const CLASS_TABLE: Array<{ classId: string; level: number; name: string; entry: TableEntry }> = [
+  { classId: "ranger", level: 1, name: "Favored Enemy language", entry: { pickLanguages: 1 } },
+  { classId: "ranger", level: 6, name: "Favored Enemy language (6th level)", entry: { pickLanguages: 1 } },
+  { classId: "ranger", level: 14, name: "Favored Enemy language (14th level)", entry: { pickLanguages: 1 } },
+];
 
 const key = (classId: string, subclass: string, feature: string) =>
   `${classId}|${subclass}|${feature}`.trim().toLowerCase();
@@ -293,6 +312,13 @@ export function subclassGrants(classes: ClassEntryLike[], extras?: SubclassExtra
   const grants: SubclassGrant[] = [];
   const seen = new Set<string>();
   for (const entry of classes) {
+    // The class's own grants first, whatever its subclass.
+    for (const row of CLASS_TABLE) {
+      if (textKey(entry.id ?? "") === row.classId && entry.level >= row.level && !seen.has(key(row.classId, "", row.name))) {
+        seen.add(key(row.classId, "", row.name));
+        grants.push({ name: row.name, classId: entry.id, subclass: "", level: row.level, spec: specOf(row.entry), optional: true });
+      }
+    }
     const subclass = (entry.subclass ?? "").trim();
     if (!subclass || !entry.id) {
       continue;
@@ -408,18 +434,32 @@ export function applySubclassTraining(input: {
     return { proficiencies: input.proficiencies, problems: [] };
   }
   const grants = grantsForHeldTraining(input.grants, input.proficiencies);
+  const required = grants.filter((grant) => !grant.optional);
+  const waiting = grants.filter((grant) => grant.optional);
   const applied = applyFeatGrants({
     proficiencies: input.proficiencies,
-    feats: grants.map((grant) => ({ name: grant.name, desc: "", spec: grant.spec })),
+    feats: required.map((grant) => ({ name: grant.name, desc: "", spec: grant.spec })),
     choices: input.choices,
     strict: input.strict,
     picksMayWait: input.picksMayWait,
   });
-  const saves = withSaves(applied.proficiencies.saves as Ability[], input.grants, input.abilities);
+  // The picks that may wait: a named one is still held to the grant; one
+  // left out is owed (applyFeatGrants picksMayWait).
+  const optional = waiting.length
+    ? applyFeatGrants({
+        proficiencies: applied.proficiencies,
+        feats: waiting.map((grant) => ({ name: grant.name, desc: "", spec: grant.spec })),
+        choices: input.choices,
+        strict: input.strict,
+        picksMayWait: true,
+      })
+    : { proficiencies: applied.proficiencies, problems: [] as string[], owed: undefined };
+  const saves = withSaves(optional.proficiencies.saves as Ability[], input.grants, input.abilities);
+  const owed = [...(applied.owed ?? []), ...(input.strict ? (optional.owed ?? []) : [])];
   return {
-    problems: applied.problems,
-    proficiencies: { ...applied.proficiencies, saves },
-    ...(applied.owed ? { owed: applied.owed } : {}),
+    problems: [...applied.problems, ...optional.problems],
+    proficiencies: { ...optional.proficiencies, saves },
+    ...(owed.length ? { owed } : {}),
   };
 }
 

@@ -1,7 +1,9 @@
 // The choices a character's levels have earned and not yet made
 // (docs/dnd-rules-audit-2026-10-09-extent.md, F24): the class's skill picks,
 // an Ability Score Improvement, the expertise a rogue or bard picks, a
-// subclass at its class's level. Level-up leaves them open rather than refusing the level (a
+// subclass at its class's level, and the picks a class feature opens (a
+// dragon ancestor, invocations, a fighting style: owed-picks-logic.ts, which
+// the sheet takes outside a level-up, issue #833). Level-up leaves them open rather than refusing the level (a
 // companion levels without them); they carry to the next level-up, which
 // takes them, and the sheet shows them until then.
 //
@@ -13,8 +15,10 @@ import { classListFor } from "@/lib/srd/multiclass";
 import { SRD_CLASSES } from "@/lib/srd";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { classWords } from "@/lib/sheet-words";
+import { owedPickLines } from "@/lib/srd/owed-picks-logic";
 
-type Owing = Pick<CharacterSheet, "class" | "subclass" | "level" | "classes" | "features" | "proficiencies">;
+type Owing = Pick<CharacterSheet, "class" | "subclass" | "level" | "classes" | "features" | "proficiencies"> &
+  Partial<Pick<CharacterSheet, "feats" | "spellcasting" | "featChoices" | "race">>;
 
 export function owedChoices(sheet: Owing): string[] {
   const classes = classListFor(sheet);
@@ -48,6 +52,7 @@ export function owedChoices(sheet: Owing): string[] {
       out.push(`a subclass for ${classWords(entry.id)} (due at ${classWords(entry.id)} level ${subclassLevelFor(entry.id)})`);
     }
   }
+  out.push(...owedPickLines(sheet));
   return out;
 }
 
