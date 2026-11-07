@@ -39,6 +39,8 @@ const { test, finish } = suite("test-enforce-zones");
 const { buildPlayerMapView } = await import("../src/lib/battlemap/view.ts");
 const encounters = await import("../src/lib/db/encounters.ts");
 const { getDatabase } = await import("../src/lib/db/core.ts");
+const { endSpentConcentration } = await import("../src/lib/dm/concentration-upkeep.ts");
+const { saveZones } = await import("../src/lib/dm/zone-store.ts");
 
 const moved = (world, refId) => tokenOf(world, refId).movedThisRound;
 const hp = (world, id) => world.sheet(id).currentHp;
@@ -793,6 +795,40 @@ await test("Web: fire burns away the web around a creature it strikes, freeing i
   nextTurn(world);
   world.clearDice();
   assert.equal(enemyOf(world, goblin.id).currentHp, before - 4);
+});
+
+// Play-test 2026-11-07: Wren's Web caught nobody (the raider saved), and
+// the next sweep of spent concentration (src/lib/dm/concentration-upkeep.ts,
+// run as a condition ran out) ended it because no creature was restrained,
+// though the web stands for its hour (SRD 5.1, Web).
+await test("Web: a web that holds nobody still stands, and its caster keeps concentrating on it, until the last of it is gone.", async () => {
+  const { world, sheets: [wizard], enemies: [goblin] } = await board([caster("wizard", "int", ["Web"])], { 0: { x: 2, y: 8 }, e0: { x: 12, y: 2 } });
+  world.dice(20);
+  const cast = await world.invoke("aoe_damage", { casterCharacterId: wizard.id, spell: "Web", enemyIds: [goblin.id], saveAbility: "dex", dc: 15, level: 2, atX: 12, atY: 2 });
+  world.clearDice();
+  assert.equal(cast.ok, true, cast.error);
+  assert.ok(!enemyOf(world, goblin.id).conditions.includes("restrained"), "the goblin's save did not keep it free");
+  const lines = [];
+  endSpentConcentration(world.campaign(), lines);
+  assert.deepEqual(lines, []);
+  assert.equal(world.sheet(wizard.id).concentratingOn, "Web", "an empty web ended its caster's concentration");
+  assert.ok(zonesOf(world).some((zone) => zone.spell === "Web"), "the web left the board");
+  // Every square burnt away: nothing of the spell is left on the board.
+  const map = mapOf(world);
+  saveZones(map.id, map.spellZones.map((zone) => (zone.spell === "Web" ? { ...zone, cells: [] } : zone)));
+  endSpentConcentration(world.campaign(), lines);
+  assert.equal(world.sheet(wizard.id).concentratingOn, null, "a web burnt to the last square still holds its caster's concentration");
+});
+
+await test("Off the board an area spell keeps its concentration when nobody is caught: nothing records the area, so nothing says it has gone.", async () => {
+  const { world, sheets: [druid], enemies: [goblin] } = await table([caster("druid", "wis", ["Entangle"])]);
+  world.dice(20);
+  const cast = await world.invoke("aoe_damage", { casterCharacterId: druid.id, spell: "Entangle", enemyIds: [goblin.id], saveAbility: "str", dc: 15, level: 1 });
+  world.clearDice();
+  assert.equal(cast.ok, true, cast.error);
+  assert.equal(mapOf(world), null, "this table has a board");
+  endSpentConcentration(world.campaign(), []);
+  assert.equal(world.sheet(druid.id).concentratingOn, "Entangle");
 });
 
 await test("An enemy's spell that only lays an area (Darkness) is cast through aoe_damage with no targets: the area is on the board, held by the enemy's concentration.", async () => {
