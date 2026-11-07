@@ -594,6 +594,17 @@ export function listOpenPendingRolls(campaignId: string): PendingRoll[] {
   return rows.map(mapPending);
 }
 
+// Every roll at any table still waiting on its player's after-the-roll
+// choice, for the timers a restart lost (src/lib/dm/after-roll-timer.ts).
+export function listOpenAfterRolls(): PendingRoll[] {
+  // Read at boot, before anything else may have added the column.
+  ensureParkColumn();
+  const rows = getDatabase()
+    .prepare(`SELECT * FROM pending_rolls WHERE status = 'pending' AND parked_for = 'after_roll' ORDER BY created_at ASC`)
+    .all() as PendingRow[];
+  return rows.map(mapPending);
+}
+
 export function setPendingCombatNote(id: string, note: string) {
   getDatabase()
     .prepare(`UPDATE pending_rolls SET combat_note = ? WHERE id = ?`)

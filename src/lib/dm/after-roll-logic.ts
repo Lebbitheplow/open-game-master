@@ -30,6 +30,10 @@ export type AfterRollOption = {
 };
 
 export const DARK_ONES_OWN_LUCK = "dark_ones_own_luck";
+
+// How long a roll waits on its player before the dice are kept as they lie
+// (src/lib/dm/after-roll-timer.ts); the card counts it down.
+export const AFTER_ROLL_SECONDS = 20;
 const OWN_LUCK_DIE = "d10";
 
 // A roll that waits on the player's choice, once its dice are known.
@@ -43,6 +47,9 @@ export type ThrownRoll = {
   choosing: boolean;
   // How the roll is recorded when it lands, from who threw its dice.
   landing: { status: "submitted" | "fallback"; physical: boolean; source: "digital" | "physical" };
+  // When the dice are kept as they lie if the player has not chosen
+  // (src/lib/dm/after-roll-timer.ts). A roll parked before there was one has none.
+  deadline?: string;
 };
 
 // The rolls that can wait: an ability check or a saving throw. Initiative

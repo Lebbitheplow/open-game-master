@@ -6,6 +6,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { PendingRoll } from "@/app/campaigns/[campaignId]/useCampaignStream";
 import { CheckFrame } from "@/app/campaigns/[campaignId]/SkillCheckCard";
 import { ROLL_KIND_LABELS } from "@/lib/roll-labels";
+import { AFTER_ROLL_SECONDS } from "@/lib/dm/after-roll-logic";
 
 const STEP_IN_AFTER_MS = 3 * 60 * 1000;
 
@@ -41,6 +42,18 @@ export function AfterRollCard({
     const timer = setTimeout(() => setStale(true), Math.max(0, left));
     return () => clearTimeout(timer);
   }, [pending.createdAt]);
+  // The seconds left before the server keeps the dice as they lie
+  // (src/lib/dm/after-roll-timer.ts). A roll parked before there was a
+  // deadline has none to show.
+  const deadline = pending.thrown?.deadline;
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!deadline) return;
+    const tick = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(tick);
+  }, [deadline]);
+  // The clock ticks once a second, so a fresh deadline can briefly read long.
+  const left = deadline ? Math.min(AFTER_ROLL_SECONDS, Math.max(0, Math.ceil((new Date(deadline).getTime() - now) / 1000))) : null;
   const thrown = pending.thrown;
   if (!thrown) {
     return null;
@@ -76,6 +89,7 @@ export function AfterRollCard({
       <CheckFrame className="mb-2 flex animate-fade-up items-center justify-between gap-2 px-3 py-2 text-xs">
         <span className="min-w-0" role="status">
           {character?.name ?? "A player"} rolled {thrown.outcome.total} and is deciding what to do with it.
+          {left !== null ? <span className="check-dim"> The roll stands in {left}s.</span> : null}
         </span>
         {steersStory && stale ? (
           <button
@@ -141,6 +155,12 @@ export function AfterRollCard({
             {busy ? <Loader2 className="size-4 animate-spin" /> : "Keep this roll"}
           </button>
         )}
+        {left !== null ? (
+          // Read once by a screen reader with the card, not every second.
+          <span className="check-dim text-xs" aria-live="off">
+            {thrown.choosing ? "The higher die counts" : "The roll stands"} in {left}s
+          </span>
+        ) : null}
       </div>
       {error ? <p role="alert" className="mt-1.5 text-xs text-red-400">{error}</p> : null}
     </CheckFrame>

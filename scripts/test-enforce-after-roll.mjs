@@ -8,7 +8,10 @@
 //   roll that needed none;
 //   a luck point's d20 is the player's to choose among, whatever the advantage;
 //   whoever runs the story may keep the dice for an absent player, and an
-//   answer from a screen that knows nothing of the pause keeps them too.
+//   answer from a screen that knows nothing of the pause keeps them too;
+//   a roll nobody chooses for is kept as it lies when its time runs out
+//   (src/lib/dm/after-roll-timer.ts), each choice giving fresh time, a break
+//   holding it, and a restart arming it again.
 import assert from "node:assert/strict";
 import { call, seats } from "./lib/enforce-campaign.mjs";
 import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
@@ -19,6 +22,9 @@ import { openWorld } from "./lib/enforce-world.mjs";
 const { test, finish } = suite("test-enforce-after-roll");
 const { getDmTurn, getPendingRoll, listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
 const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
+const { AFTER_ROLL_SECONDS, keepAfterRollWhenDue, rearmAfterRollKeeps } = await import("../src/lib/dm/after-roll-timer.ts");
+const { pauseTable, resumeTable } = await import("../src/lib/dm/table-break.ts");
+const past = (pending) => new Date(getPendingRoll(pending.id).thrown.deadline).getTime() + 1;
 
 const world = await openWorld({ campaign: { maxPlayers: 20 } });
 const who = await seats(world);
@@ -403,6 +409,63 @@ await test("A halfling's Lucky trait holds no luck points, and a stored counter 
   assert.equal(populateResources(sheet.features, 5, {}, {}, undefined, ["Lucky"]).luck_points?.max, 3, "the feat still holds three");
 });
 
+await test("A roll nobody chooses for is kept as it lies when its time runs out, and nothing is spent.", async () => {
+  hero({ ...LUCKY, conditions: ["bardic inspiration (d8)"] });
+  const before = Date.now();
+  world.dice(9);
+  await check();
+  world.clearDice();
+  const [pending] = open();
+  const deadline = new Date(pending.thrown.deadline).getTime();
+  assert.ok(Math.abs(deadline - before - AFTER_ROLL_SECONDS * 1000) < 5000, `the roll has ${AFTER_ROLL_SECONDS}s`);
+  assert.equal(await keepAfterRollWhenDue(pending.id, deadline - 1000), false, "not before its time");
+  assert.equal(open().length, 1);
+  assert.equal(await keepAfterRollWhenDue(pending.id, past(pending)), true);
+  assert.equal(open().length, 0, "the card is gone");
+  assert.equal(landed(pending.id).total, 9, "the dice as they lay");
+  const sheet = world.sheet(who.sheet.id);
+  assert.equal(sheet.resources.luck_points.used, 0, "no luck point spent");
+  assert.ok(sheet.conditions.includes("bardic inspiration (d8)"), "the die is still held");
+  assert.equal(await keepAfterRollWhenDue(pending.id, past(pending)), false, "a landed roll is left alone");
+});
+
+await test("Each choice gives fresh time, and a luck point's dice left unchosen keep the higher.", async () => {
+  hero(LUCKY);
+  world.dice(4);
+  await check();
+  world.clearDice();
+  const [pending] = open();
+  const first = pending.thrown.deadline;
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  world.dice(12);
+  assert.equal((await choose(pending.id, { use: "lucky" })).status, 200);
+  world.clearDice();
+  const choosing = getPendingRoll(pending.id).thrown;
+  assert.equal(choosing.choosing, true);
+  assert.ok(new Date(choosing.deadline).getTime() > new Date(first).getTime(), "the new decision has its own time");
+  assert.equal(await keepAfterRollWhenDue(pending.id, new Date(first).getTime() + 1), false, "the old deadline no longer counts");
+  assert.equal(await keepAfterRollWhenDue(pending.id, past(pending)), true);
+  assert.equal(landed(pending.id).total, 12, "the higher die");
+  assert.equal(world.sheet(who.sheet.id).resources.luck_points.used, 1, "the point the player spent, and no other");
+});
+
+await test("A break holds the roll past its time; the wait goes on after it.", async () => {
+  hero(LUCKY);
+  world.dice(5);
+  await check();
+  world.clearDice();
+  const [pending] = open();
+  pauseTable(world.campaignId, { id: who.dm.id, username: "dm" });
+  try {
+    assert.equal(await keepAfterRollWhenDue(pending.id, past(pending)), false, "not during a break");
+    assert.equal(open().length, 1);
+  } finally {
+    resumeTable(world.campaignId, { id: who.dm.id, username: "dm" });
+  }
+  assert.equal(await keepAfterRollWhenDue(pending.id, past(pending)), true);
+  assert.equal(landed(pending.id).total, 5);
+});
+
 // ---- the AI's turn ----
 
 const table = await openWorld({ gameSettings: { ttsEnabled: false } });
@@ -456,10 +519,31 @@ await test("A restart while the roll waits leaves it waiting, with its dice and 
   assert.equal(still?.id, pending.id, "the roll still waits");
   assert.equal(still.thrown.outcome.total, 4);
   assert.deepEqual(still.thrown.options.map((option) => option.id), ["lucky"]);
+  assert.ok(still.thrown.deadline, "with its time");
+  assert.ok(rearmAfterRollKeeps() >= 1, "its timer armed again");
   table.signIn({ id: pending.userId });
   assert.equal((await call(tableRoute, "POST", { keep: true }, { campaignId: table.campaignId, pendingRollId: pending.id })).status, 200);
   await settleQueue(table.campaignId);
   assert.equal(getDmTurn(pending.turnId).status, "done");
+});
+
+await test("An AI turn waiting on a roll nobody chooses for resumes when its time runs out.", async () => {
+  const lucky = table.addHero({ name: "Ola", class: "fighter", level: 5, feats: ["Lucky"], resources: { luck_points: { max: 3, used: 0 } } });
+  model.script([
+    reply({ calls: [modelCall("request_roll", { characterId: lucky.id, kind: "ability_check", ability: "str", dc: 15, reason: "the door" })] }),
+    reply({ text: "The door stays shut." }),
+  ]);
+  const asked = model.requests.length;
+  table.dice(6);
+  await model.turn(table, "I shoulder the door.");
+  table.clearDice();
+  const [pending] = listOpenPendingRolls(table.campaignId);
+  assert.equal(getDmTurn(pending.turnId).status, "awaiting_rolls");
+  assert.equal(await keepAfterRollWhenDue(pending.id, new Date(pending.thrown.deadline).getTime() + 1), true);
+  await settleQueue(table.campaignId);
+  assert.equal(getDmTurn(pending.turnId).status, "done");
+  assert.match(JSON.stringify(model.requests[asked + 1]), /"total\?":s*6|total.{0,6}6/, "the model reads the roll as it lay");
+  assert.equal(table.sheet(lucky.id).resources.luck_points.used, 0);
 });
 
 model.close();
