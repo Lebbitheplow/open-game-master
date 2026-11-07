@@ -216,9 +216,12 @@ export function CustomSpellList({
           onPick={(spell) => add([spell.name])}
         />
         <AddFromList
-          prompt={filling ? `Adding the ${filling}'s list` : "Add a published class's whole list"}
+          // Short enough to read whole beside the search at any width.
+          prompt={filling ? `Adding the ${filling}'s list` : "Add a class's list"}
           disabled={Boolean(filling) || full}
-          className="min-h-10 sm:min-h-0"
+          // Wide enough for its prompt and room for its arrow: a native
+          // select is as wide as its longest option, which is shorter.
+          className="min-h-10 min-w-44 pr-7 sm:min-h-0"
           options={SPELL_LISTS.map((list) => ({ value: list, label: `The ${list}'s list` }))}
           onPick={(list) => {
             setFilling(list);

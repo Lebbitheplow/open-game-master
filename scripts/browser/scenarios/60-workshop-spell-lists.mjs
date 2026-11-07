@@ -12,8 +12,16 @@ export default {
   async run(t) {
     const { page, base, root, api } = t;
     const stamp = `${t.viewport}${t.app ? "a" : "w"}${Date.now().toString(36).slice(-4)}`;
-    const className = `Runesmith ${stamp}`;
-    const spellName = `Emberglass Dart ${stamp}`;
+    // Plain names, so the screenshots read as a table would: one left by a
+    // stopped run is cleared first (the workshop keeps one entry per name).
+    const className = "Runesmith";
+    const spellName = "Emberglass Dart";
+    for (const kind of ["class", "spell"]) {
+      const shelf = await (await api.get(`${base}/api/homebrew?kind=${kind}`)).json().catch(() => ({ entries: [] }));
+      for (const entry of shelf.entries ?? []) {
+        if (entry.name === className || entry.name === spellName) await api.delete(`${base}/api/homebrew/${entry.id}?purge=1`).catch(() => {});
+      }
+    }
     const active = `${root}section[data-active]`;
     const setTheme = (mode) =>
       page.evaluate((choice) => {
@@ -50,6 +58,12 @@ export default {
       const picker = editor.locator('[data-testid="custom-spell-list"]');
       await eventually(() => picker.isVisible(), { timeoutMs: 5_000, label: "the class's own spell list" });
       check(await editor.getByRole("button", { name: "Gets its spells", exact: true }).isVisible(), "the form asks how it holds its spells");
+      // "Add a class's list" reads whole beside the search, a finger's
+      // height on a phone.
+      const fillSelect = picker.getByRole("combobox", { name: "Add a class's list" });
+      check(await fillSelect.isVisible(), "the class's list picker shows");
+      const fillBox = await fillSelect.boundingBox();
+      if (t.viewport === "phone") check((fillBox?.height ?? 0) >= 40, `the class's list picker is ${fillBox?.height}px tall on a phone`);
 
       // A cantrip of the author's own, which names no class, made while the
       // form is open: the search finds it at once (it asks the server as
@@ -76,7 +90,7 @@ export default {
 
       // Picked from the SRD's and the author's homebrew, found by name.
       const search = picker.getByLabel("Find a spell to add to the class's list");
-      for (const [typed, name] of [["fire bo", "Fire Bolt"], ["shield", "Shield"], [`emberglass dart ${stamp}`, spellName]]) {
+      for (const [typed, name] of [["fire bo", "Fire Bolt"], ["shield", "Shield"], ["emberglass dart", spellName]]) {
         await search.fill(typed);
         const result = picker.getByRole("list", { name: "Spells to add" }).getByRole("button").filter({ hasText: name }).first();
         await eventually(() => result.isVisible(), { timeoutMs: 15_000, label: `${name} offered` });
@@ -88,6 +102,9 @@ export default {
       await untilStill(page);
       await listSelect.scrollIntoViewIfNeeded();
       await t.shot("custom-spell-list");
+      // The picks and the two ways to add, which sit lower on a phone.
+      await picker.getByRole("combobox", { name: "Add a class's list" }).scrollIntoViewIfNeeded();
+      await t.shot("custom-spell-list-picks");
       // And by day, the theme a player may have saved.
       await setTheme("light");
       await untilStill(page);
