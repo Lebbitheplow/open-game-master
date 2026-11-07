@@ -767,6 +767,54 @@ const INVOCATION_ACTION_DEFS: ResourceDef[] = [
   },
 ];
 
+// A Draconic Bloodline sorcerer's three spends (src/lib/dm/draconic-spends.ts),
+// dealt as Hand cards from the feature held: Elemental Affinity's hour of
+// resistance for a sorcery point, Dragon Wings out or away, and Draconic
+// Presence's aura. Each counted in sorcery points or nothing, so no counter
+// of its own (issue #833: only the GM's tool could reach them, and the wings
+// and the resistance not at all).
+const DRACONIC_ACTION_DEFS: ResourceDef[] = [
+  {
+    id: "elemental_affinity",
+    match: ["elemental affinity"],
+    exact: true,
+    displayName: "Elemental Affinity",
+    maxFor: () => UNLIMITED_USES,
+    atWill: true,
+    recharge: "long",
+    action: "none",
+    effect: { kind: "narrative" },
+    guidance:
+      "Elemental Affinity: when they cast a spell that deals their dragon ancestor's damage type, 1 sorcery point gives them resistance to that type for 1 hour. The server spends the point and holds the resistance.",
+  },
+  {
+    id: "dragon_wings",
+    match: ["dragon wings"],
+    exact: true,
+    displayName: "Dragon Wings",
+    maxFor: () => UNLIMITED_USES,
+    atWill: true,
+    recharge: "long",
+    action: "bonus",
+    effect: { kind: "narrative" },
+    guidance:
+      "Dragon Wings: a bonus action sprouts dragon wings, a flying speed equal to their current speed, until a bonus action dismisses them. Not while wearing armor. Played again, the wings fold away.",
+  },
+  {
+    id: "draconic_presence",
+    match: ["draconic presence"],
+    exact: true,
+    displayName: "Draconic Presence",
+    maxFor: () => UNLIMITED_USES,
+    atWill: true,
+    recharge: "long",
+    action: "action",
+    effect: { kind: "buff", condition: "draconic presence", rounds: 10, target: "self", variants: ["fear", "charm"] },
+    guidance:
+      "Draconic Presence: 5 sorcery points and the action raise an aura of fear or awe to 60 feet for a minute, held by concentration. Each hostile creature that starts its turn in it makes a WIS save against their spell save DC or is frightened (or charmed) until the aura ends; one that succeeds is immune for 24 hours.",
+  },
+];
+
 export const RESOURCE_DEFS: ResourceDef[] = [
   ...SRD_RESOURCE_DEFS,
   ...CUSTOM_RESOURCE_DEFS,
@@ -774,6 +822,7 @@ export const RESOURCE_DEFS: ResourceDef[] = [
   ...INNATE_RESOURCE_DEFS,
   ...COMBAT_RESOURCE_DEFS,
   ...INVOCATION_ACTION_DEFS,
+  ...DRACONIC_ACTION_DEFS,
 ];
 
 // The marker a counter that returns after several long rests leaves on the

@@ -272,7 +272,10 @@ await test("every counter id is unique, so no definition hides another", () => {
   // pour-ins to the class counters (src/lib/srd/feat-combat.ts).
   // And the warlock's One with Shadows, an action with no limit
   // (src/lib/dm/one-with-shadows.ts, issue #570).
-  assert.equal(RESOURCE_DEFS.length, 32 + AUTHORED.length + GENRE.length + 3 + 5 + 1);
+  // And a Draconic sorcerer's three, played as often as the points allow:
+  // Elemental Affinity's resistance, Dragon Wings and Draconic Presence
+  // (src/lib/dm/draconic-spends.ts, issue #833).
+  assert.equal(RESOURCE_DEFS.length, 32 + AUTHORED.length + GENRE.length + 3 + 5 + 1 + 3);
 });
 
 await test("every authored and genre row is structurally legal", () => {

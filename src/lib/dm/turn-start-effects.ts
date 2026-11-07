@@ -10,6 +10,7 @@ import type { Encounter, EncounterEnemy } from "@/lib/db/encounters";
 import { insertCampaignMessage } from "@/lib/db/messages";
 import { publishWithSeq } from "@/lib/events";
 import { holyNimbusTurnStart } from "@/lib/dm/combat-features";
+import { draconicPresenceTurnStart } from "@/lib/dm/draconic-spends";
 import { refillLegendaryForTurn } from "@/lib/dm/legendary-tools";
 import { landTheFlightless } from "@/lib/dm/map-tools";
 import { regenerationTurnStart } from "@/lib/dm/regeneration-turn";
@@ -45,6 +46,9 @@ export function turnStartEffects(
     // Holy Nimbus burns the enemies whose turns start in its light
     // (src/lib/dm/combat-features.ts).
     ...holyNimbusTurnStart(campaign, encounter, starting),
+    // Draconic Presence's aura asks a save of each hostile creature whose
+    // turn starts in it (src/lib/dm/draconic-spends.ts).
+    ...draconicPresenceTurnStart(campaign, encounter, starting),
     // A character aloft whose flight has ended comes down.
     ...landTheFlightless(campaign, encounter.id),
     // Cackle fever's laughter spreads to a character starting beside it.

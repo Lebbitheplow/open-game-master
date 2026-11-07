@@ -11,6 +11,9 @@
 //   Natural Explorer (ranger 1): in the favored terrain ("Natural Explorer:
 //     forest"), an Intelligence or Wisdom check the ranger is proficient in
 //     adds double the proficiency bonus.
+//   Dragon Ancestor (Draconic Bloodline 1): a Charisma check made with a
+//     dragon ("creature": "dragon") adds double the proficiency bonus when
+//     the check carries it ("if it applies to the check").
 //   Stonecunning (dwarf): a History check on the origin of stonework counts
 //     as proficient and adds double the proficiency bonus.
 //   Artificer's Lore (rock gnome): a History check on magic items, alchemical
@@ -28,6 +31,7 @@ import { NATURAL_TERRAINS, type CheckAbout, type NaturalTerrain } from "@/lib/dm
 import { sameRulesKey } from "@/lib/srd/name-forms";
 import { textKey } from "@/lib/language/text-logic";
 import { isDwarf, speciesHoldsTrait, speciesRulesFor, srdRaceId } from "@/lib/srd/race-id";
+import { dragonAncestorColor } from "@/lib/srd/dragon-ancestor";
 
 export type CheckInput = {
   ability?: string;
@@ -95,6 +99,14 @@ export function heldCheckTraits(sheet: TraitSheet & { race?: string }): CheckTra
   const terrains = NATURAL_TERRAINS.filter((terrain) => explored.some((pick) => sameRulesKey(terrain, pick)));
   if (terrains.length) {
     out.push({ roll: "check", abilities: ["int", "wis"], proficient: true, terrains, gives: "double", note: (input) => `Natural Explorer: double proficiency in the ${input.terrain}` });
+  }
+  // SRD 5.1, Dragon Ancestor: "Whenever you make a Charisma check when
+  // interacting with dragons, your proficiency bonus is doubled if it applies
+  // to the check." Only a check that already carries the bonus: the sheet's
+  // dragon was read for Elemental Affinity alone (issue #833).
+  const dragon = dragonAncestorColor({ features: sheet.features ?? [] });
+  if (dragon) {
+    out.push({ roll: "check", abilities: ["cha"], proficient: true, creatures: ["dragon"], gives: "double", note: () => `Dragon Ancestor (${dragon}): double proficiency on a Charisma check with a dragon` });
   }
   if (holds("stonecunning") || isDwarf(race)) {
     out.push({ roll: "check", skills: ["history"], about: "stonework", gives: "double", note: () => "Stonecunning: double proficiency on History about stonework" });

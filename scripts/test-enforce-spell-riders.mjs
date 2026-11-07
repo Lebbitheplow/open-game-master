@@ -292,6 +292,44 @@ await test("A Draconic Bloodline sorcerer picks a dragon at 1st level, and the p
   assert.equal(optionSlotsFor("sorcerer", "Storm-Blooded", 1, "dragon_ancestor", [{ name: "Dragon Ancestor" }]), 1, "a workshop origin that borrows Dragon Ancestor opens it too");
 });
 
+await test("Elemental Affinity's other half: 1 sorcery point buys an hour's resistance to the ancestor's damage type; with no dragon chosen, or no point left, nothing is spent", async () => {
+  const { pcResistances } = await import("../src/lib/dm/pc-defenses.ts");
+  const { heldAtWill } = await import("../src/lib/srd/class-resources.ts");
+  const draconic = (features) => caster("sorcerer", "cha", ["Burning Hands"], [], 6, {
+    subclass: "Draconic Bloodline",
+    features: [...features, { name: "Elemental Affinity", source: "class", level: 6 }],
+    spellcasting: { known: ["Burning Hands"], prepared: [] },
+  });
+  const { world, sheets: [none, blue] } = await table([draconic([]), draconic([{ name: "Dragon Ancestor: Blue", source: "choice", level: 1 }])]);
+  const points = (who) => world.sheet(who.id).resources.sorcery_points.used;
+  const before = points(none);
+  const refused = await world.invoke("use_resource", { characterId: none.id, resource: "Elemental Affinity" });
+  assert.equal(refused.ok, false);
+  assert.match(refused.error, /no dragon ancestor chosen/);
+  assert.equal(points(none), before, "nothing spent");
+  // The Hand's card names its id; the tool the feature.
+  const out = await world.invoke("use_resource", { characterId: blue.id, resource: "elemental_affinity" });
+  assert.equal(out.ok, true, out.error);
+  assert.equal(points(blue), before + 1);
+  const resisting = world.sheet(blue.id);
+  assert.ok(resisting.conditions.includes("elemental affinity (lightning)"));
+  assert.match(pcResistances(resisting), /lightning/);
+  assert.ok(heldAtWill(resisting).some(([id]) => id === "elemental_affinity"), "dealt as a Hand card");
+  world.patch(blue.id, { resources: { ...resisting.resources, sorcery_points: { max: resisting.resources.sorcery_points.max, used: resisting.resources.sorcery_points.max } } });
+  const empty = await world.invoke("use_resource", { characterId: blue.id, resource: "Elemental Affinity" });
+  assert.equal(empty.ok, false);
+  assert.match(empty.error, /no sorcery point left/);
+});
+
+await test("The GM's prompt says the dragon's damage type beside the pick", async () => {
+  const { buildDmMessages } = await import("../src/lib/dm/prompt.ts");
+  const { listMembers } = await import("../src/lib/db/campaigns.ts");
+  const draconic = caster("sorcerer", "cha", ["Burning Hands"], [], 1, { subclass: "Draconic Bloodline", features: [{ name: "Dragon Ancestor: Green", source: "choice", level: 1 }] });
+  const { world } = await table([draconic]);
+  const text = buildDmMessages({ campaign: world.campaign(), members: listMembers(world.campaignId), sheets: world.sheets(), encounter: null, recentRolls: [], storySummary: "" }, [])[0].content;
+  assert.match(text, /Dragon Ancestor: Green \(poison damage\)/);
+});
+
 await test("Potent Cantrip: a save against the evoker's cantrip still takes half", async () => {
   const evoker = caster("wizard", "int", [], ["Acid Splash"], 6, { subclass: "School of Evocation", features: [{ name: "Potent Cantrip", source: "class", level: 6 }] });
   const { world, sheets: [wizard], enemies: [goblin] } = await table([evoker]);

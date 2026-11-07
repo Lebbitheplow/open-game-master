@@ -151,6 +151,13 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
     spends: [{ name: "Otherworldly Wings", action: "bonus", does: { kind: "buff", condition: "otherworldly wings", rounds: 14400 } }],
     effects: [{ kind: "move", fly: 30, gate: { condition: "otherworldly wings" } }],
   },
+  // Dragon Wings' flight while the wings are out (src/lib/dm/draconic-spends.ts
+  // lays "dragon wings"), so the sheet shows the flying speed then and only
+  // then. The card that brings them out is class-resources.ts's.
+  "sorcerer::Dragon Wings": {
+    subclass: "Draconic Bloodline",
+    effects: [{ kind: "move", fly: "walk", gate: { condition: "dragon wings" } }],
+  },
   "sorcerer::Hound of Ill Omen": {
     subclass: "Shadow Magic",
     spends: [
