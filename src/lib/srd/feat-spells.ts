@@ -350,7 +350,9 @@ export function featSpellGrants(input: FeatSpellInput): FeatSpellVerdict {
   return { grants, problems, ...(owedPicks.length ? { owed: owedPicks } : {}) };
 }
 
-const capital = (value: string) => value.replace(/(^|\s|')([a-z])/g, (_, before, letter) => `${before}${letter.toUpperCase()}`);
+// Each word's first letter, not the one after a possessive's apostrophe
+// ("Tasha's", never "Tasha'S").
+const capital = (value: string) => value.replace(/(^|\s)(['‘]?)([a-z])/g, (_, before, quote, letter) => `${before}${quote}${letter.toUpperCase()}`);
 
 // ---- the free cast, as a feature and a counter ----
 

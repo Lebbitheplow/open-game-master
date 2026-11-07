@@ -101,7 +101,8 @@ const languageName = (words: string) => {
   const wanted = words.trim().toLowerCase();
   return (
     STANDARD_LANGUAGES.find((entry) => textKey(entry) === textKey(words)) ??
-    wanted.replace(/(^|\s|')([a-z])/g, (_, before, letter) => `${before}${letter.toUpperCase()}`)
+    // Each word's first letter, not the one after a possessive's apostrophe.
+    wanted.replace(/(^|\s)(['‘]?)([a-z])/g, (_, before, quote, letter) => `${before}${quote}${letter.toUpperCase()}`)
   );
 };
 
