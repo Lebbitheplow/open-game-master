@@ -2528,7 +2528,7 @@
     "lib/content/species-variants.ts#whole": [["key",4,"a species option by its id"]],
     "lib/dm/arc-logic.ts#helper": [["search",2,"a planner's fight step that names the act's boss, as whole words either way (bossFoughtLast): a miss leaves the step where the planner put it"]],
     "lib/dm/action-walk.ts#whole": [["identity",1,"the creature a Dash goes toward, a board token by whole name"]],
-    "lib/dm/conversation-logic.ts#partial": [["key",2,"a companion's sheet id and a player's character id"]],
+    "lib/dm/conversation-logic.ts#partial": [["key",3,"a companion's sheet id, checked for who speaks and for who is no player's own character, and a player's character id"]],
     "lib/srd/legality/species-variant.ts#partial": [["key",3,"the skill ids, tools and languages an option given up, or changed since, granted, by lower case and textKey"]],
     "lib/srd/legality/older-builder.ts#first": [["key",1,"the first stored racial cantrip, by position: the one the older builder shows and sends back"]],
     "lib/srd/legality/older-builder.ts#whole-single": [["identity",2,"an edit's stored character on the same species, by textKey of its whole name"]],
