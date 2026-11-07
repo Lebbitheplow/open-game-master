@@ -48,6 +48,9 @@ function readOption(raw: Data): SubclassChoiceOption {
   };
 }
 
+// The search a species spell row makes too (SpeciesSpellFields.tsx).
+const SRD_SPELLS = { srd: "1" };
+
 // The option's spells by the class level they arrive at, picked from the
 // SRD's and the author's own (ContentPick), as the subclass's own are.
 function OptionSpells({ option, put }: { option: Data; put: (spells: Record<string, string[]> | undefined) => void }) {
@@ -92,6 +95,10 @@ function OptionSpells({ option, put }: { option: Data; put: (spells: Record<stri
         {atLevel.length < L.spellsPerLevel && !levelsFull ? (
           <ContentPick
             kind="spells"
+            // With no content pack the bundled SRD's spells answer too
+            // (srd=1, issue #833), so a bare server offers them here as it
+            // does for the subclass's own spells just above.
+            extraParams={SRD_SPELLS}
             label="Find a spell this option always has prepared"
             placeholder="Add a spell..."
             className="min-w-48 flex-1"

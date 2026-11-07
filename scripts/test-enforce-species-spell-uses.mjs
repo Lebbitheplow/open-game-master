@@ -320,4 +320,13 @@ await test("the species' spell picker asks for the SRD's spells, which a server 
   assert.ok((body.results ?? []).some((row) => row.name === "Mage Hand"), `no Mage Hand among ${JSON.stringify((body.results ?? []).map((row) => row.name))}`);
 });
 
+
+// A workshop subclass choice's option spells (PR #840) sit right below the
+// subclass's own spell picker, which offers the SRD's spells with no pack
+// (PR #839): the option's picker asks for them too (issue #833).
+await test("a workshop subclass choice option's spell picker asks for the SRD's spells as well", () => {
+  const source = fs.readFileSync(new URL("../src/app/workshop/homebrew/SubclassChoiceFields.tsx", import.meta.url), "utf8");
+  assert.match(source, /const SRD_SPELLS = \{ srd: "1" \};[\s\S]*kind="spells"[\s\S]*extraParams=\{SRD_SPELLS\}/);
+});
+
 finish();
