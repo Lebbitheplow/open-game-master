@@ -69,6 +69,7 @@ export default {
       const older = await openSheet(t);
       const text = (await older.textContent()) ?? "";
       check(/Dragon Ancestor: 1 to choose/.test(text), "an older host's sheet still lists the dragon as owed");
+      check(/Made when a level-up offers the choice\./.test(text), "an older host's sheet says the dragon waits for a level-up that offers it");
       check((await older.getByRole("group", { name: /Dragon Ancestor/ }).count()) === 0, "an older host's sheet offers no picker it cannot save");
       await page.unroute("**/api/capabilities**");
     }
@@ -78,7 +79,11 @@ export default {
     const group = sheet.getByRole("group", { name: /Dragon Ancestor/ });
     await eventually(() => group.count(), { label: "the owed Dragon Ancestor picker" });
     await group.scrollIntoViewIfNeeded();
-    check(/Dragon Ancestor: 1 to choose/.test((await sheet.textContent()) ?? ""), "the sheet lists the dragon as owed");
+    const owedText = (await sheet.textContent()) ?? "";
+    check(/Dragon Ancestor: 1 to choose/.test(owedText), "the sheet lists the dragon as owed");
+    // The class's own skills wait for the level-up; the dragon is made here.
+    check(/Dragon Ancestor: 1 to choose\. Made below, now, without waiting for a level-up\./.test(owedText), "the sheet says the dragon is made right there");
+    check(!/Dragon Ancestor[^.]*\. The next level-up takes/.test(owedText), "nothing on the sheet says a level-up takes the pick it offers");
     await t.shot("owed");
     const gold = group.getByRole("button", { name: "Gold", exact: true });
     await t.tap(gold);

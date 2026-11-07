@@ -584,9 +584,6 @@ export function CharacterSheetDialog({
 
           {owedChoices(sheet).length ? (
             <SheetBlock className="mt-4" title="Choices owed">
-              <p className="text-sm text-amber-200/90">
-                Earned and not yet made: {owedChoices(sheet).join("; ")}. The next level-up takes them.
-              </p>
               <OwedPicks sheet={sheet} mine={mine} />
             </SheetBlock>
           ) : null}

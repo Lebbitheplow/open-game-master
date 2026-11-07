@@ -67,6 +67,43 @@ await test("A Draconic sorcerer with no dragon owes the pick, at 6th level, as t
   assert.ok(owed.some((line) => /Dragon Ancestor/.test(line)), `the join confirmation: ${owed.join(" | ")}`);
 });
 
+await test("Choices owed says where each is made: the next level-up takes the class's own, a class feature's pick is made on the sheet; the join confirmation says the same.", async () => {
+  const { owedChoiceGroups, owedChoicesSentences, joinOwedNote, joinOwedLeft } = await import("../src/lib/srd/owed-choices.ts");
+  // A Draconic sorcerer 6 with no dragon and none of the class's skills.
+  const both = sheetOf({
+    class: "sorcerer",
+    subclass: "Draconic Bloodline",
+    level: 6,
+    features: [{ name: "Metamagic: Quickened Spell", source: "choice" }, { name: "Metamagic: Twinned Spell", source: "choice" }],
+  });
+  const groups = owedChoiceGroups(both);
+  assert.ok(groups.levelUp.some((line) => /Sorcerer skills/.test(line)), groups.levelUp.join(" | "));
+  assert.ok(!groups.levelUp.some((line) => /Dragon Ancestor/.test(line)), "the dragon is no level-up's");
+  assert.deepEqual(groups.onSheet, ["Dragon Ancestor: 1 to choose"]);
+  const [forLevelUp, forSheet] = owedChoicesSentences(groups, "here");
+  assert.match(forLevelUp, /Sorcerer skills\. The next level-up takes them\.$/);
+  assert.doesNotMatch(forLevelUp, /Dragon Ancestor/);
+  assert.equal(forSheet, "A class feature's picks, also owed: Dragon Ancestor: 1 to choose. Made below, now, without waiting for a level-up.");
+  // The screenshot's case: only the dragon owed, on the player's own sheet.
+  const onlyDragon = { levelUp: [], onSheet: groups.onSheet };
+  assert.deepEqual(owedChoicesSentences(onlyDragon, "here"), ["Earned and not yet made: Dragon Ancestor: 1 to choose. Made below, now, without waiting for a level-up."]);
+  assert.ok(!owedChoicesSentences(onlyDragon, "here").some((line) => /level-up takes/.test(line)), "nothing says a level-up takes a pick made here");
+  assert.match(owedChoicesSentences(onlyDragon, "owner")[0], /Made on the player's own sheet, without waiting for a level-up\./);
+  assert.match(owedChoicesSentences(onlyDragon, "level-up")[0], /Made when a level-up offers the choice\.$/);
+  // The join confirmation.
+  const { owed, owedOnSheet } = joinChanges(both, 6, both, 6);
+  assert.deepEqual(owedOnSheet, ["Dragon Ancestor: 1 to choose"]);
+  const note = joinOwedNote("Ysolde", owed, owedOnSheet);
+  assert.match(note, /The first level-up at this table offers \d Sorcerer skills\. The rest \(Dragon Ancestor: 1 to choose\) are made on the character sheet under Choices owed once seated/);
+  assert.doesNotMatch(note, /offers every one/);
+  assert.match(joinOwedNote("Ysolde", ["Dragon Ancestor: 1 to choose"], ["Dragon Ancestor: 1 to choose"]), /Once seated, they are made on the character sheet under Choices owed, without waiting for a level-up/);
+  assert.match(joinOwedNote("Ysolde", ["1 Ability Score Improvement"]), /offers every one/, "an older host's list stays the level-up's");
+  assert.deepEqual(joinOwedLeft(owed, owedOnSheet), [
+    `Left for the first level-up: ${groups.levelUp.join("; ")}.`,
+    "Made on the character sheet once seated: Dragon Ancestor: 1 to choose.",
+  ]);
+});
+
 await test("Every pick-list is owed the same way: a warlock's invocations, a fighter's style, a ranger's enemy, a Land druid's terrain.", () => {
   const lines = (sheet) => owedPickLines(sheet).join(" | ");
   assert.match(lines(sheetOf({ class: "warlock", subclass: "The Fiend", level: 2 })), /Eldritch Invocation: 2 to choose/);

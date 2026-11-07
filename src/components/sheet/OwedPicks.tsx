@@ -8,6 +8,7 @@ import { STANDARD_LANGUAGES } from "@/lib/content/mechanics";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { fightingStyleFeatureName } from "@/lib/srd/feature-effects";
 import { optionCost, optionFeatureName, remainingWords, slotTakes, type OptionSlot } from "@/lib/srd/options";
+import { owedChoiceGroups, owedChoicesSentences } from "@/lib/srd/owed-choices";
 import { owedPickSlots } from "@/lib/srd/owed-picks-logic";
 import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 import { textKey } from "@/lib/language/text-logic";
@@ -20,15 +21,31 @@ import { textKey } from "@/lib/language/text-logic";
 // "Keep" to save it through POST /sheet/owed, which holds it to the slots
 // the classes give (src/lib/srd/owed-picks-logic.ts). An older host has no
 // such route: the sheet then only lists what is owed.
+// The block's words come first, each true for what it lists: the next
+// level-up takes the class's own choices, and a class feature's picks are
+// made here, on the player's own sheet, or at a level-up that offers them
+// on a host without the route (owed-choices.ts owedChoicesSentences).
 export function OwedPicks({ sheet, mine }: { sheet: CharacterSheet; mine: boolean }) {
   const offered = hostOffers(useCapabilities(), "owedPicks");
   const owed = owedPickSlots(sheet);
-  if (!mine || !offered || (!owed.options.length && !owed.styles.count && !owed.training.length)) {
-    return null;
-  }
+  const where = !mine ? "owner" : offered ? "here" : "level-up";
+  const sentences = owedChoicesSentences(owedChoiceGroups(sheet), where);
+  const pickers = where === "here" && (owed.options.length > 0 || owed.styles.count > 0 || owed.training.length > 0);
+  return (
+    <>
+      {sentences.map((line) => (
+        <p key={line} className="text-sm text-amber-200/90">
+          {line}
+        </p>
+      ))}
+      {pickers ? <OwedPickers sheet={sheet} owed={owed} /> : null}
+    </>
+  );
+}
+
+function OwedPickers({ sheet, owed }: { sheet: CharacterSheet; owed: ReturnType<typeof owedPickSlots> }) {
   return (
     <div className="reveal mt-3 space-y-3">
-      <p className="text-xs text-stone-400">These picks can be made now, without waiting for a level-up:</p>
       {owed.options.map((slot) => (
         <SlotPicker key={slot.kind} sheet={sheet} slot={slot} />
       ))}
