@@ -1,8 +1,8 @@
 // A condition held by its source's presence, with no count of rounds: it ends
 // when that source is down, dead or incapacitated, or more than `leashFeet`
-// from the creature holding it. Champion Challenge (Oath of the Crown): the
-// effect ends on a creature "if you are incapacitated or die or if the creature
-// is more than 30 feet away from you".
+// from the creature holding it. Champion Challenge (Oath of the Crown) lets a
+// creature go once the paladin is incapacitated or dead, or once it stands
+// more than 30 feet from them (the subclass table's own wording, subclasses.json).
 //
 // Checked as every turn ends (src/lib/dm/turn-end.ts endTurns), so a creature
 // carried past the distance mid-turn is let go at that turn's end.
