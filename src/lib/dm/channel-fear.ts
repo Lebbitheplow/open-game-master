@@ -12,6 +12,7 @@ import { seesOnBoard, withinFeet } from "@/lib/dm/authored-saves";
 import type { ConditionMeta } from "@/lib/dm/condition-logic";
 import { layEnemyConditionInstance } from "@/lib/dm/enemy-condition-lay";
 import { rollEnemySave } from "@/lib/dm/forced-save";
+import { chosenTargets } from "@/lib/dm/chosen-targets";
 import { conditionImmunity } from "@/lib/dm/set-condition";
 import { foesOfSheet, resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { swallowCoverBetween } from "@/lib/dm/swallow";
@@ -29,6 +30,9 @@ type FearOption = {
   rangeFt: number;
   // Aimed at one creature, which the call names.
   single?: boolean;
+  // The creatures of the user's choice in reach (Dreadful Aspect), named in
+  // targetEnemyIds; every one when none is named.
+  chosen?: boolean;
   // A save at the end of each of its turns ends it (Conquering Presence).
   repeats?: boolean;
   // Abjure Enemy: frightened and speed 0, or half speed on a success; either
@@ -39,7 +43,7 @@ type FearOption = {
 
 export const CHANNEL_FEAR: FearOption[] = [
   { name: "Conquering Presence", rangeFt: 30, repeats: true },
-  { name: "Dreadful Aspect", rangeFt: 30 },
+  { name: "Dreadful Aspect", rangeFt: 30, chosen: true },
   { name: "Abjure Enemy", rangeFt: 60, single: true, abjures: true },
 ];
 
@@ -56,12 +60,16 @@ export function channelFear(
   sheet: CharacterSheet,
   option: FearOption,
   targetEnemyId: string | undefined,
+  targetEnemyIds?: string[],
 ): ToolError | { result: Record<string, unknown> } {
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter) {
     return { error: `${option.name} needs creatures to frighten: start the encounter first. Channel Divinity was not spent.`, retry: true };
   }
   let targets: EncounterEnemy[];
+  if (option.single && targetEnemyIds?.length) {
+    return { error: `${option.name} is aimed at one creature: pass targetEnemyId, not targetEnemyIds. Channel Divinity was not spent.`, retry: true };
+  }
   if (option.single) {
     const named = targetEnemyId ? resolveTargetFoe(campaign.id, encounter, targetEnemyId) : null;
     if (!named || named.status !== "alive" || named.currentHp <= 0 || named.id === sheet.id) {
@@ -78,6 +86,13 @@ export function channelFear(
   targets = targets.filter((enemy) => seesOnBoard(encounter.id, sheet.id, enemy.id) && !swallowCoverBetween(sheet.id, enemy.id));
   if (!targets.length) {
     return { error: `Nothing ${option.name} affects is within ${option.rangeFt} feet of ${sheet.name}; Channel Divinity was not spent.`, refused: "rules" };
+  }
+  if (!option.single) {
+    const chosen = chosenTargets(option.name, Boolean(option.chosen), targets, { targetEnemyIds, targetEnemyId }, (ref) => resolveTargetFoe(campaign.id, encounter, ref)?.id ?? null);
+    if ("error" in chosen) {
+      return chosen;
+    }
+    targets = chosen;
   }
   const derived = computeSheetDerived(sheet);
   const dc = derived.spellSaveDc ?? 8 + derived.proficiencyBonus + derived.abilityMods.cha;

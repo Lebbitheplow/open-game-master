@@ -15,6 +15,7 @@ import { resourceDef, resourceName, type ResourceDef } from "@/lib/srd/class-res
 import type { SpendAction } from "@/lib/srd/authored-effects-types";
 import { holdsFeature } from "@/lib/srd/trait-rules";
 import {
+  CHOSEN_CREATURES,
   costGate,
   gated,
   primaryClass,
@@ -41,6 +42,8 @@ function targetOf(does: SpendDoes): HandTarget {
     return does.target === "enemy" || does.quarry ? "enemy" : does.target === "ally" ? "ally" : "self";
   }
   if (does.kind === "save_effect" || does.kind === "insight_contest" || does.kind === "die_damage") return "enemy";
+  // The creatures of the player's choice: aimed at one, the others added.
+  if (does.kind === "save_area" && does.chosen) return "enemy";
   return "none";
 }
 
@@ -167,6 +170,7 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
       id: `${counter ? `feature:${counter.id}` : `feature:authored:${textKey(spend.name).replace(/\s+/g, "-")}`}${aim.variant && aims.length > 1 ? `:${aim.variant}` : ""}`,
       type: aim.heals ? "mend" : does.kind === "save_effect" || does.kind === "save_area" ? (lines.condition ? "control" : "spell") : does.kind === "buff" ? "ward" : "feature",
       name: aim.label && aims.length > 1 ? `${spend.name} (${aim.label})` : spend.name,
+      ...(does.kind === "save_area" && does.chosen ? { shares: CHOSEN_CREATURES } : {}),
       cost,
       range: aim.target === "self" || aim.target === "none" ? "Self" : "",
       // A reaction's fire is the whole of it, not a rider's extra damage.

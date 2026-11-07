@@ -61,6 +61,7 @@ export const AUTHORED_DATA_CHANNEL: Record<string, AuthoredEntry> = {
           condition: "charmed",
           untilNextTurnEnds: true,
           endsOnDamage: true,
+          chosen: true,
           onFail: "can be made to drop what it is holding",
         },
       },
@@ -108,7 +109,7 @@ export const AUTHORED_DATA_CHANNEL: Record<string, AuthoredEntry> = {
         // Creatures the paladin can see. No count of rounds: it ends when the
         // paladin is incapacitated or dies, or the creature is more than 30 feet
         // away (SCAG, Oath of the Crown).
-        does: { kind: "save_area", save: "wis", dcAbility: "spell", rangeFt: 30, condition: "champion challenge", leashFeet: 30, sight: true },
+        does: { kind: "save_area", save: "wis", dcAbility: "spell", rangeFt: 30, condition: "champion challenge", leashFeet: 30, sight: true, chosen: true },
       },
     ],
   },

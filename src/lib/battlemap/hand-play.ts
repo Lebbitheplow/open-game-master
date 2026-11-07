@@ -326,7 +326,10 @@ export function composeSentence(
     return `I cast ${intent.spell}${ring}${picked ? ` (${picked})` : ""}${where}${laid}${how}${slot}.`;
   }
   if (intent.card === "feature") {
-    const where = !who || aim?.kind === "self" ? "" : ` on ${who}`;
+    // The creatures of the player's choice, every one named (CHOSEN_CREATURES).
+    const shared = shareList(card, aim, choices);
+    const chosen = shared.length > 1 ? sharePhrase(card, shared) : who;
+    const where = !chosen || aim?.kind === "self" ? "" : ` on ${chosen}`;
     const how = card.cost === "bonus" ? " as a bonus action" : "";
     // A pool is spent by amount; the blank is where the player says how much.
     const picked = chosenLabel(card, choices);

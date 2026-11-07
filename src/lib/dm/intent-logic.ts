@@ -402,7 +402,9 @@ function what(intent: MessageIntent): string {
     case "spell":
       return `${intent.spell ?? "a spell"}${isStoredCast(intent) ? ` out of ${intent.item}, at level ${intent.slotLevel ?? "its stored level"} with no slot` : intent.slotLevel ? ` from a level ${intent.slotLevel} slot` : ""}${intent.shares && intent.shares.length > 1 ? sharedTargets(intent) : target(intent)}`;
     case "feature":
-      return `the feature ${intent.resourceId ?? ""}${target(intent)}`.trim();
+      return intent.targetKind === "enemy" && intent.shares?.length
+        ? `the feature ${intent.resourceId ?? ""} on the creatures they choose, and no others: ${intent.shares!.map((share) => `${share.name ?? share.id} (enemyId=${share.id})`).join(", ")}`
+        : `the feature ${intent.resourceId ?? ""}${target(intent)}`.trim();
     case "basic":
       if (intent.action === "stabilize") {
         return `stabilizing ${intent.targetName ?? "a dying ally"}${intent.targetId ? ` (stabilize characterId=${intent.targetId}, the actor as healerId)` : ""}`;
@@ -492,6 +494,12 @@ export function directCardCalls(intent: MessageIntent, characterId: string, cont
     }
     const cast = directCardCalls({ ...intent, item: undefined }, characterId, context);
     return cast ? [draw, ...cast] : null;
+  }
+  // The creatures of the player's choice for an area feature: one use_resource
+  // naming them all, the aimed one alone when no other was added.
+  if (intent.card === "feature" && intent.targetKind === "enemy" && intent.shares?.length) {
+    const call = directCardCall({ ...intent, shares: undefined }, characterId, context);
+    return call ? [{ ...call, args: { ...call.args, targetEnemyIds: intent.shares!.map((share) => share.id) } }] : null;
   }
   const shares = intent.card === "spell" && intent.spell && context.shareKind ? intent.shares ?? [] : [];
   if (!shares.length) {
