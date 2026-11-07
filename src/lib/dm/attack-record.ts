@@ -1,0 +1,195 @@
+// One player attack, written down once it is paid for: everything the rules
+// read after the dice are thrown. Both dice paths resolve the attack from this
+// record through the same stages (attack-swing.ts, attack-blow.ts). The
+// server's dice resolve it at once; real dice store it on the parked roll and
+// resolve it as each roll lands (pc-attack-parked.ts). A rule reads the record,
+// never the plan, so it reaches both paths or neither.
+
+import type { PendingAttack } from "@/lib/db/dm-turns";
+import type { Advantage } from "@/lib/dice";
+import { enemyAcWithEffects } from "@/lib/dm/ac-effects";
+import { attackerUnseen } from "@/lib/dm/enemy-reactions";
+import { critDamageExpression } from "@/lib/dm/encounter-logic";
+import { gearCritRiders } from "@/lib/dm/gear-attack";
+import { markCritRange } from "@/lib/dm/attack-marks";
+import { blowSource, liveTypedRiders, strikesAsMagic } from "@/lib/dm/pc-attack-damage";
+import type { AttackPlan } from "@/lib/dm/pc-attack-plan";
+import type { AttackKind } from "@/lib/dm/pc-attack-profile";
+import type { OnHitSpends } from "@/lib/dm/pc-attack-riders";
+import type { HeldMote } from "@/lib/dm/authored-mote";
+import type { BlowSource, WeaponMaterial } from "@/lib/dm/damage-logic";
+import { getFoe } from "@/lib/dm/sheet-foe";
+import type { TypedRider } from "@/lib/dm/damage-parts";
+import type { CreatureOnHit } from "@/lib/srd/creature-attacks";
+import type { GearWeapon } from "@/lib/srd/gear-weapons";
+import { damageTypeFeat, poisonerIgnoresResistance, type DamageTypeFeat } from "@/lib/srd/feat-combat";
+
+// The damage roll a hit or a graze asks for, decided once the d20 is known
+// (attack-swing.ts askDamage). The server throws it at once; real dice park it
+// on the damage roll's record, and attack-blow.ts lands it either way.
+export type DamageAsk = {
+  expression: string;
+  // The dice riding the blow under a type of their own (damage-parts.ts).
+  riders: TypedRider[];
+  crit: boolean;
+  // Stunning Sniper: the critical stuns instead of doubling.
+  stunShot: boolean;
+  // A spell's half damage on a miss (Acid Arrow): half the total lands.
+  half?: boolean;
+  // The once-a-turn feats that change the dice, already spent: the server
+  // rolls them, a player is told how to (attack-blow.ts damageDiceNote).
+  feats: { brutal?: boolean; savage?: boolean; piercer?: boolean };
+  rerollBelow: number;
+  // Paid on the hit, resolved once the blow has landed.
+  stunDc?: number;
+  maneuver?: boolean;
+  // A natural 20's magic weapon dice rode the damage (Sentinel at Death's Door
+  // reads no normal figure past them).
+  critGear?: boolean;
+};
+
+// A Battle Master maneuver's rider save, with the DC the hit is made at.
+export type ManeuverRider = { name: string; condition: string; save: "str" | "wis"; dc: number };
+
+// A record written before these fields existed (a roll parked by an older
+// build) lacks them; every reader defaults it to what the old real-dice
+// path did.
+export type AttackRecord = PendingAttack & {
+  attackerId?: string;
+  kind?: AttackKind;
+  weaponAttack?: boolean;
+  // The weapon is a ranged one (bow, thrown dart).
+  ranged?: boolean;
+  // Made within reach: what a monster's Parry answers (enemy-reactions.ts).
+  melee?: boolean;
+  unarmed?: boolean;
+  improvised?: boolean;
+  // The weapon's catalog name, for Curving Shot's arrows.
+  base?: string;
+  special?: "net" | "lance";
+  gearWeapon?: GearWeapon;
+  material?: WeaponMaterial;
+  blow?: BlowSource;
+  // Elemental Adept or Poisoner: the target's resistance to the type is ignored.
+  ignoreResistanceBy?: string;
+  mageSlayer?: boolean;
+  nonlethal?: boolean;
+  onHit?: OnHitSpends;
+  // A creature cannot Parry an attacker it could not see. Read when the attack
+  // is made: the attack itself can end hiding.
+  attackerUnseen?: boolean;
+  // The creature's AC, without cover, when the attack was made (recordTargetAc).
+  plainAc?: number;
+  hitSpent?: string[];
+  hitClaims?: string[];
+  spell?: string;
+  stunShot?: boolean;
+  maneuver?: ManeuverRider;
+  typeFeat?: DamageTypeFeat;
+  // The round of the attacker's own turn the attack was made on; absent for a
+  // reaction, which opens nothing a turn's attack does.
+  round?: number;
+  advantage?: Advantage;
+  // What the engine said of the attack before the roll (advantage, Sneak Attack).
+  notes?: string[];
+  mote?: HeldMote;
+  critGear?: { suffix: string; typed: Array<{ dice: string; type: string }>; notes: string[] };
+  extras?: {
+    foeSlayer?: number;
+    strokeOfLuck?: boolean;
+    openHand?: { choice: "prone" | "push" | "no reactions"; dc: number };
+    hurl?: boolean;
+    poison?: boolean;
+    tempHp?: { amount: number; feature: string };
+    creature?: CreatureOnHit;
+  };
+  // The damage roll's record only: the roll it asks for, and the to-hit roll
+  // it follows (Sentinel at Death's Door and the reactions read its d20).
+  damage?: DamageAsk;
+  toHitRollId?: string;
+  // The graze's damage roll: half of it lands (turn.ts pendingRollAnswer).
+  halfOnMiss?: boolean;
+  // Written by older builds: Savage Attacker spent when the roll parked.
+  savageAttacker?: boolean;
+  // Written by an older build of #820, never shipped.
+  blowRound?: number;
+};
+
+export function attackRecord(plan: AttackPlan, strike: { critExtraDice: number; critOptions: { powerfulCritical: boolean; multiplyNumeric: boolean }; rerollBelow: number; hasOnHit: boolean; onHitSpends: OnHitSpends }, mote: HeldMote | null): AttackRecord {
+  const { campaign, sheet, enemy, profile, riders, context, extras } = plan;
+  const typeFeat = plan.weaponAttack ? damageTypeFeat(sheet, profile.damageType) : null;
+  // Piercer: a piercing critical hit rolls one more of the weapon's dice.
+  const critExtraDice = strike.critExtraDice + (typeFeat === "Piercer" ? 1 : 0);
+  const critRange = Math.min(plan.weaponAttack ? riders.critRange : 20, markCritRange(plan.marks.applies));
+  const critGear = gearCritRiders(profile, enemy.stats.type);
+  const typedRiders = liveTypedRiders(plan.typedRiders, plan.droppedRiders);
+  const ignoreBy = plan.elementalAdept ? "Elemental Adept" : poisonerIgnoresResistance(sheet, profile.damageType) ? "Poisoner" : null;
+  const blow = blowSource(plan);
+  const rider = plan.maneuver && !plan.maneuver.precision ? plan.maneuver.rider : null;
+  const kept = {
+    ...(extras.foeSlayer > 0 ? { foeSlayer: extras.foeSlayer } : {}),
+    ...(extras.strokeOfLuck ? { strokeOfLuck: true } : {}),
+    ...(extras.openHand ? { openHand: extras.openHand } : {}),
+    ...(extras.hurl ? { hurl: true } : {}),
+    ...(extras.poison ? { poison: true } : {}),
+    ...(extras.tempHp ? { tempHp: extras.tempHp } : {}),
+    ...(profile.creatureOnHit ? { creature: profile.creatureOnHit } : {}),
+  };
+  return {
+    attacker: sheet.name,
+    attackerId: sheet.id,
+    weapon: profile.weapon,
+    targetEnemyId: enemy.id,
+    targetAc: plan.effectiveAc,
+    plainAc: enemyAcWithEffects(campaign.id, enemy),
+    damageExpression: profile.damageExpression,
+    critDamageExpression: critDamageExpression(profile.damageExpression, critExtraDice, strike.critOptions),
+    damageType: profile.damageType,
+    kind: plan.kind,
+    weaponAttack: plan.weaponAttack,
+    ranged: profile.ranged,
+    melee: !plan.atRange,
+    magical: strikesAsMagic(plan),
+    advantage: plan.advantage,
+    ...(profile.unarmed ? { unarmed: true } : {}),
+    ...(profile.improvised ? { improvised: true } : {}),
+    ...(profile.base ? { base: profile.base } : {}),
+    ...(plan.special ? { special: plan.special } : {}),
+    ...(profile.gearWeapon ? { gearWeapon: profile.gearWeapon } : {}),
+    ...(profile.material ? { material: profile.material } : {}),
+    ...(blow.spell || blow.goodWielder ? { blow } : {}),
+    ...(ignoreBy ? { ignoreResistanceBy: ignoreBy } : {}),
+    ...(plan.mageSlayer ? { mageSlayer: true } : {}),
+    ...(plan.options.nonlethal ? { nonlethal: true } : {}),
+    ...(attackerUnseen(sheet.conditions, enemy.conditions, plan.sight) ? { attackerUnseen: true } : {}),
+    ...(typedRiders.length ? { riders: typedRiders } : {}),
+    ...(critExtraDice ? { critExtraDice } : {}),
+    ...(context.autoCrit ? { autoCrit: true } : {}),
+    ...(critRange < 20 ? { critRange } : {}),
+    ...(strike.rerollBelow ? { rerollBelow: strike.rerollBelow } : {}),
+    ...(strike.hasOnHit ? { onHit: strike.onHitSpends } : {}),
+    ...(plan.hitSpent.length ? { hitSpent: plan.hitSpent } : {}),
+    ...(plan.hitClaims.length ? { hitClaims: plan.hitClaims } : {}),
+    ...(plan.kind === "spell" && plan.args.spell ? { spell: plan.args.spell } : {}),
+    ...(critGear.suffix ? { critGear } : {}),
+    ...(extras.stunShot ? { stunShot: true } : {}),
+    ...(rider && plan.maneuver
+      ? { maneuver: { name: plan.maneuver.name, ...rider, dc: 8 + plan.derived.proficiencyBonus + Math.max(plan.derived.abilityMods.str, plan.derived.abilityMods.dex) } }
+      : {}),
+    ...(typeFeat ? { typeFeat } : {}),
+    ...(plan.budget ? { round: plan.budget.round } : {}),
+    ...(context.notes.length ? { notes: [...context.notes] } : {}),
+    ...(mote ? { mote } : {}),
+    ...(Object.keys(kept).length ? { extras: kept } : {}),
+  };
+}
+
+// The AC a roll meets when it lands. An attack's parts are made together, so
+// the creature may have changed its AC since: a Shield an earlier part drew
+// stands against this one. What the AC held beyond the creature's own (cover)
+// is kept.
+export function recordTargetAc(campaignId: string, record: Pick<AttackRecord, "targetAc" | "targetEnemyId" | "plainAc">): number {
+  const { plainAc } = record;
+  const foe = record.targetEnemyId ? getFoe(record.targetEnemyId) : null;
+  return plainAc === undefined || !foe ? record.targetAc : record.targetAc - plainAc + enemyAcWithEffects(campaignId, foe);
+}

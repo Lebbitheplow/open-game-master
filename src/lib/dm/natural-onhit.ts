@@ -6,8 +6,8 @@
 // a pseudodragon's or a sprite's poison adds on a bad enough save; a
 // grapple held by the attacker at the block's escape DC; and every sentence
 // no engine models, named to the DM. Shared by pc_attack (a beast form, a
-// summoned creature, src/lib/dm/pc-attack-resolve.ts and its physical-dice
-// path) and pet_attack (src/lib/dm/pet-tools.ts).
+// summoned creature, src/lib/dm/attack-blow.ts on either dice path) and
+// pet_attack (src/lib/dm/pet-tools.ts).
 
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";

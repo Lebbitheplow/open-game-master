@@ -37,6 +37,7 @@ import { tilesBetween } from "@/lib/dm/attack-spatial";
 import { buildAttackProfile, type BuiltAttack } from "@/lib/dm/pc-attack-profile";
 import { pickManeuver, type OnHitSpends } from "@/lib/dm/pc-attack-riders";
 import type { ManeuverUse } from "@/lib/dm/maneuver-rules";
+import type { Sight } from "@/lib/dm/attack-light";
 import { attackGeometry, attackSituation } from "@/lib/dm/pc-attack-situation";
 import { missileDeflection, reachThroughProblem } from "@/lib/dm/zone-rules";
 import { planConjuredStrike, type ConjuredStrike } from "@/lib/dm/conjured-strike";
@@ -108,6 +109,8 @@ export type AttackPlan = {
   context: { advantage: Advantage; autoCrit: boolean; notes: string[] };
   helped: string | null;
   attackRiders: ConditionRollRiders;
+  // Who the light lets see whom (attack-light.ts): null off the board.
+  sight: Sight | null;
   maneuver: ManeuverPick | null;
   smite: OnHitSpends["smite"];
   // The feature options the attack carries (src/lib/dm/pc-attack-options.ts).
@@ -685,6 +688,7 @@ export function planPcAttack(input: {
     context,
     helped: situation.helped,
     attackRiders: situation.attackRiders,
+    sight: situation.sight,
     marks,
     // Skulker: a ranged attack from hiding gives them away only when it
     // hits (pc-attack.ts leaves the hiding in place for the roll).

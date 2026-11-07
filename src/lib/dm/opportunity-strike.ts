@@ -17,7 +17,7 @@ import { getFoe } from "@/lib/dm/sheet-foe";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { openLastHit } from "@/lib/dm/last-hit";
 import { hasSentinel } from "@/lib/srd/feat-combat";
-import { tryParry } from "@/lib/dm/enemy-reactions";
+import { attackerUnseen, tryParry } from "@/lib/dm/enemy-reactions";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { closeStandInTurn, openStandInTurn, type DmTurn } from "@/lib/db/dm-turns";
 import { patchEnemyConditions, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
@@ -186,7 +186,7 @@ export function pcOpportunitySwing(input: {
     critRange: riders.critRange,
   });
   // Parry: the creature's reaction lifts its AC against a melee hit (enemy-reactions.ts).
-  const parry = judged.hit && !judged.crit ? tryParry({ encounter, enemy, total: hitOutcome.total, natural20: false, ac: targetAc, melee: true, attackerUnseen: false }) : null;
+  const parry = judged.hit && !judged.crit ? tryParry({ encounter, enemy, total: hitOutcome.total, natural20: false, ac: targetAc, melee: true, attackerUnseen: attackerUnseen(sheet.conditions, enemy.conditions, sight) }) : null;
   const adjudicated = parry ? { ...judged, hit: false, crit: false } : judged;
   spendAttackCarriers(campaign, sheet, enemy, attackRiders.spent);
   // Relentless Avenger answers the hit (src/lib/dm/authored-reactions-more.ts).
