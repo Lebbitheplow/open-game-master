@@ -253,8 +253,9 @@ function whoSaid(
     return about && opensOnSomeoneElse(after, about, context.reading) ? null : about;
   }
   // The line opens its paragraph. An action after it in the same paragraph
-  // is the speaker's own ("Not tonight." Venn frowns.).
-  const beat = subjectOf(sentencesOf(after)[0]?.text ?? "", context.reading, false);
+  // is the speaker's own ("Not tonight." Venn frowns.). It opens a sentence,
+  // so "Old habits die hard." is nobody's beat, not Old Pike's.
+  const beat = subjectOf(sentencesOf(after)[0]?.text ?? "", context.reading, true);
   if (beat.kind === "name") {
     return beat.speaker;
   }

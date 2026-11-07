@@ -157,6 +157,8 @@ test("a line with someone else's name straight after it is nobody's, whoever the
   const old = new Set([...common, "old"]);
   assert.deepEqual(said('Marla scowls. "No." Old habits die hard.', cast, { common: old }), ["Marla: No."], "an adjective is not Old Pike");
   assert.deepEqual(said('Marla scowls. "No." Old Pike laughs.', cast, { common: old }), [], "his whole name still is");
+  assert.deepEqual(said('"No." Old habits die hard.', cast, { common: old }), [], "a line opening its paragraph is not Old Pike's either");
+  assert.deepEqual(said('"No." Old Pike laughs.', cast, { common: old }), ["Old Pike: No."], "while his own beat after it is");
 });
 
 test("a tag's pronoun is never the person the tag names as spoken to", () => {
