@@ -597,13 +597,25 @@ function pruneChoiceFeatures(
   const fitting = fittingFightingStyles(chosenFightingStyles(features), granted, undefined, false);
   const stylesHeld = new Set<string>();
   const perKind = new Map<string, number>();
-  return features.filter((feature) => {
+  // A workshop pick kept is written under its option's current name with
+  // its ids, so the author's rename reaches the sheet.
+  const workshopKept = new Set<SheetFeature>();
+  const resolved = features.flatMap((feature) => {
     if (feature.source !== "choice") {
-      return true;
+      return [feature];
     }
-    const workshop = subclassChoicePickKept(feature.name, classes, extras, choicesTaken);
-    if (workshop !== undefined) {
-      return workshop;
+    const workshop = subclassChoicePickKept(feature, classes, extras, choicesTaken);
+    if (workshop === undefined) {
+      return [feature];
+    }
+    if (workshop) {
+      workshopKept.add(workshop);
+    }
+    return workshop ? [workshop] : [];
+  });
+  return resolved.filter((feature) => {
+    if (feature.source !== "choice" || workshopKept.has(feature)) {
+      return true;
     }
     const option = findOptionByFeatureName(feature.name);
     if (option) {

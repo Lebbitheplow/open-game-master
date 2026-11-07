@@ -302,6 +302,10 @@ export const sheetFeatureSchema = z.object({
   // class. Set on regrant so level-scaled features (Sneak Attack, Martial
   // Arts) resolve against the granting class's level on multiclass sheets.
   classId: z.string().trim().max(60).optional(),
+  // A workshop subclass choice's pick ("Bloodline (Storm)") keeps the ids of
+  // its choice and option, "bloodline/storm", so a rename in the workshop
+  // keeps the pick (src/lib/content/subclass-choices.ts, issue #833).
+  optionId: z.string().trim().max(82).optional(),
 });
 export type SheetFeature = z.infer<typeof sheetFeatureSchema>;
 

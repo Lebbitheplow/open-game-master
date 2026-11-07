@@ -25,6 +25,7 @@ import type { BackgroundOption, ClassOption, RaceOption } from "./useBuilderOpti
 import type { BuilderDerived } from "./useBuilderDerived";
 import type { BuilderState, EquipmentItem } from "./useBuilderState";
 import { textKey } from "@/lib/language/text-logic";
+import { subclassPickFeatures } from "@/lib/srd/subclass-choice-picks";
 import { featChoice } from "@/lib/schemas/sheet";
 import { normalizeAttraction } from "@/lib/attraction";
 
@@ -607,6 +608,7 @@ function reconcileContextOf(input: SubmitInput, race: RaceOption | undefined): R
     background: input.background,
     level: input.derived.effectiveLevel,
     extras: input.derived.extras ?? [],
+    pickIds: input.state.pickIds,
   };
 }
 
@@ -715,7 +717,7 @@ export function buildBuilderResult(input: SubmitInput): BuilderResult {
       ? [
           // With the picks: a workshop subclass's choice brings its option's
           // spells (issue #833).
-          ...subclassSpellsFor(casterKlass.id, casterSubclass, casterLevel, undefined, picks.optionPicks.map((name) => ({ name }))),
+          ...subclassSpellsFor(casterKlass.id, casterSubclass, casterLevel, undefined, subclassPickFeatures(picks.optionPicks, state.pickIds)),
           ...(derived.spellGrants?.learned ?? []),
         ]
       : []
@@ -817,7 +819,9 @@ export function buildBuilderResult(input: SubmitInput): BuilderResult {
         // Invocations, maneuvers, metamagic and the rest ride along as
         // "choice" features, the same shape as a fighting style, so the
         // level-up regrant preserves them.
-        ...picks.optionPicks.map((optionName) => ({ name: optionName, source: "choice" as const })),
+        // A workshop subclass choice's pick carries the ids its stored copy
+        // keeps (issue #833 review).
+        ...subclassPickFeatures(picks.optionPicks, state.pickIds).map((pick) => ({ ...pick, source: "choice" as const })),
       ],
       asiChoices: resolvedAsiChoices,
       racialChoices: {

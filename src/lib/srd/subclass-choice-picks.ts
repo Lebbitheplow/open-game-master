@@ -5,18 +5,26 @@
 // extras (src/lib/srd/subclass-tables.ts): the server passes the table's own,
 // the browser reads what it registered.
 //
-// The pick is a "choice" feature, "Bloodline (Storm)". The regrant
-// (src/lib/srd/features.ts populateFeaturesForClasses) keeps one per choice
-// while the subclass offers it at the class's level, and writes the option's
-// damage type and resistances beside it as class features; the training
-// (src/lib/srd/subclass-training.ts) gives its skills and languages; the
-// subclass's spells (features.ts subclassSpellsFor) its spells. Pure.
+// The pick is a "choice" feature, "Bloodline (Storm)", holding the ids of
+// its choice and option (SheetFeature.optionId): it is found by those first,
+// so the author's rename of either keeps it, and by its name only before the
+// regrant has stamped them. The regrant (src/lib/srd/features.ts
+// populateFeaturesForClasses) keeps one per choice while the subclass offers
+// it at the class's level, writes it under the option's current name, and
+// writes the option's damage type and resistances beside it as class
+// features; the training (src/lib/srd/subclass-training.ts) gives its skills
+// and languages; the subclass's spells (features.ts subclassSpellsFor) its
+// spells. Only a "choice" feature is a pick: a story feature of the same
+// name, which a file may carry, grants nothing. Pure.
 
 import type { SheetFeature } from "@/lib/schemas/sheet";
 import { textKey } from "@/lib/language/text-logic";
 import {
+  parsePickOptionId,
   parseSubclassChoicePick,
+  pickOptionId,
   subclassChoiceFeatureNames,
+  subclassChoicePickName,
   subclassChoiceSpellsAt,
   subclassChoiceSummary,
   type SubclassChoice,
@@ -26,7 +34,9 @@ import { browserSubclassExtras, type ExtraSubclass, type SubclassExtras } from "
 import { subclassNamedBare, subclassNamedExactly } from "@/lib/srd/subclass-name";
 
 type Entry = { id: string; subclass?: string | null; level: number };
-type Named = ReadonlyArray<{ name: string }>;
+// A feature as the readers below take it.
+export type PickFeature = { name: string; source?: string; optionId?: string };
+type Picks = ReadonlyArray<PickFeature>;
 
 // The workshop or pack subclass a sheet's subclass string names, from the
 // extras given, else the browser's registered ones.
@@ -43,6 +53,7 @@ export type SubclassChoiceSlot = {
   classId: string;
   // The workshop subclass's own name.
   subclass: string;
+  choiceId: string;
   label: string;
   // The class level it is chosen at.
   level: number;
@@ -54,12 +65,30 @@ const sameLabel = (choice: SubclassChoice, label: string) => textKey(choice.labe
 const optionNamed = (choice: SubclassChoice, name: string) =>
   choice.options.find((option) => textKey(option.name) === textKey(name)) ?? null;
 
-// The option a sheet's features hold for a choice: the first "Label
-// (Option)" naming one it offers.
-function heldOption(choice: SubclassChoice, features: Named): SubclassChoiceOption | null {
+// The option of this choice a feature picks: by the ids it keeps, else by
+// its "Label (Option)" name. Undefined when it is no pick of this choice,
+// null when it picks one the choice no longer offers (deleted, or a name
+// it never offered).
+function optionOfPick(choice: SubclassChoice, feature: PickFeature): SubclassChoiceOption | null | undefined {
+  if (feature.source !== "choice") {
+    return undefined;
+  }
+  const ids = parsePickOptionId(feature.optionId);
+  if (ids) {
+    return ids.choice === choice.id ? (choice.options.find((option) => option.id === ids.option) ?? null) : undefined;
+  }
+  const parsed = parseSubclassChoicePick(feature.name);
+  if (!parsed || !sameLabel(choice, parsed.label)) {
+    return undefined;
+  }
+  return optionNamed(choice, parsed.option);
+}
+
+// The option a sheet's features hold for a choice: the first pick of it
+// that names one it offers.
+function heldOption(choice: SubclassChoice, features: Picks): SubclassChoiceOption | null {
   for (const feature of features) {
-    const parsed = parseSubclassChoicePick(feature.name);
-    const option = parsed && sameLabel(choice, parsed.label) ? optionNamed(choice, parsed.option) : null;
+    const option = optionOfPick(choice, feature);
     if (option) {
       return option;
     }
@@ -68,7 +97,7 @@ function heldOption(choice: SubclassChoice, features: Named): SubclassChoiceOpti
 }
 
 // Every workshop choice open at the classes' levels, with the option held.
-export function subclassChoiceSlots(classes: Entry[], features: Named, extras?: SubclassExtras): SubclassChoiceSlot[] {
+export function subclassChoiceSlots(classes: Entry[], features: Picks, extras?: SubclassExtras): SubclassChoiceSlot[] {
   const slots: SubclassChoiceSlot[] = [];
   for (const entry of classes) {
     const stored = (entry.subclass ?? "").trim();
@@ -78,6 +107,7 @@ export function subclassChoiceSlots(classes: Entry[], features: Named, extras?: 
         slots.push({
           classId: entry.id,
           subclass: extra!.name,
+          choiceId: choice.id,
           label: choice.label,
           level: choice.level,
           options: choice.options,
@@ -91,7 +121,7 @@ export function subclassChoiceSlots(classes: Entry[], features: Named, extras?: 
 
 // The class features the held options grant: their damage types and
 // resistances, tagged with the class that grants them.
-export function subclassChoiceGrantedFeatures(classes: Entry[], features: Named, extras?: SubclassExtras): SheetFeature[] {
+export function subclassChoiceGrantedFeatures(classes: Entry[], features: Picks, extras?: SubclassExtras): SheetFeature[] {
   return subclassChoiceSlots(classes, features, extras).flatMap((slot) =>
     slot.chosen
       ? subclassChoiceFeatureNames(slot.label, slot.chosen).map((name) => ({
@@ -104,78 +134,81 @@ export function subclassChoiceGrantedFeatures(classes: Entry[], features: Named,
   );
 }
 
+const asPick = (feature: PickFeature | string): PickFeature => (typeof feature === "string" ? { name: feature, source: "choice" } : feature);
+
 // Whether any subclass in the extras offers this pick.
-export function isSubclassChoicePick(name: string, extras?: SubclassExtras): boolean {
-  const parsed = parseSubclassChoicePick(name);
-  if (!parsed) {
-    return false;
-  }
+export function isSubclassChoicePick(feature: PickFeature | string, extras?: SubclassExtras): boolean {
+  const pick = asPick(feature);
   return Object.values(extras ?? browserSubclassExtras()).some((tables) =>
-    tables.some((table) => (table.choices ?? []).some((choice) => sameLabel(choice, parsed.label) && optionNamed(choice, parsed.option))),
+    tables.some((table) => (table.choices ?? []).some((choice) => Boolean(optionOfPick(choice, pick)))),
   );
 }
 
-// Whether the regrant keeps a "choice" feature as a workshop pick: true to
-// keep it (the first pick of a choice the class's subclass offers at its
-// level), false to drop it (a second pick, one made early, an option the
-// choice no longer offers, or a pick of a subclass the sheet no longer
-// holds), undefined when it is no workshop pick these extras know, so a path
-// that reads no extras leaves it as it is.
-export function subclassChoicePickKept(
-  name: string,
+// How the regrant keeps a "choice" feature that is a workshop pick: the
+// feature under its option's current name with its ids stamped (the first
+// pick of a choice the class's subclass offers at its level), null to drop
+// it (a second pick, one made early, an option the choice no longer
+// offers, or a pick of a subclass the sheet no longer holds), undefined
+// when it is no workshop pick these extras know, so a path that reads no
+// extras leaves it as it is.
+export function subclassChoicePickKept<T extends PickFeature>(
+  feature: T,
   classes: Entry[],
   extras: SubclassExtras | undefined,
   taken: Set<string>,
-): boolean | undefined {
-  const parsed = parseSubclassChoicePick(name);
-  if (!parsed) {
-    return undefined;
-  }
+): T | null | undefined {
   for (const entry of classes) {
     const stored = (entry.subclass ?? "").trim();
-    const choice = stored ? extraSubclassFor(entry.id, stored, extras)?.choices?.find((held) => sameLabel(held, parsed.label)) : undefined;
-    if (!choice) {
-      continue;
+    for (const choice of (stored ? extraSubclassFor(entry.id, stored, extras)?.choices : undefined) ?? []) {
+      const option = optionOfPick(choice, feature);
+      if (option === undefined) {
+        continue;
+      }
+      const key = `${entry.id}|${choice.id}`;
+      if (option === null || choice.level > entry.level || taken.has(key)) {
+        return null;
+      }
+      taken.add(key);
+      return { ...feature, name: subclassChoicePickName(choice.label, option), optionId: pickOptionId(choice, option) };
     }
-    const key = `${entry.id}|${textKey(choice.label)}`;
-    if (choice.level > entry.level || !optionNamed(choice, parsed.option) || taken.has(key)) {
-      return false;
-    }
-    taken.add(key);
-    return true;
   }
-  return isSubclassChoicePick(name, extras) ? false : undefined;
+  // A pick of a choice these extras know, on a sheet whose subclass no
+  // longer offers it, or of an option gone from it.
+  const known = Object.values(extras ?? browserSubclassExtras()).some((tables) =>
+    tables.some((table) => (table.choices ?? []).some((choice) => optionOfPick(choice, feature) !== undefined)),
+  );
+  return known ? null : undefined;
 }
 
 // Why the picks a request sends cannot be made, in plain words: an option
 // the choice does not offer, one chosen before its level, or two for one
-// choice. Empty when they can.
-export function subclassChoicePickProblems(sent: Named, classes: Entry[], extras?: SubclassExtras): string[] {
+// choice. Empty when they can. Only what the request makes is judged: a
+// stored pick gone stale (its option deleted) is the regrant's to drop and
+// never blocks a save or a level.
+export function subclassChoicePickProblems(sent: Picks, classes: Entry[], extras?: SubclassExtras): string[] {
   const problems: string[] = [];
   const made = new Map<string, string>();
   for (const feature of sent) {
-    const parsed = parseSubclassChoicePick(feature.name);
-    if (!parsed) {
+    if (feature.source !== "choice") {
       continue;
     }
     for (const entry of classes) {
       const stored = (entry.subclass ?? "").trim();
       const extra = stored ? extraSubclassFor(entry.id, stored, extras) : null;
-      const choice = extra?.choices?.find((held) => sameLabel(held, parsed.label));
+      const choice = (extra?.choices ?? []).find((held) => optionOfPick(held, feature) !== undefined);
       if (!extra || !choice) {
         continue;
       }
-      const option = optionNamed(choice, parsed.option);
+      const option = optionOfPick(choice, feature);
       if (!option) {
-        problems.push(
-          `"${parsed.option}" is not one of ${extra.name}'s ${choice.label} options; pick one of ${choice.options.map((entry) => entry.name).join(", ")}.`,
-        );
+        const named = parseSubclassChoicePick(feature.name)?.option ?? feature.name;
+        problems.push(`"${named}" is not one of ${extra.name}'s ${choice.label} options; pick one of ${choice.options.map((entry) => entry.name).join(", ")}.`);
       } else if (choice.level > entry.level) {
         problems.push(`${extra.name}'s ${choice.label} is chosen at class level ${choice.level}; this character is level ${entry.level} in that class.`);
       } else {
-        const key = `${entry.id}|${textKey(choice.label)}`;
+        const key = `${entry.id}|${choice.id}`;
         const before = made.get(key);
-        if (before && textKey(before) !== textKey(option.name)) {
+        if (before && before !== option.name) {
           problems.push(`${extra.name}'s ${choice.label} is one pick; ${before} and ${option.name} were both chosen.`);
         }
         made.set(key, before ?? option.name);
@@ -186,10 +219,12 @@ export function subclassChoicePickProblems(sent: Named, classes: Entry[], extras
   return problems;
 }
 
-// What the held options train the character in, one grant per pick: its
-// skills and languages, at the level the choice is made.
+// What the held options train the character in, one grant per choice,
+// named for it (its replacement picks are kept under that name): its skills
+// and languages, at the level the choice is made.
 export type SubclassChoiceTraining = {
   name: string;
+  choiceId: string;
   classId: string;
   subclass: string;
   level: number;
@@ -197,12 +232,13 @@ export type SubclassChoiceTraining = {
   languages: string[];
 };
 
-export function subclassChoiceTraining(classes: Entry[], features: Named, extras?: SubclassExtras): SubclassChoiceTraining[] {
+export function subclassChoiceTraining(classes: Entry[], features: Picks, extras?: SubclassExtras): SubclassChoiceTraining[] {
   return subclassChoiceSlots(classes, features, extras).flatMap((slot) =>
     slot.chosen && (slot.chosen.skills?.length || slot.chosen.languages?.length)
       ? [
           {
-            name: `${slot.label} (${slot.chosen.name})`,
+            name: slot.label,
+            choiceId: slot.choiceId,
             classId: slot.classId,
             subclass: slot.subclass,
             level: slot.level,
@@ -215,57 +251,42 @@ export function subclassChoiceTraining(classes: Entry[], features: Named, extras
 }
 
 // The spells the held options grant by a class level, always prepared.
-export function subclassChoiceSpells(classId: string, subclass: string, level: number, features: Named | undefined, extras?: SubclassExtras): string[] {
+export function subclassChoiceSpells(classId: string, subclass: string, level: number, features: Picks | undefined, extras?: SubclassExtras): string[] {
   return subclassChoiceSlots([{ id: classId, subclass, level }], features ?? [], extras).flatMap((slot) =>
     slot.chosen ? subclassChoiceSpellsAt(slot.chosen, level) : [],
   );
 }
 
-// The skills and languages a stored character's old picks gave, taken off
-// its training when an edit picks another option (or the subclass changes):
-// the stored training is kept while the class stays, so without this a
-// swapped option's skill stayed for good. What a new pick also gives stays.
-export function withoutOldSubclassChoices<T extends { skills: string[]; languages: string[] }>(
-  held: T,
-  before: { classes: Entry[]; features: Named },
-  after: { classes: Entry[]; features: Named },
-  extras?: SubclassExtras,
-): T {
-  const gave = subclassChoiceTraining(before.classes, before.features, extras);
-  if (!gave.length) {
-    return held;
-  }
-  const gives = subclassChoiceTraining(after.classes, after.features, extras);
-  const keep = (kind: "skills" | "languages") => new Set(gives.flatMap((grant) => grant[kind]).map(textKey));
-  const off = (kind: "skills" | "languages") => {
-    const kept = keep(kind);
-    return new Set(gave.flatMap((grant) => grant[kind]).map(textKey).filter((entry) => !kept.has(entry)));
-  };
-  const skills = off("skills");
-  const languages = off("languages");
-  return {
-    ...held,
-    skills: held.skills.filter((skill) => !skills.has(textKey(skill))),
-    languages: held.languages.filter((language) => !languages.has(textKey(language))),
-  };
-}
-
 // One line for a pick on a sheet, for the help and the GM's prompt: the
 // option's words and what it gives. Null when no subclass offers it.
-export function subclassChoicePickDescription(name: string, extras?: SubclassExtras): string | null {
-  const parsed = parseSubclassChoicePick(name);
-  if (!parsed) {
-    return null;
-  }
+export function subclassChoicePickDescription(feature: PickFeature | string, extras?: SubclassExtras): string | null {
+  const pick = asPick(feature);
   for (const tables of Object.values(extras ?? browserSubclassExtras())) {
     for (const table of tables) {
-      const choice = (table.choices ?? []).find((held) => sameLabel(held, parsed.label));
-      const option = choice ? optionNamed(choice, parsed.option) : null;
-      if (option) {
-        const gives = subclassChoiceSummary(option);
-        return [option.description, `${table.name}'s ${choice!.label}: ${gives}.`].filter(Boolean).join(" ");
+      for (const choice of table.choices ?? []) {
+        const option = optionOfPick(choice, pick);
+        if (option) {
+          return [option.description, `${table.name}'s ${choice.label}: ${subclassChoiceSummary(option)}.`].filter(Boolean).join(" ");
+        }
       }
     }
   }
   return null;
+}
+
+// A request's picks with the ids the stored character's same picks keep:
+// the builder sends a pick by its name alone, and a name an author has since
+// renamed is found again only by the ids its stored pick holds.
+export function withHeldPickIds<T extends PickFeature>(sent: readonly T[], held: Picks | undefined): T[] {
+  const ids = new Map((held ?? []).filter((feature) => feature.source === "choice" && feature.optionId).map((feature) => [textKey(feature.name), feature.optionId!]));
+  return sent.map((feature) => (feature.source === "choice" && !feature.optionId && ids.has(textKey(feature.name)) ? { ...feature, optionId: ids.get(textKey(feature.name)) } : feature));
+}
+
+// The builder's option picks (feature names) as "choice" features, with the
+// ids the character's stored picks held (by name).
+export function subclassPickFeatures(picks: readonly string[], ids: Readonly<Record<string, string>> | undefined): PickFeature[] {
+  return picks.map((name) => {
+    const optionId = ids?.[textKey(name)];
+    return { name, source: "choice", ...(optionId ? { optionId } : {}) };
+  });
 }

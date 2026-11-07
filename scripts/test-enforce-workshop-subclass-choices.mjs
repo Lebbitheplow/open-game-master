@@ -45,6 +45,8 @@ const { describeFeature } = await import("../src/lib/help/index.ts");
 const { buildDmMessages } = await import("../src/lib/dm/prompt.ts");
 const { listMembers } = await import("../src/lib/db/campaigns.ts");
 const { homebrewDataRefs } = await import("../src/lib/homebrew/data-refs.ts");
+const { markAffinityCast } = await import("../src/lib/dm/affinity-cast.ts");
+const { textKey } = await import("../src/lib/language/text-logic.ts");
 
 const owner = world.owner;
 const STORM = {
@@ -76,13 +78,20 @@ async function brew(name, data) {
 // The table's subclasses as the server reads them, and as the builder's
 // browser registers them (useBuilderOptions, the campaign snapshot).
 const extras = () => subclassExtrasForTable(world.campaignId, owner.id);
-function registerInBrowser() {
+// Registered for one browser-side check and cleared after it: left filled,
+// a later server-path check read the browser's registry and passed without
+// the table's extras (issue #833 review).
+function inBrowser(fn) {
   const previous = globalThis.window;
   globalThis.window = globalThis.window ?? {};
-  for (const [classId, tables] of Object.entries(extras())) {
-    registerBrowserSubclassExtras(classId, tables);
+  const tables = extras();
+  try {
+    for (const [classId, list] of Object.entries(tables)) registerBrowserSubclassExtras(classId, list);
+    return fn();
+  } finally {
+    for (const classId of Object.keys(tables)) registerBrowserSubclassExtras(classId, []);
+    if (previous === undefined) delete globalThis.window;
   }
-  if (previous === undefined) delete globalThis.window;
 }
 
 const names = (sheet) => (sheet.features ?? []).map((feature) => feature.name);
@@ -124,7 +133,7 @@ await test("A subclass without choices is as it was: no choices kept, its featur
   assert.equal("choices" in plain.json.entry.data, false);
   const ember = hero({ subclass: "Ember-Touched", level: 6 });
   assert.ok(names(world.sheet(ember.id)).includes("Elemental Affinity"));
-  assert.equal(owedPickSlots(world.sheet(ember.id), extras()).choices.length, 0);
+  assert.equal(owedPickSlots(world.sheet(ember.id), { extras: extras() }).choices.length, 0);
   assert.equal(extraSubclassOf({ name: "Ember-Touched", source: "homebrew", data: plain.json.entry.data }).choices, undefined);
 });
 
@@ -141,8 +150,7 @@ await test("The workshop's checker says when an option's element is read by noth
 
 // ---- the builder and creation ----
 
-await test("The builder offers the choice and keeps the pick; the payload sends it as a choice feature.", () => {
-  registerInBrowser();
+await test("The builder offers the choice and keeps the pick; the payload sends it as a choice feature.", () => inBrowser(() => {
   const sorcerer = builder.classes.find((entry) => entry.id === "sorcerer");
   const built = builder.build({ race: "human", class: sorcerer, background: "sage", level: 1, subclass: "Storm-Blooded" });
   const slot = built.derived.subclassChoiceSlots.find((entry) => entry.label === "Bloodline");
@@ -153,23 +161,27 @@ await test("The builder offers the choice and keeps the pick; the payload sends 
   const picked = builder.build({ race: "human", class: sorcerer, background: "sage", level: 1, subclass: "Storm-Blooded", optionPicks: ["Bloodline (Storm)"] });
   assert.equal(picked.derived.subclassChoiceSlots[0].chosen?.name, "Storm");
   assert.ok(picked.sheet.features.some((feature) => feature.name === "Bloodline (Storm)" && feature.source === "choice"));
-});
+}));
 
 // A level 1 human sorcerer on a pick, built by the builder's own code.
-function built(pick) {
+function built(pick, more = {}) {
+  return inBrowser(() => builtNow(pick, more));
+}
+function builtNow(pick, more) {
   const sorcerer = builder.classes.find((entry) => entry.id === "sorcerer");
   const result = builder.build({
     race: "human",
     class: sorcerer,
     background: "sage",
     level: 1,
-    subclass: "Storm-Blooded",
+    subclass: more.subclass ?? "Storm-Blooded",
     scores: { str: 8, dex: 14, con: 13, int: 10, wis: 12, cha: 15 },
     chosenSkills: ["arcana", "insight"],
     bonusLanguages: ["Elvish", "Dwarvish", "Giant"],
     cantrips: ["Fire Bolt", "Light", "Mage Hand", "Shocking Grasp"],
     spells: ["Magic Missile", "Shield"],
     optionPicks: [pick],
+    ...more,
   });
   return { ...result.sheet, portrait: { url: "/uploads/enforce-creation.png" } };
 }
@@ -238,6 +250,12 @@ await test("Elemental Affinity, borrowed, adds Charisma to a spell of the chosen
 
 await test("Elemental Affinity's sorcery point resists the chosen element, and says where it came from.", async () => {
   const sorcerer = hero({ level: 6, features: [{ name: "Bloodline (Storm)", source: "choice" }] });
+  // The point is spent as a spell of the element is cast: the cast tools
+  // note it (src/lib/dm/affinity-cast.ts), reading the chosen element too.
+  markAffinityCast(world.campaign(), world.sheet(sorcerer.id), "fire");
+  assert.ok(!world.sheet(sorcerer.id).conditions.some((condition) => /affinity cast/.test(condition)), "a fire spell is not the bloodline's");
+  markAffinityCast(world.campaign(), world.sheet(sorcerer.id), "lightning");
+  assert.ok(world.sheet(sorcerer.id).conditions.includes("affinity cast (lightning)"), "a lightning spell is noted");
   const out = await world.invoke("use_resource", { characterId: sorcerer.id, resource: "Elemental Affinity" });
   assert.equal(out.ok, true, out.error);
   assert.match(JSON.stringify(out), /their Bloodline \(lightning\)/);
@@ -267,7 +285,7 @@ await test("The level-up offers the choice at its level when the sheet holds non
 await test("An old sheet owes the choice; the sheet's owed picks make it, with its training, and refuse an option it does not offer.", async () => {
   const sorcerer = hero({ level: 6 });
   const old = world.sheet(sorcerer.id);
-  assert.ok(owedPickLines(old, extras()).some((line) => /Storm-Blooded's Bloodline: 1 to choose/.test(line)), owedPickLines(old, extras()).join(" | "));
+  assert.ok(owedPickLines(old, { extras: extras() }).some((line) => /Storm-Blooded's Bloodline: 1 to choose/.test(line)), owedPickLines(old, { extras: extras() }).join(" | "));
   const post = async (features) => {
     world.signIn(sorcerer.user);
     const response = await owedRoute.POST(
@@ -284,14 +302,13 @@ await test("An old sheet owes the choice; the sheet's owed picks make it, with i
   assert.ok(names(stored).includes("Bloodline (Storm)") && names(stored).includes("Lightning Resistance"), names(stored).join(", "));
   assert.ok(stored.proficiencies.languages.includes("Primordial"));
   assert.ok(stored.proficiencies.skills.includes("nature"));
-  assert.equal(owedPickSlots(stored, extras()).choices.length, 0, "no longer owed");
+  assert.equal(owedPickSlots(stored, { extras: extras() }).choices.length, 0, "no longer owed");
   const again = await post(["Bloodline (Frost)"]);
   assert.equal(again.status, 400, "one pick");
 });
 
 await test("The help and the GM's prompt say what the pick gives.", () => {
-  registerInBrowser();
-  assert.match(describeFeature("sorcerer", "Storm-Blooded", "Bloodline (Storm)") ?? "", /Thunder in the blood\..*lightning is its element.*resists lightning damage/);
+  inBrowser(() => assert.match(describeFeature("sorcerer", "Storm-Blooded", "Bloodline (Storm)") ?? "", /Thunder in the blood\..*lightning is its element.*resists lightning damage/));
   assert.match(describeFeature("sorcerer", "Storm-Blooded", "Bloodline damage type: Lightning") ?? "", /Bloodline chosen: lightning\. Elemental Affinity/);
   const sorcerer = hero({ level: 3, features: [{ name: "Bloodline (Storm)", source: "choice" }] });
   const sheet = world.sheet(sorcerer.id);
@@ -303,6 +320,158 @@ await test("An older host offers no editor for the choices: the section waits fo
   assert.equal(SERVER_FEATURES.subclassChoices, true);
   assert.equal(hostOffers({ features: {} }, "subclassChoices"), false);
   assert.equal(hostOffers({ features: { subclassChoices: true } }, "subclassChoices"), true);
+});
+
+
+// ---- review fixes (issue #833 review) ----
+
+const homebrewEntry = await world.route("homebrew/[id]");
+const { isMechanicalFeature } = await import("../src/lib/srd/legality/features.ts");
+const { chosenElementType } = await import("../src/lib/srd/dragon-ancestor.ts");
+const { subclassChoiceSlots } = await import("../src/lib/srd/subclass-choice-picks.ts");
+const { browserSubclassExtras } = await import("../src/lib/srd/subclass-tables.ts");
+const { joinChanges } = await import("../src/lib/characters/join-changes.ts");
+const { owedChoiceGroups } = await import("../src/lib/srd/owed-choices.ts");
+
+const SQUALL = { name: "Squall", damageType: "lightning", resistances: ["lightning"], skills: ["nature"], languages: ["Primordial"] };
+const HUSH = { name: "Hush", resistances: ["cold"] };
+const gale = (options) => stormBlooded([{ label: "Gift", level: 1, options }]);
+let galeEntry;
+let galeHero;
+let hushHero;
+
+await test("A pick keeps its choice's and option's ids, and an author's rename keeps the pick, its grants and its training.", async () => {
+  const saved = await brew("Gale-Blooded", gale([SQUALL, HUSH]));
+  assert.equal(saved.status, 201, JSON.stringify(saved.json));
+  galeEntry = saved.json.entry;
+  assert.equal(galeEntry.data.choices[0].id, "gift", "the choice keeps an id made from its label");
+  world.signIn(owner);
+  const made = await call(libraryRoute, "POST", { level: 1, sheet: built("Gift (Squall)", { subclass: "Gale-Blooded" }) });
+  assert.equal(made.status, 201, JSON.stringify(made.json));
+  galeHero = made.json.character;
+  const pick = galeHero.sheet.features.find((feature) => feature.name === "Gift (Squall)");
+  assert.equal(pick?.optionId, "gift/squall", "the pick holds the ids");
+  // Squall renamed Tempest, its id kept.
+  const renamed = structuredClone(galeEntry.data);
+  renamed.choices[0].options[0].name = "Tempest";
+  const patched = await call(homebrewEntry, "PATCH", { data: renamed }, { id: galeEntry.id });
+  assert.equal(patched.status, 200, JSON.stringify(patched.json));
+  const regranted = populateFeaturesForClasses(galeHero.sheet.features, [{ id: "sorcerer", subclass: "Gale-Blooded", level: 1 }], "human", [], extras()).map((feature) => feature.name);
+  assert.ok(regranted.includes("Gift (Tempest)") && regranted.includes("Lightning Resistance") && regranted.includes("Gift damage type: Lightning"), regranted.join(", "));
+  assert.equal(owedPickSlots(galeHero.sheet, { extras: extras() }).choices.length, 0, "not owed again");
+  // An edit from a builder that still names Squall keeps the pick.
+  // As the builder reopens the stored character: the pick by its name, and
+  // the ids its stored copy keeps (useBuilderState pickIds).
+  const edited = await call(characterRoute, "PATCH", { level: 1, sheet: built("Gift (Squall)", { subclass: "Gale-Blooded", pickIds: { [textKey("Gift (Squall)")]: "gift/squall" } }) }, { characterId: galeHero.id });
+  assert.equal(edited.status, 200, JSON.stringify(edited.json));
+  const sheet = edited.json.character.sheet;
+  assert.ok(names(sheet).includes("Gift (Tempest)") && names(sheet).includes("Lightning Resistance"), names(sheet).join(", "));
+  assert.ok(sheet.proficiencies.skills.includes("nature") && sheet.proficiencies.languages.includes("Primordial"));
+});
+
+await test("An option the author deletes leaves nothing behind at the next edit: its skill and language go with it.", async () => {
+  const pruned = structuredClone(galeEntry.data);
+  pruned.choices[0].options = [{ name: "Breeze", resistances: ["thunder"] }, { name: "Calm" }];
+  const patched = await call(homebrewEntry, "PATCH", { data: pruned }, { id: galeEntry.id });
+  assert.equal(patched.status, 200, JSON.stringify(patched.json));
+  world.signIn(owner);
+  const edited = await call(characterRoute, "PATCH", { level: 1, sheet: built("Gift (Breeze)", { subclass: "Gale-Blooded" }) }, { characterId: galeHero.id });
+  assert.equal(edited.status, 200, JSON.stringify(edited.json));
+  const sheet = edited.json.character.sheet;
+  assert.ok(names(sheet).includes("Gift (Breeze)") && names(sheet).includes("Thunder Resistance"), names(sheet).join(", "));
+  assert.ok(!names(sheet).includes("Lightning Resistance"));
+  assert.ok(!sheet.proficiencies.skills.includes("nature"), sheet.proficiencies.skills.join(", "));
+  assert.ok(!sheet.proficiencies.languages.includes("Primordial"), sheet.proficiencies.languages.join(", "));
+});
+
+await test("A stored pick gone stale (its option deleted) never refuses a level: the level is taken and the pick is owed again.", async () => {
+  const hushed = await brew("Hush-Blooded", stormBlooded([{ label: "Gift", level: 1, options: [HUSH, { name: "Gust", resistances: ["thunder"] }] }]));
+  assert.equal(hushed.status, 201, JSON.stringify(hushed.json));
+  hushHero = hero({ subclass: "Hush-Blooded", level: 1, features: [{ name: "Gift (Hush)", source: "choice" }] });
+  const gone = structuredClone(hushed.json.entry.data);
+  gone.choices[0].options = [{ name: "Gust", resistances: ["thunder"] }, { name: "Calm" }];
+  const patched = await call(homebrewEntry, "PATCH", { data: gone }, { id: hushed.json.entry.id });
+  assert.equal(patched.status, 200, JSON.stringify(patched.json));
+  await world.invoke("award_xp", { characterIds: [hushHero.id], amount: 300, reason: "earned in play" });
+  const taken = await patchSheetAs(world, sheetRoute, hushHero.user, { level: 2 });
+  assert.equal(taken.status, 200, JSON.stringify(taken.json));
+  const after = world.sheet(hushHero.id);
+  assert.equal(after.level, 2);
+  assert.ok(!names(after).includes("Gift (Hush)") && !names(after).includes("Cold Resistance"), names(after).join(", "));
+  assert.equal(owedPickSlots(after, { extras: extras() }).choices.length, 1, "owed again");
+});
+
+await test("A file cannot forge a pick or an element: only the regrant's class feature is an element, only a choice feature a pick, and the element line is a feature the engines run.", () => {
+  assert.equal(isMechanicalFeature("Bloodline damage type: Fire"), true, "a story element line is refused at the import door");
+  const forged = { class: "sorcerer", subclass: "Storm-Blooded", features: [{ name: "Elemental Affinity", source: "class", classId: "sorcerer" }, { name: "Bloodline damage type: Fire", source: "story" }] };
+  assert.equal(chosenElementType(forged), null);
+  const [slot] = subclassChoiceSlots([{ id: "sorcerer", subclass: "Storm-Blooded", level: 1 }], [{ name: "Bloodline (Storm)", source: "story" }], extras());
+  assert.equal(slot.chosen, null, "a story feature is no pick");
+});
+
+await test("Elemental Affinity reads the element of the subclass that grants it: the SRD's Draconic Bloodline only its dragon; and a subclass names an element in one choice only.", async () => {
+  const split = {
+    class: "sorcerer",
+    subclass: "Draconic Bloodline",
+    classes: [{ id: "sorcerer", subclass: "Draconic Bloodline", level: 6 }, { id: "warlock", subclass: "Ember Pact", level: 1 }],
+    features: [
+      { name: "Elemental Affinity", source: "class", classId: "sorcerer" },
+      { name: "Pact damage type: Fire", source: "class", classId: "warlock" },
+    ],
+  };
+  assert.equal(chosenElementType(split), null, "no dragon chosen: the warlock's element is not the sorcerer's");
+  assert.equal(chosenElementType({ ...split, features: [...split.features, { name: "Dragon Ancestor: Silver", source: "choice" }] }), "cold");
+  const two = await brew("Twice-Blooded", stormBlooded([BLOODLINE, { label: "Heart", level: 3, options: [{ name: "Ember", damageType: "fire" }, { name: "Ash" }] }]));
+  assert.equal(two.status, 400);
+  assert.match(two.json.error, /name an element in one choice only/);
+});
+
+await test("At the owed route an option's language spoken already becomes another language.", async () => {
+  const speaker = hero({ level: 6, proficiencies: { saves: [], skills: [], expertise: [], languages: ["Common", "Primordial"], tools: [], armor: [], weapons: [] } });
+  world.signIn(speaker.user);
+  const response = await owedRoute.POST(
+    new Request("http://test/", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ characterId: speaker.id, features: ["Bloodline (Storm)"] }) }),
+    { params: Promise.resolve({ campaignId: world.campaignId }) },
+  );
+  assert.equal(response.status, 200, JSON.stringify(await response.clone().json()));
+  const languages = world.sheet(speaker.id).proficiencies.languages;
+  assert.equal(languages.length, 3, `Primordial again is another language: ${languages.join(", ")}`);
+});
+
+await test("In the builder a class skill the option also gives asks for another, and a swap keeps the player's own class skill and takes the replacement off.", async () => {
+  const lore = await brew("Lore-Blooded", stormBlooded([{ label: "Lineage", level: 1, options: [{ name: "Scholar", skills: ["arcana"] }, { name: "Wild" }] }]));
+  assert.equal(lore.status, 201, JSON.stringify(lore.json));
+  const make = (pick, featChoices) => built(pick, { subclass: "Lore-Blooded", background: "acolyte", chosenSkills: ["arcana", "deception"], featChoices });
+  const asked = inBrowser(() => {
+    const sorcerer = builder.classes.find((entry) => entry.id === "sorcerer");
+    const open = builder.build({ race: "human", class: sorcerer, background: "acolyte", level: 1, subclass: "Lore-Blooded", chosenSkills: ["arcana", "deception"], optionPicks: ["Lineage (Scholar)"] });
+    return open.derived.subclassTraining.find((grant) => grant.name === "Lineage");
+  });
+  assert.equal(asked?.spec.skills, 1, "Arcana held already: one skill of the player's choice");
+  world.signIn(owner);
+  const madeLore = await call(libraryRoute, "POST", { level: 1, sheet: make("Lineage (Scholar)", { lineage: { skills: ["history"] } }) });
+  assert.equal(madeLore.status, 201, JSON.stringify(madeLore.json));
+  assert.ok(madeLore.json.character.sheet.proficiencies.skills.includes("history"));
+  const swapped = await call(characterRoute, "PATCH", { level: 1, sheet: make("Lineage (Wild)", {}) }, { characterId: madeLore.json.character.id });
+  assert.equal(swapped.status, 200, JSON.stringify(swapped.json));
+  const skills = swapped.json.character.sheet.proficiencies.skills;
+  assert.ok(skills.includes("arcana"), `the class skill stays: ${skills.join(", ")}`);
+  assert.ok(!skills.includes("history"), `the replacement goes with the option: ${skills.join(", ")}`);
+});
+
+await test("The join confirmation lists a workshop choice owed, read with the table's subclasses.", () => {
+  const old = world.sheet(hero({ level: 6 }).id);
+  const { owed, owedOnSheet } = joinChanges(old, 6, old, 6, { extras: extras(), campaignId: world.campaignId });
+  assert.ok(owed.some((line) => /Storm-Blooded's Bloodline/.test(line)), owed.join(" | "));
+  // Made on the character sheet once seated, as a class feature's picks are.
+  assert.ok((owedOnSheet ?? []).some((line) => /Storm-Blooded's Bloodline/.test(line)), (owedOnSheet ?? []).join(" | "));
+  const groups = owedChoiceGroups(old, { extras: extras() });
+  assert.ok(groups.onSheet.some((line) => /Storm-Blooded's Bloodline/.test(line)) && !groups.levelUp.some((line) => /Bloodline/.test(line)));
+});
+
+await test("The browser's registry is empty again after a browser-side check, so the server's checks read the table's extras.", () => {
+  inBrowser(() => assert.ok((browserSubclassExtras().sorcerer ?? []).length > 0));
+  assert.equal((browserSubclassExtras().sorcerer ?? []).length, 0);
 });
 
 world.close?.();

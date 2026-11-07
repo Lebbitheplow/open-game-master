@@ -14,7 +14,7 @@ import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
-import { AFFINITY_CAST, dragonAncestorType } from "@/lib/srd/dragon-ancestor";
+import { AFFINITY_CAST, chosenElementType } from "@/lib/srd/dragon-ancestor";
 import { holdsFeature } from "@/lib/srd/trait-rules";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
@@ -23,11 +23,12 @@ import { textKey } from "@/lib/language/text-logic";
 export { AFFINITY_CAST, affinityCastType } from "@/lib/srd/dragon-ancestor";
 
 // Marks the caster after a spell of `damageType` dealt its damage, when that
-// is their dragon's and they hold Elemental Affinity.
+// is their dragon's, or the element their workshop subclass's choice names
+// (issue #833), and they hold Elemental Affinity.
 export function markAffinityCast(campaign: Campaign, stale: CharacterSheet, damageType: string | null | undefined) {
   const type = textKey(damageType ?? "");
   const sheet = getSheetById(stale.id) ?? stale;
-  if (!type || !holdsFeature(sheet, "elemental affinity") || dragonAncestorType(sheet) !== type) {
+  if (!type || !holdsFeature(sheet, "elemental affinity") || chosenElementType(sheet) !== type) {
     return;
   }
   const condition = `${AFFINITY_CAST} (${type})`;

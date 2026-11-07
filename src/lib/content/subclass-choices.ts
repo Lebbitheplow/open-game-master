@@ -39,6 +39,9 @@ export type SubclassChoiceOption = {
 };
 
 export type SubclassChoice = {
+  // Fixed when the choice is made, as an option's is: a pick keeps it
+  // (pickOptionId), so a renamed choice or option keeps every sheet's pick.
+  id: string;
   label: string;
   // The class level the choice is made at.
   level: number;
@@ -54,6 +57,31 @@ const capital = (word: string) => `${word.charAt(0).toUpperCase()}${word.slice(1
 // The pick's record on the sheet: "Bloodline (Storm)".
 export function subclassChoicePickName(label: string, option: Pick<SubclassChoiceOption, "name">): string {
   return `${label.trim()} (${option.name.trim()})`;
+}
+
+// What a pick keeps on its feature beside its name (SheetFeature.optionId):
+// the choice's id and the option's, so a pick is found again after the
+// author renames either, and an option deleted is known as gone, never
+// mistaken for a new one of the same name (issue #833 review).
+export function pickOptionId(choice: Pick<SubclassChoice, "id">, option: Pick<SubclassChoiceOption, "id">): string {
+  return `${choice.id}/${option.id}`;
+}
+
+export function parsePickOptionId(value: string | undefined): { choice: string; option: string } | null {
+  const found = /^([a-z0-9-]+)\/([a-z0-9-]+)$/.exec((value ?? "").trim());
+  return found ? { choice: found[1], option: found[2] } : null;
+}
+
+// The record of what a pick trained its character in, kept in the sheet's
+// featChoices under this key: the skills and languages the option gave and
+// the character did not hold before. Every edit takes the recorded ones off
+// first (src/lib/srd/feat-grants.ts withoutFeatPicks) and the live option
+// gives back only what it still grants, so an option swapped, edited or
+// deleted leaves nothing behind.
+export const SUBCLASS_CHOICE_RECORD = "subclass choice ";
+
+export function subclassChoiceRecordKey(choice: Pick<SubclassChoice, "id">): string {
+  return `${SUBCLASS_CHOICE_RECORD}${choice.id}`;
 }
 
 // The label and the option a "Label (Option)" name holds, or null.
@@ -137,6 +165,7 @@ export function storedSubclassChoices(raw: unknown): SubclassChoice[] {
       ];
     });
     const level = Number(choice.level ?? 1);
-    return label && options.length ? [{ label, level: Number.isInteger(level) && level >= 1 && level <= 20 ? level : 1, options }] : [];
+    const id = typeof choice.id === "string" && choice.id ? choice.id : label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "choice";
+    return label && options.length ? [{ id, label, level: Number.isInteger(level) && level >= 1 && level <= 20 ? level : 1, options }] : [];
   });
 }

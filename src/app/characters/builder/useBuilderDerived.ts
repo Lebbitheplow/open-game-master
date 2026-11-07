@@ -23,6 +23,7 @@ import { fightingStyleChoices, fightingStyleSlots } from "@/lib/srd/feature-effe
 import { openOptionSlots, optionFeatureName, slotTakes, type OptionSlot } from "@/lib/srd/options";
 import { subclassChoiceSlots } from "@/lib/srd/subclass-choice-picks";
 import { parseSubclassChoicePick, subclassChoicePickName } from "@/lib/content/subclass-choices";
+import { subclassPickFeatures } from "@/lib/srd/subclass-choice-picks";
 import { spellStyleFor, spellbookAllowance, type SpellStyle } from "@/lib/srd/spell-prep";
 import {
   chooseKitOption as withKitOption,
@@ -520,6 +521,10 @@ export function useBuilderDerived({
   // A skill or language the character already has becomes a pick (Royal
   // Envoy's Persuasion, Draconic Disciple's Draconic).
   // A class's own secret tongue (Druidic, Thieves' Cant), each class's.
+  // The option picks as features: a workshop subclass choice's pick keeps the
+  // ids its stored copy held, so one the author renamed is still found
+  // (issue #833 review).
+  const pickFeatures = useMemo(() => subclassPickFeatures(optionPicks, state.pickIds), [optionPicks, state.pickIds]);
   const classLanguages = useMemo(
     () => [...(klass?.languages ?? []), ...extras.flatMap((entry) => entry.klass.languages ?? [])],
     [klass, extras],
@@ -529,12 +534,12 @@ export function useBuilderDerived({
       // A base class's own grants too, before any subclass (a ranger's
       // Favored Enemy language, src/lib/srd/subclass-training.ts CLASS_TABLE).
       klass
-        ? grantsForHeldTraining(subclassGrants(classList, undefined, optionPicks.map((name) => ({ name }))), {
+        ? grantsForHeldTraining(subclassGrants(classList, undefined, pickFeatures), {
             skills: proficientSkills,
             languages: [...(race?.languages ?? []), ...(background?.knownLanguages ?? []), ...bonusLanguages.filter(Boolean), ...classLanguages],
           })
         : [],
-    [klass, classList, proficientSkills, race, background, bonusLanguages, classLanguages, optionPicks],
+    [klass, classList, proficientSkills, race, background, bonusLanguages, classLanguages, pickFeatures],
   );
   const training = useMemo(() => {
     const skills = proficientSkills;
@@ -948,9 +953,9 @@ export function useBuilderDerived({
     () =>
       subclassChoiceSlots(
         classList.map((entry) => ({ id: entry.id, subclass: entry.subclass ?? "", level: entry.level })),
-        optionPicks.map((name) => ({ name })),
+        pickFeatures,
       ),
-    [classList, optionPicks],
+    [classList, pickFeatures],
   );
   // Expertise each class has earned at its own level: a rogue's two at its
   // 1st, a bard's at its 3rd.
@@ -1020,11 +1025,11 @@ export function useBuilderDerived({
         ? withLearned(
             // The option a workshop subclass's choice holds brings its own
             // (issue #833).
-            subclassSpellsFor(casterKlass.id, casterSubclass, casterLevel, undefined, optionPicks.map((name) => ({ name }))),
+            subclassSpellsFor(casterKlass.id, casterSubclass, casterLevel, undefined, pickFeatures),
             spellGrants,
           )
         : [],
-    [casterKlass, casterSubclass, casterLevel, casts, spellGrants, optionPicks],
+    [casterKlass, casterSubclass, casterLevel, casts, spellGrants, pickFeatures],
   );
   // What this class calls its spells, used in the empty-spell-list warning.
   const castingLabel = casts && casterKlass ? (casterKlass.castingLabel || "spells") : "";

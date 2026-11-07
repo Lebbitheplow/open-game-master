@@ -32,6 +32,7 @@ import { KNOWN_TOOLS } from "@/lib/srd/feat-grant-text";
 import { SRD_WEAPONS } from "@/lib/srd/weapons";
 import type { SubclassExtras } from "@/lib/srd/subclass-tables";
 import { subclassChoiceTraining } from "@/lib/srd/subclass-choice-picks";
+import { SUBCLASS_CHOICE_RECORD, subclassChoiceRecordKey } from "@/lib/content/subclass-choices";
 import { textKey } from "@/lib/language/text-logic";
 import { featChoice, withFeatChoice } from "@/lib/schemas/sheet";
 
@@ -58,7 +59,12 @@ export type SubclassGrant = {
   // A pick that may wait: left out, it is owed rather than refused (a
   // ranger's Favored Enemy language). A builder older than the grant has no
   // picker for it, and a sheet saved before it holds none.
-  optional?: true;
+  optional?: true;  // A workshop subclass choice's option (issue #833), by its choice's id:
+  // what it gives is recorded on the sheet (subclassChoiceRecords), and a
+  // skill or language it would give again becomes a pick of another, as SRD
+  // 5.1 has a duplicate proficiency (Backgrounds: "can choose a different
+  // one").
+  choiceId?: string;
 };
 
 type TableEntry = {
@@ -368,6 +374,7 @@ export function subclassGrants(
       subclass: pick.subclass,
       level: pick.level,
       spec: specOf({ skills: pick.skills, languages: pick.languages }),
+      choiceId: pick.choiceId,
     });
   }
   return grants;
@@ -402,6 +409,22 @@ export function grantsForHeldTraining(
         fixedLanguages: spec.fixedLanguages.filter((language) => textKey(language) !== textKey(tongue)),
         languages: spec.languages + 1,
       };
+    }
+    // A workshop choice's option: each skill or language held already is a
+    // pick of another (issue #833 review). Given twice, it was given once,
+    // and an edit that took the option's grants off took the player's own.
+    if (grant.choiceId) {
+      const heldSkills = spec.fixedSkills.filter((skill) => skills.has(textKey(skill)));
+      const heldLanguages = spec.fixedLanguages.filter((language) => languages.has(textKey(language)));
+      if (heldSkills.length || heldLanguages.length) {
+        spec = {
+          ...spec,
+          fixedSkills: spec.fixedSkills.filter((skill) => !skills.has(textKey(skill))),
+          skills: spec.skills + heldSkills.length,
+          fixedLanguages: spec.fixedLanguages.filter((language) => !languages.has(textKey(language))),
+          languages: spec.languages + heldLanguages.length,
+        };
+      }
     }
     return spec === grant.spec ? grant : { ...rest, spec };
   });
@@ -571,4 +594,24 @@ export function repairedTraining(
     (kind) => (after[kind] ?? []).length > (before[kind] ?? []).length,
   );
   return grew ? after : null;
+}
+
+// What the workshop choices' options gave a character, as the sheet records
+// it in featChoices (src/lib/content/subclass-choices.ts
+// subclassChoiceRecordKey): the skills and languages each settled grant
+// gave outright, the replacement picks living under the grant's own name.
+// Every edit takes both off first (feat-grants.ts withoutFeatPicks), so what
+// an option swapped, edited or deleted gave leaves with it.
+export function withSubclassChoiceRecords(choices: FeatChoices | undefined, settled: SubclassGrant[]): FeatChoices {
+  const kept = Object.fromEntries(Object.entries(choices ?? {}).filter(([key]) => !textKey(key).startsWith(textKey(SUBCLASS_CHOICE_RECORD))));
+  let out: FeatChoices = kept;
+  for (const grant of settled) {
+    if (grant.choiceId && (grant.spec.fixedSkills.length || grant.spec.fixedLanguages.length)) {
+      out = withFeatChoice(out, subclassChoiceRecordKey({ id: grant.choiceId }), {
+        ...(grant.spec.fixedSkills.length ? { skills: grant.spec.fixedSkills } : {}),
+        ...(grant.spec.fixedLanguages.length ? { languages: grant.spec.fixedLanguages } : {}),
+      });
+    }
+  }
+  return out;
 }

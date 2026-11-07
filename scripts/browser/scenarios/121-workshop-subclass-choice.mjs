@@ -155,6 +155,17 @@ export default {
       check(choice?.label === "Bloodline" && choice.level === 1, `the choice was kept (${JSON.stringify(choice)})`);
       check((choice?.options ?? []).map((option) => option.id).join() === "storm,frost", "the options were kept with their ids");
       check(choice?.options?.[0]?.damageType === "lightning", "Storm's element was kept");
+      check(Boolean(choice?.id), `the choice keeps an id (${choice?.id})`);
+      // Each choice is its own row, keyed by its id: a second choice's
+      // half-typed option name stays with it when the first is removed.
+      await t.tap(section.getByRole("button", { name: /^Add another choice$/ }));
+      const second = section.getByRole("group", { name: /^Choice \d$/ });
+      await eventually(() => second.count(), { timeoutMs: 10_000, label: "a second choice" });
+      await second.getByLabel("New option's name").fill("Zephyr");
+      await t.tap(section.getByRole("button", { name: /^Remove Bloodline$/ }));
+      const left = section.getByRole("group", { name: /^Choice \d$/ });
+      await eventually(async () => (await section.getByRole("group", { name: "Bloodline" }).count()) === 0, { timeoutMs: 10_000, label: "the first choice removed" });
+      check((await left.getByLabel("New option's name").inputValue()) === "Zephyr", "the remaining choice keeps what was typed in it");
       await closeDialogs();
 
       // ---- chosen in the builder ----

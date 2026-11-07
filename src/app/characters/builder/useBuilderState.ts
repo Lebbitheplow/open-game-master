@@ -319,6 +319,16 @@ export function useBuilderState({
       // holds it to the subclass once it is (issue #833).
       .filter((featureName) => findOptionByFeatureName(featureName) !== null || parseSubclassChoicePick(featureName) !== null),
   );
+  // The ids a stored workshop subclass choice's picks keep, by the pick's
+  // name: the builder reads a pick its author has since renamed by them
+  // (src/lib/srd/subclass-choice-picks.ts, issue #833 review).
+  const [pickIds] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      (initial?.features ?? [])
+        .filter((feature) => feature.source === "choice" && feature.optionId)
+        .map((feature) => [textKey(feature.name), feature.optionId as string]),
+    ),
+  );
   // One-shot acknowledgement for the "caster with no spells" warning.
   const [spellWarningAck, setSpellWarningAck] = useState(false);
   const [backstory, setBackstory] = useState(initial?.backstory ?? "");
@@ -451,6 +461,7 @@ export function useBuilderState({
       background,
       level: total,
       extras: fitted.map((entry) => ({ ...entry, klass: classes.find((row) => row.id === entry.classId) })),
+      pickIds,
     });
     let { picks } = result;
     const drops = [...result.drops];
@@ -1087,6 +1098,7 @@ export function useBuilderState({
     backgroundSkills, setBackgroundSkills,
     backgroundGearPicks, setBackgroundGearPicks,
     optionPicks, setOptionPicks,
+    pickIds,
     spellWarningAck, setSpellWarningAck,
     backstory, setBackstory,
     hopes, setHopes,

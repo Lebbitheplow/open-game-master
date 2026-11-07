@@ -29,7 +29,7 @@ import type {
 import { ABILITIES } from "@/lib/schemas/sheet";
 import { XP_THRESHOLDS, findSkill, levelForXp } from "@/lib/srd";
 import { ABILITY_SCORE_CAP, applyAsiChoices, earnedAsiCountFor } from "@/lib/srd/asi";
-import { applySubclassTraining, autoSubclassPicks, grantsForHeldTraining, subclassGrants } from "@/lib/srd/subclass-training";
+import { applySubclassTraining, autoSubclassPicks, grantsForHeldTraining, subclassGrants, withSubclassChoiceRecords } from "@/lib/srd/subclass-training";
 import type { SubclassExtras } from "@/lib/srd/subclass-tables";
 import { asiTaken, withAsiLedger } from "@/lib/srd/asi-ledger";
 import { applyFeatIncrease, featSaveProficiency, featsAsRun } from "@/lib/srd/feat-effects";
@@ -510,8 +510,11 @@ export function buildLevelUp(
     .map((feature) => ({ name: feature.name, source: "choice" as const }));
   // A workshop subclass's choice names an option it offers, once, at its
   // level (issue #833): one it does not offer was dropped without a word.
+  // Only what this level makes: a stored pick gone stale (its option since
+  // deleted) is the regrant's to drop and never refuses a level.
+  const heldPickNames = new Set(sheet.features.filter((feature) => feature.source === "choice").map((feature) => textKey(feature.name)));
   const choiceProblem = subclassChoicePickProblems(
-    [...sheet.features, ...(request.features ?? [])].filter((feature) => feature.source === "choice"),
+    (request.features ?? []).filter((feature) => feature.source === "choice" && !heldPickNames.has(textKey(feature.name))),
     classes,
     context.subclassExtras,
   )[0];
@@ -689,6 +692,9 @@ export function buildLevelUp(
   // The picks this level applied, recorded beside the ones the sheet already
   // keeps: without them a feat taken in play went home, to a file and back
   // to the builder looking unpicked, and was asked for again (issue #430).
+  // What a workshop choice's option gave with this level, recorded for an
+  // edit to take off (subclass-training.ts withSubclassChoiceRecords).
+  const choiceRecords = withSubclassChoiceRecords({}, freshTraining.filter((grant) => grant.choiceId));
   const recorded = Object.fromEntries(
     [...featsTaken.map((name) => context.featOf(name)?.name ?? name), ...freshTraining.map((grant) => grant.name)].flatMap((name) => {
       const picks = featChoice(trainingChoices, name) ?? featChoice(request.featChoices, name);
@@ -700,7 +706,9 @@ export function buildLevelUp(
     currentHp,
     proficiencies,
     features,
-    ...(Object.keys(recorded).length ? { featChoices: { ...(sheet.featChoices ?? {}), ...recorded } } : {}),
+    ...(Object.keys(recorded).length || Object.keys(choiceRecords).length
+      ? { featChoices: { ...(sheet.featChoices ?? {}), ...recorded, ...choiceRecords } }
+      : {}),
     ...(asked.choices.length || primalChampion ? { abilities, feats } : {}),
     ...(spellcasting !== sheet.spellcasting ? { spellcasting } : {}),
     ...(multiclass ? { classes } : { level: target, subclass: classes[0].subclass }),

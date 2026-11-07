@@ -2,7 +2,7 @@ import type { Ability } from "@/lib/schemas/sheet";
 import { classFeaturesFor, expertiseSlotsFor, racialTraitsFor, subclassLevelFor } from "@/lib/srd/features";
 import { fightingStyleChoices, fightingStyleSlots, type FightingStyleId } from "@/lib/srd/feature-effects";
 import { findOptionByFeatureName, optionCost, optionSlotsFor } from "@/lib/srd/options";
-import { subclassChoicePickKept } from "@/lib/srd/subclass-choice-picks";
+import { subclassChoicePickKept, subclassPickFeatures } from "@/lib/srd/subclass-choice-picks";
 import { parseSubclassChoicePick } from "@/lib/content/subclass-choices";
 import { innateCantripsFor, repeatedGrants } from "@/lib/srd/racial-grants";
 import { withSpeciesVariant } from "@/lib/content/species-variants";
@@ -62,6 +62,9 @@ export type ReconcileContext = {
   // The classes taken after the first, each with its row, its levels, its
   // subclass and the skills its multiclass grant let the player pick.
   extras?: ReadonlyArray<ReconcileExtra>;
+  // The ids a stored workshop subclass choice's picks keep, by the pick's
+  // name (useBuilderState pickIds): a pick its author renamed is kept.
+  pickIds?: Readonly<Record<string, string>>;
 };
 
 export type ReconcileExtra = { klass?: ClassOption; subclass: string; level: number; skills?: string[] };
@@ -347,9 +350,10 @@ export function reconcilePicks(
   const choicesTaken = new Set<string>();
   const choiceClasses = classes.map((entry) => ({ id: entry.klass.id, subclass: entry.subclass, level: entry.level }));
   const optionPicks = unique(picks.optionPicks).filter((featureName) => {
-    const workshop = subclassChoicePickKept(featureName, choiceClasses, undefined, choicesTaken);
+    const [pick] = subclassPickFeatures([featureName], context.pickIds);
+    const workshop = subclassChoicePickKept(pick, choiceClasses, undefined, choicesTaken);
     if (workshop !== undefined) {
-      return workshop;
+      return workshop !== null;
     }
     const option = findOptionByFeatureName(featureName);
     if (!option && parseSubclassChoicePick(featureName)) {

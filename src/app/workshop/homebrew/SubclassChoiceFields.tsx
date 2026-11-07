@@ -20,6 +20,7 @@ import { DAMAGE_TYPES } from "@/lib/dm/damage-logic";
 import { textKey } from "@/lib/language/text-logic";
 import { SUBCLASS_CHOICE_LIMITS } from "@/lib/homebrew/subclass-choice-check";
 import { subclassChoiceSummary, type SubclassChoiceOption } from "@/lib/content/subclass-choices";
+import { uniqueVariantId } from "@/lib/content/species-variants";
 
 // A subclass whose player picks one of several options at a class level: a
 // bloodline, an elemental affinity (issue #833). Hidden behind one button
@@ -152,7 +153,10 @@ function OptionFields({ option, put }: { option: Data; put: (next: Data) => void
 export function SubclassChoiceFields({ data, set }: { data: Data; set: (patch: Data) => void }) {
   const choices = Array.isArray(data.choices) ? (data.choices as Data[]) : [];
   const putChoices = (next: Data[]) => set({ choices: next.length ? next : undefined });
-  const add = () => putChoices([...choices, { label: "", level: 1, options: [] }]);
+  // Each choice keeps an id from when it is made: a sheet's pick holds it,
+  // and the rows are keyed by it, so a removed choice takes its own row.
+  const add = () =>
+    putChoices([...choices, { id: uniqueVariantId("choice", choices.map((choice) => String(choice.id ?? "")).filter(Boolean)), label: "", level: 1, options: [] }]);
   if (!choices.length) {
     return (
       <div className="space-y-1.5 text-sm" data-subclass-choice>
@@ -175,7 +179,7 @@ export function SubclassChoiceFields({ data, set }: { data: Data; set: (patch: D
         const options = Array.isArray(choice.options) ? (choice.options as Data[]) : [];
         const label = String(choice.label ?? "").trim() || `Choice ${index + 1}`;
         return (
-          <div key={index} className="live-in space-y-2 rounded-lg border border-stone-800 p-2" role="group" aria-label={label}>
+          <div key={String(choice.id ?? "") || `at-${index}`} className="live-in space-y-2 rounded-lg border border-stone-800 p-2" role="group" aria-label={label}>
             <div className="flex flex-wrap items-end gap-2">
               <TextField
                 label="What the player chooses"

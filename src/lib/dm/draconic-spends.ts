@@ -101,7 +101,7 @@ export function elementalAffinityResistance(campaign: Campaign, sheet: Character
   // the type", so only after such a spell (src/lib/dm/affinity-cast.ts).
   if (affinityCastType(sheet) !== type) {
     return {
-      error: `Elemental Affinity's resistance comes with a spell that deals ${type} damage, ${sheet.name}'s dragon's type, as it is cast; ${sheet.name} has cast none this turn. Nothing was spent.`,
+      error: `Elemental Affinity's resistance comes with a spell that deals ${type} damage, the type of ${chosenElementWords(sheet)}, as it is cast; ${sheet.name} has cast none this turn. Nothing was spent.`,
       refused: "rules",
     };
   }

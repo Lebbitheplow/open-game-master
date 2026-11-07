@@ -504,7 +504,7 @@ export function LevelUpDialog({
   // A skill or language already held becomes a pick (Royal Envoy). A
   // workshop choice made here trains in its option's (issue #833).
   const freshTraining = grantsForHeldTraining(
-    subclassGrants(classesAfter, undefined, [...sheet.features, ...optionPicks.map((name) => ({ name }))]).filter(
+    subclassGrants(classesAfter, undefined, [...sheet.features, ...optionPicks.map((name) => ({ name, source: "choice" as const }))]).filter(
       (grant) => !trainingBefore.has(`${grant.classId}|${textKey(grant.name)}`),
     ),
     sheet.proficiencies,
@@ -625,7 +625,7 @@ export function LevelUpDialog({
       new Set(
         [
           // With a workshop choice made here: its option's spells (issue #833).
-          ...subclassSpellsFor(classChoice, effectiveSubclass, classLevelAfter, undefined, [...sheet.features, ...optionPicks.map((name) => ({ name }))]),
+          ...subclassSpellsFor(classChoice, effectiveSubclass, classLevelAfter, undefined, [...sheet.features, ...optionPicks.map((name) => ({ name, source: "choice" as const }))]),
           ...(learnedKey ? learnedKey.split("|") : []),
         ].map((name) => textKey(name)),
       ),

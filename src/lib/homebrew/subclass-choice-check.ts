@@ -190,7 +190,7 @@ function checkOption(
   return { option };
 }
 
-function checkChoice(raw: unknown, index: number, labels: Set<string>): { choice: SubclassChoice } | { error: string } {
+function checkChoice(raw: unknown, index: number, labels: Set<string>, choiceIds: Set<string>, askedIds: Set<string>): { choice: SubclassChoice } | { error: string } {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     return { error: `Choice ${index + 1} is a label, a level and a list of options.` };
   }
@@ -232,8 +232,18 @@ function checkChoice(raw: unknown, index: number, labels: Set<string>): { choice
     }
     options.push(checked.option);
   }
+  // Kept once made, as an option's id is: a sheet's pick holds it.
+  const sent = typeof source.id === "string" ? source.id.trim() : "";
+  if (sent && (sent.length > L.id || !ID.test(sent))) {
+    return { error: `${quoted(label)}: its id "${sent}" is not lower-case letters and numbers joined by dashes, ${L.id} at most.` };
+  }
+  if (sent && choiceIds.has(sent)) {
+    return { error: `Two choices share the id "${sent}"; each choice keeps its own.` };
+  }
+  const id = sent || uniqueVariantId(label, [...choiceIds, ...askedIds]);
+  choiceIds.add(id);
   labels.add(textKey(label));
-  return { choice: { label, level, options } };
+  return { choice: { id, label, level, options } };
 }
 
 // The choices a subclass offers, checked whole: every limit is refused by
@@ -250,13 +260,22 @@ export function checkSubclassChoices(raw: unknown): { choices: SubclassChoice[] 
     return { error: `A subclass offers ${L.choices} choices at most; this one has ${raw.length}.` };
   }
   const labels = new Set<string>();
+  const choiceIds = new Set<string>();
+  const askedIds = new Set(raw.map((row) => (row && typeof (row as Raw).id === "string" ? String((row as Raw).id).trim() : "")).filter(Boolean));
   const choices: SubclassChoice[] = [];
   for (const [index, row] of raw.entries()) {
-    const checked = checkChoice(row, index, labels);
+    const checked = checkChoice(row, index, labels, choiceIds, askedIds);
     if ("error" in checked) {
       return checked;
     }
     choices.push(checked.choice);
+  }
+  // One element per subclass: Elemental Affinity reads one damage type, and
+  // two choices that each named one left the order of a sheet's features to
+  // decide which (issue #833 review).
+  const elemental = choices.filter((choice) => choice.options.some((option) => option.damageType));
+  if (elemental.length > 1) {
+    return { error: `${elemental.map((choice) => quoted(choice.label)).join(" and ")} both give an element; a subclass's options name an element in one choice only, the one Elemental Affinity reads.` };
   }
   return { choices };
 }

@@ -14,6 +14,10 @@
     "lib/db/core.ts"
   ],
   "sites": {
+    "lib/content/subclass-choices.ts#[a-z]": [["key",3,"ODM's own pick ids (choice/option) and a choice id made from its label"]],
+    "lib/content/subclass-choices.ts#toLowerCase": [["key",1,"a choice id made from its label"]],
+    "lib/srd/chosen-element.ts#str-eq": [["key",1,"a feature's source, the sheet schema's enum"]],
+    "lib/srd/subclass-choice-picks.ts#str-eq": [["key",4,"a feature's source (the sheet schema's enum) and the workshop's choice and option ids"]],
     "lib/content/subclass-choices.ts#toUpperCase": [["display",1,"a damage type and a skill's words capitalised for a feature name and a summary"]],
     "lib/content/subclass-choices.ts#str-eq": [["key",1,"a skill id's own \"of\", kept lower case in its shown name"]],
     "lib/homebrew/subclass-choice-check.ts#[a-z]": [["key",2,"an option's id: lower-case letters and numbers joined by dashes"]],

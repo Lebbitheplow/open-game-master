@@ -32,9 +32,19 @@ export function choiceDamageTypeOf(name: string): { label: string; type: string 
   return found ? { label: found[1].trim(), type: textKey(found[2]) } : null;
 }
 
-// The first damage type a sheet's chosen options name, and its choice, or null.
-export function chosenDamageType(features: ReadonlyArray<{ name: string }>): { label: string; type: string } | null {
+// The damage type a sheet's chosen option names, and its choice, or null:
+// only the regrant's own "class" feature counts (a story feature of the
+// same name, which a file may carry, is no element), and with `classId`
+// only the one that class's subclass grants, so a multiclass's element is
+// the subclass's that holds Elemental Affinity (issue #833 review).
+export function chosenDamageType(
+  features: ReadonlyArray<{ name: string; source?: string; classId?: string }>,
+  classId?: string,
+): { label: string; type: string } | null {
   for (const feature of features) {
+    if (feature.source !== "class" || (classId && feature.classId && textKey(feature.classId) !== textKey(classId))) {
+      continue;
+    }
     const named = choiceDamageTypeOf(feature.name);
     if (named) {
       return named;
