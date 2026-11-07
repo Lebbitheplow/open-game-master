@@ -107,6 +107,21 @@ export async function GET(
         // author's homebrew.
         results = [...results, ...notFiled(results, bundledSpellRows(q)).slice(0, base.limit ?? 50)];
       }
+      // `lite=1`: the names, levels and books a picker lists, without each
+      // row's whole text, which a phone would download for nothing (the
+      // workshop's spell list pickers, issue #833).
+      if (url.searchParams.get("lite") === "1") {
+        results = (results as Array<Record<string, unknown>>).map((row) => ({
+          slug: row.slug,
+          name: row.name,
+          level: row.level,
+          school: row.school,
+          source: row.source,
+          documentSlug: row.documentSlug,
+          document: row.document,
+          data: {},
+        }));
+      }
       break;
     }
     case "items": {

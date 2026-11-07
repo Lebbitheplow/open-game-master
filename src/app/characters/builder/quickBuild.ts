@@ -125,6 +125,9 @@ function classScore(klass: ClassOption, answers: QuizAnswers, recommended?: Read
   if (answers.method === "mix") score += someMagic ? 3 : fullMagic ? 1 : -1;
   if (answers.source && asksSource(answers.method)) {
     const lists = QUIZ_SOURCES.find((entry) => entry.id === answers.source)?.lists ?? [];
+    // A workshop class with a list of its own names its own id here, which
+    // answers no source: its spells are its author's, not a published
+    // class's (issue #833).
     const list = klass.spellListFrom ?? spellClassFor(klass.id);
     if (lists.includes(list)) score += 5;
   }

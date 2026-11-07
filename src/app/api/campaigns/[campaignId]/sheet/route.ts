@@ -641,7 +641,9 @@ export async function PATCH(
     const built = buildLevelUp(sheet, parsed.data, {
       hpMethod: context.campaign.gameSettings.hpMethod ?? "average",
       multiclassAllowed: context.campaign.gameSettings.multiclassingEnabled !== false,
-      classOf: classGrantsFor,
+      // The table's workshop classes are classes here as at creation: a
+      // Runesmith levelled to "Unknown class" before (issue #833).
+      classOf: (classId) => classGrantsFor(classId, owner),
       // The race's cantrip pick and its innate cantrips (Thaumaturgy) are
       // known on top of the class's, as at creation (U:UB3).
       racialCantrips: freeCantripCount(sheet, raceGrantsFor(sheet.race, owner)?.cantripChoice?.count ?? 0),

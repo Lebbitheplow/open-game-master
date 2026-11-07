@@ -5,7 +5,7 @@ import { subclassLevelFor } from "@/lib/srd/features";
 import { Check, Plus, Search, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
-import { ContentPick } from "@/components/ui/ContentPick";
+import { SpellSearch } from "@/app/workshop/homebrew/SpellListFields";
 import { NumberStepper } from "@/components/ui/NumberStepper";
 import { SectionHead } from "@/components/ui/SectionHead";
 import { SelectField } from "@/app/workshop/homebrew/fields";
@@ -94,11 +94,20 @@ function BorrowFeature({ onPick, taken, full }: { onPick: (feature: CatalogFeatu
   );
 }
 
+// Spells by the class level they arrive at: the always-prepared ones a
+// subclass hands out (`spells`), or the ones it adds to what its class may
+// learn or prepare (`expanded`, a warlock patron's list, issue #833).
+const SPELL_SECTIONS = {
+  spells: { title: "Always-prepared spells", find: "Find a spell the subclass always has prepared" },
+  expanded: { title: "Adds to the class's spell list", find: "Find a spell to add to the class's list" },
+} as const;
+
 function SpellLists({
   data,
   set,
   castsNothing,
   classLabel,
+  field = "spells",
 }: {
   data: Data;
   set: (patch: Data) => void;
@@ -106,14 +115,15 @@ function SpellLists({
   // always-prepared spells have nothing to be cast with.
   castsNothing: boolean;
   classLabel: string;
+  field?: keyof typeof SPELL_SECTIONS;
 }) {
-  const spells = (data.spells ?? {}) as Record<string, string[]>;
+  const spells = (data[field] ?? {}) as Record<string, string[]>;
   const rows = Object.entries(spells).sort(([a], [b]) => Number(a) - Number(b));
-  const put = (next: Record<string, string[]>) => set({ spells: Object.keys(next).length ? next : undefined });
+  const put = (next: Record<string, string[]>) => set({ [field]: Object.keys(next).length ? next : undefined });
   const [level, setLevel] = useState(3);
   return (
-    <div className="space-y-1.5">
-      <SectionHead title="Always-prepared spells" glyph="rest-spell-slot" className="mb-1" />
+    <div className="space-y-1.5" data-testid={`subclass-${field}`}>
+      <SectionHead title={SPELL_SECTIONS[field].title} glyph="rest-spell-slot" className="mb-1" />
       {rows.map(([at, names]) => (
         <div key={at} className="live-in flex flex-wrap items-center gap-1.5 text-xs">
           <span className="w-28 shrink-0 text-stone-400">
@@ -146,11 +156,11 @@ function SpellLists({
           <NumberStepper size="sm" label="Class level the spells arrive at" min={1} max={20} value={level} onChange={setLevel} />
         </span>
         {(spells[String(level)] ?? []).length < SUBCLASS_SPELLS_PER_LEVEL ? (
-          <ContentPick
-            kind="spells"
-            label="Find a spell the subclass always has prepared"
+          <SpellSearch
+            label={SPELL_SECTIONS[field].find}
             placeholder="Add a spell..."
             className="min-w-48 flex-1"
+            exclude={new Set((spells[String(level)] ?? []).map(textKey))}
             onPick={(entry) => {
               const list = spells[String(level)] ?? [];
               if (list.some((name) => textKey(name) === textKey(entry.name))) return;
@@ -166,6 +176,10 @@ function SpellLists({
       {castsNothing && rows.length ? (
         <p className="reveal text-[11px] text-amber-300/90">
           A {classLabel} casts nothing of its own, so these spells have no slots to be cast with. Choose a spellcasting progression above, or they are words for the GM.
+        </p>
+      ) : field === "expanded" ? (
+        <p className="text-[11px] text-stone-500">
+          From that level on the character may learn or prepare these as if they were on the {classLabel}&apos;s list, as a warlock patron&apos;s spells are. They count like any other spell.
         </p>
       ) : (
         <p className="text-[11px] text-stone-500">Prepared for free from that level on, and never counted against the class&apos;s own prepared spells.</p>
@@ -218,6 +232,7 @@ export function ArchetypeFields({
         : (featureProfile ?? "none");
   const rules = THIRD_CASTER_PROFILES.find((profile) => profile.id === casting);
   const offersChoices = hostOffers(useCapabilities(), "subclassChoices");
+  const offersExpanded = hostOffers(useCapabilities(), "customSpellLists") || Boolean(data.expanded);
 
   return (
     <div className="space-y-3">
@@ -316,6 +331,11 @@ export function ArchetypeFields({
         </p>
       </div>
       <SpellLists data={data} set={set} castsNothing={casting === "none" && !casterClass(classId)} classLabel={classLabel} />
+      {/* A subclass that casts may widen its class's list (issue #833); an
+          older host drops `expanded` unread (src/lib/capabilities.ts). */}
+      {offersExpanded && (casting !== "none" || casterClass(classId)) ? (
+        <SpellLists data={data} set={set} castsNothing={false} classLabel={classLabel} field="expanded" />
+      ) : null}
       {/* What its player picks at a level: a bloodline, an element (issue
           #833). An older host drops the field on save, so it waits for the
           flag. */}

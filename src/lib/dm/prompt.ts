@@ -708,9 +708,14 @@ export function describeSheet(
   }
   const customClass = findCustomClass(sheet.class);
   if (customClass) {
-    const casting = customClass.spellListFrom
-      ? ` Casts ${customClass.spellListFrom}-list spells reflavored as ${customClass.castingLabel ?? "their own arts"} (${customClass.spellAbility?.toUpperCase()}).`
-      : "";
+    // A workshop class with a list of its own names some of it, not its id
+    // (issue #833): the GM reads which spells it draws on.
+    const own = customClass.customSpells;
+    const casting = own
+      ? ` Casts from a spell list of its own (${own.length} spells, among them ${own.slice(0, 8).join(", ")}) as ${customClass.castingLabel ?? "their own arts"} (${customClass.spellAbility?.toUpperCase()}).`
+      : customClass.spellListFrom
+        ? ` Casts ${customClass.spellListFrom}-list spells reflavored as ${customClass.castingLabel ?? "their own arts"} (${customClass.spellAbility?.toUpperCase()}).`
+        : "";
     lines.splice(
       1,
       0,

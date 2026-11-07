@@ -1,5 +1,5 @@
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
-import { getHomebrew, isPublishedGearName, listHomebrew, tableAuthors, updateHomebrew, type HomebrewEntry } from "@/lib/db/homebrew";
+import { getHomebrew, isPublishedGearName, listHomebrew, syncWorkshopClasses, tableAuthors, updateHomebrew, type HomebrewEntry } from "@/lib/db/homebrew";
 import { getSheetById } from "@/lib/db/sheets";
 import { getCampaignById } from "@/lib/db/campaigns";
 import { publishPersisted } from "@/lib/events";
@@ -185,6 +185,7 @@ function carry(userId: string, before: HomebrewEntry, to: string): { carried: Re
   }
 
   // The author's own entries that name it.
+  let classesCarried = false;
   if ((before.kind === "spell" || before.kind === "item") && answeredFor([userId], userId, before, from)) {
     const rename2 = renamerOf([{ kind: before.kind, from, to }]);
     for (const other of listHomebrew(userId, undefined, { archived: true })) {
@@ -201,8 +202,15 @@ function carry(userId: string, before: HomebrewEntry, to: string): { carried: Re
       const data = "error" in normalized ? out.data : normalized.data;
       db.prepare(`UPDATE homebrew_entries SET data_json = ?, updated_at = ? WHERE id = ?`).run(JSON.stringify(data), nowIso(), other.id);
       carried.entries += 1;
+      classesCarried ||= other.kind === "class";
     }
   }
+  // The other authors of a table the author runs whose classes and
+  // subclasses list this spell by name: theirs follow too, where the name
+  // meant this spell (they keep no spell of that name themselves), or a
+  // co-author's class lost the spell at the rename (issue #833 review). Only
+  // the spell names on those lists are rewritten.
+  const coAuthorsCarried = new Set<string>([userId]);
 
   // Every table the author runs, where theirs was the entry that answered.
   const tables = db
@@ -220,6 +228,28 @@ function carry(userId: string, before: HomebrewEntry, to: string): { carried: Re
     if (before.kind === "monster" || before.kind === "item") {
       carried.prep += renamePrepRefs(table.id, { [before.kind]: new Map([[textKey(from), to]]) });
     }
+    if (before.kind === "spell") {
+      const renameSpell = renamerOf([{ kind: "spell", from, to }]);
+      for (const coAuthor of tableAuthors(table.id)) {
+        if (coAuthorsCarried.has(coAuthor)) continue;
+        coAuthorsCarried.add(coAuthor);
+        if (listHomebrew(coAuthor, "spell", { archived: true }).some((entry) => textKey(entry.name) === textKey(from))) continue;
+        for (const other of listHomebrew(coAuthor, undefined, { archived: true })) {
+          if (other.kind !== "class" && other.kind !== "archetype") continue;
+          const out = renameHomebrewDataRefs(other.kind, other.data, renameSpell);
+          if (!out.changed) continue;
+          const normalized = normalizeHomebrewData(other.kind, out.data, other.name);
+          db.prepare(`UPDATE homebrew_entries SET data_json = ?, updated_at = ? WHERE id = ?`).run(JSON.stringify("error" in normalized ? out.data : normalized.data), nowIso(), other.id);
+          carried.entries += 1;
+          classesCarried ||= other.kind === "class";
+        }
+      }
+    }
+  }
+  // A class's own list follows the rename in the engines' registry too, or
+  // the renamed spell was off it until the next restart (issue #833).
+  if (classesCarried) {
+    syncWorkshopClasses();
   }
   return { carried, announce };
 }

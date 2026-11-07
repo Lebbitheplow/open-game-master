@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { isErrorResponse, requireMember } from "@/lib/campaign-api";
-import { spellClassFor } from "@/lib/classes";
-import { searchSpells, spellNameMatches } from "@/lib/content";
+import { spellFactsFor } from "@/lib/characters/catalog";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { allocateSeq } from "@/lib/db/campaigns";
 import { getSheetById, getSheetForUser, patchSheet } from "@/lib/db/sheets";
@@ -9,11 +8,11 @@ import { subclassExtrasForTable } from "@/lib/db/subclass-extras";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { publishPersisted } from "@/lib/events";
 import type { FullPatchSheetInput } from "@/lib/schemas/sheet";
-import { checklistClassSpell } from "@/lib/srd/spell-lists";
 import {
   casterViewsOf,
   changePreparation,
   maxSpellLevelOf,
+  spellOnCasterList,
   withCasterViews,
 } from "@/lib/srd/spell-prep";
 
@@ -93,25 +92,18 @@ async function changeSpell(
     return Response.json({ error: `${sheet.name} has no such caster class.` }, { status: 400 });
   }
 
-  // The content pack is the class list: the spell must be on it at a level
-  // this class can cast, and the sheet stores its canonical name.
+  // The spell must be on the list this caster prepares from, at a level it
+  // can cast, and the sheet stores its canonical name. The list is the one
+  // the save's check reads (spell-prep.ts spellOnCasterList, issue #833): a
+  // homebrew spell only when it names this class, a workshop class's own
+  // list, a subclass's additions. Homebrew counts when the table's owner or
+  // GM seats wrote it, not because the player did (src/lib/dm/spell-authors.ts).
   let spell = parsed.data.spell;
   let inClassList = false;
   if (action === "prepare" && view.style === "prepared") {
-    const found = searchSpells({
-      q: spell,
-      // Homebrew counts when the table's owner or DM seats wrote it, not
-      // because the player did (src/lib/dm/spell-authors.ts).
-      userIds: spellAuthorsFor(context.campaign),
-      classSlug: spellClassFor(view.classId),
-      level: maxSpellLevelOf(view),
-      limit: 20,
-    }).find((entry) => entry.level > 0 && spellNameMatches(entry, spell));
-    const canonical =
-      found?.name ??
-      checklistClassSpell(spell, spellClassFor(view.classId), maxSpellLevelOf(view));
-    if (canonical) {
-      spell = canonical;
+    const facts = spellFactsFor(spell, spellAuthorsFor(context.campaign));
+    if (facts && facts.level > 0 && facts.level <= maxSpellLevelOf(view) && spellOnCasterList(view, facts)) {
+      spell = facts.name;
       inClassList = true;
     }
   }

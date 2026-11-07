@@ -67,6 +67,7 @@ import { useQuickFill, type FillRequest } from "./useQuickFill";
 import { useTableRules } from "./useTableRules";
 import { hitDieChip } from "./lineage";
 import { useShowNumbers } from "./numbersPref";
+import { withPoolSupply } from "./spellSupply";
 
 export type { BuilderResult } from "./submit";
 
@@ -583,7 +584,7 @@ function CharacterBuilderForm({
       ...abilitiesBlocks(derived, state, featJudge),
       ...racialFeatBlock(unmetFeatMessage(featJudge, state.feats.slice(0, race ? racialFeatCount(race.id) : 0))),
     ],
-    spells: [...spellsBlocks(derived, klass), ...(gear ? [gear] : [])],
+    spells: [...spellsBlocks(withPoolSupply(derived, spellPool), klass), ...(gear ? [gear] : [])],
   };
   const blockers = {
     identity: owed.identity[0] ?? null,

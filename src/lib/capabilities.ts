@@ -233,6 +233,12 @@ export const SERVER_FEATURES = {
   // (issue #833): the species editor's spell rows, which an older host
   // drops unread on save.
   speciesSpells: true,
+  // A workshop class's list of its own and a workshop subclass's additions
+  // to its class's list (issue #833): the class's `spellList`/`spellStyle`,
+  // the subclass's `expanded` and a homebrew spell tagged with a workshop
+  // class. An older host drops the fields unread (the class falls back to
+  // the wizard's list), so the editor offers none of them there.
+  customSpellLists: true,
 } as const;
 export type ServerFeatures = { [K in keyof typeof SERVER_FEATURES]: boolean };
 

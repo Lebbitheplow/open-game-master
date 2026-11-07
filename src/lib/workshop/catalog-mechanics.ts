@@ -1,4 +1,4 @@
-import { getEntryDetail, spellMechanicsFor } from "@/lib/content";
+import { getEntryDetail, spellMechanicsFor, spellRowsOnList } from "@/lib/content";
 import { optionIdFor, packRaceOptions } from "@/lib/content/race-options";
 import { armorNamed } from "@/lib/srd/armor";
 import { magicItemBonus } from "@/lib/srd/item-row";
@@ -383,7 +383,9 @@ function withMechanicsOnly(kind: string, results: unknown[], params: { classSlug
   }
   if (kind === "classes") {
     return results.map((row) => {
-      const table = classMechanicsOf(row as Row & { slug?: string });
+      // A pack class's own list, read from the pack's spells and the
+      // checklist (issue #833); asked only for a class no SRD list covers.
+      const table = classMechanicsOf(row as Row & { slug?: string }, (classId) => spellRowsOnList(classId, []).map((spell) => spell.name));
       return table ? { ...(row as Row), table } : row;
     });
   }
