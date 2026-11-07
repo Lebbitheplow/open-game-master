@@ -325,7 +325,7 @@ function compactSchema(value: unknown): unknown {
 // anyway is still heard: the server reads every argument it knows.
 export const COMPACT_OMITS: Record<string, string[]> = {
   // The creatures of the user's choice an area feature takes (Order's Demand,
-  // Champion Challenge, Dreadful Aspect); without it, every foe in reach.
+  // Champion Challenge, Conquering Presence, Dreadful Aspect); without it, every foe in reach.
   use_resource: ["targetEnemyIds"],
 };
 

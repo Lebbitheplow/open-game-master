@@ -355,7 +355,7 @@ export const PARTY_ADJUDICATIONS: CatalogEntry[] = [
       { name: "variant", label: "Option", kind: "text", help: "For a feature with choices." },
       { name: "targetCharacterId", label: "Target", kind: "character" },
       { name: "targetEnemyId", label: "Enemy aimed at", kind: "enemy", help: "Intimidating Presence and the subclass features aimed at a creature: the server rolls its save." },
-      { name: "targetEnemyIds", label: "Enemies chosen", kind: "enemies", help: "The creatures of the user's choice an area feature takes (Order's Demand, Champion Challenge, Dreadful Aspect). Left empty, every foe in reach." },
+      { name: "targetEnemyIds", label: "Enemies chosen", kind: "enemies", help: "The creatures of the user's choice an area feature takes (Order's Demand, Champion Challenge, Conquering Presence, Dreadful Aspect). Left empty, every foe in reach." },
       { name: "form", label: "Beast form", kind: "text", help: "Wild Shape: the beast's name. The server reads its stat block." },
       { name: "formHp", label: "Form's hit points", kind: "number", min: 1, max: 300 },
       { name: "formAc", label: "Form's armor class", kind: "number", min: 1, max: 30 },

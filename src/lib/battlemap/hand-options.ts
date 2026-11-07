@@ -90,7 +90,7 @@ function card(
 const AIMED_OPTIONS = [VOW_OF_ENMITY, textKey("Arcane Abjuration"), textKey("Abjure Enemy")];
 // The options that take the creatures of the player's choice (channel-fear.ts
 // chosen): aimed at one, the others added.
-const CHOSEN_OPTIONS = [textKey("Dreadful Aspect")];
+const CHOSEN_OPTIONS = [textKey("Conquering Presence"), textKey("Dreadful Aspect")];
 
 const RULES: Record<HeldOption["cost"], string> = {
   action: "Takes their action.",

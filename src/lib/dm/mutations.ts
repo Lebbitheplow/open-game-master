@@ -484,7 +484,7 @@ const argsSchema = z.object({
   // use_resource: the creature a feature is aimed at (Intimidating Presence).
   targetEnemyId: z.string().optional(),
   // use_resource: the creatures of the user's choice an area feature takes
-  // (Order's Demand, Champion Challenge, Dreadful Aspect).
+  // (Order's Demand, Champion Challenge, Conquering Presence, Dreadful Aspect).
   targetEnemyIds: z.array(z.string().trim().min(1).max(80)).max(30).optional(),
   // purchase: gold each, for a thing no list prices (half a gold piece is 0.5).
   price: z.coerce.number().min(0).max(100000).optional(),

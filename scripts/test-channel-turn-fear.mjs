@@ -170,8 +170,8 @@ await test("An option the sheet does not hold is refused and spends nothing.", a
   assert.equal(used(oathbreaker), 0);
 });
 
-await test("The cards play these: the aimed two ask for a creature, the others for none.", async () => {
-  for (const [who, name, target] of [[ancients, "Turn the Faithless", "none"], [watchers, "Abjure the Extraplanar", "none"], [arcana, "Arcane Abjuration", "enemy"], [conquest, "Conquering Presence", "none"], [oathbreaker, "Dreadful Aspect", "enemy"], [vengeance, "Abjure Enemy", "enemy"]]) {
+await test("The cards play these: the aimed and chosen ones ask for a creature, the others for none.", async () => {
+  for (const [who, name, target] of [[ancients, "Turn the Faithless", "none"], [watchers, "Abjure the Extraplanar", "none"], [arcana, "Arcane Abjuration", "enemy"], [conquest, "Conquering Presence", "enemy"], [oathbreaker, "Dreadful Aspect", "enemy"], [vengeance, "Abjure Enemy", "enemy"]]) {
     const [first] = await stage(who, ["fiend", "fiend", "beast"]);
     const card = deriveHand(world.sheet(who.id), FRESH_TURN, {}).find((entry) => entry.name === name);
     assert.ok(card, name);

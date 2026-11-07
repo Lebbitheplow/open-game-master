@@ -1,6 +1,6 @@
 // The Channel Divinity options that frighten on a failed Wisdom save: Conquering
-// Presence and Dreadful Aspect, every foe within 30 feet, and Abjure Enemy, one
-// creature within 60 whose speed drops as well. Before this the use was spent and
+// Presence and Dreadful Aspect, the foes of the user's choice within 30 feet,
+// and Abjure Enemy, one creature within 60 whose speed drops as well. Before this the use was spent and
 // the model was left to roll the saves and lay the conditions by hand, or not at all.
 //
 // Called from feature-spends.ts, whose spend() checks, charges the turn and spends
@@ -30,8 +30,8 @@ type FearOption = {
   rangeFt: number;
   // Aimed at one creature, which the call names.
   single?: boolean;
-  // The creatures of the user's choice in reach (Dreadful Aspect), named in
-  // targetEnemyIds; every one when none is named.
+  // The creatures of the user's choice in reach (Conquering Presence, Dreadful
+  // Aspect), named in targetEnemyIds; every one when none is named.
   chosen?: boolean;
   // A save at the end of each of its turns ends it (Conquering Presence).
   repeats?: boolean;
@@ -42,7 +42,9 @@ type FearOption = {
 };
 
 export const CHANNEL_FEAR: FearOption[] = [
-  { name: "Conquering Presence", rangeFt: 30, repeats: true },
+  // "Each creature of your choice that you can see within 30 feet", as
+  // Dreadful Aspect: a list naming some of them is the player's choice.
+  { name: "Conquering Presence", rangeFt: 30, repeats: true, chosen: true },
   { name: "Dreadful Aspect", rangeFt: 30, chosen: true },
   { name: "Abjure Enemy", rangeFt: 60, single: true, abjures: true },
 ];

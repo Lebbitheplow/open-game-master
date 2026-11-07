@@ -1,5 +1,5 @@
-// Order's Demand, Champion Challenge and Dreadful Aspect take "each creature of
-// your choice" within reach. They took every foe in reach; a call now names the
+// Order's Demand, Champion Challenge, Conquering Presence and Dreadful Aspect
+// take "each creature of your choice" within reach. They took every foe in reach; a call now names the
 // ones chosen in targetEnemyIds (every one when it names none), and the Hand's
 // card aims at one creature and adds the others.
 import assert from "node:assert/strict";
@@ -23,7 +23,8 @@ const order = hero("cleric", "Order Domain");
 const crown = hero("paladin", "Oath of the Crown");
 const oathbreaker = hero("paladin", "Oathbreaker");
 const conquest = hero("paladin", "Oath of Conquest");
-const everyone = [order, crown, oathbreaker, conquest];
+const light = hero("cleric", "Light Domain");
+const everyone = [order, crown, oathbreaker, conquest, light];
 
 // Two foes beside the hero and one out of 30 feet.
 async function stage(who) {
@@ -56,6 +57,7 @@ for (const [who, variant, condition] of [
   [order, "order's demand", "charmed"],
   [crown, "champion challenge", "champion challenge"],
   [oathbreaker, "dreadful aspect", "frightened"],
+  [conquest, "conquering presence", "frightened"],
 ]) {
   await test(`${variant}: only the creature chosen saves and suffers, though the other in reach would fail too.`, async () => {
     const [near, beside] = await stage(who);
@@ -85,12 +87,12 @@ for (const [who, variant, condition] of [
   });
 }
 
-await test("Conquering Presence takes every creature in reach, so a chosen few is refused and nothing is spent.", async () => {
-  const [near] = await stage(conquest);
-  const out = await channel(conquest, "conquering presence", [2, 2], { targetEnemyIds: [near.id] });
+await test("Radiance of the Dawn takes every hostile creature in reach, so a chosen few is refused and nothing is spent.", async () => {
+  const [near] = await stage(light);
+  const out = await channel(light, "radiance of the dawn", [5, 5, 2, 2], { targetEnemyIds: [near.id] });
   assert.equal(out.ok, false);
   assert.match(String(out.error), /every creature in reach/);
-  assert.equal(used(conquest), 0);
+  assert.equal(used(light), 0);
 });
 
 await test("The Hand's card aims at one creature and adds the others, and its call names them all.", async () => {
@@ -98,6 +100,7 @@ await test("The Hand's card aims at one creature and adds the others, and its ca
     [order, "Order's Demand", "charmed"],
     [crown, "Champion Challenge", "champion challenge"],
     [oathbreaker, "Dreadful Aspect", "frightened"],
+    [conquest, "Conquering Presence", "frightened"],
   ]) {
     const [near, beside, far] = await stage(who);
     const [card] = deriveHand(world.sheet(who.id), FRESH_TURN, {}).filter((entry) => entry.name === name);

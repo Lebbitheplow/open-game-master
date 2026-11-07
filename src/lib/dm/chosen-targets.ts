@@ -1,5 +1,5 @@
 // "Each creature of your choice": the creatures an area feature takes, when
-// the call names them (Order's Demand, Champion Challenge, Dreadful Aspect).
+// the call names them (Order's Demand, Champion Challenge, Conquering Presence, Dreadful Aspect).
 // targetEnemyIds names them; a lone targetEnemyId names one, for a caller that
 // sees only that argument (the compact tool set leaves targetEnemyIds off).
 // Every creature in reach when none is named. A name outside the area, or a
