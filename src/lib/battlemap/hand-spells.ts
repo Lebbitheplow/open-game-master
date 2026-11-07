@@ -47,10 +47,13 @@ import {
   type SpellFact,
 } from "@/lib/battlemap/hand-core";
 import type { ToolError } from "@/lib/dm/tool-errors";
+import type { StoredSpell } from "@/lib/srd/spell-storing";
 import { compareNames, textKey } from "@/lib/language/text-logic";
 import { forPlayers } from "@/lib/language/player-text";
 
 // ---- spells ----
+
+export const ringCardName = (spell: string) => `Ring: ${spell}`;
 
 export function spellNames(sheet: CharacterSheet): string[] {
   const casting = sheet.spellcasting;
@@ -82,7 +85,7 @@ function rangeText(range: SpellRange): string {
   return range.kind === "unknown" ? "" : range.kind.replace(/^./, (c) => c.toUpperCase());
 }
 
-function factFor(name: string, options: HandOptions): SpellFact | null {
+export function factFor(name: string, options: HandOptions): SpellFact | null {
   const fetched = options.spells?.[textKey(name)];
   if (fetched) return fetched;
   // No pack: the authored rows' prose, and the bundled facts' casting time,
@@ -169,7 +172,7 @@ export function spellChoice(mech: SpellMech): HandChoice | undefined {
   return undefined;
 }
 
-function castingCost(castingTime: string): HandCost | null {
+export function castingCost(castingTime: string): HandCost | null {
   const text = castingTime.toLowerCase();
   if (text.includes("bonus")) return "bonus";
   if (text.includes("reaction")) return "reaction";
@@ -189,9 +192,15 @@ function spellShares(mech: SpellMech, spellLevel: number, slotLevel: number | nu
   return { count, unit: "creature", stack: false };
 }
 
-function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, name: string, fact: SpellFact, options: HandOptions = {}): HandCard | null {
+// A spell cast out of a Ring of Spell Storing (hand-ring.ts): its own level and
+// numbers, and the ring's gates in place of the caster's. `holds`: played now it
+// only begins a casting held across turns, so it aims at nothing yet. `free`: that
+// casting is done, and this card resolves it.
+export type StoredCard = { ring: string; entry: StoredSpell; holds: boolean; free: boolean; gates: Gate[] };
+
+export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, name: string, fact: SpellFact, options: HandOptions = {}, stored?: StoredCard): HandCard | null {
   const blasts = options.blasts !== false;
-  const cost = castingCost(fact.castingTime);
+  const cost = castingCost(fact.castingTime) ?? (stored ? "action" : null);
   if (!cost) return null;
   // The mechanics row the engine reads; the prose is parsed only for what the
   // card shows when no row exists (its target, its save). With no pack there
@@ -207,16 +216,18 @@ function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, 
     { resolution: "utility" };
   // Witch Bolt's beam while it holds: the card is its strike, with no slot and
   // no roll. Aimed anywhere else it is a new casting (src/lib/dm/intent-logic.ts).
-  const beam = mech.repeatDice && sheet.concentratingOn && textKey(sheet.concentratingOn) === textKey(name) ? mech.repeatDice : null;
-  const slot = fact.level > 0 && !beam ? lowestSlot(sheet, fact.level) : null;
+  // A ring's card of that spell is always a new casting.
+  const beam = !stored && mech.repeatDice && sheet.concentratingOn && textKey(sheet.concentratingOn) === textKey(name) ? mech.repeatDice : null;
+  const slot = !stored && fact.level > 0 && !beam ? lowestSlot(sheet, fact.level) : null;
+  const slotLevel = stored?.entry.level ?? slot?.level;
   const derived = computeSheetDerived(sheet);
-  const abilityMod = sheet.spellcasting ? derived.abilityMods[sheet.spellcasting.ability] : 0;
+  const abilityMod = stored ? stored.entry.abilityMod ?? 0 : sheet.spellcasting ? derived.abilityMods[sheet.spellcasting.ability] : 0;
   const scaled = scaledSpellDice({
     spellLevel: fact.level,
     desc: fact.desc,
     higherLevel: fact.higherLevel,
     casterLevel: sheet.level,
-    slotLevel: slot?.level,
+    slotLevel,
   });
   // The dice the engine rolls (spellDamageFor reads the same rule): Web,
   // Entangle and Hypnotic Pattern deal none whatever their prose mentions.
@@ -225,7 +236,7 @@ function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, 
     mech: row,
     spellLevel: fact.level,
     casterLevel: sheet.level,
-    slotLevel: slot?.level,
+    slotLevel,
     desc: fact.desc,
     higherLevel: fact.higherLevel,
   });
@@ -242,11 +253,11 @@ function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, 
   if (rider && damage) {
     damage = addFlat(damage, derived.abilityMods[rider.ability as keyof typeof derived.abilityMods] ?? 0);
   }
-  const toHit = mech.resolution === "attack" && !beam ? spellAttackFor(sheet, name) : null;
+  const toHit = mech.resolution === "attack" && !beam ? (stored ? stored.entry.attackBonus ?? null : spellAttackFor(sheet, name)) : null;
   // The engine's own facts (casting time, components, material cost, range)
   // for the engine's own gates below.
   const facts = fact.facts ?? bundledSpellFacts(name);
-  const dc = mech.resolution === "save" && mech.save ? spellSaveDcFor(sheet, name) : null;
+  const dc = mech.resolution === "save" && mech.save ? (stored ? stored.entry.saveDc ?? null : spellSaveDcFor(sheet, name)) : null;
   const save = dc !== null && mech.save ? { ability: SAVE_LABEL[mech.save] ?? mech.save.toUpperCase(), dc } : null;
   const type: HandCardType =
     mech.resolution === "heal" ? "mend" : mech.resolution === "buff" ? "ward" : mech.condition ? "control" : "spell";
@@ -292,14 +303,14 @@ function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, 
   // costly material neither carried nor affordable, no slot, and the
   // bonus-action spell rule.
   const problem = (refusal: ToolError | null, spent = false): Gate => (refusal ? { reason: refusal.error, spent } : null);
-  const material = materialPlan(sheet, facts, { inFight: true, slotLevel: slot?.level ?? fact.level });
-  const slotRefusal = fact.level > 0 && !slot ? slotPlan(sheet, name, facts, fact.level) : null;
+  const material = materialPlan(sheet, facts, { inFight: true, slotLevel: slotLevel ?? fact.level });
+  const slotRefusal = !stored && fact.level > 0 && !slot ? slotPlan(sheet, name, facts, fact.level) : null;
   const charge = turnCharge({
     who: sheet.name,
     // Not a casting: charged as cast-repeat.ts charges it.
     facts: beam && facts ? { ...facts, level: 0 } : facts,
     spell: name,
-    slotLevel: slot?.level ?? null,
+    slotLevel: slotLevel ?? null,
     inFight: true,
     budget: turn.myTurn ? budgetOf(turn, sheet) : null,
     reactionSpent: turn.reactionUsed,
@@ -310,19 +321,23 @@ function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, 
   const chargeGate: Gate = "error" in charge ? { reason: charge.error, spent: charge.error.includes("already used") } : null;
   const melee = mech.resolution === "attack" && isMeleeSpellAttack(engine, facts?.range.kind);
   if (melee) notes.unshift("Melee spell attack: a creature beside you.");
+  if (stored) {
+    notes.unshift(stored.holds ? `Out of ${stored.ring}, with no slot. It takes turns to cast: this begins it and holds your action each turn.` : `Out of ${stored.ring}, with no slot.`);
+  }
   // A feature that moves the spell to the bonus action shows it there.
-  const shownCost: HandCost = !("error" in charge) && charge.kind === "budget" && charge.cost === "bonus action" ? "bonus" : cost;
+  const shownCost: HandCost = stored?.free ? "free" : !stored && !("error" in charge) && charge.kind === "budget" && charge.cost === "bonus action" ? "bonus" : cost;
+  const fromRing = stored ? { item: stored.ring } : {};
   const card: HandCard = {
-    id: `spell:${textKey(name)}`,
+    id: stored ? `spell:ring:${textKey(stored.ring)}:${textKey(name)}` : `spell:${textKey(name)}`,
     type,
-    name,
+    name: stored ? ringCardName(name) : name,
     cost: shownCost,
     range: feet(fact.range),
     dice,
     roll,
     rules: notes.slice(0, 2).join(" "),
     description: [fact.desc, fact.higherLevel ? `At higher levels: ${fact.higherLevel}` : "", ...notes.map((note) => (note === BEST_EFFORT_SHORT ? BEST_EFFORT_NOTE : note))].filter(Boolean).join("\n\n"),
-    resource: beam ? "No slot" : fact.level === 0 ? "Cantrip" : slot ? slotLine(slot) : `Level ${fact.level} · no slots`,
+    resource: beam ? "No slot" : stored ? `Level ${stored.entry.level}` : fact.level === 0 ? "Cantrip" : slot ? slotLine(slot) : `Level ${fact.level} · no slots`,
     condition: beam ? "" : mech.condition?.name ?? (fact.concentration ? "Concentration" : ""),
     icon: { kind: "spell", key: name, family: fact.school ? `spell-${fact.school.toLowerCase()}` : null },
     target,
@@ -344,18 +359,21 @@ function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, 
     // use_reaction resolves it, off the caster's turn too.
     intent:
       cost === "reaction"
-        ? { card: "reaction", feature: name, spell: name, slotLevel: slot?.level ?? null }
-        : { card: "spell", spell: name, slotLevel: slot?.level ?? null },
+        ? { card: "reaction", feature: name, spell: name, slotLevel: slotLevel ?? null, ...fromRing }
+        : { card: "spell", spell: name, slotLevel: slotLevel ?? null, ...fromRing },
   };
   // The beam asks only what its cost does: no slot, components or material.
   if (beam) {
     return gated(card, standingGate(sheet, turn), chargeGate);
   }
-  const choice = cost === "reaction" ? undefined : spellChoice(mech);
+  // Nothing to pick for a reaction, or for a casting that is only begun.
+  const plain = cost === "reaction" || stored?.holds === true;
+  if (stored?.holds) card.target = "none";
+  const choice = plain ? undefined : spellChoice(mech);
   if (choice) card.choice = choice;
   // A summoning spell that calls more than one creature from this slot asks
   // which, and how many where the spell lets its caster choose (issue 685).
-  const summoning = cost === "reaction" ? null : summonPick(options.summons?.[textKey(name)], slot?.level ?? fact.level);
+  const summoning = plain ? null : summonPick(options.summons?.[textKey(name)], slotLevel ?? fact.level);
   if (summoning) {
     card.choice = summoning.choice;
     card.summon = summoning.summon;
@@ -364,22 +382,25 @@ function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, 
   // So is an instant blast's (Fireball, Burning Hands), whose squares the
   // engine then catches everyone on (issue 570); a blast around the caster
   // needs no pick and aims at nobody.
-  const zone = cost === "reaction" ? null : areaFor({ spell: name, runsAs: fact.runsAs }, slot?.level ?? (fact.level || null));
+  const zone = plain ? null : areaFor({ spell: name, runsAs: fact.runsAs }, slotLevel ?? (fact.level || null));
   // Its printed area decides, not the parsed row's flag, which a line "100
   // feet long" or a "10-foot-radius sphere" can slip past (Lightning Bolt,
   // Shatter).
   const blast =
-    cost === "reaction" || zone || !blasts || (mech.resolution !== "save" && mech.resolution !== "auto")
+    plain || zone || !blasts || (mech.resolution !== "save" && mech.resolution !== "auto")
       ? null
-      : blastAreaFor({ spell: name, runsAs: fact.runsAs }, { desc: fact.desc, range: fact.range }, slot?.level ?? (fact.level || null), mech.damageType ?? "");
+      : blastAreaFor({ spell: name, runsAs: fact.runsAs }, { desc: fact.desc, range: fact.range }, slotLevel ?? (fact.level || null), mech.damageType ?? "");
   const area = zone ?? blast;
   if (area) card.area = area;
   if (blast?.pick === "none") card.target = "none";
   // Magic Missile's darts, Scorching Ray's rays, Eldritch Blast's beams, the
   // creatures Bless or an upcast Hold Person takes: how they are shared out
   // is asked in the Hand, not left to the model (issue 570).
-  const shared = cost === "reaction" || area ? null : spellShares(mech, fact.level, slot?.level ?? null, sheet.level);
+  const shared = plain || area ? null : spellShares(mech, fact.level, slotLevel ?? null, sheet.level);
   if (shared) card.shares = shared;
+  // No components, no slot and no room in the turn's spell rule: the ring asks
+  // what use_item asks (src/lib/dm/spell-storing.ts).
+  if (stored) return gated(card, ...stored.gates);
   return gated(
     card,
     standingGate(sheet, turn, cost === "reaction" ? "reaction" : "cast"),

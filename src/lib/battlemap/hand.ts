@@ -45,6 +45,7 @@ import {
   type HandTurn,
 } from "@/lib/battlemap/hand-core";
 import { featureCards, spellCards, spellNames } from "@/lib/battlemap/hand-spells";
+import { ringSpellCards, ringSpellNames } from "@/lib/battlemap/hand-ring";
 import { intimidatingPresenceCards, subclassSpendCards } from "@/lib/battlemap/hand-subclass";
 import { spellHoldOf } from "@/lib/battlemap/hand-escape";
 import { gearCards, undrawnGate } from "@/lib/battlemap/hand-gear";
@@ -505,6 +506,7 @@ export function deriveHand(sheet: CharacterSheet, turn: HandTurn = FRESH_TURN, o
     ...attackCards(sheet, turn, riders, options),
     ...riderCards(sheet, turn, riders),
     ...spells,
+    ...ringSpellCards(sheet, turn, riders, options),
     ...features,
     ...optionCards(sheet, turn),
     ...intimidatingPresenceCards(sheet, turn),
@@ -552,6 +554,12 @@ function withReadySpells(card: HandCard, spells: HandCard[]): HandCard {
 // The spells the component has to look up before the hand is complete.
 export function spellsToLookUp(sheet: CharacterSheet): string[] {
   return spellNames(sheet);
+}
+
+// The same, and what a ring holds, for the cards alone: the summoning door lists
+// what the sheet casts from its own slots.
+export function handSpellsToLookUp(sheet: CharacterSheet): string[] {
+  return [...spellNames(sheet), ...ringSpellNames(sheet)];
 }
 
 // Nine in the fan, the rest behind the "more" spine; a player's own

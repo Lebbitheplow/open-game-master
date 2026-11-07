@@ -2722,6 +2722,125 @@ const resolveTables = {};
   }
 }
 
+// A fighter's Ring of Spell Storing in the Hand (scenario 122-ring-cards): a table
+// the lead runs and plays at, so a card resolves as it is played, in a fight on
+// the fighter's turn with two goblins beside them. One per viewport: the spells go.
+const ringTables = {};
+{
+  const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
+  const maps = await import("../../src/lib/db/battle-maps.ts");
+  const encounterRows = await import("../../src/lib/db/encounters.ts");
+  const { initiativeFloorFor } = await import("../../src/lib/dm/encounter-tools.ts");
+  // Two goblins beside the hero, on the hero's turn: a person's table shows the
+  // Hand only in a fight, and Hold Person can take one and leave one to swing.
+  const ringFight = async (campaignId, heroId) => {
+    const started = await invokeEngine(campaigns.getCampaignById(campaignId), { kind: "human", userId: world.owner.id }, {
+      name: "start_encounter",
+      args: { enemies: [{ monster: "goblin", count: 2 }] },
+    });
+    if (!started.ok) {
+      throw new Error(`the ring table's fight did not start: ${started.error}`);
+    }
+    const encounter = encounterRows.getActiveEncounter(campaignId);
+    const board = maps.getBattleMapForEncounter(encounter.id);
+    maps.setBattleMapTerrain(board.id, ".".repeat(board.width * board.height));
+    getDatabase().prepare("UPDATE battle_maps SET doors_json = '{}' WHERE id = ?").run(board.id);
+    let rank = 0;
+    for (const token of maps.listTokens(board.id)) {
+      if (token.refId === heroId) maps.moveToken(token.id, 5, 6, 0);
+      else maps.moveToken(token.id, 6, 5 + rank++, 0);
+    }
+    const place = encounter.order.findIndex((entry) => entry.characterId === heroId);
+    if (place < 0) {
+      throw new Error("the ring table's hero has no place in the order");
+    }
+    encounterRows.saveEncounter({
+      ...encounter,
+      orderReady: true,
+      round: Math.max(1, encounter.round),
+      turnIndex: place,
+      turnBudget: null,
+      legendary: { ...encounter.legendary, due: [] },
+    });
+    campaigns.setFloor(campaignId, initiativeFloorFor(campaignId) ?? { mode: "open" });
+  };
+  for (const viewport of ["desktop", "phone"]) {
+    const table = campaigns.createCampaign(world.owner.id, {
+      title: `Ring Table (${viewport})`,
+      description: "Goblins in a lane and a ring that holds three spells.",
+      theme: "high-fantasy",
+      maxPlayers: 4,
+      startingLevel: 5,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human" },
+    });
+    campaigns.setCampaignStatus(table.id, "active");
+    const hero = sheets.createSheet(
+      table.id,
+      world.owner.id,
+      5,
+      heroInput({
+        name: "Corin Ashvale",
+        class: "fighter",
+        level: 5,
+        maxHp: 44,
+        equipment: [
+          { name: "Longsword", qty: 1, equipped: true },
+          {
+            name: "Ring of Spell Storing",
+            qty: 1,
+            equipped: true,
+            attuned: true,
+            storedSpells: [
+              { spell: "Knock", level: 2, saveDc: 15, attackBonus: 7, by: "Iris" },
+              { spell: "Hold Person", level: 2, saveDc: 15, attackBonus: 7, by: "Iris" },
+              { spell: "Shield", level: 1, saveDc: 15, attackBonus: 7, by: "Iris" },
+            ],
+          },
+        ],
+      }),
+    );
+    await ringFight(table.id, hero.id);
+    // A wizard whose own spells fold Spells and whose gear folds
+    // Items, so the ring's cards are under both.
+    const study = campaigns.createCampaign(world.owner.id, {
+      title: `Ring Study (${viewport})`,
+      description: "A wizard's study and a ring on the desk.",
+      theme: "high-fantasy",
+      maxPlayers: 4,
+      startingLevel: 5,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human" },
+    });
+    campaigns.setCampaignStatus(study.id, "active");
+    const wizardHero = sheets.createSheet(
+      study.id,
+      world.owner.id,
+      5,
+      heroInput({
+        name: "Maren Oake",
+        class: "wizard",
+        level: 5,
+        abilities: { int: 16 },
+        equipment: [
+          { name: "Dagger", qty: 1, equipped: true },
+          { name: "Ring of Spell Storing", qty: 1, equipped: true, attuned: true, storedSpells: [{ spell: "Knock", level: 2, saveDc: 15, attackBonus: 7 }, { spell: "Hold Person", level: 2, saveDc: 15, attackBonus: 7 }] },
+        ],
+        spellcasting: {
+          ability: "int",
+          slots: { 1: { max: 4, used: 0 }, 2: { max: 3, used: 0 } },
+          known: [],
+          prepared: ["Shield", "Sleep", "Magic Missile", "Mage Armor"],
+          cantrips: [],
+          spellbook: ["Shield", "Sleep", "Magic Missile", "Mage Armor"],
+        },
+      }),
+    );
+    await ringFight(study.id, wizardHero.id);
+    ringTables[viewport] = { id: table.id, hero: hero.id, study: study.id };
+  }
+}
+
 // Issue 685, round 2 (scenario 115-fight-bench-2): a table per moment, one
 // per viewport, since each step plays on its own. At the first four the
 // player runs the table and the lead plays (the page is the lead's, on the
@@ -3116,6 +3235,7 @@ const ids = {
   fallenTables,
   clockTables,
   resolveTables,
+  ringTables,
   bench2,
   weekly,
   multiclassTableId: multiclassTable.id,
@@ -3229,6 +3349,7 @@ const ids = {
     ...Object.fromEntries(Object.entries(fallenTables).map(([viewport, id]) => [id, `The Fallen Watch (${viewport})`])),
     ...Object.fromEntries(Object.entries(clockTables).map(([viewport, table]) => [table.id, `Clock Table (${viewport})`])),
     ...Object.fromEntries(Object.entries(resolveTables).map(([viewport, table]) => [table.id, `${RESOLVE_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(ringTables).flatMap(([viewport, table]) => [[table.id, `Ring Table (${viewport})`], [table.study, `Ring Study (${viewport})`]])),
     ...bench2Titles,
     ...Object.fromEntries(Object.entries(pactTables).flatMap(([kind, tables]) => Object.entries(tables).map(([viewport, table]) => [table.id, `Pact ${kind.charAt(0).toUpperCase()}${kind.slice(1)} (${viewport})`]))),
     ...Object.fromEntries(Object.entries(chipTables).map(([viewport, table]) => [table.id, `Chip Table (${viewport})`])),
