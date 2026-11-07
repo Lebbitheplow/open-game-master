@@ -2481,6 +2481,64 @@ for (const viewport of ["desktop", "phone"]) {
   portentTables[viewport] = { id: table.id, hero: hero.id };
 }
 
+// The damage roll card on real dice (play-test 2026-11-07, B5): a table the
+// player runs, at real_allowed, in a fight with one goblin beside the lead's
+// fighter, whose Piercer and Savage Attacker change the damage dice. It is
+// her turn; she turns real dice on once the order is rolled.
+const DAMAGE_STEPS_TITLE = "Quarry Table";
+const damageStepTables = {};
+{
+  const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
+  const { dice, clearDice } = await import("../lib/enforce-world.mjs");
+  const maps = await import("../../src/lib/db/battle-maps.ts");
+  const encounterRows = await import("../../src/lib/db/encounters.ts");
+  const { initiativeFloorFor } = await import("../../src/lib/dm/encounter-tools.ts");
+  for (const viewport of ["desktop", "phone"]) {
+    const table = campaigns.createCampaign(player.id, {
+      title: `${DAMAGE_STEPS_TITLE} (${viewport})`,
+      description: "Raiders at the old quarry.",
+      theme: "high-fantasy",
+      maxPlayers: 6,
+      startingLevel: 5,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human", dicePolicy: "real_allowed" },
+    });
+    const seated = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+    if ("error" in seated) {
+      throw new Error(`could not seat the lead at the quarry table: ${seated.error}`);
+    }
+    campaigns.setCampaignStatus(table.id, "active");
+    const hero = sheets.createSheet(table.id, world.owner.id, 5, heroInput({
+      name: "Kestra Holm", class: "fighter", level: 5, maxHp: 44, abilities: { str: 12, dex: 16 },
+      feats: ["Piercer", "Savage Attacker"], equipment: [{ name: "Rapier", qty: 1, equipped: true }],
+    }));
+    // The goblin's die, then the hero's: the hero acts first.
+    clearDice();
+    dice(1, 20);
+    const started = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: player.id }, {
+      name: "start_encounter",
+      args: { enemies: [{ monster: "goblin", count: 1 }] },
+    });
+    clearDice();
+    if (!started.ok) {
+      throw new Error(`the quarry table's fight did not start: ${started.error}`);
+    }
+    const encounter = encounterRows.getActiveEncounter(table.id);
+    const board = maps.getBattleMapForEncounter(encounter.id);
+    maps.setBattleMapTerrain(board.id, ".".repeat(board.width * board.height));
+    getDatabase().prepare("UPDATE battle_maps SET doors_json = '{}' WHERE id = ?").run(board.id);
+    const [goblin] = encounterRows.listEnemies(encounter.id);
+    for (const token of maps.listTokens(board.id)) {
+      maps.moveToken(token.id, token.refId === hero.id ? 5 : 6, 5, 0);
+    }
+    const index = encounter.order.findIndex((entry) => entry.characterId === hero.id);
+    encounterRows.saveEncounter({ ...encounter, orderReady: true, turnIndex: Math.max(0, index), turnBudget: null, surprisedIds: [], reactionsUsed: [] });
+    campaigns.setFloor(table.id, initiativeFloorFor(table.id) ?? { mode: "open" });
+    campaigns.setMemberRealDice(table.id, world.owner.id, true);
+    damageStepTables[viewport] = { id: table.id, hero: hero.id, goblin: goblin.id };
+  }
+}
+
 // Issue 530: a running campaign the lead steers, one per viewport, to step
 // out of play to its prep and back without ending anything.
 const PREP_RETURN_TITLE = "Waystation Table";
@@ -3327,6 +3385,7 @@ const ids = {
   noticeTables,
   afterRollTables,
   portentTables,
+  damageStepTables,
   recapTables,
   prepReturn,
   prepReturnTitle: PREP_RETURN_TITLE,
@@ -3440,6 +3499,7 @@ const ids = {
     ...Object.fromEntries(Object.entries(noticeTables).map(([viewport, table]) => [table.id, `${NOTICE_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(afterRollTables).map(([viewport, table]) => [table.id, `${AFTER_ROLL_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(portentTables).map(([viewport, table]) => [table.id, `${PORTENT_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(damageStepTables).map(([viewport, table]) => [table.id, `${DAMAGE_STEPS_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(recapTables).map(([viewport, id]) => [id, `${RECAP_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(prepReturn).map(([viewport, id]) => [id, `${PREP_RETURN_TITLE} (${viewport})`])),
     [world.campaignId]: TITLE,

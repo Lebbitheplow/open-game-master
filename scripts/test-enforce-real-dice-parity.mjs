@@ -15,7 +15,7 @@ import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
 const { test, finish } = suite("test-enforce-real-dice-parity");
 const world = await openWorld({ campaign: { maxPlayers: 16 }, gameSettings: { dicePolicy: "real_allowed" } });
 const kit = await combatKit(world);
-const { setMemberRealDice } = await import("../src/lib/db/campaigns.ts");
+const { setMemberHoldRolls, setMemberRealDice } = await import("../src/lib/db/campaigns.ts");
 const { getPendingRoll, listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
 const submitRoute = await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]");
 
@@ -46,7 +46,8 @@ const fiend = world.addHero({
   equipment: [{ name: "Dagger", qty: 1, equipped: true }],
 });
 world.patch(fiend.id, { features: [...world.sheet(fiend.id).features, { name: "Dark One's Blessing", source: "class", classId: "warlock" }] });
-const heroes = [piercer, brutal, savage, slasher, crusher, sniper, netter, master, mage, fiend];
+const keen = fighter(["Piercer", "Savage Attacker"], [{ name: "Rapier", qty: 1 }]);
+const heroes = [piercer, brutal, savage, slasher, crusher, sniper, netter, master, mage, fiend, keen];
 // Who shoots from where a shot is not at disadvantage.
 const standsBack = new Set([sniper.id, mage.id]);
 
@@ -137,6 +138,53 @@ await test("Savage Attacker is spent by a hit, not by an attack that misses, on 
   const out = await both(savage, { toHit: 2, args: { weapon: "Longsword" } });
   same(out, (side) => side.marks.includes("savage attacker:used"), "Savage Attacker after a miss");
   assert.equal(out.table.marks.includes("savage attacker:used"), false);
+});
+
+// The damage roll's reason is the line the player's roll card shows under its
+// title (PendingRollCard.tsx). Only the model's note said how the feats change
+// the dice, so a player whose GM did not pass it on entered dice the spent
+// feats never touched.
+async function parkedDamageReason(hero, weapon, { hold = false } = {}) {
+  const enemy = await stage(hero);
+  if (hold) {
+    setMemberHoldRolls(world.campaignId, hero.userId, true);
+  } else {
+    setMemberRealDice(world.campaignId, hero.userId, true);
+  }
+  try {
+    const parked = await world.invoke("pc_attack", { characterId: hero.id, targetEnemyId: enemy.id, weapon });
+    assert.equal(parked.ok, true, parked.error);
+    const toHit = listOpenPendingRolls(world.campaignId).filter((entry) => entry.kind === "attack" && entry.userId === hero.userId).at(-1);
+    assert.ok(toHit, "no attack roll is parked");
+    world.signIn({ id: hero.userId });
+    // A held roll is released whole and thrown by the server: a 15 hits.
+    world.clearDice();
+    world.dice(15);
+    const out = await call(submitRoute, "POST", hold ? { fallback: "digital" } : { dice: [15] }, { campaignId: world.campaignId, pendingRollId: toHit.id });
+    world.clearDice();
+    assert.equal(out.status, 200, JSON.stringify(out.json));
+    const damage = listOpenPendingRolls(world.campaignId).filter((entry) => entry.kind === "damage" && entry.userId === hero.userId).at(-1);
+    assert.ok(damage, `no damage roll is parked: ${getPendingRoll(toHit.id).combatNote}`);
+    // Landed, so the next test finds no damage roll left waiting.
+    const landed = await call(submitRoute, "POST", { fallback: "digital" }, { campaignId: world.campaignId, pendingRollId: damage.id });
+    assert.equal(landed.status, 200, JSON.stringify(landed.json));
+    return damage.reason;
+  } finally {
+    setMemberRealDice(world.campaignId, hero.userId, false);
+    setMemberHoldRolls(world.campaignId, hero.userId, false);
+  }
+}
+
+await test("The damage roll card tells a real-dice player to roll twice for Savage Attacker and reroll a die for Piercer", async () => {
+  const reason = await parkedDamageReason(keen, "Rapier");
+  assert.match(reason, /^Rapier damage against .+\. Before you enter your dice: /, reason);
+  assert.match(reason, /roll the weapon's dice a second time and keep the better total \(Savage Attacker\), then reroll the lowest damage die once and keep the new roll \(Piercer\)\.$/, reason);
+  // Without a feat that changes the dice the card says only what the roll is for.
+  const plain = await parkedDamageReason(master, "Longsword");
+  assert.doesNotMatch(plain, /Before you enter/, plain);
+  // A held roll is thrown by the server, so there are no dice to reroll.
+  const held = await parkedDamageReason(keen, "Rapier", { hold: true });
+  assert.doesNotMatch(held, /Before you enter/, held);
 });
 
 await test("Stunning Sniper: a critical shot on real dice asks for undoubled damage and stuns the creature", async () => {
