@@ -152,6 +152,11 @@ test("a line with someone else's name straight after it is nobody's, whoever the
   assert.deepEqual(said('Marla scowls. "No." Silence falls.', cast, { common }), ["Marla: No."]);
   assert.deepEqual(said('Marla scowls. "No."\n\nFella flinches.', cast, { common }), ["Marla: No."], "the next paragraph says nothing about this line");
   assert.deepEqual(said('Marla scowls at Old Pike. "Not you." "Why not?" Old Pike asks.', cast, { common })[0], "Marla: Not you.", "the words after a line run only to the next line");
+  // The sentence after a line opens on its own, so a word of a longer name
+  // there is that person only if the story never writes it in lower case.
+  const old = new Set([...common, "old"]);
+  assert.deepEqual(said('Marla scowls. "No." Old habits die hard.', cast, { common: old }), ["Marla: No."], "an adjective is not Old Pike");
+  assert.deepEqual(said('Marla scowls. "No." Old Pike laughs.', cast, { common: old }), [], "his whole name still is");
 });
 
 test("a tag's pronoun is never the person the tag names as spoken to", () => {

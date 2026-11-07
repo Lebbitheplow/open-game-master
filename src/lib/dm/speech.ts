@@ -213,7 +213,10 @@ function lookBack(before: string, previous: Speaker | null, afterLine: boolean, 
 // first of those wore the face of whoever the prose before it was about.
 function opensOnSomeoneElse(after: string, speaker: Speaker, reading: Reading): boolean {
   const next = (sentencesOf(after)[0]?.text ?? "").replace(LEAD, "");
-  const subject = subjectOf(next, reading, false);
+  // A sentence of its own, so a word of a longer name at its start counts
+  // only if the story never writes it in lower case: "Old habits die hard."
+  // after Marla's line is not Old Pike taking it from her.
+  const subject = subjectOf(next, reading, true);
   if (subject.kind === "name") {
     return keyOf(subject.speaker) !== keyOf(speaker);
   }
