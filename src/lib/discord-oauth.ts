@@ -1,5 +1,5 @@
-import os from "node:os";
 import { configValue, getGlobalConfig } from "@/lib/app-config";
+import { safeNetworkInterfaces } from "@/lib/network-interfaces";
 import { requestPublicOrigin } from "@/lib/server-address";
 import { serverEnv } from "@/lib/server-env";
 
@@ -24,7 +24,7 @@ export function publicOrigin(request: Request): string {
   return requestPublicOrigin({
     savedPublicUrl: getGlobalConfig().publicUrl,
     envPublicUrl: serverEnv("APP_PUBLIC_URL"),
-    interfaces: os.networkInterfaces(),
+    interfaces: safeNetworkInterfaces(),
     forwardedHost: request.headers.get("x-forwarded-host"),
     forwardedProto: request.headers.get("x-forwarded-proto"),
     requestUrl: request.url,
