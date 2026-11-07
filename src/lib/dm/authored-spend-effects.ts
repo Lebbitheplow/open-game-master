@@ -28,6 +28,7 @@ import { rollEnemySave } from "@/lib/dm/forced-save";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import { hurtEnemy } from "@/lib/dm/spell-aura";
 import { seesOnBoard, withinFeet } from "@/lib/dm/authored-saves";
+import { tilesBetween, wallBetween } from "@/lib/dm/attack-spatial";
 import { rerollLastSave, swarmPush } from "@/lib/dm/authored-spend-more";
 import { summonSteelDefender } from "@/lib/dm/summon-defender";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
@@ -537,6 +538,9 @@ function saveArea(ctx: SpendContext, does: Extract<SpendDoes, { kind: "save_area
       enemy.currentHp > 0 &&
       withinFeet(encounter.id, sheet.id, enemy.id, does.rangeFt) &&
       (!does.sight || seesOnBoard(encounter.id, sheet.id, enemy.id)) &&
+      // Total cover: a wall of the board between them (as cast-reach.ts reads
+      // it, past the squares beside the holder).
+      (!does.coverShields || !((tilesBetween(encounter.id, sheet.id, enemy.id) ?? 0) > 1 && wallBetween(encounter.id, sheet.id, enemy.id))) &&
       !swallowCoverBetween(sheet.id, enemy.id) &&
       (!does.types || does.types.includes(creatureTypeOf(enemy.stats))),
   );

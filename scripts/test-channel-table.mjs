@@ -71,6 +71,17 @@ await test("Radiance of the Dawn: one roll, full on a failed Constitution save, 
   assert.equal(used(light), 1);
 });
 
+await test("Radiance of the Dawn leaves a creature behind a wall, total cover from the cleric, untouched.", async () => {
+  const [near, beside] = await stage(light);
+  // A wall row between the cleric (5, 5) and a foe moved to (5, 8), 15 feet off.
+  kit.openField(Array.from({ length: 20 }, (_, x) => [x, 7, "#"]));
+  kit.place(near.id, 5, 8);
+  const out = await channel(light, "radiance of the dawn", [5, 5, 2, 2]);
+  assert.equal(out.ok, true, out.error);
+  assert.equal(foe(near.id).currentHp, 300, "behind the wall");
+  assert.equal(foe(beside.id).currentHp, 300 - 19, "in the open");
+});
+
 await test("Charm Animals and Plants charms the beast that fails, and leaves the fiend alone.", async () => {
   const [beast, fiend] = await stage(nature);
   const out = await channel(nature, "charm animals and plants", [2]);

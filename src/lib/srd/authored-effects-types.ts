@@ -365,6 +365,9 @@ export type SpendDoes =
       // Dawn's text asks no sight, and Order's Demand's "see or hear" carries
       // through a fog.
       sight?: boolean;
+      // A creature with total cover from the holder is not affected, seen or
+      // not (Radiance of the Dawn reaches into a fog, not through a wall).
+      coverShields?: boolean;
     }
   | { kind: "reroll_save" }
   // Temporary hit points: to the holder, or to allies in range.

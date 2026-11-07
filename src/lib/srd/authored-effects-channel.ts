@@ -18,7 +18,9 @@ export const AUTHORED_DATA_CHANNEL: Record<string, AuthoredEntry> = {
         name: "Radiance of the Dawn",
         pool: POOL,
         action: "action",
-        does: { kind: "save_area", save: "con", dcAbility: "spell", rangeFt: 30, dice: "2d10+level", type: "radiant", half: true },
+        // Every hostile creature in reach, seen or not, but none with total
+        // cover from the cleric.
+        does: { kind: "save_area", save: "con", dcAbility: "spell", rangeFt: 30, dice: "2d10+level", type: "radiant", half: true, coverShields: true },
       },
     ],
   },
