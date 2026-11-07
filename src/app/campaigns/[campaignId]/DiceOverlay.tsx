@@ -198,6 +198,11 @@ export function DiceOverlay({
     queueRef.current = freshRolls(queueRef.current, performance.now());
     const next = queueRef.current.shift();
     if (!next) {
+      // Every roll still waiting went stale while the last throw played
+      // (freshRolls): the tray is idle, and its context is let go after a
+      // quiet spell like any other. Returning without this left the tray
+      // marked rolling and its WebGL context held for the session.
+      settleIdle();
       return;
     }
     animatingRef.current = true;
@@ -254,19 +259,23 @@ export function DiceOverlay({
       if (queueRef.current.length) {
         void pump();
       } else {
-        markTray(overlayRef.current, "idle");
-        if (trayRef.current && !unmountedRef.current) {
-          // Nothing left to show: let the context go after a quiet spell. The
-          // next roll rebuilds the tray (theme load plus WebGL init), which is
-          // the same path the very first roll takes.
-          idleTimerRef.current = window.setTimeout(() => {
-            idleTimerRef.current = 0;
-            if (animatingRef.current || queueRef.current.length) {
-              return;
-            }
-            dropTray();
-          }, DICE_IDLE_MS);
-        }
+        settleIdle();
+      }
+    }
+
+    function settleIdle() {
+      markTray(overlayRef.current, "idle");
+      if (trayRef.current && !unmountedRef.current && !idleTimerRef.current) {
+        // Nothing left to show: let the context go after a quiet spell. The
+        // next roll rebuilds the tray (theme load plus WebGL init), which is
+        // the same path the very first roll takes.
+        idleTimerRef.current = window.setTimeout(() => {
+          idleTimerRef.current = 0;
+          if (animatingRef.current || queueRef.current.length) {
+            return;
+          }
+          dropTray();
+        }, DICE_IDLE_MS);
       }
     }
 
