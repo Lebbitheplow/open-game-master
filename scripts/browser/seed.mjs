@@ -2457,6 +2457,68 @@ for (const viewport of ["desktop", "phone"]) {
   afterRollTables[viewport] = { id: table.id, hero: hero.id };
 }
 
+// PR 848: the after-the-roll card on an attack. A fight the player runs, with
+// the lead's fighter beside a goblin, holding the Lucky feat and a Bardic
+// Inspiration die. The lead rolls real dice, so the scenario enters a 10: with
+// the seeded hero's +0, a miss against the goblin's AC 15 that both could
+// save, every run. (A test table's dice script could force the server's
+// throw, but the app's list of tables leaves test tables out.)
+const AFTER_ATTACK_TITLE = "Lucky Swing";
+const afterAttackTables = {};
+{
+  const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
+  const maps = await import("../../src/lib/db/battle-maps.ts");
+  const encounterRows = await import("../../src/lib/db/encounters.ts");
+  const { initiativeFloorFor } = await import("../../src/lib/dm/encounter-tools.ts");
+  for (const viewport of ["desktop", "phone"]) {
+    const table = campaigns.createCampaign(player.id, {
+      title: `${AFTER_ATTACK_TITLE} (${viewport})`,
+      description: "One goblin in a lane.",
+      theme: "high-fantasy",
+      maxPlayers: 6,
+      startingLevel: 3,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human", dicePolicy: "real_allowed" },
+    });
+    const seated = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+    if ("error" in seated) {
+      throw new Error(`could not seat the lead at the lucky swing table: ${seated.error}`);
+    }
+    campaigns.setCampaignStatus(table.id, "active");
+    const hero = sheets.createSheet(
+      table.id,
+      world.owner.id,
+      3,
+      heroInput({ name: "Tamsin Reed", class: "fighter", level: 3, feats: ["Lucky"], equipment: [{ name: "Longsword", qty: 1, equipped: true }] }),
+    );
+    sheets.patchSheet(hero.id, { conditions: ["bardic inspiration (d8)"] });
+    const started = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: player.id }, {
+      name: "start_encounter",
+      args: { enemies: [{ monster: "goblin", count: 1 }] },
+    });
+    if (!started.ok) {
+      throw new Error(`the lucky swing table's fight did not start: ${started.error}`);
+    }
+    const encounter = encounterRows.getActiveEncounter(table.id);
+    const board = maps.getBattleMapForEncounter(encounter.id);
+    maps.setBattleMapTerrain(board.id, ".".repeat(board.width * board.height));
+    getDatabase().prepare("UPDATE battle_maps SET doors_json = '{}' WHERE id = ?").run(board.id);
+    const [goblin] = encounterRows.listEnemies(encounter.id);
+    for (const [token, x] of maps.listTokens(board.id).map((entry) => [entry, entry.refId === goblin.id ? 3 : 2])) {
+      maps.moveToken(token.id, x, 6, 0);
+    }
+    const place = encounter.order.findIndex((entry) => entry.characterId === hero.id);
+    if (place < 0) {
+      throw new Error("the lucky swing table's fighter has no place in the order");
+    }
+    encounterRows.saveEncounter({ ...encounterRows.getActiveEncounter(table.id), orderReady: true, round: Math.max(1, encounter.round), turnIndex: place, turnBudget: null, legendary: { ...encounter.legendary, due: [] } });
+    campaigns.setFloor(table.id, initiativeFloorFor(table.id) ?? { mode: "open" });
+    // Set once the order is: real dice would have parked the initiative too.
+    campaigns.setMemberRealDice(table.id, world.owner.id, true);
+    afterAttackTables[viewport] = { id: table.id, hero: hero.id, goblin: goblin.id };
+  }
+}
+
 // Portent's numbers on a real parked roll: a table the player runs, with the
 // lead's hero a School of Divination wizard holding two numbers.
 const PORTENT_TITLE = "Seer's Table";
@@ -3326,6 +3388,7 @@ const ids = {
   speciesSpells,
   noticeTables,
   afterRollTables,
+  afterAttackTables,
   portentTables,
   recapTables,
   prepReturn,
@@ -3439,6 +3502,7 @@ const ids = {
     ...Object.fromEntries(Object.entries(spellbook).map(([viewport, table]) => [table.id, `${SPELLBOOK_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(noticeTables).map(([viewport, table]) => [table.id, `${NOTICE_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(afterRollTables).map(([viewport, table]) => [table.id, `${AFTER_ROLL_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(afterAttackTables).map(([viewport, table]) => [table.id, `${AFTER_ATTACK_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(portentTables).map(([viewport, table]) => [table.id, `${PORTENT_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(recapTables).map(([viewport, id]) => [id, `${RECAP_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(prepReturn).map(([viewport, id]) => [id, `${PREP_RETURN_TITLE} (${viewport})`])),
