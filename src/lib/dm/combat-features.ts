@@ -64,9 +64,11 @@ export function priceTheAction(
   sheet: CharacterSheet,
   encounter: Encounter | null,
   what: string,
+  // A feature that takes the bonus action (Dragon Wings) prices that one.
+  kind: "action" | "bonus" = "action",
 ): { commit: () => void } | ToolError {
   // Off their turn, a feature they readied: their reaction (readied-release.ts).
-  const readied = readiedReleaseFor(sheet, encounter, "feature");
+  const readied = kind === "action" ? readiedReleaseFor(sheet, encounter, "feature") : null;
   if (readied && "error" in readied) {
     return toolError(readied);
   }
@@ -77,7 +79,7 @@ export function priceTheAction(
       },
     };
   }
-  const able = canAct({ sheet, encounter, kind: "action" });
+  const able = canAct({ sheet, encounter, kind });
   if (!able.ok) {
     return toolError(able);
   }
@@ -90,7 +92,7 @@ export function priceTheAction(
   if (!fight || !budget) {
     return { commit: () => {} };
   }
-  const spent = spendAction(budget, "action", what, sheet.name);
+  const spent = spendAction(budget, kind, what, sheet.name);
   if (!spent.ok) {
     return toolError(spent);
   }

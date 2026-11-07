@@ -232,6 +232,8 @@ export function flyingSpeedOf(input: {
   // speed equal to your walking speed"), from src/lib/srd/magic-items.ts
   // itemSpeeds; the better of it and the creature's own.
   worn?: number;
+  // Wearing body armor: Dragon Wings cannot come through it (SRD 5.1).
+  armored?: boolean;
 }): number | null {
   const own = ownFlyingSpeed(input);
   return input.worn ? Math.max(own ?? 0, input.worn) : own;
@@ -250,12 +252,34 @@ function ownFlyingSpeed(input: Parameters<typeof flyingSpeedOf>[0]): number | nu
   if (mist.includes("gaseous form") || mist.includes("wind walk")) {
     return mist.includes("wind walk") ? 300 : 10;
   }
+  // Wings a feature brings out and puts away fly only while out, as the
+  // condition of their name says (issue #833): a Draconic sorcerer's Dragon
+  // Wings (a bonus action, at the current speed, never through armor:
+  // src/lib/dm/draconic-spends.ts), a Divine Soul's Otherworldly Wings (30
+  // feet), an Ascendant Dragon monk's Wings Unfurled. Read as wings, each
+  // flew for good from the level it came.
+  for (const [condition, feet] of MANIFESTED_WINGS) {
+    if (mist.includes(condition) && !(condition === "dragon wings" && input.armored)) {
+      return feet ?? input.walkingFeet ?? 30;
+    }
+  }
   const named = (input.features ?? []).map((feature) => /flying speed(?: of)? (\d+)/i.exec(feature.name)).find(Boolean);
   if (named) {
     return Number(named[1]);
   }
-  if ((input.features ?? []).some((feature) => /\bwings?\b|flying speed/i.test(feature.name)) || input.wildShaped) {
+  const winged = (input.features ?? []).some(
+    (feature) => /\bwings?\b|flying speed/i.test(feature.name) && !MANIFESTED_WINGS.has(feature.name.trim().toLowerCase()),
+  );
+  if (winged || input.wildShaped) {
     return input.walkingFeet ?? 30;
   }
   return null;
 }
+
+// The features whose wings come out only while their condition is held, and
+// the flying speed they give (null: the walking speed).
+const MANIFESTED_WINGS = new Map<string, number | null>([
+  ["dragon wings", null],
+  ["otherworldly wings", 30],
+  ["wings unfurled", null],
+]);

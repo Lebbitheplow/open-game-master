@@ -357,6 +357,16 @@ await test("Pick for me on the subclass card fills only the subclass", async () 
   assert.ok(filled.every((pick) => pick.target === "subclass"));
 });
 
+await test("Pick for me on a Draconic sorcerer's dragon takes a dragonborn's own, else red, the same every time (issue #833)", async () => {
+  for (const [raceId, racialAncestry, want] of [["dragonborn", "gold", "Dragon Ancestor: Gold"], ["human", "", "Dragon Ancestor: Red"]]) {
+    const start = fresh({ level: 1, classId: "sorcerer", subclass: "Draconic Bloodline", raceId, racialAncestry, backgroundId: "acolyte" });
+    const once = await runFill(start, { only: ["options"] });
+    const twice = await runFill(start, { only: ["options"], rng: seeded(99) });
+    assert.ok(once.fields.optionPicks.includes(want), `${raceId}: ${once.fields.optionPicks.join(", ")}`);
+    assert.deepEqual(once.fields.optionPicks, twice.fields.optionPicks, "deterministic");
+  }
+});
+
 await test("Pick for me on an improvement card takes the numbers, never a feat", async () => {
   const start = fresh({ level: 8, classId: "fighter", raceId: "human", backgroundId: "soldier", scores: { str: 15, dex: 14, con: 13, int: 12, wis: 10, cha: 8 } });
   const { fields, filled } = await runFill(start, { only: ["asi"] });

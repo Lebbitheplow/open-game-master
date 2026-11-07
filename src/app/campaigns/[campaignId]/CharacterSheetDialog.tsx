@@ -43,6 +43,7 @@ import { DefensesLine, HitDiceSpend, StateTags } from "@/components/sheet/SheetS
 import { SheetBetween } from "@/components/sheet/SheetBetween";
 import { conditionDetail, hitDiceLine, itemStatus, maxHpView, otherSpeedsLine, speedView, wearableGear } from "@/components/sheet/sheet-state";
 import { FeatureChoicePicker, OtherSpeeds } from "@/components/sheet/SheetChoices";
+import { OwedPicks } from "@/components/sheet/OwedPicks";
 import { SheetGearRows, type PendingWear } from "@/components/sheet/SheetGearRow";
 import { LoadBreakdown } from "@/components/sheet/LoadBreakdown";
 import { ResourceRow, SlotRow, STEP_BUTTON } from "@/components/sheet/SheetCounters";
@@ -583,9 +584,7 @@ export function CharacterSheetDialog({
 
           {owedChoices(sheet).length ? (
             <SheetBlock className="mt-4" title="Choices owed">
-              <p className="text-sm text-amber-200/90">
-                Earned and not yet made: {owedChoices(sheet).join("; ")}. The next level-up takes them.
-              </p>
+              <OwedPicks sheet={sheet} mine={mine} />
             </SheetBlock>
           ) : null}
           {sheet.features.length ? (

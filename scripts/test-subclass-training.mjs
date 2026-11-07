@@ -28,7 +28,8 @@ await test("Every entry of the training table names a real feature of a real sub
 });
 
 await test("The grants arrive at the class level their feature does, and only then.", () => {
-  const at = (classId, subclass, level) => training.subclassGrants([{ id: classId, subclass, level }]);
+  // The subclass's own: a ranger's Favored Enemy language is its class's.
+  const at = (classId, subclass, level) => training.subclassGrants([{ id: classId, subclass, level }]).filter((grant) => grant.subclass);
   assert.deepEqual(at("cleric", "Life Domain", 1).map((grant) => grant.spec.armor), [["heavy"]]);
   assert.equal(at("bard", "College of Lore", 2).length, 0, "Lore's skills come at bard 3");
   assert.equal(at("bard", "College of Lore", 3)[0].spec.skills, 3);

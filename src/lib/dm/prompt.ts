@@ -1,3 +1,4 @@
+import { dragonAncestorType } from "@/lib/srd/dragon-ancestor";
 import { advanceRulesLine, openToAdvanceNames } from "@/lib/dm/advance-logic";
 import { defenseWords } from "@/lib/dm/pet-build";
 import { STORYTELLER_SECRET } from "@/lib/dm/viewer";
@@ -604,7 +605,15 @@ export function describeSheet(
             classFeatureDescription(owner, feature.name) ??
             subclassFeatureDescription(owner, ownerSubclass, feature.name, extras);
           const tag = engineTags.get(feature.name);
-          const named = description ? `${feature.name} (${description})` : feature.name;
+          // A sorcerer's dragon says its damage type, the one Elemental
+          // Affinity adds to and resists: "Dragon Ancestor: Red" alone left
+          // the model to remember the table (issue #833).
+          const dragonType = dragonAncestorType({ features: [feature] });
+          const named = description
+            ? `${feature.name} (${description})`
+            : dragonType
+              ? `${feature.name} (${dragonType} damage)`
+              : feature.name;
           return tag ? `${named} ${tag}` : named;
         })
         .join(", ")

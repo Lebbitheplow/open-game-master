@@ -330,7 +330,7 @@ export function CallingStep({
             {/* What the subclass trains the character in (issue 251): its
                 armor and weapons said outright, and its picks asked for here,
                 as a feat's are. */}
-            {derived.subclassTraining.map((grant) => (
+            {derived.subclassTraining.filter((grant) => !grant.optional).map((grant) => (
               <FeatChoicesFields
                 key={grant.name}
                 feat={grant.name}

@@ -15,6 +15,7 @@
 //
 // Imports mutations (for the slot spend) and must never be imported by it.
 
+import { markAffinityCast } from "@/lib/dm/affinity-cast";
 import { areaProblem, spellAreaShape } from "@/lib/dm/aoe-shape";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { EncounterEnemy } from "@/lib/db/encounters";
@@ -300,6 +301,11 @@ export function planAoeSpell(
     damage = [damage, ...riders.dice].join("+");
   }
   corrections.push(...riders.notes);
+  // A spell of a Draconic sorcerer's dragon's type opens Elemental Affinity's
+  // resistance (src/lib/dm/affinity-cast.ts).
+  if (damage) {
+    markAffinityCast(campaign, caster, type);
+  }
   if (riders.potentCantrip && !halfOnSave) {
     halfOnSave = true;
     corrections.push("Potent Cantrip: a successful save still takes half.");

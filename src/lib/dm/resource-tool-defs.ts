@@ -104,7 +104,7 @@ export const resourceTools: ToolDef[] = [
           resource: {
             type: "string",
             description:
-              "Resource name from their Resources list ('Rage', 'Ki Points'). Subclass features the server resolves go by their own name, no counter needed: Kensei's Shot, Shadow Step, Symbiotic Entity, Visage of the Astral Self, Sharpen the Blade (amount), Planar Warrior, Otherworldly Wings, Umbral Form, Fanatical Focus, Summon Wildfire Spirit, Slayer's Prey (targetEnemyId), Gathered Swarm (variant 'push', targetEnemyId), Arcane Jolt (variant 'burn' and targetEnemyId, or 'heal' and targetCharacterId), Peerless Skill, Quivering Palm (targetEnemyId; again to end the vibrations), Draconic Presence (variant 'fear' or 'charm'), Hide in Plain Sight, Primeval Awareness (amount: the slot level).",
+              "Resource name from their Resources list ('Rage', 'Ki Points'). Subclass features the server resolves go by their own name, no counter needed: Kensei's Shot, Shadow Step, Symbiotic Entity, Visage of the Astral Self, Sharpen the Blade (amount), Planar Warrior, Otherworldly Wings, Umbral Form, Fanatical Focus, Summon Wildfire Spirit, Slayer's Prey (targetEnemyId), Gathered Swarm (variant 'push', targetEnemyId), Arcane Jolt (variant 'burn' and targetEnemyId, or 'heal' and targetCharacterId), Peerless Skill, Quivering Palm (targetEnemyId; again to end the vibrations), Draconic Presence (variant 'fear' or 'charm'), Dragon Wings (out, or away again), Elemental Affinity (1 sorcery point: an hour's resistance), Hide in Plain Sight, Primeval Awareness (amount: the slot level).",
           },
           amount: {
             type: "integer",

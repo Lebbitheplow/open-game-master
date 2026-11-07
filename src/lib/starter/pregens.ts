@@ -93,6 +93,9 @@ export const PREGENS: Pregen[] = [
       hitDice: { die: "d10", total: 1, spent: 0 },
       proficiencies: { saves: ["str", "con"], skills: ["athletics", "perception"], expertise: [], languages: ["Common"], tools: ["dice set"], armor: [], weapons: [] },
       equipment: [...pack([["Chain Mail"], ["Longsword"], ["Shield"], ["Light Crossbow"], ["Crossbow Bolts", 20]]), ...DUNGEONEER],
+      // A fighter's 1st-level Fighting Style, which the sheet listed as owed
+      // once fighting styles were (issue #833): Defense, for the chain mail.
+      features: [{ name: "Fighting Style: Defense", source: "choice" }],
       backstory: "Ten years in a river baron's guard, mustered out when the baron ran out of money. Still salutes by habit.",
     },
   },

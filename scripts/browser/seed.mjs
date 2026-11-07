@@ -947,6 +947,32 @@ messages.insertCampaignMessage({
   content: "The road is quiet now. Rook wipes the blade clean and feels steadier for it.",
 });
 
+// Issue #833: a Draconic Bloodline sorcerer saved before Dragon Ancestor was
+// a pick, at 6th level with 7th earned. The sheet lists the dragon as owed
+// and takes it there; the level-up's pick step offers it too. One table per
+// viewport, since the pick is made.
+const dragonTables = {};
+for (const viewport of ["desktop", "phone"]) {
+  const table = campaigns.createCampaign(world.owner.id, {
+    title: `Dragon Table (${viewport})`,
+    description: "Scales under the skin, and no dragon named yet.",
+    theme: "high-fantasy",
+    maxPlayers: 6,
+    startingLevel: 6,
+    difficulty: "normal",
+    gameSettings: { ttsEnabled: false, genre: "high_fantasy" },
+  });
+  campaigns.setCampaignStatus(table.id, "active");
+  const hero = sheets.createSheet(
+    table.id,
+    world.owner.id,
+    6,
+    heroInput({ name: "Ysolde Ember", class: "sorcerer", subclass: "Draconic Bloodline", level: 6, abilities: { str: 8, dex: 14, con: 14, int: 10, wis: 12, cha: 17 } }),
+  );
+  getDatabase().prepare(`UPDATE character_sheets SET xp = ? WHERE id = ?`).run(23000, hero.id);
+  dragonTables[viewport] = { id: table.id, hero: hero.id };
+}
+
 // A College of Lore bard who has earned 10th level (issue #570, CLS-21): the
 // level-up dialog's spell step offers Magical Secrets' two spells from any
 // class as their own group. The two Additional Magical Secrets took at 6th
@@ -3307,6 +3333,7 @@ const ids = {
   enemyMoves,
   levelTableId: levelTable.id,
   secretsTableId: secretsTable.id,
+  dragonTables,
   commandTableId: commandTable.id,
   replayTableId: replayTable.id,
   voiceTableId: voiceTable.id,
@@ -3334,6 +3361,7 @@ const ids = {
   titles: {
     [levelTable.id]: "Level Table",
     [secretsTable.id]: "Secrets Table",
+    ...Object.fromEntries(Object.entries(dragonTables).map(([viewport, table]) => [table.id, `Dragon Table (${viewport})`])),
     [commandTable.id]: COMMAND_TITLE,
     [replayTable.id]: REPLAY_TITLE,
     [voiceTable.id]: VOICE_TITLE,

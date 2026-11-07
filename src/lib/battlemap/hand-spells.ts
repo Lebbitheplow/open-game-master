@@ -7,6 +7,7 @@ import { bonusCastOf, casterStateProblem, componentProblem, focusProblem, materi
 import { computeSheetDerived, spellAttackFor, spellSaveDcFor } from "@/lib/srd";
 import { counterSpendCards, pickLabel, playedAsSpendCard } from "@/lib/battlemap/hand-subclass";
 import { nameChoice } from "@/lib/srd/feature-names";
+import { affinityCastType } from "@/lib/srd/dragon-ancestor";
 import { heldAtWill, resourceDef, resourceLevel, type ResourceDef } from "@/lib/srd/class-resources";
 import { psionicOptions } from "@/lib/dm/option-costs";
 import { ACTION_SURGED } from "@/lib/dm/action-budget";
@@ -595,6 +596,11 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
           ? { reason: "Action Surge is used once a turn; the other use waits for a later turn.", spent: true }
           : null,
         costGate(cost, turn, sheet, def.displayName),
+        // SRD 5.1: Elemental Affinity's resistance comes with a spell of the
+        // dragon's damage type, as it is cast (src/lib/dm/affinity-cast.ts).
+        id === "elemental_affinity" && !affinityCastType(sheet)
+          ? { reason: "Elemental Affinity's resistance comes with a spell of your dragon's damage type: cast one first.", spent: false }
+          : null,
       ),
     );
   }

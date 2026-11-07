@@ -15,6 +15,7 @@ import {
 } from "@/app/campaigns/[campaignId]/OwedPicksFields";
 import type { SeatPicks } from "@/lib/characters/seat-picks";
 import type { JoinPreview } from "@/lib/characters/join-changes";
+import { joinOwedLeft, joinOwedNote } from "@/lib/srd/owed-choices";
 import type { CreateSheetInput } from "@/lib/schemas/sheet";
 
 // A hero about to take a seat: one from the player's library (their own, or
@@ -284,14 +285,14 @@ export function JoinConfirmDialog({
                     <li key={line}>{line}</li>
                   ))}
                 </ul>
-                <p className="text-xs text-stone-400">
-                  This level earned them and {name} has not made them yet. The first level-up at this table offers every one, with the usual pickers, and the character sheet lists them until then.
-                </p>
+                <p className="text-xs text-stone-400">{joinOwedNote(name, owedLeft, shown?.owedOnSheet ?? preview?.owedOnSheet)}</p>
               </section>
             ) : shown?.ok && owed && owedLeft.length ? (
-              <p className="text-xs text-amber-100" data-join-owed-left>
-                Left for the first level-up: {owedLeft.join("; ")}.
-              </p>
+              <div className="space-y-1 text-xs text-amber-100" data-join-owed-left>
+                {joinOwedLeft(owedLeft, shown?.owedOnSheet ?? preview?.owedOnSheet).map((line) => (
+                  <p key={line}>{line}</p>
+                ))}
+              </div>
             ) : null}
           </>
         ) : null}
