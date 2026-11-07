@@ -7,6 +7,7 @@ import { magicItemNamed, matchMagicItem } from "@/lib/srd/magic-items";
 import { lineNamed, linesNamed, magicItemBonus } from "@/lib/srd/item-row";
 import type { ItemTag } from "@/lib/schemas/item-tags";
 import { compositeGearNamed } from "@/lib/srd/magic-gear";
+import { gearWeaponFor } from "@/lib/srd/gear-weapons";
 
 // Pure consumable knowledge for the use_item tool: healing potion tiers,
 // generic consumable detection, and ammunition lookup. Database-free so
@@ -83,6 +84,26 @@ export function itemUseProblem(item: TaggedItem & { attuned?: boolean }): ToolEr
     return { error: "it is kept, not consumed: a wand or staff spends charges on a cast, and worn items work while worn. Narrate its use without use_item.", retry: true };
   }
   return null;
+}
+
+// A flask thrown or splashed at a creature in a fight is an attack (SRD 5.1
+// Adventuring Gear: "Make a ranged attack against a creature or object"),
+// which pc_attack rolls, spending the flask whatever the roll and landing
+// what the hit leaves (src/lib/srd/gear-weapons.ts). Sent to use_item, the
+// flask and the action were spent and no attack was made, and the attack
+// could not then be made: the action was gone (play-test 2026-11-07,
+// alchemist's fire). Oil can also be poured on the ground, which is no
+// attack, so it stays use_item's; so does any flask out of a fight, where
+// pc_attack has no target and the flask is most likely put to an object.
+export function thrownFlaskProblem(user: string, item: string, inFight: boolean): ToolError | null {
+  const gear = gearWeaponFor(item);
+  if (!inFight || !gear?.thrown || gear.pours) {
+    return null;
+  }
+  return {
+    error: `${item} thrown at a creature is an attack: call pc_attack with weapon "${item}" for ${user}, which rolls it and spends the flask. use_item spent nothing.`,
+    retry: true,
+  };
 }
 
 // What a tool that puts an item in a pack tells the model, as a hit says it

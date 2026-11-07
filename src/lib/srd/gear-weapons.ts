@@ -35,6 +35,10 @@ export type GearWeapon = {
   spent: boolean;
   // What a hit leaves on the target (gear-weapon-hit.ts).
   leaves?: "burning" | "oiled";
+  // Oil: "You can also pour a flask of oil on the ground." A use that is no
+  // attack, so use_item still spends it in a fight (item-logic.ts
+  // thrownFlaskProblem); the other flasks are only ever thrown or splashed.
+  pours?: boolean;
 };
 
 const GEAR_WEAPONS: GearWeapon[] = [
@@ -46,7 +50,7 @@ const GEAR_WEAPONS: GearWeapon[] = [
   { name: "Holy Water (flask)", thrown: true, dice: "2d6", type: "radiant", fiendsAndUndeadOnly: true, spent: true },
   // Oil: "On a hit, the target is covered in oil": 5 more fire damage the
   // next time it takes fire damage within a minute.
-  { name: "Oil (flask)", thrown: true, dice: null, type: "", spent: true, leaves: "oiled" },
+  { name: "Oil (flask)", thrown: true, dice: null, type: "", spent: true, leaves: "oiled", pours: true },
   // Torch: "If you make a melee attack with a burning torch and hit, it
   // deals 1 fire damage." Read as the torch's whole damage, no Strength
   // added, as the flasks' entries are read. A carried torch is taken to be
