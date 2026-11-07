@@ -32,6 +32,8 @@ const { thirdCasterPickRefusal } = await import("../src/app/campaigns/[campaignI
 const { isWornGear } = await import("../src/components/sheet/sheet-state.ts");
 const { RESOURCE_DEFS } = await import("../src/lib/srd/class-resources.ts");
 const { AUTHORED_TABLE } = await import("../src/lib/srd/authored-effects.ts");
+const { AUTHORED_DATA_CHANNEL } = await import("../src/lib/srd/authored-effects-channel.ts");
+const CHANNEL_OPTIONS = new Set(Object.values(AUTHORED_DATA_CHANNEL).flatMap((entry) => (entry.spends ?? []).map((spend) => spend.name)));
 
 let passed = 0;
 function test(name, fn) {
@@ -183,9 +185,13 @@ test("every feature the Hand deals by name has its own painting, not its class's
     if (!spellNames.has(def.displayName.toLowerCase())) names.add(def.displayName);
   }
   for (const entry of Object.values(AUTHORED_TABLE)) {
-    for (const spend of entry.spends ?? []) if (spend.fight !== "out" && spend.does.kind !== "choose") names.add(spend.name);
+    // A Channel Divinity option of src/lib/srd/authored-effects-channel.ts wears
+    // the pool's painting until it has its own (hand-subclass.ts), as its option
+    // card did; the pool's painting is checked below.
+    for (const spend of entry.spends ?? []) if (spend.fight !== "out" && spend.does.kind !== "choose" && !CHANNEL_OPTIONS.has(spend.name)) names.add(spend.name);
     for (const reaction of entry.reactions ?? []) names.add(reaction.name);
   }
+  names.add("Channel Divinity");
   const bare = [...names].filter((name) => !iconCandidates({ kind: "feature", key: name, family: null }).length);
   assert.deepEqual(bare, [], "paint them: node scripts/generate-icons.mjs --only feature");
 });

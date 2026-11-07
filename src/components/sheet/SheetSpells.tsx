@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { spellClassFor } from "@/lib/classes";
+import { spellPoolKeyFor } from "@/lib/classes";
 import { spellSlotsFor } from "@/lib/srd";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { spellLevelOf } from "@/lib/srd/spell-lists";
@@ -13,12 +13,14 @@ import {
   preparedCount,
   spellCapOf,
   spellbookOf,
+  widerListOf,
   type CasterView,
 } from "@/lib/srd/spell-prep";
 import { SpellBook, type SpellTile } from "./SpellBook";
-import { useSpellLookups, useSpellPool, type PoolSpell } from "./useSpellPool";
+import { useSpellLookups, useWiderSpellPool, type PoolSpell } from "./useSpellPool";
 import { textKey } from "@/lib/language/text-logic";
 import { revisedOnlySpellProblem } from "@/lib/content/edition";
+import { speciesSpellsShown, type SpeciesSpellSheet } from "@/lib/srd/species-spell-view";
 
 // A character's spells as a spell book, one per caster class. The owner of a
 // prepared caster can change what is prepared right here: unpreparing takes
@@ -35,6 +37,12 @@ export function SheetSpells({
   sheet: Pick<CharacterSheet, "class" | "level" | "subclass" | "classes" | "abilities" | "spellcasting"> & {
     id?: string;
     campaignId?: string;
+    // The species and what it gave (issue #833): its spells get a book of
+    // their own, a character with no Spellcasting included.
+    race?: string;
+    features?: CharacterSheet["features"];
+    resources?: CharacterSheet["resources"];
+    racialChoices?: { variant?: string } | null;
   };
   // The owner, in a campaign: may change prepared spells.
   editable?: boolean;
@@ -65,7 +73,8 @@ export function SheetSpells({
       },
     ];
   }
-  if (!views.length) {
+  const species = sheet.race ? speciesSpellsShown(sheet as SpeciesSpellSheet) : [];
+  if (!views.length && !species.length) {
     return null;
   }
   return (
@@ -76,9 +85,32 @@ export function SheetSpells({
           view={view}
           sheet={sheet}
           editable={editable && Boolean(sheet.campaignId)}
-          showClass={views.length > 1}
+          showClass={views.length > 1 || species.length > 0}
         />
       ))}
+      {species.length ? <SpeciesBook entries={species} titled={views.length > 0} /> : null}
+    </div>
+  );
+}
+
+// The spells the species gives (src/lib/srd/species-spell-view.ts): known
+// for good, never prepared or swapped, each tile saying what it costs.
+function SpeciesBook({ entries, titled }: { entries: ReturnType<typeof speciesSpellsShown>; titled: boolean }) {
+  const tiles: SpellTile[] = entries.map((entry) => ({ name: entry.name, level: entry.level, state: "granted", note: entry.note }));
+  return (
+    <div data-species-spell-book>
+      {titled ? <p className="eyebrow mb-1.5 text-[10px] text-amber-400/80">From the species</p> : null}
+      <SpellBook
+        tiles={tiles}
+        maxLevel={Math.max(0, ...entries.map((entry) => entry.level))}
+        counters={[{ label: "From the species", value: entries.length }]}
+        canToggle={() => false}
+        footer={
+          <p className="mt-2 text-[11px] text-stone-500">
+            Known by nature, with no spell slot unless the tile says one casts it too. Cast them like any spell.
+          </p>
+        }
+      />
     </div>
   );
 }
@@ -100,10 +132,15 @@ function CasterBook({
   const maxLevel = maxSpellLevelOf(view);
   const canPrepare = editable && view.style !== "known";
   // The whole class list is only needed while a prepared caster edits.
-  const { pool, loading } = useSpellPool(
-    spellClassFor(view.classId),
+  // The list the server's prepare route checks (spell-prep.ts
+  // spellOnCasterList, issue #833): a workshop class's own list and the
+  // homebrew tagged with it, and what the subclass adds (a patron's or a
+  // workshop subclass's expanded spells), which the book used to leave out.
+  const { pool, loading } = useWiderSpellPool(
+    spellPoolKeyFor(view.classId),
     maxLevel,
     editing && view.style === "prepared",
+    widerListOf(view),
   );
 
   // Pack and homebrew spells the checklist does not know get their level

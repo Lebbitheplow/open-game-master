@@ -18,6 +18,7 @@ import {
   thirdCasterProfileForPackSubclass,
   type ThirdCasterProfile,
 } from "@/lib/srd/third-caster";
+import { storedSubclassChoices, type SubclassChoice } from "@/lib/content/subclass-choices";
 
 export type SubclassFeatureRow = { n: string; d: string };
 
@@ -26,10 +27,16 @@ export type ExtraSubclass = {
   levels: Record<string, SubclassFeatureRow[]>;
   // Always-prepared spells by class level (a domain's, an oath's).
   spells?: Record<string, string[]>;
+  // Spells added to what the class may learn or prepare, by class level (a
+  // patron's expanded list), never granted (issue #833).
+  expanded?: Record<string, string[]>;
   // Casts as an Eldritch Knight or Arcane Trickster does (src/lib/srd/
   // third-caster.ts). Read only for a class that casts nothing of its own
   // (src/lib/srd/features.ts subclassCastingProfileFor).
   castingProfile?: ThirdCasterProfile;
+  // What its player picks at a class level: a bloodline, an element (src/lib/
+  // content/subclass-choices.ts, issue #833). A workshop subclass's only.
+  choices?: SubclassChoice[];
   source: "homebrew" | "pack";
 };
 
@@ -156,11 +163,21 @@ export function extraSubclassOf(row: Row, defaultLevel = 3): ExtraSubclass | nul
   const homebrew = row.source === "homebrew";
   const levels = homebrew ? homebrewLevels(row.data.levels) : subclassLevelsFromProse(String(row.data.desc ?? ""), defaultLevel);
   const spells = homebrew ? spellLevels(row.data.spells) : undefined;
+  const expanded = homebrew ? spellLevels(row.data.expanded) : undefined;
   const castingProfile = homebrew ? castingProfileOf(row.data, levels) : (thirdCasterProfileForPackSubclass(row.name) ?? undefined);
-  if (!Object.keys(levels).length && !spells) {
+  const choices = homebrew ? storedSubclassChoices(row.data.choices) : [];
+  if (!Object.keys(levels).length && !spells && !expanded && !choices.length) {
     if (!castingProfile) return null;
   }
-  return { name: row.name, levels, ...(spells ? { spells } : {}), ...(castingProfile ? { castingProfile } : {}), source: homebrew ? "homebrew" : "pack" };
+  return {
+    name: row.name,
+    levels,
+    ...(spells ? { spells } : {}),
+    ...(expanded ? { expanded } : {}),
+    ...(castingProfile ? { castingProfile } : {}),
+    ...(choices.length ? { choices } : {}),
+    source: homebrew ? "homebrew" : "pack",
+  };
 }
 
 export function mergeExtras(...sets: SubclassExtras[]): SubclassExtras {

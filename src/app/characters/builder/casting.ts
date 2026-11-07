@@ -8,7 +8,7 @@
 // (U:UB1). A third caster casts with Intelligence from the wizard's list and
 // knows its spells; its counts and slots come from the engine's own tables
 // (src/lib/srd/third-caster.ts through spell-prep.ts and spellSlotsFor).
-import { spellClassFor } from "@/lib/classes";
+import { spellPoolKeyFor, spellRulesClassFor } from "@/lib/classes";
 import { suggestedCantripCount, suggestedSpellCount } from "@/lib/content/mechanics";
 import type { AbilityScores, ClassEntry } from "@/lib/schemas/sheet";
 import { pactSlotsFor, slotTableFor } from "@/lib/srd/multiclass";
@@ -30,8 +30,12 @@ export type BuilderCasting = {
   // Arcane Trickster's (its schools, its cantrips, its suggestions).
   profile: ThirdCasterProfile | null;
   ability: "int" | "wis" | "cha" | null;
-  // The spell list searched (the borrowed SRD list for a setting class).
+  // The spell list searched (the borrowed SRD list for a setting class, a
+  // workshop class by its own id: src/lib/classes/index.ts spellPoolKeyFor).
   list: string;
+  // The published class whose tables count it (spellRulesClassFor): the
+  // list itself, but for a workshop class with a list of its own.
+  rules: string;
   maxSpellLevel: number;
   cantripCap: number | null;
   // A class that casts, and has something to cast at this level. A level 1
@@ -45,12 +49,13 @@ export function builderCasting(
   level: number,
 ): BuilderCasting {
   if (!klass) {
-    return { third: false, profile: null, ability: null, list: "", maxSpellLevel: 0, cantripCap: null, casts: false };
+    return { third: false, profile: null, ability: null, list: "", rules: "", maxSpellLevel: 0, cantripCap: null, casts: false };
   }
   const profile = thirdCasterProfileOf(klass.id, subclass, subclassCastingProfileFor(klass.id, subclass ?? ""));
   const third = profile !== null;
   const ability = (profile ? thirdCasterAbility(profile) : klass.spellAbility || null) as BuilderCasting["ability"];
-  const list = profile ? thirdCasterList(profile) : spellClassFor(klass.id);
+  const list = profile ? thirdCasterList(profile) : spellPoolKeyFor(klass.id);
+  const rules = profile ? list : spellRulesClassFor(klass.id);
   const maxSpellLevel =
     third || klass.casterType !== "none"
       ? Object.keys(spellSlotsFor(klass.id, level, subclass, profile)).reduce((top, slot) => Math.max(top, Number(slot)), 0)
@@ -59,9 +64,9 @@ export function builderCasting(
     ? null
     : third
       ? cantripCapOf({ classId: klass.id, level, subclass: subclass ?? "", progression: profile })
-      : suggestedCantripCount(list, level, klass.casterType as Parameters<typeof suggestedCantripCount>[2]);
+      : suggestedCantripCount(rules, level, klass.casterType as Parameters<typeof suggestedCantripCount>[2]);
   const casts = Boolean(ability) && (maxSpellLevel > 0 || cantripCap !== null);
-  return { third, profile, ability, list, maxSpellLevel, cantripCap: casts ? cantripCap : null, casts };
+  return { third, profile, ability, list, rules, maxSpellLevel, cantripCap: casts ? cantripCap : null, casts };
 }
 
 // How many levelled spells the class may hold at this level.
@@ -100,14 +105,14 @@ export function builderSpellAdvice(
     );
   }
   const mod = abilityMod(abilities[casting.ability]);
-  const advice = suggestedSpellCount(casting.list, level, mod);
+  const advice = suggestedSpellCount(casting.rules, level, mod);
   if (!advice || advice.label !== "spells prepared") {
     return advice;
   }
   return {
     ...advice,
-    formula: preparedFormula(casting.ability, mod, casting.list, level),
-    sum: { ability: casting.ability, mod, level, levelPart: preparedLevelPart(casting.list, level) },
+    formula: preparedFormula(casting.ability, mod, casting.rules, level),
+    sum: { ability: casting.ability, mod, level, levelPart: preparedLevelPart(casting.rules, level) },
   };
 }
 

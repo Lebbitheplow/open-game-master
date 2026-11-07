@@ -1,6 +1,6 @@
 // The Channel Divinity options that frighten on a failed Wisdom save: Conquering
-// Presence and Dreadful Aspect, every foe within 30 feet, and Abjure Enemy, one
-// creature within 60 whose speed drops as well. Before this the use was spent and
+// Presence and Dreadful Aspect, the foes of the user's choice within 30 feet,
+// and Abjure Enemy, one creature within 60 whose speed drops as well. Before this the use was spent and
 // the model was left to roll the saves and lay the conditions by hand, or not at all.
 //
 // Called from feature-spends.ts, whose spend() checks, charges the turn and spends
@@ -12,6 +12,7 @@ import { seesOnBoard, withinFeet } from "@/lib/dm/authored-saves";
 import type { ConditionMeta } from "@/lib/dm/condition-logic";
 import { layEnemyConditionInstance } from "@/lib/dm/enemy-condition-lay";
 import { rollEnemySave } from "@/lib/dm/forced-save";
+import { chosenTargets } from "@/lib/dm/chosen-targets";
 import { conditionImmunity } from "@/lib/dm/set-condition";
 import { foesOfSheet, resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { swallowCoverBetween } from "@/lib/dm/swallow";
@@ -29,8 +30,14 @@ type FearOption = {
   rangeFt: number;
   // Aimed at one creature, which the call names.
   single?: boolean;
+  // The creatures of the user's choice in reach (Conquering Presence, Dreadful
+  // Aspect), named in targetEnemyIds; every one when none is named.
+  chosen?: boolean;
   // A save at the end of each of its turns ends it (Conquering Presence).
   repeats?: boolean;
+  // A save only at the end of a turn it ends farther than this from the user
+  // (Dreadful Aspect: 30 feet).
+  farSaveFt?: number;
   // Abjure Enemy: frightened and speed 0, or half speed on a success; either
   // ends when the creature takes damage, and fiends and undead save at a
   // disadvantage.
@@ -38,8 +45,10 @@ type FearOption = {
 };
 
 export const CHANNEL_FEAR: FearOption[] = [
-  { name: "Conquering Presence", rangeFt: 30, repeats: true },
-  { name: "Dreadful Aspect", rangeFt: 30 },
+  // "Each creature of your choice that you can see within 30 feet", as
+  // Dreadful Aspect: a list naming some of them is the player's choice.
+  { name: "Conquering Presence", rangeFt: 30, repeats: true, chosen: true },
+  { name: "Dreadful Aspect", rangeFt: 30, chosen: true, farSaveFt: 30 },
   { name: "Abjure Enemy", rangeFt: 60, single: true, abjures: true },
 ];
 
@@ -56,12 +65,16 @@ export function channelFear(
   sheet: CharacterSheet,
   option: FearOption,
   targetEnemyId: string | undefined,
+  targetEnemyIds?: string[],
 ): ToolError | { result: Record<string, unknown> } {
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter) {
     return { error: `${option.name} needs creatures to frighten: start the encounter first. Channel Divinity was not spent.`, retry: true };
   }
   let targets: EncounterEnemy[];
+  if (option.single && targetEnemyIds?.length) {
+    return { error: `${option.name} is aimed at one creature: pass targetEnemyId, not targetEnemyIds. Channel Divinity was not spent.`, retry: true };
+  }
   if (option.single) {
     const named = targetEnemyId ? resolveTargetFoe(campaign.id, encounter, targetEnemyId) : null;
     if (!named || named.status !== "alive" || named.currentHp <= 0 || named.id === sheet.id) {
@@ -78,6 +91,13 @@ export function channelFear(
   targets = targets.filter((enemy) => seesOnBoard(encounter.id, sheet.id, enemy.id) && !swallowCoverBetween(sheet.id, enemy.id));
   if (!targets.length) {
     return { error: `Nothing ${option.name} affects is within ${option.rangeFt} feet of ${sheet.name}; Channel Divinity was not spent.`, refused: "rules" };
+  }
+  if (!option.single) {
+    const chosen = chosenTargets(option.name, Boolean(option.chosen), targets, { targetEnemyIds, targetEnemyId }, (ref) => resolveTargetFoe(campaign.id, encounter, ref)?.id ?? null);
+    if ("error" in chosen) {
+      return chosen;
+    }
+    targets = chosen;
   }
   const derived = computeSheetDerived(sheet);
   const dc = derived.spellSaveDc ?? 8 + derived.proficiencyBonus + derived.abilityMods.cha;
@@ -113,9 +133,10 @@ export function channelFear(
       }
       continue;
     }
-    lay("frightened", { ...lasting, ...(option.repeats ? { saveEnds: { ability: "wis" as const, dc } } : {}) });
+    const saveEnds = option.repeats ? { ability: "wis" as const, dc } : option.farSaveFt ? { ability: "wis" as const, dc, beyondFeet: option.farSaveFt } : null;
+    lay("frightened", { ...lasting, ...(saveEnds ? { saveEnds } : {}) });
     if (option.abjures) lay(ABJURED, lasting);
-    outcomes.push(`${enemy.displayName} is frightened for a minute (WIS ${save.total ?? "failed"} vs DC ${dc})${option.abjures ? ", and its speed is 0 until it takes damage" : option.repeats ? ", saving again at the end of each of its turns" : ""}.`);
+    outcomes.push(`${enemy.displayName} is frightened for a minute (WIS ${save.total ?? "failed"} vs DC ${dc})${option.abjures ? ", and its speed is 0 until it takes damage" : option.repeats ? ", saving again at the end of each of its turns" : option.farSaveFt ? `, saving again at the end of a turn it ends more than ${option.farSaveFt} feet away` : ""}.`);
   }
   return { result: { applied: outcomes } };
 }

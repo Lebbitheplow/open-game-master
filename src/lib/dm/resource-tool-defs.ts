@@ -104,7 +104,7 @@ export const resourceTools: ToolDef[] = [
           resource: {
             type: "string",
             description:
-              "Resource name from their Resources list ('Rage', 'Ki Points'). Subclass features the server resolves go by their own name, no counter needed: Kensei's Shot, Shadow Step, Symbiotic Entity, Visage of the Astral Self, Sharpen the Blade (amount), Planar Warrior, Otherworldly Wings, Umbral Form, Fanatical Focus, Summon Wildfire Spirit, Slayer's Prey (targetEnemyId), Gathered Swarm (variant 'push', targetEnemyId), Arcane Jolt (variant 'burn' and targetEnemyId, or 'heal' and targetCharacterId), Peerless Skill, Quivering Palm (targetEnemyId; again to end the vibrations), Draconic Presence (variant 'fear' or 'charm'), Hide in Plain Sight, Primeval Awareness (amount: the slot level).",
+              "Resource name from their Resources list ('Rage', 'Ki Points'). Subclass features the server resolves go by their own name, no counter needed: Kensei's Shot, Shadow Step, Symbiotic Entity, Visage of the Astral Self, Sharpen the Blade (amount), Planar Warrior, Otherworldly Wings, Umbral Form, Fanatical Focus, Summon Wildfire Spirit, Slayer's Prey (targetEnemyId), Gathered Swarm (variant 'push', targetEnemyId), Arcane Jolt (variant 'burn' and targetEnemyId, or 'heal' and targetCharacterId), Peerless Skill, Quivering Palm (targetEnemyId; again to end the vibrations), Draconic Presence (variant 'fear' or 'charm'), Dragon Wings (out, or away again), Elemental Affinity (1 sorcery point: an hour's resistance), Hide in Plain Sight, Primeval Awareness (amount: the slot level).",
           },
           amount: {
             type: "integer",
@@ -121,6 +121,11 @@ export const resourceTools: ToolDef[] = [
             type: "string",
             description:
               "The creature a feature is aimed at: exact enemyId from GAME STATE. Intimidating Presence and the subclass features aimed at a creature use it (Touch of the Long Death, Psychic Blades, Unsettling Words, Hound of Ill Omen, Versatile Trickster, Mighty Impel, Elemental Fury, Storm Aura's sea, Insightful Fighting, Cauterizing Flames' burn): the server rolls their saves and damage.",
+          },
+          targetEnemyIds: {
+            type: "array",
+            items: { type: "string" },
+            description: "The creatures of the user's choice an area feature takes, exact enemyIds. Default: every foe in reach.",
           },
           form: {
             type: "string",

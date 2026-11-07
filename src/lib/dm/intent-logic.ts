@@ -59,6 +59,13 @@ const SPELL_TOOLS = [
   "use_reaction",
 ];
 
+// A card that casts a spell held in an item (a Ring of Spell Storing,
+// src/lib/battlemap/hand-ring.ts): use_item draws it, and the spell's own tool
+// casts it with no slot.
+export function isStoredCast(intent: MessageIntent): boolean {
+  return (intent.card === "spell" || intent.card === "reaction") && Boolean(intent.spell && intent.item);
+}
+
 // The tools that resolve a card. Empty for a card with nothing to resolve.
 export function intentTools(intent: MessageIntent): string[] {
   switch (intent.card) {
@@ -125,6 +132,9 @@ export type DirectContext = {
   // Aimed at what the caster's held beam is connected to (Witch Bolt,
   // src/lib/dm/witch-bolt.ts): cast_at_enemy strikes, with no slot and no roll.
   beam?: boolean;
+  // A spell of a minute or more out of a Ring of Spell Storing, in a fight and
+  // not yet cast: use_item begins it, and nothing resolves it until it is done.
+  ringBegins?: boolean;
 };
 
 export type DirectCall = { name: string; args: Record<string, unknown> };
@@ -390,16 +400,18 @@ function what(intent: MessageIntent): string {
     case "rider":
       return `${intent.rider ?? "a rider"} on their next hit`;
     case "spell":
-      return `${intent.spell ?? "a spell"}${intent.slotLevel ? ` from a level ${intent.slotLevel} slot` : ""}${intent.shares && intent.shares.length > 1 ? sharedTargets(intent) : target(intent)}`;
+      return `${intent.spell ?? "a spell"}${isStoredCast(intent) ? ` out of ${intent.item}, at level ${intent.slotLevel ?? "its stored level"} with no slot` : intent.slotLevel ? ` from a level ${intent.slotLevel} slot` : ""}${intent.shares && intent.shares.length > 1 ? sharedTargets(intent) : target(intent)}`;
     case "feature":
-      return `the feature ${intent.resourceId ?? ""}${target(intent)}`.trim();
+      return intent.targetKind === "enemy" && intent.shares?.length
+        ? `the feature ${intent.resourceId ?? ""} on the creatures they choose, and no others: ${intent.shares!.map((share) => `${share.name ?? share.id} (enemyId=${share.id})`).join(", ")}`
+        : `the feature ${intent.resourceId ?? ""}${target(intent)}`.trim();
     case "basic":
       if (intent.action === "stabilize") {
         return `stabilizing ${intent.targetName ?? "a dying ally"}${intent.targetId ? ` (stabilize characterId=${intent.targetId}, the actor as healerId)` : ""}`;
       }
       return `the ${intent.action ?? "basic"} action${target(intent)}`;
     case "reaction":
-      return `the reaction ${intent.feature ?? intent.spell ?? ""}${target(intent)}`;
+      return `the reaction ${intent.feature ?? intent.spell ?? ""}${isStoredCast(intent) ? ` out of ${intent.item}, with no slot` : ""}${target(intent)}`;
     case "gear": {
       const item = intent.item ?? "an item";
       switch (intent.action) {
@@ -412,6 +424,11 @@ function what(intent: MessageIntent): string {
       }
     }
   }
+}
+
+// The call that comes before the spell's own tool for a spell held in an item.
+function drawFirst(intent: MessageIntent): string {
+  return isStoredCast(intent) ? `use_item with item=${intent.item} and spell=${intent.spell}, then ` : "";
 }
 
 // The line the model reads under the player's words. For a card the engine
@@ -429,7 +446,7 @@ export function describeIntent(intent: MessageIntent, characterId: string | null
   if (options.resolved) {
     return `${card} The engine has resolved it: its call and result are in this conversation. Narrate from that result and do not call the tool again.]`;
   }
-  return `${card} Resolve it with ${tools.length > 1 ? `the spell's tool (${tools.join(", ")})` : tools[0]}.]`;
+  return `${card} Resolve it with ${drawFirst(intent)}${tools.length > 1 ? `the spell's tool (${tools.join(", ")})` : tools[0]}.]`;
 }
 
 // The card a turn answers, with how its spell resolves when the content
@@ -468,6 +485,22 @@ function slotFallsShort(card: PlayedCard): boolean {
 // every ally a Bless takes. Anything else is directCardCall's one call. Null
 // leaves the card to the model.
 export function directCardCalls(intent: MessageIntent, characterId: string, context: DirectContext = { inFight: true }): DirectCall[] | null {
+  // Out of the ring first, then cast as any card of the spell is. A casting held
+  // across turns is only begun: its card comes again when it is done.
+  if (isStoredCast(intent)) {
+    const draw = { name: "use_item", args: { characterId, item: intent.item, spell: intent.spell } };
+    if (context.ringBegins) {
+      return [draw];
+    }
+    const cast = directCardCalls({ ...intent, item: undefined }, characterId, context);
+    return cast ? [draw, ...cast] : null;
+  }
+  // The creatures of the player's choice for an area feature: one use_resource
+  // naming them all, the aimed one alone when no other was added.
+  if (intent.card === "feature" && intent.targetKind === "enemy" && intent.shares?.length) {
+    const call = directCardCall({ ...intent, shares: undefined }, characterId, context);
+    return call ? [{ ...call, args: { ...call.args, targetEnemyIds: intent.shares!.map((share) => share.id) } }] : null;
+  }
   const shares = intent.card === "spell" && intent.spell && context.shareKind ? intent.shares ?? [] : [];
   if (!shares.length) {
     const call = directCardCall(intent, characterId, context);
@@ -565,7 +598,8 @@ export type CallMismatch = "tool" | "slot" | "retry" | "actor" | "target" | "spe
 // someone or something else is. Null means the call resolved the card.
 export function callMismatch(card: PlayedCard, call: TurnCall): CallMismatch | null {
   const { intent } = card;
-  if (!intentTools(intent).includes(call.name)) {
+  const draw = call.name === "use_item" && isStoredCast(intent);
+  if (!draw && !intentTools(intent).includes(call.name)) {
     return "tool";
   }
   if (call.name === "use_spell_slot" && slotFallsShort(card)) {
@@ -573,6 +607,11 @@ export function callMismatch(card: PlayedCard, call: TurnCall): CallMismatch | n
   }
   if (call.result?.retry === true) {
     return "retry";
+  }
+  // Drawing a spell from the ring casts nothing: it answers the card only when
+  // the ring refused, or when the casting takes turns and has begun.
+  if (draw && typeof call.result?.casting !== "string" && typeof call.result?.error !== "string") {
+    return "tool";
   }
   const actor = actorRef(call);
   if (card.characterId && typeof actor === "string" && !refMatches(actor, card.characterId, card.name)) {
@@ -651,5 +690,5 @@ export function intentCorrection(
     intent.slotLevel ? `level=${intent.slotLevel}` : "",
     ...handExtraArgs(intent),
   ].filter(Boolean);
-  return `[System] ${name} played ${what(intent)} from their hand, ${INTENT_CORRECTION_MARK}: no ${tools.length > 1 ? "spell tool" : tools[0]} call this turn carried it out (a call for another character, another target or another spell, or one that came back asking for a retry, does not count), so it has not happened.${slotOnly ? " Spending the slot with use_spell_slot does not cast it: the engine rolls it." : ""} Call ${tools.length > 1 ? "the spell's tool" : tools[0]} now${args.length ? ` with ${args.join(", ")}` : ""}. If the rules forbid it the tool refuses, and that refusal is what you narrate. Then narrate from the result only.`;
+  return `[System] ${name} played ${what(intent)} from their hand, ${INTENT_CORRECTION_MARK}: no ${tools.length > 1 ? "spell tool" : tools[0]} call this turn carried it out (a call for another character, another target or another spell, or one that came back asking for a retry, does not count), so it has not happened.${slotOnly ? " Spending the slot with use_spell_slot does not cast it: the engine rolls it." : ""} Call ${drawFirst(intent)}${tools.length > 1 ? "the spell's tool" : tools[0]} now${args.length ? ` with ${args.join(", ")}` : ""}. If the rules forbid it the tool refuses, and that refusal is what you narrate. Then narrate from the result only.`;
 }

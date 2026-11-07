@@ -192,6 +192,12 @@ export type HandCard = {
 
 export type HandShares = { count: number; unit: "dart" | "ray" | "beam" | "creature"; stack: boolean };
 
+// "Each creature of your choice" within an area feature's reach: the player
+// aims at one and adds the others (Order's Demand, Champion Challenge,
+// Conquering Presence, Dreadful Aspect). The engine refuses any outside the reach. Twelve is the most a
+// card's intent carries (hand-intent.ts shares).
+export const CHOSEN_CREATURES: HandShares = { count: 12, unit: "creature", stack: false };
+
 // Each creature a summoning card's choice offers: the numbers it may come
 // in from the card's slot, fewest first (the last is the most, what the
 // engine brings when no number is picked), and the challenge rating it is

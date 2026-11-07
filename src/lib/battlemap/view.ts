@@ -13,6 +13,7 @@ import { getActiveBoard, getActiveEncounter, getEnemy, listEnemies, type Encount
 import { listDroppedItems } from "@/lib/db/dropped-items";
 import { spaceOf, tilesApart, tokenFootprint } from "@/lib/dm/board-reach";
 import { speedFor } from "@/lib/srd";
+import { wearsBodyArmor } from "@/lib/srd/authored-effects";
 import { getMounts } from "@/lib/db/mounts";
 import { mountActionTaken } from "@/lib/srd/mounts";
 import { effectiveMaxHp, effectiveSpeed, exhaustionSpeed } from "@/lib/dm/condition-logic";
@@ -137,7 +138,7 @@ export function pcMoveBudget(
   // A mounted rider moves at the mount's speed (SRD 5.1, Mounted Combat).
   const mount = getMounts(campaignId)[sheet.id];
   // Aloft, a character moves at their flying speed (the Fly spell's 60 feet).
-  const flying = token.movement === "fly" ? flyingSpeedOf({ conditions: sheet.conditions, features: sheet.features, worn: itemSpeeds(sheet.equipment, sheet, sheet.speed).fly }) : null;
+  const flying = token.movement === "fly" ? flyingSpeedOf({ conditions: sheet.conditions, features: sheet.features, walkingFeet: sheet.speed, worn: itemSpeeds(sheet.equipment, sheet, sheet.speed).fly, armored: wearsBodyArmor(sheet) }) : null;
   const base = mount
     ? mount.speed
     : flying ?? speedFor(sheet, {

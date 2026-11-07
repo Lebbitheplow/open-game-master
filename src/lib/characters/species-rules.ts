@@ -1,6 +1,6 @@
 import { getDatabase, parseJson } from "@/lib/db/core";
 import { listRaces } from "@/lib/content";
-import { packRaceOptions, srdRaceFor } from "@/lib/content/race-options";
+import { packRaceOptions, speciesRulesOf, srdRaceFor } from "@/lib/content/race-options";
 import { libraryLabels } from "@/lib/db/homebrew";
 import type { SpeciesRules } from "@/lib/srd/race-id";
 
@@ -49,7 +49,7 @@ function read(raceId: string): Read {
   }
   const option = optionFor(raceId);
   const fresh: Read = option
-    ? { rules: { size: option.size, heavyArmorSpeed: option.heavyArmorSpeed, traitNames: option.traitNames }, name: option.name || null }
+    ? { rules: speciesRulesOf(option), name: option.name || null }
     : { rules: null, name: null };
   cache.set(raceId, { at: Date.now(), ...fresh });
   return fresh;

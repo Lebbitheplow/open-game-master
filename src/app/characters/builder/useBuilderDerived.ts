@@ -20,7 +20,10 @@ import {
 import { suggestArmor } from "@/lib/srd/armor";
 import { classFeaturesFor, subclassSpellsFor } from "@/lib/srd/features";
 import { fightingStyleChoices, fightingStyleSlots } from "@/lib/srd/feature-effects";
-import { openOptionSlots, optionFeatureName, type OptionSlot } from "@/lib/srd/options";
+import { openOptionSlots, optionFeatureName, slotTakes, type OptionSlot } from "@/lib/srd/options";
+import { subclassChoiceSlots } from "@/lib/srd/subclass-choice-picks";
+import { parseSubclassChoicePick, subclassChoicePickName } from "@/lib/content/subclass-choices";
+import { subclassPickFeatures } from "@/lib/srd/subclass-choice-picks";
 import { spellStyleFor, spellbookAllowance, type SpellStyle } from "@/lib/srd/spell-prep";
 import {
   chooseKitOption as withKitOption,
@@ -197,7 +200,8 @@ function casterDeskOf(
   const casting = builderCasting(row, subclass, level);
   const casts = casting.casts;
   const spellGrants = classSpellGrants({ classId: casts ? row.id : "", level, subclass, features });
-  const subclassSpells = casts ? withLearned(subclassSpellsFor(row.id, subclass, level), spellGrants) : [];
+  // `features` holds the picks: a workshop choice's option spells (issue #833).
+  const subclassSpells = casts ? withLearned(subclassSpellsFor(row.id, subclass, level, undefined, features), spellGrants) : [];
   const spellWider = casts
     ? { spells: subclassExpandedSpellsFor(row.id, subclass, level), lists: subclassSpellListsFor(row.id, subclass) }
     : { spells: [], lists: [] };
@@ -517,19 +521,25 @@ export function useBuilderDerived({
   // A skill or language the character already has becomes a pick (Royal
   // Envoy's Persuasion, Draconic Disciple's Draconic).
   // A class's own secret tongue (Druidic, Thieves' Cant), each class's.
+  // The option picks as features: a workshop subclass choice's pick keeps the
+  // ids its stored copy held, so one the author renamed is still found
+  // (issue #833 review).
+  const pickFeatures = useMemo(() => subclassPickFeatures(optionPicks, state.pickIds), [optionPicks, state.pickIds]);
   const classLanguages = useMemo(
     () => [...(klass?.languages ?? []), ...extras.flatMap((entry) => entry.klass.languages ?? [])],
     [klass, extras],
   );
   const subclassTraining = useMemo(
     () =>
-      klass && classList.some((entry) => entry.subclass)
-        ? grantsForHeldTraining(subclassGrants(classList), {
+      // A base class's own grants too, before any subclass (a ranger's
+      // Favored Enemy language, src/lib/srd/subclass-training.ts CLASS_TABLE).
+      klass
+        ? grantsForHeldTraining(subclassGrants(classList, undefined, pickFeatures), {
             skills: proficientSkills,
             languages: [...(race?.languages ?? []), ...(background?.knownLanguages ?? []), ...bonusLanguages.filter(Boolean), ...classLanguages],
           })
         : [],
-    [klass, classList, proficientSkills, race, background, bonusLanguages, classLanguages],
+    [klass, classList, proficientSkills, race, background, bonusLanguages, classLanguages, pickFeatures],
   );
   const training = useMemo(() => {
     const skills = proficientSkills;
@@ -902,7 +912,7 @@ export function useBuilderDerived({
   // as "choice"-sourced features so the level-up regrant preserves them.
   const styleSlots = useMemo(() => fightingStyleSlots(grantedFeatures), [grantedFeatures]);
   // The styles those slots allow (a Swords bard: Dueling or Two-Weapon Fighting).
-  const styleChoices = useMemo(() => fightingStyleChoices(grantedFeatures), [grantedFeatures]);
+  const styleChoices = useMemo(() => fightingStyleChoices(grantedFeatures, klass?.id), [grantedFeatures, klass?.id]);
 
   // Invocations, maneuvers, metamagic, pact boons, infusions, runes and
   // elemental disciplines: the pick-lists that used to be feature names with
@@ -922,6 +932,9 @@ export function useBuilderDerived({
         features,
         // A feat's own picks are counted once, with the first class.
         feats: index === 0 ? featNames : [],
+        // A wizard's Spell Mastery and Signature Spells pick from the book
+        // written on the spell step (for a wizard `spells` is the book).
+        ...(spells.length ? { spellbook: spells } : {}),
       }),
     );
     return slots.reduce<typeof slots>((merged, slot) => {
@@ -932,7 +945,18 @@ export function useBuilderDerived({
       const total = held.total + slot.total;
       return merged.map((entry) => (entry === held ? { ...held, total, remaining: Math.max(0, total - held.chosen.length) } : entry));
     }, []);
-  }, [classList, grantedFeatures, optionPicks, featNames]);
+  }, [classList, grantedFeatures, optionPicks, featNames, spells]);
+  // A workshop subclass's own choices (a bloodline, an element): one pick
+  // each, at the class level its author set, kept as "Bloodline (Storm)"
+  // among the option picks (issue #833).
+  const subclassChoiceSlotsOpen = useMemo(
+    () =>
+      subclassChoiceSlots(
+        classList.map((entry) => ({ id: entry.id, subclass: entry.subclass ?? "", level: entry.level })),
+        pickFeatures,
+      ),
+    [classList, pickFeatures],
+  );
   // Expertise each class has earned at its own level: a rogue's two at its
   // 1st, a bard's at its 3rd.
   const expertiseSlots = useMemo(
@@ -997,8 +1021,15 @@ export function useBuilderDerived({
   // showing at the top of the list so a cleric knows what their domain gives.
   const subclassSpells = useMemo(
     () =>
-      casts && casterKlass ? withLearned(subclassSpellsFor(casterKlass.id, casterSubclass, casterLevel), spellGrants) : [],
-    [casterKlass, casterSubclass, casterLevel, casts, spellGrants],
+      casts && casterKlass
+        ? withLearned(
+            // The option a workshop subclass's choice holds brings its own
+            // (issue #833).
+            subclassSpellsFor(casterKlass.id, casterSubclass, casterLevel, undefined, pickFeatures),
+            spellGrants,
+          )
+        : [],
+    [casterKlass, casterSubclass, casterLevel, casts, spellGrants, pickFeatures],
   );
   // What this class calls its spells, used in the empty-spell-list warning.
   const castingLabel = casts && casterKlass ? (casterKlass.castingLabel || "spells") : "";
@@ -1201,6 +1232,7 @@ export function useBuilderDerived({
     styleSlots,
     styleChoices,
     optionSlots,
+    subclassChoiceSlots: subclassChoiceSlotsOpen,
     spellSearchClass,
     spellWider,
     casts,
@@ -1351,13 +1383,24 @@ export function builderActions(
             : current,
       );
     },
+    // A workshop subclass's choice: one option, so a second replaces the
+    // first, and the one held again takes it back (issue #833).
+    pickSubclassChoice(label: string, optionName: string) {
+      const featureName = subclassChoicePickName(label, { name: optionName });
+      state.setOptionPicks((current) => {
+        const others = current.filter((entry) => textKey(parseSubclassChoicePick(entry)?.label ?? "") !== textKey(label));
+        return current.includes(featureName) ? others : [...others, featureName];
+      });
+    },
     toggleOption(slot: OptionSlot, optionName: string) {
       const featureName = optionFeatureName(slot.kind, optionName);
       state.setOptionPicks((current) => {
         if (current.includes(featureName)) {
           return current.filter((entry) => entry !== featureName);
         }
-        return slot.chosen.length < slot.total ? [...current, featureName] : current;
+        // A favored enemy's humanoid race is half a pick (options.ts slotTakes).
+        const option = slot.options.find((entry) => entry.n === optionName);
+        return option && slotTakes(slot, option) ? [...current, featureName] : current;
       });
     },
   };

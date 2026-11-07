@@ -1,4 +1,4 @@
-import { CLASS_LIST_LIMITS, FEATURE_LIMITS, SUBCLASS_SPELLS_PER_LEVEL, levelOfKey } from "@/lib/homebrew/class-data";
+import { CLASS_LIST_LIMITS, CUSTOM_LIST_MAX, CUSTOM_SPELL_LIST, FEATURE_LIMITS, SUBCLASS_SPELLS_PER_LEVEL, distinctSpellNames, levelOfKey } from "@/lib/homebrew/class-data";
 import { RACE_LIMITS } from "@/lib/homebrew/race-data";
 import { BACKGROUND_LIMITS } from "@/lib/homebrew/background-data";
 import { GEAR_LIMITS } from "@/lib/homebrew/item-data";
@@ -70,7 +70,9 @@ function featureProblems(levels: unknown): LimitProblem[] {
 }
 
 // A subclass's always-prepared spells: six at a level, each named whole.
-function spellProblems(spells: unknown): LimitProblem[] {
+// `field`: the subclass's always-prepared spells, or the ones it adds to its
+// class's list (issue #833), held to the same per-level number.
+function spellProblems(spells: unknown, field: "spells" | "expanded" = "spells"): LimitProblem[] {
   const out: LimitProblem[] = [];
   const byLevel = new Map<number, Set<string>>();
   for (const [key, names] of Object.entries(record(spells))) {
@@ -80,7 +82,7 @@ function spellProblems(spells: unknown): LimitProblem[] {
       const name = typeof entry === "string" ? entry.trim() : "";
       if (!name) continue;
       if (name.length > HOMEBREW_NAME_MAX) {
-        out.push({ field: `spells.${level}`, text: `${quoted(name)} at level ${level} is a spell name of ${name.length} letters, and a name keeps ${HOMEBREW_NAME_MAX} at most.` });
+        out.push({ field: `${field}.${level}`, text: `${quoted(name)} at level ${level} is a spell name of ${name.length} letters, and a name keeps ${HOMEBREW_NAME_MAX} at most.` });
       }
       (byLevel.get(level) ?? byLevel.set(level, new Set()).get(level)!).add(name.slice(0, HOMEBREW_NAME_MAX));
     }
@@ -88,8 +90,8 @@ function spellProblems(spells: unknown): LimitProblem[] {
   for (const [level, held] of [...byLevel].sort(([a], [b]) => a - b)) {
     if (held.size > SUBCLASS_SPELLS_PER_LEVEL) {
       out.push({
-        field: `spells.${level}`,
-        text: `Level ${level} has ${held.size} always-prepared spells, and a level keeps ${SUBCLASS_SPELLS_PER_LEVEL} at most. Move one to another level.`,
+        field: `${field}.${level}`,
+        text: `Level ${level} has ${held.size} ${field === "spells" ? "always-prepared spells" : "spells added to the class's list"}, and a level keeps ${SUBCLASS_SPELLS_PER_LEVEL} at most. Move one to another level.`,
       });
     }
   }
@@ -111,9 +113,22 @@ export function homebrewLimitProblems(kind: HomebrewKind, raw: unknown): LimitPr
       out.push({ field: "weapons", text: `The class names ${weapons} weapons, and a class keeps ${CLASS_LIST_LIMITS.weapons} at most: tick simple or martial instead of naming each.` });
     }
     out.push(...featureProblems(data.levels));
+    // A list of its own (issue #833): every name whole, and no more than a
+    // list keeps.
+    if (data.spellListFrom === CUSTOM_SPELL_LIST && Array.isArray(data.spellList)) {
+      // Counted as the save keeps them: one name per spell, by its name key.
+      const names = distinctSpellNames(data.spellList, HOMEBREW_NAME_MAX + 1);
+      const long = names.find((name) => name.length > HOMEBREW_NAME_MAX);
+      if (long) {
+        out.push({ field: "spellList", text: `${quoted(long)} is a spell name of ${long.length} letters, and a name keeps ${HOMEBREW_NAME_MAX} at most.` });
+      }
+      if (names.length > CUSTOM_LIST_MAX) {
+        out.push({ field: "spellList", text: `The class's list holds ${names.length} spells, and a list keeps ${CUSTOM_LIST_MAX} at most. Take some off.` });
+      }
+    }
   }
   if (kind === "archetype") {
-    out.push(...featureProblems(data.levels), ...spellProblems(data.spells));
+    out.push(...featureProblems(data.levels), ...spellProblems(data.spells), ...spellProblems(data.expanded, "expanded"));
   }
   if (kind === "race") {
     const skills = distinct(data.skills, 30).length;

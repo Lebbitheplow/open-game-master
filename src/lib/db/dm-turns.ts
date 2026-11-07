@@ -355,6 +355,10 @@ export type PendingAttack = {
   crit?: boolean;
 };
 
+export type PendingCarry = {
+  mote?: { bardId: string; die: string; sides: number };
+};
+
 export type PendingRoll = {
   id: string;
   campaignId: string;
@@ -370,6 +374,10 @@ export type PendingRoll = {
   reason: string;
   // Damage rolls only: enemy the server applies the result to on resolve.
   targetEnemyId: string | null;
+  // What a roll tool's parked roll carries to its landing, as its digital
+  // throw would have used it then: the mote riding the inspiration die it
+  // spent (authored-mote.ts). A pc_attack's rides its attack record instead.
+  carry: PendingCarry | null;
   // pc_attack to-hit rolls only: how to adjudicate the submitted d20.
   attack: PendingAttack | null;
   // Server summary of what the resolved roll already did; the resumed turn
@@ -393,6 +401,7 @@ export type PendingRoll = {
 type PendingRow = {
   parked_for?: string | null;
   thrown_json?: string | null;
+  carry_json?: string | null;
   id: string;
   campaign_id: string;
   turn_id: string;
@@ -429,6 +438,7 @@ function mapPending(row: PendingRow): PendingRoll {
     dc: row.dc,
     reason: row.reason,
     targetEnemyId: row.target_enemy_id ?? null,
+    carry: parseJson<PendingCarry | null>(row.carry_json ?? null, null),
     attack: parseJson<PendingAttack | null>(row.attack_json, null),
     combatNote: row.combat_note ?? null,
     parkedFor:
@@ -457,6 +467,9 @@ function ensureParkColumn() {
   }
   if (!columns.some((column) => column.name === "thrown_json")) {
     db.exec(`ALTER TABLE pending_rolls ADD COLUMN thrown_json TEXT`);
+  }
+  if (!columns.some((column) => column.name === "carry_json")) {
+    db.exec(`ALTER TABLE pending_rolls ADD COLUMN carry_json TEXT`);
   }
   parkColumnReady.add(db);
 }
@@ -495,6 +508,7 @@ export function createPendingRoll(input: {
   dc: number | null;
   reason: string;
   targetEnemyId?: string | null;
+  carry?: PendingCarry | null;
   attack?: PendingAttack | null;
   // Left out by every caller today: the reason is read from the table's dice
   // policy and the player's preferences as the roll is parked.
@@ -514,10 +528,10 @@ export function createPendingRoll(input: {
       `
         INSERT INTO pending_rolls (
           id, campaign_id, turn_id, tool_call_id, user_id, character_id, kind,
-          detail, expression, advantage, dc, reason, target_enemy_id, attack_json, parked_for,
+          detail, expression, advantage, dc, reason, target_enemy_id, carry_json, attack_json, parked_for,
           thrown_json, visibility, status, created_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
       `,
     )
     .run(
@@ -534,6 +548,7 @@ export function createPendingRoll(input: {
       input.dc,
       input.reason,
       input.targetEnemyId ?? null,
+      input.carry && Object.keys(input.carry).length ? JSON.stringify(input.carry) : null,
       input.attack ? JSON.stringify(input.attack) : null,
       parkedFor,
       input.thrown ? JSON.stringify(input.thrown) : null,

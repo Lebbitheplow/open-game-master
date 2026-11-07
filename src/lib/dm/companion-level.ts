@@ -35,7 +35,7 @@ import { ABILITY_NAMES } from "@/lib/srd/legality/types";
 import { buildLevelUp, type LevelUpContext, type LevelUpRequest } from "@/lib/srd/level-up";
 import { levelUpSpells } from "@/lib/srd/level-up-spells";
 import { classListFor } from "@/lib/srd/multiclass";
-import { checklistSpellsOn } from "@/lib/srd/spell-lists";
+import { classSpellPool } from "@/lib/content";
 import { casterViewsOf, spellStyleFor, type CasterView } from "@/lib/srd/spell-prep";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
@@ -84,7 +84,9 @@ export type CompanionSheet =
 export function legalCompanionSheet(draft: CompanionDraft): CompanionSheet {
   const { campaign, level } = draft;
   const notes: string[] = [];
-  const klass = classGrantsFor(draft.sheet.class);
+  // The table's workshop classes are described too (issue #833): a
+  // companion of one came out with no spells at all.
+  const klass = classGrantsFor(draft.sheet.class, tableAuthors(campaign.id));
   if (!klass) {
     // A class no table describes has nothing to be derived from.
     return { ok: true, sheet: draft.sheet, notes };
@@ -99,7 +101,7 @@ export function legalCompanionSheet(draft: CompanionDraft): CompanionSheet {
   const abilities = applyAsiChoices(draft.sheet.abilities, asiChoices);
 
   let spellcasting: Spellcasting = null;
-  const [casting] = castingClassesOf(classes, classGrantsFor, subclassExtrasFor(tableAuthors(campaign.id)));
+  const [casting] = castingClassesOf(classes, (classId) => classGrantsFor(classId, tableAuthors(campaign.id)), subclassExtrasFor(tableAuthors(campaign.id)));
   if (casting) {
     const spellOf = (name: string) => spellFactsFor(name, tableAuthors(campaign.id));
     const before = emptyView(klass.id, casting.ability, level);
@@ -111,7 +113,8 @@ export function legalCompanionSheet(draft: CompanionDraft): CompanionSheet {
       freeCantrips: 0,
       // The subclass's always-prepared spells come free: a choice spent on
       // one would be a choice lost.
-      candidates: withoutGranted(checklistSpellsOn(casting.list), subclassSpellsFor(klass.id, subclass, level, subclassExtrasFor(tableAuthors(campaign.id)))),
+      // The list the save's check reads, homebrew included (issue #833).
+      candidates: withoutGranted(classSpellPool(casting.list, tableAuthors(campaign.id)), subclassSpellsFor(klass.id, subclass, level, subclassExtrasFor(tableAuthors(campaign.id)))),
       wanted: draft.wantedSpells.map((name) => spellOf(name)?.name ?? name),
     });
     const passed = draft.wantedSpells.filter(
@@ -198,7 +201,9 @@ function contextFor(campaign: Campaign, sheet: CharacterSheet): LevelUpContext {
     hpMethod: campaign.gameSettings.hpMethod ?? "average",
     // A companion keeps to the class it was recruited in.
     multiclassAllowed: false,
-    classOf: classGrantsFor,
+    // The table's workshop classes, read for whoever runs the table, as at
+    // a player's level-up (issue #833).
+    classOf: (classId) => classGrantsFor(classId, owner),
     racialCantrips: raceGrantsFor(sheet.race, owner)?.cantripChoice?.count ?? 0,
     spellOf: (name) => spellFactsFor(name, owner),
     featOf: (name) => featFactsFor(name, owner),
@@ -214,7 +219,7 @@ function contextFor(campaign: Campaign, sheet: CharacterSheet): LevelUpContext {
 // at 0 hit points levels once it is back on its feet).
 function levelOnce(campaign: Campaign, sheet: CharacterSheet): CharacterSheet | null {
   const [leading] = classListFor(sheet);
-  const klass = classGrantsFor(leading.id);
+  const klass = classGrantsFor(leading.id, tableAuthors(campaign.id));
   if (!klass) {
     // No table for the class: the level, and what any level brings (hit
     // dice, the fixed hit points of the die the sheet holds).
@@ -239,7 +244,7 @@ function levelOnce(campaign: Campaign, sheet: CharacterSheet): CharacterSheet | 
   // The table's workshop subclasses: one that casts as an Eldritch Knight,
   // or hands out always-prepared spells, does so for a companion too.
   const extras = subclassExtrasFor(tableAuthors(campaign.id));
-  const casting = castingClassesOf(after, classGrantsFor, extras, sheet.spellcasting).find(
+  const casting = castingClassesOf(after, (classId) => classGrantsFor(classId, tableAuthors(campaign.id)), extras, sheet.spellcasting).find(
     (entry) => textKey(entry.entry.id) === textKey(leading.id),
   );
   if (casting) {
@@ -255,7 +260,7 @@ function levelOnce(campaign: Campaign, sheet: CharacterSheet): CharacterSheet | 
       firstLevel: !held,
       freeCantrips: 0,
       candidates: withoutGranted(
-        checklistSpellsOn(casting.list),
+        classSpellPool(casting.list, tableAuthors(campaign.id)),
         subclassSpellsFor(leading.id, companionSubclass(leading.id, leading.level + 1, leading.subclass), leading.level + 1, extras),
       ),
     });

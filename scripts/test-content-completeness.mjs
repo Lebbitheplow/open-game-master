@@ -127,6 +127,17 @@ test("every pick-list a class earns has options and correct counts", () => {
     ["artificer", "", 18, "infusion", 12],
     ["monk", "Way of the Four Elements", 3, "discipline", 2],
     ["monk", "Way of the Open Hand", 3, "discipline", 0],
+    ["ranger", "Hunter", 3, "hunters_prey", 1],
+    ["ranger", "Hunter", 15, "superior_hunters_defense", 1],
+    ["sorcerer", "Draconic Bloodline", 1, "dragon_ancestor", 1],
+    ["sorcerer", "Wild Magic", 1, "dragon_ancestor", 0],
+    ["ranger", "", 1, "favored_enemy", 1],
+    ["ranger", "", 14, "favored_enemy", 3],
+    ["ranger", "", 10, "favored_terrain", 3],
+    ["druid", "Circle of the Land", 2, "land_circle", 1],
+    ["wizard", "", 18, "spell_mastery_1", 1],
+    ["wizard", "", 18, "spell_mastery_2", 1],
+    ["wizard", "", 20, "signature_spell", 2],
   ];
   const wrong = [];
   for (const [classId, subclass, level, kind, expected] of cases) {
@@ -138,7 +149,9 @@ test("every pick-list a class earns has options and correct counts", () => {
   assert.deepEqual(wrong, []);
 
   // Every kind must have options to pick, each with rules text.
-  const kinds = ["invocation", "maneuver", "metamagic", "pact_boon", "infusion", "rune", "discipline"];
+  // Every kind options.json and options.ts know (issue #833 added the dragon,
+  // the ranger's, the Land druid's and the wizard's).
+  const kinds = ["invocation", "maneuver", "metamagic", "pact_boon", "infusion", "rune", "discipline", "hunters_prey", "defensive_tactics", "hunter_multiattack", "superior_hunters_defense", "dragon_ancestor", "favored_enemy", "favored_terrain", "land_circle", "spell_mastery_1", "spell_mastery_2", "signature_spell"];
   const empty = kinds.filter((kind) => optionsOfKind(kind).length === 0);
   assert.deepEqual(empty, [], "these pick-lists have no options");
   const textless = kinds.flatMap((kind) =>
@@ -149,7 +162,7 @@ test("every pick-list a class earns has options and correct counts", () => {
 
 test("an option pick round-trips through its feature name", () => {
   // The sheet stores "Invocation: Agonizing Blast"; it has to resolve back.
-  for (const kind of ["invocation", "maneuver", "metamagic", "pact_boon", "infusion", "rune", "discipline"]) {
+  for (const kind of ["invocation", "maneuver", "metamagic", "pact_boon", "infusion", "rune", "discipline", "hunters_prey", "defensive_tactics", "hunter_multiattack", "superior_hunters_defense", "dragon_ancestor", "favored_enemy", "favored_terrain", "land_circle", "spell_mastery_1", "spell_mastery_2", "signature_spell"]) {
     for (const option of optionsOfKind(kind)) {
       const featureName = optionFeatureName(kind, option.n);
       const found = findOptionByFeatureName(featureName);

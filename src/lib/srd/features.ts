@@ -6,12 +6,18 @@ import classesJson from "@/lib/srd/classes.json";
 import { CUSTOM_CLASS_FEATURES, findCustomClass } from "@/lib/classes";
 import { workshopClassDef } from "@/lib/classes/workshop-registry";
 import type { SheetFeature } from "@/lib/schemas/sheet";
-import { chosenFightingStyles, fightingStyleChoices, fightingStyleSlots } from "@/lib/srd/feature-effects";
-import { findOptionByFeatureName, isOptionName, optionSlotsFor } from "@/lib/srd/options";
+import { chosenFightingStyles, fittingFightingStyles } from "@/lib/srd/feature-effects";
+import { findOptionByFeatureName, isOptionName, optionCost, optionSlotsFor } from "@/lib/srd/options";
 import { featOptionSlots } from "@/lib/srd/feat-combat";
 import { srdRaceId } from "@/lib/srd/race-id";
 import { subclassNamedBare, subclassNamedExactly } from "@/lib/srd/subclass-name";
 import { browserSubclassExtras, type SubclassExtras } from "@/lib/srd/subclass-tables";
+import {
+  extraSubclassFor,
+  subclassChoiceGrantedFeatures,
+  subclassChoicePickKept,
+  subclassChoiceSpells,
+} from "@/lib/srd/subclass-choice-picks";
 import { thirdCasterProfileOf, type ThirdCasterProfile } from "@/lib/srd/third-caster";
 import { textKey } from "@/lib/language/text-logic";
 
@@ -250,14 +256,9 @@ function leveledNames(levels: Record<string, string[]>, level: number): SheetFea
 // server always passes the table's own (src/lib/db/subclass-extras.ts).
 export { registerBrowserSubclassExtras } from "@/lib/srd/subclass-tables";
 
-function extraSubclassNamed(classId: string, stored: string, extras?: SubclassExtras) {
-  const list = (extras ?? browserSubclassExtras())[classId] ?? [];
-  return (
-    list.find((entry) => subclassNamedExactly(stored, entry.name)) ??
-    list.find((entry) => subclassNamedBare(stored, entry.name)) ??
-    null
-  );
-}
+// One reader for the workshop's and the pack's subclasses, shared with the
+// subclass choices (src/lib/srd/subclass-choice-picks.ts).
+const extraSubclassNamed = extraSubclassFor;
 
 // Whether a subclass of this class may bring its own Spellcasting: the
 // classes that cast nothing themselves (barbarian, fighter, monk, rogue, and
@@ -299,6 +300,9 @@ function extraTableNamed(classId: string, stored: string, extras?: SubclassExtra
     name: found.name,
     levels: Object.fromEntries(Object.entries(found.levels).map(([level, rows]) => [level, rows.map((row) => row.n)])),
     ...(found.spells ? { spells: found.spells } : {}),
+    // A workshop subclass's additions to its class's list, read where a
+    // patron's are (subclassExpandedSpellsFor, issue #833).
+    ...(found.expanded ? { expanded: found.expanded } : {}),
   };
 }
 
@@ -388,11 +392,13 @@ function spellsBy(table: Record<string, string[]> | undefined, level: number): s
 }
 
 // The option a sheet chose for a feature: "Forest" of "Circle Spells
-// (Forest)". Null when the feature carries none.
+// (Forest)", or of "Circle Spells: Forest", the pick the builder and the
+// level-up write (src/lib/srd/options.ts land_circle, issue #833). Null when
+// the feature carries none.
 export function featureChoiceOf(features: ReadonlyArray<{ name: string }> | undefined, feature: string): string | null {
   const wanted = textKey(feature);
   for (const held of features ?? []) {
-    const parts = /^(.*?)\s*\(([^)]+)\)\s*$/.exec(held.name.trim());
+    const parts = /^(.*?)\s*\(([^)]+)\)\s*$/.exec(held.name.trim()) ?? /^([^:]+):\s*(.+)$/.exec(held.name.trim());
     if (parts && textKey(parts[1]) === wanted) {
       return parts[2].trim();
     }
@@ -433,7 +439,15 @@ export function subclassSpellsFor(
   if (!chosen) {
     return [];
   }
-  return [...new Set([...spellsBy(chosen.spells, level), ...choiceSpellsBy(chosen, features, level, false)])];
+  return [
+    ...new Set([
+      ...spellsBy(chosen.spells, level),
+      ...choiceSpellsBy(chosen, features, level, false),
+      // A workshop subclass's choice: the spells of the option held (issue
+      // #833, a Storm bloodline's lightning spells).
+      ...subclassChoiceSpells(classId, subclass, level, features, extras),
+    ]),
+  ];
 }
 
 // The spells a subclass adds to those its class may learn by `level`, not
@@ -522,6 +536,10 @@ export function populateFeaturesForClasses(
       granted[index] = { ...feature, name: chosen.name };
     }
   }
+  // What a workshop subclass's choice grants beside its pick ("Lightning
+  // Resistance", "Bloodline damage type: Lightning"), written afresh from
+  // the pick every time, so an option given up leaves nothing (issue #833).
+  granted.push(...subclassChoiceGrantedFeatures(classes, existing, extras));
   const racialTraits = racialTraitsFor(raceId);
   granted.push(...racialTraits);
   // A race the bundled data doesn't describe (a content-pack Catfolk) has its
@@ -544,6 +562,7 @@ export function populateFeaturesForClasses(
     classes,
     granted,
     feats,
+    extras,
   );
   const seen = new Set<string>();
   return [...granted, ...kept].filter((feature) => {
@@ -568,15 +587,37 @@ function pruneChoiceFeatures(
   classes: Array<{ id: string; subclass: string; level: number }>,
   granted: SheetFeature[],
   feats?: string[],
+  extras?: SubclassExtras,
 ): SheetFeature[] {
-  const styleSlots = fightingStyleSlots(granted);
-  const styles = new Set(chosenFightingStyles(features).map((name) => textKey(name)));
-  // A style the slots do not allow (Archery on a Swords bard) is not kept.
-  const allowedStyles = new Set(fightingStyleChoices(granted).map((style) => textKey(style.name)));
-  let stylesKept = 0;
+  // A workshop subclass's choices: one pick each, while the subclass offers
+  // it at the class's level (subclass-choice-picks.ts). Before, a pick of
+  // the author's own was dropped by every check.
+  const choicesTaken = new Set<string>();
+  // A style the slots do not allow (Archery on a Swords bard) is not kept;
+  // a class's own slot keeps any style the sheet holds, since a paladin's
+  // Archery was legal when chosen and new picks are held to the class's list
+  // where they are made (feature-effects.ts fittingFightingStyles).
+  const fitting = fittingFightingStyles(chosenFightingStyles(features), granted, undefined, false);
+  const stylesHeld = new Set<string>();
   const perKind = new Map<string, number>();
-  return features.filter((feature) => {
+  // A workshop pick kept is written under its option's current name with
+  // its ids, so the author's rename reaches the sheet.
+  const workshopKept = new Set<SheetFeature>();
+  const resolved = features.flatMap((feature) => {
     if (feature.source !== "choice") {
+      return [feature];
+    }
+    const workshop = subclassChoicePickKept(feature, classes, extras, choicesTaken);
+    if (workshop === undefined) {
+      return [feature];
+    }
+    if (workshop) {
+      workshopKept.add(workshop);
+    }
+    return workshop ? [workshop] : [];
+  });
+  return resolved.filter((feature) => {
+    if (feature.source !== "choice" || workshopKept.has(feature)) {
       return true;
     }
     const option = findOptionByFeatureName(feature.name);
@@ -598,18 +639,19 @@ function pruneChoiceFeatures(
         ) +
         featOptionSlots(feats, option.k);
       const taken = perKind.get(option.k) ?? 0;
-      if (taken >= total) {
+      // A favored enemy's humanoid race is half a pick (options.ts optionCost).
+      if (taken + optionCost(option) > total) {
         return false;
       }
-      perKind.set(option.k, taken + 1);
+      perKind.set(option.k, taken + optionCost(option));
       return true;
     }
     const bare = chosenFightingStyles([feature])[0];
-    if (bare !== undefined && styles.has(textKey(bare))) {
-      if (stylesKept >= styleSlots || !allowedStyles.has(textKey(bare))) {
+    if (bare !== undefined) {
+      if (!fitting.has(textKey(bare)) || stylesHeld.has(textKey(bare))) {
         return false;
       }
-      stylesKept += 1;
+      stylesHeld.add(textKey(bare));
       return true;
     }
     return true;

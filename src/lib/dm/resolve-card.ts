@@ -62,10 +62,13 @@ export async function resolveAsPlayed(
   // A casting shared out among creatures is one call each, in order: the
   // first spends the slot, the rest draw on the same casting.
   const turns: string[] = [];
+  // A spell drawn from a ring has not happened until its tool casts it, and the
+  // draw pays only once, so a refused cast lets the card go again too.
+  const firstCast = calls.some((call) => call.name === "use_item") ? 1 : 0;
   for (const [index, call] of calls.entries()) {
     const resolved = await invokeEngine(campaign, { kind: "human", userId }, call);
     if (!resolved.ok) {
-      if (index === 0) {
+      if (index <= firstCast) {
         releaseCardResolution(messageId);
       } else {
         keepUnderTurns(campaign.id, messageId, turns);

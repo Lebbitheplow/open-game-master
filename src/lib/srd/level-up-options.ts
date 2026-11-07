@@ -30,7 +30,10 @@ import { isThievesTools, populateFeaturesForClasses, subclassCastingProfileFor, 
 import type { HpMethod } from "@/lib/srd/hit-points";
 import { MULTICLASS_CAP, canMulticlassInto, classListFor, multiclassGrantsFor } from "@/lib/srd/multiclass";
 import { openOptionSlots, optionFeatureName } from "@/lib/srd/options";
+import { subclassChoiceSlots } from "@/lib/srd/subclass-choice-picks";
+import { subclassChoicePickName } from "@/lib/content/subclass-choices";
 import { owedChoices, subclassOwed } from "@/lib/srd/owed-choices";
+import { sheetSpellbook } from "@/lib/srd/owed-picks-logic";
 import {
   casterViewsOf,
   dedupeNames,
@@ -248,16 +251,30 @@ export function levelUpOptions(sheet: CharacterSheet, context: LevelUpOptionsCon
     level: classLevelAfter,
     features: sheet.features,
     feats: sheet.feats,
+    // Spell Mastery and Signature Spells name spells in the spellbook.
+    spellbook: sheetSpellbook(sheet),
   })) {
     if (slot.remaining <= 0) {
       continue;
     }
     const chosen = new Set(slot.chosen.map(textKey));
     featurePicks.push({
+      // Half a favored enemy pick left is one more humanoid race.
       label: slot.label,
-      count: slot.remaining,
+      count: Math.ceil(slot.remaining),
       options: slot.options.filter((option) => !chosen.has(textKey(option.n))).map((option) => optionFeatureName(slot.kind, option.n)),
     });
+  }
+  // A workshop subclass's own choice, due at this class level and not made
+  // (issue #833): a bloodline, an element, picked as "Bloodline (Storm)".
+  for (const slot of subclassChoiceSlots([{ id: klass.id, subclass: subclassNow, level: classLevelAfter }], sheet.features, context.subclassExtras)) {
+    if (!slot.chosen) {
+      featurePicks.push({
+        label: `${slot.subclass}: ${slot.label}`,
+        count: 1,
+        options: slot.options.map((option) => subclassChoicePickName(slot.label, option)),
+      });
+    }
   }
   if (featurePicks.length) {
     choices.featurePicks = featurePicks;
@@ -358,7 +375,7 @@ export function levelUpOptions(sheet: CharacterSheet, context: LevelUpOptionsCon
     xpForNextLevel: sheet.level >= 20 ? null : XP_THRESHOLDS[next - 1],
     ready: !notReady,
     ...(notReady ? { notReady } : {}),
-    owedFromEarlierLevels: owedChoices(sheet),
+    owedFromEarlierLevels: owedChoices(sheet, { extras: context.subclassExtras, campaignId: sheet.campaignId }),
     levelUpClass: klass.id,
     classLevelAfter,
     countedUnderSubclass: subclassNow || null,

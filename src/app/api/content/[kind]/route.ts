@@ -100,6 +100,27 @@ export async function GET(
       // the pack's, for a page the pack files under no SRD row.
       if ((!packInstalled || fromBook) && mechanics) {
         results = [...results, ...notFiled(results, bundledSpellRows(q)).slice(0, base.limit ?? 50)];
+      } else if (!packInstalled && url.searchParams.get("srd") === "1") {
+        // `srd=1` (a picker that only names a spell, as a workshop species'
+        // spells do, issue #833): with no pack the bundled book's spells
+        // answer, so a bare server still offers the SRD's, not only the
+        // author's homebrew.
+        results = [...results, ...notFiled(results, bundledSpellRows(q)).slice(0, base.limit ?? 50)];
+      }
+      // `lite=1`: the names, levels and books a picker lists, without each
+      // row's whole text, which a phone would download for nothing (the
+      // workshop's spell list pickers, issue #833).
+      if (url.searchParams.get("lite") === "1") {
+        results = (results as Array<Record<string, unknown>>).map((row) => ({
+          slug: row.slug,
+          name: row.name,
+          level: row.level,
+          school: row.school,
+          source: row.source,
+          documentSlug: row.documentSlug,
+          document: row.document,
+          data: {},
+        }));
       }
       break;
     }

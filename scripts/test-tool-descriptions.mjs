@@ -10,7 +10,7 @@ import assert from "node:assert/strict";
 import { openWorld } from "./lib/enforce-world.mjs";
 
 const world = await openWorld();
-const { compactTool, moreToolsTool, TOOL_GROUPS } = await import("../src/lib/dm/tool-profiles.ts");
+const { compactTool, moreToolsTool, TOOL_GROUPS, COMPACT_OMITS } = await import("../src/lib/dm/tool-profiles.ts");
 const { dmTurnTools } = await import("../src/lib/dm/turn.ts");
 const { readCardTool } = await import("../src/lib/dm/prep-card-tool.ts");
 const { runPreparedEncounterTool } = await import("../src/lib/dm/prepared-encounter-tool.ts");
@@ -41,6 +41,8 @@ function descriptions(tool) {
   const found = [[tool.function.name, tool.function.description, compact.function.description]];
   const walk = (full, cut, path) => {
     if (!full || typeof full !== "object") return;
+    // An argument the compact set leaves off (tool-profiles.ts COMPACT_OMITS) has no cut to read.
+    if (!cut && COMPACT_OMITS[tool.function.name]?.includes(path.split(".").at(-1))) return;
     for (const key of Object.keys(full)) {
       if (key === "description" && typeof full[key] === "string") found.push([path, full[key], cut[key]]);
       else walk(full[key], cut[key], key === "properties" ? path : key === "items" ? path : `${path}.${key}`);

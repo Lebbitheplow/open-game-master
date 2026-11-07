@@ -27,6 +27,7 @@ import {
   getDmTurn,
   getLatestDmTurnId,
   listPendingForTurn,
+  type PendingRoll,
   saveDmTurn,
   type DmTurn,
 } from "@/lib/db/dm-turns";
@@ -68,7 +69,7 @@ import { AWAITING_ROLL } from "@/lib/dm/pc-attack-parts";
 import { strictBooleanArgs } from "@/lib/dm/arg-coerce";
 import { insertCampaignMessage, listMessagesPage, listRecentMessages, markCardReturned, type CampaignMessage } from "@/lib/db/messages";
 import { heldNarrationSeq, narrationShown, takeNarrationSeq, takeNarrationSlot } from "@/lib/dm/narration-slot";
-import { getRoll, listRecentRolls } from "@/lib/db/rolls";
+import { getRoll, listRecentRolls, type StoredRoll } from "@/lib/db/rolls";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { adoptTurnAudit } from "@/lib/db/sheet-audit";
 import { describeConditionDuration } from "@/lib/dm/condition-logic";
@@ -1092,6 +1093,24 @@ function awaitingPart(content: unknown): { content: { attacks: Record<string, un
   return at >= 0 ? { content: { ...parsed, attacks }, at } : null;
 }
 
+// What the model is told of a roll that was parked for it.
+export function pendingRollAnswer(pending: PendingRoll, roll: StoredRoll) {
+  return {
+    total: roll.total,
+    dice: roll.breakdown.terms,
+    ...(pending.dc !== null ? { dc: pending.dc, success: roll.total >= pending.dc } : {}),
+    ...(roll.breakdown.crit ? { crit: roll.breakdown.crit } : {}),
+    rolledBy: pending.status === "submitted" ? "the player, with physical dice" : "the server",
+    note: ROLL_RESULT_NOTE,
+    // What the server already did with this roll (initiative locked,
+    // damage applied); the model must narrate from it, not repeat it.
+    ...(pending.combatNote ? { combat: pending.combatNote } : {}),
+    // A spell's half on a miss (Acid Arrow): the figure that landed, which
+    // the narration guard must find, as the server's dice answer it.
+    ...((pending.attack as { halfOnMiss?: boolean } | null | undefined)?.halfOnMiss ? { damage: Math.floor(roll.total / 2) } : {}),
+  };
+}
+
 export async function resumeDmTurn(campaignId: string, turnId: string) {
   const campaign = getCampaignById(campaignId);
   const turn = getDmTurn(turnId);
@@ -1132,17 +1151,7 @@ export async function resumeDmTurn(campaignId: string, turnId: string) {
     if (!turn.rollIds.includes(roll.id)) {
       turn.rollIds.push(roll.id);
     }
-    const answer = {
-      total: roll.total,
-      dice: roll.breakdown.terms,
-      ...(pending.dc !== null ? { dc: pending.dc, success: roll.total >= pending.dc } : {}),
-      ...(roll.breakdown.crit ? { crit: roll.breakdown.crit } : {}),
-      rolledBy: pending.status === "submitted" ? "the player, with physical dice" : "the server",
-      note: ROLL_RESULT_NOTE,
-      // What the server already did with this roll (initiative locked,
-      // damage applied); the model must narrate from it, not repeat it.
-      ...(pending.combatNote ? { combat: pending.combatNote } : {}),
-    };
+    const answer = pendingRollAnswer(pending, roll);
     // The call whose parts wait on this roll: a tool answer of its id that
     // still holds a part awaiting one (a backend may reuse an id across
     // replies, and an earlier answer of that id holds no parts).

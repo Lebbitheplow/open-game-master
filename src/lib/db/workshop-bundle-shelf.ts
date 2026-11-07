@@ -3,7 +3,7 @@ import { isWorkshopClassId, workshopClassId } from "@/lib/homebrew/class-data";
 import { renameSheetRefs, sheetRefNames, type SheetRenamer } from "@/lib/homebrew/sheet-refs";
 import { homebrewDataRefs, monsterStatsSpells, renameHomebrewDataRefs, renameMonsterStatsSpells } from "@/lib/homebrew/data-refs";
 import { renamePrepRefs } from "@/lib/db/prep-refs";
-import { createHomebrew, isPublishedGearName, listHomebrew, type HomebrewEntry } from "@/lib/db/homebrew";
+import { createHomebrew, isPublishedGearName, listHomebrew, updateHomebrew, type HomebrewEntry } from "@/lib/db/homebrew";
 import { spellFactsFor } from "@/lib/characters/catalog";
 import { matchGear } from "@/lib/srd/adventuring-gear";
 import { createHomebrewMonster, listHomebrewMonsters, type HomebrewMonster } from "@/lib/bestiary/homebrew-monsters";
@@ -76,6 +76,27 @@ export function portableClassRef(classId: string, byId: Map<string, HomebrewEntr
   if (!isWorkshopClassId(classId)) return classId;
   const entry = byId.get(classId.slice("homebrew-".length));
   return entry ? `${PORTABLE_REF}class:${entry.name}` : classId;
+}
+
+// An entry's data as another server can read it: a subclass's class, and
+// the workshop classes a homebrew spell is tagged with (issue #833), by name
+// rather than by this server's ids. A tagged spell lost its class on the way
+// and fell off that class's list.
+export function portableEntryData(entry: Pick<HomebrewEntry, "kind" | "data">, byId: Map<string, HomebrewEntry>): Record<string, unknown> {
+  if (entry.kind === "archetype" && typeof entry.data.classSlug === "string") {
+    return { ...entry.data, classSlug: portableClassRef(entry.data.classSlug, byId) };
+  }
+  if (entry.kind === "spell" && Array.isArray(entry.data.classes)) {
+    return { ...entry.data, classes: entry.data.classes.map((classId) => portableClassRef(String(classId ?? ""), byId)) };
+  }
+  return entry.data;
+}
+
+// The spells of `shelf` tagged with a workshop class: kept with it, since
+// they are on its list whether or not its list names them.
+export function spellsTaggedWith(shelf: HomebrewEntry[], classEntry: HomebrewEntry): HomebrewEntry[] {
+  const id = workshopClassId(classEntry.id);
+  return shelf.filter((other) => other.kind === "spell" && Array.isArray(other.data.classes) && other.data.classes.includes(id));
 }
 
 // A pregen's sheet with its homebrew ids written by kind and name.
@@ -195,6 +216,7 @@ export function shelfForBundle(input: {
     if (isWorkshopClassId(parent)) keep(homebrew.find((other) => other.kind === "class" && workshopClassId(other.id) === parent));
     if (entry.kind === "class") {
       for (const subclass of homebrew.filter((other) => other.kind === "archetype" && String(other.data.classSlug ?? "") === workshopClassId(entry.id))) keep(subclass);
+      for (const spell of spellsTaggedWith(homebrew, entry)) keep(spell);
     }
   }
   const keepHomebrew = homebrew.filter((entry) => kept.has(entry));
@@ -305,12 +327,29 @@ export function writeShelfArrivals(userId: string, workshopId: string, bundle: W
   const names = new Map<string, Set<string>>();
   for (const entry of owned) (names.get(entry.kind) ?? names.set(entry.kind, new Set()).get(entry.kind)!).add(textKey(entry.name));
   const arrivals = [...bundle.homebrew].sort((a, b) => ARRIVAL_ORDER.indexOf(a.kind) - ARRIVAL_ORDER.indexOf(b.kind));
+  // A workshop class written by name, to its id here: one that landed from
+  // this bundle, else the importer's own of that name; null for neither.
+  const classHere = (ref: string): string | null => {
+    const name = ref.slice(`${PORTABLE_REF}class:`.length);
+    const id = ids.get(`class:${textKey(name)}`) ?? byKey.get(`class:${textKey(name)}`)?.id;
+    return id ? workshopClassId(id) : null;
+  };
+  const isClassRef = (value: unknown) => typeof value === "string" && value.toLowerCase().startsWith(`${PORTABLE_REF}class:`);
+  // Spells land before the classes they are tagged with: the ones still
+  // naming a class by name are pointed at it once it has landed.
+  const taggedLater: Array<{ id: string; userId: string; data: Record<string, unknown>; name: string }> = [];
   for (const arrival of arrivals) {
     const parent = String(arrival.data.classSlug ?? "");
     const parentId = arrival.kind === "archetype" && parent.startsWith(`${PORTABLE_REF}class:`) ? ids.get(`class:${textKey(parent.slice(`${PORTABLE_REF}class:`.length))}`) : undefined;
-    const withParent = parentId ? { ...arrival.data, classSlug: workshopClassId(parentId) } : arrival.data;
+    const withClasses =
+      arrival.kind === "spell" && Array.isArray(arrival.data.classes)
+        ? { ...arrival.data, classes: arrival.data.classes.map((classId) => (isClassRef(classId) ? (classHere(String(classId)) ?? classId) : classId)) }
+        : arrival.data;
+    const withParent = parentId ? { ...withClasses, classSlug: workshopClassId(parentId) } : withClasses;
     const entry = { ...arrival, data: renameHomebrewDataRefs(arrival.kind, withParent, asHere).data };
-    const normalized = normalizeHomebrewForSave(entry.kind, entry.data, entry.name);
+    // A species' spells are named from the importer's own catalog, as a save
+    // names them (issue #833): its homebrew spells arrived first.
+    const normalized = normalizeHomebrewForSave(entry.kind, entry.data, entry.name, (spell) => spellFactsFor(spell, [userId]));
     if ("error" in normalized) {
       // Said, not dropped in silence: the importer learns what to fix.
       refused.push(`${label(entry.kind, entry.name)} did not come: ${normalized.error}`);
@@ -332,9 +371,17 @@ export function writeShelfArrivals(userId: string, workshopId: string, bundle: W
     }
     const created = createHomebrew(userId, { kind: entry.kind, name, data: normalized.data });
     ids.set(key, created.id);
+    if (entry.kind === "spell" && Array.isArray(normalized.data.classes) && normalized.data.classes.some(isClassRef)) {
+      taggedLater.push({ id: created.id, userId, data: normalized.data, name });
+    }
     taken.add(textKey(name));
     names.set(entry.kind, taken);
     copied += 1;
+  }
+
+  for (const spell of taggedLater) {
+    const classes = (spell.data.classes as unknown[]).map((classId) => (isClassRef(classId) ? classHere(String(classId)) : classId)).filter(Boolean);
+    updateHomebrew(spell.userId, spell.id, { data: { ...spell.data, classes } });
   }
 
   // Monsters after the spells they cast.

@@ -9,6 +9,7 @@ import { normalizeBackgroundData } from "@/lib/homebrew/background-data";
 import { normalizeHazardData } from "@/lib/homebrew/hazard-data";
 import { GEAR_LIMITS, normalizeItemData, type HomebrewData, type Outcome } from "@/lib/homebrew/item-data";
 import { checkSpellMech } from "@/lib/homebrew/spell-mech-schema";
+import { checkSubclassChoices } from "@/lib/homebrew/subclass-choice-check";
 import { engineFeatNamed } from "@/lib/srd/feat-effects";
 import { engineSpellNamed, truthy } from "@/lib/srd/spell-facts";
 import { HOMEBREW_NAME_MAX, type HomebrewKind } from "@/lib/schemas/homebrew";
@@ -108,6 +109,21 @@ export function normalizeSpellData(raw: unknown): Outcome<HomebrewData> {
 
 // ---- character options ----
 
+// Spell names by the class level they arrive at, each level held to the
+// number a subclass's level keeps: a subclass's always-prepared spells and
+// its additions to the class's list alike.
+function spellsByLevel(raw: unknown): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const [level, names] of Object.entries((raw ?? {}) as Raw)) {
+    const at = levelOfKey(level);
+    const list = Array.isArray(names) ? names.map((name) => text(name, HOMEBREW_NAME_MAX)).filter(Boolean) : [];
+    if (at !== null && list.length) {
+      out[String(at)] = [...new Set([...(out[String(at)] ?? []), ...list])].slice(0, SUBCLASS_SPELLS_PER_LEVEL);
+    }
+  }
+  return out;
+}
+
 function normalizeOptionData(raw: unknown, kind: HomebrewKind): HomebrewData {
   const source = (raw ?? {}) as Raw;
   const data: HomebrewData = { desc: text(source.desc, GEAR_LIMITS.descMax) };
@@ -146,16 +162,16 @@ function normalizeOptionData(raw: unknown, kind: HomebrewKind): HomebrewData {
       data.levels = levels;
       // Always-prepared spells by class level (a domain's, an oath's), the
       // same shape the bundled tables give theirs.
-      const spells: Record<string, string[]> = {};
-      for (const [level, names] of Object.entries((source.spells ?? {}) as Raw)) {
-        const at = levelOfKey(level);
-        const list = Array.isArray(names) ? names.map((name) => text(name, HOMEBREW_NAME_MAX)).filter(Boolean) : [];
-        if (at !== null && list.length) {
-          spells[String(at)] = [...new Set([...(spells[String(at)] ?? []), ...list])].slice(0, SUBCLASS_SPELLS_PER_LEVEL);
-        }
-      }
+      const spells = spellsByLevel(source.spells);
       if (Object.keys(spells).length) {
         data.spells = spells;
+      }
+      // Spells it adds to what the class may learn or prepare from a class
+      // level on, never granted (a warlock patron's expanded list), the
+      // shape the bundled tables give theirs (issue #833).
+      const expanded = spellsByLevel(source.expanded);
+      if (Object.keys(expanded).length) {
+        data.expanded = expanded;
       }
       // Whether it casts as an Eldritch Knight or Arcane Trickster does:
       // either profile on, "none" off, nothing to follow its features
@@ -235,6 +251,17 @@ function normalizeHomebrewKind(
       // A class (src/lib/homebrew/class-data.ts): the numbers every class has.
       const normalized = normalizeClassData((raw ?? {}) as Raw);
       return "error" in normalized ? normalized : { data: normalized.data as unknown as HomebrewData };
+    }
+    case "archetype": {
+      // A subclass may be refused: what its player chooses (a bloodline,
+      // an element) is held to its limits by name (issue #833,
+      // src/lib/homebrew/subclass-choice-check.ts).
+      const data = normalizeOptionData(raw, kind);
+      const checked = checkSubclassChoices(((raw ?? {}) as Raw).choices);
+      if ("error" in checked) {
+        return checked;
+      }
+      return { data: checked.choices.length ? { ...data, choices: checked.choices } : data };
     }
     case "monster": {
       // The bestiary owns monsters (src/lib/bestiary/monster-draft.ts).
@@ -327,7 +354,7 @@ export function describeHomebrew(kind: HomebrewKind, data: Raw): string {
     const levels = Object.keys((data.levels as Raw | undefined) ?? {});
     return [
       `d${String(data.hitDie ?? 8)}`,
-      casting === "none" ? "" : `${casting === "pact" ? "pact magic" : `${casting} caster`}, ${String(data.spellListFrom ?? "")} list`,
+      casting === "none" ? "" : `${casting === "pact" ? "pact magic" : `${casting} caster`}, ${data.spellListFrom === "custom" ? "its own" : String(data.spellListFrom ?? "")} list`,
       levels.length ? `${levels.length} feature levels` : "",
     ]
       .filter(Boolean)

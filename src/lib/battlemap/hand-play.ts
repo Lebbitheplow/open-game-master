@@ -307,6 +307,7 @@ export function composeSentence(
   }
   if (intent.card === "reaction") {
     const at = !who ? "" : aim?.kind === "enemy" ? ` at ${who}` : ` for ${who}`;
+    if (intent.spell && intent.item) return `I cast ${intent.spell} from my ${intent.item}${at} as a reaction.`;
     return intent.spell
       ? `I cast ${intent.spell}${at} as a reaction${intent.slotLevel && intent.slotLevel > 1 ? ` using a level ${intent.slotLevel} slot` : ""}.`
       : `I use ${intent.feature}${at} as my reaction.`;
@@ -316,15 +317,19 @@ export function composeSentence(
     const shared = shareList(card, aim, choices);
     const named = shared.length > 1 || (shared.length === 1 && shared[0].count > 1) ? sharePhrase(card, shared) : who;
     const where = !named ? "" : aim?.kind === "enemy" ? ` at ${named}` : ` on ${named}`;
-    const slot = intent.slotLevel ? ` using a level ${intent.slotLevel} slot` : "";
+    const slot = intent.item ? "" : intent.slotLevel ? ` using a level ${intent.slotLevel} slot` : "";
+    const ring = intent.item ? ` from my ${intent.item}` : "";
     const how = card.cost === "bonus" ? " as a bonus action" : card.cost === "reaction" ? " as a reaction" : "";
     const picked = chosenLabel(card, choices);
     // The square the player picked on the board, in the engine's (x,y).
     const laid = card.area && hasPick(card.area, choices.area) ? ` ${describePick(card.area, choices.area ?? {})}` : "";
-    return `I cast ${intent.spell}${picked ? ` (${picked})` : ""}${where}${laid}${how}${slot}.`;
+    return `I cast ${intent.spell}${ring}${picked ? ` (${picked})` : ""}${where}${laid}${how}${slot}.`;
   }
   if (intent.card === "feature") {
-    const where = !who || aim?.kind === "self" ? "" : ` on ${who}`;
+    // The creatures of the player's choice, every one named (CHOSEN_CREATURES).
+    const shared = shareList(card, aim, choices);
+    const chosen = shared.length > 1 ? sharePhrase(card, shared) : who;
+    const where = !chosen || aim?.kind === "self" ? "" : ` on ${chosen}`;
     const how = card.cost === "bonus" ? " as a bonus action" : "";
     // A pool is spent by amount; the blank is where the player says how much.
     const picked = chosenLabel(card, choices);
@@ -528,7 +533,8 @@ export function afterCommit(turn: HandTurn, card: HandCard, allowed = 1): HandTu
   }
   // The cast guard's marks (cast-rules.ts turnCharge): a bonus-action spell,
   // or a levelled spell with the action, leaves room for a cantrip only.
-  if (card.intent.card === "spell" && (card.cost === "action" || card.cost === "bonus")) {
+  // A spell out of a ring leaves neither: use_item spends the action alone.
+  if (card.intent.card === "spell" && !card.intent.item && (card.cost === "action" || card.cost === "bonus")) {
     const mark = card.cost === "bonus" ? BONUS_SPELL : card.resource !== "Cantrip" ? LEVELLED_SPELL : null;
     if (mark && !(next.marks ?? []).includes(mark)) next.marks = [...(next.marks ?? []), mark];
   }

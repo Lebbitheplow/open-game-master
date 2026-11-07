@@ -142,6 +142,32 @@ test("an action after a line counts only in the line's own paragraph, and only a
   assert.deepEqual(said('A merchant approaches you, his face pale. "Please! Take this!" He thrusts a heavy pouch into Lebbi\'s hands.', table), [], "a merchant's line is not the hands he fills");
 });
 
+test("a line with someone else's name straight after it is nobody's, whoever the prose before it is about", () => {
+  const common = new Set(["the", "a", "silence"]);
+  assert.deepEqual(said('Marla scowls at the stranger. "Who\'s asking?" Fella says.', cast, { common }), [], "a name with no row yet, in a tag");
+  assert.deepEqual(said('Marla scowls. "No." Old Pike calls out.', cast, { common }), [], "a name the table knows, the same");
+  assert.deepEqual(said('Marla scowls. "No." Marla turns away.', cast, { common }), ["Marla: No."], "the same person carries on");
+  assert.deepEqual(said('Marla scowls. "No." She turns away.', cast, { common }), ["Marla: No."]);
+  assert.deepEqual(said('Marla scowls. "No." The door creaks.', cast, { common }), ["Marla: No."], "a word the story writes in lower case is no name");
+  assert.deepEqual(said('Marla scowls. "No." Silence falls.', cast, { common }), ["Marla: No."]);
+  assert.deepEqual(said('Marla scowls. "No."\n\nFella flinches.', cast, { common }), ["Marla: No."], "the next paragraph says nothing about this line");
+  assert.deepEqual(said('Marla scowls at Old Pike. "Not you." "Why not?" Old Pike asks.', cast, { common })[0], "Marla: Not you.", "the words after a line run only to the next line");
+  // The sentence after a line opens on its own, so a word of a longer name
+  // there is that person only if the story never writes it in lower case.
+  const old = new Set([...common, "old"]);
+  assert.deepEqual(said('Marla scowls. "No." Old habits die hard.', cast, { common: old }), ["Marla: No."], "an adjective is not Old Pike");
+  assert.deepEqual(said('Marla scowls. "No." Old Pike laughs.', cast, { common: old }), [], "his whole name still is");
+  assert.deepEqual(said('"No." Old habits die hard.', cast, { common: old }), [], "a line opening its paragraph is not Old Pike's either");
+  assert.deepEqual(said('"No." Old Pike laughs.', cast, { common: old }), ["Old Pike: No."], "while his own beat after it is");
+});
+
+test("a tag's pronoun is never the person the tag names as spoken to", () => {
+  const bram = { kind: "npc", id: "b", name: "Bram" };
+  assert.deepEqual(said('Fella glances over. "You keep poor company," he tells Bram.', [...cast, bram]), []);
+  assert.deepEqual(said('Marla looks over. "You keep poor company," she tells Bram.', [...cast, bram]), ["Marla: You keep poo"]);
+  assert.deepEqual(said('He tells Bram. "Run."', [...cast, bram]), [], "a sentence before a line, the same");
+});
+
 test("a pronoun only follows back past a second name when the passage says it means the first", () => {
   assert.deepEqual(said('Marla nods to Old Pike. He grins. "Fine."', cast), [], "he could be Pike");
   assert.deepEqual(said('Marla nods to Old Pike, then tucks her hair back. She waits. "Fine."', cast), [], "her hair comes after Pike is named, so it could be anyone's");
@@ -198,6 +224,12 @@ test("the subject before a line, the action after it and a colon lead-in, in any
   assert.deepEqual(other("Pike guarda mentre Marla dice: «Basta.»", cast), ["Marla: Basta."]);
   assert.deepEqual(other("Sella si volta verso Marla. «Chi va là?»", cast), [], "the person turned to is not the speaker");
   assert.deepEqual(other("Senza alzare gli occhi, Marla posa la tazza. «Basta.»", cast), ["Marla: Basta."]);
+});
+
+test("someone else's name after a line, and a tag that opens on its verb, in any language", () => {
+  assert.deepEqual(other("Marla aggrotta la fronte. «Chi va là?» Fella dice.", cast), []);
+  assert.deepEqual(other("Marla aggrotta la fronte. «Chi va là?» Marla si volta.", cast), ["Marla: Chi va là?"], "the same person carries on");
+  assert.deepEqual(other("Fella si volta. «Basta», dice Marla.", cast), ["Marla: Basta"]);
 });
 
 test("pronouns are followed back only at an English table", () => {

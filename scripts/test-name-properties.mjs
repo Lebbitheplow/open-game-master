@@ -163,7 +163,7 @@ await test("conditions, features, feats and option picks: the whole name or with
     find: (name) => named.find((term) => holdsFeature({ features: [{ name }] }, term)) ?? null,
     keysOf: (term) => new Set([textKey(term)]),
   });
-  for (const kind of ["maneuver", "invocation", "metamagic", "discipline"]) {
+  for (const kind of ["maneuver", "invocation", "metamagic", "discipline", "hunters_prey", "defensive_tactics", "hunter_multiattack", "superior_hunters_defense", "dragon_ancestor", "favored_enemy", "favored_terrain", "land_circle"]) {
     const options = optionsOfKind(kind).map((option) => option.n);
     holdsProperties(kind, options, {
       nameOf: (option) => option,

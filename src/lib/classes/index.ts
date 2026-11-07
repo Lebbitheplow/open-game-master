@@ -34,6 +34,11 @@ export type CustomClass = SrdClass & {
   // searches and advice go through spellClassFor().
   spellListFrom: string | null;
   knownCaster: boolean;
+  // A workshop class with a list of its own (issue #833): its spells by
+  // name (spellListFrom is then the class's own id), and the published
+  // class whose tables count its cantrips and spells (spellRulesClassFor).
+  customSpells?: string[];
+  spellRules?: string;
   // Flavor label for what this class calls its spells ("Programs").
   castingLabel: string | null;
 };
@@ -92,6 +97,24 @@ export function findCustomClass(id: string): CustomClass | null {
 // custom casters borrow an SRD class's list, everything else passes through.
 export function spellClassFor(classId: string): string {
   return findCustomClass(classId)?.spellListFrom ?? classId;
+}
+
+// The published class whose tables count a caster's cantrips and spells,
+// say whether it learns or prepares, and reach a Mystic Arcanum: the list
+// it borrows, or for a workshop class with a list of its own the caster
+// that casts the same way (src/lib/homebrew/class-data.ts customListRules).
+// Without this a custom list counted by its own id found no table at all.
+export function spellRulesClassFor(classId: string): string {
+  return findCustomClass(classId)?.spellRules ?? spellClassFor(classId);
+}
+
+// What a search for a class's spells names (/api/content/spells?class=,
+// checklistSpellsOn, useSpellPool): a workshop class by its own id, so the
+// homebrew spells tagged with it and its own list answer as well as the
+// list it borrows (src/lib/classes/class-spell-list.ts); every other class
+// by the list it casts from.
+export function spellPoolKeyFor(classId: string): string {
+  return classId.startsWith("homebrew-") ? classId : spellClassFor(classId);
 }
 
 // SRD classes that also deserve a spot in a genre's recommended group.

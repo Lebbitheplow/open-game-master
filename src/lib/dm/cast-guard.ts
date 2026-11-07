@@ -39,6 +39,7 @@ import { advanceClock } from "@/lib/db/clock";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { materialPatch } from "@/lib/dm/cast-material";
 import { freeCastCounter, signatureCounter, spendSignature } from "@/lib/dm/caster-features";
+import { spendGrantUse } from "@/lib/srd/granted-casts";
 import { spellFactsFor, spellMechanicsFor, spellSchoolFor } from "@/lib/content";
 import { castShares } from "@/lib/srd/spell-mechanics";
 import { describeCastingTime, type SpellFacts } from "@/lib/srd/spell-facts";
@@ -67,8 +68,10 @@ import {
   bonusCastOf,
   componentsAsCast,
   grantedCastOf,
+  grantCastsFree,
   MANTLE_OF_MAJESTY,
   type BonusCast,
+  type OpenCast,
   type SlotPlan,
 } from "@/lib/dm/cast-rules";
 import type { TurnBudget } from "@/lib/dm/action-budget";
@@ -82,7 +85,8 @@ import { placeSpellZone, placementReachProblem } from "@/lib/dm/zone-cast";
 import { spellSaveDcFor } from "@/lib/srd";
 import { castTempHp } from "@/lib/dm/authored-spells";
 import { authoredSlotRefund } from "@/lib/srd/authored-effects-more";
-import { takeItemCast } from "@/lib/srd/item-cast-credit";
+import { takeItemCast, type ItemCast } from "@/lib/srd/item-cast-credit";
+import type { SpellMech } from "@/lib/srd/spell-mechanics";
 import { storerHolding } from "@/lib/srd/spell-storing";
 import { casterNumbers, equipmentWithoutRunning, putInRing, storeRefusal } from "@/lib/dm/ring-store";
 import { castFromItem } from "@/lib/dm/item-casts";
@@ -137,6 +141,54 @@ export type CastResult = ToolResult;
 
 function inRunningFight(encounter: Encounter | null): encounter is Encounter {
   return Boolean(encounter && encounter.status === "active" && (encounter.kind ?? "fight") === "fight");
+}
+
+// A later ray, dart or target of a casting already made this turn: it spends
+// nothing more.
+function continueOpenCast(encounter: Encounter, budget: TurnBudget, open: OpenCast, name: string, input: CastInput): CastResult {
+  if (input.dryRun) {
+    return { ok: true, dryRun: true, spell: name, slotLevel: open.slotLevel, continuing: true };
+  }
+  const uses = Math.max(1, Math.min(open.left, Math.floor(input.uses ?? 1)));
+  storeBudget(encounter, withOpenCast(budget, { ...open, left: open.left - uses }));
+  return {
+    ok: true,
+    spell: name,
+    slotLevel: open.slotLevel,
+    uses,
+    sharesLeft: open.left - uses,
+    continuing: `${name}: more of the same casting (${open.left - uses} left); nothing more is spent.`,
+    ...(open.item ? { fromItem: open.item } : {}),
+  };
+}
+
+// The rays, darts or targets a casting from an item holds beyond this call
+// (Scorching Ray from a Ring of Spell Storing at 2nd: three rays), kept open on
+// the turn as a slot's casting keeps them. The item is named on it, so its later
+// calls are taken before the holder's own list or Spellcasting feature is asked:
+// a fighter has neither, and a wizard's own copy would spend a slot.
+function openItemShares(encounter: Encounter, sheet: CharacterSheet, name: string, mech: SpellMech | null, facts: SpellFacts | null, cast: ItemCast, input: CastInput, via: CastVia): Record<string, unknown> {
+  if (via === "aoe" || via === "reaction") {
+    return {};
+  }
+  const shares = castShares(mech, { spellLevel: facts?.level ?? cast.level, slotLevel: cast.level, casterLevel: sheet.level });
+  if (shares < 2) {
+    return {};
+  }
+  const uses = Math.max(1, Math.min(shares, Math.floor(input.uses ?? 1)));
+  const left = via === "slot" ? shares : shares - uses;
+  // Off their own turn (a readied release) there is no turn to keep it on.
+  const budget = budgetFor(encounter, sheet.id, attacksAllowedFor(sheet), conditionTurnShape(sheet.conditions));
+  if (!budget) {
+    return {};
+  }
+  storeBudget(encounter, withOpenCast(budget, { spell: name, slotLevel: cast.level, left, item: cast.item }));
+  const list = mech?.attacks ? "pc_attack's attacks" : mech?.resolution === "heal" ? "heal's targets" : "cast_at_enemy's targets";
+  return {
+    uses,
+    sharesLeft: left,
+    shares: `${name} holds ${shares} ${mech?.attacks ? "attack rolls" : mech?.darts ? "darts" : "targets"} from this one casting; ${left} left this turn at no further cost, each its own entry in ${list}.`,
+  };
 }
 
 function slotLine(plan: SlotPlan): string {
@@ -374,8 +426,12 @@ export function castSpell(
   }
   const fromItem = input.storing ? null : takeItemCast(sheet.id, name, { dryRun: Boolean(input.dryRun) });
   if (fromItem) {
-    const itemCast = castFromItem(campaign, turnId, sheet, facts, name, fromItem, input);
+    let itemCast = castFromItem(campaign, turnId, sheet, facts, name, fromItem, input);
     if (!input.dryRun) {
+      const live = inFight ? getActiveEncounter(campaign.id) : null;
+      if (live) {
+        itemCast = { ...itemCast, ...openItemShares(live, sheet, name, mech, facts, fromItem, input, via) };
+      }
       if (completing) {
         clearCompletedCasting(campaign, sheet.id);
       } else if (fromItem.storedIn && typeof facts?.castingTime === "number") {
@@ -389,6 +445,13 @@ export function castSpell(
       }
     }
     return itemCast;
+  }
+  if (!input.storing && inFight && via !== "slot" && via !== "reaction") {
+    const budget = budgetFor(encounter, sheet.id, attacksAllowedFor(sheet), conditionTurnShape(sheet.conditions));
+    const open = budget ? openCastOf(budget, name) : null;
+    if (budget && open?.item) {
+      return continueOpenCast(encounter, budget, open, name, input);
+    }
   }
 
   // ---- refusals, in the order a person would give them ----
@@ -428,6 +491,11 @@ export function castSpell(
   // A spell an invocation or the race casts, which no class list holds
   // (src/lib/srd/granted-casts.ts): its own slot rule, level and counter.
   const grant = input.ritual ? null : grantedCastOf(sheet, spell, facts, extras);
+  // A free grant casts without a slot while a use is left; one the
+  // character's own slots can cast too (issue #833) is paid with a slot once
+  // its uses are spent, or when a higher level is named.
+  const grantFree = grantCastsFree(sheet, grant, facts, input.level);
+  const grantNoSlot = grant?.slot === "free" && (grantFree || !grant.slotsToo);
   // The components as this caster makes them: none of the material for an
   // invocation that says so, an Archdruid's druid spells without the voice,
   // the gestures or a free material (cast-rules.ts componentsAsCast).
@@ -468,19 +536,7 @@ export function castSpell(
       : null;
   const open = liveBudget ? openCastOf(liveBudget, name) : null;
   if (open && liveBudget) {
-    if (input.dryRun) {
-      return { ok: true, dryRun: true, spell: name, slotLevel: open.slotLevel, continuing: true };
-    }
-    const uses = Math.max(1, Math.min(open.left, Math.floor(input.uses ?? 1)));
-    storeBudget(encounter as Encounter, withOpenCast(liveBudget, { ...open, left: open.left - uses }));
-    return {
-      ok: true,
-      spell: name,
-      slotLevel: open.slotLevel,
-      uses,
-      sharesLeft: open.left - uses,
-      continuing: `${name}: more of the same casting (${open.left - uses} left); nothing more is spent.`,
-    };
+    return continueOpenCast(encounter as Encounter, liveBudget, open, name, input);
   }
 
   // The casting Slow held back last turn, completed now for this turn's
@@ -497,6 +553,10 @@ export function castSpell(
   const mantled =
     !input.ritual && !signature && !freeCast && /^command$/i.test(engine.trim()) &&
     sheet.conditions.some((entry) => isConditionNamed(entry, MANTLE_OF_MAJESTY));
+  // The race's grant pays only when nothing before it in the plan below
+  // did: a Topaz fighter with Fey Touched casting misty step spends the
+  // feat's free cast or the ancestry's use, never both (issue #833).
+  const grantPaid = Boolean(grant) && grantNoSlot && !input.ritual && !slowHeld && !signature && !freeCast;
   // A reaction spell cast into a ring answers no trigger: it takes the action.
   const turnFacts = input.storing && facts?.castingTime === "reaction" ? { ...facts, castingTime: "action" as const } : facts;
   const slot: SlotPlan | ToolError = input.ritual
@@ -507,8 +567,8 @@ export function castSpell(
       ? { kind: "none", note: `${name} is a Signature Spell: cast at 3rd level with no slot, once until a short rest.` }
       : freeCast
         ? { kind: "none", note: `${name} is cast without a slot (a feat's free cast): once until a long rest.` }
-        : grant?.slot === "free"
-          ? { kind: "none", note: `${name} is cast through ${grant.source} with no spell slot${grant.counter ? ": once, and again after a long rest" : ", at will"}${grant.castAt ? `, as a level ${grant.castAt} spell` : ""}.` }
+        : grant && grantPaid
+          ? { kind: "none", note: `${name} is cast through ${grant.source} with no spell slot${grant.counter ? `: ${(grant.uses ?? 1) === 1 ? "once" : `${grant.uses} times`}, and again after a ${grant.rest ?? "long"} rest` : ", at will"}${grant.castAt ? `, as a level ${grant.castAt} spell` : ""}.` }
         : mantled
           ? { kind: "none", note: `${name} is cast through Mantle of Majesty: no slot spent.` }
         : // A slot the player marked spent by hand for this cast pays for it;
@@ -522,7 +582,7 @@ export function castSpell(
     return barred && "error" in barred ? barred : slot;
   }
   // Infernal Legacy's hellish rebuke is cast as a 2nd-level spell, with no slot.
-  const slotLevel = slowHeld ? slowHeld.slotLevel : slot.kind === "none" ? (grant?.slot === "free" ? grant.castAt ?? null : null) : slot.level;
+  const slotLevel = slowHeld ? slowHeld.slotLevel : slot.kind === "none" ? (grantPaid ? grant?.castAt ?? null : null) : slot.level;
   // A ritual out of a fight costs no turn; in one it is begun with the
   // action like any casting held across turns, and a completing casting
   // costs no action at all.
@@ -574,12 +634,17 @@ export function castSpell(
   if (freeCast) {
     patch.resources = spendSignature(sheet.resources, freeCast);
   }
-  // The grant's once-a-long-rest use (Thief of Five Fates, Infernal Legacy).
-  if (grant?.counter) {
-    patch.resources = spendSignature(patch.resources ?? sheet.resources, grant.counter);
+  // The grant's use (Thief of Five Fates' with its slot, Infernal Legacy's
+  // without one). A cast a slot paid for, its free uses spent, spends none.
+  if (grant?.counter && ((grant.slot === "slot" && slot.kind !== "none") || (grantPaid && grantFree))) {
+    patch.resources = spendGrantUse(patch.resources ?? sheet.resources, grant);
   }
-  if (grant) {
-    result.granted = `${name} is cast through ${grant.source}.${grant.note ? ` ${grant.note}` : ""}`;
+  // Said only of a grant that paid, or of a slot that paid in its place.
+  if (grant && (grantPaid || slot.kind !== "none")) {
+    result.granted =
+      grant.slot === "free" && !grantPaid
+        ? `${name} is cast with a spell slot; ${grant.source} gives it without one${grant.counter ? `, ${(grant.uses ?? 1) === 1 ? "once" : `${grant.uses} times`} a ${grant.rest ?? "long"} rest` : ""}.`
+        : `${name} is cast through ${grant.source}.${grant.note ? ` ${grant.note}` : ""}`;
   }
   // Expert Divination (School of Divination 6): a divination spell of 2nd
   // level or higher cast with a slot gives back one spent slot of a lower

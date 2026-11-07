@@ -1,4 +1,5 @@
-import { findCustomClass, spellClassFor } from "@/lib/classes";
+import { findCustomClass, spellPoolKeyFor, spellRulesClassFor } from "@/lib/classes";
+import { classLabelOf, spellOnListKey, type ListedSpell } from "@/lib/classes/class-spell-list";
 import { suggestedCantripCount, suggestedSpellCount } from "@/lib/content/mechanics";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { SRD_CLASSES, abilityMod, spellSlotsFor } from "@/lib/srd";
@@ -273,7 +274,7 @@ export function spellCapOf(
       ? { label: "spells known", count: thirdCasterSpellsKnown(view.level) }
       : null;
   }
-  return suggestedSpellCount(spellClassFor(view.classId), view.level, abilityMod(abilities[view.ability]));
+  return suggestedSpellCount(spellRulesClassFor(view.classId), view.level, abilityMod(abilities[view.ability]));
 }
 
 // Prepared now plus waiting for the rest, as the cap counts them.
@@ -421,11 +422,23 @@ function casterTypeOf(classId: string) {
 
 // The class list a caster learns from: a third caster's profile list (an
 // Eldritch Knight learns wizard spells, a Soulspy cleric ones), else its
-// class's own.
+// class's own, a workshop class by its own id (src/lib/classes/index.ts
+// spellPoolKeyFor), which names its own list or the one it borrows.
 export function casterListOf(view: Pick<CasterView, "classId" | "subclass" | "progression">): string {
   const profile =
     casterTypeOf(view.classId) === "none" ? thirdCasterProfileOf(view.classId, view.subclass, view.progression) : null;
-  return profile ? thirdCasterList(profile) : spellClassFor(view.classId);
+  return profile ? thirdCasterList(profile) : spellPoolKeyFor(view.classId);
+}
+
+// Whether a spell is one this caster may learn or prepare (issue #833): on
+// the list it casts from (a published class's, a workshop class's own or
+// borrowed one, a homebrew spell tagged with the workshop class), or one its
+// subclass adds (a patron's expanded list, a workshop subclass's, a Divine
+// Soul's cleric list). The server's check, the level-up, learn_spell, the
+// sheet's prepare and the builder all ask this, so none of them offers what
+// another refuses. A homebrew spell that names no class is on no list.
+export function spellOnCasterList(view: CasterView, spell: ListedSpell): boolean {
+  return spellOnListKey(casterListOf(view), spell) || onWiderList(view, { name: spell.name, classes: [...spell.classes] });
 }
 
 // Cantrips this class knows at its level, or null when it has none.
@@ -435,13 +448,13 @@ export function cantripCapOf(
   if (isThirdCaster(view.classId, view.subclass, view.progression)) {
     return view.level >= 3 ? thirdCasterCantrips(view.classId, view.level, view.progression) : null;
   }
-  return suggestedCantripCount(spellClassFor(view.classId), view.level, casterTypeOf(view.classId));
+  return suggestedCantripCount(spellRulesClassFor(view.classId), view.level, casterTypeOf(view.classId));
 }
 
 // A warlock's Mystic Arcanum reaches past pact slots: one spell of 6th level
 // at 11, 7th at 13, 8th at 15 and 9th at 17.
 function arcanumTop(view: Pick<CasterView, "classId" | "level">): number {
-  if (spellClassFor(view.classId) !== "warlock") {
+  if (spellRulesClassFor(view.classId) !== "warlock") {
     return 0;
   }
   return view.level >= 17 ? 9 : view.level >= 15 ? 8 : view.level >= 13 ? 7 : view.level >= 11 ? 6 : 0;
@@ -483,7 +496,7 @@ export function spellListProblems(
   // sit with the first caster's.
   let freeCount = options.freeCantripCount ?? 0;
   for (const view of casterViewsOf(sheet, options.extras)) {
-    const label = `level ${view.level} ${view.classId.replace(/[_-]+/g, " ")}`;
+    const label = `level ${view.level} ${classLabelOf(view.classId)}`;
     // The Book of Shadows' three cantrips and Additional Magical Secrets' two
     // spells sit on top of the class's counts (class-spell-grants.ts).
     const grants = classSpellGrants(view);

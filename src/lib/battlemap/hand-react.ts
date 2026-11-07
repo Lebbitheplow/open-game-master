@@ -29,12 +29,13 @@ import {
   type HandTarget,
   type HandTurn,
 } from "@/lib/battlemap/hand-core";
-import { spellNames } from "@/lib/battlemap/hand-spells";
+import { freeUseOf, spellNames } from "@/lib/battlemap/hand-spells";
+import { ringBarrierGate, ringCardName, ringSpells } from "@/lib/battlemap/hand-ring";
 import { COMMANDED, wieldsMeleeOrShield } from "@/lib/dm/maneuver-rules";
 import { HIT_ANSWER_COUNTERS, reachAtLevel, reactionTimingOf, timingOfDoes } from "@/lib/dm/reaction-kinds";
 import { LUCK_POINTS, resourceDef } from "@/lib/srd/class-resources";
 import type { ToolError } from "@/lib/dm/tool-errors";
-import { textKey } from "@/lib/language/text-logic";
+import { findNamed, textKey } from "@/lib/language/text-logic";
 import { vowedFoe } from "@/lib/srd/vow-of-enmity";
 import { holdsFeature, isConditionNamed, isNamed } from "@/lib/srd/feature-names";
 
@@ -111,21 +112,27 @@ function spellReaction(
   turn: HandTurn,
   spell: string,
   prompt: string,
-  rules: string,
+  rules: string | ((level: number) => string),
   target: HandTarget,
   hit: PublicLastHit,
   idTail = "",
 ): HandCard | null {
   if (!spellNames(sheet).some((name) => textKey(name) === textKey(spell))) return null;
   const facts = bundledSpellFacts(spell);
-  const slot = lowestSlot(sheet, facts?.level ?? 1);
+  // A race's free use (a tiefling's Infernal Legacy) answers without a slot
+  // while it is left, at the level the trait casts it (issue #833): the card
+  // once asked every tiefling fighter for a slot, and sent a tiefling
+  // warlock's slot level so the cast spent the slot and kept the free use.
+  const free = freeUseOf(sheet, spell, facts);
+  const slot = free?.free ? null : lowestSlot(sheet, facts?.level ?? 1);
+  const level = (free?.free ? free.castAt : slot?.level) ?? facts?.level ?? 1;
   const card = base(
     `${textKey(spell).replace(/\s+/g, "-")}${idTail}`,
     spell,
     prompt,
     target,
     aimedIntent({ card: "reaction", feature: spell, spell, slotLevel: slot?.level ?? null }, hit),
-    { type: "spell", rules, resource: slot ? slotLine(slot) : "No slots", icon: { kind: "spell", key: spell, family: null }, ...(target !== "none" && facts?.range.kind === "feet" ? { range: reachLabel(facts.range.feet) } : {}), ...answering(hit) },
+    { type: "spell", rules: typeof rules === "function" ? rules(level) : rules, resource: free?.free ? free.line : slot ? slotLine(slot) : "No slots", icon: { kind: "spell", key: spell, family: null }, ...(target !== "none" && facts?.range.kind === "feet" ? { range: reachLabel(facts.range.feet) } : {}), ...answering(hit) },
   );
   const problem = (refusal: ToolError | null): Gate => (refusal ? { reason: refusal.error, spent: false } : null);
   const fallen = droppedByThisHit(sheet, hit) && reactionTimingOf(spell) === "answers";
@@ -134,9 +141,53 @@ function spellReaction(
     fallen ? stoodGate(sheet, turn, hit) : standingGate(sheet, turn, "reaction"),
     problem(casterStateProblem(sheet)),
     problem(componentProblem(sheet, facts) ?? focusProblem(sheet, facts)),
-    slot ? null : { reason: `${sheet.name} has no spell slot left for ${spell}.`, spent: true },
+    free?.free || slot ? null : { reason: free?.spent ?? `${sheet.name} has no spell slot left for ${spell}.`, spent: true },
     costGate("reaction", turn, fallen ? asTheyStood(sheet, hit) : sheet, spell),
   );
+}
+
+// The same spell out of a Ring of Spell Storing the character holds it in: no slot
+// and no components, so only the ring and the reaction itself can stop it. Beside
+// the caster's own card of the spell when they have both: which pays is theirs to
+// choose. The name is the one the fan's grey card goes by, which this replaces
+// (withReactions).
+function ringReactions(
+  sheet: CharacterSheet,
+  turn: HandTurn,
+  spell: string,
+  prompt: string,
+  rules: string | ((level: number) => string),
+  target: HandTarget,
+  hit: PublicLastHit,
+  idTail = "",
+): HandCard[] {
+  const fallen = droppedByThisHit(sheet, hit) && reactionTimingOf(spell) === "answers";
+  const facts = bundledSpellFacts(spell);
+  const slug = (name: string) => textKey(name).replace(/\s+/g, "-");
+  return ringSpells(sheet)
+    .filter(({ entry }) => findNamed([entry], spell, (held) => [held.spell]))
+    .map(({ ring, ring: { name: item }, entry }) =>
+      gated(
+        base(
+          `ring:${slug(item)}:${slug(spell)}${idTail}`,
+          ringCardName(spell),
+          prompt,
+          target,
+          aimedIntent({ card: "reaction", feature: spell, spell, slotLevel: entry.level, item }, hit),
+          {
+            type: "spell",
+            rules: typeof rules === "function" ? rules(entry.level) : rules,
+            resource: `Level ${entry.level}`,
+            icon: { kind: "spell", key: spell, family: null },
+            ...(target !== "none" && facts?.range.kind === "feet" ? { range: reachLabel(facts.range.feet) } : {}),
+            ...answering(hit),
+          },
+        ),
+        ringBarrierGate(sheet, ring),
+        fallen ? stoodGate(sheet, turn, hit) : standingGate(sheet, turn, "reaction"),
+        costGate("reaction", turn, fallen ? asTheyStood(sheet, hit) : sheet, spell),
+      ),
+    );
 }
 
 // The reactions the player's other characters may take now (a person playing
@@ -287,6 +338,19 @@ export function reactionCards(
       shieldable[0],
     );
     if (shield) cards.push(shield);
+    cards.push(
+      ...ringReactions(
+        sheet,
+        turn,
+        "Shield",
+        whatAll(shieldable, self),
+        shieldable.length > 1
+          ? "+5 AC against these attacks: every swing the +5 beats misses."
+          : "+5 AC against the attack that hit: a swing the +5 beats misses.",
+        "none",
+        shieldable[0],
+      ),
+    );
   }
   for (const hit of mine) {
     const prompt = what(hit, self);
@@ -309,12 +373,16 @@ export function reactionCards(
         });
       }
       if (hit.attackerId && !answered(hit, "Hellish Rebuke")) {
-        const rebuke = spellReaction(sheet, turn, "Hellish Rebuke", prompt, `${hit.attacker} makes a DEX save against 2d10 fire.`, "enemy", hit, tail(hit));
+        const rebuke = spellReaction(sheet, turn, "Hellish Rebuke", prompt, (level) => `${hit.attacker} makes a DEX save against ${level + 1}d10 fire.`, "enemy", hit, tail(hit));
         if (rebuke) cards.push(rebuke);
+        cards.push(...ringReactions(sheet, turn, "Hellish Rebuke", prompt, (level) => `${hit.attacker} makes a DEX save against ${level + 1}d10 fire.`, "enemy", hit, tail(hit)));
       }
     }
     if (hit.source === "fall" && holdsFeature(sheet, "slow fall")) {
       feature(hit, "Slow Fall", prompt, "Take five times your monk level off the fall.");
+    }
+    if (hit.source === "fall" && !answered(hit, "Feather Fall")) {
+      cards.push(...ringReactions(sheet, turn, "Feather Fall", prompt, "You drift down and land on your feet: the fall deals you nothing.", "none", hit, tail(hit)));
     }
     if (hit.source === "attack") {
       for (const held of subclassReactions(sheet, hit, "self", feet, unseen)) {

@@ -1,5 +1,5 @@
-import { getEntryDetail, spellMechanicsFor } from "@/lib/content";
-import { packRaceOptions } from "@/lib/content/race-options";
+import { getEntryDetail, spellMechanicsFor, spellRowsOnList } from "@/lib/content";
+import { optionIdFor, packRaceOptions } from "@/lib/content/race-options";
 import { armorNamed } from "@/lib/srd/armor";
 import { magicItemBonus } from "@/lib/srd/item-row";
 import { checkRidersNamed } from "@/lib/srd/item-check-riders";
@@ -21,6 +21,7 @@ import { traitParagraphs } from "@/lib/workshop/species-traits";
 import type { RulebookPage } from "@/lib/rulebook/types";
 import { textKey } from "@/lib/language/text-logic";
 import { thirdCasterProfileForPackSubclass } from "@/lib/srd/third-caster";
+import { bundledSpeciesSpells } from "@/lib/srd/racial-grants";
 import { classMechanicsOf } from "@/lib/workshop/class-catalog";
 
 // What the engine runs for a published row, handed to the workshop's "start
@@ -183,11 +184,14 @@ export function raceMechanicsOf(
   }
   const paragraphs = new Map([...traitParagraphs(String(parent?.data.traits ?? "")), ...traitParagraphs(String(row.data.traits ?? ""))]);
   const traits = option.traitNames.map((name) => `**_${name}._** ${paragraphs.get(name) ?? ""}`.trim()).join("\n\n");
-  return raceTableOf(option, traits, String(row.data.vision ?? parent?.data.vision ?? ""));
+  // The race's spells are the bundled table's only for the row that is that
+  // race: Tome of Heroes' Drow, kept under the bare slug here, is its own.
+  return raceTableOf(option, traits, String(row.data.vision ?? parent?.data.vision ?? ""), optionIdFor({ slug: row.slug, documentSlug: row.documentSlug ?? "wotc-srd" }));
 }
 
 // What a species's data carries for one of the builder's race options.
-function raceTableOf(option: RaceOption, traits: string, vision: string): Record<string, unknown> {
+function raceTableOf(option: RaceOption, traits: string, vision: string, bundledId = option.id): Record<string, unknown> {
+  const spells = option.spells ?? bundledSpeciesSpells(bundledId);
   return {
     traits,
     size: option.size ?? "Medium",
@@ -206,6 +210,10 @@ function raceTableOf(option: RaceOption, traits: string, vision: string): Record
     ...(option.armor ? { armor: option.armor } : {}),
     ...(option.weapons ? { weapons: option.weapons } : {}),
     ...(option.cantripChoice ? { cantripChoice: option.cantripChoice } : {}),
+    // The spells it casts by nature (issue #833): a copied Tiefling keeps
+    // Infernal Legacy's in the species' own spell rows, where they can be
+    // changed.
+    ...(spells ? { spells } : {}),
   };
 }
 
@@ -375,7 +383,9 @@ function withMechanicsOnly(kind: string, results: unknown[], params: { classSlug
   }
   if (kind === "classes") {
     return results.map((row) => {
-      const table = classMechanicsOf(row as Row & { slug?: string });
+      // A pack class's own list, read from the pack's spells and the
+      // checklist (issue #833); asked only for a class no SRD list covers.
+      const table = classMechanicsOf(row as Row & { slug?: string }, (classId) => spellRowsOnList(classId, []).map((spell) => spell.name));
       return table ? { ...(row as Row), table } : row;
     });
   }

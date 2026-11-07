@@ -3,9 +3,11 @@ import { archiveHomebrew, deleteHomebrew, getHomebrew, restoreHomebrew } from "@
 import { updateHomebrewCarried } from "@/lib/db/homebrew-rename";
 import { serverPublishedNameProblem } from "@/lib/homebrew/published-names-server";
 import { normalizeHomebrewForSave } from "@/lib/homebrew/species-choice-server";
+import { spellFactsFor } from "@/lib/characters/catalog";
 import { homebrewLimitProblems } from "@/lib/homebrew/limits";
 import { patchHomebrewSchema } from "@/lib/schemas/homebrew";
 import { forgetSpeciesRules } from "@/lib/characters/species-rules";
+import { resyncSpeciesSpellCounters } from "@/lib/db/species-spell-resync";
 import { forgetTableFeats } from "@/lib/db/table-feats";
 import { forgetTableHazards } from "@/lib/db/table-hazards";
 import { textKey } from "@/lib/language/text-logic";
@@ -62,7 +64,7 @@ export async function PATCH(
     if (over) {
       return Response.json({ error: over.text, field: over.field }, { status: 400 });
     }
-    const normalized = normalizeHomebrewForSave(existing.kind, data, parsed.data.name ?? existing.name);
+    const normalized = normalizeHomebrewForSave(existing.kind, data, parsed.data.name ?? existing.name, (spell) => spellFactsFor(spell, user.id));
     if ("error" in normalized) {
       return Response.json({ error: normalized.error }, { status: 400 });
     }
@@ -73,6 +75,10 @@ export async function PATCH(
   // characters; `carried` says how many.
   const updated = updateHomebrewCarried(user.id, id, { name: parsed.data.name, data });
   forgetSpeciesRules(`homebrew:${id}`);
+  // A species' spells reach the characters already at a table (issue #833).
+  if (updated && existing.kind === "race") {
+    resyncSpeciesSpellCounters(`homebrew:${id}`);
+  }
   forgetTableFeats();
   forgetTableHazards();
   if (!updated) {
@@ -100,6 +106,11 @@ export async function DELETE(
     return Response.json({ error: "Not found." }, { status: 404 });
   }
   forgetSpeciesRules(`homebrew:${id}`);
+  // A species purged for good takes its spells' counters with it; one only
+  // archived keeps its rules, as everything carrying it does.
+  if (purge) {
+    resyncSpeciesSpellCounters(`homebrew:${id}`, { gone: true });
+  }
   forgetTableFeats();
   forgetTableHazards();
   return Response.json({ ok: true });

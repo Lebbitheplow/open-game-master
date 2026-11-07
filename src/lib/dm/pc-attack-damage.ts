@@ -468,7 +468,7 @@ export function landBlow(input: {
   enemy: AttackPlan["enemy"];
   sheets: CharacterSheet[];
   sheetsById: Map<string, CharacterSheet>;
-  profile: AttackProfile;
+  profile: Pick<AttackProfile, "damageType" | "material">;
   typedRiders: TypedRider[];
   damageOutcome: RollResult;
   dealt: number;

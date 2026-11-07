@@ -4,7 +4,8 @@
 //     modifier is added to one damage roll of a wizard evocation spell.
 //   Elemental Affinity (sorcerer, Draconic Bloodline 6): the Charisma
 //     modifier is added to one damage roll of a spell dealing the damage type
-//     of the sorcerer's dragon ancestor.
+//     of the sorcerer's dragon ancestor, or of the element a workshop
+//     subclass's choice names (src/lib/srd/chosen-element.ts).
 //   Potent Cantrip (wizard, School of Evocation 6): a creature that succeeds
 //     on its save against the wizard's cantrip still takes half its damage.
 //
@@ -12,8 +13,8 @@
 // (cast_at_enemy, aoe_damage) and pc_attack share one answer.
 
 import { authoredSpellDice } from "@/lib/srd/authored-effects-more";
-import { textKey } from "@/lib/language/text-logic";
-import { familyOf, holdsFeature, isNamed, nameChoice } from "@/lib/srd/feature-names";
+import { holdsFeature } from "@/lib/srd/feature-names";
+import { chosenElementType } from "@/lib/srd/dragon-ancestor";
 
 type Caster = {
   class: string;
@@ -29,32 +30,8 @@ type Caster = {
 
 const mod = (score: number) => Math.floor((score - 10) / 2);
 
-// The damage type of each dragon a Draconic Bloodline sorcerer can descend
-// from (SRD 5.1, Dragon Ancestor table).
-const DRAGON_TYPES: Record<string, string> = {
-  black: "acid",
-  blue: "lightning",
-  brass: "fire",
-  bronze: "lightning",
-  copper: "acid",
-  gold: "fire",
-  green: "poison",
-  red: "fire",
-  silver: "cold",
-  white: "cold",
-};
-
-// The damage type of the sorcerer's dragon ancestor, read from the feature
-// that records the choice ("Dragon Ancestor: Red", "Dragon Ancestor (gold)").
-export function dragonAncestorType(sheet: Pick<Caster, "features">): string | null {
-  for (const feature of sheet.features) {
-    const type = isNamed(familyOf(feature.name), "Dragon Ancestor", "Draconic Bloodline") ? DRAGON_TYPES[textKey(nameChoice(feature.name) ?? "")] : undefined;
-    if (type) {
-      return type;
-    }
-  }
-  return null;
-}
+// The sorcerer's dragon, read in one place (src/lib/srd/dragon-ancestor.ts).
+export { dragonAncestorType } from "@/lib/srd/dragon-ancestor";
 
 export type SpellDamageRiders = {
   // Added once to the spell's damage total.
@@ -86,7 +63,9 @@ export function spellDamageRiders(
       riders.notes.push(`Empowered Evocation: +${bonus} (Intelligence)`);
     }
   }
-  const ancestor = dragonAncestorType(sheet);
+  // The dragon's damage type, or a workshop bloodline's chosen element
+  // (issue #833: a "Storm" option dealing lightning).
+  const ancestor = chosenElementType(sheet);
   if (
     ancestor &&
     spell.damageType &&

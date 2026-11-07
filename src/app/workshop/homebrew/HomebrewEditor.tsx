@@ -113,7 +113,7 @@ export function HomebrewEditor({
       />
 
       {draft.kind === "item" ? <ItemFields data={draft.data} onChange={setData} /> : null}
-      {draft.kind === "spell" ? <SpellFields data={draft.data} onChange={setData} /> : null}
+      {draft.kind === "spell" ? <SpellFields data={draft.data} onChange={setData} workshopClasses={workshopClasses} /> : null}
       {draft.kind === "hazard" ? <HazardFields data={draft.data} onChange={setData} /> : null}
       {draft.kind === "class" ? <ClassFields data={draft.data} set={(patch) => setData({ ...draft.data, ...patch })} /> : null}
       {draft.kind !== "item" && draft.kind !== "spell" && draft.kind !== "hazard" && draft.kind !== "class" ? (

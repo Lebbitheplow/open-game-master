@@ -23,6 +23,9 @@ import {
 } from "@/lib/srd/feature-effects";
 import { classFeaturesFor, subclassNamesFor } from "@/lib/srd/features";
 import { findOptionByFeatureName } from "@/lib/srd/options";
+import { isSubclassChoicePick } from "@/lib/srd/subclass-choice-picks";
+import { choiceDamageTypeOf } from "@/lib/srd/chosen-element";
+import type { SubclassExtras } from "@/lib/srd/subclass-tables";
 import { ABILITY_NAMES, type FeatFacts } from "@/lib/srd/legality/types";
 import { textKey } from "@/lib/language/text-logic";
 
@@ -70,6 +73,12 @@ export function isMechanicalFeature(name: string): boolean {
   if (findOptionByFeatureName(name) || chosenFightingStyles([{ name }]).length) {
     return true;
   }
+  // A workshop choice's element ("Bloodline damage type: Lightning"), which
+  // Elemental Affinity reads: the regrant's to write, never a file's story
+  // (issue #833 review).
+  if (choiceDamageTypeOf(name)) {
+    return true;
+  }
   if (Object.keys(populateResources([{ name }], 20, {}, undefined)).length) {
     return true;
   }
@@ -80,9 +89,10 @@ export function isMechanicalFeature(name: string): boolean {
 
 // A pick from a list a class feature opens. Whether the class has the slot
 // for it is populateFeaturesForClasses's to decide; this is only "is it a
-// pick at all".
-export function isChoiceFeature(name: string): boolean {
-  if (findOptionByFeatureName(name)) {
+// pick at all". A workshop subclass's own choice ("Bloodline (Storm)") is
+// one when a subclass of the table's offers it (issue #833).
+export function isChoiceFeature(name: string, extras?: SubclassExtras, optionId?: string): boolean {
+  if (findOptionByFeatureName(name) || isSubclassChoicePick({ name, source: "choice", optionId }, extras)) {
     return true;
   }
   const [style] = chosenFightingStyles([{ name }]);
@@ -109,6 +119,8 @@ export type FeatureInput = {
   allowPlainStory: boolean;
   // Whether the stored character has the background the request names.
   sameBackground: boolean;
+  // The table's workshop subclasses, whose own choices are picks too.
+  subclassExtras?: SubclassExtras;
 };
 
 export type FeatureVerdict = { problems: string[]; features: SheetFeature[] };
@@ -121,8 +133,9 @@ export function judgeFeatures(input: FeatureInput): FeatureVerdict {
   for (const feature of input.sent) {
     const key = textKey(feature.name);
     if (feature.source === "choice") {
-      if (isChoiceFeature(feature.name)) {
-        features.push({ name: feature.name, source: "choice" });
+      if (isChoiceFeature(feature.name, input.subclassExtras, feature.optionId)) {
+        // A workshop choice's pick keeps the ids it carries (issue #833).
+        features.push({ name: feature.name, source: "choice", ...(feature.optionId ? { optionId: feature.optionId } : {}) });
       }
       continue;
     }

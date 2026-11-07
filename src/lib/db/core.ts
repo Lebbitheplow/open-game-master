@@ -3723,6 +3723,7 @@ function resyncSheetResources(db: SqliteDatabase): { checked: number; changed: n
         multiclass ? classes : undefined,
         rowFeats,
         row.campaign_id,
+        { race: row.race },
       );
       const nextFeatures = JSON.stringify(features);
       const nextResources = JSON.stringify(resources);

@@ -44,6 +44,7 @@ import { weaponMaterial } from "@/lib/dm/damage-logic";
 import { hasName, namesOf } from "@/lib/dm/cast-rules";
 import { paidByItem, runningItemSpell } from "@/lib/srd/item-cast-credit";
 import { scrollNumbers } from "@/lib/dm/consumables";
+import { itemCastOpen } from "@/lib/dm/item-casts";
 import { magicItemRiders } from "@/lib/srd/magic-items";
 
 export type AttackKind = "weapon" | "spell" | "natural" | "granted";
@@ -176,7 +177,8 @@ export function buildAttackProfile(
     const spellName = args.spell.trim();
     // A spell an item paid for needs no Spellcasting feature and is on no list
     // of theirs, as it runs on too.
-    const fromItem = paidByItem(sheet, spellName);
+    // So is a later ray of a casting an item made this turn.
+    const fromItem = paidByItem(sheet, spellName) ?? itemCastOpen(campaignId, sheet, spellName);
     if (!castsSpells(sheet) && !fromItem) {
       return { error: `${sheet.name} cannot cast spells.`, refused: "rules" };
     }

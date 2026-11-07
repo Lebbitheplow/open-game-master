@@ -63,6 +63,7 @@ import { handleCastBuff } from "@/lib/dm/cast-buff";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { spellHeldProblem, grantedCastOf } from "@/lib/dm/cast-rules";
 import { paidByItem } from "@/lib/srd/item-cast-credit";
+import { itemCastOpen } from "@/lib/dm/item-casts";
 import { scrollNumbers } from "@/lib/dm/consumables";
 import { conditionNameRefusal } from "@/lib/dm/set-condition";
 import { swallowCover } from "@/lib/dm/swallow";
@@ -128,14 +129,15 @@ export function handleCastAtEnemy(
   // A race's spell is cast with no Spellcasting feature (a tiefling
   // fighter's Infernal Legacy, src/lib/srd/granted-casts.ts), and so is one
   // an item paid for, as it runs on (a fighter with a wand or a stored spell).
-  if (!castsSpells(sheet) && !paidByItem(sheet, args.spell ?? "") && !grantedCastOf(sheet, args.spell ?? "", spellFactsFor(args.spell ?? "", spellAuthorsFor(campaign)))) {
+  // So is a later target of a casting an item made this turn (item-casts.ts).
+  const itemPaid = paidByItem(sheet, args.spell ?? "") ?? itemCastOpen(campaign.id, sheet, args.spell ?? "");
+  if (!castsSpells(sheet) && !itemPaid && !grantedCastOf(sheet, args.spell ?? "", spellFactsFor(args.spell ?? "", spellAuthorsFor(campaign)))) {
     return { error: `${sheet.name} cannot cast spells.`, refused: "rules" };
   }
   // Multiclass: the DC follows the class whose list carries the spell; a
   // race's spell, the ability the race names.
   // An item that names no DC (a Wand of Magic Missiles, whose spell asks no
   // save) in the hands of someone with no spell DC of their own: a scroll's.
-  const itemPaid = paidByItem(sheet, args.spell ?? "");
   const dc = spellSaveDcFor(sheet, args.spell ?? "") ?? (itemPaid ? scrollNumbers(itemPaid.level).saveDc : null);
   if (dc === null) {
     return { error: `${sheet.name} cannot cast spells.`, refused: "rules" };

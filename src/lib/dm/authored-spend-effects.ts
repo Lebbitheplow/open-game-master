@@ -3,7 +3,10 @@
 // it writes; the caller then spends the pool and the turn.
 
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
-import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
+import { saveModFor } from "@/lib/bestiary/enemy-numbers";
+import { layEnemyConditionInstance } from "@/lib/dm/enemy-condition-lay";
+import { foesOfSheet, resolveTargetFoe } from "@/lib/dm/sheet-foe";
+import { chosenTargets } from "@/lib/dm/chosen-targets";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getBattleMapForEncounter } from "@/lib/db/battle-maps";
 import type { DmTurn } from "@/lib/db/dm-turns";
@@ -14,7 +17,7 @@ import { computeSheetDerived } from "@/lib/srd";
 import { resolveFormula, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
 import type { Ability, SpendDoes } from "@/lib/srd/authored-effects-types";
 import { STORM_AURA } from "@/lib/srd/authored-effects-data";
-import { effectiveMaxHp, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { effectiveMaxHp, likelierSave, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { immuneToCondition } from "@/lib/dm/damage-logic";
 import { rollCharacterCheck } from "@/lib/dm/contest-roll";
 import { charmedBy } from "@/lib/dm/enemy-profile";
@@ -24,7 +27,8 @@ import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import { hurtEnemy } from "@/lib/dm/spell-aura";
-import { withinFeet } from "@/lib/dm/authored-saves";
+import { seesOnBoard, withinFeet } from "@/lib/dm/authored-saves";
+import { tilesBetween, wallBetween } from "@/lib/dm/attack-spatial";
 import { rerollLastSave, swarmPush } from "@/lib/dm/authored-spend-more";
 import { summonSteelDefender } from "@/lib/dm/summon-defender";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
@@ -32,6 +36,7 @@ import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import { rollAgainst } from "@/lib/roll-labels";
 import { namedOption, type ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
+import { creatureTypeOf } from "@/lib/bestiary/creature-type";
 import { creditFeatureTeleport } from "@/lib/dm/feature-teleport";
 import { isConditionNamed, isNamed, nameChoice } from "@/lib/srd/feature-names";
 import { swallowCoverBetween, swallowCoverError } from "@/lib/dm/swallow";
@@ -51,7 +56,7 @@ export type SpendContext = {
   sheet: CharacterSheet;
   held: HeldAuthored;
   spend: AuthoredSpend;
-  args: { amount?: number; variant?: string; targetCharacterId?: string; targetEnemyId?: string };
+  args: { amount?: number; variant?: string; targetCharacterId?: string; targetEnemyId?: string; targetEnemyIds?: string[] };
   units: number;
   mods: Record<string, number>;
   reason: string;
@@ -247,7 +252,7 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
         const kept = sheet.conditions.filter((entry) => textKey(entry) !== textKey(condition));
         patch = {
           conditions: [...kept, condition],
-          conditionMeta: { ...sheet.conditionMeta, [condition]: { rounds: does.rounds, ...(quarry ? { quarry: quarry.id } : {}) } },
+          conditionMeta: { ...sheet.conditionMeta, [condition]: { ...(does.untilNextTurnEnds ? { untilTurnEndOf: sheet.id } : { rounds: does.rounds }), ...(quarry ? { quarry: quarry.id } : {}) } },
           ...(tempHp > sheet.tempHp ? { tempHp } : {}),
         };
         lines.push(
@@ -282,6 +287,11 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       if (does.rangeFt && !withinFeet(encounter.id, sheet.id, enemy.id, does.rangeFt)) {
         return { error: `${enemy.displayName} is beyond ${does.rangeFt} feet of ${sheet.name}; ${ctx.spend.name} reaches no further. Nothing was spent.`, refused: "rules" };
       }
+      // "A creature you can see" (Nature's Wrath): one behind a wall or in a
+      // heavily obscured space is refused before the use is paid.
+      if (does.sight && !seesOnBoard(encounter.id, sheet.id, enemy.id)) {
+        return { error: `${sheet.name} cannot see ${enemy.displayName}, and ${ctx.spend.name} takes a creature they can see. Nothing was spent.`, refused: "rules" };
+      }
       if (does.perUnit && ctx.units < 1) {
         return { error: `${ctx.spend.name} needs at least 1 point spent: pass amount. Nothing was spent.`, retry: true };
       }
@@ -291,12 +301,15 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
         return type;
       }
       const dc = saveDc(ctx, does.dcAbility);
-      const save = rollEnemySave(campaign.id, enemy, does.save, dc, {
+      // The creature picks the save it is likelier to pass (condition-logic.ts).
+      const ability = does.orSave ? likelierSave(enemy.conditions, does.save, does.orSave, dc, (each) => saveModFor(enemy.stats, each)) : does.save;
+      const other = does.orSave ? (ability === does.save ? does.orSave : does.save) : undefined;
+      const save = rollEnemySave(campaign.id, enemy, ability, dc, {
         resist: Boolean(does.condition) && bindsWorthResisting([does.condition ?? ""]),
         against: does.condition,
         // A DEX save takes the cover between the character and it.
         origin: { ref: ctx.sheet.id },
-        record: { turn: ctx.turn ?? undefined, detail: `${enemy.displayName}: ${does.save.toUpperCase()} save against ${ctx.spend.name}` },
+        record: { turn: ctx.turn ?? undefined, detail: `${enemy.displayName}: ${ability.toUpperCase()} save against ${ctx.spend.name}` },
       });
       const result: Record<string, unknown> = { target: enemy.displayName, save: save.total, dc, saved: save.success };
       const dice = does.perUnit ? addUnits(does.perUnit, does.perUnit, ctx.units - 1) : does.dice ? formula(ctx, does.dice) : null;
@@ -306,7 +319,7 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
         Object.assign(result, { rolled: `${dice}: ${rolled}` }, damageEnemy(ctx, getEnemy(enemy.id) ?? enemy, amount, type));
       }
       if (!save.success && does.condition) {
-        const landed = enemyCondition(ctx, enemy, does.condition, does.rounds ? { rounds: does.rounds } : {});
+        const landed = enemyCondition(ctx, enemy, does.condition, does.saveEnds ? { saveEnds: { ability, dc, ...(other ? { or: other } : {}) } } : does.rounds ? { rounds: does.rounds } : {});
         result.condition = landed ? `${enemy.displayName} is ${does.condition}.` : `${enemy.displayName} cannot be ${does.condition}.`;
       }
       if (!save.success && does.onFail) {
@@ -314,6 +327,8 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       }
       return { result };
     }
+    case "save_area":
+      return saveArea(ctx, does);
     case "reroll_save":
       return rerollLastSave(ctx);
     case "temp_hp": {
@@ -506,6 +521,78 @@ function burst(ctx: SpendContext, spec: NonNullable<Extract<SpendDoes, { kind: "
     }
   }
   return lines;
+}
+
+function saveArea(ctx: SpendContext, does: Extract<SpendDoes, { kind: "save_area" }>): Resolution {
+  const { campaign, sheet } = ctx;
+  const encounter = getActiveEncounter(campaign.id);
+  // No fight on, so no creature is on the board to save: the use is paid and the
+  // GM narrates it (Charm Animals and Plants is used on a trail as often as in a
+  // fight), as a buff aimed at a creature is.
+  if (!encounter) {
+    return { result: { applied: [`${ctx.spend.name}: there is no fight, so no creature on the board saves; the GM resolves it in the story.`] } };
+  }
+  let targets = foesOfSheet(campaign.id, encounter, sheet.id).filter(
+    (enemy) =>
+      enemy.status === "alive" &&
+      enemy.currentHp > 0 &&
+      withinFeet(encounter.id, sheet.id, enemy.id, does.rangeFt) &&
+      (!does.sight || seesOnBoard(encounter.id, sheet.id, enemy.id)) &&
+      // Total cover: a wall of the board between them (as cast-reach.ts reads
+      // it, past the squares beside the holder).
+      (!does.coverShields || !((tilesBetween(encounter.id, sheet.id, enemy.id) ?? 0) > 1 && wallBetween(encounter.id, sheet.id, enemy.id))) &&
+      !swallowCoverBetween(sheet.id, enemy.id) &&
+      (!does.types || does.types.includes(creatureTypeOf(enemy.stats))),
+  );
+  if (!targets.length) {
+    return { error: `Nothing ${ctx.spend.name} affects is within ${does.rangeFt} feet of ${sheet.name}. Nothing was spent.`, refused: "rules" };
+  }
+  const chosen = chosenTargets(ctx.spend.name, Boolean(does.chosen), targets, ctx.args, (ref) => resolveTargetFoe(campaign.id, encounter, ref)?.id ?? null);
+  if ("error" in chosen) {
+    return chosen;
+  }
+  targets = chosen;
+  const dc = saveDc(ctx, does.dcAbility);
+  const rolled = does.dice ? rollCard(campaign, ctx.turn, sheet.id, "damage", ctx.spend.name, formula(ctx, does.dice), sheetAttacker(sheet)).total : 0;
+  const lines: string[] = [];
+  for (const enemy of targets) {
+    const save = rollEnemySave(campaign.id, enemy, does.save, dc, {
+      magical: true,
+      resist: Boolean(does.condition) && bindsWorthResisting([does.condition ?? ""]),
+      against: does.condition,
+      origin: { ref: sheet.id },
+      record: { turn: ctx.turn ?? undefined, detail: `${enemy.displayName}: ${does.save.toUpperCase()} save against ${ctx.spend.name}` },
+    });
+    const resisted = save.legendaryResistance ? "with Legendary Resistance" : `(${does.save.toUpperCase()} ${save.total} vs DC ${dc})`;
+    const fresh = () => resolveTargetFoe(campaign.id, encounter, enemy.id) ?? enemy;
+    const amount = save.success ? (does.half ? Math.floor(rolled / 2) : 0) : rolled;
+    if (amount > 0) {
+      damageEnemy(ctx, fresh(), amount, does.type ?? "");
+    }
+    if (save.success) {
+      lines.push(`${enemy.displayName} resists ${resisted}${amount ? ` and takes ${amount} ${does.type ?? ""} damage` : ""}.`);
+      continue;
+    }
+    const parts = amount ? [`takes ${amount} ${does.type ?? ""} damage`] : [];
+    if (does.condition) {
+      if (immuneToCondition(fresh(), does.condition)) {
+        parts.push(`cannot be ${does.condition}`);
+      } else {
+        layEnemyConditionInstance(campaign, fresh(), does.condition, {
+          source: sheet.id,
+          ...(does.untilNextTurnEnds ? { untilTurnEndOf: sheet.id } : does.rounds ? { rounds: does.rounds } : {}),
+          ...(does.endsOnDamage ? { endsOnDamage: true } : {}),
+          ...(does.leashFeet ? { leashFeet: does.leashFeet } : {}),
+        });
+        parts.push(`is ${does.condition}`);
+      }
+    }
+    if (does.onFail) {
+      parts.push(does.onFail);
+    }
+    lines.push(`${enemy.displayName} ${parts.join(", and ")} ${resisted}.`);
+  }
+  return { result: { applied: lines } };
 }
 
 function listEnemiesNear(ctx: SpendContext, encounter: Encounter, feet: number): EncounterEnemy[] {

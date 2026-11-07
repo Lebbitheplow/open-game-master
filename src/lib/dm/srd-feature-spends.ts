@@ -8,10 +8,8 @@
 //     unarmed strike sets the vibrations in a creature they attacked this
 //     turn; the monk's action ends them later: a CON save against the ki DC,
 //     0 hit points on a failure and 10d10 necrotic on a success.
-//   - Draconic Presence (Draconic Bloodline 18): 5 sorcery points and the
-//     action; creatures of the sorcerer's choice within 60 feet make a WIS
-//     save or are charmed (variant "charm") or frightened (the default) for a
-//     minute, held by the sorcerer's concentration.
+//   - Elemental Affinity's resistance, Dragon Wings and Draconic Presence
+//     (Draconic Bloodline 6, 14, 18): src/lib/dm/draconic-spends.ts.
 //   - Hide in Plain Sight (ranger 10): a minute of camouflage outside a
 //     fight: "camouflaged", +10 to Stealth checks (a condition-effects row).
 //   - Primeval Awareness (ranger 3): a spell slot (the level in `amount`, else
@@ -23,25 +21,24 @@
 
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import type { Campaign } from "@/lib/db/campaigns";
-import { getActiveEncounter, listEnemies, patchEnemyConditions, type EncounterEnemy } from "@/lib/db/encounters";
+import { getActiveEncounter, listEnemies, patchEnemyConditions } from "@/lib/db/encounters";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
 import { classLevelOf, holdsFeature } from "@/lib/srd/trait-rules";
 import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
-import { setConcentration } from "@/lib/dm/concentration";
 import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { hurtEnemy } from "@/lib/dm/spell-aura";
 import { getDmTurn } from "@/lib/db/dm-turns";
-import { feetBetween, priceTheAction, publishSheet } from "@/lib/dm/combat-features";
+import { priceTheAction, publishSheet } from "@/lib/dm/combat-features";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import { rollAgainst } from "@/lib/roll-labels";
 import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { spentSlotRefusal } from "@/lib/dm/cast-rules";
 import { textKey } from "@/lib/language/text-logic";
-import { swallowCoverBetween } from "@/lib/dm/swallow";
+import { draconicPresence, dragonWings, elementalAffinityResistance } from "@/lib/dm/draconic-spends";
 
 export type SrdSpendArgs = { variant?: string; targetEnemyId?: string; amount?: number };
 
@@ -52,11 +49,14 @@ export function srdFeatureSpend(
   resourceName: string,
   args: SrdSpendArgs,
 ): Record<string, unknown> | null {
-  const name = textKey(resourceName);
+  // A Hand card names its counter's id ("dragon_wings"), a call the feature.
+  const name = textKey(resourceName.replace(/_/g, " "));
   const sheet = getSheetById(stale.id) ?? stale;
   if (name === "peerless skill") return peerlessSkill(campaign, sheet);
   if (name === "quivering palm") return quiveringPalm(campaign, turnId, sheet, args.targetEnemyId);
-  if (name === "draconic presence") return draconicPresence(campaign, turnId, sheet, args);
+  if (name === "draconic presence") return draconicPresence(campaign, turnId, sheet, args.variant);
+  if (name === "dragon wings") return dragonWings(campaign, sheet, args.variant);
+  if (name === "elemental affinity" || name === "elemental affinity resistance") return elementalAffinityResistance(campaign, sheet);
   if (name === "hide in plain sight") return hideInPlainSight(campaign, sheet);
   if (name === "primeval awareness") return primevalAwareness(campaign, sheet, args.amount);
   return null;
@@ -163,63 +163,6 @@ function quiveringPalm(campaign: Campaign, turnId: string, sheet: CharacterSheet
     applied: save.success ? `${enemy.displayName} resists the vibrations and takes ${amount} necrotic damage.` : `${enemy.displayName} fails the CON save and drops to 0 hit points.`,
     ...applied,
   };
-}
-
-// ---- Draconic Presence ----
-
-function draconicPresence(campaign: Campaign, turnId: string, sheet: CharacterSheet, args: SrdSpendArgs): ToolResult {
-  if (!holdsFeature(sheet, "draconic presence")) {
-    return { error: `${sheet.name} does not have Draconic Presence (a Draconic Bloodline sorcerer's 18th level feature).`, refused: "rules" };
-  }
-  if (poolLeft(sheet, "sorcery_points") < 5) {
-    return { error: `${sheet.name} needs 5 sorcery points for Draconic Presence. Nothing was spent.`, refused: "rules" };
-  }
-  const encounter = getActiveEncounter(campaign.id);
-  if (!encounter) {
-    return { error: "Draconic Presence answers creatures in a fight; there is none. Nothing was spent.", refused: "rules" };
-  }
-  // Charming or frightening, the sorcerer's choice: the variant names one
-  // whole, never a default.
-  const wanted = textKey(args.variant ?? "");
-  const condition = wanted === "charm" ? "charmed" : wanted === "fear" ? "frightened" : null;
-  if (!condition) {
-    return { error: `Draconic Presence takes variant 'fear' or 'charm'${wanted ? `; "${args.variant}" is neither` : ""}. Ask the player which, unless they named one. Nothing was spent.`, retry: true };
-  }
-  const chosen: EncounterEnemy[] = args.targetEnemyId
-    ? [resolveTargetFoe(encounter.campaignId, encounter, args.targetEnemyId)].filter((enemy): enemy is EncounterEnemy => Boolean(enemy))
-    : listEnemies(encounter.id).filter((enemy) => {
-        const feet = feetBetween(encounter.id, sheet.id, enemy.id);
-        return feet === null || feet <= 60;
-      });
-  // A creature across a swallower's wall is out of the presence (swallow.ts).
-  const targets = chosen.filter((enemy) => enemy.status === "alive" && !swallowCoverBetween(sheet.id, enemy.id));
-  if (!targets.length) {
-    return { error: "No living creature of the sorcerer's choice stands within 60 feet. Nothing was spent.", refused: "rules" };
-  }
-  const price = priceTheAction(sheet, encounter, "Draconic Presence");
-  if ("error" in price) {
-    return toolError(price);
-  }
-  spendPool(campaign, sheet, "sorcery_points", 5);
-  price.commit();
-  setConcentration(campaign, turnId, sheet.id, "Draconic Presence");
-  const dc = computeSheetDerived(sheet).spellSaveDc ?? 13;
-  const lines: string[] = [];
-  for (const enemy of targets) {
-    const save = rollEnemySave(campaign.id, enemy, "wis", dc, { magical: true, resist: true, against: condition, record: { detail: `${enemy.displayName}: WIS save against Draconic Presence` } });
-    const immune = String(enemy.stats.conditionImmune ?? "").toLowerCase().includes(condition);
-    if (save.success || immune) {
-      lines.push(`${enemy.displayName} ${immune ? `cannot be ${condition}` : `resists (WIS ${save.total} vs DC ${dc})`}.`);
-      continue;
-    }
-    patchEnemyConditions(enemy.id, [...enemy.conditions.filter((entry) => entry !== condition), condition], {
-      ...(enemy.conditionMeta as ConditionMetaMap),
-      [condition]: { source: sheet.id, spell: "Draconic Presence", rounds: 10 },
-    } as typeof enemy.conditionMeta);
-    lines.push(`${enemy.displayName} is ${condition} for a minute.`);
-  }
-  publishEncounter(campaign.id);
-  return { ok: true, resource: "Draconic Presence", spent: "5 sorcery points", cost: "their action", concentration: "Draconic Presence", applied: lines };
 }
 
 // ---- Hide in Plain Sight ----

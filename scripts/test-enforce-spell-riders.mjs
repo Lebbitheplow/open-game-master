@@ -9,8 +9,8 @@
 import assert from "node:assert/strict";
 import "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
-import { freshTurn, onTurnOf } from "./lib/enforce-spells.mjs";
-import { caster, closeTables, countDice, enemyOf, FIGHTER, invokeAsAi, table } from "./lib/enforce-spell-kit.mjs";
+import { freshTurn, layMap, onTurnOf } from "./lib/enforce-spells.mjs";
+import { caster, closeTables, countDice, enemyOf, field, FIGHTER, invokeAsAi, table } from "./lib/enforce-spell-kit.mjs";
 
 const { test, finish } = suite("test-enforce-spell-riders");
 const { skipCurrentTurn } = await import("../src/lib/dm/encounter-tools.ts");
@@ -271,6 +271,143 @@ await test("Elemental Affinity adds the sorcerer's Charisma to a spell of the an
   // A failed save: 3 + 4 CHA.
   const now = enemyOf(world, goblin.id);
   assert.equal(now.maxHp - now.currentHp, 7);
+});
+
+await test("A Draconic Bloodline sorcerer picks a dragon at 1st level, and the pick is the one Elemental Affinity reads", async () => {
+  const { openOptionSlots, optionFeatureName, optionSlotsFor } = await import("../src/lib/srd/options.ts");
+  const { dragonAncestorType } = await import("../src/lib/srd/spell-damage-riders.ts");
+  const { DRACONIC_ANCESTRIES } = await import("../src/lib/srd/racial-grants.ts");
+  const [slot] = openOptionSlots({ classId: "sorcerer", subclass: "Draconic Bloodline", level: 1, features: [{ name: "Dragon Ancestor" }] }).filter((entry) => entry.kind === "dragon_ancestor");
+  assert.ok(slot, "the builder and the level-up offer the pick");
+  assert.equal(slot.label, "Dragon Ancestor");
+  assert.equal(slot.remaining, 1);
+  assert.deepEqual(slot.options.map((option) => option.n), DRACONIC_ANCESTRIES.map((entry) => entry.dragon), "the SRD's ten dragons");
+  for (const entry of DRACONIC_ANCESTRIES) {
+    const feature = { name: optionFeatureName("dragon_ancestor", entry.dragon), source: "choice" };
+    assert.equal(dragonAncestorType({ features: [feature] }), entry.damageType, feature.name);
+  }
+  const chosen = openOptionSlots({ classId: "sorcerer", subclass: "Draconic Bloodline", level: 6, features: [{ name: "Dragon Ancestor" }, { name: "Dragon Ancestor: Red" }] });
+  assert.equal(chosen.find((entry) => entry.kind === "dragon_ancestor").remaining, 0, "one dragon, chosen once");
+  assert.equal(optionSlotsFor("sorcerer", "Wild Magic", 1, "dragon_ancestor"), 0, "another origin has no dragon");
+  assert.equal(optionSlotsFor("sorcerer", "Storm-Blooded", 1, "dragon_ancestor", [{ name: "Dragon Ancestor" }]), 1, "a workshop origin that borrows Dragon Ancestor opens it too");
+});
+
+await test("Elemental Affinity's other half: when the sorcerer casts a spell of the ancestor's damage type, 1 sorcery point buys an hour's resistance to it; before such a spell, with no dragon chosen, or with no point left, nothing is spent", async () => {
+  const { pcResistances } = await import("../src/lib/dm/pc-defenses.ts");
+  const { heldAtWill } = await import("../src/lib/srd/class-resources.ts");
+  const draconic = (features) => caster("sorcerer", "cha", ["Burning Hands"], [], 6, {
+    subclass: "Draconic Bloodline",
+    features: [...features, { name: "Elemental Affinity", source: "class", level: 6 }],
+    spellcasting: { known: ["Burning Hands"], prepared: [] },
+  });
+  const { world, sheets: [none, red], enemies: [goblin] } = await table([draconic([]), draconic([{ name: "Dragon Ancestor: Red", source: "choice", level: 1 }])]);
+  const points = (who) => world.sheet(who.id).resources.sorcery_points.used;
+  const before = points(none);
+  const refused = await world.invoke("use_resource", { characterId: none.id, resource: "Elemental Affinity" });
+  assert.equal(refused.ok, false);
+  assert.match(refused.error, /no dragon ancestor or element chosen/);
+  assert.equal(points(none), before, "nothing spent");
+  // The trigger: "when you cast a spell that deals damage of the type".
+  const early = await world.invoke("use_resource", { characterId: red.id, resource: "Elemental Affinity" });
+  assert.equal(early.ok, false, "no fire spell cast yet");
+  assert.equal(early.refused, "rules");
+  assert.match(early.error, /has cast none this turn/);
+  assert.equal(points(red), before, "nothing spent before the spell");
+  world.dice(1, 1, 1, 1);
+  await world.invoke("aoe_damage", { casterCharacterId: red.id, spell: "Burning Hands", level: 1, damage: "3d6", saveAbility: "dex", dc: 15, enemyIds: [goblin.id] });
+  world.clearDice();
+  assert.ok(world.sheet(red.id).conditions.includes("affinity cast (fire)"), "the fire spell is noted");
+  // The Hand's card names its id; the tool the feature.
+  const out = await world.invoke("use_resource", { characterId: red.id, resource: "elemental_affinity" });
+  assert.equal(out.ok, true, out.error);
+  assert.equal(points(red), before + 1);
+  const resisting = world.sheet(red.id);
+  assert.ok(resisting.conditions.includes("elemental affinity (fire)"));
+  assert.ok(!resisting.conditions.includes("affinity cast (fire)"), "one spell buys one resistance");
+  assert.match(pcResistances(resisting), /fire/);
+  assert.ok(heldAtWill(resisting).some(([id]) => id === "elemental_affinity"), "dealt as a Hand card");
+  const again = await world.invoke("use_resource", { characterId: red.id, resource: "Elemental Affinity" });
+  assert.equal(again.ok, false, "a second point needs a second spell");
+  world.dice(1, 1, 1, 1);
+  await world.invoke("aoe_damage", { casterCharacterId: red.id, spell: "Burning Hands", level: 1, damage: "3d6", saveAbility: "dex", dc: 15, enemyIds: [goblin.id] });
+  world.clearDice();
+  const cast = world.sheet(red.id);
+  world.patch(red.id, { resources: { ...cast.resources, sorcery_points: { max: cast.resources.sorcery_points.max, used: cast.resources.sorcery_points.max } } });
+  const empty = await world.invoke("use_resource", { characterId: red.id, resource: "Elemental Affinity" });
+  assert.equal(empty.ok, false);
+  assert.match(empty.error, /no sorcery point left/);
+});
+
+// Each cast tool that deals a spell's damage notes a spell of the dragon's
+// type for Elemental Affinity, and only that type: aoe_damage above, the
+// single-target cast and the spell attack here.
+const affinitySorcerer = (dragon) => caster("sorcerer", "cha", [], ["Fire Bolt", "Poison Spray"], 6, {
+  subclass: "Draconic Bloodline",
+  features: [{ name: `Dragon Ancestor: ${dragon}`, source: "choice", level: 1 }, { name: "Elemental Affinity", source: "class", level: 6 }],
+});
+const affinityNoted = (world, who) => world.sheet(who.id).conditions.filter((entry) => entry.startsWith("affinity cast"));
+
+await test("A single-target spell of the dragon's type (cast_at_enemy) notes the cast Elemental Affinity needs; one of another type does not", async () => {
+  const { world, sheets: [green, red], enemies: [goblin] } = await table([affinitySorcerer("Green"), affinitySorcerer("Red")]);
+  world.dice(1, 6);
+  const sprayed = await world.invoke("cast_at_enemy", { characterId: green.id, targetEnemyId: goblin.id, spell: "Poison Spray", saveAbility: "con", damage: "1d12" });
+  world.clearDice();
+  assert.equal(sprayed.ok, true, sprayed.error);
+  assert.deepEqual(affinityNoted(world, green), ["affinity cast (poison)"]);
+  const resisted = await world.invoke("use_resource", { characterId: green.id, resource: "Elemental Affinity" });
+  assert.equal(resisted.ok, true, resisted.error);
+  world.dice(1, 6);
+  const other = await world.invoke("cast_at_enemy", { characterId: red.id, targetEnemyId: goblin.id, spell: "Poison Spray", saveAbility: "con", damage: "1d12" });
+  world.clearDice();
+  assert.equal(other.ok, true, other.error);
+  assert.deepEqual(affinityNoted(world, red), [], "poison is not a red dragon's fire");
+});
+
+await test("A spell attack of the dragon's type (pc_attack) notes the cast Elemental Affinity needs; one of another type, or one refused, does not", async () => {
+  const { world, sheets: [red, blue], enemies: [goblin] } = await table([affinitySorcerer("Red"), affinitySorcerer("Blue")]);
+  world.dice(15, 5);
+  const bolt = await world.invoke("pc_attack", { characterId: red.id, targetEnemyId: goblin.id, spell: "Fire Bolt", damage: "1d10" });
+  world.clearDice();
+  assert.equal(bolt.ok, true, bolt.error);
+  assert.deepEqual(affinityNoted(world, red), ["affinity cast (fire)"]);
+  const resisted = await world.invoke("use_resource", { characterId: red.id, resource: "Elemental Affinity" });
+  assert.equal(resisted.ok, true, resisted.error);
+  world.dice(15, 5);
+  const other = await world.invoke("pc_attack", { characterId: blue.id, targetEnemyId: goblin.id, spell: "Fire Bolt", damage: "1d10" });
+  world.clearDice();
+  assert.equal(other.ok, true, other.error);
+  assert.deepEqual(affinityNoted(world, blue), [], "fire is not a blue dragon's lightning");
+  // A Fire Bolt refused (the goblin 170 feet off, past its 120) was never
+  // cast, so it opens nothing.
+  await layMap(world, field(), { [red.id]: { x: 1, y: 1 }, [blue.id]: { x: 1, y: 2 }, [goblin.id]: { x: 35, y: 1 } });
+  const far = await world.invoke("pc_attack", { characterId: red.id, targetEnemyId: goblin.id, spell: "Fire Bolt", damage: "1d10" });
+  assert.equal(far.ok, false, "the goblin is out of range");
+  assert.deepEqual(affinityNoted(world, red), [], "a refused spell attack noted a cast");
+});
+
+await test("The Hand holds Elemental Affinity's card back until a spell of the dragon's type is cast", async () => {
+  const { featureCards } = await import("../src/lib/battlemap/hand-spells.ts");
+  const draconic = caster("sorcerer", "cha", ["Burning Hands"], [], 6, {
+    subclass: "Draconic Bloodline",
+    features: [{ name: "Dragon Ancestor: Red", source: "choice", level: 1 }, { name: "Elemental Affinity", source: "class", level: 6 }],
+    spellcasting: { known: ["Burning Hands"], prepared: [] },
+  });
+  const { world, sheets: [red] } = await table([draconic]);
+  const turn = { myTurn: true, actionUsed: false, bonusUsed: false, reactionUsed: false, attacksMade: 0 };
+  const card = (sheet) => featureCards(sheet, turn).find((entry) => entry.intent?.resourceId === "elemental_affinity");
+  assert.ok(card(world.sheet(red.id)), "the card is dealt");
+  assert.match(card(world.sheet(red.id)).disabled ?? "", /cast one first/, "the card waits for the spell");
+  world.patch(red.id, { conditions: ["affinity cast (fire)"] });
+  assert.equal(card(world.sheet(red.id)).disabled, null, "and plays once it is cast");
+});
+
+await test("The GM's prompt says the dragon's damage type beside the pick", async () => {
+  const { buildDmMessages } = await import("../src/lib/dm/prompt.ts");
+  const { listMembers } = await import("../src/lib/db/campaigns.ts");
+  const draconic = caster("sorcerer", "cha", ["Burning Hands"], [], 1, { subclass: "Draconic Bloodline", features: [{ name: "Dragon Ancestor: Green", source: "choice", level: 1 }] });
+  const { world } = await table([draconic]);
+  const text = buildDmMessages({ campaign: world.campaign(), members: listMembers(world.campaignId), sheets: world.sheets(), encounter: null, recentRolls: [], storySummary: "" }, [])[0].content;
+  assert.match(text, /Dragon Ancestor: Green \(poison damage\)/);
 });
 
 await test("Potent Cantrip: a save against the evoker's cantrip still takes half", async () => {

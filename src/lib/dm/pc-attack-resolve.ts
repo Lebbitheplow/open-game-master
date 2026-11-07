@@ -1,78 +1,29 @@
-// The digital dice path of pc_attack: the to-hit expression is built, the
-// server rolls it against the target's Armor Class, a hit pays for what it
-// carries, the damage lands per type, and a maneuver's rider save resolves.
-// Split from pc-attack.ts, which has already refused or paid for everything
-// this rolls; nothing here refuses the attack.
+// The server's dice for pc_attack: the to-hit expression is built, and the
+// server throws the d20 and the damage. What the dice decide is resolved by
+// the stages every attack runs, whoever throws its dice (attack-swing.ts for
+// the hit, attack-blow.ts for the blow); pc-attack-parked.ts runs the same
+// stages on a player's real dice. Split from pc-attack.ts, which has already
+// refused or paid for everything this rolls; nothing here refuses the attack.
 
-import { getActiveEncounter } from "@/lib/db/encounters";
 import { settleAttackDie } from "@/lib/dm/forced-save";
-import { breakConcentration } from "@/lib/dm/concentration";
-import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
-import { openLastHit } from "@/lib/dm/last-hit";
-import { getFoe } from "@/lib/dm/sheet-foe";
-import type { Campaign } from "@/lib/db/campaigns";
-import type { TurnBudget } from "@/lib/dm/action-budget";
-import { publishEncounter } from "@/lib/dm/enemy-damage";
-import { pushTokenAway } from "@/lib/dm/map-tools";
-import { holdsFeature } from "@/lib/srd/feature-names";
-import { textKey } from "@/lib/language/text-logic";
-import { BRUTAL_ATTACK_USED, brawlerUnarmed, brutalAttackApplies, CRUSHER_USED, damageTypeFeat, GREAT_WEAPON_MASTER_READY, PIERCER_USED, SAVAGE_ATTACKER_USED, savageAttackerApplies, SLASHER_USED, TAVERN_GRAPPLE_READY, type DamageTypeFeat } from "@/lib/srd/feat-combat";
-import { holdsFeat } from "@/lib/srd/feat-effects";
-import { tryParry } from "@/lib/dm/enemy-reactions";
-import { allocateSeq } from "@/lib/db/campaigns";
-import { patchEnemyConditions, recordEncounterTarget, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
-import { insertRoll, landRoll, type StoredRoll } from "@/lib/db/rolls";
-import { d20Expression, rollExpression, type DiceTerm } from "@/lib/dice";
-import { publishWithSeq } from "@/lib/events";
-import { planAttackFx, type RollVisibility } from "@/lib/battlemap/fx-plan";
-import { attacksLeft, WEAPON_HIT } from "@/lib/dm/action-budget";
-import { adjudicateHit } from "@/lib/dm/attack-logic";
-import { rollEnemySave } from "@/lib/dm/forced-save";
-import { darkOnesBlessing } from "@/lib/dm/feature-hooks";
-import { authoredOnHit } from "@/lib/dm/authored-hooks";
-import { critDamageExpression, ordinaryOfCritical } from "@/lib/dm/encounter-logic";
-import { critOnlyWhileUnconscious } from "@/lib/dm/condition-logic";
-import { gearCritRiders } from "@/lib/dm/gear-attack";
-import { publishFx, tokenPosition } from "@/lib/dm/fx";
-import { applyHitDamage, blowSource, claimHitRiders, strikesAsMagic, type strikeDamage } from "@/lib/dm/pc-attack-damage";
-import type { AttackPlan, ManeuverPick } from "@/lib/dm/pc-attack-plan";
-import {
-  applyRiderCondition,
-  clearHitSpent,
-  gainTempHp,
-  openCurvingShot,
-  riderBarred,
-  spendOnHit,
-  stunningStrikeSave,
-} from "@/lib/dm/pc-attack-riders";
-import { applySpellHitCondition, healCasterHalf, spellAttackRider } from "@/lib/dm/spell-attack-riders";
+import { insertRoll } from "@/lib/db/rolls";
+import { d20Expression, rollExpression, type RollResult } from "@/lib/dice";
+import type { RollVisibility } from "@/lib/battlemap/fx-plan";
+import { attacksLeft } from "@/lib/dm/action-budget";
+import { attackRecord, recordTargetAc, type AttackRecord, type DamageAsk } from "@/lib/dm/attack-record";
+import { hitSwing, judgeSwing, missSwing, type SwingScene } from "@/lib/dm/attack-swing";
+import { landSwingBlow, publishRoll, throwDamage } from "@/lib/dm/attack-blow";
+import type { HeldMote } from "@/lib/dm/authored-mote";
+import type { strikeDamage } from "@/lib/dm/pc-attack-damage";
+import type { AttackPlan } from "@/lib/dm/pc-attack-plan";
 import { hasElvenAccuracy, hasHalflingLuck } from "@/lib/srd/feature-effects";
-import { FOE_SLAYER, rescueMiss, STROKE_OF_LUCK, totalAReactionMeets } from "@/lib/dm/attack-features";
-import {
-  HURL_THROUGH_HELL,
-  hurlThroughHell,
-  openHandOnHit,
-  poisonOnHit,
-  spendFeatureUse,
-} from "@/lib/dm/attack-onhit";
-import { storeBudget } from "@/lib/dm/turn-budget";
-import { landNaturalOnHit } from "@/lib/dm/natural-onhit";
-import { untilTurnEnd } from "@/lib/dm/turn-end";
 import { rollAgainst } from "@/lib/roll-labels";
-import type { CharacterSheet } from "@/lib/schemas/sheet";
-import { markCritRange } from "@/lib/dm/attack-marks";
-import { gearHitWithoutDamage } from "@/lib/dm/gear-weapon-hit";
+
+export { publishRoll };
 
 // The roll the attack makes and the damage it carries, built once the
 // attack is paid for and shared by both dice paths.
 export type Strike = ReturnType<typeof strikeToHit> & ReturnType<typeof strikeDamage>;
-
-export function publishRoll(campaignId: string, roll: StoredRoll) {
-  publishWithSeq(campaignId, allocateSeq(campaignId), "roll_result", {
-    roll,
-    source: "digital",
-  });
-}
 
 export function strikeToHit(plan: AttackPlan) {
   const { sheet, enemy, profile, advantage, maneuver, context } = plan;
@@ -108,31 +59,18 @@ export function strikeToHit(plan: AttackPlan) {
   return { toHitExpression, detail };
 }
 
-// Digital path: roll, adjudicate, and apply in one pass.
-export function rollPcAttack(plan: AttackPlan, strike: Strike): Record<string, unknown> {
-  const { campaign, turn, encounter, sheet, enemy, budget, riders, special, context } = plan;
-  const { critExtraDice: baseCritDice, onHitSpends } = strike;
-  // Piercer: a piercing critical hit rolls one more of the weapon's dice.
-  const typeFeat = plan.weaponAttack ? damageTypeFeat(sheet, plan.profile.damageType) : null;
-  const critExtraDice = baseCritDice + (typeFeat === "Piercer" ? 1 : 0);
-  let profile = plan.profile;
-  let maneuver = plan.maneuver;
-  const typedRiders = [...plan.typedRiders];
-
-  const spellRider = plan.kind === "spell" ? spellAttackRider(plan.args.spell) : null;
-  // A character struck by another (a turncoat's blow, issue 503) keeps the
-  // record a reaction answers, as an enemy's attack leaves it (last-hit.ts):
-  // Shield, Uncanny Dodge and their kin re-resolve it.
-  const hitLog = isSheetFoe(enemy) ? openLastHit(campaign.id, enemy.id) : null;
-  const closeLog = () =>
-    hitLog?.close({ attacker: { kind: "sheet", id: sheet.id, name: sheet.name }, attack: plan.profile.weapon, type: plan.profile.damageType, ranged: plan.profile.ranged });
+// Digital path: the server throws the d20 and the damage, and the attack runs
+// the same stages a player's real dice do (attack-swing.ts, attack-blow.ts).
+export function rollPcAttack(plan: AttackPlan, strike: Strike, mote: HeldMote | null = null): Record<string, unknown> {
+  const { campaign, turn, sheet, enemy, budget, context } = plan;
+  const record = attackRecord(plan, strike, mote);
+  const scene: SwingScene = { campaign, turn, sheet, enemy, sheets: plan.sheets, sheetsById: plan.sheetsById };
+  // Notes written from here on; the plan's own ride the answer before them.
+  const notes = context.notes;
   const thrown = rollExpression(strike.toHitExpression, undefined, { purpose: { roller: "hero", kind: "attack", who: sheet.name } });
-  // Improved and Superior Critical are written for weapon attacks; a mark
-  // (Hexblade's Curse) for every attack on its creature.
-  const critRange = Math.min(plan.weaponAttack ? riders.critRange : 20, markCritRange(plan.marks.applies));
-  const hitOutcome = settleAttackDie(campaign.id, sheet, thrown, plan.effectiveAc, critRange);
+  const hitOutcome = settleAttackDie(campaign.id, sheet, thrown, recordTargetAc(campaign.id, record), record.critRange ?? 20);
   if (hitOutcome !== thrown) {
-    context.notes.push(`spends their Bardic Inspiration die on the miss: ${thrown.total} becomes ${hitOutcome.total}`);
+    notes.push(`spends their Bardic Inspiration die on the miss: ${thrown.total} becomes ${hitOutcome.total}`);
   }
   const hitRoll = insertRoll({
     campaignId: campaign.id,
@@ -146,660 +84,81 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike): Record<string, u
   });
   publishRoll(campaign.id, hitRoll);
   turn.rollIds.push(hitRoll.id);
-
-  const judged = adjudicateHit(hitOutcome.total, hitOutcome.crit, plan.effectiveAc, {
-    natural: hitOutcome.natural,
-    critRange,
-  });
-  // Parry: the creature's reaction lifts its AC against a melee hit it sees (enemy-reactions.ts).
-  const metTotal = totalAReactionMeets({ total: hitOutcome.total, ac: plan.effectiveAc, hit: judged.hit, crit: judged.crit, natural1: hitOutcome.crit === "nat1", foeSlayer: plan.extras.foeSlayer });
-  const parry = metTotal !== null
-    ? tryParry({ encounter, enemy, total: metTotal, natural20: false, ac: plan.effectiveAc, melee: !plan.atRange, attackerUnseen: sheet.conditions.some((entry) => /^(invisible|hidden)$/i.test(entry.trim())) })
-    : null;
-  if (parry) {
-    context.notes.push(parry.note);
-    // Foe Slayer's bonus lifted the near miss the reaction answered: it went on
-    // this roll, so it is spent, and cannot draw a second reaction or lift again.
-    if (metTotal !== hitOutcome.total) {
-      claimFoeSlayer(plan);
-      context.notes.push(`Foe Slayer: +${plan.extras.foeSlayer} lifted ${hitOutcome.total} to ${metTotal} before the reaction, and is spent`);
-    }
-  }
-  const adjudicated = parry ? { ...judged, hit: false, crit: false } : judged;
-  // Foe Slayer turns a near miss into a hit, and a declared Stroke of Luck
-  // any miss (src/lib/dm/attack-features.ts). A reaction's raised AC is the
-  // figure a roll has to reach: one it turned has already met the plain AC.
-  const rescued = adjudicated.hit
-    ? null
-    : rescueMiss({
-        total: hitOutcome.total,
-        ac: plan.effectiveAc + (parry?.bonus ?? 0),
-        natural1: hitOutcome.crit === "nat1",
-        foeSlayer: plan.extras.foeSlayer,
-        strokeOfLuck: plan.extras.strokeOfLuck,
-      });
-  const hit = adjudicated.hit || (rescued !== null && payRescue(plan, rescued));
-  const crit = adjudicated.crit || (hit && context.autoCrit);
-  // Sneak Attack and the other once-a-turn riders are spent by the hit.
-  if (hit) {
-    claimHitRiders(encounter, budget, plan.hitClaims);
-  }
-  // Foe Slayer not needed on the roll rides the hit's damage.
-  if (adjudicated.hit && plan.extras.foeSlayer > 0) {
-    claimFoeSlayer(plan);
-    profile = { ...profile, damageExpression: `${profile.damageExpression}+${plan.extras.foeSlayer}` };
-    context.notes.push(`Foe Slayer: +${plan.extras.foeSlayer} damage against a favored enemy`);
-  }
-  const stage = attackStage(campaign.id, encounter, sheet, enemy);
-  // The hit is known: now the smite slot and the maneuver's die are spent.
-  let stunDc: number | null = null;
-  if (hit && strike.hasOnHit) {
-    const paid = spendOnHit(campaign, turn.id, onHitSpends, plan.sheets, plan.sheetsById);
-    stunDc = paid.stunPaid && onHitSpends.stun ? onHitSpends.stun.dc : null;
-    if (onHitSpends.smite && paid.suffix.includes(`+${onHitSpends.smite.dice}d8`)) {
-      typedRiders.push({ dice: `${onHitSpends.smite.dice}d8`, type: "radiant" });
-    }
-    profile = { ...profile, damageExpression: `${profile.damageExpression}${paid.suffix}` };
-    context.notes.push(...paid.notes);
-    if (onHitSpends.maneuver && !paid.suffix.includes(onHitSpends.maneuver.die)) {
-      maneuver = null;
-    }
-  }
-  const base = {
+  const judged = judgeSwing(scene, record, hitOutcome, notes);
+  const base = () => ({
     attacker: sheet.name,
-    weapon: profile.weapon,
+    weapon: plan.profile.weapon,
     rolled: hitOutcome.total,
-    vsAc: plan.effectiveAc,
+    vsAc: judged.targetAc,
     target: enemy.displayName,
-    ...(profile.improvised ? { improvised: true } : {}),
+    ...(plan.profile.improvised ? { improvised: true } : {}),
     ...(budget ? {} : { reaction: true }),
-    ...(context.notes.length ? { conditionEffects: context.notes } : {}),
+    ...(notes.length ? { conditionEffects: notes } : {}),
     // Extra Attack: the model has no way to know a level-5 fighter swings
     // twice unless the engine says so on every swing.
     ...(budget && attacksLeft(budget) > 0 && budget.attacksMade > 0
       ? {
           attacksRemaining: attacksLeft(budget),
-          extraAttack: `${sheet.name} has ${attacksLeft(budget)} more attack${
-            attacksLeft(budget) === 1 ? "" : "s"
-          } this turn: one more entry each in pc_attack's attacks, before ending their turn.`,
+          extraAttack: `${sheet.name} has ${attacksLeft(budget)} more attack${attacksLeft(budget) === 1 ? "" : "s"} this turn: one more entry each in pc_attack's attacks, before ending their turn.`,
         }
       : {}),
-  };
-  if (!hit) {
-    hitLog?.swing(hitOutcome, plan.effectiveAc, { hit: false, crit: false, raw: 0, advantage: plan.advantage, ranged: profile.ranged });
-    closeLog();
+  });
+  if (!judged.hit) {
+    const { graze } = missSwing(scene, record, judged, hitOutcome, hitRoll.visibility, notes);
     // Acid Arrow: a miss still deals half the damage.
-    const grazed = spellRider?.halfOnMiss && hitOutcome.crit !== "nat1" ? missDamage(plan) : null;
-    // Witch Bolt's beam connects on a hit: a miss leaves nothing to hold.
-    if (spellRider?.beam) {
-      breakConcentration(campaign, turn.id, sheet.id, `${spellRider.beam} missed`);
-    }
-    const curving = plan.weaponAttack && profile.ranged ? openCurvingShot(campaign.id, sheet, enemy.id, profile.base) : null;
-    if (curving) {
-      context.notes.push(curving);
-    }
-    emitAttackFx(campaign.id, stage, {
-      hit: false,
-      crit: false,
-      fumble: hitOutcome.crit === "nat1",
-      ranged: profile.ranged,
-      damageType: profile.damageType,
-      visibility: hitRoll.visibility,
-    });
+    const grazed = graze ? serverBlow(scene, record, graze, hitOutcome, hitRoll.visibility, rollAgainst(`${plan.profile.weapon} (half on a miss)`, enemy.displayName), notes) : null;
     return {
-      ...base,
+      ...base(),
       hit: false,
-      ...(hitOutcome.crit === "nat1" ? { fumble: true } : {}),
+      ...(judged.natural1 ? { fumble: true } : {}),
       ...(grazed ?? {}),
       note: grazed
-        ? `The attack misses, and the spell still deals half its damage; the server already applied it.`
+        ? "The attack misses, and the spell still deals half its damage; the server already applied it."
         : "The attack misses; narrate the miss.",
     };
   }
-  // The hit uses up the charges waiting for it (the smites).
-  clearHitSpent(campaign, sheet.id, plan.hitSpent);
+  const prepared = hitSwing(scene, record, judged, hitOutcome, hitRoll.visibility, notes);
+  if ("done" in prepared) {
+    return { ...base(), hit: true, ...prepared.done };
+  }
+  const landed = serverBlow(scene, record, prepared.ask, hitOutcome, hitRoll.visibility, strike.detail, notes);
+  const crit = prepared.ask.crit;
+  const dealt = Number(landed.damage ?? 0);
+  return {
+    ...landed,
+    ...base(),
+    hit: true,
+    ...(crit ? { crit: true } : {}),
+    damage: dealt,
+    ...(plan.profile.damageType ? { damageType: plan.profile.damageType } : {}),
+    note: typeof landed.warning === "string"
+      ? landed.warning
+      : landed.dead
+        ? `${enemy.displayName} is slain; the server already applied this damage. Narrate the killing blow.`
+        : landed.down
+          ? `${String(landed.note ?? `${enemy.displayName} falls.`)} The server already applied this damage.`
+          : landed.knockedOut
+            ? `${enemy.displayName} is knocked out, unconscious at 0 hit points and out of the fight; the server already applied this. Narrate it falling senseless, not dying.`
+            : dealt === 0
+              ? `The blow lands and does no harm: its damage came to 0. Narrate a hit that fails to hurt ${enemy.displayName}.`
+              : `The server already applied this damage to ${enemy.displayName}. Do NOT call apply_damage for this hit; narrate from this state.`,
+  };
+}
 
-  // The net deals no damage: a hit restrains a creature that is Large or
-  // smaller and can be restrained at all.
-  if (special === "net") {
-    emitAttackFx(campaign.id, stage, {
-      hit: true,
-      crit: false,
-      ranged: true,
-      damageType: "",
-      visibility: hitRoll.visibility,
-    });
-    const held = applyRiderCondition(campaign, enemy, "restrained", { maxSize: "Large" });
-    return {
-      ...base,
-      hit: true,
-      damage: 0,
-      note: held.applied
-        ? `The net lands: ${enemy.displayName} is restrained until it is freed (a DC 10 Strength check, or 5 slashing damage to the net). The server applied the condition; a net deals no damage.`
-        : `The net lands and slides off: ${held.reason} A net deals no damage.`,
-    };
-  }
-
-  // A flask whose hit deals nothing at once (alchemist's fire, oil), or holy
-  // water on a creature neither fiend nor undead (gear-weapon-hit.ts).
-  const markOnly = profile.gearWeapon ? gearHitWithoutDamage(campaign, enemy, profile.gearWeapon) : null;
-  if (markOnly) {
-    emitAttackFx(campaign.id, stage, { hit: true, crit: false, ranged: profile.ranged, damageType: profile.damageType, visibility: hitRoll.visibility });
-    return { ...base, hit: true, damage: 0, ...(profile.damageType ? { damageType: profile.damageType } : {}), note: markOnly };
-  }
-
-  // A magic weapon's dice on a natural 20 (src/lib/dm/gear-attack.ts).
-  const critGear = hitOutcome.crit === "nat20" ? gearCritRiders(profile, enemy.stats.type) : null;
-  if (critGear?.suffix) {
-    profile = { ...profile, damageExpression: `${profile.damageExpression}${critGear.suffix}` };
-    typedRiders.push(...critGear.typed);
-    context.notes.push(...critGear.notes);
-  }
-  // Stunning Sniper: the critical hit stuns instead of doubling.
-  const stunShot = crit && plan.extras.stunShot === true;
-  const damageExpression = crit && !stunShot
-    ? critDamageExpression(profile.damageExpression, critExtraDice, strike.critOptions)
-    : profile.damageExpression;
-  let damageOutcome = rollExpression(damageExpression, undefined, {
-    rerollBelow: strike.rerollBelow,
-    purpose: { roller: "hero", kind: "damage", who: sheet.name },
-  });
-  if (stunShot) {
-    context.notes.push("Stunning Sniper: the critical hit's damage is not doubled; the target is stunned instead");
-  }
-  // Brutal Attack (Level Up): once a turn, the melee weapon's damage is
-  // rolled again and the better kept.
-  if (brutalAttackApplies(sheet, { weaponAttack: plan.weaponAttack, melee: !profile.ranged && !plan.atRange }, budget?.oncePerTurn ?? null) && budget) {
-    const again = rollExpression(damageExpression, undefined, { rerollBelow: strike.rerollBelow });
-    const kept = again.total > damageOutcome.total ? again : damageOutcome;
-    context.notes.push(`Brutal Attack: the damage rolled twice (${damageOutcome.total} and ${again.total}), the better kept`);
-    damageOutcome = kept;
-    budget.oncePerTurn.push(BRUTAL_ATTACK_USED);
-    storeBudget(encounter, budget);
-  }
-  // Savage Attacker: once a turn, the weapon's own dice are rolled again and
-  // the better total kept; the riders' dice stand as rolled.
-  if (budget && savageAttackerApplies(sheet, { weaponAttack: plan.weaponAttack, melee: !profile.ranged && !plan.atRange }, budget.oncePerTurn)) {
-    const weapon = damageOutcome.terms.find((term): term is DiceTerm => term.kind === "dice");
-    const kept = weapon ? weapon.dice.filter((die) => die.kept) : [];
-    if (weapon && kept.length) {
-      const first = kept.reduce((sum, die) => sum + die.value, 0);
-      const again = rollExpression(`${kept.length}d${kept[0].sides}`, undefined, { rerollBelow: strike.rerollBelow });
-      const fresh = again.terms.find((term): term is DiceTerm => term.kind === "dice");
-      context.notes.push(`Savage Attacker: the weapon's dice rolled twice (${first} and ${again.total}), the better kept`);
-      if (fresh && again.total > first) {
-        kept.forEach((die, index) => {
-          die.value = fresh.dice[index]?.value ?? die.value;
-        });
-        weapon.subtotal += again.total - first;
-        damageOutcome = { ...damageOutcome, total: damageOutcome.total - first + again.total };
-      }
-      budget.oncePerTurn.push(SAVAGE_ATTACKER_USED);
-      storeBudget(encounter, budget);
-    }
-  }
-  // Piercer: once a turn, one of the piercing damage dice is rerolled.
-  if (typeFeat === "Piercer" && budget && !budget.oncePerTurn.includes(PIERCER_USED)) {
-    const dice = damageOutcome.terms.find((term) => term.kind === "dice");
-    const lowest = dice && dice.kind === "dice" ? dice.dice.filter((die) => die.kept).sort((a, b) => a.value - b.value)[0] : undefined;
-    if (dice && lowest) {
-      const fresh = rollExpression(`1d${lowest.sides}`).total;
-      context.notes.push(`Piercer: a ${lowest.value} on a d${lowest.sides} is rerolled to ${fresh}`);
-      damageOutcome = { ...damageOutcome, total: damageOutcome.total - lowest.value + fresh };
-      lowest.value = fresh;
-      budget.oncePerTurn.push(PIERCER_USED);
-      storeBudget(encounter, budget);
-    }
-  }
+// The server's damage dice for a hit or a graze: thrown, shown, and landed.
+function serverBlow(scene: SwingScene, record: AttackRecord, ask: DamageAsk, hitOutcome: RollResult, visibility: RollVisibility, detail: string, notes: string[]): Record<string, unknown> {
+  const { campaign, turn, sheet } = scene;
+  const outcome = throwDamage(ask, sheet.name, notes);
   const damageRoll = insertRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
     requestedBy: "dm",
     kind: "damage",
-    detail: strike.detail,
-    result: damageOutcome,
+    detail,
+    result: outcome,
     attacker: { kind: "sheet", id: sheet.id, name: sheet.name },
   });
   publishRoll(campaign.id, damageRoll);
   turn.rollIds.push(damageRoll.id);
-  // A penalty can bring a hit's damage to 0, never below it.
-  const dealt = Math.max(0, damageOutcome.total);
-  emitAttackFx(campaign.id, stage, {
-    hit: true,
-    crit,
-    ranged: profile.ranged,
-    damage: dealt,
-    damageType: profile.damageType,
-    visibility: hitRoll.visibility,
-  });
-
-  const applied = landRoll(damageRoll.id, enemy.id, () =>
-    applyHitDamage({
-      plan,
-      typedRiders,
-      damageOutcome,
-      dealt,
-      crit,
-      critExtraDice,
-    }),
-  );
-  // A critical that came only from the character it struck lying unconscious
-  // at 0 within 5 ft (SRD 5.1) keeps its ordinary damage from the same dice,
-  // for a reaction that later leaves them standing when it landed
-  // (reaction-refund.ts). A natural 20 is critical whatever the target.
-  const ordinaryRoll =
-    hitLog && crit && !stunShot && hitOutcome.crit !== "nat20" && enemy.currentHp <= 0 && critOnlyWhileUnconscious(enemy.conditions)
-      ? ordinaryOfCritical(damageOutcome, profile.damageExpression, { multiplyNumeric: strike.critOptions?.multiplyNumeric, extraDice: critExtraDice })
-      : null;
-  // A critical's normal figure, for Sentinel at Death's Door (last-hit.ts); a
-  // natural 20's gear dice belong to the critical, so none is read past them.
-  const normalRoll =
-    hitLog && crit && !stunShot && !critGear?.suffix
-      ? ordinaryOfCritical(damageOutcome, profile.damageExpression, { multiplyNumeric: strike.critOptions?.multiplyNumeric, extraDice: critExtraDice })
-      : null;
-  hitLog?.swing(hitOutcome, plan.effectiveAc, {
-    hit: true,
-    crit,
-    raw: dealt,
-    advantage: plan.advantage,
-    type: profile.damageType,
-    ranged: profile.ranged,
-    ...(ordinaryRoll ? { ordinary: { raw: Math.max(0, ordinaryRoll.total) } } : {}),
-    ...(normalRoll ? { normal: { raw: Math.max(0, normalRoll.total), from: dealt } } : {}),
-    // What the blow is made of, as the damage path met it (pc-attack-damage.ts
-    // landBlow): a reaction's replay meets the same clauses (a magic weapon
-    // past Stoneskin, a silvered blade past a form's resistance).
-    flags: { ...(strikesAsMagic(plan) ? { magical: true } : {}), ...(profile.material ?? {}), ...blowSource(plan) },
-  });
-  closeLog();
-
-  // A weapon's hit opens Arcane Jolt this turn, at the creature it hit. Stored on
-  // the encounter as it now stands: `encounter` predates the blow, and saving it
-  // would undo what the blow wrote (a legendary creature's failed save, the end of
-  // the fight).
-  if (plan.weaponAttack && budget && !applied.encounterOver && holdsFeature(sheet, "arcane jolt") && !budget.oncePerTurn.includes(`${WEAPON_HIT}${enemy.id}`)) {
-    budget.oncePerTurn.push(`${WEAPON_HIT}${enemy.id}`);
-    const live = getActiveEncounter(campaign.id);
-    if (live?.turnBudget) {
-      storeBudget(live, { ...live.turnBudget, oncePerTurn: [...live.turnBudget.oncePerTurn, `${WEAPON_HIT}${enemy.id}`] });
-    }
-  }
-  // Great Weapon Master: a melee weapon crit or kill opens a bonus-action
-  // melee attack this turn (pc-attack-options.ts reads the key).
-  if (
-    plan.weaponAttack && !profile.ranged && !plan.atRange && (crit || applied.dead) && budget && !applied.encounterOver &&
-    holdsFeat(sheet, "Great Weapon Master") && !budget.oncePerTurn.includes(GREAT_WEAPON_MASTER_READY)
-  ) {
-    markLiveTurn(campaign.id, budget, GREAT_WEAPON_MASTER_READY);
-    context.notes.push(`Great Weapon Master: ${crit ? "the critical hit" : "the kill"} opens a bonus-action melee attack this turn (an entry with feature "Great Weapon Master")`);
-  }
-  // Tavern Brawler: a hit with an unarmed strike or an improvised weapon
-  // opens a bonus-action grapple (take_action grapple, action-tools.ts).
-  if ((profile.unarmed || profile.improvised) && !profile.ranged && budget && !applied.encounterOver && brawlerUnarmed(sheet) && !budget.oncePerTurn.includes(TAVERN_GRAPPLE_READY)) {
-    markLiveTurn(campaign.id, budget, TAVERN_GRAPPLE_READY);
-    context.notes.push("Tavern Brawler: the hit opens a bonus-action grapple this turn (take_action grapple)");
-  }
-  // What the hit leaves on the target: Stunning Sniper's stun, Slasher's
-  // hamstring and Crusher's shove once a turn, and their critical hits'
-  // marks, each until the start of the attacker's next turn.
-  if (!applied.dead && !applied.encounterOver) {
-    const left = featHitMarks({ campaign, encounter, sheet, enemy, typeFeat, crit, stunShot, budget });
-    context.notes.push(...left);
-    const repelled = repellingBlast(campaign, encounter, sheet, enemy, plan);
-    if (repelled) {
-      context.notes.push(repelled);
-    }
-  }
-  const maneuverOutcome: Record<string, unknown> =
-    maneuver?.rider && !applied.dead && !applied.encounterOver
-      ? maneuverRiderSave(plan, maneuver)
-      : {};
-  if (stunDc !== null && !applied.encounterOver) {
-    maneuverOutcome.stunningStrike = stunningStrikeSave(campaign, encounter.id, enemy.id, sheet.id, stunDc);
-  }
-  Object.assign(maneuverOutcome, hitExtras(plan, Boolean(applied.dead), Boolean(applied.encounterOver)));
-  // Dark One's Blessing: a kill gives a Fiend warlock temporary hit points.
-  const blessing = applied.dead ? darkOnesBlessing(campaign, sheet.id) : null;
-  if (blessing) {
-    maneuverOutcome.darkOnesBlessing = blessing;
-  }
-  // Authored subclass features on a hit (a guardian's mark, Order's Wrath, Touch of Death): authored-hooks.ts.
-  const authoredLines = authoredOnHit(campaign, { encounter, sheet, enemy, melee: !profile.ranged, weapon: plan.weaponAttack, weaponName: profile.weapon, dead: Boolean(applied.dead) });
-  if (authoredLines.length) {
-    maneuverOutcome.subclassFeatures = authoredLines;
-  }
-  // What an attack spell leaves beyond its damage (spell-attack-riders.ts).
-  if (spellRider && !applied.encounterOver) {
-    const lines = [
-      applySpellHitCondition(campaign, spellRider, enemy.id, sheet.id),
-      spellRider.healHalf
-        ? healCasterHalf(campaign, sheet.id, Number(applied.damageApplied ?? dealt) || 0, profile.weapon)
-        : null,
-    ].filter((line): line is string => Boolean(line));
-    if (lines.length) {
-      maneuverOutcome.spellEffect = lines.join("; ");
-    }
-  }
-  return {
-    ...maneuverOutcome,
-    ...base,
-    ...(context.notes.length ? { conditionEffects: context.notes } : {}),
-    hit: true,
-    ...(crit ? { crit: true } : {}),
-    damage: dealt,
-    ...(profile.damageType ? { damageType: profile.damageType } : {}),
-    ...applied,
-    note: applied.dead
-      ? `${enemy.displayName} is slain; the server already applied this damage. Narrate the killing blow.`
-      : applied.down
-        ? `${String(applied.note ?? `${enemy.displayName} falls.`)} The server already applied this damage.`
-      : applied.knockedOut
-        ? `${enemy.displayName} is knocked out, unconscious at 0 hit points and out of the fight; the server already applied this. Narrate it falling senseless, not dying.`
-      : dealt === 0
-        ? `The blow lands and does no harm: its damage came to 0. Narrate a hit that fails to hurt ${enemy.displayName}.`
-        : `The server already applied this damage to ${enemy.displayName}. Do NOT call apply_damage for this hit; narrate from this state.`,
-  };
-}
-
-// A mark a landed blow earns goes on the encounter as it now stands. The plan's
-// copy predates the blow, and storing it undid what the blow wrote: the end of
-// the fight (which then stood open for end_encounter to pay its XP again) and a
-// legendary creature's failed save.
-function markLiveTurn(campaignId: string, budget: TurnBudget, key: string) {
-  const live = getActiveEncounter(campaignId);
-  if (live?.turnBudget?.ownerId === budget.ownerId) {
-    storeBudget(live, { ...live.turnBudget, oncePerTurn: [...live.turnBudget.oncePerTurn, key] });
-  }
-}
-
-// Pays for a rescued miss: Foe Slayer's once a turn, or Stroke of Luck's use.
-function payRescue(plan: AttackPlan, rescued: "foe slayer" | "stroke of luck"): boolean {
-  if (rescued === "foe slayer") {
-    claimFoeSlayer(plan);
-    plan.context.notes.push(`Foe Slayer: +${plan.extras.foeSlayer} to the attack roll turns the miss into a hit`);
-    return true;
-  }
-  if (!spendFeatureUse(plan.campaign, plan.sheet.id, STROKE_OF_LUCK, "Stroke of Luck")) {
-    return false;
-  }
-  plan.context.notes.push("Stroke of Luck: the miss becomes a hit (the use is spent)");
-  return true;
-}
-
-// Foe Slayer is once on each of the ranger's turns: the turn remembers it. The
-// mark goes on the turn's budget itself: written on a copy, the next store of
-// that budget (Brutal Attack, Savage Attacker, Piercer, the riders' claim after a
-// rescued miss) dropped it and the bonus rode a second attack. The encounter's
-// budget comes first: a cast has moved the turn on from the plan's
-// (pc-attack-spell.ts), and storing that one would undo the cast.
-function claimFoeSlayer(plan: AttackPlan) {
-  const { encounter } = plan;
-  const live = encounter.turnBudget ?? plan.budget;
-  if (live && !live.oncePerTurn.includes(FOE_SLAYER)) {
-    live.oncePerTurn.push(FOE_SLAYER);
-    storeBudget(encounter, live);
-  }
-}
-
-// What the hit carries past its damage: a coat of poison, Open Hand
-// Technique, Hurl Through Hell (src/lib/dm/attack-onhit.ts).
-export function hitExtras(plan: AttackPlan, dead: boolean, over: boolean): Record<string, unknown> {
-  const out: Record<string, unknown> = {};
-  const { campaign, sheet, enemy, extras } = plan;
-  if (extras.tempHp) {
-    out.tempHp = gainTempHp(campaign, sheet.id, extras.tempHp.amount, extras.tempHp.feature);
-  }
-  if (extras.poison) {
-    const line = over ? null : poisonOnHit(campaign, sheet.id, enemy.id);
-    if (line) {
-      out.poison = line;
-    }
-  }
-  if (over || dead) {
-    return out;
-  }
-  // A creature's natural attack: the save, poison, condition or grapple its
-  // stat block's hit carries (src/lib/dm/natural-onhit.ts).
-  if (plan.profile.creatureOnHit) {
-    const lines = landNaturalOnHit(campaign, {
-      turn: plan.turn,
-      attacker: { kind: "sheet", sheetId: sheet.id, name: sheet.name },
-      holderId: sheet.id,
-      attack: plan.profile.weapon,
-      enemyId: enemy.id,
-      onHit: plan.profile.creatureOnHit,
-    });
-    if (lines.length) {
-      out.onHit = lines;
-    }
-  }
-  if (extras.openHand) {
-    out.openHand = openHandOnHit(campaign, sheet.id, enemy.id, extras.openHand.choice, extras.openHand.dc);
-  }
-  if (extras.hurl && spendFeatureUse(campaign, sheet.id, HURL_THROUGH_HELL, "Hurl Through Hell")) {
-    out.hurlThroughHell = hurlThroughHell(campaign, sheet.id, enemy.id);
-  }
-  return out;
-}
-
-// Half of a missed spell's damage (Acid Arrow), rolled and applied like a
-// hit's, rounded down.
-function missDamage(plan: AttackPlan): Record<string, unknown> | null {
-  const { campaign, turn, sheet, enemy, profile } = plan;
-  const outcome = rollExpression(profile.damageExpression);
-  const roll = insertRoll({
-    campaignId: campaign.id,
-    characterId: sheet.id,
-    requestedBy: "dm",
-    kind: "damage",
-    detail: rollAgainst(`${profile.weapon} (half on a miss)`, enemy.displayName),
-    result: outcome,
-    attacker: { kind: "sheet", id: sheet.id, name: sheet.name },
-  });
-  publishRoll(campaign.id, roll);
-  turn.rollIds.push(roll.id);
-  const half = Math.floor(Math.max(0, outcome.total) / 2);
-  if (half <= 0) {
-    return { damage: 0 };
-  }
-  const applied = landRoll(roll.id, plan.enemy.id, () =>
-    applyHitDamage({ plan, typedRiders: [], damageOutcome: outcome, dealt: half, crit: false, critExtraDice: 0 }),
-  );
-  return { ...applied, damage: half };
-}
-
-// A maneuver's rider save (Trip -> prone, Menacing -> frightened) resolves
-// against the enemy's real stat block once the hit lands.
-function maneuverRiderSave(plan: AttackPlan, maneuver: ManeuverPick): Record<string, unknown> {
-  const { campaign, turn, enemy, derived } = plan;
-  const maneuverOutcome: Record<string, unknown> = {};
-  const fresh = getFoe(enemy.id);
-  const rider = maneuver.rider;
-  if (!rider || !fresh || fresh.status !== "alive") {
-    return maneuverOutcome;
-  }
-  const dc =
-    8 +
-    derived.proficiencyBonus +
-    Math.max(derived.abilityMods.str, derived.abilityMods.dex);
-  const barred = riderBarred(fresh, rider.condition, rider.condition === "prone" ? "Large" : null);
-  if (barred) {
-    maneuverOutcome.maneuver = `${maneuver.name}: ${barred} The extra damage still lands.`;
-    return maneuverOutcome;
-  }
-  // The creature's save as every other is rolled (src/lib/dm/forced-save.ts):
-  // its conditions (a paralyzed creature fails a STR or DEX save outright),
-  // Bane or Bless on it, its exhaustion, lasting effects, authored features.
-  // Cover between the attacker and the target counts on a DEX rider.
-  const save = rollEnemySave(campaign.id, fresh, rider.save, dc, { against: rider.condition, origin: { ref: plan.sheet.id } });
-  if (save.result) {
-    const saveRoll = insertRoll({
-      campaignId: campaign.id,
-      characterId: null,
-      requestedBy: "dm",
-      kind: "saving_throw",
-      detail: `${fresh.displayName}: ${rider.save.toUpperCase()} save vs ${maneuver.name}`,
-      dc,
-      result: save.result,
-    });
-    turn.rollIds.push(saveRoll.id);
-    publishRoll(campaign.id, saveRoll);
-  }
-  const shown = save.total ?? "an automatic failure";
-  if (!save.success) {
-    applyRiderCondition(campaign, fresh, rider.condition, {
-      // Prone lasts until the creature stands. Menacing Attack's fright and
-      // Goading Attack's goad last until the end of the attacker's next turn
-      // (SRD 5.1, src/lib/dm/turn-end.ts); a disarm is a moment.
-      ...(rider.condition === "prone"
-        ? {}
-        : rider.condition === "frightened" || rider.condition === "goaded"
-          ? { meta: untilTurnEnd(plan.sheet.id, { source: plan.sheet.id }) }
-          : { rounds: 1 }),
-    });
-    maneuverOutcome.maneuver = `${maneuver.name}: ${fresh.displayName} fails the ${rider.save.toUpperCase()} save (${shown} vs DC ${dc}) and is ${rider.condition}.`;
-  } else {
-    maneuverOutcome.maneuver = `${maneuver.name}: ${fresh.displayName} holds (${shown} vs DC ${dc}); no ${rider.condition}.`;
-  }
-  return maneuverOutcome;
-}
-
-// Where attacker and target stand on the live board, and the target line
-// every client draws for the round. Null when there is no board, which is
-// a theatre-of-the-mind fight with nothing to draw on.
-type AttackStage = {
-  from: { x: number; y: number };
-  to: { x: number; y: number };
-  fromTokenId: string;
-  toTokenId: string;
-} | null;
-
-function attackStage(
-  campaignId: string,
-  encounter: Encounter,
-  sheet: CharacterSheet,
-  enemy: EncounterEnemy,
-): AttackStage {
-  const from = tokenPosition(campaignId, sheet.id);
-  const to = tokenPosition(campaignId, enemy.id);
-  if (!from || !to) {
-    return null;
-  }
-  recordEncounterTarget(encounter.id, encounter.round, sheet.id, enemy.id);
-  return { from: from.at, to: to.at, fromTokenId: from.tokenId, toTokenId: to.tokenId };
-}
-
-function emitAttackFx(
-  campaignId: string,
-  stage: AttackStage,
-  outcome: {
-    hit: boolean;
-    crit: boolean;
-    fumble?: boolean;
-    ranged: boolean;
-    damage?: number;
-    damageType?: string;
-    visibility: RollVisibility;
-  },
-) {
-  if (!stage) {
-    return;
-  }
-  publishFx(
-    campaignId,
-    planAttackFx({
-      ...stage,
-      ...outcome,
-      // Damage to an enemy is a DM secret; the client strips the number
-      // for seats without real enemy numbers.
-      secretNumbers: true,
-    }),
-  );
-}
-
-
-// SRD 5.1, Repelling Blast (a warlock invocation): "When you hit a creature
-// with eldritch blast, you can push the creature up to 10 feet away from you
-// in a straight line." On a battle map each hit pushes it two squares, as far
-// as the ground behind it lets it go.
-function repellingBlast(campaign: Campaign, encounter: Encounter, sheet: CharacterSheet, enemy: EncounterEnemy, plan: AttackPlan): string | null {
-  if (plan.kind !== "spell" || textKey(plan.profile.weapon) !== textKey("Eldritch Blast") || !holdsFeature(sheet, "Invocation: Repelling Blast")) {
-    return null;
-  }
-  let feet = 0;
-  let stopped = "";
-  for (let step = 0; step < 2; step += 1) {
-    const pushed = pushTokenAway(campaign, encounter.id, sheet.id, enemy.id);
-    if (!pushed.moved) {
-      stopped = pushed.reason;
-      break;
-    }
-    feet += 5;
-  }
-  return feet
-    ? `Repelling Blast: ${enemy.displayName} is pushed ${feet} feet away${stopped ? ` (${stopped})` : ""}`
-    : `Repelling Blast: ${enemy.displayName} could not be pushed (${stopped})`;
-}
-
-// The conditions a feat's hit leaves on an enemy (src/lib/srd/feat-combat.ts):
-// Stunning Sniper's stun; Slasher's hamstring (speed -10) once a turn and
-// its critical hit's shaken (disadvantage on attacks); Crusher's 5-foot
-// shove once a turn and its critical hit's exposed (attacks against it at
-// advantage). Each lasts until the start of the attacker's next turn.
-function featHitMarks(input: {
-  campaign: Campaign;
-  encounter: Encounter;
-  sheet: CharacterSheet;
-  enemy: EncounterEnemy;
-  typeFeat: DamageTypeFeat | null;
-  crit: boolean;
-  stunShot: boolean;
-  budget: TurnBudget | null;
-}): string[] {
-  const { campaign, encounter, sheet, enemy, typeFeat, crit, stunShot, budget } = input;
-  const notes: string[] = [];
-  const leave = (name: string): boolean => {
-    const fresh = getFoe(enemy.id);
-    if (!fresh || fresh.status !== "alive" || fresh.conditions.includes(name)) {
-      return false;
-    }
-    patchEnemyConditions(fresh.id, [...fresh.conditions, name], { ...fresh.conditionMeta, [name]: { source: sheet.id, untilTurnOf: sheet.id } });
-    return true;
-  };
-  if (stunShot && leave("stunned")) {
-    notes.push(`Stunning Sniper: ${enemy.displayName} is stunned until the start of ${sheet.name}'s next turn`);
-  }
-  if (!typeFeat || typeFeat === "Piercer") {
-    return notes;
-  }
-  const usedKey = typeFeat === "Slasher" ? SLASHER_USED : CRUSHER_USED;
-  const unused = budget !== null && !budget.oncePerTurn.includes(usedKey);
-  if (typeFeat === "Slasher") {
-    if (unused && leave("hamstrung")) {
-      notes.push(`Slasher: ${enemy.displayName}'s speed is reduced by 10 feet until the start of ${sheet.name}'s next turn`);
-      markLiveTurn(campaign.id, budget, usedKey);
-    }
-    if (crit && leave("shaken")) {
-      notes.push(`Slasher: the critical hit puts ${enemy.displayName}'s attack rolls at disadvantage until the start of ${sheet.name}'s next turn`);
-    }
-  } else {
-    if (unused) {
-      const pushed = pushTokenAway(campaign, encounter.id, sheet.id, enemy.id);
-      notes.push(
-        pushed.moved
-          ? `Crusher: ${enemy.displayName} is moved 5 feet to (${pushed.at.x},${pushed.at.y})`
-          : `Crusher: ${enemy.displayName} could not be moved 5 feet (${pushed.reason})`,
-      );
-      markLiveTurn(campaign.id, budget, usedKey);
-    }
-    if (crit && leave("exposed")) {
-      notes.push(`Crusher: the critical hit leaves ${enemy.displayName} exposed; attacks against it have advantage until the start of ${sheet.name}'s next turn`);
-    }
-  }
-  if (budget) {
-    // The conditions above were seen by the enemy's copy; the encounter's
-    // own list is published by the patch.
-    publishEncounter(campaign.id);
-  }
-  return notes;
+  return landSwingBlow(scene, record, ask, damageRoll, hitOutcome, visibility, notes);
 }

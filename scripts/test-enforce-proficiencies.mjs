@@ -94,6 +94,8 @@ const CLASSES = {
     die: 10, saves: ["str", "dex"], count: 3, armor: ["light", "medium", "shields"], weapons: SIMPLE_MARTIAL, tools: [],
     skills: ["animal_handling", "athletics", "insight", "investigation", "nature", "perception", "stealth", "survival"],
     subclassAt: 3, features: ["Favored Enemy", "Natural Explorer"],
+    // A ranger names a favored enemy and a favored terrain at 1st level (issue #833).
+    pick: { optionPicks: ["Favored Enemy: Undead", "Natural Explorer: Forest"] },
   },
   rogue: {
     die: 8, saves: ["dex", "int"], count: 4, armor: ["light"], weapons: ROGUE_WEAPONS, tools: ["thieves' tools"],
@@ -103,7 +105,9 @@ const CLASSES = {
   sorcerer: {
     die: 6, saves: ["con", "cha"], count: 2, armor: [], weapons: MAGE_WEAPONS, tools: [],
     skills: ["arcana", "deception", "insight", "intimidation", "persuasion", "religion"],
-    subclassAt: 1, features: ["Spellcasting", "Sorcerous Origin"], cantrips: 4, spells: 2, pick: { subclass: "Draconic Bloodline" },
+    subclassAt: 1, features: ["Spellcasting", "Sorcerous Origin"], cantrips: 4, spells: 2, pick: { subclass: "Draconic Bloodline", optionPicks: ["Dragon Ancestor: Red"] },
+    // Dragon Ancestor: "You can speak, read, and write Draconic" (issue #833).
+    subclassLanguages: ["Draconic"],
   },
   warlock: {
     die: 8, saves: ["wis", "cha"], count: 2, armor: ["light"], weapons: ["simple"], tools: [],
@@ -243,7 +247,7 @@ await test("the builder makes each class proficient in what the class grants, an
     assert.deepEqual(profs.tools, [...open.fixed, ...open.choices.flatMap((choice) => choice.from.slice(0, choice.count))], `${classId} tools`);
     assert.deepEqual(
       sorted(profs.languages),
-      sorted(["Common", "Dwarvish", "Elvish", "Giant", ...(row.language ? [row.language] : [])]),
+      sorted(["Common", "Dwarvish", "Elvish", "Giant", ...(row.language ? [row.language] : []), ...(row.subclassLanguages ?? [])]),
       `${classId} languages`,
     );
     // The class's count from the class's list, and the acolyte's two.

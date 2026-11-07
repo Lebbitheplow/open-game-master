@@ -13,11 +13,13 @@ import {
 import { insertRoll, type StoredRoll } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
 import { settleAttackDie } from "@/lib/dm/forced-save";
+import { moteAfterRoll } from "@/lib/dm/authored-mote";
 import type { RollResult } from "@/lib/dice";
 import { recordInitiativeRoll, settleTurn, turnHolder } from "@/lib/dm/encounter-tools";
 import { applyInitiativeRefills } from "@/lib/dm/feature-hooks";
 import { applyPendingDamageRoll } from "@/lib/dm/enemy-damage";
 import { resolvePendingPcAttack } from "@/lib/dm/pc-attack";
+import { parkedTargetAc, resolvePendingPcDamage } from "@/lib/dm/pc-attack-parked";
 import { resumeDmTurn } from "@/lib/dm/turn";
 import { resumeHumanTurn } from "@/lib/dm/invoke";
 import { enqueueDmJob } from "@/lib/dm/queue";
@@ -38,7 +40,7 @@ function landOne(campaign: Campaign, pending: PendingRoll, thrown: RollResult, l
   // A parked to-hit roll takes a held Bardic Inspiration die the way the
   // digital one does: only on a miss it turns into a hit (forced-save.ts).
   const attacker = pending.kind === "attack" && pending.attack && pending.characterId ? getSheetById(pending.characterId) : null;
-  const outcome = attacker && pending.attack ? settleAttackDie(campaignId, attacker, thrown, pending.attack.targetAc, pending.attack.critRange ?? 20) : thrown;
+  const outcome = attacker && pending.attack ? settleAttackDie(campaignId, attacker, thrown, parkedTargetAc(campaignId, pending.attack), pending.attack.critRange ?? 20) : thrown;
   if (outcome !== thrown) {
     // The server threw that die: the roll is no longer the player's alone.
     landing = { ...landing, physical: false };
@@ -111,10 +113,20 @@ function landOne(campaign: Campaign, pending: PendingRoll, thrown: RollResult, l
       }
     } else if (pending.kind === "damage" && pending.targetEnemyId) {
       // Targeted damage applies server-side the moment the dice land; the
-      // enemy card updates now, not when the model gets around to it.
-      const note = applyPendingDamageRoll(pending, roll);
+      // enemy card updates now, not when the model gets around to it. A
+      // pc_attack's damage lands through the attack's own stage, as the
+      // server's dice land it (attack-blow.ts).
+      const note = pending.attack ? resolvePendingPcDamage(pending, roll) : applyPendingDamageRoll(pending, roll);
       if (note) {
         setPendingCombatNote(pending.id, note);
+      }
+    } else if (pending.carry?.mote) {
+      // A mote the spent inspiration die carried goes off as it does on the
+      // server's throw (authored-mote.ts): a save's temporary hit points.
+      const sheet = pending.characterId ? getSheetById(pending.characterId) : null;
+      const line = sheet ? moteAfterRoll(campaign, sheet, pending.carry.mote, pending.kind, roll.breakdown) : null;
+      if (line) {
+        setPendingCombatNote(pending.id, line);
       }
     }
 

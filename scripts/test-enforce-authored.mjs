@@ -597,7 +597,7 @@ await test("Every typed authored effect kind is read by the engine file that nam
 await test("Every condition an authored spend, reaction or mark writes has a meaning the engines read: a registry row or an SRD condition.", async () => {
   const { authoredRows } = await import("../src/lib/srd/authored-effects.ts");
   const { conditionEffectsFor } = await import("../src/lib/srd/condition-effects.ts");
-  const SRD = new Set(["prone", "frightened", "charmed", "restrained", "stunned", "poisoned", "blinded", "deafened"]);
+  const SRD = new Set(["prone", "frightened", "charmed", "restrained", "stunned", "poisoned", "blinded", "deafened", "invisible"]);
   const names = new Set();
   const addBuff = (does) => {
     const bases = Array.isArray(does.condition) ? does.condition.map(([, name]) => name) : [does.condition];
@@ -611,7 +611,7 @@ await test("Every condition an authored spend, reaction or mark writes has a mea
       const options = spend.does.kind === "variants" ? Object.values(spend.does.options).map((option) => option.does) : [spend.does];
       for (const does of options) {
         if (does.kind === "buff") addBuff(does);
-        if (does.kind === "save_effect" && does.condition) names.add(does.condition);
+        if ((does.kind === "save_effect" || does.kind === "save_area") && does.condition) names.add(does.condition);
         if (does.kind === "insight_contest") names.add(does.condition);
       }
     }

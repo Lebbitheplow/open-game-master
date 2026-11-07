@@ -217,6 +217,28 @@ export const SERVER_FEATURES = {
   // `thrown` dice and POST /api/campaigns/[id]/pending-rolls/[id]/after-roll.
   // An older host never parks a roll that way, so the card never draws there.
   afterRollChoice: true,
+  // The owed picks on a character sheet (issue #833): POST
+  // /api/campaigns/[id]/sheet/owed makes a pick the character's levels
+  // earned and no level-up offered (a dragon ancestor, a favored enemy, a
+  // fighting style), outside a level-up. An older host answers 404, so the
+  // sheet only lists the pick as owed there.
+  owedPicks: true,
+  // A workshop subclass's own choices (issue #833): the archetype's
+  // `choices` field (a bloodline, an element, each option's damage type,
+  // resistances, skills, languages and spells), which the workshop's
+  // subclass editor writes. An older host drops the field on save, so the
+  // editor shows its "Let the player choose" section only here.
+  subclassChoices: true,
+  // Spells on a workshop species and on each option of its player's choice
+  // (issue #833): the species editor's spell rows, which an older host
+  // drops unread on save.
+  speciesSpells: true,
+  // A workshop class's list of its own and a workshop subclass's additions
+  // to its class's list (issue #833): the class's `spellList`/`spellStyle`,
+  // the subclass's `expanded` and a homebrew spell tagged with a workshop
+  // class. An older host drops the fields unread (the class falls back to
+  // the wizard's list), so the editor offers none of them there.
+  customSpellLists: true,
 } as const;
 export type ServerFeatures = { [K in keyof typeof SERVER_FEATURES]: boolean };
 

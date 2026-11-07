@@ -136,6 +136,7 @@ export function featureVariantSpend(
   targetId: string | undefined,
   reason: string,
   targetEnemyId?: string,
+  targetEnemyIds?: string[],
 ): ToolResult | null {
   if (isNamed(familyOf(resourceName), "Fiendish Resilience")) {
     return chooseFiendishResilience(campaign, turnId, sheet, variant, reason);
@@ -165,7 +166,7 @@ export function featureVariantSpend(
       return spend(campaign, turnId, sheet, def.id, "action", reason, () => turnUndead(campaign, turnId, sheet, { ...turning, destroy: false, target: targetEnemyId }));
     }
     if (fear) {
-      return spend(campaign, turnId, sheet, def.id, "action", reason, () => channelFear(campaign, getSheetById(sheet.id) ?? sheet, fear, targetEnemyId));
+      return spend(campaign, turnId, sheet, def.id, "action", reason, () => channelFear(campaign, getSheetById(sheet.id) ?? sheet, fear, targetEnemyId, targetEnemyIds));
     }
     if (isNamed(wanted, "turn undead", "destroy undead")) {
       return spend(campaign, turnId, sheet, def.id, "action", reason, () => turnUndead(campaign, turnId, sheet));

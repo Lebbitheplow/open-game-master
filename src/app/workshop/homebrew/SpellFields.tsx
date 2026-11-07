@@ -20,6 +20,7 @@ import { SpellMechFields } from "@/app/workshop/homebrew/SpellMechFields";
 import type { Data } from "@/app/workshop/homebrew/draft";
 import { effectiveSpellPreview } from "@/lib/workshop/spell-preview";
 import { bundledSpellNames, materialCostFrom } from "@/lib/srd/spell-facts";
+import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 
 // The spell form. The description is the part the engine reads its damage
 // out of, the same way it reads the SRD's, unless the block underneath says
@@ -29,8 +30,24 @@ import { bundledSpellNames, materialCostFrom } from "@/lib/srd/spell-facts";
 
 const RUNS_AS_OPTIONS = bundledSpellNames().map((name) => ({ value: name, label: name }));
 
-export function SpellFields({ data, onChange }: { data: Data; onChange: (next: Data) => void }) {
+export function SpellFields({
+  data,
+  onChange,
+  workshopClasses = [],
+}: {
+  data: Data;
+  onChange: (next: Data) => void;
+  // The author's own classes (homebrew kind "class"): a spell tagged with one
+  // is on that class's list (issue #833, src/lib/classes/class-spell-list.ts).
+  workshopClasses?: Array<{ id: string; name: string }>;
+}) {
   const set = (patch: Data) => onChange({ ...data, ...patch });
+  // An older host never reads a spell's workshop class (src/lib/capabilities.ts
+  // customSpellLists), so it is offered only where it counts; one already
+  // tagged stays shown so it can be taken off.
+  const tagged = Array.isArray(data.classes) ? (data.classes as string[]) : [];
+  const offersOwn = hostOffers(useCapabilities(), "customSpellLists");
+  const ownClasses = workshopClasses.filter((klass) => offersOwn || tagged.includes(klass.id));
   const preview = effectiveSpellPreview(data);
   const hasMaterial = /\bM\b/.test(String(data.components ?? "").split("(")[0].toUpperCase());
   const cost = typeof data.materialCostGp === "number" ? data.materialCostGp : null;
@@ -140,13 +157,17 @@ export function SpellFields({ data, onChange }: { data: Data; onChange: (next: D
       <div className="space-y-1">
         <SectionHead title="Classes that can learn it" glyph="tab-characters" className="mb-1" />
         <ToggleChips
-          options={CLASS_IDS}
-          selected={Array.isArray(data.classes) ? (data.classes as string[]) : []}
+          options={[...CLASS_IDS, ...ownClasses.map((klass) => klass.id)]}
+          selected={tagged}
           onChange={(classes) => set({ classes })}
-          labels={Object.fromEntries(
-            CLASS_IDS.map((id) => [id, id.charAt(0).toUpperCase() + id.slice(1)]),
-          )}
+          labels={Object.fromEntries([
+            ...CLASS_IDS.map((id) => [id, id.charAt(0).toUpperCase() + id.slice(1)]),
+            ...ownClasses.map((klass) => [klass.id, klass.name]),
+          ])}
         />
+        {ownClasses.length ? (
+          <p className="text-[11px] text-stone-500">Ticking one of your own classes puts the spell on its list, whichever list that class casts from.</p>
+        ) : null}
       </div>
 
       <TextField

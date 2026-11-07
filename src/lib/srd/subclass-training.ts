@@ -31,6 +31,8 @@ import { ALL_SKILLS, STANDARD_LANGUAGES } from "@/lib/content/mechanics";
 import { KNOWN_TOOLS } from "@/lib/srd/feat-grant-text";
 import { SRD_WEAPONS } from "@/lib/srd/weapons";
 import type { SubclassExtras } from "@/lib/srd/subclass-tables";
+import { subclassChoiceTraining } from "@/lib/srd/subclass-choice-picks";
+import { SUBCLASS_CHOICE_RECORD, subclassChoiceRecordKey } from "@/lib/content/subclass-choices";
 import { textKey } from "@/lib/language/text-logic";
 import { featChoice, withFeatChoice } from "@/lib/schemas/sheet";
 
@@ -54,6 +56,15 @@ export type SubclassGrant = {
   saves?: SaveGrant;
   skillOtherwise?: { skill: string; from: string[] };
   languageOtherwise?: string;
+  // A pick that may wait: left out, it is owed rather than refused (a
+  // ranger's Favored Enemy language). A builder older than the grant has no
+  // picker for it, and a sheet saved before it holds none.
+  optional?: true;  // A workshop subclass choice's option (issue #833), by its choice's id:
+  // what it gives is recorded on the sheet (subclassChoiceRecords), and a
+  // skill or language it would give again becomes a pick of another, as SRD
+  // 5.1 has a duplicate proficiency (Backgrounds: "can choose a different
+  // one").
+  choiceId?: string;
 };
 
 type TableEntry = {
@@ -182,6 +193,10 @@ const TABLE: Record<string, TableEntry> = {
   "barbarian|path of the giant|giant's power": { languages: ["Giant"] },
   "druid|circle of the shepherd|speech of the woods": { languages: ["Sylvan"] },
   "sorcerer|storm sorcery|wind speaker": { languages: ["Primordial"] },
+  // SRD 5.1, Dragon Ancestor: "You can speak, read, and write Draconic."
+  // Nothing granted it, so a Draconic sorcerer could not read a dragon's
+  // hoard-runes they were born to (issue #833).
+  "sorcerer|draconic bloodline|dragon ancestor": { languages: ["Draconic"] },
   "monk|way of the ascendant dragon|draconic disciple": { languages: ["Draconic"], languageOtherwise: "Draconic" },
   "ranger|drakewarden|draconic gift": { languages: ["Draconic"], languageOtherwise: "Draconic" },
   "monk|way of the drunken master|bonus proficiencies (drunken master)": { skills: ["performance"], tools: ["brewer's supplies"] },
@@ -221,6 +236,17 @@ const TABLE: Record<string, TableEntry> = {
   "artificer|battle smith|tool proficiency (battle smith)": { tools: ["smith's tools"] },
   "artificer|battle smith|battle ready": { weapons: ["martial"] },
 };
+
+// What a base class's own features train the character in, by the class
+// level they arrive at. SRD 5.1, Ranger, Favored Enemy: "You also learn one
+// language of your choice that is spoken by your favored enemies", at 1st
+// level and with each favored enemy after (6th and 14th). The grant's name
+// keys its pick in featChoices, so each level's is its own.
+const CLASS_TABLE: Array<{ classId: string; level: number; name: string; entry: TableEntry }> = [
+  { classId: "ranger", level: 1, name: "Favored Enemy language", entry: { pickLanguages: 1 } },
+  { classId: "ranger", level: 6, name: "Favored Enemy language (6th level)", entry: { pickLanguages: 1 } },
+  { classId: "ranger", level: 14, name: "Favored Enemy language (14th level)", entry: { pickLanguages: 1 } },
+];
 
 const key = (classId: string, subclass: string, feature: string) =>
   `${classId}|${subclass}|${feature}`.trim().toLowerCase();
@@ -289,10 +315,23 @@ export type ClassEntryLike = { id: string; level: number; subclass?: string | nu
 
 // The training every subclass on the sheet has granted by its class's
 // level, in class order, each once.
-export function subclassGrants(classes: ClassEntryLike[], extras?: SubclassExtras): SubclassGrant[] {
+export function subclassGrants(
+  classes: ClassEntryLike[],
+  extras?: SubclassExtras,
+  // The sheet's features: the options its workshop subclass's choices hold
+  // train it too (a Storm bloodline's Arcana, issue #833).
+  features?: ReadonlyArray<{ name: string }>,
+): SubclassGrant[] {
   const grants: SubclassGrant[] = [];
   const seen = new Set<string>();
   for (const entry of classes) {
+    // The class's own grants first, whatever its subclass.
+    for (const row of CLASS_TABLE) {
+      if (textKey(entry.id ?? "") === row.classId && entry.level >= row.level && !seen.has(key(row.classId, "", row.name))) {
+        seen.add(key(row.classId, "", row.name));
+        grants.push({ name: row.name, classId: entry.id, subclass: "", level: row.level, spec: specOf(row.entry), optional: true });
+      }
+    }
     const subclass = (entry.subclass ?? "").trim();
     if (!subclass || !entry.id) {
       continue;
@@ -327,6 +366,17 @@ export function subclassGrants(classes: ClassEntryLike[], extras?: SubclassExtra
       }
     }
   }
+  const entries = classes.map((entry) => ({ id: entry.id, subclass: entry.subclass ?? "", level: entry.level }));
+  for (const pick of features ? subclassChoiceTraining(entries, features, extras) : []) {
+    grants.push({
+      name: pick.name,
+      classId: pick.classId,
+      subclass: pick.subclass,
+      level: pick.level,
+      spec: specOf({ skills: pick.skills, languages: pick.languages }),
+      choiceId: pick.choiceId,
+    });
+  }
   return grants;
 }
 
@@ -359,6 +409,22 @@ export function grantsForHeldTraining(
         fixedLanguages: spec.fixedLanguages.filter((language) => textKey(language) !== textKey(tongue)),
         languages: spec.languages + 1,
       };
+    }
+    // A workshop choice's option: each skill or language held already is a
+    // pick of another (issue #833 review). Given twice, it was given once,
+    // and an edit that took the option's grants off took the player's own.
+    if (grant.choiceId) {
+      const heldSkills = spec.fixedSkills.filter((skill) => skills.has(textKey(skill)));
+      const heldLanguages = spec.fixedLanguages.filter((language) => languages.has(textKey(language)));
+      if (heldSkills.length || heldLanguages.length) {
+        spec = {
+          ...spec,
+          fixedSkills: spec.fixedSkills.filter((skill) => !skills.has(textKey(skill))),
+          skills: spec.skills + heldSkills.length,
+          fixedLanguages: spec.fixedLanguages.filter((language) => !languages.has(textKey(language))),
+          languages: spec.languages + heldLanguages.length,
+        };
+      }
     }
     return spec === grant.spec ? grant : { ...rest, spec };
   });
@@ -408,18 +474,32 @@ export function applySubclassTraining(input: {
     return { proficiencies: input.proficiencies, problems: [] };
   }
   const grants = grantsForHeldTraining(input.grants, input.proficiencies);
+  const required = grants.filter((grant) => !grant.optional);
+  const waiting = grants.filter((grant) => grant.optional);
   const applied = applyFeatGrants({
     proficiencies: input.proficiencies,
-    feats: grants.map((grant) => ({ name: grant.name, desc: "", spec: grant.spec })),
+    feats: required.map((grant) => ({ name: grant.name, desc: "", spec: grant.spec })),
     choices: input.choices,
     strict: input.strict,
     picksMayWait: input.picksMayWait,
   });
-  const saves = withSaves(applied.proficiencies.saves as Ability[], input.grants, input.abilities);
+  // The picks that may wait: a named one is still held to the grant; one
+  // left out is owed (applyFeatGrants picksMayWait).
+  const optional = waiting.length
+    ? applyFeatGrants({
+        proficiencies: applied.proficiencies,
+        feats: waiting.map((grant) => ({ name: grant.name, desc: "", spec: grant.spec })),
+        choices: input.choices,
+        strict: input.strict,
+        picksMayWait: true,
+      })
+    : { proficiencies: applied.proficiencies, problems: [] as string[], owed: undefined };
+  const saves = withSaves(optional.proficiencies.saves as Ability[], input.grants, input.abilities);
+  const owed = [...(applied.owed ?? []), ...(input.strict ? (optional.owed ?? []) : [])];
   return {
-    problems: applied.problems,
-    proficiencies: { ...applied.proficiencies, saves },
-    ...(applied.owed ? { owed: applied.owed } : {}),
+    problems: [...applied.problems, ...optional.problems],
+    proficiencies: { ...optional.proficiencies, saves },
+    ...(owed.length ? { owed } : {}),
   };
 }
 
@@ -514,4 +594,24 @@ export function repairedTraining(
     (kind) => (after[kind] ?? []).length > (before[kind] ?? []).length,
   );
   return grew ? after : null;
+}
+
+// What the workshop choices' options gave a character, as the sheet records
+// it in featChoices (src/lib/content/subclass-choices.ts
+// subclassChoiceRecordKey): the skills and languages each settled grant
+// gave outright, the replacement picks living under the grant's own name.
+// Every edit takes both off first (feat-grants.ts withoutFeatPicks), so what
+// an option swapped, edited or deleted gave leaves with it.
+export function withSubclassChoiceRecords(choices: FeatChoices | undefined, settled: SubclassGrant[]): FeatChoices {
+  const kept = Object.fromEntries(Object.entries(choices ?? {}).filter(([key]) => !textKey(key).startsWith(textKey(SUBCLASS_CHOICE_RECORD))));
+  let out: FeatChoices = kept;
+  for (const grant of settled) {
+    if (grant.choiceId && (grant.spec.fixedSkills.length || grant.spec.fixedLanguages.length)) {
+      out = withFeatChoice(out, subclassChoiceRecordKey({ id: grant.choiceId }), {
+        ...(grant.spec.fixedSkills.length ? { skills: grant.spec.fixedSkills } : {}),
+        ...(grant.spec.fixedLanguages.length ? { languages: grant.spec.fixedLanguages } : {}),
+      });
+    }
+  }
+  return out;
 }

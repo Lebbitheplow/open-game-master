@@ -101,7 +101,7 @@ export function freshPlaySheet(hero: LibraryHero): CharacterSheet {
     spellcasting: sheet.spellcasting,
     conditions: [],
     conditionMeta: {},
-    resources: populateResources(sheet.features, level, abilityMods, {}, sheet.classes, sheet.feats),
+    resources: populateResources(sheet.features, level, abilityMods, {}, sheet.classes, sheet.feats, undefined, { race: sheet.race, variant: sheet.racialChoices?.variant }),
     wildShape: null,
     pets: [],
     exhaustion: 0,
@@ -202,7 +202,8 @@ function attackTip(card: HandCard, sheet: CharacterSheet): HeroTip {
 // for; then a cantrip, which can go every turn. A spell without its facts
 // (the content search not answered yet) is still named, without numbers.
 function bestSpell(cards: HandCard[]): HandCard | null {
-  const spells = cards.filter((card) => card.intent.card === "spell" && !card.disabled && (card.cost === "action" || card.cost === "bonus"));
+  // A spell in a ring is cast once and gone, no thing to try on a first turn.
+  const spells = cards.filter((card) => card.intent.card === "spell" && !card.intent.item && !card.disabled && (card.cost === "action" || card.cost === "bonus"));
   const levelOf = (card: HandCard) => (card.intent.card === "spell" ? card.intent.slotLevel ?? 0 : 0);
   const score = (card: HandCard) =>
     (card.cost === "bonus" ? 100 : 0) + (levelOf(card) > 0 ? 10 : 0) + (card.damage || card.heals ? 1 : 0);

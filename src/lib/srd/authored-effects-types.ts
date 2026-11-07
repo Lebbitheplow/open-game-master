@@ -22,6 +22,8 @@ export type Gate = {
   raging?: boolean;
   // The holder wears heavy armor.
   heavyArmor?: boolean;
+  // The holder wears no body armor (Dragon Wings).
+  unarmored?: boolean;
   // The holder is concentrating on a spell.
   concentrating?: boolean;
   // The holder has (or has not) a condition, by name or "name (" prefix.
@@ -303,6 +305,9 @@ export type SpendDoes =
       // `mark`: a second condition each creature that failed carries
       // (Avenging Angel: "menaced", which gives every attacker advantage).
       burst?: { save: Ability; dcAbility: Ability | "spell"; rangeFt: number; dice?: Formula; type?: string; condition?: string; mark?: string; rounds?: number };
+      // Until the end of the holder's next turn, not a count of rounds (Cloak
+      // of Shadows). `rounds` still states its length on the card.
+      untilNextTurnEnds?: boolean;
     }
   // Choose an option for the feature, outside a fight: the feature is
   // renamed "Feature (Option)", which the passive effects read.
@@ -312,6 +317,9 @@ export type SpendDoes =
   | {
       kind: "save_effect";
       save: Ability;
+      // The creature picks: it rolls whichever of the two is better for it
+      // (Nature's Wrath: "a Strength or Dexterity save").
+      orSave?: Ability;
       dcAbility: Ability | "spell";
       dice?: Formula;
       perUnit?: string;
@@ -319,9 +327,47 @@ export type SpendDoes =
       half?: boolean;
       condition?: string;
       rounds?: number;
+      // The condition lasts until the creature saves at a round's end; with
+      // `orSave`, it picks between the two again at each of those saves.
+      saveEnds?: boolean;
       rangeFt?: number;
+      // Only a creature the holder can see (Nature's Wrath).
+      sight?: boolean;
       onFail?: string;
       typeFromVariant?: string[];
+    }
+  // Every foe in reach that the holder can see saves or suffers, with one roll
+  // of damage shared among them. `types` keeps it to creatures of those types;
+  // with none of them in reach, nothing is spent.
+  | {
+      kind: "save_area";
+      save: Ability;
+      dcAbility: Ability | "spell";
+      rangeFt: number;
+      dice?: Formula;
+      type?: string;
+      half?: boolean;
+      condition?: string;
+      rounds?: number;
+      // Until the end of the holder's next turn, not a count of rounds.
+      untilNextTurnEnds?: boolean;
+      endsOnDamage?: boolean;
+      // Held while the holder stands within this many feet and is neither down
+      // nor incapacitated, with no count of rounds (src/lib/dm/condition-leash.ts).
+      leashFeet?: number;
+      onFail?: string;
+      types?: string[];
+      // The creatures of the user's choice in reach, named in targetEnemyIds
+      // (every one when none is named): "each creature of your choice".
+      chosen?: boolean;
+      // Only creatures the holder can see (a wall or a heavily obscured space
+      // hides one). Without it every creature in reach is caught: Radiance of the
+      // Dawn's text asks no sight, and Order's Demand's "see or hear" carries
+      // through a fog.
+      sight?: boolean;
+      // A creature with total cover from the holder is not affected, seen or
+      // not (Radiance of the Dawn reaches into a fog, not through a wall).
+      coverShields?: boolean;
     }
   | { kind: "reroll_save" }
   // Temporary hit points: to the holder, or to allies in range.

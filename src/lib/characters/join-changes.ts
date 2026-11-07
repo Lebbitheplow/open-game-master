@@ -1,5 +1,6 @@
 import type { CreateSheetInput } from "@/lib/schemas/sheet";
-import { owedChoices } from "@/lib/srd/owed-choices";
+import { owedChoiceGroups } from "@/lib/srd/owed-choices";
+import type { OwedContext } from "@/lib/srd/owed-picks-logic";
 import { textKey } from "@/lib/language/text-logic";
 import type { OwedPicks } from "@/lib/characters/seat-picks";
 import { classLevelWords } from "@/lib/characters/class-words";
@@ -17,9 +18,13 @@ import { classWords } from "@/lib/sheet-words";
 export type JoinChanges = {
   // One line per change, in the order a player cares about.
   changes: string[];
-  // Choices the level earned and the hero has not made: taken by the first
-  // level-up, as the character sheet says (owedChoices).
+  // Choices the level earned and the hero has not made, as the character
+  // sheet says (owedChoices): the first level-up takes the class's own.
   owed: string[];
+  // The part of `owed` the character sheet makes once seated (a class
+  // feature's picks, owed-choices.ts owedChoiceGroups). Absent from an
+  // older host, whose every owed line waits for a level-up.
+  owedOnSheet?: string[];
 };
 
 // What the confirm sheet reads (POST /sheet/preview).
@@ -42,7 +47,8 @@ export type JoinPreview = JoinChanges & {
 type Sheet = Pick<
   CreateSheetInput,
   "class" | "subclass" | "classes" | "maxHp" | "asiChoices" | "feats" | "features" | "proficiencies" | "spellcasting"
->;
+> &
+  Partial<Pick<CreateSheetInput, "featChoices" | "race">>;
 
 const ORDINAL = ["", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th"];
 
@@ -91,6 +97,8 @@ export function joinChanges(
   storedLevel: number,
   seated: Sheet,
   tableLevel: number,
+  // The table's catalog, for the picks its workshop subclasses open.
+  owedContext: OwedContext = {},
 ): JoinChanges {
   const changes: string[] = [];
   if (storedLevel === tableLevel) {
@@ -136,14 +144,20 @@ export function joinChanges(
 
   // Owed choices read the sheet at the level it plays; the seated sheet's
   // own level field is the table's once stored, so it is given here.
-  const owed = owedChoices({
+  const groups = owedChoiceGroups({
     class: seated.class,
     subclass: seated.subclass ?? "",
     level: tableLevel,
     classes: seated.classes,
     features: seated.features ?? [],
     proficiencies: seated.proficiencies,
-  } as Parameters<typeof owedChoices>[0]);
+    // The picks a class feature opens (a dragon ancestor), read off the same
+    // sheet (owed-picks-logic.ts): the spellbook for Spell Mastery's.
+    feats: seated.feats,
+    spellcasting: seated.spellcasting,
+    featChoices: seated.featChoices,
+    race: seated.race,
+  } as Parameters<typeof owedChoiceGroups>[0], owedContext);
 
-  return { changes, owed };
+  return { changes, owed: [...groups.levelUp, ...groups.onSheet], owedOnSheet: groups.onSheet };
 }

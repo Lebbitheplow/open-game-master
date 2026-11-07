@@ -16,7 +16,8 @@ import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
 import { authoredSpendFor, gateHolds, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
-import { resourceDef, resourceName as counterName } from "@/lib/srd/class-resources";
+import { matchResource, resourceDef, resourceName as counterName } from "@/lib/srd/class-resources";
+import { nameChoice } from "@/lib/srd/feature-names";
 import type { SpendAction, SpendDoes } from "@/lib/srd/authored-effects-types";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
@@ -33,6 +34,7 @@ export type AuthoredSpendArgs = {
   variant?: string;
   targetCharacterId?: string;
   targetEnemyId?: string;
+  targetEnemyIds?: string[];
 };
 
 function audit(campaign: Campaign, turnId: string, sheet: CharacterSheet, delta: Record<string, unknown>, reason: string, patch: Record<string, unknown>) {
@@ -131,6 +133,15 @@ function pickVariant(does: SpendDoes, variant: string | undefined, spend: Author
   return typeof key === "string" ? does.options[key] : key;
 }
 
+// An option of a shared pool, named in the variant or after the pool's name
+// ("Channel Divinity: Nature's Wrath"). It must spend the pool the call names.
+function poolOptionSpend(sheet: CharacterSheet, resourceName: string, variant: string | undefined) {
+  const option = variant ?? nameChoice(resourceName);
+  const pool = matchResource(resourceName);
+  const found = option && pool ? authoredSpendFor(sheet, option) : null;
+  return found?.spend.pool?.id === pool?.id ? found : null;
+}
+
 // A use_resource call this module resolves, or null for the other paths.
 export function authoredFeatureSpend(
   campaign: Campaign,
@@ -144,7 +155,7 @@ export function authoredFeatureSpend(
   // A counter's id names the same spend as the feature's name. Without this a
   // call by id (sub_elder_champion) fell to the generic path, which spends the
   // use and applies nothing.
-  const found = authoredSpendFor(sheet, resourceDef(resourceName)?.displayName ?? resourceName);
+  const found = authoredSpendFor(sheet, resourceDef(resourceName)?.displayName ?? resourceName) ?? poolOptionSpend(sheet, resourceName, args.variant);
   if (!found) {
     return null;
   }

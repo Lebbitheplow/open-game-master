@@ -3,7 +3,7 @@ import { featFactsFor, spellFactsFor, subclassIsOffered } from "@/lib/characters
 import { matchGear } from "@/lib/srd/adventuring-gear";
 import { isWorkshopClassId, workshopClassId } from "@/lib/homebrew/class-data";
 import { homebrewDataRefs } from "@/lib/homebrew/data-refs";
-import { landedSheet, portableClassRef, portableSheet, sheetUses, writeShelfArrivals, PORTABLE_REF } from "@/lib/db/workshop-bundle-shelf";
+import { landedSheet, portableEntryData, portableSheet, sheetUses, spellsTaggedWith, writeShelfArrivals, PORTABLE_REF } from "@/lib/db/workshop-bundle-shelf";
 import type { CharacterBundle } from "@/lib/character-bundle";
 import type { CreateSheetInput } from "@/lib/schemas/sheet";
 import type { WorkshopBundle } from "@/lib/workshop/bundle";
@@ -73,6 +73,8 @@ export function characterFileShelf(userId: string, sheet: CreateSheetInput): { s
     if (isWorkshopClassId(parent)) keep(byId.get(parent.slice("homebrew-".length)));
     if (entry.kind === "class") {
       for (const subclass of shelf.filter((other) => other.kind === "archetype" && String(other.data.classSlug ?? "") === workshopClassId(entry.id))) keep(subclass);
+      // The spells tagged with it are on its list (issue #833).
+      for (const spell of spellsTaggedWith(shelf, entry)) keep(spell);
     }
   }
   return {
@@ -82,10 +84,7 @@ export function characterFileShelf(userId: string, sheet: CreateSheetInput): { s
       .map((entry) => ({
         kind: entry.kind as FileEntry["kind"],
         name: entry.name,
-        data:
-          entry.kind === "archetype" && typeof entry.data.classSlug === "string"
-            ? { ...entry.data, classSlug: portableClassRef(entry.data.classSlug, byId) }
-            : entry.data,
+        data: portableEntryData(entry, byId),
       })),
   };
 }

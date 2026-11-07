@@ -33,7 +33,7 @@ import {
   type WorkshopBundle,
 } from "@/lib/workshop/bundle";
 import { isWorkshop, normalizeTargetParty } from "@/lib/workshop/kind";
-import { portableClassRef, portableSheet, portableStatBlock, shelfForBundle, type ShelfReport } from "@/lib/db/workshop-bundle-shelf";
+import { portableEntryData, portableSheet, portableStatBlock, shelfForBundle, type ShelfReport } from "@/lib/db/workshop-bundle-shelf";
 import { exportMapAddonView } from "@/lib/db/map-addon-view-bundle";
 import { portableLabels, portableRoster, stringsIn } from "@/lib/db/workshop-bundle-refs";
 
@@ -506,12 +506,10 @@ export function exportWorkshopBundle(
     homebrew: shelf.homebrew.map((entry) => ({
       kind: entry.kind as Exclude<typeof entry.kind, "monster">,
       name: entry.name,
-      // A subclass of a workshop class names its class as another server
-      // can find it (workshop-bundle-shelf.ts portableClassRef).
-      data:
-        entry.kind === "archetype" && typeof entry.data.classSlug === "string"
-          ? { ...entry.data, classSlug: portableClassRef(entry.data.classSlug, shelfById) }
-          : entry.data,
+      // A subclass of a workshop class, and a spell tagged with one, name
+      // the class as another server can find it (workshop-bundle-shelf.ts
+      // portableEntryData).
+      data: portableEntryData(entry, shelfById),
     })),
     // The owner's library characters filed under this workshop, their
     // homebrew written by kind and name rather than by this server's ids.

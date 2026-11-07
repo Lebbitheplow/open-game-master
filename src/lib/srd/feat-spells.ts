@@ -350,7 +350,9 @@ export function featSpellGrants(input: FeatSpellInput): FeatSpellVerdict {
   return { grants, problems, ...(owedPicks.length ? { owed: owedPicks } : {}) };
 }
 
-const capital = (value: string) => value.replace(/(^|\s|')([a-z])/g, (_, before, letter) => `${before}${letter.toUpperCase()}`);
+// Each word's first letter, not the one after a possessive's apostrophe
+// ("Tasha's", never "Tasha'S").
+const capital = (value: string) => value.replace(/(^|\s)(['‘]?)([a-z])/g, (_, before, quote, letter) => `${before}${quote}${letter.toUpperCase()}`);
 
 // ---- the free cast, as a feature and a counter ----
 
@@ -385,6 +387,56 @@ export function freeCastSpellOf(id: string): string {
 // Every Free cast feature the grants call for.
 export function freeCastFeatures(grants: FeatSpellGrant[]): string[] {
   return grants.flatMap((grant) => grant.freeCasts.map((spell) => freeCastFeatureName(spell, grant.feat)));
+}
+
+// ---- the ability a feat's spell is cast with ----
+
+// What a sheet records of its feats' spells and of the scores they raised.
+export type FeatSpellSheet = {
+  feats?: ReadonlyArray<string>;
+  features?: ReadonlyArray<{ name: string }>;
+  featChoices?: Record<string, FeatSpellPicks | undefined> | null;
+  asiChoices?: ReadonlyArray<{ mode: string; feat?: string; ability?: Ability }>;
+  racialChoices?: { featAbility?: Ability } | null;
+};
+
+// The ability a spell a feat teaches is cast with, read from the sheet's
+// own record (issue #833: FeatSpellGrant.ability was worked out when the
+// feat was taken and never read again, so Fey Touched's misty step was cast
+// with the class's ability, or a fighter's with none). The feat is the one
+// whose picks name the spell or whose Free cast feature does; its ability
+// is the class list's the player chose (Magic Initiate's), else the score
+// the half-feat raised, else the one the player named. Null for a spell no feat teaches.
+export function featSpellAbility(sheet: FeatSpellSheet, spell: string): CastingAbility | null {
+  const wanted = textKey(spell);
+  const choices = sheet.featChoices ?? {};
+  const feats = Object.entries(choices)
+    .filter(([, picks]) => [...(picks?.cantrips ?? []), ...(picks?.spells ?? [])].some((name) => textKey(name) === wanted))
+    .map(([feat]) => feat);
+  for (const feature of sheet.features ?? []) {
+    const free = freeCastOf(feature.name);
+    if (free && textKey(free.spell) === wanted) {
+      feats.push(free.feat);
+    }
+  }
+  for (const feat of feats) {
+    const picks = featChoice(choices, feat);
+    // The score the feat raised: its improvement's, or for the feat a
+    // variant human took with the race (on the sheet, with no improvement
+    // for it) the race's pick. Another feat's improvement that raised
+    // nothing is no reason to read the race's: a variant human's racial Fey
+    // Touched (+Charisma) left a later Magic Initiate (cleric) on Charisma.
+    const entry = sheet.asiChoices?.find((choice) => choice.mode === "feat" && textKey(choice.feat ?? "") === textKey(feat));
+    const racialFeat = !entry && (sheet.feats ?? []).some((name) => textKey(name) === textKey(feat));
+    const raised = entry ? entry.ability : racialFeat ? sheet.racialChoices?.featAbility : undefined;
+    // A class list the player chose answers first (Magic Initiate: "Charisma
+    // for bard, sorcerer, or warlock; Wisdom for cleric or druid").
+    const ability = (picks?.list ? listAbility(picks.list) : null) ?? castingAbility(raised) ?? castingAbility(picks?.ability);
+    if (ability) {
+      return ability;
+    }
+  }
+  return null;
 }
 
 // ---- the sheet's lists with the feat spells in ----

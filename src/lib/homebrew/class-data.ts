@@ -15,7 +15,7 @@ import type { CustomClass, CustomFeatureTable } from "@/lib/classes";
 import type { Ability } from "@/lib/schemas/sheet";
 import { ALL_SKILLS } from "@/lib/content/mechanics";
 import { textKey } from "@/lib/language/text-logic";
-import { HOMEBREW_DESC_MAX } from "@/lib/schemas/homebrew";
+import { HOMEBREW_DESC_MAX, HOMEBREW_NAME_MAX } from "@/lib/schemas/homebrew";
 
 export type ClassFeatureRow = { n: string; d: string };
 
@@ -32,7 +32,12 @@ export type WorkshopClassData = {
   // or not at all; and from which class's list, with which ability.
   casterType: "none" | "full" | "half" | "pact";
   spellAbility: "int" | "wis" | "cha" | null;
+  // A published class's list (SPELL_LISTS), or CUSTOM_SPELL_LIST for one of
+  // its own (issue #833): then `spellList` names its spells and
+  // `spellStyle` says whether it prepares them each day or learns a number.
   spellListFrom: string | null;
+  spellList?: string[];
+  spellStyle?: SpellListStyle;
   subclassLevel: number;
   levels: Record<string, ClassFeatureRow[]>;
 };
@@ -51,6 +56,27 @@ export const SPELL_LISTS = ["bard", "cleric", "druid", "paladin", "ranger", "sor
 // The lists whose class learns its spells for good rather than preparing
 // them each day; a workshop class casting from one learns the same way.
 const KNOWN_LISTS = new Set(["bard", "ranger", "sorcerer", "warlock"]);
+// A list of the class's own, picked spell by spell from the SRD's and the
+// table's homebrew (issue #833), instead of a published class's.
+export const CUSTOM_SPELL_LIST = "custom";
+// The most spells such a list holds: past the wizard's whole list in the
+// SRD and a pack's, with room for the table's own.
+export const CUSTOM_LIST_MAX = 400;
+// How a class with its own list holds its spells: prepares from the whole
+// list each day (a cleric), or learns a set number for good (a sorcerer).
+export type SpellListStyle = "prepared" | "known";
+export const SPELL_LIST_STYLES = ["prepared", "known"] as const;
+// The published class whose tables count a custom list's cantrips and
+// spells, by how the class casts and how it holds them. A borrowed list's
+// own class counts it, as before; a list of the class's own has no class
+// of its own to count by, so it counts as the published caster that casts
+// and holds its spells the same way. Pact magic learns, as the warlock does.
+export function customListRules(casterType: WorkshopClassData["casterType"], style: SpellListStyle): string | null {
+  if (casterType === "pact") return "warlock";
+  if (casterType === "full") return style === "known" ? "sorcerer" : "cleric";
+  if (casterType === "half") return style === "known" ? "ranger" : "paladin";
+  return null;
+}
 // The ability each list's own class casts with, the default for a new caster.
 export const LIST_ABILITY: Record<(typeof SPELL_LISTS)[number], "int" | "wis" | "cha"> = {
   bard: "cha",
@@ -118,6 +144,26 @@ const stringList = (value: unknown, max: number, length = 60): string[] =>
     ? [...new Set(value.map((entry) => String(entry ?? "").trim().slice(0, length)).filter(Boolean))].slice(0, max)
     : [];
 
+// A list of spell names as a class keeps it: blanks dropped, each name once
+// by its name key ("Shield" and "shield" are one spell), the first spelling
+// kept. Uncapped, so the limits can say how far past the cap a list ran.
+export function distinctSpellNames(value: unknown, length = HOMEBREW_NAME_MAX): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const entry of value) {
+    const name = String(entry ?? "").trim().slice(0, length);
+    const key = textKey(name);
+    if (key && !seen.has(key)) {
+      seen.add(key);
+      out.push(name);
+    }
+  }
+  return out;
+}
+
 // The stored data read into the shape the engines need, every field held to
 // what a class can be: a d6 to a d12, two different saves, skills from the
 // list, a level to pick the subclass at between 1 and 3. Returns the reason
@@ -135,8 +181,23 @@ export function normalizeClassData(raw: Record<string, unknown>): { data: Worksh
     return { error: `The class picks ${count} skills from a list of ${from.length}: add skills to the list or pick fewer.` };
   }
   const casterType = oneOf(raw.casterType, CASTER_TYPES, "none");
-  const spellListFrom = casterType === "none" ? null : oneOf(raw.spellListFrom, SPELL_LISTS, "wizard");
-  const spellAbility = casterType === "none" ? null : oneOf(raw.spellAbility, ["int", "wis", "cha"] as const, LIST_ABILITY[spellListFrom ?? "wizard"]);
+  const spellListFrom = casterType === "none" ? null : oneOf(raw.spellListFrom, [...SPELL_LISTS, CUSTOM_SPELL_LIST], "wizard");
+  const custom = spellListFrom === CUSTOM_SPELL_LIST;
+  const spellAbility =
+    casterType === "none"
+      ? null
+      : oneOf(raw.spellAbility, ["int", "wis", "cha"] as const, custom ? "int" : LIST_ABILITY[(spellListFrom ?? "wizard") as (typeof SPELL_LISTS)[number]]);
+  // A list of its own keeps its spells by name, each once; a pact caster
+  // learns its spells, as the warlock does, whatever the draft said.
+  const spellList = custom ? distinctSpellNames(raw.spellList).slice(0, CUSTOM_LIST_MAX) : [];
+  const spellStyle: SpellListStyle | undefined = custom
+    ? casterType === "pact"
+      ? "known"
+      : oneOf(raw.spellStyle, SPELL_LIST_STYLES, "prepared")
+    : undefined;
+  if (custom && !spellList.length) {
+    return { error: "The class casts from a spell list of its own: add at least one spell to it, or pick a published class's list." };
+  }
   const levels: Record<string, ClassFeatureRow[]> = {};
   for (const [key, rows] of Object.entries((raw.levels ?? {}) as Record<string, unknown>)) {
     const level = levelOfKey(key);
@@ -166,6 +227,7 @@ export function normalizeClassData(raw: Record<string, unknown>): { data: Worksh
       casterType,
       spellAbility,
       spellListFrom,
+      ...(custom ? { spellList, spellStyle } : {}),
       subclassLevel: Math.max(1, Math.min(3, Math.floor(Number(raw.subclassLevel ?? blank.subclassLevel)) || blank.subclassLevel)),
       levels,
     },
@@ -193,6 +255,11 @@ export function workshopClassFrom(entry: { id: string; name: string; data: Recor
   }
   const data = normalized.data;
   const id = workshopClassId(entry.id);
+  // A list of its own is the class's own: its id is the list the searches
+  // and the checks ask for (src/lib/classes/class-spell-list.ts), and the
+  // published caster that casts the same way counts it.
+  const custom = data.spellListFrom === CUSTOM_SPELL_LIST;
+  const style = data.spellStyle ?? "prepared";
   const text: Record<string, string> = {};
   const levels: Record<string, string[]> = {};
   for (const [level, rows] of Object.entries(data.levels)) {
@@ -215,8 +282,9 @@ export function workshopClassFrom(entry: { id: string; name: string; data: Recor
       skillChoices: data.skillChoices,
       genres: [],
       blurb: blurbOf(data.desc, entry.name.trim()),
-      spellListFrom: data.spellListFrom,
-      knownCaster: data.spellListFrom !== null && KNOWN_LISTS.has(data.spellListFrom),
+      spellListFrom: custom ? id : data.spellListFrom,
+      knownCaster: custom ? style === "known" : data.spellListFrom !== null && KNOWN_LISTS.has(data.spellListFrom),
+      ...(custom ? { customSpells: data.spellList ?? [], spellRules: customListRules(data.casterType, style) ?? "wizard" } : {}),
       castingLabel: null,
     },
     features: { subclassLevel: data.subclassLevel, levels, subclasses: [] },

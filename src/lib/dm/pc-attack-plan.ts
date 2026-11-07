@@ -37,12 +37,13 @@ import { tilesBetween } from "@/lib/dm/attack-spatial";
 import { buildAttackProfile, type BuiltAttack } from "@/lib/dm/pc-attack-profile";
 import { pickManeuver, type OnHitSpends } from "@/lib/dm/pc-attack-riders";
 import type { ManeuverUse } from "@/lib/dm/maneuver-rules";
+import type { Sight } from "@/lib/dm/attack-light";
 import { attackGeometry, attackSituation } from "@/lib/dm/pc-attack-situation";
 import { missileDeflection, reachThroughProblem } from "@/lib/dm/zone-rules";
 import { planConjuredStrike, type ConjuredStrike } from "@/lib/dm/conjured-strike";
 import { sheetCreatureType } from "@/lib/dm/summon-rules";
 import { spellWardOn } from "@/lib/dm/cast-reach";
-import { spellFactsFor } from "@/lib/content";
+import { spellDamageFor, spellFactsFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { checkAttackSpell } from "@/lib/dm/pc-attack-spell";
 import { attacksAllowedFor, budgetFor } from "@/lib/dm/turn-budget";
@@ -108,6 +109,8 @@ export type AttackPlan = {
   context: { advantage: Advantage; autoCrit: boolean; notes: string[] };
   helped: string | null;
   attackRiders: ConditionRollRiders;
+  // Who the light lets see whom (attack-light.ts): null off the board.
+  sight: Sight | null;
   maneuver: ManeuverPick | null;
   smite: OnHitSpends["smite"];
   // The feature options the attack carries (src/lib/dm/pc-attack-options.ts).
@@ -224,6 +227,14 @@ export function planPcAttack(input: {
   }
   let profile = spell.profile;
   const weaponAttack = kind === "weapon" || kind === "natural";
+  // Cast from a higher slot, or out of a ring at the level it was stored, the
+  // spell rolls that level's dice (cast-reach.ts spellAttackReach), and the line
+  // naming its dice says so: it said "4d6 at its base level" over a 5d6 Guiding
+  // Bolt, and the narrator read it.
+  const upcastNote =
+    kind === "spell" && args.spell && built.scalingNote && spell.spellSlotLevel
+      ? spellDamageFor({ spell: args.spell, userIds: spellAuthorsFor(campaign), casterLevel: sheet.level, slotLevel: spell.spellSlotLevel })?.note ?? null
+      : null;
 
   // Ammunition, when the table asked for it: an empty quiver is a refused
   // attack, not a missed one. Only looked at here; the round leaves the
@@ -571,7 +582,7 @@ export function planPcAttack(input: {
     profile,
     kind,
     special: built.special,
-    scalingNote: built.scalingNote,
+    scalingNote: upcastNote ?? built.scalingNote,
     riders,
     rageBonus: folded.rageBonus,
     attackEffect: folded.attackEffect,
@@ -685,6 +696,7 @@ export function planPcAttack(input: {
     context,
     helped: situation.helped,
     attackRiders: situation.attackRiders,
+    sight: situation.sight,
     marks,
     // Skulker: a ranged attack from hiding gives them away only when it
     // hits (pc-attack.ts leaves the hiding in place for the roll).

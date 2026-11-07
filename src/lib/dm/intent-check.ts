@@ -23,7 +23,9 @@ import { listSheets } from "@/lib/db/sheets";
 import { withHitAim } from "@/lib/dm/last-hit";
 import { freshBudget, spendAction } from "@/lib/dm/action-budget";
 import { castSpell } from "@/lib/dm/cast-guard";
-import type { MessageIntent } from "@/lib/dm/intent-logic";
+import { isStoredCast, type MessageIntent } from "@/lib/dm/intent-logic";
+import { reactionTriggerProblem } from "@/lib/dm/reaction-spells";
+import { releaseStoredSpell } from "@/lib/dm/spell-storing";
 import { spellEngineName } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { reassertsControl, summonMixPlan, summonPlan, summonSpellFor } from "@/lib/srd/summon-spells";
@@ -81,6 +83,23 @@ function summonCardRefusal(campaign: Campaign, sheet: CharacterSheet, intent: Me
   return "error" in plan ? plan.error : null;
 }
 
+// A card that casts a spell out of a ring, asked as use_item will ask it. A
+// reaction spell is asked its trigger as well, before anything is drawn: a credit
+// left waiting would pay for the next Shield the wearer cast from their own slots.
+function storedCastRefusal(campaign: Campaign, sheet: CharacterSheet, intent: MessageIntent): string | null {
+  const released = releaseStoredSpell(campaign, sheet, intent.item ?? "", intent.spell, "", { dryRun: true });
+  if (!released) {
+    return `${intent.item} holds no spell to cast.`;
+  }
+  if (typeof released.error === "string") {
+    return released.error;
+  }
+  if (intent.card === "reaction") {
+    return reactionTriggerProblem(campaign, sheet, intent.spell ?? "", { targetEnemyId: intent.targetKind === "enemy" ? intent.targetId : undefined })?.error ?? null;
+  }
+  return summonCardRefusal(campaign, sheet, intent);
+}
+
 // The engine's reason the card cannot be played now, or null.
 export function intentRefusal(
   campaign: Campaign,
@@ -91,10 +110,16 @@ export function intentRefusal(
   if (intent.card === "basic" && intent.action === "end-turn") {
     return null;
   }
+  if (isStoredCast(intent)) {
+    const refused = storedCastRefusal(campaign, sheet, intent);
+    if (refused || intent.card === "spell") {
+      return refused;
+    }
+  }
   // A spell is judged by the cast guard. A reaction card's spell is cast by
   // use_reaction (src/lib/dm/reaction-spells.ts), so it is asked as that
   // cast, off turn too, and its spent reaction below as any reaction's.
-  if ((intent.card === "spell" || intent.card === "reaction") && intent.spell) {
+  if ((intent.card === "spell" || intent.card === "reaction") && intent.spell && !isStoredCast(intent)) {
     const verdict = castSpell(
       campaign,
       "",

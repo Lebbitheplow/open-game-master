@@ -947,6 +947,32 @@ messages.insertCampaignMessage({
   content: "The road is quiet now. Rook wipes the blade clean and feels steadier for it.",
 });
 
+// Issue #833: a Draconic Bloodline sorcerer saved before Dragon Ancestor was
+// a pick, at 6th level with 7th earned. The sheet lists the dragon as owed
+// and takes it there; the level-up's pick step offers it too. One table per
+// viewport, since the pick is made.
+const dragonTables = {};
+for (const viewport of ["desktop", "phone"]) {
+  const table = campaigns.createCampaign(world.owner.id, {
+    title: `Dragon Table (${viewport})`,
+    description: "Scales under the skin, and no dragon named yet.",
+    theme: "high-fantasy",
+    maxPlayers: 6,
+    startingLevel: 6,
+    difficulty: "normal",
+    gameSettings: { ttsEnabled: false, genre: "high_fantasy" },
+  });
+  campaigns.setCampaignStatus(table.id, "active");
+  const hero = sheets.createSheet(
+    table.id,
+    world.owner.id,
+    6,
+    heroInput({ name: "Ysolde Ember", class: "sorcerer", subclass: "Draconic Bloodline", level: 6, abilities: { str: 8, dex: 14, con: 14, int: 10, wis: 12, cha: 17 } }),
+  );
+  getDatabase().prepare(`UPDATE character_sheets SET xp = ? WHERE id = ?`).run(23000, hero.id);
+  dragonTables[viewport] = { id: table.id, hero: hero.id };
+}
+
 // A College of Lore bard who has earned 10th level (issue #570, CLS-21): the
 // level-up dialog's spell step offers Magical Secrets' two spells from any
 // class as their own group. The two Additional Magical Secrets took at 6th
@@ -2293,6 +2319,60 @@ const witchBolt = {};
   }
 }
 
+// A tiefling fighter's Infernal Legacy (scenario species-spells, issue
+// #833): per viewport, on her turn in a fight, a 5th-level fighter whose race casts
+// thaumaturgy, hellish rebuke and darkness with no Spellcasting of its own.
+const speciesSpells = {};
+for (const viewport of ["desktop", "phone"]) {
+  const table = campaigns.createCampaign(player.id, {
+    title: `Infernal Table (${viewport})`,
+    description: "A tiefling fighter and the spells of her blood.",
+    theme: "high-fantasy",
+    maxPlayers: 6,
+    startingLevel: 5,
+    difficulty: "normal",
+    gameSettings: { ttsEnabled: false, dmMode: "human" },
+  });
+  const seated = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+  if ("error" in seated) {
+    throw new Error(`could not seat the lead at the infernal table: ${seated.error}`);
+  }
+  campaigns.setCampaignStatus(table.id, "active");
+  const fighter = sheets.createSheet(
+    table.id,
+    world.owner.id,
+    5,
+    heroInput({
+      name: "Ash Marrow",
+      race: "tiefling",
+      class: "fighter",
+      level: 5,
+      maxHp: 44,
+      abilities: { str: 16, con: 14, cha: 14 },
+      equipment: [{ name: "Component pouch", qty: 1 }],
+    }),
+  );
+  // In a fight on her turn, where the Hand deals her cards.
+  const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
+  const encounterRows = await import("../../src/lib/db/encounters.ts");
+  const { initiativeFloorFor } = await import("../../src/lib/dm/encounter-tools.ts");
+  const started = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: player.id }, {
+    name: "start_encounter",
+    args: { enemies: [{ monster: "goblin", count: 1 }] },
+  });
+  if (!started.ok) {
+    throw new Error(`the infernal table's fight did not start: ${started.error}`);
+  }
+  const encounter = encounterRows.getActiveEncounter(table.id);
+  const place = encounter.order.findIndex((entry) => entry.characterId === fighter.id);
+  if (place < 0) {
+    throw new Error("the infernal table's fighter has no place in the order");
+  }
+  encounterRows.saveEncounter({ ...encounter, orderReady: true, turnIndex: place, turnBudget: null, legendary: { ...encounter.legendary, due: [] } });
+  campaigns.setFloor(table.id, initiativeFloorFor(table.id) ?? { mode: "open" });
+  speciesSpells[viewport] = { id: table.id, fighter: fighter.id };
+}
+
 // Issue 668: a Hand notice ("already used their bonus action this turn")
 // stayed into the next round while the chip was lit again. A fight a
 // person runs (the player's seat), with the lead's fighter up, one per
@@ -2722,6 +2802,125 @@ const resolveTables = {};
   }
 }
 
+// A fighter's Ring of Spell Storing in the Hand (scenario 122-ring-cards): a table
+// the lead runs and plays at, so a card resolves as it is played, in a fight on
+// the fighter's turn with two goblins beside them. One per viewport: the spells go.
+const ringTables = {};
+{
+  const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
+  const maps = await import("../../src/lib/db/battle-maps.ts");
+  const encounterRows = await import("../../src/lib/db/encounters.ts");
+  const { initiativeFloorFor } = await import("../../src/lib/dm/encounter-tools.ts");
+  // Two goblins beside the hero, on the hero's turn: a person's table shows the
+  // Hand only in a fight, and Hold Person can take one and leave one to swing.
+  const ringFight = async (campaignId, heroId) => {
+    const started = await invokeEngine(campaigns.getCampaignById(campaignId), { kind: "human", userId: world.owner.id }, {
+      name: "start_encounter",
+      args: { enemies: [{ monster: "goblin", count: 2 }] },
+    });
+    if (!started.ok) {
+      throw new Error(`the ring table's fight did not start: ${started.error}`);
+    }
+    const encounter = encounterRows.getActiveEncounter(campaignId);
+    const board = maps.getBattleMapForEncounter(encounter.id);
+    maps.setBattleMapTerrain(board.id, ".".repeat(board.width * board.height));
+    getDatabase().prepare("UPDATE battle_maps SET doors_json = '{}' WHERE id = ?").run(board.id);
+    let rank = 0;
+    for (const token of maps.listTokens(board.id)) {
+      if (token.refId === heroId) maps.moveToken(token.id, 5, 6, 0);
+      else maps.moveToken(token.id, 6, 5 + rank++, 0);
+    }
+    const place = encounter.order.findIndex((entry) => entry.characterId === heroId);
+    if (place < 0) {
+      throw new Error("the ring table's hero has no place in the order");
+    }
+    encounterRows.saveEncounter({
+      ...encounter,
+      orderReady: true,
+      round: Math.max(1, encounter.round),
+      turnIndex: place,
+      turnBudget: null,
+      legendary: { ...encounter.legendary, due: [] },
+    });
+    campaigns.setFloor(campaignId, initiativeFloorFor(campaignId) ?? { mode: "open" });
+  };
+  for (const viewport of ["desktop", "phone"]) {
+    const table = campaigns.createCampaign(world.owner.id, {
+      title: `Ring Table (${viewport})`,
+      description: "Goblins in a lane and a ring that holds three spells.",
+      theme: "high-fantasy",
+      maxPlayers: 4,
+      startingLevel: 5,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human" },
+    });
+    campaigns.setCampaignStatus(table.id, "active");
+    const hero = sheets.createSheet(
+      table.id,
+      world.owner.id,
+      5,
+      heroInput({
+        name: "Corin Ashvale",
+        class: "fighter",
+        level: 5,
+        maxHp: 44,
+        equipment: [
+          { name: "Longsword", qty: 1, equipped: true },
+          {
+            name: "Ring of Spell Storing",
+            qty: 1,
+            equipped: true,
+            attuned: true,
+            storedSpells: [
+              { spell: "Knock", level: 2, saveDc: 15, attackBonus: 7, by: "Iris" },
+              { spell: "Hold Person", level: 2, saveDc: 15, attackBonus: 7, by: "Iris" },
+              { spell: "Shield", level: 1, saveDc: 15, attackBonus: 7, by: "Iris" },
+            ],
+          },
+        ],
+      }),
+    );
+    await ringFight(table.id, hero.id);
+    // A wizard whose own spells fold Spells and whose gear folds
+    // Items, so the ring's cards are under both.
+    const study = campaigns.createCampaign(world.owner.id, {
+      title: `Ring Study (${viewport})`,
+      description: "A wizard's study and a ring on the desk.",
+      theme: "high-fantasy",
+      maxPlayers: 4,
+      startingLevel: 5,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human" },
+    });
+    campaigns.setCampaignStatus(study.id, "active");
+    const wizardHero = sheets.createSheet(
+      study.id,
+      world.owner.id,
+      5,
+      heroInput({
+        name: "Maren Oake",
+        class: "wizard",
+        level: 5,
+        abilities: { int: 16 },
+        equipment: [
+          { name: "Dagger", qty: 1, equipped: true },
+          { name: "Ring of Spell Storing", qty: 1, equipped: true, attuned: true, storedSpells: [{ spell: "Knock", level: 2, saveDc: 15, attackBonus: 7 }, { spell: "Hold Person", level: 2, saveDc: 15, attackBonus: 7 }] },
+        ],
+        spellcasting: {
+          ability: "int",
+          slots: { 1: { max: 4, used: 0 }, 2: { max: 3, used: 0 } },
+          known: [],
+          prepared: ["Shield", "Sleep", "Magic Missile", "Mage Armor"],
+          cantrips: [],
+          spellbook: ["Shield", "Sleep", "Magic Missile", "Mage Armor"],
+        },
+      }),
+    );
+    await ringFight(study.id, wizardHero.id);
+    ringTables[viewport] = { id: table.id, hero: hero.id, study: study.id };
+  }
+}
+
 // Issue 685, round 2 (scenario 115-fight-bench-2): a table per moment, one
 // per viewport, since each step plays on its own. At the first four the
 // player runs the table and the lead plays (the page is the lead's, on the
@@ -3116,6 +3315,7 @@ const ids = {
   fallenTables,
   clockTables,
   resolveTables,
+  ringTables,
   bench2,
   weekly,
   multiclassTableId: multiclassTable.id,
@@ -3123,6 +3323,7 @@ const ids = {
   qualityTurnIds,
   spellbook,
   witchBolt,
+  speciesSpells,
   noticeTables,
   afterRollTables,
   portentTables,
@@ -3187,6 +3388,7 @@ const ids = {
   enemyMoves,
   levelTableId: levelTable.id,
   secretsTableId: secretsTable.id,
+  dragonTables,
   commandTableId: commandTable.id,
   replayTableId: replayTable.id,
   voiceTableId: voiceTable.id,
@@ -3214,6 +3416,7 @@ const ids = {
   titles: {
     [levelTable.id]: "Level Table",
     [secretsTable.id]: "Secrets Table",
+    ...Object.fromEntries(Object.entries(dragonTables).map(([viewport, table]) => [table.id, `Dragon Table (${viewport})`])),
     [commandTable.id]: COMMAND_TITLE,
     [replayTable.id]: REPLAY_TITLE,
     [voiceTable.id]: VOICE_TITLE,
@@ -3229,6 +3432,7 @@ const ids = {
     ...Object.fromEntries(Object.entries(fallenTables).map(([viewport, id]) => [id, `The Fallen Watch (${viewport})`])),
     ...Object.fromEntries(Object.entries(clockTables).map(([viewport, table]) => [table.id, `Clock Table (${viewport})`])),
     ...Object.fromEntries(Object.entries(resolveTables).map(([viewport, table]) => [table.id, `${RESOLVE_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(ringTables).flatMap(([viewport, table]) => [[table.id, `Ring Table (${viewport})`], [table.study, `Ring Study (${viewport})`]])),
     ...bench2Titles,
     ...Object.fromEntries(Object.entries(pactTables).flatMap(([kind, tables]) => Object.entries(tables).map(([viewport, table]) => [table.id, `Pact ${kind.charAt(0).toUpperCase()}${kind.slice(1)} (${viewport})`]))),
     ...Object.fromEntries(Object.entries(chipTables).map(([viewport, table]) => [table.id, `Chip Table (${viewport})`])),

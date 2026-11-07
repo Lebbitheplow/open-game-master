@@ -127,7 +127,8 @@ export type CompanionSpellInput = {
   firstLevel: boolean;
   // Cantrips the race gave, known on top of the class's own.
   freeCantrips: number;
-  // The class's list (src/lib/srd/spell-lists.ts checklistSpellsOn).
+  // The class's list as the save reads it (src/lib/content/index.ts
+  // classSpellPool: the checklist, the pack and the table's homebrew).
   candidates: Array<{ name: string; level: number }>;
   // Names somebody asked for (the DM, recruiting). Tried first; one that is
   // off the list or out of reach is passed over.

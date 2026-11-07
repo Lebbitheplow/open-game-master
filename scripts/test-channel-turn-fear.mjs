@@ -112,13 +112,33 @@ await test("Conquering Presence frightens everyone in reach, with a save each tu
   assert.equal(used(conquest), 1);
 });
 
-await test("Dreadful Aspect frightens for a minute with no repeat save; a save made lands nothing.", async () => {
+await test("Dreadful Aspect frightens for a minute, saved against only far from the paladin; a save made lands nothing.", async () => {
   const [a, b] = await stage(oathbreaker, ["beast", "humanoid", "beast"]);
   const out = await channel(oathbreaker, "dreadful aspect", [2, 20]);
   assert.equal(out.ok, true, out.error);
   assert.ok(foe(a.id).conditions.includes("frightened"));
-  assert.equal(foe(a.id).conditionMeta.frightened.saveEnds, undefined);
+  assert.deepEqual(foe(a.id).conditionMeta.frightened.saveEnds, { ability: "wis", dc: 15, beyondFeet: 30 });
+  assert.match(out.result.applied.join(" "), /more than 30 feet away/);
   assert.equal(foe(b.id).conditions.includes("frightened"), false);
+});
+
+await test("A creature frightened by Dreadful Aspect saves again only at the end of a turn it ends more than 30 feet away.", async () => {
+  const [a] = await stage(oathbreaker, ["beast", "humanoid", "beast"]);
+  const out = await channel(oathbreaker, "dreadful aspect", [2, 2]);
+  assert.equal(out.ok, true, out.error);
+  assert.ok(foe(a.id).conditions.includes("frightened"));
+  const { endTurnSaves } = await import("../src/lib/dm/condition-tick.ts");
+  // Still beside the paladin: no save, however high the die.
+  world.dice(20);
+  endTurnSaves(world.campaign(), world.encounter(), [a.id]);
+  world.clearDice();
+  assert.ok(foe(a.id).conditions.includes("frightened"), "no save within 30 feet");
+  // Fled 35 feet: the save comes, and a 20 ends it.
+  kit.place(a.id, 5, 12);
+  world.dice(20);
+  endTurnSaves(world.campaign(), world.encounter(), [a.id]);
+  world.clearDice();
+  assert.equal(foe(a.id).conditions.includes("frightened"), false, "a save far away ends it");
 });
 
 await test("A creature immune to fear is said to be, and is not frightened.", async () => {
@@ -170,8 +190,8 @@ await test("An option the sheet does not hold is refused and spends nothing.", a
   assert.equal(used(oathbreaker), 0);
 });
 
-await test("The cards play these: the aimed two ask for a creature, the others for none.", async () => {
-  for (const [who, name, target] of [[ancients, "Turn the Faithless", "none"], [watchers, "Abjure the Extraplanar", "none"], [arcana, "Arcane Abjuration", "enemy"], [conquest, "Conquering Presence", "none"], [oathbreaker, "Dreadful Aspect", "none"], [vengeance, "Abjure Enemy", "enemy"]]) {
+await test("The cards play these: the aimed and chosen ones ask for a creature, the others for none.", async () => {
+  for (const [who, name, target] of [[ancients, "Turn the Faithless", "none"], [watchers, "Abjure the Extraplanar", "none"], [arcana, "Arcane Abjuration", "enemy"], [conquest, "Conquering Presence", "enemy"], [oathbreaker, "Dreadful Aspect", "enemy"], [vengeance, "Abjure Enemy", "enemy"]]) {
     const [first] = await stage(who, ["fiend", "fiend", "beast"]);
     const card = deriveHand(world.sheet(who.id), FRESH_TURN, {}).find((entry) => entry.name === name);
     assert.ok(card, name);

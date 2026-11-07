@@ -13,7 +13,8 @@ import { HOMEBREW_DESC_MAX } from "@/lib/schemas/homebrew";
 import { describeFeature } from "@/lib/help";
 import { classMechanics } from "@/lib/content/mechanics";
 import { findCustomClass } from "@/lib/classes";
-import { SPELL_LISTS, type ClassFeatureRow, type WorkshopClassData } from "@/lib/homebrew/class-data";
+import { CUSTOM_LIST_MAX, CUSTOM_SPELL_LIST, SPELL_LISTS, type ClassFeatureRow, type WorkshopClassData } from "@/lib/homebrew/class-data";
+import { checklistSpellsOn } from "@/lib/srd/spell-lists";
 import { textKey } from "@/lib/language/text-logic";
 
 type Row = { name: string; slug?: string; source?: string; data: Record<string, unknown> };
@@ -25,8 +26,38 @@ function listOf(classId: string): string | null {
   return own ?? findCustomClass(classId)?.spellListFrom ?? null;
 }
 
+// How a copy casts: the list its class borrows or is (SPELL_LISTS), or,
+// for a class with a list no SRD class has (the artificer, a pack's own
+// caster), a list of the copy's own holding that list's spells: `named` is
+// every spell the server files under the class (issue #833). Copies always
+// borrowed the wizard's list, so a copied artificer cast wizard spells. The
+// wizard's is left only for a caster nothing names a spell for.
+function castingOf(
+  classId: string,
+  casterType: WorkshopClassData["casterType"],
+  // Asked only on the path that needs it: a catalog search copies many
+  // casters at once, and most borrow a published list (issue #833 review).
+  named: () => string[],
+): Pick<WorkshopClassData, "spellListFrom" | "spellList" | "spellStyle"> {
+  if (casterType === "none") {
+    return { spellListFrom: null };
+  }
+  const list = listOf(classId);
+  if (list && (SPELL_LISTS as readonly string[]).includes(list)) {
+    return { spellListFrom: list };
+  }
+  const own = [...new Set(named())].slice(0, CUSTOM_LIST_MAX);
+  if (!own.length) {
+    return { spellListFrom: "wizard" };
+  }
+  return { spellListFrom: CUSTOM_SPELL_LIST, spellList: own, spellStyle: casterType === "pact" ? "known" : "prepared" };
+}
+
 // A bundled class's whole table, as a workshop class's data.
-export function bundledClassTable(classId: string): WorkshopClassData | null {
+export function bundledClassTable(
+  classId: string,
+  spellsOf: (classId: string) => string[] = (id) => checklistSpellsOn(id).map((spell) => spell.name),
+): WorkshopClassData | null {
   const klass = findClass(classId);
   if (!klass) {
     return null;
@@ -47,7 +78,7 @@ export function bundledClassTable(classId: string): WorkshopClassData | null {
     tools: klass.tools ?? [],
     casterType,
     spellAbility: casterType === "none" ? null : klass.spellAbility,
-    spellListFrom: casterType === "none" ? null : (listOf(classId) ?? "wizard"),
+    ...castingOf(classId, casterType, () => spellsOf(classId)),
     subclassLevel: Math.max(1, Math.min(3, subclassLevelFor(classId) ?? 3)),
     levels,
   };
@@ -55,15 +86,18 @@ export function bundledClassTable(classId: string): WorkshopClassData | null {
 
 // A catalog row's copy: a bundled class's table under its own id, or a pack
 // class's numbers. Null for the table's own homebrew (copied as stored).
-export function classMechanicsOf(row: Row): WorkshopClassData | null {
+// `spellsOf` names the spells the server files under a class id (the pack's
+// and the checklist's), for a class whose list is its own.
+export function classMechanicsOf(row: Row, spellsOf: (classId: string) => string[] = (classId) => checklistSpellsOn(classId).map((spell) => spell.name)): WorkshopClassData | null {
   if (row.source === "homebrew") {
     return null;
   }
-  const bundled = row.slug ? bundledClassTable(row.slug.toLowerCase()) : null;
+  const bundled = row.slug ? bundledClassTable(row.slug.toLowerCase(), spellsOf) : null;
   if (bundled) {
     return bundled;
   }
   const numbers = classMechanics(row.slug ?? row.name, row.data);
+  const casterType = numbers.casterType === "artificer" ? "half" : numbers.casterType;
   return {
     desc: String(row.data.desc ?? "").slice(0, HOMEBREW_DESC_MAX),
     hitDie: numbers.hitDie,
@@ -72,9 +106,9 @@ export function classMechanicsOf(row: Row): WorkshopClassData | null {
     armor: numbers.armor,
     weapons: numbers.weapons,
     tools: numbers.tools ?? [],
-    casterType: numbers.casterType === "artificer" ? "half" : numbers.casterType,
+    casterType,
     spellAbility: numbers.spellAbility,
-    spellListFrom: numbers.casterType === "none" ? null : "wizard",
+    ...castingOf(String(row.slug ?? "").toLowerCase(), casterType, () => (row.slug ? spellsOf(row.slug.toLowerCase()) : [])),
     subclassLevel: 3,
     levels: {},
   };

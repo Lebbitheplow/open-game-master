@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { spellsToLookUp, type SpellFact } from "@/lib/battlemap/hand";
+import { handSpellsToLookUp, type SpellFact } from "@/lib/battlemap/hand";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { normalizeSpellMech } from "@/lib/homebrew/gear";
 import { factsFromRow } from "@/lib/srd/spell-facts";
@@ -85,7 +85,7 @@ async function lookUp(name: string, campaignId: string | null): Promise<SpellFac
 }
 
 export function useHandSpells(sheet: CharacterSheet | null): Record<string, SpellFact> {
-  const names = useMemo(() => (sheet ? spellsToLookUp(sheet) : []), [sheet]);
+  const names = useMemo(() => (sheet ? handSpellsToLookUp(sheet) : []), [sheet]);
   const wanted = names.map(textKey).join("|");
   // Cached per table: two tables may each have a spell of the same name.
   const campaignId = sheet?.campaignId ?? null;
@@ -139,7 +139,7 @@ const SUMMON_BATCH = 60;
 export function useHandSummons(sheet: CharacterSheet | null, enabled: boolean): Record<string, SummonCatalogue> {
   const campaignId = sheet?.campaignId ?? null;
   const characterId = sheet?.id ?? "";
-  const names = useMemo(() => (sheet && enabled ? spellsToLookUp(sheet) : []), [sheet, enabled]);
+  const names = useMemo(() => (sheet && enabled ? handSpellsToLookUp(sheet) : []), [sheet, enabled]);
   const wanted = names.join("\n");
   const [version, setVersion] = useState(0);
 

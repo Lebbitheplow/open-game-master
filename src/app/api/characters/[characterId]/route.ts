@@ -14,7 +14,7 @@ import { admitSheet, refusal } from "@/lib/characters/admit";
 import { olderBuilderOf } from "@/lib/srd/legality/older-builder";
 import { attachmentSchema, createSheetSchema } from "@/lib/schemas/sheet";
 import { workshopClassDefs } from "@/lib/classes/workshop-registry";
-import { libraryWords } from "@/lib/characters/species-rules";
+import { libraryWords, speciesAtTable } from "@/lib/characters/species-rules";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -54,6 +54,9 @@ export async function GET(
     events: listEventsForLibraryCharacter(characterId),
     // The workshop classes it holds, read in the browser as on the server.
     workshopClasses: workshopClassDefs([character.class, ...((character.sheet as { classes?: Array<{ id: string }> } | undefined)?.classes ?? []).map((entry) => entry.id)]),
+    // Its species, as the table's snapshot sends them: a workshop species'
+    // spells and its options' (issue #833) are read in the browser too.
+    species: speciesAtTable([character.race]),
   });
 }
 

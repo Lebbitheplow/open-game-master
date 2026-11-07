@@ -14,13 +14,14 @@ import { containsPhrase } from "@/lib/language/text-logic";
 import { aloftByMagic, cannotStayAloft } from "@/lib/dm/flight-logic";
 import { onGrounding } from "@/lib/db/flight-watch";
 import { itemSpeeds } from "@/lib/srd/magic-items";
+import { wearsBodyArmor } from "@/lib/srd/authored-effects";
 
 // The flying speed of the creature a token stands for, or null.
 export function flightOf(encounterId: string, token: BattleToken): number | null {
   if (token.kind === "pc") {
     const sheet = getSheetById(token.refId);
     return sheet
-      ? flyingSpeedOf({ conditions: sheet.conditions, features: sheet.features, wildShaped: Boolean(sheet.wildShape), walkingFeet: sheet.speed, worn: itemSpeeds(sheet.equipment, sheet, sheet.speed).fly })
+      ? flyingSpeedOf({ conditions: sheet.conditions, features: sheet.features, wildShaped: Boolean(sheet.wildShape), walkingFeet: sheet.speed, worn: itemSpeeds(sheet.equipment, sheet, sheet.speed).fly, armored: wearsBodyArmor(sheet) })
       : null;
   }
   if (token.kind === "enemy") {

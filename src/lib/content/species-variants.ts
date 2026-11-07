@@ -3,12 +3,13 @@ import { ALL_SKILLS } from "@/lib/content/mechanics";
 import { DAMAGE_TYPES } from "@/lib/dm/damage-logic";
 import { textKey } from "@/lib/language/text-logic";
 import { variantBreathFeatureName } from "@/lib/srd/racial-grants";
+import { checkSpeciesSpells, speciesSpellsSummary, type SpeciesSpellGroup } from "@/lib/content/species-spells";
 
 // A species whose player picks one of several packages: a Half-Dragon's
 // ancestry, an elf's lineage, a sorcerous bloodline (issue #538). Each option
 // gives only grants the engines already run (scores, skills, tools,
-// languages, damage resistances and a breath weapon), plus words the player
-// reads. The pick is kept on the sheet as racialChoices.variant, the
+// languages, damage resistances, a breath weapon and spells, issue #833),
+// plus words the player reads. The pick is kept on the sheet as racialChoices.variant, the
 // option's id.
 //
 // The engines read features and the race row, never the pick itself. So the
@@ -35,6 +36,8 @@ export type SpeciesVariantOption = {
   tools?: string[];
   languages?: string[];
   breath?: SpeciesBreath;
+  // Spells the option gives (src/lib/content/species-spells.ts, issue #833).
+  spells?: SpeciesSpellGroup;
 };
 
 export type SpeciesVariantGroup = { label: string; options: SpeciesVariantOption[] };
@@ -74,9 +77,10 @@ const ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 // (so "Resistances" and "Resistant" too), "breath weapon" as the breath's
 // counter (src/lib/dm/pc-defenses.ts, src/lib/srd/feature-names.ts). The
 // label and every option's name are held to the same words, since both are
-// written into the choice's record.
-const RESERVED = /[():]|resistan|breath\s*weapon/i;
-const RESERVED_WORDS = `brackets, a colon, "resistance" or "breath weapon": the table reads those words`;
+// written into the choice's record. A workshop subclass's choice keeps the
+// same words (src/lib/content/subclass-choices.ts).
+export const RESERVED = /[():]|resistan|breath\s*weapon/i;
+export const RESERVED_WORDS = `brackets, a colon, "resistance" or "breath weapon": the table reads those words`;
 
 const quoted = (name: string) => `"${name.length > 40 ? `${name.slice(0, 40)}...` : name}"`;
 const listed = (items: string[], last = "and") =>
@@ -232,6 +236,10 @@ function checkOption(
     option.breath = { damageType, save: breath.save as Ability, shape: breath.shape as BreathShape };
   }
 
+  const spells = checkSpeciesSpells(row.spells, where);
+  if ("error" in spells) return spells;
+  if (spells.group) option.spells = spells.group;
+
   ids.add(id);
   names.add(textKey(name));
   return { option };
@@ -326,8 +334,22 @@ function union(base: string[] | undefined, extra: string[] | undefined): string[
 // languages. The server writes it on the sheet beside the pick when it
 // admits one (racialChoices.variantGrants), so what an edit takes off is
 // what the character was given, even after the workshop changes the option
-// or removes it.
+// or removes it. Its spells are not among them: nothing of them is baked
+// into the sheet, and the table reads them from the option the species
+// offers today, found by the record below (src/lib/srd/racial-grants.ts).
 export type SpeciesVariantGrants = Pick<SpeciesVariantOption, "asi" | "skills" | "tools" | "languages">;
+
+// The record a choice's option is written as on a sheet, a race feature:
+// "Draconic ancestry (Topaz)".
+export const variantRecordName = (label: string, option: Pick<SpeciesVariantOption, "name">) => `${label} (${option.name})`;
+
+// The features with the option's record tagged with the option's id, so
+// the table finds the option by its id however the author renames it or
+// the choice later (issue #833, src/lib/srd/racial-grants.ts).
+export function withVariantRecordId<T extends { name: string; variant?: string }>(features: T[], label: string, option: Pick<SpeciesVariantOption, "id" | "name">): T[] {
+  const record = textKey(variantRecordName(label, option));
+  return features.map((feature) => (textKey(feature.name) === record && feature.variant !== option.id ? { ...feature, variant: option.id } : feature));
+}
 
 export function variantGrantsOf(option: SpeciesVariantOption): Required<SpeciesVariantGrants> {
   return {
@@ -403,7 +425,7 @@ const capital = (word: string) => `${word.charAt(0).toUpperCase()}${word.slice(1
 export function variantFeatureNames(label: string, option: SpeciesVariantOption, speciesTraitNames: readonly string[] = []): string[] {
   const held = new Set(speciesTraitNames.map(textKey));
   const names = [
-    `${label} (${option.name})`,
+    variantRecordName(label, option),
     ...(option.resistances ?? []).map((type) => `${capital(type)} Resistance`),
     ...(option.breath
       ? [variantBreathFeatureName({ damageType: option.breath.damageType, area: BREATH_AREAS[option.breath.shape], save: option.breath.save })]
@@ -441,6 +463,7 @@ export function variantSummary(option: SpeciesVariantOption, baseAsi?: Partial<R
   if (option.skills?.length) parts.push(`proficient in ${listed(option.skills.map(skillName))}`);
   if (option.tools?.length) parts.push(`proficient with ${listed(option.tools)}`);
   if (option.languages?.length) parts.push(`speaks ${listed(option.languages)}`);
+  if (option.spells?.spells.length) parts.push(`spells: ${speciesSpellsSummary(option.spells)}`);
   return parts.length ? parts.join("; ") : "nothing beyond its words";
 }
 
@@ -454,6 +477,7 @@ export function variantShort(option: SpeciesVariantOption): string {
     ...(option.skills ?? []).map(skillName),
     ...(option.tools ?? []),
     ...(option.languages ?? []),
+    ...(option.spells?.spells ?? []).map((row) => row.spell),
   ];
   return parts.join(", ") || "its words only";
 }

@@ -29,7 +29,8 @@ import { earnedAsiCountFor } from "@/lib/srd/asi";
 import { legacyAsiTaken, readAsiLedger, withAsiLedger } from "@/lib/srd/asi-ledger";
 import { backgroundFeatureFor } from "@/lib/backgrounds";
 import { attunementSlotsFor, matchArmor } from "@/lib/srd/armor";
-import { racialTraitsFor, subclassLevelFor } from "@/lib/srd/features";
+import { classFeaturesFor, racialTraitsFor, subclassLevelFor } from "@/lib/srd/features";
+import { chosenFightingStyles, fightingStyleChoices, fightingStyleSlots, newStyleFits } from "@/lib/srd/feature-effects";
 import {
   derivedMaxHp,
   hpBonusPerLevelFor,
@@ -66,13 +67,17 @@ import { judgeStartingGear, wealthCeilingGold } from "@/lib/srd/starting-wealth"
 import { abilityProblems, baseSpans } from "@/lib/srd/legality/abilities";
 import { applyHalfFeats, halfFeatPicks, halfFeatPoints } from "@/lib/srd/legality/half-feats";
 import { judgeFeats, judgeFeatures } from "@/lib/srd/legality/features";
+import { findOptionByFeatureName, pickInSpellbook } from "@/lib/srd/options";
+import { sheetSpellbook } from "@/lib/srd/owed-picks-logic";
+import { subclassChoicePickProblems, withHeldPickIds } from "@/lib/srd/subclass-choice-picks";
+import { SUBCLASS_CHOICE_RECORD } from "@/lib/content/subclass-choices";
 import { judgeProficiencies } from "@/lib/srd/legality/proficiencies";
-import { applySubclassTraining, autoSubclassPicks, subclassFixedTraining, subclassGrants } from "@/lib/srd/subclass-training";
+import { applySubclassTraining, autoSubclassPicks, grantsForHeldTraining, subclassFixedTraining, subclassGrants, withSubclassChoiceRecords } from "@/lib/srd/subclass-training";
 import { castingClassesOf, judgeSpellcasting } from "@/lib/srd/legality/spells";
 import { judgeRacialCantrips } from "@/lib/srd/legality/racial-cantrips";
 import { judgeSpeciesVariant, withoutOldVariant } from "@/lib/srd/legality/species-variant";
 import { carriedCantrips, carriedVariant } from "@/lib/srd/legality/older-builder";
-import { withHeldVariant } from "@/lib/content/species-variants";
+import { withHeldVariant, withVariantRecordId } from "@/lib/content/species-variants";
 import { racialCantripFields } from "@/lib/srd/racial-cantrips";
 import {
   type ClassGrants,
@@ -354,7 +359,12 @@ export function legalizeSheet(input: CreateSheetInput, context: LegalityContext)
   // 251: a Life Domain cleric's heavy armor was a feature's name and never
   // training), and the armor and weapons among it the feat prerequisites
   // read before the training is written.
-  const subclassTraining = subclassGrants(classes, context.subclassExtras);
+  // A workshop subclass's choice trains its character in what the option
+  // held gives (issue #833).
+  // The request's picks carry the ids their stored copies keep, so a pick
+  // the author has renamed is still found (issue #833 review).
+  const sentFeatures = withHeldPickIds(input.features ?? held?.features ?? [], held?.features);
+  const subclassTraining = subclassGrants(classes, context.subclassExtras, sentFeatures);
   const subclassFixed = subclassFixedTraining(subclassTraining);
   const secondClassTraining = classes.slice(1).map((entry) => multiclassGrantsFor(entry.id));
 
@@ -556,7 +566,10 @@ export function legalizeSheet(input: CreateSheetInput, context: LegalityContext)
       held && held.class === input.class && held.race === input.race && held.background === input.background
         ? policy.trustsHeld
           ? withoutFeatPicks(held.proficiencies, held.featChoices)
-          : withoutOldVariant(withoutFeatPicks(held.proficiencies, held.featChoices), baseRace, held.racialChoices, speciesChoice.option)
+          : // A workshop subclass choice's option gave what featChoices
+            // records of it, which comes off here with the feats' picks
+            // (subclass-training.ts withSubclassChoiceRecords, issue #833).
+            withoutOldVariant(withoutFeatPicks(held.proficiencies, held.featChoices), baseRace, held.racialChoices, speciesChoice.option)
         : null,
     // The builder's doors name the tools an open grant leaves to the player.
     requireToolPicks: context.door === "table" || context.door === "library",
@@ -684,7 +697,7 @@ export function legalizeSheet(input: CreateSheetInput, context: LegalityContext)
   const featured = policy.trustsHeld
     ? { problems: [], features: withFreeCasts(input.features ?? [], freeCasts) }
     : judgeFeatures({
-        sent: (input.features ?? []).filter((feature) => !isAncestry(feature) && !featDerived(feature.name)),
+        sent: withHeldPickIds(input.features ?? [], held?.features).filter((feature) => !isAncestry(feature) && !featDerived(feature.name)),
         held: (held?.features ?? []).filter((feature) => !featDerived(feature.name)),
         // Written afresh every time, so an option given up leaves nothing.
         raceTraits: [...(bundledTraits ? [] : race.traitNames), ...speciesChoice.traits],
@@ -692,8 +705,51 @@ export function legalizeSheet(input: CreateSheetInput, context: LegalityContext)
         derived: [...(casts ? [] : racialPicks.map((name) => `Racial cantrip: ${name}`)), ...freeCasts],
         allowPlainStory: policy.plainStory,
         sameBackground: (held?.background ?? "") === input.background,
+        subclassExtras: context.subclassExtras,
       });
   problems.push(...featured.problems);
+  // A workshop subclass's choice names an option it offers, at its level,
+  // once (issue #833): one it does not offer was dropped without a word.
+  if (!policy.trustsHeld) {
+    problems.push(
+      ...subclassChoicePickProblems(
+        sentFeatures.filter((feature) => feature.source === "choice"),
+        classes,
+        context.subclassExtras,
+      ),
+    );
+  }
+  // Spell Mastery and Signature Spells name spells in the spellbook (SRD
+  // 5.1, issue #833): a pick of a spell the book does not hold is refused.
+  // A new fighting style is one its slot's class offers (a paladin's four);
+  // one the stored character holds stays, as the regrant keeps it.
+  if (!policy.trustsHeld) {
+    const book = sheetSpellbook({ spellcasting: input.spellcasting ?? null });
+    const heldNames = new Set((held?.features ?? []).map((feature) => textKey(feature.name)));
+    const classFeatures = classes.flatMap((entry) =>
+      classFeaturesFor(entry.id, entry.subclass ?? "", entry.level, context.subclassExtras).map((feature) => ({ ...feature, classId: entry.id })),
+    );
+    const classStyles = fightingStyleChoices(classFeatures);
+    const styleSlots = fightingStyleSlots(classFeatures);
+    const placedStyles = chosenFightingStyles((held?.features ?? []).filter((feature) => feature.source === "choice"));
+    for (const feature of featured.features) {
+      const option = feature.source === "choice" ? findOptionByFeatureName(feature.name) : null;
+      if (option && !pickInSpellbook(option, book)) {
+        problems.push(`${option.n} is not in the spellbook; ${feature.name.split(":")[0]} names a spell written there.`);
+      }
+      const [style] = feature.source === "choice" ? chosenFightingStyles([feature]) : [];
+      // A style with no slot to take (a wizard's, a fighter's third) is
+      // dropped by the regrant, as any pick no class opens; one that would
+      // take a free slot its class does not offer is refused.
+      if (style !== undefined && !heldNames.has(textKey(feature.name)) && placedStyles.length < styleSlots) {
+        if (!newStyleFits(placedStyles, style, classFeatures)) {
+          problems.push(`${style} is not a fighting style this character's classes offer; pick one of ${classStyles.map((entry) => entry.name).join(", ")}.`);
+        } else {
+          placedStyles.push(style);
+        }
+      }
+    }
+  }
   // The ledger of improvements taken. A character made here, or arriving
   // in a file, has taken all it has earned: what it left unspent is not
   // owed again. A stored one keeps its own count, or the old table's.
@@ -713,9 +769,12 @@ export function legalizeSheet(input: CreateSheetInput, context: LegalityContext)
       : earned;
   const ledgered =
     level >= 4 || ledger > 0 ? withAsiLedger(featured.features, ledger) : featured.features;
-  const features = ancestry
+  const withAncestry = ancestry
     ? [...ledgered.filter((feature) => !isAncestry(feature)), draconicAncestryFeature(ancestry)]
     : ledgered;
+  // The option's record carries the option's id (issue #833).
+  const features =
+    speciesChoice.option && baseRace.variants ? withVariantRecordId(withAncestry, baseRace.variants.label, speciesChoice.option) : withAncestry;
 
   // ---- gear and coin ----
   let equipment = input.equipment ?? [];
@@ -808,8 +867,13 @@ export function legalizeSheet(input: CreateSheetInput, context: LegalityContext)
     input.acOverride === undefined &&
     !equipment.some((item) => matchArmor(item));
 
+  // What each workshop choice's option gave, recorded for the next edit to
+  // take off (subclass-training.ts withSubclassChoiceRecords, issue #833).
+  const choiceGrants = grantsForHeldTraining(subclassTraining.filter((grant) => grant.choiceId), granted.proficiencies);
+  const recordsChoices = choiceGrants.length > 0 || Object.keys(input.featChoices ?? {}).some((key) => key.startsWith(SUBCLASS_CHOICE_RECORD));
   const sheet: CreateSheetInput = {
     ...input,
+    ...(recordsChoices ? { featChoices: withSubclassChoiceRecords(input.featChoices, choiceGrants) } : {}),
     subclass: classes[0].subclass,
     classes: multiclass ? classes : [],
     hitDicePools,
