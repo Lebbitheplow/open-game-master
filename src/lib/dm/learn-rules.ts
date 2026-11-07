@@ -13,24 +13,28 @@ import type { SubclassExtras } from "@/lib/srd/subclass-tables";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { subclassSpellsFor } from "@/lib/srd/features";
 import type { SpellFacts } from "@/lib/srd/spell-facts";
-import { cantripCapOf, casterListOf, casterViewsOf, maxSpellLevelOf, type CasterView, onWiderList } from "@/lib/srd/spell-prep";
+import { cantripCapOf, casterListOf, casterViewsOf, maxSpellLevelOf, spellOnCasterList, type CasterView } from "@/lib/srd/spell-prep";
+import { spellListLabel } from "@/lib/classes/class-spell-list";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 
 type Learner = Pick<CharacterSheet, "name" | "class" | "level" | "subclass" | "classes" | "abilities" | "spellcasting"> & { features?: CharacterSheet["features"] };
 
-// The caster views whose class list carries the spell: the class's own list,
-// or the spells its subclass adds to it (a patron's expanded list).
-// A third caster's list is its profile's: an Eldritch Knight learns a
-// wizard spell, which "fighter" was never on.
+// The caster views whose class list carries the spell: the one answer the
+// server's check and the builder give (spell-prep.ts spellOnCasterList), so
+// the GM teaches nothing a save would refuse, or the subclass's own
+// always-prepared spells. A third caster's list is its profile's: an
+// Eldritch Knight learns a wizard spell, which "fighter" was never on.
+//
+// Issue #833: a homebrew spell that named no class used to be learnable by
+// any caster, and the class names were compared in two spellings (a
+// workshop class's "homebrew-1f0c..." against the key "homebrew 1f0c ..."),
+// so a spell tagged with a workshop class was refused to it.
 export function viewsWithSpell(sheet: Learner, facts: SpellFacts, extras?: SubclassExtras): CasterView[] {
   return casterViewsOf(sheet, extras).filter(
     (view) =>
-      facts.classes.length === 0 ||
-      facts.classes.includes(textKey(view.classId)) ||
-      facts.classes.includes(textKey(casterListOf(view))) ||
-      subclassSpellsFor(view.classId, view.subclass, view.level, extras, view.features).some((name) => textKey(name) === textKey(facts.name)) ||
-      onWiderList(view, facts),
+      spellOnCasterList(view, facts) ||
+      subclassSpellsFor(view.classId, view.subclass, view.level, extras, view.features).some((name) => textKey(name) === textKey(facts.name)),
   );
 }
 
@@ -40,7 +44,7 @@ export function learnProblem(sheet: Learner, spell: string, facts: SpellFacts | 
   }
   const views = viewsWithSpell(sheet, facts, extras);
   if (!views.length) {
-    const classes = casterViewsOf(sheet).map((view) => casterListOf(view)).join(" or ") || sheet.class;
+    const classes = casterViewsOf(sheet).map((view) => spellListLabel(casterListOf(view))).join(" or ") || sheet.class;
     return { error: `${facts.name} is not on the ${classes} spell list, so ${sheet.name} cannot learn it.`, refused: "rules" };
   }
   if (facts.level === 0) {

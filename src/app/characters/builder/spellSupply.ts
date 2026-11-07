@@ -1,4 +1,5 @@
 import { textKey } from "@/lib/language/text-logic";
+import { spellOnListKey } from "@/lib/classes/class-spell-list";
 import { checklistSpell, checklistSpellsOn, spellLevelOf } from "@/lib/srd/spell-lists";
 
 // Which spells the save takes on a caster's list, and how many of them there
@@ -11,7 +12,7 @@ export type SpellListRule = {
   // A third caster (an Eldritch Knight) is held to its two schools instead,
   // and picks only from its starters, which are drawn from them.
   third: boolean;
-  // The list the class casts from (spellClassFor), "" for none.
+  // The list the class casts from (spellPoolKeyFor), "" for none.
   spellClass: string;
   // The spells the spell step offers this class (useSpellPool: the content
   // pack's list, or the bundled checklist without it). The checklist stands
@@ -27,7 +28,10 @@ export function spellOnSavedList(name: string, rule: SpellListRule): boolean {
   if (rule.spellPool?.length) {
     return rule.spellPool.some((spell) => textKey(spell.name) === textKey(name));
   }
-  return (checklistSpell(name)?.classes ?? []).includes(rule.spellClass);
+  // The server's own answer for the list (a workshop class's own list, or
+  // the one it borrows: src/lib/classes/class-spell-list.ts).
+  const listed = checklistSpell(name);
+  return spellOnListKey(rule.spellClass, { name: listed?.name ?? name, classes: listed?.classes ?? [] });
 }
 
 export type SpellSupply = { cantrips: number; spells: number };
@@ -81,6 +85,43 @@ export function bundledSpellSupply(input: {
     }),
   ];
   return spellSupplyOf(rows, input.maxSpellLevel, input.free);
+}
+
+// The supply the spell step's own pool gives (the pack's and the table's
+// homebrew beside the checklist), once it has loaded. The bundled supply
+// counts the checklist alone, so a workshop class whose list is made of the
+// table's own spells came out with nothing to pick and the step asked for
+// none (issue #833). The larger of the two is what exists. The pool is the
+// lead class's, so it is the lead desk's supply that grows; another class's
+// desk keeps its own.
+export function withPoolSupply<
+  T extends {
+    spellSupply: SpellSupply | null;
+    maxSpellLevel: number;
+    casterDesks: ReadonlyArray<{ lead: boolean; spellSupply: SpellSupply | null }>;
+    racialCantrips: string[];
+    featSpells: { cantrips: string[]; spells: string[] };
+    subclassSpells: string[];
+  },
+>(derived: T, pool: ReadonlyArray<{ name: string; level: number }>): T {
+  if (!derived.spellSupply || !pool.length) {
+    return derived;
+  }
+  const fromPool = spellSupplyOf(pool, derived.maxSpellLevel, [
+    ...derived.racialCantrips,
+    ...derived.featSpells.cantrips,
+    ...derived.featSpells.spells,
+    ...derived.subclassSpells,
+  ]);
+  const supply = {
+    cantrips: Math.max(derived.spellSupply.cantrips, fromPool.cantrips),
+    spells: Math.max(derived.spellSupply.spells, fromPool.spells),
+  };
+  return {
+    ...derived,
+    spellSupply: supply,
+    casterDesks: derived.casterDesks.map((desk) => (desk.lead ? { ...desk, spellSupply: supply } : desk)),
+  };
 }
 
 // What the spell step says when the list holds fewer spells than the class

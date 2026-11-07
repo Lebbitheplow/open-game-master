@@ -16,9 +16,18 @@ type Rec = Record<string, unknown>;
 const isRec = (value: unknown): value is Rec => Boolean(value) && typeof value === "object" && !Array.isArray(value);
 const strings = (value: unknown): string[] => (Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string" && Boolean(entry.trim())) : []);
 
+// A subclass's spells by level: the always-prepared ones and the ones it
+// adds to its class's list (issue #833).
+const SUBCLASS_SPELL_FIELDS = ["spells", "expanded"] as const;
+
 export function homebrewDataRefs(kind: HomebrewKind, data: Rec): { spell: string[]; item: string[] } {
-  if (kind === "archetype" && isRec(data.spells)) {
-    return { spell: [...new Set(Object.values(data.spells).flatMap(strings))], item: [] };
+  if (kind === "archetype" && SUBCLASS_SPELL_FIELDS.some((field) => isRec(data[field]))) {
+    const spell = SUBCLASS_SPELL_FIELDS.flatMap((field) => (isRec(data[field]) ? Object.values(data[field] as Rec).flatMap(strings) : []));
+    return { spell: [...new Set(spell)], item: [] };
+  }
+  // A class's list of its own names its spells, homebrew ones among them.
+  if (kind === "class" && Array.isArray(data.spellList)) {
+    return { spell: [...new Set(strings(data.spellList))], item: [] };
   }
   if (kind === "item" && Array.isArray(data.spells)) {
     return { spell: [...new Set(data.spells.filter(isRec).flatMap((entry) => (typeof entry.spell === "string" ? [entry.spell] : [])))], item: [] };
@@ -40,11 +49,19 @@ export function renameHomebrewDataRefs(kind: HomebrewKind, data: Rec, rename: Sh
     if (next !== name) changed = true;
     return next;
   };
-  if (kind === "archetype" && isRec(data.spells)) {
-    const spells = Object.fromEntries(
-      Object.entries(data.spells).map(([level, names]) => [level, Array.isArray(names) ? names.map((name) => (typeof name === "string" ? to("spell", name) : name)) : names]),
-    );
-    return changed ? { data: { ...data, spells }, changed } : { data, changed };
+  if (kind === "archetype" && SUBCLASS_SPELL_FIELDS.some((field) => isRec(data[field]))) {
+    const next: Rec = { ...data };
+    for (const field of SUBCLASS_SPELL_FIELDS) {
+      if (!isRec(data[field])) continue;
+      next[field] = Object.fromEntries(
+        Object.entries(data[field] as Rec).map(([level, names]) => [level, Array.isArray(names) ? names.map((name) => (typeof name === "string" ? to("spell", name) : name)) : names]),
+      );
+    }
+    return changed ? { data: next, changed } : { data, changed };
+  }
+  if (kind === "class" && Array.isArray(data.spellList)) {
+    const spellList = data.spellList.map((name) => (typeof name === "string" ? to("spell", name) : name));
+    return changed ? { data: { ...data, spellList }, changed } : { data, changed };
   }
   if (kind === "item" && Array.isArray(data.spells)) {
     const spells = data.spells.map((entry) => (isRec(entry) && typeof entry.spell === "string" ? { ...entry, spell: to("spell", entry.spell) } : entry));

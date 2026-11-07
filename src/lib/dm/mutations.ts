@@ -96,7 +96,7 @@ import { searchSpells, spellFactsFor, spellNameMatches } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { suggestedSpellCount } from "@/lib/content/mechanics";
 import { abilityMod } from "@/lib/srd";
-import { spellClassFor } from "@/lib/classes";
+import { spellRulesClassFor } from "@/lib/classes";
 import { planHealFx } from "@/lib/battlemap/fx-plan";
 import { publishFx, tokenPosition } from "@/lib/dm/fx";
 import { checklistClassSpell, isCantripName, spellsAgainstLimit } from "@/lib/srd/spell-lists";
@@ -1898,7 +1898,7 @@ function dmMutation(
             const view = learnerViews[index];
             const cap = view
               ? spellCapOf(view, sheet.abilities)
-              : suggestedSpellCount(spellClassFor(caster.classId), level, abilityMod(sheet.abilities[caster.ability]));
+              : suggestedSpellCount(spellRulesClassFor(caster.classId), level, abilityMod(sheet.abilities[caster.ability]));
             const classEntry = (sheet.classes ?? []).find(
               (entry) => entry.id.toLowerCase() === caster.classId.toLowerCase(),
             );
@@ -1922,7 +1922,7 @@ function dmMutation(
         } else {
           const ceiling = learnerViews[0]
             ? spellCapOf(learnerViews[0], sheet.abilities)
-            : suggestedSpellCount(sheet.class, sheet.level, abilityMod(sheet.abilities[sheet.spellcasting.ability]));
+            : suggestedSpellCount(spellRulesClassFor(sheet.class), sheet.level, abilityMod(sheet.abilities[sheet.spellcasting.ability]));
           const current = spellsAgainstLimit(
             intoKnown ? known : prepared,
             subclassSpellsFor(sheet.class, sheet.subclass, sheet.level, subclassExtrasForTable(campaign.id, sheet.userId), sheet.features),

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { spellClassFor } from "@/lib/classes";
+import { spellPoolKeyFor } from "@/lib/classes";
 import { spellSlotsFor } from "@/lib/srd";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { spellLevelOf } from "@/lib/srd/spell-lists";
@@ -13,10 +13,11 @@ import {
   preparedCount,
   spellCapOf,
   spellbookOf,
+  widerListOf,
   type CasterView,
 } from "@/lib/srd/spell-prep";
 import { SpellBook, type SpellTile } from "./SpellBook";
-import { useSpellLookups, useSpellPool, type PoolSpell } from "./useSpellPool";
+import { useSpellLookups, useWiderSpellPool, type PoolSpell } from "./useSpellPool";
 import { textKey } from "@/lib/language/text-logic";
 import { revisedOnlySpellProblem } from "@/lib/content/edition";
 
@@ -100,10 +101,15 @@ function CasterBook({
   const maxLevel = maxSpellLevelOf(view);
   const canPrepare = editable && view.style !== "known";
   // The whole class list is only needed while a prepared caster edits.
-  const { pool, loading } = useSpellPool(
-    spellClassFor(view.classId),
+  // The list the server's prepare route checks (spell-prep.ts
+  // spellOnCasterList, issue #833): a workshop class's own list and the
+  // homebrew tagged with it, and what the subclass adds (a patron's or a
+  // workshop subclass's expanded spells), which the book used to leave out.
+  const { pool, loading } = useWiderSpellPool(
+    spellPoolKeyFor(view.classId),
     maxLevel,
     editing && view.style === "prepared",
+    widerListOf(view),
   );
 
   // Pack and homebrew spells the checklist does not know get their level

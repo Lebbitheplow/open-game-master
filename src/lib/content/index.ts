@@ -25,6 +25,8 @@ import {
   type SpellMech,
 } from "@/lib/srd/spell-mechanics";
 import { textKey } from "@/lib/language/text-logic";
+import { customSpellsOf, spellOnListKey } from "@/lib/classes/class-spell-list";
+import { checklistSpellsOn } from "@/lib/srd/spell-lists";
 import type { SqliteDatabase } from "@/lib/db/driver";
 import { isTwinSlug, needsOfSlug, offeredSlug, servedSlug } from "@/lib/content/levelup";
 import { offeredInPlay } from "@/lib/content/levelup-logic";
@@ -267,13 +269,16 @@ export function searchSpells(
   const classSlug = (options.classSlug ?? "").trim().toLowerCase();
   const schools = (options.school ?? "").split(",").map((entry) => entry.trim().toLowerCase()).filter(Boolean);
   const offset = Math.max(0, options.offset ?? 0);
+  // A workshop class names its own list, or the one it borrows, and the
+  // homebrew spells tagged with it (src/lib/classes/class-spell-list.ts).
+  const workshopList = classSlug.startsWith("homebrew-");
   const rows = allPackSpells()
     .filter(
       (row) =>
         (!needle ||
           textKey(row.name).includes(needle) ||
           row.aliases.some((alias) => textKey(alias).includes(needle))) &&
-        (!classSlug || row.classes.some((entry) => entry.includes(classSlug))) &&
+        (!classSlug || (workshopList ? spellOnListKey(classSlug, row) : row.classes.some((entry) => entry.includes(classSlug)))) &&
         (options.level === undefined || (options.exactLevel ? row.level === options.level : row.level <= options.level)) &&
         (!schools.length || schools.includes(row.school.toLowerCase())) &&
         (!options.attack || /\bspell attack\b/i.test(String(row.data.desc ?? ""))) &&
@@ -284,6 +289,12 @@ export function searchSpells(
   // A published name is the published spell's: a homebrew row that takes the
   // name of one is not offered in its place, so nobody rewrites Revivify into
   // a 1st level spell by writing their own.
+  //
+  // The table's own spells are held to the same class, level, school and
+  // attack the search asks of the pack's (issue #833): they used to pass
+  // every filter, so the builder offered every homebrew spell to every class
+  // (and above its level) while the save refused all but the ones that
+  // named it, and the sheet's prepare took any of them as on the list.
   const brews = homebrewEntries(options, "spell", options.q)
     .filter((entry) => !isPublishedSpellName(entry.name))
     .map((entry) => ({
@@ -294,10 +305,47 @@ export function searchSpells(
       ritual: entry.data.ritual === true,
       concentration: entry.data.concentration === true,
       aliases: [] as string[],
-    }));
+    }))
+    .filter(
+      (entry) =>
+        (!classSlug || spellOnListKey(classSlug, entry)) &&
+        (options.level === undefined || (options.exactLevel ? entry.level === options.level : entry.level <= options.level)) &&
+        (!schools.length || schools.includes(entry.school.toLowerCase())) &&
+        (!options.attack || /\bspell attack\b/i.test(String(entry.data.desc ?? ""))),
+    );
   // The DM's own work leads: a homebrew goblin boss should not sit after
   // twenty-five catalogue goblins.
   return [...brews, ...rows];
+}
+
+// Every spell on one class's list that the engine may choose for a
+// character (an AI companion's build and level-up): the bundled checklist's,
+// the table's homebrew on the list, and a pack spell only where a workshop
+// class's own list names it, through the same list answer as the save's
+// check (src/lib/classes/class-spell-list.ts). Companions chose from the
+// checklist alone, so a workshop class's homebrew spells, and a list of its
+// own made of them, never reached one (issue #833). A pack's third-party
+// spells on a published list stay the players' to pick, as before.
+export function classSpellPool(list: string, authors: readonly string[]): Array<{ name: string; level: number }> {
+  const out = checklistSpellsOn(list);
+  const held = new Set(out.map((spell) => textKey(spell.name)));
+  const own = new Set((customSpellsOf(list) ?? []).map(textKey));
+  for (let offset = 0; offset < 4000; offset += MAX_LIMIT) {
+    const page = searchSpells({ classSlug: list, userIds: [...authors], limit: MAX_LIMIT, offset });
+    for (const row of page) {
+      if (row.source !== "homebrew" && !own.has(textKey(row.name))) {
+        continue;
+      }
+      if (!held.has(textKey(row.name))) {
+        held.add(textKey(row.name));
+        out.push({ name: row.name, level: row.level });
+      }
+    }
+    if (page.length < MAX_LIMIT) {
+      break;
+    }
+  }
+  return out;
 }
 
 // Does this row answer to `name`? Every caller that wants one specific spell

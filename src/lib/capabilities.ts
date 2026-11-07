@@ -217,6 +217,12 @@ export const SERVER_FEATURES = {
   // `thrown` dice and POST /api/campaigns/[id]/pending-rolls/[id]/after-roll.
   // An older host never parks a roll that way, so the card never draws there.
   afterRollChoice: true,
+  // A workshop class's list of its own and a workshop subclass's additions
+  // to its class's list (issue #833): the class's `spellList`/`spellStyle`,
+  // the subclass's `expanded` and a homebrew spell tagged with a workshop
+  // class. An older host drops the fields unread (the class falls back to
+  // the wizard's list), so the editor offers none of them there.
+  customSpellLists: true,
 } as const;
 export type ServerFeatures = { [K in keyof typeof SERVER_FEATURES]: boolean };
 

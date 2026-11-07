@@ -1,5 +1,5 @@
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
-import { getHomebrew, isPublishedGearName, listHomebrew, tableAuthors, updateHomebrew, type HomebrewEntry } from "@/lib/db/homebrew";
+import { getHomebrew, isPublishedGearName, listHomebrew, syncWorkshopClasses, tableAuthors, updateHomebrew, type HomebrewEntry } from "@/lib/db/homebrew";
 import { getSheetById } from "@/lib/db/sheets";
 import { getCampaignById } from "@/lib/db/campaigns";
 import { publishPersisted } from "@/lib/events";
@@ -185,6 +185,7 @@ function carry(userId: string, before: HomebrewEntry, to: string): { carried: Re
   }
 
   // The author's own entries that name it.
+  let classesCarried = false;
   if ((before.kind === "spell" || before.kind === "item") && answeredFor([userId], userId, before, from)) {
     const rename2 = renamerOf([{ kind: before.kind, from, to }]);
     for (const other of listHomebrew(userId, undefined, { archived: true })) {
@@ -201,6 +202,12 @@ function carry(userId: string, before: HomebrewEntry, to: string): { carried: Re
       const data = "error" in normalized ? out.data : normalized.data;
       db.prepare(`UPDATE homebrew_entries SET data_json = ?, updated_at = ? WHERE id = ?`).run(JSON.stringify(data), nowIso(), other.id);
       carried.entries += 1;
+      classesCarried ||= other.kind === "class";
+    }
+    // A class's own list follows the rename in the engines' registry too,
+    // or the renamed spell was off it until the next restart (issue #833).
+    if (classesCarried) {
+      syncWorkshopClasses();
     }
   }
 

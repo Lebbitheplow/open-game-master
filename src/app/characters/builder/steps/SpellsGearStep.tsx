@@ -11,6 +11,7 @@ import { cn } from "@/lib/cn";
 import { OWNS_ESCAPE } from "@/lib/owned-escape";
 import { ui } from "@/lib/ui";
 import { spellLevelOf } from "@/lib/srd/spell-lists";
+import { customSpellsOf, spellListLabel } from "@/lib/classes/class-spell-list";
 import { bundledSpellSchool } from "@/lib/srd/spell-facts";
 import { thirdCasterSchoolProblem } from "@/lib/srd/third-caster";
 import { subclassCastingProfileFor } from "@/lib/srd/features";
@@ -806,7 +807,13 @@ export function SpellsSection({
         }
         header={
           klass.genres ? (
-            <span className="text-stone-500">Counts follow the {spellSearchClass} list this class borrows.</span>
+            <span className="text-stone-500">
+              {/* A workshop class is named by its own id (issue #833): the
+                  line says which list it casts from, never the id. */}
+              {customSpellsOf(spellSearchClass)
+                ? `${className} casts from a spell list of its own.`
+                : `Counts follow the ${spellListLabel(spellSearchClass)} list this class borrows.`}
+            </span>
           ) : null
         }
         searchLabel={anyGroup ? `Find a ${className} spell` : undefined}

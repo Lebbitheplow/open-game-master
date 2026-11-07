@@ -10,7 +10,7 @@
 // allowance read the scores from before the Ability Score Improvement.
 //
 // Pure, no JSX, so scripts/test-enforce-ui-dm.mjs drives it.
-import { spellClassFor } from "@/lib/classes";
+import { spellPoolKeyFor } from "@/lib/classes";
 import type { AbilityScores, AsiChoice, CharacterSheet } from "@/lib/schemas/sheet";
 import { findClass, findRace } from "@/lib/srd";
 import { applyFeatIncrease } from "@/lib/srd/feat-effects";
@@ -195,7 +195,9 @@ export function casterPreview(input: {
   const ability = profile
     ? thirdCasterAbility(profile)
     : ((klass?.casterType !== "none" ? klass?.spellAbility : null) ?? null);
-  const list = profile ? thirdCasterList(profile) : spellClassFor(input.classId);
+  // A workshop class searches by its own id: its own list, or the one it
+  // borrows, with the homebrew tagged with it (issue #833).
+  const list = profile ? thirdCasterList(profile) : spellPoolKeyFor(input.classId);
   const style: SpellStyle = third ? "known" : spellStyleFor(input.classId);
   if (!ability) {
     return { casts: false, list, ability: null, style, maxLevel: 0, cantripCap: null, spellCap: null };

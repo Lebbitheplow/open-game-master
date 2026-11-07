@@ -36,7 +36,7 @@ import {
   takesDraconicAncestry,
 } from "@/lib/srd/racial-grants";
 import { abilityMod, findClass, findRace, SRD_SKILLS, suggestedStartingHp, type SrdClass } from "@/lib/srd";
-import { offeredBackgrounds } from "@/lib/characters/catalog";
+import { classGrantsFor, offeredBackgrounds } from "@/lib/characters/catalog";
 import { tableAuthors } from "@/lib/db/homebrew";
 import { abilityPriority, companionBackground, companionSkillPicks, skillIdOf } from "@/lib/srd/companion-build";
 import { startingKitFor } from "@/lib/srd/starting-kit";
@@ -375,7 +375,18 @@ export function handleAddCompanion(
     campaign.gameSettings.genre,
     packClassIds(campaign.gameSettings),
   );
-  if (allowedClasses.length && !allowedClasses.includes(klass.id)) {
+  // The table's own workshop classes belong to its world, as the builder
+  // offers them to its players in any setting (issue #833); another
+  // table's are not this table's to recruit from.
+  const workshopClass = klass.id.startsWith("homebrew-");
+  const tableClass = workshopClass && classGrantsFor(klass.id, tableAuthors(campaign.id)) !== null;
+  if (workshopClass && !tableClass) {
+    return {
+      error: `Unknown class "${args.class}". Use a class id from this world's catalog (e.g. fighter, cleric, rogue, wizard).`,
+      retry: true,
+    };
+  }
+  if (allowedClasses.length && !allowedClasses.includes(klass.id) && !tableClass) {
     return {
       error: `${klass.name} does not belong in this world (${preset.name}). Call add_companion again with one of: ${allowedClasses.join(", ")}.`,
       retry: true,

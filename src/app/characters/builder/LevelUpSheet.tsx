@@ -52,6 +52,7 @@ import { useFeatDescs, useFeatTexts } from "./useFeatDescs";
 import { usePickerGroups } from "./usePickerGroups";
 import { useQuickFill } from "./useQuickFill";
 import { useTableRules } from "./useTableRules";
+import { withPoolSupply } from "./spellSupply";
 
 // The rows a picker offers, in its order: what the fill chooses from, so it
 // never picks what this builder leaves out (as CharacterBuilder.tsx does).
@@ -176,7 +177,7 @@ function LevelUpSheetForm({
     ...abilitiesBlocks(derived, state, featJudge),
     ...ancestryBlocks(state, race, background, derived, featJudge),
     ...callingBlocks(klass, state, derived),
-    ...spellsBlocks(derived, klass),
+    ...spellsBlocks(withPoolSupply(derived, spellPool), klass),
     ...(gear ? [gear] : []),
   ];
   const racialFeatProblem = unmetFeatMessage(featJudge, state.feats.slice(0, race ? racialFeatCount(race.id) : 0));

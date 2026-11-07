@@ -299,6 +299,9 @@ function extraTableNamed(classId: string, stored: string, extras?: SubclassExtra
     name: found.name,
     levels: Object.fromEntries(Object.entries(found.levels).map(([level, rows]) => [level, rows.map((row) => row.n)])),
     ...(found.spells ? { spells: found.spells } : {}),
+    // A workshop subclass's additions to its class's list, read where a
+    // patron's are (subclassExpandedSpellsFor, issue #833).
+    ...(found.expanded ? { expanded: found.expanded } : {}),
   };
 }
 
