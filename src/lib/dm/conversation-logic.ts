@@ -98,12 +98,18 @@ export function conversationNote(conversation: Conversation): string {
   const verb = conversation.answering.length > 1 ? "are" : "is";
   const other = conversation.with;
   const answer = "in their own voice: what they know, think or will do, said plainly";
+  // "Whoever they name answers" read alone hands the GM a player's character
+  // when one player speaks to another ("Bram, cover the door"): that answer
+  // is the other player's to give, so the note says so where it says who.
+  const notPlayers = "A player's character answers only through their own player: never write their reply.";
   const opening = other
     ? `IN CONVERSATION: ${who} ${verb} talking, and ${other} spoke last. ` +
       `Read the players' words first: whoever they name or call to answers first, not ${other}, and if they turn to something else, answer that. ` +
+      `${notPlayers} ` +
       `If they turn to nobody else, this reply is ${other}'s answer, ${answer}. `
     : `IN CONVERSATION: ${who} ${verb} talking with someone in the scene. ` +
-      `This reply is the answer of whoever the players' words are for, ${answer}. `;
+      `This reply is the answer of whoever the players' words are for, ${answer}. ` +
+      `${notPlayers} `;
   // Said plainly that telling is no check: a note asking for "something the
   // party did not know" had both local models roll History for an elder's
   // memory and Persuasion for a companion asked to come along.

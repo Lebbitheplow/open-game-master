@@ -128,6 +128,11 @@ test("the note asks for that person's answer and holds the fight, the arrival an
   assert.ok(nameless.includes("the answer of whoever the players' words are for"));
   assert.ok(nameless.includes("No fight starts"), "the talk holds the fight whoever it is with");
   assert.ok(!nameless.includes("null"));
+  // One player speaking to another's character names someone too; that
+  // answer is the other player's, whichever way the note opens.
+  for (const text of [note, nameless]) {
+    assert.ok(text.includes("A player's character answers only through their own player"), text);
+  }
 });
 
 console.log(`conversation: ${passed} tests passed`);
