@@ -74,7 +74,8 @@ export const AUTHORED_DATA_CHANNEL: Record<string, AuthoredEntry> = {
         name: "Nature's Wrath",
         pool: POOL,
         action: "action",
-        // A creature the paladin can see.
+        // A creature the paladin can see; it picks Strength or Dexterity for
+        // the first save and again for each save to break free.
         does: { kind: "save_effect", save: "str", orSave: "dex", dcAbility: "spell", rangeFt: 10, condition: "restrained", saveEnds: true, sight: true },
       },
     ],

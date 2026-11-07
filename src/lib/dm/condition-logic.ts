@@ -37,7 +37,9 @@ export type ConditionMeta = {
   untilTurnEndOf?: string;
   turnBegun?: boolean;
   // Re-save at each round wrap; success ends the condition.
-  saveEnds?: { ability: SaveAbilityId; dc: number };
+  // `or`: a second ability the creature may roll instead, choosing again at
+  // each save (Nature's Wrath: Strength or Dexterity; see likelierSave).
+  saveEnds?: { ability: SaveAbilityId; dc: number; or?: SaveAbilityId };
   // Who or what put the condition there: the characterId or enemyId of the
   // charmer, the grappler or the source of the fear, or an engine word
   // ("stable" on the unconscious of a stabilized creature). Optional, and
@@ -609,7 +611,27 @@ export type TickOptions = {
   saves?: boolean;
 };
 
-export type SaveDue = { name: string; ability: SaveAbilityId; dc: number; key: string };
+export type SaveDue = { name: string; ability: SaveAbilityId; dc: number; key: string; or?: SaveAbilityId };
+
+// Of two saves a creature may choose between, the one it is likelier to pass:
+// its modifier against the DC, with what its conditions do to each. A save
+// they fail outright counts as lost, and one rolled at disadvantage (a
+// restrained creature's Dexterity) is weighed as two dice taking the lower.
+// Without this a creature caught by Nature's Wrath on its Dexterity rolled
+// every save to break free on Dexterity, at disadvantage, though Strength was
+// open to it.
+export function likelierSave(conditions: string[], first: SaveAbilityId, second: SaveAbilityId, dc: number, modOf: (ability: SaveAbilityId) => number): SaveAbilityId {
+  const chance = (ability: SaveAbilityId) => {
+    const derivation = rollDerivation(conditions, "saving_throw", ability);
+    if (derivation.autoFail) {
+      return 0;
+    }
+    const one = Math.min(0.95, Math.max(0.05, (21 + modOf(ability) - dc) / 20));
+    const lean = mergeAdvantage(derivation.sources);
+    return lean === "disadvantage" ? one * one : lean === "advantage" ? 1 - (1 - one) * (1 - one) : one;
+  };
+  return chance(second) > chance(first) ? second : first;
+}
 
 export function tickConditions(
   conditions: string[],
@@ -649,7 +671,7 @@ export function tickConditions(
         kept.push(instance);
       }
       if (instance.saveEnds && options?.saves !== false) {
-        savesDue.push({ name, ability: instance.saveEnds.ability, dc: instance.saveEnds.dc, key: instanceIdentity(instance) });
+        savesDue.push({ name, ability: instance.saveEnds.ability, dc: instance.saveEnds.dc, key: instanceIdentity(instance), ...(instance.saveEnds.or ? { or: instance.saveEnds.or } : {}) });
       }
     }
     if (!kept.length) {

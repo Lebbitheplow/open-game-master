@@ -17,7 +17,7 @@ import { computeSheetDerived } from "@/lib/srd";
 import { resolveFormula, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
 import type { Ability, SpendDoes } from "@/lib/srd/authored-effects-types";
 import { STORM_AURA } from "@/lib/srd/authored-effects-data";
-import { effectiveMaxHp, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { effectiveMaxHp, likelierSave, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { immuneToCondition } from "@/lib/dm/damage-logic";
 import { rollCharacterCheck } from "@/lib/dm/contest-roll";
 import { charmedBy } from "@/lib/dm/enemy-profile";
@@ -300,7 +300,9 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
         return type;
       }
       const dc = saveDc(ctx, does.dcAbility);
-      const ability = does.orSave && saveModFor(enemy.stats, does.orSave) > saveModFor(enemy.stats, does.save) ? does.orSave : does.save;
+      // The creature picks the save it is likelier to pass (condition-logic.ts).
+      const ability = does.orSave ? likelierSave(enemy.conditions, does.save, does.orSave, dc, (each) => saveModFor(enemy.stats, each)) : does.save;
+      const other = does.orSave ? (ability === does.save ? does.orSave : does.save) : undefined;
       const save = rollEnemySave(campaign.id, enemy, ability, dc, {
         resist: Boolean(does.condition) && bindsWorthResisting([does.condition ?? ""]),
         against: does.condition,
@@ -316,7 +318,7 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
         Object.assign(result, { rolled: `${dice}: ${rolled}` }, damageEnemy(ctx, getEnemy(enemy.id) ?? enemy, amount, type));
       }
       if (!save.success && does.condition) {
-        const landed = enemyCondition(ctx, enemy, does.condition, does.saveEnds ? { saveEnds: { ability, dc } } : does.rounds ? { rounds: does.rounds } : {});
+        const landed = enemyCondition(ctx, enemy, does.condition, does.saveEnds ? { saveEnds: { ability, dc, ...(other ? { or: other } : {}) } } : does.rounds ? { rounds: does.rounds } : {});
         result.condition = landed ? `${enemy.displayName} is ${does.condition}.` : `${enemy.displayName} cannot be ${does.condition}.`;
       }
       if (!save.success && does.onFail) {

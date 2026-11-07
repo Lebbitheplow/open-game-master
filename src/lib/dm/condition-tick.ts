@@ -16,11 +16,13 @@ import { insertCampaignMessage } from "@/lib/db/messages";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
 import { rollCharacterSave, rollEnemySave } from "@/lib/dm/forced-save";
+import { saveModFor } from "@/lib/bestiary/enemy-numbers";
 import {
   ROUNDS_PER_MINUTE,
   effectiveMaxHp,
   instanceIdentity,
   instancesOf,
+  likelierSave,
   removeConditionInstances,
   removeConditions,
   tickConditions,
@@ -393,10 +395,13 @@ function tickEnemyConditions(campaign: Campaign, encounter: Encounter, by: numbe
       ({ conditions, meta } = withLethargy(conditions, meta, lethargyMeta(enemy.id)));
       lines.push(`${enemy.displayName} is overcome by lethargy as Haste ends and loses its next turn.`);
     }
-    for (const due of tick.savesDue) {
-      if (!conditions.includes(due.name)) {
+    for (const listed of tick.savesDue) {
+      if (!conditions.includes(listed.name)) {
         continue;
       }
+      // A hold that lets the creature pick its save (Nature's Wrath) takes the
+      // one it is likelier to pass now, as it stands (restrained: not Dexterity).
+      const due = listed.or ? { ...listed, ability: likelierSave(conditions, listed.ability, listed.or, listed.dc, (each) => saveModFor(enemy.stats, each)) } : listed;
       // Each source's hold asks its own save; this is one of them.
       const holds = (instance: ConditionMeta) => instanceIdentity(instance) === due.key && instance.saveEnds?.dc === due.dc;
       const instance = instancesOf((meta as ConditionMetaMap)[due.name]).find(holds);
@@ -507,11 +512,13 @@ function tickSheetConditions(
     // 5.1 Poisons; issue #570, EQP-15). A hold with no source is its own.
     const effectSaves = new Map<string, boolean>();
     const effectOf = (due: (typeof tick.savesDue)[number]) => (due.key === "|" ? null : `${due.key}|${due.ability}|${due.dc}`);
-    for (const due of tick.savesDue) {
-      if (!conditions.includes(due.name)) {
+    for (const listed of tick.savesDue) {
+      if (!conditions.includes(listed.name)) {
         continue;
       }
-      const effect = effectOf(due);
+      // A hold that lets the character pick its save (Nature's Wrath).
+      const due = listed.or ? { ...listed, ability: likelierSave(conditions, listed.ability, listed.or, listed.dc, (each) => computeSheetDerived(sheet).saves[each]) } : listed;
+      const effect = effectOf(listed);
       const settled = effect ? effectSaves.get(effect) : undefined;
       if (settled !== undefined) {
         if (settled) {

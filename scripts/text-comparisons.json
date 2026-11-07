@@ -787,7 +787,7 @@
     "lib/battlemap/condition-notes.ts#str-key": [["key",1,"condition labels (engine vocabulary)"]],
     "lib/battlemap/condition-notes.ts#str-list": [["key",1,"condition labels (engine vocabulary)"]],
     "lib/battlemap/condition-notes.ts#toLowerCase": [["key",4,"condition labels and engine source words"]],
-    "lib/battlemap/condition-notes.ts#toUpperCase": [["display",1,"ability abbreviation shown"]],
+    "lib/battlemap/condition-notes.ts#toUpperCase": [["display",2,"ability abbreviations shown (a save and the one it may be swapped for)"]],
     "lib/battlemap/damage-palette.ts#str-key": [["key",1,"damage types (engine vocabulary)"]],
     "lib/battlemap/damage-palette.ts#toLowerCase": [["key",1,"damage type"]],
     "lib/battlemap/daylight.ts#str-eq": [["key",2,"map themes"]],

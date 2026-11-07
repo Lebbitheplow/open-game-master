@@ -151,6 +151,25 @@ await test("Nature's Wrath restrains a creature within 10 feet on a failed save,
   assert.equal(used(ancients), 1);
 });
 
+await test("Nature's Wrath's save to break free is the creature's pick each time: restrained, it rolls Strength, not Dexterity at disadvantage.", async () => {
+  const [near] = await stage(ancients);
+  // Dexterity is a shade better on the first save; restrained, Strength is the
+  // likelier of the two (Dexterity saves are then at disadvantage).
+  kit.setEnemy(near.id, { stats: { ...foe(near.id).stats, saveMods: { dex: 9, str: 8 } } });
+  const out = await channel(ancients, "nature's wrath", [2], { targetEnemyId: near.id });
+  assert.equal(out.ok, true, out.error);
+  assert.deepEqual(foe(near.id).conditionMeta.restrained.saveEnds, { ability: "dex", dc: 15, or: "str" });
+  const { conditionNote } = await import("../src/lib/battlemap/condition-notes.ts");
+  assert.match(JSON.stringify(conditionNote("restrained", foe(near.id).conditionMeta.restrained, () => null, near.id)), /DEX or STR 15/);
+  // Its turn ends: a 7 is 15 on Strength and frees it; Dexterity at
+  // disadvantage would keep the 1 and hold it.
+  const { endTurnSaves } = await import("../src/lib/dm/condition-tick.ts");
+  world.dice(7, 1);
+  endTurnSaves(world.campaign(), world.encounter(), [near.id]);
+  world.clearDice();
+  assert.equal(foe(near.id).conditions.includes("restrained"), false, "free on Strength");
+});
+
 await test("Emissary of Peace is a bonus action that adds 5 to Persuasion checks, and only those.", async () => {
   await stage(redemption);
   const out = await channel(redemption, "emissary of peace", []);

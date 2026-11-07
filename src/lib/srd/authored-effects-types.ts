@@ -327,7 +327,8 @@ export type SpendDoes =
       half?: boolean;
       condition?: string;
       rounds?: number;
-      // The condition lasts until the creature saves at a round's end.
+      // The condition lasts until the creature saves at a round's end; with
+      // `orSave`, it picks between the two again at each of those saves.
       saveEnds?: boolean;
       rangeFt?: number;
       // Only a creature the holder can see (Nature's Wrath).
