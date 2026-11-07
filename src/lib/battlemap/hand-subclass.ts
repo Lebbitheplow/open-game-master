@@ -26,6 +26,7 @@ import {
   type HandTurn,
 } from "@/lib/battlemap/hand-core";
 import { textKey } from "@/lib/language/text-logic";
+import { iconPath, isPainted } from "@/lib/icons";
 
 type SpendDoes = AuthoredSpend["does"];
 
@@ -50,6 +51,7 @@ function linesOf(does: SpendDoes): { dice: string; condition: string } {
       if (does.variants) return { dice: "", condition: "" };
       return { dice: typeof does.condition === "string" ? does.condition : does.condition[0]?.[1] ?? "", condition: typeof does.condition === "string" ? does.condition : "" };
     case "save_effect":
+    case "save_area":
       return { dice: `${does.save.toUpperCase()} save`, condition: does.condition ?? "" };
     case "temp_hp":
       return { dice: "temp hp", condition: "" };
@@ -163,19 +165,21 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
   return aims.map((aim) => {
     const card: HandCard = {
       id: `${counter ? `feature:${counter.id}` : `feature:authored:${textKey(spend.name).replace(/\s+/g, "-")}`}${aim.variant && aims.length > 1 ? `:${aim.variant}` : ""}`,
-      type: aim.heals ? "mend" : does.kind === "save_effect" ? (lines.condition ? "control" : "spell") : does.kind === "buff" ? "ward" : "feature",
+      type: aim.heals ? "mend" : does.kind === "save_effect" || does.kind === "save_area" ? (lines.condition ? "control" : "spell") : does.kind === "buff" ? "ward" : "feature",
       name: aim.label && aims.length > 1 ? `${spend.name} (${aim.label})` : spend.name,
       cost,
       range: aim.target === "self" || aim.target === "none" ? "Self" : "",
       // A reaction's fire is the whole of it, not a rider's extra damage.
       dice: action === "reaction" ? aim.dice.replace(/^\+/, "") : aim.dice,
-      roll: does.kind === "save_effect" ? "no attack" : "no roll",
+      roll: does.kind === "save_effect" || does.kind === "save_area" ? "no attack" : "no roll",
       rules: `${held.feature}: the server resolves it.`,
       // The counter's reminder, which its own card used to show on hover.
       ...(counter ? { description: counter.guidance } : {}),
       resource: counter && state && left !== null ? `Uses ${left}/${state.max}` : state && left !== null ? `${resourceName(pool!.id)} ${left}/${state.max}` : "",
       condition: lines.condition,
-      icon: { kind: "feature", key: spend.name, family: `class-${primaryClass(sheet)}` },
+      // A shared pool's option with no painting of its own wears the pool's, as
+      // its option card did (hand-options.ts).
+      icon: { kind: "feature", key: pool && !isPainted(iconPath("feature", spend.name)) && isPainted(iconPath("feature", resourceName(pool.id))) ? resourceName(pool.id) : spend.name, family: `class-${primaryClass(sheet)}` },
       target: aim.target,
       toHit: null,
       damage: null,

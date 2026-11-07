@@ -8,7 +8,7 @@
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { channelOptions, psionicOptions, type HeldOption } from "@/lib/dm/option-costs";
 import { VOW_OF_ENMITY } from "@/lib/srd/vow-of-enmity";
-import { heldReaction } from "@/lib/srd/authored-effects";
+import { authoredSpendFor, heldReaction } from "@/lib/srd/authored-effects";
 import { maneuverDieFor } from "@/lib/dm/maneuver-rules";
 import { iconPath, isPainted, type IconRef } from "@/lib/icons";
 import {
@@ -100,6 +100,9 @@ export function optionCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] {
     for (const option of channelOptions(sheet)) {
       // Offered when its trigger comes (hand-react.ts), as a reaction card.
       if (heldReaction(sheet, option.name)) continue;
+      // A row of the authored table is dealt as its own card, which carries the
+      // row's target and cost (hand-subclass.ts).
+      if (authoredSpendFor(sheet, option.name)) continue;
       cards.push(
         card(sheet, turn, { id: "channel_divinity", label: "Channel Divinity" }, {
           name: option.name,

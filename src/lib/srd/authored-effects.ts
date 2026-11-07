@@ -38,6 +38,7 @@ import type {
   Formula,
   Gate,
 } from "@/lib/srd/authored-effects-types";
+import { AUTHORED_DATA_CHANNEL } from "@/lib/srd/authored-effects-channel";
 import { textKey } from "@/lib/language/text-logic";
 import type { CheckAbout } from "@/lib/dm/roll-about";
 import { keyFits, type RollKey } from "@/lib/srd/roll-keys";
@@ -50,6 +51,7 @@ export const AUTHORED_TABLE: Record<string, AuthoredEntry> = {
   ...AUTHORED_DATA_B,
   ...AUTHORED_DATA_B2,
   ...AUTHORED_DATA_C,
+  ...AUTHORED_DATA_CHANNEL,
 };
 
 type Row = { key: string; classId: string; feature: string; entry: AuthoredEntry };
