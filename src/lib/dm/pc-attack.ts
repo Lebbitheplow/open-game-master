@@ -15,6 +15,7 @@ import { strikeDamage } from "@/lib/dm/pc-attack-damage";
 import { FRENZIED } from "@/lib/dm/frenzy";
 import { ADVANTAGE_SOURCES, BONUS_ATTACKS, RECKLESS } from "@/lib/dm/pc-attack-options";
 import { parkPcAttack } from "@/lib/dm/pc-attack-parked";
+import { markAffinityCast } from "@/lib/dm/affinity-cast";
 import { planPcAttack, type AttackPlan } from "@/lib/dm/pc-attack-plan";
 import { rollPcAttack, strikeToHit } from "@/lib/dm/pc-attack-resolve";
 import { castAttackSpell } from "@/lib/dm/pc-attack-spell";
@@ -444,6 +445,13 @@ function spendPcAttack(plan: AttackPlan): ToolError | null {
     const countered = castAttackSpell(plan);
     if (countered) {
       return countered;
+    }
+    // A spell attack of a Draconic sorcerer's dragon's type, cast now that
+    // nothing refused it, opens Elemental Affinity's resistance
+    // (src/lib/dm/affinity-cast.ts). Not in the plan: a plan is a dry run
+    // (an approach asks it first) and may still be refused after it.
+    if (plan.kind === "spell") {
+      markAffinityCast(campaign, sheet, plan.profile.damageType);
     }
   } else if (!budget) {
     markReactionUsed(encounter, sheet.id);

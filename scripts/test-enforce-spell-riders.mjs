@@ -9,8 +9,8 @@
 import assert from "node:assert/strict";
 import "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
-import { freshTurn, onTurnOf } from "./lib/enforce-spells.mjs";
-import { caster, closeTables, countDice, enemyOf, FIGHTER, invokeAsAi, table } from "./lib/enforce-spell-kit.mjs";
+import { freshTurn, layMap, onTurnOf } from "./lib/enforce-spells.mjs";
+import { caster, closeTables, countDice, enemyOf, field, FIGHTER, invokeAsAi, table } from "./lib/enforce-spell-kit.mjs";
 
 const { test, finish } = suite("test-enforce-spell-riders");
 const { skipCurrentTurn } = await import("../src/lib/dm/encounter-tools.ts");
@@ -336,6 +336,53 @@ await test("Elemental Affinity's other half: when the sorcerer casts a spell of 
   const empty = await world.invoke("use_resource", { characterId: red.id, resource: "Elemental Affinity" });
   assert.equal(empty.ok, false);
   assert.match(empty.error, /no sorcery point left/);
+});
+
+// Each cast tool that deals a spell's damage notes a spell of the dragon's
+// type for Elemental Affinity, and only that type: aoe_damage above, the
+// single-target cast and the spell attack here.
+const affinitySorcerer = (dragon) => caster("sorcerer", "cha", [], ["Fire Bolt", "Poison Spray"], 6, {
+  subclass: "Draconic Bloodline",
+  features: [{ name: `Dragon Ancestor: ${dragon}`, source: "choice", level: 1 }, { name: "Elemental Affinity", source: "class", level: 6 }],
+});
+const affinityNoted = (world, who) => world.sheet(who.id).conditions.filter((entry) => entry.startsWith("affinity cast"));
+
+await test("A single-target spell of the dragon's type (cast_at_enemy) notes the cast Elemental Affinity needs; one of another type does not", async () => {
+  const { world, sheets: [green, red], enemies: [goblin] } = await table([affinitySorcerer("Green"), affinitySorcerer("Red")]);
+  world.dice(1, 6);
+  const sprayed = await world.invoke("cast_at_enemy", { characterId: green.id, targetEnemyId: goblin.id, spell: "Poison Spray", saveAbility: "con", damage: "1d12" });
+  world.clearDice();
+  assert.equal(sprayed.ok, true, sprayed.error);
+  assert.deepEqual(affinityNoted(world, green), ["affinity cast (poison)"]);
+  const resisted = await world.invoke("use_resource", { characterId: green.id, resource: "Elemental Affinity" });
+  assert.equal(resisted.ok, true, resisted.error);
+  world.dice(1, 6);
+  const other = await world.invoke("cast_at_enemy", { characterId: red.id, targetEnemyId: goblin.id, spell: "Poison Spray", saveAbility: "con", damage: "1d12" });
+  world.clearDice();
+  assert.equal(other.ok, true, other.error);
+  assert.deepEqual(affinityNoted(world, red), [], "poison is not a red dragon's fire");
+});
+
+await test("A spell attack of the dragon's type (pc_attack) notes the cast Elemental Affinity needs; one of another type, or one refused, does not", async () => {
+  const { world, sheets: [red, blue], enemies: [goblin] } = await table([affinitySorcerer("Red"), affinitySorcerer("Blue")]);
+  world.dice(15, 5);
+  const bolt = await world.invoke("pc_attack", { characterId: red.id, targetEnemyId: goblin.id, spell: "Fire Bolt", damage: "1d10" });
+  world.clearDice();
+  assert.equal(bolt.ok, true, bolt.error);
+  assert.deepEqual(affinityNoted(world, red), ["affinity cast (fire)"]);
+  const resisted = await world.invoke("use_resource", { characterId: red.id, resource: "Elemental Affinity" });
+  assert.equal(resisted.ok, true, resisted.error);
+  world.dice(15, 5);
+  const other = await world.invoke("pc_attack", { characterId: blue.id, targetEnemyId: goblin.id, spell: "Fire Bolt", damage: "1d10" });
+  world.clearDice();
+  assert.equal(other.ok, true, other.error);
+  assert.deepEqual(affinityNoted(world, blue), [], "fire is not a blue dragon's lightning");
+  // A Fire Bolt refused (the goblin 170 feet off, past its 120) was never
+  // cast, so it opens nothing.
+  await layMap(world, field(), { [red.id]: { x: 1, y: 1 }, [blue.id]: { x: 1, y: 2 }, [goblin.id]: { x: 35, y: 1 } });
+  const far = await world.invoke("pc_attack", { characterId: red.id, targetEnemyId: goblin.id, spell: "Fire Bolt", damage: "1d10" });
+  assert.equal(far.ok, false, "the goblin is out of range");
+  assert.deepEqual(affinityNoted(world, red), [], "a refused spell attack noted a cast");
 });
 
 await test("The Hand holds Elemental Affinity's card back until a spell of the dragon's type is cast", async () => {

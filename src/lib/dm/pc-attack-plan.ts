@@ -6,7 +6,6 @@
 // the quiver is only counted, the maneuver's pool and the smite's slot are
 // only looked at, and the budget is a copy until pc-attack.ts stores it.
 
-import { markAffinityCast } from "@/lib/dm/affinity-cast";
 import { luckPointsLeft } from "@/lib/srd/class-resources";
 import { mergeAdvantage } from "@/lib/dm/condition-logic";
 import { coverFeatName, damageShakesConcentration, elementalAdeptApplies, floorDamageDice, hasSkulker, polearmButtDamage, powerAttackFeat, shotIgnoresCover, shotIgnoresLongRange, spellIgnoresCover, stunningSniperApplies } from "@/lib/srd/feat-combat";
@@ -224,11 +223,6 @@ export function planPcAttack(input: {
     return spell;
   }
   let profile = spell.profile;
-  // A spell attack of a Draconic sorcerer's dragon's type opens Elemental
-  // Affinity's resistance (src/lib/dm/affinity-cast.ts).
-  if (kind === "spell") {
-    markAffinityCast(campaign, sheet, profile.damageType);
-  }
   const weaponAttack = kind === "weapon" || kind === "natural";
 
   // Ammunition, when the table asked for it: an empty quiver is a refused
