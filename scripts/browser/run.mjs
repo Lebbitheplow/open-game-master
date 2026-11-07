@@ -53,7 +53,9 @@ if (args.shard) {
 }
 
 const tree = path.resolve(import.meta.dirname, "../..");
-const outDir = args.out || fs.mkdtempSync(path.join(os.tmpdir(), "odm-browser-"));
+// The seed changes cwd through enforce-world, so a relative --out must be
+// anchored to the caller before it crosses into the child process.
+const outDir = args.out ? path.resolve(args.out) : fs.mkdtempSync(path.join(os.tmpdir(), "odm-browser-"));
 fs.mkdirSync(outDir, { recursive: true });
 const logFile = path.join(outDir, "server.log");
 
