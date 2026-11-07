@@ -4,7 +4,8 @@
 // them out (src/lib/battlemap/hand-ring.ts), and the cast guard keeps the rest of
 // the casting open on the turn after the first call takes the ring's credit
 // (src/lib/dm/cast-guard.ts openItemShares). The later calls once met a fighter's
-// "cannot cast spells" and a wizard's own slot.
+// "cannot cast spells" and a wizard's own slot. A ring's attack-roll spell also
+// names the dice of the level it was stored at (pc-attack-plan.ts).
 import assert from "node:assert/strict";
 import { clearDice, dice, openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
@@ -99,6 +100,31 @@ await test("Hold Person stored at 3rd holds both creatures the card names, the s
   clearDice();
   for (const target of entries(results.at(-1))) assert.notEqual(target.ok, false, JSON.stringify(target));
   assert.deepEqual(world.enemies().map((enemy) => enemy.conditions.includes("paralyzed")), [true, true]);
+});
+
+await test("A ring's Guiding Bolt stored at 2nd names the 5d6 it rolls, not its base level's 4d6, on both dice paths", async () => {
+  const [goblin] = await stage(brute, [ring([stored("Guiding Bolt", 2)])]);
+  dice(15, 6, 6, 6, 6, 6);
+  const [, cast] = await play(brute, ringCard(brute), aimAt(goblin));
+  clearDice();
+  const notes = cast.result.result.conditionEffects ?? [];
+  assert.equal(cast.result.result.damage, 30, "5d6 of 6");
+  // The pack's words ("upcast to level 2: 5d6") or the bundled ones ("5d6 from a
+  // level 2 slot"), never the base level's.
+  assert.ok(notes.some((note) => /\b5d6\b/.test(note)), notes.join(" | "));
+  assert.ok(!notes.some((note) => /\b4d6\b|base level/.test(note)), notes.join(" | "));
+
+  const [again] = await stage(brute, [ring([stored("Guiding Bolt", 2)])]);
+  setMemberRealDice(world.campaignId, brute.userId, true);
+  try {
+    const earlier = new Set(listOpenPendingRolls(world.campaignId).map((roll) => roll.id));
+    await play(brute, ringCard(brute), aimAt(again));
+    const parked = listOpenPendingRolls(world.campaignId).find((roll) => !earlier.has(roll.id) && roll.kind === "attack");
+    assert.equal(parked.expression, "1d20+7");
+    assert.equal(parked.attack.damageExpression, "5d6");
+  } finally {
+    setMemberRealDice(world.campaignId, brute.userId, false);
+  }
 });
 
 await test("On real dice each ray of a ring's Scorching Ray is parked at the ring's +7", async () => {
