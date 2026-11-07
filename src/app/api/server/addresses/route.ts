@@ -1,6 +1,6 @@
-import os from "node:os";
 import { currentUser, unauthorized } from "@/lib/auth";
 import { getGlobalConfig } from "@/lib/db/app-settings";
+import { safeNetworkInterfaces } from "@/lib/network-interfaces";
 import { lanOrigins, livePublicUrl } from "@/lib/server-address";
 
 export const runtime = "nodejs";
@@ -20,9 +20,10 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const protocol = request.headers.get("x-forwarded-proto") ?? url.protocol;
   const config = getGlobalConfig();
+  const interfaces = safeNetworkInterfaces();
   return Response.json({
     serverName: config.serverName || "Open Game Master",
-    publicUrl: livePublicUrl(config.publicUrl, os.networkInterfaces()),
-    lanUrls: lanOrigins(os.networkInterfaces(), protocol, url.port),
+    publicUrl: livePublicUrl(config.publicUrl, interfaces),
+    lanUrls: lanOrigins(interfaces, protocol, url.port),
   });
 }
