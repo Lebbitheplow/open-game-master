@@ -254,6 +254,8 @@ import {
   resolveTurnFromNarration,
 } from "@/lib/dm/encounter-tools";
 import { handleRequestRoll } from "@/lib/dm/invoke-roll";
+import { askForInitiative } from "@/lib/dm/initiative-ask";
+import { fillInitiativeCard, holdsInitiativeCard, withInitiativeCards } from "@/lib/dm/initiative-cards-logic";
 import { restTools } from "@/lib/dm/rest-tools";
 import { checkTools, CHECK_TOOL_NAMES } from "@/lib/dm/check-tools";
 import { hazardTools, HAZARD_TOOL_NAMES, partyCanSlowAFall } from "@/lib/dm/hazard-tools";
@@ -1152,6 +1154,18 @@ export async function resumeDmTurn(campaignId: string, turnId: string) {
       turn.rollIds.push(roll.id);
     }
     const answer = pendingRollAnswer(pending, roll);
+    // A card the AI's fight sent when it opened: the call that opened it was
+    // answered then, and the total joins that answer (initiative-cards-logic.ts).
+    const opened =
+      pending.kind === "initiative" && pending.toolCallId && pending.characterId
+        ? turn.conversation.findLast(
+            (message) => message.role === "tool" && message.tool_call_id === pending.toolCallId && holdsInitiativeCard(message.content, pending.characterId as string),
+          )
+        : undefined;
+    if (opened && typeof opened.content === "string" && pending.characterId) {
+      opened.content = fillInitiativeCard(opened.content, pending.characterId, answer);
+      continue;
+    }
     // The call whose parts wait on this roll: a tool answer of its id that
     // still holds a part awaiting one (a backend may reuse an id across
     // replies, and an earlier answer of that id holds no parts).
@@ -2452,6 +2466,11 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       // The prepared events it brought on (fight-events.ts) ride back in its
       // result, so the model narrates them in this very reply.
       const happened = settleTurn(context.campaign, holder);
+      // A fight that opened with initiative cards out answers now and the
+      // turn waits for the cards, as for a request_roll's.
+      if (CARDS_OUT.has(outcome)) {
+        parkedAny = true;
+      }
       if (outcome[PARKED]) {
         parkedAny = true;
         // The parts of a pc_attack that needed no roll are answered now;
@@ -2581,6 +2600,10 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
 // arrives when the turn resumes, so none is written now.
 const PARKED = "__turnParked";
 
+// The answers of calls that opened a fight and sent initiative cards: each
+// is written now, and the turn then waits on the cards (resolveModelCall).
+const CARDS_OUT = new WeakSet<object>();
+
 // One model call that did not run above, resolved against the engine with
 // the loop's own rails: the per-turn caps, the item-approval offers, the
 // companion roster refresh, and parking for physical dice. Everything else
@@ -2648,6 +2671,7 @@ async function resolveModelCall(
     // at the console's own door (src/lib/dm/legendary-play.ts): the spend and
     // what it buys in one call, given back if the engine refuses the rest.
     // Fling and Swallow have no other call to make them (issue 685).
+    const fightBefore = getActiveEncounter(campaign.id)?.id ?? null;
     const result =
       name === "legendary_action" && playsWhole(gated.args)
         ? await dispatchAdjudication(name, gated.args, { campaign, turn, sheets, sheetsById, realDiceUserIds })
@@ -2658,7 +2682,26 @@ async function resolveModelCall(
     if (!("error" in result)) {
       turn.encounterCount += 1;
     }
-    return result[PC_ATTACK_PARKED] ? { [PARKED]: true, ...(Array.isArray(result.attacks) ? { attacks: result.attacks } : {}) } : result;
+    if (result[PC_ATTACK_PARKED]) {
+      return { [PARKED]: true, ...(Array.isArray(result.attacks) ? { attacks: result.attacks } : {}) };
+    }
+    // A fight this call opened asks the seats the server does not roll for
+    // with their initiative cards now, as a fight a person opens does
+    // (initiative-ask.ts): left to the model, a reply that went on with the
+    // story asked nobody, and the deadlock guard rolled those players' dice
+    // for them on the next turn (play-test 2026-11-07, B3).
+    const fight = getActiveEncounter(campaign.id);
+    if (!("error" in result) && fight && fight.id !== fightBefore && !fight.orderReady) {
+      const ask = askForInitiative(campaign, turn, realDiceUserIds, { toolCallId: toolCall.id ?? null });
+      if (ask) {
+        const told = withInitiativeCards(result, ask);
+        if (ask.waiting.length) {
+          CARDS_OUT.add(told);
+        }
+        return told;
+      }
+    }
+    return result;
   }
   // Companion recruit/dismiss resolves synchronously: the sheet, order
   // slot, and token exist before the model narrates the arrival. The shared
