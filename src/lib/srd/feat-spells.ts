@@ -387,6 +387,49 @@ export function freeCastFeatures(grants: FeatSpellGrant[]): string[] {
   return grants.flatMap((grant) => grant.freeCasts.map((spell) => freeCastFeatureName(spell, grant.feat)));
 }
 
+// ---- the ability a feat's spell is cast with ----
+
+// What a sheet records of its feats' spells and of the scores they raised.
+export type FeatSpellSheet = {
+  features?: ReadonlyArray<{ name: string }>;
+  featChoices?: Record<string, FeatSpellPicks | undefined> | null;
+  asiChoices?: ReadonlyArray<{ mode: string; feat?: string; ability?: Ability }>;
+  racialChoices?: { featAbility?: Ability } | null;
+};
+
+// The ability a spell a feat teaches is cast with, read from the sheet's
+// own record (issue #833: FeatSpellGrant.ability was worked out when the
+// feat was taken and never read again, so Fey Touched's misty step was cast
+// with the class's ability, or a fighter's with none). The feat is the one
+// whose picks name the spell or whose Free cast feature does; its ability
+// is the score the half-feat raised, else the one the player named, else
+// the class list's (Magic Initiate's). Null for a spell no feat teaches.
+export function featSpellAbility(sheet: FeatSpellSheet, spell: string): CastingAbility | null {
+  const wanted = textKey(spell);
+  const choices = sheet.featChoices ?? {};
+  const feats = Object.entries(choices)
+    .filter(([, picks]) => [...(picks?.cantrips ?? []), ...(picks?.spells ?? [])].some((name) => textKey(name) === wanted))
+    .map(([feat]) => feat);
+  for (const feature of sheet.features ?? []) {
+    const free = freeCastOf(feature.name);
+    if (free && textKey(free.spell) === wanted) {
+      feats.push(free.feat);
+    }
+  }
+  for (const feat of feats) {
+    const picks = featChoice(choices, feat);
+    const raised = sheet.asiChoices?.find((choice) => choice.mode === "feat" && textKey(choice.feat ?? "") === textKey(feat))?.ability;
+    const ability =
+      castingAbility(raised ?? (raised === undefined ? sheet.racialChoices?.featAbility : undefined)) ??
+      castingAbility(picks?.ability) ??
+      (picks?.list ? listAbility(picks.list) : null);
+    if (ability) {
+      return ability;
+    }
+  }
+  return null;
+}
+
 // ---- the sheet's lists with the feat spells in ----
 
 export type SpellLists = {

@@ -3,6 +3,7 @@ import { archiveHomebrew, deleteHomebrew, getHomebrew, restoreHomebrew } from "@
 import { updateHomebrewCarried } from "@/lib/db/homebrew-rename";
 import { serverPublishedNameProblem } from "@/lib/homebrew/published-names-server";
 import { normalizeHomebrewForSave } from "@/lib/homebrew/species-choice-server";
+import { spellFactsFor } from "@/lib/characters/catalog";
 import { homebrewLimitProblems } from "@/lib/homebrew/limits";
 import { patchHomebrewSchema } from "@/lib/schemas/homebrew";
 import { forgetSpeciesRules } from "@/lib/characters/species-rules";
@@ -62,7 +63,7 @@ export async function PATCH(
     if (over) {
       return Response.json({ error: over.text, field: over.field }, { status: 400 });
     }
-    const normalized = normalizeHomebrewForSave(existing.kind, data, parsed.data.name ?? existing.name);
+    const normalized = normalizeHomebrewForSave(existing.kind, data, parsed.data.name ?? existing.name, (spell) => spellFactsFor(spell, user.id));
     if ("error" in normalized) {
       return Response.json({ error: normalized.error }, { status: 400 });
     }

@@ -217,6 +217,10 @@ export const SERVER_FEATURES = {
   // `thrown` dice and POST /api/campaigns/[id]/pending-rolls/[id]/after-roll.
   // An older host never parks a roll that way, so the card never draws there.
   afterRollChoice: true,
+  // Spells on a workshop species and on each option of its player's choice
+  // (issue #833): the species editor's spell rows, which an older host
+  // drops unread on save.
+  speciesSpells: true,
 } as const;
 export type ServerFeatures = { [K in keyof typeof SERVER_FEATURES]: boolean };
 

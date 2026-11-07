@@ -1,7 +1,8 @@
 import { raceMechanics, type RaceMechanics } from "@/lib/content/mechanics";
-import { readSpeciesVariants } from "@/lib/content/species-variants";
+import { readSpeciesVariants, variantRecordName } from "@/lib/content/species-variants";
+import { readSpeciesSpells } from "@/lib/content/species-spells";
 import { SRD_RACES, type SrdRace } from "@/lib/srd";
-import { isDwarf, srdRaceId } from "@/lib/srd/race-id";
+import { isDwarf, srdRaceId, type SpeciesRules } from "@/lib/srd/race-id";
 import { isEdition2024 } from "@/lib/content/edition";
 import { textKey } from "@/lib/language/text-logic";
 
@@ -228,7 +229,9 @@ export function packRaceOptions(rows: RaceRow[], keepIds: Iterable<string> = [])
       // A workshop species' choice rides along, so the builder offers it
       // and the creation check holds a character to it.
       const variants = readSpeciesVariants(row.data.variants);
-      mechanics = { ...raceMechanics(row.data), ...(variants ? { variants } : {}) };
+      // And its own spells (issue #833).
+      const spells = readSpeciesSpells(row.data.spells);
+      mechanics = { ...raceMechanics(row.data), ...(variants ? { variants } : {}), ...(spells ? { spells } : {}) };
       parsed.set(row.slug, mechanics);
     }
     return mechanics;
@@ -263,4 +266,24 @@ export function packRaceOptions(rows: RaceRow[], keepIds: Iterable<string> = [])
       source: row.document ?? row.documentSlug,
     };
   });
+}
+
+// What the engines read off an option the bundled list does not carry
+// (src/lib/srd/race-id.ts SpeciesRules): the server's reader
+// (src/lib/characters/species-rules.ts) and the builder's
+// (useBuilderOptions.ts) both build it here, so the browser and the server
+// read a workshop species' spells, and each option's, alike (issue #833).
+export function speciesRulesOf(option: Pick<RaceMechanics, "size" | "heavyArmorSpeed" | "traitNames" | "spells" | "variants">): SpeciesRules {
+  const variantSpells = Object.fromEntries(
+    (option.variants?.options ?? []).flatMap((entry) =>
+      entry.spells ? [[entry.id, { ...entry.spells, from: variantRecordName(option.variants!.label, entry) }]] : [],
+    ),
+  );
+  return {
+    size: option.size,
+    heavyArmorSpeed: option.heavyArmorSpeed,
+    traitNames: option.traitNames,
+    ...(option.spells ? { spells: option.spells } : {}),
+    ...(Object.keys(variantSpells).length ? { variantSpells } : {}),
+  };
 }

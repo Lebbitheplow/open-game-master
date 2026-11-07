@@ -67,6 +67,7 @@ import {
   bonusCastOf,
   componentsAsCast,
   grantedCastOf,
+  grantCastsFree,
   MANTLE_OF_MAJESTY,
   type BonusCast,
   type SlotPlan,
@@ -428,6 +429,11 @@ export function castSpell(
   // A spell an invocation or the race casts, which no class list holds
   // (src/lib/srd/granted-casts.ts): its own slot rule, level and counter.
   const grant = input.ritual ? null : grantedCastOf(sheet, spell, facts, extras);
+  // A free grant casts without a slot while a use is left; one the
+  // character's own slots can cast too (issue #833) is paid with a slot once
+  // its uses are spent, or when a higher level is named.
+  const grantFree = grantCastsFree(sheet, grant, facts, input.level);
+  const grantNoSlot = grant?.slot === "free" && (grantFree || !grant.slotsToo);
   // The components as this caster makes them: none of the material for an
   // invocation that says so, an Archdruid's druid spells without the voice,
   // the gestures or a free material (cast-rules.ts componentsAsCast).
@@ -507,8 +513,8 @@ export function castSpell(
       ? { kind: "none", note: `${name} is a Signature Spell: cast at 3rd level with no slot, once until a short rest.` }
       : freeCast
         ? { kind: "none", note: `${name} is cast without a slot (a feat's free cast): once until a long rest.` }
-        : grant?.slot === "free"
-          ? { kind: "none", note: `${name} is cast through ${grant.source} with no spell slot${grant.counter ? ": once, and again after a long rest" : ", at will"}${grant.castAt ? `, as a level ${grant.castAt} spell` : ""}.` }
+        : grant && grantNoSlot
+          ? { kind: "none", note: `${name} is cast through ${grant.source} with no spell slot${grant.counter ? `: ${(grant.uses ?? 1) === 1 ? "once" : `${grant.uses} times`}, and again after a ${grant.rest ?? "long"} rest` : ", at will"}${grant.castAt ? `, as a level ${grant.castAt} spell` : ""}.` }
         : mantled
           ? { kind: "none", note: `${name} is cast through Mantle of Majesty: no slot spent.` }
         : // A slot the player marked spent by hand for this cast pays for it;
@@ -522,7 +528,7 @@ export function castSpell(
     return barred && "error" in barred ? barred : slot;
   }
   // Infernal Legacy's hellish rebuke is cast as a 2nd-level spell, with no slot.
-  const slotLevel = slowHeld ? slowHeld.slotLevel : slot.kind === "none" ? (grant?.slot === "free" ? grant.castAt ?? null : null) : slot.level;
+  const slotLevel = slowHeld ? slowHeld.slotLevel : slot.kind === "none" ? (grantNoSlot ? grant?.castAt ?? null : null) : slot.level;
   // A ritual out of a fight costs no turn; in one it is begun with the
   // action like any casting held across turns, and a completing casting
   // costs no action at all.
@@ -574,12 +580,16 @@ export function castSpell(
   if (freeCast) {
     patch.resources = spendSignature(sheet.resources, freeCast);
   }
-  // The grant's once-a-long-rest use (Thief of Five Fates, Infernal Legacy).
-  if (grant?.counter) {
+  // The grant's use (Thief of Five Fates' with its slot, Infernal Legacy's
+  // without one). A cast a slot paid for, its free uses spent, spends none.
+  if (grant?.counter && (grant.slot === "slot" || grantFree)) {
     patch.resources = spendSignature(patch.resources ?? sheet.resources, grant.counter);
   }
   if (grant) {
-    result.granted = `${name} is cast through ${grant.source}.${grant.note ? ` ${grant.note}` : ""}`;
+    result.granted =
+      grant.slot === "free" && !grantNoSlot
+        ? `${name} is cast with a spell slot; ${grant.source} gives it without one${grant.counter ? `, ${(grant.uses ?? 1) === 1 ? "once" : `${grant.uses} times`} a ${grant.rest ?? "long"} rest` : ""}.`
+        : `${name} is cast through ${grant.source}.${grant.note ? ` ${grant.note}` : ""}`;
   }
   // Expert Divination (School of Divination 6): a divination spell of 2nd
   // level or higher cast with a slot gives back one spent slot of a lower

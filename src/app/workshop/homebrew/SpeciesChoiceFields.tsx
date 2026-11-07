@@ -17,6 +17,9 @@ import { LANGUAGES, TOOL_PROFICIENCIES } from "@/lib/workshop/pickers";
 import { SKILL_IDS } from "@/lib/homebrew/item-magic-schema";
 import { DAMAGE_TYPES } from "@/lib/dm/damage-logic";
 import { raceMechanics } from "@/lib/content/mechanics";
+import { readSpeciesSpells } from "@/lib/content/species-spells";
+import { SpeciesSpellFields } from "@/app/workshop/homebrew/SpeciesSpellFields";
+import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 import { ABILITIES, type Ability } from "@/lib/schemas/abilities";
 import {
   BREATH_AREAS,
@@ -31,8 +34,8 @@ import {
 // ancestry, a lineage, a bloodline (issue #538). Hidden behind one button
 // until the author asks for it, since most species offer none. Each option
 // holds only what the table runs (scores, resistances, a breath, skills,
-// tools, languages) and the words its player reads; the save checks it
-// whole (src/lib/content/species-variants.ts).
+// tools, languages, spells from issue #833) and the words its player reads;
+// the save checks it whole (src/lib/content/species-variants.ts).
 
 type Props = { data: Data; set: (patch: Data) => void };
 
@@ -54,6 +57,7 @@ function readOption(raw: Data): SpeciesVariantOption {
     skills: list(raw.skills),
     tools: list(raw.tools),
     languages: list(raw.languages),
+    ...(readSpeciesSpells(raw.spells) ? { spells: readSpeciesSpells(raw.spells) } : {}),
     ...(breath.damageType
       ? { breath: { damageType: String(breath.damageType), save: (breath.save ?? "dex") as Ability, shape: (breath.shape ?? "cone") as BreathShape } }
       : {}),
@@ -120,8 +124,9 @@ function Increases({ option, put }: { option: Data; put: (asi: Data | undefined)
   );
 }
 
-function OptionFields({ option, put }: { option: Data; put: (next: Data) => void }) {
+function OptionFields({ option, put, spells }: { option: Data; put: (next: Data) => void; spells: boolean }) {
   const field = (key: string, value: unknown) => put(withField(option, key, value));
+  const optionName = String(option.name ?? "").trim() || "this option";
   const breath = sub(option.breath);
   const breathType = String(breath.damageType ?? "");
   const putBreath = (patch: Data) => {
@@ -188,11 +193,22 @@ function OptionFields({ option, put }: { option: Data; put: (next: Data) => void
           />
         </>
       ) : null}
+      {/* Spells the option gives (issue #833), on a host that keeps them. */}
+      {spells ? (
+        <SpeciesSpellFields
+          value={option.spells}
+          put={(next) => field("spells", next)}
+          title="Spells it gives"
+          hint="Only characters who pick this option cast these. A cantrip is cast at will; a spell of 1st level or higher a set number of times without a spell slot, and again after a rest."
+          pickLabel={`Find a spell ${optionName} gives`}
+        />
+      ) : null}
     </>
   );
 }
 
 export function SpeciesChoiceFields({ data, set }: Props) {
+  const spells = hostOffers(useCapabilities(), "speciesSpells");
   const [newName, setNewName] = useState("");
   // The option just added opens, ready for its grants.
   const [fresh, setFresh] = useState<string | null>(null);
@@ -254,7 +270,7 @@ export function SpeciesChoiceFields({ data, set }: Props) {
             <li key={key} className="live-in flex items-start gap-1" data-species-option={String(option.id ?? "")}>
               <div className="min-w-0 grow">
                 <MechGroup title={optionName} summary={variantSummary(readOption(option))} open={fresh === option.id}>
-                  <OptionFields option={option} put={(next) => putOptions(options.map((entry, at) => (at === index ? next : entry)))} />
+                  <OptionFields option={option} spells={spells} put={(next) => putOptions(options.map((entry, at) => (at === index ? next : entry)))} />
                 </MechGroup>
               </div>
               <button

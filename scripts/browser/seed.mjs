@@ -2293,6 +2293,60 @@ const witchBolt = {};
   }
 }
 
+// A tiefling fighter's Infernal Legacy (scenario species-spells, issue
+// #833): per viewport, on her turn in a fight, a 5th-level fighter whose race casts
+// thaumaturgy, hellish rebuke and darkness with no Spellcasting of its own.
+const speciesSpells = {};
+for (const viewport of ["desktop", "phone"]) {
+  const table = campaigns.createCampaign(player.id, {
+    title: `Infernal Table (${viewport})`,
+    description: "A tiefling fighter and the spells of her blood.",
+    theme: "high-fantasy",
+    maxPlayers: 6,
+    startingLevel: 5,
+    difficulty: "normal",
+    gameSettings: { ttsEnabled: false, dmMode: "human" },
+  });
+  const seated = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+  if ("error" in seated) {
+    throw new Error(`could not seat the lead at the infernal table: ${seated.error}`);
+  }
+  campaigns.setCampaignStatus(table.id, "active");
+  const fighter = sheets.createSheet(
+    table.id,
+    world.owner.id,
+    5,
+    heroInput({
+      name: "Ash Marrow",
+      race: "tiefling",
+      class: "fighter",
+      level: 5,
+      maxHp: 44,
+      abilities: { str: 16, con: 14, cha: 14 },
+      equipment: [{ name: "Component pouch", qty: 1 }],
+    }),
+  );
+  // In a fight on her turn, where the Hand deals her cards.
+  const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
+  const encounterRows = await import("../../src/lib/db/encounters.ts");
+  const { initiativeFloorFor } = await import("../../src/lib/dm/encounter-tools.ts");
+  const started = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: player.id }, {
+    name: "start_encounter",
+    args: { enemies: [{ monster: "goblin", count: 1 }] },
+  });
+  if (!started.ok) {
+    throw new Error(`the infernal table's fight did not start: ${started.error}`);
+  }
+  const encounter = encounterRows.getActiveEncounter(table.id);
+  const place = encounter.order.findIndex((entry) => entry.characterId === fighter.id);
+  if (place < 0) {
+    throw new Error("the infernal table's fighter has no place in the order");
+  }
+  encounterRows.saveEncounter({ ...encounter, orderReady: true, turnIndex: place, turnBudget: null, legendary: { ...encounter.legendary, due: [] } });
+  campaigns.setFloor(table.id, initiativeFloorFor(table.id) ?? { mode: "open" });
+  speciesSpells[viewport] = { id: table.id, fighter: fighter.id };
+}
+
 // Issue 668: a Hand notice ("already used their bonus action this turn")
 // stayed into the next round while the chip was lit again. A fight a
 // person runs (the player's seat), with the lead's fighter up, one per
@@ -3123,6 +3177,7 @@ const ids = {
   qualityTurnIds,
   spellbook,
   witchBolt,
+  speciesSpells,
   noticeTables,
   afterRollTables,
   portentTables,

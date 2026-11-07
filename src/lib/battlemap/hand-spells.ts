@@ -3,8 +3,10 @@
 // spends, read from the same tables the cast and use_resource tools read.
 import { BEST_EFFORT_NOTE, BEST_EFFORT_SHORT } from "@/lib/content/reading-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import { bonusCastOf, casterStateProblem, componentProblem, focusProblem, materialPlan, slotPlan, turnCharge } from "@/lib/dm/cast-rules";
-import { computeSheetDerived, spellAttackFor, spellSaveDcFor } from "@/lib/srd";
+import { bonusCastOf, casterStateProblem, componentProblem, focusProblem, grantCastsFree, grantedCastOf, materialPlan, slotPlan, turnCharge } from "@/lib/dm/cast-rules";
+import { freeCastResourceId, isFreeCastResource } from "@/lib/srd/feat-spells";
+import { innateSpellsFor, RACIAL_COUNTER_PREFIX } from "@/lib/srd/racial-grants";
+import { computeSheetDerived, spellAbilityFor, spellAttackFor, spellSaveDcFor } from "@/lib/srd";
 import { counterSpendCards, pickLabel, playedAsSpendCard } from "@/lib/battlemap/hand-subclass";
 import { nameChoice } from "@/lib/srd/feature-names";
 import { heldAtWill, resourceDef, resourceLevel, type ResourceDef } from "@/lib/srd/class-resources";
@@ -54,10 +56,15 @@ import { forPlayers } from "@/lib/language/player-text";
 
 export function spellNames(sheet: CharacterSheet): string[] {
   const casting = sheet.spellcasting;
-  if (!casting) return [];
+  // The spells the race and its chosen option give (issue #833): a
+  // tiefling fighter's hellish rebuke, a Topaz ancestry's misty step. They
+  // sit on no class list, and a character with no Spellcasting casts them
+  // too.
+  const racial = innateSpellsFor(sheet.race, sheet.level, undefined, { features: sheet.features }).map((spell) => spell.name);
   const all = [
-    ...allSpellNames(casting),
-    ...(casting.casters ?? []).flatMap((caster) => allSpellNames(caster)),
+    ...(casting ? allSpellNames(casting) : []),
+    ...(casting?.casters ?? []).flatMap((caster) => allSpellNames(caster)),
+    ...racial,
   ];
   const seen = new Set<string>();
   return all.filter((name) => {
@@ -208,9 +215,16 @@ function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, 
   // Witch Bolt's beam while it holds: the card is its strike, with no slot and
   // no roll. Aimed anywhere else it is a new casting (src/lib/dm/intent-logic.ts).
   const beam = mech.repeatDice && sheet.concentratingOn && textKey(sheet.concentratingOn) === textKey(name) ? mech.repeatDice : null;
-  const slot = fact.level > 0 && !beam ? lowestSlot(sheet, fact.level) : null;
+  // A spell the race gives, or a feat's free cast, is cast without a slot
+  // while a use is left, as the cast guard spends it (issue #833): the card
+  // shows those uses rather than a slot it would not spend.
+  const free = beam || fact.level === 0 ? null : freeUseOf(sheet, name, fact.facts ?? bundledSpellFacts(name));
+  const slot = fact.level > 0 && !beam && !free?.free ? lowestSlot(sheet, fact.level) : null;
   const derived = computeSheetDerived(sheet);
-  const abilityMod = sheet.spellcasting ? derived.abilityMods[sheet.spellcasting.ability] : 0;
+  // The ability this spell is cast with: a race's or a feat's own (issue
+  // #833), else the class's.
+  const castWith = spellAbilityFor(sheet, name);
+  const abilityMod = castWith ? derived.abilityMods[castWith] : 0;
   const scaled = scaledSpellDice({
     spellLevel: fact.level,
     desc: fact.desc,
@@ -283,6 +297,7 @@ function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, 
   const note = mech.note ? forPlayers(mech.note) : "";
   if (note) notes.push(note);
   if (slot && slot.level > fact.level) notes.push(`Cast with a level ${slot.level} slot.`);
+  if (free?.free && free.note) notes.push(free.note);
   // Mechanics the app read from the spell's text that nobody checked
   // (issue #570): the card's details say so.
   if (fact.bestEffort) notes.push(BEST_EFFORT_SHORT);
@@ -293,7 +308,12 @@ function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, 
   // bonus-action spell rule.
   const problem = (refusal: ToolError | null, spent = false): Gate => (refusal ? { reason: refusal.error, spent } : null);
   const material = materialPlan(sheet, facts, { inFight: true, slotLevel: slot?.level ?? fact.level });
-  const slotRefusal = fact.level > 0 && !slot ? slotPlan(sheet, name, facts, fact.level) : null;
+  const slotRefusal =
+    fact.level > 0 && !slot && !free?.free
+      ? free?.spent
+        ? { error: free.spent }
+        : slotPlan(sheet, name, facts, fact.level)
+      : null;
   const charge = turnCharge({
     who: sheet.name,
     // Not a casting: charged as cast-repeat.ts charges it.
@@ -322,7 +342,7 @@ function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, 
     roll,
     rules: notes.slice(0, 2).join(" "),
     description: [fact.desc, fact.higherLevel ? `At higher levels: ${fact.higherLevel}` : "", ...notes.map((note) => (note === BEST_EFFORT_SHORT ? BEST_EFFORT_NOTE : note))].filter(Boolean).join("\n\n"),
-    resource: beam ? "No slot" : fact.level === 0 ? "Cantrip" : slot ? slotLine(slot) : `Level ${fact.level} · no slots`,
+    resource: beam ? "No slot" : fact.level === 0 ? "Cantrip" : free?.free ? free.line : slot ? slotLine(slot) : `Level ${fact.level} · no slots`,
     condition: beam ? "" : mech.condition?.name ?? (fact.concentration ? "Concentration" : ""),
     icon: { kind: "spell", key: name, family: fact.school ? `spell-${fact.school.toLowerCase()}` : null },
     target,
@@ -393,6 +413,29 @@ function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, 
   );
 }
 
+// The free use a spell has this turn: a race's grant (its counter, or at
+// will) or a feat's free cast, while one is left; `spent` says why a grant
+// no slot can cast is out of uses.
+function freeUseOf(sheet: CharacterSheet, name: string, facts: ReturnType<typeof bundledSpellFacts>): { free: boolean; line: string; note?: string; spent?: string } | null {
+  const grant = grantedCastOf(sheet, name, facts);
+  if (grant?.slot === "free") {
+    const state = grant.counter ? sheet.resources?.[grant.counter] : undefined;
+    if (grantCastsFree(sheet, grant, facts, undefined)) {
+      return state
+        ? { free: true, line: `Free ${state.max - state.used}/${state.max}`, note: `No slot: ${state.max - state.used} of ${state.max} free uses left until a ${grant.rest ?? "long"} rest.` }
+        : { free: true, line: "Free · at will" };
+    }
+    return grant.slotsToo
+      ? { free: false, line: "" }
+      : { free: false, line: "", spent: `${name} is spent until a ${grant.rest ?? "long"} rest.` };
+  }
+  const id = freeCastResourceId(facts?.name ?? name);
+  const state = sheet.resources?.[id];
+  return state && state.used < state.max
+    ? { free: true, line: `Free ${state.max - state.used}/${state.max}`, note: `No slot: ${state.max - state.used} of ${state.max} free uses left until a long rest.` }
+    : null;
+}
+
 export function spellCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, options: HandOptions): HandCard[] {
   const rows: Array<{ level: number; card: HandCard }> = [];
   const names = spellNames(sheet);
@@ -443,6 +486,9 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
   // card comes from the feature held, and reads no uses.
   for (const [id, state] of [...Object.entries(sheet.resources), ...heldAtWill(sheet)]) {
     const def = resourceDef(id);
+    // A spell's free uses (a race's, a feat's free cast) ride the spell's
+    // own card, which spends them (spellCard).
+    if (id.startsWith(RACIAL_COUNTER_PREFIX) || isFreeCastResource(id)) continue;
     // Superiority dice ride attacks (riderCards); recoveries belong to a rest.
     // Ki is spent through its techniques, each a card of its own (hand-class.ts
     // Flurry of Blows, and the bonus-action moves in hand.ts).

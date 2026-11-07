@@ -16,7 +16,19 @@ type Rec = Record<string, unknown>;
 const isRec = (value: unknown): value is Rec => Boolean(value) && typeof value === "object" && !Array.isArray(value);
 const strings = (value: unknown): string[] => (Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string" && Boolean(entry.trim())) : []);
 
+// A species' spell groups (issue #833): its own and each option's, every
+// row naming its spell.
+function raceSpellGroups(data: Rec): Rec[] {
+  const options = isRec(data.variants) && Array.isArray(data.variants.options) ? data.variants.options.filter(isRec) : [];
+  return [data.spells, ...options.map((option) => option.spells)].filter(isRec);
+}
+const groupSpells = (group: Rec): string[] =>
+  Array.isArray(group.spells) ? group.spells.filter(isRec).flatMap((row) => (typeof row.spell === "string" ? [row.spell] : [])) : [];
+
 export function homebrewDataRefs(kind: HomebrewKind, data: Rec): { spell: string[]; item: string[] } {
+  if (kind === "race") {
+    return { spell: [...new Set(raceSpellGroups(data).flatMap(groupSpells))], item: [] };
+  }
   if (kind === "archetype" && isRec(data.spells)) {
     return { spell: [...new Set(Object.values(data.spells).flatMap(strings))], item: [] };
   }
@@ -40,6 +52,17 @@ export function renameHomebrewDataRefs(kind: HomebrewKind, data: Rec, rename: Sh
     if (next !== name) changed = true;
     return next;
   };
+  if (kind === "race") {
+    const renamed = (group: unknown) =>
+      isRec(group) && Array.isArray(group.spells)
+        ? { ...group, spells: group.spells.map((row) => (isRec(row) && typeof row.spell === "string" ? { ...row, spell: to("spell", row.spell) } : row)) }
+        : group;
+    const next: Rec = { ...data, ...(data.spells !== undefined ? { spells: renamed(data.spells) } : {}) };
+    if (isRec(data.variants) && Array.isArray(data.variants.options)) {
+      next.variants = { ...data.variants, options: data.variants.options.map((option) => (isRec(option) && option.spells !== undefined ? { ...option, spells: renamed(option.spells) } : option)) };
+    }
+    return changed ? { data: next, changed } : { data, changed };
+  }
   if (kind === "archetype" && isRec(data.spells)) {
     const spells = Object.fromEntries(
       Object.entries(data.spells).map(([level, names]) => [level, Array.isArray(names) ? names.map((name) => (typeof name === "string" ? to("spell", name) : name)) : names]),

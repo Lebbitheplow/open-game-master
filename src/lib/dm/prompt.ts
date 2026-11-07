@@ -11,6 +11,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { ADVENTURE_BEGINS_NOTE, LEAD_NOTE_PREFIX, OPENING_SCENE_CUE, type CampaignMember } from "@/lib/campaign-types";
 import { heldRollUserIds } from "@/lib/dice/held-rolls";
 import { computeSheetDerived, findClass, findSkill, formatModifier, sizeForRace, speedFor, SRD_SKILLS } from "@/lib/srd";
+import { innateSpellsFor } from "@/lib/srd/racial-grants";
 import { attackSummary } from "@/lib/srd/creature-attacks";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
 import { wearingIsExplicit } from "@/lib/srd/armor";
@@ -538,6 +539,25 @@ function spellListLabel(lists: {
   return parts.join("; ") || "none";
 }
 
+// The spells the race and its chosen option give (issue #833): a
+// tiefling's, a workshop Half-Dragon's Topaz misty step. None sits on a
+// class's list, so the line beside them read "they can cast nothing else"
+// and a fighter's read "cannot cast any spells". Each with its ability and
+// DC, and its uses left, as the cast tools spend them.
+function racialSpellsLine(sheet: CharacterSheet): string {
+  const derived = computeSheetDerived(sheet);
+  const parts = innateSpellsFor(sheet.race, sheet.level, undefined, { features: sheet.features }).map((spell) => {
+    const ability = spell.ability ? `${spell.ability.toUpperCase()}, DC ${8 + derived.proficiencyBonus + derived.abilityMods[spell.ability]}` : "";
+    if (spell.castAt === 0) {
+      return `${spell.name} (cantrip, at will${ability ? `, ${ability}` : ""})`;
+    }
+    const state = spell.counterId ? sheet.resources?.[spell.counterId] : undefined;
+    const left = state ? state.max - state.used : spell.uses;
+    return `${spell.name} (level ${spell.castAt}, no slot ${left}/${spell.uses} left until a ${spell.rest} rest${spell.slotsToo ? ", or with a spell slot" : ""}${ability ? `, ${ability}` : ""})`;
+  });
+  return parts.length ? `Spells from their species (cast with the spell tools; the server spends the use): ${parts.join("; ")}` : "";
+}
+
 // What GAME STATE adds of a companion a player commands in fights
 // (src/lib/dm/companion-command.ts): whose orders its turns follow, named as
 // the story knows them. The account name went into the GM's narration ("she
@@ -757,6 +777,8 @@ export function describeSheet(
       lines.push(`    ${summary}`);
     }
   }
+  const racialSpells = racialSpellsLine(sheet);
+  const besides = racialSpells ? " and their species' spells below" : "";
   if (sheet.spellcasting) {
     const pact = sheet.spellcasting.pact;
     const pactLabel = pact
@@ -777,15 +799,18 @@ export function describeSheet(
         );
       }
       lines.push(
-        `    They can cast nothing beyond those lists.${sheet.concentratingOn ? ` Concentrating on: ${sheet.concentratingOn}` : ""}`,
+        `    They can cast nothing beyond those lists${besides}.${sheet.concentratingOn ? ` Concentrating on: ${sheet.concentratingOn}` : ""}`,
       );
     } else {
       const spellList = spellListLabel(sheet.spellcasting);
       lines.push(
-        `  Spell slots: ${slots || "none"}${pactLabel} | Save DC ${derived.spellSaveDc} | Spells (complete list, they can cast nothing else): ${spellList}${sheet.concentratingOn ? ` | Concentrating on: ${sheet.concentratingOn}` : ""}`,
+        `  Spell slots: ${slots || "none"}${pactLabel} | Save DC ${derived.spellSaveDc} | Spells (complete list${besides}, they can cast nothing else): ${spellList}${sheet.concentratingOn ? ` | Concentrating on: ${sheet.concentratingOn}` : ""}`,
       );
     }
-  } else {
+  }
+  if (racialSpells) {
+    lines.push(`  ${racialSpells}`);
+  } else if (!sheet.spellcasting) {
     lines.push(`  Spellcasting: none (cannot cast any spells)`);
   }
   // The purse always prints, even with an empty pack: the model cannot keep a

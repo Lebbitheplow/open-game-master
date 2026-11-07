@@ -10,6 +10,7 @@ import { darkvisionTilesFromText } from "@/lib/battlemap/los";
 import { pcImmunities, pcResistances } from "@/lib/dm/pc-defenses";
 import { normalizeHomebrewData } from "@/lib/homebrew/gear";
 import { readSpeciesVariants, type SpeciesVariantGroup } from "@/lib/content/species-variants";
+import { readSpeciesSpells, resolveSpeciesSpells, type SpeciesSpellLookup } from "@/lib/content/species-spells";
 import { textKey } from "@/lib/language/text-logic";
 import type { HomebrewKind } from "@/lib/schemas/homebrew";
 
@@ -130,17 +131,52 @@ export function speciesChoiceClash(group: SpeciesVariantGroup): string | null {
 }
 
 // The normalizer the save routes and a bundle's arrivals run: the editor's
-// own (src/lib/homebrew/gear.ts), then for a species the clash above.
+// own (src/lib/homebrew/gear.ts), then for a species the clash above, and
+// with `spellOf` (the author's catalog: published spells and their own) its
+// spells and its options' named as the catalog names them, each with its
+// own level, so the table tells a homebrew cantrip from a levelled spell
+// (issue #833). A spell the catalog does not know is refused.
 export function normalizeHomebrewForSave(
   kind: HomebrewKind,
   data: unknown,
   name: string,
+  spellOf?: SpeciesSpellLookup,
 ): ReturnType<typeof normalizeHomebrewData> {
   const normalized = normalizeHomebrewData(kind, data, name);
   if ("error" in normalized || kind !== "race") {
     return normalized;
   }
-  const group = readSpeciesVariants((normalized.data as { variants?: unknown }).variants);
+  const raw = normalized.data as { variants?: unknown; spells?: unknown };
+  const group = readSpeciesVariants(raw.variants);
   const clash = group ? speciesChoiceClash(group) : null;
-  return clash ? { error: clash } : normalized;
+  if (clash) {
+    return { error: clash };
+  }
+  if (!spellOf) {
+    return normalized;
+  }
+  const own = readSpeciesSpells(raw.spells);
+  if (own) {
+    const resolved = resolveSpeciesSpells(own, "The species", spellOf);
+    if ("error" in resolved) {
+      return resolved;
+    }
+    raw.spells = resolved.group;
+  }
+  if (group) {
+    const options = [];
+    for (const option of group.options) {
+      if (!option.spells) {
+        options.push(option);
+        continue;
+      }
+      const resolved = resolveSpeciesSpells(option.spells, `"${option.name}"`, spellOf);
+      if ("error" in resolved) {
+        return resolved;
+      }
+      options.push({ ...option, spells: resolved.group });
+    }
+    raw.variants = { ...group, options };
+  }
+  return normalized;
 }

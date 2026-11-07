@@ -19,7 +19,7 @@
 // (src/lib/srd/index.ts) and the counters (class-resources.ts) read it.
 import type { Ability } from "@/lib/schemas/sheet";
 import { chosenOptions } from "@/lib/srd/options";
-import { innateSpellAbility, innateSpellsFor, racialCantripAbility } from "@/lib/srd/racial-grants";
+import { innateSpellsFor, racialCantripAbility } from "@/lib/srd/racial-grants";
 import { racialCantripsOf, type RacialCantripChoices } from "@/lib/srd/racial-cantrips";
 import { asciiSlugOf, textKey } from "@/lib/language/text-logic";
 
@@ -30,8 +30,15 @@ export type GrantedCast = {
   // "free": no slot is spent (at will, or a trait's once a day); "slot": a
   // warlock spell slot pays, as for any cast.
   slot: "free" | "slot";
-  // The once-a-long-rest counter, when the grant has one.
+  // The counter of its uses, when the grant has one.
   counter?: string;
+  // How many uses the counter holds, and the rest that refills it (a
+  // race's spell, issue #833); absent is once a long rest.
+  uses?: number;
+  rest?: "long" | "short";
+  // A free grant the character's own spell slots can cast too, once its
+  // uses are spent or at a higher level (a workshop option's misty step).
+  slotsToo?: boolean;
   // The level the spell is cast at, when the grant names one.
   castAt?: number;
   // The casting ability, when it is not the class's.
@@ -96,7 +103,7 @@ type GrantSheet = {
   race: string;
   level: number;
   features?: ReadonlyArray<{ name: string }>;
-  racialChoices?: RacialCantripChoices;
+  racialChoices?: (NonNullable<RacialCantripChoices> & { variant?: string | null }) | null;
 };
 
 // Every spell the sheet casts through an invocation or its race.
@@ -109,15 +116,17 @@ export function grantedCastsOf(sheet: GrantSheet): GrantedCast[] {
       out.push({ ...cast, source: invocation, ...(row.slot === "slot" ? { counter: invocationCounterId(invocation) } : {}) });
     }
   }
-  const innateAbility = innateSpellAbility(sheet.race);
-  for (const innate of innateSpellsFor(sheet.race, sheet.level)) {
+  // The race's spells and its chosen option's, each with its own counter,
+  // rest, slot rule and ability (src/lib/srd/racial-grants.ts, issue #833).
+  for (const innate of innateSpellsFor(sheet.race, sheet.level, undefined, { variant: sheet.racialChoices?.variant, features: sheet.features })) {
     out.push({
-      source: "the race's trait",
+      source: innate.source,
       spell: innate.name,
       slot: "free",
-      ...(innate.counterId ? { counter: innate.counterId } : {}),
+      ...(innate.counterId ? { counter: innate.counterId, uses: innate.uses, rest: innate.rest } : {}),
       ...(innate.castAt > 0 ? { castAt: innate.castAt } : {}),
-      ...(innateAbility ? { ability: innateAbility } : {}),
+      ...(innate.ability ? { ability: innate.ability } : {}),
+      ...(innate.slotsToo ? { slotsToo: true } : {}),
     });
   }
   const cantripAbility = racialCantripAbility(sheet.race);
@@ -130,11 +139,4 @@ export function grantedCastsOf(sheet: GrantSheet): GrantedCast[] {
 // The grant that casts this spell (any of its names), or null.
 export function grantedCastFor(sheet: GrantSheet, names: ReadonlySet<string>): GrantedCast | null {
   return grantedCastsOf(sheet).find((grant) => names.has(textKey(grant.spell))) ?? null;
-}
-
-// The ability a race's spell is cast with (a high elf's cantrip, a
-// tiefling's Infernal Legacy), or null when the spell is not the race's or
-// the race names none.
-export function grantedSpellAbility(sheet: GrantSheet, spell: string): Ability | null {
-  return grantedCastFor(sheet, new Set([textKey(spell)]))?.ability ?? null;
 }

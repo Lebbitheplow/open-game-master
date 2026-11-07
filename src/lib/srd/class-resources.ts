@@ -8,7 +8,7 @@
 import { COMBAT_RESOURCE_DEFS } from "@/lib/srd/combat-rows";
 import customResourcesJson from "@/lib/classes/resources.json";
 import authoredResourcesJson from "@/lib/srd/authored-resources.json";
-import { innateSpellCounterRows } from "@/lib/srd/racial-grants";
+import { innateSpellCounters, racialCounterRest, racialCounterSpell, RACIAL_COUNTER_PREFIX, speciesSpellsReadable } from "@/lib/srd/racial-grants";
 import { INVOCATION_COUNTER_PREFIX, invocationCounters, invocationOfCounter } from "@/lib/srd/granted-casts";
 import { freeCastOf, freeCastResourceId, freeCastSpellOf, isFreeCastResource } from "@/lib/srd/feat-spells";
 import { LATE_RESOURCE_DEFS } from "@/lib/srd/class-resources-late";
@@ -726,29 +726,6 @@ const SUBCLASS_RESOURCE_DEFS: ResourceDef[] = (
   ...(row.recovers ? { recovers: row.recovers } : {}),
 }));
 
-// The spells a race casts once a day by nature (a tiefling's hellish rebuke
-// from 3rd level, darkness from 5th; a drow's faerie fire and darkness), on
-// the trait that carries them. Below the level the spell arrives at the
-// counter has no use, and populateResources leaves it off the sheet.
-// One counter per spell: a tiefling's darkness and a drow's are the same
-// counter on two traits.
-const ORDINAL = ["", "1st", "2nd", "3rd"];
-const INNATE_RESOURCE_DEFS: ResourceDef[] = [
-  ...new Map(innateSpellCounterRows().map((row) => [row.id, row])).values(),
-].map((row) => {
-  const rows = innateSpellCounterRows().filter((entry) => entry.id === row.id);
-  return {
-    id: row.id,
-    match: [...new Set(rows.map((entry) => entry.trait))],
-    displayName: row.spell,
-    maxFor: () => 1,
-    minLevel: Math.min(...rows.map((entry) => entry.gainedAt)),
-    recharge: "long",
-    effect: { kind: "narrative" },
-    guidance: `${row.spell} once, cast as a ${ORDINAL[row.castAt] ?? `${row.castAt}th`}-level spell, and again after a long rest.`,
-  };
-});
-
 // One with Shadows (SRD 5.1, a warlock invocation): an action, as often as
 // the warlock likes, in dim light or darkness (src/lib/dm/one-with-shadows.ts).
 const INVOCATION_ACTION_DEFS: ResourceDef[] = [
@@ -771,7 +748,6 @@ export const RESOURCE_DEFS: ResourceDef[] = [
   ...SRD_RESOURCE_DEFS,
   ...CUSTOM_RESOURCE_DEFS,
   ...SUBCLASS_RESOURCE_DEFS,
-  ...INNATE_RESOURCE_DEFS,
   ...COMBAT_RESOURCE_DEFS,
   ...INVOCATION_ACTION_DEFS,
 ];
@@ -806,6 +782,9 @@ export function resourceDef(id: string): ResourceDef | null {
   if (isFreeCastResource(id)) {
     return freeCastDef(id);
   }
+  if (id.startsWith(RACIAL_COUNTER_PREFIX)) {
+    return racialSpellDef(id);
+  }
   if (id.startsWith(INVOCATION_COUNTER_PREFIX)) {
     const row = invocationOfCounter(id);
     if (row) {
@@ -834,6 +813,25 @@ function freeCastDef(id: string): ResourceDef {
     recharge: "long",
     effect: { kind: "narrative" },
     guidance: `${spell} once without a spell slot, at its own level, and again after a long rest; the cast tool spends this use itself when the spell is cast, so use_resource is not needed. With a slot of its level or higher it can also be cast as usual.`,
+  };
+}
+
+// The counter of a spell a race casts without a slot (a tiefling's hellish
+// rebuke, a Topaz ancestry's misty step, src/lib/srd/racial-grants.ts),
+// made from its id like a feat's free cast. Its uses are the sheet's own
+// count, which populateResources writes from the race (issue #833: every
+// one was a fixed static row of one use, back on a long rest).
+function racialSpellDef(id: string): ResourceDef {
+  const spell = racialCounterSpell(id).replace(/(^|\s)([a-z])/g, (_, before, letter) => `${before}${letter.toUpperCase()}`);
+  const rest = racialCounterRest(id);
+  return {
+    id,
+    match: [],
+    displayName: spell,
+    maxFor: () => 1,
+    recharge: rest,
+    effect: { kind: "narrative" },
+    guidance: `${spell} without a spell slot, through the species, at its own level (or the one the trait names); its uses come back after a ${rest} rest. The cast tool spends a use itself when the spell is cast, so use_resource is not needed.`,
   };
 }
 
@@ -866,6 +864,11 @@ export function matchResource(term: string): ResourceDef | null {
   const wanted = textKey(term);
   if (!wanted) {
     return null;
+  }
+  // A counter made from its id (a free cast, a racial spell) is no row of
+  // the table: its id, as the sheet lists it, finds it.
+  if (/^(?:racial_|free_cast_|invocation_)[a-z0-9_]+$/.test(term.trim())) {
+    return resourceDef(term.trim());
   }
   const named = (written: string) =>
     RESOURCE_DEFS.find((def) => isNamed(written, def.displayName)) ??
@@ -1005,6 +1008,9 @@ export function populateResources(
   feats?: string[],
   // The table, for a workshop feat that runs as one with a counter.
   campaignId?: string,
+  // The race, and the option its player picked: the counters of the spells
+  // they cast without a slot (issue #833), sized by the race's own rows.
+  species?: { race: string; variant?: string | null },
 ): ResourceMap {
   const out: ResourceMap = {};
   const held_all: Array<{ name: string; classId?: string; source?: string }> = [
@@ -1055,6 +1061,17 @@ export function populateResources(
   // An invocation that casts its spell once a long rest (granted-casts.ts).
   for (const counter of invocationCounters(features)) {
     out[counter.id] = { max: 1, used: Math.min(existing?.[counter.id]?.used ?? 0, 1) };
+  }
+  // A spell the race casts without a slot, from the level it arrives at:
+  // its uses, back on the rest its row names (src/lib/srd/racial-grants.ts).
+  if (species?.race && speciesSpellsReadable(species.race)) {
+    Object.assign(out, innateSpellCounters(species.race, level, existing, undefined, { variant: species.variant, features }));
+  } else if (species?.race) {
+    for (const [id, state] of Object.entries(existing ?? {})) {
+      if (id.startsWith(RACIAL_COUNTER_PREFIX)) {
+        out[id] = state;
+      }
+    }
   }
   // Inspiration belongs to no feature: the DM awarded it, and it stays until
   // it is spent.

@@ -1,6 +1,7 @@
 import { clamp, text, type Raw } from "@/lib/homebrew/coerce";
 import { ALL_SKILLS, raceMechanics, raceSizeOf } from "@/lib/content/mechanics";
 import { checkSpeciesVariants } from "@/lib/content/species-variants";
+import { checkSpeciesSpells } from "@/lib/content/species-spells";
 import { speciesHoldsTrait } from "@/lib/srd/race-id";
 
 // A workshop species in the fields the builder and the creation check read
@@ -98,6 +99,13 @@ export function normalizeRaceData(source: Raw, data: Raw & { desc: string }): { 
   if (cantrip && CLASS_LISTS.includes(String(cantrip.list))) {
     data.cantripChoice = { list: String(cantrip.list), count: clamp(cantrip.count, 1, 3, 1) };
   }
+  // The spells every one of its people casts (issue #833), held to the
+  // same rules as an option's.
+  const spells = checkSpeciesSpells(source.spells, "The species");
+  if ("error" in spells) {
+    return spells;
+  }
+  if (spells.group) data.spells = spells.group;
   const variants = checkSpeciesVariants(source.variants);
   if ("error" in variants) {
     return variants;

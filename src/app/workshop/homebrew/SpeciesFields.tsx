@@ -15,6 +15,9 @@ import { SRD_WEAPONS } from "@/lib/srd/weapons";
 import { addChip, rowIcon } from "@/app/workshop/kit";
 import { SpeciesTraitPicker } from "@/app/workshop/homebrew/SpeciesTraitPicker";
 import { SpeciesChoiceFields } from "@/app/workshop/homebrew/SpeciesChoiceFields";
+import { SpeciesSpellFields } from "@/app/workshop/homebrew/SpeciesSpellFields";
+import { readSpeciesSpells, speciesSpellsSummary } from "@/lib/content/species-spells";
+import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 import type { Data } from "@/app/workshop/homebrew/draft";
 import { speciesHoldsTrait } from "@/lib/srd/race-id";
 import { heldTraitNames, resistanceTrait, resistedByTraits, withTrait } from "@/lib/workshop/species-traits";
@@ -212,8 +215,26 @@ function Training({ data, set }: Props) {
   );
 }
 
+// The spells every one of its people casts by nature (issue #833), as the
+// tiefling's Infernal Legacy: shown on a host that keeps them.
+function Spells({ data, set }: Props) {
+  const group = readSpeciesSpells(data.spells);
+  return (
+    <MechGroup title="Spells it casts" summary={speciesSpellsSummary(group) || "none"} open={Boolean(group)}>
+      <SpeciesSpellFields
+        value={data.spells}
+        put={(spells) => set({ spells })}
+        title="Spells every one of them casts"
+        hint="As a tiefling's Infernal Legacy. A cantrip is cast at will; a spell of 1st level or higher a set number of times without a spell slot, and again after a rest. An option of the player's choice below can give spells of its own."
+        pickLabel="Find a spell the species gives"
+      />
+    </MechGroup>
+  );
+}
+
 export function SpeciesFields({ data, set }: Props) {
   const speed = (data.speed as { walk?: number } | undefined)?.walk ?? 30;
+  const spells = hostOffers(useCapabilities(), "speciesSpells");
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -246,6 +267,7 @@ export function SpeciesFields({ data, set }: Props) {
       <AbilityIncreases data={data} set={set} />
       <Languages data={data} set={set} />
       <Training data={data} set={set} />
+      {spells ? <Spells data={data} set={set} /> : null}
       <SpeciesChoiceFields data={data} set={set} />
       <div className="space-y-1.5">
         <SpeciesTraitPicker traits={String(data.traits ?? "")} onChange={(traits) => set({ traits })} />
