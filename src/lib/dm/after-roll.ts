@@ -9,7 +9,9 @@ import { getSheetById } from "@/lib/db/sheets";
 import { rollExpression, type RollResult } from "@/lib/dice";
 import { spendFeatureUse } from "@/lib/dm/attack-onhit";
 import { spendRollCarriers } from "@/lib/dm/forced-save";
+import { attackTurnOver, recordTargetAc, type AttackRecord } from "@/lib/dm/attack-record";
 import {
+  afterAttackOptions,
   afterRollOptions,
   DARK_ONES_OWN_LUCK,
   extraD20Expression,
@@ -44,14 +46,26 @@ export function rollsCanWait(sheet: CharacterSheet | null | undefined): sheet is
 
 // What this parked roll offers, given its dice as they now stand. A roll
 // behind the GM's screen never waits: its card would show the table the dice.
-// A parked attack keeps its own path (src/lib/dm/pc-attack-parked.ts).
+// A parked attack's to-hit roll is judged against the target's AC as it now
+// stands; its damage roll never waits.
 export function optionsForPending(pending: PendingRoll, outcome: RollResult, spent: readonly AfterRollId[] = []): AfterRollOption[] {
-  if (pending.visibility !== "public" || !pending.characterId || pending.attack) {
+  if (pending.visibility !== "public" || !pending.characterId || (pending.attack && pending.kind !== "attack")) {
     return [];
   }
   const sheet = getSheetById(pending.characterId);
   if (!sheet || !rollsCanWait(sheet)) {
     return [];
+  }
+  if (pending.attack) {
+    const record = pending.attack as AttackRecord;
+    // Its turn is over: the roll will not land, so nothing is spent on it.
+    if (attackTurnOver(pending.campaignId, record, pending.characterId)) {
+      return [];
+    }
+    // A luck point bought with the attack (pc_attack luck: true) was its one.
+    // Read from the record, not the dice: Elven Accuracy throws a third d20 too.
+    const bought: AfterRollId[] = record.luck ? ["lucky"] : [];
+    return afterAttackOptions(sheet, { outcome, ac: recordTargetAc(pending.campaignId, record), critRange: record.critRange ?? 20, spent: [...spent, ...bought] });
   }
   const upFront: AfterRollId[] = luckRodeThrow(pending.expression, pending.advantage) ? ["lucky"] : [];
   return afterRollOptions(sheet, { kind: pending.kind, outcome, dc: pending.dc, spent: [...spent, ...upFront] });

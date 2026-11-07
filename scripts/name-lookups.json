@@ -1624,6 +1624,7 @@
     "lib/dm/pc-attack-parked.ts#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "lib/dm/pc-attack-parked.ts#partial": [["parse",1,"damage text"]],
     "lib/dm/pc-attack-parts.ts#partial": [["key",1,"the engine's own refusal of a feature that grants no attack, found by its constant (NO_BONUS_ATTACK_FEATURE)"],["key",1,"a part's feature kind among those that take the bonus action (engine vocabulary)"]],
+    "lib/dm/pc-attack-parts.ts#fallback": [["key",1,"a queued attack's answer by its place in the call, or the note that it was not made"]],
     "lib/dm/pc-attack-plan.ts#bypass": [["identity",1,"the resolved weapon's carried line by its own name (the profile carries it)"]],
     "lib/dm/pc-attack-plan.ts#whole": [["identity",1,"the resolved weapon's carried line by its own name (the profile carries it)"]],
     "lib/dm/pc-attack-profile.ts#keyed": [["key",2,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],

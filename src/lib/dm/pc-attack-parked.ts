@@ -9,15 +9,18 @@ import { getCampaignById } from "@/lib/db/campaigns";
 import { createPendingRoll, getDmTurn, publicPendingRoll, type PendingAttack, type PendingRoll } from "@/lib/db/dm-turns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getRoll, type StoredRoll } from "@/lib/db/rolls";
-import { listSheets } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
-import { attackRecord, recordTargetAc, type AttackRecord, type DamageAsk } from "@/lib/dm/attack-record";
+import { attackRecord, attackTurnOver, recordTargetAc, type AttackRecord, type DamageAsk } from "@/lib/dm/attack-record";
 import { damageDiceNote, landSwingBlow } from "@/lib/dm/attack-blow";
 import { hitSwing, judgeSwing, missSwing, type SwingScene } from "@/lib/dm/attack-swing";
 import type { HeldMote } from "@/lib/dm/authored-mote";
 import { applyPendingDamageRoll } from "@/lib/dm/enemy-blow";
 import type { AttackPlan } from "@/lib/dm/pc-attack-plan";
-import type { Strike } from "@/lib/dm/pc-attack-resolve";
+import { serverBlow, throwToHit, type Strike } from "@/lib/dm/pc-attack-resolve";
+import { rollsCanWait } from "@/lib/dm/after-roll";
+import { afterAttackOptions } from "@/lib/dm/after-roll-logic";
+import { getSheetById, listSheets } from "@/lib/db/sheets";
+import type { RollResult } from "@/lib/dice";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { rollAgainst } from "@/lib/roll-labels";
 
@@ -44,6 +47,51 @@ export function parkPcAttack(plan: AttackPlan, strike: Strike, toolCallId: strin
     attack: attackRecord(plan, strike, mote),
   });
   publishPersisted(campaign.id, "roll_pending", { pendingRoll: publicPendingRoll(pending) });
+}
+
+// The server's dice for a player whose rolls can wait (after-roll.ts
+// rollsCanWait): the d20 is thrown, and when the attack misses as it stands
+// and something they hold could turn it into a hit (a luck point, a held
+// Bardic Inspiration die), the roll is parked thrown, with the attack's
+// record, for the player to decide (after-roll route). Nothing is spent until
+// they do. It lands as a real-dice roll does (resolvePendingPcAttack), and the
+// server throws its damage. `thrown` when there is nothing to decide: the
+// caller resolves the attack with that throw at once.
+export function throwForChoice(plan: AttackPlan, strike: Strike, toolCallId: string | null, mote: HeldMote | null): { parked: PendingRoll } | { thrown: RollResult } | null {
+  const { campaign, turn, sheet, enemy, profile } = plan;
+  const fresh = getSheetById(sheet.id) ?? sheet;
+  if (!rollsCanWait(fresh)) {
+    return null;
+  }
+  const record = attackRecord(plan, strike, mote);
+  const thrown = throwToHit(plan, strike);
+  const options = afterAttackOptions(fresh, {
+    outcome: thrown,
+    ac: recordTargetAc(campaign.id, record),
+    critRange: record.critRange ?? 20,
+    spent: record.luck ? ["lucky"] : [],
+  });
+  if (!options.length) {
+    return { thrown };
+  }
+  const parked = createPendingRoll({
+    campaignId: campaign.id,
+    turnId: turn.id,
+    toolCallId,
+    userId: sheet.userId,
+    characterId: sheet.id,
+    kind: "attack",
+    detail: strike.detail,
+    expression: strike.toHitExpression,
+    advantage: plan.advantage,
+    dc: null,
+    reason: `${profile.weapon} attack against ${enemy.displayName}`,
+    attack: { ...record, serverDice: true } as AttackRecord,
+    parkedFor: "after_roll",
+    thrown: { outcome: thrown, options, choosing: false, landing: { status: "fallback", physical: false, source: "digital" } },
+  });
+  publishPersisted(campaign.id, "roll_pending", { pendingRoll: publicPendingRoll(parked) });
+  return { parked };
 }
 
 // The stage's world, read as the roll lands. A record parked by an older
@@ -104,12 +152,8 @@ export function resolvePendingPcAttack(pending: PendingRoll, roll: StoredRoll): 
   // A to-hit roll still parked when the turn moved on (the lead skipped it,
   // the order was edited) must not land on a later turn as though nothing
   // had happened: the player declared it on a turn that is over.
-  const fight = getActiveEncounter(pending.campaignId);
-  if (fight?.orderReady) {
-    const current = fight.order[fight.turnIndex];
-    if (!current || current.kind !== "pc" || current.characterId !== pending.characterId) {
-      return `${stored.attacker}'s ${stored.weapon} attack was still unrolled when their turn ended, so it does not land. No damage roll happens; narrate the moment passing.`;
-    }
+  if (attackTurnOver(pending.campaignId, stored, pending.characterId)) {
+    return `${stored.attacker}'s ${stored.weapon} attack was still ${stored.serverDice ? "waiting on its player's choice" : "unrolled"} when their turn ended, so it does not land. No damage roll happens; narrate the moment passing.`;
   }
   const found = sceneOf(pending);
   if (!found) {
@@ -125,6 +169,10 @@ export function resolvePendingPcAttack(pending: PendingRoll, roll: StoredRoll): 
   if (!judged.hit) {
     const { graze } = missSwing(scene, record, judged, roll.breakdown, roll.visibility, notes);
     const said = notes.length ? ` ${notes.join("; ")}.` : "";
+    if (graze && record.serverDice) {
+      const out = serverBlow(scene, record, graze, roll.breakdown, roll.visibility, rollAgainst(`${record.weapon} (half on a miss)`, scene.enemy.displayName), []);
+      return `${rolled}: MISS.${said} The spell still deals half its damage. ${blowSentences(scene, graze, out, []).join(" ")}`;
+    }
     if (graze) {
       parkDamage(pending, scene, record, graze, roll);
       return `${rolled}: MISS.${said} The spell still deals half its damage: ${record.attacker} now rolls damage (${graze.expression}), and the server will apply half of it to ${scene.enemy.displayName} automatically.`;
@@ -140,8 +188,16 @@ export function resolvePendingPcAttack(pending: PendingRoll, roll: StoredRoll): 
     return `${rolled}: HIT.${said} ${String(prepared.done.note ?? "")}`.trim();
   }
   const { ask } = prepared;
+  const critical = ask.crit ? (ask.stunShot ? " (CRITICAL: the target is stunned instead of the dice doubling)" : " (CRITICAL: damage dice are doubled)") : "";
+  if (record.serverDice) {
+    // The server threw the d20, so it throws the damage too, as its own
+    // answer would have: the player decided only what to do with the d20.
+    const blowNotes: string[] = [];
+    const out = serverBlow(scene, record, ask, roll.breakdown, roll.visibility, pending.detail, blowNotes);
+    return `${rolled}: HIT${critical}.${said} ${blowSentences(scene, ask, out, blowNotes).join(" ")}`.trim();
+  }
   parkDamage(pending, scene, record, ask, roll);
-  return `${rolled}: HIT${ask.crit ? (ask.stunShot ? " (CRITICAL: the target is stunned instead of the dice doubling)" : " (CRITICAL: damage dice are doubled)") : ""}.${said} ${record.attacker} now rolls damage (${ask.expression})${damageDiceNote(ask)}; the server will apply it to ${scene.enemy.displayName} automatically.`;
+  return `${rolled}: HIT${critical}.${said} ${record.attacker} now rolls damage (${ask.expression})${damageDiceNote(ask)}; the server will apply it to ${scene.enemy.displayName} automatically.`;
 }
 
 // Called from the pending-rolls submit route when the player's damage roll
@@ -161,17 +217,23 @@ export function resolvePendingPcDamage(pending: PendingRoll, roll: StoredRoll): 
   const toHit = record.toHitRollId ? (getRoll(record.toHitRollId)?.breakdown ?? null) : null;
   const notes: string[] = [];
   const out = landSwingBlow(scene, record, ask, roll, toHit, pending.visibility, notes);
-  if (typeof out.warning === "string") {
-    return out.warning;
-  }
-  if ("error" in out) {
+  if ("error" in out && typeof out.warning !== "string") {
     return null;
+  }
+  return blowSentences(scene, ask, out, notes, roll.total).join(" ");
+}
+
+// What a landed blow did, in the words the resumed turn gives the model.
+// `total`: the player's damage roll, said beside the half of it that landed.
+function blowSentences(scene: SwingScene, ask: DamageAsk, out: Record<string, unknown>, notes: string[], total?: number): string[] {
+  if (typeof out.warning === "string") {
+    return [out.warning];
   }
   const byType = Array.isArray(out.damageByType) ? ` (${(out.damageByType as string[]).join(", ")})` : "";
   const dealt = Number(out.damage ?? 0);
   const parts = [
     ask.half
-      ? `The server already applied half of this ${roll.total} damage, ${dealt}${byType}, to ${scene.enemy.displayName} (now ${out.dead ? "SLAIN" : String(out.health ?? "unharmed")}).`
+      ? `The server already applied half ${total === undefined ? "the" : `of this ${total}`} damage, ${dealt}${byType}, to ${scene.enemy.displayName} (now ${out.dead ? "SLAIN" : String(out.health ?? "unharmed")}).`
       : `The server already applied this ${dealt} damage${byType} to ${scene.enemy.displayName} (now ${out.dead ? "SLAIN" : String(out.health)}).`,
   ];
   if (out.encounterOver) {
@@ -179,7 +241,7 @@ export function resolvePendingPcDamage(pending: PendingRoll, roll: StoredRoll): 
   }
   parts.push(...notes.map((note) => `${note}.`), ...outcomeLines(out));
   parts.push(`Do NOT call apply_damage for this ${ask.half ? "miss" : "hit"}; narrate from this state.`);
-  return parts.join(" ");
+  return parts;
 }
 
 // What the blow left, said in the order the server's dice answer says it.

@@ -13,6 +13,8 @@ import {
 import { insertRoll, type StoredRoll } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
 import { settleAttackDie } from "@/lib/dm/forced-save";
+import { rollsCanWait } from "@/lib/dm/after-roll";
+import { runQueuedParts } from "@/lib/dm/pc-attack-parts";
 import { moteAfterRoll } from "@/lib/dm/authored-mote";
 import type { RollResult } from "@/lib/dice";
 import { recordInitiativeRoll, settleTurn, turnHolder } from "@/lib/dm/encounter-tools";
@@ -20,6 +22,7 @@ import { applyInitiativeRefills } from "@/lib/dm/feature-hooks";
 import { applyPendingDamageRoll } from "@/lib/dm/enemy-damage";
 import { resolvePendingPcAttack } from "@/lib/dm/pc-attack";
 import { parkedTargetAc, resolvePendingPcDamage } from "@/lib/dm/pc-attack-parked";
+import { attackTurnOver, type AttackRecord } from "@/lib/dm/attack-record";
 import { resumeDmTurn } from "@/lib/dm/turn";
 import { resumeHumanTurn } from "@/lib/dm/invoke";
 import { enqueueDmJob } from "@/lib/dm/queue";
@@ -39,8 +42,11 @@ function landOne(campaign: Campaign, pending: PendingRoll, thrown: RollResult, l
   const campaignId = campaign.id;
   // A parked to-hit roll takes a held Bardic Inspiration die the way the
   // digital one does: only on a miss it turns into a hit (forced-save.ts).
+  // A player whose rolls can wait spends it themselves, after the roll
+  // (after-roll.ts): the die is theirs, and stays held if they keep the roll.
   const attacker = pending.kind === "attack" && pending.attack && pending.characterId ? getSheetById(pending.characterId) : null;
-  const outcome = attacker && pending.attack ? settleAttackDie(campaignId, attacker, thrown, parkedTargetAc(campaignId, pending.attack), pending.attack.critRange ?? 20) : thrown;
+  const decides = Boolean(pending.thrown) || rollsCanWait(attacker);
+  const outcome = attacker && pending.attack && !decides ? settleAttackDie(campaignId, attacker, thrown, parkedTargetAc(campaignId, pending.attack), pending.attack.critRange ?? 20) : thrown;
   if (outcome !== thrown) {
     // The server threw that die: the roll is no longer the player's alone.
     landing = { ...landing, physical: false };
@@ -107,9 +113,17 @@ function landOne(campaign: Campaign, pending: PendingRoll, thrown: RollResult, l
       // A parked pc_attack to-hit roll: the server adjudicates it against the
       // stored enemy AC and, on a hit, parks the damage roll so the turn stays
       // paused until the player rolls their damage dice.
+      // Asked before the roll lands: a turn that is over lands nothing, and
+      // makes none of the attacks queued behind the roll.
+      const over = attackTurnOver(campaignId, pending.attack as AttackRecord, pending.characterId);
       const note = resolvePendingPcAttack(pending, roll);
       if (note) {
         setPendingCombatNote(pending.id, note);
+      }
+      // The attacks declared after this one wait behind it: made now, in
+      // order, as the server's dice would have made them.
+      if (!over) {
+        runQueuedParts(campaign, pending);
       }
     } else if (pending.kind === "damage" && pending.targetEnemyId) {
       // Targeted damage applies server-side the moment the dice land; the

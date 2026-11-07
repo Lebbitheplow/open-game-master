@@ -104,7 +104,12 @@ export function AfterRollCard({
       <p className="mt-1 text-sm">
         {character?.name ?? "You"} rolled <strong>{thrown.outcome.total}</strong>
         {thrown.outcome.natural !== undefined ? ` (the die shows ${thrown.outcome.natural})` : ""}.{" "}
-        {thrown.choosing ? "Choose which die counts." : "Before the game says what happens, you can still change it."}
+        {thrown.choosing
+          ? "Choose which die counts."
+          : pending.kind === "attack"
+            // An attack only waits on a miss (after-roll-logic.ts afterAttackOptions).
+            ? "As it stands, the attack misses. You can still change that."
+            : "Before the game says what happens, you can still change it."}
       </p>
       {pending.reason ? <p className="check-dim mt-0.5 text-xs">{pending.reason}</p> : null}
       <div className="mt-2 flex flex-wrap items-center gap-2" role="group" aria-label={thrown.choosing ? "Choose which die counts" : "Change this roll, or keep it"}>

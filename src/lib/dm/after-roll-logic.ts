@@ -130,6 +130,35 @@ export function afterRollOptions(
   return options;
 }
 
+// An attack roll waits only when it misses as it stands: a hit is already what
+// the player wants, and the game knows the target's AC where a check may have
+// no DC. A natural 1 misses whatever is added to it, so only a fresh d20 can
+// save it; a fresh d20 can always save a miss, since a natural 20 hits. Dark
+// One's Own Luck is for checks and saves alone.
+export function afterAttackOptions(
+  sheet: CharacterSheet,
+  roll: { outcome: RollResult; ac: number; critRange: number; spent?: readonly AfterRollId[] },
+): AfterRollOption[] {
+  const { outcome, ac } = roll;
+  const natural = outcome.natural;
+  if (!leadD20(outcome) || natural === undefined) {
+    return [];
+  }
+  if (natural !== 1 && (natural >= roll.critRange || outcome.total >= ac)) {
+    return [];
+  }
+  const taken = new Set(roll.spent ?? []);
+  const options: AfterRollOption[] = [];
+  if (holdsLuckPoint(sheet) && !taken.has("lucky")) {
+    options.push({ id: "lucky", label: "Lucky: roll another d20", note: "Spend a luck point: roll another d20, then choose which die counts." });
+  }
+  const bardic = heldBardicDie(sheet);
+  if (bardic && !taken.has("bardic") && natural !== 1 && outcome.total + sidesOf(bardic.die) >= ac) {
+    options.push({ id: "bardic", label: `Add Bardic Inspiration (${bardic.die})`, note: `Spend your Bardic Inspiration die: add 1${bardic.die} to this attack roll.` });
+  }
+  return options;
+}
+
 // A luck point spent before the throw (request_roll luck: true) put one d20
 // more in the pool than the advantage asks for: that was the roll's one.
 export function luckRodeThrow(expression: string, advantage: string): boolean {

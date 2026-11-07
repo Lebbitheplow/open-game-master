@@ -620,6 +620,13 @@ export function setPendingThrown(id: string, thrown: ThrownRoll): PendingRoll | 
   return result.changes > 0 ? getPendingRoll(id) : null;
 }
 
+// The attack's record as it now stands: the attacks queued behind the roll,
+// then what they did once it landed (pc-attack-parts.ts runQueuedParts).
+export function setPendingAttack(id: string, attack: PendingAttack): PendingRoll | null {
+  const result = getDatabase().prepare(`UPDATE pending_rolls SET attack_json = ? WHERE id = ?`).run(JSON.stringify(attack), id);
+  return result.changes > 0 ? getPendingRoll(id) : null;
+}
+
 export function resolvePendingRoll(
   id: string,
   status: "submitted" | "fallback",

@@ -373,7 +373,8 @@ await test("A roll behind the GM's screen never waits: its card would show the t
   assert.equal(open().length, 0);
 });
 
-await test("An attack does not pause: a held die is added by the engine to a miss it turns into a hit (forced-save.ts settleAttackDie).", async () => {
+// Attacks have their own suite: scripts/test-enforce-after-roll-attacks.mjs.
+await test("An attack waits too, on a miss the die could turn: the engine no longer adds it unasked.", async () => {
   await kit.endFight();
   hero({ conditions: ["bardic inspiration (d8)"] });
   await kit.fight(1, { heroFaces: { [who.sheet.id]: 19, [who.leadSheet.id]: 2, [who.otherSheet.id]: 2 } });
@@ -385,8 +386,10 @@ await test("An attack does not pause: a held die is added by the engine to a mis
   world.patch(who.sheet.id, { conditions: ["bardic inspiration (d8)"] });
   const swing = await kit.swing(who.sheet.id, enemy.id, [2, 4], { weapon: "Longsword" });
   assert.equal(swing.ok, true, swing.error);
-  assert.equal(open().length, 0);
-  assert.ok(!world.sheet(who.sheet.id).conditions.includes("bardic inspiration (d8)"));
+  const [pending] = open();
+  assert.equal(pending?.kind, "attack", "the attack waits on the player");
+  assert.ok(world.sheet(who.sheet.id).conditions.includes("bardic inspiration (d8)"), "nothing spent yet");
+  await choose(pending.id, { keep: true });
   await kit.endFight();
 });
 

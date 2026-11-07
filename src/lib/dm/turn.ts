@@ -65,7 +65,8 @@ import { listQuests } from "@/lib/db/quests";
 import { SMALL_MODEL_REASONING_CHARS, type ModelTuning } from "@/lib/dm/model-tuning-logic";
 import { PC_ATTACK_PARKED } from "@/lib/dm/pc-attack";
 import { doneParts, listedCalls, listRefusal, oneCasting, PART_LISTS, partsResult, type OneCasting } from "@/lib/dm/action-parts-logic";
-import { AWAITING_ROLL } from "@/lib/dm/pc-attack-parts";
+import { AWAITING_ROLL, fillQueuedParts } from "@/lib/dm/pc-attack-parts";
+import type { AttackRecord } from "@/lib/dm/attack-record";
 import { strictBooleanArgs } from "@/lib/dm/arg-coerce";
 import { insertCampaignMessage, listMessagesPage, listRecentMessages, markCardReturned, type CampaignMessage } from "@/lib/db/messages";
 import { heldNarrationSeq, narrationShown, takeNarrationSeq, takeNarrationSlot } from "@/lib/dm/narration-slot";
@@ -1162,6 +1163,10 @@ export async function resumeDmTurn(campaignId: string, turnId: string) {
     if (waiting && held) {
       const { content, at } = held;
       content.attacks[at] = { ...answer, ...(content.attacks[at].spent ? { spent: content.attacks[at].spent } : {}) };
+      // The attacks that waited behind this roll, made once it landed.
+      if ((pending.attack as AttackRecord | null)?.queue) {
+        fillQueuedParts(content.attacks, at, (pending.attack as AttackRecord).queuedResults);
+      }
       waiting.content = JSON.stringify(content);
       continue;
     }

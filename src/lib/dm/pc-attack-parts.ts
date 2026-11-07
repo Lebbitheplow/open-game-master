@@ -19,8 +19,9 @@
 import { z } from "zod";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
-import type { DmTurn } from "@/lib/db/dm-turns";
-import { getSheetById } from "@/lib/db/sheets";
+import { getDmTurn, getPendingRoll, setPendingAttack, type DmTurn, type PendingRoll } from "@/lib/db/dm-turns";
+import { getSheetById, listSheets } from "@/lib/db/sheets";
+import type { AttackRecord } from "@/lib/dm/attack-record";
 import { ACTION_SURGED } from "@/lib/dm/action-budget";
 import {
   ATTACK_FEATURE_NAMES,
@@ -32,7 +33,7 @@ import {
 } from "@/lib/dm/action-parts-logic";
 import { instancesOf } from "@/lib/dm/condition-logic";
 import { applyDmMutation } from "@/lib/dm/mutations";
-import { handlePcAttack, PC_ATTACK_PARKED, pcAttackArgsSchema } from "@/lib/dm/pc-attack";
+import { handlePcAttack, PC_ATTACK_PARKED, PC_ATTACK_WAITS, pcAttackArgsSchema } from "@/lib/dm/pc-attack";
 import { gatePcAttack } from "@/lib/dm/pc-attack-gate";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
 import { getFoe } from "@/lib/dm/sheet-foe";
@@ -49,6 +50,9 @@ import { textKey } from "@/lib/language/text-logic";
 // A part parked for the player's physical dice: its roll takes its place
 // in the call's answer when the turn resumes (src/lib/dm/turn.ts).
 export const AWAITING_ROLL = "awaitingRoll";
+// An attack declared behind one whose d20 waits on its player's choice: made
+// once that roll lands, and its answer takes this place then (turn.ts).
+export const QUEUED_BEHIND = "queuedBehindRoll";
 
 const NEEDS = "Invalid arguments: pc_attack needs characterId and attacks, one entry per attack with its targetEnemyId.";
 
@@ -102,11 +106,21 @@ export function handlePcAttackParts(
   }
   const outcomes: Record<string, unknown>[] = [];
   let parked = false;
-  for (const part of parsed.data.attacks) {
+  const parts = parsed.data.attacks;
+  for (const [at, part] of parts.entries()) {
     const { result, notes } = resolvePart(campaign, turn, stale.id, part, sheets, sheetsById, realDiceUserIds, toolCallId);
     if (result[PC_ATTACK_PARKED]) {
       parked = true;
       outcomes.push({ [AWAITING_ROLL]: true, ...(notes.length ? { spent: notes } : {}) });
+      // The server's d20 waits on the player: the swings after it are made
+      // once it lands, in the order declared, so none lands before it and
+      // none is aimed or paid for before the player knows how it went.
+      const waits = result[PC_ATTACK_WAITS];
+      if (typeof waits === "string" && at < parts.length - 1) {
+        queueBehind(waits, stale.id, parts.slice(at + 1));
+        outcomes.push(...parts.slice(at + 1).map(() => ({ [QUEUED_BEHIND]: true })));
+        break;
+      }
       continue;
     }
     outcomes.push(notes.length ? { ...result, spent: notes } : result);
@@ -143,6 +157,67 @@ export function handlePcAttackParts(
     ...counted,
     ...(unreached ? { outOfReach: true } : {}),
   };
+}
+
+function queueBehind(pendingId: string, characterId: string, parts: Record<string, unknown>[]) {
+  const pending = getPendingRoll(pendingId);
+  if (pending?.attack) {
+    setPendingAttack(pendingId, { ...pending.attack, queue: { characterId, parts } } as AttackRecord);
+  }
+}
+
+// The attacks queued behind a roll that has just landed (pending-roll-land.ts),
+// made now as the call would have made them: each is planned against the
+// fight as it stands, so one aimed at a creature the roll killed is refused
+// as a fresh call would refuse it. What they did rides back on the landed
+// roll's record (queuedResults) and takes their places in the call's answer
+// when the turn resumes. One of them may wait on its own d20: the rest queue
+// behind that one in turn.
+export function runQueuedParts(campaign: Campaign, landed: PendingRoll) {
+  const pending = getPendingRoll(landed.id);
+  const record = pending?.attack as AttackRecord | null | undefined;
+  const queue = record?.queue;
+  const turn = getDmTurn(landed.turnId);
+  if (!pending || !record || !queue?.parts.length || !turn) {
+    return;
+  }
+  const sheets = listSheets(campaign.id);
+  const sheetsById = new Map(sheets.map((sheet) => [sheet.id, sheet]));
+  const results: Record<string, unknown>[] = [];
+  for (const [at, part] of queue.parts.entries()) {
+    const { result, notes } = resolvePart(campaign, turn, queue.characterId, part, sheets, sheetsById, new Set(), pending.toolCallId);
+    if (result[PC_ATTACK_PARKED]) {
+      results.push({ [AWAITING_ROLL]: true, ...(notes.length ? { spent: notes } : {}) });
+      const waits = result[PC_ATTACK_WAITS];
+      if (typeof waits === "string" && at < queue.parts.length - 1) {
+        queueBehind(waits, queue.characterId, queue.parts.slice(at + 1));
+        results.push(...queue.parts.slice(at + 1).map(() => ({ [QUEUED_BEHIND]: true })));
+        break;
+      }
+      continue;
+    }
+    results.push(notes.length ? { ...result, spent: notes } : result);
+  }
+  setPendingAttack(pending.id, { ...record, queuedResults: results } as AttackRecord);
+}
+
+// A call's answer with the attacks queued behind a landed roll in their
+// places: the answers they got when it landed, in order, or, where the roll
+// never landed them, that they were not made.
+export function fillQueuedParts(attacks: Record<string, unknown>[], from: number, results: Record<string, unknown>[] | undefined): void {
+  let next = 0;
+  for (let at = from + 1; at < attacks.length; at += 1) {
+    if (attacks[at][AWAITING_ROLL] === true) {
+      // A part still waiting on its own roll: whatever follows it is that
+      // roll's to fill.
+      break;
+    }
+    if (attacks[at][QUEUED_BEHIND] !== true) {
+      continue;
+    }
+    attacks[at] = results?.[next] ?? { made: false, note: "This attack was not made: the roll before it never landed. Nothing was spent on it." };
+    next += 1;
+  }
 }
 
 function resolvePart(
@@ -192,7 +267,7 @@ function resolvePart(
     return { result: bought.refused, notes: said };
   }
   const notes = bought ? [bought.note, ...said] : said;
-  const result = handlePcAttack(campaign, turn, JSON.stringify(args), sheets, sheetsById, realDiceUserIds, toolCallId);
+  const result = handlePcAttack(campaign, turn, JSON.stringify(args), sheets, sheetsById, realDiceUserIds, toolCallId, { mayWait: true });
   // A feature of theirs that makes no attack of its own (Sneak Attack, a
   // rider on the swing) is no part's feature: sent back
   // with the names a part takes, so the swing is made in the next call

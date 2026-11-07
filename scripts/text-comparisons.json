@@ -139,6 +139,7 @@
     "app/api/upload/route.ts#re-word": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/api/worlds/registry/thumbnail/[kind]/[id]/route.ts#[a-z]": [["key",2,"world pack and bundle id format"]],
     "app/api/worlds/registry/thumbnail/[kind]/[id]/route.ts#str-eq": [["key",2,"route segment values"]],
+    "app/campaigns/[campaignId]/AfterRollCard.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/AskPanel.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/AskPanel.tsx#str-key": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/AskPanel.tsx#str-list": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
