@@ -44,7 +44,7 @@ const { hostOffers } = await import("../src/lib/use-capabilities.ts");
 const { describeFeature } = await import("../src/lib/help/index.ts");
 const { buildDmMessages } = await import("../src/lib/dm/prompt.ts");
 const { listMembers } = await import("../src/lib/db/campaigns.ts");
-const { homebrewDataRefs } = await import("../src/lib/homebrew/data-refs.ts");
+const { homebrewDataRefs, renameHomebrewDataRefs } = await import("../src/lib/homebrew/data-refs.ts");
 const { markAffinityCast } = await import("../src/lib/dm/affinity-cast.ts");
 const { textKey } = await import("../src/lib/language/text-logic.ts");
 
@@ -140,6 +140,25 @@ await test("A subclass without choices is as it was: no choices kept, its featur
 await test("The choice's option spells are named for a rename and a bundle, as the subclass's own are.", () => {
   const data = stormBlooded([BLOODLINE]);
   assert.deepEqual(homebrewDataRefs("archetype", data).spell, ["Shatter"]);
+});
+
+// With custom spell lists (PR #839) a subclass also holds `expanded`, the
+// spells it adds to its class's list: a rename and "only what this workshop
+// uses" follow all three tables at once (issue #833).
+await test("A subclass's refs hold its always-prepared spells, its expanded list and each choice option's spells, and a rename reaches all three.", () => {
+  const data = {
+    classSlug: "sorcerer",
+    spells: { 1: ["Thunderwave"] },
+    expanded: { 3: ["Gust of Wind"] },
+    choices: [{ id: "bloodline", label: "Bloodline", level: 1, options: [{ id: "storm", name: "Storm", spells: { 1: ["Shatter"] } }] }],
+  };
+  assert.deepEqual(homebrewDataRefs("archetype", data).spell.sort(), ["Gust of Wind", "Shatter", "Thunderwave"]);
+  const rename = (kind, name) => (kind === "spell" ? `${name} (renamed)` : name);
+  const { data: renamed, changed } = renameHomebrewDataRefs("archetype", data, rename);
+  assert.ok(changed);
+  assert.deepEqual(renamed.spells, { 1: ["Thunderwave (renamed)"] });
+  assert.deepEqual(renamed.expanded, { 3: ["Gust of Wind (renamed)"] });
+  assert.deepEqual(renamed.choices[0].options[0].spells, { 1: ["Shatter (renamed)"] });
 });
 
 await test("The workshop's checker says when an option's element is read by nothing the subclass holds.", () => {
