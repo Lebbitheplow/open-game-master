@@ -129,5 +129,7 @@ await test("learn_spell refuses a pack spell that names no class, as the save's 
   world.close();
 });
 
-fs.rmSync(dir, { recursive: true, force: true });
+// The pack stays open in src/lib/content/db.ts for the life of this process,
+// and Windows refuses to remove an open SQLite file (EPERM). The directory is
+// inside the runner's own scratch directory, which the runner removes.
 finish();
