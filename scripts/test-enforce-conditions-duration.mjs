@@ -526,10 +526,12 @@ await test("outside a fight the save that ends a condition is rolled once for th
 await test("a rest moves the clock: an hour's poison is gone after a short rest", async () => {
   kit.reset(hero.id);
   await set({ condition: "poisoned", hours: 1 });
-  await set({ condition: "prone" });
+  // A condition with no clock of its own stays. Not prone: a rest ends it
+  // for whoever can stand (test-enforce-short-rest.mjs).
+  await set({ condition: "blinded" });
   const out = await world.invoke("take_rest", { kind: "short" });
   assert.equal(out.ok, true, out.error);
-  assert.deepEqual(held(), ["prone"]);
+  assert.deepEqual(held(), ["blinded"]);
 });
 kit.reset(hero.id);
 
