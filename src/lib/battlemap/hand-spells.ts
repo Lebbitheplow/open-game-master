@@ -6,6 +6,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { bonusCastOf, casterStateProblem, componentProblem, focusProblem, grantCastsFree, grantedCastOf, materialPlan, slotPlan, turnCharge } from "@/lib/dm/cast-rules";
 import { freeCastResourceId, isFreeCastResource } from "@/lib/srd/feat-spells";
 import { innateSpellsFor, RACIAL_COUNTER_PREFIX } from "@/lib/srd/racial-grants";
+import { grantUses } from "@/lib/srd/granted-casts";
 import { computeSheetDerived, spellAbilityFor, spellAttackFor, spellSaveDcFor } from "@/lib/srd";
 import { counterSpendCards, pickLabel, playedAsSpendCard } from "@/lib/battlemap/hand-subclass";
 import { nameChoice } from "@/lib/srd/feature-names";
@@ -220,6 +221,9 @@ function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, 
   // shows those uses rather than a slot it would not spend.
   const free = beam || fact.level === 0 ? null : freeUseOf(sheet, name, fact.facts ?? bundledSpellFacts(name));
   const slot = fact.level > 0 && !beam && !free?.free ? lowestSlot(sheet, fact.level) : null;
+  // The level the dice are rolled at: the slot's, or the free cast's own
+  // (Infernal Legacy's hellish rebuke at 2nd, 3d10).
+  const castLevel = slot?.level ?? (free?.free ? free.castAt : undefined);
   const derived = computeSheetDerived(sheet);
   // The ability this spell is cast with: a race's or a feat's own (issue
   // #833), else the class's.
@@ -230,7 +234,7 @@ function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, 
     desc: fact.desc,
     higherLevel: fact.higherLevel,
     casterLevel: sheet.level,
-    slotLevel: slot?.level,
+    slotLevel: castLevel,
   });
   // The dice the engine rolls (spellDamageFor reads the same rule): Web,
   // Entangle and Hypnotic Pattern deal none whatever their prose mentions.
@@ -239,7 +243,7 @@ function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, 
     mech: row,
     spellLevel: fact.level,
     casterLevel: sheet.level,
-    slotLevel: slot?.level,
+    slotLevel: castLevel,
     desc: fact.desc,
     higherLevel: fact.higherLevel,
   });
@@ -414,16 +418,22 @@ function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, 
 }
 
 // The free use a spell has this turn: a race's grant (its counter, or at
-// will) or a feat's free cast, while one is left; `spent` says why a grant
-// no slot can cast is out of uses.
-function freeUseOf(sheet: CharacterSheet, name: string, facts: ReturnType<typeof bundledSpellFacts>): { free: boolean; line: string; note?: string; spent?: string } | null {
+// will) or a feat's free cast, while one is left, with the level it is cast
+// at; `spent` says why a grant no slot can cast is out of uses. The Hand's
+// spell cards and its reaction cards (hand-react.ts) both read it, as the
+// cast guard spends it.
+export type FreeUse = { free: boolean; line: string; note?: string; spent?: string; castAt?: number };
+export function freeUseOf(sheet: CharacterSheet, name: string, facts: ReturnType<typeof bundledSpellFacts>): FreeUse | null {
   const grant = grantedCastOf(sheet, name, facts);
   if (grant?.slot === "free") {
-    const state = grant.counter ? sheet.resources?.[grant.counter] : undefined;
     if (grantCastsFree(sheet, grant, facts, undefined)) {
-      return state
-        ? { free: true, line: `Free ${state.max - state.used}/${state.max}`, note: `No slot: ${state.max - state.used} of ${state.max} free uses left until a ${grant.rest ?? "long"} rest.` }
-        : { free: true, line: "Free · at will" };
+      // A counter the sheet does not carry yet reads at the grant's own
+      // size, never as at will (granted-casts.ts grantUses).
+      const uses = grantUses(sheet.resources, grant);
+      const castAt = grant.castAt ?? facts?.level;
+      return uses
+        ? { free: true, castAt, line: `Free ${uses.left}/${uses.max}`, note: `No slot: ${uses.left} of ${uses.max} free uses left until a ${grant.rest ?? "long"} rest.` }
+        : { free: true, castAt, line: "Free · at will" };
     }
     return grant.slotsToo
       ? { free: false, line: "" }
@@ -432,7 +442,7 @@ function freeUseOf(sheet: CharacterSheet, name: string, facts: ReturnType<typeof
   const id = freeCastResourceId(facts?.name ?? name);
   const state = sheet.resources?.[id];
   return state && state.used < state.max
-    ? { free: true, line: `Free ${state.max - state.used}/${state.max}`, note: `No slot: ${state.max - state.used} of ${state.max} free uses left until a long rest.` }
+    ? { free: true, castAt: facts?.level, line: `Free ${state.max - state.used}/${state.max}`, note: `No slot: ${state.max - state.used} of ${state.max} free uses left until a long rest.` }
     : null;
 }
 

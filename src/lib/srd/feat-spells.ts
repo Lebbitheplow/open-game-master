@@ -391,6 +391,7 @@ export function freeCastFeatures(grants: FeatSpellGrant[]): string[] {
 
 // What a sheet records of its feats' spells and of the scores they raised.
 export type FeatSpellSheet = {
+  feats?: ReadonlyArray<string>;
   features?: ReadonlyArray<{ name: string }>;
   featChoices?: Record<string, FeatSpellPicks | undefined> | null;
   asiChoices?: ReadonlyArray<{ mode: string; feat?: string; ability?: Ability }>;
@@ -402,8 +403,8 @@ export type FeatSpellSheet = {
 // feat was taken and never read again, so Fey Touched's misty step was cast
 // with the class's ability, or a fighter's with none). The feat is the one
 // whose picks name the spell or whose Free cast feature does; its ability
-// is the score the half-feat raised, else the one the player named, else
-// the class list's (Magic Initiate's). Null for a spell no feat teaches.
+// is the class list's the player chose (Magic Initiate's), else the score
+// the half-feat raised, else the one the player named. Null for a spell no feat teaches.
 export function featSpellAbility(sheet: FeatSpellSheet, spell: string): CastingAbility | null {
   const wanted = textKey(spell);
   const choices = sheet.featChoices ?? {};
@@ -418,11 +419,17 @@ export function featSpellAbility(sheet: FeatSpellSheet, spell: string): CastingA
   }
   for (const feat of feats) {
     const picks = featChoice(choices, feat);
-    const raised = sheet.asiChoices?.find((choice) => choice.mode === "feat" && textKey(choice.feat ?? "") === textKey(feat))?.ability;
-    const ability =
-      castingAbility(raised ?? (raised === undefined ? sheet.racialChoices?.featAbility : undefined)) ??
-      castingAbility(picks?.ability) ??
-      (picks?.list ? listAbility(picks.list) : null);
+    // The score the feat raised: its improvement's, or for the feat a
+    // variant human took with the race (on the sheet, with no improvement
+    // for it) the race's pick. Another feat's improvement that raised
+    // nothing is no reason to read the race's: a variant human's racial Fey
+    // Touched (+Charisma) left a later Magic Initiate (cleric) on Charisma.
+    const entry = sheet.asiChoices?.find((choice) => choice.mode === "feat" && textKey(choice.feat ?? "") === textKey(feat));
+    const racialFeat = !entry && (sheet.feats ?? []).some((name) => textKey(name) === textKey(feat));
+    const raised = entry ? entry.ability : racialFeat ? sheet.racialChoices?.featAbility : undefined;
+    // A class list the player chose answers first (Magic Initiate: "Charisma
+    // for bard, sorcerer, or warlock; Wisdom for cleric or druid").
+    const ability = (picks?.list ? listAbility(picks.list) : null) ?? castingAbility(raised) ?? castingAbility(picks?.ability);
     if (ability) {
       return ability;
     }

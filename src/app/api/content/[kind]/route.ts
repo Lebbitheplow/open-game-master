@@ -100,6 +100,12 @@ export async function GET(
       // the pack's, for a page the pack files under no SRD row.
       if ((!packInstalled || fromBook) && mechanics) {
         results = [...results, ...notFiled(results, bundledSpellRows(q)).slice(0, base.limit ?? 50)];
+      } else if (!packInstalled && url.searchParams.get("srd") === "1") {
+        // `srd=1` (a picker that only names a spell, as a workshop species'
+        // spells do, issue #833): with no pack the bundled book's spells
+        // answer, so a bare server still offers the SRD's, not only the
+        // author's homebrew.
+        results = [...results, ...notFiled(results, bundledSpellRows(q)).slice(0, base.limit ?? 50)];
       }
       break;
     }

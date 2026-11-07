@@ -102,7 +102,7 @@ export function invocationOfCounter(id: string): InvocationSpell | null {
 type GrantSheet = {
   race: string;
   level: number;
-  features?: ReadonlyArray<{ name: string }>;
+  features?: ReadonlyArray<{ name: string; variant?: string }>;
   racialChoices?: (NonNullable<RacialCantripChoices> & { variant?: string | null }) | null;
 };
 
@@ -139,4 +139,31 @@ export function grantedCastsOf(sheet: GrantSheet): GrantedCast[] {
 // The grant that casts this spell (any of its names), or null.
 export function grantedCastFor(sheet: GrantSheet, names: ReadonlySet<string>): GrantedCast | null {
   return grantedCastsOf(sheet).find((grant) => names.has(textKey(grant.spell))) ?? null;
+}
+
+type Counters = Record<string, { max: number; used: number }> | undefined;
+
+// A grant's uses as the cast reads them (issue #833): its own count is the
+// word on how many there are, so a counter the sheet does not carry yet (a
+// spell an author added since the last level change), or one sized before
+// the author changed the count, is read at the grant's size, never as at
+// will or as one use. Null for a grant with no counter.
+export function grantUses(resources: Counters, grant: Pick<GrantedCast, "counter" | "uses">): { max: number; used: number; left: number } | null {
+  if (!grant.counter) {
+    return null;
+  }
+  const state = resources?.[grant.counter];
+  const max = Math.max(1, grant.uses ?? state?.max ?? 1);
+  const used = Math.min(state?.used ?? 0, max);
+  return { max, used, left: max - used };
+}
+
+// The resources with one of the grant's uses spent, its counter written at
+// the grant's own size.
+export function spendGrantUse<T extends Counters>(resources: T, grant: Pick<GrantedCast, "counter" | "uses">): NonNullable<T> {
+  const uses = grantUses(resources, grant);
+  if (!uses || !grant.counter) {
+    return (resources ?? {}) as NonNullable<T>;
+  }
+  return { ...(resources ?? {}), [grant.counter]: { max: uses.max, used: Math.min(uses.max, uses.used + 1) } } as NonNullable<T>;
 }

@@ -302,6 +302,12 @@ export const sheetFeatureSchema = z.object({
   // class. Set on regrant so level-scaled features (Sneak Attack, Martial
   // Arts) resolve against the granting class's level on multiclass sheets.
   classId: z.string().trim().max(60).optional(),
+  // On a workshop species' choice record ("Draconic ancestry (Topaz)"), the
+  // option's id ("topaz"), written by the server when it admits the sheet
+  // (src/lib/srd/sheet-legality.ts): a sheet at a table keeps no
+  // racialChoices, and the id finds the option's spells through a rename of
+  // the option or of the choice (issue #833).
+  variant: z.string().trim().max(40).optional(),
 });
 export type SheetFeature = z.infer<typeof sheetFeatureSchema>;
 

@@ -72,7 +72,7 @@ import { castingClassesOf, judgeSpellcasting } from "@/lib/srd/legality/spells";
 import { judgeRacialCantrips } from "@/lib/srd/legality/racial-cantrips";
 import { judgeSpeciesVariant, withoutOldVariant } from "@/lib/srd/legality/species-variant";
 import { carriedCantrips, carriedVariant } from "@/lib/srd/legality/older-builder";
-import { withHeldVariant } from "@/lib/content/species-variants";
+import { withHeldVariant, withVariantRecordId } from "@/lib/content/species-variants";
 import { racialCantripFields } from "@/lib/srd/racial-cantrips";
 import {
   type ClassGrants,
@@ -713,9 +713,12 @@ export function legalizeSheet(input: CreateSheetInput, context: LegalityContext)
       : earned;
   const ledgered =
     level >= 4 || ledger > 0 ? withAsiLedger(featured.features, ledger) : featured.features;
-  const features = ancestry
+  const withAncestry = ancestry
     ? [...ledgered.filter((feature) => !isAncestry(feature)), draconicAncestryFeature(ancestry)]
     : ledgered;
+  // The option's record carries the option's id (issue #833).
+  const features =
+    speciesChoice.option && baseRace.variants ? withVariantRecordId(withAncestry, baseRace.variants.label, speciesChoice.option) : withAncestry;
 
   // ---- gear and coin ----
   let equipment = input.equipment ?? [];

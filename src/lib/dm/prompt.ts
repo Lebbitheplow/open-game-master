@@ -10,7 +10,7 @@ import type { StoredRoll } from "@/lib/db/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { ADVENTURE_BEGINS_NOTE, LEAD_NOTE_PREFIX, OPENING_SCENE_CUE, type CampaignMember } from "@/lib/campaign-types";
 import { heldRollUserIds } from "@/lib/dice/held-rolls";
-import { computeSheetDerived, findClass, findSkill, formatModifier, sizeForRace, speedFor, SRD_SKILLS } from "@/lib/srd";
+import { computeSheetDerived, findClass, findSkill, formatModifier, sizeForRace, spellAbilityFor, spellSaveDcFor, speedFor, SRD_SKILLS } from "@/lib/srd";
 import { innateSpellsFor } from "@/lib/srd/racial-grants";
 import { attackSummary } from "@/lib/srd/creature-attacks";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
@@ -542,20 +542,29 @@ function spellListLabel(lists: {
 // The spells the race and its chosen option give (issue #833): a
 // tiefling's, a workshop Half-Dragon's Topaz misty step. None sits on a
 // class's list, so the line beside them read "they can cast nothing else"
-// and a fighter's read "cannot cast any spells". Each with its ability and
-// DC, and its uses left, as the cast tools spend them.
+// and a fighter's read "cannot cast any spells". One short line: each spell
+// a class list does not already show, its free uses left, and the ability
+// and DC the engine casts them with (src/lib/srd/species-spell-view.ts).
 function racialSpellsLine(sheet: CharacterSheet): string {
-  const derived = computeSheetDerived(sheet);
-  const parts = innateSpellsFor(sheet.race, sheet.level, undefined, { features: sheet.features }).map((spell) => {
-    const ability = spell.ability ? `${spell.ability.toUpperCase()}, DC ${8 + derived.proficiencyBonus + derived.abilityMods[spell.ability]}` : "";
-    if (spell.castAt === 0) {
-      return `${spell.name} (cantrip, at will${ability ? `, ${ability}` : ""})`;
-    }
-    const state = spell.counterId ? sheet.resources?.[spell.counterId] : undefined;
-    const left = state ? state.max - state.used : spell.uses;
-    return `${spell.name} (level ${spell.castAt}, no slot ${left}/${spell.uses} left until a ${spell.rest} rest${spell.slotsToo ? ", or with a spell slot" : ""}${ability ? `, ${ability}` : ""})`;
-  });
-  return parts.length ? `Spells from their species (cast with the spell tools; the server spends the use): ${parts.join("; ")}` : "";
+  const spells = innateSpellsFor(sheet.race, sheet.level, undefined, { features: sheet.features });
+  const listed = new Set(
+    [sheet.spellcasting, ...(sheet.spellcasting?.casters ?? [])]
+      .flatMap((entry) => (entry ? [...(entry.cantrips ?? []), ...entry.known, ...entry.prepared] : []))
+      .map((name) => textKey(name)),
+  );
+  const parts = spells
+    .filter((spell) => !listed.has(textKey(spell.name)))
+    .map((spell) => {
+      const ability = spellAbilityFor(sheet, spell.name);
+      const cast = ability ? ` ${ability.toUpperCase()} DC ${spellSaveDcFor(sheet, spell.name)}` : "";
+      if (spell.castAt === 0) {
+        return `${spell.name} (at will${cast})`;
+      }
+      const state = spell.counterId ? sheet.resources?.[spell.counterId] : undefined;
+      const left = spell.uses - Math.min(state?.used ?? 0, spell.uses);
+      return `${spell.name} (L${spell.castAt}, ${left}/${spell.uses} per ${spell.rest} rest${spell.slotsToo ? " or a slot" : ""}${cast})`;
+    });
+  return parts.length ? `Species spells (no slot, spell tools spend them): ${parts.join("; ")}` : "";
 }
 
 // What GAME STATE adds of a companion a player commands in fights

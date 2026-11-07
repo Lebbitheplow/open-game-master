@@ -342,6 +342,14 @@ export type SpeciesVariantGrants = Pick<SpeciesVariantOption, "asi" | "skills" |
 // "Draconic ancestry (Topaz)".
 export const variantRecordName = (label: string, option: Pick<SpeciesVariantOption, "name">) => `${label} (${option.name})`;
 
+// The features with the option's record tagged with the option's id, so
+// the table finds the option by its id however the author renames it or
+// the choice later (issue #833, src/lib/srd/racial-grants.ts).
+export function withVariantRecordId<T extends { name: string; variant?: string }>(features: T[], label: string, option: Pick<SpeciesVariantOption, "id" | "name">): T[] {
+  const record = textKey(variantRecordName(label, option));
+  return features.map((feature) => (textKey(feature.name) === record && feature.variant !== option.id ? { ...feature, variant: option.id } : feature));
+}
+
 export function variantGrantsOf(option: SpeciesVariantOption): Required<SpeciesVariantGrants> {
   return {
     asi: { ...(option.asi ?? {}) },

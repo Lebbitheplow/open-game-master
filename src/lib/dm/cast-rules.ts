@@ -26,7 +26,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { hasItemTag } from "@/lib/srd/item-tags";
 import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
 import { pactRitualOf } from "@/lib/srd/class-spell-grants";
-import { grantedCastFor, type GrantedCast } from "@/lib/srd/granted-casts";
+import { grantedCastFor, grantUses, type GrantedCast } from "@/lib/srd/granted-casts";
 import type { RacialCantripChoices } from "@/lib/srd/racial-cantrips";
 
 export type CastRefusal = ToolError;
@@ -174,8 +174,8 @@ export function grantedCastOf(sheet: Caster, spell: string, facts: SpellFacts | 
   // feat's free cast is (issue #833: the class's slot was always spent, and
   // the free use never was). The class's slots cast it once the use is gone.
   const grant = grantedCastFor(grantSheet(sheet), names);
-  const state = grant?.counter ? sheet.resources?.[grant.counter] : undefined;
-  return grant?.slot === "free" && state && state.used < state.max ? { ...grant, slotsToo: true } : null;
+  const uses = grant ? grantUses(sheet.resources, grant) : null;
+  return grant?.slot === "free" && uses && uses.left > 0 ? { ...grant, slotsToo: true } : null;
 }
 
 // A grant whose uses are spent: Infernal Legacy's hellish rebuke cast
@@ -183,11 +183,11 @@ export function grantedCastOf(sheet: Caster, spell: string, facts: SpellFacts | 
 // has its use. A grant the character's own slots can cast too (a workshop
 // option's misty step, issue #833) is not refused: a slot pays.
 function grantUseProblem(sheet: Caster, grant: GrantedCast, spell: string): ToolError | null {
-  const state = grant.counter ? sheet.resources?.[grant.counter] : undefined;
-  if (state && state.used >= state.max && !grant.slotsToo) {
-    const times = state.max === 1 ? "once" : `${state.max} times`;
+  const uses = grantUses(sheet.resources, grant);
+  if (uses && uses.left <= 0 && !grant.slotsToo) {
+    const times = uses.max === 1 ? "once" : `${uses.max} times`;
     return {
-      error: `${sheet.name} casts ${spell} through ${grant.source} ${times}, and again after a ${grant.rest ?? "long"} rest; ${state.max === 1 ? "that use is" : "those uses are"} spent.`,
+      error: `${sheet.name} casts ${spell} through ${grant.source} ${times}, and again after a ${grant.rest ?? "long"} rest; ${uses.max === 1 ? "that use is" : "those uses are"} spent.`,
       refused: "rules",
     };
   }
@@ -202,8 +202,8 @@ export function grantCastsFree(sheet: Pick<Caster, "resources">, grant: GrantedC
   if (!grant || grant.slot !== "free") {
     return false;
   }
-  const state = grant.counter ? sheet.resources?.[grant.counter] : undefined;
-  if (state && state.used >= state.max) {
+  const uses = grantUses(sheet.resources, grant);
+  if (uses && uses.left <= 0) {
     return false;
   }
   const own = grant.castAt ?? facts?.level;

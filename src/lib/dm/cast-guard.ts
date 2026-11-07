@@ -39,6 +39,7 @@ import { advanceClock } from "@/lib/db/clock";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { materialPatch } from "@/lib/dm/cast-material";
 import { freeCastCounter, signatureCounter, spendSignature } from "@/lib/dm/caster-features";
+import { spendGrantUse } from "@/lib/srd/granted-casts";
 import { spellFactsFor, spellMechanicsFor, spellSchoolFor } from "@/lib/content";
 import { castShares } from "@/lib/srd/spell-mechanics";
 import { describeCastingTime, type SpellFacts } from "@/lib/srd/spell-facts";
@@ -503,6 +504,10 @@ export function castSpell(
   const mantled =
     !input.ritual && !signature && !freeCast && /^command$/i.test(engine.trim()) &&
     sheet.conditions.some((entry) => isConditionNamed(entry, MANTLE_OF_MAJESTY));
+  // The race's grant pays only when nothing before it in the plan below
+  // did: a Topaz fighter with Fey Touched casting misty step spends the
+  // feat's free cast or the ancestry's use, never both (issue #833).
+  const grantPaid = Boolean(grant) && grantNoSlot && !input.ritual && !slowHeld && !signature && !freeCast;
   // A reaction spell cast into a ring answers no trigger: it takes the action.
   const turnFacts = input.storing && facts?.castingTime === "reaction" ? { ...facts, castingTime: "action" as const } : facts;
   const slot: SlotPlan | ToolError = input.ritual
@@ -513,7 +518,7 @@ export function castSpell(
       ? { kind: "none", note: `${name} is a Signature Spell: cast at 3rd level with no slot, once until a short rest.` }
       : freeCast
         ? { kind: "none", note: `${name} is cast without a slot (a feat's free cast): once until a long rest.` }
-        : grant && grantNoSlot
+        : grant && grantPaid
           ? { kind: "none", note: `${name} is cast through ${grant.source} with no spell slot${grant.counter ? `: ${(grant.uses ?? 1) === 1 ? "once" : `${grant.uses} times`}, and again after a ${grant.rest ?? "long"} rest` : ", at will"}${grant.castAt ? `, as a level ${grant.castAt} spell` : ""}.` }
         : mantled
           ? { kind: "none", note: `${name} is cast through Mantle of Majesty: no slot spent.` }
@@ -528,7 +533,7 @@ export function castSpell(
     return barred && "error" in barred ? barred : slot;
   }
   // Infernal Legacy's hellish rebuke is cast as a 2nd-level spell, with no slot.
-  const slotLevel = slowHeld ? slowHeld.slotLevel : slot.kind === "none" ? (grantNoSlot ? grant?.castAt ?? null : null) : slot.level;
+  const slotLevel = slowHeld ? slowHeld.slotLevel : slot.kind === "none" ? (grantPaid ? grant?.castAt ?? null : null) : slot.level;
   // A ritual out of a fight costs no turn; in one it is begun with the
   // action like any casting held across turns, and a completing casting
   // costs no action at all.
@@ -582,12 +587,13 @@ export function castSpell(
   }
   // The grant's use (Thief of Five Fates' with its slot, Infernal Legacy's
   // without one). A cast a slot paid for, its free uses spent, spends none.
-  if (grant?.counter && (grant.slot === "slot" || grantFree)) {
-    patch.resources = spendSignature(patch.resources ?? sheet.resources, grant.counter);
+  if (grant?.counter && ((grant.slot === "slot" && slot.kind !== "none") || (grantPaid && grantFree))) {
+    patch.resources = spendGrantUse(patch.resources ?? sheet.resources, grant);
   }
-  if (grant) {
+  // Said only of a grant that paid, or of a slot that paid in its place.
+  if (grant && (grantPaid || slot.kind !== "none")) {
     result.granted =
-      grant.slot === "free" && !grantNoSlot
+      grant.slot === "free" && !grantPaid
         ? `${name} is cast with a spell slot; ${grant.source} gives it without one${grant.counter ? `, ${(grant.uses ?? 1) === 1 ? "once" : `${grant.uses} times`} a ${grant.rest ?? "long"} rest` : ""}.`
         : `${name} is cast through ${grant.source}.${grant.note ? ` ${grant.note}` : ""}`;
   }

@@ -253,7 +253,7 @@ function rowsFrom(group: { ability: Ability | null; spells: GroupRow[] }, source
 // src/lib/content/species-variants.ts).
 export type SpeciesSpellChoices = {
   variant?: string | null;
-  features?: ReadonlyArray<{ name: string }> | null;
+  features?: ReadonlyArray<{ name: string; variant?: string }> | null;
 };
 
 // The option a sheet holds, among the species' options with spells.
@@ -262,7 +262,10 @@ function heldOptionSpells(species: SpeciesRules | null, held: SpeciesSpellChoice
   if (!options || !held) {
     return null;
   }
-  const picked = (held.variant ?? "").trim();
+  // The pick, else the id the record carries (sheet-legality.ts writes it),
+  // which outlives a rename of the option or the choice; a record written
+  // before the id was is found by its name.
+  const picked = (held.variant ?? "").trim() || (held.features ?? []).find((feature) => feature.variant)?.variant?.trim() || "";
   if (picked) {
     return options[picked] ?? null;
   }
@@ -336,7 +339,7 @@ export function racialCantripAbility(raceId: string): Ability | null {
 // spell is not the race's or the race names no ability for it. The class's
 // ability answers then, and also for a levelled spell the class knows too
 // (`classHolds`): a tiefling wizard's darkness from a wizard slot is cast
-// with Intelligence.
+// with Intelligence once Infernal Legacy's own use of it is spent.
 export function racialSpellAbility(
   sheet: RacialSpellSheet,
   spell: string,
@@ -355,14 +358,27 @@ export function racialSpellAbility(
     }
   }
   const innate = innateSpellsFor(sheet.race, sheet.level, undefined, { variant: sheet.racialChoices?.variant, features: sheet.features }).find((entry) => textKey(entry.name) === wanted);
-  return innate && !(classHolds && innate.castAt > 0) ? innate.ability : null;
+  if (!innate) {
+    return null;
+  }
+  // A spell the class holds too is cast through the race while its free use
+  // is left, which the cast guard spends first (SRD 5.1, Infernal Legacy:
+  // "Charisma is your spellcasting ability for these spells"), and as the
+  // class's own spell, with the class's ability, once that use is gone.
+  if (classHolds && innate.castAt > 0) {
+    const state = innate.counterId ? sheet.resources?.[innate.counterId] : undefined;
+    const left = innate.uses - Math.min(state?.used ?? 0, innate.uses);
+    return left > 0 ? innate.ability : null;
+  }
+  return innate.ability;
 }
 
 type RacialSpellSheet = {
   race?: string;
   level: number;
   racialChoices?: (NonNullable<RacialCantripChoices> & { variant?: string | null }) | null;
-  features?: ReadonlyArray<{ name: string }>;
+  features?: ReadonlyArray<{ name: string; variant?: string }>;
+  resources?: Record<string, { max: number; used: number }>;
   class?: string;
   classes?: ReadonlyArray<{ id: string }>;
   spellcasting?: { cantrips?: string[]; casters?: Array<{ cantrips?: string[] }> } | null;

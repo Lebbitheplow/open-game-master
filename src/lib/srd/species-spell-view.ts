@@ -21,7 +21,7 @@ type SpellLists = { cantrips?: string[]; known: string[]; prepared: string[] };
 export type SpeciesSpellSheet = {
   race: string;
   level: number;
-  features?: ReadonlyArray<{ name: string }>;
+  features?: ReadonlyArray<{ name: string; variant?: string }>;
   racialChoices?: { variant?: string | null } | null;
   resources?: Record<string, { max: number; used: number }>;
   spellcasting?: (SpellLists & { casters?: SpellLists[] }) | null;
@@ -47,7 +47,8 @@ export function speciesSpellsShown(sheet: SpeciesSpellSheet): SpeciesSpellEntry[
       const state = spell.counterId ? sheet.resources?.[spell.counterId] : undefined;
       const higher = spell.castAt > spell.circle ? `As a level ${spell.castAt} spell, ` : "";
       const times = spell.uses === 1 ? "once" : `${spell.uses} times`;
-      const left = state ? ` (${Math.max(0, state.max - state.used)} left)` : "";
+      // Read at the spell's own count, as the cast guard reads it.
+      const left = ` (${spell.uses - Math.min(state?.used ?? 0, spell.uses)} left)`;
       const slots = spell.slotsToo ? ", or with a spell slot" : "";
       const words = `${higher}${times} a ${spell.rest} rest${left}${slots}${ability}`;
       return { name: spell.name, level: spell.circle, note: words.charAt(0).toUpperCase() + words.slice(1) };

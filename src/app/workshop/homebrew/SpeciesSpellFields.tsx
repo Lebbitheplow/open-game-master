@@ -39,6 +39,8 @@ const USE_OPTIONS = (["long", "short"] as const).flatMap((rest) =>
   Array.from({ length: L.uses }, (_, at) => ({ value: `${at + 1}-${rest}`, label: speciesSpellUsesWords({ uses: at + 1, rest }) })),
 );
 
+const SRD_SPELLS = { srd: "1" };
+
 const ABILITY_OPTIONS = SPECIES_SPELL_ABILITIES.map((ability) => ({ value: ability, label: speciesSpellAbilityWord(ability) }));
 
 // A row as the draft holds it; a level the catalog gave is kept with it, so
@@ -129,6 +131,8 @@ export function SpeciesSpellFields({
             label={pickLabel}
             placeholder="Add a spell..."
             className="min-w-48 flex-1"
+            // The SRD's spells answer on a server with no content pack too.
+            extraParams={SRD_SPELLS}
             onPick={(entry) => {
               if (rows.some((row) => textKey(String(row.spell ?? "")) === textKey(entry.name))) return;
               write([...rows, { spell: entry.name, level: 1, ...(typeof entry.level === "number" ? { circle: entry.level } : {}) }]);

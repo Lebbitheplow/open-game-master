@@ -1625,7 +1625,7 @@
     "lib/dm/prompt-rules.ts#partial": [["pattern",2,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["key",1,"class ids"]],
     "lib/dm/prompt.ts#fallback": [["key",1,"the member's active sheet id, else their first"]],
     "lib/dm/prompt.ts#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"],["key",1,"a racial spell's counter by its own id"]],
-    "lib/dm/prompt.ts#partial": [["pattern",5,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["key",2,"ODM's own prompt heading"],["identity",1,"spells, NPC locations and places by whole name"],["key",1,"engine tags by the feature's own name"],["parse",1,"an hp field's current/max"]],
+    "lib/dm/prompt.ts#partial": [["pattern",5,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["key",2,"ODM's own prompt heading"],["identity",1,"spells, NPC locations and places by whole name"],["key",1,"engine tags by the feature's own name"],["parse",1,"an hp field's current/max"],["identity",1,"a species spell already on a class's list, by whole name (textKey set)"]],
     "lib/dm/prompt.ts#whole": [["identity",3,"spells, NPC locations and places by whole name"],["key",1,"move_party's own property names, left out before the table has a place (issue 548)"]],
     "lib/dm/prompt.ts#whole-single": [["identity",1,"concentration, spells, downtime subjects, relationships, trade lines and zones by textKey (zoneKey is textKey plus ODM's English spell aliases) or normalizeName; turn and order keys"]],
     "lib/dm/proposal-intercept.ts#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
@@ -2155,7 +2155,7 @@
     "lib/srd/feat-spells.ts#keyed": [["parse",1,"number words of the SRD's English feat text"]],
     "lib/srd/feat-spells.ts#number": [["key",3,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "lib/srd/feat-spells.ts#partial": [["pattern",17,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["identity",1,"ODM's own \"Free cast: <spell> (<note>)\" feature name, whole"],["identity",1,"spells by whole name"],["authoring",1,"spell names read in a feat's text"]],
-    "lib/srd/feat-spells.ts#whole": [["key",4,"class lists and schools by textKey"],["identity",1,"a spell by its whole name"],["identity",3,"a feat's spell, the feat whose picks or Free cast feature name it, and the score its half-feat raised, by whole name (textKey)"]],
+    "lib/srd/feat-spells.ts#whole": [["key",4,"class lists and schools by textKey"],["identity",1,"a spell by its whole name"],["identity",3,"a feat's spell, the feat whose picks or Free cast feature name it, and the score its half-feat raised, by whole name (textKey)"],["identity",1,"the feat a variant human took with the race, by whole name (textKey)"]],
     "lib/srd/feat-text.ts#partial": [["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "lib/srd/feat-use.ts#keyed": [["identity",1,"the SRD feat's prerequisite by its textKey"]],
     "lib/srd/feat-use.ts#whole": [["identity",1,"a held feat by its whole name"]],
@@ -2524,7 +2524,7 @@
     "app/workshop/homebrew/SpeciesChoiceFields.tsx#keyed": [["authoring",1,"workshop authoring (pickers, drafts, copied rows); every site read, none reads a carried item's row"]],
     "lib/content/species-variants.ts#keyed": [["key",2,"ability ids and breath shapes to their words"]],
     "lib/content/species-variants.ts#partial": [["key",6,"a species option's ids, damage types, skill ids, abilities and breath shapes checked against the engines' own lists; ODM's own feature names by textKey"]],
-    "lib/content/species-variants.ts#whole": [["key",4,"a species option by its id"]],
+    "lib/content/species-variants.ts#whole": [["key",4,"a species option by its id"],["key",1,"a species option's record among a sheet's features, by textKey of its whole name"]],
     "lib/dm/arc-logic.ts#helper": [["search",2,"a planner's fight step that names the act's boss, as whole words either way (bossFoughtLast): a miss leaves the step where the planner put it"]],
     "lib/dm/action-walk.ts#whole": [["identity",1,"the creature a Dash goes toward, a board token by whole name"]],
     "lib/dm/conversation-logic.ts#partial": [["key",2,"a companion's sheet id and a player's character id"]],
@@ -2564,6 +2564,7 @@
     "app/workshop/homebrew/SpeciesSpellFields.tsx#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "app/workshop/homebrew/SpeciesSpellFields.tsx#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "app/workshop/homebrew/SpeciesSpellFields.tsx#partial": [["key",1,"the uses pick's own \"<uses>-<rest>\" value"]],
-    "app/workshop/homebrew/SpeciesSpellFields.tsx#whole": [["authoring",1,"a spell picked twice for one species, by whole name (textKey)"]]
+    "app/workshop/homebrew/SpeciesSpellFields.tsx#whole": [["authoring",1,"a spell picked twice for one species, by whole name (textKey)"]],
+    "lib/db/species-spell-resync.ts#partial": [["key",1,"ODM's own racial counter id prefix"]]
   }
 }

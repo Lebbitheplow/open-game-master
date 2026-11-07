@@ -191,7 +191,7 @@ await test("at 3rd level Detect Thoughts arrives: one use a long rest, cast with
   assert.match(card.description, /No slot: 1 of 1 free uses left until a long rest\./);
   // 8 + proficiency 2 + Charisma 8 (-1): the option's ability.
   assert.equal(spellSaveDcFor(third, "Detect Thoughts"), 9);
-  assert.match(describeSheet(third, "the owner", false), /Spells from their species[^\n]*Mage Hand \(cantrip, at will, CHA, DC 9\); Detect Thoughts \(level 2, no slot 1\/1 left until a long rest, CHA, DC 9\)/);
+  assert.match(describeSheet(third, "the owner", false), /Species spells \(no slot, spell tools spend them\): Mage Hand \(at will CHA DC 9\); Detect Thoughts \(L2, 1\/1 per long rest CHA DC 9\)/);
   const out = await cast(hero, "Detect Thoughts");
   assert.equal(out.ok, true, out.error);
   assert.equal(out.result.slotLevel, 2);
