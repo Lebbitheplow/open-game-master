@@ -30,6 +30,8 @@ import { isThievesTools, populateFeaturesForClasses, subclassCastingProfileFor, 
 import type { HpMethod } from "@/lib/srd/hit-points";
 import { MULTICLASS_CAP, canMulticlassInto, classListFor, multiclassGrantsFor } from "@/lib/srd/multiclass";
 import { openOptionSlots, optionFeatureName } from "@/lib/srd/options";
+import { subclassChoiceSlots } from "@/lib/srd/subclass-choice-picks";
+import { subclassChoicePickName } from "@/lib/content/subclass-choices";
 import { owedChoices, subclassOwed } from "@/lib/srd/owed-choices";
 import { sheetSpellbook } from "@/lib/srd/owed-picks-logic";
 import {
@@ -262,6 +264,17 @@ export function levelUpOptions(sheet: CharacterSheet, context: LevelUpOptionsCon
       count: Math.ceil(slot.remaining),
       options: slot.options.filter((option) => !chosen.has(textKey(option.n))).map((option) => optionFeatureName(slot.kind, option.n)),
     });
+  }
+  // A workshop subclass's own choice, due at this class level and not made
+  // (issue #833): a bloodline, an element, picked as "Bloodline (Storm)".
+  for (const slot of subclassChoiceSlots([{ id: klass.id, subclass: subclassNow, level: classLevelAfter }], sheet.features, context.subclassExtras)) {
+    if (!slot.chosen) {
+      featurePicks.push({
+        label: `${slot.subclass}: ${slot.label}`,
+        count: 1,
+        options: slot.options.map((option) => subclassChoicePickName(slot.label, option)),
+      });
+    }
   }
   if (featurePicks.length) {
     choices.featurePicks = featurePicks;

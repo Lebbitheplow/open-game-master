@@ -246,7 +246,18 @@ export function HomebrewPanel({
       onChanged?.();
       const saved = (payload as { entry?: HomebrewEntryView }).entry;
       setNotice(carriedNotice((payload as { carried?: Carried }).carried));
-      setEditing(saved ? { id: saved.id, draft: { kind: saved.kind as EditorKind, name: saved.name, data: saved.data }, savedName: saved.name } : null);
+      // The form stays open and editable while the save and the shelf's
+      // reload are on their way: an edit made meanwhile (a second subclass
+      // choice added right after Keep) is the author's newest word, so it
+      // stays, with the saved entry's id for the next Keep. Only an
+      // untouched form takes the server's normalized copy.
+      setEditing((current) =>
+        saved && current && current.draft !== draft
+          ? { ...current, id: saved.id, savedName: saved.name }
+          : saved
+            ? { id: saved.id, draft: { kind: saved.kind as EditorKind, name: saved.name, data: saved.data }, savedName: saved.name }
+            : null,
+      );
     } catch {
       setError("Could not reach the server. Nothing was saved; try again.");
     } finally {

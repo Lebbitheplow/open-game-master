@@ -12,6 +12,12 @@ import { featOptionSlots } from "@/lib/srd/feat-combat";
 import { srdRaceId } from "@/lib/srd/race-id";
 import { subclassNamedBare, subclassNamedExactly } from "@/lib/srd/subclass-name";
 import { browserSubclassExtras, type SubclassExtras } from "@/lib/srd/subclass-tables";
+import {
+  extraSubclassFor,
+  subclassChoiceGrantedFeatures,
+  subclassChoicePickKept,
+  subclassChoiceSpells,
+} from "@/lib/srd/subclass-choice-picks";
 import { thirdCasterProfileOf, type ThirdCasterProfile } from "@/lib/srd/third-caster";
 import { textKey } from "@/lib/language/text-logic";
 
@@ -250,14 +256,9 @@ function leveledNames(levels: Record<string, string[]>, level: number): SheetFea
 // server always passes the table's own (src/lib/db/subclass-extras.ts).
 export { registerBrowserSubclassExtras } from "@/lib/srd/subclass-tables";
 
-function extraSubclassNamed(classId: string, stored: string, extras?: SubclassExtras) {
-  const list = (extras ?? browserSubclassExtras())[classId] ?? [];
-  return (
-    list.find((entry) => subclassNamedExactly(stored, entry.name)) ??
-    list.find((entry) => subclassNamedBare(stored, entry.name)) ??
-    null
-  );
-}
+// One reader for the workshop's and the pack's subclasses, shared with the
+// subclass choices (src/lib/srd/subclass-choice-picks.ts).
+const extraSubclassNamed = extraSubclassFor;
 
 // Whether a subclass of this class may bring its own Spellcasting: the
 // classes that cast nothing themselves (barbarian, fighter, monk, rogue, and
@@ -435,7 +436,15 @@ export function subclassSpellsFor(
   if (!chosen) {
     return [];
   }
-  return [...new Set([...spellsBy(chosen.spells, level), ...choiceSpellsBy(chosen, features, level, false)])];
+  return [
+    ...new Set([
+      ...spellsBy(chosen.spells, level),
+      ...choiceSpellsBy(chosen, features, level, false),
+      // A workshop subclass's choice: the spells of the option held (issue
+      // #833, a Storm bloodline's lightning spells).
+      ...subclassChoiceSpells(classId, subclass, level, features, extras),
+    ]),
+  ];
 }
 
 // The spells a subclass adds to those its class may learn by `level`, not
@@ -524,6 +533,10 @@ export function populateFeaturesForClasses(
       granted[index] = { ...feature, name: chosen.name };
     }
   }
+  // What a workshop subclass's choice grants beside its pick ("Lightning
+  // Resistance", "Bloodline damage type: Lightning"), written afresh from
+  // the pick every time, so an option given up leaves nothing (issue #833).
+  granted.push(...subclassChoiceGrantedFeatures(classes, existing, extras));
   const racialTraits = racialTraitsFor(raceId);
   granted.push(...racialTraits);
   // A race the bundled data doesn't describe (a content-pack Catfolk) has its
@@ -546,6 +559,7 @@ export function populateFeaturesForClasses(
     classes,
     granted,
     feats,
+    extras,
   );
   const seen = new Set<string>();
   return [...granted, ...kept].filter((feature) => {
@@ -570,7 +584,12 @@ function pruneChoiceFeatures(
   classes: Array<{ id: string; subclass: string; level: number }>,
   granted: SheetFeature[],
   feats?: string[],
+  extras?: SubclassExtras,
 ): SheetFeature[] {
+  // A workshop subclass's choices: one pick each, while the subclass offers
+  // it at the class's level (subclass-choice-picks.ts). Before, a pick of
+  // the author's own was dropped by every check.
+  const choicesTaken = new Set<string>();
   // A style the slots do not allow (Archery on a Swords bard) is not kept;
   // a class's own slot keeps any style the sheet holds, since a paladin's
   // Archery was legal when chosen and new picks are held to the class's list
@@ -578,8 +597,24 @@ function pruneChoiceFeatures(
   const fitting = fittingFightingStyles(chosenFightingStyles(features), granted, undefined, false);
   const stylesHeld = new Set<string>();
   const perKind = new Map<string, number>();
-  return features.filter((feature) => {
+  // A workshop pick kept is written under its option's current name with
+  // its ids, so the author's rename reaches the sheet.
+  const workshopKept = new Set<SheetFeature>();
+  const resolved = features.flatMap((feature) => {
     if (feature.source !== "choice") {
+      return [feature];
+    }
+    const workshop = subclassChoicePickKept(feature, classes, extras, choicesTaken);
+    if (workshop === undefined) {
+      return [feature];
+    }
+    if (workshop) {
+      workshopKept.add(workshop);
+    }
+    return workshop ? [workshop] : [];
+  });
+  return resolved.filter((feature) => {
+    if (feature.source !== "choice" || workshopKept.has(feature)) {
       return true;
     }
     const option = findOptionByFeatureName(feature.name);

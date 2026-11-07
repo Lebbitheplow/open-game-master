@@ -305,7 +305,7 @@ await test("Elemental Affinity's other half: when the sorcerer casts a spell of 
   const before = points(none);
   const refused = await world.invoke("use_resource", { characterId: none.id, resource: "Elemental Affinity" });
   assert.equal(refused.ok, false);
-  assert.match(refused.error, /no dragon ancestor chosen/);
+  assert.match(refused.error, /no dragon ancestor or element chosen/);
   assert.equal(points(none), before, "nothing spent");
   // The trigger: "when you cast a spell that deals damage of the type".
   const early = await world.invoke("use_resource", { characterId: red.id, resource: "Elemental Affinity" });

@@ -229,6 +229,22 @@ export function subclassFindings(data: Data): Finding[] {
   if (!levels.length) {
     out.push({ level: "warn", text: "No features: a character who takes it is granted nothing." });
   }
+  // Its player's choices (issue #833): one made before the subclass is taken
+  // is never asked, and an element nothing reads is words for the GM.
+  const choices = Array.isArray(data.choices) ? (data.choices as Data[]) : [];
+  const featureNames = Object.values(rec(data.levels)).flatMap((rows) => (Array.isArray(rows) ? rows.map((row) => String(rec(row).n ?? "")) : []));
+  const readsElement = featureNames.some((name) => /^\s*elemental affinity\s*$/i.test(name));
+  for (const choice of choices) {
+    const label = String(choice.label ?? "").trim() || "A choice";
+    const at = num(choice.level) || 1;
+    if (first !== null && at < first) {
+      out.push({ level: "warn", text: `${label} is chosen at level ${at}: a ${classId} takes their subclass at ${first}, so it is asked then.` });
+    }
+    const elements = (Array.isArray(choice.options) ? (choice.options as Data[]) : []).filter((option) => String(option.damageType ?? ""));
+    if (elements.length && !readsElement) {
+      out.push({ level: "note", text: `${label}'s options name an element; Elemental Affinity reads it, and this subclass has no such feature, so the element is words for the GM.` });
+    }
+  }
   return out;
 }
 

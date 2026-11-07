@@ -9,6 +9,7 @@ import { normalizeBackgroundData } from "@/lib/homebrew/background-data";
 import { normalizeHazardData } from "@/lib/homebrew/hazard-data";
 import { GEAR_LIMITS, normalizeItemData, type HomebrewData, type Outcome } from "@/lib/homebrew/item-data";
 import { checkSpellMech } from "@/lib/homebrew/spell-mech-schema";
+import { checkSubclassChoices } from "@/lib/homebrew/subclass-choice-check";
 import { engineFeatNamed } from "@/lib/srd/feat-effects";
 import { engineSpellNamed, truthy } from "@/lib/srd/spell-facts";
 import { HOMEBREW_NAME_MAX, type HomebrewKind } from "@/lib/schemas/homebrew";
@@ -235,6 +236,17 @@ function normalizeHomebrewKind(
       // A class (src/lib/homebrew/class-data.ts): the numbers every class has.
       const normalized = normalizeClassData((raw ?? {}) as Raw);
       return "error" in normalized ? normalized : { data: normalized.data as unknown as HomebrewData };
+    }
+    case "archetype": {
+      // A subclass may be refused: what its player chooses (a bloodline,
+      // an element) is held to its limits by name (issue #833,
+      // src/lib/homebrew/subclass-choice-check.ts).
+      const data = normalizeOptionData(raw, kind);
+      const checked = checkSubclassChoices(((raw ?? {}) as Raw).choices);
+      if ("error" in checked) {
+        return checked;
+      }
+      return { data: checked.choices.length ? { ...data, choices: checked.choices } : data };
     }
     case "monster": {
       // The bestiary owns monsters (src/lib/bestiary/monster-draft.ts).

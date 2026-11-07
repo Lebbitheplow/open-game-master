@@ -15,6 +15,7 @@
 
 import { textKey } from "@/lib/language/text-logic";
 import { familyOf, isNamed, nameChoice } from "@/lib/srd/feature-names";
+import { chosenDamageType } from "@/lib/srd/chosen-element";
 
 // The damage type of each dragon a Draconic Bloodline sorcerer can descend
 // from (SRD 5.1, Dragon Ancestor table).
@@ -66,4 +67,48 @@ export function affinityCastType(sheet: { conditions?: ReadonlyArray<string> }):
     }
   }
   return null;
+}
+
+// A sheet as the element's readers take it.
+type ElementSheet = {
+  class?: string;
+  subclass?: string;
+  classes?: ReadonlyArray<{ id: string; subclass?: string | null }>;
+  features: ReadonlyArray<{ name: string; source?: string; classId?: string }>;
+};
+
+// The class whose subclass grants Elemental Affinity, and that subclass.
+function affinityHolder(sheet: ElementSheet): { classId: string; subclass: string } {
+  const feature = sheet.features.find((entry) => isNamed(entry.name, "Elemental Affinity"));
+  const classId = feature?.classId ?? sheet.class ?? "";
+  const entry = (sheet.classes ?? []).find((held) => textKey(held.id) === textKey(classId));
+  return { classId, subclass: entry?.subclass ?? sheet.subclass ?? "" };
+}
+
+// The element Elemental Affinity reads: the dragon ancestor's, else the
+// damage type the workshop subclass that grants it has its player choose
+// ("Bloodline damage type: Lightning", src/lib/srd/chosen-element.ts), so a
+// workshop bloodline that borrows it adds to and resists its own element
+// (issue #833). The SRD's Draconic Bloodline reads only its dragon, and a
+// multiclass reads only the element of the subclass holding the feature:
+// an element another class's subclass chose is not this one's.
+export function chosenElementType(sheet: ElementSheet): string | null {
+  const dragon = dragonAncestorType(sheet);
+  const holder = affinityHolder(sheet);
+  if (textKey(holder.subclass) === textKey("Draconic Bloodline")) {
+    return dragon;
+  }
+  return dragon ?? chosenDamageType(sheet.features, holder.classId || undefined)?.type ?? null;
+}
+
+// Where that element comes from, in words: "their dragon ancestor (Red)",
+// "their Bloodline (lightning)".
+export function chosenElementWords(sheet: ElementSheet): string {
+  const color = dragonAncestorColor(sheet);
+  if (color) {
+    return `their dragon ancestor (${color})`;
+  }
+  const holder = affinityHolder(sheet);
+  const named = chosenDamageType(sheet.features, holder.classId || undefined);
+  return named ? `their ${named.label} (${named.type})` : "their chosen element";
 }

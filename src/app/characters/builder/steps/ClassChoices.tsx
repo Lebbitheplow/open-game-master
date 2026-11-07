@@ -13,6 +13,7 @@ import { PickPill, StepPanel } from "./shared";
 import { textKey } from "@/lib/language/text-logic";
 import { splitToolGrants } from "@/lib/srd/tool-choices";
 import { remainingWords } from "@/lib/srd/options";
+import { subclassChoiceSummary } from "@/lib/content/subclass-choices";
 import { featChoice } from "@/lib/schemas/sheet";
 import FeatChoicesFields, { knownTraining } from "../FeatChoicesFields";
 
@@ -182,6 +183,47 @@ export function ClassChoices({
                     meta={option.req ? `Requires ${option.req}` : undefined}
                     text={option.d}
                   />
+                </div>
+              );
+            })}
+          </div>
+        </StepPanel>
+      ))}
+
+      {/* A workshop subclass's own choice (issue #833): a bloodline, an
+          element. One option, picked like the lists above; what it gives is
+          said on its card. */}
+      {(derived.subclassChoiceSlots ?? []).map((slot) => (
+        <StepPanel
+          key={`${slot.classId}|${slot.label}`}
+          anchor="options"
+          title={`${slot.label} (pick 1)`}
+          help={
+            <>
+              {slot.chosen ? null : <span className="text-amber-300">1 still to choose. </span>}
+              {slot.subclass} asks for this. Each option gives your character what its card says.
+            </>
+          }
+        >
+          <div className="grid gap-1.5 sm:grid-cols-2" role="group" aria-label={slot.label}>
+            {slot.options.map((option) => {
+              const selected = slot.chosen?.name === option.name;
+              const gives = subclassChoiceSummary(option);
+              return (
+                <div key={option.id} className={cn(optionCard(selected), "flex items-start gap-1")}>
+                  <button
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => actions.pickSubclassChoice(slot.label, option.name)}
+                    className="min-h-[40px] grow text-left"
+                  >
+                    <span className="block text-xs">{option.name}</span>
+                    <span className="block text-sm text-stone-500">
+                      {option.description ? `${option.description} ` : ""}
+                      {gives}
+                    </span>
+                  </button>
+                  <InfoButton label={option.name} meta={slot.subclass} text={[option.description, gives].filter(Boolean).join(" ")} />
                 </div>
               );
             })}

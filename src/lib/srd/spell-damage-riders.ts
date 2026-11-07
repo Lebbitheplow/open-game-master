@@ -4,7 +4,8 @@
 //     modifier is added to one damage roll of a wizard evocation spell.
 //   Elemental Affinity (sorcerer, Draconic Bloodline 6): the Charisma
 //     modifier is added to one damage roll of a spell dealing the damage type
-//     of the sorcerer's dragon ancestor.
+//     of the sorcerer's dragon ancestor, or of the element a workshop
+//     subclass's choice names (src/lib/srd/chosen-element.ts).
 //   Potent Cantrip (wizard, School of Evocation 6): a creature that succeeds
 //     on its save against the wizard's cantrip still takes half its damage.
 //
@@ -13,7 +14,7 @@
 
 import { authoredSpellDice } from "@/lib/srd/authored-effects-more";
 import { holdsFeature } from "@/lib/srd/feature-names";
-import { dragonAncestorType } from "@/lib/srd/dragon-ancestor";
+import { chosenElementType } from "@/lib/srd/dragon-ancestor";
 
 type Caster = {
   class: string;
@@ -62,7 +63,9 @@ export function spellDamageRiders(
       riders.notes.push(`Empowered Evocation: +${bonus} (Intelligence)`);
     }
   }
-  const ancestor = dragonAncestorType(sheet);
+  // The dragon's damage type, or a workshop bloodline's chosen element
+  // (issue #833: a "Storm" option dealing lightning).
+  const ancestor = chosenElementType(sheet);
   if (
     ancestor &&
     spell.damageType &&

@@ -223,6 +223,12 @@ export const SERVER_FEATURES = {
   // fighting style), outside a level-up. An older host answers 404, so the
   // sheet only lists the pick as owed there.
   owedPicks: true,
+  // A workshop subclass's own choices (issue #833): the archetype's
+  // `choices` field (a bloodline, an element, each option's damage type,
+  // resistances, skills, languages and spells), which the workshop's
+  // subclass editor writes. An older host drops the field on save, so the
+  // editor shows its "Let the player choose" section only here.
+  subclassChoices: true,
 } as const;
 export type ServerFeatures = { [K in keyof typeof SERVER_FEATURES]: boolean };
 

@@ -314,7 +314,7 @@ export const CONDITION_EFFECTS: ConditionEffectRow[] = [
     // ("elemental affinity (fire)", src/lib/dm/draconic-spends.ts).
     id: "elemental_affinity",
     match: ["elemental affinity"],
-    summary: "Elemental Affinity: resistance to their dragon ancestor's damage type (named in the condition) for an hour.",
+    summary: "Elemental Affinity: resistance to their dragon ancestor's damage type, or their chosen element's (named in the condition), for an hour.",
     paramResistance: true,
   },
   {
