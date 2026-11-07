@@ -27,7 +27,7 @@ import { publishPersisted } from "@/lib/events";
 import { acBreakdownFor, computeSheetDerived } from "@/lib/srd";
 import { holdsFeature } from "@/lib/srd/trait-rules";
 import { wearsBodyArmor } from "@/lib/srd/authored-effects";
-import { dragonAncestorColor, dragonAncestorType } from "@/lib/srd/dragon-ancestor";
+import { chosenElementType, chosenElementWords } from "@/lib/srd/dragon-ancestor";
 import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { setConcentration } from "@/lib/dm/concentration";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
@@ -88,10 +88,12 @@ export function elementalAffinityResistance(campaign: Campaign, sheet: Character
   if (!holdsFeature(sheet, "elemental affinity")) {
     return { error: `${sheet.name} does not have Elemental Affinity (a Draconic Bloodline sorcerer's 6th level feature).`, refused: "rules" };
   }
-  const type = dragonAncestorType(sheet);
+  // The dragon's damage type, or the element a workshop bloodline's choice
+  // names (issue #833).
+  const type = chosenElementType(sheet);
   if (!type) {
     return {
-      error: `${sheet.name} has no dragon ancestor chosen, so Elemental Affinity has no damage type to resist. The player chooses their Dragon Ancestor on the character sheet first. Nothing was spent.`,
+      error: `${sheet.name} has no dragon ancestor or element chosen, so Elemental Affinity has no damage type to resist. The player makes that choice on the character sheet first. Nothing was spent.`,
       refused: "rules",
     };
   }
@@ -114,7 +116,7 @@ export function elementalAffinityResistance(campaign: Campaign, sheet: Character
     ok: true,
     resource: "Elemental Affinity",
     spent: "1 sorcery point",
-    applied: `${sheet.name} resists ${type} damage for 1 hour, the damage of their dragon ancestor (${dragonAncestorColor(sheet)}).`,
+    applied: `${sheet.name} resists ${type} damage for 1 hour, the damage of ${chosenElementWords(sheet)}.`,
   };
 }
 

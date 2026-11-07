@@ -31,6 +31,7 @@ import { ALL_SKILLS, STANDARD_LANGUAGES } from "@/lib/content/mechanics";
 import { KNOWN_TOOLS } from "@/lib/srd/feat-grant-text";
 import { SRD_WEAPONS } from "@/lib/srd/weapons";
 import type { SubclassExtras } from "@/lib/srd/subclass-tables";
+import { subclassChoiceTraining } from "@/lib/srd/subclass-choice-picks";
 import { textKey } from "@/lib/language/text-logic";
 import { featChoice, withFeatChoice } from "@/lib/schemas/sheet";
 
@@ -308,7 +309,13 @@ export type ClassEntryLike = { id: string; level: number; subclass?: string | nu
 
 // The training every subclass on the sheet has granted by its class's
 // level, in class order, each once.
-export function subclassGrants(classes: ClassEntryLike[], extras?: SubclassExtras): SubclassGrant[] {
+export function subclassGrants(
+  classes: ClassEntryLike[],
+  extras?: SubclassExtras,
+  // The sheet's features: the options its workshop subclass's choices hold
+  // train it too (a Storm bloodline's Arcana, issue #833).
+  features?: ReadonlyArray<{ name: string }>,
+): SubclassGrant[] {
   const grants: SubclassGrant[] = [];
   const seen = new Set<string>();
   for (const entry of classes) {
@@ -352,6 +359,16 @@ export function subclassGrants(classes: ClassEntryLike[], extras?: SubclassExtra
         grants.push({ name, classId: entry.id, subclass, level, spec });
       }
     }
+  }
+  const entries = classes.map((entry) => ({ id: entry.id, subclass: entry.subclass ?? "", level: entry.level }));
+  for (const pick of features ? subclassChoiceTraining(entries, features, extras) : []) {
+    grants.push({
+      name: pick.name,
+      classId: pick.classId,
+      subclass: pick.subclass,
+      level: pick.level,
+      spec: specOf({ skills: pick.skills, languages: pick.languages }),
+    });
   }
   return grants;
 }

@@ -23,6 +23,8 @@ import {
 import { subclassMayCast } from "@/lib/srd/features";
 import { FEATURE_LIMITS, SUBCLASS_SPELLS_PER_LEVEL } from "@/lib/homebrew/class-data";
 import { featureCounts } from "@/lib/homebrew/limits";
+import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
+import { SubclassChoiceFields } from "@/app/workshop/homebrew/SubclassChoiceFields";
 
 // A subclass: its class, its features by level and the always-prepared
 // spells it hands out (a domain's, an oath's). A character who takes it is
@@ -215,6 +217,7 @@ export function ArchetypeFields({
         ? "none"
         : (featureProfile ?? "none");
   const rules = THIRD_CASTER_PROFILES.find((profile) => profile.id === casting);
+  const offersChoices = hostOffers(useCapabilities(), "subclassChoices");
 
   return (
     <div className="space-y-3">
@@ -313,6 +316,10 @@ export function ArchetypeFields({
         </p>
       </div>
       <SpellLists data={data} set={set} castsNothing={casting === "none" && !casterClass(classId)} classLabel={classLabel} />
+      {/* What its player picks at a level: a bloodline, an element (issue
+          #833). An older host drops the field on save, so it waits for the
+          flag. */}
+      {offersChoices ? <SubclassChoiceFields data={data} set={set} /> : null}
     </div>
   );
 }

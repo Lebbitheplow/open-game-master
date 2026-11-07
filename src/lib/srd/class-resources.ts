@@ -785,7 +785,7 @@ const DRACONIC_ACTION_DEFS: ResourceDef[] = [
     action: "none",
     effect: { kind: "narrative" },
     guidance:
-      "Elemental Affinity: when they cast a spell that deals their dragon ancestor's damage type, 1 sorcery point gives them resistance to that type for 1 hour. The server spends the point and holds the resistance.",
+      "Elemental Affinity: when they cast a spell that deals their dragon ancestor's damage type (or the element their subclass's choice names), 1 sorcery point gives them resistance to that type for 1 hour. The server spends the point and holds the resistance.",
   },
   {
     id: "dragon_wings",

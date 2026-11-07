@@ -74,9 +74,10 @@ const ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 // (so "Resistances" and "Resistant" too), "breath weapon" as the breath's
 // counter (src/lib/dm/pc-defenses.ts, src/lib/srd/feature-names.ts). The
 // label and every option's name are held to the same words, since both are
-// written into the choice's record.
-const RESERVED = /[():]|resistan|breath\s*weapon/i;
-const RESERVED_WORDS = `brackets, a colon, "resistance" or "breath weapon": the table reads those words`;
+// written into the choice's record. A workshop subclass's choice keeps the
+// same words (src/lib/content/subclass-choices.ts).
+export const RESERVED = /[():]|resistan|breath\s*weapon/i;
+export const RESERVED_WORDS = `brackets, a colon, "resistance" or "breath weapon": the table reads those words`;
 
 const quoted = (name: string) => `"${name.length > 40 ? `${name.slice(0, 40)}...` : name}"`;
 const listed = (items: string[], last = "and") =>

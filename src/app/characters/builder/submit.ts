@@ -319,6 +319,11 @@ export function callingBlocks(
   if (slot) {
     owed.push(block("options", `Pick ${slot.remaining} more ${slot.label.toLowerCase()}.`));
   }
+  // A workshop subclass's own choice, as a pick-list's (issue #833).
+  const choice = (derived.subclassChoiceSlots ?? []).find((entry) => !entry.chosen);
+  if (choice) {
+    owed.push(block("options", `Pick your ${choice.label} (${choice.subclass}).`));
+  }
   return owed;
 }
 
@@ -706,7 +711,14 @@ export function buildBuilderResult(input: SubmitInput): BuilderResult {
   // they ride onto the list on top of whatever the player picked, as does
   // a chain warlock's find familiar (src/lib/srd/class-spell-grants.ts).
   const grantedSpells = (
-    casterKlass ? [...subclassSpellsFor(casterKlass.id, casterSubclass, casterLevel), ...(derived.spellGrants?.learned ?? [])] : []
+    casterKlass
+      ? [
+          // With the picks: a workshop subclass's choice brings its option's
+          // spells (issue #833).
+          ...subclassSpellsFor(casterKlass.id, casterSubclass, casterLevel, undefined, picks.optionPicks.map((name) => ({ name }))),
+          ...(derived.spellGrants?.learned ?? []),
+        ]
+      : []
   ).filter(
     (spell) => !spells.some((entry) => textKey(entry) === textKey(spell)),
   );

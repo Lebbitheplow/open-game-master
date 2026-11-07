@@ -69,6 +69,7 @@ import { applyHalfFeats, halfFeatPicks, halfFeatPoints } from "@/lib/srd/legalit
 import { judgeFeats, judgeFeatures } from "@/lib/srd/legality/features";
 import { findOptionByFeatureName, pickInSpellbook } from "@/lib/srd/options";
 import { sheetSpellbook } from "@/lib/srd/owed-picks-logic";
+import { subclassChoicePickProblems, withoutOldSubclassChoices } from "@/lib/srd/subclass-choice-picks";
 import { judgeProficiencies } from "@/lib/srd/legality/proficiencies";
 import { applySubclassTraining, autoSubclassPicks, subclassFixedTraining, subclassGrants } from "@/lib/srd/subclass-training";
 import { castingClassesOf, judgeSpellcasting } from "@/lib/srd/legality/spells";
@@ -357,7 +358,9 @@ export function legalizeSheet(input: CreateSheetInput, context: LegalityContext)
   // 251: a Life Domain cleric's heavy armor was a feature's name and never
   // training), and the armor and weapons among it the feat prerequisites
   // read before the training is written.
-  const subclassTraining = subclassGrants(classes, context.subclassExtras);
+  // A workshop subclass's choice trains its character in what the option
+  // held gives (issue #833).
+  const subclassTraining = subclassGrants(classes, context.subclassExtras, input.features ?? held?.features);
   const subclassFixed = subclassFixedTraining(subclassTraining);
   const secondClassTraining = classes.slice(1).map((entry) => multiclassGrantsFor(entry.id));
 
@@ -559,7 +562,14 @@ export function legalizeSheet(input: CreateSheetInput, context: LegalityContext)
       held && held.class === input.class && held.race === input.race && held.background === input.background
         ? policy.trustsHeld
           ? withoutFeatPicks(held.proficiencies, held.featChoices)
-          : withoutOldVariant(withoutFeatPicks(held.proficiencies, held.featChoices), baseRace, held.racialChoices, speciesChoice.option)
+          : withoutOldSubclassChoices(
+              withoutOldVariant(withoutFeatPicks(held.proficiencies, held.featChoices), baseRace, held.racialChoices, speciesChoice.option),
+              // A workshop subclass's option given up takes its skills and
+              // languages with it (issue #833).
+              { classes: held.classes?.length ? held.classes : [{ id: held.class, subclass: held.subclass, level: context.baseline?.level ?? level }], features: held.features ?? [] },
+              { classes, features: input.features ?? [] },
+              context.subclassExtras,
+            )
         : null,
     // The builder's doors name the tools an open grant leaves to the player.
     requireToolPicks: context.door === "table" || context.door === "library",
@@ -695,8 +705,20 @@ export function legalizeSheet(input: CreateSheetInput, context: LegalityContext)
         derived: [...(casts ? [] : racialPicks.map((name) => `Racial cantrip: ${name}`)), ...freeCasts],
         allowPlainStory: policy.plainStory,
         sameBackground: (held?.background ?? "") === input.background,
+        subclassExtras: context.subclassExtras,
       });
   problems.push(...featured.problems);
+  // A workshop subclass's choice names an option it offers, at its level,
+  // once (issue #833): one it does not offer was dropped without a word.
+  if (!policy.trustsHeld) {
+    problems.push(
+      ...subclassChoicePickProblems(
+        (input.features ?? []).filter((feature) => feature.source === "choice"),
+        classes,
+        context.subclassExtras,
+      ),
+    );
+  }
   // Spell Mastery and Signature Spells name spells in the spellbook (SRD
   // 5.1, issue #833): a pick of a spell the book does not hold is refused.
   // A new fighting style is one its slot's class offers (a paladin's four);

@@ -15,6 +15,7 @@
 
 import { textKey } from "@/lib/language/text-logic";
 import { familyOf, isNamed, nameChoice } from "@/lib/srd/feature-names";
+import { chosenDamageType } from "@/lib/srd/chosen-element";
 
 // The damage type of each dragon a Draconic Bloodline sorcerer can descend
 // from (SRD 5.1, Dragon Ancestor table).
@@ -66,4 +67,24 @@ export function affinityCastType(sheet: { conditions?: ReadonlyArray<string> }):
     }
   }
   return null;
+}
+
+// The element a character's features choose: the dragon ancestor's, else the
+// damage type a workshop subclass's choice names ("Bloodline damage type:
+// Lightning", src/lib/srd/chosen-element.ts). Elemental Affinity reads this,
+// so a workshop bloodline that borrows it adds to and resists its own
+// element (issue #833).
+export function chosenElementType(sheet: { features: ReadonlyArray<{ name: string }> }): string | null {
+  return dragonAncestorType(sheet) ?? chosenDamageType(sheet.features)?.type ?? null;
+}
+
+// Where that element comes from, in words: "their dragon ancestor (Red)",
+// "their Bloodline (lightning)".
+export function chosenElementWords(sheet: { features: ReadonlyArray<{ name: string }> }): string {
+  const color = dragonAncestorColor(sheet);
+  if (color) {
+    return `their dragon ancestor (${color})`;
+  }
+  const named = chosenDamageType(sheet.features);
+  return named ? `their ${named.label} (${named.type})` : "their chosen element";
 }

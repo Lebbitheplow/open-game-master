@@ -24,6 +24,7 @@ import { racialCantripsOf } from "@/lib/srd/racial-cantrips";
 import { holdsFeature, reachesPrimalChampion, withoutPrimalChampion } from "@/lib/srd/trait-rules";
 import type { KitChoices } from "@/lib/srd/starting-kit";
 import { findOptionByFeatureName } from "@/lib/srd/options";
+import { parseSubclassChoicePick } from "@/lib/content/subclass-choices";
 import {
   FIGHTING_STYLES,
   fightingStyleFeatureName,
@@ -313,7 +314,10 @@ export function useBuilderState({
     (initial?.features ?? [])
       .filter((feature) => feature.source === "choice")
       .map((feature) => feature.name)
-      .filter((featureName) => findOptionByFeatureName(featureName) !== null),
+      // A workshop subclass's own choice ("Bloodline (Storm)") too: its
+      // subclass's table may not be fetched yet, and the builder's reconcile
+      // holds it to the subclass once it is (issue #833).
+      .filter((featureName) => findOptionByFeatureName(featureName) !== null || parseSubclassChoicePick(featureName) !== null),
   );
   // One-shot acknowledgement for the "caster with no spells" warning.
   const [spellWarningAck, setSpellWarningAck] = useState(false);

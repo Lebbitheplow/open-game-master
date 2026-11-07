@@ -41,6 +41,13 @@ import { applySubclassTraining, grantsForHeldTraining, subclassGrants, type Subc
 import { textKey } from "@/lib/language/text-logic";
 import { dedupeNames, spellbookOf } from "@/lib/srd/spell-prep";
 import { featsAsRun } from "@/lib/srd/feat-effects";
+import { parseSubclassChoicePick, subclassChoicePickName } from "@/lib/content/subclass-choices";
+import {
+  isSubclassChoicePick,
+  subclassChoiceSlots,
+  subclassChoiceTraining,
+  type SubclassChoiceSlot,
+} from "@/lib/srd/subclass-choice-picks";
 import type { SubclassExtras } from "@/lib/srd/subclass-tables";
 
 export type OwedSheet = Pick<CharacterSheet, "class" | "subclass" | "level" | "classes" | "features" | "proficiencies"> &
@@ -50,6 +57,10 @@ export type OwedPickSlots = {
   // The pick-lists with picks left, merged across classes as the builder
   // merges them.
   options: OptionSlot[];
+  // A workshop subclass's own choices due and not made (issue #833): a
+  // character saved before its author added the choice, or one whose level
+  // went to another class.
+  choices: SubclassChoiceSlot[];
   // Fighting styles earned and not chosen, and the styles the slots allow.
   styles: { count: number; choices: typeof FIGHTING_STYLES };
   // Class training picks that may wait and were not made.
@@ -141,7 +152,8 @@ export function owedPickSlots(stated: OwedSheet, context: OwedContext = {}): Owe
   const training = grantsForHeldTraining(subclassGrants(classes, context.extras), sheet.proficiencies).filter(
     (grant) => grant.optional && featPicksOwed(grant.name, grant.spec, featChoice(sheet.featChoices ?? {}, grant.name)) !== null,
   );
-  return { options, styles: { count: styleCount, choices: styleChoices }, training };
+  const choices = subclassChoiceSlots(classes, sheet.features, context.extras).filter((slot) => !slot.chosen);
+  return { options, choices, styles: { count: styleCount, choices: styleChoices }, training };
 }
 
 // The owed picks in words, for the sheet's and the join's "Earned and not
@@ -152,6 +164,9 @@ export function owedPickLines(sheet: OwedSheet, context: OwedContext = {}): stri
     const words = remainingWords(slot);
     return `${slot.label}: ${words.replace(" still to choose", " to choose")}`;
   });
+  for (const slot of owed.choices) {
+    lines.push(`${slot.subclass}'s ${slot.label}: 1 to choose`);
+  }
   if (owed.styles.count > 0) {
     lines.push(owed.styles.count === 1 ? "a fighting style" : `${owed.styles.count} fighting styles`);
   }
@@ -178,8 +193,24 @@ export function applyOwedPicks(sheet: OwedSheet, request: OwedPicksRequest, cont
   }
   let features: SheetFeature[] = [...sheet.features];
   const made: string[] = [];
+  // What a workshop choice's option trains the character in, added below.
+  let trainedBy: Proficiencies | undefined;
   for (const raw of asked) {
     const name = raw.trim();
+    const parsed = isSubclassChoicePick(name, context.extras) ? parseSubclassChoicePick(name) : null;
+    if (parsed) {
+      // A workshop subclass's own choice (issue #833), held to the choices
+      // owed: due at the class's level and not made.
+      const slot = owedPickSlots({ ...sheet, features }, context).choices.find((entry) => textKey(entry.label) === textKey(parsed.label));
+      const option = slot?.options.find((entry) => textKey(entry.name) === textKey(parsed.option));
+      if (!slot || !option) {
+        return { ok: false, error: `${sheet.name ?? "This character"} owes no ${parsed.label} pick of ${parsed.option}: none of their subclasses has that choice open at its level.` };
+      }
+      const feature = subclassChoicePickName(slot.label, option);
+      features = [...features, { name: feature, source: "choice" }];
+      made.push(feature);
+      continue;
+    }
     const option = findOptionByFeatureName(name);
     if (option) {
       const slot = owedPickSlots({ ...sheet, features }, context).options.find((entry) => entry.kind === option.k);
@@ -224,7 +255,19 @@ export function applyOwedPicks(sheet: OwedSheet, request: OwedPicksRequest, cont
       made.push(feature);
       continue;
     }
-    return { ok: false, error: `"${name}" is not a pick this server knows. Send an owed option as its feature name ("Dragon Ancestor: Red", "Fighting Style: Defense").` };
+    return { ok: false, error: `"${name}" is not a pick this server knows. Send an owed option as its feature name ("Dragon Ancestor: Red", "Fighting Style: Defense", "Bloodline (Storm)").` };
+  }
+  // A workshop choice's option trains in its skills and languages.
+  const classList = classListFor(sheet).map((entry) => ({ id: entry.id, subclass: entry.subclass ?? "", level: entry.level }));
+  const fresh = subclassChoiceTraining(classList, features, context.extras).filter((grant) => made.includes(grant.name));
+  if (fresh.length) {
+    const has = (list: string[], entry: string) => list.some((held) => textKey(held) === textKey(entry));
+    const base = sheet.proficiencies;
+    trainedBy = {
+      ...base,
+      skills: [...base.skills, ...fresh.flatMap((grant) => grant.skills).filter((skill, at, all) => !has(base.skills, skill) && all.indexOf(skill) === at)],
+      languages: [...base.languages, ...fresh.flatMap((grant) => grant.languages).filter((language, at, all) => !has(base.languages, language) && all.indexOf(language) === at)],
+    };
   }
   // The regrant keeps what the slots allow (features.ts pruneChoiceFeatures);
   // a pick it would drop is refused rather than lost.
@@ -237,7 +280,7 @@ export function applyOwedPicks(sheet: OwedSheet, request: OwedPicksRequest, cont
     }
     features = kept;
   }
-  let proficiencies: Proficiencies | undefined;
+  let proficiencies: Proficiencies | undefined = trainedBy;
   let featChoices: FeatChoices | undefined;
   const keys = Object.keys(choices);
   if (keys.length) {
@@ -258,7 +301,7 @@ export function applyOwedPicks(sheet: OwedSheet, request: OwedPicksRequest, cont
       // Named here, the pick is held to the grant like any other.
       grants.push({ name: grant.name, classId: grant.classId, subclass: grant.subclass, level: grant.level, spec: grant.spec });
     }
-    const trained = applySubclassTraining({ proficiencies: sheet.proficiencies, grants, choices: merged, strict: true });
+    const trained = applySubclassTraining({ proficiencies: trainedBy ?? sheet.proficiencies, grants, choices: merged, strict: true });
     if (trained.problems.length) {
       return { ok: false, error: trained.problems[0] };
     }

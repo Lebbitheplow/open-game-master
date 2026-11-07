@@ -1,4 +1,5 @@
 import { dragonAncestorType } from "@/lib/srd/dragon-ancestor";
+import { subclassChoicePickDescription } from "@/lib/srd/subclass-choice-picks";
 import { advanceRulesLine, openToAdvanceNames } from "@/lib/dm/advance-logic";
 import { defenseWords } from "@/lib/dm/pet-build";
 import { STORYTELLER_SECRET } from "@/lib/dm/viewer";
@@ -603,7 +604,10 @@ export function describeSheet(
             sheet.subclass;
           const description =
             classFeatureDescription(owner, feature.name) ??
-            subclassFeatureDescription(owner, ownerSubclass, feature.name, extras);
+            subclassFeatureDescription(owner, ownerSubclass, feature.name, extras) ??
+            // A workshop subclass's pick ("Bloodline (Storm)") says what its
+            // option gives (issue #833).
+            (feature.source === "choice" ? subclassChoicePickDescription(feature.name, extras) : null);
           const tag = engineTags.get(feature.name);
           // A sorcerer's dragon says its damage type, the one Elemental
           // Affinity adds to and resists: "Dragon Ancestor: Red" alone left

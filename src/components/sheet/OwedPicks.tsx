@@ -10,6 +10,7 @@ import { fightingStyleFeatureName } from "@/lib/srd/feature-effects";
 import { optionCost, optionFeatureName, remainingWords, slotTakes, type OptionSlot } from "@/lib/srd/options";
 import { owedChoiceGroups, owedChoicesSentences } from "@/lib/srd/owed-choices";
 import { owedPickSlots } from "@/lib/srd/owed-picks-logic";
+import { subclassChoicePickName, subclassChoiceSummary } from "@/lib/content/subclass-choices";
 import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 import { textKey } from "@/lib/language/text-logic";
 
@@ -30,7 +31,7 @@ export function OwedPicks({ sheet, mine }: { sheet: CharacterSheet; mine: boolea
   const owed = owedPickSlots(sheet);
   const where = !mine ? "owner" : offered ? "here" : "level-up";
   const sentences = owedChoicesSentences(owedChoiceGroups(sheet), where);
-  const pickers = where === "here" && (owed.options.length > 0 || owed.styles.count > 0 || owed.training.length > 0);
+  const pickers = where === "here" && (owed.options.length > 0 || owed.choices.length > 0 || owed.styles.count > 0 || owed.training.length > 0);
   return (
     <>
       {sentences.map((line) => (
@@ -48,6 +49,27 @@ function OwedPickers({ sheet, owed }: { sheet: CharacterSheet; owed: ReturnType<
     <div className="reveal mt-3 space-y-3">
       {owed.options.map((slot) => (
         <SlotPicker key={slot.kind} sheet={sheet} slot={slot} />
+      ))}
+      {/* A workshop subclass's own choice (issue #833), saved as "Bloodline
+          (Storm)" and judged by the route against the table's subclasses. */}
+      {owed.choices.map((choice) => (
+        <SlotPicker
+          key={`${choice.classId}|${choice.label}`}
+          sheet={sheet}
+          slot={{
+            kind: "invocation",
+            label: `${choice.label} (${choice.subclass})`,
+            total: 1,
+            chosen: [],
+            remaining: 1,
+            options: choice.options.map((option) => ({
+              k: "invocation",
+              n: option.name,
+              d: [option.description, subclassChoiceSummary(option)].filter(Boolean).join(" "),
+            })),
+          }}
+          featureOf={(name) => subclassChoicePickName(choice.label, { name })}
+        />
       ))}
       {owed.styles.count > 0 ? (
         <SlotPicker

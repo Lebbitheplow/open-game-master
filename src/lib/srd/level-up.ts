@@ -66,6 +66,7 @@ import { featureHitPoints, holdsFeature, withPrimalChampion } from "@/lib/srd/tr
 import { isChoiceFeature, unmetPrerequisite } from "@/lib/srd/legality/features";
 import { findOptionByFeatureName, optionReqProblem, pickInSpellbook } from "@/lib/srd/options";
 import { sheetCantrips, sheetSpellbook } from "@/lib/srd/owed-picks-logic";
+import { subclassChoicePickProblems } from "@/lib/srd/subclass-choice-picks";
 import { castingClassesOf } from "@/lib/srd/legality/spells";
 import {
   ABILITY_NAMES,
@@ -427,11 +428,16 @@ export function buildLevelUp(
   // skills) or a feature at the class's new level (a Gloom Stalker's Iron
   // Mind at 7). Picks are named in the request as a feat's are, keyed by the
   // feature's name (issue 251).
+  // A workshop subclass's choice made with this level trains in what its
+  // option gives (issue #833): read from the sheet's picks and this one's.
+  const pickedNow = (request.features ?? []).filter((feature) => feature.source === "choice");
   const trainedBefore = new Set(
-    subclassGrants(before, context.subclassExtras).map((grant) => `${grant.classId}|${textKey(grant.name)}`),
+    subclassGrants(before, context.subclassExtras, sheet.features).map((grant) => `${grant.classId}|${textKey(grant.name)}`),
   );
   const freshTraining = grantsForHeldTraining(
-    subclassGrants(classes, context.subclassExtras).filter((grant) => !trainedBefore.has(`${grant.classId}|${textKey(grant.name)}`)),
+    subclassGrants(classes, context.subclassExtras, [...sheet.features, ...pickedNow]).filter(
+      (grant) => !trainedBefore.has(`${grant.classId}|${textKey(grant.name)}`),
+    ),
     proficiencies,
   );
   const trainingChoices = context.autoPicks
@@ -498,10 +504,20 @@ export function buildLevelUp(
     .filter(
       (feature) =>
         feature.source === "choice" &&
-        isChoiceFeature(feature.name) &&
+        isChoiceFeature(feature.name, context.subclassExtras) &&
         !heldNames.has(textKey(feature.name)),
     )
     .map((feature) => ({ name: feature.name, source: "choice" as const }));
+  // A workshop subclass's choice names an option it offers, once, at its
+  // level (issue #833): one it does not offer was dropped without a word.
+  const choiceProblem = subclassChoicePickProblems(
+    [...sheet.features, ...(request.features ?? [])].filter((feature) => feature.source === "choice"),
+    classes,
+    context.subclassExtras,
+  )[0];
+  if (choiceProblem) {
+    return refuse(choiceProblem);
+  }
   // Spell Mastery and Signature Spells name spells in the spellbook (SRD
   // 5.1): one written there before, or with this level.
   // The book as it stands after this level: the sheet's, the lists the
@@ -553,7 +569,9 @@ export function buildLevelUp(
   // A table's workshop copy of Martial Adept opens its slots as the feat it
   // runs as.
   const featsRun = featsAsRun(feats, sheet.campaignId);
-  let features = populateFeaturesForClasses([...sheet.features, ...picked, ...freeCasts], classes, sheet.race, featsRun);
+  // With the table's subclasses: a workshop subclass's features, and what
+  // its choice's option grants beside the pick (issue #833).
+  let features = populateFeaturesForClasses([...sheet.features, ...picked, ...freeCasts], classes, sheet.race, featsRun, context.subclassExtras);
   const takenAfter = taken + asked.choices.length;
   if (target >= 4 || takenAfter > 0) {
     features = withAsiLedger(features, takenAfter);

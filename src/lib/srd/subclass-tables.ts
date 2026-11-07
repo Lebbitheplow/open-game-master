@@ -18,6 +18,7 @@ import {
   thirdCasterProfileForPackSubclass,
   type ThirdCasterProfile,
 } from "@/lib/srd/third-caster";
+import { storedSubclassChoices, type SubclassChoice } from "@/lib/content/subclass-choices";
 
 export type SubclassFeatureRow = { n: string; d: string };
 
@@ -30,6 +31,9 @@ export type ExtraSubclass = {
   // third-caster.ts). Read only for a class that casts nothing of its own
   // (src/lib/srd/features.ts subclassCastingProfileFor).
   castingProfile?: ThirdCasterProfile;
+  // What its player picks at a class level: a bloodline, an element (src/lib/
+  // content/subclass-choices.ts, issue #833). A workshop subclass's only.
+  choices?: SubclassChoice[];
   source: "homebrew" | "pack";
 };
 
@@ -157,10 +161,18 @@ export function extraSubclassOf(row: Row, defaultLevel = 3): ExtraSubclass | nul
   const levels = homebrew ? homebrewLevels(row.data.levels) : subclassLevelsFromProse(String(row.data.desc ?? ""), defaultLevel);
   const spells = homebrew ? spellLevels(row.data.spells) : undefined;
   const castingProfile = homebrew ? castingProfileOf(row.data, levels) : (thirdCasterProfileForPackSubclass(row.name) ?? undefined);
-  if (!Object.keys(levels).length && !spells) {
+  const choices = homebrew ? storedSubclassChoices(row.data.choices) : [];
+  if (!Object.keys(levels).length && !spells && !choices.length) {
     if (!castingProfile) return null;
   }
-  return { name: row.name, levels, ...(spells ? { spells } : {}), ...(castingProfile ? { castingProfile } : {}), source: homebrew ? "homebrew" : "pack" };
+  return {
+    name: row.name,
+    levels,
+    ...(spells ? { spells } : {}),
+    ...(castingProfile ? { castingProfile } : {}),
+    ...(choices.length ? { choices } : {}),
+    source: homebrew ? "homebrew" : "pack",
+  };
 }
 
 export function mergeExtras(...sets: SubclassExtras[]): SubclassExtras {

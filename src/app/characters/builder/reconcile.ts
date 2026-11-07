@@ -2,6 +2,8 @@ import type { Ability } from "@/lib/schemas/sheet";
 import { classFeaturesFor, expertiseSlotsFor, racialTraitsFor, subclassLevelFor } from "@/lib/srd/features";
 import { fightingStyleChoices, fightingStyleSlots, type FightingStyleId } from "@/lib/srd/feature-effects";
 import { findOptionByFeatureName, optionCost, optionSlotsFor } from "@/lib/srd/options";
+import { subclassChoicePickKept } from "@/lib/srd/subclass-choice-picks";
+import { parseSubclassChoicePick } from "@/lib/content/subclass-choices";
 import { innateCantripsFor, repeatedGrants } from "@/lib/srd/racial-grants";
 import { withSpeciesVariant } from "@/lib/content/species-variants";
 import { spellLevelOf } from "@/lib/srd/spell-lists";
@@ -340,8 +342,20 @@ export function reconcilePicks(
   note("fighting style", "styles", picks.stylePicks, stylePicks);
 
   const perKind = new Map<string, number>();
+  // A workshop subclass's own choice: one pick each, while a class's
+  // subclass offers it at its level (issue #833).
+  const choicesTaken = new Set<string>();
+  const choiceClasses = classes.map((entry) => ({ id: entry.klass.id, subclass: entry.subclass, level: entry.level }));
   const optionPicks = unique(picks.optionPicks).filter((featureName) => {
+    const workshop = subclassChoicePickKept(featureName, choiceClasses, undefined, choicesTaken);
+    if (workshop !== undefined) {
+      return workshop;
+    }
     const option = findOptionByFeatureName(featureName);
+    if (!option && parseSubclassChoicePick(featureName)) {
+      // A subclass table not fetched yet: the server holds the pick to it.
+      return true;
+    }
     if (!option || !klass) {
       return false;
     }

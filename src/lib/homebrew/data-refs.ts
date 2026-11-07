@@ -16,9 +16,15 @@ type Rec = Record<string, unknown>;
 const isRec = (value: unknown): value is Rec => Boolean(value) && typeof value === "object" && !Array.isArray(value);
 const strings = (value: unknown): string[] => (Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string" && Boolean(entry.trim())) : []);
 
+// The spells each option of a subclass's choices grants (issue #833), by
+// class level as the subclass's own are.
+const choiceOptions = (data: Rec): Rec[] =>
+  (Array.isArray(data.choices) ? data.choices.filter(isRec) : []).flatMap((choice) => (Array.isArray(choice.options) ? choice.options.filter(isRec) : []));
+
 export function homebrewDataRefs(kind: HomebrewKind, data: Rec): { spell: string[]; item: string[] } {
-  if (kind === "archetype" && isRec(data.spells)) {
-    return { spell: [...new Set(Object.values(data.spells).flatMap(strings))], item: [] };
+  if (kind === "archetype") {
+    const tables = [...(isRec(data.spells) ? [data.spells] : []), ...choiceOptions(data).flatMap((option) => (isRec(option.spells) ? [option.spells] : []))];
+    return { spell: [...new Set(tables.flatMap((table) => Object.values(table).flatMap(strings)))], item: [] };
   }
   if (kind === "item" && Array.isArray(data.spells)) {
     return { spell: [...new Set(data.spells.filter(isRec).flatMap((entry) => (typeof entry.spell === "string" ? [entry.spell] : [])))], item: [] };
@@ -40,11 +46,20 @@ export function renameHomebrewDataRefs(kind: HomebrewKind, data: Rec, rename: Sh
     if (next !== name) changed = true;
     return next;
   };
-  if (kind === "archetype" && isRec(data.spells)) {
-    const spells = Object.fromEntries(
-      Object.entries(data.spells).map(([level, names]) => [level, Array.isArray(names) ? names.map((name) => (typeof name === "string" ? to("spell", name) : name)) : names]),
-    );
-    return changed ? { data: { ...data, spells }, changed } : { data, changed };
+  if (kind === "archetype") {
+    const byLevel = (table: Rec) =>
+      Object.fromEntries(
+        Object.entries(table).map(([level, names]) => [level, Array.isArray(names) ? names.map((name) => (typeof name === "string" ? to("spell", name) : name)) : names]),
+      );
+    const spells = isRec(data.spells) ? byLevel(data.spells) : data.spells;
+    const choices = Array.isArray(data.choices)
+      ? data.choices.map((choice) =>
+          isRec(choice) && Array.isArray(choice.options)
+            ? { ...choice, options: choice.options.map((option) => (isRec(option) && isRec(option.spells) ? { ...option, spells: byLevel(option.spells) } : option)) }
+            : choice,
+        )
+      : data.choices;
+    return changed ? { data: { ...data, spells, ...(choices ? { choices } : {}) }, changed } : { data, changed };
   }
   if (kind === "item" && Array.isArray(data.spells)) {
     const spells = data.spells.map((entry) => (isRec(entry) && typeof entry.spell === "string" ? { ...entry, spell: to("spell", entry.spell) } : entry));

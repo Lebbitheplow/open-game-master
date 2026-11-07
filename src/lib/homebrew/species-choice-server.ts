@@ -10,6 +10,8 @@ import { darkvisionTilesFromText } from "@/lib/battlemap/los";
 import { pcImmunities, pcResistances } from "@/lib/dm/pc-defenses";
 import { normalizeHomebrewData } from "@/lib/homebrew/gear";
 import { readSpeciesVariants, type SpeciesVariantGroup } from "@/lib/content/species-variants";
+import { subclassChoicePickName, type SubclassChoice } from "@/lib/content/subclass-choices";
+import { readSubclassChoices } from "@/lib/homebrew/subclass-choice-check";
 import { textKey } from "@/lib/language/text-logic";
 import type { HomebrewKind } from "@/lib/schemas/homebrew";
 
@@ -129,15 +131,46 @@ export function speciesChoiceClash(group: SpeciesVariantGroup): string | null {
   return null;
 }
 
+// The same for a workshop subclass's choices (issue #833): its pick is a
+// "choice" feature, "<label> (<option>)", which the engines read by name as
+// they read a species' record. A choice labelled "Elemental Affinity" or
+// "Dragon Ancestor" would be read as the published feature (A's pick-lists
+// read "Dragon Ancestor (gold)" as the dragon), one labelled "Rage" a
+// counter. Refused at the save, with the clash named.
+export function subclassChoiceClash(choices: readonly SubclassChoice[]): string | null {
+  for (const choice of choices) {
+    const labelReading = engineReading(choice.label);
+    if (labelReading) {
+      return `The table would read the choice's label, "${choice.label}", as ${labelReading}, and give it to every character who picks an option. Call the choice something else, such as Bloodline or Affinity.`;
+    }
+    for (const option of choice.options) {
+      const record = subclassChoicePickName(choice.label, option);
+      const reading = engineReading(record);
+      if (reading) {
+        return `The table would read "${record}", the feature ${option.name} writes on a sheet, as ${reading}. Give the option another name.`;
+      }
+    }
+  }
+  return null;
+}
+
 // The normalizer the save routes and a bundle's arrivals run: the editor's
-// own (src/lib/homebrew/gear.ts), then for a species the clash above.
+// own (src/lib/homebrew/gear.ts), then for a species or a subclass the
+// clashes above.
 export function normalizeHomebrewForSave(
   kind: HomebrewKind,
   data: unknown,
   name: string,
 ): ReturnType<typeof normalizeHomebrewData> {
   const normalized = normalizeHomebrewData(kind, data, name);
-  if ("error" in normalized || kind !== "race") {
+  if ("error" in normalized) {
+    return normalized;
+  }
+  if (kind === "archetype") {
+    const clash = subclassChoiceClash(readSubclassChoices((normalized.data as { choices?: unknown }).choices));
+    return clash ? { error: clash } : normalized;
+  }
+  if (kind !== "race") {
     return normalized;
   }
   const group = readSpeciesVariants((normalized.data as { variants?: unknown }).variants);

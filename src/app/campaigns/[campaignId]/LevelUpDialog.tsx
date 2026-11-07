@@ -84,6 +84,9 @@ import { authoredFeatDesc, featAbilityIncrease } from "@/lib/srd/feat-effects";
 import { featGrantSpec, featOwed, type FeatChoices, type FeatPicks } from "@/lib/srd/feat-grants";
 import { grantsForHeldTraining, subclassGrants } from "@/lib/srd/subclass-training";
 import { sheetSpellbook } from "@/lib/srd/owed-picks-logic";
+import { subclassChoiceSlots } from "@/lib/srd/subclass-choice-picks";
+import { parseSubclassChoicePick, subclassChoicePickName } from "@/lib/content/subclass-choices";
+import { SubclassChoicePick } from "@/app/campaigns/[campaignId]/SubclassChoicePick";
 import FeatChoicesFields from "@/app/characters/builder/FeatChoicesFields";
 import { useArchetypeOptions, useWorldPack } from "@/app/characters/builder/useBuilderOptions";
 import { TableScopeNote } from "@/app/characters/builder/TableScopeNote";
@@ -401,7 +404,22 @@ export function LevelUpDialog({
     // written with this level included (the route checks the same book).
     spellbook: [...sheetSpellbook(sheet), ...spellPicks],
   });
-  const needsOptions = openSlots.some((slot) => slot.remaining > 0);
+  // A workshop subclass's own choice due at this class level and not on the
+  // sheet (issue #833): a bloodline, an element, one option each.
+  const choicesDue = subclassChoiceSlots(
+    [{ id: classChoice, subclass: subclassChoice || entrySubclass, level: classLevelAfter }],
+    sheet.features,
+  ).filter((slot) => !slot.chosen);
+  const choicePicked = (label: string) => optionPicks.find((pick) => textKey(parseSubclassChoicePick(pick)?.label ?? "") === textKey(label));
+  const needsOptions = openSlots.some((slot) => slot.remaining > 0) || choicesDue.length > 0;
+
+  function pickChoice(label: string, name: string) {
+    const featureName = subclassChoicePickName(label, { name });
+    setOptionPicks((current) => {
+      const others = current.filter((entry) => textKey(parseSubclassChoicePick(entry)?.label ?? "") !== textKey(label));
+      return current.includes(featureName) ? others : [...others, featureName];
+    });
+  }
 
   function toggleOption(slot: OptionSlot, name: string) {
     const featureName = optionFeatureName(slot.kind, name);
@@ -480,12 +498,15 @@ export function LevelUpDialog({
   // fixed grants are said; the picks are asked for, and the server refuses
   // the level without them.
   const trainingBefore = useMemo(
-    () => new Set(subclassGrants(classList).map((grant) => `${grant.classId}|${textKey(grant.name)}`)),
-    [classList],
+    () => new Set(subclassGrants(classList, undefined, sheet.features).map((grant) => `${grant.classId}|${textKey(grant.name)}`)),
+    [classList, sheet.features],
   );
-  // A skill or language already held becomes a pick (Royal Envoy).
+  // A skill or language already held becomes a pick (Royal Envoy). A
+  // workshop choice made here trains in its option's (issue #833).
   const freshTraining = grantsForHeldTraining(
-    subclassGrants(classesAfter).filter((grant) => !trainingBefore.has(`${grant.classId}|${textKey(grant.name)}`)),
+    subclassGrants(classesAfter, undefined, [...sheet.features, ...optionPicks.map((name) => ({ name }))]).filter(
+      (grant) => !trainingBefore.has(`${grant.classId}|${textKey(grant.name)}`),
+    ),
     sheet.proficiencies,
   );
   const trainingOpen = freshTraining.some((grant) =>
@@ -603,11 +624,12 @@ export function LevelUpDialog({
     () =>
       new Set(
         [
-          ...subclassSpellsFor(classChoice, effectiveSubclass, classLevelAfter, undefined, sheet.features),
+          // With a workshop choice made here: its option's spells (issue #833).
+          ...subclassSpellsFor(classChoice, effectiveSubclass, classLevelAfter, undefined, [...sheet.features, ...optionPicks.map((name) => ({ name }))]),
           ...(learnedKey ? learnedKey.split("|") : []),
         ].map((name) => textKey(name)),
       ),
-    [classChoice, effectiveSubclass, classLevelAfter, sheet.features, learnedKey],
+    [classChoice, effectiveSubclass, classLevelAfter, sheet.features, learnedKey, optionPicks],
   );
   const heldSpells = [...new Set([...knownList, ...pendingList].map((name) => textKey(name)))].filter(
     (name) => !grantedFree.has(name),
@@ -872,7 +894,7 @@ export function LevelUpDialog({
               : step === "training"
                 ? trainingOpen
               : step === "options"
-                ? openSlots.some((slot) => slot.remaining > 0)
+                ? openSlots.some((slot) => slot.remaining > 0) || choicesDue.some((slot) => !choicePicked(slot.label))
                 : false;
   // A subclass grant's picks are the one open choice the server will not
   // take a level without, so that step holds the button until they are made.
@@ -1300,6 +1322,9 @@ export function LevelUpDialog({
                     New abilities for {sheet.name} to choose. These are real powers, not flavour,
                     so read them before picking.
                   </p>
+                  {choicesDue.map((slot) => (
+                    <SubclassChoicePick key={slot.label} slot={slot} picked={choicePicked(slot.label)} onPick={(name) => pickChoice(slot.label, name)} />
+                  ))}
                   {openSlots
                     .filter((slot) => slot.remaining > 0 || slot.chosen.length > 0)
                     .map((slot) => (
