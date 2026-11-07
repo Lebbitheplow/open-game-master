@@ -101,7 +101,7 @@ export function freshPlaySheet(hero: LibraryHero): CharacterSheet {
     spellcasting: sheet.spellcasting,
     conditions: [],
     conditionMeta: {},
-    resources: populateResources(sheet.features, level, abilityMods, {}, sheet.classes, sheet.feats),
+    resources: populateResources(sheet.features, level, abilityMods, {}, sheet.classes, sheet.feats, undefined, { race: sheet.race, variant: sheet.racialChoices?.variant }),
     wildShape: null,
     pets: [],
     exhaustion: 0,

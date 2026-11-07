@@ -472,7 +472,8 @@ await test("Infernal Legacy: a tiefling knows thaumaturgy, casts hellish rebuke 
   });
   assert.ok(tiefling.sheet.spellcasting.cantrips.includes("Thaumaturgy"), "no thaumaturgy among the cantrips");
   const features = populateFeatures([], "wizard", "", "tiefling", 5);
-  const counters = Object.keys(populateResources(features, 5, { cha: 1 }));
+  // The counters are sized from the race itself (issue #833).
+  const counters = Object.keys(populateResources(features, 5, { cha: 1 }, undefined, undefined, undefined, undefined, { race: "tiefling" }));
   assert.ok(counters.some((id) => /infernal|rebuke|legacy/.test(id)), `no daily casting among ${counters}`);
 });
 

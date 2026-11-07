@@ -19,6 +19,8 @@ import type { SubclassExtras } from "@/lib/srd/subclass-tables";
 import { pactSlotsFor, progressionForClass, slotTableFor } from "@/lib/srd/multiclass";
 import { isThirdCaster } from "@/lib/srd/third-caster";
 import { subclassCastingProfileFor } from "@/lib/srd/features";
+import { innateSpellsFor } from "@/lib/srd/racial-grants";
+import { textKey } from "@/lib/language/text-logic";
 
 type Die = CharacterSheet["hitDice"]["die"];
 
@@ -44,7 +46,27 @@ export type LevelState = {
   // The class the sheet held while it was single-classed, when this change
   // is what gives it a second one; null otherwise.
   loneClassBefore?: string | null;
+  // The level the sheet stood at before this change, for what arrives on
+  // the way up (a race's cantrip that comes at 3rd level).
+  levelBefore?: number;
 };
+
+// A cantrip the race gives that arrives on the way up (issue #833): a
+// creation at that level writes it into the cantrip list, and a level-up
+// only counted it as free, so a caster who reached it in play never held
+// it. An option's cantrips are read from the option instead
+// (src/lib/srd/racial-grants.ts innateCantripsFor).
+function withArrivingCantrips(casting: Spellcasting, state: LevelState): Spellcasting {
+  const before = state.levelBefore;
+  if (!casting || before === undefined || state.level <= before) {
+    return casting;
+  }
+  const held = new Set([...(casting.cantrips ?? []), ...(casting.casters ?? []).flatMap((entry) => entry.cantrips ?? [])].map(textKey));
+  const arriving = innateSpellsFor(state.race, state.level)
+    .filter((spell) => spell.castAt === 0 && spell.gainedAt > before && !held.has(textKey(spell.name)))
+    .map((spell) => spell.name);
+  return arriving.length ? { ...casting, cantrips: [...(casting.cantrips ?? []), ...arriving] } : casting;
+}
 
 // The class list with no class named twice. A rename that would repeat a
 // class the sheet already holds is not applied: the list stays as it was.
@@ -175,7 +197,7 @@ export function settleLevelChange(
     features,
     hitDice,
     hitDicePools,
-    spellcasting: pinned.spellcasting ? state.spellcasting : settleSlots(state, classes, extras),
+    spellcasting: withArrivingCantrips(pinned.spellcasting ? state.spellcasting : settleSlots(state, classes, extras), state),
     xp: pinned.xp ? state.xp : Math.max(state.xp, XP_THRESHOLDS[total - 1] ?? 0),
   };
 }

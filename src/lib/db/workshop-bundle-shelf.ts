@@ -310,7 +310,9 @@ export function writeShelfArrivals(userId: string, workshopId: string, bundle: W
     const parentId = arrival.kind === "archetype" && parent.startsWith(`${PORTABLE_REF}class:`) ? ids.get(`class:${textKey(parent.slice(`${PORTABLE_REF}class:`.length))}`) : undefined;
     const withParent = parentId ? { ...arrival.data, classSlug: workshopClassId(parentId) } : arrival.data;
     const entry = { ...arrival, data: renameHomebrewDataRefs(arrival.kind, withParent, asHere).data };
-    const normalized = normalizeHomebrewForSave(entry.kind, entry.data, entry.name);
+    // A species' spells are named from the importer's own catalog, as a save
+    // names them (issue #833): its homebrew spells arrived first.
+    const normalized = normalizeHomebrewForSave(entry.kind, entry.data, entry.name, (spell) => spellFactsFor(spell, [userId]));
     if ("error" in normalized) {
       // Said, not dropped in silence: the importer learns what to fix.
       refused.push(`${label(entry.kind, entry.name)} did not come: ${normalized.error}`);

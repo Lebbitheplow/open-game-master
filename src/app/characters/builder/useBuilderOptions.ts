@@ -4,7 +4,7 @@ import { registerBrowserSubclassExtras, subclassLevelFor } from "@/lib/srd/featu
 import { extraSubclassOf } from "@/lib/srd/subclass-tables";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { scopeQuery, useContentCampaign } from "@/lib/content-scope";
-import { packRaceOptions } from "@/lib/content/race-options";
+import { packRaceOptions, speciesRulesOf } from "@/lib/content/race-options";
 import { registerBrowserSpecies } from "@/lib/srd/race-id";
 import {
   mergedBackgroundOptions,
@@ -116,7 +116,7 @@ export function useBuilderOptions(keepRaceId?: string) {
         // Size, Dwarven Toughness and the rest read a pack or workshop
         // species by id, here as on the server.
         registerBrowserSpecies(
-          Object.fromEntries(options.map((option) => [option.id, { size: option.size, heavyArmorSpeed: option.heavyArmorSpeed, traitNames: option.traitNames }])),
+          Object.fromEntries(options.map((option) => [option.id, speciesRulesOf(option)])),
         );
         setRaces(options);
       }

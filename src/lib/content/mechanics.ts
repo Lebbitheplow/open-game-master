@@ -1,6 +1,7 @@
 import { ABILITIES, fitName, LANGUAGE_NAME_MAX, type Ability } from "@/lib/schemas/sheet";
 import { textKey } from "@/lib/language/text-logic";
 import type { SpeciesVariantGroup } from "@/lib/content/species-variants";
+import type { SpeciesSpellGroup } from "@/lib/content/species-spells";
 
 // Parses Open5e's prose-ish mechanics fields (race asi arrays, class
 // proficiency strings) into the same shapes the bundled SRD data uses, so
@@ -45,6 +46,8 @@ export type RaceMechanics = {
   // A workshop species' choice of packages (a Half-Dragon's ancestry), read
   // by src/lib/content/race-options.ts; the player picks one.
   variants?: SpeciesVariantGroup;
+  // A workshop species' own spells (issue #833), src/lib/content/species-spells.ts.
+  spells?: SpeciesSpellGroup;
 };
 
 export const RACE_SIZES = ["Tiny", "Small", "Medium", "Large"] as const;

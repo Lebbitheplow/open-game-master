@@ -30,10 +30,10 @@ const { effectsFor, FEAT_ONLY_SPEED } = await import("../src/lib/srd/feature-eff
 const { packFeatText } = await import("../src/lib/srd/feat-text.ts");
 const { featGrantSpec } = await import("../src/lib/srd/feat-grant-text.ts");
 const { listRaces } = await import("../src/lib/content/index.ts");
-const { packRaceOptions } = await import("../src/lib/content/race-options.ts");
+const { optionIdFor, packRaceOptions, speciesRulesOf } = await import("../src/lib/content/race-options.ts");
 const { sizeForRace } = await import("../src/lib/srd/index.ts");
 const { hpBonusPerLevel } = await import("../src/lib/srd/race-id.ts");
-const { innateSpellsFor, takesDraconicAncestry } = await import("../src/lib/srd/racial-grants.ts");
+const { bundledSpeciesSpells, innateSpellsFor, takesDraconicAncestry } = await import("../src/lib/srd/racial-grants.ts");
 const { ignoresHeavyArmorSpeedPenalty } = await import("../src/lib/srd/armor.ts");
 const { wearSlotOf } = await import("../src/lib/srd/wear-slots.ts");
 const { classFeaturesFor, subclassNamesFor, subclassSpellsFor } = await import("../src/lib/srd/features.ts");
@@ -431,14 +431,17 @@ test("every published species copied into the workshop grants the same, and the 
       continue;
     }
     copied += 1;
-    const want = optionView(option);
+    // A copy carries the published race's spells in its own rows (issue
+    // #833), which the published row keeps in the bundled table.
+    const spells = bundledSpeciesSpells(optionIdFor(row));
+    const want = optionView(spells ? { ...option, spells } : option);
     const got = optionView(copy);
     for (const key of new Set([...Object.keys(want), ...Object.keys(got)])) {
       if (JSON.stringify(want[key]) !== JSON.stringify(got[key])) {
         changed.push(`${option.name} ${key}: ${JSON.stringify(want[key])?.slice(0, 80)} -> ${JSON.stringify(got[key])?.slice(0, 80)}`);
       }
     }
-    const rules = { size: copy.size, heavyArmorSpeed: copy.heavyArmorSpeed, traitNames: copy.traitNames };
+    const rules = speciesRulesOf(copy);
     const engines = JSON.stringify(engineSpecies("homebrew:copy", rules));
     const original = JSON.stringify(engineSpecies(option.id, { size: option.size, heavyArmorSpeed: option.heavyArmorSpeed, traitNames: option.traitNames }));
     if (engines !== original) changed.push(`${option.name} at the table: ${original} -> ${engines}`);

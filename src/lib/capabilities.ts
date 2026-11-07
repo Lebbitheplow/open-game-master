@@ -229,6 +229,10 @@ export const SERVER_FEATURES = {
   // subclass editor writes. An older host drops the field on save, so the
   // editor shows its "Let the player choose" section only here.
   subclassChoices: true,
+  // Spells on a workshop species and on each option of its player's choice
+  // (issue #833): the species editor's spell rows, which an older host
+  // drops unread on save.
+  speciesSpells: true,
 } as const;
 export type ServerFeatures = { [K in keyof typeof SERVER_FEATURES]: boolean };
 

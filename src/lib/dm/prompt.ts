@@ -12,7 +12,8 @@ import type { StoredRoll } from "@/lib/db/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { ADVENTURE_BEGINS_NOTE, LEAD_NOTE_PREFIX, OPENING_SCENE_CUE, type CampaignMember } from "@/lib/campaign-types";
 import { heldRollUserIds } from "@/lib/dice/held-rolls";
-import { computeSheetDerived, findClass, findSkill, formatModifier, sizeForRace, speedFor, SRD_SKILLS } from "@/lib/srd";
+import { computeSheetDerived, findClass, findSkill, formatModifier, sizeForRace, spellAbilityFor, spellSaveDcFor, speedFor, SRD_SKILLS } from "@/lib/srd";
+import { innateSpellsFor } from "@/lib/srd/racial-grants";
 import { attackSummary } from "@/lib/srd/creature-attacks";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
 import { wearingIsExplicit } from "@/lib/srd/armor";
@@ -540,6 +541,34 @@ function spellListLabel(lists: {
   return parts.join("; ") || "none";
 }
 
+// The spells the race and its chosen option give (issue #833): a
+// tiefling's, a workshop Half-Dragon's Topaz misty step. None sits on a
+// class's list, so the line beside them read "they can cast nothing else"
+// and a fighter's read "cannot cast any spells". One short line: each spell
+// a class list does not already show, its free uses left, and the ability
+// and DC the engine casts them with (src/lib/srd/species-spell-view.ts).
+function racialSpellsLine(sheet: CharacterSheet): string {
+  const spells = innateSpellsFor(sheet.race, sheet.level, undefined, { features: sheet.features });
+  const listed = new Set(
+    [sheet.spellcasting, ...(sheet.spellcasting?.casters ?? [])]
+      .flatMap((entry) => (entry ? [...(entry.cantrips ?? []), ...entry.known, ...entry.prepared] : []))
+      .map((name) => textKey(name)),
+  );
+  const parts = spells
+    .filter((spell) => !listed.has(textKey(spell.name)))
+    .map((spell) => {
+      const ability = spellAbilityFor(sheet, spell.name);
+      const cast = ability ? ` ${ability.toUpperCase()} DC ${spellSaveDcFor(sheet, spell.name)}` : "";
+      if (spell.castAt === 0) {
+        return `${spell.name} (at will${cast})`;
+      }
+      const state = spell.counterId ? sheet.resources?.[spell.counterId] : undefined;
+      const left = spell.uses - Math.min(state?.used ?? 0, spell.uses);
+      return `${spell.name} (L${spell.castAt}, ${left}/${spell.uses} per ${spell.rest} rest${spell.slotsToo ? " or a slot" : ""}${cast})`;
+    });
+  return parts.length ? `Species spells (no slot, spell tools spend them): ${parts.join("; ")}` : "";
+}
+
 // What GAME STATE adds of a companion a player commands in fights
 // (src/lib/dm/companion-command.ts): whose orders its turns follow, named as
 // the story knows them. The account name went into the GM's narration ("she
@@ -770,6 +799,8 @@ export function describeSheet(
       lines.push(`    ${summary}`);
     }
   }
+  const racialSpells = racialSpellsLine(sheet);
+  const besides = racialSpells ? " and their species' spells below" : "";
   if (sheet.spellcasting) {
     const pact = sheet.spellcasting.pact;
     const pactLabel = pact
@@ -790,15 +821,18 @@ export function describeSheet(
         );
       }
       lines.push(
-        `    They can cast nothing beyond those lists.${sheet.concentratingOn ? ` Concentrating on: ${sheet.concentratingOn}` : ""}`,
+        `    They can cast nothing beyond those lists${besides}.${sheet.concentratingOn ? ` Concentrating on: ${sheet.concentratingOn}` : ""}`,
       );
     } else {
       const spellList = spellListLabel(sheet.spellcasting);
       lines.push(
-        `  Spell slots: ${slots || "none"}${pactLabel} | Save DC ${derived.spellSaveDc} | Spells (complete list, they can cast nothing else): ${spellList}${sheet.concentratingOn ? ` | Concentrating on: ${sheet.concentratingOn}` : ""}`,
+        `  Spell slots: ${slots || "none"}${pactLabel} | Save DC ${derived.spellSaveDc} | Spells (complete list${besides}, they can cast nothing else): ${spellList}${sheet.concentratingOn ? ` | Concentrating on: ${sheet.concentratingOn}` : ""}`,
       );
     }
-  } else {
+  }
+  if (racialSpells) {
+    lines.push(`  ${racialSpells}`);
+  } else if (!sheet.spellcasting) {
     lines.push(`  Spellcasting: none (cannot cast any spells)`);
   }
   // The purse always prints, even with an empty pack: the model cannot keep a

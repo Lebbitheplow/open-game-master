@@ -427,6 +427,8 @@ export function createSheet(
     classList.length > 1 ? classList : undefined,
     input.feats,
     campaignId,
+    // The race's spells' counters (issue #833).
+    { race: input.race, variant: input.racialChoices?.variant },
   );
   // Unless the AC is pinned, it comes from the gear they are actually
   // carrying rather than the builder's suggestion. An absent flag means a
@@ -817,6 +819,7 @@ export function patchSheet(
             classes.length ? classes : undefined,
             patch.feats ?? existing.feats,
             existing.campaignId,
+            { race: patch.race ?? existing.race },
           )
         : existing.resources),
     equipment: patch.equipment ?? existing.equipment,
@@ -871,6 +874,7 @@ export function patchSheet(
         hitDicePools: patch.hitDicePools !== undefined ? patch.hitDicePools : existing.hitDicePools,
         spellcasting: next.spellcasting,
         loneClassBefore: existing.classes.length ? null : existing.class,
+        levelBefore: existing.level,
       },
       { spellcasting: patch.spellcasting !== undefined, xp: patch.xp !== undefined },
       subclassExtrasForTable(existing.campaignId, existing.userId),
@@ -896,6 +900,7 @@ export function patchSheet(
       next.classes.length ? next.classes : undefined,
       next.feats,
       existing.campaignId,
+      { race: next.race },
     );
   }
 

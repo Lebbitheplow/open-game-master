@@ -7,6 +7,7 @@
 
 import { textKey } from "@/lib/language/text-logic";
 import { EDITION_2024_DOCUMENTS } from "@/lib/content/edition";
+import type { SpeciesSpellGroup } from "@/lib/content/species-spells";
 
 // A sheet saved while the pack still carried 2024 species holds its row's
 // id with the document in front ("srd-2024-goliath"). That species is the
@@ -42,6 +43,12 @@ export type SpeciesRules = {
   size?: string;
   heavyArmorSpeed?: boolean;
   traitNames: string[];
+  // A workshop species' own spells, and each option's by its id with the
+  // record the option is written as (issue #833,
+  // src/lib/content/species-spells.ts). With its own spells a species casts
+  // those, not the ones a published trait it names would borrow.
+  spells?: SpeciesSpellGroup;
+  variantSpells?: Record<string, SpeciesSpellGroup & { from?: string }>;
 };
 
 let speciesReader: ((raceId: string) => SpeciesRules | null) | null = null;

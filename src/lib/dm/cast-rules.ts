@@ -26,7 +26,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { hasItemTag } from "@/lib/srd/item-tags";
 import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
 import { pactRitualOf } from "@/lib/srd/class-spell-grants";
-import { grantedCastFor, type GrantedCast } from "@/lib/srd/granted-casts";
+import { grantedCastFor, grantUses, type GrantedCast } from "@/lib/srd/granted-casts";
 import type { RacialCantripChoices } from "@/lib/srd/racial-cantrips";
 
 export type CastRefusal = ToolError;
@@ -166,18 +166,48 @@ function classHolds(sheet: Caster, names: Set<string>, extras?: SubclassExtras):
 // lists do not hold it (src/lib/srd/granted-casts.ts), or null.
 export function grantedCastOf(sheet: Caster, spell: string, facts: SpellFacts | null, extras?: SubclassExtras): GrantedCast | null {
   const names = namesOf(spell, facts);
-  return classHolds(sheet, names, extras) ? null : grantedCastFor(grantSheet(sheet), names);
+  if (!classHolds(sheet, names, extras)) {
+    return grantedCastFor(grantSheet(sheet), names);
+  }
+  // A race's free cast of a spell the class holds too (a tiefling wizard's
+  // darkness, a Topaz wizard's misty step) is spent before a slot, as a
+  // feat's free cast is (issue #833: the class's slot was always spent, and
+  // the free use never was). The class's slots cast it once the use is gone.
+  const grant = grantedCastFor(grantSheet(sheet), names);
+  const uses = grant ? grantUses(sheet.resources, grant) : null;
+  return grant?.slot === "free" && uses && uses.left > 0 ? { ...grant, slotsToo: true } : null;
 }
 
-// A once-a-long-rest grant whose use is spent: Infernal Legacy's hellish
-// rebuke cast today, Thief of Five Fates' bane. A counter the sheet does not
-// carry yet has its use.
+// A grant whose uses are spent: Infernal Legacy's hellish rebuke cast
+// today, Thief of Five Fates' bane. A counter the sheet does not carry yet
+// has its use. A grant the character's own slots can cast too (a workshop
+// option's misty step, issue #833) is not refused: a slot pays.
 function grantUseProblem(sheet: Caster, grant: GrantedCast, spell: string): ToolError | null {
-  const state = grant.counter ? sheet.resources?.[grant.counter] : undefined;
-  if (state && state.used >= state.max) {
-    return { error: `${sheet.name} casts ${spell} through ${grant.source} once, and again after a long rest; that use is spent.`, refused: "rules" };
+  const uses = grantUses(sheet.resources, grant);
+  if (uses && uses.left <= 0 && !grant.slotsToo) {
+    const times = uses.max === 1 ? "once" : `${uses.max} times`;
+    return {
+      error: `${sheet.name} casts ${spell} through ${grant.source} ${times}, and again after a ${grant.rest ?? "long"} rest; ${uses.max === 1 ? "that use is" : "those uses are"} spent.`,
+      refused: "rules",
+    };
   }
   return null;
+}
+
+// Whether a free grant casts this time without a slot: a cantrip or an
+// at-will grant always; a counted one while a use is left, at its own level
+// (a level named above it, on a grant the slots can cast too, is a slot's
+// casting, as a feat's free cast is).
+export function grantCastsFree(sheet: Pick<Caster, "resources">, grant: GrantedCast | null, facts: SpellFacts | null, named: number | undefined): boolean {
+  if (!grant || grant.slot !== "free") {
+    return false;
+  }
+  const uses = grantUses(sheet.resources, grant);
+  if (uses && uses.left <= 0) {
+    return false;
+  }
+  const own = grant.castAt ?? facts?.level;
+  return !(grant.slotsToo && named !== undefined && own !== undefined && named !== own);
 }
 
 // The components as this caster casts the spell: an invocation that casts

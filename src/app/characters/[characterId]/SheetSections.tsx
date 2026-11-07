@@ -12,6 +12,7 @@ import {
   SkillRows,
   VitalTiles, TrainingLines } from "@/components/sheet/SheetParts";
 import { SheetSpells } from "@/components/sheet/SheetSpells";
+import { speciesSpellsShown } from "@/lib/srd/species-spell-view";
 import { Ribbon } from "@/components/ui/Ribbon";
 import { cn } from "@/lib/cn";
 import type { CreateSheetInput } from "@/lib/schemas/sheet";
@@ -130,7 +131,7 @@ export function SheetSections({ sheet, level = 1 }: { sheet: CreateSheetInput; l
         <TrainingLines proficiencies={sheet.proficiencies} />
       </SheetPanel>
 
-      {sheet.spellcasting ? (
+      {sheet.spellcasting || speciesSpellsShown({ ...sheet, level }).length ? (
         <SheetPanel title="Spells">
           <SheetSpells sheet={{ ...sheet, level }} />
         </SheetPanel>

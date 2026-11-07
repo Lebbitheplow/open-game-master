@@ -23,7 +23,7 @@ import { formatPrice, purseCoins, purseCopper } from "@/lib/srd/currency";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
 import { magicItemRiders } from "@/lib/srd/magic-items";
 import type { WearConflict } from "@/lib/srd/wear-slots";
-import { RESOURCE_DEFS, resourceName } from "@/lib/srd/class-resources";
+import { resourceDef, resourceName } from "@/lib/srd/class-resources";
 import { foretoldLeft } from "@/lib/dm/foretold-logic";
 import { GameTerm } from "@/components/ui/GameTerm";
 import {
@@ -38,6 +38,7 @@ import {
   SkillRows,
   VitalTiles, TrainingLines } from "@/components/sheet/SheetParts";
 import { SheetSpells } from "@/components/sheet/SheetSpells";
+import { speciesSpellsShown } from "@/lib/srd/species-spell-view";
 import { SummonDoor } from "@/app/campaigns/[campaignId]/SummonDoor";
 import { DefensesLine, HitDiceSpend, StateTags } from "@/components/sheet/SheetState";
 import { SheetBetween } from "@/components/sheet/SheetBetween";
@@ -58,7 +59,9 @@ function titleCase(value: string) {
 
 // Every resource already carries a line explaining what spending it does; it
 // was written for the DM model and reads just as well for the player.
-const RESOURCE_HELP = new Map(RESOURCE_DEFS.map((def) => [def.id, def.guidance]));
+// A counter made from its id (a race's spell, a feat's free cast) is no
+// row of the table: its help is read from its id too.
+const resourceHelp = (id: string) => resourceDef(id)?.guidance;
 
 // Full character sheet, opened by selecting any party member. Read-only,
 // except the owner may mark counters their class actually has as spent
@@ -454,6 +457,16 @@ export function CharacterSheetDialog({
             </SheetBlock>
           ) : null}
 
+          {/* A character with no Spellcasting may still cast its species'
+              spells (issue #833): a tiefling fighter's hellish rebuke. */}
+          {!sheet.spellcasting && speciesSpellsShown(sheet).length ? (
+            <SheetBlock className="mt-4" title="Spells">
+              <div className="reveal">
+                <SheetSpells sheet={sheet} editable={mine} />
+              </div>
+            </SheetBlock>
+          ) : null}
+
           {spends || Object.keys(sheet.resources).length ? (
             <SheetBlock className="mt-4" title="Hit dice and resources">
               <div className="space-y-1.5 text-xs text-stone-300">
@@ -495,7 +508,7 @@ export function CharacterSheetDialog({
                     id={id}
                     pool={pool}
                     name={resourceName(id)}
-                    help={RESOURCE_HELP.get(id)}
+                    help={resourceHelp(id)}
                     spends={spends}
                     corrects={corrects}
                     busy={busy}

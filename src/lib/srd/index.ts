@@ -19,6 +19,7 @@ import { purseCoins } from "@/lib/srd/currency";
 import { allSpellNames } from "@/lib/srd/spell-lists";
 import { hpBonusPerLevel, speciesRulesFor, type SpeciesRules } from "@/lib/srd/race-id";
 import { racialSpellAbility } from "@/lib/srd/racial-grants";
+import { featSpellAbility, type FeatSpellSheet } from "@/lib/srd/feat-spells";
 import { isThirdCaster, thirdCasterSlots } from "@/lib/srd/third-caster";
 import type {
   Ability,
@@ -629,6 +630,13 @@ function classListsHold(casting: DerivedSheet["spellcasting"], spell: string): b
     [...(entry?.known ?? []), ...(entry?.prepared ?? [])].some((name) => textKey(name) === wanted),
   );
 }
+// The ability a spell is cast with when something other than a class gave
+// it (issue #833): the feat's that taught it, else the race's (a tiefling's
+// Charisma, a workshop option's own), or null for the class's.
+function grantedSpellAbility(sheet: DerivedSheet, spell: string): Ability | null {
+  return featSpellAbility(sheet as FeatSpellSheet, spell) ?? racialSpellAbility(sheet as RacialSheet, spell, classListsHold(sheet.spellcasting, spell));
+}
+
 export type CastingSheet<T extends DerivedSheet = DerivedSheet> = T & { spellcasting: NonNullable<T["spellcasting"]> };
 
 // A sheet with spellcasting, which always has a save DC (its ability is
@@ -653,9 +661,9 @@ export function spellSaveDcFor(
     return fromItem;
   }
   const derived = computeSheetDerived(sheet);
-  // A race's spell is cast with the ability the race names, caster or not
-  // (SRD 5.1, Infernal Legacy; High Elf, Cantrip).
-  const racial = racialSpellAbility(sheet as RacialSheet, spellName, classListsHold(sheet.spellcasting, spellName));
+  // A race's or a feat's spell is cast with the ability it names, caster
+  // or not (SRD 5.1, Infernal Legacy; High Elf, Cantrip; Fey Touched).
+  const racial = grantedSpellAbility(sheet, spellName);
   if (racial) {
     return 8 + derived.proficiencyBonus + derived.abilityMods[racial];
   }
@@ -681,7 +689,7 @@ export function spellAttackFor(
     return fromItem;
   }
   const derived = computeSheetDerived(sheet);
-  const racial = racialSpellAbility(sheet as RacialSheet, spellName, classListsHold(sheet.spellcasting, spellName));
+  const racial = grantedSpellAbility(sheet, spellName);
   if (racial) {
     return derived.proficiencyBonus + derived.abilityMods[racial];
   }
@@ -700,6 +708,10 @@ export function spellAttackFor(
 // wizard's Spiritual Weapon adds Wisdom to its damage, not Intelligence
 // (issue 659). Null with no spellcasting.
 export function spellAbilityFor(sheet: DerivedSheet, spellName: string): "str" | "dex" | "con" | "int" | "wis" | "cha" | null {
+  const granted = grantedSpellAbility(sheet, spellName);
+  if (granted) {
+    return granted;
+  }
   if (!sheet.spellcasting) {
     return null;
   }
