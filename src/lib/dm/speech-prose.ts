@@ -221,12 +221,14 @@ export function subjectOf(sentence: string, reading: Reading, atStart = true): S
     return { kind: "none" };
   }
   const at = (body: string, start: boolean): Pointer | null => {
-    const found = nameAt(body, reading, start);
-    if (found) {
-      return { kind: "name", speaker: found.speaker, text: body, end: found.end };
-    }
+    // The pronoun first: nameAt reads past a common word or two, so "he tells
+    // Bram" was about Bram, the one person it is surely not about.
     const pronoun = englishPronounAt(body, reading);
-    return pronoun ? { kind: "pronoun", text: body, end: pronoun[0].length } : null;
+    if (pronoun) {
+      return { kind: "pronoun", text: body, end: pronoun[0].length };
+    }
+    const found = nameAt(body, reading, start);
+    return found ? { kind: "name", speaker: found.speaker, text: body, end: found.end } : null;
   };
   const direct = at(text, atStart);
   if (direct) {
