@@ -377,21 +377,81 @@ await test("a half caster that learns its spells is counted as a ranger: two kno
 // ---- copies ----
 
 await test("a copied class with a list no SRD class has keeps that list, not the wizard's", async () => {
-  const { bundledClassTable, classMechanicsOf } = await import("../src/lib/workshop/class-catalog.ts");
+  const { bundledClassTable } = await import("../src/lib/workshop/class-catalog.ts");
   const artificer = bundledClassTable("artificer");
-  if (artificer) {
-    assert.equal(artificer.spellListFrom, "custom", JSON.stringify(artificer.spellListFrom));
-    assert.deepEqual(artificer.spellList, checklistSpellsOn("artificer").map((spell) => spell.name));
+  assert.ok(artificer, "the bundled artificer could not be copied");
+  assert.equal(artificer.spellListFrom, "custom", JSON.stringify(artificer.spellListFrom));
+  assert.deepEqual(artificer.spellList, checklistSpellsOn("artificer").map((spell) => spell.name));
+  assert.equal(bundledClassTable("cleric").spellListFrom, "cleric");
+  // (A content pack's own caster is scripts/test-custom-spell-lists-pack.mjs,
+  // on a pack of its own.)
+});
+
+await test("a copy reads a class's spells only when its list is its own, not for every caster a search lists", async () => {
+  const { bundledClassTable } = await import("../src/lib/workshop/class-catalog.ts");
+  const asked = [];
+  const spy = (classId) => {
+    asked.push(classId);
+    return checklistSpellsOn(classId).map((spell) => spell.name);
+  };
+  for (const classId of ["cleric", "wizard", "paladin", "warlock", "fighter"]) bundledClassTable(classId, spy);
+  assert.deepEqual(asked, [], `the spells of ${asked.join(", ")} were read for a published list`);
+  bundledClassTable("artificer", spy);
+  assert.deepEqual(asked, ["artificer"]);
+});
+
+// ---- the search's pages ----
+// (Whose list a search may read is scripts/test-custom-spell-lists-pack.mjs:
+// it shows only through the pack's rows.)
+
+await test("a search pages the table's own spells with the pack's, so a pager ends", () => {
+  const all = searchSpells({ classSlug: runeId, userIds: authors, limit: 200 }).map((row) => row.name);
+  assert.ok(all.length >= 2, all.join(", "));
+  const first = searchSpells({ classSlug: runeId, userIds: authors, limit: 1, offset: 0 }).map((row) => row.name);
+  const second = searchSpells({ classSlug: runeId, userIds: authors, limit: 1, offset: 1 }).map((row) => row.name);
+  assert.equal(first.length, 1, `a page of one held ${first.join(", ")}`);
+  assert.equal(second.length, 1, `a page of one held ${second.join(", ")}`);
+  assert.notEqual(first[0], second[0], "the second page repeated the first");
+  const past = searchSpells({ classSlug: runeId, userIds: authors, limit: 200, offset: all.length });
+  assert.deepEqual(past, [], "a page past the end still held the table's own spells");
+});
+
+await test("a lite search answers names and levels without each spell's text", async () => {
+  const content = await world.route("content/[kind]");
+  world.signIn(world.owner);
+  const ask = async (extra) => {
+    const response = await content.GET(new Request(`http://test/api/content/spells?q=ember${extra}`), { params: Promise.resolve({ kind: "spells" }) });
+    return (await response.json()).results ?? [];
+  };
+  const full = await ask("");
+  assert.ok(full.some((row) => row.data?.desc), "the full answer carries the text");
+  const lite = await ask("&lite=1");
+  assert.ok(lite.length > 0 && lite.length === full.length, `lite answered ${lite.length} of ${full.length}`);
+  for (const row of lite) {
+    assert.equal(row.data?.desc, undefined, `${row.name} came with its text`);
+    assert.equal(typeof row.level, "number");
   }
-  const cleric = bundledClassTable("cleric");
-  assert.equal(cleric.spellListFrom, "cleric");
-  const pack = classMechanicsOf(
-    { name: "Tinkerer", slug: "tinkerer", source: "open5e", data: { desc: "", hit_dice: "1d8", spellcasting_ability: "Intelligence", prof_saving_throws: "Constitution, Intelligence" } },
-    () => ["Mending", "Cure Wounds"],
-  );
-  if (pack && pack.casterType !== "none") {
-    assert.deepEqual([pack.spellListFrom, pack.spellList], ["custom", ["Mending", "Cure Wounds"]]);
-  }
+});
+
+// ---- bundles and character files ----
+
+await test("a spell tagged with a workshop class travels with it, and is on the class's list where it lands", async () => {
+  const { characterFileShelf, landCharacterFile } = await import("../src/lib/db/character-file.ts");
+  const hero = runeHero(1, { prepared: ["Shield"], cantrips: ["Fire Bolt", "Light", "Runeflare"] });
+  const file = characterFileShelf(world.owner.id, world.sheet(hero.id));
+  const tagged = file.homebrew.find((entry) => entry.kind === "spell" && entry.name === "Runeflare");
+  assert.ok(tagged, `the tagged cantrip was left out: ${file.homebrew.map((entry) => entry.name).join(", ")}`);
+  assert.deepEqual(tagged.data.classes, ["homebrew:@class:Runesmith"], "the tag kept this server's id");
+  const importer = world.addUser("importer");
+  const landed = landCharacterFile(importer.id, { name: "Odda", sheet: file.sheet, homebrew: file.homebrew });
+  const { listHomebrew } = await import("../src/lib/db/homebrew.ts");
+  const herClass = listHomebrew(importer.id, "class").find((entry) => entry.name === "Runesmith");
+  assert.ok(herClass, "the class did not land");
+  const herSpell = listHomebrew(importer.id, "spell").find((entry) => entry.name === "Runeflare");
+  assert.deepEqual(herSpell.data.classes, [workshopClassId(herClass.id)], "the tag does not name the class as it is here");
+  assert.equal(landed.sheet.class, workshopClassId(herClass.id));
+  const { spellOnListKey } = await import("../src/lib/classes/class-spell-list.ts");
+  assert.equal(spellOnListKey(workshopClassId(herClass.id), { name: "Runeflare", classes: herSpell.data.classes }), true);
 });
 
 // ---- renames and limits ----
@@ -426,6 +486,33 @@ await test("a list past what a list keeps is refused by name, not cut", async ()
   assert.match(JSON.stringify(over.body), /keeps 400 at most/);
   const levels = await brew("archetype", "Crowded", { desc: "", classSlug: runeId, levels: {}, expanded: { 1: ["Bless", "Shield", "Sleep", "Light", "Fire Bolt", "Mage Hand", "Command"] } });
   assert.equal(levels.status, 400, JSON.stringify(levels.body));
+});
+
+await test("a renamed spell is renamed on a co-author's class at the table too", async () => {
+  const { setAssistantDm, joinByInviteCode } = await import("../src/lib/db/campaigns.ts");
+  const coAuthor = world.addUser("co-gm");
+  assert.ok(!("error" in joinByInviteCode(coAuthor.id, world.campaign().inviteCode)), "the co-GM could not join");
+  assert.equal(setAssistantDm(world.campaignId, coAuthor.id), true);
+  world.signIn(coAuthor);
+  const response = await homebrew.POST(new Request("http://test/", { method: "POST", body: JSON.stringify({ kind: "class", name: "Ashwright", data: { ...CLASS_BASE, casterType: "full", spellListFrom: "custom", spellList: ["Ember Spear", "Shield"] } }) }));
+  const made = await response.json();
+  assert.equal(response.status, 201, JSON.stringify(made));
+  const entryRoute = await world.route("homebrew/[id]");
+  world.signIn(world.owner);
+  const renamed = await entryRoute.PATCH(new Request("http://test/", { method: "PATCH", body: JSON.stringify({ name: "Ember Pike" }) }), { params: Promise.resolve({ id: emberLance.body.entry.id }) });
+  assert.equal(renamed.status, 200);
+  const { listHomebrew } = await import("../src/lib/db/homebrew.ts");
+  const theirs = listHomebrew(coAuthor.id, "class").find((entry) => entry.name === "Ashwright");
+  assert.deepEqual(theirs.data.spellList, ["Ember Pike", "Shield"]);
+  assert.ok(findCustomClass(workshopClassId(made.entry.id)).customSpells.includes("Ember Pike"));
+});
+
+await test("a list keeps each spell once by its name key, and counts it once against the cap", async () => {
+  const kept = normalizeClassData({ ...CLASS_BASE, casterType: "full", spellListFrom: "custom", spellList: ["Shield", "shield", " SHIELD ", "Light"] });
+  assert.deepEqual(kept.data.spellList, ["Shield", "Light"]);
+  const many = [...Array.from({ length: 400 }, (_, index) => `Spell ${index}`), "spell 0"];
+  const atCap = await brew("class", "Brimful", { ...CLASS_BASE, casterType: "full", spellListFrom: "custom", spellList: many });
+  assert.equal(atCap.status, 201, JSON.stringify(atCap.body));
 });
 
 // ---- an older host ----

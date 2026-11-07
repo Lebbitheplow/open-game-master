@@ -271,7 +271,13 @@ export function searchSpells(
   const offset = Math.max(0, options.offset ?? 0);
   // A workshop class names its own list, or the one it borrows, and the
   // homebrew spells tagged with it (src/lib/classes/class-spell-list.ts).
+  // Only a class of the search's own authors: another author's would filter
+  // the pack through their list and so read it out (issue #833 review).
   const workshopList = classSlug.startsWith("homebrew-");
+  if (workshopList && !authorsOf(options).some((author) => listHomebrew(author, "class", { archived: true }).some((entry) => workshopClassId(entry.id) === classSlug))) {
+    return [];
+  }
+  const limit = clampLimit(options.limit);
   const rows = allPackSpells()
     .filter(
       (row) =>
@@ -283,9 +289,7 @@ export function searchSpells(
         (!schools.length || schools.includes(row.school.toLowerCase())) &&
         (!options.attack || /\bspell attack\b/i.test(String(row.data.desc ?? ""))) &&
         (options.unoffered || offeredInPlay(spellNeeds(row))),
-    )
-    .slice(offset, offset + clampLimit(options.limit))
-    .map((row) => withNeeds("spells", row));
+    );
   // A published name is the published spell's: a homebrew row that takes the
   // name of one is not offered in its place, so nobody rewrites Revivify into
   // a 1st level spell by writing their own.
@@ -314,8 +318,35 @@ export function searchSpells(
         (!options.attack || /\bspell attack\b/i.test(String(entry.data.desc ?? ""))),
     );
   // The DM's own work leads: a homebrew goblin boss should not sit after
-  // twenty-five catalogue goblins.
-  return [...brews, ...rows];
+  // twenty-five catalogue goblins. One page of the two together: the table's
+  // own came on every page before, so a pager over a class with many of them
+  // never saw a short page and asked again and again.
+  const ownPage = brews.slice(offset, offset + limit);
+  const packFrom = Math.max(0, offset - brews.length);
+  const packPage = rows.slice(packFrom, packFrom + (limit - ownPage.length)).map((row) => withNeeds("spells", row));
+  return [...ownPage, ...packPage];
+}
+
+// Every spell this server files under one class's list, the pack's and the
+// given authors' homebrew included, page by page (a search answers 200 at
+// most), with the bundled checklist's first. What a copied class's own list
+// is made of (src/lib/workshop/class-catalog.ts, issue #833).
+export function spellRowsOnList(list: string, authors: readonly string[]): Array<{ name: string; level: number; homebrew: boolean }> {
+  const out = checklistSpellsOn(list).map((spell) => ({ ...spell, homebrew: false }));
+  const held = new Set(out.map((spell) => textKey(spell.name)));
+  for (let offset = 0; ; offset += MAX_LIMIT) {
+    const page = searchSpells({ classSlug: list, userIds: [...authors], limit: MAX_LIMIT, offset });
+    for (const row of page) {
+      if (!held.has(textKey(row.name))) {
+        held.add(textKey(row.name));
+        out.push({ name: row.name, level: row.level, homebrew: row.source === "homebrew" });
+      }
+    }
+    if (page.length < MAX_LIMIT) {
+      break;
+    }
+  }
+  return out;
 }
 
 // Every spell on one class's list that the engine may choose for a
@@ -327,25 +358,11 @@ export function searchSpells(
 // own made of them, never reached one (issue #833). A pack's third-party
 // spells on a published list stay the players' to pick, as before.
 export function classSpellPool(list: string, authors: readonly string[]): Array<{ name: string; level: number }> {
-  const out = checklistSpellsOn(list);
-  const held = new Set(out.map((spell) => textKey(spell.name)));
+  const listed = new Set(checklistSpellsOn(list).map((spell) => textKey(spell.name)));
   const own = new Set((customSpellsOf(list) ?? []).map(textKey));
-  for (let offset = 0; offset < 4000; offset += MAX_LIMIT) {
-    const page = searchSpells({ classSlug: list, userIds: [...authors], limit: MAX_LIMIT, offset });
-    for (const row of page) {
-      if (row.source !== "homebrew" && !own.has(textKey(row.name))) {
-        continue;
-      }
-      if (!held.has(textKey(row.name))) {
-        held.add(textKey(row.name));
-        out.push({ name: row.name, level: row.level });
-      }
-    }
-    if (page.length < MAX_LIMIT) {
-      break;
-    }
-  }
-  return out;
+  return spellRowsOnList(list, authors)
+    .filter((spell) => listed.has(textKey(spell.name)) || spell.homebrew || own.has(textKey(spell.name)))
+    .map(({ name, level }) => ({ name, level }));
 }
 
 // Does this row answer to `name`? Every caller that wants one specific spell

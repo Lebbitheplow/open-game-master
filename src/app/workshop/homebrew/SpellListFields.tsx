@@ -5,10 +5,11 @@ import { Loader2, Plus, Search, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
 import { AddFromList } from "@/components/ui/AddFromList";
-import { ANY_SPELL_LIST, useSpellLookups, useSpellPool, type PoolSpell } from "@/components/sheet/useSpellPool";
+import { useSpellLookups } from "@/components/sheet/useSpellPool";
+import { useContentSearch } from "@/app/characters/builder/useContentSearch";
 import { addChip, rowIcon } from "@/app/workshop/kit";
 import { compareNames, textKey } from "@/lib/language/text-logic";
-import { checklistSpellsOn, spellLevelOf } from "@/lib/srd/spell-lists";
+import { checklistSpellsMatching, checklistSpellsOn, spellLevelOf } from "@/lib/srd/spell-lists";
 import { CUSTOM_LIST_MAX, SPELL_LISTS } from "@/lib/homebrew/class-data";
 
 // A workshop class's list of its own (issue #833): the spells it may learn
@@ -19,30 +20,35 @@ import { CUSTOM_LIST_MAX, SPELL_LISTS } from "@/lib/homebrew/class-data";
 
 const LEVEL_WORDS = ["Cantrips", "1st level", "2nd level", "3rd level", "4th level", "5th level", "6th level", "7th level", "8th level", "9th level"];
 
+type Found = { name: string; level: number; source?: string; document?: string };
+
 // Every spell a published class's list holds, as this server files them:
-// the checklist's, and the pack's and the author's homebrew tagged with it.
-async function listNames(list: string): Promise<string[]> {
-  const names = checklistSpellsOn(list).map((spell) => spell.name);
+// the checklist's, and the pack's and the author's homebrew tagged with it,
+// names and levels only (`lite=1`).
+async function listSpells(list: string): Promise<Found[]> {
+  const spells: Found[] = checklistSpellsOn(list);
   try {
     for (let offset = 0; offset < 2000; offset += 200) {
-      const params = new URLSearchParams({ class: list, level: "9", limit: "200", offset: String(offset) });
+      const params = new URLSearchParams({ class: list, level: "9", limit: "200", offset: String(offset), lite: "1" });
       const response = await fetch(`/api/content/spells?${params}`);
       if (!response.ok) break;
-      const page = ((await response.json()) as { results?: Array<{ name: string }> }).results ?? [];
-      names.push(...page.map((row) => row.name));
+      const page = ((await response.json()) as { results?: Found[] }).results ?? [];
+      spells.push(...page.map((row) => ({ name: row.name, level: Number(row.level ?? 0) })));
       if (page.length < 200) break;
     }
   } catch {
     // Unreachable: the checklist's own list stands.
   }
-  return names;
+  return spells;
 }
 
 // A search over every spell this server knows, for a workshop list to pick
-// from: the content pack's and the author's homebrew, or the bundled SRD
-// checklist on a server without the pack (useSpellPool's own fallback). The
-// catalog picker (ContentPick) shows nothing without the pack, so a subclass's
-// spells could not be picked on such a server at all.
+// from: the server is asked for what was typed (the content pack's rows and
+// the author's homebrew, names and levels only), and the bundled SRD
+// checklist answers beside it, so a server without the pack still offers the
+// SRD's spells. Asked afresh as the person types, so a homebrew spell made a
+// moment ago is found. It used to load every spell the server knows, text
+// and all, whenever a form opened, and kept it for the page's life.
 export function SpellSearch({
   exclude,
   onPick,
@@ -50,23 +56,38 @@ export function SpellSearch({
   placeholder,
   disabled = false,
   className,
+  noCantrips = false,
 }: {
   exclude: ReadonlySet<string>;
-  onPick: (spell: PoolSpell) => void;
+  onPick: (spell: Found) => void;
   label: string;
   placeholder: string;
   disabled?: boolean;
   className?: string;
+  // A half caster learns no cantrips: none is offered.
+  noCantrips?: boolean;
 }) {
-  const { pool, loading } = useSpellPool(ANY_SPELL_LIST, 9);
-  const [query, setQuery] = useState("");
+  const { query, setQuery, results: served, loading } = useContentSearch("spells", { lite: "1", limit: "30" });
   const wanted = textKey(query);
-  const results: PoolSpell[] = wanted
-    ? pool
-        .filter((spell) => !exclude.has(textKey(spell.name)) && textKey(spell.name).includes(wanted))
-        .sort((a, b) => a.level - b.level || compareNames(a.name, b.name))
-        .slice(0, 30)
-    : [];
+  const results: Found[] = useMemo(() => {
+    if (!wanted) {
+      return [];
+    }
+    const rows: Found[] = [
+      ...served.map((row) => ({ name: row.name, level: Number(row.level ?? 0), source: row.source, document: row.document })),
+      ...checklistSpellsMatching(query, 60),
+    ];
+    const seen = new Set<string>();
+    return rows
+      .filter((spell) => {
+        const key = textKey(spell.name);
+        if (seen.has(key) || exclude.has(key) || !key.includes(wanted) || (noCantrips && spell.level === 0)) return false;
+        seen.add(key);
+        return true;
+      })
+      .sort((a, b) => a.level - b.level || compareNames(a.name, b.name))
+      .slice(0, 30);
+  }, [served, query, wanted, exclude, noCantrips]);
   return (
     <div className={cn("space-y-1.5", className)}>
       <div className="relative">
@@ -79,7 +100,7 @@ export function SpellSearch({
           aria-label={label}
           className={cn(ui.input, "w-full pl-7 text-sm pointer-coarse:min-h-10")}
         />
-        {loading ? <Loader2 className="absolute right-2 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-stone-500" /> : null}
+        {loading && wanted ? <Loader2 className="absolute right-2 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-stone-500" /> : null}
       </div>
       {wanted && !loading && !results.length ? (
         <p className="reveal text-[11px] text-stone-500">Nothing matched &quot;{query.trim()}&quot; that is not picked already.</p>
@@ -109,15 +130,25 @@ export function SpellSearch({
   );
 }
 
-export function CustomSpellList({ names, onChange }: { names: string[]; onChange: (names: string[]) => void }) {
-  const { pool } = useSpellPool(ANY_SPELL_LIST, 9);
+export function CustomSpellList({
+  names,
+  onChange,
+  noCantrips = false,
+}: {
+  names: string[];
+  onChange: (names: string[]) => void;
+  // A half caster's list: it learns no cantrips, so none is offered or added.
+  noCantrips?: boolean;
+}) {
   const [filling, setFilling] = useState("");
-  const byKey = useMemo(() => new Map(pool.map((spell) => [textKey(spell.name), spell])), [pool]);
+  // Levels of the picked names the checklist does not know (the pack's, the
+  // author's homebrew), one lookup each, kept for the page's life.
   const lookups = useSpellLookups(names);
   const chosen = useMemo(() => new Set(names.map(textKey)), [names]);
-  const levelOf = (name: string): number | null =>
-    byKey.get(textKey(name))?.level ?? spellLevelOf(name) ?? lookups.get(textKey(name))?.level ?? null;
+  const levelOf = (name: string): number | null => spellLevelOf(name) ?? lookups.get(textKey(name))?.level ?? null;
+  const homebrew = (name: string) => lookups.get(textKey(name))?.source === "homebrew";
   const full = names.length >= CUSTOM_LIST_MAX;
+  const cantripsHeld = noCantrips ? names.filter((name) => levelOf(name) === 0).length : 0;
 
   const add = (more: string[]) => {
     const next = [...names];
@@ -145,6 +176,12 @@ export function CustomSpellList({ names, onChange }: { names: string[]; onChange
           ? `${names.length} ${names.length === 1 ? "spell" : "spells"} on the list${full ? `, the most a list keeps (${CUSTOM_LIST_MAX})` : ""}.`
           : "No spells yet. Add a published class's list to start from, or find spells one by one."}
       </p>
+      {noCantrips ? (
+        <p className="text-[11px] text-stone-500" data-testid="no-cantrips-hint">
+          A half caster learns no cantrips, so none is offered here.
+          {cantripsHeld ? ` The ${cantripsHeld === 1 ? "cantrip" : `${cantripsHeld} cantrips`} on the list ${cantripsHeld === 1 ? "is" : "are"} never taken; take ${cantripsHeld === 1 ? "it" : "them"} off.` : ""}
+        </p>
+      ) : null}
       {ordered.map(([level, group]) => (
         <div key={String(level)} className="live-in flex flex-wrap items-center gap-1.5 text-xs">
           <span className="w-24 shrink-0 text-stone-400">
@@ -153,10 +190,7 @@ export function CustomSpellList({ names, onChange }: { names: string[]; onChange
           {group.sort(compareNames).map((name) => (
             <span
               key={name}
-              className={cn(
-                "inline-flex items-center rounded-md border border-stone-700 pl-2 text-stone-200",
-                byKey.get(textKey(name))?.source === "homebrew" && "text-amber-300",
-              )}
+              className={cn("inline-flex items-center rounded-md border border-stone-700 pl-2 text-stone-200", homebrew(name) && "text-amber-300")}
             >
               {name}
               <button
@@ -176,6 +210,7 @@ export function CustomSpellList({ names, onChange }: { names: string[]; onChange
           className="min-w-48 flex-1"
           exclude={chosen}
           disabled={full}
+          noCantrips={noCantrips}
           label="Find a spell to add to the class's list"
           placeholder={full ? "The list is full" : "Find a spell to add: fire bolt, shield..."}
           onPick={(spell) => add([spell.name])}
@@ -187,8 +222,8 @@ export function CustomSpellList({ names, onChange }: { names: string[]; onChange
           options={SPELL_LISTS.map((list) => ({ value: list, label: `The ${list}'s list` }))}
           onPick={(list) => {
             setFilling(list);
-            void listNames(list)
-              .then(add)
+            void listSpells(list)
+              .then((spells) => add(spells.filter((spell) => !noCantrips || spell.level !== 0).map((spell) => spell.name)))
               .finally(() => setFilling(""));
           }}
         />

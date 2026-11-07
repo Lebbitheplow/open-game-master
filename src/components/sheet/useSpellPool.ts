@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import spellManifest from "@/lib/srd/manifest/spells.json";
 import { checklistSpellsOn, spellLevelOf } from "@/lib/srd/spell-lists";
 import { compareNames, textKey } from "@/lib/language/text-logic";
+import { lookupCache, poolCache } from "@/components/sheet/spell-pool-cache";
 
 // Every spell a class can take up to a spell level, for the spell book's
 // "available" tiles: the content pack (homebrew included) when installed,
@@ -23,7 +24,9 @@ export type PoolSpell = {
 };
 
 const PAGE = 200;
-const cache = new Map<string, PoolSpell[]>();
+// Kept for the page's life, and cleared by the workshop when a spell or a
+// class is saved (src/components/sheet/spell-pool-cache.ts).
+const cache = poolCache;
 
 // Every class's list at once, for the picks a feature lets come from any
 // class (Magical Secrets, the Book of Shadows: src/lib/srd/any-list-picks-logic.ts).
@@ -70,7 +73,7 @@ function uniqueByName(rows: PoolSpell[]): PoolSpell[] {
 // the page's life, per table (src/lib/content/scope.ts): two tables may
 // each have a homebrew spell of one name. Names the checklist knows never
 // cost a request.
-const lookups = new Map<string, PoolSpell | null>();
+const lookups = lookupCache;
 const scoped = (campaignId: string | null, name: string) => `${campaignId ?? "library"}|${textKey(name)}`;
 
 export function useSpellLookups(names: string[]): Map<string, PoolSpell> {

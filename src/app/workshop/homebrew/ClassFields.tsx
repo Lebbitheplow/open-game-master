@@ -405,6 +405,8 @@ export function ClassFields({ data, set }: { data: Data; set: (patch: Data) => v
           <CustomSpellList
             names={Array.isArray(data.spellList) ? (data.spellList as string[]) : []}
             onChange={(spellList) => set({ spellList })}
+            // Counted as a paladin's or a ranger's: no cantrips to learn.
+            noCantrips={casting === "half"}
           />
         </div>
       ) : null}

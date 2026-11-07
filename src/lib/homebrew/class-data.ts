@@ -144,6 +144,26 @@ const stringList = (value: unknown, max: number, length = 60): string[] =>
     ? [...new Set(value.map((entry) => String(entry ?? "").trim().slice(0, length)).filter(Boolean))].slice(0, max)
     : [];
 
+// A list of spell names as a class keeps it: blanks dropped, each name once
+// by its name key ("Shield" and "shield" are one spell), the first spelling
+// kept. Uncapped, so the limits can say how far past the cap a list ran.
+export function distinctSpellNames(value: unknown, length = HOMEBREW_NAME_MAX): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const entry of value) {
+    const name = String(entry ?? "").trim().slice(0, length);
+    const key = textKey(name);
+    if (key && !seen.has(key)) {
+      seen.add(key);
+      out.push(name);
+    }
+  }
+  return out;
+}
+
 // The stored data read into the shape the engines need, every field held to
 // what a class can be: a d6 to a d12, two different saves, skills from the
 // list, a level to pick the subclass at between 1 and 3. Returns the reason
@@ -169,7 +189,7 @@ export function normalizeClassData(raw: Record<string, unknown>): { data: Worksh
       : oneOf(raw.spellAbility, ["int", "wis", "cha"] as const, custom ? "int" : LIST_ABILITY[(spellListFrom ?? "wizard") as (typeof SPELL_LISTS)[number]]);
   // A list of its own keeps its spells by name, each once; a pact caster
   // learns its spells, as the warlock does, whatever the draft said.
-  const spellList = custom ? stringList(raw.spellList, CUSTOM_LIST_MAX, HOMEBREW_NAME_MAX) : [];
+  const spellList = custom ? distinctSpellNames(raw.spellList).slice(0, CUSTOM_LIST_MAX) : [];
   const spellStyle: SpellListStyle | undefined = custom
     ? casterType === "pact"
       ? "known"

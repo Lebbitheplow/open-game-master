@@ -35,7 +35,9 @@ function listOf(classId: string): string | null {
 function castingOf(
   classId: string,
   casterType: WorkshopClassData["casterType"],
-  named: string[],
+  // Asked only on the path that needs it: a catalog search copies many
+  // casters at once, and most borrow a published list (issue #833 review).
+  named: () => string[],
 ): Pick<WorkshopClassData, "spellListFrom" | "spellList" | "spellStyle"> {
   if (casterType === "none") {
     return { spellListFrom: null };
@@ -44,7 +46,7 @@ function castingOf(
   if (list && (SPELL_LISTS as readonly string[]).includes(list)) {
     return { spellListFrom: list };
   }
-  const own = [...new Set(named)].slice(0, CUSTOM_LIST_MAX);
+  const own = [...new Set(named())].slice(0, CUSTOM_LIST_MAX);
   if (!own.length) {
     return { spellListFrom: "wizard" };
   }
@@ -76,7 +78,7 @@ export function bundledClassTable(
     tools: klass.tools ?? [],
     casterType,
     spellAbility: casterType === "none" ? null : klass.spellAbility,
-    ...castingOf(classId, casterType, casterType === "none" ? [] : spellsOf(classId)),
+    ...castingOf(classId, casterType, () => spellsOf(classId)),
     subclassLevel: Math.max(1, Math.min(3, subclassLevelFor(classId) ?? 3)),
     levels,
   };
@@ -106,7 +108,7 @@ export function classMechanicsOf(row: Row, spellsOf: (classId: string) => string
     tools: numbers.tools ?? [],
     casterType,
     spellAbility: numbers.spellAbility,
-    ...castingOf(String(row.slug ?? "").toLowerCase(), casterType, row.slug ? spellsOf(row.slug.toLowerCase()) : []),
+    ...castingOf(String(row.slug ?? "").toLowerCase(), casterType, () => (row.slug ? spellsOf(row.slug.toLowerCase()) : [])),
     subclassLevel: 3,
     levels: {},
   };

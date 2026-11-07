@@ -197,3 +197,21 @@ export function normalizeSpellcasting<
   }
   return top;
 }
+
+// The checklist's spells whose name holds `query` (by name key), level and
+// name, for a picker that searches the server too: on a server without the
+// content pack the checklist is where the SRD's spells are (issue #833).
+export function checklistSpellsMatching(query: string, limit = 30): Array<{ name: string; level: number }> {
+  const wanted = textKey(query);
+  if (!wanted) {
+    return [];
+  }
+  const out: Array<{ name: string; level: number }> = [];
+  for (const spell of (spellManifest as { spells: ManifestSpell[] }).spells) {
+    if (textKey(spell.n).includes(wanted)) {
+      out.push({ name: spell.n, level: spell.l });
+      if (out.length >= limit) break;
+    }
+  }
+  return out;
+}

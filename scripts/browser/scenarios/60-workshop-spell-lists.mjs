@@ -24,13 +24,7 @@ export default {
     const made = await api.post(`${base}/api/workshops`, { data: { title: `Spell lists ${stamp}`, description: "" } });
     check(made.ok(), "a workshop for the check");
     const workshopId = (await made.json()).workshop.id;
-    // A cantrip of the author's own, which names no class: on the list only
-    // because the class's author picks it.
-    const brewed = await api.post(`${base}/api/homebrew`, {
-      data: { kind: "spell", name: spellName, data: { desc: "A shard of glowing glass.", level: 0, school: "evocation", classes: [] } },
-    });
-    check(brewed.ok(), "the homebrew cantrip is kept");
-    const spellId = (await brewed.json()).entry.id;
+    let spellId = null;
     let classEntryId = null;
     try {
       // ---- the class form ----
@@ -56,6 +50,29 @@ export default {
       const picker = editor.locator('[data-testid="custom-spell-list"]');
       await eventually(() => picker.isVisible(), { timeoutMs: 5_000, label: "the class's own spell list" });
       check(await editor.getByRole("button", { name: "Gets its spells", exact: true }).isVisible(), "the form asks how it holds its spells");
+
+      // A cantrip of the author's own, which names no class, made while the
+      // form is open: the search finds it at once (it asks the server as
+      // the author types), and it is on the list only because it is picked.
+      const brewed = await api.post(`${base}/api/homebrew`, {
+        data: { kind: "spell", name: spellName, data: { desc: "A shard of glowing glass.", level: 0, school: "evocation", classes: [] } },
+      });
+      check(brewed.ok(), "the homebrew cantrip is kept");
+      spellId = (await brewed.json()).entry.id;
+
+      // A half caster learns no cantrips: the picker says so and offers none.
+      await t.tap(editor.getByRole("button", { name: "Spellcasting", exact: true }));
+      await t.tap(page.getByRole("menuitemradio", { name: /^Half caster/ }).locator("visible=true").first());
+      await eventually(() => picker.locator('[data-testid="no-cantrips-hint"]').isVisible(), { timeoutMs: 5_000, label: "the half caster's no-cantrips hint" });
+      const halfSearch = picker.getByLabel("Find a spell to add to the class's list");
+      await halfSearch.fill("fire");
+      const halfResults = picker.getByRole("list", { name: "Spells to add" }).getByRole("button");
+      await eventually(() => halfResults.filter({ hasText: "Fireball" }).count(), { timeoutMs: 15_000, label: "a levelled fire spell offered to a half caster" });
+      check((await halfResults.filter({ hasText: "Fire Bolt" }).count()) === 0, "a half caster's picker offered a cantrip");
+      await halfSearch.fill("");
+      await t.tap(editor.getByRole("button", { name: "Spellcasting", exact: true }));
+      await t.tap(page.getByRole("menuitemradio", { name: /^Full caster/ }).locator("visible=true").first());
+      await eventually(async () => (await picker.locator('[data-testid="no-cantrips-hint"]').count()) === 0, { timeoutMs: 5_000, label: "the full caster's picker" });
 
       // Picked from the SRD's and the author's homebrew, found by name.
       const search = picker.getByLabel("Find a spell to add to the class's list");
@@ -143,7 +160,7 @@ export default {
       await setTheme("dark");
     } finally {
       if (classEntryId) await api.delete(`${base}/api/homebrew/${classEntryId}?purge=1`).catch(() => {});
-      await api.delete(`${base}/api/homebrew/${spellId}?purge=1`).catch(() => {});
+      if (spellId) await api.delete(`${base}/api/homebrew/${spellId}?purge=1`).catch(() => {});
       await api.delete(`${base}/api/workshops/${workshopId}`).catch(() => {});
     }
   },

@@ -1,4 +1,4 @@
-import { CLASS_LIST_LIMITS, CUSTOM_LIST_MAX, CUSTOM_SPELL_LIST, FEATURE_LIMITS, SUBCLASS_SPELLS_PER_LEVEL, levelOfKey } from "@/lib/homebrew/class-data";
+import { CLASS_LIST_LIMITS, CUSTOM_LIST_MAX, CUSTOM_SPELL_LIST, FEATURE_LIMITS, SUBCLASS_SPELLS_PER_LEVEL, distinctSpellNames, levelOfKey } from "@/lib/homebrew/class-data";
 import { RACE_LIMITS } from "@/lib/homebrew/race-data";
 import { BACKGROUND_LIMITS } from "@/lib/homebrew/background-data";
 import { GEAR_LIMITS } from "@/lib/homebrew/item-data";
@@ -116,7 +116,8 @@ export function homebrewLimitProblems(kind: HomebrewKind, raw: unknown): LimitPr
     // A list of its own (issue #833): every name whole, and no more than a
     // list keeps.
     if (data.spellListFrom === CUSTOM_SPELL_LIST && Array.isArray(data.spellList)) {
-      const names = distinct(data.spellList, HOMEBREW_NAME_MAX + 1);
+      // Counted as the save keeps them: one name per spell, by its name key.
+      const names = distinctSpellNames(data.spellList, HOMEBREW_NAME_MAX + 1);
       const long = names.find((name) => name.length > HOMEBREW_NAME_MAX);
       if (long) {
         out.push({ field: "spellList", text: `${quoted(long)} is a spell name of ${long.length} letters, and a name keeps ${HOMEBREW_NAME_MAX} at most.` });

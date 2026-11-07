@@ -1,5 +1,6 @@
 "use client";
 
+import { forgetSpellPools } from "@/components/sheet/spell-pool-cache";
 import { EmptyState } from "@/components/EmptyState";
 import { LoadFailed } from "@/app/campaigns/[campaignId]/PanelKit";
 import { readLoad, useLoadStatus } from "@/lib/load-state";
@@ -244,6 +245,9 @@ export function HomebrewPanel({
       }
       await load();
       onChanged?.();
+      // A saved spell or class changes what the spell pickers offer: what
+      // they fetched before is asked for again (issue #833).
+      if (draft.kind === "spell" || draft.kind === "class") forgetSpellPools();
       const saved = (payload as { entry?: HomebrewEntryView }).entry;
       setNotice(carriedNotice((payload as { carried?: Carried }).carried));
       setEditing(saved ? { id: saved.id, draft: { kind: saved.kind as EditorKind, name: saved.name, data: saved.data }, savedName: saved.name } : null);
