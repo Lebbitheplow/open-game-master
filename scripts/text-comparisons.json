@@ -1689,7 +1689,7 @@
     "lib/dm/prompt.ts#str-eq": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary); creature type"]],
     "lib/dm/prompt.ts#str-list": [["key",10,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/prompt.ts#toLowerCase": [["key",1,"condition label (engine vocabulary)"]],
-    "lib/dm/prompt.ts#toUpperCase": [["display",9,"ability abbreviations and status shown in the prompt; an SRD feat name title-cased"]],
+    "lib/dm/prompt.ts#toUpperCase": [["display",10,"ability abbreviations and status shown in the prompt; an SRD feat name title-cased"]],
     "lib/dm/proposal-intercept.ts#str-eq": [["key",9,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/proposal-logic.ts#re-word": [["english-source",1,"the outcome line the engine writes"]],
     "lib/dm/proposal-logic.ts#str-case": [["key",5,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
