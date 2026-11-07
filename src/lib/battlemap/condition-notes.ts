@@ -20,7 +20,7 @@ export type ConditionMetaLike = {
   // turn has started, so it ends when this turn does.
   untilTurnEndOf?: string;
   turnBegun?: boolean;
-  saveEnds?: { ability: string; dc: number; or?: string };
+  saveEnds?: { ability: string; dc: number; or?: string; beyondFeet?: number };
   source?: string;
   spell?: string;
 };
@@ -89,7 +89,7 @@ export function conditionNote(
     counted = true;
   }
   // A hold whose save the creature picks (Nature's Wrath) names both.
-  const save = meta.saveEnds ? `save ends (${meta.saveEnds.ability.toUpperCase()}${meta.saveEnds.or ? ` or ${meta.saveEnds.or.toUpperCase()}` : ""} ${meta.saveEnds.dc})` : null;
+  const save = meta.saveEnds ? `save ends (${meta.saveEnds.ability.toUpperCase()}${meta.saveEnds.or ? ` or ${meta.saveEnds.or.toUpperCase()}` : ""} ${meta.saveEnds.dc}${meta.saveEnds.beyondFeet ? `, beyond ${meta.saveEnds.beyondFeet} ft` : ""})` : null;
   let source: string | null = null;
   const raw = meta.source?.trim() ?? "";
   if (name.trim().toLowerCase() === "readied" && raw) {

@@ -35,6 +35,9 @@ type FearOption = {
   chosen?: boolean;
   // A save at the end of each of its turns ends it (Conquering Presence).
   repeats?: boolean;
+  // A save only at the end of a turn it ends farther than this from the user
+  // (Dreadful Aspect: 30 feet).
+  farSaveFt?: number;
   // Abjure Enemy: frightened and speed 0, or half speed on a success; either
   // ends when the creature takes damage, and fiends and undead save at a
   // disadvantage.
@@ -45,7 +48,7 @@ export const CHANNEL_FEAR: FearOption[] = [
   // "Each creature of your choice that you can see within 30 feet", as
   // Dreadful Aspect: a list naming some of them is the player's choice.
   { name: "Conquering Presence", rangeFt: 30, repeats: true, chosen: true },
-  { name: "Dreadful Aspect", rangeFt: 30, chosen: true },
+  { name: "Dreadful Aspect", rangeFt: 30, chosen: true, farSaveFt: 30 },
   { name: "Abjure Enemy", rangeFt: 60, single: true, abjures: true },
 ];
 
@@ -130,9 +133,10 @@ export function channelFear(
       }
       continue;
     }
-    lay("frightened", { ...lasting, ...(option.repeats ? { saveEnds: { ability: "wis" as const, dc } } : {}) });
+    const saveEnds = option.repeats ? { ability: "wis" as const, dc } : option.farSaveFt ? { ability: "wis" as const, dc, beyondFeet: option.farSaveFt } : null;
+    lay("frightened", { ...lasting, ...(saveEnds ? { saveEnds } : {}) });
     if (option.abjures) lay(ABJURED, lasting);
-    outcomes.push(`${enemy.displayName} is frightened for a minute (WIS ${save.total ?? "failed"} vs DC ${dc})${option.abjures ? ", and its speed is 0 until it takes damage" : option.repeats ? ", saving again at the end of each of its turns" : ""}.`);
+    outcomes.push(`${enemy.displayName} is frightened for a minute (WIS ${save.total ?? "failed"} vs DC ${dc})${option.abjures ? ", and its speed is 0 until it takes damage" : option.repeats ? ", saving again at the end of each of its turns" : option.farSaveFt ? `, saving again at the end of a turn it ends more than ${option.farSaveFt} feet away` : ""}.`);
   }
   return { result: { applied: outcomes } };
 }

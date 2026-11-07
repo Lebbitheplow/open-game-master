@@ -39,7 +39,9 @@ export type ConditionMeta = {
   // Re-save at each round wrap; success ends the condition.
   // `or`: a second ability the creature may roll instead, choosing again at
   // each save (Nature's Wrath: Strength or Dexterity; see likelierSave).
-  saveEnds?: { ability: SaveAbilityId; dc: number; or?: SaveAbilityId };
+  // `beyondFeet`: the save comes only at the end of a turn the holder ends
+  // farther than this from the source (Dreadful Aspect: 30 feet).
+  saveEnds?: { ability: SaveAbilityId; dc: number; or?: SaveAbilityId; beyondFeet?: number };
   // Who or what put the condition there: the characterId or enemyId of the
   // charmer, the grappler or the source of the fear, or an engine word
   // ("stable" on the unconscious of a stabilized creature). Optional, and

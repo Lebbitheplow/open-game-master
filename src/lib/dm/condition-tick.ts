@@ -50,6 +50,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { listedAgainst } from "@/lib/dm/roll-about";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
+import { withinFeet } from "@/lib/dm/authored-saves";
 
 // Condition upkeep: timed conditions count down and expire, save-ends
 // conditions get their re-save rolled server-side (enemy saves from stat
@@ -374,6 +375,16 @@ type HolderTick = {
   only?: Set<string>;
 };
 
+// A hold saved against only far from its source (Dreadful Aspect: a creature
+// that ends its turn more than 30 feet away). Measured on the board as reach
+// is (authored-saves.ts): off the board it counts as close, as the fear's
+// reach did; a source no longer on the board is far.
+function heldClose(encounter: Encounter | undefined, holderId: string, instance: ConditionMeta | undefined): boolean {
+  const feet = instance?.saveEnds?.beyondFeet;
+  if (!feet || !encounter || !instance?.source) return false;
+  return withinFeet(encounter.id, instance.source, holderId, feet);
+}
+
 function tickEnemyConditions(campaign: Campaign, encounter: Encounter, by: number, lines: string[], options: HolderTick = {}) {
   for (const enemy of listEnemies(encounter.id)) {
     if (enemy.status !== "alive" || !enemy.conditions.length || (options.only && !options.only.has(enemy.id))) {
@@ -405,7 +416,7 @@ function tickEnemyConditions(campaign: Campaign, encounter: Encounter, by: numbe
       // Each source's hold asks its own save; this is one of them.
       const holds = (instance: ConditionMeta) => instanceIdentity(instance) === due.key && instance.saveEnds?.dc === due.dc;
       const instance = instancesOf((meta as ConditionMetaMap)[due.name]).find(holds);
-      if (!instance) {
+      if (!instance || heldClose(encounter, enemy.id, instance)) {
         continue;
       }
       // The creature's full save (src/lib/dm/forced-save.ts), as the first
@@ -518,6 +529,9 @@ function tickSheetConditions(
       }
       // A hold that lets the character pick its save (Nature's Wrath).
       const due = listed.or ? { ...listed, ability: likelierSave(conditions, listed.ability, listed.or, listed.dc, (each) => computeSheetDerived(sheet).saves[each]) } : listed;
+      if (heldClose(options?.encounter, sheet.id, instancesOf((meta as ConditionMetaMap)[due.name]).find((instance) => instanceIdentity(instance) === due.key && instance.saveEnds?.dc === due.dc))) {
+        continue;
+      }
       const effect = effectOf(listed);
       const settled = effect ? effectSaves.get(effect) : undefined;
       if (settled !== undefined) {

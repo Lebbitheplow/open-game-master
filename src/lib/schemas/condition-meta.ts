@@ -40,6 +40,8 @@ const conditionInstanceSchema = z.object({
         dc: z.number().int().min(1).max(30),
         // The other ability the creature may choose instead (Nature's Wrath).
         or: z.enum(ABILITIES).optional(),
+        // Saved against only while farther than this from the source (Dreadful Aspect).
+        beyondFeet: z.number().int().min(5).max(300).optional(),
       })
       .optional(),
     // The spell that laid the condition down, and the slot it was cast
