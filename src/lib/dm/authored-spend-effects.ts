@@ -286,6 +286,11 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       if (does.rangeFt && !withinFeet(encounter.id, sheet.id, enemy.id, does.rangeFt)) {
         return { error: `${enemy.displayName} is beyond ${does.rangeFt} feet of ${sheet.name}; ${ctx.spend.name} reaches no further. Nothing was spent.`, refused: "rules" };
       }
+      // "A creature you can see" (Nature's Wrath): one behind a wall or in a
+      // heavily obscured space is refused before the use is paid.
+      if (does.sight && !seesOnBoard(encounter.id, sheet.id, enemy.id)) {
+        return { error: `${sheet.name} cannot see ${enemy.displayName}, and ${ctx.spend.name} takes a creature they can see. Nothing was spent.`, refused: "rules" };
+      }
       if (does.perUnit && ctx.units < 1) {
         return { error: `${ctx.spend.name} needs at least 1 point spent: pass amount. Nothing was spent.`, retry: true };
       }

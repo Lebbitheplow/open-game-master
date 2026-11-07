@@ -330,6 +330,8 @@ export type SpendDoes =
       // The condition lasts until the creature saves at a round's end.
       saveEnds?: boolean;
       rangeFt?: number;
+      // Only a creature the holder can see (Nature's Wrath).
+      sight?: boolean;
       onFail?: string;
       typeFromVariant?: string[];
     }

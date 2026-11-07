@@ -74,7 +74,8 @@ export const AUTHORED_DATA_CHANNEL: Record<string, AuthoredEntry> = {
         name: "Nature's Wrath",
         pool: POOL,
         action: "action",
-        does: { kind: "save_effect", save: "str", orSave: "dex", dcAbility: "spell", rangeFt: 10, condition: "restrained", saveEnds: true },
+        // A creature the paladin can see.
+        does: { kind: "save_effect", save: "str", orSave: "dex", dcAbility: "spell", rangeFt: 10, condition: "restrained", saveEnds: true, sight: true },
       },
     ],
   },
