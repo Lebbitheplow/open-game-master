@@ -50,6 +50,7 @@ import { nameChoice } from "@/lib/srd/feature-names";
 import { castsSpells } from "@/lib/srd";
 import { grantedCastOf } from "@/lib/dm/cast-rules";
 import { paidByItem } from "@/lib/srd/item-cast-credit";
+import { itemCastOpen } from "@/lib/dm/item-casts";
 import type { CastingSheet } from "@/lib/srd";
 
 // Temporary hit points a chosen variant grants on top of its condition.
@@ -134,7 +135,8 @@ export function handleCastBuff(
     return { error: `${sheet.name} is at 0 HP and cannot cast.`, refused: "rules" };
   }
   // A spell an item paid for needs no Spellcasting feature, as it runs on too.
-  if (!castsSpells(sheet) && !paidByItem(sheet, args.spell ?? "")) {
+  // So does a later target of a casting an item made this turn (item-casts.ts).
+  if (!castsSpells(sheet) && !paidByItem(sheet, args.spell ?? "") && !itemCastOpen(campaign.id, sheet, args.spell ?? "")) {
     return { error: `${sheet.name} cannot cast spells.`, refused: "rules" };
   }
   const barred = castBarred(campaign, turn.id, { characterId: sheet.id, spell: args.spell, ...(args.level ? { level: args.level } : {}), via: "buff" }, sheets, sheetsById);

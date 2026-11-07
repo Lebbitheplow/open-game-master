@@ -575,13 +575,14 @@ const SHARES = "cast-shares";
 // many the casting still holds, and the slot it was cast from. An area
 // resolved a creature per call keeps who it has caught and its one damage
 // roll (cast-at-enemy.ts), so every call is the same placement and the same
-// dice.
-export type OpenCast = { spell: string; slotLevel: number | null; left: number; caught?: string[]; roll?: number };
+// dice. One an item paid for names the item (a Ring of Spell Storing's Scorching
+// Ray): its later rays are no casting of the holder's own (cast-guard.ts).
+export type OpenCast = { spell: string; slotLevel: number | null; left: number; caught?: string[]; roll?: number; item?: string };
 
 export function openCastOf(budget: TurnBudget | null, spell: string): OpenCast | null {
   const wanted = textKey(spell);
   for (const entry of budget?.oncePerTurn ?? []) {
-    const [tag, name, slot, left, caught, roll] = entry.split("|");
+    const [tag, name, slot, left, caught, roll, item] = entry.split("|");
     if (tag === SHARES && name === wanted && Number(left) > 0) {
       return {
         spell: wanted,
@@ -589,6 +590,7 @@ export function openCastOf(budget: TurnBudget | null, spell: string): OpenCast |
         left: Number(left),
         ...(caught ? { caught: caught.split(",") } : {}),
         ...(roll && roll !== "-" ? { roll: Number(roll) } : {}),
+        ...(item ? { item } : {}),
       };
     }
   }
@@ -605,7 +607,7 @@ export function withOpenCast(budget: TurnBudget, open: OpenCast): TurnBudget {
     ...budget,
     oncePerTurn:
       open.left > 0
-        ? [...kept, [SHARES, wanted, open.slotLevel ?? "-", open.left, (open.caught ?? []).join(","), open.roll ?? "-"].join("|")]
+        ? [...kept, [SHARES, wanted, open.slotLevel ?? "-", open.left, (open.caught ?? []).join(","), open.roll ?? "-", ...(open.item ? [open.item.replace(/\|/g, "")] : [])].join("|")]
         : kept,
   };
 }

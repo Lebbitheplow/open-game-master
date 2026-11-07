@@ -16,6 +16,25 @@ import type { ItemCast } from "@/lib/srd/item-cast-credit";
 import { droppedLine, setConcentration } from "@/lib/dm/concentration";
 import { endInvisibilityOnCast } from "@/lib/dm/attack-marks";
 import { noteRunning, takeFromRing } from "@/lib/dm/ring-store";
+import { getActiveEncounter } from "@/lib/db/encounters";
+import { openCastOf } from "@/lib/dm/cast-rules";
+import { attacksAllowedFor, budgetFor } from "@/lib/dm/turn-budget";
+import { conditionTurnShape } from "@/lib/srd/condition-effects";
+
+// The item whose casting of this spell still holds rays, darts or targets this
+// turn (cast-guard.ts openItemShares), and the level it was cast at, or null.
+// Its later calls are that casting, so a tool that asks for a Spellcasting
+// feature or a spell list first lets them through, as it lets through the call
+// that took the item's credit.
+export function itemCastOpen(campaignId: string, sheet: CharacterSheet, spell: string): { item: string; level: number } | null {
+  const encounter = getActiveEncounter(campaignId);
+  if (!encounter || encounter.status !== "active") {
+    return null;
+  }
+  const budget = budgetFor(encounter, sheet.id, attacksAllowedFor(sheet), conditionTurnShape(sheet.conditions));
+  const open = openCastOf(budget, spell);
+  return open?.item ? { item: open.item, level: open.slotLevel ?? 1 } : null;
+}
 
 export function castFromItem(
   campaign: Campaign,

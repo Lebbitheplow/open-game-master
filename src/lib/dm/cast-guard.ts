@@ -71,6 +71,7 @@ import {
   grantCastsFree,
   MANTLE_OF_MAJESTY,
   type BonusCast,
+  type OpenCast,
   type SlotPlan,
 } from "@/lib/dm/cast-rules";
 import type { TurnBudget } from "@/lib/dm/action-budget";
@@ -84,7 +85,8 @@ import { placeSpellZone, placementReachProblem } from "@/lib/dm/zone-cast";
 import { spellSaveDcFor } from "@/lib/srd";
 import { castTempHp } from "@/lib/dm/authored-spells";
 import { authoredSlotRefund } from "@/lib/srd/authored-effects-more";
-import { takeItemCast } from "@/lib/srd/item-cast-credit";
+import { takeItemCast, type ItemCast } from "@/lib/srd/item-cast-credit";
+import type { SpellMech } from "@/lib/srd/spell-mechanics";
 import { storerHolding } from "@/lib/srd/spell-storing";
 import { casterNumbers, equipmentWithoutRunning, putInRing, storeRefusal } from "@/lib/dm/ring-store";
 import { castFromItem } from "@/lib/dm/item-casts";
@@ -139,6 +141,54 @@ export type CastResult = ToolResult;
 
 function inRunningFight(encounter: Encounter | null): encounter is Encounter {
   return Boolean(encounter && encounter.status === "active" && (encounter.kind ?? "fight") === "fight");
+}
+
+// A later ray, dart or target of a casting already made this turn: it spends
+// nothing more.
+function continueOpenCast(encounter: Encounter, budget: TurnBudget, open: OpenCast, name: string, input: CastInput): CastResult {
+  if (input.dryRun) {
+    return { ok: true, dryRun: true, spell: name, slotLevel: open.slotLevel, continuing: true };
+  }
+  const uses = Math.max(1, Math.min(open.left, Math.floor(input.uses ?? 1)));
+  storeBudget(encounter, withOpenCast(budget, { ...open, left: open.left - uses }));
+  return {
+    ok: true,
+    spell: name,
+    slotLevel: open.slotLevel,
+    uses,
+    sharesLeft: open.left - uses,
+    continuing: `${name}: more of the same casting (${open.left - uses} left); nothing more is spent.`,
+    ...(open.item ? { fromItem: open.item } : {}),
+  };
+}
+
+// The rays, darts or targets a casting from an item holds beyond this call
+// (Scorching Ray from a Ring of Spell Storing at 2nd: three rays), kept open on
+// the turn as a slot's casting keeps them. The item is named on it, so its later
+// calls are taken before the holder's own list or Spellcasting feature is asked:
+// a fighter has neither, and a wizard's own copy would spend a slot.
+function openItemShares(encounter: Encounter, sheet: CharacterSheet, name: string, mech: SpellMech | null, facts: SpellFacts | null, cast: ItemCast, input: CastInput, via: CastVia): Record<string, unknown> {
+  if (via === "aoe" || via === "reaction") {
+    return {};
+  }
+  const shares = castShares(mech, { spellLevel: facts?.level ?? cast.level, slotLevel: cast.level, casterLevel: sheet.level });
+  if (shares < 2) {
+    return {};
+  }
+  const uses = Math.max(1, Math.min(shares, Math.floor(input.uses ?? 1)));
+  const left = via === "slot" ? shares : shares - uses;
+  // Off their own turn (a readied release) there is no turn to keep it on.
+  const budget = budgetFor(encounter, sheet.id, attacksAllowedFor(sheet), conditionTurnShape(sheet.conditions));
+  if (!budget) {
+    return {};
+  }
+  storeBudget(encounter, withOpenCast(budget, { spell: name, slotLevel: cast.level, left, item: cast.item }));
+  const list = mech?.attacks ? "pc_attack's attacks" : mech?.resolution === "heal" ? "heal's targets" : "cast_at_enemy's targets";
+  return {
+    uses,
+    sharesLeft: left,
+    shares: `${name} holds ${shares} ${mech?.attacks ? "attack rolls" : mech?.darts ? "darts" : "targets"} from this one casting; ${left} left this turn at no further cost, each its own entry in ${list}.`,
+  };
 }
 
 function slotLine(plan: SlotPlan): string {
@@ -376,8 +426,12 @@ export function castSpell(
   }
   const fromItem = input.storing ? null : takeItemCast(sheet.id, name, { dryRun: Boolean(input.dryRun) });
   if (fromItem) {
-    const itemCast = castFromItem(campaign, turnId, sheet, facts, name, fromItem, input);
+    let itemCast = castFromItem(campaign, turnId, sheet, facts, name, fromItem, input);
     if (!input.dryRun) {
+      const live = inFight ? getActiveEncounter(campaign.id) : null;
+      if (live) {
+        itemCast = { ...itemCast, ...openItemShares(live, sheet, name, mech, facts, fromItem, input, via) };
+      }
       if (completing) {
         clearCompletedCasting(campaign, sheet.id);
       } else if (fromItem.storedIn && typeof facts?.castingTime === "number") {
@@ -391,6 +445,13 @@ export function castSpell(
       }
     }
     return itemCast;
+  }
+  if (!input.storing && inFight && via !== "slot" && via !== "reaction") {
+    const budget = budgetFor(encounter, sheet.id, attacksAllowedFor(sheet), conditionTurnShape(sheet.conditions));
+    const open = budget ? openCastOf(budget, name) : null;
+    if (budget && open?.item) {
+      return continueOpenCast(encounter, budget, open, name, input);
+    }
   }
 
   // ---- refusals, in the order a person would give them ----
@@ -475,19 +536,7 @@ export function castSpell(
       : null;
   const open = liveBudget ? openCastOf(liveBudget, name) : null;
   if (open && liveBudget) {
-    if (input.dryRun) {
-      return { ok: true, dryRun: true, spell: name, slotLevel: open.slotLevel, continuing: true };
-    }
-    const uses = Math.max(1, Math.min(open.left, Math.floor(input.uses ?? 1)));
-    storeBudget(encounter as Encounter, withOpenCast(liveBudget, { ...open, left: open.left - uses }));
-    return {
-      ok: true,
-      spell: name,
-      slotLevel: open.slotLevel,
-      uses,
-      sharesLeft: open.left - uses,
-      continuing: `${name}: more of the same casting (${open.left - uses} left); nothing more is spent.`,
-    };
+    return continueOpenCast(encounter as Encounter, liveBudget, open, name, input);
   }
 
   // The casting Slow held back last turn, completed now for this turn's
