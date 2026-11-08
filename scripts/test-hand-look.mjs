@@ -188,7 +188,7 @@ test("every feature the Hand deals by name has its own painting, not its class's
     // A Channel Divinity option of src/lib/srd/authored-effects-channel.ts wears
     // the pool's painting until it has its own (hand-subclass.ts), as its option
     // card did; the pool's painting is checked below.
-    for (const spend of entry.spends ?? []) if (spend.fight !== "out" && spend.does.kind !== "choose" && !CHANNEL_OPTIONS.has(spend.name)) names.add(spend.name);
+    for (const spend of entry.spends ?? []) if (!spend.gm && spend.fight !== "out" && spend.does.kind !== "choose" && !CHANNEL_OPTIONS.has(spend.name)) names.add(spend.name);
     for (const reaction of entry.reactions ?? []) names.add(reaction.name);
   }
   names.add("Channel Divinity");

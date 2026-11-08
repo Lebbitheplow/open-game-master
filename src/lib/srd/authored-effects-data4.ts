@@ -5,6 +5,13 @@
 
 import type { AuthoredEntry, Formula } from "@/lib/srd/authored-effects-types";
 
+// Wild Magic Surge (Wild Magic sorcerer 1): after a sorcerer spell of 1st
+// level or higher "the GM may have you roll" on the surge table, and a spent
+// Tides of Chaos comes back when they do. A casting that opens that chance
+// leaves this mark for a round (cast-guard.ts, authored-effects-more.ts
+// opensSurgeChance); use_resource "Wild Magic Surge" needs it, and spends it.
+export const SURGE_CHANCE = "surge chance";
+
 const ALL_DAMAGE = [
   "acid", "bludgeoning", "cold", "fire", "force", "lightning", "necrotic",
   "piercing", "poison", "psychic", "radiant", "slashing", "thunder",
@@ -413,7 +420,20 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   },
 
   // ---- sorcerer ----
-  "sorcerer::Wild Magic Surge": { subclass: "Wild Magic", narrated: "The d20 and the wild magic table are the GM's to roll and narrate." },
+  // The d20 and the wild magic table are the GM's to roll and narrate; the
+  // use given back is the engine's, and the GM's call, so no card is dealt.
+  "sorcerer::Wild Magic Surge": {
+    subclass: "Wild Magic",
+    spends: [
+      {
+        name: "Wild Magic Surge",
+        gm: true,
+        action: "none",
+        gate: { condition: SURGE_CHANCE, because: "gives Tides of Chaos back only right after a sorcerer spell of 1st level or higher, while Tides of Chaos is spent" },
+        does: { kind: "restore", pool: "sub_tides_of_chaos", amount: 1, clears: SURGE_CHANCE },
+      },
+    ],
+  },
   "sorcerer::Controlled Chaos": { subclass: "Wild Magic", narrated: "Rolling the wild magic table twice and choosing is the GM's roll on that narrated table." },
   "sorcerer::Spell Bombardment": {
     subclass: "Wild Magic",

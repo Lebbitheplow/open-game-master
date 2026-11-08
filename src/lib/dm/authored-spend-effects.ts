@@ -17,7 +17,7 @@ import { computeSheetDerived, speedFor } from "@/lib/srd";
 import { resolveFormula, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
 import type { Ability, SpendDoes } from "@/lib/srd/authored-effects-types";
 import { STORM_AURA } from "@/lib/srd/authored-effects-data";
-import { effectiveMaxHp, effectiveSpeed, likelierSave, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { effectiveMaxHp, effectiveSpeed, likelierSave, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
 import { immuneToCondition } from "@/lib/dm/damage-logic";
 import { rollCharacterCheck } from "@/lib/dm/contest-roll";
@@ -427,7 +427,13 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       }
       const back = Math.min(does.amount, state.used);
       const resources = { ...sheet.resources, [does.pool]: { max: state.max, used: state.used - back } };
-      return { patch: { resources }, result: { restored: `${back} ${resourceName(does.pool)} back (${state.max - state.used + back}/${state.max}).` } };
+      // The mark that opened the chance is spent by it (Wild Magic Surge's
+      // SURGE_CHANCE), so one casting gives one use back.
+      const cleared = does.clears ? removeConditions(sheet.conditions, sheet.conditionMeta as ConditionMetaMap, [does.clears]) : null;
+      return {
+        patch: { resources, ...(cleared ? { conditions: cleared.conditions, conditionMeta: cleared.meta } : {}) },
+        result: { restored: `${back} ${resourceName(does.pool)} back (${state.max - state.used + back}/${state.max}).` },
+      };
     }
     case "flames": {
       const wanted = does.healOnly ? "heal" : textKey(ctx.args.variant ?? "");

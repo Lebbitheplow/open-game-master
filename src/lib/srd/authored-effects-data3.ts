@@ -145,7 +145,8 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
   // Advantage on one attack roll, ability check or saving throw: the player
   // names which kind when they play it, as Drunkard's Luck does, and the
   // first roll of that kind takes it and spends it. The use is the counter's
-  // own (sub_tides_of_chaos); the GM restores it after a Wild Magic Surge.
+  // own (sub_tides_of_chaos); the GM gives it back with a Wild Magic Surge
+  // (authored-effects-data4.ts SURGE_CHANCE).
   "sorcerer::Tides of Chaos": {
     subclass: "Wild Magic",
     spends: [

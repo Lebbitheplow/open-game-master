@@ -309,6 +309,19 @@ export function authoredSlotRefund(
   return null;
 }
 
+// Whether a casting opens the surge's chance for a spent Tides of Chaos: a
+// spell of 1st level or higher on the sorcerer's list, cast by a sheet whose
+// Tides of Chaos counter (sub_tides_of_chaos, a Wild Magic sorcerer's alone)
+// has no use left. With the use still there, the surge would give nothing back.
+// The casting then leaves SURGE_CHANCE (authored-effects-data4.ts) for a round.
+export function opensSurgeChance(
+  resources: Record<string, { max: number; used: number }> | undefined,
+  spell: { level: number; classes: string[] } | null,
+): boolean {
+  const tides = resources?.sub_tides_of_chaos;
+  return Boolean(tides && tides.max > 0 && tides.used >= tides.max && spell && spell.level >= 1 && spell.classes.some((entry) => textKey(entry) === "sorcerer"));
+}
+
 // A creature's Hit Die by its size: an SRD block's hit points are the
 // average of its dice plus its Constitution modifier for each.
 const HIT_DIE_AVERAGE: Record<string, number> = { Tiny: 2.5, Small: 3.5, Medium: 4.5, Large: 5.5, Huge: 6.5, Gargantuan: 10.5 };

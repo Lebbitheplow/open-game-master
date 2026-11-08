@@ -55,7 +55,7 @@ function audit(campaign: Campaign, turnId: string, sheet: CharacterSheet, delta:
 function gateSentence(spend: AuthoredSpend): ToolError {
   const gate = spend.gate ?? {};
   if (gate.raging) return { error: `${spend.name} works only while raging (and not in heavy armor).`, refused: "rules" };
-  if (gate.condition) return { error: `${spend.name} works only while ${gate.condition} holds.`, refused: "rules" };
+  if (gate.condition) return { error: gate.because ? `${spend.name} ${gate.because}. Nothing was spent.` : `${spend.name} works only while ${gate.condition} holds.`, refused: "rules" };
   if (gate.choice) return { error: `${spend.name} belongs to the ${gate.choice} option, which this character has not chosen.`, refused: "rules" };
   if (gate.choiceOf) return { error: `${spend.name} belongs to the ${gate.choiceOf.value} ${gate.choiceOf.feature}, which this character has not chosen.`, refused: "rules" };
   return { error: `${spend.name} cannot be used right now.`, refused: "rules" };

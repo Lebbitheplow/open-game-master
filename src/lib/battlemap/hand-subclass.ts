@@ -150,7 +150,7 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
   // variants price themselves, stays a bonus action.
   const counter = ownCounter(spend);
   const action = spendAction(spend);
-  if (spend.fight === "out" || does.kind === "choose" || (action === "reaction" && !aimedReaction(spend)) || !gateHolds(spend.gate, sheet, held)) return [];
+  if (spend.gm || spend.fight === "out" || does.kind === "choose" || (action === "reaction" && !aimedReaction(spend)) || !gateHolds(spend.gate, sheet, held)) return [];
   const cost = COST[action] ?? "action";
   const pool = spend.pool;
   const state = pool ? sheet.resources[pool.id] : undefined;

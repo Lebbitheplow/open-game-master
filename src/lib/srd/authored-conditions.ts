@@ -93,6 +93,7 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
   },
   summaryOnly("tides_of_chaos_check", "tides of chaos (check)", "Tides of Chaos: advantage on the next ability check, which spends it."),
   summaryOnly("tides_of_chaos_save", "tides of chaos (save)", "Tides of Chaos: advantage on the next saving throw, which spends it."),
+  summaryOnly("surge_chance", "surge chance", "Wild Magic Surge: a sorcerer spell was just cast with Tides of Chaos spent; if the GM has the sorcerer roll on the wild magic table now, Tides of Chaos comes back."),
   ...(["1d8", "1d10"] as const).map(
     (dice): ConditionEffectRow => ({
       id: `giants_might_${dice}`,
