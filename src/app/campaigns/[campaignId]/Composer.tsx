@@ -268,7 +268,7 @@ function ComposerInner({
     <form onSubmit={onSubmit} className="glass session-desk cine-desk border-t border-stone-700/40 px-3 pb-3 pt-2.5">
       <div className="session-desk-body mx-auto max-w-3xl sm:px-3">
         <div className="session-compose-notices">
-        {encounter && watchingSheet ? <WatchToggle campaignId={campaignId} sheet={watchingSheet} encounterId={encounter.id} /> : null}
+        {encounter && watchingSheet && hostOffers(capabilities, "portentWatch") ? <WatchToggle campaignId={campaignId} sheet={watchingSheet} encounterId={encounter.id} /> : null}
         {pendingRolls.map((pending) => pending.parkedFor === "watch" ? (
           <WatchCard
             key={pending.id}

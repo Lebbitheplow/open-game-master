@@ -192,6 +192,22 @@ await test("A foretold number can still take a Bardic die after it lands, and co
   assert.ok(!world.sheet(who.sheet.id).conditions.includes("bardic inspiration (d8)"));
 });
 
+await test("A foretold number that leaves a die to decide runs on the table's clock, like any roll on the card.", async () => {
+  const { subscribe } = await import("../src/lib/events.ts");
+  const gmOnline = subscribe(world.campaignId, () => {}, who.dm.id);
+  try {
+    wizard({ conditions: ["bardic inspiration (d8)"] });
+    await check({ dc: 12 });
+    const [pending] = open();
+    assert.equal((await portent(pending.id, 3)).status, 200);
+    const waiting = getPendingRoll(pending.id);
+    assert.ok(waiting.thrown?.deadline, "a deadline, as the server's own throw gets: it had none and waited for good");
+    await clear();
+  } finally {
+    gmOnline();
+  }
+});
+
 await test("The spend is the player's, and undoing it gives the number back.", async () => {
   wizard();
   await check();
@@ -525,6 +541,14 @@ await test("A number a stop has promised cannot be spent again on the wizard's o
   assert.deepEqual(sheet.foretold, []);
   assert.equal(sheet.resources.sub_portent.used, 2);
   assert.equal(hitRolls().at(-1).breakdown.natural, 17);
+});
+
+await test("The watch button waits for a host that answers it.", async () => {
+  const { SERVER_FEATURES } = await import("../src/lib/capabilities.ts");
+  const { hostOffers } = await import("../src/lib/use-capabilities.ts");
+  assert.equal(SERVER_FEATURES.portentWatch, true);
+  assert.equal(hostOffers({ features: { afterRollChoice: true } }, "portentWatch"), false, "an app on an older host drew a button its host answers with a 404");
+  assert.equal(hostOffers({ features: { portentWatch: true } }, "portentWatch"), true);
 });
 
 fightModel.close();
