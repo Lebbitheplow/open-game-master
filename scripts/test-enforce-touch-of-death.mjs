@@ -23,6 +23,7 @@ const hero = world.addHero({
   class: "cleric", level: 3, maxHp: 44, abilities: { str: 16, dex: 10 }, proficiencies: TRAINED,
   equipment: [{ name: "Mace", qty: 1, equipped: true }, { name: "Longbow", qty: 1, equipped: true }, { name: "Arrow", qty: 20 }],
 });
+const GEAR = world.sheet(hero.id).equipment;
 const ally = world.addHero({ class: "fighter", level: 5, maxHp: 44, abilities: { str: 16 }, proficiencies: TRAINED });
 const TOUCH = {
   features: [{ name: "Channel Divinity: Touch of Death", description: "" }],
@@ -112,6 +113,25 @@ await test("Nothing waits on a miss, a ranged hit or with no Channel Divinity le
   const spent = await stage({ ...TOUCH, resources: { channel_divinity: { max: 1, used: 1 } } });
   await kit.swing(hero.id, spent.id, [15, 3], { weapon: "Mace" });
   assert.equal(open().length, 0, "no use left");
+});
+
+await test("A melee attack spell waits and takes it. A ranged one cast from beside the creature does not.", async () => {
+  const SPELLS = { ability: "str", slots: { 1: { max: 2, used: 0 } }, known: [], prepared: ["Inflict Wounds"], cantrips: ["Fire Bolt"] };
+  const enemy = await stage({ ...TOUCH, spellcasting: SPELLS, equipment: [] });
+  world.dice(15);
+  const cast = await world.invoke("pc_attack", { characterId: hero.id, enemyId: enemy.id, targetEnemyId: enemy.id, spell: "Inflict Wounds", level: 1, damage: "3d10" });
+  world.clearDice();
+  assert.equal(cast.ok, true, cast.error);
+  assert.deepEqual(offered(), ["touch_of_death"]);
+  await spend(open()[0], 5, 5, 5);
+  assert.equal(kit.enemy(enemy.id).currentHp, 400 - (15 + 11));
+  const beside = await stage({ ...TOUCH, spellcasting: SPELLS, equipment: [] });
+  world.dice(15, 5);
+  const bolt = await world.invoke("pc_attack", { characterId: hero.id, enemyId: beside.id, targetEnemyId: beside.id, spell: "Fire Bolt", damage: "1d10" });
+  world.clearDice();
+  assert.equal(bolt.ok, true, bolt.error);
+  assert.equal(open().length, 0);
+  world.patch(hero.id, { spellcasting: null, equipment: GEAR });
 });
 
 await test("A monk's Touch of Death, a different feature, opens nothing.", async () => {
