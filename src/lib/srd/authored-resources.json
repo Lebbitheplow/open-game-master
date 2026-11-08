@@ -792,7 +792,8 @@
    "uses": 1,
    "ability": null,
    "recharge": "long",
-   "guidance": "Instead of rolling a death save, rise at half hit points, blinding enemies within 30 feet and dealing 2d8 + Charisma radiant damage to them."
+   "passive": true,
+   "guidance": "This is not spent by choice: the next time the warlock would make a death save, the server has them rise at half their hit points instead, on their feet, burning (2d8 + Charisma radiant) and blinding every enemy within 30 feet until the end of their turn, and in a fight the turn is theirs to take."
   },
   {
    "id": "sub_accursed_specter",

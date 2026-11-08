@@ -293,6 +293,15 @@ export function wakeStable(campaign: Campaign, characterId: string): string | nu
   return `${sheet.name} comes round with 1 hit point.`;
 }
 
+// A feature that answers a death save in its place (Searing Vengeance,
+// src/lib/dm/searing-vengeance.ts), registered by its module: this one must
+// not import what that one needs (an enemy's damage imports this file).
+type DeathSaveStandIn = (campaign: Campaign, sheet: CharacterSheet) => string | null;
+let standIn: DeathSaveStandIn | null = null;
+export function registerDeathSaveStandIn(hook: DeathSaveStandIn) {
+  standIn = hook;
+}
+
 // One automatic death save, rolled server-side when the initiative pointer
 // passes a dying PC. Publishes the dice card and a table note so both the
 // players and the model (via history) see the result.
@@ -303,6 +312,11 @@ export function rollDeathSave(campaign: Campaign, characterId: string, turnId: s
   const track = sheet?.deathSaves;
   if (!sheet || !track || track.stable || track.dead || sheet.currentHp > 0) {
     return null;
+  }
+  const instead = standIn?.(campaign, sheet) ?? null;
+  if (instead) {
+    tableNote(campaign, instead, "cue-heal");
+    return instead;
   }
   // A death save is a saving throw tied to no ability: it takes what every
   // save takes (exhaustion, Bless and Bane, a paladin's aura, a Ring of

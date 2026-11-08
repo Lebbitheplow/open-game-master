@@ -20,6 +20,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { withActor } from "@/lib/dm/acting-party";
 import { regainHitPoints } from "@/lib/dm/regain";
+import { risesWithVengeance, searingVengeance } from "@/lib/dm/searing-vengeance";
 
 function fielded(campaignId: string): CharacterSheet[] {
   return listSheets(campaignId)
@@ -69,6 +70,11 @@ export function authoredTurnStart(campaign: Campaign, encounter: Encounter, comb
   for (const id of combatantIds) {
     const sheet = getSheetById(id);
     if (sheet && !sheet.deathSaves?.dead) {
+      // A dying warlock's turn the pointer stopped on starts with the rise
+      // their death save would have been (searing-vengeance.ts).
+      if (risesWithVengeance(sheet)) {
+        lines.push(...searingVengeance(campaign, sheet));
+      }
       for (const { effect, held } of activeAuthored(sheet, "turn_heal")) {
         if (effect.when !== "start") {
           continue;
