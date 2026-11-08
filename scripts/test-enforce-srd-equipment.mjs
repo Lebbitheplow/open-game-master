@@ -357,6 +357,32 @@ await test("EQP-10", async () => {
   assert.equal(swing.result.damageType, "fire", `the torch hit for ${swing.result.damage} ${swing.result.damageType}`);
 });
 
+// adventuring-gear, Acid, Alchemist's Fire, Holy Water: "As an action, you can
+// ... throw this flask up to 20 feet, shattering it on impact. Make a ranged
+// attack". In the 2026-11-07 play-test the GM threw alchemist's fire through
+// use_item: the flask and the action were spent, no attack was rolled, and
+// the attack could not then be made. Oil can also be poured on the ground,
+// which is no attack, so use_item still spends it.
+await test("Adventuring Gear, thrown flasks: in a fight, use_item sends a flask thrown at a creature to pc_attack and spends neither the flask nor the action.", async () => {
+  kit.stand(thrower.id, 3);
+  for (const name of ["Acid (vial)", "Alchemist's Fire (flask)", "Holy Water (flask)"]) {
+    world.patch(thrower.id, { equipment: [{ name, qty: 2 }] });
+    const { used, budget } = await kit.onTurnOf(thrower.id, async () => ({
+      used: await world.invoke("use_item", { characterId: thrower.id, item: name, reason: "thrown at the goblin" }),
+      budget: world.encounter().turnBudget,
+    }));
+    assert.equal(used.ok, false, `use_item spent ${name} with no attack: ${JSON.stringify(used.result)}`);
+    assert.equal(used.retry, true, `${name}: ${used.error}`);
+    assert.match(used.error, /pc_attack/, `${name}: ${used.error}`);
+    assert.equal(carried(thrower.id, name)?.qty, 2, `${name} left the pack on a refused use`);
+    assert.equal(budget?.actionUsed ?? false, false, `${name}: the refused use took the action`);
+  }
+  world.patch(thrower.id, { equipment: [{ name: "Oil (flask)", qty: 2 }] });
+  const poured = await kit.onTurnOf(thrower.id, () => world.invoke("use_item", { characterId: thrower.id, item: "Oil (flask)", reason: "poured on the floor" }));
+  assert.equal(poured.ok, true, `oil poured on the ground was refused: ${poured.error}`);
+  assert.equal(carried(thrower.id, "Oil (flask)")?.qty, 1);
+});
+
 // weapons, Improvised Weapons: "If a character uses a ranged weapon to make a
 // melee attack, or throws a melee weapon that does not have the thrown
 // property, it also deals 1d4 damage. An improvised thrown weapon has a normal

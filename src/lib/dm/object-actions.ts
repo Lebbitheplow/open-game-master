@@ -29,7 +29,7 @@ import { tilesBetween } from "@/lib/dm/attack-spatial";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { rollCharacterCheck } from "@/lib/dm/contest-roll";
-import { findCarriedItem, itemUseProblem } from "@/lib/dm/item-logic";
+import { findCarriedItem, itemUseProblem, thrownFlaskProblem } from "@/lib/dm/item-logic";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import { READIED, READIED_WORDS, RELEASE_TOOLS, type Readiable } from "@/lib/dm/readied-kinds";
 import { dropReadied, readiedReleaseFor } from "@/lib/dm/readied-release";
@@ -61,6 +61,12 @@ export function prepareUseItem(
     return { ...problem, error: `${sheet.name} does not use up ${carried?.name ?? itemName}: ${problem.error}` };
   }
   const encounter = getActiveEncounter(campaign.id);
+  // A flask thrown in a fight is pc_attack's, asked before the action is
+  // priced so nothing is spent (item-logic.ts).
+  const thrown = thrownFlaskProblem(sheet.name, carried?.name ?? itemName, Boolean(encounter));
+  if (thrown) {
+    return thrown;
+  }
   // Off their turn, the use of an item they readied is their reaction, and
   // nothing of the acting combatant's turn (readied-release.ts).
   const readied = readiedReleaseFor(sheet, encounter, "item");
