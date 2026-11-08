@@ -6,12 +6,13 @@
 // stages, so it reaches both dice paths or neither.
 
 import { getCampaignById } from "@/lib/db/campaigns";
-import { createPendingRoll, getDmTurn, publicPendingRoll, type PendingAttack, type PendingRoll } from "@/lib/db/dm-turns";
+import { createPendingRoll, dicePreferencesOf, getDmTurn, publicPendingRoll, type PendingAttack, type PendingRoll } from "@/lib/db/dm-turns";
+import { parkReasonFor } from "@/lib/dice/held-rolls";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getRoll, type StoredRoll } from "@/lib/db/rolls";
 import { publishPersisted } from "@/lib/events";
 import { attackRecord, attackTurnOver, recordTargetAc, type AttackRecord, type DamageAsk } from "@/lib/dm/attack-record";
-import { damageDiceNote, landSwingBlow } from "@/lib/dm/attack-blow";
+import { damageDiceNote, damageDiceSteps, landSwingBlow } from "@/lib/dm/attack-blow";
 import { hitSwing, judgeSwing, missSwing, type SwingScene } from "@/lib/dm/attack-swing";
 import type { HeldMote } from "@/lib/dm/authored-mote";
 import { applyPendingDamageRoll } from "@/lib/dm/enemy-blow";
@@ -120,6 +121,12 @@ function sceneOf(pending: PendingRoll): { scene: SwingScene; record: AttackRecor
 // Parks the damage roll a hit or a graze asks for, with the record it lands by.
 function parkDamage(pending: PendingRoll, scene: SwingScene, record: AttackRecord, ask: DamageAsk, toHit: StoredRoll) {
   const attack: AttackRecord = { ...record, damage: ask, toHitRollId: toHit.id, riders: ask.riders, crit: ask.crit, ...(ask.half ? { halfOnMiss: true } : {}) };
+  // The card shows the roll's reason under its title, so the feats' steps go
+  // there for a player with dice in hand. A held roll is thrown by the server
+  // and has no dice to reroll.
+  const { dicePolicy, member } = dicePreferencesOf(pending.campaignId, pending.userId);
+  const steps = parkReasonFor(dicePolicy, member) === "real_dice" ? damageDiceSteps(ask) : "";
+  const reason = `${record.weapon} ${ask.half ? "half damage" : "damage"} against ${scene.enemy.displayName}`;
   const damagePending = createPendingRoll({
     campaignId: pending.campaignId,
     turnId: pending.turnId,
@@ -134,7 +141,7 @@ function parkDamage(pending: PendingRoll, scene: SwingScene, record: AttackRecor
     expression: ask.expression,
     advantage: "none",
     dc: null,
-    reason: `${record.weapon} ${ask.half ? "half damage" : "damage"} against ${scene.enemy.displayName}`,
+    reason: steps ? `${reason}. ${steps}` : reason,
     targetEnemyId: scene.enemy.id,
     attack,
   });
