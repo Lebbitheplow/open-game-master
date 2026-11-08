@@ -140,6 +140,42 @@ await test("A dropped weapon costs nothing, lies on the board for the party to s
   assert.equal(listDroppedItems(world.campaignId).length, 0);
 });
 
+// Play-test 2026-11-07: a net thrown from the hand that held it stayed on
+// the sheet, equipped, so the hands read as full afterwards and a weapon
+// picked up went into the pack.
+await test("A thrown net leaves the hand and the pack and lies at the creature it was thrown at, hit or miss", async () => {
+  await freshFight();
+  world.patch(fighter.id, { equipment: [...GEAR(), { name: "Net", qty: 2, equipped: true }] });
+  const [enemy] = world.enemies();
+  kit.place(enemy.id, 3, 2);
+  const hit = await kit.swing(fighter.id, enemy.id, [18, 18], { weapon: "Net" });
+  assert.equal(hit.ok, true, hit.error);
+  assert.equal(hit.result.hit, true, JSON.stringify(hit.result));
+  assert.equal(row(fighter, "Net").qty, 1, "the net thrown is still in the pack");
+  assert.equal(row(fighter, "Net").equipped, false, "the net thrown is still in hand");
+  const [lying] = listDroppedItems(world.campaignId);
+  assert.equal(lying?.item.name, "Net");
+  assert.equal(lying.item.qty, 1);
+  assert.deepEqual([lying.x, lying.y], [3, 2], "the net lies at the creature it was thrown at");
+  assert.equal(lying.droppedBy, "Kara");
+  // Sword in one hand and the other free: the handaxe can be drawn.
+  const axe = await handle({ action: "equip", item: "Handaxe" });
+  assert.equal(axe.ok, true, axe.error);
+  // A miss on the next turn: the second net leaves the sheet as well.
+  kit.giveTurn(fighter.id);
+  assert.equal((await handle({ action: "drop", item: "Handaxe" })).ok, true);
+  const miss = await kit.swing(fighter.id, enemy.id, [2, 2], { weapon: "Net" });
+  assert.equal(miss.ok, true, miss.error);
+  assert.equal(miss.result.hit, false, JSON.stringify(miss.result));
+  assert.equal(row(fighter, "Net"), undefined, "a missed net is still on the sheet");
+  assert.equal(listDroppedItems(world.campaignId).filter((entry) => entry.item.name === "Net").length, 2);
+  // From within 5 ft it is taken up again, as anything on the ground is.
+  kit.giveTurn(fighter.id);
+  const took = await handle({ action: "pick_up", item: "Net" });
+  assert.equal(took.ok, true, took.error);
+  assert.equal(row(fighter, "Net").qty, 1);
+});
+
 await test("A strapped-on shield is not dropped for free: taking it off is the action", async () => {
   await freshFight();
   world.patch(fighter.id, { equipment: GEAR().map((item) => (item.name === "Shield" ? { ...item, equipped: true } : item)) });
