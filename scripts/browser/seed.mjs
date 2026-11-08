@@ -2588,6 +2588,45 @@ for (const viewport of ["desktop", "phone"]) {
   portentTables[viewport] = { id: table.id, hero: hero.id };
 }
 
+// Watching a fight for Portent (src/lib/dm/foresight.ts): a table the AI GM
+// runs with the player steering, in a fight with one goblin, where the lead's
+// Divination wizard holds two numbers. The stops come in the AI's turns, so
+// the button stands only at a table like this one.
+const WATCH_TITLE = "Seer's Watch";
+const watchTables = {};
+{
+  const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
+  const encounterRows = await import("../../src/lib/db/encounters.ts");
+  for (const viewport of ["desktop", "phone"]) {
+    const table = campaigns.createCampaign(player.id, {
+      title: `${WATCH_TITLE} (${viewport})`,
+      description: "A goblin, and a wizard who has seen this before.",
+      theme: "high-fantasy",
+      maxPlayers: 6,
+      startingLevel: 5,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "steered" },
+    });
+    const seated = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+    if ("error" in seated) {
+      throw new Error(`could not seat the lead at the seer's watch: ${seated.error}`);
+    }
+    campaigns.setCampaignStatus(table.id, "active");
+    const hero = sheets.createSheet(table.id, world.owner.id, 5, heroInput({ name: "Ione Vale", class: "wizard", subclass: "School of Divination", level: 5 }));
+    sheets.patchSheet(hero.id, { resources: { ...hero.resources, sub_portent: { max: 2, used: 0 } }, foretold: [17, 3] });
+    const started = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: player.id }, {
+      name: "start_encounter",
+      args: { enemies: [{ monster: "goblin", count: 1 }] },
+    });
+    if (!started.ok) {
+      throw new Error(`the seer's watch fight did not start: ${started.error}`);
+    }
+    const encounter = encounterRows.getActiveEncounter(table.id);
+    encounterRows.saveEncounter({ ...encounter, orderReady: true, round: Math.max(1, encounter.round), legendary: { ...encounter.legendary, due: [] } });
+    watchTables[viewport] = { id: table.id, hero: hero.id };
+  }
+}
+
 // The damage roll card on real dice (play-test 2026-11-07, B5): a table the
 // player runs, at real_allowed, in a fight with one goblin beside the lead's
 // fighter, whose Piercer and Savage Attacker change the damage dice. It is
@@ -3517,6 +3556,7 @@ const ids = {
   afterRollTables,
   afterAttackTables,
   portentTables,
+  watchTables,
   damageStepTables,
   recapTables,
   prepReturn,
@@ -3632,6 +3672,7 @@ const ids = {
     ...Object.fromEntries(Object.entries(afterRollTables).map(([viewport, table]) => [table.id, `${AFTER_ROLL_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(afterAttackTables).map(([viewport, table]) => [table.id, `${AFTER_ATTACK_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(portentTables).map(([viewport, table]) => [table.id, `${PORTENT_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(watchTables).map(([viewport, table]) => [table.id, `${WATCH_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(damageStepTables).map(([viewport, table]) => [table.id, `${DAMAGE_STEPS_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(recapTables).map(([viewport, id]) => [id, `${RECAP_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(prepReturn).map(([viewport, id]) => [id, `${PREP_RETURN_TITLE} (${viewport})`])),

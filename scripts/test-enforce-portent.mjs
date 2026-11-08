@@ -326,9 +326,19 @@ await test("With the button off an attack never stops, and the numbers stay.", a
   assert.deepEqual(fightWorld.sheet(seer.id).foretold, [17, 3]);
 });
 
-await test("The button needs a number held.", async () => {
+await test("The button needs a number held, and a table whose turns the AI GM plays.", async () => {
   arm({ foretold: [] });
   assert.equal((await toggle(true)).status, 409, "no number held");
+  arm();
+  const { setDmMode } = await import("../src/lib/db/campaigns.ts");
+  setDmMode(fightWorld.campaignId, "human", fightWorld.owner.id);
+  try {
+    const refused = await toggle(true);
+    assert.equal(refused.status, 409, "a person runs the table: the console's rolls never stop, so the button did nothing");
+    assert.match(JSON.stringify(refused.json ?? refused.body ?? ""), /A person runs this table/);
+  } finally {
+    setDmMode(fightWorld.campaignId, "ai", fightWorld.owner.id);
+  }
   arm();
   assert.equal((await toggle(true)).status, 200);
   assert.ok(fightWorld.sheet(seer.id).watchingEncounterId);

@@ -1,18 +1,53 @@
 // Watching a fight for Portent (src/lib/dm/foresight.ts): the button stands in
-// the fight for a character who holds a number, and the stop before a roll
-// shows those numbers and sends what it says. The rules are held by
-// scripts/test-enforce-portent.mjs; this is the button and the card where a
-// player meets them, at phone width.
-import { check, eventually, untilStill } from "../lib.mjs";
+// the fight for a character who holds a number, at a table whose turns the AI
+// GM plays, and the stop before a roll shows those numbers and sends what it
+// says. The rules are held by scripts/test-enforce-portent.mjs; this is the
+// button and the card where a player meets them, at phone width, by day and
+// by night, on the website and in the app.
+import { axeViolations, check, eventually, untilStill } from "../lib.mjs";
 
 export default {
   name: "watch-card",
   viewports: ["desktop", "phone"],
-  // The stand-in is a browser-level route, which the app's patched fetch
-  // bypasses.
-  app: false,
   async run(t) {
     const { page, base, root, ids, api } = t;
+
+    // ---- The button, for real: a seeded fight the AI GM runs ----
+    const table = ids.watchTables[t.viewport];
+    await t.open(`/campaigns/${table.id}`);
+    const watch = page.locator(`${root}button`).filter({ hasText: /^\s*Watch(ing)? for Portent\s*$/ }).locator("visible=true").first();
+    if (!(await eventually(() => watch.count(), { timeoutMs: 8_000 }).catch(() => 0))) {
+      const tab = page.locator(`${root}nav.cine-bottombar`).getByRole("button", { name: "Table", exact: true }).locator("visible=true");
+      if (await tab.count()) await t.tap(tab.first());
+    }
+    await eventually(() => watch.count(), { timeoutMs: 30_000, label: "the Watch for Portent button" });
+    await page.getByText(/roll initiative/i).locator("visible=true").first().waitFor({ state: "hidden", timeout: 20_000 }).catch(() => {});
+    await untilStill(page);
+    check((await watch.getAttribute("aria-pressed")) === "false", "the button starts off, and says so");
+    const watchBox = await watch.boundingBox();
+    check((watchBox?.height ?? 0) >= 40, `a finger-sized button (${watchBox?.height}px)`);
+    await watch.focus();
+    await page.keyboard.press("Enter");
+    await eventually(async () => (await watch.getAttribute("aria-pressed")) === "true", { timeoutMs: 15_000, label: "the button turned on from the keyboard" });
+    check(/Watching for Portent/.test(await watch.innerText()), "its words say it is on");
+    const night = await axeViolations(page, `${root}.session-compose-notices`);
+    check(!night.length, `axe on the button at night: ${night.map((entry) => entry.id).join(", ")}`);
+    await t.shot("button-on");
+    await page.evaluate(() => (document.documentElement.dataset.theme = "light"));
+    await untilStill(page);
+    const day = await axeViolations(page, `${root}.session-compose-notices`);
+    check(!day.length, `axe on the button by day: ${day.map((entry) => entry.id).join(", ")}`);
+    await t.shot("button-on-day");
+    await page.evaluate(() => (document.documentElement.dataset.theme = "dark"));
+    await t.tap(watch);
+    await eventually(async () => (await watch.getAttribute("aria-pressed")) === "false", { timeoutMs: 15_000, label: "the button turned off" });
+    const snapshot0 = await (await api.get(`${base}/api/campaigns/${table.id}`)).json();
+    check(!snapshot0.sheets.find((entry) => entry.id === table.hero)?.watchingEncounterId, "off on the server too");
+
+    // ---- The stop's card: a stand-in through a browser route, which the
+    // app's patched fetch bypasses, so on the website only. The card is the
+    // same component in the app. ----
+    if (t.app) return;
     const snapshot = await (await api.get(`${base}/api/campaigns/${ids.campaignId}`)).json();
     const sheet = snapshot.sheets.find((entry) => entry.userId === snapshot.me.id) ?? snapshot.sheets[0];
     const line = "Goblin 1 is about to attack Bree Underbough.";
@@ -76,6 +111,8 @@ export default {
       check((box?.height ?? 0) >= 40, `a finger-sized number (${box?.height}px)`);
       const fits = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
       check(fits, "the card does not push the page sideways");
+      const cardAxe = await axeViolations(page, `${root}[role="group"][aria-label="Use a number Portent foretold, or let it roll"]`);
+      check(!cardAxe.length, `axe on the card: ${cardAxe.map((entry) => entry.id).join(", ")}`);
       await t.tap(number.first());
       await eventually(() => sent.length, { label: "the choice sent" });
       check(sent[0].value === 17, `the number sends itself (${JSON.stringify(sent[0])})`);
