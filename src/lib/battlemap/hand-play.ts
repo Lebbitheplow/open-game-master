@@ -250,7 +250,7 @@ export function previewRows(
   } else if (card.roll) {
     rows.push({ key: "Roll", value: card.roll, tone: "muted" });
   }
-  if (card.damageType) rows.push({ key: "Type", value: card.damageType, tone: "muted" });
+  if (card.damageType) rows.push({ key: "Type", value: card.secondType ? `${card.damageType} and ${card.secondType}` : card.damageType, tone: "muted" });
   if (card.condition) rows.push({ key: "Applies", value: card.condition, tone: "applies" });
   // What a summoning card brings, once its creature is picked.
   const brings = card.summon ? chosenLabel(card, choices) : null;

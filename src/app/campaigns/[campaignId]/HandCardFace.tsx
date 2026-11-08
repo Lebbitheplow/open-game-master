@@ -84,7 +84,7 @@ export function HandPlayedCard({ card }: { card: HandCard }) {
       </span>
       <span className="hand-played-name">{card.name}</span>
       {card.dice ? (
-        <span className="hand-dice" data-heals={card.heals ? "true" : undefined}>
+        <span className="hand-dice" data-heals={card.heals ? "true" : undefined} data-two-types={card.secondType ? "true" : undefined}>
           {card.dice}
         </span>
       ) : null}
@@ -183,7 +183,7 @@ function HandCardFaceInner({
         <span className="hand-name">{card.name}</span>
         <span className="hand-numbers">
           {card.dice ? (
-            <span className="hand-dice" data-heals={card.heals ? "true" : undefined}>
+            <span className="hand-dice" data-heals={card.heals ? "true" : undefined} data-two-types={card.secondType ? "true" : undefined}>
               {card.dice}
             </span>
           ) : null}

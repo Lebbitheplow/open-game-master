@@ -225,6 +225,8 @@
 }
 .hand-dice { color: #ffbe8f; }
 .hand-dice[data-heals="true"] { color: #7ed6a4; }
+/* Two damage types do not fit one line: cut off, Ice Storm's card lost its cold. */
+.hand-dice[data-two-types="true"] { white-space: normal; }
 .hand-roll { color: var(--hand-ink-mute); }
 .hand-rules {
   display: block;

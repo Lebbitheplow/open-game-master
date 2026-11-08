@@ -271,7 +271,7 @@ export function filterCards(cards: HandCard[], filter: HandFilter): HandCard[] {
     if (filter.costs.length && !filter.costs.includes(card.cost)) return false;
     if (filter.concentration && !card.concentration) return false;
     if (!wanted.length) return true;
-    const held = textKey([card.name, card.dice, card.damageType, card.condition].join(" ")).split(" ");
+    const held = textKey([card.name, card.dice, card.damageType, card.secondType, card.condition].join(" ")).split(" ");
     return wanted.every((word) => held.some((part) => part.startsWith(word)));
   });
 }

@@ -50,6 +50,7 @@ import {
   type HandTurn,
   type SpellFact,
 } from "@/lib/battlemap/hand-core";
+import { splitDamageExpression } from "@/lib/dm/aoe-parts";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import type { StoredSpell } from "@/lib/srd/spell-storing";
 import { compareNames, textKey } from "@/lib/language/text-logic";
@@ -207,6 +208,20 @@ function spellShares(mech: SpellMech, spellLevel: number, slotLevel: number | nu
 // casting is done, and this card resolves it.
 export type StoredCard = { ring: string; entry: StoredSpell; holds: boolean; free: boolean; gates: Gate[] };
 
+// The dice a card shows, with what they deal. A spell of two damage types
+// (Ice Storm: 2d8 bludgeoning and 4d6 cold) names each beside its own dice,
+// split as the engine splits them (aoe-parts.ts): the whole sum used to read
+// as its first type, so Ice Storm's card never said cold. Dice the engine
+// would not split (a flat bonus on the end) name both types after the sum.
+function typedDice(dice: string, mech: SpellMech): string {
+  if (!mech.damageType) return dice;
+  if (!mech.secondType) return `${dice} ${mech.damageType}`;
+  const parts = splitDamageExpression(dice, mech.secondType);
+  if (!parts) return `${dice} ${mech.damageType} and ${mech.secondType}`;
+  const [firstDice, secondDice] = parts;
+  return `${firstDice} ${mech.damageType} + ${secondDice} ${mech.secondType}`;
+}
+
 export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, name: string, fact: SpellFact, options: HandOptions = {}, stored?: StoredCard): HandCard | null {
   const blasts = options.blasts !== false;
   const cost = castingCost(fact.castingTime) ?? (stored ? "action" : null);
@@ -289,7 +304,7 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
         : mech.resolution === "attack" || mech.resolution === "save" || mech.resolution === "auto"
           ? "enemy"
           : "none";
-  const typed = damage ? `${damage}${mech.damageType ? ` ${mech.damageType}` : ""}` : "";
+  const typed = damage ? typedDice(damage, mech) : "";
   const dice = heals
     ? damage ? `heals ${damage}` : "heals"
     : save
@@ -298,7 +313,7 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
         (mech.buff
           ? // A buff with an aura that hurts (Spirit Guardians) names the
             // engine's dice beside it; the card itself aims at no enemy.
-            `${mech.buff.condition}${mech.resolution === "buff" && rolled ? `, ${rolled.dice}${mech.damageType ? ` ${mech.damageType}` : ""}` : ""}`
+            `${mech.buff.condition}${mech.resolution === "buff" && rolled ? `, ${typedDice(rolled.dice, mech)}` : ""}`
           : "");
   const roll =
     toHit !== null ? `${signed(toHit)} to hit` : save ? (typed ? `DC ${save.dc}${mech.halfOnSave ? ", half on a save" : ""}` : "no attack") : "no roll";
@@ -370,6 +385,7 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
     toHit,
     damage,
     damageType: heals ? "healing" : mech.damageType ?? "",
+    ...(!heals && mech.damageType && mech.secondType ? { secondType: mech.secondType } : {}),
     heals,
     save,
     // A touch spell is a melee spell attack with touch reach (the engine's
