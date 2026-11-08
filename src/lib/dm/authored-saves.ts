@@ -26,7 +26,7 @@ import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { spaceOf, tilesApart } from "@/lib/dm/board-reach";
 import { hasLineOfSightBetween } from "@/lib/battlemap/los";
 import { sightTerrainFor } from "@/lib/dm/zone-rules";
-import { characterSenses, enemySenses } from "@/lib/dm/attack-light";
+import { characterSenses, enemySenses, sensesReaching } from "@/lib/dm/attack-light";
 
 import type { Advantage } from "@/lib/dice";
 import { activeAuthored, hasCondition } from "@/lib/srd/authored-effects";
@@ -87,8 +87,8 @@ export function seesOnBoard(encounterId: string, fromRef: string, toRef: string)
 // line of sight. The board alone let an invisible goblin be taken.
 // Either side may look: a character, or a creature of the fight (Charm Animals
 // and Plants asks whether the beast can see the cleric). Blindsight or
-// truesight that reaches the other sees past invisibility, as it does for
-// hiding (hide-traits.ts); off the board any such sense reaches.
+// truesight that reaches the other sees past invisibility (attack-light.ts
+// sensesReaching, the rule an attack roll reads too).
 type Looker = { id: string; conditions: string[]; name?: string; displayName?: string } & (
   | Pick<CharacterSheet, "features" | "race">
   | Pick<EncounterEnemy, "stats">
@@ -101,14 +101,10 @@ export function unseenBecause(encounterId: string, viewer: Looker, seen: Looker,
 }
 
 // The conditions' part alone: blinded, invisible, hidden, and the senses that see past them.
-export function unseenByConditions(encounterId: string, viewer: Looker, seen: Looker, options: { hidden?: boolean }): string | null {
+export function unseenByConditions(encounterId: string | null, viewer: Looker, seen: Looker, options: { hidden?: boolean }): string | null {
   const senses = "stats" in viewer ? enemySenses(viewer) : characterSenses(viewer);
-  const map = senses.blindsight || senses.truesight ? getBattleMapForEncounter(encounterId) : null;
-  const from = map ? getTokenByRef(map.id, viewer.id) : null;
-  const to = map ? getTokenByRef(map.id, seen.id) : null;
-  const apart = from && to ? tilesApart(from, to) : null;
-  const reaches = (tiles: number) => tiles > 0 && (apart === null || apart <= tiles);
-  const blocked = sightBlockedBy(viewer.conditions, seen.conditions, { blindsight: reaches(senses.blindsight), truesight: reaches(senses.truesight), hidden: options.hidden });
+  const reach = sensesReaching(encounterId, { refId: viewer.id, senses }, { refId: seen.id });
+  const blocked = sightBlockedBy(viewer.conditions, seen.conditions, { ...reach, hidden: options.hidden });
   if (!blocked) {
     return null;
   }

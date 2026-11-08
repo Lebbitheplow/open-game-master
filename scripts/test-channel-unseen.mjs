@@ -27,7 +27,8 @@ const vengeance = hero("paladin", "Oath of Vengeance");
 const oathbreaker = hero("paladin", "Oathbreaker");
 const nature = hero("cleric", "Nature Domain");
 const rogue = hero("rogue", "Thief");
-const everyone = [ancients, crown, conquest, vengeance, oathbreaker, nature, rogue];
+const watchers = hero("paladin", "Oath of the Watchers");
+const everyone = [ancients, crown, conquest, vengeance, oathbreaker, nature, rogue, watchers];
 
 // Two beasts beside the hero, the first of them invisible, in the open: the
 // board's line of sight reaches both.
@@ -205,6 +206,27 @@ await test("Uncanny Dodge is refused against an invisible attacker and while the
   kit.setEnemy(seen.id, { conditions: ["hidden"], conditionMeta: {} });
   const hidden = await dodge();
   assert.equal(hidden.ok, true, hidden.error);
+});
+
+// Watcher's Will: "up to a number of creatures equal to your Charisma
+// modifier that you can see within 30 feet". It took the first allies in
+// reach, seen or not.
+await test("Watcher's Will leaves out an invisible ally, takes those the paladin sees, and refuses one named that it cannot see, spending nothing.", async () => {
+  await stage(watchers);
+  everyone.forEach((entry) => entry.id !== watchers.id && world.patch(entry.id, { conditions: [], conditionMeta: {} }));
+  world.patch(ancients.id, { conditions: ["invisible"], conditionMeta: {} });
+  const named = await channel(watchers, "watcher's will", [], { targetCharacterId: ancients.id });
+  assert.equal(named.ok, false, "an invisible ally named for it was taken");
+  assert.match(String(named.error), /cannot see .*invisible.*Nothing was spent/);
+  assert.equal(used(watchers), 0);
+  const out = await channel(watchers, "watcher's will", []);
+  assert.equal(out.ok, true, out.error);
+  const willed = (who) => world.sheet(who.id).conditions.includes("watcher's will");
+  assert.equal(willed(ancients), false, "the invisible ally took Watcher's Will");
+  assert.ok(willed(watchers), "the paladin takes it");
+  assert.equal(everyone.filter((entry) => entry.id !== watchers.id && willed(entry)).length, 3, "three seen allies for a +3 Charisma");
+  assert.match(JSON.stringify(out.result), /left out/);
+  world.patch(ancients.id, { conditions: [], conditionMeta: {} });
 });
 
 // The Hand deals a reaction only for a creature its player sees, by the board

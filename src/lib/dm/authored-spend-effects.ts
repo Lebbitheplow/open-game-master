@@ -28,7 +28,7 @@ import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import { hurtEnemy } from "@/lib/dm/spell-aura";
-import { unseenBecause, withinFeet } from "@/lib/dm/authored-saves";
+import { unseenBecause, unseenByConditions, withinFeet } from "@/lib/dm/authored-saves";
 import { darknessNear, dispelZones } from "@/lib/dm/zone-cast";
 import { tilesBetween, wallBetween } from "@/lib/dm/attack-spatial";
 import { rerollLastSave, swarmPush } from "@/lib/dm/authored-spend-more";
@@ -220,11 +220,27 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
         lines.push(landed ? `${enemy.displayName} is ${condition} for ${does.rounds} rounds.` : `${enemy.displayName} cannot be ${condition}.`);
       } else if (does.target === "allies") {
         const count = does.count ? Number(formula(ctx, does.count)) : 5;
-        const touched = alliesInReach(ctx, does.rangeFt ?? 30, true).slice(0, count + 1);
+        // "Creatures you can see" (Watcher's Will): the conditions and the
+        // board's line as every sight check reads them; an ally hides from
+        // the foes, not from its friends.
+        const encounter = getActiveEncounter(campaign.id);
+        const unseen = (ally: CharacterSheet) =>
+          ally.id !== sheet.id && does.sight ? (encounter ? unseenBecause(encounter.id, sheet, ally, { hidden: false }) : unseenByConditions(null, sheet, ally, { hidden: false })) : null;
+        const named = ctx.args.targetCharacterId ? getSheetById(ctx.args.targetCharacterId) : null;
+        const namedUnseen = named ? unseen(named) : null;
+        if (named && namedUnseen) {
+          return { error: `${sheet.name} cannot see ${named.name} (${namedUnseen}), and ${ctx.spend.name} takes creatures they can see. Nothing was spent.`, refused: "rules" };
+        }
+        const reach = alliesInReach(ctx, does.rangeFt ?? 30, true);
+        const left = reach.filter((ally) => unseen(ally));
+        const touched = reach.filter((ally) => !unseen(ally)).slice(0, count + 1);
         for (const ally of touched) {
           sheetCondition(campaign, ally, condition, does.rounds);
         }
         lines.push(`${touched.map((entry) => entry.name).join(", ")}: ${condition} for ${does.rounds} rounds.`);
+        if (left.length) {
+          lines.push(`${left.map((entry) => entry.name).join(", ")}: not seen by ${sheet.name}, so left out.`);
+        }
       } else if (does.target === "ally") {
         // "Other than yourself": named or not, the holder is refused before
         // the use is paid, where it once landed on them.

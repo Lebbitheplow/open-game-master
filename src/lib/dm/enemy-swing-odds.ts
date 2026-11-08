@@ -12,7 +12,7 @@ import type { EncounterEnemy } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
 import type { Advantage } from "@/lib/dice";
 import { enemyFlanks, enemyShootsInMelee } from "@/lib/dm/attack-spatial";
-import { attackSight, characterSenses, enemySenses, fearAsRolled, lightOnAttack } from "@/lib/dm/attack-light";
+import { attackSenses, attackSight, characterSenses, enemySenses, fearAsRolled, lightOnAttack } from "@/lib/dm/attack-light";
 import { authoredIncomingAttack } from "@/lib/dm/authored-hooks";
 import { normalizeClock } from "@/lib/dm/calendar";
 import { attackContext, isIncapacitated, mergeAdvantage } from "@/lib/dm/condition-logic";
@@ -78,8 +78,11 @@ export function enemySwingOdds(input: {
     target: { refId: target.id, senses: characterSenses(target) },
   });
   const live = getSheetById(target.id) ?? target;
+  // Blindsight or truesight past an invisible or blinded side (attack-light.ts).
+  const senses = attackSenses(encounterId, { refId: standing.id, senses: enemySenses(standing) }, { refId: target.id, senses: characterSenses(target) });
   const upright = input.standingTarget ? live.conditions.filter((entry) => !isConditionNamed(entry, UNCONSCIOUS) && !isConditionNamed(entry, PRONE)) : null;
   const conditionContext = attackContext({
+    ...senses,
     // Frightened weighs on the roll only with its source in sight.
     attackerConditions: fearAsRolled(encounterId, standing.id, standing.conditions, standing.conditionMeta),
     attackerType: standing.stats.type,
@@ -191,6 +194,7 @@ export function enemyRowSwingOdds(input: {
     target: { refId: target.id, senses: enemySenses(target) },
   });
   const conditionContext = attackContext({
+    ...attackSenses(encounterId, { refId: standing.id, senses: enemySenses(standing) }, { refId: target.id, senses: enemySenses(target) }),
     // Frightened weighs on the roll only with its source in sight.
     attackerConditions: fearAsRolled(encounterId, standing.id, standing.conditions, standing.conditionMeta),
     attackerType: standing.stats.type,

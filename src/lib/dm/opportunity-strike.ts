@@ -28,7 +28,7 @@ import { d20Expression, rollExpression, type Advantage } from "@/lib/dice";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { healthState } from "@/lib/bestiary/health";
 import { enemyAcWithEffects } from "@/lib/dm/ac-effects";
-import { attackSight, characterSenses, enemySenses, fearAsRolled, lightOnAttack } from "@/lib/dm/attack-light";
+import { attackSenses, attackSight, characterSenses, enemySenses, fearAsRolled, lightOnAttack } from "@/lib/dm/attack-light";
 import { adjudicateHit, weaponAttackProfile, type ResolvedWeapon } from "@/lib/dm/attack-logic";
 import { endInvisibilityOnCast, planMarks, writeMarks } from "@/lib/dm/attack-marks";
 import {
@@ -136,6 +136,7 @@ export function pcOpportunitySwing(input: {
   // the dodger sees (attack-light.ts), as on pc_attack.
   const sight = opportunitySight({ campaignId: campaign.id, encounterId: encounter.id, enemy, sheet, enemyReacts: false });
   const context = attackContext({
+    ...attackSenses(encounter.id, { refId: sheet.id, senses: characterSenses(sheet) }, { refId: enemy.id, senses: enemySenses(enemy) }),
     attackerConditions: fearAsRolled(encounter.id, sheet.id, sheet.conditions, sheet.conditionMeta),
     targetConditions: input.targetConditions,
     melee: true,

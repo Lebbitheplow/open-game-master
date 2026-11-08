@@ -16,7 +16,7 @@ import type { Advantage } from "@/lib/dice";
 import { enemyAcWithEffects } from "@/lib/dm/ac-effects";
 import type { AttackProfile } from "@/lib/dm/attack-logic";
 import { thrownAtRange } from "@/lib/dm/attack-rules";
-import { attackSight, characterSenses, enemySenses, fearAsRolled, lightOnAttack } from "@/lib/dm/attack-light";
+import { attackSenses, attackSight, characterSenses, enemySenses, fearAsRolled, lightOnAttack } from "@/lib/dm/attack-light";
 import {
   characterFlanks,
   characterShootsInMelee,
@@ -148,7 +148,10 @@ export function attackSituation(input: {
     attacker: { refId: sheet.id, senses: characterSenses(sheet) },
     target: { refId: enemy.id, senses: enemySenses(enemy) },
   });
+  // Blindsight or truesight past an invisible or blinded side (attack-light.ts).
+  const senses = attackSenses(encounter.id, { refId: sheet.id, senses: characterSenses(sheet) }, { refId: enemy.id, senses: enemySenses(enemy) });
   const conditionContext = attackContext({
+    ...senses,
     // Frightened weighs on the roll only with its source in sight.
     attackerConditions: fearAsRolled(encounter.id, sheet.id, sheet.conditions, sheet.conditionMeta),
     targetConditions: seenTargetConditions(sheet, enemy.conditions),

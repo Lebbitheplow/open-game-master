@@ -104,8 +104,9 @@ export const AUTHORED_DATA_CHANNEL: Record<string, AuthoredEntry> = {
         name: "Watcher's Will",
         pool: POOL,
         action: "action",
-        // The holder and their Charisma modifier in allies, at least one.
-        does: { kind: "buff", target: "allies", condition: "watcher's will", rounds: 10, rangeFt: 30, count: (_level, mods) => Math.max(1, mods.cha ?? 0) },
+        // The holder and their Charisma modifier in allies they can see, at
+        // least one.
+        does: { kind: "buff", target: "allies", condition: "watcher's will", rounds: 10, rangeFt: 30, count: (_level, mods) => Math.max(1, mods.cha ?? 0), sight: true },
       },
     ],
   },

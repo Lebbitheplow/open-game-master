@@ -315,6 +315,10 @@ export type SpendDoes =
       // Until the end of the holder's next turn, not a count of rounds (Cloak
       // of Shadows). `rounds` still states its length on the card.
       untilNextTurnEnds?: boolean;
+      // Only allies the holder can see (Watcher's Will: "creatures you can
+      // see"): an invisible one, or any while the holder is blinded, is left
+      // out, and one named for it is refused with nothing spent.
+      sight?: boolean;
     }
   // Choose an option for the feature, outside a fight: the feature is
   // renamed "Feature (Option)", which the passive effects read.
