@@ -240,8 +240,14 @@ await test("A Life cleric's Divine Strike deals radiant damage, so a creature re
 
 // ---- Bardic Inspiration ----
 
-await test("A held Bardic Inspiration die is added to the holder's attack roll that misses and that it turns into a hit, and spent by it; a hit keeps it.", async () => {
-  // SRD 5.1: the holder may decide once the d20 is rolled (forced-save.ts settleAttackDie).
+await test("A held Bardic Inspiration die is offered on the holder's attack roll that misses and that it could turn into a hit, and spent when they add it; a hit keeps it.", async () => {
+  // SRD 5.1: the holder may decide once the d20 is rolled. The roll waits on
+  // them (after-roll-logic.ts afterAttackOptions); an agent's seat has the
+  // engine add it (scripts/test-enforce-held-die-settle.mjs).
+  const { call } = await import("./lib/enforce-campaign.mjs");
+  const { listOpenPendingRolls, getPendingRoll } = await import("../src/lib/db/dm-turns.ts");
+  const { getRoll } = await import("../src/lib/db/rolls.ts");
+  const choice = await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]/after-roll");
   const [enemy] = await stage(fighter);
   kit.setEnemy(enemy.id, { maxHp: 400, ac: 18 });
   const bonus = abilityMod(16) + proficiencyBonus(5);
@@ -251,10 +257,18 @@ await test("A held Bardic Inspiration die is added to the holder's attack roll t
   assert.equal(dieCount(hit.toHit, 8), 0, "a hit needs no die");
   assert.deepEqual(world.sheet(fighter.id).conditions, ["bardic inspiration (d8)"]);
   kit.freshTurn();
-  const swing = await kit.swing(fighter.id, enemy.id, [10, 6, 4], { weapon: "Longsword" });
+  const swing = await kit.swing(fighter.id, enemy.id, [10], { weapon: "Longsword" });
   assert.equal(swing.ok, true, swing.error);
-  assert.equal(dieCount(swing.toHit, 8), 1);
-  assert.equal(swing.toHit.total, 10 + 6 + bonus);
+  const [pending] = listOpenPendingRolls(world.campaignId);
+  assert.deepEqual(pending?.thrown?.options.map((option) => option.id), ["bardic"], "the miss waits on the holder");
+  world.signIn({ id: world.sheet(fighter.id).userId });
+  world.dice(6, 4);
+  const spent = await call(choice, "POST", { use: "bardic" }, { campaignId: world.campaignId, pendingRollId: pending.id });
+  world.clearDice();
+  assert.equal(spent.status, 200, JSON.stringify(spent.json));
+  const toHit = getRoll(getPendingRoll(pending.id).rollId);
+  assert.equal(dieCount(toHit, 8), 1);
+  assert.equal(toHit.total, 10 + 6 + bonus);
   assert.equal(world.sheet(fighter.id).conditions.length, 0);
 });
 

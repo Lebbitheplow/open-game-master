@@ -19,6 +19,7 @@ import type { OnHitSpends } from "@/lib/dm/pc-attack-riders";
 import type { HeldMote } from "@/lib/dm/authored-mote";
 import type { BlowSource, WeaponMaterial } from "@/lib/dm/damage-logic";
 import { getFoe } from "@/lib/dm/sheet-foe";
+import { getActiveEncounter } from "@/lib/db/encounters";
 import type { TypedRider } from "@/lib/dm/damage-parts";
 import type { CreatureOnHit } from "@/lib/srd/creature-attacks";
 import type { GearWeapon } from "@/lib/srd/gear-weapons";
@@ -93,6 +94,17 @@ export type AttackRecord = PendingAttack & {
   // What the engine said of the attack before the roll (advantage, Sneak Attack).
   notes?: string[];
   mote?: HeldMote;
+  // A luck point was bought with the attack (pc_attack luck: true): the roll
+  // has had its one, so the pause offers no other (after-roll.ts).
+  luck?: boolean;
+  // The server threw the d20 and the roll waits on the player's choice: when
+  // it lands, the server throws the damage too (pc-attack-parked.ts).
+  serverDice?: boolean;
+  // The attacks declared after this one in the same pc_attack call. They are
+  // made, in order, once this roll lands (pc-attack-parts.ts runQueuedParts),
+  // and what they did rides back with it (queuedResults).
+  queue?: { characterId: string; parts: Record<string, unknown>[] };
+  queuedResults?: Record<string, unknown>[];
   critGear?: { suffix: string; typed: Array<{ dice: string; type: string }>; notes: string[] };
   extras?: {
     foeSlayer?: number;
@@ -180,8 +192,26 @@ export function attackRecord(plan: AttackPlan, strike: { critExtraDice: number; 
     ...(plan.budget ? { round: plan.budget.round } : {}),
     ...(context.notes.length ? { notes: [...context.notes] } : {}),
     ...(mote ? { mote } : {}),
+    ...(extras.luck ? { luck: true } : {}),
     ...(Object.keys(kept).length ? { extras: kept } : {}),
   };
+}
+
+// Whether the turn a parked to-hit roll was declared on is over: the pointer
+// has moved off its attacker (the lead skipped them, the order was edited).
+// A roll the server threw for the player's choice also names its round, so a
+// lone hero whose turn came round again does not land last round's swing on
+// this one. A roll that lands then does nothing.
+export function attackTurnOver(campaignId: string, record: Pick<AttackRecord, "round" | "serverDice">, characterId: string | null): boolean {
+  const fight = getActiveEncounter(campaignId);
+  if (!fight?.orderReady) {
+    return false;
+  }
+  const current = fight.order[fight.turnIndex];
+  if (!current || current.kind !== "pc" || current.characterId !== characterId) {
+    return true;
+  }
+  return Boolean(record.serverDice) && record.round !== undefined && fight.round !== record.round;
 }
 
 // The AC a roll meets when it lands. An attack's parts are made together, so

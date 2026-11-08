@@ -1165,6 +1165,13 @@ function handleEndTurn(
   if (actingCombatantId(encounter) !== sheet.id || !current || current.kind !== "pc") {
     return { error: `It is ${current?.name ?? "someone else"}'s turn, not ${sheet.name}'s.`, retry: true };
   }
+  // Their attack's d20 waits on the player's choice (after-roll.ts): ended
+  // now, the swing would never land, and what they chose would be spent on
+  // nothing. The resumed turn ends it once the roll lands.
+  const choosing = listOpenPendingRolls(campaign.id).some((entry) => entry.characterId === sheet.id && entry.kind === "attack" && entry.parkedFor === "after_roll");
+  if (choosing) {
+    return { error: `${sheet.name}'s attack roll waits on their player's choice. End the turn once it lands. Nothing was changed.`, retry: true };
+  }
   // A pass now would leave the enemies before this turn behind
   // (src/lib/dm/enemies-due.ts).
   const waiting = enemiesOwedTurn(encounter).map((enemy) => enemy.displayName);

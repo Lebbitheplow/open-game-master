@@ -59,16 +59,24 @@ export function strikeToHit(plan: AttackPlan) {
   return { toHitExpression, detail };
 }
 
+// The server's throw of the to-hit roll, tagged as the hero's attack.
+export function throwToHit(plan: AttackPlan, strike: Strike): RollResult {
+  return rollExpression(strike.toHitExpression, undefined, { purpose: { roller: "hero", kind: "attack", who: plan.sheet.name } });
+}
+
 // Digital path: the server throws the d20 and the damage, and the attack runs
 // the same stages a player's real dice do (attack-swing.ts, attack-blow.ts).
-export function rollPcAttack(plan: AttackPlan, strike: Strike, mote: HeldMote | null = null): Record<string, unknown> {
+// `thrown`: a to-hit roll already thrown for a player whose rolls can wait
+// (pc-attack-parked.ts throwForChoice) and that offered nothing to choose. A
+// held Bardic die is theirs to spend then, never the server's: it stays held.
+export function rollPcAttack(plan: AttackPlan, strike: Strike, mote: HeldMote | null = null, thrownForPlayer: RollResult | null = null): Record<string, unknown> {
   const { campaign, turn, sheet, enemy, budget, context } = plan;
   const record = attackRecord(plan, strike, mote);
   const scene: SwingScene = { campaign, turn, sheet, enemy, sheets: plan.sheets, sheetsById: plan.sheetsById };
   // Notes written from here on; the plan's own ride the answer before them.
   const notes = context.notes;
-  const thrown = rollExpression(strike.toHitExpression, undefined, { purpose: { roller: "hero", kind: "attack", who: sheet.name } });
-  const hitOutcome = settleAttackDie(campaign.id, sheet, thrown, recordTargetAc(campaign.id, record), record.critRange ?? 20);
+  const thrown = thrownForPlayer ?? throwToHit(plan, strike);
+  const hitOutcome = thrownForPlayer ? thrownForPlayer : settleAttackDie(campaign.id, sheet, thrown, recordTargetAc(campaign.id, record), record.critRange ?? 20);
   if (hitOutcome !== thrown) {
     notes.push(`spends their Bardic Inspiration die on the miss: ${thrown.total} becomes ${hitOutcome.total}`);
   }
@@ -146,7 +154,7 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike, mote: HeldMote | 
 }
 
 // The server's damage dice for a hit or a graze: thrown, shown, and landed.
-function serverBlow(scene: SwingScene, record: AttackRecord, ask: DamageAsk, hitOutcome: RollResult, visibility: RollVisibility, detail: string, notes: string[]): Record<string, unknown> {
+export function serverBlow(scene: SwingScene, record: AttackRecord, ask: DamageAsk, hitOutcome: RollResult, visibility: RollVisibility, detail: string, notes: string[]): Record<string, unknown> {
   const { campaign, turn, sheet } = scene;
   const outcome = throwDamage(ask, sheet.name, notes);
   const damageRoll = insertRoll({

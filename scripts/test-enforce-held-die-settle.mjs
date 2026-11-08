@@ -73,7 +73,18 @@ await test("The party's Stealth for an ambush: kept when it already beats every 
   assert.ok(!holds(), "3 and 8 make 11, past a goblin's watch: spent");
 });
 
-await test("An attack roll: kept on a hit and on a miss it cannot save, spent on the miss it turns into a hit; never on a natural 1.", async () => {
+// The engine settles an attack's die only for a seat an agent plays, which has
+// no card to press; a player's own seat decides after the roll
+// (scripts/test-enforce-after-roll-attacks.mjs).
+const { createConnectionGrant, revokeConnectionGrant } = await import("../src/lib/agents/grants.ts");
+const asAgentSeat = () => {
+  const userId = world.sheet(hero.id).userId;
+  const { grant } = createConnectionGrant({ userId, name: "seat", scopes: ["play"], campaignId: world.campaignId });
+  return () => revokeConnectionGrant(userId, grant.id);
+};
+
+await test("An agent's attack roll: kept on a hit and on a miss it cannot save, spent on the miss it turns into a hit; never on a natural 1.", async () => {
+  const revoke = asAgentSeat();
   await kit.endFight();
   await kit.fight(1, { heroFaces: { [hero.id]: 19 } });
   const [enemy] = world.enemies();
@@ -96,9 +107,11 @@ await test("An attack roll: kept on a hit and on a miss it cannot save, spent on
   await swing([9, 6, 4]);
   assert.ok(!holds(), "9 + 3 = 12 misses, and the d8's 6 makes 18: spent on the miss it saves");
   await kit.endFight();
+  revoke();
 });
 
-await test("A parked to-hit roll (a player who holds their rolls) takes the die the same way when it lands.", async () => {
+await test("An agent's parked to-hit roll (a seat that holds its rolls) takes the die the same way when it lands.", async () => {
+  const revoke = asAgentSeat();
   const { call } = await import("./lib/enforce-campaign.mjs");
   const { listOpenPendingRolls, getPendingRoll } = await import("../src/lib/db/dm-turns.ts");
   const { getRoll } = await import("../src/lib/db/rolls.ts");
@@ -141,6 +154,7 @@ await test("A parked to-hit roll (a player who holds their rolls) takes the die 
   assert.ok(!saved.detail.includes("physical"));
   await call(prefs, "PATCH", { holdRolls: false }, { campaignId: world.campaignId });
   await kit.endFight();
+  revoke();
 });
 
 // Every site in src/lib/dm that rolls a d20 with what a roll carries

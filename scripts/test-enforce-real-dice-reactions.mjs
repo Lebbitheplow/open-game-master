@@ -96,7 +96,8 @@ async function tableSwing(hero, enemy, faces, args) {
 
 // Two attacks declared in one call, whose to-hit rolls park together, each
 // entered in turn. Returns both notes.
-async function twoParts(hero, enemy, firstFaces, secondFaces, args, between = () => {}) {
+// `seen`: told the second part's parked roll, once its dice are entered.
+async function twoParts(hero, enemy, firstFaces, secondFaces, args, between = () => {}, seen = () => {}) {
   return withRealDice(hero, async () => {
     const earlier = new Set(listOpenPendingRolls(world.campaignId).map((entry) => entry.id));
     const part = { targetEnemyId: enemy.id, ...args };
@@ -106,7 +107,9 @@ async function twoParts(hero, enemy, firstFaces, secondFaces, args, between = ()
     assert.ok(first && second, "both parts are parked");
     const firstNote = await land(hero, first, [firstFaces].flat());
     between();
-    return [firstNote, await land(hero, second, [secondFaces].flat())];
+    const secondNote = await land(hero, second, [secondFaces].flat());
+    seen(second);
+    return [firstNote, secondNote];
   });
 }
 
@@ -155,10 +158,20 @@ await test("With real dice, a Bardic Inspiration die stays held when it could no
 await test("With real dice, a Bardic Inspiration die still lifts a roll past a standing Shield it can reach", async () => {
   const [enemy] = await stage(fighter, { spellcasting: SHIELD });
   world.patch(fighter.id, { conditions: ["bardic inspiration (d4)"] });
-  // A 16 against 18: a 4 on the die reaches it.
+  // A 16 against 18: a 4 on the die reaches it. The entered roll waits on the
+  // player, who adds the die (after-roll-logic.ts afterAttackOptions).
+  const choice = await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]/after-roll");
+  let waiting = null;
+  await twoParts(fighter, enemy, 7, 10, { weapon: "Longsword" }, () => {}, (pending) => {
+    waiting = pending;
+  });
+  assert.deepEqual(getPendingRoll(waiting.id).thrown?.options.map((option) => option.id), ["bardic"], "the second roll waits on the die");
+  world.signIn({ id: world.sheet(fighter.id).userId });
   world.dice(4);
-  const [, second] = await twoParts(fighter, enemy, 7, 10, { weapon: "Longsword" });
+  const spent = await call(choice, "POST", { use: "bardic" }, { campaignId: world.campaignId, pendingRollId: waiting.id });
   world.clearDice();
+  assert.equal(spent.status, 200, JSON.stringify(spent.json));
+  const second = getPendingRoll(waiting.id).combatNote ?? "";
   assert.match(second, /HIT/, second);
   assert.ok(!world.sheet(fighter.id).conditions.includes("bardic inspiration (d4)"), "the die was spent");
 });

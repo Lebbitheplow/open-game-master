@@ -14,7 +14,7 @@ import { applyDmMutation } from "@/lib/dm/mutations";
 import { strikeDamage } from "@/lib/dm/pc-attack-damage";
 import { FRENZIED } from "@/lib/dm/frenzy";
 import { ADVANTAGE_SOURCES, BONUS_ATTACKS, RECKLESS } from "@/lib/dm/pc-attack-options";
-import { parkPcAttack } from "@/lib/dm/pc-attack-parked";
+import { parkPcAttack, throwForChoice } from "@/lib/dm/pc-attack-parked";
 import { markAffinityCast } from "@/lib/dm/affinity-cast";
 import { planPcAttack, type AttackPlan } from "@/lib/dm/pc-attack-plan";
 import { rollPcAttack, strikeToHit } from "@/lib/dm/pc-attack-resolve";
@@ -285,6 +285,10 @@ export type PcAttackArgs = z.infer<typeof pcAttackArgsSchema>;
 // Sentinel the turn loop checks: a parked pc_attack pushes no tool result
 // now; the resumed turn answers it with the adjudicated roll.
 export const PC_ATTACK_PARKED = "_parked";
+// Parked by the server's own throw for the player's after-the-roll choice
+// (pc-attack-parked.ts throwForChoice), with the parked roll's id: the attacks
+// declared after it wait behind it (pc-attack-parts.ts).
+export const PC_ATTACK_WAITS = "_waitsOnChoice";
 
 export function handlePcAttack(
   campaign: Campaign,
@@ -297,7 +301,10 @@ export function handlePcAttack(
   // The engine's own attacks (Confusion's random target): `anySide` lets the
   // target be an ally (pc-attack-gate.ts). `reactionAttack`: a reaction feature's
   // attack, paid for by its caller, which touches neither the turn nor a readied action.
-  engine: { anySide?: boolean; reactionAttack?: boolean } = {},
+  // `mayWait`: the pc_attack tool's own attacks, whose d20 may wait on the
+  // player's choice (pc-attack-parked.ts throwForChoice); an attack the engine
+  // makes inside another call never waits.
+  engine: { anySide?: boolean; reactionAttack?: boolean; mayWait?: boolean } = {},
 ): ToolResult {
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter) {
@@ -362,7 +369,7 @@ function attackFrom(
   sheetsById: Map<string, CharacterSheet>,
   realDiceUserIds: Set<string>,
   toolCallId: string | null,
-  engine: { anySide?: boolean; reactionAttack?: boolean } = {},
+  engine: { anySide?: boolean; reactionAttack?: boolean; mayWait?: boolean } = {},
 ): ToolResult {
   // The walk may have changed the fight: read it again.
   const encounter = getActiveEncounter(campaign.id);
@@ -408,7 +415,15 @@ function attackFrom(
     parkPcAttack(plan, strike, toolCallId, mote);
     return { [PC_ATTACK_PARKED]: true };
   }
-  return rollPcAttack(plan, strike, mote);
+  // The server's dice, for a player who may still change a miss once they see
+  // it: the roll waits thrown, or resolves with that throw. Only on the
+  // attacker's own turn (a turn budget): a readied strike or Giant Killer is
+  // made on another's turn, and a roll waiting past it would never land.
+  const choice = engine.mayWait && !engine.reactionAttack && plan.budget ? throwForChoice(plan, strike, toolCallId, mote) : null;
+  if (choice && "parked" in choice) {
+    return { [PC_ATTACK_PARKED]: true, [PC_ATTACK_WAITS]: choice.parked.id };
+  }
+  return rollPcAttack(plan, strike, mote, choice?.thrown ?? null);
 }
 
 // What the attack costs, paid now that nothing can refuse it: the turn
