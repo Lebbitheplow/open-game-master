@@ -176,6 +176,57 @@ await test("A thrown net leaves the hand and the pack and lies at the creature i
   assert.equal(row(fighter, "Net").qty, 1);
 });
 
+// SRD 5.1, Net: "A creature can use its action to make a DC 10 Strength
+// check, freeing itself ... Dealing 5 slashing damage to the net (AC 10) also
+// frees the creature without harming it, ending the effect and destroying the
+// net." Neither was wired: an enemy's take_action escape found "nothing to
+// escape", and a blow at the net was a wooden object's.
+await test("A net's hold ends by its own rule: a DC 10 Strength check frees the creature and leaves the net; 5 slashing to the net (AC 10) frees it unharmed and destroys the net", async () => {
+  await freshFight();
+  world.patch(fighter.id, { equipment: [...GEAR(), { name: "Net", qty: 2, equipped: true }] });
+  const [enemy] = world.enemies();
+  kit.setEnemy(enemy.id, { maxHp: 40, stats: { abilities: { str: 10 } } });
+  kit.place(enemy.id, 3, 2);
+  const restrained = () => kit.enemy(enemy.id).conditions.includes("restrained");
+  const throwNet = async () => {
+    kit.giveTurn(fighter.id);
+    const hit = await kit.swing(fighter.id, enemy.id, [18, 18], { weapon: "Net" });
+    assert.equal(hit.ok, true, hit.error);
+    assert.ok(restrained(), "the net did not restrain it");
+  };
+  await throwNet();
+  // Its action and a Strength check: a 9 stays, a 10 breaks free.
+  kit.freshRound();
+  kit.dice(9);
+  const stuck = await world.invoke("take_action", { action: "escape", enemyId: enemy.id });
+  assert.equal(stuck.ok, true, stuck.error);
+  assert.equal(stuck.result.success, false);
+  assert.ok(restrained());
+  kit.freshRound();
+  kit.dice(10);
+  const free = await world.invoke("take_action", { action: "escape", enemyId: enemy.id });
+  assert.equal(free.ok, true, free.error);
+  assert.equal(free.result.success, true, JSON.stringify(free.result));
+  assert.ok(!restrained(), "a 10 against DC 10 left it restrained");
+  assert.equal(listDroppedItems(world.campaignId).filter((entry) => entry.item.name === "Net").length, 1, "the net broken free of no longer lies where it fell");
+  // The second net, cut: 4 bludgeoning does nothing, 5 slashing cuts it.
+  await throwNet();
+  const hp = kit.enemy(enemy.id).currentHp;
+  const blunt = await world.invoke("damage_object", { name: "Net", damage: "6", damageType: "bludgeoning" });
+  assert.equal(blunt.ok, true, blunt.error);
+  assert.equal(blunt.result.ac, 10);
+  assert.ok(restrained(), "bludgeoning cut the net");
+  const cut = await world.invoke("damage_object", { name: "Net", damage: "5", damageType: "slashing" });
+  assert.equal(cut.ok, true, cut.error);
+  assert.equal(cut.result.broken, true, JSON.stringify(cut.result));
+  assert.ok(!restrained(), "the net cut through still restrains it");
+  assert.equal(kit.enemy(enemy.id).currentHp, hp, "cutting the net harmed the creature");
+  assert.equal(listDroppedItems(world.campaignId).filter((entry) => entry.item.name === "Net").length, 1, "the net cut through still lies on the ground");
+  // With no creature held, "Net" is refused, not a wooden door.
+  const none = await world.invoke("damage_object", { name: "Net", damage: "5", damageType: "slashing" });
+  assert.equal(none.ok, false);
+});
+
 // The same fault as the net, for every weapon thrown: a javelin held in hand
 // and thrown 20 feet stayed in the hand and on the sheet, so it could be
 // thrown at every attack, and a dagger drawn and thrown stayed in the pack.

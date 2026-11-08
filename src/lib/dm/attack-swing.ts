@@ -4,6 +4,7 @@
 // roll it asks for. pc-attack-resolve.ts calls it with the server's d20,
 // pc-attack-parked.ts with the player's; attack-blow.ts lands the damage.
 
+import { NET_HOLD } from "@/lib/dm/net-hold";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter, recordEncounterTarget, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
@@ -183,13 +184,15 @@ export function hitSwing(scene: SwingScene, record: AttackRecord, judged: Judged
   // smaller and can be restrained at all.
   if (record.special === "net") {
     emitAttackFx(campaign.id, stage, { hit: true, crit: false, ranged: true, damageType: "", visibility });
-    const held = applyRiderCondition(campaign, getFoe(enemy.id) ?? enemy, "restrained", { maxSize: "Large" });
+    // Its own source, so breaking or cutting the net ends this restraint
+    // and no other (net-hold.ts).
+    const held = applyRiderCondition(campaign, getFoe(enemy.id) ?? enemy, "restrained", { maxSize: "Large", meta: { source: NET_HOLD } });
     pushLine(notes, finishSwing(scene, record, { hit: true, damage: 0 }));
     return {
       done: {
         damage: 0,
         note: held.applied
-          ? `The net lands: ${enemy.displayName} is restrained until it is freed (a DC 10 Strength check, or 5 slashing damage to the net). The server applied the condition; a net deals no damage.`
+          ? `The net lands: ${enemy.displayName} is restrained until it is freed: a DC 10 Strength check (take_action escape), or 5 slashing damage to the net (damage_object name "Net", AC 10). The server applied the condition; a net deals no damage.`
           : `The net lands and slides off: ${held.reason} A net deals no damage.`,
       },
     };

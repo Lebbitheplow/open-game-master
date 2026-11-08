@@ -3,6 +3,7 @@ import { disarmFightEvents } from "@/lib/db/fight-events";
 import { endFightEffects } from "@/lib/db/active-effects";
 import { getFloor, setFloor, type Campaign } from "@/lib/db/campaigns";
 import { burnWebUnder } from "@/lib/dm/zone-cast";
+import { lightOil } from "@/lib/dm/gear-zones";
 import { endEncounter, getActiveEncounter, getEnemy, listEnemies, patchEnemyHp, setEnemyConcentration, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { activePublicEncounter } from "@/lib/db/encounter-view";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
@@ -469,6 +470,8 @@ export function applyEnemyDamage(
   // Fire burns away the web around it (zone-cast.ts).
   if (fireBlow) {
     burnWebUnder(campaign, enemy.id);
+    // And lights the oil it stands in (gear-zones.ts).
+    lightOil(campaign, enemy.id, 0);
   }
   // A Polymorph's beast dropped to 0 reverts (SRD 5.1): the creature's own
   // block and hit points return (src/lib/db/enemy-form.ts), and only the

@@ -391,8 +391,11 @@ export function zonesAfterMove(
       lines.push(`${victimName(victim)} moves carefully through ${zone.spell} at half speed and needs no save.`);
       continue;
     }
-    if (trigger.on.includes("enter") && enteredAt && zone.struck?.[struckKey] !== key) {
-      zone.struck = { ...(zone.struck ?? {}), [struckKey]: key };
+    // Burning oil: "A creature can take this damage only once per turn",
+    // entering or ending its turn there alike.
+    const spentThisTurn = Boolean(trigger.oncePerTurn && zone.struck?.[`${victim.id}:turn`] === key);
+    if (trigger.on.includes("enter") && enteredAt && zone.struck?.[struckKey] !== key && !spentThisTurn) {
+      zone.struck = { ...(zone.struck ?? {}), [struckKey]: key, ...(trigger.oncePerTurn ? { [`${victim.id}:turn`]: key } : {}) };
       // Caltrops: a failed save, seen as the condition it newly lays,
       // stops the move on the square entered (zones-gear.ts).
       const hadIt = Boolean(trigger.stopsOnFail && trigger.condition && victimHolds(victim, trigger.condition));
@@ -560,6 +563,12 @@ function momentFor(
           continue;
         }
         zone.struck = { ...(zone.struck ?? {}), [`${id}:once`]: turnKey(encounter) };
+      }
+      if (trigger.oncePerTurn) {
+        if (zone.struck?.[`${id}:turn`] === turnKey(encounter)) {
+          continue;
+        }
+        zone.struck = { ...(zone.struck ?? {}), [`${id}:turn`]: turnKey(encounter) };
       }
       // The turn's start is this turn's event: an explicit call for the same
       // area in this turn finds it spent (src/lib/dm/area-casting.ts).

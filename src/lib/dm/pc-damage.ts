@@ -39,6 +39,7 @@ import { authoredAuraResistances } from "@/lib/dm/authored-saves";
 import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { silencedImmunity } from "@/lib/dm/zone-rules";
 import { burnWebUnder } from "@/lib/dm/zone-cast";
+import { lightOil } from "@/lib/dm/gear-zones";
 import { summonImmunities, summonResistances, summonVulnerabilities } from "@/lib/dm/summon-rules";
 import { summonAfterDamage } from "@/lib/dm/summon-store";
 import { absorbByWard } from "@/lib/dm/arcane-ward";
@@ -251,6 +252,8 @@ export function applyPcDamage(
   // Fire burns away the web around them (zone-cast.ts).
   if (fireBlow) {
     burnWebUnder(campaign, sheet.id);
+    // And lights the oil it stands in (gear-zones.ts).
+    lightOil(campaign, sheet.id, 0);
   }
   // Wild Shape: the beast's hit points take the blow first. While the form
   // holds, the druid's own sheet is untouched and no death hook fires; when
