@@ -37,7 +37,7 @@ import { handlePcAttack, PC_ATTACK_PARKED, PC_ATTACK_WAITS, pcAttackArgsSchema }
 import { gatePcAttack } from "@/lib/dm/pc-attack-gate";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
 import { getFoe } from "@/lib/dm/sheet-foe";
-import { invalidArguments, type ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, invalidArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import { attacksAllowedFor, budgetFor } from "@/lib/dm/turn-budget";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { holdsFeat } from "@/lib/srd/feat-effects";
@@ -79,8 +79,8 @@ export function handlePcAttackParts(
   let raw: unknown;
   try {
     raw = JSON.parse(rawArguments || "{}");
-  } catch {
-    return { error: NEEDS, retry: true };
+  } catch (error) {
+    return badArguments(NEEDS, error, rawArguments);
   }
   if (!isRecord(raw)) {
     return { error: NEEDS, retry: true };
@@ -94,7 +94,7 @@ export function handlePcAttackParts(
   }
   const parsed = partsSchema.safeParse(raw);
   if (!parsed.success) {
-    return invalidArguments(NEEDS, parsed.error);
+    return invalidArguments(NEEDS, parsed.error, raw);
   }
   const stale = resolveSheetRef(parsed.data.characterId, sheets, sheetsById);
   if (!stale) {
@@ -291,7 +291,7 @@ function refusedBeforeBuying(campaign: Campaign, sheet: CharacterSheet, args: Re
   }
   const parsed = pcAttackArgsSchema.safeParse(args);
   if (!parsed.success) {
-    return invalidArguments("Invalid arguments: pc_attack needs characterId and targetEnemyId.", parsed.error);
+    return invalidArguments("Invalid arguments: pc_attack needs characterId and targetEnemyId.", parsed.error, args);
   }
   const gate = gatePcAttack({ campaign, encounter, sheet, args: parsed.data });
   return "refused" in gate ? gate.refused : null;

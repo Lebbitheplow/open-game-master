@@ -63,7 +63,7 @@ import {
   type CharacterSheet,
   type CreateSheetInput,
 } from "@/lib/schemas/sheet";
-import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { unknownSheetRef } from "@/lib/dm/rolls";
 import { ALIGNMENT_CODES, VALUES_PARAMETER, valuesArgSchema } from "@/lib/dm/companion-values-logic";
@@ -71,6 +71,7 @@ import { setCompanionValues } from "@/lib/db/companion-conscience";
 import { seedAgenda } from "@/lib/dm/companion-agenda";
 import { classWords } from "@/lib/sheet-words";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
+import { fittedText, fittedLine } from "@/lib/dm/fitted-text";
 
 // AI companion party members: sheets the DM recruits, plays, and dismisses.
 // A companion is a full character sheet owned by an unloginable bot user,
@@ -259,7 +260,7 @@ const addArgsSchema = z.object({
   gender: z.enum(TOLD_GENDERS),
   drawnTo: z.array(z.string().max(40)).max(6).optional(),
   level: z.number().int().min(1).max(20).optional(),
-  personality: z.string().trim().min(1).max(500),
+  personality: fittedLine(500),
   kind: z.enum(["party", "guest"]).default("guest"),
   spells: z.array(z.string().trim().min(1).max(60)).max(12).optional(),
   // The GM's console only (src/lib/dm/catalog-party.ts): the model's tool set
@@ -269,12 +270,12 @@ const addArgsSchema = z.object({
   skills: z.array(z.string().trim().min(1).max(40)).max(8).optional(),
   alignment: z.enum(ALIGNMENT_CODES).optional(),
   values: valuesArgSchema.optional(),
-  agenda: z.object({ employer: z.string().trim().max(80).optional(), aim: z.string().trim().max(200).optional() }).optional(),
+  agenda: z.object({ employer: z.string().trim().max(80).optional(), aim: fittedText(200).optional() }).optional(),
 });
 
 const dismissArgsSchema = z.object({
   characterId: z.string().trim().min(1),
-  reason: z.string().trim().max(300).optional(),
+  reason: fittedText(300).optional(),
 });
 
 const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8];
@@ -308,12 +309,8 @@ export function handleAddCompanion(
   let args: z.infer<typeof addArgsSchema>;
   try {
     args = addArgsSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return {
-      error:
-        "Invalid arguments: add_companion needs name, class, gender (Female, Male, Nonbinary or Unknown), personality, and kind ('party' or 'guest').",
-      retry: true,
-    };
+  } catch (error) {
+    return badArguments("Invalid arguments: add_companion needs name, class, gender (Female, Male, Nonbinary or Unknown), personality, and kind ('party' or 'guest').", error, rawArguments);
   }
   if (args.values?.some((held) => held.value === "faction_loyalty" && !held.faction)) {
     return { error: "A faction_loyalty value names its faction: send faction with it, or leave that value out. Nothing was added.", retry: true };
@@ -685,8 +682,8 @@ export function handleDismissCompanion(
   let args: z.infer<typeof dismissArgsSchema>;
   try {
     args = dismissArgsSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: dismiss_companion needs characterId.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: dismiss_companion needs characterId.", error, rawArguments);
   }
   const needle = textKey(args.characterId);
   const sheet =

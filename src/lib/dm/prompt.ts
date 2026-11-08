@@ -1815,7 +1815,7 @@ export const sendWhisperTool = {
         },
         message: {
           type: "string",
-          description: "The private note, addressed to those characters in second person.",
+          description: "The private note, addressed to those characters in second person. Up to 2,000 characters.",
         },
       },
       required: ["characterIds", "message"],

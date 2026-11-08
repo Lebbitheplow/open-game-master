@@ -42,7 +42,7 @@ import { handleMoveToken, publishBattleMapUpdate } from "@/lib/dm/map-tools";
 import { spellMechanicsFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import { swallowCover } from "@/lib/dm/swallow";
 
 export type Dispatch = (name: string, args: Record<string, unknown>) => Promise<ToolResult>;
@@ -430,8 +430,8 @@ export async function playLegendaryAction(campaign: Campaign, turn: DmTurn, rawA
   let args: PlayArgs;
   try {
     args = playSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: legendary_action needs enemyId and action, and its targets as ids.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: legendary_action needs enemyId and action, and its targets as ids.", error, rawArguments);
   }
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter) {

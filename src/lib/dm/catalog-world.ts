@@ -19,6 +19,7 @@ import {
   damageTypeField,
 } from "@/lib/dm/catalog-vocab";
 import { REQUEST_ROLL_ADJUDICATION } from "@/lib/dm/catalog-roll";
+import { WHISPER_MAX_CHARS } from "@/lib/dm/whisper-limits";
 
 // The console form's words for a deed's severity (issue 503).
 const SEVERITY_LABELS: Record<(typeof DEED_SEVERITIES)[number], string> = { minor: "Minor", serious: "Serious", atrocity: "Atrocity" };
@@ -612,7 +613,7 @@ export const STORY_ADJUDICATIONS: CatalogEntry[] = [
     summary: "A private line to one player or several; nobody else sees it.",
     fields: [
       { name: "characterIds", label: "To", kind: "characters", required: true },
-      { name: "message", label: "Message", kind: "longtext", required: true },
+      { name: "message", label: "Message", kind: "longtext", required: true, maxLength: WHISPER_MAX_CHARS },
     ],
   },
   {

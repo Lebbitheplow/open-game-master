@@ -43,6 +43,7 @@ import {
 import { unknownSheetRef } from "@/lib/dm/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolResult } from "@/lib/dm/tool-errors";
+import { fittedText } from "@/lib/dm/fitted-text";
 
 // Scheming NPCs (issue 501), the rim of src/lib/dm/scheme-logic.ts: the one
 // tool a new intent earns (relationship_scheme, start and reveal; one tool
@@ -109,7 +110,7 @@ const schemeSchema = z.object({
   action: z.enum(["start", "reveal"]),
   characterId: z.string(),
   subject: z.string().min(1).max(80),
-  motive: z.string().max(400).optional(),
+  motive: fittedText(400).optional(),
   note: relationshipNote,
 });
 

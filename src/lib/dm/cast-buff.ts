@@ -43,7 +43,7 @@ import { castFindFamiliar, isFindFamiliar } from "@/lib/dm/familiar-cast";
 import { castShapeAtEnemy, enemyShapeSpellFor } from "@/lib/dm/enemy-polymorph";
 import { allyRowRefusal, allyRowsOf, layBuffOnRows } from "@/lib/dm/cast-buff-allies";
 import { unwillingResist } from "@/lib/dm/hostile-buffs";
-import { holdingHint, invalidArguments, noneNamed, type ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, holdingHint, invalidArguments, noneNamed, type ToolResult } from "@/lib/dm/tool-errors";
 import { zoneArgsSchema } from "@/lib/dm/zone-args";
 import { textKey } from "@/lib/language/text-logic";
 import { nameChoice } from "@/lib/srd/feature-names";
@@ -115,12 +115,12 @@ export function handleCastBuff(
   let raw: unknown;
   try {
     raw = JSON.parse(rawArguments || "{}");
-  } catch {
-    return { error: "Invalid arguments: cast_buff needs characterId and spell.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: cast_buff needs characterId and spell.", error, rawArguments);
   }
   const parsed = castBuffSchema.safeParse(raw);
   if (!parsed.success) {
-    return invalidArguments("Invalid arguments: cast_buff needs characterId and spell.", parsed.error);
+    return invalidArguments("Invalid arguments: cast_buff needs characterId and spell.", parsed.error, raw);
   }
   let args: z.infer<typeof castBuffSchema> = parsed.data;
   const staleSheet = resolveSheetRef(args.characterId, sheets, sheetsById);

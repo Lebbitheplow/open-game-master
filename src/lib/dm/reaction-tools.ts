@@ -57,7 +57,7 @@ import { matchResource } from "@/lib/srd/class-resources";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { PRONE } from "@/lib/dm/vitals-logic";
-import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { swallowCoverBetween, swallowCoverError } from "@/lib/dm/swallow";
 import { engineFeatNamed } from "@/lib/srd/feat-effects";
 import { isPublishedFeatureName } from "@/lib/srd/features";
@@ -511,8 +511,8 @@ export function handleUseReaction(
   let args: Args;
   try {
     args = useReactionSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: use_reaction needs characterId and feature.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: use_reaction needs characterId and feature.", error, rawArguments);
   }
   const staleSheet = resolveSheetRef(args.characterId, sheets, sheetsById);
   const sheet = staleSheet ? (getSheetById(staleSheet.id) ?? staleSheet) : null;

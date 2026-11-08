@@ -24,7 +24,7 @@ import {
   type FieldOutcome,
 } from "@/lib/dm/effects-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
 
@@ -219,8 +219,8 @@ export function handleSetEffect(
   let args: z.infer<typeof setSchema>;
   try {
     args = setSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: set_effect needs a name and at least one modifier.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: set_effect needs a name and at least one modifier.", error, rawArguments);
   }
   const target = resolveTarget(campaign, args, sheets, sheetsById);
   if (!target) {
@@ -289,8 +289,8 @@ export function handleClearEffect(
   let args: z.infer<typeof clearSchema>;
   try {
     args = clearSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: clear_effect needs a name.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: clear_effect needs a name.", error, rawArguments);
   }
   const target = resolveTarget(campaign, args, sheets, sheetsById);
   if (!target) {

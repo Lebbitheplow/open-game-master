@@ -45,7 +45,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { moteAfterRoll, moteOf } from "@/lib/dm/authored-mote";
 import { applyRollGates } from "@/lib/dm/roll-gates";
 import { afterRollDeadline, armAfterRollKeep } from "@/lib/dm/after-roll-timer";
-import { invalidArguments, toolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, invalidArguments, toolError, type ToolResult } from "@/lib/dm/tool-errors";
 
 export function handleRequestRoll(
   campaign: Campaign,
@@ -66,12 +66,12 @@ export function handleRequestRoll(
   let raw: unknown;
   try {
     raw = JSON.parse(rawArguments || "{}");
-  } catch {
-    return { error: needs, retry: true };
+  } catch (error) {
+    return badArguments(needs, error, rawArguments);
   }
   const parsed = rollArgsSchema.safeParse(raw);
   if (!parsed.success) {
-    return model ? invalidArguments(needs, parsed.error) : { error: needs, retry: true };
+    return model ? invalidArguments(needs, parsed.error, raw) : { error: needs, retry: true };
   }
   let args: RollArgs = parsed.data;
   args = {

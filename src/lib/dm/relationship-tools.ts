@@ -71,6 +71,7 @@ import { exclusiveRefusal } from "@/lib/dm/romance-exclusive-logic";
 import { amendsNote } from "@/lib/dm/amends-logic";
 import { recordRomanceStep, romanceStepTooSoon } from "@/lib/dm/romance-scenes";
 import { settleMoveNotes } from "@/lib/dm/story-moves";
+import { fittedText } from "@/lib/dm/fitted-text";
 
 export { publishRelationshipsUpdated };
 
@@ -260,7 +261,7 @@ const beatSchema = z.object({
   objected: z.array(z.string().trim().min(1).max(80)).max(8).optional(),
   severity: z.enum(DEED_SEVERITIES).optional(),
   faction: z.string().trim().max(80).optional(),
-  demand: z.string().trim().max(160).optional(),
+  demand: fittedText(160).optional(),
   deadlineHours: z.number().int().min(1).max(MAX_DEADLINE_HOURS).optional(),
 });
 

@@ -37,8 +37,9 @@ import { handleMountAction } from "@/lib/dm/mount-combat";
 import { contest, help, hide } from "@/lib/dm/combat-actions";
 import { payGrapplingStrike } from "@/lib/dm/maneuver-reactions";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import { toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { hasDestination, planActionWalk, walkActionPlan, type ActionWalk } from "@/lib/dm/action-walk";
+import { fittedText } from "@/lib/dm/fitted-text";
 
 // The rest of a 5e turn: the actions that are not attacks or spells, plus
 // reactions. Dodge, Dash, Disengage, Hide, Help, Grapple, and Shove all had
@@ -217,7 +218,7 @@ const takeActionSchema = z.object({
   targetEnemyId: z.string().optional(),
   targetCharacterId: z.string().optional(),
   shove: z.enum(["prone", "push"]).optional(),
-  trigger: z.string().max(200).optional(),
+  trigger: fittedText(200).optional(),
   // The schema offers no skill enum (it cost a 48K table's trimmed set its
   // room), so a skill by its name ("Sleight of Hand") is its id here, and a
   // wrong one is refused with the list.
@@ -336,8 +337,8 @@ export function handleTakeAction(
   let raw: unknown;
   try {
     raw = JSON.parse(rawArguments || "{}");
-  } catch {
-    return { error: "Invalid arguments: take_action's arguments are not JSON.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: take_action's arguments are not JSON.", error, rawArguments);
   }
   const parsed = takeActionSchema.safeParse(raw);
   if (!parsed.success) {

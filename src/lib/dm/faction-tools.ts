@@ -5,7 +5,8 @@ import { insertFact } from "@/lib/db/facts";
 import { getParty, setParty } from "@/lib/db/party";
 import { publishEphemeral } from "@/lib/events";
 import { clampReputation, reputationLabel } from "@/lib/dm/faction-logic";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
+import { fittedText, fittedLine } from "@/lib/dm/fitted-text";
 
 // The faction tools (docs/vtt-parity-implementation-plan.md section 6):
 // standing moves through adjust_reputation and nothing else; faction_note
@@ -67,15 +68,15 @@ function resolveFaction(campaignId: string, ref: string) {
 const adjustSchema = z.object({
   faction: z.string().trim().min(1),
   delta: z.coerce.number().int().min(-2).max(2),
-  reason: z.string().trim().max(200).default(""),
+  reason: fittedText(200).default(""),
 });
 
 export function handleAdjustReputation(campaign: Campaign, rawArguments: string): ToolResult {
   let args: z.infer<typeof adjustSchema>;
   try {
     args = adjustSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: adjust_reputation needs faction, delta and reason.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: adjust_reputation needs faction, delta and reason.", error, rawArguments);
   }
   const faction = resolveFaction(campaign.id, args.faction);
   if (!faction) {
@@ -102,7 +103,7 @@ export function handleAdjustReputation(campaign: Campaign, rawArguments: string)
 
 const noteSchema = z.object({
   faction: z.string().trim().min(1),
-  note: z.string().trim().min(1).max(300),
+  note: fittedLine(300),
   secret: z.boolean().optional(),
 });
 
@@ -110,8 +111,8 @@ export function handleFactionNote(campaign: Campaign, rawArguments: string): Too
   let args: z.infer<typeof noteSchema>;
   try {
     args = noteSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: faction_note needs faction and note.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: faction_note needs faction and note.", error, rawArguments);
   }
   const faction = resolveFaction(campaign.id, args.faction);
   if (!faction) {

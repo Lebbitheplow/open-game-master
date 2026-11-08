@@ -29,7 +29,7 @@ import { critDamageExpression } from "@/lib/dm/encounter-logic";
 import { buildAttackProfile } from "@/lib/dm/pc-attack-profile";
 import { objectProfile, type ObjectMaterial, type ObjectSize } from "@/lib/srd/objects";
 import { breakWallSection, sectionHit, wallSectionFor } from "@/lib/dm/zone-walls";
-import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { unknownSheetRef } from "@/lib/dm/rolls";
 import { freeFromNet, NET_AC, NET_HP, netObject, nettedId } from "@/lib/dm/net-hold";
@@ -111,8 +111,8 @@ export function damageObject(
   let args: z.infer<typeof objectSchema>;
   try {
     args = objectSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments for damage_object.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments for damage_object.", error, rawArguments);
   }
   // A section of a Wall of Ice has its own numbers (src/lib/dm/zone-walls.ts).
   const section = campaign && args.name ? wallSectionFor(campaign.id, args.name, args.section) : null;

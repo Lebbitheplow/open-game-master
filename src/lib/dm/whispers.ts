@@ -4,7 +4,8 @@ import { insertWhisper, type WhisperRecipient } from "@/lib/db/dm-whispers";
 import { publishEphemeral } from "@/lib/events";
 import { resolveSheetRef } from "@/lib/dm/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
+import { WHISPER_MAX_CHARS } from "@/lib/dm/whisper-limits";
 
 // Executes one send_whisper tool call: a private note from the DM to the
 // players of the named characters, and the DM's reply channel for private
@@ -14,6 +15,7 @@ import type { ToolResult } from "@/lib/dm/tool-errors";
 // never enters the shared event stream.
 
 export const WHISPER_CAP_PER_TURN = 5;
+export { WHISPER_MAX_CHARS };
 
 // Fallback whisper text when the model produced no reply to a private player
 // message even after a nudge: the player is never left in silence.
@@ -40,7 +42,7 @@ const whisperArgsSchema = z.object({
     .union([z.array(z.string().max(120)).min(1).max(10), z.string().min(1).max(600)])
     .optional(),
   characterId: z.string().max(120).optional(),
-  message: z.string().trim().min(1).max(1000),
+  message: z.string().trim().min(1).max(WHISPER_MAX_CHARS),
 });
 
 export function handleSendWhisper(
@@ -53,8 +55,8 @@ export function handleSendWhisper(
   let args: z.infer<typeof whisperArgsSchema>;
   try {
     args = whisperArgsSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "send_whisper needs characterIds (from GAME STATE) and a message.", retry: true };
+  } catch (error) {
+    return badArguments("send_whisper needs characterIds (from GAME STATE) and a message.", error, rawArguments);
   }
   const refs = [
     ...(Array.isArray(args.characterIds)

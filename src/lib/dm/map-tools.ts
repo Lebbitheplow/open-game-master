@@ -79,7 +79,7 @@ import { walkCostFactor } from "@/lib/dm/drag";
 import { flightOf, markSqueezing } from "@/lib/dm/token-state";
 import { livePurchase } from "@/lib/dm/legendary-logic";
 import { swallowRowWalk } from "@/lib/dm/swallow";
-import { toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { findNamed, textKey } from "@/lib/language/text-logic";
 
 export { landTheFlightless } from "@/lib/dm/token-state";
@@ -309,8 +309,8 @@ export function handleTeleportToken(
   let args: z.infer<typeof teleportArgsSchema>;
   try {
     args = teleportArgsSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: a teleport needs token, x and y.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: a teleport needs token, x and y.", error, rawArguments);
   }
   const token = resolveAnyToken(map, board.id, args.token, sheets, sheetsById);
   if (!token) {
@@ -391,8 +391,8 @@ export function handleSetMovement(
   let args: z.infer<typeof movementArgsSchema>;
   try {
     args = movementArgsSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: set_movement needs token and movement (walk, fly or burrow).", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: set_movement needs token and movement (walk, fly or burrow).", error, rawArguments);
   }
   const token = resolveAnyToken(map, board.id, args.token, sheets, sheetsById);
   if (!token) {
@@ -538,8 +538,8 @@ export function handleMoveToken(
   let args: z.infer<typeof moveArgsSchema>;
   try {
     args = moveArgsSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: move_token needs token, x, and y.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: move_token needs token, x, and y.", error, rawArguments);
   }
   const resolved = resolveMoveTarget(map, encounter.id, args.token, sheets, sheetsById);
   if (!resolved) {

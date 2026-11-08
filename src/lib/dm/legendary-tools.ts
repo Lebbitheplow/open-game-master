@@ -40,7 +40,7 @@ import {
   spendResistance,
   type LegendaryPool,
 } from "@/lib/dm/legendary-logic";
-import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
 
@@ -223,8 +223,8 @@ export function handleLegendaryAction(campaign: Campaign, rawArguments: string, 
   let args: z.infer<typeof actionSchema>;
   try {
     args = actionSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: legendary_action needs enemyId and action.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: legendary_action needs enemyId and action.", error, rawArguments);
   }
   const enemy = resolveEnemyRef(encounter.id, args.enemyId);
   if (!enemy) {
@@ -350,8 +350,8 @@ export function handleLegendaryResist(campaign: Campaign, rawArguments: string):
   let args: z.infer<typeof resistSchema>;
   try {
     args = resistSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: legendary_resist needs enemyId.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: legendary_resist needs enemyId.", error, rawArguments);
   }
   const enemy = resolveEnemyRef(encounter.id, args.enemyId);
   if (!enemy) {
@@ -425,8 +425,8 @@ export function handleLairAction(campaign: Campaign, turn: DmTurn | null, rawArg
   let args: z.infer<typeof lairSchema>;
   try {
     args = lairSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: lair_action needs an action.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: lair_action needs an action.", error, rawArguments);
   }
   if (!encounter.legendary.lair) {
     return { error: "This fight is not in a lair: there are no lair actions, and the enemies act on their own turns.", retry: true };

@@ -103,7 +103,7 @@ import { checklistClassSpell, isCantripName, spellsAgainstLimit } from "@/lib/sr
 import { casterViewsOf, spellCapOf, spellbookOf, withCasterViews } from "@/lib/srd/spell-prep";
 import { subclassSpellsFor } from "@/lib/srd/features";
 import { waypointProperty } from "@/lib/dm/waypoint-logic";
-import { invalidArguments, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, invalidArguments, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { worthProblem } from "@/lib/dm/trade-value";
 import { findCarriedItem, notCarried, sentItemTags, srdNameFor } from "@/lib/dm/item-logic";
 import { isTableGearName } from "@/lib/db/homebrew";
@@ -620,12 +620,12 @@ function dmMutation(
   let raw: unknown;
   try {
     raw = JSON.parse(rawArguments || "{}");
-  } catch {
-    return { result: { error: "Invalid arguments.", retry: true } };
+  } catch (error) {
+    return { result: badArguments("Invalid arguments.", error, rawArguments) };
   }
   const parsed = argsSchema.safeParse(raw);
   if (!parsed.success) {
-    return { result: invalidArguments("Invalid arguments.", parsed.error) };
+    return { result: invalidArguments("Invalid arguments.", parsed.error, raw) };
   }
   const args = parsed.data;
   const reason = (args.reason ?? "").slice(0, 200);
@@ -2022,8 +2022,8 @@ function dmMutation(
       let rawArgs: Record<string, unknown>;
       try {
         rawArgs = JSON.parse(rawArguments || "{}") as Record<string, unknown>;
-      } catch {
-        return { result: { error: "Invalid arguments.", retry: true } };
+      } catch (error) {
+        return { result: badArguments("Invalid arguments.", error, rawArguments) };
       }
       delete rawArgs.characterId;
       delete rawArgs.reason;
