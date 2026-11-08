@@ -29,6 +29,10 @@ import {
   listPendingForTurn,
   type PendingRoll,
   saveDmTurn,
+  dropHeldCalls,
+  takeHeldCalls,
+  type HeldCall,
+  type WatchStop,
   type DmTurn,
 } from "@/lib/db/dm-turns";
 import { haltDmTurn, haltUnbuiltTurn } from "@/lib/dm/turn-halt";
@@ -72,6 +76,7 @@ import { insertCampaignMessage, listMessagesPage, listRecentMessages, markCardRe
 import { heldNarrationSeq, narrationShown, takeNarrationSeq, takeNarrationSlot } from "@/lib/dm/narration-slot";
 import { getRoll, listRecentRolls, type StoredRoll } from "@/lib/db/rolls";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
+import { parkForWatch, runWithForetold } from "@/lib/dm/foresight";
 import { adoptTurnAudit } from "@/lib/db/sheet-audit";
 import { describeConditionDuration } from "@/lib/dm/condition-logic";
 import { heldRollUserIds } from "@/lib/dice/held-rolls";
@@ -1148,12 +1153,12 @@ export async function resumeDmTurn(campaignId: string, turnId: string) {
   // part's place, so the call has one answer, as the API requires.
   for (const pending of pendings) {
     const roll = pending.rollId ? getRoll(pending.rollId) : null;
-    if (!roll) {
+    // A turn that parks more than once (a stop before a later roll) comes back
+    // here with the rolls of its last resume, already answered.
+    if (!roll || turn.rollIds.includes(roll.id)) {
       continue;
     }
-    if (!turn.rollIds.includes(roll.id)) {
-      turn.rollIds.push(roll.id);
-    }
+    turn.rollIds.push(roll.id);
     const answer = pendingRollAnswer(pending, roll);
     // A card the AI's fight sent when it opened: the call that opened it was
     // answered then, and the total joins that answer (initiative-cards-logic.ts).
@@ -1191,6 +1196,37 @@ export async function resumeDmTurn(campaignId: string, turnId: string) {
     });
   }
 
+  // What a watch stop held back runs now, and may park the turn again.
+  for (const pending of pendings) {
+    const stop = pending.parkedFor === "watch" && pending.characterId ? takeHeldCalls(pending.id) : null;
+    if (!stop || !pending.characterId) {
+      continue;
+    }
+    // The process died among these calls: those that never answered may have
+    // happened or not, so the model is told and they do not run twice.
+    if (stop.taken) {
+      for (const call of stop.calls) {
+        if (call.id && !turn.conversation.some((message) => message.role === "tool" && message.tool_call_id === call.id)) {
+          turn.conversation.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify({ error: "The server restarted around this action, so it may not have happened. Check the current state and send it again only if it did not.", retry: true }) });
+        }
+      }
+      dropHeldCalls(pending.id);
+      saveDmTurn(turn);
+      continue;
+    }
+    // As a turn's own calls run: what they change is filed under it.
+    bindTurn(campaignId, turn.id);
+    const watcherId = pending.characterId;
+    const waiting = await runInTurnScope(turn.id, () => runHeldCalls(loadContext(campaign), turn, watcherId, stop));
+    dropHeldCalls(pending.id);
+    if (waiting) {
+      turn.status = "awaiting_rolls";
+      saveDmTurn(turn);
+      setDmStatus(campaignId, "awaiting_rolls");
+      return;
+    }
+  }
+
   // Positions may have changed while the turn was parked (the mover's own
   // click-to-move never wakes the DM), so the map snapshot baked into the
   // turn's GAME STATE can be stale. Hand the model a fresh one.
@@ -1223,6 +1259,59 @@ export async function reenterDmTurn(campaign: Campaign, turn: DmTurn) {
   // belongs after its narration, as on the turn's first run.
   narrationShown(campaign.id, turn.id);
   await advance(loadContext(campaign), turn);
+}
+
+// The calls a watch stop held back (src/lib/dm/foresight.ts), run as the loop
+// runs any call, the first with the number the watcher chose. Each later one
+// may stop again, and true means something is waiting once more.
+async function runHeldCalls(context: TurnContext, turn: DmTurn, watcherId: string, stop: WatchStop): Promise<boolean> {
+  const { campaign } = context;
+  const campaignId = campaign.id;
+  const standing = getActiveEncounter(campaignId);
+  const enemyNames = standing ? listEnemies(standing.id).map((enemy) => enemy.displayName) : [];
+  const beatBefore = markActiveBeat(campaignId);
+  const accepted = new Set<HeldCall>();
+  const refused = new Set<HeldCall>();
+  const ran: HeldCall[] = [];
+  let waiting = false;
+  for (const [at, toolCall] of stop.calls.entries()) {
+    if (at > 0 && parkForWatch(campaign, turn, stop.calls.slice(at))) {
+      waiting = true;
+      break;
+    }
+    const holder = turnHolder(campaignId);
+    const choice = at === 0 && stop.face !== null ? { watcherId, face: stop.face, tag: stop.tag, line: stop.line } : null;
+    // A call that throws is answered like any refusal: the loop's catch does
+    // not reach this far, and the table would wait on it for good.
+    let outcome: ToolResult;
+    let portent: string | null = null;
+    try {
+      ({ result: outcome, portent } = await runWithForetold(campaign, turn.id, choice, () => resolveModelCall(context, turn, toolCall)));
+    } catch (error) {
+      console.error(`[dm-turn] a held ${toolCall.name} threw:`, error);
+      outcome = { error: `${toolCall.name} failed on the server, so nothing came of it.`, retry: true };
+    }
+    const happened = settleTurn(campaign, holder);
+    if (outcome[PARKED]) {
+      ran.push(toolCall);
+      waiting = true;
+      if (Array.isArray(outcome.attacks)) {
+        turn.conversation.push({ role: "tool", ...(toolCall.id ? { tool_call_id: toolCall.id } : {}), content: JSON.stringify({ attacks: outcome.attacks }) });
+      }
+      continue;
+    }
+    // A list partly refused is credited with its done entries alone.
+    const done = "error" in outcome ? toolCall.rawArguments : doneParts(toolCall.name, toolCall.rawArguments, outcome);
+    const credited = done === toolCall.rawArguments ? toolCall : { ...toolCall, rawArguments: done };
+    ran.push(credited);
+    ("error" in outcome ? refused : accepted).add(credited);
+    const told = { ...outcome, ...(portent ? { portent } : {}), ...(happened.length ? { fightEvents: firedEventsNote(happened) } : {}) };
+    turn.conversation.push({ role: "tool", ...(toolCall.id ? { tool_call_id: toolCall.id } : {}), content: JSON.stringify(told) });
+    saveDmTurn(turn);
+  }
+  await tickWaypointsFromCalls(campaignId, ran, { enemyNames, accepted, refused });
+  settleEarlyTicks(campaignId, beatBefore, ran, { enemyNames, accepted, refused });
+  return waiting;
 }
 
 // A throwing tool handler used to leave dm_turns stuck at 'running' until
@@ -2460,7 +2549,25 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     let parkedAny = false;
     // A list partly refused is credited with its done entries alone.
     const credited = new Map<(typeof toolCalls)[number], (typeof toolCalls)[number]>();
-    for (const toolCall of toolCalls) {
+    let ranCalls = toolCalls.length;
+    for (const [at, toolCall] of toolCalls.entries()) {
+      // Someone watching for Portent may answer this roll before it is made:
+      // this call and those after it wait, in order (src/lib/dm/foresight.ts).
+      // The calls already resolved above and those no table offers are answered
+      // now, since nothing on resume can.
+      const later = toolCalls.slice(at);
+      const heldBack = later.filter((call) => offersTool(catalogue, call.name) && ranAbove(call, inputInFight, false) === null);
+      if (heldBack[0] === toolCall && parkForWatch(context.campaign, turn, heldBack)) {
+        for (const call of later) {
+          if (!heldBack.includes(call)) {
+            const answer = ranAbove(call, inputInFight, false) ?? { error: `The engine has no action called "${call.name}".`, retry: true };
+            turn.conversation.push({ role: "tool", ...(call.id ? { tool_call_id: call.id } : {}), content: JSON.stringify(answer) });
+          }
+        }
+        parkedAny = true;
+        ranCalls = at;
+        break;
+      }
       const holder = turnHolder(campaignId);
       const outcome =
         ranAbove(toolCall, inputInFight, false) ??
@@ -2508,7 +2615,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     // The NPC, item, objective and combat tools ran after the beat check:
     // their waypoints tick now, for the next reply's checklist, and before
     // a park so a resumed turn does not lose them.
-    const ran = toolCalls.map((call) => credited.get(call) ?? call);
+    const ran = toolCalls.slice(0, ranCalls).map((call) => credited.get(call) ?? call);
     await tickWaypointsFromCalls(campaignId, ran, { enemyNames: foesBefore, accepted, refused });
     settleEarlyTicks(campaignId, beatBefore, ran, { enemyNames: foesBefore, accepted, refused });
 

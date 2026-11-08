@@ -24,6 +24,8 @@ import {
   DirectorPresets,
 } from "@/app/campaigns/[campaignId]/DirectorPanel";
 import { AfterRollCard } from "@/app/campaigns/[campaignId]/AfterRollCard";
+import { WatchCard, WatchToggle } from "@/app/campaigns/[campaignId]/WatchCard";
+import { foretoldLeft } from "@/lib/dm/foretold-logic";
 import { PendingRollCard } from "@/app/campaigns/[campaignId]/PendingRollCard";
 import { DmStatusLine } from "@/app/campaigns/[campaignId]/DmStatusLine";
 import { PushToTalk } from "@/app/campaigns/[campaignId]/PushToTalk";
@@ -231,6 +233,8 @@ function ComposerInner({
   // may take (a test fight a person runs): a hit hero answers under the
   // monsters' hand.
   const ownsHeroes = isDm && sheets.some((sheet) => sheet.userId === meUserId && !sheet.isCompanion);
+  // Portent's button, for the character who holds a number.
+  const watchingSheet = sheets.find((sheet) => sheet.userId === meUserId && !sheet.isCompanion && foretoldLeft(sheet).length > 0);
   // And the companions nobody commands, whose reactions the seat plays at a
   // table a person runs as it plays their turns (issue 685).
   const answersForCompanions = gmCompanions && hostOffers(capabilities, "companionReactions") && companionReactors(sheets, meUserId, undefined, true).length > 0;
@@ -264,7 +268,17 @@ function ComposerInner({
     <form onSubmit={onSubmit} className="glass session-desk cine-desk border-t border-stone-700/40 px-3 pb-3 pt-2.5">
       <div className="session-desk-body mx-auto max-w-3xl sm:px-3">
         <div className="session-compose-notices">
-        {pendingRolls.map((pending) => pending.thrown && hostOffers(capabilities, "afterRollChoice") ? (
+        {encounter && watchingSheet ? <WatchToggle campaignId={campaignId} sheet={watchingSheet} encounterId={encounter.id} /> : null}
+        {pendingRolls.map((pending) => pending.parkedFor === "watch" ? (
+          <WatchCard
+            key={pending.id}
+            campaignId={campaignId}
+            pending={pending}
+            sheets={sheets}
+            meUserId={meUserId}
+            steersStory={steersStory}
+          />
+        ) : pending.thrown && hostOffers(capabilities, "afterRollChoice") ? (
           <AfterRollCard
             key={pending.id}
             campaignId={campaignId}

@@ -1653,6 +1653,8 @@ function ensureSchema(db: SqliteDatabase) {
     ["summon_json", `TEXT`],
     // The numbers Portent foretold at the last long rest (src/lib/dm/foretold-logic.ts).
     ["foretold_json", `TEXT`],
+    // The fight this wizard is watching for Portent (src/lib/dm/foresight.ts).
+    ["watching_encounter_id", `TEXT`],
     // AI companion party member: owned by an unloginable bot user row so
     // UNIQUE(campaign_id, user_id) and the users FK stay satisfied. The DM
     // drives these sheets (src/lib/dm/companion-tools.ts).

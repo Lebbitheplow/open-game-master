@@ -5,6 +5,8 @@ import {
   listOrphanedParkedTurns,
   listRunningAiTurns,
   saveDmTurn,
+  listOpenWatchStops,
+  resolvePendingWatch,
 } from "@/lib/db/dm-turns";
 import { failPendingLocationMaps } from "@/lib/db/locations";
 import { isAgentTurn } from "@/lib/dm/agent-turn";
@@ -66,6 +68,11 @@ export function recoverDmAfterRestart(): RestartRecovery | null {
   const breaks = restoreTableBreaks().length;
   const sessions = restoreSessionHolds().length;
   const halted = haltInterruptedTurns();
+  // A stop before a roll has outlived its moment, and its timer did not
+  // survive: the roll goes ahead when its turn resumes just below.
+  for (const stop of listOpenWatchStops()) {
+    resolvePendingWatch(stop.id, null);
+  }
   const { resumed, closed } = resumeOrphanedParkedTurns();
   // The map queue was in memory too: a place still waiting on a render
   // would chart forever under the narration that introduced it.

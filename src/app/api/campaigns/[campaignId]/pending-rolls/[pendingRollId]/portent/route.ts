@@ -1,12 +1,12 @@
 import { z } from "zod";
 import { isErrorResponse, requireMember } from "@/lib/campaign-api";
-import { getPendingRoll, publicPendingRoll, setPendingThrown } from "@/lib/db/dm-turns";
+import { foretoldPromised, getPendingRoll, publicPendingRoll, setPendingThrown } from "@/lib/db/dm-turns";
 import { getSheetById } from "@/lib/db/sheets";
 import { rollExpression } from "@/lib/dice";
 import { optionsForPending } from "@/lib/dm/after-roll";
 import { canWaitOnRoll } from "@/lib/dm/after-roll-logic";
 import { spendForetold } from "@/lib/dm/foretold";
-import { foretoldLeft, singleD20Expression, withForetoldD20 } from "@/lib/dm/foretold-logic";
+import { foretoldLeft, foretoldWithout, singleD20Expression, withForetoldD20 } from "@/lib/dm/foretold-logic";
 import { landPendingRoll } from "@/lib/dm/pending-roll-land";
 import { refuseDuringBreak } from "@/lib/dm/table-break";
 import { publishPersisted } from "@/lib/events";
@@ -60,7 +60,12 @@ export async function POST(
     return Response.json({ error: "Only the character's own player uses their Portent." }, { status: 403 });
   }
   const { value } = parsed.data;
-  if (!foretoldLeft(sheet).includes(value)) {
+  // A stop in this turn may have promised the number already.
+  let free = foretoldLeft(sheet);
+  for (const promised of foretoldPromised(pending.turnId, sheet.id)) {
+    free = foretoldWithout(free, promised);
+  }
+  if (!free.includes(value)) {
     return Response.json({ error: `${sheet.name} holds no foretold ${value}.` }, { status: 409 });
   }
 

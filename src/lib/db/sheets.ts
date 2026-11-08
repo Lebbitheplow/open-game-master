@@ -74,6 +74,7 @@ type SheetRow = {
   pets_json: string | null;
   summon_json?: string | null;
   foretold_json?: string | null;
+  watching_encounter_id?: string | null;
   exhaustion: number | null;
   death_saves_json: string | null;
   concentrating_on: string | null;
@@ -175,6 +176,7 @@ function mapSheet(row: SheetRow): CharacterSheet {
     pets: repairedPets(parseJson<CharacterSheet["pets"]>(row.pets_json, [])),
     summon: parseJson<CharacterSheet["summon"]>(row.summon_json ?? null, null),
     foretold: parseJson<number[]>(row.foretold_json ?? null, []),
+    watchingEncounterId: row.watching_encounter_id ?? null,
     exhaustion: row.exhaustion ?? 0,
     deathSaves: parseJson<CharacterSheet["deathSaves"]>(row.death_saves_json, null),
     concentratingOn: row.concentrating_on ?? null,
@@ -231,7 +233,7 @@ const SHEET_COLUMNS = `
   abilities_json, max_hp, current_hp, temp_hp, ac, ac_override, speed, hit_dice_json,
   classes_json, hit_dice_pools_json,
   proficiencies_json, equipment_json, gold, copper, feats_json, features_json,
-  spellcasting_json, conditions_json, condition_meta_json, resources_json, wild_shape_json, pets_json, summon_json, foretold_json, exhaustion, death_saves_json, concentrating_on, concentration_rounds,
+  spellcasting_json, conditions_json, condition_meta_json, resources_json, wild_shape_json, pets_json, summon_json, foretold_json, watching_encounter_id, exhaustion, death_saves_json, concentrating_on, concentration_rounds,
   portrait_json, notes, backstory, hopes, is_companion, companion_kind, commanded_by, personality, hand_layout_json, feat_choices_json,
   attraction_json, open_to_advances, open_to_pacts, former_sheet_ids_json, created_at, updated_at
 `;
@@ -319,6 +321,13 @@ export function adoptSheetAsCompanion(
 
 // Marks a sheet as a creature a spell or feature made (src/lib/dm/summon-store.ts),
 // or clears the mark. Kept out of patchSheet like the companion flag above.
+// The fight a wizard watches for Portent (src/lib/dm/foresight.ts): a choice of
+// the moment, so it is no audited change to the character.
+export function setSheetWatching(sheetId: string, encounterId: string | null): CharacterSheet | null {
+  getDatabase().prepare(`UPDATE character_sheets SET watching_encounter_id = ? WHERE id = ?`).run(encounterId, sheetId);
+  return getSheetById(sheetId);
+}
+
 export function setSheetSummon(sheetId: string, summon: CharacterSheet["summon"]): CharacterSheet | null {
   getDatabase()
     .prepare(`UPDATE character_sheets SET summon_json = ? WHERE id = ?`)

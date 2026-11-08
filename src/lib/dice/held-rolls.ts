@@ -26,7 +26,10 @@ export type HeldRollMember = {
 //
 // The fourth is too: no die is thrown yet, and the player may replace it with
 // a number Portent foretold (src/lib/dm/foretold-logic.ts).
-export type ParkReason = "real_dice" | "held" | "after_roll" | "foretold";
+//
+// The fifth holds no roll of this player's at all: another creature is about
+// to roll, and the player watching for Portent may answer (src/lib/dm/foresight.ts).
+export type ParkReason = "real_dice" | "held" | "after_roll" | "foretold" | "watch";
 
 type DicePreferences = Pick<HeldRollMember, "useRealDice" | "holdRolls">;
 
@@ -56,7 +59,7 @@ export function mayTypeFaces(
   dicePolicy: string,
   member: DicePreferences | null | undefined,
 ): boolean {
-  if (parkedFor === "held" || parkedFor === "after_roll" || parkedFor === "foretold") {
+  if (parkedFor === "held" || parkedFor === "after_roll" || parkedFor === "foretold" || parkedFor === "watch") {
     return false;
   }
   return parkReasonFor(dicePolicy, member) === "real_dice";
