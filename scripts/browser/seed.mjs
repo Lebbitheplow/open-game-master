@@ -3437,6 +3437,29 @@ const bench2Titles = {};
       turnOf(table, runa.id);
       at.runicGm = { id: table.id, runa: { id: runa.id, name: runa.name }, near: { id: near.id, name: near.name } };
     }
+    // ---- 14b: Chronal Shift for a hit on the wizard or a creature within 30
+    // feet: Bran stands beside Ilse, Tam 35 feet off, and a goblin's hit is open
+    // on each of the three ----
+    {
+      const table = tableFor(`Chronal Shift Table (${viewport})`, player, world.owner);
+      const ilse = sheets.createSheet(table.id, world.owner.id, 2, heroInput({
+        name: "Ilse Marrow", class: "wizard", subclass: "Chronurgy Magic", level: 2, maxHp: 30,
+      }));
+      const ally = (name) => {
+        const bot = createCompanionUser(name);
+        const sheet = sheets.createSheet(table.id, bot.id, 5, heroInput({ name, class: "fighter", level: 5, maxHp: 44 }));
+        sheets.markSheetAsCompanion(sheet.id, "party", "Steady, and slow to speak.");
+        return sheet;
+      };
+      const [near, far] = [ally("Bran Holt"), ally("Tam Reed")];
+      const { rows, place } = await fightAt(table, player, [{ monster: "goblin", count: 3 }]);
+      const [g1, g2, g3] = [named(rows, "goblin", 0), named(rows, "goblin", 1), named(rows, "goblin", 2)];
+      [[ilse.id, 0, 0], [near.id, 1, 0], [g1.id, 2, 0], [g3.id, 0, 1], [far.id, -7, 0], [g2.id, -8, 0]].forEach(([refId, dx, dy]) => place(refId, dx, dy));
+      turnOf(table, g1.id, { legendary: { due: [g1.id, g2.id, g3.id] } });
+      await pass(table, [[g1.id, near.id, [15, 3]], [g2.id, far.id, [15, 3]], [g3.id, ilse.id, [15, 3]]]);
+      turnOf(table, ilse.id);
+      at.chronal = { id: table.id, ilse: { id: ilse.id, name: ilse.name }, near: { id: near.id, name: near.name }, far: { id: far.id, name: far.name } };
+    }
     // ---- 15: Misdirection from the GM's own seat, which the engine resolves as
     // it is played: a goblin's arrow from 15 feet hits Vex, another goblin stands
     // beside them in its line (the cover Misdirection needs), and a third 25 feet

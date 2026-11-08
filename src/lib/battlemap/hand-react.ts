@@ -660,6 +660,7 @@ function subclassReactions(
             does.kind === "redirect" ||
             does.kind === "force_miss" ||
             does.kind === "uncrit" ||
+            (does.kind === "reroll_hit" && Boolean(does.self)) ||
             (does.kind === "chance_miss" && (!does.vsMark || markedBy(sheet, does.vsMark, hit.attackerId))) ||
             (does.kind === "strike_back" && !does.afterSave && Boolean(hit.attackerId) && !(does.melee && hit.ranged))
           : (does.kind === "reduce" && does.who !== "self" && typed(does.types)) ||

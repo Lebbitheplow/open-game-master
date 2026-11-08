@@ -476,11 +476,12 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       return { ...(edge ? { next: edge } : {}), applied: `Rolled again at disadvantage: ${total} against AC ${swing.vsAc} misses, and ${settled.given} hit points come back. HP ${settled.hp}.` };
     }
     case "reroll_hit": {
-      const ally = allyOf(ctx);
-      if (!ally || ally.id === ctx.sheet.id) {
+      // Unnamed, a reaction that also covers its holder answers the hit on them.
+      const ally = allyOf(ctx) ?? (does.self ? ctx.sheet : null);
+      if (!ally || (ally.id === ctx.sheet.id && !does.self)) {
         return { error: `${reaction.name} protects another creature: pass the ally's targetCharacterId. Nothing was spent.`, retry: true };
       }
-      if (encounter && !withinFeet(encounter.id, ctx.sheet.id, ally.id, does.rangeFt)) {
+      if (encounter && ally.id !== ctx.sheet.id && !withinFeet(encounter.id, ctx.sheet.id, ally.id, does.rangeFt)) {
         return { error: `${ally.name} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
       }
       const hidden = unseenTarget(ctx, found, ally);

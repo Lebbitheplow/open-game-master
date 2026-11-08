@@ -472,8 +472,9 @@ export type ReactionDoes =
   // of their next turn (Entropic Ward; authored-hooks.ts reads the mark).
   | { kind: "disadv_vs_hit"; notVsAdvantage?: boolean; allyWith?: string; rangeFt?: number; advantageOnMiss?: boolean }
   // The attacker rolls the d20 that hit an ally in range again and must use the
-  // new roll, high or low (Runic Shield).
-  | { kind: "reroll_hit"; rangeFt: number }
+  // new roll, high or low (Runic Shield). `self`: a hit on the holder counts too
+  // (Chronal Shift: "you or a creature you can see within 30 feet").
+  | { kind: "reroll_hit"; rangeFt: number; self?: boolean }
   // Resistance to the last hit's damage when it is one of these types.
   // `bond`: only for the holder, and only while that creature is on their sheet and up
   // (a Drakewarden's drake); no other ally.

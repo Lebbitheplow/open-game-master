@@ -1221,7 +1221,7 @@
    "ability": null,
    "recharge": "long",
    "action": "reaction",
-   "guidance": "A reaction forcing a creature within 30 feet to reroll an attack, check or save after the wizard sees whether it succeeded; the second roll stands."
+   "guidance": "A reaction forcing a creature within 30 feet to reroll an attack, check or save after the wizard sees whether it succeeded; the second roll stands. Against an attack that hit the wizard or a creature within 30 feet, use_reaction 'Chronal Shift' (targetCharacterId for the creature hit): the server rolls the attack again and settles the hit. For a check or a save, use_resource and narrate the reroll."
   },
   {
    "id": "sub_momentary_stasis",
