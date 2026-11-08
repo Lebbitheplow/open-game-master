@@ -418,6 +418,18 @@ export function applyPcDamage(
   if (relentless) {
     return tookIt(relentless);
   }
+  // A Wildfire druid's spirit gives itself up for them, then a Shadow
+  // sorcerer's save. Each answers the drop itself, so it runs here, before
+  // the death engine sees it: played as a card afterwards it was refused,
+  // the hero being at 0, and played before it spent the use for nothing.
+  const revival = blazingRevival(campaign, turnId, sheet, math, input, reason);
+  if (revival) {
+    return tookIt(revival);
+  }
+  const grave = strengthOfTheGrave(campaign, turnId, sheet, math, input, adjusted.amount, reason);
+  if (grave) {
+    return tookIt(grave);
+  }
   // A barbarian knocked unconscious stops raging. Checked after Relentless
   // Endurance, which keeps them on their feet still raging.
   let rageInfo: Record<string, unknown> = {};
@@ -503,6 +515,90 @@ function relentlessRage(
     ok: true,
     hp: `1/${effectiveMaxHp(sheet)}`,
     relentlessRage: `CON save ${save.total} against DC ${dc}: ${sheet.name} stays on their feet at 1 hit point, still raging. The next save is DC ${dc + 5} until they rest.`,
+  };
+}
+
+// A use of a once-a-rest feature, spent; null when none is left.
+function spendUse(resources: CharacterSheet["resources"], id: string): CharacterSheet["resources"] | null {
+  const state = resources?.[id];
+  return state && state.used < state.max ? { ...resources, [id]: { max: state.max, used: state.used + 1 } } : null;
+}
+
+export const WILDFIRE_SPIRIT = "wildfire spirit";
+
+// Blazing Revival (Circle of Wildfire 14): dropped to 0 but not killed
+// outright while the wildfire spirit is out, the spirit drops to 0 and the
+// druid regains half their hit point maximum and stands. The spirit is a
+// condition on the druid here, with no token to measure its 120 feet from,
+// so its being out is all that is checked. Taken whenever it can be: being
+// up again at half is always worth the spirit, as Undying Sentinel's hold is
+// taken whenever it can be.
+function blazingRevival(
+  campaign: Campaign,
+  turnId: string,
+  sheet: CharacterSheet,
+  math: { dropped: boolean; overkill: number },
+  input: PcDamageInput,
+  reason: string,
+): Record<string, unknown> | null {
+  const now = getSheetById(sheet.id) ?? sheet;
+  if (!math.dropped || input.disintegrate || isMassiveDamage(math.overkill, effectiveMaxHp(now)) || !now.conditions.some((entry) => entry.toLowerCase() === WILDFIRE_SPIRIT)) {
+    return null;
+  }
+  const resources = spendUse(now.resources, "sub_blazing_revival");
+  if (!resources) {
+    return null;
+  }
+  const hp = Math.max(1, Math.floor(effectiveMaxHp(now) / 2));
+  const cleared = removeConditions(now.conditions, now.conditionMeta, [WILDFIRE_SPIRIT]);
+  const patch: FullPatchSheetInput = { currentHp: hp, resources, conditions: cleared.conditions, conditionMeta: cleared.meta };
+  patchSheet(sheet.id, patch);
+  audit(campaign, turnId, now, "apply_damage", { blazingRevival: true }, reason, patch);
+  publishSheet(campaign, sheet.id);
+  return {
+    ok: true,
+    hp: `${hp}/${effectiveMaxHp(now)}`,
+    blazingRevival: `${sheet.name} should have fallen, but their wildfire spirit drops to 0 hit points in their place: Blazing Revival brings them back at ${hp} hit points, on their feet. The spirit is gone, and the feature is spent until a long rest.`,
+  };
+}
+
+// Strength of the Grave (Shadow Magic 1): damage that drops the sorcerer to 0
+// is answered by a Charisma save against 5 + the damage taken, which leaves
+// them at 1 instead. Not against radiant damage or a critical hit, and only a
+// success spends the use. Rolled whenever it can be, as Relentless Rage's
+// save is: a failed one costs nothing.
+function strengthOfTheGrave(
+  campaign: Campaign,
+  turnId: string,
+  sheet: CharacterSheet,
+  math: { dropped: boolean; overkill: number },
+  input: PcDamageInput,
+  taken: number,
+  reason: string,
+): Record<string, unknown> | null {
+  const now = getSheetById(sheet.id) ?? sheet;
+  const radiant = /\bradiant\b/i.test([input.type ?? "", ...(input.parts ?? []).map((part) => part.type)].join(" "));
+  if (!math.dropped || input.disintegrate || input.crit === true || radiant || isMassiveDamage(math.overkill, effectiveMaxHp(now))) {
+    return null;
+  }
+  const resources = spendUse(now.resources, "sub_strength_of_the_grave");
+  if (!resources) {
+    return null;
+  }
+  const dc = 5 + Math.max(0, taken);
+  const save = rollFeatureSave(campaign, now, "cha", dc, "Strength of the Grave");
+  if (!save.success) {
+    return null;
+  }
+  const after = getSheetById(sheet.id) ?? now;
+  const patch: FullPatchSheetInput = { currentHp: 1, resources: { ...after.resources, sub_strength_of_the_grave: resources.sub_strength_of_the_grave } };
+  patchSheet(sheet.id, patch);
+  audit(campaign, turnId, after, "apply_damage", { strengthOfTheGrave: true, dc }, reason, patch);
+  publishSheet(campaign, sheet.id);
+  return {
+    ok: true,
+    hp: `1/${effectiveMaxHp(now)}`,
+    strengthOfTheGrave: `CHA save ${save.total} against DC ${dc}: ${sheet.name} drops to 1 hit point instead of 0. Strength of the Grave is spent until a long rest.`,
   };
 }
 

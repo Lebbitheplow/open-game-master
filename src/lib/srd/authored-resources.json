@@ -446,7 +446,8 @@
    "uses": 1,
    "ability": null,
    "recharge": "long",
-   "guidance": "Triggers when the druid drops to 0 hit points while the wildfire spirit is out: the spirit is destroyed and the druid returns at half their hit point maximum."
+   "passive": true,
+   "guidance": "This is not spent by choice: the next time damage would drop the druid to 0 hit points without killing them outright while the wildfire spirit is out, the server lets the spirit fall in their place, brings the druid back at half their hit point maximum, and burns the use."
   },
   {
    "id": "sub_walker_in_dreams",
@@ -999,7 +1000,8 @@
    "uses": 1,
    "ability": null,
    "recharge": "long",
-   "guidance": "When damage drops the sorcerer to 0 hit points: a Charisma save (DC 5 + the damage) leaves them at 1 instead. It does not work against radiant damage or a critical hit, and only a success spends the use."
+   "passive": true,
+   "guidance": "This is not spent by choice: the next time damage other than radiant or a critical hit would drop the sorcerer to 0 hit points without killing them outright, the server rolls their Charisma save (DC 5 + the damage taken) and, on a success, leaves them at 1 hit point and burns the use."
   },
   {
    "id": "sub_restore_balance",

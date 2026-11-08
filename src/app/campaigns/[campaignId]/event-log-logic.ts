@@ -167,6 +167,8 @@ export function describeKnownEntry(entry: { kind: string; delta: Delta }, name: 
       }
       if (delta.relentlessEndurance) return `${name} holds on at 1 HP (Relentless Endurance)`;
       if (delta.undyingSentinel) return `${name} holds on at 1 HP (Undying Sentinel)`;
+      if (delta.strengthOfTheGrave) return `${name} holds on at 1 HP (Strength of the Grave)`;
+      if (delta.blazingRevival) return `${name} rises again as their wildfire spirit falls (Blazing Revival)`;
       if (delta.relentlessRage) return `${name} holds on at 1 HP (Relentless Rage)`;
       if (delta.deathWard) return `${name} holds on at 1 HP (Death Ward)`;
       const type = word(delta.type);

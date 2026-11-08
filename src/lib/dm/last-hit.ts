@@ -173,6 +173,9 @@ export type VitalsSnapshot = {
   relentlessRage?: number | null;
   // Undying Sentinel's uses spent, for the same refund.
   undyingSentinel?: number | null;
+  // Blazing Revival's and Strength of the Grave's, likewise (pc-damage.ts).
+  blazingRevival?: number | null;
+  strengthOfTheGrave?: number | null;
   // An abjurer's Arcane Ward's hit points, which take a blow first; null
   // with no ward raised. Absent on records written before it.
   ward?: number | null;
@@ -731,6 +734,8 @@ export function snapshotVitals(campaignId: string, sheet: CharacterSheet): Vital
     relentless: relentless ? { max: relentless.max, used: relentless.used } : null,
     relentlessRage: sheet.resources?.relentless_rage?.used ?? null,
     undyingSentinel: sheet.resources?.sub_undying_sentinel?.used ?? null,
+    blazingRevival: sheet.resources?.sub_blazing_revival?.used ?? null,
+    strengthOfTheGrave: sheet.resources?.sub_strength_of_the_grave?.used ?? null,
     ward: wardHpOf(sheet),
     concentratingOn: sheet.concentratingOn ?? null,
     held: concentrationHeld(campaignId, sheet),
