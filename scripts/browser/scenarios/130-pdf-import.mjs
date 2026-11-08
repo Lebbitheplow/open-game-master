@@ -71,5 +71,9 @@ export default {
       { label: "the imported workshop exists", timeoutMs: 30_000 },
     );
     check(Boolean(made), "the book became a workshop of the importer's own");
+    // The lead's shelf is shared with later scenarios (empty-states reads it
+    // as empty), so the workshop made here goes again.
+    const removed = await api.delete(`${base}/api/workshops/${made.id}`);
+    check(removed.ok(), `the imported workshop is removed again (HTTP ${removed.status()})`);
   },
 };

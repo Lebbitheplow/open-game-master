@@ -3,13 +3,17 @@
 // and one whose name only ends in an SRD one each start on a suggestion,
 // the workshop waits until both are confirmed, one is changed to keep the
 // book's own numbers, "Accept the rest" confirms the other, and the
-// workshop is made. The step is clean under axe by day and night. Needs the
-// content pack (the SRD to match to); without it the step never shows.
+// workshop is made. The step is clean under axe by day and night. The SRD
+// to match to is the content pack: with none (CI's browser run) the step
+// never shows and the book is made at once, which is checked instead.
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { oldSchoolPdf } from "../../lib/pdf-fixture.mjs";
 import { axeViolations, check, eventually, untilStill } from "../lib.mjs";
+
+const TREE = path.resolve(import.meta.dirname, "..", "..", "..");
+const hasPack = () => fs.existsSync(process.env.CONTENT_DB_PATH ?? path.join(TREE, "data", "content", "open5e.sqlite"));
 
 let bookFile = "";
 async function book() {
@@ -34,6 +38,31 @@ export default {
     await review.waitFor({ state: "visible", timeout: 120_000 });
     await untilStill(page);
     const matches = review.locator('[data-testid="pdf-matches"]');
+    const make = review.locator("button", { hasText: "Make the workshop" });
+    const stamp = `${t.viewport[0]}${t.app ? "a" : "w"}${Date.now().toString(36).slice(-4)}`;
+    const madeWorkshop = async () => {
+      await review.locator("input").first().fill(`Glass Tower ${stamp}`);
+      await make.click();
+      const made = await eventually(
+        async () => {
+          const listed = await api.get(`${base}/api/workshops`);
+          const body = await listed.json().catch(() => ({}));
+          return (body.workshops ?? []).find((workshop) => workshop.title === `Glass Tower ${stamp}`) ?? null;
+        },
+        { label: "the imported workshop exists", timeoutMs: 30_000 },
+      );
+      // The lead's shelf is shared with later scenarios (empty-states reads
+      // it as empty), so the workshop made here goes again.
+      const removed = await api.delete(`${base}/api/workshops/${made.id}`);
+      check(removed.ok(), `the imported workshop is removed again (HTTP ${removed.status()})`);
+      return made;
+    };
+    if (!hasPack()) {
+      check((await matches.count()) === 0, "with no content pack there is no SRD to match to, so no match step");
+      check(await make.isEnabled(), "and nothing holds the workshop back");
+      check(Boolean(await madeWorkshop()), "the book became a workshop with no content pack");
+      return;
+    }
     check((await matches.count()) === 1, "the review asks for the creatures' SRD 5.1 matches");
     const rows = matches.locator("[data-match]");
     check((await rows.count()) === 2, `two creatures to match (got ${await rows.count()})`);
@@ -43,7 +72,6 @@ export default {
     check(/Golem$/.test(golemPick), `the golem starts on an SRD golem (got "${golemPick}")`);
     check((await ooze.locator("select").inputValue()) === "Gray Ooze", "the ooze starts on the SRD's Gray Ooze");
 
-    const make = review.locator("button", { hasText: "Make the workshop" });
     check(await make.isDisabled(), "the workshop waits until every match is confirmed");
 
     for (const theme of ["dark", "light"]) {
@@ -75,17 +103,6 @@ export default {
     });
     await eventually(() => make.isEnabled(), { label: "every match confirmed", timeoutMs: 15_000 });
 
-    const stamp = `${t.viewport[0]}${t.app ? "a" : "w"}${Date.now().toString(36).slice(-4)}`;
-    await review.locator("input").first().fill(`Glass Tower ${stamp}`);
-    await make.click();
-    const made = await eventually(
-      async () => {
-        const listed = await api.get(`${base}/api/workshops`);
-        const body = await listed.json().catch(() => ({}));
-        return (body.workshops ?? []).find((workshop) => workshop.title === `Glass Tower ${stamp}`) ?? null;
-      },
-      { label: "the imported workshop exists", timeoutMs: 30_000 },
-    );
-    check(Boolean(made), "the book became a workshop once its matches were confirmed");
+    check(Boolean(await madeWorkshop()), "the book became a workshop once its matches were confirmed");
   },
 };
