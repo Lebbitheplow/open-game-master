@@ -31,7 +31,10 @@ const redemption = hero("paladin", "Oath of Redemption");
 const glory = hero("paladin", "Oath of Glory");
 const watchers = hero("paladin", "Oath of the Watchers");
 const crown = hero("paladin", "Oath of the Crown");
-const everyone = [light, nature, trickery, order, ancients, redemption, glory, watchers, crown];
+// The healing rows' holders (scripts/test-enforce-cd-healing.mjs tests them).
+const peace = hero("cleric", "Peace Domain");
+const twilight = hero("cleric", "Twilight Domain");
+const everyone = [light, nature, trickery, order, ancients, redemption, glory, watchers, crown, peace, twilight];
 
 // Two foes beside the hero and one out of 30 feet, of the types given.
 async function stage(who, types = ["beast", "fiend", "beast"]) {

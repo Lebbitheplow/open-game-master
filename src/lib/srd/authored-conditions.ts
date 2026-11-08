@@ -132,6 +132,8 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
     ],
   },
   summaryOnly("champion_challenge", "champion challenge", "Champion Challenge: cannot willingly move more than 30 feet from the paladin who challenged it; ends if the paladin is incapacitated or dies, or it is more than 30 feet away."),
+  // Its turn-end benefits are the cleric's row (turn_end_aura, authored-turns.ts).
+  summaryOnly("twilight_sanctuary", "twilight sanctuary", "Twilight Sanctuary: a 30-foot sphere of twilight around the cleric for a minute; a creature ending its turn in it loses a charm or fear, or gains temporary hit points."),
   summaryOnly(
     "corona_of_light",
     "corona of light",

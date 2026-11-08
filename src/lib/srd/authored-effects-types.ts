@@ -111,6 +111,11 @@ export type AuthoredEffect = Base &
     | { kind: "death_heal"; rangeFt: number }
     // Hit points at the start or end of the holder's turn in a fight.
     | { kind: "turn_heal"; when: "start" | "end"; formula: Formula; belowHalf?: boolean }
+    // An aura while the holder's spend holds (gate.condition): each character
+    // who ends a turn within `rangeFt` of the holder, the holder too, loses one
+    // of `ends` laid on them or, holding none, gains temporary hit points
+    // (Twilight Sanctuary). Ends with the holder down or incapacitated.
+    | { kind: "turn_end_aura"; rangeFt: number; tempHp: Formula; ends: string[] }
     // Temporary HP after every rest, for the holder and up to `count` allies.
     | { kind: "rest_temp_hp"; formula: Formula; allies?: { count: number; formula: Formula } }
     // Extra damage dice on the holder's weapon hits (feature-effects rider).
@@ -372,6 +377,12 @@ export type SpendDoes =
   | { kind: "reroll_save" }
   // Temporary hit points: to the holder, or to allies in range.
   | { kind: "temp_hp"; formula: Formula; allies?: { rangeFt: number; count: Formula } }
+  // Hit points to the characters in reach (Turn the Tide, Balm of Peace), at
+  // least 1 each. `rangeFt` "move": the holder's speed plus 5 feet, for a
+  // healing the holder deals as they walk past. `belowHalf`: only those at or
+  // under half their maximum. `othersOnly`: not the holder. `each`: one roll
+  // per creature, not one shared. With nobody to heal, nothing is spent.
+  | { kind: "heal_area"; formula: Formula; rangeFt: number | "move"; belowHalf?: boolean; othersOnly?: boolean; each?: boolean; note?: string }
   // An area the model resolves with aoe_damage: the dice, save and DC.
   | { kind: "aoe_report"; dice: Formula; perUnit?: string; baseUnits?: number; save: Ability; dcAbility: Ability | "spell"; type: string; area: string }
   // `touched`: a willing creature the holder touches is the one moved.
