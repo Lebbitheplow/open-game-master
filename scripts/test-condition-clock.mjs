@@ -82,9 +82,11 @@ try {
   });
 
   test("an untimed condition is left alone by the clock", () => {
-    afflict({ prone: {} });
+    // Not prone: time out of a fight stands up whoever is awake and able to
+    // move (condition-tick.ts tickClockConditions).
+    afflict({ blinded: {} });
     advanceClock(campaign.id, 8, "hours");
-    assert.deepEqual(current().conditions, ["prone"]);
+    assert.deepEqual(current().conditions, ["blinded"]);
   });
 
   test("a long rest's eight hours clear an hour-long condition on their own", () => {
