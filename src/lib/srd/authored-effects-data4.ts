@@ -116,7 +116,9 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   },
   "cleric::Twilight Shroud": {
     subclass: "Twilight Domain",
-    narrated: "Half cover for the cleric and allies inside Twilight Sanctuary: +2 AC the GM adds with set_effect while the sanctuary holds.",
+    // Half cover for the cleric and allies inside Twilight Sanctuary, on every
+    // attack and every save that reads cover.
+    heldBy: { file: "src/lib/dm/attack-spatial.ts", call: "twilightShroudCover(" },
   },
   "cleric::Spell Breaker": {
     subclass: "Arcana Domain",

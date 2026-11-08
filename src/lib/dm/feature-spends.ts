@@ -30,7 +30,7 @@ import { foesOfSheet, resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { VOW_OF_ENMITY } from "@/lib/srd/vow-of-enmity";
 import { seesOnBoard, withinFeet } from "@/lib/dm/authored-saves";
 import { rollFeatureSave } from "@/lib/dm/contest-roll";
-import { healDeathHook } from "@/lib/dm/death";
+import { canRegain, regainHitPoints } from "@/lib/dm/regain";
 import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { turnDefence } from "@/lib/dm/turn-defiance";
@@ -464,7 +464,8 @@ function preserveLife(
   let pool = 5 * Math.max(1, classLevelOf(sheet, "cleric"));
   const party = fieldedSheets(campaign, listSheets(campaign.id))
     .map((entry) => getSheetById(entry.id) ?? entry)
-    .filter((entry) => !entry.deathSaves?.dead && within(campaign.id, sheet.id, entry.id, 30) && !swallowCoverBetween(sheet.id, entry.id));
+    // One Chill Touch grips, or one suffocating, regains nothing (regain.ts).
+    .filter((entry) => canRegain(entry) && within(campaign.id, sheet.id, entry.id, 30) && !swallowCoverBetween(sheet.id, entry.id));
   const room = (entry: CharacterSheet) =>
     Math.max(0, Math.floor(effectiveMaxHp(entry) / 2) - entry.currentHp);
   const ordered = [
@@ -481,12 +482,8 @@ function preserveLife(
     }
     const amount = Math.min(pool, room(target));
     pool -= amount;
-    const currentHp = target.currentHp + amount;
-    patchSheet(target.id, { currentHp });
-    audit(campaign, turnId, target, { healed: amount, by: "Preserve Life" }, reason, { currentHp });
-    healDeathHook(campaign, turnId, target);
-    publishSheet(campaign, target.id);
-    healed.push(`${target.name} +${amount} (${currentHp}/${effectiveMaxHp(target)})`);
+    const gained = regainHitPoints(campaign, turnId, target, amount, reason || "Preserve Life");
+    healed.push(`${target.name} +${gained} (${(getSheetById(target.id) ?? target).currentHp}/${effectiveMaxHp(target)})`);
   }
   return { result: { healed } };
 }

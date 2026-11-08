@@ -10,7 +10,8 @@ import { getBattleMapForEncounter, getTokenByRef, listTokens } from "@/lib/db/ba
 import { getEncounter, getEnemy, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { otherSide, type CombatSide } from "@/lib/dm/combat-sides-logic";
 import { sideOf } from "@/lib/dm/combatant";
-import { getSheetById } from "@/lib/db/sheets";
+import { getSheetById, listSheets } from "@/lib/db/sheets";
+import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
 import { coverBetweenSpaces, hasLineOfSightBetween } from "@/lib/battlemap/los";
 import { blockedLines, type XY } from "@/lib/battlemap/sight-lines";
 import { footprintTiles, type Footprint } from "@/lib/battlemap/footprint";
@@ -173,7 +174,31 @@ export function coverFor(encounterId: string, attackerRef: string, targetRef: st
 
   // Blade Barrier gives three-quarters cover to what stands behind it (zone-rules.ts).
   const blades = zoneCoverBetween(encounterId, attackerRef, targetRef);
-  return terrain === 5 || blades === 5 ? 5 : creatureCover(encounterId, attackerRef, targetRef) ? 2 : terrain;
+  return terrain === 5 || blades === 5 ? 5 : creatureCover(encounterId, attackerRef, targetRef) || twilightShroudCover(map, targetRef) ? 2 : terrain;
+}
+
+// Twilight Shroud (Twilight Domain 17): the cleric and their allies have half
+// cover while in the sphere of their Twilight Sanctuary, 30 feet around the
+// cleric. The sanctuary ends with the cleric incapacitated (authored-turns.ts
+// ends it at the next turn's end), so it shelters nobody from then. Before this
+// the GM had to remember the +2 with set_effect.
+function twilightShroudCover(map: { id: string; campaignId: string }, targetRef: string): boolean {
+  const target = getSheetById(targetRef);
+  const token = target ? getTokenByRef(map.id, target.id) : null;
+  if (!target || !token || target.campaignId !== map.campaignId) {
+    return false;
+  }
+  return listSheets(map.campaignId).some((stale) => {
+    const cleric = getSheetById(stale.id) ?? stale;
+    if (!holdsFeature(cleric, "twilight shroud") || !cleric.conditions.some((entry) => isConditionNamed(entry, "twilight sanctuary"))) {
+      return false;
+    }
+    if (cleric.currentHp <= 0 || cleric.deathSaves?.dead || isIncapacitated(cleric.conditions)) {
+      return false;
+    }
+    const at = getTokenByRef(map.id, cleric.id);
+    return Boolean(at) && tilesApart(at!, token) <= 6;
+  });
 }
 
 // The cover a creature has against an effect that starts at a square (a
@@ -191,7 +216,7 @@ export function coverFromPoint(encounterId: string, at: { x: number; y: number }
   const to = spaceOf(target);
   const terrain = coverBetweenSpaces(map.terrain, map.width, map.height, [at], to);
   const blades = zoneCoverFromPoint(encounterId, at, targetRef);
-  return terrain === 5 || blades === 5 ? 5 : creatureOnLine(map.id, [at], to, [targetRef]) ? 2 : terrain;
+  return terrain === 5 || blades === 5 ? 5 : creatureOnLine(map.id, [at], to, [targetRef]) || twilightShroudCover(map, targetRef) ? 2 : terrain;
 }
 
 // Whether a creature's squares stop any line from a space to the target, from

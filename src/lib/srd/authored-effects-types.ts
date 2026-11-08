@@ -390,8 +390,9 @@ export type SpendDoes =
   // least 1 each. `rangeFt` "move": the holder's speed plus 5 feet, for a
   // healing the holder deals as they walk past. `belowHalf`: only those at or
   // under half their maximum. `othersOnly`: not the holder. `each`: one roll
-  // per creature, not one shared. With nobody to heal, nothing is spent.
-  | { kind: "heal_area"; formula: Formula; rangeFt: number | "move"; belowHalf?: boolean; othersOnly?: boolean; each?: boolean; note?: string }
+  // per creature, not one shared. `hears`: not a deafened creature. With
+  // nobody to heal, nothing is spent (src/lib/dm/authored-heal-area.ts).
+  | { kind: "heal_area"; formula: Formula; rangeFt: number | "move"; belowHalf?: boolean; othersOnly?: boolean; each?: boolean; hears?: boolean; note?: string }
   // An area the model resolves with aoe_damage: the dice, save and DC.
   | { kind: "aoe_report"; dice: Formula; perUnit?: string; baseUnits?: number; save: Ability; dcAbility: Ability | "spell"; type: string; area: string }
   // `touched`: a willing creature the holder touches is the one moved.

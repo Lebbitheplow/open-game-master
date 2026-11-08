@@ -15,6 +15,7 @@ const kit = await combatKit(world);
 const { deriveHand, FRESH_TURN } = await import("../src/lib/battlemap/hand.ts");
 const { directCardCall } = await import("../src/lib/dm/intent-logic.ts");
 const { endTurns } = await import("../src/lib/dm/turn-end.ts");
+const { coverFor } = await import("../src/lib/dm/attack-spatial.ts");
 
 // Level 9, every ability 16 (+3), 100 hit points.
 const hero = (classId, subclass) =>
@@ -28,7 +29,13 @@ const twilight = hero("cleric", "Twilight Domain");
 const near = hero("fighter", "Champion");
 const beside = hero("fighter", "Champion");
 const far = hero("fighter", "Champion");
-const everyone = [crown, peace, twilight, near, beside, far];
+const life = hero("cleric", "Life Domain");
+// Twilight Shroud comes at 17th level.
+const shroud = world.addHero({
+  user: world.owner, class: "cleric", subclass: "Twilight Domain", level: 17, maxHp: 100, ac: 12, acOverride: true, proficiencies: TRAINED,
+  abilities: { str: 16, dex: 16, con: 16, int: 16, wis: 16, cha: 16 }, portrait: { url: "/uploads/test.png" },
+});
+const everyone = [crown, peace, twilight, near, beside, far, life, shroud];
 
 // The holder at (5, 5); `near` 5 feet off, `beside` 25 feet off, `far` 45 feet
 // off (35 feet is the Balm's reach at speed 30). Everyone's hit points as given.
@@ -171,6 +178,77 @@ await test("The Hand deals Turn the Tide and Balm of Peace as healing cards, and
     assert.equal(used(who), 1, `${name} spends its use`);
     assert.equal(/Divine power channelled into a subclass effect/.test(JSON.stringify(out.result)), false, `${name} is resolved, not handed back as the pool's reminder`);
   }
+});
+
+// ---- found in review: the walk, the heal rules, the sanctuary's end, the shroud ----
+
+await test("Balm of Peace walks one path: of two allies 30 feet off in opposite directions it reaches one, and the cleric's token ends beside them with the turn's movement untouched.", async () => {
+  await stage(peace, { [near.id]: 40, [beside.id]: 40 });
+  kit.place(peace.id, 8, 8);
+  kit.place(near.id, 8, 2);
+  kit.place(beside.id, 8, 14);
+  const out = await channel(peace, "balm of peace", [6, 6, 6, 6]);
+  assert.equal(out.ok, true, out.error);
+  const healed = [near, beside].filter((who) => hpOf(who) > 40);
+  assert.equal(healed.length, 1, "one walk of 30 feet cannot come within 5 feet of both");
+  const at = kit.token(peace.id);
+  const by = kit.token(healed[0].id);
+  assert.ok(Math.max(Math.abs(at.x - by.x), Math.abs(at.y - by.y)) <= 1, `the cleric ends beside ${healed[0].name} (${at.x},${at.y})`);
+  assert.equal(at.movedThisRound, 0, "the walk is the feature's, not the turn's movement");
+});
+
+await test("Turn the Tide leaves out a character Chill Touch grips or who is deafened; with nobody else hurt, nothing is spent.", async () => {
+  for (const condition of ["chill touch", "deafened"]) {
+    await stage(crown, { [near.id]: 20 });
+    world.patch(near.id, { conditions: [condition], conditionMeta: { [condition]: { rounds: 10 } } });
+    const out = await channel(crown, "turn the tide", [4]);
+    assert.equal(out.ok, false, condition);
+    assert.equal(used(crown), 0, condition);
+    assert.equal(hpOf(near), 20, condition);
+  }
+});
+
+await test("Preserve Life passes over a character Chill Touch grips and heals the next.", async () => {
+  await stage(life, { [near.id]: 10, [beside.id]: 10 });
+  world.patch(near.id, { conditions: ["chill touch"], conditionMeta: { "chill touch": { rounds: 10 } } });
+  const out = await channel(life, "preserve life", []);
+  assert.equal(out.ok, true, out.error);
+  assert.equal(hpOf(near), 10, "gripped");
+  assert.equal(hpOf(beside), 50, "healed up to half");
+});
+
+await test("Twilight Sanctuary ends when its cleric is incapacitated: stunned for a round, the sphere does not come back.", async () => {
+  await stage(twilight);
+  await channel(twilight, "twilight sanctuary", []);
+  const encounterId = world.encounter().id;
+  world.patch(twilight.id, { conditions: [...world.sheet(twilight.id).conditions, "stunned"] });
+  endTurns(world.campaign(), encounterId, [near.id]);
+  assert.equal(world.sheet(twilight.id).conditions.includes("twilight sanctuary"), false, "ended");
+  world.patch(twilight.id, { conditions: world.sheet(twilight.id).conditions.filter((entry) => entry !== "stunned") });
+  world.dice(3);
+  endTurns(world.campaign(), encounterId, [beside.id]);
+  world.clearDice();
+  assert.equal(world.sheet(beside.id).tempHp, 0);
+});
+
+await test("Twilight Shroud gives the cleric and allies in the sanctuary half cover, and nobody outside it, with the cleric stunned, or below 17th level.", async () => {
+  await stage(shroud);
+  const [enemy] = world.enemies();
+  kit.place(enemy.id, 12, 6);
+  const encounterId = world.encounter().id;
+  const lay = (who) => world.patch(who.id, { conditions: ["twilight sanctuary"], conditionMeta: { "twilight sanctuary": { rounds: 10 } } });
+  assert.equal(coverFor(encounterId, enemy.id, near.id), 0, "no sanctuary");
+  lay(shroud);
+  assert.equal(coverFor(encounterId, enemy.id, near.id), 2, "an ally inside");
+  assert.equal(coverFor(encounterId, enemy.id, shroud.id), 2, "the cleric");
+  assert.equal(coverFor(encounterId, enemy.id, far.id), 0, "45 feet off");
+  world.patch(shroud.id, { conditions: ["twilight sanctuary", "stunned"] });
+  assert.equal(coverFor(encounterId, enemy.id, near.id), 0, "the cleric stunned");
+  world.patch(shroud.id, { conditions: [], conditionMeta: {} });
+  kit.place(twilight.id, 5, 5);
+  kit.place(shroud.id, 0, 17);
+  lay(twilight);
+  assert.equal(coverFor(encounterId, enemy.id, near.id), 0, "a 9th-level cleric has no shroud");
 });
 
 finish();
