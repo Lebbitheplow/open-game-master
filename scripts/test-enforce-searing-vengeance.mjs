@@ -77,7 +77,7 @@ await test("A Celestial warlock of 14th level holds the one use.", async () => {
 });
 
 await test("The pointer stops on the dying warlock, who rises at half hit points on their feet instead of saving, burns and blinds the goblin within 30 feet, and keeps the turn.", async () => {
-  const { world, kit, tamsin, ilsa, g1, g2 } = await stage();
+  const { world, tamsin, ilsa, g1, g2 } = await stage();
   world.dice(4, 4);
   assert.equal(tools.endOwnTurn(world.campaignId, tamsin.userId), true, "Tamsin ends her turn");
   world.clearDice();
@@ -97,7 +97,7 @@ await test("The pointer stops on the dying warlock, who rises at half hit points
 });
 
 await test("With the use spent, the pointer walks past the dying warlock and the death save is rolled as before.", async () => {
-  const { world, kit, tamsin, ilsa } = await stage({ used: 1 });
+  const { world, tamsin, ilsa } = await stage({ used: 1 });
   world.dice(15);
   tools.endOwnTurn(world.campaignId, tamsin.userId);
   world.clearDice();
@@ -109,7 +109,7 @@ await test("With the use spent, the pointer walks past the dying warlock and the
 });
 
 await test("A dying hero of another class is walked past and saves.", async () => {
-  const { world, kit, tamsin, ilsa } = await stage({ warlock: { class: "fighter", level: 14 } });
+  const { world, tamsin, ilsa } = await stage({ warlock: { class: "fighter", level: 14 } });
   world.dice(15);
   tools.endOwnTurn(world.campaignId, tamsin.userId);
   world.clearDice();
