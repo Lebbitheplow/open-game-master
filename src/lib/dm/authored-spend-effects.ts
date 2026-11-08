@@ -28,6 +28,7 @@ import { rollEnemySave } from "@/lib/dm/forced-save";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import { hurtEnemy } from "@/lib/dm/spell-aura";
 import { seesOnBoard, withinFeet } from "@/lib/dm/authored-saves";
+import { darknessNear, dispelZones } from "@/lib/dm/zone-cast";
 import { tilesBetween, wallBetween } from "@/lib/dm/attack-spatial";
 import { rerollLastSave, swarmPush } from "@/lib/dm/authored-spend-more";
 import { summonSteelDefender } from "@/lib/dm/summon-defender";
@@ -530,7 +531,8 @@ function saveArea(ctx: SpendContext, does: Extract<SpendDoes, { kind: "save_area
   // GM narrates it (Charm Animals and Plants is used on a trail as often as in a
   // fight), as a buff aimed at a creature is.
   if (!encounter) {
-    return { result: { applied: [`${ctx.spend.name}: there is no fight, so no creature on the board saves; the GM resolves it in the story.`] } };
+    const dark = does.dispelsDarkness ? ` Any magical darkness within ${does.rangeFt} feet of ${sheet.name} is dispelled.` : "";
+    return { result: { applied: [`${ctx.spend.name}: there is no fight, so no creature on the board saves; the GM resolves it in the story.${dark}`] } };
   }
   let targets = foesOfSheet(campaign.id, encounter, sheet.id).filter(
     (enemy) =>
@@ -544,17 +546,25 @@ function saveArea(ctx: SpendContext, does: Extract<SpendDoes, { kind: "save_area
       !swallowCoverBetween(sheet.id, enemy.id) &&
       (!does.types || does.types.includes(creatureTypeOf(enemy.stats))),
   );
-  if (!targets.length) {
+  const darkness = does.dispelsDarkness ? darknessNear(campaign, sheet.id, does.rangeFt) : [];
+  if (!targets.length && !darkness.length) {
     return { error: `Nothing ${ctx.spend.name} affects is within ${does.rangeFt} feet of ${sheet.name}. Nothing was spent.`, refused: "rules" };
   }
-  const chosen = chosenTargets(ctx.spend.name, Boolean(does.chosen), targets, ctx.args, (ref) => resolveTargetFoe(campaign.id, encounter, ref)?.id ?? null);
+  const chosen = targets.length
+    ? chosenTargets(ctx.spend.name, Boolean(does.chosen), targets, ctx.args, (ref) => resolveTargetFoe(campaign.id, encounter, ref)?.id ?? null)
+    : targets;
   if ("error" in chosen) {
     return chosen;
   }
   targets = chosen;
+  // The darkness ends before the damage lands, so a caster hurt by the burst
+  // makes no concentration save for a spell already gone.
+  const lines: string[] = dispelZones(campaign, darkness, ctx.spend.name);
+  if (!targets.length) {
+    lines.push(`No creature ${ctx.spend.name} affects is within ${does.rangeFt} feet of ${sheet.name}.`);
+  }
   const dc = saveDc(ctx, does.dcAbility);
-  const rolled = does.dice ? rollCard(campaign, ctx.turn, sheet.id, "damage", ctx.spend.name, formula(ctx, does.dice), sheetAttacker(sheet)).total : 0;
-  const lines: string[] = [];
+  const rolled = does.dice && targets.length ? rollCard(campaign, ctx.turn, sheet.id, "damage", ctx.spend.name, formula(ctx, does.dice), sheetAttacker(sheet)).total : 0;
   for (const enemy of targets) {
     const save = rollEnemySave(campaign.id, enemy, does.save, dc, {
       magical: true,

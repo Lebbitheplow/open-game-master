@@ -368,6 +368,10 @@ export type SpendDoes =
       // A creature with total cover from the holder is not affected, seen or
       // not (Radiance of the Dawn reaches into a fog, not through a wall).
       coverShields?: boolean;
+      // Every area of magical darkness within rangeFt of the holder ends, of
+      // any spell level (Radiance of the Dawn). With darkness in reach the use
+      // is not refused for want of a foe.
+      dispelsDarkness?: boolean;
     }
   | { kind: "reroll_save" }
   // Temporary hit points: to the holder, or to allies in range.
