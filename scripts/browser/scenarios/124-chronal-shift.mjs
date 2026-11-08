@@ -6,7 +6,7 @@
 // a reaction card from the aim bar is runic-shield's to check: the same path.
 import { axeViolations, check, eventually, untilStill } from "../lib.mjs";
 
-export default {
+const scenario = {
   name: "chronal-shift",
   viewports: ["desktop", "phone"],
   async run(t) {
@@ -49,3 +49,5 @@ export default {
     }
   },
 };
+
+export default scenario;
