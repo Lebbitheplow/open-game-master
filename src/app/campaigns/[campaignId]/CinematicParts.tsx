@@ -288,26 +288,27 @@ export function PartyRail({
 // gold for a 20, plain otherwise. A secret roll shows only on the seats the
 // server sent its number to (the roller, the DM), stamped Secret; a blind
 // roll, whose number nobody here holds, never shows.
+//
+// `staged` comes from the dice stage (DiceOverlay), one roll at a time in the
+// order they were rolled, as each throw lands. It used to be the newest roll
+// the stream heard, so an attack's damage replaced its to-hit while the d20
+// was still in the air (issue 843).
 const TOAST_MS = 5200;
 
 export function RollToast({
-  latestRoll,
+  staged,
   sheets,
 }: {
-  latestRoll: { roll: StoredRoll; seq: number } | null;
+  staged: { roll: StoredRoll; seq: number } | null;
   sheets: ReadonlyArray<CharacterSheet>;
 }) {
   const [shown, setShown] = useState<{ roll: StoredRoll; seq: number } | null>(null);
-  // Each roll is judged once, during the render it arrives in (state from
-  // props). The roll the snapshot arrived with is history, not news, so the
-  // first seq seen is the one to skip; every later public roll takes the
-  // stage.
-  const [seenSeq, setSeenSeq] = useState<number | null>(() => latestRoll?.seq ?? null);
-  if (latestRoll && latestRoll.seq !== seenSeq) {
-    setSeenSeq(latestRoll.seq);
-    if (latestRoll.roll.visibility === "public" || typeof latestRoll.roll.total === "number") {
-      setShown(latestRoll);
-    }
+  // Each staged roll takes the toast once, during the render it arrives in
+  // (state from props).
+  const [seenSeq, setSeenSeq] = useState<number | null>(null);
+  if (staged && staged.seq !== seenSeq) {
+    setSeenSeq(staged.seq);
+    setShown(staged);
   }
   useEffect(() => {
     if (!shown) return;
