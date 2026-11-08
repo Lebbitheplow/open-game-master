@@ -129,11 +129,16 @@ export { toolRouteFromError };
 // never that; and any body naming reasoning_effort or /v1/responses is the
 // GPT-6 refusal (issue #129), which a retry without tools would turn into a
 // narrator running with no request_roll and no engines, in silence. Such a
-// turn fails loudly instead.
+// turn fails loudly instead. So does a chat template that threw while
+// rendering the tools (llama.cpp's "While executing ...", vLLM's jinja2
+// errors): the server has tools, and one of ours broke its template. heal's
+// targets shipped with no items in 0.32.0, the gpt-oss template answered
+// "Function is not a bool value", and this read it as no tools at all.
 export function toolsUnsupportedByServer(kind: EndpointKind, body: string): boolean {
   const text = (body || "").slice(0, 4000);
   if (kind === "openai") return false;
   if (toolRouteFromError(text) || /reasoning_effort/i.test(text)) return false;
+  if (/While executing|jinja/i.test(text)) return false;
   return /tool|function|not support/i.test(text);
 }
 

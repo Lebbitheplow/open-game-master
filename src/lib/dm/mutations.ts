@@ -225,8 +225,14 @@ export const mutationTools: ToolDef[] = [
     // Instead of characterId, so neither is required. Kept small: the
     // compact first call of a 16K window holds it beside an opened group
     // (scripts/test-tool-profiles.mjs); each entry is a heal call's own
-    // arguments, checked as that call.
-    targets: { type: "array", description: "Instead of characterId: {characterId, amount} for each creature one spell heals." },
+    // arguments, checked as that call. The items are not optional: the
+    // gpt-oss chat template llama.cpp ships reads an array's items and, with
+    // none, fails every call that offers the tools, so the DM ran with none.
+    targets: {
+      type: "array",
+      items: { type: "object" },
+      description: "Instead of characterId: {characterId, amount} for each creature one spell heals.",
+    },
   }, [], false),
   tool(
     "stabilize",

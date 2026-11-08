@@ -343,6 +343,11 @@ check("the GPT-6 refusal never turns into a retry without tools", () => {
   assert.equal(toolsUnsupportedByServer("local", "This model does not support function calling"), true);
   assert.equal(toolsUnsupportedByServer("openrouter", "No endpoints found that support tool use"), true);
   assert.equal(toolsUnsupportedByServer("local", "rate limit exceeded"), false);
+  // A template that threw on one of our tool schemas has tools: the turn fails loudly
+  // rather than narrating with none (the gpt-oss template on heal's bare array, 0.32.0).
+  const templateError = JSON.stringify({ error: { code: 500, message: "\n------------\nWhile executing If at line 12, column 13 in source:\n...am_spec.type == \"array\" -%}\n        {%- if param_spec['items'] -%}\n\nError: Function is not a bool value", type: "server_error" } });
+  assert.equal(toolsUnsupportedByServer("local", templateError), false, "llama.cpp's template error");
+  assert.equal(toolsUnsupportedByServer("local", "jinja2.exceptions.UndefinedError: 'dict object' has no attribute 'function'"), false, "vLLM's");
 });
 
 check("reasoning_effort and max_output_tokens are droppable when a model refuses them", () => {
