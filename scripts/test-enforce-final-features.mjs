@@ -447,4 +447,32 @@ await test("Every tool description reaches an agent program whole: none is longe
   }
 });
 
+await test("Every array in every tool schema says what it holds: llama.cpp's gpt-oss template fails the whole call on an array without items.", () => {
+  // heal's targets shipped without items in 0.32.0: llama-server answered every call that offered the
+  // tools with a 500 from the template, and the turn fell back to narrating with no tools at all.
+  const campaign = world.campaign();
+  const everything = {
+    ...campaign,
+    storyArc: campaign.storyArc ?? { beats: [] },
+    gameSettings: { ...campaign.gameSettings, worldSimulation: true, ambienceEnabled: true, relationships: "on", romance: "on", companions: "full" },
+  };
+  const bare = [];
+  const walk = (schema, at) => {
+    if (!schema || typeof schema !== "object") {
+      return;
+    }
+    const types = Array.isArray(schema.type) ? schema.type : [schema.type];
+    if (types.includes("array") && !(schema.items && typeof schema.items === "object")) {
+      bare.push(at);
+    }
+    for (const [key, value] of Object.entries(schema)) {
+      walk(value, `${at}.${key}`);
+    }
+  };
+  for (const tool of [...dmTurnToolCatalogue(everything, true, false), runPreparedEncounterTool]) {
+    walk(tool.function.parameters, tool.function.name);
+  }
+  assert.deepEqual(bare, [], "arrays with no items");
+});
+
 finish();
