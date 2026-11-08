@@ -506,6 +506,19 @@ export function dicePreferencesOf(campaignId: string, userId: string) {
 // The calls a watch stop holds back, what the first is about to roll, and what
 // the watcher chose. Null face: let it roll.
 export type HeldCall = { id?: string; name: string; rawArguments: string };
+// Which feature the stop is for: Portent's number before the roll, or a
+// Chronal Shift decided now and taken once the roll goes the wrong way
+// (src/lib/dm/chronal-shift.ts). A stop stored before there were two is
+// Portent's.
+export type WatchPower = "portent" | "chronal_shift";
+// One creature's roll the stop may answer: its tag on the dice, and the way
+// it must go for a Chronal Shift to take it ("success" a foe's, "failure" an
+// ally's).
+export type WatchRoll = { tag: RollTag; reverse: "success" | "failure" };
+// Whose roll: a creature by name, and the rolls of theirs the call may make
+// (a spell at a creature is the caster's attack or the creature's save,
+// whichever d20 comes first). An area holds one choice per creature in it.
+export type WatchChoice = { name: string; rolls: WatchRoll[] };
 export type WatchStop = {
   calls: HeldCall[];
   tag: RollTag;
@@ -518,7 +531,33 @@ export type WatchStop = {
   // A resumed turn has begun running the calls: if they are still here after a
   // restart, the process died among them, and they do not run twice.
   taken?: boolean;
+  power?: WatchPower;
+  choices?: WatchChoice[];
+  // The choice the watcher picked; with one choice there is nothing to pick.
+  chosen?: number | null;
+  // Chronal Shift: the watcher said to roll it again if it goes wrong.
+  shift?: boolean;
 };
+
+// The choice a stop's answer stands on: the one picked, or the only one.
+export function watchChoiceOf(watch: Pick<WatchStop, "choices" | "chosen">): WatchChoice | null {
+  const choices = watch.choices ?? [];
+  const index = typeof watch.chosen === "number" ? watch.chosen : choices.length === 1 ? 0 : -1;
+  return index >= 0 && index < choices.length ? choices[index] : null;
+}
+
+// What a Chronal Shift answers on this choice, in the card's words: "if it
+// succeeds" for a foe's save, "if it fails" or "if it misses" for an ally's.
+export function shiftWhen(choice: WatchChoice): string {
+  const reverses = new Set(choice.rolls.map((roll) => roll.reverse));
+  if (reverses.size > 1) {
+    return "if it goes against you";
+  }
+  if (reverses.has("success")) {
+    return choice.rolls.every((roll) => roll.tag.kind === "attack") ? "if it hits" : "if it succeeds";
+  }
+  return choice.rolls.every((roll) => roll.tag.kind === "attack") ? "if it misses" : "if it fails";
+}
 
 export function setPendingWatch(id: string, watch: WatchStop): PendingRoll | null {
   ensureParkColumn();
@@ -528,14 +567,14 @@ export function setPendingWatch(id: string, watch: WatchStop): PendingRoll | nul
 
 // The watcher's answer closes the stop: no roll is written against it, and the
 // resumed turn runs what it held (src/lib/dm/turn.ts).
-export function resolvePendingWatch(id: string, face: number | null): PendingRoll | null {
+export function resolvePendingWatch(id: string, face: number | null, answer: { chosen?: number | null; shift?: boolean } = {}): PendingRoll | null {
   const pending = getPendingRoll(id);
   if (!pending?.watch) {
     return null;
   }
   const result = getDatabase()
     .prepare(`UPDATE pending_rolls SET status = 'fallback', watch_json = ? WHERE id = ? AND status = 'pending'`)
-    .run(JSON.stringify({ ...pending.watch, face }), id);
+    .run(JSON.stringify({ ...pending.watch, face, ...(answer.chosen !== undefined ? { chosen: answer.chosen } : {}), ...(answer.shift ? { shift: true } : {}) }), id);
   return result.changes > 0 ? getPendingRoll(id) : null;
 }
 
@@ -649,8 +688,16 @@ export function publicPendingRoll(pending: PendingRoll): Omit<PendingRoll, "atta
   delete rest.combatNote;
   // A stop's held calls are the model's own words, and may name what the table
   // has not seen: the card reads its line and its time.
+  // The creatures to pick from are ones the table can see (foresight.ts
+  // reads only those), so their names and the shift's words ride too.
   if (pending.watch) {
-    rest.watch = { line: pending.watch.line, deadline: pending.watch.deadline } as WatchStop;
+    const { line, deadline, power, choices } = pending.watch;
+    rest.watch = {
+      line,
+      deadline,
+      ...(power ? { power } : {}),
+      ...(choices?.length ? { choices: choices.map((choice) => ({ name: choice.name, when: shiftWhen(choice) })) } : {}),
+    } as unknown as WatchStop;
   }
   return rest as Omit<PendingRoll, "attack" | "combatNote">;
 }

@@ -25,9 +25,12 @@ import {
   withBonusDie,
   withExtraD20,
   withRerolledD20,
+  shiftCanHelp,
   type AfterRollId,
   type AfterRollOption,
+  type ThrownRoll,
 } from "@/lib/dm/after-roll-logic";
+import { allyShifters, payChronalShift } from "@/lib/dm/chronal-shift";
 import { LUCK_SPEND } from "@/lib/dm/roll-riders";
 import { luckPointsLeft } from "@/lib/srd/class-resources";
 import { getActiveEncounter } from "@/lib/db/encounters";
@@ -57,8 +60,15 @@ export function reactionFreeFor(campaignId: string, sheetId: string): boolean {
 // What this parked roll offers, given its dice as they now stand. A roll
 // behind the GM's screen never waits: its card would show the table the dice.
 // A parked attack's to-hit roll is judged against the target's AC as it now
-// stands; its damage roll never waits.
-export function optionsForPending(pending: PendingRoll, outcome: RollResult, spent: readonly AfterRollId[] = []): AfterRollOption[] {
+// stands; its damage roll never waits. `done`: the thrown roll's record of the
+// wizards who shifted it or let it stand, and whether the roller kept it
+// (then only a wizard's Chronal Shift is left to offer).
+export function optionsForPending(
+  pending: PendingRoll,
+  outcome: RollResult,
+  spent: readonly AfterRollId[] = [],
+  done: Pick<ThrownRoll, "shiftedBy" | "declined" | "kept"> = {},
+): AfterRollOption[] {
   if (pending.visibility !== "public" || !pending.characterId || (pending.attack && pending.kind !== "attack")) {
     return [];
   }
@@ -76,10 +86,33 @@ export function optionsForPending(pending: PendingRoll, outcome: RollResult, spe
     // A luck point bought with the attack (pc_attack luck: true) was its one.
     // Read from the record, not the dice: Elven Accuracy throws a third d20 too.
     const bought: AfterRollId[] = record.luck ? ["lucky"] : [];
-    return afterAttackOptions(sheet, { outcome, ac: recordTargetAc(pending.campaignId, record), critRange: record.critRange ?? 20, spent: [...spent, ...bought], reactionFree });
+    const ac = recordTargetAc(pending.campaignId, record);
+    const critRange = record.critRange ?? 20;
+    const own = done.kept ? [] : afterAttackOptions(sheet, { outcome, ac, critRange, spent: [...spent, ...bought], reactionFree });
+    const allies = shiftCanHelp({ kind: "attack", outcome, ac, critRange }) ? allyShifters(pending.campaignId, sheet, "attack", done) : [];
+    return [...own, ...allies];
   }
   const upFront: AfterRollId[] = luckRodeThrow(pending.expression, pending.advantage) ? ["lucky"] : [];
-  return afterRollOptions(sheet, { kind: pending.kind, outcome, dc: pending.dc, spent: [...spent, ...upFront], reactionFree });
+  const own = done.kept ? [] : afterRollOptions(sheet, { kind: pending.kind, outcome, dc: pending.dc, spent: [...spent, ...upFront], reactionFree });
+  const allies = shiftCanHelp({ kind: pending.kind, outcome, dc: pending.dc }) ? allyShifters(pending.campaignId, sheet, pending.kind, done) : [];
+  return [...own, ...allies];
+}
+
+// The wizards who could answer a roll the server just threw for a player
+// whose rolls wait (invoke-roll.ts, pc-attack-parked.ts throwForChoice): the
+// roll parks on them as it would on the roller's own options.
+export function allyShiftsFor(campaignId: string, sheet: CharacterSheet, roll: { kind: string; outcome: RollResult; dc: number | null } | { kind: "attack"; outcome: RollResult; ac: number; critRange: number }): AfterRollOption[] {
+  return shiftCanHelp(roll) ? allyShifters(campaignId, sheet, roll.kind) : [];
+}
+
+// The roll's d20s thrown again, one fresh die for each it threw, obeying what
+// they obeyed (a halfling's reroll of a 1); the new roll stands.
+function rerollD20s(outcome: RollResult): { outcome: RollResult; choosing: boolean } | null {
+  const lead = outcome.terms[0];
+  const count = lead && lead.kind === "dice" ? lead.dice.length : 0;
+  const fresh = Array.from({ length: count }).flatMap(() => rollExpression(extraD20Expression(outcome.expression)).terms.flatMap((term) => (term.kind === "dice" ? term.dice.slice(0, 1) : [])));
+  const rerolled = withRerolledD20(outcome, fresh);
+  return rerolled ? { outcome: rerolled, choosing: false } : null;
 }
 
 // The player's choice, paid for and on the dice. Null when the choice is no
@@ -89,6 +122,8 @@ export function spendAfterRoll(
   sheet: CharacterSheet,
   id: AfterRollId,
   outcome: RollResult,
+  // Another character pays (a wizard's Chronal Shift on this roll).
+  payer?: CharacterSheet,
 ): { outcome: RollResult; choosing: boolean } | null {
   const die = (sides: number) => ({ sides, value: rollExpression(`1d${sides}`).total, kept: true });
   if (id === "lucky") {
@@ -101,6 +136,12 @@ export function spendAfterRoll(
     const pooled = extra.kind === "dice" ? withExtraD20(outcome, extra.dice[0]) : null;
     return pooled ? { outcome: pooled, choosing: true } : null;
   }
+  if (id === "chronal_shift" && payer && payer.id !== sheet.id) {
+    if (!payChronalShift(campaign.id, payer.id)) {
+      return null;
+    }
+    return rerollD20s(outcome);
+  }
   if (id === "chronal_shift") {
     const encounter = getActiveEncounter(campaign.id);
     if (encounter?.reactionsUsed.includes(sheet.id) || !spendFeatureUse(campaign, sheet.id, CHRONAL_SHIFT, "Chronal Shift", "player")) {
@@ -109,13 +150,7 @@ export function spendAfterRoll(
     if (encounter) {
       markReactionUsed(encounter, sheet.id);
     }
-    const lead = outcome.terms[0];
-    const count = lead && lead.kind === "dice" ? lead.dice.length : 0;
-    // One fresh d20 for each the roll threw, obeying what they obeyed (a
-    // halfling's reroll of a 1).
-    const fresh = Array.from({ length: count }).flatMap(() => rollExpression(extraD20Expression(outcome.expression)).terms.flatMap((term) => (term.kind === "dice" ? term.dice.slice(0, 1) : [])));
-    const rerolled = withRerolledD20(outcome, fresh);
-    return rerolled ? { outcome: rerolled, choosing: false } : null;
+    return rerollD20s(outcome);
   }
   if (id === "bardic") {
     const held = heldBardicDie(sheet);

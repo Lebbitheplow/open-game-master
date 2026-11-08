@@ -49,6 +49,7 @@ import { TURNED } from "@/lib/dm/flee-logic";
 import { channelOptions } from "@/lib/dm/option-costs";
 import { CHANNEL_FEAR, channelFear } from "@/lib/dm/channel-fear";
 import { swallowCoverBetween } from "@/lib/dm/swallow";
+import { classSaveDc, controlUndead } from "@/lib/dm/command-undead";
 
 type Ability = "str" | "dex" | "con" | "int" | "wis" | "cha";
 
@@ -56,9 +57,9 @@ type Ability = "str" | "dex" | "con" | "int" | "wis" | "cha";
 // types, within 30 feet. Banishing (Arcane Abjuration from 5th level) rests on a
 // creature's plane of origin, which no stat block records, so it stays the GM's.
 const CHANNEL_TURNINGS = [
-  { name: "Turn the Faithless", beyond: true, types: /fey|fiend/i, note: "A creature that failed drops any disguise or illusion: its true form shows." },
-  { name: "Abjure the Extraplanar", beyond: true, types: /aberration|celestial|elemental|fey|fiend/i },
-  { name: "Arcane Abjuration", beyond: true, types: /celestial|elemental|fey|fiend/i, single: true, note: "From 5th level a creature that failed, away from its plane of origin, at or under the limit for this level (CR 1/2 at 5th, 1 at 8th, 2 at 11th, 3 at 14th, 4 at 17th) is banished for a minute instead: that is the GM's call." },
+  { name: "Turn the Faithless", beyond: true, ability: "cha" as const, types: /fey|fiend/i, note: "A creature that failed drops any disguise or illusion: its true form shows." },
+  { name: "Abjure the Extraplanar", beyond: true, ability: "cha" as const, types: /aberration|celestial|elemental|fey|fiend/i },
+  { name: "Arcane Abjuration", beyond: true, ability: "wis" as const, types: /celestial|elemental|fey|fiend/i, single: true, note: "From 5th level a creature that failed, away from its plane of origin, at or under the limit for this level (CR 1/2 at 5th, 1 at 8th, 2 at 11th, 3 at 14th, 4 at 17th) is banished for a minute instead: that is the GM's call." },
 ];
 
 // Destroy Undead's challenge rating threshold by cleric level (SRD 5.1).
@@ -152,7 +153,7 @@ export function featureVariantSpend(
   if (def?.id === "channel_divinity") {
     if (isNamed(wanted, "turn the unholy")) {
       return spend(campaign, turnId, sheet, def.id, "action", reason, () =>
-        turnUndead(campaign, turnId, sheet, { types: /undead|fiend/i, destroy: false, name: "Turn the Unholy" }),
+        turnUndead(campaign, turnId, sheet, { types: /undead|fiend/i, destroy: false, name: "Turn the Unholy", ability: "cha" }),
       );
     }
     // The other turnings run as Turn the Unholy does. Each is refused to a sheet
@@ -167,6 +168,17 @@ export function featureVariantSpend(
     }
     if (fear) {
       return spend(campaign, turnId, sheet, def.id, "action", reason, () => channelFear(campaign, getSheetById(sheet.id) ?? sheet, fear, targetEnemyId, targetEnemyIds));
+    }
+    if (isNamed(wanted, "control undead")) {
+      if (!channelOptions(sheet).some((entry) => isNamed(entry.name, "control undead"))) {
+        return { error: `${sheet.name} does not hold Control Undead. Nothing was spent.`, refused: "rules" };
+      }
+      // Outside a fight there is no creature row to command: the generic
+      // path spends the use and the GM plays the undead's obedience.
+      if (getActiveEncounter(campaign.id)) {
+        return spend(campaign, turnId, sheet, def.id, "action", reason, () => controlUndead(campaign, turnId, sheet, targetEnemyId));
+      }
+      return null;
     }
     if (isNamed(wanted, "turn undead", "destroy undead")) {
       return spend(campaign, turnId, sheet, def.id, "action", reason, () => turnUndead(campaign, turnId, sheet));
@@ -299,14 +311,16 @@ function turnUndead(
   turnId: string,
   sheet: CharacterSheet,
   // `beyond`: a turning of other creatures than undead (CHANNEL_TURNINGS).
-  kind: { types: RegExp; destroy: boolean; name: string; single?: boolean; target?: string; note?: string; beyond?: boolean } = { types: /undead/i, destroy: true, name: "Turn Undead" },
+  // `ability`: the class's spellcasting ability the DC is read with (a
+  // cleric's Wisdom, a paladin's Charisma), so a multiclass sheet whose first
+  // caster class is another does not lend that class's DC.
+  kind: { types: RegExp; destroy: boolean; name: string; single?: boolean; target?: string; note?: string; beyond?: boolean; ability?: Ability } = { types: /undead/i, destroy: true, name: "Turn Undead", ability: "wis" },
 ): Resolution {
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter) {
     return { error: `${kind.name} needs something to turn: start the encounter first.`, retry: true };
   }
-  const derived = computeSheetDerived(sheet);
-  const dc = derived.spellSaveDc ?? 8 + derived.proficiencyBonus + Math.max(derived.abilityMods.wis, derived.abilityMods.cha);
+  const dc = classSaveDc(sheet, kind.ability ?? "wis");
   const destroyAt = kind.destroy ? destroyUndeadCr(classLevelOf(sheet, "cleric")) : null;
   // Nothing across a swallower's wall sees or hears the cleric (swallow.ts).
   const named = kind.single && kind.target ? resolveTargetFoe(campaign.id, encounter, kind.target) : null;

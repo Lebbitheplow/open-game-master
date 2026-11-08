@@ -4,16 +4,26 @@ import { getPendingRoll } from "@/lib/db/dm-turns";
 import { getSheetById } from "@/lib/db/sheets";
 import { answerWatch } from "@/lib/dm/foresight-release";
 import { foretoldLeft } from "@/lib/dm/foretold-logic";
+import { canShiftNow } from "@/lib/dm/chronal-shift";
 import { refuseDuringBreak } from "@/lib/dm/table-break";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const choiceSchema = z.union([z.object({ value: z.number().int().min(1).max(20) }), z.object({ pass: z.literal(true) })]);
+// `choice`: whose roll, by its place in the stop's list, when the stop offers
+// more than one (an area's saves).
+const choice = z.number().int().min(0).max(99).optional();
+const choiceSchema = z.union([
+  z.object({ value: z.number().int().min(1).max(20), choice }),
+  z.object({ shift: z.literal(true), choice }),
+  z.object({ pass: z.literal(true) }),
+]);
 
 // The watcher answers a stop before a roll (src/lib/dm/foresight.ts): a number
-// they hold goes on the roll's d20, or the roll goes ahead. Whoever runs the
-// story may send a stop on, and so may anyone once its time is up.
+// they hold goes on the roll's d20, a Chronal Shift is set to roll it again if
+// it goes the wrong way (src/lib/dm/chronal-shift.ts), or the roll goes ahead.
+// Whoever runs the story may send a stop on, and so may anyone once its time
+// is up.
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ campaignId: string; pendingRollId: string }> },
@@ -40,19 +50,37 @@ export async function POST(
   }
   const isWatcher = pending.userId === context.user.id;
   const due = Date.now() >= new Date(pending.watch.deadline).getTime();
-  if ("value" in parsed.data) {
+  const data = parsed.data;
+  const power = pending.watch.power ?? "portent";
+  const choices = pending.watch.choices ?? [];
+  let chosen: number | undefined;
+  if ("value" in data || "shift" in data) {
     if (!isWatcher) {
-      return Response.json({ error: "Only the wizard's own player uses their Portent." }, { status: 403 });
+      return Response.json({ error: `Only the wizard's own player uses their ${power === "portent" ? "Portent" : "Chronal Shift"}.` }, { status: 403 });
     }
+    if (("value" in data && power !== "portent") || ("shift" in data && power !== "chronal_shift")) {
+      return Response.json({ error: `This stop is for ${power === "portent" ? "Portent" : "Chronal Shift"}.` }, { status: 409 });
+    }
+    // Whose roll: asked for when there is more than one to answer.
+    if (choices.length > 1 && data.choice === undefined) {
+      return Response.json({ error: "Choose whose roll it answers first." }, { status: 400 });
+    }
+    if (data.choice !== undefined && data.choice >= Math.max(1, choices.length)) {
+      return Response.json({ error: "That creature is not one of this roll's." }, { status: 400 });
+    }
+    chosen = data.choice;
     const sheet = pending.characterId ? getSheetById(pending.characterId) : null;
-    if (!sheet || !foretoldLeft(sheet).includes(parsed.data.value)) {
-      return Response.json({ error: `You hold no foretold ${parsed.data.value}.` }, { status: 409 });
+    if ("value" in data && (!sheet || !foretoldLeft(sheet).includes(data.value))) {
+      return Response.json({ error: `You hold no foretold ${data.value}.` }, { status: 409 });
+    }
+    if ("shift" in data && (!sheet || !canShiftNow(campaignId, sheet))) {
+      return Response.json({ error: "Your Chronal Shift is spent, or your reaction is." }, { status: 409 });
     }
   } else if (!isWatcher && !due && !steersStory(context)) {
     return Response.json({ error: "This is not your choice yet." }, { status: 403 });
   }
-  const face = "value" in parsed.data ? parsed.data.value : null;
-  return answerWatch(pending.id, face)
+  const face = "value" in data ? data.value : null;
+  return answerWatch(pending.id, face, { ...(chosen !== undefined ? { chosen } : {}), ...("shift" in data ? { shift: true } : {}) })
     ? Response.json({ ok: true })
     : Response.json({ error: "That roll has already gone ahead." }, { status: 409 });
 }

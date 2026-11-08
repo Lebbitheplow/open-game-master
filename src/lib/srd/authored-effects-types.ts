@@ -347,6 +347,17 @@ export type SpendDoes =
       sight?: boolean;
       onFail?: string;
       typeFromVariant?: string[];
+      // Only a creature of these types (its block's type, creature-type.ts):
+      // any other is refused before the use is paid.
+      types?: string[];
+      // The creature rolls with advantage when its score in this ability is
+      // at least `atLeast` (Command Undead: "if the target has an
+      // Intelligence of 8 or higher, it has advantage on the saving throw").
+      advantageAt?: { ability: Ability; atLeast: number };
+      // The condition hands the creature to the holder: it fights on their
+      // side while the condition lasts, and the holder's next use lets the
+      // last creature go (src/lib/dm/command-undead.ts).
+      commands?: boolean;
     }
   // Every foe in reach that the holder can see saves or suffers, with one roll
   // of damage shared among them. `types` keeps it to creatures of those types;

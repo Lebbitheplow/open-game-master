@@ -9,8 +9,8 @@ import { tableBreakOn } from "@/lib/dm/table-break";
 import { resumeDmTurn } from "@/lib/dm/turn";
 import { publishPersisted } from "@/lib/events";
 
-export function answerWatch(pendingId: string, face: number | null): boolean {
-  const answered = resolvePendingWatch(pendingId, face);
+export function answerWatch(pendingId: string, face: number | null, answer: { chosen?: number | null; shift?: boolean } = {}): boolean {
+  const answered = resolvePendingWatch(pendingId, face, answer);
   if (!answered) {
     return false;
   }

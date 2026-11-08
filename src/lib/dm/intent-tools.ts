@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { dominatorOf } from "@/lib/dm/combat-sides-logic";
+import { dominatorOf, isDominationSpell } from "@/lib/dm/combat-sides-logic";
 import { patchEnemyConditions } from "@/lib/db/encounters";
-import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { instancesOf, packInstances, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { resolveCombatant } from "@/lib/dm/combatant";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
@@ -123,18 +123,20 @@ export function handleDeclareIntent(
   };
 }
 
-// The order written on the domination's charm, when one holds the creature.
+// The order written on the domination's charm, when one holds the creature:
+// on the dominating instance, not on another source of the same charm.
 function commandDominated(enemy: { id: string; conditions: string[]; conditionMeta: ConditionMetaMap }, targetId: string): boolean {
-  if (!dominatorOf(enemy.conditions, enemy.conditionMeta)) {
-    return false;
-  }
+  const dominator = dominatorOf(enemy.conditions, enemy.conditionMeta);
   const charmed = enemy.conditions.find((entry) => entry.trim().toLowerCase() === "charmed");
-  if (!charmed) {
+  if (!dominator || !charmed) {
     return false;
   }
   // The order rides the charm's meta (combat-sides-logic.ts dominationOrderOf
   // reads it), so it ends when the charm does.
-  const meta: ConditionMetaMap = { ...enemy.conditionMeta, [charmed]: { ...enemy.conditionMeta[charmed], order: targetId } };
+  const instances = instancesOf(enemy.conditionMeta[charmed]).map((instance) =>
+    instance.source === dominator && isDominationSpell(instance.spell) ? { ...instance, order: targetId } : instance,
+  );
+  const meta: ConditionMetaMap = { ...enemy.conditionMeta, [charmed]: packInstances(instances)! };
   patchEnemyConditions(enemy.id, enemy.conditions, meta);
   return true;
 }

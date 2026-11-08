@@ -34,6 +34,7 @@ import {
   type HeldCall,
   type WatchStop,
   type DmTurn,
+  watchChoiceOf,
 } from "@/lib/db/dm-turns";
 import { haltDmTurn, haltUnbuiltTurn } from "@/lib/dm/turn-halt";
 import { assertJobLive, bindJobTurn, DmJobStopped, jobAbandoned, runInTurnScope, setJobStage } from "@/lib/dm/job-control";
@@ -77,6 +78,7 @@ import { heldNarrationSeq, narrationShown, takeNarrationSeq, takeNarrationSlot }
 import { getRoll, listRecentRolls, type StoredRoll } from "@/lib/db/rolls";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { parkForWatch, runWithForetold } from "@/lib/dm/foresight";
+import { runWithShift } from "@/lib/dm/chronal-shift";
 import { adoptTurnAudit } from "@/lib/db/sheet-audit";
 import { describeConditionDuration } from "@/lib/dm/condition-logic";
 import { heldRollUserIds } from "@/lib/dice/held-rolls";
@@ -1299,13 +1301,22 @@ async function runHeldCalls(context: TurnContext, turn: DmTurn, watcherId: strin
       break;
     }
     const holder = turnHolder(campaignId);
-    const choice = at === 0 && stop.face !== null ? { watcherId, face: stop.face, tags: [stop.tag, ...(stop.also ?? [])], line: stop.line } : null;
+    // The creature the watcher picked (an area's saves are many), else the
+    // call's one roll, whichever of its d20s comes first.
+    const picked = watchChoiceOf(stop);
+    const shifting = stop.power === "chronal_shift";
+    const choice = at === 0 && !shifting && stop.face !== null ? { watcherId, face: stop.face, tags: picked ? picked.rolls.map((roll) => roll.tag) : [stop.tag, ...(stop.also ?? [])], line: stop.line } : null;
+    const shift = at === 0 && shifting && stop.shift && picked ? { wizardId: watcherId, rolls: picked.rolls } : null;
     // A call that throws is answered like any refusal: the loop's catch does
     // not reach this far, and the table would wait on it for good.
     let outcome: ToolResult;
     let portent: string | null = null;
+    let chronalShift: string | null = null;
     try {
-      ({ result: outcome, portent } = await runWithForetold(campaign, turn.id, choice, () => resolveModelCall(context, turn, toolCall)));
+      const ran = await runWithShift(campaignId, shift, () => runWithForetold(campaign, turn.id, choice, () => resolveModelCall(context, turn, toolCall)));
+      outcome = ran.result.result;
+      portent = ran.result.portent;
+      chronalShift = ran.shift;
     } catch (error) {
       console.error(`[dm-turn] a held ${toolCall.name} threw:`, error);
       outcome = { error: `${toolCall.name} failed on the server, so nothing came of it.`, retry: true };
@@ -1329,7 +1340,7 @@ async function runHeldCalls(context: TurnContext, turn: DmTurn, watcherId: strin
     const credited = done === toolCall.rawArguments ? toolCall : { ...toolCall, rawArguments: done };
     ran.push(credited);
     ("error" in outcome ? refused : accepted).add(credited);
-    const told = { ...outcome, ...(portent ? { portent } : {}), ...(happened.length ? { fightEvents: firedEventsNote(happened) } : {}) };
+    const told = { ...outcome, ...(portent ? { portent } : {}), ...(chronalShift ? { chronalShift } : {}), ...(happened.length ? { fightEvents: firedEventsNote(happened) } : {}) };
     turn.conversation.push({ role: "tool", ...(toolCall.id ? { tool_call_id: toolCall.id } : {}), content: JSON.stringify(told) });
     saveDmTurn(turn);
   }

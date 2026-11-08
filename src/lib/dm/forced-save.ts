@@ -8,6 +8,7 @@
 // request_roll (src/lib/dm/invoke-roll.ts), group_check and aoe_damage call
 // in here; cast_at_player and cast_at_enemy are meant to.
 
+import { noteShift, takeShift } from "@/lib/dm/chronal-shift";
 import { recordSave } from "@/lib/dm/last-save";
 import { diehardSaveAdvantage, shieldMasterSaveBonus } from "@/lib/srd/feat-combat";
 import { LUCK_SPEND } from "@/lib/dm/roll-riders";
@@ -341,16 +342,29 @@ export function rollCharacterSave(
   const mote = moteOf(sheet, resolved.spendInspiration);
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
   const versus = authoredSaveDieVs(sheet, sheet.id, from ? { conditions: from.conditions, meta: from.conditionMeta as Record<string, { source?: string }> } : null);
-  const thrown = rollExpression(
-    `${resolved.expression}${versus ? `+${versus.die}` : ""}${shieldSave ? `+${shieldSave}` : ""}${covered ? `+${covered}` : ""}${extra?.die ? `+${extra.die}` : ""}`,
-    undefined,
-    { purpose: { roller: "hero", kind: "save", who: sheet.name } },
-  );
-  // A floor under the d20 (Starry Form's dragon: a 9 or lower counts as 10).
-  if (extra?.floor && thrown.natural !== undefined && thrown.natural < extra.floor) {
-    thrown.total = thrown.total - thrown.natural + extra.floor;
+  const purpose = { roller: "hero" as const, kind: "save" as const, who: sheet.name };
+  const throwSave = () => {
+    const thrown = rollExpression(
+      `${resolved.expression}${versus ? `+${versus.die}` : ""}${shieldSave ? `+${shieldSave}` : ""}${covered ? `+${covered}` : ""}${extra?.die ? `+${extra.die}` : ""}`,
+      undefined,
+      { purpose },
+    );
+    // A floor under the d20 (Starry Form's dragon: a 9 or lower counts as 10).
+    if (extra?.floor && thrown.natural !== undefined && thrown.natural < extra.floor) {
+      thrown.total = thrown.total - thrown.natural + extra.floor;
+    }
+    // A held die is spent only where it carries the roll, so it is still
+    // held for the second roll when it could not save the first.
+    return waits ? settleHeldDie(campaign.id, sheet.id, thrown, dc) : thrown;
+  };
+  let outcome = throwSave();
+  // A Chronal Shift a watching wizard set on this save (chronal-shift.ts).
+  const shiftedBy = takeShift(campaign.id, purpose, outcome.total >= dc);
+  const shiftLine = shiftedBy ? `${shiftedBy}'s Chronal Shift: rolled again (${outcome.total} became ` : null;
+  if (shiftedBy) {
+    outcome = throwSave();
+    noteShift(campaign.id, `${shiftedBy} used Chronal Shift: ${sheet.name} rolled the save again, ${outcome.total} against DC ${dc}, and the new roll stands.`);
   }
-  const outcome = waits ? settleHeldDie(campaign.id, sheet.id, thrown, dc) : thrown;
   const roll = insertRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
@@ -382,6 +396,7 @@ export function rollCharacterSave(
       ...(shieldSave ? [`Shield Master: +${shieldSave} (the shield) on a Dexterity save against an effect that targets only them`] : []),
       ...coverNote(covered),
       ...(moteLine ? [moteLine] : []),
+      ...(shiftLine ? [`${shiftLine}${outcome.total})`] : []),
     ],
   };
 }
@@ -499,11 +514,18 @@ export function rollEnemySave(
     ...riders.advantageSources,
     ...authored.sources,
   ]);
-  const outcome = rollExpression(
-    `${d20Expression(saveModFor(enemy.stats, ability) + effect.bonus + covered, advantage)}${riders.diceSuffix}`,
-    undefined,
-    { purpose: { roller: "enemy", kind: "save", who: enemy.displayName } },
-  );
+  const purpose = { roller: "enemy" as const, kind: "save" as const, who: enemy.displayName };
+  const expression = `${d20Expression(saveModFor(enemy.stats, ability) + effect.bonus + covered, advantage)}${riders.diceSuffix}`;
+  let outcome = rollExpression(expression, undefined, { purpose });
+  // A Chronal Shift a watching wizard set on this save (chronal-shift.ts):
+  // a success is rolled again, and the second roll stands. Legendary
+  // Resistance may still answer the failure that follows.
+  const shiftedBy = takeShift(campaignId, purpose, outcome.total >= dc);
+  const firstTotal = outcome.total;
+  if (shiftedBy) {
+    outcome = rollExpression(expression, undefined, { purpose });
+    noteShift(campaignId, `${shiftedBy} used Chronal Shift: ${enemy.displayName} rolled the save again, ${outcome.total} against DC ${dc}, and the new roll stands.`);
+  }
   if (options.record) {
     const roll = insertRoll({
       campaignId,
@@ -538,6 +560,7 @@ export function rollEnemySave(
       ...coverNote(covered),
       ...riders.notes,
       ...authored.notes,
+      ...(shiftedBy ? [`${shiftedBy}'s Chronal Shift: rolled again (${firstTotal} became ${outcome.total})`] : []),
     ],
   };
 }

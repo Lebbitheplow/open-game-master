@@ -225,6 +225,12 @@ export const SERVER_FEATURES = {
   // answers on pending-rolls/[id]/watch. An older host answers 404, so the
   // button is not drawn there and the numbers wait on the wizard's own rolls.
   portentWatch: true,
+  // Watching a fight for Chronal Shift, and the "whose roll" pick at a stop
+  // (src/lib/dm/foresight.ts, chronal-shift.ts): POST
+  // /api/campaigns/[id]/foresight takes a Chronurgy wizard with no Portent
+  // number, and pending-rolls/[id]/watch takes `shift` and `choice`. An older
+  // host refuses the first, so the button is drawn only here.
+  chronalWatch: true,
   // The owed picks on a character sheet (issue #833): POST
   // /api/campaigns/[id]/sheet/owed makes a pick the character's levels
   // earned and no level-up offered (a dragon ancestor, a favored enemy, a

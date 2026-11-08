@@ -12,7 +12,8 @@
 // digital, an initiative roll feeds the encounter, and a damage roll aimed at
 // an enemy applies itself.
 import { afterRollOptions, canWaitOnRoll } from "@/lib/dm/after-roll-logic";
-import { reactionFreeFor, rollsCanWait } from "@/lib/dm/after-roll";
+import { allyShiftsFor, reactionFreeFor, rollsCanWait } from "@/lib/dm/after-roll";
+import { noteShift, takeShift } from "@/lib/dm/chronal-shift";
 import { LUCK_SPEND } from "@/lib/dm/roll-riders";
 import { foretoldLeft } from "@/lib/dm/foretold-logic";
 import { claimedAdvantage } from "@/lib/dm/pc-attack-options";
@@ -250,12 +251,28 @@ export function handleRequestRoll(
   }
 
   try {
-    const outcome = rollExpression(resolved.expression, undefined, { purpose: sheet ? heroRollTag(args.kind, sheet.name) : undefined });
+    const purpose = sheet ? heroRollTag(args.kind, sheet.name) : undefined;
+    let outcome = rollExpression(resolved.expression, undefined, { purpose });
+    // A Chronal Shift a watching wizard set on this roll at the stop before
+    // it (src/lib/dm/chronal-shift.ts): it goes the wrong way, and the d20s
+    // are thrown again, the new roll standing.
+    if (sheet && typeof args.dc === "number" && canWaitOnRoll(args.kind)) {
+      const by = takeShift(campaignId, purpose, outcome.total >= args.dc);
+      if (by) {
+        const first = outcome.total;
+        outcome = rollExpression(resolved.expression, undefined, { purpose });
+        noteShift(campaignId, `${by} used Chronal Shift: ${sheet.name} rolled the ${args.kind.replaceAll("_", " ")} again (${first} became ${outcome.total}), and the new roll stands.`);
+      }
+    }
     // The server threw it: the dice wait on the player when something they
-    // hold could change the result, and the model waits with them.
+    // hold could change the result, or a wizard beside them could make them
+    // roll it again, and the model waits with them.
     const options = canWait && sheet && fresh
       // A luck point spent before the throw (luck: true) was this roll's one.
-      ? afterRollOptions(fresh, { kind: args.kind, outcome, dc: args.dc ?? null, spent: resolved.spendInspiration?.split("|").includes(LUCK_SPEND) ? ["lucky"] : [], reactionFree: reactionFreeFor(campaignId, fresh.id) })
+      ? [
+          ...afterRollOptions(fresh, { kind: args.kind, outcome, dc: args.dc ?? null, spent: resolved.spendInspiration?.split("|").includes(LUCK_SPEND) ? ["lucky"] : [], reactionFree: reactionFreeFor(campaignId, fresh.id) }),
+          ...allyShiftsFor(campaignId, fresh, { kind: args.kind, outcome, dc: args.dc ?? null }),
+        ]
       : [];
     if (sheet && options.length) {
       const pending = createPendingRoll({

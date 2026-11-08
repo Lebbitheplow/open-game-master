@@ -17,8 +17,8 @@ import { hitSwing, judgeSwing, missSwing, type SwingScene } from "@/lib/dm/attac
 import type { HeldMote } from "@/lib/dm/authored-mote";
 import { applyPendingDamageRoll } from "@/lib/dm/enemy-blow";
 import type { AttackPlan } from "@/lib/dm/pc-attack-plan";
-import { serverBlow, throwToHit, type Strike } from "@/lib/dm/pc-attack-resolve";
-import { reactionFreeFor, rollsCanWait } from "@/lib/dm/after-roll";
+import { serverBlow, shiftedThrow, type Strike } from "@/lib/dm/pc-attack-resolve";
+import { allyShiftsFor, reactionFreeFor, rollsCanWait } from "@/lib/dm/after-roll";
 import { afterRollDeadline, armAfterRollKeep } from "@/lib/dm/after-roll-timer";
 import { afterAttackOptions } from "@/lib/dm/after-roll-logic";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
@@ -66,14 +66,14 @@ export function throwForChoice(plan: AttackPlan, strike: Strike, toolCallId: str
     return null;
   }
   const record = attackRecord(plan, strike, mote);
-  const thrown = throwToHit(plan, strike);
-  const options = afterAttackOptions(fresh, {
-    outcome: thrown,
-    ac: recordTargetAc(campaign.id, record),
-    critRange: record.critRange ?? 20,
-    spent: record.luck ? ["lucky"] : [],
-    reactionFree: reactionFreeFor(campaign.id, fresh.id),
-  });
+  const ac = recordTargetAc(campaign.id, record);
+  const critRange = record.critRange ?? 20;
+  const thrown = shiftedThrow(plan, strike, ac, critRange);
+  const options = [
+    ...afterAttackOptions(fresh, { outcome: thrown, ac, critRange, spent: record.luck ? ["lucky"] : [], reactionFree: reactionFreeFor(campaign.id, fresh.id) }),
+    // A wizard beside them may make them roll the miss again (chronal-shift.ts).
+    ...allyShiftsFor(campaign.id, fresh, { kind: "attack", outcome: thrown, ac, critRange }),
+  ];
   if (!options.length) {
     return { thrown };
   }

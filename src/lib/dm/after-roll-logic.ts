@@ -27,6 +27,11 @@ export type AfterRollOption = {
   label: string;
   // What choosing it does, in plain words, for the button's tooltip.
   note: string;
+  // Another character's, offered on their player's screen: a Chronurgy
+  // wizard's Chronal Shift on an ally's roll ("after you or a creature you
+  // can see within 30 feet of you makes an attack roll, an ability check,
+  // or a saving throw"). Absent: the roller's own.
+  by?: string;
 };
 
 export const DARK_ONES_OWN_LUCK = "dark_ones_own_luck";
@@ -51,6 +56,13 @@ export type ThrownRoll = {
   // When the dice are kept as they lie if the player has not chosen
   // (src/lib/dm/after-roll-timer.ts). A roll parked before there was one has none.
   deadline?: string;
+  // The wizards whose Chronal Shift has rolled this roll again, and those
+  // who let it stand: neither is offered it again on this roll.
+  shiftedBy?: string[];
+  declined?: string[];
+  // The roller kept the roll while a wizard could still answer it: the
+  // roller is offered nothing more, and the roll waits on the wizard alone.
+  kept?: boolean;
 };
 
 // The rolls that can wait: an ability check or a saving throw. Initiative
@@ -187,6 +199,37 @@ export function afterAttackOptions(
     options.push(shift);
   }
   return options;
+}
+
+// Whether an ally's roll, as it stands, fails where a fresh d20 could still
+// carry it: a check or save against a known Difficulty Class, or an attack
+// against the target's AC. A roll with no DC is not offered to an ally: they
+// cannot see whether it succeeded, and a pause on every such roll would hold
+// the table for nothing.
+export function shiftCanHelp(roll: { kind: string; outcome: RollResult; dc: number | null } | { kind: "attack"; outcome: RollResult; ac: number; critRange: number }): boolean {
+  const { outcome } = roll;
+  const natural = outcome.natural;
+  if (!leadD20(outcome)) {
+    return false;
+  }
+  if ("ac" in roll) {
+    return natural === 1 || (natural !== undefined && natural < roll.critRange && outcome.total < roll.ac);
+  }
+  if (!canWaitOnRoll(roll.kind) || roll.dc === null || outcome.total >= roll.dc) {
+    return false;
+  }
+  return natural === undefined || outcome.total - natural + 20 >= roll.dc;
+}
+
+// A wizard's Chronal Shift offered on another character's roll.
+export function allyShiftOption(wizardId: string, rollerName: string, kind: string): AfterRollOption {
+  const what = kind === "attack" ? "attack roll" : kind === "saving_throw" ? "save" : "check";
+  return {
+    id: "chronal_shift",
+    by: wizardId,
+    label: `Chronal Shift: make ${rollerName} roll again`,
+    note: `Spend a use of Chronal Shift and your reaction: ${rollerName} rolls this ${what} again, and the new roll stands.`,
+  };
 }
 
 // The roll with its d20s thrown again (`fresh`, one for each die the lead term
