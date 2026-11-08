@@ -25,7 +25,7 @@ import { spendReadied } from "@/lib/dm/object-actions";
 import { spendGiantKiller } from "@/lib/dm/reaction-attacks";
 import { withAmmoCount } from "@/lib/srd/ammunition";
 import { lineNamed } from "@/lib/srd/item-row";
-import { throwToGround } from "@/lib/dm/gear-ground";
+import { returnsToHand, throwToGround } from "@/lib/dm/gear-ground";
 import { OPEN_HAND_CHOICES } from "@/lib/dm/attack-choice-rules";
 import { spendInspirationCounter } from "@/lib/dm/roll-riders";
 import { spendLuckCounter } from "@/lib/srd/class-resources";
@@ -431,9 +431,28 @@ function attackFrom(
 // budget, the cast or the reaction, the round from the quiver, Precision
 // Attack's die, and the conditions this roll uses up. Returns the refusal of
 // a spell Counterspell stopped (spent, and nothing else follows), or null.
+// A weapon thrown is not spent but no longer held: a net, a dagger or a
+// javelin thrown at range, a carried weapon thrown as an improvised one, a
+// torch hurled; unless its own text brings it back (a Dwarven Thrower). A
+// flask shatters instead (spent above), and a swing within reach keeps the
+// weapon in hand.
+function throwsAway(plan: AttackPlan): boolean {
+  return (
+    plan.special === "net" ||
+    (plan.kind === "weapon" && plan.atRange && plan.profile.thrown && !plan.profile.gearWeapon?.spent && !returnsToHand(plan.profile.weapon))
+  );
+}
+
 function spendPcAttack(plan: AttackPlan): ToolError | null {
   const { campaign, turn, encounter, sheet, sheets, sheetsById, budget, ammo, context } = plan;
+  const thrownAway = throwsAway(plan);
   if (budget) {
+    // The weapon thrown still counts as the one that was in the first hand
+    // when two-weapon fighting asks for a second (attack-rules.ts
+    // offHandProblem): a dagger thrown, then the off-hand dagger.
+    if (thrownAway) {
+      budget.thrownAway = (budget.thrownAway ?? 0) + 1;
+    }
     storeBudget(encounter, budget);
   }
   // Spiritual Weapon's weapon flies to the square it strikes from (issue
@@ -528,9 +547,9 @@ function spendPcAttack(plan: AttackPlan): ToolError | null {
       context.notes.push(`one ${plan.profile.weapon} spent`);
     }
   }
-  // A net is not spent but no longer held: it leaves the hand whatever the
-  // roll and lies at the creature it was thrown at (gear-ground.ts).
-  if (plan.special === "net") {
+  // A weapon thrown leaves the hand whatever the roll and lies at the
+  // creature it was thrown at (gear-ground.ts).
+  if (thrownAway) {
     const thrown = throwToGround(campaign, turn, sheet, plan.profile.weapon, plan.enemy.id);
     if (thrown) {
       context.notes.push(thrown);

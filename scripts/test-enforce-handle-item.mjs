@@ -176,6 +176,49 @@ await test("A thrown net leaves the hand and the pack and lies at the creature i
   assert.equal(row(fighter, "Net").qty, 1);
 });
 
+// The same fault as the net, for every weapon thrown: a javelin held in hand
+// and thrown 20 feet stayed in the hand and on the sheet, so it could be
+// thrown at every attack, and a dagger drawn and thrown stayed in the pack.
+// A dagger used within reach is a stab, not a throw, and a Dwarven Thrower
+// "flies back to your hand" (SRD 5.1).
+await test("A weapon thrown at range leaves the hand and the pack and lies at its target, hit or miss; a stab within reach keeps it", async () => {
+  await freshFight();
+  world.patch(fighter.id, {
+    equipment: [
+      { name: "Chain Mail", qty: 1, equipped: true },
+      { name: "Javelin", qty: 1, equipped: false },
+      { name: "Javelin", qty: 1, equipped: true },
+      { name: "Dagger", qty: 1, equipped: true },
+    ],
+  });
+  const [enemy] = world.enemies();
+  kit.place(enemy.id, 6, 2);
+  const hit = await kit.swing(fighter.id, enemy.id, [18, 3], { weapon: "Javelin" });
+  assert.equal(hit.ok, true, hit.error);
+  // The held line went: the one left is the stowed one.
+  const javelins = world.sheet(fighter.id).equipment.filter((item) => item.name === "Javelin");
+  assert.deepEqual(javelins.map((item) => item.equipped), [false], "the javelin thrown is still in hand or in the pack");
+  const lying = listDroppedItems(world.campaignId).find((entry) => entry.item.name === "Javelin");
+  assert.deepEqual([lying?.x, lying?.y], [6, 2], "the javelin lies at the creature it was thrown at");
+  // A stab within reach keeps the dagger in hand.
+  kit.giveTurn(fighter.id);
+  kit.place(enemy.id, 3, 2);
+  const stab = await kit.swing(fighter.id, enemy.id, [18, 3], { weapon: "Dagger" });
+  assert.equal(stab.ok, true, stab.error);
+  assert.equal(row(fighter, "Dagger")?.equipped, true, "a stab let go of the dagger");
+  // Thrown, a miss: it leaves the sheet all the same.
+  kit.giveTurn(fighter.id);
+  kit.place(enemy.id, 6, 2);
+  const miss = await kit.swing(fighter.id, enemy.id, [2, 3], { weapon: "Dagger" });
+  assert.equal(miss.ok, true, miss.error);
+  assert.equal(miss.result.hit, false, JSON.stringify(miss.result));
+  assert.equal(row(fighter, "Dagger"), undefined, "a dagger thrown and missed is still on the sheet");
+  assert.ok(listDroppedItems(world.campaignId).some((entry) => entry.item.name === "Dagger" && entry.x === 6));
+  const { returnsToHand } = await import("../src/lib/dm/gear-ground.ts");
+  assert.equal(returnsToHand("Dwarven Thrower"), true);
+  assert.equal(returnsToHand("Javelin"), false);
+});
+
 await test("A strapped-on shield is not dropped for free: taking it off is the action", async () => {
   await freshFight();
   world.patch(fighter.id, { equipment: GEAR().map((item) => (item.name === "Shield" ? { ...item, equipped: true } : item)) });
