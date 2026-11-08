@@ -207,8 +207,21 @@ docker compose logs         # open the setup link it prints
 The link creates the admin account and starts the same guided setup
 ([Run with Docker](docs/docker.md): Windows, your model server, backing up the key).
 
-Both follow the stable releases. Nightly betas, and how a beta becomes stable:
-[docs/releases.md](docs/releases.md).
+Both follow the stable releases. To run the newest beta instead (a GitHub
+pre-release, promoted to stable unchanged once it holds up), switch Docker to the
+`beta` image in the same folder:
+
+```bash
+echo "ODM_IMAGE=lebbi/open-game-master" >> .env
+echo "ODM_IMAGE_TAG=beta" >> .env
+docker compose pull && docker compose up -d   # run again to update
+```
+
+From a clone, check out the beta's tag instead. The
+[beta channel](https://opengamemaster.com/download/#beta) on opengamemaster.com
+links the current beta's release archive and content pack, and says when there is
+none because the newest release is stable. How the channels work and how a beta
+becomes stable: [docs/releases.md](docs/releases.md).
 
 ## Documentation
 

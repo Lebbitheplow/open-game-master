@@ -55,6 +55,9 @@ services:
       # The host port above, so the setup link in the log opens the right
       # address when ODM_PORT moves it off 3005.
       ODM_HOST_PORT: ${ODM_PORT:-3005}
+      # beta has the About dialog compare against the nightly betas too; set it
+      # beside ODM_IMAGE_TAG=beta. Empty is the stable channel.
+      ODM_UPDATE_CHANNEL: ${ODM_UPDATE_CHANNEL:-}
 
       # Text backend: llama.cpp, or any OpenAI-compatible server. No model is
       # named by default: a server that lists one model runs it, and one that
