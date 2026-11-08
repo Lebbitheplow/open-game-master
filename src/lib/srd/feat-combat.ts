@@ -551,7 +551,12 @@ export function defensiveDuelistBonus(
 }
 
 // The one-word tag the DM prompt hangs on a feat the server applies, so
-// the model routes it through the right tool instead of narrating it.
+// the model routes it through the right tool instead of narrating it. The
+// builder reads it as well: a feat the engines run but this list misses is
+// shown to the player as "Nothing of this feat is applied by the table"
+// (Savage Attacker, Poisoner, Athlete, Chef and Healer were).
+// scripts/test-feat-combat.mjs holds each of ODM's feats the attack, feat
+// and stabilize engines name to a tag.
 export function featEngineTag(feat: string, campaignId?: string): string | null {
   const name = featTwinOf(feat, campaignId);
   if (["great weapon master", "sharpshooter", "powerful attacker", "deadeye"].includes(name)) return "[pc_attack powerAttack]";
@@ -563,6 +568,7 @@ export function featEngineTag(feat: string, campaignId?: string): string | null 
     "spell sniper", "elemental adept", "gunner", "crossbow expert", "dungeon delver", "war caster", "tough", "mobile", "heavy armor master",
     "alert", "observant", "lucky", "dual wielder", "resilient", "battle caster", "spellbreaker", "diehard", "survivor", "rapid drinker",
     "durable", "medium armor master", "skirmisher", "mobile", "brutal attack", "piercer", "slasher", "crusher", "giant foe", "skulker", "actor", "grappler",
+    "savage attacker", "poisoner", "athlete", "chef", "healer",
   ].includes(name)) return "[server]";
   if (["fey touched", "shadow touched", "magic initiate", "ritual caster"].includes(name)) return "[cast tools]";
   return null;

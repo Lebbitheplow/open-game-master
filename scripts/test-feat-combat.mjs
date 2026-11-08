@@ -4,6 +4,7 @@
 // Expert's and Gunner's shot in melee, Elemental Adept's type and dice
 // floor, Dungeon Delver's notice, Defensive Duelist's bonus, the prompt tag.
 import assert from "node:assert/strict";
+import { readdirSync, readFileSync } from "node:fs";
 import { register } from "node:module";
 
 register("./lib/register-alias.mjs", import.meta.url);
@@ -13,7 +14,7 @@ const {
   featBonusAttack, isPolearm, ONE_HANDED_ATTACKED, powerAttackFeat, shootsFreelyInMelee, shotIgnoresCover, shotIgnoresLongRange, spellIgnoresCover, spellRangeFactor,
 } = await import("../src/lib/srd/feat-combat.ts");
 const { featGrantSpec, featPicksOwed, applyFeatGrants } = await import("../src/lib/srd/feat-grants.ts");
-const { authoredFeatDesc } = await import("../src/lib/srd/feat-effects.ts");
+const { authoredFeatDesc, engineFeatNamed } = await import("../src/lib/srd/feat-effects.ts");
 
 let passed = 0;
 function test(name, fn) {
@@ -95,6 +96,35 @@ test("the prompt tags the feats the server applies", () => {
   // Actor's advantage is the check engine's now (issue #147); Keen Mind stays the DM's.
   assert.equal(featEngineTag("Actor"), "[server]");
   assert.equal(featEngineTag("Keen Mind"), null);
+});
+
+// The builder tells the player what the table applies of a feat from this
+// tag, and said "Nothing of this feat is applied by the table" of Savage
+// Attacker while attack-swing.ts rolled its second damage (play-test
+// 2026-11-07). Every one of ODM's own feats the attack, feat and stabilize
+// engines ask for by name carries a tag; a content pack's feat is left out,
+// as its reading follows the tag (feat-reading-logic.ts).
+test("every one of ODM's feats the engines run carries a tag", () => {
+  for (const feat of ["Savage Attacker", "Poisoner", "Athlete", "Chef", "Healer"]) {
+    assert.equal(featEngineTag(feat), "[server]", feat);
+  }
+  const root = new URL("../src/lib/", import.meta.url);
+  const sources = [
+    new URL("srd/feat-combat.ts", root),
+    new URL("dm/stabilize.ts", root),
+    ...readdirSync(new URL("dm/", root)).filter((file) => /^attack-.*\.ts$/.test(file)).map((file) => new URL(`dm/${file}`, root)),
+  ];
+  const named = new Set();
+  for (const source of sources) {
+    const text = readFileSync(source, "utf8").replace(/\r\n/g, "\n");
+    for (const match of text.matchAll(/holdsFeat\(\s*\w+\s*,\s*"([^"]+)"\s*\)/g)) {
+      named.add(match[1]);
+    }
+  }
+  const own = [...named].filter((feat) => engineFeatNamed(feat));
+  assert.ok(own.length > 20, `read ${own.length} of ODM's feats from the engines`);
+  const untagged = own.filter((feat) => !featEngineTag(feat));
+  assert.deepEqual(untagged, [], `run by the engines but untagged: ${untagged.join(", ")}`);
 });
 
 // A weapon is the SRD row it swings as (AttackProfile's base), never the name
