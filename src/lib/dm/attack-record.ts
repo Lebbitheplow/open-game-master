@@ -29,6 +29,8 @@ import { damageTypeFeat, poisonerIgnoresResistance, type DamageTypeFeat } from "
 // (attack-swing.ts askDamage). The server throws it at once; real dice park it
 // on the damage roll's record, and attack-blow.ts lands it either way.
 export type DamageAsk = {
+  // Destructive Wrath wrote every die at its maximum: nothing to enter.
+  noDice?: boolean;
   expression: string;
   // The dice riding the blow under a type of their own (damage-parts.ts).
   riders: TypedRider[];

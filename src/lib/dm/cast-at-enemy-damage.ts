@@ -4,6 +4,7 @@
 // the features that answer one. Split from cast-at-enemy.ts, which has
 // checked and paid for the cast and rolled the save before calling this.
 
+import { getSheetById } from "@/lib/db/sheets";
 import { markAffinityCast } from "@/lib/dm/affinity-cast";
 import { elementalAdeptApplies, floorDamageDice } from "@/lib/srd/feat-combat";
 import type { Campaign } from "@/lib/db/campaigns";
@@ -16,6 +17,8 @@ import { authoredOnKill } from "@/lib/dm/authored-hooks";
 import { applyEnemyDamage } from "@/lib/dm/enemy-damage";
 import { darkOnesBlessing } from "@/lib/dm/feature-hooks";
 import { flooredDamage, maximizedDamage } from "@/lib/dm/spell-riders";
+import { maximumOf } from "@/lib/dm/heal-spell";
+import { spendWrath, wrathApplies, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
 import { curseBurn } from "@/lib/dm/spell-retort";
 import { spellDamageRiders } from "@/lib/srd/spell-damage-riders";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -62,7 +65,14 @@ export function landSpellDamage(input: {
   // and resistance is ignored (src/lib/srd/feat-combat.ts).
   const adept = elementalAdeptApplies(sheet, damageType);
   const rolledExpression = [adept ? floorDamageDice(damageExpression) : damageExpression, ...riders.dice].join("+");
-  const maxed = maximizedDamage(mech, enemy, rolledExpression);
+  // Destructive Wrath, on the casting's one roll: the creatures after the first
+  // take that roll (`sharedRoll`).
+  const wrath = sharedRoll === undefined && wrathApplies(getSheetById(sheet.id) ?? sheet, damageType);
+  if (wrath) {
+    spendWrath(campaign.id, sheet.id);
+    base.destructiveWrath = WRATH_NOTE;
+  }
+  const maxed = wrath ? maximumOf(rolledExpression) : maximizedDamage(mech, enemy, rolledExpression);
   // The card shows the dice as rolled; the save halves or stops what lands.
   // A maximized blow rolls no dice, so it has no card.
   const outcome =
@@ -117,5 +127,5 @@ export function landSpellDamage(input: {
   } else {
     base.damage = 0;
   }
-  return { dealt: damageDealt, rolled: maxed === null ? outcome.total : null };
+  return { dealt: damageDealt, rolled: maxed === null || wrath ? outcome.total : null };
 }

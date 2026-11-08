@@ -25,7 +25,7 @@ import {
   type HandTurn,
 } from "@/lib/battlemap/hand-core";
 import { textKey } from "@/lib/language/text-logic";
-import { isNamed } from "@/lib/srd/feature-names";
+import { isConditionNamed, isNamed } from "@/lib/srd/feature-names";
 
 const COST: Record<HeldOption["cost"], HandCost> = {
   action: "action",
@@ -110,6 +110,8 @@ export function optionCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] {
       // Guided Strike is chosen after the d20, on the card a miss waits on
       // (after-roll-logic.ts): played here, the +10 had nothing to ride.
       if (isNamed(option.name, AFTER_ROLL_CHANNEL_OPTION)) continue;
+      // Already held for the next lightning or thunder damage (destructive-wrath.ts).
+      if (isNamed(option.name, "destructive wrath") && sheet.conditions.some((entry) => isConditionNamed(entry, "destructive wrath"))) continue;
       // A row of the authored table is dealt as its own card, which carries the
       // row's target and cost (hand-subclass.ts).
       if (authoredSpendFor(sheet, option.name)) continue;

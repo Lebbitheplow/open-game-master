@@ -2510,6 +2510,8 @@ for (const viewport of ["desktop", "phone"]) {
 // throw, but the app's list of tables leaves test tables out.)
 const AFTER_ATTACK_TITLE = "Lucky Swing";
 const afterAttackTables = {};
+const WRATH_TITLE = "Storm Swing";
+const wrathTables = {};
 // The same lane for the features chosen on that card: Guided Strike, Master
 // Duelist and Favored by the Gods (scenario after-roll-riders).
 const AFTER_RIDER_TITLE = "Favored Swing";
@@ -2521,6 +2523,12 @@ const afterRiderTables = {};
   const { initiativeFloorFor } = await import("../../src/lib/dm/encounter-tools.ts");
   for (const [title, tables, feats, patch] of [
     [AFTER_ATTACK_TITLE, afterAttackTables, ["Lucky"], { conditions: ["bardic inspiration (d8)"] }],
+    [WRATH_TITLE, wrathTables, [], {
+      class: "cleric",
+      features: [{ name: "Channel Divinity: Destructive Wrath", source: "choice" }],
+      resources: { channel_divinity: { max: 1, used: 0 } },
+      spellcasting: { ability: "wis", known: [], prepared: [], cantrips: ["Shocking Grasp"], slots: {} },
+    }],
     [AFTER_RIDER_TITLE, afterRiderTables, [], {
       features: [{ name: "Channel Divinity: Guided Strike", source: "choice" }, { name: "Master Duelist", source: "choice" }, { name: "Favored by the Gods", source: "choice" }],
       resources: { channel_divinity: { max: 2, used: 0 }, sub_master_duelist: { max: 1, used: 0 }, sub_favored_by_the_gods: { max: 1, used: 0 } },
@@ -2544,9 +2552,10 @@ const afterRiderTables = {};
       table.id,
       world.owner.id,
       3,
-      heroInput({ name: "Tamsin Reed", class: "fighter", level: 3, feats, equipment: [{ name: "Longsword", qty: 1, equipped: true }] }),
+      heroInput({ name: "Tamsin Reed", class: patch.class ?? "fighter", level: 3, feats, equipment: [{ name: "Longsword", qty: 1, equipped: true }] }),
     );
-    sheets.patchSheet(hero.id, patch);
+    const { class: _heroClass, ...heroPatch } = patch;
+    sheets.patchSheet(hero.id, heroPatch);
     const started = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: player.id }, {
       name: "start_encounter",
       args: { enemies: [{ monster: "goblin", count: 1 }] },
@@ -3567,6 +3576,7 @@ const ids = {
   noticeTables,
   afterRollTables,
   afterAttackTables,
+  wrathTables,
   afterRiderTables,
   portentTables,
   watchTables,
@@ -3684,6 +3694,7 @@ const ids = {
     ...Object.fromEntries(Object.entries(noticeTables).map(([viewport, table]) => [table.id, `${NOTICE_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(afterRollTables).map(([viewport, table]) => [table.id, `${AFTER_ROLL_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(afterAttackTables).map(([viewport, table]) => [table.id, `${AFTER_ATTACK_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(wrathTables).map(([viewport, table]) => [table.id, `${WRATH_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(afterRiderTables).map(([viewport, table]) => [table.id, `${AFTER_RIDER_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(portentTables).map(([viewport, table]) => [table.id, `${PORTENT_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(watchTables).map(([viewport, table]) => [table.id, `${WATCH_TITLE} (${viewport})`])),
