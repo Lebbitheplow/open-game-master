@@ -29,7 +29,7 @@ import { sightTerrainFor } from "@/lib/dm/zone-rules";
 
 import type { Advantage } from "@/lib/dice";
 import { activeAuthored, hasCondition } from "@/lib/srd/authored-effects";
-import { removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { removeConditions, sightBlockedBy, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
@@ -77,6 +77,23 @@ export function seesOnBoard(encounterId: string, fromRef: string, toRef: string)
     return true;
   }
   return hasLineOfSightBetween(sightTerrainFor(map), map.width, spaceOf(from), spaceOf(to));
+}
+
+// Why a character cannot see a creature for a feature whose text says "you
+// can see" (Nature's Wrath, Champion Challenge, Conquering Presence, Abjure
+// Enemy), or null when they can: the conditions first (blinded, an invisible
+// or hidden creature: condition-logic.ts sightBlockedBy), then the board's
+// line of sight. The board alone let an invisible goblin be taken.
+export function unseenBecause(
+  encounterId: string,
+  viewer: { id: string; name: string; conditions: string[] },
+  seen: { id: string; displayName: string; conditions: string[] },
+): string | null {
+  const blocked = sightBlockedBy(viewer.conditions, seen.conditions);
+  if (blocked) {
+    return blocked === "blinded" ? `${viewer.name} is blinded` : `${seen.displayName} is ${blocked}`;
+  }
+  return seesOnBoard(encounterId, viewer.id, seen.id) ? null : "no line of sight";
 }
 
 // The refusal for a reaction its holder cannot see the creature for, or null.

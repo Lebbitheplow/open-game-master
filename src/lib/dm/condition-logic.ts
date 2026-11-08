@@ -341,6 +341,22 @@ function has(conditions: string[], names: string[]): string | null {
   return names.find((name) => lowered.includes(name)) ?? null;
 }
 
+// Why the conditions keep one creature from seeing another, or null: it is
+// blinded, or the other is hidden, or invisible to a viewer without See
+// Invisibility or True Seeing. Walls, fog and darkness are the board's part
+// (authored-saves.ts seesOnBoard). A feature for "a creature you can see"
+// read the board alone, so Nature's Wrath took an invisible goblin and spent
+// the Channel Divinity on it.
+export function sightBlockedBy(viewerConditions: string[], seenConditions: string[]): "blinded" | "invisible" | "hidden" | null {
+  if (has(viewerConditions, ["blinded"])) {
+    return "blinded";
+  }
+  if (has(seenConditions, ["invisible"]) && !conditionSeesInvisible(viewerConditions)) {
+    return "invisible";
+  }
+  return has(seenConditions, ["hidden"]) ? "hidden" : null;
+}
+
 // Whether a hit within 5 ft is critical only because the target is
 // unconscious (paralysis would make it critical all the same): the blow a
 // reaction later finds landing on a target standing is an ordinary hit
@@ -453,11 +469,7 @@ export function attackContext(input: {
   // made against you has disadvantage if you can see the attacker" (SRD
   // 5.1, Dodge): not while blinded, nor against an invisible attacker it
   // cannot see through or a hidden one, nor one the dark hides.
-  const dodgerSees =
-    !has(input.targetConditions, ["blinded"]) &&
-    !(has(input.attackerConditions, ["invisible"]) && !conditionSeesInvisible(input.targetConditions)) &&
-    !has(input.attackerConditions, ["hidden"]) &&
-    input.targetSeesAttacker !== false;
+  const dodgerSees = !sightBlockedBy(input.targetConditions, input.attackerConditions) && input.targetSeesAttacker !== false;
   if (has(input.targetConditions, [DODGING]) && !isIncapacitated(input.targetConditions) && dodgerSees) {
     sources.push("disadvantage");
     notes.push("target is dodging: disadvantage");

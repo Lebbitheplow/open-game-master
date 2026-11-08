@@ -336,7 +336,8 @@ export type SpendDoes =
       // `orSave`, it picks between the two again at each of those saves.
       saveEnds?: boolean;
       rangeFt?: number;
-      // Only a creature the holder can see (Nature's Wrath).
+      // Only a creature the holder can see (Nature's Wrath): in line of sight,
+      // not invisible or hidden, and the holder not blinded.
       sight?: boolean;
       onFail?: string;
       typeFromVariant?: string[];
@@ -368,8 +369,12 @@ export type SpendDoes =
       // Only creatures the holder can see (a wall or a heavily obscured space
       // hides one). Without it every creature in reach is caught: Radiance of the
       // Dawn's text asks no sight, and Order's Demand's "see or hear" carries
-      // through a fog.
-      sight?: boolean;
+      // through a fog. True also leaves out an invisible or hidden creature, and
+      // every one while the holder is blinded (Champion Challenge: "that you can
+      // see"). "line" asks only the line between them, which runs both ways:
+      // Charm Animals and Plants takes a beast "that can see you", so the
+      // holder's own sight of it is not the test.
+      sight?: true | "line";
       // A creature with total cover from the holder is not affected, seen or
       // not (Radiance of the Dawn reaches into a fog, not through a wall).
       coverShields?: boolean;

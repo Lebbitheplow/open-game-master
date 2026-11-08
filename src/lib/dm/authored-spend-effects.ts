@@ -28,7 +28,7 @@ import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import { hurtEnemy } from "@/lib/dm/spell-aura";
-import { seesOnBoard, withinFeet } from "@/lib/dm/authored-saves";
+import { seesOnBoard, unseenBecause, withinFeet } from "@/lib/dm/authored-saves";
 import { tilesBetween, wallBetween } from "@/lib/dm/attack-spatial";
 import { rerollLastSave, swarmPush } from "@/lib/dm/authored-spend-more";
 import { summonSteelDefender } from "@/lib/dm/summon-defender";
@@ -288,10 +288,12 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       if (does.rangeFt && !withinFeet(encounter.id, sheet.id, enemy.id, does.rangeFt)) {
         return { error: `${enemy.displayName} is beyond ${does.rangeFt} feet of ${sheet.name}; ${ctx.spend.name} reaches no further. Nothing was spent.`, refused: "rules" };
       }
-      // "A creature you can see" (Nature's Wrath): one behind a wall or in a
-      // heavily obscured space is refused before the use is paid.
-      if (does.sight && !seesOnBoard(encounter.id, sheet.id, enemy.id)) {
-        return { error: `${sheet.name} cannot see ${enemy.displayName}, and ${ctx.spend.name} takes a creature they can see. Nothing was spent.`, refused: "rules" };
+      // "A creature you can see" (Nature's Wrath): one behind a wall, in a
+      // heavily obscured space, invisible or hidden, or any while the holder
+      // is blinded, is refused before the use is paid.
+      const unseen = does.sight ? unseenBecause(encounter.id, sheet, enemy) : null;
+      if (unseen) {
+        return { error: `${sheet.name} cannot see ${enemy.displayName} (${unseen}), and ${ctx.spend.name} takes a creature they can see. Nothing was spent.`, refused: "rules" };
       }
       if (does.perUnit && ctx.units < 1) {
         return { error: `${ctx.spend.name} needs at least 1 point spent: pass amount. Nothing was spent.`, retry: true };
@@ -581,7 +583,7 @@ function saveArea(ctx: SpendContext, does: Extract<SpendDoes, { kind: "save_area
       enemy.status === "alive" &&
       enemy.currentHp > 0 &&
       withinFeet(encounter.id, sheet.id, enemy.id, does.rangeFt) &&
-      (!does.sight || seesOnBoard(encounter.id, sheet.id, enemy.id)) &&
+      (!does.sight || (does.sight === "line" ? seesOnBoard(encounter.id, sheet.id, enemy.id) : !unseenBecause(encounter.id, sheet, enemy))) &&
       // Total cover: a wall of the board between them (as cast-reach.ts reads
       // it, past the squares beside the holder).
       (!does.coverShields || !((tilesBetween(encounter.id, sheet.id, enemy.id) ?? 0) > 1 && wallBetween(encounter.id, sheet.id, enemy.id))) &&
