@@ -173,6 +173,20 @@ await test("Protection's reroll treats a natural 20 the same way, and answers th
   assert.equal(world.sheet(ally.id).currentHp, 44, out.result?.applied);
 });
 
+await test("Wrath of the Storm spends a held Destructive Wrath: its 2d8 at their maximum.", async () => {
+  const cleric = hero("cleric", "Tempest Domain");
+  world.patch(cleric.id, { conditions: ["destructive wrath"], resources: { ...world.sheet(cleric.id).resources, sub_wrath_of_the_storm: { max: 3, used: 0 } } });
+  const enemy = await stage(cleric);
+  world.patch(cleric.id, { conditions: ["destructive wrath"] });
+  kit.setEnemy(enemy.id, { stats: { immune: "" } });
+  await strike(enemy, cleric);
+  const out = await react(cleric, "Wrath of the Storm", [2]);
+  assert.equal(out.ok, true, out.error);
+  assert.match(out.result.destructiveWrath, /maximum/);
+  assert.equal(world.enemies()[0].currentHp, 284);
+  assert.ok(!world.sheet(cleric.id).conditions.includes("destructive wrath"));
+});
+
 await test("Wrath of the Storm deals thunder to a creature immune to lightning, and the type named when one is.", async () => {
   const cleric = hero("cleric", "Tempest Domain");
   world.patch(cleric.id, { resources: { ...world.sheet(cleric.id).resources, sub_wrath_of_the_storm: { max: 3, used: 0 } } });

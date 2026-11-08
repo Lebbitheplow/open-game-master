@@ -4,9 +4,10 @@
 // held on the sheet until their next lightning or thunder damage or their next
 // rest. A spell attack that misses rolls no damage, so it keeps the hold.
 //
-// Reached by cast_at_enemy, aoe_damage and an attack's own damage. Not by a
-// thunder rider on another type's blow (Divine Strike) or Wrath of the Storm's
-// reaction: those keep the hold for the roll after.
+// Reached by cast_at_enemy, aoe_damage, an attack's own damage and Wrath of the
+// Storm. Not by a thunder rider on another type's blow (Divine Strike): spent on
+// its 1d8 automatically, the hold would be gone before the thunder spell the
+// cleric took it for.
 
 import { spendRollCarriers } from "@/lib/dm/forced-save";
 import { maximumOf } from "@/lib/dm/heal-spell";
