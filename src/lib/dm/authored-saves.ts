@@ -101,7 +101,7 @@ export function unseenBecause(encounterId: string, viewer: Looker, seen: Looker,
 }
 
 // The conditions' part alone: blinded, invisible, hidden, and the senses that see past them.
-function unseenByConditions(encounterId: string, viewer: Looker, seen: Looker, options: { hidden?: boolean }): string | null {
+export function unseenByConditions(encounterId: string, viewer: Looker, seen: Looker, options: { hidden?: boolean }): string | null {
   const senses = "stats" in viewer ? enemySenses(viewer) : characterSenses(viewer);
   const map = senses.blindsight || senses.truesight ? getBattleMapForEncounter(encounterId) : null;
   const from = map ? getTokenByRef(map.id, viewer.id) : null;
@@ -121,7 +121,7 @@ function unseenByConditions(encounterId: string, viewer: Looker, seen: Looker, o
 // sight. The board alone let a blinded rogue Uncanny Dodge. Hiding does not
 // count: the attack gave the attacker away, and an ally hides from the foes,
 // not from its friends. The player's Hand deals by the same answer
-// (battlemap/view.ts `unseen`).
+// (battlemap/view.ts `unseen`, which asks the same two parts).
 export function reactionUnseen(encounterId: string, holderId: string, seenId: string): { why: string | null } | null {
   const looker = getSheetById(holderId);
   const other = getEnemy(seenId) ?? getSheetById(seenId);
