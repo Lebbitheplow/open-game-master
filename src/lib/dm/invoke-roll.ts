@@ -23,7 +23,7 @@ import { getActiveEncounter } from "@/lib/db/encounters";
 import { getFoe } from "@/lib/dm/sheet-foe";
 import { charmedBy } from "@/lib/dm/enemy-profile";
 import { insertRoll } from "@/lib/db/rolls";
-import { createPendingRoll, publicPendingRoll, setPendingCombatNote, type DmTurn } from "@/lib/db/dm-turns";
+import { createPendingRoll, listOpenPendingRolls, publicPendingRoll, setPendingCombatNote, type DmTurn } from "@/lib/db/dm-turns";
 import { getSheetById } from "@/lib/db/sheets";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { allocateSeq } from "@/lib/db/campaigns";
@@ -143,6 +143,24 @@ export function handleRequestRoll(
     const held = heldInitiative(campaignId, sheet.id);
     if (held) {
       return { error: held, refused: "rules" };
+    }
+    // Nor does one for a character whose initiative card is already with
+    // their player in this fight: the AI's fight asks its real-dice seats
+    // itself (src/lib/dm/initiative-ask.ts), and a model that also asked
+    // put a second card for the same roll in front of them.
+    const fight = getActiveEncounter(campaignId);
+    const carded = fight
+      ? listOpenPendingRolls(campaignId).some(
+          (pending) => pending.kind === "initiative" && pending.characterId === sheet.id && pending.createdAt >= fight.createdAt,
+        )
+      : false;
+    if (carded) {
+      return {
+        error: model
+          ? `${sheet.name}'s initiative roll card is already with their player, so nothing was rolled. The order locks once every initiative is in.`
+          : `${sheet.name} already has an initiative roll to make. The order locks once every initiative is in.`,
+        refused: "rules",
+      };
     }
   }
 

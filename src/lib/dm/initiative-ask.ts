@@ -6,7 +6,8 @@ import { handleRequestRoll } from "@/lib/dm/invoke-roll";
 import { fieldedSheets } from "@/lib/dm/roster";
 import { atTheFight } from "@/lib/dm/fight-away-logic";
 
-// Asking the table for initiative when a person runs it (issue 63).
+// Asking the table for initiative when a person runs it (issue 63), and for
+// the real-dice seats of a fight the AI opens.
 //
 // The AI's fight opens with the server rolling for every character whose
 // dice it rolls, and the model is told to request_roll the rest. A person at
@@ -17,6 +18,16 @@ import { atTheFight } from "@/lib/dm/fight-away-logic";
 // server throws the dice for a player who lets it, and a player who holds
 // their own rolls or rolls real dice gets the roll card.
 //
+// The AI's fight rolls the dice the server throws when it opens
+// (encounter-open.ts rollOpeningInitiative) and told the model to
+// request_roll the rest. A model that went straight on to the story left the
+// table on "Rolling initiative" with no card for anyone, and the deadlock
+// guard (encounter-tools.ts ensureInitiativeProgress) then rolled those
+// players' initiative digitally on the next turn: at an AI table a player on
+// real dice never rolled initiative (play-test 2026-11-07, B3). So the turn
+// asks them here too, the moment the fight opens (turn.ts), and waits for the
+// cards as it waits for a request_roll's.
+//
 // Who is asked: every fielded character with no place in the order and no
 // initiative roll already waiting. The dead roll nothing and are not waited
 // on (recordInitiativeRoll counts the same roster).
@@ -26,6 +37,8 @@ export type InitiativeAsk = {
   rolled: string[];
   // Names of the characters whose player now holds an initiative roll card.
   waiting: string[];
+  // Their ids, in the same order.
+  waitingIds: string[];
   // The engine's note when the last roll locked the order.
   combat: string | null;
 };
@@ -34,6 +47,9 @@ export function askForInitiative(
   campaign: Campaign,
   turn: DmTurn,
   realDiceUserIds: Set<string>,
+  // The AI's turn: the tool call (the one that opened the fight) its cards
+  // answer when the turn resumes.
+  model?: { toolCallId: string | null },
 ): InitiativeAsk | null {
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter || encounter.orderReady) {
@@ -52,7 +68,7 @@ export function askForInitiative(
   );
   const sheets = listSheets(campaign.id);
   const sheetsById = new Map(sheets.map((sheet) => [sheet.id, sheet]));
-  const ask: InitiativeAsk = { rolled: [], waiting: [], combat: null };
+  const ask: InitiativeAsk = { rolled: [], waiting: [], waitingIds: [], combat: null };
   // Asking one who is away would bring them to the fight.
   for (const sheet of atTheFight(encounter, fieldedSheets(campaign, sheets))) {
     if (placed.has(sheet.id) || asked.has(sheet.id) || sheet.deathSaves?.dead) {
@@ -65,9 +81,11 @@ export function askForInitiative(
       sheets,
       sheetsById,
       realDiceUserIds,
+      model,
     );
     if (out.parked === true) {
       ask.waiting.push(sheet.name);
+      ask.waitingIds.push(sheet.id);
     } else if (typeof out.total === "number") {
       ask.rolled.push(`${sheet.name} ${out.total}`);
       if (typeof out.combat === "string") {
