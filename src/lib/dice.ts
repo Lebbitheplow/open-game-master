@@ -99,6 +99,12 @@ export type RollOptions = {
   purpose?: RollTag;
 };
 
+// How a roll made of faces entered at the table reads its dice
+// (rollEnteredDice): whether the face just drawn was the player's, already
+// the one they kept after any reroll their own die took, and how a reroll of
+// a face the server drew is drawn without taking the next entered face.
+type EntryOptions = RollOptions & { faceIsFinal?: () => boolean; redraw?: DieRng };
+
 // Parses and rolls a dice expression: XdY terms with optional khN/klN keeps
 // and integer modifiers, joined by + or -. Examples: "1d20+5", "4d6kh3",
 // "2d20kl1+3", "8d6", "1d100-10".
@@ -107,6 +113,10 @@ export function rollExpression(
   rng: DieRng = defaultRng,
   options: RollOptions = {},
 ): RollResult {
+  return rollFramed(expression, rng, options);
+}
+
+function rollFramed(expression: string, rng: DieRng, options: EntryOptions): RollResult {
   // Rolling is synchronous, so the frame is this call's alone until it
   // returns; the one it replaced is put back for whoever was rolling.
   const outer = frame;
@@ -118,7 +128,9 @@ export function rollExpression(
   }
 }
 
-function rollTerms(expression: string, rng: DieRng, options: RollOptions): RollResult {
+// An expression's signed terms, each read by the grammar, or the reason it
+// cannot be read. Shared by the roll and by what a roll card says of it.
+function termsOf(expression: string): { compact: string; terms: Array<{ rawTerm: string; sign: 1 | -1; match: RegExpExecArray }> } {
   const compact = expression.replace(/\s+/g, "").toLowerCase();
   if (!compact) {
     throw new Error("Empty dice expression.");
@@ -132,15 +144,23 @@ function rollTerms(expression: string, rng: DieRng, options: RollOptions): RollR
   if (rawTerms.length > MAX_TERMS) {
     throw new Error("Too many terms in dice expression.");
   }
-
-  const terms: Array<DiceTerm | ModifierTerm> = [];
-  for (const rawTerm of rawTerms) {
+  const terms = rawTerms.map((rawTerm) => {
     const sign: 1 | -1 = rawTerm.startsWith("-") ? -1 : 1;
     const body = rawTerm.replace(/^[+-]/, "");
     const match = TERM_PATTERN.exec(body);
     if (!match) {
       throw new Error(`Invalid dice term: ${rawTerm}`);
     }
+    return { rawTerm, sign, match };
+  });
+  return { compact, terms };
+}
+
+function rollTerms(expression: string, rng: DieRng, options: EntryOptions): RollResult {
+  const terms: Array<DiceTerm | ModifierTerm> = [];
+  const read = termsOf(expression);
+  const compact = read.compact;
+  for (const { rawTerm, sign, match } of read.terms) {
 
     if (match[7] !== undefined) {
       terms.push({ kind: "modifier", sign, value: Number(match[7]) });
@@ -187,14 +207,27 @@ function rollTerms(expression: string, rng: DieRng, options: RollOptions): RollR
     // halfling's Lucky trait, lets you reroll or replace the d20, you can
     // reroll or replace only one of the dice." At disadvantage two 1s stay 1.
     let grammarRerollsLeft = keep ? 1 : count;
+    const reroll = () => {
+      if (!options.redraw) {
+        return roll();
+      }
+      const value = options.redraw(sides);
+      if (!Number.isInteger(value) || value < 1 || value > sides) {
+        throw new Error(`RNG returned an invalid d${sides} value: ${value}`);
+      }
+      return value;
+    };
     const dice: DieResult[] = Array.from({ length: count }, () => {
       const value = roll();
-      const lucky = grammarReroll > 0 && value <= grammarReroll && grammarRerollsLeft > 0;
+      // A face a player entered is the one they kept: their own die already
+      // took the reroll, so it is not rolled a second time here.
+      const final = options.faceIsFinal?.() ?? false;
+      const lucky = !final && grammarReroll > 0 && value <= grammarReroll && grammarRerollsLeft > 0;
       if (lucky) {
         grammarRerollsLeft -= 1;
       }
-      if (lucky || (weaponRerollAt > 0 && value <= weaponRerollAt)) {
-        return { sides, value: roll(), kept: true, rerolledFrom: value };
+      if (lucky || (!final && weaponRerollAt > 0 && value <= weaponRerollAt)) {
+        return { sides, value: reroll(), kept: true, rerolledFrom: value };
       }
       return { sides, value, kept: true };
     });
@@ -315,6 +348,97 @@ export function rollExpressionWithDice(expression: string, values: number[]): Ro
     throw new Error("Too many die values for this roll.");
   }
   return result;
+}
+
+// The faces a player rolling real dice enters for an expression: one per die.
+// A reroll the expression carries ("1d20r1", a halfling's Lucky) is made with
+// the die in hand, and the face they keep is the one they enter, so it asks
+// for no face of its own. expressionDice counts a reroll's draw as a face
+// (the server's own throw makes it), and a card built on it asked a halfling
+// for two d20s that the roll then refused.
+export function entryDice(expression: string): number[] {
+  const faces: number[] = [];
+  rollFramed(expression, (sides) => {
+    faces.push(sides);
+    return 1;
+  }, { faceIsFinal: () => true });
+  return faces;
+}
+
+// Scores a roll from the faces entered at the table, one per die in roll
+// order (entryDice). A number is a face the player kept, any reroll already
+// made with their own die. Null is a face the server draws: it takes the
+// rerolls the expression and `options.rerollBelow` (Great Weapon Fighting)
+// give a die, as the server's own throw would.
+export function rollEnteredDice(expression: string, entries: ReadonlyArray<number | null>, options: RollOptions = {}): RollResult {
+  let index = 0;
+  let typed = false;
+  const result = rollFramed(
+    expression,
+    (sides) => {
+      if (index >= entries.length) {
+        throw new Error("Not enough die values for this roll.");
+      }
+      const value = entries[index];
+      index += 1;
+      if (value === null) {
+        typed = false;
+        return defaultRng(sides);
+      }
+      if (!Number.isInteger(value) || value < 1 || value > sides) {
+        throw new Error(`Die ${index} must be a whole number from 1 to ${sides}.`);
+      }
+      typed = true;
+      return value;
+    },
+    { ...options, faceIsFinal: () => typed, redraw: defaultRng },
+  );
+  if (index !== entries.length) {
+    throw new Error("Too many die values for this roll.");
+  }
+  return result;
+}
+
+// The reroll each entered face may take (entryDice order): the face at or
+// below which it is rolled again, the term it belongs to, and whether only
+// one die of that term may be (a kept pool, as at advantage). A card reads it
+// to take a Pixels die's next landing in place of a face that qualified.
+export type EntryReroll = { at: number; term: number; once: boolean };
+
+export function entryRerolls(expression: string): EntryReroll[] {
+  const out: EntryReroll[] = [];
+  termsOf(expression).terms.forEach(({ match }, term) => {
+    if (match[7] !== undefined) {
+      return;
+    }
+    const at = match[5] ? Number(match[5]) : 0;
+    for (let die = 0; die < Number(match[1]); die += 1) {
+      out.push({ at, term, once: Boolean(match[3]) });
+    }
+  });
+  return out;
+}
+
+// What a player rolling real dice does for the rerolls an expression carries
+// before they enter a face, said on their roll card. With advantage or
+// disadvantage only one of the dice is rerolled (SRD 5.1, Advantage and
+// Disadvantage).
+export function entryRerollNotes(expression: string): string[] {
+  const notes: string[] = [];
+  for (const { match } of termsOf(expression).terms) {
+    const below = match[5] ? Number(match[5]) : 0;
+    if (match[7] !== undefined || below < 1) {
+      continue;
+    }
+    const face = below === 1 ? "a 1" : `${below} or less`;
+    const count = Number(match[1]);
+    notes.push(
+      match[3] && count > 1
+        ? `A d${match[2]} that shows ${face}: roll one of them again, once, and enter the new number.`
+        : `A d${match[2]} that shows ${face}: roll it again, once, and enter the new number.`,
+    );
+  }
+  return notes;
 }
 
 export function isValidExpression(expression: string) {

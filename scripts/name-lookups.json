@@ -1092,7 +1092,7 @@
     "lib/dice-script-logic.ts#keyed": [["key",1,"a stored roll's kind (engine vocabulary) to the kind a dice script aims at"]],
     "lib/dice-script-logic.ts#whole": [["identity",1,"a forced face aimed at one creature, by textKey on both sides of its name on the table"]],
     "lib/dice.ts#first": [["key",1,"a d20's kept die"]],
-    "lib/dice.ts#number": [["key",6,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
+    "lib/dice.ts#number": [["key",10,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "lib/dice.ts#partial": [["pattern",2,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["parse",1,"a dice term's sign"]],
     "lib/dice.ts#whole-single": [["key",1,"dice terms rejoined"]],
     "lib/dice/dice-box-lifecycle.ts#whole": [["key",1,"event types"]],
