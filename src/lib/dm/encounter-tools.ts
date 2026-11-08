@@ -136,6 +136,7 @@ import { endEncounterTool, endTurnTool, enemyAttackTool, startEncounterTool, typ
 import { RUN_PREPARED_ENCOUNTER, runPreparedEncounter } from "@/lib/dm/prepared-encounter-tool";
 import { asEventTurn, fireFightEvents } from "@/lib/dm/fight-events";
 import { rollDeathSave } from "@/lib/dm/death";
+import { risesWithVengeance } from "@/lib/dm/searing-vengeance";
 import { getBattleMapForEncounter, getTokenByRef, listHiddenRefIds, resetRoundBudgets, resetTurnBudgets } from "@/lib/db/battle-maps";
 import { tilesApart } from "@/lib/dm/board-reach";
 
@@ -599,6 +600,11 @@ registerFightStarter(startFightAgainst);
 function entryAlive(entry: OrderEntry, enemiesById: Map<string, EncounterEnemy>): boolean {
   if (entry.kind === "pc") {
     const sheet = getSheetById(entry.characterId);
+    // A dying warlock whose death save is Searing Vengeance rises as the turn
+    // starts and takes it: the pointer stops for them (searing-vengeance.ts).
+    if (risesWithVengeance(sheet)) {
+      return true;
+    }
     return ((sheet?.currentHp ?? 0) > 0 || Boolean(sheet && holdsOn(sheet))) && !isIncapacitated(sheet?.conditions ?? []);
   }
   if (entry.kind === "enemy") {

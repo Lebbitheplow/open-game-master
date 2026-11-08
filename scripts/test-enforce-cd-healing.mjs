@@ -17,6 +17,7 @@ const { directCardCall } = await import("../src/lib/dm/intent-logic.ts");
 const { endTurns } = await import("../src/lib/dm/turn-end.ts");
 const { coverFor } = await import("../src/lib/dm/attack-spatial.ts");
 const { healCasterHalf } = await import("../src/lib/dm/spell-attack-riders.ts");
+const { regainHitPoints } = await import("../src/lib/dm/regain.ts");
 
 // Level 9, every ability 16 (+3), 100 hit points.
 const hero = (classId, subclass) =>
@@ -260,6 +261,41 @@ await test("Vampiric Touch's half of the damage is healing like any other: a cas
   world.patch(near.id, { conditions: [], conditionMeta: {} });
   assert.match(String(healCasterHalf(world.campaign(), near.id, 20, "Vampiric Touch")), /regains 10 hit points/);
   assert.equal(hpOf(near), 60);
+});
+
+// ---- regain.ts: a beast form and exhaustion ----
+
+await test("Healing a druid in a beast form heals the beast, never past its maximum, and leaves the druid's own hit points alone.", async () => {
+  await stage(crown);
+  world.patch(near.id, { currentHp: 100, wildShape: { form: "Brown Bear", beastHp: 10, beastMaxHp: 34, beastAc: 11 } });
+  assert.equal(regainHitPoints(world.campaign(), null, world.sheet(near.id), 15, "test"), 15);
+  assert.equal(world.sheet(near.id).wildShape.beastHp, 25);
+  assert.equal(hpOf(near), 100, "the druid's own hit points");
+  assert.equal(regainHitPoints(world.campaign(), null, world.sheet(near.id), 50, "test"), 9, "up to the beast's 34");
+  assert.equal(world.sheet(near.id).wildShape.beastHp, 34);
+  world.patch(near.id, { wildShape: null });
+});
+
+await test("Turn the Tide reads a beast form's hit points: a bear at 10 of 34 is healed though the druid's own are full, and a druid low but in a whole bear is not.", async () => {
+  await stage(crown);
+  world.patch(near.id, { currentHp: 100, wildShape: { form: "Brown Bear", beastHp: 10, beastMaxHp: 34, beastAc: 11 } });
+  world.patch(beside.id, { currentHp: 20, wildShape: { form: "Brown Bear", beastHp: 34, beastMaxHp: 34, beastAc: 11 } });
+  const out = await channel(crown, "turn the tide", [4]);
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.sheet(near.id).wildShape.beastHp, 17, "the bear regains 1d6 + 3");
+  assert.equal(hpOf(near), 100);
+  assert.equal(world.sheet(beside.id).wildShape.beastHp, 34);
+  assert.equal(hpOf(beside), 20, "the druid's own hit points wait for the form to end");
+  world.patch(near.id, { wildShape: null });
+  world.patch(beside.id, { wildShape: null });
+});
+
+await test("Exhaustion 4 halves the most healing can bring: 30 points heal a 100-hit-point character at 40 only to 50.", async () => {
+  await stage(crown);
+  world.patch(near.id, { currentHp: 40, exhaustion: 4 });
+  assert.equal(regainHitPoints(world.campaign(), null, world.sheet(near.id), 30, "test"), 10);
+  assert.equal(hpOf(near), 50);
+  world.patch(near.id, { currentHp: 100, exhaustion: 0 });
 });
 
 finish();

@@ -293,6 +293,20 @@ export function wakeStable(campaign: Campaign, characterId: string): string | nu
   return `${sheet.name} comes round with 1 hit point.`;
 }
 
+// A feature that answers a death save in its place (Searing Vengeance,
+// src/lib/dm/searing-vengeance.ts), registered by its module: this one must
+// not import what that one needs (an enemy's damage imports this file).
+// Kept on globalThis, as the dice script's hook is (src/lib/dice.ts): the
+// registering module can load while this one is still evaluating (an import
+// cycle through an enemy's damage), before a module-level binding exists.
+type DeathSaveStandIn = (campaign: Campaign, sheet: CharacterSheet) => string | null;
+declare global {
+  var __odmDeathSaveStandIn: DeathSaveStandIn | undefined;
+}
+export function registerDeathSaveStandIn(hook: DeathSaveStandIn) {
+  globalThis.__odmDeathSaveStandIn = hook;
+}
+
 // One automatic death save, rolled server-side when the initiative pointer
 // passes a dying PC. Publishes the dice card and a table note so both the
 // players and the model (via history) see the result.
@@ -303,6 +317,11 @@ export function rollDeathSave(campaign: Campaign, characterId: string, turnId: s
   const track = sheet?.deathSaves;
   if (!sheet || !track || track.stable || track.dead || sheet.currentHp > 0) {
     return null;
+  }
+  const instead = globalThis.__odmDeathSaveStandIn?.(campaign, sheet) ?? null;
+  if (instead) {
+    tableNote(campaign, instead, "cue-heal");
+    return instead;
   }
   // A death save is a saving throw tied to no ability: it takes what every
   // save takes (exhaustion, Bless and Bane, a paladin's aura, a Ring of

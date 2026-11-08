@@ -394,7 +394,8 @@
    "uses": 1,
    "ability": null,
    "recharge": "long",
-   "guidance": "Triggers when the druid drops to 0 hit points or is incapacitated against their will: as conjure animals with a 9th-level slot, four beasts of the druid's choice (each challenge rating 2 or lower) appear within 20 feet, guard them and attack their foes for an hour without concentration."
+   "passive": true,
+   "guidance": "This is not spent by choice: the next time the druid drops to 0 hit points or is incapacitated by something other than their own doing, the server spends it and four wolves appear beside them as allies, guarding them and attacking their foes for an hour without concentration."
   },
   {
    "id": "sub_fungal_infestation",
@@ -792,7 +793,8 @@
    "uses": 1,
    "ability": null,
    "recharge": "long",
-   "guidance": "Instead of rolling a death save, rise at half hit points, blinding enemies within 30 feet and dealing 2d8 + Charisma radiant damage to them."
+   "passive": true,
+   "guidance": "This is not spent by choice: the next time the warlock would make a death save, the server has them rise at half their hit points instead, on their feet, burning (2d8 + Charisma radiant) and blinding every enemy within 30 feet until the end of their turn, and in a fight the turn is theirs to take."
   },
   {
    "id": "sub_accursed_specter",

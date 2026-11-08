@@ -193,7 +193,9 @@ test("the passive defs are the ones something else spends", () => {
   // Warding Flare, Wrath of the Storm, Entropic Ward and Illusory Self are spent by
   // their reactions, when a hit offers them.
   // Sentinel at Death's Door is spent by its reaction, when a critical offers it.
-  assert.deepEqual(passive, ["relentless_endurance", "inspiration", "relentless_rage", "signature_spell_1", "signature_spell_2", "overchannel", "sub_psionic_recovery", "sub_runic_shield", "sub_shadow_martyr", "sub_warding_flare", "sub_wrath_of_the_storm", "sub_sentinel_at_deaths_door", "sub_blazing_revival", "sub_entropic_ward", "sub_strength_of_the_grave", "sub_illusory_self", "sub_glorious_defense", "sub_undying_sentinel", "sub_arcane_ward", "sub_arcane_ward_raised"]);
+  // Searing Vengeance is spent in place of a death save (searing-vengeance.ts).
+  // Faithful Summons is spent by the incapacity watch as the druid falls (faithful-summons.ts).
+  assert.deepEqual(passive, ["relentless_endurance", "inspiration", "relentless_rage", "signature_spell_1", "signature_spell_2", "overchannel", "sub_psionic_recovery", "sub_runic_shield", "sub_shadow_martyr", "sub_warding_flare", "sub_wrath_of_the_storm", "sub_sentinel_at_deaths_door", "sub_faithful_summons", "sub_blazing_revival", "sub_entropic_ward", "sub_searing_vengeance", "sub_strength_of_the_grave", "sub_illusory_self", "sub_glorious_defense", "sub_undying_sentinel", "sub_arcane_ward", "sub_arcane_ward_raised"]);
 });
 
 test("Relentless Endurance spends once, then refuses", () => {
