@@ -1,3 +1,4 @@
+import { nowIso } from "@/lib/db/core";
 import { z } from "zod";
 import type { Campaign } from "@/lib/db/campaigns";
 import { findFactionByName, getFaction, listFactions, updateFaction } from "@/lib/db/factions";
@@ -81,10 +82,20 @@ export function handleAdjustReputation(campaign: Campaign, rawArguments: string)
   if (!faction) {
     return { error: `No faction called "${args.faction}". Known: ${listFactions(campaign.id).map((entry) => entry.name).join(", ") || "none"}.`, retry: true };
   }
+  // A step of 0 moved nothing and was recorded as standing that "fell".
+  if (args.delta === 0) {
+    return { error: "delta is 0, which moves nothing: give +1 or +2 for regard, -1 or -2 for a grievance, or leave the standing alone.", retry: true };
+  }
   const party = getParty(campaign.id);
   const before = party.reputation[faction.id] ?? 0;
   const after = clampReputation(before + args.delta);
-  setParty(campaign.id, { ...party, reputation: { ...party.reputation, [faction.id]: after } });
+  setParty(campaign.id, {
+    ...party,
+    reputation: { ...party.reputation, [faction.id]: after },
+    reputationMovedAt: { ...party.reputationMovedAt, [faction.id]: nowIso() },
+    // Settled: the closed chapter's review no longer asks for this one.
+    factionReview: party.factionReview ? reviewWithout(party.factionReview, faction.id) : null,
+  });
   if (args.reason) {
     insertFact({
       campaignId: campaign.id,
@@ -138,4 +149,9 @@ export function shiftFactionPower(campaignId: string, factionId: string, power: 
   }
   updateFaction(factionId, { power });
   insertFact({ campaignId, category: "world", subject: faction.name, fact, knownBy: "dm", source: "simulation" });
+}
+
+function reviewWithout(review: { ids: string[]; at: string }, factionId: string): { ids: string[]; at: string } | null {
+  const ids = review.ids.filter((id) => id !== factionId);
+  return ids.length ? { ...review, ids } : null;
 }

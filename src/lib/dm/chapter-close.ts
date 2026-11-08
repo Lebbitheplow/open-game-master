@@ -4,6 +4,7 @@ import { listTranscriptSince } from "@/lib/db/voice-transcript";
 import { renderTranscript } from "@/lib/voice/transcript";
 import { describeInstant } from "@/lib/dm/calendar";
 import { listFactions } from "@/lib/db/factions";
+import { recordFactionReview } from "@/lib/dm/faction-attention";
 import { advanceFactionGoals } from "@/lib/dm/faction-logic";
 import { shiftFactionPower } from "@/lib/dm/faction-tools";
 import {
@@ -598,6 +599,9 @@ export async function maybeCloseChapter(
     for (const moved of advanceFactionGoals(listFactions(campaignId))) {
       shiftFactionPower(campaignId, moved.faction.id, moved.power, moved.fact);
     }
+    // The factions this chapter dealt with whose standing never moved: the
+    // next GM turn is asked to settle each once (issue 870).
+    recordFactionReview(campaignId, transcript, chapter.createdAt, new Date().toISOString());
   } catch (error) {
     console.error("[factions] chapter pass failed", error);
   }

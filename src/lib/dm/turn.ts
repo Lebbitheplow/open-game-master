@@ -297,6 +297,7 @@ import { fireFightEvents, firedEventsNote } from "@/lib/dm/fight-events";
 import { SETTLEMENT_TOOL_NAMES, settlementTools } from "@/lib/dm/settlement-tools";
 import { placeIsWritten, populateSettlement } from "@/lib/dm/settlement";
 import { listFactions } from "@/lib/db/factions";
+import { factionAttention, factionsInPlay } from "@/lib/dm/faction-attention";
 import { getParty } from "@/lib/db/party";
 import { renderFactionsForPrompt } from "@/lib/dm/faction-logic";
 import {
@@ -862,7 +863,7 @@ async function openTurn(
       loreBlock: retrieval.loreBlock,
       loreTrace: retrieval.loreTrace,
       rulesTrace: retrieval.rulesTrace,
-      factionsBlock: renderFactionsForPrompt(listFactions(campaign.id), getParty(campaign.id).reputation, true),
+      factionsBlock: renderFactionsForPrompt(listFactions(campaign.id), getParty(campaign.id).reputation, true, factionAttention(campaign.id)),
       worldBlock: world.block,
       shopsBlock: shopsBlock(campaign),
       preparedFightsBlock: preparedFightsBlock(campaign),
@@ -1530,6 +1531,10 @@ export function profileSignals(campaign: Campaign, sheets: readonly CharacterShe
     // offered while the window is open; and while a step asked in a fight
     // waits for its answer (issue 640).
     advanceReady: !inEncounter && (advanceWindowOpen(campaign) || romanceAnswerOwed(campaign)),
+    // A faction is being dealt with, by name in any language, or a closed
+    // chapter asks for its standing to be settled (issue 870): left to the
+    // English word "faction", the tools were never offered.
+    factions: factionsInPlay(campaign.id),
   };
 }
 
