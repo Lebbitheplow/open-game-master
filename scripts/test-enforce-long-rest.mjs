@@ -334,11 +334,12 @@ await test("the rest goes ahead for those who can take it, and the others are na
   assert.deepEqual(out.result.rested, [table.sheet(rested.id).name]);
   assert.equal(table.sheet(rested.id).currentHp, 30);
   // Eight hours are more than the four a stable creature waits at most: it
-  // wakes with its 1 hit point and nothing else of the rest.
+  // wakes with its 1 hit point and nothing else of the rest, and is on its
+  // feet by the morning.
   const woken = table.sheet(stable.id);
   assert.equal(woken.currentHp, 1);
   assert.equal(woken.deathSaves, null);
-  assert.deepEqual(woken.conditions, ["prone"]);
+  assert.deepEqual(woken.conditions, []);
   assert.equal(woken.resources.second_wind.used, 1);
   assert.equal(table.campaign().clock.longRests[stable.id], undefined);
   // The dying gain nothing from the rest, but eight hours settle their
@@ -372,6 +373,33 @@ await test("a long rest nobody can gain from still happens: the hours pass, a st
   assert.equal(woken.resources.second_wind.used, 1);
   assert.equal(table.campaign().clock.longRests?.[stable.id], undefined);
   assert.equal(table.sheet(fallen.id).currentHp, 0);
+});
+
+await test("the night ends prone for whoever wakes from it able to move, and leaves it on the sleeping and the held", async () => {
+  // Play-test 2026-11-07: both heroes fell to 0 hit points, one was
+  // stabilized and one woke on a natural 20. After a truce and a long rest
+  // both cards still read prone, and the next fight began with them on the
+  // ground: half the movement spent standing, attacks at disadvantage.
+  // Standing costs half a move (SRD 5.1, Being Prone); eight hours pay it.
+  const table = await openTable();
+  const woke = table.addHero({ class: "fighter", level: 3, maxHp: 30 });
+  const stable = table.addHero({ class: "fighter", level: 3, maxHp: 30 });
+  const asleep = table.addHero({ class: "fighter", level: 3, maxHp: 30 });
+  const held = table.addHero({ class: "fighter", level: 3, maxHp: 30 });
+  table.patch(woke.id, { currentHp: 1, conditions: ["prone"] });
+  table.patch(stable.id, { currentHp: 0, deathSaves: STABLE, conditions: ["unconscious", "prone"] });
+  // A sleep that outlasts the night, and a hold with no end of its own: an
+  // unconscious or restrained creature has speed 0 and cannot stand.
+  table.patch(asleep.id, { currentHp: 20, conditions: ["unconscious", "prone"], conditionMeta: { unconscious: { rounds: 12 * 60 * 10 } } });
+  table.patch(held.id, { currentHp: 20, conditions: ["restrained", "prone"] });
+  const out = await longRest(table);
+  assert.equal(out.ok, true, out.error);
+  assert.deepEqual(out.result.rested.sort(), [woke, asleep, held].map((sheet) => table.sheet(sheet.id).name).sort());
+  assert.deepEqual(table.sheet(woke.id).conditions, [], "the hero who rested is still prone");
+  assert.equal(table.sheet(stable.id).currentHp, 1);
+  assert.deepEqual(table.sheet(stable.id).conditions, [], "the hero who woke in the night is still prone");
+  assert.deepEqual(table.sheet(asleep.id).conditions, ["unconscious", "prone"]);
+  assert.deepEqual(table.sheet(held.id).conditions, ["restrained", "prone"]);
 });
 
 await test("a character who wakes at exhaustion level 4 wakes at the halved maximum", async () => {

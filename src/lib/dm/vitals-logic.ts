@@ -5,7 +5,9 @@
 // stabilize.ts, rest-tools.ts) all decide from one place.
 import {
   effectiveMaxHp,
+  effectiveSpeed,
   removeConditionInstances,
+  removeConditions,
   ROUNDS_PER_MINUTE,
   type ConditionMetaMap,
 } from "@/lib/dm/condition-logic";
@@ -71,6 +73,29 @@ export function holdsOn(sheet: { conditions: string[]; deathSaves?: { dead: bool
 export function wakeConditions(held: Held): { conditions: string[]; conditionMeta: ConditionMetaMap } {
   const cleared = removeConditionInstances(held.conditions, held.conditionMeta, UNCONSCIOUS, (entry) => !entry.spell);
   return { conditions: cleared.conditions, conditionMeta: cleared.meta };
+}
+
+// The hours of a rest are time enough to get up. Standing costs half a move
+// (SRD 5.1, Being Prone), and outside a fight there is no turn to pay it
+// from, so nothing ever stood a character who woke on the ground: the prone
+// of a drop to 0 hit points lay through the night and met them in the next
+// fight. Whoever ends a short or long rest awake and able to move is on their
+// feet. Still asleep (stable and not yet woken, a Sleep spell) or held at
+// speed 0 (grappled, restrained), they stay down. Null when nothing changes.
+export function standAfterRest(sheet: Held & {
+  currentHp: number;
+  speed: number;
+  deathSaves?: { dead: boolean } | null;
+}): { conditions: string[]; conditionMeta: ConditionMetaMap } | null {
+  if (sheet.deathSaves?.dead || sheet.currentHp <= 0 || !sheet.conditions.some((entry) => isConditionNamed(entry, PRONE))) {
+    return null;
+  }
+  if (effectiveSpeed(sheet.conditions, sheet.speed) <= 0) {
+    return null;
+  }
+  // Only prone's own note goes with it; the others' notes stay as written.
+  const { meta } = removeConditions(sheet.conditions, sheet.conditionMeta, [PRONE]);
+  return { conditions: sheet.conditions.filter((entry) => !isConditionNamed(entry, PRONE)), conditionMeta: meta };
 }
 
 // A mummy lord's Channel Negative Energy (SRD 5.1, a legendary action):

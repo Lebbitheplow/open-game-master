@@ -40,6 +40,7 @@ import { authoredRestTempHp } from "@/lib/dm/authored-turns";
 import { tranquilityAfterLongRest } from "@/lib/dm/srd-defenses";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
+import { standAfterRest } from "@/lib/dm/vitals-logic";
 
 // The rest engine: short rests spend hit dice with real server rolls, long
 // rests restore HP, slots, and half the hit dice. Every sheet write is
@@ -293,6 +294,9 @@ export function handleTakeRest(
     const resilience = authoredRestTempHp(campaign, resting);
     // Tranquility: an Open Hand monk wakes under Sanctuary (srd-defenses.ts).
     tranquilityAfterLongRest(campaign, resting);
+    // Everyone the night left awake is on their feet, rested or not: one who
+    // began it at 0 hit points and woke in the hours stands up too.
+    standUpAfterRest(campaign, turnId, sheets, "rest_long", reason);
     tableNote(
       campaign,
       `The party takes a long rest (${restedFor})${nowReads ? `. It is now ${nowReads}` : ""}.${
@@ -419,6 +423,7 @@ export function handleTakeRest(
   // a short rest, once per day, spending the tracked use.
   const recovered = applySlotRecovery(campaign, turnId, sheets, reason);
   const resilience = authoredRestTempHp(campaign, sheets.map((sheet) => sheet.id));
+  standUpAfterRest(campaign, turnId, sheets, "rest_short", reason);
 
   tableNote(
     campaign,
@@ -458,6 +463,23 @@ export function handleTakeRest(
   };
 }
 
+// A rest ends prone for whoever wakes from it able to move (vitals-logic.ts
+// standAfterRest), read after the rest's hours have woken the stable.
+function standUpAfterRest(
+  campaign: Campaign,
+  turnId: string,
+  sheets: CharacterSheet[],
+  kind: "rest_long" | "rest_short",
+  reason: string,
+) {
+  for (const stale of sheets) {
+    const sheet = getSheetById(stale.id);
+    const stood = sheet ? standAfterRest(sheet) : null;
+    if (sheet && stood) {
+      auditRest(campaign, turnId, sheet, kind, stood, reason);
+    }
+  }
+}
 
 // Every item waiting on the rest to be attuned becomes attuned, for each
 // character who is not dead. Returns "Name: Item" lines for the result.
