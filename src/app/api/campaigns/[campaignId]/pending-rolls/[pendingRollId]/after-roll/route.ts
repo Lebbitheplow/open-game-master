@@ -14,7 +14,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const choiceSchema = z.union([
-  z.object({ use: z.enum(["lucky", "bardic", "own_luck", "chronal_shift"]) }),
+  z.object({ use: z.enum(["lucky", "bardic", "own_luck", "chronal_shift", "guided_strike", "master_duelist", "favored_by_the_gods"]) }),
   // Which of a luck point's d20s counts.
   z.object({ die: z.number().int().min(0).max(20) }),
   z.object({ keep: z.literal(true) }),
@@ -89,7 +89,7 @@ export async function POST(
       return Response.json({ error: "That is no longer on offer for this roll." }, { status: 409 });
     }
     // The parked turn's spend: its revert gives it back (issue #622).
-    const paid = runInTurnScope(pending.turnId, () => spendAfterRoll(context.campaign, sheet, choice.use, outcome));
+    const paid = runInTurnScope(pending.turnId, () => spendAfterRoll(context.campaign, sheet, choice.use, outcome, pending.advantage));
     if (!paid) {
       return Response.json({ error: "That is no longer on offer for this roll." }, { status: 409 });
     }

@@ -7,6 +7,7 @@
 // Pure; scripts/test-hand-options.mjs drives it.
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { channelOptions, psionicOptions, type HeldOption } from "@/lib/dm/option-costs";
+import { AFTER_ROLL_CHANNEL_OPTION } from "@/lib/dm/after-roll-logic";
 import { VOW_OF_ENMITY } from "@/lib/srd/vow-of-enmity";
 import { authoredSpendFor, heldReaction } from "@/lib/srd/authored-effects";
 import { maneuverDieFor } from "@/lib/dm/maneuver-rules";
@@ -106,6 +107,9 @@ export function optionCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] {
     for (const option of channelOptions(sheet)) {
       // Offered when its trigger comes (hand-react.ts), as a reaction card.
       if (heldReaction(sheet, option.name)) continue;
+      // Guided Strike is chosen after the d20, on the card a miss waits on
+      // (after-roll-logic.ts): played here, the +10 had nothing to ride.
+      if (isNamed(option.name, AFTER_ROLL_CHANNEL_OPTION)) continue;
       // A row of the authored table is dealt as its own card, which carries the
       // row's target and cost (hand-subclass.ts).
       if (authoredSpendFor(sheet, option.name)) continue;
