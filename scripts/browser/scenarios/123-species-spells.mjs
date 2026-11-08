@@ -208,6 +208,11 @@ export default {
         { timeoutMs: 15_000, label: "the character in the library" },
       );
       characterId = hero.id;
+      // The save sends the builder on to the hero's page by itself; opening the
+      // sheet while that navigation is still in flight interrupts one or the
+      // other (CI: "Navigation ... is interrupted by another navigation to
+      // .../ready"). Let the builder leave first.
+      await page.waitForURL((url) => !url.pathname.startsWith("/characters/new"), { timeout: 15_000 }).catch(() => {});
       await t.open(`/characters/${characterId}`);
       const book = page.locator(`${root}[data-species-spell-book]`).locator("visible=true").first();
       await eventually(() => book.count(), { timeoutMs: 30_000, label: "the species' spell book on a fighter's sheet" });
