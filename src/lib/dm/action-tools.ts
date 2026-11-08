@@ -524,6 +524,8 @@ export function handleTakeAction(
     }
     case "use_object":
       return objectAction(
+        campaign,
+        turn,
         sheet,
         args.item,
         args.reason,
