@@ -101,7 +101,7 @@ export function unseenBecause(encounterId: string, viewer: Looker, seen: Looker,
 }
 
 // The conditions' part alone: blinded, invisible, hidden, and the senses that see past them.
-export function unseenByConditions(encounterId: string, viewer: Looker, seen: Looker, options: { hidden?: boolean }): string | null {
+export function unseenByConditions(encounterId: string | null, viewer: Looker, seen: Looker, options: { hidden?: boolean }): string | null {
   const senses = "stats" in viewer ? enemySenses(viewer) : characterSenses(viewer);
   const reach = sensesReaching(encounterId, { refId: viewer.id, senses }, { refId: seen.id });
   const blocked = sightBlockedBy(viewer.conditions, seen.conditions, { ...reach, hidden: options.hidden });
