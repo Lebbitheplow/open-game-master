@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 
 const choiceSchema = z.union([
   // `by`: the wizard whose Chronal Shift this is, on another character's roll.
-  z.object({ use: z.enum(["lucky", "bardic", "own_luck", "chronal_shift"]), by: z.string().min(1).max(80).optional() }),
+  z.object({ use: z.enum(["lucky", "bardic", "own_luck", "chronal_shift", "guided_strike", "master_duelist", "favored_by_the_gods"]), by: z.string().min(1).max(80).optional() }),
   // Which of a luck point's d20s counts.
   z.object({ die: z.number().int().min(0).max(20) }),
   z.object({ keep: z.literal(true) }),
@@ -123,7 +123,7 @@ export async function POST(
     return Response.json({ error: "That is no longer on offer for this roll." }, { status: 409 });
   }
   // The parked turn's spend: its revert gives it back (issue #622).
-  const paid = runInTurnScope(pending.turnId, () => spendAfterRoll(context.campaign, sheet, choice.use, thrown.outcome, wizard ?? undefined));
+  const paid = runInTurnScope(pending.turnId, () => spendAfterRoll(context.campaign, sheet, choice.use, thrown.outcome, pending.advantage, wizard ?? undefined));
   if (!paid) {
     return Response.json({ error: "That is no longer on offer for this roll." }, { status: 409 });
   }
