@@ -509,6 +509,9 @@ export type HeldCall = { id?: string; name: string; rawArguments: string };
 export type WatchStop = {
   calls: HeldCall[];
   tag: RollTag;
+  // Other rolls the number may land on instead, whichever d20 comes first: a
+  // spell at a creature is the caster's attack or the creature's save.
+  also?: RollTag[];
   line: string;
   face: number | null;
   deadline: string;

@@ -1128,7 +1128,7 @@
     ]
    ],
    "recharge": "long",
-   "guidance": "The server rolls these after each long rest and keeps the numbers. On the wizard's own ability check or saving throw from request_roll it offers them before the roll and waits, so do not spend one for them. In a fight their player can watch for it: the server then stops before an attack or a check and puts the number on the d20 itself, and the attack's result says so. Never name or invent a number."
+   "guidance": "The server rolls these after each long rest and keeps the numbers. On the wizard's own ability check or saving throw from request_roll it offers them before the roll and waits, so do not spend one for them. In a fight their player can watch for it: the server then stops before an attack, a check or one creature's save and puts the number on the d20 itself, and the result says so. Never name or invent a number."
   },
   {
    "id": "sub_illusory_self",
