@@ -39,6 +39,11 @@ export type ProficiencyInput = {
   // A character made here names the tools an open grant leaves to it ("three
   // musical instruments"). A stored one may still carry the grant's words.
   requireToolPicks?: boolean;
+  // Tools a subclass or a feat names outright (an Alchemist's alchemist's
+  // supplies, a Chef's cook's utensils). The sheet carries them beside the
+  // class's and background's picks, and the subclass and feat grants write
+  // them back after this; they are not picks of an open tool grant.
+  grantedTools?: string[];
 };
 
 export type ProficiencyVerdict = { problems: string[]; proficiencies: Proficiencies };
@@ -140,13 +145,26 @@ export function judgeProficiencies(input: ProficiencyInput): ProficiencyVerdict 
       (tool) => !grantWords(tool) && !fixedToolKeys.has(toolKey(tool)) && !heldTools.has(toolKey(tool)),
     ),
   ).map(lower);
+  // A tool a subclass or feat names is its grant's, not a pick: read as one
+  // it overfilled the open grant, and every Alchemist, Armorer, Rune Knight,
+  // Drunken Master or Mercy monk whose class or background pick was another
+  // tool was refused ("alchemist's supplies is not a tool this character may
+  // choose"). It still answers the open grant when it is the player's only
+  // pick there (an artificer who took alchemist's supplies as the class's
+  // artisan's tools and then the Alchemist).
+  const grantedToolKeys = new Set((input.grantedTools ?? []).map(toolKey));
+  const ownPicks = toolPicks.filter((tool) => !grantedToolKeys.has(toolKey(tool)));
+  const picked =
+    ownPicks.length < toolPicks.length && toolPickProblem(granted.choices, ownPicks) && !toolPickProblem(granted.choices, toolPicks)
+      ? toolPicks
+      : ownPicks;
   let chosenTools: string[] = [];
-  if (granted.choices.length && toolPicks.length) {
-    const problem = toolPickProblem(granted.choices, toolPicks);
+  if (granted.choices.length && picked.length) {
+    const problem = toolPickProblem(granted.choices, picked);
     if (problem) {
       problems.push(problem);
     }
-    chosenTools = toolPicks;
+    chosenTools = picked;
   }
   if (input.requireToolPicks && granted.choices.length) {
     // Picks kept from the stored character (an edit) answer their choice too.

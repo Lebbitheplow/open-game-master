@@ -352,36 +352,66 @@ await test("Undo from a reopened read-back leaves a pick changed since", async (
 // Domain's Intimidation or Persuasion, Arcane Archer Lore's Arcana or
 // Nature, Cavalier's skill or language) is filled from that list. The fill
 // took any skill, so a Cleric 3 of the Order took History and the save
-// refused it.
-await test("every subclass fills its training from the grant's own skill list, and saves", async () => {
+// refused it. Every other subclass is held to the same end: "Fill what's
+// left" ends in a character the builder and the server both take, at the
+// subclass's first level, at 10th and at 17th. The fill left a kensei's and
+// a bladesinger's weapons owed, an artificer's later infusions and a Rune
+// Knight's later runes unpicked, an Eldritch Knight's spells and an Arcane
+// Trickster's cantrip short at 10th, and a Lore bard's expertise on skills
+// the builder does not count; and the server refused every Alchemist,
+// Armorer, Artillerist, Battle Smith, Rune Knight, Drunken Master and Mercy
+// monk, whose subclass tool it read as an extra pick of the class's.
+await test("every subclass's fill saves, and fills its training from the grant's own lists", async () => {
   const { subclassLevelFor, subclassNamesFor } = await import("../src/lib/srd/features.ts");
   const { featChoice } = await import("../src/lib/schemas/sheet.ts");
   let restricted = 0;
+  let built = 0;
   for (const klass of builder.classes) {
     const pickLevel = subclassLevelFor(klass.id);
     if (pickLevel === null) continue;
     for (const subclass of subclassNamesFor(klass.id)) {
-      for (const level of [Math.max(pickLevel, 3), 10]) {
+      for (const level of [...new Set([Math.max(pickLevel, 3), 10, 17])]) {
         const label = `${klass.id} ${subclass} at ${level}`;
-        const start = fresh({ level, classId: klass.id, subclass });
-        const offers = (derive(start).derived.subclassTraining ?? []).some((grant) => grant.spec.skillsFrom.length);
-        if (!offers) continue;
-        const { fields } = await runFill(start);
-        const built = await saves(fields, label);
-        for (const grant of built.derived.subclassTraining ?? []) {
-          const from = grant.spec.skillsFrom;
-          if (!from.length) continue;
-          restricted += 1;
-          const picked = featChoice(fields.featChoices, grant.name)?.skills ?? [];
-          assert.ok(picked.length, `${label}: ${grant.name} was left unpicked`);
-          assert.deepEqual(picked.filter((skill) => !from.includes(skill)), [], `${label}: ${grant.name} took a skill off its list`);
+        const { fields } = await runFill(fresh({ level, classId: klass.id, subclass }));
+        const made = await saves(fields, label);
+        built += 1;
+        for (const grant of made.derived.subclassTraining ?? []) {
+          const picks = featChoice(fields.featChoices, grant.name) ?? {};
+          for (const [kind, from] of [["skills", grant.spec.skillsFrom], ["tools", grant.spec.toolsFrom], ["weapons", grant.spec.weaponsFrom]]) {
+            if (!from.length) continue;
+            restricted += 1;
+            const picked = picks[kind] ?? [];
+            assert.deepEqual(picked.filter((pick) => !from.some((entry) => entry.toLowerCase() === pick.toLowerCase())), [], `${label}: ${grant.name} took ${kind} off its list`);
+          }
         }
       }
     }
   }
-  // Knowledge, Nature, Order, Peace, Arcane Archer, Cavalier, Samurai and
-  // Fey Wanderer, each at two levels: the test reached the grants it is for.
-  assert.ok(restricted >= 16, `only ${restricted} grants with a skill list were met`);
+  // Knowledge, Nature, Order, Peace, Arcane Archer, Cavalier, Samurai, Fey
+  // Wanderer, Battle Master, Mastermind, Kensei and Bladesinging, each at
+  // three levels: the test reached the grants it is for.
+  assert.ok(built > 300, `only ${built} subclasses filled`);
+  assert.ok(restricted >= 30, `only ${restricted} grants with a list were met`);
+});
+
+// A tool a subclass or a feat names is its own grant, not a pick of the
+// class's or background's open tool grant, whichever tool the player took
+// there; and it still answers that grant when it is the only pick.
+await test("a subclass's or a feat's own tool is no extra pick of the class's", async () => {
+  const alchemist = (await runFill(fresh({ level: 3, classId: "artificer", subclass: "Alchemist" }))).fields;
+  for (const pick of ["smith's tools", "alchemist's supplies"]) {
+    await saves({ ...alchemist, toolPicks: [pick] }, `Alchemist with ${pick} as the artificer's artisan's tools`);
+  }
+  const mercy = (await runFill(fresh({ level: 3, classId: "monk", subclass: "Way of Mercy" }))).fields;
+  await saves({ ...mercy, toolPicks: ["lute"] }, "Way of Mercy with a lute as the monk's tool");
+  // A Chef artificer's cook's utensils are artisan's tools too; a Poisoner
+  // bard's kit is no instrument.
+  for (const [classId, feat, ability] of [["artificer", "Chef", "con"], ["bard", "Poisoner", undefined]]) {
+    const asiChoices = [{ mode: "feat", feat, ...(ability ? { ability } : {}) }];
+    const { fields } = await runFill(fresh({ level: 4, classId, asiChoices }));
+    assert.equal(fields.asiChoices[0]?.feat, feat);
+    await saves(fields, `${classId} with ${feat}`);
+  }
 });
 
 await test("an Order cleric's fill takes Intimidation or Persuasion for Bonus Proficiencies (Order)", async () => {

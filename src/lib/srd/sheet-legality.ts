@@ -573,6 +573,12 @@ export function legalizeSheet(input: CreateSheetInput, context: LegalityContext)
         : null,
     // The builder's doors name the tools an open grant leaves to the player.
     requireToolPicks: context.door === "table" || context.door === "library",
+    // The tools the subclasses and feats name outright come back on with
+    // their grants below; they are not the open grants' picks.
+    grantedTools: [
+      ...subclassTraining.flatMap((grant) => grant.spec.fixedTools),
+      ...feats.feats.flatMap((name) => featGrantSpec(context.featOf(name)?.desc ?? "").fixedTools),
+    ],
   });
   if (policy.judgesPicks) {
     problems.push(...trained.problems);

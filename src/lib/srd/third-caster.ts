@@ -168,6 +168,11 @@ export function thirdCasterList(profile: ThirdCasterProfile): string {
   return PROFILES[profile].list;
 }
 
+// The two schools a profile's levelled spells come from.
+export function thirdCasterSchools(profile: ThirdCasterProfile): readonly string[] {
+  return PROFILES[profile].schools;
+}
+
 export function thirdCasterAbility(profile: ThirdCasterProfile): "int" | "wis" | "cha" {
   return PROFILES[profile].ability;
 }
