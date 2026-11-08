@@ -70,6 +70,14 @@ then choose, per die shape, where that die's numbers come from:
   fallback to typing if it disconnects. Web Bluetooth requires a Chromium-based
   browser and HTTPS (localhost is exempt), the same requirement voice has.
 
+A player on real dice is asked for their attacks and their damage, their
+initiative, and the checks and saves the GM asks for. The table still rolls the
+rest for them: death saves, concentration, and the saves a spell, trap or
+monster forces, since the engine makes those in the middle of resolving
+something else. A roll card says any reroll the player owes it (a halfling's
+Lucky, Great Weapon Fighting, Piercer, Savage Attacker); the face kept is the
+one entered, and dice the server rolls for them take the same rerolls.
+
 When every die in a request is covered by a Pixel or the server, the roll submits
 itself as the last die settles. Dice-source choices are stored in the browser they
 were made in, per device, and the d100 pairs no single Pixel, so it stays typed or

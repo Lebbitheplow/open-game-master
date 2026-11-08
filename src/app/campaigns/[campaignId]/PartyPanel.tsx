@@ -45,6 +45,7 @@ import { usePackArt } from "@/lib/worlds/use-pack-art";
 import { textKey } from "@/lib/language/text-logic";
 import { heroFell, livingHero, switchesHeroes } from "@/lib/characters/fallen-logic";
 import { speciesAndClassWords } from "@/lib/characters/class-words";
+import { REAL_DICE_SCOPE } from "@/lib/dice/held-rolls";
 
 // The portrait cropper (and its cropping library) loads when a portrait is
 // being cropped, not with the table.
@@ -59,8 +60,8 @@ function inspired(sheet: CharacterSheet): boolean {
 }
 
 // Mid-game physical-dice opt-in/out; the same per-member preference the
-// Lobby toggle writes. Turning it ON means the DM pauses on your rolls and
-// asks for the numbers from your real dice.
+// Lobby toggle writes. Turning it ON means the DM pauses on the rolls
+// REAL_DICE_SCOPE names and asks for the numbers from your real dice.
 function RealDiceToggle({
   campaignId,
   member,
@@ -90,8 +91,8 @@ function RealDiceToggle({
       label="Physical dice"
       title={
         member.useRealDice
-          ? "The game pauses on your rolls and asks for your real dice results. Click to switch back to automatic digital rolls."
-          : "Roll your own physical dice: the game will tell you what to roll and wait for your result. Click to opt in."
+          ? `The game pauses for your real dice results. ${REAL_DICE_SCOPE} Click to switch back to automatic digital rolls.`
+          : `Roll your own physical dice: the game tells you what to roll and waits for your result. ${REAL_DICE_SCOPE} Click to opt in.`
       }
       className="w-full text-xs"
     >
