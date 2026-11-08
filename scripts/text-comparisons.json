@@ -1590,6 +1590,7 @@
     "lib/dm/npc-suggest.ts#str-eq": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/object-actions.ts#toLowerCase": [["key",1,"condition label (engine vocabulary)"]],
     "lib/dm/object-damage.ts#re-word": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
+    "lib/dm/object-damage.ts#str-eq": [["key",1,"a damage type, the engine's own English name (a net is cut only by slashing)"]],
     "lib/dm/object-damage.ts#toLowerCase": [["key",1,"damage type"]],
     "lib/dm/ooc-question.ts#\\b": [["key",1,"the @GM (or older @DM) mention marker"]],
     "lib/dm/ooc-question.ts#re-affix": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],

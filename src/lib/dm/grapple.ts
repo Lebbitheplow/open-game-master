@@ -19,6 +19,7 @@
 //     contest (SRD 5.1, Monsters: Grapple Rules for Monsters). A restraint
 //     that lasts "until this grapple ends" ends with it.
 
+import { characterNetEscape, enemyNetEscape, netHolds } from "@/lib/dm/net-hold";
 import { characterTrapEscape, trapHoldOn } from "@/lib/dm/trap-escape";
 import { characterExtinguish, enemyBurning, enemyExtinguish, sheetBurning } from "@/lib/dm/gear-weapon-hit";
 import type { Campaign } from "@/lib/db/campaigns";
@@ -98,7 +99,9 @@ export function characterEscape(
     // (a falling net): src/lib/dm/trap-escape.ts.
     return characterSpellHold(campaign, sheet)
       ? characterSpellEscape(campaign, turn, sheet, spend)
-      : trapHoldOn(campaign, sheet)
+      : netHolds(sheet)
+        ? characterNetEscape(campaign, turn, sheet, spend)
+        : trapHoldOn(campaign, sheet)
         ? characterTrapEscape(campaign, turn, sheet, spend)
         // Alchemist's fire: the action's DC 10 Dexterity check puts it out.
         : sheetBurning(sheet)
@@ -192,9 +195,12 @@ export function enemyEscape(
       saveEncounter(encounter);
       return enemyExtinguish(campaign, turn, enemy);
     }
+    // A net's hold (net-hold.ts): the action and a DC 10 Strength check.
     return enemySpellHold(campaign, enemy)
       ? enemySpellEscape(campaign, turn, enemy)
-      : { error: `${enemy.displayName} is not grappled; there is nothing to escape.`, retry: true };
+      : netHolds(enemy)
+        ? enemyNetEscape(campaign, turn, enemy)
+        : { error: `${enemy.displayName} is not grappled; there is nothing to escape.`, retry: true };
   }
   const allowed = canEnemyAct({ enemy, encounter, kind: "action" });
   if (!allowed.ok) {
