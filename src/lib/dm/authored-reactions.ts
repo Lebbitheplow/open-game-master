@@ -476,18 +476,32 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       return { ...(edge ? { next: edge } : {}), applied: `Rolled again at disadvantage: ${total} against AC ${swing.vsAc} misses, and ${settled.given} hit points come back. HP ${settled.hp}.` };
     }
     case "reroll_hit": {
-      // Unnamed, a reaction that also covers its holder answers the hit on them.
-      const ally = allyOf(ctx) ?? (does.self ? ctx.sheet : null);
-      if (!ally || (ally.id === ctx.sheet.id && !does.self)) {
+      // Unnamed, a reaction that answers the roller answers the hit on its holder.
+      const ally = allyOf(ctx) ?? (does.roller ? ctx.sheet : null);
+      if (!ally || (ally.id === ctx.sheet.id && !does.roller)) {
         return { error: `${reaction.name} protects another creature: pass the ally's targetCharacterId. Nothing was spent.`, retry: true };
       }
-      if (encounter && ally.id !== ctx.sheet.id && !withinFeet(encounter.id, ctx.sheet.id, ally.id, does.rangeFt)) {
+      if (!does.roller && encounter && !withinFeet(encounter.id, ctx.sheet.id, ally.id, does.rangeFt)) {
         return { error: `${ally.name} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
       }
-      const hidden = unseenTarget(ctx, found, ally);
+      const hidden = does.roller ? null : unseenTarget(ctx, found, ally);
       if (hidden) return hidden;
-      const hit = lastHitOn(ctx, ally, label);
-      if ("error" in hit) return hit;
+      // Chronal Shift reaches the creature that rolled, wherever it hit: of the
+      // hits open on the ally, one from an attacker in reach and in sight.
+      const rollerRefusal = (record: LastHit): ToolError | null => {
+        const foe = attackerFoeId(record);
+        if (!does.roller || !encounter || !foe) return null;
+        if (!withinFeet(encounter.id, ctx.sheet.id, foe, does.rangeFt)) {
+          return { error: `${record.attacker.name} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}, and ${reaction.name} answers a roll made within them. Nothing was spent.`, refused: "rules" };
+        }
+        return unseenRefusal(encounter.id, ctx.sheet, record.attacker, reaction.name);
+      };
+      const reachable = (record: LastHit) => (rollerRefusal(record) ? () => false : () => true);
+      const hit = lastHitOn(ctx, ally, label, does.roller ? reachable : undefined);
+      if ("error" in hit) {
+        const open = does.roller ? lastHitOn(ctx, ally, label) : hit;
+        return "error" in open ? hit : (rollerRefusal(open.record) ?? hit);
+      }
       const swing = hit.record.swings[hit.index];
       if (swing.natural === null) {
         return { error: `${reaction.name} answers an attack roll, and this hit had none on record. Nothing was spent.`, refused: "rules" };

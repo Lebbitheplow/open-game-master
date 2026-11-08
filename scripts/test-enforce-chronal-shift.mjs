@@ -4,8 +4,9 @@
 // of you makes an attack roll... you can use your reaction to force that creature
 // to reroll. You make this decision after you see whether the roll succeeds or
 // fails. The target must use the result of the second roll." An attack that hit
-// the wizard or a creature within 30 feet is now answered: a card for it, and
-// the attacker's d20 rolled again, the new roll standing.
+// the wizard or an ally, made from within 30 feet, is now answered: a card for it, and
+// the attacker's d20 rolled again, the new roll standing. The 30 feet are to the
+// creature that rolled, the attacker, not to the one it hit.
 //
 // Dice forced; every check reads a sheet, a card or a refusal.
 import assert from "node:assert/strict";
@@ -121,21 +122,42 @@ await test("The new roll stands when it still hits: the use is spent and the hit
   assert.equal(offered().length, 0);
 });
 
-await test("An ally beyond 30 feet gets no card and is refused with nothing spent; exactly 30 feet reaches.", async () => {
+await test("The 30 feet are to the attacker, wherever the ally it hit stands: an ally 35 feet off is answered, an attacker 35 feet off is not.", async () => {
   const enemy = await stage();
-  await strike(enemy, ally);
-  const apart = () => ({ [ally.id]: tilesApart(kit.token(wizard.id), kit.token(ally.id)) * 5 });
-  kit.place(ally.id, 5, 11);
-  assert.equal(apart()[ally.id], 30);
-  assert.equal(offered(apart()).length, 1);
+  const apart = (id) => tilesApart(kit.token(wizard.id), kit.token(id)) * 5;
+  const feet = () => ({ [ally.id]: apart(ally.id), [enemy.id]: apart(enemy.id) });
+  // The goblin swings from 15 feet at an ally beside it, 35 feet from the wizard.
   kit.place(ally.id, 5, 12);
-  assert.equal(apart()[ally.id], 35);
-  assert.equal(offered(apart()).length, 0);
+  kit.place(enemy.id, 5, 8);
+  kit.place(enemy.id, 5, 11);
+  await strike(enemy, ally);
+  kit.place(enemy.id, 5, 8);
+  assert.equal(feet()[ally.id], 35);
+  assert.equal(offered(feet()).length, 1, "the attacker is 15 feet off");
   const out = await shift([2], ally);
-  assert.match(out.error, /beyond 30 feet/);
-  assert.equal(used(), 0);
-  assert.equal(world.sheet(ally.id).currentHp, 44);
-  assert.ok(reactionKept());
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.sheet(ally.id).currentHp, 50);
+  assert.equal(used(), 1);
+});
+
+await test("An attacker beyond 30 feet gets no card and is refused with nothing spent, on the wizard or an ally beside them; exactly 30 feet reaches.", async () => {
+  for (const target of [ally, wizard]) {
+    const enemy = await stage();
+    kit.place(enemy.id, 5, target === wizard ? 6 : 8);
+    await strike(enemy, target);
+    const feet = () => ({ [ally.id]: tilesApart(kit.token(wizard.id), kit.token(ally.id)) * 5, [enemy.id]: tilesApart(kit.token(wizard.id), kit.token(enemy.id)) * 5 });
+    kit.place(enemy.id, 5, 11);
+    assert.equal(feet()[enemy.id], 30);
+    assert.equal(offered(feet()).length, 1, `30 feet reaches (${target.name})`);
+    kit.place(enemy.id, 5, 12);
+    assert.equal(feet()[enemy.id], 35);
+    assert.equal(offered(feet()).length, 0, `35 feet does not (${target.name})`);
+    const out = await shift([2], target === wizard ? undefined : target);
+    assert.match(String(out.error), /beyond 30 feet/);
+    assert.equal(used(), 0);
+    assert.equal(world.sheet(target.id).currentHp, 44);
+    assert.ok(reactionKept());
+  }
 });
 
 await test("With both uses spent there is no card, and the reaction refuses with nothing changed.", async () => {

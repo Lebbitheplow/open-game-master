@@ -515,7 +515,9 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
   "wizard::Chronal Shift": {
     subclass: "Chronurgy Magic",
     counter: "sub_chronal_shift",
-    reactions: [{ name: "Chronal Shift", pool: { id: "sub_chronal_shift" }, sees: "target", does: { kind: "reroll_hit", rangeFt: 30, self: true } }],
+    // The 30 feet and the sight are to the attacker, the creature that rolled:
+    // whoever it hit, the wizard included.
+    reactions: [{ name: "Chronal Shift", pool: { id: "sub_chronal_shift" }, sees: "attacker", does: { kind: "reroll_hit", rangeFt: 30, roller: true } }],
   },
   "wizard::Convergent Future": {
     subclass: "Chronurgy Magic",

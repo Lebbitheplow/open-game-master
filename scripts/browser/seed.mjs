@@ -3437,9 +3437,9 @@ const bench2Titles = {};
       turnOf(table, runa.id);
       at.runicGm = { id: table.id, runa: { id: runa.id, name: runa.name }, near: { id: near.id, name: near.name } };
     }
-    // ---- 14b: Chronal Shift for a hit on the wizard or a creature within 30
-    // feet: Bran stands beside Ilse, Tam 35 feet off, and a goblin's hit is open
-    // on each of the three ----
+    // ---- 14b: Chronal Shift for a hit by a goblin within 30 feet of the
+    // wizard: Bran stands beside Ilse, Tam 35 feet off with his goblin 40 feet
+    // off, and a goblin's hit is open on each of the three ----
     {
       const table = tableFor(`Chronal Shift Table (${viewport})`, player, world.owner);
       const ilse = sheets.createSheet(table.id, world.owner.id, 2, heroInput({
