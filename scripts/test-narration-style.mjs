@@ -60,11 +60,12 @@ await test("Fight narration (issue #842): every length gets brisk fights, scaled
   const standard = fightNarrationRule("standard");
   assert.equal(fightNarrationRule(undefined), standard, "a campaign that never set a length gets the standard fight line");
   assert.match(standard, /^- FIGHT NARRATION: /);
-  assert.match(standard, /about 50 to 100 words/);
-  assert.match(fightNarrationRule("short"), /at most about 60 words/);
-  assert.match(fightNarrationRule("rich"), /up to about 150 words/);
+  assert.match(standard, /at most about 80 words/);
+  assert.match(fightNarrationRule("short"), /at most about 50 words/);
+  assert.match(fightNarrationRule("rich"), /at most about 150 words/);
   for (const length of ["short", "standard", "rich"]) {
     const line = fightNarrationRule(length);
+    assert.match(line, /at most about \d+ words/, `${length}: a ceiling, never a range a terse model writes up to`);
     assert.match(line, /whose move it is/, length);
     assert.match(line, /replaces the reply length given above until the fight ends/, length);
     assert.match(line, /unless the table's style notes ask for something else/, length);

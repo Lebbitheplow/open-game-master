@@ -394,8 +394,8 @@ test("the fight's narration line (issue #842) rides with the fight rules, below 
   const above = aboveHeading(fighting);
   assert.ok(fighting.includes(`${ENCOUNTER_RULES}\n- FIGHT NARRATION: `), "the line follows the fight rules");
   assert.ok(!above.includes("FIGHT NARRATION"), "nothing above the heading changes when a fight starts");
-  assert.match(fighting, /FIGHT NARRATION: [^\n]*about 50 to 100 words/);
-  assert.match(buildDmMessages(fightingState(2, { narrationLength: "short" }), [])[0].content, /FIGHT NARRATION: [^\n]*at most about 60 words/);
+  assert.match(fighting, /FIGHT NARRATION: [^\n]*at most about 80 words/);
+  assert.match(buildDmMessages(fightingState(2, { narrationLength: "short" }), [])[0].content, /FIGHT NARRATION: [^\n]*at most about 50 words/);
   const quiet = fightingState();
   quiet.encounter = null;
   assert.ok(!buildDmMessages(quiet, [])[0].content.includes("FIGHT NARRATION"), "out of a fight there is no fight line");

@@ -38,10 +38,13 @@ const LENGTH_TEXT: Record<NarrationLength, string> = {
 // the DM starts with start_encounter keeps the scene's length for that reply,
 // whose prompt was built before it; one opened from the table (a prepared or
 // test fight) and the reply that ends a fight are told they may.
+// Each is a ceiling, never a range: gpt-oss-20b, terse in a fight already,
+// wrote up to a "50 to 100 words" target (61 words a fight turn without the
+// line, 74 with it), so a range made a short model pad.
 const FIGHT_LENGTH_TEXT: Record<NarrationLength, string> = {
-  short: "at most about 60 words, one plain sentence for each thing that was resolved",
-  standard: "about 50 to 100 words, a sentence or two more when several creatures acted",
-  rich: "one or two short paragraphs, up to about 150 words",
+  short: "at most about 50 words, one plain sentence for each thing that was resolved",
+  standard: "at most about 80 words, and fewer when little happened",
+  rich: "one or two short paragraphs, at most about 150 words",
 };
 
 export function fightNarrationRule(length: NarrationLength | undefined): string {
