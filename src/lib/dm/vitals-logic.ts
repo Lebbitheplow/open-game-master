@@ -75,14 +75,16 @@ export function wakeConditions(held: Held): { conditions: string[]; conditionMet
   return { conditions: cleared.conditions, conditionMeta: cleared.meta };
 }
 
-// The hours of a rest are time enough to get up. Standing costs half a move
-// (SRD 5.1, Being Prone), and outside a fight there is no turn to pay it
-// from, so nothing ever stood a character who woke on the ground: the prone
-// of a drop to 0 hit points lay through the night and met them in the next
-// fight. Whoever ends a short or long rest awake and able to move is on their
-// feet. Still asleep (stable and not yet woken, a Sleep spell) or held at
-// speed 0 (grappled, restrained), they stay down. Null when nothing changes.
-export function standAfterRest(sheet: Held & {
+// Time passing out of a fight is time enough to get up. Standing costs half
+// a move (SRD 5.1, Being Prone), and outside a fight there is no turn to pay
+// it from, so nothing ever stood a character who woke on the ground: the
+// prone of a drop to 0 hit points lay through a rest, a road or an hour of
+// waiting and met them in the next fight. Whoever the stretch leaves awake
+// and able to move is on their feet (condition-tick.ts tickClockConditions,
+// which a rest, travel and pass_time all run). Still asleep (stable and not
+// yet woken, a Sleep spell) or held at speed 0 (grappled, restrained), they
+// stay down. Null when nothing changes.
+export function standAsTimePasses(sheet: Held & {
   currentHp: number;
   speed: number;
   deathSaves?: { dead: boolean } | null;
