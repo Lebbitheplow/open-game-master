@@ -326,4 +326,29 @@ test("the event log's window keeps eighty real changes, however many rounds tick
   assert.equal(state.auditLog.filter((entry) => entry.id === "c90").length, 1);
 });
 
+// Issue 843: the dice stage hears every roll of a burst, and a revealed roll
+// is thrown again only where it is news.
+const rolled = (id, extra = {}) => ({ id, kind: "attack", visibility: "public", total: 12, breakdown: { terms: [] }, ...extra });
+
+test("a burst of nine rolls reaches the dice stage whole, in order", () => {
+  let next = loaded;
+  for (let index = 0; index < 9; index += 1) {
+    next = campaignReducer(next, event("roll_result", { roll: rolled(`b${index}`), source: "digital" }, 11 + index));
+  }
+  assert.deepEqual(next.recentRolls.map((entry) => entry.roll.id), Array.from({ length: 9 }, (_, index) => `b${index}`));
+  assert.equal("latestRoll" in next, false, "the toast reads the stage, not the newest roll");
+});
+
+test("a revealed roll is staged for a seat that never held it, not for its roller", () => {
+  const secret = rolled("s1", { visibility: "secret" });
+  const roller = campaignReducer(loaded, event("roll_result", { roll: secret, source: "digital" }, 11));
+  const revealed = campaignReducer(roller, event("roll_result", { roll: { ...secret, visibility: "public" }, source: "digital", revealed: true }, 12));
+  assert.equal(revealed.recentRolls.length, 1, "the roller saw it land the first time");
+  assert.equal(revealed.rolls.find((entry) => entry.id === "s1").visibility, "public", "the chip still turns public");
+  const hidden = { ...secret, total: null, breakdown: null, hidden: true };
+  const other = campaignReducer(loaded, event("roll_result", { roll: hidden, source: "digital" }, 11));
+  const shown = campaignReducer(other, event("roll_result", { roll: { ...secret, visibility: "public" }, source: "digital", revealed: true }, 12));
+  assert.deepEqual(shown.recentRolls.map((entry) => entry.seq), [11, 12], "news to a seat that held it hidden");
+});
+
 console.log(`\n${passed} campaign reducer tests passed.`);

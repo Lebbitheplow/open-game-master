@@ -52,7 +52,7 @@ import { DM_TOUR, DM_TOUR_ID, FIRST_TURN_TOUR, PLAYER_TOUR, PLAYER_TOUR_ID } fro
 import { finishTour, useTourFinished } from "@/lib/tours/tour-store";
 import { Composer, type InputKind } from "@/app/campaigns/[campaignId]/Composer";
 import { composerGate } from "@/app/campaigns/[campaignId]/composerGate";
-import { DiceOverlay } from "@/app/campaigns/[campaignId]/DiceOverlay";
+import { DiceOverlay, type OverlayRoll } from "@/app/campaigns/[campaignId]/DiceOverlay";
 import { secretAudience } from "@/lib/dice/secret-audience";
 import {
   requestMotionAccess,
@@ -310,6 +310,9 @@ export function SessionView({
   const [tour, setTour] = useState<"first" | "player" | "dm" | null>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const dice3d = useSyncExternalStore(subscribeDicePref, readDice3d, () => true);
+  // The roll the toast shows: handed over by the dice stage when its dice
+  // land, or in its turn when it is not thrown (issue 843).
+  const [stagedRoll, setStagedRoll] = useState<OverlayRoll | null>(null);
   const toggleDice3d = useCallback(() => {
     window.localStorage.setItem("odm:dice3d", dice3d ? "off" : "on");
     window.dispatchEvent(new Event(DICE3D_EVENT));
@@ -1501,7 +1504,7 @@ export function SessionView({
         ]}
       />
 
-      <RollToast latestRoll={state.latestRoll} sheets={sheets} />
+      <RollToast staged={stagedRoll} sheets={sheets} />
 
       {mobileView !== "chat" && (narrationHeld > 0 || ambienceWaiting) ? (
         <div className="px-2 pb-1 lg:hidden">{audioWaiting}</div>
@@ -1521,7 +1524,7 @@ export function SessionView({
 
       {prep && (prepOpen || prepLeaving) ? <PrepLayer leaving={!prepOpen}>{prep.screen}</PrepLayer> : null}
 
-      {dice3d ? <DiceOverlay rolls={state.recentRolls} enabled /> : null}
+      <DiceOverlay rolls={state.recentRolls} enabled={dice3d} onStage={setStagedRoll} />
       <SceneTitle card={state.titleCard} onShown={markTitleCardShown} />
       <TableBreakBanner tableBreak={tableBreak} meUserId={me.id} mayResume={mayResumeTable} onResume={resumeTable} />
       <SessionHoldBanner
