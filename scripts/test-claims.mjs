@@ -14,10 +14,12 @@ import { READER_PROMPT_START } from "./lib/claims-reader.mjs";
 const { test, finish } = suite("test-claims");
 const world = await openWorld({ gameSettings: { ttsEnabled: false } });
 
-const { checkClaims, claimKindsFor, englishEndsTurn, namedSpeakers, parseReaderReply, readerSystem, renderReaderInput, withoutAsides } = await import(
+const { checkClaims, claimKindsFor, englishEndsTurn, englishKeepsTurn, namedSpeakers, parseReaderReply, quoteAsks, readerSystem, renderReaderInput, withoutAsides } = await import(
   "../src/lib/dm/claims-logic.ts"
 );
-const { leveledSpellNames, readClaims, ruledFor } = await import("../src/lib/dm/claims.ts");
+const { askedThisTurn, leveledSpellNames, readClaims, ruledFor } = await import("../src/lib/dm/claims.ts");
+const { createCompanionUser } = await import("../src/lib/db/users.ts");
+const { createSheet, listSheets, markSheetAsCompanion, setCompanionCommander } = await import("../src/lib/db/sheets.ts");
 const { withoutCombatBookkeeping } = await import("../src/lib/dm/narration-tidy-logic.ts");
 const { guardOutcomes, normalizeSpellName } = await import("../src/lib/dm/engine-boundary.ts");
 const campaigns = await import("../src/lib/db/campaigns.ts");
@@ -98,6 +100,46 @@ await test("The plain English ways a player ends their turn are read beside the 
   for (const said of ["I wasn't sure, but I end my turn.", "Before moving I checked the door. That's my turn.", "Don't end it yet.\n\nOkay, I end my turn."]) {
     assert.equal(englishEndsTurn(said), true, said);
   }
+});
+
+await test("English words that name the end only to keep the turn or ask about it answer without the reader; words that never name it are the reader's (issue 761).", () => {
+  for (const said of ["I cast Web over the goblins. Don't end my turn yet, I want to move after.", "Should I end my turn?", "Before I end my turn, I cast Web."]) {
+    assert.equal(englishKeepsTurn(said), true, said);
+  }
+  for (const said of ["I Dash.", "I attack the goblin.", "Then I end my turn.", "Don't end it yet.\n\nOkay, I end my turn."]) {
+    assert.equal(englishKeepsTurn(said), false, said);
+  }
+});
+
+await test("A turn handed on in a question ends nothing, at a table in any language; a statement beside a question still hands it on (issue 761).", () => {
+  const base = { attackRefs: new Set(), creatureRefs: new Set(), party: new Map(), leveledSpells: new Set(), normalizeSpell: (name) => name, skills: new Set(), spent: new Map(), speakers: new Map(), kinds: ["turn_over"] };
+  const asked = [
+    ["Whurrard manca il colpo. Whurrard, ti resta giusto un passo: lo usi o chiudi qui il turno?", "chiudi qui il turno"],
+    ["Whurrard manca il colpo. Whurrard, ti resta giusto un passo: lo usi o chiudi qui il turno?", "lo usi o chiudi qui il turno?"],
+    ["Avery misses. ¿Terminas tu turno o te mueves?", "Terminas tu turno"],
+    ["Avery misses. Do you end your turn here, or keep moving?", "end your turn here"],
+    ["Avery misses. « Tu finis ton tour ? »", "Tu finis ton tour"],
+    // A player's own words, read the same way.
+    ["Should I end my turn?", "end my turn"],
+  ];
+  for (const [text, quote] of asked) {
+    assert.equal(quoteAsks(text, quote), true, quote);
+    assert.deepEqual(checkClaims([{ kind: "turn_over", quote }], { ...base, text }), [], quote);
+  }
+  const told = [
+    ["Avery misses. Your turn ends. What does Kara do?", "Your turn ends."],
+    ["Avery misses. Your turn ends. What does Kara do?", "Your turn ends. What does Kara do?"],
+    ["Whurrard manca il colpo. Il tuo turno finisce qui.", "Il tuo turno finisce qui"],
+    ["I swing, then I end my turn.", "then I end my turn"],
+  ];
+  for (const [text, quote] of told) {
+    assert.equal(quoteAsks(text, quote), false, quote);
+    assert.equal(checkClaims([{ kind: "turn_over", quote }], { ...base, text }).length, 1, quote);
+  }
+  const system = readerSystem([], false);
+  assert.match(system, /"kind":"turn_over".*Never for: a question, whether about what they do next or about ending the turn/);
+  assert.match(system, /"kind":"turn_over".*a turn that ends only later or not yet/);
+  assert.match(system, /"kind":"turn_over".*an action taken on its own, such as an attack, a spell, a Dash or a Dodge/);
 });
 
 await test("The request lists the kinds, the refs and the narration; the instructions name every skill id.", () => {
@@ -465,6 +507,33 @@ await test("A call that names the character as its actor, a healer or a caster a
     assert.ok(ruledFor(exchange(name, args), mira), `${name} names Mira and rules for her`);
   }
   assert.ok(!ruledFor(exchange("stabilize", { characterId: "someone-else" }), mira), "a call that does not name her is no ruling for her");
+});
+
+await test("A turn asked for its player's answer is one the GM waits on: the character's own, or for a commanded companion its commander's character (issue 761).", () => {
+  const bot = createCompanionUser("Tamsin");
+  const tamsin = createSheet(world.campaignId, bot.id, 3, { ...world.sheet(mira.id), name: "Tamsin" });
+  markSheetAsCompanion(tamsin.id, "party", "steady");
+  const ask = (ids) => [
+    { role: "assistant", content: "", tool_calls: [{ id: "c1", type: "function", function: { name: "request_player_input", arguments: JSON.stringify({ characterIds: ids, prompt: "Move or stop?" }) } }] },
+    { role: "tool", tool_call_id: "c1", content: JSON.stringify({ ok: true }) },
+  ];
+  const campaign = () => world.campaign();
+  const sheets = () => listSheets(world.campaignId);
+  assert.equal(askedThisTurn(campaign(), ask([mira.id]), sheets(), mira.id), true, "the player's own character was asked");
+  assert.equal(askedThisTurn(campaign(), ask(["someone-else"]), sheets(), mira.id), false);
+  assert.equal(askedThisTurn(campaign(), [], sheets(), mira.id), false);
+  // A ruling is no question.
+  const ruling = [
+    { role: "assistant", content: "", tool_calls: [{ id: "c2", type: "function", function: { name: "end_turn", arguments: JSON.stringify({ characterId: mira.id }) } }] },
+    { role: "tool", tool_call_id: "c2", content: JSON.stringify({ ok: true }) },
+  ];
+  assert.equal(askedThisTurn(campaign(), ruling, sheets(), mira.id), false);
+  // Tamsin nobody commands: no human answers for her.
+  assert.equal(askedThisTurn(campaign(), ask([mira.id]), sheets(), tamsin.id), false);
+  setCompanionCommander(tamsin.id, world.owner.id);
+  assert.equal(askedThisTurn(campaign(), ask([mira.id]), sheets(), tamsin.id), true, "her commander's character was asked");
+  assert.equal(askedThisTurn(campaign(), ask([tamsin.id]), sheets(), tamsin.id), true, "she was asked by her own id");
+  setCompanionCommander(tamsin.id, null);
 });
 
 world.close();

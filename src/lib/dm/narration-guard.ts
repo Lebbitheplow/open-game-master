@@ -16,7 +16,7 @@ import {
 } from "@/lib/dm/engine-boundary";
 import { claimKindsFor, withoutSentences, type ClaimKind, type NarrationClaim, type PartRead } from "@/lib/dm/claims-logic";
 import { hasQuotedLine, type SpokenLine } from "@/lib/dm/speech";
-import { guardGate, liveStateFor, readClaims, turnOverFor } from "@/lib/dm/claims";
+import { askedThisTurn, guardGate, liveStateFor, readClaims, turnOverFor } from "@/lib/dm/claims";
 import { exchangeWords } from "@/lib/dm/story-moves";
 import type { GuardKind, GuardOutcome, GuardReport } from "@/lib/narrator-quality";
 
@@ -96,13 +96,20 @@ async function readNarration(
     words: exchangeWords(campaign.id, sheets, turn.createdAt),
   });
   const claims = [...known, ...read];
+  // A turn this DM turn asked its player about stays theirs, whatever the
+  // narration reads as (claims.ts askedThisTurn).
+  const handedOn = waiting && claims.some((claim) => claim.kind === "turn_over") ? waiting : null;
+  const answerAwaited = handedOn !== null && askedThisTurn(campaign, turn.conversation, sheets, handedOn);
+  if (answerAwaited) {
+    console.warn(`[dm-turn] turn ${turn.id}: the narration reads as handing the turn on, but the turn asked its player for an answer; the turn stays theirs.`);
+  }
   return {
     contradictions: ruleClaims(
       claims.filter((claim) => kinds.includes(claim.kind) && claim.kind !== "deed"),
       outcomes,
     ),
     lines: claims.flatMap((claim) => (claim.kind === "speaker" ? [{ line: claim.line, speaker: claim.speaker }] : [])),
-    handedOn: waiting && claims.some((claim) => claim.kind === "turn_over") ? waiting : null,
+    handedOn: answerAwaited ? null : handedOn,
     // A deed is no contradiction: the turn notes the ones nothing recorded
     // (src/lib/dm/deed-claims.ts).
     deeds: claims.flatMap((claim) => (claim.kind === "deed" ? [claim] : [])),

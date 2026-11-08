@@ -2,9 +2,12 @@
 // endTurn ends it with the attack (encounter-tools.ts endTurnAfterAttack),
 // and a narration that hands the turn on ("It is now Kara's turn") ends it
 // after the narration although the model never called end_turn (claims.ts
-// turnOverFor, turn.ts). A narration that asks what they do next ends
-// nothing. The player's own words ("...then I end my turn") end it too, once
-// the DM ruled on what they did (claims.ts readTurnEndInWords). And a later
+// turnOverFor, turn.ts). A narration that asks what they do next, or asks
+// whether they end the turn, ends nothing in any language, and neither does
+// one from a turn that asked that player for their answer (issue 761). The
+// player's own words ("...then I end my turn") end it too, once the DM ruled
+// on what they did (claims.ts readTurnEndInWords); English words that only
+// keep it open answer without the reader. And a later
 // reply in the same turn that recalls a swing the turn already rolled is not
 // sent back as a blow nobody rolled (engine-boundary.ts resolveOutcomes, the
 // turn budget's struck swings).
@@ -129,6 +132,44 @@ await test("A narration that asks what they do next ends nothing", async () => {
   assert.equal(current(), avery.id, "a question about the rest of the turn ended it");
 });
 
+// Issue 761, at an Italian table on 0.33.0: the GM offered the fighter's last
+// step in a question, the reader read the turn handed on, and it ended before
+// the player could answer.
+await test("A narration that asks whether they end the turn ends nothing, though the reader read it as handed on, in any language", async () => {
+  updateGameSettings(world.campaignId, { tableLanguage: "italian" });
+  const goblin = await stage();
+  kit.place(goblin.id, 15, 5);
+  await playerTurn(
+    "Attacco il goblin.",
+    [
+      reply({ calls: [call("pc_attack", { characterId: avery.id, targetEnemyId: goblin.id, weapon: "Longsword" })] }),
+      reply({ text: "Il goblin è troppo lontano per la spada di Avery. Avery, ti resta giusto un passo: lo usi o chiudi qui il turno?" }),
+    ],
+    [[{ kind: "turn_over", quote: "chiudi qui il turno" }], []],
+  );
+  updateGameSettings(world.campaignId, { tableLanguage: "english" });
+  assert.equal(current(), avery.id, "the question about ending the turn ended it");
+});
+
+await test("A narration read as handing the turn on ends nothing when the same turn asked that player for their answer", async () => {
+  const goblin = await stage();
+  kit.place(goblin.id, 15, 5);
+  await playerTurn(
+    "I swing at the goblin.",
+    [
+      reply({
+        calls: [
+          call("pc_attack", { characterId: avery.id, targetEnemyId: goblin.id, weapon: "Longsword" }),
+          call("request_player_input", { characterIds: [avery.id], prompt: "Use the last step, or stop here?" }),
+        ],
+      }),
+      reply({ text: "The goblin is too far off for Avery's blade. One step is left, and the turn ends with it." }),
+    ],
+    [[{ kind: "turn_over", quote: "the turn ends with it" }], []],
+  );
+  assert.equal(current(), avery.id, "the GM asked Avery's player and the turn passed before they answered");
+});
+
 const wordsRead = () => model.readerRequests.some((request) => String(request.messages?.[1]?.content ?? "").includes("Player's words:"));
 
 await test("The player's own words end the turn once the DM ruled on what they did, though nothing else ended it", async () => {
@@ -196,9 +237,10 @@ await test("The player's words that keep the turn open keep it, though the DM ru
       reply({ calls: [call("pc_attack", { characterId: avery.id, targetEnemyId: goblin.id, weapon: "Longsword" })] }),
       reply({ text: "The goblin is too far off for Avery's blade to reach. What does Avery do?" }),
     ],
-    [[], []],
+    // A reader that misreads them is never asked (issue 761).
+    [[], [{ kind: "turn_over", quote: "Don't end my turn yet" }]],
   );
-  assert.equal(wordsRead(), true, "the phrase answered for the reader");
+  assert.equal(wordsRead(), false, "the words that already answered were sent to the reader");
   assert.equal(current(), avery.id, "the words that kept the turn open ended it");
 });
 
