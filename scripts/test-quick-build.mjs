@@ -348,6 +348,52 @@ await test("Undo from a reopened read-back leaves a pick changed since", async (
   assert.deepEqual({ ...after, ...quick.undoFill(before, after, after) }, before);
 });
 
+// A subclass's training that picks a skill from a short list (Order
+// Domain's Intimidation or Persuasion, Arcane Archer Lore's Arcana or
+// Nature, Cavalier's skill or language) is filled from that list. The fill
+// took any skill, so a Cleric 3 of the Order took History and the save
+// refused it.
+await test("every subclass fills its training from the grant's own skill list, and saves", async () => {
+  const { subclassLevelFor, subclassNamesFor } = await import("../src/lib/srd/features.ts");
+  const { featChoice } = await import("../src/lib/schemas/sheet.ts");
+  let restricted = 0;
+  for (const klass of builder.classes) {
+    const pickLevel = subclassLevelFor(klass.id);
+    if (pickLevel === null) continue;
+    for (const subclass of subclassNamesFor(klass.id)) {
+      for (const level of [Math.max(pickLevel, 3), 10]) {
+        const label = `${klass.id} ${subclass} at ${level}`;
+        const start = fresh({ level, classId: klass.id, subclass });
+        const offers = (derive(start).derived.subclassTraining ?? []).some((grant) => grant.spec.skillsFrom.length);
+        if (!offers) continue;
+        const { fields } = await runFill(start);
+        const built = await saves(fields, label);
+        for (const grant of built.derived.subclassTraining ?? []) {
+          const from = grant.spec.skillsFrom;
+          if (!from.length) continue;
+          restricted += 1;
+          const picked = featChoice(fields.featChoices, grant.name)?.skills ?? [];
+          assert.ok(picked.length, `${label}: ${grant.name} was left unpicked`);
+          assert.deepEqual(picked.filter((skill) => !from.includes(skill)), [], `${label}: ${grant.name} took a skill off its list`);
+        }
+      }
+    }
+  }
+  // Knowledge, Nature, Order, Peace, Arcane Archer, Cavalier, Samurai and
+  // Fey Wanderer, each at two levels: the test reached the grants it is for.
+  assert.ok(restricted >= 16, `only ${restricted} grants with a skill list were met`);
+});
+
+await test("an Order cleric's fill takes Intimidation or Persuasion for Bonus Proficiencies (Order)", async () => {
+  const { fields } = await runFill(fresh({ level: 3, classId: "cleric", subclass: "Order Domain" }));
+  const built = await saves(fields, "Order cleric at 3");
+  const { featChoice } = await import("../src/lib/schemas/sheet.ts");
+  assert.ok((built.derived.subclassTraining ?? []).some((entry) => entry.name === "Bonus Proficiencies (Order)"), "the Order Domain's training is offered");
+  const picked = featChoice(fields.featChoices, "Bonus Proficiencies (Order)")?.skills ?? [];
+  assert.equal(picked.length, 1);
+  assert.ok(["intimidation", "persuasion"].includes(picked[0]), `the Order's pick is ${picked[0]}`);
+});
+
 await test("Pick for me on the subclass card fills only the subclass", async () => {
   const start = fresh({ level: 3, classId: "fighter", raceId: "human", backgroundId: "soldier" });
   const { fields, filled } = await runFill(start, { only: ["subclass"] });

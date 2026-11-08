@@ -312,7 +312,13 @@ function fillFeatPicks(
   // Held from here on, so the next grant picks another: a ranger's three
   // Favored Enemy languages were all the same one.
   for (const language of out.languages ?? []) held.languages.add(textKey(language));
-  top("skills", spec.skills + (spec.anyKinds.includes("skills") ? spec.any : 0), skillOrder(ctx, held.skills));
+  // From the grant's own list where it names one, as the save checks
+  // (feat-grants.ts): an Order cleric's fill took History for a pick of
+  // Intimidation or Persuasion, and the save then refused the build while
+  // the picker, its one slot taken by a skill it does not show, could not
+  // put it right.
+  const skillsFrom = spec.skillsFrom.length ? spec.skillsFrom : ALL_SKILLS;
+  top("skills", spec.skills + (spec.anyKinds.includes("skills") ? spec.any : 0), skillOrder(ctx, held.skills, skillsFrom));
   for (const skill of out.skills ?? []) held.skills.add(skill);
   top("expertise", spec.expertise, [...held.skills]);
   top("tools", spec.tools, spec.toolsFrom.filter((tool) => !held.tools.has(textKey(tool))));
