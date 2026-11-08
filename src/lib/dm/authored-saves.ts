@@ -115,22 +115,27 @@ function unseenByConditions(encounterId: string, viewer: Looker, seen: Looker, o
   return blocked === "blinded" ? `${lookerName(viewer)} is blinded` : `${lookerName(seen)} is ${blocked}`;
 }
 
-// The refusal for a reaction its holder cannot see the creature for, or null.
-// The conditions count as they do for a Channel Divinity (an invisible
-// attacker, a blinded holder); the board alone let a blinded rogue Uncanny
-// Dodge. Hiding does not: the attack gave the attacker away, and an ally
-// hides from the foes, not from its friends.
-export function unseenRefusal(encounterId: string | undefined, holder: { id: string; name: string }, seen: { id: string | null; name: string }, feature: string): { error: string; refused: "rules" } | null {
-  if (!encounterId || !seen.id) {
-    return null;
-  }
-  const looker = getSheetById(holder.id);
-  const other = getEnemy(seen.id) ?? getSheetById(seen.id);
+// Why a character cannot see a creature for a reaction whose text says "a
+// creature you can see", or null: the conditions as a Channel Divinity reads
+// them (an invisible attacker, a blinded holder), then the board's line of
+// sight. The board alone let a blinded rogue Uncanny Dodge. Hiding does not
+// count: the attack gave the attacker away, and an ally hides from the foes,
+// not from its friends. The player's Hand deals by the same answer
+// (battlemap/view.ts `unseen`).
+export function reactionUnseen(encounterId: string, holderId: string, seenId: string): { why: string | null } | null {
+  const looker = getSheetById(holderId);
+  const other = getEnemy(seenId) ?? getSheetById(seenId);
   const why = looker && other ? unseenByConditions(encounterId, looker, other, { hidden: false }) : null;
-  if (!why && seesOnBoard(encounterId, holder.id, seen.id)) {
+  return why || !seesOnBoard(encounterId, holderId, seenId) ? { why } : null;
+}
+
+// The refusal for a reaction its holder cannot see the creature for, or null.
+export function unseenRefusal(encounterId: string | undefined, holder: { id: string; name: string }, seen: { id: string | null; name: string }, feature: string): { error: string; refused: "rules" } | null {
+  const unseen = encounterId && seen.id ? reactionUnseen(encounterId, holder.id, seen.id) : null;
+  if (!unseen) {
     return null;
   }
-  const lead = why ? `${holder.name} cannot see ${seen.name} (${why})` : `${holder.name} has no line of sight to ${seen.name}`;
+  const lead = unseen.why ? `${holder.name} cannot see ${seen.name} (${unseen.why})` : `${holder.name} has no line of sight to ${seen.name}`;
   return { error: `${lead}, and ${feature} answers a creature they can see. Nothing was spent.`, refused: "rules" };
 }
 

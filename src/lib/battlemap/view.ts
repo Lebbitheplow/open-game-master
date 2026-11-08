@@ -12,6 +12,7 @@ import { applyField, resolveField } from "@/lib/dm/effects-logic";
 import { getActiveBoard, getActiveEncounter, getEnemy, listEnemies, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { listDroppedItems } from "@/lib/db/dropped-items";
 import { spaceOf, tilesApart, tokenFootprint } from "@/lib/dm/board-reach";
+import { reactionUnseen } from "@/lib/dm/authored-saves";
 import { speedFor } from "@/lib/srd";
 import { wearsBodyArmor } from "@/lib/srd/authored-effects";
 import { getMounts } from "@/lib/db/mounts";
@@ -32,7 +33,6 @@ import {
 } from "@/lib/db/battle-maps";
 import {
   darkvisionTilesFromText,
-  hasLineOfSightBetween,
   perceivesToken,
   visibleTiles,
   type Viewer,
@@ -626,14 +626,12 @@ export function buildPlayerMapView(
           // measures them; only those this viewer is shown.
           const shown = new Set(shownTokens.map((token) => token.id));
           const others = tokens.filter((token) => token.id !== myToken.id && shown.has(token.id));
-          // Line of sight as the engine reads it (authored-saves.ts seesOnBoard).
-          const sight = sightTerrainFor(map);
+          // Sight as the engine reads it for a reaction (authored-saves.ts
+          // reactionUnseen): the line of sight, a blinded character, an
+          // invisible creature.
           return {
             feet: Object.fromEntries(others.map((token) => [token.refId, tilesApart(myToken, token) * 5])),
-            unseen: others
-              .filter((token) => token.x >= 0 && token.y >= 0 && token.x < map.width && token.y < map.height)
-              .filter((token) => !hasLineOfSightBetween(sight, map.width, spaceOf(myToken), spaceOf(token)))
-              .map((token) => token.refId),
+            unseen: others.filter((token) => reactionUnseen(encounter.id, sheet.id, token.refId)).map((token) => token.refId),
           };
         })()
       : {}),

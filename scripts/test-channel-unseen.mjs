@@ -207,4 +207,16 @@ await test("Uncanny Dodge is refused against an invisible attacker and while the
   assert.equal(hidden.ok, true, hidden.error);
 });
 
+// The Hand deals a reaction only for a creature its player sees, by the board
+// view's `unseen` list: it reads the same conditions, so a blinded rogue is
+// not offered a card the engine would refuse.
+const { buildPlayerMapView } = await import("../src/lib/battlemap/view.ts");
+await test("A blinded rogue's board view lists the goblin beside her as unseen, so no Uncanny Dodge card is dealt for it.", async () => {
+  const [, seen] = await stage(rogue);
+  assert.equal(buildPlayerMapView(world.campaignId, world.owner.id).unseen.includes(seen.id), false, "seen in the open");
+  world.patch(rogue.id, { conditions: ["blinded"], conditionMeta: {} });
+  assert.ok(buildPlayerMapView(world.campaignId, world.owner.id).unseen.includes(seen.id), "a blinded rogue still sees the goblin");
+  world.patch(rogue.id, { conditions: [], conditionMeta: {} });
+});
+
 finish();
