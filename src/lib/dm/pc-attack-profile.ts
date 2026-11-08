@@ -41,7 +41,7 @@ import type { CreatureAttack } from "@/lib/srd/creature-attacks";
 import { noneNamed, type ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { weaponMaterial } from "@/lib/dm/damage-logic";
-import { hasName, namesOf } from "@/lib/dm/cast-rules";
+import { grantedCastOf, hasName, namesOf } from "@/lib/dm/cast-rules";
 import { paidByItem, runningItemSpell } from "@/lib/srd/item-cast-credit";
 import { scrollNumbers } from "@/lib/dm/consumables";
 import { itemCastOpen } from "@/lib/dm/item-casts";
@@ -179,7 +179,13 @@ export function buildAttackProfile(
     // of theirs, as it runs on too.
     // So is a later ray of a casting an item made this turn.
     const fromItem = paidByItem(sheet, spellName) ?? itemCastOpen(campaignId, sheet, spellName);
-    if (!castsSpells(sheet) && !fromItem) {
+    // A spell the species or its chosen option gives (a workshop Mistkin's
+    // Fire Bolt), or an invocation's, sits on no class list and needs no
+    // Spellcasting feature: the cast guard reads the same grant
+    // (src/lib/srd/granted-casts.ts), so this check reads it too. It read
+    // only the class lists, and refused a cantrip the Hand dealt.
+    const grant = grantedCastOf(sheet, spellName, spellFactsFor(spellName, sheetSpellAuthors(sheet)));
+    if (!castsSpells(sheet) && !fromItem && !grant) {
       return { error: `${sheet.name} cannot cast spells.`, refused: "rules" };
     }
     // The content pack knows how a known spell resolves; a save or buff
@@ -192,7 +198,7 @@ export function buildAttackProfile(
     const mechDamageType = resolvedMech?.mech.damageType;
     const spellList = allSpellNames(sheet.spellcasting);
     const spellNames = namesOf(spellName, spellFactsFor(spellName, sheetSpellAuthors(sheet)));
-    const onList = Boolean(fromItem) || hasName(spellList, spellNames);
+    const onList = Boolean(fromItem) || Boolean(grant) || hasName(spellList, spellNames);
     if (!onList) {
       // A spell the rules know is one they lack; a name nobody knows is the
       // call's to fix, from their list.
