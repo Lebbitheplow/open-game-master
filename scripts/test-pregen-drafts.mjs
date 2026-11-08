@@ -276,9 +276,10 @@ await test("every class the builder offers drafts to a legal sheet at levels 1, 
       assert.ok(verdict.ok, `${klass.id} at ${level} is not legal: ${verdict.problems?.join("; ")}`);
     }
   }
-  // Only the artificer's late infusions are left to the player by the
-  // engine today; any other class swapped is a new gap.
-  assert.deepEqual(swapped, ["artificer 20"]);
+  // The fill picks every option whose prerequisite the character meets
+  // (quickBuild.ts), so a level 20 artificer's late infusions are filled
+  // too; any class swapped is a new gap.
+  assert.deepEqual(swapped, []);
   desk.world.close();
 });
 

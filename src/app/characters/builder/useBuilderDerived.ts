@@ -547,8 +547,8 @@ export function useBuilderDerived({
       // The first class's saves only: a class taken second gives none.
       saves: klass?.saves ?? [],
       skills,
-      // Expertise picks only count while still proficient in the skill.
-      expertise: expertisePicks.filter((skillId) => expertiseAllowed(skillId, skills, classList.map((entry) => entry.id))),
+      // The class's expertise is placed below, once every skill is in.
+      expertise: [] as string[],
       // A class teaches its own secret tongue: Druidic to a druid, Thieves'
       // Cant to a rogue. Without this a druid could never speak Druidic even
       // though the feature says they do.
@@ -574,7 +574,13 @@ export function useBuilderDerived({
     }).proficiencies;
     // And the subclass's training (issue 251): a Life Domain's heavy armor,
     // a Lore bard's three skills as picked on the class step.
-    return applySubclassTraining({ proficiencies: withFeats, grants: subclassTraining, choices: featChoices, strict: false }).proficiencies;
+    const trained = applySubclassTraining({ proficiencies: withFeats, grants: subclassTraining, choices: featChoices, strict: false }).proficiencies;
+    // Expertise picks only count while still proficient in the skill: any
+    // of them (SRD 5.1, Bard and Rogue: "choose two of your skill
+    // proficiencies"), a Lore bard's subclass skills and a feat's among them,
+    // as the level-up already allows.
+    const own = expertisePicks.filter((skillId) => expertiseAllowed(skillId, trained.skills, classList.map((entry) => entry.id)));
+    return { ...trained, expertise: [...new Set([...own, ...(trained.expertise ?? [])])] };
   }, [proficientSkills, klass, classList, grants, classLanguages, race, background, expertisePicks, bonusLanguages, trainedTools, featNames, featDescOf, featChoices, subclassTraining]);
 
   // Hit points as the server will work them out (builderHp.ts): lineage,
@@ -1210,6 +1216,9 @@ export function useBuilderDerived({
     abilities,
     shownAbilities,
     proficientSkills,
+    // The skills a class's expertise may double: every one the character
+    // holds, its subclass's and feats' too.
+    expertiseSkills: training.skills,
     toolGrants,
     featNames,
     featDescOf,

@@ -323,11 +323,25 @@ export function applyFeatGrants(input: FeatGrantInput): FeatGrantVerdict {
   };
 }
 
+// The skills these grants pick and double themselves (Knowledge Domain's
+// Blessings of Knowledge), as featChoices records them: the expertise a
+// sheet holds on them is the grant's, not the class's.
+export function pickedExpertiseSkills(grants: ReadonlyArray<{ name: string; spec: Pick<FeatGrantSpec, "pickedExpertise"> }>, choices: FeatChoices | undefined): Set<string> {
+  return new Set(
+    grants.filter((grant) => grant.spec.pickedExpertise).flatMap((grant) => (featChoice(choices, grant.name)?.skills ?? []).map(lower)),
+  );
+}
+
 // The training without the picks these feats made: what an edit starts
 // from, so a Linguist's languages re-picked in the edit replace the old
 // ones rather than pile on them. Fixed grants (armor) stay: they are the
 // feat's whether or not it is re-picked, and the regrant adds them again.
-export function withoutFeatPicks(proficiencies: Proficiencies, choices: FeatChoices | undefined): Proficiencies {
+// `doubled`: the picked skills whose grant doubles them itself (Knowledge
+// Domain's, pickedExpertiseSkills); their expertise comes off with them. A
+// class's expertise on another picked skill (a Lore bard's college skill)
+// stays, as SRD 5.1 lets it double any skill proficiency. Without it, every
+// picked skill's expertise comes off, as before.
+export function withoutFeatPicks(proficiencies: Proficiencies, choices: FeatChoices | undefined, doubled?: ReadonlySet<string>): Proficiencies {
   if (!choices) {
     return proficiencies;
   }
@@ -343,7 +357,7 @@ export function withoutFeatPicks(proficiencies: Proficiencies, choices: FeatChoi
     ...proficiencies,
     languages: proficiencies.languages.filter((entry) => !languages.has(lower(entry))),
     skills: proficiencies.skills.filter((entry) => !skills.has(lower(entry))),
-    expertise: (proficiencies.expertise ?? []).filter((entry) => !expertise.has(lower(entry)) && !skills.has(lower(entry))),
+    expertise: (proficiencies.expertise ?? []).filter((entry) => !expertise.has(lower(entry)) && !(doubled ?? skills).has(lower(entry))),
     weapons: proficiencies.weapons.filter((entry) => !weapons.has(lower(entry))),
     tools: proficiencies.tools.filter((entry) => !tools.has(lower(entry))),
     armor: proficiencies.armor.filter((entry) => !armor.has(lower(entry))),

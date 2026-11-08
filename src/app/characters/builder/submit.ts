@@ -312,7 +312,7 @@ export function callingBlocks(
   // panel draws: a pick in a dropped skill is not a pick.
   const expertiseLeft =
     expertiseSlots -
-    state.expertisePicks.filter((skillId) => expertiseAllowed(skillId, derived.proficientSkills, classIds)).length;
+    state.expertisePicks.filter((skillId) => expertiseAllowed(skillId, derived.expertiseSkills ?? derived.proficientSkills, classIds)).length;
   if (expertiseLeft > 0) {
     owed.push(block("expertise", `Pick ${expertiseLeft} more ${expertiseLeft === 1 ? "skill" : "skills"} you are especially good at (expertise).`));
   }
@@ -688,8 +688,10 @@ export function buildBuilderResult(input: SubmitInput): BuilderResult {
   const proficiencies = {
     ...preview.proficiencies,
     skills,
+    // A subclass's or feat's skill may take the class's expertise too; the
+    // server adds those skills back with their grants.
     expertise: picks.expertisePicks.filter((skill) =>
-      expertiseAllowed(skill, skills, multiclass ? classes.map((entry) => entry.id) : [klass.id]),
+      expertiseAllowed(skill, [...skills, ...(derived.expertiseSkills ?? [])], multiclass ? classes.map((entry) => entry.id) : [klass.id]),
     ),
     languages: [
       ...new Set([

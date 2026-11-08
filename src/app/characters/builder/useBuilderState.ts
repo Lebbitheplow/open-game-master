@@ -18,7 +18,8 @@ import { innateCantripsFor } from "@/lib/srd/racial-grants";
 import { withSpeciesVariant } from "@/lib/content/species-variants";
 import { classListFor } from "@/lib/srd/multiclass";
 import { halfFeatPicks, halfFeatPoints } from "@/lib/srd/legality/half-feats";
-import { withoutFeatPicks, type FeatChoices, type FeatPicks } from "@/lib/srd/feat-grants";
+import { pickedExpertiseSkills, withoutFeatPicks, type FeatChoices, type FeatPicks } from "@/lib/srd/feat-grants";
+import { subclassGrants } from "@/lib/srd/subclass-training";
 import { racialFeatCount } from "@/lib/srd/race-id";
 import { racialCantripsOf } from "@/lib/srd/racial-cantrips";
 import { holdsFeature, reachesPrimalChampion, withoutPrimalChampion } from "@/lib/srd/trait-rules";
@@ -696,7 +697,14 @@ export function useBuilderState({
       // Skilled's skills) is theirs, held by FeatChoicesFields: read as a
       // bonus language or a class skill it overflowed the slots and was
       // reported as no longer on offer.
-      const held = withoutFeatPicks(initial.proficiencies, initial.featChoices);
+      // A class's expertise on a picked skill (a Lore bard's college skill)
+      // stays a pick; the skills a grant doubles itself (Knowledge Domain's)
+      // come off with it.
+      const doubled = pickedExpertiseSkills(
+        subclassGrants(classListFor({ class: initial.class, subclass: initial.subclass, level: storedLevel, classes: initial.classes })),
+        initial.featChoices,
+      );
+      const held = withoutFeatPicks(initial.proficiencies, initial.featChoices, doubled);
       // The skills picked for each class: the first class's own, then the
       // one a class taken second let the player pick.
       const stored = splitStoredSkills(
