@@ -16,6 +16,7 @@ const { deriveHand, FRESH_TURN } = await import("../src/lib/battlemap/hand.ts");
 const { directCardCall } = await import("../src/lib/dm/intent-logic.ts");
 const { endTurns } = await import("../src/lib/dm/turn-end.ts");
 const { coverFor } = await import("../src/lib/dm/attack-spatial.ts");
+const { healCasterHalf } = await import("../src/lib/dm/spell-attack-riders.ts");
 
 // Level 9, every ability 16 (+3), 100 hit points.
 const hero = (classId, subclass) =>
@@ -249,6 +250,16 @@ await test("Twilight Shroud gives the cleric and allies in the sanctuary half co
   kit.place(shroud.id, 0, 17);
   lay(twilight);
   assert.equal(coverFor(encounterId, enemy.id, near.id), 0, "a 9th-level cleric has no shroud");
+});
+
+await test("Vampiric Touch's half of the damage is healing like any other: a caster Chill Touch grips regains none of it.", async () => {
+  await stage(near, { [near.id]: 50 });
+  world.patch(near.id, { conditions: ["chill touch"], conditionMeta: { "chill touch": { rounds: 10 } } });
+  assert.equal(healCasterHalf(world.campaign(), near.id, 20, "Vampiric Touch"), null);
+  assert.equal(hpOf(near), 50, "gripped");
+  world.patch(near.id, { conditions: [], conditionMeta: {} });
+  assert.match(String(healCasterHalf(world.campaign(), near.id, 20, "Vampiric Touch")), /regains 10 hit points/);
+  assert.equal(hpOf(near), 60);
 });
 
 finish();

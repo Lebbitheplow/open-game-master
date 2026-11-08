@@ -18,13 +18,12 @@
 // A "until the start of" effect is untilTurnOf; a "before the end of" one is
 // untilTurnEndOf, ended as that turn ends (src/lib/dm/turn-end.ts).
 
+import { regainHitPoints } from "@/lib/dm/regain";
 import { getFoe } from "@/lib/dm/sheet-foe";
-import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import type { Campaign } from "@/lib/db/campaigns";
 import { patchEnemyConditions } from "@/lib/db/encounters";
-import { insertSheetAudit } from "@/lib/db/sheet-audit";
-import { getSheetById, patchSheet } from "@/lib/db/sheets";
-import { publishPersisted } from "@/lib/events";
-import { effectiveMaxHp, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { getSheetById } from "@/lib/db/sheets";
+import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { untilTurnEnd } from "@/lib/dm/turn-end";
 import { layEnfeeblement } from "@/lib/dm/spell-retort";
@@ -148,26 +147,11 @@ export function healCasterHalf(campaign: Campaign, casterId: string, dealt: numb
   if (!sheet || amount <= 0 || sheet.currentHp <= 0) {
     return null;
   }
-  const currentHp = Math.min(effectiveMaxHp(sheet), sheet.currentHp + amount);
-  if (currentHp === sheet.currentHp) {
+  // Under the heal tool's rules (regain.ts): a caster Chill Touch grips, or in
+  // a beast form, is healed as any heal would heal them.
+  const gained = regainHitPoints(campaign, null, sheet, amount, `${spell}: half the necrotic damage dealt`);
+  if (gained <= 0) {
     return null;
   }
-  const patch = { currentHp };
-  const updated = patchSheet(sheet.id, patch);
-  const entry = insertSheetAudit({
-    campaignId: campaign.id,
-    characterId: sheet.id,
-    turnId: null,
-    kind: "heal",
-    delta: { amount: currentHp - sheet.currentHp, currentHp },
-    reason: `${spell}: half the necrotic damage dealt`,
-    seq: allocateSeq(campaign.id),
-    before: sheet,
-    patch,
-  });
-  publishPersisted(campaign.id, "sheet_audit", { entry, characterName: sheet.name });
-  if (updated) {
-    publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
-  }
-  return `${spell}: ${sheet.name} regains ${currentHp - sheet.currentHp} hit points`;
+  return `${spell}: ${sheet.name} regains ${gained} hit points`;
 }
