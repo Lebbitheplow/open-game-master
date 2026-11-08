@@ -296,10 +296,15 @@ export function wakeStable(campaign: Campaign, characterId: string): string | nu
 // A feature that answers a death save in its place (Searing Vengeance,
 // src/lib/dm/searing-vengeance.ts), registered by its module: this one must
 // not import what that one needs (an enemy's damage imports this file).
+// Kept on globalThis, as the dice script's hook is (src/lib/dice.ts): the
+// registering module can load while this one is still evaluating (an import
+// cycle through an enemy's damage), before a module-level binding exists.
 type DeathSaveStandIn = (campaign: Campaign, sheet: CharacterSheet) => string | null;
-let standIn: DeathSaveStandIn | null = null;
+declare global {
+  var __odmDeathSaveStandIn: DeathSaveStandIn | undefined;
+}
 export function registerDeathSaveStandIn(hook: DeathSaveStandIn) {
-  standIn = hook;
+  globalThis.__odmDeathSaveStandIn = hook;
 }
 
 // One automatic death save, rolled server-side when the initiative pointer
@@ -313,7 +318,7 @@ export function rollDeathSave(campaign: Campaign, characterId: string, turnId: s
   if (!sheet || !track || track.stable || track.dead || sheet.currentHp > 0) {
     return null;
   }
-  const instead = standIn?.(campaign, sheet) ?? null;
+  const instead = globalThis.__odmDeathSaveStandIn?.(campaign, sheet) ?? null;
   if (instead) {
     tableNote(campaign, instead, "cue-heal");
     return instead;
