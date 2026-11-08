@@ -2318,6 +2318,51 @@ const witchBolt = {};
     witchBolt[viewport] = { id: table.id, wizard: wizard.id, goblin: goblin.id };
   }
 }
+// Tides of Chaos (scenario tides-of-chaos-card): per viewport, a Wild Magic
+// sorcerer's turn in a fight with the feature's one use still there.
+const tidesOfChaos = {};
+{
+  const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
+  const encounterRows = await import("../../src/lib/db/encounters.ts");
+  const { initiativeFloorFor } = await import("../../src/lib/dm/encounter-tools.ts");
+  for (const viewport of ["desktop", "phone"]) {
+    const table = campaigns.createCampaign(player.id, {
+      title: `Chaos Table (${viewport})`,
+      description: "A wild sorcerer and a goblin.",
+      theme: "high-fantasy",
+      maxPlayers: 6,
+      startingLevel: 3,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human" },
+    });
+    const seated = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+    if ("error" in seated) {
+      throw new Error(`could not seat the lead at the chaos table: ${seated.error}`);
+    }
+    campaigns.setCampaignStatus(table.id, "active");
+    const sorcerer = sheets.createSheet(
+      table.id,
+      world.owner.id,
+      3,
+      heroInput({ name: "Ivo Quill", class: "sorcerer", subclass: "Wild Magic", level: 3, maxHp: 20, abilities: { dex: 14, con: 14, cha: 17 } }),
+    );
+    const started = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: player.id }, {
+      name: "start_encounter",
+      args: { enemies: [{ monster: "goblin", count: 1 }] },
+    });
+    if (!started.ok) {
+      throw new Error(`the chaos table's fight did not start: ${started.error}`);
+    }
+    const encounter = encounterRows.getActiveEncounter(table.id);
+    const place = encounter.order.findIndex((entry) => entry.characterId === sorcerer.id);
+    if (place < 0) {
+      throw new Error("the chaos table's sorcerer has no place in the order");
+    }
+    encounterRows.saveEncounter({ ...encounter, orderReady: true, turnIndex: place, turnBudget: null, legendary: { ...encounter.legendary, due: [] } });
+    campaigns.setFloor(table.id, initiativeFloorFor(table.id) ?? { mode: "open" });
+    tidesOfChaos[viewport] = { id: table.id, sorcerer: sorcerer.id };
+  }
+}
 
 // A tiefling fighter's Infernal Legacy (scenario species-spells, issue
 // #833): per viewport, on her turn in a fight, a 5th-level fighter whose race casts
@@ -3323,6 +3368,7 @@ const ids = {
   qualityTurnIds,
   spellbook,
   witchBolt,
+  tidesOfChaos,
   speciesSpells,
   noticeTables,
   afterRollTables,
