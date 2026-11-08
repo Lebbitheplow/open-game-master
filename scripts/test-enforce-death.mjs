@@ -519,7 +519,11 @@ await test("a stable creature regains 1 hit point when its 1d4 hours have passed
   await world.invoke("pass_time", { amount: 1, unit: "minutes" });
   assert.equal(hp(), 1);
   assert.equal(track(), null);
+  // Woken on the stretch's last round, it has had no time to get up; a
+  // minute more and it is on its feet (condition-tick.ts tickClockConditions).
   assert.deepEqual(world.sheet(hero.id).conditions, ["prone"]);
+  await world.invoke("pass_time", { amount: 1, unit: "minutes" });
+  assert.deepEqual(world.sheet(hero.id).conditions, []);
 });
 
 await test("a stable creature with no wait of its own wakes once four hours pass in one stretch", async () => {

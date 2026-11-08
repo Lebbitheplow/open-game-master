@@ -34,7 +34,7 @@ import { settleDying, wakeStable } from "@/lib/dm/death";
 import { deathSavesInMinutes, isDying } from "@/lib/dm/death-logic";
 import { breakConcentration, lethargyMeta, withLethargy } from "@/lib/dm/concentration";
 import { endConcentrationOnFadedSummons, endSpentConcentration } from "@/lib/dm/concentration-upkeep";
-import { STABLE_SOURCE, STABLE_WAKE_HOURS_MAX, UNCONSCIOUS } from "@/lib/dm/vitals-logic";
+import { PRONE, STABLE_SOURCE, STABLE_WAKE_HOURS_MAX, UNCONSCIOUS, standAsTimePasses } from "@/lib/dm/vitals-logic";
 import { holdsFeature } from "@/lib/srd/trait-rules";
 import { tickEffectRound } from "@/lib/db/active-effects";
 import { rollEffectSaves } from "@/lib/dm/effect-saves";
@@ -47,6 +47,7 @@ import { finishCasting } from "@/lib/dm/long-casting";
 import { CASTING, castingOf } from "@/lib/dm/long-casting-logic";
 import { sweepSummons } from "@/lib/dm/summon-store";
 import { textKey } from "@/lib/language/text-logic";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 import { listedAgainst } from "@/lib/dm/roll-about";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
@@ -140,6 +141,9 @@ export function tickClockConditions(campaign: Campaign, minutes: number, started
     .filter((sheet) => isDying(sheet))
     .flatMap((sheet) => settleDying(campaign, sheet.id, deathSavesInMinutes(minutes), null, startedAt));
   const lines: string[] = [];
+  // How long each creature lies senseless into the stretch, read before the
+  // stretch runs: one that wakes on its last round has had no time to get up.
+  const downFor = new Map(listSheets(campaign.id).map((sheet) => [sheet.id, roundsSenseless(sheet)]));
   tickSheetConditions(campaign, rounds, lines, { endTurnBound: true });
   rollEffectSaves(campaign, null, () => true, lines);
   // A concentration spell lasts no longer than its duration on the road
@@ -159,6 +163,20 @@ export function tickClockConditions(campaign: Campaign, minutes: number, started
       }
     }
   }
+  // Read after the stretch woke whom it woke: whoever it leaves awake and
+  // able to move, with a round of it left to stand in, is no longer prone
+  // (vitals-logic.ts standAsTimePasses).
+  for (const stale of listSheets(campaign.id)) {
+    const sheet = getSheetById(stale.id) ?? stale;
+    const stood = (downFor.get(sheet.id) ?? 0) < rounds ? standAsTimePasses(sheet) : null;
+    if (stood) {
+      patchSheetAudited(campaign.id, sheet.id, stood, {
+        kind: "condition_clock",
+        reason: "no longer prone as time passed",
+        delta: { ended: [PRONE], added: [] },
+      });
+    }
+  }
   if (lines.length) {
     endSpentConcentration(campaign, lines);
   }
@@ -173,6 +191,21 @@ export function tickClockConditions(campaign: Campaign, minutes: number, started
     noteAtTable(campaign.id, lines);
   }
   return deathSaves;
+}
+
+// The rounds a creature stays senseless from now: none awake, its
+// unconscious's own count (a stable creature's 1d4 hours, a Sleep spell's
+// minute), the longest 1d4 hours for a stable creature with no count kept,
+// and no end for any other.
+function roundsSenseless(sheet: { conditions: string[]; conditionMeta: unknown; deathSaves?: { stable?: boolean } | null }): number {
+  if (!sheet.conditions.some((entry) => isConditionNamed(entry, UNCONSCIOUS))) {
+    return 0;
+  }
+  const counted = (sheet.conditionMeta as ConditionMetaMap | undefined)?.[UNCONSCIOUS]?.rounds;
+  if (typeof counted === "number") {
+    return counted;
+  }
+  return sheet.deathSaves?.stable ? STABLE_WAKE_HOURS_MAX * 60 * ROUNDS_PER_MINUTE : Number.POSITIVE_INFINITY;
 }
 
 // Whether this sheet's unconscious is the wait of a stabilized creature.

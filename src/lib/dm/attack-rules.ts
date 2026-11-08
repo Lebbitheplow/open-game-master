@@ -125,7 +125,8 @@ export function offHandProblem(input: {
   if (input.shieldName) {
     return { error: `${input.who} has ${input.shieldName} in their other hand, so there is no second weapon to strike with. Two-weapon fighting needs a ${dualWielder ? "weapon" : "light weapon"} in each hand.`, refused: "rules" };
   }
-  if (offHandWeaponsCarried(input.equipment, dualWielder) < 2) {
+  // A weapon thrown this turn has left the pack but was held in one hand.
+  if (offHandWeaponsCarried(input.equipment, dualWielder) + (input.budget?.thrownAway ?? 0) < 2) {
     return { error: dualWielder
       ? `Two-weapon fighting needs a one-handed melee weapon in each hand, and ${input.who} carries only one.`
       : `Two-weapon fighting needs a light melee weapon in each hand, and ${input.who} carries only one.`, refused: "rules" };

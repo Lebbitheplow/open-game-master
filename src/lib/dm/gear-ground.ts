@@ -33,6 +33,7 @@ import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { storeBudget } from "@/lib/dm/turn-budget";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
 import { textKey } from "@/lib/language/text-logic";
+import { magicItemNamed } from "@/lib/srd/magic-items";
 
 // ---- the ground ----
 
@@ -91,20 +92,24 @@ export function drop(
   };
 }
 
-// A net thrown leaves the thrower's hands and pack, hit or miss, and lies
-// where it landed: at the square of the creature it was thrown at (over it,
-// while it holds it restrained), for anyone within 5 ft to take up again.
-// Kept on the sheet, it stayed in hand after the throw and filled a hand
-// the thrower no longer used. Null when the sheet carries no such line.
+// A weapon thrown, a net or a dagger, leaves the thrower's hands and pack,
+// hit or miss, and lies where it landed: at the square of the creature it
+// was thrown at (a net over it, while it holds it restrained), for anyone
+// within 5 ft to take up again (handle_item pick_up; the end of the fight
+// lists what lies about). Kept on the sheet, a net stayed in hand after the
+// throw and filled a hand the thrower no longer used, and a held javelin
+// could be thrown every attack. The held line goes first, when the sheet
+// carries the same weapon on two lines. Null when it carries no such line.
 export function throwToGround(campaign: Campaign, turn: DmTurn | null, sheet: CharacterSheet, name: string, targetRefId: string): string | null {
   const fresh = getSheetById(sheet.id) ?? sheet;
-  const index = lineNamed(fresh.equipment, name);
-  if (index < 0) {
+  const named = linesNamed(fresh.equipment, name);
+  const row = named.find((item) => item.equipped === true) ?? named[0];
+  if (!row) {
     return null;
   }
-  const row = fresh.equipment[index];
-  // The hand that held one is empty now: a second net on the line is
-  // drawn before it is thrown.
+  const index = fresh.equipment.indexOf(row);
+  // The hand that held one is empty now: a second on the line is drawn
+  // before it is thrown.
   const equipment =
     row.qty > 1
       ? fresh.equipment.map((item, at) => (at === index ? { ...item, qty: item.qty - 1, ...(item.equipped === true ? { equipped: false } : {}) } : item))
@@ -125,6 +130,16 @@ export function throwToGround(campaign: Campaign, turn: DmTurn | null, sheet: Ch
     publishBattleMapUpdate(campaign.id);
   }
   return `${row.name} leaves ${sheet.name}'s hands and lies ${token ? `at (${token.x},${token.y})` : "where it landed"}; anyone within 5 ft can pick it up (handle_item pick_up, item "${fell.id}")`;
+}
+
+// A magic weapon whose own text brings it back after the throw: "Immediately
+// after the attack, the weapon flies back to your hand" (SRD 5.1, Dwarven
+// Thrower). It stays where it was.
+const RETURNS_TO_HAND = new Set(["dwarven thrower"]);
+
+export function returnsToHand(name: string): boolean {
+  const magic = magicItemNamed(name);
+  return Boolean(magic && RETURNS_TO_HAND.has(textKey(magic.name)));
 }
 
 // The items a creature standing here may take: on the live board within

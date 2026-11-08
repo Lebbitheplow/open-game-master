@@ -36,6 +36,9 @@ import { dropReadied, readiedReleaseFor } from "@/lib/dm/readied-release";
 import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { hasItemTag } from "@/lib/srd/item-tags";
+import { gearWeaponFor } from "@/lib/srd/gear-weapons";
+import { withAmmoCount } from "@/lib/srd/ammunition";
+import { saveEquipment } from "@/lib/dm/gear-store";
 
 // Haste's extra action names this use by these words (action-budget.ts).
 const USE_AN_OBJECT = "use an object";
@@ -134,6 +137,8 @@ type Priced = { spend: () => void };
 // rope to throw. A consumable goes through use_item, which charges the same
 // action, so the model is pointed there rather than paying twice.
 export function objectAction(
+  campaign: Campaign,
+  turn: DmTurn,
   sheet: CharacterSheet,
   item: string | undefined,
   reason: string | undefined,
@@ -143,6 +148,23 @@ export function objectAction(
   cost = "their action",
 ): ToolResult {
   const carried = item ? findCarriedItem(sheet.equipment, item) : null;
+  // A flask put to anything but a creature: acid on a lock, alchemist's fire
+  // on a web, oil poured on the floor. use_item sends a flask in a fight
+  // here or to pc_attack (item-logic.ts thrownFlaskProblem), and pc_attack
+  // takes only creatures, so this is where it is spent; it shatters whatever
+  // it strikes.
+  if (carried && gearWeaponFor(carried.name)?.thrown) {
+    const index = sheet.equipment.indexOf(carried);
+    priced.spend();
+    saveEquipment(campaign, turn, sheet, withAmmoCount(sheet.equipment, index, (carried.qty ?? 1) - 1), "use_item", { item: carried.name }, (reason ?? `Used ${carried.name}`).slice(0, 200));
+    return {
+      ok: true,
+      action: "Use an Object",
+      used: carried.name,
+      remaining: Math.max(0, (carried.qty ?? 1) - 1),
+      applied: `${sheet.name} spends ${cost} on ${carried.name}${reason ? ` (${reason.slice(0, 80)})` : ""}, and the flask is spent. Narrate what it does to the object or the ground; an object's AC and hit points (SRD 5.1 Objects) are yours to rule.`,
+    };
+  }
   if (carried && !itemUseProblem(carried)) {
     return {
       error: `${carried.name} is used up when it is used: call use_item for it, which spends ${sheet.name}'s action (Use an Object) itself.`,

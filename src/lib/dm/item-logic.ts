@@ -92,16 +92,17 @@ export function itemUseProblem(item: TaggedItem & { attuned?: boolean }): ToolEr
 // what the hit leaves (src/lib/srd/gear-weapons.ts). Sent to use_item, the
 // flask and the action were spent and no attack was made, and the attack
 // could not then be made: the action was gone (play-test 2026-11-07,
-// alchemist's fire). Oil can also be poured on the ground, which is no
-// attack, so it stays use_item's; so does any flask out of a fight, where
-// pc_attack has no target and the flask is most likely put to an object.
+// alchemist's fire). use_item cannot tell a creature from anything else, so
+// in a fight every flask goes to the tool that knows its target: pc_attack
+// for a creature, take_action use_object for an object or oil poured on the
+// ground (object-actions.ts objectAction spends it). Out of a fight there is
+// no attack to roll, and use_item spends it as before.
 export function thrownFlaskProblem(user: string, item: string, inFight: boolean): ToolError | null {
-  const gear = gearWeaponFor(item);
-  if (!inFight || !gear?.thrown || gear.pours) {
+  if (!inFight || !gearWeaponFor(item)?.thrown) {
     return null;
   }
   return {
-    error: `${item} thrown at a creature is an attack: call pc_attack with weapon "${item}" for ${user}, which rolls it and spends the flask. use_item spent nothing.`,
+    error: `${item} thrown at a creature is an attack: call pc_attack with weapon "${item}" for ${user}, which rolls it and spends the flask. At an object, or oil poured on the ground: take_action use_object with item "${item}". use_item spent nothing.`,
     retry: true,
   };
 }

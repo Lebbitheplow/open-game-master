@@ -35,7 +35,9 @@ const { seesOnBoard } = await import("../src/lib/dm/authored-saves.ts");
 const hero = world.addHero({
   class: "fighter", level: 5, abilities: { str: 16, dex: 14 }, proficiencies: TRAINED,
   equipment: [
-    { name: "Longsword", qty: 1 }, { name: "Glaive", qty: 1 }, { name: "Dagger", qty: 1 },
+    { name: "Longsword", qty: 1 }, { name: "Glaive", qty: 1 },
+    // Several: a dagger thrown lies where it landed (gear-ground.ts throwToGround).
+    { name: "Dagger", qty: 10 },
     { name: "Shortbow", qty: 1 },
   ],
 });

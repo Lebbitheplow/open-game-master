@@ -47,6 +47,10 @@ export type TurnBudget = {
   // Haste's these are unrestricted: a second Attack action with every swing
   // of Extra Attack, a spell, a Dodge.
   grantedActions?: number;
+  // Weapons the turn's attacks threw away (pc-attack.ts): gone from the
+  // sheet, but the one thrown still counts as held in the first hand when
+  // two-weapon fighting asks for a weapon in each.
+  thrownAway?: number;
   // The Attack action was taken this turn with a light melee weapon, which
   // is what earns the bonus-action swing of two-weapon fighting.
   lightMeleeAttack?: boolean;
