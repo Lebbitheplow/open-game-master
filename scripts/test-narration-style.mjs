@@ -9,7 +9,7 @@ import { suite } from "./lib/enforce-harness.mjs";
 
 const { test, finish } = suite("test-narration-style");
 
-const { renderNarrationStyle, STYLE_NOTES_MAX } = await import("../src/lib/dm/narration-style-logic.ts");
+const { fightNarrationRule, renderNarrationStyle, STYLE_NOTES_MAX } = await import("../src/lib/dm/narration-style-logic.ts");
 const { buildDmSystem } = await import("../src/lib/dm/prompt.ts");
 const { getCampaignById } = await import("../src/lib/db/campaigns.ts");
 
@@ -54,6 +54,25 @@ await test("The lead saves them in Table settings and the next prompt carries th
   const tooLong = await send(world.owner, { styleNotes: "x".repeat(STYLE_NOTES_MAX + 1) });
   assert.equal(tooLong.status, 400);
   assert.equal(getCampaignById(world.campaignId).gameSettings.styleNotes, "Less purple prose.");
+});
+
+await test("Fight narration (issue #842): every length gets brisk fights, scaled by the narration length, with the tools still deciding", () => {
+  const standard = fightNarrationRule("standard");
+  assert.equal(fightNarrationRule(undefined), standard, "a campaign that never set a length gets the standard fight line");
+  assert.match(standard, /^- FIGHT NARRATION: /);
+  assert.match(standard, /at most about 80 words/);
+  assert.match(fightNarrationRule("short"), /at most about 50 words/);
+  assert.match(fightNarrationRule("rich"), /at most about 150 words/);
+  for (const length of ["short", "standard", "rich"]) {
+    const line = fightNarrationRule(length);
+    assert.match(line, /at most about \d+ words/, `${length}: a ceiling, never a range a terse model writes up to`);
+    assert.match(line, /whose move it is/, length);
+    assert.match(line, /replaces the reply length given above until the fight ends/, length);
+    assert.match(line, /unless the table's style notes ask for something else/, length);
+    assert.match(line, /the reply that opens the fight or ends it may run to the usual length/, length);
+    assert.match(line, /never skips, merges or invents a tool call/, length);
+  }
+  assert.equal(new Set(["short", "standard", "rich"].map(fightNarrationRule)).size, 3, "each length reads differently");
 });
 
 await test("Combat pace (issue #432): balanced adds nothing; fewer or more fights each add one pacing line, saved from Table settings like the length", async () => {

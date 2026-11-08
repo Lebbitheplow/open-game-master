@@ -389,6 +389,18 @@ test("the game state stands first and its turn-to-turn part follows one heading,
   assert.ok(buildDmMessages(state, [])[0].content.endsWith(`${moment.trimEnd()}`), "the moment runs to the end of the system prompt");
 });
 
+test("the fight's narration line (issue #842) rides with the fight rules, below the heading, at the table's narration length", () => {
+  const fighting = buildDmMessages(fightingState(), [])[0].content;
+  const above = aboveHeading(fighting);
+  assert.ok(fighting.includes(`${ENCOUNTER_RULES}\n- FIGHT NARRATION: `), "the line follows the fight rules");
+  assert.ok(!above.includes("FIGHT NARRATION"), "nothing above the heading changes when a fight starts");
+  assert.match(fighting, /FIGHT NARRATION: [^\n]*at most about 80 words/);
+  assert.match(buildDmMessages(fightingState(2, { narrationLength: "short" }), [])[0].content, /FIGHT NARRATION: [^\n]*at most about 50 words/);
+  const quiet = fightingState();
+  quiet.encounter = null;
+  assert.ok(!buildDmMessages(quiet, [])[0].content.includes("FIGHT NARRATION"), "out of a fight there is no fight line");
+});
+
 test("what play switches leaves the text above the heading as it was; a settings change moves it", () => {
   const above = aboveHeading(buildDmMessages(fightingState(), [])[0].content);
   const quiet = fightingState();
@@ -447,7 +459,8 @@ test("a chat model reads the rules as the system message and the state as the me
   assert.equal(after.length, before.length + 1, "one more message: the state");
   assert.equal(after[0].role, "system");
   assert.ok(!after[0].content.includes(THIS_TURN_HEADING), "no turn's state in the system message");
-  assert.ok(after[0].content.endsWith(ENCOUNTER_RULES.split("\n").at(-1)), "a fight's rules stay with the rules");
+  assert.ok(after[0].content.includes(ENCOUNTER_RULES), "a fight's rules stay with the rules");
+  assert.ok(after[0].content.split("\n").at(-1).startsWith("- FIGHT NARRATION: "), "and its narration line closes them");
   assert.equal(after[1].role, "user");
   assert.ok(after[1].content.startsWith(THIS_TURN_HEADING));
   assert.ok(after[1].content.endsWith("=== END GAME STATE ==="), "the state still runs to its end");

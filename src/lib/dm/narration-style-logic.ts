@@ -28,6 +28,30 @@ const LENGTH_TEXT: Record<NarrationLength, string> = {
   rich: "Narration may run fuller when the moment earns it, up to about 300 words with room for sensory detail. Still end where the players have something to decide.",
 };
 
+// How long a reply runs while a fight is on (issue #842, after ziomik's
+// proposal). The general reply length suits a scene, not a sword swing: left
+// to it, every turn of a fight reads like a scene and the table waits on
+// prose it skims, generated a word at a time. So every table gets brisk
+// fights by default and the narration length scales them, which is why there
+// is no setting of its own. The lines ride with the fight rules, so they
+// exist only while a fight is active (a scene on the map is not one). A fight
+// the DM starts with start_encounter keeps the scene's length for that reply,
+// whose prompt was built before it; one opened from the table (a prepared or
+// test fight) and the reply that ends a fight are told they may.
+// Each is a ceiling, never a range: gpt-oss-20b, terse in a fight already,
+// wrote up to a "50 to 100 words" target (61 words a fight turn without the
+// line, 74 with it), so a range made a short model pad.
+const FIGHT_LENGTH_TEXT: Record<NarrationLength, string> = {
+  short: "at most about 50 words, one plain sentence for each thing that was resolved",
+  standard: "at most about 80 words, and fewer when little happened",
+  rich: "one or two short paragraphs, at most about 150 words",
+};
+
+export function fightNarrationRule(length: NarrationLength | undefined): string {
+  const words = FIGHT_LENGTH_TEXT[length ?? "standard"] ?? FIGHT_LENGTH_TEXT.standard;
+  return `- FIGHT NARRATION: while the fight lasts, each reply is ${words}: what the tools just resolved, how the target looks in a word or two, then whose move it is. No scene-setting between blows, and at most one short line from an NPC or monster when it matters. This replaces the reply length given above until the fight ends, unless the table's style notes ask for something else; the reply that opens the fight or ends it may run to the usual length, to set the scene or tell the aftermath. Saving words never skips, merges or invents a tool call: the tools and the dice still decide everything.`;
+}
+
 export const STYLE_NOTES_MAX = 500;
 
 // How often fights come (issue #432). The world tick's encounter dice follow
