@@ -50,6 +50,15 @@ export default {
     await sleep(1_000);
     await untilStill(page);
     await t.shot("picks-day");
+    // By day the chosen pick stands apart from the others (its border and ink
+    // are the day's gold, not the parchment's), and every pick is a finger's size.
+    const looks = await picks.evaluateAll((buttons) =>
+      buttons.map((button) => ({ on: button.getAttribute("aria-checked") === "true", border: getComputedStyle(button).borderTopColor, ink: getComputedStyle(button).color, height: button.getBoundingClientRect().height })),
+    );
+    const chosen = looks.find((look) => look.on);
+    check(Boolean(chosen), "one pick is chosen");
+    check(looks.filter((look) => !look.on).every((look) => look.border !== chosen.border && look.ink !== chosen.ink), `by day the chosen pick looks like the others: ${JSON.stringify(looks)}`);
+    if (viewport === "phone") check(looks.every((look) => look.height >= 40), `a pick under 40px on a phone: ${JSON.stringify(looks)}`);
     await page.evaluate((value) => (document.documentElement.dataset.theme = value), theme);
   },
 };
