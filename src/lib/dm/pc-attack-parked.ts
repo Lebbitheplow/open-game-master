@@ -19,6 +19,7 @@ import { applyPendingDamageRoll } from "@/lib/dm/enemy-blow";
 import type { AttackPlan } from "@/lib/dm/pc-attack-plan";
 import { serverBlow, throwToHit, type Strike } from "@/lib/dm/pc-attack-resolve";
 import { rollsCanWait } from "@/lib/dm/after-roll";
+import { afterRollDeadline, armAfterRollKeep } from "@/lib/dm/after-roll-timer";
 import { afterAttackOptions } from "@/lib/dm/after-roll-logic";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import type { RollResult } from "@/lib/dice";
@@ -89,9 +90,10 @@ export function throwForChoice(plan: AttackPlan, strike: Strike, toolCallId: str
     reason: `${profile.weapon} attack against ${enemy.displayName}`,
     attack: { ...record, serverDice: true } as AttackRecord,
     parkedFor: "after_roll",
-    thrown: { outcome: thrown, options, choosing: false, landing: { status: "fallback", physical: false, source: "digital" } },
+    thrown: { outcome: thrown, options, choosing: false, landing: { status: "fallback", physical: false, source: "digital" }, deadline: afterRollDeadline(campaign.id, sheet.userId) },
   });
   publishPersisted(campaign.id, "roll_pending", { pendingRoll: publicPendingRoll(parked) });
+  armAfterRollKeep(parked.id, parked.thrown?.deadline);
   return { parked };
 }
 

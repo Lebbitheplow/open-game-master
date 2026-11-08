@@ -6,8 +6,9 @@
 // card where a parked roll stands, finger-sized, inside the phone's width, in
 // the day and night themes and in the app shell, its countdown, and the turn
 // going on. The roll is kept on its own after AFTER_ROLL_SECONDS
-// (src/lib/dm/after-roll-timer.ts); the steps up to Lucky take well under
-// that, and Lucky gives the dice their own time.
+// (src/lib/dm/after-roll-timer.ts) while the GM's screen is open beside the
+// lead's; the steps up to Lucky take well under that, and Lucky gives the
+// dice their own time.
 import { request } from "playwright-core";
 import { axeViolations, check, eventually, untilStill } from "../lib.mjs";
 
@@ -19,9 +20,15 @@ const scenario = {
     const table = ids.afterRollTables[viewport];
     // The table is the player's to run: the GM's calls go out as them.
     const gm = await request.newContext();
+    const watching = new AbortController();
     try {
       const signed = await gm.post(`${base}/api/auth/login`, { data: { username: ids.player, password: ids.password } });
       check(signed.ok(), `the player signed in (${signed.status()})`);
+      // The GM's own screen is open on the table: the roll's clock runs only
+      // while someone besides its roller is there to be held up.
+      const cookie = (await gm.storageState()).cookies.map((entry) => `${entry.name}=${entry.value}`).join("; ");
+      const stream = await fetch(`${base}/api/campaigns/${table.id}/events`, { headers: { cookie }, signal: watching.signal });
+      check(stream.ok, `the GM's stream opened (${stream.status})`);
       await t.open(`/campaigns/${table.id}`);
       if (viewport === "phone") {
         const tab = page.locator(`${root}nav.cine-bottombar`).getByRole("button", { name: "Table", exact: true });
@@ -76,6 +83,7 @@ const scenario = {
       const hero = snapshot.sheets.find((sheet) => sheet.id === table.hero);
       check(hero?.resources?.luck_points?.used === 1, `one luck point spent (${JSON.stringify(hero?.resources?.luck_points)})`);
     } finally {
+      watching.abort();
       await gm.dispose();
     }
   },

@@ -24,10 +24,14 @@ const { getDmTurn, getPendingRoll, listOpenPendingRolls } = await import("../src
 const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
 const { AFTER_ROLL_SECONDS, keepAfterRollWhenDue, rearmAfterRollKeeps } = await import("../src/lib/dm/after-roll-timer.ts");
 const { pauseTable, resumeTable } = await import("../src/lib/dm/table-break.ts");
+const { subscribe } = await import("../src/lib/events.ts");
 const past = (pending) => new Date(getPendingRoll(pending.id).thrown.deadline).getTime() + 1;
 
 const world = await openWorld({ campaign: { maxPlayers: 20 } });
 const who = await seats(world);
+// The clock runs only while someone else is at the table to be held up
+// (after-roll-timer.ts): the GM's screen is open, as at a table in play.
+let gmOnline = subscribe(world.campaignId, () => {}, who.dm.id);
 const kit = await combatKit(world);
 const route = {
   choice: await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]/after-roll"),
@@ -452,6 +456,30 @@ await test("Each choice gives fresh time, and a luck point's dice left unchosen 
   assert.equal(world.sheet(who.sheet.id).resources.luck_points.used, 1, "the point the player spent, and no other");
 });
 
+await test("A player alone at the table is given no clock: nobody waits on them, so nothing takes their choice away.", async () => {
+  gmOnline();
+  const ownTab = subscribe(world.campaignId, () => {}, who.player.id);
+  try {
+    hero(LUCKY);
+    world.dice(4);
+    await check();
+    world.clearDice();
+    const [pending] = open();
+    assert.ok(pending, "the roll still waits on the card");
+    assert.equal(pending.thrown.deadline, undefined, "with no count: the player's own screen is no one else");
+    assert.equal(await keepAfterRollWhenDue(pending.id, Date.now() + 60 * 60 * 1000), false, "and nothing keeps it for them");
+    world.dice(15);
+    await choose(pending.id, { use: "lucky" });
+    world.clearDice();
+    assert.equal(getPendingRoll(pending.id).thrown.deadline, undefined, "the next decision has none either");
+    await choose(pending.id, { die: 1 });
+  } finally {
+    ownTab();
+    gmOnline = subscribe(world.campaignId, () => {}, who.dm.id);
+  }
+  assert.equal(open().length, 0);
+});
+
 await test("A break holds the roll past its time; the wait goes on after it.", async () => {
   hero(LUCKY);
   world.dice(5);
@@ -472,6 +500,7 @@ await test("A break holds the roll past its time; the wait goes on after it.", a
 // ---- the AI's turn ----
 
 const table = await openWorld({ gameSettings: { ttsEnabled: false } });
+const tableOwnerOnline = subscribe(table.campaignId, () => {}, table.owner.id);
 const model = await fakeModel();
 model.pointAt(table);
 const tableRoute = await table.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]/after-roll");
@@ -550,4 +579,6 @@ await test("An AI turn waiting on a roll nobody chooses for resumes when its tim
 });
 
 model.close();
+gmOnline();
+tableOwnerOnline();
 finish();

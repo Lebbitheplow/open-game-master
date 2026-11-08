@@ -108,7 +108,7 @@ export async function POST(
     return land(outcome, landing);
   }
   // A new decision gets its own time.
-  const updated = setPendingThrown(pending.id, { ...thrown, outcome, options, choosing, spent, landing, deadline: afterRollDeadline() });
+  const updated = setPendingThrown(pending.id, { ...thrown, outcome, options, choosing, spent, landing, deadline: afterRollDeadline(campaignId, pending.userId) });
   if (!updated) {
     return Response.json({ error: "That roll was already resolved." }, { status: 409 });
   }

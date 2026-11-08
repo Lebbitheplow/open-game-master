@@ -6,6 +6,11 @@
 // d20 is a new decision). The deadline rides the thrown dice, so the card can
 // count it down and a restart can find it.
 //
+// Only while someone else is at the table: the timer is there so one player
+// cannot hold up the rest, and a player alone holds up nobody. A solo table
+// keeps the old wait, with no clock taking their choice away while they read
+// their sheet or look up from their real dice.
+//
 // The landing is imported when the timer fires: the roll that arms it
 // (invoke-roll.ts) sits under the turn loop that the landing resumes.
 
@@ -13,13 +18,19 @@ import { getCampaignById } from "@/lib/db/campaigns";
 import { getPendingRoll, listOpenAfterRolls } from "@/lib/db/dm-turns";
 import { AFTER_ROLL_SECONDS } from "@/lib/dm/after-roll-logic";
 import { tableBreakOn } from "@/lib/dm/table-break";
+import { onlineUserIds } from "@/lib/events";
 
 export { AFTER_ROLL_SECONDS };
 
 // A break holds the table, so the wait is checked again this often until it ends.
 const BREAK_RECHECK_MS = 5000;
 
-export function afterRollDeadline(now = Date.now()): string {
+// The deadline for a roll the roller now decides on, or none when nobody
+// else is online at the table to be kept waiting.
+export function afterRollDeadline(campaignId: string, rollerId: string, now = Date.now()): string | undefined {
+  if (!onlineUserIds(campaignId).some((userId) => userId !== rollerId)) {
+    return undefined;
+  }
   return new Date(now + AFTER_ROLL_SECONDS * 1000).toISOString();
 }
 
