@@ -46,8 +46,8 @@ const FAVORED_SIDES = 4;
 
 // Spent from this card and no other: dealt to the Hand they spent a use and
 // changed nothing, since the roll they ride had already landed. use_resource
-// still takes them, for a roll that cannot wait (an agent's seat, a spell
-// attack, a forced save), where the GM narrates the result.
+// still takes them, for a roll that cannot wait (an agent's seat, a forced
+// save), where the GM narrates the result.
 export const AFTER_ROLL_COUNTERS: readonly string[] = [MASTER_DUELIST, FAVORED_BY_THE_GODS];
 export const AFTER_ROLL_CHANNEL_OPTION = "guided strike";
 
