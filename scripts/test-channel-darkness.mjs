@@ -79,5 +79,27 @@ await test("A Darkness wholly beyond 30 feet stays, and with no foe in reach eit
   assert.equal(used(world, cleric.id), 0);
 });
 
+// Out of a fight a board can still be on the table (an exploration scene),
+// and a Darkness laid on it is as much in reach: the burst has no foe to
+// catch, but the darkness ends. Before, the GM read only that it was dispelled
+// while the area stayed drawn and its caster kept concentrating.
+const maps = await import("../src/lib/db/battle-maps.ts");
+const { getDatabase } = await import("../src/lib/db/core.ts");
+await test("On a scene's board with no fight, a Darkness within 30 feet still ends, with its caster's concentration.", async () => {
+  const { world, sheets: [sorcerer, cleric] } = await board([SORCERER, CLERIC], [{ x: 2, y: 8 }, { x: 4, y: 8 }]);
+  const dark = await world.invoke("use_spell_slot", { characterId: sorcerer.id, spell: "Darkness", level: 2, atX: 8, atY: 8 });
+  assert.equal(dark.ok, true, dark.error);
+  const encounterId = world.encounter().id;
+  getDatabase().prepare("UPDATE encounters SET kind = 'scene' WHERE id = ?").run(encounterId);
+  const sceneZones = () => maps.getBattleMapForEncounter(encounterId).spellZones.filter((zone) => zone.spell === "Darkness");
+  assert.equal(sceneZones().length, 1, "no Darkness on the scene to dispel");
+  const out = await radiance(world, cleric.id, []);
+  assert.equal(out.ok, true, out.error);
+  assert.equal(sceneZones().length, 0, "the Darkness stayed on the scene's board");
+  assert.equal(world.sheet(sorcerer.id).concentratingOn ?? null, null, "the sorcerer still concentrates on Darkness");
+  assert.match(JSON.stringify(out.result), /dispels .*Darkness/);
+  assert.equal(used(world, cleric.id), 1);
+});
+
 closeTables();
 finish();

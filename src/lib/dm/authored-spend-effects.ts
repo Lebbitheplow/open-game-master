@@ -577,8 +577,12 @@ function saveArea(ctx: SpendContext, does: Extract<SpendDoes, { kind: "save_area
   // GM narrates it (Charm Animals and Plants is used on a trail as often as in a
   // fight), as a buff aimed at a creature is.
   if (!encounter) {
-    const dark = does.dispelsDarkness ? ` Any magical darkness within ${does.rangeFt} feet of ${sheet.name} is dispelled.` : "";
-    return { result: { applied: [`${ctx.spend.name}: there is no fight, so no creature on the board saves; the GM resolves it in the story.${dark}`] } };
+    // A scene's board (a map with no fight on it) holds its darkness all the
+    // same: Radiance of the Dawn ends what it reaches there, and says so of
+    // any other only in the story.
+    const dispelled = does.dispelsDarkness ? dispelZones(campaign, darknessNear(campaign, sheet.id, does.rangeFt), ctx.spend.name) : [];
+    const dark = does.dispelsDarkness && !dispelled.length ? ` Any magical darkness within ${does.rangeFt} feet of ${sheet.name} is dispelled.` : "";
+    return { result: { applied: [`${ctx.spend.name}: there is no fight, so no creature on the board saves; the GM resolves it in the story.${dark}`, ...dispelled] } };
   }
   let targets = foesOfSheet(campaign.id, encounter, sheet.id).filter(
     (enemy) =>
