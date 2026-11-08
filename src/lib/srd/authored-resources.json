@@ -974,7 +974,7 @@
    "uses": 1,
    "ability": null,
    "recharge": "short",
-   "guidance": "Add 2d4 to a failed saving throw or a missed attack, possibly turning it into a success. A player's missed attack or failed request_roll save waits on a card that offers this, so do not spend it for them there. Use it here only for a roll that cannot wait (a forced save, a spell attack, an agent's seat), and narrate the result."
+   "guidance": "Add 2d4 to a failed saving throw or a missed attack, possibly turning it into a success. A player's missed attack or failed request_roll save waits on a card that offers this, so do not spend it for them there. Use it here only for a roll that cannot wait (a forced save, an agent's seat), and narrate the result."
   },
   {
    "id": "sub_unearthly_recovery",
@@ -1585,7 +1585,7 @@
    "uses": 1,
    "ability": null,
    "recharge": "short",
-   "guidance": "Reroll a missed attack, with advantage. A player's missed weapon attack waits on a card that offers this, so do not spend it for them there. Use it here only for a roll that cannot wait (a spell attack, an agent's seat), and narrate the result."
+   "guidance": "Reroll a missed attack, with advantage. A player's missed attack waits on a card that offers this, so do not spend it for them there. Use it here only for a roll that cannot wait (an agent's seat), and narrate the result."
   },
   {
    "id": "sub_wholeness_of_body_mercy",

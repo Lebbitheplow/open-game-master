@@ -31,6 +31,7 @@ const hero = world.addHero({
 });
 const ally = world.addHero({ class: "fighter", level: 5, maxHp: 44, abilities: { str: 16 }, proficiencies: TRAINED, equipment: [{ name: "Longsword", qty: 1, equipped: true }] });
 const feature = (name) => ({ name, description: "" });
+const SPELLS = { ability: "str", slots: {}, known: [], prepared: [], cantrips: ["Shocking Grasp"] };
 const GUIDED = { features: [feature("Channel Divinity: Guided Strike")], resources: { channel_divinity: { max: 2, used: 0 } } };
 const DUELIST = { features: [feature("Master Duelist")], resources: { sub_master_duelist: { max: 1, used: 0 } } };
 const FAVORED = { features: [feature("Favored by the Gods")], resources: { sub_favored_by_the_gods: { max: 1, used: 0 } } };
@@ -163,6 +164,21 @@ await test("Favored by the Gods on a failed save: it waits and adds 2d4, and a c
   await roll("ability_check");
   world.clearDice();
   assert.equal(open().length, 0, "the feature names saves and attacks");
+});
+
+await test("An attack spell waits too: a missed one takes Master Duelist, and the new roll can hit.", async () => {
+  const enemy = await stage({ features: [feature("Master Duelist"), feature("Favored by the Gods")], resources: { sub_master_duelist: { max: 1, used: 0 }, sub_favored_by_the_gods: { max: 1, used: 0 } }, spellcasting: SPELLS });
+  world.dice(5);
+  const cast = await world.invoke("pc_attack", { characterId: hero.id, enemyId: enemy.id, targetEnemyId: enemy.id, spell: "Shocking Grasp", damage: "1d8" });
+  world.clearDice();
+  assert.equal(cast.ok, true, cast.error);
+  const ids = offered();
+  assert.ok(ids.includes("master_duelist"), ids.join(", "));
+  const [pending] = open();
+  await spend(pending, "master_duelist", 19, 18, 4, 4);
+  assert.equal(usedOf("sub_master_duelist"), 1);
+  assert.match(getPendingRoll(pending.id).combatNote, /HIT/);
+  world.patch(hero.id, { spellcasting: null });
 });
 
 await test("None of the three is a card in the Hand, and use_resource still takes them for a roll that cannot wait.", async () => {
