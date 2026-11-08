@@ -12,6 +12,8 @@
 // death engine, and damage forces the concentration save.
 //
 // This module must not import mutations.ts (which imports it).
+// Registers the incapacity watch's answer (Faithful Summons) wherever damage runs.
+import "@/lib/dm/faithful-summons";
 import { immersedResistance } from "@/lib/dm/underwater";
 import { deathWardPatch } from "@/lib/dm/spell-effects";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";

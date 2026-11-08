@@ -394,7 +394,8 @@
    "uses": 1,
    "ability": null,
    "recharge": "long",
-   "guidance": "Triggers when the druid drops to 0 hit points or is incapacitated against their will: as conjure animals with a 9th-level slot, four beasts of the druid's choice (each challenge rating 2 or lower) appear within 20 feet, guard them and attack their foes for an hour without concentration."
+   "passive": true,
+   "guidance": "This is not spent by choice: the next time the druid drops to 0 hit points or is incapacitated by something other than their own doing, the server spends it and four wolves appear beside them as allies, guarding them and attacking their foes for an hour without concentration."
   },
   {
    "id": "sub_fungal_infestation",
