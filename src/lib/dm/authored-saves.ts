@@ -21,11 +21,12 @@
 
 import { sideOf } from "@/lib/dm/combatant";
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
-import { getActiveEncounter, patchEnemyConditions, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
+import { getActiveEncounter, getEnemy, patchEnemyConditions, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { spaceOf, tilesApart } from "@/lib/dm/board-reach";
 import { hasLineOfSightBetween } from "@/lib/battlemap/los";
 import { sightTerrainFor } from "@/lib/dm/zone-rules";
+import { characterSenses, enemySenses } from "@/lib/dm/attack-light";
 
 import type { Advantage } from "@/lib/dice";
 import { activeAuthored, hasCondition } from "@/lib/srd/authored-effects";
@@ -84,24 +85,53 @@ export function seesOnBoard(encounterId: string, fromRef: string, toRef: string)
 // Enemy), or null when they can: the conditions first (blinded, an invisible
 // or hidden creature: condition-logic.ts sightBlockedBy), then the board's
 // line of sight. The board alone let an invisible goblin be taken.
-export function unseenBecause(
-  encounterId: string,
-  viewer: { id: string; name: string; conditions: string[] },
-  seen: { id: string; displayName: string; conditions: string[] },
-): string | null {
-  const blocked = sightBlockedBy(viewer.conditions, seen.conditions);
-  if (blocked) {
-    return blocked === "blinded" ? `${viewer.name} is blinded` : `${seen.displayName} is ${blocked}`;
+// Either side may look: a character, or a creature of the fight (Charm Animals
+// and Plants asks whether the beast can see the cleric). Blindsight or
+// truesight that reaches the other sees past invisibility, as it does for
+// hiding (hide-traits.ts); off the board any such sense reaches.
+type Looker = { id: string; conditions: string[]; name?: string; displayName?: string } & (
+  | Pick<CharacterSheet, "features" | "race">
+  | Pick<EncounterEnemy, "stats">
+);
+
+const lookerName = (looker: Looker) => looker.displayName ?? looker.name ?? "";
+
+export function unseenBecause(encounterId: string, viewer: Looker, seen: Looker, options: { hidden?: boolean } = {}): string | null {
+  return unseenByConditions(encounterId, viewer, seen, options) ?? (seesOnBoard(encounterId, viewer.id, seen.id) ? null : "no line of sight");
+}
+
+// The conditions' part alone: blinded, invisible, hidden, and the senses that see past them.
+function unseenByConditions(encounterId: string, viewer: Looker, seen: Looker, options: { hidden?: boolean }): string | null {
+  const senses = "stats" in viewer ? enemySenses(viewer) : characterSenses(viewer);
+  const map = senses.blindsight || senses.truesight ? getBattleMapForEncounter(encounterId) : null;
+  const from = map ? getTokenByRef(map.id, viewer.id) : null;
+  const to = map ? getTokenByRef(map.id, seen.id) : null;
+  const apart = from && to ? tilesApart(from, to) : null;
+  const reaches = (tiles: number) => tiles > 0 && (apart === null || apart <= tiles);
+  const blocked = sightBlockedBy(viewer.conditions, seen.conditions, { blindsight: reaches(senses.blindsight), truesight: reaches(senses.truesight), hidden: options.hidden });
+  if (!blocked) {
+    return null;
   }
-  return seesOnBoard(encounterId, viewer.id, seen.id) ? null : "no line of sight";
+  return blocked === "blinded" ? `${lookerName(viewer)} is blinded` : `${lookerName(seen)} is ${blocked}`;
 }
 
 // The refusal for a reaction its holder cannot see the creature for, or null.
+// The conditions count as they do for a Channel Divinity (an invisible
+// attacker, a blinded holder); the board alone let a blinded rogue Uncanny
+// Dodge. Hiding does not: the attack gave the attacker away, and an ally
+// hides from the foes, not from its friends.
 export function unseenRefusal(encounterId: string | undefined, holder: { id: string; name: string }, seen: { id: string | null; name: string }, feature: string): { error: string; refused: "rules" } | null {
-  if (!encounterId || !seen.id || seesOnBoard(encounterId, holder.id, seen.id)) {
+  if (!encounterId || !seen.id) {
     return null;
   }
-  return { error: `${holder.name} has no line of sight to ${seen.name}, and ${feature} answers a creature they can see. Nothing was spent.`, refused: "rules" };
+  const looker = getSheetById(holder.id);
+  const other = getEnemy(seen.id) ?? getSheetById(seen.id);
+  const why = looker && other ? unseenByConditions(encounterId, looker, other, { hidden: false }) : null;
+  if (!why && seesOnBoard(encounterId, holder.id, seen.id)) {
+    return null;
+  }
+  const lead = why ? `${holder.name} cannot see ${seen.name} (${why})` : `${holder.name} has no line of sight to ${seen.name}`;
+  return { error: `${lead}, and ${feature} answers a creature they can see. Nothing was spent.`, refused: "rules" };
 }
 
 function sourcedMark(enemy: EncounterEnemy, name: string): { condition: string; source: string | undefined } | null {

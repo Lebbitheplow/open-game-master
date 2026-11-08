@@ -26,7 +26,8 @@ const conquest = hero("paladin", "Oath of Conquest");
 const vengeance = hero("paladin", "Oath of Vengeance");
 const oathbreaker = hero("paladin", "Oathbreaker");
 const nature = hero("cleric", "Nature Domain");
-const everyone = [ancients, crown, conquest, vengeance, oathbreaker, nature];
+const rogue = hero("rogue", "Thief");
+const everyone = [ancients, crown, conquest, vengeance, oathbreaker, nature, rogue];
 
 // Two beasts beside the hero, the first of them invisible, in the open: the
 // board's line of sight reaches both.
@@ -128,6 +129,82 @@ await test("Dreadful Aspect and Charm Animals and Plants still take the invisibl
   const charm = await channel(nature, "charm animals and plants", [2, 2]);
   assert.equal(charm.ok, true, charm.error);
   assert.ok(foe(beast.id).conditions.includes("charmed"));
+});
+
+// The other way round: Charm Animals and Plants and Dreadful Aspect take a
+// creature that can see the user. A blinded one cannot, and none can see an
+// invisible user unless a sense of its own reaches her.
+await test("Charm Animals and Plants leaves a blinded beast out, and an invisible cleric charms only the beast whose blindsight reaches her.", async () => {
+  const [unseen, seen] = await stage(nature);
+  kit.setEnemy(seen.id, { conditions: ["blinded"], conditionMeta: {} });
+  const charm = await channel(nature, "charm animals and plants", [2, 2]);
+  assert.equal(charm.ok, true, charm.error);
+  assert.ok(foe(unseen.id).conditions.includes("charmed"), "the invisible beast can still see the cleric");
+  assert.equal(foe(seen.id).conditions.includes("charmed"), false, "the blinded beast was charmed");
+  const [plain, bat] = await stage(nature, ["invisible"]);
+  kit.setEnemy(bat.id, { stats: { ...foe(bat.id).stats, senses: { blindsight: 30 } } });
+  const hidden = await channel(nature, "charm animals and plants", [2, 2]);
+  assert.equal(hidden.ok, true, hidden.error);
+  assert.ok(foe(bat.id).conditions.includes("charmed"), "blindsight reaches the invisible cleric");
+  assert.equal(foe(plain.id).conditions.includes("charmed"), false, "a beast that cannot see the invisible cleric was charmed");
+});
+
+await test("Dreadful Aspect leaves out a blinded creature, which cannot see the oathbreaker.", async () => {
+  const [unseen, seen] = await stage(oathbreaker);
+  kit.setEnemy(seen.id, { conditions: ["blinded"], conditionMeta: {} });
+  const fear = await channel(oathbreaker, "dreadful aspect", [2, 2]);
+  assert.equal(fear.ok, true, fear.error);
+  assert.ok(foe(unseen.id).conditions.includes("frightened"));
+  assert.equal(foe(seen.id).conditions.includes("frightened"), false);
+});
+
+await test("Vow of Enmity is refused on an invisible creature, and spends nothing.", async () => {
+  const [unseen, seen] = await stage(vengeance);
+  const out = await channel(vengeance, "vow of enmity", [], { targetEnemyId: unseen.id });
+  assert.equal(out.ok, false, "the invisible creature was vowed against");
+  assert.match(String(out.error), /cannot see .*invisible.*Nothing was spent/);
+  assert.equal(used(vengeance), 0);
+  const vowed = await channel(vengeance, "vow of enmity", [], { targetEnemyId: seen.id });
+  assert.equal(vowed.ok, true, vowed.error);
+});
+
+await test("Blindsight that reaches the goblin lets a blinded paladin take it with Nature's Wrath, invisible or not.", async () => {
+  const before = world.sheet(ancients.id).features;
+  world.patch(ancients.id, { features: [...before, { name: "Blindsight 10 ft", source: "race" }] });
+  const [unseen] = await stage(ancients, ["blinded"]);
+  const out = await channel(ancients, "nature's wrath", [2], { targetEnemyId: unseen.id });
+  world.patch(ancients.id, { features: before });
+  assert.equal(out.ok, true, out.error);
+  assert.ok(foe(unseen.id).conditions.includes("restrained"));
+});
+
+// Reactions whose text says "an attacker that you can see" read the same
+// conditions; the attack gives a hidden attacker away, so hiding does not count.
+const enemyHits = async (enemy, faces) => {
+  kit.freshRound();
+  world.dice(...faces);
+  const out = await world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: rogue.id });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(out.result.hit, true, "the attack missed");
+};
+const dodge = () => world.invoke("use_reaction", { characterId: rogue.id, feature: "Uncanny Dodge" });
+
+await test("Uncanny Dodge is refused against an invisible attacker and while the rogue is blinded, and is used against a hidden one.", async () => {
+  const [unseen, seen] = await stage(rogue);
+  await enemyHits(unseen, [18, 18, 4]);
+  const out = await dodge();
+  assert.equal(out.ok, false, "Uncanny Dodge answered an invisible attacker");
+  assert.match(String(out.error), /cannot see .*invisible.*Nothing was spent/);
+  await enemyHits(seen, [18, 18, 4]);
+  world.patch(rogue.id, { conditions: ["blinded"], conditionMeta: {} });
+  const blind = await dodge();
+  assert.equal(blind.ok, false, "a blinded rogue used Uncanny Dodge");
+  assert.match(String(blind.error), /blinded/);
+  world.patch(rogue.id, { conditions: [], conditionMeta: {} });
+  kit.setEnemy(seen.id, { conditions: ["hidden"], conditionMeta: {} });
+  const hidden = await dodge();
+  assert.equal(hidden.ok, true, hidden.error);
 });
 
 finish();

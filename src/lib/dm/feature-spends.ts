@@ -28,7 +28,7 @@ import { effectiveMaxHp, incapacitatedBy, removeConditions, type ConditionMetaMa
 import { activeAuthored } from "@/lib/srd/authored-effects";
 import { foesOfSheet, resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { VOW_OF_ENMITY } from "@/lib/srd/vow-of-enmity";
-import { seesOnBoard, withinFeet } from "@/lib/dm/authored-saves";
+import { seesOnBoard, unseenBecause, withinFeet } from "@/lib/dm/authored-saves";
 import { rollFeatureSave } from "@/lib/dm/contest-roll";
 import { healDeathHook } from "@/lib/dm/death";
 import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
@@ -420,6 +420,11 @@ function vowRefusal(campaign: Campaign, sheet: CharacterSheet, enemyId: string |
   }
   if (!withinFeet(encounter.id, sheet.id, enemy.id, 10)) {
     return { error: `${enemy.displayName} is beyond 10 feet of ${sheet.name}; Vow of Enmity reaches 10 feet. Nothing was spent.`, refused: "rules" };
+  }
+  // "A creature you can see", as Abjure Enemy beside it (channel-fear.ts).
+  const unseen = unseenBecause(encounter.id, sheet, enemy);
+  if (unseen) {
+    return { error: `${sheet.name} cannot see ${enemy.displayName} (${unseen}), and Vow of Enmity takes a creature they can see. Nothing was spent.`, refused: "rules" };
   }
   return null;
 }

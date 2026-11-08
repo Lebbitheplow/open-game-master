@@ -28,7 +28,7 @@ import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import { hurtEnemy } from "@/lib/dm/spell-aura";
-import { seesOnBoard, unseenBecause, withinFeet } from "@/lib/dm/authored-saves";
+import { unseenBecause, withinFeet } from "@/lib/dm/authored-saves";
 import { darknessNear, dispelZones } from "@/lib/dm/zone-cast";
 import { tilesBetween, wallBetween } from "@/lib/dm/attack-spatial";
 import { rerollLastSave, swarmPush } from "@/lib/dm/authored-spend-more";
@@ -585,7 +585,7 @@ function saveArea(ctx: SpendContext, does: Extract<SpendDoes, { kind: "save_area
       enemy.status === "alive" &&
       enemy.currentHp > 0 &&
       withinFeet(encounter.id, sheet.id, enemy.id, does.rangeFt) &&
-      (!does.sight || (does.sight === "line" ? seesOnBoard(encounter.id, sheet.id, enemy.id) : !unseenBecause(encounter.id, sheet, enemy))) &&
+      (!does.sight || !(does.sight === "seesHolder" ? unseenBecause(encounter.id, enemy, sheet) : unseenBecause(encounter.id, sheet, enemy))) &&
       // Total cover: a wall of the board between them (as cast-reach.ts reads
       // it, past the squares beside the holder).
       (!does.coverShields || !((tilesBetween(encounter.id, sheet.id, enemy.id) ?? 0) > 1 && wallBetween(encounter.id, sheet.id, enemy.id))) &&

@@ -371,10 +371,10 @@ export type SpendDoes =
       // Dawn's text asks no sight, and Order's Demand's "see or hear" carries
       // through a fog. True also leaves out an invisible or hidden creature, and
       // every one while the holder is blinded (Champion Challenge: "that you can
-      // see"). "line" asks only the line between them, which runs both ways:
-      // Charm Animals and Plants takes a beast "that can see you", so the
-      // holder's own sight of it is not the test.
-      sight?: true | "line";
+      // see"). "seesHolder" turns it round: Charm Animals and Plants takes a
+      // beast "that can see you", so a blinded one is left out, and every one
+      // while the cleric is invisible or hidden from it.
+      sight?: true | "seesHolder";
       // A creature with total cover from the holder is not affected, seen or
       // not (Radiance of the Dawn reaches into a fog, not through a wall).
       coverShields?: boolean;

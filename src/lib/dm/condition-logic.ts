@@ -346,15 +346,24 @@ function has(conditions: string[], names: string[]): string | null {
 // Invisibility or True Seeing. Walls, fog and darkness are the board's part
 // (authored-saves.ts seesOnBoard). A feature for "a creature you can see"
 // read the board alone, so Nature's Wrath took an invisible goblin and spent
-// the Channel Divinity on it.
-export function sightBlockedBy(viewerConditions: string[], seenConditions: string[]): "blinded" | "invisible" | "hidden" | null {
-  if (has(viewerConditions, ["blinded"])) {
+// the Channel Divinity on it. `senses`: the viewer's blindsight or truesight
+// reaches the other (the caller measures it, as hide-traits.ts does).
+// Blindsight perceives without eyes, so neither blindness nor invisibility
+// stops it; truesight sees the invisible. `hidden: false` when hiding does
+// not count: an attacker its own attack gave away, or an ally hidden from
+// the foes and not from its friends.
+export function sightBlockedBy(
+  viewerConditions: string[],
+  seenConditions: string[],
+  options: { blindsight?: boolean; truesight?: boolean; hidden?: boolean } = {},
+): "blinded" | "invisible" | "hidden" | null {
+  if (has(viewerConditions, ["blinded"]) && !options.blindsight) {
     return "blinded";
   }
-  if (has(seenConditions, ["invisible"]) && !conditionSeesInvisible(viewerConditions)) {
+  if (has(seenConditions, ["invisible"]) && !options.blindsight && !options.truesight && !conditionSeesInvisible(viewerConditions)) {
     return "invisible";
   }
-  return has(seenConditions, ["hidden"]) ? "hidden" : null;
+  return options.hidden !== false && has(seenConditions, ["hidden"]) ? "hidden" : null;
 }
 
 // Whether a hit within 5 ft is critical only because the target is
