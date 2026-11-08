@@ -72,7 +72,7 @@ import { formatCopper, formatPrice, purseCoins, purseCopper } from "@/lib/srd/cu
 import { coverPromptBlock } from "@/lib/dm/delegation";
 import { ENGINE_BOUNDARY_CHECK, ENGINE_BOUNDARY_RULES } from "@/lib/dm/engine-boundary";
 import { normalizeGm, normalizeSafety, renderGmBlock, renderSafetyBlock } from "@/lib/dm/safety-logic";
-import { renderNarrationStyle } from "@/lib/dm/narration-style-logic";
+import { fightNarrationRule, renderNarrationStyle } from "@/lib/dm/narration-style-logic";
 import { renderChapterLod } from "@/lib/dm/chapter-lod";
 import { buildPinnedMemoriesBlock } from "@/lib/dm/pin-logic";
 import { NPC_PROMPT_MAX, rankNpcsForPrompt } from "@/lib/dm/npc-rank-logic";
@@ -1913,7 +1913,9 @@ function turnRuleParts(state: TurnRuleState): {
     rulesCarrySecret = Boolean(secretRules);
   }
   const dmSystem = buildDmSystem(state.campaign, settingsRules, state.ruleContext ?? null);
-  const fightRules = state.encounter ? encounterRulesText(tracksAmmunition(state.campaign), state.ruleContext ?? null) : "";
+  const fightRules = state.encounter
+    ? `${encounterRulesText(tracksAmmunition(state.campaign), state.ruleContext ?? null)}\n${fightNarrationRule(state.campaign.gameSettings?.narrationLength)}`
+    : "";
   return { dmSystem, fightRules, secretRules, rulesCarrySecret };
 }
 
