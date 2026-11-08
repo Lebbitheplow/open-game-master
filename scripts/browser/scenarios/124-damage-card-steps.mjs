@@ -5,7 +5,10 @@
 // to roll the rapier's dice twice and reroll the lowest die. Until then only
 // the GM's note said so. The rules are held by
 // scripts/test-enforce-real-dice-parity.mjs; this is the line where the player
-// reads it, inside the phone's width, in the day and night themes.
+// reads it, inside the phone's width, in the day and night themes. She is a
+// halfling: her attack card asks for one d20 (Lucky's reroll is hers to make
+// with the die in hand) and says so, where it once asked for two and the
+// server refused them.
 import { request } from "playwright-core";
 import { check, eventually, untilStill } from "../lib.mjs";
 
@@ -34,6 +37,11 @@ const scenario = {
       // The to-hit card: a natural 20, typed and sent.
       const d20 = page.locator(`${root}input[aria-label="d20"]`).locator("visible=true");
       await eventually(() => d20.count(), { timeoutMs: 30_000, label: "the attack roll card" });
+      check((await d20.count()) === 1, `one d20 to enter for a halfling's attack (${await d20.count()})`);
+      const lucky = page.locator(`${root}p`).filter({ hasText: /A d20 that shows a 1: roll it again, once/ }).locator("visible=true");
+      check((await lucky.count()) === 1, "the attack card says Lucky's reroll");
+      await untilStill(page);
+      await t.shot("attack-card-lucky");
       await d20.first().fill("20");
       const send = page.locator(`${root}button`).filter({ hasText: /^\s*Submit roll\s*$/ }).locator("visible=true");
       await eventually(async () => (await send.count()) && (await send.first().isEnabled()), { label: "the attack roll ready to send" });

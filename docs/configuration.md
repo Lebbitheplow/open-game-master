@@ -405,7 +405,10 @@ file on the server is silence, named as such in the panel.
 
 Nothing to configure server-side: dice sources are a per-player, per-browser
 choice that appears once the campaign's dice policy allows real dice and the
-player opts in (Party tab, next to the real-dice toggle).
+player opts in (Party tab, next to the real-dice toggle). Real dice cover a
+player's attacks and damage, initiative, and the checks and saves the GM asks
+for; death saves, concentration and the saves a spell, trap or monster forces
+are rolled by the table.
 
 For each die shape (d4 through d20, plus the d100) a player picks one of:
 

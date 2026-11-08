@@ -10,6 +10,15 @@
 //
 // Pure and alias-import-free so scripts/test-held-rolls.mjs can load it.
 
+// What a player rolling real dice is asked for, said wherever they opt in.
+// The engine parks the rolls a card can wait on: a request_roll, a pc_attack's
+// to-hit and damage, initiative. The rolls it makes in the middle of
+// resolving something else (a death save as the turn passes, a concentration
+// save as damage lands, a save an enemy's spell forces) are thrown at once,
+// so the promise names them rather than saying every roll waits.
+export const REAL_DICE_SCOPE =
+  "You roll your attacks and their damage, initiative, and the checks and saves the GM asks for. The table rolls the rest for you, such as death saves, concentration, and the saves a spell, trap or monster forces on you.";
+
 export type HeldRollMember = {
   userId: string;
   useRealDice: boolean;

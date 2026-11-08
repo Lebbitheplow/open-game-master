@@ -898,7 +898,13 @@ function openAfterAmbush(
 }
 
 // Deadlock guard: if combat is stuck collecting initiative with nothing
-// pending, roll the stragglers digitally so a fight can never wedge.
+// pending, roll the stragglers digitally so a fight can never wedge. A
+// player who rolls real dice or holds their rolls is not rolled for: the AI's
+// turn sends them their card before the model speaks (turn.ts openTurn,
+// initiative-ask.ts), and the lead can roll it digitally from the card. Rolled
+// here, a fight opened outside a model call (a companion turning on the
+// party) or a model that never asked took those players' initiative from
+// them, even as they said they would roll it (play-test 2026-11-07, B3).
 export function ensureInitiativeProgress(campaign: Campaign): string | null {
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter || encounter.orderReady) {
@@ -913,7 +919,10 @@ export function ensureInitiativeProgress(campaign: Campaign): string | null {
       .map((entry) => entry.characterId),
   );
   // Rolling for one who is away would bring them to the fight.
-  const missing = atTheFight(encounter, fieldedSheets(campaign)).filter((sheet) => !staged.has(sheet.id) && !sheet.deathSaves?.dead);
+  const held = heldRollUserIds(campaign.gameSettings.dicePolicy, listMembers(campaign.id));
+  const missing = atTheFight(encounter, fieldedSheets(campaign)).filter(
+    (sheet) => !staged.has(sheet.id) && !sheet.deathSaves?.dead && !held.has(sheet.userId),
+  );
   if (!missing.length) {
     return null;
   }

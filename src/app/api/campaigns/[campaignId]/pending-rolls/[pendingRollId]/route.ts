@@ -7,11 +7,13 @@ import {
   publicPendingRoll,
   setPendingThrown,
 } from "@/lib/db/dm-turns";
-import { defaultRng, expressionDice, rollExpression, rollExpressionWithDice } from "@/lib/dice";
+import { rollEnteredDice, rollExpression, type RollResult } from "@/lib/dice";
 import { heroRollTag } from "@/lib/dice-script-logic";
 import { mayTypeFaces } from "@/lib/dice/held-rolls";
 import { optionsForPending } from "@/lib/dm/after-roll";
 import { afterRollDeadline, armAfterRollKeep } from "@/lib/dm/after-roll-timer";
+import { throwDamage } from "@/lib/dm/attack-blow";
+import type { DamageAsk } from "@/lib/dm/attack-record";
 import { landPendingRoll } from "@/lib/dm/pending-roll-land";
 import { publishPersisted } from "@/lib/events";
 
@@ -117,25 +119,27 @@ export async function POST(
   }
   const allDigital = submitted.length > 0 && submitted.every((entry) => entry === "digital");
 
-  let outcome;
+  // A pc_attack's damage roll carries the feats the hit spent on its dice
+  // (attack-swing.ts spendDamageFeats). The player rolling real dice is told
+  // the steps on the card; dice the server throws take them here, as its own
+  // throw of the damage does (attack-blow.ts throwDamage). Thrown plain, a
+  // released hold or "Roll digitally" lost Piercer, Savage Attacker, Brutal
+  // Attack and Great Weapon Fighting the hit had already spent.
+  const damageAsk = pending.kind === "damage" ? ((pending.attack as { damage?: DamageAsk } | null)?.damage ?? null) : null;
+  let outcome: RollResult;
   try {
-    if (isFallback) {
-      outcome = rollExpression(pending.expression, undefined, { purpose: heroRollTag(pending.kind) });
+    if (isFallback || allDigital) {
+      outcome = damageAsk
+        ? throwDamage(damageAsk, pending.attack?.attacker ?? "", [])
+        : rollExpression(pending.expression, undefined, { purpose: heroRollTag(pending.kind) });
     } else {
-      // Per-index sides come from the expression itself, so each server-drawn
-      // face matches the die it stands in for ("2d20kh1+1d4" -> [20, 20, 4]).
-      const faces = expressionDice(pending.expression);
-      const dice = submitted.map((entry, index) => {
-        if (entry !== "digital") {
-          return entry;
-        }
-        if (index >= faces.length) {
-          // Same wording rollExpressionWithDice uses for an oversized payload.
-          throw new Error("Too many die values for this roll.");
-        }
-        return defaultRng(faces[index]);
-      });
-      outcome = rollExpressionWithDice(pending.expression, dice);
+      // One entry per die (entryDice): a typed face is the one the player
+      // kept, a "digital" one the server draws with the die's own rerolls.
+      outcome = rollEnteredDice(
+        pending.expression,
+        submitted.map((entry) => (entry === "digital" ? null : entry)),
+        { purpose: heroRollTag(pending.kind), ...(damageAsk?.rerollBelow ? { rerollBelow: damageAsk.rerollBelow } : {}) },
+      );
     }
   } catch (error) {
     return Response.json(

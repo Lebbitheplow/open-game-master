@@ -2630,7 +2630,8 @@ const watchTables = {};
 // The damage roll card on real dice (play-test 2026-11-07, B5): a table the
 // player runs, at real_allowed, in a fight with one goblin beside the lead's
 // fighter, whose Piercer and Savage Attacker change the damage dice. It is
-// her turn; she turns real dice on once the order is rolled.
+// her turn; she turns real dice on once the order is rolled. She is a
+// halfling, so her attack card asks for one d20 and says Lucky's reroll.
 const DAMAGE_STEPS_TITLE = "Quarry Table";
 const damageStepTables = {};
 {
@@ -2655,8 +2656,9 @@ const damageStepTables = {};
     }
     campaigns.setCampaignStatus(table.id, "active");
     const hero = sheets.createSheet(table.id, world.owner.id, 5, heroInput({
-      name: "Kestra Holm", class: "fighter", level: 5, maxHp: 44, abilities: { str: 12, dex: 16 },
+      name: "Kestra Holm", race: "halfling", class: "fighter", level: 5, maxHp: 44, abilities: { str: 12, dex: 16 },
       feats: ["Piercer", "Savage Attacker"], equipment: [{ name: "Rapier", qty: 1, equipped: true }],
+      features: [{ name: "Lucky (reroll nat 1 on d20)", source: "race" }],
     }));
     // The goblin's die, then the hero's: the hero acts first.
     clearDice();

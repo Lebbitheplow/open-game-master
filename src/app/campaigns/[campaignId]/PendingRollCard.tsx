@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 import type { CampaignMember } from "@/lib/campaign-types";
 import { cn } from "@/lib/cn";
 import { OptionalStepper } from "@/app/workshop/kit";
-import { expressionDice } from "@/lib/dice";
+import { entryDice, entryRerollNotes, entryRerolls } from "@/lib/dice";
 import { buzz, onShake, supportsShake, useShakeToRoll } from "@/lib/dice/shake-to-roll";
 import {
   resolveFaceSource,
@@ -79,13 +79,31 @@ export function PendingRollCard({
   // re-render after the threshold is fine for a courtesy button.
   const [mountedAt] = useState(() => Date.now());
 
+  // One field per die: a reroll the roll carries (a halfling's Lucky) is
+  // made with the die in hand, and the face kept is the one entered.
   const faces = useMemo(() => {
     try {
-      return expressionDice(pending.expression);
+      return entryDice(pending.expression);
     } catch {
       return [];
     }
   }, [pending.expression]);
+  const rerolls = useMemo(() => {
+    try {
+      return entryRerolls(pending.expression);
+    } catch {
+      return [];
+    }
+  }, [pending.expression]);
+  const rerollNotes = useMemo(() => {
+    try {
+      return entryRerollNotes(pending.expression);
+    } catch {
+      return [];
+    }
+  }, [pending.expression]);
+  // Faces a Pixels die filled and then filled again for their reroll.
+  const [rerolled, setRerolled] = useState<Record<number, boolean>>({});
 
   const mine = pending.userId === meUserId;
   // Held without real dice: no faces to type, the whole roll is digital
@@ -124,27 +142,67 @@ export function PendingRollCard({
       faceSources[index]?.kind === "digital" ? "digital" : Number(faceValue(index)),
     );
 
-  // A physical Pixels die landing fills the next empty face assigned to it.
+  // A Pixels face that landed low enough for the roll's own reroll (Lucky's
+  // 1) and has not taken it: the die's next landing goes in its place, and
+  // the card does not send itself until it has. Only one die of a kept pool
+  // is rerolled.
+  const landed = (current: Record<number, string>, index: number): number => Number(current[index]?.trim() || 0);
+  const rerollDue = (index: number, current: Record<number, string>, marks: Record<number, boolean>): boolean => {
+    const rule = rerolls[index];
+    const face = landed(current, index);
+    if (!rule?.at || faceSources[index]?.kind !== "pixel" || !face || face > rule.at || marks[index]) {
+      return false;
+    }
+    if (!rule.once) {
+      return true;
+    }
+    // The first face of the pool that qualifies, while none has been rerolled.
+    const qualifies = (position: number) =>
+      faceSources[position]?.kind === "pixel" && landed(current, position) > 0 && landed(current, position) <= rule.at;
+    return (
+      !rerolls.some((other, position) => other.term === rule.term && marks[position]) &&
+      rerolls.findIndex((other, position) => other.term === rule.term && qualifies(position)) === index
+    );
+  };
+  // What the Pixels listener reads: the faces as they stand, kept current
+  // between renders by the listener itself.
+  const latest = useRef({ values, rerolled });
+  useEffect(() => {
+    latest.current = { values, rerolled };
+  }, [values, rerolled]);
+
+  // A physical Pixels die landing fills the next empty face assigned to it,
+  // or the face still owed its reroll.
   useEffect(() => {
     if (!mine) {
       return;
     }
     return onPixelRoll(({ systemId, faceCount, value }) => {
-      setValues((current) => {
-        const index = faceSources.findIndex(
-          (source, position) =>
-            source.kind === "pixel" &&
-            source.systemId === systemId &&
-            faces[position] === faceCount &&
-            !current[position]?.trim(),
-        );
-        if (index < 0) {
-          return current;
-        }
-        return { ...current, [index]: String(value) };
-      });
+      const { values: current, rerolled: marks } = latest.current;
+      const mineDie = (source: FaceSource, position: number) =>
+        source.kind === "pixel" && source.systemId === systemId && faces[position] === faceCount;
+      // Every die of the roll lands first (both of an advantage pair), and
+      // only then does a landing stand in for a face owed its reroll.
+      const index = faceSources.findIndex((source, position) => mineDie(source, position) && !current[position]?.trim());
+      if (index >= 0) {
+        const nextValues = { ...current, [index]: String(value) };
+        latest.current = { values: nextValues, rerolled: marks };
+        setValues(nextValues);
+        return;
+      }
+      const again = faceSources.findIndex((source, position) => mineDie(source, position) && rerollDue(position, current, marks));
+      if (again < 0) {
+        return;
+      }
+      const nextMarks = { ...marks, [again]: true };
+      const nextValues = { ...current, [again]: String(value) };
+      latest.current = { values: nextValues, rerolled: nextMarks };
+      setRerolled(nextMarks);
+      setValues(nextValues);
     });
-  }, [mine, faceSources, faces]);
+    // rerollDue reads the rules and sources these deps already name.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mine, faceSources, faces, rerolls]);
 
   const character = sheets.find((sheet) => sheet.id === pending.characterId);
   const detailText = pending.detail.replaceAll("_", " ");
@@ -184,7 +242,7 @@ export function PendingRollCard({
   const complete =
     faces.length > 0 &&
     faces.every(
-      (_, index) => faceSources[index]?.kind === "digital" || faceValue(index),
+      (_, index) => faceSources[index]?.kind === "digital" || (faceValue(index) && !rerollDue(index, values, rerolled)),
     );
   // Every face comes from a die that fills itself (digital or a Pixels die):
   // no typing is needed, so the card submits on its own once all have landed.
@@ -433,6 +491,13 @@ export function PendingRollCard({
       {!heldOnly && advantageNote ? (
         <p className="check-dim mt-0.5 text-xs">{advantageNote}</p>
       ) : null}
+      {!heldOnly
+        ? rerollNotes.map((note) => (
+            <p key={note} className="check-dim mt-0.5 text-xs">
+              {note}
+            </p>
+          ))
+        : null}
       {!heldOnly && shakeActive ? (
         <p className="check-dim mt-0.5 flex items-center gap-1.5 text-xs">
           <Smartphone className="size-3.5" /> Or shake to roll it digitally.

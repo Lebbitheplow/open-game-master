@@ -18,6 +18,7 @@ const kit = await combatKit(world);
 const { setMemberHoldRolls, setMemberRealDice } = await import("../src/lib/db/campaigns.ts");
 const { getPendingRoll, listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
 const submitRoute = await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]");
+const { entryDice } = await import("../src/lib/dice.ts");
 
 const fighter = (feats, equipment, abilities = { str: 16, dex: 16 }) =>
   world.addHero({ class: "fighter", level: 5, maxHp: 44, abilities, proficiencies: TRAINED, equipment, feats });
@@ -286,6 +287,78 @@ await test("Mote of Potential: a saving throw entered on real dice gives the bar
       world.clearDice();
     }
     assert.equal(world.sheet(savage.id).tempHp, 4 + abilityMod(16), `${real ? "real" : "server"} dice`);
+  }
+});
+
+// Dice the server throws for a parked damage roll (the lead's "Roll
+// digitally", every face set to the server, a held roll released) take the
+// feats the hit already spent, as its own throw of the damage does
+// (attack-blow.ts throwDamage). They were thrown plain, so Piercer, Brutal
+// Attack, Savage Attacker and Great Weapon Fighting were spent for nothing.
+async function serverThrownDamage(hero, weapon, body, faces, { hold = false } = {}) {
+  const enemy = await stage(hero);
+  (hold ? setMemberHoldRolls : setMemberRealDice)(world.campaignId, hero.userId, true);
+  try {
+    const parked = await world.invoke("pc_attack", { characterId: hero.id, targetEnemyId: enemy.id, weapon });
+    assert.equal(parked.ok, true, parked.error);
+    const toHit = listOpenPendingRolls(world.campaignId).filter((entry) => entry.kind === "attack" && entry.userId === hero.userId).at(-1);
+    world.signIn({ id: hero.userId });
+    world.clearDice();
+    world.dice(15);
+    const hit = await call(submitRoute, "POST", hold ? { fallback: "digital" } : { dice: [15] }, { campaignId: world.campaignId, pendingRollId: toHit.id });
+    assert.equal(hit.status, 200, JSON.stringify(hit.json));
+    const damage = listOpenPendingRolls(world.campaignId).filter((entry) => entry.kind === "damage" && entry.userId === hero.userId).at(-1);
+    assert.ok(damage, `no damage roll is parked: ${getPendingRoll(toHit.id).combatNote}`);
+    world.clearDice();
+    world.dice(...faces);
+    const landed = await call(submitRoute, "POST", body, { campaignId: world.campaignId, pendingRollId: damage.id });
+    world.clearDice();
+    assert.equal(landed.status, 200, JSON.stringify(landed.json));
+    return 400 - kit.enemy(enemy.id).currentHp;
+  } finally {
+    setMemberRealDice(world.campaignId, hero.userId, false);
+    setMemberHoldRolls(world.campaignId, hero.userId, false);
+  }
+}
+
+await test("A parked damage roll the server throws still takes the Piercer and Brutal Attack the hit spent", async () => {
+  // Rapier 1d8+3: a 1, and Piercer's reroll of it to a 6.
+  assert.equal(await serverThrownDamage(piercer, "Rapier", { fallback: "digital" }, [1, 6]), 6 + abilityMod(16), "Roll digitally");
+  assert.equal(await serverThrownDamage(piercer, "Rapier", { dice: ["digital"] }, [1, 6]), 6 + abilityMod(16), "every face set to the server");
+  // Greatsword 2d6+3 released by a player who holds their rolls: 1 and 1,
+  // then Brutal Attack's second roll of 6 and 6.
+  assert.equal(await serverThrownDamage(brutal, "Greatsword", { fallback: "digital" }, [1, 1, 6, 6], { hold: true }), 12 + abilityMod(16), "a held roll released");
+});
+
+// SRD 5.1, Halfling Lucky: a natural 1 on an attack roll, ability check or
+// saving throw is rolled again, and the new roll must be used. Its "r1" made
+// the card ask for a d20 per possible reroll, and the route then refused the
+// faces: a halfling on real dice could not answer a roll that came up 1, nor
+// (on the card) one that did not.
+await test("A halfling on real dice enters one d20 for an attack and a save, and a 1 kept after Lucky's reroll stays a 1", async () => {
+  const before = world.sheet(piercer.id).features;
+  world.patch(piercer.id, { features: [...before, { name: "Lucky (reroll nat 1 on d20)", source: "race" }] });
+  try {
+    const enemy = await stage(piercer);
+    setMemberRealDice(world.campaignId, piercer.userId, true);
+    try {
+      const parked = await world.invoke("pc_attack", { characterId: piercer.id, targetEnemyId: enemy.id, weapon: "Rapier" });
+      assert.equal(parked.ok, true, parked.error);
+      const toHit = listOpenPendingRolls(world.campaignId).filter((entry) => entry.kind === "attack").at(-1);
+      assert.match(toHit.expression, /^1d20r1/, toHit.expression);
+      assert.deepEqual(entryDice(toHit.expression), [20], "the card asks for one d20");
+      const missed = await answer(piercer, "attack", [1]);
+      assert.match(missed.note, /MISS \(natural 1\)/, missed.note);
+      await kit.endFight();
+      await world.invoke("request_roll", { characterId: piercer.id, kind: "saving_throw", ability: "dex", dc: 10, reason: "a falling beam" });
+      const save = listOpenPendingRolls(world.campaignId).filter((entry) => entry.kind === "saving_throw").at(-1);
+      assert.deepEqual(entryDice(save.expression), [20], save.expression);
+      await answer(piercer, "saving_throw", [14]);
+    } finally {
+      setMemberRealDice(world.campaignId, piercer.userId, false);
+    }
+  } finally {
+    world.patch(piercer.id, { features: before });
   }
 });
 

@@ -685,7 +685,8 @@ type OpeningTurn = { stage: DmJobStage; turn: DmTurn | null };
 
 // The turn up to its first model call: the prompt, built against the moment,
 // and the row that carries it. Null when the turn was an out-of-character
-// answer, which is finished here.
+// answer, which is finished here, or parked on initiative cards before the
+// model speaks (resumeDmTurn picks it up).
 async function openTurn(
   campaign: Campaign,
   history: CampaignMessage[],
@@ -1053,6 +1054,18 @@ async function openTurn(
   // marks them answered only when the turn succeeds.
   turn.playerWhisperIds = pendingWhispers.map((whisper) => whisper.id);
   saveDmTurn(turn);
+  // A fight still collecting initiative that no call of the model opened (a
+  // companion turning on the party, issue 503) or whose opening asked nobody:
+  // the players who roll their own dice get their cards now, and the model
+  // speaks once every initiative is in (resumeDmTurn hands it the totals).
+  // The deadlock guard above rolled everyone else.
+  const ask = askForInitiative(campaign, turn, heldRollUserIds(campaign.gameSettings.dicePolicy, listMembers(campaignId)), { toolCallId: null });
+  if (ask?.waiting.length) {
+    turn.status = "awaiting_rolls";
+    saveDmTurn(turn);
+    setDmStatus(campaignId, "awaiting_rolls");
+    return null;
+  }
   return { context, turn };
 }
 
@@ -1170,6 +1183,12 @@ export async function resumeDmTurn(campaignId: string, turnId: string) {
         : undefined;
     if (opened && typeof opened.content === "string" && pending.characterId) {
       opened.content = fillInitiativeCard(opened.content, pending.characterId, answer);
+      continue;
+    }
+    // A card the turn sent before the model first spoke (openTurn) answers
+    // no call of the model's, so the total reaches it as the moment's news.
+    if (pending.kind === "initiative" && !pending.toolCallId && !turn.conversation.some((message) => message.role === "assistant")) {
+      turn.conversation.push({ role: "user", content: `[GAME STATE UPDATE] Initiative rolled at the table: ${JSON.stringify(answer)}` });
       continue;
     }
     // The call whose parts wait on this roll: a tool answer of its id that
@@ -1292,6 +1311,11 @@ async function runHeldCalls(context: TurnContext, turn: DmTurn, watcherId: strin
       outcome = { error: `${toolCall.name} failed on the server, so nothing came of it.`, retry: true };
     }
     const happened = settleTurn(campaign, holder);
+    // A fight this held call opened has initiative cards out: its answer is
+    // written below, and the turn waits on the cards (resolveModelCall).
+    if (CARDS_OUT.has(outcome)) {
+      waiting = true;
+    }
     if (outcome[PARKED]) {
       ran.push(toolCall);
       waiting = true;
