@@ -542,7 +542,7 @@ await test("An AI turn waiting on a roll nobody chooses for resumes when its tim
   assert.equal(await keepAfterRollWhenDue(pending.id, new Date(pending.thrown.deadline).getTime() + 1), true);
   await settleQueue(table.campaignId);
   assert.equal(getDmTurn(pending.turnId).status, "done");
-  assert.match(JSON.stringify(model.requests[asked + 1]), /"total\?":s*6|total.{0,6}6/, "the model reads the roll as it lay");
+  assert.match(JSON.stringify(model.requests[asked + 1]), /total\\{0,2}":\s*6\b/, "the model reads the roll as it lay");
   assert.equal(table.sheet(lucky.id).resources.luck_points.used, 0);
 });
 
