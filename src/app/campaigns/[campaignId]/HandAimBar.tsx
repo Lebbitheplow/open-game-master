@@ -386,7 +386,7 @@ export function HandAimBar({
                     style={{ "--i": index } as CSSProperties}
                     onClick={() => onChoice?.(option.value)}
                     className={cn(
-                      "hand-option motion-press inline-flex min-h-9 items-center rounded-full border px-3 text-xs sm:min-h-8",
+                      "hand-option motion-press inline-flex min-h-10 items-center rounded-full border px-3 text-xs sm:min-h-8",
                       on ? "border-amber-400/70 bg-amber-500/20 text-amber-100" : "border-stone-600 text-stone-300 hover:border-amber-500/60",
                     )}
                   >

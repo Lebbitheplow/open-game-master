@@ -17,7 +17,7 @@ import { computeSheetDerived, speedFor } from "@/lib/srd";
 import { resolveFormula, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
 import type { Ability, SpendDoes } from "@/lib/srd/authored-effects-types";
 import { STORM_AURA } from "@/lib/srd/authored-effects-data";
-import { effectiveMaxHp, effectiveSpeed, likelierSave, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { effectiveMaxHp, effectiveSpeed, likelierSave, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
 import { immuneToCondition } from "@/lib/dm/damage-logic";
 import { rollCharacterCheck } from "@/lib/dm/contest-roll";
@@ -28,7 +28,7 @@ import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import { hurtEnemy } from "@/lib/dm/spell-aura";
-import { seesOnBoard, unseenBecause, withinFeet } from "@/lib/dm/authored-saves";
+import { unseenBecause, withinFeet } from "@/lib/dm/authored-saves";
 import { darknessNear, dispelZones } from "@/lib/dm/zone-cast";
 import { tilesBetween, wallBetween } from "@/lib/dm/attack-spatial";
 import { rerollLastSave, swarmPush } from "@/lib/dm/authored-spend-more";
@@ -427,7 +427,13 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       }
       const back = Math.min(does.amount, state.used);
       const resources = { ...sheet.resources, [does.pool]: { max: state.max, used: state.used - back } };
-      return { patch: { resources }, result: { restored: `${back} ${resourceName(does.pool)} back (${state.max - state.used + back}/${state.max}).` } };
+      // The mark that opened the chance is spent by it (Wild Magic Surge's
+      // SURGE_CHANCE), so one casting gives one use back.
+      const cleared = does.clears ? removeConditions(sheet.conditions, sheet.conditionMeta as ConditionMetaMap, [does.clears]) : null;
+      return {
+        patch: { resources, ...(cleared ? { conditions: cleared.conditions, conditionMeta: cleared.meta } : {}) },
+        result: { restored: `${back} ${resourceName(does.pool)} back (${state.max - state.used + back}/${state.max}).` },
+      };
     }
     case "flames": {
       const wanted = does.healOnly ? "heal" : textKey(ctx.args.variant ?? "");
@@ -577,15 +583,19 @@ function saveArea(ctx: SpendContext, does: Extract<SpendDoes, { kind: "save_area
   // GM narrates it (Charm Animals and Plants is used on a trail as often as in a
   // fight), as a buff aimed at a creature is.
   if (!encounter) {
-    const dark = does.dispelsDarkness ? ` Any magical darkness within ${does.rangeFt} feet of ${sheet.name} is dispelled.` : "";
-    return { result: { applied: [`${ctx.spend.name}: there is no fight, so no creature on the board saves; the GM resolves it in the story.${dark}`] } };
+    // A scene's board (a map with no fight on it) holds its darkness all the
+    // same: Radiance of the Dawn ends what it reaches there, and says so of
+    // any other only in the story.
+    const dispelled = does.dispelsDarkness ? dispelZones(campaign, darknessNear(campaign, sheet.id, does.rangeFt), ctx.spend.name) : [];
+    const dark = does.dispelsDarkness && !dispelled.length ? ` Any magical darkness within ${does.rangeFt} feet of ${sheet.name} is dispelled.` : "";
+    return { result: { applied: [`${ctx.spend.name}: there is no fight, so no creature on the board saves; the GM resolves it in the story.${dark}`, ...dispelled] } };
   }
   let targets = foesOfSheet(campaign.id, encounter, sheet.id).filter(
     (enemy) =>
       enemy.status === "alive" &&
       enemy.currentHp > 0 &&
       withinFeet(encounter.id, sheet.id, enemy.id, does.rangeFt) &&
-      (!does.sight || (does.sight === "line" ? seesOnBoard(encounter.id, sheet.id, enemy.id) : !unseenBecause(encounter.id, sheet, enemy))) &&
+      (!does.sight || !(does.sight === "seesHolder" ? unseenBecause(encounter.id, enemy, sheet) : unseenBecause(encounter.id, sheet, enemy))) &&
       // Total cover: a wall of the board between them (as cast-reach.ts reads
       // it, past the squares beside the holder).
       (!does.coverShields || !((tilesBetween(encounter.id, sheet.id, enemy.id) ?? 0) > 1 && wallBetween(encounter.id, sheet.id, enemy.id))) &&

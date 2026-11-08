@@ -17,6 +17,7 @@ const kit = await combatKit(world);
 const sorcerer = world.addHero({
   class: "sorcerer", subclass: "Wild Magic", level: 3, abilities: { dex: 14, con: 14, cha: 16 },
   maxHp: 60, proficiencies: TRAINED, equipment: [{ name: "Dagger", qty: 1, equipped: true }],
+  spellcasting: { ability: "cha", slots: { 1: { max: 4, used: 0 } }, prepared: [], known: ["Shield", "Mage Armor"], cantrips: ["Fire Bolt"] },
 });
 const ally = world.addHero({ class: "fighter", level: 3, abilities: { str: 16 }, proficiencies: TRAINED });
 
@@ -105,6 +106,48 @@ await test("a second use before a long rest (or a surge) is refused, and nothing
   const again = await tides("attack");
   assert.equal(again.ok, false, "one use");
   assert.deepEqual(carriers(), []);
+});
+
+// "Any time before you regain the use of this feature, the DM can have you
+// roll on the Wild Magic Surge table immediately after you cast a sorcerer
+// spell of 1st level or higher. You then regain the use." The GM had no way
+// to give the use back: update_sheet refuses counters, and no tool restored it.
+const { deriveHand, FRESH_TURN } = await import("../src/lib/battlemap/hand.ts");
+const surge = () => world.invoke("use_resource", { characterId: sorcerer.id, resource: "Wild Magic Surge" });
+const cast = async (spell, level) => {
+  kit.freshTurn();
+  const out = await world.invoke("use_spell_slot", { characterId: sorcerer.id, spell, ...(level ? { level } : {}) });
+  assert.equal(out.ok, true, out.error);
+  return out;
+};
+const chance = () => world.sheet(sorcerer.id).conditions.includes("surge chance");
+
+await test("after a sorcerer spell of 1st level or higher the GM's Wild Magic Surge gives a spent Tides of Chaos back, once, with no card in the player's Hand", async () => {
+  await stage();
+  world.patch(sorcerer.id, { spellcasting: { ...world.sheet(sorcerer.id).spellcasting, slots: { 1: { max: 4, used: 0 } } } });
+  assert.equal((await tides("attack")).ok, true);
+  assert.equal(usedOf(), 1);
+  const early = await surge();
+  assert.equal(early.ok, false, "a surge with no spell cast gave the use back");
+  assert.match(String(early.error), /right after a sorcerer spell/);
+  assert.equal(usedOf(), 1);
+  const shield = await cast("Mage Armor", 1);
+  assert.match(String(shield.result.wildMagicSurge), /Wild Magic Surge/, "the GM is not told the surge may give the use back");
+  assert.ok(chance(), "the casting left no chance for the surge");
+  assert.equal(deriveHand(world.sheet(sorcerer.id), FRESH_TURN, {}).some((card) => card.name === "Wild Magic Surge"), false, "the GM's call is a card in the player's Hand");
+  const back = await surge();
+  assert.equal(back.ok, true, back.error);
+  assert.equal(usedOf(), 0, "the use came back");
+  assert.equal(chance(), false, "the chance is spent with it");
+  assert.equal((await surge()).ok, false, "one casting gives one use back");
+});
+
+await test("a casting leaves no surge chance while Tides of Chaos still has its use", async () => {
+  await stage();
+  world.patch(sorcerer.id, { spellcasting: { ...world.sheet(sorcerer.id).spellcasting, slots: { 1: { max: 4, used: 0 } } } });
+  const out = await cast("Mage Armor", 1);
+  assert.equal(out.result.wildMagicSurge, undefined);
+  assert.equal(chance(), false);
 });
 
 await finish();

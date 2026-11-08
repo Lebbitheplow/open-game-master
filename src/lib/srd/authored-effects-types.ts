@@ -27,7 +27,9 @@ export type Gate = {
   // The holder is concentrating on a spell.
   concentrating?: boolean;
   // The holder has (or has not) a condition, by name or "name (" prefix.
+  // `because`: what the refusal says is missing, in place of the mark's name.
   condition?: string;
+  because?: string;
   notCondition?: string;
   // The option chosen for this feature ("Totem Spirit (Bear)"), or for
   // another feature of the same sheet ("Armor Model (Guardian)").
@@ -371,10 +373,10 @@ export type SpendDoes =
       // Dawn's text asks no sight, and Order's Demand's "see or hear" carries
       // through a fog. True also leaves out an invisible or hidden creature, and
       // every one while the holder is blinded (Champion Challenge: "that you can
-      // see"). "line" asks only the line between them, which runs both ways:
-      // Charm Animals and Plants takes a beast "that can see you", so the
-      // holder's own sight of it is not the test.
-      sight?: true | "line";
+      // see"). "seesHolder" turns it round: Charm Animals and Plants takes a
+      // beast "that can see you", so a blinded one is left out, and every one
+      // while the cleric is invisible or hidden from it.
+      sight?: true | "seesHolder";
       // A creature with total cover from the holder is not affected, seen or
       // not (Radiance of the Dawn reaches into a fog, not through a wall).
       coverShields?: boolean;
@@ -421,7 +423,8 @@ export type SpendDoes =
   // what happens (Spirit Totem's move, the cannon's ballista option).
   | { kind: "note"; text: string }
   // Spent dice come back to a pool (Psionic Recovery: one Psionic Energy die).
-  | { kind: "restore"; pool: string; amount: number };
+  // `clears`: the mark the spend's gate asked for is spent with it.
+  | { kind: "restore"; pool: string; amount: number; clears?: string };
 
 export type SpendAction = "action" | "bonus" | "reaction" | "none";
 
@@ -450,6 +453,9 @@ export type AuthoredSpend = {
   afterWeaponHit?: boolean;
   // Chosen outside a fight only, or only in one.
   fight?: "in" | "out";
+  // The GM's call, not the player's: no card in the Hand (Wild Magic Surge,
+  // which the GM may have the sorcerer roll).
+  gm?: boolean;
   does: SpendDoes;
 };
 

@@ -2278,6 +2278,7 @@
     "lib/srd/authored-effects-data3.ts#str-list": [["english-source",21,"ODM's authored effect rows (bundled data)"]],
     "lib/srd/authored-effects-data3.ts#toUpperCase": [["display",1,"capitalised damage type"]],
     "lib/srd/authored-effects-data4.ts#str-list": [["english-source",6,"ODM's authored effect rows (bundled data)"]],
+    "lib/srd/authored-effects-more.ts#str-eq": [["key",1,"class id (engine vocabulary)"]],
     "lib/srd/authored-effects-more.ts#str-key": [["key",1,"creature sizes"]],
     "lib/srd/authored-effects-genre.ts#str-list": [["english-source",1,"ODM's authored effect rows (bundled data)"]],
     "lib/srd/authored-effects.ts#\\b": [["key",2,"the engine's own dice formula"]],

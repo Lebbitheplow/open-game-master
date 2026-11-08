@@ -46,7 +46,7 @@ import { describeCastingTime, type SpellFacts } from "@/lib/srd/spell-facts";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
-import { incapacitatedBy } from "@/lib/dm/condition-logic";
+import { incapacitatedBy, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { attacksAllowedFor, budgetFor, markReactionUsed, storeBudget } from "@/lib/dm/turn-budget";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { droppedLine, setConcentration } from "@/lib/dm/concentration";
@@ -84,7 +84,8 @@ import { antimagicProblem, silenceProblem } from "@/lib/dm/zone-rules";
 import { placeSpellZone, placementReachProblem } from "@/lib/dm/zone-cast";
 import { spellSaveDcFor } from "@/lib/srd";
 import { castTempHp } from "@/lib/dm/authored-spells";
-import { authoredSlotRefund } from "@/lib/srd/authored-effects-more";
+import { authoredSlotRefund, opensSurgeChance } from "@/lib/srd/authored-effects-more";
+import { SURGE_CHANCE } from "@/lib/srd/authored-effects-data4";
 import { takeItemCast, type ItemCast } from "@/lib/srd/item-cast-credit";
 import type { SpellMech } from "@/lib/srd/spell-mechanics";
 import { storerHolding } from "@/lib/srd/spell-storing";
@@ -656,6 +657,15 @@ export function castSpell(
     const row = slots[String(refund.level)];
     patch.spellcasting = { ...patch.spellcasting, slots: { ...slots, [String(refund.level)]: { ...row, used: row.used - 1 } } };
     result.slotRefund = `${refund.feature}: a spent level ${refund.level} slot comes back.`;
+  }
+  // Wild Magic Surge: after a sorcerer spell of 1st level or higher the GM may
+  // have the sorcerer roll on the surge table, and a spent Tides of Chaos then
+  // comes back. The mark lasts the round; the GM's use_resource spends it.
+  if (!input.storing && opensSurgeChance(sheet.resources, facts)) {
+    const held = (patch.conditions ?? sheet.conditions).filter((entry) => !isConditionNamed(entry, SURGE_CHANCE));
+    patch.conditions = [...held, SURGE_CHANCE];
+    patch.conditionMeta = { ...((patch.conditionMeta ?? sheet.conditionMeta) as ConditionMetaMap), [SURGE_CHANCE]: { rounds: 1 } };
+    result.wildMagicSurge = `Tides of Chaos is spent: the GM may have ${sheet.name} roll on the wild magic table now, and if so use_resource "Wild Magic Surge" gives the use back.`;
   }
   // Cast from their own slots now: an item's numbers for it are over.
   const freed = input.storing ? null : equipmentWithoutRunning(patch.equipment ?? sheet.equipment, name);
