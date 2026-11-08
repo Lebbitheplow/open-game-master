@@ -22,8 +22,9 @@ export const AUTHORED_DATA_CHANNEL: Record<string, AuthoredEntry> = {
         pool: POOL,
         action: "action",
         // Every hostile creature in reach, seen or not, but none with total
-        // cover from the cleric.
-        does: { kind: "save_area", save: "con", dcAbility: "spell", rangeFt: 30, dice: "2d10+level", type: "radiant", half: true, coverShields: true },
+        // cover from the cleric; and "any magical darkness within 30 feet of
+        // you is dispelled".
+        does: { kind: "save_area", save: "con", dcAbility: "spell", rangeFt: 30, dice: "2d10+level", type: "radiant", half: true, coverShields: true, dispelsDarkness: true },
       },
     ],
   },

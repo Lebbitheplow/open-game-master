@@ -476,6 +476,19 @@ export function zoneLights(zones: SpellZone[], width: number): LightZone[] {
   return out;
 }
 
+// The areas of magical darkness with any square within `tiles` of the
+// squares a creature stands on (Radiance of the Dawn: "any magical darkness
+// within 30 feet of you is dispelled"). One square in reach is enough and
+// the whole spell ends, as Daylight dispels a darkness it only partly
+// overlaps (src/lib/dm/zone-cast.ts).
+export function darknessWithin(zones: SpellZone[], width: number, space: XY[], tiles: number): SpellZone[] {
+  return zones.filter(
+    (zone) =>
+      rowOf(zone)?.darkness &&
+      zone.cells.some((cell) => space.some((at) => chebyshev(at.x, at.y, cell % width, Math.floor(cell / width)) <= tiles)),
+  );
+}
+
 // Whether a square is inside Silence.
 export function silentAt(zones: SpellZone[], cell: number): SpellZone | null {
   return zones.find((zone) => rowOf(zone)?.silence && zone.cells.includes(cell)) ?? null;
