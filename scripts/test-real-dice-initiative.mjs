@@ -16,6 +16,7 @@ import { openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { call as callRoute } from "./lib/enforce-campaign.mjs";
 import { call, fakeModel, reply, settleQueue } from "./lib/enforce-narrator.mjs";
+import { combatKit } from "./lib/enforce-combat.mjs";
 
 const { test, finish } = suite("test-real-dice-initiative");
 
@@ -23,6 +24,8 @@ const { setMemberRealDice } = await import("../src/lib/db/campaigns.ts");
 const { listOpenPendingRolls, getDmTurn } = await import("../src/lib/db/dm-turns.ts");
 const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
 const { fillInitiativeCard, holdsInitiativeCard, withInitiativeCards } = await import("../src/lib/dm/initiative-cards-logic.ts");
+const { startFightAgainst } = await import("../src/lib/dm/encounter-tools.ts");
+const { getCampaignById } = await import("../src/lib/db/campaigns.ts");
 
 // An AI table that allows real dice: the lead (Bran) lets the server roll,
 // Kara rolls her own dice.
@@ -145,6 +148,97 @@ await test("the opening answer is left alone when nobody was asked, and a filled
   const both = JSON.parse(fillInitiativeCard(one, "l", { total: 8, combat: "Combat begins. Initiative order: Bran, Kara, Lia." }));
   assert.equal(both.next, "Combat begins. Initiative order: Bran, Kara, Lia.");
   assert.deepEqual(both.initiativeCards.map((card) => card.total), [12, 8]);
+});
+
+// A fight no call of the model opened: a lasting companion turning on the
+// party starts one of its own (turncoat.ts, through startFightAgainst), from
+// the turn's own opening, the clock or a sheet's use. The deadlock guard then
+// rolled the real-dice player's initiative before the model was asked. The
+// turn now sends her card before the model speaks, and hands it the total.
+await test("a fight opened outside a model call sends the real-dice player her card before the model speaks, and the guard rolls only the others", async () => {
+  const { world, bran, kara, karaUserId, dm, submitRoute } = await table();
+  const opened = startFightAgainst(getCampaignById(world.campaignId), "goblin", "A goblin turns on the party");
+  assert.equal("error" in opened, false, JSON.stringify(opened));
+  dm.script([reply({ text: "The goblin's knife flashes. Kara, you are quickest." })]);
+  dm.claims([[]]);
+
+  const narrated = await dm.turn(world, "We stand our ground.", bran.id);
+  assert.equal(narrated, null, "the turn did not wait for Kara's initiative");
+  assert.equal(dm.requests.length, 0, "the model spoke before every initiative was in");
+  assert.equal(initiativeRollsOf(world, kara.id).length, 0, "the server rolled Kara's initiative");
+  const cards = listOpenPendingRolls(world.campaignId);
+  assert.equal(cards.length, 1, `expected one initiative card, found ${cards.length}`);
+  assert.equal(cards[0].characterId, kara.id);
+  assert.equal(getDmTurn(cards[0].turnId)?.status, "awaiting_rolls");
+  assert.ok(world.encounter().order.some((entry) => entry.kind === "pc" && entry.characterId === bran.id), "Bran's initiative was not rolled");
+
+  world.signIn({ id: karaUserId });
+  const answered = await callRoute(submitRoute, "POST", { dice: [14] }, { campaignId: world.campaignId, pendingRollId: cards[0].id });
+  assert.equal(answered.status, 200, JSON.stringify(answered.json));
+  await settleQueue(world.campaignId);
+  assert.equal(world.encounter().orderReady, true, "the order never locked");
+  assert.equal(getDmTurn(cards[0].turnId)?.status, "done");
+  assert.equal(dm.requests.length, 1);
+  assert.match(JSON.stringify(dm.requests[0]), /Initiative rolled at the table/, "the model was not told her roll");
+  dm.close();
+  world.close();
+});
+
+// A Portent watch stop holds the calls behind an attack (foresight.ts) and
+// runs them when the watcher answers (turn.ts runHeldCalls). One that ended
+// the fight and one that opened the next sent the real-dice player's card,
+// but the held run did not count the cards as waiting: the turn went on, the
+// model narrated a fight still collecting initiative, and her total later
+// landed on a turn that was over.
+await test("a fight opened by a call a Portent stop held still waits for the real-dice player's card", async () => {
+  const world = await openWorld({ gameSettings: { ttsEnabled: false, narrationGuard: false, dicePolicy: "real_allowed" } });
+  const kit = await combatKit(world);
+  const seerUser = world.addUser("seer");
+  const seer = world.addHero({ user: seerUser, name: "Seer", class: "wizard", level: 5 });
+  const bran = world.addHero({ name: "Bran", class: "fighter", level: 5, equipment: [{ name: "Longsword", qty: 1 }] });
+  const karaUser = world.addUser("kara");
+  const kara = world.addHero({ user: karaUser, name: "Kara", class: "fighter", level: 5 });
+  const dm = await fakeModel();
+  dm.pointAt(world);
+  await kit.fight(1, { heroFaces: { [seer.id]: 2, [bran.id]: 19, [kara.id]: 5 } });
+  const [goblin] = world.enemies();
+  kit.setEnemy(goblin.id, { currentHp: 1, maxHp: 1, ac: 5 });
+  kit.place(bran.id, 5, 5);
+  kit.place(goblin.id, 6, 5);
+  world.patch(seer.id, { resources: { sub_portent: { max: 2, used: 0 } }, foretold: [17, 3] });
+  world.signIn(seerUser);
+  const watching = await callRoute(await world.route("campaigns/[campaignId]/foresight"), "POST", { on: true, characterId: seer.id }, { campaignId: world.campaignId });
+  assert.equal(watching.status, 200, JSON.stringify(watching.json));
+  setMemberRealDice(world.campaignId, karaUser.id, true);
+
+  const swing = call("pc_attack", { characterId: bran.id, targetEnemyId: goblin.id, weapon: "Longsword" });
+  const opening = startCall();
+  dm.script([reply({ calls: [swing, opening] }), reply({ text: "More raiders pour over the ridge." })]);
+  dm.claims([[]]);
+  await dm.turn(world, "Bran cuts the goblin down.", bran.id);
+  const stop = listOpenPendingRolls(world.campaignId).find((pending) => pending.parkedFor === "watch");
+  assert.ok(stop, "the attack did not stop for the watching seer");
+
+  world.dice(18, 8);
+  world.signIn(seerUser);
+  const passed = await callRoute(await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]/watch"), "POST", { pass: true }, { campaignId: world.campaignId, pendingRollId: stop.id });
+  assert.equal(passed.status, 200, JSON.stringify(passed.json));
+  await settleQueue(world.campaignId);
+  world.clearDice();
+  const card = listOpenPendingRolls(world.campaignId).find((pending) => pending.kind === "initiative");
+  assert.ok(card, "no initiative card reached Kara in the new fight");
+  assert.equal(card.characterId, kara.id);
+  assert.equal(getDmTurn(card.turnId)?.status, "awaiting_rolls", "the turn went on without Kara's initiative");
+  assert.equal(dm.requests.length, 1, "the model spoke before every initiative was in");
+
+  world.signIn({ id: karaUser.id });
+  const answered = await callRoute(await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]"), "POST", { dice: [11] }, { campaignId: world.campaignId, pendingRollId: card.id });
+  assert.equal(answered.status, 200, JSON.stringify(answered.json));
+  await settleQueue(world.campaignId);
+  assert.equal(world.encounter().orderReady, true);
+  assert.equal(getDmTurn(card.turnId)?.status, "done");
+  dm.close();
+  world.close();
 });
 
 finish();
