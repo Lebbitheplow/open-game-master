@@ -44,6 +44,7 @@ import type { Campaign } from "@/lib/db/campaigns";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { moteAfterRoll, moteOf } from "@/lib/dm/authored-mote";
 import { applyRollGates } from "@/lib/dm/roll-gates";
+import { afterRollDeadline, armAfterRollKeep } from "@/lib/dm/after-roll-timer";
 import { invalidArguments, toolError, type ToolResult } from "@/lib/dm/tool-errors";
 
 export function handleRequestRoll(
@@ -270,7 +271,7 @@ export function handleRequestRoll(
         dc: args.dc ?? null,
         reason: args.reason?.slice(0, 200) ?? "",
         parkedFor: "after_roll",
-        thrown: { outcome, options, choosing: false, landing: { status: "fallback", physical: false, source: "digital" } },
+        thrown: { outcome, options, choosing: false, landing: { status: "fallback", physical: false, source: "digital" }, deadline: afterRollDeadline() },
       });
       // What the digital answer would have told the model, for the answer the
       // resumed turn writes.
@@ -279,6 +280,7 @@ export function handleRequestRoll(
         setPendingCombatNote(pending.id, told);
       }
       publishPersisted(campaignId, "roll_pending", { pendingRoll: publicPendingRoll(pending) });
+      armAfterRollKeep(pending.id, pending.thrown?.deadline);
       return {
         ok: true,
         parked: true,

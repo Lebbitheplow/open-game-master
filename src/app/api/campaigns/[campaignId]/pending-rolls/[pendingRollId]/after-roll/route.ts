@@ -4,6 +4,7 @@ import { getPendingRoll, publicPendingRoll, setPendingThrown } from "@/lib/db/dm
 import { getSheetById } from "@/lib/db/sheets";
 import { optionsForPending, spendAfterRoll } from "@/lib/dm/after-roll";
 import { keepD20 } from "@/lib/dm/after-roll-logic";
+import { afterRollDeadline, armAfterRollKeep } from "@/lib/dm/after-roll-timer";
 import { runInTurnScope } from "@/lib/dm/job-control";
 import { landPendingRoll } from "@/lib/dm/pending-roll-land";
 import { refuseDuringBreak } from "@/lib/dm/table-break";
@@ -106,10 +107,12 @@ export async function POST(
   if (!choosing && !options.length) {
     return land(outcome, landing);
   }
-  const updated = setPendingThrown(pending.id, { ...thrown, outcome, options, choosing, spent, landing });
+  // A new decision gets its own time.
+  const updated = setPendingThrown(pending.id, { ...thrown, outcome, options, choosing, spent, landing, deadline: afterRollDeadline() });
   if (!updated) {
     return Response.json({ error: "That roll was already resolved." }, { status: 409 });
   }
+  armAfterRollKeep(updated.id, updated.thrown?.deadline);
   publishPersisted(campaignId, "roll_pending", { pendingRoll: publicPendingRoll(updated) });
   return Response.json({ pendingRoll: publicPendingRoll(updated) });
 }
