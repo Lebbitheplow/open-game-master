@@ -73,6 +73,7 @@ export function throwForChoice(plan: AttackPlan, strike: Strike, toolCallId: str
     critRange: record.critRange ?? 20,
     spent: record.luck ? ["lucky"] : [],
     reactionFree: reactionFreeFor(campaign.id, fresh.id),
+    melee: record.melee === true && record.ranged !== true,
   });
   if (!options.length) {
     return { thrown };

@@ -14,7 +14,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const choiceSchema = z.union([
-  z.object({ use: z.enum(["lucky", "bardic", "own_luck", "chronal_shift", "guided_strike", "master_duelist", "favored_by_the_gods"]) }),
+  z.object({ use: z.enum(["lucky", "bardic", "own_luck", "chronal_shift", "guided_strike", "master_duelist", "favored_by_the_gods", "touch_of_death"]) }),
   // Which of a luck point's d20s counts.
   z.object({ die: z.number().int().min(0).max(20) }),
   z.object({ keep: z.literal(true) }),
@@ -56,8 +56,8 @@ export async function POST(
     return Response.json({ error: "This is not your roll." }, { status: 403 });
   }
 
-  const land = (outcome: typeof thrown.outcome, landing = thrown.landing) => {
-    const roll = landPendingRoll(context.campaign, pending, outcome, landing);
+  const land = (outcome: typeof thrown.outcome, landing = thrown.landing, landed = pending) => {
+    const roll = landPendingRoll(context.campaign, landed, outcome, landing);
     return roll ? Response.json({ roll }) : Response.json({ error: "That roll was already resolved." }, { status: 409 });
   };
   if ("keep" in choice) {
@@ -73,6 +73,7 @@ export async function POST(
   let choosing = false;
   let spent = thrown.spent ?? [];
   let landing = thrown.landing;
+  let landed = pending;
   if ("die" in choice) {
     const kept = thrown.choosing ? keepD20(outcome, choice.die) : null;
     if (!kept) {
@@ -96,16 +97,21 @@ export async function POST(
     outcome = paid.outcome;
     choosing = paid.choosing;
     spent = [...spent, choice.use];
-    // The server threw this die: "(physical)" would overclaim the roll now,
-    // and the model would be told the player threw it all.
-    landing = { ...landing, status: "fallback", physical: false };
+    if (paid.touchOfDeath && pending.attack) {
+      // No die is thrown: the roll stays the player's, and the hit carries it.
+      landed = { ...pending, attack: { ...pending.attack, touchOfDeath: paid.touchOfDeath } };
+    } else {
+      // The server threw this die: "(physical)" would overclaim the roll now,
+      // and the model would be told the player threw it all.
+      landing = { ...landing, status: "fallback", physical: false };
+    }
   }
 
   // Choosing among the dice comes first. After that the roll lands as soon as
   // it succeeds or nothing more could change it.
   const options = choosing ? [] : optionsForPending(pending, outcome, spent);
   if (!choosing && !options.length) {
-    return land(outcome, landing);
+    return land(outcome, landing, landed);
   }
   // A new decision gets its own time.
   const updated = setPendingThrown(pending.id, { ...thrown, outcome, options, choosing, spent, landing, deadline: afterRollDeadline(campaignId, pending.userId) });

@@ -26,6 +26,7 @@ import {
   MASTER_DUELIST,
   ownLuckDie,
   sidesOf,
+  touchOfDeathDamage,
   withAdvantageReroll,
   withBonusDie,
   withExtraD20,
@@ -82,7 +83,7 @@ export function optionsForPending(pending: PendingRoll, outcome: RollResult, spe
     // A luck point bought with the attack (pc_attack luck: true) was its one.
     // Read from the record, not the dice: Elven Accuracy throws a third d20 too.
     const bought: AfterRollId[] = record.luck ? ["lucky"] : [];
-    return afterAttackOptions(sheet, { outcome, ac: recordTargetAc(pending.campaignId, record), critRange: record.critRange ?? 20, spent: [...spent, ...bought], reactionFree });
+    return afterAttackOptions(sheet, { outcome, ac: recordTargetAc(pending.campaignId, record), critRange: record.critRange ?? 20, spent: [...spent, ...bought], reactionFree, melee: record.melee === true && record.ranged !== true });
   }
   const upFront: AfterRollId[] = luckRodeThrow(pending.expression, pending.advantage) ? ["lucky"] : [];
   return afterRollOptions(sheet, { kind: pending.kind, outcome, dc: pending.dc, spent: [...spent, ...upFront], reactionFree });
@@ -96,10 +97,13 @@ export function spendAfterRoll(
   id: AfterRollId,
   outcome: RollResult,
   advantage = "none",
-): { outcome: RollResult; choosing: boolean } | null {
+): { outcome: RollResult; choosing: boolean; touchOfDeath?: number } | null {
   const die = (sides: number) => ({ sides, value: rollExpression(`1d${sides}`).total, kept: true });
   if (id === "guided_strike") {
     return spendFeatureUse(campaign, sheet.id, CHANNEL_DIVINITY, "Channel Divinity: Guided Strike", "player") ? { outcome: withFlatBonus(outcome, GUIDED_STRIKE_BONUS), choosing: false } : null;
+  }
+  if (id === "touch_of_death") {
+    return spendFeatureUse(campaign, sheet.id, CHANNEL_DIVINITY, "Channel Divinity: Touch of Death", "player") ? { outcome, choosing: false, touchOfDeath: touchOfDeathDamage(sheet) } : null;
   }
   if (id === "favored_by_the_gods") {
     if (!spendFeatureUse(campaign, sheet.id, FAVORED_BY_THE_GODS, "Favored by the Gods", "player")) {

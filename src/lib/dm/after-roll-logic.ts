@@ -18,10 +18,11 @@ import type { DiceTerm, DieResult, RollResult } from "@/lib/dice";
 import { luckPointsLeft } from "@/lib/srd/class-resources";
 import { holdsFeature, isNamed } from "@/lib/srd/feature-names";
 import { channelOptions } from "@/lib/dm/option-costs";
+import { classLevelOf } from "@/lib/srd/trait-rules";
 import { textKey } from "@/lib/language/text-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
-export type AfterRollId = "lucky" | "bardic" | "own_luck" | "chronal_shift" | "guided_strike" | "master_duelist" | "favored_by_the_gods";
+export type AfterRollId = "lucky" | "bardic" | "own_luck" | "chronal_shift" | "guided_strike" | "master_duelist" | "favored_by_the_gods" | "touch_of_death";
 
 export type AfterRollOption = {
   id: AfterRollId;
@@ -44,7 +45,7 @@ const FAVORED_SIDES = 4;
 // still takes them, for a roll that cannot wait (an agent's seat, a forced
 // save), where the GM narrates the result.
 export const AFTER_ROLL_COUNTERS: readonly string[] = [MASTER_DUELIST, FAVORED_BY_THE_GODS];
-export const AFTER_ROLL_CHANNEL_OPTION = "guided strike";
+export const isAfterRollChannelOption = (name: string) => isNamed(name, "guided strike", "touch of death");
 
 // How long a roll waits on its player before the dice are kept as they lie
 // (src/lib/dm/after-roll-timer.ts); the card counts it down.
@@ -190,17 +191,17 @@ export function afterRollOptions(
 // One's Own Luck is for checks and saves alone.
 export function afterAttackOptions(
   sheet: CharacterSheet,
-  roll: { outcome: RollResult; ac: number; critRange: number; spent?: readonly AfterRollId[]; reactionFree?: boolean },
+  roll: { outcome: RollResult; ac: number; critRange: number; spent?: readonly AfterRollId[]; reactionFree?: boolean; melee?: boolean },
 ): AfterRollOption[] {
   const { outcome, ac } = roll;
   const natural = outcome.natural;
   if (!leadD20(outcome) || natural === undefined) {
     return [];
   }
-  if (natural !== 1 && (natural >= roll.critRange || outcome.total >= ac)) {
-    return [];
-  }
   const taken = new Set(roll.spent ?? []);
+  if (natural !== 1 && (natural >= roll.critRange || outcome.total >= ac)) {
+    return roll.melee && !taken.has("touch_of_death") ? touchOfDeathOption(sheet) : [];
+  }
   const options: AfterRollOption[] = [];
   if (holdsLuckPoint(sheet) && !taken.has("lucky")) {
     options.push({ id: "lucky", label: "Lucky: roll another d20", note: "Spend a luck point: roll another d20, then choose which die counts." });
@@ -217,7 +218,7 @@ export function afterAttackOptions(
   // Guided Strike (War Domain 2, Oath of Conquest 3): +10, chosen after the
   // roll and before the GM says whether it hits. Channel Divinity is a short
   // supply, so it is offered only where it turns the miss.
-  const guided = usesLeft(sheet, CHANNEL_DIVINITY) > 0 && channelOptions(sheet).some((option) => isNamed(option.name, AFTER_ROLL_CHANNEL_OPTION));
+  const guided = usesLeft(sheet, CHANNEL_DIVINITY) > 0 && channelOptions(sheet).some((option) => isNamed(option.name, "guided strike"));
   if (guided && !taken.has("guided_strike") && natural !== 1 && outcome.total + GUIDED_STRIKE_BONUS >= ac) {
     options.push({ id: "guided_strike", label: `Guided Strike: add ${GUIDED_STRIKE_BONUS}`, note: `Spend a use of Channel Divinity: add ${GUIDED_STRIKE_BONUS} to this attack roll.` });
   }
@@ -231,6 +232,22 @@ export function afterAttackOptions(
     options.push(favored);
   }
   return options;
+}
+
+// Touch of Death (Death Domain 2): "when you hit a creature with a melee attack,
+// you can use Channel Divinity to deal extra necrotic damage": the one choice
+// that waits on a hit. The cleric sees the hit before spending the use.
+function touchOfDeathOption(sheet: CharacterSheet): AfterRollOption[] {
+  if (usesLeft(sheet, CHANNEL_DIVINITY) < 1 || !channelOptions(sheet).some((option) => isNamed(option.name, "touch of death"))) {
+    return [];
+  }
+  const damage = touchOfDeathDamage(sheet);
+  return [{ id: "touch_of_death", label: `Touch of Death: add ${damage} necrotic`, note: `Spend a use of Channel Divinity: this hit deals ${damage} extra necrotic damage.` }];
+}
+
+// 5 + twice the cleric level.
+export function touchOfDeathDamage(sheet: CharacterSheet): number {
+  return 5 + 2 * classLevelOf(sheet, "cleric");
 }
 
 // The roll with its d20s thrown again (`fresh`, one for each die the lead term

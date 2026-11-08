@@ -121,8 +121,11 @@ export function AfterRollCard({
         {thrown.choosing
           ? "Choose which die counts."
           : pending.kind === "attack"
-            // An attack only waits on a miss (after-roll-logic.ts afterAttackOptions).
-            ? "As it stands, the attack misses. You can still change that."
+            // An attack waits on a miss, or on a hit for Touch of Death
+            // (after-roll-logic.ts afterAttackOptions).
+            ? thrown.options.some((option) => option.id === "touch_of_death")
+              ? "The attack hits. You can add to its damage."
+              : "As it stands, the attack misses. You can still change that."
             : "Before the game says what happens, you can still change it."}
       </p>
       {pending.reason ? <p className="check-dim mt-0.5 text-xs">{pending.reason}</p> : null}

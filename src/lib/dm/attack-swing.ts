@@ -236,6 +236,13 @@ export function hitSwing(scene: SwingScene, record: AttackRecord, judged: Judged
     riders.push(...critGear.typed);
     notes.push(...critGear.notes);
   }
+  // Touch of Death, chosen on the card the hit waited on. Flat, so a critical
+  // does not double it.
+  if (record.touchOfDeath) {
+    expression = `${expression}+${record.touchOfDeath}`;
+    riders.push({ dice: "", type: "necrotic", flat: record.touchOfDeath });
+    notes.push(`Touch of Death: +${record.touchOfDeath} necrotic damage`);
+  }
   // Foe Slayer not needed on the roll rides the hit's damage.
   if (judged.rolledHit && (record.extras?.foeSlayer ?? 0) > 0 && markAttackTurn(campaign.id, record, FOE_SLAYER)) {
     expression = `${expression}+${record.extras?.foeSlayer}`;
