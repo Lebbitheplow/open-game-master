@@ -61,6 +61,9 @@ export type ZoneTrigger = {
   immuneSucceeds?: string;
   // Strikes each creature once only (burning webs).
   once?: boolean;
+  // Strikes a creature at most once a turn, whichever moment comes first
+  // (burning oil: "only once per turn").
+  oncePerTurn?: boolean;
   // Caltrops: a failed save stops the creature's move on the square it
   // entered (src/lib/battlemap/zones-gear.ts).
   stopsOnFail?: boolean;

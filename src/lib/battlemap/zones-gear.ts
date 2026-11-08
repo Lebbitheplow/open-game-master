@@ -1,7 +1,7 @@
 // The SRD 5.1 Adventuring Gear spread on the ground as an area: a bag of
-// caltrops and a bag of ball bearings. They run as the spell areas do
-// (src/lib/battlemap/zones-spells.ts zoneRowFor reads these after the
-// spells), laid by use_item (src/lib/dm/gear-zones.ts) and resolved by the
+// caltrops, a bag of ball bearings and a flask of oil poured out. They run
+// as the spell areas do (src/lib/battlemap/zones-spells.ts zoneRowFor reads
+// these after the spells), laid by use_item (src/lib/dm/gear-zones.ts) and resolved by the
 // zone triggers when a creature enters; but nothing in them is magic, and
 // their save DCs are the book's own. Pure data.
 
@@ -32,6 +32,21 @@ export const GEAR_ZONE_ROWS: Record<string, ZoneRow> = {
     trigger: { on: ["enter"], save: "dex", condition: "prone", carefulSkips: true },
     summary: "ball bearings: entering is a DC 10 DEX save or fall prone; moving carefully at half speed skips the save",
   },
+  // Oil: "You can also pour a flask of oil on the ground to cover a
+  // 5-foot-square area, provided that the surface is level. If lit, the oil
+  // burns for 2 rounds and deals 5 fire damage to any creature that enters
+  // the area or ends its turn in the area. A creature can take this damage
+  // only once per turn." Poured, it does nothing until fire reaches it
+  // (src/lib/dm/gear-zones.ts lightOil); then it is the burning pool below.
+  oil: {
+    shape: "cube", feet: 5, level: 0, concentration: false, rounds: null, mundane: true, tone: "stone",
+    summary: "a pool of oil: fire striking a creature in it, or a torch or tinderbox put to it (take_action use_object within 5 feet), lights it to burn for 2 rounds",
+  },
+  "burning oil": {
+    shape: "cube", feet: 5, level: 0, concentration: false, rounds: 2, mundane: true, tone: "fire",
+    trigger: { on: ["enter", "end"], dice: "5", type: "fire", oncePerTurn: true },
+    summary: "burning oil: entering or ending a turn here, 5 fire, once a turn",
+  },
 };
 
 // The bag each area is spread from, by its catalog row
@@ -39,4 +54,6 @@ export const GEAR_ZONE_ROWS: Record<string, ZoneRow> = {
 export const GEAR_ZONES: Array<{ gear: string; zone: string; dc: number }> = [
   { gear: "Caltrops (bag of 20)", zone: "Caltrops", dc: 15 },
   { gear: "Ball Bearings (bag of 1000)", zone: "Ball Bearings", dc: 10 },
+  // Poured, not spread; no save until it burns, and then none at all.
+  { gear: "Oil (flask)", zone: "Oil", dc: 0 },
 ];

@@ -37,7 +37,7 @@ const encounters = await import("../src/lib/db/encounters.ts");
 const { getDatabase } = await import("../src/lib/db/core.ts");
 const { getCampaignById } = await import("../src/lib/db/campaigns.ts");
 const { burningTurnStart } = await import("../src/lib/dm/gear-weapon-hit.ts");
-const { zonesAfterMove } = await import("../src/lib/dm/zone-triggers.ts");
+const { zonesAfterMove, zoneTurnEnd } = await import("../src/lib/dm/zone-triggers.ts");
 const maps = await import("../src/lib/db/battle-maps.ts");
 const { saveZones } = await import("../src/lib/dm/zone-store.ts");
 const { moveToSide } = await import("../src/lib/dm/combat-sides.ts");
@@ -393,6 +393,8 @@ await test("Adventuring Gear, thrown flasks: in a fight, use_item sends a flask 
     assert.equal(carried(thrower.id, name)?.qty, 1, `${name} ${reason} was not spent: ${JSON.stringify(put.result)}`);
     assert.equal(budget?.actionUsed, true, `${name} ${reason} took no action`);
   }
+  // The poured oil's pool is the Oil test's below; the board starts clear.
+  saveZones(kit.board().id, []);
 });
 
 // weapons, Improvised Weapons: "If a character uses a ranged weapon to make a
@@ -916,6 +918,61 @@ await test("Adventuring Gear, Lamp: on the board a lit lamp lights 45 feet aroun
   } finally {
     await kit.endFight();
   }
+});
+
+// adventuring-gear, Oil: "You can also pour a flask of oil on the ground to
+// cover a 5-foot-square area ... If lit, the oil burns for 2 rounds and deals
+// 5 fire damage to any creature that enters the area or ends its turn in the
+// area. A creature can take this damage only once per turn." Poured oil left
+// nothing on the board, and nothing could light it.
+await test("Adventuring Gear, Oil poured: a pool on the board that a torch or fire lights, then 5 fire to a creature entering it or ending its turn there, once a turn", async () => {
+  if (!kit.board()) {
+    await kit.arena({ first: anchor.id });
+  }
+  const campaign = getCampaignById(world.campaignId);
+  const board = kit.board();
+  saveZones(board.id, []);
+  maps.placeToken(tokenOf(kit.dummy().id).id, 0, 0);
+  encounters.patchEnemyConditions(kit.dummy().id, [], {});
+  kit.stand(thrower.id, 2);
+  world.patch(thrower.id, { equipment: [{ name: "Oil (flask)", qty: 2 }, { name: "Torch", qty: 1 }] });
+  const poured = await kit.onTurnOf(thrower.id, () => world.invoke("take_action", { characterId: thrower.id, action: "use_object", item: "Oil (flask)", reason: "poured on the floor" }));
+  must(poured.ok, `pouring the oil was refused: ${poured.error}`);
+  const zonesNow = () => liveZones(kit.board(), world.encounter()).map((zone) => [zone.spell, zone.cells]);
+  assert.deepEqual(zonesNow(), [["Oil", [1]]], "the poured oil lies on the square before the pourer");
+  // Unlit, it is only a puddle.
+  const dummyHp = kit.dummy().currentHp;
+  zonesAfterMove(campaign, world.encounter().id, { kind: "enemy", refId: kit.dummy().id }, { x: 0, y: 0 }, [{ x: 1, y: 0 }]);
+  assert.equal(kit.dummy().currentHp, dummyHp, "unlit oil burned");
+  maps.placeToken(tokenOf(kit.dummy().id).id, 0, 0);
+  // A torch put to it from the next square lights it; the torch is kept.
+  const lit = await kit.onTurnOf(thrower.id, () => world.invoke("take_action", { characterId: thrower.id, action: "use_object", item: "Torch" }));
+  must(lit.ok, `the torch was refused: ${lit.error}`);
+  assert.deepEqual(zonesNow(), [["Burning Oil", [1]]], JSON.stringify(lit.result));
+  assert.equal(carried(thrower.id, "Torch")?.qty, 1);
+  // Entering: 5 fire. Back out and in the same turn: nothing more.
+  zonesAfterMove(campaign, world.encounter().id, { kind: "enemy", refId: kit.dummy().id }, { x: 0, y: 0 }, [{ x: 1, y: 0 }]);
+  assert.equal(dummyHp - kit.dummy().currentHp, 5, "entering the burning oil");
+  zonesAfterMove(campaign, world.encounter().id, { kind: "enemy", refId: kit.dummy().id }, { x: 1, y: 0 }, [{ x: 0, y: 0 }, { x: 1, y: 0 }]);
+  assert.equal(dummyHp - kit.dummy().currentHp, 5, "the burning oil struck twice in one turn");
+  // Ending a turn there: 5 fire, once that turn.
+  maps.placeToken(tokenOf(kit.dummy().id).id, 0, 0);
+  maps.placeToken(tokenOf(thrower.id).id, 1, 0);
+  const heroHp = world.sheet(thrower.id).currentHp;
+  zoneTurnEnd(campaign, world.encounter().id, [thrower.id]);
+  zoneTurnEnd(campaign, world.encounter().id, [thrower.id]);
+  assert.equal(heroHp - world.sheet(thrower.id).currentHp, 5, "ending a turn in the burning oil");
+  // Fire striking a creature standing in a fresh pool lights it too.
+  saveZones(board.id, []);
+  kit.stand(thrower.id, 2);
+  const again = await kit.onTurnOf(thrower.id, () => world.invoke("take_action", { characterId: thrower.id, action: "use_object", item: "Oil (flask)" }));
+  must(again.ok, again.error);
+  maps.placeToken(tokenOf(kit.dummy().id).id, 1, 0);
+  const burnt = await world.invoke("damage_enemy", { enemyId: kit.dummy().id, amount: 2, type: "fire", source: "hazard" });
+  must(burnt.ok, burnt.error);
+  assert.deepEqual(zonesNow(), [["Burning Oil", [1]]], "fire on a creature in the pool left it unlit");
+  maps.placeToken(tokenOf(kit.dummy().id).id, 0, 0);
+  saveZones(board.id, []);
 });
 
 world.close();

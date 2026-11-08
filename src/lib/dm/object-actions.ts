@@ -39,6 +39,12 @@ import { hasItemTag } from "@/lib/srd/item-tags";
 import { gearWeaponFor } from "@/lib/srd/gear-weapons";
 import { withAmmoCount } from "@/lib/srd/ammunition";
 import { saveEquipment } from "@/lib/dm/gear-store";
+import { lightOil, spreadGear } from "@/lib/dm/gear-zones";
+import { matchGear } from "@/lib/srd/adventuring-gear";
+
+// The tinderbox, by its catalog row: "using it to light a torch, or anything
+// else with abundant, exposed fuel, takes an action".
+const TINDERBOX = matchGear("Tinderbox");
 
 // Haste's extra action names this use by these words (action-budget.ts).
 const USE_AN_OBJECT = "use an object";
@@ -157,13 +163,25 @@ export function objectAction(
     const index = sheet.equipment.indexOf(carried);
     priced.spend();
     saveEquipment(campaign, turn, sheet, withAmmoCount(sheet.equipment, index, (carried.qty ?? 1) - 1), "use_item", { item: carried.name }, (reason ?? `Used ${carried.name}`).slice(0, 200));
+    // Oil poured out lies as a pool on the board until fire lights it
+    // (gear-zones.ts); the other flasks leave nothing on the ground.
+    const pool = spreadGear(campaign, sheet, carried.name);
     return {
       ok: true,
       action: "Use an Object",
       used: carried.name,
       remaining: Math.max(0, (carried.qty ?? 1) - 1),
+      ...(pool ? { spread: pool } : {}),
       applied: `${sheet.name} spends ${cost} on ${carried.name}${reason ? ` (${reason.slice(0, 80)})` : ""}, and the flask is spent. Narrate what it does to the object or the ground; an object's AC and hit points (SRD 5.1 Objects) are yours to rule.`,
     };
+  }
+  // A torch or a tinderbox put to poured oil within 5 feet lights it
+  // ("If lit, the oil burns for 2 rounds"). Neither is used up by it.
+  const kindles = carried && (gearWeaponFor(carried.name)?.type === "fire" || matchGear(carried.name) === TINDERBOX);
+  const lit = kindles ? lightOil(campaign, sheet.id, 1) : null;
+  if (carried && lit) {
+    priced.spend();
+    return { ok: true, action: "Use an Object", applied: `${sheet.name} spends ${cost} putting ${carried.name} to the oil. ${lit}` };
   }
   if (carried && !itemUseProblem(carried)) {
     return {
