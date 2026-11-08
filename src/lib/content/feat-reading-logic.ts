@@ -6,7 +6,7 @@
 import { featGrantSpec, featGrantsAnything, type FeatGrantSpec } from "@/lib/srd/feat-grant-text";
 import { featAbilityIncreaseFrom, engineFeatNamed } from "@/lib/srd/feat-effects";
 import { parseFeatureEffects } from "@/lib/srd/feature-effects";
-import { featEngineTag } from "@/lib/srd/feat-combat";
+import { featEngineTag, featRiderOnly } from "@/lib/srd/feat-combat";
 import { packFeatText } from "@/lib/srd/feat-text";
 import { reading, readingChecked, type EntryReading, type ReadingRow } from "@/lib/content/reading-logic";
 
@@ -49,7 +49,9 @@ export function readFeat(row: ReadingRow): EntryReading {
   // server applies by name (feat-combat.ts featEngineTag: Grappler, Level
   // Up's Deadeye and Battle Caster).
   const runsAs = engineFeatNamed(row.name);
-  const tag = featEngineTag(row.name);
+  // A feat the engines run one rule of (a check rider) is read from its
+  // text for the rest, its training among it (featRiderOnly).
+  const tag = featRiderOnly(row.name) ? null : featEngineTag(row.name);
   if (runsAs || tag) {
     return reading({ handWritten: runsAs ? { runsAs } : { engine: tag }, parsed: null, unread: [], checked: true });
   }

@@ -550,6 +550,25 @@ export function defensiveDuelistBonus(
   return wielded ? proficiencyBonus : null;
 }
 
+// A content pack's feat the engines run one rule of by name (a check rider
+// in FEAT_CHECKS, Level Up's Stalwart and Tactical Support) and whose text
+// gives the rest, its training among it. It carries the tag, so the builder
+// and the GM's prompt say the server applies that rule, but the Reference
+// page still reads the rest of its text (feat-reading-logic.ts readFeat).
+// (Giant Foe and Actor were tagged before this and read as hand-written;
+// they stay so.) scripts/test-feat-combat.mjs holds this list to the
+// engines' own.
+const RIDER_FEATS = new Set(
+  [
+    "Stalker", "Forest Denizen", "Floriographer", "Combat Thievery", "Empathic", "Surgical Combatant", "Monster Hunter",
+    "Crafting Expert", "Ace Driver", "Stalwart", "Tactical Support",
+  ].map((feat) => textKey(feat)),
+);
+
+export function featRiderOnly(feat: string, campaignId?: string): boolean {
+  return RIDER_FEATS.has(featTwinOf(feat, campaignId));
+}
+
 // The one-word tag the DM prompt hangs on a feat the server applies, so
 // the model routes it through the right tool instead of narrating it. The
 // builder reads it as well: a feat the engines run but this list misses is
@@ -559,7 +578,14 @@ export function defensiveDuelistBonus(
 // and stabilize engines name to a tag.
 export function featEngineTag(feat: string, campaignId?: string): string | null {
   const name = featTwinOf(feat, campaignId);
+  if (featRiderOnly(feat, campaignId)) return "[server]";
   if (["great weapon master", "sharpshooter", "powerful attacker", "deadeye"].includes(name)) return "[pc_attack powerAttack]";
+  // Martial Adept's maneuvers ride on the attack (maneuver-rules.ts), with
+  // its d6 superiority die.
+  if (name === "martial adept") return "[pc_attack maneuver]";
+  // Inspiring Leader's temporary hit points and Metamagic Adept's sorcery
+  // points are counters the server spends and applies (class-resources.ts).
+  if (["inspiring leader", "metamagic adept"].includes(name)) return "[use_resource]";
   if (["defensive duelist", "mage slayer", "sentinel"].includes(name)) return "[use_reaction]";
   if (["polearm master", "crossbow expert", "charger"].includes(name)) return "[pc_attack feature]";
   if (name === "stunning sniper") return "[pc_attack stunShot]";
@@ -568,8 +594,8 @@ export function featEngineTag(feat: string, campaignId?: string): string | null 
     "spell sniper", "elemental adept", "gunner", "crossbow expert", "dungeon delver", "war caster", "tough", "mobile", "heavy armor master",
     "alert", "observant", "lucky", "dual wielder", "resilient", "battle caster", "spellbreaker", "diehard", "survivor", "rapid drinker",
     "durable", "medium armor master", "skirmisher", "mobile", "brutal attack", "piercer", "slasher", "crusher", "giant foe", "skulker", "actor", "grappler",
-    "savage attacker", "poisoner", "athlete", "chef", "healer",
+    "savage attacker", "poisoner", "athlete", "chef", "healer", "elven accuracy", "eldritch adept",
   ].includes(name)) return "[server]";
-  if (["fey touched", "shadow touched", "magic initiate", "ritual caster"].includes(name)) return "[cast tools]";
+  if (["fey touched", "shadow touched", "magic initiate", "ritual caster", "telepathic", "telekinetic"].includes(name)) return "[cast tools]";
   return null;
 }

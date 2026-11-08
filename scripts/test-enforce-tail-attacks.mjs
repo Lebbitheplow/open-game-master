@@ -195,6 +195,28 @@ await test("A vial of basic poison coats a slashing or piercing weapon; the next
   assert.equal(has(world.sheet(fighter.id).conditions, "poisoned weapon"), false);
 });
 
+// ODM's Poisoner: "you can coat a weapon as a bonus action so its next hit
+// forces a DC 14 Constitution save for 2d8 poison damage and the poisoned
+// condition". The coat went on as a bonus action, but with the vial's DC 10
+// and 1d4, so the feat's own numbers ran nowhere while its tag told the GM
+// the server applied it.
+await test("A Poisoner's coat of basic poison is their potent poison: DC 14, 2d8 poison and poisoned.", async () => {
+  const [enemy] = await stage(fighter);
+  world.patch(fighter.id, { feats: ["Poisoner"], equipment: [{ name: "Longsword", qty: 1 }, { name: "Poison, basic (vial)", qty: 1 }] });
+  const coat = await world.invoke("use_item", { characterId: fighter.id, item: "Poison, basic (vial)" });
+  assert.equal(coat.ok, true, coat.error);
+  assert.match(JSON.stringify(coat.result), /DC 14/);
+  kit.freshTurn();
+  // Hit, the longsword's d8, the dummy's CON save on a 10 (+1 = 11, short of
+  // 14 and enough for basic poison's 10), the poison's 2d8.
+  const swing = await kit.swing(fighter.id, enemy.id, [15, 4, 10, 3, 5]);
+  assert.equal(swing.ok, true, swing.error);
+  assert.equal(swing.unused, 0, "the potent poison's save and dice were never rolled");
+  assert.equal(kit.enemy(enemy.id).currentHp, 400 - (4 + abilityMod(16)) - 8);
+  assert.ok(has(kit.enemy(enemy.id).conditions, "poisoned"), "the failed save left the creature unpoisoned");
+  world.patch(fighter.id, { feats: [] });
+});
+
 // ---- Shillelagh ----
 
 await test("Under Shillelagh a club attacks with the spellcasting ability and deals a d8.", async () => {
