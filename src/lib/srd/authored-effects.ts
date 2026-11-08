@@ -408,6 +408,8 @@ const ONE_SHOT_ROLLS: Array<{ condition: string; kind: "check" | "save" | "initi
   { condition: "elegant maneuver", kind: "check", skills: ["acrobatics", "athletics"], label: "Elegant Maneuver" },
   { condition: "drunkard's luck (check)", kind: "check", label: "Drunkard's Luck" },
   { condition: "drunkard's luck (save)", kind: "save", label: "Drunkard's Luck" },
+  { condition: "tides of chaos (check)", kind: "check", label: "Tides of Chaos" },
+  { condition: "tides of chaos (save)", kind: "save", label: "Tides of Chaos" },
 ];
 const HELD_CHECKS: Array<{ condition: string; skills: string[]; label: string }> = [
   { condition: "blessing of the trickster", skills: ["stealth"], label: "Blessing of the Trickster" },

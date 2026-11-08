@@ -84,6 +84,15 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
   },
   summaryOnly("drunkards_luck_check", "drunkard's luck (check)", "Drunkard's Luck: the next ability check cancels its disadvantage."),
   summaryOnly("drunkards_luck_save", "drunkard's luck (save)", "Drunkard's Luck: the next saving throw cancels its disadvantage."),
+  {
+    id: "tides_of_chaos_attack",
+    match: ["tides of chaos (attack)"],
+    summary: "Tides of Chaos: advantage on the next attack roll, which spends it.",
+    attackAdvantage: true,
+    consumedBy: "attack",
+  },
+  summaryOnly("tides_of_chaos_check", "tides of chaos (check)", "Tides of Chaos: advantage on the next ability check, which spends it."),
+  summaryOnly("tides_of_chaos_save", "tides of chaos (save)", "Tides of Chaos: advantage on the next saving throw, which spends it."),
   ...(["1d8", "1d10"] as const).map(
     (dice): ConditionEffectRow => ({
       id: `giants_might_${dice}`,

@@ -142,6 +142,26 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
     subclass: "Divine Soul",
     spends: [{ name: "Divine Affinity", aliases: ["Divine Magic"], fight: "out", does: { kind: "choose", options: ["Good", "Evil", "Law", "Chaos", "Neutrality"] } }],
   },
+  // Advantage on one attack roll, ability check or saving throw: the player
+  // names which kind when they play it, as Drunkard's Luck does, and the
+  // first roll of that kind takes it and spends it. The use is the counter's
+  // own (sub_tides_of_chaos); the GM restores it after a Wild Magic Surge.
+  "sorcerer::Tides of Chaos": {
+    subclass: "Wild Magic",
+    spends: [
+      {
+        name: "Tides of Chaos",
+        pool: { id: "sub_tides_of_chaos" },
+        action: "none",
+        does: {
+          kind: "buff",
+          condition: "tides of chaos (attack)",
+          variants: { attack: "tides of chaos (attack)", check: "tides of chaos (check)", save: "tides of chaos (save)" },
+          rounds: 10,
+        },
+      },
+    ],
+  },
   "sorcerer::Bend Luck": {
     subclass: "Wild Magic",
     reactions: [{ name: "Bend Luck", usedBy: "holder", pool: { id: "sorcery_points", amount: 2 }, does: { kind: "attack_penalty", die: "1d4" } }],
