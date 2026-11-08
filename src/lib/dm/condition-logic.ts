@@ -329,6 +329,8 @@ const TARGET_GRANTS_ADVANTAGE = [
 const AUTO_CRIT_TARGETS = ["paralyzed", "unconscious"];
 // The attacker's own attack rolls suffer disadvantage.
 const ATTACKER_DISADVANTAGE = ["prone", "restrained", "poisoned", "blinded", "frightened"];
+// The condition blindsight sees past.
+const BLIND = ["blinded"];
 // The Dodge action's condition: attacks against them roll at disadvantage
 // and they get advantage on DEX saves. Applied by take_action
 // (src/lib/dm/action-tools.ts); named here because the mechanics are here.
@@ -341,26 +343,37 @@ function has(conditions: string[], names: string[]): string | null {
   return names.find((name) => lowered.includes(name)) ?? null;
 }
 
+// What a viewer's senses reach of another creature past what eyes need
+// (attack-light.ts sensesReaching measures it on the board): blindsight
+// perceives without eyes, so neither blindness nor invisibility stops it;
+// truesight sees the invisible.
+export type PastSight = { blindsight?: boolean; truesight?: boolean };
+
+// Whether a viewer sees an invisible creature: See Invisibility or True
+// Seeing among its conditions, or blindsight or truesight that reaches it.
+// The one rule an attack roll, a Dodge, "a creature you can see" and an
+// opportunity attack all read.
+export function seesInvisible(viewerConditions: string[], senses: PastSight = {}): boolean {
+  return Boolean(senses.blindsight || senses.truesight || conditionSeesInvisible(viewerConditions));
+}
+
 // Why the conditions keep one creature from seeing another, or null: it is
-// blinded, or the other is hidden, or invisible to a viewer without See
-// Invisibility or True Seeing. Walls, fog and darkness are the board's part
+// blinded, or the other is hidden, or invisible to a viewer that cannot see
+// the invisible (seesInvisible). Walls, fog and darkness are the board's part
 // (authored-saves.ts seesOnBoard). A feature for "a creature you can see"
 // read the board alone, so Nature's Wrath took an invisible goblin and spent
-// the Channel Divinity on it. `senses`: the viewer's blindsight or truesight
-// reaches the other (the caller measures it, as hide-traits.ts does).
-// Blindsight perceives without eyes, so neither blindness nor invisibility
-// stops it; truesight sees the invisible. `hidden: false` when hiding does
-// not count: an attacker its own attack gave away, or an ally hidden from
-// the foes and not from its friends.
+// the Channel Divinity on it. `hidden: false` when hiding does not count: an
+// attacker its own attack gave away, or an ally hidden from the foes and not
+// from its friends.
 export function sightBlockedBy(
   viewerConditions: string[],
   seenConditions: string[],
-  options: { blindsight?: boolean; truesight?: boolean; hidden?: boolean } = {},
+  options: PastSight & { hidden?: boolean } = {},
 ): "blinded" | "invisible" | "hidden" | null {
   if (has(viewerConditions, ["blinded"]) && !options.blindsight) {
     return "blinded";
   }
-  if (has(seenConditions, ["invisible"]) && !options.blindsight && !options.truesight && !conditionSeesInvisible(viewerConditions)) {
+  if (has(seenConditions, ["invisible"]) && !seesInvisible(viewerConditions, options)) {
     return "invisible";
   }
   return options.hidden !== false && has(seenConditions, ["hidden"]) ? "hidden" : null;
@@ -426,6 +439,12 @@ export function attackContext(input: {
   // False when the board's light keeps the target from seeing the attacker
   // (src/lib/dm/attack-light.ts attackSight): a Dodge then does nothing.
   targetSeesAttacker?: boolean;
+  // What each side's blindsight or truesight reaches of the other
+  // (attack-light.ts attackSenses). Without them a blindsight monster still
+  // swung at an invisible character at disadvantage, and a blinded one with
+  // blindsight swung blind.
+  attackerSenses?: PastSight;
+  targetSenses?: PastSight;
 }): { advantage: AdvantageState; sources: AdvantageState[]; autoCrit: boolean; notes: string[] } {
   // Every source is kept for the caller to merge with its own: advantage
   // and disadvantage cancel once, over all of them (SRD 5.1), so a
@@ -433,13 +452,17 @@ export function attackContext(input: {
   const sources: AdvantageState[] = [input.requested];
   const notes: string[] = [];
 
-  const attackerDown = has(input.attackerConditions, ATTACKER_DISADVANTAGE);
+  // Blindsight that reaches the target perceives it without eyes: a blinded
+  // attacker with it does not swing blind.
+  const attackerSees = { ...input.attackerSenses };
+  const targetSees = { ...input.targetSenses };
+  const attackerDown = has(input.attackerConditions, attackerSees.blindsight ? ATTACKER_DISADVANTAGE.filter((name) => !BLIND.includes(name)) : ATTACKER_DISADVANTAGE);
   if (attackerDown) {
     sources.push("disadvantage");
     notes.push(`attacker is ${attackerDown}: disadvantage`);
   }
   // See Invisibility and True Seeing see the invisible (condition-effects-last.ts).
-  if (has(input.attackerConditions, ["invisible"]) && !conditionSeesInvisible(input.targetConditions)) {
+  if (has(input.attackerConditions, ["invisible"]) && !seesInvisible(input.targetConditions, targetSees)) {
     sources.push("advantage");
     notes.push("attacker is invisible: advantage");
   }
@@ -458,12 +481,12 @@ export function attackContext(input: {
       input.adjacent ? "target is prone: advantage up close" : "target is prone: disadvantage at range",
     );
   }
-  const targetOpen = has(input.targetConditions, TARGET_GRANTS_ADVANTAGE);
+  const targetOpen = has(input.targetConditions, targetSees.blindsight ? TARGET_GRANTS_ADVANTAGE.filter((name) => !BLIND.includes(name)) : TARGET_GRANTS_ADVANTAGE);
   if (targetOpen) {
     sources.push("advantage");
     notes.push(`target is ${targetOpen}: advantage`);
   }
-  if (has(input.targetConditions, ["invisible"]) && !conditionSeesInvisible(input.attackerConditions)) {
+  if (has(input.targetConditions, ["invisible"]) && !seesInvisible(input.attackerConditions, attackerSees)) {
     sources.push("disadvantage");
     notes.push("target is invisible: disadvantage");
   }
@@ -478,7 +501,7 @@ export function attackContext(input: {
   // made against you has disadvantage if you can see the attacker" (SRD
   // 5.1, Dodge): not while blinded, nor against an invisible attacker it
   // cannot see through or a hidden one, nor one the dark hides.
-  const dodgerSees = !sightBlockedBy(input.targetConditions, input.attackerConditions) && input.targetSeesAttacker !== false;
+  const dodgerSees = !sightBlockedBy(input.targetConditions, input.attackerConditions, targetSees) && input.targetSeesAttacker !== false;
   if (has(input.targetConditions, [DODGING]) && !isIncapacitated(input.targetConditions) && dodgerSees) {
     sources.push("disadvantage");
     notes.push("target is dodging: disadvantage");

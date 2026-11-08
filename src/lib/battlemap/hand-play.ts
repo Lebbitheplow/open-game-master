@@ -5,7 +5,7 @@
 import { READIED_WORDS, type Readiable } from "@/lib/dm/readied-kinds";
 import { ACTION_SURGED, spendAction, spendAttack } from "@/lib/dm/action-budget";
 import { BONUS_SPELL, LEVELLED_SPELL } from "@/lib/dm/cast-rules";
-import { attackContext, mergeAdvantage } from "@/lib/dm/condition-logic";
+import { attackContext, mergeAdvantage, type PastSight } from "@/lib/dm/condition-logic";
 import { asPercent, attackOdds, averageDetail } from "@/lib/srd/odds";
 import { weaponNamed } from "@/lib/srd/weapons";
 import {
@@ -36,7 +36,7 @@ export type HandAim = {
   ac?: number;
   cr?: number;
   conditions?: string[];
-  edge?: { cover: 0 | 2 | 5; flanking: boolean; adjacent: boolean; blocked?: boolean; hostileBeside?: boolean };
+  edge?: { cover: 0 | 2 | 5; flanking: boolean; adjacent: boolean; blocked?: boolean; hostileBeside?: boolean; senses?: { attacker: PastSight; target: PastSight } };
   // The attacker's features that give advantage against it (hand-edge.ts).
   advantage?: string[];
 };
@@ -208,6 +208,9 @@ export function previewRows(
       const edge = enemy?.edge;
       const adjacent = edge ? edge.adjacent : card.melee;
       const context = attackContext({
+        // Blindsight or truesight past invisibility, as the roll reads it (view-tactics.ts).
+        attackerSenses: edge?.senses?.attacker,
+        targetSenses: edge?.senses?.target,
         attackerConditions,
         targetConditions: enemy?.conditions ?? [],
         melee: card.melee,

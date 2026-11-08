@@ -24,7 +24,7 @@ import type { EnemyAttack } from "@/lib/bestiary/statblock";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { claimOncePerTurn, dashCount } from "@/lib/dm/action-budget";
 import { addSheetCondition } from "@/lib/dm/action-common";
-import { attackSight, enemySenses, fearAsRolled, lightOnAttack } from "@/lib/dm/attack-light";
+import { attackSight, enemySenses, fearAsRolled, lightOnAttack, sensesReaching } from "@/lib/dm/attack-light";
 import { attackContext, DODGING, mergeAdvantage, type AdvantageState } from "@/lib/dm/condition-logic";
 import { critDamageExpression } from "@/lib/dm/encounter-logic";
 import { handleDismount } from "@/lib/dm/mount-tools";
@@ -128,6 +128,9 @@ export function strikeMount(input: {
     target: { refId: rider.id, senses: { darkvision: 0, blindsight: 0, tremorsense: 0, truesight: 0, devilsSight: 0 } },
   });
   const light = lightOnAttack(sight, { attacker: enemy.displayName, target: mount.name });
+  // The attacker's blindsight or truesight past an invisible rider's mount
+  // (attack-light.ts); the mount brings no senses of its own here.
+  const attackerSenses = sensesReaching(input.encounterId, { refId: enemy.id, senses: enemySenses(enemy) }, { refId: rider.id });
   const rows: Array<Record<string, unknown>> = [];
   for (const swing of input.swings) {
     if (hp <= 0) {
@@ -139,6 +142,7 @@ export function strikeMount(input: {
     }
     const { attack, ranged } = swing;
     const context = attackContext({
+      attackerSenses,
       attackerConditions: fearAsRolled(input.encounterId, enemy.id, enemy.conditions, enemy.conditionMeta),
       targetConditions: dodging ? [DODGING] : [],
       melee: !ranged,

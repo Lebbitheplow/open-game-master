@@ -37,13 +37,15 @@ import {
   attackContext,
   effectiveSpeed,
   mergeAdvantage,
+  sightBlockedBy,
   type ConditionMetaMap,
 } from "@/lib/dm/condition-logic";
+import type { Senses } from "@/lib/srd/senses";
 import { acWithEffects } from "@/lib/dm/ac-effects";
 import { canAct, canEnemyAct } from "@/lib/dm/can-act";
 import { opportunityReactionKey } from "@/lib/srd/authored-effects-more";
 import { conditionsOf } from "@/lib/dm/vitals-logic";
-import { fearAsRolled, lightOnAttack } from "@/lib/dm/attack-light";
+import { attackSenses, characterSenses, enemySenses, fearAsRolled, lightOnAttack, sensesReaching } from "@/lib/dm/attack-light";
 import { opportunityWeapon } from "@/lib/dm/enemy-profile";
 import { opportunitySight, pcOpportunitySwing, withOpportunityTurn } from "@/lib/dm/opportunity-strike";
 import { martialArtsApplies } from "@/lib/dm/pc-attack-options";
@@ -93,10 +95,11 @@ export type OpportunityOutcome = {
 // Where a walk enters or leaves a reach (opportunity-reach-logic.ts).
 export { entersReachAt, leavesReachAt };
 
-const lowered = (conditions: string[]) => conditions.map((entry) => entry.toLowerCase());
-const cannotSee = (conditions: string[]) => lowered(conditions).includes("blinded");
-const cannotBeSeen = (conditions: string[]) =>
-  lowered(conditions).some((entry) => entry === "invisible" || entry === "hidden");
+// Only a creature the reactor can see provokes it: a blinded reactor, an
+// invisible or hidden leaver, past the blindsight or truesight that reaches
+// it (attack-light.ts sensesReaching, the rule every sight check reads).
+const unseenBy = (encounterId: string, viewer: { id: string; conditions: string[]; senses: Senses }, seen: { id: string; conditions: string[] }) =>
+  Boolean(sightBlockedBy(viewer.conditions, seen.conditions, sensesReaching(encounterId, { refId: viewer.id, senses: viewer.senses }, { refId: seen.id })));
 
 // Dodge is lost with the dodger's speed (SRD 5.1, Dodge): a grappled or
 // restrained dodger puts nobody at disadvantage.
@@ -147,8 +150,7 @@ export function resolveOpportunityAttacks(
     // the reaction away), and to see who is leaving.
     if (
       !canEnemyAct({ enemy, encounter, kind: "reaction" }).ok ||
-      conditionBlocksReactions(enemy.conditions) ||
-      cannotSee(enemy.conditions)
+      conditionBlocksReactions(enemy.conditions)
     ) {
       continue;
     }
@@ -176,7 +178,7 @@ export function resolveOpportunityAttacks(
     if (!sheet || sheet.currentHp <= 0) {
       break;
     }
-    if (cannotBeSeen(sheet.conditions)) {
+    if (unseenBy(encounter.id, { ...enemy, senses: enemySenses(enemy) }, sheet)) {
       continue;
     }
     // Mobile (and Skirmisher): a creature they attacked in melee this turn
@@ -201,6 +203,7 @@ export function resolveOpportunityAttacks(
     // only against an attacker they can see (attack-light.ts), as on
     // enemy_attack: an opportunity attack read neither.
     const context = attackContext({
+      ...attackSenses(encounter.id, { refId: enemy.id, senses: enemySenses(enemy) }, { refId: sheet.id, senses: characterSenses(sheet) }),
       attackerConditions: fearAsRolled(encounter.id, enemy.id, enemy.conditions, enemy.conditionMeta),
       targetConditions: withLiveDodge(conditionsOf(sheet)),
       melee: true,
@@ -431,8 +434,7 @@ export function resolvePcOpportunityAttacks(
     }
     if (
       !canAct({ sheet, encounter, kind: "reaction" }).ok ||
-      conditionBlocksReactions(sheet.conditions) ||
-      cannotSee(sheet.conditions)
+      conditionBlocksReactions(sheet.conditions)
     ) {
       continue;
     }
@@ -470,7 +472,7 @@ export function resolvePcOpportunityAttacks(
     if (!enemy || enemy.status !== "alive" || (isSheetFoe(enemy) && enemy.currentHp <= 0)) {
       break;
     }
-    if (cannotBeSeen(enemy.conditions)) {
+    if (unseenBy(encounter.id, { ...sheet, senses: characterSenses(sheet) }, enemy)) {
       continue;
     }
     // Only a creature they can see provokes it (attack-light.ts).

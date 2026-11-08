@@ -31,7 +31,8 @@ import { lightSourcesWithZones, lightsWithZones, zoneHidesFrom } from "@/lib/dm/
 import { conditionTruesightFeet } from "@/lib/srd/condition-effect-queries";
 import { authoredDarkvisionFeet } from "@/lib/srd/authored-effects-more";
 import { isConditionNamed } from "@/lib/srd/feature-names";
-import { instancesOf, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { instancesOf, type ConditionMetaMap, type PastSight } from "@/lib/dm/condition-logic";
+import { tilesApart } from "@/lib/dm/board-reach";
 
 export function characterSenses(sheet: Pick<CharacterSheet, "features" | "race"> & { conditions?: string[] }): Senses {
   const texts = [...sheet.features.map((feature) => feature.name), sheet.race];
@@ -55,6 +56,36 @@ export function enemySenses(enemy: Pick<EncounterEnemy, "stats"> & { conditions?
     truesight: Math.max(block.truesight, text.truesight, Math.floor(conditionTruesightFeet(enemy.conditions ?? []) / 5)),
     devilsSight: Math.max(block.devilsSight, text.devilsSight),
   };
+}
+
+// Which of a viewer's senses reach another creature past what eyes need:
+// blindsight perceives without them, so blindness and invisibility do not
+// stop it, and truesight sees the invisible (SRD 5.1, Senses). Measured on
+// the board between their tokens; off it, a sense the viewer has reaches.
+// The one rule every sight check reads: an attack roll (condition-logic.ts
+// attackContext), "a creature you can see" (authored-saves.ts), and who
+// provokes an opportunity attack.
+export function sensesReaching(encounterId: string | null, viewer: { refId: string; senses: Senses }, seen: { refId: string }): PastSight {
+  const { blindsight, truesight } = viewer.senses;
+  if (!blindsight && !truesight) {
+    return { blindsight: false, truesight: false };
+  }
+  const map = encounterId ? getBattleMapForEncounter(encounterId) : null;
+  const from = map ? getTokenByRef(map.id, viewer.refId) : null;
+  const to = map ? getTokenByRef(map.id, seen.refId) : null;
+  const apart = from && to ? tilesApart(from, to) : null;
+  const reaches = (tiles: number) => tiles > 0 && (apart === null || apart <= tiles);
+  return { blindsight: reaches(blindsight), truesight: reaches(truesight) };
+}
+
+// Both ways round, for an attack: what the attacker's senses reach of the
+// target, and the target's of the attacker.
+export function attackSenses(
+  encounterId: string | null,
+  attacker: { refId: string; senses: Senses },
+  target: { refId: string; senses: Senses },
+): { attackerSenses: PastSight; targetSenses: PastSight } {
+  return { attackerSenses: sensesReaching(encounterId, attacker, target), targetSenses: sensesReaching(encounterId, target, attacker) };
 }
 
 export type Sight = {

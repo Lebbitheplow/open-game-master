@@ -15,6 +15,10 @@ import {
   tilesBetween,
   wallBetween,
 } from "@/lib/dm/attack-spatial";
+import { attackSenses, characterSenses, enemySenses } from "@/lib/dm/attack-light";
+import type { PastSight } from "@/lib/dm/condition-logic";
+import { getEnemy } from "@/lib/db/encounters";
+import { getSheetById } from "@/lib/db/sheets";
 
 export type TargetEdge = {
   cover: 0 | 2 | 5;
@@ -22,6 +26,10 @@ export type TargetEdge = {
   adjacent: boolean;
   blocked: boolean;
   hostileBeside: boolean;
+  // Blindsight or truesight past an invisible or blinded side, each way, as
+  // pc_attack reads it (attack-light.ts attackSenses); absent when neither
+  // side's reaches.
+  senses?: { attacker: PastSight; target: PastSight };
 };
 
 export function targetEdges(input: {
@@ -34,6 +42,7 @@ export function targetEdges(input: {
   const { encounterId, characterId } = input;
   const hostileBeside = characterShootsInMelee(encounterId, characterId, input.characterConditions);
   const edges: Record<string, TargetEdge> = {};
+  const sheet = getSheetById(characterId);
   for (const enemyId of input.enemyIds) {
     const tiles = tilesBetween(encounterId, characterId, enemyId);
     if (tiles === null) {
@@ -47,6 +56,11 @@ export function targetEdges(input: {
       blocked: wallBetween(encounterId, characterId, enemyId),
       hostileBeside,
     };
+    const enemy = getEnemy(enemyId);
+    const senses = sheet && enemy ? attackSenses(encounterId, { refId: characterId, senses: characterSenses(sheet) }, { refId: enemyId, senses: enemySenses(enemy) }) : null;
+    if (senses && [senses.attackerSenses, senses.targetSenses].some((side) => side.blindsight || side.truesight)) {
+      edges[enemyId].senses = { attacker: senses.attackerSenses, target: senses.targetSenses };
+    }
   }
   return edges;
 }

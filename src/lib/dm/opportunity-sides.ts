@@ -10,7 +10,7 @@
 // turn to end (holdVictory, as every opportunity attack leaves it).
 
 import { allocateSeq, getCampaignById } from "@/lib/db/campaigns";
-import { getActiveEncounter, getEnemy, listEnemies, saveEncounter } from "@/lib/db/encounters";
+import { getActiveEncounter, getEnemy, listEnemies, saveEncounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { insertCampaignMessage } from "@/lib/db/messages";
 import { insertRoll } from "@/lib/db/rolls";
@@ -22,8 +22,8 @@ import { rollAgainst } from "@/lib/roll-labels";
 import { enemyAcWithEffects } from "@/lib/dm/ac-effects";
 import { canEnemyAct } from "@/lib/dm/can-act";
 import { sideOf } from "@/lib/dm/combatant";
-import { attackContext, mergeAdvantage } from "@/lib/dm/condition-logic";
-import { attackSight, enemySenses, fearAsRolled } from "@/lib/dm/attack-light";
+import { attackContext, mergeAdvantage, sightBlockedBy } from "@/lib/dm/condition-logic";
+import { attackSenses, attackSight, enemySenses, fearAsRolled, sensesReaching } from "@/lib/dm/attack-light";
 import { applyEnemyDamage } from "@/lib/dm/enemy-damage";
 import { blowByType } from "@/lib/dm/enemy-hit";
 import { opportunityWeapon } from "@/lib/dm/enemy-profile";
@@ -35,8 +35,13 @@ import { tableNoteSeq } from "@/lib/dm/narration-slot";
 
 type XY = { x: number; y: number };
 
-const unseen = (conditions: string[]) => conditions.some((entry) => ["invisible", "hidden"].includes(entry.toLowerCase()));
-const blind = (conditions: string[]) => conditions.some((entry) => entry.toLowerCase() === "blinded");
+
+// Only a creature the reactor can see provokes it: a blinded reactor, an
+// invisible or hidden walker, past the blindsight or truesight that reaches
+// it (attack-light.ts sensesReaching, the rule every sight check reads).
+function unseenByReactor(encounterId: string, reactor: EncounterEnemy, walker: EncounterEnemy): boolean {
+  return Boolean(sightBlockedBy(reactor.conditions, walker.conditions, sensesReaching(encounterId, { refId: reactor.id, senses: enemySenses(reactor) }, { refId: walker.id })));
+}
 
 // The enemies of the other side whose reach the walker (an enemy row) leaves
 // strike it; returns the lines it posted.
@@ -57,7 +62,7 @@ export function enemiesStrikeWalker(campaignId: string, walkerId: string, steps:
     if (reactor.id === walkerId || sideOf(encounter, "enemy", reactor.id, reactor) === walkerSide) {
       continue;
     }
-    if (!canEnemyAct({ enemy: reactor, encounter, kind: "reaction" }).ok || conditionBlocksReactions(reactor.conditions) || blind(reactor.conditions) || unseen(walker.conditions)) {
+    if (!canEnemyAct({ enemy: reactor, encounter, kind: "reaction" }).ok || conditionBlocksReactions(reactor.conditions) || unseenByReactor(encounter.id, reactor, walker)) {
       continue;
     }
     if (encounter.reactionsUsed.includes(reactor.id)) {
@@ -80,6 +85,7 @@ export function enemiesStrikeWalker(campaignId: string, walkerId: string, steps:
       target: { refId: walker.id, senses: enemySenses(walker) },
     });
     const context = attackContext({
+      ...attackSenses(encounter.id, { refId: reactor.id, senses: enemySenses(reactor) }, { refId: walker.id, senses: enemySenses(walker) }),
       attackerConditions: fearAsRolled(encounter.id, reactor.id, reactor.conditions, reactor.conditionMeta),
       targetConditions: walker.conditions,
       melee: true,
