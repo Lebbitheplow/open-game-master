@@ -487,6 +487,16 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
       { name: "Song of Defense", gate: { condition: "bladesong" }, pool: { slot: true }, does: { kind: "reduce", amount: "slot5", who: "self" } },
     ],
   },
+  // Spent its use and changed nothing: no card came when an attack hit. An
+  // attack that hit is the roll the engine keeps open for a reaction; a check,
+  // a save or the wizard's own attack is thrown and settled in one call, with
+  // nothing waiting for another character's reaction, so use_resource still
+  // spends it for those and the GM narrates the reroll.
+  "wizard::Chronal Shift": {
+    subclass: "Chronurgy Magic",
+    counter: "sub_chronal_shift",
+    reactions: [{ name: "Chronal Shift", pool: { id: "sub_chronal_shift" }, sees: "target", does: { kind: "reroll_hit", rangeFt: 30, self: true } }],
+  },
   "wizard::Convergent Future": {
     subclass: "Chronurgy Magic",
     reactions: [{ name: "Convergent Future", does: { kind: "force_miss", exhaustion: 1 } }],
