@@ -31,7 +31,9 @@ export const AUTHORED_DATA_CHANNEL: Record<string, AuthoredEntry> = {
         name: "Charm Animals and Plants",
         pool: POOL,
         action: "action",
-        does: { kind: "save_area", save: "wis", dcAbility: "spell", rangeFt: 30, condition: "charmed", rounds: 10, endsOnDamage: true, types: ["beast", "plant"], sight: true },
+        // A beast or plant "that can see you": the line between them, not the
+        // cleric's own sight of it (authored-effects-types.ts `sight`).
+        does: { kind: "save_area", save: "wis", dcAbility: "spell", rangeFt: 30, condition: "charmed", rounds: 10, endsOnDamage: true, types: ["beast", "plant"], sight: "line" },
       },
     ],
   },
