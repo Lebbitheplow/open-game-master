@@ -130,9 +130,10 @@ export const AUTHORED_DATA_CHANNEL: Record<string, AuthoredEntry> = {
         name: "Turn the Tide",
         pool: POOL,
         action: "bonus",
-        // SCAG: each creature of the paladin's choice within 30 feet with no
-        // more than half its hit points regains 1d6 + CHA (at least 1).
-        does: { kind: "heal_area", formula: (_level, mods) => plus("1d6", mods.cha), rangeFt: 30, belowHalf: true },
+        // SCAG: each creature of the paladin's choice that can hear them within
+        // 30 feet, with no more than half its hit points, regains 1d6 + CHA (at
+        // least 1).
+        does: { kind: "heal_area", formula: (_level, mods) => plus("1d6", mods.cha), rangeFt: 30, belowHalf: true, hears: true },
       },
     ],
   },
@@ -145,7 +146,8 @@ export const AUTHORED_DATA_CHANNEL: Record<string, AuthoredEntry> = {
         action: "action",
         // TCoE: the cleric moves up to their speed without provoking, and each
         // other creature they pass within 5 feet of regains 2d6 + WIS (at least
-        // 1), once per use. Anyone the walk can reach is one they can pass.
+        // 1), once per use. On the board the server walks it; the note is for
+        // a scene with none.
         does: {
           kind: "heal_area",
           formula: (_level, mods) => plus("2d6", mods.wis),

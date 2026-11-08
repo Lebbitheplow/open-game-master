@@ -20,7 +20,7 @@ import { holdsFeature } from "@/lib/srd/feature-names";
 import { textKey } from "@/lib/language/text-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
-export type AfterRollId = "lucky" | "bardic" | "own_luck";
+export type AfterRollId = "lucky" | "bardic" | "own_luck" | "chronal_shift";
 
 export type AfterRollOption = {
   id: AfterRollId;
@@ -30,6 +30,7 @@ export type AfterRollOption = {
 };
 
 export const DARK_ONES_OWN_LUCK = "dark_ones_own_luck";
+export const CHRONAL_SHIFT = "sub_chronal_shift";
 
 // How long a roll waits on its player before the dice are kept as they lie
 // (src/lib/dm/after-roll-timer.ts); the card counts it down.
@@ -110,9 +111,22 @@ export function ownLuckDie(sheet: CharacterSheet): string | null {
   return holdsFeature(sheet, "dark one's own luck") && usesLeft(sheet, DARK_ONES_OWN_LUCK) > 0 ? OWN_LUCK_DIE : null;
 }
 
+// Chronal Shift (Chronurgy 2): "after you ... make an attack roll, an ability
+// check, or a saving throw", the wizard's reaction rolls it again once they
+// see it fail, and the second roll stands. The wizard's own roll is theirs to
+// answer here; a hit on them or an ally is the reaction card's
+// (src/lib/battlemap/hand-react.ts). `reactionFree`: their reaction is not
+// spent this round (always so outside a fight).
+function chronalShiftOption(sheet: CharacterSheet, reactionFree: boolean, taken: Set<AfterRollId>, what: string): AfterRollOption | null {
+  if (!reactionFree || taken.has("chronal_shift") || usesLeft(sheet, CHRONAL_SHIFT) < 1 || !holdsFeature(sheet, "chronal shift")) {
+    return null;
+  }
+  return { id: "chronal_shift", label: "Chronal Shift: roll it again", note: `Spend a use of Chronal Shift and your reaction: roll this ${what} again, and the new roll stands.` };
+}
+
 export function afterRollOptions(
   sheet: CharacterSheet,
-  roll: { kind: string; outcome: RollResult; dc: number | null; spent?: readonly AfterRollId[] },
+  roll: { kind: string; outcome: RollResult; dc: number | null; spent?: readonly AfterRollId[]; reactionFree?: boolean },
 ): AfterRollOption[] {
   const { outcome, dc } = roll;
   if (!canWaitOnRoll(roll.kind) || !leadD20(outcome) || (dc !== null && outcome.total >= dc)) {
@@ -134,6 +148,10 @@ export function afterRollOptions(
   if (own && !taken.has("own_luck") && reaches(sidesOf(own))) {
     options.push({ id: "own_luck", label: `Add Dark One's Own Luck (${own})`, note: `Add 1${own} to this check or save.` });
   }
+  const shift = outcome.natural === undefined || reaches(20 - outcome.natural) ? chronalShiftOption(sheet, roll.reactionFree !== false, taken, roll.kind === "saving_throw" ? "save" : "check") : null;
+  if (shift) {
+    options.push(shift);
+  }
   return options;
 }
 
@@ -144,7 +162,7 @@ export function afterRollOptions(
 // One's Own Luck is for checks and saves alone.
 export function afterAttackOptions(
   sheet: CharacterSheet,
-  roll: { outcome: RollResult; ac: number; critRange: number; spent?: readonly AfterRollId[] },
+  roll: { outcome: RollResult; ac: number; critRange: number; spent?: readonly AfterRollId[]; reactionFree?: boolean },
 ): AfterRollOption[] {
   const { outcome, ac } = roll;
   const natural = outcome.natural;
@@ -163,7 +181,38 @@ export function afterAttackOptions(
   if (bardic && !taken.has("bardic") && natural !== 1 && outcome.total + sidesOf(bardic.die) >= ac) {
     options.push({ id: "bardic", label: `Add Bardic Inspiration (${bardic.die})`, note: `Spend your Bardic Inspiration die: add 1${bardic.die} to this attack roll.` });
   }
+  // A fresh d20 can always save a miss: a natural 20 hits.
+  const shift = chronalShiftOption(sheet, roll.reactionFree !== false, taken, "attack roll");
+  if (shift) {
+    options.push(shift);
+  }
   return options;
+}
+
+// The roll with its d20s thrown again (`fresh`, one for each die the lead term
+// threw), kept by the same rule, advantage and all: the creature rolls again
+// and must use the new roll.
+export function withRerolledD20(outcome: RollResult, fresh: DieResult[]): RollResult | null {
+  const lead = leadD20(outcome);
+  if (!lead || fresh.length !== lead.dice.length) {
+    return null;
+  }
+  const order = fresh.map((die, at) => ({ value: die.value, at }));
+  const keepCount = lead.keep?.count ?? order.length;
+  const ranked = lead.keep ? [...order].sort((a, b) => (lead.keep!.mode === "highest" ? b.value - a.value : a.value - b.value)) : order;
+  const kept = new Set(ranked.slice(0, keepCount).map((entry) => entry.at));
+  const dice = fresh.map((die, at) => ({ ...die, kept: kept.has(at) }));
+  const subtotal = dice.reduce((sum, die) => sum + (die.kept ? die.value : 0), 0);
+  const natural = keepCount === 1 ? dice.find((die) => die.kept)!.value : undefined;
+  const rest = { ...outcome };
+  delete rest.crit;
+  return {
+    ...rest,
+    total: outcome.total - lead.subtotal + subtotal,
+    terms: [{ ...lead, dice, subtotal }, ...outcome.terms.slice(1)],
+    ...(natural !== undefined ? { natural } : {}),
+    ...(natural === 20 ? { crit: "nat20" as const } : natural === 1 ? { crit: "nat1" as const } : {}),
+  };
 }
 
 // A luck point spent before the throw (request_roll luck: true) put one d20

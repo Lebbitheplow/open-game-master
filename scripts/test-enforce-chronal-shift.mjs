@@ -4,8 +4,9 @@
 // of you makes an attack roll... you can use your reaction to force that creature
 // to reroll. You make this decision after you see whether the roll succeeds or
 // fails. The target must use the result of the second roll." An attack that hit
-// the wizard or a creature within 30 feet is now answered: a card for it, and
-// the attacker's d20 rolled again, the new roll standing.
+// the wizard or an ally, made from within 30 feet, is now answered: a card for it, and
+// the attacker's d20 rolled again, the new roll standing. The 30 feet are to the
+// creature that rolled, the attacker, not to the one it hit.
 //
 // Dice forced; every check reads a sheet, a card or a refusal.
 import assert from "node:assert/strict";
@@ -20,6 +21,10 @@ const { FRESH_TURN } = await import("../src/lib/battlemap/hand.ts");
 const { reactionCards } = await import("../src/lib/battlemap/hand-react.ts");
 const { tilesApart } = await import("../src/lib/dm/board-reach.ts");
 const { activePublicEncounter } = await import("../src/lib/db/encounter-view.ts");
+const { getPendingRoll, listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
+const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
+const { call } = await import("./lib/enforce-campaign.mjs");
+const afterRoll = await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]/after-roll");
 
 const hero = (classId, subclass, level = 20) =>
   world.addHero({
@@ -121,21 +126,42 @@ await test("The new roll stands when it still hits: the use is spent and the hit
   assert.equal(offered().length, 0);
 });
 
-await test("An ally beyond 30 feet gets no card and is refused with nothing spent; exactly 30 feet reaches.", async () => {
+await test("The 30 feet are to the attacker, wherever the ally it hit stands: an ally 35 feet off is answered, an attacker 35 feet off is not.", async () => {
   const enemy = await stage();
-  await strike(enemy, ally);
-  const apart = () => ({ [ally.id]: tilesApart(kit.token(wizard.id), kit.token(ally.id)) * 5 });
-  kit.place(ally.id, 5, 11);
-  assert.equal(apart()[ally.id], 30);
-  assert.equal(offered(apart()).length, 1);
+  const apart = (id) => tilesApart(kit.token(wizard.id), kit.token(id)) * 5;
+  const feet = () => ({ [ally.id]: apart(ally.id), [enemy.id]: apart(enemy.id) });
+  // The goblin swings from 15 feet at an ally beside it, 35 feet from the wizard.
   kit.place(ally.id, 5, 12);
-  assert.equal(apart()[ally.id], 35);
-  assert.equal(offered(apart()).length, 0);
+  kit.place(enemy.id, 5, 8);
+  kit.place(enemy.id, 5, 11);
+  await strike(enemy, ally);
+  kit.place(enemy.id, 5, 8);
+  assert.equal(feet()[ally.id], 35);
+  assert.equal(offered(feet()).length, 1, "the attacker is 15 feet off");
   const out = await shift([2], ally);
-  assert.match(out.error, /beyond 30 feet/);
-  assert.equal(used(), 0);
-  assert.equal(world.sheet(ally.id).currentHp, 44);
-  assert.ok(reactionKept());
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.sheet(ally.id).currentHp, 50);
+  assert.equal(used(), 1);
+});
+
+await test("An attacker beyond 30 feet gets no card and is refused with nothing spent, on the wizard or an ally beside them; exactly 30 feet reaches.", async () => {
+  for (const target of [ally, wizard]) {
+    const enemy = await stage();
+    kit.place(enemy.id, 5, target === wizard ? 6 : 8);
+    await strike(enemy, target);
+    const feet = () => ({ [ally.id]: tilesApart(kit.token(wizard.id), kit.token(ally.id)) * 5, [enemy.id]: tilesApart(kit.token(wizard.id), kit.token(enemy.id)) * 5 });
+    kit.place(enemy.id, 5, 11);
+    assert.equal(feet()[enemy.id], 30);
+    assert.equal(offered(feet()).length, 1, `30 feet reaches (${target.name})`);
+    kit.place(enemy.id, 5, 12);
+    assert.equal(feet()[enemy.id], 35);
+    assert.equal(offered(feet()).length, 0, `35 feet does not (${target.name})`);
+    const out = await shift([2], target === wizard ? undefined : target);
+    assert.match(String(out.error), /beyond 30 feet/);
+    assert.equal(used(), 0);
+    assert.equal(world.sheet(target.id).currentHp, 44);
+    assert.ok(reactionKept());
+  }
 });
 
 await test("With both uses spent there is no card, and the reaction refuses with nothing changed.", async () => {
@@ -157,6 +183,53 @@ await test("A wizard of another school has no card for the hit.", async () => {
   await strike(enemy, ally);
   const cards = reactionCards(world.sheet(other.id), { ...FRESH_TURN, myTurn: false }, hits(), world.sheets()).filter((card) => card.name === "Chronal Shift");
   assert.equal(cards.length, 0);
+});
+
+// ---- the wizard's own roll ("after you ... make an ... ability check, or a
+// saving throw"): the after-the-roll card offers it, as it offers Lucky ----
+
+const ownSave = async (face) => {
+  for (const pending of listOpenPendingRolls(world.campaignId)) {
+    world.signIn(world.owner);
+    await call(afterRoll, "POST", { keep: true }, { campaignId: world.campaignId, pendingRollId: pending.id });
+  }
+  world.dice(face);
+  const out = await world.invoke("request_roll", { characterId: wizard.id, kind: "saving_throw", ability: "wis", dc: 15, reason: "a mind reaching for theirs" });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  return listOpenPendingRolls(world.campaignId).find((pending) => pending.characterId === wizard.id) ?? null;
+};
+
+await test("The wizard's own failed save waits with Chronal Shift on the card: the use and the reaction are spent, and the new roll stands.", async () => {
+  await stage();
+  const pending = await ownSave(3);
+  assert.ok(pending, "the failed save waits");
+  assert.ok(pending.thrown.options.some((option) => option.id === "chronal_shift"), JSON.stringify(pending.thrown.options));
+  world.signIn(world.owner);
+  world.dice(18);
+  const res = await call(afterRoll, "POST", { use: "chronal_shift" }, { campaignId: world.campaignId, pendingRollId: pending.id });
+  world.clearDice();
+  assert.equal(res.status, 200, JSON.stringify(res.body));
+  assert.equal(used(), 1);
+  assert.equal(reactionKept(), false);
+  const landed = listRecentRolls(world.campaignId, 20).find((roll) => roll.id === getPendingRoll(pending.id).rollId);
+  assert.equal(landed?.breakdown.natural, 18, "the second roll stands");
+});
+
+await test("With the reaction spent this round, or no use left, the card has no Chronal Shift.", async () => {
+  await stage();
+  const encounter = world.encounter();
+  const { saveEncounter } = await import("../src/lib/db/encounters.ts");
+  saveEncounter({ ...encounter, reactionsUsed: [...encounter.reactionsUsed, wizard.id] });
+  const spentReaction = await ownSave(3);
+  // Nothing else to offer: the save lands at once instead of waiting.
+  assert.ok(!spentReaction || !spentReaction.thrown.options.some((option) => option.id === "chronal_shift"), "the reaction is spent");
+  assert.equal(used(), 0);
+  await stage();
+  const resources = world.sheet(wizard.id).resources;
+  world.patch(wizard.id, { resources: { ...resources, [COUNTER]: { ...resources[COUNTER], used: 2 } } });
+  const noUse = await ownSave(3);
+  assert.ok(!noUse || !noUse.thrown.options.some((option) => option.id === "chronal_shift"), "no use left");
 });
 
 world.close();

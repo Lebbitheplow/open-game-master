@@ -10,11 +10,11 @@
 // Called from pc-attack-plan.ts (the budget, before anything is spent) and
 // from authored-hooks.ts authoredOnHit (the bite, after the hit).
 
+import { regainHitPoints } from "@/lib/dm/regain";
 import type { Campaign } from "@/lib/db/campaigns";
 import { turnKey, type Encounter } from "@/lib/db/encounters";
-import { getSheetById, patchSheet } from "@/lib/db/sheets";
+import { getSheetById } from "@/lib/db/sheets";
 import type { Advantage } from "@/lib/dice";
-import { publishPersisted } from "@/lib/events";
 import type { TurnBudget } from "@/lib/dm/action-budget";
 import { effectiveMaxHp } from "@/lib/dm/condition-logic";
 import { computeSheetDerived } from "@/lib/srd";
@@ -107,12 +107,11 @@ export function naturalWeaponOnHit(
   if (sheet.currentHp <= 0 || sheet.currentHp >= max / 2 || BITE_HEALED.get(sheet.id) === stamp) {
     return [];
   }
-  const heal = computeSheetDerived(sheet).proficiencyBonus;
-  const currentHp = Math.min(max, sheet.currentHp + heal);
-  const updated = patchSheet(sheet.id, { currentHp });
-  if (updated) {
-    publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
+  // Under the heal tool's rules (regain.ts), and audited, so an undo takes it back.
+  const gained = regainHitPoints(campaign, null, sheet, computeSheetDerived(sheet).proficiencyBonus, `${natural.feature}: the bite's healing`);
+  if (gained <= 0) {
+    return [];
   }
   BITE_HEALED.set(sheet.id, stamp);
-  return [`${natural.feature}: the bite heals ${sheet.name} ${currentHp - sheet.currentHp} hit points.`];
+  return [`${natural.feature}: the bite heals ${sheet.name} ${gained} hit points.`];
 }

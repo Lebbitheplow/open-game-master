@@ -1,11 +1,12 @@
-// Chronal Shift comes up when an attack hits the Chronurgy wizard or a creature
-// within 30 feet of her, and not for one farther off (the seed's bench2.chronal:
-// Bran beside Ilse, Tam 35 feet away, a goblin's hit open on each and on Ilse).
+// Chronal Shift comes up when a goblin within 30 feet of the Chronurgy wizard
+// hits her or an ally, and not for one farther off (the seed's bench2.chronal:
+// Bran beside Ilse, Tam 35 feet away and his goblin 40, a goblin's hit open on
+// each and on Ilse).
 // Seen on a desktop and a phone, day and night, the Hand through axe. Playing
 // a reaction card from the aim bar is runic-shield's to check: the same path.
 import { axeViolations, check, eventually, untilStill } from "../lib.mjs";
 
-export default {
+const scenario = {
   name: "chronal-shift",
   viewports: ["desktop", "phone"],
   async run(t) {
@@ -48,3 +49,5 @@ export default {
     }
   },
 };
+
+export default scenario;

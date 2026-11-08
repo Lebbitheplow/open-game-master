@@ -10,7 +10,7 @@ import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
 import { computeSheetDerived } from "@/lib/srd";
 import { activeAuthored, resolveFormula } from "@/lib/srd/authored-effects";
-import { effectiveMaxHp, incapacitatedBy, removeConditionInstances, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { effectiveMaxHp, incapacitatedBy, removeConditionInstances, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { hurtEnemy } from "@/lib/dm/spell-aura";
 import { withinFeet } from "@/lib/dm/authored-saves";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -19,6 +19,7 @@ import { rollAgainst } from "@/lib/roll-labels";
 import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { withActor } from "@/lib/dm/acting-party";
+import { regainHitPoints } from "@/lib/dm/regain";
 
 function fielded(campaignId: string): CharacterSheet[] {
   return listSheets(campaignId)
@@ -44,18 +45,9 @@ function reach(range: number | Array<[number, number]>, level: number): number {
 }
 
 function heal(campaign: Campaign, sheet: CharacterSheet, amount: number): number {
-  const max = effectiveMaxHp(sheet);
-  const currentHp = Math.min(max, sheet.currentHp + Math.max(0, amount));
-  if (currentHp === sheet.currentHp) {
-    return 0;
-  }
-  // Audited: the turn that moved the pointer takes it back (issue #622).
-  patchSheetAudited(campaign.id, sheet.id, { currentHp }, {
-    kind: "heal",
-    reason: "a feature, as their turn starts",
-    delta: { amount: currentHp - sheet.currentHp, newHp: currentHp },
-  });
-  return currentHp - sheet.currentHp;
+  // Under the heal tool's rules (regain.ts), audited: the turn that moved the
+  // pointer takes it back (issue #622).
+  return regainHitPoints(campaign, null, sheet, amount, "a feature, as their turn starts");
 }
 
 function setTempHp(campaign: Campaign, sheet: CharacterSheet, amount: number): boolean {
@@ -155,6 +147,24 @@ export function authoredTurnEnd(campaign: Campaign, combatantIds: string[]): str
 function turnEndAuras(campaign: Campaign, combatantIds: string[]): string[] {
   const lines: string[] = [];
   const encounter = getActiveEncounter(campaign.id);
+  // The sanctuary ends with its cleric incapacitated or dead, not only waits:
+  // stunned for a round, the cleric's sphere does not come back.
+  for (const stale of listSheets(campaign.id)) {
+    const holder = getSheetById(stale.id) ?? stale;
+    if (!(holder.deathSaves?.dead || holder.currentHp <= 0 || incapacitatedBy(holder.conditions))) {
+      continue;
+    }
+    for (const { effect, held } of activeAuthored(holder, "turn_end_aura")) {
+      const gate = effect.gate && "condition" in effect.gate ? effect.gate.condition : undefined;
+      const now = getSheetById(holder.id) ?? holder;
+      const ended = gate ? now.conditions.filter((entry) => isConditionNamed(entry, gate)) : [];
+      if (ended.length) {
+        const cleared = removeConditions(now.conditions, now.conditionMeta, ended);
+        patchSheetAudited(campaign.id, now.id, { conditions: cleared.conditions, conditionMeta: cleared.meta }, { kind: "set_condition", reason: `${held.feature} ends`, delta: { removed: ended.join(", ") } });
+        lines.push(`${held.feature} ends: ${now.name} is ${now.deathSaves?.dead ? "dead" : "incapacitated"}.`);
+      }
+    }
+  }
   const holders = fielded(campaign.id).filter((holder) => !incapacitatedBy(holder.conditions) && activeAuthored(holder, "turn_end_aura").length);
   for (const id of combatantIds) {
     for (const holder of holders) {

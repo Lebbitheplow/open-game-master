@@ -13,17 +13,17 @@ import type { DmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter, getEnemy, patchEnemyConditions, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
-import { computeSheetDerived, speedFor } from "@/lib/srd";
+import { computeSheetDerived } from "@/lib/srd";
 import { resolveFormula, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
 import type { Ability, SpendDoes } from "@/lib/srd/authored-effects-types";
 import { STORM_AURA } from "@/lib/srd/authored-effects-data";
-import { effectiveMaxHp, effectiveSpeed, likelierSave, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
-import { patchSheetAudited } from "@/lib/dm/audited-patch";
+import { likelierSave, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { healArea } from "@/lib/dm/authored-heal-area";
+import { canRegain, regainHitPoints } from "@/lib/dm/regain";
 import { immuneToCondition } from "@/lib/dm/damage-logic";
 import { rollCharacterCheck } from "@/lib/dm/contest-roll";
 import { charmedBy } from "@/lib/dm/enemy-profile";
 import { d20Expression } from "@/lib/dice";
-import { healDeathHook } from "@/lib/dm/death";
 import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
@@ -438,19 +438,18 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
     case "flames": {
       const wanted = does.healOnly ? "heal" : textKey(ctx.args.variant ?? "");
       if (wanted === "heal") {
-        const rolled = rollCard(ctx.campaign, ctx.turn, sheet.id, "custom", `${ctx.spend.name}: healing`, formula(ctx, does.formula), null).total;
         const ally = ctx.args.targetCharacterId ? getSheetById(ctx.args.targetCharacterId) : sheet;
         if (!ally || ally.deathSaves?.dead) {
           return { error: `${ctx.spend.name} heals a living creature at the table: pass targetCharacterId. Nothing was spent.`, retry: true };
         }
-        const currentHp = Math.min(effectiveMaxHp(ally), ally.currentHp + rolled);
-        patchSheet(ally.id, { currentHp });
-        healDeathHook(campaign, ctx.turnId, ally);
-        const updated = patchSheet(ally.id, {});
-        if (updated) {
-          publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
+        // Asked before the roll and the spend: Chill Touch, suffocation and
+        // negative energy stop any healing (regain.ts).
+        if (!canRegain(ally)) {
+          return { error: `${ally.name} cannot regain hit points right now, so ${ctx.spend.name} would heal nothing. Nothing was spent.`, refused: "rules" };
         }
-        return { result: { healed: `${ally.name} regains ${currentHp - ally.currentHp} hit points (${rolled} rolled).` } };
+        const rolled = rollCard(ctx.campaign, ctx.turn, sheet.id, "custom", `${ctx.spend.name}: healing`, formula(ctx, does.formula), null).total;
+        const gained = regainHitPoints(campaign, ctx.turnId, ally, rolled, `${ctx.spend.name} (${sheet.name})`);
+        return { result: { healed: `${ally.name} regains ${gained} hit points (${rolled} rolled).` } };
       }
       if (wanted !== "burn") {
         return { error: `${ctx.spend.name} takes variant "heal" or "burn". Ask the player which, unless they named one. Nothing was spent.`, retry: true };
@@ -497,47 +496,6 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
 
 // A burst the spend sets off around the holder: each enemy in range saves
 // or takes the dice, or the condition.
-// Turn the Tide and Balm of Peace. Before this both spent the use and the GM
-// was left to roll and apply the healing from the card's text. Every character
-// in reach who can use it is healed: a cleric or paladin never chooses to leave
-// a hurt ally out, and nothing here reaches an enemy. One roll serves them all
-// unless `each` (Balm of Peace heals each creature as the cleric walks past).
-function healArea(ctx: SpendContext, does: Extract<SpendDoes, { kind: "heal_area" }>): Resolution {
-  const { campaign, sheet } = ctx;
-  // Balm of Peace reaches anyone the cleric can walk beside on this move.
-  const rangeFt = does.rangeFt === "move" ? effectiveSpeed(sheet.conditions, speedFor(sheet)) + 5 : does.rangeFt;
-  const hurt = (entry: CharacterSheet) => entry.currentHp < effectiveMaxHp(entry) && (!does.belowHalf || entry.currentHp <= effectiveMaxHp(entry) / 2);
-  const targets = alliesInReach(ctx, rangeFt, !does.othersOnly).filter(hurt);
-  if (!targets.length) {
-    const who = does.belowHalf ? "at or under half their hit points" : "hurt";
-    return { error: `${ctx.spend.name} heals characters ${who} within ${rangeFt} feet${does.othersOnly ? ` of ${sheet.name}` : ""}, and nobody is. Nothing was spent.`, refused: "rules" };
-  }
-  const dice = formula(ctx, does.formula);
-  const roll = () => Math.max(1, Number(rollCard(campaign, ctx.turn, sheet.id, "custom", `${ctx.spend.name}: healing`, dice, null).total));
-  const shared = does.each ? 0 : roll();
-  const healed: string[] = [];
-  for (const target of targets) {
-    const fresh = getSheetById(target.id) ?? target;
-    const rolled = does.each ? roll() : shared;
-    const currentHp = Math.min(effectiveMaxHp(fresh), fresh.currentHp + rolled);
-    // Audited, so an undo of the turn takes the healing back with the use.
-    patchSheetAudited(campaign.id, fresh.id, { currentHp }, {
-      kind: "heal",
-      reason: `${ctx.spend.name} (${sheet.name})`,
-      delta: { amount: currentHp - fresh.currentHp, newHp: currentHp },
-    });
-    healDeathHook(campaign, ctx.turnId, fresh);
-    const updated = patchSheet(fresh.id, {});
-    if (updated) {
-      publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
-    }
-    healed.push(`${fresh.name} +${currentHp - fresh.currentHp} (${currentHp}/${effectiveMaxHp(fresh)})`);
-  }
-  // The holder's own patch is written after this by the caller from a fresh
-  // read, so their own healing above is kept.
-  return { result: { healed, ...(does.note ? { applied: does.note } : {}) } };
-}
-
 function burst(ctx: SpendContext, spec: NonNullable<Extract<SpendDoes, { kind: "buff" }>["burst"]>): string[] {
   const encounter = getActiveEncounter(ctx.campaign.id);
   if (!encounter) {

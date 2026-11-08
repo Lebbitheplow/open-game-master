@@ -392,8 +392,9 @@ export type SpendDoes =
   // least 1 each. `rangeFt` "move": the holder's speed plus 5 feet, for a
   // healing the holder deals as they walk past. `belowHalf`: only those at or
   // under half their maximum. `othersOnly`: not the holder. `each`: one roll
-  // per creature, not one shared. With nobody to heal, nothing is spent.
-  | { kind: "heal_area"; formula: Formula; rangeFt: number | "move"; belowHalf?: boolean; othersOnly?: boolean; each?: boolean; note?: string }
+  // per creature, not one shared. `hears`: not a deafened creature. With
+  // nobody to heal, nothing is spent (src/lib/dm/authored-heal-area.ts).
+  | { kind: "heal_area"; formula: Formula; rangeFt: number | "move"; belowHalf?: boolean; othersOnly?: boolean; each?: boolean; hears?: boolean; note?: string }
   // An area the model resolves with aoe_damage: the dice, save and DC.
   | { kind: "aoe_report"; dice: Formula; perUnit?: string; baseUnits?: number; save: Ability; dcAbility: Ability | "spell"; type: string; area: string }
   // `touched`: a willing creature the holder touches is the one moved.
@@ -478,9 +479,11 @@ export type ReactionDoes =
   // of their next turn (Entropic Ward; authored-hooks.ts reads the mark).
   | { kind: "disadv_vs_hit"; notVsAdvantage?: boolean; allyWith?: string; rangeFt?: number; advantageOnMiss?: boolean }
   // The attacker rolls the d20 that hit an ally in range again and must use the
-  // new roll, high or low (Runic Shield). `self`: a hit on the holder counts too
-  // (Chronal Shift: "you or a creature you can see within 30 feet").
-  | { kind: "reroll_hit"; rangeFt: number; self?: boolean }
+  // new roll, high or low (Runic Shield). `roller`: the reach is to the creature
+  // that rolled, not the one it hit, so a hit on the holder counts too
+  // (Chronal Shift: "after you or a creature you can see within 30 feet of you
+  // makes an attack roll").
+  | { kind: "reroll_hit"; rangeFt: number; roller?: boolean }
   // Resistance to the last hit's damage when it is one of these types.
   // `bond`: only for the holder, and only while that creature is on their sheet and up
   // (a Drakewarden's drake); no other ally.

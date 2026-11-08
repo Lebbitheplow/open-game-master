@@ -660,7 +660,7 @@ function subclassReactions(
             does.kind === "redirect" ||
             does.kind === "force_miss" ||
             does.kind === "uncrit" ||
-            (does.kind === "reroll_hit" && Boolean(does.self)) ||
+            (does.kind === "reroll_hit" && Boolean(does.roller)) ||
             (does.kind === "chance_miss" && (!does.vsMark || markedBy(sheet, does.vsMark, hit.attackerId))) ||
             (does.kind === "strike_back" && !does.afterSave && Boolean(hit.attackerId) && !(does.melee && hit.ranged))
           : (does.kind === "reduce" && does.who !== "self" && typed(does.types)) ||
@@ -674,10 +674,12 @@ function subclassReactions(
             (does.kind === "resist_instance" && !does.bond && typed(does.types));
       if (!answers) continue;
       // Within its reach: the ally it covers, or for Rebuke the Violent the
-      // attacker ("an attacker within 30 feet of you").
+      // attacker ("an attacker within 30 feet of you"). Chronal Shift's reach
+      // is to the attacker whoever it hit, the holder too.
       const reach = "rangeFt" in does ? reachAt(does.rangeFt as number | Array<[number, number]> | undefined, held.level) : undefined;
-      if (whose === "ally") {
-        if (!inReach(feet, does.kind === "echo_hit" ? hit.attackerId : hit.characterId, reach)) continue;
+      const toRoller = does.kind === "reroll_hit" && Boolean(does.roller);
+      if (whose === "ally" || toRoller) {
+        if (!inReach(feet, does.kind === "echo_hit" || toRoller ? hit.attackerId : hit.characterId, reach)) continue;
       }
       // Instinctive Charm sways an attacker within its 30 feet.
       const charm = does.kind === "redirect" && Boolean(does.save);
@@ -699,7 +701,7 @@ function subclassReactions(
           ? reachLabel(REDIRECT_FT)
           : charm
             ? reachLabel(reach)
-          : target === "none"
+          : target === "none" && !toRoller
             ? "Self"
             : does.kind === "strike_back" && does.melee && reach === undefined
               ? "Melee"

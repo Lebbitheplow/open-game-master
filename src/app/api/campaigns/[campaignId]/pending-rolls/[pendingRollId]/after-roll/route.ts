@@ -14,7 +14,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const choiceSchema = z.union([
-  z.object({ use: z.enum(["lucky", "bardic", "own_luck"]) }),
+  z.object({ use: z.enum(["lucky", "bardic", "own_luck", "chronal_shift"]) }),
   // Which of a luck point's d20s counts.
   z.object({ die: z.number().int().min(0).max(20) }),
   z.object({ keep: z.literal(true) }),
