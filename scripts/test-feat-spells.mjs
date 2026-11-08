@@ -11,7 +11,7 @@ register("./lib/register-alias.mjs", import.meta.url);
 
 const {
   featSpellGrants, featSpellSpec, featSpellsAnything, featSpellsOwed, freeCastFeatureName, freeCastFeatures,
-  freeCastOf, freeCastResourceId, freeCastSpellOf, withFeatSpells, withoutFeatSpells, listAbility,
+  freeCastOf, freeCastResourceId, freeCastSpellOf, withFeatSpells, withoutFeatSpells, listAbility, mendedFeatSpells,
 } = await import("../src/lib/srd/feat-spells.ts");
 const { authoredFeatDesc } = await import("../src/lib/srd/feat-effects.ts");
 
@@ -262,6 +262,41 @@ test("a cantrip or spell a feat names outright is known: Monster Hunter's altere
   });
   assert.deepEqual(grants.problems, []);
   assert.deepEqual(grants.grants[0].cantrips, ["Altered Strike"]);
+});
+
+// ODM's own Magic Initiate reads "you learn it and can cast it once": the
+// pronoun was read as a cantrip, and every Magic Initiate held one named
+// "It". Telepathic's "cast detect thoughts once per long rest without a
+// slot" was read as a spell with no free cast, so a fighter could not cast
+// it at all.
+test("ODM's Magic Initiate teaches no cantrip named It, and Telepathic's detect thoughts is free", () => {
+  assert.deepEqual(spec("Magic Initiate").fixedCantrips, []);
+  const telepathic = spec("Telepathic");
+  assert.deepEqual(telepathic.fixedSpells, ["detect thoughts"]);
+  assert.equal(telepathic.freeCast, true);
+  assert.deepEqual(spec("Telekinetic").fixedCantrips, ["mage hand"]);
+  const grants = featSpellGrants({
+    feats: [{ name: "Magic Initiate", desc: authoredFeatDesc("Magic Initiate") }, { name: "Telepathic", desc: authoredFeatDesc("Telepathic") }],
+    choices: { "magic initiate": { list: "wizard", cantrips: ["Fire Bolt", "Light"], spells: ["Burning Hands"] } },
+    raisedAbility: () => "int",
+    spellOf: (name) => ({ ...SPELLS, light: { name: "Light", level: 0, classes: ["wizard"], school: "evocation" }, "detect thoughts": { name: "Detect Thoughts", level: 2, classes: ["wizard"], school: "divination" } })[name.trim().toLowerCase()] ?? null,
+    strict: true,
+  });
+  assert.deepEqual(grants.problems, []);
+  assert.deepEqual(grants.grants[0].cantrips, ["Fire Bolt", "Light"]);
+  assert.deepEqual(grants.grants[1].freeCasts, ["Detect Thoughts"]);
+  assert.deepEqual(freeCastFeatures(grants.grants), [freeCastFeatureName("Burning Hands", "Magic Initiate"), freeCastFeatureName("Detect Thoughts", "Telepathic")]);
+});
+
+test("a sheet stored with the misreadings is mended, and one without them is left alone", () => {
+  const lists = { ability: "int", slots: {}, cantrips: ["It", "Fire Bolt", "Light"], known: ["Burning Hands"], prepared: [] };
+  const mended = mendedFeatSpells({ feats: ["Magic Initiate", "Telepathic"], features: [{ name: "Second Wind" }], spellcasting: lists });
+  assert.deepEqual(mended.spellcasting.cantrips, ["Fire Bolt", "Light"]);
+  assert.deepEqual(mended.features.map((feature) => feature.name), ["Second Wind", freeCastFeatureName("Detect Thoughts", "Telepathic")]);
+  assert.equal(mendedFeatSpells({ feats: ["Magic Initiate", "Telepathic"], features: mended.features, spellcasting: mended.spellcasting }), null);
+  assert.equal(mendedFeatSpells({ feats: ["Alert"], features: [], spellcasting: lists }), null);
+  // An edit of a sheet restored from before the fix drops it with the feats' spells.
+  assert.deepEqual(withoutFeatSpells(lists, []).cantrips, ["Fire Bolt", "Light"]);
 });
 
 console.log(`${passed} checks passed`);

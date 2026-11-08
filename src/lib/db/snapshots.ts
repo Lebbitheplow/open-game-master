@@ -1,5 +1,6 @@
 import { backfillNpcHeard } from "@/lib/db/npc-heard-backfill";
 import { repairSkewedPersonalities } from "@/lib/db/npc-personality-repair";
+import { repairFeatSpellMisreadings } from "@/lib/db/feat-spell-repair";
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { restoreCompanionUser } from "@/lib/db/users";
 import {
@@ -261,4 +262,5 @@ export function restoreSnapshot(campaignId: string, payload: SnapshotPayload) {
   // A snapshot taken before issue 732 brings back personalities saved from
   // the skewed name hash; they move onto the corrected spread again.
   repairSkewedPersonalities(db, campaignId);
+  repairFeatSpellMisreadings(db, campaignId);
 }

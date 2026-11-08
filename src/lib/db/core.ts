@@ -2,6 +2,7 @@ import { openDatabase, type SqliteDatabase } from "./driver.ts";
 import { fileSubAreasByName } from "./place-parents-backfill.ts";
 import { backfillNpcHeard } from "./npc-heard-backfill.ts";
 import { repairSkewedPersonalities } from "./npc-personality-repair.ts";
+import { repairFeatSpellMisreadings } from "./feat-spell-repair.ts";
 import { createHash } from "node:crypto";
 import { mkdirSync, statSync } from "node:fs";
 import path from "node:path";
@@ -3112,6 +3113,16 @@ function ensureSchema(db: SqliteDatabase) {
     db.transaction(() => {
       repairSkewedPersonalities(db);
       db.prepare(`INSERT INTO app_settings (key, value_json, updated_at) VALUES (?, ?, ?)`).run("npc_personality_repair_done", "true", new Date().toISOString());
+    })();
+  }
+  // Sheets written while ODM's Magic Initiate and Telepathic were misread
+  // (src/lib/db/feat-spell-repair.ts): the phantom cantrip "It" comes off
+  // and Telepathic's free cast goes on. One pass, guarded by a marker.
+  const featSpellMarker = db.prepare(`SELECT key FROM app_settings WHERE key = 'feat_spell_repair_done'`).get();
+  if (!featSpellMarker) {
+    db.transaction(() => {
+      repairFeatSpellMisreadings(db);
+      db.prepare(`INSERT INTO app_settings (key, value_json, updated_at) VALUES (?, ?, ?)`).run("feat_spell_repair_done", "true", new Date().toISOString());
     })();
   }
 }
