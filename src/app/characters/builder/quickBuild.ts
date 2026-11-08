@@ -596,13 +596,10 @@ export function fillRound(ctx: FillContext): FillRound {
   // language), with or without a subclass.
   if (wants("subclass")) {
     let featChoices: FeatChoices = fields.featChoices;
-    // A copy of the skills: the subclass's own (a Lore bard's three) are
-    // not ones its class expertise may double, as the builder counts it
-    // (derived.proficientSkills) and the server judges it, so the expertise
-    // pick below takes from the rest. Taking them left a Lore bard at 10th
-    // level owing two expertise picks after the fill.
+    // The subclass's skills join the ones the expertise below may double
+    // (derived.expertiseSkills).
     const held = {
-      skills: new Set(proficient),
+      skills: proficient,
       languages,
       tools,
       weapons: new Set((derived.training.weapons ?? []).map((weapon) => textKey(weapon))),

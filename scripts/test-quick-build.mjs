@@ -414,6 +414,23 @@ await test("a subclass's or a feat's own tool is no extra pick of the class's", 
   }
 });
 
+// SRD 5.1, Bard, Expertise: "choose two of your skill proficiencies". The
+// builder and the library route counted only the class's, background's and
+// race's skills, so a Lore bard made at 10th level could not double a skill
+// its college gave (the level-up always could), and the sheet dropped such a
+// pick without a word.
+await test("a Lore bard made at 10th level doubles a skill its college gave", async () => {
+  const { featChoice } = await import("../src/lib/schemas/sheet.ts");
+  const { fields } = await runFill(fresh({ level: 10, classId: "bard", subclass: "College of Lore" }));
+  const lore = featChoice(fields.featChoices, "Bonus Proficiencies (Lore)")?.skills ?? [];
+  assert.equal(lore.length, 3, "the college's three skills");
+  const expertisePicks = [lore[0], ...fields.expertisePicks.filter((skill) => skill !== lore[0])].slice(0, 4);
+  const built = await saves({ ...fields, expertisePicks }, "Lore bard with expertise in a college skill");
+  assert.ok(built.sheet.proficiencies.expertise.includes(lore[0]), `the sheet dropped expertise in ${lore[0]}`);
+  const made = await call(libraryRoute, "POST", { level: built.level, sheet: { ...built.sheet, portrait: PORTRAIT } });
+  assert.ok(made.json.character.sheet?.proficiencies?.expertise?.includes(lore[0]) ?? made.json.character.proficiencies?.expertise?.includes(lore[0]), "the server dropped it");
+});
+
 await test("an Order cleric's fill takes Intimidation or Persuasion for Bonus Proficiencies (Order)", async () => {
   const { fields } = await runFill(fresh({ level: 3, classId: "cleric", subclass: "Order Domain" }));
   const built = await saves(fields, "Order cleric at 3");

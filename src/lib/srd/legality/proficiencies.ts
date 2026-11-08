@@ -44,6 +44,11 @@ export type ProficiencyInput = {
   // class's and background's picks, and the subclass and feat grants write
   // them back after this; they are not picks of an open tool grant.
   grantedTools?: string[];
+  // Skills a subclass or a feat gives (a Lore bard's three, Skilled's),
+  // written back with their grants after this: the class's expertise may
+  // double them too (SRD 5.1, Bard and Rogue: "choose two of your skill
+  // proficiencies"), as the level-up already allows.
+  grantedSkills?: string[];
 };
 
 export type ProficiencyVerdict = { problems: string[]; proficiencies: Proficiencies };
@@ -263,7 +268,7 @@ export function judgeProficiencies(input: ProficiencyInput): ProficiencyVerdict 
   const heldExpertise = new Set((held?.expertise ?? []).map(lower));
   const expertise = uniqueNames([...(held?.expertise ?? []), ...(sent.expertise ?? [])].map(lower));
   const classIds = input.classes.map((entry) => entry.id);
-  const unproficient = expertise.filter((skill) => !expertiseAllowed(skill, skills, classIds));
+  const unproficient = expertise.filter((skill) => !expertiseAllowed(skill, [...skills, ...(input.grantedSkills ?? []).map(lower)], classIds));
   if (unproficient.length) {
     problems.push(
       `Expertise doubles a proficiency the character has; ${unproficient.join(", ")} ${unproficient.length === 1 ? "is" : "are"} not among their skills.`,
