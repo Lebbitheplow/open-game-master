@@ -18,7 +18,7 @@ import type { HeldMote } from "@/lib/dm/authored-mote";
 import { applyPendingDamageRoll } from "@/lib/dm/enemy-blow";
 import type { AttackPlan } from "@/lib/dm/pc-attack-plan";
 import { serverBlow, throwToHit, type Strike } from "@/lib/dm/pc-attack-resolve";
-import { rollsCanWait } from "@/lib/dm/after-roll";
+import { reactionFreeFor, rollsCanWait } from "@/lib/dm/after-roll";
 import { afterAttackOptions } from "@/lib/dm/after-roll-logic";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import type { RollResult } from "@/lib/dice";
@@ -71,6 +71,7 @@ export function throwForChoice(plan: AttackPlan, strike: Strike, toolCallId: str
     ac: recordTargetAc(campaign.id, record),
     critRange: record.critRange ?? 20,
     spent: record.luck ? ["lucky"] : [],
+    reactionFree: reactionFreeFor(campaign.id, fresh.id),
   });
   if (!options.length) {
     return { thrown };

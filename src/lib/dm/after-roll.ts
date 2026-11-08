@@ -13,6 +13,7 @@ import { attackTurnOver, recordTargetAc, type AttackRecord } from "@/lib/dm/atta
 import {
   afterAttackOptions,
   afterRollOptions,
+  CHRONAL_SHIFT,
   DARK_ONES_OWN_LUCK,
   extraD20Expression,
   heldBardicDie,
@@ -23,11 +24,14 @@ import {
   sidesOf,
   withBonusDie,
   withExtraD20,
+  withRerolledD20,
   type AfterRollId,
   type AfterRollOption,
 } from "@/lib/dm/after-roll-logic";
 import { LUCK_SPEND } from "@/lib/dm/roll-riders";
 import { luckPointsLeft } from "@/lib/srd/class-resources";
+import { getActiveEncounter } from "@/lib/db/encounters";
+import { markReactionUsed } from "@/lib/dm/turn-budget";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 // Whether this character's rolls can wait on their player. A companion rolls
@@ -44,6 +48,12 @@ export function rollsCanWait(sheet: CharacterSheet | null | undefined): sheet is
   );
 }
 
+// Whether the character's reaction is still theirs this round: Chronal Shift
+// costs it. Outside a fight there is no round, and it is.
+export function reactionFreeFor(campaignId: string, sheetId: string): boolean {
+  return !getActiveEncounter(campaignId)?.reactionsUsed.includes(sheetId);
+}
+
 // What this parked roll offers, given its dice as they now stand. A roll
 // behind the GM's screen never waits: its card would show the table the dice.
 // A parked attack's to-hit roll is judged against the target's AC as it now
@@ -56,6 +66,7 @@ export function optionsForPending(pending: PendingRoll, outcome: RollResult, spe
   if (!sheet || !rollsCanWait(sheet)) {
     return [];
   }
+  const reactionFree = reactionFreeFor(pending.campaignId, sheet.id);
   if (pending.attack) {
     const record = pending.attack as AttackRecord;
     // Its turn is over: the roll will not land, so nothing is spent on it.
@@ -65,10 +76,10 @@ export function optionsForPending(pending: PendingRoll, outcome: RollResult, spe
     // A luck point bought with the attack (pc_attack luck: true) was its one.
     // Read from the record, not the dice: Elven Accuracy throws a third d20 too.
     const bought: AfterRollId[] = record.luck ? ["lucky"] : [];
-    return afterAttackOptions(sheet, { outcome, ac: recordTargetAc(pending.campaignId, record), critRange: record.critRange ?? 20, spent: [...spent, ...bought] });
+    return afterAttackOptions(sheet, { outcome, ac: recordTargetAc(pending.campaignId, record), critRange: record.critRange ?? 20, spent: [...spent, ...bought], reactionFree });
   }
   const upFront: AfterRollId[] = luckRodeThrow(pending.expression, pending.advantage) ? ["lucky"] : [];
-  return afterRollOptions(sheet, { kind: pending.kind, outcome, dc: pending.dc, spent: [...spent, ...upFront] });
+  return afterRollOptions(sheet, { kind: pending.kind, outcome, dc: pending.dc, spent: [...spent, ...upFront], reactionFree });
 }
 
 // The player's choice, paid for and on the dice. Null when the choice is no
@@ -89,6 +100,22 @@ export function spendAfterRoll(
     const extra = rollExpression(extraD20Expression(outcome.expression)).terms[0];
     const pooled = extra.kind === "dice" ? withExtraD20(outcome, extra.dice[0]) : null;
     return pooled ? { outcome: pooled, choosing: true } : null;
+  }
+  if (id === "chronal_shift") {
+    const encounter = getActiveEncounter(campaign.id);
+    if (encounter?.reactionsUsed.includes(sheet.id) || !spendFeatureUse(campaign, sheet.id, CHRONAL_SHIFT, "Chronal Shift", "player")) {
+      return null;
+    }
+    if (encounter) {
+      markReactionUsed(encounter, sheet.id);
+    }
+    const lead = outcome.terms[0];
+    const count = lead && lead.kind === "dice" ? lead.dice.length : 0;
+    // One fresh d20 for each the roll threw, obeying what they obeyed (a
+    // halfling's reroll of a 1).
+    const fresh = Array.from({ length: count }).flatMap(() => rollExpression(extraD20Expression(outcome.expression)).terms.flatMap((term) => (term.kind === "dice" ? term.dice.slice(0, 1) : [])));
+    const rerolled = withRerolledD20(outcome, fresh);
+    return rerolled ? { outcome: rerolled, choosing: false } : null;
   }
   if (id === "bardic") {
     const held = heldBardicDie(sheet);
