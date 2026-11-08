@@ -8,6 +8,7 @@ import path from "node:path";
 import { scheduleImageVariants } from "@/lib/image-variants";
 import { isUploadedImagePath, isUploadedPdfPath } from "@/lib/uploads";
 import { recordMediaFile } from "@/lib/media-access";
+import { pdfTextDir } from "@/lib/pdf-text-files";
 
 // The one size cap for anything that lands in public/uploads, whether it
 // arrives by upload form or inside a character bundle.
@@ -54,15 +55,55 @@ export async function writeUploadedImage(
   return { id, url: `/uploads/${filename}` };
 }
 
-// A PDF under its own cap, named the same way.
-export async function writeUploadedPdf(bytes: Uint8Array): Promise<{ id: string; url: string }> {
+// A PDF under its own cap, named the same way. `text` is the PDF's words as
+// the page read them with pdf.js (src/lib/pdf-import/book-text.ts), kept
+// beside it under data/ for the rules search: the server's own reader
+// (src/lib/pdf/text.ts) cannot read a book whose fonts are subset with
+// their own codes, which is most published books.
+export async function writeUploadedPdf(bytes: Uint8Array, text = ""): Promise<{ id: string; url: string }> {
   const id = crypto.randomUUID();
   const filename = `${id}.pdf`;
   const dir = uploadsDir();
   await mkdir(dir, { recursive: true });
   await writeFile(path.join(/*turbopackIgnore: true*/ dir, filename), bytes);
   recordMediaFile(`/uploads/${filename}`);
+  if (text.trim()) await writeUploadedPdfText(`/uploads/${filename}`, text);
   return { id, url: `/uploads/${filename}` };
+}
+
+// The reading sent with the upload is the uploader's (`<id>.txt`, written
+// once with a fresh id); a reading given later for an older attachment is
+// one campaign's (`<id>.<campaign>.txt`), so whoever else attaches the same
+// PDF elsewhere cannot change what this campaign's rules search reads.
+function pdfTextFile(url: string, campaignId?: string): string | null {
+  if (!isUploadedPdfPath(url)) return null;
+  if (campaignId !== undefined && !/^[A-Za-z0-9-]{1,64}$/.test(campaignId)) return null;
+  const id = url.slice("/uploads/".length, -".pdf".length);
+  return path.join(/*turbopackIgnore: true*/ pdfTextDir(), campaignId ? `${id}.${campaignId}.txt` : `${id}.txt`);
+}
+
+export async function writeUploadedPdfText(url: string, text: string, campaignId?: string): Promise<boolean> {
+  const file = pdfTextFile(url, campaignId);
+  if (!file) return false;
+  await mkdir(path.dirname(file), { recursive: true });
+  await writeFile(file, text);
+  return true;
+}
+
+// The page's reading of an uploaded PDF (the campaign's own first, then
+// the uploader's), or null when none was sent (an older app, or a PDF
+// uploaded before the page read them).
+export async function readUploadedPdfText(url: unknown, campaignId?: string): Promise<string | null> {
+  if (typeof url !== "string") return null;
+  for (const file of [campaignId ? pdfTextFile(url, campaignId) : null, pdfTextFile(url)]) {
+    if (!file) continue;
+    try {
+      return await readFile(file, "utf8");
+    } catch {
+      // not this one
+    }
+  }
+  return null;
 }
 
 export async function readUploadedPdf(url: unknown): Promise<Buffer | null> {

@@ -1,4 +1,5 @@
 import { parseFightSetup, portableSetup } from "@/lib/workshop/fight-setup-logic";
+import { markPrivateSource, markShelfArrivals } from "@/lib/db/private-sources";
 import { createHash } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -591,5 +592,10 @@ function writeBundleRows(
   // were saved with from the skewed name hash.
   repairSkewedPersonalities(getDatabase(), workshop.id);
 
+  // A workshop imported from a published book stays private in its copy.
+  if (bundle.privateSource) {
+    markPrivateSource(workshop.id, bundle.privateSource);
+    markShelfArrivals(bundle, shelf.entryFor, bundle.privateSource);
+  }
   return { workshopId: workshop.id, copied, linkedShared, droppedLinks, shelf: { reused: shelf.reused, renamed: shelf.renamed, refused: shelf.refused } };
 }

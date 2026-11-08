@@ -1,4 +1,5 @@
 import { parseFightSetup, portableSetup } from "@/lib/workshop/fight-setup-logic";
+import { privateSourceOf, privateSourceOfEntries } from "@/lib/db/private-sources";
 import { createHash } from "node:crypto";
 import { compareNames } from "@/lib/language/text-logic";
 import { readFileSync } from "node:fs";
@@ -558,6 +559,9 @@ export function exportWorkshopBundle(
     ),
     overworld: null,
     dependsOn: common ? { name: common.title.slice(0, 80) } : null,
+    // The workshop's own mark, or the mark of a book's creature or item
+    // it takes along from the shelf.
+    privateSource: privateSourceOf(workshopId) || privateSourceOfEntries([...shelf.monsters.map((monster) => monster.id), ...shelf.homebrew.map((entry) => entry.id)]),
   };
 
   // The region map, with its anchors as indexes into the places.
@@ -618,4 +622,15 @@ export function exportWorkshopBundle(
   });
 
   return { bundle, skippedImages: budget.skipped, shelf: shelf.report };
+}
+
+// The published book a workshop is from (private-sources.ts), or the book
+// of a creature, item or spell it takes from the GM's shelf: what a world
+// pack, a plugin export and a plugin pull refuse. The shelf is read the way
+// a bundle export reads it, so the two never disagree.
+export function workshopPrivateSource(workshopId: string): string {
+  const own = privateSourceOf(workshopId);
+  if (own) return own;
+  const exported = exportWorkshopBundle(workshopId, { name: "Private source check", blurb: "check", inspiredBy: "check", shelf: "used" });
+  return "bundle" in exported ? (exported.bundle.privateSource ?? "") : "";
 }

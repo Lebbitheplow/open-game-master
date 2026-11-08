@@ -104,6 +104,10 @@ export type WorldImport = {
   // What comes in on purpose differently, said so nobody is surprised.
   notes: string[];
   worldName: string;
+  // ODM's own extension: the published book the world was imported from
+  // (src/lib/db/private-sources.ts), so a world read back from its file
+  // stays as private as the workshop it was saved from.
+  privateSource?: string;
   // ODM's own extension: the workshop an ODM export came from, so a world
   // keeps one identity when it is renamed. "" for a file from elsewhere.
   worldId: string;
@@ -335,7 +339,8 @@ export function readWorldForge(raw: unknown): WorldImport | { error: string } {
   if (doc.secrets.length) {
     notes.push("A secret new to this world comes in with the party knowing none of it yet; one brought in before keeps what the party has learned. Who in the world knows each one comes in as written.");
   }
-  return { losses, sceneLosses, notes, worldName, worldId, premise, records, doc, beats, mapImages };
+  const privateSource = str(world.odmPrivateSource, 200);
+  return { losses, sceneLosses, notes, worldName, worldId, ...(privateSource ? { privateSource } : {}), premise, records, doc, beats, mapImages };
 }
 
 // ---- out ----
@@ -346,6 +351,8 @@ export type ExportBeat = { id: string; title: string; body: string; pov: string;
 export function writeWorldForge(input: {
   worldName: string;
   worldId?: string;
+  // The published book a private workshop was imported from.
+  privateSource?: string;
   // Entries and maps whose pictures did not fit the export's room for them.
   omitted?: string[];
   premise: string;
@@ -370,6 +377,7 @@ export function writeWorldForge(input: {
     exportedAt: input.now,
     worldName: input.worldName,
     ...(input.worldId ? { odmWorldId: input.worldId } : {}),
+    ...(input.privateSource ? { odmPrivateSource: input.privateSource } : {}),
     // ODM's extension, read back as a loss so the next import names them.
     ...(input.omitted?.length ? { odmOmitted: input.omitted } : {}),
     entities: input.records.map((record) => ({

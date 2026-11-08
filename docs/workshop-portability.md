@@ -146,6 +146,68 @@ workshop's cast, places, maps and fights after the chapter's own, marked
   it. The chapter then draws on it and nothing is duplicated. Otherwise the
   shared rows land as the chapter's own.
 
+## Adventure PDFs
+
+"Import an adventure PDF" (the Workshop page, a workshop's header, and
+WorldForge's "Add an adventure PDF to this world") turns a GM's own copy of
+an adventure book into a workshop. Code: `src/lib/pdf-import/`, routes
+`/api/pdf-imports/*`, screens `src/app/workshop/pdf-import/`, checks
+`scripts/test-pdf-import.mjs` and the browser scenario `130-pdf-import`.
+
+1. **The page reads the book** with pdf.js (`read-pdf.ts`), on the website
+   and in the apps alike: the text with its fonts and positions, tinted
+   boxes, bookmarks, and the pictures worth keeping (ornaments repeated on
+   every page are left behind). A scanned book's art and maps are cut out
+   of its page pictures where no words are; a page its bookmarks call a map
+   keeps the map whole. The PDF never leaves the device.
+2. **The server reads the layout** without a model (`draft-logic.ts`):
+   chapters, the book's words as the GM's lore (read-aloud boxes quoted),
+   stat blocks, roll tables, keyed rooms as places under their site, maps
+   with their grid and room numbers, art, and a storyboard card a chapter.
+3. **With a story model**, the job reads the book a piece at a time
+   (`ai-logic.ts`, `job.ts`; pieces sized to the model's window) for its
+   people, places, factions, treasure, spells, fights, scenes, secrets and
+   ties. Each answer is kept as it arrives, so a restarted server carries on
+   where it was. Without a model the import stops at step 2 and says what a
+   model would add.
+4. **Everything is set beside SRD 5.1** (`equivalents.ts`, `matches.ts`),
+   whatever system the book was written for (5e, the 2024 printing,
+   Old-School Essentials or B/X, Pathfinder). A creature the SRD has by name
+   (or by another printing's name) plays as it, under the book's name where
+   that differs. Items and spells the SRD has by name are the SRD's, a
+   book's "+1 Longsword" its +1 weapon and "Scroll of Fireball" its Spell
+   Scroll. Every other creature (another system's with no SRD name, a name
+   that only ends in an SRD one, a name in a fight with no stat block) is
+   put to the GM in the review's **Match to SRD 5.1** step.
+5. **The GM reviews** every record with its pages and the words it came
+   from, and takes or leaves each one. In Match to SRD 5.1 each creature
+   starts on its closest SRD 5.1 creature: the model's pick when one read
+   the book, else the closest guess from its name, type, size, challenge
+   and the book's own words (`match-logic.ts`). The GM confirms it, picks
+   another from the nearest few or a search of the whole SRD, or keeps the
+   book's own numbers; "Accept the rest" confirms what is left. Nothing
+   lands until every match is confirmed, and each choice is saved as it is
+   made. Imported, it is a new workshop through the bundle import's own
+   checks, or, from WorldForge, the world's people, places, factions, lore,
+   ties and scenes, its creatures and items on the GM's shelf.
+
+A workshop made from a book is the GM's private copy
+(`src/lib/db/private-sources.ts`): it is never compiled into a world pack or
+installed for others. The mark follows it through Duplicate, a bundle file,
+a WorldForge file (`odmPrivateSource`) and a content import, and the book's
+creatures, items and spells on the GM's shelf carry it too, so a bundle of
+any other workshop that takes one along is marked. In a file the mark is a
+field like any other: it keeps an honest copy honest, and is not a lock on
+the file.
+
+**Limits.** An account's unfinished imports hold at most 512 MB of pages and
+pictures between them, and nothing is kept below the server's free-disk
+floor (`UPLOAD_MIN_FREE_BYTES`); what lands is charged to the upload budget
+like any other import. One book at a time is read per account. The PDF is
+read by pdf.js in the page, with no scripts run and no password tried; the
+server receives only text, positions and pictures it checks (PNG, JPEG or
+WebP by their bytes), never the PDF.
+
 ## Importing again
 
 - **Kept by default.** Rows an earlier import brought from the same source

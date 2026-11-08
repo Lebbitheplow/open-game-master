@@ -4,7 +4,7 @@ import { deleteSourceChunks, replaceSourceChunks } from "@/lib/db/rules";
 import { chunkHouseRules, HOUSE_RULES_MAX } from "@/lib/dm/rules-logic";
 import type { WorldLoreEntry } from "@/lib/dm/world-lore-logic";
 import { extractPdfText } from "@/lib/pdf/text";
-import { readUploadedPdf } from "@/lib/uploads-store";
+import { readUploadedPdf, readUploadedPdfText } from "@/lib/uploads-store";
 
 // A PDF on a lore entry tagged "rules" feeds the rules retrieval (docs/vtt-
 // parity-implementation-plan.md section 5.3): its text is extracted once
@@ -55,7 +55,10 @@ export async function ingestLoreAttachment(entry: WorldLoreEntry): Promise<numbe
     deleteSourceChunks(entry.campaignId, entry.id);
     return 0;
   }
-  const chunks = chunksForAttachment(entry.title, extractPdfText(bytes, TEXT_CAP));
+  // The page's pdf.js reading when it sent one; the server's own reader
+  // only for PDFs from before (it cannot read subset fonts).
+  const read = await readUploadedPdfText(entry.attachmentPath, entry.campaignId);
+  const chunks = chunksForAttachment(entry.title, read?.trim() ? read.slice(0, TEXT_CAP) : extractPdfText(bytes, TEXT_CAP));
   replaceSourceChunks(entry.campaignId, entry.id, chunks);
   return chunks.length;
 }

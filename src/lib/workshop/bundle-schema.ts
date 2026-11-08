@@ -445,6 +445,10 @@ export const workshopBundleSchema = z.object({
   // of the importer's that holds the same refs, or land as the chapter's
   // own rows.
   dependsOn: z.object({ name: z.string().trim().max(80) }).nullable().default(null),
+  // The published book a workshop was imported from for its owner's own
+  // table (src/lib/db/private-sources.ts), so the copy a bundle makes is as
+  // private as the workshop it came from. "" for everything else.
+  privateSource: z.string().trim().max(200).default(""),
 });
 
 export type WorkshopBundle = z.infer<typeof workshopBundleSchema>;

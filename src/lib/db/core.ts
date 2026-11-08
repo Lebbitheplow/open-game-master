@@ -1919,6 +1919,65 @@ function ensureSchema(db: SqliteDatabase) {
   // than rerolling from the pack. '' is a shop stocked from the pack.
   addColumns("shops", [["prepared_stock_json", `TEXT NOT NULL DEFAULT ''`]]);
 
+  // Adventure PDF imports (src/lib/db/pdf-imports.ts): the book as the
+  // page read it, a batch of pages at a time, the pictures it kept (files in
+  // data/pdf-imports/<id>), and the draft the job builds and the GM
+  // reviews. campaign_id is the workshop an import started in WorldForge
+  // lays itself into; NULL makes a new workshop. Gzipped JSON in the blobs.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS pdf_imports (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      campaign_id TEXT REFERENCES campaigns(id) ON DELETE CASCADE,
+      file_name TEXT NOT NULL,
+      title TEXT NOT NULL DEFAULT '',
+      page_count INTEGER NOT NULL,
+      state TEXT NOT NULL,
+      step TEXT NOT NULL DEFAULT '',
+      done INTEGER NOT NULL DEFAULT 0,
+      total INTEGER NOT NULL DEFAULT 0,
+      use_model INTEGER NOT NULL DEFAULT 0,
+      reason TEXT NOT NULL DEFAULT '',
+      outline_json TEXT NOT NULL DEFAULT '[]',
+      fonts_json TEXT NOT NULL DEFAULT '[]',
+      pictures_json TEXT NOT NULL DEFAULT '[]',
+      draft_blob BLOB,
+      model_blob BLOB,
+      workshop_id TEXT,
+      boot TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_pdf_imports_user ON pdf_imports (user_id, updated_at);
+    -- A workshop built from someone's own copy of a published book: what it
+    -- was imported from. Such a workshop is never compiled into a world pack
+    -- or installed for the server (src/lib/db/private-sources.ts).
+    CREATE TABLE IF NOT EXISTS private_sources (
+      campaign_id TEXT PRIMARY KEY REFERENCES campaigns(id) ON DELETE CASCADE,
+      source TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS private_homebrew (
+      entry_id TEXT PRIMARY KEY REFERENCES homebrew_entries(id) ON DELETE CASCADE,
+      source TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS pdf_import_pages (
+      import_id TEXT NOT NULL REFERENCES pdf_imports(id) ON DELETE CASCADE,
+      n INTEGER NOT NULL,
+      page_blob BLOB NOT NULL,
+      runs INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (import_id, n)
+    );
+  `);
+
+  // Each page's count of text runs, which a book is held to in total
+  // (MAX_IMPORT_RUNS, src/lib/pdf-import/reading.ts).
+  const importPageColumns = db.prepare(`PRAGMA table_info(pdf_import_pages)`).all() as Array<{ name: string }>;
+  if (!importPageColumns.some((column) => column.name === "runs")) {
+    db.exec(`ALTER TABLE pdf_import_pages ADD COLUMN runs INTEGER NOT NULL DEFAULT 0`);
+  }
+
   // Transcript lines (docs/vtt-parity-implementation-plan.md 13.3): what
   // was said at a transcribed table, by whom, on both clocks. Never fed to
   // the DM prompt.
