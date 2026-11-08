@@ -44,6 +44,7 @@ const CARDS = [
   ["druid", "Circle of Stars", "Starry Form", { Archer: "starry form: archer", Chalice: "starry form: chalice", Dragon: "starry form: dragon" }],
   ["monk", "Way of the Ascendant Dragon", "Aspect of the Wyrm", { Frighten: "aspect of the wyrm: frighten", Ward: "aspect of the wyrm: ward" }],
   ["monk", "Way of the Drunken Master", "Drunkard's Luck", { Attack: "drunkard's luck (attack)", Check: "drunkard's luck (check)", Save: "drunkard's luck (save)" }],
+  ["sorcerer", "Wild Magic", "Tides of Chaos", { Attack: "tides of chaos (attack)", Check: "tides of chaos (check)", Save: "tides of chaos (save)" }],
   ["wizard", "Graviturgy Magic", "Adjust Density", { Lighter: "adjusted density (lighter)", Heavier: "adjusted density (heavier)" }],
 ];
 
