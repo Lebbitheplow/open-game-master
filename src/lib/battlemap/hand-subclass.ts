@@ -135,6 +135,10 @@ function aimsOf(does: SpendDoes, level: number, mods: Record<string, number>): A
     const heal = { variant: "heal", label: "healing", target: "ally" as const, dice: `heals ${dice}`, heals: true };
     return does.healOnly ? [{ ...heal, variant: undefined, label: undefined }] : [{ variant: "burn", label: does.type, target: "enemy", dice: `+${dice} ${does.type}`, heals: false }, heal];
   }
+  // Turn the Tide, Balm of Peace: every hurt ally in reach, with no aim.
+  if (does.kind === "heal_area") {
+    return [{ target: "none", dice: `heals ${resolveFormula(does.formula, level, mods)}`, heals: true }];
+  }
   const lines = linesOf(does);
   return [{ target: targetOf(does), dice: lines.dice, heals: false }];
 }

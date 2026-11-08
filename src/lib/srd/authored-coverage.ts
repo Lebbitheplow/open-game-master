@@ -132,6 +132,7 @@ export const AUTHORED_READERS: Record<string, { file: string; call: string }> = 
   kill_temp_hp: { file: "src/lib/dm/attack-blow.ts", call: "authoredOnHit(" },
   death_heal: { file: "src/lib/dm/attack-blow.ts", call: "authoredOnHit(" },
   turn_heal: { file: "src/lib/dm/condition-tick.ts", call: "authoredTurn" },
+  turn_end_aura: { file: "src/lib/dm/authored-turns.ts", call: "turnEndAuras(" },
   rest_temp_hp: { file: "src/lib/dm/rest-tools.ts", call: "authoredRestTempHp(" },
   rider: { file: "src/lib/srd/feature-effects.ts", call: "authoredFeatureDefs(" },
   mark: { file: "src/lib/dm/attack-blow.ts", call: "authoredOnHit(" },

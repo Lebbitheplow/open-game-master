@@ -10,6 +10,9 @@ import type { AuthoredEntry } from "@/lib/srd/authored-effects-types";
 
 const POOL = { id: "channel_divinity" };
 
+// A modifier added to dice, its sign written either way ("1d6+3", "1d6-1").
+const plus = (dice: string, mod: number | undefined) => `${dice}${(mod ?? 0) < 0 ? "" : "+"}${mod ?? 0}`;
+
 export const AUTHORED_DATA_CHANNEL: Record<string, AuthoredEntry> = {
   "cleric::Channel Divinity: Radiance of the Dawn": {
     subclass: "Light Domain",
@@ -116,5 +119,54 @@ export const AUTHORED_DATA_CHANNEL: Record<string, AuthoredEntry> = {
         does: { kind: "save_area", save: "wis", dcAbility: "spell", rangeFt: 30, condition: "champion challenge", leashFeet: 30, sight: true, chosen: true },
       },
     ],
+  },
+  "paladin::Channel Divinity: Turn the Tide": {
+    subclass: "Oath of the Crown",
+    spends: [
+      {
+        name: "Turn the Tide",
+        pool: POOL,
+        action: "bonus",
+        // SCAG: each creature of the paladin's choice within 30 feet with no
+        // more than half its hit points regains 1d6 + CHA (at least 1).
+        does: { kind: "heal_area", formula: (_level, mods) => plus("1d6", mods.cha), rangeFt: 30, belowHalf: true },
+      },
+    ],
+  },
+  "cleric::Channel Divinity: Balm of Peace": {
+    subclass: "Peace Domain",
+    spends: [
+      {
+        name: "Balm of Peace",
+        pool: POOL,
+        action: "action",
+        // TCoE: the cleric moves up to their speed without provoking, and each
+        // other creature they pass within 5 feet of regains 2d6 + WIS (at least
+        // 1), once per use. Anyone the walk can reach is one they can pass.
+        does: {
+          kind: "heal_area",
+          formula: (_level, mods) => plus("2d6", mods.wis),
+          rangeFt: "move",
+          othersOnly: true,
+          each: true,
+          note: "The cleric moves up to their speed past the creatures healed, provoking no opportunity attacks: move the token along that path.",
+        },
+      },
+    ],
+  },
+  "cleric::Channel Divinity: Twilight Sanctuary": {
+    subclass: "Twilight Domain",
+    spends: [
+      {
+        name: "Twilight Sanctuary",
+        pool: POOL,
+        action: "action",
+        does: { kind: "buff", condition: "twilight sanctuary", rounds: 10 },
+      },
+    ],
+    // TCoE: a 30-foot sphere for a minute, or until the cleric is
+    // incapacitated or dies. A creature ending its turn in it gains 1d6 +
+    // cleric level temporary hit points, or ends one charm or fear on it.
+    effects: [{ kind: "turn_end_aura", rangeFt: 30, tempHp: (level) => `1d6+${level}`, ends: ["charmed", "frightened"], gate: { condition: "twilight sanctuary" } }],
   },
 };
