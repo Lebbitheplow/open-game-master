@@ -1,3 +1,4 @@
+import { deleteAccountImports } from "@/lib/db/pdf-imports";
 import { getGlobalConfig } from "@/lib/db/app-settings";
 import { forgetUsageFor } from "@/lib/usage/ledger";
 import { forgetCorrectionsBy } from "@/lib/db/turn-ledger";
@@ -120,6 +121,8 @@ export function purgeAccount(userId: string) {
   // Read before the rows go: the account's own pictures, and every file its
   // campaigns and workshops name (covers, scene art, maps, NPC portraits).
   const files = [...uploadsOwnedBy(userId), ...owned.flatMap(({ id }) => campaignFilePaths(id))];
+  // Books being imported, with the pages and pictures they hold.
+  deleteAccountImports(userId);
 
   db.transaction(() => {
     // Owned campaigns and workshops first: campaigns.owner_user_id is a

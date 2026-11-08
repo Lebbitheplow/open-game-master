@@ -1,4 +1,6 @@
 import { isErrorResponse, requireWorkshop, type WorkshopContext } from "@/lib/workshop-api";
+import { PRIVATE_SOURCE_REFUSAL } from "@/lib/db/private-sources";
+import { workshopPrivateSource } from "@/lib/db/workshop-bundle-export";
 import { exportWorkshopBundle } from "@/lib/db/workshop-bundle";
 import { getPackDraft, savePackDraft } from "@/lib/db/world-pack-drafts";
 import { mergePulled, type PulledFlavour } from "@/lib/worlds/draft";
@@ -58,6 +60,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ wor
   if (isErrorResponse(context)) {
     return context;
   }
+  // A workshop imported from a published book never becomes a pack.
+  if (workshopPrivateSource(workshopId)) {
+    return Response.json({ error: PRIVATE_SOURCE_REFUSAL }, { status: 403 });
+  }
   const outcome = compile(workshopId, context);
   if (outcome instanceof Response) {
     return outcome;
@@ -70,6 +76,10 @@ export async function POST(_request: Request, { params }: { params: Promise<{ wo
   const context = await requireWorkshop(workshopId);
   if (isErrorResponse(context)) {
     return context;
+  }
+  // A workshop imported from a published book never becomes a pack.
+  if (workshopPrivateSource(workshopId)) {
+    return Response.json({ error: PRIVATE_SOURCE_REFUSAL }, { status: 403 });
   }
   const outcome = compile(workshopId, context);
   if (outcome instanceof Response) {

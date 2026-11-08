@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ui } from "@/lib/ui";
 import { ImportBundleButton } from "@/app/workshop/ImportBundleButton";
+import { PdfImportButton } from "@/app/workshop/pdf-import/PdfImportButton";
 import { AddonImportButton } from "@/app/workshop/AddonImportButton";
 import type { WorkshopSummary } from "@/app/workshop/types";
 import { CreateButton } from "@/app/workshop/[workshopId]/CreateChooser";
@@ -163,6 +164,7 @@ export function WorkshopHeader({
         <CreateButton onClick={onCreate} />
         <div data-tour="hub-import" className="flex w-fit flex-wrap items-start gap-2">
           <ImportBundleButton label="Import a bundle" className={ui.btnSmall} />
+          <PdfImportButton className={ui.btnSmall} />
           <AddonImportButton className={ui.btnSmall} />
         </div>
       </div>

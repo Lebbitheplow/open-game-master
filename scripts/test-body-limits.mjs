@@ -31,7 +31,7 @@ const asBase64Json = (bytes) => Math.ceil(bytes / 3) * 4 + 4096;
 test("a sign-in form is judged small, an import large, everything else the default", () => {
   assert.equal(bodyLimitFor("/api/auth/login"), 64 * 1024);
   assert.equal(bodyLimitFor("/api/auth/token"), 64 * 1024);
-  assert.equal(bodyLimitFor("/api/upload"), 36 * MIB);
+  assert.equal(bodyLimitFor("/api/upload"), 40 * MIB);
   assert.equal(bodyLimitFor("/api/workshops/import"), 80 * MIB);
   assert.equal(bodyLimitFor("/api/campaigns/abc/world/import"), 80 * MIB);
   assert.equal(bodyLimitFor("/api/campaigns/abc/notes"), DEFAULT_BODY_LIMIT);
@@ -54,7 +54,7 @@ test("a declared size over the budget is 413, at or under it passes", () => {
 });
 
 test("a chunked body with no size is 411; no body at all passes", () => {
-  assert.deepEqual(judgeBody("POST", "/api/upload", null, "chunked"), { ok: false, status: 411, limit: 36 * MIB });
+  assert.deepEqual(judgeBody("POST", "/api/upload", null, "chunked"), { ok: false, status: 411, limit: 40 * MIB });
   assert.deepEqual(judgeBody("POST", "/api/auth/logout", null, null), { ok: true });
   assert.deepEqual(judgeBody("DELETE", "/api/campaigns/a", null, null), { ok: true });
 });

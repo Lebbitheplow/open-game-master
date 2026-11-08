@@ -139,6 +139,9 @@ export function LorePanel({
   useOpenOnArrival(openId, loaded ? entries : null, (entry) => (steersStory ? startEdit(entry) : setReadingId(entry.id)));
   // In the workshop, an editor with changes is asked about before leaving.
   const openEntry = editingId ? entries.find((entry) => entry.id === editingId) ?? null : null;
+  // The PDF the open entry has saved (not the draft's): the one the editor
+  // may read again for the rules search.
+  const savedAttachment = openEntry?.attachmentPath ?? "";
   useUnsavedDraft(
     Boolean(onWorldEntry) && (adding || editingId !== null) &&
       JSON.stringify(draft) !== JSON.stringify(openEntry ? draftFromEntry(openEntry) : blankLoreDraft()),
@@ -384,6 +387,7 @@ export function LorePanel({
         members={members}
         targets={targets}
         rows={rows}
+        saved={editingId && savedAttachment ? { campaignId, entryId: editingId, attachmentPath: savedAttachment } : undefined}
       />
       {saveError ? <PanelError className="text-[11px]">{saveError}</PanelError> : null}
       <div className="flex gap-1.5" data-tour="lore-save">

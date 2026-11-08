@@ -68,8 +68,8 @@ function uploadsDir(): string {
 // Free bytes on the volume public/uploads lives on, or null when it cannot
 // be read. Asks the nearest folder that exists, since uploads/ itself is
 // only made by the first write.
-function freeBytes(): number | null {
-  let dir = uploadsDir();
+function freeBytes(from?: string): number | null {
+  let dir = from ?? uploadsDir();
   for (;;) {
     try {
       const stats = fs.statfsSync(dir);
@@ -117,6 +117,19 @@ function waitInWords(seconds: number): string {
   }
   const hours = Math.round(minutes / 60);
   return `about ${hours} hour${hours === 1 ? "" : "s"}`;
+}
+
+// Null while `bytes` more leaves the disk above its floor; else why not.
+// For files kept outside uploads for a while (an adventure PDF import's
+// pages and pictures, which are charged to the budget when they land), so
+// they cannot fill the disk while they wait.
+// `dir` is where the bytes go, when that is not uploads (a server may keep
+// data/ on another volume).
+export function diskRefusal(bytes: number, dir?: string): UploadRefusal | null {
+  const { minFreeBytes } = uploadLimits();
+  if (!minFreeBytes) return null;
+  const free = freeBytes(dir);
+  return free !== null && free - bytes < minFreeBytes ? { error: "The server is low on storage space and is not accepting uploads right now.", status: 507 } : null;
 }
 
 // Null when the account may write `files` new files totalling `bytes`, and

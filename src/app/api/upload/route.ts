@@ -2,7 +2,7 @@ import { z } from "zod";
 import { pixelBudget } from "@/lib/image-format";
 import { currentUser, unauthorized } from "@/lib/auth";
 import { isUploadMimeType, MAX_PDF_BYTES, MAX_UPLOAD_BYTES, writeUploadedImage, writeUploadedPdf } from "@/lib/uploads-store";
-import { isEncryptedPdf, isPdf } from "@/lib/pdf/text";
+import { isEncryptedPdf, isPdf, PDF_TEXT_MAX } from "@/lib/pdf/text";
 import { admitUpload, uploadRefusalResponse } from "@/lib/upload-budget";
 
 export const runtime = "nodejs";
@@ -16,6 +16,8 @@ const requestSchema = z.object({
     .min(1)
     .transform((value) => value.slice(0, 120)),
   type: z.string().min(1),
+  // A PDF's words as the page read them (src/lib/pdf-import/book-text.ts).
+  text: z.string().max(PDF_TEXT_MAX).optional(),
 });
 
 export async function POST(request: Request) {
@@ -41,11 +43,12 @@ export async function POST(request: Request) {
     if (isEncryptedPdf(buffer)) {
       return Response.json({ error: "That PDF is password protected." }, { status: 415 });
     }
-    const refusal = admitUpload(user, buffer.length, 1);
+    // The page's reading of it is kept beside it, so it counts too.
+    const refusal = admitUpload(user, buffer.length + Buffer.byteLength(body.text ?? ""), 1);
     if (refusal) {
       return uploadRefusalResponse(refusal);
     }
-    const written = await writeUploadedPdf(buffer);
+    const written = await writeUploadedPdf(buffer, body.text ?? "");
     return Response.json({ id: written.id, name: body.name, type: body.type, url: written.url });
   }
   if (!isUploadMimeType(body.type)) {

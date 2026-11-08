@@ -1,4 +1,6 @@
 import fs from "node:fs";
+import { sweepPdfImports } from "@/lib/db/pdf-imports";
+import { sweepPdfTexts } from "@/lib/pdf-text-files";
 import path from "node:path";
 import { setImmediate as nextTurn } from "node:timers/promises";
 import { databaseFilePath, getDatabase, nowIso } from "@/lib/db/core";
@@ -237,6 +239,14 @@ export function runRetention(now = Date.now()): Promise<RetentionReport> {
       const tracesCleared = clearOldContextTraces(now);
       const usageRowsMerged = await rollUpUsage(now);
       const modelCallsRemoved = pruneModelCalls(now);
+      // Adventure imports nobody finished, and folders a deleted account left.
+      try {
+        sweepPdfImports(now);
+        // Readings of rules PDFs that are gone.
+        sweepPdfTexts((campaignId) => Boolean(getDatabase().prepare(`SELECT 1 FROM campaigns WHERE id = ?`).get(campaignId)));
+      } catch (error) {
+        console.error("[retention] pdf import sweep failed", error);
+      }
       const bytesReclaimed = await reclaimSpace();
       const report = { at: nowIso(), eventsRemoved, tracesCleared, usageRowsMerged, modelCallsRemoved, bytesReclaimed, ms: Date.now() - started };
       current.report = report;

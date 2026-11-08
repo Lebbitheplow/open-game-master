@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { getDatabase } from "@/lib/db/core";
+import { pdfTextFilesOf } from "@/lib/pdf-text-files";
 import { VARIANT_WIDTHS, variantFileName } from "@/lib/image-format";
 import { isGeneratedImagePath, isUploadedImagePath, isUploadedModelPath, isUploadedPdfPath } from "@/lib/uploads";
 
@@ -154,6 +155,8 @@ export function removeFile(url: string) {
       console.error(`[image-files] could not remove /${root}/${file}`, error);
     }
   }
+  // A rules PDF's readings (uploads-store.ts) go with it.
+  for (const file of pdfTextFilesOf(url)) fs.rmSync(file, { force: true });
   getDatabase().prepare(`DELETE FROM media_files WHERE path = ?`).run(url);
 }
 

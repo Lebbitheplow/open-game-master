@@ -161,6 +161,20 @@ it in.
 An export's `settings` (where WorldForge keeps API keys) is never read or
 stored.
 
+## pdf.js (the adventure PDF reader)
+
+The adventure PDF import reads books in the page with Mozilla's
+[pdf.js](https://github.com/mozilla/pdf.js) (`pdfjs-dist`), Apache License
+2.0. `public/pdfjs/` carries its worker, character maps, standard fonts and
+image decoders, copied there at install by `scripts/copy-dice-assets.mjs`,
+each with its licence file beside it: OpenJPEG (BSD 2-clause), JBIG2 from
+PDFium (BSD 3-clause) and qcms (MIT). Its script sandbox is not shipped.
+
+What an import reads (a book's words and pictures) is the GM's own copy of
+the book's publisher's work, kept for the GM's own table. It is never
+shipped with this project, compiled into a world pack or installed for
+others (`src/lib/db/private-sources.ts`).
+
 ## Ideas borrowed from other MIT projects
 
 No code from these is in this repository. Each is named because its SHAPE

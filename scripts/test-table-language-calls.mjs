@@ -259,6 +259,11 @@ const CLASSIFIED = {
   // checks what came back, a tool called and narration streamed; nobody
   // reads the reply.
   "src/lib/backend-trial.ts": { prose: 0, machine: 1 },
+  // An adventure PDF import (src/lib/pdf-import/job.ts): each piece of the
+  // book read into JSON records in the book's own words, and each creature's
+  // SRD 5.1 equivalent picked from a list. Both are read by the importer,
+  // and what lands keeps the book's language, not the table's.
+  "src/lib/pdf-import/job.ts": { prose: 0, machine: 2 },
   // The routers themselves.
   "src/lib/dm/model.ts": { prose: 0, machine: 0, router: true },
 };

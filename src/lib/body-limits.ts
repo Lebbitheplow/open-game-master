@@ -30,7 +30,7 @@ const SEGMENT = "[^/]+";
 
 export const BODY_LIMIT_RULES: Rule[] = [
   { pattern: /^\/api\/auth\//, limit: 64 * KIB, why: "a username and a password" },
-  { pattern: /^\/api\/upload\/?$/, limit: 36 * MIB, why: "a 25 MB PDF as base64 in JSON" },
+  { pattern: /^\/api\/upload\/?$/, limit: 40 * MIB, why: "a 25 MB PDF as base64 in JSON, with its text as the page read it" },
   { pattern: /^\/api\/workshops\/import\/?$/, limit: 80 * MIB, why: "a 64 MB workshop bundle inside a JSON string" },
   {
     pattern: new RegExp(`^/api/campaigns/${SEGMENT}/world/import/?$`),
@@ -49,6 +49,11 @@ export const BODY_LIMIT_RULES: Rule[] = [
     why: "a 16 MB world pack manifest",
   },
   { pattern: /^\/api\/stt\/?$/, limit: 9 * MIB, why: "an 8 MB recording as a form" },
+  {
+    pattern: new RegExp(`^/api/pdf-imports/${SEGMENT}/pictures/?$`),
+    limit: 12 * MIB,
+    why: "one 8 MB picture from an adventure PDF as base64 in JSON",
+  },
   { pattern: /^\/api\/admin\/addons\/upload\/?$/, limit: 64 * MIB, why: "an addon archive an admin picked" },
   {
     pattern: new RegExp(`^/api/campaigns/${SEGMENT}/voice/transcript/?$`),
