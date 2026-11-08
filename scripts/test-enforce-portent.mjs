@@ -471,6 +471,34 @@ await test("An area with one creature in it stops for that one's save; with two 
   assert.deepEqual(fightWorld.sheet(seer.id).foretold, [17, 3]);
 });
 
+await test("A foretold miss on a hero's own swing still leaves them their Bardic die to decide, on the card, and the turn waits for it.", async () => {
+  arm({ foretold: [17, 9] });
+  const order = fightWorld.encounter();
+  saveEncounter({ ...order, turnIndex: order.order.findIndex((entry) => entry.characterId === target.id), turnBudget: null });
+  fightWorld.patch(target.id, { conditions: ["bardic inspiration (d8)"], equipment: [{ name: "Longsword", qty: 1, equipped: true }], abilities: { str: 16, dex: 10, con: 14, int: 10, wis: 10, cha: 10 } });
+  kit.setEnemy(goblin.id, { currentHp: 300, maxHp: 300, ac: 15 });
+  fightModel.script([reply({ calls: [modelCall("pc_attack", { characterId: target.id, attacks: [{ targetEnemyId: goblin.id }] })] }), reply({ text: "The blade glances off." })]);
+  await fightModel.turn(fightWorld, "I swing at the goblin.", target.id, targetUser.id);
+  const [stop] = stops();
+  assert.ok(stop, "the swing stops for the watcher");
+  // A 9 and Kara's +3 make 12 against AC 15: a miss her d8 could still turn.
+  assert.equal((await answer(stop.id, { value: 9 })).status, 200);
+  await settleQueue(fightWorld.campaignId);
+  const card = listOpenPendingRolls(fightWorld.campaignId).find((entry) => entry.kind === "attack" && entry.parkedFor === "after_roll");
+  assert.ok(card, "the foretold 9 misses, and the die that could save it is the player's to spend");
+  assert.equal(card.thrown.outcome.natural, 9);
+  assert.equal(getDmTurn(card.turnId).status, "awaiting_rolls");
+  fightWorld.signIn(targetUser);
+  const kept = await call(await fightWorld.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]/after-roll"), "POST", { keep: true }, { campaignId: fightWorld.campaignId, pendingRollId: card.id });
+  assert.equal(kept.status, 200, JSON.stringify(kept.json));
+  await settleQueue(fightWorld.campaignId);
+  assert.equal(getDmTurn(card.turnId).status, "done");
+  const told = fightModel.requests.at(-1).messages.filter((message) => message.role === "tool").map((message) => message.content).join(" ");
+  assert.match(told, /MISS/, "the model reads the swing's answer");
+  assert.ok(fightWorld.sheet(target.id).conditions.includes("bardic inspiration (d8)"), "kept: the die is still Kara's");
+  assert.deepEqual(fightWorld.sheet(seer.id).foretold, [17]);
+});
+
 await test("A blinded wizard sees nothing to stop, and the fight's end ends the watch.", async () => {
   arm({ conditions: ["blinded"] });
   fightWorld.dice(10, 4);
