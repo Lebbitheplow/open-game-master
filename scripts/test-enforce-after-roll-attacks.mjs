@@ -25,6 +25,9 @@ const { setMemberRealDice } = await import("../src/lib/db/campaigns.ts");
 const { getDmTurn, getPendingRoll, listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
 const { getRoll, listRecentRolls } = await import("../src/lib/db/rolls.ts");
 const { fillQueuedParts, QUEUED_BEHIND, AWAITING_ROLL } = await import("../src/lib/dm/pc-attack-parts.ts");
+const { keepAfterRollWhenDue, rearmAfterRollKeeps } = await import("../src/lib/dm/after-roll-timer.ts");
+const { listOpenAfterRolls } = await import("../src/lib/db/dm-turns.ts");
+const { subscribe } = await import("../src/lib/events.ts");
 const route = {
   choice: await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]/after-roll"),
   pending: await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]"),
@@ -38,6 +41,8 @@ const hero = world.addHero({
 });
 // A second hero, so a turn ended passes to someone else.
 const ally = world.addHero({ class: "fighter", level: 5, maxHp: 44, abilities: { str: 16 }, proficiencies: TRAINED, equipment: [{ name: "Longsword", qty: 1, equipped: true }] });
+// Someone else at the table, so a wait runs on the clock (after-roll-timer.ts).
+const allyOnline = subscribe(world.campaignId, () => {}, world.sheet(ally.id).userId);
 const LUCKY = { feats: ["Lucky"], resources: { ...world.sheet(hero.id).resources, luck_points: { max: 3, used: 0 } } };
 const NONE = { feats: [], conditions: [], resources: { ...world.sheet(hero.id).resources, luck_points: { max: 3, used: 3 } } };
 
@@ -261,6 +266,39 @@ await test("Real dice: a miss entered at the table waits the same way, and its d
   }
 });
 
+await test("An attack waiting on its player runs on the same clock as a check: kept as it lies at the deadline, nothing spent.", async () => {
+  const enemy = await stage({ conditions: ["bardic inspiration (d8)"] });
+  await swingWith(enemy, [5]);
+  // The real-dice test above leaves its damage roll open.
+  const pending = open().find((entry) => entry.kind === "attack");
+  assert.ok(pending.thrown.deadline, "the attack's wait has a deadline: it had none, and waited for good");
+  assert.equal(await keepAfterRollWhenDue(pending.id, new Date(pending.thrown.deadline).getTime() + 1), true);
+  assert.ok(!open().some((entry) => entry.id === pending.id), "the card is gone");
+  assert.match(getPendingRoll(pending.id).combatNote, /MISS/);
+  assert.ok(held().includes("bardic inspiration (d8)"), "kept as it lay: the die is still theirs");
+});
+
+await test("Real dice entered on the card run on the clock too, and a restart finds them to arm again.", async () => {
+  const enemy = await stage({ conditions: ["bardic inspiration (d8)"] });
+  setMemberRealDice(world.campaignId, world.sheet(hero.id).userId, true);
+  try {
+    await world.invoke("pc_attack", { characterId: hero.id, targetEnemyId: enemy.id });
+    const toHit = open().find((entry) => entry.kind === "attack");
+    world.signIn({ id: world.sheet(hero.id).userId });
+    assert.equal((await call(route.pending, "POST", { dice: [5] }, { campaignId: world.campaignId, pendingRollId: toHit.id })).status, 200);
+    const waiting = getPendingRoll(toHit.id);
+    assert.equal(waiting.parkedFor, "real_dice", "still parked for real dice");
+    assert.ok(waiting.thrown.deadline, "with a deadline, as the server's own throw has");
+    assert.ok(listOpenAfterRolls().some((entry) => entry.id === toHit.id), "a restart finds it by its dice, not its park reason");
+    assert.ok(rearmAfterRollKeeps() >= 1);
+    assert.equal(await keepAfterRollWhenDue(toHit.id, new Date(waiting.thrown.deadline).getTime() + 1), true);
+    assert.equal(getPendingRoll(toHit.id).status, "submitted", "the player's own dice, as they lay");
+    assert.ok(held().includes("bardic inspiration (d8)"));
+  } finally {
+    setMemberRealDice(world.campaignId, world.sheet(hero.id).userId, false);
+  }
+});
+
 // ---- the AI's turn ----
 
 const table = await openWorld({ gameSettings: { ttsEnabled: false } });
@@ -311,6 +349,7 @@ await test("An AI turn waits on the first swing, and resumes with both swings' a
 });
 
 model.close();
+allyOnline();
 finish();
 world.close();
 table.close();

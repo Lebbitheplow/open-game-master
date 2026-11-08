@@ -69,6 +69,7 @@ function ComposerInner({
   steersStory,
   isDm,
   aiRunsFoes = false,
+  aiTurns = false,
 
   kind,
   onKindChange,
@@ -130,6 +131,9 @@ function ComposerInner({
   // the allies nobody commands are the AI's, so the seat gets no monsters'
   // Hand and no ally's, and Direct asks the AI for a move as the lead's does.
   aiRunsFoes?: boolean;
+  // The AI GM plays the turns (src/lib/dm/viewer.ts narratorIsAi): the only
+  // turns a watch for Portent stops (src/lib/dm/foresight.ts).
+  aiTurns?: boolean;
   kind: InputKind;
   onKindChange: (kind: InputKind) => void;
   input: string;
@@ -268,7 +272,7 @@ function ComposerInner({
     <form onSubmit={onSubmit} className="glass session-desk cine-desk border-t border-stone-700/40 px-3 pb-3 pt-2.5">
       <div className="session-desk-body mx-auto max-w-3xl sm:px-3">
         <div className="session-compose-notices">
-        {encounter && watchingSheet ? <WatchToggle campaignId={campaignId} sheet={watchingSheet} encounterId={encounter.id} /> : null}
+        {encounter && watchingSheet && aiTurns && hostOffers(capabilities, "portentWatch") ? <WatchToggle campaignId={campaignId} sheet={watchingSheet} encounterId={encounter.id} /> : null}
         {pendingRolls.map((pending) => pending.parkedFor === "watch" ? (
           <WatchCard
             key={pending.id}

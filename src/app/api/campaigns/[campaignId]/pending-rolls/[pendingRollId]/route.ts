@@ -11,6 +11,7 @@ import { defaultRng, expressionDice, rollExpression, rollExpressionWithDice } fr
 import { heroRollTag } from "@/lib/dice-script-logic";
 import { mayTypeFaces } from "@/lib/dice/held-rolls";
 import { optionsForPending } from "@/lib/dm/after-roll";
+import { afterRollDeadline, armAfterRollKeep } from "@/lib/dm/after-roll-timer";
 import { landPendingRoll } from "@/lib/dm/pending-roll-land";
 import { publishPersisted } from "@/lib/events";
 
@@ -158,10 +159,13 @@ export async function POST(
         physical: !isFallback && !anyDigital,
         source: isFallback || allDigital ? "digital" : "physical",
       },
+      // The same clock as the server's own throw (after-roll-timer.ts).
+      deadline: afterRollDeadline(campaignId, pending.userId),
     });
     if (!waiting) {
       return Response.json({ error: "That roll was already resolved." }, { status: 409 });
     }
+    armAfterRollKeep(waiting.id, waiting.thrown?.deadline);
     publishPersisted(campaignId, "roll_pending", { pendingRoll: publicPendingRoll(waiting) });
     return Response.json({ pendingRoll: publicPendingRoll(waiting) });
   }

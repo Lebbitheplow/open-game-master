@@ -9,8 +9,9 @@
 //   the choice is the roller's, the number must be one they hold, and thrown
 //   dice are too late;
 //   an undo of the spend gives the number back;
-//   a player watching a fight is asked before an attack is rolled, in order,
-//   for a moment only, and pays only if a d20 took the number.
+//   a player watching a fight is asked before an attack, a check or one
+//   creature's save is rolled, in order, for a moment only, and pays only if
+//   a d20 took the number.
 import assert from "node:assert/strict";
 import { call, seats } from "./lib/enforce-campaign.mjs";
 import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
@@ -192,6 +193,22 @@ await test("A foretold number can still take a Bardic die after it lands, and co
   assert.ok(!world.sheet(who.sheet.id).conditions.includes("bardic inspiration (d8)"));
 });
 
+await test("A foretold number that leaves a die to decide runs on the table's clock, like any roll on the card.", async () => {
+  const { subscribe } = await import("../src/lib/events.ts");
+  const gmOnline = subscribe(world.campaignId, () => {}, who.dm.id);
+  try {
+    wizard({ conditions: ["bardic inspiration (d8)"] });
+    await check({ dc: 12 });
+    const [pending] = open();
+    assert.equal((await portent(pending.id, 3)).status, 200);
+    const waiting = getPendingRoll(pending.id);
+    assert.ok(waiting.thrown?.deadline, "a deadline, as the server's own throw gets: it had none and waited for good");
+    await clear();
+  } finally {
+    gmOnline();
+  }
+});
+
 await test("The spend is the player's, and undoing it gives the number back.", async () => {
   wizard();
   await check();
@@ -309,9 +326,19 @@ await test("With the button off an attack never stops, and the numbers stay.", a
   assert.deepEqual(fightWorld.sheet(seer.id).foretold, [17, 3]);
 });
 
-await test("The button needs a number held.", async () => {
+await test("The button needs a number held, and a table whose turns the AI GM plays.", async () => {
   arm({ foretold: [] });
   assert.equal((await toggle(true)).status, 409, "no number held");
+  arm();
+  const { setDmMode } = await import("../src/lib/db/campaigns.ts");
+  setDmMode(fightWorld.campaignId, "human", fightWorld.owner.id);
+  try {
+    const refused = await toggle(true);
+    assert.equal(refused.status, 409, "a person runs the table: the console's rolls never stop, so the button did nothing");
+    assert.match(JSON.stringify(refused.json ?? refused.body ?? ""), /A person runs this table/);
+  } finally {
+    setDmMode(fightWorld.campaignId, "ai", fightWorld.owner.id);
+  }
   arm();
   assert.equal((await toggle(true)).status, 200);
   assert.ok(fightWorld.sheet(seer.id).watchingEncounterId);
@@ -387,6 +414,89 @@ await test("A number no die took costs nothing: the rules refused the attack.", 
   await settleQueue(fightWorld.campaignId);
   assert.deepEqual(fightWorld.sheet(seer.id).foretold, [17, 3]);
   assert.equal(fightWorld.sheet(seer.id).resources.sub_portent.used, 0);
+});
+
+const saveRolls = () => listRecentRolls(fightWorld.campaignId, 100).filter((roll) => roll.kind === "saving_throw");
+
+await test("A save one creature makes stops too: a hazard forcing a hero's save takes the number on its d20.", async () => {
+  arm();
+  const before = saveRolls().length;
+  await enemyTurn([modelCall("cast_at_player", { characterId: target.id, source: "a poison needle", saveAbility: "con", dc: 25, damage: "1d4", damageType: "poison" })], "The needle bites.");
+  const [stop] = stops();
+  assert.ok(stop, "the save stops: it never did, and the feature names saves");
+  assert.match(stop.reason, /Kara is about to make a saving throw against a poison needle\./);
+  assert.equal(saveRolls().length, before, "no die yet");
+  assert.equal((await answer(stop.id, { value: 17 })).status, 200);
+  await settleQueue(fightWorld.campaignId);
+  assert.equal(saveRolls().at(-1)?.breakdown.natural, 17, "the foretold 17 is the save's d20");
+  assert.deepEqual(fightWorld.sheet(seer.id).foretold, [3]);
+});
+
+await test("A hero's spell at one creature stops before it is cast, and the number lands on that creature's save.", async () => {
+  arm();
+  const order = fightWorld.encounter();
+  saveEncounter({ ...order, turnIndex: order.order.findIndex((entry) => entry.characterId === target.id), turnBudget: null });
+  fightWorld.patch(target.id, { spellcasting: { ability: "wis", cantrips: ["Sacred Flame"], known: [], prepared: [], slots: {} } });
+  fightModel.script([reply({ calls: [modelCall("cast_at_enemy", { characterId: target.id, targetEnemyId: goblin.id, spell: "Sacred Flame" })] }), reply({ text: "Radiance falls." })]);
+  const before = saveRolls().length;
+  await fightModel.turn(fightWorld, "I call down Sacred Flame on the goblin.", target.id, targetUser.id);
+  const [stop] = stops();
+  assert.ok(stop, "the spell stops before its roll");
+  assert.match(stop.reason, /Kara is about to cast Sacred Flame at Goblin/);
+  assert.equal((await answer(stop.id, { value: 3 })).status, 200);
+  await settleQueue(fightWorld.campaignId);
+  const landed = saveRolls().slice(before);
+  assert.equal(landed[0]?.breakdown.natural, 3, `the goblin's save shows the 3 (${JSON.stringify(landed.map((roll) => roll.detail))})`);
+  assert.deepEqual(fightWorld.sheet(seer.id).foretold, [17], "the 3 is paid for");
+});
+
+await test("An area with one creature in it stops for that one's save; with two it does not ask whose.", async () => {
+  arm();
+  await enemyTurn([modelCall("aoe_damage", { enemyIds: [goblin2.id], saveAbility: "dex", dc: 25, damage: "1d4", damageType: "fire", halfOnSave: true })], "Embers fall.");
+  const [stop] = stops();
+  assert.ok(stop, "one creature's save stops");
+  assert.match(stop.reason, /is about to make a saving throw\./);
+  assert.equal((await answer(stop.id, { value: 3 })).status, 200);
+  await settleQueue(fightWorld.campaignId);
+  // An area's saves ride its answer, not the roll log.
+  const told = JSON.parse(fightModel.requests.at(-1).messages.filter((message) => message.role === "tool").at(-1).content);
+  assert.match(told.portent ?? "", /its d20 shows 3/, JSON.stringify(told));
+  assert.deepEqual(fightWorld.sheet(seer.id).foretold, [17]);
+  arm();
+  fightWorld.dice(10, 10, 4);
+  await enemyTurn([modelCall("aoe_damage", { enemyIds: [goblin.id, goblin2.id], saveAbility: "dex", dc: 5, damage: "1d4", damageType: "fire", halfOnSave: true })], "Embers fall again.");
+  fightWorld.clearDice();
+  await settleQueue(fightWorld.campaignId);
+  assert.equal(stops().length, 0, "two savers: no stop");
+  assert.deepEqual(fightWorld.sheet(seer.id).foretold, [17, 3]);
+});
+
+await test("A foretold miss on a hero's own swing still leaves them their Bardic die to decide, on the card, and the turn waits for it.", async () => {
+  arm({ foretold: [17, 9] });
+  const order = fightWorld.encounter();
+  saveEncounter({ ...order, turnIndex: order.order.findIndex((entry) => entry.characterId === target.id), turnBudget: null });
+  fightWorld.patch(target.id, { conditions: ["bardic inspiration (d8)"], equipment: [{ name: "Longsword", qty: 1, equipped: true }], abilities: { str: 16, dex: 10, con: 14, int: 10, wis: 10, cha: 10 } });
+  kit.setEnemy(goblin.id, { currentHp: 300, maxHp: 300, ac: 15 });
+  fightModel.script([reply({ calls: [modelCall("pc_attack", { characterId: target.id, attacks: [{ targetEnemyId: goblin.id }] })] }), reply({ text: "The blade glances off." })]);
+  await fightModel.turn(fightWorld, "I swing at the goblin.", target.id, targetUser.id);
+  const [stop] = stops();
+  assert.ok(stop, "the swing stops for the watcher");
+  // A 9 and Kara's +3 make 12 against AC 15: a miss her d8 could still turn.
+  assert.equal((await answer(stop.id, { value: 9 })).status, 200);
+  await settleQueue(fightWorld.campaignId);
+  const card = listOpenPendingRolls(fightWorld.campaignId).find((entry) => entry.kind === "attack" && entry.parkedFor === "after_roll");
+  assert.ok(card, "the foretold 9 misses, and the die that could save it is the player's to spend");
+  assert.equal(card.thrown.outcome.natural, 9);
+  assert.equal(getDmTurn(card.turnId).status, "awaiting_rolls");
+  fightWorld.signIn(targetUser);
+  const kept = await call(await fightWorld.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]/after-roll"), "POST", { keep: true }, { campaignId: fightWorld.campaignId, pendingRollId: card.id });
+  assert.equal(kept.status, 200, JSON.stringify(kept.json));
+  await settleQueue(fightWorld.campaignId);
+  assert.equal(getDmTurn(card.turnId).status, "done");
+  const told = fightModel.requests.at(-1).messages.filter((message) => message.role === "tool").map((message) => message.content).join(" ");
+  assert.match(told, /MISS/, "the model reads the swing's answer");
+  assert.ok(fightWorld.sheet(target.id).conditions.includes("bardic inspiration (d8)"), "kept: the die is still Kara's");
+  assert.deepEqual(fightWorld.sheet(seer.id).foretold, [17]);
 });
 
 await test("A blinded wizard sees nothing to stop, and the fight's end ends the watch.", async () => {
@@ -525,6 +635,14 @@ await test("A number a stop has promised cannot be spent again on the wizard's o
   assert.deepEqual(sheet.foretold, []);
   assert.equal(sheet.resources.sub_portent.used, 2);
   assert.equal(hitRolls().at(-1).breakdown.natural, 17);
+});
+
+await test("The watch button waits for a host that answers it.", async () => {
+  const { SERVER_FEATURES } = await import("../src/lib/capabilities.ts");
+  const { hostOffers } = await import("../src/lib/use-capabilities.ts");
+  assert.equal(SERVER_FEATURES.portentWatch, true);
+  assert.equal(hostOffers({ features: { afterRollChoice: true } }, "portentWatch"), false, "an app on an older host drew a button its host answers with a 404");
+  assert.equal(hostOffers({ features: { portentWatch: true } }, "portentWatch"), true);
 });
 
 fightModel.close();

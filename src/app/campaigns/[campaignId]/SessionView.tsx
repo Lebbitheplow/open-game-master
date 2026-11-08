@@ -83,7 +83,7 @@ import { SessionBanner, bannerButtonClass } from "@/app/campaigns/[campaignId]/S
 import { TestFightBanner } from "@/app/campaigns/[campaignId]/TestFightBanner";
 import { workshopHref } from "@/lib/workshop/links";
 import { aiRunsFoes as aiRunsFoesAt } from "@/lib/workshop/test-seats-logic";
-import { isPrimaryDm } from "@/lib/dm/viewer";
+import { isPrimaryDm, narratorIsAi } from "@/lib/dm/viewer";
 import Link from "next/link";
 import { SidePanel } from "@/app/campaigns/[campaignId]/SidePanel";
 import { useChatChime } from "@/app/campaigns/[campaignId]/useChatChime";
@@ -1434,6 +1434,7 @@ export function SessionView({
                     steersStory={steersStory}
                     isDm={isDm}
                     aiRunsFoes={aiRunsFoes}
+                    aiTurns={narratorIsAi(campaign.gameSettings?.dmMode ?? "ai")}
                     kind={kind}
                     onKindChange={setKind}
                     input={input}

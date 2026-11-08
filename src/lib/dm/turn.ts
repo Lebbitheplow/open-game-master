@@ -1280,7 +1280,7 @@ async function runHeldCalls(context: TurnContext, turn: DmTurn, watcherId: strin
       break;
     }
     const holder = turnHolder(campaignId);
-    const choice = at === 0 && stop.face !== null ? { watcherId, face: stop.face, tag: stop.tag, line: stop.line } : null;
+    const choice = at === 0 && stop.face !== null ? { watcherId, face: stop.face, tags: [stop.tag, ...(stop.also ?? [])], line: stop.line } : null;
     // A call that throws is answered like any refusal: the loop's catch does
     // not reach this far, and the table would wait on it for good.
     let outcome: ToolResult;

@@ -220,6 +220,11 @@ export const SERVER_FEATURES = {
   // `thrown` dice and POST /api/campaigns/[id]/pending-rolls/[id]/after-roll.
   // An older host never parks a roll that way, so the card never draws there.
   afterRollChoice: true,
+  // Watching a fight for Portent (src/lib/dm/foresight.ts): POST
+  // /api/campaigns/[id]/foresight turns the stops on, and a stop's card
+  // answers on pending-rolls/[id]/watch. An older host answers 404, so the
+  // button is not drawn there and the numbers wait on the wizard's own rolls.
+  portentWatch: true,
   // The owed picks on a character sheet (issue #833): POST
   // /api/campaigns/[id]/sheet/owed makes a pick the character's levels
   // earned and no level-up offered (a dragon ancestor, a favored enemy, a

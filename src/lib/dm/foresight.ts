@@ -1,7 +1,8 @@
 // Watching a fight for Portent. Most of a fight needs no stop, so a wizard's
 // player presses a button for the fight, or the part of it, where a number may
-// matter. While it is on, the turn holds an attack or a check before the call
-// runs, and the player may put a foretold number on that call's d20.
+// matter. While it is on, the turn holds an attack, a check or one creature's
+// save before the call runs, and the player may put a foretold number on that
+// call's d20.
 //
 // Nothing is paused inside an attack. The held calls run on resume by the same
 // code as any other call, with the number armed on the dice
@@ -52,8 +53,10 @@ function argsOf(raw: string): Record<string, unknown> {
 }
 
 // What a call is about to roll, for the player to read and the number to aim
-// at. Null for a call no watch stops.
-function rollAbout(call: HeldCall, sheets: readonly CharacterSheet[]): { tag: RollTag; line: string; rollerId: string } | null {
+// at. Null for a call no watch stops. A save is stopped where one creature
+// makes it and the call names that creature: an area's many saves would need
+// the player to pick whose, and its call does not say which comes first.
+function rollAbout(call: HeldCall, sheets: readonly CharacterSheet[]): { tag: RollTag; also?: RollTag[]; line: string; rollerId: string } | null {
   const args = argsOf(call.rawArguments);
   const sheetOf = (id: unknown) => sheets.find((sheet) => sheet.id === id);
   if (call.name === "enemy_attack") {
@@ -74,6 +77,52 @@ function rollAbout(call: HeldCall, sheets: readonly CharacterSheet[]): { tag: Ro
       return null;
     }
     return { tag: { roller: "hero", kind: "attack", who: hero.name }, line: `${hero.name} is about to attack.`, rollerId: hero.id };
+  }
+  if (call.name === "cast_at_player") {
+    // An enemy or a hazard forces one character's save, which the server rolls.
+    const hero = sheetOf(args.characterId);
+    if (!hero || holdsCondition(hero, "invisible", "hidden")) {
+      return null;
+    }
+    const source = typeof args.source === "string" && args.source.trim() ? ` against ${args.source.trim().slice(0, 80)}` : "";
+    return { tag: { roller: "hero", kind: "save", who: hero.name }, line: `${hero.name} is about to make a saving throw${source}.`, rollerId: hero.id };
+  }
+  if (call.name === "cast_at_enemy") {
+    // A hero's spell at one creature: the caster's attack roll or the
+    // creature's save, whichever the spell asks for. Only the ones in sight.
+    const hero = sheetOf(args.characterId);
+    const enemy = typeof args.targetEnemyId === "string" ? getFoe(args.targetEnemyId) : null;
+    if (!hero || !enemy) {
+      return null;
+    }
+    const tags: RollTag[] = [
+      ...(holdsCondition(enemy, "invisible", "hidden") ? [] : [{ roller: "enemy" as const, kind: "save" as const, who: enemy.displayName }]),
+      ...(holdsCondition(hero, "invisible", "hidden") ? [] : [{ roller: "hero" as const, kind: "attack" as const, who: hero.name }]),
+    ];
+    const [tag, ...also] = tags;
+    if (!tag) {
+      return null;
+    }
+    const spell = typeof args.spell === "string" && args.spell.trim() ? args.spell.trim().slice(0, 60) : "a spell";
+    return { tag, ...(also.length ? { also } : {}), line: `${hero.name} is about to cast ${spell} at ${enemy.displayName}.`, rollerId: hero.id };
+  }
+  if (call.name === "aoe_damage") {
+    // An area with one creature in it: that one's save. With more, whose
+    // save the number should take is the player's to say, and the call does
+    // not say which is rolled first.
+    const enemyIds = Array.isArray(args.enemyIds) ? args.enemyIds.filter((id): id is string => typeof id === "string") : [];
+    const heroIds = Array.isArray(args.characterIds) ? args.characterIds.filter((id): id is string => typeof id === "string") : [];
+    if (enemyIds.length + heroIds.length !== 1) {
+      return null;
+    }
+    const enemy = enemyIds[0] ? getFoe(enemyIds[0]) : null;
+    const hero = heroIds[0] ? sheetOf(heroIds[0]) : null;
+    const name = enemy?.displayName ?? hero?.name;
+    if (!name || holdsCondition(enemy ?? hero ?? {}, "invisible", "hidden")) {
+      return null;
+    }
+    const spell = typeof args.spell === "string" && args.spell.trim() ? ` against ${args.spell.trim().slice(0, 60)}` : "";
+    return { tag: { roller: enemy ? "enemy" : "hero", kind: "save", who: name }, line: `${name} is about to make a saving throw${spell}.`, rollerId: enemy?.id ?? hero?.id ?? "" };
   }
   if (call.name === "request_roll") {
     const hero = sheetOf(args.characterId);
@@ -121,7 +170,7 @@ export function parkForWatch(campaign: Campaign, turn: DmTurn, calls: readonly H
     parkedFor: "watch",
   });
   const deadline = new Date(Date.now() + WATCH_SECONDS * 1000).toISOString();
-  const held = setPendingWatch(pending.id, { calls: [...calls], tag: about.tag, line: about.line, face: null, deadline });
+  const held = setPendingWatch(pending.id, { calls: [...calls], tag: about.tag, ...(about.also ? { also: about.also } : {}), line: about.line, face: null, deadline });
   publishPersisted(campaign.id, "roll_pending", { pendingRoll: publicPendingRoll(held ?? pending) });
   // Past the deadline the roll goes ahead on its own and nothing is spent.
   const timer = setTimeout(() => {
@@ -136,7 +185,7 @@ export function parkForWatch(campaign: Campaign, turn: DmTurn, calls: readonly H
 export async function runWithForetold<T>(
   campaign: Campaign,
   turnId: string,
-  choice: { watcherId: string; face: number; tag: RollTag; line: string } | null,
+  choice: { watcherId: string; face: number; tags: readonly RollTag[]; line: string } | null,
   run: () => Promise<T>,
 ): Promise<{ result: T; portent: string | null }> {
   // Spent some other way since it was chosen (the counter moved, an undo): the
@@ -145,7 +194,7 @@ export async function runWithForetold<T>(
   if (!choice || !holder || !foretoldLeft(holder).includes(choice.face)) {
     return { result: await run(), portent: null };
   }
-  armForetold(campaign.id, { face: choice.face, tag: choice.tag });
+  armForetold(campaign.id, { face: choice.face, tags: choice.tags });
   let used = false;
   let result: T;
   try {

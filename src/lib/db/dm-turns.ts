@@ -509,6 +509,9 @@ export type HeldCall = { id?: string; name: string; rawArguments: string };
 export type WatchStop = {
   calls: HeldCall[];
   tag: RollTag;
+  // Other rolls the number may land on instead, whichever d20 comes first: a
+  // spell at a creature is the caster's attack or the creature's save.
+  also?: RollTag[];
   line: string;
   face: number | null;
   deadline: string;
@@ -677,11 +680,13 @@ export function listOpenPendingRolls(campaignId: string): PendingRoll[] {
 
 // Every roll at any table still waiting on its player's after-the-roll
 // choice, for the timers a restart lost (src/lib/dm/after-roll-timer.ts).
+// By its thrown dice, not its park reason: a roll entered with real dice
+// waits on the same card, still parked for real dice.
 export function listOpenAfterRolls(): PendingRoll[] {
   // Read at boot, before anything else may have added the column.
   ensureParkColumn();
   const rows = getDatabase()
-    .prepare(`SELECT * FROM pending_rolls WHERE status = 'pending' AND parked_for = 'after_roll' ORDER BY created_at ASC`)
+    .prepare(`SELECT * FROM pending_rolls WHERE status = 'pending' AND thrown_json IS NOT NULL ORDER BY created_at ASC`)
     .all() as PendingRow[];
   return rows.map(mapPending);
 }

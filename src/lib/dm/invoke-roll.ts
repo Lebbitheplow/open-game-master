@@ -271,7 +271,7 @@ export function handleRequestRoll(
         dc: args.dc ?? null,
         reason: args.reason?.slice(0, 200) ?? "",
         parkedFor: "after_roll",
-        thrown: { outcome, options, choosing: false, landing: { status: "fallback", physical: false, source: "digital" }, deadline: afterRollDeadline() },
+        thrown: { outcome, options, choosing: false, landing: { status: "fallback", physical: false, source: "digital" }, deadline: afterRollDeadline(campaignId, sheet.userId) },
       });
       // What the digital answer would have told the model, for the answer the
       // resumed turn writes.

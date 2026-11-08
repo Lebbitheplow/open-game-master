@@ -72,6 +72,7 @@ export function WatchCard({
             Go ahead
           </button>
         ) : null}
+        {error ? <span role="alert" className="text-red-400">{error}</span> : null}
       </CheckFrame>
     );
   }
@@ -104,7 +105,7 @@ export function WatchCard({
         </button>
         <span className="check-dim text-xs" aria-live="off">{left}s</span>
       </div>
-      {error ? <p className="mt-1.5 text-xs text-red-400">{error}</p> : null}
+      {error ? <p role="alert" className="mt-1.5 text-xs text-red-400">{error}</p> : null}
     </CheckFrame>
   );
 }
@@ -155,7 +156,7 @@ export function WatchToggle({
       >
         {on ? "Watching for Portent" : "Watch for Portent"}
       </button>
-      {error ? <span className="text-xs text-red-400">{error}</span> : null}
+      {error ? <span role="alert" className="text-xs text-red-400">{error}</span> : null}
     </div>
   );
 }

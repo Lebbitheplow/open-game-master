@@ -272,12 +272,14 @@ export function giveBackDice(campaignId: string, changes: readonly TurnChange[])
 // A number Portent foretold, armed on the d20 of the one roll it answers while
 // the held call runs (src/lib/dm/foresight.ts). The one exception to the honest
 // dice of a live table, and it is the rules': the player rolled it at dawn.
-type ArmedFace = { face: number; tag: RollTag; used: boolean };
+// `tags`: the rolls it may land on, the first d20 to match taking it (a spell
+// at a creature is either the caster's attack or the creature's save).
+type ArmedFace = { face: number; tags: readonly RollTag[]; used: boolean };
 declare global {
   var __odmArmedFaces: Map<string, ArmedFace> | undefined;
 }
 
-export function armForetold(campaignId: string, armed: { face: number; tag: RollTag }) {
+export function armForetold(campaignId: string, armed: { face: number; tags: readonly RollTag[] }) {
   (globalThis.__odmArmedFaces ??= new Map()).set(campaignId, { ...armed, used: false });
 }
 
@@ -290,12 +292,12 @@ export function disarmForetold(campaignId: string): boolean {
 
 function takeArmedFace(campaignId: string | null, sides: number, purpose: RollTag | null): number | null {
   const armed = campaignId ? globalThis.__odmArmedFaces?.get(campaignId) : undefined;
-  if (!armed || armed.used || sides !== 20 || !purpose || purpose.roller !== armed.tag.roller || purpose.kind !== armed.tag.kind) {
+  if (!armed || armed.used || sides !== 20 || !purpose) {
     return null;
   }
   const names = [purpose.who ?? []].flat().map(textKey);
-  const wanted = [armed.tag.who ?? []].flat().map(textKey);
-  if (!wanted.some((name) => names.includes(name))) {
+  const fits = armed.tags.some((tag) => purpose.roller === tag.roller && purpose.kind === tag.kind && [tag.who ?? []].flat().map(textKey).some((name) => names.includes(name)));
+  if (!fits) {
     return null;
   }
   armed.used = true;
