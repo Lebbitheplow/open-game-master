@@ -1382,6 +1382,7 @@
     "lib/dm/effects-logic.ts#toLowerCase": [["key",1,"ability abbreviation (tool argument)"],["display",2,"label in a sentence, ability abbreviation shown"]],
     "lib/dm/effects-logic.ts#toUpperCase": [["display",1,"label in a sentence, ability abbreviation shown"]],
     "lib/dm/embedding-reindex.ts#re-word": [["english-source",1,"the embedding library's own English error message"]],
+    "lib/dm/empty-turn.ts#str-key": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/empty-turn.ts#str-eq": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/encounter-logic.ts#str-eq": [["key",3,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/encounter-logic.ts#str-list": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
