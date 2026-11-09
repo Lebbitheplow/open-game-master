@@ -99,6 +99,9 @@ export function landTypedParts(input: {
   sheets: CharacterSheet[];
   sheetsById: Map<string, CharacterSheet>;
   weapon: EnemyPartFlags;
+  // Elemental Adept of a spell's second type sets aside that part's
+  // resistance, not the first's.
+  otherParts?: Pick<EnemyPartFlags, "ignoreResistanceBy">;
   // From a spell, whatever part (Spell Resistance, "damage from spells").
   spell?: boolean;
   nonlethal?: boolean;
@@ -132,7 +135,7 @@ export function landTypedParts(input: {
       enemy,
       part.amount,
       part.type,
-      index === 0 ? { ...weapon, spell, partOfBlow: true } : { magical: true, spell, partOfBlow: true },
+      index === 0 ? { ...weapon, spell, partOfBlow: true } : { magical: true, spell, partOfBlow: true, ...input.otherParts },
     ),
   }));
   const landed = byType.reduce((sum, part) => sum + part.amount, 0);

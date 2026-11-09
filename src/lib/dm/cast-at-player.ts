@@ -10,6 +10,8 @@ import { markReactionUsed } from "@/lib/dm/turn-budget";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { isValidExpression } from "@/lib/dice";
+import { splitDamageExpression } from "@/lib/dm/aoe-parts";
+import { secondTypeShare } from "@/lib/dm/damage-parts";
 import { spellFactsFor, spellMechanicsFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import type { SaveAbility } from "@/lib/bestiary/statblock";
@@ -486,7 +488,22 @@ export function handleCastAtPlayer(
     // The one save-for-half rule every path shares, Evasion included
     // (src/lib/srd/trait-rules.ts).
     const taken = saveDamageTaken({ total: outcome.total, saved, halfOnSave, ability, sheet });
-    let dealt = taken.damage;
+    // A creature's spell of two types: each share is halved on its own and
+    // meets the character's defences on its own, as one wound. The whole sum
+    // used to land as the first type.
+    const secondType = byBlock ? use?.secondType : undefined;
+    const [, secondDice] = splitDamageExpression(damage, secondType) ?? [];
+    const secondRolled = secondDice && damageType && secondType
+      ? secondTypeShare(outcome, damageType, { dice: secondDice, type: secondType })
+      : null;
+    const shareOf = (total: number) => saveDamageTaken({ total, saved, halfOnSave, ability, sheet }).damage;
+    let typedParts = secondRolled !== null && damageType && secondType
+      ? [
+          { amount: shareOf(outcome.total - secondRolled), type: damageType },
+          { amount: shareOf(secondRolled), type: secondType },
+        ]
+      : null;
+    let dealt = typedParts ? typedParts.reduce((sum, part) => sum + part.amount, 0) : taken.damage;
     // Shield Master: a successful Dexterity save against an effect aimed at
     // them alone costs the reaction to take no damage at all.
     if (saved && dealt > 0 && ability === "dex" && shieldMasterSaveBonus(sheet) > 0) {
@@ -499,7 +516,8 @@ export function handleCastAtPlayer(
     }
     // Dungeon Delver: resistance to the damage dealt by traps.
     if (trapWard && dealt > 0) {
-      dealt = Math.floor(dealt / 2);
+      typedParts = typedParts?.map((part) => ({ ...part, amount: Math.floor(part.amount / 2) })) ?? null;
+      dealt = typedParts ? typedParts.reduce((sum, part) => sum + part.amount, 0) : Math.floor(dealt / 2);
       base.dungeonDelver = "Dungeon Delver: resistance to trap damage, halved.";
     }
     if (taken.evasion) {
@@ -511,6 +529,14 @@ export function handleCastAtPlayer(
       const reason = `${source} (${ability.toUpperCase()} save ${saved ? "succeeded" : "failed"})`;
       const applied = disintegrates
         ? applyPcDamage(campaign, turn.id, getSheetById(sheet.id) ?? sheet, { amount: dealt, type: damageType, magical: true, disintegrate: true, reason })
+        : typedParts
+          ? applyPcDamage(campaign, turn.id, getSheetById(sheet.id) ?? sheet, {
+              amount: dealt,
+              parts: typedParts,
+              magical: use?.magical === true,
+              spell: Boolean(use?.spell ?? args.spell),
+              reason,
+            })
         : applyDmMutation(
             campaign,
             turn.id,

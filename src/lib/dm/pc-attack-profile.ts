@@ -11,6 +11,7 @@ import { getMounts } from "@/lib/db/mounts";
 import { isValidExpression } from "@/lib/dice";
 import { acBreakdownFor, computeSheetDerived, spellAbilityFor, spellAttackFor, type SheetDerived, castsSpells } from "@/lib/srd";
 import { spellDamageFor, spellEngineName, spellFactsFor, spellMechanicsFor, spellSchoolFor } from "@/lib/content";
+import { splitDamageExpression } from "@/lib/dm/aoe-parts";
 import { spellDamageRiders } from "@/lib/srd/spell-damage-riders";
 import { isMeleeSpellAttack } from "@/lib/dm/spell-attack-riders";
 import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
@@ -229,7 +230,7 @@ export function buildAttackProfile(
       scalingNote = scaled.note;
     }
     // Multiclass: the to-hit follows the class whose list carries the spell.
-    const spellProfile = spellAttackProfile(
+    const baseSpellProfile = spellAttackProfile(
       { spellAttack: spellAttackFor(sheet, spellName) ?? scrollNumbers(fromItem?.level ?? 1).attackBonus },
       spellName,
       damageArg,
@@ -237,6 +238,15 @@ export function buildAttackProfile(
       // only for a spell the content does not know (SRD 5.1).
       (mechDamageType || args.damageType || "").trim().toLowerCase(),
     );
+    // A spell attack of two types (Storm Kick's thunder and lightning): its
+    // last dice ride the blow under their own type, as a magic weapon's do,
+    // so each meets its own resistance and a critical doubles both. The whole
+    // sum used to land as the first type.
+    const secondType = resolvedMech?.mech.secondType;
+    const [, secondDice] = splitDamageExpression(damageArg, secondType) ?? [];
+    const spellProfile = secondDice && secondType
+      ? { ...baseSpellProfile, gearTyped: [{ dice: secondDice, type: secondType }] }
+      : baseSpellProfile;
     // A melee spell attack (a touch) is a melee attack: it reaches only the
     // creature beside the caster, and the rules for ranged attacks do not
     // apply to it.

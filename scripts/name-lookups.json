@@ -1237,7 +1237,7 @@
     "lib/dm/cast-materials.ts#partial": [["authoring",4,"material words"],["authoring",1,"a spell's material words matched in item names"],["pattern",2,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "lib/dm/cast-reach.ts#partial": [["parse",1,"damage expressions"]],
     "lib/dm/cast-reach.ts#whole-single": [["identity",1,"a spell by its whole name"]],
-    "lib/dm/cast-rules.ts#number": [["key",5,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
+    "lib/dm/cast-rules.ts#number": [["key",6,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "lib/dm/cast-rules.ts#partial": [["key",6,"class ids and ODM's own \"|\" records"],["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["identity",1,"a spell by whole name"]],
     "lib/dm/cast-rules.ts#whole": [["identity",1,"condition instances by whole name or key"],["identity",1,"a feature by its whole name"],["key",2,"class ids and ODM's own \"|\" records"]],
     "lib/dm/cast-slot-choice.ts#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],

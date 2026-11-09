@@ -75,7 +75,7 @@ export function areaShareProblem(input: {
 // Writes the creature caught and the casting's one damage roll onto the open
 // casting, for the next call of it. Nothing to write once the casting holds
 // no more.
-export function recordAreaShare(campaignId: string, casterId: string, spell: string, targetId: string, roll: number | null) {
+export function recordAreaShare(campaignId: string, casterId: string, spell: string, targetId: string, roll: number | null, rollSecond: number | null = null) {
   const live = getActiveEncounter(campaignId);
   const open = live ? openAreaCast(live, casterId, spell) : null;
   if (!live?.turnBudget || !open) {
@@ -84,7 +84,7 @@ export function recordAreaShare(campaignId: string, casterId: string, spell: str
   storeBudget(live, withOpenCast(live.turnBudget, {
     ...open,
     caught: [...(open.caught ?? []).filter((id) => id !== targetId), targetId],
-    ...(open.roll === undefined && roll !== null ? { roll } : {}),
+    ...(open.roll === undefined && roll !== null ? { roll, ...(rollSecond !== null ? { rollSecond } : {}) } : {}),
   }));
 }
 
