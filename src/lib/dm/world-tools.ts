@@ -33,8 +33,9 @@ import { ADVANCE_UNITS, describeDuration, describeInstant, restMinutes } from "@
 import { handleTakeRest } from "@/lib/dm/rest-tools";
 import { insertCampaignMessage } from "@/lib/db/messages";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
+import { fittedText } from "@/lib/dm/fitted-text";
 
 // The remaining DM-utility engines: CR-scaled treasure the server actually
 // moves into purses, object durability read from the DMG table, and forced-
@@ -298,8 +299,8 @@ export function handleSetWeather(campaign: Campaign, rawArguments: string): Tool
   let args: z.infer<typeof weatherSchema>;
   try {
     args = weatherSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: set_weather needs a sky.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: set_weather needs a sky.", error, rawArguments);
   }
   const current = getClock(campaign.id).weather;
   const precipitation =
@@ -324,7 +325,7 @@ export function handleSetWeather(campaign: Campaign, rawArguments: string): Tool
 
 const titleSchema = z.object({
   title: z.string().trim().min(1).max(60),
-  subtitle: z.string().trim().max(120).optional(),
+  subtitle: fittedText(120).optional(),
   tone: z.enum(["gold", "ember", "dawn", "plain"]).optional(),
 });
 
@@ -332,8 +333,8 @@ export function handleShowTitle(campaign: Campaign, rawArguments: string): ToolR
   let args: z.infer<typeof titleSchema>;
   try {
     args = titleSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: show_title needs a title.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: show_title needs a title.", error, rawArguments);
   }
   publishTitleCard(campaign.id, {
     title: args.title,
@@ -398,8 +399,8 @@ export function handleRollTreasure(
   let args: z.infer<typeof treasureSchema>;
   try {
     args = treasureSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: roll_treasure needs a cr.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: roll_treasure needs a cr.", error, rawArguments);
   }
   const recipients = resolveTargets(args.characterIds, sheets, sheetsById);
   if (!recipients.length) {
@@ -556,7 +557,7 @@ const passTimeSchema = z.object({
   unit: z.enum(ADVANCE_UNITS).default("hours"),
   water: z.enum(["plenty", "half", "none"]).optional(),
   meal: mealArg.optional(),
-  reason: z.string().max(200).optional(),
+  reason: fittedText(200).optional(),
 });
 
 // Moving the in-world clock without travelling anywhere: waiting out a
@@ -581,8 +582,9 @@ export function handlePassTime(
   let args: z.infer<typeof passTimeSchema>;
   try {
     args = passTimeSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: `Invalid arguments: pass_time needs an amount and a unit.${mealRefused(rawArguments) ? ` ${MEAL_REFUSAL}` : ""}`, retry: true };
+  } catch (error) {
+    const refused = badArguments(`Invalid arguments: pass_time needs an amount and a unit.`, error, rawArguments);
+    return { ...refused, error: `${refused.error}${mealRefused(rawArguments) ? ` ${MEAL_REFUSAL}` : ""}` };
   }
   if (args.water) {
     setWaterRation(campaign.id, args.water);
@@ -645,8 +647,9 @@ export function handleTravel(
   let args: z.infer<typeof travelSchema>;
   try {
     args = travelSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: `Invalid arguments: travel needs hours or miles.${mealRefused(rawArguments) ? ` ${MEAL_REFUSAL}` : ""}`, retry: true };
+  } catch (error) {
+    const refused = badArguments(`Invalid arguments: travel needs hours or miles.`, error, rawArguments);
+    return { ...refused, error: `${refused.error}${mealRefused(rawArguments) ? ` ${MEAL_REFUSAL}` : ""}` };
   }
   // Who travels, settled before anything moves. A forced march with no
   // traveller used to find out only after the clock, the world, the sky and

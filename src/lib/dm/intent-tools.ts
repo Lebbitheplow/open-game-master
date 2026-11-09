@@ -12,7 +12,7 @@ import { INTENT_VERB_KINDS } from "@/lib/battlemap/intent";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 
 // declare_intent (docs/visual-overhaul-plan.md 5.6): the DM, model or person,
@@ -72,8 +72,8 @@ export function handleDeclareIntent(
   let args: z.infer<typeof declareIntentArgsSchema>;
   try {
     args = declareIntentArgsSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: declare_intent needs actor and verb.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: declare_intent needs actor and verb.", error, rawArguments);
   }
   const enemy = resolveEnemyRef(encounter.id, args.actor);
   if (!enemy) {

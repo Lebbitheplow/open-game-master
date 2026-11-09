@@ -12,7 +12,7 @@ import type { Campaign } from "@/lib/db/campaigns";
 import { weatherBedCue } from "@/lib/srd/weather";
 import type { Weather } from "@/lib/scene/state";
 import { publishEphemeral, publishPersisted } from "@/lib/events";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 
 // Sound at the table: the engine rim around src/lib/ambience/logic.ts.
 //
@@ -132,8 +132,8 @@ export function handleSetAmbience(
   let args: z.infer<typeof setSchema>;
   try {
     args = setSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: set_ambience takes a bed, a music cue, or both.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: set_ambience takes a bed, a music cue, or both.", error, rawArguments);
   }
   const bed = layerArg(args.bed);
   const music = layerArg(args.music);
@@ -182,8 +182,8 @@ export function handlePlaySting(
   let args: z.infer<typeof stingSchema>;
   try {
     args = stingSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: play_sting needs a cue.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: play_sting needs a cue.", error, rawArguments);
   }
   const cue = cueById(args.cue);
   if (!cue || cue.layer !== "sting") {

@@ -88,6 +88,9 @@ export type CatalogField = {
   options?: Array<{ value: string; label: string; host?: string }>;
   min?: number;
   max?: number;
+  // The longest text a text or longtext field takes, as the tool's schema
+  // allows: the box stops there instead of the call being refused after.
+  maxLength?: number;
   placeholder?: string;
   // What a checkbox starts as. Booleans are off by default, which is right
   // for a flag like "forced" and wrong for one like "they can see it": the

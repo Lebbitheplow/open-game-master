@@ -33,7 +33,7 @@ import { springTrapOn } from "@/lib/dm/trap-run";
 import { rollExpression } from "@/lib/dice";
 import { SAMPLE_TRAPS } from "@/lib/srd/trap-specs";
 import { hazardNamesAt, trapAt } from "@/lib/srd/table-hazards";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import { hasItemTag } from "@/lib/srd/item-tags";
 
 // Traps and environmental hazards used to be pure narration routed through the
@@ -216,8 +216,8 @@ export function handleApplyHazard(
   let args: z.infer<typeof hazardSchema>;
   try {
     args = hazardSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: apply_hazard needs a type and characterIds (or rank).", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: apply_hazard needs a type and characterIds (or rank).", error, rawArguments);
   }
   // Who walks first or last, from the formation in force (issue 230).
   let named = args.characterIds ?? [];

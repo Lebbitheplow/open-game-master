@@ -448,6 +448,7 @@ export function FieldInput({
           <textarea
             value={String(value ?? "")}
             rows={3}
+            maxLength={field.maxLength}
             placeholder={field.placeholder}
             aria-label={field.label}
             onChange={(event) => onChange(event.target.value)}
@@ -460,6 +461,7 @@ export function FieldInput({
         <input
           type="text"
           value={String(value ?? "")}
+          maxLength={field.maxLength}
           placeholder={field.placeholder}
           aria-label={field.label}
           onChange={(event) => onChange(event.target.value)}

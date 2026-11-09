@@ -9,8 +9,9 @@ import { DM_ONLY_MARK, normalizeObjectives, tickObjective, type Quest, type Ques
 import { dismissHandout, publishHandout } from "@/lib/dm/scene-state";
 import { isUploadedImagePath } from "@/lib/uploads";
 import type { WorldLoreEntry } from "@/lib/dm/world-lore-logic";
-import { noneNamed, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, noneNamed, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
+import { fittedText } from "@/lib/dm/fitted-text";
 
 // The binder's tools (docs/vtt-parity-implementation-plan.md sections 5.2
 // and 5.7): put a handout in front of the table and take it away again,
@@ -97,7 +98,7 @@ export const binderTools: ToolDef[] = [
 const handoutSchema = z.object({
   lore: z.string().trim().min(1).optional(),
   imagePath: z.string().trim().optional(),
-  caption: z.string().trim().max(200).optional(),
+  caption: fittedText(200).optional(),
 });
 
 function loreEntryFor(campaignId: string, args: z.infer<typeof handoutSchema>): WorldLoreEntry | ToolError | null {
@@ -122,8 +123,8 @@ export function handleShowHandout(campaign: Campaign, turn: DmTurn | null, rawAr
   let args: z.infer<typeof handoutSchema>;
   try {
     args = handoutSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: show_handout needs lore: the lore entry's title.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: show_handout needs lore: the lore entry's title.", error, rawArguments);
   }
   const human = turn?.actor === "human_dm";
   const entry = loreEntryFor(campaign.id, args);
@@ -209,8 +210,8 @@ export function handleSetQuest(campaign: Campaign, rawArguments: string): ToolRe
   let args: z.infer<typeof questSchema>;
   try {
     args = questSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: set_quest takes a title, objectives and a status.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: set_quest takes a title, objectives and a status.", error, rawArguments);
   }
   const update = (quest: Quest, retitle: boolean) =>
     editQuest(quest.id, {
@@ -298,8 +299,8 @@ export function handleTickObjective(campaign: Campaign, rawArguments: string): T
   let args: z.infer<typeof tickSchema>;
   try {
     args = tickSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: tick_objective needs a quest and an objective.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: tick_objective needs a quest and an objective.", error, rawArguments);
   }
   const found = objectiveFor(campaign.id, args);
   if ("error" in found) {

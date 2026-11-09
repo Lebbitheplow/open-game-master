@@ -56,7 +56,7 @@ import { MINUTES_PER_DAY } from "@/lib/dm/calendar";
 import { publishEphemeral, publishPersisted, publishWithSeq } from "@/lib/events";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { addCopper, formatCopper, formatPrice } from "@/lib/srd/currency";
-import { noneNamed, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { argumentsRefusal, noneNamed, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { alreadyInPack, notCarried } from "@/lib/dm/item-logic";
 import { isTableGearName } from "@/lib/db/homebrew";
 import { containsPhrase, textKey } from "@/lib/language/text-logic";
@@ -270,7 +270,7 @@ const openSchema = z.object({
 export function handleOpenShop(campaign: Campaign, rawArguments: string, random: () => number = Math.random): ToolResult {
   const args = parse(openSchema, rawArguments);
   if (!args) {
-    return { error: "Invalid arguments: open_shop needs a name and a kind.", retry: true };
+    return argumentsRefusal("Invalid arguments: open_shop needs a name and a kind.", openSchema, rawArguments);
   }
   const location = getCurrentLocation(campaign.id);
   const size = normalizeShopSize(args.size);
@@ -425,7 +425,7 @@ function counterRefusal(campaign: Campaign, sheet: CharacterSheet, shop: Shop, v
 export function handleBuyItem(campaign: Campaign, rawArguments: string, at: TradeAt = {}): ToolResult {
   const args = parse(buySchema, rawArguments);
   if (!args) {
-    return { error: "Invalid arguments: a purchase at a shop needs characterId, shop and item.", retry: true };
+    return argumentsRefusal("Invalid arguments: a purchase at a shop needs characterId, shop and item.", buySchema, rawArguments);
   }
   const sheet = resolveSheet(campaign, args.characterId);
   if (!sheet) {
@@ -480,7 +480,7 @@ const sellSchema = buySchema.extend({ priceCp: z.coerce.number().int().min(1).ma
 export function handleSellItem(campaign: Campaign, rawArguments: string, at: TradeAt = {}): ToolResult {
   const args = parse(sellSchema, rawArguments);
   if (!args) {
-    return { error: "Invalid arguments: a sale at a shop needs characterId, shop and item, and a price of at most 100,000 gp each when one is given.", retry: true };
+    return argumentsRefusal("Invalid arguments: a sale at a shop needs characterId, shop and item, and a price of at most 100,000 gp each when one is given.", sellSchema, rawArguments);
   }
   const sheet = resolveSheet(campaign, args.characterId);
   if (!sheet) {
@@ -552,7 +552,7 @@ const SKILL_LABEL = { persuasion: "Persuasion", intimidation: "Intimidation", de
 export function handleHaggle(campaign: Campaign, rawArguments: string, at: TradeAt = {}): ToolResult {
   const args = parse(haggleSchema, rawArguments);
   if (!args) {
-    return { error: "Invalid arguments: haggle needs characterId and shop, a skill of persuasion, intimidation or deception, and presentCharacterIds as a list of characters.", retry: true };
+    return argumentsRefusal("Invalid arguments: haggle needs characterId and shop, a skill of persuasion, intimidation or deception, and presentCharacterIds as a list of characters.", haggleSchema, rawArguments);
   }
   const skill = args.skill ? normalizeHaggleSkill(args.skill) : "persuasion";
   if (!skill) {

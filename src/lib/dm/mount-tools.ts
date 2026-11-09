@@ -25,7 +25,7 @@ import { claimOncePerTurn } from "@/lib/dm/action-budget";
 import { reactionRefusal } from "@/lib/dm/reaction-gate";
 import { attacksAllowedFor, budgetFor, markReactionUsed, storeBudget } from "@/lib/dm/turn-budget";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
-import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
 import { SRD_CREATURES } from "@/lib/srd/srd-creatures";
 import { matchGear } from "@/lib/srd/adventuring-gear";
@@ -138,8 +138,8 @@ export function handleMountUp(
   let args: z.infer<typeof mountSchema>;
   try {
     args = mountSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: mount_up needs a characterId and a mount.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: mount_up needs a characterId and a mount.", error, rawArguments);
   }
   const sheet = resolveSheetRef(args.characterId, sheets, sheetsById);
   if (!sheet) {
@@ -244,8 +244,8 @@ export function handleDismount(
   let args: z.infer<typeof dismountSchema>;
   try {
     args = dismountSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: dismount needs a characterId.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: dismount needs a characterId.", error, rawArguments);
   }
   const sheet = resolveSheetRef(args.characterId, sheets, sheetsById);
   if (!sheet) {

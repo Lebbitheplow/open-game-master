@@ -20,7 +20,7 @@ import { critDamageExpression } from "@/lib/dm/encounter-logic";
 import { naturalAttackProfile, pickNaturalAttack } from "@/lib/dm/natural-attack";
 import { landNaturalOnHit } from "@/lib/dm/natural-onhit";
 import { landBlow } from "@/lib/dm/pc-attack-damage";
-import { noneNamed, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, noneNamed, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { swallowCoverError } from "@/lib/dm/swallow";
 import { buildPet, defenseWords, DRAKE_ESSENCES, petCreatureType } from "@/lib/dm/pet-build";
 import { conditionIncomingAttackState } from "@/lib/srd/condition-effects";
@@ -201,8 +201,8 @@ export function handleSummonPet(
   let args: z.infer<typeof summonSchema>;
   try {
     args = summonSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: summon_pet needs characterId, kind, and form.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: summon_pet needs characterId, kind, and form.", error, rawArguments);
   }
   const stale = resolveSheetRef(args.characterId, sheets, sheetsById);
   const sheet = stale ? (getSheetById(stale.id) ?? stale) : null;
@@ -247,8 +247,8 @@ export function handlePetAttack(
   let args: z.infer<typeof petAttackSchema>;
   try {
     args = petAttackSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: pet_attack needs characterId and targetEnemyId.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: pet_attack needs characterId and targetEnemyId.", error, rawArguments);
   }
   const stale = resolveSheetRef(args.characterId, sheets, sheetsById);
   const sheet = stale ? (getSheetById(stale.id) ?? stale) : null;
@@ -421,8 +421,8 @@ export function handleDamagePet(
   let args: z.infer<typeof damagePetSchema>;
   try {
     args = damagePetSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: apply_damage on a pet needs the owner's characterId and an amount.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: apply_damage on a pet needs the owner's characterId and an amount.", error, rawArguments);
   }
   const stale = resolveSheetRef(args.characterId, sheets, sheetsById);
   const sheet = stale ? (getSheetById(stale.id) ?? stale) : null;
@@ -479,8 +479,8 @@ export function handleDismissPet(
   let args: z.infer<typeof dismissSchema>;
   try {
     args = dismissSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: dismiss_pet needs characterId.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: dismiss_pet needs characterId.", error, rawArguments);
   }
   const stale = resolveSheetRef(args.characterId, sheets, sheetsById);
   const sheet = stale ? (getSheetById(stale.id) ?? stale) : null;

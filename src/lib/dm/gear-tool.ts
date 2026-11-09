@@ -36,7 +36,7 @@ import { tokenFootprint } from "@/lib/dm/board-reach";
 import { addRowMath, handedOverRow, removeItemMath } from "@/lib/dm/mutation-math";
 import { characterCallUnasked } from "@/lib/dm/player-word";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
-import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { swallowCoverError } from "@/lib/dm/swallow";
 import { storeBudget } from "@/lib/dm/turn-budget";
 import { gearPatch, implicitlyWorn } from "@/lib/dm/usage-rules";
@@ -102,8 +102,8 @@ export function handleItemCall(
   let args: Args;
   try {
     args = JSON.parse(rawArguments || "{}") as Args;
-  } catch {
-    return retry("Invalid arguments.");
+  } catch (error) {
+    return badArguments("Invalid arguments: handle_item needs an action.", error, rawArguments);
   }
   const action = (args.action ?? "").trim() as GearAction;
   if (!(ACTIONS as readonly string[]).includes(action)) {

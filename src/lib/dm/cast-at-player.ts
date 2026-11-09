@@ -34,7 +34,7 @@ import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { sanctuaryWard } from "@/lib/dm/enemy-conditions";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { outOfReach } from "@/lib/dm/spell-planes";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { saveAgainst } from "@/lib/dm/roll-about";
 import { swallowCover } from "@/lib/dm/swallow";
@@ -301,11 +301,8 @@ export function handleCastAtPlayer(
   let args: z.infer<typeof castAtPlayerSchema>;
   try {
     args = castAtPlayerSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return {
-      error: "Invalid arguments: cast_at_player needs characterId, and saveAbility and dc unless an enemy's ability or spell sets them.",
-      retry: true,
-    };
+  } catch (error) {
+    return badArguments("Invalid arguments: cast_at_player needs characterId, and saveAbility and dc unless an enemy's ability or spell sets them.", error, rawArguments);
   }
   const staleSheet = resolveSheetRef(args.characterId, sheets, sheetsById);
   const sheet = staleSheet ? (getSheetById(staleSheet.id) ?? staleSheet) : null;

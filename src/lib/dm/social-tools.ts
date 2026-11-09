@@ -49,9 +49,10 @@ import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@
 import type { RollArgs } from "@/lib/dm/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { waypointProperty } from "@/lib/dm/waypoint-logic";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { stepTakenThisExchange } from "@/lib/dm/step-exchange";
+import { fittedText } from "@/lib/dm/fitted-text";
 
 // The social-interaction engine: NPC disposition was pure narration with no
 // state, so a shopkeeper the party bullied yesterday greeted them warmly today
@@ -229,21 +230,21 @@ function bootstrapAgency(
 const setNpcSchema = z.object({
   name: z.string().min(1).max(80),
   attitude: z.enum(["hostile", "indifferent", "friendly"]).optional(),
-  trait: z.string().max(300).optional(),
+  trait: fittedText(300).optional(),
   location: z.string().max(120).optional(),
   gender: z.enum(TOLD_GENDERS).optional(),
   race: z.string().max(40).optional(),
   drawnTo: z.array(z.string().max(40)).max(6).optional(),
-  goal: z.string().max(300).optional(),
-  ambition: z.string().max(300).optional(),
+  goal: fittedText(300).optional(),
+  ambition: fittedText(300).optional(),
 });
 
 export function handleSetNpc(campaign: Campaign, rawArguments: string): ToolResult {
   let args: z.infer<typeof setNpcSchema>;
   try {
     args = setNpcSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: set_npc needs at least a name.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: set_npc needs at least a name.", error, rawArguments);
   }
   // gender is optional so an update need not restate it, which leaves a
   // registration free to forget it: the result then asks, never refuses.
@@ -301,7 +302,7 @@ export function handleSetNpc(campaign: Campaign, rawArguments: string): ToolResu
 const reactionSchema = z.object({
   name: z.string().min(1).max(80),
   modifier: z.coerce.number().int().min(-10).max(10).optional(),
-  trait: z.string().max(300).optional(),
+  trait: fittedText(300).optional(),
   location: z.string().max(120).optional(),
   gender: z.enum(TOLD_GENDERS),
 });
@@ -314,8 +315,8 @@ export function handleNpcReaction(
   let args: z.infer<typeof reactionSchema>;
   try {
     args = reactionSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: npc_reaction needs a name and a gender (Female, Male, Nonbinary or Unknown).", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: npc_reaction needs a name and a gender (Female, Male, Nonbinary or Unknown).", error, rawArguments);
   }
   // A reaction roll decides how a stranger takes the party, once. Someone
   // the party has dealt with keeps the attitude play gave them, and so does
@@ -401,8 +402,8 @@ export function handleSocialCheck(
   let args: z.infer<typeof socialCheckSchema>;
   try {
     args = socialCheckSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: social_check needs characterId, npc, and approach.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: social_check needs characterId, npc, and approach.", error, rawArguments);
   }
   const stale = resolveSheetRef(args.characterId, sheets, sheetsById);
   const sheet = stale ? getSheetById(stale.id) ?? stale : null;

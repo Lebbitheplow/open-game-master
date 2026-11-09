@@ -53,7 +53,7 @@ import { spellWardOn } from "@/lib/dm/cast-reach";
 import { partsTaken, partsTotal, splitDamageExpression, type DamagePart } from "@/lib/dm/aoe-parts";
 import { castingHold, outOfReach } from "@/lib/dm/spell-planes";
 import { castPrismaticSpray, isPrismaticSpray } from "@/lib/dm/prismatic";
-import { unknownRef, type ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, unknownRef, type ToolResult } from "@/lib/dm/tool-errors";
 import { swallowCover } from "@/lib/dm/swallow";
 
 export { aoeDamageTool } from "@/lib/dm/aoe-damage-tool";
@@ -100,11 +100,8 @@ export function handleAoeDamage(
   let args: z.infer<typeof aoeArgsSchema>;
   try {
     args = aoeArgsSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return {
-      error: "Invalid arguments: aoe_damage needs targets, and saveAbility and dc unless a caster's spell or an enemy's ability sets them.",
-      retry: true,
-    };
+  } catch (error) {
+    return badArguments("Invalid arguments: aoe_damage needs targets, and saveAbility and dc unless a caster's spell or an enemy's ability sets them.", error, rawArguments);
   }
   // A trap or a collapsing ceiling names no spell and no caster: its save
   // and DC are the caller's, and nothing else could supply them.

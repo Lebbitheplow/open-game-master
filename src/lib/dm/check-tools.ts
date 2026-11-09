@@ -31,7 +31,7 @@ import { weatherPerceptionRider } from "@/lib/srd/weather";
 import { obscuredFor, silencedImmunity } from "@/lib/dm/zone-rules";
 import { senseCheckFailure } from "@/lib/srd/sense-checks";
 import { sightRotPenalty } from "@/lib/srd/afflictions";
-import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { npcDeceiver, seeThroughActs } from "@/lib/dm/scheme-tools";
 
 // Two exploration-pillar tools that were pure narration before: a group skill
@@ -222,8 +222,8 @@ export function handleGroupCheck(
   let args: z.infer<typeof groupCheckSchema>;
   try {
     args = groupCheckSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: group_check needs a skill or ability and a difficulty.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: group_check needs a skill or ability and a difficulty.", error, rawArguments);
   }
   if (!args.skill && !args.ability) {
     return { error: "group_check needs a skill (e.g. stealth) or an ability (e.g. str).", retry: true };
@@ -399,8 +399,8 @@ export function handleCheckNotice(
   let args: z.infer<typeof checkNoticeSchema>;
   try {
     args = checkNoticeSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: check_notice needs a difficulty and optionally a sense.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: check_notice needs a difficulty and optionally a sense.", error, rawArguments);
   }
   const sense = args.sense ?? "perception";
   const targets = resolveTargets(args.characterIds, sheets, sheetsById);

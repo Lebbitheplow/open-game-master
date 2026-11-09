@@ -133,7 +133,7 @@ import { meetSpeakers } from "@/lib/dm/party-bonds";
 import { voiceOwedConscience } from "@/lib/dm/conscience-voice";
 import { readRomanceScene, romanceSceneNotes } from "@/lib/dm/romance-scenes";
 import type { SpokenLine } from "@/lib/dm/speech";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import { dispatchAdjudication } from "@/lib/dm/invoke-dispatch";
 import { playsWhole } from "@/lib/dm/legendary-play";
 import { awayCall, gateAiCall } from "@/lib/dm/ai-gate";
@@ -3421,8 +3421,8 @@ export function handleRecordEvent(
   let args: { characterId?: unknown; kind?: unknown; summary?: unknown };
   try {
     args = JSON.parse(rawArguments || "{}");
-  } catch {
-    return { error: "Invalid arguments.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments.", error, rawArguments);
   }
   const ref = typeof args.characterId === "string" ? args.characterId : undefined;
   const sheet = resolveSheetRef(ref, sheets, sheetsById);
@@ -3478,8 +3478,8 @@ export function handleLocationCall(
   };
   try {
     args = JSON.parse(rawArguments || "{}");
-  } catch {
-    return { error: "Invalid arguments.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments.", error, rawArguments);
   }
   // Where the place sits in the region (issue 548): the bigger place it is
   // part of, and for a new place reached by travel, which way and how far it

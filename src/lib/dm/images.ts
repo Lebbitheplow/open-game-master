@@ -15,7 +15,7 @@ import { toEnglishForImage } from "@/lib/image-english";
 import { artDirection, scenePrompt, typedStyle } from "@/lib/art-direction";
 import { presetFor } from "@/lib/worlds/preset";
 import type { AspectPreset, GeneratedImage, ImageRequest, StorySettings } from "@/lib/types";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 
 // Ephemeral progress refinements for the pending-media placeholders. The
 // durable truth stays derivable (a message with imageRequest and no
@@ -157,8 +157,8 @@ export function handleGenerateImage(
   let args: ImageToolArgs;
   try {
     args = imageToolArgsSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: illustrating needs a prompt.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: illustrating needs a prompt.", error, rawArguments);
   }
   const message = getLatestDmMessage(campaign.id);
   if (!message) {

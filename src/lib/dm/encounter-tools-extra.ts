@@ -25,7 +25,7 @@ import { normalizeAbility } from "@/lib/dm/arg-coerce";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { aoeDamageTool, handleAoeDamage } from "@/lib/dm/aoe-damage";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { enemyExhaustion } from "@/lib/dm/monster-abilities";
 import { isKnockedOut } from "@/lib/dm/knockout";
@@ -114,8 +114,8 @@ function handleEnemyFlees(
   let args: z.infer<typeof enemyRefArgsSchema>;
   try {
     args = enemyRefArgsSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: enemy_flees needs enemyId.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: enemy_flees needs enemyId.", error, rawArguments);
   }
   const enemy = resolveEnemyRef(encounter.id, args.enemyId);
   if (!enemy) {
@@ -172,8 +172,8 @@ function handleEnemyCondition(
   let args: z.infer<typeof enemyRefArgsSchema>;
   try {
     args = enemyRefArgsSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: needs enemyId and condition.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: needs enemyId and condition.", error, rawArguments);
   }
   const enemy = resolveEnemyRef(encounter.id, args.enemyId);
   if (!enemy) {

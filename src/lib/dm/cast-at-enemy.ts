@@ -60,7 +60,7 @@ import { maximumOf } from "@/lib/dm/heal-spell";
 import { castingHold } from "@/lib/dm/spell-planes";
 import { castShapeAtEnemy, enemyShapeSpellFor } from "@/lib/dm/enemy-polymorph";
 import { handleCastBuff } from "@/lib/dm/cast-buff";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import { spellHeldProblem, grantedCastOf } from "@/lib/dm/cast-rules";
 import { paidByItem } from "@/lib/srd/item-cast-credit";
 import { itemCastOpen } from "@/lib/dm/item-casts";
@@ -109,11 +109,8 @@ export function handleCastAtEnemy(
   let args: z.infer<typeof castArgsSchema>;
   try {
     args = castArgsSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return {
-      error: "Invalid arguments: cast_at_enemy needs characterId, targetEnemyId, spell, and saveAbility.",
-      retry: true,
-    };
+  } catch (error) {
+    return badArguments("Invalid arguments: cast_at_enemy needs characterId, targetEnemyId, spell, and saveAbility.", error, rawArguments);
   }
   const staleSheet = resolveSheetRef(args.characterId, sheets, sheetsById);
   const sheet = staleSheet ? (getSheetById(staleSheet.id) ?? staleSheet) : null;

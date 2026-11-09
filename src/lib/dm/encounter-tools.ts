@@ -155,7 +155,7 @@ import { afflictionsAtCombatStart } from "@/lib/dm/afflictions";
 import { ENEMY_TURNS_CUE, enemiesDue, enemiesOwedTurn, holdForEnemies, noteLostTurns } from "@/lib/dm/enemies-due";
 import { closeHitsAtTurnEnd } from "@/lib/dm/last-hit";
 import { approachForCompanion } from "@/lib/dm/companion-approach";
-import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { holdsFeat } from "@/lib/srd/feat-effects";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
 import { swallowTurnEnd } from "@/lib/dm/swallow";
@@ -982,8 +982,8 @@ function handleDamageEnemy(
   let args: z.infer<typeof damageArgsSchema>;
   try {
     args = damageArgsSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: apply_damage on an enemy needs enemyId and amount.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: apply_damage on an enemy needs enemyId and amount.", error, rawArguments);
   }
   if (args.amount === undefined && args.fallFeet === undefined) {
     return { error: "apply_damage on an enemy needs the amount, or fallFeet for a fall.", retry: true };
@@ -1166,8 +1166,8 @@ function handleEndTurn(
   let args: z.infer<typeof endTurnArgsSchema>;
   try {
     args = endTurnArgsSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "Invalid arguments: end_turn needs characterId.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: end_turn needs characterId.", error, rawArguments);
   }
   const sheet = resolveSheetRef(args.characterId, sheets, sheetsById);
   if (!sheet) {

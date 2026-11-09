@@ -65,7 +65,7 @@ import { conditionRollRiders, conditionTurnShape } from "@/lib/srd/condition-eff
 import { isImmersed, underwaterSwing } from "@/lib/dm/underwater";
 import { swimsFrom } from "@/lib/battlemap/types";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import { invalidArguments, noneNamed, toolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, invalidArguments, noneNamed, toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { ADVANTAGE_SOURCES, claimedAdvantage } from "@/lib/dm/pc-attack-options";
 import { unknownSheetRef } from "@/lib/dm/rolls";
@@ -75,6 +75,7 @@ import { swallowCover, swallowRefusal } from "@/lib/dm/swallow";
 import { swallowActionOf } from "@/lib/dm/swallow-logic";
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
 import { sizeForRace } from "@/lib/srd";
+import { fittedText } from "@/lib/dm/fitted-text";
 
 const attackArgsSchema = z.object({
   enemyId: z.string(),
@@ -82,7 +83,7 @@ const attackArgsSchema = z.object({
   attack: z.string().optional(),
   advantage: z.enum(["none", "advantage", "disadvantage"]).optional(),
   advantageSource: z.enum(ADVANTAGE_SOURCES).optional(),
-  advantageReason: z.string().max(200).optional(),
+  advantageReason: fittedText(200).optional(),
   // A melee blow meant to knock the character out (SRD 5.1, Knocking a
   // Creature Out): dropped to 0, they fall unconscious and stable.
   nonlethal: z.coerce.boolean().optional(),
@@ -167,12 +168,12 @@ export function handleEnemyAttack(
   let raw: unknown;
   try {
     raw = JSON.parse(rawArguments || "{}");
-  } catch {
-    return { error: "Invalid arguments: enemy_attack needs enemyId and targetCharacterId.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: enemy_attack needs enemyId and targetCharacterId.", error, rawArguments);
   }
   const parsed = attackArgsSchema.safeParse(raw);
   if (!parsed.success) {
-    return invalidArguments("Invalid arguments: enemy_attack needs enemyId and targetCharacterId.", parsed.error);
+    return invalidArguments("Invalid arguments: enemy_attack needs enemyId and targetCharacterId.", parsed.error, raw);
   }
   const args = parsed.data;
   const found = resolveEnemyRef(encounter.id, args.enemyId);

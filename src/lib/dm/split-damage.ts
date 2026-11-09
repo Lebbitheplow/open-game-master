@@ -20,7 +20,7 @@ import { applyEnemyDamage, resolveEnemyRef } from "@/lib/dm/enemy-damage";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 
 export const SPLIT_DAMAGE_TOOL_NAMES = ["split_damage"] as const;
 
@@ -56,8 +56,8 @@ export function handleSplitDamage(
   let args: z.infer<typeof splitSchema>;
   try {
     args = splitSchema.parse(JSON.parse(rawArguments || "{}"));
-  } catch {
-    return { error: "apply_damage with targets needs an amount (or dice) and at least one target.", retry: true };
+  } catch (error) {
+    return badArguments("apply_damage with targets needs an amount (or dice) and at least one target.", error, rawArguments);
   }
 
   // The rule damage_enemy holds (encounter-tools.ts): the model hurts an

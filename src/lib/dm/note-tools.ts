@@ -1,7 +1,7 @@
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { insertNote } from "@/lib/db/notes";
 import { publishPersisted } from "@/lib/events";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 
 // write_campaign_note: the DM records a durable table note. It lands as a
 // pending suggestion (the same flow as member suggestions), so the party
@@ -34,8 +34,8 @@ export function handleWriteCampaignNote(
   let args: { title?: unknown; body?: unknown };
   try {
     args = JSON.parse(rawArguments || "{}");
-  } catch {
-    return { error: "Invalid arguments.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: write_campaign_note needs a body.", error, rawArguments);
   }
   const body = String(args.body ?? "").trim();
   if (!body) {

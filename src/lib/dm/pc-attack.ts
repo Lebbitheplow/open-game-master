@@ -31,13 +31,14 @@ import { spendInspirationCounter } from "@/lib/dm/roll-riders";
 import { spendLuckCounter } from "@/lib/srd/class-resources";
 import { moteOf } from "@/lib/dm/authored-mote";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import { invalidArguments, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, invalidArguments, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { attacksLeft } from "@/lib/dm/action-budget";
 import { approachForAttack, withApproach } from "@/lib/dm/pc-attack-approach";
 import { walkHeld } from "@/lib/dm/player-word";
 import { commitConjuredStrike } from "@/lib/dm/conjured-strike";
 import { swallowCover } from "@/lib/dm/swallow";
 import { resolveEnemyRef } from "@/lib/dm/enemy-damage";
+import { fittedText } from "@/lib/dm/fitted-text";
 
 // Re-exported for the callers that learned it here.
 export { resolvePendingPcAttack } from "@/lib/dm/pc-attack-parked";
@@ -247,7 +248,7 @@ export const pcAttackArgsSchema = z.object({
   smite: z.coerce.number().int().min(1).max(9).optional(),
   maneuver: z.string().max(60).optional(),
   advantageSource: z.enum(ADVANTAGE_SOURCES).optional(),
-  advantageReason: z.string().max(200).optional(),
+  advantageReason: fittedText(200).optional(),
   bonusAttack: z.preprocess(
     (value) => (typeof value === "string" ? value.trim().toLowerCase() : value),
     z.enum(BONUS_ATTACKS).optional(),
@@ -315,12 +316,12 @@ export function handlePcAttack(
   let raw: unknown;
   try {
     raw = JSON.parse(rawArguments || "{}");
-  } catch {
-    return { error: "Invalid arguments: pc_attack needs characterId and targetEnemyId.", retry: true };
+  } catch (error) {
+    return badArguments("Invalid arguments: pc_attack needs characterId and targetEnemyId.", error, rawArguments);
   }
   const parsed = pcAttackArgsSchema.safeParse(raw);
   if (!parsed.success) {
-    return invalidArguments("Invalid arguments: pc_attack needs characterId and targetEnemyId.", parsed.error);
+    return invalidArguments("Invalid arguments: pc_attack needs characterId and targetEnemyId.", parsed.error, raw);
   }
   const args: PcAttackArgs = parsed.data;
   const staleSheet = resolveSheetRef(args.characterId, sheets, sheetsById);
