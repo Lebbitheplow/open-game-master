@@ -9,6 +9,11 @@
     "authoring": "the workshop's and WorldForge's authoring tools, which read what an author writes as they go"
   },
   "sites": {
+    "lib/dm/player-word-logic.ts#helper": [["search",1,"reads whether a player's own words hold still or name a fight action (a foe of the fight or a spell on the sheet, by containsPhrase); no record is chosen by it, and a miss only means the AI waits for the player"]],
+    "lib/dm/player-word-logic.ts#partial": [["search",7,"reads whether a player's own words hold still or name a fight action (a foe of the fight or a spell on the sheet, by containsPhrase); no record is chosen by it, and a miss only means the AI waits for the player"]],
+    "lib/dm/player-word-read.ts#keyed": [["key",1,"the kept readings, by a hash of the model route and the words"]],
+    "lib/dm/player-word-read.ts#partial": [["parse",1,"the JSON object in the utility model's reply"]],
+    "lib/dm/player-word.ts#keyed": [["key",1,"the current character's sheet by its id, handed to resolveSheetRef"]],
     "lib/srd/chosen-element.ts#whole": [["key",1,"a feature's granting class by its id, textKey on both sides (the element of the subclass that holds Elemental Affinity)"]],
     "lib/srd/subclass-choice-picks.ts#keyed": [["key",1,"a stored pick's ids by its name, textKey (the builder's and an edit's picks sent by name)"]],
     "lib/srd/dragon-ancestor.ts#whole": [["key",1,"a class entry by its id, textKey (the class holding Elemental Affinity)"]],

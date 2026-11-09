@@ -1415,7 +1415,7 @@ function encounterCall(
     case "use_reaction":
       return { result: handleUseReaction(campaign, turn, rawArguments, sheets, sheetsById) };
     case "end_turn": {
-      const unasked = characterCallUnasked(campaign.id, turn, rawArguments, "characterId");
+      const unasked = characterCallUnasked(campaign.id, turn, rawArguments, "characterId", true);
       return { result: unasked ? unasked : handleEndTurn(campaign, turn, rawArguments, sheets, sheetsById) };
     }
     case "damage_enemy":

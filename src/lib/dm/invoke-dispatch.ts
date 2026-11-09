@@ -72,7 +72,7 @@ import { strictBooleanArgs } from "@/lib/dm/arg-coerce";
 import { listedCalls, listRefusal, oneCasting, PART_LISTS, partsResult, type OneCasting } from "@/lib/dm/action-parts-logic";
 import { awayCall, gateAiCall } from "@/lib/dm/ai-gate";
 import { conductGate } from "@/lib/dm/party-conduct";
-import { characterCallUnasked } from "@/lib/dm/player-word";
+import { characterCallUnasked, prepareWordFor } from "@/lib/dm/player-word";
 import { EXPLORE_TOOL_NAMES, handleExploreCall } from "@/lib/dm/explore-tools";
 import { watchRungs } from "@/lib/dm/romance-stage-lines";
 import type { Campaign } from "@/lib/db/campaigns";
@@ -133,6 +133,10 @@ async function dispatchCall(
   }
   // "false" sent as a string is false (src/lib/dm/arg-coerce.ts).
   const coerced = strictBooleanArgs(sentArguments);
+  // A connected agent program is held to its player's words as the AI is
+  // (src/lib/dm/player-word.ts); at a table in another language they are
+  // read once first.
+  await prepareWordFor(campaign, turn ?? null, coerced);
   // The model's damage, healing and binding conditions are the server's to
   // roll (src/lib/dm/ai-gate.ts); the console keeps its free hand.
   const gated = context.serverBuilt ? { args: coerced } : gateAiCall(name, coerced, { campaign, turn, sheetsById });

@@ -66,7 +66,7 @@ import { forgetEnemyTurns, enemyTurnEntry, speedWords } from "@/lib/dm/enemy-tur
 import { nearerSquares } from "@/lib/dm/flee-logic";
 import { aggressiveSteps, approachSteps } from "@/lib/dm/enemy-aggressive";
 import { enemyTurnRefusal } from "@/lib/dm/enemy-turn-order";
-import { declaredThisTurn } from "@/lib/dm/player-word";
+import { declaredThisTurn, walkHeld } from "@/lib/dm/player-word";
 import { featureTeleportFeet } from "@/lib/dm/feature-teleport";
 import { distancesFrom, payForTeleport, stillAt, teleportRangeFeet, walkCharacter } from "@/lib/dm/token-rules";
 import type { DmTurn } from "@/lib/db/dm-turns";
@@ -558,7 +558,14 @@ export function handleMoveToken(
     const fresh = walker ? (getSheetById(walker.id) ?? walker) : null;
     const current = encounter.orderReady ? encounter.order[encounter.turnIndex] : undefined;
     const declared = fresh && turn.actor === "ai" && declaredThisTurn(campaign.id, fresh.id);
-    if (fresh && (aiPlaysSheet(campaign, fresh) || declared) && current?.kind === "pc" && current.characterId === fresh.id) {
+    const ownTurn = current?.kind === "pc" && current.characterId === fresh?.id;
+    // A player who said their character stays put is not walked, whatever
+    // else they asked for (src/lib/dm/player-word-logic.ts).
+    const held = fresh && ownTurn ? walkHeld(campaign.id, turn, fresh, " Nothing was moved.") : null;
+    if (held) {
+      return held;
+    }
+    if (fresh && (aiPlaysSheet(campaign, fresh) || declared) && ownTurn) {
       return walkCharacter(campaign, encounter, map, fresh, resolved.token, { x: args.x, y: args.y }, { drag: args.drag, careful: args.careful });
     }
     // The move a character readied releases off their turn, by whoever runs

@@ -7,7 +7,7 @@ import { getActiveEncounter, listEnemies, orderEntryId } from "@/lib/db/encounte
 import { budgetApplies } from "@/lib/dm/action-budget";
 import { listCastNpcs } from "@/lib/db/npcs";
 import { getSheetById } from "@/lib/db/sheets";
-import { declaredThisTurn, wordsThisTurn } from "@/lib/dm/player-word";
+import { playerWord, wordsThisTurn } from "@/lib/dm/player-word";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { arcTextTimeoutMs } from "@/lib/model-client";
@@ -112,7 +112,13 @@ export function turnOverFor(campaignId: string, turn: Pick<DmTurn, "resolvedChar
     return null;
   }
   const sheet = getSheetById(current.characterId);
-  return sheet && !aiPlaysSheet(getCampaignById(campaignId), sheet) && declaredThisTurn(campaignId, sheet.id) ? sheet.id : null;
+  if (!sheet || aiPlaysSheet(getCampaignById(campaignId), sheet)) {
+    return null;
+  }
+  // A player who chose to stay put and do nothing may have the turn handed
+  // on; words from before the fight, or a question, end nothing.
+  const word = playerWord(campaignId, sheet.id);
+  return word.declares || word.why === "held" ? sheet.id : null;
 }
 
 // Whether this DM turn ruled on something the character did: a call that

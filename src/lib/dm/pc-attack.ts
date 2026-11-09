@@ -34,6 +34,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { invalidArguments, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { attacksLeft } from "@/lib/dm/action-budget";
 import { approachForAttack, withApproach } from "@/lib/dm/pc-attack-approach";
+import { walkHeld } from "@/lib/dm/player-word";
 import { commitConjuredStrike } from "@/lib/dm/conjured-strike";
 import { swallowCover } from "@/lib/dm/swallow";
 import { resolveEnemyRef } from "@/lib/dm/enemy-damage";
@@ -91,7 +92,7 @@ export const pcAttackTool: ToolDef = {
               approach: {
                 type: "boolean",
                 description:
-                  "True when the player said their character moves to the target first and it is out of melee reach. Closing in or charging counts. The server walks them beside it out of their movement, drawing opportunity attacks, then attacks; too far to reach this turn, they close in as far as they can and nothing is attacked.",
+                  "True when the player said their character moves to the target first and it is out of melee reach. Closing in or charging counts; holding still or staying put never does. The server walks them beside it out of their movement, drawing opportunity attacks, then attacks; too far to reach this turn, they close in as far as they can and nothing is attacked.",
               },
               spell: {
                 type: "string",
@@ -346,6 +347,13 @@ export function handlePcAttack(
       const beside = planPcAttack({ campaign, turn, encounter, sheet, args, sheets, sheetsById, skipReach: true, anySide: engine.anySide, reactionAttack: engine.reactionAttack });
       if ("refused" in beside) {
         return beside.refused;
+      }
+      // Their player said they stay where they are: the swing from here was
+      // refused for reach, and no walk is made to fix that (the walk drew
+      // opportunity attacks for a fight its player never moved in).
+      const held = walkHeld(campaign.id, turn, sheet, " Nothing was moved or attacked.");
+      if (held) {
+        return { ...held, error: `${dry.refused.error} ${held.error}` };
       }
       const approach = approachForAttack(campaign, encounter, sheet, args, dry.refused);
       if (!approach) {

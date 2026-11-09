@@ -9,7 +9,7 @@ import { handleMoveToken } from "@/lib/dm/map-tools";
 import { textKey } from "@/lib/language/text-logic";
 import { getSheetById } from "@/lib/db/sheets";
 import { aiPlaysSheet } from "@/lib/dm/companion-command";
-import { declaredThisTurn } from "@/lib/dm/player-word";
+import { declaredThisTurn, walkHeld } from "@/lib/dm/player-word";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolError } from "@/lib/dm/tool-errors";
 
@@ -65,6 +65,11 @@ export function planActionWalk(
   // field cannot hide itself by the actor's kind, so this is where it says
   // why (issue #666).
   const sheet = getSheetById(mover.id);
+  // Their player said they stay put: no walk, and the action is not spent.
+  const held = sheet ? walkHeld(campaign.id, actor, sheet, tail) : null;
+  if (held) {
+    return held;
+  }
   if (sheet && !aiPlaysSheet(campaign, sheet) && !(actor.actor === "ai" && declaredThisTurn(campaign.id, sheet.id))) {
     return {
       error: sheet.isCompanion

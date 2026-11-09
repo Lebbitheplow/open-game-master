@@ -192,6 +192,10 @@ export type DmEncounterState = {
   // The current combatant's name while their turn waits on their player
   // (src/lib/dm/player-word.ts characterAwaitingPlayer).
   awaitingPlayer: string | null;
+  // The current character's name while their player keeps them where they
+  // stand (src/lib/dm/player-word.ts characterHeld); optional for a state
+  // built before it existed.
+  holding?: string | null;
   // The enemies a pass made outside the model's turn left owed their turns
   // before the current character's (src/lib/dm/enemies-due.ts); absent when
   // none are. The pass's table note names them too
@@ -1139,6 +1143,10 @@ export function buildGameStateBlock(state: DmGameState): string {
         lines.push(
           `Waiting on ${name}'s player: they have not declared an action this turn. Set the scene and ask what ${name} does; the server refuses any action or end_turn for ${name} until they do.`,
         );
+      }
+      if (encounter.holding) {
+        const name = encounter.holding;
+        lines.push(`${name}'s player said ${name} stays where they are: never walk ${name} this turn (no move_token, approach or toward); resolve only what they asked from where they stand.`);
       }
       if (encounter.openHits?.length) {
         const who = encounter.openHits.map(

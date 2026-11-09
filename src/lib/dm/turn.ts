@@ -137,7 +137,7 @@ import type { ToolResult } from "@/lib/dm/tool-errors";
 import { dispatchAdjudication } from "@/lib/dm/invoke-dispatch";
 import { playsWhole } from "@/lib/dm/legendary-play";
 import { awayCall, gateAiCall } from "@/lib/dm/ai-gate";
-import { characterAwaitingPlayer } from "@/lib/dm/player-word";
+import { characterAwaitingPlayer, characterHeld, prepareWordFor } from "@/lib/dm/player-word";
 import { hitIdOf, openHits } from "@/lib/dm/last-hit";
 import { aiPlaysSheet } from "@/lib/dm/companion-command";
 import { enemiesDue, enemiesOwedTurn, personRunsTable } from "@/lib/dm/enemies-due";
@@ -483,6 +483,7 @@ export function buildEncounterState(campaignId: string, sheets: CharacterSheet[]
     ...(lair.length ? { lairOptions: lair.map((line, at) => `${at + 1}. ${line}`) } : {}),
     movementLeft: encounter.orderReady ? movementLeft(campaignId, encounter, sheets) : null,
     awaitingPlayer: characterAwaitingPlayer(campaignId)?.name ?? null,
+    holding: characterHeld(campaignId)?.name ?? null,
     ...openHitsForState(campaignId, encounter, sheets),
     ...(due.length
       ? {
@@ -2799,6 +2800,9 @@ async function resolveModelCall(
     return routed.refusal;
   }
   const { name, rawArguments } = routed;
+  // At a table in another language, the words of the character this call
+  // names are read once before the gates below run (src/lib/dm/player-word.ts).
+  await prepareWordFor(campaign, turn, rawArguments);
   // The model's damage, healing and binding conditions are the server's to
   // roll (src/lib/dm/ai-gate.ts). The encounter and mutation calls and
   // request_roll below run their handlers directly, so they are held to it

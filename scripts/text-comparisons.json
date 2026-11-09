@@ -16,6 +16,10 @@
   "sites": {
     "lib/content/subclass-choices.ts#[a-z]": [["key",3,"ODM's own pick ids (choice/option) and a choice id made from its label"]],
     "lib/content/subclass-choices.ts#toLowerCase": [["key",1,"a choice id made from its label"]],
+    "lib/dm/player-word-logic.ts#\\b": [["english-extra",13,"the plain English ways a player holds still or names a fight action (englishHold, englishActs, HOLD_*, ACTS), read only at an English table (player-word.ts playerWord); player-word-read.ts reads the same in every other language with the utility model, and a miss only means the AI waits for the player to say it again"]],
+    "lib/dm/player-word-logic.ts#\\w": [["english-extra",1,"the plain English ways a player holds still or names a fight action (englishHold, englishActs, HOLD_*, ACTS), read only at an English table (player-word.ts playerWord); player-word-read.ts reads the same in every other language with the utility model, and a miss only means the AI waits for the player to say it again"]],
+    "lib/dm/player-word-logic.ts#re-word": [["english-extra",5,"the plain English ways a player holds still or names a fight action (englishHold, englishActs, HOLD_*, ACTS), read only at an English table (player-word.ts playerWord); player-word-read.ts reads the same in every other language with the utility model, and a miss only means the AI waits for the player to say it again"]],
+    "lib/dm/player-word.ts#str-list": [["key",1,"the tool argument names that carry the acting character (characterId, casterId, casterCharacterId, healerId, token)"]],
     "lib/srd/chosen-element.ts#str-eq": [["key",1,"a feature's source, the sheet schema's enum"]],
     "lib/srd/subclass-choice-picks.ts#str-eq": [["key",4,"a feature's source (the sheet schema's enum) and the workshop's choice and option ids"]],
     "lib/content/subclass-choices.ts#toUpperCase": [["display",1,"a damage type and a skill's words capitalised for a feature name and a summary"]],
