@@ -2211,7 +2211,7 @@ const spellbook = {};
           cantrips: ["Fire Bolt", "Ray of Frost", "Mage Hand", "Light", "Minor Illusion"],
           prepared: [
             "Magic Missile", "Shield", "Sleep", "Detect Magic", "Misty Step", "Hold Person", "Scorching Ray", "Fireball",
-            "Counterspell", "Lightning Bolt", "Fly", "Greater Invisibility", "Dimension Door", "Cone of Cold", "Wall of Force",
+            "Counterspell", "Lightning Bolt", "Fly", "Greater Invisibility", "Dimension Door", "Ice Storm", "Cone of Cold", "Wall of Force",
           ],
         },
       }),

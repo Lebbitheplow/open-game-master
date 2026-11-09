@@ -41,7 +41,7 @@ export default {
     check(seats <= 9, `the grouped hand fits the fan (${seats} seats)`);
     check((await page.locator(`${root}button.hand-more`).count()) === 0, "no More spine is needed once grouped");
     const spellsLabel = (await spells.first().getAttribute("aria-label")) ?? "";
-    check(/20 spells/.test(spellsLabel) && /Slots 13\/14/.test(spellsLabel), `the Spells card counts its spells and slots ("${spellsLabel}")`);
+    check(/21 spells/.test(spellsLabel) && /Slots 13\/14/.test(spellsLabel), `the Spells card counts its spells and slots ("${spellsLabel}")`);
     check((await page.locator(`${root}button.hand-group-card[data-group-id="group:actions"]`).count()) === 1, "the basic actions fold under Actions");
     // A player at a table a person runs steers nothing: no campaign prep.
     check((await page.locator(`${root}[data-campaign-prep]`).count()) === 0, "no Campaign prep button for a player");
@@ -109,7 +109,7 @@ export default {
     }, { label: "only Misty Step under Bonus action" });
     await t.tap(bonus.first());
     const search = visible(page.locator(`${root}.hand-group input[type="search"]`));
-    check((await search.count()) === 1, "twenty spells bring a search box");
+    check((await search.count()) === 1, "a full spellbook brings a search box");
     await search.first().fill("fire");
     await eventually(async () => {
       const names = await fanNames(page, root);
@@ -117,6 +117,31 @@ export default {
     }, { label: "the fire spells found" });
     await untilStill(page);
     await t.shot("spells-search");
+
+    // A spell of two damage types: either type finds it, and the card keeps
+    // both in sight (its dice line was cut off at the first), as does the aim bar.
+    await search.first().fill("cold");
+    const iceStorm = visible(page.locator(`${root}.hand-fan button.hand-card[aria-label^="Ice Storm,"]`));
+    await eventually(() => iceStorm.count(), { label: "Ice Storm found by its second type" });
+    const iceDice = iceStorm.first().locator(".hand-numbers .hand-dice");
+    const iceLine = await iceDice.evaluate((line) => ({
+      text: line.textContent,
+      fits: line.scrollWidth <= line.clientWidth && line.scrollHeight <= line.clientHeight,
+    }));
+    check(iceLine.text === "2d8 bludgeoning + 4d6 cold, DEX save", `Ice Storm's card names both types ("${iceLine.text}")`);
+    check(iceLine.fits, "Ice Storm's dice line is not cut off");
+    await untilStill(page);
+    await t.shot("two-types");
+    await press(iceStorm.first());
+    const iceAim = visible(page.locator(`${root}.hand-aim`));
+    await eventually(async () => /bludgeoning and cold/.test((await iceAim.first().textContent().catch(() => "")) ?? ""), { label: "the aim bar's Type row names both" });
+    if (viewport === "desktop") {
+      await page.keyboard.press("Escape");
+    } else {
+      await t.tap(visible(page.locator(`${root}button`).filter({ hasText: /^\s*Back\s*$/ })).first());
+    }
+    await eventually(async () => (await iceAim.count()) === 0, { label: "Ice Storm let go" });
+
     await t.tap(visible(page.locator(`${root}.hand-group-clear`)).first());
     await eventually(() => tabs.count(), { label: "the tabs back once the search is cleared" });
 

@@ -119,6 +119,8 @@ export type HandCard = {
   // A dice expression the preview can average; null when nothing is rolled.
   damage: string | null;
   damageType: string;
+  // The second type of a spell that deals two at once (Ice Storm's cold).
+  secondType?: string;
   heals: boolean;
   save: { ability: string; dc: number } | null;
   melee: boolean;
