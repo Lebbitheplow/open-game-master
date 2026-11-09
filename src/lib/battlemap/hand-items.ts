@@ -30,6 +30,7 @@ import { itemSpellsOfRow, type ItemSpell } from "@/lib/srd/item-spells";
 import { hasItemTag } from "@/lib/srd/item-tags";
 import { scrollCheckDc, scrollNumbers, scrollSpell, scrollUnreadable } from "@/lib/srd/scrolls";
 import { isSpellStorer } from "@/lib/srd/spell-storing";
+import { beadRefusal, beadsOf, isPrayerNecklace } from "@/lib/srd/prayer-beads";
 import { checklistSpell } from "@/lib/srd/spell-lists";
 import type { CombatRiders } from "@/lib/srd/feature-effects";
 import { costGate, standingGate, type Gate, type HandCard, type HandCost, type HandOptions, type HandTurn, type SpellFact } from "@/lib/battlemap/hand-core";
@@ -37,13 +38,19 @@ import { castingCost, factFor, spellCard } from "@/lib/battlemap/hand-spells";
 
 export type ItemCastRow = { item: EquipmentItem; entry: ItemSpell; scroll: boolean };
 
+export function unnamedBeads(item: Pick<EquipmentItem, "name">): boolean {
+  return isPrayerNecklace(item.name) && !beadsOf(item.name);
+}
+
 // Each spell of each item the engine would cast it from. Two scrolls under one name
 // read the first it finds, so that is the one card; the other is dealt when the
 // first has gone. A mystery item deals nothing until it is named.
 export function itemCastRows(sheet: Pick<CharacterSheet, "equipment">): ItemCastRow[] {
   const seen = new Set<string>();
   return sheet.equipment.flatMap((item): ItemCastRow[] => {
-    if (item.identified === false || isSpellStorer(item)) return [];
+    // A necklace whose beads the GM has not named deals none: the card would
+    // let its player pick a bead nobody gave them (prayer-beads.ts).
+    if (item.identified === false || isSpellStorer(item) || unnamedBeads(item)) return [];
     const held = hasItemTag(item, "scroll") ? scrollSpell(item) : null;
     if (held) {
       const key = textKey(item.name);
@@ -107,6 +114,7 @@ function gatesFor(sheet: CharacterSheet, turn: HandTurn, row: ItemCastRow, fact:
   }
   const rule = chargeRuleOf(item);
   const short = rule ? chargesShort(item, rule, entry.charges) : null;
+  const beadSpent = beadRefusal(item, entry.spell);
   return [
     // The engine will not guess between them (item-use.ts).
     named.length > 1 ? reason(`"${item.name}" could mean ${named.map((line) => line.name).join(" or ")}; name the item exactly. Nothing was spent.`) : null,
@@ -117,6 +125,7 @@ function gatesFor(sheet: CharacterSheet, turn: HandTurn, row: ItemCastRow, fact:
     castingCost(fact.castingTime) === "reaction" ? reason(`${entry.spell} is cast as a reaction: say so in your own words when its trigger comes.`) : null,
     !rule && entry.charges ? reason(`${item.name} holds no charges, and ${entry.spell} from it costs ${entry.charges}. Nothing was spent.`) : null,
     short ? { reason: `${short} Nothing was spent.`, spent: true } : null,
+    beadSpent ? { reason: beadSpent, spent: true } : null,
     pay,
   ];
 }

@@ -38,6 +38,7 @@ import {
 } from "@/lib/dm/item-charges";
 import { chargesShort } from "@/lib/srd/item-charge-rules";
 import { linesNamed } from "@/lib/srd/item-row";
+import { beadForSpell, beadRefusal, beadsOf } from "@/lib/srd/prayer-beads";
 import { getSheetById } from "@/lib/db/sheets";
 import { textKey } from "@/lib/language/text-logic";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
@@ -110,7 +111,13 @@ function equipmentWithPaymentBack(equipment: readonly EquipmentItem[], paid: Non
   }
   return equipment.map((item) => {
     if (item !== line) return item;
-    return charges !== undefined ? { ...item, charges: (item.charges ?? 0) + charges } : { ...item, qty: item.qty + 1 };
+    if (charges === undefined) {
+      return { ...item, qty: item.qty + 1 };
+    }
+    // A prayer bead the cast never used is unused again.
+    const { beadsSpent: _spent, ...rest } = item;
+    void _spent;
+    return { ...rest, charges: (item.charges ?? 0) + charges, ...(row.beadsSpent ? { beadsSpent: row.beadsSpent } : {}) };
   });
 }
 
@@ -198,6 +205,11 @@ export function chargedItemUse(
   if (barrier) {
     return { error: barrier, refused: "rules" };
   }
+  // A prayer bead the necklace does not hold, or one used since dawn.
+  const beadless = cast ? beadRefusal(carried, cast.spell) : null;
+  if (beadless) {
+    return { error: beadless, refused: "rules" };
+  }
   // In a fight, activating the item is the character's action, or the bonus
   // action its text names (Ring of Jumping, a prayer bead).
   const kind = cast?.bonusAction ? "bonus" : "action";
@@ -261,7 +273,10 @@ export function chargedItemUse(
   const destroyed = math.destroyed || Boolean(cast?.usesUp);
   const becomes = "becomes" in math ? math.becomes : undefined;
   if (rule || destroyed) {
-    const equipment = equipmentAfterSpend(sheet.equipment, carried, math.charges, destroyed, becomes);
+    const spent = equipmentAfterSpend(sheet.equipment, carried, math.charges, destroyed, becomes);
+    const bead = cast && beadsOf(carried.name) ? beadForSpell(cast.spell) : null;
+    const at = sheet.equipment.indexOf(carried);
+    const equipment = bead && !destroyed && !becomes ? spent.map((item, index) => (index === at ? { ...item, beadsSpent: [...(item.beadsSpent ?? []), bead] } : item)) : spent;
     writeCharges(campaign.id, sheet, equipment, "use_item", rule ? `${carried.name}: ${count} charge${count === 1 ? "" : "s"}` : `${carried.name}: used up`, turnId);
   }
   // The check the cast waits on (Amulet of the Planes); a failure casts

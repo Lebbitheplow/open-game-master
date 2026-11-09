@@ -182,6 +182,12 @@ export function dusksBetween(from: number, to: number): number {
   return dawnsBetween(from - (DUSK_HOUR - DAWN_HOUR) * MINUTES_PER_HOUR, to - (DUSK_HOUR - DAWN_HOUR) * MINUTES_PER_HOUR);
 }
 
+function withoutBeadsSpent(item: EquipmentItem): EquipmentItem {
+  const { beadsSpent: _spent, ...rest } = item;
+  void _spent;
+  return rest;
+}
+
 // Every dawn the clock crosses, each charged item that regains at dawn rolls
 // what it regains (never past its most); an item whose text brings its uses
 // back at dusk, at each dusk. Called by advanceClock, so a rest, travel and
@@ -196,7 +202,12 @@ export function rechargeAtDawn(campaignId: string, from: number, to: number): st
   const recharged: string[] = [];
   for (const sheet of listSheets(campaignId)) {
     let changed = false;
-    const equipment = sheet.equipment.map((item) => {
+    const equipment = sheet.equipment.map((row) => {
+      // A prayer bead used is whole again at dawn (src/lib/srd/prayer-beads.ts).
+      const item = dawns && row.beadsSpent ? withoutBeadsSpent(row) : row;
+      if (item !== row) {
+        changed = true;
+      }
       const rule = chargeRuleOf(item);
       if (!rule?.regain || typeof item.charges !== "number") {
         return item;

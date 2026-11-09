@@ -27,6 +27,7 @@
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { rowName, type RowItem } from "@/lib/srd/item-row";
+import { beadsCast, beadsOf } from "@/lib/srd/prayer-beads";
 
 export type ItemSpell = {
   spell: string;
@@ -319,7 +320,14 @@ function WONDROUS_ROWS(): ItemSpellRow[] {
 export function itemSpellsOf(itemName: string): ItemSpell[] {
   const whole = itemName.trim();
   const name = whole.replace(/\s*\([^()]*\)\s*$/, "");
-  return (ROWS.find((row) => row.item.test(whole)) ?? ROWS.find((row) => row.item.test(name)))?.spells ?? [];
+  return onlyItsBeads(whole, (ROWS.find((row) => row.item.test(whole)) ?? ROWS.find((row) => row.item.test(name)))?.spells ?? []);
+}
+
+// A Necklace of Prayer Beads casts what its beads hold, once the GM has named
+// them (src/lib/srd/prayer-beads.ts); unnamed, every kind is the GM's to say.
+function onlyItsBeads(name: string, spells: ItemSpell[]): ItemSpell[] {
+  const beads = beadsOf(name);
+  return beads ? spells.filter((entry) => beadsCast(beads, entry.spell)) : spells;
 }
 
 // The spells a carried row casts: a workshop item's own list when it carries
@@ -328,7 +336,7 @@ export function itemSpellsOf(itemName: string): ItemSpell[] {
 // Magic Missiles casts them.
 export function itemSpellsOfRow(item: RowItem & { gear?: unknown }): ItemSpell[] {
   const own = (item.gear as { spells?: ItemSpell[] } | undefined)?.spells;
-  return Array.isArray(own) && own.length ? own : itemSpellsOf(rowName(item));
+  return Array.isArray(own) && own.length ? own : onlyItsBeads(item.name, itemSpellsOf(rowName(item)));
 }
 
 // What casting `spell` from this item costs for `charges` spent (the fewest

@@ -489,7 +489,7 @@ await test("They take no Ready pick and are no first-turn tip; the lookups read 
 });
 
 await test("Every item the table says casts a spell deals its cards with no two alike, and asks use_item first of whatever it resolves", async () => {
-  const names = ["Wand of Fear", "Wand of Magic Detection", "Staff of Frost", "Staff of Charming", "Staff of Swarming Insects", "Staff of Power", "Eyes of Charming", "Medallion of Thoughts", "Helm of Teleportation", "Cubic Gate", "Necklace of Prayer Beads", "Robe of Stars", "Cape of the Mountebank", "Rod of Alertness", "Boots of Levitation", "Helm of Comprehending Languages", "Ring of Telekinesis", "Crystal Ball of Telepathy", "Circlet of Blasting", "Cloak of Arachnida", "Wind Fan", "Trident of Fish Command", "Ring of Fire Elemental Command"];
+  const names = ["Wand of Fear", "Wand of Magic Detection", "Staff of Frost", "Staff of Charming", "Staff of Swarming Insects", "Staff of Power", "Eyes of Charming", "Medallion of Thoughts", "Helm of Teleportation", "Cubic Gate", "Necklace of Prayer Beads (Blessing, Curing, Favor, Smiting, Summons, Wind Walking)", "Robe of Stars", "Cape of the Mountebank", "Rod of Alertness", "Boots of Levitation", "Helm of Comprehending Languages", "Ring of Telekinesis", "Crystal Ball of Telepathy", "Circlet of Blasting", "Cloak of Arachnida", "Wind Fan", "Trident of Fish Command", "Ring of Fire Elemental Command"];
   await stage(mage, []);
   for (const name of names) {
     world.patch(mage.id, { equipment: [wand(name, { equipped: true })] });
@@ -525,6 +525,35 @@ await test("A Trident of Fish Command casts while carried, as its text says, not
   const out = await run("use_item", { characterId: mage.id, item: "Trident of Fish Command", spell: "Dominate Beast" });
   assert.equal(out.ok, true, JSON.stringify(out));
   dropItemCast(mage.id, "Dominate Beast");
+});
+
+await test("A Necklace of Prayer Beads deals the beads the GM named and no other, each once until dawn", async () => {
+  const { rechargeAtDawn } = await import("../src/lib/dm/item-charges.ts");
+  const necklace = (name, extra = {}) => ({ name, qty: 1, equipped: true, attuned: true, ...extra });
+  await stage(mage, [necklace("Necklace of Prayer Beads")]);
+  const asClass = (id) => world.patch(mage.id, { class: id, classes: (world.sheet(mage.id).classes ?? []).map((entry) => ({ ...entry, id })) });
+  asClass("cleric");
+  assert.deepEqual(itemCards(mage), [], "no bead named: no card lets the player pick one");
+  const unnamed = { card: "spell", spell: "Planar Ally", slotLevel: 6, item: "Necklace of Prayer Beads" };
+  assert.match(intentRefusal(campaign(), world.sheet(mage.id), unnamed), /GM's to say/, "and an older Hand's card is refused");
+  world.patch(mage.id, { equipment: [necklace("Necklace of Prayer Beads (Blessing, Curing)")] });
+  assert.deepEqual(itemCards(mage).map((card) => card.name).sort(), ["Necklace of Prayer Beads (Blessing, Curing): Bless", "Necklace of Prayer Beads (Blessing, Curing): Cure Wounds", "Necklace of Prayer Beads (Blessing, Curing): Lesser Restoration"]);
+  const ally = await run("use_item", { characterId: mage.id, item: "Necklace of Prayer Beads (Blessing, Curing)", spell: "Planar Ally" });
+  assert.match(ally.error ?? "", /not cast Planar Ally|casts Bless/, JSON.stringify(ally));
+  const cure = await run("use_item", { characterId: mage.id, item: "Necklace of Prayer Beads (Blessing, Curing)", spell: "Cure Wounds" });
+  assert.equal(cure.ok, true, JSON.stringify(cure));
+  dropItemCast(mage.id, "Cure Wounds");
+  const row1 = world.sheet(mage.id).equipment[0];
+  assert.deepEqual(row1.beadsSpent, ["curing"]);
+  assert.equal(row1.charges, 1, "two beads named, two charges");
+  kit.giveTurn(mage.id);
+  const again = await run("use_item", { characterId: mage.id, item: "Necklace of Prayer Beads (Blessing, Curing)", spell: "Lesser Restoration" });
+  assert.match(again.error ?? "", /Every bead of curing/, "the one bead of curing is spent, whichever of its spells is asked");
+  assert.match(cardNamed(mage, "Necklace of Prayer Beads (Blessing, Curing): Lesser Restoration").disabled, /Every bead of curing/);
+  assert.equal(cardNamed(mage, "Necklace of Prayer Beads (Blessing, Curing): Bless").disabled, null);
+  rechargeAtDawn(world.campaignId, 0, 2 * 24 * 60);
+  assert.equal(world.sheet(mage.id).equipment[0].beadsSpent, undefined, "dawn makes the bead whole");
+  asClass("wizard");
 });
 
 // A fresh node process on the same database is the server after a restart: it
