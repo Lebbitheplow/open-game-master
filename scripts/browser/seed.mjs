@@ -2514,6 +2514,10 @@ const afterAttackTables = {};
 // Duelist and Favored by the Gods (scenario after-roll-riders).
 const AFTER_RIDER_TITLE = "Favored Swing";
 const afterRiderTables = {};
+// A second player's swing, with the lead's cleric beside them holding War God's
+// Blessing (scenario ally-reaction-on-roll).
+const ALLY_TITLE = "Blessed Swing";
+const allyTables = {};
 {
   const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
   const maps = await import("../../src/lib/db/battle-maps.ts");
@@ -2524,6 +2528,12 @@ const afterRiderTables = {};
     [AFTER_RIDER_TITLE, afterRiderTables, [], {
       features: [{ name: "Channel Divinity: Guided Strike", source: "choice" }, { name: "Master Duelist", source: "choice" }, { name: "Favored by the Gods", source: "choice" }],
       resources: { channel_divinity: { max: 2, used: 0 }, sub_master_duelist: { max: 1, used: 0 }, sub_favored_by_the_gods: { max: 1, used: 0 } },
+    }],
+    [ALLY_TITLE, allyTables, [], {
+      class: "cleric",
+      otherRolls: true,
+      features: [{ name: "Channel Divinity: War God's Blessing", source: "choice" }],
+      resources: { channel_divinity: { max: 2, used: 0 } },
     }],
   ]) for (const viewport of ["desktop", "phone"]) {
     const table = campaigns.createCampaign(player.id, {
@@ -2544,9 +2554,13 @@ const afterRiderTables = {};
       table.id,
       world.owner.id,
       3,
-      heroInput({ name: "Tamsin Reed", class: "fighter", level: 3, feats, equipment: [{ name: "Longsword", qty: 1, equipped: true }] }),
+      heroInput({ name: "Tamsin Reed", class: patch.class ?? "fighter", level: 3, feats, equipment: [{ name: "Longsword", qty: 1, equipped: true }] }),
     );
-    sheets.patchSheet(hero.id, patch);
+    const { class: _heroClass, otherRolls, ...heroPatch } = patch;
+    sheets.patchSheet(hero.id, heroPatch);
+    const roller = otherRolls
+      ? sheets.createSheet(table.id, player.id, 3, heroInput({ name: "Bren Ash", class: "fighter", level: 3, feats: [], equipment: [{ name: "Longsword", qty: 1, equipped: true }] }))
+      : hero;
     const started = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: player.id }, {
       name: "start_encounter",
       args: { enemies: [{ monster: "goblin", count: 1 }] },
@@ -2560,17 +2574,17 @@ const afterRiderTables = {};
     getDatabase().prepare("UPDATE battle_maps SET doors_json = '{}' WHERE id = ?").run(board.id);
     const [goblin] = encounterRows.listEnemies(encounter.id);
     for (const [token, x] of maps.listTokens(board.id).map((entry) => [entry, entry.refId === goblin.id ? 3 : 2])) {
-      maps.moveToken(token.id, x, 6, 0);
+      maps.moveToken(token.id, x, otherRolls && token.refId === hero.id ? 3 : 6, 0);
     }
-    const place = encounter.order.findIndex((entry) => entry.characterId === hero.id);
+    const place = encounter.order.findIndex((entry) => entry.characterId === roller.id);
     if (place < 0) {
       throw new Error("the lucky swing table's fighter has no place in the order");
     }
     encounterRows.saveEncounter({ ...encounterRows.getActiveEncounter(table.id), orderReady: true, round: Math.max(1, encounter.round), turnIndex: place, turnBudget: null, legendary: { ...encounter.legendary, due: [] } });
     campaigns.setFloor(table.id, initiativeFloorFor(table.id) ?? { mode: "open" });
     // Set once the order is: real dice would have parked the initiative too.
-    campaigns.setMemberRealDice(table.id, world.owner.id, true);
-    tables[viewport] = { id: table.id, hero: hero.id, goblin: goblin.id };
+    campaigns.setMemberRealDice(table.id, otherRolls ? player.id : world.owner.id, true);
+    tables[viewport] = { id: table.id, hero: hero.id, roller: roller.id, goblin: goblin.id };
   }
 }
 
@@ -3627,6 +3641,7 @@ const ids = {
   afterRollTables,
   afterAttackTables,
   afterRiderTables,
+  allyTables,
   portentTables,
   watchTables,
   shiftTables,
@@ -3746,6 +3761,7 @@ const ids = {
     ...Object.fromEntries(Object.entries(afterRollTables).map(([viewport, table]) => [table.id, `${AFTER_ROLL_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(afterAttackTables).map(([viewport, table]) => [table.id, `${AFTER_ATTACK_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(afterRiderTables).map(([viewport, table]) => [table.id, `${AFTER_RIDER_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(allyTables).map(([viewport, table]) => [table.id, `${ALLY_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(portentTables).map(([viewport, table]) => [table.id, `${PORTENT_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(watchTables).map(([viewport, table]) => [table.id, `${WATCH_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(shiftTables).map(([viewport, table]) => [table.id, `${SHIFT_TITLE} (${viewport})`])),

@@ -1828,7 +1828,7 @@
    "ability": "int",
    "recharge": "long",
    "action": "reaction",
-   "guidance": "A reaction adding the artificer's Intelligence modifier to an ability check or saving throw by them or an ally within 30 feet."
+   "guidance": "A reaction adding the artificer's Intelligence modifier to an ability check or saving throw by them or an ally within 30 feet. A player's request_roll check or save waits on a card that offers this, so do not spend it for them there. Use it here only for a roll that cannot wait (a forced save, an agent's seat), and narrate the result."
   },
   {
    "id": "art_right_tool",

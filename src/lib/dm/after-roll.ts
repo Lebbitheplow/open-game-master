@@ -5,9 +5,11 @@
 import { listConnectionGrants } from "@/lib/agents/grants";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { PendingRoll } from "@/lib/db/dm-turns";
-import { getSheetById } from "@/lib/db/sheets";
+import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { rollExpression, type RollResult } from "@/lib/dice";
 import { spendFeatureUse } from "@/lib/dm/attack-onhit";
+import { withinFeet } from "@/lib/dm/authored-saves";
+import { computeSheetDerived } from "@/lib/srd";
 import { spendRollCarriers } from "@/lib/dm/forced-save";
 import { attackTurnOver, recordTargetAc, type AttackRecord } from "@/lib/dm/attack-record";
 import {
@@ -18,7 +20,11 @@ import {
   DARK_ONES_OWN_LUCK,
   extraD20Expression,
   FAVORED_BY_THE_GODS,
+  FLASH_OF_GENIUS,
+  flashOfGeniusOption,
   GUIDED_STRIKE_BONUS,
+  WAR_GODS_BLESSING_BONUS,
+  warGodsBlessingOption,
   heldBardicDie,
   heldOwnLuckDie,
   holdsMoteDie,
@@ -36,7 +42,7 @@ import {
   type AfterRollOption,
   type ThrownRoll,
 } from "@/lib/dm/after-roll-logic";
-import { allyShifters, payChronalShift } from "@/lib/dm/chronal-shift";
+import { allyShifters, canReactNow, inShiftReach, payChronalShift, SHIFT_RANGE_FEET } from "@/lib/dm/chronal-shift";
 import { LUCK_SPEND } from "@/lib/dm/roll-riders";
 import { luckPointsLeft } from "@/lib/srd/class-resources";
 import { getActiveEncounter } from "@/lib/db/encounters";
@@ -95,20 +101,40 @@ export function optionsForPending(
     const ac = recordTargetAc(pending.campaignId, record);
     const critRange = record.critRange ?? 20;
     const own = done.kept ? [] : afterAttackOptions(sheet, { outcome, ac, critRange, spent: [...spent, ...bought], reactionFree });
-    const allies = shiftCanHelp({ kind: "attack", outcome, ac, critRange }) ? allyShifters(pending.campaignId, sheet, "attack", done) : [];
+    const allies = allyChoicesFor(pending.campaignId, sheet, { kind: "attack", outcome, ac, critRange }, done);
     return [...own, ...allies];
   }
   const upFront: AfterRollId[] = luckRodeThrow(pending.expression, pending.advantage) ? ["lucky"] : [];
   const own = done.kept ? [] : afterRollOptions(sheet, { kind: pending.kind, outcome, dc: pending.dc, spent: [...spent, ...upFront], reactionFree });
-  const allies = shiftCanHelp({ kind: pending.kind, outcome, dc: pending.dc }) ? allyShifters(pending.campaignId, sheet, pending.kind, done) : [];
+  const allies = allyChoicesFor(pending.campaignId, sheet, { kind: pending.kind, outcome, dc: pending.dc, spent }, done);
   return [...own, ...allies];
 }
 
-// The wizards who could answer a roll the server just threw for a player
-// whose rolls wait (invoke-roll.ts, pc-attack-parked.ts throwForChoice): the
-// roll parks on them as it would on the roller's own options.
-export function allyShiftsFor(campaignId: string, sheet: CharacterSheet, roll: { kind: string; outcome: RollResult; dc: number | null } | { kind: "attack"; outcome: RollResult; ac: number; critRange: number }): AfterRollOption[] {
-  return shiftCanHelp(roll) ? allyShifters(campaignId, sheet, roll.kind) : [];
+// Who could answer a roll from their own screen, for a player whose rolls wait
+// (invoke-roll.ts, pc-attack-parked.ts throwForChoice): the roll parks on them
+// as it would on the roller's own options. Chronal Shift, War God's Blessing
+// and Flash of Genius, which the artificer may also spend on their own roll.
+export function allyChoicesFor(
+  campaignId: string,
+  sheet: CharacterSheet,
+  roll: { kind: string; outcome: RollResult; dc: number | null; spent?: readonly AfterRollId[] } | { kind: "attack"; outcome: RollResult; ac: number; critRange: number },
+  done: Pick<ThrownRoll, "shiftedBy" | "declined" | "kept"> = {},
+): AfterRollOption[] {
+  const shifts = shiftCanHelp(roll) ? allyShifters(campaignId, sheet, roll.kind, done) : [];
+  const skip = new Set([sheet.id, ...(done.shiftedBy ?? []), ...(done.declined ?? [])]);
+  const others = listSheets(campaignId)
+    .map((stale) => getSheetById(stale.id) ?? stale)
+    .filter((other) => !skip.has(other.id) && rollsCanWait(other) && canReactNow(campaignId, other));
+  if ("ac" in roll) {
+    // Its text asks for 30 feet and not for sight.
+    const fight = getActiveEncounter(campaignId);
+    const near = others.filter((cleric) => !fight || withinFeet(fight.id, cleric.id, sheet.id, SHIFT_RANGE_FEET));
+    return [...shifts, ...near.flatMap((cleric) => warGodsBlessingOption(cleric, roll) ?? [])];
+  }
+  const flash = (artificer: CharacterSheet, ally: boolean) => flashOfGeniusOption(artificer, computeSheetDerived(artificer).abilityMods.int, roll, ally);
+  const own = !done.kept && !roll.spent?.includes("flash_of_genius") && canReactNow(campaignId, sheet) ? flash(sheet, false) : null;
+  const help = others.filter((artificer) => inShiftReach(campaignId, artificer, sheet)).flatMap((artificer) => flash(artificer, true) ?? []);
+  return [...shifts, ...(own ? [own] : []), ...help];
 }
 
 // The roll's d20s thrown again, one fresh die for each it threw, obeying what
@@ -129,10 +155,27 @@ export function spendAfterRoll(
   id: AfterRollId,
   outcome: RollResult,
   advantage = "none",
-  // Another character pays (a wizard's Chronal Shift on this roll).
+  // Another character pays, answering this roll from their own screen.
   payer?: CharacterSheet,
 ): { outcome: RollResult; choosing: boolean } | null {
   const die = (sides: number) => ({ sides, value: rollExpression(`1d${sides}`).total, kept: true });
+  if (id === "war_gods_blessing" || id === "flash_of_genius") {
+    const giver = payer ?? sheet;
+    if (!canReactNow(campaign.id, giver)) {
+      return null;
+    }
+    const paid = id === "war_gods_blessing"
+      ? spendFeatureUse(campaign, giver.id, CHANNEL_DIVINITY, "Channel Divinity: War God's Blessing", "player")
+      : spendFeatureUse(campaign, giver.id, FLASH_OF_GENIUS, "Flash of Genius", "player");
+    if (!paid) {
+      return null;
+    }
+    const encounter = getActiveEncounter(campaign.id);
+    if (encounter) {
+      markReactionUsed(encounter, giver.id);
+    }
+    return { outcome: withFlatBonus(outcome, id === "war_gods_blessing" ? WAR_GODS_BLESSING_BONUS : computeSheetDerived(giver).abilityMods.int), choosing: false };
+  }
   if (id === "guided_strike") {
     return spendFeatureUse(campaign, sheet.id, CHANNEL_DIVINITY, "Channel Divinity: Guided Strike", "player") ? { outcome: withFlatBonus(outcome, GUIDED_STRIKE_BONUS), choosing: false } : null;
   }

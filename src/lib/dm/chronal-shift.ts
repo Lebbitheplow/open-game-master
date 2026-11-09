@@ -41,17 +41,16 @@ function usesLeft(sheet: Pick<CharacterSheet, "resources">): number {
   return state ? Math.max(0, state.max - state.used) : 0;
 }
 
+// Whether the character could take a reaction now: theirs is free, and they
+// are able to take one.
+export function canReactNow(campaignId: string, sheet: CharacterSheet): boolean {
+  return sheet.currentHp > 0 && !sheet.deathSaves?.dead && !incapacitatedBy(sheet.conditions) && reactionFreeFor(campaignId, sheet.id);
+}
+
 // Whether the wizard could spend Chronal Shift now, wherever the roll is: the
-// feature with a use left, their reaction free, and able to take one.
+// feature with a use left, and able to react.
 export function canShiftNow(campaignId: string, wizard: CharacterSheet): boolean {
-  return (
-    holdsFeature(wizard, "chronal shift") &&
-    usesLeft(wizard) > 0 &&
-    wizard.currentHp > 0 &&
-    !wizard.deathSaves?.dead &&
-    !incapacitatedBy(wizard.conditions) &&
-    reactionFreeFor(campaignId, wizard.id)
-  );
+  return holdsFeature(wizard, "chronal shift") && usesLeft(wizard) > 0 && canReactNow(campaignId, wizard);
 }
 
 // Whether the creature is in the wizard's reach for it: within 30 feet and
