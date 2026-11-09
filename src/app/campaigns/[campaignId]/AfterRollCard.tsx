@@ -164,8 +164,11 @@ export function AfterRollCard({
             ? "You kept this roll."
             : pending.kind === "attack"
               // An attack only waits on a miss (after-roll-logic.ts afterAttackOptions).
-              ? "As it stands, the attack misses. You can still change that."
-              : "Before the game says what happens, you can still change it."}
+              // With nothing of their own to press, only the helpers can change it.
+              ? `As it stands, the attack misses.${own.length ? " You can still change that." : ""}`
+              : own.length
+                ? "Before the game says what happens, you can still change it."
+                : "Before the game says what happens, someone may still help."}
       </p>
       {pending.reason ? <p className="check-dim mt-0.5 text-xs">{pending.reason}</p> : null}
       {waitingOn.length ? (
