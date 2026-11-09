@@ -262,8 +262,12 @@ export function handleTakeRest(
   // Whoever rested with an item they asked to attune to is attuned now,
   // short rest or long (a long rest holds a short one).
   const attuned = settleAttunements(campaign, turnId, sheets, reason);
-  // A held Destructive Wrath ends with the rest that gives the use back.
-  for (const id of resting) {
+  // A held Destructive Wrath ends with the rest that gives the use back: a
+  // long rest for those who gain from it, a short one for everyone standing
+  // (its uses come back below). Read from `resting` alone, a short rest left
+  // the hold beside a full set of uses.
+  const regaining = args.kind === "long" ? resting : sheets.filter((stale) => !getSheetById(stale.id)?.deathSaves?.dead).map((stale) => stale.id);
+  for (const id of regaining) {
     const sheet = getSheetById(id);
     if (sheet && holdsDestructiveWrath(sheet)) {
       spendWrath(campaign.id, id);

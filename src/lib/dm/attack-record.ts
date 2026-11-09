@@ -29,7 +29,8 @@ import { damageTypeFeat, poisonerIgnoresResistance, type DamageTypeFeat } from "
 // (attack-swing.ts askDamage). The server throws it at once; real dice park it
 // on the damage roll's record, and attack-blow.ts lands it either way.
 export type DamageAsk = {
-  // Destructive Wrath wrote every die at its maximum: nothing to enter.
+  // Destructive Wrath wrote every die at its maximum: nothing to enter, so
+  // real dice are not asked for.
   noDice?: boolean;
   expression: string;
   // The dice riding the blow under a type of their own (damage-parts.ts).
@@ -67,6 +68,9 @@ export type AttackRecord = PendingAttack & {
   melee?: boolean;
   // Touch of Death's necrotic, chosen on the hit (after-roll.ts).
   touchOfDeath?: number;
+  // Destructive Wrath, chosen on the hit (after-roll.ts): its lightning and
+  // thunder dice are dealt at their maximum.
+  destructiveWrath?: boolean;
   unarmed?: boolean;
   improvised?: boolean;
   // The weapon's catalog name, for Curving Shot's arrows.

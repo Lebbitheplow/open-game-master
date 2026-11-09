@@ -46,6 +46,7 @@ import {
 import { allyShifters, canReactNow, inShiftReach, payChronalShift, SHIFT_RANGE_FEET } from "@/lib/dm/chronal-shift";
 import { LUCK_SPEND } from "@/lib/dm/roll-riders";
 import { luckPointsLeft } from "@/lib/srd/class-resources";
+import { rollsWrathDice } from "@/lib/dm/destructive-wrath-logic";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { markReactionUsed } from "@/lib/dm/turn-budget";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -101,7 +102,7 @@ export function optionsForPending(
     const bought: AfterRollId[] = record.luck ? ["lucky"] : [];
     const ac = recordTargetAc(pending.campaignId, record);
     const critRange = record.critRange ?? 20;
-    const own = done.kept ? [] : afterAttackOptions(sheet, { outcome, ac, critRange, spent: [...spent, ...bought], reactionFree, melee: record.melee === true && record.ranged !== true });
+    const own = done.kept ? [] : afterAttackOptions(sheet, { outcome, ac, critRange, spent: [...spent, ...bought], reactionFree, melee: record.melee === true && record.ranged !== true, wrathDice: rollsWrathDice(record.damageExpression, record.damageType, record.riders) });
     const allies = allyChoicesFor(pending.campaignId, sheet, { kind: "attack", outcome, ac, critRange }, done);
     return [...own, ...allies];
   }
@@ -158,7 +159,7 @@ export function spendAfterRoll(
   advantage = "none",
   // Another character pays, answering this roll from their own screen.
   payer?: CharacterSheet,
-): { outcome: RollResult; choosing: boolean; touchOfDeath?: number } | null {
+): { outcome: RollResult; choosing: boolean; touchOfDeath?: number; destructiveWrath?: boolean } | null {
   const die = (sides: number) => ({ sides, value: rollExpression(`1d${sides}`).total, kept: true });
   if (id === "war_gods_blessing" || id === "flash_of_genius") {
     const giver = payer ?? sheet;
@@ -182,6 +183,9 @@ export function spendAfterRoll(
   }
   if (id === "touch_of_death") {
     return spendFeatureUse(campaign, sheet.id, CHANNEL_DIVINITY, "Channel Divinity: Touch of Death", "player") ? { outcome, choosing: false, touchOfDeath: touchOfDeathDamage(sheet) } : null;
+  }
+  if (id === "destructive_wrath") {
+    return spendFeatureUse(campaign, sheet.id, CHANNEL_DIVINITY, "Channel Divinity: Destructive Wrath", "player") ? { outcome, choosing: false, destructiveWrath: true } : null;
   }
   if (id === "favored_by_the_gods") {
     if (!spendFeatureUse(campaign, sheet.id, FAVORED_BY_THE_GODS, "Favored by the Gods", "player")) {
