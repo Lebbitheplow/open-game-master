@@ -270,10 +270,16 @@ export function buildAttackProfile(
     }
     // Empowered Evocation, Elemental Affinity (src/lib/srd/spell-damage-riders.ts).
     const facts = spellFactsFor(spellName, sheetSpellAuthors(sheet));
-    const spellRiders = spellDamageRiders(sheet, { school: spellSchoolFor(spellName, sheetSpellAuthors(sheet)), damageType: mechDamageType || args.damageType, level: facts?.level ?? 0, classes: facts?.classes });
-    if (spellRiders.flat > 0 || spellRiders.dice.length) {
-      const extra = [...spellRiders.dice, ...(spellRiders.flat > 0 ? [String(spellRiders.flat)] : [])].join("+");
+    const spellRiders = spellDamageRiders(sheet, { school: spellSchoolFor(spellName, sheetSpellAuthors(sheet)), damageType: mechDamageType || args.damageType, secondType, level: facts?.level ?? 0, classes: facts?.classes });
+    const flatTotal = spellRiders.flat + spellRiders.flatSecond;
+    if (flatTotal > 0 || spellRiders.dice.length) {
+      const extra = [...spellRiders.dice, ...(flatTotal > 0 ? [String(flatTotal)] : [])].join("+");
       profile = { ...profile, damageExpression: `${profile.damageExpression}+${extra}`, riderNotes: [...profile.riderNotes, ...spellRiders.notes] };
+    }
+    // Affinity's Charisma on the second type: it rides those dice as their own
+    // flat part, once, as a critical never doubles it (damage-parts.ts).
+    if (spellRiders.flatSecond > 0 && secondDice && secondType) {
+      profile = { ...profile, gearTyped: [{ dice: `${secondDice}+${spellRiders.flatSecond}`, type: secondType }] };
     }
   } else if (sheet.summon && !sheet.wildShape) {
     // A creature a spell made fights with its stat block (summon-rules.ts).

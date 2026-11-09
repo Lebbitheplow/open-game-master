@@ -12,7 +12,9 @@ import { suite } from "./lib/enforce-harness.mjs";
 import { caster, closeTables, enemyOf, field, FIGHTER, table } from "./lib/enforce-spell-kit.mjs";
 import { layMap } from "./lib/enforce-spells.mjs";
 
+const encounters = await import("../src/lib/db/encounters.ts");
 const { createHomebrew } = await import("../src/lib/db/homebrew.ts");
+const REGENERATING = "Regeneration: The troll regains 10 hit points at the start of its turn. If the troll takes acid or fire damage, this trait doesn't function at the start of the troll's next turn.";
 const { openCastOf, withOpenCast } = await import("../src/lib/dm/cast-rules.ts");
 const { baseDamageExpression } = await import("../src/lib/srd/spell-scaling.ts");
 
@@ -234,6 +236,103 @@ await test("An ally caught in a character's own area takes it as one wound too."
   const { currentHp, deathSaves } = world.sheet(ally.id);
   assert.equal(currentHp, 0);
   assert.deepEqual([deathSaves.failures, deathSaves.dead], [0, false]);
+});
+
+// ---- Elemental Affinity on a spell's second type ----
+
+// SRD 5.1: the Charisma modifier is added to one damage roll of a spell that
+// deals the dragon's type, and a sorcery point buys resistance to it. Ice
+// Storm deals cold as its second type.
+const whiteDragon = (known) =>
+  caster("sorcerer", "cha", known, [], 9, {
+    subclass: "Draconic Bloodline",
+    features: [
+      { name: "Dragon Ancestor: White", source: "choice", level: 1 },
+      { name: "Elemental Affinity", source: "class", level: 6 },
+    ],
+    spellcasting: { known, prepared: [] },
+  });
+const markedCold = (world, id) => world.sheet(id).conditions.some((entry) => /affinity cast \(cold\)/i.test(entry));
+
+await test("A cold dragon's sorcerer adds Charisma to Ice Storm's cold, where resistance meets it, and opens the resistance.", async () => {
+  const { world, sheets: [sorcerer], enemies: [goblin] } = await table([whiteDragon(["Ice Storm"])], 1, { resist: "cold" });
+  // Bludgeoning 16. Cold 24 + 4 Charisma, halved to 14.
+  world.dice(8, 8, 6, 6, 6, 6, 1);
+  const out = await world.invoke("aoe_damage", { casterCharacterId: sorcerer.id, spell: "Ice Storm", level: 4, saveAbility: "dex", dc: 15, enemyIds: [goblin.id] });
+  assert.equal(out.ok, true, out.error);
+  world.clearDice();
+  const now = enemyOf(world, goblin.id);
+  assert.equal(now.maxHp - now.currentHp, 16 + 14);
+  assert.ok(markedCold(world, sorcerer.id), "the resistance's mark was laid");
+});
+
+const brewedForDragon = async (spell, mech, desc) => {
+  const { world, sheets: [sorcerer], enemies: [goblin] } = await table([whiteDragon([spell])], 1, { resist: "fire" });
+  createHomebrew(world.owner.id, {
+    kind: "spell",
+    name: spell,
+    data: { desc, level: 3, classes: ["sorcerer"], school: "evocation", castingTime: "1 action", range: "60 feet", mech },
+  });
+  return { world, sorcerer, goblin };
+};
+
+await test("The same at one target: the Charisma lands with the cold, untouched by the fire resistance.", async () => {
+  const { world, sorcerer, goblin } = await brewedForDragon("Twin Lash", SAVE_MECH, SAVE_TEXT);
+  const { lost: taken } = await castAt(world, sorcerer, goblin, "Twin Lash", [1, 6, 6, 6, 8, 8]);
+  assert.equal(taken, 9 + (16 + 4));
+  assert.ok(markedCold(world, sorcerer.id), "the resistance's mark was laid");
+});
+
+await test("The same on a spell attack, and a critical doubles the dice but not the Charisma.", async () => {
+  const hit = await brewedForDragon("Twin Bolt", ATTACK_MECH, ATTACK_TEXT);
+  const one = await attackAt(hit.world, hit.sorcerer, hit.goblin, "Twin Bolt", [18, 6, 6, 6, 8, 8]);
+  assert.equal(one.lost, 9 + (16 + 4));
+  assert.ok(markedCold(hit.world, hit.sorcerer.id), "the resistance's mark was laid");
+
+  const crit = await brewedForDragon("Twin Bolt", ATTACK_MECH, ATTACK_TEXT);
+  const two = await attackAt(crit.world, crit.sorcerer, crit.goblin, "Twin Bolt", [20, ...new Array(10).fill(5)]);
+  assert.equal(two.lost, 15 + (20 + 4));
+});
+
+// ---- one spell, one wound on an enemy ----
+
+const enemyOfStrike = async (patch) => {
+  const { world, sheets: [cleric], enemies: [foe] } = await table([caster("cleric", "wis", ["Flame Strike"], [], 9)], 1, patch);
+  return { world, cleric, foe };
+};
+const strikeOn = (world, cleric, foe) =>
+  world.invoke("aoe_damage", { casterCharacterId: cleric.id, spell: "Flame Strike", level: 5, saveAbility: "dex", dc: 15, enemyIds: [foe.id] });
+
+await test("An enemy concentrating asks one concentration save for one two-type area spell.", async () => {
+  const { world, cleric, foe } = await enemyOfStrike({ resist: "" });
+  encounters.setEnemyConcentration(foe.id, "Bless");
+  world.dice(6, 6, 6, 6, 6, 6, 6, 6, 1, 20, 20, 20);
+  const out = await strikeOn(world, cleric, foe);
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.clearDice(), 2, "one of the three spare dice was rolled");
+});
+
+await test("A two-type area spell's fire still stops a regenerating enemy's regeneration.", async () => {
+  const { world, cleric, foe } = await enemyOfStrike({ resist: "", traits: [REGENERATING] });
+  world.dice(1, 1, 1, 1, 1, 1, 1, 1, 1);
+  const out = await strikeOn(world, cleric, foe);
+  assert.equal(out.ok, true, out.error);
+  world.clearDice();
+  assert.ok(enemyOf(world, foe.id).conditions.some((entry) => /regeneration/i.test(entry)), "the regeneration was stopped");
+});
+
+await test("A two-type spell at one target stops it too, as its first type did alone.", async () => {
+  const { world, wizard, enemies: [foe] } = await brewed("Twin Lash", SAVE_MECH, SAVE_TEXT, { stats: { resist: "", traits: [REGENERATING] } });
+  await castAt(world, wizard, foe, "Twin Lash", [1, 1, 1, 1, 1, 1]);
+  assert.ok(enemyOf(world, foe.id).conditions.some((entry) => /regeneration/i.test(entry)), "the regeneration was stopped");
+});
+
+await test("A two-type spell's fire still catches the oil on an enemy.", async () => {
+  const { world, wizard, enemies: [foe] } = await brewed("Twin Lash", SAVE_MECH, SAVE_TEXT, { stats: { resist: "" } });
+  encounters.patchEnemyConditions(foe.id, ["covered in oil"], {});
+  const { lost: taken } = await castAt(world, wizard, foe, "Twin Lash", [1, 1, 1, 1, 1, 1]);
+  // Five dice of 1, and 5 more from the burning oil.
+  assert.equal(taken, 5 + 5);
 });
 
 // ---- the reader ----

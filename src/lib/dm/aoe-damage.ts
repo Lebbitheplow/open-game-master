@@ -51,6 +51,7 @@ import { spellEngineName } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { spellWardOn } from "@/lib/dm/cast-reach";
 import { partsTaken, partsTotal, splitDamageExpression, type DamagePart } from "@/lib/dm/aoe-parts";
+import { landTypedParts } from "@/lib/dm/enemy-blow";
 import { castingHold, outOfReach } from "@/lib/dm/spell-planes";
 import { castPrismaticSpray, isPrismaticSpray } from "@/lib/dm/prismatic";
 import { unknownRef, type ToolResult } from "@/lib/dm/tool-errors";
@@ -508,11 +509,13 @@ export function handleAoeDamage(
     total = partsTotal(rolled);
   }
   if (args.damage !== undefined && args.damage !== 0 && args.damage !== "0") {
-    total = Math.max(1, total + (plan?.flat ?? 0));
+    total = Math.max(1, total + (plan?.flat ?? 0) + (plan?.flatSecond ?? 0));
   }
   // The blast as it lands: one part, or the first type with the caster's
-  // flat bonus and the second type's own roll.
-  const blast: DamagePart[] = rolled.length > 1 ? [{ ...rolled[0], amount: total - rolled[1].amount }, rolled[1]] : [{ amount: total, type: args.type }];
+  // flat bonus and the second type's own roll with its own (Elemental
+  // Affinity's cold on Ice Storm).
+  const secondShare = rolled.length > 1 ? rolled[1].amount + (plan?.flatSecond ?? 0) : 0;
+  const blast: DamagePart[] = rolled.length > 1 ? [{ ...rolled[0], amount: total - secondShare }, { ...rolled[1], amount: secondShare }] : [{ amount: total, type: args.type }];
   const halfOnSave = args.halfOnSave ?? true;
   const ability = (args.saveAbility ?? "dex") as SaveAbility;
   // What a failed save lays on an enemy, recorded with the spell and caster.
@@ -604,26 +607,12 @@ export function handleAoeDamage(
       }
     }
     const hpBefore = enemy.currentHp;
-    // Each damage type lands on its own, meeting its own resistance.
-    for (const part of taken.filter((entry) => entry.amount > 0)) {
-      const now = getEnemy(enemy.id) ?? enemy;
-      if (now.status !== "alive") {
-        break;
-      }
-      const applied = applyEnemyDamage(
-        campaign,
-        turn,
-        encounter,
-        now,
-        part.amount,
-        sheets,
-        sheetsById,
-        part.type,
-        // An enemy's spell is a spell's damage too (casterEnemyId).
-        plan || args.spell ? { magical: true, spell: true, ...(plan && elementalAdeptApplies(plan.caster, part.type) ? { ignoreResistance: true } : {}) } : undefined,
-      );
+    const noteLanded = (applied: Record<string, unknown>) => {
       if (applied.damageNote) {
         row.note = [row.note, applied.damageNote].filter(Boolean).join(" ");
+      }
+      if (applied.damageByType) {
+        row.damageByType = applied.damageByType;
       }
       row.health = applied.health;
       if (applied.dead) {
@@ -636,6 +625,42 @@ export function handleAoeDamage(
           ...(applied.xpAwarded ? { xpAwarded: applied.xpAwarded } : {}),
         };
       }
+    };
+    const landing = taken.filter((entry) => entry.amount > 0);
+    const [firstPart, secondPart] = landing;
+    const now = getEnemy(enemy.id) ?? enemy;
+    if (firstPart && secondPart && now.status === "alive") {
+      // Two types are one wound, each meeting its own resistance. Landed one
+      // at a time, an enemy concentrating saved twice at the lower DCs.
+      noteLanded(
+        landTypedParts({
+          campaign,
+          turn,
+          encounter,
+          enemy: now,
+          parts: landing.map((part) => ({ amount: part.amount, type: part.type ?? "" })),
+          sheets,
+          sheetsById,
+          weapon: { magical: true, ...(plan && elementalAdeptApplies(plan.caster, firstPart.type) ? { ignoreResistanceBy: "Elemental Adept" } : {}) },
+          ...(plan && elementalAdeptApplies(plan.caster, secondPart.type) ? { otherParts: { ignoreResistanceBy: "Elemental Adept" } } : {}),
+          spell: true,
+        }),
+      );
+    } else if (firstPart && now.status === "alive") {
+      noteLanded(
+        applyEnemyDamage(
+          campaign,
+          turn,
+          encounter,
+          now,
+          firstPart.amount,
+          sheets,
+          sheetsById,
+          firstPart.type,
+          // An enemy's spell is a spell's damage too (casterEnemyId).
+          plan || args.spell ? { magical: true, spell: true, ...(plan && elementalAdeptApplies(plan.caster, firstPart.type) ? { ignoreResistance: true } : {}) } : undefined,
+        ),
+      );
     }
     // What the failure cost, so legendary_resist can settle it as a success
     // (src/lib/dm/legendary-tools.ts): the conditions and the hit points a
