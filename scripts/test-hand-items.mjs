@@ -609,6 +609,14 @@ await test("A two-type spell from an item deals both of its types, at the item's
   assert.equal(world.sheet(mage.id).spellcasting.slots["3"].used, 0, "no slot");
 });
 
+await test("A host that cannot resolve an item's spell says so, and the Hand then deals no item card", async () => {
+  const { SERVER_FEATURES } = await import("../src/lib/capabilities.ts");
+  assert.equal(SERVER_FEATURES.handItemCasts, true, "this host offers them");
+  await stage(mage, [wand("Wand of Web")]);
+  assert.equal(deriveHand(world.sheet(mage.id), turnOf(mage)).filter((card) => card.fromItem).length, 1);
+  assert.equal(deriveHand(world.sheet(mage.id), turnOf(mage), { items: false }).filter((card) => card.fromItem).length, 0, "an older host's Hand leaves them typed");
+});
+
 // A fresh node process on the same database is the server after a restart: it
 // has none of this process's memory.
 function afterRestart(source) {

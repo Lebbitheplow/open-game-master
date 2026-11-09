@@ -340,6 +340,10 @@ export type HandOptions = {
   // false for a host too old to catch the creatures in it, whose blasts are
   // aimed at one enemy as before. Absent means it is.
   blasts?: boolean;
+  // Whether the spells items cast are dealt as cards (hand-items.ts): false
+  // for a host too old to resolve them (src/lib/capabilities.ts
+  // handItemCasts). Absent means they are.
+  items?: boolean;
 };
 
 // The board and the party as the gear cards read them: what lies on the

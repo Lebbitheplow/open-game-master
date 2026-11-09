@@ -109,6 +109,11 @@ export const SERVER_FEATURES = {
   // message's `shares`, which an older host drops and resolves as the aimed
   // creature alone, so the split stays shut there.
   handShares: true,
+  // A card for each spell a wand, a staff, a scroll or another item casts
+  // (hand-items.ts): an older host's actions route reads an item's spell
+  // only out of a Ring of Spell Storing and refuses the rest, so they stay
+  // typed there.
+  handItemCasts: true,
   // What each connected agent's receiver or poll link wakes, and a link
   // that stopped and why, on Settings > Connected agents (issue 654): the
   // `links` and `stoppedLinks` fields of GET /api/profile/agents.

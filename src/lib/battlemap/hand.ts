@@ -508,7 +508,7 @@ export function deriveHand(sheet: CharacterSheet, turn: HandTurn = FRESH_TURN, o
     ...riderCards(sheet, turn, riders),
     ...spells,
     ...ringSpellCards(sheet, turn, riders, options),
-    ...itemSpellCards(sheet, turn, riders, options),
+    ...(options.items === false ? [] : itemSpellCards(sheet, turn, riders, options)),
     ...features,
     ...optionCards(sheet, turn),
     ...intimidatingPresenceCards(sheet, turn),
