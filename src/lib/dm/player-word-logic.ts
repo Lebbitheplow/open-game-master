@@ -20,7 +20,7 @@
 // English is read here; any other table language is read once by the
 // utility model (src/lib/dm/player-word-read.ts) and handed in as `read`.
 
-import { containsPhrase } from "@/lib/language/text-logic";
+import { containsPhrase, textKey } from "@/lib/language/text-logic";
 
 export type WordLine = {
   content: string;
@@ -88,14 +88,64 @@ export function englishActs(text: string, names: readonly string[]): boolean {
   return ACTS.test(text) || names.some((name) => name.trim().length > 1 && containsPhrase(text, name));
 }
 
+// The English words around a quoted question that say only who asks it:
+// '"Do you know this place?" I ask Corin.' Without them, the commonest way
+// to write a question to someone ("..." I ask) read as an act, and a
+// companion asked about the road got a Persuasion check (0.34.1 report).
+// "I ask him to open the gate" and "I ask for help" ask for something done,
+// and "and", "then" or "but" add a second act: none of those is a tag.
+const ASK_TAG =
+  /^[\p{L}'’-]+\s+(?:[\p{L}]+ly\s+)?(?:ask|asks|asked|inquire|inquires|wonder|wonders)\b(?:[\s,]+(?!(?:to|for|and|then|but)\b)[\p{L}'’-]+){0,5}[\s,.!…]*$/iu;
+// An indirect question: "I ask Corin what he thinks of the road."
+const ASK_INDIRECT =
+  /^[\p{L}'’-]+\s+(?:[\p{L}]+ly\s+)?(?:ask|asks|asked|inquire|inquires|wonder|wonders)\b(?:\s+(?!(?:to|for)\b)[\p{L}'’-]+){0,3}?\s+(?:what|whether|if|how|why|where|who|whom|when|which|about)\b(?![^]*\b(?:and|then|but)\b)[^]*$/iu;
+
 // A line that only asks: every sentence of it ends in a question mark, in
-// any script.
-export function onlyAsks(text: string): boolean {
+// any script, or at an English table only says who asks.
+export function onlyAsks(text: string, english = true): boolean {
   const parts = text
     .split(/(?<=[.!?。！？؟\n])\s*/)
     .map((part) => part.trim())
     .filter((part) => /[\p{L}\p{N}]/u.test(part));
-  return parts.length > 0 && parts.every((part) => /[?？؟]["'”’)\]]*$/.test(part));
+  // Each sentence is a question, a tag, or something else; a line of tags
+  // alone ("I ask.") asks nothing.
+  const kind = (part: string): "question" | "tag" | null => {
+    if (/[?？؟]["'”’)\]]*$/.test(part)) {
+      return "question";
+    }
+    // The quote mark a question closed with opens the tag's part.
+    const bare = part.replace(/^["'”’“‘)\]\s]+/, "");
+    if (!english) {
+      return null;
+    }
+    return ASK_INDIRECT.test(bare) ? "question" : ASK_TAG.test(bare) ? "tag" : null;
+  };
+  const kinds = parts.map(kind);
+  return kinds.includes("question") && kinds.every((entry) => entry !== null);
+}
+
+// Whether every one of the character's lines only asks: no Hand card, and
+// nothing said beside the question. A roll to sway someone is the answer to
+// an attempt, and a question is none (SRD 5.1, Ability Checks: the GM calls
+// for one when a character tries something whose outcome is in doubt), so
+// the AI answers the question in character and the player decides whether
+// to press. No line at all is not this: the GM may still call for a check
+// the scene forces.
+export function onlyAsked(lines: readonly Pick<WordLine, "content" | "card">[], english: boolean): boolean {
+  return lines.length > 0 && lines.every((line) => !line.card && onlyAsks(line.content, english));
+}
+
+// The skills social_check rolls: the checks that try to change a mind.
+const SWAY_SKILLS = new Set(["persuasion", "deception", "intimidation"]);
+
+// Whether a request_roll's skill is one that sways someone.
+export function swaySkill(skill: string | undefined): boolean {
+  return SWAY_SKILLS.has(textKey(skill ?? ""));
+}
+
+// The refusal of a roll to sway someone the player only asked a question of.
+export function askedSwayRefusal(name: string): string {
+  return `${name}'s player only asked a question, and a question sways no one, so nothing was rolled. Answer it in character, as the one asked feels about the party, and do not narrate a check. If the player then presses, argues or bargains, that attempt is the roll.`;
 }
 
 export function readPlayerWord(
@@ -124,7 +174,7 @@ export function readPlayerWord(
   const before = started ? lines.filter((line) => line.createdAt < started) : [];
   const during = started ? lines.filter((line) => line.createdAt >= started) : [...lines];
   const all = lines.map((line) => line.content).join("\n");
-  const asking = (line: WordLine) => onlyAsks(line.content);
+  const asking = (line: WordLine) => onlyAsks(line.content, options.english);
 
   if (options.english) {
     const acts = englishActs(all, options.names);

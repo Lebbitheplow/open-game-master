@@ -47,6 +47,8 @@ import { moteAfterRoll, moteOf } from "@/lib/dm/authored-mote";
 import { applyRollGates } from "@/lib/dm/roll-gates";
 import { afterRollDeadline, armAfterRollKeep } from "@/lib/dm/after-roll-timer";
 import { badArguments, invalidArguments, toolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { swayUnasked } from "@/lib/dm/player-word";
+import { swaySkill } from "@/lib/dm/player-word-logic";
 
 export function handleRequestRoll(
   campaign: Campaign,
@@ -95,6 +97,14 @@ export function handleRequestRoll(
         error: `${fresh.name} is dead and makes no rolls. Only magic that raises the dead brings them back.`,
         refused: "rules",
       };
+    }
+  }
+  // A roll to sway someone answers an attempt, and a player who only asked
+  // a question made none (src/lib/dm/player-word.ts swayUnasked).
+  if (sheet && args.kind === "skill_check" && swaySkill(args.skill)) {
+    const unasked = swayUnasked(campaignId, turn, sheet);
+    if (unasked) {
+      return unasked;
     }
   }
   // No stealth on a normal or fast march, and a contest rolls the

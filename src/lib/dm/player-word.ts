@@ -26,7 +26,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import type { Campaign } from "@/lib/db/campaigns";
 import { listEnemies } from "@/lib/db/encounters";
-import { heldRefusal, readPlayerWord, unaskedRefusal, type PlayerWord } from "@/lib/dm/player-word-logic";
+import { askedSwayRefusal, heldRefusal, onlyAsked, readPlayerWord, unaskedRefusal, type PlayerWord } from "@/lib/dm/player-word-logic";
 import { keptWordReading, readWords } from "@/lib/dm/player-word-read";
 
 // The character's own words since the DM last spoke, table talk and
@@ -98,6 +98,27 @@ export function walkHeld(campaignId: string, actor: Pick<DmTurn, "actor"> | null
   }
   const word = playerWord(campaignId, sheet.id);
   return word.holds ? { error: heldRefusal(sheet.name, word.holdQuote, tail), retry: true } : null;
+}
+
+// The refusal of a roll to sway someone (social_check, or a Persuasion,
+// Deception or Intimidation check) for a player's character whose player
+// only asked a question since the DM last spoke, or null. In a fight or out
+// of one: a player asked a companion something, and the AI rolled
+// Persuasion against a DC for an attempt they never made (0.34.1 report).
+// The AI's turn only, and never a character the AI plays; asked before
+// anything is rolled or spent.
+export function swayUnasked(campaignId: string, actor: Pick<DmTurn, "actor"> | null, sheet: Pick<CharacterSheet, "id" | "name">): ToolError | null {
+  if (actor?.actor !== "ai") {
+    return null;
+  }
+  const campaign = getCampaignById(campaignId);
+  const full = getSheetById(sheet.id);
+  if (!campaign || !full || aiPlaysSheet(campaign, full)) {
+    return null;
+  }
+  const lines = ownWordsSinceDm(campaignId, sheet.id).map((line) => ({ content: line.content, card: line.intent?.card ?? null }));
+  const english = (campaign.gameSettings.tableLanguage ?? "english") === "english";
+  return onlyAsked(lines, english) ? { error: askedSwayRefusal(full.name), retry: true } : null;
 }
 
 // Reads the words of the character a call names at a table in another
