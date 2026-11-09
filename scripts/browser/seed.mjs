@@ -2518,6 +2518,9 @@ const afterRiderTables = {};
 // Blessing (scenario ally-reaction-on-roll).
 const ALLY_TITLE = "Blessed Swing";
 const allyTables = {};
+// The same, with an artificer beside them (scenario flash-of-genius-on-roll).
+const FLASH_TITLE = "Flash of Insight";
+const flashTables = {};
 {
   const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
   const maps = await import("../../src/lib/db/battle-maps.ts");
@@ -2534,6 +2537,13 @@ const allyTables = {};
       otherRolls: true,
       features: [{ name: "Channel Divinity: War God's Blessing", source: "choice" }],
       resources: { channel_divinity: { max: 2, used: 0 } },
+    }],
+    [FLASH_TITLE, flashTables, [], {
+      class: "artificer",
+      otherRolls: true,
+      abilities: { str: 10, dex: 10, con: 10, int: 16, wis: 10, cha: 10 },
+      features: [{ name: "Flash of Genius", source: "choice" }],
+      resources: { art_flash_of_genius: { max: 3, used: 0 } },
     }],
   ]) for (const viewport of ["desktop", "phone"]) {
     const table = campaigns.createCampaign(player.id, {
@@ -3642,6 +3652,7 @@ const ids = {
   afterAttackTables,
   afterRiderTables,
   allyTables,
+  flashTables,
   portentTables,
   watchTables,
   shiftTables,
@@ -3762,6 +3773,7 @@ const ids = {
     ...Object.fromEntries(Object.entries(afterAttackTables).map(([viewport, table]) => [table.id, `${AFTER_ATTACK_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(afterRiderTables).map(([viewport, table]) => [table.id, `${AFTER_RIDER_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(allyTables).map(([viewport, table]) => [table.id, `${ALLY_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(flashTables).map(([viewport, table]) => [table.id, `${FLASH_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(portentTables).map(([viewport, table]) => [table.id, `${PORTENT_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(watchTables).map(([viewport, table]) => [table.id, `${WATCH_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(shiftTables).map(([viewport, table]) => [table.id, `${SHIFT_TITLE} (${viewport})`])),
