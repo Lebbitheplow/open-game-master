@@ -205,6 +205,8 @@ await test("A Parry that turns the hit as it lands spends nothing: the use is pa
 await test("An ally's War God's Blessing is offered on a miss only; the hit it makes then offers Touch of Death, even after the roller kept the miss.", async () => {
   const BLESSING = { features: [{ name: "Channel Divinity: War God's Blessing", description: "" }], resources: { channel_divinity: { max: 1, used: 0 } } };
   world.patch(ally.id, BLESSING);
+  // The ally's player is at the table: a helper who is away is not waited on.
+  const online = subscribe(world.campaignId, () => {}, world.sheet(ally.id).userId);
   try {
     const hit = await stage();
     await kit.swing(hero.id, hit.id, [15], { weapon: "Mace" });
@@ -229,6 +231,7 @@ await test("An ally's War God's Blessing is offered on a miss only; the hit it m
     assert.equal(kit.enemy(enemy.id).currentHp, 400 - (4 + 3 + 11));
     assert.equal(open().length, 0, "nothing is left waiting");
   } finally {
+    online();
     world.patch(ally.id, { features: [], resources: {} });
   }
 });
