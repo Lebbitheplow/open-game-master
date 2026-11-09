@@ -107,9 +107,9 @@ export function optionCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] {
     for (const option of channelOptions(sheet)) {
       // Offered when its trigger comes (hand-react.ts), as a reaction card.
       if (heldReaction(sheet, option.name)) continue;
-      // Guided Strike and War God's Blessing are chosen after the d20, on the
-      // card a miss waits on (after-roll-logic.ts): played here, the +10 had
-      // nothing to ride.
+      // Guided Strike, War God's Blessing and Touch of Death are chosen after
+      // the d20, on the card the roll waits on (after-roll-logic.ts): played
+      // here, they had nothing to ride.
       if (isAfterRollChannelOption(option.name)) continue;
       // A row of the authored table is dealt as its own card, which carries the
       // row's target and cost (hand-subclass.ts).

@@ -63,6 +63,8 @@ export type AttackRecord = PendingAttack & {
   ranged?: boolean;
   // Made within reach: what a monster's Parry answers (enemy-reactions.ts).
   melee?: boolean;
+  // Touch of Death's necrotic, chosen on the hit (after-roll.ts).
+  touchOfDeath?: number;
   unarmed?: boolean;
   improvised?: boolean;
   // The weapon's catalog name, for Curving Shot's arrows.

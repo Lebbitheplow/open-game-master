@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 
 const choiceSchema = z.union([
   // `by`: the character whose choice this is, on another character's roll.
-  z.object({ use: z.enum(["lucky", "bardic", "own_luck", "chronal_shift", "guided_strike", "master_duelist", "favored_by_the_gods", "war_gods_blessing", "flash_of_genius"]), by: z.string().min(1).max(80).optional() }),
+  z.object({ use: z.enum(["lucky", "bardic", "own_luck", "chronal_shift", "guided_strike", "master_duelist", "favored_by_the_gods", "war_gods_blessing", "flash_of_genius", "touch_of_death"]), by: z.string().min(1).max(80).optional() }),
   // Which of a luck point's d20s counts.
   z.object({ die: z.number().int().min(0).max(20) }),
   z.object({ keep: z.literal(true) }),
@@ -67,8 +67,8 @@ export async function POST(
     return Response.json({ error: "This is not your roll." }, { status: 403 });
   }
 
-  const land = (outcome: typeof thrown.outcome, landing = thrown.landing) => {
-    const roll = landPendingRoll(context.campaign, pending, outcome, landing);
+  const land = (outcome: typeof thrown.outcome, landing = thrown.landing, landed = pending) => {
+    const roll = landPendingRoll(context.campaign, landed, outcome, landing);
     return roll ? Response.json({ roll }) : Response.json({ error: "That roll was already resolved." }, { status: 409 });
   };
   // A new decision gets its own time; with nothing left to decide it lands.
@@ -126,6 +126,12 @@ export async function POST(
   const paid = runInTurnScope(pending.turnId, () => spendAfterRoll(context.campaign, sheet, choice.use, thrown.outcome, pending.advantage, wizard ?? undefined));
   if (!paid) {
     return Response.json({ error: "That is no longer on offer for this roll." }, { status: 409 });
+  }
+  if (paid.touchOfDeath && pending.attack) {
+    // No die is thrown: the roll stays the player's, and the hit carries the
+    // necrotic. Touch of Death is the one choice a hit waits on, so the hit
+    // lands with it.
+    return land(paid.outcome, thrown.landing, { ...pending, attack: { ...pending.attack, touchOfDeath: paid.touchOfDeath } });
   }
   // The server threw this die: "(physical)" would overclaim the roll now,
   // and the model would be told the player threw it all.

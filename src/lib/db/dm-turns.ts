@@ -327,6 +327,8 @@ export type PendingRollStatus = "pending" | "submitted" | "fallback";
 // is submitted the server compares it to targetAc and, on a hit, parks the
 // matching damage roll (src/lib/dm/pc-attack.ts).
 export type PendingAttack = {
+  // Touch of Death's necrotic, chosen on the hit (after-roll.ts).
+  touchOfDeath?: number;
   attacker: string;
   weapon: string;
   targetEnemyId: string;
@@ -351,7 +353,7 @@ export type PendingAttack = {
   // parked before these were stored has none and resolves under the
   // weapon's type alone, as it always did.
   magical?: boolean;
-  riders?: Array<{ dice: string; type: string }>;
+  riders?: Array<{ dice: string; type: string; flat?: number }>;
   critExtraDice?: number;
   crit?: boolean;
 };

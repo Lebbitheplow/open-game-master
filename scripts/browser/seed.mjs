@@ -2521,6 +2521,8 @@ const allyTables = {};
 // The same, with an artificer beside them (scenario flash-of-genius-on-roll).
 const FLASH_TITLE = "Flash of Insight";
 const flashTables = {};
+const TOUCH_TITLE = "Deathly Swing";
+const touchTables = {};
 {
   const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
   const maps = await import("../../src/lib/db/battle-maps.ts");
@@ -2544,6 +2546,11 @@ const flashTables = {};
       abilities: { str: 10, dex: 10, con: 10, int: 16, wis: 10, cha: 10 },
       features: [{ name: "Flash of Genius", source: "choice" }],
       resources: { art_flash_of_genius: { max: 3, used: 0 } },
+    }],
+    [TOUCH_TITLE, touchTables, [], {
+      class: "cleric",
+      features: [{ name: "Channel Divinity: Touch of Death", source: "choice" }],
+      resources: { channel_divinity: { max: 1, used: 0 } },
     }],
   ]) for (const viewport of ["desktop", "phone"]) {
     const table = campaigns.createCampaign(player.id, {
@@ -3719,6 +3726,7 @@ const ids = {
   afterRiderTables,
   allyTables,
   flashTables,
+  touchTables,
   portentTables,
   watchTables,
   shiftTables,
@@ -3841,6 +3849,7 @@ const ids = {
     ...Object.fromEntries(Object.entries(afterRiderTables).map(([viewport, table]) => [table.id, `${AFTER_RIDER_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(allyTables).map(([viewport, table]) => [table.id, `${ALLY_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(flashTables).map(([viewport, table]) => [table.id, `${FLASH_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(touchTables).map(([viewport, table]) => [table.id, `${TOUCH_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(portentTables).map(([viewport, table]) => [table.id, `${PORTENT_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(watchTables).map(([viewport, table]) => [table.id, `${WATCH_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(shiftTables).map(([viewport, table]) => [table.id, `${SHIFT_TITLE} (${viewport})`])),
