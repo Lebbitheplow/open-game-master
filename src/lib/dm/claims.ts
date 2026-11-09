@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { getCampaignById, type Campaign } from "@/lib/db/campaigns";
-import { aiPlaysSheet } from "@/lib/dm/companion-command";
+import { aiPlaysSheet, commanderOf } from "@/lib/dm/companion-command";
 import { conscienceOn, consciousCompanions } from "@/lib/dm/conscience";
 import { getActiveEncounter, listEnemies, orderEntryId } from "@/lib/db/encounters";
 import { budgetApplies } from "@/lib/dm/action-budget";
@@ -31,6 +31,7 @@ import {
   checkClaims,
   claimKindsFor,
   englishEndsTurn,
+  englishKeepsTurn,
   namedSpeakers,
   parseReaderReply,
   readerSystem,
@@ -135,6 +136,34 @@ export function ruledFor(conversation: readonly GuardMessage[], sheet: Pick<Char
   });
 }
 
+// Whether this DM turn asked the character for their answer with
+// request_player_input: the character, or for a companion a player commands,
+// that player's own character. The GM is then waiting on them, so a narration
+// read as handing their turn on does not end it (issue 761: the GM asked
+// whether the fighter used the last step, and the turn passed before the
+// player could answer).
+export function askedThisTurn(
+  campaign: Campaign,
+  conversation: readonly GuardMessage[],
+  sheets: readonly CharacterSheet[],
+  characterId: string,
+): boolean {
+  const sheet = sheets.find((entry) => entry.id === characterId);
+  const commander = sheet?.isCompanion ? commanderOf(campaign, sheet) : null;
+  const askable = new Set([characterId, ...(commander ? sheets.filter((entry) => entry.userId === commander && !entry.isCompanion).map((entry) => entry.id) : [])]);
+  return collectExchanges(conversation).some((exchange) => {
+    if (exchange.name !== "request_player_input") {
+      return false;
+    }
+    try {
+      const args = JSON.parse(exchange.arguments || "{}") as { characterIds?: unknown };
+      return Array.isArray(args.characterIds) && args.characterIds.some((id) => typeof id === "string" && askable.has(id));
+    } catch {
+      return false;
+    }
+  });
+}
+
 // Whether the player's own words end the turn the fight still waits on
 // ("I close in and attack it, then I end my turn"), once the DM ruled on what
 // they did (ruledFor). gpt-oss-20b answered that line by asking what they do
@@ -151,8 +180,13 @@ export async function readTurnEndInWords(
   if (!text.trim()) {
     return false;
   }
-  if (campaign.gameSettings.tableLanguage === "english" && englishEndsTurn(text)) {
-    return true;
+  if (campaign.gameSettings.tableLanguage === "english") {
+    if (englishEndsTurn(text)) {
+      return true;
+    }
+    if (englishKeepsTurn(text)) {
+      return false;
+    }
   }
   const claims = await readClaims(campaign, {
     label: `turn ${turn.id}`,
