@@ -48,5 +48,10 @@ export default {
     const state = await read.json();
     check(state.read === true, "the page's reading of the PDF arrived with it");
     check(state.feedsRules === true, "the entry feeds the rules search");
+    // The lead's shelf is shared with later scenarios (empty-states reads it as
+    // empty, world-pack-omissions counts its hand-built monsters), so the
+    // workshop made here goes again, as pdf-import's does.
+    const removed = await api.delete(`${base}/api/workshops/${workshopId}`);
+    check(removed.ok(), `the binder's workshop is removed again (HTTP ${removed.status()})`);
   },
 };
