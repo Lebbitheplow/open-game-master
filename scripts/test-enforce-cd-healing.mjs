@@ -178,7 +178,7 @@ await test("The Hand deals Turn the Tide and Balm of Peace as healing cards, and
     world.clearDice();
     assert.equal(out.ok, true, `${name}: ${out.error}`);
     assert.equal(used(who), 1, `${name} spends its use`);
-    assert.equal(/Divine power channelled into a subclass effect/.test(JSON.stringify(out.result)), false, `${name} is resolved, not handed back as the pool's reminder`);
+    assert.equal(/A subclass effect\. In a fight, name the option/.test(JSON.stringify(out.result)), false, `${name} is resolved, not handed back as the pool's reminder`);
   }
 });
 
