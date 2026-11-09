@@ -150,6 +150,7 @@ export function landTypedParts(input: {
           // The total lands untyped, so a radiant part says so itself
           // (Undead Fortitude: "unless the damage is radiant").
           ...(byType.some((part) => part.amount > 0 && /radiant/i.test(part.type)) ? { radiant: true } : {}),
+          blowTypes: byType.filter((part) => part.amount > 0).map((part) => part.type),
           ...(input.concentrationDisadvantage ? { concentrationDisadvantage: true } : {}),
         })
       : {

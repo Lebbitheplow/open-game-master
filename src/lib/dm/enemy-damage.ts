@@ -405,6 +405,9 @@ export function applyEnemyDamage(
     // Mage Slayer: a melee weapon hit from within 5 feet puts the caster's
     // concentration save at disadvantage (src/lib/srd/feat-combat.ts).
     concentrationDisadvantage?: boolean;
+    // The types of a blow of several, which lands untyped (enemy-blow.ts):
+    // its fire still catches oil and stops a troll's regeneration.
+    blowTypes?: string[];
   },
 ): ToolResult {
   // A character fighting on the other side, seen as a foe (sheet-foe.ts):
@@ -417,7 +420,8 @@ export function applyEnemyDamage(
     const blow = { amount, type: damageType ?? undefined, magical, spell, silvered, adamantine, goodWielder, ignoreResistanceTo: ignores, crit, nonlethal, death };
     return applySheetFoeBlow(campaign, turn, encounter, enemy, blow, sheets, sheetsById, holdVictory === true);
   }
-  const fireBlow = /\bfire\b/i.test(damageType ?? "");
+  const typesOfBlow = [damageType ?? "", ...(options?.blowTypes ?? [])].join(" ");
+  const fireBlow = /\bfire\b/i.test(typesOfBlow);
   // Oil (SRD 5.1 Adventuring Gear): "If the target takes any fire damage
   // before the oil dries (after 1 minute), the target takes an additional 5
   // fire damage from the burning oil." The coat burns once and is gone
@@ -556,7 +560,7 @@ export function applyEnemyDamage(
   // condition on the creature that ends at the start of its own turn, so
   // the table and the DM see it.
   const stoppers = regenerationOf(enemy.stats)?.stoppedBy ?? [];
-  if ((!math.dropped || regenerating) && stoppers.some((type) => new RegExp(`\\b${type}\\b`, "i").test(damageType ?? ""))) {
+  if ((!math.dropped || regenerating) && stoppers.some((type) => new RegExp(`\\b${type}\\b`, "i").test(typesOfBlow))) {
     const fresh = getEnemy(enemy.id);
     if (fresh && !fresh.conditions.includes(REGENERATION_STOPPED)) {
       patchEnemyConditions(enemy.id, [...fresh.conditions, REGENERATION_STOPPED], {

@@ -153,6 +153,13 @@ export function aoeOnCharacters(input: {
       if (typeof applied.hp === "string") {
         row.hp = applied.hp;
       }
+      // What landed, beside what the save left (aoe-damage.ts says why).
+      if (typeof applied.damageApplied === "number" && applied.damageApplied !== damageTaken) {
+        row.damageApplied = applied.damageApplied;
+      }
+      if (applied.damageByType) {
+        row.damageByType = applied.damageByType;
+      }
       if (applied.dying) {
         row.dying = applied.dying;
       }

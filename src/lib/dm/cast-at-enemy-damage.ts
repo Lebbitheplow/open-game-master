@@ -58,12 +58,14 @@ export function landSpellDamage(input: {
   const riders = spellDamageRiders(sheet, {
     school: spellSchoolFor(spell, authors),
     damageType,
+    secondType: mech?.secondType,
     level: spellLevel,
     classes: facts?.classes,
   });
   // A spell of a Draconic sorcerer's dragon's type opens Elemental Affinity's
   // resistance (src/lib/dm/affinity-cast.ts).
   markAffinityCast(campaign, sheet, damageType);
+  markAffinityCast(campaign, sheet, mech?.secondType);
   // Blight on a plant: the dice's maximum, rolled as no dice at all.
   // A subclass feature's die rides the roll (Enhanced Bond, Arcane Firearm).
   // Elemental Adept: on a spell of its type every 1 on the dice is a 2
@@ -95,7 +97,7 @@ export function landSpellDamage(input: {
       : sharedRoll !== undefined
         ? { total: sharedRoll }
         : rollCard(campaign, turn, sheet.id, "damage", rollAgainst(spellName, enemy.displayName), rolledExpression, { kind: "sheet", id: sheet.id, name: sheet.name });
-  const total = outcome.total + riders.flat;
+  const total = outcome.total + riders.flat + riders.flatSecond;
   const halves = halfOnSave || riders.potentCantrip;
   // Feeblemind's damage lands whatever the save (spell-mech-types.ts).
   const shareOf = (amount: number) => (saved && !mech?.riders?.damageIgnoresSave ? (halves ? Math.floor(amount / 2) : 0) : amount);
@@ -111,8 +113,8 @@ export function landSpellDamage(input: {
   const typedParts =
     secondRolled !== null && damageType && secondType
       ? [
-          { amount: shareOf(total - secondRolled), type: damageType },
-          { amount: shareOf(secondRolled), type: secondType },
+          { amount: shareOf(total - secondRolled - riders.flatSecond), type: damageType },
+          { amount: shareOf(secondRolled + riders.flatSecond), type: secondType },
         ]
       : null;
   let damageDealt = typedParts ? typedParts.reduce((sum, part) => sum + part.amount, 0) : shareOf(total);

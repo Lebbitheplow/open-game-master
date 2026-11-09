@@ -493,6 +493,10 @@ function spendPcAttack(plan: AttackPlan): ToolError | null {
     // (an approach asks it first) and may still be refused after it.
     if (plan.kind === "spell") {
       markAffinityCast(campaign, sheet, plan.profile.damageType);
+      // A two-type spell's second type rides as a typed rider.
+      for (const rider of plan.profile.gearTyped ?? []) {
+        markAffinityCast(campaign, sheet, rider.type);
+      }
     }
   } else if (!budget) {
     markReactionUsed(encounter, sheet.id);

@@ -51,6 +51,8 @@ export type AoeSpellPlan = {
   damage: string | null;
   // Added once to the rolled total (Empowered Evocation).
   flat: number;
+  // Added once to a two-type spell's second type (Elemental Affinity's cold).
+  flatSecond: number;
   saveAbility: SaveAbilityId;
   dc: number;
   halfOnSave: boolean;
@@ -291,10 +293,11 @@ export function planAoeSpell(
     ? spellDamageRiders(caster, {
         school: spellSchoolFor(input.spell, authors),
         damageType: type,
+        secondType: mech?.secondType,
         level: spellLevel,
         classes: facts?.classes,
       })
-    : { flat: 0, dice: [] as string[], potentCantrip: false, notes: [] as string[] };
+    : { flat: 0, flatSecond: 0, dice: [] as string[], potentCantrip: false, notes: [] as string[] };
   // A subclass feature's die rides the spell's one damage roll (Enhanced
   // Bond, Arcane Firearm): src/lib/srd/spell-damage-riders.ts.
   if (damage && riders.dice.length) {
@@ -305,6 +308,7 @@ export function planAoeSpell(
   // resistance (src/lib/dm/affinity-cast.ts).
   if (damage) {
     markAffinityCast(campaign, caster, type);
+    markAffinityCast(campaign, caster, mech?.secondType);
   }
   if (riders.potentCantrip && !halfOnSave) {
     halfOnSave = true;
@@ -324,6 +328,7 @@ export function planAoeSpell(
     mech,
     damage,
     flat: riders.flat,
+    flatSecond: riders.flatSecond,
     saveAbility,
     dc,
     halfOnSave,
