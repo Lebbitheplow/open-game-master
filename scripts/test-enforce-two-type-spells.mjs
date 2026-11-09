@@ -179,6 +179,63 @@ await test("The same spell at one character: only the fire is halved, on a faile
   assert.equal(made.world.sheet(made.sheets[0].id).currentHp, 200 - (6 + 12));
 });
 
+// ---- one spell, one wound ----
+
+// Flame Strike for 48 (24 fire, 24 radiant) on a character with no resistance.
+// Landed a type at a time, the second part was a hit at 0 hit points.
+const unresisting = async (maxHp, currentHp, extra = {}) => {
+  const { world, sheets: [hero], enemies: [foe] } = await table([{ ...FIGHTER, race: "human", maxHp, ...extra }], 1, { spells: ["Flame Strike"] });
+  world.patch(hero.id, { currentHp });
+  return { world, hero, foe };
+};
+const STRIKE = [6, 6, 6, 6, 6, 6, 6, 6, 1];
+const caughtBy = (world, hero, foe) => world.invokeAsIs("aoe_damage", { casterEnemyId: foe.id, spell: "Flame Strike", characterIds: [hero.id], saveAbility: "dex", dc: 14 });
+const aimedAt = (world, hero, foe) => world.invokeAsIs("cast_at_player", { characterId: hero.id, casterEnemyId: foe.id, spell: "Flame Strike", saveAbility: "dex", dc: 14 });
+const SAVE_FIRST = [1, 6, 6, 6, 6, 6, 6, 6, 6];
+
+for (const [path, cast, faces] of [["An area", caughtBy, STRIKE], ["A spell at one character", aimedAt, SAVE_FIRST]]) {
+  await test(`${path} that drops a character does not also count a death-save failure.`, async () => {
+    const { world, hero, foe } = await unresisting(60, 10);
+    world.dice(...faces);
+    const out = await cast(world, hero, foe);
+    assert.equal(out.ok, true, out.error);
+    const { currentHp, deathSaves } = world.sheet(hero.id);
+    assert.equal(currentHp, 0);
+    assert.deepEqual([deathSaves.failures, deathSaves.dead], [0, false]);
+  });
+
+  await test(`${path} of two types weighs massive damage on the whole: 38 past 0 kills a character of 30 hit points.`, async () => {
+    const { world, hero, foe } = await unresisting(30, 10);
+    world.dice(...faces);
+    const out = await cast(world, hero, foe);
+    assert.equal(out.ok, true, out.error);
+    assert.equal(world.sheet(hero.id).deathSaves.dead, true);
+  });
+
+  await test(`${path} of two types asks one concentration save, for the whole.`, async () => {
+    const { world, hero, foe } = await unresisting(200, 200, { spellcasting: { ability: "wis", slots: {}, known: [], prepared: [], cantrips: [] } });
+    world.patch(hero.id, { concentratingOn: "Bless" });
+    world.dice(...faces, 20, 20, 20);
+    const out = await cast(world, hero, foe);
+    assert.equal(out.ok, true, out.error);
+    assert.equal(world.clearDice(), 2, "one of the three spare dice was rolled");
+    // 48 damage is DC 24, which 20 + 3 (a level 5 fighter's CON save) misses.
+    // Two saves at DC 12 for the two parts would both have made it.
+    assert.equal(world.sheet(hero.id).concentratingOn, null);
+  });
+}
+
+await test("An ally caught in a character's own area takes it as one wound too.", async () => {
+  const { world, sheets: [cleric, ally] } = await table([caster("cleric", "wis", ["Flame Strike"], [], 9), { ...FIGHTER, race: "human", maxHp: 60 }], 1);
+  world.patch(ally.id, { currentHp: 10 });
+  world.dice(6, 6, 6, 6, 6, 6, 6, 6, 1);
+  const out = await world.invoke("aoe_damage", { casterCharacterId: cleric.id, spell: "Flame Strike", characterIds: [ally.id], saveAbility: "dex", dc: 15, level: 5 });
+  assert.equal(out.ok, true, out.error);
+  const { currentHp, deathSaves } = world.sheet(ally.id);
+  assert.equal(currentHp, 0);
+  assert.deepEqual([deathSaves.failures, deathSaves.dead], [0, false]);
+});
+
 // ---- the reader ----
 
 await test('The reader adds dice joined by "plus", as it adds those joined by "and".', async () => {

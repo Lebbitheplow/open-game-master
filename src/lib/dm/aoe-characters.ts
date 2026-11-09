@@ -13,6 +13,7 @@ import { partsTaken, partsTotal, type DamagePart } from "@/lib/dm/aoe-parts";
 import type { EnemyUse } from "@/lib/dm/enemy-casting";
 import { rollCharacterSave } from "@/lib/dm/forced-save";
 import { applyDmMutation } from "@/lib/dm/mutations";
+import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { handleSetCondition } from "@/lib/dm/set-condition";
 import { getFoe } from "@/lib/dm/sheet-foe";
 import { afterEnemySave } from "@/lib/dm/spell-riders";
@@ -114,23 +115,41 @@ export function aoeOnCharacters(input: {
       ...(refused.length ? { conditionRefused: refused.join(" ") } : {}),
     };
     const hpBefore = getSheetById(sheet.id)?.currentHp ?? sheet.currentHp;
-    for (const part of taken.filter((entry) => entry.amount > 0)) {
-      const applied = applyDmMutation(
-        campaign,
-        turn.id,
-        "apply_damage",
-        JSON.stringify({
-          characterId: sheet.id,
-          amount: part.amount,
-          type: part.type,
-          // A spell's damage is magical: "from nonmagical attacks" on a
-          // beast form's block does not cover Ice Storm's hail.
-          ...(input.spell ? { spell: input.spell, magical: true } : {}),
-          reason: (input.reason ?? "area effect").slice(0, 200),
-        }),
-        sheets,
-        sheetsById,
-      ).result;
+    const landing = taken.filter((entry) => entry.amount > 0);
+    const reason = (input.reason ?? "area effect").slice(0, 200);
+    // Two types are one wound, each meeting its own defences. Landed one type
+    // at a time, the second was a hit at 0 hit points: a death-save failure no
+    // blow earned, no massive damage where the whole would kill, and a second
+    // concentration save for the one spell.
+    const blows: Array<Record<string, unknown>> =
+      landing.length > 1
+        ? [
+            applyPcDamage(campaign, turn.id, getSheetById(sheet.id) ?? sheet, {
+              amount: damageTaken,
+              parts: landing.map((part) => ({ amount: part.amount, type: part.type ?? "" })),
+              ...(input.spell ? { spell: true, magical: true } : {}),
+              reason,
+            }),
+          ]
+        : landing.map((part) =>
+            applyDmMutation(
+              campaign,
+              turn.id,
+              "apply_damage",
+              JSON.stringify({
+                characterId: sheet.id,
+                amount: part.amount,
+                type: part.type,
+                // A spell's damage is magical: "from nonmagical attacks" on a
+                // beast form's block does not cover Ice Storm's hail.
+                ...(input.spell ? { spell: input.spell, magical: true } : {}),
+                reason,
+              }),
+              sheets,
+              sheetsById,
+            ).result,
+          );
+    for (const applied of blows) {
       if (typeof applied.hp === "string") {
         row.hp = applied.hp;
       }
