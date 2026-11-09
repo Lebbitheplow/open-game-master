@@ -5,6 +5,7 @@ import { getSheetById } from "@/lib/db/sheets";
 import { optionsForPending, spendAfterRoll } from "@/lib/dm/after-roll";
 import { answeredLine, keepD20, type ThrownRoll } from "@/lib/dm/after-roll-logic";
 import { afterRollDeadline, armAfterRollKeep } from "@/lib/dm/after-roll-timer";
+import type { AttackRecord } from "@/lib/dm/attack-record";
 import { runInTurnScope } from "@/lib/dm/job-control";
 import { landPendingRoll } from "@/lib/dm/pending-roll-land";
 import { refuseDuringBreak } from "@/lib/dm/table-break";
@@ -123,7 +124,7 @@ export async function POST(
     return Response.json({ error: "That is no longer on offer for this roll." }, { status: 409 });
   }
   // The parked turn's spend: its revert gives it back (issue #622).
-  const paid = runInTurnScope(pending.turnId, () => spendAfterRoll(context.campaign, sheet, choice.use, thrown.outcome, pending.advantage, wizard ?? undefined));
+  const paid = runInTurnScope(pending.turnId, () => spendAfterRoll(context.campaign, sheet, choice.use, thrown.outcome, pending.advantage, wizard ?? undefined, (pending.attack as AttackRecord | null)?.elvenAccuracy === true));
   if (!paid) {
     return Response.json({ error: "That is no longer on offer for this roll." }, { status: 409 });
   }

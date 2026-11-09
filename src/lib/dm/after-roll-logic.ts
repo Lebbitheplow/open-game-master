@@ -237,7 +237,7 @@ export function afterAttackOptions(
   if (guided && !taken.has("guided_strike") && natural !== 1 && outcome.total + GUIDED_STRIKE_BONUS >= ac) {
     options.push({ id: "guided_strike", label: `Guided Strike: add ${GUIDED_STRIKE_BONUS}`, note: `Spend a use of Channel Divinity: add ${GUIDED_STRIKE_BONUS} to this attack roll.` });
   }
-  // Master Duelist (Swashbuckler 18): "if you miss with an attack roll, you can
+  // Master Duelist (Swashbuckler 17): "if you miss with an attack roll, you can
   // roll it again with advantage". A fresh d20 can always save a miss.
   if (!taken.has("master_duelist") && usesLeft(sheet, MASTER_DUELIST) > 0 && holdsFeature(sheet, "master duelist")) {
     options.push({ id: "master_duelist", label: "Master Duelist: roll again with advantage", note: "Spend your use of Master Duelist: roll this attack again with advantage, and the new roll stands." });
@@ -375,8 +375,8 @@ export function withRerolledD20(outcome: RollResult, fresh: DieResult[]): RollRe
   };
 }
 
-// The roll thrown again with advantage (Master Duelist): two fresh d20s, the
-// higher kept. Disadvantage the attack already had cancels it, leaving one d20
+// The roll thrown again with advantage (Master Duelist): two fresh d20s (three
+// with Elven Accuracy), the highest kept. Disadvantage the attack already had cancels it, leaving one d20
 // (`fresh` then holds one).
 export function withAdvantageReroll(outcome: RollResult, fresh: DieResult[]): RollResult | null {
   const lead = leadD20(outcome);
