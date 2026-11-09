@@ -37,6 +37,7 @@ import { foretoldLeft } from "@/lib/dm/foretold-logic";
 import { getFoe } from "@/lib/dm/sheet-foe";
 import { publishPersisted } from "@/lib/events";
 import { isConditionNamed } from "@/lib/srd/feature-names";
+import { trapAt } from "@/lib/srd/table-hazards";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 // A stop comes before every watched roll, so it cannot ask for long.
@@ -178,6 +179,34 @@ function rollAbout(campaign: Campaign, call: HeldCall, sheets: readonly Characte
     }
     const source = typeof args.source === "string" && args.source.trim() ? ` against ${args.source.trim().slice(0, 80)}` : "";
     return { line: `${hero.name} is about to make a saving throw${source}.`, rollerId: hero.id, rolls: [{ tag: { roller: "hero", kind: "save", who: hero.name }, ref: hero.id, name: hero.name }], perCreature: false, rollerWaits: false };
+  }
+  if (call.name === "apply_hazard") {
+    // A trap or a hazard the GM throws: each character it names saves through
+    // cast_at_player (hazard-tools.ts), the save that call already stops for.
+    // A fall and lost air roll no save, nor does a named trap without one
+    // (or with a name no trap holds, which is refused), and the hours of cold
+    // or heat roll saves no number or shift is armed for (endurance.ts). A
+    // travel-formation rank names nobody until the call runs, and a formation
+    // is for travel, not a fight.
+    const isTrap = args.type === "trap";
+    const trapName = isTrap && typeof args.trap === "string" && args.trap.trim() ? args.trap : null;
+    const trap = trapName ? trapAt(trapName, campaign.id) : null;
+    const saves = args.type === "generic" || (isTrap && (trapName ? Boolean(trap?.trap.save) : true));
+    const heroes: CharacterSheet[] = [];
+    for (const ref of saves && Array.isArray(args.characterIds) ? args.characterIds : []) {
+      const hero = typeof ref === "string" ? (sheetOf(ref) ?? findNamed(sheets, ref, (sheet) => [sheet.name])) : undefined;
+      if (hero && !unseen(hero) && !heroes.some((entry) => entry.id === hero.id)) heroes.push(hero);
+    }
+    if (!heroes.length) {
+      return null;
+    }
+    const rolls: Seen[] = heroes.map((hero) => ({ tag: { roller: "hero" as const, kind: "save" as const, who: hero.name }, ref: hero.id, name: hero.name }));
+    const named = typeof args.reason === "string" && args.reason.trim() ? args.reason.trim() : (trap?.name ?? (isTrap ? "a trap" : ""));
+    const source = named ? ` against ${named.slice(0, 80)}` : "";
+    const line = heroes.length === 1 ? `${heroes[0].name} is about to make a saving throw${source}.` : `${heroes.length} characters are about to make saving throws${source}.`;
+    // Each character caught saves on its own, as in an area: the watcher
+    // picks whose.
+    return { line, rollerId: heroes[0].id, rolls, perCreature: true, rollerWaits: false };
   }
   if (call.name === "cast_at_enemy") {
     // A hero's spell at one creature: the caster's attack roll or the
