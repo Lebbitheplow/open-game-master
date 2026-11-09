@@ -51,6 +51,10 @@ export function SequenceEditor({
     setSaid(`${nameOf(id)}: step ${at + 1} of ${next.length}${mates ? `, with ${mates} more` : ""}.`);
   };
 
+  // Taken on dragenter as well as dragover: the steps move under a still
+  // pointer (the gaps open as a drag starts, a step reveals itself as the
+  // editor opens), and a drop that lands on the step's other part after a
+  // move is refused unless that part's dragenter was accepted.
   const dragOver = (event: DragEvent, target: Target) => {
     if (!event.dataTransfer.types.includes(DRAG_TYPE)) {
       return;
@@ -78,6 +82,7 @@ export function SequenceEditor({
     <li
       key={`gap-${index}`}
       aria-hidden="true"
+      onDragEnter={(event) => dragOver(event, { step: index, join: false })}
       onDragOver={(event) => dragOver(event, { step: index, join: false })}
       onDragLeave={() => setOver(null)}
       onDrop={(event) => drop(event, { step: index, join: false })}
@@ -97,6 +102,7 @@ export function SequenceEditor({
           <li
             key={`step-${ids.join("+")}`}
             data-sequence-step={index + 1}
+            onDragEnter={(event) => dragOver(event, { step: index, join: true })}
             onDragOver={(event) => dragOver(event, { step: index, join: true })}
             onDragLeave={() => setOver(null)}
             onDrop={(event) => drop(event, { step: index, join: true })}
