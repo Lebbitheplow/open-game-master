@@ -39,6 +39,12 @@ export type PartyState = {
   // Standing with each faction by id, minus five to five
   // (src/lib/dm/faction-logic.ts). Absent ids read as zero.
   reputation: Record<string, number>;
+  // When each faction's standing last moved (an ISO instant), so the GM's
+  // block can say which factions the party has dealt with since (issue 870).
+  reputationMovedAt: Record<string, string>;
+  // The factions a closed chapter dealt with whose standing did not move,
+  // for the next GM turn to settle once; `at` is when the chapter closed.
+  factionReview: { ids: string[]; at: string } | null;
   // The common purse, in copper (src/lib/srd/currency.ts). Separate from
   // every character's own money: what the party banked together is not
   // anyone's to spend alone.
@@ -79,6 +85,8 @@ export const MAX_PARTY_ITEMS = 120;
 export function emptyParty(): PartyState {
   return {
     reputation: {},
+    reputationMovedAt: {},
+    factionReview: null,
     copper: 0,
     inventory: [],
     bankedXp: 0,
@@ -101,6 +109,8 @@ export function normalizeParty(raw: unknown): PartyState {
   const record = raw as Record<string, unknown>;
   return {
     reputation: normalizeReputation(record.reputation),
+    reputationMovedAt: normalizeMovedAt(record.reputationMovedAt),
+    factionReview: normalizeFactionReview(record.factionReview),
     copper: Math.max(0, Math.round(Number(record.copper) || 0)),
     inventory: Array.isArray(record.inventory)
       ? (record.inventory as Array<Record<string, unknown>>)
@@ -316,4 +326,26 @@ export function describeParty(
     lines.push(`Marching order (front first): ${party.marchingOrder.map(nameOf).join(", ")}`);
   }
   return lines.length ? `The party as a whole:\n${lines.join("\n")}` : "";
+}
+
+function normalizeMovedAt(raw: unknown): Record<string, string> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return {};
+  }
+  return Object.fromEntries(
+    Object.entries(raw as Record<string, unknown>)
+      .filter(([id, at]) => id.length <= 80 && typeof at === "string" && at.length <= 40)
+      .slice(0, 200)
+      .map(([id, at]) => [id, at as string]),
+  );
+}
+
+function normalizeFactionReview(raw: unknown): PartyState["factionReview"] {
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+  const record = raw as Record<string, unknown>;
+  const ids = Array.isArray(record.ids) ? record.ids.filter((id): id is string => typeof id === "string" && id.length <= 80).slice(0, 6) : [];
+  const at = typeof record.at === "string" ? record.at.slice(0, 40) : "";
+  return ids.length && at ? { ids, at } : null;
 }

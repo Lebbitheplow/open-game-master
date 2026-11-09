@@ -205,6 +205,8 @@ export type ProfileSignals = {
   // An NPC is ready to make a romantic move (issue 501, src/lib/dm/advance-
   // tick.ts): romance_advance is offered while the window is open.
   advanceReady?: boolean;
+  // A faction is in play (src/lib/dm/faction-attention.ts factionsInPlay).
+  factions?: boolean;
   // The newest player lines at an English table, read for the English words
   // of ENGLISH_INTENT (none at another table), and the tool a card played
   // from the Hand names.
@@ -244,6 +246,7 @@ export function autoGroups(signals: ProfileSignals): Set<ToolGroupId> {
   if (signals.inEncounter && signals.legendary) groups.add("legendary");
   if (signals.caster) groups.add("spells");
   if (signals.advanceReady) groups.add("relationships");
+  if (signals.factions) groups.add("factions");
   const text = signals.englishPlayerText ?? "";
   for (const [group, pattern] of ENGLISH_INTENT) {
     if (pattern.test(text)) groups.add(group);
