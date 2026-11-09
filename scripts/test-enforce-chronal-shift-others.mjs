@@ -177,6 +177,10 @@ await test("An ally's missed attack waits on the wizard; the reroll that hits de
   world.clearDice();
   assert.equal(shifted.status, 200, JSON.stringify(shifted.json));
   assert.equal(kit.enemy(enemy.id).currentHp, 400 - 8, "14 + 6 hits AC 15: 5 + 3 slashing");
+  // The model reads who changed the roll beside the attack's own note: the
+  // hit's note used to replace it (pending-roll-land.ts).
+  assert.match(getPendingRoll(pending.id).combatNote ?? "", /Tova used Chronal Shift: Kara rolled again \(11 became 20\)/);
+  assert.match(getPendingRoll(pending.id).combatNote ?? "", /HIT/);
   assert.equal(used(), 1);
   assert.ok(world.encounter().reactionsUsed.includes(wizard.id), "the reaction is the wizard's, spent");
 });
