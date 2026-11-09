@@ -12,11 +12,16 @@ import { suite } from "./lib/enforce-harness.mjs";
 import { openWorld } from "./lib/enforce-world.mjs";
 
 const { test, finish } = suite("test-enforce-touch-of-death");
-const world = await openWorld({ campaign: { maxPlayers: 8 } });
+const world = await openWorld({ campaign: { maxPlayers: 8 }, gameSettings: { dicePolicy: "real_allowed" } });
 const kit = await combatKit(world);
 const { getPendingRoll, listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
 const { deriveHand, FRESH_TURN } = await import("../src/lib/battlemap/hand.ts");
 const route = await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]/after-roll");
+const submitRoute = await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]");
+const { setMemberRealDice } = await import("../src/lib/db/campaigns.ts");
+const { getRoll } = await import("../src/lib/db/rolls.ts");
+const { keepAfterRollWhenDue } = await import("../src/lib/dm/after-roll-timer.ts");
+const { subscribe } = await import("../src/lib/events.ts");
 
 // A third-level cleric: +5 to hit with the mace (1d6+3), and 11 necrotic.
 const hero = world.addHero({
@@ -99,6 +104,11 @@ await test("The necrotic meets its own type: resistance to it halves that part a
   await kit.swing(hero.id, immune.id, [15], { weapon: "Mace" });
   await spend(open()[0], 4);
   assert.equal(kit.enemy(immune.id).currentHp, 400 - 7);
+  // Inescapable Destruction (Death Domain 6): the cleric's necrotic ignores resistance.
+  const ignored = await stage({ ...TOUCH, features: [...TOUCH.features, { name: "Inescapable Destruction", description: "" }] }, { stats: { resist: "necrotic" } });
+  await kit.swing(hero.id, ignored.id, [15], { weapon: "Mace" });
+  await spend(open()[0], 4);
+  assert.equal(kit.enemy(ignored.id).currentHp, 400 - (7 + 11));
 });
 
 await test("Nothing waits on a miss, a ranged hit or with no Channel Divinity left.", async () => {
@@ -132,6 +142,95 @@ await test("A melee attack spell waits and takes it. A ranged one cast from besi
   assert.equal(bolt.ok, true, bolt.error);
   assert.equal(open().length, 0);
   world.patch(hero.id, { spellcasting: null, equipment: GEAR });
+});
+
+await test("Real dice: a hit entered at the table waits, and the necrotic rides the damage the player rolls.", async () => {
+  const enemy = await stage();
+  setMemberRealDice(world.campaignId, world.sheet(hero.id).userId, true);
+  try {
+    await world.invoke("pc_attack", { characterId: hero.id, targetEnemyId: enemy.id, weapon: "Mace" });
+    const toHit = open().find((entry) => entry.kind === "attack");
+    assert.equal(toHit.parkedFor, "real_dice");
+    world.signIn({ id: world.sheet(hero.id).userId });
+    const entered = await call(submitRoute, "POST", { dice: [15] }, { campaignId: world.campaignId, pendingRollId: toHit.id });
+    assert.equal(entered.status, 200, JSON.stringify(entered.json));
+    assert.deepEqual(getPendingRoll(toHit.id).thrown.options.map((option) => option.id), ["touch_of_death"]);
+    assert.equal(used(), 0);
+    const chose = await choose(toHit.id, { use: "touch_of_death" });
+    assert.equal(chose.status, 200, JSON.stringify(chose.json));
+    assert.match(getRoll(getPendingRoll(toHit.id).rollId).detail, /\(physical\)/, "no die was thrown for them: the roll is still theirs");
+    assert.equal(used(), 1);
+    const damage = open().find((entry) => entry.kind === "damage");
+    assert.ok(damage, "the hit asks the player for damage");
+    assert.match(damage.expression, /\+11/);
+    const rolled = await call(submitRoute, "POST", { dice: [4] }, { campaignId: world.campaignId, pendingRollId: damage.id });
+    assert.equal(rolled.status, 200, JSON.stringify(rolled.json));
+    assert.equal(kit.enemy(enemy.id).currentHp, 400 - (4 + 3 + 11));
+  } finally {
+    setMemberRealDice(world.campaignId, world.sheet(hero.id).userId, false);
+  }
+});
+
+await test("Its time running out lands the hit without it, and spends nothing.", async () => {
+  // Someone else at the table, so the wait runs on the clock (after-roll-timer.ts).
+  const online = subscribe(world.campaignId, () => {}, world.sheet(ally.id).userId);
+  try {
+    const enemy = await stage();
+    await kit.swing(hero.id, enemy.id, [15], { weapon: "Mace" });
+    const [pending] = open();
+    assert.ok(pending.thrown.deadline);
+    world.dice(4);
+    assert.equal(await keepAfterRollWhenDue(pending.id, new Date(pending.thrown.deadline).getTime() + 1), true);
+    world.clearDice();
+    assert.equal(used(), 0);
+    assert.equal(kit.enemy(enemy.id).currentHp, 400 - 7);
+  } finally {
+    online();
+  }
+});
+
+await test("A Parry that turns the hit as it lands spends nothing: the use is paid by the hit.", async () => {
+  const PARRY = "Reaction: Parry. The captain adds 2 to its AC against one melee attack that would hit it. To do so, the captain must see the attacker and be wielding a melee weapon.";
+  const enemy = await stage(TOUCH, { stats: { traits: [PARRY] } });
+  // 10 + 5 meets AC 15 as it stands; the Parry's +2 turns it.
+  await kit.swing(hero.id, enemy.id, [10], { weapon: "Mace" });
+  const [pending] = open();
+  assert.deepEqual(offered(), ["touch_of_death"]);
+  await spend(pending);
+  assert.match(getPendingRoll(pending.id).combatNote, /MISS/);
+  assert.equal(used(), 0, "the Channel Divinity was spent on a hit that never landed");
+  assert.equal(kit.enemy(enemy.id).currentHp, 400);
+});
+
+await test("An ally's War God's Blessing is offered on a miss only; the hit it makes then offers Touch of Death, even after the roller kept the miss.", async () => {
+  const BLESSING = { features: [{ name: "Channel Divinity: War God's Blessing", description: "" }], resources: { channel_divinity: { max: 1, used: 0 } } };
+  world.patch(ally.id, BLESSING);
+  try {
+    const hit = await stage();
+    await kit.swing(hero.id, hit.id, [15], { weapon: "Mace" });
+    assert.deepEqual(offered(), ["touch_of_death"], "a hit offers the ally nothing");
+    await spend(open()[0], 4);
+    assert.equal(kit.enemy(hit.id).currentHp, 400 - (4 + 3 + 11));
+    world.patch(ally.id, BLESSING);
+    const enemy = await stage();
+    await kit.swing(hero.id, enemy.id, [5], { weapon: "Mace" });
+    const [pending] = open();
+    assert.deepEqual(offered(), ["war_gods_blessing"], "a miss offers no Touch of Death");
+    const kept = await choose(pending.id, { keep: true });
+    assert.equal(kept.status, 200, JSON.stringify(kept.json));
+    assert.equal(getPendingRoll(pending.id).status, "pending", "the roll waits on the ally");
+    world.signIn({ id: world.sheet(ally.id).userId });
+    const blessed = await call(route, "POST", { use: "war_gods_blessing", by: ally.id }, { campaignId: world.campaignId, pendingRollId: pending.id });
+    assert.equal(blessed.status, 200, JSON.stringify(blessed.json));
+    assert.deepEqual(offered(), ["touch_of_death"], "the hit the blessing made is the roller's to answer");
+    await spend(pending, 4);
+    assert.equal(used(), 1);
+    assert.equal(world.sheet(ally.id).resources.channel_divinity.used, 1);
+    assert.equal(kit.enemy(enemy.id).currentHp, 400 - (4 + 3 + 11));
+    assert.equal(open().length, 0, "nothing is left waiting");
+  } finally {
+    world.patch(ally.id, { features: [], resources: {} });
+  }
 });
 
 await test("A monk's Touch of Death, a different feature, opens nothing.", async () => {

@@ -158,6 +158,8 @@ export function spendAfterRoll(
   advantage = "none",
   // Another character pays, answering this roll from their own screen.
   payer?: CharacterSheet,
+  // Advantage on this attack throws a third d20 (attack-record.ts).
+  elvenAccuracy = false,
 ): { outcome: RollResult; choosing: boolean; touchOfDeath?: number } | null {
   const die = (sides: number) => ({ sides, value: rollExpression(`1d${sides}`).total, kept: true });
   if (id === "war_gods_blessing" || id === "flash_of_genius") {
@@ -181,7 +183,10 @@ export function spendAfterRoll(
     return spendFeatureUse(campaign, sheet.id, CHANNEL_DIVINITY, "Channel Divinity: Guided Strike", "player") ? { outcome: withFlatBonus(outcome, GUIDED_STRIKE_BONUS), choosing: false } : null;
   }
   if (id === "touch_of_death") {
-    return spendFeatureUse(campaign, sheet.id, CHANNEL_DIVINITY, "Channel Divinity: Touch of Death", "player") ? { outcome, choosing: false, touchOfDeath: touchOfDeathDamage(sheet) } : null;
+    // Paid by the hit itself (attack-swing.ts hitSwing): a Parry or a Shield
+    // can still turn the roll as it lands, and a use spent here was lost then.
+    const state = sheet.resources?.[CHANNEL_DIVINITY];
+    return state && state.max - state.used > 0 ? { outcome, choosing: false, touchOfDeath: touchOfDeathDamage(sheet) } : null;
   }
   if (id === "favored_by_the_gods") {
     if (!spendFeatureUse(campaign, sheet.id, FAVORED_BY_THE_GODS, "Favored by the Gods", "player")) {
@@ -193,8 +198,9 @@ export function spendAfterRoll(
     if (!spendFeatureUse(campaign, sheet.id, MASTER_DUELIST, "Master Duelist", "player")) {
       return null;
     }
-    // Obeying what the first throw obeyed (a halfling's reroll of a 1).
-    const fresh = Array.from({ length: advantage === "disadvantage" ? 1 : 2 }).flatMap(() => rollExpression(extraD20Expression(outcome.expression)).terms.flatMap((term) => (term.kind === "dice" ? term.dice.slice(0, 1) : [])));
+    // Obeying what the first throw obeyed (a halfling's reroll of a 1), and
+    // Elven Accuracy's third die on the advantage it now has.
+    const fresh = Array.from({ length: advantage === "disadvantage" ? 1 : elvenAccuracy ? 3 : 2 }).flatMap(() => rollExpression(extraD20Expression(outcome.expression)).terms.flatMap((term) => (term.kind === "dice" ? term.dice.slice(0, 1) : [])));
     const again = withAdvantageReroll(outcome, fresh);
     return again ? { outcome: again, choosing: false } : null;
   }

@@ -3,7 +3,7 @@
 //
 //   Guided Strike (War Domain, Oath of Conquest): +10 to the attack, for a use
 //   of Channel Divinity. Offered only where the 10 turns the miss.
-//   Master Duelist (Swashbuckler 18): a missed attack is rolled again with
+//   Master Duelist (Swashbuckler 17): a missed attack is rolled again with
 //   advantage, and the new roll stands.
 //   Favored by the Gods (Divine Soul 1): 2d4 on a missed attack or a failed
 //   save. Offered only where 8 could turn it.
@@ -118,6 +118,23 @@ await test("Master Duelist: disadvantage on the attack cancels the advantage, so
   await spend(pending, "master_duelist", 2);
   assert.equal(landed(pending).total, 8, "the one fresh die stands");
   assert.match(getPendingRoll(pending.id).combatNote, /MISS/);
+});
+
+await test("Master Duelist: an elf with Elven Accuracy throws three d20s on the advantage it gives a Dexterity attack.", async () => {
+  const plain = { abilities: world.sheet(hero.id).abilities, equipment: world.sheet(hero.id).equipment };
+  const enemy = await stage({ ...DUELIST, feats: ["Elven Accuracy"], abilities: { ...plain.abilities, dex: 18 }, equipment: [{ name: "Rapier", qty: 1, equipped: true }] });
+  try {
+    // +7 with the rapier: 3 + 7 misses AC 15.
+    await kit.swing(hero.id, enemy.id, [3], { weapon: "Rapier" });
+    const [pending] = open();
+    assert.deepEqual(offered(), ["master_duelist"]);
+    await spend(pending, "master_duelist", 2, 3, 19);
+    assert.equal(landed(pending).breakdown.terms[0].dice.length, 3, "the third d20 is Elven Accuracy's");
+    assert.equal(landed(pending).total, 26);
+    assert.match(getPendingRoll(pending.id).combatNote, /HIT/);
+  } finally {
+    world.patch(hero.id, plain);
+  }
 });
 
 await test("Favored by the Gods on an attack: 2d4 is added and can turn the miss.", async () => {

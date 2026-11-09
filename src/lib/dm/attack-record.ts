@@ -24,6 +24,7 @@ import type { TypedRider } from "@/lib/dm/damage-parts";
 import type { CreatureOnHit } from "@/lib/srd/creature-attacks";
 import type { GearWeapon } from "@/lib/srd/gear-weapons";
 import { damageTypeFeat, poisonerIgnoresResistance, type DamageTypeFeat } from "@/lib/srd/feat-combat";
+import { hasElvenAccuracy } from "@/lib/srd/feature-effects";
 
 // The damage roll a hit or a graze asks for, decided once the d20 is known
 // (attack-swing.ts askDamage). The server throws it at once; real dice park it
@@ -98,6 +99,9 @@ export type AttackRecord = PendingAttack & {
   // What the engine said of the attack before the roll (advantage, Sneak Attack).
   notes?: string[];
   mote?: HeldMote;
+  // Advantage on this attack throws a third d20 (Elven Accuracy: not a
+  // Strength attack). Master Duelist's reroll with advantage reads it.
+  elvenAccuracy?: boolean;
   // A luck point was bought with the attack (pc_attack luck: true): the roll
   // has had its one, so the pause offers no other (after-roll.ts).
   luck?: boolean;
@@ -197,6 +201,7 @@ export function attackRecord(plan: AttackPlan, strike: { critExtraDice: number; 
     ...(context.notes.length ? { notes: [...context.notes] } : {}),
     ...(mote ? { mote } : {}),
     ...(extras.luck ? { luck: true } : {}),
+    ...(profile.ability !== "str" && hasElvenAccuracy(sheet) ? { elvenAccuracy: true } : {}),
     ...(Object.keys(kept).length ? { extras: kept } : {}),
   };
 }

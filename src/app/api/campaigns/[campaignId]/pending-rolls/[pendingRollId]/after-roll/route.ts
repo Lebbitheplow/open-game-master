@@ -5,6 +5,7 @@ import { getSheetById } from "@/lib/db/sheets";
 import { optionsForPending, spendAfterRoll } from "@/lib/dm/after-roll";
 import { answeredLine, keepD20, type ThrownRoll } from "@/lib/dm/after-roll-logic";
 import { afterRollDeadline, armAfterRollKeep } from "@/lib/dm/after-roll-timer";
+import type { AttackRecord } from "@/lib/dm/attack-record";
 import { runInTurnScope } from "@/lib/dm/job-control";
 import { landPendingRoll } from "@/lib/dm/pending-roll-land";
 import { refuseDuringBreak } from "@/lib/dm/table-break";
@@ -123,14 +124,14 @@ export async function POST(
     return Response.json({ error: "That is no longer on offer for this roll." }, { status: 409 });
   }
   // The parked turn's spend: its revert gives it back (issue #622).
-  const paid = runInTurnScope(pending.turnId, () => spendAfterRoll(context.campaign, sheet, choice.use, thrown.outcome, pending.advantage, wizard ?? undefined));
+  const paid = runInTurnScope(pending.turnId, () => spendAfterRoll(context.campaign, sheet, choice.use, thrown.outcome, pending.advantage, wizard ?? undefined, (pending.attack as AttackRecord | null)?.elvenAccuracy === true));
   if (!paid) {
     return Response.json({ error: "That is no longer on offer for this roll." }, { status: 409 });
   }
   if (paid.touchOfDeath && pending.attack) {
     // No die is thrown: the roll stays the player's, and the hit carries the
-    // necrotic. Touch of Death is the one choice a hit waits on, so the hit
-    // lands with it.
+    // necrotic and pays its use once it stands (attack-swing.ts). Touch of
+    // Death is the one choice a hit waits on, so the hit lands with it.
     return land(paid.outcome, thrown.landing, { ...pending, attack: { ...pending.attack, touchOfDeath: paid.touchOfDeath } });
   }
   // The server threw this die: "(physical)" would overclaim the roll now,
