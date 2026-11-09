@@ -83,3 +83,11 @@ export function damageParts(
     ...[...byType.entries()].map(([type, amount]) => ({ type, amount })),
   ];
 }
+
+// How much of a rolled two-type spell its second type's dice came to, or null
+// when none of them are in the roll. `trailingTerms`: the riders' own dice,
+// which follow the spell's and belong to its first type.
+export function secondTypeShare(outcome: RollResult, firstType: string, second: TypedRider, trailingTerms = 0): number | null {
+  const [, rider] = damageParts(outcome, firstType, [second], { crit: false, trailingTerms });
+  return rider ? rider.amount : null;
+}

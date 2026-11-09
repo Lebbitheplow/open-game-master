@@ -577,12 +577,14 @@ const SHARES = "cast-shares";
 // roll (cast-at-enemy.ts), so every call is the same placement and the same
 // dice. One an item paid for names the item (a Ring of Spell Storing's Scorching
 // Ray): its later rays are no casting of the holder's own (cast-guard.ts).
-export type OpenCast = { spell: string; slotLevel: number | null; left: number; caught?: string[]; roll?: number; item?: string };
+// `rollSecond` is how much of that roll a two-type spell's second type is, so
+// a later creature's resistance meets the same split.
+export type OpenCast = { spell: string; slotLevel: number | null; left: number; caught?: string[]; roll?: number; item?: string; rollSecond?: number };
 
 export function openCastOf(budget: TurnBudget | null, spell: string): OpenCast | null {
   const wanted = textKey(spell);
   for (const entry of budget?.oncePerTurn ?? []) {
-    const [tag, name, slot, left, caught, roll, item] = entry.split("|");
+    const [tag, name, slot, left, caught, roll, item, rollSecond] = entry.split("|");
     if (tag === SHARES && name === wanted && Number(left) > 0) {
       return {
         spell: wanted,
@@ -591,6 +593,7 @@ export function openCastOf(budget: TurnBudget | null, spell: string): OpenCast |
         ...(caught ? { caught: caught.split(",") } : {}),
         ...(roll && roll !== "-" ? { roll: Number(roll) } : {}),
         ...(item ? { item } : {}),
+        ...(rollSecond ? { rollSecond: Number(rollSecond) } : {}),
       };
     }
   }
@@ -607,7 +610,7 @@ export function withOpenCast(budget: TurnBudget, open: OpenCast): TurnBudget {
     ...budget,
     oncePerTurn:
       open.left > 0
-        ? [...kept, [SHARES, wanted, open.slotLevel ?? "-", open.left, (open.caught ?? []).join(","), open.roll ?? "-", ...(open.item ? [open.item.replace(/\|/g, "")] : [])].join("|")]
+        ? [...kept, [SHARES, wanted, open.slotLevel ?? "-", open.left, (open.caught ?? []).join(","), open.roll ?? "-", ...(open.item || open.rollSecond !== undefined ? [(open.item ?? "").replace(/\|/g, "")] : []), ...(open.rollSecond !== undefined ? [open.rollSecond] : [])].join("|")]
         : kept,
   };
 }

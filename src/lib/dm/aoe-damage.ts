@@ -479,9 +479,11 @@ export function handleAoeDamage(
     if (!isValidExpression(args.damage)) {
       return { error: `Invalid damage expression "${args.damage}".`, retry: true };
     }
-    const split = splitDamageExpression(args.damage, plan?.mech?.secondType);
+    // A creature's spell as well as a character's (a mage's Ice Storm).
+    const secondType = plan?.mech?.secondType ?? enemyUse?.secondType;
+    const split = splitDamageExpression(args.damage, secondType);
     for (const [index, expression] of (split ?? [args.damage]).entries()) {
-      const type = index === 0 ? args.type : plan?.mech?.secondType;
+      const type = index === 0 ? args.type : secondType;
       // Elemental Adept: the caster's chosen type floors its dice at 2.
       const adept = plan ? elementalAdeptApplies(plan.caster, type) : false;
       const outcome = rollExpression(adept ? floorDamageDice(expression) : expression);

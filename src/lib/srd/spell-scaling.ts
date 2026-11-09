@@ -29,9 +29,10 @@ export function baseDamageDice(desc: string): string | null {
 
 // The whole payload where the text states more than one term: Ice Storm's
 // "2d8 bludgeoning damage and 4d6 cold damage" is 2d8+4d6, Disintegrate's
-// "10d6 + 40 force damage" keeps its 40. Only terms joined by "and" are
-// added: "3d8 radiant damage ... or 3d8 necrotic damage" is a choice, and
-// dice in a later sentence are another effect.
+// "10d6 + 40 force damage" keeps its 40. Only terms joined by "and" or "plus"
+// are added (Clash of Glaciers' "5d6 bludgeoning damage plus 5d6 cold damage"
+// rolled 5d6 until "plus" was read): "3d8 radiant damage ... or 3d8 necrotic
+// damage" is a choice, and dice in a later sentence are another effect.
 export function baseDamageExpression(desc: string): string | null {
   const first = /(\d+d\d+)(?:\s*\+\s*(\d+))?(?:\s+[a-z]+)?\s+damage\b/i.exec(desc);
   if (!first) {
@@ -41,7 +42,7 @@ export function baseDamageExpression(desc: string): string | null {
   let flat = first[2] ? Number(first[2]) : 0;
   let rest = desc.slice(first.index + first[0].length);
   for (;;) {
-    const more = /^\s+and\s+(\d+d\d+)(?:\s*\+\s*(\d+))?(?:\s+[a-z]+)?\s+damage\b/i.exec(rest);
+    const more = /^,?\s+(?:and|plus)\s+(\d+d\d+)(?:\s*\+\s*(\d+))?(?:\s+[a-z]+)?\s+damage\b/i.exec(rest);
     if (!more) {
       break;
     }

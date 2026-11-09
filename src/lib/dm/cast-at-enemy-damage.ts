@@ -13,6 +13,9 @@ import { rollCard } from "@/lib/dm/action-common";
 import { rollAgainst } from "@/lib/roll-labels";
 import { spellDamageFor, spellFactsFor, spellMechanicsFor, spellSchoolFor } from "@/lib/content";
 import { authoredOnKill } from "@/lib/dm/authored-hooks";
+import { splitDamageExpression } from "@/lib/dm/aoe-parts";
+import { secondTypeShare } from "@/lib/dm/damage-parts";
+import { landTypedParts } from "@/lib/dm/enemy-blow";
 import { applyEnemyDamage } from "@/lib/dm/enemy-damage";
 import { darkOnesBlessing } from "@/lib/dm/feature-hooks";
 import { flooredDamage, maximizedDamage } from "@/lib/dm/spell-riders";
@@ -45,7 +48,9 @@ export function landSpellDamage(input: {
   sheets: CharacterSheet[];
   sheetsById: Map<string, CharacterSheet>;
   sharedRoll?: number;
-}): { dealt: number; rolled: number | null } {
+  // How much of that one roll is a two-type spell's second type.
+  sharedSecond?: number;
+}): { dealt: number; rolled: number | null; rolledSecond: number | null } {
   const { campaign, turn, encounter, sheet, enemy, spell, spellName, authors, mech, facts, scaled, damageExpression, damageType, spellLevel, halfOnSave, saved, base, sheets, sheetsById, sharedRoll } = input;
   const riders = spellDamageRiders(sheet, {
     school: spellSchoolFor(spell, authors),
@@ -61,7 +66,16 @@ export function landSpellDamage(input: {
   // Elemental Adept: on a spell of its type every 1 on the dice is a 2
   // and resistance is ignored (src/lib/srd/feat-combat.ts).
   const adept = elementalAdeptApplies(sheet, damageType);
-  const rolledExpression = [adept ? floorDamageDice(damageExpression) : damageExpression, ...riders.dice].join("+");
+  // A spell of two types (Blazing Chariot's fire and radiant): its last dice
+  // deal the second type and meet that type's resistance. Only aoe_damage read
+  // this, so at one target the whole sum landed as the first type.
+  const secondType = mech?.secondType;
+  const [firstDice, secondDice] = splitDamageExpression(damageExpression, secondType) ?? [];
+  const secondAdept = secondDice ? elementalAdeptApplies(sheet, secondType) : false;
+  const spellDice = firstDice && secondDice
+    ? `${adept ? floorDamageDice(firstDice) : firstDice}+${secondAdept ? floorDamageDice(secondDice) : secondDice}`
+    : adept ? floorDamageDice(damageExpression) : damageExpression;
+  const rolledExpression = [spellDice, ...riders.dice].join("+");
   const maxed = maximizedDamage(mech, enemy, rolledExpression);
   // The card shows the dice as rolled; the save halves or stops what lands.
   // A maximized blow rolls no dice, so it has no card.
@@ -74,7 +88,24 @@ export function landSpellDamage(input: {
   const total = outcome.total + riders.flat;
   const halves = halfOnSave || riders.potentCantrip;
   // Feeblemind's damage lands whatever the save (spell-mech-types.ts).
-  let damageDealt = saved && !mech?.riders?.damageIgnoresSave ? (halves ? Math.floor(total / 2) : 0) : total;
+  const shareOf = (amount: number) => (saved && !mech?.riders?.damageIgnoresSave ? (halves ? Math.floor(amount / 2) : 0) : amount);
+  // The second type's share of the roll: read from its dice, which the riders'
+  // own dice follow, or the casting's shared roll for a later creature.
+  const secondRolled =
+    !secondDice || !damageType || !secondType || maxed !== null
+      ? null
+      : "terms" in outcome
+        ? secondTypeShare(outcome, damageType, { dice: secondDice, type: secondType }, riders.dice.length)
+        : input.sharedSecond ?? null;
+  // Each type's share is halved on its own, as aoe_damage halves it.
+  const typedParts =
+    secondRolled !== null && damageType && secondType
+      ? [
+          { amount: shareOf(total - secondRolled), type: damageType },
+          { amount: shareOf(secondRolled), type: secondType },
+        ]
+      : null;
+  let damageDealt = typedParts ? typedParts.reduce((sum, part) => sum + part.amount, 0) : shareOf(total);
   // Harm: never below 1 hit point. The floor is on what gets through the
   // creature's resistances, so those are weighed here and not again.
   const floored = flooredDamage(campaign.id, mech, enemy, damageDealt, damageType, adept ? "Elemental Adept" : null);
@@ -88,17 +119,33 @@ export function landSpellDamage(input: {
     base.potentCantrip = "Potent Cantrip: the save still takes half.";
   }
   if (damageDealt > 0) {
-    const applied = applyEnemyDamage(campaign, turn, encounter, enemy, damageDealt, sheets, sheetsById, floored === null ? damageType : undefined, {
-      magical: true,
-      spell: true,
-      ...(adept ? { ignoreResistance: true } : {}),
-    });
+    const applied = typedParts && floored === null
+      ? landTypedParts({
+          campaign,
+          turn,
+          encounter,
+          enemy,
+          parts: typedParts,
+          sheets,
+          sheetsById,
+          weapon: { magical: true, ...(adept ? { ignoreResistanceBy: "Elemental Adept" } : {}) },
+          ...(secondAdept ? { otherParts: { ignoreResistanceBy: "Elemental Adept" } } : {}),
+          spell: true,
+        })
+      : applyEnemyDamage(campaign, turn, encounter, enemy, damageDealt, sheets, sheetsById, floored === null ? damageType : undefined, {
+          magical: true,
+          spell: true,
+          ...(adept ? { ignoreResistance: true } : {}),
+        });
     if (adept) {
       base.elementalAdept = `Elemental Adept: ${damageType} ignores resistance; every 1 on the dice counted as 2.`;
+    } else if (secondAdept) {
+      base.elementalAdept = `Elemental Adept: ${secondType} ignores resistance; every 1 on its dice counted as 2.`;
     }
     Object.assign(base, {
       damage: damageDealt,
       ...(damageType ? { damageType } : {}),
+      ...(typedParts ? { secondType } : {}),
       ...(scaled ? { scaling: scaled.note } : {}),
       ...applied,
     });
@@ -117,5 +164,5 @@ export function landSpellDamage(input: {
   } else {
     base.damage = 0;
   }
-  return { dealt: damageDealt, rolled: maxed === null ? outcome.total : null };
+  return { dealt: damageDealt, rolled: maxed === null ? outcome.total : null, rolledSecond: secondRolled };
 }

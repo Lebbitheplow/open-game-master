@@ -505,7 +505,9 @@ export function handleCastAtEnemy(
   const hpBefore = enemy.currentHp;
   // The dice, the riders, the save's share and the kill (cast-at-enemy-damage.ts).
   // A later creature of one area casting takes its one roll.
-  const sharedRoll = cast.continuing ? openAreaCast(getActiveEncounter(campaign.id) ?? encounter, sheet.id, spellName)?.roll : undefined;
+  const openShare = cast.continuing ? openAreaCast(getActiveEncounter(campaign.id) ?? encounter, sheet.id, spellName) : null;
+  const sharedRoll = openShare?.roll;
+  const sharedSecond = openShare?.rollSecond;
   const landed = damageExpression
     ? landSpellDamage({
         campaign,
@@ -528,6 +530,7 @@ export function handleCastAtEnemy(
         sheets,
         sheetsById,
         ...(sharedRoll !== undefined ? { sharedRoll } : {}),
+        ...(sharedSecond !== undefined ? { sharedSecond } : {}),
       })
     : null;
   const damageDealt = landed?.dealt ?? 0;
@@ -635,7 +638,7 @@ export function handleCastAtEnemy(
   const zone = cast.continuing || zoneMove ? null : placeSpellZone(campaign, { spell: spellName, runsAs: resolvedMech?.runsAs ?? facts?.runsAs, caster: { kind: "pc", id: sheet.id, name: sheet.name }, slotLevel: slotLevel ?? null, dc, caught: [enemy.id], repeat: held, ...zonePlacement(args) });
   // What the next call of this casting must agree with: who the area has
   // caught and its one roll; a recurring area's strike for this turn.
-  recordAreaShare(campaign.id, sheet.id, spellName, enemy.id, landed?.rolled ?? null);
+  recordAreaShare(campaign.id, sheet.id, spellName, enemy.id, landed?.rolled ?? null, landed?.rolledSecond ?? null);
   if (mech?.repeat === "free") {
     markRepeatStruck(campaign, spellName, sheet.id, [enemy.id]);
   }

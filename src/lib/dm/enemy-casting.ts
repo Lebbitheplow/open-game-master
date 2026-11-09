@@ -44,6 +44,9 @@ export type EnemyUse = {
   dc?: number;
   damage?: string;
   damageType?: string;
+  // The second type of a spell that deals two at once (a mage's Ice Storm):
+  // the last dice of `damage` deal it.
+  secondType?: string;
   halfOnSave?: boolean;
   condition?: string;
   rounds?: number;
@@ -195,6 +198,9 @@ export function prepareEnemyUse(campaign: Campaign, input: Input): EnemyUse | To
     }
     if (mech?.damageType) {
       use.damageType = mech.damageType;
+    }
+    if (mech?.secondType) {
+      use.secondType = mech.secondType;
     }
     if (mech?.hitPointPool) {
       use.hitPointPool = mech.hitPointPool;
