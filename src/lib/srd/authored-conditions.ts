@@ -82,6 +82,9 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
     attackAdvantage: true,
     consumedBy: "attack",
   },
+  // Held from the Hand or use_resource (src/lib/dm/destructive-wrath.ts): the
+  // chip on the party card says what it waits for.
+  summaryOnly("destructive_wrath", "destructive wrath", "Destructive Wrath: the next lightning or thunder damage they roll is dealt at its maximum; a rest ends it."),
   summaryOnly("drunkards_luck_check", "drunkard's luck (check)", "Drunkard's Luck: the next ability check cancels its disadvantage."),
   summaryOnly("drunkards_luck_save", "drunkard's luck (save)", "Drunkard's Luck: the next saving throw cancels its disadvantage."),
   {

@@ -163,12 +163,14 @@ export function AfterRollCard({
           : thrown.kept
             ? "You kept this roll."
             : pending.kind === "attack"
-              // An attack waits on a miss, or on a hit for Touch of Death
-              // (after-roll-logic.ts afterAttackOptions). With nothing of their
-              // own to press, only the helpers can change a miss.
+              // An attack waits on a miss, or on a hit for Touch of Death or
+              // Destructive Wrath (after-roll-logic.ts afterAttackOptions). With
+              // nothing of their own to press, only the helpers can change a miss.
               ? thrown.options.some((option) => option.id === "touch_of_death")
                 ? "The attack hits. You can add to its damage."
-                : `As it stands, the attack misses.${own.length ? " You can still change that." : ""}`
+                : thrown.options.some((option) => option.id === "destructive_wrath")
+                  ? "The attack hits. You can deal its lightning and thunder at their maximum."
+                  : `As it stands, the attack misses.${own.length ? " You can still change that." : ""}`
               : own.length
                 ? "Before the game says what happens, you can still change it."
                 : "Before the game says what happens, someone may still help."}

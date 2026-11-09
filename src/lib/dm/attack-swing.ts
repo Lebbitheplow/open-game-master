@@ -5,7 +5,8 @@
 // pc-attack-parked.ts with the player's; attack-blow.ts lands the damage.
 
 import { getSheetById } from "@/lib/db/sheets";
-import { spendWrath, hasNoDice, withOwnDiceAtMaximum, wrathApplies, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
+import { spendWrath, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
+import { attackWrathDice, holdsDestructiveWrath } from "@/lib/dm/destructive-wrath-logic";
 import { NET_HOLD } from "@/lib/dm/net-hold";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
@@ -163,10 +164,19 @@ export function missSwing(scene: SwingScene, record: AttackRecord, judged: Judge
     visibility,
   });
   const fresh = getFoe(enemy.id);
+  // The half a miss deals is rolled too: a held Destructive Wrath takes it
+  // when it is lightning or thunder.
+  const wrath = spellRider?.halfOnMiss && holdsDestructiveWrath(getSheetById(sheet.id) ?? sheet)
+    ? attackWrathDice(record.damageExpression, record.damageType ?? "", [], { crit: false })
+    : null;
   const graze =
     spellRider?.halfOnMiss && !judged.natural1 && fresh?.status === "alive"
-      ? { expression: record.damageExpression, riders: [], crit: false, stunShot: false, half: true, feats: {}, rerollBelow: 0 }
+      ? { expression: wrath?.expression ?? record.damageExpression, riders: [], crit: false, stunShot: false, half: true, feats: {}, rerollBelow: 0, ...(wrath?.noDice ? { noDice: true } : {}) }
       : null;
+  if (graze && wrath) {
+    spendWrath(campaign.id, sheet.id);
+    notes.push(WRATH_NOTE);
+  }
   if (!graze) {
     pushLine(notes, finishSwing(scene, record, { hit: false }));
   }
@@ -260,18 +270,28 @@ export function hitSwing(scene: SwingScene, record: AttackRecord, judged: Judged
   const rolled = crit && !stunShot
     ? critDamageExpression(expression, record.critExtraDice ?? 0, { powerfulCritical: variant.powerfulCritical, multiplyNumeric: variant.criticalDamageMods })
     : expression;
-  // Destructive Wrath, spent as the attack's own lightning or thunder is rolled.
-  const maximized = wrathApplies(getSheetById(sheet.id) ?? sheet, record.damageType);
-  if (maximized) {
-    spendWrath(campaign.id, sheet.id);
+  // Destructive Wrath: chosen on the card the hit waited on, or held from
+  // before the roll (destructive-wrath.ts). Only the lightning and thunder
+  // dice are dealt at their maximum, the attack's own or a rider's.
+  // Chosen on the card: the use is paid here, once the hit stands, so a Parry
+  // or a Shield that turned the roll as it landed costs nothing.
+  const chosen = record.destructiveWrath === true && spendFeatureUse(campaign, sheet.id, CHANNEL_DIVINITY, "Channel Divinity: Destructive Wrath", "player");
+  const held = !record.destructiveWrath && holdsDestructiveWrath(getSheetById(sheet.id) ?? sheet);
+  const wrath = chosen || held
+    ? attackWrathDice(rolled, record.damageType ?? "", riders, { crit, trailingTerms: crit ? (record.critExtraDice ?? 0) : 0 })
+    : null;
+  if (wrath) {
+    if (held) {
+      spendWrath(campaign.id, sheet.id);
+    }
     notes.push(WRATH_NOTE);
   }
-  const asked = maximized ? withOwnDiceAtMaximum(rolled) : rolled;
+  const asked = wrath?.expression ?? rolled;
   return {
     ask: {
       expression: asked,
-      riders,
-      ...(maximized && hasNoDice(asked) ? { noDice: true } : {}),
+      riders: wrath?.riders ?? riders,
+      ...(wrath?.noDice ? { noDice: true } : {}),
       crit,
       stunShot,
       feats: spendDamageFeats(scene, record, asked),

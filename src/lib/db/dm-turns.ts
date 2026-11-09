@@ -329,6 +329,9 @@ export type PendingRollStatus = "pending" | "submitted" | "fallback";
 export type PendingAttack = {
   // Touch of Death's necrotic, chosen on the hit (after-roll.ts).
   touchOfDeath?: number;
+  // Destructive Wrath, chosen on the hit (after-roll.ts): its lightning and
+  // thunder dice are dealt at their maximum.
+  destructiveWrath?: boolean;
   attacker: string;
   weapon: string;
   targetEnemyId: string;

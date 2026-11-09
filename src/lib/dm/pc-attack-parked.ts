@@ -21,6 +21,7 @@ import { serverBlow, shiftedThrow, type Strike } from "@/lib/dm/pc-attack-resolv
 import { allyChoicesFor, reactionFreeFor, rollsCanWait } from "@/lib/dm/after-roll";
 import { afterRollDeadline, armAfterRollKeep } from "@/lib/dm/after-roll-timer";
 import { afterAttackOptions } from "@/lib/dm/after-roll-logic";
+import { rollsWrathDice } from "@/lib/dm/destructive-wrath-logic";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import type { RollResult } from "@/lib/dice";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
@@ -70,7 +71,7 @@ export function throwForChoice(plan: AttackPlan, strike: Strike, toolCallId: str
   const critRange = record.critRange ?? 20;
   const thrown = shiftedThrow(plan, strike, ac, critRange);
   const options = [
-    ...afterAttackOptions(fresh, { outcome: thrown, ac, critRange, spent: record.luck ? ["lucky"] : [], reactionFree: reactionFreeFor(campaign.id, fresh.id), melee: record.melee === true && record.ranged !== true }),
+    ...afterAttackOptions(fresh, { outcome: thrown, ac, critRange, spent: record.luck ? ["lucky"] : [], reactionFree: reactionFreeFor(campaign.id, fresh.id), melee: record.melee === true && record.ranged !== true, wrathDice: rollsWrathDice(record.damageExpression, record.damageType, record.riders) }),
     // A wizard or a War cleric beside them may answer the miss (after-roll.ts).
     ...allyChoicesFor(campaign.id, fresh, { kind: "attack", outcome: thrown, ac, critRange }),
   ];
@@ -179,7 +180,7 @@ export function resolvePendingPcAttack(pending: PendingRoll, roll: StoredRoll): 
   if (!judged.hit) {
     const { graze } = missSwing(scene, record, judged, roll.breakdown, roll.visibility, notes);
     const said = notes.length ? ` ${notes.join("; ")}.` : "";
-    if (graze && record.serverDice) {
+    if (graze && (record.serverDice || graze.noDice)) {
       const out = serverBlow(scene, record, graze, roll.breakdown, roll.visibility, rollAgainst(`${record.weapon} (half on a miss)`, scene.enemy.displayName), []);
       return `${rolled}: MISS.${said} The spell still deals half its damage. ${blowSentences(scene, graze, out, []).join(" ")}`;
     }

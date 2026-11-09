@@ -72,7 +72,8 @@ export type PcDamageInput = {
   adamantine?: boolean;
   goodWielder?: boolean;
   // The type whose resistance this blow sets aside (Elemental Adept, the
-  // Death cleric's Inescapable Destruction), on a character as on an enemy.
+  // Death cleric's Inescapable Destruction), on a character as on an enemy;
+  // several, comma-separated, for a spell of two types an adept covers both.
   ignoreResistanceTo?: string;
   // The creature lands prone if any of this damage gets through (a fall).
   knocksProne?: boolean;
@@ -122,12 +123,12 @@ export function blowDefenses(campaignId: string, sheet: CharacterSheet, input: B
   // elemental is immune to fire: beast-forms.ts wildShapeRecord), each its
   // own clause so a "from nonmagical attacks" binds only its own types.
   const shape = sheet.wildShape;
-  const ignored = (input.ignoreResistanceTo ?? "").trim();
+  const ignored = (input.ignoreResistanceTo ?? "").split(",").map((type) => type.trim()).filter(Boolean);
   const resistedLine = [
     [pcResistances(sheet, { magical: input.magical === true, spell: input.spell === true, except: input.exceptFeatures }), ...authoredAuraResistances(campaignId, sheet, { spell: input.spell === true }), summonResistances(sheet), immersedResistance(campaignId, sheet.id), ...(input.resists ?? [])].filter(Boolean).join(", "),
     shape?.resist ?? "",
   ].filter(Boolean).join("; ");
-  const resisted = ignored ? resistedLine.replace(new RegExp(`\\b${ignored}\\b`, "gi"), "") : resistedLine;
+  const resisted = ignored.reduce((line, type) => line.replace(new RegExp(`\\b${type}\\b`, "gi"), ""), resistedLine);
   // Inside Silence, thunder does nothing (zone-rules.ts).
   const immune = `${summonImmunities(sheet)}${pcImmunities(sheet)}${silencedImmunity(campaignId, sheet.id)}${shape?.immune ? `; ${shape.immune}` : ""}`;
   const vulnerable = [summonVulnerabilities(sheet), shape?.vulnerable ?? ""].filter(Boolean).join("; ");

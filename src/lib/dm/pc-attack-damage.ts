@@ -444,6 +444,7 @@ export function applyHitDamage(input: {
     nonlethal: plan.options.nonlethal,
     ignoreResistance: plan.elementalAdept || poisonerIgnoresResistance(plan.sheet, plan.profile.damageType),
     ignoreResistanceBy: plan.elementalAdept ? "Elemental Adept" : "Poisoner",
+    adeptOthers: plan.adeptOthers,
     concentrationDisadvantage: plan.mageSlayer,
     blow: blowSource(plan),
   });
@@ -479,6 +480,8 @@ export function landBlow(input: {
   ignoreResistance?: boolean;
   // The feat that ignores it, for the note (Elemental Adept, Poisoner).
   ignoreResistanceBy?: string;
+  // A two-type spell's other type Elemental Adept covers (pc-attack-plan.ts).
+  adeptOthers?: string[];
   // Mage Slayer's melee hit from within 5 feet (feat-combat.ts).
   concentrationDisadvantage?: boolean;
   nonlethal?: boolean;
@@ -518,7 +521,7 @@ export function landBlow(input: {
       ...material,
       ...(input.blow?.spell ? { spell: true } : {}),
       ...(input.blow?.goodWielder ? { goodWielder: true } : {}),
-      ...(input.ignoreResistance && profile.damageType ? { ignoreResistanceTo: profile.damageType } : {}),
+      ...(input.ignoreResistance || input.adeptOthers?.length ? { ignoreResistanceTo: [...(input.ignoreResistance && profile.damageType ? [profile.damageType] : []), ...(typed ? (input.adeptOthers ?? []) : [])].join(", ") } : {}),
       ...(crit ? { crit: true } : {}),
       ...(nonlethal ? { nonlethal: true } : {}),
     }, sheets, sheetsById, holdVictory);
@@ -550,6 +553,7 @@ export function landBlow(input: {
       holdVictory,
       crit,
       concentrationDisadvantage: input.concentrationDisadvantage === true,
+      ...(input.adeptOthers?.length ? { ignoreTypes: { types: input.adeptOthers, by: "Elemental Adept" } } : {}),
     });
   }
   return applied;

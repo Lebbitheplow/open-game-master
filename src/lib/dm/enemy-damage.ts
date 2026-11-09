@@ -26,7 +26,7 @@ import { insertCampaignMessage } from "@/lib/db/messages";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
 import { damageAdjust, removeConditions, resistsAllDamage } from "@/lib/dm/condition-logic";
 import { BURNING_OIL_DAMAGE, COVERED_IN_OIL, oilCatches } from "@/lib/srd/gear-weapons";
-import { enemyDefenseLines } from "@/lib/dm/enemy-defenses";
+import { enemyDefenseLines, meetEnemyPart } from "@/lib/dm/enemy-defenses";
 import { authoredIgnoresResistance } from "@/lib/dm/authored-saves";
 import { isKnockedOut, knockedOutConditions } from "@/lib/dm/knockout";
 import { endConditionsHeldBy, endVowsOn } from "@/lib/dm/enemy-conditions";
@@ -429,7 +429,10 @@ export function applyEnemyDamage(
   if (enemy.status === "alive" && oilCatches(enemy.conditions, fireBlow, amount)) {
     const dried = removeConditions(enemy.conditions, enemy.conditionMeta, [COVERED_IN_OIL]);
     patchEnemyConditions(enemy.id, dried.conditions, dried.meta);
-    const burnt = applyEnemyDamage(campaign, turn, encounter, { ...enemy, conditions: dried.conditions, conditionMeta: dried.meta }, amount + BURNING_OIL_DAMAGE, sheets, sheetsById, damageType, options);
+    // A blow of several types lands untyped, its parts already met: the
+    // oil's fire meets the creature's fire resistance on its own.
+    const oil = damageType ? BURNING_OIL_DAMAGE : meetEnemyPart(campaign.id, enemy, BURNING_OIL_DAMAGE, "fire", { magical: true, partOfBlow: true }).amount;
+    const burnt = applyEnemyDamage(campaign, turn, encounter, { ...enemy, conditions: dried.conditions, conditionMeta: dried.meta }, amount + oil, sheets, sheetsById, damageType, options);
     return burnt.error ? burnt : { ...burnt, burningOil: `The oil on ${enemy.displayName} catches: ${BURNING_OIL_DAMAGE} more fire damage, and the oil is burnt away.` };
   }
   // Inescapable Destruction (the acting Death cleric's necrotic), Elemental

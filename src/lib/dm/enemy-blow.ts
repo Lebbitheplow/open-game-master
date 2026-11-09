@@ -4,6 +4,7 @@
 // it. Split from enemy-damage.ts, which re-exports it.
 
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
+import { textKey } from "@/lib/language/text-logic";
 import { getCampaignById, type Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, getEnemy, patchEnemyHp, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { listSheets } from "@/lib/db/sheets";
@@ -99,9 +100,9 @@ export function landTypedParts(input: {
   sheets: CharacterSheet[];
   sheetsById: Map<string, CharacterSheet>;
   weapon: EnemyPartFlags;
-  // Elemental Adept of a spell's second type sets aside that part's
-  // resistance, not the first's.
-  otherParts?: Pick<EnemyPartFlags, "ignoreResistanceBy">;
+  // Elemental Adept of a spell's second type sets aside that type's
+  // resistance, not the first's, nor a rider's of another type (Hex).
+  ignoreTypes?: { types: string[]; by: string };
   // From a spell, whatever part (Spell Resistance, "damage from spells").
   spell?: boolean;
   nonlethal?: boolean;
@@ -110,6 +111,9 @@ export function landTypedParts(input: {
   concentrationDisadvantage?: boolean;
 }): Record<string, unknown> {
   const { campaign, turn, encounter, enemy, parts, sheets, sheetsById, weapon } = input;
+  const ignored = (type: string) => Boolean(input.ignoreTypes?.types.some((wanted) => textKey(wanted) === textKey(type)));
+  // A character on the foes' side sets aside the same types' resistance.
+  const ignoredTypes = [...(weapon.ignoreResistanceBy && parts[0]?.type ? [parts[0].type] : []), ...parts.slice(1).map((part) => part.type).filter(ignored)];
   if (isSheetFoe(enemy)) {
     return applySheetFoeBlow(campaign, turn, encounter, enemy, {
       amount: parts.reduce((sum, part) => sum + part.amount, 0),
@@ -119,7 +123,7 @@ export function landTypedParts(input: {
       ...(weapon.adamantine ? { adamantine: true } : {}),
       ...(weapon.goodWielder ? { goodWielder: true } : {}),
       ...(input.spell || weapon.spell ? { spell: true } : {}),
-      ...(weapon.ignoreResistanceBy && parts[0]?.type ? { ignoreResistanceTo: parts[0].type } : {}),
+      ...(ignoredTypes.length ? { ignoreResistanceTo: ignoredTypes.join(", ") } : {}),
       ...(input.crit ? { crit: true } : {}),
       ...(input.nonlethal ? { nonlethal: true } : {}),
     }, sheets, sheetsById, input.holdVictory === true);
@@ -135,7 +139,7 @@ export function landTypedParts(input: {
       enemy,
       part.amount,
       part.type,
-      index === 0 ? { ...weapon, spell, partOfBlow: true } : { magical: true, spell, partOfBlow: true, ...input.otherParts },
+      index === 0 ? { ...weapon, spell, partOfBlow: true } : { magical: true, spell, partOfBlow: true, ...(ignored(part.type) ? { ignoreResistanceBy: input.ignoreTypes?.by } : {}) },
     ),
   }));
   const landed = byType.reduce((sum, part) => sum + part.amount, 0);

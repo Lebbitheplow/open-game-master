@@ -87,21 +87,45 @@ await test("A creature that resists neither takes the whole roll, as one wound."
 
 const adeptOf = (element) => ({ feats: ["Elemental Adept"], features: [{ name: `Elemental Adept: ${element}`, source: "story" }] });
 
-await test("Elemental Adept of the first type sets aside only that type's resistance and floors only its dice.", async () => {
+// The feat's own text: "Your spells of that damage type ignore resistance, and
+// any 1 rolled on their damage dice counts as a 2." A spell that deals the type
+// at all is one of "your spells of that damage type": every one of its dice
+// floors, and only the chosen type's resistance is set aside.
+await test("Elemental Adept of the first type sets aside only that type's resistance, and floors every die of the spell.", async () => {
   const { world, wizard, enemies: [goblin] } = await brewed("Twin Lash", SAVE_MECH, SAVE_TEXT, { stats: { resist: "fire, cold" }, extra: adeptOf("fire") });
   // Fire: 1, 1, 1 count as 2 each (6) and the resistance is set aside. Cold:
-  // 1 and 1 stay 2, halved to 1.
+  // 1 and 1 count as 2 each (4), halved to 2.
   const { lost: taken } = await castAt(world, wizard, goblin, "Twin Lash", [1, 1, 1, 1, 1, 1]);
-  assert.equal(taken, 6 + 1);
+  assert.equal(taken, 6 + 2);
 });
 
-await test("Elemental Adept of the second type sets aside only that type's resistance and floors only its dice.", async () => {
+await test("Elemental Adept of the second type sets aside only that type's resistance, and floors every die of the spell.", async () => {
   const { world, wizard, enemies: [goblin] } = await brewed("Twin Lash", SAVE_MECH, SAVE_TEXT, { stats: { resist: "fire, cold" }, extra: adeptOf("cold") });
-  // Fire: 1, 1, 1 stay 3, halved to 1. Cold: 1 and 1 count as 2 each (4), with
-  // the resistance set aside.
+  // Fire: 1, 1, 1 count as 2 each (6), halved to 3. Cold: 1 and 1 count as 2
+  // each (4), with the resistance set aside.
   const { out, lost: taken } = await castAt(world, wizard, goblin, "Twin Lash", [1, 1, 1, 1, 1, 1]);
-  assert.equal(taken, 1 + 4);
+  assert.equal(taken, 3 + 4);
   assert.match(out.result.elementalAdept, /cold ignores resistance/);
+});
+
+await test("The same in an area: a cold adept's Ice Storm floors the hail's dice too, and only the cold passes the resistance.", async () => {
+  const { world, sheets: [wizard], enemies: [goblin] } = await table([caster("wizard", "int", ["Ice Storm"], [], 9, adeptOf("cold"))], 1, { resist: "bludgeoning, cold" });
+  // Hail: 1 and 1 count as 2 each (4), halved to 2. Cold: four 1s count as 2
+  // each (8), with the resistance set aside. Then the failed save.
+  world.dice(1, 1, 1, 1, 1, 1, 1);
+  const out = await world.invoke("aoe_damage", { casterCharacterId: wizard.id, spell: "Ice Storm", level: 4, saveAbility: "dex", dc: 15, enemyIds: [goblin.id] });
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.clearDice(), 0);
+  const now = enemyOf(world, goblin.id);
+  assert.equal(now.maxHp - now.currentHp, 2 + 8);
+});
+
+await test("A cold adept's spell attack: every die floors, and only the cold passes the resistance.", async () => {
+  const { world, wizard, enemies: [goblin] } = await brewed("Twin Bolt", ATTACK_MECH, ATTACK_TEXT, { stats: { resist: "fire, cold" }, extra: adeptOf("cold") });
+  // Fire: three 1s count as 2 (6), halved to 3. Cold: two 1s count as 2 (4),
+  // the resistance set aside. It did nothing for the second type.
+  const { out, lost: taken } = await attackAt(world, wizard, goblin, "Twin Bolt", [18, 1, 1, 1, 1, 1]);
+  assert.equal(taken, 3 + 4, JSON.stringify(out.result));
 });
 
 // ---- one area, one roll, a call per creature ----
@@ -337,6 +361,118 @@ await test("A two-type spell's fire still catches the oil on an enemy.", async (
   const { lost: taken } = await castAt(world, wizard, foe, "Twin Lash", [1, 1, 1, 1, 1, 1]);
   // Five dice of 1, and 5 more from the burning oil.
   assert.equal(taken, 5 + 5);
+});
+
+// ---- a spell at its maximum ----
+
+const overchanneler = (known) => caster("wizard", "int", known, [], 14);
+const overchannels = (world, wizard) => world.patch(wizard.id, { features: [...world.sheet(wizard.id).features, { name: "Overchannel", source: "test" }] });
+
+await test("Overchannel on Ice Storm keeps both types: the hail and the cold at their maximum, each meeting its own resistance.", async () => {
+  const { world, sheets: [wizard], enemies: [goblin] } = await table([overchanneler(["Ice Storm"])], 1, { resist: "cold" });
+  overchannels(world, wizard);
+  // No damage dice: the failed save alone. 16 bludgeoning, 24 cold halved.
+  world.dice(1);
+  const out = await world.invoke("aoe_damage", { casterCharacterId: wizard.id, spell: "Ice Storm", level: 4, saveAbility: "dex", dc: 15, enemyIds: [goblin.id], overchannel: true });
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.clearDice(), 0);
+  const now = enemyOf(world, goblin.id);
+  assert.equal(now.maxHp - now.currentHp, 16 + 12, "collapsed to one number, all 40 landed as hail");
+});
+
+await test("Overchannel at one target keeps both types too.", async () => {
+  const { world, wizard, enemies: [goblin] } = await brewed("Twin Lash", SAVE_MECH, SAVE_TEXT);
+  overchannels(world, wizard);
+  // 18 fire halved, 16 cold. Collapsed to one number, all 34 was fire.
+  const { lost: taken } = await castAt(world, wizard, goblin, "Twin Lash", [1], { overchannel: true });
+  assert.equal(taken, 9 + 16);
+});
+
+// ---- a rider's die beside its own type ----
+
+// A subclass die that earns its place by a type (Enhanced Bond's fire) rides
+// the dice of that type; one that earns it otherwise rides the first type.
+const FROST_CINDER = "The target must make a Dexterity saving throw, taking 3d6 cold damage and 2d8 fire damage on a failed save, or half as much on a successful one.";
+const CINDER_MECH = { resolution: "save", save: "dex", halfOnSave: true, damageType: "cold", secondType: "fire", dice: { base: "3d6+2d8", baseLevel: 3 } };
+const EMBER_TEXT = "Each creature in a 20-foot-radius sphere must make a Dexterity saving throw, taking 3d6 fire damage and 2d8 cold damage on a failed save, or half as much on a successful one.";
+const EMBER_MECH = { ...SAVE_MECH, area: true, areaFeet: 20 };
+const brewedForDruid = async (spell, mech, desc, resist) => {
+  const { world, sheets: [druid], enemies: [goblin] } = await table([caster("druid", "wis", [spell], [], 9, { subclass: "Circle of Wildfire" })], 1, { resist });
+  // The wildfire spirit is out; Enhanced Bond comes with the circle at 6th level.
+  world.patch(druid.id, {
+    conditions: ["wildfire spirit"],
+    conditionMeta: { "wildfire spirit": { rounds: 600 } },
+  });
+  createHomebrew(world.owner.id, {
+    kind: "spell",
+    name: spell,
+    data: { desc, level: 3, classes: ["druid"], school: "evocation", castingTime: "1 action", range: "60 feet", mech },
+  });
+  return { world, druid, goblin };
+};
+
+await test("Enhanced Bond on a spell whose fire is its second type: the d8 is earned, and it is fire.", async () => {
+  const { world, druid, goblin } = await brewedForDruid("Frost Cinder", CINDER_MECH, FROST_CINDER, "fire");
+  // The save, 18 cold, 16 fire and the bond's 8 fire, halved together to 12.
+  const { out, lost: taken } = await castAt(world, druid, goblin, "Frost Cinder", [1, 6, 6, 6, 8, 8, 8]);
+  assert.equal(taken, 18 + 12, JSON.stringify(out.result));
+});
+
+await test("A rider's die on a character's two-type area spell joins its own type, not the second type's dice.", async () => {
+  const { world, druid, goblin } = await brewedForDruid("Ember Hail", EMBER_MECH, EMBER_TEXT, "cold");
+  // Fire: 3d6 and the bond's d8 (6, 6, 6, 8). Cold: 2d8 (8, 8), halved. Then
+  // the save. Appended to the whole, the d8 was read as the cold and the 2d8
+  // as fire.
+  world.dice(6, 6, 6, 8, 8, 8, 1);
+  const out = await world.invoke("aoe_damage", { casterCharacterId: druid.id, spell: "Ember Hail", level: 3, saveAbility: "dex", dc: 15, enemyIds: [goblin.id] });
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.clearDice(), 0);
+  const now = enemyOf(world, goblin.id);
+  assert.equal(now.maxHp - now.currentHp, 26 + 8);
+});
+
+// ---- a creature's spells of two types ----
+
+const BOLT_BLOCK = { dc: 15, attack: 7, ability: "int", casterLevel: 9, spells: [{ name: "Twin Bolt", level: 3 }], slots: { 3: 3 } };
+const DARTS_TEXT = "Three darts of frost and fire strike a creature you can see. Each target takes 3d6 fire damage and 2d8 cold damage.";
+const DARTS_MECH = { resolution: "auto", damageType: "fire", secondType: "cold", dice: { base: "3d6+2d8", baseLevel: 3 } };
+const DARTS_BLOCK = { ...BOLT_BLOCK, spells: [{ name: "Twin Darts", level: 3 }] };
+const creatureSpell = async (spell, mech, desc, spellcasting) => {
+  const { world, sheets: [hero], enemies: [foe] } = await table([{ ...FIGHTER, race: "tiefling", maxHp: 200, currentHp: 200 }], 1, { spellcasting });
+  createHomebrew(world.owner.id, {
+    kind: "spell",
+    name: spell,
+    data: { desc, level: 3, classes: ["wizard"], school: "evocation", castingTime: "1 action", range: "60 feet", mech },
+  });
+  return { world, hero, foe };
+};
+
+await test("A creature's spell attack of two types: a tiefling's fire resistance halves only the fire.", async () => {
+  const { world, hero, foe } = await creatureSpell("Twin Bolt", ATTACK_MECH, ATTACK_TEXT, BOLT_BLOCK);
+  world.dice(18, 6, 6, 6, 8, 8);
+  const out = await world.invokeAsIs("enemy_attack", { enemyId: foe.id, targetCharacterId: hero.id, spell: "Twin Bolt" });
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.clearDice(), 0);
+  assert.equal(world.sheet(hero.id).currentHp, 200 - (9 + 16), JSON.stringify(out.result));
+});
+
+await test("A creature's spell that hits with no save, of two types: the fire is halved, the cold is not, as one wound.", async () => {
+  const { world, hero, foe } = await creatureSpell("Twin Darts", DARTS_MECH, DARTS_TEXT, DARTS_BLOCK);
+  world.dice(6, 6, 6, 8, 8);
+  const out = await world.invokeAsIs("cast_at_player", { characterId: hero.id, casterEnemyId: foe.id, spell: "Twin Darts" });
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.clearDice(), 0);
+  assert.equal(world.sheet(hero.id).currentHp, 200 - (9 + 16), JSON.stringify(out.result));
+});
+
+// ---- the oil, with resistance ----
+
+await test("The oil a two-type spell lights meets the creature's fire resistance, as the spell's own fire does.", async () => {
+  const { world, wizard, enemies: [foe] } = await brewed("Twin Lash", SAVE_MECH, SAVE_TEXT, { stats: { resist: "fire" } });
+  encounters.patchEnemyConditions(foe.id, ["covered in oil"], {});
+  // Fire 3 halved to 1, cold 2, and the oil's 5 fire halved to 2.
+  const { lost: taken } = await castAt(world, wizard, foe, "Twin Lash", [1, 1, 1, 1, 1, 1]);
+  assert.equal(taken, 1 + 2 + 2);
 });
 
 // ---- the reader ----

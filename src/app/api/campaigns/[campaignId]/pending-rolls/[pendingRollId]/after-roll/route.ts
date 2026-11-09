@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 
 const choiceSchema = z.union([
   // `by`: the character whose choice this is, on another character's roll.
-  z.object({ use: z.enum(["lucky", "bardic", "own_luck", "chronal_shift", "guided_strike", "master_duelist", "favored_by_the_gods", "war_gods_blessing", "flash_of_genius", "touch_of_death"]), by: z.string().min(1).max(80).optional() }),
+  z.object({ use: z.enum(["lucky", "bardic", "own_luck", "chronal_shift", "guided_strike", "master_duelist", "favored_by_the_gods", "war_gods_blessing", "flash_of_genius", "touch_of_death", "destructive_wrath"]), by: z.string().min(1).max(80).optional() }),
   // Which of a luck point's d20s counts.
   z.object({ die: z.number().int().min(0).max(20) }),
   z.object({ keep: z.literal(true) }),
@@ -128,11 +128,13 @@ export async function POST(
   if (!paid) {
     return Response.json({ error: "That is no longer on offer for this roll." }, { status: 409 });
   }
-  if (paid.touchOfDeath && pending.attack) {
+  if ((paid.touchOfDeath || paid.destructiveWrath) && pending.attack) {
     // No die is thrown: the roll stays the player's, and the hit carries the
-    // necrotic and pays its use once it stands (attack-swing.ts). Touch of
-    // Death is the one choice a hit waits on, so the hit lands with it.
-    return land(paid.outcome, thrown.landing, { ...pending, attack: { ...pending.attack, touchOfDeath: paid.touchOfDeath } });
+    // necrotic and pays its use once it stands (attack-swing.ts), or its
+    // lightning and thunder at their maximum. A hit waits on one cleric's
+    // Channel Divinity, so it lands with the choice.
+    const attack = { ...pending.attack, ...(paid.touchOfDeath ? { touchOfDeath: paid.touchOfDeath } : {}), ...(paid.destructiveWrath ? { destructiveWrath: true } : {}) };
+    return land(paid.outcome, thrown.landing, { ...pending, attack });
   }
   // The server threw this die: "(physical)" would overclaim the roll now,
   // and the model would be told the player threw it all.

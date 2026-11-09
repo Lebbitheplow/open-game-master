@@ -30,7 +30,8 @@ import { hasElvenAccuracy } from "@/lib/srd/feature-effects";
 // (attack-swing.ts askDamage). The server throws it at once; real dice park it
 // on the damage roll's record, and attack-blow.ts lands it either way.
 export type DamageAsk = {
-  // Destructive Wrath wrote every die at its maximum: nothing to enter.
+  // Destructive Wrath wrote every die at its maximum: nothing to enter, so
+  // real dice are not asked for.
   noDice?: boolean;
   expression: string;
   // The dice riding the blow under a type of their own (damage-parts.ts).
@@ -68,6 +69,9 @@ export type AttackRecord = PendingAttack & {
   melee?: boolean;
   // Touch of Death's necrotic, chosen on the hit (after-roll.ts).
   touchOfDeath?: number;
+  // Destructive Wrath, chosen on the hit (after-roll.ts): its lightning and
+  // thunder dice are dealt at their maximum.
+  destructiveWrath?: boolean;
   unarmed?: boolean;
   improvised?: boolean;
   // The weapon's catalog name, for Curving Shot's arrows.
@@ -78,6 +82,8 @@ export type AttackRecord = PendingAttack & {
   blow?: BlowSource;
   // Elemental Adept or Poisoner: the target's resistance to the type is ignored.
   ignoreResistanceBy?: string;
+  // A two-type spell's other type Elemental Adept covers (pc-attack-plan.ts).
+  adeptOthers?: string[];
   mageSlayer?: boolean;
   nonlethal?: boolean;
   onHit?: OnHitSpends;
@@ -179,6 +185,7 @@ export function attackRecord(plan: AttackPlan, strike: { critExtraDice: number; 
     ...(profile.material ? { material: profile.material } : {}),
     ...(blow.spell || blow.goodWielder ? { blow } : {}),
     ...(ignoreBy ? { ignoreResistanceBy: ignoreBy } : {}),
+    ...(plan.adeptOthers.length ? { adeptOthers: plan.adeptOthers } : {}),
     ...(plan.mageSlayer ? { mageSlayer: true } : {}),
     ...(plan.options.nonlethal ? { nonlethal: true } : {}),
     ...(attackerUnseen(sheet.conditions, enemy.conditions, plan.sight) ? { attackerUnseen: true } : {}),

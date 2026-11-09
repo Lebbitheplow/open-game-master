@@ -20,9 +20,10 @@ import { holdsFeature, isNamed } from "@/lib/srd/feature-names";
 import { channelOptions } from "@/lib/dm/option-costs";
 import { classLevelOf } from "@/lib/srd/trait-rules";
 import { textKey } from "@/lib/language/text-logic";
+import { holdsDestructiveWrath } from "@/lib/dm/destructive-wrath-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
-export type AfterRollId = "lucky" | "bardic" | "own_luck" | "chronal_shift" | "guided_strike" | "master_duelist" | "favored_by_the_gods" | "war_gods_blessing" | "flash_of_genius" | "touch_of_death";
+export type AfterRollId = "lucky" | "bardic" | "own_luck" | "chronal_shift" | "guided_strike" | "master_duelist" | "favored_by_the_gods" | "war_gods_blessing" | "flash_of_genius" | "touch_of_death" | "destructive_wrath";
 
 export type AfterRollOption = {
   id: AfterRollId;
@@ -206,7 +207,8 @@ export function afterRollOptions(
 // One's Own Luck is for checks and saves alone.
 export function afterAttackOptions(
   sheet: CharacterSheet,
-  roll: { outcome: RollResult; ac: number; critRange: number; spent?: readonly AfterRollId[]; reactionFree?: boolean; melee?: boolean },
+  // `wrathDice`: the hit would roll lightning or thunder dice (destructive-wrath-logic.ts rollsWrathDice).
+  roll: { outcome: RollResult; ac: number; critRange: number; spent?: readonly AfterRollId[]; reactionFree?: boolean; melee?: boolean; wrathDice?: boolean },
 ): AfterRollOption[] {
   const { outcome, ac } = roll;
   const natural = outcome.natural;
@@ -215,7 +217,10 @@ export function afterAttackOptions(
   }
   const taken = new Set(roll.spent ?? []);
   if (natural !== 1 && (natural >= roll.critRange || outcome.total >= ac)) {
-    return roll.melee && !taken.has("touch_of_death") ? touchOfDeathOption(sheet) : [];
+    return [
+      ...(roll.melee && !taken.has("touch_of_death") ? touchOfDeathOption(sheet) : []),
+      ...(roll.wrathDice && !taken.has("destructive_wrath") ? destructiveWrathOption(sheet) : []),
+    ];
   }
   const options: AfterRollOption[] = [];
   if (holdsLuckPoint(sheet) && !taken.has("lucky")) {
@@ -342,6 +347,18 @@ function touchOfDeathOption(sheet: CharacterSheet): AfterRollOption[] {
   }
   const damage = touchOfDeathDamage(sheet);
   return [{ id: "touch_of_death", label: `Touch of Death: add ${damage} necrotic`, note: `Spend a use of Channel Divinity: this hit deals ${damage} extra necrotic damage.` }];
+}
+
+// Destructive Wrath (Tempest Domain 2): "When you roll lightning or thunder
+// damage, you can use your Channel Divinity to deal maximum damage, instead of
+// rolling." A hit is where its damage is rolled, so the hit waits on the
+// choice as it does for Touch of Death. One already held from the Hand takes
+// the roll by itself (destructive-wrath.ts), so it is not offered again.
+function destructiveWrathOption(sheet: CharacterSheet): AfterRollOption[] {
+  if (holdsDestructiveWrath(sheet) || usesLeft(sheet, CHANNEL_DIVINITY) < 1 || !channelOptions(sheet).some((option) => isNamed(option.name, "destructive wrath"))) {
+    return [];
+  }
+  return [{ id: "destructive_wrath", label: "Destructive Wrath: maximum lightning and thunder", note: "Spend a use of Channel Divinity: this hit's lightning and thunder dice are dealt at their maximum instead of rolled." }];
 }
 
 // 5 + twice the cleric level.

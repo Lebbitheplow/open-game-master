@@ -17,7 +17,7 @@ import { rollOn } from "@/lib/roll-labels";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { isValidExpression, rollExpression } from "@/lib/dice";
 import { spendWrath, wrathApplies, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
-import { maximumOf } from "@/lib/dm/heal-spell";
+import { expressionMaximum } from "@/lib/dm/destructive-wrath-logic";
 import { publishWithSeq } from "@/lib/events";
 import type { SaveAbility } from "@/lib/bestiary/statblock";
 import { trackEnemyConcentration } from "@/lib/dm/cast-tools";
@@ -482,18 +482,27 @@ export function handleAoeDamage(
     }
     // A creature's spell as well as a character's (a mage's Ice Storm).
     const secondType = plan?.mech?.secondType ?? enemyUse?.secondType;
-    const split = splitDamageExpression(args.damage, secondType);
-    for (const [index, expression] of (split ?? [args.damage]).entries()) {
-      const type = index === 0 ? args.type : secondType;
-      // Elemental Adept: the caster's chosen type floors its dice at 2.
-      const adept = plan ? elementalAdeptApplies(plan.caster, type) : false;
-      // Destructive Wrath: the area's one roll, for the part of its type.
-      const wrath = plan && wrathApplies(getSheetById(plan.caster.id) ?? plan.caster, type);
-      if (plan && wrath) {
-        spendWrath(campaign.id, plan.caster.id);
-        wrathNote = WRATH_NOTE;
-      }
-      const outcome = rollExpression(wrath ? String(maximumOf(expression)) : adept ? floorDamageDice(expression) : expression);
+    // A character's plan split its dice before the riders' joined (aoe-spell.ts).
+    const split = plan?.damageParts ?? splitDamageExpression(args.damage, secondType);
+    // Elemental Adept: a spell that deals the chosen type has every 1 on its
+    // damage dice count as 2 (the feat's text: "their damage dice"), both
+    // types' dice; resistance is set aside for the chosen type alone, below.
+    const adept = plan ? elementalAdeptApplies(plan.caster, args.type) || Boolean(split && elementalAdeptApplies(plan.caster, secondType)) : false;
+    const parts = (split ?? [args.damage]).map((expression, index) => ({ expression, type: index === 0 ? args.type : secondType }));
+    // Destructive Wrath, held from before the cast (destructive-wrath.ts): the
+    // area's lightning and thunder dice at their maximum and the other type's
+    // rolled, one use for the whole casting. Decided once, so a spell whose
+    // two types are lightning and thunder has both at their maximum.
+    // A character's area that names no spell (a blue dragonborn's breath) too.
+    const owner = plan?.caster ?? awayCaster;
+    const holder = owner ? (getSheetById(owner.id) ?? owner) : null;
+    const wrathParts = holder ? parts.map((part) => wrathApplies(holder, part.type)) : [];
+    if (holder && wrathParts.includes(true)) {
+      spendWrath(campaign.id, holder.id);
+      wrathNote = WRATH_NOTE;
+    }
+    for (const [index, { expression, type }] of parts.entries()) {
+      const outcome = rollExpression(wrathParts[index] ? String(expressionMaximum(expression)) : adept ? floorDamageDice(expression) : expression);
       rolled.push({ amount: outcome.total, type });
       const roll = insertRoll({
         campaignId: campaign.id,
@@ -653,7 +662,7 @@ export function handleAoeDamage(
           sheets,
           sheetsById,
           weapon: { magical: true, ...(plan && elementalAdeptApplies(plan.caster, firstPart.type) ? { ignoreResistanceBy: "Elemental Adept" } : {}) },
-          ...(plan && elementalAdeptApplies(plan.caster, secondPart.type) ? { otherParts: { ignoreResistanceBy: "Elemental Adept" } } : {}),
+          ...(plan && secondPart.type && elementalAdeptApplies(plan.caster, secondPart.type) ? { ignoreTypes: { types: [secondPart.type], by: "Elemental Adept" } } : {}),
           spell: true,
         }),
       );

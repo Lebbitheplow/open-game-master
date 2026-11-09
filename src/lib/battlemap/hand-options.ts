@@ -25,7 +25,8 @@ import {
   type HandTurn,
 } from "@/lib/battlemap/hand-core";
 import { textKey } from "@/lib/language/text-logic";
-import { isConditionNamed, isNamed } from "@/lib/srd/feature-names";
+import { isNamed } from "@/lib/srd/feature-names";
+import { DESTRUCTIVE_WRATH, holdsDestructiveWrath } from "@/lib/dm/destructive-wrath-logic";
 
 const COST: Record<HeldOption["cost"], HandCost> = {
   action: "action",
@@ -112,7 +113,8 @@ export function optionCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] {
       // here, they had nothing to ride.
       if (isAfterRollChannelOption(option.name)) continue;
       // Already held for the next lightning or thunder damage (destructive-wrath.ts).
-      if (isNamed(option.name, "destructive wrath") && sheet.conditions.some((entry) => isConditionNamed(entry, "destructive wrath"))) continue;
+      const wrath = isNamed(option.name, DESTRUCTIVE_WRATH);
+      if (wrath && holdsDestructiveWrath(sheet)) continue;
       // A row of the authored table is dealt as its own card, which carries the
       // row's target and cost (hand-subclass.ts).
       if (authoredSpendFor(sheet, option.name)) continue;
@@ -120,7 +122,9 @@ export function optionCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] {
         card(sheet, turn, { id: "channel_divinity", label: "Channel Divinity" }, {
           name: option.name,
           cost: COST[option.cost],
-          rules: `Channel Divinity. ${RULES[option.cost]}`,
+          // Played here it is held for a roll the server makes at once (a
+          // save spell, an area); a hit offers it on its own card.
+          rules: wrath ? "Channel Divinity. Held for their next lightning or thunder damage, dealt at its maximum." : `Channel Divinity. ${RULES[option.cost]}`,
           ritual: option.cost === "ritual",
           ...(AIMED_OPTIONS.includes(textKey(option.name)) ? { target: "enemy" as const } : {}),
           ...(CHOSEN_OPTIONS.includes(textKey(option.name)) ? { target: "enemy" as const, shares: CHOSEN_CREATURES } : {}),
