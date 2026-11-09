@@ -30,6 +30,28 @@ const PLAYER_ACTION_TOOLS = new Set([
   "use_reaction",
 ]);
 
+// These also serve a creature's spell, a trap and the DM's own healing, so they
+// are the player's action only when the call names a character's casting. An
+// area spell that landed and went un-narrated told the table to try again,
+// which spends a second slot.
+type CastingArguments = { casterCharacterId?: unknown; spell?: unknown; casterId?: unknown };
+const NAMES_A_CASTING = new Map<string, (args: CastingArguments) => boolean>([
+  ["aoe_damage", (args) => Boolean(args.casterCharacterId)],
+  ["heal", (args) => Boolean(args.spell || args.casterId)],
+]);
+
+function namesPlayersCasting(name: string, rawArguments: unknown): boolean {
+  const names = NAMES_A_CASTING.get(name);
+  if (!names) {
+    return false;
+  }
+  try {
+    return names((JSON.parse(String(rawArguments)) ?? {}) as CastingArguments);
+  } catch {
+    return false;
+  }
+}
+
 // What a player buys goes through these: done once, it must not be asked for
 // again.
 const PURCHASE_TOOLS = new Set(["purchase", "buy_item"]);
@@ -47,7 +69,7 @@ export type EmptyTurnPlayer = {
   notReady?: (spell: string) => string | null;
 };
 
-type ToolCallLike = { id?: string; name?: string; function?: { name?: string } };
+type ToolCallLike = { id?: string; name?: string; function?: { name?: string; arguments?: unknown } };
 
 export function emptyTurnLine(conversation: ChatMessage[], player?: EmptyTurnPlayer | null): string {
   const outcome = lastActionOutcome(conversation);
@@ -67,6 +89,7 @@ export function emptyTurnLine(conversation: ChatMessage[], player?: EmptyTurnPla
 // gone through. A retry or a limit coaches the model and is passed over.
 function lastActionOutcome(conversation: ChatMessage[]): { refusal?: string; resolved?: boolean } | null {
   const names = new Map<string, string>();
+  const playersCastings = new Set<string>();
   for (const message of conversation) {
     if (message.role !== "assistant" || !Array.isArray(message.tool_calls)) {
       continue;
@@ -75,6 +98,9 @@ function lastActionOutcome(conversation: ChatMessage[]): { refusal?: string; res
       const name = call.function?.name ?? call.name;
       if (call.id && name) {
         names.set(call.id, name);
+        if (namesPlayersCasting(name, call.function?.arguments)) {
+          playersCastings.add(call.id);
+        }
       }
     }
   }
@@ -84,7 +110,8 @@ function lastActionOutcome(conversation: ChatMessage[]): { refusal?: string; res
       continue;
     }
     const name = names.get(message.tool_call_id) ?? "";
-    if (!PLAYER_ACTION_TOOLS.has(name) && !PURCHASE_TOOLS.has(name)) {
+    const playersAction = PLAYER_ACTION_TOOLS.has(name) || playersCastings.has(message.tool_call_id);
+    if (!playersAction && !PURCHASE_TOOLS.has(name)) {
       continue;
     }
     let parsed: unknown;
@@ -99,7 +126,7 @@ function lastActionOutcome(conversation: ChatMessage[]): { refusal?: string; res
     // nothing at the table, and a cap on the turn is not their character
     // failing.
     if (typeof error === "string" && error.trim()) {
-      if (refused === "rules" && PLAYER_ACTION_TOOLS.has(name)) {
+      if (refused === "rules" && playersAction) {
         return { refusal: firstSentences(error) };
       }
       continue;
