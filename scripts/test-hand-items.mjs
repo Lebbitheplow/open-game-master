@@ -591,6 +591,24 @@ await test("A Wand of Polymorph's card names no beast, as no Polymorph card does
   assert.equal(getCampaignMessage(message.id).cardResolvedAt ?? null, null, "and the card waits for the GM, who names the beast");
 });
 
+await test("A two-type spell from an item deals both of its types, at the item's numbers and with no slot", async () => {
+  if (!hasPack) return;
+  const enemy = await stage(mage, [wand("Staff of Frost")]);
+  assert.ok(cardNamed(mage, "Staff of Frost: Ice Storm"), "the staff deals Ice Storm");
+  const before = world.enemies().find((entry) => entry.id === enemy.id).currentHp;
+  // Ice Storm's card goes to the GM (a lasting area that catches), from a slot as
+  // from an item; the GM resolves it with these calls.
+  const drawn = await run("use_item", { characterId: mage.id, item: "Staff of Frost", spell: "Ice Storm" });
+  assert.equal(drawn.ok, true, JSON.stringify(drawn));
+  const cast = await run("aoe_damage", { casterCharacterId: mage.id, spell: "Ice Storm", enemyIds: [enemy.id] });
+  assert.equal(cast.error, undefined, JSON.stringify(cast));
+  assert.match(JSON.stringify(cast), /bludgeoning/i);
+  assert.match(JSON.stringify(cast), /cold/i);
+  assert.ok(world.enemies().find((entry) => entry.id === enemy.id).currentHp < before);
+  assert.equal(row(mage, "Staff of Frost").charges, 6, "four charges");
+  assert.equal(world.sheet(mage.id).spellcasting.slots["3"].used, 0, "no slot");
+});
+
 // A fresh node process on the same database is the server after a restart: it
 // has none of this process's memory.
 function afterRestart(source) {
