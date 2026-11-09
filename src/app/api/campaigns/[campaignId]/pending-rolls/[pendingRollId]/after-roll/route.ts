@@ -129,8 +129,8 @@ export async function POST(
   }
   if (paid.touchOfDeath && pending.attack) {
     // No die is thrown: the roll stays the player's, and the hit carries the
-    // necrotic. Touch of Death is the one choice a hit waits on, so the hit
-    // lands with it.
+    // necrotic and pays its use once it stands (attack-swing.ts). Touch of
+    // Death is the one choice a hit waits on, so the hit lands with it.
     return land(paid.outcome, thrown.landing, { ...pending, attack: { ...pending.attack, touchOfDeath: paid.touchOfDeath } });
   }
   // The server threw this die: "(physical)" would overclaim the roll now,

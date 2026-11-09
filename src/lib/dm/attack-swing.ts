@@ -15,6 +15,7 @@ import { budgetApplies, WEAPON_HIT, type TurnBudget } from "@/lib/dm/action-budg
 import { adjudicateHit } from "@/lib/dm/attack-logic";
 import { FOE_SLAYER, rescueMiss, STROKE_OF_LUCK, totalAReactionMeets } from "@/lib/dm/attack-features";
 import { spendFeatureUse } from "@/lib/dm/attack-onhit";
+import { CHANNEL_DIVINITY } from "@/lib/dm/after-roll-logic";
 import { recordTargetAc, type AttackRecord, type DamageAsk } from "@/lib/dm/attack-record";
 import { moteBurst } from "@/lib/dm/authored-mote";
 import { breakConcentration } from "@/lib/dm/concentration";
@@ -238,9 +239,9 @@ export function hitSwing(scene: SwingScene, record: AttackRecord, judged: Judged
     riders.push(...critGear.typed);
     notes.push(...critGear.notes);
   }
-  // Touch of Death, chosen on the card the hit waited on. Flat, so a critical
-  // does not double it.
-  if (record.touchOfDeath) {
+  // Touch of Death, chosen on the card the hit waited on and paid for only
+  // now the hit stands. Flat, so a critical does not double it.
+  if (record.touchOfDeath && spendFeatureUse(campaign, sheet.id, CHANNEL_DIVINITY, "Channel Divinity: Touch of Death", "player")) {
     expression = `${expression}+${record.touchOfDeath}`;
     riders.push({ dice: "", type: "necrotic", flat: record.touchOfDeath });
     notes.push(`Touch of Death: +${record.touchOfDeath} necrotic damage`);

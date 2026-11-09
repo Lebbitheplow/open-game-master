@@ -181,7 +181,10 @@ export function spendAfterRoll(
     return spendFeatureUse(campaign, sheet.id, CHANNEL_DIVINITY, "Channel Divinity: Guided Strike", "player") ? { outcome: withFlatBonus(outcome, GUIDED_STRIKE_BONUS), choosing: false } : null;
   }
   if (id === "touch_of_death") {
-    return spendFeatureUse(campaign, sheet.id, CHANNEL_DIVINITY, "Channel Divinity: Touch of Death", "player") ? { outcome, choosing: false, touchOfDeath: touchOfDeathDamage(sheet) } : null;
+    // Paid by the hit itself (attack-swing.ts hitSwing): a Parry or a Shield
+    // can still turn the roll as it lands, and a use spent here was lost then.
+    const state = sheet.resources?.[CHANNEL_DIVINITY];
+    return state && state.max - state.used > 0 ? { outcome, choosing: false, touchOfDeath: touchOfDeathDamage(sheet) } : null;
   }
   if (id === "favored_by_the_gods") {
     if (!spendFeatureUse(campaign, sheet.id, FAVORED_BY_THE_GODS, "Favored by the Gods", "player")) {
