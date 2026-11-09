@@ -34,7 +34,7 @@ const kit = await combatKit(world);
 const ai = await aiEngine(world);
 const { setMemberRealDice } = await import("../src/lib/db/campaigns.ts");
 const { createCompanionUser } = await import("../src/lib/db/users.ts");
-const { createSheet, markSheetAsCompanion } = await import("../src/lib/db/sheets.ts");
+const { createSheet, markSheetAsCompanion, setCompanionCommander } = await import("../src/lib/db/sheets.ts");
 const { getDmTurn, listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
 const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
 const { characterAwaitingPlayer } = await import("../src/lib/dm/player-word.ts");
@@ -179,6 +179,69 @@ await test("Another player's line is not this player's word.", async () => {
   world.say("player", "Kara, hit it!", brom);
   const out = await ai.invoke("pc_attack", { characterId: kara.id, targetEnemyId: enemy.id, weapon: "Longsword" });
   assert.equal(out.error, REFUSAL("Kara"));
+});
+
+// ---- words that only turn an action down ----
+
+// The 0.34.1 play-test (issue 761): after an attack, "I won't attack again"
+// with the move and the bonus action unspent, and the model's own end_turn
+// ended the turn 8 times in 16. The words only turn an attack down: the turn
+// stays open until the player ends it.
+const DECLINED = (name) =>
+  `${name}'s player only said what ${name} will not do; they did not end the turn. Nothing was spent and the turn stays open. Ask them whether ${name} moves, uses a bonus action, or ends the turn, and wait for their answer.`;
+
+for (const line of ["I won't attack again.", "Don't attack again this turn. I keep my shield up.", "No more attacks from me.", "I keep my hands ready but don't attack again this turn."]) {
+  await test(`"${line}": the model's end_turn is refused and the turn stays Kara's; an attack for her is refused the same way.`, async () => {
+    const enemy = await stage(kara);
+    world.say("player", line, kara);
+    assert.equal(characterAwaitingPlayer(world.campaignId)?.id, kara.id, "GAME STATE waits on Kara's player");
+    const before = spendable();
+    const ended = await ai.invoke("end_turn", { characterId: kara.id });
+    assert.equal(ended.ok, false, "the turn ended on words that only turned an attack down");
+    assert.equal(ended.error, DECLINED("Kara"));
+    const swing = await ai.invoke("pc_attack", { characterId: kara.id, targetEnemyId: enemy.id, weapon: "Longsword" });
+    assert.equal(swing.error, DECLINED("Kara"));
+    assert.equal(spendable(), before, "nothing was spent and the turn did not pass");
+    assert.equal(kit.current().characterId, kara.id);
+  });
+}
+
+await test("An end in her own words still ends it: \"I won't attack again, that's my turn.\" and, asked, \"I end my turn.\"", async () => {
+  await stage(kara);
+  world.say("player", "I won't attack again, that's my turn.", kara);
+  const ended = await ai.invoke("end_turn", { characterId: kara.id });
+  assert.equal(ended.ok, true, ended.error);
+  assert.equal(kit.current().characterId, brom.id);
+  await stage(kara);
+  world.say("player", "Don't attack again.", kara);
+  assert.equal((await ai.invoke("end_turn", { characterId: kara.id })).ok, false);
+  world.say("dm", "Kara, do you move, use a bonus action, or end your turn?");
+  world.say("player", "I end my turn.", kara);
+  const asked = await ai.invoke("end_turn", { characterId: kara.id });
+  assert.equal(asked.ok, true, asked.error);
+  assert.equal(kit.current().characterId, brom.id);
+});
+
+await test("A move after the declined attack is still her word: \"I won't attack again, I step back.\" lets end_turn through as before.", async () => {
+  await stage(kara);
+  world.say("player", "I won't attack again, I step back.", kara);
+  assert.equal(characterAwaitingPlayer(world.campaignId), null);
+  const ended = await ai.invoke("end_turn", { characterId: kara.id });
+  assert.equal(ended.ok, true, ended.error);
+});
+
+await test("A companion a player commands is held to the same words: \"Pip won't attack again this turn.\" ends nothing.", async () => {
+  setCompanionCommander(pip.id, kara.userId);
+  try {
+    await stage(pip);
+    world.say("player", "Pip won't attack again this turn.", { ...pip, userId: kara.userId });
+    const ended = await ai.invoke("end_turn", { characterId: pip.id });
+    assert.equal(ended.ok, false, "the commanded companion's turn ended on a declined attack");
+    assert.equal(ended.error, DECLINED("Pip"));
+    assert.equal(kit.current().characterId, pip.id);
+  } finally {
+    setCompanionCommander(pip.id, null);
+  }
 });
 
 // ---- what stays as it was ----

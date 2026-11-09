@@ -15,11 +15,15 @@
 //   - words written before the fight began were about the scene, so they
 //     declare a fight turn only when they name something the character does
 //     in it (an attack, a spell, a move, a foe of the fight);
-//   - a line that only asks a question declares nothing.
+//   - a line that only asks a question declares nothing;
+//   - a line that only says what the character will not do ("I won't attack
+//     again", "No more attacks from me") declares nothing either, unless it
+//     also ends the turn in words ("...that's my turn").
 // A card played from the Hand is a structured action and always declares.
 // English is read here; any other table language is read once by the
 // utility model (src/lib/dm/player-word-read.ts) and handed in as `read`.
 
+import { englishEndsTurn } from "@/lib/dm/claims-logic";
 import { containsPhrase } from "@/lib/language/text-logic";
 
 export type WordLine = {
@@ -43,9 +47,9 @@ export type PlayerWord = {
   // The words the hold was read from, for the refusal.
   holdQuote: string | null;
   // Why the words declare nothing: never spoke, only asked a question, spoke
-  // only before the fight began about something else, or chose to stay put
-  // and do nothing.
-  why: "silent" | "asked" | "before_fight" | "held" | null;
+  // only before the fight began about something else, chose to stay put
+  // and do nothing, or only said what the character will not do.
+  why: "silent" | "asked" | "before_fight" | "held" | "declined" | null;
 };
 
 const SILENT: PlayerWord = { spoke: false, declares: false, holds: false, holdQuote: null, why: "silent" };
@@ -62,8 +66,45 @@ const HOLD_UNDONE = /\b(?:don['’]?t|do not|doesn['’]?t|does not|won['’]?t|
 
 // Something done in a fight. Used only where a line could otherwise be a
 // remark about the scene: words from before the fight, and a hold.
-const ACTS =
-  /\b(?:attack|swing|strike|stab|slash|hit|smash|bash|shoot|fire|loose|throw|hurl|cast|charge|rush|lunge|close in|move|run|dash|disengage|dodge|help|hide|grapple|shove|ready|drink|draw|punch|kick|bite|smite|rage|heal|bless|walk|step|approach|advance|retreat|flee|climb|jump|leap|tackle|grab|aim|cut|slice|thrust|parry|go (?:to|for|after|toward|towards)|head (?:to|for|toward|towards)|use)(?:s|es|ed|ing)?\b/i;
+const ACT_VERBS =
+  "attack|swing|strike|stab|slash|hit|smash|bash|shoot|fire|loose|throw|hurl|cast|charge|rush|lunge|close in|move|run|dash|disengage|dodge|help|hide|grapple|shove|ready|drink|draw|punch|kick|bite|smite|rage|heal|bless|walk|step|approach|advance|retreat|flee|climb|jump|leap|tackle|grab|aim|cut|slice|thrust|parry|go (?:to|for|after|toward|towards)|head (?:to|for|toward|towards)|use";
+const ACTS = new RegExp(`\\b(?:${ACT_VERBS})(?:s|es|ed|ing)?\\b`, "i");
+
+// An action named only to turn it down: "I won't attack again", "Don't
+// attack again this turn", "Bryn doesn't attack", "not casting anything
+// else", "No more attacks from me". Read as acting, "won't attack" let the
+// model's end_turn through with the move and the bonus action unspent: 8 of
+// 16 such turns ended at the 0.34.1 play-test (issue 761). A few words may
+// stand between ("I won't make another attack").
+const DECLINED = new RegExp(
+  `\\b(?:(?:don['’]?t|do not|doesn['’]?t|does not|didn['’]?t|won['’]?t|will not|can['’]?t|cannot|not|never|no longer)\\s+(?:\\w+\\s+){0,3}?|no\\s+(?:more\\s+|further\\s+|other\\s+)?)(?:${ACT_VERBS})(?:s|es|ed|ing)?\\b`,
+  "i",
+);
+
+// "Ready" said of hands or a weapon kept ready is a stance, not the Ready
+// action: "I keep my hands ready but don't attack again" acted on "ready".
+const STANCE = /\b(?:(?:keep|stay|remain|get)(?:s|ing)?|kept|be|am|is|are|i['’]m|we['’]re|they['’]re|he['’]s|she['’]s)\s+(?:\w+\s+){0,2}?ready\b/gi;
+
+// Where one clause of a line ends and the next begins.
+const CLAUSE_BREAK = /([.!?;,\n]|\b(?:and|but|then|so|instead|while)\b)/i;
+
+// The words with every clause that turns an action down taken out, and
+// whether there was one. The rest of a declining clause goes with it: the
+// goblin in "I won't attack the goblin again" is the foe declined.
+function withoutDeclined(text: string): { rest: string; declined: boolean } {
+  let declined = false;
+  const rest = text
+    .split(CLAUSE_BREAK)
+    .map((piece, at) => {
+      if (at % 2 === 0 && DECLINED.test(piece)) {
+        declined = true;
+        return ".";
+      }
+      return piece;
+    })
+    .join("");
+  return { rest, declined };
+}
 
 function clauseBefore(text: string, at: number): string {
   const before = text.slice(0, at);
@@ -83,9 +124,16 @@ export function englishHold(text: string): string | null {
 }
 
 // Whether English words name something done in a fight: an action verb, or
-// a name the fight knows (a foe, a spell on the sheet).
+// a name the fight knows (a foe, a spell on the sheet), outside a clause that
+// turns it down.
 export function englishActs(text: string, names: readonly string[]): boolean {
-  return ACTS.test(text) || names.some((name) => name.trim().length > 1 && containsPhrase(text, name));
+  const { rest } = withoutDeclined(text);
+  return ACTS.test(rest.replace(STANCE, " ")) || names.some((name) => name.trim().length > 1 && containsPhrase(rest, name));
+}
+
+// Whether English words turn an action down ("I won't attack again").
+export function englishDeclines(text: string): boolean {
+  return withoutDeclined(text).declined;
 }
 
 // A line that only asks: every sentence of it ends in a question mark, in
@@ -138,6 +186,13 @@ export function readPlayerWord(
     if (holds && !acts) {
       return { spoke: true, declares: false, holds, holdQuote, why: during.length ? "held" : "before_fight" };
     }
+    // Words in the fight that only turn an action down leave the rest of the
+    // turn to the player: the move and the bonus action may still follow, so
+    // the turn ends only when they say so (issue 761).
+    const duringText = during.map((line) => line.content).join("\n");
+    if (!acts && englishDeclines(duringText) && !englishEndsTurn(duringText)) {
+      return { spoke: true, declares: false, holds, holdQuote, why: "declined" };
+    }
     if (saidDuring || saidBefore) {
       return { spoke: true, declares: true, holds, holdQuote, why: null };
     }
@@ -176,6 +231,8 @@ export function unaskedRefusal(name: string, word: Pick<PlayerWord, "why">): str
       return `${name} has not acted: their player spoke before this fight began and named nothing ${name} does in it. ${tail}`;
     case "held":
       return `${name} has not acted: their player said ${name} stays where they are and named nothing else. Nothing was spent. If that is all ${name} does, end_turn ends the turn; otherwise wait for them to say what ${name} does.`;
+    case "declined":
+      return `${name}'s player only said what ${name} will not do; they did not end the turn. Nothing was spent and the turn stays open. Ask them whether ${name} moves, uses a bonus action, or ends the turn, and wait for their answer.`;
     default:
       return `${name} has not acted: their player hasn't declared an action this turn. ${tail}`;
   }
