@@ -5,7 +5,9 @@
 // and is played through the tools a typed use takes (use_item, then the spell's
 // own), spending no slot. A cast that does not happen gives back what the item spent.
 import assert from "node:assert/strict";
-import { openWorld } from "./lib/enforce-world.mjs";
+import { spawnSync } from "node:child_process";
+import path from "node:path";
+import { hasPack, openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
 import { fakeModel, reply } from "./lib/enforce-narrator.mjs";
@@ -467,13 +469,31 @@ await test("The sentence and the model's line say which item, with use_item firs
   assert.deepEqual(afterCommit(turnOf(mage), cardNamed(mage, "Staff of the Magi: Light")).marks ?? [], [], "and leaves no spell-rule mark, as use_item does");
 });
 
-await test("A casting of a minute from an item does not begin across turns as a ring's does: that is the ring's alone", async () => {
-  await stage(brute, [{ name: "Ring of Spell Storing", qty: 1, equipped: true, attuned: true, storedSpells: [{ spell: "Alarm", level: 1, saveDc: 15, attackBonus: 7, abilityMod: 4, by: "Mage" }] }]);
-  const stored = { card: "spell", spell: "Alarm", slotLevel: 1, item: "Ring of Spell Storing" };
-  assert.equal(directContextFor(world.campaignId, stored, [], brute.id).ringBegins, true);
-  await stage(mage, [wand("Staff of the Woodlands")]);
-  const staff = { card: "spell", spell: "Awaken", slotLevel: 5, item: "Staff of the Woodlands" };
-  assert.equal(directContextFor(world.campaignId, staff, [], mage.id).ringBegins, undefined);
+await test("A spell of a minute or more from an item is held across turns in a fight, as a ring's is, and spends the item only when done", async () => {
+  if (!hasPack) return;
+  const { finishCastingsAtFightEnd } = await import("../src/lib/dm/long-casting.ts");
+  await stage(mage, [wand("Staff of the Magi")]);
+  const intent = { card: "spell", spell: "Conjure Elemental", slotLevel: 5, item: "Staff of the Magi", variant: "Fire Elemental" };
+  assert.equal(directContextFor(world.campaignId, intent, [], mage.id).ringBegins, true, "SRD 5.1: the spell uses its normal casting time");
+  const card = cardNamed(mage, "Staff of the Magi: Conjure Elemental");
+  assert.match(card.rules, /takes turns to cast/);
+  const begun = await run("use_item", { characterId: mage.id, item: "Staff of the Magi", spell: "Conjure Elemental" });
+  assert.match(String(begun.casting), /10 rounds/, JSON.stringify(begun));
+  assert.equal(row(mage, "Staff of the Magi").charges, undefined, "nothing of the staff is spent while it is cast");
+  assert.equal(usedAction(), true);
+  assert.match(cardNamed(mage, "Staff of the Magi: Conjure Elemental").disabled, /is casting Conjure Elemental/);
+  finishCastingsAtFightEnd(campaign());
+  assert.equal(row(mage, "Staff of the Magi").charges, 43, "seven charges, spent as it takes effect");
+  const done = cardNamed(mage, "Staff of the Magi: Conjure Elemental");
+  assert.equal(done.cost, "free", "and the card that resolves it is free");
+  const again = await run("use_item", { characterId: mage.id, item: "Staff of the Magi", spell: "Conjure Elemental" });
+  assert.equal(again.ok, true, JSON.stringify(again));
+  assert.equal(row(mage, "Staff of the Magi").charges, 43, "resolving it charges nothing more");
+  dropItemCast(mage.id, "Conjure Elemental");
+  world.patch(mage.id, { conditions: [], conditionMeta: {} });
+  await stage(brute, [{ name: "Bowl of Commanding Water Elementals", qty: 1 }]);
+  const bowl = { card: "spell", spell: "Conjure Elemental", slotLevel: 5, item: "Bowl of Commanding Water Elementals" };
+  assert.equal(directContextFor(world.campaignId, bowl, [], brute.id).ringBegins, undefined, "a bowl's text makes it an action");
 });
 
 await test("They take no Ready pick and are no first-turn tip; the lookups read an item's spells for its card alone", async () => {
@@ -487,7 +507,7 @@ await test("They take no Ready pick and are no first-turn tip; the lookups read 
 });
 
 await test("Every item the table says casts a spell deals its cards with no two alike, and asks use_item first of whatever it resolves", async () => {
-  const names = ["Wand of Fear", "Wand of Magic Detection", "Staff of Frost", "Staff of Charming", "Staff of Swarming Insects", "Staff of Power", "Eyes of Charming", "Medallion of Thoughts", "Helm of Teleportation", "Cubic Gate", "Necklace of Prayer Beads", "Robe of Stars", "Cape of the Mountebank", "Rod of Alertness", "Boots of Levitation", "Helm of Comprehending Languages", "Ring of Telekinesis", "Crystal Ball of Telepathy", "Circlet of Blasting", "Cloak of Arachnida", "Wind Fan", "Trident of Fish Command", "Ring of Fire Elemental Command"];
+  const names = ["Wand of Fear", "Wand of Magic Detection", "Staff of Frost", "Staff of Charming", "Staff of Swarming Insects", "Staff of Power", "Eyes of Charming", "Medallion of Thoughts", "Helm of Teleportation", "Cubic Gate", "Necklace of Prayer Beads (Blessing, Curing, Favor, Smiting, Summons, Wind Walking)", "Robe of Stars", "Cape of the Mountebank", "Rod of Alertness", "Boots of Levitation", "Helm of Comprehending Languages", "Ring of Telekinesis", "Crystal Ball of Telepathy", "Circlet of Blasting", "Cloak of Arachnida", "Wind Fan", "Trident of Fish Command", "Ring of Fire Elemental Command"];
   await stage(mage, []);
   for (const name of names) {
     world.patch(mage.id, { equipment: [wand(name, { equipped: true })] });
@@ -513,6 +533,133 @@ await test("A draw that casts nothing is no answer to the card, and a refused on
   assert.equal(intentAnswered(played, [{ ...draw, result: { error: "no", refused: "rules" } }]), true);
   assert.deepEqual(drawStopsCast("cast_at_enemy", { error: "no", refused: "rules" }), null);
   assert.deepEqual(drawStopsCast("use_item", { error: "no", retry: true }), { error: "no", retry: true });
+});
+
+
+await test("A Trident of Fish Command casts while carried, as its text says, not only in hand", async () => {
+  await stage(mage, [{ name: "Trident of Fish Command", qty: 1, equipped: false, attuned: true }, { name: "Dagger", qty: 1, equipped: true }]);
+  const card = cardNamed(mage, "Trident of Fish Command: Dominate Beast");
+  assert.equal(card.disabled, null, card.disabled);
+  const out = await run("use_item", { characterId: mage.id, item: "Trident of Fish Command", spell: "Dominate Beast" });
+  assert.equal(out.ok, true, JSON.stringify(out));
+  dropItemCast(mage.id, "Dominate Beast");
+});
+
+await test("A Necklace of Prayer Beads deals the beads the GM named and no other, each once until dawn", async () => {
+  const { rechargeAtDawn } = await import("../src/lib/dm/item-charges.ts");
+  const necklace = (name, extra = {}) => ({ name, qty: 1, equipped: true, attuned: true, ...extra });
+  await stage(mage, [necklace("Necklace of Prayer Beads")]);
+  const asClass = (id) => world.patch(mage.id, { class: id, classes: (world.sheet(mage.id).classes ?? []).map((entry) => ({ ...entry, id })) });
+  asClass("cleric");
+  assert.deepEqual(itemCards(mage), [], "no bead named: no card lets the player pick one");
+  const unnamed = { card: "spell", spell: "Planar Ally", slotLevel: 6, item: "Necklace of Prayer Beads" };
+  assert.match(intentRefusal(campaign(), world.sheet(mage.id), unnamed), /GM's to say/, "and an older Hand's card is refused");
+  world.patch(mage.id, { equipment: [necklace("Necklace of Prayer Beads (Blessing, Curing)")] });
+  assert.deepEqual(itemCards(mage).map((card) => card.name).sort(), ["Necklace of Prayer Beads (Blessing, Curing): Bless", "Necklace of Prayer Beads (Blessing, Curing): Cure Wounds", "Necklace of Prayer Beads (Blessing, Curing): Lesser Restoration"]);
+  const ally = await run("use_item", { characterId: mage.id, item: "Necklace of Prayer Beads (Blessing, Curing)", spell: "Planar Ally" });
+  assert.match(ally.error ?? "", /not cast Planar Ally|casts Bless/, JSON.stringify(ally));
+  const cure = await run("use_item", { characterId: mage.id, item: "Necklace of Prayer Beads (Blessing, Curing)", spell: "Cure Wounds" });
+  assert.equal(cure.ok, true, JSON.stringify(cure));
+  dropItemCast(mage.id, "Cure Wounds");
+  const row1 = world.sheet(mage.id).equipment[0];
+  assert.deepEqual(row1.beadsSpent, ["curing"]);
+  assert.equal(row1.charges, 1, "two beads named, two charges");
+  kit.giveTurn(mage.id);
+  const again = await run("use_item", { characterId: mage.id, item: "Necklace of Prayer Beads (Blessing, Curing)", spell: "Lesser Restoration" });
+  assert.match(again.error ?? "", /Every bead of curing/, "the one bead of curing is spent, whichever of its spells is asked");
+  assert.match(cardNamed(mage, "Necklace of Prayer Beads (Blessing, Curing): Lesser Restoration").disabled, /Every bead of curing/);
+  assert.equal(cardNamed(mage, "Necklace of Prayer Beads (Blessing, Curing): Bless").disabled, null);
+  rechargeAtDawn(world.campaignId, 0, 2 * 24 * 60);
+  assert.equal(world.sheet(mage.id).equipment[0].beadsSpent, undefined, "dawn makes the bead whole");
+  asClass("wizard");
+});
+
+await test("A Wand of Polymorph's card names no beast, as no Polymorph card does: at a table a person runs, the spell's tool asks for one and the charge comes back", async () => {
+  const enemy = await stage(mage, [wand("Wand of Polymorph")]);
+  const message = insertCampaignMessage({
+    campaignId: world.campaignId,
+    seq: allocateSeq(world.campaignId),
+    authorType: "player",
+    userId: world.owner.id,
+    characterId: mage.id,
+    content: "I cast Polymorph from my Wand of Polymorph.",
+    intent: { card: "spell", spell: "Polymorph", slotLevel: 4, item: "Wand of Polymorph", targetId: enemy.id, targetKind: "enemy" },
+  });
+  const out = await resolveAsPlayed(campaign(), world.owner.id, message.id);
+  assert.equal(out.ok, false, JSON.stringify(out));
+  assert.equal(row(mage, "Wand of Polymorph").charges, 7, "the charge came back");
+  assert.equal(getCampaignMessage(message.id).cardResolvedAt ?? null, null, "and the card waits for the GM, who names the beast");
+});
+
+await test("A two-type spell from an item deals both of its types, at the item's numbers and with no slot", async () => {
+  if (!hasPack) return;
+  const enemy = await stage(mage, [wand("Staff of Frost")]);
+  assert.ok(cardNamed(mage, "Staff of Frost: Ice Storm"), "the staff deals Ice Storm");
+  const before = world.enemies().find((entry) => entry.id === enemy.id).currentHp;
+  // Ice Storm's card goes to the GM (a lasting area that catches), from a slot as
+  // from an item; the GM resolves it with these calls.
+  const drawn = await run("use_item", { characterId: mage.id, item: "Staff of Frost", spell: "Ice Storm" });
+  assert.equal(drawn.ok, true, JSON.stringify(drawn));
+  const cast = await run("aoe_damage", { casterCharacterId: mage.id, spell: "Ice Storm", enemyIds: [enemy.id] });
+  assert.equal(cast.error, undefined, JSON.stringify(cast));
+  assert.match(JSON.stringify(cast), /bludgeoning/i);
+  assert.match(JSON.stringify(cast), /cold/i);
+  assert.ok(world.enemies().find((entry) => entry.id === enemy.id).currentHp < before);
+  assert.equal(row(mage, "Staff of Frost").charges, 6, "four charges");
+  assert.equal(world.sheet(mage.id).spellcasting.slots["3"].used, 0, "no slot");
+});
+
+await test("A host that cannot resolve an item's spell says so, and the Hand then deals no item card", async () => {
+  const { SERVER_FEATURES } = await import("../src/lib/capabilities.ts");
+  assert.equal(SERVER_FEATURES.handItemCasts, true, "this host offers them");
+  await stage(mage, [wand("Wand of Web")]);
+  assert.equal(deriveHand(world.sheet(mage.id), turnOf(mage)).filter((card) => card.fromItem).length, 1);
+  assert.equal(deriveHand(world.sheet(mage.id), turnOf(mage), { items: false }).filter((card) => card.fromItem).length, 0, "an older host's Hand leaves them typed");
+});
+
+// A fresh node process on the same database is the server after a restart: it
+// has none of this process's memory.
+function afterRestart(source) {
+  const alias = path.join(import.meta.dirname, "lib", "register-alias.mjs");
+  const script = `import { register } from "node:module"; import { pathToFileURL } from "node:url"; register(pathToFileURL(${JSON.stringify(alias)}).href, import.meta.url);\n${source}`;
+  const child = spawnSync(process.execPath, ["--input-type=module", "-e", script], { cwd: path.join(import.meta.dirname, ".."), env: process.env, encoding: "utf8" });
+  const answer = child.stdout.trim().split("\n").at(-1);
+  assert.ok(answer, child.stderr);
+  return JSON.parse(answer);
+}
+
+await test("A restart between use_item and the spell's tool keeps the credit: the cast spends no slot, and one never cast still gives the charge back", async () => {
+  await stage(mage, [wand("Wand of Binding")]);
+  const drawn = await run("use_item", { characterId: mage.id, item: "Wand of Binding", spell: "Hold Person" });
+  assert.equal(drawn.ok, true, JSON.stringify(drawn));
+  assert.equal(row(mage, "Wand of Binding").charges, 5);
+  const waiting = afterRestart(`const { takeItemCast } = await import("./src/lib/srd/item-cast-credit.ts"); await import("./src/lib/dm/item-use.ts"); console.log(JSON.stringify(takeItemCast(${JSON.stringify(mage.id)}, "Hold Person", { dryRun: true })));`);
+  assert.equal(waiting?.item, "Wand of Binding", "the credit outlives the process that wrote it");
+  const given = afterRestart(`const { takeBackItemCast } = await import("./src/lib/dm/item-use.ts"); const { getCampaignById } = await import("./src/lib/db/campaigns.ts"); console.log(JSON.stringify(takeBackItemCast(getCampaignById(${JSON.stringify(world.campaignId)}), ${JSON.stringify(mage.id)}, "Hold Person")));`);
+  assert.equal(given, true, "and the settling after the restart finds what to give back");
+  assert.equal(row(mage, "Wand of Binding").charges, 7);
+  assert.equal(takeItemCast(mage.id, "Hold Person", { dryRun: true }), null);
+});
+
+await test("Reverting the turn that drew a wand's spell forgets its credit, and reverting the turn that cast it leaves it waiting again", async () => {
+  const { forgetTurnItemCasts } = await import("../src/lib/db/item-cast-credits.ts");
+  const { recordItemCast } = await import("../src/lib/srd/item-cast-credit.ts");
+  await stage(mage, [wand("Wand of Web")]);
+  recordItemCast(mage.id, { spell: "Web", level: 2, item: "Wand of Web", saveDc: 15, paid: { row: wand("Wand of Web"), charges: 1 }, turnId: "turn-drew" });
+  forgetTurnItemCasts(world.campaignId, "turn-drew");
+  assert.equal(takeItemCast(mage.id, "Web", { dryRun: true }), null, "a cast the revert undid pays for nothing later, and owes nothing back");
+  assert.equal(takeBackItemCast(campaign(), mage.id, "Web"), false);
+  recordItemCast(mage.id, { spell: "Web", level: 2, item: "Wand of Web", saveDc: 15, turnId: "turn-drew" });
+  globalThis.__odmItemCastStore.turn = () => "turn-cast";
+  try {
+    assert.ok(takeItemCast(mage.id, "Web"), "the spell's tool takes it in a later turn");
+  } finally {
+    delete globalThis.__odmItemCastStore.turn;
+  }
+  assert.equal(takeItemCast(mage.id, "Web", { dryRun: true }), null);
+  forgetTurnItemCasts(world.campaignId, "turn-cast");
+  assert.equal(takeItemCast(mage.id, "Web", { dryRun: true })?.item, "Wand of Web", "the cast undone, the charge it took stays paid for it");
+  dropItemCast(mage.id, "Web");
 });
 
 model.close();

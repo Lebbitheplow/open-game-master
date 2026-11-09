@@ -45,6 +45,8 @@ import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
+// The credits live in the database on the server (src/lib/db/item-cast-credits.ts).
+import "@/lib/db/item-cast-credits";
 import { spellDrawnMark, takeItemCast } from "@/lib/srd/item-cast-credit";
 import { ringBarrier, storedSpellNamed, storedSpellsOf, storeLevelsFree, type StoredSpell } from "@/lib/srd/spell-storing";
 

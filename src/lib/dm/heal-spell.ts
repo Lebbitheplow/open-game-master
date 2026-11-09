@@ -23,6 +23,8 @@
 // This module does not import mutations.ts: the cast is handed in.
 
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+// The credits live in the database on the server (src/lib/db/item-cast-credits.ts).
+import "@/lib/db/item-cast-credits";
 import { itemCastNumbers, runningItemSpell } from "@/lib/srd/item-cast-credit";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";

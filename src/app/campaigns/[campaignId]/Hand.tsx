@@ -306,11 +306,14 @@ function HandInner({
   // The creature a summoning spell calls (issue 685): a host without the
   // picker leaves its summon cards to the GM, as before.
   const summons = useHandSummons(sheet, hostOffers(capabilities, "summonPicker"));
+  // A wand's, a staff's or a scroll's spell as a card: a host that cannot
+  // resolve one leaves them typed.
+  const items = hostOffers(capabilities, "handItemCasts");
   const cards = useMemo(() => {
     if (!sheet || !turn) return [];
     if (reactionsOnly) return [...reactions, ...othersReactions];
-    return [...othersReactions, ...holdPendingCards(withReactions(reactions, deriveHand(sheet, turn, { spells, trackAmmo, gear, blasts, summons })), waiting)];
-  }, [sheet, turn, reactions, othersReactions, reactionsOnly, spells, trackAmmo, gear, blasts, summons, waiting]);
+    return [...othersReactions, ...holdPendingCards(withReactions(reactions, deriveHand(sheet, turn, { spells, trackAmmo, gear, blasts, summons, items })), waiting)];
+  }, [sheet, turn, reactions, othersReactions, reactionsOnly, spells, trackAmmo, gear, blasts, summons, items, waiting]);
 
   // Cards that spend one thing (spell slots, ki, superiority dice, gear, the
   // basic actions) gather under one card each (issue 528, hand-groups.ts).

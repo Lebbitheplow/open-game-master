@@ -433,6 +433,8 @@ export function deleteCampaign(campaignId: string) {
   db.prepare(`DELETE FROM last_hits WHERE campaign_id = ?`).run(campaignId);
   // The saves made this turn (src/lib/dm/last-save.ts), keyed the same way.
   db.prepare(`DELETE FROM last_saves WHERE campaign_id = ?`).run(campaignId);
+  // What its items paid for and nobody cast (src/lib/db/item-cast-credits.ts).
+  db.prepare(`DELETE FROM item_cast_credits WHERE campaign_id = ?`).run(campaignId);
   // A test table's dice script goes with the row (ON DELETE CASCADE); the
   // dice's note that this id was a test table goes too
   // (src/lib/db/dice-scripts.ts).

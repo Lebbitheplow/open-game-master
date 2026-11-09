@@ -7,6 +7,7 @@ import { previewTurnClockRewind, rewindTurnClock } from "@/lib/db/clock";
 import { getDmTurn, markDmTurnReverted } from "@/lib/db/dm-turns";
 import { listAuditForTurn } from "@/lib/db/sheet-audit";
 import { liveTurnChanges } from "@/lib/db/turn-changes";
+import { forgetTurnItemCasts } from "@/lib/db/item-cast-credits";
 import { REVERT_WINDOW_TURNS, revertWindowStart } from "@/lib/db/turn-rows";
 import { describeInstant } from "@/lib/dm/calendar";
 import { forgetTurnAnswers, forgetTurnHits } from "@/lib/dm/last-hit";
@@ -126,6 +127,7 @@ export async function POST(
     // And a reaction the turn took puts the hit it answered back as it was,
     // open to be answered again (the refund and the spend are its audit rows).
     forgetTurnAnswers(campaignId, turnId);
+    forgetTurnItemCasts(campaignId, turnId);
     // After the sheets too: the fight's events, the test dice, the cards.
     const takenBack = changes.length ? takeBackTurnChanges(context.campaign, turnId, changes) : 0;
     if (takenBack) {

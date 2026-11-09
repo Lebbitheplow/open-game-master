@@ -1,4 +1,5 @@
 import { getDatabase, nowIso } from "@/lib/db/core";
+import { forgetCampaignItemCasts } from "@/lib/db/item-cast-credits";
 import { allocateSeq, getCampaignById } from "@/lib/db/campaigns";
 import { insertCampaignMessage, listRecentMessages } from "@/lib/db/messages";
 import { markRolledBack, recordRollbackCorrections } from "@/lib/db/turn-ledger";
@@ -237,6 +238,9 @@ function rollbackNow(
       campaignId,
       capturedAt,
     );
+    // A spell an item paid for and nobody cast belongs to the timeline that
+    // no longer happened (src/lib/db/item-cast-credits.ts).
+    forgetCampaignItemCasts(campaignId);
     db.prepare(`DELETE FROM dm_whispers WHERE campaign_id = ? AND created_at > ?`).run(
       campaignId,
       capturedAt,

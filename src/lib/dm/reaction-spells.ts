@@ -33,6 +33,8 @@ import { allyOf, noFall, softenFall, spendReaction, type Ctx } from "@/lib/dm/re
 import { settleHits } from "@/lib/dm/reaction-refund";
 import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
 import { swallowCoverError } from "@/lib/dm/swallow";
+// The credits live in the database on the server (src/lib/db/item-cast-credits.ts).
+import "@/lib/db/item-cast-credits";
 import { takeItemCast } from "@/lib/srd/item-cast-credit";
 import { spellHeldProblem } from "@/lib/dm/cast-rules";
 import { findNamed, textKey } from "@/lib/language/text-logic";

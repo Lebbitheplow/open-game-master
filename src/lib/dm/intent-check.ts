@@ -28,6 +28,7 @@ import { reactionTriggerProblem } from "@/lib/dm/reaction-spells";
 import { releaseStoredSpell } from "@/lib/dm/spell-storing";
 import { consumableRefusal } from "@/lib/dm/consumables";
 import { findCarriedItem } from "@/lib/dm/item-logic";
+import { unnamedBeads } from "@/lib/battlemap/hand-items";
 import { chargedItemUse } from "@/lib/dm/item-use";
 import { prepareUseItem } from "@/lib/dm/object-actions";
 import type { ToolResult } from "@/lib/dm/tool-errors";
@@ -111,6 +112,12 @@ function scrollCastAnswer(campaign: Campaign, sheet: CharacterSheet, intent: Mes
 // left waiting would pay for the next Shield the wearer cast from their own slots.
 function storedCastRefusal(campaign: Campaign, sheet: CharacterSheet, intent: MessageIntent): string | null {
   const item = intent.item ?? "";
+  // Which beads a Necklace of Prayer Beads holds is the GM's to say (an older
+  // Hand dealt a card for every kind): the card waits until they have.
+  const row = findCarriedItem(sheet.equipment, item);
+  if (row && unnamedBeads(row)) {
+    return `Which beads ${row.name} holds is the GM's to say; until they name them on the item, say in your own words which bead you use.`;
+  }
   const released =
     releaseStoredSpell(campaign, sheet, item, intent.spell, "", { dryRun: true }) ??
     chargedItemUse(campaign, "", sheet, item, undefined, intent.spell, { dryRun: true }) ??
