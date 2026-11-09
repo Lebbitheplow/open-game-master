@@ -2535,7 +2535,8 @@ const touchTables = {};
     [WRATH_TITLE, wrathTables, [], {
       class: "cleric",
       features: [{ name: "Channel Divinity: Destructive Wrath", source: "choice" }],
-      resources: { channel_divinity: { max: 1, used: 0 } },
+      // One for the hit's card, one held from the Hand.
+      resources: { channel_divinity: { max: 2, used: 0 } },
       spellcasting: { ability: "wis", known: [], prepared: [], cantrips: ["Shocking Grasp"], slots: {} },
     }],
     [AFTER_RIDER_TITLE, afterRiderTables, [], {
