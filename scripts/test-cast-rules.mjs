@@ -30,6 +30,7 @@ const { bundledSpellFacts, materialOf } = await import("../src/lib/srd/spell-fac
 const { CASTING_HELD, freshBudget, releaseHeldAction, spendAction, spendAttack } = await import("../src/lib/dm/action-budget.ts");
 const { castingRoundsOf, castingOf, castingInstance, completedCastingOf, completeMark } = await import("../src/lib/dm/long-casting-logic.ts");
 const { spellSupportFor, spellSupportLine } = await import("../src/lib/srd/spell-support.ts");
+const { spellMechanicsFor } = await import("../src/lib/content/index.ts");
 
 let passed = 0;
 function test(name, fn) {
@@ -373,6 +374,19 @@ test("a spell taught in play is the class's, of a castable level, with room for 
 
 test("copying a spell costs 50 gp and two hours a level", () => {
   assert.deepEqual(copyCost(facts("Fly")), { gold: 150, hours: 6 });
+});
+
+// Symbol fires later, the one glyph chosen at the inscribing, each with its
+// own save (SRD 5.1). Read from the prose, the Death glyph's CON save and
+// necrotic dice took the Fear glyph's frightened, so a death glyph laid it.
+test("Symbol is a glyph the GM fires with the chosen glyph's own save, never a mix of two", () => {
+  const { mech } = spellMechanicsFor({ spell: "Symbol" });
+  assert.equal(mech.resolution, "utility");
+  assert.equal(mech.condition, undefined);
+  assert.equal(mech.noDamage, true);
+  for (const glyph of ["Death, CON save, 10d10 necrotic", "Fear, WIS save, frightened", "Hopelessness, CHA save", "Insanity, INT save", "Pain, CON save, incapacitated", "Sleep, WIS save, unconscious for 10 minutes", "Stunning, WIS save, stunned"]) {
+    assert.ok(mech.note.includes(glyph), glyph);
+  }
 });
 
 test("the nine materials a single price cannot hold are kept as printed", () => {
