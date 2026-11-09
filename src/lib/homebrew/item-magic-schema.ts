@@ -109,10 +109,12 @@ export const itemSpellSchema = z.preprocess(withoutEmptyDc, z.object({
   maxLevel: int(1, 9).optional(),
   dc: int(1, 30).optional(),
   // The rest of a published item's cast (src/lib/srd/item-spells.ts): its
-  // own attack bonus, a bonus action, the cast that uses the item up, and
-  // the check it waits on, kept by a copy.
+  // own attack bonus, a bonus action, an action whatever the spell's casting
+  // time, the cast that uses the item up, and the check it waits on, kept by
+  // a copy.
   attackBonus: int(-5, 20).optional(),
   bonusAction: flag,
+  asAction: flag,
   usesUp: flag,
   check: z.object({ ability: z.enum(["str", "dex", "con", "int", "wis", "cha"]), dc: int(1, 30) }).optional(),
 }));

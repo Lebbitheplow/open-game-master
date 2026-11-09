@@ -13,6 +13,7 @@
 import { gearKindOf, inHand } from "@/lib/dm/gear-hands";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
 import { gearDefOfRow } from "@/lib/srd/magic-gear";
+import { textKey } from "@/lib/language/text-logic";
 import { rowName } from "@/lib/srd/item-row";
 import { attunementProblem } from "@/lib/srd/magic-items";
 
@@ -20,7 +21,7 @@ import { attunementProblem } from "@/lib/srd/magic-items";
 // "While you carry it, you can use an action and expend 1 charge to cast
 // dominate beast" (Trident of Fish Command). Asking for it in hand refused a
 // trident strapped to a back the SRD lets cast.
-const WORKS_CARRIED = /^trident of fish command\b/i;
+const WORKS_CARRIED = textKey("Trident of Fish Command");
 
 export function itemBarrier(sheet: CharacterSheet, item: EquipmentItem): string | null {
   if (gearDefOfRow(item)?.requiresAttunement && !item.attuned) {
@@ -30,7 +31,7 @@ export function itemBarrier(sheet: CharacterSheet, item: EquipmentItem): string 
     return `${barred ?? `${item.name} works only for someone attuned to it, and ${sheet.name} is not; attuning takes a short rest with the item.`} Nothing was spent.`;
   }
   const kind = gearKindOf(item);
-  if (kind === "carried" || inHand(item, sheet.equipment) || (kind === "weapon" && WORKS_CARRIED.test(rowName(item)))) {
+  if (kind === "carried" || inHand(item, sheet.equipment) || (kind === "weapon" && textKey(rowName(item)) === WORKS_CARRIED)) {
     return null;
   }
   return kind === "weapon"

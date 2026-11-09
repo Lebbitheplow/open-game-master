@@ -12,7 +12,7 @@
 //
 // Pure: the Hand's cards (src/lib/battlemap/hand-items.ts) and use_item
 // (src/lib/dm/item-use.ts) ask the same questions.
-import { textKey } from "@/lib/language/text-logic";
+import { findNamed, textKey } from "@/lib/language/text-logic";
 
 export type BeadKind = "blessing" | "curing" | "favor" | "smiting" | "summons" | "wind walking";
 
@@ -25,15 +25,22 @@ const BEAD_SPELLS: Record<BeadKind, string[]> = {
   "wind walking": ["Wind Walk"],
 };
 
-const NECKLACE = /^necklace of prayer beads\b/i;
+const NECKLACE = textKey("Necklace of Prayer Beads");
+const KINDS = Object.keys(BEAD_SPELLS) as BeadKind[];
 
-export function isPrayerNecklace(name: string): boolean {
-  return NECKLACE.test(name.trim());
+// The name without the GM's note in brackets.
+function bare(name: string): string {
+  return name.trim().replace(/\s*\([^()]*\)\s*$/, "");
 }
 
+export function isPrayerNecklace(name: string): boolean {
+  return textKey(bare(name)) === NECKLACE;
+}
+
+// A bead's kind by its whole name, as the table writes it: "Curing" or "Bead
+// of Curing".
 function kindOf(word: string): BeadKind | null {
-  const key = textKey(word.replace(/\b(beads?|of)\b/gi, " "));
-  return (Object.keys(BEAD_SPELLS) as BeadKind[]).find((kind) => textKey(kind) === key || textKey(kind).replace(/\s+/g, "") === key.replace(/\s+/g, "")) ?? null;
+  return findNamed(KINDS, word.trim(), (kind) => [kind, `bead of ${kind}`]) ?? null;
 }
 
 // How many beads of each kind the necklace's name says it holds, or null when
@@ -44,7 +51,7 @@ export function beadsOf(name: string): Partial<Record<BeadKind, number>> | null 
     return null;
   }
   const beads: Partial<Record<BeadKind, number>> = {};
-  for (const part of note[1].split(/[,;]|\band\b/)) {
+  for (const part of note[1].split(/[,;]/)) {
     const match = /^\s*(\d+)?\s*[x×]?\s*(.*?)\s*(?:[x×]\s*(\d+))?\s*$/i.exec(part);
     const kind = match ? kindOf(match[2]) : null;
     if (kind) {
@@ -61,7 +68,7 @@ export function beadCount(beads: Partial<Record<BeadKind, number>>): number {
 // The bead a spell is cast from.
 export function beadForSpell(spell: string): BeadKind | null {
   const key = textKey(spell);
-  return (Object.keys(BEAD_SPELLS) as BeadKind[]).find((kind) => BEAD_SPELLS[kind].some((entry) => textKey(entry) === key)) ?? null;
+  return KINDS.find((kind) => BEAD_SPELLS[kind].some((entry) => textKey(entry) === key)) ?? null;
 }
 
 // Whether a spell is cast from one of these beads.
