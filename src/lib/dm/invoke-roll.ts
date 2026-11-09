@@ -12,7 +12,7 @@
 // digital, an initiative roll feeds the encounter, and a damage roll aimed at
 // an enemy applies itself.
 import { afterRollOptions, canWaitOnRoll } from "@/lib/dm/after-roll-logic";
-import { allyShiftsFor, reactionFreeFor, rollsCanWait } from "@/lib/dm/after-roll";
+import { allyChoicesFor, reactionFreeFor, rollsCanWait } from "@/lib/dm/after-roll";
 import { noteShift, takeShift } from "@/lib/dm/chronal-shift";
 import { LUCK_SPEND } from "@/lib/dm/roll-riders";
 import { foretoldLeft } from "@/lib/dm/foretold-logic";
@@ -271,7 +271,7 @@ export function handleRequestRoll(
       // A luck point spent before the throw (luck: true) was this roll's one.
       ? [
           ...afterRollOptions(fresh, { kind: args.kind, outcome, dc: args.dc ?? null, spent: resolved.spendInspiration?.split("|").includes(LUCK_SPEND) ? ["lucky"] : [], reactionFree: reactionFreeFor(campaignId, fresh.id) }),
-          ...allyShiftsFor(campaignId, fresh, { kind: args.kind, outcome, dc: args.dc ?? null }),
+          ...allyChoicesFor(campaignId, fresh, { kind: args.kind, outcome, dc: args.dc ?? null }),
         ]
       : [];
     if (sheet && options.length) {

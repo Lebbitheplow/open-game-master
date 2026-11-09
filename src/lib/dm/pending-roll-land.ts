@@ -7,6 +7,7 @@ import {
   getDmTurn,
   listPendingForTurn,
   resolvePendingRoll,
+  getPendingRoll,
   setPendingCombatNote,
   type PendingRoll,
 } from "@/lib/db/dm-turns";
@@ -118,7 +119,9 @@ function landOne(campaign: Campaign, pending: PendingRoll, thrown: RollResult, l
       const over = attackTurnOver(campaignId, pending.attack as AttackRecord, pending.characterId);
       const note = resolvePendingPcAttack(pending, roll);
       if (note) {
-        setPendingCombatNote(pending.id, note);
+        // Who helped the roll (the after-roll route) stays beside what it did.
+        const helped = getPendingRoll(pending.id)?.combatNote;
+        setPendingCombatNote(pending.id, helped ? `${helped}; ${note}` : note);
       }
       // The attacks declared after this one wait behind it: made now, in
       // order, as the server's dice would have made them.

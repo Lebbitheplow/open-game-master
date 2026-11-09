@@ -104,7 +104,8 @@ export default {
       const label = await card.innerText();
       check(/1d8/i.test(label) && /slashing/i.test(label), `the card shows the gauntlets (${label})`);
       await card.scrollIntoViewIfNeeded();
-      if (t.viewport === "desktop") await card.hover();
+      // Its left edge: the next card in the fan lies over the middle of this one.
+      if (t.viewport === "desktop") await card.hover({ position: { x: 10, y: 60 } });
       // The fight's opening banner covers the page for its first seconds.
       await page.waitForTimeout(6_000);
       await t.shot("hand-card");

@@ -3,7 +3,7 @@ import { isErrorResponse, requireMember, steersStory } from "@/lib/campaign-api"
 import { getPendingRoll, publicPendingRoll, setPendingCombatNote, setPendingThrown } from "@/lib/db/dm-turns";
 import { getSheetById } from "@/lib/db/sheets";
 import { optionsForPending, spendAfterRoll } from "@/lib/dm/after-roll";
-import { keepD20, type ThrownRoll } from "@/lib/dm/after-roll-logic";
+import { answeredLine, keepD20, type ThrownRoll } from "@/lib/dm/after-roll-logic";
 import { afterRollDeadline, armAfterRollKeep } from "@/lib/dm/after-roll-timer";
 import { runInTurnScope } from "@/lib/dm/job-control";
 import { landPendingRoll } from "@/lib/dm/pending-roll-land";
@@ -14,12 +14,12 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const choiceSchema = z.union([
-  // `by`: the wizard whose Chronal Shift this is, on another character's roll.
-  z.object({ use: z.enum(["lucky", "bardic", "own_luck", "chronal_shift", "guided_strike", "master_duelist", "favored_by_the_gods"]), by: z.string().min(1).max(80).optional() }),
+  // `by`: the character whose choice this is, on another character's roll.
+  z.object({ use: z.enum(["lucky", "bardic", "own_luck", "chronal_shift", "guided_strike", "master_duelist", "favored_by_the_gods", "war_gods_blessing", "flash_of_genius"]), by: z.string().min(1).max(80).optional() }),
   // Which of a luck point's d20s counts.
   z.object({ die: z.number().int().min(0).max(20) }),
   z.object({ keep: z.literal(true) }),
-  // A wizard lets an ally's roll stand.
+  // A character lets an ally's roll stand.
   z.object({ decline: z.literal(true), by: z.string().min(1).max(80) }),
 ]);
 
@@ -132,9 +132,9 @@ export async function POST(
   const landing = { ...thrown.landing, status: "fallback" as const, physical: false };
   if (wizard) {
     // The model reads the roll as it lands; this says why it changed.
-    const line = `${wizard.name} used Chronal Shift: ${sheet.name} rolled again (${thrown.outcome.total} became ${paid.outcome.total}), and the new roll stands.`;
+    const line = answeredLine(choice.use, wizard.name, sheet.name, thrown.outcome.total, paid.outcome.total);
     setPendingCombatNote(pending.id, [pending.combatNote, line].filter(Boolean).join("; "));
-    // A new roll: the roller may answer it again, and the wizard is done.
+    // A new total: the roller may answer it again, and this character is done.
     return next({ outcome: paid.outcome, choosing: paid.choosing, landing, kept: false, shiftedBy: [...(thrown.shiftedBy ?? []), wizard.id] });
   }
   return next({ outcome: paid.outcome, choosing: paid.choosing, landing, spent: [...(thrown.spent ?? []), choice.use] });

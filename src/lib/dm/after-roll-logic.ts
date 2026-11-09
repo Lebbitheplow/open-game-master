@@ -21,7 +21,7 @@ import { channelOptions } from "@/lib/dm/option-costs";
 import { textKey } from "@/lib/language/text-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
-export type AfterRollId = "lucky" | "bardic" | "own_luck" | "chronal_shift" | "guided_strike" | "master_duelist" | "favored_by_the_gods";
+export type AfterRollId = "lucky" | "bardic" | "own_luck" | "chronal_shift" | "guided_strike" | "master_duelist" | "favored_by_the_gods" | "war_gods_blessing" | "flash_of_genius";
 
 export type AfterRollOption = {
   id: AfterRollId;
@@ -31,7 +31,8 @@ export type AfterRollOption = {
   // Another character's, offered on their player's screen: a Chronurgy
   // wizard's Chronal Shift on an ally's roll ("after you or a creature you
   // can see within 30 feet of you makes an attack roll, an ability check,
-  // or a saving throw"). Absent: the roller's own.
+  // or a saving throw"), War God's Blessing, Flash of Genius. Absent: the
+  // roller's own.
   by?: string;
 };
 
@@ -40,7 +41,9 @@ export const CHRONAL_SHIFT = "sub_chronal_shift";
 export const CHANNEL_DIVINITY = "channel_divinity";
 export const MASTER_DUELIST = "sub_master_duelist";
 export const FAVORED_BY_THE_GODS = "sub_favored_by_the_gods";
+export const FLASH_OF_GENIUS = "art_flash_of_genius";
 export const GUIDED_STRIKE_BONUS = 10;
+export const WAR_GODS_BLESSING_BONUS = 10;
 const FAVORED_DICE = 2;
 const FAVORED_SIDES = 4;
 
@@ -48,8 +51,8 @@ const FAVORED_SIDES = 4;
 // changed nothing, since the roll they ride had already landed. use_resource
 // still takes them, for a roll that cannot wait (an agent's seat, a forced
 // save), where the GM narrates the result.
-export const AFTER_ROLL_COUNTERS: readonly string[] = [MASTER_DUELIST, FAVORED_BY_THE_GODS];
-export const AFTER_ROLL_CHANNEL_OPTION = "guided strike";
+export const AFTER_ROLL_COUNTERS: readonly string[] = [MASTER_DUELIST, FAVORED_BY_THE_GODS, FLASH_OF_GENIUS];
+export const isAfterRollChannelOption = (name: string) => isNamed(name, "guided strike", "war god's blessing");
 
 // How long a roll waits on its player before the dice are kept as they lie
 // (src/lib/dm/after-roll-timer.ts); the card counts it down.
@@ -70,8 +73,8 @@ export type ThrownRoll = {
   // When the dice are kept as they lie if the player has not chosen
   // (src/lib/dm/after-roll-timer.ts). A roll parked before there was one has none.
   deadline?: string;
-  // The wizards whose Chronal Shift has rolled this roll again, and those
-  // who let it stand: neither is offered it again on this roll.
+  // The characters who answered this roll from their own screen, and those
+  // who let it stand: neither is offered anything more on it.
   shiftedBy?: string[];
   declined?: string[];
   // The roller kept the roll while a wizard could still answer it: the
@@ -229,7 +232,7 @@ export function afterAttackOptions(
   // Guided Strike (War Domain 2, Oath of Conquest 3): +10, chosen after the
   // roll and before the GM says whether it hits. Channel Divinity is a short
   // supply, so it is offered only where it turns the miss.
-  const guided = usesLeft(sheet, CHANNEL_DIVINITY) > 0 && channelOptions(sheet).some((option) => isNamed(option.name, AFTER_ROLL_CHANNEL_OPTION));
+  const guided = usesLeft(sheet, CHANNEL_DIVINITY) > 0 && channelOptions(sheet).some((option) => isNamed(option.name, "guided strike"));
   if (guided && !taken.has("guided_strike") && natural !== 1 && outcome.total + GUIDED_STRIKE_BONUS >= ac) {
     options.push({ id: "guided_strike", label: `Guided Strike: add ${GUIDED_STRIKE_BONUS}`, note: `Spend a use of Channel Divinity: add ${GUIDED_STRIKE_BONUS} to this attack roll.` });
   }
@@ -263,6 +266,59 @@ export function shiftCanHelp(roll: { kind: string; outcome: RollResult; dc: numb
     return false;
   }
   return natural === undefined || outcome.total - natural + 20 >= roll.dc;
+}
+
+// War God's Blessing (War Domain 6): "when a creature within 30 feet of you makes
+// an attack roll, you can use your reaction to grant that creature a +10 bonus
+// to the roll... after you see the roll, but before the DM says whether the
+// attack hits or misses." Offered where the 10 turns the miss.
+export function warGodsBlessingOption(cleric: CharacterSheet, roll: { outcome: RollResult; ac: number; critRange: number }): AfterRollOption | null {
+  const { outcome, ac } = roll;
+  const natural = outcome.natural;
+  if (natural === undefined || natural === 1 || natural >= roll.critRange || outcome.total >= ac || outcome.total + WAR_GODS_BLESSING_BONUS < ac || !leadD20(outcome)) {
+    return null;
+  }
+  if (usesLeft(cleric, CHANNEL_DIVINITY) < 1 || !channelOptions(cleric).some((option) => isNamed(option.name, "war god's blessing"))) {
+    return null;
+  }
+  return {
+    id: "war_gods_blessing",
+    by: cleric.id,
+    label: `War God's Blessing: add ${WAR_GODS_BLESSING_BONUS}`,
+    note: `Use your reaction and a use of Channel Divinity: add ${WAR_GODS_BLESSING_BONUS} to this attack roll.`,
+  };
+}
+
+// Flash of Genius (Artificer 7): "when you or another creature you can see within
+// 30 feet of you makes an ability check or a saving throw, you can use your
+// reaction to add your Intelligence modifier to the roll." Offered where the
+// modifier could carry it. `ally`: on another character's roll, where a roll
+// with no DC is not offered, as for Chronal Shift (shiftCanHelp).
+export function flashOfGeniusOption(artificer: CharacterSheet, intelligence: number, roll: { kind: string; outcome: RollResult; dc: number | null }, ally: boolean): AfterRollOption | null {
+  const { outcome, dc } = roll;
+  if (!canWaitOnRoll(roll.kind) || !leadD20(outcome) || intelligence < 1 || (ally && dc === null)) {
+    return null;
+  }
+  if (dc !== null && (outcome.total >= dc || outcome.total + intelligence < dc)) {
+    return null;
+  }
+  if (usesLeft(artificer, FLASH_OF_GENIUS) < 1 || !holdsFeature(artificer, "flash of genius")) {
+    return null;
+  }
+  return {
+    id: "flash_of_genius",
+    ...(ally ? { by: artificer.id } : {}),
+    label: `Flash of Genius: add ${intelligence}`,
+    note: `Use your reaction and a use of Flash of Genius: add ${intelligence} to this roll.`,
+  };
+}
+
+// The line the model reads when another character changed this roll.
+export function answeredLine(id: AfterRollId, helper: string, roller: string, before: number, after: number): string {
+  if (id === "chronal_shift") {
+    return `${helper} used Chronal Shift: ${roller} rolled again (${before} became ${after}), and the new roll stands.`;
+  }
+  return `${helper} used ${id === "war_gods_blessing" ? "War God's Blessing" : "Flash of Genius"}: ${roller}'s roll went from ${before} to ${after}.`;
 }
 
 // A wizard's Chronal Shift offered on another character's roll.

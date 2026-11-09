@@ -18,7 +18,7 @@ import type { HeldMote } from "@/lib/dm/authored-mote";
 import { applyPendingDamageRoll } from "@/lib/dm/enemy-blow";
 import type { AttackPlan } from "@/lib/dm/pc-attack-plan";
 import { serverBlow, shiftedThrow, type Strike } from "@/lib/dm/pc-attack-resolve";
-import { allyShiftsFor, reactionFreeFor, rollsCanWait } from "@/lib/dm/after-roll";
+import { allyChoicesFor, reactionFreeFor, rollsCanWait } from "@/lib/dm/after-roll";
 import { afterRollDeadline, armAfterRollKeep } from "@/lib/dm/after-roll-timer";
 import { afterAttackOptions } from "@/lib/dm/after-roll-logic";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
@@ -71,8 +71,8 @@ export function throwForChoice(plan: AttackPlan, strike: Strike, toolCallId: str
   const thrown = shiftedThrow(plan, strike, ac, critRange);
   const options = [
     ...afterAttackOptions(fresh, { outcome: thrown, ac, critRange, spent: record.luck ? ["lucky"] : [], reactionFree: reactionFreeFor(campaign.id, fresh.id) }),
-    // A wizard beside them may make them roll the miss again (chronal-shift.ts).
-    ...allyShiftsFor(campaign.id, fresh, { kind: "attack", outcome: thrown, ac, critRange }),
+    // A wizard or a War cleric beside them may answer the miss (after-roll.ts).
+    ...allyChoicesFor(campaign.id, fresh, { kind: "attack", outcome: thrown, ac, critRange }),
   ];
   if (!options.length) {
     return { thrown };

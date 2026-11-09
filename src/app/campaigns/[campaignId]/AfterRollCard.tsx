@@ -86,15 +86,18 @@ export function AfterRollCard({
     }
   }
 
-  // A Chronal Shift of one of my characters on this roll (chronal-shift.ts).
+  // One of my characters' choices on this roll: Chronal Shift, War God's
+  // Blessing or Flash of Genius (after-roll.ts allyChoicesFor).
   const mine = new Set(sheets.filter((sheet) => sheet.userId === meUserId).map((sheet) => sheet.id));
   const myShifts = thrown.options.filter((option) => option.by && mine.has(option.by));
-  const waitingOn = [...new Set(thrown.options.filter((option) => option.by && !mine.has(option.by)).map((option) => sheets.find((sheet) => sheet.id === option.by)?.name ?? "A wizard"))];
+  const waitingOn = [...new Set(thrown.options.filter((option) => option.by && !mine.has(option.by)).map((option) => sheets.find((sheet) => sheet.id === option.by)?.name ?? "An ally"))];
+  const onlyShifts = thrown.options.filter((option) => option.by).every((option) => option.id === "chronal_shift");
+  const myHelpers = [...new Set(myShifts.map((option) => option.by))];
   const standing = pending.kind === "attack" ? "misses as it stands" : pending.dc !== null ? `fails against Difficulty Class ${pending.dc} as it stands` : "may still fail";
   const clock = left !== null ? <span className="check-dim text-xs" aria-live="off">The roll stands in {left}s</span> : null;
 
   if (pending.userId !== meUserId && myShifts.length) {
-    // The wizard's own screen: the ally's roll, and whether to make them roll it again.
+    // The helper's own screen: the ally's roll, and whether to answer it.
     return (
       <CheckFrame className="mb-2 animate-fade-up px-3 py-2.5">
         <p className="text-sm">
@@ -102,15 +105,15 @@ export function AfterRollCard({
           {thrown.outcome.natural !== undefined ? ` (the die shows ${thrown.outcome.natural})` : ""} and {standing}.
         </p>
         {pending.reason ? <p className="check-dim mt-0.5 text-xs">{pending.reason}</p> : null}
-        <div className="mt-2 flex flex-wrap items-center gap-2" role="group" aria-label={`Use Chronal Shift on ${character?.name ? `${character.name}'s` : "this"} roll, or let it stand`}>
+        <div className="mt-2 flex flex-wrap items-center gap-2" role="group" aria-label={`${onlyShifts ? "Use Chronal Shift on" : "Help"} ${character?.name ? `${character.name}'s` : "this"} roll, or let it stand`}>
           {myShifts.map((option) => (
-            <button key={option.by} type="button" disabled={busy} title={option.note} onClick={() => void choose({ use: option.id, by: option.by })} className={OPTION}>
+            <button key={`${option.id}:${option.by}`} type="button" disabled={busy} title={option.note} onClick={() => void choose({ use: option.id, by: option.by })} className={OPTION}>
               {option.label}
             </button>
           ))}
-          {myShifts.map((option) => (
-            <button key={`leave-${option.by}`} type="button" disabled={busy} onClick={() => void choose({ decline: true, by: option.by })} className={`${PLAIN} check-dim`}>
-              {busy ? <Loader2 className="size-4 animate-spin" /> : myShifts.length > 1 ? `Let it stand (${sheets.find((sheet) => sheet.id === option.by)?.name})` : "Let it stand"}
+          {myHelpers.map((helper) => (
+            <button key={`leave-${helper}`} type="button" disabled={busy} onClick={() => void choose({ decline: true, by: helper })} className={`${PLAIN} check-dim`}>
+              {busy ? <Loader2 className="size-4 animate-spin" /> : myHelpers.length > 1 ? `Let it stand (${sheets.find((sheet) => sheet.id === helper)?.name})` : "Let it stand"}
             </button>
           ))}
           {clock}
@@ -124,7 +127,7 @@ export function AfterRollCard({
     return (
       <CheckFrame className="mb-2 flex animate-fade-up items-center justify-between gap-2 px-3 py-2 text-xs">
         <span className="min-w-0" role="status">
-          {character?.name ?? "A player"} rolled {thrown.outcome.total} and {thrown.kept && waitingOn.length ? `${waitingOn.join(" and ")} ${waitingOn.length > 1 ? "are" : "is"} deciding whether to use Chronal Shift` : "is deciding what to do with it"}.
+          {character?.name ?? "A player"} rolled {thrown.outcome.total} and {thrown.kept && waitingOn.length ? `${waitingOn.join(" and ")} ${waitingOn.length > 1 ? "are" : "is"} deciding whether to ${onlyShifts ? "use Chronal Shift" : "help"}` : "is deciding what to do with it"}.
           {left !== null ? <span className="check-dim"> The roll stands in {left}s.</span> : null}
         </span>
         {steersStory && stale ? (
@@ -161,13 +164,16 @@ export function AfterRollCard({
             ? "You kept this roll."
             : pending.kind === "attack"
               // An attack only waits on a miss (after-roll-logic.ts afterAttackOptions).
-              ? "As it stands, the attack misses. You can still change that."
-              : "Before the game says what happens, you can still change it."}
+              // With nothing of their own to press, only the helpers can change it.
+              ? `As it stands, the attack misses.${own.length ? " You can still change that." : ""}`
+              : own.length
+                ? "Before the game says what happens, you can still change it."
+                : "Before the game says what happens, someone may still help."}
       </p>
       {pending.reason ? <p className="check-dim mt-0.5 text-xs">{pending.reason}</p> : null}
       {waitingOn.length ? (
         <p className="check-dim mt-0.5 text-xs" role="status">
-          {waitingOn.join(" and ")} can still make you roll it again with Chronal Shift.
+          {waitingOn.join(" and ")} {onlyShifts ? "can still make you roll it again with Chronal Shift." : "can still help with this roll."}
         </p>
       ) : null}
       <div className="mt-2 flex flex-wrap items-center gap-2" role="group" aria-label={thrown.choosing ? "Choose which die counts" : "Change this roll, or keep it"}>
