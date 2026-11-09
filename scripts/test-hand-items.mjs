@@ -574,6 +574,23 @@ await test("A Necklace of Prayer Beads deals the beads the GM named and no other
   asClass("wizard");
 });
 
+await test("A Wand of Polymorph's card names no beast, as no Polymorph card does: at a table a person runs, the spell's tool asks for one and the charge comes back", async () => {
+  const enemy = await stage(mage, [wand("Wand of Polymorph")]);
+  const message = insertCampaignMessage({
+    campaignId: world.campaignId,
+    seq: allocateSeq(world.campaignId),
+    authorType: "player",
+    userId: world.owner.id,
+    characterId: mage.id,
+    content: "I cast Polymorph from my Wand of Polymorph.",
+    intent: { card: "spell", spell: "Polymorph", slotLevel: 4, item: "Wand of Polymorph", targetId: enemy.id, targetKind: "enemy" },
+  });
+  const out = await resolveAsPlayed(campaign(), world.owner.id, message.id);
+  assert.equal(out.ok, false, JSON.stringify(out));
+  assert.equal(row(mage, "Wand of Polymorph").charges, 7, "the charge came back");
+  assert.equal(getCampaignMessage(message.id).cardResolvedAt ?? null, null, "and the card waits for the GM, who names the beast");
+});
+
 // A fresh node process on the same database is the server after a restart: it
 // has none of this process's memory.
 function afterRestart(source) {
