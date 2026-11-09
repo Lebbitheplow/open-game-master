@@ -16,11 +16,12 @@
 
 import type { DiceTerm, DieResult, RollResult } from "@/lib/dice";
 import { luckPointsLeft } from "@/lib/srd/class-resources";
-import { holdsFeature } from "@/lib/srd/feature-names";
+import { holdsFeature, isNamed } from "@/lib/srd/feature-names";
+import { channelOptions } from "@/lib/dm/option-costs";
 import { textKey } from "@/lib/language/text-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
-export type AfterRollId = "lucky" | "bardic" | "own_luck" | "chronal_shift";
+export type AfterRollId = "lucky" | "bardic" | "own_luck" | "chronal_shift" | "guided_strike" | "master_duelist" | "favored_by_the_gods";
 
 export type AfterRollOption = {
   id: AfterRollId;
@@ -36,6 +37,19 @@ export type AfterRollOption = {
 
 export const DARK_ONES_OWN_LUCK = "dark_ones_own_luck";
 export const CHRONAL_SHIFT = "sub_chronal_shift";
+export const CHANNEL_DIVINITY = "channel_divinity";
+export const MASTER_DUELIST = "sub_master_duelist";
+export const FAVORED_BY_THE_GODS = "sub_favored_by_the_gods";
+export const GUIDED_STRIKE_BONUS = 10;
+const FAVORED_DICE = 2;
+const FAVORED_SIDES = 4;
+
+// Spent from this card and no other: dealt to the Hand they spent a use and
+// changed nothing, since the roll they ride had already landed. use_resource
+// still takes them, for a roll that cannot wait (an agent's seat, a forced
+// save), where the GM narrates the result.
+export const AFTER_ROLL_COUNTERS: readonly string[] = [MASTER_DUELIST, FAVORED_BY_THE_GODS];
+export const AFTER_ROLL_CHANNEL_OPTION = "guided strike";
 
 // How long a roll waits on its player before the dice are kept as they lie
 // (src/lib/dm/after-roll-timer.ts); the card counts it down.
@@ -136,6 +150,16 @@ function chronalShiftOption(sheet: CharacterSheet, reactionFree: boolean, taken:
   return { id: "chronal_shift", label: "Chronal Shift: roll it again", note: `Spend a use of Chronal Shift and your reaction: roll this ${what} again, and the new roll stands.` };
 }
 
+// Favored by the Gods (Divine Soul 1): "if you fail a saving throw or miss with
+// an attack roll, you can roll 2d4 and add it to the total". `reaches` is
+// whether the most it can add carries the roll.
+function favoredOption(sheet: CharacterSheet, taken: Set<AfterRollId>, reaches: boolean, what: string): AfterRollOption | null {
+  if (!reaches || taken.has("favored_by_the_gods") || usesLeft(sheet, FAVORED_BY_THE_GODS) < 1 || !holdsFeature(sheet, "favored by the gods")) {
+    return null;
+  }
+  return { id: "favored_by_the_gods", label: `Favored by the Gods: add ${FAVORED_DICE}d${FAVORED_SIDES}`, note: `Spend your use of Favored by the Gods: add ${FAVORED_DICE}d${FAVORED_SIDES} to this ${what}.` };
+}
+
 export function afterRollOptions(
   sheet: CharacterSheet,
   roll: { kind: string; outcome: RollResult; dc: number | null; spent?: readonly AfterRollId[]; reactionFree?: boolean },
@@ -163,6 +187,10 @@ export function afterRollOptions(
   const shift = outcome.natural === undefined || reaches(20 - outcome.natural) ? chronalShiftOption(sheet, roll.reactionFree !== false, taken, roll.kind === "saving_throw" ? "save" : "check") : null;
   if (shift) {
     options.push(shift);
+  }
+  const favored = roll.kind === "saving_throw" ? favoredOption(sheet, taken, reaches(FAVORED_DICE * FAVORED_SIDES), "save") : null;
+  if (favored) {
+    options.push(favored);
   }
   return options;
 }
@@ -197,6 +225,22 @@ export function afterAttackOptions(
   const shift = chronalShiftOption(sheet, roll.reactionFree !== false, taken, "attack roll");
   if (shift) {
     options.push(shift);
+  }
+  // Guided Strike (War Domain 2, Oath of Conquest 3): +10, chosen after the
+  // roll and before the GM says whether it hits. Channel Divinity is a short
+  // supply, so it is offered only where it turns the miss.
+  const guided = usesLeft(sheet, CHANNEL_DIVINITY) > 0 && channelOptions(sheet).some((option) => isNamed(option.name, AFTER_ROLL_CHANNEL_OPTION));
+  if (guided && !taken.has("guided_strike") && natural !== 1 && outcome.total + GUIDED_STRIKE_BONUS >= ac) {
+    options.push({ id: "guided_strike", label: `Guided Strike: add ${GUIDED_STRIKE_BONUS}`, note: `Spend a use of Channel Divinity: add ${GUIDED_STRIKE_BONUS} to this attack roll.` });
+  }
+  // Master Duelist (Swashbuckler 18): "if you miss with an attack roll, you can
+  // roll it again with advantage". A fresh d20 can always save a miss.
+  if (!taken.has("master_duelist") && usesLeft(sheet, MASTER_DUELIST) > 0 && holdsFeature(sheet, "master duelist")) {
+    options.push({ id: "master_duelist", label: "Master Duelist: roll again with advantage", note: "Spend your use of Master Duelist: roll this attack again with advantage, and the new roll stands." });
+  }
+  const favored = favoredOption(sheet, taken, natural !== 1 && outcome.total + FAVORED_DICE * FAVORED_SIDES >= ac, "attack roll");
+  if (favored) {
+    options.push(favored);
   }
   return options;
 }
@@ -256,6 +300,29 @@ export function withRerolledD20(outcome: RollResult, fresh: DieResult[]): RollRe
     ...(natural !== undefined ? { natural } : {}),
     ...(natural === 20 ? { crit: "nat20" as const } : natural === 1 ? { crit: "nat1" as const } : {}),
   };
+}
+
+// The roll thrown again with advantage (Master Duelist): two fresh d20s, the
+// higher kept. Disadvantage the attack already had cancels it, leaving one d20
+// (`fresh` then holds one).
+export function withAdvantageReroll(outcome: RollResult, fresh: DieResult[]): RollResult | null {
+  const lead = leadD20(outcome);
+  if (!lead || !fresh.length) {
+    return null;
+  }
+  const pool: DiceTerm = { ...lead, count: fresh.length, dice: fresh };
+  delete pool.keep;
+  if (fresh.length > 1) {
+    pool.keep = { mode: "highest", count: 1 };
+  }
+  const written = fresh.length > 1 ? `${fresh.length}d20kh1` : "1d20";
+  return withRerolledD20({ ...outcome, expression: outcome.expression.replace(/^\s*\d+d20(?:k[hl]\d+)?/, written), terms: [pool, ...outcome.terms.slice(1)] }, fresh);
+}
+
+// A flat bonus on the roll (Guided Strike's +10), written as the dice engine
+// writes a modifier.
+export function withFlatBonus(outcome: RollResult, value: number): RollResult {
+  return { ...outcome, expression: `${outcome.expression}+${value}`, total: outcome.total + value, terms: [...outcome.terms, { kind: "modifier", sign: 1, value }] };
 }
 
 // A luck point spent before the throw (request_roll luck: true) put one d20

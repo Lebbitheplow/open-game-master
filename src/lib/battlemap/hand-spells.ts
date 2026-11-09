@@ -14,6 +14,7 @@ import { affinityCastType } from "@/lib/srd/dragon-ancestor";
 import { heldAtWill, resourceDef, resourceLevel, type ResourceDef } from "@/lib/srd/class-resources";
 import { psionicOptions } from "@/lib/dm/option-costs";
 import { ACTION_SURGED } from "@/lib/dm/action-budget";
+import { AFTER_ROLL_COUNTERS } from "@/lib/dm/after-roll-logic";
 import { BONUS_ATTACK_COUNTERS } from "@/lib/dm/feature-bonus-attacks";
 import { HIT_ANSWER_COUNTERS } from "@/lib/dm/reaction-kinds";
 import { isMeleeSpellAttack } from "@/lib/srd/melee-spell";
@@ -532,6 +533,8 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
     if (id === "channel_divinity" || (id === "sub_psionic_energy" && psionicOptions(sheet).length)) continue;
     // Spent by the bonus attack itself (hand-class.ts bonusStrikeCards).
     if (BONUS_ATTACK_COUNTERS.includes(id)) continue;
+    // Spent on the card a missed roll waits on (after-roll-logic.ts).
+    if (AFTER_ROLL_COUNTERS.includes(id)) continue;
     // A spend the server resolves is its own card, dealt here in its
     // counter's place (hand-subclass.ts counterSpendCards).
     if (playedAsSpendCard(sheet, def.displayName)) {

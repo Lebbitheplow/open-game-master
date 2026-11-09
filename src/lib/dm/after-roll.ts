@@ -13,17 +13,23 @@ import { attackTurnOver, recordTargetAc, type AttackRecord } from "@/lib/dm/atta
 import {
   afterAttackOptions,
   afterRollOptions,
+  CHANNEL_DIVINITY,
   CHRONAL_SHIFT,
   DARK_ONES_OWN_LUCK,
   extraD20Expression,
+  FAVORED_BY_THE_GODS,
+  GUIDED_STRIKE_BONUS,
   heldBardicDie,
   heldOwnLuckDie,
   holdsMoteDie,
   luckRodeThrow,
+  MASTER_DUELIST,
   ownLuckDie,
   sidesOf,
+  withAdvantageReroll,
   withBonusDie,
   withExtraD20,
+  withFlatBonus,
   withRerolledD20,
   shiftCanHelp,
   type AfterRollId,
@@ -122,10 +128,29 @@ export function spendAfterRoll(
   sheet: CharacterSheet,
   id: AfterRollId,
   outcome: RollResult,
+  advantage = "none",
   // Another character pays (a wizard's Chronal Shift on this roll).
   payer?: CharacterSheet,
 ): { outcome: RollResult; choosing: boolean } | null {
   const die = (sides: number) => ({ sides, value: rollExpression(`1d${sides}`).total, kept: true });
+  if (id === "guided_strike") {
+    return spendFeatureUse(campaign, sheet.id, CHANNEL_DIVINITY, "Channel Divinity: Guided Strike", "player") ? { outcome: withFlatBonus(outcome, GUIDED_STRIKE_BONUS), choosing: false } : null;
+  }
+  if (id === "favored_by_the_gods") {
+    if (!spendFeatureUse(campaign, sheet.id, FAVORED_BY_THE_GODS, "Favored by the Gods", "player")) {
+      return null;
+    }
+    return { outcome: withBonusDie(withBonusDie(outcome, die(4)), die(4)), choosing: false };
+  }
+  if (id === "master_duelist") {
+    if (!spendFeatureUse(campaign, sheet.id, MASTER_DUELIST, "Master Duelist", "player")) {
+      return null;
+    }
+    // Obeying what the first throw obeyed (a halfling's reroll of a 1).
+    const fresh = Array.from({ length: advantage === "disadvantage" ? 1 : 2 }).flatMap(() => rollExpression(extraD20Expression(outcome.expression)).terms.flatMap((term) => (term.kind === "dice" ? term.dice.slice(0, 1) : [])));
+    const again = withAdvantageReroll(outcome, fresh);
+    return again ? { outcome: again, choosing: false } : null;
+  }
   if (id === "lucky") {
     if (luckPointsLeft(sheet.resources) < 1) {
       return null;
