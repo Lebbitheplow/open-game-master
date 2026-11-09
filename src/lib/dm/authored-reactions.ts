@@ -11,6 +11,8 @@
 // Before this every one of them fell to use_reaction's last branch: the
 // reaction was spent and the effect was "resolved from its own text".
 
+import { spendWrath, wrathApplies, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
+import { maximumOf } from "@/lib/dm/heal-spell";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { getEnemy, patchEnemyConditions, type EncounterEnemy } from "@/lib/db/encounters";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
@@ -673,9 +675,15 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (typeof type !== "string") {
         return type;
       }
-      const expression = resolveFormula(does.amount, held.level, modsOf(holder));
+      // A held Destructive Wrath takes the next lightning or thunder, this too.
+      const wrath = wrathApplies(getSheetById(holder.id) ?? holder, type);
+      if (wrath) {
+        spendWrath(ctx.campaign.id, holder.id);
+      }
+      const formula = resolveFormula(does.amount, held.level, modsOf(holder));
+      const expression = wrath ? String(maximumOf(formula)) : formula;
       let amount = rollCard(ctx.campaign, ctx.turn, holder.id, "damage", rollAgainst(reaction.name, enemy.displayName), expression, { kind: "sheet", id: holder.id, name: holder.name }).total;
-      const out: Record<string, unknown> = { rolled: `${expression}: ${amount}`, ...(does.orType ? { type } : {}) };
+      const out: Record<string, unknown> = { rolled: `${expression}: ${amount}`, ...(does.orType ? { type } : {}), ...(wrath ? { destructiveWrath: WRATH_NOTE } : {}) };
       if (does.save) {
         const dc = saveDc(holder, does.save.dcAbility);
         const save = rollEnemySave(ctx.campaign.id, enemy, does.save.ability, dc, {

@@ -4,6 +4,8 @@
 // roll it asks for. pc-attack-resolve.ts calls it with the server's d20,
 // pc-attack-parked.ts with the player's; attack-blow.ts lands the damage.
 
+import { getSheetById } from "@/lib/db/sheets";
+import { spendWrath, hasNoDice, withOwnDiceAtMaximum, wrathApplies, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
 import { NET_HOLD } from "@/lib/dm/net-hold";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
@@ -257,13 +259,21 @@ export function hitSwing(scene: SwingScene, record: AttackRecord, judged: Judged
   const rolled = crit && !stunShot
     ? critDamageExpression(expression, record.critExtraDice ?? 0, { powerfulCritical: variant.powerfulCritical, multiplyNumeric: variant.criticalDamageMods })
     : expression;
+  // Destructive Wrath, spent as the attack's own lightning or thunder is rolled.
+  const maximized = wrathApplies(getSheetById(sheet.id) ?? sheet, record.damageType);
+  if (maximized) {
+    spendWrath(campaign.id, sheet.id);
+    notes.push(WRATH_NOTE);
+  }
+  const asked = maximized ? withOwnDiceAtMaximum(rolled) : rolled;
   return {
     ask: {
-      expression: rolled,
+      expression: asked,
       riders,
+      ...(maximized && hasNoDice(asked) ? { noDice: true } : {}),
       crit,
       stunShot,
-      feats: spendDamageFeats(scene, record, rolled),
+      feats: spendDamageFeats(scene, record, asked),
       rerollBelow: record.rerollBelow ?? 0,
       ...(stunDc !== undefined ? { stunDc } : {}),
       ...(record.maneuver && maneuverPaid ? { maneuver: true } : {}),

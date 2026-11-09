@@ -1,3 +1,4 @@
+import { holdsDestructiveWrath, spendWrath } from "@/lib/dm/destructive-wrath";
 import type { SystemGlyph } from "@/lib/system-glyphs";
 import { z } from "zod";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
@@ -261,6 +262,13 @@ export function handleTakeRest(
   // Whoever rested with an item they asked to attune to is attuned now,
   // short rest or long (a long rest holds a short one).
   const attuned = settleAttunements(campaign, turnId, sheets, reason);
+  // A held Destructive Wrath ends with the rest that gives the use back.
+  for (const id of resting) {
+    const sheet = getSheetById(id);
+    if (sheet && holdsDestructiveWrath(sheet)) {
+      spendWrath(campaign.id, id);
+    }
+  }
 
   if (args.kind === "long") {
     const rested: string[] = [];

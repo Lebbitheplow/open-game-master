@@ -16,6 +16,8 @@ import { getBattleMapForEncounter, listHiddenRefIds } from "@/lib/db/battle-maps
 import { rollOn } from "@/lib/roll-labels";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { isValidExpression, rollExpression } from "@/lib/dice";
+import { spendWrath, wrathApplies, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
+import { maximumOf } from "@/lib/dm/heal-spell";
 import { publishWithSeq } from "@/lib/events";
 import type { SaveAbility } from "@/lib/bestiary/statblock";
 import { trackEnemyConcentration } from "@/lib/dm/cast-tools";
@@ -462,6 +464,7 @@ export function handleAoeDamage(
   // A character's area that names no spell (a dragonborn's breath) is still
   // theirs. A caster whose token is hidden is not named, as a hidden
   // creature it catches is not (the tracker's word for it).
+  let wrathNote: string | null = null;
   const areaBy: RollAttacker | null = plan
     ? { kind: "sheet", id: plan.caster.id, name: plan.caster.name }
     : enemyUse
@@ -481,7 +484,13 @@ export function handleAoeDamage(
       const type = index === 0 ? args.type : plan?.mech?.secondType;
       // Elemental Adept: the caster's chosen type floors its dice at 2.
       const adept = plan ? elementalAdeptApplies(plan.caster, type) : false;
-      const outcome = rollExpression(adept ? floorDamageDice(expression) : expression);
+      // Destructive Wrath: the area's one roll, for the part of its type.
+      const wrath = plan && wrathApplies(getSheetById(plan.caster.id) ?? plan.caster, type);
+      if (plan && wrath) {
+        spendWrath(campaign.id, plan.caster.id);
+        wrathNote = WRATH_NOTE;
+      }
+      const outcome = rollExpression(wrath ? String(maximumOf(expression)) : adept ? floorDamageDice(expression) : expression);
       rolled.push({ amount: outcome.total, type });
       const roll = insertRoll({
         campaignId: campaign.id,
@@ -784,6 +793,7 @@ export function handleAoeDamage(
   return {
     ok: true,
     ...(plan ? { spell: plan.spell, caster: plan.caster.name } : {}),
+    ...(wrathNote ? { destructiveWrath: wrathNote } : {}),
     ...(plan?.mech?.note ? { spellNote: plan.mech.note } : {}),
     ...(shaken.length ? { concentration: shaken } : {}),
     damageRolled: total,

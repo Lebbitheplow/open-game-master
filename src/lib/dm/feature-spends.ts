@@ -45,6 +45,7 @@ export { applyInitiativeRefills } from "@/lib/dm/feature-hooks";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
 import { familyOf, isConditionNamed, isNamed, nameChoice } from "@/lib/srd/feature-names";
+import { DESTRUCTIVE_WRATH, holdsDestructiveWrath } from "@/lib/dm/destructive-wrath";
 import { TURNED } from "@/lib/dm/flee-logic";
 import { channelOptions } from "@/lib/dm/option-costs";
 import { CHANNEL_FEAR, channelFear } from "@/lib/dm/channel-fear";
@@ -182,6 +183,18 @@ export function featureVariantSpend(
     }
     if (isNamed(wanted, "turn undead", "destroy undead")) {
       return spend(campaign, turnId, sheet, def.id, "action", reason, () => turnUndead(campaign, turnId, sheet));
+    }
+    if (isNamed(wanted, DESTRUCTIVE_WRATH)) {
+      if (!channelOptions(sheet).some((entry) => isNamed(entry.name, DESTRUCTIVE_WRATH))) {
+        return { error: `${sheet.name} does not hold Destructive Wrath. Nothing was spent.`, refused: "rules" };
+      }
+      if (holdsDestructiveWrath(sheet)) {
+        return { error: `${sheet.name} already holds Destructive Wrath for their next lightning or thunder damage. Nothing was spent.`, refused: "rules" };
+      }
+      return spend(campaign, turnId, sheet, def.id, "none", reason, () => ({
+        patch: { conditions: [...sheet.conditions, DESTRUCTIVE_WRATH] },
+        result: { applied: "Destructive Wrath: their next lightning or thunder damage before a rest is dealt at its maximum." },
+      }));
     }
     if (isNamed(wanted, "sacred weapon")) {
       return spend(campaign, turnId, sheet, def.id, "action", reason, () => sacredWeapon(sheet));

@@ -199,7 +199,7 @@ export function resolvePendingPcAttack(pending: PendingRoll, roll: StoredRoll): 
   }
   const { ask } = prepared;
   const critical = ask.crit ? (ask.stunShot ? " (CRITICAL: the target is stunned instead of the dice doubling)" : " (CRITICAL: damage dice are doubled)") : "";
-  if (record.serverDice) {
+  if (record.serverDice || ask.noDice) {
     // The server threw the d20, so it throws the damage too, as its own
     // answer would have: the player decided only what to do with the d20.
     const blowNotes: string[] = [];
