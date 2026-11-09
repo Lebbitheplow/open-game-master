@@ -435,7 +435,9 @@ export function useBuilderState({
   // render's own reading of it is not the one to trust (a stored character).
   function reconciled(
     next: Partial<Selection>,
-    current: BuilderPicks,
+    // The feat and subclass picks as they will stand, where a caller changes
+    // them in the same step (a quick-build fill); this render's otherwise.
+    current: BuilderPicks & { featChoices?: FeatChoices },
     leadBefore?: string | null,
     // A change that moves levels (the total, or between classes) trims every
     // casting class's lists to its counts at its new level. Opening a stored
@@ -456,7 +458,12 @@ export function useBuilderState({
       after,
     );
     current = { ...current, ...keyed.lead };
-    const result = reconcilePicks(current, {
+    // The skills the subclass's training and the feats picked count for the
+    // expertise, as at the save (submit.ts): left out, a Lore bard's
+    // expertise in its college's Arcana, History and Nature was dropped
+    // whenever the species, background or level changed, the quick build's
+    // "Fill what's left" among them.
+    const result = reconcilePicks({ ...current, featChoices: current.featChoices ?? featChoices }, {
       race: findRace(races, ids.raceId),
       klass: classes.find((entry) => entry.id === ids.classId),
       background,
@@ -597,7 +604,7 @@ export function useBuilderState({
       setDropped(null);
     }
   }
-  function applyChange(because: string, next: Partial<Selection>, current: BuilderPicks) {
+  function applyChange(because: string, next: Partial<Selection>, current: BuilderPicks & { featChoices?: FeatChoices }) {
     applyReconciled(because, reconciled(next, current));
   }
 
@@ -984,7 +991,7 @@ export function useBuilderState({
       const current = Object.fromEntries(
         Object.entries(picks).map(([key, value]) => [key, key in patch ? patch[key as keyof BuilderDraftFields] : value]),
       ) as BuilderPicks;
-      applyChange("quick build", ids, current);
+      applyChange("quick build", ids, { ...current, featChoices: patch.featChoices ?? featChoices });
     }
   }
   const draftFields: BuilderDraftFields = {

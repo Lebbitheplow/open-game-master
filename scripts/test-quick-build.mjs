@@ -431,6 +431,44 @@ await test("a Lore bard made at 10th level doubles a skill its college gave", as
   assert.ok(made.json.character.sheet?.proficiencies?.expertise?.includes(lore[0]) ?? made.json.character.proficiencies?.expertise?.includes(lore[0]), "the server dropped it");
 });
 
+// The play-test's Lore bard at 10th: class skills, the college's Arcana,
+// History and Nature, and expertise in Performance and the three college
+// skills, all by hand, then "Fill what's left". The fill read only the
+// class's, background's and race's skills as held, so its species pick took
+// Arcana, which the college already gave, and "Pick for me" on the
+// expertise card dropped the three college picks for three of its own.
+// (The builder's own reconcile dropped them too when the fill picked the
+// species; scripts/browser/scenarios/126-fill-keeps-expertise.mjs holds
+// that.)
+await test("Fill what's left keeps a Lore bard's expertise in its college skills and picks no skill twice", async () => {
+  const { featChoice, withFeatChoice } = await import("../src/lib/schemas/sheet.ts");
+  const college = ["arcana", "history", "nature"];
+  const expertisePicks = ["performance", ...college];
+  const featChoices = withFeatChoice({}, "Bonus Proficiencies (Lore)", { skills: college });
+  const bard = (fields) => fresh({ level: 10, classId: "bard", subclass: "College of Lore", chosenSkills: ["performance", "persuasion", "deception"], featChoices, expertisePicks, ...fields });
+  // A folk hero already has Animal Handling, so a half-elf's two free
+  // skills reach Arcana in the bard's order.
+  for (const start of [bard({}), bard({ raceId: "half_elf", backgroundId: "folk_hero" }), bard({ backgroundId: "folk_hero" })]) {
+    const { fields } = await runFill(start);
+    const label = `${fields.raceId} ${fields.backgroundId}`;
+    assert.deepEqual(fields.expertisePicks, expertisePicks, `${label}: the hand-picked expertise changed`);
+    assert.deepEqual(featChoice(fields.featChoices, "Bonus Proficiencies (Lore)")?.skills, college, `${label}: the college's skills changed`);
+    for (const slot of ["racialSkills", "backgroundSkills", "repeatSkills"]) {
+      const twice = (fields[slot] ?? []).filter((skill) => college.includes(skill));
+      assert.deepEqual(twice, [], `${label}: ${slot} took ${twice.join(", ")}, which the college already gave`);
+    }
+    const built = await saves(fields, `Lore bard 10 filled (${label})`);
+    for (const skill of expertisePicks) {
+      assert.ok(built.sheet.proficiencies.expertise.includes(skill), `${label}: the sheet dropped expertise in ${skill}`);
+    }
+  }
+  // "Pick for me" on the expertise card alone: one slot open, the three
+  // college picks kept.
+  const { fields } = await runFill(bard({ raceId: "human", backgroundId: "sage", expertisePicks: college }), { only: ["expertise"] });
+  assert.deepEqual(fields.expertisePicks.slice(0, 3), college, `Pick for me on the expertise changed the college picks: ${fields.expertisePicks.join(", ")}`);
+  assert.equal(fields.expertisePicks.length, 4, "and filled the one open slot");
+});
+
 await test("an Order cleric's fill takes Intimidation or Persuasion for Bonus Proficiencies (Order)", async () => {
   const { fields } = await runFill(fresh({ level: 3, classId: "cleric", subclass: "Order Domain" }));
   const built = await saves(fields, "Order cleric at 3");

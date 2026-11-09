@@ -428,7 +428,12 @@ export function fillRound(ctx: FillContext): FillRound {
   const background = ctx.background;
   klass = ctx.klass;
 
-  const proficient = new Set(derived.proficientSkills);
+  // Every skill held, the subclass's and the feats' picks among them
+  // (derived.expertiseSkills, what the save counts): from the class's,
+  // background's and race's alone, a Lore bard's species pick took Arcana
+  // the college already gave, and "Pick for me" on the expertise dropped
+  // the picks made on the college's skills.
+  const proficient = new Set(derived.expertiseSkills ?? derived.proficientSkills);
   const languages = new Set(derived.training.languages.map((language) => textKey(language)));
   const tools = new Set((derived.training.tools ?? []).map((tool) => textKey(tool)));
 
