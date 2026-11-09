@@ -231,6 +231,12 @@ export const SERVER_FEATURES = {
   // number, and pending-rolls/[id]/watch takes `shift` and `choice`. An older
   // host refuses the first, so the button is drawn only here.
   chronalWatch: true,
+  // Watching a fight for Flash of Genius or Favored by the Gods on a save the
+  // server throws inside a call (src/lib/dm/foresight.ts, chronal-shift.ts
+  // takeSaveHelp): POST /api/campaigns/[id]/foresight takes an artificer or a
+  // divine soul, and a stop's `power` may name either. An older host refuses
+  // the first, so the button is drawn only here.
+  saveWatch: true,
   // The owed picks on a character sheet (issue #833): POST
   // /api/campaigns/[id]/sheet/owed makes a pick the character's levels
   // earned and no level-up offered (a dragon ancestor, a favored enemy, a

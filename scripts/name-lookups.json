@@ -1004,7 +1004,7 @@
     "lib/db/dm-turns.ts#partial": [["key",4,"schema SQL"]],
     "lib/dm/foresight.ts#number": [["parse",1,"a board square's coordinates in a held call's arguments, read as numbers"]],
     "lib/dm/foresight.ts#partial": [["parse",1,"an area call's comma list of targets, split as aoe_damage splits it; each piece is then found whole"]],
-    "lib/dm/foresight.ts#whole": [["identity",2,"a creature a held call names by its id (the board's refs), never by a word of its name"]],
+    "lib/dm/foresight.ts#whole": [["identity",3,"a creature a held call names by its id (the board's refs), never by a word of its name; a save's roller by the sheet id its tag was read from"]],
     "lib/dm/foresight.ts#fallback": [["identity",2,"an area call's refs read as aoe_damage reads them: the id first, else the whole name through textKey (resolveEnemyRef), and a creature by id on either side"]],
     "lib/dm/chronal-shift.ts#whole": [["identity",1,"who an armed Chronal Shift is aimed at, by the whole name through textKey, as a foretold number is (dice-scripts.ts)"]],
     "lib/dm/command-undead.ts#whole-single": [["key",1,"a stat block's normalized creature type (creature-type.ts) against the engine's own type word"]],

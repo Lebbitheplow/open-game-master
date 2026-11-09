@@ -43,6 +43,10 @@ const wizard = world.addHero({
   user: wizUser, name: "Tova", class: "wizard", subclass: "Chronurgy Magic", level: 5, maxHp: 30,
   abilities: { str: 10, dex: 14, con: 12, int: 16, wis: 12, cha: 10 },
 });
+// The wizard's player is at the table: a roll does not wait on an absent
+// one (chronal-shift.ts playerAtTable).
+const { subscribe } = await import("../src/lib/events.ts");
+let wizardHere = subscribe(world.campaignId, () => {}, wizUser.id);
 const COUNTER = "sub_chronal_shift";
 const used = () => world.sheet(wizard.id).resources[COUNTER].used;
 const open = () => listOpenPendingRolls(world.campaignId);
@@ -113,6 +117,21 @@ await test("No wait on a success, on a roll with no DC, with both uses spent, or
   assert.notEqual((await check()).parked, true, "no use left");
   world.clearDice();
   assert.equal(open().length, 0);
+});
+
+await test("A wizard whose player has left the table is not waited on: the ally's failure stands at once, and nothing is spent.", async () => {
+  reset();
+  wizardHere();
+  try {
+    world.dice(3);
+    const out = await check();
+    world.clearDice();
+    assert.notEqual(out.parked, true, JSON.stringify(out));
+    assert.equal(open().length, 0, "no wait on an absent player, with no clock to end it");
+    assert.equal(used(), 0);
+  } finally {
+    wizardHere = subscribe(world.campaignId, () => {}, wizUser.id);
+  }
 });
 
 await test("In a fight the 30 feet and the reaction count: a wizard too far, or whose reaction is spent, gets no offer.", async () => {

@@ -47,6 +47,11 @@ const press = (who, id, body) => {
   return call(route, "POST", body, { campaignId: world.campaignId, pendingRollId: id });
 };
 const channel = () => world.sheet(helper.id).resources.channel_divinity.used;
+// The helper's player is at the table: a roll does not wait on an absent one
+// (chronal-shift.ts playerAtTable).
+const { subscribe } = await import("../src/lib/events.ts");
+let helperHere = subscribe(world.campaignId, () => {}, world.sheet(helper.id).userId);
+const revert = await world.route("campaigns/[campaignId]/audit/revert-turn");
 
 await test("A miss the 10 turns waits on the cleric, who adds it and lands the hit, spending the use and the reaction.", async () => {
   const enemy = await stage();
@@ -163,6 +168,76 @@ await test("In a fight Flash of Genius needs the ally in sight, and War God's Bl
   assert.ok(!offered().includes("flash_of_genius"), "the artificer cannot see them");
   for (const pending of open()) await press(hero, pending.id, { keep: true });
   world.patch(hero.id, { conditions: [] });
+});
+
+await test("A helper whose player has left the table is not waited on, for either, and the roller's miss or failure stands at once.", async () => {
+  helperHere();
+  try {
+    const enemy = await stage();
+    await kit.swing(hero.id, enemy.id, [5]);
+    assert.equal(open().length, 0, "the miss lands: nobody else is online, so no clock would have ended the wait");
+    assert.equal(channel(), 0);
+    await kit.endFight();
+    world.patch(helper.id, { conditions: [], ...FLASH });
+    world.dice(9);
+    await world.invoke("request_roll", { characterId: hero.id, kind: "saving_throw", ability: "wis", dc: 11, reason: "the gate" });
+    world.clearDice();
+    assert.equal(open().length, 0, "the failed save lands");
+    assert.equal(world.sheet(helper.id).resources.art_flash_of_genius.used, 0);
+  } finally {
+    helperHere = subscribe(world.campaignId, () => {}, world.sheet(helper.id).userId);
+  }
+});
+
+await test("Reverting the turn gives War God's Blessing's use and the cleric's reaction back.", async () => {
+  world.patch(helper.id, { ...BLESSING });
+  const enemy = await stage();
+  await kit.swing(hero.id, enemy.id, [5]);
+  const [pending] = open();
+  assert.ok(pending?.turnId, "the miss waits on a turn");
+  world.dice(4);
+  const out = await press(helper, pending.id, { use: "war_gods_blessing", by: helper.id });
+  world.clearDice();
+  assert.equal(out.status, 200, JSON.stringify(out.json));
+  assert.equal(channel(), 1);
+  assert.ok(world.encounter().reactionsUsed.includes(helper.id));
+  world.signIn(world.owner);
+  const undone = await call(revert, "POST", { turnId: pending.turnId, confirm: true }, { campaignId: world.campaignId });
+  assert.equal(undone.status, 200, JSON.stringify(undone.json));
+  assert.equal(channel(), 0, "the use is back");
+  assert.ok(!world.encounter().reactionsUsed.includes(helper.id), "and the reaction");
+});
+
+await test("A Flash of Genius whose artificer's reaction is spent is not offered, and one helper holding two choices is asked once.", async () => {
+  await stage(FLASH);
+  markReactionUsed(world.encounter(), helper.id);
+  world.dice(9);
+  await world.invoke("request_roll", { characterId: hero.id, kind: "saving_throw", ability: "wis", dc: 11, reason: "the gate" });
+  world.clearDice();
+  assert.equal(open().length, 0, "the reaction is gone");
+  await kit.endFight();
+  const both = { features: [...FLASH.features, { name: "Chronal Shift", description: "" }], resources: { ...FLASH.resources, sub_chronal_shift: { max: 2, used: 0 } } };
+  world.patch(helper.id, { conditions: [], ...both });
+  world.dice(9);
+  await world.invoke("request_roll", { characterId: hero.id, kind: "saving_throw", ability: "wis", dc: 11, reason: "the gate" });
+  world.clearDice();
+  const [pending] = open();
+  assert.deepEqual(pending.thrown.options.map((option) => [option.id, option.by]).sort(), [["chronal_shift", helper.id], ["flash_of_genius", helper.id]]);
+  // The same 9 again: the save still fails, and Flash of Genius would carry
+  // it, but the artificer has answered this roll.
+  world.dice(9);
+  const shifted = await press(helper, pending.id, { use: "chronal_shift", by: helper.id });
+  world.clearDice();
+  assert.equal(shifted.status, 200, JSON.stringify(shifted.json));
+  assert.equal(getPendingRoll(pending.id).status !== "pending", true, "nothing more is offered to the same helper");
+  assert.equal(world.sheet(helper.id).resources.art_flash_of_genius.used, 0);
+  world.dice(9);
+  await world.invoke("request_roll", { characterId: hero.id, kind: "saving_throw", ability: "wis", dc: 11, reason: "the gate" });
+  world.clearDice();
+  const [again] = open();
+  const left = await press(helper, again.id, { decline: true, by: helper.id });
+  assert.equal(left.status, 200, JSON.stringify(left.json));
+  assert.equal(getPendingRoll(again.id).status !== "pending", true, "one Let it stand answers both");
 });
 
 await test("Neither is a card in the Hand, and use_resource still takes them for a roll that cannot wait.", async () => {

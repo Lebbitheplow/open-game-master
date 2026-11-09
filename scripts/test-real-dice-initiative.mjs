@@ -195,6 +195,8 @@ await test("a fight opened by a call a Portent stop held still waits for the rea
   const kit = await combatKit(world);
   const seerUser = world.addUser("seer");
   const seer = world.addHero({ user: seerUser, name: "Seer", class: "wizard", level: 5 });
+  // The watcher's player is at the table: an absent one is not stopped for.
+  (await import("../src/lib/events.ts")).subscribe(world.campaignId, () => {}, seerUser.id);
   const bran = world.addHero({ name: "Bran", class: "fighter", level: 5, equipment: [{ name: "Longsword", qty: 1 }] });
   const karaUser = world.addUser("kara");
   const kara = world.addHero({ user: karaUser, name: "Kara", class: "fighter", level: 5 });

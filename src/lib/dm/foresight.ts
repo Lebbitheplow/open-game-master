@@ -1,10 +1,11 @@
-// Watching a fight for Portent or Chronal Shift. Most of a fight needs no
-// stop, so a wizard's player presses a button for the fight, or the part of
-// it, where a number or a shift may matter. While it is on, the turn holds an
-// attack, a check or a save before the call runs, and the player may put a
-// foretold number on that call's d20, or say to roll it again if it goes the
-// wrong way (src/lib/dm/chronal-shift.ts). An area's saves are many: the
-// player picks whose.
+// Watching a fight for Portent or Chronal Shift, Flash of Genius or Favored
+// by the Gods. Most of a fight needs no stop, so the player presses a button
+// for the fight, or the part of it, where a number or a shift may matter.
+// While it is on, the turn holds an attack, a check or a save before the call
+// runs, and the player may put a foretold number on that call's d20, or say
+// to roll it again if it goes the wrong way, or to add to a save that fails
+// (src/lib/dm/chronal-shift.ts). An area's saves are many: the player picks
+// whose.
 //
 // Nothing is paused inside an attack. The held calls run on resume by the same
 // code as any other call, with the number armed on the dice
@@ -18,10 +19,11 @@ import { getActiveEncounter, type Encounter, type EncounterEnemy } from "@/lib/d
 import { spellEngineName, spellFactsFor } from "@/lib/content";
 import { zoneRowFor } from "@/lib/battlemap/zones-spells";
 import { creaturesInBlast, spellAreaShape } from "@/lib/dm/aoe-shape";
-import { canShiftNow, inShiftReach } from "@/lib/dm/chronal-shift";
+import { canHelpSaveNow, canShiftNow, inShiftReach, playerAtTable, type SaveHelp } from "@/lib/dm/chronal-shift";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { kindOfId, sideOf } from "@/lib/dm/combatant";
 import { resolveEnemyRef } from "@/lib/dm/enemy-damage";
+import { attackNamed } from "@/lib/dm/enemy-profile";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { zonePlacement } from "@/lib/dm/zone-args";
 import { findNamed } from "@/lib/language/text-logic";
@@ -45,15 +47,18 @@ function holdsCondition(creature: { conditions?: readonly string[] }, ...names: 
 }
 
 // Whether the sheet is watching this fight and could answer a stop: a
-// number left (Portent) or a Chronal Shift it can still spend. "A creature
-// that you can see": a blinded or unconscious wizard sees nothing to stop.
-function canWatch(sheet: CharacterSheet, encounterId: string): boolean {
+// number left (Portent), or a Chronal Shift, Flash of Genius or Favored by the
+// Gods it holds. "A creature that you can see": a blinded or unconscious
+// watcher sees nothing to stop. A player who has left the table would hold
+// every watched roll for the stop's whole time (chronal-shift.ts playerAtTable).
+function canWatch(campaignId: string, sheet: CharacterSheet, encounterId: string): boolean {
   return (
     sheet.watchingEncounterId === encounterId &&
-    (foretoldLeft(sheet).length > 0 || holdsFeature(sheet, "chronal shift")) &&
+    (foretoldLeft(sheet).length > 0 || holdsFeature(sheet, "chronal shift") || holdsFeature(sheet, "flash of genius") || holdsFeature(sheet, "favored by the gods")) &&
     sheet.currentHp > 0 &&
     !holdsCondition(sheet, "blinded", "unconscious") &&
-    rollsCanWait(sheet)
+    rollsCanWait(sheet) &&
+    playerAtTable(campaignId, sheet)
   );
 }
 
@@ -76,7 +81,9 @@ type Seen = { tag: RollTag; ref: string; name: string };
 // the rolls are one roll of the call's, whichever comes first. `rollerWaits`:
 // the roller is a player whose own card answers the roll after it lands
 // (after-roll.ts), so a Chronal Shift is offered there, not here.
-type About = { line: string; rollerId: string; rolls: Seen[]; perCreature: boolean; rollerWaits: boolean };
+// `riderSaves`: the save an enemy's hit may force on its target, which only
+// Flash of Genius and Favored by the Gods answer here.
+type About = { line: string; rollerId: string; rolls: Seen[]; perCreature: boolean; rollerWaits: boolean; riderSaves?: Seen[] };
 
 // A creature of the fight as its save is tagged: a character fighting the
 // party saves as the character it is (forced-save.ts rollEnemySave).
@@ -138,7 +145,13 @@ function rollAbout(campaign: Campaign, call: HeldCall, sheets: readonly Characte
     if (!enemy || unseen(enemy)) {
       return null;
     }
-    const target = sheetOf(args.targetCharacterId)?.name;
+    const victim = sheetOf(args.targetCharacterId);
+    const target = victim?.name;
+    // A hit whose rider forces a save (a spider's poison): the target's save
+    // is thrown inside this call, too late for any card.
+    // The attack named as enemy_attack itself finds it (enemy-attack.ts).
+    const named = typeof args.attack === "string" ? attackNamed(enemy.stats.attacks ?? [], args.attack) : null;
+    const forcesSave = (named ? [named] : (enemy.stats.attacks ?? [])).some((attack) => attack.onHit?.save && attack.onHit.dc);
     return {
       line: `${enemy.displayName} is about to attack${target ? ` ${target}` : ""}.`,
       rollerId: enemy.id,
@@ -147,6 +160,7 @@ function rollAbout(campaign: Campaign, call: HeldCall, sheets: readonly Characte
       rolls: [{ tag: { roller: "enemy", kind: "attack", who: enemy.displayName }, ref: enemy.id, name: enemy.displayName }],
       perCreature: false,
       rollerWaits: true,
+      ...(victim && forcesSave && !unseen(victim) ? { riderSaves: [{ tag: { roller: "hero" as const, kind: "save" as const, who: victim.name }, ref: victim.id, name: victim.name }] } : {}),
     };
   }
   if (call.name === "pc_attack") {
@@ -219,9 +233,27 @@ function shiftReaches(campaignId: string, wizard: CharacterSheet, roll: Seen, sh
   return Boolean(creature) && inShiftReach(campaignId, wizard, creature!);
 }
 
+// The character saves a Flash of Genius (an ally's in sight within 30 feet, or
+// the artificer's own) or a Favored by the Gods (the sorcerer's own) may
+// answer: a player's save, which no card will offer once the call throws it.
+function savesHelped(campaignId: string, encounter: Encounter, sheet: CharacterSheet, power: SaveHelp, about: About, sheets: readonly CharacterSheet[]): Seen[] {
+  if (about.rollerWaits && !about.riderSaves) {
+    return [];
+  }
+  const side = (ref: string) => sideOf(encounter, kindOfId(encounter.id, ref) ?? "enemy", ref);
+  return [...(about.rollerWaits ? [] : about.rolls), ...(about.riderSaves ?? [])].filter((roll) => {
+    const saver = roll.tag.roller === "hero" && roll.tag.kind === "save" ? sheets.find((entry) => entry.id === roll.ref) : null;
+    if (!saver) {
+      return false;
+    }
+    return power === "favored_by_the_gods" ? saver.id === sheet.id : side(saver.id) === side(sheet.id) && inShiftReach(campaignId, sheet, saver);
+  });
+}
+
 // The watcher for this call and the choices they are offered, or null. A
 // wizard holding a number is asked first, then one holding a Chronal Shift
-// that reaches a roll a card will not already offer.
+// that reaches a roll a card will not already offer, then an artificer's
+// Flash of Genius or a divine soul's Favored by the Gods on a save.
 function watcherFor(campaignId: string, encounter: Encounter, about: About, ownCard: boolean, sheets: readonly CharacterSheet[]): { watcher: CharacterSheet; power: WatchPower; choices: WatchChoice[] } | null {
   const side = (ref: string) => sideOf(encounter, kindOfId(encounter.id, ref) ?? "enemy", ref);
   const choicesOf = (rolls: Seen[], reverseFor: (roll: Seen) => WatchRoll["reverse"]): WatchChoice[] => {
@@ -229,7 +261,7 @@ function watcherFor(campaignId: string, encounter: Encounter, about: About, ownC
     return about.perCreature ? rolls.map((roll) => ({ name: roll.name, rolls: [one(roll)] })) : [{ name: rolls[0].name, rolls: rolls.map(one) }];
   };
   for (const sheet of sheets) {
-    if (!canWatch(sheet, encounter.id) || (ownCard && sheet.id === about.rollerId)) {
+    if (!canWatch(campaignId, sheet, encounter.id) || (ownCard && sheet.id === about.rollerId)) {
       continue;
     }
     if (foretoldLeft(sheet).length > 0) {
@@ -243,6 +275,12 @@ function watcherFor(campaignId: string, encounter: Encounter, about: About, ownC
       : about.rolls.filter((roll) => !(roll.tag.roller === "enemy" && roll.tag.kind === "attack") && shiftReaches(campaignId, sheet, roll, sheets));
     if (reach.length && canShiftNow(campaignId, sheet)) {
       return { watcher: sheet, power: "chronal_shift", choices: choicesOf(reach, (roll) => (side(roll.ref) === mine ? "failure" : "success")) };
+    }
+    for (const power of ["flash_of_genius", "favored_by_the_gods"] as const) {
+      const saves = canHelpSaveNow(campaignId, sheet, power) ? savesHelped(campaignId, encounter, sheet, power, about, sheets) : [];
+      if (saves.length) {
+        return { watcher: sheet, power, choices: choicesOf(saves, () => "failure") };
+      }
     }
   }
   return null;

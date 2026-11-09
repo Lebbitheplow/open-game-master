@@ -1307,9 +1307,10 @@ async function runHeldCalls(context: TurnContext, turn: DmTurn, watcherId: strin
     // The creature the watcher picked (an area's saves are many), else the
     // call's one roll, whichever of its d20s comes first.
     const picked = watchChoiceOf(stop);
-    const shifting = stop.power === "chronal_shift";
+    // Every power but Portent's number is armed to answer the roll once it goes wrong.
+    const shifting = Boolean(stop.power) && stop.power !== "portent";
     const choice = at === 0 && !shifting && stop.face !== null ? { watcherId, face: stop.face, tags: picked ? picked.rolls.map((roll) => roll.tag) : [stop.tag, ...(stop.also ?? [])], line: stop.line } : null;
-    const shift = at === 0 && shifting && stop.shift && picked ? { wizardId: watcherId, rolls: picked.rolls } : null;
+    const shift = at === 0 && shifting && stop.shift && picked && stop.power && stop.power !== "portent" ? { wizardId: watcherId, rolls: picked.rolls, power: stop.power } : null;
     // A call that throws is answered like any refusal: the loop's catch does
     // not reach this far, and the table would wait on it for good.
     let outcome: ToolResult;
@@ -1343,7 +1344,9 @@ async function runHeldCalls(context: TurnContext, turn: DmTurn, watcherId: strin
     const credited = done === toolCall.rawArguments ? toolCall : { ...toolCall, rawArguments: done };
     ran.push(credited);
     ("error" in outcome ? refused : accepted).add(credited);
-    const told = { ...outcome, ...(portent ? { portent } : {}), ...(chronalShift ? { chronalShift } : {}), ...(happened.length ? { fightEvents: firedEventsNote(happened) } : {}) };
+    // A save Flash of Genius or Favored by the Gods answered: the line says which.
+    const helpKey = stop.power === "chronal_shift" ? "chronalShift" : "savedWith";
+    const told = { ...outcome, ...(portent ? { portent } : {}), ...(chronalShift ? { [helpKey]: chronalShift } : {}), ...(happened.length ? { fightEvents: firedEventsNote(happened) } : {}) };
     turn.conversation.push({ role: "tool", ...(toolCall.id ? { tool_call_id: toolCall.id } : {}), content: JSON.stringify(told) });
     saveDmTurn(turn);
   }
