@@ -276,6 +276,9 @@ const fightRoute = {
   pending: await fightWorld.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]"),
 };
 const seerUser = fightWorld.addUser("seer");
+// The watcher's player is at the table: an absent one is not stopped for
+// (chronal-shift.ts playerAtTable).
+(await import("../src/lib/events.ts")).subscribe(fightWorld.campaignId, () => {}, seerUser.id);
 const seer = fightWorld.addHero({ user: seerUser, name: "Seer", class: "wizard", level: 5 });
 const targetUser = fightWorld.addUser("kara");
 const target = fightWorld.addHero({ user: targetUser, name: "Kara", class: "fighter", level: 5 });

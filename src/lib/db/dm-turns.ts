@@ -512,10 +512,10 @@ export function dicePreferencesOf(campaignId: string, userId: string) {
 // the watcher chose. Null face: let it roll.
 export type HeldCall = { id?: string; name: string; rawArguments: string };
 // Which feature the stop is for: Portent's number before the roll, or a
-// Chronal Shift decided now and taken once the roll goes the wrong way
-// (src/lib/dm/chronal-shift.ts). A stop stored before there were two is
-// Portent's.
-export type WatchPower = "portent" | "chronal_shift";
+// Chronal Shift, Flash of Genius or Favored by the Gods decided now and taken
+// once the roll goes the wrong way (src/lib/dm/chronal-shift.ts). A stop
+// stored before there were two is Portent's.
+export type WatchPower = "portent" | "chronal_shift" | "flash_of_genius" | "favored_by_the_gods";
 // One creature's roll the stop may answer: its tag on the dice, and the way
 // it must go for a Chronal Shift to take it ("success" a foe's, "failure" an
 // ally's).
@@ -540,7 +540,8 @@ export type WatchStop = {
   choices?: WatchChoice[];
   // The choice the watcher picked; with one choice there is nothing to pick.
   chosen?: number | null;
-  // Chronal Shift: the watcher said to roll it again if it goes wrong.
+  // The watcher said to use it if the roll goes wrong: a Chronal Shift rolls
+  // it again, Flash of Genius and Favored by the Gods add to a failed save.
   shift?: boolean;
 };
 

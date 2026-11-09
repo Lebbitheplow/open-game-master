@@ -5,15 +5,42 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { PendingRoll } from "@/app/campaigns/[campaignId]/useCampaignStream";
 import { CheckFrame } from "@/app/campaigns/[campaignId]/SkillCheckCard";
 import { foretoldLeft } from "@/lib/dm/foretold-logic";
+import { holdsFeature } from "@/lib/srd/feature-names";
 
 // A finger-sized target (40px, the kit's own) with a ring for the keyboard.
 const RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70";
 const NUMBER = `motion-press inline-flex min-h-10 items-center justify-center rounded-full border border-amber-400/60 px-3 py-1 text-xs font-semibold disabled:opacity-50 ${RING}`;
 const PLAIN = `motion-press inline-flex min-h-10 items-center px-1 text-xs font-medium underline decoration-dotted underline-offset-2 disabled:opacity-50 ${RING}`;
 
+type Power = "portent" | "chronal_shift" | "flash_of_genius" | "favored_by_the_gods";
+const FEATURES: Record<Power, string> = { portent: "Portent", chronal_shift: "Chronal Shift", flash_of_genius: "Flash of Genius", favored_by_the_gods: "Favored by the Gods" };
+
+// The feature a character watches with: a diviner's numbers first, then a
+// chronurgist's shift, an artificer's Flash of Genius, a divine soul's
+// Favored by the Gods (src/lib/dm/foresight.ts asks in the same order).
+export function watchFeatureOf(sheet: CharacterSheet): Power | null {
+  if (foretoldLeft(sheet).length > 0) return "portent";
+  if (holdsFeature(sheet, "chronal shift")) return "chronal_shift";
+  if (holdsFeature(sheet, "flash of genius")) return "flash_of_genius";
+  if (holdsFeature(sheet, "favored by the gods")) return "favored_by_the_gods";
+  return null;
+}
+
+// What watching lets the player do, on the button's hint.
+const WATCH_FOR: Record<Power, string> = {
+  portent: "use a foretold number",
+  chronal_shift: "use Chronal Shift on it",
+  flash_of_genius: "add your Intelligence modifier to a save that fails",
+  favored_by_the_gods: "add 2d4 to your save if it fails",
+};
+
+// The Intelligence modifier Flash of Genius adds, as the sheet's score gives it.
+const intModifier = (sheet: CharacterSheet | undefined) => Math.floor(((sheet?.abilities?.int ?? 10) - 10) / 2);
+
 // The stop before a watched roll (src/lib/dm/foresight.ts): the watcher may put
-// a foretold number on it, or set a Chronal Shift to roll it again if it goes
-// the wrong way, picking whose roll first when an area holds several; and
+// a foretold number on it, set a Chronal Shift to roll it again if it goes
+// the wrong way, or set Flash of Genius or Favored by the Gods to add to a
+// save that fails, picking whose roll first when an area holds several; and
 // everyone else sees why the table has paused.
 export function WatchCard({
   campaignId,
@@ -37,8 +64,8 @@ export function WatchCard({
     return () => clearInterval(timer);
   }, [deadline]);
   const watcher = sheets.find((sheet) => sheet.id === pending.characterId);
-  const power = pending.watch?.power ?? "portent";
-  const feature = power === "portent" ? "Portent" : "Chronal Shift";
+  const power: Power = pending.watch?.power ?? "portent";
+  const feature = FEATURES[power] ?? "Portent";
   const choices = pending.watch?.choices ?? [];
   // Whose roll, when there is more than one to answer (an area's saves).
   const [picked, setPicked] = useState<number | null>(null);
@@ -69,7 +96,7 @@ export function WatchCard({
     return (
       <CheckFrame className="mb-2 flex items-center justify-between gap-2 px-3 py-2 text-xs">
         <span className="min-w-0">
-          {pending.reason} {watcher?.name ?? "A wizard"} is deciding whether to use {feature}.
+          {pending.reason} {watcher?.name ?? "A player"} is deciding whether to use {feature}.
         </span>
         {steersStory || left === 0 ? (
           <button
@@ -110,7 +137,7 @@ export function WatchCard({
           ))}
         </div>
       ) : null}
-      <div role="group" aria-label={power === "portent" ? "Use a number Portent foretold, or let it roll" : "Use Chronal Shift on this roll, or let it roll"} className="mt-2 flex flex-wrap items-center gap-2">
+      <div role="group" aria-label={power === "portent" ? "Use a number Portent foretold, or let it roll" : `Use ${feature} on this roll, or let it roll`} className="mt-2 flex flex-wrap items-center gap-2">
         <span className="text-xs">{feature}:</span>
         {power === "portent"
           ? numbers.map((value) => (
@@ -130,10 +157,16 @@ export function WatchCard({
                 type="button"
                 disabled={busy || pick === null}
                 onClick={() => void answer({ shift: true, ...choice })}
-                title="Spend a use of Chronal Shift and your reaction only if the roll goes that way: it is rolled again and the new roll stands."
+                title={
+                  power === "flash_of_genius"
+                    ? "Spend a use of Flash of Genius and your reaction only if the save fails and your Intelligence modifier would carry it."
+                    : power === "favored_by_the_gods"
+                      ? "Spend Favored by the Gods only if the save fails and 2d4 could carry it: the 2d4 is added to the save."
+                      : "Spend a use of Chronal Shift and your reaction only if the roll goes that way: it is rolled again and the new roll stands."
+                }
                 className={NUMBER}
               >
-                Roll it again {when}
+                {power === "flash_of_genius" ? `Add ${intModifier(watcher)} ${when}` : power === "favored_by_the_gods" ? `Add 2d4 ${when}` : `Roll it again ${when}`}
               </button>
             )}
         <button
@@ -152,8 +185,8 @@ export function WatchCard({
   );
 }
 
-// The button: only a character who holds a number or a Chronal Shift, only in
-// a fight.
+// The button: only a character who holds a number, a Chronal Shift, Flash of
+// Genius or Favored by the Gods, only in a fight.
 export function WatchToggle({
   campaignId,
   sheet,
@@ -166,9 +199,9 @@ export function WatchToggle({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const on = sheet.watchingEncounterId === encounterId;
-  // A diviner watches with numbers, a chronurgist with Chronal Shift.
-  const feature = foretoldLeft(sheet).length > 0 ? "Portent" : "Chronal Shift";
-  const what = feature === "Portent" ? "use a foretold number" : "use Chronal Shift on it";
+  const power = watchFeatureOf(sheet) ?? "portent";
+  const feature = FEATURES[power];
+  const what = WATCH_FOR[power];
 
   async function toggle() {
     setBusy(true);

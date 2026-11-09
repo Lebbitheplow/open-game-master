@@ -8,7 +8,7 @@
 // request_roll (src/lib/dm/invoke-roll.ts), group_check and aoe_damage call
 // in here; cast_at_player and cast_at_enemy are meant to.
 
-import { noteShift, takeShift } from "@/lib/dm/chronal-shift";
+import { noteShift, takeSaveHelp, takeShift } from "@/lib/dm/chronal-shift";
 import { recordSave } from "@/lib/dm/last-save";
 import { diehardSaveAdvantage, shieldMasterSaveBonus } from "@/lib/srd/feat-combat";
 import { LUCK_SPEND } from "@/lib/dm/roll-riders";
@@ -365,6 +365,11 @@ export function rollCharacterSave(
     outcome = throwSave();
     noteShift(campaign.id, `${shiftedBy} used Chronal Shift: ${sheet.name} rolled the save again, ${outcome.total} against DC ${dc}, and the new roll stands.`);
   }
+  // Flash of Genius or Favored by the Gods set on this save at the stop.
+  const helped = takeSaveHelp(campaign.id, purpose, sheet.name, outcome, dc);
+  if (helped) {
+    outcome = helped.outcome;
+  }
   const roll = insertRoll({
     campaignId: campaign.id,
     characterId: sheet.id,
@@ -397,6 +402,7 @@ export function rollCharacterSave(
       ...coverNote(covered),
       ...(moteLine ? [moteLine] : []),
       ...(shiftLine ? [`${shiftLine}${outcome.total})`] : []),
+      ...(helped ? [helped.line] : []),
     ],
   };
 }

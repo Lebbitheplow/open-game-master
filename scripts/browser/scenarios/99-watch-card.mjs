@@ -1,4 +1,5 @@
-// Watching a fight for Portent (src/lib/dm/foresight.ts): the button stands in
+// Watching a fight for Portent (src/lib/dm/foresight.ts), and an artificer's
+// stop for Flash of Genius on an ally's save: the button stands in
 // the fight for a character who holds a number, at a table whose turns the AI
 // GM plays, and the stop before a roll shows those numbers and sends what it
 // says. The rules are held by scripts/test-enforce-portent.mjs; this is the
@@ -116,6 +117,67 @@ export default {
       await t.tap(number.first());
       await eventually(() => sent.length, { label: "the choice sent" });
       check(sent[0].value === 17, `the number sends itself (${JSON.stringify(sent[0])})`);
+    } finally {
+      await page.unroute(new RegExp(`/api/campaigns/${ids.campaignId}(\\?|$)`));
+      await page.unroute(/\/watch$/);
+    }
+
+    // ---- An artificer's stop: Flash of Genius on an ally's save that the
+    // call throws (chronal-shift.ts takeSaveHelp), as a stand-in the same way.
+    const saveLine = "Bree Underbough is about to make a saving throw against a poison needle.";
+    const flashStop = { ...pending, id: "flash-stand-in", detail: saveLine, reason: saveLine, watch: { line: saveLine, deadline: pending.watch.deadline, power: "flash_of_genius", choices: [{ name: "Bree Underbough", when: "if it fails" }] } };
+    await page.route(new RegExp(`/api/campaigns/${ids.campaignId}(\\?|$)`), async (route) => {
+      if (route.request().method() !== "GET") return route.continue();
+      const response = await route.fetch();
+      const body = await response.json();
+      body.pendingRolls = [flashStop];
+      body.sheets = body.sheets.map((entry) =>
+        entry.id === sheet.id
+          ? { ...entry, foretold: [], abilities: { ...entry.abilities, int: 16 }, features: [...(entry.features ?? []), { name: "Flash of Genius", description: "" }], resources: { ...entry.resources, art_flash_of_genius: { max: 3, used: 0 } } }
+          : entry,
+      );
+      await route.fulfill({ response, json: body });
+    });
+    const asked = [];
+    await page.route(/\/watch$/, async (route) => {
+      asked.push(route.request().postDataJSON());
+      await route.fulfill({ status: 200, json: { ok: true } });
+    });
+    try {
+      await t.open(`/campaigns/${ids.campaignId}`);
+      const add = page.locator(`${root}button`).filter({ hasText: /^\s*Add 3 if it fails\s*$/ }).locator("visible=true");
+      if (!(await eventually(() => add.count(), { timeoutMs: 5_000 }).catch(() => 0))) {
+        const tab = page.locator(`${root}button, ${root}[role="tab"]`).filter({ hasText: /^\s*table\s*$/i }).locator("visible=true");
+        if (await tab.count()) await t.tap(tab.first());
+      }
+      await eventually(() => add.count(), { timeoutMs: 30_000, label: "Flash of Genius's Add 3 if it fails" });
+      await page.getByText(/roll initiative/i).locator("visible=true").first().waitFor({ state: "hidden", timeout: 20_000 }).catch(() => {});
+      await untilStill(page);
+      check(await page.locator(`${root}button`).filter({ hasText: /^\s*Watch(ing)? for Flash of Genius\s*$/ }).locator("visible=true").count(), "the artificer's button names Flash of Genius");
+      const box = await add.first().boundingBox();
+      check((box?.height ?? 0) >= 40, `a finger-sized choice (${box?.height}px)`);
+      check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "the card does not push the page sideways");
+      const group = `${root}[role="group"][aria-label="Use Flash of Genius on this roll, or let it roll"]`;
+      const nightAxe = await axeViolations(page, group);
+      check(!nightAxe.length, `axe on the Flash of Genius card: ${nightAxe.map((entry) => entry.id).join(", ")}`);
+      await t.shot("flash-stop");
+      await page.evaluate(() => {
+        document.documentElement.dataset.theme = "light";
+        document.documentElement.style.colorScheme = "light";
+      });
+      await untilStill(page);
+      const dayAxe = await axeViolations(page, group);
+      check(!dayAxe.length, `axe on the Flash of Genius card by day: ${dayAxe.map((entry) => entry.id).join(", ")}`);
+      await t.shot("flash-stop-day");
+      await page.evaluate(() => {
+        document.documentElement.dataset.theme = "dark";
+        document.documentElement.style.colorScheme = "dark";
+      });
+      // From the keyboard: the choice is "if it fails", sent as the stop's shift.
+      await add.first().focus();
+      await page.keyboard.press("Enter");
+      await eventually(() => asked.length, { label: "the Flash of Genius choice sent" });
+      check(asked[0].shift === true, `the choice sends itself (${JSON.stringify(asked[0])})`);
     } finally {
       await page.unroute(new RegExp(`/api/campaigns/${ids.campaignId}(\\?|$)`));
       await page.unroute(/\/watch$/);

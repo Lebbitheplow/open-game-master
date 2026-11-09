@@ -43,7 +43,7 @@ import {
   type AfterRollOption,
   type ThrownRoll,
 } from "@/lib/dm/after-roll-logic";
-import { allyShifters, canReactNow, inShiftReach, payChronalShift, SHIFT_RANGE_FEET } from "@/lib/dm/chronal-shift";
+import { allyShifters, canReactNow, inShiftReach, payChronalShift, playerAtTable, SHIFT_RANGE_FEET } from "@/lib/dm/chronal-shift";
 import { LUCK_SPEND } from "@/lib/dm/roll-riders";
 import { luckPointsLeft } from "@/lib/srd/class-resources";
 import { rollsWrathDice } from "@/lib/dm/destructive-wrath-logic";
@@ -126,9 +126,12 @@ export function allyChoicesFor(
   const skip = new Set([sheet.id, ...(done.shiftedBy ?? []), ...(done.declined ?? [])]);
   const others = listSheets(campaignId)
     .map((stale) => getSheetById(stale.id) ?? stale)
-    .filter((other) => !skip.has(other.id) && rollsCanWait(other) && canReactNow(campaignId, other));
+    .filter((other) => !skip.has(other.id) && rollsCanWait(other) && playerAtTable(campaignId, other) && canReactNow(campaignId, other));
   if ("ac" in roll) {
-    // Its text asks for 30 feet and not for sight.
+    // "When a creature within 30 feet of you makes an attack roll": the text
+    // asks for 30 feet and, unlike Chronal Shift and Flash of Genius ("a
+    // creature you can see"), not for sight, so a cleric beside an unseen
+    // ally may still bless the roll.
     const fight = getActiveEncounter(campaignId);
     const near = others.filter((cleric) => !fight || withinFeet(fight.id, cleric.id, sheet.id, SHIFT_RANGE_FEET));
     return [...shifts, ...near.flatMap((cleric) => warGodsBlessingOption(cleric, roll) ?? [])];

@@ -239,9 +239,15 @@ function ComposerInner({
   // monsters' hand.
   const ownsHeroes = isDm && sheets.some((sheet) => sheet.userId === meUserId && !sheet.isCompanion);
   // The watch button, for the character who holds a Portent number, or a
-  // Chronal Shift on a host that stops for it (chronalWatch).
+  // Chronal Shift on a host that stops for it (chronalWatch), or Flash of
+  // Genius or Favored by the Gods on one that stops for a save (saveWatch).
   const watchingSheet = sheets.find(
-    (sheet) => sheet.userId === meUserId && !sheet.isCompanion && (foretoldLeft(sheet).length > 0 || (holdsFeature(sheet, "chronal shift") && hostOffers(capabilities, "chronalWatch"))),
+    (sheet) =>
+      sheet.userId === meUserId &&
+      !sheet.isCompanion &&
+      (foretoldLeft(sheet).length > 0 ||
+        (holdsFeature(sheet, "chronal shift") && hostOffers(capabilities, "chronalWatch")) ||
+        ((holdsFeature(sheet, "flash of genius") || holdsFeature(sheet, "favored by the gods")) && hostOffers(capabilities, "saveWatch"))),
   );
   // And the companions nobody commands, whose reactions the seat plays at a
   // table a person runs as it plays their turns (issue 685).
