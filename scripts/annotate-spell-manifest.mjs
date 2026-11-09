@@ -37,7 +37,7 @@ const manifestPath = path.join(root, "src/lib/srd/manifest/spells.json");
 process.env.CONTENT_DB_PATH ||= path.join(root, "data/content/open5e.sqlite");
 
 const { getContentDb } = await import("../src/lib/content/db.ts");
-const { castingTimeFrom, componentLettersFrom, materialCostFrom, rangeFrom } = await import(
+const { castingTimeFrom, componentLettersFrom, materialOf, rangeFrom } = await import(
   "../src/lib/srd/spell-facts.ts"
 );
 const { durationRounds, parseSpellMech } = await import("../src/lib/srd/spell-mechanics.ts");
@@ -124,7 +124,9 @@ manifest.spells = manifest.spells.map((spell) => {
   }
   const letters = componentLettersFrom(data.components);
   next.v = `${letters.verbal ? "V" : ""}${letters.somatic ? "S" : ""}${letters.material ? "M" : ""}`;
-  const cost = materialCostFrom(data.material);
+  // The same reading the engine plays a pack row with (spell-facts.ts
+  // materialOf), misprints set right.
+  const cost = materialOf({ material: data.material });
   if (letters.material && cost.costGp) {
     next.g = cost.costGp;
     if (cost.consumed) {

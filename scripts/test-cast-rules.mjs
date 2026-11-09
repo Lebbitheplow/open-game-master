@@ -26,7 +26,7 @@ const {
 } = await import("../src/lib/dm/cast-rules.ts");
 const { copyCost, learnProblem } = await import("../src/lib/dm/learn-rules.ts");
 const { textKey } = await import("../src/lib/language/text-logic.ts");
-const { bundledSpellFacts } = await import("../src/lib/srd/spell-facts.ts");
+const { bundledSpellFacts, materialOf } = await import("../src/lib/srd/spell-facts.ts");
 const { CASTING_HELD, freshBudget, releaseHeldAction, spendAction, spendAttack } = await import("../src/lib/dm/action-budget.ts");
 const { castingRoundsOf, castingOf, castingInstance, completedCastingOf, completeMark } = await import("../src/lib/dm/long-casting-logic.ts");
 const { spellSupportFor, spellSupportLine } = await import("../src/lib/srd/spell-support.ts");
@@ -383,6 +383,12 @@ test("the nine materials a single price cannot hold are kept as printed", () => 
   assert.equal(sum("Create Undead", 4), 600, "150 gp a corpse");
   assert.equal(sum("Imprisonment", 10), 5000, "500 gp a Hit Die");
   assert.equal(sum("Legend Lore"), 450, "250 gp of incense and four 50 gp ivory strips");
+  // The pack's own row misprints the incense ("worth 250 inches that fate
+  // consumes"); read as printed it cost 200 gp, the ivory alone.
+  assert.deepEqual(
+    materialOf({ material: "Incense worth 250 inches that fate consumes and four sticks of ivory worth 50 gp each." }),
+    { text: "Incense worth 250 gp, which the spell consumes and four sticks of ivory worth 50 gp each.", costGp: 450, consumed: true },
+  );
   assert.equal(sum("Magnificent Mansion"), 15, "three items of 5 gp");
   assert.equal(sum("Warding Bond"), 100, "two rings of 50 gp");
   assert.equal(sum("Secret Chest"), 5050);

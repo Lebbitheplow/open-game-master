@@ -188,11 +188,6 @@
   },
   {
    "n": "Beacon of Hope",
-   "m": {
-    "resolution": "save",
-    "save": "wis",
-    "halfOnSave": false
-   },
    "u": 10
   },
   {
@@ -904,6 +899,10 @@
     "resolution": "save",
     "save": "wis",
     "halfOnSave": false,
+    "condition": {
+     "name": "frightened",
+     "rounds": 10
+    },
     "area": true,
     "areaFeet": 30
    },
@@ -1036,6 +1035,7 @@
     "save": "dex",
     "halfOnSave": true,
     "damageType": "fire",
+    "secondType": "radiant",
     "area": true,
     "areaFeet": 10
    },
@@ -1291,11 +1291,6 @@
   },
   {
    "n": "Haste",
-   "m": {
-    "resolution": "save",
-    "save": "dex",
-    "halfOnSave": false
-   },
    "u": 10
   },
   {
@@ -1438,6 +1433,7 @@
     "save": "dex",
     "halfOnSave": true,
     "damageType": "bludgeoning",
+    "secondType": "cold",
     "area": true,
     "areaFeet": 20
    },
@@ -1530,7 +1526,7 @@
    ],
    "m": {
     "resolution": "save",
-    "save": "dex",
+    "save": "wis",
     "halfOnSave": false
    },
    "u": 10
@@ -1703,6 +1699,7 @@
     "save": "dex",
     "halfOnSave": true,
     "damageType": "fire",
+    "secondType": "bludgeoning",
     "area": true,
     "areaFeet": 40
    },
@@ -2329,6 +2326,9 @@
     "save": "con",
     "halfOnSave": true,
     "damageType": "necrotic",
+    "condition": {
+     "name": "frightened"
+    },
     "area": true,
     "areaFeet": 60
    }
