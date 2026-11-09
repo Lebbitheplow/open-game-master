@@ -51,7 +51,7 @@ export const SRD_TAIL_ROWS: Record<string, SpellMech> = {
   symbol: {
     resolution: "utility",
     noDamage: true,
-    note: "Cast it with use_spell_slot; it does nothing until its trigger. When the glyph fires, every creature in its 60-foot sphere (and one that enters or ends its turn there, for 10 minutes) is targeted by the one glyph chosen when it was inscribed, against the caster's spell save DC; resolve it with aoe_damage (or cast_at_player) naming no spell: Death, CON save, 10d10 necrotic, half on a success; Discord, CON save, bickering for 1 minute (disadvantage on attack rolls and ability checks); Fear, WIS save, frightened for 1 minute, drops what it holds and moves 30 feet away each turn; Hopelessness, CHA save, despair for 1 minute (it can't attack or target a creature with harmful effects); Insanity, INT save, insane for 1 minute (no actions, the GM moves it); Pain, CON save, incapacitated for 1 minute; Sleep, WIS save, unconscious for 10 minutes, waking if it takes damage or is shaken awake; Stunning, WIS save, stunned for 1 minute.",
+    note: "use_spell_slot; when it triggers, each creature in 60 feet (or entering or ending a turn there, 10 min) meets the chosen glyph at the caster's DC, by aoe_damage, no spell: Death CON 10d10 necrotic, half; Discord CON, disadvantage; Fear WIS frightened; Hopelessness CHA, can't harm; Insanity INT, no actions; Pain CON incapacitated; Sleep WIS unconscious 10 min; Stunning WIS stunned; others 1 min.",
   },
 
   // ---- a push on a failed save ----

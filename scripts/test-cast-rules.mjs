@@ -384,7 +384,7 @@ test("Symbol is a glyph the GM fires with the chosen glyph's own save, never a m
   assert.equal(mech.resolution, "utility");
   assert.equal(mech.condition, undefined);
   assert.equal(mech.noDamage, true);
-  for (const glyph of ["Death, CON save, 10d10 necrotic", "Fear, WIS save, frightened", "Hopelessness, CHA save", "Insanity, INT save", "Pain, CON save, incapacitated", "Sleep, WIS save, unconscious for 10 minutes", "Stunning, WIS save, stunned"]) {
+  for (const glyph of ["Death CON 10d10 necrotic, half", "Discord CON", "Fear WIS frightened", "Hopelessness CHA", "Insanity INT", "Pain CON incapacitated", "Sleep WIS unconscious 10 min", "Stunning WIS stunned"]) {
     assert.ok(mech.note.includes(glyph), glyph);
   }
 });
