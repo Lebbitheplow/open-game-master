@@ -95,6 +95,12 @@ export function AfterRollCard({
   const myHelpers = [...new Set(myShifts.map((option) => option.by))];
   const standing = pending.kind === "attack" ? "misses as it stands" : pending.dc !== null ? `fails against Difficulty Class ${pending.dc} as it stands` : "may still fail";
   const clock = left !== null ? <span className="check-dim text-xs" aria-live="off">The roll stands in {left}s</span> : null;
+  const helpLabel = `${onlyShifts ? "Use Chronal Shift on" : "Help"} ${character?.name ? `${character.name}'s` : "this"} roll, or let it stand`;
+  const letItStand = myHelpers.map((helper) => (
+    <button key={`leave-${helper}`} type="button" disabled={busy} onClick={() => void choose({ decline: true, by: helper })} className={`${PLAIN} check-dim`}>
+      {busy ? <Loader2 className="size-4 animate-spin" /> : myHelpers.length > 1 ? `Let it stand (${sheets.find((sheet) => sheet.id === helper)?.name})` : "Let it stand"}
+    </button>
+  ));
 
   if (pending.userId !== meUserId && myShifts.length) {
     // The helper's own screen: the ally's roll, and whether to answer it.
@@ -105,17 +111,13 @@ export function AfterRollCard({
           {thrown.outcome.natural !== undefined ? ` (the die shows ${thrown.outcome.natural})` : ""} and {standing}.
         </p>
         {pending.reason ? <p className="check-dim mt-0.5 text-xs">{pending.reason}</p> : null}
-        <div className="mt-2 flex flex-wrap items-center gap-2" role="group" aria-label={`${onlyShifts ? "Use Chronal Shift on" : "Help"} ${character?.name ? `${character.name}'s` : "this"} roll, or let it stand`}>
+        <div className="mt-2 flex flex-wrap items-center gap-2" role="group" aria-label={helpLabel}>
           {myShifts.map((option) => (
             <button key={`${option.id}:${option.by}`} type="button" disabled={busy} title={option.note} onClick={() => void choose({ use: option.id, by: option.by })} className={OPTION}>
               {option.label}
             </button>
           ))}
-          {myHelpers.map((helper) => (
-            <button key={`leave-${helper}`} type="button" disabled={busy} onClick={() => void choose({ decline: true, by: helper })} className={`${PLAIN} check-dim`}>
-              {busy ? <Loader2 className="size-4 animate-spin" /> : myHelpers.length > 1 ? `Let it stand (${sheets.find((sheet) => sheet.id === helper)?.name})` : "Let it stand"}
-            </button>
-          ))}
+          {letItStand}
           {clock}
         </div>
         {error ? <p role="alert" className="mt-1.5 text-xs text-red-400">{error}</p> : null}
@@ -181,7 +183,7 @@ export function AfterRollCard({
           {waitingOn.join(" and ")} {onlyShifts ? "can still make you roll it again with Chronal Shift." : "can still help with this roll."}
         </p>
       ) : null}
-      <div className="mt-2 flex flex-wrap items-center gap-2" role="group" aria-label={thrown.choosing ? "Choose which die counts" : "Change this roll, or keep it"}>
+      <div className="mt-2 flex flex-wrap items-center gap-2" role="group" aria-label={thrown.choosing ? "Choose which die counts" : thrown.kept && myHelpers.length ? helpLabel : "Change this roll, or keep it"}>
         {thrown.choosing
           ? d20s.map((die, index) => (
               <button
@@ -206,7 +208,13 @@ export function AfterRollCard({
                 {option.label}
               </button>
             ))}
-        {thrown.choosing || thrown.kept ? null : (
+        {thrown.choosing ? null : thrown.kept ? (
+          // One account holds the roller and the helper (a player with two
+          // characters, a test fight): the kept roll waits on that helper,
+          // and only this screen can answer it, so it needs the helper's
+          // way out as well as the helper's reroll (play-test 2026-11-09).
+          letItStand
+        ) : (
           <button
             type="button"
             disabled={busy}
