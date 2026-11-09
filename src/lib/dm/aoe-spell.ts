@@ -35,6 +35,7 @@ import type { SaveAbilityId } from "@/lib/srd/condition-effects";
 import { castRedirect } from "@/lib/dm/cast-redirect";
 import { overchannelProblem, payOverchannel, sculptedIds } from "@/lib/dm/caster-features";
 import { maximumOf } from "@/lib/dm/heal-spell";
+import { splitDamageExpression } from "@/lib/dm/aoe-parts";
 import { toolError, type ToolError } from "@/lib/dm/tool-errors";
 import { spellHeldProblem } from "@/lib/dm/cast-rules";
 
@@ -53,6 +54,9 @@ export type AoeSpellPlan = {
   flat: number;
   // Added once to a two-type spell's second type (Elemental Affinity's cold).
   flatSecond: number;
+  // A two-type spell's dice by type, each with the riders' dice it earned,
+  // or null for a spell of one type.
+  damageParts: [string, string] | null;
   saveAbility: SaveAbilityId;
   dc: number;
   halfOnSave: boolean;
@@ -297,11 +301,16 @@ export function planAoeSpell(
         level: spellLevel,
         classes: facts?.classes,
       })
-    : { flat: 0, flatSecond: 0, dice: [] as string[], potentCantrip: false, notes: [] as string[] };
+    : { flat: 0, flatSecond: 0, dice: [] as string[], diceSecond: [] as string[], potentCantrip: false, notes: [] as string[] };
+  // A spell of two types rolls each type's dice on its own (aoe-damage.ts).
+  // Split here, before a rider's die joins: appended to the whole, Enhanced
+  // Bond's d8 read as the second type's dice and Ice Storm's cold as hail.
+  const ownSplit = damage ? splitDamageExpression(damage, mech?.secondType) : null;
+  let damageParts: [string, string] | null = ownSplit ? [[ownSplit[0], ...riders.dice].join("+"), [ownSplit[1], ...riders.diceSecond].join("+")] : null;
   // A subclass feature's die rides the spell's one damage roll (Enhanced
   // Bond, Arcane Firearm): src/lib/srd/spell-damage-riders.ts.
-  if (damage && riders.dice.length) {
-    damage = [damage, ...riders.dice].join("+");
+  if (damage && (riders.dice.length || riders.diceSecond.length)) {
+    damage = damageParts ? damageParts.join("+") : [damage, ...riders.dice, ...riders.diceSecond].join("+");
   }
   corrections.push(...riders.notes);
   // A spell of a Draconic sorcerer's dragon's type opens Elemental Affinity's
@@ -316,7 +325,8 @@ export function planAoeSpell(
   }
   // Overchannel: the dice at their maximum, and its price after the cast.
   if (input.overchannel && damage) {
-    damage = String(maximumOf(damage));
+    damageParts = damageParts ? [String(maximumOf(damageParts[0])), String(maximumOf(damageParts[1]))] : null;
+    damage = damageParts ? damageParts.join("+") : String(maximumOf(damage));
     corrections.push(payOverchannel(campaign, turn, caster.id, spellLevel));
   }
   const condition = mech?.condition ?? null;
@@ -329,6 +339,7 @@ export function planAoeSpell(
     damage,
     flat: riders.flat,
     flatSecond: riders.flatSecond,
+    damageParts,
     saveAbility,
     dc,
     halfOnSave,

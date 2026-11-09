@@ -125,6 +125,9 @@ export type AttackPlan = {
   budget: TurnBudget | null;
   // Elemental Adept covers this attack spell's damage type (feat-combat.ts).
   elementalAdept: boolean;
+  // A two-type spell's other type the feat covers (Ice Storm's cold for a cold
+  // adept): that part's resistance is set aside, the first type's is not.
+  adeptOthers: string[];
   // A Mage Slayer's melee weapon hit from within 5 feet: the target's
   // concentration save is at disadvantage (feat-combat.ts).
   mageSlayer: boolean;
@@ -337,14 +340,18 @@ export function planPcAttack(input: {
     featNotes.push(power.note);
   }
   // Elemental Adept on an attack-roll spell of its type: every 1 on the
-  // damage dice counts as 2, and the target's resistance is ignored.
+  // damage dice counts as 2, and the target's resistance to that type is
+  // ignored. A spell of two types counts for either (the feat's text: "Your
+  // spells of that damage type ... their damage dice"): all its dice floor,
+  // and only the chosen type's resistance is set aside.
+  const adeptOthers = kind === "spell" ? (profile.gearTyped ?? []).map((rider) => rider.type).filter((type, index, all) => all.indexOf(type) === index && type !== profile.damageType && elementalAdeptApplies(sheet, type)) : [];
   const elementalAdept = kind === "spell" && elementalAdeptApplies(sheet, profile.damageType);
   // Mage Slayer's melee hit, or any damage from a Spellbreaker, shakes the
   // target's concentration (enemy-damage.ts).
   const mageSlayer = damageShakesConcentration(sheet, { weaponAttack, melee: !atRange, withinFiveFeet: geometry.withinFiveFeet }) !== null;
-  if (elementalAdept) {
+  if (elementalAdept || adeptOthers.length) {
     profile = { ...profile, damageExpression: floorDamageDice(profile.damageExpression) };
-    featNotes.push(`Elemental Adept: ${profile.damageType} ignores resistance and every 1 on the dice is a 2`);
+    featNotes.push(`Elemental Adept: ${[...(elementalAdept ? [profile.damageType] : []), ...adeptOthers].join(" and ")} ignores resistance and every 1 on the dice is a 2`);
   }
 
   // A Battle Master maneuver riding this swing. The pick and the pool are
@@ -675,6 +682,7 @@ export function planPcAttack(input: {
     args,
     enemy,
     elementalAdept,
+    adeptOthers,
     mageSlayer,
     derived: built.derived,
     riders,

@@ -127,6 +127,7 @@ export function landSwingBlow(
     magical: record.magical === true,
     nonlethal: record.nonlethal,
     ...(record.ignoreResistanceBy ? { ignoreResistance: true, ignoreResistanceBy: record.ignoreResistanceBy } : {}),
+    ...(record.adeptOthers?.length ? { adeptOthers: record.adeptOthers } : {}),
     ...(record.mageSlayer ? { concentrationDisadvantage: true } : {}),
     blow: record.blow ?? {},
   };
