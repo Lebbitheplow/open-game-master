@@ -9,6 +9,7 @@
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 
@@ -70,7 +71,9 @@ await test("A descriptive line past its length is fitted at a word, and the call
 await test("No tool handler answers a refused parse with a fixed line: each one hands zod's reason on.", () => {
   // The DM tools' own folder; a stored trade offer (trade.ts) is read by the
   // server, not sent by a model, and says only that it could not be read.
-  const root = new URL("../src/lib/dm/", import.meta.url).pathname;
+  // fileURLToPath, not .pathname: on Windows the pathname reads "/D:/..." and
+  // readdirSync took it as "C:\\D:\\..."
+  const root = fileURLToPath(new URL("../src/lib/dm/", import.meta.url));
   const ALLOWED = new Set(["trade.ts"]);
   const files = [];
   const walk = (dir) => {
