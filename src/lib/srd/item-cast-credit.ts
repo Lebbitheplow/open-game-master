@@ -10,10 +10,15 @@
 // the slot is never spent twice, and spellSaveDcFor / spellAttackFor
 // (src/lib/srd/index.ts) read the item's numbers while it stands.
 //
-// Held in memory, per sheet, for a few minutes: long enough for the DM's
-// reply to resolve the spell it just paid for, short enough that a scroll
-// read and never resolved does not pay for a cast an hour later. A restart
-// forgets them, which costs only the old behaviour (the cast spends a slot).
+// Kept per sheet for a few minutes: long enough for the DM's reply to resolve
+// the spell it just paid for, short enough that a scroll read and never
+// resolved does not pay for a cast an hour later. On the server they are kept
+// in the database (src/lib/db/item-cast-credits.ts), as a turn's last hits
+// are: one held in memory was lost to a restart between use_item and the
+// spell's tool, and with it the cast's free slot and the charge or scroll
+// owed back when the cast never happened. "Revert this turn" forgets the
+// credits the turn wrote and gives back the ones it used. The browser and a
+// pure suite keep them in memory.
 //
 // A spell that runs on (Call Lightning's next bolt, a Spiritual Weapon's next
 // strike) outlasts its credit, so the item's row keeps its numbers while the
@@ -49,18 +54,41 @@ export type ItemCast = {
   turnId?: string;
 };
 
-type Credit = ItemCast & { key: string; at: number; usedAt?: number };
+// `usedTurn`: the turn whose cast took it, so reverting that turn gives it back.
+export type ItemCastCredit = ItemCast & { key: string; at: number; usedAt?: number; usedTurn?: string };
 
-const credits = new Map<string, Credit[]>();
+// Where the credits are kept. `turn` names the GM turn running now, if any.
+export type ItemCastStore = {
+  read(sheetId: string): ItemCastCredit[];
+  write(sheetId: string, credits: ItemCastCredit[]): void;
+  turn?(): string | null;
+};
 
-function live(sheetId: string, now: number): Credit[] {
-  const kept = (credits.get(sheetId) ?? []).filter((credit) =>
-    credit.usedAt !== undefined ? now - credit.usedAt <= NUMBERS_AFTER_USE_MS : now - credit.at <= WINDOW_MS,
-  );
-  if (kept.length) {
-    credits.set(sheetId, kept);
-  } else {
-    credits.delete(sheetId);
+declare global {
+  // Set by src/lib/db/item-cast-credits.ts when the server loads it; on
+  // globalThis, as the dice script's hook is, so a module that loads it inside
+  // an import cycle still finds it.
+  var __odmItemCastStore: ItemCastStore | undefined;
+}
+
+const memory = new Map<string, ItemCastCredit[]>();
+const MEMORY: ItemCastStore = {
+  read: (sheetId) => memory.get(sheetId) ?? [],
+  write: (sheetId, list) => void (list.length ? memory.set(sheetId, list) : memory.delete(sheetId)),
+};
+const store = (): ItemCastStore => globalThis.__odmItemCastStore ?? MEMORY;
+
+// A credit still standing: waiting for its cast, or taken within the minute
+// it lends its numbers.
+export function creditStands(credit: ItemCastCredit, now: number): boolean {
+  return credit.usedAt !== undefined ? now - credit.usedAt <= NUMBERS_AFTER_USE_MS : now - credit.at <= WINDOW_MS;
+}
+
+function live(sheetId: string, now: number): ItemCastCredit[] {
+  const all = store().read(sheetId);
+  const kept = all.filter((credit) => creditStands(credit, now));
+  if (kept.length !== all.length) {
+    store().write(sheetId, kept);
   }
   return kept;
 }
@@ -68,8 +96,9 @@ function live(sheetId: string, now: number): Credit[] {
 // use_item just cast `cast.spell` for this character from an item.
 export function recordItemCast(sheetId: string, cast: ItemCast, now = Date.now()) {
   const kept = live(sheetId, now).filter((credit) => credit.key !== textKey(cast.spell) || credit.usedAt !== undefined);
-  kept.push({ ...cast, key: textKey(cast.spell), at: now });
-  credits.set(sheetId, kept);
+  const turnId = cast.turnId || store().turn?.() || undefined;
+  kept.push({ ...cast, ...(turnId ? { turnId } : {}), key: textKey(cast.spell), at: now });
+  store().write(sheetId, kept);
 }
 
 // Takes the waiting credit for this spell, if there is one: the cast is paid
@@ -80,12 +109,18 @@ export function takeItemCast(
   { dryRun = false, now = Date.now() }: { dryRun?: boolean; now?: number } = {},
 ): ItemCast | null {
   const key = textKey(spell);
-  const credit = live(sheetId, now).find((entry) => entry.key === key && entry.usedAt === undefined);
+  const list = live(sheetId, now);
+  const credit = list.find((entry) => entry.key === key && entry.usedAt === undefined);
   if (!credit) {
     return null;
   }
   if (!dryRun) {
     credit.usedAt = now;
+    const turn = store().turn?.();
+    if (turn) {
+      credit.usedTurn = turn;
+    }
+    store().write(sheetId, list);
   }
   return { spell: credit.spell, level: credit.level, item: credit.item, saveDc: credit.saveDc, attackBonus: credit.attackBonus, abilityMod: credit.abilityMod, storedIn: credit.storedIn, paid: credit.paid, turnId: credit.turnId };
 }
@@ -94,11 +129,7 @@ export function takeItemCast(
 export function dropItemCast(sheetId: string, spell: string, now = Date.now()) {
   const key = textKey(spell);
   const kept = live(sheetId, now).filter((credit) => credit.key !== key || credit.usedAt !== undefined);
-  if (kept.length) {
-    credits.set(sheetId, kept);
-  } else {
-    credits.delete(sheetId);
-  }
+  store().write(sheetId, kept);
 }
 
 // The once-a-turn mark on the budget that says the action is spent on this spell and

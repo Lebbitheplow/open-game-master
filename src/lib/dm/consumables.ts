@@ -32,6 +32,8 @@ import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
 import { handleSetCondition } from "@/lib/dm/set-condition";
 import { checklistSpell } from "@/lib/srd/spell-lists";
 import { highestSlotLevel, scrollCheckDc, scrollNumbers, scrollSpell, scrollUnreadable } from "@/lib/srd/scrolls";
+// The credits live in the database on the server (src/lib/db/item-cast-credits.ts).
+import "@/lib/db/item-cast-credits";
 import { recordItemCast } from "@/lib/srd/item-cast-credit";
 import { afflictCondition, afflictionConditionsFor } from "@/lib/dm/afflictions";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";

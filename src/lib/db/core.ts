@@ -2919,6 +2919,18 @@ function ensureSchema(db: SqliteDatabase) {
       PRIMARY KEY (campaign_id, character_id)
     );
 
+    -- The spells items have paid for and their tools have not yet cast, per
+    -- character (src/lib/db/item-cast-credits.ts), so a restart between the
+    -- two keeps the cast's free slot and what it owes back. No foreign keys:
+    -- deleteCampaign clears a table's rows by hand. Older servers ignore it.
+    CREATE TABLE IF NOT EXISTS item_cast_credits (
+      character_id TEXT PRIMARY KEY,
+      campaign_id TEXT NOT NULL,
+      payload_json TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_item_cast_credits_campaign ON item_cast_credits(campaign_id);
+
     -- The Intelligence, Wisdom and Charisma saves made this turn and who forced
     -- them, for Vigilant Rebuke (src/lib/dm/last-save.ts). One row per
     -- campaign; deleteCampaign clears it by hand.

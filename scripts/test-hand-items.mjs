@@ -5,6 +5,8 @@
 // and is played through the tools a typed use takes (use_item, then the spell's
 // own), spending no slot. A cast that does not happen gives back what the item spent.
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import path from "node:path";
 import { openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
@@ -513,6 +515,52 @@ await test("A draw that casts nothing is no answer to the card, and a refused on
   assert.equal(intentAnswered(played, [{ ...draw, result: { error: "no", refused: "rules" } }]), true);
   assert.deepEqual(drawStopsCast("cast_at_enemy", { error: "no", refused: "rules" }), null);
   assert.deepEqual(drawStopsCast("use_item", { error: "no", retry: true }), { error: "no", retry: true });
+});
+
+
+// A fresh node process on the same database is the server after a restart: it
+// has none of this process's memory.
+function afterRestart(source) {
+  const alias = path.join(import.meta.dirname, "lib", "register-alias.mjs");
+  const script = `import { register } from "node:module"; import { pathToFileURL } from "node:url"; register(pathToFileURL(${JSON.stringify(alias)}).href, import.meta.url);\n${source}`;
+  const child = spawnSync(process.execPath, ["--input-type=module", "-e", script], { cwd: path.join(import.meta.dirname, ".."), env: process.env, encoding: "utf8" });
+  const answer = child.stdout.trim().split("\n").at(-1);
+  assert.ok(answer, child.stderr);
+  return JSON.parse(answer);
+}
+
+await test("A restart between use_item and the spell's tool keeps the credit: the cast spends no slot, and one never cast still gives the charge back", async () => {
+  await stage(mage, [wand("Wand of Binding")]);
+  const drawn = await run("use_item", { characterId: mage.id, item: "Wand of Binding", spell: "Hold Person" });
+  assert.equal(drawn.ok, true, JSON.stringify(drawn));
+  assert.equal(row(mage, "Wand of Binding").charges, 5);
+  const waiting = afterRestart(`const { takeItemCast } = await import("./src/lib/srd/item-cast-credit.ts"); await import("./src/lib/dm/item-use.ts"); console.log(JSON.stringify(takeItemCast(${JSON.stringify(mage.id)}, "Hold Person", { dryRun: true })));`);
+  assert.equal(waiting?.item, "Wand of Binding", "the credit outlives the process that wrote it");
+  const given = afterRestart(`const { takeBackItemCast } = await import("./src/lib/dm/item-use.ts"); const { getCampaignById } = await import("./src/lib/db/campaigns.ts"); console.log(JSON.stringify(takeBackItemCast(getCampaignById(${JSON.stringify(world.campaignId)}), ${JSON.stringify(mage.id)}, "Hold Person")));`);
+  assert.equal(given, true, "and the settling after the restart finds what to give back");
+  assert.equal(row(mage, "Wand of Binding").charges, 7);
+  assert.equal(takeItemCast(mage.id, "Hold Person", { dryRun: true }), null);
+});
+
+await test("Reverting the turn that drew a wand's spell forgets its credit, and reverting the turn that cast it leaves it waiting again", async () => {
+  const { forgetTurnItemCasts } = await import("../src/lib/db/item-cast-credits.ts");
+  const { recordItemCast } = await import("../src/lib/srd/item-cast-credit.ts");
+  await stage(mage, [wand("Wand of Web")]);
+  recordItemCast(mage.id, { spell: "Web", level: 2, item: "Wand of Web", saveDc: 15, paid: { row: wand("Wand of Web"), charges: 1 }, turnId: "turn-drew" });
+  forgetTurnItemCasts(world.campaignId, "turn-drew");
+  assert.equal(takeItemCast(mage.id, "Web", { dryRun: true }), null, "a cast the revert undid pays for nothing later, and owes nothing back");
+  assert.equal(takeBackItemCast(campaign(), mage.id, "Web"), false);
+  recordItemCast(mage.id, { spell: "Web", level: 2, item: "Wand of Web", saveDc: 15, turnId: "turn-drew" });
+  globalThis.__odmItemCastStore.turn = () => "turn-cast";
+  try {
+    assert.ok(takeItemCast(mage.id, "Web"), "the spell's tool takes it in a later turn");
+  } finally {
+    delete globalThis.__odmItemCastStore.turn;
+  }
+  assert.equal(takeItemCast(mage.id, "Web", { dryRun: true }), null);
+  forgetTurnItemCasts(world.campaignId, "turn-cast");
+  assert.equal(takeItemCast(mage.id, "Web", { dryRun: true })?.item, "Wand of Web", "the cast undone, the charge it took stays paid for it");
+  dropItemCast(mage.id, "Web");
 });
 
 model.close();

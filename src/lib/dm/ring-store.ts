@@ -11,6 +11,8 @@ import type { ToolError } from "@/lib/dm/tool-errors";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
 import { findNamed } from "@/lib/language/text-logic";
 import { computeSheetDerived, spellAttackFor, spellSaveDcFor } from "@/lib/srd";
+// The credits live in the database on the server (src/lib/db/item-cast-credits.ts).
+import "@/lib/db/item-cast-credits";
 import { recordItemCast, runningItemSpell, type ItemCast } from "@/lib/srd/item-cast-credit";
 import { rowName } from "@/lib/srd/item-row";
 import {

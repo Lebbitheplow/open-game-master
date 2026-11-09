@@ -86,6 +86,8 @@ import { spellSaveDcFor } from "@/lib/srd";
 import { castTempHp } from "@/lib/dm/authored-spells";
 import { authoredSlotRefund, opensSurgeChance } from "@/lib/srd/authored-effects-more";
 import { SURGE_CHANCE } from "@/lib/srd/authored-effects-data4";
+// The credits live in the database on the server (src/lib/db/item-cast-credits.ts).
+import "@/lib/db/item-cast-credits";
 import { takeItemCast, type ItemCast } from "@/lib/srd/item-cast-credit";
 import type { SpellMech } from "@/lib/srd/spell-mechanics";
 import { storerHolding } from "@/lib/srd/spell-storing";

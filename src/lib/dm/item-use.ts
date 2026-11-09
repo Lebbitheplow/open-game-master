@@ -25,6 +25,8 @@ import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
 import { rollExpression } from "@/lib/dice";
 import { itemSpellCast, itemSpellsOfRow, type ItemSpellCast } from "@/lib/srd/item-spells";
 import { itemBarrier } from "@/lib/srd/item-barrier";
+// The credits live in the database on the server (src/lib/db/item-cast-credits.ts).
+import "@/lib/db/item-cast-credits";
 import { dropItemCast, recordItemCast, spellDrawnMark, takeItemCast, type ItemCast } from "@/lib/srd/item-cast-credit";
 import {
   chargeMax,
