@@ -614,6 +614,11 @@ export function handleAoeDamage(
       if (applied.damageByType) {
         row.damageByType = applied.damageByType;
       }
+      // `damage` is what the save left, before resistance. Alone it read as
+      // what landed: a live model told the table 29 when the goblin lost 19.
+      if (typeof applied.damageApplied === "number" && applied.damageApplied !== row.damage) {
+        row.damageApplied = applied.damageApplied;
+      }
       row.health = applied.health;
       if (applied.dead) {
         row.dead = true;

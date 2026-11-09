@@ -264,6 +264,10 @@ await test("A cold dragon's sorcerer adds Charisma to Ice Storm's cold, where re
   const now = enemyOf(world, goblin.id);
   assert.equal(now.maxHp - now.currentHp, 16 + 14);
   assert.ok(markedCold(world, sorcerer.id), "the resistance's mark was laid");
+  // The row tells the GM what landed, beside what the save left.
+  const [row] = out.result.results;
+  assert.equal(row.damage, 16 + 28);
+  assert.equal(row.damageApplied, 16 + 14);
 });
 
 const brewedForDragon = async (spell, mech, desc) => {
