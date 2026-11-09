@@ -11,6 +11,10 @@
 // owned here too: its cast spends nothing but the action.
 
 import { readiedReleaseFor } from "@/lib/dm/readied-release";
+import { spellFactsFor } from "@/lib/content";
+import { spellAuthorsFor } from "@/lib/dm/spell-authors";
+import { beginHeldCasting } from "@/lib/dm/long-casting";
+import { castingRoundsOf, completedCastingOf } from "@/lib/dm/long-casting-logic";
 import type { Campaign } from "@/lib/db/campaigns";
 import { allocateSeq } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
@@ -158,7 +162,10 @@ export function chargedItemUse(
   itemName: string,
   charges: number | undefined,
   spell?: string,
-  { dryRun = false }: { dryRun?: boolean } = {},
+  // `finishing`: a casting of a minute or more begun from this item has run its
+  // rounds (long-casting.ts): its turns paid the action, and what it spends is
+  // spent now.
+  { dryRun = false, finishing = false }: { dryRun?: boolean; finishing?: boolean } = {},
 ): ToolResult | null {
   // A name that fits a charged or spell-casting item and something else as
   // well is a guess: "healing" with a Staff of Healing and a potion in the
@@ -215,13 +222,24 @@ export function chargedItemUse(
   const kind = cast?.bonusAction ? "bonus" : "action";
   const encounter = getActiveEncounter(campaign.id);
   let budget: ReturnType<typeof budgetFor> = null;
+  // A casting of a minute or more held from this item to its end: what it cost
+  // was spent as it finished, and the spell's tool casts it now.
+  const finished = cast && !finishing && completedCastingOf(sheet, cast.spell) ? takeItemCast(sheet.id, cast.spell, { dryRun: true }) : null;
+  if (cast && finished) {
+    return { ok: true, used: carried.name, spellCast: finished.spell, spellLevel: finished.level, ...(finished.saveDc ? { saveDc: finished.saveDc } : {}), ...(finished.attackBonus ? { attackBonus: finished.attackBonus } : {}), note: `The casting of ${finished.spell} from ${carried.name} is complete and paid for. Resolve it now with the spell's own tool naming the spell: that cast spends no slot.` };
+  }
   // Off their turn, the use of an item they readied: their reaction, and
   // nothing of the acting combatant's turn (readied-release.ts).
-  const readied = readiedReleaseFor(sheet, encounter, "item");
+  const readied = finishing ? null : readiedReleaseFor(sheet, encounter, "item");
   if (readied && "error" in readied) {
     return toolError(readied);
   }
-  if (encounter && !readied) {
+  // SRD 5.1, Magic Items, Spells: "The spell uses its normal casting time". In a
+  // fight one of a minute or more is held across the caster's turns, as a
+  // ring's is, unless the item's text makes it an action or a bonus action.
+  const facts = cast && encounter && !readied && !finishing && !cast.bonusAction && !cast.asAction ? spellFactsFor(cast.spell, spellAuthorsFor(campaign)) : null;
+  const rounds = facts ? castingRoundsOf(facts, false) : null;
+  if (encounter && !readied && !finishing) {
     const able = canAct({ sheet, encounter, kind });
     if (!able.ok) {
       return toolError(able);
@@ -244,9 +262,20 @@ export function chargedItemUse(
       budget = spent.budget;
     }
   }
-  if (dryRun) {
+  if (dryRun || (cast && rounds !== null)) {
     const short = rule ? chargesShort(carried, rule, count) : null;
-    return short ? { error: `${short} Nothing was spent.`, refused: "rules" } : { ok: true, dryRun: true, used: carried.name };
+    if (short) {
+      return { error: `${short} Nothing was spent.`, refused: "rules" };
+    }
+  }
+  if (dryRun) {
+    return { ok: true, dryRun: true, used: carried.name };
+  }
+  // Begun now, paid when done: a casting whose concentration breaks spends
+  // nothing of the item, as one from a slot spends no slot.
+  if (cast && encounter && rounds !== null) {
+    const begun = beginHeldCasting(campaign, turnId, sheet, encounter, budget ? { budget } : null, { name: cast.spell, facts, slotLevel: null, ritual: false, rounds, fromRing: carried.name });
+    return { ...begun, used: carried.name, note: `${cast.spell} takes effect when this casting is complete, and ${carried.name} spends what it costs then.` };
   }
   // An item with no charges spends none: it is only gone when the cast uses
   // it up.
@@ -342,3 +371,14 @@ export function chargedItemUse(
     ].filter(Boolean).join(" "),
   };
 }
+
+// The casting from an item held to its end (long-casting.ts finishCasting):
+// what the item costs is spent now, and its credit waits for the spell's tool.
+// Registered on globalThis: long-casting.ts cannot import this module.
+globalThis.__odmItemCastingDone = (campaign, sheet, itemName, spell) => {
+  const out = chargedItemUse(campaign, "", sheet, itemName, undefined, spell, { finishing: true });
+  if (!out) {
+    return `${sheet.name} no longer carries ${itemName}`;
+  }
+  return typeof out.error === "string" ? out.error : out.spellCast === false ? `${itemName} failed to cast it` : null;
+};

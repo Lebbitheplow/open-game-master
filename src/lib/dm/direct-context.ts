@@ -10,6 +10,9 @@ import { getActiveEncounter } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
 import { completedCastingOf } from "@/lib/dm/long-casting-logic";
 import { storerNamed } from "@/lib/dm/ring-store";
+import { textKey } from "@/lib/language/text-logic";
+import { itemCastHeld, itemCastRows } from "@/lib/battlemap/hand-items";
+import { linesNamed } from "@/lib/srd/item-row";
 import { getFoe } from "@/lib/dm/sheet-foe";
 import { beamConnected, beamHeld } from "@/lib/dm/witch-bolt";
 import { spellEngineName, spellFactsFor, spellMechanicsFor } from "@/lib/content";
@@ -52,10 +55,14 @@ export function directContextFor(campaignId: string, intent: MessageIntent, auth
   // by the card played once it is done (long-casting.ts).
   const wearer = cast && intent.item && encounter && typeof facts?.castingTime === "number" ? getSheetById(characterId) : null;
   const ring = wearer && intent.item ? storerNamed(wearer, intent.item) : null;
-  const ringBegins = Boolean(wearer && ring && cast && !completedCastingOf(wearer, cast));
-  // Any other item casts at once (item-use.ts), so nothing is begun for a summoning
-  // that names no creature: the credit would go, and no creature would come.
-  const heldHere = !intent.item || Boolean(ring);
+  // Another item holds it as a ring does, unless its text makes it an action
+  // (item-use.ts, hand-items.ts itemCastHeld).
+  const fromItem = wearer && !ring && cast && facts ? itemCastRows(wearer).find((row) => linesNamed([row.item], intent.item ?? "").length && textKey(row.entry.spell) === textKey(cast)) : null;
+  const itemHolds = Boolean(fromItem && facts && itemCastHeld(fromItem, { castingTime: String(facts.castingTime) }));
+  const ringBegins = Boolean(wearer && (ring || itemHolds) && cast && !completedCastingOf(wearer, cast));
+  // An item that casts at once begins nothing for a summoning that names no
+  // creature: the credit would go, and no creature would come.
+  const heldHere = !intent.item || Boolean(ring) || itemHolds;
   const pick = cast && zone ? (board ? (areaFor({ spell: cast, runsAs })?.pick ?? "point") : "off") : null;
   // Witch Bolt's card at what its beam is connected to is the beam's strike;
   // at anything else it is a new casting (src/lib/dm/witch-bolt.ts). So is a

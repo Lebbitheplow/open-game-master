@@ -21,6 +21,7 @@
 // Pure, with hand-spells.ts: scripts/test-hand-items.mjs drives it.
 import { computeSheetDerived, spellAttackFor, spellSaveDcFor } from "@/lib/srd";
 import { textKey } from "@/lib/language/text-logic";
+import { castingOf, completedCastingOf } from "@/lib/dm/long-casting-logic";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
 import { itemBarrier } from "@/lib/srd/item-barrier";
 import { spellDrawnMark } from "@/lib/srd/item-cast-credit";
@@ -102,9 +103,21 @@ function paying(sheet: CharacterSheet, { item, entry, scroll }: ItemCastRow): st
   return `No slot: ${spends}.${risk}${check}${higher}`;
 }
 
-function gatesFor(sheet: CharacterSheet, turn: HandTurn, row: ItemCastRow, fact: SpellFact, cost: HandCost): Gate[] {
+// A spell of a minute or more from an item whose text does not make it an
+// action: in a fight it is held across turns, as a ring's is (item-use.ts). A
+// scroll is read with an action, its text says.
+export function itemCastHeld({ entry, scroll }: Pick<ItemCastRow, "entry" | "scroll">, fact: Pick<SpellFact, "castingTime">): boolean {
+  return !scroll && !entry.bonusAction && !entry.asAction && castingCost(fact.castingTime) === null;
+}
+
+function gatesFor(sheet: CharacterSheet, turn: HandTurn, row: ItemCastRow, fact: SpellFact, cost: HandCost, done: boolean): Gate[] {
   const { item, entry, scroll } = row;
-  const paid = new Set(turn.marks ?? []).has(spellDrawnMark(entry.spell));
+  const paid = done || new Set(turn.marks ?? []).has(spellDrawnMark(entry.spell));
+  const held = castingOf(sheet);
+  const casting: Gate =
+    held?.fromRing && linesNamed([item], held.fromRing).length && textKey(held.spell) === textKey(entry.spell)
+      ? { reason: `${sheet.name} is casting ${entry.spell}: it takes effect when the casting is done.`, spent: false }
+      : null;
   const reason = (text: string | null): Gate => (text ? { reason: text, spent: false } : null);
   const named = linesNamed(sheet.equipment, item.name);
   const standing = standingGate(sheet, turn, cost === "bonus" ? "bonus" : "action");
@@ -120,6 +133,7 @@ function gatesFor(sheet: CharacterSheet, turn: HandTurn, row: ItemCastRow, fact:
     named.length > 1 ? reason(`"${item.name}" could mean ${named.map((line) => line.name).join(" or ")}; name the item exactly. Nothing was spent.`) : null,
     reason(itemBarrier(sheet, item)),
     standing,
+    casting,
     // A reaction spell answers its trigger through use_reaction, which no action
     // from an item can stand in for (cast-guard.ts).
     castingCost(fact.castingTime) === "reaction" ? reason(`${entry.spell} is cast as a reaction: say so in your own words when its trigger comes.`) : null,
@@ -135,6 +149,8 @@ export function itemSpellCards(sheet: CharacterSheet, turn: HandTurn, riders: Co
     const { item, entry, scroll } = row;
     const fact: SpellFact = factFor(entry.spell, options) ?? { level: entry.level, school: "", castingTime: "", range: "", desc: "", higherLevel: "", concentration: false };
     const cost: HandCost = entry.bonusAction ? "bonus" : "action";
+    const long = itemCastHeld(row, fact);
+    const done = long && Boolean(completedCastingOf(sheet, entry.spell));
     const count = chargeCount(item);
     const ability = sheet.spellcasting ? computeSheetDerived(sheet).abilityMods[sheet.spellcasting.ability] : 0;
     const card = spellCard(sheet, turn, riders, entry.spell, fact, options, {
@@ -147,15 +163,15 @@ export function itemSpellCards(sheet: CharacterSheet, turn: HandTurn, riders: Co
         attackBonus: entry.attackBonus ?? spellAttackFor(sheet, entry.spell) ?? undefined,
         abilityMod: ability,
       },
-      holds: false,
-      free: false,
-      gates: gatesFor(sheet, turn, row, fact, cost),
+      holds: long && Boolean(turn.table) && !done,
+      free: done,
+      gates: gatesFor(sheet, turn, row, fact, cost, done),
       item: {
         id: `spell:item:${textKey(item.name)}:${textKey(entry.spell)}`,
         name: scroll ? `Scroll: ${entry.spell}` : `${item.name}: ${entry.spell}`,
         cost,
         resource: resourceLine(row),
-        note: paying(sheet, row),
+        note: `${paying(sheet, row)}${long && turn.table && !done ? " It takes turns to cast: this begins it and holds your action each turn, and the item pays when it is done." : ""}`,
       },
       fromItem: scroll
         ? { key: "scrolls", label: "Scrolls", note: "" }

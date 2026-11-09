@@ -43,6 +43,11 @@ export type ItemSpell = {
   // Cast as a bonus action rather than an action (Ring of Jumping: "cast the
   // jump spell from it as a bonus action at will").
   bonusAction?: boolean;
+  // The item's text makes the cast an action, whatever the spell's own casting
+  // time ("you can use an action to summon a water elemental"). Otherwise a
+  // spell of a minute or more takes its minute: SRD 5.1, Magic Items, Spells,
+  // "The spell uses its normal casting time".
+  asAction?: boolean;
   // The cast uses the item up (Elemental Gem: "an elemental is summoned as if
   // you had cast the conjure elemental spell, and the gem's magic is lost").
   usesUp?: boolean;
@@ -188,7 +193,7 @@ const ROWS: ItemSpellRow[] = [
 // what it casts (a Crystal Ball of Telepathy, a Ring of Air Elemental
 // Command). Each row quotes the sentence it is read from.
 function WONDROUS_ROWS(): ItemSpellRow[] {
-  const conjure: ItemSpell[] = [{ spell: "Conjure Elemental", charges: 1, level: 5 }];
+  const conjure: ItemSpell[] = [{ spell: "Conjure Elemental", charges: 1, level: 5, asAction: true }];
   // "Spells cast from the ring have a save DC of 17." "You can expend 2 of
   // the ring's charges to cast dominate monster on an air elemental", and
   // once the wearer has helped slay one of its kind, "You can cast the
@@ -248,7 +253,7 @@ function WONDROUS_ROWS(): ItemSpellRow[] {
     { item: /^stone of controlling earth elementals$/i, spells: conjure },
     // "When you use an action to break the gem, an elemental is summoned as
     // if you had cast the conjure elemental spell, and the gem's magic is lost."
-    { item: /^elemental gem(?: \(.+\))?$|^(?:blue sapphire|yellow diamond|red corundum|emerald) elemental gem$/i, spells: [{ spell: "Conjure Elemental", charges: 0, level: 5, usesUp: true }] },
+    { item: /^elemental gem(?: \(.+\))?$|^(?:blue sapphire|yellow diamond|red corundum|emerald) elemental gem$/i, spells: [{ spell: "Conjure Elemental", charges: 0, level: 5, usesUp: true, asAction: true }] },
     // "cast the gust of wind spell (save DC 13) from it. Once used, the fan
     // shouldn't be used again until the next dawn."
     { item: /^wind fan$/i, spells: [{ spell: "Gust of Wind", charges: 1, level: 2, dc: 13 }] },
@@ -341,7 +346,7 @@ export function itemSpellsOfRow(item: RowItem & { gear?: unknown }): ItemSpell[]
 
 // What casting `spell` from this item costs for `charges` spent (the fewest
 // it takes when none are named), or an error sentence.
-export type ItemSpellCast = Pick<ItemSpell, "spell" | "charges" | "level" | "dc" | "attackBonus" | "bonusAction" | "usesUp" | "check">;
+export type ItemSpellCast = Pick<ItemSpell, "spell" | "charges" | "level" | "dc" | "attackBonus" | "bonusAction" | "asAction" | "usesUp" | "check">;
 
 export function itemSpellCast(
   item: string | (RowItem & { gear?: unknown }),
@@ -377,6 +382,7 @@ export function itemSpellCast(
     ...(row.dc ? { dc: row.dc } : {}),
     ...(row.attackBonus ? { attackBonus: row.attackBonus } : {}),
     ...(row.bonusAction ? { bonusAction: true } : {}),
+    ...(row.asAction ? { asAction: true } : {}),
     ...(row.usesUp ? { usesUp: true } : {}),
     ...(row.check ? { check: row.check } : {}),
   };

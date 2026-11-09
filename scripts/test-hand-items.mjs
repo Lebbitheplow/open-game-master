@@ -7,7 +7,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
-import { openWorld } from "./lib/enforce-world.mjs";
+import { hasPack, openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
 import { fakeModel, reply } from "./lib/enforce-narrator.mjs";
@@ -469,13 +469,31 @@ await test("The sentence and the model's line say which item, with use_item firs
   assert.deepEqual(afterCommit(turnOf(mage), cardNamed(mage, "Staff of the Magi: Light")).marks ?? [], [], "and leaves no spell-rule mark, as use_item does");
 });
 
-await test("A casting of a minute from an item does not begin across turns as a ring's does: that is the ring's alone", async () => {
-  await stage(brute, [{ name: "Ring of Spell Storing", qty: 1, equipped: true, attuned: true, storedSpells: [{ spell: "Alarm", level: 1, saveDc: 15, attackBonus: 7, abilityMod: 4, by: "Mage" }] }]);
-  const stored = { card: "spell", spell: "Alarm", slotLevel: 1, item: "Ring of Spell Storing" };
-  assert.equal(directContextFor(world.campaignId, stored, [], brute.id).ringBegins, true);
-  await stage(mage, [wand("Staff of the Woodlands")]);
-  const staff = { card: "spell", spell: "Awaken", slotLevel: 5, item: "Staff of the Woodlands" };
-  assert.equal(directContextFor(world.campaignId, staff, [], mage.id).ringBegins, undefined);
+await test("A spell of a minute or more from an item is held across turns in a fight, as a ring's is, and spends the item only when done", async () => {
+  if (!hasPack) return;
+  const { finishCastingsAtFightEnd } = await import("../src/lib/dm/long-casting.ts");
+  await stage(mage, [wand("Staff of the Magi")]);
+  const intent = { card: "spell", spell: "Conjure Elemental", slotLevel: 5, item: "Staff of the Magi", variant: "Fire Elemental" };
+  assert.equal(directContextFor(world.campaignId, intent, [], mage.id).ringBegins, true, "SRD 5.1: the spell uses its normal casting time");
+  const card = cardNamed(mage, "Staff of the Magi: Conjure Elemental");
+  assert.match(card.rules, /takes turns to cast/);
+  const begun = await run("use_item", { characterId: mage.id, item: "Staff of the Magi", spell: "Conjure Elemental" });
+  assert.match(String(begun.casting), /10 rounds/, JSON.stringify(begun));
+  assert.equal(row(mage, "Staff of the Magi").charges, undefined, "nothing of the staff is spent while it is cast");
+  assert.equal(usedAction(), true);
+  assert.match(cardNamed(mage, "Staff of the Magi: Conjure Elemental").disabled, /is casting Conjure Elemental/);
+  finishCastingsAtFightEnd(campaign());
+  assert.equal(row(mage, "Staff of the Magi").charges, 43, "seven charges, spent as it takes effect");
+  const done = cardNamed(mage, "Staff of the Magi: Conjure Elemental");
+  assert.equal(done.cost, "free", "and the card that resolves it is free");
+  const again = await run("use_item", { characterId: mage.id, item: "Staff of the Magi", spell: "Conjure Elemental" });
+  assert.equal(again.ok, true, JSON.stringify(again));
+  assert.equal(row(mage, "Staff of the Magi").charges, 43, "resolving it charges nothing more");
+  dropItemCast(mage.id, "Conjure Elemental");
+  world.patch(mage.id, { conditions: [], conditionMeta: {} });
+  await stage(brute, [{ name: "Bowl of Commanding Water Elementals", qty: 1 }]);
+  const bowl = { card: "spell", spell: "Conjure Elemental", slotLevel: 5, item: "Bowl of Commanding Water Elementals" };
+  assert.equal(directContextFor(world.campaignId, bowl, [], brute.id).ringBegins, undefined, "a bowl's text makes it an action");
 });
 
 await test("They take no Ready pick and are no first-turn tip; the lookups read an item's spells for its card alone", async () => {

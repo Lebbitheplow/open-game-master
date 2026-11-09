@@ -142,6 +142,12 @@ export function clearCompletedCasting(campaign: Campaign, sheetId: string) {
 // A casting whose rounds have run out, or whose fight has ended: the spell
 // takes effect now. Its "casting" condition is already gone. Returns the
 // line for the table.
+declare global {
+  // Set by src/lib/dm/item-use.ts: pays a casting from an item that is not a
+  // Ring of Spell Storing, or says why it cannot.
+  var __odmItemCastingDone: ((campaign: Campaign, sheet: CharacterSheet, itemName: string, spell: string) => string | null) | undefined;
+}
+
 export function finishCasting(campaign: Campaign, sheetId: string, held: HeldCasting, inFight: boolean): string | null {
   const sheet = getSheetById(sheetId);
   if (!sheet) {
@@ -155,8 +161,16 @@ export function finishCasting(campaign: Campaign, sheetId: string, held: HeldCas
   // A spell coming out of a ring: the credit the cast door takes, as use_item
   // writes it for one cast at once (spell-storing.ts). A ring gone from them
   // meanwhile leaves nothing to cast.
-  if (held.fromRing) {
-    const ring = storerNamed(sheet, held.fromRing);
+  const ring = held.fromRing ? storerNamed(sheet, held.fromRing) : null;
+  // Any other item spends what the spell costs as it takes effect, and writes
+  // its credit (src/lib/dm/item-use.ts).
+  if (held.fromRing && !ring && globalThis.__odmItemCastingDone) {
+    const failed = globalThis.__odmItemCastingDone(campaign, sheet, held.fromRing, held.spell);
+    if (failed) {
+      breakConcentration(campaign, null, sheetId, `the casting of ${held.spell} could not be paid from ${held.fromRing}`);
+      return failLine(sheet.name, held.spell, failed);
+    }
+  } else if (held.fromRing) {
     const stored = ring ? storedSpellNamed(ring, held.spell) : null;
     if (!ring || !stored) {
       breakConcentration(campaign, null, sheetId, `the casting of ${held.spell} has no ring to come from`);
