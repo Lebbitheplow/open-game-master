@@ -87,7 +87,7 @@ function card(
 }
 
 // The options aimed at one creature, which the engine asks for by id.
-const AIMED_OPTIONS = [VOW_OF_ENMITY, textKey("Arcane Abjuration"), textKey("Abjure Enemy")];
+const AIMED_OPTIONS = [VOW_OF_ENMITY, textKey("Arcane Abjuration"), textKey("Abjure Enemy"), textKey("Control Undead")];
 // The options that take the creatures of the player's choice (channel-fear.ts
 // chosen): aimed at one, the others added.
 const CHOSEN_OPTIONS = [textKey("Conquering Presence"), textKey("Dreadful Aspect")];

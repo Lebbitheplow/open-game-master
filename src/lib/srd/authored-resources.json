@@ -1223,7 +1223,7 @@
    "ability": null,
    "recharge": "long",
    "action": "reaction",
-   "guidance": "A reaction forcing a creature within 30 feet to reroll an attack, check or save after the wizard sees whether it succeeded; the second roll stands. Against a hit on the wizard or an ally by an attacker within 30 feet, use_reaction 'Chronal Shift' (targetCharacterId for the creature hit): the server rolls the attack again and settles the hit. The wizard's own failed roll offers it on the after-the-roll card; for anyone else's check or save, use_resource and narrate the reroll."
+   "guidance": "A reaction forcing a creature within 30 feet to reroll an attack, check or save after the wizard sees whether it succeeded; the second roll stands. Against a hit on the wizard or an ally by an attacker within 30 feet, use_reaction 'Chronal Shift' (targetCharacterId for the creature hit): the server rolls the attack again and settles the hit. The wizard's own failed roll, and a player ally's failed check, save or attack, offer it on the after-the-roll card (the wizard's player answers an ally's on their own screen). In a fight the wizard's player can watch for it: a creature's save against a spell or an area, an ally's save against a hazard, and a companion's attack stop first, and the server rolls it again if it goes the way the wizard said. Never use_resource it for any of these; only for a roll the engine never threw."
   },
   {
    "id": "sub_momentary_stasis",

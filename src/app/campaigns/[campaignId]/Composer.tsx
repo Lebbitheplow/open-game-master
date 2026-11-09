@@ -26,6 +26,7 @@ import {
 import { AfterRollCard } from "@/app/campaigns/[campaignId]/AfterRollCard";
 import { WatchCard, WatchToggle } from "@/app/campaigns/[campaignId]/WatchCard";
 import { foretoldLeft } from "@/lib/dm/foretold-logic";
+import { holdsFeature } from "@/lib/srd/feature-names";
 import { PendingRollCard } from "@/app/campaigns/[campaignId]/PendingRollCard";
 import { DmStatusLine } from "@/app/campaigns/[campaignId]/DmStatusLine";
 import { PushToTalk } from "@/app/campaigns/[campaignId]/PushToTalk";
@@ -237,8 +238,11 @@ function ComposerInner({
   // may take (a test fight a person runs): a hit hero answers under the
   // monsters' hand.
   const ownsHeroes = isDm && sheets.some((sheet) => sheet.userId === meUserId && !sheet.isCompanion);
-  // Portent's button, for the character who holds a number.
-  const watchingSheet = sheets.find((sheet) => sheet.userId === meUserId && !sheet.isCompanion && foretoldLeft(sheet).length > 0);
+  // The watch button, for the character who holds a Portent number, or a
+  // Chronal Shift on a host that stops for it (chronalWatch).
+  const watchingSheet = sheets.find(
+    (sheet) => sheet.userId === meUserId && !sheet.isCompanion && (foretoldLeft(sheet).length > 0 || (holdsFeature(sheet, "chronal shift") && hostOffers(capabilities, "chronalWatch"))),
+  );
   // And the companions nobody commands, whose reactions the seat plays at a
   // table a person runs as it plays their turns (issue 685).
   const answersForCompanions = gmCompanions && hostOffers(capabilities, "companionReactions") && companionReactors(sheets, meUserId, undefined, true).length > 0;

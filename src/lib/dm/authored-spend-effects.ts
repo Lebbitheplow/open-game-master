@@ -21,6 +21,7 @@ import { likelierSave, removeConditions, type ConditionMetaMap } from "@/lib/dm/
 import { healArea } from "@/lib/dm/authored-heal-area";
 import { canRegain, regainHitPoints } from "@/lib/dm/regain";
 import { immuneToCondition } from "@/lib/dm/damage-logic";
+import { commandCreature, commandedNote } from "@/lib/dm/command-undead";
 import { rollCharacterCheck } from "@/lib/dm/contest-roll";
 import { charmedBy } from "@/lib/dm/enemy-profile";
 import { d20Expression } from "@/lib/dice";
@@ -312,6 +313,9 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       if (unseen) {
         return { error: `${sheet.name} cannot see ${enemy.displayName} (${unseen}), and ${ctx.spend.name} takes a creature they can see. Nothing was spent.`, refused: "rules" };
       }
+      if (does.types && !does.types.includes(creatureTypeOf(enemy.stats))) {
+        return { error: `${enemy.displayName} is not ${does.types.length === 1 && does.types[0] === "undead" ? "an undead" : `a creature of type ${does.types.join(" or ")}`} (${creatureTypeOf(enemy.stats)}); ${ctx.spend.name} takes one. Nothing was spent.`, refused: "rules" };
+      }
       if (does.perUnit && ctx.units < 1) {
         return { error: `${ctx.spend.name} needs at least 1 point spent: pass amount. Nothing was spent.`, retry: true };
       }
@@ -324,7 +328,9 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       // The creature picks the save it is likelier to pass (condition-logic.ts).
       const ability = does.orSave ? likelierSave(enemy.conditions, does.save, does.orSave, dc, (each) => saveModFor(enemy.stats, each)) : does.save;
       const other = does.orSave ? (ability === does.save ? does.orSave : does.save) : undefined;
+      const keen = does.advantageAt ? Number(enemy.stats.abilities?.[does.advantageAt.ability] ?? 10) >= does.advantageAt.atLeast : false;
       const save = rollEnemySave(campaign.id, enemy, ability, dc, {
+        ...(keen ? { advantage: true } : {}),
         resist: Boolean(does.condition) && bindsWorthResisting([does.condition ?? ""]),
         against: does.condition,
         // A DEX save takes the cover between the character and it.
@@ -338,7 +344,16 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
         const amount = save.success ? (does.half ? Math.floor(rolled / 2) : 0) : rolled;
         Object.assign(result, { rolled: `${dice}: ${rolled}` }, damageEnemy(ctx, getEnemy(enemy.id) ?? enemy, amount, type));
       }
-      if (!save.success && does.condition) {
+      if (!save.success && does.condition && does.commands) {
+        const placed = commandCreature(campaign, enemy, sheet.id, ctx.spend.name, does.rounds ?? null, (fresh) => immuneToCondition(fresh, does.condition!));
+        result.condition = placed.commanded ? `${enemy.displayName} is ${does.condition}.` : `${enemy.displayName} cannot be ${does.condition}.`;
+        if (placed.freed.length) {
+          result.released = `${placed.freed.join(", ")} no longer obeys ${sheet.name}.`;
+        }
+        if (placed.commanded) {
+          result.note = commandedNote(sheet.name, enemy.displayName);
+        }
+      } else if (!save.success && does.condition) {
         const landed = enemyCondition(ctx, enemy, does.condition, does.saveEnds ? { saveEnds: { ability, dc, ...(other ? { or: other } : {}) } } : does.rounds ? { rounds: does.rounds } : {});
         result.condition = landed ? `${enemy.displayName} is ${does.condition}.` : `${enemy.displayName} cannot be ${does.condition}.`;
       }

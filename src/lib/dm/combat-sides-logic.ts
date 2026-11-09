@@ -88,34 +88,47 @@ export function isSheetFoe(enemy: { slug?: string } | null | undefined): boolean
 }
 
 // The spells whose charm hands the creature to its caster (SRD 5.1: "you
-// can use this telepathic link to issue commands to the creature"). A charm
-// from anything else (Charm Person, a vampire's gaze) leaves the creature
-// where it was: it is friendly to the charmer, not fighting for them.
-const DOMINATIONS = ["dominate person", "dominate beast", "dominate monster"];
+// can use this telepathic link to issue commands to the creature"), and the
+// features that do the same to an undead: Control Undead (Oath of the
+// Oathbreaker: it "obeys your commands for the next 24 hours") and Command
+// Undead (School of Necromancy: it "obeys your commands until you use this
+// feature again"). A charm from anything else (Charm Person, a vampire's
+// gaze) leaves the creature where it was: it is friendly to the charmer, not
+// fighting for them.
+const DOMINATIONS = ["dominate person", "dominate beast", "dominate monster", "control undead", "command undead"];
 
 export function isDominationSpell(spell: unknown): boolean {
   return typeof spell === "string" && DOMINATIONS.includes(spell.trim().toLowerCase());
 }
 
-type ConditionMetaLike = Record<string, { spell?: unknown; source?: unknown } | undefined>;
+type CharmInstance = { spell?: unknown; source?: unknown; order?: unknown; others?: unknown };
+type ConditionMetaLike = Record<string, CharmInstance | undefined>;
 
-// Who dominates this creature, by combatant id, or null: a "charmed" whose
-// meta names a Dominate spell and its caster.
-export function dominatorOf(conditions: readonly string[], meta: ConditionMetaLike | null | undefined): string | null {
+// The charm instance that hands the creature over, among every source of its
+// "charmed" (a creature a vampire charmed and a wizard then dominated holds
+// two): the vampire's leaves it where it was, the wizard's takes it.
+function dominationOf(conditions: readonly string[], meta: ConditionMetaLike | null | undefined): CharmInstance | null {
   const charmed = conditions.find((entry) => entry.trim().toLowerCase() === "charmed");
-  if (!charmed) {
+  const entry = charmed ? meta?.[charmed] : undefined;
+  if (!entry) {
     return null;
   }
-  const entry = meta?.[charmed];
-  return entry && isDominationSpell(entry.spell) && typeof entry.source === "string" && entry.source ? entry.source : null;
+  const others = Array.isArray(entry.others) ? (entry.others as CharmInstance[]) : [];
+  return [entry, ...others].find((instance) => isDominationSpell(instance.spell) && typeof instance.source === "string" && instance.source) ?? null;
+}
+
+// Who dominates this creature, by combatant id, or null: a "charmed" whose
+// meta names a Dominate spell (or a feature that commands it) and its caster.
+export function dominatorOf(conditions: readonly string[], meta: ConditionMetaLike | null | undefined): string | null {
+  const instance = dominationOf(conditions, meta);
+  return instance ? (instance.source as string) : null;
 }
 
 // The standing order a dominated creature was given (SRD 5.1: "a simple and
 // general course of action, such as 'Attack that creature'"), kept on the
-// charm's meta: the creature it was told to attack, or null.
+// dominating charm's meta: the creature it was told to attack, or null.
 export function dominationOrderOf(conditions: readonly string[], meta: Record<string, Record<string, unknown> | undefined> | null | undefined): string | null {
-  const charmed = conditions.find((entry) => entry.trim().toLowerCase() === "charmed");
-  const order = charmed ? meta?.[charmed]?.order : undefined;
+  const order = dominationOf(conditions, meta as ConditionMetaLike)?.order;
   return typeof order === "string" && order ? order : null;
 }
 

@@ -2627,6 +2627,65 @@ const watchTables = {};
   }
 }
 
+// Chronal Shift on another creature's roll (src/lib/dm/chronal-shift.ts). The
+// lead's Chronurgy wizard beside the player's own fighter at a table the
+// player runs: a check of the fighter's that fails waits on the wizard's
+// screen too. And a fight the AI GM runs with the player steering, where the
+// same wizard has the watch button for Chronal Shift.
+const SHIFT_TITLE = "Turning Hour";
+const CHRONAL_WATCH_TITLE = "Clockwork Watch";
+const shiftTables = {};
+const chronalWatchTables = {};
+{
+  const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
+  const encounterRows = await import("../../src/lib/db/encounters.ts");
+  for (const viewport of ["desktop", "phone"]) {
+    const table = campaigns.createCampaign(player.id, {
+      title: `${SHIFT_TITLE} (${viewport})`,
+      description: "A gate, a fighter, and a wizard who can turn the moment back.",
+      theme: "high-fantasy",
+      maxPlayers: 6,
+      startingLevel: 5,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human" },
+    });
+    const seated = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+    if ("error" in seated) {
+      throw new Error(`could not seat the lead at the turning hour: ${seated.error}`);
+    }
+    campaigns.setCampaignStatus(table.id, "active");
+    const wizard = sheets.createSheet(table.id, world.owner.id, 5, heroInput({ name: "Ilse Marrow", class: "wizard", subclass: "Chronurgy Magic", level: 5 }));
+    const ally = sheets.createSheet(table.id, player.id, 5, heroInput({ name: "Bran Ostler", class: "fighter", level: 5 }));
+    shiftTables[viewport] = { id: table.id, wizard: wizard.id, ally: ally.id };
+
+    const fight = campaigns.createCampaign(player.id, {
+      title: `${CHRONAL_WATCH_TITLE} (${viewport})`,
+      description: "A goblin, and a wizard who can turn the moment back.",
+      theme: "high-fantasy",
+      maxPlayers: 6,
+      startingLevel: 5,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "steered" },
+    });
+    const joined = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(fight.id).inviteCode);
+    if ("error" in joined) {
+      throw new Error(`could not seat the lead at the clockwork watch: ${joined.error}`);
+    }
+    campaigns.setCampaignStatus(fight.id, "active");
+    const watcher = sheets.createSheet(fight.id, world.owner.id, 5, heroInput({ name: "Ilse Marrow", class: "wizard", subclass: "Chronurgy Magic", level: 5 }));
+    const started = await invokeEngine(campaigns.getCampaignById(fight.id), { kind: "human", userId: player.id }, {
+      name: "start_encounter",
+      args: { enemies: [{ monster: "goblin", count: 1 }] },
+    });
+    if (!started.ok) {
+      throw new Error(`the clockwork watch fight did not start: ${started.error}`);
+    }
+    const encounter = encounterRows.getActiveEncounter(fight.id);
+    encounterRows.saveEncounter({ ...encounter, orderReady: true, round: Math.max(1, encounter.round), legendary: { ...encounter.legendary, due: [] } });
+    chronalWatchTables[viewport] = { id: fight.id, hero: watcher.id };
+  }
+}
+
 // The damage roll card on real dice (play-test 2026-11-07, B5): a table the
 // player runs, at real_allowed, in a fight with one goblin beside the lead's
 // fighter, whose Piercer and Savage Attacker change the damage dice. It is
@@ -3559,6 +3618,8 @@ const ids = {
   afterAttackTables,
   portentTables,
   watchTables,
+  shiftTables,
+  chronalWatchTables,
   damageStepTables,
   recapTables,
   prepReturn,
@@ -3675,6 +3736,8 @@ const ids = {
     ...Object.fromEntries(Object.entries(afterAttackTables).map(([viewport, table]) => [table.id, `${AFTER_ATTACK_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(portentTables).map(([viewport, table]) => [table.id, `${PORTENT_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(watchTables).map(([viewport, table]) => [table.id, `${WATCH_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(shiftTables).map(([viewport, table]) => [table.id, `${SHIFT_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(chronalWatchTables).map(([viewport, table]) => [table.id, `${CHRONAL_WATCH_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(damageStepTables).map(([viewport, table]) => [table.id, `${DAMAGE_STEPS_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(recapTables).map(([viewport, id]) => [id, `${RECAP_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(prepReturn).map(([viewport, id]) => [id, `${PREP_RETURN_TITLE} (${viewport})`])),

@@ -16,9 +16,11 @@ const OPTION = `motion-press inline-flex min-h-10 items-center rounded-full bord
 const PLAIN = `motion-press inline-flex min-h-10 items-center px-1 text-xs underline decoration-dotted underline-offset-2 disabled:opacity-50 ${RING}`;
 
 // The dice have landed and the game has not yet said what they did: the roller
-// may spend something on them (src/lib/dm/after-roll-logic.ts). Everyone else
-// sees who the table is waiting on, and whoever runs the story can keep the
-// dice for a player who has stepped away.
+// may spend something on them (src/lib/dm/after-roll-logic.ts), and a
+// Chronurgy wizard beside them may make them roll it again, on the wizard's
+// own screen (src/lib/dm/chronal-shift.ts). Everyone else sees who the table
+// is waiting on, and whoever runs the story can keep the dice for a player
+// who has stepped away.
 export function AfterRollCard({
   campaignId,
   pending,
@@ -84,11 +86,45 @@ export function AfterRollCard({
     }
   }
 
+  // A Chronal Shift of one of my characters on this roll (chronal-shift.ts).
+  const mine = new Set(sheets.filter((sheet) => sheet.userId === meUserId).map((sheet) => sheet.id));
+  const myShifts = thrown.options.filter((option) => option.by && mine.has(option.by));
+  const waitingOn = [...new Set(thrown.options.filter((option) => option.by && !mine.has(option.by)).map((option) => sheets.find((sheet) => sheet.id === option.by)?.name ?? "A wizard"))];
+  const standing = pending.kind === "attack" ? "misses as it stands" : pending.dc !== null ? `fails against Difficulty Class ${pending.dc} as it stands` : "may still fail";
+  const clock = left !== null ? <span className="check-dim text-xs" aria-live="off">The roll stands in {left}s</span> : null;
+
+  if (pending.userId !== meUserId && myShifts.length) {
+    // The wizard's own screen: the ally's roll, and whether to make them roll it again.
+    return (
+      <CheckFrame className="mb-2 animate-fade-up px-3 py-2.5">
+        <p className="text-sm">
+          {character?.name ?? "An ally"} rolled <strong>{thrown.outcome.total}</strong>
+          {thrown.outcome.natural !== undefined ? ` (the die shows ${thrown.outcome.natural})` : ""} and {standing}.
+        </p>
+        {pending.reason ? <p className="check-dim mt-0.5 text-xs">{pending.reason}</p> : null}
+        <div className="mt-2 flex flex-wrap items-center gap-2" role="group" aria-label={`Use Chronal Shift on ${character?.name ? `${character.name}'s` : "this"} roll, or let it stand`}>
+          {myShifts.map((option) => (
+            <button key={option.by} type="button" disabled={busy} title={option.note} onClick={() => void choose({ use: option.id, by: option.by })} className={OPTION}>
+              {option.label}
+            </button>
+          ))}
+          {myShifts.map((option) => (
+            <button key={`leave-${option.by}`} type="button" disabled={busy} onClick={() => void choose({ decline: true, by: option.by })} className={`${PLAIN} check-dim`}>
+              {busy ? <Loader2 className="size-4 animate-spin" /> : myShifts.length > 1 ? `Let it stand (${sheets.find((sheet) => sheet.id === option.by)?.name})` : "Let it stand"}
+            </button>
+          ))}
+          {clock}
+        </div>
+        {error ? <p role="alert" className="mt-1.5 text-xs text-red-400">{error}</p> : null}
+      </CheckFrame>
+    );
+  }
+
   if (pending.userId !== meUserId) {
     return (
       <CheckFrame className="mb-2 flex animate-fade-up items-center justify-between gap-2 px-3 py-2 text-xs">
         <span className="min-w-0" role="status">
-          {character?.name ?? "A player"} rolled {thrown.outcome.total} and is deciding what to do with it.
+          {character?.name ?? "A player"} rolled {thrown.outcome.total} and {thrown.kept && waitingOn.length ? `${waitingOn.join(" and ")} ${waitingOn.length > 1 ? "are" : "is"} deciding whether to use Chronal Shift` : "is deciding what to do with it"}.
           {left !== null ? <span className="check-dim"> The roll stands in {left}s.</span> : null}
         </span>
         {steersStory && stale ? (
@@ -105,6 +141,7 @@ export function AfterRollCard({
     );
   }
 
+  const own = thrown.options.filter((option) => !option.by);
   return (
     <CheckFrame className="mb-2 animate-fade-up px-3 py-2.5">
       <div className="flex flex-wrap items-center gap-1.5">
@@ -120,12 +157,19 @@ export function AfterRollCard({
         {thrown.outcome.natural !== undefined ? ` (the die shows ${thrown.outcome.natural})` : ""}.{" "}
         {thrown.choosing
           ? "Choose which die counts."
-          : pending.kind === "attack"
-            // An attack only waits on a miss (after-roll-logic.ts afterAttackOptions).
-            ? "As it stands, the attack misses. You can still change that."
-            : "Before the game says what happens, you can still change it."}
+          : thrown.kept
+            ? "You kept this roll."
+            : pending.kind === "attack"
+              // An attack only waits on a miss (after-roll-logic.ts afterAttackOptions).
+              ? "As it stands, the attack misses. You can still change that."
+              : "Before the game says what happens, you can still change it."}
       </p>
       {pending.reason ? <p className="check-dim mt-0.5 text-xs">{pending.reason}</p> : null}
+      {waitingOn.length ? (
+        <p className="check-dim mt-0.5 text-xs" role="status">
+          {waitingOn.join(" and ")} can still make you roll it again with Chronal Shift.
+        </p>
+      ) : null}
       <div className="mt-2 flex flex-wrap items-center gap-2" role="group" aria-label={thrown.choosing ? "Choose which die counts" : "Change this roll, or keep it"}>
         {thrown.choosing
           ? d20s.map((die, index) => (
@@ -139,18 +183,19 @@ export function AfterRollCard({
                 Use the {die.value} (total {die.value + others})
               </button>
             ))
-          : thrown.options.map((option) => (
+          : [...own, ...myShifts].map((option) => (
               <button
-                key={option.id}
+                key={`${option.id}:${option.by ?? ""}`}
                 type="button"
                 disabled={busy}
-                onClick={() => void choose({ use: option.id })}
+                title={option.note}
+                onClick={() => void choose(option.by ? { use: option.id, by: option.by } : { use: option.id })}
                 className={OPTION}
               >
                 {option.label}
               </button>
             ))}
-        {thrown.choosing ? null : (
+        {thrown.choosing || thrown.kept ? null : (
           <button
             type="button"
             disabled={busy}

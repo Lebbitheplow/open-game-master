@@ -450,7 +450,7 @@ await test("A hero's spell at one creature stops before it is cast, and the numb
   assert.deepEqual(fightWorld.sheet(seer.id).foretold, [17], "the 3 is paid for");
 });
 
-await test("An area with one creature in it stops for that one's save; with two it does not ask whose.", async () => {
+await test("An area with one creature in it stops for that one's save; with two the player picks whose save takes the number.", async () => {
   arm();
   await enemyTurn([modelCall("aoe_damage", { enemyIds: [goblin2.id], saveAbility: "dex", dc: 25, damage: "1d4", damageType: "fire", halfOnSave: true })], "Embers fall.");
   const [stop] = stops();
@@ -463,12 +463,30 @@ await test("An area with one creature in it stops for that one's save; with two 
   assert.match(told.portent ?? "", /its d20 shows 3/, JSON.stringify(told));
   assert.deepEqual(fightWorld.sheet(seer.id).foretold, [17]);
   arm();
-  fightWorld.dice(10, 10, 4);
-  await enemyTurn([modelCall("aoe_damage", { enemyIds: [goblin.id, goblin2.id], saveAbility: "dex", dc: 5, damage: "1d4", damageType: "fire", halfOnSave: true })], "Embers fall again.");
-  fightWorld.clearDice();
+  await enemyTurn([modelCall("aoe_damage", { enemyIds: [goblin.id, goblin2.id], saveAbility: "dex", dc: 25, damage: "1d4", damageType: "fire", halfOnSave: true })], "Embers fall again.");
+  const [pair] = stops();
+  assert.ok(pair, "two savers stop too");
+  assert.match(pair.reason, /2 creatures are about to make saving throws/);
+  const { publicPendingRoll } = await import("../src/lib/db/dm-turns.ts");
+  assert.deepEqual(publicPendingRoll(pair).watch.choices.map((choice) => choice.name), [goblin.displayName, goblin2.displayName], "the card names whose saves they are");
+  // A number with no creature named is refused: the card asks whose first.
+  const unnamed = await answer(pair.id, { value: 3 });
+  assert.equal(unnamed.status, 400);
+  assert.match(unnamed.json.error, /whose roll/);
+  assert.equal((await answer(pair.id, { value: 3, choice: 2 })).status, 400, "a creature not in the list");
+  fightWorld.dice(10, 10, 10, 4);
+  assert.equal((await answer(pair.id, { value: 3, choice: 1 })).status, 200);
   await settleQueue(fightWorld.campaignId);
-  assert.equal(stops().length, 0, "two savers: no stop");
-  assert.deepEqual(fightWorld.sheet(seer.id).foretold, [17, 3]);
+  fightWorld.clearDice();
+  const answered = JSON.parse(fightModel.requests.at(-1).messages.filter((message) => message.role === "tool").at(-1).content);
+  assert.match(answered.portent ?? "", /its d20 shows 3/, JSON.stringify(answered));
+  const rowOf = (name) => (answered.results ?? answered.targets ?? []).find((row) => row.target === name);
+  const first = rowOf(goblin.displayName);
+  const second = rowOf(goblin2.displayName);
+  assert.ok(first && second, JSON.stringify(answered));
+  // The second goblin's d20 is the 3; the first rolled its own 10.
+  assert.equal(first.save - second.save, 7, JSON.stringify([first, second]));
+  assert.deepEqual(fightWorld.sheet(seer.id).foretold, [17]);
 });
 
 await test("A foretold miss on a hero's own swing still leaves them their Bardic die to decide, on the card, and the turn waits for it.", async () => {
