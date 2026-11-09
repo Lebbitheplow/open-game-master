@@ -81,6 +81,8 @@ export type AttackRecord = PendingAttack & {
   blow?: BlowSource;
   // Elemental Adept or Poisoner: the target's resistance to the type is ignored.
   ignoreResistanceBy?: string;
+  // A two-type spell's other type Elemental Adept covers (pc-attack-plan.ts).
+  adeptOthers?: string[];
   mageSlayer?: boolean;
   nonlethal?: boolean;
   onHit?: OnHitSpends;
@@ -179,6 +181,7 @@ export function attackRecord(plan: AttackPlan, strike: { critExtraDice: number; 
     ...(profile.material ? { material: profile.material } : {}),
     ...(blow.spell || blow.goodWielder ? { blow } : {}),
     ...(ignoreBy ? { ignoreResistanceBy: ignoreBy } : {}),
+    ...(plan.adeptOthers.length ? { adeptOthers: plan.adeptOthers } : {}),
     ...(plan.mageSlayer ? { mageSlayer: true } : {}),
     ...(plan.options.nonlethal ? { nonlethal: true } : {}),
     ...(attackerUnseen(sheet.conditions, enemy.conditions, plan.sight) ? { attackerUnseen: true } : {}),

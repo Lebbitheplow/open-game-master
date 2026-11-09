@@ -56,7 +56,6 @@ import { layOnEnemy, spellAutoSave, spellSaveOptions, turnEndMark } from "@/lib/
 import { sleepPool } from "@/lib/dm/spell-pool";
 import { handleDispelMagic } from "@/lib/dm/dispel";
 import { overchannelProblem, payOverchannel } from "@/lib/dm/caster-features";
-import { maximumOf } from "@/lib/dm/heal-spell";
 import { castingHold } from "@/lib/dm/spell-planes";
 import { castShapeAtEnemy, enemyShapeSpellFor } from "@/lib/dm/enemy-polymorph";
 import { handleCastBuff } from "@/lib/dm/cast-buff";
@@ -448,10 +447,12 @@ export function handleCastAtEnemy(
       }),
     };
   }
-  let damageExpression = mech?.noDamage ? undefined : (scaled?.dice ?? args.damage);
-  // Overchannel: the dice at their maximum, and its price after the cast.
-  if (args.overchannel && damageExpression) {
-    damageExpression = String(maximumOf(damageExpression));
+  const damageExpression = mech?.noDamage ? undefined : (scaled?.dice ?? args.damage);
+  // Overchannel: the dice at their maximum, and its price after the cast. The
+  // dice stay written (landSpellDamage maximizes them) so a spell of two types
+  // keeps both: collapsed to one number here, Ice Storm landed all as hail.
+  const overchannel = Boolean(args.overchannel && damageExpression);
+  if (overchannel) {
     base.overchannel = payOverchannel(campaign, turn, sheet.id, spellLevel);
   }
 
@@ -528,6 +529,7 @@ export function handleCastAtEnemy(
         sheetsById,
         ...(sharedRoll !== undefined ? { sharedRoll } : {}),
         ...(sharedSecond !== undefined ? { sharedSecond } : {}),
+        ...(overchannel ? { atMaximum: true } : {}),
       })
     : null;
   const damageDealt = landed?.dealt ?? 0;

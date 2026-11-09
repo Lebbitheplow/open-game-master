@@ -246,7 +246,7 @@ function autoSpellAtPlayer(
   sheet: CharacterSheet,
   use: EnemyUse | null,
   spell: string,
-  cast: { damage?: string; damageType?: string; source?: string; ward: string | null },
+  cast: { damage?: string; damageType?: string; secondType?: string; source?: string; ward: string | null },
   sheets: CharacterSheet[],
   sheetsById: Map<string, CharacterSheet>,
 ): ToolResult {
@@ -263,8 +263,17 @@ function autoSpellAtPlayer(
   const outcome = rollCard(campaign, turn, sheet.id, "damage", rollAgainst(spell, sheet.name), cast.damage, caster);
   const shielded = isNamed(spell, "magic missile") && (getSheetById(sheet.id) ?? sheet).conditions.some((entry) => isConditionNamed(entry, "shielded"));
   const dealt = shielded ? 0 : Math.max(0, outcome.total);
+  // A spell of two types: each part meets the character's defences on its
+  // own, as one wound (a save spell's parts below). It landed as the first.
+  const [, secondDice] = cast.damage && cast.damageType ? (splitDamageExpression(cast.damage, cast.secondType) ?? []) : [];
+  const secondRolled = secondDice && cast.damageType && cast.secondType ? secondTypeShare(outcome, cast.damageType, { dice: secondDice, type: cast.secondType }) : null;
+  const parts = secondRolled !== null && cast.damageType && cast.secondType
+    ? [{ amount: Math.max(0, outcome.total - secondRolled), type: cast.damageType }, { amount: secondRolled, type: cast.secondType }]
+    : null;
   const applied =
-    dealt > 0
+    dealt > 0 && parts
+      ? applyPcDamage(campaign, turn.id, getSheetById(sheet.id) ?? sheet, { amount: dealt, parts, magical: true, spell: true, reason: source })
+      : dealt > 0
       ? applyDmMutation(
           campaign,
           turn.id,
@@ -274,7 +283,7 @@ function autoSpellAtPlayer(
           sheetsById,
         ).result
       : {};
-  hitLog.swing(outcome, 0, { hit: dealt > 0, crit: false, raw: dealt, advantage: "none", ...(cast.damageType ? { type: cast.damageType } : {}), ranged: true, attack: spell, flags: { magical: true, spell: true } });
+  hitLog.swing(outcome, 0, { hit: dealt > 0, crit: false, raw: dealt, advantage: "none", ...(cast.damageType ? { type: cast.damageType } : {}), ...(parts && dealt > 0 ? { parts } : {}), ranged: true, attack: spell, flags: { magical: true, spell: true } });
   hitLog.close({
     attacker: use ? { kind: "enemy", id: use.enemy.id, name: use.enemy.displayName } : { kind: "hazard", id: null, name: source },
     attack: spell,
@@ -378,7 +387,7 @@ export function handleCastAtPlayer(
   const castName = use?.name || args.spell;
   const unsaved = castName && !use?.save && !args.saveAbility ? spellMechanicsFor({ spell: castName, userIds: spellAuthorsFor(campaign) }) : null;
   if (castName && unsaved?.mech.resolution === "auto") {
-    return autoSpellAtPlayer(campaign, turn, sheet, use, castName, { damage: (use?.fromBlock ? use.damage : undefined) ?? args.damage, damageType: (use?.fromBlock ? use.damageType : undefined) ?? args.damageType ?? unsaved.mech.damageType, source: args.source, ward }, sheets, sheetsById);
+    return autoSpellAtPlayer(campaign, turn, sheet, use, castName, { damage: (use?.fromBlock ? use.damage : undefined) ?? args.damage, damageType: (use?.fromBlock ? use.damageType : undefined) ?? args.damageType ?? unsaved.mech.damageType, secondType: use?.secondType ?? unsaved.mech.secondType, source: args.source, ward }, sheets, sheetsById);
   }
   const byBlock = Boolean(use?.fromBlock);
   const ability = (use?.save ?? args.saveAbility) as SaveAbility | undefined;

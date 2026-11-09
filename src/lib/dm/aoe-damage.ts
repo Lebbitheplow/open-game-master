@@ -482,7 +482,12 @@ export function handleAoeDamage(
     }
     // A creature's spell as well as a character's (a mage's Ice Storm).
     const secondType = plan?.mech?.secondType ?? enemyUse?.secondType;
-    const split = splitDamageExpression(args.damage, secondType);
+    // A character's plan split its dice before the riders' joined (aoe-spell.ts).
+    const split = plan?.damageParts ?? splitDamageExpression(args.damage, secondType);
+    // Elemental Adept: a spell that deals the chosen type has every 1 on its
+    // damage dice count as 2 (the feat's text: "their damage dice"), both
+    // types' dice; resistance is set aside for the chosen type alone, below.
+    const adept = plan ? elementalAdeptApplies(plan.caster, args.type) || Boolean(split && elementalAdeptApplies(plan.caster, secondType)) : false;
     const parts = (split ?? [args.damage]).map((expression, index) => ({ expression, type: index === 0 ? args.type : secondType }));
     // Destructive Wrath, held from before the cast (destructive-wrath.ts): the
     // area's lightning and thunder dice at their maximum and the other type's
@@ -497,8 +502,6 @@ export function handleAoeDamage(
       wrathNote = WRATH_NOTE;
     }
     for (const [index, { expression, type }] of parts.entries()) {
-      // Elemental Adept: the caster's chosen type floors its dice at 2.
-      const adept = plan ? elementalAdeptApplies(plan.caster, type) : false;
       const outcome = rollExpression(wrathParts[index] ? String(expressionMaximum(expression)) : adept ? floorDamageDice(expression) : expression);
       rolled.push({ amount: outcome.total, type });
       const roll = insertRoll({
@@ -659,7 +662,7 @@ export function handleAoeDamage(
           sheets,
           sheetsById,
           weapon: { magical: true, ...(plan && elementalAdeptApplies(plan.caster, firstPart.type) ? { ignoreResistanceBy: "Elemental Adept" } : {}) },
-          ...(plan && elementalAdeptApplies(plan.caster, secondPart.type) ? { otherParts: { ignoreResistanceBy: "Elemental Adept" } } : {}),
+          ...(plan && secondPart.type && elementalAdeptApplies(plan.caster, secondPart.type) ? { ignoreTypes: { types: [secondPart.type], by: "Elemental Adept" } } : {}),
           spell: true,
         }),
       );

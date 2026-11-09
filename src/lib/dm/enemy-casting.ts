@@ -1,6 +1,7 @@
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, saveEncounter, turnKey, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import type { EnemyAttack, SaveAbility } from "@/lib/bestiary/statblock";
+import { splitDamageExpression } from "@/lib/dm/aoe-parts";
 import type { SpellCondition, SpellMech } from "@/lib/srd/spell-mech-types";
 import type { TurnTie } from "@/lib/dm/save-effect";
 import { spellDamageFor, spellFactsFor, spellMechanicsFor } from "@/lib/content";
@@ -371,6 +372,10 @@ export function enemySpellAttack(
   }
   const range = spellFactsFor(spell, authors)?.range;
   const feet = range?.kind === "feet" ? range.feet : 5;
+  // A spell of two types: its last dice ride the hit under their own type,
+  // as a block's "plus 2d6 fire" does (enemy-hit.ts), so each meets the
+  // character's resistance on its own. The whole sum landed as the first.
+  const [, secondDice] = use.damage ? (splitDamageExpression(use.damage, use.secondType) ?? []) : [];
   return {
     use,
     attack: {
@@ -378,6 +383,7 @@ export function enemySpellAttack(
       toHit,
       damage: use.damage ?? "0",
       type: use.damageType ?? "force",
+      ...(secondDice && use.secondType ? { riders: [{ dice: secondDice, type: use.secondType }] } : {}),
       mode: mech.attack === "melee" ? "melee" : "ranged",
       ...(mech.attack === "melee" ? { reach: feet } : { range: { normal: feet, long: feet } }),
       spellAttack: true,
