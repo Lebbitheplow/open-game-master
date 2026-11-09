@@ -205,7 +205,7 @@
     "app/campaigns/[campaignId]/FactionsPanel.tsx#str-list": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/GameSettingsPanel.tsx#toLowerCase": [["display",3,"label in a sentence"]],
     "app/campaigns/[campaignId]/HaltedTurnBanner.tsx#toUpperCase": [["display",1,"a sentence's first letter"]],
-    "app/campaigns/[campaignId]/Hand.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
+    "app/campaigns/[campaignId]/Hand.tsx#str-eq": [["key",2,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/HandAimBar.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/HandGroups.tsx#str-eq": [["key",5,"section ids, chip ids and costs"]],
     "app/campaigns/[campaignId]/HandGroups.tsx#str-key": [["key",1,"a cost read in a fixed table"]],
