@@ -36,7 +36,7 @@ import { breakConcentration, lethargyMeta, withLethargy } from "@/lib/dm/concent
 import { endConcentrationOnFadedSummons, endSpentConcentration } from "@/lib/dm/concentration-upkeep";
 import { PRONE, STABLE_SOURCE, STABLE_WAKE_HOURS_MAX, UNCONSCIOUS, standAsTimePasses } from "@/lib/dm/vitals-logic";
 import { holdsFeature } from "@/lib/srd/trait-rules";
-import { tickEffectRound } from "@/lib/db/active-effects";
+import { listEffects, tickEffectRound } from "@/lib/db/active-effects";
 import { rollEffectSaves } from "@/lib/dm/effect-saves";
 import { spellTurnStart } from "@/lib/dm/spell-aura";
 import { zoneTurnStart } from "@/lib/dm/zone-triggers";
@@ -406,7 +406,51 @@ type HolderTick = {
   saves?: (holderId: string) => boolean;
   // Only these holders are looked at.
   only?: Set<string>;
+  // Of the saves due, the ones rolled now, by holdKey (endTurnSaves).
+  due?: (holderId: string, key: string) => boolean;
 };
+
+// One hold a creature can save against at the end of its turn: a save-ends
+// instance of a condition (its source's identity and DC, as the save that
+// ends it matches them), or an active effect's save by the effect's id.
+function holdKey(holderId: string, name: string, key: string, dc: number): string {
+  return `${holderId}|${name}|${key}|${dc}`;
+}
+
+function effectHoldKey(holderId: string, effectId: string): string {
+  return `${holderId}|effect|${effectId}`;
+}
+
+// What holds these enemies as their turns begin, by holdKey. The pointer
+// walks past an enemy and its turn is played in the DM turn after; the save
+// it makes as that turn ends comes at the next move, by which time the
+// character who went next may have laid a new hold on it (Hold Person). That
+// hold had no turn of the creature's under it, so it is not saved against
+// until the end of the creature's next turn (SRD 5.1, Hold Person: "at the
+// end of each of its turns"). advancePointer keeps this list as it walks
+// past them and hands it back to endTurnSaves at the next move.
+export function turnHoldKeys(campaign: Campaign, encounterId: string, enemyIds: string[]): string[] {
+  const holders = new Set(enemyIds);
+  const keys: string[] = [];
+  for (const enemy of listEnemies(encounterId)) {
+    if (!holders.has(enemy.id)) {
+      continue;
+    }
+    for (const name of enemy.conditions) {
+      for (const instance of instancesOf((enemy.conditionMeta as ConditionMetaMap)[name])) {
+        if (instance.saveEnds) {
+          keys.push(holdKey(enemy.id, name, instanceIdentity(instance), instance.saveEnds.dc));
+        }
+      }
+    }
+  }
+  for (const effect of listEffects(campaign.id)) {
+    if (effect.targetKind === "enemy" && holders.has(effect.targetId) && effect.saveAbility && effect.saveDc) {
+      keys.push(effectHoldKey(effect.targetId, effect.id));
+    }
+  }
+  return keys;
+}
 
 // A hold saved against only far from its source (Dreadful Aspect: a creature
 // that ends its turn more than 30 feet away). Measured on the board as reach
@@ -440,7 +484,7 @@ function tickEnemyConditions(campaign: Campaign, encounter: Encounter, by: numbe
       lines.push(`${enemy.displayName} is overcome by lethargy as Haste ends and loses its next turn.`);
     }
     for (const listed of tick.savesDue) {
-      if (!conditions.includes(listed.name)) {
+      if (!conditions.includes(listed.name) || (options.due && !options.due(enemy.id, holdKey(enemy.id, listed.name, listed.key, listed.dc)))) {
         continue;
       }
       // A hold that lets the creature pick its save (Nature's Wrath) takes the
@@ -557,7 +601,7 @@ function tickSheetConditions(
     const effectSaves = new Map<string, boolean>();
     const effectOf = (due: (typeof tick.savesDue)[number]) => (due.key === "|" ? null : `${due.key}|${due.ability}|${due.dc}`);
     for (const listed of tick.savesDue) {
-      if (!conditions.includes(listed.name)) {
+      if (!conditions.includes(listed.name) || (options?.due && !options.due(sheet.id, holdKey(sheet.id, listed.name, listed.key, listed.dc)))) {
         continue;
       }
       // A hold that lets the character pick its save (Nature's Wrath).
@@ -668,16 +712,26 @@ function tickSheetConditions(
 // one per source holding it. advancePointer calls this as the pointer moves:
 // for the character whose turn it was, the ones it walked past, and the
 // enemies whose turns the DM turn since the last move has taken.
-export function endTurnSaves(campaign: Campaign, encounter: Encounter, holderIds: string[]) {
+// `heldAtStart`: for those enemies, what held them as their turns began
+// (turnHoldKeys); a hold laid on one of them since saves at a later turn's end.
+export function endTurnSaves(
+  campaign: Campaign,
+  encounter: Encounter,
+  holderIds: string[],
+  heldAtStart?: { holders: string[]; keys: string[] },
+) {
   if (!holderIds.length) {
     return;
   }
   const ending = new Set(holderIds);
   const lines: string[] = [];
-  const ownSave: HolderTick = { counts: () => false, saves: (holderId) => ending.has(holderId), only: ending };
+  const startedUnder = heldAtStart ? new Set(heldAtStart.keys) : null;
+  const checked = new Set(heldAtStart?.holders ?? []);
+  const due = (holderId: string, key: string) => !startedUnder || !checked.has(holderId) || startedUnder.has(key);
+  const ownSave: HolderTick = { counts: () => false, saves: (holderId) => ending.has(holderId), only: ending, due };
   tickEnemyConditions(campaign, encounter, 0, lines, ownSave);
   tickSheetConditions(campaign, 0, lines, { encounter, ...ownSave });
-  rollEffectSaves(campaign, encounter, (holderId) => ending.has(holderId), lines);
+  rollEffectSaves(campaign, encounter, (holderId, effectId) => ending.has(holderId) && due(holderId, effectHoldKey(holderId, effectId)), lines);
   if (lines.length) {
     endSpentConcentration(campaign, lines);
     publishPersisted(campaign.id, "encounter_updated", {

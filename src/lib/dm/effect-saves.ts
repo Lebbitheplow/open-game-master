@@ -16,12 +16,14 @@ import { rollCharacterSave, rollEnemySave } from "@/lib/dm/forced-save";
 export function rollEffectSaves(
   campaign: Campaign,
   encounter: Encounter | null,
-  saves: (targetId: string) => boolean,
+  // Whether this target saves against this effect now (endTurnSaves passes
+  // the effect, to leave one laid since the target's turn began).
+  saves: (targetId: string, effectId: string) => boolean,
   lines: string[],
 ) {
   let lifted = false;
   for (const effect of listEffects(campaign.id)) {
-    if (!effect.saveAbility || !effect.saveDc || !saves(effect.targetId)) {
+    if (!effect.saveAbility || !effect.saveDc || !saves(effect.targetId, effect.id)) {
       continue;
     }
     const ability = effect.saveAbility as SaveAbility;
