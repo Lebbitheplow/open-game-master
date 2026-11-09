@@ -105,4 +105,28 @@ test("a one-type spell reads exactly as before", () => {
   assert.ok(!found("cold").includes("Fireball"));
 });
 
+// What the cast tools add to the damage, beside the type it lands as
+// (src/lib/srd/spell-damage-riders.ts): the card said only the spell's dice.
+const sorcerer = (features) => ({
+  ...sheet(["Ice Storm", "Fireball"]),
+  class: "sorcerer",
+  subclass: "Draconic Bloodline",
+  abilities: { str: 10, dex: 14, con: 14, int: 10, wis: 10, cha: 18 },
+  spellcasting: { ...sheet().spellcasting, ability: "cha", prepared: [], known: ["Ice Storm", "Fireball"] },
+  features,
+});
+const handOf = (owner) => deriveHand(owner, FRESH_TURN, {});
+test("a cold dragon's sorcerer sees Elemental Affinity's Charisma beside Ice Storm's cold, and not on a fire spell", () => {
+  const cold = handOf(sorcerer([{ name: "Dragon Ancestor: White", source: "choice", level: 1 }, { name: "Elemental Affinity", source: "class", level: 6 }]));
+  assert.equal(cold.find((entry) => entry.name === "Ice Storm").dice, "2d8 bludgeoning + 4d6+4 cold, DEX save");
+  assert.equal(cold.find((entry) => entry.name === "Ice Storm").damage, "2d8+4d6+4");
+  assert.equal(cold.find((entry) => entry.name === "Fireball").dice, "8d6 fire, DEX save");
+});
+test("a red dragon's sees it on the fire, and an evoker's Intelligence rides the first type", () => {
+  const red = handOf(sorcerer([{ name: "Dragon Ancestor: Red", source: "choice", level: 1 }, { name: "Elemental Affinity", source: "class", level: 6 }]));
+  assert.equal(red.find((entry) => entry.name === "Fireball").dice, "8d6+4 fire, DEX save");
+  const evoker = deriveHand({ ...sheet(), subclass: "School of Evocation", features: [{ name: "Empowered Evocation", source: "class", level: 10 }] }, FRESH_TURN, {});
+  assert.equal(evoker.find((entry) => entry.name === "Ice Storm").dice, "2d8+4 bludgeoning + 4d6 cold, DEX save");
+});
+
 console.log(`${passed} two-type card checks passed`);

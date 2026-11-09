@@ -18,7 +18,7 @@ import { AFTER_ROLL_COUNTERS } from "@/lib/dm/after-roll-logic";
 import { BONUS_ATTACK_COUNTERS } from "@/lib/dm/feature-bonus-attacks";
 import { HIT_ANSWER_COUNTERS } from "@/lib/dm/reaction-kinds";
 import { isMeleeSpellAttack } from "@/lib/srd/melee-spell";
-import { bundledSpellFacts, type CastingTime, type SpellRange } from "@/lib/srd/spell-facts";
+import { bundledSpellFacts, bundledSpellSchool, type CastingTime, type SpellRange } from "@/lib/srd/spell-facts";
 import { aoeSpendFor } from "@/lib/srd/aoe-spend";
 import type { CombatRiders } from "@/lib/srd/feature-effects";
 import { authoredSpellRow, castShares, parseSpellMech, spellMechFor, type SpellMech } from "@/lib/srd/spell-mechanics";
@@ -52,6 +52,7 @@ import {
   type SpellFact,
 } from "@/lib/battlemap/hand-core";
 import { splitDamageExpression } from "@/lib/dm/aoe-parts";
+import { spellDamageRiders, type SpellDamageRiders } from "@/lib/srd/spell-damage-riders";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import type { StoredSpell } from "@/lib/srd/spell-storing";
 import { compareNames, textKey } from "@/lib/language/text-logic";
@@ -224,13 +225,19 @@ export type StoredCard = {
 // split as the engine splits them (aoe-parts.ts): the whole sum used to read
 // as its first type, so Ice Storm's card never said cold. Dice the engine
 // would not split (a flat bonus on the end) name both types after the sum.
-function typedDice(dice: string, mech: SpellMech): string {
+// The caster's own additions sit beside the type they deal (Elemental
+// Affinity's Charisma beside Ice Storm's cold), as the cast tools land them.
+type CardBonus = Pick<SpellDamageRiders, "flat" | "flatSecond" | "dice" | "diceSecond">;
+function typedDice(dice: string, mech: SpellMech, bonus?: CardBonus | null): string {
+  const plus = (part: string, extra: string[], flat: number) => addFlat([part, ...extra].join("+"), flat);
   if (!mech.damageType) return dice;
-  if (!mech.secondType) return `${dice} ${mech.damageType}`;
-  const parts = splitDamageExpression(dice, mech.secondType);
-  if (!parts) return `${dice} ${mech.damageType} and ${mech.secondType}`;
+  const parts = mech.secondType ? splitDamageExpression(dice, mech.secondType) : null;
+  if (!parts) {
+    const all = plus(dice, [...(bonus?.dice ?? []), ...(bonus?.diceSecond ?? [])], (bonus?.flat ?? 0) + (bonus?.flatSecond ?? 0));
+    return mech.secondType ? `${all} ${mech.damageType} and ${mech.secondType}` : `${all} ${mech.damageType}`;
+  }
   const [firstDice, secondDice] = parts;
-  return `${firstDice} ${mech.damageType} + ${secondDice} ${mech.secondType}`;
+  return `${plus(firstDice, bonus?.dice ?? [], bonus?.flat ?? 0)} ${mech.damageType} + ${plus(secondDice, bonus?.diceSecond ?? [], bonus?.flatSecond ?? 0)} ${mech.secondType}`;
 }
 
 export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders, name: string, fact: SpellFact, options: HandOptions = {}, stored?: StoredCard): HandCard | null {
@@ -315,7 +322,16 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
         : mech.resolution === "attack" || mech.resolution === "save" || mech.resolution === "auto"
           ? "enemy"
           : "none";
-  const typed = damage ? typedDice(damage, mech) : "";
+  // Empowered Evocation, Elemental Affinity, a subclass die: what the cast
+  // tools add to the spell's damage (spell-damage-riders.ts), so the card says
+  // what lands. It said only the spell's own dice.
+  const bonus = damage && !heals && !beam && mech.damageType
+    ? spellDamageRiders(sheet, { school: fact.school || bundledSpellSchool(name), damageType: mech.damageType, secondType: mech.secondType, level: fact.level, classes: facts?.classes?.map((entry) => textKey(entry)) })
+    : null;
+  const typed = damage ? typedDice(damage, mech, bonus) : "";
+  if (damage && bonus) {
+    damage = addFlat([damage, ...bonus.dice, ...bonus.diceSecond].join("+"), bonus.flat + bonus.flatSecond);
+  }
   const dice = heals
     ? damage ? `heals ${damage}` : "heals"
     : save

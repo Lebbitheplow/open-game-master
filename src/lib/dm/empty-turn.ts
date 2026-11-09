@@ -33,11 +33,21 @@ const PLAYER_ACTION_TOOLS = new Set([
 // These also serve a creature's spell, a trap and the DM's own healing, so they
 // are the player's action only when the call names a character's casting. An
 // area spell that landed and went un-narrated told the table to try again,
-// which spends a second slot.
-type CastingArguments = { casterCharacterId?: unknown; spell?: unknown; casterId?: unknown };
+// which spends a second slot. The basic cards' tools (src/lib/dm/intent-logic.ts
+// directCardCalls) are the player's when they name the character acting: a
+// Dash or a Help that went through told them to try again too, and an enemy's
+// own take_action names no character.
+type CastingArguments = { casterCharacterId?: unknown; spell?: unknown; casterId?: unknown; characterId?: unknown; healerId?: unknown; condition?: unknown };
 const NAMES_A_CASTING = new Map<string, (args: CastingArguments) => boolean>([
   ["aoe_damage", (args) => Boolean(args.casterCharacterId)],
   ["heal", (args) => Boolean(args.spell || args.casterId)],
+  ["take_action", (args) => Boolean(args.characterId)],
+  ["end_turn", (args) => Boolean(args.characterId)],
+  ["dismount", (args) => Boolean(args.characterId)],
+  ["handle_item", (args) => Boolean(args.characterId)],
+  ["stabilize", (args) => Boolean(args.healerId)],
+  // Standing up; the DM ends a character's other conditions as the story does.
+  ["clear_condition", (args) => Boolean(args.characterId) && typeof args.condition === "string" && textKey(args.condition) === "prone"],
 ]);
 
 function namesPlayersCasting(name: string, rawArguments: unknown): boolean {

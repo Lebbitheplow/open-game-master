@@ -41,6 +41,19 @@ export const SRD_TAIL_ROWS: Record<string, SpellMech> = {
     ]),
   ),
 
+  // Symbol (SRD 5.1): a glyph inscribed over a minute that fires later, when its
+  // trigger is met, with the one effect chosen at the inscribing. Like Glyph of
+  // Warding it does nothing to anyone as it is cast, so it casts with
+  // use_spell_slot; the triggered glyph is the GM's, with each glyph's own save
+  // and effect below. The prose reader took the Death glyph's CON save and
+  // necrotic dice and the Fear glyph's frightened for one effect, so a death
+  // glyph laid frightened.
+  symbol: {
+    resolution: "utility",
+    noDamage: true,
+    note: "use_spell_slot; when it triggers, each creature in 60 feet (or entering or ending a turn there, 10 min) meets the chosen glyph at the caster's DC, by aoe_damage, no spell: Death CON 10d10 necrotic, half; Discord CON, disadvantage; Fear WIS frightened; Hopelessness CHA, can't harm; Insanity INT, no actions; Pain CON incapacitated; Sleep WIS unconscious 10 min; Stunning WIS stunned; others 1 min.",
+  },
+
   // ---- a push on a failed save ----
   thunderwave: {
     resolution: "save",

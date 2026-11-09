@@ -26,8 +26,8 @@ const DICE = { damageType: "fire", secondType: "cold", dice: { base: "3d6+2d8", 
 const SAVE_MECH = { resolution: "save", save: "dex", halfOnSave: true, ...DICE };
 const ATTACK_MECH = { resolution: "attack", attack: "ranged", ...DICE };
 
-async function brewed(spell, mech, desc, { stats = { resist: "fire" }, extra = {}, count = 1 } = {}) {
-  const { world, sheets: [wizard], enemies } = await table([caster("wizard", "int", [spell], [], 9, extra)], count, stats);
+async function brewed(spell, mech, desc, { stats = { resist: "fire" }, extra = {}, count = 1, options = {} } = {}) {
+  const { world, sheets: [wizard], enemies } = await table([caster("wizard", "int", [spell], [], 9, extra)], count, stats, options);
   createHomebrew(world.owner.id, {
     kind: "spell",
     name: spell,
@@ -251,6 +251,32 @@ for (const [path, cast, faces] of [["An area", caughtBy, STRIKE], ["A spell at o
   });
 }
 
+// "Revert this turn" takes back the one wound with everything it did: the hit
+// points, the dying track and the concentration a two-type spell broke.
+await test("Reverting the turn of a two-type spell puts back the hit points, the dying track and the concentration.", async () => {
+  const { world, hero, foe } = await unresisting(60, 10, { spellcasting: { ability: "wis", slots: {}, known: [], prepared: [], cantrips: [] } });
+  world.patch(hero.id, { concentratingOn: "Bless" });
+  world.dice(...SAVE_FIRST);
+  const out = await aimedAt(world, hero, foe);
+  assert.equal(out.ok, true, out.error);
+  world.clearDice();
+  assert.equal(world.sheet(hero.id).currentHp, 0);
+  assert.equal(world.sheet(hero.id).concentratingOn, null);
+  const { getDatabase } = await import("../src/lib/db/core.ts");
+  const turnId = getDatabase().prepare("SELECT id FROM dm_turns WHERE campaign_id = ? ORDER BY rowid DESC LIMIT 1").get(world.campaignId).id;
+  const revert = await world.route("campaigns/[campaignId]/audit/revert-turn");
+  world.signIn(world.owner);
+  const response = await revert.POST(
+    new Request("http://test/", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ turnId, confirm: true }) }),
+    { params: Promise.resolve({ campaignId: world.campaignId }) },
+  );
+  assert.equal(response.status, 200, JSON.stringify(await response.json().catch(() => ({}))));
+  const back = world.sheet(hero.id);
+  assert.equal(back.currentHp, 10);
+  assert.equal(back.deathSaves?.failures ?? 0, 0);
+  assert.equal(back.concentratingOn, "Bless");
+});
+
 await test("An ally caught in a character's own area takes it as one wound too.", async () => {
   const { world, sheets: [cleric, ally] } = await table([caster("cleric", "wis", ["Flame Strike"], [], 9), { ...FIGHTER, race: "human", maxHp: 60 }], 1);
   world.patch(ally.id, { currentHp: 10 });
@@ -361,6 +387,39 @@ await test("A two-type spell's fire still catches the oil on an enemy.", async (
   const { lost: taken } = await castAt(world, wizard, foe, "Twin Lash", [1, 1, 1, 1, 1, 1]);
   // Five dice of 1, and 5 more from the burning oil.
   assert.equal(taken, 5 + 5);
+});
+
+// ---- real dice ----
+
+// The same spell attack with the player's own dice: the hit parks a damage roll
+// the player enters, and the record it lands from carries the cold adept's
+// type (attack-record.ts adeptOthers), so only the cold passes the resistance.
+await test("Real dice: a cold adept's two-type spell attack sets aside only the cold's resistance.", async () => {
+  const { world, wizard, enemies: [goblin] } = await brewed("Twin Bolt", ATTACK_MECH, ATTACK_TEXT, { stats: { resist: "fire, cold" }, extra: adeptOf("cold"), options: { gameSettings: { dicePolicy: "real_allowed" } } });
+  const { call } = await import("./lib/enforce-campaign.mjs");
+  const { setMemberRealDice } = await import("../src/lib/db/campaigns.ts");
+  const { listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
+  const submit = await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]");
+  const userId = world.sheet(wizard.id).userId;
+  const before = enemyOf(world, goblin.id).currentHp;
+  setMemberRealDice(world.campaignId, userId, true);
+  try {
+    const parked = await world.invoke("pc_attack", { characterId: wizard.id, targetEnemyId: goblin.id, spell: "Twin Bolt", level: 3 });
+    assert.equal(parked.ok, true, parked.error);
+    world.signIn({ id: userId });
+    const toHit = listOpenPendingRolls(world.campaignId).find((entry) => entry.kind === "attack");
+    assert.ok(toHit, "the to-hit roll is parked");
+    const hit = await call(submit, "POST", { dice: [18] }, { campaignId: world.campaignId, pendingRollId: toHit.id });
+    assert.equal(hit.status, 200, JSON.stringify(hit.json));
+    const damage = listOpenPendingRolls(world.campaignId).find((entry) => entry.kind === "damage");
+    assert.ok(damage, "the hit asks the player for damage");
+    // Fire 6, 6, 6 (18, halved to 9); cold 8 and 8 (16, the resistance set aside).
+    const landed = await call(submit, "POST", { dice: [6, 6, 6, 8, 8] }, { campaignId: world.campaignId, pendingRollId: damage.id });
+    assert.equal(landed.status, 200, JSON.stringify(landed.json));
+  } finally {
+    setMemberRealDice(world.campaignId, userId, false);
+  }
+  assert.equal(before - enemyOf(world, goblin.id).currentHp, 9 + 16);
 });
 
 // ---- a spell at its maximum ----

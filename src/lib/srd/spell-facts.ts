@@ -175,6 +175,13 @@ export function spellFlagsOf(data: Record<string, unknown>): { ritual: boolean; 
   };
 }
 
+// The pack's SRD row of Legend Lore prints its incense as "worth 250 inches
+// that fate consumes", where SRD 5.1 reads "incense worth at least 250 gp,
+// which the spell consumes": read as printed, the material cost 200 gp (the
+// ivory alone) and the caster needed 250 gp less than the spell asks.
+const MISPRINTS: Array<[RegExp, string]> = [[/\bworth (\d[\d,]*) inches that fate consumes\b/i, "worth $1 gp, which the spell consumes"]];
+const asPrinted = (line: string) => MISPRINTS.reduce((text, [wrong, right]) => text.replace(wrong, right), line);
+
 // What a row says of its material, in every shape the sources use: the 2014
 // rows' `material` line ("Diamonds worth 300gp, which the spell consumes."),
 // the 2024 rows' `material_specified` with `material_cost` and
@@ -184,10 +191,11 @@ export function spellFlagsOf(data: Record<string, unknown>): { ritual: boolean; 
 export function materialOf(data: Record<string, unknown>): { text: string; costGp: number | null; consumed: boolean } {
   const written = String(data.components ?? "");
   const bracket = /\(([^)]+)\)/.exec(written)?.[1] ?? "";
-  const text =
+  const text = asPrinted(
     (typeof data.material === "string" ? data.material : "") ||
     (typeof data.material_specified === "string" ? data.material_specified : "") ||
-    bracket;
+    bracket,
+  );
   const read = materialCostFrom(text);
   const statedCost =
     typeof data.materialCostGp === "number" ? data.materialCostGp

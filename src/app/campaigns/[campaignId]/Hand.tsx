@@ -452,6 +452,22 @@ function HandInner({
     });
   }, [pickedId, clearAim]);
 
+  // Escape lets an aimed card go even when the keyboard is in no element: the
+  // pressed card can be redrawn under the pointer (a search's fan) after the
+  // effect above has run, leaving the focus on the page, where the hand's own
+  // Escape never hears it. Only then: a dialog or a field keeps its Escape.
+  useEffect(() => {
+    if (!pickedId) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      const active = document.activeElement;
+      if (active && active !== document.body && active !== document.documentElement) return;
+      releaseAim();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [pickedId, releaseAim]);
+
   useEffect(() => {
     const onTarget = (event: Event) => {
       const detail = (event as CustomEvent<HandTargetDetail>).detail ?? {};

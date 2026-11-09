@@ -148,6 +148,27 @@ test("a creature's area spell, a trap's and the GM's own healing are not the pla
   assert.equal(garbled, EMPTY_TURN_LINE);
 });
 
+test("a basic card's action that went through says so, never 'try again'; an enemy's is not the player's", () => {
+  // The calls the Hand's basic cards resolve to (intent-logic.ts directCardCalls).
+  const played = [
+    ["take_action", { characterId: "s1", action: "dash" }],
+    ["end_turn", { characterId: "s1" }],
+    ["dismount", { characterId: "s1" }],
+    ["handle_item", { characterId: "s1", action: "equip", item: "Shield" }],
+    ["stabilize", { characterId: "s2", healerId: "s1" }],
+    ["clear_condition", { characterId: "s1", condition: "Prone" }],
+  ];
+  for (const [name, args] of played) {
+    assert.equal(emptyTurnLine([callWith("a", name, args), result("a", { ok: true })], mage("I dash to the door")), RESOLVED_TURN_LINE, name);
+  }
+  const refused = [callWith("a", "take_action", { characterId: "s1", action: "dash" }), result("a", { error: "Ada has no action left this turn.", refused: "rules" })];
+  assert.match(emptyTurnLine(refused, mage("I dash")), /^The GM could not resolve that: Ada has no action left this turn\./);
+  // An enemy's action, and the DM ending a character's other condition.
+  const notYours = (name, args) => emptyTurnLine([callWith("a", name, args), result("a", { ok: true })]);
+  assert.equal(notYours("take_action", { action: "dodge", enemyId: "e1" }), EMPTY_TURN_LINE);
+  assert.equal(notYours("clear_condition", { characterId: "s1", condition: "poisoned" }), EMPTY_TURN_LINE);
+});
+
 test("anything else gets a plain hint, and no player keeps the old line", () => {
   assert.equal(emptyTurnLine([call("a", "reveal_item"), result("a", { error: "The ring is a mimic." })]), EMPTY_TURN_LINE);
   assert.equal(emptyTurnLine([]), EMPTY_TURN_LINE);
