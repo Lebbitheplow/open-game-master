@@ -104,8 +104,23 @@ export default {
       const label = await card.innerText();
       check(/1d8/i.test(label) && /slashing/i.test(label), `the card shows the gauntlets (${label})`);
       await card.scrollIntoViewIfNeeded();
-      // Its left edge: the next card in the fan lies over the middle of this one.
-      if (t.viewport === "desktop") await card.hover({ position: { x: 10, y: 60 } });
+      if (t.viewport === "desktop") {
+        // The fan lays each card over the right of the one before, and how
+        // far depends on how many cards the Hand holds: Tavi's gear actions
+        // fold under Items at four and stand alone at three, and
+        // 68-board-move-confirm walks Tavi a square, which can take one away.
+        // So the hover goes to a point of this card nothing lies over.
+        const spot = await card.evaluate((node) => {
+          const box = node.getBoundingClientRect();
+          for (let x = 4; x < box.width; x += 4) {
+            const hit = document.elementFromPoint(box.left + x, box.top + box.height / 2);
+            if (hit && node.contains(hit)) return { x, y: box.height / 2 };
+          }
+          return null;
+        });
+        check(spot, "some of the Unarmed strike card shows in the fan");
+        await card.hover({ position: spot });
+      }
       // The fight's opening banner covers the page for its first seconds.
       await page.waitForTimeout(6_000);
       await t.shot("hand-card");

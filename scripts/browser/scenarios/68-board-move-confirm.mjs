@@ -3,7 +3,8 @@
 // same square makes it. A stray click while the camera is being moved used
 // to be a step taken (Discord, 2026-10-20). Escape drops the aim.
 //
-// The last scenario on purpose: it walks Tavi one square for real.
+// It walks Tavi one square for real, so a scenario after it that reads Tavi
+// (99-item-unarmed-bonus's Hand) must not count on where Tavi stands.
 import { check, eventually, sleep } from "../lib.mjs";
 
 const AIMED = "Tap the same tile again to move there";
