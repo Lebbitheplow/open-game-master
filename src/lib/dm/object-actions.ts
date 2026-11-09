@@ -35,12 +35,14 @@ import { READIED, READIED_WORDS, RELEASE_TOOLS, type Readiable } from "@/lib/dm/
 import { dropReadied, readiedReleaseFor } from "@/lib/dm/readied-release";
 import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { spellDrawnMark } from "@/lib/srd/item-cast-credit";
 import { hasItemTag } from "@/lib/srd/item-tags";
 import { gearWeaponFor } from "@/lib/srd/gear-weapons";
 import { withAmmoCount } from "@/lib/srd/ammunition";
 import { saveEquipment } from "@/lib/dm/gear-store";
 import { lightOil, spreadGear } from "@/lib/dm/gear-zones";
 import { matchGear } from "@/lib/srd/adventuring-gear";
+import { scrollSpell } from "@/lib/srd/scrolls";
 
 // The tinderbox, by its catalog row: "using it to light a torch, or anything
 // else with abundant, exposed fuel, takes an action".
@@ -116,6 +118,18 @@ export function prepareUseItem(
   // Rapid Drinker drinks a potion as a bonus action; Poisoner coats a
   // weapon as one (src/lib/srd/feat-combat.ts).
   const name = carried?.name ?? itemName;
+  // A scroll's spell paid its action this turn, and the scroll came back when the
+  // cast did not happen (item-use.ts takeBackItemCast): this reading is on it.
+  const scroll = carried ? scrollSpell(carried) : null;
+  const mark = scroll ? spellDrawnMark(scroll) : "";
+  if (mark && budget.oncePerTurn.includes(mark)) {
+    return {
+      commit: () => {
+        storeBudget(encounter, { ...budget, oncePerTurn: budget.oncePerTurn.filter((entry) => entry !== mark) });
+        return {};
+      },
+    };
+  }
   const drinking = drinksAsBonusAction(sheet) && Boolean(carried && hasItemTag(carried, "potion"));
   const asBonus = drinking || (coatsAsBonusAction(sheet) && isBasicPoison(carried ?? { name }, sheet.campaignId));
   const price = asBonus

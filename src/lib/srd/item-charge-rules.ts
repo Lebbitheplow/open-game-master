@@ -34,3 +34,22 @@ export function chargesLeft(item: Pick<EquipmentItem, "charges">, rule: ChargeRu
   }
   return typeof rule.max === "number" ? rule.max : Math.max(0, rolled ?? 0);
 }
+
+// Why this use cannot be paid, or null: the words use_item refuses with and the
+// card greys with. A count still to be rolled (a Necklace of Fireballs' first use)
+// and a Wind Fan, which may be used past its last charge at a risk, are not short.
+export function chargesShort(item: Pick<EquipmentItem, "name" | "charges">, rule: ChargeRule, count: number, rolled?: number): string | null {
+  if (typeof item.charges !== "number" && typeof rule.max === "string" && rolled === undefined) {
+    return null;
+  }
+  const left = chargesLeft(item, rule, rolled);
+  if (count <= left || (rule.overuseRisk && left === 0)) {
+    return null;
+  }
+  const regains = rule.regain
+    ? rule.regain === "all"
+      ? `It regains all its charges at ${rule.regainAtDusk ? "dusk" : "dawn"}.`
+      : `It regains ${rule.regain} charges at ${rule.regainAtDusk ? "dusk" : "dawn"}.`
+    : "It does not regain charges.";
+  return `${item.name} has ${left} charge${left === 1 ? "" : "s"} left and this use needs ${count}. ${regains}`;
+}

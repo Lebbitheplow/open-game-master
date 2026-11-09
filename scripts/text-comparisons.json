@@ -207,7 +207,7 @@
     "app/campaigns/[campaignId]/HaltedTurnBanner.tsx#toUpperCase": [["display",1,"a sentence's first letter"]],
     "app/campaigns/[campaignId]/Hand.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/HandAimBar.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
-    "app/campaigns/[campaignId]/HandGroups.tsx#str-eq": [["key",4,"section ids, chip ids and costs"]],
+    "app/campaigns/[campaignId]/HandGroups.tsx#str-eq": [["key",5,"section ids, chip ids and costs"]],
     "app/campaigns/[campaignId]/HandGroups.tsx#str-key": [["key",1,"a cost read in a fixed table"]],
     "app/campaigns/[campaignId]/HandSpells.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/campaigns/[campaignId]/HeroRoutes.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
@@ -612,7 +612,7 @@
     "lib/addons/store.ts#str-includes": [["key",1,"a permission id"]],
     "lib/backend-trial.ts#str-eq": [["key",2,"provider ids and the backend finish_reason"]],
     "lib/battlemap/hand-granted.ts#toLowerCase": [["key",1,"SRD feature names as once-per-turn keys, as pc-attack-spend.ts writes them"]],
-    "lib/battlemap/hand-groups.ts#str-eq": [["key",4,"card ids, card types, costs and a route id"]],
+    "lib/battlemap/hand-groups.ts#str-eq": [["key",5,"card ids, card types, costs and a route id"]],
     "lib/battlemap/hand-groups.ts#str-key": [["key",1,"a counter's id or a cost read in a fixed table"]],
     "lib/battlemap/hand-groups.ts#str-list": [["key",16,"the basic actions' ids, the costs and the group keys: the engine's own vocabulary"]],
     "lib/battlemap/hand-layout.ts#str-eq": [["key",1,"End turn's card id"]],
@@ -1346,7 +1346,6 @@
     "lib/dm/confusion.ts#str-eq": [["key",2,"token kinds (engine vocabulary)"]],
     "lib/dm/consumables.ts#str-key": [["english-source",1,"reference: the SRD potions the engines hold, by the row's name (src/lib/classes/item-tags.json)"]],
     "lib/dm/consumables.ts#str-list": [["english-source",1,"reference: the SRD's Eyebright ointment by its whole English name (the row an item names)"],["key",2,"condition labels (engine vocabulary)"]],
-    "lib/dm/consumables.ts#toLowerCase": [["key",1,"class id"]],
     "lib/dm/contest-roll.ts#toUpperCase": [["display",1,"ability abbreviation shown in a note"]],
     "lib/dm/context-budget.ts#str-key": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/context-probe-logic.ts#[a-z]": [["key",2,"the size a model id states (an ASCII convention, never prose)"]],
@@ -1509,7 +1508,7 @@
     "lib/dm/invoke.ts#str-eq": [["key",3,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/invoke.ts#str-list": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/invoke.ts#toLowerCase": [["key",2,"damage-share keyword typed in the console (fixed choice)"]],
-    "lib/dm/item-charges.ts#str-eq": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
+    "lib/dm/item-charges.ts#str-eq": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/item-summary.ts#str-eq": [["key",3,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/item-summary.ts#toLowerCase": [["display",1,"base item name in a summary"]],
     "lib/dm/item-summary.ts#toUpperCase": [["display",2,"ability abbreviation shown"]],
@@ -2856,6 +2855,9 @@
     "lib/pdf-import/draft-logic.ts#str-key": [["key",1,"a record's kind as a lookup key"]],
     "lib/db/pdf-imports.ts#str-key": [["key",1,"an import's state as a lookup key"]],
     "lib/pdf-import/bundle-logic.ts#str-key": [["key",1,"a record's kind as a lookup key"]],
-    "app/workshop/pdf-import/PdfMatches.tsx#str-eq": [["key",1,"the select's own value for keeping the book's numbers"]]
+    "app/workshop/pdf-import/PdfMatches.tsx#str-eq": [["key",1,"the select's own value for keeping the book's numbers"]],
+    "lib/srd/scrolls.ts#toLowerCase": [["key",1,"class id"]],
+    "lib/srd/item-charge-rules.ts#str-eq": [["key",1,"a charge count, by its field and type, and what it regains"]],
+    "lib/battlemap/hand-items.ts#str-key": [["key",1,"ability ids, to the word a check names"]]
   }
 }

@@ -17,6 +17,7 @@ import { z } from "zod";
 import { HAND_GEAR_ACTIONS, HAND_INTENT_ACTIONS, describeHandExtras, handExtraArgs, handIntentExtras } from "@/lib/battlemap/hand-intent";
 import { textKey } from "@/lib/language/text-logic";
 import { PART_LISTS } from "@/lib/dm/action-parts-logic";
+import type { ToolError } from "@/lib/dm/tool-errors";
 import type { SpellMech } from "@/lib/srd/spell-mech-types";
 import { lastingAreaCall, riderArgs, selfBuffCall, summonCall, utilityCall } from "@/lib/dm/direct-card-logic";
 
@@ -59,9 +60,9 @@ const SPELL_TOOLS = [
   "use_reaction",
 ];
 
-// A card that casts a spell held in an item (a Ring of Spell Storing,
-// src/lib/battlemap/hand-ring.ts): use_item draws it, and the spell's own tool
-// casts it with no slot.
+// A card that casts a spell from an item (a Ring of Spell Storing, a wand, a scroll,
+// src/lib/battlemap/hand-ring.ts, hand-items.ts): use_item draws it, and the spell's
+// own tool casts it with no slot.
 export function isStoredCast(intent: MessageIntent): boolean {
   return (intent.card === "spell" || intent.card === "reaction") && Boolean(intent.spell && intent.item);
 }
@@ -400,7 +401,7 @@ function what(intent: MessageIntent): string {
     case "rider":
       return `${intent.rider ?? "a rider"} on their next hit`;
     case "spell":
-      return `${intent.spell ?? "a spell"}${isStoredCast(intent) ? ` out of ${intent.item}, at level ${intent.slotLevel ?? "its stored level"} with no slot` : intent.slotLevel ? ` from a level ${intent.slotLevel} slot` : ""}${intent.shares && intent.shares.length > 1 ? sharedTargets(intent) : target(intent)}`;
+      return `${intent.spell ?? "a spell"}${isStoredCast(intent) ? ` out of ${intent.item}${intent.slotLevel ? `, at level ${intent.slotLevel}` : ""} with no slot` : intent.slotLevel ? ` from a level ${intent.slotLevel} slot` : ""}${intent.shares && intent.shares.length > 1 ? sharedTargets(intent) : target(intent)}`;
     case "feature":
       return intent.targetKind === "enemy" && intent.shares?.length
         ? `the feature ${intent.resourceId ?? ""} on the creatures they choose, and no others: ${intent.shares!.map((share) => `${share.name ?? share.id} (enemyId=${share.id})`).join(", ")}`
@@ -551,6 +552,19 @@ export const DIRECT_CALL_ID_PREFIX = "card_";
 // (src/lib/dm/card-score-logic.ts) can tell the calls made after it.
 export const INTENT_CORRECTION_MARK = "and nothing resolved it";
 
+// What the spell's own tool answers when use_item did not pay for the cast: run
+// anyway it would find no credit, and spend a slot of a wizard's own for a spell a
+// scroll has just failed to cast. Null while the cast may follow.
+export function drawStopsCast(call: string, result: Record<string, unknown>): ToolError | null {
+  if (call !== "use_item") {
+    return null;
+  }
+  if (typeof result.error === "string") {
+    return result.retry === true ? { error: result.error, retry: true } : { error: result.error, refused: "rules" };
+  }
+  return result.spellCast === false ? { error: "The item's use failed, so no spell was cast and no spell's tool ran.", refused: "rules" } : null;
+}
+
 // The tools take a creature by its id or by the name the table sees
 // (resolveEnemyRef, resolveSheetRef), so a ref matches either.
 function refMatches(ref: string, id: string | null | undefined, name: string | null | undefined): boolean {
@@ -608,9 +622,10 @@ export function callMismatch(card: PlayedCard, call: TurnCall): CallMismatch | n
   if (call.result?.retry === true) {
     return "retry";
   }
-  // Drawing a spell from the ring casts nothing: it answers the card only when
-  // the ring refused, or when the casting takes turns and has begun.
-  if (draw && typeof call.result?.casting !== "string" && typeof call.result?.error !== "string") {
+  // Drawing a spell from an item casts nothing: it answers the card only when the
+  // item refused, when the use failed (a scroll misread, its magic lost), or when
+  // the casting takes turns and has begun.
+  if (draw && typeof call.result?.casting !== "string" && typeof call.result?.error !== "string" && call.result?.spellCast !== false) {
     return "tool";
   }
   const actor = actorRef(call);

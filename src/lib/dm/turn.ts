@@ -146,7 +146,8 @@ import { directContextFor } from "@/lib/dm/direct-context";
 import { castCarded, castDeclared, castRolled, castToolHint, namedCreature, slotlessCastCall, storedCastHint, unpaidCastPrompt, type CastCreature } from "@/lib/dm/slotless-cast-logic";
 import { storerHolding } from "@/lib/srd/spell-storing";
 import type { SlotlessCast } from "@/lib/dm/narration-guard";
-import { DIRECT_CALL_ID_PREFIX, directCardCalls, intentAnswered, intentCorrection, intentNeedsTool, returnedCardNote, returnReason, unresolvedCards, type MessageIntent, type PlayedCard, type TurnCall } from "@/lib/dm/intent-logic";
+import { takeBackItemCast } from "@/lib/dm/item-use";
+import { DIRECT_CALL_ID_PREFIX, directCardCalls, drawStopsCast, intentAnswered, intentCorrection, intentNeedsTool, isStoredCast, returnedCardNote, returnReason, unresolvedCards, type MessageIntent, type PlayedCard, type TurnCall } from "@/lib/dm/intent-logic";
 import type { SpellMech } from "@/lib/srd/spell-mech-types";
 import { handleCompleteBeat } from "@/lib/dm/arc";
 import { markActiveBeat, settleEarlyTicks, tickWaypointsFromCalls } from "@/lib/dm/waypoint-tick";
@@ -2590,6 +2591,8 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     let parkedAny = false;
     // A list partly refused is credited with its done entries alone.
     const credited = new Map<(typeof toolCalls)[number], (typeof toolCalls)[number]>();
+    // A card whose use_item did not pay for its cast runs no spell's tool after it.
+    const castStopped = new Map<string, ToolResult>();
     let ranCalls = toolCalls.length;
     for (const [at, toolCall] of toolCalls.entries()) {
       // Someone watching for Portent may answer this roll before it is made:
@@ -2610,11 +2613,17 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
         break;
       }
       const holder = turnHolder(campaignId);
-      const outcome =
+      const cardKey = directCardKey(toolCall.id);
+      const outcome: ToolResult =
+        (cardKey ? castStopped.get(cardKey) : null) ??
         ranAbove(toolCall, inputInFight, false) ??
         (offersTool(catalogue, toolCall.name)
           ? await resolveModelCall(context, turn, toolCall)
           : { error: `The engine has no action called "${toolCall.name}".`, retry: true });
+      if (cardKey) {
+        const stop = drawStopsCast(toolCall.name, outcome);
+        if (stop) castStopped.set(cardKey, stop);
+      }
       // A combatant who left the fight during the call takes no turn with them.
       // The prepared events it brought on (fight-events.ts) ride back in its
       // result, so the model narrates them in this very reply.
@@ -2688,6 +2697,15 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
   // (issue 570).
   const callsMade = turnCalls(turn.conversation, []);
   const unresolved = failed ? [] : unresolvedCards(cardsToSettle(context, turn), callsMade);
+  // A spell an item paid for and no tool cast did not happen, whether the card goes
+  // back or the rules refused it: what the item spent comes back (item-use.ts).
+  if (!failed) {
+    for (const { intent, characterId } of cardsToSettle(context, turn)) {
+      if (characterId && isStoredCast(intent)) {
+        takeBackItemCast(campaign, characterId, intent.spell ?? "");
+      }
+    }
+  }
   let spoken: SpokenLine[] = [];
   if (!failed) {
     await ensureWhisperReplies(context, turn);
@@ -2997,6 +3015,7 @@ function cardsPlayed(context: TurnContext): PlayedCard[] {
 // The short form of a message id a direct card's call carries in its own id
 // (cardReply), and the messages whose cards the engine played that way.
 const cardCallKey = (messageId: string) => messageId.replace(/-/g, "").slice(0, 12);
+const directCardKey = (id: string | undefined) => (id?.startsWith(DIRECT_CALL_ID_PREFIX) ? id.slice(DIRECT_CALL_ID_PREFIX.length).split("_")[0] : null);
 function directlyPlayed(conversation: DmTurn["conversation"]): Set<string> {
   const keys = new Set<string>();
   for (const message of conversation) {

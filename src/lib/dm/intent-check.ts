@@ -26,6 +26,14 @@ import { castSpell } from "@/lib/dm/cast-guard";
 import { isStoredCast, type MessageIntent } from "@/lib/dm/intent-logic";
 import { reactionTriggerProblem } from "@/lib/dm/reaction-spells";
 import { releaseStoredSpell } from "@/lib/dm/spell-storing";
+import { consumableRefusal } from "@/lib/dm/consumables";
+import { findCarriedItem } from "@/lib/dm/item-logic";
+import { chargedItemUse } from "@/lib/dm/item-use";
+import { prepareUseItem } from "@/lib/dm/object-actions";
+import type { ToolResult } from "@/lib/dm/tool-errors";
+import { textKey } from "@/lib/language/text-logic";
+import { hasItemTag } from "@/lib/srd/item-tags";
+import { scrollSpell } from "@/lib/srd/scrolls";
 import { spellEngineName } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { reassertsControl, summonMixPlan, summonPlan, summonSpellFor } from "@/lib/srd/summon-spells";
@@ -83,11 +91,30 @@ function summonCardRefusal(campaign: Campaign, sheet: CharacterSheet, intent: Me
   return "error" in plan ? plan.error : null;
 }
 
-// A card that casts a spell out of a ring, asked as use_item will ask it. A
+// A scroll's card, asked as use_item asks a scroll: what it holds, the action, and
+// whether this reader can read it. Null for a row that is no scroll holding a spell.
+function scrollCastAnswer(campaign: Campaign, sheet: CharacterSheet, intent: MessageIntent): ToolResult | null {
+  const row = findCarriedItem(sheet.equipment, intent.item ?? "");
+  const holds = row && hasItemTag(row, "scroll") ? scrollSpell(row) : null;
+  if (!row || !holds) {
+    return null;
+  }
+  if (textKey(holds) !== textKey(intent.spell ?? "")) {
+    return { error: `${row.name} holds ${holds}, not ${intent.spell}.`, refused: "rules" };
+  }
+  const prepared = prepareUseItem(campaign, sheet, sheet, row.name);
+  return "error" in prepared ? prepared : consumableRefusal(sheet, row) ?? { ok: true };
+}
+
+// A card that casts a spell from an item, asked as use_item will ask it. A
 // reaction spell is asked its trigger as well, before anything is drawn: a credit
 // left waiting would pay for the next Shield the wearer cast from their own slots.
 function storedCastRefusal(campaign: Campaign, sheet: CharacterSheet, intent: MessageIntent): string | null {
-  const released = releaseStoredSpell(campaign, sheet, intent.item ?? "", intent.spell, "", { dryRun: true });
+  const item = intent.item ?? "";
+  const released =
+    releaseStoredSpell(campaign, sheet, item, intent.spell, "", { dryRun: true }) ??
+    chargedItemUse(campaign, "", sheet, item, undefined, intent.spell, { dryRun: true }) ??
+    scrollCastAnswer(campaign, sheet, intent);
   if (!released) {
     return `${intent.item} holds no spell to cast.`;
   }

@@ -16,7 +16,8 @@
 import { castingOf, completedCastingOf } from "@/lib/dm/long-casting-logic";
 import { findNamed, textKey } from "@/lib/language/text-logic";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
-import { isSpellStorer, ringBarrier, ringDrawnMark, storedSpellsOf, type StoredSpell } from "@/lib/srd/spell-storing";
+import { spellDrawnMark } from "@/lib/srd/item-cast-credit";
+import { isSpellStorer, ringBarrier, storedSpellsOf, type StoredSpell } from "@/lib/srd/spell-storing";
 import type { CombatRiders } from "@/lib/srd/feature-effects";
 import { costGate, standingGate, type Gate, type HandCard, type HandCost, type HandOptions, type HandTurn, type SpellFact } from "@/lib/battlemap/hand-core";
 import { castingCost, factFor, ringCardName, spellCard } from "@/lib/battlemap/hand-spells";
@@ -86,13 +87,14 @@ export function ringSpellCards(sheet: CharacterSheet, turn: HandTurn, riders: Co
     const done = long && Boolean(completedCastingOf(sheet, entry.spell));
     const cost: HandCost = castingCost(fact.castingTime) ?? "action";
     // Paid for already: a casting held to its end, or a draw whose cast was refused.
-    const paid = done || new Set(turn.marks ?? []).has(ringDrawnMark(entry.spell));
+    const paid = done || new Set(turn.marks ?? []).has(spellDrawnMark(entry.spell));
     const card = spellCard(sheet, turn, riders, entry.spell, fact, options, {
       ring: ring.name,
       entry,
       holds: long && Boolean(turn.table) && !done,
       free: done,
       gates: gatesFor(sheet, turn, row, cost, paid),
+      fromItem: { key: textKey(ring.name), label: ring.name, note: `Holds ${storedSpellsOf(ring).length}` },
     });
     return card ? [card] : [];
   });

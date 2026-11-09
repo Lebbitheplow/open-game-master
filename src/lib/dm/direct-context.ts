@@ -9,6 +9,7 @@ import { getBattleMapForEncounter } from "@/lib/db/battle-maps";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
 import { completedCastingOf } from "@/lib/dm/long-casting-logic";
+import { storerNamed } from "@/lib/dm/ring-store";
 import { getFoe } from "@/lib/dm/sheet-foe";
 import { beamConnected, beamHeld } from "@/lib/dm/witch-bolt";
 import { spellEngineName, spellFactsFor, spellMechanicsFor } from "@/lib/content";
@@ -50,7 +51,11 @@ export function directContextFor(campaignId: string, intent: MessageIntent, auth
   // A casting of a minute or more out of a ring is begun in a fight, and resolved
   // by the card played once it is done (long-casting.ts).
   const wearer = cast && intent.item && encounter && typeof facts?.castingTime === "number" ? getSheetById(characterId) : null;
-  const ringBegins = Boolean(wearer && cast && !completedCastingOf(wearer, cast));
+  const ring = wearer && intent.item ? storerNamed(wearer, intent.item) : null;
+  const ringBegins = Boolean(wearer && ring && cast && !completedCastingOf(wearer, cast));
+  // Any other item casts at once (item-use.ts), so nothing is begun for a summoning
+  // that names no creature: the credit would go, and no creature would come.
+  const heldHere = !intent.item || Boolean(ring);
   const pick = cast && zone ? (board ? (areaFor({ spell: cast, runsAs })?.pick ?? "point") : "off") : null;
   // Witch Bolt's card at what its beam is connected to is the beam's strike;
   // at anything else it is a new casting (src/lib/dm/witch-bolt.ts). So is a
@@ -66,7 +71,7 @@ export function directContextFor(campaignId: string, intent: MessageIntent, auth
     ...(shareKind ? { shareKind } : {}),
     ...(mech?.riders?.clusterFeet ? { cluster: true } : {}),
     ...(summoning ? { summon: summoning.forms?.length === 1 ? "one" : "choose" } : familiar ? { summon: "choose" } : {}),
-    ...((summoning || familiar) && typeof facts?.castingTime === "number" ? { long: true } : {}),
+    ...((summoning || familiar) && typeof facts?.castingTime === "number" && heldHere ? { long: true } : {}),
     ...(pick && zone ? { lasting: { pick, ...(zone.catchesWhenLaid ? { catches: true } : {}) } } : {}),
     ...(facts?.range.kind === "self" ? { selfOnly: true } : {}),
     ...(mech?.dispel ? { dispel: true } : {}),

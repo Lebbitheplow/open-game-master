@@ -159,6 +159,9 @@ export type HandCard = {
   // An attack that is the whole action, not a swing of the Attack action
   // (Flame Blade, hand-granted.ts): afterCommit spends the action for it.
   wholeAction?: boolean;
+  // The magic item a spell card casts from: Items shows a section per item with
+  // what it has left (hand-groups.ts), as Spells shows one per level with its slots.
+  fromItem?: { key: string; label: string; note: string };
   // A spell that leaves an area on the battle map: the square it is laid on
   // is picked on the board (src/lib/battlemap/hand-area.ts) and sent as the
   // tool's atX/atY/towardX/towardY.

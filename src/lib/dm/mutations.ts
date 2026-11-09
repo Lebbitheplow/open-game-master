@@ -55,7 +55,7 @@ import { channelOptions, channelOptionsHeld, optionCost } from "@/lib/dm/option-
 import { BONUS_ATTACK_COUNTERS } from "@/lib/dm/feature-bonus-attacks";
 import { matchResource } from "@/lib/srd/class-resources";
 import { prepareUseItem } from "@/lib/dm/object-actions";
-import { chargedItemUse } from "@/lib/dm/item-use";
+import { chargedItemUse, paidItemCast } from "@/lib/dm/item-use";
 import { releaseStoredSpell, storeSpell } from "@/lib/dm/spell-storing";
 import { applyConsumable, consumableRefusal, scrollSpellFor } from "@/lib/dm/consumables";
 import { castSpell } from "@/lib/dm/cast-guard";
@@ -1223,6 +1223,11 @@ function dmMutation(
       const released = releaseStoredSpell(campaign, sheet, itemName, args.spell, turnId);
       if (released) {
         return { result: released };
+      }
+      // A cast this item has already paid for spends nothing more (item-use.ts).
+      const paid = paidItemCast(sheet, itemName, args.spell, turnId);
+      if (paid) {
+        return { result: paid };
       }
       // A charged item (a wand, a staff) spends charges and stays in the
       // pack (src/lib/dm/item-use.ts); null for anything else.

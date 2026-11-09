@@ -20,6 +20,7 @@
 // spell holds: runningItemSpell, written by src/lib/dm/item-casts.ts.
 
 import { findNamed, textKey } from "@/lib/language/text-logic";
+import type { EquipmentItem } from "@/lib/schemas/sheet";
 
 const WINDOW_MS = 5 * 60 * 1000;
 // A credit taken by the cast still lends its DC for a minute: the tool that
@@ -38,6 +39,14 @@ export type ItemCast = {
   // The Ring of Spell Storing it comes from: it leaves the ring when it is
   // cast (src/lib/dm/item-casts.ts).
   storedIn?: string;
+  // What use_item spent for this cast, to put back if the cast never happens
+  // (src/lib/dm/item-use.ts takeBackItemCast): the row as it stood, and the
+  // charges it gave. A ring's spell is not spent until it is cast, and a die
+  // that has already destroyed a wand cannot be taken back, so neither has one.
+  paid?: { row: EquipmentItem; charges?: number };
+  // The turn that paid: the same turn asking again is the one use, not a second
+  // (src/lib/dm/item-use.ts paidItemCast).
+  turnId?: string;
 };
 
 type Credit = ItemCast & { key: string; at: number; usedAt?: number };
@@ -78,7 +87,27 @@ export function takeItemCast(
   if (!dryRun) {
     credit.usedAt = now;
   }
-  return { spell: credit.spell, level: credit.level, item: credit.item, saveDc: credit.saveDc, attackBonus: credit.attackBonus, abilityMod: credit.abilityMod, storedIn: credit.storedIn };
+  return { spell: credit.spell, level: credit.level, item: credit.item, saveDc: credit.saveDc, attackBonus: credit.attackBonus, abilityMod: credit.abilityMod, storedIn: credit.storedIn, paid: credit.paid, turnId: credit.turnId };
+}
+
+// The waiting credit gone without a cast: the cast it paid for will not happen.
+export function dropItemCast(sheetId: string, spell: string, now = Date.now()) {
+  const key = textKey(spell);
+  const kept = live(sheetId, now).filter((credit) => credit.key !== key || credit.usedAt !== undefined);
+  if (kept.length) {
+    credits.set(sheetId, kept);
+  } else {
+    credits.delete(sheetId);
+  }
+}
+
+// The once-a-turn mark on the budget that says the action is spent on this spell and
+// the spell has not been cast: a ring's draw whose tool has not run, or a wand's use
+// whose cast was refused and whose charge came back. The Hand cannot see the credit,
+// which is in the server's memory, so without this a card sent back after its tool
+// refused (a target out of range) stood greyed for the action it had paid.
+export function spellDrawnMark(spell: string): string {
+  return `spell drawn:${textKey(spell)}`;
 }
 
 export type RunningItemSpell = { spell: string; level: number; saveDc?: number; attackBonus?: number; abilityMod?: number };
