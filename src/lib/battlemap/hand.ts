@@ -568,8 +568,4 @@ export function handSpellsToLookUp(sheet: CharacterSheet): string[] {
 // arrangement of the fan is hand-layout.ts (issue 231).
 export { splitHand } from "@/lib/battlemap/hand-layout";
 
-// Swings the Attack action grants this character (1 + Extra Attack), which
-// is what afterCommit needs to know when the action closes.
-export function attacksAllowed(sheet: CharacterSheet): number {
-  return 1 + combatRiders(sheet).extraAttacks;
-}
+export { attacksAllowed } from "@/lib/battlemap/hand-core";

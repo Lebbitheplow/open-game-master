@@ -9,9 +9,8 @@
 import { casterStateProblem } from "@/lib/dm/cast-rules";
 import { effectiveSpeed } from "@/lib/dm/condition-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import { attackGate, costGate, standingGate, type Gate, type HandTurn } from "@/lib/battlemap/hand-core";
+import { attackGate, attacksAllowed, costGate, standingGate, type Gate, type HandTurn } from "@/lib/battlemap/hand-core";
 import { spellNames } from "@/lib/battlemap/hand-spells";
-import { attacksAllowed } from "@/lib/battlemap/hand";
 import { turnFromEncounter, type FloorView } from "@/lib/battlemap/hand-table";
 
 export type HudGateId = "attack" | "cast" | "dodge" | "dash" | "disengage" | "help";

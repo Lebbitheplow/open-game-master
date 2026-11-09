@@ -15,6 +15,7 @@ import type { OrderEntry } from "@/lib/db/encounters";
 import type { IconRef } from "@/lib/icons";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { conditionBlocksReactions } from "@/lib/srd/condition-effects";
+import { combatRiders } from "@/lib/srd/feature-effects";
 import type { HandGearAction, HandIntentExtras } from "@/lib/battlemap/hand-intent";
 import type { HandArea } from "@/lib/battlemap/hand-area";
 // A type alone: the catalogue's stat blocks stay on the server.
@@ -533,3 +534,12 @@ export function slotLine(slot: SlotPick): string {
 
 
 export const SAVE_LABEL: Record<string, string> = { str: "STR", dex: "DEX", con: "CON", int: "INT", wis: "WIS", cha: "CHA" };
+
+// Swings the Attack action grants this character (1 + Extra Attack), which
+// is what afterCommit needs to know when the action closes. Here rather than
+// in hand.ts so the board's token menu (hand-hud.ts) asks it without pulling
+// every card builder into the board's first load: the table display page
+// loads the board and never deals a hand.
+export function attacksAllowed(sheet: CharacterSheet): number {
+  return 1 + combatRiders(sheet).extraAttacks;
+}
