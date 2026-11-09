@@ -518,6 +518,15 @@ await test("A draw that casts nothing is no answer to the card, and a refused on
 });
 
 
+await test("A Trident of Fish Command casts while carried, as its text says, not only in hand", async () => {
+  await stage(mage, [{ name: "Trident of Fish Command", qty: 1, equipped: false, attuned: true }, { name: "Dagger", qty: 1, equipped: true }]);
+  const card = cardNamed(mage, "Trident of Fish Command: Dominate Beast");
+  assert.equal(card.disabled, null, card.disabled);
+  const out = await run("use_item", { characterId: mage.id, item: "Trident of Fish Command", spell: "Dominate Beast" });
+  assert.equal(out.ok, true, JSON.stringify(out));
+  dropItemCast(mage.id, "Dominate Beast");
+});
+
 // A fresh node process on the same database is the server after a restart: it
 // has none of this process's memory.
 function afterRestart(source) {
