@@ -82,23 +82,25 @@ export function landSpellDamage(input: {
   const secondAdept = secondDice ? elementalAdeptApplies(sheet, secondType) : false;
   const floored = (dice: string) => (adept || secondAdept ? floorDamageDice(dice) : dice);
   // Destructive Wrath, on the casting's one roll: the creatures after the first
-  // take that roll (`sharedRoll`).
-  const wrath = sharedRoll === undefined && wrathApplies(getSheetById(sheet.id) ?? sheet, damageType);
-  if (wrath) {
-    spendWrath(campaign.id, sheet.id);
-    base.destructiveWrath = WRATH_NOTE;
-  }
+  // take that roll (`sharedRoll`). Only the lightning or thunder part is dealt
+  // at its maximum; the other type of a two-type spell is still rolled.
+  const holder = getSheetById(sheet.id) ?? sheet;
+  const wrathOn = (type: string | undefined) => sharedRoll === undefined && wrathApplies(holder, type);
   // Blight's maximum is this creature's (a plant), so a later creature of the
   // area rolls its own; Overchannel's and Wrath's are the casting's.
   const plantMaximum = maximizedDamage(mech, enemy, damageExpression) !== null;
-  const atMaximum = Boolean(input.atMaximum) || wrath || plantMaximum;
+  const atMaximum = Boolean(input.atMaximum) || plantMaximum;
   const parts: SpellDicePart[] =
     firstDice && secondDice && damageType && secondType
       ? [
-          { type: damageType, dice: [floored(firstDice), ...riders.dice].join("+"), atMaximum },
-          { type: secondType, dice: [floored(secondDice), ...riders.diceSecond].join("+"), atMaximum },
+          { type: damageType, dice: [floored(firstDice), ...riders.dice].join("+"), atMaximum: atMaximum || wrathOn(damageType) },
+          { type: secondType, dice: [floored(secondDice), ...riders.diceSecond].join("+"), atMaximum: atMaximum || wrathOn(secondType) },
         ]
-      : [{ type: damageType ?? "", dice: [floored(damageExpression), ...riders.dice, ...riders.diceSecond].join("+"), atMaximum }];
+      : [{ type: damageType ?? "", dice: [floored(damageExpression), ...riders.dice, ...riders.diceSecond].join("+"), atMaximum: atMaximum || wrathOn(damageType) }];
+  if (parts.some((part) => wrathOn(part.type))) {
+    spendWrath(campaign.id, sheet.id);
+    base.destructiveWrath = WRATH_NOTE;
+  }
   // The card shows the dice as rolled; the save halves or stops what lands.
   // A maximized blow rolls no dice, so it has no card.
   const shared = sharedRoll !== undefined && !plantMaximum ? (parts.length > 1 && input.sharedSecond !== undefined ? [sharedRoll - input.sharedSecond, input.sharedSecond] : [sharedRoll]) : null;

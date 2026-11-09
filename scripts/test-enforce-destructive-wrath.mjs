@@ -21,13 +21,23 @@ const { deriveHand, FRESH_TURN } = await import("../src/lib/battlemap/hand.ts");
 const { attackWrathDice, expressionMaximum } = await import("../src/lib/dm/destructive-wrath-logic.ts");
 const { setMemberRealDice } = await import("../src/lib/db/campaigns.ts");
 const { getPendingRoll, listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
+const { createHomebrew } = await import("../src/lib/db/homebrew.ts");
 const route = {
   choice: await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]/after-roll"),
   pending: await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]"),
   revert: await world.route("campaigns/[campaignId]/audit/revert-turn"),
 };
 
-const hero = world.addHero(caster("cleric", "wis", ["Shatter", "Burning Hands"], ["Shocking Grasp", "Fire Bolt"], 5, { maxHp: 44 }));
+// Spells of two types, one of them thunder or lightning (aoe-parts.ts).
+const brew = (name, mech, desc) =>
+  createHomebrew(world.owner.id, { kind: "spell", name, data: { desc, level: 2, classes: ["cleric"], school: "evocation", castingTime: "1 action", range: "60 feet", mech } });
+brew("Storm Burst", { resolution: "save", save: "dex", halfOnSave: true, damageType: "fire", secondType: "thunder", dice: { base: "2d6+2d8", baseLevel: 2 } },
+  "The target must make a Dexterity saving throw, taking 2d6 fire damage and 2d8 thunder damage on a failed save, or half as much on a successful one.");
+brew("Spark Burst", { resolution: "save", save: "dex", halfOnSave: true, damageType: "lightning", secondType: "fire", dice: { base: "2d8+2d6", baseLevel: 2 } },
+  "The target must make a Dexterity saving throw, taking 2d8 lightning damage and 2d6 fire damage on a failed save, or half as much on a successful one.");
+brew("Thunder Lance", { resolution: "attack", attack: "ranged", damageType: "piercing", secondType: "thunder", dice: { base: "1d8+2d6", baseLevel: 2 } },
+  "Make a ranged spell attack against the target. On a hit, the target takes 1d8 piercing damage plus 2d6 thunder damage.");
+const hero = world.addHero(caster("cleric", "wis", ["Shatter", "Burning Hands", "Storm Burst", "Spark Burst", "Thunder Lance"], ["Shocking Grasp", "Fire Bolt"], 5, { maxHp: 44 }));
 const SPELLCASTING = world.sheet(hero.id).spellcasting;
 const ally = world.addHero({ class: "fighter", level: 5, maxHp: 44, abilities: { str: 16 }, proficiencies: TRAINED });
 const OPTION = { features: [{ name: "Channel Divinity: Destructive Wrath", description: "" }], resources: { channel_divinity: { max: 2, used: 0 } } };
@@ -140,6 +150,48 @@ await test("cast_at_enemy reaches it too.", async () => {
   world.clearDice();
   assert.equal(out.ok, true, out.error);
   assert.equal(lost(enemy), 24);
+  assert.equal(holds(), false);
+});
+
+await test("A two-type spell: only its thunder or lightning part is at its maximum, and each part keeps its type.", async () => {
+  // Storm Burst's thunder is its second type: 2d6 fire rolled (1 and 1), 2d8
+  // thunder at 16, halved to 8 by the creature's resistance.
+  const second = await stage();
+  kit.setEnemy(second.id, { stats: { resist: "thunder" } });
+  await hold();
+  world.dice(2, 1, 1);
+  const out = await world.invoke("cast_at_enemy", { characterId: hero.id, targetEnemyId: second.id, spell: "Storm Burst", level: 2 });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(lost(second), 2 + 8);
+  assert.equal(holds(), false);
+  // Spark Burst's lightning is its first type: the fire is still rolled.
+  const first = await stage();
+  await hold();
+  world.dice(2, 1, 1);
+  const spark = await world.invoke("cast_at_enemy", { characterId: hero.id, targetEnemyId: first.id, spell: "Spark Burst", level: 2 });
+  world.clearDice();
+  assert.equal(spark.ok, true, spark.error);
+  assert.equal(lost(first), 16 + 2);
+  // The same in an area.
+  const area = await stage();
+  kit.setEnemy(area.id, { stats: { resist: "thunder" } });
+  await hold();
+  // An area rolls its damage before the creature's save.
+  world.dice(1, 1, 2);
+  const burst = await world.invoke("aoe_damage", { casterCharacterId: hero.id, spell: "Storm Burst", level: 2, enemyIds: [area.id] });
+  world.clearDice();
+  assert.equal(burst.ok, true, burst.error);
+  assert.equal(lost(area), 2 + 8);
+  // An attack spell whose thunder is its second type: the piercing is rolled.
+  const lance = await stage();
+  await hold();
+  // Ranged beside the goblin: two d20s at disadvantage, then the piercing die.
+  world.dice(18, 18, 3);
+  const hit = await world.invoke("pc_attack", { characterId: hero.id, enemyId: lance.id, targetEnemyId: lance.id, spell: "Thunder Lance", level: 2 });
+  world.clearDice();
+  assert.equal(hit.ok, true, hit.error);
+  assert.equal(lost(lance), 3 + 12);
   assert.equal(holds(), false);
 });
 
