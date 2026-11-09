@@ -74,8 +74,13 @@ const scenario = {
       check((await heroOf())?.resources?.channel_divinity?.used === 1, "a use of Channel Divinity is spent");
 
       // ---- a use held for a roll the server makes at once ----
+      // A third-level cleric has one use: the GM gives it back, as after a rest.
+      const back = await gm.patch(`${base}/api/campaigns/${table.id}/sheets/${table.hero}`, {
+        data: { resources: { ...(await heroOf()).resources, channel_divinity: { max: 1, used: 0 } }, reason: "A short rest's use back" },
+      });
+      check(back.ok(), `the use came back (${back.status()}: ${(await back.text()).slice(0, 200)})`);
       const held = await invoke("use_resource", { characterId: table.hero, resource: "Channel Divinity", variant: "destructive wrath" });
-      check(held.ok(), `the hold was taken (${held.status()})`);
+      check(held.ok(), `the hold was taken (${held.status()}: ${(await held.text()).slice(0, 300)})`);
       await eventually(async () => (await heroOf())?.conditions?.includes("destructive wrath"), { timeoutMs: 15_000, label: "the hold on the sheet" });
       if (viewport === "phone") {
         await t.tap(page.locator(`${root}nav.cine-bottombar`).getByRole("button", { name: "Party", exact: true }));
