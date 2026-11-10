@@ -42,6 +42,10 @@ const { authoredFeatDesc } = await import("../src/lib/srd/feat-effects.ts");
 const { withFeatChoice } = await import("../src/lib/schemas/sheet.ts");
 const { SRD_SKILLS } = await import("../src/lib/srd/index.ts");
 const { optionFeatureName } = await import("../src/lib/srd/options.ts");
+// The feat texts and prerequisites by the textKey of the name, as
+// useFeatDescs hands them to the builder: keyed by the lowercased name, an
+// apostrophe's feat (Destiny's Call) reached the builder with no text at all.
+const { textKey } = await import("../src/lib/language/text-logic.ts");
 
 // The picker's rows (useContentSearch on feats), every page.
 const feats = [];
@@ -92,7 +96,7 @@ function judged(fields, row) {
     klass: sb.classes.find((klass) => klass.id === fields.classId),
     background: sb.backgrounds.find((background) => background.id === fields.backgroundId),
   };
-  const featJudge = builderFeatJudge(facts, { [key(row.name)]: entryPrerequisite(row) });
+  const featJudge = builderFeatJudge(facts, { [textKey(row.name)]: entryPrerequisite(row) });
   // The save check as the wizard runs it, the judge with it: enforce-builder's
   // own gate passes none, and without one no feat's prerequisite is read.
   const blocker = facts.race && facts.klass && facts.background ? sb.builder.submit.validateBuilder({ ...facts, featJudge }) : built.blocker;
@@ -168,7 +172,7 @@ function optionPicksFor(built, fields) {
 
 let untaken = 0;
 for (const row of feats) {
-  const featDescs = { [key(row.name)]: descOf(row) };
+  const featDescs = { [textKey(row.name)]: descOf(row) };
   const verdicts = bases.map((base) => ({ base, verdict: verdict(base, row, featDescs) }));
   const open = verdicts.find((entry) => !entry.verdict?.blocked);
   const shut = verdicts.find((entry) => entry.verdict?.blocked);
@@ -204,7 +208,7 @@ for (const row of feats) {
     };
     await rows.row(`${prefix}:${row.name}:taken`, async () => {
       const first = withFeatAbility();
-      const spec = featGrantSpec(featDescs[key(row.name)]);
+      const spec = featGrantSpec(featDescs[textKey(row.name)]);
       const featChoices = withFeatChoice(first.fields.featChoices ?? {}, row.name, await picksFor(spec, first.built));
       const optionPicks = optionPicksFor(first.built, first.fields);
       const { fields, built } = withFeatAbility({ featChoices, optionPicks });
@@ -215,15 +219,12 @@ for (const row of feats) {
     });
     await rows.row(`${prefix}:${row.name}:fill`, async () => {
       const { built } = withFeatAbility();
-      // quickBuild.ts fillFeatPicks: "Damage types and taught spells are left
-      // for the player." A fill that stops only at one of those has kept
-      // its word; the findings file carries the ruling for the maintainer.
-      const spec = featGrantSpec(featDescs[key(row.name)]);
-      const leftToPlayer =
-        built.blocker &&
-        (spec.damageTypes.length > 0 || spec.taught.cantrips + spec.taught.spells > 0) &&
-        new RegExp(`^${row.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}: pick (a damage type|a class list|\\d+ [^,.]*(spells?|cantrips?))(, (\\d+ [^,.]*(spells?|cantrips?)|a damage type))*\\.$`).test(built.blocker.message);
-      assert.ok(!built.blocker || leftToPlayer, `fill (${open.base.classId}): after the fill the builder still refuses the save: ${JSON.stringify(built.blocker)}`);
+      // The maintainer's decision R12 (/tmp/odm-gapstudy/WAVE1.md, wave 1):
+      // "'Fill what's left' fills a feat's taught spells and damage types
+      // too." A fill that stopped at Magic Initiate's spells or Elemental
+      // Adept's damage type was held as keeping its word before; it no
+      // longer is.
+      assert.equal(built.blocker, null, `fill (${open.base.classId}): after the fill the builder still refuses the save: ${JSON.stringify(built.blocker)}`);
     });
   } else {
     untaken += 1;

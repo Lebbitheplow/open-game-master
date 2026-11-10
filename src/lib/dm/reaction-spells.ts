@@ -38,6 +38,7 @@ import "@/lib/db/item-cast-credits";
 import { takeItemCast } from "@/lib/srd/item-cast-credit";
 import { spellHeldProblem } from "@/lib/dm/cast-rules";
 import { findNamed, textKey } from "@/lib/language/text-logic";
+import { openSaves } from "@/lib/dm/last-save";
 
 // ---- reaction spells ----
 
@@ -77,10 +78,20 @@ const TRIGGERS: Array<{ spell: string; when: (name: string) => string; open: (ca
   {
     spell: "Hellish Rebuke",
     when: (name) => `a creature damages ${name}`,
-    open: (campaignId, sheetId, targetEnemyId) =>
-      Boolean(freshLastHit(campaignId, sheetId, (hit) => attackerFoeId(hit) !== null && hit.swings.some((swing) => swing.hit && swing.raw > 0) && (!targetEnemyId || hit.attacker.id === targetEnemyId))),
+    open: (campaignId, sheetId, targetEnemyId) => damagedBy(campaignId, sheetId, targetEnemyId) !== null,
   },
 ];
+
+// The creature whose damage to the caster Hellish Rebuke answers ("in response
+// to being damaged by a creature"): an open hit that dealt some, or a save it
+// forced that dealt some (a spell's failed save leaves no hit record:
+// src/lib/dm/last-save.ts noteSaveDamage). The one named, when the call names one.
+function damagedBy(campaignId: string, sheetId: string, named?: string): string | null {
+  const hit = freshLastHit(campaignId, sheetId, (record) => attackerFoeId(record) !== null && record.swings.some((swing) => swing.hit && swing.raw > 0) && (!named || record.attacker.id === named));
+  if (hit) return attackerFoeId(hit);
+  const save = openSaves(campaignId).filter((record) => record.characterId === sheetId && (record.damage?.amount ?? 0) > 0 && (!named || record.forcer.id === named)).at(-1);
+  return save?.forcer.id ?? null;
+}
 
 // Whether what this reaction spell answers has happened, for a card about to draw
 // it out of a ring (intent-check.ts). Null when it has. A spell whose trigger the
@@ -115,15 +126,9 @@ export function reactionSpell(ctx: Ctx, spellName: string): ToolResult {
   // spent here, as for every reaction spell.
   if (name === "hellish rebuke") {
     // The open hit that damaged them, by the creature named when one is.
-    const damaged = (hit: LastHit) =>
-      attackerFoeId(hit) !== null && hit.swings.some((swing) => swing.hit && swing.raw > 0) && (!ctx.args.targetEnemyId || hit.attacker.id === ctx.args.targetEnemyId);
-    const record = freshLastHit(campaign.id, sheet.id, damaged) ?? freshLastHit(campaign.id, sheet.id);
-    const attackerId =
-      ctx.args.targetEnemyId ?? attackerFoeId(record) ?? undefined;
+    const named = ctx.args.targetEnemyId?.trim() || undefined;
+    const attackerId = damagedBy(campaign.id, sheet.id, named);
     if (!attackerId) {
-      return { error: "Hellish Rebuke answers the creature that damaged the caster: pass its targetEnemyId. Nothing was spent.", retry: true };
-    }
-    if (!record || record.attacker.id !== attackerId || record.swings.every((swing) => !swing.hit || swing.raw <= 0)) {
       return {
         error: `Hellish Rebuke is cast in response to being damaged by the creature, and the server has no damage to ${sheet.name} from it this turn. Nothing was spent.`,
         refused: "rules",

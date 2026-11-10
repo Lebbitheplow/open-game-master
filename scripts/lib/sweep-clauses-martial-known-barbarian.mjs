@@ -39,13 +39,6 @@ export const KNOWN = {
     fix: "Refuse a reduce reaction for an ally the reactor cannot see (blinded reactor, invisible or heavily obscured ally), as Uncanny Dodge's attacker check does.",
     files: ["src/lib/dm/authored-reactions.ts"],
   },
-  "zealous-presence-advantage": {
-    severity: "medium", kind: "rule-missing",
-    where: "src/lib/srd/authored-resources.json sub_zealous_presence (no fx: the use and the bonus action are spent, nothing else)",
-    note: "An ally 20 feet away attacks and saves with one d20 after the battle cry.",
-    fix: "fx: a condition on up to ten allies within 60 feet giving advantage on attack rolls and saving throws until the start of the zealot's next turn.",
-    files: ["src/lib/srd/authored-resources.json", "src/lib/srd/authored-conditions.ts"],
-  },
   "bolstering-magic-d3": {
     severity: "medium", kind: "rule-missing",
     where: "src/lib/srd/authored-resources.json sub_bolstering_magic (no fx: the spend returns the text)",

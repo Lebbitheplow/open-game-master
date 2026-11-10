@@ -20,14 +20,12 @@ import type { FeatChoices } from "@/lib/srd/feat-grants";
 import { applyFeatGrants, featPicksOwed } from "@/lib/srd/feat-grants";
 import {
   chosenFightingStyles,
-  fightingStyleChoices,
   fightingStyleFeatureName,
-  fightingStyleSlots,
-  newStyleFits,
   FIGHTING_STYLES,
 } from "@/lib/srd/feature-effects";
-import { classFeaturesFor, expertiseAllowed, isThievesTools, populateFeaturesForClasses, THIEVES_TOOLS } from "@/lib/srd/features";
+import { expertiseAllowed, isThievesTools, populateFeaturesForClasses, THIEVES_TOOLS } from "@/lib/srd/features";
 import { classListFor } from "@/lib/srd/multiclass";
+import { openStyleSlots } from "@/lib/srd/style-slots";
 import {
   findOptionByFeatureName,
   openOptionSlots,
@@ -134,16 +132,8 @@ export function owedPickSlots(stated: OwedSheet, context: OwedContext = {}): Owe
     .filter((slot) => slot.remaining > 0 && slot.options.some((option) => slotTakes(slot, option)));
   // Each class's Fighting Style is a slot of its own (a paladin 2 / ranger 2
   // has two), though the sheet lists the feature once by name.
-  const slotFeatures = classes.flatMap((entry) =>
-    classFeaturesFor(entry.id, entry.subclass ?? "", entry.level, context.extras).map((feature) => ({ ...feature, classId: entry.id })),
-  );
-  const styleSlots = fightingStyleSlots(slotFeatures);
-  const heldStyles = chosenFightingStyles(sheet.features);
-  const chosenStyles = heldStyles.map(textKey);
-  const styleChoices = fightingStyleChoices(slotFeatures).filter(
-    (style) => !chosenStyles.includes(textKey(style.name)) && newStyleFits(heldStyles, style.name, slotFeatures),
-  );
-  const styleCount = styleChoices.length ? Math.max(0, styleSlots - chosenStyles.length) : 0;
+  // (src/lib/srd/style-slots.ts, the count the level-up offers by too).
+  const { count: styleCount, choices: styleChoices } = openStyleSlots(classes, sheet.features, context.extras);
   const training = grantsForHeldTraining(subclassGrants(classes, context.extras), sheet.proficiencies).filter(
     (grant) => grant.optional && featPicksOwed(grant.name, grant.spec, featChoice(sheet.featChoices ?? {}, grant.name)) !== null,
   );

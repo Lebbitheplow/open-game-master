@@ -30,6 +30,7 @@ import {
   type HandTurn,
 } from "@/lib/battlemap/hand-core";
 import { freeUseOf, spellNames } from "@/lib/battlemap/hand-spells";
+import { dealtByTrigger, triggerCards } from "@/lib/battlemap/hand-react-triggers";
 import { ringBarrierGate, ringCardName, ringSpells } from "@/lib/battlemap/hand-ring";
 import { COMMANDED, wieldsMeleeOrShield } from "@/lib/dm/maneuver-rules";
 import { HIT_ANSWER_COUNTERS, reachAtLevel, reactionTimingOf, timingOfDoes } from "@/lib/dm/reaction-kinds";
@@ -295,7 +296,7 @@ export function reactionCards(
     prompt: string,
     rules: string,
     target: HandTarget = "none",
-    more: { icon?: HandCard["icon"]; fallen?: boolean; gate?: Gate; range?: string; pickWithin?: number } = {},
+    more: { icon?: HandCard["icon"]; fallen?: boolean; gate?: Gate; range?: string; pickWithin?: number; choice?: HandCard["choice"] } = {},
   ) => {
     if (answered(hit, name)) return;
     const card = base(
@@ -304,7 +305,7 @@ export function reactionCards(
       prompt,
       target,
       aimedIntent({ card: "reaction", feature: name }, hit),
-      { rules, ...(more.icon ? { icon: more.icon } : {}), ...(more.range ? { range: more.range } : {}), ...(more.pickWithin ? { pickWithin: more.pickWithin } : {}), ...answering(hit) },
+      { rules, ...(more.icon ? { icon: more.icon } : {}), ...(more.range ? { range: more.range } : {}), ...(more.pickWithin ? { pickWithin: more.pickWithin } : {}), ...(more.choice ? { choice: more.choice } : {}), ...answering(hit) },
     );
     const fallen = more.fallen ?? (droppedByThisHit(sheet, hit) && reactionTimingOf(name) === "answers");
     cards.push(
@@ -382,6 +383,9 @@ export function reactionCards(
       feature(hit, "Slow Fall", prompt, "Take five times your monk level off the fall.");
     }
     if (hit.source === "fall" && !answered(hit, "Feather Fall")) {
+      // The caster's own Feather Fall too: its card in the Hand waits for this.
+      const fall = spellReaction(sheet, turn, "Feather Fall", prompt, "You drift down and land on your feet: the fall deals you nothing.", "none", hit, tail(hit));
+      if (fall) cards.push(fall);
       cards.push(...ringReactions(sheet, turn, "Feather Fall", prompt, "You drift down and land on your feet: the fall deals you nothing.", "none", hit, tail(hit)));
     }
     if (hit.source === "attack") {
@@ -393,6 +397,7 @@ export function reactionCards(
           fallen: held.fallen && sheet.currentHp <= 0,
           range: held.range,
           pickWithin: held.pickWithin,
+          ...(held.choice ? { choice: held.choice } : {}),
           gate: beside ? null : { reason: `No other creature stands within ${held.pickWithin} feet of ${sheet.name} to take the hit.`, spent: false },
         });
       }
@@ -411,7 +416,7 @@ export function reactionCards(
   // Vigilant Rebuke: a success by the character or one within its reach,
   // and the creature that forced the save takes the damage.
   for (const held of saveAnswers(sheet)) {
-    for (const save of saves) {
+    for (const save of saves.filter(madeMentalSave)) {
       const saver = save.characterId === sheet.id ? self : party.find((entry) => entry.id === save.characterId)?.name;
       if (!saver || (save.characterId !== sheet.id && !inReach(feet, save.characterId, held.rangeFt))) continue;
       const id = `${textKey(held.name).replace(/\s+/g, "-")}:${save.id}`;
@@ -487,7 +492,25 @@ export function reactionCards(
       feature(hit, held.name, prompt, held.rules, "ally", { range: held.range });
     }
   }
+  // Hellish Rebuke after a creature's spell damaged them through a save: no hit
+  // record holds it, the save does (src/lib/dm/last-save.ts noteSaveDamage).
+  for (const save of saves.filter((entry) => (entry.kind ?? "save") === "save" && entry.characterId === sheet.id && (entry.damage?.amount ?? 0) > 0 && entry.forcerId)) {
+    const hurt: PublicLastHit = { characterId: sheet.id, attacker: save.forcer, attackerId: save.forcerId, attack: save.spell ?? "spell", type: save.damage?.type ?? "", ranged: true, source: "attack", hit: true, hits: 1, damage: save.damage?.amount ?? 0, answered: save.answered ?? [] };
+    if (cards.some((entry) => entry.name === "Hellish Rebuke" && entry.answers?.attackerId === save.forcerId)) continue;
+    const prompt = `${save.forcer}'s ${save.spell ?? "spell"} hurt ${self} for ${hurt.damage}${hurt.type ? ` ${hurt.type}` : ""}`;
+    const rebuke = spellReaction(sheet, turn, "Hellish Rebuke", prompt, (level) => `${save.forcer} makes a DEX save against ${level + 1}d10 fire.`, "enemy", hurt, `~${save.id}`);
+    if (rebuke) cards.push(rebuke);
+  }
+  // The reactions and triggered uses whose trigger is not a hit: a death, a
+  // turn's end, a save forced, damage, a cast (hand-react-triggers.ts).
+  cards.push(...triggerCards(sheet, turn, hits, saves, (id, reach) => inReach(feet, id, reach), unseen));
   return cards;
+}
+
+// A save made against a creature on Intelligence, Wisdom or Charisma, the one
+// Vigilant Rebuke answers. The view sends failures and other triggers too.
+function madeMentalSave(save: PublicSave): boolean {
+  return (save.kind ?? "save") === "save" && save.success !== false && ["int", "wis", "cha"].includes(save.ability);
 }
 
 // A card answered as the holder stood when the hit landed, as the engine asks
@@ -635,11 +658,15 @@ function subclassReactions(
   whose: "self" | "ally",
   feet?: Record<string, number>,
   unseen?: Unseen,
-): Array<{ name: string; rules: string; target: HandTarget; range: string; fallen?: boolean; pickWithin?: number }> {
-  const out: Array<{ name: string; rules: string; target: HandTarget; range: string; fallen?: boolean; pickWithin?: number }> = [];
+): Array<{ name: string; rules: string; target: HandTarget; range: string; fallen?: boolean; pickWithin?: number; choice?: HandCard["choice"] }> {
+  const out: Array<{ name: string; rules: string; target: HandTarget; range: string; fallen?: boolean; pickWithin?: number; choice?: HandCard["choice"] }> = [];
   for (const held of heldAuthored(sheet)) {
     for (const reaction of held.entry.reactions ?? []) {
       if ((reaction.usedBy ?? "holder") !== "holder" || !gateHolds(reaction.gate, sheet, held)) continue;
+      // One whose trigger is not this hit is dealt when its own comes
+      // (hand-react-triggers.ts): Halo of Spores answers a creature starting its
+      // turn near, and its card on a hit was refused.
+      if (dealtByTrigger(reaction.name, reaction.gate?.condition)) continue;
       // "A creature you can see", as the engine asks it (authored-reactions.ts).
       if (reaction.sees === "target" && whose === "ally" && hidden(unseen, hit.characterId)) continue;
       if (reaction.sees === "attacker" && hidden(unseen, hit.attackerId)) continue;
@@ -681,6 +708,9 @@ function subclassReactions(
       if (whose === "ally" || toRoller) {
         if (!inReach(feet, does.kind === "echo_hit" || toRoller ? hit.attackerId : hit.characterId, reach)) continue;
       }
+      // A strike back with a reach reaches the attacker, as the engine measures it
+      // (authored-reactions.ts strike_back): a card for one 25 feet off was refused.
+      if (does.kind === "strike_back" && !inReach(feet, hit.attackerId, reach)) continue;
       // Instinctive Charm sways an attacker within its 30 feet.
       const charm = does.kind === "redirect" && Boolean(does.save);
       if (charm && !inReach(feet, hit.attackerId, reach)) continue;
@@ -716,6 +746,11 @@ function subclassReactions(
         // Asked by what it does to the hit, as the engine asks it (reaction-tools.ts).
         fallen: timingOfDoes(does) === "answers",
         ...(misdirects ? { pickWithin: REDIRECT_FT } : {}),
+        // Glorious Defense: the miss "lets you attack", so the card asks. The
+        // attack comes first, as most paladins take it (ruling R6).
+        ...(does.kind === "ac_vs_hit" && does.strikeOnMiss
+          ? { choice: { arg: "variant", label: "On a miss", options: [{ value: "attack", label: "Attack the attacker" }, { value: "no attack", label: "No attack" }] } }
+          : {}),
       });
     }
   }

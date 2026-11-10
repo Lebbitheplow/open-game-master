@@ -40,6 +40,9 @@ import { tilesBetween } from "@/lib/dm/attack-spatial";
 import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
 import { wieldsMeleeOrShield } from "@/lib/dm/maneuver-rules";
 import type { ToolError } from "@/lib/dm/tool-errors";
+import { resourceDef } from "@/lib/srd/class-resources";
+import { triggerRefusal, triggerSpecOf } from "@/lib/dm/reaction-triggers";
+import { reactionSpending } from "@/lib/srd/trigger-table";
 
 export const MANIFEST_MIND = "manifest mind";
 // The marker a use that recharges over several long rests leaves, with the
@@ -53,6 +56,9 @@ type Input = {
   sheet: CharacterSheet;
   defId: string;
   targetCharacterId?: string;
+  // The creature the call names, for a use that answers one (a caster, the
+  // creature a hit landed on).
+  targetEnemyId?: string;
   sheets: CharacterSheet[];
   sheetsById: Map<string, CharacterSheet>;
 };
@@ -97,6 +103,24 @@ function droppedByFreshHit(campaignId: string, sheet: CharacterSheet): boolean {
 
 export function planCounterReaction(input: Input): Plan | ToolError | null {
   const { campaign, sheet } = input;
+  // A counter an authored reaction draws on is spent by that reaction, which
+  // checks its trigger and applies its effect: a plain use_resource took the
+  // use and did nothing (a wizard's reroll, a drake's resistance, a guardian's pull).
+  const reaction = reactionSpending(input.defId);
+  if (reaction) {
+    return { error: `${reaction} is a reaction: send use_reaction with feature "${reaction}" when what it answers happens, and it spends the use with it. Nothing was spent.`, retry: true };
+  }
+  // A counter whose trigger is not a hit answers the record of it
+  // (reaction-triggers.ts): refused before anything is spent with nothing open.
+  const def = resourceDef(input.defId);
+  const ask = def ? { campaignId: campaign.id, reactor: sheet, name: def.displayName, counterId: input.defId, targetEnemyId: input.targetEnemyId, label: answerKey(input.defId, sheet.id) } : null;
+  // Its effect is the counter's own, applied by use_resource. The trigger is
+  // not marked answered: the spent reaction, or the turn's cost, shuts its card.
+  if (ask && triggerSpecOf(ask)) {
+    const unanswered = triggerRefusal(ask);
+    if (unanswered) return unanswered;
+    return null;
+  }
   const turn = getDmTurn(input.turnId);
   if ((input.defId === "sub_necrotic_husk" || input.defId === "sub_strength_before_death") && !droppedByFreshHit(campaign.id, sheet)) {
     const name = input.defId === "sub_necrotic_husk" ? "Necrotic Husk" : "Strength before Death";

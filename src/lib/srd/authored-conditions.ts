@@ -399,4 +399,5 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
   summaryOnly("wildfire_spirit", "wildfire spirit", "The wildfire spirit is out: the druid's fire and healing spells gain 1d8 (Enhanced Bond)."),
   summaryOnly("slayers_prey_marked", "slayer's prey (marked)", "The Monster Slayer's prey: the ranger adds 1d6 to saves against its effects (Supernatural Defense)."),
   summaryOnly("struck_as_it_fled", "struck as it fled", "Relentless Avenger: the paladin's opportunity attack hit; they may move up to half their speed with use_reaction, drawing no opportunity attacks."),
+  summaryOnly("echo_manifested", "echo manifested", "Manifest Echo: the Echo Knight's echo is out (AC 14 + proficiency bonus, 1 hit point); Shadow Martyr can send it into an attack that hit another creature, and a hit that destroys it ends it."),
 ];

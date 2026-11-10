@@ -36,7 +36,7 @@ import {
   takesDraconicAncestry,
 } from "@/lib/srd/racial-grants";
 import { abilityMod, findClass, findRace, SRD_SKILLS, suggestedStartingHp, type SrdClass } from "@/lib/srd";
-import { classGrantsFor, offeredBackgrounds } from "@/lib/characters/catalog";
+import { classGrantsFor, offeredBackgrounds, workshopClassIdNamed } from "@/lib/characters/catalog";
 import { tableAuthors } from "@/lib/db/homebrew";
 import { abilityPriority, companionBackground, companionSkillPicks, skillIdOf } from "@/lib/srd/companion-build";
 import { startingKitFor } from "@/lib/srd/starting-kit";
@@ -359,7 +359,9 @@ export function handleAddCompanion(
   }
 
   const preset = presetFor(campaign.gameSettings);
-  const klass = resolveClass(args.class);
+  // By id, or by the name of one of the table's own workshop classes.
+  const namedClass = findClass(slugify(args.class)) ? null : workshopClassIdNamed(args.class, tableAuthors(campaign.id));
+  const klass = resolveClass(namedClass ?? args.class);
   if (!klass) {
     return {
       error: `Unknown class "${args.class}". Use a class id from this world's catalog (e.g. fighter, cleric, rogue, wizard).`,

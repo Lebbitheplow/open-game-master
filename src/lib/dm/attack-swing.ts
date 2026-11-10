@@ -33,6 +33,8 @@ import { openLastHit } from "@/lib/dm/last-hit";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { planAttackFx, type RollVisibility } from "@/lib/battlemap/fx-plan";
 import { holdsFeature } from "@/lib/srd/feature-names";
+import { GREAT_WEAPON_MASTER_READY } from "@/lib/srd/feat-combat";
+import { holdsFeat } from "@/lib/srd/feat-effects";
 import { BRUTAL_ATTACK_USED, brutalAttackApplies, PIERCER_USED, SAVAGE_ATTACKER_USED, savageAttackerApplies } from "@/lib/srd/feat-combat";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -122,15 +124,26 @@ export function judgeSwing(scene: SwingScene, record: AttackRecord, toHit: RollR
     rescuedHit = true;
   }
   const hit = adjudicated.hit || rescuedHit;
-  const crit = adjudicated.crit || (hit && record.autoCrit === true);
+  // A face in the critical range is a critical hit once the attack hits,
+  // whatever lifted it to a hit: "A natural 19 for a Champion that hits
+  // because of Foe Slayer is a critical hit" (the maintainer's decision R2 of
+  // the 2026-11-09 gap sweep; SRD 5.1 Improved Critical, "score a critical hit
+  // on a roll of 19 or 20").
+  const widened = rescuedHit && !natural1 && toHit.natural !== undefined && toHit.natural >= (record.critRange ?? 20);
+  const crit = adjudicated.crit || widened || (hit && record.autoCrit === true);
   if (hit) {
     // Sneak Attack and the other once-a-turn riders are spent by the hit.
     const live = attackTurn(campaign.id, record);
     if (live) {
       claimHitRiders(live.encounter, live.budget, record.hitClaims);
     }
-    // A weapon's hit opens Arcane Jolt this turn, at the creature it hit.
-    if ((record.weaponAttack ?? !record.spell) && holdsFeature(scene.sheet, "arcane jolt")) {
+    // A weapon's hit is kept on the turn, at the creature it hit, for every
+    // weapon hit: it opens what rides one this turn (Arcane Jolt, Blade
+    // Flourish, Psionic Strike, Gathered Swarm's push: authored-spends.ts
+    // afterWeaponHit), and it is the trigger the features that answer a hit
+    // this turn read (src/lib/dm/reaction-triggers.ts), so it is not limited
+    // to the holders of a rider.
+    if (record.weaponAttack ?? !record.spell) {
       markAttackTurn(campaign.id, record, `${WEAPON_HIT}${record.targetEnemyId}`);
     }
   }
@@ -169,8 +182,12 @@ export function missSwing(scene: SwingScene, record: AttackRecord, judged: Judge
   const wrath = spellRider?.halfOnMiss && holdsDestructiveWrath(getSheetById(sheet.id) ?? sheet)
     ? attackWrathDice(record.damageExpression, record.damageType ?? "", [], { crit: false })
     : null;
+  // A natural 1 is a miss, and the spell's miss deals half ("On a miss, the
+  // arrow splashes the target with acid for half as much of the initial
+  // damage"): the maintainer's decision R1 of the 2026-11-09 gap sweep,
+  // overturning #825's rule call that a natural 1 dealt nothing.
   const graze =
-    spellRider?.halfOnMiss && !judged.natural1 && fresh?.status === "alive"
+    spellRider?.halfOnMiss && fresh?.status === "alive"
       ? { expression: wrath?.expression ?? record.damageExpression, riders: [], crit: false, stunShot: false, half: true, feats: {}, rerollBelow: 0, ...(wrath?.noDice ? { noDice: true } : {}) }
       : null;
   if (graze && wrath) {
@@ -189,6 +206,15 @@ export function missSwing(scene: SwingScene, record: AttackRecord, judged: Judge
 export function hitSwing(scene: SwingScene, record: AttackRecord, judged: Judged, toHit: RollResult, visibility: RollVisibility, notes: string[]): { ask: DamageAsk } | { done: Record<string, unknown> } {
   const { campaign, turn, sheet, enemy } = scene;
   const crit = judged.crit;
+  // Great Weapon Master's critical opens the bonus attack the moment it is
+  // scored, at the stage both dice share: opened when the damage landed, a
+  // critical entered on real dice whose target something else dropped before
+  // the damage dice came opened nothing (finding L820-crit-then-target-dies).
+  // The kill's half stays with the blow (attack-blow.ts bonusActionsOpened).
+  // The blow says so, once it knows the fight goes on.
+  if (crit && record.weaponAttack === true && record.ranged !== true && record.melee === true && holdsFeat(sheet, "Great Weapon Master") && markAttackTurn(campaign.id, record, GREAT_WEAPON_MASTER_READY)) {
+    (record as AttackRecord & { gwmOpened?: boolean }).gwmOpened = true;
+  }
   if (record.hitSpent?.length) {
     clearHitSpent(campaign, sheet.id, record.hitSpent);
   }

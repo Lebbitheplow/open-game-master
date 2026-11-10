@@ -4,8 +4,9 @@
 // thrown from a mount, a shape spell at an unwilling creature, a disease, a
 // poison or a madness. Each lands on a roll site that carries the save's tag
 // and asks what the stop armed: the character's or the creature's full save
-// (src/lib/dm/forced-save.ts), or throwWatchedSave there for the hours of
-// cold and heat (endurance.ts) and an affliction (between-io.ts). Without a
+// (src/lib/dm/forced-save.ts), or the character's d20 door for the hours of
+// cold and heat (endurance.ts) and an affliction (between-io.ts:
+// character-roll.ts rollCharacterD20). Without a
 // stop these
 // went by with the watcher's Portent, Chronal Shift, Flash of Genius or
 // Favored by the Gods unasked (SRD 5.1 Portent: "any attack roll, saving

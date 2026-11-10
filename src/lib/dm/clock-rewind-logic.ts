@@ -5,13 +5,15 @@ import type { CampaignClock, Instant } from "@/lib/dm/calendar";
 // (src/lib/db/clock-moves.ts records them), so the route decides nothing the
 // tests cannot read.
 //
-// What comes back is what the moving itself changed (src/lib/db/clock.ts
-// advanceClock): the instant, the Wild Shapes whose hours ran out, the days
-// of food and water counted, a meal it brought, the hit dice window it
-// closed, the diseases and poisons it ran on, the downtime the days paid for,
-// and the stretches marched (travel records each after its move). What the
-// world did with the time (its weather, its calendar's events, a companion
-// who left) stays: the chapter rewind is what takes those back.
+// What comes back is everything the turn changed on the clock: the turn
+// keeps the whole clock as it found it (src/lib/db/turn-journal.ts keeps
+// the campaign row), so the weather a rest or a march rolled, the pace they
+// set, a disease, a poison or a lifestyle the turn gave, an object it broke
+// go back with the hours. Each part goes back unless something moved it
+// again since the turn (another turn, the GM's own controls), and the
+// instant decides "kept": time moved on since stays where it is. A turn kept
+// before the clock was journaled has only its moves, which put back what the
+// moving itself changed (src/lib/db/clock.ts advanceClock).
 
 export type RecordedClockMove = {
   // The clock as the move found it.
@@ -54,8 +56,43 @@ function put<K extends Restored>(clock: CampaignClock, key: K, value: CampaignCl
   }
 }
 
-// Null when the turn moved no time. The moves come oldest first.
-export function rewindClock(current: CampaignClock, moves: RecordedClockMove[]): ClockRewind | null {
+// The clock as the turn found it and as it left it (both read through
+// normalizeClock, as `current` is).
+export type ClockImage = { before: CampaignClock; after: CampaignClock };
+
+const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+
+function rewindImage(current: CampaignClock, moves: RecordedClockMove[], image: ClockImage): ClockRewind {
+  const next: Record<string, unknown> = { ...current };
+  const before = image.before as Record<string, unknown>;
+  const after = image.after as Record<string, unknown>;
+  const now = current as Record<string, unknown>;
+  // Time moved on since the turn: the hours stay, and the revert says so.
+  const moved = image.before.instant !== image.after.instant && current.instant !== image.after.instant;
+  for (const key of new Set([...Object.keys(before), ...Object.keys(after)])) {
+    if (same(before[key], after[key]) || !same(now[key], after[key])) {
+      continue;
+    }
+    if (before[key] === undefined) {
+      delete next[key];
+    } else {
+      next[key] = before[key];
+    }
+  }
+  const clock = next as CampaignClock;
+  if (moved) {
+    put(clock, "shapeEnds", withLapsedShapes(clock, moves));
+    return { kept: clock };
+  }
+  return { restored: clock };
+}
+
+// Null when the turn changed nothing on the clock. The moves come oldest
+// first; `image`, when the turn's clock was kept whole and it changed.
+export function rewindClock(current: CampaignClock, moves: RecordedClockMove[], image: ClockImage | null = null): ClockRewind | null {
+  if (image && !same(image.before, image.after)) {
+    return rewindImage(current, moves, image);
+  }
   if (!moves.length) {
     return null;
   }

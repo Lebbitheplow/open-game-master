@@ -63,6 +63,8 @@ import { engineFeatNamed } from "@/lib/srd/feat-effects";
 import { isPublishedFeatureName } from "@/lib/srd/features";
 import { choiceIn, holdsFeature, isNamed } from "@/lib/srd/feature-names";
 import { channelOptions } from "@/lib/dm/option-costs";
+import { grantCastsFree, grantedCastOf, spellHeldProblem, spentSlotRefusal } from "@/lib/dm/cast-rules";
+import { takeItemCast } from "@/lib/srd/item-cast-credit";
 import { subclassNamed } from "@/lib/srd/subclass-name";
 
 const useReactionSchema = z.object({
@@ -85,6 +87,10 @@ const useReactionSchema = z.object({
   // hit's id from GAME STATE or the Hand's card, or the enemyId of the
   // creature that made it.
   hit: z.string().trim().max(120).optional(),
+  // The pet whose damage a bond reaction answers (Reflexive Resistance for the
+  // drake). Read from the console and the Hand's card; the tool's description
+  // does not name it, so it costs the model's window nothing.
+  petName: z.string().trim().max(60).optional(),
   reason: z.string().optional(),
 });
 
@@ -496,6 +502,31 @@ function answersOwnHitOnly(campaign: Campaign, feature: string): boolean {
   return spell?.castingTime === "reaction" && isNamed(spellEngineName(spell.name, authors), "shield", "absorb elements", "hellish rebuke");
 }
 
+// The bars that refuse a reaction spell whatever hit it answers: the caster
+// does not hold it, or has no slot or free use left to cast it with. A spell an
+// item has just paid for needs neither.
+function barsBeforeTheHit(campaign: Campaign, sheet: CharacterSheet, feature: string, level: number | undefined): ToolError | null {
+  const authors = spellAuthorsFor(campaign);
+  const facts = spellFactsFor(feature, authors);
+  if (facts?.castingTime !== "reaction" || takeItemCast(sheet.id, facts.name, { dryRun: true })) {
+    return null;
+  }
+  const unheld = spellHeldProblem(sheet, feature, facts);
+  if (unheld) {
+    return { ...unheld, error: `${unheld.error} Nothing was spent.` };
+  }
+  const grant = grantedCastOf(sheet, feature, facts);
+  if (facts.level === 0 || (grant && grantCastsFree(sheet, grant, facts, undefined))) {
+    return null;
+  }
+  const lowest = Math.max(facts.level, level ?? facts.level);
+  const free = Object.entries(sheet.spellcasting?.slots ?? {}).some(([key, slot]) => Number(key) >= lowest && slot.used < slot.max);
+  const pact = sheet.spellcasting?.pact;
+  return free || (pact && pact.level >= lowest && pact.used < pact.max)
+    ? null
+    : spentSlotRefusal(sheet.name, sheet.spellcasting, { level: lowest, lowest, what: facts.name, withPact: true });
+}
+
 // How far a hit id the model sent may stray from an open hit's and still be
 // taken for a slip of it: the misses seen dropped one character of nine.
 // Two random ids this close are about one in a billion.
@@ -536,6 +567,13 @@ export function handleUseReaction(
       // random), so it is told no rather than offered another hit to spend
       // the reaction on. So is a person, and a reactor already spent.
       const encounter = getActiveEncounter(campaign.id);
+      // What refuses the reaction whatever hit it names comes before the slip
+      // (tool-errors.ts: the game's refusal before a retry, issue 797): the
+      // model was handed the list, resent, and only then told there was no slot.
+      const barred = barsBeforeTheHit(campaign, sheet, args.feature, args.level);
+      if (barred) {
+        return barred;
+      }
       const offers = turn.actor === "ai"
         && !(encounter && (encounter.reactionsUsed.includes(sheet.id) || reactedLate(campaign.id, encounter, sheet.id)));
       const sent = args.hit.trim();

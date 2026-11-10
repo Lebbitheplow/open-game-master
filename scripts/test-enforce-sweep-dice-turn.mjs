@@ -74,16 +74,9 @@ const rows = [
   { id: "start_encounter.initiative", line: "I kick the door in and charge the goblin inside.", tool: "start_encounter", args: () => ({ enemies: [{ monster: "goblin", count: 1 }] }) },
 ];
 
-const PROMISE = '"You roll your attacks and their damage, initiative, and the checks and saves the GM asks for." (src/lib/dice/held-rolls.ts REAL_DICE_SCOPE); issue #896 is this promise broken at an AI table';
-const known = (where, note) => ({ rule: PROMISE, where, severity: "medium", note });
+// None left: every check tool throws the seat's d20 through
+// src/lib/dm/character-roll.ts, which holds the call for its card.
 const KNOWN = {
-  group_check: known("src/lib/dm/check-tools.ts handleGroupCheck", "issue #896: the model asks the check through group_check and the server throws it"),
-  "social_check.persuade": known("src/lib/dm/social-tools.ts handleSocialCheck", "issue #896: the model answers a player's persuasion with social_check and the server throws it"),
-  "social_check.intimidate": known("src/lib/dm/social-tools.ts handleSocialCheck", "issue #896"),
-  haggle: known("src/lib/dm/shop-tools.ts handleHaggle", "issue #896 at a shop"),
-  scene_check: known("src/lib/dm/scene-tools.ts (contest-roll.ts rollCharacterCheck)", "issue #896 in a chase"),
-  "take_action.search": known("src/lib/dm/contest-roll.ts rollCharacterCheck", "issue #896 in a fight: the Search action"),
-  "take_action.shove": known("src/lib/dm/contest-roll.ts rollCharacterCheck", "the Shove contest"),
 };
 
 async function play(entry) {

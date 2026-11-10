@@ -23,7 +23,7 @@ import { featChoice, withFeatChoice, type Ability, type AsiChoice } from "@/lib/
 import { SRD_SKILLS } from "@/lib/srd";
 import { companionImprovements, preferredSpellOrder } from "@/lib/srd/companion-build";
 import { authoredFeatDesc } from "@/lib/srd/feat-effects";
-import type { FeatChoices, FeatPicks, FeatGrantSpec } from "@/lib/srd/feat-grants";
+import type { FeatChoices } from "@/lib/srd/feat-grants";
 import { FIGHTING_STYLES, type FightingStyleId } from "@/lib/srd/feature-effects";
 import { expertiseAllowed, expertiseSlotsFor, subclassLevelFor, subclassNamesFor } from "@/lib/srd/features";
 import { optionFeatureName, optionReqProblem, picksFromSpellbook } from "@/lib/srd/options";
@@ -32,12 +32,11 @@ import { DRACONIC_ANCESTRIES, findDraconicAncestry, repeatedGrants, takesDraconi
 import { racialCantripsOf } from "@/lib/srd/racial-cantrips";
 import { pickedVariant, withSpeciesVariant } from "@/lib/content/species-variants";
 import { checklistSpell, checklistSpellsOn, spellLevelOf } from "@/lib/srd/spell-lists";
-import { KNOWN_TOOLS } from "@/lib/srd/feat-grant-text";
 import { thirdCasterAnySchoolPicks, thirdCasterSchools } from "@/lib/srd/third-caster";
-import { SRD_WEAPONS } from "@/lib/srd/weapons";
 import { classRoles, type ClassRole } from "@/lib/srd/class-roles";
 import { spellClassFor } from "@/lib/classes";
 import { builderCasting } from "./casting";
+import { fillFeatPicks, type FeatFillFacts, type HeldTraining } from "./fillFeatPicks";
 import { abilityPriority, poolSlotsFor, standardFor } from "./classAbilities";
 import { rollHeroName } from "./heroNames";
 import { EASY_CLASSES, PLAYSTYLES, fillClassSkills, type PlaystyleId } from "./playstyles";
@@ -291,65 +290,37 @@ function skillOrder(ctx: FillContext, held: ReadonlySet<string>, from: readonly 
   return [...new Set(ordered)].filter((skill) => from.includes(skill) && !held.has(skill));
 }
 
-// The weapons a grant that picks them may take, best first: one not yet
-// trained with before one that is, a martial weapon before a simple one,
-// and for a pick of two (a kensei's) a ranged weapon second, as Path of the
-// Kensei asks one of each.
-function weaponOrder(from: readonly string[], held: ReadonlySet<string>): string[] {
-  const rows = from.map((name) => SRD_WEAPONS.find((weapon) => textKey(weapon.name) === textKey(name)) ?? { name, category: "simple", kind: "melee" });
-  const score = (row: { name: string; category: string }) =>
-    (held.has(textKey(row.name)) || held.has(textKey(row.category)) ? 2 : 0) + (row.category === "martial" ? 0 : 1);
-  const ranked = rows.map((row, index) => ({ row, index })).sort((a, b) => score(a.row) - score(b.row) || a.index - b.index).map((entry) => entry.row);
-  const melee = ranked.filter((row) => row.kind !== "ranged");
-  const ranged = ranked.filter((row) => row.kind === "ranged");
-  return [...new Set([...melee.slice(0, 1), ...ranged.slice(0, 1), ...ranked].map((row) => row.name))];
-}
-
-// A feat-shaped grant's open picks (a subclass's training, a feat): the
-// languages, skills, expertise, tools and weapons it leaves to the player,
-// each from the grant's own list where it names one, as the save checks
-// (feat-grants.ts). Damage types and taught spells are left for the player.
-function fillFeatPicks(
-  spec: FeatGrantSpec,
-  picks: FeatPicks | undefined,
-  ctx: FillContext,
-  held: { skills: Set<string>; languages: Set<string>; tools: Set<string>; weapons: Set<string> },
-): FeatPicks | null {
-  const out: FeatPicks = { ...picks };
-  let changed = false;
-  const top = (kind: "languages" | "skills" | "expertise" | "tools" | "weapons", count: number, candidates: string[]) => {
-    const have = (out[kind] ?? []).filter(Boolean);
-    const room = count - have.length;
-    if (room <= 0) return;
-    const add = candidates.filter((entry) => !has(have, entry)).slice(0, room);
-    if (add.length) {
-      out[kind] = [...have, ...add];
-      changed = true;
+// The same order for a pick that is not the class's own (a species', a
+// background's, a feat's), with the class's list held back while the class
+// still has picks to make: only as many of its skills come early as the
+// class can spare. Leading with the class's list starved it: a half-elf
+// cleric's two free skills took History and Medicine after an Acolyte's
+// Insight and Religion, and the cleric (SRD 5.1: "Choose two from History,
+// Insight, Medicine, Persuasion, and Religion") was left one to pick two from.
+export function skillOrderSparingClass(
+  order: readonly string[],
+  held: ReadonlySet<string>,
+  klassSkills: { from: readonly string[]; count: number } | undefined,
+  classChosen: number,
+): string[] {
+  const need = klassSkills ? klassSkills.count - classChosen : 0;
+  if (!klassSkills || need <= 0) {
+    return [...order];
+  }
+  let spare = Math.max(0, klassSkills.from.filter((skill) => !held.has(skill)).length - need);
+  const early: string[] = [];
+  const late: string[] = [];
+  for (const skill of order) {
+    if (!klassSkills.from.includes(skill)) {
+      early.push(skill);
+    } else if (spare > 0) {
+      spare -= 1;
+      early.push(skill);
+    } else {
+      late.push(skill);
     }
-  };
-  top("languages", spec.languages, STANDARD_LANGUAGES.filter((language) => !held.languages.has(textKey(language))));
-  // Held from here on, so the next grant picks another: a ranger's three
-  // Favored Enemy languages were all the same one.
-  for (const language of out.languages ?? []) held.languages.add(textKey(language));
-  // From the grant's own list where it names one, as the save checks
-  // (feat-grants.ts): an Order cleric's fill took History for a pick of
-  // Intimidation or Persuasion, and the save then refused the build while
-  // the picker, its one slot taken by a skill it does not show, could not
-  // put it right.
-  const skillsFrom = spec.skillsFrom.length ? spec.skillsFrom : ALL_SKILLS;
-  top("skills", spec.skills + (spec.anyKinds.includes("skills") ? spec.any : 0), skillOrder(ctx, held.skills, skillsFrom));
-  for (const skill of out.skills ?? []) held.skills.add(skill);
-  top("expertise", spec.expertise, [...held.skills]);
-  // A tool or weapon pick with no list of its own takes any (feat-grants.ts
-  // allows any): left blank, the fill ended with the pick still owed.
-  top("tools", spec.tools, (spec.toolsFrom.length ? spec.toolsFrom : KNOWN_TOOLS).filter((tool) => !held.tools.has(textKey(tool))));
-  for (const tool of out.tools ?? []) held.tools.add(textKey(tool));
-  // Path of the Kensei's two weapons and Training in War and Song's one
-  // were left for the player, and "Fill what's left" left the subclass
-  // owing them.
-  const weapons = spec.weaponsFrom.length ? spec.weaponsFrom : SRD_WEAPONS.filter((weapon) => weapon.category === "simple" || weapon.category === "martial").map((weapon) => weapon.name);
-  top("weapons", spec.weapons, weaponOrder(weapons, held.weapons));
-  return changed ? out : null;
+  }
+  return [...early, ...late];
 }
 
 // A feat the fill may hand a variant human: one with no prerequisite and
@@ -436,6 +407,11 @@ export function fillRound(ctx: FillContext): FillRound {
   const proficient = new Set(derived.expertiseSkills ?? derived.proficientSkills);
   const languages = new Set(derived.training.languages.map((language) => textKey(language)));
   const tools = new Set((derived.training.tools ?? []).map((tool) => textKey(tool)));
+  // A pick that is not the class's own spares the class's list while the
+  // class still has picks to make (skillOrderSparingClass).
+  const classSkills = klass && srdClass(klass) ? klass.skillChoices : undefined;
+  const freeSkillOrder = (held: ReadonlySet<string>, from: readonly string[] = ALL_SKILLS) =>
+    skillOrderSparingClass(skillOrder(ctx, held, from), held, classSkills, (patch.chosenSkills ?? fields.chosenSkills).filter(Boolean).length);
 
   // The species' own choice first, the list's first option: the picks below
   // read the race with it, so none lands on what it already gives.
@@ -451,7 +427,7 @@ export function fillRound(ctx: FillContext): FillRound {
 
   // The background's own skill pick.
   if (background.skillChoice && wants("backgroundSkills")) {
-    const { next, added } = fillSlots(fields.backgroundSkills, background.skillChoice.count, skillOrder(ctx, proficient, background.skillChoice.from));
+    const { next, added } = fillSlots(fields.backgroundSkills, background.skillChoice.count, freeSkillOrder(proficient, background.skillChoice.from));
     if (added.length) {
       patch.backgroundSkills = next;
       added.forEach((skill) => proficient.add(skill));
@@ -492,7 +468,7 @@ export function fillRound(ctx: FillContext): FillRound {
   }
   if (race.skillChoice && wants("racialSkills")) {
     const from = race.skillChoice.from?.length ? race.skillChoice.from : ALL_SKILLS;
-    const { next, added } = fillSlots(fields.racialSkills, race.skillChoice.count, skillOrder(ctx, proficient, from));
+    const { next, added } = fillSlots(fields.racialSkills, race.skillChoice.count, freeSkillOrder(proficient, from));
     if (added.length) {
       patch.racialSkills = next;
       added.forEach((skill) => proficient.add(skill));
@@ -540,7 +516,7 @@ export function fillRound(ctx: FillContext): FillRound {
   }
   const repeats = repeatedGrants(background.skills, race.skills).length;
   if (repeats && wants("repeatSkills")) {
-    const { next, added } = fillSlots(fields.repeatSkills, repeats, skillOrder(ctx, proficient));
+    const { next, added } = fillSlots(fields.repeatSkills, repeats, freeSkillOrder(proficient));
     if (added.length) {
       patch.repeatSkills = next;
       added.forEach((skill) => proficient.add(skill));
@@ -599,19 +575,28 @@ export function fillRound(ctx: FillContext): FillRound {
   // What the subclass's training leaves open (a Lore bard's three skills).
   // And what the class itself leaves open (a ranger's Favored Enemy
   // language), with or without a subclass.
+  // The subclass's skills join the ones the expertise below may double
+  // (derived.expertiseSkills). One held set for the subclass's grants and the
+  // feats', so no pick repeats another.
+  const held: HeldTraining = {
+    skills: proficient,
+    languages,
+    tools,
+    weapons: new Set((derived.training.weapons ?? []).map((weapon) => textKey(weapon))),
+    spells: new Set(
+      [...fields.cantrips, ...fields.spells, ...derived.racialCantrips, ...derived.featSpells.cantrips, ...derived.featSpells.spells, ...(derived.subclassSpells ?? [])].map(textKey),
+    ),
+  };
+  const featFacts: FeatFillFacts = {
+    skillOrder: (heldSkills, from) => freeSkillOrder(heldSkills, from),
+    abilities: derived.abilities,
+    classList: derived.spellSearchClass ?? null,
+  };
+  let featChoices: FeatChoices = fields.featChoices;
   if (wants("subclass")) {
-    let featChoices: FeatChoices = fields.featChoices;
-    // The subclass's skills join the ones the expertise below may double
-    // (derived.expertiseSkills).
-    const held = {
-      skills: proficient,
-      languages,
-      tools,
-      weapons: new Set((derived.training.weapons ?? []).map((weapon) => textKey(weapon))),
-    };
     const added: string[] = [];
     for (const grant of (derived.subclassTraining ?? []).filter((entry) => fields.subclass || entry.optional)) {
-      const picks = fillFeatPicks(grant.spec, featChoice(featChoices, grant.name), ctx, held);
+      const picks = fillFeatPicks(grant.spec, featChoice(featChoices, grant.name), featFacts, held);
       if (picks) {
         featChoices = withFeatChoice(featChoices, grant.name, picks);
         added.push(grant.name);
@@ -620,6 +605,24 @@ export function fillRound(ctx: FillContext): FillRound {
     if (added.length) {
       patch.featChoices = featChoices;
       note("subclass", added.join(", "), "Subclass training");
+    }
+  }
+  // What a feat the player took leaves open (Linguist's three languages,
+  // Skilled's three skills or tools, Magic Initiate's list and spells,
+  // Elemental Adept's damage type), each where the gate asks for it: an
+  // improvement's feat on the improvements, the species' own feat with the
+  // species. The fill made a subclass's training picks and never a feat's.
+  if (derived.featSpecOf) {
+    const racial = new Set((patch.feats ?? fields.feats).map(textKey));
+    for (const feat of derived.featNames ?? []) {
+      const target: BlockerTarget = racial.has(textKey(feat)) ? "racialFeat" : "asi";
+      if (!wants(target)) continue;
+      const picks = fillFeatPicks(derived.featSpecOf(feat), featChoice(featChoices, feat), featFacts, held);
+      if (picks) {
+        featChoices = withFeatChoice(featChoices, feat, picks);
+        patch.featChoices = featChoices;
+        note(target, feat, `${feat}'s picks`);
+      }
     }
   }
   if (derived.styleSlots > fields.stylePicks.length && wants("styles")) {

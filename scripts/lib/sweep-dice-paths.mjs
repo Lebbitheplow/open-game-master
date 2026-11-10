@@ -12,17 +12,10 @@ import { combatKit, TRAINED } from "./enforce-combat.mjs";
 import { diffState, forceDice, installDiceSpy, repoRoot, tableState } from "./sweep-dice.mjs";
 
 
-// Rows the four paths leave differently today, by row id.
-const NO_DICE = (what) => ({
-  where: "src/lib/dm/pc-attack-parked.ts (parks a damage roll for an expression with no dice); src/app/api/campaigns/[campaignId]/pending-rolls/[pendingRollId]/route.ts submitSchema (dice: min 1); src/app/campaigns/[campaignId]/PendingRollCard.tsx (complete needs faces.length > 0)",
-  severity: "medium",
-  note: `${what}: on a hit the seat on physical dice is handed a damage card with no die on it. The route refuses an empty list of faces and the card's own button stays shut, so the turn waits until someone presses Roll digitally; the server's dice land the same hit at once`,
-});
-const KNOWN_ROWS = {
-  "weapon.Blowgun": NO_DICE("a blowgun deals 1 piercing damage, no die"),
-  "spell.Contagion": NO_DICE("Contagion's hit deals no damage"),
-  "spell.Ray of Enfeeblement": NO_DICE("Ray of Enfeeblement's hit deals no damage"),
-};
+// Rows the four paths leave differently today, by row id. None: a blow with
+// no dice (a Blowgun, Contagion, Ray of Enfeeblement) lands at the to-hit
+// stage on entered dice too (src/lib/dm/pc-attack-parked.ts noDiceIn).
+const KNOWN_ROWS = {};
 // Why pc_attack alone cannot play a row: the call needs something this sweep
 // does not stage. A row refused for one of these on the server's dice is
 // counted under it; a row refused for any other reason fails.

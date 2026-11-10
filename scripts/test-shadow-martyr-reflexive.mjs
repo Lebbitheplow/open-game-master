@@ -17,6 +17,7 @@ const { createDmTurn } = await import("../src/lib/db/dm-turns.ts");
 const { directCardCalls } = await import("../src/lib/dm/intent-logic.ts");
 const { invokeEngine } = await import("../src/lib/dm/invoke.ts");
 
+const { ECHO_OUT } = await import("../src/lib/srd/authored-effects-data-b.ts");
 const hero = (classId, subclass, level = 20) =>
   world.addHero({
     user: world.owner, class: classId, subclass, level, maxHp: 100, ac: 12, acOverride: true, proficiencies: TRAINED,
@@ -35,6 +36,9 @@ async function stage(holder, ally, enemies = 1) {
   kit.place(ally.id, 4, 5);
   kit.freshRound();
   for (const who of [holder, ally]) world.patch(who.id, { currentHp: 50, conditions: [], conditionMeta: {} });
+  // An Echo Knight's echo is out: Shadow Martyr sends it into a hit only while
+  // it is (Manifest Echo leaves the mark, authored-effects-data-b.ts).
+  if (/echo knight/i.test(world.sheet(holder.id).subclass ?? "")) world.patch(holder.id, { conditions: [ECHO_OUT], conditionMeta: { [ECHO_OUT]: { rounds: 600 } } });
   return foes;
 }
 // A club at +4, 1d6+2: a 16 on the die is a 20, through AC 12, for 6.
@@ -103,6 +107,15 @@ await test("Shadow Martyr: the same roll is made against the echo, AC 14 + profi
   let out = await martyr(knight, friend);
   assert.equal(out.ok, true, out.error);
   assert.match(out.result.applied, /20 hits the echo \(AC 20, 1 hit point\) and destroys it/);
+  assert.equal(world.sheet(knight.id).conditions.includes(ECHO_OUT), false, "the destroyed echo is no longer out");
+  // With no echo out there is nothing to send into the next hit.
+  backReaction();
+  setUsed(knight, COUNTER, 0);
+  kit.freshRound();
+  await strike(enemy, friend);
+  const none = await martyr(knight, friend);
+  assert.equal(none.ok, false, "Shadow Martyr went through with no echo out");
+  assert.equal(used(knight, COUNTER), 0);
   [enemy] = await stage(knight, friend);
   setUsed(knight, COUNTER, 0);
   world.dice(12, 4);

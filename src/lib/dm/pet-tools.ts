@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { recordTrigger } from "@/lib/dm/last-save";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
@@ -462,6 +463,11 @@ export function handleDamagePet(
   const pets = sheet.pets.map((entry) => (entry === pet ? { ...entry, hp } : entry));
   patchSheet(sheet.id, { pets });
   publishSheet(campaign, sheet.id);
+  // Damage to a pet is the trigger its owner's reaction answers (a drake's
+  // resistance, src/lib/dm/last-save.ts).
+  if (dealt > 0) {
+    recordTrigger(campaign.id, { kind: "pet_damage", characterId: sheet.id, forcer: { id: sheet.id, name: sheet.name }, petName: pet.name, damage: { amount: dealt, type: args.type?.trim() ?? "" } });
+  }
   return {
     ok: true,
     pet: pet.name,

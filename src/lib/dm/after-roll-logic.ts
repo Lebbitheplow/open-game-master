@@ -84,10 +84,15 @@ export type ThrownRoll = {
   kept?: boolean;
 };
 
-// The rolls that can wait: an ability check or a saving throw. Initiative
-// locks the order and a death save is thrown by its own engine.
+// The rolls that can wait: an ability check or a saving throw, initiative
+// (a Dexterity check) among them. Death saves are saving throws, and wait
+// through src/lib/dm/character-roll.ts. The 20 second clock keeps a table
+// from waiting long on either ("After-the-roll holders are asked on
+// initiative and death saves too": maintainer decision R4 of the
+// 2026-11-09 gap sweep; they were left out before as the order locking and
+// the death save's own engine).
 export function canWaitOnRoll(kind: string): boolean {
-  return kind === "saving_throw" || kind === "skill_check" || kind === "ability_check";
+  return kind === "saving_throw" || kind === "skill_check" || kind === "ability_check" || kind === "initiative";
 }
 
 const HELD_DIE = /^(bardic inspiration|dark one's own luck) \((d\d{1,2})\)$/i;

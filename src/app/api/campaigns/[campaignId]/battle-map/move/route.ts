@@ -31,6 +31,7 @@ import { removeConditions } from "@/lib/dm/condition-logic";
 import { awayFromFear, fearSourceAt } from "@/lib/dm/enemy-approach";
 import { publishPersisted } from "@/lib/events";
 import { releaseGrapplesOutOfReach } from "@/lib/dm/grapple";
+import { afterMoveLeashes } from "@/lib/dm/condition-leash";
 import { withZoneSteps } from "@/lib/dm/zone-rules";
 import { zonesAfterMove } from "@/lib/dm/zone-triggers";
 import { standUpTiles } from "@/lib/srd/authored-effects-more";
@@ -409,8 +410,12 @@ export async function POST(
   for (const entry of carried) {
     moveToken(entry.token.id, entry.at.x, entry.at.y, entry.token.movedThisRound);
   }
-  // Walking away from a grapple ends it (src/lib/dm/grapple.ts).
+  // Walking away from a grapple ends it (src/lib/dm/grapple.ts), and away
+  // from a creature the walker leashes ends the leash (condition-leash.ts).
   const letGo = campaign ? releaseGrapplesOutOfReach(campaign) : [];
+  if (campaign) {
+    afterMoveLeashes(campaign);
+  }
   if (stands) {
     // Read again: the move above may have ended an invisibility on the sheet.
     const current = getSheetById(sheet.id) ?? sheet;

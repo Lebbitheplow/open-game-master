@@ -214,13 +214,7 @@ const ID_ROUTES = [
 // names are the model's words (tool-errors.ts: each sentence is written for
 // the model), so none belongs in one.
 const TOOL_WORD = new RegExp(`\\b(${ADJUDICATION_NAMES.filter((name) => name.includes("_")).join("|")})\\b`);
-const KNOWN_WORDS = {
-  "sheet/usage": {
-    where: "src/app/api/campaigns/[campaignId]/sheet/usage/route.ts (relays heldTurnRefusal's sentence, held-turn.ts heldActionLine, written for the model); the board's walk says the same thing in the player's words (heldTurnLine)",
-    severity: "low",
-    note: "Seen by a player who toggles a shield on a turn held for the enemies before it: \"play their turns (enemy_attack / take_action with each one's enemyId) first\".",
-  },
-};
+const KNOWN_WORDS = {};
 for (const [path, said] of refusals) {
   const leaks = [...said].filter((sentence) => TOOL_WORD.test(sentence));
   const run = () => assert.deepEqual(leaks, [], `${path} answered a player in the model's tool words`);

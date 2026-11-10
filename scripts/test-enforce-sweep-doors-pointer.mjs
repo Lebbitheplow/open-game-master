@@ -68,6 +68,13 @@ rows.push(
 
 const SKIP = {
   "reaction-attack:Soul of Vengeance": "answers an attack by the creature under the holder's Vow of Enmity, on record: the bare staging has neither vow nor attack (the trigger is the spends sweep's to stage)",
+  // A reaction is held to its trigger's record (src/lib/srd/trigger-table.ts,
+  // SRD 5.1 Reactions: "an instant response to a trigger of some kind"): the
+  // bare staging has nothing for these to answer, so the control cannot go
+  // through. The spends sweep stages each trigger (scripts/lib/sweep-spends-walk.mjs).
+  "reaction-attack:Opportunist": "answers a creature within 5 feet that another creature just hit, on record: the bare staging has no such hit (the trigger is the spends sweep's to stage)",
+  "reaction-attack:Inspiring Surge": "answers the banneret's Action Surge this turn, on record: the bare staging has none (the trigger is the spends sweep's to stage)",
+  "reaction-attack:Slayer's Counter": "answers a save the creature under Slayer's Prey forced on the holder, on record: the bare staging has neither (the trigger is the spends sweep's to stage)",
 };
 
 const HELD_AS_OWN = {
@@ -77,17 +84,10 @@ const HELD_AS_OWN = {
 };
 const KNOWN = {
   ...Object.fromEntries(
-    ["Voice of Authority", "Hold the Line", "Inspiring Surge", "Opportunist", "Slayer's Counter"].flatMap((name) => ["console", "ai"].map((door) => [`reaction-attack:${name}|${door}`, HELD_AS_OWN])),
-  ),
-  ...Object.fromEntries(
-    ["console", "ai"].map((door) => [
-      `forced-move|${door}`,
-      {
-        where: "src/lib/dm/map-tools.ts move_token, the forced branch (`current?.kind === \"pc\" && current.characterId === resolved.token.refId`): reads the pointer alone",
-        severity: "high",
-        note: "A push, a drag or a carry by an enemy acting in the pass before the hero is answered \"It is Brom's own turn; they move their own token from the board ... Forced movement is for a push, drag or carry on someone else's turn\": it IS someone else's turn, and the hero stays where the rules moved them from.",
-      },
-    ]),
+    // Voice of Authority and Hold the Line now go on a held turn as on any other
+    // hero's (authored-reactions.ts asks turnHeldForEnemies); the three in SKIP
+    // wait for their trigger. The entry stays for a reaction that regresses.
+    ([]).flatMap((name) => ["console", "ai"].map((door) => [`reaction-attack:${name}|${door}`, HELD_AS_OWN])),
   ),
 };
 

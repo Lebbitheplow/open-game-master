@@ -1,5 +1,4 @@
 import { dungeonDelverNotices, hasDungeonDelver } from "@/lib/srd/feat-combat";
-import { heroRollTag } from "@/lib/dice-script-logic";
 import { CHECK_KEY_PROPERTIES, named, NONE } from "@/lib/dm/roll-about";
 import { CHECK_KEY_FIELDS } from "@/lib/dm/roll-args";
 import { askedFields, unnamedTraitFields } from "@/lib/dm/roll-feature-riders";
@@ -8,14 +7,15 @@ import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getSheetById } from "@/lib/db/sheets";
 import { insertRoll } from "@/lib/db/rolls";
 import type { DmTurn } from "@/lib/db/dm-turns";
-import { rollExpression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
 import { computeSheetDerived, SRD_SKILLS } from "@/lib/srd";
 import { dcForDifficulty, difficultyOfDc, normalizeDifficulty } from "@/lib/srd/dc";
 import { strictnessShift } from "@/lib/dm/safety-logic";
 import { resolveRollExpression, resolveSheetRef } from "@/lib/dm/rolls";
 import { itemCheckRiders } from "@/lib/srd/item-check-riders";
-import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers, throwWatchedCheck } from "@/lib/dm/forced-save";
+import { heldDieWaits, rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
+import { rollCharacterD20 } from "@/lib/dm/character-roll";
+import { canAct } from "@/lib/dm/can-act";
 import { rollEffectExtras } from "@/lib/dm/effect-tools";
 import { exhaustionRollState, mergeAdvantage, rollDerivation, type AdvantageState } from "@/lib/dm/condition-logic";
 import { conditionRollRiders } from "@/lib/srd/condition-effects";
@@ -268,8 +268,11 @@ export function handleGroupCheck(
       terrain: args.terrain,
       by: args.by,
     } as unknown as RollArgs;
-    // The dead take no part, and count as a failure for the group.
-    if (sheet.deathSaves?.dead) {
+    // The dead take no part, and count as a failure for the group; so do
+    // those who cannot act, at 0 hit points, asleep or turned to stone (SRD
+    // 5.1: "incapacitated ..., can't move or speak, and is unaware of its
+    // surroundings"; finding doors-14 of the 2026-11-09 gap sweep).
+    if (!canAct({ sheet, encounter: null, kind: "action" }).ok) {
       results.push({ name: sheet.name, total: 0, success: false });
       continue;
     }
@@ -287,12 +290,17 @@ export function handleGroupCheck(
     }
     // An inspiration die or a held Help is spent by the roll it rides.
     spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-    // A check is watched as any check a call throws (forced-save.ts).
-    const tag = heroRollTag(rollArgs.kind, sheet.name);
-    const rolled = tag?.kind === "check" ? throwWatchedCheck(campaign.id, sheet, resolved.expression, dc.dc, waits) : (() => {
-      const thrown = rollExpression(resolved.expression, undefined, { purpose: tag });
-      return waits ? settleHeldDie(campaign.id, sheet.id, thrown, dc.dc) : thrown;
-    })();
+    // Each player's own d20 (src/lib/dm/character-roll.ts): a seat on
+    // physical dice rolls theirs (issue #896), and the group is settled once
+    // every roll is in.
+    const rolled = rollCharacterD20(campaign, sheet, {
+      kind,
+      expression: resolved.expression,
+      detail: `${sheet.name}: group ${args.skill ?? args.ability} check`,
+      dc: dc.dc,
+      ...(args.reason ? { reason: args.reason } : {}),
+      settleHeldDie: waits,
+    });
     const roll = insertRoll({
       campaignId: campaign.id,
       characterId: sheet.id,

@@ -11,13 +11,17 @@
 // Pure and alias-import-free so scripts/test-held-rolls.mjs can load it.
 
 // What a player rolling real dice is asked for, said wherever they opt in.
-// The engine parks the rolls a card can wait on: a request_roll, a pc_attack's
-// to-hit and damage, initiative. The rolls it makes in the middle of
-// resolving something else (a death save as the turn passes, a concentration
-// save as damage lands, a save an enemy's spell forces) are thrown at once,
-// so the promise names them rather than saying every roll waits.
+// Every d20 a GM's call throws for a character goes through one door
+// (src/lib/dm/character-roll.ts), which holds the call for the card: a
+// request_roll and a pc_attack park their own, and every other check, save,
+// contest and attack waits the same way, the saves the engine forces and
+// concentration included ("A seat on physical dice rolls its own saves,
+// including saves the engine forces", maintainer decision R5 of the
+// 2026-11-09 gap sweep, after issue #896). A roll made outside any of the
+// GM's calls (a death save as the turn passes once the GM has spoken, a
+// disease's save at a rest) has no call to hold, and is still thrown.
 export const REAL_DICE_SCOPE =
-  "You roll your attacks and their damage, initiative, and the checks and saves the GM asks for. The table rolls the rest for you, such as death saves, concentration, and the saves a spell, trap or monster forces on you.";
+  "You roll your attacks and their damage, initiative, and every check and save your character makes, the saves a spell, trap or monster forces on you included. Only a roll that comes between the GM's moves, such as a death save as your turn begins, may be rolled for you.";
 
 export type HeldRollMember = {
   userId: string;

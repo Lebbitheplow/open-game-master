@@ -195,7 +195,11 @@ test("the passive defs are the ones something else spends", () => {
   // Sentinel at Death's Door is spent by its reaction, when a critical offers it.
   // Searing Vengeance is spent in place of a death save (searing-vengeance.ts).
   // Faithful Summons is spent by the incapacity watch as the druid falls (faithful-summons.ts).
-  assert.deepEqual(passive, ["relentless_endurance", "inspiration", "relentless_rage", "signature_spell_1", "signature_spell_2", "overchannel", "sub_psionic_recovery", "sub_runic_shield", "sub_shadow_martyr", "sub_warding_flare", "sub_wrath_of_the_storm", "sub_sentinel_at_deaths_door", "sub_faithful_summons", "sub_blazing_revival", "sub_entropic_ward", "sub_searing_vengeance", "sub_strength_of_the_grave", "sub_illusory_self", "sub_glorious_defense", "sub_undying_sentinel", "sub_arcane_ward", "sub_arcane_ward_raised"]);
+  // WAVE1 R10: a pool spent only through another tool refuses a bare spend
+  // (sorcery points, Lucky's points, Hurl Through Hell, Psionic Energy, the
+  // drake, the after-roll counters), and a counter whose use is a spell is
+  // spent by the cast (src/lib/srd/counter-casts.ts, Mystic Arcanum).
+  assert.deepEqual(passive, ["sorcery_points", "luck_points", "relentless_endurance", "stroke_of_luck", "inspiration", "relentless_rage", "signature_spell_1", "signature_spell_2", "overchannel", "hurl_through_hell", "mystic_arcanum_6", "mystic_arcanum_7", "mystic_arcanum_8", "mystic_arcanum_9", "sub_psionic_energy", "sub_psionic_recovery", "sub_runic_shield", "sub_shadow_martyr", "sub_warding_flare", "sub_wrath_of_the_storm", "sub_sentinel_at_deaths_door", "sub_faithful_summons", "sub_star_map", "sub_blazing_revival", "sub_walker_in_dreams", "sub_consult_the_spirits", "sub_entropic_ward", "sub_searing_vengeance", "sub_grasping_tentacles", "sub_favored_by_the_gods", "sub_strength_of_the_grave", "sub_lunar_free_cast", "sub_waxing_and_waning", "sub_portent", "sub_illusory_self", "sub_shapechanger", "sub_fey_reinforcements", "sub_drake_companion", "sub_master_duelist", "sub_glorious_defense", "sub_undying_sentinel", "art_restorative_reagents", "sub_telekinetic_master", "sub_arcane_ward", "sub_arcane_ward_raised"]);
 });
 
 test("Relentless Endurance spends once, then refuses", () => {
@@ -225,13 +229,7 @@ test("Font of Magic's two conversions are fixed variants; anything else is a Met
 const NAMES_A_COST = /\b(?:bonus[- ]action|reaction|an action|action:)/i;
 const CHARGED_ELSEWHERE = {
   ki: "each use (Flurry, Patient Defense, Step of the Wind) costs its own",
-  sorcery_points: "Metamagic and slot conversion cost different things",
-  luck_points: "spent on a roll, no action",
-  // Each option costs its own, charged by use_resource from the option's
-  // name (src/lib/dm/option-costs.ts), pc_attack (a maneuver on the swing)
-  // or use_reaction (Parry, Riposte, Brace, Protective Field).
   channel_divinity: "each option costs its own",
-  sub_psionic_energy: "each use costs its own",
   sub_superiority_dice: "each maneuver costs its own",
   cyberpunk_surge_momentum: "the cantrip's cast is the cost",
   horror_the_rite_remembers: "the cantrip's cast is the cost",
@@ -248,11 +246,13 @@ const CHARGED_ELSEWHERE = {
   sub_war_priest: "the bonus attack, not the use, costs the bonus action",
   race_hungry_jaws: "the bonus attack, not the use, costs the bonus action",
   sub_unwavering_mark: "the bonus attack, not the use, costs the bonus action",
-  sub_telekinetic_master: "the slotless cast, then pc_attack's bonus attack",
   sub_embodiment_of_the_law: "the enchantment spell's cast is the cost (the use marks it for the bonus action)",
-  sub_waxing_and_waning: "the slotless spell's cast is the cost; the phase is the Lunar Phase choice",
 };
 
+// Sorcery points, Lucky's points, Psionic Energy, Telekinetic Master and
+// Waxing and Waning left the list above as passive: a pool spent only through
+// another call refuses a bare spend (WAVE1 R10), and a counter whose use is a
+// spell is spent by the cast (src/lib/srd/counter-casts.ts).
 test("every feature whose text names a cost carries it", () => {
   const uncosted = RESOURCE_DEFS.filter((def) => !def.action && !def.passive && NAMES_A_COST.test(def.guidance)).map((def) => def.id);
   assert.deepEqual(uncosted.sort(), Object.keys(CHARGED_ELSEWHERE).sort());
@@ -321,6 +321,17 @@ test("the costs the authored summaries got wrong are the books'", () => {
   for (const [id, cost] of Object.entries(books)) {
     assert.equal(resourceDef(id).action, cost, id);
   }
+});
+
+// A subclass counter's free cast is held by the subclass feature, never by a
+// species trait of the same name: a changeling's Shapechanger alters their
+// looks and casts no polymorph (src/lib/srd/counter-casts.ts).
+const { counterCastsHeld } = await import("../src/lib/srd/counter-casts.ts");
+test("a species trait named like a subclass counter casts nothing", () => {
+  const changeling = [{ name: "Shapechanger (alter your appearance as an action, no action economy cost to revert)", source: "race" }];
+  assert.deepEqual(counterCastsHeld(changeling), []);
+  const transmuter = [{ name: "Shapechanger", source: "srd" }];
+  assert.deepEqual(counterCastsHeld(transmuter).map((entry) => entry.spell), ["Polymorph"]);
 });
 
 console.log(`test-class-resources: ${passed} tests passed`);

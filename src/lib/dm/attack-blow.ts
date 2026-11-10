@@ -233,7 +233,11 @@ function bonusActionsOpened(scene: SwingScene, record: AttackRecord, crit: boole
   const { campaign, sheet } = scene;
   const notes: string[] = [];
   const meleeWeapon = record.weaponAttack === true && record.ranged !== true && record.melee === true;
-  if (meleeWeapon && (crit || dead) && holdsFeat(sheet, "Great Weapon Master") && markAttackTurn(campaign.id, record, GREAT_WEAPON_MASTER_READY)) {
+  // A critical opened it already at the to-hit stage (attack-swing.ts hitSwing).
+  // Said only while that turn still runs: a damage roll entered later opens
+  // nothing on the turn it lands in.
+  const openedAtHit = (record as AttackRecord & { gwmOpened?: boolean }).gwmOpened === true && attackTurn(campaign.id, record) !== null;
+  if (meleeWeapon && (crit || dead) && holdsFeat(sheet, "Great Weapon Master") && (openedAtHit || markAttackTurn(campaign.id, record, GREAT_WEAPON_MASTER_READY))) {
     notes.push(`Great Weapon Master: ${crit ? "the critical hit" : "the kill"} opens a bonus-action melee attack this turn (an entry with feature "Great Weapon Master")`);
   }
   if ((record.unarmed || record.improvised) && record.ranged !== true && brawlerUnarmed(sheet) && markAttackTurn(campaign.id, record, TAVERN_GRAPPLE_READY)) {

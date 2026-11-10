@@ -29,8 +29,9 @@ import { earnedAsiCountFor } from "@/lib/srd/asi";
 import { legacyAsiTaken, readAsiLedger, withAsiLedger } from "@/lib/srd/asi-ledger";
 import { backgroundFeatureFor } from "@/lib/backgrounds";
 import { attunementSlotsFor, matchArmor } from "@/lib/srd/armor";
-import { classFeaturesFor, racialTraitsFor, subclassLevelFor } from "@/lib/srd/features";
+import { racialTraitsFor, subclassLevelFor } from "@/lib/srd/features";
 import { chosenFightingStyles, fightingStyleChoices, fightingStyleSlots, newStyleFits } from "@/lib/srd/feature-effects";
+import { styleSlotFeatures } from "@/lib/srd/style-slots";
 import {
   derivedMaxHp,
   hpBonusPerLevelFor,
@@ -745,9 +746,7 @@ export function legalizeSheet(input: CreateSheetInput, context: LegalityContext)
   if (!policy.trustsHeld) {
     const book = sheetSpellbook({ spellcasting: input.spellcasting ?? null });
     const heldNames = new Set((held?.features ?? []).map((feature) => textKey(feature.name)));
-    const classFeatures = classes.flatMap((entry) =>
-      classFeaturesFor(entry.id, entry.subclass ?? "", entry.level, context.subclassExtras).map((feature) => ({ ...feature, classId: entry.id })),
-    );
+    const classFeatures = styleSlotFeatures(classes, context.subclassExtras);
     const classStyles = fightingStyleChoices(classFeatures);
     const styleSlots = fightingStyleSlots(classFeatures);
     const placedStyles = chosenFightingStyles((held?.features ?? []).filter((feature) => feature.source === "choice"));

@@ -59,6 +59,22 @@ export function drop(
 ): ToolResult {
   // Strapped on or worn, it does not simply fall: a shield takes an action
   // to take off, armor minutes (SRD 5.1, Getting Into and Out of Armor).
+  // Free does not mean any time: dropping is the turn's own object
+  // interaction (SRD 5.1, Other Activity on Your Turn: "for free, during
+  // either your move or your action"), as picking up is, and an unconscious
+  // character lets go of nothing by choice. A dying hero, a hero on another's
+  // turn and one whose turn is held for the enemies before them dropped
+  // their weapon on the AI's word.
+  if (encounter) {
+    const able = canAct({ sheet, encounter, kind: "free" });
+    if (!able.ok) {
+      return toolError(able);
+    }
+    const heldOff = heldTurnRefusal(encounter, sheet);
+    if (heldOff) {
+      return heldOff;
+    }
+  }
   const kind = gearKindOf(row);
   if (encounter && (kind === "armor" || kind === "shield") && inHand(row, sheet.equipment)) {
     return refuse(

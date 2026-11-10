@@ -32,7 +32,11 @@
 //   whole, as they are the sheet;
 //   the cast is stored and sent as the people the table knows, met or heard
 //   (src/lib/dm/cast-logic.ts, issue 650); the seats that read the whole
-//   cast in the GM's people panel are sent it all, each marked, live.
+//   cast in the GM's people panel are sent it all, each marked, live;
+//   a creature the GM keeps off the board is "someone unseen" in every
+//   roll, sheet change, message and tracker the table is sent
+//   (src/lib/hidden-names-logic.ts); the seats that see the whole map are
+//   sent its name, live.
 import { campaignSeats, capsFor, getCampaignById, type Campaign } from "@/lib/db/campaigns";
 import { getRoll } from "@/lib/db/rolls";
 import { getAuditEntry } from "@/lib/db/sheet-audit";
@@ -42,6 +46,10 @@ import { redactRoll, rollAccessFor, type RollView } from "@/lib/dm/viewer";
 import { audienceOf, type SeatRight } from "@/lib/event-audience";
 import { offerVisibleTo, publicItemProposal, readProposal } from "@/lib/dm/proposal-view";
 import { knownCast } from "@/lib/dm/cast-logic";
+import { getBattleMapForEncounter, getTokenByRef, listHiddenRefIds } from "@/lib/db/battle-maps";
+import { getActiveEncounter, listEnemies } from "@/lib/db/encounters";
+import { listSheets } from "@/lib/db/sheets";
+import { hideNames, namesToHide } from "@/lib/hidden-names-logic";
 
 type Payload = Record<string, unknown>;
 type SheetLike = { id: string; userId: string; notes?: string; hopes?: string; openToAdvances?: boolean; openToPacts?: boolean };
@@ -190,6 +198,64 @@ export function tablePayload(type: string, payload: unknown): unknown {
   return payload;
 }
 
+// The events whose words or entries can name a creature in a fight. The
+// narration's own words are the model's, told "someone unseen" in its game
+// state; its stream (dm_delta, a token at a time) is left out of this.
+const NAMING_TYPES: ReadonlySet<string> = new Set(["roll_result", "sheet_audit", "message_added", "encounter_updated", "fx"]);
+
+// The creatures of a campaign's fight its table has not seen, by encounter:
+// one whose token the GM hides, kept as it leaves the board (a creature that
+// flees or falls while unseen takes its token with it, and its last order
+// entry named it), and given up once its token is shown.
+const unseenByCampaign = new Map<string, { encounterId: string; names: Map<string, string> }>();
+
+function unseenNames(campaignId: string): string[] {
+  const encounter = getActiveEncounter(campaignId);
+  if (!encounter) {
+    unseenByCampaign.delete(campaignId);
+    return [];
+  }
+  const known = unseenByCampaign.get(campaignId);
+  const names = known && known.encounterId === encounter.id ? known.names : new Map<string, string>();
+  const map = getBattleMapForEncounter(encounter.id);
+  const hidden = new Set(map ? listHiddenRefIds(map.id) : []);
+  const enemies = listEnemies(encounter.id);
+  for (const enemy of enemies) {
+    if (hidden.has(enemy.id)) {
+      names.set(enemy.id, enemy.displayName);
+    } else if (map && names.has(enemy.id) && getTokenByRef(map.id, enemy.id)) {
+      // Its token is on the board for all to see now.
+      names.delete(enemy.id);
+    }
+  }
+  unseenByCampaign.set(campaignId, { encounterId: encounter.id, names });
+  if (!names.size) {
+    return [];
+  }
+  const shown = [
+    ...enemies.filter((enemy) => !names.has(enemy.id)).map((enemy) => enemy.displayName),
+    ...listSheets(campaignId).map((sheet) => sheet.name),
+  ];
+  return namesToHide([...names.values()], shown);
+}
+
+// The payload as the whole table may hold it, for a campaign: tablePayload,
+// with the creatures the table has not seen kept out of it. Every event of
+// a campaign is stored and sent through this (src/lib/events.ts).
+const NAMES_HIDDEN = new WeakSet<object>();
+export function tablePayloadFor(campaignId: string, type: string, payload: unknown): unknown {
+  const stored = tablePayload(type, payload);
+  if (!NAMING_TYPES.has(type) || !stored || typeof stored !== "object") {
+    return stored;
+  }
+  const names = unseenNames(campaignId);
+  const hiddenFrom = hideNames(stored, names);
+  if (hiddenFrom !== stored && hiddenFrom && typeof hiddenFrom === "object") {
+    NAMES_HIDDEN.add(hiddenFrom);
+  }
+  return hiddenFrom;
+}
+
 // One listener's view of a campaign, worked out once per event and only when
 // an event needs it.
 export type Viewer = {
@@ -234,6 +300,11 @@ export function payloadForViewer(
   const audience = audienceOf(type);
   if (!audience) {
     return null;
+  }
+  // The seats that see the whole map are sent the hidden creature's name,
+  // live; the log keeps the table's words.
+  if (stored && typeof stored === "object" && NAMES_HIDDEN.has(stored) && original !== undefined && holds(viewer, "fullMap")) {
+    stored = tablePayload(type, original);
   }
   if (audience.kind === "dm") {
     return holds(viewer, audience.right) ? stored : null;

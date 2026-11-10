@@ -447,7 +447,15 @@ await test("Skirmisher: when an enemy stands within 5 feet of the Scout, a react
   kit.place(enemy.id, 9, 9);
   const alone = await react(scout, "Skirmisher", { x: 5, y: 3 });
   assert.equal(alone.ok, false, "no enemy within 5 feet");
+  // "When an enemy ends its turn within 5 feet of you": the enemy's turn ends
+  // beside the Scout, as the engine ends it when the pointer leaves it
+  // (src/lib/dm/last-hit.ts closeHitsAtTurnEnd keeps the trigger).
   kit.place(enemy.id, 5, 6);
+  const nothing = await react(scout, "Skirmisher", { x: 5, y: 2 });
+  assert.equal(nothing.ok, false, "an enemy standing there whose turn has not ended is not the trigger");
+  const { closeHitsAtTurnEnd } = await import("../src/lib/dm/last-hit.ts");
+  const encounter = world.encounter();
+  closeHitsAtTurnEnd(world.campaignId, encounter, encounter.order.find((entry) => entry.enemyId === enemy.id));
   const tooFar = await react(scout, "Skirmisher", { x: 5, y: 1 });
   assert.equal(tooFar.ok, false, "more than half their speed");
   const before = kit.lastRolls(60).length;
@@ -592,19 +600,19 @@ await test("Gathered Swarm moves the creature the ranger hit 15 feet on a failed
   const hit = await kit.swing(swarmer.id, enemy.id, [18, 4, 4]);
   assert.equal(hit.ok, true, hit.error);
   kit.freshTurn();
+  // "a hit lets your swarm deal 1d6 piercing damage, move the target 15
+  // feet, or move you 5 feet": the push follows the hit, in place of the
+  // damage (its die comes back off), and once a turn. It was refused after
+  // every hit and reached only through a turn wiped by hand.
   const struck = await kit.swing(swarmer.id, enemy.id, [18, 4]);
   assert.equal(struck.ok, true, struck.error);
-  world.clearDice();
-  world.dice(1);
-  const push = await spend(swarmer, "Gathered Swarm", { variant: "push", targetEnemyId: enemy.id });
-  world.clearDice();
-  assert.equal(push.ok, false, "the swarm already dealt its damage this turn");
-  kit.freshTurn();
   world.clearDice();
   world.dice(1);
   const fresh1 = await spend(swarmer, "Gathered Swarm", { variant: "push", targetEnemyId: enemy.id });
   world.clearDice();
   assert.equal(fresh1.ok, true, fresh1.error);
+  const again = await spend(swarmer, "Gathered Swarm", { variant: "push", targetEnemyId: enemy.id });
+  assert.equal(again.ok, false, "once a turn");
   const at = tokenAt(enemy.id);
   assert.ok(Math.max(Math.abs(at.x - 5), Math.abs(at.y - 5)) >= 3, `moved away: ${JSON.stringify(at)}`);
   assert.ok(kit.enemy(enemy.id).conditions.includes("prone"), "Mighty Swarm knocks it prone");

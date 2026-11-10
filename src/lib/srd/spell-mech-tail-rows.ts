@@ -31,6 +31,15 @@ const TABLE_MAGIC = [
   "forcecage",
   "glyph of warding",
   "wall of stone",
+  // A save whose failure is a compulsion or a pull the engine keeps no
+  // state for: Compulsion (SRD 5.1, "moves in a direction of your choice"),
+  // and the subclass spells Compelled Duel and Grasping Vine
+  // (authored-spells.json, no mechanics row of their own). Read as a save
+  // with no damage and no condition, their cards were sent to cast_at_enemy,
+  // which answered that nothing would happen and cast nothing.
+  "compulsion",
+  "compelled duel",
+  "grasping vine",
 ];
 
 export const SRD_TAIL_ROWS: Record<string, SpellMech> = {
@@ -430,6 +439,13 @@ export const SRD_TAIL_ROWS: Record<string, SpellMech> = {
   },
 
   // ---- healing that goes on ----
+  // Aura of Vitality (authored-spells.json): "a bonus action lets you
+  // restore 2d6 hit points", no modifier. The heal tool added the caster's
+  // spellcasting modifier and the card showed the dice alone.
+  "aura of vitality": {
+    resolution: "heal",
+    healNoModifier: true,
+  },
   regenerate: {
     resolution: "heal",
     dice: { base: "4d8+15", baseLevel: 7 },

@@ -197,5 +197,10 @@ export function unawareReason(sheet: { currentHp: number; conditions: string[]; 
   if (sheet.currentHp <= 0) {
     return "at 0 hit points, unconscious: unaware of their surroundings";
   }
+  // SRD 5.1, Petrified: "is incapacitated ..., can't move or speak, and is
+  // unaware of its surroundings", as the unconscious are (finding doors-15).
+  if (sheet.conditions.some((condition) => isConditionNamed(condition, "petrified"))) {
+    return "petrified: unaware of their surroundings";
+  }
   return null;
 }

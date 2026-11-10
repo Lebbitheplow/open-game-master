@@ -88,6 +88,14 @@ export function judge({ state, card, played, variant, heroId, riderCards = [] })
     return out;
   }
 
+  if (enabled && played.withheld) {
+    // The card leaves this creature's chip off its aim bar (it cannot be
+    // seen): the engine, forced, must refuse it too.
+    out.push(accepted
+      ? { prop: "P5", ok: false, msg: `the card withholds the chip ("${short(played.withheld)}"), and the engine takes it when forced (${played.calls.map((call) => call.name).join(", ")})` }
+      : { prop: "P5", ok: true });
+    return out;
+  }
   if (enabled) {
     if (variant === ":self") {
       // The holder's own chip on an ally card.
@@ -172,7 +180,9 @@ export function judge({ state, card, played, variant, heroId, riderCards = [] })
     } else {
       const flat = flatOf(attackRoll);
       const otherDice = attackRoll.terms.filter((term) => term.kind === "dice" && term.sides !== 20).map((term) => `${term.sign < 0 ? "-" : "+"}${term.count}d${term.sides}`);
-      out.push(flat === card.toHit && !otherDice.length
+      // The dice the card names beside its bonus (toHitDice, "+1d4" while
+      // blessed) must be exactly the ones rolled: a card with none names none.
+      out.push(flat === card.toHit && sameTerms(termsOf(otherDice.join("")), termsOf(card.toHitDice ?? ""))
         ? { prop: "P3", ok: true }
         : { prop: "P3", ok: false, msg: `to hit: the card shows ${card.toHit >= 0 ? "+" : ""}${card.toHit}, the engine rolled ${attackRoll.expression}` });
       const row = (played.preview ?? []).find((entry) => entry.key === "To hit");

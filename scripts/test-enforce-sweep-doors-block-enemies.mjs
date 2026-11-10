@@ -33,25 +33,7 @@ const SKIP = Object.fromEntries(
 const BOTH = ["console", "ai"];
 const cellsOf = (row, states) => states.flatMap((state) => BOTH.map((door) => `${row}|${state}|${door}`));
 
-const KNOWN = {
-  // enemy_flees refuses a creature lying knocked out (issue #667) and asks
-  // nothing else of it.
-  ...known(cellsOf("enemy_flees", ["asleep", "stunned", "paralyzed", "petrified", "surprised", "grappled", "restrained"]), {
-    where: "src/lib/dm/encounter-tools-extra.ts handleEnemyFlees (only status and isKnockedOut are asked; no canEnemyAct, no speed)",
-    severity: "medium",
-    note: "A creature that cannot move cannot run: the handler's own comment says so for a knocked-out one (\"unconscious, they cannot flee\", issue #667), and unconscious by a spell, stunned, paralyzed, petrified, grappled and restrained are the same rule.",
-  }),
-  ...known(cellsOf("move_token:enemy", ["surprised"]), {
-    where: "src/lib/dm/map-tools.ts / token-rules.ts (move_token for an enemy's token): canEnemyAct's surprise is asked of its action (enemy_attack, take_action), not of its walk",
-    severity: "medium",
-    note: "A hero surprised in round 1 is refused the walk (the hero matrix, move_token|surprised); a creature the party surprised walks its full speed.",
-  }),
-  ...known(cellsOf("declare_intent", ["asleep", "petrified"]), {
-    where: "src/lib/dm/encounter-tools-extra.ts (declare_intent): refuses the dead and the fled, not the unaware",
-    severity: "low",
-    note: "The board telegraphs an intent for a creature that is unconscious or stone.",
-  }),
-};
+const KNOWN = {};
 
 // ---- the stage ----
 
@@ -90,6 +72,12 @@ const STATES = [
     rule: "A creature that has fled the fight takes no part in it (enemy_flees: \"it is out of the fight\").",
     bars: (row) => row.tool !== "enemy_flees",
     apply: async (table, id) => {
+      // A row's prelude may have bound it (the escape row grapples it), and
+      // a creature at speed 0 cannot run (enemy_flees): it breaks free, then
+      // runs.
+      for (const condition of ["grappled", "restrained"].filter((name) => table.kit.enemy(id).conditions.includes(name))) {
+        await table.world.invoke("clear_enemy_condition", { enemyId: id, condition });
+      }
       const out = await table.world.invoke("enemy_flees", { enemyId: id, reason: "it runs" });
       assert.ok(out.ok && table.kit.enemy(id).status !== "alive", `sending it off: ${out.error ?? table.kit.enemy(id).status}`);
     },

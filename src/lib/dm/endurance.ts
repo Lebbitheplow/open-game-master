@@ -7,7 +7,7 @@
 //
 // Every save rides the character's own roll path, so a held Bardic
 // Inspiration, Help or Guidance is folded in and spent by the save it rides.
-// Each is thrown as a watched save (forced-save.ts throwWatchedSave), so what
+// Each is thrown through the character's d20 door (character-roll.ts rollCharacterD20), so what
 // a watch stop armed for it in a fight (a foretold number, a Chronal Shift,
 // Flash of Genius, Favored by the Gods: src/lib/dm/foresight.ts) lands on the
 // first hour's save it answers.
@@ -18,7 +18,8 @@ import type { DmTurn } from "@/lib/db/dm-turns";
 import { insertRoll } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
 import { publishWithSeq } from "@/lib/events";
-import { heldDieWaits, rollExtrasFor, spendRollCarriers, throwWatchedSave } from "@/lib/dm/forced-save";
+import { heldDieWaits, rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
+import { rollCharacterD20 } from "@/lib/dm/character-roll";
 import { applyDmMutation } from "@/lib/dm/mutations";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -68,7 +69,9 @@ export function hourlyConSaves(input: {
       failed = true;
     } else {
       spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-      const rolled = throwWatchedSave(campaign.id, sheet, resolved.expression, dc, waits);
+      // The player's own save (src/lib/dm/character-roll.ts; WAVE1 R5): on
+      // physical dice they roll it, hour by hour.
+      const rolled = rollCharacterD20(campaign, sheet, { kind: "saving_throw", expression: resolved.expression, detail: input.detail(hour), dc, settleHeldDie: waits });
       save = rolled.total;
       const roll = insertRoll({
         campaignId: campaign.id,

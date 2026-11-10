@@ -8,6 +8,7 @@ import { turncoatLinesForPrompt } from "@/lib/dm/turncoat";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { pactsAtOwnTurn } from "@/lib/dm/pacts";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { ownTurnOf } from "@/lib/dm/held-turn";
 
 // Where the leaving and the return meet the turn machinery (issue 503
 // Phases 2 and 3): before a DM turn builds its prompt (src/lib/dm/turn.ts)
@@ -22,7 +23,8 @@ export function settleCompanionLeaving(campaign: Campaign): string[] {
   // Phase 5): its members cross to the foes' side where they stand.
   const encounter = getActiveEncounter(campaign.id);
   const current = encounter?.orderReady ? encounter.order[encounter.turnIndex] : undefined;
-  const pacts = current?.kind === "pc" ? pactsAtOwnTurn(campaign, current.characterId) : [];
+  // Its leader's own turn, not the enemies' pass before it (held-turn.ts).
+  const pacts = current?.kind === "pc" && ownTurnOf(encounter, current.characterId) ? pactsAtOwnTurn(campaign, current.characterId) : [];
   const outcomes = [...settleDepartures(campaign), ...departureOpenings(campaign, "own_turn")];
   if (pacts.length || outcomes.some((outcome) => outcome.departed)) {
     settleTurn(campaign, holder);

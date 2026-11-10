@@ -3,6 +3,9 @@
 
 import type { AuthoredEntry } from "@/lib/srd/authored-effects-types";
 
+
+// The mark an Echo Knight's manifested echo leaves on them (Manifest Echo).
+export const ECHO_OUT = "echo manifested";
 export const AUTHORED_DATA_A2: Record<string, AuthoredEntry> = {
   // ---- druid ----
   // Combat Wild Shape spends Wild Shape's own uses: the change as a bonus
@@ -30,6 +33,8 @@ export const AUTHORED_DATA_A2: Record<string, AuthoredEntry> = {
     reactions: [
       {
         name: "Halo of Spores",
+        // "a creature you can see": the creature struck (authored-reactions.ts strike_back).
+        sees: "attacker",
         does: {
           kind: "strike_back",
           amount: [[2, "1d4"], [6, "1d6"], [10, "1d8"], [14, "1d10"]],
@@ -189,15 +194,19 @@ export const AUTHORED_DATA_A2: Record<string, AuthoredEntry> = {
     subclass: "Samurai",
     effects: [{ kind: "rapid_strike", note: "The extra attack's target is the same creature; the GM keeps to that." }],
   },
+  // The echo is kept as a mark on the knight while it lasts (a bonus action
+  // manifests it), so what needs it out can ask: Shadow Martyr sends it into a
+  // hit only while it is out, and the hit that destroys it takes the mark off
+  // (authored-reactions.ts echo_takes_hit). Its square on the board and the 30
+  // feet it may stray are the GM's to place (pull request handoff).
   "fighter::Manifest Echo": {
     subclass: "Echo Knight",
-    narrated:
-      "The echo is a position on the board, not a creature the engine tracks; attacks from its space are ordinary pc_attack calls.",
+    spends: [{ name: "Manifest Echo", action: "bonus", does: { kind: "buff", condition: ECHO_OUT, rounds: 600 } }],
   },
   "fighter::Shadow Martyr": {
     subclass: "Echo Knight",
     counter: "sub_shadow_martyr",
-    reactions: [{ name: "Shadow Martyr", pool: { id: "sub_shadow_martyr" }, sees: "target", does: { kind: "echo_takes_hit" } }],
+    reactions: [{ name: "Shadow Martyr", pool: { id: "sub_shadow_martyr" }, sees: "target", gate: { condition: ECHO_OUT }, does: { kind: "echo_takes_hit" } }],
   },
   "fighter::Legion of One": {
     subclass: "Echo Knight",
@@ -237,9 +246,12 @@ export const AUTHORED_DATA_A2: Record<string, AuthoredEntry> = {
         does: {
           kind: "variants",
           options: {
+            // "When you deal damage to a target with your Psionic Strike"
+            // (TCoE): it follows the hit, on the creature hit.
             thrust: {
               does: { kind: "save_effect", save: "str", dcAbility: "int", condition: "prone", rangeFt: 5, onFail: "may instead be pushed 10 feet (move_token forced)" },
               action: "none",
+              afterWeaponHit: true,
             },
             leap: { does: { kind: "buff", condition: "flying", rounds: 1 }, action: "bonus" },
           },

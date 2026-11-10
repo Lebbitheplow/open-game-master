@@ -293,8 +293,13 @@ export function directCardCall(intent: MessageIntent, characterId: string, conte
         case "dodge":
         case "dash":
         case "disengage":
-        case "hide":
           return { name: "take_action", args: { characterId, action: intent.action, ...bonus } };
+        case "hide":
+          // Out of a fight take_action answers Hide with instructions for the
+          // GM (a Stealth check and whoever is watching), which a person
+          // playing the card cannot follow: the GM takes it, as grapple and
+          // escape are taken there.
+          return inFight ? { name: "take_action", args: { characterId, action: "hide", ...bonus } } : null;
         case "search":
           return { name: "take_action", args: { characterId, action: "search", ...(intent.skill ? { skill: intent.skill } : {}), ...bonus } };
         case "help":
@@ -305,7 +310,11 @@ export function directCardCall(intent: MessageIntent, characterId: string, conte
         case "escape":
           return inFight ? { name: "take_action", args: { characterId, action: "escape" } } : null;
         case "ready":
-          if (!intent.trigger || (!intent.readyAction && !intent.readySpell)) {
+          // The card's first pick, "An attack", names nothing: take_action
+          // readies an attack when nothing is named, so the trigger alone is
+          // the call (SRD 5.1, Ready). It used to wait for the GM. Ready is a
+          // fight's action: out of one the GM takes it.
+          if (!intent.trigger || !inFight) {
             return null;
           }
           return {

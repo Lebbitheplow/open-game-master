@@ -45,6 +45,18 @@ export function allyRowsOf(campaignId: string, casterId: string, refs: readonly 
   return { rows, rest };
 }
 
+// Whether the argument door (arg-coerce.ts doorArgs) lets an id in a list of
+// character ids through though it is no character's: cast_buff's
+// targetCharacterIds names an enemy row on the caster's side, and only by the
+// allyRowsOf the handler reads. Every list a handler reads creature rows
+// from goes here, beside its lookup.
+export function sideAllyInList(campaignId: string, tool: string, key: string, ref: string, args: Readonly<Record<string, unknown>>): boolean {
+  if (tool !== "cast_buff" || key !== "targetCharacterIds" || typeof args.characterId !== "string") {
+    return false;
+  }
+  return allyRowsOf(campaignId, args.characterId, [ref]).rows.length > 0;
+}
+
 // Why this buff cannot go to a creature's row, or null.
 export function allyRowRefusal(spell: string, rows: readonly EncounterEnemy[], what: { sheetOnly: boolean }): ToolError | null {
   if (!rows.length || !what.sheetOnly) {

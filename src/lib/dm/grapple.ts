@@ -272,6 +272,33 @@ function reachOf(enemy: EncounterEnemy | null, holderId: string): number {
   return Math.max(1, ...reaches);
 }
 
+// Ends every grapple on a character held by one of these creatures: the
+// creatures of a fight that has ended, or one that has fled it (SRD 5.1,
+// Grappled: it ends "if an effect removes the grappled creature from the
+// reach of the grappler"). A hero grappled by a goblin kept "grappled" after
+// end_encounter and ten minutes on, speed 0 with nobody holding them.
+// Returns the names of those let go.
+export function releaseGrapplesHeldByAny(campaign: Campaign, grapplers: Iterable<string>): string[] {
+  const ids = new Set(grapplers);
+  const released: string[] = [];
+  for (const sheet of listSheets(campaign.id)) {
+    const held = grappleOf(sheet.conditionMeta as ConditionMetaMap);
+    if (!held?.source || !ids.has(held.source)) {
+      continue;
+    }
+    const cleared = withoutGrapple(sheet.conditions, sheet.conditionMeta as ConditionMetaMap, held);
+    const updated = patchSheet(sheet.id, { conditions: cleared.conditions, conditionMeta: cleared.meta });
+    if (updated) {
+      publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
+    }
+    released.push(sheet.name);
+  }
+  if (released.length) {
+    releaseLostPins(campaign);
+  }
+  return released;
+}
+
 // Ends every grapple on the board whose two creatures now stand farther
 // apart than the grappler's reach. Called after anything moves a token
 // (the move route, move_token, an enemy's approach). Returns the names of

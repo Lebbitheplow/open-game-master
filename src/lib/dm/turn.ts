@@ -72,12 +72,13 @@ import { PC_ATTACK_PARKED } from "@/lib/dm/pc-attack";
 import { doneParts, listedCalls, listRefusal, oneCasting, PART_LISTS, partsResult, type OneCasting } from "@/lib/dm/action-parts-logic";
 import { AWAITING_ROLL, fillQueuedParts } from "@/lib/dm/pc-attack-parts";
 import type { AttackRecord } from "@/lib/dm/attack-record";
-import { strictBooleanArgs } from "@/lib/dm/arg-coerce";
+import { doorArgs, strictBooleanArgs, type DoorField } from "@/lib/dm/arg-coerce";
+import { sideAllyInList } from "@/lib/dm/cast-buff-allies";
 import { insertCampaignMessage, listMessagesPage, listRecentMessages, markCardReturned, type CampaignMessage } from "@/lib/db/messages";
 import { heldNarrationSeq, narrationShown, takeNarrationSeq, takeNarrationSlot } from "@/lib/dm/narration-slot";
 import { getRoll, listRecentRolls, type StoredRoll } from "@/lib/db/rolls";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
-import { parkForWatch, runWithForetold } from "@/lib/dm/foresight";
+import { holdBehindStop, parkForWatch, runWithForetold } from "@/lib/dm/foresight";
 import { runWithShift } from "@/lib/dm/chronal-shift";
 import { adoptTurnAudit } from "@/lib/db/sheet-audit";
 import { describeConditionDuration } from "@/lib/dm/condition-logic";
@@ -135,6 +136,8 @@ import { readRomanceScene, romanceSceneNotes } from "@/lib/dm/romance-scenes";
 import type { SpokenLine } from "@/lib/dm/speech";
 import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import { dispatchAdjudication } from "@/lib/dm/invoke-dispatch";
+import { clearWatchAnswered, isHeldPark, markWatchAnswered, runHeld, watchStopOf } from "@/lib/dm/held-call";
+import { deedRefusal } from "@/lib/dm/deed-guard";
 import { playsWhole } from "@/lib/dm/legendary-play";
 import { awayCall, gateAiCall } from "@/lib/dm/ai-gate";
 import { characterAwaitingPlayer, characterHeld, prepareWordFor } from "@/lib/dm/player-word";
@@ -295,7 +298,7 @@ import { BINDER_TOOL_NAMES, binderTools } from "@/lib/dm/binder-tools";
 import { FACTION_TOOL_NAMES, factionTools } from "@/lib/dm/faction-tools";
 import { actionTools } from "@/lib/dm/action-tools";
 import { SHOP_TOOL_NAMES, shopTools, shopsBlock } from "@/lib/dm/shop-tools";
-import { preparedEncounterTools, preparedFightsBlock } from "@/lib/dm/prepared-encounter-tool";
+import { preparedEncounterTools, preparedFightsBlock, runPreparedEncounterTool } from "@/lib/dm/prepared-encounter-tool";
 import { fireFightEvents, firedEventsNote } from "@/lib/dm/fight-events";
 import { SETTLEMENT_TOOL_NAMES, settlementTools } from "@/lib/dm/settlement-tools";
 import { placeIsWritten, populateSettlement } from "@/lib/dm/settlement";
@@ -1170,6 +1173,17 @@ export async function resumeDmTurn(campaignId: string, turnId: string) {
   // parked with the parts that needed no roll, takes each roll in the
   // part's place, so the call has one answer, as the API requires.
   for (const pending of pendings) {
+    // A roll that held its whole call (src/lib/dm/held-call.ts): the call ran
+    // again when it landed, and this is what it answered. One that parked
+    // again answers through the roll it parked on.
+    const heldCall = pending.carry?.call;
+    if (heldCall) {
+      const answered = turn.conversation.some((message) => message.role === "tool" && message.tool_call_id === pending.toolCallId);
+      if (pending.carry?.answer && pending.toolCallId && !answered) {
+        turn.conversation.push({ role: "tool", tool_call_id: pending.toolCallId, content: pending.carry.answer });
+      }
+      continue;
+    }
     const roll = pending.rollId ? getRoll(pending.rollId) : null;
     // A turn that parks more than once (a stop before a later roll) comes back
     // here with the rolls of its last resume, already answered.
@@ -1317,6 +1331,10 @@ async function runHeldCalls(context: TurnContext, turn: DmTurn, watcherId: strin
     let portent: string | null = null;
     let chronalShift: string | null = null;
     try {
+      // The stopped call does not stop again for the roll it stopped for.
+      if (at === 0) {
+        markWatchAnswered(campaignId, toolCall.tape ?? []);
+      }
       const ran = await runWithShift(campaignId, shift, () => runWithForetold(campaign, turn.id, choice, () => resolveModelCall(context, turn, toolCall)));
       outcome = ran.result.result;
       portent = ran.result.portent;
@@ -1324,8 +1342,19 @@ async function runHeldCalls(context: TurnContext, turn: DmTurn, watcherId: strin
     } catch (error) {
       console.error(`[dm-turn] a held ${toolCall.name} threw:`, error);
       outcome = { error: `${toolCall.name} failed on the server, so nothing came of it.`, retry: true };
+    } finally {
+      // Taken by the call's own held run; a call refused before it ran
+      // leaves it to no other.
+      clearWatchAnswered(campaignId);
     }
     const happened = settleTurn(campaign, holder);
+    // A later call stopped for a watcher at its own first d20: the rest wait
+    // behind that stop.
+    if (typeof outcome[WATCH_HELD] === "string") {
+      holdBehindStop(outcome[WATCH_HELD] as string, stop.calls.slice(at + 1));
+      waiting = true;
+      break;
+    }
     // A fight this held call opened has initiative cards out: its answer is
     // written below, and the turn waits on the cards (resolveModelCall).
     if (CARDS_OUT.has(outcome)) {
@@ -1431,7 +1460,13 @@ export function dmTurnTools(
     ...(countPrepCards(campaign.id) ? [readCardTool] : []),
     writeCampaignNoteTool,
     sendWhisperTool,
-    ...(campaign.storyArc ? [completeBeatTool] : []),
+    // A beat is closed and a picture painted between rounds: the trimmed set
+    // of a fight leaves both out (either still runs when called by name), as
+    // the fight's sets leave out the binder. With world simulation, the sound
+    // library and pictures all on, they left a 48K window 1,223 tokens above
+    // the trimmed profile's floor, under the 1,500 scripts/test-prompt-
+    // window.mjs keeps for the next rules fix (gap sweep 2026-11-09).
+    ...(campaign.storyArc && !(leanTools && inEncounter) ? [completeBeatTool] : []),
     ...checkTools,
     ...hazardTools,
     ...petTools,
@@ -1482,7 +1517,7 @@ export function dmTurnTools(
     ...(inEncounter ? [] : restTools),
     ...companionTools(campaign, inEncounter),
     ...(leanTools ? mutationTools.filter((tool) => keptWhenTrimmed(tool.function.name, inEncounter)) : mutationTools),
-    ...(imageEnabled ? [generateImageTool] : []),
+    ...(imageEnabled && !(leanTools && inEncounter) ? [generateImageTool] : []),
     ];
 }
 
@@ -1710,6 +1745,42 @@ export function dmTurnToolCatalogue(campaign: Campaign, imageEnabled: boolean, l
     ...dmTurnTools(campaign, false, imageEnabled, leanTools),
     ...dmTurnTools(campaign, true, imageEnabled, leanTools),
   ];
+}
+
+// Each tool's published fields, by name, for the argument door: what a
+// field's kind is does not change from table to table, so it is read from
+// the first catalogue that offers the tool and kept.
+const toolFieldsByName = new Map<string, Record<string, DoorField>>();
+function toolFields(campaign: Campaign, name: string): Record<string, DoorField> {
+  if (!toolFieldsByName.has(name)) {
+    const offered = [...(dmTurnToolCatalogue(campaign, true, false) as ToolDefLike[]), readCardTool, runPreparedEncounterTool, completeBeatTool, recallStoryTool] as ToolDefLike[];
+    for (const tool of offered) {
+      const properties = (tool.function.parameters as { properties?: Record<string, DoorField> } | undefined)?.properties;
+      if (properties && !toolFieldsByName.has(tool.function.name)) {
+        toolFieldsByName.set(tool.function.name, properties);
+      }
+    }
+  }
+  return toolFieldsByName.get(name) ?? {};
+}
+
+// The arguments of one GM tool call as every gate and handler reads them:
+// null and "" read as absent, a list of one where a list is asked, a
+// character's name read as their id, a list of ids refused at the first one
+// that names nobody (src/lib/dm/arg-coerce.ts doorArgs says why). The
+// model's calls (resolveModelCall below) and the console's and agent
+// programs' (invoke-dispatch.ts dispatchCall) pass it, once each.
+export function modelCallArguments(
+  campaign: Campaign,
+  name: string,
+  rawArguments: string,
+  sheets: readonly CharacterSheet[],
+): { rawArguments: string } | { refusal: ToolResult } {
+  return doorArgs(rawArguments, {
+    properties: toolFields(campaign, name),
+    sheets,
+    alsoNames: (key, ref, args) => sideAllyInList(campaign.id, name, key, ref, args),
+  });
 }
 
 // Whether a set of tools takes a call by this name: one it offers, or a
@@ -2624,7 +2695,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
         (cardKey ? castStopped.get(cardKey) : null) ??
         ranAbove(toolCall, inputInFight, false) ??
         (offersTool(catalogue, toolCall.name)
-          ? await resolveModelCall(context, turn, toolCall)
+          ? await answerModelCall(context, turn, toolCall)
           : { error: `The engine has no action called "${toolCall.name}".`, retry: true });
       if (cardKey) {
         const stop = drawStopsCast(toolCall.name, outcome);
@@ -2638,6 +2709,23 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       // turn waits for the cards, as for a request_roll's.
       if (CARDS_OUT.has(outcome)) {
         parkedAny = true;
+      }
+      // The call stopped for a watcher at its first d20 (held-call.ts): the
+      // calls after it wait behind the stop, as a stop made before the call
+      // holds them above.
+      if (typeof outcome[WATCH_HELD] === "string") {
+        const behind = later.slice(1);
+        const held = behind.filter((call) => offersTool(catalogue, call.name) && ranAbove(call, inputInFight, false) === null);
+        holdBehindStop(outcome[WATCH_HELD] as string, held);
+        for (const call of behind) {
+          if (!held.includes(call)) {
+            const answer = ranAbove(call, inputInFight, false) ?? { error: `The engine has no action called "${call.name}".`, retry: true };
+            turn.conversation.push({ role: "tool", ...(call.id ? { tool_call_id: call.id } : {}), content: JSON.stringify(answer) });
+          }
+        }
+        parkedAny = true;
+        ranCalls = at;
+        break;
       }
       if (outcome[PARKED]) {
         parkedAny = true;
@@ -2786,12 +2874,40 @@ const CARDS_OUT = new WeakSet<object>();
 // companion roster refresh, and parking for physical dice. Everything else
 // goes through the same dispatch the DM console uses
 // (src/lib/dm/invoke-dispatch.ts), so the two callers cannot drift.
+// A handler that throws on one malformed argument answers that call with a
+// retry, and the turn goes on: handle_item with its item sent as a list
+// threw a TypeError that ended the whole turn as failed, and the table got
+// no narration (gap sweep 2026-11-09). The crash's own text stays in the
+// server log; the model is told which call to send again. A stopped job
+// still stops the turn.
+async function answerModelCall(
+  context: TurnContext,
+  turn: DmTurn,
+  toolCall: { id?: string; name: string; rawArguments: string; casting?: OneCasting },
+): Promise<ToolResult> {
+  try {
+    return await resolveModelCall(context, turn, toolCall);
+  } catch (error) {
+    if (error instanceof DmJobStopped) {
+      throw error;
+    }
+    console.error(`[dm-turn] ${toolCall.name} threw:`, error);
+    return { error: `${toolCall.name} could not read these arguments, so nothing came of it. Check each field against the tool's description (one value where it asks one, a list where it asks a list) and send it again.`, retry: true };
+  }
+}
+
 async function resolveModelCall(
   context: TurnContext,
   turn: DmTurn,
   toolCall: { id?: string; name: string; rawArguments: string; casting?: OneCasting },
 ): Promise<ToolResult> {
   const { campaign, sheets, sheetsById, realDiceUserIds } = context;
+  // The call's arguments as every gate and handler below reads them.
+  const door = modelCallArguments(campaign, toolCall.name, toolCall.rawArguments, sheets);
+  if ("refusal" in door) {
+    return door.refusal;
+  }
+  toolCall = { ...toolCall, rawArguments: door.rawArguments };
   // A chest's items, a shopping list, the creatures a healing spell
   // reaches: each entry the one-entry call it always was
   // (src/lib/dm/action-parts-logic.ts listedCalls).
@@ -2852,18 +2968,21 @@ async function resolveModelCall(
     // what it buys in one call, given back if the engine refuses the rest.
     // Fling and Swallow have no other call to make them (issue 685).
     const fightBefore = getActiveEncounter(campaign.id)?.id ?? null;
+    // Held so a roll inside it may wait on its player (src/lib/dm/held-call.ts).
     const result =
       name === "legendary_action" && playsWhole(gated.args)
-        ? await dispatchAdjudication(name, gated.args, { campaign, turn, sheets, sheetsById, realDiceUserIds })
-        : applyEncounterCall(campaign, turn, name, gated.args, sheets, sheetsById, {
-            realDiceUserIds,
-            toolCallId: toolCall.id ?? null,
-          }).result;
+        ? await dispatchAdjudication(name, gated.args, { campaign, turn, sheets, sheetsById, realDiceUserIds, toolCallId: toolCall.id ?? null })
+        : runHeld(campaign, turn, { name, rawArguments: gated.args, toolCallId: toolCall.id ?? null }, () =>
+            applyEncounterCall(campaign, turn, name, gated.args, sheets, sheetsById, {
+              realDiceUserIds,
+              toolCallId: toolCall.id ?? null,
+            }).result,
+          );
     if (!("error" in result)) {
       turn.encounterCount += 1;
     }
-    if (result[PC_ATTACK_PARKED]) {
-      return { [PARKED]: true, ...(Array.isArray(result.attacks) ? { attacks: result.attacks } : {}) };
+    if (result[PC_ATTACK_PARKED] || isHeldPark(result)) {
+      return { [PARKED]: true, ...heldStop(result), ...(Array.isArray(result.attacks) ? { attacks: result.attacks } : {}) };
     }
     // A fight this call opened asks the seats the server does not roll for
     // with their initiative cards now, as a fight a person opens does
@@ -2915,13 +3034,19 @@ async function resolveModelCall(
     if ("result" in gated) {
       return gated.result;
     }
+    // A deed out of a fight by a character who cannot act (deed-guard.ts),
+    // as dispatchAdjudication holds the console's path.
+    const unable = deedRefusal(campaign.id, name, gated.args, sheets, sheetsById);
+    if (unable) {
+      return unable;
+    }
     const result =
       maybeProposeItemChange(campaign, turn.id, name, gated.args, sheetsById) ??
-      applyDmMutation(campaign, turn.id, name, gated.args, sheets, sheetsById, turn, toolCall.casting).result;
+      runHeld(campaign, turn, { name, rawArguments: gated.args, toolCallId: toolCall.id ?? null }, () => applyDmMutation(campaign, turn.id, name, gated.args, sheets, sheetsById, turn, toolCall.casting).result);
     if (!("error" in result)) {
       turn.mutationCount += 1;
     }
-    return result;
+    return isHeldPark(result) ? { [PARKED]: true, ...heldStop(result) } : result;
   }
   // One request_roll for both callers (src/lib/dm/invoke-roll.ts); the
   // model's parks remember the call they answer. Held to the gate here, as
@@ -2931,9 +3056,19 @@ async function resolveModelCall(
     if ("result" in gated) {
       return gated.result;
     }
-    const result = handleRequestRoll(campaign, turn, gated.args, sheets, sheetsById, realDiceUserIds, {
-      toolCallId: toolCall.id ?? null,
-    });
+    const unable = deedRefusal(campaign.id, name, gated.args, sheets, sheetsById);
+    if (unable) {
+      return unable;
+    }
+    // Held, so a watcher's stop before its d20 holds it like any call.
+    const result = runHeld(campaign, turn, { name, rawArguments: gated.args, toolCallId: toolCall.id ?? null }, () =>
+      handleRequestRoll(campaign, turn, gated.args, sheets, sheetsById, realDiceUserIds, {
+        toolCallId: toolCall.id ?? null,
+      }),
+    );
+    if (isHeldPark(result)) {
+      return { [PARKED]: true, ...heldStop(result) };
+    }
     if (result.parked) {
       return { [PARKED]: true };
     }
@@ -2941,7 +3076,16 @@ async function resolveModelCall(
       ? { ...result, note: ROLL_RESULT_NOTE }
       : result;
   }
-  return dispatchAdjudication(name, rawArguments, { campaign, turn, sheets, sheetsById, realDiceUserIds });
+  const result = await dispatchAdjudication(name, rawArguments, { campaign, turn, sheets, sheetsById, realDiceUserIds, toolCallId: toolCall.id ?? null });
+  return isHeldPark(result) ? { [PARKED]: true, ...heldStop(result) } : result;
+}
+
+// A held call that stopped for a player watching for Portent (held-call.ts):
+// the stop's card, so the loop holds the calls after it behind it.
+const WATCH_HELD = "__watchHeld";
+function heldStop(result: ToolResult): Record<string, string> {
+  const stop = watchStopOf(result);
+  return stop ? { [WATCH_HELD]: stop } : {};
 }
 
 // Every tool the turn has called so far, from its conversation.
@@ -3100,7 +3244,7 @@ function castSlotlessFor(context: TurnContext, turn: DmTurn): (cast: { casterId:
     const id = `slotless_${turn.conversation.length}`;
     const rawArguments = JSON.stringify(call.args);
     turn.conversation.push({ role: "assistant", content: "", tool_calls: [{ id, type: "function", function: { name: call.name, arguments: rawArguments } }] });
-    const outcome = await resolveModelCall(context, turn, { id, name: call.name, rawArguments });
+    const outcome = await answerModelCall(context, turn, { id, name: call.name, rawArguments });
     turn.conversation.push({ role: "tool", tool_call_id: id, content: JSON.stringify(outcome) });
     saveDmTurn(turn);
     if (typeof outcome.error === "string") {

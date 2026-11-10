@@ -23,10 +23,10 @@ import { publishWithSeq } from "@/lib/events";
 import { spendAction } from "@/lib/dm/action-budget";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
-import { heldDieWaits, rollExtrasFor, spendRollCarriers, throwWatchedCheck } from "@/lib/dm/forced-save";
+import { heldDieWaits, rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
+import { rollCharacterD20 } from "@/lib/dm/character-roll";
 import { carriedItemsMatching } from "@/lib/dm/item-logic";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
-
 import { itemSpellCast, itemSpellsOfRow, type ItemSpellCast } from "@/lib/srd/item-spells";
 import { itemBarrier } from "@/lib/srd/item-barrier";
 // The credits live in the database on the server (src/lib/db/item-cast-credits.ts).
@@ -72,7 +72,8 @@ function rollCastCheck(campaign: Campaign, sheet: CharacterSheet, check: NonNull
     return { total: 0, success: false };
   }
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-  const outcome = throwWatchedCheck(campaign.id, sheet, resolved.expression, check.dc, waits);
+  // The player's own check (src/lib/dm/character-roll.ts).
+  const outcome = rollCharacterD20(campaign, sheet, { kind: "ability_check", expression: resolved.expression, detail, dc: check.dc, settleHeldDie: waits });
   const roll = insertRoll({ campaignId: campaign.id, characterId: sheet.id, requestedBy: "dm", kind: "ability_check", detail, dc: check.dc, result: outcome });
   publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
   return { total: outcome.total, success: outcome.total >= check.dc };

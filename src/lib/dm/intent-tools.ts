@@ -14,6 +14,7 @@ import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
+import { canEnemyAct } from "@/lib/dm/can-act";
 
 // declare_intent (docs/visual-overhaul-plan.md 5.6): the DM, model or person,
 // says what an enemy is about to do, and the board telegraphs it for the
@@ -81,6 +82,13 @@ export function handleDeclareIntent(
   }
   if (enemy.status !== "alive") {
     return { error: `${enemy.displayName} is already ${enemy.status}.`, retry: true };
+  }
+  // The board showed a sleeping goblin raising its club: a creature
+  // "unaware of its surroundings" (SRD 5.1, Unconscious, Petrified) plans
+  // nothing (can-act.ts canEnemyAct "intent").
+  const aware = canEnemyAct({ enemy, encounter, kind: "intent" });
+  if (!aware.ok) {
+    return { error: aware.error, refused: "rules" };
   }
   // Its mark is any combatant (src/lib/dm/combatant.ts): a character, or a
   // creature the party has turned to its side.

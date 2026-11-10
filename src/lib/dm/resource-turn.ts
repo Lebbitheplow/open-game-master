@@ -29,7 +29,7 @@ import {
   storeBudget,
 } from "@/lib/dm/turn-budget";
 import { toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
-import { holdsFeature } from "@/lib/srd/feature-names";
+import { counterCost } from "@/lib/srd/counter-rules";
 
 export type ResourceCharge =
   | ToolError
@@ -64,12 +64,12 @@ export function prepareResourceCharge(
   if (def.effect.kind === "wild_shape" && sheet.wildShape) {
     return FREE;
   }
+  // The cost the Hand's card shows, from the same place (counter-rules.ts):
   // Combat Wild Shape (Circle of the Moon) makes the change a bonus action.
-  const action =
-    def.effect.kind === "wild_shape" &&
-    holdsFeature(sheet, "Combat Wild Shape")
-      ? "bonus"
-      : def.action;
+  const action = override ? def.action : counterCost(def, sheet);
+  if (!action) {
+    return FREE;
+  }
   if (action === "reaction") {
     return prepareReaction(encounter, sheet, def.displayName);
   }

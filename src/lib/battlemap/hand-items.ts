@@ -19,7 +19,7 @@
 // more charges for a higher level are asked for in words.
 //
 // Pure, with hand-spells.ts: scripts/test-hand-items.mjs drives it.
-import { computeSheetDerived, spellAttackFor, spellSaveDcFor } from "@/lib/srd";
+import { spellAttackFor, spellSaveDcFor } from "@/lib/srd";
 import { textKey } from "@/lib/language/text-logic";
 import { castingOf, completedCastingOf } from "@/lib/dm/long-casting-logic";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
@@ -152,16 +152,18 @@ export function itemSpellCards(sheet: CharacterSheet, turn: HandTurn, riders: Co
     const long = itemCastHeld(row, fact);
     const done = long && Boolean(completedCastingOf(sheet, entry.spell));
     const count = chargeCount(item);
-    const ability = sheet.spellcasting ? computeSheetDerived(sheet).abilityMods[sheet.spellcasting.ability] : 0;
     const card = spellCard(sheet, turn, riders, entry.spell, fact, options, {
       ring: item.name,
+      // No modifier of its own: a healing spell heals with the one the DC
+      // implies, as the heal tool reads the item's numbers (heal-bonus.ts).
+      // The card added the wielder's own and showed 5d8+3 for an Orb of
+      // Dragonkind whose DC 18 heals 5d8+4.
       entry: {
         spell: entry.spell,
         level: entry.level,
         // "using your spell save DC" where the item names none of its own.
         saveDc: entry.dc ?? spellSaveDcFor(sheet, entry.spell) ?? undefined,
         attackBonus: entry.attackBonus ?? spellAttackFor(sheet, entry.spell) ?? undefined,
-        abilityMod: ability,
       },
       holds: long && Boolean(turn.table) && !done,
       free: done,

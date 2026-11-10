@@ -39,13 +39,6 @@ export const KNOWN = {
     fix: "Allow Sneak Attack twice a turn for a holder, the second against a different creature (src/lib/dm/pc-attack-damage.ts).",
     files: ["src/lib/dm/pc-attack-damage.ts", ROWS2],
   },
-  "wails-from-the-grave": {
-    severity: "medium", kind: "rule-missing",
-    where: "src/lib/srd/authored-resources.json sub_wails_from_the_grave (no fx: the spend returns the text)",
-    note: "A use is spent and the second creature loses nothing.",
-    fix: "fx: after a Sneak Attack this turn, half the sneak attack dice (rounded up) in necrotic damage to a creature within 30 feet of the first.",
-    files: ["src/lib/srd/authored-resources.json"],
-  },
 };
 
 export const SKIP = {};

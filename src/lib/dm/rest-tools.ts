@@ -1,3 +1,4 @@
+import { breakConcentration } from "@/lib/dm/concentration";
 import { holdsDestructiveWrath, spendWrath } from "@/lib/dm/destructive-wrath";
 import type { SystemGlyph } from "@/lib/system-glyphs";
 import { z } from "zod";
@@ -39,7 +40,7 @@ import {
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { authoredRestTempHp } from "@/lib/dm/authored-turns";
 import { tranquilityAfterLongRest } from "@/lib/dm/srd-defenses";
-import type { ToolResult } from "@/lib/dm/tool-errors";
+import { argumentsRefusal, type ToolResult } from "@/lib/dm/tool-errors";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
 
 // The rest engine: short rests spend hit dice with real server rolls, long
@@ -186,11 +187,13 @@ export function handleTakeRest(
   }
   const args = parseRestArgs(rawArguments);
   if (!args) {
-    return {
-      error:
-        `Invalid take_rest arguments. Send {"kind":"short"} or {"kind":"long"}; a spend list is [{"characterId": "...", "dice": 1}] with whole dice of 1 or more.${mealRefused(rawArguments) ? ` ${MEAL_REFUSAL}` : ""} Nobody rested and no time passed.`,
-      retry: true,
-    };
+    // With each field zod refused and why (#875): the fixed line answered
+    // a reason sent as a list with how to send kind, which it had.
+    return argumentsRefusal(
+      `Invalid take_rest arguments. Send {"kind":"short"} or {"kind":"long"}; a spend list is [{"characterId": "...", "dice": 1}] with whole dice of 1 or more.${mealRefused(rawArguments) ? ` ${MEAL_REFUSAL}` : ""} Nobody rested and no time passed.`,
+      restArgsSchema,
+      rawArguments,
+    );
   }
   const reason = (args.reason ?? `${args.kind} rest`).slice(0, 200);
   const variant = campaign.gameSettings.variantRules.restVariant;
@@ -277,6 +280,13 @@ export function handleTakeRest(
   if (args.kind === "long") {
     const rested: string[] = [];
     for (const id of resting) {
+      // Asleep, nobody concentrates (SRD 5.1: an unconscious creature is
+      // incapacitated, and incapacitation ends concentration): the spell
+      // ends whole, through the one function that ends one, before the rest
+      // is read from the sheet it leaves.
+      if (getSheetById(id)?.concentratingOn) {
+        breakConcentration(campaign, turnId, id, "fell asleep for the long rest");
+      }
       const sheet = getSheetById(id);
       if (!sheet || sheet.deathSaves?.dead) {
         continue;

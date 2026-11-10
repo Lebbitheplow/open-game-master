@@ -95,13 +95,6 @@ export const KNOWN = {
     fix: "Let a self reduce row with types answer the last damage taken of those types, whatever dealt it.",
     files: ["src/lib/dm/authored-reactions.ts"],
   },
-  "wings-unfurled-needs-step-of-the-wind": {
-    severity: "low", kind: "rule-wrong",
-    where: "src/lib/srd/authored-resources.json sub_wings_unfurled (fx buff flying, no trigger)",
-    note: "A use is spent and the monk flies with no Step of the Wind used.",
-    fix: "Ride the spend on Step of the Wind (the ki variant) rather than a card of its own.",
-    files: ["src/lib/srd/authored-resources.json"],
-  },
   "aspect-of-the-wyrm-frighten": {
     severity: "medium", kind: "rule-missing",
     where: "src/lib/srd/authored-resources.json sub_aspect_of_the_wyrm (fx buff on the monk only: \"resolve via cast_at_enemy\")",

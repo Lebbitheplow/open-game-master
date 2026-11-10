@@ -70,8 +70,18 @@ const TERM_PATTERN =
 export type RollFrame = { purpose: RollTag | null; forcedD20: number | null };
 export type ScriptedDie = (sides: number, frame: RollFrame) => number | null;
 
+// A call the server holds for a player's dice is run again once they land
+// (src/lib/dm/held-call.ts). The faces its first run drew by chance are
+// drawn again on the second, so a die nobody has seen yet is the same die
+// (`taped`), and every face drawn by chance is noted for a later run
+// (`drawn`). Registered the way the dice script is, for the same reason.
+// `before`: told of every die before it is thrown, so the held call may stop
+// for a player watching for Portent before the first d20 of a roll.
+export type DiceTape = { taped: (sides: number) => number | null; drawn: (sides: number, face: number) => void; before?: (sides: number, frame: RollFrame) => void };
+
 declare global {
   var __odmScriptedDie: ScriptedDie | undefined;
+  var __odmDiceTape: DiceTape | null | undefined;
 }
 
 export function registerScriptedDice(hook: ScriptedDie) {
@@ -106,12 +116,16 @@ function webDie(sides: number): number {
 }
 
 export function defaultRng(sides: number) {
+  globalThis.__odmDiceTape?.before?.(sides, frame ?? { purpose: null, forcedD20: null });
   const scripted = globalThis.__odmScriptedDie?.(sides, frame ?? { purpose: null, forcedD20: null });
   if (scripted !== undefined && scripted !== null) {
     return scripted;
   }
+  const tape = globalThis.__odmDiceTape;
   const node = nodeCrypto();
-  return node ? node.randomInt(1, sides + 1) : webDie(sides);
+  const face = tape?.taped(sides) ?? (node ? node.randomInt(1, sides + 1) : webDie(sides));
+  tape?.drawn(sides, face);
+  return face;
 }
 
 export type RollOptions = {

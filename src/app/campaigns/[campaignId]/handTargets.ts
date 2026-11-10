@@ -1,5 +1,5 @@
 import type { HandTargetChip } from "@/app/campaigns/[campaignId]/HandAimBar";
-import type { TargetEdge } from "@/lib/battlemap/view-tactics";
+import type { TargetEdge, TargetSight } from "@/lib/battlemap/view-tactics";
 import { effectiveMaxHp } from "@/lib/dm/condition-logic";
 import type { PublicEncounter } from "@/lib/db/encounter-view";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -25,6 +25,9 @@ export function handTargets(
   edges: Record<string, TargetEdge> | undefined,
   sides?: PublicEncounter["sides"],
   clock?: EdgeClock,
+  // Sight as the roll reads it (PlayerMapView.sight), so the preview's odds
+  // carry the light's advantage: the foes in magical darkness have no edge.
+  sight?: Record<string, TargetSight>,
 ): HandTargetChip[] {
   const self = sheets.find((entry) => entry.id === selfId);
   // The features that give this character advantage against it (Vow of
@@ -45,6 +48,7 @@ export function handTargets(
       cr: enemy.cr,
       conditions: enemy.conditions,
       ...(edges?.[enemy.id] ? { edge: edges[enemy.id] } : {}),
+      ...(sight?.[enemy.id] ? { sight: sight[enemy.id] } : {}),
       ...featured(enemy.id, enemy.type),
       note: [
         enemy.knockedOut ? "knocked out" : enemy.regenerating ? (enemy.regenerating.stopped ? "down, dies at its turn" : "down, regenerates at its turn") : enemy.health,

@@ -19,21 +19,19 @@ import {
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { ALL_CLASSES, SRD_SKILLS, XP_THRESHOLDS, findClass, levelForXp } from "@/lib/srd";
 import { asiOwed } from "@/lib/srd/asi-ledger";
-import {
-  chosenFightingStyles,
-  fightingStyleChoices,
-  fightingStyleFeatureName,
-  fightingStyleSlots,
-} from "@/lib/srd/feature-effects";
+import { fightingStyleFeatureName } from "@/lib/srd/feature-effects";
 import { featPicksOwed } from "@/lib/srd/feat-grants";
 import { isThievesTools, populateFeaturesForClasses, subclassCastingProfileFor, THIEVES_TOOLS } from "@/lib/srd/features";
 import type { HpMethod } from "@/lib/srd/hit-points";
 import { MULTICLASS_CAP, canMulticlassInto, classListFor, multiclassGrantsFor } from "@/lib/srd/multiclass";
-import { openOptionSlots, optionFeatureName } from "@/lib/srd/options";
+import { openOptionSlots, optionFeatureName, optionReqProblem } from "@/lib/srd/options";
+import { openStyleSlots } from "@/lib/srd/style-slots";
+import { thirdCasterAnySchoolPicks, thirdCasterOutside, thirdCasterProfileOf, thirdCasterSchools } from "@/lib/srd/third-caster";
+import { checklistSpell } from "@/lib/srd/spell-lists";
 import { subclassChoiceSlots } from "@/lib/srd/subclass-choice-picks";
 import { subclassChoicePickName } from "@/lib/content/subclass-choices";
 import { owedChoices, subclassOwed } from "@/lib/srd/owed-choices";
-import { sheetSpellbook } from "@/lib/srd/owed-picks-logic";
+import { sheetCantrips, sheetSpellbook } from "@/lib/srd/owed-picks-logic";
 import {
   casterViewsOf,
   dedupeNames,
@@ -66,6 +64,11 @@ export type LevelUpOptionsContext = {
   // settingClassIds); empty for a world that takes them all. A class of
   // another setting is listed after them and says so (issue #434).
   settingClassIds?: string[];
+  // The class rows the level-up itself reads (the PATCH's LevelUpContext
+  // classOf: classGrantsFor with the table's authors), for a class the
+  // bundled list does not carry: a content pack's Mechanist was "Unknown
+  // class" here while the PATCH took its level.
+  classOf?: (classId: string) => { id: string; name: string; hitDie: number } | null;
 };
 
 type ClassRow = { id: string; subclass: string; level: number };
@@ -103,7 +106,11 @@ export type LevelUpOptions = {
     asiChoices?: { count: number; note: string };
     subclass?: { options: string[] };
     expertise?: { count: number; options: string[] };
-    featurePicks?: Array<{ label: string; count: number; options: string[] }>;
+    // `notYet`: the options whose prerequisite the character will not meet
+    // after this level (an invocation's warlock level or pact boon), each
+    // with the reason, so an agent plans for them rather than sending one
+    // the level-up refuses.
+    featurePicks?: Array<{ label: string; count: number; options: string[]; notYet?: Array<{ option: string; reason: string }> }>;
     levelUpSkill?: { options: string[] };
     training?: Array<{ name: string; picks: string }>;
     spells?: {
@@ -114,6 +121,12 @@ export type LevelUpOptions = {
       newSpells: number;
       style: "known" | "prepared" | "spellbook";
       mayReplaceOne: boolean;
+      // A third caster (an Eldritch Knight, an Arcane Trickster) learns its
+      // levelled spells from two schools, and from any other only as many
+      // as its level allows (src/lib/srd/third-caster.ts, the rule the
+      // level-up enforces): `otherSchoolPicks` is how many of those are
+      // still free.
+      schools?: { from: string[]; otherSchoolPicks: number };
       note: string;
     };
   };
@@ -144,7 +157,7 @@ function notReadyReason(sheet: CharacterSheet, next: number): string | undefined
 export function levelUpOptions(sheet: CharacterSheet, context: LevelUpOptionsContext): LevelUpOptions | { error: string } {
   const classList = classListFor(sheet).map((entry) => ({ ...entry }));
   const classId = (context.classId ?? "").trim().toLowerCase() || classList[0].id.toLowerCase();
-  const klass = findClass(classId);
+  const klass = findClass(classId) ?? context.classOf?.(classId) ?? null;
   if (!klass) {
     return { error: `Unknown class "${classId}".` };
   }
@@ -233,18 +246,24 @@ export function levelUpOptions(sheet: CharacterSheet, context: LevelUpOptionsCon
   // Picks a class feature opens, sent back as feature names: fighting styles,
   // then invocations, maneuvers, metamagic and the rest (src/lib/srd/options.ts).
   const featurePicks: NonNullable<LevelUpOptions["choices"]["featurePicks"]> = [];
-  const styles = chosenFightingStyles(sheet.features);
-  const featuresAfter = populateFeaturesForClasses(sheet.features, classesAfter, sheet.race);
-  const styleSlots = fightingStyleSlots(featuresAfter);
-  if (styleSlots > styles.length) {
+  // Each class's slots at its own level (style-slots.ts): the sheet lists
+  // "Fighting Style" once, and a fighter taking paladin 2 was offered none.
+  const styleSlots = openStyleSlots(classesAfter, sheet.features, context.subclassExtras);
+  if (styleSlots.count > 0) {
     featurePicks.push({
       label: "Fighting Style",
-      count: styleSlots - styles.length,
-      options: fightingStyleChoices(featuresAfter).filter((style) => !styles.some((name) => textKey(name) === textKey(style.name))).map((style) =>
-        fightingStyleFeatureName(style.id),
-      ),
+      count: styleSlots.count,
+      options: styleSlots.choices.map((style) => fightingStyleFeatureName(style.id)),
     });
   }
+  const featuresAfter = populateFeaturesForClasses(sheet.features, classesAfter, sheet.race);
+  // The facts an option's prerequisite reads, as the level-up reads them
+  // (level-up.ts, optionReqProblem): the class levels after this one.
+  const reqFacts = {
+    classLevel: (id: string) => classesAfter.find((entry) => textKey(entry.id) === textKey(id))?.level ?? 0,
+    features: featuresAfter,
+    cantrips: sheetCantrips(sheet),
+  };
   for (const slot of openOptionSlots({
     classId: klass.id,
     subclass: subclassNow,
@@ -258,11 +277,18 @@ export function levelUpOptions(sheet: CharacterSheet, context: LevelUpOptionsCon
       continue;
     }
     const chosen = new Set(slot.chosen.map(textKey));
+    const open = slot.options.filter((option) => !chosen.has(textKey(option.n)));
+    const notYet = open.flatMap((option) => {
+      const reason = optionReqProblem(option, reqFacts);
+      return reason ? [{ option: optionFeatureName(slot.kind, option.n), reason }] : [];
+    });
+    const unmet = new Set(notYet.map((entry) => entry.option));
     featurePicks.push({
       // Half a favored enemy pick left is one more humanoid race.
       label: slot.label,
       count: Math.ceil(slot.remaining),
-      options: slot.options.filter((option) => !chosen.has(textKey(option.n))).map((option) => optionFeatureName(slot.kind, option.n)),
+      options: open.map((option) => optionFeatureName(slot.kind, option.n)).filter((name) => !unmet.has(name)),
+      ...(notYet.length ? { notYet } : {}),
     });
   }
   // A workshop subclass's own choice, due at this class level and not made
@@ -343,6 +369,20 @@ export function levelUpOptions(sheet: CharacterSheet, context: LevelUpOptionsCon
       newSpells = Math.max(0, caster.spellCap.count + grants.extraSpells - holding);
     }
     const knownBefore = view ? (view.known.length ? view.known : view.prepared) : [];
+    const profile = thirdCasterProfileOf(klass.id, subclassNow, progression);
+    const schools = profile
+      ? {
+          from: [...thirdCasterSchools(profile)],
+          // Held spells outside the schools, by the bundled table's school
+          // (a spell it does not know is not counted, as the level-up's
+          // own count leaves a spell of no known school out).
+          otherSchoolPicks: Math.max(
+            0,
+            thirdCasterAnySchoolPicks(classLevelAfter) -
+              thirdCasterOutside(klass.id, knownBefore.map((name) => ({ school: checklistSpell(name)?.school ?? null })), profile),
+          ),
+        }
+      : null;
     choices.spells = {
       list: caster.list,
       maxSpellLevel: caster.maxLevel,
@@ -350,9 +390,16 @@ export function levelUpOptions(sheet: CharacterSheet, context: LevelUpOptionsCon
       newSpells,
       style: caster.style,
       mayReplaceOne: caster.style === "known" && knownBefore.length > 0,
-      note: grants.anyList
-        ? `${STYLE_NOTE[caster.style]} ${grants.feature}: ${grants.anyList} of the ${grants.anyListSpells ? "spells" : "cantrips"} held may come from any class's spell list.`
-        : STYLE_NOTE[caster.style],
+      ...(schools ? { schools } : {}),
+      note: [
+        STYLE_NOTE[caster.style],
+        grants.anyList ? `${grants.feature}: ${grants.anyList} of the ${grants.anyListSpells ? "spells" : "cantrips"} held may come from any class's spell list.` : "",
+        schools
+          ? `Levelled spells come from ${schools.from.join(" and ")}; ${schools.otherSchoolPicks} more may come from any other school.`
+          : "",
+      ]
+        .filter(Boolean)
+        .join(" "),
     };
   }
 

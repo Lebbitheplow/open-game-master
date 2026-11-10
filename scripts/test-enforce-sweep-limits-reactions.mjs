@@ -11,40 +11,14 @@ import { limitsSuite } from "./lib/sweep-limits.mjs";
 import { authoredText, everySubclass, limitsTable } from "./lib/sweep-limits-world.mjs";
 
 const KNOWN = {
-  "774-text-says-near": {
-    where: "src/lib/srd/subclasses.json Oath of Redemption, Channel Divinity: Rebuke the Violent (the words), against src/lib/srd/authored-effects-more.ts echo_hit rangeFt 30 (the engine)",
-    severity: "low",
-    note: "The words a player reads say \"someone near you\" (the one wounded); the engine measures 30 feet to the ATTACKER and answers an ally at any distance. Neither the number nor whose distance it is can be read off the card's text.",
-  },
-  "787-echo-not-modelled": {
-    where: "src/lib/dm/authored-reactions.ts case \"echo_takes_hit\" (no echo on the sheet or the board is asked for), src/lib/srd/authored-effects-types.ts (\"The echo is no creature the engine tracks\")",
-    severity: "medium",
-    note: "Manifest Echo is narrated: nothing records that the bonus action was spent, so Shadow Martyr turns a hit on any ally the knight can see into a miss with no echo out and at any distance.",
-  },
-  "787-pet-hit-keeps-no-record": {
-    where: "src/lib/dm/pc-damage.ts (the petName branch of apply_damage writes no last-hit record) and src/lib/battlemap/hand-react.ts (resist_instance with bond reads only the holder's own hits)",
-    severity: "medium",
-    note: "The drake's half of Reflexive Resistance (\"when you or your drake takes damage\") has no card and no refund: the reaction is refused for want of a hit on the ranger.",
-  },
-  "787-reflexive-card-on-own-turn": {
-    where: "src/lib/dm/resource-tools.ts use_resource (the counter's generic spend) and src/lib/battlemap/hand-subclass.ts (the counter's card)",
-    severity: "medium",
-    note: "DEAD spend: use_resource \"Reflexive Resistance\" answers ok, takes a use, and changes nothing but the counter. Kept on purpose in #787 as the only way to pay for the drake's half; it stays a use spent for nothing.",
-  },
   "787-thirty-feet-to-the-drake": {
     where: "src/lib/dm/pet-tools.ts summon_pet (a pet is a row on the owner's sheet, with no token) and src/lib/dm/authored-reactions.ts resist_instance rangeFt",
     severity: "low",
     note: "\"while you are within 30 feet of each other\" cannot be asked: the drake stands nowhere.",
   },
-  "797-other-bars-come-second": {
-    where: "src/lib/dm/reaction-tools.ts (the hit-id check that answers retry with the open hits runs before the slot and feature gates)",
-    severity: "low",
-    note: "One wasted model call: the list first, the real refusal on the resend. src/lib/dm/tool-errors.ts asks for bars before slips.",
-  },
 };
 const RULING = {
   "774-spell-damage": "the feature's own words (src/lib/srd/subclasses.json: \"an attacker who wounded someone near you\") and the published feature (\"deals damage with an attack\") both answer an attack; pull request #774 listed it as a limit, and it is the rule",
-  "773-attack-not-optional": "pull request #773, Known limits: \"The attack isn't optional, though the rules say 'lets you'. I chose this because a paladin almost always wants it and the card has no second step.\"",
 };
 const SKIP = {
   "791-unpicked-card-sends-first": "the first option is chosen by the Hand's picker in the browser (the card's intent carries no variant until a chip is pressed, and the engine asks for one: \"Tides of Chaos needs a variant\"); only the browser harness can press a card without picking.",
@@ -286,6 +260,9 @@ for (const [door, fall] of Object.entries(FALLS)) {
 // ---- #773, #774 ----
 
 const glory = table.hero({ class: "paladin", subclass: "Oath of Glory" });
+// Maintainer ruling R6 (/tmp/odm-gapstudy/WAVE1.md): "Glorious Defense's attack
+// is the paladin's choice ('lets you'): the card offers the attack by default
+// and a 'no attack' choice."
 await row("773-attack-not-optional", {
   pr: 773,
   limit: "The attack isn't optional, though the rules say \"lets you\".",
@@ -294,10 +271,23 @@ await row("773-attack-not-optional", {
   const [enemy] = await table.stage([glory, friend]);
   beside(glory, enemy);
   await table.strike(enemy, glory, [10, 4]);
+  const [card] = table.offered(glory, "Glorious Defense");
+  assert.ok(card, "the hit deals Glorious Defense's card");
+  assert.deepEqual(card.choice?.options.map((option) => option.value), ["attack", "no attack"], "the card asks whether the miss is followed by an attack, the attack first");
   const out = await react(glory, { feature: "Glorious Defense" }, [15, 4, 4, 4]);
   assert.equal(out.ok, true, out.error);
   assert.equal(world.sheet(glory.id).currentHp, 50, "the hit became a miss");
-  assert.ok(out.result.attack, "the miss is answered by the attack without asking");
+  assert.ok(out.result.attack?.hit !== undefined || out.result.attack?.ok, `with nothing said the miss is answered by the attack: ${show(out)}`);
+  // Declined: the miss stands and no attack is rolled.
+  const [again] = await table.stage([glory, friend]);
+  beside(glory, again);
+  await table.strike(again, glory, [10, 4]);
+  const before = kit.enemy(again.id).currentHp;
+  const declined = await react(glory, { feature: "Glorious Defense", variant: "no attack" }, [15, 4, 4, 4]);
+  assert.equal(declined.ok, true, declined.error);
+  assert.equal(world.sheet(glory.id).currentHp, 50, "the hit became a miss");
+  assert.equal(kit.enemy(again.id).currentHp, before, "no attack was made");
+  assert.match(String(declined.result.attack), /lets the attack pass/);
 });
 
 const redeemer = table.hero({ class: "paladin", subclass: "Oath of Redemption" });
@@ -514,6 +504,8 @@ await row("787-martyr-not-rolled-against-the-echo", {
   // A 20th-level knight's echo: AC 14 + 6. A 16 that hit the ally's AC 12 misses it.
   const [enemy] = await table.stage([knight, friend]);
   beside(knight, enemy);
+  // The echo is out (Manifest Echo's mark): Shadow Martyr needs it.
+  world.patch(knight.id, { conditions: [...world.sheet(knight.id).conditions, "echo manifested"] });
   await table.strike(enemy, friend, [12, 4]);
   const out = await react(knight, { feature: "Shadow Martyr", targetCharacterId: friend.id });
   assert.equal(out.ok, true, out.error);

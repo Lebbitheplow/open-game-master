@@ -228,8 +228,11 @@ const RECIPES = {
   relationship_beat: one("calm", (c) => ({ characterId: c.hero.id, subject: "Old Marta", beat: "helped", note: "Carried her water." }), {
     before: (c) => must(c, "set_npc", { name: "Old Marta", attitude: "indifferent", trait: "hums while she works", gender: "female" }),
   }),
+  // Refused on purpose ("They barely know them"): the property is that the
+  // refusal left nothing (LC-REV-10), so a refusal here is the row walked.
   romance_advance: one("calm", (c) => ({ characterId: c.hero.id, subject: "Old Marta", to: "interested" }), {
     before: (c) => must(c, "set_npc", { name: "Old Marta", attitude: "friendly", trait: "hums while she works", gender: "female" }),
+    refuses: true,
   }),
   relationship_end: one("calm", (c) => ({ characterId: c.hero.id, subject: "Old Marta", reason: "parting" }), {
     before: async (c) => {
@@ -282,65 +285,10 @@ const SKIP = {
 };
 
 // Residue known today, by "tool" or "tool/variant". Each is a finding in
-// /tmp/odm-gapstudy/findings/lifecycle.jsonl with the same id.
-const KNOWN = {
-  // ---- inside what the revert says it takes back: sheets, the fight, the board, the clock ----
-  "take_action/dodge": { severity: "high", where: "src/lib/dm/action-common.ts addSheetCondition (Dodge writes the sheet with no audit row, so the revert gives the action back and leaves \"dodging\")" },
-  "take_action/ready": { severity: "high", where: "src/lib/dm/action-common.ts addSheetCondition (Ready: \"readied\" and its trigger stay, the action comes back)" },
-  use_reaction: { severity: "high", where: "src/lib/dm/reaction-spells.ts castShield -> addSheetCondition (\"shielded\" stays: +5 AC kept, the slot and the reaction given back)" },
-  "apply_damage/concentrating": { severity: "high", where: "src/lib/dm/concentration.ts breakConcentration (the conditions it strips from every sheet the spell was on, and concentration_rounds, have no audit row: the revert gives back the hit points and the caster's concentration on a Bless nobody has)" },
-  summon_pet: { severity: "medium", where: "src/lib/dm/pet-tools.ts (pets_json is written with no audit row: \"Nothing left to revert for that turn\")" },
-  dismiss_pet: { severity: "medium", where: "src/lib/dm/pet-tools.ts (as summon_pet: the pet stays gone)" },
-  party_stash: { severity: "medium", where: "party_stash's handler (the depositor's gold and campaigns.party_json are written with no audit row: the gold stays in the stash)" },
-  "update_sheet/level": { severity: "low", where: "update_sheet (level): the xp it raises with the level is not in the audit row, so the level goes back and the xp stays" },
-  start_encounter: { severity: "medium", where: "src/lib/db/campaigns.ts setFloor / ambience: campaigns.floor_json and ambience_json are not among the rows a turn keeps (src/lib/dm/turn-rows-logic.ts FIGHT_TABLES): the fight goes and the floor stays in initiative, naming an encounter that no longer exists" },
-  end_turn: { severity: "medium", where: "setFloor (as start_encounter): the order goes back to Kara, the floor still names Mira" },
-  "pc_attack/kills the last foe": {
-    severity: "medium",
-    where: "src/lib/dm/turn-revert.ts takeBackTurnChanges (\"a fight that has ended since stays\"): the fight this very turn's blow ended is treated as ended since. The revert answers ok, takes the sheets' rows back (the XP the kill paid) and leaves the foe dead, the fight ended and the action spent",
-    note: "written ruling to confirm: docs/issue-685-audit-2026-11-01.md \"a fight that has ended stays ended\"",
-  },
-  "apply_damage/kills the last foe": { severity: "medium", where: "src/lib/dm/turn-revert.ts (as pc_attack/kills the last foe)", note: "the same written ruling" },
-  end_encounter: { severity: "medium", where: "setFloor (as start_encounter): the fight is back and the floor stays open" },
-  request_player_input: { severity: "low", where: "setFloor: a spotlight question stays asked after its turn is reverted" },
-  grant_item: { severity: "low", where: "character_events: the timeline row of an item the revert took back stays" },
-  reveal_item: { severity: "low", where: "character_events (as grant_item)" },
-  purchase: { severity: "low", where: "character_events (as grant_item)" },
-  record_event: { severity: "low", where: "character_events: a recorded deed has no revert" },
-  learn_spell: { severity: "low", where: "character_events (as grant_item): the spell and the gold go back, the timeline row stays" },
-  "take_rest/long": { severity: "low", where: "src/lib/db/clock.ts rewindTurnClock: the hours go back, the weather the rest rolled and the world tick's counters do not" },
-  travel: { severity: "low", where: "rewindTurnClock (as take_rest/long): weather, travel pace and the ambience bed stay as the march left them" },
-  romance_advance: { severity: "low", where: "romance_advance: refused (\"They barely know them\") after it stamped npcs.met_at and wrote two relationships rows" },
-  // ---- not on the route's list of what a revert takes back (its header comment; recorded with that ruling) ----
-  add_companion: { severity: "low", where: "revert-turn/route.ts: companions are outside the revert (\"a companion's leaving stay[s]: the chapter rewind is what takes those back\")" },
-  dismiss_companion: { severity: "low", where: "revert-turn/route.ts: written ruling, a companion's leaving stays" },
-  move_party: { severity: "low", where: "revert-turn/route.ts: the scene and locations are not kept by a turn" },
-  update_location: { severity: "low", where: "as move_party" },
-  start_scene: { severity: "low", where: "campaigns.scene_tracker_json is not kept by a turn" },
-  scene_check: { severity: "low", where: "campaigns.scene_tracker_json: a skill challenge's success counted by a reverted turn stays counted" },
-  end_scene: { severity: "low", where: "campaigns.scene_tracker_json" },
-  mount_up: { severity: "low", where: "campaigns.mounts_json is not kept by a turn" },
-  dismount: { severity: "low", where: "campaigns.mounts_json" },
-  damage_object: { severity: "low", where: "campaigns.clock_json.objects: damage to an object is not kept by a turn" },
-  set_npc: { severity: "low", where: "npcs" },
-  npc_reaction: { severity: "low", where: "npcs, relationships" },
-  social_check: { severity: "low", where: "npcs.met_at, relationships" },
-  relationship_beat: { severity: "low", where: "relationships" },
-  relationship_end: { severity: "low", where: "relationships" },
-  send_whisper: { severity: "low", where: "dm_whispers" },
-  write_campaign_note: { severity: "low", where: "campaign_notes" },
-  set_ambience: { severity: "low", where: "campaigns.ambience_json" },
-  set_weather: { severity: "low", where: "campaigns.clock_json.weather" },
-  set_quest: { severity: "low", where: "quests" },
-  tick_objective: { severity: "low", where: "quests.objectives_json" },
-  adjust_reputation: { severity: "low", where: "campaigns.party_json standing, world_facts" },
-  faction_note: { severity: "low", where: "world_facts" },
-  generate_settlement: { severity: "low", where: "npcs, lore_entries" },
-  open_shop: { severity: "low", where: "shops" },
-  haggle: { severity: "low", where: "shops.haggled_json: a haggle taken back can not be tried again" },
-  set_lifestyle: { severity: "low", where: "campaigns.clock_json.lifestyles" },
-  afflict: { severity: "medium", where: "campaigns.clock_json.afflictions: a disease or poison a reverted turn gave a character stays on them (\"Nothing left to revert for that turn\")" },
-};
+// /tmp/odm-gapstudy/findings/lifecycle.jsonl with the same id. Every row
+// the sweep walked is closed: the database keeps every row a turn writes
+// (src/lib/db/turn-journal.ts), and the revert writes them back.
+const KNOWN = {};
 
 // A difference that is not the game's state.
 const ignore = (table, column) =>
@@ -393,10 +341,12 @@ for (const entry of ADJUDICATIONS) {
       if (refused !== null) {
         // A recipe the engine refuses walks nothing: that is the suite
         // breaking (not an assertion), unless the refusal itself left marks.
-        if (!residue.length) {
+        if (!residue.length && !recipe.refuses) {
           throw new Error(`the recipe for ${id} was refused, so the row was not walked: ${refused}`);
         }
         assert.deepEqual(residue, [], `${id} was refused (${refused}) and still changed the table`);
+        // Nothing to revert: the refusal itself was the row.
+        return;
       }
       if (!changed.length) {
         silent += 1;

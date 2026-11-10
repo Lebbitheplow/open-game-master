@@ -65,7 +65,9 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
         aliases: ["Totemic Attunement Wolf"],
         action: "bonus",
         gate: { ...RAGING, choice: "wolf" },
-        does: { kind: "note", text: "The Large or smaller creature the barbarian hit with a melee weapon attack this turn is knocked prone (set_condition prone)." },
+        // The creature beside the barbarian is knocked prone, no save: it was
+        // a note the GM had to act on.
+        does: { kind: "buff", target: "enemy", condition: "prone", rounds: 10, rangeFt: 5 },
       },
     ],
     effects: [
@@ -272,7 +274,8 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
   "bard::Blade Flourish": {
     subclass: "College of Swords",
     spends: [
-      { name: "Blade Flourish", pool: { id: "bardic_inspiration" }, oncePerTurn: true, does: { kind: "flourish" } },
+      // "when you hit a creature with a weapon attack" (XGtE): after the hit.
+      { name: "Blade Flourish", pool: { id: "bardic_inspiration" }, oncePerTurn: true, afterWeaponHit: true, does: { kind: "flourish" } },
     ],
   },
   "bard::Psychic Blades": {

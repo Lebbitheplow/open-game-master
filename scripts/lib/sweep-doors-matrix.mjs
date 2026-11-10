@@ -15,7 +15,11 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import { answer } from "./sweep-doors.mjs";
 
-export async function runMatrix({ api, db, rows, states, doors, stageFor, actorOf, KNOWN, SKIP, label }) {
+// ALLOWED: cells a written ruling lets through (the console's free hand on a
+// mount, the GM settling a fallen friend's trades). Each must still go
+// through, so a change that starts refusing one is noticed, and each names
+// the ruling it rests on (`ruling`) and may check what it wrote (`check`).
+export async function runMatrix({ api, db, rows, states, doors, stageFor, actorOf, KNOWN, SKIP, ALLOWED = {}, label }) {
   const { test, gap } = api;
   const cells = [];
   const counts = { rows: 0, cells: 0, skipped: 0, notApplicable: 0 };
@@ -93,6 +97,20 @@ export async function runMatrix({ api, db, rows, states, doors, stageFor, actorO
           assert.equal(out.ok, false, `${row.tool} went through for an actor who is ${state.words}: ${answer(out)}`);
           assert.deepEqual(wrote, [], `${row.tool} was refused (${answer(out)}) and still wrote`);
         };
+        const allowed = ALLOWED[id];
+        if (allowed) {
+          used.add(id);
+          await test(`${label} ${id}: goes through, as ${allowed.ruling} rules`, async () => {
+            await arrange(stage, row, state, door);
+            const before = db.snapshot();
+            out = await door.call(stage.t, row.tool, row.args(stage.t));
+            wrote = db.changed(before);
+            cells.push(`${id} | ${answer(out)} | ALLOWED`);
+            assert.equal(out.ok, true, `${row.tool} was refused for an actor who is ${state.words}, though ${allowed.ruling} lets it through: ${answer(out)}`);
+            allowed.check?.(wrote, out);
+          });
+          continue;
+        }
         const known = KNOWN[id];
         if (known) {
           used.add(id);
@@ -117,8 +135,10 @@ export async function runMatrix({ api, db, rows, states, doors, stageFor, actorO
     }
   }
   await test(`${label}: every KNOWN and SKIP entry names a cell or a row the matrix has`, () => {
-    const stale = Object.keys(KNOWN).filter((id) => !used.has(id));
-    assert.deepEqual(stale, [], "KNOWN entries no cell matched");
+    assert.deepEqual(Object.keys(ALLOWED).filter((id) => !ALLOWED[id].ruling), [], "ALLOWED entries name the ruling they rest on");
+    assert.deepEqual(Object.keys(ALLOWED).filter((id) => KNOWN[id]), [], "a cell is ALLOWED or KNOWN, not both");
+    const stale = [...Object.keys(KNOWN), ...Object.keys(ALLOWED)].filter((id) => !used.has(id));
+    assert.deepEqual(stale, [], "KNOWN or ALLOWED entries no cell matched");
     const staleSkips = Object.keys(SKIP).filter((id) => !usedSkips.has(id));
     assert.deepEqual(staleSkips, [], "SKIP entries no row matched");
   });

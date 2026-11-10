@@ -73,6 +73,11 @@ function prepareCost(
 ): ToolError | { commit: () => ToolResult; marks?: string[] } {
   const encounter = getActiveEncounter(campaign.id);
   const inFight = encounter !== null && (encounter.kind ?? "fight") === "fight";
+  // A spend that rides a weapon hit has none to ride out of a fight (Arcane
+  // Jolt's healing was taken there with no hit, its card shut).
+  if (afterWeaponHit && !inFight) {
+    return { error: `${label} rides a weapon hit in a fight, and there is no fight. Nothing was spent.`, refused: "rules" };
+  }
   if (!inFight || !encounter) {
     return { commit: () => ({}) };
   }
@@ -80,8 +85,9 @@ function prepareCost(
   if (onceKey && budget?.oncePerTurn.includes(onceKey)) {
     return { error: `${label} is used once a turn, and ${sheet.name} has used it this turn.`, refused: "rules" };
   }
-  // Before this the use could be spent with no attack made at all.
-  if (afterWeaponHit && budget && !budget.oncePerTurn.some((mark) => mark.startsWith(WEAPON_HIT))) {
+  // Before this the use could be spent with no attack made at all, and off
+  // the holder's turn (no budget of theirs) with no hit of this turn.
+  if (afterWeaponHit && (!budget || !budget.oncePerTurn.some((mark) => mark.startsWith(WEAPON_HIT)))) {
     return { error: `${label} rides a weapon hit, and ${sheet.name} has landed none this turn: pc_attack first. Nothing was spent.`, refused: "rules" };
   }
   if (cost === "reaction") {
@@ -125,12 +131,14 @@ function prepareCost(
   };
 }
 
-function pickVariant(does: SpendDoes, variant: string | undefined, spend: AuthoredSpend): { does: SpendDoes; action?: SpendAction } | ToolError {
+function pickVariant(does: SpendDoes, variant: string | undefined, spend: AuthoredSpend): { does: SpendDoes; action?: SpendAction; afterWeaponHit?: boolean } | ToolError {
   if (does.kind !== "variants") {
-    return { does, action: spend.action };
+    return { does, action: spend.action, afterWeaponHit: spend.afterWeaponHit };
   }
   const key = namedOption(spend.name, variant, Object.keys(does.options));
-  return typeof key === "string" ? does.options[key] : key;
+  // An option that names no cost of its own costs the spend's (Bolstering
+  // Magic's touch, Lunar Phenomenon's bonus action), as its card says.
+  return typeof key === "string" ? { ...does.options[key], action: does.options[key].action ?? spend.action } : key;
 }
 
 // An option of a shared pool, named in the variant or after the pool's name
@@ -203,7 +211,7 @@ export function authoredFeatureSpend(
     }
   }
   const onceKey = spend.oncePerTurn ? (spend.onceKey ?? `authored:${textKey(spend.name)}`) : null;
-  const charge = prepareCost(campaign, sheet, picked.action, spend.name, onceKey, spend.afterWeaponHit);
+  const charge = prepareCost(campaign, sheet, picked.action, spend.name, onceKey, picked.afterWeaponHit ?? spend.afterWeaponHit);
   if ("error" in charge) {
     return charge;
   }
@@ -230,8 +238,13 @@ export function authoredFeatureSpend(
   const now = getSheetById(sheet.id) ?? sheet;
   const patch: FullPatchSheetInput = { ...(outcome.patch ?? {}) };
   if (poolId && units > 0) {
-    const state = now.resources[poolId];
-    patch.resources = { ...now.resources, [poolId]: { max: state.max, used: state.used + units } };
+    // On top of what the effect wrote: Psionic Recovery restores a Psionic
+    // Energy die and spends its own use, and the pool written from the sheet
+    // as read before the effect put the die straight back (it answered
+    // "1 die back" and returned none).
+    const resources = patch.resources ?? now.resources;
+    const state = resources[poolId] ?? now.resources[poolId];
+    patch.resources = { ...resources, [poolId]: { max: state.max, used: state.used + units } };
   }
   if (spend.oncePer) {
     const conditions = patch.conditions ?? now.conditions;

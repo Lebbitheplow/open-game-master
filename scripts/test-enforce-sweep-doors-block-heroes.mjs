@@ -36,42 +36,17 @@ const SKIP = {
 const BOTH = ["console", "ai"];
 const cellsOf = (row, states, doorIds = BOTH) => states.flatMap((state) => doorIds.map((door) => `${row}|${state}|${door}`));
 
-const KNOWN = {
-  // mount_up and dismount ask one thing, whose turn it is (and the console
-  // not even that): nothing reads the rider's state.
-  ...known(
-    [
-      ...cellsOf("mount_up", ["dead", "dying", "stable", "asleep", "stunned", "paralyzed", "petrified", "surprised", "held"]),
-      ...cellsOf("dismount", ["dead", "dying", "stable", "asleep", "stunned", "paralyzed", "petrified", "surprised", "held"]),
-    ],
-    {
-      where: "src/lib/dm/mount-tools.ts handleMountUp, handleDismount, spendMountingMovement (no canAct kind \"move\", no heldTurnRefusal)",
-      severity: "medium",
-      note: "SRD 5.1, Mounting and Dismounting: \"Once during your move, you can mount a creature that is within 5 feet of you or dismount.\" A dead, dying, stunned, paralyzed, petrified or surprised character has no move, and mounting spends half of it.",
-    },
-  ),
-  // The console's free hand off the rider's turn is written down.
-  ...known(cellsOf("mount_up", ["not_turn"], ["console"]).concat(cellsOf("dismount", ["not_turn"], ["console"])), {
-    where: "src/lib/dm/mount-tools.ts spendMountingMovement: \"a person at the console keeps a free hand\" (a written ruling; recorded for the maintainer to confirm)",
-    severity: "low",
-    note: "ruling",
-  }),
-  ...known(cellsOf("take_action:grapple", ["charmed_by_target"]).concat(cellsOf("take_action:shove", ["charmed_by_target"])), {
-    where: "src/lib/dm/action-tools.ts (case \"grapple\" / \"shove\"): no charmedBy check, as pc-attack-gate.ts, cast-at-enemy.ts and aoe-damage.ts have",
-    severity: "medium",
-    note: "SRD 5.1, Grappling and Shoving a Creature: each is \"a special melee attack\", so the charmer cannot be its target.",
-  }),
-  ...known(cellsOf("handle_item:drop", ["dying", "stable", "not_turn", "held"]), {
-    where: "src/lib/dm/gear-tool.ts handleItemCall (case \"drop\") -> gear-ground.ts drop: a drop asks no canAct and no heldTurnRefusal",
-    severity: "low",
-    note: "SRD 5.1, Other Activity on Your Turn: \"You can also interact with one object or feature of the environment for free, during either your move or your action.\" Dropping is free (gear-tool.ts), but it is still the turn's, and an unconscious character lets go of nothing by choice.",
-  }),
-  ...known(["move_token|not_turn|ai:family", "move_token:disengage|not_turn|ai:family"], {
-    where: "src/lib/dm/map-tools.ts (move_token's refusal of a player's token off its turn)",
-    severity: "low",
-    note: "Off their turn pc_attack, take_action and every cast refuse as rules; move_token refuses as retry and names forced:true in the same sentence, which invites the model to resend the walk as a forced one.",
-  }),
-};
+// No known gaps left in this matrix.
+const KNOWN = {};
+
+// The console's free hand off the rider's turn (WAVE1 ruling R9: "the
+// console may mount or dismount off turn (a person GM adjudicates), but never
+// charges movement to a turn that is not running"). The mount is recorded, so
+// these cells write; that no movement is charged is held by
+// scripts/test-enforce-turn-movement-2.mjs.
+const ALLOWED = known(cellsOf("mount_up", ["not_turn"], ["console"]).concat(cellsOf("dismount", ["not_turn"], ["console"])), {
+  ruling: "ruling R9 (src/lib/dm/mount-tools.ts spendMountingMovement: a person at the console keeps a free hand)",
+});
 
 await test("every catalog entry with a character, enemy or token picker is a row of a matrix or has a written reason", () => {
   assert.deepEqual(unclassified(ADJUDICATIONS, [...rows, ...enemyRows(ADJUDICATIONS)]), []);
@@ -138,7 +113,7 @@ const callers = [
 await runMatrix({
   api, db, rows, states: STATES, doors: callers, stageFor,
   actorOf: (row, t) => t[row.actor].id,
-  KNOWN, SKIP, label: "hero",
+  KNOWN, SKIP, ALLOWED, label: "hero",
 });
 
 for (const t of stages.values()) {

@@ -32,6 +32,7 @@
 //     through the engine.
 import assert from "node:assert/strict";
 import { openWorld } from "./lib/enforce-world.mjs";
+import { call } from "./lib/enforce-campaign.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { kit as conditionsKit, FIGHTER } from "./lib/enforce-conditions.mjs";
 
@@ -746,9 +747,23 @@ await test("a death save that spends an inspiration die and stabilises leaves th
   // the stable wait.
   dying({ ...FRESH, successes: 2 });
   world.patch(hero.id, { conditions: ["bardic inspiration (d6)"] });
-  const out = await kit.withDice([9, 3, 2], "pass_time", { amount: 1, unit: "minutes" });
-  assert.equal(out.outcome.ok, true, out.outcome.error);
-  assert.equal(track()?.stable, true, JSON.stringify(out.dice));
+  // The 9 falls short and waits on the hero's player, who adds the held die
+  // ("After-the-roll holders ... are asked on initiative and death saves
+  // too": the maintainer's decision R4 of the 2026-11-09 gap sweep; it was
+  // added for them before).
+  world.clearDice();
+  world.dice(9);
+  const out = await world.invoke("pass_time", { amount: 1, unit: "minutes" });
+  assert.equal(out.ok, true, out.error);
+  const { listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
+  const card = listOpenPendingRolls(world.campaignId).find((pending) => pending.thrown?.options.some((option) => option.id === "bardic"));
+  assert.ok(card, "the death save waits on the held die");
+  world.dice(3, 2);
+  world.signIn({ id: hero.userId });
+  const added = await call(await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]/after-roll"), "POST", { use: "bardic" }, { campaignId: world.campaignId, pendingRollId: card.id });
+  world.clearDice();
+  assert.equal(added.status, 200, JSON.stringify(added.json));
+  assert.equal(track()?.stable, true, JSON.stringify(track()));
   assert.ok(
     !world.sheet(hero.id).conditions.includes("bardic inspiration (d6)"),
     `the spent die came back with the stable conditions: ${world.sheet(hero.id).conditions.join(", ")}`,

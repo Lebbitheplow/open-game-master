@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { isErrorResponse, requireMember } from "@/lib/campaign-api";
-import { offeredSubclasses, raceGrantsFor } from "@/lib/characters/catalog";
+import { classGrantsFor, offeredSubclasses, raceGrantsFor } from "@/lib/characters/catalog";
 import { settingClassIds } from "@/lib/classes";
 import { packClassIds } from "@/lib/dm/companion-tools";
 import { tableAuthors } from "@/lib/db/homebrew";
@@ -66,6 +66,9 @@ export async function GET(
     classId,
     subclass,
     subclassesOf: (id) => offeredSubclasses(id, owner),
+    // The class rows the PATCH levels by, so a pack's class is offered its
+    // level as it is given it.
+    classOf: (id) => classGrantsFor(id, owner),
     freeCantrips: freeCantripCount(sheet, racialCantripChoice),
     subclassExtras: subclassExtrasFor(owner),
     settingClassIds: settingClassIds(context.campaign.gameSettings.genre, packClassIds(context.campaign.gameSettings)),

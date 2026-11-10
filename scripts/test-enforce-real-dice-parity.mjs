@@ -69,7 +69,13 @@ async function stage(hero, setEnemy = () => ({})) {
 }
 
 const d8s = (expression) => [...expression.matchAll(/(\d+)d8/g)].reduce((sum, match) => sum + Number(match[1]), 0);
-const marks = () => [...(world.encounter()?.turnBudget?.oncePerTurn ?? [])].sort();
+// Each path stages its own creature, so the weapon-hit mark a hit leaves on the
+// creature it struck (weapon-hit:<id>, read by the reactions that answer a
+// weapon hit) names a different id on each path: it reads as "the target" here,
+// and any mark naming some other creature keeps its id and fails the compare.
+const marks = (enemy) => [...(world.encounter()?.turnBudget?.oncePerTurn ?? [])]
+  .map((mark) => (mark === `weapon-hit:${enemy.id}` ? "weapon-hit:target" : mark))
+  .sort();
 
 async function answer(hero, kind, faces) {
   const pending = listOpenPendingRolls(world.campaignId).filter((entry) => entry.kind === kind && entry.userId === hero.userId).at(-1);
@@ -91,7 +97,7 @@ async function both(hero, { toHit, damage = [], after = [], args = {}, serverDam
       const swing = await kit.swing(hero.id, enemy.id, [toHit, ...serverDamage, ...after].flat(), args);
       assert.equal(swing.ok, true, swing.error);
       const said = JSON.stringify(swing.result);
-      out.server = { enemy: kit.enemy(enemy.id), marks: marks(), said, result: swing.result, tempHp: world.sheet(hero.id).tempHp };
+      out.server = { enemy: kit.enemy(enemy.id), marks: marks(enemy), said, result: swing.result, tempHp: world.sheet(hero.id).tempHp };
       continue;
     }
     setMemberRealDice(world.campaignId, hero.userId, true);
@@ -104,7 +110,7 @@ async function both(hero, { toHit, damage = [], after = [], args = {}, serverDam
       world.dice(...after);
       const blow = asked ? await answer(hero, "damage", damage) : { note: "", expression: null };
       world.clearDice();
-      out.table = { enemy: kit.enemy(enemy.id), marks: marks(), said: `${hit.note} ${blow.note}`, hitNote: hit.note, damageExpression: blow.expression, tempHp: world.sheet(hero.id).tempHp };
+      out.table = { enemy: kit.enemy(enemy.id), marks: marks(enemy), said: `${hit.note} ${blow.note}`, hitNote: hit.note, damageExpression: blow.expression, tempHp: world.sheet(hero.id).tempHp };
     } finally {
       setMemberRealDice(world.campaignId, hero.userId, false);
     }

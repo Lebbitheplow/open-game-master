@@ -10,48 +10,11 @@ import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
 import { limitsSuite } from "./lib/sweep-limits.mjs";
 import { authoredText, limitsTable } from "./lib/sweep-limits-world.mjs";
 
-const NO_SIGHT = {
-  where: "src/lib/srd/authored-effects-data*.ts (the spend's row carries no `sight`), read by src/lib/dm/authored-spend-effects.ts",
-  severity: "medium",
-  note: "The same qualifier Nature's Wrath and Command Undead already carry (sight: true). An invisible or hidden creature is cursed or charmed by a holder who cannot see it.",
-};
-const NO_STOP = {
-  where: "src/lib/dm/forced-save.ts (a save the engine forces is thrown at once; only an AI table with the fight watch on stops it, src/lib/dm/foresight.ts)",
-  severity: "medium",
-  note: "The wizard's own checks and saves asked through request_roll wait on Portent with no button pressed; the same wizard's save against a trap, a hazard or an area is thrown before they can name a number.",
-};
 const KNOWN = {
-  "831-champion-challenge-walks-away": {
-    where: "src/lib/dm/map-tools.ts move_token / src/lib/dm/enemy-speed.ts (a creature's own move does not read the leash on its conditions); src/lib/dm/condition-leash.ts only ends the mark",
-    severity: "medium",
-    note: "The creature walks out of the 30 feet and the leash then lets it go at the turn's end: the option does the opposite of its text.",
-  },
-  "831-challenge-let-go-at-turn-end": {
-    where: "src/lib/dm/condition-leash.ts (checked from src/lib/dm/turn-end.ts only)",
-    severity: "low",
-    note: "A creature shoved or carried beyond 30 feet stays challenged until some turn ends.",
-  },
-  "831-within-feet:warlock::Hexblade's Curse/Hexblade's Curse": {
-    where: "src/lib/srd/authored-effects-data*.ts Hexblade's Curse (buff, quarry: true, no rangeFt), read by src/lib/dm/authored-spend-effects.ts",
-    severity: "medium",
-    note: "Vow of Enmity's row, the same shape, carries its 10 feet and refuses beyond it; this one curses a creature anywhere on the board.",
-  },
-  "831-you-can-see:warlock::Hexblade's Curse/Hexblade's Curse": NO_SIGHT,
-  "831-you-can-see:warlock::Master of Hexes/Master of Hexes": NO_SIGHT,
-  "831-you-can-see:wizard::Hypnotic Gaze/Hypnotic Gaze": NO_SIGHT,
-  "809-portent-on-a-forced-save:a trap's save (cast_at_player)": NO_STOP,
-  "809-portent-on-a-forced-save:a hazard (apply_hazard)": NO_STOP,
-  "809-portent-on-a-forced-save:a spell's area (aoe_damage)": NO_STOP,
-  "856-no-stop-at-a-person-run-table": {
-    where: "src/app/api/campaigns/[campaignId]/foresight/route.ts (409 \"A person runs this table: tell them when you use Portent.\") and src/lib/dm/foresight.ts (the console's calls never stop)",
-    severity: "medium",
-    note: "Pinned by scripts/test-enforce-portent.mjs \"The button needs a number held, and a table whose turns the AI GM plays.\" At a person-run table Portent on another creature's roll has no door: the player tells the GM, who has no tool that puts a chosen number on a d20.",
-  },
 };
 const RULING = {
   "831-out-of-a-fight": "pull request #831, Known limits: \"Out of a fight, an area option is paid for and left to the story, as a buff aimed at a creature already is. Nature's Wrath is refused without a fight, like other single-target save_effect rows.\" (pinned by scripts/test-channel-table.mjs \"Out of a fight, an area option is paid for and left to the GM's story.\")",
   "832-picker-caps-at-12": "pull request #832, Known limits: \"The picker's limit: it caps at 12 creatures, the most a card's intent carries.\" (src/lib/battlemap/hand-intent.ts .max(12))",
-  "809-reliable-talent-under-portent": "pull request #809, Limits: \"A number replaces the d20 directly, so a rule that sets a minimum roll, like Reliable Talent, doesn't apply to it.\"",
   "859-faithful-summons-choice": "src/lib/dm/faithful-summons.ts: the four beasts are wolves, chosen for the player; pull request #859 asked for \"a card the player answers at 0 hit points or a ruling on defaults\"",
 };
 const SKIP = {
@@ -528,9 +491,12 @@ await row("809-reliable-talent-under-portent", {
   const spent = await call(routes.portent, "POST", { value: 3 }, { campaignId: world.campaignId, pendingRollId: open.id });
   assert.equal(spent.status, 200, JSON.stringify(spent.json));
   const landed = rolls.listRecentRolls(world.campaignId, 20).find((roll) => roll.id === pending.getPendingRoll(open.id).rollId);
-  // As ruled: the foretold 3 stands, Reliable Talent's 10 does not lift it.
-  assert.equal(landed.breakdown.natural, 3);
-  assert.ok(landed.total < 10 + 3 + 3, `the total is ${landed.total}`);
+  // The foretold 3 is the d20 roll, and Reliable Talent treats a d20 roll of
+  // 9 or lower as a 10 (the maintainer's decision R3 of the 2026-11-09 gap
+  // sweep overturned #809's ruling that the number stands unlifted).
+  assert.equal(landed.breakdown.natural, 3, "the number foretold is the roll's");
+  const lead = landed.breakdown.terms[0];
+  assert.equal(lead.subtotal, 10, `Reliable Talent lifts the foretold 3 to 10: ${JSON.stringify(landed.breakdown)}`);
   await clearRolls();
 });
 await row("809-foretold-number-on-the-sheet", { pr: 809, limit: "A foretold number shows on the wizard's sheet like the rest of its resources, so anyone who can open that sheet can see it.", rule: "-" }, async () => {});

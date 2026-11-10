@@ -28,46 +28,22 @@ const rows = quietRows();
 
 const SKIP = {};
 
-const BOTH = ["console", "ai"];
-const ALL = ["dead", "dying", "stable", "asleep", "petrified"];
-const DOWN = ["dying", "stable", "asleep", "petrified"];
-const cellsOf = (row, states) => states.flatMap((state) => BOTH.map((door) => `${row}|${state}|${door}`));
-const UNAWARE = "SRD 5.1, Unconscious and Petrified: the creature \"is incapacitated (see the condition), can't move or speak, and is unaware of its surroundings\"; the dead do nothing.";
 
-const KNOWN = {
-  ...known(
-    [
-      ...cellsOf("social_check", ALL), ...cellsOf("scene_check", ALL), ...cellsOf("damage_object", ALL), ...cellsOf("lift", ALL),
-      ...cellsOf("purchase:buy", ALL), ...cellsOf("purchase:sell", ALL), ...cellsOf("party_stash:stow", ALL), ...cellsOf("mount_up", ALL),
-    ],
-    {
-      where: "src/lib/dm/social-tools.ts handleSocialCheck, scene-tools.ts handleSceneCheck, world-tools.ts handleDamageObject, explore-tools.ts (lift), shop-tools.ts handleBuyItem / handleSellItem with no fight on, party-tools.ts handlePartyStash, mount-tools.ts handleMountUp: none asks the character's state",
-      severity: "medium",
-      note: `${UNAWARE} A dead character persuades the fence, wins a chase's exchange, swings at a door, sells a dagger. use_item, use_resource, cast_buff, heal, haggle and stabilize refuse the same character through canAct.`,
-    },
-  ),
-  ...known(
-    [
-      ...cellsOf("request_roll:skill", DOWN), ...cellsOf("request_roll:ability", DOWN), ...cellsOf("group_check", DOWN),
-      ...cellsOf("handle_item:hand", DOWN), ...cellsOf("handle_item:drop", DOWN), ...cellsOf("downtime", DOWN),
-    ],
-    {
-      where: "src/lib/dm/invoke-roll.ts handleRequestRoll, check-tools.ts handleGroupCheck, gear-tool.ts handleItemCall (hand, drop, out of a fight), explore-tools.ts (downtime): each refuses or counts out the dead and stops there",
-      severity: "medium",
-      note: `${UNAWARE} The handlers already turn the dead away; a character at 0 hit points, asleep or turned to stone rolls Athletics, sneaks with the group, hands over a dagger and works a day of downtime (a dying one while their death saves roll).`,
-    },
-  ),
-  ...known(cellsOf("check_notice", ["petrified"]), {
-    where: "src/lib/dm/check-tools.ts handleCheckNotice (\"The dead and the unconscious notice nothing\"): the petrified are not counted with them",
-    severity: "low",
-    note: "SRD 5.1, Petrified: \"is unaware of its surroundings\"; a petrified character's passive Perception still notices the trip wire.",
-  }),
-  ...known(["downtime|dead|console:family", "downtime|dead|ai:family"], {
-    where: "src/lib/dm/explore-tools.ts (downtime's refusal of a dead character)",
-    severity: "low",
-    note: "\"is dead and spends no downtime\" is the game saying no, marked retry.",
-  }),
-};
+// None left: every deed out of a fight asks canAct first
+// (src/lib/dm/deed-guard.ts), group_check counts out who cannot act, and
+// check_notice counts out the petrified with the unconscious.
+const OUT_STATES = ["dead", "dying", "stable", "asleep", "petrified"];
+const cells = (row) => OUT_STATES.flatMap((state) => ["console", "ai"].map((door) => `${row}|${state}|${door}`));
+// A trade is the GM's to settle: the GM settles a fallen friend's purchase
+// and sale through the engine (scripts/test-enforce-break-and-counter.mjs
+// "The DM settles a fallen friend's purchase and sale"), and the
+// maintainer's call in the gap sweep of 2026-11-10 confirmed it. The
+// deed guard (src/lib/dm/deed-guard.ts) leaves a trade out of DEEDS for that
+// reason; these cells hold that it still goes through.
+const KNOWN = {};
+const ALLOWED = known([...cells("purchase:buy"), ...cells("purchase:sell")], {
+  ruling: "the GM settling a fallen friend's trades (scripts/test-enforce-break-and-counter.mjs)",
+});
 
 // ---- the stage: a quiet table with a shop, a fence and three heroes ----
 
@@ -101,7 +77,7 @@ await runMatrix({
   api, db, rows, states: STATES, doors: callers,
   stageFor: async () => ({ t, base }),
   actorOf: (row, table) => table[row.actor].id,
-  KNOWN, SKIP, label: "quiet",
+  KNOWN, SKIP, ALLOWED, label: "quiet",
 });
 
 world.close();

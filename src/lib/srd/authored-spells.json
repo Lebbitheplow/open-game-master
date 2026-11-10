@@ -384,7 +384,7 @@
         "buff": {
           "condition": "armor of agathys",
           "target": "self",
-          "rounds": 100,
+          "rounds": 600,
           "tempHp": {
             "base": 5,
             "perSlotLevel": 5
@@ -517,7 +517,7 @@
         "buff": {
           "condition": "gift of alacrity",
           "target": "ally",
-          "rounds": 100
+          "rounds": 4800
         }
       }
     },
@@ -1355,7 +1355,7 @@
         "buff": {
           "condition": "elemental weapon",
           "target": "ally",
-          "rounds": 100
+          "rounds": 600
         }
       }
     },
@@ -1434,7 +1434,7 @@
         "buff": {
           "condition": "flame arrows",
           "target": "ally",
-          "rounds": 100
+          "rounds": 600
         }
       }
     },
@@ -1494,7 +1494,7 @@
         "buff": {
           "condition": "intellect fortress",
           "target": "ally",
-          "rounds": 100
+          "rounds": 600
         }
       }
     },
@@ -2262,7 +2262,7 @@
         "buff": {
           "condition": "holy weapon",
           "target": "ally",
-          "rounds": 100
+          "rounds": 600
         }
       }
     },
@@ -2827,7 +2827,7 @@
         "buff": {
           "condition": "crown of stars",
           "target": "self",
-          "rounds": 100
+          "rounds": 600
         }
       }
     },

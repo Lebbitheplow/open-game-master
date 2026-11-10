@@ -65,22 +65,25 @@ ollama create qwen3.6-dm -f models/qwen3.6-dm.Modelfile
 
 ### Context window
 
-The storyteller needs a context window of at least 16K tokens to narrate and
-24K to run fights; 32K or more is recommended. The GM's instructions and the
-compact tool set come to about 15K tokens before any story is told, and every
-request is fitted to the window the backend really has
+The storyteller needs a context window of at least 24K tokens to narrate and
+32K to run fights; 48K or more is recommended. The GM's instructions and the
+compact tool set come to about 15K tokens for a lone level 1 hero before any
+story is told, and about 20K for a party of four (a caster's spell rules and
+each hero's sheet add to them); a fight's rules and turn order add about 6K
+more. Every request is fitted to the window the backend really has
 ([request-fit.ts](../src/lib/dm/request-fit.ts)):
 
 | Window | What plays |
 |---|---|
-| under 16K | nothing: each turn is refused with a note naming the fix |
-| 16K (`-c 16384`) | narration, exploration and checks on the compact tool set; a fight turn can be refused for room |
-| 24K (`-c 24576`) | fights too, on a trimmed tool set, with only the last few turns in view |
-| 32K (`-c 32768`) | everything, with recent turns in view |
+| under 24K | a lone low-level hero narrates on the compact tool set; a larger party is offered only the essential tools (a roll, a question, a note, a whisper); too small for the instructions, a turn is refused with a note naming the fix |
+| 24K (`-c 24576`) | narration, exploration and checks on the compact tool set, for a party of four; a fight turn can be refused for room |
+| 32K (`-c 32768`) | fights too, on the compact tool set, with only the last few turns in view |
+| 48K (`-c 49152`) | everything, on the trimmed tool set, with recent turns in view |
 | 64K (`-c 65536`) | the default: the full tool set and a long transcript |
 
-Measured on Qwen3.6-35B-A3B and Gemma 4 E4B; a bigger party or a longer
-story leaves less of each window for history. llama-server reports its
+Measured through the request fitter over a party of one to four heroes,
+exploring and in a fight; a bigger party or a longer story leaves less of
+each window for history. llama-server reports its
 window on `/props`, read at the start of each turn. On Ollama's own API the
 app sets the window itself. Ollama's OpenAI-compatible endpoint and most
 other servers report none, so a table plans for 16K and lets the server

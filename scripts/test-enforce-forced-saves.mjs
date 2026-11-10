@@ -143,8 +143,20 @@ await test("a forced save adds a held inspiration die once the d20 falls short a
   assert.equal(hopeless.result.save, 1 + abilityMod(14));
   assert.deepEqual(world.sheet(scout.id).conditions, ["bardic inspiration (d6)"], "a d6 cannot lift 3 to 10: kept");
   world.dice(5, 4, 1);
-  const carried = await hex(scout, { saveAbility: "con", dc: 10, damage: "1d4" });
+  const parked = await hex(scout, { saveAbility: "con", dc: 10, damage: "1d4" });
+  // The 5 waits on its player, who adds the die (src/lib/dm/character-roll.ts,
+  // the maintainer's decision R5 of the 2026-11-09 gap sweep and its findings
+  // dice-afterroll-*): it was added for them, unasked, before.
+  assert.equal(parked.result.parked, true, JSON.stringify(parked));
+  const { getPendingRoll, listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
+  const { call } = await import("./lib/enforce-campaign.mjs");
+  const card = listOpenPendingRolls(world.campaignId).find((pending) => pending.thrown?.options.some((option) => option.id === "bardic"));
+  assert.ok(card, "the save waits on the held die");
+  world.signIn({ id: scout.userId });
+  const added = await call(await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]/after-roll"), "POST", { use: "bardic" }, { campaignId: world.campaignId, pendingRollId: card.id });
   world.clearDice();
+  assert.equal(added.status, 200, JSON.stringify(added.json));
+  const carried = { result: JSON.parse(getPendingRoll(card.id).carry.answer) };
   assert.equal(carried.result.save, 5 + 4 + abilityMod(14));
   assert.deepEqual(world.sheet(scout.id).conditions, [], "the die that carried the save is spent");
 });

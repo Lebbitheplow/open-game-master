@@ -24,6 +24,7 @@ import { insertRoll, type RollAttacker } from "@/lib/db/rolls";
 import { rollAgainst, rollOn } from "@/lib/roll-labels";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { isValidExpression, rollExpression, type RollResult } from "@/lib/dice";
+import { rollCharacterD20 } from "@/lib/dm/character-roll";
 import { publishWithSeq } from "@/lib/events";
 import { critDamageExpression } from "@/lib/dm/encounter-logic";
 import { buildAttackProfile } from "@/lib/dm/pc-attack-profile";
@@ -166,7 +167,14 @@ export function damageObject(
     if ("error" in built) {
       return toolError(built);
     }
-    const attack = rollExpression(`1d20${built.profile.toHit >= 0 ? "+" : ""}${built.profile.toHit}`);
+    // The character's own attack roll (src/lib/dm/character-roll.ts): on
+    // physical dice their player rolls it, and a miss waits on what they hold.
+    const attack = rollCharacterD20(campaign, sheet, {
+      kind: "attack",
+      expression: `1d20${built.profile.toHit >= 0 ? "+" : ""}${built.profile.toHit}`,
+      detail: rollAgainst(built.profile.weapon, args.name ?? "an object"),
+      attack: { ac },
+    });
     const striker: RollAttacker = { kind: "sheet", id: sheet.id, name: sheet.name };
     publishRoll(campaign, turn, sheet.id, "attack", rollAgainst(built.profile.weapon, args.name ?? "an object"), attack, striker);
     const natural = attack.natural ?? 0;
@@ -186,7 +194,7 @@ export function damageObject(
       };
     }
     const expression = natural === 20 ? critDamageExpression(built.profile.damageExpression) : built.profile.damageExpression;
-    const damage = rollExpression(expression);
+    const damage = rollCharacterD20(campaign, sheet, { kind: "damage", expression, detail: rollAgainst(built.profile.weapon, args.name ?? "an object") });
     publishRoll(campaign, turn, sheet.id, "damage", rollAgainst(built.profile.weapon, args.name ?? "an object"), damage, striker);
     dealt = Math.max(0, damage.total);
     type = type || built.profile.damageType;

@@ -14,7 +14,7 @@
 
 import { armForetold, disarmForetold } from "@/lib/db/dice-scripts";
 import type { Campaign } from "@/lib/db/campaigns";
-import { createPendingRoll, publicPendingRoll, setPendingWatch, type DmTurn, type HeldCall, type WatchChoice, type WatchPower, type WatchRoll } from "@/lib/db/dm-turns";
+import { createPendingRoll, getPendingRoll, publicPendingRoll, setPendingWatch, type DmTurn, type HeldCall, type WatchChoice, type WatchPower, type WatchRoll } from "@/lib/db/dm-turns";
 import { getActiveEncounter, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { spellEngineName, spellMechanicsFor } from "@/lib/content";
 import { boardCatch } from "@/lib/dm/area-casting";
@@ -233,7 +233,9 @@ function rollAbout(campaign: Campaign, call: HeldCall, sheets: readonly Characte
   if (call.name === "request_roll") {
     const hero = sheetOf(args.characterId);
     const kind = typeof args.kind === "string" ? args.kind : "";
-    const tag = hero && canWaitOnRoll(kind) && (args.visibility ?? "public") === "public" ? heroRollTag(kind, hero.name) : undefined;
+    // Initiative waits on its roller's card now (after-roll-logic.ts), but no
+    // watch stops for it: that is a ruling still to make.
+    const tag = hero && canWaitOnRoll(kind) && kind !== "initiative" && (args.visibility ?? "public") === "public" ? heroRollTag(kind, hero.name) : undefined;
     if (!hero || !tag) {
       return null;
     }
@@ -344,6 +346,19 @@ export function openWatchStop(
   if (!found) {
     return null;
   }
+  return { id: openStopFor(campaign, turnId, calls, found, about.line), watcher: found.watcher };
+}
+
+// The stop itself: a card for the watcher holding the calls, let go on its own
+// after WATCH_SECONDS. The id of the card.
+function openStopFor(
+  campaign: Campaign,
+  turnId: string,
+  calls: readonly HeldCall[],
+  found: { watcher: CharacterSheet; power: WatchPower; choices: WatchChoice[] },
+  line: string,
+): string {
+  const about = { line };
   const { watcher, power, choices } = found;
   const pending = createPendingRoll({
     campaignId: campaign.id,
@@ -368,8 +383,61 @@ export function openWatchStop(
     void import("@/lib/dm/foresight-release").then(({ releaseWatchWhenDue }) => releaseWatchWhenDue(pending.id));
   }, WATCH_SECONDS * 1000);
   timer.unref?.();
-  return { id: pending.id, watcher };
+  return pending.id;
 }
+
+const ROLL_WORDS: Partial<Record<RollTag["kind"], string>> = { attack: "an attack roll", save: "a saving throw", check: "an ability check" };
+
+// The stop before one d20 a held call is about to throw (src/lib/dm/held-call.ts):
+// the watched tools are the ones whose rolls reach a roll site, read from the
+// roll's own tag (who throws it and what it is), so a tool, an argument shape
+// or a server-played turn that rollAbout above has no case for is watched all
+// the same. Portent: "any attack roll, saving throw, or ability check made by
+// you or a creature that you can see ... before the roll". Null when nobody
+// watching can answer it.
+// `open`: false only asks whether someone would be stopped for (inside the
+// run that is about to be rolled back), true opens the stop.
+export function watchStopForRoll(campaign: Campaign, turn: DmTurn, call: HeldCall, tag: RollTag, open = true): string | null {
+  const words = ROLL_WORDS[tag.kind];
+  const encounter = words ? getActiveEncounter(campaign.id) : null;
+  if (!encounter) {
+    return null;
+  }
+  const sheets = listSheets(campaign.id);
+  // A group's roll names every creature it stands for: the stop is for the
+  // one of them the table has.
+  const names: readonly string[] = [tag.who ?? []].flat();
+  const name = names.find((entry) => findNamed(sheets, entry, (sheet) => [sheet.name]) || resolveEnemyRef(encounter.id, entry));
+  if (!name) {
+    return null;
+  }
+  const hero = findNamed(sheets, name, (sheet) => [sheet.name]);
+  const foe = hero ? null : (resolveEnemyRef(encounter.id, name) ?? null);
+  const creature = hero ?? (foe && foe.status === "alive" ? foe : null);
+  if (!creature || unseen(creature)) {
+    return null;
+  }
+  const shown = hero ? hero.name : (foe?.displayName ?? name);
+  // A player's own card answers their roll once it lands (after-roll.ts), so
+  // only Portent's number is asked here, and never of the roller themselves.
+  const rollerWaits = hero ? rollsCanWait(hero) : tag.kind === "attack";
+  const about: About = { line: `${shown} is about to make ${words}.`, rollerId: creature.id, rolls: [{ tag, ref: creature.id, name: shown }], perCreature: false, rollerWaits };
+  const found = watcherFor(campaign.id, encounter, about, rollerWaits, sheets);
+  if (!found) {
+    return null;
+  }
+  return open ? openStopFor(campaign, turn.id, [call], found, about.line) : found.watcher.id;
+}
+
+// Whether anyone at the table is watching this fight at all: read once per
+// held call, so a call nobody watches asks nothing of every d20 it throws.
+export function anyoneWatching(campaignId: string): boolean {
+  const encounter = getActiveEncounter(campaignId);
+  return Boolean(encounter) && listSheets(campaignId).some((sheet) => sheet.watchingEncounterId === encounter?.id);
+}
+
+globalThis.__odmWatchStop = watchStopForRoll;
+globalThis.__odmAnyoneWatching = anyoneWatching;
 
 // Runs one held call with the chosen number armed on its first matching d20,
 // and pays for the number if a die took it. The line is for the model's answer.
@@ -398,4 +466,13 @@ export async function runWithForetold<T>(
   }
   const name = getSheetById(choice.watcherId)?.name ?? "A wizard";
   return { result, portent: `${name} foretold this roll with Portent: its d20 shows ${choice.face}.` };
+}
+
+// The calls after the one a stop holds, held behind it in order: the AI sent
+// them in one reply, and they wait for the stop as the first one does.
+export function holdBehindStop(pendingId: string, calls: readonly HeldCall[]) {
+  const stop = getPendingRoll(pendingId)?.watch;
+  if (stop && calls.length) {
+    setPendingWatch(pendingId, { ...stop, calls: [...stop.calls, ...calls] });
+  }
 }

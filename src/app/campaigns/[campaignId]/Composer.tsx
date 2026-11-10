@@ -109,6 +109,8 @@ function ComposerInner({
   unseen,
   drops,
   mounts,
+  board,
+  sight,
   genre,
   handSlot,
   highlight = false,
@@ -189,6 +191,9 @@ function ComposerInner({
   // What lies on the board and who rides what, for the Hand's gear cards.
   drops?: PlayerMapView["drops"];
   mounts?: PlayerMapView["mounts"];
+  // The engine's verdicts on this character's own square (PlayerMapView.self).
+  board?: PlayerMapView["self"];
+  sight?: PlayerMapView["sight"];
   genre?: string | null;
   // Where the Hand is drawn instead of its row in the desk: the slot on the
   // staged board's lower edge (SessionView.tsx), so in a fight the cards lie
@@ -424,6 +429,8 @@ function ComposerInner({
             unseen={unseen}
             drops={drops}
             mounts={mounts}
+            board={board}
+            sight={sight}
             genre={genre}
           />
         ) : null}

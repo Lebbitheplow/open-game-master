@@ -34,6 +34,7 @@ import { publishEphemeral, publishWithSeq } from "@/lib/events";
 import { textKey } from "@/lib/language/text-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
+import { ownTurnOf } from "@/lib/dm/held-turn";
 
 // A lasting companion leaving the party (issue 503 Phase 2), the rim around
 // src/lib/dm/departure-logic.ts. At a table set to Leave or Turn, a
@@ -330,8 +331,8 @@ export function departureOpenings(campaign: Campaign, hook: OpeningHook): Depart
   let holders = consciousCompanions(sheets).filter((sheet) => sheet.currentHp > 0 && !sheet.deathSaves?.dead);
   if (hook === "own_turn") {
     const encounter = getActiveEncounter(campaign.id);
-    const current = encounter?.orderReady ? encounter.order[encounter.turnIndex] : undefined;
-    holders = current?.kind === "pc" ? holders.filter((sheet) => sheet.id === current.characterId) : [];
+    // Its own turn, not the enemies' pass before it (held-turn.ts ownTurnOf).
+    holders = holders.filter((sheet) => ownTurnOf(encounter, sheet.id));
   }
   const where: DepartureWhere = hook === "own_turn" ? "fight" : hook === "split" ? "split" : "night";
   for (const companion of holders) {

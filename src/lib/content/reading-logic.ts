@@ -42,7 +42,11 @@ export const READING_KINDS = ["spell", "monster", "feat", "race", "class", "back
 //   8: Symbol reads as the hand-written row of a glyph the GM fires later, each
 //      glyph with its own save; the prose reader mixed the Death glyph's save
 //      and dice with the Fear glyph's frightened.
-export const READER_REVISION = 8;
+//   9: Aura of Vitality, Compulsion, Compelled Duel and Grasping Vine read as
+//      hand-written rows (the Hand's rules helpers), and Armor of Agathys,
+//      Crown of Stars, Elemental Weapon, Flame Arrows, Gift of Alacrity, Holy
+//      Weapon and Intellect Fortress last the duration their line says.
+export const READER_REVISION = 9;
 export type ReadingKind = (typeof READING_KINDS)[number];
 export type ReadingSource = "hand-written" | "parsed" | "missing";
 

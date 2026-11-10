@@ -140,7 +140,7 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   "druid::Circle Forms": {
     subclass: "Circle of the Moon",
     // Wild Shape's challenge rating ceiling for a Moon druid.
-    heldBy: { file: "src/lib/srd/beast-forms.ts", call: "moonDruid ? Math.max(baseCr, moonCr)" },
+    heldBy: { file: "src/lib/srd/wild-shape-caps.ts", call: "moonDruid ? Math.max(baseCr, moonCr)" },
   },
   "druid::Thousand Forms": {
     subclass: "Circle of the Moon",
@@ -218,6 +218,8 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
         name: "Psionic Strike",
         pool: { id: "sub_psionic_energy" },
         oncePerTurn: true,
+        // "add it ... as force damage to a hit": after a weapon hit this turn.
+        afterWeaponHit: true,
         action: "none",
         does: { kind: "die_damage", dice: PSIONIC_INT, type: "force" },
       },

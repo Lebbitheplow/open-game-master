@@ -198,7 +198,12 @@ await test("An attack spell waits too: a missed one takes Master Duelist, and th
   world.patch(hero.id, { spellcasting: null });
 });
 
-await test("None of the three is a card in the Hand, and use_resource still takes them for a roll that cannot wait.", async () => {
+// WAVE1 R10: "A pool spent only through a named option or another tool
+// (... Favored by the Gods ...) refuses a bare use_resource spend with a
+// pointer to the right call, spending nothing." A bare spend had no roll on
+// record to change, so it burned the use for nothing; Master Duelist is the
+// same shape (the gap sweep's SPENT_FOR_NOTHING).
+await test("None of the three is a card in the Hand, and a bare use_resource of one is refused with nothing spent: the roll's own card spends it.", async () => {
   await kit.endFight();
   world.patch(hero.id, {
     features: [feature("Channel Divinity: Guided Strike"), feature("Master Duelist"), feature("Favored by the Gods")],
@@ -208,9 +213,11 @@ await test("None of the three is a card in the Hand, and use_resource still take
   for (const name of ["Guided Strike", "Master Duelist", "Favored by the Gods"]) {
     assert.ok(!names.includes(name), name);
   }
-  const out = await world.invoke("use_resource", { characterId: hero.id, resource: "Master Duelist" });
-  assert.equal(out.ok, true, out.error);
-  assert.equal(usedOf("sub_master_duelist"), 1);
+  for (const [resource, id] of [["Master Duelist", "sub_master_duelist"], ["Favored by the Gods", "sub_favored_by_the_gods"]]) {
+    const out = await world.invoke("use_resource", { characterId: hero.id, resource });
+    assert.notEqual(out.ok, true, resource);
+    assert.equal(usedOf(id), 0, resource);
+  }
 });
 
 world.close();

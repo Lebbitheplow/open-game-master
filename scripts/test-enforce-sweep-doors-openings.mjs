@@ -114,18 +114,7 @@ const DOORS = [
 
 // ---- 1. initiative ----
 
-const KNOWN_INITIATIVE = {
-  ...Object.fromEntries(
-    ["server", "real"].map((dice) => [
-      `initiative|turns-on-the-party|person|${dice}`,
-      {
-        where: "src/lib/dm/encounter-tools.ts startFightAgainst (and its caller, src/lib/dm/turncoat.ts turnOnTheSpot, reached from invoke.ts settleCompanionLeaving after the console's own initiative ask has run): no askForInitiative on a person's table",
-        severity: "medium",
-        note: "The console's start_encounter and Deploy ask the table themselves (invoke.ts askForInitiative, issue 63); a fight the engine opens at a person's table asks nobody, and its answer's \"Now call request_roll with kind=initiative for EACH character\" is read by no model.",
-      },
-    ]),
-  ),
-};
+const KNOWN_INITIATIVE = {};
 
 const INITIATIVE_RULE = "SRD 5.1, Initiative: \"When combat starts, every participant makes a Dexterity check to determine their place in the initiative order.\" Every door that opens a fight sees that every hero is asked.";
 
@@ -204,23 +193,7 @@ const SKIP = {
   distanceFeet: "the board is generated, and a plain fight's opening distance already varies around the asked one: no steady reading",
 };
 
-const KNOWN_OPTIONS = {
-  ...Object.fromEntries(
-    ["absent", "surprised", "scene"].map((option) => [
-      `option|${option}|deploy`,
-      {
-        where: "src/app/api/campaigns/[campaignId]/dm/encounter-templates/[templateId]/deploy/route.ts (reads no body for the GM) -> src/lib/dm/encounter-templates.ts deployTemplate (sends enemies, summary and the template's scene only)",
-        severity: "medium",
-        note: "The console's Start a fight form and the AI's run_prepared_encounter both say who is absent, who is surprised and how far off the foes stand; a GM who deploys a prepared fight can say none of it, so the whole party is staged and nobody is surprised.",
-      },
-    ]),
-  ),
-  "option|scene|ai-prepared": {
-    where: "src/lib/dm/prepared-encounter-tool.ts runPreparedEncounterTool (no scene argument): the ground is the template's own",
-    severity: "low",
-    note: "ruling: \"A fight with its own saved map or positions keeps them\" (the tool's description); a template with no scene of its own still cannot be given one as it opens.",
-  },
-};
+const KNOWN_OPTIONS = {};
 
 const OPTION_RULE = "One rule at every door: an option the Start a fight form takes (who is absent, who is surprised, how far off the foes stand, the ground) is taken wherever a fight is opened, as issues 784 and 808 made run_prepared_encounter take absent and building.";
 

@@ -33,7 +33,8 @@ import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { chebyshev } from "@/lib/battlemap/types";
 import { findCarriedItem } from "@/lib/dm/item-logic";
 import { resolveRollExpression } from "@/lib/dm/rolls";
-import { heldDieWaits, rollExtrasFor, spendRollCarriers, throwWatchedCheck } from "@/lib/dm/forced-save";
+import { heldDieWaits, rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
+import { rollCharacterD20 } from "@/lib/dm/character-roll";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import { readiedReleaseFor } from "@/lib/dm/readied-release";
 import { STABILIZE_DC, SUFFOCATING, type StabilizeMethod } from "@/lib/dm/vitals-logic";
@@ -232,8 +233,15 @@ export function handleStabilize(
       storeBudget(encounter, spent.budget);
     }
     readied?.release();
-    // Watched as any check a call throws (forced-save.ts throwWatchedCheck).
-    const outcome = throwWatchedCheck(campaign.id, healer, resolved.expression, STABILIZE_DC, heldDieWaits(healer, STABILIZE_DC));
+    // The healer's own d20 (src/lib/dm/character-roll.ts): on physical dice
+    // their player rolls it, and a roll that falls short waits on what they hold.
+    const outcome = rollCharacterD20(campaign, healer, {
+      kind: "skill_check",
+      expression: resolved.expression,
+      detail: `medicine, to stabilize ${sheet.name}`,
+      dc: STABILIZE_DC,
+      settleHeldDie: heldDieWaits(healer, STABILIZE_DC),
+    });
     const roll = insertRoll({
       campaignId: campaign.id,
       characterId: healer.id,

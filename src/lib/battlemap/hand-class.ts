@@ -27,7 +27,6 @@ import {
   budgetOf,
   costGate,
   gated,
-  signed,
   standingGate,
   type Gate,
   type HandAttackOption,
@@ -36,6 +35,8 @@ import {
 } from "@/lib/battlemap/hand-core";
 import { textKey } from "@/lib/language/text-logic";
 import { subclassNamed } from "@/lib/srd/subclass-name";
+import { attackDamageLine, attackReach, attackRollLine, toHitWords } from "@/lib/battlemap/hand-attack-lines";
+import { RAPID_STRIKE_NEEDS_ADVANTAGE } from "@/lib/battlemap/hand-odds";
 import { magicItemRiders } from "@/lib/srd/magic-items";
 
 const holds = (sheet: CharacterSheet, name: string) =>
@@ -118,16 +119,18 @@ export function attackOptionsFor(
     });
   }
   // Rapid Strike (Samurai 15): this swing's advantage traded for one more
-  // attack of the action, once a turn. The engine judges the advantage when
-  // it rolls, and refuses in its own words when there is none.
+  // attack of the action, once a turn. pc_attack refuses it on a swing with
+  // no advantage ("this attack has none to forgo"), so it is shut as dealt
+  // and opened by the aim's own advantage (hand-odds.ts aimedCard): it was
+  // open on every plain swing.
   const rapid = hasRapidStrike(sheet);
   if (rapid && !swing.bonusStrike) {
     options.push({
       id: "rapidStrike",
       label: "Rapid Strike",
       note: `${rapid}: give up this attack's advantage for one more attack this turn. Only with advantage, once a turn.`,
-      // Off the fighter's turn the whole card is refused by canAct already.
-      disabled: null,
+      disabled: RAPID_STRIKE_NEEDS_ADVANTAGE,
+      needsAdvantage: true,
     });
   }
   // Open Hand Technique rides an unarmed strike paid for by Flurry of Blows:
@@ -210,21 +213,30 @@ export function bonusStrikeCards(
       { riders, martialArts: martialArtsApplies(sheet), worn: magicItemRiders(sheet.equipment, sheet).weaponRiders },
     );
     const refused = optionRefusal(sheet, turn, profile, derived, { bonusAttack });
+    // Rage, the riders and the roll as pc_attack makes them, as the Attack
+    // action's cards read them (hand-attack-lines.ts): a raging Frenzy card
+    // left the Rage bonus out.
+    const line = attackDamageLine({ sheet, turn, profile, riders, kind: "weapon" });
+    const rolled = attackRollLine(sheet, profile.toHit);
+    const notes = [...line.notes, ...rolled.notes];
     const card: HandCard = {
       id: `attack:${textKey(weapon)}:${bonusAttack.replace(/\s+/g, "-")}${key ? `:${key}` : ""}`,
       type: "attack",
       name,
       cost: "bonus",
-      range: profile.ranged && srd?.rangeFt ? `${srd.rangeFt} ft` : `${profile.reachTiles * 5} ft`,
-      dice: `${profile.damageExpression} ${profile.damageType}`.trim(),
-      roll: `${signed(profile.toHit)} to hit`,
+      ...attackReach(profile),
+      dice: `${line.damage} ${profile.damageType}`.trim(),
+      roll: toHitWords(rolled),
       rules,
+      ...(notes.length ? { description: [rules, ...notes].join(" ") } : {}),
       resource: "",
       condition: "",
       icon: srd ? { kind: "item", key: srd.name, family: "item-weapon" } : { kind: "action", key: "unarmed-strike" },
       target: "enemy",
-      toHit: profile.toHit,
-      damage: profile.damageExpression,
+      toHit: rolled.toHit,
+      ...(rolled.toHitDice ? { toHitDice: rolled.toHitDice } : {}),
+      ...(rolled.rollAdvantage ? { rollAdvantage: rolled.rollAdvantage } : {}),
+      damage: line.damage,
       damageType: profile.damageType,
       heals: false,
       save: null,

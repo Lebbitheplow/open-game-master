@@ -1,0 +1,390 @@
+{
+ "_note": "The SRD beasts a Wild Shape or Polymorph card offers, by name, challenge rating and the speeds Wild Shape gates: the Hand's small copy of src/lib/srd/beast-forms.ts, which reads the whole bestiary. scripts/test-counter-repairs.mjs fails when the two differ.",
+ "forms": [
+  {
+   "n": "Baboon",
+   "cr": 0
+  },
+  {
+   "n": "Badger",
+   "cr": 0
+  },
+  {
+   "n": "Bat",
+   "cr": 0,
+   "fly": true
+  },
+  {
+   "n": "Cat",
+   "cr": 0
+  },
+  {
+   "n": "Crab",
+   "cr": 0,
+   "swim": true
+  },
+  {
+   "n": "Deer",
+   "cr": 0
+  },
+  {
+   "n": "Eagle",
+   "cr": 0,
+   "fly": true
+  },
+  {
+   "n": "Frog",
+   "cr": 0,
+   "swim": true
+  },
+  {
+   "n": "Giant Fire Beetle",
+   "cr": 0
+  },
+  {
+   "n": "Goat",
+   "cr": 0
+  },
+  {
+   "n": "Hawk",
+   "cr": 0,
+   "fly": true
+  },
+  {
+   "n": "Hyena",
+   "cr": 0
+  },
+  {
+   "n": "Jackal",
+   "cr": 0
+  },
+  {
+   "n": "Lizard",
+   "cr": 0
+  },
+  {
+   "n": "Octopus",
+   "cr": 0,
+   "swim": true
+  },
+  {
+   "n": "Owl",
+   "cr": 0,
+   "fly": true
+  },
+  {
+   "n": "Quipper",
+   "cr": 0,
+   "swim": true
+  },
+  {
+   "n": "Rat",
+   "cr": 0
+  },
+  {
+   "n": "Raven",
+   "cr": 0,
+   "fly": true
+  },
+  {
+   "n": "Scorpion",
+   "cr": 0
+  },
+  {
+   "n": "Sea Horse",
+   "cr": 0,
+   "swim": true
+  },
+  {
+   "n": "Spider",
+   "cr": 0
+  },
+  {
+   "n": "Vulture",
+   "cr": 0,
+   "fly": true
+  },
+  {
+   "n": "Weasel",
+   "cr": 0
+  },
+  {
+   "n": "Blood Hawk",
+   "cr": 0.125,
+   "fly": true
+  },
+  {
+   "n": "Camel",
+   "cr": 0.125
+  },
+  {
+   "n": "Flying Snake",
+   "cr": 0.125,
+   "fly": true,
+   "swim": true
+  },
+  {
+   "n": "Giant Crab",
+   "cr": 0.125,
+   "swim": true
+  },
+  {
+   "n": "Giant Rat",
+   "cr": 0.125
+  },
+  {
+   "n": "Giant Rat (Diseased)",
+   "cr": 0.125
+  },
+  {
+   "n": "Giant Weasel",
+   "cr": 0.125
+  },
+  {
+   "n": "Mastiff",
+   "cr": 0.125
+  },
+  {
+   "n": "Mule",
+   "cr": 0.125
+  },
+  {
+   "n": "Poisonous Snake",
+   "cr": 0.125,
+   "swim": true
+  },
+  {
+   "n": "Pony",
+   "cr": 0.125
+  },
+  {
+   "n": "Stirge",
+   "cr": 0.125,
+   "fly": true
+  },
+  {
+   "n": "Axe Beak",
+   "cr": 0.25
+  },
+  {
+   "n": "Boar",
+   "cr": 0.25
+  },
+  {
+   "n": "Constrictor Snake",
+   "cr": 0.25,
+   "swim": true
+  },
+  {
+   "n": "Draft Horse",
+   "cr": 0.25
+  },
+  {
+   "n": "Elk",
+   "cr": 0.25
+  },
+  {
+   "n": "Giant Badger",
+   "cr": 0.25
+  },
+  {
+   "n": "Giant Bat",
+   "cr": 0.25,
+   "fly": true
+  },
+  {
+   "n": "Giant Centipede",
+   "cr": 0.25
+  },
+  {
+   "n": "Giant Frog",
+   "cr": 0.25,
+   "swim": true
+  },
+  {
+   "n": "Giant Lizard",
+   "cr": 0.25
+  },
+  {
+   "n": "Giant Owl",
+   "cr": 0.25,
+   "fly": true
+  },
+  {
+   "n": "Giant Poisonous Snake",
+   "cr": 0.25,
+   "swim": true
+  },
+  {
+   "n": "Giant Wolf Spider",
+   "cr": 0.25
+  },
+  {
+   "n": "Panther",
+   "cr": 0.25
+  },
+  {
+   "n": "Riding Horse",
+   "cr": 0.25
+  },
+  {
+   "n": "Wolf",
+   "cr": 0.25
+  },
+  {
+   "n": "Ape",
+   "cr": 0.5
+  },
+  {
+   "n": "Black Bear",
+   "cr": 0.5
+  },
+  {
+   "n": "Crocodile",
+   "cr": 0.5,
+   "swim": true
+  },
+  {
+   "n": "Giant Goat",
+   "cr": 0.5
+  },
+  {
+   "n": "Giant Sea Horse",
+   "cr": 0.5,
+   "swim": true
+  },
+  {
+   "n": "Giant Wasp",
+   "cr": 0.5,
+   "fly": true
+  },
+  {
+   "n": "Reef Shark",
+   "cr": 0.5,
+   "swim": true
+  },
+  {
+   "n": "Warhorse",
+   "cr": 0.5
+  },
+  {
+   "n": "Brown Bear",
+   "cr": 1
+  },
+  {
+   "n": "Dire Wolf",
+   "cr": 1
+  },
+  {
+   "n": "Giant Eagle",
+   "cr": 1,
+   "fly": true
+  },
+  {
+   "n": "Giant Hyena",
+   "cr": 1
+  },
+  {
+   "n": "Giant Octopus",
+   "cr": 1,
+   "swim": true
+  },
+  {
+   "n": "Giant Spider",
+   "cr": 1
+  },
+  {
+   "n": "Giant Toad",
+   "cr": 1,
+   "swim": true
+  },
+  {
+   "n": "Giant Vulture",
+   "cr": 1,
+   "fly": true
+  },
+  {
+   "n": "Lion",
+   "cr": 1
+  },
+  {
+   "n": "Tiger",
+   "cr": 1
+  },
+  {
+   "n": "Giant Boar",
+   "cr": 2
+  },
+  {
+   "n": "Giant Constrictor Snake",
+   "cr": 2,
+   "swim": true
+  },
+  {
+   "n": "Giant Elk",
+   "cr": 2
+  },
+  {
+   "n": "Hunter Shark",
+   "cr": 2,
+   "swim": true
+  },
+  {
+   "n": "Plesiosaurus",
+   "cr": 2,
+   "swim": true
+  },
+  {
+   "n": "Polar Bear",
+   "cr": 2,
+   "swim": true
+  },
+  {
+   "n": "Rhinoceros",
+   "cr": 2
+  },
+  {
+   "n": "Saber-Toothed Tiger",
+   "cr": 2
+  },
+  {
+   "n": "Giant Scorpion",
+   "cr": 3
+  },
+  {
+   "n": "Killer Whale",
+   "cr": 3,
+   "swim": true
+  },
+  {
+   "n": "Elephant",
+   "cr": 4
+  },
+  {
+   "n": "Giant Crocodile",
+   "cr": 5,
+   "swim": true
+  },
+  {
+   "n": "Giant Shark",
+   "cr": 5,
+   "swim": true
+  },
+  {
+   "n": "Triceratops",
+   "cr": 5
+  },
+  {
+   "n": "Mammoth",
+   "cr": 6
+  },
+  {
+   "n": "Giant Ape",
+   "cr": 7
+  },
+  {
+   "n": "Tyrannosaurus Rex",
+   "cr": 8
+  }
+ ]
+}

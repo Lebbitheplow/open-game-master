@@ -44,14 +44,14 @@ import { normalizeAbility } from "@/lib/dm/arg-coerce";
 import { resolveSheetRef } from "@/lib/dm/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { curseBurn } from "@/lib/dm/spell-retort";
-import { holdEnemyAreaConcentration, placeSpellZone } from "@/lib/dm/zone-cast";
+import { holdEnemyAreaConcentration, placementReachProblem, placeSpellZone } from "@/lib/dm/zone-cast";
 import { commitZoneMove, planZoneMove } from "@/lib/dm/zone-move";
 import { zoneArgsSchema, zonePlacement } from "@/lib/dm/zone-args";
 import { coverFor, coverFromPoint } from "@/lib/dm/attack-spatial";
 import { zoneRowFor } from "@/lib/battlemap/zones-spells";
 import { spellEngineName } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
-import { spellWardOn } from "@/lib/dm/cast-reach";
+import { spellReachProblem, spellWardOn } from "@/lib/dm/cast-reach";
 import { partsTaken, partsTotal, splitDamageExpression, type DamagePart } from "@/lib/dm/aoe-parts";
 import { landTypedParts } from "@/lib/dm/enemy-blow";
 import { castingHold, outOfReach } from "@/lib/dm/spell-planes";
@@ -308,6 +308,30 @@ export function handleAoeDamage(
     : null;
   if (charmedCaster && charmer) {
     return { error: `${charmedCaster.name} is charmed by ${charmer.displayName} and cannot catch it in harmful magic. Nothing was spent; leave it out of the area.`, refused: "rules" };
+  }
+  // "The target of a spell must be within the spell's range" (SRD 5.1,
+  // Casting a Spell: Range), held here as use_spell_slot and cast_buff hold
+  // it: a Web or a Flaming Sphere laid by atX/atY went on any square of the
+  // board, and Acid Splash's enemyIds were taken 100 feet off, though the
+  // card said 60 ft. Asked before the slot is spent; what bars the cast
+  // itself (no slot, not their turn) is said first (tool-errors.ts).
+  if (args.spell && !args.casterEnemyId && charmedCaster) {
+    const facts = spellFactsFor(args.spell, spellAuthorsFor(campaign));
+    const at = zonePlacement(args).at;
+    const laid = at
+      ? placementReachProblem(campaign, { casterId: charmedCaster.id, casterName: charmedCaster.name, spell: args.spell, runsAs: engineSpell ? engineSpell.runsAs : null, facts, at })
+      : null;
+    // A spell with no area of its own names its targets in range; an area's
+    // reach is held by aoe-spell.ts (its range plus its size).
+    const named = !laid && !spellAreaShape(args.spell, spellAuthorsFor(campaign))
+      ? [...enemyTargets.map((enemy) => ({ id: enemy.id, name: enemy.displayName })), ...pcTargets.map((sheet) => ({ id: sheet.id, name: sheet.name }))]
+          .map((target) => spellReachProblem({ encounterId: encounter.id, casterId: charmedCaster.id, casterName: charmedCaster.name, targetId: target.id, targetName: target.name, facts }))
+          .find(Boolean) ?? null
+      : null;
+    const beyond = laid ?? named;
+    if (beyond) {
+      return castBarred(campaign, turn.id, { characterId: charmedCaster.id, spell: args.spell, ...(args.level ? { level: args.level } : {}), via: "aoe" }, sheets, sheetsById) ?? beyond;
+    }
   }
   // A named player spell is cast and paid for, and its own numbers apply
   // (src/lib/dm/aoe-spell.ts): the slot, the save, the DC, the dice, the

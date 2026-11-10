@@ -16,24 +16,13 @@ const { entryDice } = await import("../src/lib/dice.ts");
 // One face for every d20 the roll asks for (two with advantage).
 const fill = (roll, faces) => (Array.isArray(faces) ? faces : entryDice(roll.expression).map(() => faces));
 
-const TEN = {
-  where: "src/lib/dm/enemy-reactions.ts (Shield's reaction is spent and \"shielded\" is written through the creature's capped list: src/lib/db/encounters.ts keeps 10 conditions)",
-  severity: "low",
-  note: "The same on both dice. Needs a creature already carrying ten conditions; the cap drops the newest, which is the one the reaction just paid for.",
-};
 const KNOWN = {
-  "822-ten-conditions-shield:server's dice": TEN,
-  "822-ten-conditions-shield:entered dice": TEN,
   "822-skulker-second-part-unseen": {
     where: "src/lib/dm/pc-attack-parked.ts (each part's sight of the attacker is fixed when the parts park together; the first part's reveal does not reach the second)",
     severity: "low",
     note: "On the server's dice the parts resolve in turn and the second is seen (the row checks that first). On entered dice the sword part still rolls with \"attacker is hidden: advantage\" and draws no Parry.",
   },
-  "820-knockout-note": {
-    where: "src/lib/dm/pc-attack-parked.ts / pending-roll-land.ts (the note a landed damage roll writes for the GM)",
-    severity: "low",
-    note: "The table is right on both dice (the creature is down, not dead); only the entered-dice note tells the GM model \"now dead\" and \"The encounter ended: victory\" for a blow declared nonlethal, so the narration kills a creature the player spared.",
-  },
+
   "819-parry-and-shield-not-steady:server's dice": {
     where: "src/lib/dm/enemy-reactions.ts tryParry with src/lib/dm/pc-attack-resolve.ts rescueMiss (Foe Slayer's lift judged against one reaction at a time)",
     severity: "low",
@@ -44,27 +33,17 @@ const KNOWN = {
     severity: "low",
     note: "Same faces, same result as the server's dice: the two paths agree, and both are unsteady.",
   },
-  "820-critical-target-dies-before-damage": {
-    where: "src/lib/dm/pc-attack-parked.ts / attack-blow.ts (Great Weapon Master's bonus is opened when the damage lands, and nothing lands on a creature already dead)",
-    severity: "medium",
-    note: "\"when you score a critical hit\": the critical was scored when the d20 was entered. The server's dice have no window between the two rolls.",
-  },
+
   "820-end-turn-on-a-parked-attack": {
     where: "src/lib/dm/pc-attack-parked.ts (endTurn is not carried on the parked roll) / src/lib/dm/pending-roll-land.ts",
     severity: "low",
     note: "The console's \"and end the turn\" is dropped when the seat rolls real dice; the GM ends the turn by hand.",
   },
-  "822-invisible-by-another-name": {
-    where: "src/lib/dm/enemy-reactions.ts attackerUnseen (matches a condition that starts with \"invisible\") against the attack's advantage for an unseen attacker (the exact word)",
-    severity: "low",
-    note: "Two readers of \"is this attacker unseen\" that disagree on a condition written with a note in brackets. No engine path was found that writes one; a GM's or a pack's wording can.",
-  },
+
 };
 const RULING = {
   "825-damage-lands-after-the-turn": "pull request #825 lists it under \"Already true of an ordinary real-dice hit\"; scripts/test-enforce-physical-feat-bonus.mjs \"a damage roll that lands on the next character's turn opens nothing, whether or not they have acted\" pins that the damage lands and only the turn's bonuses are withheld",
-  "825-natural-1-no-half": "pull request #825, Rule call: \"A natural 1 gets no half, on either dice. SRD 5.1 counts it as a miss, and the spell says a miss still deals half. I kept what the server's dice do, and a test pins it\" (scripts/test-enforce-real-dice-half-on-miss.mjs \"a natural 1 deals nothing, as on the server's dice\")",
   "822-cover-as-parked": "scripts/test-enforce-real-dice-reactions.mjs \"A roll parked before the creature's own AC was recorded ... keeps the AC it parked with\" asserts \"the 2 of cover stays\"; scripts/test-enforce-parry-in-the-dark.mjs \"the light when the attack is made decides, not the light when the roll lands\" states the same reading for light",
-  "819-foe-slayer-widened-critical": "pull request #819, Noticed and left alone: \"A natural 19 lifted by Foe Slayer isn't treated as a critical. Depends on how you read the rule.\"",
 };
 const SKIP = {
   "820-feats-skipped:Mage Slayer": "needs a creature holding concentration on a spell for the hit to test; no staging helper puts a creature's concentration on the table. Left to the dice package's differential.",
@@ -118,7 +97,9 @@ const state = (hero, enemy) => {
   return {
     foe: { hp: foe.currentHp, status: foe.status, conditions: [...foe.conditions].sort(), at: token ? [token.x, token.y] : null },
     hero: { hp: sheet.currentHp, tempHp: sheet.tempHp, conditions: [...sheet.conditions].sort() },
-    marks: [...(world.encounter()?.turnBudget?.oncePerTurn ?? [])].sort(),
+    // A mark names the creature it concerns by id (a weapon hit's "weapon-hit:<id>"),
+    // which differs between the two worlds compared: read as the role.
+    marks: [...(world.encounter()?.turnBudget?.oncePerTurn ?? [])].map((mark) => mark.replace(enemy.id, "<foe>")).sort(),
     fight: world.encounter() ? "on" : "over",
   };
 };
@@ -479,7 +460,10 @@ await row("819-foe-slayer-widened-critical", {
   const swing = await kit.swing(champion.id, enemy.id, [19, 4, 4], { weapon: "Longsword" });
   assert.equal(swing.ok, true, swing.error);
   assert.equal(swing.result.hit, true, JSON.stringify(swing.result).slice(0, 240));
-  assert.ok(!swing.result.crit && !swing.result.critical, "as ruled: the lifted 19 is a plain hit");
+  // A 19 is in the Champion's range whatever made it hit (WAVE1 R2: "A
+  // natural 19 for a Champion that hits because of Foe Slayer is a critical
+  // hit"), overturning #819's reading.
+  assert.ok(swing.result.crit || swing.result.critical, `the lifted 19 is a critical hit: ${JSON.stringify(swing.result).slice(0, 240)}`);
 });
 
 // ---- #820 ----
@@ -683,8 +667,10 @@ await row("825-natural-1-no-half", {
   limit: "A natural 1 gets no half, on either dice.",
   rule: "SRD 5.1 Acid Arrow: \"On a miss, the arrow splashes the target with acid for half as much of the initial damage\"; Attack Rolls: \"If the d20 roll for an attack is a 1, the attack misses regardless of any modifiers or the target's AC.\"",
 }, async () => {
+  // A natural 1 is a miss, and the miss deals half (WAVE1 R1): 12 of acid
+  // makes 6.
   const out = await acidArrow([1], [3, 3, 3, 3]);
-  assert.equal(out.enemy.currentHp, 400, out.note);
+  assert.equal(out.enemy.currentHp, 394, out.note);
 });
 await row("825-spell-resistance-ignored", {
   pr: 825,

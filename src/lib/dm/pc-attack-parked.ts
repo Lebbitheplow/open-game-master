@@ -23,9 +23,22 @@ import { afterRollDeadline, armAfterRollKeep } from "@/lib/dm/after-roll-timer";
 import { afterAttackOptions } from "@/lib/dm/after-roll-logic";
 import { rollsWrathDice } from "@/lib/dm/destructive-wrath-logic";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
-import type { RollResult } from "@/lib/dice";
-import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
+import { entryDice, type RollResult } from "@/lib/dice";
+import { getFoe, resolveTargetFoe } from "@/lib/dm/sheet-foe";
+import { isKnockedOut } from "@/lib/dm/knockout";
 import { rollAgainst } from "@/lib/roll-labels";
+
+// A blow with no dice to roll (a Blowgun's 1 piercing, Contagion's 0) lands
+// at once: parked, it asked for no faces, the route refuses an empty entry,
+// and the turn waited until someone pressed Roll digitally (finding
+// dice-paths-no-dice-damage-card of the 2026-11-09 gap sweep).
+function noDiceIn(expression: string): boolean {
+  try {
+    return entryDice(expression).length === 0;
+  } catch {
+    return false;
+  }
+}
 
 // The AC a parked roll meets when it lands (attack-record.ts recordTargetAc).
 export function parkedTargetAc(campaignId: string, attack: PendingAttack): number {
@@ -180,7 +193,7 @@ export function resolvePendingPcAttack(pending: PendingRoll, roll: StoredRoll): 
   if (!judged.hit) {
     const { graze } = missSwing(scene, record, judged, roll.breakdown, roll.visibility, notes);
     const said = notes.length ? ` ${notes.join("; ")}.` : "";
-    if (graze && (record.serverDice || graze.noDice)) {
+    if (graze && (record.serverDice || graze.noDice || noDiceIn(graze.expression))) {
       const out = serverBlow(scene, record, graze, roll.breakdown, roll.visibility, rollAgainst(`${record.weapon} (half on a miss)`, scene.enemy.displayName), []);
       return `${rolled}: MISS.${said} The spell still deals half its damage. ${blowSentences(scene, graze, out, []).join(" ")}`;
     }
@@ -200,7 +213,7 @@ export function resolvePendingPcAttack(pending: PendingRoll, roll: StoredRoll): 
   }
   const { ask } = prepared;
   const critical = ask.crit ? (ask.stunShot ? " (CRITICAL: the target is stunned instead of the dice doubling)" : " (CRITICAL: damage dice are doubled)") : "";
-  if (record.serverDice || ask.noDice) {
+  if (record.serverDice || ask.noDice || noDiceIn(ask.expression)) {
     // The server threw the d20, so it throws the damage too, as its own
     // answer would have: the player decided only what to do with the d20.
     const blowNotes: string[] = [];
@@ -242,10 +255,15 @@ function blowSentences(scene: SwingScene, ask: DamageAsk, out: Record<string, un
   }
   const byType = Array.isArray(out.damageByType) ? ` (${(out.damageByType as string[]).join(", ")})` : "";
   const dealt = Number(out.damage ?? 0);
+  // A blow declared nonlethal leaves the creature at 0 and stable, as the
+  // server's dice say of it (knockout.ts): "now dead" told the GM otherwise
+  // (finding L820-knockout-note-says-dead).
+  const after = getFoe(scene.enemy.id);
+  const now = after && isKnockedOut(after) ? "knocked out: unconscious and stable" : out.dead ? "SLAIN" : String(out.health ?? "unharmed");
   const parts = [
     ask.half
-      ? `The server already applied half ${total === undefined ? "the" : `of this ${total}`} damage, ${dealt}${byType}, to ${scene.enemy.displayName} (now ${out.dead ? "SLAIN" : String(out.health ?? "unharmed")}).`
-      : `The server already applied this ${dealt} damage${byType} to ${scene.enemy.displayName} (now ${out.dead ? "SLAIN" : String(out.health)}).`,
+      ? `The server already applied half ${total === undefined ? "the" : `of this ${total}`} damage, ${dealt}${byType}, to ${scene.enemy.displayName} (now ${now}).`
+      : `The server already applied this ${dealt} damage${byType} to ${scene.enemy.displayName} (now ${now}).`,
   ];
   if (out.encounterOver) {
     parts.push(`The encounter ended: ${String(out.outcome)}. XP was awarded automatically.`);

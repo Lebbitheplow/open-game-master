@@ -74,7 +74,10 @@ export function handleRequestRoll(
   }
   const parsed = rollArgsSchema.safeParse(raw);
   if (!parsed.success) {
-    return model ? invalidArguments(needs, parsed.error, raw) : { error: needs, retry: true };
+    // Each field zod refused, with its reason, at the console as for the
+    // model: the fixed line answered a valid call with one null optional in
+    // it, and named no field (#875, gap sweep 2026-11-09).
+    return invalidArguments(needs, parsed.error, raw);
   }
   let args: RollArgs = parsed.data;
   args = {
@@ -225,7 +228,9 @@ export function handleRequestRoll(
   const contestLine = gated.contest ? `${gated.contest.name} rolled ${gated.contest.skill} ${gated.contest.total}; ${gated.contest.answering ? "a tie goes to the character" : "the character must beat it"}.` : null;
   // Portent replaces the d20 before it is thrown, so a wizard holding a number
   // decides here: the roll waits unthrown, and the model waits with it.
-  const foretelling = canWait && fresh ? foretoldLeft(fresh).length > 0 : false;
+  // Not on initiative: the watch leaves it be (a ruling the maintainer has
+  // still to make), and so does a wizard's own card.
+  const foretelling = canWait && fresh && args.kind !== "initiative" ? foretoldLeft(fresh).length > 0 : false;
   if (sheet && (foretelling || realDiceUserIds.has(sheet.userId))) {
     const pending = createPendingRoll({
       campaignId,

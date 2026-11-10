@@ -51,6 +51,7 @@ import { enemyExhaustion, hasTrait } from "@/lib/dm/monster-abilities";
 import { authoredEnemySave } from "@/lib/dm/authored-saves";
 import { authoredSaveDieVs } from "@/lib/srd/authored-effects-more";
 import { moteAfterRoll, moteOf } from "@/lib/dm/authored-mote";
+import { rollCharacterD20 } from "@/lib/dm/character-roll";
 
 // Everything resolveRollExpression cannot read for itself, for one roll of
 // one character: the aura over them (saves only), the lasting effects on
@@ -165,51 +166,6 @@ export function settleHeldDie(campaignId: string, sheetId: string, outcome: Roll
     spendRollCarriers(campaignId, sheetId, die.condition);
   }
   return settled;
-}
-
-// A character's save thrown outside rollCharacterSave (an hour of the
-// weather, endurance.ts; an affliction, between-io.ts): tagged as the
-// character's save, so a watch stop's foretold number lands on its d20, and
-// answered by what the stop armed (a Chronal Shift rolls it again, Flash of
-// Genius or Favored by the Gods adds to it when it fails), as
-// rollCharacterSave's own save is. `waits`: heldDieWaits for this DC.
-export function throwWatchedSave(campaignId: string, sheet: Pick<CharacterSheet, "id" | "name">, expression: string, dc: number, waits: boolean): RollResult {
-  const purpose = { roller: "hero" as const, kind: "save" as const, who: sheet.name };
-  const throwSave = () => {
-    const thrown = rollExpression(expression, undefined, { purpose });
-    return waits ? settleHeldDie(campaignId, sheet.id, thrown, dc) : thrown;
-  };
-  let outcome = throwSave();
-  const shiftedBy = takeShift(campaignId, purpose, outcome.total >= dc);
-  if (shiftedBy) {
-    outcome = throwSave();
-    noteShift(campaignId, `${shiftedBy} used Chronal Shift: ${sheet.name} rolled the save again, ${outcome.total} against DC ${dc}, and the new roll stands.`);
-  }
-  return takeSaveHelp(campaignId, purpose, sheet.name, outcome, dc)?.outcome ?? outcome;
-}
-
-// A character's ability check thrown inside a call (a contest's side, a
-// scroll read above their slots, an item's check, a healer's Medicine): tagged
-// as the character's check, so a watch stop's foretold number lands on its
-// d20. With a DC its outcome is known as it lands, so a Chronal Shift armed
-// for it rolls it again and Flash of Genius adds to it when it fails; a
-// contest's side has no DC of its own, and only the number answers it.
-export function throwWatchedCheck(campaignId: string, sheet: Pick<CharacterSheet, "id" | "name">, expression: string, dc: number | null | undefined, waits: boolean): RollResult {
-  const purpose = { roller: "hero" as const, kind: "check" as const, who: sheet.name };
-  const throwCheck = () => {
-    const thrown = rollExpression(expression, undefined, { purpose });
-    return waits && dc ? settleHeldDie(campaignId, sheet.id, thrown, dc) : thrown;
-  };
-  let outcome = throwCheck();
-  if (!dc) {
-    return outcome;
-  }
-  const shiftedBy = takeShift(campaignId, purpose, outcome.total >= dc);
-  if (shiftedBy) {
-    outcome = throwCheck();
-    noteShift(campaignId, `${shiftedBy} used Chronal Shift: ${sheet.name} rolled the check again, ${outcome.total} against DC ${dc}, and the new roll stands.`);
-  }
-  return takeSaveHelp(campaignId, purpose, sheet.name, outcome, dc)?.outcome ?? outcome;
 }
 
 // An attack roll's held Bardic Inspiration die (settleHeldDie): added only to
@@ -388,26 +344,26 @@ export function rollCharacterSave(
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
   const versus = authoredSaveDieVs(sheet, sheet.id, from ? { conditions: from.conditions, meta: from.conditionMeta as Record<string, { source?: string }> } : null);
   const purpose = { roller: "hero" as const, kind: "save" as const, who: sheet.name };
-  const throwSave = () => {
-    const thrown = rollExpression(
-      `${resolved.expression}${versus ? `+${versus.die}` : ""}${shieldSave ? `+${shieldSave}` : ""}${covered ? `+${covered}` : ""}${extra?.die ? `+${extra.die}` : ""}`,
-      undefined,
-      { purpose },
-    );
-    // A floor under the d20 (Starry Form's dragon: a 9 or lower counts as 10).
-    if (extra?.floor && thrown.natural !== undefined && thrown.natural < extra.floor) {
-      thrown.total = thrown.total - thrown.natural + extra.floor;
-    }
-    // A held die is spent only where it carries the roll, so it is still
-    // held for the second roll when it could not save the first.
-    return waits ? settleHeldDie(campaign.id, sheet.id, thrown, dc) : thrown;
-  };
-  let outcome = throwSave();
+  const expression = `${resolved.expression}${versus ? `+${versus.die}` : ""}${shieldSave ? `+${shieldSave}` : ""}${covered ? `+${covered}` : ""}${extra?.die ? `+${extra.die}` : ""}`;
+  // A floor under the d20 (Starry Form's dragon: a 9 or lower counts as 10).
+  const floored = (thrown: RollResult): RollResult =>
+    extra?.floor && thrown.natural !== undefined && thrown.natural < extra.floor ? { ...thrown, total: thrown.total - thrown.natural + extra.floor } : thrown;
+  // A held die is spent only where it carries the roll, so it is still
+  // held for the second roll when it could not save the first.
+  const settled = (thrown: RollResult) => (waits ? settleHeldDie(campaign.id, sheet.id, thrown, dc) : thrown);
+  const throwSave = () => floored(rollExpression(expression, undefined, { purpose }));
+  // The player's own save, though the engine forces it (WAVE1 R5: "A seat
+  // on physical dice rolls its own saves, including saves the engine
+  // forces"): on physical dice they roll it, a wizard holding a foretold
+  // number may use it, and a failure waits on what they hold (Lucky, Bardic
+  // Inspiration), all before the damage or the condition lands
+  // (src/lib/dm/character-roll.ts).
+  let outcome = rollCharacterD20(campaign, sheet, { kind: "saving_throw", tag: purpose, expression, detail: detail.slice(0, 200), dc, throwIt: throwSave, adjust: floored, settle: settled });
   // A Chronal Shift a watching wizard set on this save (chronal-shift.ts).
   const shiftedBy = takeShift(campaign.id, purpose, outcome.total >= dc);
   const shiftLine = shiftedBy ? `${shiftedBy}'s Chronal Shift: rolled again (${outcome.total} became ` : null;
   if (shiftedBy) {
-    outcome = throwSave();
+    outcome = settled(throwSave());
     noteShift(campaign.id, `${shiftedBy} used Chronal Shift: ${sheet.name} rolled the save again, ${outcome.total} against DC ${dc}, and the new roll stands.`);
   }
   // Flash of Genius or Favored by the Gods set on this save at the stop.
@@ -430,10 +386,11 @@ export function rollCharacterSave(
     source: "digital",
   });
   const moteLine = moteAfterRoll(campaign, sheet, mote, "saving_throw", outcome);
-  // A save made against a creature is kept for what answers it (Vigilant
-  // Rebuke, src/lib/dm/last-save.ts).
-  if (outcome.total >= dc && from) {
-    recordSave(campaign.id, sheet.id, ability, { id: from.id, name: from.displayName });
+  // A save forced by a creature is kept, made or failed, for what answers it
+  // (Vigilant Rebuke a success, Slayer's Counter the forcing, Hellish Rebuke
+  // the damage through it: src/lib/dm/last-save.ts).
+  if (from) {
+    recordSave(campaign.id, sheet.id, ability, { id: from.id, name: from.displayName }, outcome.total >= dc, resists?.against);
   }
   return {
     success: outcome.total >= dc,

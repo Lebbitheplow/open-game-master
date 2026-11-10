@@ -19,7 +19,8 @@
 //      until someone has checked it against the strict readers).
 //   C. Budgets: the trimmed set on a 48K window and the full set on a 64K
 //      one with every optional family switched on (scripts/test-prompt-window.mjs
-//      measures a default table), and the compact set on a 16K window over
+//      measures a default table), and the compact set at the narration and
+//      combat floors (src/lib/story-window.ts) over
 //      a matrix of tables: the first call of a turn offers the richest
 //      compact set, with room to spare for one more argument.
 import assert from "node:assert/strict";
@@ -37,41 +38,7 @@ const { test, gap, finish } = suite("test-enforce-sweep-modelio-schema");
 // What fails today, keyed by row id. A row with an entry runs through gap()
 // and fails the suite the day it starts holding; a row without one runs
 // through test().
-const KNOWN = {
-  "lint:chat:object-properties:heal.targets[]": {
-    rule: "Every object a tool's schema declares names its properties: heal.targets is a list of {characterId, amount}, written only in the description, so a model reads `targets: object[]` and a reader that wants an object's properties (Gemini: 'should be non-empty for OBJECT type') refuses the whole tool list.",
-    where: "src/lib/dm/mutations.ts mutationTools heal.targets (items: { type: \"object\" } with no properties, added by the #861 fix)",
-    severity: "medium",
-    note: "The #861 fix gave the array its items and stopped there. Every other list of objects in the catalogue (pc_attack.attacks, cast_at_enemy.targets, grant_item.items) declares its entry's fields.",
-  },
-  "limit:chat:description-1024:compact/every-tool:more_tools": {
-    rule: "A function's description stays within the 1,024 characters OpenAI's Chat Completions accepts ('string too long. Expected a string with maximum length 1024'): more_tools lists every closed group with its summary in its description.",
-    where: "src/lib/dm/tool-profiles.ts moreToolsTool (description joins every closed group's summary; 1,609 characters with every group closed)",
-    severity: "medium",
-    note: "A compact table is one whose window is small; on a strict OpenAI-compatible host the 400 it answers holds the words 'tools' and 'function', which toolsUnsupportedByServer reads as no function calling and retries without tools (see test-enforce-sweep-modelio-errors).",
-  },
-  "limit:chat:description-1024:compact/explore:more_tools": {
-    rule: "A function's description stays within the 1,024 characters OpenAI's Chat Completions accepts: the more_tools a quiet 16K table is really sent.",
-    where: "src/lib/dm/tool-profiles.ts moreToolsTool",
-    severity: "medium",
-  },
-  "limit:chat:description-1024:compact/fight:more_tools": {
-    rule: "A function's description stays within the 1,024 characters OpenAI's Chat Completions accepts: the more_tools a 16K table in a fight is really sent.",
-    where: "src/lib/dm/tool-profiles.ts moreToolsTool",
-    severity: "medium",
-  },
-  "lint:mcp-workbench:object-properties": {
-    rule: "Every object an MCP tool's inputSchema declares names its properties: the workbench declares eight open objects (a sheet, a test fight's party, a dice queue's entries, odm_dm_invoke's args) with a description alone, so a connecting agent is not told a single field of them.",
-    where: "src/lib/agents/workbench.ts WORKBENCH_TOOLS (odm_level_up.asiChoices[], odm_level_up.featChoices, odm_create_character.sheet, odm_update_character.sheet, odm_start_test_fight.party, odm_set_dice_script.queue[], odm_dm_invoke.args, odm_dm_narrate.speaker)",
-    severity: "low",
-    note: "Open by design for sheet and args (the route's own zod schema is the contract), but an agent whose client converts MCP tools for a strict reader loses the tool. Recorded for a ruling.",
-  },
-  "lint:mcp-workbench:type-list": {
-    rule: "A schema node's type is one name, not a list: odm_set_dice_script.seed is [\"integer\", \"null\"].",
-    where: "src/lib/agents/workbench.ts WORKBENCH_TOOLS odm_set_dice_script.seed",
-    severity: "low",
-  },
-};
+const KNOWN = {};
 
 const world = await openWorld({ gameSettings: { ttsEnabled: false } });
 world.addHero({ class: "fighter", level: 3 });
@@ -213,40 +180,9 @@ const { requestTokens } = await import("../src/lib/dm/request-fit.ts");
 const { getDmTurn, getLatestDmTurnId } = await import("../src/lib/db/dm-turns.ts");
 const { listSheets } = await import("../src/lib/db/sheets.ts");
 
-// The compact rows share one rule; each row's note is the table it failed at.
-const COMPACT_16K = (note) => ({
-  rule: "docs/text-backends.md: '16K (-c 16384): narration, exploration and checks on the compact tool set'. The first call of an exploring turn on a 16,384 window carries the compact set its table's state and the players' words call for, with room for one more argument.",
-  where: "src/lib/dm/turn.ts compactToolsThatFit / toolSetTokens (the rules and game state are packed against the window less the tools, but the rules a party needs do not shrink); src/lib/dm/prompt-rules.ts for the fixed lines; scripts/test-tool-profiles.mjs measures only a lone level 1 fighter",
-  severity: "medium",
-  note,
-});
-const COMPACT_24K = (note) => ({
-  rule: "docs/text-backends.md: '24K (-c 24576): fights too, on a trimmed tool set' (src/lib/story-window.ts MIN_COMBAT_WINDOW). The first call of a fight's turn on a 24,576 window carries the fight's compact set.",
-  where: "src/lib/dm/turn.ts compactToolsThatFit (falls to ESSENTIAL_TOOLS + ESSENTIAL_COMBAT_TOOLS); src/lib/story-window.ts MIN_COMBAT_WINDOW; scripts/test-tool-profiles.mjs 'the combat minimum' measures a lone level 1 fighter",
-  severity: "medium",
-  note,
-});
-const BUDGET_KNOWN = {
-  "budget:lean-48k:every-family": {
-    rule: "The trimmed tool set leaves a 48K window the 1,500 tokens the prompt-window guard keeps spare (scripts/test-prompt-window.mjs LEAN_SPARE), at a table with every optional family on as at a default one.",
-    where: "scripts/test-prompt-window.mjs section 4 measures a default table only; src/lib/dm/turn.ts dmTurnTools adds settlements, ambience and pictures on top",
-    severity: "low",
-    note: "With world simulation, the sound library and pictures all on, the fight's trimmed set is 22,777 tokens: 1,223 spare, against 1,602 at the default table the guard measures.",
-  },
-  "budget:compact-16k:lone-fighter-1": COMPACT_16K("The one table the existing guard measures: 15,353 of 15,360 tokens, 7 spare. Any argument added to a core tool sheds tools (issue #746, then #755, #808, #832)."),
-  "budget:compact-16k:lone-fighter-3": COMPACT_16K("A lone level 3 fighter: 15,806 tokens, 446 over; the call fell to 5 tools (request_roll, request_player_input, record_event, send_whisper, more_tools)."),
-  "budget:compact-16k:lone-fighter-11": COMPACT_16K("A lone level 11 fighter: 466 over, 5 tools."),
-  "budget:compact-16k:lone-wizard-5": COMPACT_16K("A lone level 5 wizard: 18,707 tokens, 3,347 over, 5 tools: the casting rules alone outgrow the window."),
-  "budget:compact-16k:fighter-and-wizard": COMPACT_16K("A fighter and a wizard: 3,637 over, 5 tools."),
-  "budget:compact-16k:four-heroes": COMPACT_16K("Four level 5 heroes: 4,360 over, 5 tools."),
-  "budget:compact-16k:shop-words-fighter-1": COMPACT_16K("'I want to buy a rope' at the guard's own table: 292 over, so the lookups are shed to keep the shop (the #755 fix working as written, with nothing spare)."),
-  "budget:compact-16k:shop-words-fighter-3": COMPACT_16K("'I want to buy a rope' with a level 3 fighter: 745 over; open_shop, haggle and purchase are all shed, the case #755 fixed for a level 1 fighter."),
-  "budget:compact-16k:journey-words-fighter-3": COMPACT_16K("Three groups opened by the player's words (world, hazards, mounts): 3,117 over, 5 tools, none of the three groups offered."),
-  "budget:compact-24k-fight:fight-fighter-1": COMPACT_24K("A lone level 1 fighter against one goblin: 817 over, the six spare tools shed."),
-  "budget:compact-24k-fight:fight-fighter-3": COMPACT_24K("A lone level 3 fighter against two goblins: 1,491 over; the call fell to 8 tools (the four essentials, pc_attack, enemy_attack, end_turn, more_tools): no take_action, move_token, apply_damage, use_resource, end_encounter."),
-  "budget:compact-24k-fight:fight-fighter-and-wizard": COMPACT_24K("A fighter and a wizard: 4,928 over, 8 tools: no cast_at_enemy, aoe_damage or use_spell_slot for the wizard's turn."),
-  "budget:compact-24k-fight:fight-four-heroes": COMPACT_24K("Four level 5 heroes against four goblins: 6,137 over, 8 tools."),
-};
+// Every row the 2026-11-09 repair closed runs as a test. The compact rows
+// measure each table at the window src/lib/story-window.ts promises for it.
+const BUDGET_KNOWN = {};
 
 const cost = (tools) => estimateTokens(JSON.stringify(tools));
 const larger = (campaign, image, lean) => Math.max(cost(turnModule.dmTurnTools(campaign, false, image, lean)), cost(turnModule.dmTurnTools(campaign, true, image, lean)));
@@ -276,10 +212,10 @@ async function budgetRow(id, fn) {
 }
 
 // The compact windows the docs promise (src/lib/story-window.ts,
-// docs/text-backends.md): "16K (-c 16384): narration, exploration and checks
-// on the compact tool set", and 24K for fights. One first call per table of
+// docs/text-backends.md): "24K (-c 24576): narration, exploration and checks
+// on the compact tool set, for a party of four", and 32K for fights. One first call per table of
 // the matrix, at the window its moment is promised.
-const { MIN_NARRATION_WINDOW, MIN_COMBAT_WINDOW, windowFlag } = await import("../src/lib/story-window.ts");
+const { MIN_NARRATION_WINDOW, MIN_COMBAT_WINDOW, windowFlag, windowLabel } = await import("../src/lib/story-window.ts");
 const REPLY_FLOOR = 1_024;
 // Room for one more argument with a sentence of description on a core tool.
 const COMPACT_SPARE = 120;
@@ -324,7 +260,7 @@ let budgetRows = 0;
 
 for (const table of TABLES) {
   const window = windowFlag(table.fight ? MIN_COMBAT_WINDOW : MIN_NARRATION_WINDOW);
-  const label = table.fight ? "24k-fight" : "16k";
+  const label = `${windowLabel(window).toLowerCase()}${table.fight ? "-fight" : ""}`;
   const id = `budget:compact-${label}:${table.id}`;
   budgetRows += 1;
   process.env.OPENAI_COMPAT_CONTEXT = String(window);

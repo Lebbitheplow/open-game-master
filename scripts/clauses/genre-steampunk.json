@@ -175,8 +175,9 @@
    },
    {
     "c": "save (DEX)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Steamvent Burst#3:fx",
+    "is": "held",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test machinist::Steamvent Burst#3:fx",
     "k": "fx",
     "p": {
      "id": "steampunk_steamvent_burst",
@@ -185,8 +186,7 @@
       "dice": "3d8",
       "takes": "none"
      }
-    },
-    "observed": "a creature that made the save lost 12 of 24, and the text makes it 0 (the spend hands back halfOnSave undefined)"
+    }
    },
    {
     "c": "3d8 fire",
@@ -1018,7 +1018,7 @@
    {
     "c": "for 1 minute your Daring Maneuver applies to every attack and enemies who see you save (WIS) or are frightened",
     "is": "held",
-    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), resolved by aoe_damage",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
     "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test aeronaut::Terror of the Trade Winds#1:fx",
     "k": "fx",
     "p": {
@@ -1042,7 +1042,7 @@
    {
     "c": "save (WIS)",
     "is": "held",
-    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), resolved by aoe_damage",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
     "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test aeronaut::Terror of the Trade Winds#3:fx",
     "k": "fx",
     "p": {
@@ -1576,7 +1576,7 @@
    {
     "c": "(CON save halves)",
     "is": "held",
-    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), resolved by aoe_damage",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
     "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test alchemist::Dissolving Mist#4:fx",
     "k": "fx",
     "p": {
@@ -2711,7 +2711,7 @@
    {
     "c": "adjacent creatures save (CON) or are blinded by scalding mist until your next turn",
     "is": "held",
-    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), resolved by aoe_damage",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
     "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test steam_knight::Steam Vent#1:fx",
     "k": "fx",
     "p": {
@@ -2747,7 +2747,7 @@
    {
     "c": "save (CON)",
     "is": "held",
-    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), resolved by aoe_damage",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
     "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test steam_knight::Steam Vent#4:fx",
     "k": "fx",
     "p": {
@@ -2894,7 +2894,7 @@
    {
     "c": "(DEX save halves)",
     "is": "held",
-    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), resolved by aoe_damage",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
     "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test steam_knight::Emergency Release#3:fx",
     "k": "fx",
     "p": {

@@ -25,7 +25,9 @@ import { claimOncePerTurn } from "@/lib/dm/action-budget";
 import { reactionRefusal } from "@/lib/dm/reaction-gate";
 import { attacksAllowedFor, budgetFor, markReactionUsed, storeBudget } from "@/lib/dm/turn-budget";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
-import { badArguments, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { canAct } from "@/lib/dm/can-act";
+import { heldTurnRefusal, ownTurnOf } from "@/lib/dm/held-turn";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
 import { SRD_CREATURES } from "@/lib/srd/srd-creatures";
 import { matchGear } from "@/lib/srd/adventuring-gear";
@@ -183,9 +185,19 @@ export function handleMountUp(
 // Mounting or dismounting costs half the rider's speed, once during their
 // move (SRD 5.1, Mounted Combat). In a fight on a board it comes out of the
 // movement of the rider's own turn, and without that much left it cannot be
-// done this turn. Off their turn there is no movement of theirs to spend (it
-// would refill as their turn starts); a person at the console keeps a free
-// hand.
+// done this turn.
+//
+// It is the rider's move, so what stops a move stops it, at either door
+// (can-act.ts canAct "move"): the dead, the dying, the stunned, the
+// paralyzed, the petrified, the surprised in round 1, and a rider whose turn
+// is held while the enemies before them act (held-turn.ts) mounted and
+// dismounted as if nothing held them.
+//
+// Off their turn a person at the console keeps a free hand, and no movement
+// is charged: there is none of theirs running to spend (WAVE1 ruling R9: "the
+// console may mount or dismount off turn (a person GM adjudicates), but never
+// charges movement to a turn that is not running"). It was added to the
+// movement of a turn that was not theirs.
 // The turn's once-a-move mark for mounting or dismounting (action-budget.ts
 // oncePerTurn).
 const MOUNTING_KEY = "mount_or_dismount";
@@ -196,13 +208,24 @@ function spendMountingMovement(
   turn?: Pick<DmTurn, "actor">,
 ): { charged: boolean } | ToolError {
   const encounter = getActiveEncounter(campaign.id);
+  const able = canAct({ sheet, encounter, kind: "move" });
+  if (!able.ok && able.reason !== "not_your_turn" && able.reason !== "no_initiative") {
+    return toolError(able);
+  }
+  const held = heldTurnRefusal(encounter, sheet);
+  if (held) {
+    return held;
+  }
   const map = encounter?.orderReady ? getBattleMapForEncounter(encounter.id) : null;
   const token = map ? getTokenByRef(map.id, sheet.id) : null;
   if (!encounter || !token) {
     return { charged: false };
   }
-  const current = encounter.order[encounter.turnIndex];
-  if (turn?.actor !== "human_dm" && (current?.kind !== "pc" || current.characterId !== sheet.id)) {
+  if (!ownTurnOf(encounter, sheet.id)) {
+    if (turn?.actor === "human_dm") {
+      return { charged: false };
+    }
+    const current = encounter.order[encounter.turnIndex];
     return { error: `${sheet.name} mounts or dismounts during their own move only; it is ${current?.name ?? "another combatant"}'s turn. What they declared waits for their turn.`, refused: "rules" };
   }
   const half = Math.floor(speedToTiles(sheet.speed) / 2);

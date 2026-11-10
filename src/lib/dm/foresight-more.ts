@@ -4,7 +4,7 @@
 // character's or creature's save as a blow lands, an item's save or check, a
 // legendary action's attack and saves, a walk's save and the opportunity
 // attacks it may draw. Each lands on a roll site that carries its tag: a
-// character's check through forced-save.ts throwWatchedCheck, a creature's
+// character's check through character-roll.ts rollCharacterD20, a creature's
 // side of a contest tagged in action-common.ts and roll-gates.ts.
 
 import type { Campaign } from "@/lib/db/campaigns";

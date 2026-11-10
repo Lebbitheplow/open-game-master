@@ -52,6 +52,9 @@ export interface SqliteDatabase {
   exec(sql: string): void;
   pragma(source: string): unknown;
   transaction<A extends unknown[], R>(fn: (...args: A) => R): (...args: A) => R;
+  // A SQL function of no arguments the connection's own triggers may call
+  // (src/lib/db/turn-journal.ts: the turn a write belongs to).
+  defineFunction(name: string, impl: () => string | number | null): void;
   close(): void;
   // Which engine opened the file, and whether cipher/key pragmas mean
   // anything on it. The core module warns when a key was requested but the
@@ -200,6 +203,9 @@ function wrapNative(db: import("better-sqlite3-multiple-ciphers").Database): Sql
     },
     pragma: (source) => db.pragma(source),
     transaction: (fn) => db.transaction(fn),
+    defineFunction: (name, impl) => {
+      db.function(name, { deterministic: false }, impl);
+    },
     close: () => {
       statements.clear();
       db.close();
@@ -276,6 +282,9 @@ function openNode(file: string, options: OpenOptions): SqliteDatabase {
     // SQLite ignores pragmas it does not know, so they simply do nothing.
     pragma: (source) => db.prepare(`PRAGMA ${source}`).all(),
     transaction,
+    defineFunction: (name, impl) => {
+      db.function(name, { deterministic: false }, impl);
+    },
     close: () => {
       statements.clear();
       db.close();

@@ -26,6 +26,7 @@
 // holds (15 by default: a hit on the dummies' AC 13 that is no critical, a
 // failed save for a creature with +0 or +1); the other dice are seeded.
 import crypto from "node:crypto";
+import { keepThrownCards } from "./kept-rolls.mjs";
 import fs from "node:fs";
 import { syncBuiltinESMExports } from "node:module";
 import { openWorld, seedDice } from "./enforce-world.mjs";
@@ -360,7 +361,7 @@ export async function handRig() {
     const turn = turnFromEncounter(encounter, sheet, { myTurn: true });
     const authors = tableAuthors(world.campaignId);
     const hits = encounter?.lastHits ?? [];
-    const chips = encounter ? handTargets(encounter.enemies, sheets, sheet.id, view?.edges, encounter.sides, encounter) : handTargets([], sheets, sheet.id, undefined);
+    const chips = encounter ? handTargets(encounter.enemies, sheets, sheet.id, view?.edges, encounter.sides, encounter, view?.sight) : handTargets([], sheets, sheet.id, undefined);
     const creatures = encounter ? handTargets(encounter.enemies, sheets, sheet.id, undefined, encounter.sides) : [];
     const unseen = view?.unseen ? new Set(view.unseen) : undefined;
     const reactions = handReact.reactionCards(sheet, turn, hits, sheets, "you", view?.feet, encounter?.lastSaves, view?.feet ? creatures : undefined, view?.feet && unseen ? unseen : undefined);
@@ -370,7 +371,9 @@ export async function handRig() {
       allies: sheets.filter((entry) => entry.id !== sheet.id).length,
       dying: sheets.filter((entry) => entry.currentHp <= 0 && !entry.deathSaves?.dead && !entry.deathSaves?.stable).map((entry) => ({ id: entry.id, name: entry.name })),
     };
-    const options = { spells: spellsFor(sheet), trackAmmo: campaign.gameSettings?.variantRules?.trackAmmo, gear, blasts: true, summons: summonsFor(sheet, authors), items: true };
+    // The board's verdicts on the hero's own square, as the page hands them
+    // to the Hand (Hand.tsx: PlayerMapView.self for the viewer's own token).
+    const options = { spells: spellsFor(sheet), trackAmmo: campaign.gameSettings?.variantRules?.trackAmmo, gear, blasts: true, summons: summonsFor(sheet, authors), items: true, board: view?.self };
     const cards = handReact.withReactions(reactions, hand.deriveHand(sheet, turn, options));
     return { sheet, sheets, campaign, encounter, view, turn, hits, chips, cards, authors };
   }
@@ -443,7 +446,12 @@ export async function handRig() {
     const out = { cardId: card.id, name: card.name, aim: aim ? { id: aim.id, kind: aim.kind, name: aim.name } : null, ready: true };
     if (card.compose) return { ...out, skip: "finished in the composer: the card posts no intent" };
     if ((card.target === "enemy" || card.target === "ally") && !aim) return { ...out, skip: "nothing to aim at in this state" };
-    if (!handPlay.handReady(card, aim, choices)) return { ...out, ready: false, skip: "the card is not ready as staged (a pick it needs was not made)" };
+    // A chip the card leaves off its aim bar (a sight-bound card and a foe the
+    // board says the holder cannot see, hand-play.ts aimUnseen) is still
+    // forced through the engine, which must refuse it as the card did.
+    const withheld = aim ? handPlay.aimUnseen(card, aim) : null;
+    if (withheld) out.withheld = withheld;
+    if (!handPlay.handReady(card, withheld ? { ...aim, sight: undefined } : aim, choices)) return { ...out, ready: false, skip: "the card is not ready as staged (a pick it needs was not made)" };
     const body = handPlay.intentBody(card, aim, riders, choices);
     const parsed = intentLogic.messageIntentSchema.safeParse(body);
     if (!parsed.success) {
@@ -464,7 +472,8 @@ export async function handRig() {
       d20s.length = 0;
       const results = [];
       for (const call of calls) {
-        const answer = await invokeEngine(world.campaign(), { kind: "human", userId: world.owner.id }, call);
+        // A check that waits on what the hero holds is kept as it lies.
+        const answer = await keepThrownCards(world, await invokeEngine(world.campaign(), { kind: "human", userId: world.owner.id }, call));
         results.push({ name: call.name, args: call.args, ok: answer.ok, ...(answer.ok ? { result: answer.result } : { error: answer.error, retry: answer.retry === true, refused: answer.refused ?? null }) });
         if (!answer.ok || intentLogic.drawStopsCast(call.name, answer.result)) break;
       }

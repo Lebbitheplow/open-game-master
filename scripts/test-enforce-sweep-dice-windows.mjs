@@ -192,34 +192,12 @@ for (const action of Object.keys(HERO_ACTION)) {
 // ---- what is known ----
 
 const PORTENT = '"You can replace any attack roll, saving throw, or ability check made by you or a creature that you can see with one of these foretelling rolls. You must choose to do so before the roll." (Portent, src/lib/srd/subclasses.json; the watch is its moment: src/lib/dm/foresight.ts)';
-const noCase = (what, severity = "medium") => ({ rule: PORTENT, where: "src/lib/dm/foresight.ts rollAbout (no case for this tool)", severity, note: what });
-const byName = (reader, handler) => ({
-  rule: PORTENT,
-  where: `src/lib/dm/foresight.ts rollAbout (${reader}), against ${handler}`,
-  severity: "medium",
-  note: "the tool takes a name where an id is asked and resolves it; the watch reads the same argument as an id only, finds nobody, and lets the d20 go",
-});
+// The watched tools are read from the roll sites now (foresight.ts
+// watchStopForRoll, held-call.ts): a held call stops before the d20 its tag
+// says a watcher may answer. Left: the turn the server plays itself after the
+// model has spoken, which no held call carries.
 const KNOWN = {
-  // One argument, two readers: the handler resolves a name, the watch does not.
-  "enemy_attack.enemy_by_name": byName("getFoe(args.enemyId)", "enemy-attack.ts, which resolves the creature by its name"),
-  "cast_at_player.character_by_name": byName("sheetOf(args.characterId)", "cast-at-player.ts resolveSheetRef"),
-  "pc_attack.character_by_name": byName("sheetOf(args.characterId)", "pc-attack.ts resolveSheetRef"),
-  "cast_at_enemy.enemy_by_name": byName("getFoe(args.targetEnemyId)", "cast_at_enemy's resolveEnemyRef"),
-  "request_roll.skill.by_name": byName("sheetOf(args.characterId)", "invoke-roll.ts resolveSheetRef"),
-  // Tools that throw a d20 of a creature in sight and have no case at all.
-  "apply_hazard.generic_save": noCase("a trap's save on a character (open pull request #891 adds this case)"),
-  "apply_hazard.trap": noCase("a named trap's save on a character (open pull request #891 adds this case)"),
-  "move_token.enemy_leaves_reach": noCase("the character's opportunity attack as a creature leaves reach"),
-  "move_token.hero_leaves_reach": noCase("a creature's opportunity attack as a character leaves its reach"),
   "backstop.enemy_turn_unplayed": { rule: PORTENT, where: "src/lib/dm/turn.ts (the enemy-turn backstop plays the creature's attack outside parkForWatch)", severity: "medium", note: "a creature's turn the model narrates and never plays is played by the server, whose enemy_attack is never held for the watcher" },
-  "group_check.one": noCase("a character's ability check"),
-  "damage_object.weapon": noCase("a character's attack roll at an object", "low"),
-  "take_action.hero_grapple": noCase("the character's Athletics and the creature's contest"),
-  "take_action.hero_shove": noCase("the character's Athletics and the creature's contest"),
-  "take_action.hero_search": noCase("the character's check"),
-  "take_action.hero_hide": noCase("the character's Stealth"),
-  "take_action.hero_escape": noCase("the character's check to break a grapple"),
-  "take_action.hero_improvise": noCase("the character's check and the creature's contest"),
 };
 // Rows that throw no d20, and why.
 const QUIET = {};

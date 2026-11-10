@@ -217,7 +217,12 @@ export function lintTool(tool) {
       else if (!node.items || typeof node.items !== "object") add("array-items", path, `items is ${JSON.stringify(node.items)}`);
     }
     if (node.type === "object") {
-      const open = node.additionalProperties && typeof node.additionalProperties === "object";
+      // An object open by declaration (additionalProperties true) says so to
+      // its reader: a whole sheet and odm_dm_invoke's args stay open, their
+      // route's schema the contract (maintainer decision R13,
+      // /tmp/odm-gapstudy/WAVE1.md: "sheet and args stay open objects with
+      // additionalProperties true").
+      const open = node.additionalProperties === true || (node.additionalProperties && typeof node.additionalProperties === "object");
       if (!node.properties || typeof node.properties !== "object" || Array.isArray(node.properties)) {
         if (!open) add("object-properties", path, "an object with no properties");
       } else if (!Object.keys(node.properties).length && node !== parameters && !open) {

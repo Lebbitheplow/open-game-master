@@ -46,7 +46,8 @@ import {
   socialCheckDc,
 } from "@/lib/dm/social";
 import { resolveRollExpression, resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
-import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
+import { heldDieWaits, rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
+import { rollCharacterD20 } from "@/lib/dm/character-roll";
 import type { RollArgs } from "@/lib/dm/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { waypointProperty } from "@/lib/dm/waypoint-logic";
@@ -462,12 +463,17 @@ export function handleSocialCheck(
   // An NPC keeping up an act is swayed as the warmth they show would be
   // (src/lib/dm/scheme-logic.ts): the roll's modifier is on the table.
   const standingModifier = approvalRollModifier(outwardApproval(relationship));
-  const thrown = rollExpression(
-    standingModifier === 0
-      ? resolved.expression
-      : `${resolved.expression}${standingModifier > 0 ? "+" : ""}${standingModifier}`,
-  );
-  const rolled = waits ? settleHeldDie(campaign.id, sheet.id, thrown, dc) : thrown;
+  // The player's own d20 (src/lib/dm/character-roll.ts): on physical dice
+  // they roll it (issue #896), and a roll that falls short waits on what
+  // they hold.
+  const rolled = rollCharacterD20(campaign, sheet, {
+    kind: "skill_check",
+    expression: standingModifier === 0 ? resolved.expression : `${resolved.expression}${standingModifier > 0 ? "+" : ""}${standingModifier}`,
+    detail: `${sheet.name}: ${skill} on ${npc.name}`,
+    dc,
+    ...(args.reason ? { reason: args.reason } : {}),
+    settleHeldDie: waits,
+  });
   const roll = insertRoll({
     campaignId: campaign.id,
     characterId: sheet.id,

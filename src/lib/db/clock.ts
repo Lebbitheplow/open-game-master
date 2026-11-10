@@ -15,7 +15,7 @@ import { conscienceClockTick } from "@/lib/dm/conscience";
 import { currentTurnId } from "@/lib/dm/job-control";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
 import { clockTurnOf, liveClockMoves, markClockMovesReverted, recordClockMove } from "@/lib/db/clock-moves";
-import { rewindClock, type ClockRewind } from "@/lib/dm/clock-rewind-logic";
+import { rewindClock, type ClockImage, type ClockRewind } from "@/lib/dm/clock-rewind-logic";
 import {
   advance,
   clampInstant,
@@ -154,17 +154,35 @@ export function advanceClock(
   return { clock: after, minutes: moved.minutes, deathSaves };
 }
 
-// What reverting this turn would do to the clock (src/lib/dm/
-// clock-rewind-logic.ts), without doing it: null when the turn moved no
-// time, `kept` when the clock has moved on since.
-export function previewTurnClockRewind(campaignId: string, turnId: string): ClockRewind | null {
-  return rewindClock(getClock(campaignId), liveClockMoves(campaignId, turnId));
+// The whole clock as the turn found it and left it, from the campaign row
+// the turn kept (src/lib/db/turn-journal.ts), or null when the turn kept
+// none. A turn whose work is not sealed yet left it as it stands now.
+function turnClockImage(campaignId: string, turnId: string, current: CampaignClock): ClockImage | null {
+  const row = getDatabase()
+    .prepare(`SELECT before_json, after_json, sealed FROM turn_rows WHERE turn_id = ? AND tbl = 'campaigns' AND row_id = ? AND reverted_at IS NULL`)
+    .get(turnId, campaignId) as { before_json: string | null; after_json: string | null; sealed: number } | undefined;
+  const clockOf = (json: string | null) => parseJson<{ clock_json?: string } | null>(json, null)?.clock_json;
+  const before = clockOf(row?.before_json ?? null);
+  if (!row || before === undefined) {
+    return null;
+  }
+  const after = row.sealed ? clockOf(row.after_json) : undefined;
+  return { before: normalizeClock(parseJson(before ?? "", null)), after: after === undefined ? current : normalizeClock(parseJson(after ?? "", null)) };
 }
 
-// "Revert this turn" puts back the time the turn moved on, read after the
-// sheets are restored so what their undo wrote to the clock (a long rest
-// forgotten) stands. Returns what it did, or null for a turn that moved no
-// time (issue #622).
+// What reverting this turn would do to the clock (src/lib/dm/
+// clock-rewind-logic.ts), without doing it: null when the turn changed
+// nothing on it, `kept` when the clock has moved on since.
+export function previewTurnClockRewind(campaignId: string, turnId: string): ClockRewind | null {
+  const current = getClock(campaignId);
+  return rewindClock(current, liveClockMoves(campaignId, turnId), turnClockImage(campaignId, turnId, current));
+}
+
+// "Revert this turn" puts back what the turn changed on the clock, read
+// after the sheets are restored so what their undo wrote to the clock (a
+// long rest forgotten) stands, and before the turn's rows are marked taken
+// back. Returns what it did, or null for a turn that left the clock alone
+// (issue #622).
 export function rewindTurnClock(campaignId: string, turnId: string): ClockRewind | null {
   const plan = previewTurnClockRewind(campaignId, turnId);
   if (!plan) {

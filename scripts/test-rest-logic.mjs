@@ -38,7 +38,10 @@ await test("long rest restores HP, slots, and half the hit dice", () => {
   assert.equal(patch.currentHp, 30);
   assert.equal(patch.tempHp, 0);
   assert.equal(patch.deathSaves, null);
-  assert.equal(patch.concentratingOn, null);
+  // The patch leaves concentration alone: sleep ends it and the spell with
+  // it through concentration.ts breakConcentration (rest-tools.ts), never by
+  // a sheet write that leaves the spell's effects running (LC-CONC-02).
+  assert.equal("concentratingOn" in patch, false);
   // 4 total -> 2 recovered: spent 3 -> 1.
   assert.equal(patch.hitDice.spent, 1);
   assert.equal(patch.spellcasting.slots["1"].used, 0);

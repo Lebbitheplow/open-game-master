@@ -228,9 +228,17 @@ export const mutationTools: ToolDef[] = [
     // arguments, checked as that call. The items are not optional: the
     // gpt-oss chat template llama.cpp ships reads an array's items and, with
     // none, fails every call that offers the tools, so the DM ran with none.
+    // And each entry's fields are declared, as every other list of objects
+    // in the catalogue declares them: a reader that wants an object's
+    // properties (Gemini: "should be non-empty for OBJECT type") refused the
+    // whole tool list over a bare object (gap sweep 2026-11-09).
     targets: {
       type: "array",
-      items: { type: "object" },
+      items: {
+        type: "object",
+        properties: { characterId: { type: "string" }, amount: { type: "integer", minimum: 1, maximum: 200 } },
+        required: ["characterId"],
+      },
       description: "Instead of characterId: {characterId, amount} for each creature one spell heals.",
     },
   }, [], false),
@@ -1393,7 +1401,7 @@ function dmMutation(
       // checked before anything is spent, its effect applied after.
       const counter = matchResource(resourceName);
       const reacting = counter
-        ? planCounterReaction({ campaign, turnId, sheet: getSheetById(sheet.id) ?? sheet, defId: counter.id, targetCharacterId: args.targetCharacterId, sheets, sheetsById })
+        ? planCounterReaction({ campaign, turnId, sheet: getSheetById(sheet.id) ?? sheet, defId: counter.id, targetCharacterId: args.targetCharacterId, targetEnemyId: args.targetEnemyId, sheets, sheetsById })
         : null;
       if (reacting && "error" in reacting) {
         return { result: reacting };
@@ -1471,6 +1479,7 @@ function dmMutation(
         },
         args.variant,
         { beforeDrop: charge.beforeDrop },
+        { turnId, targetEnemyId: args.targetEnemyId, targetEnemyIds: args.targetEnemyIds },
       );
       if ("error" in outcome) {
         return { result: outcome };
