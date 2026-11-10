@@ -717,6 +717,7 @@
     "lib/ambience/pack.ts#keyed": [["key",2,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "lib/ambience/pack.ts#partial": [["pattern",3,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "lib/app-cors.ts#partial": [["key",1,"origins from env"]],
+    "lib/json-compression.ts#partial": [["key",1,"a Content-Type header's media type (protocol)"]],
     "lib/art-direction.ts#fallback": [["key",1,"an art-style preset id, its documented default"]],
     "lib/attraction.ts#whole": [["identity",2,"a tool's drawnTo word to its choice (women, men, nonbinary people, open relationships) by whole name through textKey"]],
     "lib/audio-devices.ts#first": [["key",2,"a stream's audio track"]],
