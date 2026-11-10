@@ -22,6 +22,7 @@ import { flooredDamage, maximizedDamage } from "@/lib/dm/spell-riders";
 import { spendWrath, wrathApplies, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
 import { curseBurn } from "@/lib/dm/spell-retort";
 import { spellDamageRiders } from "@/lib/srd/spell-damage-riders";
+import { genreBSpellAtMaximum, genreBSpellLanded } from "@/lib/dm/genre-b-spell-hits";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 // Rolls and lands the damage, writing what happened onto `base`; returns the
@@ -89,7 +90,8 @@ export function landSpellDamage(input: {
   // Blight's maximum is this creature's (a plant), so a later creature of the
   // area rolls its own; Overchannel's and Wrath's are the casting's.
   const plantMaximum = maximizedDamage(mech, enemy, damageExpression) !== null;
-  const atMaximum = Boolean(input.atMaximum) || plantMaximum;
+  // Overcharge (aether channeler): "a damaging art rolls maximum dice".
+  const atMaximum = Boolean(input.atMaximum) || plantMaximum || (sharedRoll === undefined && genreBSpellAtMaximum(sheet));
   const parts: SpellDicePart[] =
     firstDice && secondDice && damageType && secondType
       ? [
@@ -173,6 +175,11 @@ export function landSpellDamage(input: {
     const blessing = applied.dead ? darkOnesBlessing(campaign, sheet.id) : null;
     if (blessing) {
       base.darkOnesBlessing = blessing;
+    }
+    // The genre casters' riders on a spell that struck (genre-b-spell-hits.ts).
+    const genre = genreBSpellLanded({ campaign, turn, encounter, sheet, enemy, damageType, dealt: damageDealt, first: sharedRoll === undefined, sheets, sheetsById });
+    if (genre.length) {
+      base.genreFeatures = genre;
     }
     // Touch of Death, Keeper of Souls on the kill (authored-hooks.ts).
     const onKill = applied.dead && encounter ? authoredOnKill(campaign, encounter, enemy, sheet.id, false, { level: spellLevel, school: spellSchoolFor(spell, authors) }) : [];

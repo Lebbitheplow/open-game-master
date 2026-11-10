@@ -103,6 +103,20 @@ export const GENRE_B_CONDITION_EFFECTS: ConditionEffectRow[] = [
     ["slotless_minute_3rd", "slotless minute (3rd)", "for a minute, spells of 3rd level or lower cost no slot"],
     ["slotless_minute_4th", "slotless minute (4th)", "for a minute, spells of 4th level or lower cost no slot"],
   ] as const).map(([id, name, what]) => ({ id, match: [name], summary: `${name}: ${what}.` })),
+  // Etching Acid: "Your acid damage reduces a hit target's AC by 1 until your
+  // next turn (not cumulative)"; Universal Solvent: "Etching Acid stacks to -3
+  // AC" (src/lib/dm/genre-b-spell-hits.ts lays one depth at a time).
+  { id: "etched", match: ["etched"], summary: "Etched: -1 AC until the alchemist's next turn.", acBonus: -1 },
+  { id: "etched_twice", match: ["etched twice"], summary: "Etched twice: -2 AC until the alchemist's next turn.", acBonus: -2 },
+  { id: "etched_thrice", match: ["etched thrice"], summary: "Etched thrice: -3 AC until the alchemist's next turn.", acBonus: -3 },
+  // The marks a counter lays on its caster, each spent by the next damaging
+  // spell (genre-b-spell-hits.ts): Overcharge's maximum dice, the Catalyst
+  // Stone's die, Chain Arc's jump.
+  { id: "overcharge", match: ["overcharge"], summary: "Overcharge: the next damaging spell rolls its dice at their maximum, and its caster takes 1d10 lightning backlash." },
+  { id: "catalyst_stone", match: ["catalyst stone"], summary: "Catalyst Stone: the next spell's damage or healing gains +1d4 (+1d8 with Improved Catalyst)." },
+  // Baptism of Ash: "it also gains +1 to attack rolls until your next turn".
+  { id: "baptism_of_ash", match: ["baptism of ash"], summary: "Baptism of Ash: +1 to attack rolls until the preacher's next turn.", attackDie: "1" },
+  { id: "chain_arc", match: ["chain arc"], summary: "Chain Arc: the next lightning spell that strikes one creature jumps to a second within 15 ft for half." },
   {
     // The Next Step: "your mutations of 3rd level or lower cost no slots and
     // your Adaptive Hide grants +2 more AC", for a minute.

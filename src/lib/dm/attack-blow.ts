@@ -5,6 +5,7 @@
 // (pc-attack-resolve.ts); real dice reach it when the player's damage roll
 // lands (pc-attack-parked.ts).
 
+import { genreBSpellLanded } from "@/lib/dm/genre-b-spell-hits";
 import { allocateSeq } from "@/lib/db/campaigns";
 import { getActiveEncounter, patchEnemyConditions } from "@/lib/db/encounters";
 import { publishWithSeq } from "@/lib/events";
@@ -212,6 +213,13 @@ export function landSwingBlow(
     : [];
   if (authored.length) {
     out.subclassFeatures = authored;
+  }
+  // The genre casters' riders on a spell attack that struck (genre-b-spell-hits.ts).
+  if (record.spell && live && !over) {
+    const genre = genreBSpellLanded({ campaign, turn: scene.turn, encounter: live, sheet, enemy, damageType: record.damageType, dealt: Number(applied.damageApplied ?? dealt) || 0, first: true, sheets: scene.sheets, sheetsById: scene.sheetsById });
+    if (genre.length) {
+      out.genreFeatures = genre;
+    }
   }
   // Vampiric Touch: the caster regains half the necrotic damage dealt
   // (spell-attack-riders.ts). The spell's condition landed with the hit.

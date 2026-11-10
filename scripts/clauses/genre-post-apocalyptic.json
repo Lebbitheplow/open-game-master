@@ -2005,21 +2005,21 @@
   "clauses": [
    {
     "c": "1/turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Blessed Isotope#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Blessed Isotope: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Blessed Isotope: a damaging spell deals +3 radiant once a turn, and the second spell of the turn does not",
+    "by": "src/lib/dm/genre-b-spell-hits.ts genreBSpellLanded (ONCE_A_TURN), from src/lib/dm/cast-at-enemy-damage.ts landSpellDamage and src/lib/dm/attack-blow.ts"
    },
    {
     "c": "a damaging tech effect deals +1d6 radiant as the core flares",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Blessed Isotope#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Blessed Isotope: a damaging spell deals +3 radiant once a turn, and the second spell of the turn does not",
+    "by": "src/lib/dm/genre-b-spell-hits.ts genreBSpellLanded (ONCE_A_TURN), from src/lib/dm/cast-at-enemy-damage.ts landSpellDamage and src/lib/dm/attack-blow.ts"
    },
    {
     "c": "+1d6 radiant",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Blessed Isotope#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Blessed Isotope: a damaging spell deals +3 radiant once a turn, and the second spell of the turn does not",
+    "by": "src/lib/dm/genre-b-spell-hits.ts genreBSpellLanded (ONCE_A_TURN), from src/lib/dm/cast-at-enemy-damage.ts landSpellDamage and src/lib/dm/attack-blow.ts"
    }
   ]
  },
@@ -2309,11 +2309,9 @@
   "clauses": [
    {
     "c": "Your healing sermons add your WIS modifier again to HP restored",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Lay On the Word#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Lay On the Word: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Lay On the Word: a preacher's healing adds the WIS modifier again",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Lay On the Word (spell_rider, healing, the WIS modifier), read by src/lib/dm/heal-bonus.ts healAdditions"
    }
   ]
  },
@@ -2373,21 +2371,21 @@
   "clauses": [
    {
     "c": "1/turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Judgment#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Judgment: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Judgment: a damaging spell deals +3 radiant once a turn, and the second spell of the turn does not",
+    "by": "src/lib/dm/genre-b-spell-hits.ts genreBSpellLanded (ONCE_A_TURN: the first creature of the casting), from src/lib/dm/cast-at-enemy-damage.ts landSpellDamage and src/lib/dm/attack-blow.ts"
    },
    {
     "c": "a damaging sermon deals +1d8 radiant to one target",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Judgment#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Judgment: a damaging spell deals +3 radiant once a turn, and the second spell of the turn does not",
+    "by": "src/lib/dm/genre-b-spell-hits.ts genreBSpellLanded (ONCE_A_TURN: the first creature of the casting), from src/lib/dm/cast-at-enemy-damage.ts landSpellDamage and src/lib/dm/attack-blow.ts"
    },
    {
     "c": "+1d8 radiant",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Judgment#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Judgment: a damaging spell deals +3 radiant once a turn, and the second spell of the turn does not",
+    "by": "src/lib/dm/genre-b-spell-hits.ts genreBSpellLanded (ONCE_A_TURN: the first creature of the casting), from src/lib/dm/cast-at-enemy-damage.ts landSpellDamage and src/lib/dm/attack-blow.ts"
    }
   ]
  },
@@ -2584,16 +2582,15 @@
   "clauses": [
    {
     "c": "When you heal a creature below half HP, it also gains +1 to attack rolls until your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Baptism of Ash#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Baptism of Ash: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Baptism of Ash: a creature healed from below half has +1 to attack rolls until the preacher's next turn",
+    "by": "src/lib/dm/genre-b-spell-hits.ts genreBHealed, from src/lib/dm/heal-spell.ts (the baptism of ash condition, +1 to attack rolls in src/lib/srd/genre-b-conditions.ts, until the preacher's next turn)"
    },
    {
     "c": "until your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Baptism of Ash#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Baptism of Ash: a creature healed from below half has +1 to attack rolls until the preacher's next turn",
+    "by": "src/lib/dm/genre-b-spell-hits.ts genreBHealed, from src/lib/dm/heal-spell.ts (the baptism of ash condition, +1 to attack rolls in src/lib/srd/genre-b-conditions.ts, until the preacher's next turn)"
    }
   ]
  },

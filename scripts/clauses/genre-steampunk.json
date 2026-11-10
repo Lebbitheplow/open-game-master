@@ -1097,8 +1097,9 @@
   "clauses": [
    {
     "c": "A prepared stone: 1/rest, add +1d4 to one formula's damage or healing",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_catalyst_stone#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Catalyst Stone: the spent stone adds +1d4 to one spell's damage, then is gone; Catalyst Stone: or +1d4 to one healing spell, and the heal spends it",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Catalyst Stone (spend: the catalyst stone mark; spell_rider healing gated on it, read by src/lib/dm/heal-bonus.ts), spent by src/lib/dm/genre-b-spell-hits.ts genreBSpellLanded / genreBHealed"
    },
    {
     "c": "1/rest",
@@ -1114,8 +1115,9 @@
    },
    {
     "c": "+1d4",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_catalyst_stone#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Catalyst Stone: the spent stone adds +1d4 to one spell's damage, then is gone; Catalyst Stone: or +1d4 to one healing spell, and the heal spends it",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Catalyst Stone (spend: the catalyst stone mark; spell_rider healing gated on it, read by src/lib/dm/heal-bonus.ts), spent by src/lib/dm/genre-b-spell-hits.ts genreBSpellLanded / genreBHealed"
    }
   ]
  },
@@ -1255,16 +1257,15 @@
   "clauses": [
    {
     "c": "Catalyst Stone adds +1d8 and has 3 uses per rest",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Improved Catalyst#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Improved Catalyst: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Improved Catalyst: the stone adds +1d8, three times a rest",
+    "by": "src/lib/dm/genre-b-spell-hits.ts (1d8 with Improved Catalyst), src/lib/srd/authored-effects-genre-b.ts (the healing rider's 1d8 from level 9) and src/lib/classes/resources.json (the counter's upgrade, scripts/generate-class-resources.mjs: a later feature that says '<counter> ... has N uses')"
    },
    {
     "c": "+1d8",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Improved Catalyst#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Improved Catalyst: the stone adds +1d8, three times a rest",
+    "by": "src/lib/dm/genre-b-spell-hits.ts (1d8 with Improved Catalyst), src/lib/srd/authored-effects-genre-b.ts (the healing rider's 1d8 from level 9) and src/lib/classes/resources.json (the counter's upgrade, scripts/generate-class-resources.mjs: a later feature that says '<counter> ... has N uses')"
    },
    {
     "c": "has 3 uses per rest",
@@ -1348,16 +1349,15 @@
   "clauses": [
    {
     "c": "Your damaging formulae may splash: one creature adjacent to the target takes your INT mod in the same damage type",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Volatile Chain#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Volatile Chain: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Volatile Chain: a creature beside the target takes the INT modifier, one farther off nothing",
+    "by": "src/lib/dm/genre-b-spell-hits.ts genreBSpellLanded (besideTarget, an enemy within 5 ft of the target, never an ally: the splash 'may')"
    },
    {
     "c": "adjacent",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Volatile Chain#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Volatile Chain: a creature beside the target takes the INT modifier, one farther off nothing",
+    "by": "src/lib/dm/genre-b-spell-hits.ts genreBSpellLanded (besideTarget, an enemy within 5 ft of the target, never an ally: the splash 'may')"
    }
   ]
  },
@@ -1471,21 +1471,21 @@
   "clauses": [
    {
     "c": "1/turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Corrosive Focus#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Corrosive Focus: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Corrosive Focus: a damaging spell deals +3 acid once a turn, and the second spell of the turn does not",
+    "by": "src/lib/dm/genre-b-spell-hits.ts genreBSpellLanded (ONCE_A_TURN, the caster's turn budget), from src/lib/dm/cast-at-enemy-damage.ts landSpellDamage and src/lib/dm/attack-blow.ts (a spell attack)"
    },
    {
     "c": "a damaging formula deals +1d6 acid",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Corrosive Focus#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Corrosive Focus: a damaging spell deals +3 acid once a turn, and the second spell of the turn does not",
+    "by": "src/lib/dm/genre-b-spell-hits.ts genreBSpellLanded (ONCE_A_TURN, the caster's turn budget), from src/lib/dm/cast-at-enemy-damage.ts landSpellDamage and src/lib/dm/attack-blow.ts (a spell attack)"
    },
    {
     "c": "+1d6 acid",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Corrosive Focus#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Corrosive Focus: a damaging spell deals +3 acid once a turn, and the second spell of the turn does not",
+    "by": "src/lib/dm/genre-b-spell-hits.ts genreBSpellLanded (ONCE_A_TURN, the caster's turn budget), from src/lib/dm/cast-at-enemy-damage.ts landSpellDamage and src/lib/dm/attack-blow.ts (a spell attack)"
    },
    {
     "c": "you may change any formula's damage type to acid",
@@ -1502,16 +1502,15 @@
   "clauses": [
    {
     "c": "Your acid damage reduces a hit target's AC by 1 until your next turn (not cumulative)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Etching Acid#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Etching Acid: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Etching Acid: acid that lands takes 1 off the AC, not cumulative; Universal Solvent stacks it to -3",
+    "by": "src/lib/dm/genre-b-spell-hits.ts etch (the etched condition, -1 AC in src/lib/srd/genre-b-conditions.ts, until the alchemist's next turn) on the alchemist's acid spells and Corrosive Focus's acid"
    },
    {
     "c": "until your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Etching Acid#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Etching Acid: acid that lands takes 1 off the AC, not cumulative; Universal Solvent stacks it to -3",
+    "by": "src/lib/dm/genre-b-spell-hits.ts etch (the etched condition, -1 AC in src/lib/srd/genre-b-conditions.ts, until the alchemist's next turn) on the alchemist's acid spells and Corrosive Focus's acid"
    }
   ]
  },
@@ -1638,8 +1637,9 @@
    },
    {
     "c": "Etching Acid stacks to -3 AC",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Universal Solvent#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Etching Acid: acid that lands takes 1 off the AC, not cumulative; Universal Solvent stacks it to -3",
+    "by": "src/lib/dm/genre-b-spell-hits.ts etch (etched, etched twice, etched thrice: -1 to -3 AC, src/lib/srd/genre-b-conditions.ts)"
    }
   ]
  },
@@ -2357,18 +2357,21 @@
    },
    {
     "c": "a damaging art rolls maximum dice",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_overcharge#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Overcharge: the next damaging spell rolls its dice at their maximum and the channeler takes 1d10 lightning",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Overcharge spend (the overcharge mark); src/lib/dm/cast-at-enemy-damage.ts landSpellDamage rolls at the maximum (genreBSpellAtMaximum), src/lib/dm/genre-b-spell-hits.ts lands the 1d10 backlash through pc-damage.ts applyPcDamage"
    },
    {
     "c": "you take 1d10 lightning backlash",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_overcharge#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Overcharge: the next damaging spell rolls its dice at their maximum and the channeler takes 1d10 lightning",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Overcharge spend (the overcharge mark); src/lib/dm/cast-at-enemy-damage.ts landSpellDamage rolls at the maximum (genreBSpellAtMaximum), src/lib/dm/genre-b-spell-hits.ts lands the 1d10 backlash through pc-damage.ts applyPcDamage"
    },
    {
     "c": "1d10 lightning",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_overcharge#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Overcharge: the next damaging spell rolls its dice at their maximum and the channeler takes 1d10 lightning",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Overcharge spend (the overcharge mark); src/lib/dm/cast-at-enemy-damage.ts landSpellDamage rolls at the maximum (genreBSpellAtMaximum), src/lib/dm/genre-b-spell-hits.ts lands the 1d10 backlash through pc-damage.ts applyPcDamage"
    }
   ]
  },
@@ -2482,16 +2485,15 @@
   "clauses": [
    {
     "c": "1/turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aether_channeler::Dynamo Spark#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Dynamo Spark: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Dynamo Spark: a damaging spell deals +3 lightning once a turn, and the second spell of the turn does not",
+    "by": "src/lib/dm/genre-b-spell-hits.ts genreBSpellLanded (ONCE_A_TURN, the CHA modifier), from src/lib/dm/cast-at-enemy-damage.ts landSpellDamage and src/lib/dm/attack-blow.ts"
    },
    {
     "c": "add your CHA modifier as lightning damage to a damaging art",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aether_channeler::Dynamo Spark#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Dynamo Spark: a damaging spell deals +3 lightning once a turn, and the second spell of the turn does not",
+    "by": "src/lib/dm/genre-b-spell-hits.ts genreBSpellLanded (ONCE_A_TURN, the CHA modifier), from src/lib/dm/cast-at-enemy-damage.ts landSpellDamage and src/lib/dm/attack-blow.ts"
    }
   ]
  },
@@ -2515,13 +2517,15 @@
    },
    {
     "c": "a single-target lightning art jumps to a second target within 15 ft for half damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_chain_arc#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Chain Arc: the spent arc jumps a lightning spell to a creature within 15 ft for half, once",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Chain Arc spend (the chain arc mark), spent by src/lib/dm/genre-b-spell-hits.ts genreBSpellLanded on a lightning spell's first creature"
    },
    {
     "c": "within 15 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_chain_arc#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Chain Arc: the spent arc jumps a lightning spell to a creature within 15 ft for half, once",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Chain Arc spend (the chain arc mark), spent by src/lib/dm/genre-b-spell-hits.ts genreBSpellLanded on a lightning spell's first creature"
    }
   ]
  },

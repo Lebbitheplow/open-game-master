@@ -1348,11 +1348,9 @@
      "n": 4,
      "rest": "long"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Omni-Tool Mastery#0",
-    "where": "scripts/generate-class-resources.mjs parseUses and the row in src/lib/classes/resources.json",
-    "sev": "medium",
-    "observed": "uses of cyberpunk_jury_rig at level 14"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs test rigger::Omni-Tool Mastery#0",
+    "by": "src/lib/classes/resources.json (the counter's upgrade), written by scripts/generate-class-resources.mjs: a later feature whose text says '<counter> has N uses'"
    },
    {
     "c": "can affect magical or exotic devices",
@@ -1681,11 +1679,9 @@
      "n": 2,
      "rest": "long"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap fixer::Favor Network#0",
-    "where": "scripts/generate-class-resources.mjs parseUses and the row in src/lib/classes/resources.json",
-    "sev": "medium",
-    "observed": "uses of cyberpunk_street_contacts at level 5"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs test fixer::Favor Network#0",
+    "by": "src/lib/classes/resources.json (the counter's upgrade), written by scripts/generate-class-resources.mjs: a later feature whose text says '<counter> has N uses'"
    },
    {
     "c": "reaches contacts in other cities",
@@ -1847,11 +1843,9 @@
      "n": 3,
      "rest": "long"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap fixer::Shadow Network#0",
-    "where": "scripts/generate-class-resources.mjs parseUses and the row in src/lib/classes/resources.json",
-    "sev": "medium",
-    "observed": "uses of cyberpunk_street_contacts at level 15"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs test fixer::Shadow Network#0",
+    "by": "src/lib/classes/resources.json (the counter's upgrade), written by scripts/generate-class-resources.mjs: a later feature whose text says '<counter> has N uses'"
    },
    {
     "c": "favors arrive in half the usual time",

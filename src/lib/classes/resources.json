@@ -164,7 +164,12 @@
       "uses": 2,
       "ability": null,
       "recharge": "long",
-      "upgrades": [],
+      "upgrades": [
+        {
+          "match": "omni-tool mastery",
+          "uses": 4
+        }
+      ],
       "guidance": "2/long rest, 10 minutes of tinkering restores a broken device or gives a tool user +1d4 for 1 hour."
     },
     {
@@ -449,7 +454,16 @@
       "uses": 1,
       "ability": null,
       "recharge": "long",
-      "upgrades": [],
+      "upgrades": [
+        {
+          "match": "favor network",
+          "uses": 2
+        },
+        {
+          "match": "shadow network",
+          "uses": 3
+        }
+      ],
       "guidance": "1/long rest, call in a favor: gear, a ride, a name, or entry somewhere (GM adjudicates scope)."
     },
     {
@@ -2049,7 +2063,12 @@
       "uses": 1,
       "ability": null,
       "recharge": "short",
-      "upgrades": [],
+      "upgrades": [
+        {
+          "match": "the rolodex",
+          "uses": 3
+        }
+      ],
       "guidance": "1/rest, ask the GM who in the current scene knows something about your story; you get a true pointer."
     },
     {
@@ -2105,7 +2124,12 @@
       "uses": 1,
       "ability": null,
       "recharge": "short",
-      "upgrades": [],
+      "upgrades": [
+        {
+          "match": "the scene speaks",
+          "uses": 3
+        }
+      ],
       "guidance": "1/short rest, after examining a scene, person, or object, ask the GM one pointed question; the answer is a true, useful clue."
     },
     {
@@ -2870,7 +2894,12 @@
       "uses": 1,
       "ability": null,
       "recharge": "long",
-      "upgrades": [],
+      "upgrades": [
+        {
+          "match": "second adaptation",
+          "uses": 2
+        }
+      ],
       "guidance": "1/long rest, after taking elemental damage, gain resistance to that type until you rest."
     },
     {
@@ -3278,7 +3307,12 @@
       "uses": 1,
       "ability": null,
       "recharge": "short",
-      "upgrades": [],
+      "upgrades": [
+        {
+          "match": "improved catalyst",
+          "uses": 3
+        }
+      ],
       "guidance": "A prepared stone: 1/rest, add +1d4 to one formula's damage or healing."
     },
     {
@@ -3384,7 +3418,12 @@
       "uses": 2,
       "ability": null,
       "recharge": "short",
-      "upgrades": [],
+      "upgrades": [
+        {
+          "match": "field repair (2d8)",
+          "uses": 4
+        }
+      ],
       "guidance": "2/rest, 1 minute of work restores 1d8 + INT HP to a construct, machine, or armored ally."
     },
     {
@@ -3534,7 +3573,12 @@
       "uses": 1,
       "ability": null,
       "recharge": "short",
-      "upgrades": [],
+      "upgrades": [
+        {
+          "match": "fourth gadget",
+          "uses": 2
+        }
+      ],
       "guidance": "1/rest, a gadget or machine you hold works at double effect for 1 minute."
     },
     {

@@ -205,6 +205,29 @@ export const GENRE_B_AUTHORED: GenreRow[] = [
     },
   },
 
+  // A mark on the caster the next damaging spell spends
+  // (src/lib/dm/genre-b-spell-hits.ts): "a damaging art rolls maximum dice";
+  // "add +1d4 to one formula's damage or healing"; "a single-target lightning
+  // art jumps to a second target within 15 ft for half damage". A minute to
+  // cast it in.
+  spend("Overcharge", ["aether_channeler"], "steampunk_overcharge", "none", { kind: "buff", condition: "overcharge", rounds: 10 }),
+  spend("Chain Arc", ["aether_channeler"], "steampunk_chain_arc", "none", { kind: "buff", condition: "chain arc", rounds: 10 }),
+  {
+    feature: "Catalyst Stone",
+    classes: ["alchemist"],
+    entry: {
+      subclass: "genre",
+      counter: "steampunk_catalyst_stone",
+      // The healing half: the die rides the next healing spell's roll
+      // (src/lib/dm/heal-bonus.ts), and that spell spends the stone.
+      effects: [{ kind: "spell_rider", dice: [[1, "1d4"], [9, "1d8"]], healing: true, gate: { condition: "catalyst stone" } }],
+      spends: [{ name: "Catalyst Stone", pool: { id: "steampunk_catalyst_stone" }, action: "none", does: { kind: "buff", condition: "catalyst stone", rounds: 10 } }],
+    },
+  },
+  // "Your healing sermons add your WIS modifier again to HP restored": every
+  // spell the preacher heals with is a sermon.
+  row("Lay On the Word", ["waste_preacher"], { effects: [{ kind: "spell_rider", dice: "wis", healing: true }] }),
+
   // ---- reactions on the feature's own counter ----
   // "Reaction when attacked: your read of the attacker imposes disadvantage": the attack that hit is rolled again at disadvantage.
   react("Deductive Counter", ["detective"], "mystery_deductive_counter", { kind: "disadv_vs_hit" }),

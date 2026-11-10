@@ -256,6 +256,20 @@ function collect() {
               rows.push({ match: feat.n.trim().toLowerCase(), uses: namedUses(feat.n) });
               upgradesFor.set(id, rows);
             }
+            // A later feature of another name that grows a counter: "Improved
+            // Catalyst: Catalyst Stone adds +1d8 and has 3 uses per rest",
+            // "Second Adaptation: Rapid Adaptation has 2 uses", "Fourth Gadget:
+            // ...; Overclock has 2 uses per rest". The holder of the later
+            // feature has that many (both genre packages' catalogs say so).
+            for (const grown of feat.d.matchAll(/(?:^|; )([A-Z][A-Za-z'-]*(?: [A-Z][A-Za-z'-]*)*) (?:[^;.]*? and )?has (\d+|two|three|four) uses\b/g)) {
+              const target = `${slugify(genre)}_${slugify(baseName(grown[1]))}`;
+              const count = /^\d+$/.test(grown[2]) ? Number(grown[2]) : { two: 2, three: 3, four: 4 }[grown[2]];
+              if (target !== id && count) {
+                const rows = upgradesFor.get(target) ?? [];
+                rows.push({ match: feat.n.trim().toLowerCase(), uses: count });
+                upgradesFor.set(target, rows);
+              }
+            }
             if (!parsedUses) {
               continue;
             }
