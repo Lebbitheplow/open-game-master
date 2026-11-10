@@ -13,21 +13,21 @@
    },
    {
     "c": "\"size\":\"Medium\"",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the size's reach on the board (a Small creature's heavy weapons, squeezing)"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.hill_dwarf.grants"
    },
    {
     "c": "\"asi\":{\"con\":2,\"wis\":1}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.hill_dwarf.grants"
    },
    {
     "c": "\"languages\":[\"Common\",\"Dwarvish\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.hill_dwarf.grants"
    },
    {
     "c": "\"toolChoice\":{\"count\":1,\"from\":[\"smith's tools\",\"brewer's supplies\",\"mason's tools\"]}",
@@ -37,15 +37,15 @@
    },
    {
     "c": "\"weapons\":[\"battleaxes\",\"handaxes\",\"light hammers\",\"warhammers\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.hill_dwarf.grants"
    },
    {
     "c": "Darkvision 60 ft",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/db/sheets.ts createSheet (racial traits granted) read by src/lib/battlemap/view.ts sheetDarkvisionTiles",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.hill_dwarf.darkvision"
    },
    {
     "c": "adv. vs poison",
@@ -55,9 +55,9 @@
    },
    {
     "c": "Dwarven Combat Training (battleaxe, handaxe, light hammer, warhammer)",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.hill_dwarf.grants"
    },
    {
     "c": "Stonecunning",
@@ -87,21 +87,21 @@
    },
    {
     "c": "\"size\":\"Medium\"",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the size's reach on the board (a Small creature's heavy weapons, squeezing)"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.mountain_dwarf.grants"
    },
    {
     "c": "\"asi\":{\"str\":2,\"con\":2}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.mountain_dwarf.grants"
    },
    {
     "c": "\"languages\":[\"Common\",\"Dwarvish\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.mountain_dwarf.grants"
    },
    {
     "c": "\"toolChoice\":{\"count\":1,\"from\":[\"smith's tools\",\"brewer's supplies\",\"mason's tools\"]}",
@@ -111,21 +111,21 @@
    },
    {
     "c": "\"armor\":[\"light\",\"medium\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.mountain_dwarf.grants"
    },
    {
     "c": "\"weapons\":[\"battleaxes\",\"handaxes\",\"light hammers\",\"warhammers\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.mountain_dwarf.grants"
    },
    {
     "c": "Darkvision 60 ft",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/db/sheets.ts createSheet (racial traits granted) read by src/lib/battlemap/view.ts sheetDarkvisionTiles",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.mountain_dwarf.darkvision"
    },
    {
     "c": "adv. vs poison",
@@ -135,9 +135,9 @@
    },
    {
     "c": "Dwarven Combat Training (battleaxe, handaxe, light hammer, warhammer)",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.mountain_dwarf.grants"
    },
    {
     "c": "Stonecunning",
@@ -147,9 +147,9 @@
    },
    {
     "c": "Dwarven Armor Training (light and medium armor)",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.mountain_dwarf.grants"
    }
   ]
  },
@@ -167,21 +167,21 @@
    },
    {
     "c": "\"size\":\"Medium\"",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the size's reach on the board (a Small creature's heavy weapons, squeezing)"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.high_elf.grants"
    },
    {
     "c": "\"asi\":{\"dex\":2,\"int\":1}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.high_elf.grants"
    },
    {
     "c": "\"languages\":[\"Common\",\"Elvish\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.high_elf.grants"
    },
    {
     "c": "\"bonusLanguages\":1",
@@ -191,9 +191,9 @@
    },
    {
     "c": "\"skills\":[\"perception\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.high_elf.grants"
    },
    {
     "c": "\"cantripChoice\":{\"list\":\"wizard\",\"count\":1}",
@@ -203,15 +203,15 @@
    },
    {
     "c": "\"weapons\":[\"longswords\",\"shortswords\",\"shortbows\",\"longbows\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.high_elf.grants"
    },
    {
     "c": "Darkvision 60 ft",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/db/sheets.ts createSheet (racial traits granted) read by src/lib/battlemap/view.ts sheetDarkvisionTiles",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.high_elf.darkvision"
    },
    {
     "c": "adv. vs charm",
@@ -233,9 +233,9 @@
    },
    {
     "c": "Elf Weapon Training (longsword, shortsword, shortbow, longbow)",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.high_elf.grants"
    },
    {
     "c": "One wizard cantrip",
@@ -245,9 +245,9 @@
    },
    {
     "c": "Perception proficiency (Keen Senses)",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.high_elf.grants"
    }
   ]
  },
@@ -265,39 +265,39 @@
    },
    {
     "c": "\"size\":\"Medium\"",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the size's reach on the board (a Small creature's heavy weapons, squeezing)"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.wood_elf.grants"
    },
    {
     "c": "\"asi\":{\"dex\":2,\"wis\":1}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.wood_elf.grants"
    },
    {
     "c": "\"languages\":[\"Common\",\"Elvish\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.wood_elf.grants"
    },
    {
     "c": "\"skills\":[\"perception\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.wood_elf.grants"
    },
    {
     "c": "\"weapons\":[\"longswords\",\"shortswords\",\"shortbows\",\"longbows\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.wood_elf.grants"
    },
    {
     "c": "Darkvision 60 ft",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/db/sheets.ts createSheet (racial traits granted) read by src/lib/battlemap/view.ts sheetDarkvisionTiles",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.wood_elf.darkvision"
    },
    {
     "c": "adv. vs charm",
@@ -319,15 +319,15 @@
    },
    {
     "c": "Perception proficiency (Keen Senses)",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.wood_elf.grants"
    },
    {
     "c": "Fleet of Foot (35 ft speed)",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.wood_elf.grants"
    },
    {
     "c": "Mask of the Wild (hide when lightly obscured by nature)",
@@ -351,33 +351,33 @@
    },
    {
     "c": "\"size\":\"Medium\"",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the size's reach on the board (a Small creature's heavy weapons, squeezing)"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.drow.grants"
    },
    {
     "c": "\"asi\":{\"dex\":2,\"cha\":1}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.drow.grants"
    },
    {
     "c": "\"languages\":[\"Common\",\"Elvish\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.drow.grants"
    },
    {
     "c": "\"skills\":[\"perception\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.drow.grants"
    },
    {
     "c": "\"weapons\":[\"rapiers\",\"shortswords\",\"hand crossbows\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.drow.grants"
    },
    {
     "c": "\"innateSpells\":{\"trait\":\"Drow Magic\",\"ability\":\"cha\",\"spells\":[{\"name\":\"Dancing Lights\",\"level\":1},{\"name\":\"Faerie Fire\",\"level\":3,\"per\":\"long\"},{\"name\":\"Darkness\",\"level\":5,\"per\":\"long\"}]}",
@@ -387,9 +387,9 @@
    },
    {
     "c": "Superior Darkvision 120 ft",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/db/sheets.ts createSheet (racial traits granted) read by src/lib/battlemap/view.ts sheetDarkvisionTiles",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.drow.darkvision"
    },
    {
     "c": "Sunlight Sensitivity (disadvantage on attacks and sight-based Perception in direct sunlight)",
@@ -417,9 +417,9 @@
    },
    {
     "c": "Perception proficiency (Keen Senses)",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.drow.grants"
    },
    {
     "c": "Drow Magic (dancing lights cantrip)",
@@ -443,21 +443,21 @@
    },
    {
     "c": "\"size\":\"Small\"",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the size's reach on the board (a Small creature's heavy weapons, squeezing)"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.lightfoot_halfling.grants"
    },
    {
     "c": "\"asi\":{\"dex\":2,\"cha\":1}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.lightfoot_halfling.grants"
    },
    {
     "c": "\"languages\":[\"Common\",\"Halfling\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.lightfoot_halfling.grants"
    },
    {
     "c": "Lucky (reroll nat 1 on d20)",
@@ -499,21 +499,21 @@
    },
    {
     "c": "\"size\":\"Small\"",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the size's reach on the board (a Small creature's heavy weapons, squeezing)"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.stout_halfling.grants"
    },
    {
     "c": "\"asi\":{\"dex\":2,\"con\":1}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.stout_halfling.grants"
    },
    {
     "c": "\"languages\":[\"Common\",\"Halfling\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.stout_halfling.grants"
    },
    {
     "c": "Lucky (reroll nat 1 on d20)",
@@ -561,21 +561,21 @@
    },
    {
     "c": "\"size\":\"Medium\"",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the size's reach on the board (a Small creature's heavy weapons, squeezing)"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.human.grants"
    },
    {
     "c": "\"asi\":{\"str\":1,\"dex\":1,\"con\":1,\"int\":1,\"wis\":1,\"cha\":1}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.human.grants"
    },
    {
     "c": "\"languages\":[\"Common\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.human.grants"
    },
    {
     "c": "\"bonusLanguages\":1",
@@ -605,15 +605,15 @@
    },
    {
     "c": "\"size\":\"Medium\"",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the size's reach on the board (a Small creature's heavy weapons, squeezing)"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.variant_human.grants"
    },
    {
     "c": "\"asi\":{}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.variant_human.grants"
    },
    {
     "c": "\"asiChoice\":{\"count\":2,\"amount\":1}",
@@ -623,9 +623,9 @@
    },
    {
     "c": "\"languages\":[\"Common\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.variant_human.grants"
    },
    {
     "c": "\"bonusLanguages\":1",
@@ -667,21 +667,21 @@
    },
    {
     "c": "\"size\":\"Medium\"",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the size's reach on the board (a Small creature's heavy weapons, squeezing)"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.dragonborn.grants"
    },
    {
     "c": "\"asi\":{\"str\":2,\"cha\":1}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.dragonborn.grants"
    },
    {
     "c": "\"languages\":[\"Common\",\"Draconic\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.dragonborn.grants"
    },
    {
     "c": "\"ancestryChoice\":\"draconic\"",
@@ -723,33 +723,33 @@
    },
    {
     "c": "\"size\":\"Small\"",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the size's reach on the board (a Small creature's heavy weapons, squeezing)"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.rock_gnome.grants"
    },
    {
     "c": "\"asi\":{\"int\":2,\"con\":1}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.rock_gnome.grants"
    },
    {
     "c": "\"languages\":[\"Common\",\"Gnomish\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.rock_gnome.grants"
    },
    {
     "c": "\"tools\":[\"tinker's tools\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.rock_gnome.grants"
    },
    {
     "c": "Darkvision 60 ft",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/db/sheets.ts createSheet (racial traits granted) read by src/lib/battlemap/view.ts sheetDarkvisionTiles",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.rock_gnome.darkvision"
    },
    {
     "c": "Gnome Cunning (adv. on INT/WIS/CHA saves vs magic)",
@@ -785,21 +785,21 @@
    },
    {
     "c": "\"size\":\"Small\"",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the size's reach on the board (a Small creature's heavy weapons, squeezing)"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.forest_gnome.grants"
    },
    {
     "c": "\"asi\":{\"int\":2,\"dex\":1}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.forest_gnome.grants"
    },
    {
     "c": "\"languages\":[\"Common\",\"Gnomish\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.forest_gnome.grants"
    },
    {
     "c": "\"innateSpells\":{\"trait\":\"Natural Illusionist\",\"ability\":\"int\",\"spells\":[{\"name\":\"Minor Illusion\",\"level\":1}]}",
@@ -809,9 +809,9 @@
    },
    {
     "c": "Darkvision 60 ft",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/db/sheets.ts createSheet (racial traits granted) read by src/lib/battlemap/view.ts sheetDarkvisionTiles",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.forest_gnome.darkvision"
    },
    {
     "c": "Gnome Cunning (adv. on INT/WIS/CHA saves vs magic)",
@@ -847,27 +847,27 @@
    },
    {
     "c": "\"size\":\"Small\"",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the size's reach on the board (a Small creature's heavy weapons, squeezing)"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.deep_gnome.grants"
    },
    {
     "c": "\"asi\":{\"int\":2,\"dex\":1}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.deep_gnome.grants"
    },
    {
     "c": "\"languages\":[\"Common\",\"Gnomish\",\"Undercommon\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.deep_gnome.grants"
    },
    {
     "c": "Superior Darkvision 120 ft",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/db/sheets.ts createSheet (racial traits granted) read by src/lib/battlemap/view.ts sheetDarkvisionTiles",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.deep_gnome.darkvision"
    },
    {
     "c": "Gnome Cunning (adv. on INT/WIS/CHA saves vs magic)",
@@ -897,15 +897,15 @@
    },
    {
     "c": "\"size\":\"Medium\"",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the size's reach on the board (a Small creature's heavy weapons, squeezing)"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.half_elf.grants"
    },
    {
     "c": "\"asi\":{\"cha\":2}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.half_elf.grants"
    },
    {
     "c": "\"asiChoice\":{\"count\":2,\"amount\":1}",
@@ -915,9 +915,9 @@
    },
    {
     "c": "\"languages\":[\"Common\",\"Elvish\",\"one of your choice\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.half_elf.grants"
    },
    {
     "c": "\"bonusLanguages\":1",
@@ -933,9 +933,9 @@
    },
    {
     "c": "Darkvision 60 ft",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/db/sheets.ts createSheet (racial traits granted) read by src/lib/battlemap/view.ts sheetDarkvisionTiles",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.half_elf.darkvision"
    },
    {
     "c": "Fey Ancestry",
@@ -965,39 +965,39 @@
    },
    {
     "c": "\"size\":\"Medium\"",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the size's reach on the board (a Small creature's heavy weapons, squeezing)"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.half_orc.grants"
    },
    {
     "c": "\"asi\":{\"str\":2,\"con\":1}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.half_orc.grants"
    },
    {
     "c": "\"languages\":[\"Common\",\"Orc\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.half_orc.grants"
    },
    {
     "c": "\"skills\":[\"intimidation\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.half_orc.grants"
    },
    {
     "c": "Darkvision 60 ft",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/db/sheets.ts createSheet (racial traits granted) read by src/lib/battlemap/view.ts sheetDarkvisionTiles",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.half_orc.darkvision"
    },
    {
     "c": "Intimidation proficiency (Menacing)",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.half_orc.grants"
    },
    {
     "c": "Relentless Endurance",
@@ -1027,21 +1027,21 @@
    },
    {
     "c": "\"size\":\"Medium\"",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the size's reach on the board (a Small creature's heavy weapons, squeezing)"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.tiefling.grants"
    },
    {
     "c": "\"asi\":{\"cha\":2,\"int\":1}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.tiefling.grants"
    },
    {
     "c": "\"languages\":[\"Common\",\"Infernal\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.tiefling.grants"
    },
    {
     "c": "\"innateSpells\":{\"trait\":\"Infernal Legacy\",\"ability\":\"cha\",\"spells\":[{\"name\":\"Thaumaturgy\",\"level\":1},{\"name\":\"Hellish Rebuke\",\"level\":3,\"castAt\":2,\"per\":\"long\"},{\"name\":\"Darkness\",\"level\":5,\"per\":\"long\"}]}",
@@ -1051,9 +1051,9 @@
    },
    {
     "c": "Darkvision 60 ft",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/db/sheets.ts createSheet (racial traits granted) read by src/lib/battlemap/view.ts sheetDarkvisionTiles",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.tiefling.darkvision"
    },
    {
     "c": "Hellish Resistance (fire)",
@@ -1083,21 +1083,21 @@
    },
    {
     "c": "\"size\":\"Medium\"",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the size's reach on the board (a Small creature's heavy weapons, squeezing)"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.aasimar.grants"
    },
    {
     "c": "\"asi\":{\"cha\":2,\"wis\":1}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.aasimar.grants"
    },
    {
     "c": "\"languages\":[\"Common\",\"Celestial\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.aasimar.grants"
    },
    {
     "c": "\"innateSpells\":{\"trait\":\"Light Bearer\",\"ability\":\"cha\",\"spells\":[{\"name\":\"Light\",\"level\":1}]}",
@@ -1107,9 +1107,9 @@
    },
    {
     "c": "Darkvision 60 ft",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/db/sheets.ts createSheet (racial traits granted) read by src/lib/battlemap/view.ts sheetDarkvisionTiles",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.aasimar.darkvision"
    },
    {
     "c": "Celestial Resistance (necrotic and radiant)",
@@ -1151,27 +1151,27 @@
    },
    {
     "c": "\"size\":\"Medium\"",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the size's reach on the board (a Small creature's heavy weapons, squeezing)"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.goliath.grants"
    },
    {
     "c": "\"asi\":{\"str\":2,\"con\":1}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.goliath.grants"
    },
    {
     "c": "\"languages\":[\"Common\",\"Giant\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.goliath.grants"
    },
    {
     "c": "\"skills\":[\"athletics\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.goliath.grants"
    },
    {
     "c": "Stone's Endurance (reduce damage by 1d12 + CON, 1/short rest)",
@@ -1193,9 +1193,9 @@
    },
    {
     "c": "Athletics proficiency (Natural Athlete)",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.goliath.grants"
    }
   ]
  },
@@ -1213,21 +1213,21 @@
    },
    {
     "c": "\"size\":\"Medium\"",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the size's reach on the board (a Small creature's heavy weapons, squeezing)"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.firbolg.grants"
    },
    {
     "c": "\"asi\":{\"wis\":2,\"str\":1}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.firbolg.grants"
    },
    {
     "c": "\"languages\":[\"Common\",\"Elvish\",\"Giant\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.firbolg.grants"
    },
    {
     "c": "Firbolg Magic (detect magic and disguise self, 1/short rest each)",
@@ -1269,33 +1269,33 @@
    },
    {
     "c": "\"size\":\"Medium\"",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the size's reach on the board (a Small creature's heavy weapons, squeezing)"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.tabaxi.grants"
    },
    {
     "c": "\"asi\":{\"dex\":2,\"cha\":1}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.tabaxi.grants"
    },
    {
     "c": "\"languages\":[\"Common\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.tabaxi.grants"
    },
    {
     "c": "\"skills\":[\"perception\",\"stealth\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.tabaxi.grants"
    },
    {
     "c": "Darkvision 60 ft",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/db/sheets.ts createSheet (racial traits granted) read by src/lib/battlemap/view.ts sheetDarkvisionTiles",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.tabaxi.darkvision"
    },
    {
     "c": "Feline Agility (double your speed for a turn, refreshed by not moving)",
@@ -1311,15 +1311,15 @@
    },
    {
     "c": "Perception proficiency (Cat's Talent)",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.tabaxi.grants"
    },
    {
     "c": "Stealth proficiency (Cat's Talent)",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.tabaxi.grants"
    }
   ]
  },
@@ -1337,21 +1337,21 @@
    },
    {
     "c": "\"size\":\"Medium\"",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the size's reach on the board (a Small creature's heavy weapons, squeezing)"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.kenku.grants"
    },
    {
     "c": "\"asi\":{\"dex\":2,\"wis\":1}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.kenku.grants"
    },
    {
     "c": "\"languages\":[\"Common\",\"Auran\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.kenku.grants"
    },
    {
     "c": "\"skillChoice\":{\"count\":2}",
@@ -1393,27 +1393,27 @@
    },
    {
     "c": "\"size\":\"Medium\"",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the size's reach on the board (a Small creature's heavy weapons, squeezing)"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.tortle.grants"
    },
    {
     "c": "\"asi\":{\"str\":2,\"wis\":1}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.tortle.grants"
    },
    {
     "c": "\"languages\":[\"Common\",\"Aquan\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.tortle.grants"
    },
    {
     "c": "\"skills\":[\"survival\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.tortle.grants"
    },
    {
     "c": "Natural Armor (AC 17, unmodified by Dexterity)",
@@ -1441,9 +1441,9 @@
    },
    {
     "c": "Survival proficiency (Tortle Instinct)",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.tortle.grants"
    }
   ]
  },
@@ -1461,27 +1461,27 @@
    },
    {
     "c": "\"size\":\"Medium\"",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the size's reach on the board (a Small creature's heavy weapons, squeezing)"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.fire_genasi.grants"
    },
    {
     "c": "\"asi\":{\"con\":2,\"int\":1}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.fire_genasi.grants"
    },
    {
     "c": "\"languages\":[\"Common\",\"Primordial\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.fire_genasi.grants"
    },
    {
     "c": "Darkvision 60 ft",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/db/sheets.ts createSheet (racial traits granted) read by src/lib/battlemap/view.ts sheetDarkvisionTiles",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.fire_genasi.darkvision"
    },
    {
     "c": "Fire Resistance",
@@ -1511,21 +1511,21 @@
    },
    {
     "c": "\"size\":\"Medium\"",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the size's reach on the board (a Small creature's heavy weapons, squeezing)"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.water_genasi.grants"
    },
    {
     "c": "\"asi\":{\"con\":2,\"wis\":1}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.water_genasi.grants"
    },
    {
     "c": "\"languages\":[\"Common\",\"Primordial\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.water_genasi.grants"
    },
    {
     "c": "Acid Resistance",
@@ -1567,21 +1567,21 @@
    },
    {
     "c": "\"size\":\"Medium\"",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the size's reach on the board (a Small creature's heavy weapons, squeezing)"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.air_genasi.grants"
    },
    {
     "c": "\"asi\":{\"con\":2,\"dex\":1}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.air_genasi.grants"
    },
    {
     "c": "\"languages\":[\"Common\",\"Primordial\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.air_genasi.grants"
    },
    {
     "c": "Lightning Resistance",
@@ -1617,27 +1617,27 @@
    },
    {
     "c": "\"size\":\"Medium\"",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the size's reach on the board (a Small creature's heavy weapons, squeezing)"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.earth_genasi.grants"
    },
    {
     "c": "\"asi\":{\"con\":2,\"str\":1}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.earth_genasi.grants"
    },
    {
     "c": "\"languages\":[\"Common\",\"Primordial\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.earth_genasi.grants"
    },
    {
     "c": "Darkvision 60 ft",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/db/sheets.ts createSheet (racial traits granted) read by src/lib/battlemap/view.ts sheetDarkvisionTiles",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.earth_genasi.darkvision"
    },
    {
     "c": "Earth Walk (difficult terrain of earth or stone costs no extra movement)",
@@ -1667,21 +1667,21 @@
    },
    {
     "c": "\"size\":\"Medium\"",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the size's reach on the board (a Small creature's heavy weapons, squeezing)"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.changeling.grants"
    },
    {
     "c": "\"asi\":{\"cha\":2,\"dex\":1}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.changeling.grants"
    },
    {
     "c": "\"languages\":[\"Common\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.changeling.grants"
    },
    {
     "c": "\"skillChoice\":{\"count\":2}",
@@ -1717,21 +1717,21 @@
    },
    {
     "c": "\"size\":\"Medium\"",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the size's reach on the board (a Small creature's heavy weapons, squeezing)"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.warforged.grants"
    },
    {
     "c": "\"asi\":{\"con\":2,\"str\":1}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.warforged.grants"
    },
    {
     "c": "\"languages\":[\"Common\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.warforged.grants"
    },
    {
     "c": "\"skillChoice\":{\"count\":1}",
@@ -1785,27 +1785,27 @@
    },
    {
     "c": "\"size\":\"Small\"",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the size's reach on the board (a Small creature's heavy weapons, squeezing)"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.goblin.grants"
    },
    {
     "c": "\"asi\":{\"dex\":2,\"con\":1}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.goblin.grants"
    },
    {
     "c": "\"languages\":[\"Common\",\"Goblin\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.goblin.grants"
    },
    {
     "c": "Darkvision 60 ft",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/db/sheets.ts createSheet (racial traits granted) read by src/lib/battlemap/view.ts sheetDarkvisionTiles",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.goblin.darkvision"
    },
    {
     "c": "Fury of the Small (extra damage equal to your level once per short rest against a larger creature)",
@@ -1835,33 +1835,33 @@
    },
    {
     "c": "\"size\":\"Medium\"",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the size's reach on the board (a Small creature's heavy weapons, squeezing)"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.bugbear.grants"
    },
    {
     "c": "\"asi\":{\"str\":2,\"dex\":1}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.bugbear.grants"
    },
    {
     "c": "\"languages\":[\"Common\",\"Goblin\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.bugbear.grants"
    },
    {
     "c": "\"skills\":[\"stealth\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.bugbear.grants"
    },
    {
     "c": "Darkvision 60 ft",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/db/sheets.ts createSheet (racial traits granted) read by src/lib/battlemap/view.ts sheetDarkvisionTiles",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.bugbear.darkvision"
    },
    {
     "c": "Long-Limbed (5 extra feet of reach on melee attacks on your turn)",
@@ -1883,9 +1883,9 @@
    },
    {
     "c": "Stealth proficiency (Sneaky)",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.bugbear.grants"
    }
   ]
  },
@@ -1903,21 +1903,21 @@
    },
    {
     "c": "\"size\":\"Medium\"",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the size's reach on the board (a Small creature's heavy weapons, squeezing)"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.lizardfolk.grants"
    },
    {
     "c": "\"asi\":{\"con\":2,\"wis\":1}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.lizardfolk.grants"
    },
    {
     "c": "\"languages\":[\"Common\",\"Draconic\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.lizardfolk.grants"
    },
    {
     "c": "\"skillChoice\":{\"count\":2}",
@@ -1977,21 +1977,21 @@
    },
    {
     "c": "\"size\":\"Medium\"",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the size's reach on the board (a Small creature's heavy weapons, squeezing)"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.orc.grants"
    },
    {
     "c": "\"asi\":{\"str\":2,\"con\":1}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.orc.grants"
    },
    {
     "c": "\"languages\":[\"Common\",\"Orc\"]",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.orc.grants"
    },
    {
     "c": "\"skillChoice\":{\"count\":2,\"from\":[\"animal_handling\",\"insight\",\"intimidation\",\"medicine\",\"nature\",\"perception\",\"survival\"]}",
@@ -2001,9 +2001,9 @@
    },
    {
     "c": "Darkvision 60 ft",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/db/sheets.ts createSheet (racial traits granted) read by src/lib/battlemap/view.ts sheetDarkvisionTiles",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.orc.darkvision"
    },
    {
     "c": "Aggressive (bonus action: move up to your speed toward a hostile creature you can see)",

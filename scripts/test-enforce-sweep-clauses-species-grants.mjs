@@ -1,0 +1,118 @@
+// The clause ledger's probes for what a lineage of src/lib/srd/races.json
+// grants at creation, run through the server's own check of a new character
+// (src/lib/srd/sheet-legality.ts legalizeSheet) on a sheet the builder made
+// (scripts/lib/enforce-builder.mjs): the fixed ability increases, languages,
+// skills, weapons, armor and tools reach the stored sheet, the walking speed
+// is the row's, the size is the one the engine reads (src/lib/srd/index.ts
+// sizeForRace), and darkvision is the range the board lights by
+// (src/lib/battlemap/view.ts sheetDarkvisionTiles).
+// The darkvision probes read a hero the sheet door stored (src/lib/db/sheets.ts
+// createSheet grants the racial traits the board reads).
+//
+// scripts/clauses/species.json names each probe, "species.<id>.grants" and
+// "species.<id>.darkvision".
+import { register } from "node:module";
+import fs from "node:fs";
+import assert from "node:assert/strict";
+import "./lib/enforce-world.mjs";
+import { runOrSurvey } from "./lib/sweep-clauses-srd-survey.mjs";
+import { clauseRig } from "./lib/sweep-clauses-srd-rig.mjs";
+
+register("./lib/register-alias.mjs", import.meta.url);
+
+const { openBuilder } = await import("./lib/enforce-builder.mjs");
+const { legalizeSheet } = await import("../src/lib/srd/sheet-legality.ts");
+const { bundledPrices } = await import("../src/lib/srd/starting-wealth.ts");
+const { checklistSpell } = await import("../src/lib/srd/spell-lists.ts");
+const { bundledSubclassName } = await import("../src/lib/srd/features.ts");
+const { sizeForRace } = await import("../src/lib/srd/index.ts");
+const { sheetDarkvisionTiles } = await import("../src/lib/battlemap/view.ts");
+
+const RACES = JSON.parse(fs.readFileSync(new URL("../src/lib/srd/races.json", import.meta.url), "utf8")).races;
+const builder = await openBuilder();
+const { classes, races, backgrounds } = builder;
+const SCORES = { str: 15, dex: 14, con: 13, int: 12, wis: 10, cha: 8 };
+const rig = await clauseRig();
+const table = await rig.table({ campaign: { maxPlayers: 60 } });
+
+// A fighter 1 soldier of the lineage, as the builder sends it, through the
+// server's check.
+function made(raceId) {
+  const built = builder.build({ race: raceId, class: "fighter", background: "soldier", level: 1, scores: SCORES, chosenSkills: ["perception", "survival"], stylePicks: ["defense"] });
+  const race = races.find((entry) => entry.id === raceId);
+  assert.ok(race, `the builder offers no ${raceId}`);
+  return legalizeSheet(built.sheet, {
+    door: "library",
+    level: 1,
+    hpMethod: "average",
+    startingWealth: "equipment",
+    classOf: (id) => classes.find((entry) => entry.id === id) ?? null,
+    race,
+    background: backgrounds.find((entry) => entry.id === "soldier") ?? null,
+    baseline: null,
+    abilityPool: null,
+    wealthRoll: null,
+    priceOf: bundledPrices,
+    spellOf: checklistSpell,
+    featOf: () => null,
+    subclassOffered: (classId, name) => Boolean(bundledSubclassName(classId, name)),
+    rollDie: () => 3,
+  }).sheet;
+}
+
+const lower = (list) => (list ?? []).map((entry) => String(entry).toLowerCase());
+const missing = (wanted, held) => lower(wanted).filter((entry) => !lower(held).includes(entry));
+// The darkvision a row's traits state, in feet: "Darkvision 60 ft",
+// "Superior Darkvision 120 ft".
+const darkvisionFeet = (row) => {
+  const trait = row.traits.find((entry) => /darkvision \d+ ft/i.test(entry));
+  return trait ? Number(/(\d+) ft/.exec(trait)[1]) : 0;
+};
+
+const P = {};
+for (const row of RACES) {
+  P[`species.${row.id}.grants`] = () => {
+    const sheet = made(row.id);
+    const asi = Object.fromEntries(Object.entries(SCORES).map(([ability, score]) => [ability, score + (row.asi?.[ability] ?? 0)]));
+    const wrong = {
+      abilities: Object.entries(asi).filter(([ability, score]) => sheet.abilities[ability] !== score).map(([ability, score]) => `${ability} ${sheet.abilities[ability]} (wanted ${score})`),
+      languages: missing(row.languages.filter((language) => !/of your choice/i.test(language)), sheet.proficiencies.languages),
+      skills: missing(row.skills, sheet.proficiencies.skills),
+      weapons: missing(row.weapons, sheet.proficiencies.weapons),
+      armor: missing(row.armor, sheet.proficiencies.armor),
+      tools: missing(row.tools, sheet.proficiencies.tools),
+      speed: sheet.speed === row.speed ? [] : [`${sheet.speed} (wanted ${row.speed})`],
+      size: sizeForRace(row.id) === row.size ? [] : [`${sizeForRace(row.id)} (wanted ${row.size})`],
+    };
+    const failed = Object.entries(wrong).filter(([, list]) => list.length);
+    assert.deepEqual(failed, [], `${row.name}: what the stored sheet carries against the row`);
+  };
+  const feet = darkvisionFeet(row);
+  if (feet) {
+    // A hero of the lineage as the sheet door stores it (its racial traits
+    // granted), read by the board's sight.
+    P[`species.${row.id}.darkvision`] = () => {
+      const who = table.hero({ class: "fighter", level: 1, race: row.id, equipment: [] });
+      assert.equal(sheetDarkvisionTiles(table.sheet(who)) * 5, feet, `${row.name}: darkvision on the board`);
+    };
+  }
+}
+
+// The probes above by name, for the ledger's probe check (it finds a probe
+// by its name in this file); the run holds the table to the list.
+const NAMES = [
+  "species.hill_dwarf.grants", "species.mountain_dwarf.grants", "species.high_elf.grants", "species.wood_elf.grants", "species.drow.grants",
+  "species.lightfoot_halfling.grants", "species.stout_halfling.grants", "species.human.grants", "species.variant_human.grants",
+  "species.dragonborn.grants", "species.rock_gnome.grants", "species.forest_gnome.grants", "species.deep_gnome.grants", "species.half_elf.grants",
+  "species.half_orc.grants", "species.tiefling.grants", "species.aasimar.grants", "species.goliath.grants", "species.firbolg.grants",
+  "species.tabaxi.grants", "species.kenku.grants", "species.tortle.grants", "species.fire_genasi.grants", "species.water_genasi.grants",
+  "species.air_genasi.grants", "species.earth_genasi.grants", "species.changeling.grants", "species.warforged.grants", "species.goblin.grants",
+  "species.bugbear.grants", "species.lizardfolk.grants", "species.orc.grants", "species.hill_dwarf.darkvision", "species.mountain_dwarf.darkvision",
+  "species.high_elf.darkvision", "species.wood_elf.darkvision", "species.drow.darkvision", "species.rock_gnome.darkvision",
+  "species.forest_gnome.darkvision", "species.deep_gnome.darkvision", "species.half_elf.darkvision", "species.half_orc.darkvision",
+  "species.tiefling.darkvision", "species.aasimar.darkvision", "species.tabaxi.darkvision", "species.fire_genasi.darkvision",
+  "species.earth_genasi.darkvision", "species.goblin.darkvision", "species.bugbear.darkvision", "species.orc.darkvision",
+];
+assert.deepEqual(Object.keys(P).sort(), [...NAMES].sort(), "the table makes other probes than NAMES lists: a row of races.json was added or changed");
+
+await runOrSurvey("scripts/test-enforce-sweep-clauses-species-grants.mjs", P);
