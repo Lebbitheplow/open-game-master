@@ -30,6 +30,7 @@ import { getFoe } from "@/lib/dm/sheet-foe";
 import { applySpellHitCondition, spellAttackRider } from "@/lib/dm/spell-attack-riders";
 import { noteSwing, storeBudget } from "@/lib/dm/turn-budget";
 import { openLastHit } from "@/lib/dm/last-hit";
+import { chargedBudget } from "@/lib/dm/mt-fb-charge";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { planAttackFx, type RollVisibility } from "@/lib/battlemap/fx-plan";
 import { holdsFeature } from "@/lib/srd/feature-names";
@@ -93,6 +94,11 @@ export function judgeSwing(scene: SwingScene, record: AttackRecord, toHit: RollR
   // Foe Slayer is once on each of the ranger's turns: an earlier part of the
   // attack may have spent it since.
   const turn = attackTurn(campaign.id, record);
+  // A melee attack ends the run that brought the attacker to this creature,
+  // and the turn keeps how far it ran (mt-fb-charge.ts).
+  if (turn && record.melee) {
+    storeBudget(turn.encounter, chargedBudget(turn.encounter, turn.budget, record.targetEnemyId));
+  }
   const foeSlayer = turn && !turn.budget.oncePerTurn.includes(FOE_SLAYER) ? (record.extras?.foeSlayer ?? 0) : 0;
   const metTotal = totalAReactionMeets({ total: toHit.total, ac: targetAc, hit: judged.hit, crit: judged.crit, natural1, foeSlayer });
   const encounter = getActiveEncounter(campaign.id);

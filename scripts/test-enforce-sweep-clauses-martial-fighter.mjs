@@ -274,14 +274,25 @@ const d20sOf = (log) => log.filter((die) => die.sides === 20).map((die) => die.f
     assert.ok(!foeHas(enemy, "held in place"), "the creature is still held after the turn it was hit in");
   });
 
+  // "when you move at least 10 feet in a straight line right before attacking
+  // a creature and hit it": the cavalier runs two squares at the dummy, on the
+  // board's own move, and hits it.
+  const charge = async (who, from = 3) => {
+    const [enemy] = await stage(who);
+    kit.place(who.id, from, 5);
+    if (from !== 5) assert.equal(await r.walk(who, 5, 5), 200, "the staged run was refused");
+    const hit = await swing(who, enemy);
+    assert.equal(hit.result.hit, true, hit.error);
+    return enemy;
+  };
   await probe("ferocious-charger-save", async () => {
-    const [enemy] = await stage(cavalier);
     const dc = 8 + prof(15) + MOD;
-    const made = await spend(cavalier, "Ferocious Charger", { targetEnemyId: enemy.id }, [dc - 1]);
+    const stood = await charge(cavalier);
+    const made = await spend(cavalier, "Ferocious Charger", { targetEnemyId: stood.id }, [dc - 1]);
     assert.equal(made.ok, true, made.error);
     assert.deepEqual([made.result.dc, made.result.saved], [dc, true], "the dummy saves at +1");
-    assert.ok(!foeHas(enemy, "prone"));
-    kit.freshTurn();
+    assert.ok(!foeHas(stood, "prone"));
+    const enemy = await charge(cavalier);
     const failed = await spend(cavalier, "Ferocious Charger", { targetEnemyId: enemy.id }, [dc - 2]);
     assert.equal(failed.result.saved, false);
     assert.ok(foeHas(enemy, "prone"));
@@ -291,8 +302,22 @@ const d20sOf = (log) => log.filter((die) => die.sides === 20).map((die) => die.f
 
   await probe("ferocious-charger-needs-a-charge", async () => {
     const [enemy] = await stage(cavalier);
-    const out = await spend(cavalier, "Ferocious Charger", { targetEnemyId: enemy.id }, [2]);
-    assert.equal(out.ok, false, "a cavalier who has not moved and has hit nothing knocked the creature prone");
+    const idle = await spend(cavalier, "Ferocious Charger", { targetEnemyId: enemy.id }, [2]);
+    assert.equal(idle.ok, false, "a cavalier who has not moved and has hit nothing knocked the creature prone");
+    const stood = await charge(cavalier, 5);
+    const unrun = await spend(cavalier, "Ferocious Charger", { targetEnemyId: stood.id }, [2]);
+    assert.equal(unrun.ok, false, `a hit with no run before it: ${show(unrun)}`);
+    assert.ok(!foeHas(stood, "prone"));
+    // One square is 5 feet: not the 10 the charge asks.
+    const short = await charge(cavalier, 4);
+    assert.equal((await spend(cavalier, "Ferocious Charger", { targetEnemyId: short.id }, [2])).ok, false, "a run of 5 feet");
+    // A run that ends in a miss charges nothing.
+    const [missed] = await stage(cavalier);
+    kit.place(cavalier.id, 3, 5);
+    assert.equal(await r.walk(cavalier, 5, 5), 200);
+    kit.setEnemy(missed.id, { ac: 30 });
+    await swing(cavalier, missed, [2]);
+    assert.equal((await spend(cavalier, "Ferocious Charger", { targetEnemyId: missed.id }, [2])).ok, false, "a run and a miss");
   });
 }
 
@@ -345,7 +370,17 @@ const d20sOf = (log) => log.filter((die) => die.sides === 20).map((die) => die.f
     assert.equal(traded.ok, true, traded.error);
     const others = [];
     for (let count = 0; count < 3; count += 1) others.push((await swing(samurai, second, [15, 15, 4])).ok);
-    assert.notDeepEqual(others, [true, true, true], "after Rapid Strike on one creature, every attack left went to another");
+    assert.deepEqual(others, [true, true, false], "the fighter's own two attacks go where they like; the one Rapid Strike bought is owed to the creature it was traded on");
+    assert.equal((await swing(samurai, first, [15, 15, 4])).ok, true, "and is made against that creature");
+    // Paid at once: the very next attack at the same creature is the one owed.
+    const [again, other] = await stage(samurai, { enemies: 2 });
+    kit.place(other.id, 5, 6);
+    await spend(samurai, "Fighting Spirit");
+    await swing(samurai, again, [15, 15, 4], { rapidStrike: true });
+    await swing(samurai, again, [15, 15, 4]);
+    const free = [];
+    for (let count = 0; count < 2; count += 1) free.push((await swing(samurai, other, [15, 15, 4])).ok);
+    assert.deepEqual(free, [true, true], "with the owed attack made, the rest go to anybody");
   });
 
   await probe("strength-before-death-failures", async () => {

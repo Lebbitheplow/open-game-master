@@ -196,13 +196,17 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
         action: "none",
         oncePerTurn: true,
         fight: "in",
+        // "when you move at least 10 feet in a straight line right before
+        // attacking a creature and hit it": the hit and the run are both on the
+        // turn's record (attack-swing.ts WEAPON_HIT, mt-fb-charge.ts).
+        afterWeaponHit: true,
+        chargeFeet: 10,
         does: {
           kind: "save_effect",
           save: "str",
           dcAbility: "str",
           condition: "prone",
           rangeFt: 5,
-          onFail: "is knocked prone (the fighter moved 10 feet straight at it before the hit)",
         },
       },
     ],

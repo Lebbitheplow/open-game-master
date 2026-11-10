@@ -2214,7 +2214,7 @@
     "lib/srd/authored-effects.ts#fallback": [["key",1,"the one borrowed row an id keys"]],
     "lib/srd/authored-effects.ts#first": [["key",1,"the one borrowed row an id keys"],["key",2,"an authored effect by its kind"]],
     "lib/srd/authored-effects.ts#keyed": [["identity",1,"SRD, spell, feature, subclass, hazard and magic rows by textKey (or armorKey/gearKey/rowKey/featureKey/priceKey, textKey-based); row tables keyed by the row's own name; the workshop's tables"]],
-    "lib/srd/authored-effects.ts#partial": [["identity",2,"an authored feature by its whole name, its \"(choice)\" note stripped"],["identity",2,"a held condition by its whole name, a \"(note)\" or \": note\" stripped (documented strips)"],["key",2,"the authored index's keys"]],
+    "lib/srd/authored-effects.ts#partial": [["identity",2,"an authored feature by its whole name, its \"(choice)\" note stripped"],["identity",2,"a held condition by its whole name, a \"(note)\" or \": note\" stripped (documented strips)"],["key",2,"the authored index's keys"],["parse",1,"the option chosen for a feature read as an ability by its first three letters (\"intelligence\" to int)"]],
     "lib/srd/authored-effects.ts#whole": [["key",1,"class ids by textKey"],["identity",1,"an authored feature or condition by its whole name"],["key",1,"damage types"],["identity",2,"a class id and conditions by whole name"]],
     "lib/srd/authored-effects.ts#whole-single": [["identity",2,"gate choices, feat twins, third-caster subclasses by textKey; dice parts"]],
     "lib/srd/check-traits.ts#partial": [["key",1,"ODM's own feature-name format"],["key",1,"the picks ODM writes into a feature's name (\"Favored Enemy: undead\"): keys of its English rules vocabulary"]],
@@ -2777,6 +2777,13 @@
     "lib/dm/turn-marks.ts#whole-single": [["key",1,"a feature's own mark key, built by its caller (engine vocabulary)"]],
     "lib/dm/turn-marks.ts#keyed": [["key",3,"a feature's own mark key, built by its caller (engine vocabulary)"]],
     "lib/dm/condition-cap-logic.ts#keyed": [["key",1,"a creature's own condition names, kept or dropped as written (never matched to a record)"]],
-    "lib/dm/condition-cap-logic.ts#partial": [["key",3,"a creature's own condition names, kept or dropped as written (never matched to a record)"]]
+    "lib/dm/condition-cap-logic.ts#partial": [["key",3,"a creature's own condition names, kept or dropped as written (never matched to a record)"]],
+    "lib/srd/authored-mt-fb.ts#whole": [["identity",1,"a skill by its whole id, textKey on the roll's side"]],
+    "lib/srd/mt-fb-run.ts#partial": [["key",2,"the turn's own marks: a key the engine wrote, by its prefix and its colon"]],
+    "lib/srd/mt-fb-run.ts#number": [["parse",1,"the feet in a key the engine wrote"]],
+    "lib/dm/mt-fb-charge.ts#partial": [["key",5,"the turn's own marks: a key the engine wrote, by its prefix, and the square in it"]],
+    "lib/dm/authored-attacks.ts#partial": [["key",1,"the turn's own mark of a Rapid Strike owed, by its prefix"]],
+    "lib/dm/authored-attacks.ts#whole-single": [["key",1,"the enemy id a turn mark carries against the target's id"]],
+    "lib/dm/authored-attacks.ts#whole": [["key",1,"a turn mark struck from the turn's list by its whole text"]]
   }
 }

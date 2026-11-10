@@ -41,6 +41,7 @@ import type {
 import { AUTHORED_DATA_CHANNEL } from "@/lib/srd/authored-effects-channel";
 import { AUTHORED_DATA_COUNTERS } from "@/lib/srd/authored-effects-sweep-counters";
 import { AUTHORED_DATA_W2_MARTIAL } from "@/lib/srd/authored-effects-w2-martial";
+import { AUTHORED_DATA_W2_MT_FB } from "@/lib/srd/authored-effects-w2-mt-fb";
 import { textKey } from "@/lib/language/text-logic";
 import { choiceIn } from "@/lib/srd/feature-names";
 import type { CheckAbout } from "@/lib/dm/roll-about";
@@ -57,6 +58,7 @@ export const AUTHORED_TABLE: Record<string, AuthoredEntry> = {
   ...AUTHORED_DATA_CHANNEL,
   ...AUTHORED_DATA_COUNTERS,
   ...AUTHORED_DATA_W2_MARTIAL,
+  ...AUTHORED_DATA_W2_MT_FB,
 };
 
 type Row = { key: string; classId: string; feature: string; entry: AuthoredEntry };
@@ -354,7 +356,20 @@ export function authoredCheckTraits(sheet: AuthoredSheet): Array<RollKey & { not
 }
 
 export function authoredSaveProficiencies(sheet: AuthoredSheet): Ability[] {
-  return [...new Set(activeAuthored(sheet, "save_prof").flatMap(({ effect }) => effect.abilities))];
+  // The saves the sheet itself records, where the caller's sheet carries them.
+  const own = new Set(((sheet as { proficiencies?: { saves?: string[] } }).proficiencies?.saves ?? []).map((save) => textKey(save)));
+  return [
+    ...new Set(
+      activeAuthored(sheet, "save_prof").flatMap(({ effect, held }) => {
+        // Already proficient in what the feature gives: the other save its
+        // option names is gained instead (Elegant Courtier).
+        if (!effect.elseOneOf || !effect.abilities.every((ability) => own.has(ability))) {
+          return effect.abilities;
+        }
+        return effect.elseOneOf.filter((ability) => textKey(held.choice ?? "").startsWith(ability)).slice(0, 1);
+      }),
+    ),
+  ];
 }
 
 // What the authored features add to one save's modifier: a flat bonus to

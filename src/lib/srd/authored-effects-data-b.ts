@@ -170,7 +170,8 @@ export const AUTHORED_DATA_A2: Record<string, AuthoredEntry> = {
   "fighter::Unwavering Mark": {
     subclass: "Cavalier",
     counter: "sub_unwavering_mark",
-    effects: [{ kind: "mark", condition: "unwavering mark", effect: "disadv_others", melee: true }],
+    // "until the end of your next turn. While it is within 5 feet of you".
+    effects: [{ kind: "mark", condition: "unwavering mark", effect: "disadv_others", melee: true, untilNextTurnEnds: true, rangeFt: 5 }],
   },
   "fighter::Hold the Line": {
     subclass: "Cavalier",
@@ -184,7 +185,15 @@ export const AUTHORED_DATA_A2: Record<string, AuthoredEntry> = {
   },
   "fighter::Elegant Courtier": {
     subclass: "Samurai",
-    effects: [{ kind: "save_swap", save: "wis", use: "cha", note: "The Persuasion proficiency is applied to the sheet at the pick." }],
+    // "Add your Wisdom modifier to Persuasion checks and gain proficiency in
+    // Wisdom saving throws (Intelligence or Charisma if you already have it)":
+    // the row swapped Charisma in for Wisdom on the save and added nothing to
+    // the check. The option is for a fighter who already saves on Wisdom.
+    spends: [{ name: "Elegant Courtier", fight: "out", does: { kind: "choose", options: ["Intelligence", "Charisma"] } }],
+    effects: [
+      { kind: "check_bonus", skills: ["persuasion"], ability: "wis" },
+      { kind: "save_prof", abilities: ["wis"], elseOneOf: ["int", "cha"] },
+    ],
   },
   "fighter::Tireless Spirit": {
     subclass: "Samurai",
@@ -192,7 +201,9 @@ export const AUTHORED_DATA_A2: Record<string, AuthoredEntry> = {
   },
   "fighter::Rapid Strike": {
     subclass: "Samurai",
-    effects: [{ kind: "rapid_strike", note: "The extra attack's target is the same creature; the GM keeps to that." }],
+    // "one more attack against the same target": the last attack left of the
+    // action is owed to that creature (authored-attacks.ts rapidStrikeOwed).
+    effects: [{ kind: "rapid_strike" }],
   },
   // The echo is kept as a mark on the knight while it lasts (a bonus action
   // manifests it), so what needs it out can ask: Shadow Martyr sends it into a

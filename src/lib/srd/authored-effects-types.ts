@@ -52,7 +52,10 @@ export type AuthoredEffect = Base &
     // Advantage on a save: against what the save resists (one of the
     // roll's `against` values, or magic), or every save of an ability.
     | { kind: "save_adv"; against?: SaveAgainstValue[]; magical?: true; ability?: Ability }
-    | { kind: "save_prof"; abilities: Ability[] }
+    // `elseOneOf`: a holder already proficient in every one of `abilities`
+    // gains the one of these the feature's option names instead (Elegant
+    // Courtier: "Intelligence or Charisma if you already have it").
+    | { kind: "save_prof"; abilities: Ability[]; elseOneOf?: Ability[] }
     | { kind: "save_bonus"; amount: number }
     // A save of one ability uses another ability's modifier when higher.
     | { kind: "save_swap"; save: Ability; use: Ability }
@@ -66,6 +69,9 @@ export type AuthoredEffect = Base &
     // Advantage on checks: named skills, or checks of an ability about one
     // circumstance (the roll's `about`).
     | { kind: "check_adv"; skills?: string[]; abilities?: Ability[]; about?: CheckAbout }
+    // An ability modifier (never less than 0) added to checks with these
+    // skills (Elegant Courtier: Wisdom on Persuasion).
+    | { kind: "check_bonus"; skills: string[]; ability: Ability }
     // A critical hit against the holder is a normal hit.
     | { kind: "crit_immune" }
     // The holder's damage of these types ignores resistance.
@@ -139,6 +145,11 @@ export type AuthoredEffect = Base &
         melee?: boolean;
         oncePerTurn?: boolean;
         firstRoundOnly?: boolean;
+        // The mark lasts until the end of the holder's next turn, not its start
+        // (Unwavering Mark), and binds only while the creature stands within
+        // `rangeFt` of the holder ("while it is within 5 feet of you").
+        untilNextTurnEnds?: boolean;
+        rangeFt?: number;
         halve?: boolean;
         dice?: string;
         damageType?: string;
@@ -152,7 +163,10 @@ export type AuthoredEffect = Base &
     // An action taken as a bonus action.
     | { kind: "bonus_route"; action: "dash" | "disengage" | "hide" | "dodge" | "help" | "search" | "grapple" }
     // A bonus-action weapon attack after something this turn.
-    | { kind: "bonus_attack"; after: "spell" | "cantrip" | "attack" | "telekinesis" | "missed_arrow" }
+    // `run`: only against a creature of that size or smaller the holder ran at
+    // least that many feet straight at right before a melee attack on it this
+    // turn (Totemic Attunement's tiger; src/lib/dm/mt-fb-charge.ts).
+    | { kind: "bonus_attack"; after: "spell" | "cantrip" | "attack" | "telekinesis" | "missed_arrow"; run?: { feet: number; maxSize: string } }
     // Enemies save at disadvantage: when the holder casting is hidden from
     // them, when they carry the holder's mark, or when they stand within
     // range of the holder (a spell's save, any caster when `anyCaster`).
@@ -489,6 +503,10 @@ export type AuthoredSpend = {
   // weapon counts: an infused or attuned weapon reads as a plain one here, so
   // asking for a magic one would shut the feature for the artificers it is for.
   afterWeaponHit?: boolean;
+  // Rides a run: the creature named was run at, at least this many feet
+  // straight, right before a melee attack on it this turn (Ferocious Charger;
+  // src/lib/dm/mt-fb-charge.ts chargeRefusal).
+  chargeFeet?: number;
   // Chosen outside a fight only, or only in one.
   fight?: "in" | "out";
   // The GM's call, not the player's: no card in the Hand (Wild Magic Surge,

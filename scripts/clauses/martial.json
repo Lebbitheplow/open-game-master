@@ -324,8 +324,9 @@
    },
    {
     "c": "within 60 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: curving-shot-60-feet"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: curving-shot-60-feet",
+    "by": "src/lib/dm/pc-attack-options.ts checkAttackOptions (feetFrom: the new target within 60 feet of the creature the arrow missed)"
    }
   ]
  },
@@ -371,8 +372,9 @@
    },
    {
     "c": "mounting costs only 5 feet of movement",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: born-to-the-saddle-mounting"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: born-to-the-saddle-mounting",
+    "by": "src/lib/dm/mount-tools.ts mountingFeet"
    },
    {
     "c": "you land on your feet from a fall of 10 feet or less",
@@ -397,13 +399,15 @@
    },
    {
     "c": "until the end of your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: unwavering-mark-until-end-of-next-turn"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: unwavering-mark-until-end-of-next-turn",
+    "by": "src/lib/dm/authored-hooks.ts markEnemy (untilNextTurnEnds: untilTurnEndOf)"
    },
    {
     "c": "While it is within 5 feet of you",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: unwavering-mark-within-5-feet"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: unwavering-mark-within-5-feet",
+    "by": "src/lib/dm/authored-hooks.ts authoredIncomingAttack (the mark's withinFeet)"
    },
    {
     "c": "it has disadvantage on attack rolls that don't target you",
@@ -502,8 +506,9 @@
    },
    {
     "c": "when you move at least 10 feet in a straight line right before attacking a creature and hit it",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: ferocious-charger-needs-a-charge"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: ferocious-charger-needs-a-charge",
+    "by": "src/lib/dm/mt-fb-charge.ts chargeRefusal (chargeFeet 10) and afterWeaponHit"
    },
    {
     "c": "it makes a Strength save (DC 8 + your proficiency bonus + your Strength modifier) or is knocked prone",
@@ -575,13 +580,15 @@
   "clauses": [
    {
     "c": "Add your Wisdom modifier to Persuasion checks",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: elegant-courtier-persuasion"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: elegant-courtier-persuasion",
+    "by": "src/lib/srd/authored-mt-fb.ts authoredCheckBonus (check_bonus)"
    },
    {
     "c": "gain proficiency in Wisdom saving throws (Intelligence or Charisma if you already have it)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: elegant-courtier-wisdom-save"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: elegant-courtier-wisdom-save",
+    "by": "src/lib/srd/authored-effects.ts authoredSaveProficiencies (save_prof wis, elseOneOf int or cha)"
    }
   ]
  },
@@ -613,8 +620,9 @@
    },
    {
     "c": "against the same target",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: rapid-strike-same-target"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: rapid-strike-same-target",
+    "by": "src/lib/dm/authored-attacks.ts rapidStrikeOwed"
    }
   ]
  },
@@ -1388,14 +1396,15 @@
    },
    {
     "c": "Tiger lets you make one melee weapon attack as a bonus action",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "seen only as the attack the gap probe totemic-attunement-tiger-needs-a-run was granted; no held probe"
+    "is": "held",
+    "by": "src/lib/srd/authored-economy.ts authoredBonusAttackProblem (bonus_attack after attack, gate tiger)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: totemic-attunement-tiger-bonus-attack"
    },
    {
     "c": "after moving at least 20 feet straight toward a Large or smaller target",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: totemic-attunement-tiger-needs-a-run"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: totemic-attunement-tiger-needs-a-run",
+    "by": "src/lib/srd/authored-economy.ts authoredBonusAttackProblem (run: 20 feet, Large or smaller; src/lib/dm/mt-fb-charge.ts)"
    },
    {
     "c": "Wolf lets you knock a Large or smaller creature prone as a bonus action when you hit it with a melee weapon attack",

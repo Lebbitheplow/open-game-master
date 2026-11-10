@@ -12,6 +12,7 @@ import { heldInspiration } from "@/lib/dm/roll-riders";
 import type { RollArgs } from "@/lib/dm/roll-args";
 import { computeSheetDerived, findSkill } from "@/lib/srd";
 import { authoredCheckTraits, authoredRollRiders } from "@/lib/srd/authored-effects";
+import { authoredCheckBonus } from "@/lib/srd/authored-mt-fb";
 import { heldCheckTraits, traitCheckRiders } from "@/lib/srd/check-traits";
 import { heldFeatChecks } from "@/lib/srd/feat-combat";
 import { unnamedRollKeys, type RollGap, type RollKey } from "@/lib/srd/roll-keys";
@@ -170,6 +171,8 @@ export function rollFeatureRiders(
           movedLittle: context.movedLittle,
         })
       : { advantage: [], bonus: 0, notes: [] };
+  // An ability modifier a subclass feature adds to a skill (Elegant Courtier).
+  const authoredChecks = sheet && checkDerived ? authoredCheckBonus(sheet, checkSkill, checkDerived.abilityMods) : { bonus: 0, notes: [] };
   const peerless = sheet && checkKind ? sheet.conditions.find((entry) => /^peerless skill \(d\d{1,2}\)$/i.test(entry.trim())) : undefined;
   // Inspiration the DM awarded, spent for advantage when the roll asks.
   if (args.useInspiration && derivationKind && sheet && !heldInspiration(sheet)) {
@@ -213,7 +216,7 @@ export function rollFeatureRiders(
       ...(inspired ? ["advantage" as const] : []),
     ],
     dice: `${inspiration ? (moteCheck ? `+2${inspiration.die}kh1` : `+1${inspiration.die}`) : ""}${peerlessDie}`,
-    checkBonus: itemChecks.bonus + traitChecks.bonus,
+    checkBonus: itemChecks.bonus + traitChecks.bonus + authoredChecks.bonus,
     inspirationCondition: inspiration?.condition,
     peerless,
     authoredSpent: authoredRolls.spent,
@@ -226,6 +229,7 @@ export function rollFeatureRiders(
       ...(cursedSave ? [cursedSave] : []),
       ...(feral ? [feral] : []),
       ...itemChecks.notes,
+      ...authoredChecks.notes,
       ...authoredRolls.advantage,
       ...traitChecks.advantage,
       ...traitChecks.notes,

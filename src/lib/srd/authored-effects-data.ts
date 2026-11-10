@@ -77,7 +77,7 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
         kind: "bonus_attack",
         after: "attack",
         gate: { ...RAGING, choice: "tiger" },
-        note: "Only after moving at least 20 feet straight toward a Large or smaller target; the GM keeps to that.",
+        run: { feet: 20, maxSize: "Large" },
       },
     ],
   },

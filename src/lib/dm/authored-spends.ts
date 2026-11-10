@@ -31,6 +31,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { triggerSpecFor } from "@/lib/srd/trigger-table";
 import { answerTriggers, triggerRefusal, type TriggerAsk } from "@/lib/dm/reaction-triggers";
 import { answerKey } from "@/lib/dm/last-hit";
+import { chargeRefusal } from "@/lib/dm/mt-fb-charge";
 
 export type AuthoredSpendArgs = {
   amount?: number;
@@ -203,6 +204,10 @@ export function authoredFeatureSpend(
   const picked = pickVariant(spend.does, args.variant, spend);
   if ("error" in picked) {
     return picked;
+  }
+  const unrun = spend.chargeFeet && inFight ? chargeRefusal(campaign.id, sheet, spend.name, spend.chargeFeet, args.targetEnemyId) : null;
+  if (unrun) {
+    return unrun;
   }
   // The pool: how much, from which counter.
   let poolId: string | null = null;

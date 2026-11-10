@@ -153,6 +153,34 @@ const rageBonus = (level) => (level >= 16 ? 4 : level >= 9 ? 3 : 2);
     const out = await swing(tiger, enemy, [15, 4], { feature: "Totemic Attunement" });
     assert.equal(out.ok, false, "a Tiger who has not moved a foot made the bonus-action attack");
   });
+  // The run is the board's own move: four squares straight at the dummy.
+  await probe("totemic-attunement-tiger-bonus-attack", async () => {
+    const tiger = await totem(14, "tiger", "tiger", "tiger");
+    const [enemy] = await stage(tiger);
+    rage(tiger);
+    kit.place(tiger.id, 1, 5);
+    assert.equal(await walk(tiger, 5, 5), 200, "the staged run was refused");
+    await swing(tiger, enemy, [15, 4]);
+    const out = await swing(tiger, enemy, [15, 4], { feature: "Totemic Attunement" });
+    assert.equal(out.ok, true, out.error);
+    assert.equal(budget().bonusUsed, true, "it takes the bonus action");
+    assert.equal((await swing(tiger, enemy, [15, 4], { feature: "Totemic Attunement" })).ok, false, "one, as a bonus action");
+    // Three squares is 15 feet.
+    const [near] = await stage(tiger);
+    rage(tiger);
+    kit.place(tiger.id, 2, 5);
+    assert.equal(await walk(tiger, 5, 5), 200);
+    await swing(tiger, near, [15, 4]);
+    assert.equal((await swing(tiger, near, [15, 4], { feature: "Totemic Attunement" })).ok, false, "a run of 15 feet");
+    // A Huge creature is no target for it.
+    const [huge] = await stage(tiger);
+    rage(tiger);
+    kit.setEnemy(huge.id, { stats: { size: "Huge" } });
+    kit.place(tiger.id, 1, 5);
+    assert.equal(await walk(tiger, 5, 5), 200);
+    await swing(tiger, huge, [15, 4]);
+    assert.equal((await swing(tiger, huge, [15, 4], { feature: "Totemic Attunement" })).ok, false, "a Huge creature");
+  });
 }
 
 // ---- Path of the Ancestral Guardian ----

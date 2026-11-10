@@ -25,13 +25,6 @@ export const KNOWN = {
     fix: "A maxSize on save_effect rows, read where Trip Attack's is.",
     files: [ROWS, "src/lib/srd/authored-effects-types.ts", "src/lib/dm/authored-spends.ts"],
   },
-  "totemic-attunement-tiger-needs-a-run": {
-    severity: "medium", kind: "rule-wrong",
-    where: `${ROWS} barbarian::Totemic Attunement ({ kind: "bonus_attack", after: "attack" }, note: "Only after moving at least 20 feet straight toward a Large or smaller target; the GM keeps to that.")`,
-    note: "A raging Tiger barbarian who stood still gets a bonus-action attack every turn, as long as they took the Attack action, which the text does not ask for.",
-    fix: "Read the turn's movement toward the target (the token's movedThisRound and path) before the bonus attack.",
-    files: [ROWS, "src/lib/dm/pc-attack-options.ts"],
-  },
   "spirit-shield-sight": {
     severity: "medium", kind: "rule-wrong",
     where: "src/lib/dm/authored-reactions.ts (case \"reduce\": no sight check on the reactor)",
