@@ -27,6 +27,7 @@ import { noneNamed, type ToolError, type ToolResult } from "@/lib/dm/tool-errors
 import { isConditionNamed, nameChoice } from "@/lib/srd/feature-names";
 import { isTableGearName } from "@/lib/db/homebrew";
 import { spentSlotRefusal } from "@/lib/dm/cast-rules";
+import { planSwap } from "@/lib/dm/ar-ws-transposition";
 import { creditFeatureTeleport } from "@/lib/dm/feature-teleport";
 
 export { computePurchase } from "@/lib/dm/purchase-math";
@@ -742,6 +743,16 @@ export function computeUseResource(
       return "error" in hit ? hit : { ...outcome, result: { ...outcome.result, ...hit.result } };
     }
     case "teleport": {
+      // With a willing creature named, the two change places (Benign
+      // Transposition); the plain jump below is left for move_token.
+      if (def.effect.swap && target.id !== sheet.id) {
+        const swap = planSwap(campaign, sheet, target, def.displayName, def.effect.feet);
+        if ("error" in swap) {
+          return swap;
+        }
+        outcome.result.swapped = swap.apply();
+        return outcome;
+      }
       creditFeatureTeleport(sheet.id, def.displayName, def.effect.feet);
       outcome.result.teleport = `${sheet.name} teleports up to ${def.effect.feet} feet: if a battle map is live, move their token with move_token, teleport true, spell "${def.displayName}" and casterCharacterId ${sheet.id}.`;
       return outcome;

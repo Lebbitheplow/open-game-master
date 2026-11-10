@@ -25,6 +25,7 @@
 // module reads the live state and writes the spend. It must not import
 // mutations.ts (which imports it).
 
+import { castRefills } from "@/lib/dm/ar-ws-transposition";
 import { subclassExtrasForTable } from "@/lib/db/subclass-extras";
 import { enemyCounterspell } from "@/lib/dm/enemy-reactions";
 import { endInvisibilityOnCast } from "@/lib/dm/attack-marks";
@@ -680,6 +681,13 @@ export function castSpell(
     const row = slots[String(refund.level)];
     patch.spellcasting = { ...patch.spellcasting, slots: { ...slots, [String(refund.level)]: { ...row, used: row.used - 1 } } };
     result.slotRefund = `${refund.feature}: a spent level ${refund.level} slot comes back.`;
+  }
+  // A counter a casting of this school gives back (Benign Transposition on a
+  // conjuration spell of 1st level or higher: ar-ws-transposition.ts).
+  const refilled = input.storing ? null : castRefills(patch.resources ?? sheet.resources, { school: spellSchoolFor(spell, authors), level: facts?.level ?? slotLevel ?? 0 });
+  if (refilled) {
+    patch.resources = refilled.resources;
+    result.refilled = refilled.notes.join(" ");
   }
   // Wild Magic Surge: after a sorcerer spell of 1st level or higher the GM may
   // have the sorcerer roll on the surge table, and a spent Tides of Chaos then

@@ -197,8 +197,9 @@
   "clauses": [
    {
     "c": "Teleport 30 feet or swap places with a willing creature",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: benign-swap"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: benign-swap",
+    "by": "sub_benign_transposition fx teleport 30 with swap (src/lib/srd/authored-resources.json): the plain jump waits for move_token and is held to 30 feet (feature-teleport.ts), and with targetCharacterId the two tokens change squares, the creature within 30 feet (src/lib/dm/ar-ws-transposition.ts planSwap, from resource-tools.ts computeUseResource)"
    },
    {
     "c": "recharges on a long rest",
@@ -208,8 +209,9 @@
    },
    {
     "c": "or when you cast a conjuration spell",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: benign-recharge-on-cast"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: benign-recharge-on-cast",
+    "by": "the counter castRefill conjuration, 1st level or higher (src/lib/srd/authored-resources.json), given back by src/lib/dm/ar-ws-transposition.ts castRefills inside cast-guard.ts castSpell, the door every casting passes"
    }
   ]
  },

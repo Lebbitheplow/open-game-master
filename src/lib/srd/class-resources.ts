@@ -81,8 +81,10 @@ export type ResourceEffect =
       dice?: (level: number, abilityMods: Record<string, number>) => string;
     } & SaveTerms)
   // Repositioning the server cannot fully own (maps are player-moved);
-  // reported with the distance so move_token resolves it.
-  | { kind: "teleport"; feet: number }
+  // reported with the distance so move_token resolves it. `swap`: with a
+  // willing creature named, the two change places instead (Benign
+  // Transposition: src/lib/dm/ar-ws-transposition.ts).
+  | { kind: "teleport"; feet: number; swap?: boolean }
   // Extra damage onto the creature a weapon hit landed on this turn
   // (Fury of the Small: the level, against a creature larger than the
   // holder), dealt by the spend (src/lib/dm/counter-saves.ts).
@@ -143,7 +145,7 @@ export type ResourceFx =
   | { kind: "inspire"; die: string }
   | ({ kind: "aoe"; dice: DiceFormula; save: SaveAbilityId } & SaveTerms)
   | ({ kind: "enemy_save"; save: SaveAbilityId; condition?: string; dice?: DiceFormula } & SaveTerms)
-  | { kind: "teleport"; feet: number }
+  | { kind: "teleport"; feet: number; swap?: boolean }
   | { kind: "hit_damage"; dice: DiceFormula; larger?: boolean };
 
 // "1d8+level" at level 5 -> "1d8+5"; "2d6+wis" with WIS +3 -> "2d6+3".
@@ -249,7 +251,7 @@ export function effectFromFx(fx: ResourceFx | undefined): ResourceEffect {
           : {}),
       };
     case "teleport":
-      return { kind: "teleport", feet: fx.feet };
+      return { kind: "teleport", feet: fx.feet, ...(fx.swap ? { swap: true } : {}) };
     case "hit_damage":
       return { kind: "hit_damage", dice: (level, mods) => resolveDiceFormula(fx.dice, level, mods), ...(fx.larger ? { larger: true } : {}) };
   }
@@ -323,6 +325,11 @@ export type ResourceDef = {
   // rest you have one ... and you gain one at the end of a short rest if you
   // have none"): src/lib/srd/resource-refills.ts.
   restHolds?: { long?: number; shortIfNone?: number };
+  // Every spent use comes back when its holder casts a spell of this school
+  // and level or higher (Benign Transposition: "or when you cast a
+  // conjuration spell"): src/lib/dm/ar-ws-transposition.ts castRefills, called
+  // by the one door every casting passes (cast-guard.ts castSpell).
+  castRefill?: { school: string; minLevel: number };
   // With no use left, this pool pays for one instead (Breath of the
   // Dragon: 2 ki).
   fallbackPool?: { id: string; amount: number };
@@ -781,6 +788,7 @@ type SubclassResourceRow = {
   perUse?: "half_level" | "cha";
   recovers?: string;
   restHolds?: { long?: number; shortIfNone?: number };
+  castRefill?: { school: string; minLevel: number };
 };
 
 function proficiencyBonus(level: number): number {
@@ -825,6 +833,7 @@ const SUBCLASS_RESOURCE_DEFS: ResourceDef[] = (
   ...(row.perUse ? { perUse: row.perUse } : {}),
   ...(row.recovers ? { recovers: row.recovers } : {}),
   ...(row.restHolds ? { restHolds: row.restHolds } : {}),
+  ...(row.castRefill ? { castRefill: row.castRefill } : {}),
 }));
 
 // One with Shadows (SRD 5.1, a warlock invocation): an action, as often as

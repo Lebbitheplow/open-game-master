@@ -169,6 +169,22 @@ export function probes(rig, shared) {
       const out = await spend(con(), "Benign Transposition", { targetCharacterId: friend().id });
       if (!out.ok) throw new Error(out.error);
       assert.deepEqual([kit.token(con().id).x, kit.token(friend().id).x], [theirs.x, mine.x], `the two have not changed places: ${show(out).slice(0, 160)}`);
+      assert.deepEqual([budget().actionUsed, counter(con(), "sub_benign_transposition").used], [true, 1], "[the action, the use] of the swap");
+      // A willing creature past the feature's 30 feet: refused, nothing spent.
+      await stage(con(), { others: [friend()] });
+      kit.place(friend().id, 12, 5);
+      const far = await spend(con(), "Benign Transposition", { targetCharacterId: friend().id });
+      assert.equal(far.ok, false, "a swap with a creature 35 feet away");
+      assert.match(far.error, /35 ft away/);
+      assert.deepEqual([budget()?.actionUsed ?? false, counter(con(), "sub_benign_transposition").used, kit.token(con().id).x], [false, 0, 5], "[the action, the use, the wizard's square] after the refusal");
+      // The plain jump: 30 feet through the board's teleport, and no farther.
+      const jump = await spend(con(), "Benign Transposition");
+      assert.equal(jump.ok, true, jump.error);
+      const aim = (y) => call("move_token", { token: con().id, x: 5, y, teleport: true, spell: "Benign Transposition", casterCharacterId: con().id });
+      assert.equal((await aim(12)).ok, false, "a jump of 35 feet");
+      const landed = await aim(11);
+      assert.equal(landed.ok, true, landed.error);
+      assert.equal(kit.token(con().id).y, 11, "30 feet");
     },
     "benign-rest": rests(["wizard", "School of Conjuration"], "sub_benign_transposition", "long"),
     "benign-recharge-on-cast": async () => {
@@ -180,6 +196,11 @@ export function probes(rig, shared) {
         kit.freshTurn();
       }
       assert.equal(counter(con(), "sub_benign_transposition").used, 0, "two conjuration spells cast, and the use is still spent");
+      // A spell of another school gives nothing back.
+      drain(con(), "sub_benign_transposition");
+      const other = await call("use_spell_slot", { characterId: con().id, level: 2, spell: "Hold Person" });
+      assert.equal(other.ok, true, other.error);
+      assert.equal(counter(con(), "sub_benign_transposition").used, 1, "Hold Person (enchantment) refilled it");
     },
     "focused-conjuration": async () => {
       const [enemy] = await stage(con());
@@ -537,8 +558,6 @@ export function probes(rig, shared) {
   const PROBES_REST = { thirdEye: thirdEyeRest };
 
   const KNOWN = {
-    "benign-swap": { severity: "medium", kind: "rule-missing", where: "src/lib/srd/authored-resources.json sub_benign_transposition (fx teleport, words only) read by src/lib/dm/resource-tools.ts", note: "With a willing creature named, the use and the action are spent and nobody moves; the result tells the GM to move a token.", fix: "Swap the two tokens when targetCharacterId is sent, and move the wizard up to 30 feet when a square is." },
-    "benign-recharge-on-cast": { severity: "medium", kind: "rule-missing", where: "src/lib/dm/cast-guard.ts (no refill of sub_benign_transposition on a conjuration spell of 1st level or higher)", note: "The counter's own guidance says it (\"Also recharges whenever the wizard casts a conjuration spell of 1st level or higher\") and nothing does it.", fix: "Refill sub_benign_transposition where a conjuration spell of 1st level or higher is cast by its holder." },
     "charm-before-hit": { severity: "low", kind: "timing-window", where: "src/lib/dm/reaction-tools.ts (a reaction answers a hit on record; an attack roll that missed leaves none)", note: "The engine's shape favours the wizard: they decide knowing the attack hit, and never spend the reaction on a miss.", fix: "A ruling: write that Instinctive Charm answers a hit, or offer it at the roll." },
     "split-distance": { severity: "medium", kind: "rule-wrong", where: "src/lib/dm/authored-reaper.ts authoredTwinSpell (the 5 feet between the two targets is Reaper's and Moon Fire's rule, applied to every twin_spell row)", note: "Split Enchantment's text sets no distance between the two creatures; each must only be in the spell's own range.", fix: "Let a twin_spell row say whether the second target must stand within 5 feet of the first; Split Enchantment's does not." },
     "alter-memories-door": { severity: "low", kind: "rule-missing", where: `${DATA} wizard::Alter Memories (narrated: "the GM rolls its save and narrates what it loses")`, note: "The save is an Intelligence save against the wizard's DC, and nothing rolls it or holds the hours.", fix: "A spend that rolls the creature's save, or a ruling that the save is the GM's." },
