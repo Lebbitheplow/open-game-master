@@ -2735,6 +2735,32 @@ const chronalWatchTables = {};
   }
 }
 
+// One account holding both the roller and the wizard who may answer the roll
+// (play-test 2026-11-09, W-08): the lead plays a fighter and a Chronurgy
+// wizard at a table the player runs, so a check of the fighter's that fails
+// waits on the lead's own screen twice over, as the roller and as the helper.
+const TWO_HANDS_TITLE = "Two Hands";
+const twoHandsTables = {};
+for (const viewport of ["desktop", "phone"]) {
+  const table = campaigns.createCampaign(player.id, {
+    title: `${TWO_HANDS_TITLE} (${viewport})`,
+    description: "A gate, and one player at two seats.",
+    theme: "high-fantasy",
+    maxPlayers: 6,
+    startingLevel: 5,
+    difficulty: "normal",
+    gameSettings: { ttsEnabled: false, dmMode: "human" },
+  });
+  const seated = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+  if ("error" in seated) {
+    throw new Error(`could not seat the lead at two hands: ${seated.error}`);
+  }
+  campaigns.setCampaignStatus(table.id, "active");
+  const roller = sheets.createSheet(table.id, world.owner.id, 5, heroInput({ name: "Wren Ashby", class: "fighter", level: 5 }));
+  const wizard = sheets.createSheet(table.id, world.owner.id, 5, heroInput({ name: "Ilse Marrow", class: "wizard", subclass: "Chronurgy Magic", level: 5 }));
+  twoHandsTables[viewport] = { id: table.id, roller: roller.id, wizard: wizard.id };
+}
+
 // The damage roll card on real dice (play-test 2026-11-07, B5): a table the
 // player runs, at real_allowed, in a fight with one goblin beside the lead's
 // fighter, whose Piercer and Savage Attacker change the damage dice. It is
@@ -3740,6 +3766,7 @@ const ids = {
   watchTables,
   shiftTables,
   chronalWatchTables,
+  twoHandsTables,
   damageStepTables,
   recapTables,
   prepReturn,
@@ -3864,6 +3891,7 @@ const ids = {
     ...Object.fromEntries(Object.entries(watchTables).map(([viewport, table]) => [table.id, `${WATCH_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(shiftTables).map(([viewport, table]) => [table.id, `${SHIFT_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(chronalWatchTables).map(([viewport, table]) => [table.id, `${CHRONAL_WATCH_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(twoHandsTables).map(([viewport, table]) => [table.id, `${TWO_HANDS_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(damageStepTables).map(([viewport, table]) => [table.id, `${DAMAGE_STEPS_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(recapTables).map(([viewport, id]) => [id, `${RECAP_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(prepReturn).map(([viewport, id]) => [id, `${PREP_RETURN_TITLE} (${viewport})`])),
