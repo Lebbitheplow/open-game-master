@@ -230,8 +230,13 @@ export function authoredFeatureSpend(
   const now = getSheetById(sheet.id) ?? sheet;
   const patch: FullPatchSheetInput = { ...(outcome.patch ?? {}) };
   if (poolId && units > 0) {
-    const state = now.resources[poolId];
-    patch.resources = { ...now.resources, [poolId]: { max: state.max, used: state.used + units } };
+    // On top of what the effect wrote: Psionic Recovery restores a Psionic
+    // Energy die and spends its own use, and the pool written from the sheet
+    // as read before the effect put the die straight back (it answered
+    // "1 die back" and returned none).
+    const resources = patch.resources ?? now.resources;
+    const state = resources[poolId] ?? now.resources[poolId];
+    patch.resources = { ...resources, [poolId]: { max: state.max, used: state.used + units } };
   }
   if (spend.oncePer) {
     const conditions = patch.conditions ?? now.conditions;

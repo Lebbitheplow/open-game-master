@@ -2092,7 +2092,7 @@
    "id": "sub_defensive_field",
    "displayName": "Defensive Field",
    "match": [
-    "defensive field"
+    "armor model"
    ],
    "uses": 1,
    "ability": null,
