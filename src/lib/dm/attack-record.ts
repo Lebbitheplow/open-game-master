@@ -5,6 +5,7 @@
 // resolve it as each roll lands (pc-attack-parked.ts). A rule reads the record,
 // never the plan, so it reaches both paths or neither.
 
+import { conditionMeleeCritRange } from "@/lib/srd/condition-effects";
 import type { PendingAttack } from "@/lib/db/dm-turns";
 import type { Advantage } from "@/lib/dice";
 import { enemyAcWithEffects } from "@/lib/dm/ac-effects";
@@ -146,7 +147,9 @@ export function attackRecord(plan: AttackPlan, strike: { critExtraDice: number; 
   const typeFeat = plan.weaponAttack ? damageTypeFeat(sheet, profile.damageType) : null;
   // Piercer: a piercing critical hit rolls one more of the weapon's dice.
   const critExtraDice = strike.critExtraDice + (typeFeat === "Piercer" ? 1 : 0);
-  const critRange = Math.min(plan.weaponAttack ? riders.critRange : 20, markCritRange(plan.marks.applies));
+  // A condition's melee critical range (Invincible Conqueror's 19) rides
+  // melee weapon attacks only.
+  const critRange = Math.min(plan.weaponAttack ? riders.critRange : 20, markCritRange(plan.marks.applies), plan.weaponAttack && !plan.atRange ? conditionMeleeCritRange(sheet.conditions) : 20);
   const critGear = gearCritRiders(profile, enemy.stats.type);
   const typedRiders = liveTypedRiders(plan.typedRiders, plan.droppedRiders);
   const ignoreBy = plan.elementalAdept ? "Elemental Adept" : poisonerIgnoresResistance(sheet, profile.damageType) ? "Poisoner" : null;

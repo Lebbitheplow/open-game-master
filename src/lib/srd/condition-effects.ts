@@ -1152,6 +1152,18 @@ export function conditionSpeed(conditions: string[], baseSpeed: number): number 
 // actionHeld: the turn's action is spent before it begins (a spell of a
 // minute or more being cast, src/lib/dm/long-casting-logic.ts).
 export type TurnShape = { extraActions: number; slowed: boolean; actionHeld?: boolean };
+
+// Attacks the holder's conditions add to the Attack action, read by the turn
+// budget (src/lib/dm/turn-budget.ts attacksAllowedFor) and so by the Hand.
+export function conditionExtraAttacks(conditions: string[]): number {
+  return activeConditionEffects(conditions).reduce((sum, { row }) => sum + (row.extraAttacks ?? 0), 0);
+}
+
+// The lowest natural roll the holder's melee weapon attacks score a critical
+// hit on while a condition holds (src/lib/dm/attack-record.ts), 20 with none.
+export function conditionMeleeCritRange(conditions: string[]): number {
+  return Math.min(20, ...activeConditionEffects(conditions).map(({ row }) => row.meleeCritRange ?? 20));
+}
 export function conditionTurnShape(conditions: string[]): TurnShape {
   const rows = activeConditionEffects(conditions);
   return {

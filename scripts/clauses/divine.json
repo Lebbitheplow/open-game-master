@@ -2540,11 +2540,9 @@
    },
    {
     "c": "an extra attack with the Attack action",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-a.mjs :: paladin::Invincible Conqueror#extra-attack",
-    "severity": "high",
-    "kind": "rule-missing",
-    "where": "src/lib/dm/turn-budget.ts attacksAllowedFor: the extra attack is narrated (authored-resources.json sub_invincible_conqueror guidance)"
+    "is": "held",
+    "by": "src/lib/srd/condition-effects-divine.ts row extraAttacks, read by src/lib/dm/turn-budget.ts attacksAllowedFor (conditionExtraAttacks)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-a.mjs :: paladin::Invincible Conqueror#extra-attack"
    },
    {
     "c": "and",
@@ -2552,11 +2550,9 @@
    },
    {
     "c": "melee critical hits on a 19 or 20",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-a.mjs :: paladin::Invincible Conqueror#crit-19",
-    "severity": "high",
-    "kind": "rule-missing",
-    "where": "src/lib/dm/pc-attack*.ts crit range: the 19-20 critical is narrated (sub_invincible_conqueror guidance)"
+    "is": "held",
+    "by": "src/lib/srd/condition-effects-divine.ts row meleeCritRange, read by src/lib/dm/attack-record.ts (conditionMeleeCritRange)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-paladin-a.mjs :: paladin::Invincible Conqueror#crit-19"
    }
   ]
  },

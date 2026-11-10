@@ -145,6 +145,12 @@ export type ConditionEffectRow = {
   // With marksTarget: the holder's attack rolls against the marked creature
   // score a critical hit on this natural roll or higher (Hexblade's Curse 19).
   critRangeVsMarked?: number;
+  // Attacks the holder's Attack action makes on top of what their features
+  // give (Invincible Conqueror: "an extra attack with the Attack action").
+  extraAttacks?: number;
+  // The holder's melee weapon attacks score a critical hit on this natural
+  // roll or higher (Invincible Conqueror: 19).
+  meleeCritRange?: number;
   // Held by the TARGET: the next attack roll against it spends it (Guiding
   // Bolt's advantage).
   consumedAgainst?: boolean;

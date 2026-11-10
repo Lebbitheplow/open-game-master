@@ -2108,7 +2108,7 @@
    "ability": null,
    "recharge": "long",
    "action": "action",
-   "guidance": "An action: resistance to all damage for a minute (the server applies it); the extra attack and the 19-20 critical are narrated."
+   "guidance": "An action: for a minute, resistance to all damage, one more attack with the Attack action, and melee weapon attacks that score a critical hit on a 19 or 20. The server applies all three."
   },
   {
    "id": "sub_living_legend",

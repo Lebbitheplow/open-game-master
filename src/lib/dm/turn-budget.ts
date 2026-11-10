@@ -20,7 +20,7 @@ import {
   type StruckSwing,
   type TurnBudget,
 } from "@/lib/dm/action-budget";
-import { conditionTurnShape, type TurnShape } from "@/lib/srd/condition-effects";
+import { conditionExtraAttacks, conditionTurnShape, type TurnShape } from "@/lib/srd/condition-effects";
 import { combatRiders } from "@/lib/srd/feature-effects";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { summonAttacksPerTurn } from "@/lib/dm/summon-rules";
@@ -190,7 +190,8 @@ export function attacksAllowedFor(sheet: CharacterSheet): number {
   // Thirsting Blade's second pact weapon attack (pact-weapon.ts); Extra
   // Attack features do not add together.
   const seen = formSees(sheet);
-  const own = 1 + Math.max(combatRiders(seen).extraAttacks, thirstingBladeAttacks(seen));
+  // A condition's extra attack (Invincible Conqueror) comes on top.
+  const own = 1 + Math.max(combatRiders(seen).extraAttacks, thirstingBladeAttacks(seen)) + conditionExtraAttacks(sheet.conditions ?? []);
   return shaped !== null ? Math.max(shaped, own) : own;
 }
 

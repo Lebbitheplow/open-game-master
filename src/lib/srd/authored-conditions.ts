@@ -251,8 +251,13 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
   {
     id: "invincible_conqueror",
     match: ["invincible conqueror"],
-    summary: "Invincible Conqueror: resistance to all damage for a minute; the extra attack and the 19-20 critical are narrated.",
+    // "For a minute: resistance to all damage, an extra attack with the
+    // Attack action, and melee critical hits on a 19 or 20": the attack is
+    // read by the turn budget, the critical by the attack record.
+    summary: "Invincible Conqueror: for a minute, resistance to all damage, one more attack with the Attack action, and melee weapon attacks score a critical hit on a 19 or 20.",
     resistances: ALL_BUT(),
+    extraAttacks: 1,
+    meleeCritRange: 19,
   },
   {
     id: "living_legend",
