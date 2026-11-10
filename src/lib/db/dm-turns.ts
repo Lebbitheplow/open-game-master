@@ -332,6 +332,9 @@ export type PendingAttack = {
   // Destructive Wrath, chosen on the hit (after-roll.ts): its lightning and
   // thunder dice are dealt at their maximum.
   destructiveWrath?: boolean;
+  // A Valor bard's Bardic Inspiration die on this hit's damage, chosen on
+  // the hit (after-roll.ts, ar-wbf-bard-dice.ts).
+  combatInspiration?: boolean;
   attacker: string;
   weapon: string;
   targetEnemyId: string;

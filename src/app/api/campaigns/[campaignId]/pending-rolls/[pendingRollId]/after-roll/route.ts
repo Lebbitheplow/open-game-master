@@ -5,7 +5,7 @@ import { getSheetById } from "@/lib/db/sheets";
 import { optionsForPending, spendAfterRoll } from "@/lib/dm/after-roll";
 import { answeredLine, keepD20, type ThrownRoll } from "@/lib/dm/after-roll-logic";
 import { afterRollDeadline, armAfterRollKeep } from "@/lib/dm/after-roll-timer";
-import type { AttackRecord } from "@/lib/dm/attack-record";
+import { recordTargetAc, type AttackRecord } from "@/lib/dm/attack-record";
 import { runInTurnScope } from "@/lib/dm/job-control";
 import { landPendingRoll } from "@/lib/dm/pending-roll-land";
 import { refuseDuringBreak } from "@/lib/dm/table-break";
@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 
 const choiceSchema = z.union([
   // `by`: the character whose choice this is, on another character's roll.
-  z.object({ use: z.enum(["lucky", "bardic", "own_luck", "chronal_shift", "guided_strike", "master_duelist", "favored_by_the_gods", "war_gods_blessing", "flash_of_genius", "touch_of_death", "destructive_wrath"]), by: z.string().min(1).max(80).optional() }),
+  z.object({ use: z.enum(["lucky", "bardic", "own_luck", "chronal_shift", "guided_strike", "master_duelist", "favored_by_the_gods", "war_gods_blessing", "flash_of_genius", "touch_of_death", "destructive_wrath", "combat_inspiration"]), by: z.string().min(1).max(80).optional() }),
   // Which of a luck point's d20s counts.
   z.object({ die: z.number().int().min(0).max(20) }),
   z.object({ keep: z.literal(true) }),
@@ -124,16 +124,16 @@ export async function POST(
     return Response.json({ error: "That is no longer on offer for this roll." }, { status: 409 });
   }
   // The parked turn's spend: its revert gives it back (issue #622).
-  const paid = runInTurnScope(pending.turnId, () => spendAfterRoll(context.campaign, sheet, choice.use, thrown.outcome, pending.advantage, wizard ?? undefined, (pending.attack as AttackRecord | null)?.elvenAccuracy === true));
+  const paid = runInTurnScope(pending.turnId, () => spendAfterRoll(context.campaign, sheet, choice.use, thrown.outcome, pending.advantage, wizard ?? undefined, (pending.attack as AttackRecord | null)?.elvenAccuracy === true, pending.attack ? recordTargetAc(pending.campaignId, pending.attack as AttackRecord) : pending.dc));
   if (!paid) {
     return Response.json({ error: "That is no longer on offer for this roll." }, { status: 409 });
   }
-  if ((paid.touchOfDeath || paid.destructiveWrath) && pending.attack) {
+  if ((paid.touchOfDeath || paid.destructiveWrath || paid.combatInspiration) && pending.attack) {
     // No die is thrown: the roll stays the player's, and the hit carries the
     // necrotic and pays its use once it stands (attack-swing.ts), or its
     // lightning and thunder at their maximum. A hit waits on one cleric's
     // Channel Divinity, so it lands with the choice.
-    const attack = { ...pending.attack, ...(paid.touchOfDeath ? { touchOfDeath: paid.touchOfDeath } : {}), ...(paid.destructiveWrath ? { destructiveWrath: true } : {}) };
+    const attack = { ...pending.attack, ...(paid.touchOfDeath ? { touchOfDeath: paid.touchOfDeath } : {}), ...(paid.destructiveWrath ? { destructiveWrath: true } : {}), ...(paid.combatInspiration ? { combatInspiration: true } : {}) };
     return land(paid.outcome, thrown.landing, { ...pending, attack });
   }
   // The server threw this die: "(physical)" would overclaim the roll now,

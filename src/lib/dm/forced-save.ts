@@ -51,6 +51,7 @@ import { enemyExhaustion, hasTrait } from "@/lib/dm/monster-abilities";
 import { authoredEnemySave } from "@/lib/dm/authored-saves";
 import { authoredSaveDieVs } from "@/lib/srd/authored-effects-more";
 import { moteAfterRoll, moteOf } from "@/lib/dm/authored-mote";
+import { unfailingDieKept } from "@/lib/dm/ar-wbf-bard-dice-logic";
 import { rollCharacterD20 } from "@/lib/dm/character-roll";
 
 // Everything resolveRollExpression cannot read for itself, for one roll of
@@ -163,7 +164,10 @@ export function settleHeldDie(campaignId: string, sheetId: string, outcome: Roll
       continue;
     }
     settled = withBonusDie(settled, { sides: sidesOf(die.die), value: rollExpression(`1${die.die}`).total, kept: true });
-    spendRollCarriers(campaignId, sheetId, die.condition);
+    // Unfailing Inspiration: a die that left the roll short is kept.
+    if (!sheet || !unfailingDieKept(sheet, die.condition, settled.total, dc)) {
+      spendRollCarriers(campaignId, sheetId, die.condition);
+    }
   }
   return settled;
 }

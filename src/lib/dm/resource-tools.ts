@@ -23,6 +23,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { chosenOptions, optionsOfKind } from "@/lib/srd/options";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { holdsMote } from "@/lib/srd/authored-effects-more";
+import { givenDieMarks } from "@/lib/dm/ar-wbf-bard-dice-logic";
 import { noneNamed, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { isConditionNamed, nameChoice } from "@/lib/srd/feature-names";
 import { isTableGearName } from "@/lib/db/homebrew";
@@ -798,8 +799,9 @@ export function computeUseResource(
           conditionMeta: {
             ...target.conditionMeta,
             // Who gave it, and a Creation bard's mote with it
-            // (src/lib/dm/authored-mote.ts).
-            [condition]: { rounds: INSPIRATION_ROUNDS, ...(holdsMote(sheet) ? { source: sheet.id, mote: true } : {}) },
+            // (src/lib/dm/authored-mote.ts); what a Valor or an Eloquence
+            // bard's die may do (ar-wbf-bard-dice-logic.ts).
+            [condition]: { rounds: INSPIRATION_ROUNDS, ...(holdsMote(sheet) ? { source: sheet.id, mote: true } : {}), ...givenDieMarks(sheet) },
           },
         },
       };

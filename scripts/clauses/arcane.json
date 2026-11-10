@@ -3297,7 +3297,8 @@
   "clauses": [
    {
     "c": "A creature holding your Bardic Inspiration die may add it to a damage roll",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/ar-wbf-bard-dice-logic.ts combatDie and combatInspirationOption: the die a Valor bard gives is marked (resource-tools.ts), its holder's hit waits on the after-the-roll card (after-roll-logic.ts afterAttackOptions) and the die joins the damage once the hit stands (attack-swing.ts, ar-wbf-bard-dice.ts spendCombatDie); the bard pays nothing more (the maintainer's ruling for wave 2)",
     "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: combat-damage"
    },
    {
@@ -3668,7 +3669,8 @@
   "clauses": [
    {
     "c": "An inspiration die that fails to change the outcome is not spent.",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/ar-wbf-bard-dice-logic.ts unfailingDieKept: the die an Eloquence bard gives is marked (resource-tools.ts) and is not spent by a roll it leaves short, on the after-the-roll card (after-roll.ts spendAfterRoll) and on a roll the engine settles (forced-save.ts settleHeldDie)",
     "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: unfailing"
    }
   ]

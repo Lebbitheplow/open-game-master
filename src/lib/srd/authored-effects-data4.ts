@@ -69,9 +69,11 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
     subclass: "College of Eloquence",
     effects: [{ kind: "check_floor", skills: ["persuasion", "deception"], floor: 10 }],
   },
+  // The die this bard gives is marked where it is given (resource-tools.ts)
+  // and is not spent by a roll it leaves short (after-roll.ts, forced-save.ts).
   "bard::Unfailing Inspiration": {
     subclass: "College of Eloquence",
-    narrated: "An inspiration die that changed nothing is handed back: the GM restores the Bardic Inspiration condition when the roll it rode still failed.",
+    heldBy: { file: "src/lib/dm/ar-wbf-bard-dice-logic.ts", call: "unfailingDieKept(" },
   },
   "bard::Creative Crescendo": {
     subclass: "College of Creation",

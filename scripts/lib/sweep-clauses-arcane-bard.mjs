@@ -3,6 +3,7 @@
 // by test-enforce-sweep-clauses-arcane-bard.mjs).
 import assert from "node:assert/strict";
 import { MOD } from "./sweep-clauses-arcane.mjs";
+import { call as routeCall } from "./enforce-campaign.mjs";
 
 const DATA = "src/lib/srd/authored-effects-data*.ts";
 const RES = "src/lib/srd/authored-resources.json";
@@ -40,6 +41,9 @@ export function probes(rig, shared) {
     assert.equal(out.ok, true, out.error);
     return foes;
   }
+  // The rolls parked on a player's after-the-roll card, and the route that answers one.
+  const openRolls = async () => (await import("../../src/lib/db/dm-turns.ts")).listOpenPendingRolls(world.campaignId);
+  const afterRoll = () => world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]/after-roll");
   async function attacks(who, weapon) {
     const [enemy] = await stage(who);
     const made = [];
@@ -57,16 +61,47 @@ export function probes(rig, shared) {
       assert.match(JSON.stringify(grant.spec), /martial/i);
     },
     "combat-damage": async () => {
-      await stage(valor(), { others: [friend()], first: friend() });
+      // The maintainer's ruling: the inspired creature spends the die it
+      // holds on its own damage roll, on the card its hit waits on, and the
+      // bard pays nothing more.
+      let [enemy] = await stage(valor(), { others: [friend()] });
+      world.patch(friend().id, { conditions: [], conditionMeta: {} });
       await inspire(valor());
-      const [enemy] = world.enemies();
-      kit.giveTurn(friend().id);
-      kit.freshTurn();
-      const swing = await kit.swing(friend().id, enemy.id, [15, 3]);
-      assert.equal(swing.ok, true, swing.error);
-      const before = foe(enemy).currentHp;
-      const out = await spend(friend(), "Combat Inspiration", { targetEnemyId: enemy.id, variant: "damage" }, [6]);
-      assert.equal(before - foe(enemy).currentHp, 6, `the inspired friend adds the die (a 6) to the damage of the hit: ${show(out).slice(0, 180)}`);
+      const pool = left(valor(), "bardic_inspiration");
+      const hit = async (answer) => {
+        // Beside the foe, so the friend's own weapon reaches it.
+        kit.place(friend().id, 6, 4);
+        kit.giveTurn(friend().id);
+        kit.freshTurn();
+        world.clearDice();
+        world.dice(15);
+        const swing = await world.invoke("pc_attack", { characterId: friend().id, targetEnemyId: enemy.id });
+        world.clearDice();
+        assert.equal(swing.ok, true, swing.error);
+        const [pending] = (await openRolls()).filter((entry) => entry.thrown);
+        if (!pending) return { waited: false, offered: [], dealt: null };
+        const offered = pending.thrown.options.map((option) => option.id);
+        const before = foe(enemy).currentHp;
+        world.signIn({ id: sheet(friend()).userId });
+        // Every damage die a 4, so the inspiration die adds exactly 4.
+        world.dice(4, 4, 4, 4);
+        await routeCall(await afterRoll(), "POST", answer, { campaignId: world.campaignId, pendingRollId: pending.id });
+        world.clearDice();
+        return { waited: true, offered, dealt: before - foe(enemy).currentHp };
+      };
+      const plain = await hit({ keep: true });
+      assert.deepEqual([plain.waited, plain.offered], [true, ["combat_inspiration"]], "the hit of a creature holding a Valor bard's die waits on Combat Inspiration");
+      assert.ok(has(friend(), "bardic inspiration"), "keeping the roll keeps the die");
+      const inspired = await hit({ use: "combat_inspiration" });
+      assert.equal(inspired.dealt - plain.dealt, 4, `the die (a 4) joins the hit's damage: ${plain.dealt} without it, ${inspired.dealt} with it`);
+      assert.equal(has(friend(), "bardic inspiration"), false, "the die is spent");
+      assert.equal(left(valor(), "bardic_inspiration"), pool, "the bard pays nothing more");
+      // A die from a bard of another college rides no damage roll: the hit lands at once.
+      [enemy] = await stage(eloquence(), { others: [friend()] });
+      world.patch(friend().id, { conditions: [], conditionMeta: {} });
+      await inspire(eloquence());
+      const other = await hit({ keep: true });
+      assert.equal(other.offered.includes("combat_inspiration"), false, "an Eloquence bard's die was offered on a hit's damage");
     },
     "combat-ac": async () => {
       const [enemy] = await stage(valor(), { others: [friend()] });
@@ -251,22 +286,36 @@ export function probes(rig, shared) {
       assert.equal(foe(enemy).conditions.some((name) => name.startsWith("unsettled")), false, "the die is spent on that save");
     },
     unfailing: async () => {
-      await stage(eloquence(), { others: [friend()] });
-      await inspire(eloquence());
-      const { listOpenPendingRolls } = await import("../../src/lib/db/dm-turns.ts");
-      const { call: routeCall } = await import("./enforce-campaign.mjs");
-      const choice = await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]/after-roll");
+      // A check the die cannot save (a 1 on it): an Eloquence bard's die stays, any other bard's is spent.
+      const failing = async (bard) => {
+        await stage(bard, { others: [friend()] });
+        world.patch(friend().id, { conditions: [], conditionMeta: {} });
+        await inspire(bard);
+        world.clearDice();
+        world.dice(10);
+        await world.invoke("request_roll", { characterId: friend().id, kind: "skill_check", skill: "athletics", dc: 25, reason: "probe" });
+        world.clearDice();
+        const [pending] = (await openRolls()).filter((entry) => entry.thrown);
+        assert.ok(pending, "the friend's check waits on the inspiration card");
+        world.signIn({ id: sheet(friend()).userId });
+        world.dice(1);
+        await routeCall(await afterRoll(), "POST", { use: "bardic" }, { campaignId: world.campaignId, pendingRollId: pending.id });
+        world.clearDice();
+        return has(friend(), "bardic inspiration");
+      };
+      assert.equal(await failing(valor()), false, "a Valor bard's die that left the check failed was kept");
+      assert.equal(await failing(eloquence()), true, "a die that left the check failed is kept");
+      // The die that carries the roll is spent: a save the engine forces, DC 12, a 5 on the d20 and a 12 on the die.
+      const { settleHeldDie } = await import("../../src/lib/dm/forced-save.ts");
+      const { rollExpression } = await import("../../src/lib/dice.ts");
       world.clearDice();
-      world.dice(10);
-      await world.invoke("request_roll", { characterId: friend().id, kind: "skill_check", skill: "athletics", dc: 25, reason: "probe" });
+      world.dice(5, 1);
+      const short = settleHeldDie(world.campaignId, friend().id, rollExpression("1d20"), 15);
+      assert.ok(short.total < 15 && has(friend(), "bardic inspiration"), `a forced roll the die left short (${short.total} against 15) spent it`);
+      world.dice(5, 12);
+      const made = settleHeldDie(world.campaignId, friend().id, rollExpression("1d20"), 15);
       world.clearDice();
-      const [pending] = listOpenPendingRolls(world.campaignId).filter((entry) => entry.thrown);
-      assert.ok(pending, "the friend's check waits on the inspiration card");
-      world.signIn({ id: sheet(friend()).userId });
-      world.dice(1);
-      await routeCall(choice, "POST", { use: "bardic" }, { campaignId: world.campaignId, pendingRollId: pending.id });
-      world.clearDice();
-      assert.ok(has(friend(), "bardic inspiration"), "a die that left the check failed is kept");
+      assert.ok(made.total >= 15 && !has(friend(), "bardic inspiration"), `the die that carried the roll (${made.total} against 15) is spent`);
     },
     "speech-rest": rests(["bard", "College of Eloquence"], "sub_universal_speech", "long"),
     "speech-slot": async () => {
@@ -340,8 +389,6 @@ export function probes(rig, shared) {
   const infectiousRest = rests(["bard", "College of Eloquence"], "sub_infectious_inspiration", "long");
 
   const KNOWN = {
-    "combat-damage": { severity: "medium", kind: "rule-missing", where: `${DATA} bard::Combat Inspiration (one reaction, ac_vs_hit)`, note: "", fix: "Let the inspired creature add the die to a damage roll it just made." },
-    unfailing: { severity: "low", kind: "rule-missing", where: `${DATA} bard::Unfailing Inspiration (narrated)`, note: "", fix: "Keep the inspiration of an Eloquence bard when the roll it rode still fails." },
     "tales-door": { severity: "medium", kind: "rule-missing", where: `${DATA} bard::Tales from Beyond (narrated)`, note: "", fix: "A spend that rolls the Spirit Tales table and plays the tale." },
     session: { severity: "low", kind: "rule-missing", where: `${RES} sub_spirit_session (a counter with guidance)`, note: "", fix: "Teach the chosen divination or necromancy spell until the next long rest." },
   };
