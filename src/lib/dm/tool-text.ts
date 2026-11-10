@@ -4,7 +4,9 @@
 // XML dialect ("<tool_call><function=enemy_attack><parameter=enemyId>..."),
 // which reaches us whenever llama-server's extraction misses it, an agent
 // program's call written out in the Anthropic style (invokeToolCallRegex
-// below), and bare JSON arguments (findBareJsonObjects below). Kept
+// below), and bare JSON arguments (findBareJsonObjects below). A card's line
+// copied back from the conversation (withoutCardLines below) is no call, and
+// goes the same way. Kept
 // dependency-free so client components can import it; the name list mirrors
 // the tools registered in src/lib/dm/prompt.ts, src/lib/dm/mutations.ts
 // (MUTATION_TOOL_NAMES), src/lib/dm/encounter-tools.ts, src/lib/dm/
@@ -80,6 +82,23 @@ export function withoutRollMarkers(text: string): string {
   return text.replace(/\[roll:[^\]]*\][ \t]*/gi, "");
 }
 
+// Another line of the server's a model copies into its reply: the one it
+// reads under a player's words for a card from the Hand, or for a reaction
+// in the player's own words (src/lib/dm/intent-logic.ts describeIntent).
+// Qwen3.6-35B answered an off-hand attack with the card line of the attack
+// before it and nothing else, and the table read "[Card played for
+// characterId=...: an attack with Scimitar at ... (enemyId=...)." (issue
+// 900). The line is one line. A copy that never closes its bracket goes to
+// the end of its line: the model cut it short, or the turn's tidy took its
+// last sentence for naming a tool (narration-tidy-logic.ts withoutToolTalk),
+// which is how the table came to read the half above.
+const CARD_LINE =
+  /\[(?:Card played(?: for characterId=[^\s:\]]+)?:|A reaction(?: for characterId=[^\s,\]]+)?, in their player's words above:)[^\]\n]*(?:\][ \t]*|(?=\n)|$)/g;
+
+export function withoutCardLines(text: string): string {
+  return text.replace(CARD_LINE, "");
+}
+
 // A third leak shape: a call's arguments written into the reply as a bare
 // JSON object, with no tool name ('{"characterIds":[...],"prompt":"..."}'),
 // alone or glued to the end of the prose (gpt-oss on vLLM, PR #53), or the
@@ -153,7 +172,7 @@ export function cutSpans(text: string, spans: Array<{ start: number; end: number
 }
 
 export function stripToolText(text: string): string {
-  const cleaned = text
+  const cleaned = withoutCardLines(text)
     .replace(toolTextRegex(), "")
     .replace(xmlToolCallRegex(), "")
     .replace(fakeRollMarkerRegex(), "")

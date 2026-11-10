@@ -1901,7 +1901,7 @@
     "lib/dm/tool-text.ts#RegExp i": [["key",1,"tool-call markup (tool names, XML tags)"],["key",1,"an agent program's call written as text: invoke, parameter and function_calls tags, with or without a namespace (issue 794)"]],
     "lib/dm/tool-text.ts#\\b": [["key",1,"tool-call markup (tool names, XML tags)"],["key",2,"an agent program's call written as text: invoke, parameter and function_calls tags, with or without a namespace (issue 794)"]],
     "lib/dm/tool-text.ts#\\w": [["key",1,"an agent program's call written as text: invoke, parameter and function_calls tags, with or without a namespace (issue 794)"]],
-    "lib/dm/tool-text.ts#re-word": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"],["key",1,"a roll marker the model imitates (ODM's own markup)"]],
+    "lib/dm/tool-text.ts#re-word": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"],["key",1,"a roll marker the model imitates (ODM's own markup)"],["key",1,"a card's line the model copies back: the server's own words to the model, the same at every table (intent-logic.ts describeIntent; issue 900)"]],
     "lib/dm/trade-value.ts#str-eq": [["key",1,"the content pack's item category field: a shield takes a shield's rarity for its bonus"]],
     "lib/dm/trap-escape.ts#toLowerCase": [["key",2,"condition labels (engine vocabulary)"]],
     "lib/dm/trap-escape.ts#toUpperCase": [["display",1,"ability abbreviation shown in a roll note"]],

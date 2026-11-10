@@ -106,7 +106,7 @@ import {
   salvageXmlToolCalls,
   unknownSheetRef,
 } from "@/lib/dm/rolls";
-import { stripToolText, withoutRollMarkers } from "@/lib/dm/tool-text";
+import { stripToolText, withoutCardLines, withoutRollMarkers } from "@/lib/dm/tool-text";
 import {
   collectExchanges,
   earlierFigures,
@@ -1952,11 +1952,13 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     // small model's call written as JSON, with no name and a key the tool
     // lacks: Gemma4 e4b at 24K) says and does nothing either, and so does a
     // reply that was only a call written as text and not run (issue 794).
+    // So does a reply that is only the card line the model read under the
+    // player's words, copied back (issue 900): asked again, it narrates.
     const replyText = extractReplyText(message?.content);
     const onlyStrayJson = (text: string) => {
       const xml = salvageXmlToolCalls(text);
       const salvaged = salvageJsonToolCalls(xml.text, tools);
-      return !xml.calls.length && !salvaged.calls.length && !extractStoryText(salvaged.text).trim();
+      return !xml.calls.length && !salvaged.calls.length && !withoutCardLines(extractStoryText(salvaged.text)).trim();
     };
     lastReplyEmpty =
       !extractToolCalls(message?.tool_calls).length && (!replyText.trim() || onlyStrayJson(replyText));
