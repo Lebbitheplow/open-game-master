@@ -2899,7 +2899,7 @@ button.cine-chronicle-earlier:focus-visible { outline: 2px solid #f4e0a6; outlin
 .cine-fight-board > .cine-fight-hand { transition: opacity var(--dur-quick) var(--ease-snap); }
 .cine-fight-board:has(.board-view[data-panning]) > .cine-fight-hand { opacity: 0.2; }
 .cine-fight-hand > .session-hand-host > * { position: relative; max-width: 48rem; margin-inline: auto; pointer-events: none; }
-.cine-fight-hand > .session-hand-host > * :is(button, a, input, select, textarea, summary, [role="button"], [role="radio"], [tabindex], .hand-preview) { pointer-events: auto; }
+.cine-fight-hand > .session-hand-host > * :is(button, a, input, select, textarea, summary, [role="button"], [role="radio"], [tabindex]) { pointer-events: auto; }
 .cine-fight-hand .hand { margin-bottom: 0; }
 /* On the board the Hand's words stand on a painting, in either theme: the
    night's own ink, with a shadow to hold them over pale stone. */
