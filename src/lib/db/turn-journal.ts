@@ -198,6 +198,15 @@ function triggersFor(table: string, columns: readonly Column[]): string[] {
 
 const installed = new WeakSet<object>();
 
+// A table's triggers, built from its columns as they are now: the row image
+// names each column, so a trigger made before a column was added would keep
+// a picture without it.
+function tableStatements(db: SqliteDatabase, table: string): string[] {
+  const columns = db.prepare(`PRAGMA table_info(${quote(table)})`).all() as Column[];
+  const statements = ["u", "d", "i"].map((kind) => `DROP TRIGGER IF EXISTS temp.${quote(`odm_tj_${kind}_${table}`)};`);
+  return [...statements, ...triggersFor(table, columns)];
+}
+
 // Called once the schema is in place (core.ts getDatabase).
 export function installTurnJournal(db: SqliteDatabase) {
   if (installed.has(db)) {
@@ -206,13 +215,16 @@ export function installTurnJournal(db: SqliteDatabase) {
   installed.add(db);
   db.defineFunction("odm_turn", () => currentTurnId());
   const tables = (db.prepare(`SELECT name FROM sqlite_master WHERE type = 'table'`).all() as Array<{ name: string }>).map((row) => row.name);
-  const statements: string[] = [];
-  for (const table of journaledTables(tables)) {
-    const columns = db.prepare(`PRAGMA table_info(${quote(table)})`).all() as Column[];
-    for (const kind of ["u", "d", "i"]) {
-      statements.push(`DROP TRIGGER IF EXISTS temp.${quote(`odm_tj_${kind}_${table}`)};`);
-    }
-    statements.push(...triggersFor(table, columns));
+  db.exec(journaledTables(tables).flatMap((table) => tableStatements(db, table)).join("\n"));
+}
+
+// After a column is added to a journaled table once the journal is in
+// place (a boot migration that runs on first use, as dm-turns.ts
+// ensureParkColumn does), so the turn's picture of a row holds the new
+// column too and a revert can put it back.
+export function refreshTurnJournal(db: SqliteDatabase, table: string) {
+  if (!installed.has(db) || !journaledTables([table]).length) {
+    return;
   }
-  db.exec(statements.join("\n"));
+  db.exec(tableStatements(db, table).join("\n"));
 }

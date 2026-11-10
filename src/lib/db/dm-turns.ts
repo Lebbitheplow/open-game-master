@@ -8,6 +8,7 @@ import type { ThrownRoll } from "@/lib/dm/after-roll-logic";
 import type { RollTag } from "@/lib/dice-script-logic";
 import { writeTurnQuality } from "@/lib/db/turn-ledger";
 import { currentTurnId, releaseStandIn, standInFor } from "@/lib/dm/job-control";
+import { refreshTurnJournal } from "@/lib/db/turn-journal";
 import type { GuardReport } from "@/lib/narrator-quality";
 
 // A DM narration turn persisted as a state machine so it can park while a
@@ -472,6 +473,7 @@ function ensureParkColumn() {
     return;
   }
   const columns = db.prepare(`PRAGMA table_info(pending_rolls)`).all() as Array<{ name: string }>;
+  const before = columns.length;
   if (!columns.some((column) => column.name === "parked_for")) {
     db.exec(`ALTER TABLE pending_rolls ADD COLUMN parked_for TEXT`);
   }
@@ -483,6 +485,11 @@ function ensureParkColumn() {
   }
   if (!columns.some((column) => column.name === "watch_json")) {
     db.exec(`ALTER TABLE pending_rolls ADD COLUMN watch_json TEXT`);
+  }
+  // The turn journal's triggers name the table's columns; one made before
+  // these were added would leave them out of a turn's picture of the row.
+  if ((db.prepare(`PRAGMA table_info(pending_rolls)`).all() as unknown[]).length !== before) {
+    refreshTurnJournal(db, "pending_rolls");
   }
   parkColumnReady.add(db);
 }

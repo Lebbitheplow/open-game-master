@@ -81,6 +81,32 @@ await test("a raw write under a turn is kept and taken back; outside every turn 
   assert.equal(db().prepare(`SELECT name FROM npcs WHERE id = ?`).get(id).name, "Marta the Elder");
 });
 
+// A boot migration that runs on first use (dm-turns.ts ensureParkColumn adds
+// pending_rolls' later columns the first time a roll is parked on an older
+// database) adds a column after the journal's triggers were made from the
+// table's columns. Refreshed, the turn's picture of a row holds the new
+// column, so a revert can put it back.
+await test("a column added after the journal is in place is kept in the turn's picture once the table is refreshed", async () => {
+  const { refreshTurnJournal } = await import("../src/lib/db/turn-journal.ts");
+  const { world } = await stage("calm");
+  const id = npc(world, "Brother Aldo");
+  db().exec(`ALTER TABLE npcs ADD COLUMN sweep_late_note TEXT`);
+  db().prepare(`UPDATE npcs SET sweep_late_note = 'before' WHERE id = ?`).run(id);
+  const stale = await inTurn(world, () => db().prepare(`UPDATE npcs SET sweep_late_note = 'stale' WHERE id = ?`).run(id));
+  // Unrefreshed, the picture lacks the column; the turn's only change is in
+  // it, so the row even reads as left as found and is let go. Either way a
+  // revert has nothing to put back.
+  const staleRows = kept(stale);
+  assert.ok(!staleRows.length || !("sweep_late_note" in JSON.parse(staleRows[0].before_json)), "a trigger made before the column kept it");
+  refreshTurnJournal(db(), "npcs");
+  db().prepare(`UPDATE npcs SET sweep_late_note = 'before' WHERE id = ?`).run(id);
+  const turnId = await inTurn(world, () => db().prepare(`UPDATE npcs SET sweep_late_note = 'during' WHERE id = ?`).run(id));
+  assert.equal(JSON.parse(kept(turnId)[0].before_json).sweep_late_note, "before");
+  const out = await revertTurn(world, turnId);
+  assert.equal(out.status, 200, JSON.stringify(out.json));
+  assert.equal(db().prepare(`SELECT sweep_late_note FROM npcs WHERE id = ?`).get(id).sweep_late_note, "before");
+});
+
 await test("an INSERT OR REPLACE under a turn keeps the row it replaced, and a row the turn made goes", async () => {
   const { world } = await stage("calm");
   const id = npc(world, "Brannoc");
