@@ -13,7 +13,7 @@
 import { getActiveEncounter, listEnemies, orderEntryId, type Encounter } from "@/lib/db/encounters";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
-import { ACTION_SURGED, WEAPON_HIT, WIND_STEP } from "@/lib/dm/action-budget";
+import { ACTION_SURGED, RAGE_ENTERED, WEAPON_HIT, WIND_STEP } from "@/lib/dm/action-budget";
 import { withinFeet } from "@/lib/dm/authored-saves";
 import { attackerFoeId, hitIdOf, openHits, type LastHit } from "@/lib/dm/last-hit";
 import { answerSave, kindOf, openTriggers, type LastSave } from "@/lib/dm/last-save";
@@ -23,7 +23,7 @@ import type { ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 
 // The running turn's marks as triggers: what its owner hit, whether they
-// surged or used Step of the Wind. Read off the budget, so nothing else writes them.
+// surged, used Step of the Wind or entered their rage. Read off the budget, so nothing else writes them.
 function turnMarks(encounter: Encounter): LastSave[] {
   const budget = encounter.turnBudget;
   if (!budget || budget.round !== encounter.round) return [];
@@ -38,6 +38,7 @@ function turnMarks(encounter: Encounter): LastSave[] {
     }
     if (mark === ACTION_SURGED) return [{ ...base, id: `mark:${mark}:${owner.id}`, kind: "surge", forcer: { id: owner.id, name: owner.name } }];
     if (mark === WIND_STEP) return [{ ...base, id: `mark:${mark}:${owner.id}`, kind: "wind_step", forcer: { id: owner.id, name: owner.name } }];
+    if (mark === RAGE_ENTERED) return [{ ...base, id: `mark:${mark}:${owner.id}`, kind: "rage_entered", forcer: { id: owner.id, name: owner.name } }];
     return [];
   });
 }

@@ -9,7 +9,7 @@
 // in here; cast_at_player and cast_at_enemy are meant to.
 
 import { noteShift, takeSaveHelp, takeShift } from "@/lib/dm/chronal-shift";
-import { recordSave } from "@/lib/dm/last-save";
+import { recordInspiredSuccess, recordSave } from "@/lib/dm/last-save";
 import { diehardSaveAdvantage, shieldMasterSaveBonus } from "@/lib/srd/feat-combat";
 import { LUCK_SPEND } from "@/lib/dm/roll-riders";
 import { spendLuckCounter } from "@/lib/srd/class-resources";
@@ -21,7 +21,7 @@ import { getSheetById } from "@/lib/db/sheets";
 import { patchSheetAudited, type AuditActor } from "@/lib/dm/audited-patch";
 import { currentTurnId } from "@/lib/dm/job-control";
 import { d20Expression, rollExpression, type RollResult } from "@/lib/dice";
-import { heldBardicDie, heldOwnLuckDie, holdsMoteDie, sidesOf, withBonusDie } from "@/lib/dm/after-roll-logic";
+import { bardOfHeldDie, heldBardicDie, heldOwnLuckDie, holdsMoteDie, sidesOf, withBonusDie } from "@/lib/dm/after-roll-logic";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { saveModFor } from "@/lib/bestiary/enemy-numbers";
 import type { SaveAbility } from "@/lib/bestiary/statblock";
@@ -162,8 +162,13 @@ export function settleHeldDie(campaignId: string, sheetId: string, outcome: Roll
     if (!die || settled.total + sidesOf(die.die) < dc) {
       continue;
     }
+    const bard = held === heldBardicDie && sheet ? bardOfHeldDie(sheet) : null;
     settled = withBonusDie(settled, { sides: sidesOf(die.die), value: rollExpression(`1${die.die}`).total, kept: true });
     spendRollCarriers(campaignId, sheetId, die.condition);
+    // A Bardic Inspiration die that made the roll succeed (Infectious Inspiration).
+    if (sheet && bard && settled.total >= dc) {
+      recordInspiredSuccess(campaignId, { id: sheet.id, name: sheet.name }, bard, attack ? "attack" : "save or check");
+    }
   }
   return settled;
 }

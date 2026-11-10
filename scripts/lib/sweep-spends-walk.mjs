@@ -36,6 +36,11 @@ export const TRIGGERS = [
   "a foe ended its turn beside the holder",
   "a foe's turn began beside the holder",
   "the holder used Action Surge",
+  // The records the plumbing package added (last-save.ts recordCast,
+  // recordInspiredSuccess): a spell the holder cast at the ally, a save the
+  // ally made good with the holder's Bardic Inspiration die.
+  "the holder cast a spell at the ally",
+  "the ally made a save with the holder's inspiration",
 ];
 // Not staged: a foe leaving the holder's reach (move_token resolves the
 // opportunity attack itself and spends the reaction, so nothing is left open
@@ -45,7 +50,7 @@ export const TRIGGERS = [
 // For a spend on the holder's own turn: as staged, then the states a spend may ask for.
 // The last two come after "no fight", so a spend accepted earlier is still
 // read where it was: they are for the uses that answer a kill or a step.
-export const OWN_TURN = ["own turn, nothing staged", "the holder below half hit points", "the holder hit a foe", "the holder failed a save", "the holder failed a save + then the holder's turn", "the holder missed a foe", "no fight", "the holder killed a foe", "the holder used Step of the Wind", "the holder sneak attacked a foe", "the ally at 0 died"];
+export const OWN_TURN = ["own turn, nothing staged", "the holder below half hit points", "the holder hit a foe", "the holder failed a save", "the holder failed a save + then the holder's turn", "the holder missed a foe", "no fight", "the holder killed a foe", "the holder used Step of the Wind", "the holder entered a rage", "the holder succeeded on a death save", "the holder stabilized the fallen ally with spare the dying", "the holder's echo was destroyed", "the holder sneak attacked a foe", "the ally at 0 died"];
 
 const lastStep = (key) => key.split(" + ").at(-1);
 export const untriggered = (key) => UNTRIGGERED.includes(lastStep(key));
@@ -255,6 +260,76 @@ async function step(rig, scene, name, notes) {
     case "the holder used Step of the Wind":
       if (!world.sheet(holder).resources.ki) return { ok: false, error: "no ki for Step of the Wind" };
       return world.invoke("take_action", { characterId: holder, action: "dash", bonus: true });
+    case "the holder entered a rage":
+      // Unlike "the holder raging", the turn is kept: its mark is the trigger
+      // (action-budget.ts RAGE_ENTERED).
+      if (!world.sheet(holder).resources.rage) return { ok: false, error: "no rage to enter" };
+      return world.invoke("use_resource", { characterId: holder, resource: "rage" });
+    case "the holder succeeded on a death save": {
+      const { rollDeathSave } = await import(new URL("../../src/lib/dm/death.ts", import.meta.url).href);
+      world.patch(holder, { currentHp: 0, deathSaves: { successes: 0, failures: 0, stable: false, dead: false } });
+      world.dice(15);
+      const line = rollDeathSave(world.campaign(), holder);
+      return line && /success/.test(line) ? { ok: true } : { ok: false, error: `no successful death save: ${line}` };
+    }
+    case "the holder stabilized the fallen ally with spare the dying": {
+      // The cantrip laid on the holder's sheet by hand when they lack it.
+      const sheet = world.sheet(holder);
+      const casting = sheet.spellcasting ?? { ability: "cha", slots: {}, prepared: [], known: [], cantrips: [] };
+      if (!(casting.cantrips ?? []).includes("Spare the Dying")) {
+        world.patch(holder, { spellcasting: { ...casting, cantrips: [...(casting.cantrips ?? []), "Spare the Dying"] } });
+        notes.add("Spare the Dying was laid on the holder by hand");
+      }
+      const out = await world.invoke("stabilize", { characterId: scene.fallen.id, healerId: holder, method: "spell" });
+      refresh();
+      return out;
+    }
+    case "the holder's echo was destroyed": {
+      // Manifest Echo, then the echo takes a hit meant for the ally (Shadow
+      // Martyr) and is destroyed by it: a 19 beats AC 14 + the proficiency bonus.
+      const manifest = await world.invoke("use_resource", { characterId: holder, resource: "Manifest Echo" });
+      if (!manifest.ok) return manifest;
+      refresh();
+      const hit = await strike(scene.ally.id, [19, 4]);
+      if (!hit.ok) return hit;
+      return world.invoke("use_reaction", { characterId: holder, feature: "Shadow Martyr", targetCharacterId: scene.ally.id });
+    }
+    case "the holder cast a spell at the ally": {
+      // Bless from a 1st-level slot, laid on the holder's sheet by hand when
+      // they do not have it (the trigger is the casting, not the spell).
+      const sheet = world.sheet(holder);
+      const casting = sheet.spellcasting ?? { ability: "wis", slots: {}, prepared: [], known: [], cantrips: [] };
+      const slots = { ...casting.slots, 1: { max: Math.max(1, casting.slots?.[1]?.max ?? 0), used: 0 } };
+      if (!(casting.prepared ?? []).includes("Bless") || !casting.slots?.[1]) {
+        world.patch(holder, { spellcasting: { ...casting, ability: casting.ability ?? "wis", slots, prepared: [...new Set([...(casting.prepared ?? []), "Bless"])] } });
+        notes.add("Bless and a 1st-level slot were laid on the holder by hand");
+      }
+      const out = await world.invoke("cast_buff", { characterId: holder, spell: "Bless", targetCharacterIds: [scene.ally.id] });
+      refresh();
+      return out;
+    }
+    case "the ally made a save with the holder's inspiration": {
+      if (!world.sheet(holder).resources.bardic_inspiration) return { ok: false, error: "no Bardic Inspiration to give" };
+      const given = await world.invoke("use_resource", { characterId: holder, resource: "bardic_inspiration", targetCharacterId: scene.ally.id });
+      if (!given.ok) return given;
+      refresh();
+      const die = world.sheet(scene.ally.id).conditions.map((entry) => /^bardic inspiration \(d(\d+)\)$/i.exec(entry)).find(Boolean);
+      if (!die) return { ok: false, error: "the ally holds no Bardic Inspiration die" };
+      const sides = Number(die[1]);
+      const { computeSheetDerived } = await import(new URL("../../src/lib/srd/index.ts", import.meta.url).href);
+      const mod = computeSheetDerived(world.sheet(scene.ally.id)).saves.wis;
+      // A 10 falls short of the DC by the die's size; the die's top face makes
+      // it. The ally rolls as a companion does, so the server adds the die
+      // itself (forced-save.ts settleHeldDie) rather than waiting on a card.
+      rig.foesTurn(scene);
+      const { getDatabase } = await import(new URL("../../src/lib/db/core.ts", import.meta.url).href);
+      const companion = (on) => getDatabase().prepare("UPDATE character_sheets SET is_companion = ? WHERE id = ?").run(on ? 1 : 0, scene.ally.id);
+      companion(true);
+      world.dice(10, sides);
+      const out = await world.invoke("cast_at_player", { characterId: scene.ally.id, saveAbility: "wis", casterEnemyId: scene.near.id, dc: 10 + mod + sides, condition: "frightened" });
+      companion(false);
+      return out;
+    }
     case "the holder's drake summoned":
       return world.invoke("summon_pet", { characterId: holder, kind: "drake", form: "drake", essence: "fire" });
     default:

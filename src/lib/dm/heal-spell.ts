@@ -23,6 +23,7 @@
 // This module does not import mutations.ts: the cast is handed in.
 
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import { recordCast } from "@/lib/dm/last-save";
 // The credits live in the database on the server (src/lib/db/item-cast-credits.ts).
 import "@/lib/db/item-cast-credits";
 import { itemCastNumbers, runningItemSpell } from "@/lib/srd/item-cast-credit";
@@ -196,6 +197,9 @@ export function castHealingSpell(
     return { done: { ok: true, spell: name, target: target.name, healed: 0, ...(paid.slot ? { slot: paid.slot } : {}), ...castToNoEffect(ward) } };
   }
   const slotLevel = typeof paid.slotLevel === "number" ? paid.slotLevel : facts.level;
+  // The casting at the creature it heals, on record (last-save.ts): what
+  // answers a spell aimed at an ally (Voice of Authority) reads it.
+  recordCast(campaign.id, { id: caster.id, name: caster.name }, name, slotLevel ?? 0, [target.id]);
   if (mech?.healPool) {
     // What is left of the pool bounds this share (cast-guard.ts open casts).
     const amount = typeof paid.uses === "number" ? paid.uses : (input.amount ?? 0);

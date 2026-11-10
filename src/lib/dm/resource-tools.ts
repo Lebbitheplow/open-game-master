@@ -728,7 +728,9 @@ export function computeUseResource(
             ...target.conditionMeta,
             // Who gave it, and a Creation bard's mote with it
             // (src/lib/dm/authored-mote.ts).
-            [condition]: { rounds: INSPIRATION_ROUNDS, ...(holdsMote(sheet) ? { source: sheet.id, mote: true } : {}) },
+            // The bard is kept as the die's source: a roll it makes succeed is
+            // recorded as theirs (Infectious Inspiration, last-save.ts).
+            [condition]: { rounds: INSPIRATION_ROUNDS, source: sheet.id, ...(holdsMote(sheet) ? { mote: true } : {}) },
           },
         },
       };

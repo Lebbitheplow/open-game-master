@@ -24,6 +24,7 @@
     "lib/dm/reaction-triggers.ts#re-word": [["key",1,"the derived records' own id suffix (:start)"]],
     "lib/battlemap/hand-react-triggers.ts#str-eq": [["key",3,"costs and the counter's action (engine vocabulary)"]],
     "lib/srd/trigger-table.ts#str-eq": [["key",1,"trigger kinds and ids (engine vocabulary)"]],
+    "lib/dm/last-save.ts#str-list": [["key",1,"the six save ability codes a requested save is read as (str to cha)"]],
     "lib/srd/trigger-table.ts#str-list": [["key",1,"trigger kinds (engine vocabulary)"]],
     "lib/content/subclass-choices.ts#[a-z]": [["key",3,"ODM's own pick ids (choice/option) and a choice id made from its label"]],
     "lib/content/subclass-choices.ts#toLowerCase": [["key",1,"a choice id made from its label"]],

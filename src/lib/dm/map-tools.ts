@@ -75,6 +75,7 @@ import type { DmTurn } from "@/lib/db/dm-turns";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { z } from "zod";
 import { zonesAfterMove } from "@/lib/dm/zone-triggers";
+import { recordMovesNear } from "@/lib/dm/move-near";
 import { zoneCoverBetween } from "@/lib/dm/zone-rules";
 import { longRangeTilesOf, pastNormalRange } from "@/lib/dm/attack-rules";
 import { dragLandings, enemyDrag } from "@/lib/dm/drag-move";
@@ -830,6 +831,8 @@ export function handleMoveToken(
       : [];
   // The spell areas walked (or pushed) into: their saves and damage (zone-triggers.ts).
   const zoneEffects = zonesAfterMove(campaign, encounter.id, resolved.token, origin, walkedPart(path, landing), { careful });
+  // Who it came near, on record for what answers a creature moving up (move-near.ts).
+  recordMovesNear(campaign.id, tokens, resolved.token, origin, walkedPart(path, landing));
   return {
     ok: true,
     name: resolved.token.name,
