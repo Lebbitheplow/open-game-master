@@ -18,6 +18,7 @@
 import subclassesJson from "@/lib/srd/subclasses.json";
 import authoredFeatsJson from "@/lib/srd/authored-feats.json";
 import { authoredFeatureDefs } from "@/lib/srd/authored-feature-defs";
+import { GENRE_A_FEATURE_DEFS } from "@/lib/srd/genre-a-feature-defs";
 import { tableFeat } from "@/lib/srd/feat-effects";
 import { textKey } from "@/lib/language/text-logic";
 import { choiceIn, isConditionNamed, isNamed } from "@/lib/srd/feature-names";
@@ -599,6 +600,9 @@ const AUTHORED_PARSED = new Map<string, { effects: FeatureEffect[]; guidance: st
   // (walking speed, an ability on initiative, a damage rider), typed by hand
   // in src/lib/srd/authored-effects-data*.ts where the phrasing does not
   // parse. A name the table already answers keeps its entry.
+  // The genre classes' own (src/lib/srd/genre-a-feature-defs.ts), each
+  // naming its class.
+  FEATURE_EFFECTS.push(...GENRE_A_FEATURE_DEFS);
   for (const def of authoredFeatureDefs()) {
     if (!FEATURE_EFFECTS.some((existing) => existing.match.some((term) => def.match.includes(term)))) {
       FEATURE_EFFECTS.push(def);
@@ -704,7 +708,9 @@ export function effectsFor(input: {
           (term) => term.length,
         ),
       );
-      if (length > bestLength) {
+      // At an equal match the entry written for the holder's class wins: the
+      // esper's Thought Shield is not the Great Old One's.
+      if (length > bestLength || (length === bestLength && def.classes && !best?.classes)) {
         best = def;
         bestLength = length;
       }

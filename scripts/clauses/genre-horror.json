@@ -163,11 +163,9 @@
       "frightened"
      ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap exorcist::Litany of Defense#0",
-    "observed": "d20s thrown for the wis save against frightened: the engine gives 1, the text 2",
-    "where": "src/lib/srd/trait-rules.ts (the save keys read by request_roll and forced saves) and src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no entry answers to the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts save_adv (against frightened), read by src/lib/srd/trait-rules.ts authoredSaveTraits",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: exorcist::Litany of Defense#0"
    },
    {
     "c": "allies within 10 ft",
@@ -296,11 +294,9 @@
       "frightened"
      ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap exorcist::Unshakeable Faith#0",
-    "observed": "frightened was laid on a character the text makes immune to it",
-    "where": "src/lib/srd/trait-rules.ts condition immunities, read by set_condition: no immunity for the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts immune_condition (frightened), read by src/lib/srd/trait-rules.ts authoredConditionImmunities",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: exorcist::Unshakeable Faith#0"
    },
    {
     "c": "advantage against charm",
@@ -311,11 +307,9 @@
       "charmed"
      ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap exorcist::Unshakeable Faith#1",
-    "observed": "d20s thrown for the wis save against charmed: the engine gives 1, the text 2",
-    "where": "src/lib/srd/trait-rules.ts (the save keys read by request_roll and forced saves) and src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no entry answers to the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts save_adv (against charmed), read by src/lib/srd/trait-rules.ts authoredSaveTraits",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: exorcist::Unshakeable Faith#1"
    }
   ]
  },
@@ -363,11 +357,9 @@
      "k": "resist",
      "type": "necrotic,psychic"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap exorcist::Sacred Bulwark#0",
-    "observed": "hit points lost to 10 necrotic: the engine gives 10, the text 5",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (parseFeatureEffects reads only subclasses.json and feats, never the genre catalogs) and src/lib/dm/pc-damage.ts",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts resist (necrotic, psychic), read by src/lib/dm/pc-defenses.ts authoredResistances",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: exorcist::Sacred Bulwark#0"
    }
   ]
  },
@@ -880,11 +872,9 @@
      "k": "no_surprise",
      "monster": "skeleton"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap occultist::Unblinking Study#0",
-    "observed": "the holder is on the list of the surprised",
-    "where": "the surprise list where a fight opens (src/lib/dm/encounter tools): the feature is not read",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts no_surprise (aberration, fiend, undead), read by src/lib/dm/surprise-guard.ts cannotBeSurprised",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: occultist::Unblinking Study#0"
    }
   ]
  },
@@ -900,11 +890,9 @@
      "k": "resist",
      "type": "psychic"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap occultist::Palimpsest Soul#0",
-    "observed": "hit points lost to 10 psychic: the engine gives 10, the text 5",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (parseFeatureEffects reads only subclasses.json and feats, never the genre catalogs) and src/lib/dm/pc-damage.ts",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts resist (psychic), read by src/lib/dm/pc-defenses.ts authoredResistances",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: occultist::Palimpsest Soul#0"
    },
    {
     "c": "your thoughts cannot be read unless you allow it",
@@ -1321,11 +1309,9 @@
     "run": {
      "k": "init_adv"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap survivor::Read the Room#0",
-    "observed": "the initiative roll's dice",
-    "where": "src/lib/dm/rolls.ts resolveRollExpression (initiative) and src/lib/dm/forced-save.ts rollExtrasFor: no advantage for the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts init_adv, read by src/lib/srd/authored-effects.ts authoredInitiativeAdvantage",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: survivor::Read the Room#0"
    },
    {
     "c": "on your first turn, learn the most immediate danger in the scene",
@@ -1403,11 +1389,9 @@
     "run": {
      "k": "no_surprise"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap survivor::Hypervigilant#0",
-    "observed": "the holder is on the list of the surprised",
-    "where": "the surprise list where a fight opens (src/lib/dm/encounter tools): the feature is not read",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts no_surprise, read by src/lib/dm/surprise-guard.ts cannotBeSurprised",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: survivor::Hypervigilant#0"
    }
   ]
  },
@@ -1758,11 +1742,9 @@
     "run": {
      "k": "magical"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap slayer::Silvered Strikes#0",
-    "observed": "damage to a creature that resists nonmagical weapons: the engine gives 4, the text 8",
-    "where": "src/lib/dm/pc-attack-damage.ts (the magical-weapon test against resistance): the feature is not read",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/genre-a-feature-defs.ts magical_attacks, read by src/lib/srd/feature-effects.ts combat riders",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: slayer::Silvered Strikes#0"
    }
   ]
  },
@@ -1841,11 +1823,9 @@
       "disease"
      ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap slayer::Iron Stomach#0",
-    "observed": "d20s thrown for the con save against poisoned: the engine gives 1, the text 2",
-    "where": "src/lib/srd/trait-rules.ts (the save keys read by request_roll and forced saves) and src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no entry answers to the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts save_adv (against poisoned, disease; a curse names no save of its own), read by src/lib/srd/trait-rules.ts authoredSaveTraits",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: slayer::Iron Stomach#0"
    }
   ]
  },
@@ -1918,11 +1898,9 @@
       "frightened"
      ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap slayer::Flinchless#0",
-    "observed": "d20s thrown for the wis save against frightened: the engine gives 1, the text 2",
-    "where": "src/lib/srd/trait-rules.ts (the save keys read by request_roll and forced saves) and src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no entry answers to the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts save_adv (against frightened), read by src/lib/srd/trait-rules.ts authoredSaveTraits",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: slayer::Flinchless#0"
    },
    {
     "c": "allies within 10 ft add +1d4 to fear saves",
@@ -2037,23 +2015,19 @@
      "k": "ac",
      "n": 1
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap slayer::Veteran's Guard#0",
-    "observed": "armor class (none worn): the engine gives 12, the text 13",
-    "where": "src/lib/srd/index.ts acBreakdownFor and src/lib/srd/feature-effects.ts ac_bonus: no entry for the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts ac (+1), read by src/lib/srd/index.ts authoredAcBonus",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: slayer::Veteran's Guard#0"
    },
    {
     "c": "opportunity attacks against you have disadvantage",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "an opportunity attack against the holder is not staged by this sweep (it needs the holder to leave a foe's reach on the holder's own turn through the move route)",
     "run": {
      "k": "hook"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap slayer::Veteran's Guard#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts oa_disadv, read by the opportunity attack's roll (src/lib/srd/authored-coverage.ts AUTHORED_READERS.oa_disadv)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: slayer::Veteran's Guard#1",
+    "stopped": "an opportunity attack against the holder is not staged by this sweep (it needs the holder to leave a foe's reach on the holder's own turn through the move route)"
    }
   ]
  },
@@ -2330,11 +2304,9 @@
       "frightened"
      ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap parapsychologist::Rational Mind#0",
-    "observed": "d20s thrown for the wis save against charmed: the engine gives 1, the text 2",
-    "where": "src/lib/srd/trait-rules.ts (the save keys read by request_roll and forced saves) and src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no entry answers to the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts save_adv (against charmed, frightened), read by src/lib/srd/trait-rules.ts authoredSaveTraits",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: parapsychologist::Rational Mind#0"
    }
   ]
  },
@@ -2462,11 +2434,9 @@
      "k": "resist",
      "type": "psychic"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap parapsychologist::Controlled Exposure#0",
-    "observed": "hit points lost to 10 psychic: the engine gives 10, the text 5",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (parseFeatureEffects reads only subclasses.json and feats, never the genre catalogs) and src/lib/dm/pc-damage.ts",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts resist (psychic), read by src/lib/dm/pc-defenses.ts authoredResistances",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: parapsychologist::Controlled Exposure#0"
    }
   ]
  },
@@ -2557,11 +2527,9 @@
       "frightened"
      ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap parapsychologist::Clinical Detachment#0",
-    "observed": "frightened was laid on a character the text makes immune to it",
-    "where": "src/lib/srd/trait-rules.ts condition immunities, read by set_condition: no immunity for the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts immune_condition (frightened; the instruments are in hand unless the GM says otherwise), read by src/lib/srd/trait-rules.ts authoredConditionImmunities",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: parapsychologist::Clinical Detachment#0"
    }
   ]
  },
@@ -2879,11 +2847,9 @@
      "k": "resist",
      "type": "necrotic"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap apostate::Scar Tissue#0",
-    "observed": "hit points lost to 10 necrotic: the engine gives 10, the text 5",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (parseFeatureEffects reads only subclasses.json and feats, never the genre catalogs) and src/lib/dm/pc-damage.ts",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts resist (necrotic, classes apostate), read by src/lib/dm/pc-defenses.ts authoredResistances",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: apostate::Scar Tissue#0"
    }
   ]
  },
@@ -2934,11 +2900,9 @@
      "k": "no_surprise",
      "monster": "cultist"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap apostate::Hunted Instincts#1",
-    "observed": "the holder is on the list of the surprised",
-    "where": "the surprise list where a fight opens (src/lib/dm/encounter tools): the feature is not read",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts no_surprise (cultist, cult fanatic), read by src/lib/dm/surprise-guard.ts cannotBeSurprised",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: apostate::Hunted Instincts#1"
    }
   ]
  },

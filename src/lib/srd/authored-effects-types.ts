@@ -38,6 +38,13 @@ export type Gate = {
   // The class that granted the feature has reached this level (a part of
   // the feature that arrives later: Spiritual Focus's d6 from 6th level).
   level?: number;
+  // The holder has fewer than half their hit points (the genre classes'
+  // "while below half HP": Zeal Through Pain, Desperate Strength).
+  belowHalf?: boolean;
+  // Not in heavy armor (Subdermal Plating), or in light or medium body armor
+  // (Combat Wetware's plating).
+  notHeavy?: boolean;
+  lightOrMedium?: boolean;
 };
 
 type Base = { gate?: Gate; note?: string };
@@ -53,7 +60,8 @@ export type AuthoredEffect = Base &
     // roll's `against` values, or magic), or every save of an ability.
     | { kind: "save_adv"; against?: SaveAgainstValue[]; magical?: true; ability?: Ability }
     | { kind: "save_prof"; abilities: Ability[] }
-    | { kind: "save_bonus"; amount: number }
+    // `ability`: saves of that ability only (Thought Shield: +2 on WIS saves).
+    | { kind: "save_bonus"; amount: number; ability?: Ability }
     // A save of one ability uses another ability's modifier when higher.
     | { kind: "save_swap"; save: Ability; use: Ability }
     | { kind: "ac"; amount: number }
@@ -65,7 +73,9 @@ export type AuthoredEffect = Base &
     | { kind: "init_ability"; ability: Ability }
     // Advantage on checks: named skills, or checks of an ability about one
     // circumstance (the roll's `about`).
-    | { kind: "check_adv"; skills?: string[]; abilities?: Ability[]; about?: CheckAbout }
+    // `creatures`: only a check about a creature of these types (the roll's
+    // `creature`), as Favored Enemy keys its checks.
+    | { kind: "check_adv"; skills?: string[]; abilities?: Ability[]; about?: CheckAbout; creatures?: string[] }
     // A critical hit against the holder is a normal hit.
     | { kind: "crit_immune" }
     // The holder's damage of these types ignores resistance.
@@ -255,6 +265,11 @@ export type AuthoredEffect = Base &
     // The steel defender grows sturdier: its armor class rises by this much
     // (Improved Defender, src/lib/dm/summon-defender.ts).
     | { kind: "defender_upgrade"; ac: number }
+    // The holder is never surprised while conscious: by any creature, or only
+    // when every creature lying in wait is of these types or these monsters
+    // (Unblinking Study: aberrations, fiends, undead; Hunted Instincts:
+    // cultists). Read by src/lib/dm/surprise-guard.ts.
+    | { kind: "no_surprise"; types?: string[]; slugs?: string[] }
   );
 
 export type NaturalWeapon = {

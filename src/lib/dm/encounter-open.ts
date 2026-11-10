@@ -1,4 +1,5 @@
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import { cannotBeSurprised } from "@/lib/dm/surprise-guard";
 import type { EncounterEnemy } from "@/lib/db/encounters";
 import { insertRoll } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
@@ -12,7 +13,6 @@ import { initiativeWaits, rollCharacterD20 } from "@/lib/dm/character-roll";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { dmRoll } from "@/lib/dm/roll-card";
-import { holdsFeat } from "@/lib/srd/feat-effects";
 
 // What happens as a fight opens (SRD 5.1, Combat Step by Step): who is
 // surprised, decided by the hiders' Stealth against each opponent's passive
@@ -20,8 +20,6 @@ import { holdsFeat } from "@/lib/srd/feat-effects";
 // for. Split from encounter-tools.ts, which calls it; it must not import
 // encounter-tools (the initiative totals go back through a callback).
 
-const hasAlert = (sheet: CharacterSheet) =>
-  holdsFeat(sheet, "Alert");
 
 // A creature's Stealth: its block's skill, else its Dexterity.
 function enemyStealth(enemy: EncounterEnemy): number {
@@ -55,7 +53,7 @@ export function decideAmbush(
     const lowest = Math.min(...stealth);
     const surprised = sheets.filter((stale) => {
       const sheet = getSheetById(stale.id) ?? stale;
-      if (hasAlert(sheet) && sheet.currentHp > 0) {
+      if (cannotBeSurprised(sheet, enemies)) {
         return false;
       }
       return lowest >= passiveScore(campaign, sheet, "perception");

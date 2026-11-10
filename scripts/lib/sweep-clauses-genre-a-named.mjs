@@ -48,9 +48,19 @@ export const NAMED = {
     if (run.hp) t.world.patch(hero.id, { currentHp: run.hp });
     flush(t);
     t.world.dice(10, 17, 3);
-    const out = must(await t.world.invoke("request_roll", { characterId: hero.id, kind: "skill_check", skill: run.skill, dc: 10, reason: "a probe" }), "the check");
+    // A check about a creature (Ghost in the Feed: a construct) names it, as
+    // the GM's call does; the same check about another creature is the control.
+    const about = run.creature ? { creature: run.creature } : {};
+    const out = must(await t.world.invoke("request_roll", { characterId: hero.id, kind: "skill_check", skill: run.skill, dc: 10, reason: "a probe", ...about }), "the check");
     t.world.clearDice();
     const log = t.world.diceLog();
+    if (run.creature && run.want === "adv") {
+      flush(t);
+      t.world.dice(10, 17, 3);
+      must(await t.world.invoke("request_roll", { characterId: hero.id, kind: "skill_check", skill: run.skill, dc: 10, reason: "a probe", creature: "humanoid" }), "the control check");
+      t.world.clearDice();
+      eq(t.world.diceLog().filter((die) => die.sides === 20).length, 1, `d20s thrown for a ${run.skill} check about a humanoid`);
+    }
     const base = 10 + mod(SKILL_ABILITY[run.skill]) + prof(level);
     if (run.want === "adv") eq(log.filter((die) => die.sides === 20).length, 2, `d20s thrown for the ${run.skill} check`);
     if (run.want === "d4") eq(log.filter((die) => die.sides === 4).length, 1, `d4s added to the ${run.skill} check`);

@@ -27,7 +27,8 @@ import { AUTHORED_DATA_A2 } from "@/lib/srd/authored-effects-data-b";
 import { AUTHORED_DATA_B } from "@/lib/srd/authored-effects-data2";
 import { AUTHORED_DATA_B2 } from "@/lib/srd/authored-effects-data3";
 import { AUTHORED_DATA_C } from "@/lib/srd/authored-effects-data4";
-import { GENRE_AUTHORED } from "@/lib/srd/authored-effects-genre";
+import { GENRE_AUTHORED, type GenreRow } from "@/lib/srd/authored-effects-genre";
+import genreFeatureNames from "@/lib/classes/feature-names.json";
 import type {
   Ability,
   AuthoredEffect,
@@ -81,6 +82,8 @@ export type AuthoredSheet = {
   conditionMeta?: unknown;
   equipment?: Array<{ name: string; equipped?: boolean; gear?: { armor?: { category?: string } } }>;
   concentratingOn?: string | null;
+  currentHp?: number;
+  maxHp?: number;
 };
 
 export type HeldAuthored = Row & { choice: string | null; level: number; name: string };
@@ -142,7 +145,10 @@ export function heldAuthored(sheet: AuthoredSheet): HeldAuthored[] {
     // A class feature its own class's table does not carry: borrowed from
     // another class's subclass, it runs as there, by the level of the class
     // that holds it.
-    if (!found && feature.classId && feature.source === "class") {
+    // A genre class's feature is its own catalog's: the exorcist's Voice of
+    // Authority is not the Order Domain's, and borrowed it dealt a reaction
+    // attack its text never grants (scripts/lib/sweep-clauses-genre-a-borrowed.mjs).
+    if (!found && feature.classId && feature.source === "class" && !GENRE_CLASS_IDS.has(textKey(feature.classId))) {
       const exact = borrowedRow(full);
       const row = exact ?? (chosen ? borrowedRow(textKey(chosen[1])) : undefined);
       if (row) {
@@ -156,8 +162,8 @@ export function heldAuthored(sheet: AuthoredSheet): HeldAuthored[] {
       }
     }
     // A genre class's feature, found by its name (authored-effects-genre.ts).
-    const genre = found ? undefined : GENRE_BY_NAME.get(full);
-    if (genre && (!genre.classes || genre.classes.some((id) => candidates.includes(textKey(id))))) {
+    const genre = found ? undefined : genreRowFor(full, candidates);
+    if (genre) {
       const classId = candidates[0] ?? "";
       out.push({ key: `genre::${full}`, classId, feature: genre.feature, entry: genre.entry, name: feature.name, choice: null, level: classLevel(sheet, classId) });
     }
@@ -178,7 +184,21 @@ export function heldAuthored(sheet: AuthoredSheet): HeldAuthored[] {
   return out;
 }
 
-const GENRE_BY_NAME = new Map(GENRE_AUTHORED.map((row) => [textKey(row.feature), row]));
+// Several genre classes may share a feature's name and mean different things
+// by it (the dirgesinger's and the apostate's The Rite Completed): a row that
+// names the holder's class wins, then a row that names none.
+const GENRE_BY_NAME = new Map<string, GenreRow[]>();
+for (const row of GENRE_AUTHORED) {
+  const name = textKey(row.feature);
+  GENRE_BY_NAME.set(name, [...(GENRE_BY_NAME.get(name) ?? []), row]);
+}
+
+function genreRowFor(name: string, classIds: string[]): GenreRow | undefined {
+  const rows = GENRE_BY_NAME.get(name) ?? [];
+  return rows.find((row) => row.classes?.some((id) => classIds.includes(textKey(id)))) ?? rows.find((row) => !row.classes);
+}
+
+const GENRE_CLASS_IDS = new Set(Object.keys((genreFeatureNames as { classes: Record<string, unknown> }).classes).map(textKey));
 
 export function hasCondition(sheet: AuthoredSheet, name: string): boolean {
   const wanted = textKey(name);
@@ -236,6 +256,15 @@ export function gateHolds(gate: Gate | undefined, sheet: AuthoredSheet, held: He
     return false;
   }
   if (gate.level && held.level < gate.level) {
+    return false;
+  }
+  if (gate.belowHalf && !((sheet.currentHp ?? 0) < (sheet.maxHp ?? 0) / 2)) {
+    return false;
+  }
+  if (gate.notHeavy && wearsHeavy(sheet)) {
+    return false;
+  }
+  if (gate.lightOrMedium && !(wearsBodyArmor(sheet) && !wearsHeavy(sheet))) {
     return false;
   }
   if (gate.choiceOf) {
@@ -348,7 +377,7 @@ export function authoredCheckTraits(sheet: AuthoredSheet): Array<RollKey & { not
   return activeAuthored(sheet, "check_adv").flatMap(({ effect, held }) => [
     ...(effect.skills ? [{ roll: "check" as const, skills: effect.skills }] : []),
     ...(effect.abilities ? [{ roll: "check" as const, abilities: effect.abilities, ...(effect.about ? { about: effect.about } : {}) }] : []),
-  ].map((key) => ({ ...key, note: `${held.feature}: advantage` })));
+  ].map((key) => ({ ...key, ...(effect.creatures ? { creatures: effect.creatures } : {}), note: `${held.feature}: advantage` })));
 }
 
 export function authoredSaveProficiencies(sheet: AuthoredSheet): Ability[] {
@@ -361,7 +390,9 @@ export function authoredSaveProficiencies(sheet: AuthoredSheet): Ability[] {
 export function authoredSaveModifier(sheet: AuthoredSheet, ability: Ability, mods: Record<string, number>): number {
   let total = 0;
   for (const { effect } of activeAuthored(sheet, "save_bonus")) {
-    total += effect.amount;
+    if (!effect.ability || effect.ability === ability) {
+      total += effect.amount;
+    }
   }
   for (const { effect } of activeAuthored(sheet, "save_swap")) {
     if (effect.save === ability) {
@@ -420,7 +451,7 @@ const HELD_CHECKS: Array<{ condition: string; skills: string[]; label: string }>
 
 export function authoredRollRiders(
   sheet: AuthoredSheet,
-  input: { kind: "check" | "save" | "initiative"; ability?: string; skill?: string; about?: CheckAbout },
+  input: { kind: "check" | "save" | "initiative"; ability?: string; skill?: string; about?: CheckAbout; creature?: string },
 ): { advantage: string[]; spent: string[] } {
   const advantage: string[] = [];
   const spent: string[] = [];
@@ -441,7 +472,7 @@ export function authoredRollRiders(
         advantage.push(`${held.label}: advantage`);
       }
     }
-    const roll = { roll: "check" as const, skill, ability: input.ability, about: input.about };
+    const roll = { roll: "check" as const, skill, ability: input.ability, about: input.about, creature: input.creature };
     for (const note of new Set(authoredCheckTraits(sheet).filter((key) => keyFits(key, roll)).map((key) => key.note))) {
       advantage.push(note);
     }

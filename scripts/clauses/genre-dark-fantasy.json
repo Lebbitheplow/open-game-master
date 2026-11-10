@@ -80,11 +80,9 @@
       "frightened"
      ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap witch_hunter::Grim Resolve#0",
-    "observed": "d20s thrown for the wis save against frightened: the engine gives 1, the text 2",
-    "where": "src/lib/srd/trait-rules.ts (the save keys read by request_roll and forced saves) and src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no entry answers to the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts save_adv (against frightened), read by src/lib/srd/trait-rules.ts authoredSaveTraits",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: witch_hunter::Grim Resolve#0"
    }
   ]
  },
@@ -218,11 +216,9 @@
       "charmed"
      ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap witch_hunter::Iron Will#0",
-    "observed": "d20s thrown for the wis save against charmed: the engine gives 1, the text 2",
-    "where": "src/lib/srd/trait-rules.ts (the save keys read by request_roll and forced saves) and src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no entry answers to the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts save_adv (against charmed; possession is a charm the GM names), read by src/lib/srd/trait-rules.ts authoredSaveTraits",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: witch_hunter::Iron Will#0"
    },
    {
     "c": "allies within 10 ft add +1d4 against fear",
@@ -620,11 +616,9 @@
      "k": "resist",
      "type": "poison"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap plague_doctor::Miasma Ward#0",
-    "observed": "hit points lost to 10 poison: the engine gives 10, the text 5",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (parseFeatureEffects reads only subclasses.json and feats, never the genre catalogs) and src/lib/dm/pc-damage.ts",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts resist (poison), read by src/lib/dm/pc-defenses.ts authoredResistances",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Miasma Ward#0"
    },
    {
     "c": "advantage against disease",
@@ -635,11 +629,9 @@
       "disease"
      ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap plague_doctor::Miasma Ward#1",
-    "observed": "d20s thrown for the con save against disease: the engine gives 1, the text 2",
-    "where": "src/lib/srd/trait-rules.ts (the save keys read by request_roll and forced saves) and src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no entry answers to the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts save_adv (against disease), read by src/lib/srd/trait-rules.ts authoredSaveTraits",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Miasma Ward#1"
    },
    {
     "c": "allies within 5 ft",
@@ -783,10 +775,7 @@
     "c": "Immune to inhaled poisons and gases",
     "is": "gap",
     "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
-    "run": {
-     "k": "hook"
-    },
+    "stopped": "no engine record says a poison or gas is inhaled (an apply_damage, a hazard and a condition carry no route), so the immunity cannot be told apart from poison immunity; the hook probe that ran here passes once any row answers the feature (the mask's fear advantage) and says nothing of this clause",
     "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap plague_doctor::Beaked Mask#0 (a table check only: no engine table answers to the feature)",
     "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
     "sev": "low"
@@ -800,11 +789,9 @@
       "frightened"
      ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap plague_doctor::Beaked Mask#1",
-    "observed": "d20s thrown for the wis save against frightened: the engine gives 1, the text 2",
-    "where": "src/lib/srd/trait-rules.ts (the save keys read by request_roll and forced saves) and src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no entry answers to the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts save_adv (against frightened; the mask is worn unless the GM says otherwise), read by src/lib/srd/trait-rules.ts authoredSaveTraits",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Beaked Mask#1"
    }
   ]
  },
@@ -930,14 +917,13 @@
     "run": {
      "k": "cond_immune",
      "conditions": [
-      "poisoned"
+      "poisoned",
+      "diseased"
      ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap plague_doctor::Iron Constitution#1",
-    "observed": "poisoned was laid on a character the text makes immune to it",
-    "where": "src/lib/srd/trait-rules.ts condition immunities, read by set_condition: no immunity for the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts immune_condition (poisoned, diseased), read by src/lib/srd/trait-rules.ts authoredConditionImmunities",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Iron Constitution#1"
    }
   ]
  },
@@ -951,10 +937,7 @@
     "c": "Miasma Ward radius grows to 15 ft",
     "is": "gap",
     "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
+    "stopped": "Miasma Ward's ally reach (plague_doctor::Miasma Ward#2) is itself a gap: an aura that lends a fixed resistance to allies in range has no reader (authored aura_resist lends spell damage or a type the holder's condition names), so its radius cannot be read; the hook probe passes on the mantle's own necrotic resistance",
     "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap plague_doctor::Miasma Mantle#0 (a table check only: no engine table answers to the feature)",
     "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
     "sev": "low"
@@ -965,11 +948,9 @@
      "k": "resist",
      "type": "necrotic"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap plague_doctor::Miasma Mantle#1",
-    "observed": "hit points lost to 10 necrotic: the engine gives 10, the text 5",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (parseFeatureEffects reads only subclasses.json and feats, never the genre catalogs) and src/lib/dm/pc-damage.ts",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts resist (necrotic), read by src/lib/dm/pc-defenses.ts authoredResistances",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Miasma Mantle#1"
    }
   ]
  },
@@ -1371,11 +1352,9 @@
      "k": "resist",
      "type": "necrotic"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap grave_knight::Knight of Dust#0",
-    "observed": "hit points lost to 10 necrotic: the engine gives 10, the text 5",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (parseFeatureEffects reads only subclasses.json and feats, never the genre catalogs) and src/lib/dm/pc-damage.ts",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts resist (necrotic), read by src/lib/dm/pc-defenses.ts authoredResistances",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Knight of Dust#0"
    },
    {
     "c": "you need half the usual food and sleep",
@@ -1535,20 +1514,15 @@
       "charmed"
      ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap grave_knight::Wight-Iron Will#0",
-    "observed": "frightened was laid on a character the text makes immune to it",
-    "where": "src/lib/srd/trait-rules.ts condition immunities, read by set_condition: no immunity for the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts immune_condition (frightened, charmed), read by src/lib/srd/trait-rules.ts authoredConditionImmunities",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Wight-Iron Will#0"
    },
    {
     "c": "advantage against effects that would age, drain, or possess you",
     "is": "gap",
     "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
-    "run": {
-     "k": "hook"
-    },
+    "stopped": "no engine record marks an effect as aging, draining or possessing (a save's against names conditions and damage types only, src/lib/dm/roll-about.ts SAVE_AGAINST), so the advantage cannot be keyed; the hook probe passes on the feature's immunities",
     "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap grave_knight::Wight-Iron Will#1 (a table check only: no engine table answers to the feature)",
     "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
     "sev": "low"
@@ -1975,11 +1949,9 @@
       "frightened"
      ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap penitent::Flagellant's Trance#0",
-    "observed": "d20s thrown for the wis save against frightened: the engine gives 1, the text 2",
-    "where": "src/lib/srd/trait-rules.ts (the save keys read by request_roll and forced saves) and src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no entry answers to the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts save_adv (against frightened; pain and exhaustion effects name no save of their own), read by src/lib/srd/trait-rules.ts authoredSaveTraits",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: penitent::Flagellant's Trance#0"
    }
   ]
  },
@@ -2027,11 +1999,9 @@
      "k": "resist",
      "type": "slashing"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap penitent::Scarred Hide#0",
-    "observed": "hit points lost to 10 slashing: the engine gives 10, the text 5",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (parseFeatureEffects reads only subclasses.json and feats, never the genre catalogs) and src/lib/dm/pc-damage.ts",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts resist (slashing, nonmagical), read by src/lib/dm/pc-defenses.ts authoredResistances",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: penitent::Scarred Hide#0"
    }
   ]
  },
@@ -2398,11 +2368,9 @@
      "k": "resist",
      "type": "fire"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap penitent::Robes of Soot#0",
-    "observed": "hit points lost to 10 fire: the engine gives 10, the text 5",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (parseFeatureEffects reads only subclasses.json and feats, never the genre catalogs) and src/lib/dm/pc-damage.ts",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts resist (fire), read by src/lib/dm/pc-defenses.ts authoredResistances",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: penitent::Robes of Soot#0"
    },
    {
     "c": "when a creature hits you in melee, it takes your WIS mod in fire damage",
@@ -2410,11 +2378,9 @@
      "k": "club",
      "thorns": "wis"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap penitent::Robes of Soot#1",
-    "observed": "damage the foe took for landing a melee hit: the engine gives 0, the text 3",
-    "where": "src/lib/dm/enemy-attack damage against a character: no row reduces or answers the hit for the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts retaliate (WIS fire, melee), read by the authored retaliate hook (src/lib/srd/authored-coverage.ts AUTHORED_READERS.retaliate)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: penitent::Robes of Soot#1"
    }
   ]
  },
@@ -2646,11 +2612,9 @@
       "necrotic"
      ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap dirgesinger::Songs of the Barrow#0",
-    "observed": "d20s thrown for the wis save against frightened: the engine gives 1, the text 2",
-    "where": "src/lib/srd/trait-rules.ts (the save keys read by request_roll and forced saves) and src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no entry answers to the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts save_adv (against frightened, necrotic), read by src/lib/srd/trait-rules.ts authoredSaveTraits",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: dirgesinger::Songs of the Barrow#0"
    },
    {
     "c": "you sense undead within 60 ft",
@@ -3157,15 +3121,16 @@
   "clauses": [
    {
     "c": "Immune to disease",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
     "run": {
-     "k": "hook"
+     "k": "cond_immune",
+     "conditions": [
+      "diseased"
+     ]
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap vermin_lord::Plaguebearer's Immunity#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts immune_condition (diseased), read by src/lib/srd/trait-rules.ts authoredConditionImmunities",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::Plaguebearer's Immunity#0",
+    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages"
    },
    {
     "c": "resistance to poison damage",
@@ -3173,11 +3138,9 @@
      "k": "resist",
      "type": "poison"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap vermin_lord::Plaguebearer's Immunity#1",
-    "observed": "hit points lost to 10 poison: the engine gives 10, the text 5",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (parseFeatureEffects reads only subclasses.json and feats, never the genre catalogs) and src/lib/dm/pc-damage.ts",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts resist (poison), read by src/lib/dm/pc-defenses.ts authoredResistances",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::Plaguebearer's Immunity#1"
    }
   ]
  },

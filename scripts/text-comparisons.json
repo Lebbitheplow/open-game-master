@@ -2297,6 +2297,7 @@
     "lib/srd/authored-coverage.ts#re-word": [["english-source",2,"an audit pattern over ODM's authored rules lines (bundled data)"]],
     "lib/srd/authored-coverage.ts#toLowerCase": [["key",4,"authored-table keys"]],
     "lib/srd/authored-effects-data-b.ts#str-list": [["english-source",4,"ODM's authored effect rows (bundled data)"]],
+    "lib/srd/authored-effects-genre-a.ts#str-list": [["english-source",5,"ODM's authored effect rows (bundled data)"]],
     "lib/srd/authored-effects-channel.ts#str-list": [["english-source",3,"ODM's authored effect rows (bundled data)"]],
     "lib/srd/authored-effects-data.ts#str-key": [["english-source",1,"ODM's authored effect rows (bundled data)"]],
     "lib/srd/authored-effects-data.ts#str-list": [["english-source",11,"ODM's authored effect rows (bundled data)"]],

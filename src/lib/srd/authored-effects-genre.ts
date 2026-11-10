@@ -11,6 +11,7 @@
 // action, Target Lock was a sentence, Feedback Loop spent the reaction and
 // dealt nothing.
 import type { AuthoredEntry } from "@/lib/srd/authored-effects-types";
+import { GENRE_A_AUTHORED } from "@/lib/srd/authored-effects-genre-a";
 
 export type GenreRow = { feature: string; classes?: string[]; entry: AuthoredEntry };
 
@@ -90,4 +91,5 @@ export const GENRE_AUTHORED: GenreRow[] = [
   { feature: "Duelist's Flourish", entry: { subclass: "genre", reactions: [{ name: "Duelist's Flourish", does: { kind: "attack", rangeFt: 5 } }] } },
   { feature: "Intercept Protocol", entry: { subclass: "genre", reactions: [{ name: "Intercept Protocol", does: { kind: "take_for_ally", rangeFt: 5 } }] } },
   { feature: "Blood Bond", entry: { subclass: "genre", reactions: [{ name: "Blood Bond", does: { kind: "take_for_ally", rangeFt: 30, share: "split" } }] } },
+  ...GENRE_A_AUTHORED,
 ];

@@ -190,7 +190,7 @@ export function rollFeatureRiders(
   // Authored subclass features on checks (Steady Eye, a spent Elegant
   // Maneuver or Vigilant Blessing): src/lib/srd/authored-effects.ts.
   const authoredRolls = sheet && effectKind
-    ? authoredRollRiders(sheet, { kind: effectKind, ability: derivationAbility, skill: skillId, about: named(args.about) })
+    ? authoredRollRiders(sheet, { kind: effectKind, ability: derivationAbility, skill: skillId, about: named(args.about), creature: named(args.creature) })
     : { advantage: [], spent: [] };
   // A held Bardic Inspiration die rides along on the next d20 the character
   // rolls and is spent by doing so; the caller clears the condition.

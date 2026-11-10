@@ -103,13 +103,12 @@
     "run": {
      "k": "check",
      "skill": "stealth",
-     "want": "adv"
+     "want": "adv",
+     "creature": "construct"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap netrunner::Ghost in the Feed#0",
-    "where": "src/lib/srd/trait-rules.ts check keys (src/lib/dm/roll-about.ts CHECK_ABOUT has no circumstance for it) and src/lib/dm/roll-riders.ts",
-    "sev": "medium",
-    "observed": "d20s thrown for the stealth check"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts check_adv (stealth, creatures construct), read by src/lib/dm/roll-feature-riders.ts authoredRollRiders",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Ghost in the Feed#0"
    }
   ]
  },
@@ -255,11 +254,9 @@
      "ability": "int,wis,cha",
      "magical": true
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap netrunner::Neural Firewall#0",
-    "where": "src/lib/srd/trait-rules.ts (the save keys read by request_roll and forced saves) and src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no entry answers to the feature",
-    "sev": "medium",
-    "observed": "d20s thrown for the int,wis,cha save against a spell"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts save_adv (INT, WIS, CHA, magical), read by src/lib/srd/trait-rules.ts authoredSaveTraits",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Neural Firewall#0"
    }
   ]
  },
@@ -462,16 +459,18 @@
      "k": "init",
      "n": 2
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Chrome Reflexes#0",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no initiative_bonus for the feature (parseFeatureEffects would read \"+2 to initiative\" and is never given the genre text)",
-    "sev": "medium",
-    "observed": "initiative on a 10"
+    "is": "held",
+    "by": "src/lib/srd/genre-a-feature-defs.ts initiative_bonus (+2), read by src/lib/srd/feature-effects.ts effectsFor",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Chrome Reflexes#0"
    },
    {
     "c": "cannot be surprised while conscious",
-    "is": "gap",
-    "read_only": true,
+    "run": {
+     "k": "no_surprise"
+    },
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts no_surprise, read by src/lib/dm/surprise-guard.ts cannotBeSurprised (start_encounter and an ambush)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Chrome Reflexes#1",
     "stopped": "the probe's setup broke: error: Error: the staged surprise caught nobody |     at no_surprise (file:///home/lebbi/.cache/odm-sweep/scripts/lib/sweep-clauses-genre-a-probes.mjs:223:56) |     at async play (file:///home/lebbi/."
    }
   ]
@@ -607,11 +606,9 @@
      "k": "ac",
      "n": 1
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Subdermal Plating#0",
-    "where": "src/lib/srd/index.ts acBreakdownFor and src/lib/srd/feature-effects.ts ac_bonus: no entry for the feature",
-    "sev": "medium",
-    "observed": "armor class (none worn)"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts ac (gate notHeavy), read by src/lib/srd/index.ts authoredAcBonus",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Subdermal Plating#0"
    }
   ]
  },
@@ -706,11 +703,9 @@
      "k": "init",
      "n": 4
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Reflex Booster II#0",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no initiative_bonus for the feature (parseFeatureEffects would read \"+2 to initiative\" and is never given the genre text)",
-    "sev": "medium",
-    "observed": "initiative on a 10"
+    "is": "held",
+    "by": "src/lib/srd/genre-a-feature-defs.ts initiative_bonus (+2 on Chrome Reflexes' +2), read by src/lib/srd/feature-effects.ts effectsFor",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Reflex Booster II#0"
    }
   ]
  },
@@ -801,11 +796,9 @@
      "k": "save_adv",
      "ability": "con"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Chrome Constitution#0",
-    "where": "src/lib/srd/trait-rules.ts (the save keys read by request_roll and forced saves) and src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no entry answers to the feature",
-    "sev": "medium",
-    "observed": "d20s thrown for the con save"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts save_adv (CON), read by src/lib/srd/trait-rules.ts authoredSaveTraits",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Chrome Constitution#0"
    },
    {
     "c": "resistance to poison damage",
@@ -813,11 +806,9 @@
      "k": "resist",
      "type": "poison"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Chrome Constitution#1",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (parseFeatureEffects reads only subclasses.json and feats, never the genre catalogs) and src/lib/dm/pc-damage.ts",
-    "sev": "medium",
-    "observed": "hit points lost to 10 poison"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts resist (poison), read by src/lib/dm/pc-defenses.ts authoredResistances",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Chrome Constitution#1"
    }
   ]
  },
@@ -832,11 +823,9 @@
     "run": {
      "k": "crit"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Killing Instinct#0",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no crit_range for the feature",
-    "sev": "medium",
-    "observed": "a 19 on the die is a critical hit"
+    "is": "held",
+    "by": "src/lib/srd/genre-a-feature-defs.ts crit_range (19), read by src/lib/srd/feature-effects.ts combat riders",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Killing Instinct#0"
    }
   ]
  },
@@ -2214,11 +2203,9 @@
      "ability": "wis",
      "n": 2
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap esper::Thought Shield#1",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no save bonus for the feature",
-    "sev": "medium",
-    "observed": "the wis save on a 10"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts save_bonus (+2, WIS), read by src/lib/srd/index.ts authoredSaveModifier",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: esper::Thought Shield#1"
    }
   ]
  },
@@ -2472,11 +2459,9 @@
      "k": "resist",
      "type": "psychic"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap esper::Mind Fortress#0",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (parseFeatureEffects reads only subclasses.json and feats, never the genre catalogs) and src/lib/dm/pc-damage.ts",
-    "sev": "medium",
-    "observed": "10 psychic is cut without Mind Fortress too: something else on the sheet answers, not this feature"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts resist (psychic), read by src/lib/dm/pc-defenses.ts authoredResistances",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: esper::Mind Fortress#0"
    },
    {
     "c": "advantage against charm and fear",
@@ -2488,11 +2473,9 @@
       "frightened"
      ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap esper::Mind Fortress#1",
-    "where": "src/lib/srd/trait-rules.ts (the save keys read by request_roll and forced saves) and src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no entry answers to the feature",
-    "sev": "medium",
-    "observed": "d20s thrown for the wis save against charmed"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts save_adv (against charmed, frightened), read by src/lib/srd/trait-rules.ts authoredSaveTraits",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: esper::Mind Fortress#1"
    }
   ]
  },

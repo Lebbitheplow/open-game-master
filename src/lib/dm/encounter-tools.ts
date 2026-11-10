@@ -1,4 +1,5 @@
 import { dominationOrderOf, otherSide } from "@/lib/dm/combat-sides-logic";
+import { cannotBeSurprised } from "@/lib/dm/surprise-guard";
 import { resolveCombatant, sheetsOnSide, sideOf, standingOn } from "@/lib/dm/combatant";
 import { attacksLeft, budgetApplies, type TurnBudget } from "@/lib/dm/action-budget";
 import { resolveTargetFoe, sheetFoeView } from "@/lib/dm/sheet-foe";
@@ -158,7 +159,6 @@ import { ENEMY_TURNS_CUE, enemiesDue, enemiesOwedTurn, holdForEnemies, noteLostT
 import { closeHitsAtTurnEnd } from "@/lib/dm/last-hit";
 import { approachForCompanion } from "@/lib/dm/companion-approach";
 import { badArguments, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
-import { holdsFeat } from "@/lib/srd/feat-effects";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
 import { swallowTurnEnd } from "@/lib/dm/swallow";
 import { beamTurnEnd } from "@/lib/dm/witch-bolt";
@@ -216,8 +216,6 @@ function crLabel(cr: number): string {
 
 // ---- start_encounter ----
 
-const hasAlert = (sheet: CharacterSheet) =>
-  holdsFeat(sheet, "Alert");
 
 // Who is not at this fight. A weak caller's one string ("Alice" or "Alice,
 // Bob") counts as the list; any other shape is refused, because dropping it
@@ -458,7 +456,7 @@ function handleStartEncounter(
   } else if (args.surprised === "party") {
     // Alert: a character with the feat cannot be surprised while conscious.
     encounter.surprisedIds = sheets
-      .filter((sheet) => !(hasAlert(sheet) && sheet.currentHp > 0))
+      .filter((sheet) => !cannotBeSurprised(sheet, enemies))
       .map((sheet) => sheet.id);
   } else if (args.ambush) {
     // One lying knocked out lies in wait for nobody.
