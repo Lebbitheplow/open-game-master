@@ -306,6 +306,10 @@ export type ResourceDef = {
   // level or higher pays for one instead, the lowest such slot unspent
   // ("or by expending a spell slot of 3rd level or higher").
   fallbackSlot?: { minLevel: number };
+  // Used at 0 hit points: the moment it answers happens there (Defy Death
+  // on a death save the warlock succeeds on, "when you succeed on a death
+  // saving throw"). Anything else at 0 is refused as unconscious.
+  atZeroHp?: boolean;
   // Only while the holder has fewer than half their hit points (Unearthly
   // Recovery).
   requires?: "below_half";
@@ -748,6 +752,7 @@ type SubclassResourceRow = {
   action?: ResourceAction;
   fallbackPool?: { id: string; amount: number };
   fallbackSlot?: { minLevel: number };
+  atZeroHp?: boolean;
   requires?: "below_half";
   perUse?: "half_level" | "cha";
   recovers?: string;
@@ -790,6 +795,7 @@ const SUBCLASS_RESOURCE_DEFS: ResourceDef[] = (
   ...(row.action ? { action: row.action } : {}),
   ...(row.fallbackPool ? { fallbackPool: row.fallbackPool } : {}),
   ...(row.fallbackSlot ? { fallbackSlot: row.fallbackSlot } : {}),
+  ...(row.atZeroHp ? { atZeroHp: true } : {}),
   ...(row.requires ? { requires: row.requires } : {}),
   ...(row.perUse ? { perUse: row.perUse } : {}),
   ...(row.recovers ? { recovers: row.recovers } : {}),

@@ -10,6 +10,12 @@ import type { AuthoredEntry } from "@/lib/srd/authored-effects-types";
 const LUNAR_PHASES = ["Full Moon", "New Moon", "Crescent Moon"];
 
 export const AUTHORED_DATA_W2_ARCANE: Record<string, AuthoredEntry> = {
+  // The Bladesong's "advantage on Acrobatics" while it runs (the counter
+  // sub_bladesong lays the condition; its AC and speed are condition-effects.ts's).
+  "wizard::Bladesong": {
+    subclass: "Bladesinging",
+    effects: [{ kind: "check_adv", skills: ["acrobatics"], gate: { condition: "bladesong" } }],
+  },
   // "While your spellbook is on your person you have advantage on
   // Intelligence (Arcana) checks". The reaction that spends the book is the
   // counter's (src/lib/dm/reaction-counters.ts); a wizard's book is taken to

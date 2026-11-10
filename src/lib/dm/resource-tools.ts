@@ -377,7 +377,9 @@ export function computeUseResource(
   if (sheet.deathSaves?.dead) {
     return { error: `${sheet.name} is dead and cannot use ${def.displayName}.`, refused: "rules" };
   }
-  const standing = Boolean(reacting?.beforeDrop) && def.action === "reaction";
+  // A reaction judged before the drop, or a feature used at 0 hit points by
+  // its own text (ResourceDef.atZeroHp: Defy Death after a death save).
+  const standing = (Boolean(reacting?.beforeDrop) && def.action === "reaction") || Boolean(def.atZeroHp);
   if (sheet.currentHp <= 0 && !standing) {
     return {
       error: `${sheet.name} is at 0 HP and cannot use ${def.displayName}; they are unconscious and take no actions.`,

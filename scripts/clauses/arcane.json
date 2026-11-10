@@ -955,8 +955,9 @@
    },
    {
     "c": "advantage on Acrobatics",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: bladesong-acrobatics"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: bladesong-acrobatics",
+    "by": "src/lib/srd/authored-effects-w2-arcane.ts wizard::Bladesong check_adv acrobatics (gate: the bladesong condition)"
    },
    {
     "c": "and a concentration-save bonus",

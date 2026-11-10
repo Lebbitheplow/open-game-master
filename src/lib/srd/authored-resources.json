@@ -958,7 +958,9 @@
    "fx": {
     "kind": "heal_self",
     "dice": "1d8+con"
-   }
+   },
+   "action": "none",
+   "atZeroHp": true
   },
   {
    "id": "sub_indestructible_life",
