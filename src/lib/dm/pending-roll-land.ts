@@ -8,6 +8,7 @@ import {
   listPendingForTurn,
   resolvePendingRoll,
   getPendingRoll,
+  setPendingAttack,
   setPendingCombatNote,
   type PendingRoll,
 } from "@/lib/db/dm-turns";
@@ -18,7 +19,7 @@ import { rollsCanWait } from "@/lib/dm/after-roll";
 import { runQueuedParts } from "@/lib/dm/pc-attack-parts";
 import { moteAfterRoll } from "@/lib/dm/authored-mote";
 import type { RollResult } from "@/lib/dice";
-import { recordInitiativeRoll, settleTurn, turnHolder } from "@/lib/dm/encounter-tools";
+import { endTurnOnLanding, recordInitiativeRoll, settleTurn, turnHolder } from "@/lib/dm/encounter-tools";
 import { applyInitiativeRefills } from "@/lib/dm/feature-hooks";
 import { applyPendingDamageRoll } from "@/lib/dm/enemy-damage";
 import { resolvePendingPcAttack } from "@/lib/dm/pc-attack";
@@ -60,6 +61,32 @@ function landHeld(campaign: Campaign, pending: PendingRoll, outcome: RollResult,
     postPersonsRecord(campaign, after, record, { rollIds: roll ? [roll.id] : [] });
   }
   return roll;
+}
+
+// An attack sent with endTurn ("and end the turn", the console's check box)
+// on dice entered at the table: the ask rides each of its rolls, and the turn
+// ends once the last of them has landed, as the server's dice end it. A roll
+// the landing left open (the damage of a hit, a queued part) takes the ask
+// over; a turn already over (the pointer moved on) is not ended again.
+function carryEndTurn(campaign: Campaign, pending: PendingRoll) {
+  const record = pending.attack;
+  if (!record?.endTurn || !pending.characterId) {
+    return;
+  }
+  const open = listPendingForTurn(pending.turnId).filter((entry) => entry.id !== pending.id && entry.status === "pending" && entry.attack && entry.characterId === pending.characterId);
+  if (open.length) {
+    for (const entry of open) {
+      if (!entry.attack?.endTurn) setPendingAttack(entry.id, { ...entry.attack!, endTurn: true });
+    }
+    return;
+  }
+  if (!attackTurnOver(campaign.id, record as AttackRecord, pending.characterId)) {
+    const ended = endTurnOnLanding(campaign, pending.turnId, pending.characterId);
+    if (!ended.error) {
+      const note = getPendingRoll(pending.id)?.combatNote;
+      setPendingCombatNote(pending.id, [note, "the turn ends, as the attack asked"].filter(Boolean).join("; "));
+    }
+  }
 }
 
 function landOne(campaign: Campaign, pending: PendingRoll, thrown: RollResult, landing: RollLanding): StoredRoll | null {
@@ -175,6 +202,7 @@ function landOne(campaign: Campaign, pending: PendingRoll, thrown: RollResult, l
 
     // A combatant who left the fight during the call takes no turn with them.
     settleTurn(campaign, holder);
+    carryEndTurn(campaign, pending);
   });
   const after = record ? getDmTurn(pending.turnId) : null;
   if (record && after) {

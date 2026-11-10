@@ -34,12 +34,6 @@ const KNOWN = {
     note: "Same faces, same result as the server's dice: the two paths agree, and both are unsteady.",
   },
 
-  "820-end-turn-on-a-parked-attack": {
-    where: "src/lib/dm/pc-attack-parked.ts (endTurn is not carried on the parked roll) / src/lib/dm/pending-roll-land.ts",
-    severity: "low",
-    note: "The console's \"and end the turn\" is dropped when the seat rolls real dice; the GM ends the turn by hand.",
-  },
-
 };
 const RULING = {
   "825-damage-lands-after-the-turn": "pull request #825 lists it under \"Already true of an ordinary real-dice hit\"; scripts/test-enforce-physical-feat-bonus.mjs \"a damage roll that lands on the next character's turn opens nothing, whether or not they have acted\" pins that the damage lands and only the turn's bonuses are withheld",

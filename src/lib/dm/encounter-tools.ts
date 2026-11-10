@@ -42,7 +42,7 @@ import {
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { getRoll, insertRoll } from "@/lib/db/rolls";
 import { getLatestDmMessage, insertCampaignMessage, listRecentMessages } from "@/lib/db/messages";
-import { closeStandInTurn, listOpenPendingRolls, openStandInTurn, saveDmTurn, type DmTurn } from "@/lib/db/dm-turns";
+import { closeStandInTurn, getDmTurn, listOpenPendingRolls, listPendingForTurn, openStandInTurn, saveDmTurn, setPendingAttack, type DmTurn } from "@/lib/db/dm-turns";
 import { rollExpression } from "@/lib/dice";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
@@ -1294,6 +1294,17 @@ function handleEndTurn(
 // who acts next. Any other refused attack ends nothing: the model hears why
 // first. A parked one
 // (physical dice) waits on its roll, and its player ends the turn.
+// The turn an attack sent with endTurn asked to end, ended once its last
+// roll has landed on dice entered at the table (pending-roll-land.ts).
+export function endTurnOnLanding(campaign: Campaign, turnId: string, characterId: string): ToolResult {
+  const turn = getDmTurn(turnId);
+  if (!turn) {
+    return { error: "The turn the attack was made in is gone.", refused: "rules" };
+  }
+  const sheets = listSheets(campaign.id);
+  return handleEndTurn(campaign, turn, JSON.stringify({ characterId }), sheets, new Map(sheets.map((sheet) => [sheet.id, sheet])));
+}
+
 function endTurnAfterAttack(
   campaign: Campaign,
   turn: DmTurn,
@@ -1303,6 +1314,18 @@ function endTurnAfterAttack(
   result: ToolResult,
 ): ToolResult {
   const characterId = endTurnAsked(rawArguments);
+  // Parked for dice entered at the table: the turn ends once the last of the
+  // attack's rolls has landed (pending-roll-land.ts carryEndTurn), so the
+  // open rolls carry the ask. Dropped here, "and end the turn" was lost on
+  // real dice while the server's dice ended it.
+  if (characterId && result[PC_ATTACK_PARKED]) {
+    for (const open of listPendingForTurn(turn.id)) {
+      if (open.status === "pending" && open.attack && open.characterId === characterId) {
+        setPendingAttack(open.id, { ...open.attack, endTurn: true });
+      }
+    }
+    return result;
+  }
   if (!characterId || result[PC_ATTACK_PARKED] || (result.error && !result.outOfReach)) {
     return result;
   }
