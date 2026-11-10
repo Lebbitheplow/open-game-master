@@ -284,7 +284,10 @@ export function searchSpells(
         (!needle ||
           textKey(row.name).includes(needle) ||
           row.aliases.some((alias) => textKey(alias).includes(needle))) &&
-        (!classSlug || (workshopList ? spellOnListKey(classSlug, row) : row.classes.some((entry) => entry.includes(classSlug)))) &&
+        // The class as a whole entry of the row's lists, as the save's check
+        // reads them (spellOnListKey): a substring match offered a paladin the
+        // pack's "anti-paladin" spells, which the level-up then refused.
+        (!classSlug || spellOnListKey(classSlug, row)) &&
         (options.level === undefined || (options.exactLevel ? row.level === options.level : row.level <= options.level)) &&
         (!schools.length || schools.includes(row.school.toLowerCase())) &&
         (!options.attack || /\bspell attack\b/i.test(String(row.data.desc ?? ""))) &&
