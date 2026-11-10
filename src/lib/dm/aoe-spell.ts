@@ -304,19 +304,9 @@ export function planAoeSpell(
         level: spellLevel,
         classes: facts?.classes,
       })
-    : { flat: 0, flatSecond: 0, dice: [] as string[], diceSecond: [] as string[], oneTarget: [] as Array<{ rolled: string; second: boolean }>, potentCantrip: false, notes: [] as string[] };
-  // A rider for one target leaves the roll every creature shares (a number:
-  // Radiant Soul's Charisma modifier); a die of that kind would stay shared.
-  const oneTarget = { first: 0, second: 0 };
-  for (const one of riders.oneTarget) {
-    const amount = Number(one.rolled);
-    const list = one.second ? riders.diceSecond : riders.dice;
-    const at = list.indexOf(one.rolled);
-    if (Number.isFinite(amount) && at >= 0) {
-      list.splice(at, 1);
-      oneTarget[one.second ? "second" : "first"] += amount;
-    }
-  }
+    : { flat: 0, flatSecond: 0, dice: [] as string[], diceSecond: [] as string[], oneTarget: { first: 0, second: 0 }, potentCantrip: false, notes: [] as string[] };
+  // A bonus for one target leaves what every creature shares (Radiant Soul).
+  const oneTarget = riders.oneTarget;
   // A spell of two types rolls each type's dice on its own (aoe-damage.ts).
   // Split here, before a rider's die joins: appended to the whole, Enhanced
   // Bond's d8 read as the second type's dice and Ice Storm's cold as hail.
@@ -352,8 +342,8 @@ export function planAoeSpell(
     ...(runsAs ? { runsAs } : {}),
     mech,
     damage,
-    flat: riders.flat,
-    flatSecond: riders.flatSecond,
+    flat: riders.flat - oneTarget.first,
+    flatSecond: riders.flatSecond - oneTarget.second,
     oneTarget,
     damageParts,
     saveAbility,

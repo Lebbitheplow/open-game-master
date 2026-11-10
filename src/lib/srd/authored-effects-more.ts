@@ -144,13 +144,14 @@ export function authoredSpellDice(
   sheet: AuthoredSheet & { level?: number },
   spell: { damageType?: string | null; secondType?: string | null; healing?: boolean; level?: number },
   mods: Record<string, number> = {},
-): { dice: string[]; diceSecond: string[]; notes: string[]; oneTarget: Array<{ rolled: string; second: boolean }> } {
+): { dice: string[]; diceSecond: string[]; notes: string[]; oneTarget: Array<{ amount: number; second: boolean }> } {
   const dice: string[] = [];
   const diceSecond: string[] = [];
   const notes: string[] = [];
-  // The riders that land on one target only; each is in dice (or diceSecond)
-  // too, so a spell at one creature reads them as any other rider.
-  const oneTarget: Array<{ rolled: string; second: boolean }> = [];
+  // The riders that land on one target only, as numbers (Radiant Soul's
+  // Charisma modifier): spell-damage-riders.ts adds them to the flat bonus,
+  // which an area spell gives its first creature alone.
+  const oneTarget: Array<{ amount: number; second: boolean }> = [];
   for (const { effect, held } of activeAuthored(sheet, "spell_rider")) {
     // Potent Spellcasting: cantrips only.
     if (effect.cantrips && spell.level !== 0) {
@@ -170,9 +171,13 @@ export function authoredSpellDice(
       continue;
     }
     const rolled = resolveFormula(effect.dice, held.level, mods);
-    (bySecond ? diceSecond : dice).push(rolled);
-    if (effect.oneTarget) {
-      oneTarget.push({ rolled, second: bySecond });
+    const amount = Number(rolled);
+    if (effect.oneTarget && Number.isFinite(amount)) {
+      if (amount > 0) {
+        oneTarget.push({ amount, second: bySecond });
+      }
+    } else {
+      (bySecond ? diceSecond : dice).push(rolled);
     }
     notes.push(`${held.feature}: +${rolled}${item ? ` (through the ${item.name})` : ""}${effect.oneTarget ? " (one target)" : ""}`);
   }
