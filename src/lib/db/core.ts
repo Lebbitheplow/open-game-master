@@ -197,6 +197,13 @@ function ensureSchema(db: SqliteDatabase) {
       UNIQUE (campaign_id, seq)
     );
 
+    -- The newest message that carries a picture (the home screen's glance,
+    -- src/lib/db/home-glance.ts), which otherwise walks back through every
+    -- message since the last picture, and through all of them at a table
+    -- that paints none. Only the rows with a picture are in it.
+    CREATE INDEX IF NOT EXISTS idx_campaign_messages_picture
+      ON campaign_messages(campaign_id, seq) WHERE generated_image_json IS NOT NULL;
+
     CREATE TABLE IF NOT EXISTS rolls (
       id TEXT PRIMARY KEY,
       campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
@@ -225,6 +232,15 @@ function ensureSchema(db: SqliteDatabase) {
       created_at TEXT NOT NULL,
       PRIMARY KEY (campaign_id, seq)
     );
+
+    -- The newest event of one type (latestEventOfType in src/lib/events.ts:
+    -- the handout on the table, the title card, a break, a session's end).
+    -- By the primary key alone that read walks the campaign's whole log
+    -- backwards whenever the type is rare or was never logged, which is the
+    -- usual case: 60 ms a lookup at 60,000 events, twice in every table
+    -- snapshot.
+    CREATE INDEX IF NOT EXISTS idx_campaign_events_type
+      ON campaign_events(campaign_id, type, seq);
 
     CREATE TABLE IF NOT EXISTS homebrew_entries (
       id TEXT PRIMARY KEY,
