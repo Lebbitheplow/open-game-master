@@ -139,6 +139,62 @@ for (const row of RACES) {
   }
 }
 
+// Variant Human: two increases of the player's choice, a language, a skill,
+// and the feat, which is picked in the builder's feat section (not a lineage
+// field): with any of them unmade the builder will not save, and made, the
+// server's sheet carries each.
+P["species.variant_human.choices"] = () => {
+  const picks = { racialSkills: ["arcana"], bonusLanguages: ["Giant"], racialAsi: ["int", "wis"], feats: ["Alert"] };
+  const start = { race: "variant_human", ...START, chosenSkills: ["acrobatics", "animal_handling"] };
+  const refused = Object.fromEntries(
+    Object.keys(picks).map((left) => [left, builder.build({ ...start, ...picks, [left]: [] }).blocker !== null]),
+  );
+  assert.deepEqual(refused, { racialSkills: true, bonusLanguages: true, racialAsi: true, feats: true }, "Human (Variant): the builder saves with one of the lineage's picks unmade");
+  const sheet = made("variant_human", picks);
+  const wrong = {
+    skill: missing(picks.racialSkills, sheet.proficiencies.skills),
+    language: missing(picks.bonusLanguages, sheet.proficiencies.languages),
+    asi: picks.racialAsi.filter((ability) => sheet.abilities[ability] !== SCORES[ability] + 1),
+    others: ["str", "dex", "con", "cha"].filter((ability) => sheet.abilities[ability] !== SCORES[ability]),
+    feat: missing(picks.feats, sheet.feats),
+  };
+  assert.deepEqual(Object.entries(wrong).filter(([, list]) => list.length), [], `Human (Variant): the picks on the stored sheet: ${JSON.stringify(wrong)}`);
+};
+
+// Dragonborn: the ancestry the builder's pick wrote (a red dragon), spent
+// and struck through the table. SRD 5.1, Breath Weapon: 2d6 (3d6 at 6th
+// level), DC 8 + Constitution modifier + proficiency bonus, the ancestry's
+// damage type and save, once a short or long rest; Damage Resistance: "You
+// have resistance to the damage type associated with your draconic
+// ancestry."
+function dragonborn(level, ancestry = "red") {
+  const legal = made("dragonborn", { racialAncestry: ancestry });
+  return table.hero({ class: "fighter", level, race: "dragonborn", equipment: [], maxHp: 60, abilities: { con: 14 }, racialChoices: legal.racialChoices, features: legal.features.filter((feature) => feature.source === "race") });
+}
+P["species.dragonborn.breath"] = async () => {
+  const seen = [];
+  for (const level of [1, 6]) {
+    const who = dragonborn(level);
+    const first = await table.use(who, "Breath Weapon");
+    const again = await table.use(who, "Breath Weapon");
+    seen.push([first.result?.damage, first.result?.dc, first.result?.type, first.result?.saveAbility, table.used(who, "breath_weapon"), again.ok]);
+  }
+  // Constitution 14 (+2), proficiency +2 at 1st and +3 at 6th.
+  assert.deepEqual(seen, [["2d6", 12, "fire", "dex", 1, false], ["3d6", 13, "fire", "dex", 1, false]], `Dragonborn: a red dragon's breath at 1st and 6th level, then a second with none left: ${JSON.stringify(seen)}`);
+};
+P["species.dragonborn.ancestry-resistance"] = async () => {
+  const lost = {};
+  for (const [ancestry, type] of [["red", "fire"], ["white", "cold"], ["green", "poison"]]) {
+    const who = dragonborn(5, ancestry);
+    const mine = await table.damage(who, 10, type);
+    const hp = table.sheet(who).currentHp;
+    const other = await table.damage(who, 10, type === "fire" ? "cold" : "fire");
+    assert.deepEqual([mine.ok, other.ok], [true, true], mine.error ?? other.error);
+    lost[ancestry] = [60 - hp, hp - table.sheet(who).currentHp];
+  }
+  assert.deepEqual(lost, { red: [5, 10], white: [5, 10], green: [5, 10] }, `Dragonborn: 10 damage of the ancestry's type, then 10 of another: ${JSON.stringify(lost)}`);
+};
+
 // The probes above by name, for the ledger's probe check (it finds a probe
 // by its name in this file); the run holds the table to the list.
 const NAMES = [
@@ -155,6 +211,7 @@ const NAMES = [
   "species.earth_genasi.darkvision", "species.goblin.darkvision", "species.bugbear.darkvision", "species.orc.darkvision",
   "species.hill_dwarf.choices", "species.mountain_dwarf.choices", "species.high_elf.choices", "species.human.choices", "species.dragonborn.choices",
   "species.half_elf.choices", "species.kenku.choices", "species.changeling.choices", "species.warforged.choices", "species.lizardfolk.choices", "species.orc.choices",
+  "species.variant_human.choices", "species.dragonborn.breath", "species.dragonborn.ancestry-resistance",
 ];
 assert.deepEqual(Object.keys(P).sort(), [...NAMES].sort(), "the table makes other probes than NAMES lists: a row of races.json was added or changed");
 

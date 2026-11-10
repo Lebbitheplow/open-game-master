@@ -1834,7 +1834,7 @@
    "ability": null,
    "recharge": "long",
    "action": "bonus",
-   "guidance": "A bonus action from 3rd level for a minute of transformation (MotM): pass variant heavenly wings (a flying speed equal to the walking speed), inner radiance (bright light; each creature within 10 feet takes radiant damage equal to the proficiency bonus at the end of each of the aasimar's turns) or necrotic shroud (creatures within 10 feet make a Charisma save or are frightened until the end of the aasimar's next turn). Once on each turn, one target of the aasimar's attack or spell takes extra damage equal to the proficiency bonus: radiant, or necrotic for the shroud (apply_damage).",
+   "guidance": "A bonus action from 3rd level for a minute of transformation: pass variant heavenly wings (a flying speed equal to the walking speed), inner radiance (bright light; each creature within 10 feet takes radiant damage equal to the proficiency bonus at the end of each of the aasimar's turns) or necrotic shroud (creatures within 10 feet make a Charisma save or are frightened until the end of the aasimar's next turn). Once on each turn, one creature the aasimar's attack hits takes extra damage equal to the proficiency bonus: radiant, or necrotic for the shroud. The server lays the form, rolls the shroud's saves, burns with the radiance and adds the damage to the attack.",
    "fx": {
     "kind": "buff",
     "condition": "celestial revelation: heavenly wings",
@@ -1844,7 +1844,8 @@
      "celestial revelation: inner radiance",
      "celestial revelation: necrotic shroud"
     ]
-   }
+   },
+   "minLevel": 3
   },
   {
    "id": "race_hidden_step",
@@ -1862,17 +1863,6 @@
     "condition": "invisible",
     "rounds": 1
    }
-  },
-  {
-   "id": "race_firbolg_magic",
-   "displayName": "Firbolg Magic",
-   "match": [
-    "firbolg magic"
-   ],
-   "uses": 1,
-   "ability": null,
-   "recharge": "short",
-   "guidance": "A free casting of detect magic or disguise self, using Wisdom, without a slot. Disguise self can change the firbolg's size between Medium and Small."
   },
   {
    "id": "race_fury_of_the_small",
@@ -1902,18 +1892,17 @@
    "guidance": "A bonus-action bite, made with pc_attack (weapon \"bite\", feature \"Hungry Jaws\"): on a hit the lizardfolk also gains temporary hit points equal to their Constitution modifier (minimum 1). The attack spends the use."
   },
   {
-   "id": "race_genasi_magic",
-   "displayName": "Elemental Legacy",
+   "id": "race_feline_agility",
+   "displayName": "Feline Agility",
    "match": [
-    "reach to the blaze",
-    "call to the wave",
-    "mingle with the wind",
-    "merge with stone"
+    "feline agility"
    ],
    "uses": 1,
    "ability": null,
-   "recharge": "long",
-   "guidance": "The genasi's inherited spell, cast without a slot: burning hands, create or destroy water, levitate or pass without trace depending on their element. The matching cantrip is at will and does not use this counter."
+   "recharge": "short",
+   "action": "none",
+   "guidance": "On the tabaxi's own turn, no action: their speed is doubled until the end of that turn. The use comes back at the end of a turn on which they move 0 feet (and on a rest). The server lays the speed and gives the use back.",
+   "fightOnly": true
   },
   {
    "id": "art_flash_of_genius",
