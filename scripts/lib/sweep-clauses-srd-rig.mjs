@@ -122,8 +122,14 @@ export async function clauseRig() {
     const rest = (kind) => invoke("take_rest", { kind });
     const budget = () => world.encounter()?.turnBudget ?? null;
     // The player's own End Turn: the enemies' turns pass unplayed and the
-    // floor comes round to the next hero.
-    const endTurn = (who) => kit.endTurn(sheet(who).userId);
+    // floor comes round to the next hero. The enemies are handed their turns
+    // at once, so the next hero's turn has begun when this returns: what
+    // waits on that turn's start or end is already marked (held-turn.ts).
+    const endTurn = (who) => {
+      const ended = kit.endTurn(sheet(who).userId);
+      kit.handOnEnemies();
+      return ended;
+    };
     // A new turn for whoever holds the floor, as when the round comes back.
     const freshTurn = () => kit.freshTurn();
     const foeHas = (enemy, name) => kit.enemy(enemy.id).conditions.map((entry) => entry.toLowerCase()).includes(name);

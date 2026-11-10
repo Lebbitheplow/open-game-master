@@ -81,6 +81,9 @@ const conditionInstanceSchema = z.object({
     pinning: z.string().trim().min(1).max(80).optional(),
     // Ends when the creature finishes a long rest (Life Drain, Draining Kiss).
     untilLongRest: z.boolean().optional(),
+    // Ends when its holder ends a turn farther than this from the source, or
+    // out of its sight (Intimidating Presence): src/lib/dm/mt-srd-barbarian.ts.
+    turnEndBeyondFeet: z.number().int().min(5).max(600).optional(),
     // Lasts while this barbarian rages (Call the Hunt): src/lib/dm/rage-bound.ts.
     whileRagingOf: z.string().trim().min(1).max(80).optional(),
     // A knocked-out creature's 1d4 hours to coming to (foe-carry-logic.ts).

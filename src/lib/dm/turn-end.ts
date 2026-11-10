@@ -29,6 +29,7 @@ import { zoneTurnEnd } from "@/lib/dm/zone-triggers";
 import { blinkTurnEnd } from "@/lib/dm/spell-planes";
 import { endLeashes } from "@/lib/dm/condition-leash";
 import { endRageBound } from "@/lib/dm/rage-bound";
+import { endPresenceOutOfReach } from "@/lib/dm/mt-srd-barbarian";
 import {
   instancesOf,
   packInstances,
@@ -213,6 +214,10 @@ export function endTurns(
   const leashes = endLeashes(encounterId);
   lines.push(...leashes.lines);
   enemiesChanged ||= leashes.enemiesChanged;
+  // A fear held only within sight and 60 feet of its source (mt-srd-barbarian.ts).
+  const presence = endPresenceOutOfReach(encounterId, combatantIds);
+  lines.push(...presence.lines);
+  enemiesChanged ||= presence.enemiesChanged;
   // What lasted until a rage now over ended (rage-bound.ts).
   const rageBound = endRageBound(campaign.id);
   lines.push(...rageBound.lines);

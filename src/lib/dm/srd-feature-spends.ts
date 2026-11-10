@@ -39,6 +39,7 @@ import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { spentSlotRefusal } from "@/lib/dm/cast-rules";
 import { textKey } from "@/lib/language/text-logic";
 import { draconicPresence, dragonWings, elementalAffinityResistance } from "@/lib/dm/draconic-spends";
+import { asksToEndRage, endRage } from "@/lib/dm/mt-srd-barbarian";
 
 export type SrdSpendArgs = { variant?: string; targetEnemyId?: string; amount?: number };
 
@@ -52,6 +53,7 @@ export function srdFeatureSpend(
   // A Hand card names its counter's id ("dragon_wings"), a call the feature.
   const name = textKey(resourceName.replace(/_/g, " "));
   const sheet = getSheetById(stale.id) ?? stale;
+  if (name === "rage" && asksToEndRage(args.variant)) return endRage(campaign, sheet);
   if (name === "peerless skill") return peerlessSkill(campaign, sheet);
   if (name === "quivering palm") return quiveringPalm(campaign, turnId, sheet, args.targetEnemyId, args.variant);
   if (name === "draconic presence") return draconicPresence(campaign, turnId, sheet, args.variant);

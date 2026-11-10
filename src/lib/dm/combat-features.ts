@@ -21,7 +21,9 @@ import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { getClock } from "@/lib/db/clock";
 import { getDatabase, parseJson } from "@/lib/db/core";
-import { getActiveEncounter, listEnemies, patchEnemyConditions, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
+import { getActiveEncounter, getEnemy, listEnemies, patchEnemyConditions, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
+import { unseenBecause } from "@/lib/dm/authored-saves";
+import { presenceHold } from "@/lib/dm/mt-srd-barbarian";
 import { insertRoll } from "@/lib/db/rolls";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
@@ -176,6 +178,17 @@ function intimidatingPresence(campaign: Campaign, stale: CharacterSheet, targetE
   if (apart !== null && apart > 30) {
     return { error: `${enemy.displayName} is ${apart} feet away; Intimidating Presence reaches a creature within 30 feet. Nothing was spent.`, refused: "rules" };
   }
+  // "choose one creature that you can see".
+  const unseen = unseenBecause(encounter.id, sheet, enemy);
+  if (unseen) {
+    return { error: `${sheet.name} cannot see ${enemy.displayName} (${unseen}), and Intimidating Presence takes a creature they can see. Nothing was spent.`, refused: "rules" };
+  }
+  // "If the creature can see or hear you": one that can do neither is not
+  // menaced at all.
+  const blind = unseenBecause(encounter.id, enemy, sheet, { hidden: false });
+  if (blind && enemy.conditions.some((entry) => entry.trim().toLowerCase() === "deafened")) {
+    return { error: `${enemy.displayName} can neither see ${sheet.name} (${blind}) nor hear them (deafened), so Intimidating Presence does nothing to it. Nothing was spent.`, refused: "rules" };
+  }
   const price = priceTheAction(sheet, encounter, "Intimidating Presence");
   if ("error" in price) {
     return toolError(price);
@@ -184,9 +197,12 @@ function intimidatingPresence(campaign: Campaign, stale: CharacterSheet, targetE
   // barbarian's next turn, with no new save.
   const held = enemy.conditions.includes("frightened") && meta.frightened?.source === sheet.id && meta.frightened?.untilTurnEndOf === sheet.id;
   if (held) {
-    patchEnemyConditions(enemy.id, enemy.conditions, { ...meta, frightened: untilTurnEnd(sheet.id, { source: sheet.id }) });
-    publishEncounter(campaign.id);
     price.commit();
+    // Read again: taking the action begins a turn still held for the enemies
+    // before it, and that marks what waits on the turn's end (held-turn.ts).
+    const live = getEnemy(enemy.id) ?? enemy;
+    patchEnemyConditions(enemy.id, live.conditions, { ...(live.conditionMeta as ConditionMetaMap), frightened: presenceHold(sheet.id) });
+    publishEncounter(campaign.id);
     return { ok: true, feature: "Intimidating Presence", cost: "their action", applied: `${enemy.displayName} stays frightened of ${sheet.name} until the end of their next turn.` };
   }
   const derived = computeSheetDerived(sheet);
@@ -213,7 +229,7 @@ function intimidatingPresence(campaign: Campaign, stale: CharacterSheet, targetE
     return { ok: true, feature: "Intimidating Presence", cost: "their action", applied: `${enemy.displayName} cannot be frightened.` };
   }
   const conditions = enemy.conditions.includes("frightened") ? enemy.conditions : [...enemy.conditions, "frightened"];
-  patchEnemyConditions(enemy.id, conditions, { ...meta, frightened: untilTurnEnd(sheet.id, { source: sheet.id }) });
+  patchEnemyConditions(enemy.id, conditions, { ...meta, frightened: presenceHold(sheet.id) });
   publishEncounter(campaign.id);
   return {
     ok: true,

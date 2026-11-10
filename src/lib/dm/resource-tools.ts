@@ -8,6 +8,7 @@ import { rollExpression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
 import { ELEMENTAL_WILD_SHAPE_COST, elementalWildShape, wildShapeUse, type WildShapeAsk } from "@/lib/dm/wild-shape-use";
+import { RAGE_FIRST, withoutRageFirst } from "@/lib/dm/mt-srd-barbarian";
 import { heldUnlimitedState, isUnlimited, matchResource, RAGING, recoveringPrefix, resourceLevel, type ResourceDef, type SaveAbilityId, type SaveTerms } from "@/lib/srd/class-resources";
 import { counterGate, counterSaveDc } from "@/lib/srd/counter-rules";
 import { sheetSize } from "@/lib/dm/sheet-foe-stats";
@@ -691,9 +692,13 @@ export function computeUseResource(
           outcome.result.concentrationEnded = `${sheet.name} stops concentrating on ${ended} as the rage takes hold.`;
         }
       }
-      outcome.patch.conditions = [...holder.conditions, condition];
+      // Feral Instinct's hold on a surprised first turn ends with the rage
+      // it waited for (mt-srd-barbarian.ts).
+      const entered = condition === RAGING ? withoutRageFirst(holder) : holder;
+      const metaKept = Object.fromEntries(Object.entries(holder.conditionMeta ?? {}).filter(([name]) => name !== RAGE_FIRST));
+      outcome.patch.conditions = [...entered.conditions, condition];
       outcome.patch.conditionMeta = {
-        ...holder.conditionMeta,
+        ...metaKept,
         [condition]: { rounds: def.effect.rounds },
       };
       outcome.result.applied = `${condition} for ${def.effect.rounds} rounds`;

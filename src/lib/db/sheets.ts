@@ -1,7 +1,8 @@
 import { normalizeHandLayout, type HandLayout } from "@/lib/battlemap/hand-layout";
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { touchCampaign } from "@/lib/db/campaigns";
-import { effectiveMaxHp, endedByRegain, maxHpRiders, tempHpClaims, withoutTempHpClaims, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { effectiveMaxHp, endedByRegain, maxHpRiders, removeConditions, tempHpClaims, withoutTempHpClaims, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { endedByFallingUnconscious, rageSuspension } from "@/lib/dm/mt-srd-unconscious";
 import { populateFeaturesForClasses } from "@/lib/srd/features";
 import { populateResources } from "@/lib/srd/class-resources";
 import { XP_THRESHOLDS, deriveAc } from "@/lib/srd";
@@ -936,6 +937,20 @@ export function patchSheet(
     }
     // A Dominate starting or ending moves the character's side (side-watch.ts).
     noteDominationShift(existing.campaignId, existing, next);
+  }
+  // A fall unconscious ends a rage and a sacred weapon, whichever route laid
+  // it (mt-srd-unconscious.ts).
+  const asleep = endedByFallingUnconscious(existing.conditions, next.conditions);
+  if (asleep.length) {
+    const awake = removeConditions(next.conditions, next.conditionMeta as ConditionMetaMap, asleep);
+    next.conditions = awake.conditions;
+    next.conditionMeta = awake.meta;
+  }
+  // A Berserker's rage sets charm and fear aside, and its end gives them back.
+  const suspended = rageSuspension(next);
+  if (suspended) {
+    next.conditions = suspended.conditions;
+    next.conditionMeta = suspended.conditionMeta as typeof next.conditionMeta;
   }
   // A flyer knocked prone, or held or exhausted to a speed of 0, falls
   // (flight-watch.ts).

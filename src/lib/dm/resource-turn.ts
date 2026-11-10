@@ -15,6 +15,7 @@ import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
+import { withoutRageFirst } from "@/lib/dm/mt-srd-barbarian";
 import { matchResource, RAGING, type ResourceAction } from "@/lib/srd/class-resources";
 import { ACTION_SURGED, RAGE_ENTERED, spendAction, spendAttack } from "@/lib/dm/action-budget";
 import { canAct } from "@/lib/dm/can-act";
@@ -82,7 +83,10 @@ export function prepareResourceCharge(
   if (readied) {
     return { commit: () => readied.release() };
   }
-  const able = canAct({ sheet, encounter, kind });
+  // Entering the rage is the one thing Feral Instinct's surprised first turn
+  // allows (mt-srd-barbarian.ts).
+  const entersRage = def.effect.kind === "condition" && def.effect.condition === RAGING;
+  const able = canAct({ sheet: entersRage ? withoutRageFirst(sheet) : sheet, encounter, kind });
   if (!able.ok) {
     return toolError(able);
   }

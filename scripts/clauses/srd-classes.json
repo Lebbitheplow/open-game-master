@@ -260,12 +260,9 @@
       },
       {
         "c": "It ends early if you are knocked unconscious",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.rage.unconscious",
-        "where": "src/lib/dm/set-condition.ts (the unconscious condition landing on a raging character)",
-        "severity": "medium",
-        "kind": "state-lifecycle",
-        "note": "held on the 0 hit point path only (test-enforce-damage-types: rage ends when the barbarian drops to 0 hit points)"
+        "is": "held",
+        "by": "the unconscious condition landing by any route ends the rage at the sheet's write (src/lib/dm/mt-srd-unconscious.ts)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.rage.unconscious"
       },
       {
         "c": "or if your turn ends and you haven't attacked a hostile creature since your last turn or taken damage since then",
@@ -275,11 +272,9 @@
       },
       {
         "c": "You can also end your rage on your turn as a bonus action.",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.rage.end-bonus",
-        "where": "src/lib/dm/resource-tools.ts use_resource (rage), src/lib/battlemap/hand-class.ts",
-        "severity": "low",
-        "kind": "rule-missing"
+        "is": "held",
+        "by": "use_resource rage variant 'end': the bonus action, no use spent (src/lib/dm/mt-srd-barbarian.ts endRage)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.rage.end-bonus"
       },
       {
         "c": "Once you have raged the number of times shown for your barbarian level in the Rages column of the Barbarian table",
@@ -517,12 +512,9 @@
       },
       {
         "c": "if you are surprised at the beginning of combat and aren't incapacitated, you can act normally on your first turn, but only if you enter your rage before doing anything else on that turn",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.feral-instinct.surprised-rage",
-        "where": "src/lib/dm/encounter-tools.ts start_encounter (surprisedIds) and entryActs; src/lib/dm/can-act.ts isSurprised",
-        "severity": "medium",
-        "kind": "rule-missing",
-        "note": "the first sentence (advantage on initiative) is held; the second has no code: Feral Instinct is read only by initiativeAdvantage"
+        "is": "held",
+        "by": "a surprised barbarian who can rage keeps the first turn under 'feral instinct (rage first)': nothing but the rage until it is entered (mt-srd-barbarian.ts feralInstinctOpening)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.feral-instinct.surprised-rage"
       }
     ]
   },
@@ -766,12 +758,9 @@
       },
       {
         "c": "When your rage ends, you suffer one level of exhaustion",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.frenzy.exhaustion",
-        "where": "src/lib/dm/frenzy.ts settleFrenzies and its callers (a fight's end, each round wrap)",
-        "severity": "medium",
-        "kind": "state-lifecycle",
-        "note": "held when the rage ends inside a fight (the level lands at the next round wrap)"
+        "is": "held",
+        "by": "a rage the clock ends outside a fight settles its frenzy into a level of exhaustion (condition-tick.ts tickClockConditions)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.frenzy.exhaustion"
       }
     ]
   },
@@ -801,12 +790,9 @@
       },
       {
         "c": "If you are charmed or frightened when you enter your rage, the effect is suspended for the duration of the rage.",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.mindless-rage.suspended",
-        "where": "src/lib/dm/resource-tools.ts (entering a rage); src/lib/srd/trait-rules.ts featureConditionImmunities",
-        "severity": "medium",
-        "kind": "rule-missing",
-        "note": "the first sentence is held: set_condition refuses charmed and frightened on a raging Berserker"
+        "is": "held",
+        "by": "a raging Berserker's charm and fear are set aside at the sheet's write and given back as the rage ends (mt-srd-unconscious.ts rageSuspension)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.mindless-rage.suspended"
       }
     ]
   },
@@ -836,11 +822,9 @@
       },
       {
         "c": "choose one creature that you can see",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.intimidating-presence.sight",
-        "where": "src/lib/dm/combat-features.ts intimidatingPresence",
-        "severity": "low",
-        "kind": "rule-wrong"
+        "is": "held",
+        "by": "refused for a creature the barbarian cannot see, nothing spent",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.intimidating-presence.sight"
       },
       {
         "c": "within 30 feet of you",
@@ -850,11 +834,9 @@
       },
       {
         "c": "If the creature can see or hear you",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.intimidating-presence.sees-or-hears",
-        "where": "src/lib/dm/combat-features.ts intimidatingPresence",
-        "severity": "low",
-        "kind": "rule-wrong"
+        "is": "held",
+        "by": "a creature that can neither see nor hear the barbarian is not menaced, nothing spent",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.intimidating-presence.sees-or-hears"
       },
       {
         "c": "it must succeed on a Wisdom saving throw (DC equal to 8 + your proficiency bonus + your Charisma modifier)",
@@ -870,19 +852,15 @@
       },
       {
         "c": "On subsequent turns, you can use your action to extend the duration of this effect on the frightened creature until the end of your next turn.",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.intimidating-presence.extend",
-        "where": "src/lib/dm/combat-features.ts intimidatingPresence (the `held` branch) and the untilTurnEndOf reader in src/lib/dm/turn-end.ts",
-        "severity": "medium",
-        "kind": "state-lifecycle"
+        "is": "held",
+        "by": "the action on a later turn lays the fear again until the end of the next turn, no new save",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.intimidating-presence.extend"
       },
       {
         "c": "This effect ends if the creature ends its turn out of line of sight or more than 60 feet away from you.",
-        "is": "gap",
-        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.intimidating-presence.ends-far",
-        "where": "src/lib/dm/turn-end.ts (the frightened creature's own turn end)",
-        "severity": "low",
-        "kind": "state-lifecycle"
+        "is": "held",
+        "by": "the fear carries turnEndBeyondFeet 60 and ends when its creature ends a turn beyond it or out of sight (mt-srd-barbarian.ts endPresenceOutOfReach)",
+        "probe": "scripts/test-enforce-sweep-clauses-srd-barbarian.mjs: barbarian.intimidating-presence.ends-far"
       },
       {
         "c": "If the creature succeeds on its saving throw, you can't use this feature on that creature again for 24 hours.",
