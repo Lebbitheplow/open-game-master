@@ -13,9 +13,9 @@
    },
    {
     "c": "Standing up from prone costs only 5 feet of movement",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the stand-up cost for a holder"
+    "is": "held",
+    "by": "src/lib/srd/feat-combat.ts standsCheaply, read by authored-effects-more.ts standUpTiles (src/lib/battlemap/view.ts pcMoveBudget)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.athlete.stand"
    },
    {
     "c": "climbing costs no extra movement",
@@ -64,9 +64,9 @@
   "clauses": [
    {
     "c": "After you Dash, you can use a bonus action to make one melee attack or to shove a creature.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the bonus attack after a Dash"
+    "is": "held",
+    "by": "src/lib/srd/feat-combat.ts featBonusRoute shove after a Dash (src/lib/dm/action-price.ts); the bonus melee attack is featBonusAttack (pc-attack-options.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.charger.shove"
    },
    {
     "c": "If you moved at least 10 feet in a straight line first, the attack deals an extra 5 damage or the shove pushes 10 extra feet.",
@@ -192,9 +192,9 @@
    },
    {
     "c": "When you roll a Hit Die to regain hit points, the minimum you regain is twice your Constitution modifier.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a hit die spent on a short rest with a low roll"
+    "is": "held",
+    "by": "src/lib/srd/feat-combat.ts hitDieHealingFloor (src/lib/dm/hit-dice.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.durable.floor"
    }
   ]
  },
@@ -538,9 +538,9 @@
    },
    {
     "c": "and you have advantage on saves against spells cast by creatures within 5 feet",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a save against an adjacent caster's spell"
+    "is": "held",
+    "by": "src/lib/srd/feat-combat.ts spellSaveAdvantageReach (src/lib/dm/cast-at-player.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.mage-slayer.save"
    }
   ]
  },
@@ -697,9 +697,9 @@
    },
    {
     "c": "You also get an opportunity attack when a creature enters your reach with such a weapon.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: an enemy entering the polearm's reach"
+    "is": "held",
+    "by": "src/lib/srd/feat-combat.ts polearmReachOpportunity (src/lib/dm/opportunity.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.polearm-master.enter"
    }
   ]
  },
@@ -786,9 +786,9 @@
    },
    {
     "c": "your ranged attacks ignore half and three-quarters cover",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/srd/feat-combat.ts shotIgnoresCover (src/lib/dm/pc-attack-plan.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.sharpshooter.cover"
    },
    {
     "c": "before a ranged attack with a weapon you are proficient with you can take a -5 penalty to the attack roll in exchange for +10 damage on a hit",
@@ -806,9 +806,9 @@
   "clauses": [
    {
     "c": "If you take the Attack action you can use a bonus action to shove a creature within 5 feet with your shield.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the shield shove"
+    "is": "held",
+    "by": "src/lib/srd/feat-combat.ts featBonusRoute shove (src/lib/dm/action-price.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.shield-master.shove"
    },
    {
     "c": "You add your shield's AC bonus to Dexterity saves against effects that target only you, and you can use a reaction to take no damage on a successful Dexterity save.",
@@ -836,9 +836,9 @@
    },
    {
     "c": "You can hide when lightly obscured, missing with a ranged attack does not reveal your position, and dim light does not impose disadvantage on your Perception checks that rely on sight.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "src/lib/srd/feat-combat.ts hasSkulker (src/lib/dm/hide-traits.ts, pc-attack-plan.ts, rolls.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.skulker.hide"
    }
   ]
  },
@@ -1209,9 +1209,9 @@
   "clauses": [
    {
     "c": "You ignore resistance to poison damage",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a poison hit against a creature resisting poison"
+    "is": "held",
+    "by": "src/lib/srd/feat-combat.ts poisonerIgnoresResistance (src/lib/dm/pc-attack-damage.ts, attack-record.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.poisoner.resistance"
    },
    {
     "c": "you can coat a weapon as a bonus action so its next hit forces a DC 14 Constitution save for 2d8 poison damage and the poisoned condition",
