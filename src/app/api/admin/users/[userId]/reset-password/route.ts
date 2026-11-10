@@ -13,6 +13,11 @@ export const dynamic = "force-dynamic";
 // Generates a temporary password, shows it to the admin exactly once, and
 // forces the user through the change-password flow on their next login. All
 // of the user's sessions are revoked.
+//
+// Never the admin's own account (#909): the reset ends the session that
+// asked for it, so the page is signed out before the temporary password
+// can be read. In the desktop app the owner's password is one the app made
+// up and keeps, so nothing could sign that owner back in to their world.
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ userId: string }> },
@@ -25,6 +30,12 @@ export async function POST(
   const target = getUserById(userId);
   if (!target) {
     return Response.json({ error: "User not found." }, { status: 404 });
+  }
+  if (target.id === admin.id) {
+    return Response.json(
+      { error: "You can't reset your own password: it would sign you out. Change it in Settings." },
+      { status: 400 },
+    );
   }
   const tempPassword = randomBytes(9).toString("base64url");
   let hash: string;
