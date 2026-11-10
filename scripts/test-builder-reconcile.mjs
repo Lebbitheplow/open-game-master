@@ -149,6 +149,25 @@ test("expertise in a skill the character is no longer proficient in goes", () =>
   assert.deepEqual(fighter.picks.expertisePicks, []);
 });
 
+// SRD 5.1, Rogue, Expertise: "or one of your skill proficiencies and your
+// proficiency with thieves' tools". The class step offers it; the check
+// dropped it as no skill on every change, and at the save.
+test("a rogue's expertise in thieves' tools stays, a rogue taken second's too, and only a rogue's", () => {
+  const before = { ...empty, chosenSkills: ["stealth", "insight", "perception", "acrobatics"], expertisePicks: ["stealth", "thieves' tools"] };
+  const rogue = reconcilePicks(before, { race: race("human"), klass: klass("rogue"), background: background("sage"), level: 1 });
+  assert.deepEqual(rogue.picks.expertisePicks, ["stealth", "thieves' tools"]);
+  assert.deepEqual(rogue.dropped, []);
+  const second = reconcilePicks(
+    { ...empty, chosenSkills: ["athletics", "perception"], expertisePicks: ["athletics", "thieves' tools"] },
+    { race: race("human"), klass: klass("fighter"), background: background("sage"), level: 4, extras: [{ klass: klass("rogue"), subclass: "", level: 1, skills: ["stealth"] }] },
+  );
+  assert.deepEqual(second.picks.expertisePicks, ["athletics", "thieves' tools"]);
+  const bard = reconcilePicks({ ...empty, chosenSkills: ["stealth", "insight", "perception"], expertisePicks: ["stealth", "thieves' tools"] }, {
+    race: race("human"), klass: klass("bard"), background: background("sage"), level: 3,
+  });
+  assert.deepEqual(bard.picks.expertisePicks, ["stealth"]);
+});
+
 test("a wizard lowered to level 1 loses the 3rd-level spell the spell book can no longer show", () => {
   const before = { ...empty, cantrips: ["Fire Bolt"], spells: ["Magic Missile", "Fireball", "Shield"], bookPrepared: ["Fireball", "Shield"] };
   const five = reconcilePicks(before, { race: race("human"), klass: klass("wizard"), background: background("sage"), level: 5 });
