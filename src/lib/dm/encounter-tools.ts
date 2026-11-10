@@ -128,7 +128,7 @@ import {
 import { incapacitatedBy, isIncapacitated } from "@/lib/dm/condition-logic";
 import { spellTurnHold } from "@/lib/srd/condition-effect-queries";
 import { attackLine, attackStopOf, standStillLine, stillFromStop, tableName, type StandStill } from "@/lib/dm/turn-lines-logic";
-import { endTurnSaves, startTurnConditions, tickEncounterConditions } from "@/lib/dm/condition-tick";
+import { endTurnSaves, startTurnConditions, tickEncounterConditions, turnHoldKeys } from "@/lib/dm/condition-tick";
 import { endTurns } from "@/lib/dm/turn-end";
 import { turnStartEffects } from "@/lib/dm/turn-start-effects";
 import { castingTurnBudget } from "@/lib/dm/long-casting";
@@ -1750,13 +1750,18 @@ function advancePointer(
   // was, by the characters the pointer walks past (their turns start and end
   // in this move), and by the enemies walked past last move, whose turns the
   // DM turn since has taken (src/lib/dm/condition-tick.ts endTurnSaves).
+  // Those enemies save only against what held them as their turns began: a
+  // hold laid after a creature's turn, by the character after it, waits for
+  // the end of its next turn.
   const landingId = orderEntryId(encounter.order[next.turnIndex]);
+  const walkedBefore = (encounter.legendary.walked ?? []).filter((id) => enemiesById.has(id));
   const savers = new Set<string>([
     ...(leaving && leaving.kind === "pc" ? [orderEntryId(leaving)] : []),
     ...starting.filter((id) => id !== landingId && !enemiesById.has(id)),
-    ...(encounter.legendary.walked ?? []).filter((id) => enemiesById.has(id)),
+    ...walkedBefore,
   ]);
-  endTurnSaves(campaign, encounter, [...savers]);
+  const heldAtStart = encounter.legendary.walkedHolds ? { holders: walkedBefore, keys: encounter.legendary.walkedHolds } : undefined;
+  endTurnSaves(campaign, encounter, [...savers], heldAtStart);
   encounter.legendary.walked = starting.filter((id) => enemiesById.has(id));
   // Initiative count 20, losing ties: the lair acts in the DM turn that
   // follows the move that passes it, or that round it does not
@@ -1804,6 +1809,14 @@ function advancePointer(
   // What the turns now starting bring, posted as one table note
   // (src/lib/dm/turn-start-effects.ts).
   turnStartEffects(campaign, encounter, starting, enemiesById, [...turnEnd.lines, ...swallowEnd, ...(beamEnd ? [beamEnd] : [])]);
+  // What holds the enemies walked past now that their turns have begun,
+  // read after what their turns' starts lay: the saves at the next move are
+  // against these only.
+  if (encounter.legendary.walked.length) {
+    encounter.legendary.walkedHolds = turnHoldKeys(campaign, encounter.id, encounter.legendary.walked);
+  } else {
+    delete encounter.legendary.walkedHolds;
+  }
   if (wraps) {
     encounter.round += 1;
     // Surprise costs exactly one turn, so it is spent by the time round 1

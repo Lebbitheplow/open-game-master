@@ -81,6 +81,12 @@ export type LegendaryState = {
   // the DM turn since, end as the pointer moves again, with the saves their
   // conditions grant at the end of a turn (src/lib/dm/condition-tick.ts).
   walked?: string[];
+  // What held those enemies as their turns began (condition-tick.ts
+  // turnHoldKeys): only these are saved against as those turns end. A hold
+  // laid after an enemy's turn, Hold Person cast by the character who goes
+  // next, waits for the end of a turn the creature takes under it (SRD 5.1:
+  // "at the end of each of its turns"). Absent on a row written before it.
+  walkedHolds?: string[];
   // The last save a legendary creature failed, for legendary_resist: what
   // it laid and what a success would have spared (src/lib/dm/forced-save.ts).
   failedSave?: FailedSave;
@@ -194,6 +200,7 @@ export function normalizeLegendaryState(raw: unknown): LegendaryState {
       : {}),
     ...(idle ? { idle: { since: Number(idle.since) || 0, ...(idle.told === true ? { told: true } : {}) } } : {}),
     ...(stringList(record.walked).length ? { walked: stringList(record.walked) } : {}),
+    ...(Array.isArray(record.walkedHolds) ? { walkedHolds: stringList(record.walkedHolds) } : {}),
     ...(failed && typeof failed.enemyId === "string"
       ? {
           failedSave: {
