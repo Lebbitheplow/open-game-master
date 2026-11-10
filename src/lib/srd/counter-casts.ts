@@ -38,7 +38,9 @@ export const COUNTER_CASTS: CounterCast[] = [
   { counter: "art_restorative_reagents", features: ["Restorative Reagents"], spells: ["Lesser Restoration"], rest: "long" },
   { counter: "sub_fey_reinforcements", features: ["Fey Reinforcements"], spells: ["Summon Fey"], rest: "long", noMaterial: true },
   { counter: "sub_grasping_tentacles", features: ["Grasping Tentacles"], spells: ["Black Tentacles", "Evard's Black Tentacles"], rest: "long", note: "Casting it gives the warlock temporary hit points equal to their warlock level, and damage cannot break their concentration on it." },
-  { counter: "sub_shapechanger", features: ["Shapechanger"], spells: ["Polymorph"], rest: "short", selfOnly: true, noMaterial: true, note: "Only into a beast of challenge rating 1 or lower." },
+  // Not selfOnly: the wizard knows polymorph too, and a grant's selfOnly holds
+  // the slot casts to the wizard as well (cast-buff.ts reads it).
+  { counter: "sub_shapechanger", features: ["Shapechanger"], spells: ["Polymorph"], rest: "short", noMaterial: true, note: "The free casting is on the wizard themselves, into a beast of challenge rating 1 or lower." },
   { counter: "sub_telekinetic_master", features: ["Telekinetic Master"], spells: ["Telekinesis"], rest: "long" },
   { counter: "sub_walker_in_dreams", features: ["Walker in Dreams"], spells: ["Dream", "Scrying", "Teleportation Circle"], rest: "long", noMaterial: true },
   { counter: "sub_lunar_free_cast", features: ["Lunar Embodiment"], spells: Object.values(LUNAR), byChoice: LUNAR, rest: "long" },

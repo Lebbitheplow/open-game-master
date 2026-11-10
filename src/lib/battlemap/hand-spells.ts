@@ -9,6 +9,7 @@ import { innateSpellsFor, RACIAL_COUNTER_PREFIX } from "@/lib/srd/racial-grants"
 import { grantUses } from "@/lib/srd/granted-casts";
 import { computeSheetDerived, spellAbilityFor, spellAttackFor, spellSaveDcFor } from "@/lib/srd";
 import { counterSpendCards, pickLabel, playedAsSpendCard } from "@/lib/battlemap/hand-subclass";
+import { authoredSpendFor, gateHolds } from "@/lib/srd/authored-effects";
 import { nameChoice } from "@/lib/srd/feature-names";
 import { affinityCastType } from "@/lib/srd/dragon-ancestor";
 import { heldAtWill, resourceDef, resourceLevel, type ResourceDef } from "@/lib/srd/class-resources";
@@ -599,6 +600,11 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
       cards.push(...counterSpendCards(sheet, turn, def.displayName));
       continue;
     }
+    // A spend of the counter's own name whose option is not chosen (an
+    // Infiltrator's Defensive Field, held by every Armorer): no card, as
+    // use_resource refuses it.
+    const gatedSpend = authoredSpendFor(sheet, def.displayName);
+    if (gatedSpend && !gateHolds(gatedSpend.spend.gate, sheet, gatedSpend.held)) continue;
     // Dealt when the hit that calls for it comes (hand-react.ts).
     if (HIT_ANSWER_COUNTERS.some((counter) => counter.id === id && !counter.anyDamage)) continue;
     const level = resourceLevel(def, sheet);

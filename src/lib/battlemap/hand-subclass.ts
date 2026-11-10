@@ -65,9 +65,12 @@ function aimDoes(does: SpendDoes, variant: string | undefined): SpendDoes {
   return does.kind === "variants" && variant ? (does.options[variant]?.does ?? does) : does;
 }
 
-// A spend held to "a creature you can see" (its row's sight flag).
+// A spend aimed at a creature the holder must see (its row's sight flag), which
+// the engine refuses while they are blinded. One that takes the allies it sees
+// (Watcher's Will) leaves the unseen out instead, so it stays open.
 function sightBound(does: SpendDoes): boolean {
-  return "sight" in does && Boolean(does.sight);
+  if (!("sight" in does) || !does.sight) return false;
+  return does.kind === "save_effect" || (does.kind === "buff" && (does.target === "enemy" || Boolean(does.quarry)));
 }
 
 // The reach a spend holds its creatures to, printed on the card.
