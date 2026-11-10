@@ -142,13 +142,18 @@ await test("With real dice, Acid Arrow's hit still deals the whole damage and it
   assert.ok(kit.enemy(enemy.id).conditions.includes("acid arrow"), "the burn waits");
 });
 
-await test("With real dice, a natural 1 deals nothing, as on the server's dice", async () => {
+// A natural 1 is a miss, and Acid Arrow's miss deals half: the maintainer's
+// decision R1 of the 2026-11-09 gap sweep ("A natural 1 is a miss: it deals
+// half"), overturning #825's rule call that it dealt nothing.
+await test("With real dice, a natural 1 misses and still asks for the half a miss deals", async () => {
   const enemy = await stage();
   const note = await cast(enemy, 1);
-  assert.match(note, /natural 1/, note);
-  assert.doesNotMatch(note, /half/, note);
-  assert.equal(open("damage").length, 0);
-  assert.equal(kit.enemy(enemy.id).currentHp, 400);
+  assert.match(note, /MISS/, note);
+  assert.match(note, /half/, note);
+  const [damage] = open("damage");
+  assert.ok(damage, "the damage dice are asked for");
+  await land(damage, [3, 3, 3, 3]);
+  assert.equal(kit.enemy(enemy.id).currentHp, 400 - 6, "half of 12");
 });
 
 await test("With real dice, another attack spell's miss still asks for nothing", async () => {

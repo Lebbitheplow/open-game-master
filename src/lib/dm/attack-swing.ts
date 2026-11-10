@@ -122,7 +122,13 @@ export function judgeSwing(scene: SwingScene, record: AttackRecord, toHit: RollR
     rescuedHit = true;
   }
   const hit = adjudicated.hit || rescuedHit;
-  const crit = adjudicated.crit || (hit && record.autoCrit === true);
+  // A face in the critical range is a critical hit once the attack hits,
+  // whatever lifted it to a hit: "A natural 19 for a Champion that hits
+  // because of Foe Slayer is a critical hit" (the maintainer's decision R2 of
+  // the 2026-11-09 gap sweep; SRD 5.1 Improved Critical, "score a critical hit
+  // on a roll of 19 or 20").
+  const widened = rescuedHit && !natural1 && toHit.natural !== undefined && toHit.natural >= (record.critRange ?? 20);
+  const crit = adjudicated.crit || widened || (hit && record.autoCrit === true);
   if (hit) {
     // Sneak Attack and the other once-a-turn riders are spent by the hit.
     const live = attackTurn(campaign.id, record);
@@ -169,8 +175,12 @@ export function missSwing(scene: SwingScene, record: AttackRecord, judged: Judge
   const wrath = spellRider?.halfOnMiss && holdsDestructiveWrath(getSheetById(sheet.id) ?? sheet)
     ? attackWrathDice(record.damageExpression, record.damageType ?? "", [], { crit: false })
     : null;
+  // A natural 1 is a miss, and the spell's miss deals half ("On a miss, the
+  // arrow splashes the target with acid for half as much of the initial
+  // damage"): the maintainer's decision R1 of the 2026-11-09 gap sweep,
+  // overturning #825's rule call that a natural 1 dealt nothing.
   const graze =
-    spellRider?.halfOnMiss && !judged.natural1 && fresh?.status === "alive"
+    spellRider?.halfOnMiss && fresh?.status === "alive"
       ? { expression: wrath?.expression ?? record.damageExpression, riders: [], crit: false, stunShot: false, half: true, feats: {}, rerollBelow: 0, ...(wrath?.noDice ? { noDice: true } : {}) }
       : null;
   if (graze && wrath) {

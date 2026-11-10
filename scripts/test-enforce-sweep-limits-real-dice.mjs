@@ -62,9 +62,7 @@ const KNOWN = {
 };
 const RULING = {
   "825-damage-lands-after-the-turn": "pull request #825 lists it under \"Already true of an ordinary real-dice hit\"; scripts/test-enforce-physical-feat-bonus.mjs \"a damage roll that lands on the next character's turn opens nothing, whether or not they have acted\" pins that the damage lands and only the turn's bonuses are withheld",
-  "825-natural-1-no-half": "pull request #825, Rule call: \"A natural 1 gets no half, on either dice. SRD 5.1 counts it as a miss, and the spell says a miss still deals half. I kept what the server's dice do, and a test pins it\" (scripts/test-enforce-real-dice-half-on-miss.mjs \"a natural 1 deals nothing, as on the server's dice\")",
   "822-cover-as-parked": "scripts/test-enforce-real-dice-reactions.mjs \"A roll parked before the creature's own AC was recorded ... keeps the AC it parked with\" asserts \"the 2 of cover stays\"; scripts/test-enforce-parry-in-the-dark.mjs \"the light when the attack is made decides, not the light when the roll lands\" states the same reading for light",
-  "819-foe-slayer-widened-critical": "pull request #819, Noticed and left alone: \"A natural 19 lifted by Foe Slayer isn't treated as a critical. Depends on how you read the rule.\"",
 };
 const SKIP = {
   "820-feats-skipped:Mage Slayer": "needs a creature holding concentration on a spell for the hit to test; no staging helper puts a creature's concentration on the table. Left to the dice package's differential.",
@@ -479,7 +477,10 @@ await row("819-foe-slayer-widened-critical", {
   const swing = await kit.swing(champion.id, enemy.id, [19, 4, 4], { weapon: "Longsword" });
   assert.equal(swing.ok, true, swing.error);
   assert.equal(swing.result.hit, true, JSON.stringify(swing.result).slice(0, 240));
-  assert.ok(!swing.result.crit && !swing.result.critical, "as ruled: the lifted 19 is a plain hit");
+  // A 19 is in the Champion's range whatever made it hit (WAVE1 R2: "A
+  // natural 19 for a Champion that hits because of Foe Slayer is a critical
+  // hit"), overturning #819's reading.
+  assert.ok(swing.result.crit || swing.result.critical, `the lifted 19 is a critical hit: ${JSON.stringify(swing.result).slice(0, 240)}`);
 });
 
 // ---- #820 ----
@@ -683,8 +684,10 @@ await row("825-natural-1-no-half", {
   limit: "A natural 1 gets no half, on either dice.",
   rule: "SRD 5.1 Acid Arrow: \"On a miss, the arrow splashes the target with acid for half as much of the initial damage\"; Attack Rolls: \"If the d20 roll for an attack is a 1, the attack misses regardless of any modifiers or the target's AC.\"",
 }, async () => {
+  // A natural 1 is a miss, and the miss deals half (WAVE1 R1): 12 of acid
+  // makes 6.
   const out = await acidArrow([1], [3, 3, 3, 3]);
-  assert.equal(out.enemy.currentHp, 400, out.note);
+  assert.equal(out.enemy.currentHp, 394, out.note);
 });
 await row("825-spell-resistance-ignored", {
   pr: 825,
