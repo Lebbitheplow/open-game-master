@@ -36,7 +36,6 @@ const TRIGGER_ON_TRUST = {
   note: "A weapon attack with the reaction on any turn but the holder's own, for whoever names the feature. The code's comment says so (\"unless the engine has seen the trigger itself\"); no ruling in docs/rules-enforcement-audit.md. No card deals it, so the door is the GM's or the model's use_reaction.",
 };
 const KNOWN = {
-  "trigger:cleric/Order Domain/Voice of Authority": TRIGGER_ON_TRUST,
   "trigger:fighter/Cavalier/Hold the Line": TRIGGER_ON_TRUST,
 };
 // rowId -> why the generator cannot stage this row.

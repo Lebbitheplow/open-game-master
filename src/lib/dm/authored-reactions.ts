@@ -37,7 +37,7 @@ import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import { answerKey, answerLabel, answeredBy, attackerFoeId, carryCuts, critTurnsNormal, cutBlow, freshLastHit, openHits, plainOfReroll, rerollAttacker, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { vowedFoe } from "@/lib/srd/vow-of-enmity";
 import { ENTROPIC_EDGE } from "@/lib/dm/reaction-kinds";
-import { answerSave, kindOf, MENTAL, openSaves, openTriggers, savedIt, type LastSave } from "@/lib/dm/last-save";
+import { answerSave, kindOf, MENTAL, openSaves, openTriggers, recordTrigger, savedIt, type LastSave } from "@/lib/dm/last-save";
 import { rollAgainst } from "@/lib/roll-labels";
 import { applyPcDamage, blowDefenses, meetDefenses } from "@/lib/dm/pc-damage";
 import { ownTurnOf } from "@/lib/dm/held-turn";
@@ -608,6 +608,8 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (does.bond && !(ctx.sheet.pets ?? []).some((pet) => pet.kind === does.bond && pet.hp > 0)) {
         return { error: `${reaction.name} needs ${ctx.sheet.name}'s ${does.bond} up and out, and it is not: summon_pet first. Nothing was spent.`, refused: "rules" };
       }
+      // A bond's range to the pet always holds: the pet stands with its owner
+      // (pet-place.ts, ruling D2), so only an ally's distance is measured.
       if (encounter && target.id !== ctx.sheet.id && !withinFeet(encounter.id, ctx.sheet.id, target.id, does.rangeFt)) {
         return { error: `${target.name} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
       }
@@ -1001,6 +1003,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
         const now = getSheetById(ctx.sheet.id) ?? ctx.sheet;
         const cleared = removeConditions(now.conditions, now.conditionMeta, now.conditions.filter((entry) => textKey(entry) === textKey(ECHO_OUT)));
         reactionPatch(ctx.campaign, ctx.turn.id, now.id, { conditions: cleared.conditions, conditionMeta: cleared.meta }, `${reaction.name}: the echo is destroyed`);
+        // On record, so what answers the echo's destruction (Reclaim
+        // Potential, trigger-table.ts own_echo_destroyed) finds it.
+        recordTrigger(ctx.campaign.id, { kind: "echo_destroyed", characterId: ctx.sheet.id, forcer: { id: attackerFoeId(hit.record) ?? "", name: hit.record.attacker.name } });
       }
       return { applied: `${ctx.sheet.name}'s echo takes the attack: ${settled.given} hit points come back to ${ally.name}. HP ${settled.hp}. ${echo}` };
     }

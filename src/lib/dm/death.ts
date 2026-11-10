@@ -1,3 +1,4 @@
+import { recordSteadied } from "@/lib/dm/last-save";
 import { deathSaveFeat } from "@/lib/srd/feat-combat";
 import type { SystemGlyph } from "@/lib/system-glyphs";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
@@ -381,6 +382,10 @@ export function rollDeathSave(campaign: Campaign, characterId: string, turnId: s
     source: "digital",
   });
   const applied = applyDeathSaveRoll(track, outcome.natural ?? outcome.total, outcome.total);
+  // A death save that succeeds steadies them (last-save.ts): Defy Death answers it.
+  if (applied.outcome === "revive" || applied.outcome === "stable" || applied.outcome === "success") {
+    recordSteadied(campaign.id, sheet.id, { id: sheet.id, name: sheet.name }, "death save");
+  }
   // Every line names the roll, the deciding one too: outside a fight the
   // save has no GM message to carry its dice, so the line is all the table sees.
   const rolled = (result: string) => `${sheet.name} death save: rolled ${outcome.total}, ${result}.`;

@@ -15,8 +15,8 @@ import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
-import { matchResource, type ResourceAction } from "@/lib/srd/class-resources";
-import { ACTION_SURGED, spendAction } from "@/lib/dm/action-budget";
+import { matchResource, RAGING, type ResourceAction } from "@/lib/srd/class-resources";
+import { ACTION_SURGED, RAGE_ENTERED, spendAction } from "@/lib/dm/action-budget";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { readiedReleaseFor } from "@/lib/dm/readied-release";
@@ -123,12 +123,15 @@ export function prepareResourceCharge(
   if (!spent.ok) {
     return toolError(spent);
   }
+  // Entering a rage marks the turn, so what answers "when you enter your
+  // rage" (Call the Hunt) finds it on record (trigger-table.ts own_rage_entered).
+  const raging = def.effect.kind === "condition" && def.effect.condition === RAGING;
   return {
     commit: () => {
       // Read again: the spend itself may have written to the encounter.
       const live = getActiveEncounter(campaign.id);
       if (live) {
-        storeBudget(live, spent.budget);
+        storeBudget(live, raging && !spent.budget.oncePerTurn.includes(RAGE_ENTERED) ? { ...spent.budget, oncePerTurn: [...spent.budget.oncePerTurn, RAGE_ENTERED] } : spent.budget);
       }
       return {
         cost: action === "bonus" ? "their bonus action" : "their action",

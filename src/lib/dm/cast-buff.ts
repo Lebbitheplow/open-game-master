@@ -8,6 +8,7 @@
 // Split out of cast-tools.ts, which re-exports it. Imports mutations (for
 // the slot spend) and must never be imported by it.
 
+import { recordCast } from "@/lib/dm/last-save";
 import { rollCard } from "@/lib/dm/roll-card";
 import { z } from "zod";
 import type { Campaign } from "@/lib/db/campaigns";
@@ -391,6 +392,9 @@ export function handleCastBuff(
   if ("error" in cast) {
     return cast;
   }
+  // The casting at each creature it targets, on record (last-save.ts): what
+  // answers a spell aimed at an ally (Voice of Authority) reads it.
+  recordCast(campaign.id, { id: sheet.id, name: sheet.name }, resolvedMech.name, typeof cast.slotLevel === "number" ? cast.slotLevel : resolvedMech.spellLevel, targetSheets.map((target) => target.id));
   // A target fighting against the caster saves as an unwilling creature.
   for (const [id, line] of unwillingResist(campaign, turn, sheet as CastingSheet<CharacterSheet>, { name: resolvedMech.name, engine }, targetSheets)) warded.set(id, line);
   const slotLevel = typeof cast.slotLevel === "number" ? cast.slotLevel : null;

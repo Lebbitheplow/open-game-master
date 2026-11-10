@@ -492,6 +492,10 @@ function savesView(saves: LastSave[] | undefined, hidden: Set<string>, showNumbe
           ...(save.killerId !== undefined ? { killerId: save.killerId } : {}),
           ...(save.spell ? { spell: save.spell } : {}),
           ...(save.enemy !== undefined ? { enemy: save.enemy } : {}),
+          ...(save.level !== undefined ? { level: save.level } : {}),
+          ...(save.how ? { how: save.how } : {}),
+          ...(save.feet !== undefined ? { feet: save.feet } : {}),
+          ...(save.fromFeet !== undefined ? { fromFeet: save.fromFeet } : {}),
           ...(save.answered?.length ? { answered: save.answered } : {}),
         })),
       }
