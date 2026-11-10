@@ -89,6 +89,7 @@ import {
 } from "@/lib/dm/context-budget";
 import type { ChatMessage } from "@/lib/model-client";
 import { describeIntent } from "@/lib/dm/intent-logic";
+import { withoutServerLines } from "@/lib/dm/tool-text";
 import { describeEquipmentItem } from "@/lib/dm/equipment-line";
 import { summonStateLine } from "@/lib/dm/summon-rules";
 import { dmSystemText, encounterRulesText, tracksAmmunition, type RuleContext } from "@/lib/dm/prompt-rules";
@@ -1952,7 +1953,12 @@ export function buildDmMessages(
   // A small model reads the server's "[roll:<id>]" markers in its own past
   // narration as something to write: Qwen3.5 9B wrote "[roll:pc_attack]" in
   // place of the attack. The short rules leave them out of the transcript.
-  const dmText = (text: string) => (state.ruleContext?.brief ? text.replace(/\[roll:[0-9a-f-]{36}\]\s*/g, "") : text);
+  // A passage stored before issue 900's fix may hold the card line the model
+  // copied then: read back as the model's own words, it would be copied again.
+  const dmText = (text: string) => {
+    const said = withoutServerLines(text);
+    return state.ruleContext?.brief ? said.replace(/\[roll:[0-9a-f-]{36}\]\s*/g, "") : said;
+  };
 
   const rendered = history.map((message) => {
     const name = message.characterId

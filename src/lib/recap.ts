@@ -1,3 +1,5 @@
+import { stripToolText } from "./dm/tool-text.ts";
+
 // A passage as plain prose, with the Markdown emphasis the DM sometimes
 // writes in stripped away: every paragraph for the table's chronicle scroll
 // (browser), which shows each entry whole, and the first one trimmed at a
@@ -5,7 +7,10 @@
 const RECAP_LIMIT = 360;
 
 export function recapParagraphs(content: string): string[] {
-  return content
+  // Leaked tool text, and a card's line a passage stored before issue 900's
+  // fix still carries, ids and all: the transcript never shows them
+  // (MessageContent.tsx), and neither do the scroll and the glance.
+  return stripToolText(content)
     .replace(/\r/g, "")
     .split(/\n\s*\n/)
     .map((part) =>
