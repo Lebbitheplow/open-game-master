@@ -1,4 +1,4 @@
-// Three shared doors the wave-2 plumbing package put in, each held at the
+// The shared doors the wave-2 plumbing package put in, each held at the
 // one place every writer goes through:
 //   - an item whose charges are dice has them rolled as the row is granted
 //     (src/lib/srd/item-charge-rules.ts withStartingCharges, called from the
@@ -7,7 +7,9 @@
 //     (SRD 5.1: "a hostile creature that you can see") and a line about one
 //     names it "Someone unseen" (src/lib/dm/board-hidden.ts);
 //   - a model call the server answered without its tools is kept for the
-//     admin panel (src/lib/tool-call-health.ts).
+//     admin panel (src/lib/tool-call-health.ts);
+//   - the GM's Deploy dialog asks Start a fight's own opening fields
+//     (src/lib/dm/deploy-opening-logic.ts).
 import assert from "node:assert/strict";
 import { openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
@@ -33,6 +35,19 @@ test("the admin panel's tool health keeps the last call's word", () => {
   assert.equal(toolCallHealth()?.dropped, true);
   noteToolCallHealth(false);
   assert.equal(toolCallHealth()?.dropped, false);
+});
+
+test("the Deploy dialog asks Start a fight's own opening fields, and its body is what the deploy route reads", async () => {
+  const { OPENING_FIELDS, openingBody } = await import("../src/lib/dm/deploy-opening-logic.ts");
+  const { ADJUDICATIONS } = await import("../src/lib/dm/invoke-catalog.ts");
+  const { openingOptionsSchema } = await import("../src/lib/dm/fight-opening.ts");
+  const start = ADJUDICATIONS.find((entry) => entry.name === "start_encounter");
+  const names = start.fields.map((field) => field.name);
+  assert.deepEqual(OPENING_FIELDS.filter((name) => !names.includes(name)), [], "every question is a Start a fight field");
+  const body = openingBody({ absent: ["c1"], ambush: "enemies", buildingEnemySide: "north", buildingOpenings: "2", lair: true, from: "behind" });
+  assert.deepEqual(body, { absent: ["c1"], ambush: "enemies", building: { enemySide: "north", openings: 2 }, lair: true, from: "behind" });
+  assert.equal(openingOptionsSchema.safeParse(body).success, true, "the deploy route takes the body");
+  assert.deepEqual(openingBody({}), {}, "an empty form deploys the fight as prepared");
 });
 
 const world = await openWorld({ campaign: { maxPlayers: 6 } });
