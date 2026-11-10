@@ -92,6 +92,8 @@ export type FeatureEffect =
       when: "weapon" | "melee" | "ranged";
       oncePerTurn?: boolean;
       requiresCondition?: string;
+      // Only on a hit with the weapon of this name (authored-feature-defs.ts).
+      weapon?: string;
     }
   // Always-on damage resistances (lineages, Heart of the Storm).
   | { kind: "resistance"; types: string[] }
@@ -773,6 +775,7 @@ export type CombatRiders = {
     when: "weapon" | "melee" | "ranged";
     oncePerTurn: boolean;
     requiresCondition?: string;
+    weapon?: string;
   }>;
   // Weapon and unarmed attacks count as magical for overcoming resistance.
   magicalAttacks: boolean;
@@ -896,6 +899,7 @@ export function combatRiders(sheet: {
           when: effect.when,
           oncePerTurn: Boolean(effect.oncePerTurn),
           ...(effect.requiresCondition ? { requiresCondition: effect.requiresCondition } : {}),
+          ...(effect.weapon ? { weapon: effect.weapon } : {}),
         });
         break;
       case "magical_attacks":

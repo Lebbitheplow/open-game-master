@@ -9,8 +9,12 @@ const brief = (value, length = 220) => JSON.stringify(value)?.slice(0, length);
 const intOf = (level) => modOf(castingScore(level));
 const lost = (rig, foe, from = 300) => from - rig.enemy(foe.id).currentHp;
 const slotsUsed = (rig, who) => Object.values(rig.world.sheet(who.id).spellcasting?.slots ?? {}).reduce((sum, slot) => sum + (slot.used ?? 0), 0);
-const d20sOfLastAttack = (rig) => rig.diceIn(rig.lastRolls(6).find((roll) => roll.kind === "attack"), 20);
-const zonesNamed = (rig, pattern) => (rig.kit.map()?.zones ?? []).filter((zone) => pattern.test(JSON.stringify(zone)));
+// The latest attack roll: listRecentRolls reads oldest first, so the first
+// attack found was the character's own earlier swing, never the one just made.
+const d20sOfLastAttack = (rig) => rig.diceIn(rig.lastRolls(6).filter((roll) => roll.kind === "attack").at(-1), 20);
+// The board's areas live in the map's spellZones (src/lib/db/battle-maps.ts):
+// a "zones" field it does not have read as no area at all.
+const zonesNamed = (rig, pattern) => (rig.kit.map()?.spellZones ?? []).filter((zone) => pattern.test(JSON.stringify(zone)));
 const ELIXIR = "art_experimental_elixir";
 
 // A Guardian or Infiltrator armorer, a fight, and the creature beside them.
@@ -79,8 +83,11 @@ export const RO_EXTRA = {
     const resilient = await drink("resilience");
     rig.foesTurn(foe);
     rig.kit.place(foe.id, 4, 6);
+    // Read before the blow: the rolled elixir above heals too when its d6
+    // lands on healing, so the hit points are not 50 + the first healing.
+    const beforeBlow = rig.hp(friend);
     await rig.enemyHits(foe, friend, [8, 4]);
-    const resilience = { took: 50 + healed - rig.hp(friend), rounds: rig.meta(friend, "elixir of resilience")?.rounds };
+    const resilience = { took: beforeBlow - rig.hp(friend), rounds: rig.meta(friend, "elixir of resilience")?.rounds };
     const bold = await drink("boldness");
     await rig.save(friend, "wis", {}, [10, 2]);
     const boldness = { save: rig.lastRolls(4).find((roll) => roll.kind === "saving_throw")?.expression, rounds: rig.meta(friend, "elixir of boldness")?.rounds };
@@ -198,6 +205,8 @@ export const RO_EXTRA = {
     rig.kit.freshTurn();
     const marked = gauntlet.ok ? gauntlet : await rig.kit.swing(who.id, foe.id, [18, 4]);
     const mark = { conditions: rig.enemy(foe.id).conditions, meta: rig.enemy(foe.id).conditionMeta?.["thunder gauntlets"] ?? null };
+    // The Guardian's id: `who` is the Infiltrator once the scene moves on.
+    const guardianId = who.id;
     rig.foesTurn(foe);
     await rig.enemyHits(foe, friend, [16, 16, 4]);
     const atFriend = d20sOfLastAttack(rig);
@@ -211,7 +220,8 @@ export const RO_EXTRA = {
     const launchTook = lost(rig, foe);
     rig.kit.saveEncounter({ ...rig.world.encounter(), turnBudget: { ...rig.budget(), actionUsed: false, attacksMade: 0 } });
     const second = await rig.kit.swing(who.id, foe.id, [10, 3, 3], { weapon: "Lightning Launcher" });
-    const speed = rig.srd.computeSheetDerived(rig.world.sheet(who.id)).speed;
+    // The walking speed is speedFor's (computeSheetDerived carries no "speed").
+    const speed = rig.srd.speedFor(rig.world.sheet(who.id));
     const stealth = await rig.check(who, "stealth");
     const state = {
       gauntlet: [gauntlet.ok, gauntlet.error, gauntlet.toHit?.total, gauntlet.damage?.expression, gauntlet.damage?.total], thunderImmune, marked: [marked.ok, marked.error], mark, atFriend, atArmorer,
@@ -231,7 +241,10 @@ export const RO_EXTRA = {
       "disadvantage-others": () => {
         assert.equal(gauntlet.ok, true, `the creature must be hit by the gauntlets: ${gauntlet.error}`);
         assert.deepEqual([atFriend, atArmorer], [2, 1], "the creature the gauntlets hit attacks the armorer's ally with disadvantage, the armorer without");
-        assert.equal(mark.meta?.untilTurnStartOf, who.id, `the mark lasts ${brief(mark.meta)}: until the start of the armorer's next turn`);
+        // "Until the start of your next turn" is a mark's untilTurnOf
+        // (src/lib/dm/condition-logic.ts ConditionMeta); untilTurnStartOf is
+        // no field the engine writes or reads.
+        assert.equal(mark.meta?.untilTurnOf, guardianId, `the mark lasts ${brief(mark.meta)}: until the start of the armorer's next turn`);
       },
       infiltrator: () => {
         assert.equal(launch.ok, true, `the Infiltrator's lightning launcher at 30 feet: ${launch.error}`);
@@ -256,7 +269,11 @@ export const RO_EXTRA = {
     const facts = await rig.counterFacts("artificer", "Armorer", 15, "sub_perfected_armor", { pick: ["Armor Model", "Guardian"] });
     rig.reset();
     ({ who, friend, foe } = await armorer(rig, 15, "Infiltrator"));
+    // A ranged attack at a creature 5 feet off is at disadvantage: the
+    // launcher fires from 20 feet, and the creature comes back to the armorer.
+    rig.kit.place(foe.id, 5, 9);
     const launch = await rig.kit.swing(who.id, foe.id, [15, 3, 3], { weapon: "Lightning Launcher" });
+    rig.kit.place(foe.id, 5, 6);
     const glow = { conditions: rig.enemy(foe.id).conditions, meta: rig.enemy(foe.id).conditionMeta?.["lit by perfected armor"] ?? null };
     rig.foesTurn(foe);
     await rig.enemyHits(foe, who, [16, 16, 4]);
@@ -287,7 +304,11 @@ export const RO_EXTRA = {
 
   "ro::artificer::Eldritch Cannon": async (rig) => {
     const { who, friend, foe, made } = await artillerist(rig, 3);
-    const madeState = { budget: null, zones: zonesNamed(rig, /eldritch cannon/i), meta: rig.meta(who, "eldritch cannon") };
+    // The cannon is a creature on the board beside the artificer (its sheet
+    // carries the AC and hit points the clause states), and the area named for
+    // it marks its square: read both.
+    const cannonSheet = rig.world.sheets().find((sheet) => sheet.summon?.casterId === who.id && /eldritch cannon/i.test(sheet.summon?.form ?? "")) ?? null;
+    const madeState = { budget: null, zones: zonesNamed(rig, /eldritch cannon/i), meta: rig.meta(who, "eldritch cannon"), cannon: cannonSheet ? { ac: cannonSheet.ac, hp: cannonSheet.maxHp } : null };
     rig.setUsed(who, "sub_eldritch_cannon", 1);
     const slotsBefore = slotsUsed(rig, who);
     const again = await rig.spend(who, "Eldritch Cannon");
@@ -310,7 +331,7 @@ export const RO_EXTRA = {
         assert.equal(made.ok, true, made.error);
         assert.equal(madeState.meta?.rounds, 600, `the cannon lasts ${brief(madeState.meta)}: an hour`);
         assert.equal(madeState.zones.length, 1, `no cannon stands on the board: ${brief(rig.kit.map()?.zones)}`);
-        assert.ok(/"ac":18|AC 18/i.test(JSON.stringify(madeState.zones)) && new RegExp(`"hp":${5 * 3}|${5 * 3} hit points`).test(JSON.stringify(madeState.zones)), `the cannon on the board has no AC 18 and ${5 * 3} hit points: ${brief(madeState.zones, 300)}`);
+        assert.ok(/"ac":18|AC 18/i.test(JSON.stringify([madeState.zones, madeState.cannon])) && new RegExp(`"hp":${5 * 3}|${5 * 3} hit points`).test(JSON.stringify([madeState.zones, madeState.cannon])), `the cannon on the board has no AC 18 and ${5 * 3} hit points: ${brief([madeState.zones, madeState.cannon], 300)}`);
       },
       slot: () => {
         assert.equal(bySlot.ok, true, `a second cannon the same day, for a spell slot: ${bySlot.error}`);

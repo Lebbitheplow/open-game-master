@@ -7,7 +7,8 @@ import { assert, modOf, castingScore, profOf } from "./sweep-clauses-divine.mjs"
 const brief = (value, length = 220) => JSON.stringify(value)?.slice(0, length);
 const intOf = (level) => modOf(castingScore(level));
 const lost = (rig, foe, from = 300) => from - rig.enemy(foe.id).currentHp;
-const d20sOfLastAttack = (rig) => rig.diceIn(rig.lastRolls(6).find((roll) => roll.kind === "attack"), 20);
+// The latest attack roll: listRecentRolls reads oldest first.
+const d20sOfLastAttack = (rig) => rig.diceIn(rig.lastRolls(6).filter((roll) => roll.kind === "attack").at(-1), 20);
 
 // A Battle Smith with the defender built before the fight, the defender
 // beside them at (6,5), and the turn after the artificer's read off the order.

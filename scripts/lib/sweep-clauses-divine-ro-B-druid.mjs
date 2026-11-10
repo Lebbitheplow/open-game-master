@@ -268,6 +268,12 @@ export const RO_DRUID_B = {
     rig.world.clearDice();
     rig.world.dice(1, 6, 6);
     await foeStartsTurn(rig, who, foe);
+    // The goblin's turn starting is what strikes it in the cube: the board's
+    // areas act through the turn-start door (src/lib/dm/zone-triggers.ts
+    // zoneTurnStart, which condition-tick.ts calls), and moving the pointer
+    // alone runs none of them.
+    const { zoneTurnStart } = await rig.load("lib/dm/zone-triggers.ts");
+    zoneTurnStart(rig.world.campaign(), rig.world.encounter(), [foe.id]);
     rig.world.clearDice();
     const took = 300 - rig.enemy(foe.id).currentHp;
     const halo = await rig.react(who, "Halo of Spores", { targetEnemyId: foe.id }, [3, 1]);
@@ -337,8 +343,10 @@ export const RO_DRUID_B = {
     rig.kit.setEnemy(near.id, { currentHp: 1 });
     rig.kit.giveTurn(who.id);
     const kill = await rig.kit.swing(who.id, near.id, [18, 4]);
-    const zones = rig.world.encounter().zones ?? [];
-    const flame = zones.find((zone) => /cauteriz|spectral flame/i.test(JSON.stringify(zone)));
+    // The flame is kept with the druid, at the dead creature's square
+    // (src/lib/dm/cauterizing-flames.ts).
+    const zones = rig.meta(who, "spectral flames")?.flames ?? [];
+    const flame = zones.find((entry) => entry.x === 5 && entry.y === 6);
     rig.note("flames", [early.ok, early.error.slice(0, 160), earlyTook, kill.ok, rig.enemy(near.id).status, rig.enemy(near.id).currentHp, brief(zones, 300)]);
     return {
       flame: () => {

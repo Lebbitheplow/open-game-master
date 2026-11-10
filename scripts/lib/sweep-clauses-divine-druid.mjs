@@ -116,21 +116,30 @@ export const DRUID = {
     const friend = rig.hero("cleric", "Life Domain", 10);
     const [foe] = await rig.fight(who);
     rig.kit.place(friend.id, 6, 5);
-    const tooFar = await rig.spend(who, "Hidden Paths", { variant: "self", x: 18, y: 5 });
+    // The spend pays for the teleport and move_token makes it (the engine's
+    // door for a feature's teleport, src/lib/dm/feature-teleport.ts): the
+    // spend alone moves nobody, and use_resource takes no square.
+    const hop = async (args, mover, x, y) => {
+      const paid = await rig.spend(who, "Hidden Paths", args);
+      if (!paid.ok) return paid;
+      const moved = await rig.call("move_token", { token: mover.id, x, y, teleport: true, spell: "Hidden Paths", casterCharacterId: who.id });
+      return { ...moved, ok: moved.ok === true, error: moved.error, result: { paid: paid.result, moved: moved.result } };
+    };
+    const tooFar = await hop({ variant: "self" }, who, 18, 5);
     const at = () => [rig.kit.token(who.id).x, rig.kit.token(who.id).y];
     const afterFar = at();
     rig.kit.place(who.id, 5, 5);
     // A fresh bonus action: the far try above spent this turn's.
     rig.kit.freshTurn();
-    const occupied = await rig.spend(who, "Hidden Paths", { variant: "self", x: 5, y: 6 });
+    const occupied = await hop({ variant: "self" }, who, 5, 6);
     const afterOccupied = at();
     rig.kit.place(who.id, 5, 5);
     rig.kit.freshTurn();
-    const ok = await rig.spend(who, "Hidden Paths", { variant: "self", x: 17, y: 5 });
+    const ok = await hop({ variant: "self" }, who, 17, 5);
     const afterOk = at();
     rig.kit.freshTurn();
     rig.kit.place(who.id, 5, 5);
-    const touch = await rig.spend(who, "Hidden Paths", { variant: "touch", targetCharacterId: friend.id, x: 13, y: 5 });
+    const touch = await hop({ variant: "touch", targetCharacterId: friend.id }, friend, 12, 5);
     const friendAt = [rig.kit.token(friend.id).x, rig.kit.token(friend.id).y];
     rig.note("paths", [tooFar.ok, tooFar.error, afterFar, occupied.ok, occupied.error, afterOccupied, ok.ok, ok.error, afterOk, touch.ok, touch.error, brief(touch.result), friendAt, foe.id]);
     rig.reset();
@@ -430,7 +439,9 @@ export const DRUID = {
       dragon: () => assert.equal(floor.result.total, 10, `an Arcana check on a 3 (Intelligence +0) totalled ${floor.result.total}`),
       "2d8-at-10": () => assert.equal(rig.diceIn(arrow10.damage, 8), 2, `at 10th level the arrow rolled ${arrow10.damage?.expression ?? arrow10.error}`),
       "dragon-fly-at-10": () => assert.equal(changed.speeds?.fly, 20, `after changing to the Dragon at 10th level the druid's speeds read ${brief(changed.speeds)} (${changed.conditions}): ${change.error}`),
-      "change-each-turn": () => assert.ok(change.ok && changed.pools[1]?.used === 1 && changed.conditions.filter((name) => /starry form/.test(name)).length === 1, `changing from the Archer to the Dragon on a later turn: ${change.ok ? `the druid carries ${changed.conditions.join(" and ")} at once, and the form's counter reads ${brief(changed.pools[1])}` : change.error}`),
+      // The form's use is Wild Shape's (Starry Form: "Spend a Wild Shape
+      // use"): the change spends none of it, so Wild Shape still reads one.
+      "change-each-turn": () => assert.ok(change.ok && changed.pools[0]?.used === 1 && changed.conditions.filter((name) => /starry form/.test(name)).length === 1, `changing from the Archer to the Dragon on a later turn: ${change.ok ? `the druid carries ${changed.conditions.join(" and ")} at once, and the form's counter reads ${brief(changed.pools[1])}` : change.error}`),
     };
   },
 
@@ -481,6 +492,9 @@ export const DRUID = {
     const [foe] = await rig.fight(who);
     rig.kit.place(friend.id, 6, 5);
     rig.world.patch(friend.id, { currentHp: 50 });
+    // Two spectral flames, under the goblin and under the friend, as two
+    // deaths there would leave them (src/lib/dm/cauterizing-flames.ts).
+    rig.world.patch(who.id, { conditions: [...rig.conditions(who), "spectral flames"], conditionMeta: { ...(rig.world.sheet(who.id).conditionMeta ?? {}), "spectral flames": { flames: [{ x: 5, y: 6, untilRound: 99 }, { x: 6, y: 5, untilRound: 99 }] } } });
     rig.foesTurn(foe);
     const burn = await rig.spend(who, "Cauterizing Flames", { variant: "burn", targetEnemyId: foe.id }, [5, 5]);
     const burned = 300 - rig.enemy(foe.id).currentHp;

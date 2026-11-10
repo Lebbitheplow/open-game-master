@@ -88,6 +88,9 @@ export type ConditionMeta = {
   // Ends when the creature finishes a long rest (a succubus's Draining Kiss,
   // a wight's Life Drain): src/lib/dm/rest-logic.ts.
   untilLongRest?: boolean;
+  // Ends when the rest it was raised for ends, short or long (Hearth of
+  // Moonlight and Shadow: "until the rest ends"): src/lib/dm/rest-logic.ts.
+  untilRestEnds?: boolean;
   // Each character a creature has withstood, where one mark answers several
   // (Instinctive Charm).
   sources?: string[];
