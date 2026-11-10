@@ -11,6 +11,7 @@
 // land, Hypervigilant was surprised with the rest of the party.
 import type { AuthoredEffect, AuthoredEntry } from "@/lib/srd/authored-effects-types";
 import type { GenreRow } from "@/lib/srd/authored-effects-genre";
+import { GENRE_A_CAPSTONES } from "@/lib/srd/authored-effects-genre-a-capstones";
 
 const row = (classId: string, feature: string, effects: AuthoredEffect[], more: Partial<AuthoredEntry> = {}): GenreRow => ({
   feature,
@@ -206,4 +207,4 @@ const AURAS: GenreRow[] = [
   row("exorcist", "Unguttering Flame", [{ kind: "aura_resist", rangeFt: 10, types: ["necrotic"], gate: VIGIL }]),
 ];
 
-export const GENRE_A_AUTHORED: GenreRow[] = [...PASSIVES, ...SPENDS, ...STRIKES, ...AURAS];
+export const GENRE_A_AUTHORED: GenreRow[] = [...PASSIVES, ...SPENDS, ...STRIKES, ...AURAS, ...GENRE_A_CAPSTONES];

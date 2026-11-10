@@ -16,5 +16,12 @@ export const GENRE_A_CONDITIONS: ConditionEffectRow[] = [
   // "An ally you heal gains +2 AC until the start of your next turn"
   { id: "covering_stim", match: ["covering stim"], summary: "Covering Stim: +2 AC until the start of the trauma doc's next turn.", acBonus: 2 },
   { id: "deathly_pact_blade", match: ["deathly pact blade"], summary: "Deathly Pact Blade: the grave knight's bonded weapon is in hand, and it counts as magical.", magicalStrikes: true },
+  // The capstones' marks (src/lib/srd/authored-effects-genre-a-capstones.ts).
+  { id: "psychic_flight", match: ["psychic flight"], summary: "Psychic Flight: a 30-foot flying speed for 10 minutes." },
+  { id: "storm_of_blades", match: ["storm of blades"], summary: "Storm of Blades: for a minute the street samurai makes one additional blade attack with each Attack action." },
+  { id: "singularity", match: ["singularity"], summary: "Singularity: the esper's next psionic of 5th level or lower this turn costs no slot and may strike a second target." },
+  { id: "author_of_the_unwritten", match: ["author of the unwritten"], summary: "Author of the Unwritten: the occultist's next warlock spell of 5th level or lower this turn costs no slot and may strike a second target." },
+  { id: "the_grave_chorus", match: ["the grave chorus"], summary: "The Grave Chorus: for a minute each dirge the dirgesinger casts may strike one additional target." },
+  { id: "beyond_the_veil", match: ["beyond the veil"], summary: "Beyond the Veil: for a minute they see invisible creatures and into the Ethereal Plane, and strike what stands there.", seesInvisible: true },
   { id: "deathless_champion", match: ["deathless champion"], summary: "Deathless Champion: for a minute the grave knight cannot drop below 1 hit point." },
 ];

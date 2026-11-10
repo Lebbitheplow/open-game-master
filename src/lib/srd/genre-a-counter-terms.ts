@@ -78,6 +78,9 @@ export const GENRE_A_COUNTER_TERMS: Record<string, CounterTerms> = {
     passive: true,
     guidance: "The Debt Comes Due: once a long rest, when the occultist expends their last spell slot, it comes straight back. The server gives it back and spends the use as the cast is paid; no call spends it.",
   },
+  // Spent by the cast of the spell they pay for (src/lib/dm/genre-a-casts.ts).
+  horror_apocrypha: { passive: true, guidance: "Apocrypha: the occultist's 6th level warlock spell, cast once a long rest without a slot. Cast it with the spell's own tool: the server pays with this use; no call spends it." },
+  horror_seventh_seal: { passive: true, guidance: "Seventh Seal: the occultist's 7th level warlock spell, cast once a long rest without a slot. Cast it with the spell's own tool: the server pays with this use; no call spends it." },
   cyberpunk_one_more_dawn: HELD_AT_THE_DROP("One More Dawn", "once a long rest, an ally within 30 feet of the trauma doc who would drop to 0 hit points (not killed outright) drops to 1 instead."),
   horror_final_benediction: HELD_AT_THE_DROP("Final Benediction", "once a long rest, when an ally within 30 feet of the exorcist drops to 0 hit points (not killed outright), they drop instead to five times the exorcist's Wisdom modifier."),
 };

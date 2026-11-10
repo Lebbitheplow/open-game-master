@@ -18,7 +18,7 @@
 import subclassesJson from "@/lib/srd/subclasses.json";
 import authoredFeatsJson from "@/lib/srd/authored-feats.json";
 import { authoredFeatureDefs } from "@/lib/srd/authored-feature-defs";
-import { GENRE_A_FEATURE_DEFS } from "@/lib/srd/genre-a-feature-defs";
+import { GENRE_A_FEATURE_DEFS, GENRE_A_MARK_ATTACKS } from "@/lib/srd/genre-a-feature-defs";
 import { tableFeat } from "@/lib/srd/feat-effects";
 import { textKey } from "@/lib/language/text-logic";
 import { choiceIn, isConditionNamed, isNamed } from "@/lib/srd/feature-names";
@@ -797,6 +797,9 @@ export function combatRiders(sheet: {
   classes?: Array<{ id: string; level: number }>;
   // The table, for its workshop feats.
   campaignId?: string | null;
+  // The marks a spend lays that add an attack to the Attack action while they
+  // hold (genre-a-feature-defs.ts GENRE_A_MARK_ATTACKS: Storm of Blades).
+  conditions?: string[];
 }): CombatRiders {
   const level = clampLevel(sheet.level);
   // The level a feature's scaling resolves at: its granting class's when
@@ -918,6 +921,13 @@ export function combatRiders(sheet: {
         break;
       default:
         break;
+    }
+  }
+  // "One additional attack" on top of Extra Attack, which does not add to
+  // itself: the hand, the turn budget and the board all read this sum.
+  for (const [mark, attacks] of Object.entries(GENRE_A_MARK_ATTACKS)) {
+    if (sheet.conditions?.some((entry) => isConditionNamed(entry, mark))) {
+      riders.extraAttacks += attacks;
     }
   }
   return riders;

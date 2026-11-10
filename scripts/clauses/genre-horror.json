@@ -10,7 +10,8 @@
     "run": {
      "k": "spend_cost",
      "cost": "action",
-     "id": "horror_rite_of_repulsion"
+     "id": "horror_rite_of_repulsion",
+     "foeType": "undead"
     },
     "is": "held",
     "by": "the row's action in src/lib/classes/resources.json or the spend's action in src/lib/srd/authored-effects-genre.ts",
@@ -18,15 +19,9 @@
    },
    {
     "c": "fiends, undead, and spirits within 30 ft save (WIS) or must move away from you for 1 minute",
-    "run": {
-     "k": "spend_moves",
-     "id": "horror_rite_of_repulsion"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap exorcist::Rite of Repulsion#1",
-    "observed": "spending horror_rite_of_repulsion moved its counter and the turn's cost and nothing else; the result was its guidance: Action: fiends, undead, and spirits within 30 ft save (WIS) or must move away from you for 1 minute. WIS-mod uses per lo",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row in src/lib/classes/resources.json (no fx)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-a-capstones.mjs",
+    "by": "src/lib/srd/authored-effects-genre-a-capstones.ts: save_area WIS 30 ft, fiends and undead, turned for a minute"
    },
    {
     "c": "WIS-mod uses per long rest",
@@ -838,15 +833,9 @@
    },
    {
     "c": "without a slot",
-    "run": {
-     "k": "spend_moves",
-     "id": "horror_apocrypha"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap occultist::Apocrypha#2",
-    "observed": "spending horror_apocrypha moved its counter and the turn's cost and nothing else; the result was its guidance: Learn one 6th-level warlock spell; cast it 1/long rest without a slot.",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row in src/lib/classes/resources.json (no fx)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-a-capstones.mjs",
+    "by": "src/lib/dm/genre-a-casts.ts genreFreeCast: a spell of the counter's own level costs no slot and spends the counter (passive to use_resource)"
    }
   ]
  },
@@ -917,15 +906,9 @@
    },
    {
     "c": "without a slot",
-    "run": {
-     "k": "spend_moves",
-     "id": "horror_seventh_seal"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap occultist::Seventh Seal#2",
-    "observed": "spending horror_seventh_seal moved its counter and the turn's cost and nothing else; the result was its guidance: Learn one 7th-level warlock spell; cast it 1/long rest without a slot.",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row in src/lib/classes/resources.json (no fx)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-a-capstones.mjs",
+    "by": "src/lib/dm/genre-a-casts.ts genreFreeCast: a spell of the counter's own level costs no slot and spends the counter (passive to use_resource)"
    }
   ]
  },
@@ -981,15 +964,9 @@
    },
    {
     "c": "cast any warlock spell of 5th level or lower without a slot, twinned to two targets",
-    "run": {
-     "k": "spend_moves",
-     "id": "horror_author_of_the_unwritten"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap occultist::Author of the Unwritten#1",
-    "observed": "spending horror_author_of_the_unwritten moved its counter and the turn's cost and nothing else; the result was its guidance: 1/long rest, cast any warlock spell of 5th level or lower without a slot, twinned to two targets.",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row in src/lib/classes/resources.json (no fx)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-a-capstones.mjs",
+    "by": "src/lib/dm/genre-a-casts.ts genreFreeCast (cast guard, no slot while the mark holds) and the twin_spell the mark switches on (authored-reaper.ts, any distance)"
    }
   ]
  },
@@ -2725,15 +2702,9 @@
    },
    {
     "c": "you and up to three allies see and strike into the Ethereal Plane for 1 minute",
-    "run": {
-     "k": "spend_moves",
-     "id": "horror_beyond_the_veil"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap parapsychologist::Beyond the Veil#1",
-    "observed": "spending horror_beyond_the_veil moved its counter and the turn's cost and nothing else; the result was its guidance: 1/long rest, you and up to three allies see and strike into the Ethereal Plane for 1 minute.",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row in src/lib/classes/resources.json (no fx)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-a-capstones.mjs",
+    "by": "src/lib/srd/authored-effects-genre-a-capstones.ts: buff allies (the holder and three) with See Invisibility's sight (genre-a-conditions.ts beyond_the_veil)"
    }
   ]
  },

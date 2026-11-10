@@ -40,6 +40,7 @@ import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { materialPatch } from "@/lib/dm/cast-material";
 import { freeCastCounter, signatureCounter, spendSignature } from "@/lib/dm/caster-features";
 import { debtComesDue } from "@/lib/dm/genre-a-slots";
+import { genreFreeCast, genreFreeCastPatch } from "@/lib/dm/genre-a-casts";
 import { arcanumCounter } from "@/lib/dm/counter-cast-arcanum";
 import { spendGrantUse } from "@/lib/srd/granted-casts";
 import { spellFactsFor, spellMechanicsFor, spellSchoolFor } from "@/lib/content";
@@ -561,6 +562,9 @@ export function castSpell(
   const freeCast = input.ritual || signature ? null : freeCastCounter(sheet, spell, facts, input.level);
   // A warlock's Mystic Arcanum pays for its own spell (counter-cast-arcanum.ts).
   const arcanum = input.ritual || signature || freeCast || slowHeld ? null : arcanumCounter(sheet, facts, input.level);
+  // A genre capstone's slotless cast (genre-a-casts.ts): Singularity's mark,
+  // Apocrypha's 6th level spell.
+  const genreCast = input.ritual || signature || freeCast || arcanum || slowHeld ? null : genreFreeCast(sheet, facts, input.level);
   // Mantle of Majesty's Command costs no slot while the mantle holds.
   const mantled =
     !input.ritual && !signature && !freeCast && /^command$/i.test(engine.trim()) &&
@@ -568,7 +572,7 @@ export function castSpell(
   // The race's grant pays only when nothing before it in the plan below
   // did: a Topaz fighter with Fey Touched casting misty step spends the
   // feat's free cast or the ancestry's use, never both (issue #833).
-  const grantPaid = Boolean(grant) && grantNoSlot && !input.ritual && !slowHeld && !signature && !freeCast;
+  const grantPaid = Boolean(grant) && grantNoSlot && !input.ritual && !slowHeld && !signature && !freeCast && !genreCast;
   // A reaction spell cast into a ring answers no trigger: it takes the action.
   const turnFacts = input.storing && facts?.castingTime === "reaction" ? { ...facts, castingTime: "action" as const } : facts;
   const slot: SlotPlan | ToolError = input.ritual
@@ -581,6 +585,8 @@ export function castSpell(
         ? { kind: "none", note: `${name} is cast without a slot (a feat's free cast): once until a long rest.` }
         : arcanum
           ? { kind: "none", note: `${name} is cast as a Mystic Arcanum, with no spell slot: once until a long rest.` }
+        : genreCast
+          ? { kind: "none", note: genreCast.note }
         : grant && grantPaid
           ? { kind: "none", note: `${name} is cast through ${grant.source} with no spell slot${grant.counter ? `: ${(grant.uses ?? 1) === 1 ? "once" : `${grant.uses} times`}, and again after a ${grant.rest ?? "long"} rest` : ", at will"}${grant.castAt ? `, as a level ${grant.castAt} spell` : ""}.` }
         : mantled
@@ -650,6 +656,9 @@ export function castSpell(
   }
   if (arcanum) {
     patch.resources = spendSignature(patch.resources ?? sheet.resources, arcanum);
+  }
+  if (genreCast) {
+    Object.assign(patch, genreFreeCastPatch(sheet, genreCast, patch.resources ?? sheet.resources));
   }
   // The grant's use (Thief of Five Fates' with its slot, Infernal Legacy's
   // without one). A cast a slot paid for, its free uses spent, spends none.

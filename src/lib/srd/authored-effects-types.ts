@@ -238,7 +238,10 @@ export type AuthoredEffect = Base &
     // A single-target spell of the school and level range strikes a second
     // creature within 5 feet of the first (Improved Reaper: 1st to 5th level
     // necromancy; Reaper: a necromancy cantrip; Moon Fire: sacred flame).
-    | { kind: "twin_spell"; school: string; maxLevel: number; minLevel?: number; spells?: string[] }
+    // `anySchool`: a spell of every school. `anyRange`: the second target
+    // stands anywhere the spell reaches ("at two targets": Singularity, The
+    // Grave Chorus's "one additional target").
+    | { kind: "twin_spell"; school: string; maxLevel: number; minLevel?: number; spells?: string[]; anySchool?: boolean; anyRange?: boolean }
     // pc_attack rapidStrike: an attack with advantage forgoes it for one more
     // attack of the action, once a turn (Rapid Strike).
     | { kind: "rapid_strike" }

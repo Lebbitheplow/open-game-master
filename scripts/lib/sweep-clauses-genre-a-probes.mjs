@@ -335,6 +335,9 @@ export const PROBES = {
   async spend_cost(t, run, feature) {
     // `hp`: a use the text allows only below half (Wired Soul).
     const scene = await t.stage(feature, { level: run.level, ...(run.hp ? { hp: run.hp } : {}) });
+    // `foeType`: a use that only creatures of that type answer (Rite of
+    // Repulsion's fiends and undead): the near foe is made one.
+    if (run.foeType) t.kit.setEnemy(scene.near.id, { stats: { ...t.kit.enemy(scene.near.id).stats, type: run.foeType } });
     const tries = [{}, { targetCharacterId: scene.ally.id }, { targetEnemyId: scene.near.id }];
     let out = null;
     for (const args of tries) {

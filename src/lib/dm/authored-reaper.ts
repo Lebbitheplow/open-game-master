@@ -3,7 +3,8 @@
 // first from the same slot, at no further cost (the material components a
 // spell consumes are the caster's to provide for each). Reaper (Death cleric
 // 1) does the same for a necromancy cantrip, Moon Fire (Lunar Sorcery 1) for
-// sacred flame. cast_at_enemy with two targets for a spell that reaches one
+// sacred flame; Singularity, Author of the Unwritten and The Grave Chorus
+// twin a spell at any distance while their mark holds. cast_at_enemy with two targets for a spell that reaches one
 // (src/lib/dm/cast-at-enemy-targets.ts) reaches handleReaperCast, which casts once (the slot spent, if any) and opens one
 // more share of that casting for the second creature (cast-guard.ts open
 // casts, so nothing more is spent).
@@ -66,13 +67,14 @@ export function handleReaperCast(
   const facts = spellFactsFor(spell, authors);
   const twin = authoredTwinSpell(sheet, { name: facts?.name ?? spell, school: spellSchoolFor(spell, authors), level: facts?.level ?? 0 });
   if (!twin) {
-    return { error: `${sheet.name} cannot strike a second creature with ${spell}: that takes Reaper (a necromancy cantrip), Improved Reaper (a 1st to 5th level necromancy spell) or Moon Fire (sacred flame). Ask the player whether to cast it at one creature. Nothing was spent.`, retry: true };
+    return { error: `${sheet.name} cannot strike a second creature with ${spell}: that takes Reaper (a necromancy cantrip), Improved Reaper (a 1st to 5th level necromancy spell), Moon Fire (sacred flame), or a genre capstone that twins it (Singularity, Author of the Unwritten, The Grave Chorus) while it holds. Ask the player whether to cast it at one creature. Nothing was spent.`, retry: true };
   }
   const mech = spellMechanicsFor({ spell, userIds: authors })?.mech;
   if ((mech?.targets?.count ?? 1) > 1 || mech?.area) {
     return { error: `${spell} already reaches more than one creature; ${twin.feature} doubles a spell that targets only one. Ask the player whether to cast it as it is. Nothing was spent.`, retry: true };
   }
-  if (!withinFeet(encounter.id, first.id, second.id, 5)) {
+  // The genre capstones' "two targets" name no distance between them.
+  if (!twin.anyRange && !withinFeet(encounter.id, first.id, second.id, 5)) {
     return { error: `${second.displayName} is not within 5 feet of ${first.displayName}; ${twin.feature}'s second target must be. Ask the player for another target, or whether to cast it at one creature. Nothing was spent.`, retry: true };
   }
   const budget = budgetFor(encounter, sheet.id, attacksAllowedFor(sheet), conditionTurnShape(sheet.conditions));
