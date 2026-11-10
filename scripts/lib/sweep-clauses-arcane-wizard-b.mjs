@@ -194,7 +194,13 @@ export function probes(rig, shared) {
       kit.setEnemy(enemy.id, { stats: { ...foe(enemy).stats, attacks: [{ name: "Longbow", toHit: 4, damage: "1d8", type: "piercing", ranged: true, range: "150/600 ft." }] } });
       kit.place(chr().id, 1, 1);
       kit.place(enemy.id, 16, 1);
-      await rig.table.strike(enemy, chr());
+      // The shot straight from where it stands (the table's strike walks it in first).
+      const shot = await call("enemy_attack", { enemyId: enemy.id, targetCharacterId: chr().id }, [20, 4]);
+      assert.equal(shot.ok, true, shot.error);
+      // The engine walks the archer in to shoot; the reach is measured from
+      // where the attacker stands as the reaction answers, as Chronal Shift's.
+      kit.place(enemy.id, 16, 1);
+      assert.ok(rig.feetBetween(chr(), enemy) > 60, `the staging: the archer stands ${rig.feetBetween(chr(), enemy)} feet away`);
       const out = await react(chr(), "Convergent Future");
       assert.equal(out.ok, false, `the roll was made 75 feet away: ${show(out).slice(0, 140)}`);
     },
@@ -310,12 +316,10 @@ export function probes(rig, shared) {
     "bladesong-concentration": { severity: "medium", kind: "rule-missing", where: "src/lib/dm/concentration.ts (the bladesong's bonus to the save is not read)", note: "The stored text gives no number (\"a concentration-save bonus\"); the feature it condenses adds the Intelligence modifier.", fix: "Add the Intelligence modifier to a bladesinger's concentration saves, and state it in the text." },
     "bladesinger-cantrip": { severity: "medium", kind: "rule-missing", where: "src/lib/dm/pc-attack*.ts and src/lib/dm/cast-guard.ts (\"Extra Attack gives more weapon attacks, not a second casting\")", note: "The refusal's own words deny the 6th-level feature.", fix: "For a holder of the Bladesinging Extra Attack, let one attack of the Attack action be a cantrip with a casting time of an action." },
     abeyance: { severity: "low", kind: "rule-missing", where: `${RES} sub_arcane_abeyance (a counter with guidance)`, note: "Nothing holds the bead or the spell in it.", fix: "An item on the sheet (as use_spell_slot's storeIn does for a Ring of Spell Storing)." },
-    "convergent-range": { severity: "low", kind: "rule-wrong", where: `${DATA} wizard::Convergent Future (force_miss with no rangeFt)`, note: "", fix: "Give the reaction rangeFt 60." },
     "convergent-other-rolls": { severity: "medium", kind: "rule-missing", where: `${DATA} wizard::Convergent Future (force_miss: a hit made a miss, and nothing else)`, note: "The feature turns any attack roll, ability check or saving throw within 60 feet into a success or a failure; the engine holds one of those six cases.", fix: "Offer it on the after-roll card for an ally's failed save or check and a foe's passed save." },
     "density-enemy": { severity: "medium", kind: "rule-wrong", where: `${DATA} wizard::Adjust Density (buff target "ally"), src/lib/dm/authored-spend-effects.ts (a targetEnemyId the buff cannot use falls back to the holder)`, note: "The wizard meant to slow a foe and is told they have slowed themselves; the action is spent.", fix: "Let the buff take a creature of either side, and refuse a target it cannot use instead of falling back to the holder." },
     "mind-object": { severity: "low", kind: "rule-missing", where: `${RES} sub_manifest_mind (fx buff: a condition on the wizard)`, note: "The 60 feet, the 300 feet, its light and its sight have nothing to be measured from.", fix: "A token or zone for the mind, moved with the wizard's bonus action." },
     scrivener: { severity: "low", kind: "rule-missing", where: `${RES} sub_master_scrivener (a counter with guidance)`, note: "No scroll is made; the +1 level casting has nothing to ride.", fix: "Write a scroll onto the sheet that the cast tools read one level higher and a long rest removes." },
-    "word-arcana": { severity: "medium", kind: "rule-missing", where: `${RES} sub_one_with_the_word (the reaction only); no check_adv effect for wizard::One with the Word`, note: "A passive advantage with no hook at all.", fix: "An authored effect check_adv skills [arcana]." },
     "word-vanish": { severity: "low", kind: "rule-missing", where: "src/lib/dm/reaction-counters.ts One with the Word (the price is told, not taken)", note: "The reaction prevents the damage for free.", fix: "Roll the 3d6 and mark spells of that many levels as gone until 1d6 long rests pass." },
   };
   return { PROBES, KNOWN };

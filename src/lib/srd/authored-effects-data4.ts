@@ -478,7 +478,7 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
     ],
     effects: [
       { kind: "move", fly: "walk", gate: { condition: "revelation in flesh (fly)" } },
-      { kind: "move", swim: "walk", gate: { condition: "revelation in flesh (swim)" }, note: "The swimming speed is twice the walking speed, and the sorcerer breathes water; one benefit per point spent." },
+      { kind: "move", swim: "double_walk", gate: { condition: "revelation in flesh (swim)" }, note: "The sorcerer breathes water; one benefit per point spent." },
     ],
   },
   "sorcerer::Clockwork Magic": { subclass: "Clockwork Soul", heldBy: SPELL_TABLE },

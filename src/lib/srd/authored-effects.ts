@@ -391,7 +391,7 @@ export function authoredSpeeds(sheet: AuthoredSheet, walking: number): { fly?: n
     for (const mode of ["fly", "swim"] as const) {
       const value = effect[mode];
       if (value !== undefined) {
-        out[mode] = Math.max(out[mode] ?? 0, value === "walk" ? walking : value);
+        out[mode] = Math.max(out[mode] ?? 0, value === "walk" ? walking : value === "double_walk" ? 2 * walking : value);
       }
     }
   }

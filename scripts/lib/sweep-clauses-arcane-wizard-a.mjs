@@ -281,6 +281,17 @@ export function probes(rig, shared) {
       const again = await spend(enc(), "Hypnotic Gaze", { targetEnemyId: enemy.id }, [1]);
       assert.equal(again.ok, false, "a second gaze at the same creature before a long rest is taken");
     },
+    // "later actions extend it": an action with variant "extend" renews the
+    // gaze on the creature it holds, rolling no save.
+    "gaze-extend": async () => {
+      const [enemy] = await gazed();
+      kit.freshTurn();
+      const out = await spend(enc(), "Hypnotic Gaze", { targetEnemyId: enemy.id, variant: "extend" }, [20]);
+      assert.equal(out.ok, true, out.error);
+      assert.equal(out.rolled.filter((die) => die.sides === 20).length, 0, "the extension rolled a save");
+      assert.equal(budget().actionUsed, true, "the extension is the wizard's action");
+      assert.ok(conds(enemy).includes("charmed") && conds(enemy).includes("incapacitated"), `after the extension: ${conds(enemy).join(", ")}`);
+    },
     "charm-redirect": async () => {
       await struck();
       const before = [hp(enc()), hp(friend())];
@@ -515,12 +526,6 @@ export function probes(rig, shared) {
     "improved-abjuration": { severity: "medium", kind: "rule-missing", where: "src/lib/dm/reaction-tools.ts Counterspell's ability check (and the Dispel Magic check), which never reads Improved Abjuration", note: `The row is narrated ("the GM adds it to that check"), but the engine rolls the check and settles countered itself, so the GM has nothing to add it to: an abjurer's Counterspell fails on a roll the feature turns into a success.`, fix: "Add the proficiency bonus to the Counterspell and Dispel Magic ability checks of a sheet holding Improved Abjuration, and drop the narrated reason." },
     "benign-swap": { severity: "medium", kind: "rule-missing", where: "src/lib/srd/authored-resources.json sub_benign_transposition (fx teleport, words only) read by src/lib/dm/resource-tools.ts", note: "With a willing creature named, the use and the action are spent and nobody moves; the result tells the GM to move a token.", fix: "Swap the two tokens when targetCharacterId is sent, and move the wizard up to 30 feet when a square is." },
     "benign-recharge-on-cast": { severity: "medium", kind: "rule-missing", where: "src/lib/dm/cast-guard.ts (no refill of sub_benign_transposition on a conjuration spell of 1st level or higher)", note: "The counter's own guidance says it (\"Also recharges whenever the wizard casts a conjuration spell of 1st level or higher\") and nothing does it.", fix: "Refill sub_benign_transposition where a conjuration spell of 1st level or higher is cast by its holder." },
-    "gaze-senses": { severity: "low", kind: "rule-wrong", where: `${DATA} wizard::Hypnotic Gaze (save_effect with no sense asked), read by src/lib/dm/authored-spend-effects.ts`, note: "The same family as the missing \"you can see\" (limits sweep, 831-you-can-see).", fix: "Refuse, with nothing spent, a creature that is both blinded and deafened." },
-    "gaze-incapacitated": { severity: "high", kind: "rule-missing", where: `${DATA} wizard::Hypnotic Gaze (onFail is a sentence: "is also incapacitated with speed 0 ...")`, note: "The whole point of the gaze is that the creature loses its turn; charmed alone leaves it free to attack anyone but the wizard and to walk away.", fix: "Lay incapacitated (and speed 0) beside charmed, ending together." },
-    "gaze-leash": { severity: "low", kind: "state-lifecycle", where: `${DATA} wizard::Hypnotic Gaze (no leashFeet), src/lib/dm/condition-leash.ts`, note: "Champion Challenge's row carries leashFeet for the same shape of ending.", fix: "Give the charm leashFeet 5." },
-    "gaze-damage": { severity: "medium", kind: "state-lifecycle", where: `${DATA} wizard::Hypnotic Gaze (no endsOnDamage on a save_effect)`, note: "save_area rows have endsOnDamage; save_effect has no such field.", fix: "End the gaze's conditions when the creature takes damage." },
-    "gaze-once": { severity: "medium", kind: "rule-missing", where: "src/lib/dm/authored-spend-effects.ts save_effect (no memory of the creatures a gaze was used on)", note: "Instinctive Charm, the next feature of the same school, does remember the creature that resisted it.", fix: "Remember each creature gazed at until the wizard's long rest, and refuse it." },
-    "charm-sight": { severity: "low", kind: "rule-wrong", where: `${DATA} wizard::Instinctive Charm (the reaction carries no sees: "attacker")`, note: "Warding Flare and Chronal Shift carry sees for the same words.", fix: "Add sees: \"attacker\" to the reaction." },
     "charm-before-hit": { severity: "low", kind: "timing-window", where: "src/lib/dm/reaction-tools.ts (a reaction answers a hit on record; an attack roll that missed leaves none)", note: "The engine's shape favours the wizard: they decide knowing the attack hit, and never spend the reaction on a miss.", fix: "A ruling: write that Instinctive Charm answers a hit, or offer it at the roll." },
     "split-distance": { severity: "medium", kind: "rule-wrong", where: "src/lib/dm/authored-reaper.ts authoredTwinSpell (the 5 feet between the two targets is Reaper's and Moon Fire's rule, applied to every twin_spell row)", note: "Split Enchantment's text sets no distance between the two creatures; each must only be in the spell's own range.", fix: "Let a twin_spell row say whether the second target must stand within 5 feet of the first; Split Enchantment's does not." },
     "alter-memories-door": { severity: "low", kind: "rule-missing", where: `${DATA} wizard::Alter Memories (narrated: "the GM rolls its save and narrates what it loses")`, note: "The save is an Intelligence save against the wizard's DC, and nothing rolls it or holds the hours.", fix: "A spend that rolls the creature's save, or a ruling that the save is the GM's." },

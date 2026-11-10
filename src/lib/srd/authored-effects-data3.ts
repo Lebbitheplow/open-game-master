@@ -478,14 +478,23 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
           rangeFt: 5,
           // "choose a creature that you can see within 5 feet of you".
           sight: true,
-          onFail: "is also incapacitated with speed 0 until the end of the wizard's next turn; the wizard's action extends it",
+          senses: "see_or_hear",
+          // "with speed 0 and incapacitated": an incapacitated creature takes
+          // no turn, so its speed is never spent.
+          alsoCondition: "incapacitated",
+          untilNextTurnEnds: true,
+          endsOnDamage: true,
+          leashFeet: 5,
+          oncePerCreature: true,
         },
       },
     ],
   },
   "wizard::Instinctive Charm": {
     subclass: "School of Enchantment",
-    reactions: [{ name: "Instinctive Charm", does: { kind: "redirect", save: { ability: "wis", dcAbility: "spell" }, rangeFt: 30 } }],
+    // "When a creature you can see within 30 feet of you makes an attack roll
+    // against you": the attacker in sight (sees).
+    reactions: [{ name: "Instinctive Charm", sees: "attacker", does: { kind: "redirect", save: { ability: "wis", dcAbility: "spell" }, rangeFt: 30 } }],
   },
   "wizard::Illusory Reality": {
     subclass: "School of Illusion",
@@ -537,7 +546,8 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
   },
   "wizard::Convergent Future": {
     subclass: "Chronurgy Magic",
-    reactions: [{ name: "Convergent Future", does: { kind: "force_miss", exhaustion: 1 } }],
+    // "a creature you can see within 60 feet": the attacker's roll, made within reach.
+    reactions: [{ name: "Convergent Future", does: { kind: "force_miss", exhaustion: 1, rangeFt: 60 } }],
   },
   "wizard::Adjust Density": {
     subclass: "Graviturgy Magic",

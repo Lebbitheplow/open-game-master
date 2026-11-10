@@ -60,7 +60,8 @@ export type AuthoredEffect = Base &
     // Walking speed, through feature-effects' speed_bonus.
     | { kind: "speed"; amount: number }
     // Other movement modes: a number of feet, or "walk" for the walking speed.
-    | { kind: "move"; fly?: number | "walk"; swim?: number | "walk" }
+    // "double_walk": twice the walking speed (Revelation in Flesh's swim).
+    | { kind: "move"; fly?: number | "walk"; swim?: number | "walk" | "double_walk" }
     | { kind: "init_adv" }
     | { kind: "init_ability"; ability: Ability }
     // Advantage on checks: named skills, or checks of an ability about one
@@ -360,6 +361,20 @@ export type SpendDoes =
       // side while the condition lasts, and the holder's next use lets the
       // last creature go (src/lib/dm/command-undead.ts).
       commands?: boolean;
+      // A second condition laid with it, ending with it (Hypnotic Gaze:
+      // incapacitated beside charmed); both end on any damage, or once the
+      // holder is more than `leashFeet` away (src/lib/dm/condition-leash.ts).
+      alsoCondition?: string;
+      endsOnDamage?: boolean;
+      leashFeet?: number;
+      // Until the end of the holder's next turn, not a count of rounds.
+      untilNextTurnEnds?: boolean;
+      // Refused when the creature can neither see nor hear the holder.
+      senses?: "see_or_hear";
+      // Once used on a creature, whatever the result, not on it again until
+      // the holder's long rest; a use while it still holds renews it
+      // (src/lib/dm/authored-save-effect-extras.ts).
+      oncePerCreature?: boolean;
     }
   // Every foe in reach that the holder can see saves or suffers, with one roll
   // of damage shared among them. `types` keeps it to creatures of those types;
@@ -559,7 +574,8 @@ export type ReactionDoes =
   // against a creature the holder marked with this condition.
   | { kind: "chance_miss"; die: string; min: number; vsMark?: string }
   // The last hit is declared a miss, for a level of exhaustion.
-  | { kind: "force_miss"; exhaustion: number }
+  // `rangeFt`: the attacker made its roll within this many feet of the holder.
+  | { kind: "force_miss"; exhaustion: number; rangeFt?: number }
   // A critical hit on the holder or a creature in range becomes a normal hit:
   // the same dice without the critical's, and a death-save failure for one blow
   // at 0 rather than two (Sentinel at Death's Door).

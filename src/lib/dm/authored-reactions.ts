@@ -911,6 +911,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
         if (does.rangeFt && !withinFeet(encounter.id, ctx.sheet.id, attacker.id, does.rangeFt)) {
           return { error: `${attacker.displayName} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
         }
+        // "When a creature you can see": the attacker in the holder's sight.
+        const unseen = reaction.sees === "attacker" ? unseenRefusal(encounter.id, ctx.sheet, { id: attacker.id, name: attacker.displayName }, reaction.name) : null;
+        if (unseen) return unseen;
         if (immuneToCondition(attacker, "charmed")) {
           return { error: `${attacker.displayName} cannot be charmed, so ${reaction.name} cannot sway it. Nothing was spent.`, refused: "rules" };
         }
@@ -964,7 +967,13 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
     }
     case "force_miss": {
       const target = allyOf(ctx) ?? ctx.sheet;
-      const hit = lastHitOn(ctx, target, label);
+      // Convergent Future reaches a roll made within 60 feet: a hit open from
+      // an attacker beyond them is not one it can answer.
+      const inReach = (record: LastHit) => () => {
+        const foe = attackerFoeId(record);
+        return !does.rangeFt || !encounter || !foe || withinFeet(encounter.id, ctx.sheet.id, foe, does.rangeFt);
+      };
+      const hit = lastHitOn(ctx, target, label, does.rangeFt ? inReach : undefined);
       if ("error" in hit) return hit;
       const settled = settle(ctx, hit.record, hit.record.swings.map((entry, at) => (at === hit.index ? { ...entry, hit: false, raw: 0 } : entry)), label);
       if (!does.exhaustion) {

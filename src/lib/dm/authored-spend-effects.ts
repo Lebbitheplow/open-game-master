@@ -5,6 +5,7 @@
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
 import { saveModFor } from "@/lib/bestiary/enemy-numbers";
 import { layEnemyConditionInstance } from "@/lib/dm/enemy-condition-lay";
+import { extendsHeld, layWithExtras, markMet, saveEffectRefusal } from "@/lib/dm/authored-save-effect-extras";
 import { foesOfSheet, resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { chosenTargets } from "@/lib/dm/chosen-targets";
 import type { Campaign } from "@/lib/db/campaigns";
@@ -351,6 +352,20 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       if (does.perUnit && ctx.units < 1) {
         return { error: `${ctx.spend.name} needs at least 1 point spent: pass amount. Nothing was spent.`, retry: true };
       }
+      // Its senses, its once a creature, and a renewal of what holds
+      // (src/lib/dm/authored-save-effect-extras.ts).
+      const extend = extendsHeld(does, sheet.id, enemy, ctx.args.variant);
+      if (typeof extend !== "boolean") {
+        return extend;
+      }
+      const barred = extend ? null : saveEffectRefusal(does, sheet, enemy, ctx.spend.name);
+      if (barred) {
+        return barred;
+      }
+      if (extend) {
+        layWithExtras(campaign, enemy, sheet.id, does);
+        return { result: { target: enemy.displayName, extended: `${enemy.displayName} stays ${[does.condition, does.alsoCondition].filter(Boolean).join(" and ")} under ${ctx.spend.name}, renewed for its whole length; no save is rolled.` } };
+      }
       // A damage type the caster chooses is named whole in the variant.
       const type = does.typeFromVariant ? namedOption(ctx.spend.name, ctx.args.variant, does.typeFromVariant) : (does.type ?? "");
       if (typeof type !== "string") {
@@ -385,9 +400,15 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
         if (placed.commanded) {
           result.note = commandedNote(sheet.name, enemy.displayName);
         }
+      } else if (!save.success && does.condition && (does.alsoCondition || does.endsOnDamage || does.leashFeet)) {
+        const landed = layWithExtras(campaign, enemy, sheet.id, does);
+        result.condition = landed ? `${enemy.displayName} is ${[does.condition, does.alsoCondition].filter(Boolean).join(" and ")}.` : `${enemy.displayName} cannot be ${does.condition}.`;
       } else if (!save.success && does.condition) {
         const landed = enemyCondition(ctx, enemy, does.condition, does.saveEnds ? { saveEnds: { ability, dc, ...(other ? { or: other } : {}) } } : does.rounds ? { rounds: does.rounds } : {});
         result.condition = landed ? `${enemy.displayName} is ${does.condition}.` : `${enemy.displayName} cannot be ${does.condition}.`;
+      }
+      if (does.oncePerCreature) {
+        markMet(campaign, enemy, sheet.id, ctx.spend.name);
       }
       if (!save.success && does.onFail) {
         result.onFail = `${enemy.displayName} ${does.onFail}.`;

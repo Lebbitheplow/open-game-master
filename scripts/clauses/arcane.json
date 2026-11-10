@@ -260,8 +260,9 @@
    },
    {
     "c": "or a creature you can see with one of them",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-limits-features.mjs :: 856-no-stop-at-a-person-run-table"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-limits-features.mjs :: 856-no-stop-at-a-person-run-table",
+    "by": "scripts/test-enforce-sweep-limits-features.mjs row 856-no-stop-at-a-person-run-table: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "three dice from 14th level",
@@ -311,8 +312,9 @@
    },
    {
     "c": "gain one of these until you are incapacitated or take a short or long rest: darkvision out to 60 feet, sight of the Ethereal Plane to 60 feet, the ability to read any language, or sight of invisible creatures and objects within 10 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_third_eye#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_third_eye#GUIDANCE_ONLY",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_third_eye: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    }
   ]
  },
@@ -344,8 +346,9 @@
    },
    {
     "c": "choose a creature you can see",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-limits-features.mjs :: 831-you-can-see:wizard::Hypnotic Gaze/Hypnotic Gaze"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-limits-features.mjs :: 831-you-can-see:wizard::Hypnotic Gaze/Hypnotic Gaze",
+    "by": "scripts/test-enforce-sweep-limits-features.mjs row 831-you-can-see:wizard::Hypnotic Gaze/Hypnotic Gaze: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "within 5 feet",
@@ -355,8 +358,9 @@
    },
    {
     "c": "if it can see or hear you",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: gaze-senses"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: gaze-senses",
+    "by": "src/lib/srd/authored-effects-data3.ts wizard::Hypnotic Gaze senses see_or_hear (src/lib/dm/authored-save-effect-extras.ts saveEffectRefusal)"
    },
    {
     "c": "it makes a Wisdom save against your spell save DC",
@@ -372,19 +376,21 @@
    },
    {
     "c": "with speed 0 and incapacitated",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: gaze-incapacitated"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: gaze-incapacitated",
+    "by": "src/lib/srd/authored-effects-data3.ts wizard::Hypnotic Gaze alsoCondition incapacitated, laid and ended with the charm"
    },
    {
     "c": "and later actions extend it",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: a second use is taken as a new use (see gaze-once), so an extension cannot be told from it"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-data3.ts wizard::Hypnotic Gaze oncePerCreature: variant extend renews the held gaze for the action, no save (authored-save-effect-extras.ts extendsHeld)",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: gaze-extend"
    },
    {
     "c": "It ends if you move more than 5 feet away",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: gaze-leash"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: gaze-leash",
+    "by": "src/lib/srd/authored-effects-data3.ts wizard::Hypnotic Gaze leashFeet 5 (src/lib/dm/condition-leash.ts)"
    },
    {
     "c": "if it can't see or hear you",
@@ -394,13 +400,15 @@
    },
    {
     "c": "or if it takes damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: gaze-damage"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: gaze-damage",
+    "by": "src/lib/srd/authored-effects-data3.ts wizard::Hypnotic Gaze endsOnDamage"
    },
    {
     "c": "Once you use it on a creature, whatever the result, you can't use it on that creature again until you finish a long rest.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: gaze-once"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: gaze-once",
+    "by": "src/lib/srd/authored-effects-data3.ts wizard::Hypnotic Gaze oncePerCreature: the met mark (untilLongRest) refuses a second use"
    }
   ]
  },
@@ -412,8 +420,9 @@
   "clauses": [
    {
     "c": "When a creature you can see",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: charm-sight"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: charm-sight",
+    "by": "src/lib/srd/authored-effects-data3.ts wizard::Instinctive Charm sees attacker (authored-reactions.ts redirect: unseenRefusal)"
    },
    {
     "c": "within 30 feet",
@@ -1029,8 +1038,9 @@
   "clauses": [
    {
     "c": "After you or a creature you can see within 30 feet makes an attack roll, ability check or saving throw",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-dice-windows.mjs :: windows.take_action.hero_grapple"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-dice-windows.mjs :: windows.take_action.hero_grapple",
+    "by": "scripts/test-enforce-sweep-dice-windows.mjs row windows.take_action.hero_grapple: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "a reaction forces a reroll once you see whether it succeeded, and the second roll stands",
@@ -1068,8 +1078,9 @@
   "clauses": [
    {
     "c": "As an action, a Large or smaller creature you can see within 60 feet makes a Constitution save against your spell save DC or is incapacitated with speed 0 until the end of your next turn or until it takes damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_momentary_stasis#HANDS_BACK"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_momentary_stasis#HANDS_BACK",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_momentary_stasis: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "a number of times equal to your Intelligence modifier (minimum once) per long rest",
@@ -1112,8 +1123,9 @@
    },
    {
     "c": "within 60 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: convergent-range"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: convergent-range",
+    "by": "src/lib/srd/authored-effects-data3.ts wizard::Convergent Future force_miss rangeFt 60 (authored-reactions.ts force_miss: the attacker's roll within reach)"
    },
    {
     "c": "as a success or a failure",
@@ -1205,8 +1217,9 @@
   "clauses": [
    {
     "c": "As an action, for a minute (concentration) you emanate a 30-foot field: each hostile creature that starts its turn in it makes a Strength save against your spell save DC, taking 2d10 force damage and having speed 0 until the start of its next turn on a failure, or half damage on a success, after which every foot it moves in the field costs 2 extra feet.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_event_horizon#HANDS_BACK"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_event_horizon#HANDS_BACK",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_event_horizon: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "Once per long rest",
@@ -1327,8 +1340,9 @@
   "clauses": [
    {
     "c": "While your spellbook is on your person you have advantage on Intelligence (Arcana) checks",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: word-arcana"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: word-arcana",
+    "by": "src/lib/srd/authored-effects-w2-arcane.ts wizard::One with the Word check_adv arcana"
    },
    {
     "c": "If you take damage while the book's mind is manifested, a reaction dismisses it to prevent all of that damage",
@@ -1874,8 +1888,9 @@
    },
    {
     "c": "and advantage on saves against being charmed or frightened",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: psychic-saves"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: psychic-saves",
+    "by": "src/lib/srd/authored-effects-w2-arcane.ts sorcerer::Psychic Defenses save_adv against charmed, frightened"
    }
   ]
  },
@@ -1911,8 +1926,9 @@
    },
    {
     "c": "you gain a swimming speed of twice your walking speed and breathe water",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: revelation-swim"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: revelation-swim",
+    "by": "src/lib/srd/authored-effects-data4.ts sorcerer::Revelation in Flesh move swim double_walk (authored-effects.ts authoredSpeeds)"
    },
    {
     "c": "or you can squeeze through a space as narrow as an inch and spend 5 feet of movement to escape nonmagical restraints or a grapple",
@@ -1930,8 +1946,9 @@
   "clauses": [
    {
     "c": "As an action, teleport up to 120 feet to an unoccupied space you can see; each creature within 30 feet of the space you left makes a Strength save against your spell save DC, taking 3d10 force damage and being pulled toward that space on a failure, or half damage on a success.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_warping_implosion#HANDS_BACK"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_warping_implosion#HANDS_BACK",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_warping_implosion: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "Once per long rest",
@@ -2043,8 +2060,9 @@
   "clauses": [
    {
     "c": "A 30-foot cube heals 100 hit points among creatures in it, ends spells of 6th level or lower, and repairs damaged objects",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_clockwork_cavalcade#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_clockwork_cavalcade#GUIDANCE_ONLY",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_clockwork_cavalcade: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "once per long rest",
@@ -2080,8 +2098,9 @@
    },
    {
     "c": "until your next long rest you can cast its 1st-level spell once without a spell slot",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_lunar_free_cast#SPENT_FOR_NOTHING"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_lunar_free_cast#SPENT_FOR_NOTHING",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_lunar_free_cast: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    }
   ]
  },
@@ -2138,8 +2157,9 @@
    },
    {
     "c": "and you can cast the 1st-level spell of each phase once without a spell slot, regaining those castings on a long rest",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_waxing_and_waning#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_waxing_and_waning#GUIDANCE_ONLY",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_waxing_and_waning: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    }
   ]
  },
@@ -2205,8 +2225,9 @@
    },
    {
     "c": "you release your phase's power. Full Moon: each creature of your choice within 30 feet makes a Constitution save or is blinded until the end of its next turn, and one creature of your choice there regains 3d8 hit points. New Moon: each creature of your choice within 30 feet makes a Dexterity save or takes 3d10 necrotic damage and has speed 0 until the end of its next turn, and you are invisible until the end of your next turn or until you attack or cast a spell. Crescent Moon: you teleport up to 60 feet with one willing creature within 5 feet of you, and each of you resists all damage until the start of your next turn.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_lunar_phenomenon#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_lunar_phenomenon#GUIDANCE_ONLY",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_lunar_phenomenon: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    }
   ]
  },
@@ -2218,8 +2239,9 @@
   "clauses": [
    {
     "c": "An action charms or frightens every creature in a 10-foot cube that fails a Wisdom save until the end of your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_fey_presence#HANDS_BACK"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_fey_presence#HANDS_BACK",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_fey_presence: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "recharges on a short or long rest",
@@ -2237,8 +2259,9 @@
   "clauses": [
    {
     "c": "A reaction on taking damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_misty_escape#TRIGGER_UNCHECKED"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_misty_escape#TRIGGER_UNCHECKED",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_misty_escape: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "turns you invisible",
@@ -2273,8 +2296,9 @@
    },
    {
     "c": "and when another creature tries to charm you, a reaction makes it save on Wisdom against your spell save DC or be charmed by you for a minute or until it takes damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs :: reaction:warlock::Beguiling Defenses::Beguiling Defenses#TRIGGER_UNCHECKED"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs :: reaction:warlock::Beguiling Defenses::Beguiling Defenses#TRIGGER_UNCHECKED",
+    "by": "scripts/test-enforce-sweep-spends-reactions.mjs row reaction:warlock::Beguiling Defenses::Beguiling Defenses: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    }
   ]
  },
@@ -2286,8 +2310,9 @@
   "clauses": [
    {
     "c": "As an action, a creature you can see within 60 feet makes a Wisdom save against your spell save DC or is charmed or frightened by you (your choice) for a minute or until your concentration breaks or it takes damage; it believes it is lost in a misty realm and can see and hear only itself, you and the illusion.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_dark_delirium#HANDS_BACK"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_dark_delirium#HANDS_BACK",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_dark_delirium: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "Once per short or long rest",
@@ -2513,13 +2538,15 @@
    },
    {
     "c": "curse a creature you can see",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-limits-features.mjs :: 831-you-can-see:warlock::Hexblade's Curse/Hexblade's Curse"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-limits-features.mjs :: 831-you-can-see:warlock::Hexblade's Curse/Hexblade's Curse",
+    "by": "scripts/test-enforce-sweep-limits-features.mjs row 831-you-can-see:warlock::Hexblade's Curse/Hexblade's Curse: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "within 30 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-limits-features.mjs :: 831-within-feet:warlock::Hexblade's Curse/Hexblade's Curse"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-limits-features.mjs :: 831-within-feet:warlock::Hexblade's Curse/Hexblade's Curse",
+    "by": "scripts/test-enforce-sweep-limits-features.mjs row 831-within-feet:warlock::Hexblade's Curse/Hexblade's Curse: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "for a minute",
@@ -2648,8 +2675,9 @@
    },
    {
     "c": "you can move the curse to another creature you can see",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-limits-features.mjs :: 831-you-can-see:warlock::Master of Hexes/Master of Hexes"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-limits-features.mjs :: 831-you-can-see:warlock::Master of Hexes/Master of Hexes",
+    "by": "scripts/test-enforce-sweep-limits-features.mjs row 831-you-can-see:warlock::Master of Hexes/Master of Hexes: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "within 30 feet of it",
@@ -2849,8 +2877,9 @@
    },
    {
     "c": "Bottled Respite: as an action, vanish into it for up to twice your proficiency bonus in hours, leaving early as a bonus action; once per long rest.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_genies_vessel#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_genies_vessel#GUIDANCE_ONLY",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_genies_vessel: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "Genie's Wrath: once on each of your turns",
@@ -2905,8 +2934,9 @@
   "clauses": [
    {
     "c": "When you enter your vessel through Bottled Respite, up to five willing creatures within 30 feet can come in with you.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_genies_vessel#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_genies_vessel#GUIDANCE_ONLY",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_genies_vessel: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "Anyone who stays inside at least 10 minutes gains the benefit of a short rest, and anyone who spends Hit Dice in it adds your proficiency bonus to the hit points each die restores.",
@@ -3323,8 +3353,9 @@
   "clauses": [
    {
     "c": "After performing for at least a minute, choose a number of humanoids within 60 feet who watched and listened to all of it equal to your Charisma modifier (minimum one); each makes a Wisdom save against your spell save DC or is charmed by you for an hour, idolizing you and hindering anyone who opposes you.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_enthralling_performance#HANDS_BACK"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_enthralling_performance#HANDS_BACK",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_enthralling_performance: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "Once per short or long rest",
@@ -3391,8 +3422,9 @@
    },
    {
     "c": "an attacker must pass a Charisma save or lose the attack and be unable to target you that turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_unbreakable_majesty#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_unbreakable_majesty#GUIDANCE_ONLY",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_unbreakable_majesty: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    }
   ]
  },
@@ -3515,8 +3547,9 @@
   "clauses": [
    {
     "c": "A minute of private conversation frightens a humanoid of you or someone you name for an hour on a failed Wisdom save",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_words_of_terror#HANDS_BACK"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_words_of_terror#HANDS_BACK",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_words_of_terror: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "once per short or long rest",
@@ -3534,8 +3567,9 @@
   "clauses": [
    {
     "c": "A reaction captures the shadow of a humanoid that just died, letting you wear their identity for an hour",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_mantle_of_whispers#TRIGGER_UNCHECKED"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_mantle_of_whispers#TRIGGER_UNCHECKED",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_mantle_of_whispers: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "once per short or long rest",
@@ -3553,8 +3587,9 @@
   "clauses": [
    {
     "c": "Whisper a creature's darkest secret: on a failed Wisdom save it is charmed and obeys your requests for 8 hours",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_shadow_lore#HANDS_BACK"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_shadow_lore#HANDS_BACK",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_shadow_lore: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "once per long rest",
@@ -3619,8 +3654,9 @@
   "clauses": [
    {
     "c": "As an action, choose a number of creatures within 60 feet equal to your Charisma modifier (minimum one): for an hour they understand you, whatever language you speak.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_universal_speech#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_universal_speech#GUIDANCE_ONLY",
+    "by": "scripts/test-enforce-sweep-spends-subclass.mjs row counter:sub_universal_speech: closed in wave 1 (its KNOWN entry gone), it runs as a test"
    },
    {
     "c": "Once per long rest",
