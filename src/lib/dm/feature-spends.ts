@@ -229,14 +229,14 @@ export function featureVariantSpend(
     return spend(campaign, turnId, sheet, def.id, "none", reason, () => eldritchMaster(sheet));
   }
   if (def?.id === "indomitable") {
-    return spend(campaign, turnId, sheet, def.id, "none", reason, () => indomitable(campaign, sheet));
+    return spend(campaign, turnId, sheet, def.id, ANSWERS_A_FAILED_SAVE, reason, () => indomitable(campaign, sheet));
   }
   if (def?.id === "ki" && isNamed(wanted, "diamond soul")) {
     // Diamond Soul (monk 14): 1 ki rerolls a failed save, as Indomitable does.
     if (!holdsFeature(sheet, "diamond soul")) {
       return { error: `${sheet.name} does not have Diamond Soul.`, refused: "rules" };
     }
-    return spend(campaign, turnId, sheet, def.id, "none", reason, () => indomitable(campaign, sheet));
+    return spend(campaign, turnId, sheet, def.id, ANSWERS_A_FAILED_SAVE, reason, () => indomitable(campaign, sheet));
   }
   if (def?.id === "ki" && isNamed(wanted, "empty body")) {
     // Empty Body (monk 18): 4 ki, an action, invisible for a minute and
@@ -254,6 +254,16 @@ type Resolution = ToolError | { result: Record<string, unknown>; patch?: FullPat
 // The shared order: the feature is held with a use left, the character can
 // act, the turn is charged, the effect resolves, and only then the use is
 // spent. A resolution that refuses costs nothing.
+// A reroll of the save just failed answers that roll, on whoever's turn it
+// was failed: "you can reroll a saving throw that you fail" (SRD 5.1, Fighter:
+// Indomitable; Diamond Soul the same). It costs nothing of the turn, so it is
+// not held to the holder's own turn as a free action is: refused off their
+// turn, a save failed on a goblin's turn (where nearly every save is made)
+// could be rerolled only once the failure had stood the whole round (finding
+// spends-indomitable-own-turn-only). indomitable() still asks for the failed
+// save on record.
+const ANSWERS_A_FAILED_SAVE = (): ResourceCharge => ({ commit: () => ({}) });
+
 function spend(
   campaign: Campaign,
   turnId: string,
@@ -283,7 +293,7 @@ function spend(
   }
   // An action or a bonus action needs someone able to take one; a reroll
   // (Indomitable) does not.
-  const stoppedBy = cost !== "none" && cost !== "reaction" ? incapacitatedBy(sheet.conditions) : null;
+  const stoppedBy = cost !== "none" && cost !== "reaction" && cost !== ANSWERS_A_FAILED_SAVE ? incapacitatedBy(sheet.conditions) : null;
   if (stoppedBy) {
     return { error: `${sheet.name} is ${stoppedBy} and cannot use ${def.displayName} until the condition ends.`, refused: "rules" };
   }

@@ -68,7 +68,6 @@ export const KNOWN = {
   "counter:horror_unfinished_ritual": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "counter:horror_won_t_die_here": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" }, TRIGGER_AS_CARD: { severity: "medium", note: "dealt as a card on the holder's own turn and accepted with nothing to react to" } },
   "counter:hurl_through_hell": { TRIGGER_AS_CARD: { severity: "medium", note: "dealt as a card on the holder's own turn and accepted with nothing to react to" } },
-  "counter:indomitable": { OWN_TURN_ONLY: { severity: "high", note: "refused when the save fails, taken only on the holder's own turn" } },
   "counter:luck_points": { SPENT_FOR_NOTHING: { severity: "low", note: "another path carries the effect; a plain spend takes the use without it" } },
   "counter:mystery_archetype_made_flesh": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "counter:mystery_deductive_counter": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" }, TRIGGER_UNCHECKED: { severity: "medium", note: "accepted with no trigger staged" }, TRIGGER_AS_CARD: { severity: "medium", note: "dealt as a card on the holder's own turn and accepted with nothing to react to" } },
