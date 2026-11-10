@@ -1196,10 +1196,10 @@
    },
    {
     "c": "escape grapples with advantage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap grifter::Slippery#1:escape_adv",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test grifter::Slippery#1:escape_adv",
     "k": "escape_adv",
-    "observed": "the escape threw 2 d20 with Slippery and 2 without it"
+    "by": "src/lib/srd/genre-b-combat.ts genreEscapeAdvantage, read by src/lib/dm/grapple.ts characterEscape"
    }
   ]
  },

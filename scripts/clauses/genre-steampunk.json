@@ -586,13 +586,13 @@
    },
    {
     "c": "falling damage you take is halved",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Sky Legs#1:fall",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test aeronaut::Sky Legs#1:fall",
     "k": "fall",
     "p": {
      "want": 9
     },
-    "observed": "a 60-foot fall took 18 with Sky Legs, and the text makes it 9"
+    "by": "src/lib/srd/genre-b-combat.ts genreFall, read by src/lib/dm/hazard-tools.ts apply_hazard falling"
    }
   ]
  },
@@ -829,13 +829,9 @@
   "clauses": [
    {
     "c": "Immune to falling damage while conscious",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Cat's Grace#0:fall",
-    "k": "fall",
-    "p": {
-     "want": 0
-    },
-    "observed": "a 60-foot fall took 18 with Cat's Grace, and the text makes it 0"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Cat's Grace: a conscious aeronaut takes no falling damage, where Sky Legs alone halves it",
+    "by": "src/lib/srd/genre-b-combat.ts genreFall, read by src/lib/dm/hazard-tools.ts apply_hazard falling"
    },
    {
     "c": "opportunity attacks against you have disadvantage",
@@ -1798,13 +1794,13 @@
    },
    {
     "c": "ignore the first 20 ft of any fall",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Spring Heels#1:fall",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test gadgeteer::Spring Heels#1:fall",
     "k": "fall",
     "p": {
      "want": 12
     },
-    "observed": "a 60-foot fall took 18 with Spring Heels, and the text makes it 12"
+    "by": "src/lib/srd/genre-b-combat.ts genreFall, read by src/lib/dm/hazard-tools.ts apply_hazard falling"
    }
   ]
  },

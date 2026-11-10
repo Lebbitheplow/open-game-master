@@ -128,3 +128,33 @@ export function cutParts<T extends { amount: number }>(parts: T[], cut: number):
   }
   return out.filter((part) => part.amount > 0);
 }
+
+// A fall on an aeronaut or a gadgeteer (src/lib/dm/hazard-tools.ts reads it
+// before it rolls): Spring Heels "ignore the first 20 ft of any fall"; Sky
+// Legs "falling damage you take is halved"; Cat's Grace "Immune to falling
+// damage while conscious".
+export function genreFall(sheet: Holder, feet: number): { feet: number; halved: boolean; immune: boolean; notes: string[] } {
+  const notes: string[] = [];
+  if (holds(sheet, "aeronaut", "Cat's Grace") && sheet.currentHp > 0) {
+    return { feet, halved: false, immune: true, notes: ["Cat's Grace: immune to falling damage while conscious"] };
+  }
+  let left = feet;
+  if (holds(sheet, "gadgeteer", "Spring Heels")) {
+    left = Math.max(0, feet - 20);
+    notes.push("Spring Heels: the first 20 ft of the fall are ignored");
+  }
+  const halved = holds(sheet, "aeronaut", "Sky Legs");
+  if (halved) {
+    notes.push("Sky Legs: the falling damage is halved");
+  }
+  return { feet: left, halved, immune: false, notes };
+}
+
+// "escape grapples with advantage" (Slippery, grifter); "escape grapples and
+// restraints with advantage" (Escape Artist, scavenger): src/lib/dm/grapple.ts
+// characterEscape rolls the escape with it.
+export function genreEscapeAdvantage(sheet: Holder): string | null {
+  if (holds(sheet, "grifter", "Slippery")) return "Slippery";
+  if (holds(sheet, "scavenger", "Escape Artist")) return "Escape Artist";
+  return null;
+}

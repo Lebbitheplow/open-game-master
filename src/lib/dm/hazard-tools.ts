@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { genreFall } from "@/lib/srd/genre-b-combat";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import type { DmTurn } from "@/lib/db/dm-turns";
@@ -278,8 +279,15 @@ function resolveHazard(
       if (sheet.conditions.some((entry) => entry.trim().toLowerCase() === "feather fall")) {
         return { name: sheet.name, damage: 0, note: `${sheet.name} drifts down under Feather Fall and lands unhurt.` };
       }
+      // Cat's Grace, Spring Heels, Sky Legs (src/lib/srd/genre-b-combat.ts genreFall).
+      const genre = genreFall(sheet, args.feet ?? 0);
+      const ownDice = genre.feet === (args.feet ?? 0) ? dice : fallingDamageDice(genre.feet);
+      if (genre.immune || ownDice === "0") {
+        return { name: sheet.name, damage: 0, note: `${sheet.name} lands unhurt (${genre.notes.join("; ")}).` };
+      }
       // A fall: nobody made it, as an enemy's fall (src/lib/dm/enemy-fall.ts).
-      const rolled = rollCard(campaign, turn, sheet.id, "damage", rollOn(`${args.feet ?? 0} ft fall (${dice} bludgeoning)`, [sheet.name]), dice, null);
+      const thrown = rollCard(campaign, turn, sheet.id, "damage", rollOn(`${genre.feet} ft fall (${ownDice} bludgeoning)`, [sheet.name]), ownDice, null);
+      const rolled = genre.halved ? { ...thrown, total: Math.floor(thrown.total / 2) } : thrown;
       // Kept so Slow Fall and Feather Fall can answer it (src/lib/dm/last-hit.ts).
       const fall = openFall(campaign.id, sheet.id);
       // The server rolled these dice, so they land as rolled (20d6 can pass

@@ -284,10 +284,10 @@
    },
    {
     "c": "escape grapples and restraints with advantage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Escape Artist#1:escape_adv",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test scavenger::Escape Artist#1:escape_adv",
     "k": "escape_adv",
-    "observed": "the escape threw 2 d20 with Escape Artist and 2 without it"
+    "by": "src/lib/srd/genre-b-combat.ts genreEscapeAdvantage, read by src/lib/dm/grapple.ts characterEscape; a restraint's escape is the GM's check"
    }
   ]
  },

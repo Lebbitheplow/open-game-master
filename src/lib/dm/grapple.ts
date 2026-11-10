@@ -19,6 +19,7 @@
 //     contest (SRD 5.1, Monsters: Grapple Rules for Monsters). A restraint
 //     that lasts "until this grapple ends" ends with it.
 
+import { genreEscapeAdvantage } from "@/lib/srd/genre-b-combat";
 import { characterNetEscape, enemyNetEscape, netHolds } from "@/lib/dm/net-hold";
 import { characterTrapEscape, trapHoldOn } from "@/lib/dm/trap-escape";
 import { characterExtinguish, enemyBurning, enemyExtinguish, sheetBurning } from "@/lib/dm/gear-weapon-hit";
@@ -120,10 +121,12 @@ export function characterEscape(
   spend();
   const skill = escapeSkill(sheet);
   const holderName = enemyHolder?.displayName ?? sheetHolder?.name ?? "the grappler";
+  // Slippery, Escape Artist (src/lib/srd/genre-b-combat.ts genreEscapeAdvantage).
+  const slips = genreEscapeAdvantage(sheet);
   const mine = rollCharacterCheck(
     campaign,
     sheet,
-    { skill },
+    { skill, ...(slips ? { advantage: "advantage" as const } : {}) },
     held.escapeDc && enemyHolder
       ? `${sheet.name}: ${skill} to escape ${holderName}'s grapple (DC ${held.escapeDc})`
       : `${sheet.name}: ${skill} to escape the grapple`,

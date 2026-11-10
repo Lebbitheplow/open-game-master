@@ -11,6 +11,7 @@
 //   cures        src/lib/dm/genre-b-cure.ts (the "cure" spend kind)
 //   slotless     src/lib/dm/genre-b-free-cast.ts marks, read by the cast guard
 //   kills        src/lib/dm/genre-b-kills.ts, from authored-hooks.ts authoredOnKill
+//   falls        src/lib/srd/genre-b-combat.ts genreFall, read by hazard-tools.ts
 //   passives     rows of src/lib/srd/authored-effects-genre-b.ts on the
 //                engine's own readers: darkvision, a turn's heal, acid that
 //                ignores resistance, a concentration damage cannot break or
@@ -367,6 +368,23 @@ await run("Skull Takers: enemies within 15 ft of the road warrior save or are fr
   rig.reset();
   const again = rig.holder(feature("road_warrior", "Skull Takers", 7));
   assert.equal(await dropNear(again, [18, 2]), false, "a foe 65 ft off was frightened");
+});
+
+// ---- falls (src/lib/srd/genre-b-combat.ts genreFall, read by hazard-tools.ts) ----
+
+await run("Cat's Grace: a conscious aeronaut takes no falling damage, where Sky Legs alone halves it", async () => {
+  const row = feature("aeronaut", "Cat's Grace", 14);
+  const hero = rig.holder(row);
+  const fall = async () => {
+    world.patch(hero.id, { currentHp: 100, tempHp: 0, conditions: [], conditionMeta: {} });
+    clearDice();
+    dice(3, 3, 3, 3, 3, 3);
+    rig.must(await world.invoke("apply_hazard", { type: "falling", characterIds: [hero.id], feet: 60, reason: "test" }), "apply_hazard");
+    clearDice();
+    return 100 - world.sheet(hero.id).currentHp;
+  };
+  const { on, off } = await rig.both(hero, row, fall);
+  assert.deepEqual([on, off], [0, 9], `a 60-foot fall took ${on} with Cat's Grace and ${off} with Sky Legs alone`);
 });
 
 rig.world.close();
