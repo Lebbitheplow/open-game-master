@@ -26,7 +26,9 @@
     ]
    ],
    "recharge": "short",
-   "guidance": "A maneuver that rides a weapon attack (Trip, Disarming, Precision, Menacing, Feinting, Quick Toss, Grappling Strike, Maneuvering and the rest) is named in pc_attack's maneuver: the die goes to the damage or the roll it names, its save DC is 8 + proficiency + Strength or Dexterity, and Feinting Attack and Quick Toss take the bonus action. Parry, Riposte and Brace are reactions: use_reaction. Rally and Commander's Strike are use_resource with variant 'rally' or 'commander's strike' and the ally's targetCharacterId (each takes the bonus action; Commander's Strike also forgoes one attack). A maneuver that rides a check or a move (Ambush, Bait and Switch, Commanding Presence, Evasive Footwork, Tactical Assessment) is a plain spend with that variant."
+   "guidance": "A maneuver that rides a weapon attack (Trip, Disarming, Precision, Menacing, Feinting, Quick Toss, Grappling Strike, Maneuvering and the rest) is named in pc_attack's maneuver: the die goes to the damage or the roll it names, its save DC is 8 + proficiency + Strength or Dexterity, and Feinting Attack and Quick Toss take the bonus action. Parry, Riposte and Brace are reactions: use_reaction. Rally and Commander's Strike are use_resource with variant 'rally' or 'commander's strike' and the ally's targetCharacterId (each takes the bonus action; Commander's Strike also forgoes one attack). A maneuver that rides a check or a move (Ambush, Bait and Switch, Commanding Presence, Evasive Footwork, Tactical Assessment) is use_resource with that maneuver as the variant. A die is never spent with no maneuver named.",
+   "passive": true,
+   "options": true
   },
   {
    "id": "sub_psionic_energy",

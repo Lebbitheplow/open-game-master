@@ -10,7 +10,7 @@ import type { DmTurn } from "@/lib/db/dm-turns";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
-import { applyDmMutation } from "@/lib/dm/mutations";
+import { spendManeuverDie } from "@/lib/dm/maneuver-die";
 import { strikeDamage } from "@/lib/dm/pc-attack-damage";
 import { FRENZIED } from "@/lib/dm/frenzy";
 import { ADVANTAGE_SOURCES, BONUS_ATTACKS, RECKLESS } from "@/lib/dm/pc-attack-options";
@@ -453,7 +453,7 @@ function throwsAway(plan: AttackPlan): boolean {
 }
 
 function spendPcAttack(plan: AttackPlan): ToolError | null {
-  const { campaign, turn, encounter, sheet, sheets, sheetsById, budget, ammo, context } = plan;
+  const { campaign, turn, encounter, sheet, budget, ammo, context } = plan;
   const thrownAway = throwsAway(plan);
   if (budget) {
     // The weapon thrown still counts as the one that was in the first hand
@@ -570,20 +570,8 @@ function spendPcAttack(plan: AttackPlan): ToolError | null {
   }
   if (plan.maneuver?.precision) {
     // Validated above, so this spend lands; were it to fail the roll simply
-    // goes without the die.
-    const spent = applyDmMutation(
-      campaign,
-      turn.id,
-      "use_resource",
-      JSON.stringify({
-        characterId: sheet.id,
-        resource: "Superiority Dice",
-        reason: plan.maneuver.name,
-      }),
-      sheets,
-      sheetsById,
-    ).result;
-    if ("error" in spent) {
+    // goes without the die. The shared door names the maneuver (maneuver-die.ts).
+    if (spendManeuverDie(campaign, turn.id, sheet, plan.maneuver.name)) {
       plan.maneuver = null;
     }
   }

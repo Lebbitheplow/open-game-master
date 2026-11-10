@@ -19,6 +19,7 @@ import { addConditionInstance, isIncapacitated, removeConditions, type Condition
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { applyDmMutation } from "@/lib/dm/mutations";
+import { spendManeuverDie } from "@/lib/dm/maneuver-die";
 import { GRAPPLING_STRIKE, MANEUVERED, maneuverDieFor, maneuverUse, offSwingRefusal, type ManeuverUse } from "@/lib/dm/maneuver-rules";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolError } from "@/lib/dm/tool-errors";
@@ -144,19 +145,8 @@ export function spendOnHit(
       `${spends.maneuver.name}: they may now try to grapple the target as a bonus action (take_action grapple with bonus true); the Superiority Die is spent on that Athletics check and added to it`,
     );
   } else if (spends.maneuver) {
-    const spent = applyDmMutation(
-      campaign,
-      turnId,
-      "use_resource",
-      JSON.stringify({
-        characterId: spends.characterId,
-        resource: "Superiority Dice",
-        reason: spends.maneuver.name,
-      }),
-      sheets,
-      sheetsById,
-    ).result;
-    if ("error" in spent) {
+    // The shared door names the maneuver (src/lib/dm/maneuver-die.ts).
+    if (spendManeuverDie(campaign, turnId, { id: spends.characterId }, spends.maneuver.name)) {
       notes.push(`${spends.maneuver.name}: no Superiority Die left, so the hit lands without it`);
     } else {
       maneuverPaid = true;

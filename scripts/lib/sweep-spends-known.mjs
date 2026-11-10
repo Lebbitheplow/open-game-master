@@ -147,7 +147,6 @@ export const RULINGS = {
   "counter:sub_call_the_hunt": { GUIDANCE_ONLY: "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\"" },
   "counter:sub_magic_users_nemesis": { GUIDANCE_ONLY: "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\"" },
   "counter:sub_psionic_energy": { SPENT_FOR_NOTHING: "src/lib/srd/authored-resources.json sub_psionic_energy guidance: \"Psionic Strike and Psi-Bolstered Knack ride a hit or a check already made\"" },
-  "counter:sub_superiority_dice": { SPENT_FOR_NOTHING: "src/lib/srd/authored-resources.json sub_superiority_dice guidance: \"A maneuver that rides a check or a move (Ambush, Bait and Switch, Commanding Presence, Evasive Footwork, Tactical Assessment) is a plain spend with that variant.\"" },
   "counter:sub_violent_attraction": { GUIDANCE_ONLY: "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\"" },
 };
 
