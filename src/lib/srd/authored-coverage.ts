@@ -182,6 +182,7 @@ export const AUTHORED_READERS: Record<string, { file: string; call: string }> = 
   indomitable_ally: { file: "src/lib/dm/feature-spends.ts", call: 'activeAuthored(sheet, "indomitable_ally")' },
   spend: { file: "src/lib/dm/mutations.ts", call: "authoredFeatureSpend(" },
   reaction: { file: "src/lib/dm/reaction-tools.ts", call: "authoredReaction(" },
+  spell_check_prof: { file: "src/lib/dm/ar-ws-spell-check.ts", call: 'activeAuthored(sheet, "spell_check_prof")' },
 };
 
 export function authoredEffectKinds(): string[] {

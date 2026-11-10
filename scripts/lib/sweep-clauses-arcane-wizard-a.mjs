@@ -131,6 +131,20 @@ export function probes(rig, shared) {
       const out = await react(abj(), "Counterspell", { targetEnemyId: enemy.id, spell: "Cone of Cold", level: 3 }, [9]);
       if (!out.ok) throw new Error(out.error);
       assert.equal(out.result.countered, true, `9 + ${MOD.int} INT + ${prof(20)} proficiency is 18 against DC 15, and the engine answers: ${out.result.check}`);
+      // One short of the DC with the bonus counted fails: a 5 is 14.
+      const [other] = await stage(abj(), { others: [friend()], first: friend() });
+      mage(other);
+      const short = await react(abj(), "Counterspell", { targetEnemyId: other.id, spell: "Cone of Cold", level: 3 }, [15 - MOD.int - prof(20) - 1]);
+      assert.equal(short.result?.countered, false, `one under DC 15 with the bonus counted: ${short.result?.check ?? short.error}`);
+      // Dispel Magic's check is the same door: Greater Invisibility (4th
+      // level) against a 3rd-level slot is DC 14, met by a 5 with +3 and +6.
+      await kit.endFight();
+      rig.refill(abj());
+      world.patch(friend().id, { conditions: ["invisible"], conditionMeta: { invisible: { spell: "Greater Invisibility", rounds: 10 } } });
+      const dispel = await call("cast_buff", { characterId: abj().id, spell: "Dispel Magic", targetCharacterIds: [friend().id] }, [14 - MOD.int - prof(20)]);
+      world.patch(friend().id, { conditions: [], conditionMeta: {} });
+      if (!dispel.ok) throw new Error(dispel.error);
+      assert.match(JSON.stringify(dispel.result.dispelled), /ends: check 14 vs DC 14/, `Dispel Magic's check: ${JSON.stringify(dispel.result.dispelled)}`);
     },
     "spell-resistance-saves": async () => {
       await kit.endFight();
@@ -523,7 +537,6 @@ export function probes(rig, shared) {
   const PROBES_REST = { thirdEye: thirdEyeRest };
 
   const KNOWN = {
-    "improved-abjuration": { severity: "medium", kind: "rule-missing", where: "src/lib/dm/reaction-tools.ts Counterspell's ability check (and the Dispel Magic check), which never reads Improved Abjuration", note: `The row is narrated ("the GM adds it to that check"), but the engine rolls the check and settles countered itself, so the GM has nothing to add it to: an abjurer's Counterspell fails on a roll the feature turns into a success.`, fix: "Add the proficiency bonus to the Counterspell and Dispel Magic ability checks of a sheet holding Improved Abjuration, and drop the narrated reason." },
     "benign-swap": { severity: "medium", kind: "rule-missing", where: "src/lib/srd/authored-resources.json sub_benign_transposition (fx teleport, words only) read by src/lib/dm/resource-tools.ts", note: "With a willing creature named, the use and the action are spent and nobody moves; the result tells the GM to move a token.", fix: "Swap the two tokens when targetCharacterId is sent, and move the wizard up to 30 feet when a square is." },
     "benign-recharge-on-cast": { severity: "medium", kind: "rule-missing", where: "src/lib/dm/cast-guard.ts (no refill of sub_benign_transposition on a conjuration spell of 1st level or higher)", note: "The counter's own guidance says it (\"Also recharges whenever the wizard casts a conjuration spell of 1st level or higher\") and nothing does it.", fix: "Refill sub_benign_transposition where a conjuration spell of 1st level or higher is cast by its holder." },
     "charm-before-hit": { severity: "low", kind: "timing-window", where: "src/lib/dm/reaction-tools.ts (a reaction answers a hit on record; an attack roll that missed leaves none)", note: "The engine's shape favours the wizard: they decide knowing the attack hit, and never spend the reaction on a miss.", fix: "A ruling: write that Instinctive Charm answers a hit, or offer it at the roll." },

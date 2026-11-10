@@ -176,7 +176,7 @@ export function handleDispelMagic(
     const dc = 10 + level;
     // An ability check like any other (src/lib/dm/contest-roll.ts): Jack of
     // All Trades, Guidance, exhaustion, a held die and Lucky ride it.
-    const outcome = rollCharacterCheck(campaign, caster, { ability, dc }, `Check to dispel ${entry.spell}`);
+    const outcome = rollCharacterCheck(campaign, caster, { ability, dc, spell: "Dispel Magic" }, `Check to dispel ${entry.spell}`);
     if (outcome.rollId) {
       turn.rollIds.push(outcome.rollId);
     }

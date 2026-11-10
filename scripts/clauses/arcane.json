@@ -150,8 +150,9 @@
   "clauses": [
    {
     "c": "Add your proficiency bonus to ability checks made as part of an abjuration spell, such as counterspell and dispel magic.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: improved-abjuration"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: improved-abjuration",
+    "by": "authored effect spell_check_prof (src/lib/srd/authored-effects-w2-ar-ws.ts), added by src/lib/dm/ar-ws-spell-check.ts withSpellCheckBonus inside contest-roll.ts rollCharacterCheck, where Counterspell (reaction-spells.ts) and Dispel Magic (dispel.ts) name their spell"
    }
   ]
  },

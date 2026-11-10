@@ -267,6 +267,10 @@ export type AuthoredEffect = Base &
     // The steel defender grows sturdier: its armor class rises by this much
     // (Improved Defender, src/lib/dm/summon-defender.ts).
     | { kind: "defender_upgrade"; ac: number }
+    // The proficiency bonus added to an ability check made as part of a spell
+    // of this school (Improved Abjuration: the checks of Counterspell and
+    // Dispel Magic; src/lib/dm/ar-ws-spell-check.ts, through contest-roll.ts).
+    | { kind: "spell_check_prof"; school: string }
   );
 
 export type NaturalWeapon = {
