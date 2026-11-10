@@ -37,11 +37,14 @@ export function forceDice(faces, { record = false, creatureSites = null } = {}) 
 function siteOf(stack) {
   const frames = [];
   for (const line of String(stack).split("\n").slice(1)) {
-    const match = /^\s*at (?:async )?(?:(.+?) \()?(?:file:\/\/)?(\/[^():]+?):(\d+):\d+\)?$/.exec(line);
+    // A Windows frame names a drive (D:\a\... or file:///D:/a/...): the
+    // drive is kept and the path read with either slash.
+    const frame = line.replace(/file:\/\/\/([A-Za-z]:)/, "$1");
+    const match = /^\s*at (?:async )?(?:(.+?) \()?(?:file:\/\/)?((?:[A-Za-z]:)?[\\/][^():]+?):(\d+):\d+\)?$/.exec(frame);
     if (!match) {
       continue;
     }
-    const file = path.relative(repoRoot, decodeURI(match[2]));
+    const file = path.relative(repoRoot, decodeURI(match[2])).split(path.sep).join("/");
     if (!file.startsWith("src/") || file === "src/lib/dice.ts") {
       continue;
     }
@@ -124,7 +127,8 @@ function walk(dir, out = []) {
 export function staticRollSites() {
   const sites = [];
   for (const full of walk(path.join(repoRoot, "src"))) {
-    const file = path.relative(repoRoot, full);
+    // Forward slashes on every platform: the ids are written that way.
+    const file = path.relative(repoRoot, full).split(path.sep).join("/");
     if (file === "src/lib/dice.ts") {
       continue;
     }
