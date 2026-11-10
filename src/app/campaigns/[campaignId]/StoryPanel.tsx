@@ -83,7 +83,7 @@ function ActHeading({ act, title, recap }: { act: number; title: string; recap: 
     <li className="reveal pt-2">
       <div className="flex items-center gap-2">
         <span className="h-px flex-1 bg-gradient-to-r from-transparent to-amber-500/60" aria-hidden="true" />
-        <span className="font-display text-[11px] uppercase tracking-[0.22em] text-amber-300">
+        <span className="font-display text-[11px] uppercase tracking-[0.14em] text-amber-300">
           Act {romanNumeral(act)}
         </span>
         <span className="h-px flex-1 bg-gradient-to-l from-transparent to-amber-500/60" aria-hidden="true" />

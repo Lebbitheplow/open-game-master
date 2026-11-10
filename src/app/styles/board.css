@@ -247,7 +247,7 @@ html[data-effects="low"] .board-view:focus > .board-keys-strip { animation-name:
 .board-eyebrow {
   font-family: var(--font-display), Georgia, serif;
   text-transform: uppercase;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.14em;
   font-size: 9px;
   font-weight: 600;
   color: rgba(212, 171, 58, 0.85);

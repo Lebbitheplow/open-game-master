@@ -41,7 +41,7 @@ export function ContentNotices({ pack, packInstalled }: { pack: WorldPack | null
           {isAdmin ? (
             <>
               Content pack not installed; showing SRD 5.1 basics only. Run
-              <span className="font-mono"> node scripts/import-open5e.mjs</span> on the server
+              <span className="font-code"> node scripts/import-open5e.mjs</span> on the server
               for the full Open5e catalog.
             </>
           ) : (

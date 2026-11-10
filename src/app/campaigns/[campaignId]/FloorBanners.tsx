@@ -85,6 +85,9 @@ export function FloorBanners({
                     type="button"
                     onClick={onRelease}
                     className={bannerButtonClass()}
+                    // Marks the banner as holding something only it offers
+                    // (world.css keeps it over a docked Hand for this).
+                    data-banner-lead=""
                     title="Skip the current player's turn"
                   >
                     Skip turn

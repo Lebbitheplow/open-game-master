@@ -37,6 +37,13 @@
 
 /* ---- the fan ---- */
 
+/* The element the Hand is drawn into (Composer.tsx): it is moved between
+   the desk's row and the staged board's slot, and makes no box of its own. */
+.session-hand-host { display: contents; }
+
+/* The fold button's word, shown only where the Hand lies on the board. */
+.hand-fold-word { display: none; }
+
 .hand-fan {
   position: relative;
   display: flex;
@@ -158,7 +165,7 @@
   justify-content: center;
   font-family: var(--font-display);
   text-transform: uppercase;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.14em;
   font-size: 7.5px;
   font-weight: 600;
   line-height: 1;
@@ -180,7 +187,7 @@
 }
 .hand-card-top { display: flex; flex: none; align-items: center; justify-content: space-between; gap: 6px; }
 /* The cost tag's colours and shapes are hand-costs.css's (issue 529). */
-.hand-range { font-family: var(--font-geist-mono), monospace; font-size: 9px; color: var(--hand-ink-mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hand-range { font-family: var(--font-mono); font-size: 9px; color: var(--hand-ink-mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .hand-art {
   position: relative;
@@ -216,7 +223,7 @@
 }
 .hand-numbers { display: flex; flex: none; flex-direction: column; gap: 1px; min-width: 0; }
 .hand-dice, .hand-roll {
-  font-family: var(--font-geist-mono), monospace;
+  font-family: var(--font-mono);
   font-size: 9.5px;
   line-height: 1.35;
   white-space: nowrap;
@@ -239,8 +246,8 @@
   color: var(--hand-ink-soft);
 }
 .hand-foot { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 4px; min-width: 0; }
-.hand-resource { font-family: var(--font-geist-mono), monospace; font-size: 9px; color: var(--hand-gold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.hand-cond { font-family: var(--font-geist-mono), monospace; font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: #ff9d5c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hand-resource { font-family: var(--font-mono); font-size: 9px; color: var(--hand-gold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hand-cond { font-family: var(--font-mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: #ff9d5c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* A legendary card's cost and what is left, stacked at the left edge. */
 .hand-resource[data-lines] { display: flex; flex-direction: column; line-height: 1.25; overflow: visible; }
 /* Its slot is wide enough that the next card leaves those lines showing,
@@ -325,7 +332,7 @@
 .hand-row:first-child { border-top: 0; }
 .hand-rows-box { border-radius: 8px; border: 1px solid var(--hand-panel-rule); background: var(--hand-panel); padding: 4px 10px; }
 .hand-row-key { flex: none; font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.12em; font-size: 8px; font-weight: 600; color: var(--hand-panel-mute); }
-.hand-row-value { min-width: 0; text-align: right; font-family: var(--font-geist-mono), monospace; font-size: 10px; line-height: 1.4; color: var(--hand-panel-ink); }
+.hand-row-value { min-width: 0; text-align: right; font-family: var(--font-mono); font-size: 10px; line-height: 1.4; color: var(--hand-panel-ink); }
 .hand-row-value[data-tone="damage"] { color: #ffbe8f; }
 .hand-row-value[data-tone="heal"] { color: #7ed6a4; }
 .hand-row-value[data-tone="save"] { color: #b8a6f5; }
@@ -365,7 +372,7 @@
   color: #ecd287;
   font-family: var(--font-display);
   font-size: 9px;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   writing-mode: vertical-rl;
   cursor: pointer;
@@ -502,7 +509,7 @@
   .session-desk:has(.hand) { display: flex; flex: 0 1 auto; flex-direction: column; min-height: 0; }
   .session-desk:has(.hand) > div { display: flex; flex: 0 1 auto; flex-direction: column; width: 100%; min-height: 0; }
   .session-desk:has(.hand) > div > :is(.session-compose-notices, .session-compose-entry) > * { flex-shrink: 0; }
-  .session-desk:has(.hand) > div > .session-compose-hand > .hand { flex: 0 1 auto; min-height: 0; max-height: none; overflow-y: auto; overscroll-behavior: contain; }
+  .session-desk:has(.hand) > div > .session-compose-hand > .session-hand-host > .hand { flex: 0 1 auto; min-height: 0; max-height: none; overflow-y: auto; overscroll-behavior: contain; }
 }
 /* In a fight on a phone the chronicle keeps about three lines and the Hand
    gives way (the rule above scrolls it in what is left): a test fight's
@@ -516,7 +523,7 @@
   /* The Hand gives way down to its name, never to nothing: at 0 px a hero's
      cards and the reactions they answer a hit with were gone with no sign
      they were ever there. */
-  .session-desk:has(.hand) > div > .session-compose-hand > .hand { min-height: 1.25rem; }
+  .session-desk:has(.hand) > div > .session-compose-hand > .session-hand-host > .hand { min-height: 1.25rem; }
   /* The newest line sits on the bottom edge, not 2rem above it. */
   .cine-chat:has(.hand) > .session-transcript > div > :nth-last-child(2) { margin-bottom: 0; }
   .cine-chat:has(.hand) .test-fight-say { display: none; }

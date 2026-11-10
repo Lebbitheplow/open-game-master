@@ -123,7 +123,7 @@ export function ContextPanel({ campaignId }: { campaignId: string }) {
       {trace ? (
         <>
           <div>
-            <div className="mb-1 flex justify-between font-mono text-[11px] text-stone-400">
+            <div className="mb-1 flex justify-between font-code text-[11px] text-stone-400">
               <span>
                 {trace.promptTokens.toLocaleString()} / {trace.limitTokens.toLocaleString()} tokens
               </span>
@@ -169,7 +169,7 @@ export function ContextPanel({ campaignId }: { campaignId: string }) {
               <div className="flex flex-wrap items-baseline justify-between gap-x-2">
                 <span className="whitespace-nowrap font-medium text-amber-200">Calls</span>
                 {trace.prefix ? (
-                  <span className="shrink-0 font-mono text-[11px] text-stone-400" title="How much of this turn's prompt matched the last turn's from its start: the most a prompt cache could reuse.">
+                  <span className="shrink-0 font-code text-[11px] text-stone-400" title="How much of this turn's prompt matched the last turn's from its start: the most a prompt cache could reuse.">
                     {trace.prefix.sharedTokens.toLocaleString()}/{trace.prefix.promptTokens.toLocaleString()} shared with the last turn
                   </span>
                 ) : null}
@@ -177,7 +177,7 @@ export function ContextPanel({ campaignId }: { campaignId: string }) {
               <ul className="mt-1 space-y-0.5">
                 {trace.calls.map((call, index) => (
                   <li key={`${index}-${call.task}`} className={cn("text-[11px]", call.error ? "text-red-300/90" : "text-stone-400")}>
-                    <span className="font-mono text-stone-500">{call.task}</span>{" "}
+                    <span className="font-code text-stone-500">{call.task}</span>{" "}
                     {call.windowTokens
                       ? call.windowAssumed
                         ? `about ${call.promptTokens.toLocaleString()} sent past an assumed ${call.windowTokens.toLocaleString()} window (the endpoint reports none), reply uncapped`
@@ -216,7 +216,7 @@ export function ContextPanel({ campaignId }: { campaignId: string }) {
             <div className="panel rounded-lg px-2.5 py-1.5 text-xs" data-testid="arc-trace">
               <div className="flex flex-wrap items-baseline justify-between gap-x-2">
                 <span className="whitespace-nowrap font-medium text-amber-200">Story arc</span>
-                <span className="shrink-0 font-mono text-[11px] text-stone-400">
+                <span className="shrink-0 font-code text-[11px] text-stone-400">
                   {trace.arc.beats.shown}/{trace.arc.beats.total} beats, {trace.arc.chars.toLocaleString()}/{trace.arc.budgetChars.toLocaleString()} event chars
                 </span>
               </div>
@@ -224,7 +224,7 @@ export function ContextPanel({ campaignId }: { campaignId: string }) {
                 <ul className="mt-1 space-y-0.5">
                   {trace.arc.events.map((pick) => (
                     <li key={pick.id} className={cn("text-[11px]", pick.included ? "text-stone-400" : "text-red-300/90")}>
-                      <span className="font-mono text-stone-500">{pick.id}</span> {pick.name}
+                      <span className="font-code text-stone-500">{pick.id}</span> {pick.name}
                       <span className="text-stone-500">: {pick.included ? pick.reason : `held back (${pick.reason.replace(/^held back: /, "")})`}</span>
                     </li>
                   ))}
@@ -239,7 +239,7 @@ export function ContextPanel({ campaignId }: { campaignId: string }) {
             <div className="panel rounded-lg px-2.5 py-1.5 text-xs" data-testid="lore-trace">
               <div className="flex flex-wrap items-baseline justify-between gap-x-2">
                 <span className="whitespace-nowrap font-medium text-amber-200">World lore</span>
-                <span className="shrink-0 font-mono text-[11px] text-stone-400">
+                <span className="shrink-0 font-code text-[11px] text-stone-400">
                   {trace.lore.picks.filter((pick) => pick.included).length}/{trace.lore.picks.filter((pick) => !pick.weak).length} entries, {trace.lore.chars.toLocaleString()}/{trace.lore.budgetChars.toLocaleString()} chars
                 </span>
               </div>
@@ -278,7 +278,7 @@ export function ContextPanel({ campaignId }: { campaignId: string }) {
                     {KIND_LABEL[block.kind]}
                     <span className="ml-1 font-normal text-stone-500">{block.id}</span>
                   </span>
-                  <span className="shrink-0 font-mono text-[11px] text-stone-400">
+                  <span className="shrink-0 font-code text-[11px] text-stone-400">
                     {block.tokens.toLocaleString()}
                   </span>
                 </div>

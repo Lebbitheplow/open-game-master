@@ -168,6 +168,11 @@
     border: 1px solid rgba(120, 100, 160, 0.25);
     background: rgba(10, 7, 20, 0.6);
   }
+  /* A vital that only states its figure is the figure and its label, with
+     no well round it: eight bordered tiles under six bordered abilities
+     were fourteen boxes before a reader reached a number. One that opens
+     more about itself keeps its plate, because it is a button. */
+  .sheet-vital:not(.sheet-vital-open) { border-color: transparent; background: none; }
   .sheet-vital[data-tone="warn"] { border-color: rgba(212, 171, 58, 0.55); }
   .sheet-vital[data-tone="warn"] .sheet-vital-value { color: var(--color-amber-300); }
   /* A tile that opens more about itself (Carried, issue #206). The lift and
@@ -238,7 +243,7 @@
     display: block;
     overflow: hidden;
     font-family: var(--font-display, serif);
-    font-size: 0.9rem;
+    font-size: 1.05rem;
     line-height: 1.2;
     color: var(--color-amber-50);
     white-space: nowrap;
@@ -307,6 +312,7 @@ html[data-theme="light"] .sheet-hp {
   border-color: rgba(120, 96, 40, 0.3);
   box-shadow: none;
 }
+html[data-theme="light"] .sheet-vital:not(.sheet-vital-open) { background: none; border-color: transparent; }
 html[data-theme="light"] .sheet-ability-score { background: rgba(255, 252, 244, 0.9); }
 html[data-theme="light"] .sheet-vital-open:hover { background: rgba(255, 248, 230, 0.95); border-color: rgba(150, 110, 30, 0.5); }
 html[data-theme="light"] .load-table th,

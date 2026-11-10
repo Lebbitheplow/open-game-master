@@ -74,7 +74,7 @@ export function CompanionCommand({
           aria-label={`Who takes ${sheet.name}'s turns in fights`}
           data-pill-group=""
         >
-          <span className="text-[10px] uppercase tracking-[0.18em] text-stone-500">In fights</span>
+          <span className="text-[10px] uppercase tracking-[0.14em] text-stone-500">In fights</span>
           {options.map((option, index) => {
             const on = option.id === commander;
             return (

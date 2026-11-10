@@ -150,7 +150,7 @@ export function AdminUsersPanel({ meId }: { meId: string }) {
             It is shown only once; they must change it at next login.
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <code className="rounded-lg border border-amber-500/30 bg-stone-950/80 px-3 py-1.5 font-mono text-sm text-amber-100">
+            <code className="rounded-lg border border-amber-500/30 bg-stone-950/80 px-3 py-1.5 font-code text-sm text-amber-100">
               {tempPassword.password}
             </code>
             <button

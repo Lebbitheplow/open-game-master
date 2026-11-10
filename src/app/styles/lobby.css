@@ -36,7 +36,7 @@
     font-family: var(--font-display), Georgia, serif;
     font-size: 0.72rem;
     font-weight: 600;
-    letter-spacing: 0.2em;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
     white-space: nowrap;
     color: var(--color-amber-200);
