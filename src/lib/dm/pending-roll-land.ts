@@ -16,7 +16,7 @@ import { insertRoll, type StoredRoll } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
 import { settleAttackDie } from "@/lib/dm/forced-save";
 import { rollsCanWait } from "@/lib/dm/after-roll";
-import { runQueuedParts } from "@/lib/dm/pc-attack-parts";
+import { afterToHitLanded, runQueuedParts } from "@/lib/dm/pc-attack-parts";
 import { moteAfterRoll } from "@/lib/dm/authored-mote";
 import type { RollResult } from "@/lib/dice";
 import { endTurnOnLanding, recordInitiativeRoll, settleTurn, turnHolder } from "@/lib/dm/encounter-tools";
@@ -177,18 +177,25 @@ function landOne(campaign: Campaign, pending: PendingRoll, thrown: RollResult, l
         setPendingCombatNote(pending.id, helped ? `${helped}; ${note}` : note);
       }
       // The attacks declared after this one wait behind it: made now, in
-      // order, as the server's dice would have made them.
+      // order, as the server's dice would have made them, or behind the
+      // damage roll a hit parked (pc-attack-parts.ts afterToHitLanded).
       if (!over) {
-        runQueuedParts(campaign, pending);
+        afterToHitLanded(campaign, pending, roll);
       }
     } else if (pending.kind === "damage" && pending.targetEnemyId) {
       // Targeted damage applies server-side the moment the dice land; the
       // enemy card updates now, not when the model gets around to it. A
       // pc_attack's damage lands through the attack's own stage, as the
       // server's dice land it (attack-blow.ts).
+      const over = pending.attack ? attackTurnOver(campaignId, pending.attack as AttackRecord, pending.characterId) : true;
       const note = pending.attack ? resolvePendingPcDamage(pending, roll) : applyPendingDamageRoll(pending, roll);
       if (note) {
         setPendingCombatNote(pending.id, note);
+      }
+      // The attacks of the call that waited behind this blow: made now that
+      // it has landed, unless the turn they belong to is over.
+      if (!over && (pending.attack as AttackRecord | null)?.queue) {
+        runQueuedParts(campaign, pending);
       }
     } else if (pending.carry?.mote) {
       // A mote the spent inspiration die carried goes off as it does on the

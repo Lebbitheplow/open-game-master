@@ -566,7 +566,7 @@ await test("Saved state parses: an open casting and a granted action saved mid-t
 
 // ---- Physical dice ----
 
-await test("Physical dice: the parts park in order and the resumed turn answers the one call with every part", async () => {
+await test("Physical dice: the parts park one at a time, in order, and the resumed turn answers the one call with every part", async () => {
   const enemies = await stage(monk, 1);
   setMemberRealDice(world.campaignId, monk.userId, true);
   const parts = [part(enemies[0]), part(enemies[0]), part(enemies[0], { feature: "Flurry of Blows" }), part(enemies[0], { feature: "Flurry of Blows" })];
@@ -577,8 +577,12 @@ await test("Physical dice: the parts park in order and the resumed turn answers 
   const submit = await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]");
   world.signIn({ id: monk.userId });
   for (let guard = 0; guard < 16; guard += 1) {
-    const [open] = listOpenPendingRolls(world.campaignId);
+    const [open, ...more] = listOpenPendingRolls(world.campaignId);
     if (!open) break;
+    // One roll open at a time: each part is made once the one before it has
+    // landed, its damage too (pc-attack-parts.ts afterToHitLanded), as the
+    // server's dice make them, so a part reads the fight the last one left.
+    assert.equal(more.length, 0, `parked together: ${[open, ...more].map((entry) => entry.kind).join(", ")}`);
     const answered = await callRoute(submit, "POST", { dice: open.kind === "attack" ? [18] : [3] }, { campaignId: world.campaignId, pendingRollId: open.id });
     assert.equal(answered.status, 200);
   }
@@ -590,6 +594,7 @@ await test("Physical dice: the parts park in order and the resumed turn answers 
   const result = JSON.parse(answer.content);
   assert.equal(result.attacks?.length, 4, answer.content.slice(0, 400));
   assert.ok(result.attacks.every((entry) => !entry.awaitingRoll), "every part holds its roll's answer");
+  assert.ok(result.attacks.every((entry) => typeof entry.total === "number" && entry.made !== false), `every part was made and rolled: ${answer.content.slice(0, 400)}`);
 });
 
 // At a table a person runs, the Hand's share of a casting reaches the engine

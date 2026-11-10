@@ -17,11 +17,6 @@ const { entryDice } = await import("../src/lib/dice.ts");
 const fill = (roll, faces) => (Array.isArray(faces) ? faces : entryDice(roll.expression).map(() => faces));
 
 const KNOWN = {
-  "822-skulker-second-part-unseen": {
-    where: "src/lib/dm/pc-attack-parked.ts (each part's sight of the attacker is fixed when the parts park together; the first part's reveal does not reach the second)",
-    severity: "low",
-    note: "On the server's dice the parts resolve in turn and the second is seen (the row checks that first). On entered dice the sword part still rolls with \"attacker is hidden: advantage\" and draws no Parry.",
-  },
 
 
 };
@@ -320,11 +315,20 @@ async function twoParts(hero, parts, firstFaces, secondFaces, between = () => {}
   return table.withRealDice(hero, async () => {
     const parked = await world.invoke("pc_attack", { characterId: hero.id, attacks: parts });
     assert.equal(parked.ok, true, parked.error);
-    const [first, second] = table.openRolls(hero, "attack");
-    assert.ok(first && second, "both parts are parked");
+    // The second part waits behind the first, made once the first has landed
+    // with its damage (pc-attack-parts.ts afterToHitLanded), as on the server's dice.
+    const [first, early] = table.openRolls(hero, "attack");
+    assert.ok(first && !early, "the second part is parked before the first has landed");
     const one = await table.enter(hero, first, fill(first, firstFaces));
     assert.equal(one.status, 200, JSON.stringify(one.json));
+    const [blow] = table.openRolls(hero, "damage");
+    if (blow) {
+      const landed = await table.enter(hero, blow, entryDice(blow.expression).map(() => 1));
+      assert.equal(landed.status, 200, JSON.stringify(landed.json));
+    }
     await between();
+    const [second] = table.openRolls(hero, "attack");
+    assert.ok(second, "the second part was not made once the first had landed");
     const two = await table.enter(hero, second, fill(second, secondFaces));
     assert.equal(two.status, 200, JSON.stringify(two.json));
     return [one.note, two.note];

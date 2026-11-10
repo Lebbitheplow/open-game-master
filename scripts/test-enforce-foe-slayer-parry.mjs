@@ -335,13 +335,20 @@ await test("With real dice, a Foe Slayer an earlier part of the attack spent dra
       assert.equal(out.status, 200, JSON.stringify(out.json));
       return getPendingRoll(pending.id).combatNote ?? "";
     };
-    const [first, second] = open().filter((entry) => entry.kind === "attack");
-    assert.ok(first && second, "both parts are parked");
+    // The second part waits behind the first (pc-attack-parts.ts
+    // afterToHitLanded): made once the first has landed with its damage.
+    const [first, early] = open().filter((entry) => entry.kind === "attack");
+    assert.ok(first && !early, "the second part is parked before the first has landed");
     // A 19 is past Parry's raise, so the first part leaves the reaction free
     // and spends Foe Slayer on its damage.
     await answer(first, 13);
     assert.ok(marks().includes("foe-slayer"), JSON.stringify(marks()));
     assert.ok(!reactionSpent(enemy), "the first part drew no reaction");
+    const [blow] = open().filter((entry) => entry.kind === "damage" && entry.status === "pending");
+    assert.ok(blow, "the first part's hit parks its damage");
+    await answer(blow, 1);
+    const [second] = open().filter((entry) => entry.kind === "attack" && entry.id !== first.id);
+    assert.ok(second, "the second part was not made once the first had landed");
     // A 12: a near miss Foe Slayer could have lifted, had it not gone.
     const note = await answer(second, 6);
     assert.ok(!reactionSpent(enemy), `the spent bonus drew a reaction: ${note}`);

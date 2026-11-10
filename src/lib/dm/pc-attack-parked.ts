@@ -46,7 +46,7 @@ export function parkedTargetAc(campaignId: string, attack: PendingAttack): numbe
 }
 
 // Physical dice: park the to-hit roll for the player, with the attack's record.
-export function parkPcAttack(plan: AttackPlan, strike: Strike, toolCallId: string | null, mote: HeldMote | null = null) {
+export function parkPcAttack(plan: AttackPlan, strike: Strike, toolCallId: string | null, mote: HeldMote | null = null): PendingRoll {
   const { campaign, turn, sheet, enemy, profile } = plan;
   const pending = createPendingRoll({
     campaignId: campaign.id,
@@ -63,6 +63,7 @@ export function parkPcAttack(plan: AttackPlan, strike: Strike, toolCallId: strin
     attack: attackRecord(plan, strike, mote),
   });
   publishPersisted(campaign.id, "roll_pending", { pendingRoll: publicPendingRoll(pending) });
+  return pending;
 }
 
 // The server's dice for a player whose rolls can wait (after-roll.ts
