@@ -38,19 +38,7 @@ const SKIP = {
 };
 
 // Known today, by "Spell/check".
-const SHORT = (text) => ({
-  severity: "medium",
-  where: `src/lib/srd/authored-spells.json (the row's mech.buff.rounds is 100, ten minutes; its own duration line says ${text})`,
-});
 const KNOWN = {
-  "Armor of Agathys/early": SHORT("1 hour"),
-  "Crown of Stars/early": SHORT("1 hour"),
-  "Elemental Weapon/early": SHORT("Concentration, up to 1 hour"),
-  "Flame Arrows/early": SHORT("Concentration, up to 1 hour"),
-  "Holy Weapon/early": SHORT("Concentration, up to 1 hour"),
-  "Intellect Fortress/early": SHORT("Concentration, up to 1 hour"),
-  "Gift of Alacrity/early": SHORT("8 hours"),
-  "Gift of Alacrity/short rest": SHORT("8 hours"),
   "Animal Shapes/long rest": {
     severity: "medium",
     where: "the long rest in take_rest (src/lib/dm/rest-logic.ts and its caller): it clears the caster's concentration and leaves what the spell laid: the ally stays polymorphed for the 16 hours left, with nobody concentrating",

@@ -67,17 +67,7 @@ const SKIP = {
 const CASTER_TRANSFORMED = { Shapechange: true };
 
 // Known today, by "Spell/check". Each is in /tmp/odm-gapstudy/findings/lifecycle.jsonl.
-const WRONG_TIME = (text, wrote) => ({
-  severity: "medium",
-  where: `src/lib/srd/authored-spells.json (the row's mech.buff.rounds is ${wrote}; its own duration line says ${text})`,
-});
 const KNOWN = {
-  "Armor of Agathys/duration": WRONG_TIME("1 hour", 100),
-  "Crown of Stars/duration": WRONG_TIME("1 hour", 100),
-  "Elemental Weapon/duration": WRONG_TIME("Concentration, up to 1 hour", 100),
-  "Flame Arrows/duration": WRONG_TIME("Concentration, up to 1 hour", 100),
-  "Holy Weapon/duration": WRONG_TIME("Concentration, up to 1 hour", 100),
-  "Intellect Fortress/duration": WRONG_TIME("Concentration, up to 1 hour", 100),
   "Evard's Black Tentacles/own area": {
     severity: "medium",
     where: "src/lib/dm/zone-triggers.ts (the turn-start trigger: the 3d6 breaks the caster's concentration, the spell's conditions are cleared, and THEN the trigger writes \"restrained\" on her: it stays for its ten rounds, dealing 3d6 a turn, with no spell behind it)",
