@@ -66,19 +66,7 @@ export const KNOWN_FILL_NOPACK = [
 ];
 export const SKIP_FILL_NOPACK = {};
 
-// With the pack the class list is the pack's rows and the settings' own
-// classes; the bundled Artificer has no pack row and is not added back.
-export const KNOWN_PACK_PARITY = [
-  {
-    id: "pack-hides-artificer",
-    rule:
-      "useBuilderOptions.ts: \"Loads race/class/background options from the Open5e content pack with the bundled SRD data as fallback\". A class a server without the pack offers, and whose spells and four subclasses the server plays either way, is offered with the pack as well.",
-    where: "src/lib/characters/options.ts packClassOptions (adds customClassOptions() and the workshop's, never the bundled classes the pack has no row for)",
-    severity: "medium",
-    note: "Without the pack the builder lists 14 classes with the Artificer; with it 13 and the pack's Mechanist. The library and table doors still store an artificer on a server with the pack.",
-    rows: ["pack-parity:class:artificer"],
-  },
-];
+export const KNOWN_PACK_PARITY = [];
 
 // A pack subclass's training is read out of its prose. Most features that
 // give a skill or a tool are not read at all, and two are read wrongly.
