@@ -800,15 +800,15 @@
    },
    {
     "c": "when you expend your last spell slot",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_the_debt_comes_due#TRIGGER_AS_CARD",
-    "recorded_as": "spends-trigger-as-card-counter-horror-the-debt-comes-due"
+    "is": "held",
+    "probe": "scripts/test-genre-a-slots.mjs",
+    "by": "src/lib/dm/genre-a-slots.ts debtComesDue, asked by the cast guard (cast-guard.ts) once a cast's slot or a nameless slot is paid; the counter is passive"
    },
    {
     "c": "immediately regain it",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_the_debt_comes_due#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-horror-the-debt-comes-due"
+    "is": "held",
+    "probe": "scripts/test-genre-a-slots.mjs",
+    "by": "src/lib/dm/genre-a-slots.ts debtComesDue: the slot paid comes straight back and the use is spent"
    }
   ]
  },
@@ -2977,9 +2977,9 @@
    },
    {
     "c": "regain expended slot levels equal to your CHA modifier when you drop below half HP",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_unfinished_ritual#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-horror-unfinished-ritual"
+    "is": "held",
+    "probe": "scripts/test-genre-a-slots.mjs",
+    "by": "src/lib/dm/genre-a-slots.ts genreBelowHalf, called by pc-damage.ts as the blow lands: only a blow from half or more to under half, CHA-mod slot levels; the counter is passive"
    }
   ]
  },

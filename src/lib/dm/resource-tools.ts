@@ -1,4 +1,5 @@
 import { genreCounterHeal, genreStimTemp } from "@/lib/dm/genre-a-heals";
+import { recoverSlotLevels, regainedLine } from "@/lib/dm/genre-a-slots";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { shadowInvisibility, shadowLightProblem } from "@/lib/dm/one-with-shadows";
 import { insertRoll } from "@/lib/db/rolls";
@@ -769,6 +770,18 @@ export function computeUseResource(
       return wildShapeUse(sheet, outcome, def.displayName, asked, elemental);
     }
     case "recover_slots": {
+      // Overmind, The Tomb Provides: the spend gives the slots back itself
+      // (src/lib/dm/genre-a-slots.ts), or is refused with nothing spent.
+      if (def.effect.now) {
+        const budget = def.effect.levels(fxLevel, derived.abilityMods);
+        const back = sheet.spellcasting ? recoverSlotLevels(sheet.spellcasting.slots, budget, { maxLevel: def.effect.maxLevel, most: def.effect.most }) : null;
+        if (!back?.regained.length || !sheet.spellcasting) {
+          return { error: `${sheet.name} has no spent spell slot ${def.displayName} can give back with ${budget} slot level${budget === 1 ? "" : "s"}. Nothing was spent.`, refused: "rules" };
+        }
+        outcome.patch.spellcasting = { ...sheet.spellcasting, slots: back.slots };
+        outcome.result.regained = `${sheet.name} regains spell slots: ${regainedLine(back.regained)}.`;
+        return outcome;
+      }
       // Spent through take_rest, which reads the counter and returns the
       // slots; spending it by hand here would burn the use for nothing.
       return {

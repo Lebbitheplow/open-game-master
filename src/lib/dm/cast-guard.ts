@@ -39,6 +39,7 @@ import { advanceClock } from "@/lib/db/clock";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { materialPatch } from "@/lib/dm/cast-material";
 import { freeCastCounter, signatureCounter, spendSignature } from "@/lib/dm/caster-features";
+import { debtComesDue } from "@/lib/dm/genre-a-slots";
 import { arcanumCounter } from "@/lib/dm/counter-cast-arcanum";
 import { spendGrantUse } from "@/lib/srd/granted-casts";
 import { spellFactsFor, spellMechanicsFor, spellSchoolFor } from "@/lib/content";
@@ -229,11 +230,16 @@ function namelessSlot(
   if (input.dryRun || plan.kind === "none") {
     return { ok: true, dryRun: Boolean(input.dryRun) };
   }
-  const spellcasting = spellcastingAfter(sheet, plan);
-  patchSheet(sheet.id, { spellcasting });
-  hooks.record({ level: plan.level, used: plan.state.used, max: plan.state.max }, { spellcasting });
+  // A slot with no spell (Divine Smite's) is a slot expended all the same:
+  // The Debt Comes Due answers it as it answers a cast (genre-a-slots.ts).
+  const paid = spellcastingAfter(sheet, plan);
+  const debt = paid ? debtComesDue(sheet, paid, sheet.resources, { kind: plan.kind, level: plan.level }) : null;
+  const spellcasting = debt?.spellcasting ?? paid;
+  const patch: FullPatchSheetInput = { spellcasting, ...(debt ? { resources: debt.resources } : {}) };
+  patchSheet(sheet.id, patch);
+  hooks.record({ level: plan.level, used: plan.state.used, max: plan.state.max }, patch);
   hooks.publish();
-  return { ok: true, slot: slotLine(plan) };
+  return { ok: true, slot: slotLine(plan), ...(debt ? { debtComesDue: debt.line } : {}) };
 }
 
 function spellcastingAfter(sheet: CharacterSheet, plan: SlotPlan): CharacterSheet["spellcasting"] {
@@ -667,6 +673,14 @@ export function castSpell(
     const row = slots[String(refund.level)];
     patch.spellcasting = { ...patch.spellcasting, slots: { ...slots, [String(refund.level)]: { ...row, used: row.used - 1 } } };
     result.slotRefund = `${refund.feature}: a spent level ${refund.level} slot comes back.`;
+  }
+  // The Debt Comes Due: the last slot, paid, comes straight back
+  // (src/lib/dm/genre-a-slots.ts).
+  const debt = slot.kind !== "none" && patch.spellcasting ? debtComesDue(sheet, patch.spellcasting, patch.resources ?? sheet.resources, { kind: slot.kind, level: slot.level }) : null;
+  if (debt) {
+    patch.spellcasting = debt.spellcasting;
+    patch.resources = debt.resources;
+    result.debtComesDue = debt.line;
   }
   // Wild Magic Surge: after a sorcerer spell of 1st level or higher the GM may
   // have the sorcerer roll on the surge table, and a spent Tides of Chaos then

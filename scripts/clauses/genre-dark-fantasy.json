@@ -1476,9 +1476,9 @@
    },
    {
     "c": "regain expended slot levels equal to your CHA modifier",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_the_tomb_provides#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-dark-fantasy-the-tomb-provides"
+    "is": "held",
+    "probe": "scripts/test-genre-a-slots.mjs",
+    "by": "src/lib/dm/genre-a-slots.ts recoverSlotLevels, given back by the use_resource spend itself (resource-tools.ts, recover_slots with now)"
    }
   ]
  },

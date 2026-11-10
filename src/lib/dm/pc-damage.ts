@@ -36,6 +36,7 @@ import {
 } from "@/lib/dm/condition-logic";
 import { rollFeatureSave } from "@/lib/dm/contest-roll";
 import { genreDropHold } from "@/lib/dm/genre-drop-holds";
+import { genreBelowHalf } from "@/lib/dm/genre-a-slots";
 import { holdsFeature } from "@/lib/srd/trait-rules";
 import { PRONE } from "@/lib/dm/vitals-logic";
 import { authoredAuraResistances } from "@/lib/dm/authored-saves";
@@ -348,6 +349,15 @@ export function applyPcDamage(
     ...stoked,
   });
   publishSheet(campaign, sheet.id);
+  // Unfinished Ritual: the blow that takes the apostate below half gives
+  // their slots back (src/lib/dm/genre-a-slots.ts).
+  const ritual = genreBelowHalf(getSheetById(sheet.id) ?? sheet, sheet.currentHp, math.currentHp, effectiveMaxHp(sheet));
+  if (ritual) {
+    patchSheet(sheet.id, ritual.patch);
+    audit(campaign, turnId, sheet, "apply_damage", { unfinishedRitual: true }, reason, ritual.patch);
+    publishSheet(campaign, sheet.id);
+  }
+  const ritualInfo = ritual ? { unfinishedRitual: ritual.line } : {};
   // Damage is great stress: cackle fever's laughter, madness's confusion
   // (src/lib/dm/afflictions.ts).
   if (carried > 0 && !math.dropped) {
@@ -369,6 +379,7 @@ export function applyPcDamage(
     afflictionStress(campaign, turnId, sheet.id, "damage");
     return {
       ...held,
+      ...ritualInfo,
       ...shapeInfo,
       ...proneInfo,
       ...(adjusted.note ? { resistance: `${sheet.name} is ${adjusted.note}` } : {}),
@@ -479,6 +490,7 @@ export function applyPcDamage(
   return {
     ok: true,
     hp: `${math.currentHp}/${effectiveMaxHp(sheet)}`,
+    ...ritualInfo,
     ...shapeInfo,
     ...rageInfo,
     ...proneInfo,

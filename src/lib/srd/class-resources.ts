@@ -83,8 +83,11 @@ export type ResourceEffect =
   // Swaps in a beast form with its own hit point pool.
   | { kind: "wild_shape" }
   // Returns expended spell slots on a short rest (Arcane/Natural Recovery),
-  // up to a total of `levels` slot levels.
-  | { kind: "recover_slots"; levels: (level: number) => number }
+  // up to a total of `levels` slot levels; `most` slots at most, of
+  // `maxLevel` or lower (src/lib/dm/genre-a-slots.ts recoverSlotLevels).
+  // `now`: given back by the use_resource spend itself, not by a rest
+  // (Overmind: "regain expended slot levels equal to your CHA modifier").
+  | { kind: "recover_slots"; levels: (level: number, abilityMods?: Record<string, number>) => number; most?: number; maxLevel?: number; now?: boolean }
   // No server-enforceable payload; guidance only.
   | { kind: "narrative" };
 

@@ -26,6 +26,12 @@ const BY_REACTION = (feature: string, what: string): CounterTerms => ({
   guidance: `${feature}: ${what} Played with use_reaction when the trigger comes (the Hand deals its card then), which spends the use; use_resource does not.`,
 });
 
+// Given back by take_rest as a short rest ends (rest-tools.ts applySlotRecovery).
+const BY_REST = (feature: string, what: string): CounterTerms => ({
+  passive: true,
+  guidance: `${feature}: ${what} The server gives the slots back and spends the use when take_rest ends a short rest; no call spends it.`,
+});
+
 export const GENRE_A_COUNTER_TERMS: Record<string, CounterTerms> = {
   // "take one additional action on your turn": Action Surge's grant.
   cyberpunk_adrenal_override: { extraAction: true, action: "none" },
@@ -58,6 +64,20 @@ export const GENRE_A_COUNTER_TERMS: Record<string, CounterTerms> = {
   },
   // "1/long rest while below half HP, bonus action to regain 10 + level HP"
   cyberpunk_wired_soul: { requires: "below_half" },
+  // Slots given back (src/lib/dm/genre-a-slots.ts): on a short rest, by the
+  // spend itself, or the moment the text names.
+  cyberpunk_the_net_remembers: { ...BY_REST("The Net Remembers", "once a day, a short rest gives the netrunner back 4 expended spell slot levels."), effect: { kind: "recover_slots", levels: () => 4 } },
+  cyberpunk_nanite_reserve: { ...BY_REST("Nanite Reserve", "once a day, a short rest gives the trauma doc back one expended spell slot of 3rd level or lower."), effect: { kind: "recover_slots", levels: () => 3, most: 1, maxLevel: 3 } },
+  cyberpunk_overmind: { effect: { kind: "recover_slots", levels: (_level, mods) => Math.max(1, mods?.cha ?? 0), now: true } },
+  dark_fantasy_the_tomb_provides: { effect: { kind: "recover_slots", levels: (_level, mods) => Math.max(1, mods?.cha ?? 0), now: true } },
+  horror_unfinished_ritual: {
+    passive: true,
+    guidance: "Unfinished Ritual: once a long rest, when the apostate drops below half their hit points, they regain expended spell slot levels equal to their Charisma modifier. The server gives the slots back and spends the use as the damage lands; no call spends it.",
+  },
+  horror_the_debt_comes_due: {
+    passive: true,
+    guidance: "The Debt Comes Due: once a long rest, when the occultist expends their last spell slot, it comes straight back. The server gives it back and spends the use as the cast is paid; no call spends it.",
+  },
   cyberpunk_one_more_dawn: HELD_AT_THE_DROP("One More Dawn", "once a long rest, an ally within 30 feet of the trauma doc who would drop to 0 hit points (not killed outright) drops to 1 instead."),
   horror_final_benediction: HELD_AT_THE_DROP("Final Benediction", "once a long rest, when an ally within 30 feet of the exorcist drops to 0 hit points (not killed outright), they drop instead to five times the exorcist's Wisdom modifier."),
 };
