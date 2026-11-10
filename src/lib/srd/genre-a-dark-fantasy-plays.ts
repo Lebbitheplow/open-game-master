@@ -11,7 +11,16 @@ export type DarkFantasyPlay =
   // Dirge of Sorrow: one enemy within 30 feet saves on Wisdom or takes 1d4
   // off its next attack roll; three, and its saves too, with Dirge of Ruin;
   // one more while The Grave Chorus sings.
-  | "dirge";
+  | "dirge"
+  // Purging Flame: declared before the roll, 2d10 radiant on the next hit on
+  // the branded creature. Judgment Shot: the next ranged attack on it is a
+  // critical hit if it hits.
+  | "purging_flame"
+  | "judgment_shot"
+  // Lance the Wound: 2d8 necrotic (4d8 from Virulent Strain, half on one
+  // creature beside the target) on the creature a melee hit just landed on,
+  // which cannot regain hit points until the doctor's next turn.
+  | "lance";
 
 export type DarkFantasyAim = "enemy" | "ally" | "self" | "none";
 
@@ -19,4 +28,7 @@ export type DarkFantasyAim = "enemy" | "ally" | "self" | "none";
 export const DARK_FANTASY_AIM: Record<DarkFantasyPlay, DarkFantasyAim> = {
   brand: "enemy",
   dirge: "enemy",
+  purging_flame: "none",
+  judgment_shot: "none",
+  lance: "enemy",
 };

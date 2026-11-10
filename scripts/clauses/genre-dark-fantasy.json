@@ -184,15 +184,17 @@
    },
    {
     "c": "your Hunter's Brand target takes 2d10 radiant when you hit it",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs ruling counter:dark_fantasy_purging_flame#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the purging_flame play of src/lib/dm/genre-a-dark-fantasy-spends.ts (a mark on the brand's creature, +2d10 radiant on the next hit: src/lib/srd/genre-a-dark-fantasy-conditions.ts)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Purging Flame",
     "recorded_as": "spends-guidance-only-counter-dark-fantasy-purging-flame",
     "ruling": "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\""
    },
    {
     "c": "declared before the roll",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_purging_flame#TRIGGER_AS_CARD",
+    "is": "held",
+    "by": "the purging_flame play of src/lib/dm/genre-a-dark-fantasy-spends.ts (declared on the hunter's turn before the swing, refused with no brand)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Purging Flame",
     "recorded_as": "spends-trigger-as-card-counter-dark-fantasy-purging-flame"
    }
   ]
@@ -304,8 +306,9 @@
    },
    {
     "c": "a ranged attack against your brand becomes an automatic critical if it hits",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_judgment_shot#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the judgment_shot play of src/lib/dm/genre-a-dark-fantasy-spends.ts and src/lib/dm/genre-a-dark-fantasy-edges.ts (read by authored-hooks.ts authoredAttackSituation)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Judgment Shot",
     "recorded_as": "spends-guidance-only-counter-dark-fantasy-judgment-shot"
    }
   ]
@@ -711,8 +714,9 @@
    },
    {
     "c": "a melee hit also deals 2d8 necrotic and the target cannot regain HP until your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs ruling counter:dark_fantasy_lance_the_wound#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the lance play of src/lib/dm/genre-a-dark-fantasy-spends.ts (afterWeaponHit, 2d8 necrotic, the lanced wound vitals-logic.ts regainBlockedBy reads)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Lance the Wound",
     "recorded_as": "spends-guidance-only-counter-dark-fantasy-lance-the-wound",
     "ruling": "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\""
    }
@@ -819,21 +823,15 @@
   "clauses": [
    {
     "c": "Lance the Wound damage rises to 4d8 and spreads",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap plague_doctor::Virulent Strain#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "the lance play of src/lib/dm/genre-a-dark-fantasy-spends.ts (4d8 with Virulent Strain)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Lance the Wound"
    },
    {
     "c": "one creature adjacent to the target takes half",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
+    "is": "held",
+    "by": "the lance play of src/lib/dm/genre-a-dark-fantasy-spends.ts (half to a creature beside the target)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Lance the Wound",
     "same_probe_as": 0
    }
   ]

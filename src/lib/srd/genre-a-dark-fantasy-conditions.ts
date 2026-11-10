@@ -12,6 +12,12 @@ export const BRAND_TWIN = "hunter's brand (1d8)";
 export const SECOND_BRAND = "second brand (1d8)";
 export const BRAND_CONDITIONS = [BRAND, BRAND_TWIN, SECOND_BRAND];
 
+export const PURGING_FLAME = "purging flame";
+export const JUDGMENT_SHOT = "judgment shot";
+// Lance the Wound: "the target cannot regain HP until your next turn"
+// (src/lib/dm/vitals-logic.ts regainBlockedBy reads it).
+export const LANCED = "lanced wound";
+
 export const DARK_FANTASY_CONDITIONS: ConditionEffectRow[] = [
   {
     id: "hunters_brand_twin",
@@ -31,5 +37,10 @@ export const DARK_FANTASY_CONDITIONS: ConditionEffectRow[] = [
   // "the penalty applies to attacks and saves", both until that attack.
   { id: "dirge_of_sorrow", match: ["dirge of sorrow"], summary: "Dirge of Sorrow: -1d4 on its next attack roll.", attackPenaltyDie: "1d4", consumedBy: "attack" },
   { id: "dirge_of_ruin", match: ["dirge of ruin"], summary: "Dirge of Ruin: -1d4 on its attack rolls and saves, until its next attack roll.", attackPenaltyDie: "1d4", savePenaltyDie: "1d4", consumedBy: "attack" },
+  // Purging Flame: the brand's creature, named in the meta (quarry), takes
+  // 2d10 radiant from the next hit on it, which spends the flame.
+  { id: "purging_flame", match: [PURGING_FLAME], summary: "Purging Flame: the next hit on the branded creature deals +2d10 radiant.", onHitDice: { dice: "2d10", type: "radiant" }, marksTarget: true, consumedBy: "hit" },
+  { id: "judgment_shot", match: [JUDGMENT_SHOT], summary: "Judgment Shot: the next ranged attack on the branded creature is a critical hit if it hits." },
+  { id: "lanced_wound", match: [LANCED], summary: "Lanced wound: it cannot regain hit points until the plague doctor's next turn." },
   { id: "immolate_the_sin", match: ["immolate the sin"], summary: "Immolate the Sin: for a minute the penitent burns in gray flame, +2d8 fire on their attacks and immune to fire." },
 ];

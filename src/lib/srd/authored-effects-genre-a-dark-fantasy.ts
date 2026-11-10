@@ -32,6 +32,21 @@ export const GENRE_A_DARK_FANTASY: GenreRow[] = [
   // (WIS save negates)", at will. An action, as a cantrip that lays a penalty
   // is (Vicious Mockery).
   { feature: "Dirge of Sorrow", classes: ["dirgesinger"], entry: { subclass: "genre", spends: [{ name: "Dirge of Sorrow", action: "action", does: { kind: "dark_fantasy", play: "dirge" } }] } },
+  // "your Hunter's Brand target takes 2d10 radiant when you hit it (declared
+  // before the roll)", and "a ranged attack against your brand becomes an
+  // automatic critical if it hits": declared on the hunter's turn, no action.
+  counted("witch_hunter", "Purging Flame", "dark_fantasy_purging_flame", {
+    spends: [{ name: "Purging Flame", pool: { id: "dark_fantasy_purging_flame" }, action: "none", fight: "in", does: { kind: "dark_fantasy", play: "purging_flame" } }],
+  }),
+  counted("witch_hunter", "Judgment Shot", "dark_fantasy_judgment_shot", {
+    spends: [{ name: "Judgment Shot", pool: { id: "dark_fantasy_judgment_shot" }, action: "none", fight: "in", does: { kind: "dark_fantasy", play: "judgment_shot" } }],
+  }),
+  // "a melee hit also deals 2d8 necrotic and the target cannot regain HP until
+  // your next turn", spent once the hit has landed (Virulent Strain: 4d8, half
+  // to a creature beside it).
+  counted("plague_doctor", "Lance the Wound", "dark_fantasy_lance_the_wound", {
+    spends: [{ name: "Lance the Wound", pool: { id: "dark_fantasy_lance_the_wound" }, action: "none", afterWeaponHit: true, does: { kind: "dark_fantasy", play: "lance" } }],
+  }),
   // "spectral hands erupt in a 15-ft cube: creatures save (STR) or are
   // restrained until your next turn"
   counted("grave_knight", "Grave Grip", "dark_fantasy_grave_grip", {

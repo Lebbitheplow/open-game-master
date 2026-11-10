@@ -13,6 +13,7 @@ import {
 } from "@/lib/dm/condition-logic";
 import type { DeathTrack } from "@/lib/dm/death-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
+import { LANCED } from "@/lib/srd/genre-a-dark-fantasy-conditions";
 import { textKey } from "@/lib/language/text-logic";
 
 export const UNCONSCIOUS = "unconscious";
@@ -115,6 +116,10 @@ export function regainBlockedBy(sheet: { conditions: string[]; currentHp: number
   }
   if (held.includes(NEGATIVE_ENERGY)) {
     return NEGATIVE_ENERGY;
+  }
+  // Lance the Wound (src/lib/dm/genre-a-dark-fantasy-spends.ts).
+  if (held.includes(LANCED)) {
+    return LANCED;
   }
   return sheet.currentHp <= 0 && held.includes(SUFFOCATING) ? SUFFOCATING : null;
 }

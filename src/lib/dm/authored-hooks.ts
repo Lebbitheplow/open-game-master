@@ -22,6 +22,7 @@
 // enemy-damage.ts, which reaches it.
 
 import { enemyNotActed } from "@/lib/dm/genre-a-strikes";
+import { darkFantasyAttackEdge } from "@/lib/dm/genre-a-dark-fantasy-edges";
 import { fightMarked, markFight } from "@/lib/dm/turn-marks";
 import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
@@ -278,6 +279,13 @@ export function authoredAttackSituation(input: {
     sources.push("advantage");
     notes.push("Entropic Ward: advantage, spent by this attack");
     spent.push(sheet.conditions.find((entry) => textKey(entry) === ENTROPIC_EDGE)!);
+  }
+  // Judgment Shot (src/lib/dm/genre-a-dark-fantasy-edges.ts).
+  const edge = darkFantasyAttackEdge(sheet, enemy, input.melee);
+  if (edge) {
+    autoCrit = edge.feature;
+    notes.push(edge.note);
+    spent.push(edge.spent);
   }
   for (const { held } of activeAuthored(sheet, "auto_crit")) {
     if (encounter.surprisedIds.includes(enemy.id)) {

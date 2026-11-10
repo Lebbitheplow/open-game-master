@@ -15,6 +15,7 @@
     "lib/dm/genre-a-heals.ts#whole": [["identity",3,"a condition by its keyed name on both sides"]],
     "lib/dm/genre-a-dark-fantasy-spends.ts#whole": [["identity",1,"a brand condition the sheet holds, by its keyed name on both sides"]],
     "lib/dm/genre-a-dark-fantasy-spends.ts#keyed": [["key",1,"a condition's meta read by the condition's own stored name"]],
+    "lib/dm/genre-a-dark-fantasy-spends.ts#first": [["key",1,"the first foe beside the lanced creature, by id, when the call names none (the text's one creature adjacent)"]],
     "lib/table-delivery.ts#keyed": [["key", 1, "event kinds and enemy ids"]],
     "lib/hidden-names-logic.ts#keyed": [["search", 1, "the names a creature the table sees also answers to, kept in the prose"]],
     "lib/battlemap/hand-attack-lines.ts#partial": [["key", 1, "the once-per-turn rider keys the engine marks (pc-attack-damage.ts claimOncePerTurnRiders)"]],

@@ -121,5 +121,48 @@ await test("Dirge of Sorrow: the enemy named saves on Wisdom or takes 1d4 off it
   assert.match(conditionRollRiders(["dirge of sorrow"], "attack").diceSuffix, /-1d4/);
 });
 
+await test("Purging Flame: refused with no brand; declared, the next hit on the branded creature carries 2d10 radiant and spends it", async () => {
+  const scene = await t.stage({ classId: "witch_hunter", level: 7 });
+  const bare = await spend(scene, "dark_fantasy_purging_flame");
+  assert.equal(bare.ok, false);
+  assert.equal(sheet(scene.holder.id).resources.dark_fantasy_purging_flame.used, 0);
+  must(await spend(scene, "Hunter's Brand", { targetEnemyId: scene.near.id }), "the brand");
+  must(await spend(scene, "dark_fantasy_purging_flame"), "Purging Flame");
+  const hit = must(await swing(scene, scene.near, [15, 4, 3, 3, 3, 3, 3, 3]), "the swing");
+  assert.match(JSON.stringify(hit.result), /2d10/);
+  assert.ok(!conditions(scene.holder.id).includes("purging flame"), "spent by the hit");
+});
+
+await test("Judgment Shot: the next ranged hit on the branded creature is a critical hit", async () => {
+  const scene = await t.stage({ classId: "witch_hunter", level: 13 }, { lane: true, extra: { equipment: [{ name: "Shortbow", qty: 1, equipped: true }, { name: "Arrows", qty: 20 }] } });
+  must(await spend(scene, "Hunter's Brand", { targetEnemyId: scene.far.id }), "the brand");
+  must(await spend(scene, "dark_fantasy_judgment_shot"), "Judgment Shot");
+  const shot = must(await t.kit.swing(scene.holder.id, scene.far.id, [15, 4, 4, 3, 3, 3, 3]), "the shot");
+  assert.equal(shot.result.crit, true, JSON.stringify(shot.result).slice(0, 300));
+  assert.ok(!conditions(scene.holder.id).includes("judgment shot"));
+});
+
+await test("Lance the Wound: after a melee hit 2d8 necrotic and no healing until the doctor's next turn; Virulent Strain 4d8 and half beside it", async () => {
+  const { regainBlockedBy } = await import("../src/lib/dm/vitals-logic.ts");
+  const scene = await t.stage({ classId: "plague_doctor", level: 5 });
+  const early = await spend(scene, "dark_fantasy_lance_the_wound", { targetEnemyId: scene.near.id });
+  assert.equal(early.ok, false, "no hit yet");
+  must(await swing(scene, scene.near), "the hit");
+  const before = t.foeHp(scene.near.id);
+  t.world.dice(3, 3);
+  must(await spend(scene, "dark_fantasy_lance_the_wound", { targetEnemyId: scene.near.id }), "Lance the Wound");
+  t.world.clearDice();
+  assert.equal(before - t.foeHp(scene.near.id), 6);
+  assert.equal(regainBlockedBy(t.kit.enemy(scene.near.id)), "lanced wound");
+  const strain = await t.stage({ classId: "plague_doctor", level: 11 });
+  t.kit.place(strain.far.id, 6, 6);
+  must(await swing(strain, strain.near), "the hit");
+  const far = t.foeHp(strain.far.id);
+  t.world.dice(3, 3, 3, 3);
+  must(await spend(strain, "dark_fantasy_lance_the_wound", { targetEnemyId: strain.near.id }), "Lance the Wound");
+  t.world.clearDice();
+  assert.equal(far - t.foeHp(strain.far.id), 6, "half of 12 to the creature beside it");
+});
+
 t.close();
 console.log(`test-genre-a-dark-fantasy: ${passed} passed`);
