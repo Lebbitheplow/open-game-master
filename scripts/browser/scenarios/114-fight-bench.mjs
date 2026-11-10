@@ -256,6 +256,9 @@ export default {
         );
       await showBanner();
       await untilStill(page).catch(() => undefined);
+      // A tap on the phone's table view that landed late (a loaded runner)
+      // can flip it away again while the page settles: asked once more.
+      await showBanner();
       const controls = [
         banner.getByRole("link", { name: "Back to the workshop" }),
         banner.getByRole("button", { name: "Save as set-up" }),
