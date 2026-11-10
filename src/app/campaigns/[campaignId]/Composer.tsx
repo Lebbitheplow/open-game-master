@@ -1,7 +1,7 @@
 "use client";
 
 import { Eye, EyeOff, Hand, Loader2, Send } from "lucide-react";
-import { memo, useEffect, useId, useMemo, useRef, type ComponentProps, type ReactNode } from "react";
+import { memo, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from "react";
 import type { Dispatch, FormEvent, RefObject, SetStateAction } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
@@ -281,6 +281,26 @@ function ComposerInner({
   // the box is the story's voice, and a seat holding the whole cast is
   // offered everyone, the not yet introduced marked (name-menu-logic.ts).
   const wellRef = useRef<HTMLDivElement>(null);
+  // The Hand is drawn into one element of its own for as long as the table
+  // is open, and that element is moved between the desk's row and the slot
+  // on the staged board. Drawn straight into whichever was current, a change
+  // of layout (the board staged or not, an addon's session, a short window)
+  // would unmount the Hand and take its aim, its open group and its focus
+  // with it (table-layout holds it to the same node).
+  const handRowRef = useRef<HTMLDivElement>(null);
+  // Made with the component, not in an effect: a portal draws nothing where
+  // it stands, so the server's markup and the first client render agree.
+  const [handHost] = useState<HTMLDivElement | null>(() => {
+    if (typeof document === "undefined") return null;
+    const host = document.createElement("div");
+    host.className = "session-hand-host";
+    return host;
+  });
+  useEffect(() => () => handHost?.remove(), [handHost]);
+  useLayoutEffect(() => {
+    const home = handSlot ?? handRowRef.current;
+    if (handHost && home && handHost.parentElement !== home) home.appendChild(handHost);
+  }, [handHost, handSlot]);
   const storyVoice = kind === "narrate" || kind === "lead";
   const choices = useMemo(() => nameChoices({ sheets, cast, places, storyVoice }), [sheets, cast, places, storyVoice]);
   const names = useNameMenu({ text: input, setText: setInput, field: composerRef, choices });
@@ -356,8 +376,8 @@ function ComposerInner({
           />
         ) : null}
         </div>
-        <div className="session-compose-hand">
-        {((hands: ReactNode) => (handSlot ? createPortal(hands, handSlot) : hands))(<>
+        <div className="session-compose-hand" ref={handRowRef}>
+        {((hands: ReactNode) => (handHost ? createPortal(hands, handHost) : null))(<>
         {/* The Hand (docs/visual-overhaul-plan.md 5.2): a player's combat options
             as cards, only while a fight is on. It adds to everything below and
             takes nothing away: the pills, the box, the mic and the send button

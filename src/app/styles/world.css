@@ -2858,7 +2858,7 @@ button.cine-chronicle-earlier:focus-visible { outline: 2px solid #f4e0a6; outlin
   overflow: visible;
   pointer-events: none;
 }
-.cine-fight-hand:empty { display: none; }
+.cine-fight-hand:not(:has(.session-hand-host > *)) { display: none; }
 /* The night under the cards stands as tall as the Hand (--hand-foot, on the
    frame) and eases with it, so putting the Hand away lowers it like a
    curtain instead of cutting it off. */
@@ -2898,8 +2898,8 @@ button.cine-chronicle-earlier:focus-visible { outline: 2px solid #f4e0a6; outlin
 }
 .cine-fight-board > .cine-fight-hand { transition: opacity var(--dur-quick) var(--ease-snap); }
 .cine-fight-board:has(.board-view[data-panning]) > .cine-fight-hand { opacity: 0.2; }
-.cine-fight-hand > * { position: relative; max-width: 48rem; margin-inline: auto; pointer-events: none; }
-.cine-fight-hand > * :is(button, a, input, select, textarea, summary, [role="button"], [role="radio"], [tabindex], .hand-preview) { pointer-events: auto; }
+.cine-fight-hand > .session-hand-host > * { position: relative; max-width: 48rem; margin-inline: auto; pointer-events: none; }
+.cine-fight-hand > .session-hand-host > * :is(button, a, input, select, textarea, summary, [role="button"], [role="radio"], [tabindex], .hand-preview) { pointer-events: auto; }
 .cine-fight-hand .hand { margin-bottom: 0; }
 /* On the board the Hand's words stand on a painting, in either theme: the
    night's own ink, with a shadow to hold them over pale stone. */

@@ -37,6 +37,10 @@
 
 /* ---- the fan ---- */
 
+/* The element the Hand is drawn into (Composer.tsx): it is moved between
+   the desk's row and the staged board's slot, and makes no box of its own. */
+.session-hand-host { display: contents; }
+
 /* The fold button's word, shown only where the Hand lies on the board. */
 .hand-fold-word { display: none; }
 
@@ -505,7 +509,7 @@
   .session-desk:has(.hand) { display: flex; flex: 0 1 auto; flex-direction: column; min-height: 0; }
   .session-desk:has(.hand) > div { display: flex; flex: 0 1 auto; flex-direction: column; width: 100%; min-height: 0; }
   .session-desk:has(.hand) > div > :is(.session-compose-notices, .session-compose-entry) > * { flex-shrink: 0; }
-  .session-desk:has(.hand) > div > .session-compose-hand > .hand { flex: 0 1 auto; min-height: 0; max-height: none; overflow-y: auto; overscroll-behavior: contain; }
+  .session-desk:has(.hand) > div > .session-compose-hand > .session-hand-host > .hand { flex: 0 1 auto; min-height: 0; max-height: none; overflow-y: auto; overscroll-behavior: contain; }
 }
 /* In a fight on a phone the chronicle keeps about three lines and the Hand
    gives way (the rule above scrolls it in what is left): a test fight's
@@ -519,7 +523,7 @@
   /* The Hand gives way down to its name, never to nothing: at 0 px a hero's
      cards and the reactions they answer a hit with were gone with no sign
      they were ever there. */
-  .session-desk:has(.hand) > div > .session-compose-hand > .hand { min-height: 1.25rem; }
+  .session-desk:has(.hand) > div > .session-compose-hand > .session-hand-host > .hand { min-height: 1.25rem; }
   /* The newest line sits on the bottom edge, not 2rem above it. */
   .cine-chat:has(.hand) > .session-transcript > div > :nth-last-child(2) { margin-bottom: 0; }
   .cine-chat:has(.hand) .test-fight-say { display: none; }

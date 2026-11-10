@@ -19,6 +19,11 @@ export default {
   async run(t) {
     const { page, root, ids, viewport } = t;
     await t.open(`/campaigns/${ids.campaignId}`);
+    // A phone opens on the board when it is this hero's turn; the Hand is
+    // on its Table tab.
+    if (viewport === "phone") {
+      await t.tap(page.locator(`${root}nav.cine-bottombar button`).filter({ hasText: /^\s*Table\s*$/i }).first());
+    }
     await eventually(() => page.locator(`${root}.hand-card`).locator("visible=true").count(), { timeoutMs: 30_000, label: "the Hand's cards" });
     await untilStill(page);
     const box = (selector) =>

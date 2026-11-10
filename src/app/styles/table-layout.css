@@ -184,7 +184,7 @@
   .cine-row[data-presentation="stage"] .session-compose-entry { grid-area: 5 / 1; padding: 8px; }
   .cine-row[data-presentation="stage"] .session-compose-support:empty,
   .cine-row[data-presentation="stage"] .session-compose-notices:empty,
-  .cine-row[data-presentation="stage"] .session-compose-hand:empty { display: none; }
+  .cine-row[data-presentation="stage"] .session-compose-hand:not(:has(.session-hand-host > *)) { display: none; }
   /* Keep the status owner and the mode buttons' positioned animation intact. */
   @supports (position-anchor: --session-chronicle) and (anchor-scope: --session-chronicle) {
     .cine-row[data-presentation="stage"] {
