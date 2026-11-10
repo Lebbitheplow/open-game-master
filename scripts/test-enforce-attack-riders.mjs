@@ -205,7 +205,9 @@ await test("Sneak Attack: once per turn, and again on the next", async () => {
   kit.place(fighter.id, 5, 7);
   const first = await kit.swing(rogue.id, enemy.id, [15, 4, 1, 2, 3], { weapon: "Shortsword" });
   assert.equal(dieCount(first.damage, 6), 4);
-  assert.deepEqual(world.encounter().turnBudget.oncePerTurn, ["sneak_attack"]);
+  // The once-a-turn use is spent, and the hit is marked on the creature it
+  // struck (weapon-hit:<id>, which the reactions that answer a weapon hit read).
+  assert.deepEqual([...world.encounter().turnBudget.oncePerTurn].sort(), ["sneak_attack", `weapon-hit:${enemy.id}`].sort());
   const off = await kit.swing(rogue.id, enemy.id, [15, 4, 1, 2, 3], { weapon: "Shortsword", offHand: true });
   assert.equal(off.ok, true, off.error);
   assert.equal(off.unused, 3);
