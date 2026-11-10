@@ -509,7 +509,7 @@ const SITES = {
   "lib/dm/foresight-more.ts#damageCeiling": "F no die: the most a blow could deal, to read whether it could drop the hero before the watch stop",
   "lib/dm/foretold-logic.ts#rollForetold": "H Portent's two d20s at the long rest",
   "lib/dm/gear-weapon-hit.ts#enemyExtinguish": "F", "lib/dm/hazard-tools.ts#resolveHazard": "F which target a trap picks",
-  "lib/dm/heal-spell.ts#castHealingSpell": "D", "lib/dm/hit-dice.ts#spendHitDice": "D hit dice",
+  "lib/dm/hit-dice.ts#spendHitDice": "D hit dice",
   "lib/dm/invoke-roll.ts#handleRequestRoll": "H",
   "lib/dm/item-charges.ts#rechargeAtDawn": "F", "lib/dm/item-charges.ts#spendChargesMath": "H the d20 on an item's last charge",
   "lib/dm/mount-combat.ts#strikeMount": "F", "lib/dm/natural-onhit.ts#landNaturalOnHit": "D", "lib/dm/npc-agency.ts#advanceNpcAgency": "F",
@@ -517,12 +517,11 @@ const SITES = {
   "lib/dm/opportunity-sides.ts#enemiesStrikeWalker": "F", "lib/dm/opportunity.ts#resolveOpportunityAttacks": "F",
   "lib/dm/pc-attack-resolve.ts#throwToHit": "H",
   "lib/dm/pet-tools.ts#handlePetAttack": "H a bound creature's attack, which its player rolls",
-  "lib/dm/prismatic.ts#rollRays": "D", "lib/dm/resource-tools.ts#rollHealing": "D",
+  "lib/dm/prismatic.ts#rollRays": "D",
   "lib/dm/roll-card.ts#dmRoll": "F the GM's dice", "lib/dm/roll-card.ts#rollCard": "D a helper for damage, healing and creature dice", "lib/dm/roll-card.ts#secretRoll": "F",
   "lib/dm/roll-gates.ts#rollContest": "F",
   "lib/dm/slow-cast.ts#slowHoldsCast": "H the d20 a slowed caster rolls",
   "lib/dm/social-tools.ts#handleNpcReaction": "F",
-  "lib/dm/stabilize.ts#healerKitUse": "D",
   "lib/dm/zone-quake.ts#quakeFissures": "F",
 };
 // A character's d20 no row of this suite reaches, and what it would take.

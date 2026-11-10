@@ -29,6 +29,7 @@ import {
   createPendingRoll,
   ensurePendingColumns,
   getDmTurn,
+  getPendingRoll,
   publicPendingRoll,
   saveDmTurn,
   type DecidedRoll,
@@ -63,6 +64,9 @@ export type HeldPark = {
 
 type Trial = {
   campaignId: string;
+  // The turn the call is made on: a dice card rolled inside it is that
+  // turn's (heldCallTurn below).
+  turn: DmTurn;
   // The dice the run has thrown, any kind, any source: a stop for a watcher
   // comes only before the first, so nothing thrown is thrown again.
   dice: number;
@@ -107,6 +111,13 @@ export function isHeldPark(result: unknown): boolean {
 // Whether a held call is running: a roll may wait only inside one.
 export function inHeldCall(): boolean {
   return Boolean(globalThis.__odmHeldTrial);
+}
+
+// The turn a held call is running on, for a site deep in the call that
+// cards its own dice and was handed no turn (resource-tools.ts rollHealing):
+// the card joins that turn's, so the chronicle shows it with the rest.
+export function heldCallTurn(): DmTurn | null {
+  return globalThis.__odmHeldTrial?.turn ?? null;
 }
 
 // The roll this character's run already has, of this kind, if any.
@@ -181,6 +192,7 @@ export function runHeld<T>(campaign: Campaign, turn: DmTurn, call: HeldCallSpec,
   globalThis.__odmWatchAnswered?.delete(campaign.id);
   const trial: Trial = {
     campaignId: campaign.id,
+    turn,
     dice: 0,
     watched: answered,
     watchStop: null,
@@ -380,6 +392,7 @@ export function runHeldAgain(
     .prepare(`SELECT id FROM rolls WHERE campaign_id = ? AND character_id = ? AND roll_kind = ? AND created_at >= ? ORDER BY rowid ASC LIMIT 1`)
     .get(campaign.id, pending.characterId, pending.kind, since) as { id: string } | undefined;
   let roll: StoredRoll | null = found ? getRoll(found.id) : null;
+  const recorded = Boolean(roll);
   if (!roll) {
     roll = insertRoll({
       campaignId: campaign.id,
@@ -399,6 +412,14 @@ export function runHeldAgain(
   getDatabase()
     .prepare(`UPDATE pending_rolls SET roll_id = ?, carry_json = ? WHERE id = ?`)
     .run(roll?.id ?? null, JSON.stringify({ ...pending.carry, ...(told ? { answer: JSON.stringify(told) } : {}) }), pending.id);
+  // The roll the run recorded was sent as any roll of the call's is, with no
+  // word of the card it answers: the table is told the card is done. Without
+  // this it stayed up, asking for dice already entered, until the page was
+  // loaded again.
+  const answered = recorded ? getPendingRoll(pending.id) : null;
+  if (answered && answered.status !== "pending") {
+    publishPersisted(campaign.id, "roll_pending", { pendingRoll: publicPendingRoll(answered) });
+  }
   return { roll, answer: told };
 }
 

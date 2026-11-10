@@ -30,7 +30,8 @@ import { getActiveEncounter } from "@/lib/db/encounters";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { insertRoll } from "@/lib/db/rolls";
-import { rollExpression } from "@/lib/dice";
+import { rollCharacterD20 } from "@/lib/dm/character-roll";
+import { heldCallTurn } from "@/lib/dm/held-call";
 import { authoredHealMax } from "@/lib/srd/authored-economy";
 import { healAdditions, healModifier } from "@/lib/dm/heal-bonus";
 import { publishEphemeral, publishPersisted, publishWithSeq } from "@/lib/events";
@@ -247,16 +248,25 @@ export function castHealingSpell(
     amount = maximumOf(full);
     riders.push("the dice at their maximum");
   } else {
-    const outcome = rollExpression(full);
+    // The caster's own dice, whoever is healed: on physical dice their
+    // player rolls them (src/lib/dm/character-roll.ts), as they roll a
+    // spell's damage, and the card joins the turn's (issue 902). One casting
+    // over a list of creatures is still thrown here: its entries are calls
+    // of their own that share what the first one paid, in memory
+    // (action-parts-logic.ts OneCasting), and a call held for a roll is run
+    // again alone, without it.
+    const said = `${name} on ${target.name} (${full})`;
+    const outcome = rollCharacterD20(campaign, caster, { kind: "custom", expression: full, detail: said, mayWait: !casting || casting.creatures < 2 });
     const roll = insertRoll({
       campaignId: campaign.id,
-      characterId: target.id,
+      characterId: caster.id,
       requestedBy: "dm",
       kind: "custom",
-      detail: `${name} on ${target.name} (${full})`,
+      detail: said,
       result: outcome,
     });
     publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
+    heldCallTurn()?.rollIds.push(roll.id);
     amount = outcome.total;
   }
   // Regenerate goes on healing at the start of each of the target's turns

@@ -20,7 +20,7 @@
 // rollExpression: scripts/test-enforce-sweep-dice-sites.mjs walks the source
 // for sites that throw one and fails on a site it has not classified.
 
-import { rollExpression, type Advantage, type RollResult } from "@/lib/dice";
+import { entryDice, rollExpression, type Advantage, type RollResult } from "@/lib/dice";
 import { heroRollTag, type RollTag } from "@/lib/dice-script-logic";
 import { dicePreferencesOf } from "@/lib/db/dm-turns";
 import type { Campaign } from "@/lib/db/campaigns";
@@ -39,8 +39,10 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 export type CharacterRoll = {
   // As the roll is stored: a death save is a saving throw.
   // Damage is theirs to roll on physical dice too ("You roll your attacks
-  // and their damage"), and never waits on a choice.
-  kind: Extract<RollKind, "skill_check" | "ability_check" | "saving_throw" | "attack" | "initiative" | "damage">;
+  // and their damage"), and never waits on a choice. Nor do the other dice
+  // of their own a call rolls, stored as "custom": the healing of a feature,
+  // a potion or a spell (issue 902).
+  kind: Extract<RollKind, "skill_check" | "ability_check" | "saving_throw" | "attack" | "initiative" | "damage" | "custom">;
   // What the dice are tagged as (a test table's script aims by it); the
   // stored kind's own tag when left out.
   tag?: RollTag;
@@ -110,6 +112,17 @@ export function initiativeWaits(campaign: Campaign, stale: CharacterSheet): bool
   return choicesFor(campaign, sheet, { kind: "initiative", expression: "1d20", detail: "initiative" }, lowest).length > 0;
 }
 
+// A flat amount (a heal of three times a monk's level) has no die in it:
+// there is nothing for a player to roll. An expression that cannot be read
+// is left to the throw to refuse.
+function hasDice(expression: string): boolean {
+  try {
+    return entryDice(expression).length > 0;
+  } catch {
+    return true;
+  }
+}
+
 export function rollCharacterD20(campaign: Campaign, stale: CharacterSheet, roll: CharacterRoll): RollResult {
   const sheet = getSheetById(stale.id) ?? stale;
   const decided = takeDecided(sheet.id, roll.kind);
@@ -130,7 +143,7 @@ export function rollCharacterD20(campaign: Campaign, stale: CharacterSheet, roll
     reason: roll.reason ?? roll.detail,
     visibility: roll.visibility ?? "public",
   };
-  const mayWait = held && visible && roll.mayWait !== false;
+  const mayWait = held && visible && roll.mayWait !== false && hasDice(roll.expression);
   const parks = mayWait ? seatParks(campaign, sheet) : null;
   if (parks) {
     parkHeldCall({ ...card, parkedFor: parks, note: `Waiting on ${sheet.name} to roll ${roll.detail}: their player rolls it.` });
@@ -138,7 +151,7 @@ export function rollCharacterD20(campaign: Campaign, stale: CharacterSheet, roll
   // A watcher already answered this roll at the stop before it: their
   // answer is armed and taken as the roll lands, so the card does not ask
   // again (foresight.ts, chronal-shift.ts).
-  const waits = mayWait && roll.kind !== "damage" && rollsCanWait(sheet) && !shiftArmedFor(campaign.id, tag);
+  const waits = mayWait && roll.kind !== "damage" && roll.kind !== "custom" && rollsCanWait(sheet) && !shiftArmedFor(campaign.id, tag);
   // Portent replaces the d20 before it is thrown: a wizard holding a number
   // decides here, as on a requested check (invoke-roll.ts).
   if (waits && !roll.attack && roll.kind !== "initiative" && foretoldLeft(sheet).length > 0) {
