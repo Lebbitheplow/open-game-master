@@ -56,6 +56,26 @@ import { afflictionStress } from "@/lib/dm/afflictions";
 // A sheet holds this many conditions at once (the stored list's own cap).
 export const MAX_CONDITIONS = 15;
 
+// The holder's own conditions that end when they are incapacitated
+// (Hexblade's Curse: ConditionMeta endsIfIncapacitated). Returns the names
+// that ended.
+function endIncapacitationHeld(sheetId: string): string[] {
+  const fresh = getSheetById(sheetId);
+  if (!fresh) {
+    return [];
+  }
+  const meta = (fresh.conditionMeta ?? {}) as ConditionMetaMap;
+  const held = Object.entries(meta)
+    .filter(([, entry]) => (entry as ConditionMeta | undefined)?.endsIfIncapacitated)
+    .map(([name]) => name);
+  if (!held.length) {
+    return [];
+  }
+  const cleared = removeConditions(fresh.conditions, meta, held);
+  patchSheet(sheetId, { conditions: cleared.conditions, conditionMeta: cleared.meta });
+  return held;
+}
+
 // The SRD's conditions, and the content's own when the pack is there.
 function knownConditions(): string[] {
   return [...new Set([...CONDITIONS, ...listConditions({ limit: 50 }).map((entry) => entry.name.toLowerCase())])];
@@ -472,8 +492,10 @@ export function handleSetCondition(
   if (isIncapacitated([normalized])) {
     const spell = breakConcentration(campaign, turnId, sheet.id, `became ${normalized}`);
     const released = releaseGrapplesHeldBy(campaign, sheet.id);
+    const ended = endIncapacitationHeld(sheet.id);
     lost = {
       ...(spell ? { concentrationBroken: `${sheet.name} loses concentration on ${spell}.` } : {}),
+      ...(ended.length ? { featureEnded: `${sheet.name}'s ${ended.join(" and ")} ends.` } : {}),
       ...(released.length
         ? { grappleEnded: `${sheet.name} lets go of ${released.join(", ")}.` }
         : {}),

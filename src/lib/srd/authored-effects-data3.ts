@@ -389,12 +389,14 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
         name: "Hexblade's Curse",
         pool: { id: "sub_hexblades_curse" },
         action: "bonus",
-        // "curse a creature you can see within 30 feet of you".
+        // "curse a creature you can see within 30 feet of you", "or until
+        // ... you are incapacitated".
         does: {
           kind: "buff",
           quarry: true,
           sight: true,
           rangeFt: 30,
+          endsIfIncapacitated: true,
           condition: [[1, "hexblade's curse (+2)"], [5, "hexblade's curse (+3)"], [9, "hexblade's curse (+4)"], [13, "hexblade's curse (+5)"], [17, "hexblade's curse (+6)"]],
           rounds: 10,
         },
@@ -421,6 +423,7 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
           kind: "buff",
           quarry: true,
           sight: true,
+          endsIfIncapacitated: true,
           condition: [[1, "hexblade's curse (+2)"], [5, "hexblade's curse (+3)"], [9, "hexblade's curse (+4)"], [13, "hexblade's curse (+5)"], [17, "hexblade's curse (+6)"]],
           rounds: 10,
         },

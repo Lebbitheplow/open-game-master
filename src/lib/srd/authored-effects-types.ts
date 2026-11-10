@@ -309,6 +309,9 @@ export type SpendDoes =
       // The holder's condition is a mark on the named creature (its meta's
       // quarry, src/lib/dm/attack-marks.ts): Target Lock, Quarry.
       quarry?: boolean;
+      // The holder's condition ends when they are incapacitated (Hexblade's
+      // Curse), read by set-condition.ts with concentration.
+      endsIfIncapacitated?: boolean;
       // The spend's own burst (Arms of the Astral Self, Avenging Angel).
       // `mark`: a second condition each creature that failed carries
       // (Avenging Angel: "menaced", which gives every attacker advantage).

@@ -304,7 +304,14 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
         const kept = sheet.conditions.filter((entry) => textKey(entry) !== textKey(condition));
         patch = {
           conditions: [...kept, condition],
-          conditionMeta: { ...sheet.conditionMeta, [condition]: { ...(does.untilNextTurnEnds ? { untilTurnEndOf: sheet.id } : { rounds: does.rounds }), ...(quarry ? { quarry: quarry.id } : {}) } },
+          conditionMeta: {
+            ...sheet.conditionMeta,
+            [condition]: {
+              ...(does.untilNextTurnEnds ? { untilTurnEndOf: sheet.id } : { rounds: does.rounds }),
+              ...(quarry ? { quarry: quarry.id } : {}),
+              ...(does.endsIfIncapacitated ? { endsIfIncapacitated: true } : {}),
+            },
+          },
           ...(tempHp > sheet.tempHp ? { tempHp } : {}),
         };
         lines.push(

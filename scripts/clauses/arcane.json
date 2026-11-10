@@ -2566,8 +2566,9 @@
    },
    {
     "c": "or you are incapacitated",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: curse-incapacitated"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: curse-incapacitated",
+    "by": "src/lib/srd/authored-effects-data3.ts warlock::Hexblade's Curse endsIfIncapacitated (src/lib/dm/set-condition.ts endIncapacitationHeld)"
    },
    {
     "c": "you add your proficiency bonus to damage rolls against it",

@@ -75,6 +75,9 @@ export type ConditionMeta = {
   // Hunter's Mark and Hex: the enemyId of the marked creature, the only one
   // the extra die rides against.
   quarry?: string;
+  // Ends when its holder is incapacitated (Hexblade's Curse: "or you are
+  // incapacitated"), as concentration does (set-condition.ts).
+  endsIfIncapacitated?: boolean;
   // Flesh to Stone: the saves counted at the ends of the creature's turns
   // (src/lib/dm/spell-turn-end.ts).
   tally?: { passed: number; failed: number };
