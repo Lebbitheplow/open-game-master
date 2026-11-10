@@ -323,6 +323,7 @@ function rollCounterSave(
     rounds: effect.rounds,
     rangeFt: effect.rangeFt,
     types: effect.types,
+    ...(effect.pushFeet ? { pushFeet: effect.pushFeet } : {}),
     ...(most ? { most } : {}),
     magical: effect.magical ?? def.id !== "breath_weapon",
   }, aim ?? {});

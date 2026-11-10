@@ -260,5 +260,14 @@ await run("Tetanus Edge: an improvised weapon's hit leaves the creature unable t
   assert.equal(struck.conditionMeta.tetanus?.untilTurnOf, hero.id, "the wound does not end at the scavenger's next turn");
 });
 
+await run("Steamvent Burst: an adjacent creature that fails its DEX save takes 3d8 fire and is pushed 10 ft away", async () => {
+  const hero = rig.holder(feature("machinist", "Steamvent Burst", 9));
+  const { near } = await rig.fight(hero);
+  rig.must(await spendAt(hero, "Steamvent Burst", [3, 3, 3, 1], { targetEnemyId: near.id }), "use_resource Steamvent Burst");
+  assert.equal(lost(near), 9, `the vent dealt ${lost(near)}`);
+  const at = kit.token(near.id);
+  assert.deepEqual({ x: at.x, y: at.y }, { x: 8, y: 2 }, `the creature stands at (${at.x},${at.y})`);
+});
+
 world.close();
 finish();

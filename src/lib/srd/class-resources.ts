@@ -91,6 +91,8 @@ export type ResourceEffect =
 // What a save a counter forces is held to beyond its ability, read by the
 // spend that rolls it (src/lib/dm/counter-saves.ts) and the Hand's card.
 export type SaveTerms = {
+  // A creature that fails is pushed this far from the holder (Steamvent Burst).
+  pushFeet?: number;
   // The DC: "spell" is the spell save DC, an ability 8 + proficiency + its
   // modifier. Absent, the area features' 8 + proficiency + Constitution and
   // the others' best modifier, as before.
@@ -171,8 +173,8 @@ export function resolveDiceFormula(
 }
 
 function saveTermsOf(fx: SaveTerms): SaveTerms {
-  const { dcAbility, type, typeFromVariant, half, rounds, rangeFt, types, most, magical } = fx;
-  return Object.fromEntries(Object.entries({ dcAbility, type, typeFromVariant, half, rounds, rangeFt, types, most, magical }).filter(([, value]) => value !== undefined)) as SaveTerms;
+  const { dcAbility, type, typeFromVariant, half, rounds, rangeFt, types, most, magical, pushFeet } = fx;
+  return Object.fromEntries(Object.entries({ dcAbility, type, typeFromVariant, half, rounds, rangeFt, types, most, magical, pushFeet }).filter(([, value]) => value !== undefined)) as SaveTerms;
 }
 
 // Lifts a JSON fx row into the executable effect shape.

@@ -173,13 +173,15 @@
    },
    {
     "c": "adjacent creatures save (DEX) or take 3d8 fire and are pushed 10 ft when you vent your armor",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_steamvent_burst#HANDS_BACK"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Steamvent Burst: an adjacent creature that fails its DEX save takes 3d8 fire and is pushed 10 ft away",
+    "by": "src/lib/classes/resources.json fx (pushFeet read from the text by scripts/generate-class-resources.mjs saveTermsFromText), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave, the push by src/lib/dm/map-tools.ts pushTokenAway"
    },
    {
     "c": "adjacent",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_steamvent_burst#HANDS_BACK"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Steamvent Burst: an adjacent creature that fails its DEX save takes 3d8 fire and is pushed 10 ft away",
+    "by": "src/lib/classes/resources.json fx rangeFt 5 (adjacent), refused beyond it by src/lib/dm/counter-saves.ts resolveCounterSave"
    },
    {
     "c": "save (DEX)",

@@ -3687,7 +3687,8 @@
         "save": "dex",
         "dice": "3d8",
         "rangeFt": 5,
-        "type": "fire"
+        "type": "fire",
+        "pushFeet": 10
       }
     },
     {

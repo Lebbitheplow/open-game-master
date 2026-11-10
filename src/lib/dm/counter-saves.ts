@@ -18,6 +18,7 @@ import { getDmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter, getEnemy, type EncounterEnemy } from "@/lib/db/encounters";
 import { listSheets } from "@/lib/db/sheets";
 import { layEnemyConditionInstance } from "@/lib/dm/enemy-condition-lay";
+import { pushTokenAway } from "@/lib/dm/map-tools";
 import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
@@ -56,6 +57,9 @@ export type CounterSave = {
   // The most creatures one use takes (Enthralling Performance: the bard's
   // Charisma modifier).
   most?: number;
+  // A creature that fails is pushed this far straight away from the holder
+  // (Steamvent Burst: "are pushed 10 ft"), stopping at a wall or a creature.
+  pushFeet?: number;
 };
 
 export type CounterSaveAim = { turnId?: string; targetEnemyId?: string; targetEnemyIds?: string[] };
@@ -155,6 +159,19 @@ export function resolveCounterSave(campaign: Campaign, sheet: CharacterSheet, sp
         layEnemyConditionInstance(campaign, fresh, spec.condition, { source: sheet.id, ...(spec.rounds ? { rounds: spec.rounds } : {}) });
         parts.push(`is ${spec.condition}`);
       }
+    }
+    if (!save.success && spec.pushFeet && (getEnemy(enemy.id)?.currentHp ?? 0) > 0) {
+      let moved = 0;
+      let stopped = "";
+      for (let step = 0; step < Math.floor(spec.pushFeet / 5); step += 1) {
+        const pushed = pushTokenAway(campaign, encounter.id, sheet.id, enemy.id);
+        if (!pushed.moved) {
+          stopped = pushed.reason;
+          break;
+        }
+        moved += 1;
+      }
+      parts.push(`is pushed ${moved * 5} feet${stopped ? ` (${stopped})` : ""}`);
     }
     const verdict = save.legendaryResistance ? "with Legendary Resistance" : `(${spec.save.toUpperCase()} ${save.total} vs DC ${spec.dc})`;
     lines.push(`${enemy.displayName} ${save.success ? "saves" : "fails"} ${verdict}${parts.length ? `: ${parts.join(", and ")}` : ""}.`);

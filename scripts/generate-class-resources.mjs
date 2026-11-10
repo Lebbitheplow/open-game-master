@@ -108,6 +108,10 @@ function saveTermsFromText(text) {
   else if (/\badjacent\b/i.test(text)) out.rangeFt = 5;
   const type = DAMAGE_TYPES.exec(text);
   if (type) out.type = type[1].toLowerCase();
+  // "are pushed 10 ft": a creature that fails is moved straight away from the
+  // holder (src/lib/dm/counter-saves.ts).
+  const pushed = /\bpushed (\d+)\s*(?:ft|feet)\b/i.exec(text);
+  if (pushed) out.pushFeet = Number(pushed[1]);
   return out;
 }
 
