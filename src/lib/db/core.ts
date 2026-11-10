@@ -2069,6 +2069,12 @@ function ensureSchema(db: SqliteDatabase) {
     // never by saveEncounter, so a handler holding a stale Encounter cannot
     // send back someone who has arrived.
     ["away_ids_json", `TEXT NOT NULL DEFAULT '[]'`],
+    // Once-a-turn and once-a-round marks of features off the turn budget
+    // (Grim Harvest, Keeper of Souls, Form of the Beast's bite), as
+    // {key: stamp} (src/lib/dm/turn-marks.ts). In the database, so a restart
+    // remembers them; on the fight's own row, so they revert with it. Written
+    // only there, never by saveEncounter.
+    ["turn_marks_json", `TEXT NOT NULL DEFAULT '{}'`],
     // The action economy of whichever combatant is currently acting: action,
     // bonus action, reaction, attacks made, and movement spent. Rebuilt from
     // scratch whenever the initiative pointer moves, so it never needs a

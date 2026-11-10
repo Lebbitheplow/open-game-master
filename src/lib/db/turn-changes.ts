@@ -24,11 +24,15 @@ import { publishPersisted } from "@/lib/events";
 //     (src/lib/db/dice-scripts.ts gives them back, so a replay rolls the same).
 //   - card: a player's card the GM resolved as played (src/lib/dm/
 //     resolve-card.ts puts it back in "Waiting on you").
+//   - ledger: what one call paid in the turn, so the same call sent again in
+//     it is answered with the first payout (src/lib/dm/turn-marks.ts; a
+//     treasure roll). Bookkeeping, never shown; taken back with the turn, so
+//     the call pays again once its payout is reverted.
 //
 // A row is written only under a turn: work outside every turn is nobody's to
 // revert.
 
-export type TurnChangeKind = "fight" | "story" | "fight_event" | "dice_face" | "dice_seed" | "card" | "summon" | "cue";
+export type TurnChangeKind = "fight" | "story" | "fight_event" | "dice_face" | "dice_seed" | "card" | "summon" | "cue" | "ledger";
 
 export type TurnChange = {
   id: string;
@@ -54,11 +58,12 @@ type Row = {
   created_at: string;
 };
 
-const KINDS: readonly TurnChangeKind[] = ["fight", "story", "fight_event", "dice_face", "dice_seed", "card", "summon", "cue"];
+const KINDS: readonly TurnChangeKind[] = ["fight", "story", "fight_event", "dice_face", "dice_seed", "card", "summon", "cue", "ledger"];
 
 // Kept for the revert, never shown or counted in the event log: a creature
-// a spell called up, and the prepared fight whose cue the turn spent.
-const BOOKKEEPING: readonly TurnChangeKind[] = ["summon", "cue"];
+// a spell called up, the prepared fight whose cue the turn spent, a call's
+// payout.
+const BOOKKEEPING: readonly TurnChangeKind[] = ["summon", "cue", "ledger"];
 
 function mapRow(row: Row): TurnChange | null {
   const kind = KINDS.find((entry) => entry === row.kind);
@@ -149,7 +154,7 @@ export function markTurnChangesReverted(ids: readonly string[]) {
 // snapshot's turnChanges).
 export function listLiveTurnChangeViews(campaignId: string, limit = 50): TurnChangeView[] {
   const rows = getDatabase()
-    .prepare(`SELECT * FROM turn_changes WHERE campaign_id = ? AND reverted_at IS NULL AND kind NOT IN ('summon') ORDER BY rowid DESC LIMIT ?`)
+    .prepare(`SELECT * FROM turn_changes WHERE campaign_id = ? AND reverted_at IS NULL AND kind NOT IN ('summon', 'cue', 'ledger') ORDER BY rowid DESC LIMIT ?`)
     .all(campaignId, limit) as Row[];
   return rows
     .reverse()

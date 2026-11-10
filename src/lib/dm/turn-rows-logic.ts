@@ -53,6 +53,8 @@ export const FIGHT_COLUMNS = [
   // back with the slot and token it was given, or they stayed off the list
   // with neither, and their next initiative roll brought no token.
   "away_ids_json",
+  // The once-a-turn marks the turn spent (turn-marks.ts).
+  "turn_marks_json",
 ] as const;
 
 // Columns a row image of another table keeps but no revert writes back:

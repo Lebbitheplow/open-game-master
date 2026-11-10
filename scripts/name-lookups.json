@@ -2729,6 +2729,8 @@
     "lib/dm/turn-rows-logic.ts#partial": [["key",1,"table and column names, and a fight's kind and standing (the schema's own vocabulary)"]],
     "lib/db/turn-journal.ts#partial": [["key",5,"table and column names and SQL column types (the schema's own vocabulary)"]],
     "lib/db/turn-journal.ts#whole": [["key",1,"table and column names and SQL column types (the schema's own vocabulary)"]],
-    "lib/db/turn-journal.ts#first": [["key",1,"table and column names and SQL column types (the schema's own vocabulary)"]]
+    "lib/db/turn-journal.ts#first": [["key",1,"table and column names and SQL column types (the schema's own vocabulary)"]],
+    "lib/dm/turn-marks.ts#whole-single": [["key",1,"a feature's own mark key, built by its caller (engine vocabulary)"]],
+    "lib/dm/turn-marks.ts#keyed": [["key",3,"a feature's own mark key, built by its caller (engine vocabulary)"]]
   }
 }

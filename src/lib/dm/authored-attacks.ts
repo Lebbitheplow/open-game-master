@@ -10,6 +10,7 @@
 // Called from pc-attack-plan.ts (the budget, before anything is spent) and
 // from authored-hooks.ts authoredOnHit (the bite, after the hit).
 
+import { fightMarked, markFight } from "@/lib/dm/turn-marks";
 import { regainHitPoints } from "@/lib/dm/regain";
 import type { Campaign } from "@/lib/db/campaigns";
 import { turnKey, type Encounter } from "@/lib/db/encounters";
@@ -24,8 +25,9 @@ import type { ToolError } from "@/lib/dm/tool-errors";
 
 const CLAWS_EXTRA = "form of the beast:claws";
 const RAPID_STRIKE = "rapid strike";
-// The turn a bite last healed in, per barbarian (turnKey).
-const BITE_HEALED = new Map<string, string>();
+// The turn a bite last healed in, per barbarian (turnKey): a mark the
+// fight's row keeps (turn-marks.ts), which a restart remembers.
+const biteKey = (holderId: string) => `form of the beast bite:${holderId}`;
 
 // The Attack action's budget after a claw attack: one more attack, the first
 // time a turn.
@@ -104,7 +106,7 @@ export function naturalWeaponOnHit(
   }
   const max = effectiveMaxHp(sheet);
   const stamp = `${encounter.id}:${turnKey(encounter)}`;
-  if (sheet.currentHp <= 0 || sheet.currentHp >= max / 2 || BITE_HEALED.get(sheet.id) === stamp) {
+  if (sheet.currentHp <= 0 || sheet.currentHp >= max / 2 || fightMarked(encounter.id, biteKey(sheet.id), stamp)) {
     return [];
   }
   // Under the heal tool's rules (regain.ts), and audited, so an undo takes it back.
@@ -112,6 +114,6 @@ export function naturalWeaponOnHit(
   if (gained <= 0) {
     return [];
   }
-  BITE_HEALED.set(sheet.id, stamp);
+  markFight(encounter.id, biteKey(sheet.id), stamp);
   return [`${natural.feature}: the bite heals ${sheet.name} ${gained} hit points.`];
 }
