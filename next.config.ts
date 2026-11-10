@@ -129,6 +129,17 @@ const nextConfig: NextConfig = {
     // accept before it is copied (scripts/test-body-limits.mjs holds the two
     // together).
     proxyClientMaxBodySize: "80mb",
+    // A route is loaded when it is first asked for, not all 360 at start.
+    // Loading them all read 1,700 built files (200 MB, the same code many
+    // times over under different names) into memory before the first
+    // request: 476 MB of heap and a 2.3 second stall on a desktop, on a
+    // phone hosting a world as well. Started this way the server holds
+    // 103 MB, and a route's first request pays for its own load once (a
+    // table's first open after a start takes about 0.3 s longer in all).
+    // What must exist before any request is loaded by src/instrumentation.ts
+    // (scripts/test-boot-registrations.mjs holds that every module that
+    // registers a hook as it loads is among them).
+    preloadEntriesOnStart: false,
   },
   ...(dockerBuild
     ? {
