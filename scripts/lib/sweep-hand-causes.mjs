@@ -106,8 +106,10 @@ export const CAUSES = [
     rule: '"Alternatively, you can aid a friendly creature in attacking a creature within 5 feet of you." (SRD 5.1, Help)',
     where: "src/lib/dm take_action help (takes an ally at any distance); the card says 5 ft",
     paths: "the card's range line says 5 ft; take_action help takes an ally 30 and 100 feet away with no creature named",
-    fix_hint: "Refuse Help in a fight for an ally who is not within 5 feet (a task) or with no foe within 5 feet (an attack), or drop the card's range line if the ruling is that Help has none.",
-    files: ["src/lib/dm/basic-actions.ts", "src/lib/battlemap/hand.ts"],
+    // Ruled: helping with a task has no range ("You can lend your aid to
+    // another creature in the completion of a task"), so the card's range
+    // line is dropped and only the attack form's foe is held to 5 feet.
+    fix_hint: "Refuse Help in a fight for an ally who is not within 5 feet (a task) or with no foe within 5 feet (an attack), or drop the card's range line if the ruling is that Help has none.",    files: ["src/lib/dm/basic-actions.ts", "src/lib/battlemap/hand.ts"],
     match: all(prop("P5"), card(/^basic:help/)),
   },
   {

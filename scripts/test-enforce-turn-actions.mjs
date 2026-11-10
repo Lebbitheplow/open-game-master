@@ -697,6 +697,29 @@ await test("The helper must be within 5 feet of the creature the ally attacks.",
   assert.ok(!world.sheet(ally.id).conditions.includes("helped"));
 });
 
+// SRD 5.1, Help: "You can lend your aid to another creature in the completion
+// of a task" names no range; "you can aid a friendly creature in attacking a
+// creature within 5 feet of you" holds only the foe to the helper.
+await test("Help with a task reaches an ally anywhere in a fight; Help on an attack still needs its foe within 5 feet of the helper, wherever the ally stands.", async () => {
+  const enemy = await stage(fighter);
+  kit.place(fighter.id, 2, 2);
+  kit.place(ally.id, 14, 2);
+  kit.place(enemy.id, 14, 3);
+  const task = await act(fighter, "help", { targetCharacterId: ally.id });
+  assert.equal(task.ok, true, task.error);
+  assert.ok(world.sheet(ally.id).conditions.includes("helped"));
+  const attack = await stage(fighter);
+  kit.place(fighter.id, 2, 2);
+  kit.place(ally.id, 14, 2);
+  kit.place(attack.id, 14, 3);
+  const far = await act(fighter, "help", { targetCharacterId: ally.id, targetEnemyId: attack.id });
+  assert.equal(far.ok, false);
+  kit.place(attack.id, 2, 3);
+  const near = await act(fighter, "help", { targetCharacterId: ally.id, targetEnemyId: attack.id });
+  assert.equal(near.ok, true, near.error);
+  assert.equal(world.sheet(ally.id).conditionMeta.helped?.source, attack.id);
+});
+
 // ---- Hide and contests through the roll resolver ----
 
 await test("Hide is a Stealth check like any other: Reliable Talent floors the die at 10.", async () => {

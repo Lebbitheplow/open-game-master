@@ -361,7 +361,7 @@ const BASICS: Array<{ id: BasicActionId; name: string; rules: string; target: Ha
   { id: "dodge", name: "Dodge", rules: "Attacks against you roll at disadvantage until your next turn.", target: "none" },
   { id: "dash", name: "Dash", rules: "Double your movement this turn.", target: "none" },
   { id: "disengage", name: "Disengage", rules: "Your movement provokes no opportunity attacks this turn.", target: "none" },
-  { id: "help", name: "Help", rules: "An ally gets advantage on their next attack against the creature you name, or on a check.", target: "ally" },
+  { id: "help", name: "Help", rules: "An ally gets advantage on their next attack against a creature you name within 5 ft of you, or on a check.", target: "ally" },
   { id: "hide", name: "Hide", rules: "A Stealth check to slip out of sight.", target: "none" },
   { id: "search", name: "Search", rules: "Perception or Investigation to find what is hidden.", target: "none" },
   { id: "escape", name: "Escape", rules: "Athletics or Acrobatics against the grappler's Athletics.", target: "none" },
@@ -408,7 +408,9 @@ function basicCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders,
       type: "basic",
       name: route ? `${route.feature}: ${basic.name}` : basic.name,
       cost,
-      range: contest || basic.id === "help" ? "5 ft" : "Self",
+      // Help aims at the ally, who may stand anywhere (SRD 5.1 gives helping
+      // with a task no range); its 5 feet are the foe's, named in its words.
+      range: contest ? "5 ft" : basic.id === "help" ? "" : "Self",
       dice: contest || escape
         ? `Athletics ${signed(athletics)}`
         : basic.id === "hide"
