@@ -1,4 +1,5 @@
 import { emptyTurnLine, type EmptyTurnPlayer } from "@/lib/dm/empty-turn";
+import { noteToolCallHealth } from "@/lib/tool-call-health";
 import { foesAboutBlock } from "@/lib/dm/foe-return";
 import { legendaryLairLines } from "@/lib/dm/legendary-tools";
 import { defaultSide } from "@/lib/dm/combat-sides-logic";
@@ -1988,6 +1989,15 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     });
 
     const { message, error, finishReason } = reply;
+    // A call the server answered with its tools taken off is kept on the
+    // turn's trace and shown on the admin text-model panel (tool-call-health.ts).
+    if (!resolvesCard && tools.length && !error) {
+      noteToolCallHealth(Boolean(reply.toolsDropped));
+      if (reply.toolsDropped) {
+        const trace = (turn.contextTrace ??= { limitTokens: 0, promptTokens: 0, blocks: [] });
+        trace.toolsDropped = (trace.toolsDropped ?? 0) + 1;
+      }
+    }
     // The provider's own continuation items (the Responses API's encrypted
     // reasoning), echoed with the assistant turn they belong to.
     const carried = message?.provider_items?.length ? { provider_items: message.provider_items } : {};
