@@ -439,7 +439,9 @@ export type SpendDoes =
   // `touched`: a willing creature the holder touches is the one moved.
   | { kind: "teleport"; feet: number; note?: string; touched?: boolean }
   // Dice of damage onto the creature the holder just hit.
-  | { kind: "die_damage"; dice: Formula; type: string }
+  // `until`: a condition the creature carries until the start of its own next
+  // turn (Arc Coil: "the target cannot take reactions until its next turn").
+  | { kind: "die_damage"; dice: Formula; type: string; until?: string }
   // Blade Flourish: the Bardic Inspiration die onto the hit, and AC for a
   // defensive flourish.
   | { kind: "flourish" }

@@ -123,6 +123,8 @@ export const GENRE_B_CONDITION_EFFECTS: ConditionEffectRow[] = [
   { id: "cowering", match: ["cowering"], summary: "Cowering: it never moves toward the packmaster whose roar it failed against." },
   // Fumes and Vapors: "save (CON) or retch, losing their action".
   { id: "retching", match: ["retching"], summary: "Retching: it loses its action while the fumes last.", noAction: true },
+  // Arc Coil: "the target cannot take reactions until its next turn".
+  { id: "arc_shocked", match: ["arc shocked"], summary: "Arc shocked: no reactions until its next turn.", noReactions: true },
   { id: "chain_arc", match: ["chain arc"], summary: "Chain Arc: the next lightning spell that strikes one creature jumps to a second within 15 ft for half." },
   {
     // The Next Step: "your mutations of 3rd level or lower cost no slots and

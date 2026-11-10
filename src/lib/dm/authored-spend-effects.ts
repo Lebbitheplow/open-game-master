@@ -445,7 +445,13 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       }
       const dice = formula(ctx, does.dice);
       const rolled = damageDice(ctx, enemy, dice);
-      return { result: { rolled: `${dice}: ${rolled}`, ...damageEnemy(ctx, enemy, rolled, does.type) } };
+      const dealt = damageEnemy(ctx, enemy, rolled, does.type);
+      const struck = getEnemy(enemy.id);
+      if (does.until && struck && struck.currentHp > 0 && !immuneToCondition(struck, does.until)) {
+        layEnemyConditionInstance(ctx.campaign, struck, does.until, { source: sheet.id, untilTurnOf: struck.id });
+        return { result: { rolled: `${dice}: ${rolled}`, ...dealt, applied: `${struck.displayName} is ${does.until} until its next turn.` } };
+      }
+      return { result: { rolled: `${dice}: ${rolled}`, ...dealt } };
     }
     case "flourish": {
       const enemy = targetEnemy(ctx);

@@ -165,8 +165,9 @@ export const GENRE_B_AUTHORED: GenreRow[] = [
   spend("Full Throttle", ["steam_knight"], "steampunk_full_throttle", undefined, { kind: "buff", condition: "full throttle", rounds: 10 }),
   // "1/rest, reduce all damage you take this round by your CON modifier" (the cut: genre-b-combat.ts genreDamageCut).
   spend("Hardened", ["road_warrior"], "post_apocalyptic_hardened", undefined, { kind: "buff", condition: "hardened", rounds: 1 }),
-  // "1/rest, your tuned weapon deals +2d8 lightning on one hit".
-  { feature: "Arc Coil", classes: ["gadgeteer"], entry: { subclass: "genre", counter: "steampunk_arc_coil", spends: [{ name: "Arc Coil", pool: { id: "steampunk_arc_coil" }, afterWeaponHit: true, does: { kind: "die_damage", dice: "2d8", type: "lightning" } }] } },
+  // "1/rest, your tuned weapon deals +2d8 lightning on one hit; the target
+  // cannot take reactions until its next turn".
+  { feature: "Arc Coil", classes: ["gadgeteer"], entry: { subclass: "genre", counter: "steampunk_arc_coil", spends: [{ name: "Arc Coil", pool: { id: "steampunk_arc_coil" }, afterWeaponHit: true, does: { kind: "die_damage", dice: "2d8", type: "lightning", until: "arc shocked" } }] } },
   // "1 minute of work restores 1d8 + INT HP to a construct, machine, or armored ally" (Field Repair (2d8): 2d8 + INT from 11th).
   spend("Field Repair", ["machinist"], "steampunk_field_repair", "action", { kind: "flames", healOnly: true, type: "", formula: [[1, "1d8+int"], [11, "2d8+int"]] }),
   // "whack a machine or construct: restore 1d8 + INT HP to it".

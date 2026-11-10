@@ -332,5 +332,17 @@ await run("Perfected Instability: the aberrant's spells ignore resistance to the
   assert.deepEqual({ on, off }, { on: 12, off: 6 }, `the splash took ${on} with the feature and ${off} without it`);
 });
 
+await run("Arc Coil: the hit creature takes 2d8 lightning and no reactions until its next turn", async () => {
+  const hero = rig.holder(feature("gadgeteer", "Arc Coil", 7));
+  const { near } = await rig.fight(hero);
+  await rig.swing(hero, near);
+  const before = lost(near);
+  rig.must(await spendAt(hero, "Arc Coil", [4, 4], { targetEnemyId: near.id }), "use_resource Arc Coil");
+  assert.equal(lost(near) - before, 8, `the coil dealt ${lost(near) - before}`);
+  const shocked = kit.enemy(near.id);
+  assert.ok(shocked.conditions.includes("arc shocked"), `the creature holds ${JSON.stringify(shocked.conditions)}`);
+  assert.equal(shocked.conditionMeta["arc shocked"]?.untilTurnOf, near.id, "the shock does not end at the creature's next turn");
+});
+
 world.close();
 finish();

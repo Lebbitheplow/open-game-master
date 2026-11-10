@@ -2076,13 +2076,15 @@
    },
    {
     "c": "the target cannot take reactions until its next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_arc_coil#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Arc Coil: the hit creature takes 2d8 lightning and no reactions until its next turn",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Arc Coil (die_damage until 'arc shocked'), laid by src/lib/dm/authored-spend-effects.ts until the creature's own next turn; noReactions in src/lib/srd/genre-b-conditions.ts"
    },
    {
     "c": "until its next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_arc_coil#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Arc Coil: the hit creature takes 2d8 lightning and no reactions until its next turn",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Arc Coil (die_damage until 'arc shocked'), laid by src/lib/dm/authored-spend-effects.ts until the creature's own next turn; noReactions in src/lib/srd/genre-b-conditions.ts"
    }
   ]
  },
