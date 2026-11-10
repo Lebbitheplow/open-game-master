@@ -2522,8 +2522,9 @@
    },
    {
     "c": "all enemies within 30 ft that can hear you save (WIS) or deal half damage on their next attack",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_threnody#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the threnody play of src/lib/dm/genre-a-dark-fantasy-spends.ts (the enemies within 30 feet that hear) and src/lib/dm/genre-a-dark-fantasy-wards.ts (half damage, spent by the next blow)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Threnody",
     "recorded_as": "spends-guidance-only-counter-dark-fantasy-threnody"
    }
   ]
@@ -2701,8 +2702,9 @@
    },
    {
     "c": "one creature below 50 HP that can hear you saves (CON) or drops to 0",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_song_that_ends#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the song_that_ends play of src/lib/dm/genre-a-dark-fantasy-spends.ts (below 50 HP and hearing, or refused; a CON save or the hit points it has)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Song That Ends",
     "recorded_as": "spends-guidance-only-counter-dark-fantasy-song-that-ends"
    }
   ]
@@ -2715,15 +2717,9 @@
   "clauses": [
    {
     "c": "Your dirges reach creatures that cannot hear",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap dirgesinger::Voice of the Veil#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "the hears() test of src/lib/dm/genre-a-dark-fantasy-spends.ts (Threnody, Song That Ends): with Voice of the Veil a deafened creature is caught",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Voice of the Veil"
    },
    {
     "c": "they resonate in the bone",

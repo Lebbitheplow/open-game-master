@@ -8,10 +8,15 @@
 //   (minimum 1 damage taken)", the penitent's own.
 // A spell attack is no weapon attack and passes untouched. Off a board range is
 // open, as the reactions and the auras read it.
+// - Threnody: a creature that failed it "deal[s] half damage on their next
+//   attack", weapon or spell; the attack that lands spends it.
 import { listSheets } from "@/lib/db/sheets";
+import { getEnemy, patchEnemyConditions } from "@/lib/db/encounters";
+import { removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { THRENODY } from "@/lib/srd/genre-a-dark-fantasy-conditions";
 import { withinFeet } from "@/lib/dm/authored-saves";
 import { computeSheetDerived } from "@/lib/srd";
-import { holdsFeature } from "@/lib/srd/feature-names";
+import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 export function darkFantasyWeaponWard(
@@ -21,10 +26,21 @@ export function darkFantasyWeaponWard(
   attack: { spellAttack?: boolean },
   amount: number,
 ): { amount: number; notes: string[] } {
-  if (amount <= 0 || attack.spellAttack) {
+  if (amount <= 0) {
     return { amount, notes: [] };
   }
   const notes: string[] = [];
+  const foe = getEnemy(attackerId);
+  const dirge = foe?.conditions.find((entry) => isConditionNamed(entry, THRENODY));
+  if (foe && dirge) {
+    const cleared = removeConditions(foe.conditions, foe.conditionMeta as ConditionMetaMap, [dirge]);
+    patchEnemyConditions(foe.id, cleared.conditions, cleared.meta as typeof foe.conditionMeta);
+    amount = Math.floor(amount / 2);
+    notes.push(`Threnody: ${foe.displayName}'s blow deals half damage, and the dirge's hold on it ends.`);
+  }
+  if (attack.spellAttack || amount <= 0) {
+    return { amount, notes };
+  }
   let cut = 0;
   const knight = listSheets(target.campaignId).find(
     (sheet) =>

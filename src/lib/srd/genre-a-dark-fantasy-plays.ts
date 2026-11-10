@@ -20,7 +20,13 @@ export type DarkFantasyPlay =
   // Lance the Wound: 2d8 necrotic (4d8 from Virulent Strain, half on one
   // creature beside the target) on the creature a melee hit just landed on,
   // which cannot regain hit points until the doctor's next turn.
-  | "lance";
+  | "lance"
+  // Threnody: every enemy within 30 feet that can hear saves on Wisdom or
+  // deals half damage with its next attack. Song That Ends: one creature
+  // below 50 hit points that can hear saves on Constitution or drops to 0.
+  // Voice of the Veil: a deafened creature hears them all the same.
+  | "threnody"
+  | "song_that_ends";
 
 export type DarkFantasyAim = "enemy" | "ally" | "self" | "none";
 
@@ -31,4 +37,6 @@ export const DARK_FANTASY_AIM: Record<DarkFantasyPlay, DarkFantasyAim> = {
   purging_flame: "none",
   judgment_shot: "none",
   lance: "enemy",
+  threnody: "none",
+  song_that_ends: "enemy",
 };

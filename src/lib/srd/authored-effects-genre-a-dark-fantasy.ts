@@ -47,6 +47,15 @@ export const GENRE_A_DARK_FANTASY: GenreRow[] = [
   counted("plague_doctor", "Lance the Wound", "dark_fantasy_lance_the_wound", {
     spends: [{ name: "Lance the Wound", pool: { id: "dark_fantasy_lance_the_wound" }, action: "none", afterWeaponHit: true, does: { kind: "dark_fantasy", play: "lance" } }],
   }),
+  // "all enemies within 30 ft that can hear you save (WIS) or deal half damage
+  // on their next attack"; "a killing note: one creature below 50 HP that can
+  // hear you saves (CON) or drops to 0".
+  counted("dirgesinger", "Threnody", "dark_fantasy_threnody", {
+    spends: [{ name: "Threnody", pool: { id: "dark_fantasy_threnody" }, action: "action", does: { kind: "dark_fantasy", play: "threnody" } }],
+  }),
+  counted("dirgesinger", "Song That Ends", "dark_fantasy_song_that_ends", {
+    spends: [{ name: "Song That Ends", pool: { id: "dark_fantasy_song_that_ends" }, action: "action", does: { kind: "dark_fantasy", play: "song_that_ends" } }],
+  }),
   // "spectral hands erupt in a 15-ft cube: creatures save (STR) or are
   // restrained until your next turn"
   counted("grave_knight", "Grave Grip", "dark_fantasy_grave_grip", {

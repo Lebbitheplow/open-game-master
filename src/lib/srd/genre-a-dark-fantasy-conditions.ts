@@ -17,6 +17,8 @@ export const JUDGMENT_SHOT = "judgment shot";
 // Lance the Wound: "the target cannot regain HP until your next turn"
 // (src/lib/dm/vitals-logic.ts regainBlockedBy reads it).
 export const LANCED = "lanced wound";
+// Threnody: "deal half damage on their next attack" (src/lib/dm/genre-a-dark-fantasy-wards.ts).
+export const THRENODY = "threnody";
 
 export const DARK_FANTASY_CONDITIONS: ConditionEffectRow[] = [
   {
@@ -42,5 +44,6 @@ export const DARK_FANTASY_CONDITIONS: ConditionEffectRow[] = [
   { id: "purging_flame", match: [PURGING_FLAME], summary: "Purging Flame: the next hit on the branded creature deals +2d10 radiant.", onHitDice: { dice: "2d10", type: "radiant" }, marksTarget: true, consumedBy: "hit" },
   { id: "judgment_shot", match: [JUDGMENT_SHOT], summary: "Judgment Shot: the next ranged attack on the branded creature is a critical hit if it hits." },
   { id: "lanced_wound", match: [LANCED], summary: "Lanced wound: it cannot regain hit points until the plague doctor's next turn." },
+  { id: "threnody", match: [THRENODY], summary: "Threnody: its next attack that lands deals half damage." },
   { id: "immolate_the_sin", match: ["immolate the sin"], summary: "Immolate the Sin: for a minute the penitent burns in gray flame, +2d8 fire on their attacks and immune to fire." },
 ];

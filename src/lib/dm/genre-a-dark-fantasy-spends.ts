@@ -10,7 +10,7 @@ import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
 import { textKey } from "@/lib/language/text-logic";
 import type { DarkFantasyPlay } from "@/lib/srd/genre-a-dark-fantasy-plays";
-import { BRAND, BRAND_CONDITIONS, BRAND_TWIN, JUDGMENT_SHOT, LANCED, PURGING_FLAME, SECOND_BRAND } from "@/lib/srd/genre-a-dark-fantasy-conditions";
+import { BRAND, BRAND_CONDITIONS, BRAND_TWIN, JUDGMENT_SHOT, LANCED, PURGING_FLAME, SECOND_BRAND, THRENODY } from "@/lib/srd/genre-a-dark-fantasy-conditions";
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
 import { withinFeet } from "@/lib/dm/authored-saves";
 import { foesOfSheet } from "@/lib/dm/sheet-foe";
@@ -30,6 +30,10 @@ export function playDarkFantasy(ctx: SpendContext, play: DarkFantasyPlay): Resol
       return onBrand(ctx, JUDGMENT_SHOT, { rounds: 1, untilNextTurnEnds: true });
     case "lance":
       return lance(ctx);
+    case "threnody":
+      return threnody(ctx);
+    case "song_that_ends":
+      return songThatEnds(ctx);
   }
 }
 
@@ -154,4 +158,44 @@ function lance(ctx: SpendContext): Resolution {
     }
   }
   return { ...struck, result: { ...struck.result, applied: lines } };
+}
+
+// "that can hear you": a deafened creature cannot, unless the dirgesinger
+// holds Voice of the Veil ("Your dirges reach creatures that cannot hear ...
+// deafness offers no protection").
+function hears(ctx: SpendContext, foe: { conditions: string[] }): boolean {
+  return holdsFeature(ctx.sheet, "Voice of the Veil") || !foe.conditions.some((entry) => isConditionNamed(entry, "deafened"));
+}
+
+// Threnody: "all enemies within 30 ft that can hear you save (WIS) or deal half
+// damage on their next attack". The ones who hear are the area's; with none,
+// nothing is spent. Before this the use was spent for a line of guidance.
+function threnody(ctx: SpendContext): Resolution {
+  const encounter = getActiveEncounter(ctx.campaign.id);
+  if (!encounter) {
+    return resolveSpendEffect(ctx, { kind: "save_area", save: "wis", dcAbility: "spell", rangeFt: 30, condition: THRENODY });
+  }
+  const hearing = foesOfSheet(ctx.campaign.id, encounter, ctx.sheet.id).filter((foe) => foe.status === "alive" && foe.currentHp > 0 && withinFeet(encounter.id, ctx.sheet.id, foe.id, 30) && hears(ctx, foe));
+  if (!hearing.length) {
+    return { error: `No enemy within 30 feet of ${ctx.sheet.name} can hear ${ctx.spend.name}. Nothing was spent.`, refused: "rules" };
+  }
+  return resolveSpendEffect({ ...ctx, args: { ...ctx.args, targetEnemyId: undefined, targetEnemyIds: hearing.map((foe) => foe.id) } }, { kind: "save_area", save: "wis", dcAbility: "spell", rangeFt: 30, chosen: true, condition: THRENODY });
+}
+
+// Song That Ends: "a killing note: one creature below 50 HP that can hear you
+// saves (CON) or drops to 0". A creature at 50 or more, or one that cannot hear,
+// is refused before the use is paid.
+function songThatEnds(ctx: SpendContext): Resolution {
+  const encounter = getActiveEncounter(ctx.campaign.id);
+  const target = encounter && ctx.args.targetEnemyId ? resolveTargetFoe(ctx.campaign.id, encounter, ctx.args.targetEnemyId) : null;
+  if (!encounter || !target || target.status !== "alive") {
+    return { error: `${ctx.spend.name} takes one creature in the fight: pass targetEnemyId from GAME STATE. Nothing was spent.`, retry: true };
+  }
+  if (target.currentHp >= 50) {
+    return { error: `${target.displayName} has ${target.currentHp} hit points; ${ctx.spend.name} takes a creature below 50. Nothing was spent.`, refused: "rules" };
+  }
+  if (!hears(ctx, target)) {
+    return { error: `${target.displayName} is deafened and cannot hear ${ctx.spend.name}. Nothing was spent.`, refused: "rules" };
+  }
+  return resolveSpendEffect({ ...ctx, args: { ...ctx.args, targetEnemyId: target.id } }, { kind: "save_effect", save: "con", dcAbility: "spell", dice: String(target.currentHp), onFail: "drops to 0 hit points" });
 }

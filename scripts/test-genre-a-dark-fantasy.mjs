@@ -164,5 +164,39 @@ await test("Lance the Wound: after a melee hit 2d8 necrotic and no healing until
   assert.equal(far - t.foeHp(strain.far.id), 6, "half of 12 to the creature beside it");
 });
 
+await test("Threnody: an enemy within 30 feet that hears and fails deals half damage with its next blow, and only that one; a deafened one is left out", async () => {
+  const scene = await t.stage({ classId: "dirgesinger", level: 6 });
+  t.kit.setEnemy(scene.far.id, { conditions: ["deafened"] });
+  t.kit.place(scene.far.id, 7, 5);
+  t.world.dice(1, 1);
+  must(await spend(scene, "dark_fantasy_threnody"), "Threnody");
+  t.world.clearDice();
+  assert.ok(t.kit.enemy(scene.near.id).conditions.includes("threnody"));
+  assert.ok(!t.kit.enemy(scene.far.id).conditions.includes("threnody"), "the deafened foe cannot hear");
+  assert.equal((await t.clubs(scene, scene.holder, 16, 4)).totalDamage, 3, "a club for 6, halved");
+  assert.equal((await t.clubs(scene, scene.holder, 16, 4)).totalDamage, 6, "the next blow is whole");
+});
+
+await test("Song That Ends: a creature below 50 hit points that fails drops to 0; one at 50 or more is refused with nothing spent", async () => {
+  const scene = await t.stage({ classId: "dirgesinger", level: 17 });
+  const strong = await spend(scene, "dark_fantasy_song_that_ends", { targetEnemyId: scene.near.id });
+  assert.equal(strong.ok, false, "the staged foe has 300 hit points");
+  assert.equal(sheet(scene.holder.id).resources.dark_fantasy_song_that_ends.used, 0);
+  t.kit.setEnemy(scene.near.id, { currentHp: 40 });
+  t.world.dice(1);
+  must(await spend(scene, "dark_fantasy_song_that_ends", { targetEnemyId: scene.near.id }), "Song That Ends");
+  t.world.clearDice();
+  assert.equal(t.foeHp(scene.near.id), 0);
+});
+
+await test("Voice of the Veil: Threnody reaches a deafened enemy", async () => {
+  const scene = await t.stage({ classId: "dirgesinger", level: 18 });
+  t.kit.setEnemy(scene.near.id, { conditions: ["deafened"] });
+  t.world.dice(1, 1);
+  must(await spend(scene, "dark_fantasy_threnody"), "Threnody");
+  t.world.clearDice();
+  assert.ok(t.kit.enemy(scene.near.id).conditions.includes("threnody"));
+});
+
 t.close();
 console.log(`test-genre-a-dark-fantasy: ${passed} passed`);
