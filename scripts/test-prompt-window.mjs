@@ -220,7 +220,6 @@ server.close();
   const LEAN_SPARE = 1_500;
   const FULL_SPARE = 3_000;
   const chat = table("Tool headroom", 1);
-  const imageEnabled = chat.settings.imageGenerationEnabled && chat.settings.autoImages;
   const cost = (tools) => estimateTokens(JSON.stringify(tools));
   const biggest = (tools) =>
     tools
@@ -230,25 +229,38 @@ server.close();
       .map((tool) => `${tool.name} ${tool.tokens}`)
       .join(", ");
   // The larger of each profile's two sets is what the turn charges and judges
-  // (turn.ts toolSetTokens); a fight's is the larger today.
-  const larger = (lean) => {
-    const sets = [dmTurnTools(chat, true, imageEnabled, lean), dmTurnTools(chat, false, imageEnabled, lean)];
-    return sets.reduce((most, set) => (cost(set) > cost(most) ? set : most));
+  // (turn.ts toolSetTokens); a fight's is the larger today. Measured at the
+  // default table and at one with every optional family on (a story arc,
+  // world simulation, the sound library, companions, relationships and
+  // pictures): only the default was, and that table had 1,223 tokens spare
+  // where the guard keeps 1,500 (gap sweep 2026-11-09).
+  const everyFamily = {
+    ...chat,
+    storyArc: chat.storyArc ?? { title: "Arc", beats: [] },
+    settings: { ...chat.settings, imageGenerationEnabled: true, autoImages: true },
+    gameSettings: { ...chat.gameSettings, worldSimulation: true, ambienceEnabled: true, companions: "full", relationships: "on", romance: "on" },
   };
-  const leanSet = larger(true);
-  const leanTokens = cost(leanSet);
-  const leanSpare = LEAN_WINDOW - leanTokens - MIN_LEAN_ROOM_TOKENS;
-  assert.ok(
-    leanSpare >= LEAN_SPARE,
-    `the trimmed tool set is ${leanTokens} tokens, leaving a 48K window only ${leanSpare} above the ${MIN_LEAN_ROOM_TOKENS} the trimmed profile needs (keep ${LEAN_SPARE} spare, or 48K tables fall to the compact set). Trim the descriptions of the biggest tools first: ${biggest(leanSet)}`,
-  );
-  const fullSet = larger(false);
-  const fullTokens = cost(fullSet);
-  const fullSpare = FULL_WINDOW - fullTokens - MIN_STORY_ROOM_TOKENS;
-  assert.ok(
-    fullSpare >= FULL_SPARE,
-    `the full tool set is ${fullTokens} tokens, leaving a 64K window only ${fullSpare} above the ${MIN_STORY_ROOM_TOKENS} the full profile needs (keep ${FULL_SPARE} spare, or 64K tables fall to the trimmed set). Trim the descriptions of the biggest tools first: ${biggest(fullSet)}`,
-  );
+  for (const [label, campaign] of [["a default table", chat], ["a table with every optional family on", everyFamily]]) {
+    const imageEnabled = campaign.settings.imageGenerationEnabled && campaign.settings.autoImages;
+    const larger = (lean) => {
+      const sets = [dmTurnTools(campaign, true, imageEnabled, lean), dmTurnTools(campaign, false, imageEnabled, lean)];
+      return sets.reduce((most, set) => (cost(set) > cost(most) ? set : most));
+    };
+    const leanSet = larger(true);
+    const leanTokens = cost(leanSet);
+    const leanSpare = LEAN_WINDOW - leanTokens - MIN_LEAN_ROOM_TOKENS;
+    assert.ok(
+      leanSpare >= LEAN_SPARE,
+      `at ${label} the trimmed tool set is ${leanTokens} tokens, leaving a 48K window only ${leanSpare} above the ${MIN_LEAN_ROOM_TOKENS} the trimmed profile needs (keep ${LEAN_SPARE} spare, or 48K tables fall to the compact set). Trim the descriptions of the biggest tools first: ${biggest(leanSet)}`,
+    );
+    const fullSet = larger(false);
+    const fullTokens = cost(fullSet);
+    const fullSpare = FULL_WINDOW - fullTokens - MIN_STORY_ROOM_TOKENS;
+    assert.ok(
+      fullSpare >= FULL_SPARE,
+      `at ${label} the full tool set is ${fullTokens} tokens, leaving a 64K window only ${fullSpare} above the ${MIN_STORY_ROOM_TOKENS} the full profile needs (keep ${FULL_SPARE} spare, or 64K tables fall to the trimmed set). Trim the descriptions of the biggest tools first: ${biggest(fullSet)}`,
+    );
+  }
   // And the turn picks those profiles on those windows.
   assert.equal(dmTurnTuning(chat).toolProfile, "lean", "a 48K window plays on the trimmed set");
   process.env.OPENAI_COMPAT_CONTEXT = String(FULL_WINDOW);
@@ -257,7 +269,7 @@ server.close();
   } finally {
     process.env.OPENAI_COMPAT_CONTEXT = String(WINDOW);
   }
-  console.log(`ok: the trimmed set (${leanTokens}) leaves a 48K window ${leanSpare} spare, the full set (${fullTokens}) a 64K window ${fullSpare}`);
+  console.log("ok: the trimmed set leaves a 48K window, and the full set a 64K one, room to spare at a default table and with every optional family on");
 }
 
 removeTempDir(dir);

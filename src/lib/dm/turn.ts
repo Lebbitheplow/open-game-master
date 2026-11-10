@@ -1431,7 +1431,13 @@ export function dmTurnTools(
     ...(countPrepCards(campaign.id) ? [readCardTool] : []),
     writeCampaignNoteTool,
     sendWhisperTool,
-    ...(campaign.storyArc ? [completeBeatTool] : []),
+    // A beat is closed and a picture painted between rounds: the trimmed set
+    // of a fight leaves both out (either still runs when called by name), as
+    // the fight's sets leave out the binder. With world simulation, the sound
+    // library and pictures all on, they left a 48K window 1,223 tokens above
+    // the trimmed profile's floor, under the 1,500 scripts/test-prompt-
+    // window.mjs keeps for the next rules fix (gap sweep 2026-11-09).
+    ...(campaign.storyArc && !(leanTools && inEncounter) ? [completeBeatTool] : []),
     ...checkTools,
     ...hazardTools,
     ...petTools,
@@ -1482,7 +1488,7 @@ export function dmTurnTools(
     ...(inEncounter ? [] : restTools),
     ...companionTools(campaign, inEncounter),
     ...(leanTools ? mutationTools.filter((tool) => keptWhenTrimmed(tool.function.name, inEncounter)) : mutationTools),
-    ...(imageEnabled ? [generateImageTool] : []),
+    ...(imageEnabled && !(leanTools && inEncounter) ? [generateImageTool] : []),
     ];
 }
 

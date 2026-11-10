@@ -20,16 +20,20 @@ await test("each window is told what it plays", () => {
   const level = (tokens) => windows.storyWindowVerdict(tokens).level;
   assert.equal(level(8_192), "short");
   assert.equal(level(windows.MIN_NARRATION_WINDOW - 1), "short");
-  assert.equal(level(windows.MIN_NARRATION_WINDOW), "no-fights", "a model sold as 16K narrates");
-  assert.equal(level(16_384), "no-fights");
+  // The floors measured over a party of one to four heroes (src/lib/story-
+  // window.ts, gap sweep 2026-11-09): 16K played most parties on the four
+  // essential tools, and 24K most fights.
+  assert.equal(level(16_384), "short");
+  assert.equal(level(windows.MIN_NARRATION_WINDOW), "no-fights", "a model sold as 24K narrates");
+  assert.equal(level(24_576), "no-fights");
   assert.equal(level(windows.MIN_COMBAT_WINDOW), "tight");
-  assert.equal(level(24_576), "tight");
+  assert.equal(level(32_768), "tight");
   assert.equal(level(windows.RECOMMENDED_WINDOW), "ok");
   assert.equal(level(65_536), "ok");
   assert.equal(windows.storyWindowVerdict(65_536).text, "", "enough says nothing");
   assert.match(windows.storyWindowVerdict(8_192).text, /^An 8K window is too small to narrate/);
-  assert.match(windows.storyWindowVerdict(20_480).text, /^A 20K window narrates and explores, but fights need 24K/);
-  assert.match(windows.storyWindowVerdict(24_576).text, /^A 24K window plays, fights included/);
+  assert.match(windows.storyWindowVerdict(28_672).text, /^A 28K window narrates and explores, but fights need 32K/);
+  assert.match(windows.storyWindowVerdict(32_768).text, /^A 32K window plays, fights included/);
 });
 
 await test("a size is named the way it was set", () => {
@@ -43,9 +47,9 @@ await test("a size is named the way it was set", () => {
 });
 
 await test("llama-server's -c clears each minimum", () => {
-  assert.equal(windows.windowFlag(windows.MIN_NARRATION_WINDOW), 16_384);
-  assert.equal(windows.windowFlag(windows.MIN_COMBAT_WINDOW), 24_576);
-  assert.equal(windows.windowFlag(windows.RECOMMENDED_WINDOW), 32_768);
+  assert.equal(windows.windowFlag(windows.MIN_NARRATION_WINDOW), 24_576);
+  assert.equal(windows.windowFlag(windows.MIN_COMBAT_WINDOW), 32_768);
+  assert.equal(windows.windowFlag(windows.RECOMMENDED_WINDOW), 49_152);
 });
 
 await test("the README, the guides and npm run setup quote the same minimums", () => {
