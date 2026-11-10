@@ -26,7 +26,10 @@ export type DarkFantasyPlay =
   // below 50 hit points that can hear saves on Constitution or drops to 0.
   // Voice of the Veil: a deafened creature hears them all the same.
   | "threnody"
-  | "song_that_ends";
+  | "song_that_ends"
+  // The Flame That Judges: every enemy within 30 feet saves on Wisdom or is
+  // branded, each its own brand.
+  | "mass_brand";
 
 export type DarkFantasyAim = "enemy" | "ally" | "self" | "none";
 
@@ -39,4 +42,5 @@ export const DARK_FANTASY_AIM: Record<DarkFantasyPlay, DarkFantasyAim> = {
   lance: "enemy",
   threnody: "none",
   song_that_ends: "enemy",
+  mass_brand: "none",
 };

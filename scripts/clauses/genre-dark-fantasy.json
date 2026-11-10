@@ -574,20 +574,23 @@
    },
    {
     "c": "mass brand",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_the_flame_that_judges#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the mass_brand play of src/lib/dm/genre-a-dark-fantasy-spends.ts (a brand of its own on each creature, the judged rows of src/lib/srd/genre-a-dark-fantasy-conditions.ts)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: The Flame That Judges",
     "recorded_as": "spends-guidance-only-counter-dark-fantasy-the-flame-that-judges"
    },
    {
     "c": "every enemy within 30 ft is branded at once",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_the_flame_that_judges#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the mass_brand play of src/lib/dm/genre-a-dark-fantasy-spends.ts (every enemy within 30 feet)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: The Flame That Judges",
     "same_probe_as": 1
    },
    {
     "c": "WIS save negates each",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_the_flame_that_judges#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the mass_brand play of src/lib/dm/genre-a-dark-fantasy-spends.ts (a WIS save against the spell save DC for each)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: The Flame That Judges",
     "same_probe_as": 2
    }
   ]

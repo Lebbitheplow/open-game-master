@@ -10,11 +10,13 @@ import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
 import { textKey } from "@/lib/language/text-logic";
 import type { DarkFantasyPlay } from "@/lib/srd/genre-a-dark-fantasy-plays";
-import { BRAND, BRAND_CONDITIONS, BRAND_TWIN, JUDGMENT_SHOT, LANCED, PURGING_FLAME, SECOND_BRAND, THRENODY } from "@/lib/srd/genre-a-dark-fantasy-conditions";
+import { BRAND, BRAND_CONDITIONS, BRAND_TWIN, JUDGMENT_SHOT, LANCED, PURGING_FLAME, SECOND_BRAND, THRENODY, JUDGED } from "@/lib/srd/genre-a-dark-fantasy-conditions";
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
 import { withinFeet } from "@/lib/dm/authored-saves";
 import { foesOfSheet } from "@/lib/dm/sheet-foe";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
+import { rollEnemySave } from "@/lib/dm/forced-save";
+import { computeSheetDerived } from "@/lib/srd";
 
 type Resolution = ReturnType<typeof resolveSpendEffect>;
 
@@ -34,6 +36,8 @@ export function playDarkFantasy(ctx: SpendContext, play: DarkFantasyPlay): Resol
       return threnody(ctx);
     case "song_that_ends":
       return songThatEnds(ctx);
+    case "mass_brand":
+      return massBrand(ctx);
   }
 }
 
@@ -198,4 +202,39 @@ function songThatEnds(ctx: SpendContext): Resolution {
     return { error: `${target.displayName} is deafened and cannot hear ${ctx.spend.name}. Nothing was spent.`, refused: "rules" };
   }
   return resolveSpendEffect({ ...ctx, args: { ...ctx.args, targetEnemyId: target.id } }, { kind: "save_effect", save: "con", dcAbility: "spell", dice: String(target.currentHp), onFail: "drops to 0 hit points" });
+}
+
+// The Flame That Judges: "mass brand: every enemy within 30 ft is branded at
+// once (WIS save negates each)". Each that fails carries a brand of its own on
+// the hunter ("judged (<name>)", its creature in the meta), which a hit on it
+// reads as Hunter's Brand's and its death ends. With none in reach nothing is
+// spent; before this the use was spent for a line of guidance.
+function massBrand(ctx: SpendContext): Resolution {
+  const encounter = getActiveEncounter(ctx.campaign.id);
+  if (!encounter) {
+    return { error: `${ctx.spend.name} brands the enemies in a fight; there is no fight. Nothing was spent.`, refused: "rules" };
+  }
+  const foes = foesOfSheet(ctx.campaign.id, encounter, ctx.sheet.id).filter((foe) => foe.status === "alive" && foe.currentHp > 0 && withinFeet(encounter.id, ctx.sheet.id, foe.id, 30));
+  if (!foes.length) {
+    return { error: `No enemy is within 30 feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
+  }
+  const derived = computeSheetDerived(ctx.sheet);
+  const dc = derived.spellSaveDc ?? 8 + derived.proficiencyBonus + derived.abilityMods.wis;
+  const meta = { ...(ctx.sheet.conditionMeta as ConditionMetaMap) };
+  const conditions = [...ctx.sheet.conditions];
+  const lines: string[] = [];
+  for (const foe of foes) {
+    const save = rollEnemySave(ctx.campaign.id, foe, "wis", dc, { magical: true, record: { turn: ctx.turn ?? undefined, detail: `${foe.displayName}: WIS save against ${ctx.spend.name}` } });
+    if (save.success) {
+      lines.push(`${foe.displayName} resists (WIS ${save.total} vs DC ${dc}).`);
+      continue;
+    }
+    const name = `${JUDGED} (${foe.displayName})`;
+    if (!conditions.includes(name)) {
+      conditions.push(name);
+    }
+    meta[name] = { rounds: 600, quarry: foe.id };
+    lines.push(`${foe.displayName} is branded (WIS ${save.total ?? "failed"} vs DC ${dc}).`);
+  }
+  return { patch: { conditions, conditionMeta: meta }, result: { applied: lines } };
 }

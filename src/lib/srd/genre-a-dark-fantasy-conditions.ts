@@ -10,7 +10,10 @@ import type { ConditionEffectRow } from "@/lib/srd/condition-effect-types";
 export const BRAND = "hunter's brand";
 export const BRAND_TWIN = "hunter's brand (1d8)";
 export const SECOND_BRAND = "second brand (1d8)";
-export const BRAND_CONDITIONS = [BRAND, BRAND_TWIN, SECOND_BRAND];
+// The Flame That Judges: "every enemy within 30 ft is branded at once", each
+// brand written "judged (<creature>)" with its creature in the meta.
+export const JUDGED = "judged";
+export const BRAND_CONDITIONS = [BRAND, BRAND_TWIN, SECOND_BRAND, JUDGED];
 
 export const PURGING_FLAME = "purging flame";
 export const JUDGMENT_SHOT = "judgment shot";
@@ -45,5 +48,6 @@ export const DARK_FANTASY_CONDITIONS: ConditionEffectRow[] = [
   { id: "judgment_shot", match: [JUDGMENT_SHOT], summary: "Judgment Shot: the next ranged attack on the branded creature is a critical hit if it hits." },
   { id: "lanced_wound", match: [LANCED], summary: "Lanced wound: it cannot regain hit points until the plague doctor's next turn." },
   { id: "threnody", match: [THRENODY], summary: "Threnody: its next attack that lands deals half damage." },
+  { id: "judged", match: [JUDGED], summary: "Judged (The Flame That Judges): +1d8 radiant on attacks against this branded creature, until it dies or the hunter rests.", onHitDice: { dice: "1d8", type: "radiant" }, marksTarget: true },
   { id: "immolate_the_sin", match: ["immolate the sin"], summary: "Immolate the Sin: for a minute the penitent burns in gray flame, +2d8 fire on their attacks and immune to fire." },
 ];

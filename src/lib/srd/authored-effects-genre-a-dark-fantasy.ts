@@ -56,6 +56,11 @@ export const GENRE_A_DARK_FANTASY: GenreRow[] = [
   counted("dirgesinger", "Song That Ends", "dark_fantasy_song_that_ends", {
     spends: [{ name: "Song That Ends", pool: { id: "dark_fantasy_song_that_ends" }, action: "action", does: { kind: "dark_fantasy", play: "song_that_ends" } }],
   }),
+  // "1/long rest, mass brand: every enemy within 30 ft is branded at once (WIS
+  // save negates each)": an action, as Hunter's Brand is a bonus action for one.
+  counted("witch_hunter", "The Flame That Judges", "dark_fantasy_the_flame_that_judges", {
+    spends: [{ name: "The Flame That Judges", pool: { id: "dark_fantasy_the_flame_that_judges" }, action: "action", does: { kind: "dark_fantasy", play: "mass_brand" } }],
+  }),
   // "spectral hands erupt in a 15-ft cube: creatures save (STR) or are
   // restrained until your next turn"
   counted("grave_knight", "Grave Grip", "dark_fantasy_grave_grip", {

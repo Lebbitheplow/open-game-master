@@ -198,5 +198,20 @@ await test("Voice of the Veil: Threnody reaches a deafened enemy", async () => {
   assert.ok(t.kit.enemy(scene.near.id).conditions.includes("threnody"));
 });
 
+await test("The Flame That Judges: each enemy within 30 feet that fails its Wisdom save is branded, its hits carrying the brand's die, and its death ends its brand", async () => {
+  const scene = await t.stage({ classId: "witch_hunter", level: 15 });
+  t.kit.place(scene.far.id, 9, 5);
+  t.world.dice(1, 1);
+  must(await spend(scene, "dark_fantasy_the_flame_that_judges"), "The Flame That Judges");
+  t.world.clearDice();
+  const meta = sheet(scene.holder.id).conditionMeta;
+  const judged = Object.entries(meta).filter(([name]) => name.startsWith("judged ("));
+  assert.equal(judged.length, 2, JSON.stringify(Object.keys(meta)));
+  t.kit.setEnemy(scene.near.id, { currentHp: 1 });
+  t.kit.giveTurn(scene.holder.id);
+  must(await swing(scene, scene.near), "the killing swing");
+  assert.equal(Object.keys(sheet(scene.holder.id).conditionMeta).filter((name) => name.startsWith("judged (")).length, 1);
+});
+
 t.close();
 console.log(`test-genre-a-dark-fantasy: ${passed} passed`);
