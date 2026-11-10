@@ -58,8 +58,33 @@ export function splitWords(text: string): string[] {
 // shown, stored or sent keeps the text as written. Upper case before lower,
 // so a letter whose upper case is two ("ß" is "SS") folds too.
 export function textKey(text: string): string {
+  if (text.length > KEY_MEMO_TEXT) {
+    return keyOf(text);
+  }
+  let key = KEY_MEMO.get(text);
+  if (key === undefined) {
+    key = keyOf(text);
+    if (KEY_MEMO.size >= KEY_MEMO_SIZE) {
+      KEY_MEMO.clear();
+    }
+    KEY_MEMO.set(text, key);
+  }
+  return key;
+}
+
+function keyOf(text: string): string {
   return (straight(text).match(KEY_PART) ?? []).join(" ").toUpperCase().toLowerCase();
 }
+
+// The keys of short texts already asked for. The same few hundred names
+// (the items on a sheet, the spells, the creatures of a fight) are keyed
+// again on every sheet read and every lookup, and a key took three regular
+// expressions and a Unicode normalization each time: a fifth of a board
+// refresh. A key depends on its text alone, so a kept one is never stale.
+// Names only, never prose, and the table is emptied when it fills.
+const KEY_MEMO = new Map<string, string>();
+const KEY_MEMO_SIZE = 4096;
+const KEY_MEMO_TEXT = 80;
 
 // What a search typed as you go compares by (the composer's @ menu, issue
 // 650): textKey with accents and apostrophes set aside, so "fabb" finds
