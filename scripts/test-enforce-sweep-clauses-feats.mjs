@@ -287,6 +287,17 @@ P["feat.charger.shove"] = async () => {
   const dashed = { oncePerTurn: [], attacksMade: 0, dashed: true };
   assert.deepEqual(combat.featBonusRoute(holder("Charger"), "shove", dashed, false), { feature: "Charger", ki: 0 });
   assert.equal(combat.featBonusRoute(holder("Charger"), "shove", { ...dashed, dashed: false }, false), null, "with no Dash");
+  // The other choice: one melee attack (pc-attack-options.ts featBonusAttack).
+  const swing = { weaponAttack: true, melee: true, weapon: "Longsword" };
+  assert.equal(combat.featBonusAttack(holder("Charger"), { oncePerTurn: [], dashed: true }, swing), "Charger");
+  assert.equal(combat.featBonusAttack(holder("Charger"), { oncePerTurn: [], dashed: false }, swing), null, "with no Dash");
+};
+
+P["feat.crossbow-expert.bonus"] = async () => {
+  const shot = { weaponAttack: true, melee: false, weapon: "Hand Crossbow" };
+  assert.equal(combat.featBonusAttack(holder("Crossbow Expert"), { oncePerTurn: [combat.ONE_HANDED_ATTACKED], dashed: false }, shot), "Crossbow Expert");
+  assert.equal(combat.featBonusAttack(holder("Crossbow Expert"), { oncePerTurn: [], dashed: false }, shot), null, "before an Attack action with a one-handed weapon");
+  assert.equal(combat.featBonusAttack(holder("Crossbow Expert"), { oncePerTurn: [combat.ONE_HANDED_ATTACKED], dashed: false }, { ...shot, weapon: "Light Crossbow" }), null, "only the hand crossbow");
 };
 
 P["feat.durable.floor"] = async () => {

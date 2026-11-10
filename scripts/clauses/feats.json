@@ -96,9 +96,9 @@
    },
    {
     "c": "when you take the Attack action with a one-handed weapon you can use a bonus action to attack with a hand crossbow you are holding",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the hand crossbow's bonus attack"
+    "is": "held",
+    "by": "src/lib/srd/feat-combat.ts featBonusAttack (ONE_HANDED_ATTACKED), read by src/lib/dm/pc-attack-options.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.crossbow-expert.bonus"
    }
   ]
  },
