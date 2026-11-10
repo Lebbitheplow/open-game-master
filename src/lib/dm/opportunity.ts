@@ -99,8 +99,10 @@ export { entersReachAt, leavesReachAt };
 // Only a creature the reactor can see provokes it: a blinded reactor, an
 // invisible or hidden leaver, past the blindsight or truesight that reaches
 // it (attack-light.ts sensesReaching, the rule every sight check reads).
-const unseenBy = (encounterId: string, viewer: { id: string; conditions: string[]; senses: Senses }, seen: { id: string; conditions: string[] }) =>
-  Boolean(sightBlockedBy(viewer.conditions, seen.conditions, sensesReaching(encounterId, { refId: viewer.id, senses: viewer.senses }, { refId: seen.id })));
+// `at` is the tile the leaver left the reach from (opportunity-strike.ts
+// opportunitySight).
+const unseenBy = (encounterId: string, viewer: { id: string; conditions: string[]; senses: Senses }, seen: { id: string; conditions: string[] }, at: XY) =>
+  Boolean(sightBlockedBy(viewer.conditions, seen.conditions, sensesReaching(encounterId, { refId: viewer.id, senses: viewer.senses }, { refId: seen.id, at })));
 
 // Dodge is lost with the dodger's speed (SRD 5.1, Dodge): a grappled or
 // restrained dodger puts nobody at disadvantage.
@@ -179,7 +181,7 @@ export function resolveOpportunityAttacks(
     if (!sheet || sheet.currentHp <= 0) {
       break;
     }
-    if (unseenBy(encounter.id, { ...enemy, senses: enemySenses(enemy) }, sheet)) {
+    if (unseenBy(encounter.id, { ...enemy, senses: enemySenses(enemy) }, sheet, leftFrom)) {
       continue;
     }
     // Mobile (and Skirmisher): a creature they attacked in melee this turn
@@ -191,7 +193,7 @@ export function resolveOpportunityAttacks(
     }
     // Only a creature it can see provokes it: in the dark, with no
     // darkvision and no light, the leaver slips away (attack-light.ts).
-    const sight = opportunitySight({ campaignId: campaign.id, encounterId: encounter.id, enemy, sheet, enemyReacts: true });
+    const sight = opportunitySight({ campaignId: campaign.id, encounterId: encounter.id, enemy, sheet, enemyReacts: true, moverAt: leftFrom });
     if (sight && !sight.attackerSees) {
       continue;
     }
@@ -204,7 +206,7 @@ export function resolveOpportunityAttacks(
     // only against an attacker they can see (attack-light.ts), as on
     // enemy_attack: an opportunity attack read neither.
     const context = attackContext({
-      ...attackSenses(encounter.id, { refId: enemy.id, senses: enemySenses(enemy) }, { refId: sheet.id, senses: characterSenses(sheet) }),
+      ...attackSenses(encounter.id, { refId: enemy.id, senses: enemySenses(enemy) }, { refId: sheet.id, senses: characterSenses(sheet), at: leftFrom }),
       attackerConditions: fearAsRolled(encounter.id, enemy.id, enemy.conditions, enemy.conditionMeta),
       targetConditions: withLiveDodge(conditionsOf(sheet)),
       melee: true,
@@ -470,8 +472,10 @@ export function resolvePcOpportunityAttacks(
     }
     // Polearm Master: a creature entering the polearm's reach provokes too.
     const entering = polearmReachOpportunity(sheet, resolved.srd?.name) ? entersReachAt(steps, token, profile.reachTiles, 1, moverFootprint) : null;
-    if (!leavesReachAt(steps, token, profile.reachTiles, 1, moverFootprint) && !entering) {
-
+    // Where the walker is as the swing is made: the tile it left the reach
+    // from, or the one it entered the polearm's reach at.
+    const moverAt = leavesReachAt(steps, token, profile.reachTiles, 1, moverFootprint) ?? entering;
+    if (!moverAt) {
       continue;
     }
 
@@ -479,11 +483,11 @@ export function resolvePcOpportunityAttacks(
     if (!enemy || enemy.status !== "alive" || (isSheetFoe(enemy) && enemy.currentHp <= 0)) {
       break;
     }
-    if (unseenBy(encounter.id, { ...sheet, senses: characterSenses(sheet) }, enemy)) {
+    if (unseenBy(encounter.id, { ...sheet, senses: characterSenses(sheet) }, enemy, moverAt)) {
       continue;
     }
     // Only a creature they can see provokes it (attack-light.ts).
-    const sight = opportunitySight({ campaignId: campaign.id, encounterId: encounter.id, enemy, sheet, enemyReacts: false });
+    const sight = opportunitySight({ campaignId: campaign.id, encounterId: encounter.id, enemy, sheet, enemyReacts: false, moverAt });
     if (sight && !sight.attackerSees) {
       continue;
     }
@@ -506,6 +510,7 @@ export function resolvePcOpportunityAttacks(
       resolved,
       adjacent: profile.reachTiles <= 1,
       targetConditions: withLiveDodge(enemy.conditions),
+      moverAt,
     });
     notes.push(note);
     if (dropped) {

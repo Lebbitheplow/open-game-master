@@ -19,6 +19,7 @@ import { openLastHit } from "@/lib/dm/last-hit";
 import { hasSentinel } from "@/lib/srd/feat-combat";
 import { attackerUnseen, tryParry } from "@/lib/dm/enemy-reactions";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import type { XY } from "@/lib/battlemap/types";
 import { closeStandInTurn, openStandInTurn, type DmTurn } from "@/lib/db/dm-turns";
 import { patchEnemyConditions, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { insertRoll, markRollApplied } from "@/lib/db/rolls";
@@ -69,15 +70,20 @@ function publishRoll(campaignId: string, roll: ReturnType<typeof insertRoll>) {
 }
 
 // The light between a reactor and the creature leaving: null off the board.
+// The attack is made "right before the creature leaves your reach" (SRD 5.1,
+// Opportunity Attacks), so the mover is seen at `moverAt`, the tile it left
+// the reach from (opportunity-reach-logic.ts leavesReachAt), not at the
+// square its token has already landed on. Every opportunity door passes it.
 export function opportunitySight(input: {
   campaignId: string;
   encounterId: string;
   enemy: EncounterEnemy;
   sheet: CharacterSheet;
   enemyReacts: boolean;
+  moverAt: XY | null;
 }) {
-  const enemySide = { refId: input.enemy.id, senses: enemySenses(input.enemy) };
-  const sheetSide = { refId: input.sheet.id, senses: characterSenses(input.sheet) };
+  const enemySide = { refId: input.enemy.id, senses: enemySenses(input.enemy), at: input.enemyReacts ? null : input.moverAt };
+  const sheetSide = { refId: input.sheet.id, senses: characterSenses(input.sheet), at: input.enemyReacts ? input.moverAt : null };
   return attackSight({
     campaignId: input.campaignId,
     encounterId: input.encounterId,
@@ -100,6 +106,8 @@ export function pcOpportunitySwing(input: {
   // The target's conditions as the swing meets them (a Dodge lost with its
   // speed already left out, opportunity.ts withLiveDodge).
   targetConditions: string[];
+  // The tile the walker left the reach from (opportunitySight).
+  moverAt: XY | null;
 }): { note: string; dropped: boolean } {
   const { campaign, encounter, sheet, enemy, resolved } = input;
   const derived = computeSheetDerived(sheet);
@@ -135,9 +143,9 @@ export function pcOpportunitySwing(input: {
 
   // Fear only with its source in sight, a Dodge only against an attacker
   // the dodger sees (attack-light.ts), as on pc_attack.
-  const sight = opportunitySight({ campaignId: campaign.id, encounterId: encounter.id, enemy, sheet, enemyReacts: false });
+  const sight = opportunitySight({ campaignId: campaign.id, encounterId: encounter.id, enemy, sheet, enemyReacts: false, moverAt: input.moverAt });
   const context = attackContext({
-    ...attackSenses(encounter.id, { refId: sheet.id, senses: characterSenses(sheet) }, { refId: enemy.id, senses: enemySenses(enemy) }),
+    ...attackSenses(encounter.id, { refId: sheet.id, senses: characterSenses(sheet) }, { refId: enemy.id, senses: enemySenses(enemy), at: input.moverAt }),
     attackerConditions: fearAsRolled(encounter.id, sheet.id, sheet.conditions, sheet.conditionMeta),
     targetConditions: input.targetConditions,
     melee: true,
