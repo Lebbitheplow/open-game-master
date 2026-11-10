@@ -70,6 +70,22 @@ export function classGrantsFor(classId: string, authors?: string | string[]): Cl
   return packClassOptions(rows).find((option) => textKey(option.id) === id) ?? null;
 }
 
+// The id of the table's own workshop class a person names by its name
+// ("Spellblade"), or null when no class of these authors, or more than one,
+// has it. A workshop class's id is an opaque key no screen shows a GM, so the
+// console's free-text class field and add_companion take the name too, as
+// learn_spell takes a spell by name (PR #839).
+export function workshopClassIdNamed(name: string, authors: string | string[]): string | null {
+  const wanted = textKey(name);
+  if (!wanted) {
+    return null;
+  }
+  const userIds = Array.isArray(authors) ? authors : [authors];
+  const rows = listClasses({ limit: 200, userIds, includeArchived: false }) as ContentRow[];
+  const named = packClassOptions(rows).filter((option) => option.id.startsWith("homebrew-") && textKey(option.name) === wanted);
+  return named.length === 1 ? named[0].id : null;
+}
+
 // Every row a race id may mean, the likeliest first. A sheet built from the
 // bundled list holds the bundled id ("drow") while the pack offers the same
 // race as "odm-drow", so both readings are offered and the sheet is judged
