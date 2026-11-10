@@ -365,6 +365,16 @@ export function readChanges(scene, changes) {
       continue;
     }
     if (change.table === "encounters" && /^(?:turn_budget|reactions_used)/.test(change.column)) {
+      // The cost property counts what a spend takes away. An Attack action
+      // that holds one more attack than it did (Unleash Incarnation: "make one
+      // extra melee attack from your echo's space when you take the Attack
+      // action") was given something, so a rise in attacksAllowed is the
+      // spend's effect; only a fall is a cost (the maintainer's ruling,
+      // /tmp/odm-gapstudy/MT-SPLIT.md).
+      if (change.path === "attacksAllowed" && Number(change.after) > Number(change.before ?? 0)) {
+        out.effects.push(change);
+        continue;
+      }
       if (/^reactions_used/.test(change.column) || COST_KEYS.test(change.path) || change.path === "") {
         // A budget written whole (null before): its grants count as effects.
         if (change.path === "" && change.after && typeof change.after === "object" && !Array.isArray(change.after)) {
