@@ -927,15 +927,12 @@
   "clauses": [
    {
     "c": "Two-weapon fighting with blades adds your ability mod to off-hand damage",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
     "run": {
      "k": "hook"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Twin Chrome#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "the two_weapon_ability entry of src/lib/srd/genre-a-feature-defs.ts, read by src/lib/dm/attack-logic.ts offHandModifier",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Twin Chrome#0"
    },
    {
     "c": "+1 AC while dual-wielding",
@@ -944,11 +941,9 @@
      "n": 1,
      "wear": "dual"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Twin Chrome#1",
-    "where": "src/lib/srd/index.ts acBreakdownFor and src/lib/srd/feature-effects.ts ac_bonus: no entry for the feature",
-    "sev": "medium",
-    "observed": "armor class (dual worn)"
+    "is": "held",
+    "by": "the ac row gated dualWield in src/lib/srd/authored-effects-genre-a.ts (src/lib/srd/genre-a-gates.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Twin Chrome#1"
    }
   ]
  },

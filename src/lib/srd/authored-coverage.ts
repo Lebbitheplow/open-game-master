@@ -165,6 +165,8 @@ export const AUTHORED_READERS: Record<string, { file: string; call: string }> = 
   summon_temp_hp: { file: "src/lib/dm/summon-cast.ts", call: "authoredSummonTempHp(" },
   defender_upgrade: { file: "src/lib/dm/summon-defender.ts", call: "defenderUpgrade(" },
   no_surprise: { file: "src/lib/dm/surprise-guard.ts", call: "activeAuthored(sheet, \"no_surprise\")" },
+  hit_rider: { file: "src/lib/dm/genre-a-strikes.ts", call: "activeAuthored(sheet, \"hit_rider\")" },
+  attack_bonus: { file: "src/lib/dm/genre-a-strikes.ts", call: "activeAuthored(sheet, \"attack_bonus\")" },
   // Issue 474's (Among the Dead, the eagle totem, Hex Warrior).
   ward_vs: { file: "src/lib/dm/enemy-attack.ts", call: "authoredWardSave(" },
   oa_disadv: { file: "src/lib/dm/opportunity.ts", call: 'activeAuthored(sheet, "oa_disadv")' },

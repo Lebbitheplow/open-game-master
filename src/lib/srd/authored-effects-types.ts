@@ -45,6 +45,10 @@ export type Gate = {
   // (Combat Wetware's plating).
   notHeavy?: boolean;
   lightOrMedium?: boolean;
+  // Below a quarter of the hit points (Ecstatic Fury), and two weapons in
+  // hand (Twin Chrome): src/lib/srd/genre-a-gates.ts.
+  belowQuarter?: boolean;
+  dualWield?: boolean;
 };
 
 type Base = { gate?: Gate; note?: string };
@@ -115,7 +119,8 @@ export type AuthoredEffect = Base &
     | { kind: "attack_adv"; vs: "not_acted" | "frightened_by_self" | "distracted" | "types"; types?: string[] }
     | { kind: "auto_crit"; vs: "surprised" }
     // Rolling initiative with none of this counter left gives one back.
-    | { kind: "init_refill"; resource: string }
+    // `amount`: how many come back (three, or "all"); one when absent.
+    | { kind: "init_refill"; resource: string; amount?: number | "all" }
     // A creature within 5 feet of the holder drops to 0: temporary HP.
     | { kind: "kill_temp_hp"; formula: Formula }
     // An enemy dying within range: the most hurt ally in reach regains HP
@@ -270,6 +275,24 @@ export type AuthoredEffect = Base &
     // (Unblinking Study: aberrations, fiends, undead; Hunted Instincts:
     // cultists). Read by src/lib/dm/surprise-guard.ts.
     | { kind: "no_surprise"; types?: string[]; slugs?: string[] }
+    // ---- the genre classes' strikes (src/lib/dm/genre-a-strikes.ts) ----
+    // Damage some weapon hits carry: against creatures of these types, one
+    // that has not acted yet this fight (or is surprised), with these weapons
+    // (unarmed strikes, flails). `dice` may be flat ("2"); `type` absent is
+    // the weapon's own. Read by attack-damage-riders.ts, so the card and the
+    // swing carry the same rider.
+    | {
+        kind: "hit_rider";
+        dice: Formula;
+        type?: string;
+        when?: "weapon" | "melee" | "ranged";
+        oncePerTurn?: boolean;
+        vsTypes?: string[];
+        vsNotActed?: boolean;
+        weapons?: string[];
+      }
+    // A bonus to the holder's attack rolls, all or only melee or ranged ones.
+    | { kind: "attack_bonus"; amount: number; when?: "melee" | "ranged" }
   );
 
 export type NaturalWeapon = {

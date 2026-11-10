@@ -130,4 +130,52 @@ const SPENDS: GenreRow[] = [
   }),
 ];
 
-export const GENRE_A_AUTHORED: GenreRow[] = [...PASSIVES, ...SPENDS];
+// ---- strikes, and the defenses a state switches on ----
+// The riders and attack bonuses are read by src/lib/dm/genre-a-strikes.ts;
+// the gates (below half, below a quarter, two weapons in hand) by
+// src/lib/srd/genre-a-gates.ts through gateHolds.
+const BELOW_HALF = { belowHalf: true } as const;
+const BELOW_QUARTER = { belowQuarter: true } as const;
+// The grave knight's bonded weapon in hand (Deathly Pact Blade's spend lays it).
+const PACT_BLADE = { condition: "deathly pact blade", because: "the pact blade in hand (Deathly Pact Blade)" } as const;
+
+const STRIKES: GenreRow[] = [
+  // dark fantasy
+  row("penitent", "Zeal Through Pain", [
+    { kind: "check_adv", abilities: ["str"], gate: BELOW_HALF },
+    { kind: "attack_bonus", amount: 1, gate: BELOW_HALF },
+  ]),
+  row("penitent", "Cinder Palms", [{ kind: "hit_rider", dice: "1d4", type: "fire", when: "melee", weapons: ["unarmed strike", "flail"] }]),
+  row("penitent", "Ecstatic Fury", [
+    { kind: "hit_rider", dice: "2d6", gate: BELOW_QUARTER },
+    { kind: "immune_condition", conditions: ["frightened", "charmed"], gate: BELOW_QUARTER },
+  ]),
+  row("vermin_lord", "Gutter Fighting", [{ kind: "hit_rider", dice: "1d6", oncePerTurn: true, vsNotActed: true }]),
+  // "rises to +2d6": a second d6 on the same hits.
+  row("vermin_lord", "Greater Gutter Fighting", [{ kind: "hit_rider", dice: "1d6", oncePerTurn: true, vsNotActed: true }]),
+  row("vermin_lord", "Nimble Escape", [
+    { kind: "bonus_route", action: "dash" },
+    { kind: "bonus_route", action: "disengage" },
+    { kind: "bonus_route", action: "hide" },
+  ]),
+  row("grave_knight", "Reaping Blade", [{ kind: "hit_rider", dice: "1d8", type: "necrotic", when: "melee", gate: PACT_BLADE }]),
+  // "Your pact blade's necrotic rises to +2d8": one more d8 on Reaping Blade's.
+  row("grave_knight", "Champion of the Quiet Court", [{ kind: "hit_rider", dice: "1d8", type: "necrotic", when: "melee", gate: PACT_BLADE }]),
+  row("witch_hunter", "Anathema Ward", [{ kind: "resist", types: ["necrotic"] }]),
+  row("dirgesinger", "The Final Movement", [{ kind: "init_refill", resource: "dark_fantasy_requiem_inspiration", amount: 3 }]),
+  // horror
+  // "spirits" are undead in the SRD's types.
+  row("exorcist", "Anathema", [{ kind: "hit_rider", dice: "2d8", type: "radiant", oncePerTurn: true, vsTypes: ["fiend", "undead"] }]),
+  row("slayer", "Blessed Silver", [{ kind: "hit_rider", dice: "1d8", type: "radiant", vsTypes: ["undead", "fiend", "shapechanger"] }]),
+  row("survivor", "Desperate Strength", [{ kind: "attack_bonus", amount: 2, gate: BELOW_HALF }]),
+  row("survivor", "Deep Reserves", [{ kind: "init_refill", resource: "horror_adrenaline_surge", amount: "all" }]),
+  // "your stigmata ignore resistance to necrotic": the apostate's necrotic.
+  row("apostate", "Skin Like Scripture", [
+    { kind: "ac", amount: 2, gate: BELOW_HALF },
+    { kind: "ignore_resist", types: ["necrotic"], gate: BELOW_HALF },
+  ]),
+  // cyberpunk
+  row("street_samurai", "Twin Chrome", [{ kind: "ac", amount: 1, gate: { dualWield: true } }]),
+];
+
+export const GENRE_A_AUTHORED: GenreRow[] = [...PASSIVES, ...SPENDS, ...STRIKES];

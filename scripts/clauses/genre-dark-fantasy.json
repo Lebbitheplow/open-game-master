@@ -332,21 +332,16 @@
      "k": "resist",
      "type": "necrotic"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap witch_hunter::Anathema Ward#0",
-    "observed": "hit points lost to 10 necrotic: the engine gives 10, the text 5",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (parseFeatureEffects reads only subclasses.json and feats, never the genre catalogs) and src/lib/dm/pc-damage.ts",
-    "sev": "medium"
+    "is": "held",
+    "by": "the resist row of src/lib/srd/authored-effects-genre-a.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: witch_hunter::Anathema Ward#0"
    },
    {
     "c": "curses targeting you have disadvantage",
     "is": "gap",
     "read_only": true,
     "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap witch_hunter::Anathema Ward#1 (a table check only: no engine table answers to the feature)",
+    "probe": "none of its own: a curse is no record the engine keeps; the hook probe now answers for clause #0",
     "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
     "sev": "low"
    }
@@ -1212,11 +1207,9 @@
      "k": "magical",
      "spend": "Deathly Pact Blade"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap grave_knight::Deathly Pact Blade#2",
-    "observed": "damage to a creature that resists nonmagical weapons: the engine gives 4, the text 8",
-    "where": "src/lib/dm/pc-attack-damage.ts (the magical-weapon test against resistance): the feature is not read",
-    "sev": "medium"
+    "is": "held",
+    "by": "the deathly pact blade condition its spend lays (src/lib/srd/genre-a-conditions.ts, magicalStrikes)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Deathly Pact Blade#2"
    }
   ]
  },
@@ -1438,11 +1431,9 @@
      "sides": 8,
      "spend": "Deathly Pact Blade"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap grave_knight::Reaping Blade#0",
-    "observed": "damage Reaping Blade adds to a hit (8 with it, 8 without): the engine gives 0, the text 3",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (weapon_damage_rider) and src/lib/dm/pc-attack-damage.ts: nothing answers to the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "the hit_rider row gated on the pact blade, read by src/lib/dm/genre-a-strikes.ts through attack-damage-riders.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Reaping Blade#0"
    },
    {
     "c": "slain enemies cannot rise as undead unless you allow it",
@@ -1580,21 +1571,16 @@
      "sides": 8,
      "spend": "Deathly Pact Blade"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap grave_knight::Champion of the Quiet Court#0",
-    "observed": "damage Champion of the Quiet Court adds to a hit (8 with it, 8 without): the engine gives 0, the text 3",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (weapon_damage_rider) and src/lib/dm/pc-attack-damage.ts: nothing answers to the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "the hit_rider row gated on the pact blade, read by src/lib/dm/genre-a-strikes.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Champion of the Quiet Court#0"
    },
    {
     "c": "critical hits also frighten",
     "is": "gap",
     "read_only": true,
     "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap grave_knight::Champion of the Quiet Court#1 (a table check only: no engine table answers to the feature)",
+    "probe": "none of its own: no critical-hit trigger lays a condition; the hook probe now answers for clause #0",
     "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
     "sev": "low"
    },
@@ -1852,11 +1838,9 @@
      "want": "adv",
      "hp": 40
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap penitent::Zeal Through Pain#0",
-    "observed": "d20s thrown for the athletics check: the engine gives 1, the text 2",
-    "where": "src/lib/srd/trait-rules.ts check keys (src/lib/dm/roll-about.ts CHECK_ABOUT has no circumstance for it) and src/lib/dm/roll-riders.ts",
-    "sev": "medium"
+    "is": "held",
+    "by": "the check_adv row gated belowHalf in src/lib/srd/authored-effects-genre-a.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: penitent::Zeal Through Pain#0"
    },
    {
     "c": "+1 to attack rolls",
@@ -1865,11 +1849,9 @@
      "n": 1,
      "hp": 40
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap penitent::Zeal Through Pain#1",
-    "observed": "what Zeal Through Pain adds to the attack roll (21 with it, 21 without): the engine gives 0, the text 1",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (attack_bonus) and src/lib/dm/pc-attack-profile.ts",
-    "sev": "medium"
+    "is": "held",
+    "by": "the attack_bonus row gated belowHalf, read by src/lib/dm/genre-a-strikes.ts in pc-attack-damage.ts foldDamageRiders",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: penitent::Zeal Through Pain#1"
    }
   ]
  },
@@ -1889,11 +1871,9 @@
      ],
      "wear": "bare"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap penitent::Unarmored Devotion#0",
-    "observed": "armor class (bare worn): the engine gives 12, the text 17",
-    "where": "src/lib/srd/index.ts acBreakdownFor and src/lib/srd/feature-effects.ts ac_bonus: no entry for the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "the Unarmored Devotion formula of src/lib/srd/armor.ts (Strength in place of Dexterity)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: penitent::Unarmored Devotion#0"
    }
   ]
  },
@@ -2149,11 +2129,9 @@
      "sides": 6,
      "hp": 20
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap penitent::Ecstatic Fury#0",
-    "observed": "damage Ecstatic Fury adds to a hit (8 with it, 8 without): the engine gives 0, the text 6",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (weapon_damage_rider) and src/lib/dm/pc-attack-damage.ts: nothing answers to the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "the hit_rider row gated belowQuarter (src/lib/srd/genre-a-gates.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: penitent::Ecstatic Fury#0"
    },
    {
     "c": "you cannot be frightened or charmed",
@@ -2165,11 +2143,9 @@
      ],
      "hp": 20
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap penitent::Ecstatic Fury#1",
-    "observed": "frightened was laid on a character the text makes immune to it",
-    "where": "src/lib/srd/trait-rules.ts condition immunities, read by set_condition: no immunity for the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "the immune_condition row gated belowQuarter",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: penitent::Ecstatic Fury#1"
    }
   ]
  },
@@ -2309,11 +2285,9 @@
      "sides": 4,
      "mode": "unarmed"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap penitent::Cinder Palms#0",
-    "observed": "damage Cinder Palms adds to a hit (5 with it, 5 without): the engine gives 0, the text 3",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (weapon_damage_rider) and src/lib/dm/pc-attack-damage.ts: nothing answers to the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "the hit_rider row on unarmed strikes and flails, read by src/lib/dm/genre-a-strikes.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: penitent::Cinder Palms#0"
    }
   ]
  },
@@ -2824,21 +2798,16 @@
      "id": "dark_fantasy_requiem_inspiration",
      "n": 3
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap dirgesinger::The Final Movement#0",
-    "observed": "dark_fantasy_requiem_inspiration uses spent after rolling initiative with none left: the engine gives 2, the text 0",
-    "where": "the fight's opening (initiative) in src/lib/dm/encounter tools: no regain on initiative for the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "the init_refill row with amount 3, read by src/lib/srd/authored-effects.ts authoredInitiativeRefills",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: dirgesinger::The Final Movement#0"
    },
    {
     "c": "your inspiration dice explode",
     "is": "gap",
     "read_only": true,
     "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap dirgesinger::The Final Movement#1 (a table check only: no engine table answers to the feature)",
+    "probe": "none of its own: no exploding die in the inspiration roll; the hook probe now answers for clause #0",
     "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
     "sev": "low"
    },
@@ -3007,15 +2976,12 @@
   "clauses": [
    {
     "c": "1/turn",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
     "run": {
      "k": "hook"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap vermin_lord::Gutter Fighting#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "the hit_rider row's oncePerTurn, claimed by pc-attack-damage.ts claimOncePerTurnRiders",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::Gutter Fighting#0"
    },
    {
     "c": "+1d6 damage against a creature that has not acted yet this combat or is surprised",
@@ -3024,11 +2990,9 @@
      "dice": 1,
      "sides": 6
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap vermin_lord::Gutter Fighting#1",
-    "observed": "damage Gutter Fighting adds to a hit (8 with it, 8 without): the engine gives 0, the text 3",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (weapon_damage_rider) and src/lib/dm/pc-attack-damage.ts: nothing answers to the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "the hit_rider row vsNotActed (src/lib/dm/genre-a-strikes.ts enemyNotActed)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::Gutter Fighting#1"
    }
   ]
  },
@@ -3151,11 +3115,9 @@
       "hide"
      ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap vermin_lord::Nimble Escape#0",
-    "observed": "dash as a bonus action: Holder has no feature that makes a Dash a bonus action (that takes Cunning Action, Step of the Wind or Expeditious Retreat). They can take it with their action instead.: the engine gives false, the text true",
-    "where": "src/lib/dm/bonus-routes.ts bonusRouteFor",
-    "sev": "medium"
+    "is": "held",
+    "by": "three bonus_route rows in src/lib/srd/authored-effects-genre-a.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::Nimble Escape#0"
    }
   ]
  },
@@ -3231,21 +3193,16 @@
      "dice": 1,
      "sides": 6
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap vermin_lord::Greater Gutter Fighting#0",
-    "observed": "damage Greater Gutter Fighting adds to a hit (8 with it, 8 without): the engine gives 0, the text 3",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (weapon_damage_rider) and src/lib/dm/pc-attack-damage.ts: nothing answers to the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "a second hit_rider d6 vsNotActed in src/lib/srd/authored-effects-genre-a.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::Greater Gutter Fighting#0"
    },
    {
     "c": "also applies to creatures adjacent to your swarm",
     "is": "gap",
     "read_only": true,
     "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap vermin_lord::Greater Gutter Fighting#1 (a table check only: no engine table answers to the feature)",
+    "probe": "none of its own: the swarm is no creature on the board; the hook probe now answers for clause #0",
     "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
     "sev": "low"
    }

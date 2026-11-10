@@ -21,5 +21,7 @@ export const GENRE_A_FEATURE_DEFS: FeatureDef[] = [
   // The Great Old One's Thought Shield resists psychic damage; the esper's
   // gives +2 on Wisdom saves (an authored row) and no resistance.
   { match: ["thought shield"], classes: of("esper"), effects: [{ kind: "narrative" }], guidance: "Thought Shield: the esper's mind cannot be read, and they add +2 to Wisdom saves." },
+  // "Two-weapon fighting with blades adds your ability mod to off-hand damage"
+  { match: ["twin chrome"], classes: of("street_samurai"), effects: [{ kind: "two_weapon_ability" }], guidance: "Twin Chrome: the off-hand blade adds the ability modifier to its damage; +1 AC while dual-wielding." },
   { match: ["silvered strikes"], classes: of("slayer"), effects: [{ kind: "magical_attacks" }], guidance: "Silvered Strikes: the slayer's weapon attacks count as silvered and magical for overcoming resistance." },
 ];

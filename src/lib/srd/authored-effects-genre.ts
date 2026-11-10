@@ -40,7 +40,9 @@ export const GENRE_AUTHORED: GenreRow[] = [
   // ---- bonus actions ----
   {
     feature: "Deathly Pact Blade",
-    entry: { subclass: "genre", spends: [{ name: "Deathly Pact Blade", action: "bonus", does: note("The bonded weapon is in hand, wherever it was, and it counts as magical.") }] },
+    // The bonded weapon in hand, as a condition the strikes read: it counts
+    // as magical (genre-a-conditions.ts) and carries Reaping Blade's necrotic.
+    entry: { subclass: "genre", spends: [{ name: "Deathly Pact Blade", action: "bonus", does: { kind: "buff", condition: "deathly pact blade", rounds: 600 } }] },
   },
   {
     feature: "Ashen Hymn",

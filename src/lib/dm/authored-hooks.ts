@@ -21,6 +21,7 @@
 // hit points, concentration, death, the token), so this module never imports
 // enemy-damage.ts, which reaches it.
 
+import { enemyNotActed } from "@/lib/dm/genre-a-strikes";
 import { fightMarked, markFight } from "@/lib/dm/turn-marks";
 import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
@@ -253,12 +254,7 @@ export function authoredAttackSituation(input: {
   for (const { effect, held } of activeAuthored(sheet, "attack_adv")) {
     let applies = false;
     if (effect.vs === "not_acted") {
-      const at = encounter.orderReady
-        ? encounter.order.findIndex((entry) => entry.kind === "enemy" && entry.enemyId === enemy.id)
-        : -1;
-      applies =
-        encounter.round <= 1 &&
-        (encounter.surprisedIds.includes(enemy.id) || (at >= 0 && at > encounter.turnIndex));
+      applies = enemyNotActed(encounter, enemy.id);
     } else if (effect.vs === "frightened_by_self") {
       const condition = enemy.conditions.find((entry) => textKey(entry) === "frightened");
       applies = Boolean(condition && metaOf(enemy, condition)?.source === sheet.id);

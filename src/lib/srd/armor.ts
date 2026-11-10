@@ -249,6 +249,8 @@ export type UnarmoredFormula = {
   ability: "con" | "wis" | null;
   // Barbarian's version allows a shield; the monk's does not.
   allowsShield: boolean;
+  // The ability counted in place of Dexterity (the penitent's Strength).
+  inPlaceOfDex?: "str";
 };
 
 // The SRD unarmored-AC features, keyed by the feature names populateFeatures
@@ -264,6 +266,13 @@ const UNARMORED_FORMULAS: Array<{ match: string; classes: string[]; formula: Una
     match: "unarmored defense",
     classes: ["monk"],
     formula: { source: "Unarmored Defense", base: 10, ability: "wis", allowsShield: false },
+  },
+  // The penitent's Unarmored Devotion: "AC equals 10 + STR mod + WIS mod
+  // while unarmored" (src/lib/classes/dark-fantasy-features.json).
+  {
+    match: "unarmored devotion",
+    classes: ["penitent"],
+    formula: { source: "Unarmored Devotion", base: 10, ability: "wis", allowsShield: true, inPlaceOfDex: "str" },
   },
   {
     match: "draconic resilience",
@@ -388,10 +397,13 @@ export function computeArmorClass(input: {
     }
   } else if (input.unarmored && (input.unarmored.allowsShield || !shieldItem)) {
     const extra = input.unarmored.ability ? input.abilityMods[input.unarmored.ability] : 0;
-    ac = input.unarmored.base + input.dexMod + extra;
+    // Unarmored Devotion counts Strength where the others count Dexterity.
+    const first = input.unarmored.inPlaceOfDex === "str" ? Math.floor((input.strength - 10) / 2) : input.dexMod;
+    const firstName = input.unarmored.inPlaceOfDex === "str" ? "STR" : "DEX";
+    ac = input.unarmored.base + first + extra;
     parts.push(`${input.unarmored.source} ${input.unarmored.base}`);
-    if (input.dexMod !== 0) {
-      parts.push(`DEX ${input.dexMod >= 0 ? "+" : ""}${input.dexMod}`);
+    if (first !== 0) {
+      parts.push(`${firstName} ${first >= 0 ? "+" : ""}${first}`);
     }
     if (extra !== 0 && input.unarmored.ability) {
       parts.push(`${input.unarmored.ability.toUpperCase()} ${extra >= 0 ? "+" : ""}${extra}`);

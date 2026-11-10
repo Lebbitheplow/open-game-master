@@ -24,6 +24,7 @@
     "lib/dm/attack-roll-extras.ts#number": [["key", 1, "digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "lib/dm/attack-roll-extras.ts#partial": [["identity", 1, "ODM's own condition with its die note, whole"], ["parse", 1, "the dice and flat terms of a roll suffix the engine wrote"]],
     "lib/dm/attack-sight.ts#partial": [["identity", 1, "invisible or hidden by whole name (anchored)"]],
+    "lib/dm/genre-a-strikes.ts#partial": [["key",1,"the SRD row's creature type"],["identity",1,"a weapon by its whole keyed name or its SRD base"]],
     "lib/dm/reaction-tools.ts#number": [["key",1,"spell slot levels kept as the slots record keys"]],
     "lib/dm/reaction-triggers.ts#keyed": [["key",1,"enemy names by id"]],
     "lib/dm/reaction-triggers.ts#whole": [["key",1,"an enemy by id, and the mark's source by sheet id"]],

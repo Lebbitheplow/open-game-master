@@ -256,7 +256,8 @@ export const PROBES = {
     const target = run.mode === "ranged" ? scene.far : scene.near;
     if (run.type) t.kit.setEnemy(target.id, { stats: { type: run.type } });
     const args = run.mode === "unarmed" ? { weapon: "Unarmed Strike" } : {};
-    const faces = [15, 4, 3, 3, 3, 3, 3, 3];
+    // An unarmed strike rolls no weapon die: every die after the d20 is a rider's.
+    const faces = run.mode === "unarmed" ? [15, 3, 3, 3, 3, 3, 3, 3] : [15, 4, 3, 3, 3, 3, 3, 3];
     // A rider the text puts on a weapon another spend calls up (the grave
     // knight's pact blade): that spend is made before each swing.
     const callUp = async () => {

@@ -254,15 +254,12 @@
   "clauses": [
    {
     "c": "1/turn",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
     "run": {
      "k": "hook"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap exorcist::Anathema#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "the hit_rider row's oncePerTurn",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: exorcist::Anathema#0"
    },
    {
     "c": "+2d8 radiant damage on a weapon hit against fiends, undead, or spirits",
@@ -272,11 +269,9 @@
      "sides": 8,
      "type": "fiend"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap exorcist::Anathema#1",
-    "observed": "damage Anathema adds to a hit (8 with it, 8 without): the engine gives 0, the text 6",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (weapon_damage_rider) and src/lib/dm/pc-attack-damage.ts: nothing answers to the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "the hit_rider row vsTypes fiend and undead, read by src/lib/dm/genre-a-strikes.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: exorcist::Anathema#1"
    }
   ]
  },
@@ -1409,11 +1404,9 @@
      "n": 2,
      "hp": 40
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap survivor::Desperate Strength#0",
-    "observed": "what Desperate Strength adds to the attack roll (23 with it, 23 without): the engine gives 0, the text 2",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (attack_bonus) and src/lib/dm/pc-attack-profile.ts",
-    "sev": "medium"
+    "is": "held",
+    "by": "the attack_bonus row gated belowHalf, read by src/lib/dm/genre-a-strikes.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: survivor::Desperate Strength#0"
    },
    {
     "c": "STR/DEX checks",
@@ -1498,11 +1491,9 @@
      "k": "init_regain",
      "id": "horror_adrenaline_surge"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap survivor::Deep Reserves#0",
-    "observed": "horror_adrenaline_surge uses spent after rolling initiative with none left: the engine gives 3, the text 0",
-    "where": "the fight's opening (initiative) in src/lib/dm/encounter tools: no regain on initiative for the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "the init_refill row with amount all",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: survivor::Deep Reserves#0"
    }
   ]
  },
@@ -2227,11 +2218,9 @@
      "sides": 8,
      "type": "undead"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap slayer::Blessed Silver#0",
-    "observed": "damage Blessed Silver adds to a hit (8 with it, 8 without): the engine gives 0, the text 3",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (weapon_damage_rider) and src/lib/dm/pc-attack-damage.ts: nothing answers to the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "the hit_rider row vsTypes undead, fiend, shapechanger",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: slayer::Blessed Silver#0"
    }
   ]
  },
@@ -3176,23 +3165,18 @@
      "n": 2,
      "hp": 40
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap apostate::Skin Like Scripture#0",
-    "observed": "the armor class the club swung against: the engine gives 12, the text 14",
-    "where": "src/lib/srd/index.ts effectiveAcFor and src/lib/srd/feature-effects.ts ac_bonus: no conditional entry for the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "the ac row gated belowHalf; src/lib/db/sheets.ts derives the AC with the hit points",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: apostate::Skin Like Scripture#0"
    },
    {
     "c": "your stigmata ignore resistance to necrotic",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
     "run": {
      "k": "hook"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap apostate::Skin Like Scripture#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "the ignore_resist row gated belowHalf",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: apostate::Skin Like Scripture#1"
    }
   ]
  },

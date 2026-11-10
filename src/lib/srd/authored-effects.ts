@@ -42,6 +42,7 @@ import type {
 import { AUTHORED_DATA_CHANNEL } from "@/lib/srd/authored-effects-channel";
 import { AUTHORED_DATA_COUNTERS } from "@/lib/srd/authored-effects-sweep-counters";
 import { textKey } from "@/lib/language/text-logic";
+import { genreGateHolds } from "@/lib/srd/genre-a-gates";
 import { choiceIn } from "@/lib/srd/feature-names";
 import type { CheckAbout } from "@/lib/dm/roll-about";
 import { keyFits, type RollKey } from "@/lib/srd/roll-keys";
@@ -265,6 +266,9 @@ export function gateHolds(gate: Gate | undefined, sheet: AuthoredSheet, held: He
     return false;
   }
   if (gate.lightOrMedium && !(wearsBodyArmor(sheet) && !wearsHeavy(sheet))) {
+    return false;
+  }
+  if (!genreGateHolds(gate, sheet)) {
     return false;
   }
   if (gate.choiceOf) {
@@ -492,8 +496,9 @@ export function authoredInitiativeRefills(
   for (const { effect, held } of activeAuthored(sheet, "init_refill")) {
     const state = next[effect.resource];
     if (state && state.used >= state.max && state.max > 0) {
-      next[effect.resource] = { max: state.max, used: state.max - 1 };
-      notes.push(`${held.feature}: one use comes back`);
+      const back = effect.amount === "all" ? state.max : Math.min(state.max, effect.amount ?? 1);
+      next[effect.resource] = { max: state.max, used: state.max - back };
+      notes.push(`${held.feature}: ${back === 1 ? "one use comes" : effect.amount === "all" ? "every use comes" : `${back} uses come`} back`);
     }
   }
   return notes.length ? { resources: next, notes } : null;

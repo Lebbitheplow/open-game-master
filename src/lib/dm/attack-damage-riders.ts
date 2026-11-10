@@ -23,6 +23,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { holdsFeature, isNamed } from "@/lib/srd/feature-names";
 import { subclassNamed } from "@/lib/srd/subclass-name";
 import { authoredDamageAbility } from "@/lib/srd/authored-effects-more";
+import { genreAttackBonus, genreStrikeRiders } from "@/lib/dm/genre-a-strikes";
 
 export type FeatureRider = CombatRiders["damageRiders"][number];
 
@@ -31,6 +32,8 @@ export type AttackDamageRiders = {
   abilityRiders: Array<{ feature: string; amount: number }>;
   onHit: ReturnType<typeof conditionOnHitDice>;
   featureRiders: FeatureRider[];
+  // What features add to the attack roll (src/lib/dm/genre-a-strikes.ts).
+  toHitRiders: Array<{ feature: string; amount: number }>;
 };
 
 export function attackDamageRiders(input: {
@@ -41,10 +44,12 @@ export function attackDamageRiders(input: {
   // The target, for the riders that read it (Colossus Slayer). Absent (the
   // Hand, which deals before a target is picked): the riders that need one
   // are left out.
-  enemy?: Pick<EncounterEnemy, "currentHp" | "maxHp">;
+  enemy?: Pick<EncounterEnemy, "currentHp" | "maxHp"> & { stats?: { type?: string } };
   // The marking conditions (Hunter's Mark, Hex) whose die rides a hit on
   // this target (src/lib/dm/attack-marks.ts). Absent: every one does.
   marked?: Set<string>;
+  // The target has not acted yet this fight (genre-a-strikes.ts enemyNotActed).
+  notActed?: boolean;
 }): AttackDamageRiders {
   const { sheet, profile, riders, kind, marked } = input;
   const rageBonus = ragingMeleeBonus(sheet, profile);
@@ -59,7 +64,12 @@ export function attackDamageRiders(input: {
   const featureRiders: FeatureRider[] =
     kind === "spell" || kind === "granted"
       ? []
-      : [...riders.damageRiders, ...hunterRiders(sheet, input.enemy), ...pactRiders(sheet, kind, profile)]
+      : [
+          ...riders.damageRiders,
+          ...hunterRiders(sheet, input.enemy),
+          ...pactRiders(sheet, kind, profile),
+          ...genreStrikeRiders(sheet, profile, input.enemy ? { type: input.enemy.stats?.type, notActed: input.notActed } : undefined),
+        ]
           .filter((rider) => {
             if (rider.when === "melee" && profile.ranged) {
               return false;
@@ -70,7 +80,8 @@ export function attackDamageRiders(input: {
             return !rider.requiresCondition || sheet.conditions.some((entry) => entry.toLowerCase() === rider.requiresCondition);
           })
           .map((rider) => ({ ...rider, type: riderType(sheet, rider) }));
-  return { rageBonus, abilityRiders, onHit, featureRiders };
+  const toHitRiders = kind === "spell" || kind === "granted" ? [] : genreAttackBonus(sheet, profile);
+  return { rageBonus, abilityRiders, onHit, featureRiders, toHitRiders };
 }
 
 // The dice a held condition rides on this kind of attack's hit (Hex on any

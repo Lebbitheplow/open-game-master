@@ -12,5 +12,7 @@ export const GENRE_A_CONDITIONS: ConditionEffectRow[] = [
   // in the name, "blood ward (fire)".
   { id: "blood_ward", match: ["blood ward"], summary: "Blood Ward: resistance to the named damage type until the start of the apostate's next turn.", paramResistance: true },
   // "for 1 minute you cannot drop below 1 HP": src/lib/dm/genre-drop-holds.ts reads it.
+  // "summon your bonded weapon to hand from anywhere; it counts as magical"
+  { id: "deathly_pact_blade", match: ["deathly pact blade"], summary: "Deathly Pact Blade: the grave knight's bonded weapon is in hand, and it counts as magical.", magicalStrikes: true },
   { id: "deathless_champion", match: ["deathless champion"], summary: "Deathless Champion: for a minute the grave knight cannot drop below 1 hit point." },
 ];
