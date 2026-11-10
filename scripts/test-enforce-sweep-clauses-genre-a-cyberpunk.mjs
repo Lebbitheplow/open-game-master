@@ -7,5 +7,6 @@ import { PROBES } from "./lib/sweep-clauses-genre-a-probes.mjs";
 import { NAMED } from "./lib/sweep-clauses-genre-a-named.mjs";
 import { MORE } from "./lib/sweep-clauses-genre-a-more.mjs";
 import { borrowedHooks } from "./lib/sweep-clauses-genre-a-borrowed.mjs";
+import { CYBER } from "./lib/sweep-clauses-genre-a-cyberpunk.mjs";
 
-await runLedger("cyberpunk", { ...PROBES, ...NAMED, ...MORE }, [borrowedHooks]);
+await runLedger("cyberpunk", { ...PROBES, ...NAMED, ...MORE, ...CYBER }, [borrowedHooks]);

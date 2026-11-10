@@ -63,6 +63,13 @@ export type AuthoredEffect = Base &
     // Advantage on a save: against what the save resists (one of the
     // roll's `against` values, or magic), or every save of an ability.
     | { kind: "save_adv"; against?: SaveAgainstValue[]; magical?: true; ability?: Ability }
+    // Resistance to falling damage only (Kinetic Buffer), and advantage on
+    // the save to keep concentration (Split Focus): genre-a-cyberpunk-defenses.ts.
+    | { kind: "fall_resist" }
+    // A spell attack that hits pushes the creature `feet` away (Kinetic
+    // Buffer): src/lib/dm/genre-a-cyberpunk-hits.ts.
+    | { kind: "spell_push"; feet: number; oncePerTurn?: boolean }
+    | { kind: "concentration_adv" }
     | { kind: "save_prof"; abilities: Ability[] }
     // `ability`: saves of that ability only (Thought Shield: +2 on WIS saves).
     | { kind: "save_bonus"; amount: number; ability?: Ability }
@@ -86,7 +93,8 @@ export type AuthoredEffect = Base &
     | { kind: "ignore_resist"; types: string[] }
     // Attacks against the holder by creatures of these types are at
     // disadvantage.
-    | { kind: "attacked_disadv"; from: string[] }
+    // `besideDowned`: while an ally at 0 HP stands within 5 feet (Shield the Fallen).
+    | { kind: "attacked_disadv"; from: string[]; besideDowned?: boolean }
     // A creature of these types that targets the holder with an attack must
     // first save against the holder's spell save DC or lose the attack
     // (Among the Dead: undead, Wisdom).

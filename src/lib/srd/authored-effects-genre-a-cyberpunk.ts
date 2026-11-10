@@ -31,3 +31,11 @@ export const GENRE_A_CYBERPUNK: GenreRow[] = [
     { spends: [{ name: "Combat Wetware", fight: "out", does: { kind: "choose", options: [...COMBAT_WETWARE_OPTIONS] } }] },
   ),
 ];
+
+// The defenses read by src/lib/dm/genre-a-cyberpunk-defenses.ts.
+GENRE_A_CYBERPUNK.push(
+  // "Resistance to falling damage; 1/turn, shove a target 10 ft with a psionic hit."
+  row("esper", "Kinetic Buffer", [{ kind: "fall_resist" }, { kind: "spell_push", feet: 10, oncePerTurn: true }]),
+  row("esper", "Split Focus", [{ kind: "concentration_adv" }]),
+  row("trauma_doc", "Shield the Fallen", [{ kind: "attacked_disadv", from: [], besideDowned: true }]),
+);

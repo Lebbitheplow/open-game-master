@@ -90,6 +90,8 @@ export type PcDamageInput = {
   // Features whose resistance does not hold against this blow (Emissary of
   // Redemption against a creature the paladin attacked).
   exceptFeatures?: string[];
+  // Resistances this blow alone meets (a fall's, for Kinetic Buffer).
+  resists?: string[];
   reason?: string;
 };
 

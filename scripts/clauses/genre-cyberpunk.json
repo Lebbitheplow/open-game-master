@@ -2084,23 +2084,18 @@
      "type": "bludgeoning",
      "via": "fall"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap esper::Kinetic Buffer#0",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (parseFeatureEffects reads only subclasses.json and feats, never the genre catalogs) and src/lib/dm/pc-damage.ts",
-    "sev": "medium",
-    "observed": "hit points lost to a 20 foot fall for 10"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts fall_resist, read by src/lib/dm/genre-a-cyberpunk-defenses.ts fallResistances at the fall in src/lib/dm/hazard-tools.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: esper::Kinetic Buffer#0"
    },
    {
     "c": "1/turn, shove a target 10 ft with a psionic hit",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
     "run": {
-     "k": "hook"
+     "k": "spell_shove"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap esper::Kinetic Buffer#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts spell_push (10 feet, once a turn), read by src/lib/dm/genre-a-cyberpunk-hits.ts kineticShove at the hit (src/lib/dm/attack-blow.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: esper::Kinetic Buffer#1"
    }
   ]
  },
@@ -2165,11 +2160,9 @@
     "run": {
      "k": "conc"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap esper::Split Focus#0",
-    "where": "src/lib/dm/concentration.ts (the save on damage): no rider for the feature",
-    "sev": "medium",
-    "observed": "d20s thrown for the concentration save"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts concentration_adv, read by src/lib/dm/genre-a-cyberpunk-defenses.ts concentrationAdvantage at the concentration save (src/lib/dm/concentration.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: esper::Split Focus#0"
    }
   ]
  },
@@ -2882,11 +2875,9 @@
     "run": {
      "k": "foe_disadv"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Shield the Fallen#0",
-    "where": "src/lib/dm/enemy-attack (the attack's advantage state)",
-    "sev": "medium",
-    "observed": "d20s the foe threw at a holder standing beside a downed ally"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts attacked_disadv besideDowned, read by src/lib/dm/authored-hooks.ts authoredIncomingAttack through besideDownedAlly",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Shield the Fallen#0"
    }
   ]
  },

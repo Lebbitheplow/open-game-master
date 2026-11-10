@@ -48,6 +48,7 @@ import { activeAuthored, resolveFormula } from "@/lib/srd/authored-effects";
 import { effectiveMaxHp, isIncapacitated, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { hurtEnemy } from "@/lib/dm/spell-aura";
 import { withinFeet } from "@/lib/dm/authored-saves";
+import { besideDownedAlly } from "@/lib/dm/genre-a-cyberpunk-defenses";
 import { vowedFoe } from "@/lib/srd/vow-of-enmity";
 import { ENTROPIC_EDGE, entropicQuarry } from "@/lib/dm/reaction-kinds";
 import { naturalWeaponOnHit } from "@/lib/dm/authored-attacks";
@@ -148,7 +149,13 @@ export function authoredIncomingAttack(input: {
     }
   }
   for (const { effect, held } of activeAuthored(target, "attacked_disadv")) {
-    if (effect.from.some((kind) => type.includes(kind))) {
+    if (effect.besideDowned) {
+      const fallen = besideDownedAlly(input.campaignId, input.encounterId, target);
+      if (fallen) {
+        sources.push("disadvantage");
+        notes.push(`${held.feature}: ${target.name} stands over ${fallen.name}, so the attack is at disadvantage`);
+      }
+    } else if (effect.from.some((kind) => type.includes(kind))) {
       sources.push("disadvantage");
       notes.push(`${held.feature}: a ${type} attacks ${target.name} at disadvantage`);
     }

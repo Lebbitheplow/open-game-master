@@ -23,6 +23,7 @@ import { darkOnesBlessing } from "@/lib/dm/feature-hooks";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { openLastHit } from "@/lib/dm/last-hit";
 import { pushTokenAway } from "@/lib/dm/map-tools";
+import { kineticShove } from "@/lib/dm/genre-a-cyberpunk-hits";
 import { landNaturalOnHit } from "@/lib/dm/natural-onhit";
 import { landBlow } from "@/lib/dm/pc-attack-damage";
 import { applyRiderCondition, gainTempHp, riderBarred, stunningStrikeSave } from "@/lib/dm/pc-attack-riders";
@@ -189,6 +190,10 @@ export function landSwingBlow(
     const repelled = repellingBlast(scene, record);
     if (repelled) {
       notes.push(repelled);
+    }
+    const shoved = kineticShove(scene, record);
+    if (shoved) {
+      notes.push(shoved);
     }
     if (ask.maneuver && record.maneuver) {
       out.maneuver = maneuverRiderSave(scene, record.maneuver);
