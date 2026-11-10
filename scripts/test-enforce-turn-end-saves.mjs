@@ -14,9 +14,12 @@ import assert from "node:assert/strict";
 import { openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
+import { call as modelCall, fakeModel, reply, settleQueue } from "./lib/enforce-narrator.mjs";
 
 const { test, finish } = suite("test-enforce-turn-end-saves");
-const world = await openWorld();
+const world = await openWorld({ gameSettings: { ttsEnabled: false } });
+const model = await fakeModel();
+model.pointAt(world);
 const kit = await combatKit(world);
 const { listEffects } = await import("../src/lib/db/active-effects.ts");
 
@@ -138,6 +141,23 @@ await test("Once the character after it acts, the creature's turn is over: a hol
   assert.ok(!held(enemy), "the end of its own turn brings the save");
 });
 
+// The AI's own end_turn hands the creature to the reply it ends: what that
+// reply lays on it before the turn after begins is laid in the creature's
+// turn, and the pass is over once the reply is narrated.
+await test("A curse the AI's reply lays on the creature it was handed is saved against as that creature's turn ends.", async () => {
+  const enemy = await stage();
+  model.script([
+    reply({ calls: [modelCall("end_turn", { characterId: fighter.id }), modelCall("set_effect", { enemyId: enemy.id, name: "Witch's Curse", modifiers: [{ field: "attack", mode: "add", value: -2 }], saveAbility: "wis", saveDc: 1, visible: true })] }),
+    reply({ text: "The curse settles on it." }),
+  ]);
+  await model.turn(world, "I step back and end my turn.", fighter.id, fighter.userId);
+  await settleQueue(world.campaignId);
+  const cursed = () => listEffects(world.campaignId).some((effect) => effect.targetId === enemy.id);
+  assert.ok(cursed(), "the curse is laid");
+  endTurnOf(wizard);
+  assert.ok(!cursed(), "the end of the turn it was cursed in brings the save");
+});
+
 // A paralyzed character's turn is walked past, starting and ending in the
 // one move, so a hold that leaves them able to act shows whose turn's end
 // the save waits for.
@@ -152,4 +172,5 @@ await test("A character held after their turn saves at the end of their own next
   assert.ok(!frightened(), "the end of their own turn brings the save");
 });
 
+model.close();
 finish();
