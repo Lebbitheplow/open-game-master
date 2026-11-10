@@ -82,15 +82,20 @@ export function strictBooleanArgs(rawArguments: string): string {
 //     in silence and went on with the rest (party_award paid one of two,
 //     roll_treasure paid the whole hoard to one, cast_buff cast on the
 //     caster).
+//   an id in such a list that is no character's but that the tool's own
+//     handler takes (cast_buff's Bless on an ogre the party dominates) is
+//     asked of `alsoNames`, which the caller builds from the lookup that
+//     handler reads, so the door and the handler cannot disagree on it.
 export type DoorField = { type?: unknown; enum?: unknown };
 export type DoorRecord = { id: string; name: string };
+export type DoorAlsoNames = (key: string, ref: string, args: Readonly<Record<string, unknown>>) => boolean;
 
 const SINGLE_REF = /^(?:characterId|casterId|healerId|casterCharacterId|targetCharacterId|sourceCharacterId|toCharacterId|storeInCharacterId)$/;
 const LIST_REF = /^(?:characterIds|[a-z]+CharacterIds)$/;
 
 export function doorArgs(
   rawArguments: string,
-  { properties = {}, sheets = [] }: { properties?: Record<string, DoorField>; sheets?: readonly DoorRecord[] },
+  { properties = {}, sheets = [], alsoNames }: { properties?: Record<string, DoorField>; sheets?: readonly DoorRecord[]; alsoNames?: DoorAlsoNames },
 ): { rawArguments: string } | { refusal: { error: string; retry: true } } {
   let parsed: unknown;
   try {
@@ -126,23 +131,28 @@ export function doorArgs(
     if (sheets.length && SINGLE_REF.test(key) && typeof value === "string") {
       value = sheetIdFor(value, sheets) ?? value;
     }
-    if (sheets.length && LIST_REF.test(key) && Array.isArray(value)) {
-      const ids: unknown[] = [];
-      for (const ref of value) {
-        if (typeof ref !== "string") {
-          ids.push(ref);
-          continue;
-        }
-        const id = sheetIdFor(ref, sheets);
-        if (id === null) {
-          const listed = [...new Set(sheets.map((sheet) => `${sheet.name} (${sheet.id})`))];
-          return { refusal: { error: `Unknown ${key} "${ref}". Use one of: ${listed.join(", ")}. Nothing was done for anyone in the list.`, retry: true } };
-        }
-        ids.push(id);
-      }
-      value = ids;
-    }
     out[key] = value;
+  }
+  // The lists after every single ref is read, so `alsoNames` sees the actor's
+  // id however the call named them.
+  for (const [key, value] of Object.entries(out)) {
+    if (!sheets.length || !LIST_REF.test(key) || !Array.isArray(value)) {
+      continue;
+    }
+    const ids: unknown[] = [];
+    for (const ref of value) {
+      if (typeof ref !== "string") {
+        ids.push(ref);
+        continue;
+      }
+      const id = sheetIdFor(ref, sheets) ?? (alsoNames?.(key, ref.trim(), out) ? ref.trim() : null);
+      if (id === null) {
+        const listed = [...new Set(sheets.map((sheet) => `${sheet.name} (${sheet.id})`))];
+        return { refusal: { error: `Unknown ${key} "${ref}". Use one of: ${listed.join(", ")}. Nothing was done for anyone in the list.`, retry: true } };
+      }
+      ids.push(id);
+    }
+    out[key] = ids;
   }
   const coerced = JSON.stringify(out);
   return { rawArguments: coerced === JSON.stringify(parsed) ? rawArguments : coerced };

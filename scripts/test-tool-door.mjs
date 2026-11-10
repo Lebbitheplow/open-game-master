@@ -73,6 +73,25 @@ test("a list of character ids is refused at the first one that names nobody, wit
   assert.equal(door({ targetCharacterIds: ["A1"] }).retry, true, "an id in another case is no id");
 });
 
+// cast_buff's Bless on an ogre the party dominates: its enemy id is no
+// character's, and the handler takes it (turn.ts hands the door
+// cast-buff-allies.ts sideAllyInList, the handler's own lookup).
+test("an id the tool's handler takes though it is no character's passes the list, the actor read by name first; any other is still refused", () => {
+  const asked = [];
+  const alsoNames = (key, ref, args) => {
+    asked.push([key, ref, args.characterId]);
+    return key === "targetCharacterIds" && ref === "ogre-1" && args.characterId === "a1";
+  };
+  const read = (args) => {
+    const out = doorArgs(JSON.stringify(args), { properties, sheets, alsoNames });
+    return "refusal" in out ? out.refusal : JSON.parse(out.rawArguments);
+  };
+  assert.deepEqual(read({ targetCharacterIds: ["ogre-1", "Brann"], characterId: "Mira" }), { targetCharacterIds: ["ogre-1", "b2"], characterId: "a1" });
+  assert.deepEqual(asked, [["targetCharacterIds", "ogre-1", "a1"]], "a character's id or name is never asked of it");
+  assert.match(read({ characterId: "a1", targetCharacterIds: ["goblin-2"] }).error, /Unknown targetCharacterIds "goblin-2"/);
+  assert.match(read({ characterId: "a1", characterIds: ["ogre-1"] }).error, /Unknown characterIds "ogre-1"/);
+});
+
 test("a name two sheets share names neither", () => {
   const twins = doorArgs(JSON.stringify({ characterId: "Mira" }), { properties, sheets: [...sheets, { id: "c3", name: "Mira" }] });
   assert.deepEqual(JSON.parse(twins.rawArguments), { characterId: "Mira" });

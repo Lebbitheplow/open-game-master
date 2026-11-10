@@ -73,6 +73,7 @@ import { doneParts, listedCalls, listRefusal, oneCasting, PART_LISTS, partsResul
 import { AWAITING_ROLL, fillQueuedParts } from "@/lib/dm/pc-attack-parts";
 import type { AttackRecord } from "@/lib/dm/attack-record";
 import { doorArgs, strictBooleanArgs, type DoorField } from "@/lib/dm/arg-coerce";
+import { sideAllyInList } from "@/lib/dm/cast-buff-allies";
 import { insertCampaignMessage, listMessagesPage, listRecentMessages, markCardReturned, type CampaignMessage } from "@/lib/db/messages";
 import { heldNarrationSeq, narrationShown, takeNarrationSeq, takeNarrationSlot } from "@/lib/dm/narration-slot";
 import { getRoll, listRecentRolls, type StoredRoll } from "@/lib/db/rolls";
@@ -1747,7 +1748,11 @@ export function modelCallArguments(
   rawArguments: string,
   sheets: readonly CharacterSheet[],
 ): { rawArguments: string } | { refusal: ToolResult } {
-  return doorArgs(rawArguments, { properties: toolFields(campaign, name), sheets });
+  return doorArgs(rawArguments, {
+    properties: toolFields(campaign, name),
+    sheets,
+    alsoNames: (key, ref, args) => sideAllyInList(campaign.id, name, key, ref, args),
+  });
 }
 
 // Whether a set of tools takes a call by this name: one it offers, or a
