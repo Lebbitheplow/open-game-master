@@ -9,7 +9,7 @@ import { register } from "node:module";
 
 register("./lib/register-alias.mjs", import.meta.url);
 
-const { englishHold, englishActs, onlyAsks, readPlayerWord, unaskedRefusal, heldRefusal } = await import("../src/lib/dm/player-word-logic.ts");
+const { englishHold, englishActs, onlyAsks, onlyAsked, askedSwayRefusal, readPlayerWord, unaskedRefusal, heldRefusal } = await import("../src/lib/dm/player-word-logic.ts");
 const { parseWordReading } = await import("../src/lib/dm/player-word-read.ts");
 
 const FIGHT = "2026-11-08T12:00:00.000Z";
@@ -56,6 +56,43 @@ assert.equal(onlyAsks("Is it still there? How far?"), true);
 assert.equal(onlyAsks("¿Sigue ahí el goblin？"), true);
 assert.equal(onlyAsks("I attack. Does it hit?"), false);
 assert.equal(onlyAsks("I attack"), false);
+// A quoted question with the words that say who asks it, and a question
+// asked indirectly, only ask (0.34.1 report: a companion asked about the
+// road got a Persuasion check).
+for (const text of [
+  '"Do you know this place?" I ask Corin.',
+  'I ask Corin, "Do you know this place?"',
+  '"Corin," I ask, "do you trust him?"',
+  '"Is it far?" I ask, looking at the map.',
+  "I ask Corin what he thinks of the plan.",
+  "I ask the guard about the missing caravan.",
+  "Kara quietly asks Mira whether she slept.",
+]) {
+  assert.equal(onlyAsks(text), true, text);
+}
+// Asking for something done, a second act, a bare tag, or no question at
+// all is more than a question.
+for (const text of [
+  "I ask him to open the gate.",
+  "I ask for help.",
+  "I ask.",
+  "I ask Corin what he thinks and then I grab the map.",
+  '"Will you come with us?" I ask, and I press the coin into her hand.',
+  "I try to convince her to lower the price.",
+  '"Lower the price, or we walk."',
+]) {
+  assert.equal(onlyAsks(text), false, text);
+}
+// Every line must only ask, and a Hand card is an act; no line is not a
+// question.
+assert.equal(onlyAsked([{ content: "Do you know the road?", card: null }, { content: "Is it safe?", card: null }], true), true);
+assert.equal(onlyAsked([{ content: "Do you know the road?", card: null }, { content: "Come with us, Corin.", card: null }], true), false);
+assert.equal(onlyAsked([{ content: "Is it safe?", card: "help" }], true), false);
+assert.equal(onlyAsked([], true), false);
+// At a table in another language only the question mark is read.
+assert.equal(onlyAsked([{ content: "¿Conoces este camino?", card: null }], false), true);
+assert.equal(onlyAsks('"Is it far?" I ask Corin.', false), false);
+assert.match(askedSwayRefusal("Kara"), /^Kara's player only asked a question, .*nothing was rolled\. Answer it in character/);
 
 // ---- the reading ----
 

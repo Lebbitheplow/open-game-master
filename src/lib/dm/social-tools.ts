@@ -38,6 +38,7 @@ import { TOLD_GENDER_HELP, TOLD_GENDERS, toldGender } from "@/lib/gender";
 import { TOLD_RACE_HELP, raceWords, storedRace, unreadRace } from "@/lib/npc-race";
 import { rollExpression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
+import { swayUnasked } from "@/lib/dm/player-word";
 import {
   approachSkill,
   reactionAttitude,
@@ -409,6 +410,12 @@ export function handleSocialCheck(
   const sheet = stale ? getSheetById(stale.id) ?? stale : null;
   if (!sheet) {
     return unknownSheetRef("characterId", args.characterId, sheets);
+  }
+  // Swaying answers an attempt; a player who only asked a question made
+  // none, and is answered in character (src/lib/dm/player-word.ts).
+  const unasked = swayUnasked(campaign.id, turn, sheet);
+  if (unasked) {
+    return unasked;
   }
   // A lasting companion is reached through the row behind their sheet
   // (#503 Phase 0.1), so a companion can be talked round like anyone else.
