@@ -2775,19 +2775,23 @@ button.cine-chronicle-earlier:focus-visible { outline: 2px solid #f4e0a6; outlin
     background: rgba(13, 11, 28, 0.78);
     box-shadow: 0 4px 14px rgba(4, 2, 12, 0.5);
   }
+  /* Out of sight and still read aloud. Clipped by its own shape and laid
+     inside the row, not squeezed to a pixel behind overflow: a name cut by
+     a box is what the fight bench looks for, rightly. */
   .cine-chat-staged .cine-fight-board .board-head-title {
     position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
+    top: 0;
+    right: 0;
+    width: max-content;
     clip-path: inset(50%);
     white-space: nowrap;
+    pointer-events: none;
   }
   .cine-chat-staged .cine-fight-board .board-head-tools > button { color: #c9c6db; }
   .cine-chat-staged .cine-fight-board .board-head-tools > button:hover { color: #f4e0a6; background: rgba(212, 171, 58, 0.14); }
   .cine-chat-staged .cine-fight-board .board-head-tools > button[aria-pressed="true"] { color: #f4e0a6; background: rgba(212, 171, 58, 0.22); }
   .cine-chat-staged .cine-fight-board > .board-panel > .board-view { margin-top: 0; }
-  .cine-chat-staged .cine-fight-board .board-order-strip { display: none; }
+
   .cine-chat-staged .cine-fight-board .board-under-row { display: flex; align-items: center; gap: 0.75rem; min-height: 2rem; }
   .cine-chat-staged .cine-fight-board .board-under-row > * { margin: 0; }
   .cine-chat-staged .cine-fight-board .board-under-row > :not(.board-hint) { flex: none; }
@@ -2927,9 +2931,13 @@ button.cine-chronicle-earlier:focus-visible { outline: 2px solid #f4e0a6; outlin
     .cine-fight-board > .cine-fight-hand { transition: none; }
   }
 }
-/* Where the order stands in a row above the board (a phone, the side panel)
-   the same names in chips under the board are the order a second time. */
-.board-panel:has(.board-order-above) .board-order-strip { display: none; }
+/* The names in chips under the board are the order a second time only where
+   the header's ribbon writes them under the faces. A phone and a narrower
+   window have the faces alone (the rail), so there the chips stay: they
+   are the one place the order is in words. */
+@media (min-width: 1180px) {
+  .cine-stage:has(.cine-ribbon) .cine-chat-staged .cine-fight-board .board-order-strip { display: none; }
+}
 .cine-fight-controls { display: contents; }
 .cine-fight { display: flex; flex: 1; min-height: 0; gap: 12px; padding: 12px 12px 4px; }
 .cine-fight .cine-chronicle { flex: 0 0 17rem; }
