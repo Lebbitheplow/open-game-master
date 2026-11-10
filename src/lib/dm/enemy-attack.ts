@@ -48,8 +48,9 @@ import { wornArmorTurnsCrits } from "@/lib/srd/armor";
 import { resolveEnemyRef, unknownEnemyRef } from "@/lib/dm/enemy-damage";
 import { approachTarget, reachesThisTurn, spendEnemyAction, standUpIfProne } from "@/lib/dm/enemy-approach";
 import { blowByType, resolveOnHit, scaledParts } from "@/lib/dm/enemy-hit";
-import { applyPcDamage, type BlowFlags } from "@/lib/dm/pc-damage";
+import { applyPcDamage, blowDefenses, meetDefenses, type BlowFlags } from "@/lib/dm/pc-damage";
 import { effectOutcome } from "@/lib/dm/effect-tools";
+import { hateAuraDamage } from "@/lib/dm/divine-auras";
 import { alternativeBlow, attackNamed, charmedBy, enemyAttackProfile, pastRangedLimit, plannedSwings, swingMode, type EnemyAttackProfile } from "@/lib/dm/enemy-profile";
 import { publishFx, tokenPosition } from "@/lib/dm/fx";
 import { hasTrait } from "@/lib/dm/monster-abilities";
@@ -542,6 +543,9 @@ export function handleEnemyAttack(
   let martialSpent = false;
   let dropped = false;
   let totalDamage = 0;
+  // What the target took of it, past its defenses: Emissary of Redemption
+  // answers "half the damage you take from it", not half the blow.
+  let takenTotal = 0;
   let targetHp: string | undefined;
   const damageTypes = new Set<string>();
   let lastSwing: { attack: EnemyAttack; ranged: boolean } | null = null;
@@ -711,8 +715,11 @@ export function handleEnemyAttack(
     if (bonus.martial) {
       martialSpent = true;
     }
+    // Aura of Hate: a fiend or undead within an oathbreaker's aura adds the
+    // paladin's Charisma to its melee weapon blows (divine-auras.ts).
+    const hate = ranged || attack.spellAttack ? null : hateAuraDamage(campaign.id, standing);
     // An active effect's amount on its damage rolls (set_effect), once.
-    const effectDamage = effectOutcome(campaign.id, { kind: "enemy", id: standing.id }, "damage").bonus;
+    const effectDamage = effectOutcome(campaign.id, { kind: "enemy", id: standing.id }, "damage").bonus + (hate?.bonus ?? 0);
     const withTraits = bonus.dice.length ? `${attack.damage}+${bonus.dice.join("+")}` : attack.damage;
     const baseDamage = effectDamage > 0 ? `${withTraits}+${effectDamage}` : effectDamage < 0 ? `${withTraits}-${-effectDamage}` : withTraits;
     const damageExpression = crit
@@ -787,6 +794,7 @@ export function handleEnemyAttack(
       reason: `${enemy.displayName}'s ${attack.name}`,
     });
     totalDamage += dealt;
+    takenTotal += dealt > 0 ? meetDefenses(blowDefenses(campaign.id, struck, flags), Math.min(dealt, 200), blow.type, blow.parts ? scaledParts(blow.parts, dealt) : undefined, 0).amount : 0;
     previousHit = true;
     if (multiattackDefense) {
       defended = 4;
@@ -881,7 +889,7 @@ export function handleEnemyAttack(
     type: (closing?.attack ?? planned[0]).type,
     ranged: closing?.ranged ?? false,
   });
-  notes.push(...authoredAfterHit(campaign, { encounter, attacker: standing, target, dealt: totalDamage, ranged: (lastSwing as { ranged: boolean } | null)?.ranged ?? false }));
+  notes.push(...authoredAfterHit(campaign, { encounter, attacker: standing, target, dealt: totalDamage, taken: takenTotal, ranged: (lastSwing as { ranged: boolean } | null)?.ranged ?? false }));
 
   const names = [...new Set(planned.map((attack) => attack.name))];
   return {

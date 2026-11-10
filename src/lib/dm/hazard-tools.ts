@@ -289,6 +289,8 @@ function resolveHazard(
         amount: rolled.total,
         type: damageType,
         knocksProne: true,
+        // A fall or a hazard: no creature dealt it (Emissary of Redemption).
+        noCreature: true,
         reason: source,
       });
       fall.close(rolled.total);
@@ -346,6 +348,7 @@ function resolveHazard(
         pool > 0
           ? applyPcDamage(campaign, turn.id, sheet, {
               amount: pool,
+              noCreature: true,
               reason: `${source} (out of air)`,
             })
           : { ok: true };

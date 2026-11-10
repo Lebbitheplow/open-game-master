@@ -15,6 +15,7 @@ import { describeDuration, describeInstant } from "@/lib/dm/calendar";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
 import { liftLimits, weighed } from "@/lib/dm/load-rules";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
+import { authoredCarryFactor } from "@/lib/srd/carry-jump-effects";
 import { sizeForRace } from "@/lib/srd";
 import { LIFESTYLES } from "@/lib/dm/between-state";
 import { tableNote, writeLifestyle } from "@/lib/dm/between-io";
@@ -194,6 +195,8 @@ function handleLift(args: z.infer<typeof liftSchema>, sheets: CharacterSheet[], 
     coins: purseCoins({ gold: sheet.gold ?? 0, copper: sheet.copper ?? 0 }),
     size: sizeForRace(sheet.race),
     wearer: sheet,
+    // The capacity liftLimits read (Peerless Athlete doubles it).
+    carryFactor: authoredCarryFactor(sheet),
   });
   const total = load.carriedLb + args.weightLb;
   const slowed = total > limits.capacityLb;

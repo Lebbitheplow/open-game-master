@@ -37,6 +37,7 @@ import { speedFor } from "@/lib/srd";
 import { resolveFormula } from "@/lib/srd/authored-effects";
 import type { SpendDoes } from "@/lib/srd/authored-effects-types";
 import { isConditionNamed } from "@/lib/srd/feature-names";
+import { textKey } from "@/lib/language/text-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { SpendContext } from "@/lib/dm/authored-spend-effects";
 
@@ -87,9 +88,17 @@ export function healArea(ctx: SpendContext, does: HealArea): ToolError | { resul
   const walks = does.rangeFt === "move";
   const walk = walks ? walkOf(campaign, encounter, sheet, party) : null;
   const rangeFt = typeof does.rangeFt === "number" ? does.rangeFt : effectiveSpeed(sheet.conditions, speedFor(sheet));
-  const targets = walk
+  const inReach = walk
     ? walk.order.map((id) => party.find((entry) => entry.id === id)!)
     : party.filter((entry) => entry.id === sheet.id || walks || !encounter || withinFeet(encounter.id, sheet.id, entry.id, rangeFt));
+  // "Creatures of your choice" (Turn the Tide): the one named, when one is;
+  // every hurt ally in reach healed whoever was named was the bug.
+  const named = does.chosen && ctx.args.targetCharacterId ? textKey(ctx.args.targetCharacterId) : null;
+  const targets = named ? inReach.filter((entry) => entry.id === ctx.args.targetCharacterId || textKey(entry.name) === named) : inReach;
+  if (named && !targets.length) {
+    const open = inReach.map((entry) => `${entry.name} (${entry.id})`).join(", ") || "nobody";
+    return { error: `${ctx.spend.name} cannot heal ${ctx.args.targetCharacterId}: of the characters it heals, only ${open} ${inReach.length === 1 ? "is" : "are"} within ${rangeFt} feet. Nothing was spent.`, retry: true };
+  }
   if (!targets.length) {
     const who = does.belowHalf ? "at or under half their hit points" : "hurt";
     const reach = walks ? `${sheet.name} can walk past in ${rangeFt} feet` : `within ${rangeFt} feet${does.othersOnly ? ` of ${sheet.name}` : ""}`;

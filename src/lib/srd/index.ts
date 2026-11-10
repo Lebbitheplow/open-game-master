@@ -16,6 +16,7 @@ import { borrowedProficiencies } from "@/lib/srd/borrowed-proficiency";
 import { authoredAcBonus, authoredSaveModifier, authoredSpeeds } from "@/lib/srd/authored-effects";
 import { effectiveAbilities, itemSpeeds, magicItemRiders, type Wearer, type WornMagicItem } from "@/lib/srd/magic-items";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
+import { authoredCarryFactor } from "@/lib/srd/carry-jump-effects";
 import { purseCoins } from "@/lib/srd/currency";
 import { allSpellNames } from "@/lib/srd/spell-lists";
 import { hpBonusPerLevel, speciesRulesFor, type SpeciesRules } from "@/lib/srd/race-id";
@@ -334,6 +335,8 @@ export function speedFor(
         coins: purseCoins({ gold: source.gold ?? 0, copper: source.copper ?? 0 }),
         size: source.race ? sizeForRace(source.race) : undefined,
         wearer: source,
+        // Peerless Athlete's doubled capacity, the one load-rules.ts refuses by.
+        carryFactor: authoredCarryFactor(source),
       })
     : null;
   const load = options.encumbrance ? (carried?.speedPenalty ?? 0) : 0;

@@ -102,6 +102,8 @@ export const PALADIN_B = {
     const reroll = await rig.spend(who, "Living Legend Reroll", {}, [19]);
     const rerolled = rig.lastRolls(4).find((roll) => roll.kind === "saving_throw" && /living legend/i.test(roll.detail));
     const reacted = rig.reacted(who) || rig.budget()?.reactionUsed === true;
+    // A turn later: "As a bonus action", and this turn's went on the first use.
+    rig.kit.freshTurn();
     const again = await rig.spend(who, "Living Legend", { level: 5 });
     const slots = rig.world.sheet(who.id).spellcasting.slots["5"];
     rig.note("legend", [checksRolled, miss.ok, brief(miss.result, 200), failed.result.success, reroll.ok, reroll.error, brief(reroll.result, 200), rerolled?.total, reacted, again.ok, again.error, brief(again.result, 160), slots]);
@@ -149,6 +151,10 @@ export const PALADIN_B = {
     const friend = rig.hero("cleric", "Life Domain", 7);
     const own = await rig.call("request_roll", { characterId: who.id, kind: "initiative", reason: "a fight" }, [10]);
     const ally = await rig.call("request_roll", { characterId: friend.id, kind: "initiative", reason: "a fight" }, [10]);
+    // The 6th-level paladin rolls in a world of their own: beside the 7th-level
+    // one (no board, so in reach) they would take that paladin's aura as an
+    // ally, and the check is about their own feature not yet held.
+    rig.reset();
     const low = await rig.call("request_roll", { characterId: rig.hero("paladin", "Oath of the Watchers", 6).id, kind: "initiative", reason: "a fight" }, [10]);
     rig.note("sentinel", [own.result.total, ally.result.total, low.result.total]);
     return {

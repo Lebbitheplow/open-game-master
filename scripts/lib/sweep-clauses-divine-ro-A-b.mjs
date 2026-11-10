@@ -24,6 +24,12 @@ async function walkBeside(rig, level, feetOff, feet) {
   rig.kit.place(foe.id, 15, 15);
   rig.kit.place(who.id, 5 - feetOff / 5, 5);
   rig.kit.giveTurn(friend.id);
+  // giveTurn moves the pointer only; the engine starts a turn with the
+  // pointer's turn-start hooks (condition-tick.ts startTurnConditions, as
+  // advancePointer calls it), which is where "starts their turn within 5
+  // feet" is read. Started here the same way.
+  const { startTurnConditions } = await rig.load("lib/dm/condition-tick.ts");
+  startTurnConditions(rig.world.campaign(), rig.world.encounter(), [friend.id]);
   // The player's own walk, as the board sends it.
   const route = await rig.world.route("campaigns/[campaignId]/battle-map/move");
   rig.world.signIn({ id: rig.world.sheet(friend.id).userId });
@@ -298,9 +304,14 @@ export const RO_PALADIN_B = {
   "ro::paladin::Dread Lord": async (rig) => {
     const { getDatabase } = await rig.load("lib/db/core.ts");
     const { ambientAt } = await rig.load("lib/battlemap/scene.ts");
+    const { lightsWithZones } = await rig.load("lib/dm/zone-rules.ts");
+    // Staging: the light the engine reads on a tile is the map's painted
+    // patches and its live areas' (zone-rules.ts lightsWithZones, as
+    // attack-light.ts and the board's view read it); the gloom is an area
+    // that follows the paladin, so it is not among the painted patches alone.
     const light = (x, y) => {
       const map = rig.kit.map();
-      return ambientAt(map.zones ?? [], x, y, map.ambient);
+      return ambientAt(lightsWithZones(map), x, y, map.ambient);
     };
     const who = rig.hero("paladin", "Oathbreaker", 20);
     const [foe] = await rig.fight(who);

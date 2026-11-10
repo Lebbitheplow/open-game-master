@@ -43,7 +43,9 @@ function rangeOf(attack: GrantedAttack): string {
   if (attack.from) {
     return attack.ranged ? `${attack.from.reachFeet} ft` : `${attack.from.reachFeet} ft of it`;
   }
-  return attack.ranged ? `${attack.rangeFeet ?? 60} ft` : "5 ft";
+  // A melee strike's own reach (Dread Lord's shadows, 30 feet), as
+  // pc_attack measures it (pc-attack-profile.ts reachTiles).
+  return attack.ranged ? `${attack.rangeFeet ?? 60} ft` : `${attack.reachFeet ?? 5} ft`;
 }
 
 function rulesOf(attack: GrantedAttack, rides: boolean): string {

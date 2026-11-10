@@ -61,6 +61,7 @@ import { isIncapacitated } from "@/lib/dm/condition-logic";
 import { canAct, canEnemyAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal, ownTurnOf } from "@/lib/dm/held-turn";
 import { afterMoveLeashes, leashRefusal } from "@/lib/dm/condition-leash";
+import { auraMenaceAsk } from "@/lib/dm/aura-menace";
 import { awayFromFear, enemyMoveTraits, fearSourceAt, standUpCost, standUpIfProne } from "@/lib/dm/enemy-approach";
 import { enemyMoveBudget } from "@/lib/dm/enemy-speed";
 import { movementLeft, spendEnemyDisengage } from "@/lib/dm/enemy-actions";
@@ -830,6 +831,11 @@ export function handleMoveToken(
       : [];
   // The spell areas walked (or pushed) into: their saves and damage (zone-triggers.ts).
   const zoneEffects = zonesAfterMove(campaign, encounter.id, resolved.token, origin, walkedPart(path, landing), { careful });
+  // An enemy entering an aura that asks once (Avenging Angel's aura of
+  // menace, src/lib/dm/aura-menace.ts): its save as it comes in.
+  if (resolved.kind === "enemy" && resolved.enemy) {
+    zoneEffects.push(...auraMenaceAsk(campaign, resolved.enemy.id));
+  }
   return {
     ok: true,
     name: resolved.token.name,
