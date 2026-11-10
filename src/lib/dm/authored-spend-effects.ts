@@ -226,7 +226,8 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
         if (live && does.rangeFt && !withinFeet(live.id, sheet.id, enemy.id, does.rangeFt)) {
           return { error: `${enemy.displayName} is beyond ${does.rangeFt} feet of ${sheet.name}; ${ctx.spend.name} reaches no further. Nothing was spent.`, refused: "rules" };
         }
-        const landed = enemyCondition(ctx, enemy, condition, { rounds: does.rounds });
+        // "Until the end of your next turn" (Path to the Grave), or a count of rounds.
+        const landed = enemyCondition(ctx, enemy, condition, does.untilNextTurnEnds ? { untilTurnEndOf: sheet.id } : { rounds: does.rounds });
         lines.push(landed ? `${enemy.displayName} is ${condition} for ${does.rounds} rounds.` : `${enemy.displayName} cannot be ${condition}.`);
       } else if (does.target === "allies") {
         const count = does.count ? Number(formula(ctx, does.count)) : 5;

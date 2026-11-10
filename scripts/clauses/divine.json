@@ -1202,9 +1202,9 @@
    },
    {
     "c": "to curse a creature within 30 feet until the end of your next turn",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the scene for cleric::Channel Divinity: Path to the Grave runs no check for this clause"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-w2-divine.ts row (a curse on the named creature within 30 feet, held until the end of the cleric's next turn)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: cleric::Channel Divinity: Path to the Grave#thirty-feet-next-turn"
    },
    {
     "c": "the next time you or an ally hits it with an attack",
@@ -1212,15 +1212,15 @@
    },
    {
     "c": "it has vulnerability to all of that attack's damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: cleric::Channel Divinity: Path to the Grave#curse",
-    "severity": "high",
-    "kind": "rule-missing",
-    "where": "src/lib/dm/feature-spends.ts Channel Divinity options: 'path to the grave' spends the action and use, marks nothing, and the next hit is not doubled"
+    "is": "held",
+    "by": "src/lib/dm/grave-curse.ts graveCurseFor, read by src/lib/dm/pc-attack-damage.ts landBlow",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: cleric::Channel Divinity: Path to the Grave#curse"
    },
    {
     "c": "and the curse ends",
-    "is": "flavor"
+    "is": "held",
+    "by": "src/lib/dm/grave-curse.ts graveCurseFor end(), called by landBlow after the cursed hit",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: cleric::Channel Divinity: Path to the Grave#ends"
    }
   ]
  },

@@ -102,15 +102,28 @@ export const CLERIC_B = {
 
   "cleric::Channel Divinity: Path to the Grave": async (rig) => {
     const who = rig.hero("cleric", "Grave Domain", 2);
-    const [foe] = await rig.fight(who);
+    const [foe, far] = await rig.fight(who, { enemies: 2 });
     const before = brief([rig.enemy(foe.id).conditions, rig.conditions(who)]);
+    // The second dummy stands 50 feet off: beyond the curse's 30.
+    const tooFar = await rig.channel(who, "path to the grave", { targetEnemyId: far.id });
+    const usedTooFar = rig.res(who, "channel_divinity").used;
     const out = await rig.channel(who, "path to the grave", { targetEnemyId: foe.id });
     const state = { budget: rig.budget(), used: rig.res(who, "channel_divinity").used, marks: brief([rig.enemy(foe.id).conditions, rig.conditions(who)]) };
+    const lasts = rig.enemy(foe.id).conditionMeta?.["path to the grave"] ?? null;
     rig.kit.freshTurn();
     const swing = await rig.kit.swing(who.id, foe.id, [18, 4]);
     const took = 300 - rig.enemy(foe.id).currentHp;
+    rig.kit.freshTurn();
+    await rig.kit.swing(who.id, foe.id, [18, 4]);
+    const tookAgain = 300 - took - rig.enemy(foe.id).currentHp;
     rig.note("path", [out.ok, out.error, brief(out.result, 160), state, before, swing.result]);
     return {
+      "thirty-feet-next-turn": () => {
+        assert.equal(tooFar.ok, false, "a creature 50 feet off was cursed");
+        assert.equal(usedTooFar, 0, "the refusal spent the use");
+        assert.equal(lasts?.untilTurnEndOf, who.id, `the curse lasts ${JSON.stringify(lasts)}: until the end of the cleric's next turn`);
+      },
+      ends: () => assert.equal(tookAgain, 7, `the hit after the cursed one took ${tookAgain}: the curse ends with the first`),
       action: () => {
         assert.equal(out.ok, true, out.error);
         assert.equal(state.budget?.actionUsed, true);

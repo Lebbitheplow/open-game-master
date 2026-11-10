@@ -10,6 +10,10 @@
 import type { AuthoredEntry } from "@/lib/srd/authored-effects-types";
 import { BORROWED_MARK, BORROWED_VARIANTS } from "@/lib/srd/borrowed-proficiency";
 
+// The curse's name, as src/lib/dm/grave-curse.ts reads it (a dm module
+// cannot be imported into the table).
+const GRAVE_CURSE = "path to the grave";
+
 const CHANNEL = { id: "channel_divinity" };
 
 export const AUTHORED_DATA_W2_DIVINE: Record<string, AuthoredEntry> = {
@@ -19,6 +23,13 @@ export const AUTHORED_DATA_W2_DIVINE: Record<string, AuthoredEntry> = {
   "cleric::Channel Divinity: Knowledge of the Ages": {
     subclass: "Knowledge Domain",
     spends: [{ name: "Knowledge of the Ages", pool: CHANNEL, action: "action", does: { kind: "buff", condition: BORROWED_MARK, variants: BORROWED_VARIANTS, rounds: 100 } }],
+  },
+  // "An action curses a creature within 30 feet until the end of your next
+  // turn: the next attack hit against it, it has vulnerability to all of that
+  // attack's damage" (src/lib/dm/grave-curse.ts reads the curse).
+  "cleric::Channel Divinity: Path to the Grave": {
+    subclass: "Grave Domain",
+    spends: [{ name: "Path to the Grave", pool: CHANNEL, action: "action", does: { kind: "buff", target: "enemy", condition: GRAVE_CURSE, rounds: 2, untilNextTurnEnds: true, rangeFt: 30 } }],
   },
   // "An action reveals a creature's damage immunities, resistances and
   // vulnerabilities, a Wisdom-modifier number of times per long rest."

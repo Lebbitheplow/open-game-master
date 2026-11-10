@@ -21,6 +21,7 @@ import { authoredSneakBonus } from "@/lib/srd/authored-effects-more";
 import { getSheetById } from "@/lib/db/sheets";
 import { applyEnemyDamage, applySheetFoeBlow } from "@/lib/dm/enemy-damage";
 import { landTypedParts } from "@/lib/dm/enemy-blow";
+import { graveCurseFor } from "@/lib/dm/grave-curse";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { allyAdjacentToEnemy } from "@/lib/dm/map-tools";
 import { storeBudget } from "@/lib/dm/turn-budget";
@@ -399,7 +400,11 @@ export function landBlow(input: {
   // A spell's damage, or a good wielder's weapon (damage-logic.ts).
   blow?: BlowSource;
 }): Record<string, unknown> {
-  const { campaign, turn, encounter, enemy, sheets, sheetsById, profile, damageOutcome, dealt, crit, critExtraDice, magical } = input;
+  const { campaign, turn, encounter, sheets, sheetsById, profile, damageOutcome, dealt, crit, critExtraDice, magical } = input;
+  // Path to the Grave: this hit meets a vulnerability to all of its damage,
+  // and the curse ends with it (src/lib/dm/grave-curse.ts).
+  const curse = isSheetFoe(input.enemy) ? null : graveCurseFor(input.enemy);
+  const enemy = curse?.enemy ?? input.enemy;
   // A silvered or adamantine weapon passes the resistances that name it.
   const material = profile.material ?? {};
   const nonlethal = input.nonlethal === true;
@@ -465,5 +470,5 @@ export function landBlow(input: {
       ...(input.adeptOthers?.length ? { ignoreTypes: { types: input.adeptOthers, by: "Elemental Adept" } } : {}),
     });
   }
-  return applied;
+  return curse ? { ...applied, graveCurse: curse.end() } : applied;
 }
