@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { PendingRoll } from "@/app/campaigns/[campaignId]/useCampaignStream";
 import { CheckFrame } from "@/app/campaigns/[campaignId]/SkillCheckCard";
@@ -63,6 +63,9 @@ export function WatchCard({
     const timer = setInterval(() => setLeft(Math.max(0, Math.ceil((deadline - Date.now()) / 1000))), 1000);
     return () => clearInterval(timer);
   }, [deadline]);
+  // Not a live region (it would speak every second): the watcher's buttons
+  // name it as their description, so the time left is heard at each choice.
+  const clockId = useId();
   const watcher = sheets.find((sheet) => sheet.id === pending.characterId);
   const power: Power = pending.watch?.power ?? "portent";
   const feature = FEATURES[power] ?? "Portent";
@@ -145,6 +148,7 @@ export function WatchCard({
                 key={value}
                 type="button"
                 disabled={busy || pick === null}
+                aria-describedby={clockId}
                 onClick={() => void answer({ value, ...choice })}
                 title={`Use the foretold ${value} as ${asking && pick !== null ? `${choices[pick].name}'s` : "this roll's"} d20. It is gone until your next long rest.`}
                 className={NUMBER}
@@ -156,6 +160,7 @@ export function WatchCard({
               <button
                 type="button"
                 disabled={busy || pick === null}
+                aria-describedby={clockId}
                 onClick={() => void answer({ shift: true, ...choice })}
                 title={
                   power === "flash_of_genius"
@@ -172,12 +177,13 @@ export function WatchCard({
         <button
           type="button"
           disabled={busy}
+          aria-describedby={clockId}
           onClick={() => void answer({ pass: true })}
           className={PLAIN}
         >
           Let it roll
         </button>
-        <span className="check-dim text-xs" aria-live="off">{left}s</span>
+        <span id={clockId} className="check-dim text-xs" aria-live="off"><span className="sr-only">It rolls on its own in </span>{left}s</span>
       </div>
       {asking && picked === null ? <p className="check-dim mt-1 text-xs">Choose whose roll first.</p> : null}
       {error ? <p role="alert" className="mt-1.5 text-xs text-red-400">{error}</p> : null}

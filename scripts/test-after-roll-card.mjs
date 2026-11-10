@@ -4,10 +4,13 @@
 // roller pressed "Keep this roll", the roll then waited on the helper, and
 // that same screen offered only the helper's Chronal Shift, with no way to
 // let the roll stand; it stayed pending until a hand-made request cleared
-// it. The kept card now carries the helper's "Let it stand", and the clock
-// still shows when the server set one. The real roll, its landing and the
-// clock on a table with someone else online run in a browser:
-// scripts/browser/scenarios/126-after-roll-same-account.mjs.
+// it. The keep now answers for the helpers the roller's account plays (the
+// after-roll route; scripts/test-enforce-chronal-shift-others.mjs), so the
+// roll lands. A roll kept that way before the server learned it still waits,
+// and its card carries the helper's "Let it stand". The clock shows when the
+// server set one, and each button names it for a screen reader. The real
+// roll, its landing and the clock on a table with someone else online run in
+// a browser: scripts/browser/scenarios/126-after-roll-same-account.mjs.
 import assert from "node:assert/strict";
 import { register } from "node:module";
 import { createElement } from "react";
@@ -15,6 +18,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 register("./lib/register-jsx.mjs", import.meta.url);
 const { AfterRollCard } = await import("../src/app/campaigns/[campaignId]/AfterRollCard.tsx");
+const { WatchCard } = await import("../src/app/campaigns/[campaignId]/WatchCard.tsx");
 
 const ME = "user-me";
 const OTHER = "user-other";
@@ -75,6 +79,19 @@ assert.ok(fresh.includes(`aria-label="Change this roll, or keep it"`), fresh);
 const clocked = render(pendingRoll({ kept: true, deadline: new Date(Date.now() + 15_000).toISOString() }));
 assert.match(clocked, /The roll stands in (1[0-9]|20)s/, clocked);
 assert.ok(clocked.includes(">Let it stand</button>"), clocked);
+// The clock is no live region, so each choice names it as its description:
+// a keyboard or screen reader user hears the time left at every button.
+const describedBy = (html) => {
+  const clockId = /<span id="([^"]+)"[^>]*>The roll stands in/.exec(html)?.[1];
+  const buttons = html.match(/<button[^>]*>/g) ?? [];
+  return { clockId, buttons, described: buttons.filter((tag) => clockId && tag.includes(`aria-describedby="${clockId}"`)).length };
+};
+const told = describedBy(clocked);
+assert.ok(told.clockId, `the clock has an id to point at: ${clocked}`);
+assert.equal(told.described, told.buttons.length, `every button names the clock: ${clocked}`);
+const freshClocked = describedBy(render(pendingRoll({ deadline: new Date(Date.now() + 15_000).toISOString() })));
+assert.equal(freshClocked.described, freshClocked.buttons.length, "before the keep too: the shift and Keep this roll");
+assert.ok(!kept.includes("aria-describedby"), "no clock, nothing to name");
 // A table with nobody else online has no deadline and no clock, by design.
 assert.ok(!/stands in \d+s/.test(kept), "no deadline, no clock");
 
@@ -95,5 +112,20 @@ const helper = render(pendingRoll({ userId: OTHER, characterId: "sheet-bran", op
 assert.ok(helper.includes("Chronal Shift: make Bran Ostler roll again"), helper);
 assert.ok(helper.includes(">Let it stand</button>"), helper);
 assert.ok(helper.includes(`aria-label="Use Chronal Shift on Bran Ostler&#x27;s roll, or let it stand"`), helper);
+
+// The watch stop's clock (WatchCard.tsx) the same way: its bare "14s" says
+// what it counts to a screen reader, and every choice names it.
+const watch = renderToStaticMarkup(createElement(WatchCard, {
+  campaignId: "camp-1",
+  sheets: [fighter, { ...wizard, resources: {}, foretold: [] }],
+  meUserId: ME,
+  steersStory: false,
+  pending: { ...pendingRoll({ characterId: wizard.id }), thrown: null, reason: "Wren Ashby is about to make a saving throw.", watch: { power: "chronal_shift", deadline: new Date(Date.now() + 15_000).toISOString(), choices: [{ name: "Wren Ashby", when: "if it fails" }] } },
+}));
+const watchClock = /<span id="([^"]+)"[^>]*><span class="sr-only">It rolls on its own in <\/span>\d+s<\/span>/.exec(watch)?.[1];
+assert.ok(watchClock, `the watch clock says what it counts: ${watch}`);
+const watchButtons = watch.match(/<button[^>]*>/g) ?? [];
+assert.equal(watchButtons.length, 2, watch);
+assert.ok(watchButtons.every((tag) => tag.includes(`aria-describedby="${watchClock}"`)), `every watch choice names the clock: ${watch}`);
 
 console.log("test-after-roll-card: a kept roll waiting on the same account's helper can be let stand, with its clock");
