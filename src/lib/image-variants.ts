@@ -13,10 +13,18 @@
 // Every failure is non-fatal: the original is what campaign data stores and
 // what the serve routes fall back to. Jobs run one at a time.
 import { existsSync } from "node:fs";
-import { readFile, stat } from "node:fs/promises";
+import { readFile, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 import { Worker } from "node:worker_threads";
-import { imageSize, pixelBudget, sniffImage, VARIANT_WIDTHS, variantFileName, type VariantWidth } from "@/lib/image-format";
+import {
+  imageSize,
+  isVariantFileName,
+  pixelBudget,
+  sniffImage,
+  VARIANT_WIDTHS,
+  variantFileName,
+  type VariantWidth,
+} from "@/lib/image-format";
 
 // Well past a phone's worst case for a 3 MB picture (about a second on a
 // desktop core, a few on a phone).
@@ -291,16 +299,57 @@ export function scheduleImageVariants(source: string): void {
 // Resolves once every job scheduled so far has finished, so a test can
 // delete the folder its pictures were saved in without a job still reading.
 export async function imageVariantsSettled(): Promise<void> {
+  while (checking.size > 0) {
+    await Promise.all(checking);
+  }
   await new Promise((resolve) => setImmediate(resolve));
   while (pending.size > 0) {
     await chain;
   }
 }
 
+// A picture asked for in a size it has no copy of gets its copies made, so
+// the next ask is answered with the small one. Pictures saved before the
+// copies existed, brought in inside a bundle, or copied into the folder by
+// a path that scheduled none stayed whole for good otherwise: a 3 MB
+// portrait sent to every 40 pixel token.
+//
+// Each original is tried once per run of the server, so one that can have
+// no copy (too many pixels, not a picture after all) is not read again on
+// every request. Only a picture that really lives in its folder is read: a
+// link out of it (one a restored backup carried in, say) is refused here as
+// src/lib/serve-file.ts refuses to serve it, or its copy would be a way to
+// read the file it points at.
+const PICTURE = /\.(?:png|jpe?g|webp)$/i;
+const TRIED_MAX = 20_000;
+const tried = new Set<string>();
+const checking = new Set<Promise<void>>();
+
+function makeMissingVariants(root: string, original: string): void {
+  if (tried.has(original) || !PICTURE.test(original) || isVariantFileName(path.basename(original))) {
+    return;
+  }
+  if (tried.size >= TRIED_MAX) {
+    tried.clear();
+  }
+  tried.add(original);
+  const check: Promise<void> = Promise.all([realpath(root), realpath(original)])
+    .then(([realRoot, real]) => {
+      if (real.startsWith(realRoot + path.sep)) {
+        scheduleImageVariants(original);
+      }
+    })
+    .catch(() => undefined)
+    .finally(() => {
+      checking.delete(check);
+    });
+  checking.add(check);
+}
+
 // The segments a serve route should stream for a ?w= request: the variant's
 // when it exists (waiting briefly for one that is being written right now,
 // as happens when a client asks the moment the picture lands), else the
-// original's. The variant is always a sibling in the same folder; segments
+// original's, whose copies are then made for the next ask. The variant is always a sibling in the same folder; segments
 // that would leave the root are handed back untouched for serve-file to
 // refuse the way it always has.
 export async function servedSegments(
@@ -325,8 +374,12 @@ export async function servedSegments(
   const variant = [...segments.slice(0, -1), variantFileName(name, width)];
   try {
     const info = await stat(path.resolve(root, ...variant));
-    return info.isFile() ? variant : segments;
+    if (info.isFile()) {
+      return variant;
+    }
   } catch {
-    return segments;
+    // no copy in that size
   }
+  makeMissingVariants(root, original);
+  return segments;
 }

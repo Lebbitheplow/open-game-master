@@ -356,7 +356,72 @@ try {
       fs.copyFileSync(path.join(generated, "sample.w256.webp"), path.join(generated, "deep", "x.w256.webp"));
       assert.deepEqual(await servedSegments("generated", ["deep", "x.png"], 256), ["deep", "x.w256.webp"]);
     });
+
+    const uploads = path.join(dir, "public", "uploads");
+    fs.mkdirSync(uploads, { recursive: true });
+
+    await test("a picture asked for in a size it has no copy of goes out whole once, and its copies are there for the next ask", async () => {
+      // A portrait saved before the copies existed, or brought in by a bundle.
+      fs.copyFileSync(original, path.join(uploads, "portrait.png"));
+      assert.deepEqual(await servedSegments("uploads", ["portrait.png"], 256), ["portrait.png"]);
+      await imageVariantsSettled();
+      assert.deepEqual(await servedSegments("uploads", ["portrait.png"], 256), ["portrait.w256.webp"]);
+      assert.deepEqual(await servedSegments("uploads", ["portrait.png"], 1024), ["portrait.w1024.webp"]);
+      assert.equal(sniffImage(fs.readFileSync(path.join(uploads, "portrait.w256.webp")))?.format, "webp");
+      assert.ok(fs.statSync(path.join(uploads, "portrait.w256.webp")).size < fs.statSync(path.join(uploads, "portrait.png")).size);
+    });
+
+    await test("a copy gets no copies of its own, a file that is no picture is read once, and a document is never read", async () => {
+      assert.deepEqual(await servedSegments("uploads", ["portrait.w1024.webp"], 256), ["portrait.w1024.webp"]);
+      fs.writeFileSync(path.join(uploads, "notes.png"), "not a picture");
+      fs.writeFileSync(path.join(uploads, "book.pdf"), "%PDF-1.4 not a picture either");
+      const read = [];
+      fsPromises.readFile = (file, ...args) => {
+        read.push(path.basename(String(file)));
+        return realReadFile(file, ...args);
+      };
+      syncBuiltinESMExports();
+      const realWarn = console.warn;
+      console.warn = () => {};
+      try {
+        for (let ask = 0; ask < 3; ask += 1) {
+          assert.deepEqual(await servedSegments("uploads", ["notes.png"], 256), ["notes.png"]);
+          assert.deepEqual(await servedSegments("uploads", ["book.pdf"], 256), ["book.pdf"]);
+          assert.deepEqual(await servedSegments("uploads", ["gone.png"], 256), ["gone.png"]);
+          await imageVariantsSettled();
+        }
+      } finally {
+        console.warn = realWarn;
+        fsPromises.readFile = realReadFile;
+        syncBuiltinESMExports();
+      }
+      assert.deepEqual(read, ["notes.png"], "what was read to make copies");
+      assert.deepEqual(
+        fs.readdirSync(uploads).sort(),
+        ["book.pdf", "notes.png", "portrait.png", "portrait.w1024.webp", "portrait.w256.webp"],
+        "nothing but the portrait's two copies was written",
+      );
+    });
+
+    if (process.platform !== "win32") {
+      await test("a link that points out of the folder is not read to make copies of what it points at", async () => {
+        const outside = path.join(dir, "outside.png");
+        fs.copyFileSync(original, outside);
+        fs.symlinkSync(outside, path.join(uploads, "link.png"));
+        assert.deepEqual(await servedSegments("uploads", ["link.png"], 256), ["link.png"]);
+        await imageVariantsSettled();
+        assert.equal(fs.existsSync(path.join(uploads, "link.w256.webp")), false, "a copy of the file outside was written into the folder");
+        assert.equal(fs.existsSync(path.join(dir, "outside.w256.webp")), false);
+        // A link to a picture inside the folder is that picture.
+        fs.symlinkSync(path.join(uploads, "portrait.png"), path.join(uploads, "alias.png"));
+        assert.deepEqual(await servedSegments("uploads", ["alias.png"], 256), ["alias.png"]);
+        await imageVariantsSettled();
+        assert.deepEqual(await servedSegments("uploads", ["alias.png"], 256), ["alias.w256.webp"]);
+      });
+    }
   } finally {
+    // The asks above started work of their own; it ends before the folder goes.
+    await imageVariantsSettled();
     process.chdir(cwd);
   }
 } finally {
