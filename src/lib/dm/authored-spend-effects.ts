@@ -549,6 +549,7 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
     // The divine package's spends (src/lib/dm/authored-spend-divine.ts).
     case "reveal_defenses":
     case "smite_temp_hp":
+    case "forge_blessing":
       return divineSpend(ctx, does);
   }
 }

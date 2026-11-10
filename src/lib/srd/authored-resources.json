@@ -260,6 +260,19 @@
    "passive": true
   },
   {
+   "id": "sub_blessing_of_the_forge",
+   "displayName": "Blessing of the Forge",
+   "match": [
+    "blessing of the forge"
+   ],
+   "uses": 1,
+   "recharge": "long",
+   "action": "none",
+   "outOfFight": true,
+   "passive": true,
+   "guidance": "Spent through use_resource 'Blessing of the Forge' with variant 'armor' or 'weapon' (targetCharacterId the creature it goes to), out of a fight, after a long rest: bless a suit of armor (+1 AC) or a weapon (+1 to attack and damage rolls) the cleric touches, until they use the feature again. Once a long rest. The server lays the blessing and takes the earlier one off."
+  },
+  {
    "id": "sub_eyes_of_night",
    "displayName": "Eyes of Night",
    "match": [

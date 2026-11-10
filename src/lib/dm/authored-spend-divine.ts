@@ -10,7 +10,9 @@ import type { SpendContext } from "@/lib/dm/authored-spend-effects";
 import type { FullPatchSheetInput } from "@/lib/schemas/sheet";
 import type { SpendDoes } from "@/lib/srd/authored-effects-types";
 import { resolveFormula } from "@/lib/srd/authored-effects";
-import { getSheetById, patchSheet } from "@/lib/db/sheets";
+import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
+import { removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { choiceIn, isConditionNamed } from "@/lib/srd/feature-names";
 import { publishPersisted } from "@/lib/events";
 import { unseenBecause, withinFeet } from "@/lib/dm/authored-saves";
 import { rollCard } from "@/lib/dm/roll-card";
@@ -22,14 +24,57 @@ type Resolution = ToolError | { patch?: FullPatchSheetInput; result: Record<stri
 
 // Every kind this module resolves comes through here, so the shared
 // resolver carries one case per kind and no rules of its own.
-export function divineSpend(ctx: SpendContext, does: Extract<SpendDoes, { kind: "reveal_defenses" | "smite_temp_hp" }>): Resolution {
+export function divineSpend(ctx: SpendContext, does: Extract<SpendDoes, { kind: "reveal_defenses" | "smite_temp_hp" | "forge_blessing" }>): Resolution {
   switch (does.kind) {
     case "reveal_defenses":
       return revealDefenses(ctx);
     case "smite_temp_hp":
       return smiteTempHp(ctx, does);
+    case "forge_blessing":
+      return forgeBlessing(ctx, does);
   }
 }
+
+// Blessing of the Forge: "enchant a weapon or suit of armor you touch with a
+// +1 bonus until you use the feature again". The new blessing takes the
+// cleric's earlier one off whoever carries it (its meta names the cleric as
+// the source; one laid before sources were written is the cleric's too), so
+// two objects never hold it at once; the counter keeps it to once a long rest.
+function forgeBlessing(ctx: SpendContext, does: Extract<SpendDoes, { kind: "forge_blessing" }>): Resolution {
+  const { campaign, sheet } = ctx;
+  const targetId = ctx.args.targetCharacterId?.trim() || sheet.id;
+  const target = getSheetById(targetId);
+  if (!target || target.campaignId !== campaign.id) {
+    return { error: `${ctx.spend.name} goes to a creature at the table: pass targetCharacterId. Nothing was spent.`, retry: true };
+  }
+  const lines: string[] = [];
+  for (const stale of listSheets(campaign.id)) {
+    const other = getSheetById(stale.id) ?? stale;
+    const meta = (other.conditionMeta ?? {}) as Record<string, { source?: string } | undefined>;
+    const old = other.conditions.filter((entry) => isConditionNamed(entry, does.family) || choiceIn(entry, does.family) !== null);
+    const mine = old.filter((entry) => !meta[entry]?.source || meta[entry]?.source === sheet.id);
+    if (!mine.length) continue;
+    const left = removeConditions(other.conditions, other.conditionMeta as ConditionMetaMap, mine);
+    const patch: FullPatchSheetInput = { conditions: left.conditions, conditionMeta: left.meta as FullPatchSheetInput["conditionMeta"] };
+    const updated = patchSheet(other.id, patch);
+    if (updated) publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
+    lines.push(`The earlier blessing on ${other.name} fades.`);
+  }
+  const fresh = getSheetById(target.id) ?? target;
+  const kept = fresh.conditions.filter((entry) => !isConditionNamed(entry, does.condition));
+  const blessed: FullPatchSheetInput = {
+    conditions: [...kept, does.condition],
+    conditionMeta: { ...fresh.conditionMeta, [does.condition]: { rounds: does.rounds, source: sheet.id } } as FullPatchSheetInput["conditionMeta"],
+  };
+  lines.push(`${target.name} carries ${does.condition} until ${sheet.name} uses the feature again.`);
+  if (target.id === sheet.id) {
+    return { patch: blessed, result: { applied: lines } };
+  }
+  const updated = patchSheet(target.id, blessed);
+  if (updated) publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
+  return { result: { applied: lines } };
+}
+
 
 // Inspiring Smite: "After a Divine Smite, hand out temporary hit points of
 // 2d8 + paladin level split among creatures within 30 feet." The turn's

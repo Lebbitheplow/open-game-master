@@ -20,6 +20,9 @@ export const CLERIC_B = {
     const armor = await rig.spend(who, "Blessing of the Forge", { variant: "armor", targetCharacterId: friend.id });
     const acBlessed = rig.world.sheet(friend.id).ac;
     const metaArmor = rig.meta(friend, "blessing of the forge");
+    const sameDay = await rig.spend(who, "Blessing of the Forge", { variant: "weapon", targetCharacterId: who.id });
+    // The next day's blessing (the counter back, as a long rest gives it).
+    rig.setUsed(who, "sub_blessing_of_the_forge", 0);
     const again = await rig.spend(who, "Blessing of the Forge", { variant: "weapon", targetCharacterId: who.id });
     const stillArmored = rig.has(friend, "blessing of the forge");
     const [foe] = await rig.fight(who);
@@ -37,7 +40,7 @@ export const CLERIC_B = {
         assert.equal(swing.damage?.total, 4 + 3 + 1, `and ${swing.damage?.expression} for damage`);
       },
       "until-again": () => assert.equal(stillArmored, false, "after the cleric blessed a weapon, the armor blessed before still carries its +1"),
-      "after-a-long-rest": () => assert.equal(again.ok, false, `a second blessing the same day was taken (${brief(again.result, 120)}): nothing holds the feature to one object a long rest`),
+      "after-a-long-rest": () => assert.equal(sameDay.ok, false, `a second blessing the same day was taken (${brief(sameDay.result, 120)}): nothing holds the feature to one object a long rest`),
     };
   },
 

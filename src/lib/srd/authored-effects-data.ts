@@ -366,16 +366,21 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
   },
   "cleric::Blessing of the Forge": {
     subclass: "Forge Domain",
+    counter: "sub_blessing_of_the_forge",
     spends: [
       {
+        // "After a long rest ... until you use the feature again": once a
+        // long rest (its counter), and the new blessing takes the old one off
+        // (src/lib/dm/authored-spend-divine.ts forgeBlessing).
         name: "Blessing of the Forge",
         fight: "out",
+        pool: { id: "sub_blessing_of_the_forge" },
         does: {
-          kind: "buff",
-          target: "ally",
-          condition: "blessing of the forge (armor)",
-          variants: { armor: "blessing of the forge (armor)", weapon: "blessing of the forge (+1)" },
-          rounds: 14400,
+          kind: "variants",
+          options: {
+            armor: { does: { kind: "forge_blessing", condition: "blessing of the forge (armor)", family: "blessing of the forge", rounds: 14400 } },
+            weapon: { does: { kind: "forge_blessing", condition: "blessing of the forge (+1)", family: "blessing of the forge", rounds: 14400 } },
+          },
         },
       },
     ],

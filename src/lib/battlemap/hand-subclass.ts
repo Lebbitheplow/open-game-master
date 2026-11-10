@@ -59,6 +59,8 @@ function targetOf(does: SpendDoes): HandTarget {
   if (does.kind === "reveal_defenses") return "enemy";
   // The ally Inspiring Smite shares its temporary hit points with.
   if (does.kind === "smite_temp_hp") return "ally";
+  // The creature whose armor or weapon Blessing of the Forge blesses.
+  if (does.kind === "forge_blessing") return "ally";
   return "none";
 }
 

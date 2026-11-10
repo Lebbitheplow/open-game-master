@@ -454,7 +454,11 @@ export type SpendDoes =
   // Inspiring Smite: right after a Divine Smite this turn, temporary hit
   // points rolled once and shared between the holder and the creature named
   // within rangeFt (amount: the named creature's part, the rest the holder's).
-  | { kind: "smite_temp_hp"; formula: Formula; rangeFt: number };
+  | { kind: "smite_temp_hp"; formula: Formula; rangeFt: number }
+  // Blessing of the Forge: the condition on the creature whose armor or
+  // weapon is blessed (the holder or an ally), and the holder's earlier
+  // blessing, of the family, taken off whoever carries it.
+  | { kind: "forge_blessing"; condition: string; family: string; rounds: number };
 
 export type SpendAction = "action" | "bonus" | "reaction" | "none";
 

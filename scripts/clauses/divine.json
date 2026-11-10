@@ -997,11 +997,9 @@
   "clauses": [
    {
     "c": "After a long rest",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: cleric::Blessing of the Forge#after-a-long-rest",
-    "severity": "low",
-    "kind": "rule-wrong",
-    "where": "src/lib/srd/authored-effects-data*.ts AUTHORED_TABLE[\"cleric::Blessing of the Forge\"].spends[0]: no counter, any number of blessings a day"
+    "is": "held",
+    "by": "src/lib/srd/authored-resources.json sub_blessing_of_the_forge (one use a long rest), spent by the row's pool",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: cleric::Blessing of the Forge#after-a-long-rest"
    },
    {
     "c": "enchant a weapon",
@@ -1028,7 +1026,7 @@
    {
     "c": "until you use the feature again",
     "is": "held",
-    "by": "src/lib/srd/authored-effects-data*.ts AUTHORED_TABLE[\"cleric::Blessing of the Forge\"], through the tool the scene calls",
+    "by": "src/lib/dm/authored-spend-divine.ts forgeBlessing: the new blessing takes the cleric's earlier one off",
     "probe": "scripts/test-enforce-sweep-clauses-divine-cleric-b.mjs :: cleric::Blessing of the Forge#until-again"
    }
   ]
@@ -4210,11 +4208,9 @@
    },
    {
     "c": "resist bludgeoning, piercing and slashing damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Full of Stars#resist",
-    "severity": "medium",
-    "kind": "rule-missing",
-    "where": "src/lib/srd/authored-effects-data*.ts druid::Full of Stars: no resist effect gated on starry form"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects.ts hasCondition: a gate on a condition family (starry form) holds for 'starry form: archer'",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Full of Stars#resist"
    }
   ]
  },
