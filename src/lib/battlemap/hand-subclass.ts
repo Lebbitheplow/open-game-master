@@ -12,6 +12,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { computeSheetDerived } from "@/lib/srd";
 import { authoredSpendFor, gateHolds, heldAuthored, resolveFormula, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
 import { resourceDef, resourceName, type ResourceDef } from "@/lib/srd/class-resources";
+import { otherPrice } from "@/lib/srd/counter-rules";
 import type { SpendAction } from "@/lib/srd/authored-effects-types";
 import { holdsFeature } from "@/lib/srd/trait-rules";
 import {
@@ -221,7 +222,9 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
   const perUnit = Boolean(pool?.perUnit);
   const need = pool?.optional ? 0 : pool?.amount ?? 1;
   const poolGate: Gate =
-    state && left !== null && left < need && !perUnit
+    // The other price the counter's row names still pays (counter-rules.ts
+    // otherPrice), as authored-spends.ts charges it.
+    state && left !== null && left < need && !perUnit && !(pool && ownOtherPrice(pool.id, sheet))
       ? {
           // A counter of the spend's own name is its uses, not a raw id.
           reason: counter
@@ -230,7 +233,9 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
           spent: true,
         }
       : null;
-  const aims = aimsOf(does, held.level, computeSheetDerived(sheet).abilityMods);
+  // A variant a chosen option fixes (Lunar Phenomenon's phase) is the one card.
+  const fixed = spend.variantFrom ? (heldAuthored(sheet).find((entry) => textKey(entry.feature) === textKey(spend.variantFrom!))?.choice ?? null) : null;
+  const aims = aimsOf(does, held.level, computeSheetDerived(sheet).abilityMods).filter((aim) => !fixed || !aim.variant || textKey(aim.variant) === textKey(fixed));
   return aims.map((aim) => {
     const aimCost = aim.action ? (COST[aim.action] ?? cost) : cost;
     const card: HandCard = {
@@ -361,4 +366,9 @@ export function featureChoices(sheet: CharacterSheet): FeatureChoice[] {
     }
   }
   return out;
+}
+
+function ownOtherPrice(counterId: string, sheet: CharacterSheet): boolean {
+  const def = resourceDef(counterId);
+  return Boolean(def && otherPrice(def, sheet));
 }

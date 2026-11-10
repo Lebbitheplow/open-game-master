@@ -362,7 +362,11 @@ export function probes(rig, shared) {
       assert.deepEqual([await hurt(lunar(), 10, "necrotic"), await hurt(lunar(), 10, "radiant"), await hurt(lunar(), 10, "fire")], [5, 5, 10]);
     },
     "phenomenon-cost": async () => {
+      // "you release your phase's power": the phase is Lunar Embodiment's.
+      await phase("Crescent Moon");
       await stage(lunar());
+      const other = await spend(lunar(), "Lunar Phenomenon", { variant: "full moon" });
+      assert.equal(other.ok, false, "in the Crescent Moon phase, the Full Moon's power was released");
       // A bare spend is refused: the use names its phase's variant (WAVE1 R10,
       // a pool spent only through a named option). Crescent Moon asks no creature.
       const out = await spend(lunar(), "Lunar Phenomenon", { variant: "crescent moon" });
@@ -371,7 +375,10 @@ export function probes(rig, shared) {
       await uses(["sorcerer", "Lunar Sorcery"], "sub_lunar_phenomenon", { 18: 1 })();
       await phenomenonRest();
     },
-    "phenomenon-points": buysAnother(["sorcerer", "Lunar Sorcery"], "Lunar Phenomenon", "sub_lunar_phenomenon", "sorcery point"),
+    "phenomenon-points": async () => {
+      await phase("Crescent Moon");
+      await buysAnother(["sorcerer", "Lunar Sorcery"], "Lunar Phenomenon", "sub_lunar_phenomenon", "sorcery point")();
+    },
   };
   const implosionRest = rests(["sorcerer", "Aberrant Mind"], "sub_warping_implosion", "long");
   const balanceRest = rests(["sorcerer", "Clockwork Soul"], "sub_restore_balance", "long");
@@ -405,15 +412,10 @@ export function probes(rig, shared) {
     "psionic-sorcery": { severity: "medium", kind: "rule-missing", where: `${DATA} sorcerer::Psionic Sorcery (narrated: "the cast tools with the points spent by use_resource"); the cast tools refuse a caster with no slot`, note: "The narrated door does not exist: with no slot left the cast is refused, so the points cannot stand in for one.", fix: "Let a psionic spell be paid with sorcery points equal to its level." },
     "psychic-saves": { severity: "medium", kind: "rule-missing", where: "src/lib/srd/feature-effects.ts Psychic Defenses (resistance only; no save_adv against charmed and frightened)", note: "A passive defence a player never sees missing. No written reason.", fix: "An authored effect save_adv against charmed and frightened." },
     "revelation-swim": { severity: "low", kind: "rule-wrong", where: `${DATA} sorcerer::Revelation in Flesh (move swim "walk"; its own note says "The swimming speed is twice the walking speed")`, note: "", fix: "A swim value of twice the walking speed." },
-    "implosion-points": { severity: "low", kind: "rule-missing", where: `${RES} sub_warping_implosion (no purchase with sorcery points)`, note: "", fix: "With the use spent, take 5 sorcery points instead." },
     "bastion-door": { severity: "medium", kind: "rule-missing", where: `${DATA} sorcerer::Bastion of Law (narrated: "the GM rolls the dice spent off the damage")`, note: "A ward of up to 5d8 that lasts until the next long rest, with nowhere to be written down.", fix: "A spend that lays the ward's dice on a creature and a reaction-free reduction when it is hit." },
     "trance-floor": { severity: "medium", kind: "rule-missing", where: "src/lib/srd/condition-effects.ts trance of order (a summary and nothing else); src/lib/dm/rolls.ts", note: "The use is spent, the condition is laid, and neither half of it is read by any roll.", fix: "Read the condition where Silver Tongue's check_floor is read, for attacks, checks and saves." },
     "trance-advantage": { severity: "medium", kind: "rule-missing", where: "src/lib/dm/enemy-swing-odds.ts (the trance is not read)", note: "", fix: "Strike advantage from attacks against a creature in the trance." },
-    "trance-points": { severity: "low", kind: "rule-missing", where: `${RES} sub_trance_of_order (no purchase with sorcery points)`, note: "", fix: "With the use spent, take 5 sorcery points instead." },
-    "cavalcade-points": { severity: "low", kind: "rule-missing", where: `${RES} sub_clockwork_cavalcade (no purchase with sorcery points)`, note: "", fix: "With the use spent, take 7 sorcery points instead." },
     "lunar-boons": { severity: "low", kind: "rule-missing", where: `${RES} sub_lunar_boons (a counter with guidance); src/lib/dm/metamagic*.ts does not read it`, note: "", fix: "Lower the Metamagic cost by 1 for a spell of the phase's schools while a use remains." },
-    "waxing-change": { severity: "medium", kind: "rule-missing", where: `${DATA} sorcerer::Lunar Embodiment (the phase spend is fight: "out" and free); ${RES} sub_waxing_and_waning`, note: "Out of a fight the phase changes for nothing; in one it cannot change at all.", fix: "From 6th level let the phase change in a fight for a bonus action and 1 sorcery point." },
-    "phenomenon-points": { severity: "low", kind: "rule-missing", where: `${RES} sub_lunar_phenomenon (its guidance says "Again for 5 sorcery points"; no such purchase)`, note: "", fix: "With the use spent, take 5 sorcery points instead." },
   };
   return { PROBES, KNOWN };
 }

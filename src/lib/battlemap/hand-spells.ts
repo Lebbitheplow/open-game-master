@@ -25,7 +25,7 @@ import { waitsForTrigger } from "@/lib/battlemap/hand-react-triggers";
 import { isMeleeSpellAttack } from "@/lib/srd/melee-spell";
 import { bundledSpellFacts, bundledSpellSchool, type CastingTime, type SpellRange } from "@/lib/srd/spell-facts";
 import { aoeSpendFor } from "@/lib/srd/aoe-spend";
-import { counterCost, counterGate, counterSaveDc } from "@/lib/srd/counter-rules";
+import { counterCost, counterGate, counterSaveDc, otherPrice } from "@/lib/srd/counter-rules";
 import { inFightOf, polymorphChoice, wildShapeChoice } from "@/lib/battlemap/hand-counters";
 import { counterCastsHeld } from "@/lib/srd/counter-casts";
 import type { CombatRiders } from "@/lib/srd/feature-effects";
@@ -759,7 +759,9 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
       gated(
         card,
         standingGate(sheet, turn, cost === "reaction" ? "reaction" : cost === "bonus" ? "bonus" : cost === "free" ? "free" : "action"),
-        left > 0 ? null : { reason: `${def.displayName} is spent until a ${def.recharge} rest.`, spent: true },
+        // With no use left, the other price its text names still pays
+        // (counter-rules.ts otherPrice): sorcery points, or a spell slot.
+        left > 0 || otherPrice(def, sheet) ? null : { reason: `${def.displayName} is spent until a ${def.recharge} rest.`, spent: true },
         // SRD 5.1 fighter, Action Surge: "only once on the same turn".
         id === "action_surge" && (turn.marks ?? []).includes(ACTION_SURGED)
           ? { reason: "Action Surge is used once a turn; the other use waits for a later turn.", spent: true }

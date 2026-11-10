@@ -15,7 +15,7 @@ import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
-import { authoredSpendFor, gateHolds, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
+import { authoredSpendFor, gateHolds, heldAuthored, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
 import { matchResource, resourceDef, resourceName as counterName } from "@/lib/srd/class-resources";
 import { nameChoice } from "@/lib/srd/feature-names";
 import type { SpendAction, SpendDoes } from "@/lib/srd/authored-effects-types";
@@ -28,6 +28,7 @@ import { resolveSpendEffect, type SpendContext } from "@/lib/dm/authored-spend-e
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { namedOption, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
+import { otherPrice, type OtherPrice } from "@/lib/srd/counter-rules";
 
 export type AuthoredSpendArgs = {
   amount?: number;
@@ -183,13 +184,23 @@ export function authoredFeatureSpend(
   if (spend.oncePer && sheet.conditions.some((entry) => textKey(entry) === textKey(spend.oncePer!.marker))) {
     return { error: `${spend.name} has been used already (${spend.oncePer.marker}). Nothing was spent.`, refused: "rules" };
   }
-  const picked = pickVariant(spend.does, args.variant, spend);
+  // The variant a feature's chosen option fixes (Lunar Phenomenon: the
+  // phase of Lunar Embodiment), never another one named.
+  const fixed = fixedVariant(sheet, spend, args.variant);
+  if (fixed && typeof fixed !== "string") {
+    return fixed;
+  }
+  const picked = pickVariant(spend.does, fixed ?? args.variant, spend);
   if ("error" in picked) {
     return picked;
   }
   // The pool: how much, from which counter.
   let poolId: string | null = null;
   let units = 0;
+  // What the pool is charged when another price pays (otherwise `units`),
+  // and the spell slot that paid instead of a use.
+  let paidUnits: number | null = null;
+  let slotPaid: number | null = null;
   if (spend.pool) {
     units = spend.pool.perUnit ? Math.floor(args.amount ?? (spend.pool.optional ? 0 : 1)) : (spend.pool.amount ?? 1);
     if (spend.pool.max && units > spend.pool.max) {
@@ -200,7 +211,17 @@ export function authoredFeatureSpend(
       const state = sheet.resources?.[id];
       return state && state.max - state.used >= units;
     }) ?? null;
-    if (units > 0 && !poolId) {
+    // With no use left, the other price the counter's row names pays
+    // (src/lib/srd/counter-rules.ts otherPrice): so many sorcery points, or
+    // a spell slot of the level the row names.
+    const other = units > 0 && !poolId ? otherPriceOf(spend.pool.id, sheet) : null;
+    if (other && "pool" in other) {
+      poolId = other.pool.id;
+      paidUnits = other.pool.amount;
+    } else if (other) {
+      slotPaid = other.slot;
+    }
+    if (units > 0 && !poolId && slotPaid === null) {
       const state = sheet.resources?.[spend.pool.id];
       return {
         error: state
@@ -244,7 +265,14 @@ export function authoredFeatureSpend(
     // "1 die back" and returned none).
     const resources = patch.resources ?? now.resources;
     const state = resources[poolId] ?? now.resources[poolId];
-    patch.resources = { ...resources, [poolId]: { max: state.max, used: state.used + units } };
+    patch.resources = { ...resources, [poolId]: { max: state.max, used: state.used + (paidUnits ?? units) } };
+  }
+  if (slotPaid !== null) {
+    const casting = patch.spellcasting ?? now.spellcasting;
+    const slot = casting?.slots?.[String(slotPaid)];
+    if (casting && slot) {
+      patch.spellcasting = { ...casting, slots: { ...casting.slots, [String(slotPaid)]: { ...slot, used: slot.used + 1 } } };
+    }
   }
   if (spend.oncePer) {
     const conditions = patch.conditions ?? now.conditions;
@@ -264,8 +292,33 @@ export function authoredFeatureSpend(
   return {
     ok: true,
     resource: spend.name,
-    ...(poolId && units > 0 ? { spent: units, left: left ? `${left.max - left.used}/${left.max}` : undefined } : {}),
+    ...(poolId && units > 0 ? { spent: paidUnits !== null ? `${paidUnits} ${counterName(poolId)} (no use was left)` : units, left: left ? `${left.max - left.used}/${left.max}` : undefined } : {}),
+    ...(slotPaid !== null ? { spent: `a level ${slotPaid} spell slot (no use was left)` } : {}),
     ...outcome.result,
     ...charge.commit(),
   };
+}
+
+// The other price of a spend's own counter, when its row names one.
+function otherPriceOf(counterId: string, sheet: CharacterSheet): OtherPrice | null {
+  const def = resourceDef(counterId);
+  return def ? otherPrice(def, sheet) : null;
+}
+
+// The option the spend's variantFrom feature holds, the refusal when none is
+// chosen or another was named, or null for a spend without one.
+export function fixedVariant(sheet: CharacterSheet, spend: AuthoredSpend, named: string | undefined): string | ToolError | null {
+  if (!spend.variantFrom) {
+    return null;
+  }
+  // With nothing chosen yet (a sheet from before the choice was kept), the
+  // option is the call's, as it was.
+  const choice = heldAuthored(sheet).find((entry) => textKey(entry.feature) === textKey(spend.variantFrom!))?.choice ?? null;
+  if (!choice) {
+    return null;
+  }
+  if (named?.trim() && textKey(named) !== textKey(choice)) {
+    return { error: `${spend.name} releases ${sheet.name}'s current ${spend.variantFrom} option, ${choice}, not ${named.trim()}. Nothing was spent.`, refused: "rules" };
+  }
+  return choice;
 }

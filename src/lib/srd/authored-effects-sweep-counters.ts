@@ -106,6 +106,8 @@ export const AUTHORED_DATA_COUNTERS: Record<string, AuthoredEntry> = {
         name: "Lunar Phenomenon",
         pool: { id: "sub_lunar_phenomenon" },
         action: "bonus",
+        // "you release your phase's power": the current phase, no other.
+        variantFrom: "Lunar Embodiment",
         does: {
           kind: "variants",
           options: {

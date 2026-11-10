@@ -597,7 +597,10 @@
    "ability": null,
    "recharge": "long",
    "action": "action",
-   "guidance": "An action: up to the bard's Charisma modifier (minimum one) of creatures within 60 feet understand the bard for an hour. A spell slot buys another use."
+   "guidance": "An action: up to the bard's Charisma modifier (minimum one) of creatures within 60 feet understand the bard for an hour. A spell slot buys another use.",
+   "fallbackSlot": {
+    "minLevel": 1
+   }
   },
   {
    "id": "sub_performance_of_creation",
@@ -609,7 +612,10 @@
    "ability": null,
    "recharge": "long",
    "action": "action",
-   "guidance": "An action creating a nonmagical item worth up to 20 times the bard's level. A spell slot buys extra uses."
+   "guidance": "An action creating a nonmagical item worth up to 20 times the bard's level. A spell slot buys extra uses.",
+   "fallbackSlot": {
+    "minLevel": 1
+   }
   },
   {
    "id": "sub_animating_performance",
@@ -621,7 +627,10 @@
    "ability": null,
    "recharge": "long",
    "action": "action",
-   "guidance": "An action animating a Large or smaller nonmagical item within 30 feet as a Dancing Item for an hour: AC 16, 10 + five times the bard level hit points, a Force-Empowered Slam of 1d10 + proficiency force with the bard's spell attack. Once per long rest; a spell slot of 3rd level or higher buys another use."
+   "guidance": "An action animating a Large or smaller nonmagical item within 30 feet as a Dancing Item for an hour: AC 16, 10 + five times the bard level hit points, a Force-Empowered Slam of 1d10 + proficiency force with the bard's spell attack. Once per long rest; a spell slot of 3rd level or higher buys another use.",
+   "fallbackSlot": {
+    "minLevel": 3
+   }
   },
   {
    "id": "sub_spirit_session",
@@ -1073,6 +1082,10 @@
     "kind": "buff",
     "condition": "trance of order",
     "rounds": 10
+   },
+   "fallbackPool": {
+    "id": "sorcery_points",
+    "amount": 5
    }
   },
   {
@@ -1085,7 +1098,11 @@
    "ability": null,
    "recharge": "long",
    "action": "action",
-   "guidance": "A 30-foot cube healing 100 hit points among creatures in it, ending spells of 6th level or lower and repairing objects."
+   "guidance": "A 30-foot cube healing 100 hit points among creatures in it, ending spells of 6th level or lower and repairing objects.",
+   "fallbackPool": {
+    "id": "sorcery_points",
+    "amount": 7
+   }
   },
   {
    "id": "sub_warping_implosion",
@@ -1107,6 +1124,10 @@
     "half": true,
     "rangeFt": 30,
     "magical": true
+   },
+   "fallbackPool": {
+    "id": "sorcery_points",
+    "amount": 5
    }
   },
   {
@@ -1119,7 +1140,11 @@
    "ability": null,
    "recharge": "long",
    "action": "bonus",
-   "guidance": "A bonus action releasing the current phase: Full Moon blinds creatures of the sorcerer's choice within 30 feet on a failed Constitution save and heals one of them 3d8; New Moon deals 3d10 necrotic and speed 0 on a failed Dexterity save and turns the sorcerer invisible; Crescent Moon teleports them and one willing creature 60 feet with resistance to all damage until their next turn. Again for 5 sorcery points."
+   "guidance": "A bonus action releasing the current phase: Full Moon blinds creatures of the sorcerer's choice within 30 feet on a failed Constitution save and heals one of them 3d8; New Moon deals 3d10 necrotic and speed 0 on a failed Dexterity save and turns the sorcerer invisible; Crescent Moon teleports them and one willing creature 60 feet with resistance to all damage until their next turn. Again for 5 sorcery points.",
+   "fallbackPool": {
+    "id": "sorcery_points",
+    "amount": 5
+   }
   },
   {
    "id": "sub_lunar_free_cast",
@@ -1339,6 +1364,9 @@
     "half": true,
     "rangeFt": 30,
     "magical": true
+   },
+   "fallbackSlot": {
+    "minLevel": 3
    }
   },
   {
@@ -1356,6 +1384,9 @@
     "kind": "buff",
     "condition": "manifest mind",
     "rounds": 600
+   },
+   "fallbackSlot": {
+    "minLevel": 1
    }
   },
   {

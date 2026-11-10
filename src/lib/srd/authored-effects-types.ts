@@ -322,7 +322,9 @@ export type SpendDoes =
     }
   // Choose an option for the feature, outside a fight: the feature is
   // renamed "Feature (Option)", which the passive effects read.
-  | { kind: "choose"; options: string[] }
+  // `feature`: the feature whose option is renamed, when it is another one
+  // than the spend's own (Waxing and Waning changes Lunar Embodiment's phase).
+  | { kind: "choose"; options: string[]; feature?: string }
   // One enemy saves or suffers: damage (per unit spent when `perUnit`),
   // a condition, or a note on movement the DM makes on the board.
   | {
@@ -479,6 +481,10 @@ export type AuthoredSpend = {
   // The GM's call, not the player's: no card in the Hand (Wild Magic Surge,
   // which the GM may have the sorcerer roll).
   gm?: boolean;
+  // The option chosen for this feature is the variant, and no other may be
+  // named (Lunar Phenomenon releases the power of the current phase, the
+  // choice of Lunar Embodiment).
+  variantFrom?: string;
   does: SpendDoes;
 };
 

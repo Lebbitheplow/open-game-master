@@ -14,7 +14,7 @@ import { getActiveEncounter, getEnemy, patchEnemyConditions, type Encounter, typ
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
-import { resolveFormula, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
+import { heldAuthored, resolveFormula, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
 import type { Ability, SpendDoes } from "@/lib/srd/authored-effects-types";
 import { STORM_AURA } from "@/lib/srd/authored-effects-data";
 import { likelierSave, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
@@ -198,10 +198,21 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       if (typeof option !== "string") {
         return option;
       }
+      // Another feature's option (Waxing and Waning moves Lunar Embodiment's
+      // phase): that feature as the sheet holds it.
+      const owner = does.feature ? heldAuthored(sheet).find((entry) => textKey(entry.feature) === textKey(does.feature!)) : ctx.held;
+      if (!owner) {
+        return { error: `${sheet.name} does not hold ${does.feature}, whose option ${ctx.spend.name} changes. Nothing was spent.`, refused: "rules" };
+      }
+      // A change that pays (Waxing and Waning's sorcery point) to the option
+      // already held changes nothing, so nothing is paid.
+      if (does.feature && owner.choice && textKey(owner.choice) === textKey(option)) {
+        return { error: `${sheet.name}'s ${owner.feature} is already ${option}; ${ctx.spend.name} would change nothing. Nothing was spent.`, refused: "rules" };
+      }
       const features = sheet.features.map((feature) =>
-        feature.name === ctx.held.name ? { ...feature, name: `${ctx.held.feature} (${option})` } : feature,
+        feature.name === owner.name ? { ...feature, name: `${owner.feature} (${option})` } : feature,
       );
-      return { patch: { features }, result: { chosen: `${ctx.held.feature}: ${option}. The server applies its effects from now on.` } };
+      return { patch: { features }, result: { chosen: `${owner.feature}: ${option}. The server applies its effects from now on.` } };
     }
     case "buff": {
       const condition = conditionName(ctx, does);

@@ -302,6 +302,10 @@ export type ResourceDef = {
   // With no use left, this pool pays for one instead (Breath of the
   // Dragon: 2 ki).
   fallbackPool?: { id: string; amount: number };
+  // With no use left (and no fallbackPool to pay), a spell slot of this
+  // level or higher pays for one instead, the lowest such slot unspent
+  // ("or by expending a spell slot of 3rd level or higher").
+  fallbackSlot?: { minLevel: number };
   // Only while the holder has fewer than half their hit points (Unearthly
   // Recovery).
   requires?: "below_half";
@@ -743,6 +747,7 @@ type SubclassResourceRow = {
   // What a use costs of the turn, when the guidance names it.
   action?: ResourceAction;
   fallbackPool?: { id: string; amount: number };
+  fallbackSlot?: { minLevel: number };
   requires?: "below_half";
   perUse?: "half_level" | "cha";
   recovers?: string;
@@ -784,6 +789,7 @@ const SUBCLASS_RESOURCE_DEFS: ResourceDef[] = (
   ...(row.outOfFight ? { outOfFight: true } : {}),
   ...(row.action ? { action: row.action } : {}),
   ...(row.fallbackPool ? { fallbackPool: row.fallbackPool } : {}),
+  ...(row.fallbackSlot ? { fallbackSlot: row.fallbackSlot } : {}),
   ...(row.requires ? { requires: row.requires } : {}),
   ...(row.perUse ? { perUse: row.perUse } : {}),
   ...(row.recovers ? { recovers: row.recovers } : {}),

@@ -9,7 +9,7 @@ import { publishWithSeq } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
 import { ELEMENTAL_WILD_SHAPE_COST, elementalWildShape, wildShapeUse, type WildShapeAsk } from "@/lib/dm/wild-shape-use";
 import { heldUnlimitedState, isUnlimited, matchResource, RAGING, recoveringPrefix, resourceLevel, type ResourceDef, type SaveAbilityId, type SaveTerms } from "@/lib/srd/class-resources";
-import { counterGate, counterSaveDc } from "@/lib/srd/counter-rules";
+import { counterGate, counterSaveDc, otherPrice } from "@/lib/srd/counter-rules";
 import { sheetSize } from "@/lib/dm/sheet-foe-stats";
 import { resolveCounterHit, resolveCounterSave, type CounterSaveAim } from "@/lib/dm/counter-saves";
 import { getActiveEncounter } from "@/lib/db/encounters";
@@ -256,30 +256,39 @@ function computeFontOfMagic(
 type PoolState = CharacterSheet["resources"][string];
 
 // What pays for a use: the pool itself or, with no use left, a pool that
-// pays for one instead (Breath of the Dragon's 2 ki); the refusal when
-// neither can. Asked before an option is asked for too (mutations.ts).
+// pays for one instead (Breath of the Dragon's 2 ki, or five sorcery
+// points) or a spell slot of a level the row names;
+// the refusal when none can. Asked before an option is asked for too
+// (mutations.ts). Every other price a counter's text names goes on its row
+// (fallbackPool, fallbackSlot) and through here, never at one spend.
 export function payForUse(
   sheet: CharacterSheet,
   def: ResourceDef,
   state: PoolState,
   amount: number,
-): { fallback: { id: string; amount: number; state: PoolState } | null } | ToolError {
+): { fallback: { id: string; amount: number; state: PoolState } | null; slot?: number } | ToolError {
   const left = state.max - state.used;
   if (left >= amount) {
     return { fallback: null };
   }
   const fallback = def.fallbackPool ?? null;
   const fallbackState = fallback ? sheet.resources[fallback.id] : undefined;
-  if (fallback && fallbackState && fallbackState.max - fallbackState.used >= fallback.amount) {
-    return { fallback: { ...fallback, state: fallbackState } };
+  const other = otherPrice(def, sheet);
+  if (other && "pool" in other && fallbackState) {
+    return { fallback: { ...other.pool, state: fallbackState } };
   }
+  if (other && "slot" in other) {
+    return { fallback: null, slot: other.slot };
+  }
+  const slotWords = def.fallbackSlot ? ` With none left it costs a spell slot${def.fallbackSlot.minLevel > 1 ? ` of level ${def.fallbackSlot.minLevel} or higher` : ""}, and they have none unspent.` : "";
   return {
     error: `${sheet.name} has ${left}/${state.max} ${def.displayName} left; they cannot spend ${amount}.${
       fallback ? ` With none left it costs ${fallback.amount} ${fallback.id.replace(/_/g, " ")}, and they have ${fallbackState ? fallbackState.max - fallbackState.used : 0}.` : ""
-    } The feature is not available; narrate accordingly.`,
+    }${slotWords} The feature is not available; narrate accordingly.`,
     refused: "rules",
   };
 }
+
 
 // The marker a spend leaves when its use returns only after a rolled number
 // of long rests: "<name> recovering (n)", counted down by each long rest.
@@ -482,24 +491,29 @@ export function computeUseResource(
     return payment;
   }
   const paid = payment.fallback;
+  // A spell slot paid for the use (fallbackSlot).
+  const paidSlot = payment.slot ?? null;
   // A feature with no limit is used, not counted down.
   const unlimited = isUnlimited(state);
   const spent = paid
     ? { ...sheet.resources, [paid.id]: { max: paid.state.max, used: paid.state.used + paid.amount } }
-    : unlimited
+    : unlimited || paidSlot !== null
       ? sheet.resources
       : { ...sheet.resources, [def.id]: { max: state.max, used: state.used + cost } };
+  const slotSpent = paidSlot !== null && sheet.spellcasting
+    ? { spellcasting: { ...sheet.spellcasting, slots: { ...sheet.spellcasting.slots, [String(paidSlot)]: { ...sheet.spellcasting.slots[String(paidSlot)], used: sheet.spellcasting.slots[String(paidSlot)].used + 1 } } } }
+    : {};
   // A use that returns only after several long rests (Limited Wish): the
   // marker the rest counts down (src/lib/dm/rest-logic.ts).
-  const recovering = def.recovers && !paid && !unlimited ? recoveryMarker(campaign, sheet, def) : null;
+  const recovering = def.recovers && !paid && paidSlot === null && !unlimited ? recoveryMarker(campaign, sheet, def) : null;
   const outcome: Outcome = {
-    patch: { resources: spent, ...(recovering ? { conditions: recovering.conditions } : {}) },
+    patch: { resources: spent, ...slotSpent, ...(recovering ? { conditions: recovering.conditions } : {}) },
     result: {
       ok: true,
       ...(recovering ? { returns: recovering.note } : {}),
       resource: def.displayName,
-      spent: paid ? `${paid.amount} ${paid.id.replace(/_/g, " ")} (no use was left)` : cost,
-      left: unlimited ? "unlimited" : paid ? `0/${state.max}` : `${left - cost}/${state.max}`,
+      spent: paid ? `${paid.amount} ${paid.id.replace(/_/g, " ")} (no use was left)` : paidSlot !== null ? `a level ${paidSlot} spell slot (no use was left)` : cost,
+      left: unlimited ? "unlimited" : paid || paidSlot !== null ? `0/${state.max}` : `${left - cost}/${state.max}`,
       refills: def.recharge === "short" ? "on any rest" : "on a long rest",
       effect: def.guidance,
     },

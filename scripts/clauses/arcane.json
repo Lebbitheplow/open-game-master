@@ -1216,8 +1216,9 @@
    },
    {
     "c": "or by expending a spell slot of 3rd level or higher",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: horizon-slot"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: horizon-slot",
+    "by": "src/lib/srd/authored-resources.json sub_event_horizon fallbackSlot minLevel 3, src/lib/srd/counter-rules.ts otherPrice"
    }
   ]
  },
@@ -1299,8 +1300,9 @@
    },
    {
     "c": "or costs a spell slot of any level",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: mind-slot"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: mind-slot",
+    "by": "src/lib/srd/authored-resources.json sub_manifest_mind fallbackSlot minLevel 1, src/lib/srd/counter-rules.ts otherPrice"
    }
   ]
  },
@@ -1939,8 +1941,9 @@
    },
    {
     "c": "or by spending 5 sorcery points",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: implosion-points"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: implosion-points",
+    "by": "src/lib/srd/authored-resources.json sub_warping_implosion fallbackPool (5 sorcery points), src/lib/dm/resource-tools.ts payForUse"
    }
   ]
  },
@@ -2026,8 +2029,9 @@
    },
    {
     "c": "or for 5 sorcery points",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: trance-points"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: trance-points",
+    "by": "src/lib/srd/authored-resources.json sub_trance_of_order fallbackPool (5 sorcery points), src/lib/dm/resource-tools.ts payForUse"
    }
   ]
  },
@@ -2050,8 +2054,9 @@
    },
    {
     "c": "or for 7 sorcery points",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: cavalcade-points"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: cavalcade-points",
+    "by": "src/lib/srd/authored-resources.json sub_clockwork_cavalcade fallbackPool (7 sorcery points), paid through src/lib/srd/counter-rules.ts otherPrice"
    }
   ]
  },
@@ -2127,8 +2132,9 @@
   "clauses": [
    {
     "c": "As a bonus action you can spend 1 sorcery point to change your current phase",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: waxing-change"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: waxing-change",
+    "by": "src/lib/srd/authored-effects-w2-arcane.ts Change Phase (alias Waxing and Waning): a bonus action, 1 sorcery point, Lunar Embodiment's phase renamed (choose feature)"
    },
    {
     "c": "and you can cast the 1st-level spell of each phase once without a spell slot, regaining those castings on a long rest",
@@ -2193,8 +2199,9 @@
    },
    {
     "c": "or for 5 sorcery points",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: phenomenon-points"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: phenomenon-points",
+    "by": "src/lib/srd/authored-resources.json sub_lunar_phenomenon fallbackPool (5 sorcery points), paid through src/lib/srd/counter-rules.ts otherPrice by src/lib/dm/authored-spends.ts"
    },
    {
     "c": "you release your phase's power. Full Moon: each creature of your choice within 30 feet makes a Constitution save or is blinded until the end of its next turn, and one creature of your choice there regains 3d8 hit points. New Moon: each creature of your choice within 30 feet makes a Dexterity save or takes 3d10 necrotic damage and has speed 0 until the end of its next turn, and you are invisible until the end of your next turn or until you attack or cast a spell. Crescent Moon: you teleport up to 60 feet with one willing creature within 5 feet of you, and each of you resists all damage until the start of your next turn.",
