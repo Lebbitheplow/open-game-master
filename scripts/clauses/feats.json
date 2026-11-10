@@ -1,0 +1,1330 @@
+{
+ "feat::Athlete": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "5e6c1b75c350",
+  "clauses": [
+   {
+    "c": "Increase your Strength or Dexterity by 1, to a maximum of 20.",
+    "is": "held",
+    "by": "half-feat score +1, capped at 20",
+    "probe": "scripts/test-enforce-feats.mjs: A half-feat taken when the character is made raises its score by 1, never past 20, as at a level-up: the score chosen where the feat offers a choice, with Resilient's saving "
+   },
+   {
+    "c": "Standing up from prone costs only 5 feet of movement",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the stand-up cost for a holder"
+   },
+   {
+    "c": "climbing costs no extra movement",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the board has no climb cost"
+   },
+   {
+    "c": "you can make a running jump after moving only 5 feet",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the jump helpers take a Strength score alone (src/lib/srd/jump.ts)"
+   }
+  ]
+ },
+ "feat::Actor": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "2fe0589e9696",
+  "clauses": [
+   {
+    "c": "Increase your Charisma by 1, to a maximum of 20.",
+    "is": "held",
+    "by": "feat ability +1",
+    "probe": "scripts/test-enforce-feats.mjs: A feat that changes a number on the sheet changes it: Actor is +1 Charisma, Tough is +2 hit points a level, Mobile is +10 feet of speed."
+   },
+   {
+    "c": "You have advantage on Deception and Performance checks when passing yourself off as someone else",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: request_roll about a disguise"
+   },
+   {
+    "c": "you can mimic the speech or sounds of a creature you have heard for at least 1 minute",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the Insight contest against the mimicry"
+   }
+  ]
+ },
+ "feat::Charger": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "a31b5bac37da",
+  "clauses": [
+   {
+    "c": "After you Dash, you can use a bonus action to make one melee attack or to shove a creature.",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the bonus attack after a Dash"
+   },
+   {
+    "c": "If you moved at least 10 feet in a straight line first, the attack deals an extra 5 damage or the shove pushes 10 extra feet.",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the +5 and the 10 extra feet"
+   }
+  ]
+ },
+ "feat::Crossbow Expert": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "270b964b9701",
+  "clauses": [
+   {
+    "c": "You ignore the loading property of crossbows you are proficient with",
+    "is": "held",
+    "by": "loading lifted",
+    "probe": "scripts/test-feat-combat.mjs: Polearm Master and Crossbow Expert read the SRD weapon, not the carried name"
+   },
+   {
+    "c": "being within 5 feet of a hostile creature gives you no disadvantage on ranged attacks",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a crossbow shot with a foe adjacent (Gunner's same clause is held)"
+   },
+   {
+    "c": "when you take the Attack action with a one-handed weapon you can use a bonus action to attack with a hand crossbow you are holding",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the hand crossbow's bonus attack"
+   }
+  ]
+ },
+ "feat::Defensive Duelist": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "34d95d6cb92c",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "Dexterity 13 or higher",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prerequisite (Dexterity 13) refused at the builder for a sheet without it"
+   },
+   {
+    "c": "When a creature hits you with a melee attack while you wield a finesse weapon you are proficient with, you can use your reaction to add your proficiency bonus to your AC against that attack, possibly turning it into a miss.",
+    "is": "held",
+    "by": "use_reaction Defensive Duelist",
+    "probe": "scripts/test-enforce-feat-combat.mjs: Defensive Duelist adds the proficiency bonus to AC against the melee hit it answers"
+   }
+  ]
+ },
+ "feat::Dual Wielder": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "c5d646275667",
+  "clauses": [
+   {
+    "c": "You gain +1 AC while wielding a separate melee weapon in each hand",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.dual-wielder.ac",
+    "where": "src/lib/srd/index.ts deriveAc (no Dual Wielder term)",
+    "severity": "medium",
+    "kind": "rule-missing",
+    "note": "A fighter with a shortsword in each hand has AC 12 with the feat and without it."
+   },
+   {
+    "c": "you can two-weapon fight with weapons that lack the light property",
+    "is": "held",
+    "by": "two-weapon fighting without light",
+    "probe": "scripts/test-attack-rules.mjs: Dual Wielder lifts the word light"
+   },
+   {
+    "c": "you can draw or stow two one-handed weapons at once",
+    "is": "held",
+    "by": "two weapons drawn at once",
+    "probe": "scripts/test-hand-gear.mjs: Dual Wielder draws a second one-handed weapon with the same interaction; a third is the action"
+   }
+  ]
+ },
+ "feat::Dungeon Delver": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "5e448bccea62",
+  "clauses": [
+   {
+    "c": "You have advantage on Perception and Investigation checks to detect secret doors",
+    "is": "held",
+    "by": "notice of secret doors",
+    "probe": "scripts/test-feat-combat.mjs: Dungeon Delver notices traps and secret doors; Defensive Duelist needs the feat and a finesse weapon in hand"
+   },
+   {
+    "c": "advantage on saving throws against traps, resistance to trap damage",
+    "is": "held",
+    "by": "trap save advantage and half damage",
+    "probe": "scripts/test-enforce-feat-combat.mjs: Dungeon Delver saves against a trap at advantage and takes half its damage, and notices a trap at +5 passive"
+   },
+   {
+    "c": "you can search for traps while travelling at a normal pace",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: travel pace"
+   }
+  ]
+ },
+ "feat::Durable": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "3917b3a367e1",
+  "clauses": [
+   {
+    "c": "Increase your Constitution by 1, to a maximum of 20.",
+    "is": "held",
+    "by": "half-feat score +1, capped at 20",
+    "probe": "scripts/test-enforce-feats.mjs: A half-feat taken when the character is made raises its score by 1, never past 20, as at a level-up: the score chosen where the feat offers a choice, with Resilient's saving "
+   },
+   {
+    "c": "When you roll a Hit Die to regain hit points, the minimum you regain is twice your Constitution modifier.",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a hit die spent on a short rest with a low roll"
+   }
+  ]
+ },
+ "feat::Elven Accuracy": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "1530f23a443c",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "Elf or half-elf",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prerequisite (elf or half-elf) refused at the builder for a sheet without it"
+   },
+   {
+    "c": "Increase your Dexterity, Intelligence, Wisdom, or Charisma by 1, to a maximum of 20.",
+    "is": "held",
+    "by": "half-feat score +1, capped at 20",
+    "probe": "scripts/test-enforce-feats.mjs: A half-feat taken when the character is made raises its score by 1, never past 20, as at a level-up: the score chosen where the feat offers a choice, with Resilient's saving "
+   },
+   {
+    "c": "Whenever you have advantage on an attack roll using Dexterity, Intelligence, Wisdom, or Charisma, you can reroll one of the dice once.",
+    "is": "held",
+    "by": "a third d20",
+    "probe": "scripts/test-enforce-feats.mjs: Elven Accuracy: with advantage on a Dexterity, Intelligence, Wisdom or Charisma attack the server rolls a third d20, for a feat held in sheet.feats."
+   },
+   {
+    "c": "The server rolls a third d20 and keeps the highest.",
+    "is": "held",
+    "by": "a third d20",
+    "probe": "scripts/test-enforce-feats.mjs: Elven Accuracy: with advantage on a Dexterity, Intelligence, Wisdom or Charisma attack the server rolls a third d20, for a feat held in sheet.feats."
+   }
+  ]
+ },
+ "feat::Elemental Adept": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "40e34e550935",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "The ability to cast at least one spell",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prerequisite (a spell) refused at the builder for a sheet without it"
+   },
+   {
+    "c": "Choose acid, cold, fire, lightning or thunder.",
+    "is": "held",
+    "by": "the type picked with the feat",
+    "probe": "scripts/test-enforce-feats.mjs: Elemental Adept's damage type is picked with the feat and kept on the sheet as a feature (issue #125)"
+   },
+   {
+    "c": "Your spells of that damage type ignore resistance, and any 1 rolled on their damage dice counts as a 2.",
+    "is": "held",
+    "by": "resistance ignored, 1s floored",
+    "probe": "scripts/test-enforce-feat-combat.mjs: Elemental Adept: a fire bolt's 1s count as 2 and the creature's fire resistance is ignored; another caster's is halved"
+   },
+   {
+    "c": "You can take this feat more than once, choosing a different type each time.",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a second Elemental Adept of another type"
+   }
+  ]
+ },
+ "feat::Great Weapon Master": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "300a30248bb2",
+  "clauses": [
+   {
+    "c": "On a critical hit or when you drop a creature to 0 hit points with a melee weapon, you can make one melee weapon attack as a bonus action.",
+    "is": "held",
+    "by": "the bonus attack on a crit or a kill",
+    "probe": "scripts/test-enforce-feat-combat.mjs: a melee critical hit opens Great Weapon Master's bonus-action attack; without one it is refused"
+   },
+   {
+    "c": "Before attacking with a heavy weapon you are proficient with, you can take a -5 penalty to the attack roll in exchange for +10 damage on a hit.",
+    "is": "held",
+    "by": "-5/+10 on a heavy weapon",
+    "probe": "scripts/test-enforce-feat-combat.mjs: Great Weapon Master's -5/+10 rides a heavy melee weapon; a plain fighter and a longsword are refused"
+   }
+  ]
+ },
+ "feat::Healer": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "91be4bce3b5a",
+  "clauses": [
+   {
+    "c": "When you stabilize a creature with a healer's kit it also regains 1 hit point.",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the 1 hit point on a kit stabilize by a holder"
+   },
+   {
+    "c": "As an action you can spend a use of a healer's kit to restore 1d6 + 4 hit points plus the creature's Hit Dice to a creature, once each per rest.",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+   }
+  ]
+ },
+ "feat::Heavily Armored": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "a3076fda637e",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "Proficiency with medium armor",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prerequisite (medium armor) refused at the builder for a sheet without it"
+   },
+   {
+    "c": "Increase your Strength by 1, to a maximum of 20, and gain proficiency with heavy armor.",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the heavy armor proficiency the feat grants"
+   }
+  ]
+ },
+ "feat::Heavy Armor Master": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "b930cc46571b",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "Proficiency with heavy armor",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prerequisite (heavy armor) refused at the builder for a sheet without it"
+   },
+   {
+    "c": "Increase your Strength by 1, to a maximum of 20.",
+    "is": "held",
+    "by": "half-feat score +1, capped at 20",
+    "probe": "scripts/test-enforce-feats.mjs: A half-feat taken when the character is made raises its score by 1, never past 20, as at a level-up: the score chosen where the feat offers a choice, with Resilient's saving "
+   },
+   {
+    "c": "While you wear heavy armor, bludgeoning, piercing and slashing damage from nonmagical attacks is reduced by 3.",
+    "is": "gap",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.heavy-armor-master.reduce",
+    "where": "src/lib/srd/feat-effects.ts heavyArmorMasterReduction (defined, called from nowhere: no damage path reads it)",
+    "severity": "high",
+    "kind": "rule-missing",
+    "note": "A nonmagical club hit of 6 on a fighter in plate (AC 18) with the feat takes all 6. grep finds heavyArmorMasterReduction only where it is defined."
+   }
+  ]
+ },
+ "feat::Inspiring Leader": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "8094e236b6bb",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "Charisma 13 or higher",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prerequisite (Charisma 13) refused at the builder for a sheet without it"
+   },
+   {
+    "c": "You can spend 10 minutes rallying up to six friendly creatures within 30 feet who can hear and understand you.",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+   },
+   {
+    "c": "Each gains temporary hit points equal to your level plus your Charisma modifier, and cannot benefit again until it finishes a rest.",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the temporary hit points (level + Charisma)"
+   }
+  ]
+ },
+ "feat::Keen Mind": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "9934817b6151",
+  "clauses": [
+   {
+    "c": "Increase your Intelligence by 1, to a maximum of 20.",
+    "is": "held",
+    "by": "half-feat score +1, capped at 20",
+    "probe": "scripts/test-enforce-feats.mjs: A half-feat taken when the character is made raises its score by 1, never past 20, as at a level-up: the score chosen where the feat offers a choice, with Resilient's saving "
+   },
+   {
+    "c": "You always know which way is north and how many hours remain before sunrise or sunset, and you accurately recall anything you have seen or heard in the past month.",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: information the GM gives; no written ruling names it"
+   }
+  ]
+ },
+ "feat::Lightly Armored": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "928afa9d9375",
+  "clauses": [
+   {
+    "c": "Increase your Strength or Dexterity by 1, to a maximum of 20, and gain proficiency with light armor.",
+    "is": "held",
+    "by": "half-feat score +1",
+    "probe": "scripts/test-enforce-feats.mjs: a half-feat with a choice of score raises the score chosen, Resilient adds that saving throw, and no choice is refused"
+   }
+  ]
+ },
+ "feat::Linguist": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "2bdfe7248a5e",
+  "clauses": [
+   {
+    "c": "Increase your Intelligence by 1, to a maximum of 20.",
+    "is": "held",
+    "by": "half-feat score +1, capped at 20",
+    "probe": "scripts/test-enforce-feats.mjs: A half-feat taken when the character is made raises its score by 1, never past 20, as at a level-up: the score chosen where the feat offers a choice, with Resilient's saving "
+   },
+   {
+    "c": "You learn three languages",
+    "is": "held",
+    "by": "the languages picked with the feat",
+    "probe": "scripts/test-enforce-feats.mjs: a feat's other grants land on the sheet: Linguist's languages are picked with the feat and stored, Skill Expert's skill and expertise too, and a feat left unpicked holds the "
+   },
+   {
+    "c": "and can create written ciphers that others cannot read without an Intelligence check against a DC of 8 plus your Intelligence modifier and proficiency bonus",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+   }
+  ]
+ },
+ "feat::Lucky": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "7d644d133283",
+  "clauses": [
+   {
+    "c": "You have three luck points, regained on a long rest.",
+    "is": "held",
+    "by": "the feat holds the points",
+    "probe": "scripts/test-enforce-after-roll.mjs: A halfling's Lucky trait holds no luck points, and a stored counter goes at the next resync; the feat holds them."
+   },
+   {
+    "c": "Spend one to roll an extra d20 on your own attack roll, ability check or saving throw and choose which die to use",
+    "is": "held",
+    "by": "after-roll Lucky",
+    "probe": "scripts/test-enforce-after-roll.mjs: Lucky: the point rolls another d20 and the player chooses, even a lower die."
+   },
+   {
+    "c": "or to roll an extra d20 on an attack made against you and choose which the attacker uses",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a luck point spent on an enemy's attack"
+   }
+  ]
+ },
+ "feat::Magic Initiate": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "a7b09c04abf3",
+  "clauses": [
+   {
+    "c": "Choose a class: bard, cleric, druid, sorcerer, warlock or wizard.",
+    "is": "held",
+    "by": "the list chosen",
+    "probe": "scripts/test-feat-spells.mjs: Magic Initiate's picks come from the one list chosen, with the ability named"
+   },
+   {
+    "c": "You learn two cantrips of your choice from that class's spell list.",
+    "is": "held",
+    "by": "two cantrips",
+    "probe": "scripts/test-feat-spells.mjs: Magic Initiate's picks come from the one list chosen, with the ability named"
+   },
+   {
+    "c": "Choose one 1st-level spell from the same list: you learn it and can cast it once without expending a spell slot, at its lowest level, and again after a long rest.",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the free cast of the 1st-level spell and its long rest"
+   },
+   {
+    "c": "Your spellcasting ability for these spells depends on the class you chose:",
+    "is": "held",
+    "by": "the ability named",
+    "probe": "scripts/test-feat-spells.mjs: Magic Initiate's picks come from the one list chosen, with the ability named"
+   },
+   {
+    "c": "Charisma for bard, sorcerer or warlock; Wisdom for cleric or druid; Intelligence for wizard.",
+    "is": "held",
+    "by": "the ability by list",
+    "probe": "scripts/test-enforce-species-spell-uses.mjs: a variant human's racial Fey Touched (+Charisma) leaves a later Magic Initiate (cleric) on Wisdom"
+   }
+  ]
+ },
+ "feat::Mage Slayer": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "905007585140",
+  "clauses": [
+   {
+    "c": "When a creature within 5 feet casts a spell you can use your reaction to attack it.",
+    "is": "held",
+    "by": "the reaction attack",
+    "probe": "scripts/test-enforce-feat-combat.mjs: Mage Slayer's reaction is one melee weapon attack on a caster within 5 feet; nobody else has it"
+   },
+   {
+    "c": "When you damage a creature concentrating on a spell it has disadvantage on the concentration save",
+    "is": "held",
+    "by": "disadvantage on the concentration save",
+    "probe": "scripts/test-enforce-feat-combat.mjs: a Mage Slayer's melee hit from within 5 feet puts the caster's concentration save at disadvantage"
+   },
+   {
+    "c": "and you have advantage on saves against spells cast by creatures within 5 feet",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a save against an adjacent caster's spell"
+   }
+  ]
+ },
+ "feat::Martial Adept": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "21b59f0a6907",
+  "clauses": [
+   {
+    "c": "You learn two maneuvers from the Battle Master list",
+    "is": "held",
+    "by": "two maneuvers kept",
+    "probe": "scripts/test-enforce-workshop-feats.mjs: A renamed copy of Martial Adept keeps its two maneuvers through a level-up, where the class opens none."
+   },
+   {
+    "c": "and gain one superiority die of d6, which refills on a short or long rest",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the d6 counter and its short rest"
+   }
+  ]
+ },
+ "feat::Medium Armor Master": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "2d8134347a10",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "Proficiency with medium armor",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prerequisite (medium armor) refused at the builder for a sheet without it"
+   },
+   {
+    "c": "Wearing medium armor does not impose disadvantage on Stealth checks",
+    "is": "held",
+    "by": "no Stealth disadvantage in half plate",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.medium-armor-master.stealth"
+   },
+   {
+    "c": "and if your Dexterity is 16 or higher you add 3 rather than 2 to your AC from medium armor",
+    "is": "held",
+    "by": "deriveAc +3 Dexterity cap",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.medium-armor-master.ac"
+   }
+  ]
+ },
+ "feat::Mobile": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "f0824be2b779",
+  "clauses": [
+   {
+    "c": "Your speed increases by 10 feet",
+    "is": "held",
+    "by": "speed +10",
+    "probe": "scripts/test-enforce-feats.mjs: A feat that changes a number on the sheet changes it: Actor is +1 Charisma, Tough is +2 hit points a level, Mobile is +10 feet of speed."
+   },
+   {
+    "c": "difficult terrain costs no extra movement when you Dash",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: difficult terrain on a Dash"
+   },
+   {
+    "c": "when you make a melee attack against a creature it cannot make opportunity attacks against you for the rest of the turn",
+    "is": "held",
+    "by": "no opportunity attack from the creature attacked",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.mobile.no-opportunity-attack"
+   }
+  ]
+ },
+ "feat::Moderately Armored": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "ebaeaa8055ac",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "Proficiency with light armor",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prerequisite (light armor) refused at the builder for a sheet without it"
+   },
+   {
+    "c": "Increase your Strength or Dexterity by 1, to a maximum of 20, and gain proficiency with medium armor and shields.",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the medium armor and shield proficiencies the feat grants"
+   }
+  ]
+ },
+ "feat::Mounted Combatant": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "92357b26c2d0",
+  "clauses": [
+   {
+    "c": "While mounted you have advantage on melee attacks against unmounted creatures smaller than your mount, you can redirect an attack aimed at your mount to yourself, and your mount takes no damage on a successful Dexterity save and half on a failure.",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a mounted fight"
+   }
+  ]
+ },
+ "feat::Observant": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "130f79553061",
+  "clauses": [
+   {
+    "c": "Increase your Intelligence or Wisdom by 1, to a maximum of 20.",
+    "is": "held",
+    "by": "half-feat score +1, capped at 20",
+    "probe": "scripts/test-enforce-feats.mjs: A half-feat taken when the character is made raises its score by 1, never past 20, as at a level-up: the score chosen where the feat offers a choice, with Resilient's saving "
+   },
+   {
+    "c": "You can read lips",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: information the GM gives"
+   },
+   {
+    "c": "and you gain a +5 bonus to your passive Perception and passive Investigation",
+    "is": "held",
+    "by": "+5 passive",
+    "probe": "scripts/test-enforce-feature-saves.mjs: X:OB1: Observant adds 5 to passive Investigation as well as passive Perception."
+   }
+  ]
+ },
+ "feat::Polearm Master": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "67807b81820b",
+  "clauses": [
+   {
+    "c": "When you take the Attack action with a glaive, halberd, quarterstaff or spear you can use a bonus action to strike with the opposite end for 1d4 bludgeoning damage.",
+    "is": "held",
+    "by": "the butt-end strike",
+    "probe": "scripts/test-enforce-feat-combat.mjs: Polearm Master's butt-end strike follows an Attack action with the polearm: 1d4 bludgeoning as the bonus action (issue #147)"
+   },
+   {
+    "c": "You also get an opportunity attack when a creature enters your reach with such a weapon.",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: an enemy entering the polearm's reach"
+   }
+  ]
+ },
+ "feat::Resilient": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "d64e6fbfee29",
+  "clauses": [
+   {
+    "c": "Increase one ability score by 1, to a maximum of 20, and gain proficiency in saving throws with that ability.",
+    "is": "held",
+    "by": "the score and its save",
+    "probe": "scripts/test-enforce-feats.mjs: a half-feat with a choice of score raises the score chosen, Resilient adds that saving throw, and no choice is refused"
+   }
+  ]
+ },
+ "feat::Ritual Caster": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "eda3a2af8655",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "Intelligence or Wisdom 13 or higher",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prerequisite (Intelligence or Wisdom 13) refused at the builder for a sheet without it"
+   },
+   {
+    "c": "You gain a ritual book holding two 1st-level ritual spells from a class you choose, and you can cast any ritual in it.",
+    "is": "held",
+    "by": "the ritual book",
+    "probe": "scripts/test-enforce-feats.mjs: Ritual Caster's book: a fighter casts its two rituals as rituals and nothing else, and Spell Sniper's cantrip rides on a wizard's own (issue #125)"
+   },
+   {
+    "c": "You can add further rituals of a level you can cast to the book by copying them.",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+   }
+  ]
+ },
+ "feat::Sentinel": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "098e8d2602ad",
+  "clauses": [
+   {
+    "c": "A creature you hit with an opportunity attack has its speed reduced to 0 for that turn",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the speed 0 after a Sentinel opportunity hit"
+   },
+   {
+    "c": "creatures provoke opportunity attacks from you even if they Disengage",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+   },
+   {
+    "c": "and when a creature within 5 feet attacks someone other than you, you can use your reaction to make a melee attack against it",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+   }
+  ]
+ },
+ "feat::Sharpshooter": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "7eeb14522b25",
+  "clauses": [
+   {
+    "c": "Attacking at long range gives you no disadvantage",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a shot at long range"
+   },
+   {
+    "c": "your ranged attacks ignore half and three-quarters cover",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+   },
+   {
+    "c": "before a ranged attack with a weapon you are proficient with you can take a -5 penalty to the attack roll in exchange for +10 damage on a hit",
+    "is": "held",
+    "by": "-5/+10 on a ranged weapon",
+    "probe": "scripts/test-enforce-feat-combat.mjs: Sharpshooter's -5/+10 rides a ranged weapon; Gunner shoots with a foe at the elbow at no disadvantage"
+   }
+  ]
+ },
+ "feat::Shield Master": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "48185ade1fc3",
+  "clauses": [
+   {
+    "c": "If you take the Attack action you can use a bonus action to shove a creature within 5 feet with your shield.",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the shield shove"
+   },
+   {
+    "c": "You add your shield's AC bonus to Dexterity saves against effects that target only you, and you can use a reaction to take no damage on a successful Dexterity save.",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+   }
+  ]
+ },
+ "feat::Skulker": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "3bf901e86edc",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "Dexterity 13 or higher",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prerequisite (Dexterity 13) refused at the builder for a sheet without it"
+   },
+   {
+    "c": "You can hide when lightly obscured, missing with a ranged attack does not reveal your position, and dim light does not impose disadvantage on your Perception checks that rely on sight.",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+   }
+  ]
+ },
+ "feat::Spell Sniper": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "0f218007a27d",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "The ability to cast at least one spell",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prerequisite (a spell) refused at the builder for a sheet without it"
+   },
+   {
+    "c": "The range of your attack-roll spells doubles, they ignore half and three-quarters cover",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a spell attack at twice its range"
+   },
+   {
+    "c": "and you learn one attack cantrip from the bard, cleric, druid, sorcerer, warlock or wizard list",
+    "is": "held",
+    "by": "the cantrip added",
+    "probe": "scripts/test-feat-spells.mjs: Spell Sniper adds its cantrip to a caster's list on top of the class's"
+   }
+  ]
+ },
+ "feat::Tavern Brawler": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "3151d23c3031",
+  "clauses": [
+   {
+    "c": "Increase your Strength or Constitution by 1, to a maximum of 20.",
+    "is": "held",
+    "by": "half-feat score +1, capped at 20",
+    "probe": "scripts/test-enforce-feats.mjs: A half-feat taken when the character is made raises its score by 1, never past 20, as at a level-up: the score chosen where the feat offers a choice, with Resilient's saving "
+   },
+   {
+    "c": "You are proficient with improvised weapons",
+    "is": "held",
+    "by": "the improvised weapon hit",
+    "probe": "scripts/test-enforce-physical-feat-bonus.mjs: With real dice, Tavern Brawler's hit with an improvised weapon opens the grapple"
+   },
+   {
+    "c": "your unarmed strike deals 1d4 damage, and when you hit with an unarmed strike or improvised weapon you can use a bonus action to try to grapple",
+    "is": "held",
+    "by": "1d4 and the grapple",
+    "probe": "scripts/test-enforce-feat-combat.mjs: Lucky's point buys an extra d20 on the attack roll and is spent; Tavern Brawler's unarmed strike deals 1d4 and its hit opens a bonus-action grapple (issue #147)"
+   }
+  ]
+ },
+ "feat::Tough": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "f405ba9dca85",
+  "clauses": [
+   {
+    "c": "Your hit point maximum increases by twice your level, and by 2 more each time you gain a level.",
+    "is": "held",
+    "by": "+2 hit points a level",
+    "probe": "scripts/test-enforce-feats.mjs: A feat that changes a number on the sheet changes it: Actor is +1 Charisma, Tough is +2 hit points a level, Mobile is +10 feet of speed."
+   }
+  ]
+ },
+ "feat::War Caster": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "14ea269cd25b",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "The ability to cast at least one spell",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prerequisite (a spell) refused at the builder for a sheet without it"
+   },
+   {
+    "c": "You have advantage on Constitution saves to maintain concentration",
+    "is": "held",
+    "by": "concentration advantage",
+    "probe": "scripts/test-enforce-concentration.mjs: War Caster rolls the concentration save with advantage"
+   },
+   {
+    "c": "you can cast with somatic components while holding weapons or a shield",
+    "is": "held",
+    "by": "busy hands",
+    "probe": "scripts/test-cast-rules.mjs: War Caster frees the gestures with both hands full, never the material"
+   },
+   {
+    "c": "and you can cast a one-action spell targeting one creature as an opportunity attack",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+   }
+  ]
+ },
+ "feat::Weapon Master": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "6ef95836d2a2",
+  "clauses": [
+   {
+    "c": "Increase your Strength or Dexterity by 1, to a maximum of 20, and gain proficiency with four weapons of your choice.",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the four weapon picks"
+   }
+  ]
+ },
+ "feat::Fey Touched": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "fe690f0e6ba1",
+  "clauses": [
+   {
+    "c": "Increase your Intelligence, Wisdom or Charisma by 1, to a maximum of 20.",
+    "is": "held",
+    "by": "half-feat score +1, capped at 20",
+    "probe": "scripts/test-enforce-feats.mjs: A half-feat taken when the character is made raises its score by 1, never past 20, as at a level-up: the score chosen where the feat offers a choice, with Resilient's saving "
+   },
+   {
+    "c": "You learn misty step and one 1st-level divination or enchantment spell, each castable once per long rest without a slot as well as with slots.",
+    "is": "held",
+    "by": "the free casts",
+    "probe": "scripts/test-enforce-feats.mjs: a Fey Touched fighter knows misty step and the spell picked, each cast once a day without a slot, with the score the feat raised (issue #125)"
+   }
+  ]
+ },
+ "feat::Shadow Touched": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "855c3e6504da",
+  "clauses": [
+   {
+    "c": "Increase your Intelligence, Wisdom or Charisma by 1, to a maximum of 20.",
+    "is": "held",
+    "by": "half-feat score +1, capped at 20",
+    "probe": "scripts/test-enforce-feats.mjs: A half-feat taken when the character is made raises its score by 1, never past 20, as at a level-up: the score chosen where the feat offers a choice, with Resilient's saving "
+   },
+   {
+    "c": "You learn invisibility and one 1st-level illusion or necromancy spell, each castable once per long rest without a slot as well as with slots.",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: Shadow Touched's own picks (Fey Touched's same shape is held)"
+   }
+  ]
+ },
+ "feat::Telekinetic": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "25397300ec83",
+  "clauses": [
+   {
+    "c": "Increase your Intelligence, Wisdom or Charisma by 1, to a maximum of 20.",
+    "is": "held",
+    "by": "half-feat score +1, capped at 20",
+    "probe": "scripts/test-enforce-feats.mjs: A half-feat taken when the character is made raises its score by 1, never past 20, as at a level-up: the score chosen where the feat offers a choice, with Resilient's saving "
+   },
+   {
+    "c": "You learn mage hand and can cast it without components at 30 extra feet, and as a bonus action you can shove a creature within 30 feet 5 feet on a failed Strength save.",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+   }
+  ]
+ },
+ "feat::Telepathic": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "3389c2608801",
+  "clauses": [
+   {
+    "c": "Increase your Intelligence, Wisdom or Charisma by 1, to a maximum of 20.",
+    "is": "held",
+    "by": "half-feat score +1, capped at 20",
+    "probe": "scripts/test-enforce-feats.mjs: A half-feat taken when the character is made raises its score by 1, never past 20, as at a level-up: the score chosen where the feat offers a choice, with Resilient's saving "
+   },
+   {
+    "c": "You can speak telepathically to any creature within 60 feet that shares a language with you",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: conversation"
+   },
+   {
+    "c": "and you can cast detect thoughts once per long rest without a slot",
+    "is": "held",
+    "by": "the free cast",
+    "probe": "scripts/test-feat-spells.mjs: ODM's Magic Initiate teaches no cantrip named It, and Telepathic's detect thoughts is free"
+   }
+  ]
+ },
+ "feat::Eldritch Adept": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "951987d906b9",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "Spellcasting or Pact Magic",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prerequisite (Spellcasting or Pact Magic) refused at the builder for a sheet without it"
+   },
+   {
+    "c": "You learn one Eldritch Invocation of your choice whose prerequisites you meet.",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+   },
+   {
+    "c": "You can replace it when you gain a level.",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+   }
+  ]
+ },
+ "feat::Metamagic Adept": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "fa606cf5bb7c",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "Spellcasting or Pact Magic",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the prerequisite (Spellcasting or Pact Magic) refused at the builder for a sheet without it"
+   },
+   {
+    "c": "You learn two Metamagic options from the sorcerer list and gain 2 sorcery points to spend on them, refilled on a long rest.",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause; the options themselves do nothing but cost (clauses-srd-sorcerer-heightened-spell)"
+   }
+  ]
+ },
+ "feat::Skill Expert": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "0d902da1aadc",
+  "clauses": [
+   {
+    "c": "Increase one ability score by 1, to a maximum of 20.",
+    "is": "held",
+    "by": "half-feat score +1, capped at 20",
+    "probe": "scripts/test-enforce-feats.mjs: A half-feat taken when the character is made raises its score by 1, never past 20, as at a level-up: the score chosen where the feat offers a choice, with Resilient's saving "
+   },
+   {
+    "c": "You gain proficiency in one skill, and expertise in one skill you are already proficient in.",
+    "is": "held",
+    "by": "the picks land on the sheet",
+    "probe": "scripts/test-enforce-feats.mjs: a feat's other grants land on the sheet: Linguist's languages are picked with the feat and stored, Skill Expert's skill and expertise too, and a feat left unpicked holds the "
+   }
+  ]
+ },
+ "feat::Chef": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "7b6b1bb931e2",
+  "clauses": [
+   {
+    "c": "Increase your Constitution or Wisdom by 1, to a maximum of 20, and gain proficiency with cook's utensils.",
+    "is": "held",
+    "by": "half-feat score +1",
+    "probe": "scripts/test-enforce-feats.mjs: a half-feat with a choice of score raises the score chosen, Resilient adds that saving throw, and no choice is refused"
+   },
+   {
+    "c": "Cooking during a short rest lets allies regain an extra 1d8 hit points, and an hour's work makes treats that grant temporary hit points.",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+   }
+  ]
+ },
+ "feat::Crusher": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "d4d3fbfc800e",
+  "clauses": [
+   {
+    "c": "Increase your Strength or Constitution by 1, to a maximum of 20.",
+    "is": "held",
+    "by": "half-feat score +1, capped at 20",
+    "probe": "scripts/test-enforce-feats.mjs: A half-feat taken when the character is made raises its score by 1, never past 20, as at a level-up: the score chosen where the feat offers a choice, with Resilient's saving "
+   },
+   {
+    "c": "Once per turn when you deal bludgeoning damage you can move the creature 5 feet, and a critical hit with bludgeoning damage gives attackers advantage against it until your next turn.",
+    "is": "held",
+    "by": "the move and the critical's mark",
+    "probe": "scripts/test-enforce-real-dice-parity.mjs: Crusher: a bludgeoning hit on real dice moves the creature 5 feet once a turn, and a critical exposes it"
+   }
+  ]
+ },
+ "feat::Piercer": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "f4e32a60b653",
+  "clauses": [
+   {
+    "c": "Increase your Strength or Dexterity by 1, to a maximum of 20.",
+    "is": "held",
+    "by": "half-feat score +1, capped at 20",
+    "probe": "scripts/test-enforce-feats.mjs: A half-feat taken when the character is made raises its score by 1, never past 20, as at a level-up: the score chosen where the feat offers a choice, with Resilient's saving "
+   },
+   {
+    "c": "Once per turn when you deal piercing damage you can reroll one damage die, and a critical hit with piercing damage adds one extra damage die.",
+    "is": "held",
+    "by": "reroll and the extra die",
+    "probe": "scripts/test-enforce-feat-combat.mjs: Piercer: a piercing critical hit rolls one more die, and once a turn the lowest die is rerolled (issue #147)"
+   }
+  ]
+ },
+ "feat::Slasher": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "5cbf6c8e0ffd",
+  "clauses": [
+   {
+    "c": "Increase your Strength or Dexterity by 1, to a maximum of 20.",
+    "is": "held",
+    "by": "half-feat score +1, capped at 20",
+    "probe": "scripts/test-enforce-feats.mjs: A half-feat taken when the character is made raises its score by 1, never past 20, as at a level-up: the score chosen where the feat offers a choice, with Resilient's saving "
+   },
+   {
+    "c": "Once per turn when you deal slashing damage you can reduce the target's speed by 10 feet, and a critical hit with slashing damage gives it disadvantage on attack rolls until your next turn.",
+    "is": "held",
+    "by": "the slow and the critical's mark",
+    "probe": "scripts/test-enforce-real-dice-parity.mjs: Slasher: a slashing hit on real dice slows the creature, once a turn, and a critical shakes it"
+   }
+  ]
+ },
+ "feat::Poisoner": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "e7b8d8d8237a",
+  "clauses": [
+   {
+    "c": "You ignore resistance to poison damage",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a poison hit against a creature resisting poison"
+   },
+   {
+    "c": "you can coat a weapon as a bonus action so its next hit forces a DC 14 Constitution save for 2d8 poison damage and the poisoned condition",
+    "is": "held",
+    "by": "the coat",
+    "probe": "scripts/test-enforce-tail-attacks.mjs: A Poisoner's coat of basic poison is their potent poison: DC 14, 2d8 poison and poisoned."
+   },
+   {
+    "c": "and you gain proficiency with the poisoner's kit",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+   }
+  ]
+ },
+ "feat::Gunner": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "5e61fb758e3e",
+  "clauses": [
+   {
+    "c": "Increase your Dexterity by 1, to a maximum of 20.",
+    "is": "held",
+    "by": "half-feat score +1, capped at 20",
+    "probe": "scripts/test-enforce-feats.mjs: A half-feat taken when the character is made raises its score by 1, never past 20, as at a level-up: the score chosen where the feat offers a choice, with Resilient's saving "
+   },
+   {
+    "c": "You gain proficiency with firearms, ignore their loading property",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+   },
+   {
+    "c": "and being within 5 feet of a hostile creature gives you no disadvantage on ranged attacks",
+    "is": "held",
+    "by": "no disadvantage with a foe adjacent",
+    "probe": "scripts/test-enforce-feat-combat.mjs: Sharpshooter's -5/+10 rides a ranged weapon; Gunner shoots with a foe at the elbow at no disadvantage"
+   }
+  ]
+ },
+ "feat::Alert": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "5f5ec5e0fefb",
+  "clauses": [
+   {
+    "c": "Your guard never quite drops.",
+    "is": "flavor"
+   },
+   {
+    "c": "Add 5 to every initiative roll you make.",
+    "is": "held",
+    "by": "+5 initiative",
+    "probe": "scripts/test-enforce-abilities.mjs: Alert and Observant add 5; Jack of All Trades adds half proficiency, rounded down"
+   },
+   {
+    "c": "While you are conscious no ambush catches you off guard",
+    "is": "held",
+    "by": "cannot be surprised",
+    "probe": "scripts/test-enforce-feats.mjs: a character stored with Alert before the 2014 row came back keeps +5 initiative and cannot be surprised"
+   },
+   {
+    "c": "and an attacker hidden from your sight gets no advantage against you merely because you cannot see it",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: an unseen attacker's roll against a holder"
+   }
+  ]
+ },
+ "feat::Skilled": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "a17e31eef3e9",
+  "clauses": [
+   {
+    "c": "Pick any three skills or tools, in any combination, and gain proficiency with each.",
+    "is": "held",
+    "by": "one budget across skills and tools",
+    "probe": "scripts/test-feat-grants.mjs: a shared count (Skilled's three skills or tools, Skillful's three skills, languages or tools) is one budget across its kinds"
+   },
+   {
+    "c": "This feat raises no ability score.",
+    "is": "gap",
+    "read_only": true,
+    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+   }
+  ]
+ },
+ "feat::Savage Attacker": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "59029cc1d1b3",
+  "clauses": [
+   {
+    "c": "Once on each of your turns, when you roll damage for a melee weapon attack, you can roll the weapon's damage dice a second time and keep whichever total you like.",
+    "is": "held",
+    "by": "rolled twice, the better kept",
+    "probe": "scripts/test-enforce-feat-combat.mjs: Savage Attacker (2014): once a turn a melee hit's weapon dice are rolled twice and the better kept; the second swing rolls once (issue #502)"
+   }
+  ]
+ }
+}
