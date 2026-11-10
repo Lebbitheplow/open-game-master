@@ -44,11 +44,7 @@ const KNOWN = {
     severity: "low",
     note: "Same faces, same result as the server's dice: the two paths agree, and both are unsteady.",
   },
-  "820-critical-target-dies-before-damage": {
-    where: "src/lib/dm/pc-attack-parked.ts / attack-blow.ts (Great Weapon Master's bonus is opened when the damage lands, and nothing lands on a creature already dead)",
-    severity: "medium",
-    note: "\"when you score a critical hit\": the critical was scored when the d20 was entered. The server's dice have no window between the two rolls.",
-  },
+
   "820-end-turn-on-a-parked-attack": {
     where: "src/lib/dm/pc-attack-parked.ts (endTurn is not carried on the parked roll) / src/lib/dm/pending-roll-land.ts",
     severity: "low",

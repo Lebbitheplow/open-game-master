@@ -33,6 +33,8 @@ import { openLastHit } from "@/lib/dm/last-hit";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { planAttackFx, type RollVisibility } from "@/lib/battlemap/fx-plan";
 import { holdsFeature } from "@/lib/srd/feature-names";
+import { GREAT_WEAPON_MASTER_READY } from "@/lib/srd/feat-combat";
+import { holdsFeat } from "@/lib/srd/feat-effects";
 import { BRUTAL_ATTACK_USED, brutalAttackApplies, PIERCER_USED, SAVAGE_ATTACKER_USED, savageAttackerApplies } from "@/lib/srd/feat-combat";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -199,6 +201,15 @@ export function missSwing(scene: SwingScene, record: AttackRecord, judged: Judge
 export function hitSwing(scene: SwingScene, record: AttackRecord, judged: Judged, toHit: RollResult, visibility: RollVisibility, notes: string[]): { ask: DamageAsk } | { done: Record<string, unknown> } {
   const { campaign, turn, sheet, enemy } = scene;
   const crit = judged.crit;
+  // Great Weapon Master's critical opens the bonus attack the moment it is
+  // scored, at the stage both dice share: opened when the damage landed, a
+  // critical entered on real dice whose target something else dropped before
+  // the damage dice came opened nothing (finding L820-crit-then-target-dies).
+  // The kill's half stays with the blow (attack-blow.ts bonusActionsOpened).
+  // The blow says so, once it knows the fight goes on.
+  if (crit && record.weaponAttack === true && record.ranged !== true && record.melee === true && holdsFeat(sheet, "Great Weapon Master") && markAttackTurn(campaign.id, record, GREAT_WEAPON_MASTER_READY)) {
+    (record as AttackRecord & { gwmOpened?: boolean }).gwmOpened = true;
+  }
   if (record.hitSpent?.length) {
     clearHitSpent(campaign, sheet.id, record.hitSpent);
   }
