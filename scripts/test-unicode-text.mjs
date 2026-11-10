@@ -277,4 +277,20 @@ test("a spoken transcript splits at sentence ends before any capital letter", ()
   assert.deepEqual(lines.map((line) => line.text), ["Va bene.", "Élodie arriva.", "Олег ждёт."]);
 });
 
+test("a key asked for again is the key worked out the first time, however many names were keyed in between, and prose is keyed by the same rule", () => {
+  const names = ["Épée", "E\u0301pe\u0301e", "Hunter’s  Mark", "Longsword +1", "Cursed Ring −1", "Straße", "Олег-Иван", "&", ""];
+  const first = names.map((name) => textKey(name));
+  assert.deepEqual(first, ["épée", "épée", "hunter s mark", "longsword +1", "cursed ring -1", "strasse", "олег иван", "", ""]);
+  // Far more names than textKey keeps, so what it kept is dropped and built again.
+  for (let i = 0; i < 10000; i += 1) {
+    assert.equal(textKey(`Sword ${i} of the Ǎ-${i}`), `sword ${i} of the ǎ ${i}`);
+  }
+  assert.deepEqual(names.map((name) => textKey(name)), first);
+  assert.deepEqual(names.map((name) => textKey(name)), first);
+  const prose = "The Hunter’s Mark, cast by Élodie at the Città Vecchia. ".repeat(4);
+  const keyed = Array(4).fill("the hunter s mark cast by élodie at the città vecchia").join(" ");
+  assert.equal(textKey(prose), keyed);
+  assert.equal(textKey(prose), keyed);
+});
+
 console.log(`\n${passed} unicode text tests passed`);

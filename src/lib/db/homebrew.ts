@@ -216,6 +216,16 @@ function gearKey(value: string): string {
   return textKey(value.replace(/[+-]\d+/g, " "));
 }
 
+// Every SRD weapon and suit of armor, keyed like gearKey. Both tables are
+// fixed, and keying their fifty names again for each item on each sheet
+// read was most of what reading a sheet cost (a third of opening a table,
+// half of every board refresh).
+let srdGearNames: Set<string> | null = null;
+
+function publishedSrdNames(): Set<string> {
+  return (srdGearNames ??= new Set([...SRD_WEAPONS, ...SRD_ARMOR].map((gear) => gearKey(gear.name))));
+}
+
 let packItemNames: Set<string> | null = null;
 
 // Every item name the content pack publishes, keyed like gearKey. Read once;
@@ -244,12 +254,7 @@ export function isPublishedGearName(name: string): boolean {
   if (!key) {
     return false;
   }
-  return (
-    SRD_WEAPONS.some((weapon) => gearKey(weapon.name) === key) ||
-    SRD_ARMOR.some((armor) => gearKey(armor.name) === key) ||
-    magicItemNamed(name) !== null ||
-    publishedPackNames().has(key)
-  );
+  return publishedSrdNames().has(key) || magicItemNamed(name) !== null || publishedPackNames().has(key);
 }
 
 // Whether the rules at this table know an item by that name: published gear,

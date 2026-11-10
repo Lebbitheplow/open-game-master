@@ -218,5 +218,28 @@ await test("F07: in one browser, two tables' feats of one name run as their own 
   }
 });
 
+// ---- published gear ----
+
+await test("Published gear keeps its name: every SRD weapon and suit of armor is published by its whole name, a bonus and case aside, a part of a name is not, the workshop keeps no item under one, and only an item of its own name reaches a sheet's line.", async () => {
+  const { isPublishedGearName } = await import("../src/lib/db/homebrew.ts");
+  const { SRD_WEAPONS } = await import("../src/lib/srd/weapons.ts");
+  const { SRD_ARMOR } = await import("../src/lib/srd/armor-table.ts");
+  for (const { name } of [...SRD_WEAPONS, ...SRD_ARMOR]) {
+    assert.equal(isPublishedGearName(name), true, `${name} is not read as published gear`);
+    assert.equal(isPublishedGearName(`${name.toUpperCase()} +1`), true, `${name} with a bonus, in capitals, is not read as published gear`);
+  }
+  assert.equal(isPublishedGearName("Long"), false, "a part of a weapon's name passed for the weapon");
+  assert.equal(isPublishedGearName("Zzyx Thornblade of the Marrow Fen"), false, "a name nobody publishes passed for published gear");
+  assert.equal(isPublishedGearName(""), false);
+  const effects = { desc: "A blade of bog iron.", itemKind: "magic_item", rarity: "uncommon", requiresAttunement: false, effects: [{ kind: "ac_bonus", amount: 1 }] };
+  world.signIn(world.owner);
+  const refused = await call(homebrew, "POST", { kind: "item", name: "Dagger", data: effects });
+  assert.equal(refused.status, 400, "the workshop kept an item under the SRD dagger's name");
+  await keep(world.owner, "item", "Bog Iron Cleaver", effects);
+  const line = (name) => hydrateHomebrewGear(world.owner.id, [{ name, qty: 1 }], { campaignId: world.campaignId })[0].gear;
+  assert.equal(line("Dagger"), undefined, "the SRD dagger on a sheet took a workshop item's rules");
+  assert.equal(line("Bog Iron Cleaver")?.magic?.effects?.[0]?.amount, 1, "a workshop item of its own name gave its sheet line nothing");
+});
+
 world.close();
 finish();

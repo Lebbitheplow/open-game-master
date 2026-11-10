@@ -18,6 +18,15 @@ export async function register() {
     // itself is left running in the background. A failure here must not stop
     // the server: the worst case is the keyword fallback search already has.
     if (process.env.NEXT_PHASE !== "phase-production-build") {
+      // A route's JSON is gzipped like everything else Next serves
+      // (src/lib/json-compression.ts), from the first request.
+      try {
+        const { installJsonCompression } = await import("@/lib/json-compression");
+        installJsonCompression();
+      } catch (error) {
+        console.error("[compression] API answers will go out uncompressed", error);
+      }
+
       // Whether the pages are cross-origin isolated for an addon's threads
       // (src/lib/page-isolation.ts), before the first page is served.
       try {

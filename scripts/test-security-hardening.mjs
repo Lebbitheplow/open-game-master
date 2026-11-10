@@ -235,6 +235,25 @@ await test("a file under public/ is answered only to the table it belongs to, an
   }
 });
 
+await test("a painted portrait copied into uploads gets its smaller copies, as an uploaded one does", async () => {
+  const { copyIntoUploads } = await import("../src/lib/portrait.ts");
+  const { imageVariantsSettled } = await import("../src/lib/image-variants.ts");
+  // A picture with pixels to shrink (the one-pixel PNG above has none).
+  const render = fs.readFileSync(path.join(import.meta.dirname, "..", "public", "assets", "themes", "default", "diffuse-dark.png"));
+  const renders = path.join(process.cwd(), "public", "generated");
+  fs.mkdirSync(renders, { recursive: true });
+  fs.writeFileSync(path.join(renders, "render.png"), render);
+  try {
+    const copied = copyIntoUploads("/generated/render.png");
+    assert.match(copied.url, /^\/uploads\/[0-9a-f-]{36}\.png$/);
+    assert.equal(fs.readFileSync(path.join(uploads, `${copied.id}.png`)).equals(render), true);
+    await imageVariantsSettled();
+    assert.equal(fs.existsSync(path.join(uploads, `${copied.id}.w256.webp`)), true, "no 256 pixel copy beside the portrait");
+  } finally {
+    fs.rmSync(path.join(renders, "render.png"), { force: true });
+  }
+});
+
 await test("the three login folders are sent to that route by path, never by an absolute address", async () => {
   const { loginMediaRewrites } = await import("../next.config.ts");
   assert.deepEqual(loginMediaRewrites, [
@@ -256,6 +275,40 @@ await test("the three login folders are sent to that route by path, never by an 
     assert.equal(rewriteOf(pathname), null, pathname);
     assert.equal(rewriteOf(pathname, { "x-forwarded-proto": "https" }), null, pathname);
   }
+});
+
+await test("only the game's own pictures are kept by a browser for an hour: a manifest, a player's picture and an API answer are asked for every time", async () => {
+  const { BUILT_IN_ART_SOURCE, builtInArtHeaders } = await import("../next.config.ts");
+  const config = (await import("../next.config.ts")).default;
+  const rules = await config.headers();
+  const rule = rules.find((entry) => entry.source === BUILT_IN_ART_SOURCE);
+  assert.ok(rule, "the built-in art rule is not among the headers");
+  assert.deepEqual(rule.headers, builtInArtHeaders);
+  assert.deepEqual(builtInArtHeaders, [{ key: "Cache-Control", value: "public, max-age=3600" }]);
+  // Next compiles a source with path-to-regexp; the same compiler says what it matches.
+  const { pathToRegexp } = await import("next/dist/compiled/path-to-regexp/index.js");
+  const matches = (pathname) => pathToRegexp(BUILT_IN_ART_SOURCE).test(pathname);
+  for (const pathname of ["/assets/tiles/floor/gravel-grey.webp", "/assets/icons/glyph/tab-map.webp", "/assets/ui/dust-motes.png", "/assets/placeholders/misc/empty.jpg"]) {
+    assert.equal(matches(pathname), true, pathname);
+  }
+  for (const pathname of [
+    "/assets/props/manifest.json",
+    "/assets/tiles/manifest.json",
+    "/assets/ammo/ammo.wasm",
+    "/uploads/portrait.webp",
+    "/generated/scene.png",
+    "/api/media/uploads/portrait.webp",
+    "/api/campaigns",
+    "/dice-box/assets/theme.png",
+    "/icon-192.png",
+    "/assets",
+    "/assets/",
+  ]) {
+    assert.equal(matches(pathname), false, pathname);
+  }
+  // No other rule speaks for a cache but the one that keeps a session out of it.
+  const caching = rules.filter((entry) => entry.headers.some((header) => header.key.toLowerCase() === "cache-control")).map((entry) => entry.source);
+  assert.deepEqual(caching, ["/api/auth/:path*", BUILT_IN_ART_SOURCE]);
 });
 
 await test("pages are cross-origin isolated only while an addon that is on has the threads permission", async () => {

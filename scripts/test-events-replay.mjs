@@ -20,6 +20,7 @@ const { createCampaign } = await import("../src/lib/db/campaigns.ts");
 const { forEachEventSince, latestEventOfType, listEventsSince, publishPersisted } = await import(
   "../src/lib/events.ts"
 );
+const { getDatabase } = await import("../src/lib/db/core.ts");
 
 let passed = 0;
 function test(name, fn) {
@@ -86,6 +87,33 @@ test("a dismissal lands after the handout it names", () => {
   const dismissed = latestEventOfType(campaign.id, ["handout_dismissed"]);
   assert.ok(dismissed.seq > shown.seq);
   assert.equal(dismissed.payload.id, "h1");
+});
+
+test("the newest event of one kind is found by its kind, not by walking the campaign's log, and never in another campaign's", () => {
+  // A kind that was never logged is the usual case (no handout up, no break
+  // on), and by the primary key alone it meant reading every event the
+  // campaign ever had, twice in each table snapshot.
+  const plan = getDatabase()
+    .prepare(
+      `EXPLAIN QUERY PLAN SELECT seq, type, payload_json FROM campaign_events
+       WHERE campaign_id = ? AND type IN (?) ORDER BY seq DESC LIMIT 1`,
+    )
+    .all(campaign.id, "x_card")
+    .map((row) => row.detail)
+    .join(" | ");
+  assert.match(plan, /idx_campaign_events_type \(campaign_id=\? AND type=\?\)/, plan);
+  assert.doesNotMatch(plan, /TEMP B-TREE/, `the read sorts: ${plan}`);
+
+  const other = createCampaign(dm.id, { title: "U", description: "", theme: "", maxPlayers: 4, startingLevel: 1, difficulty: "normal" });
+  publishPersisted(other.id, "x_card", { at: 1 });
+  publishPersisted(other.id, "message_added", { index: 1 });
+  publishPersisted(other.id, "x_card", { at: 2 });
+  publishPersisted(other.id, "message_added", { index: 2 });
+  assert.equal(latestEventOfType(campaign.id, ["x_card"]), null);
+  assert.equal(latestEventOfType(other.id, ["x_card"]).payload.at, 2);
+  assert.equal(latestEventOfType(other.id, ["title_card"]), null);
+  assert.equal(latestEventOfType(other.id, ["message_added", "x_card"]).payload.index, 2);
+  assert.equal(latestEventOfType(campaign.id, ["title_card"]).payload.index, 1_148);
 });
 
 // Windows refuses to delete a database file that is still open, so the

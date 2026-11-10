@@ -206,12 +206,16 @@ export function searchRulebook(index: RulebookIndex, query: string, limit = 40):
   const isPrefix = (position: number) => typed && position === terms.length - 1;
   const matching = (key: string) =>
     terms.some((term, position) => key === term || (isPrefix(position) && term.length >= 2 && key.startsWith(term)));
-  const hits: SearchHit[] = [];
+  // A passage that matched, with what its hit is made from. The snippet and
+  // the page's marked words are worked out only for the hits that are
+  // returned: a common word matches hundreds of passages, forty are shown,
+  // and cutting a snippet stems the passage word by word.
+  type Found = { entry: PageEntry; item: Passage; score: number; pageWords: () => string[] };
+  const found: Found[] = [];
 
   for (const entry of index.pages) {
     const { page } = entry;
-    const chapter = index.chapters.get(page.chapter);
-    const pageHits: SearchHit[] = [];
+    const pageFound: Found[] = [];
     let marked: string[] | null = null;
     const pageWords = () => (marked ??= [...entry.wordStems].filter(([, key]) => matching(key)).map(([word]) => textKey(word)));
     const titleAll = terms.every((term, position) => hasTerm(entry.titleStems, term, isPrefix(position)));
@@ -236,22 +240,25 @@ export function searchRulebook(index: RulebookIndex, query: string, limit = 40):
       if (headingLower === phrase) score += 600;
       else if (item.heading && terms.every((term, position) => hasTerm(item.headingStems, term, isPrefix(position)))) score += 160;
       if (phrase.length > 3 && item.lower.includes(phrase)) score += 40;
-      pageHits.push({
-        page: page.id,
-        title: page.title,
-        kind: page.kind,
-        chapter: chapter?.title ?? "",
-        numeral: chapter?.numeral ?? "",
-        heading: item.heading,
-        at: item.at,
-        snippet: snippetFor(item.text, terms),
-        words: pageWords(),
-        score,
-      });
+      pageFound.push({ entry, item, score, pageWords });
     });
-    pageHits.sort((a, b) => b.score - a.score);
-    hits.push(...pageHits.slice(0, 3));
+    pageFound.sort((a, b) => b.score - a.score);
+    found.push(...pageFound.slice(0, 3));
   }
-  hits.sort((a, b) => b.score - a.score || compareNames(a.title, b.title));
-  return hits.slice(0, limit);
+  found.sort((a, b) => b.score - a.score || compareNames(a.entry.page.title, b.entry.page.title));
+  return found.slice(0, limit).map(({ entry, item, score, pageWords }) => {
+    const chapter = index.chapters.get(entry.page.chapter);
+    return {
+      page: entry.page.id,
+      title: entry.page.title,
+      kind: entry.page.kind,
+      chapter: chapter?.title ?? "",
+      numeral: chapter?.numeral ?? "",
+      heading: item.heading,
+      at: item.at,
+      snippet: snippetFor(item.text, terms),
+      words: pageWords(),
+      score,
+    };
+  });
 }
