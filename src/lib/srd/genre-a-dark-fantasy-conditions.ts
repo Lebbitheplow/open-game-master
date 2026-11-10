@@ -27,5 +27,9 @@ export const DARK_FANTASY_CONDITIONS: ConditionEffectRow[] = [
     onHitDice: { dice: "1d8", type: "radiant" },
     marksTarget: true,
   },
+  // Dirge of Sorrow: "subtracts 1d4 from its next attack roll"; Dirge of Ruin:
+  // "the penalty applies to attacks and saves", both until that attack.
+  { id: "dirge_of_sorrow", match: ["dirge of sorrow"], summary: "Dirge of Sorrow: -1d4 on its next attack roll.", attackPenaltyDie: "1d4", consumedBy: "attack" },
+  { id: "dirge_of_ruin", match: ["dirge of ruin"], summary: "Dirge of Ruin: -1d4 on its attack rolls and saves, until its next attack roll.", attackPenaltyDie: "1d4", savePenaltyDie: "1d4", consumedBy: "attack" },
   { id: "immolate_the_sin", match: ["immolate the sin"], summary: "Immolate the Sin: for a minute the penitent burns in gray flame, +2d8 fire on their attacks and immune to fire." },
 ];

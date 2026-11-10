@@ -28,6 +28,10 @@ const IMMOLATE_EFFECTS: AuthoredEffect[] = [
 ];
 
 export const GENRE_A_DARK_FANTASY: GenreRow[] = [
+  // "A low hum: one enemy within 30 ft subtracts 1d4 from its next attack roll
+  // (WIS save negates)", at will. An action, as a cantrip that lays a penalty
+  // is (Vicious Mockery).
+  { feature: "Dirge of Sorrow", classes: ["dirgesinger"], entry: { subclass: "genre", spends: [{ name: "Dirge of Sorrow", action: "action", does: { kind: "dark_fantasy", play: "dirge" } }] } },
   // "spectral hands erupt in a 15-ft cube: creatures save (STR) or are
   // restrained until your next turn"
   counted("grave_knight", "Grave Grip", "dark_fantasy_grave_grip", {

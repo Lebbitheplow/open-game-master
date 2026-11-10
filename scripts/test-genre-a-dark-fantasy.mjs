@@ -99,5 +99,27 @@ await test("Sepulchral Aura and Numb to the Lash: a weapon blow loses 1 beside t
   assert.equal((await t.clubs(penitent, penitent.holder, 16, 1)).totalDamage, 1, "a club for 3 still deals 1");
 });
 
+await test("Dirge of Sorrow: the enemy named saves on Wisdom or takes 1d4 off its next attack; Dirge of Ruin takes three and their saves too", async () => {
+  const scene = await t.stage({ classId: "dirgesinger", level: 1 });
+  const bare = await spend(scene, "Dirge of Sorrow");
+  assert.equal(bare.ok, false, "no enemy named");
+  t.world.dice(1);
+  must(await spend(scene, "Dirge of Sorrow", { targetEnemyId: scene.near.id }), "Dirge of Sorrow");
+  t.world.clearDice();
+  assert.ok(t.kit.enemy(scene.near.id).conditions.includes("dirge of sorrow"));
+  assert.equal(t.budget().actionUsed, true);
+  const two = await spend(scene, "Dirge of Sorrow", { targetEnemyIds: [scene.near.id, scene.far.id] });
+  assert.equal(two.ok, false, "a level 1 dirge takes one enemy");
+  const ruin = await t.stage({ classId: "dirgesinger", level: 13 });
+  t.kit.place(ruin.far.id, 7, 5);
+  t.world.dice(1, 1);
+  must(await spend(ruin, "Dirge of Sorrow", { targetEnemyIds: [ruin.near.id, ruin.far.id] }), "Dirge of Ruin");
+  t.world.clearDice();
+  assert.ok(t.kit.enemy(ruin.far.id).conditions.includes("dirge of ruin"));
+  const { conditionRollRiders } = await import("../src/lib/srd/condition-effects.ts");
+  assert.match(conditionRollRiders(["dirge of ruin"], "save").diceSuffix, /-1d4/);
+  assert.match(conditionRollRiders(["dirge of sorrow"], "attack").diceSuffix, /-1d4/);
+});
+
 t.close();
 console.log(`test-genre-a-dark-fantasy: ${passed} passed`);

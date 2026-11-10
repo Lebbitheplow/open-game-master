@@ -2413,17 +2413,15 @@
     "run": {
      "k": "no_door"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap dirgesinger::Dirge of Sorrow#1",
-    "observed": "no call plays it: use_resource answers \"No resource called \"dirge of sorrow\" is known. Their resources: dark_fantasy_requiem_inspiration. Send the one meant, by the name on the sheet. / No resource ca\": the engine gives false, the text true",
-    "where": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED (no row) and src/lib/classes/resources.json (no counter): no tool plays the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "the src/lib/dm/genre-a-dark-fantasy-spends.ts dirge play (a save_area of one named enemy within 30 feet, the dirge of sorrow condition of src/lib/srd/genre-a-dark-fantasy-conditions.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: dirgesinger::Dirge of Sorrow#1"
    },
    {
     "c": "WIS save negates",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "follows clause #1 (gap dirgesinger::Dirge of Sorrow#1), which fails: no call plays the feature; with nothing on the table there is no state this clause could be read on",
+    "is": "held",
+    "by": "the src/lib/dm/genre-a-dark-fantasy-spends.ts dirge play (a WIS save against the spell save DC)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Dirge of Sorrow",
     "same_probe_as": 1
    }
   ]
@@ -2622,9 +2620,9 @@
    },
    {
     "c": "your dirges affect one additional target",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "follows clause #1 (gap dirgesinger::The Grave Chorus#1), which fails: the spend moves its counter and the turn's cost and nothing else; with nothing on the table there is no state this clause could be read on",
+    "is": "held",
+    "by": "the twin_spell row of src/lib/srd/authored-effects-genre-a-capstones.ts and the src/lib/dm/genre-a-dark-fantasy-spends.ts dirge play (one more enemy while the chorus sings)",
+    "probe": "scripts/test-genre-a-capstones.mjs: The Grave Chorus",
     "same_probe_as": 1
    }
   ]
@@ -2637,15 +2635,9 @@
   "clauses": [
    {
     "c": "Dirge of Sorrow affects up to three enemies and the penalty applies to attacks and saves",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap dirgesinger::Dirge of Ruin#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "the src/lib/dm/genre-a-dark-fantasy-spends.ts dirge play (three named enemies, the dirge of ruin condition: -1d4 on attacks and saves)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Dirge of Sorrow"
    }
   ]
  },
