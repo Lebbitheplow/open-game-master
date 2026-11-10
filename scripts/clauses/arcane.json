@@ -3181,8 +3181,9 @@
    },
    {
     "c": "and an undead that succeeds, or that you target with an attack or harmful spell, is immune for 24 hours",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: dead-immune"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-warlock.mjs :: dead-immune",
+    "by": "src/lib/dm/authored-hooks.ts authoredWardSave (WARD_WITHSTOOD: an undead that saved, or that the warlock struck, attacks without the save)"
    },
    {
     "c": "You have advantage on saving throws against disease.",
@@ -3668,8 +3669,9 @@
    },
    {
     "c": "or by expending a spell slot",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: speech-slot"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: speech-slot",
+    "by": "src/lib/srd/authored-resources.json fallbackSlot (src/lib/dm/resource-tools.ts: a spent use is bought with a spell slot)"
    }
   ]
  },
@@ -3737,8 +3739,9 @@
    },
    {
     "c": "or with a spell slot",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: creation-slot"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: creation-slot",
+    "by": "src/lib/srd/authored-resources.json fallbackSlot (src/lib/dm/resource-tools.ts: a spent use is bought with a spell slot)"
    }
   ]
  },
@@ -3761,8 +3764,9 @@
    },
    {
     "c": "or by expending a spell slot of 3rd level or higher",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: animating-slot"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: animating-slot",
+    "by": "src/lib/srd/authored-resources.json fallbackSlot 3 (src/lib/dm/resource-tools.ts: a slot of 3rd level or higher buys a spent use)"
    }
   ]
  },
