@@ -79,7 +79,9 @@ export const KNOWN_TOOLS = [...new Set([...ARTISANS_TOOLS, ...MUSICAL_INSTRUMENT
 // A pack's name for a tool the table knows by another.
 const TOOL_ALIASES: Record<string, string> = { "navigator's kit": "navigator's tools", "thieves' kit": "thieves' tools" };
 const toolNamed = (words: string): string | null => {
-  const name = TOOL_ALIASES[words] ?? words;
+  // A pack's typo for the possessive ("navigator-s tools", the Smuggler's).
+  const spelled = words.replace(/-s\b/, "'s");
+  const name = TOOL_ALIASES[spelled] ?? spelled;
   return KNOWN_TOOLS.includes(name) ? name : null;
 };
 
@@ -139,6 +141,11 @@ export function featGrantSpec(desc: string): FeatGrantSpec {
     fixedSkills: [], fixedLanguages: [], skillsFrom: [], fixedExpertise: [], pickedExpertise: false,
     taught: featSpellSpec(text), damageTypes: [],
   };
+  // A clause that asks whether the character is proficient already is a
+  // condition, never a grant: College of the Cat's "if you're proficient
+  // with a simple or martial melee weapon, you can use it as a spellcasting
+  // focus" was read as a weapon to pick.
+  text = text.replace(/\bif you(?:'re| are| have| already have| already are)\b[^,.;]*\bproficien[^,.;]*/g, " ");
   // A clause read as a count is taken out of the text, so the fixed-grant
   // patterns below never read "proficiency with thieves' tools, the
   // poisoner's kit, or a rare weapon" as thieves' tools outright.
@@ -175,6 +182,19 @@ export function featGrantSpec(desc: string): FeatGrantSpec {
   if (skills) {
     spec.skills = count(skills[1]);
   }
+  // "and in two of the following skills of your choice: Acrobatics,
+  // Deception, ..." (College of Investigation): a pick from the list.
+  const following = take(/\b(?:and )?in (one|two|three|four) of the following skills(?: of your choice)?: ([^.;]+)/);
+  if (following) {
+    spec.skills += count(following[1]);
+    spec.skillsFrom = unique([...spec.skillsFrom, ...skillsIn(following[2])]);
+  }
+  // "in Stealth and in two other skills of your choice" (College of
+  // Shadows): a pick from every skill.
+  const others = take(/\b(?:and )?in (one|two|three|four) other skills(?: of your choice)?\b/);
+  if (others) {
+    spec.skills += count(others[1]);
+  }
   if (/\bexpertise (?:in|with) (?:one|a|that) skill\b/.test(text)) {
     spec.expertise = 1;
   }
@@ -199,14 +219,21 @@ export function featGrantSpec(desc: string): FeatGrantSpec {
   // the list. An alternative the table has no row for (a rare weapon, a
   // maneuver) is not offered.
   for (const choice of [...text.matchAll(/\bproficien(?:cy|t) (?:with|in) (?:your choice of )?([^.;]*?\bor\b[^.;]*)/g)]) {
-    const alternatives = choice[1].split(/,|\bor\b/).map((entry) => entry.trim().replace(/^(?:a|an|one|the|any) /, "")).filter(Boolean);
+    // "heavy armor and either cartographer's tools or navigator's tools"
+    // (the Portal Domain), "vehicles and with your choice of either the
+    // disguise kit or ...": the choice is what follows "either"; what comes
+    // before it is granted outright and stays for the readers below. Read
+    // whole, the first tool was lost into "heavy armor and either ...".
+    const either = /^(.*?)\beither (.*)$/.exec(choice[1]);
+    const offered = either ? either[2] : choice[1];
+    const alternatives = offered.split(/,|\bor\b/).map((entry) => entry.trim().replace(/^(?:a|an|one|the|any) /, "")).filter(Boolean);
     const tools = alternatives.map(toolNamed).filter((tool): tool is string => tool !== null);
     const weaponLists = alternatives.map(weaponsNamed).filter((list): list is string[] => list !== null);
     const armor = alternatives.filter((entry) => /^(?:shields?|(?:light|medium|heavy) armor)$/.test(entry)).map((entry) => entry.replace(/^shields?$/, "shields").replace(/ armor$/, ""));
     if (alternatives.length < 2 || tools.length + weaponLists.length + armor.length === 0) {
       continue;
     }
-    text = text.replace(choice[0], " ");
+    text = text.replace(either ? `either ${either[2]}` : choice[0], " ");
     if (weaponLists.length + armor.length === 0) {
       spec.tools += 1;
       spec.toolsFrom = unique([...spec.toolsFrom, ...tools]);
@@ -242,11 +269,30 @@ export function featGrantSpec(desc: string): FeatGrantSpec {
       spec.fixedTools.push(tool);
     }
   }
-  for (const clause of text.matchAll(/\bgain proficiency in (?:the )?([^.;]+)/g)) {
+  // "gain proficiency in History and Performance", "with the Acrobatics and
+  // Stealth skills" (College of the Cat), "you have proficiency in the
+  // Religion skill" (Gravebinding): named outright. "in the Insight,
+  // Medicine, or Religion skill" (a Chaplain's), "the Acrobatics or Stealth
+  // skill" (Circle of Bees): one of them, the player's pick.
+  for (const clause of text.matchAll(/\b(?:gain|you have) proficiency (?:in|with) (?:the )?([^.;]+)/g)) {
     if (/\bof your choice\b|\bany combination\b|\b(?:one|two|three|four) skills?\b/.test(clause[1])) {
       continue;
     }
+    const oneOf = /^([a-z ,]+?),? or ([a-z ]+?) skill\b/.exec(clause[1]);
+    if (oneOf && skillsIn(oneOf[0]).length > 1) {
+      spec.skills += 1;
+      spec.skillsFrom = unique([...spec.skillsFrom, ...skillsIn(oneOf[0])]);
+      spec.fixedSkills = unique([...spec.fixedSkills, ...skillsIn(clause[1].slice(oneOf[0].length))]);
+      continue;
+    }
     spec.fixedSkills = unique([...spec.fixedSkills, ...skillsIn(clause[1])]);
+    // Weapons named outright ("with shortswords and hand crossbows", "with
+    // longbows and shortbows"), singular or plural.
+    for (const weapon of SRD_WEAPONS) {
+      if (new RegExp(`\\b${escape(weapon.name.toLowerCase())}s?\\b`).test(clause[1])) {
+        spec.fixedWeapons = unique([...spec.fixedWeapons, weapon.name]);
+      }
+    }
   }
   for (const spoken of text.matchAll(/\blearn to speak, read, and write ([a-z' ]+?)[.,;]|\byou learn ([a-z' ]+?), the language of\b/g)) {
     spec.fixedLanguages = unique([...spec.fixedLanguages, languageName(spoken[1] ?? spoken[2])]);

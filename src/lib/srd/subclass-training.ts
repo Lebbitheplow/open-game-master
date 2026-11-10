@@ -280,7 +280,9 @@ function terseTraining(text: string, spec: FeatGrantSpec): FeatGrantSpec {
   }
   const weapons = new Set(spec.fixedWeapons);
   for (const category of ["simple", "martial"] as const) {
-    if (new RegExp(`\\b${category} weapons\\b`).test(lower) && !new RegExp(`\\bone ${category} weapon\\b`).test(lower)) {
+    // Not "martial weapons that have the Finesse property" (the Serpent
+    // Domain's): a narrower set than the category.
+    if (new RegExp(`\\b${category} weapons\\b`).test(lower) && !new RegExp(`\\bone ${category} weapon\\b|\\b${category} weapons (?:that|with)\\b`).test(lower)) {
       weapons.add(category);
     }
   }
@@ -303,11 +305,36 @@ function terseTraining(text: string, spec: FeatGrantSpec): FeatGrantSpec {
 
 // The grant in a pack or workshop feature's text, or null when it trains in
 // nothing the sheet keeps.
+// A feature of any other name trains the character too where a sentence of
+// its text says so: Path of the Herald's Oral Tradition ("you gain
+// proficiency in History and Performance"), the Hunt Domain's Blessing of
+// the Hunter, a Sapper's Combat Engineer. Only those sentences are read, and
+// never one that lasts a while or one that asks whether the character is
+// proficient already ("If you already have proficiency in one of these
+// skills"). Read by name alone, seventeen pack subclasses granted nothing
+// their text gave.
+const GIVES_PROFICIENCY = /\b(?:gain|gains|have|has|become|are)\b[^.]*\bproficien(?:cy|t)\b/i;
+const ASKS_PROFICIENCY = /\bif you(?:'re| are| have| already have| already are)\b[^,.]*\bproficien[^,.]*/gi;
+
+function trainingSentences(text: string): string {
+  return text
+    .replace(/\s+/g, " ")
+    .split(/(?<=[.!?])\s+/)
+    .filter((sentence) => GIVES_PROFICIENCY.test(sentence) && !PASSING.test(sentence))
+    .map((sentence) => sentence.replace(ASKS_PROFICIENCY, " "))
+    .join(" ");
+}
+
 export function trainingFromText(name: string, text: string): FeatGrantSpec | null {
-  if (!NAMED_FOR_TRAINING.test(name) || PASSING.test(text)) {
+  const named = NAMED_FOR_TRAINING.test(name);
+  if (named && PASSING.test(text)) {
     return null;
   }
-  const spec = terseTraining(text, featGrantSpec(text));
+  const read = named ? text : trainingSentences(text);
+  if (!read.trim()) {
+    return null;
+  }
+  const spec = terseTraining(read, featGrantSpec(read));
   return featGrantsAnything(spec) ? spec : null;
 }
 
