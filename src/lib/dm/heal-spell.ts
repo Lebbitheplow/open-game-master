@@ -22,6 +22,7 @@
 //
 // This module does not import mutations.ts: the cast is handed in.
 
+import { spellBreaker } from "@/lib/dm/spell-breaker";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 // The credits live in the database on the server (src/lib/db/item-cast-credits.ts).
 import "@/lib/db/item-cast-credits";
@@ -277,6 +278,11 @@ export function castHealingSpell(
       }
       riders.push(`Blessed Healer: ${caster.name} regains ${currentHp - self.currentHp}`);
     }
+  }
+  // Spell Breaker (Arcana 6): one spell of the slot's level or lower ends.
+  const broken = spellBreaker(campaign, caster, target.id, slotLevel);
+  if (broken) {
+    riders.push(broken);
   }
   return {
     amount: Math.max(1, amount),

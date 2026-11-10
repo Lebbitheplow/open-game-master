@@ -8,8 +8,10 @@
 // of cast-tools.ts, which re-exports it; this module imports mutations (for
 // the slot spend) and must never be imported by it.
 
+import { READ_THOUGHTS, isSuggestion, thoughtsReadBy } from "@/lib/dm/read-thoughts";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 import { magicImmunityNote } from "@/lib/dm/monster-traits";
-import { describeConditionDuration } from "@/lib/dm/condition-logic";
+import { describeConditionDuration, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { immuneToCondition } from "@/lib/dm/damage-logic";
 import { z } from "zod";
 import { placeSpellZone } from "@/lib/dm/zone-cast";
@@ -19,7 +21,7 @@ import { coverFor } from "@/lib/dm/attack-spatial";
 import { zoneArgsSchema, zonePlacement } from "@/lib/dm/zone-args";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import type { Campaign } from "@/lib/db/campaigns";
-import { getActiveEncounter, recordEncounterTarget } from "@/lib/db/encounters";
+import { getActiveEncounter, patchEnemyConditions, recordEncounterTarget } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { isValidExpression } from "@/lib/dice";
@@ -460,7 +462,16 @@ export function handleCastAtEnemy(
   // lasting effects (src/lib/dm/forced-save.ts). Auto-hit spells (Magic
   // Missile, Heat Metal) and spells that allow none (Power Word Stun) skip it.
   let saved = false;
-  const noSave = autoHit || Boolean(mechCondition?.noInitialSave) || mechCondition?.hpAtMost !== undefined;
+  // Read Thoughts: "The target automatically fails its saving throw against
+  // the spell", and the reading ends with the casting (read-thoughts.ts).
+  const readFails = isSuggestion(spellName) && thoughtsReadBy(enemy, sheet.id);
+  if (readFails) {
+    const reading = enemy.conditions.find((entry) => isConditionNamed(entry, READ_THOUGHTS)) ?? READ_THOUGHTS;
+    const cleared = removeConditions(enemy.conditions, enemy.conditionMeta as ConditionMetaMap, [reading]);
+    patchEnemyConditions(enemy.id, cleared.conditions, cleared.meta as typeof enemy.conditionMeta);
+    base.readThoughts = `${enemy.displayName}, whose thoughts ${sheet.name} reads, fails the save against ${spellName}.`;
+  }
+  const noSave = autoHit || readFails || Boolean(mechCondition?.noInitialSave) || mechCondition?.hpAtMost !== undefined;
   // Stinking Cloud cannot touch a creature immune to poison.
   const untouched = spellAutoSave(mech, enemy);
   if (noSave) {
@@ -480,6 +491,8 @@ export function handleCastAtEnemy(
       // Cover between the caster and the target counts on a DEX save,
       // unless the spell says it does not (Sacred Flame): SRD 5.1, Cover.
       cover: mech?.ignoresCover ? 0 : coverFor(encounter.id, sheet.id, enemy.id),
+      // Corona of Light leans only against fire and radiant spells.
+      ...(damageType ? { damageType } : {}),
       ...spellSaveOptions(mech, enemy),
       record: { turn, detail: `${enemy.displayName}: ${ability.toUpperCase()} save against ${spellName}` },
     });

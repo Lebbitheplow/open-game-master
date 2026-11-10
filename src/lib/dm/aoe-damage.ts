@@ -593,6 +593,9 @@ export function handleAoeDamage(
             : Boolean(laysCondition) && bindsWorthResisting([laysCondition ?? ""], false),
           against: plan?.conditions ?? (enemyUse?.condition ? [enemyUse.condition] : laysCondition ? [laysCondition] : []),
           cover: saveCover(enemy.id),
+          // The spell's damage types, for a save that leans only against some
+          // (Corona of Light: fire and radiant).
+          ...(plan ? { damageType: [args.type, plan.mech?.secondType].filter(Boolean).join(", ") } : {}),
           ...(plan ? spellSaveOptions(plan.mech, enemy) : {}),
           ...(plan ? { record: { turn, detail: `${enemy.displayName}: ${ability.toUpperCase()} save against ${plan.spell}` } } : {}),
         });

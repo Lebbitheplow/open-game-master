@@ -163,7 +163,8 @@ export const RO_CLERIC_B = {
     await rig.fight(me);
     rig.kit.place(near.id, 6, 5);
     const out = await rig.spend(me, "Emboldening Bond", { targetCharacterIds: [me.id, near.id] });
-    const expressionOf = () => rig.lastRolls(4).find((roll) => roll.kind === "saving_throw" && roll.characterId === near.id)?.expression;
+    // The latest save: listRecentRolls lists the oldest first.
+    const expressionOf = () => rig.lastRolls(4).findLast((roll) => roll.kind === "saving_throw" && roll.characterId === near.id)?.expression;
     await rig.save(near, "wis", {}, [10, 2]);
     const first = expressionOf();
     await rig.save(near, "wis", {}, [10, 2]);

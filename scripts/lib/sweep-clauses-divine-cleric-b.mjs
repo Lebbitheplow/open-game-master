@@ -328,7 +328,9 @@ export const CLERIC_B = {
     const farBonded = rig.has(far, "emboldening bond");
     const out = farOut.ok && !farBonded && rig.has(near, "emboldening bond") && rig.has(me, "emboldening bond") ? farOut : await rig.spend(me, "Emboldening Bond", { targetCharacterIds: [me.id, near.id] });
     const state = { budget: rig.budget(), meta: rig.meta(near, "emboldening bond"), self: rig.has(me, "emboldening bond"), near: rig.has(near, "emboldening bond") };
-    const expressionOf = (kind) => rig.lastRolls(4).find((roll) => roll.kind === kind && roll.characterId === near.id)?.expression;
+    // The latest such roll: listRecentRolls lists the oldest first, and find
+    // read the first save back as the second.
+    const expressionOf = (kind) => rig.lastRolls(4).findLast((roll) => roll.kind === kind && roll.characterId === near.id)?.expression;
     await rig.save(near, "wis", {}, [10, 2]);
     const firstSave = expressionOf("saving_throw");
     await rig.save(near, "wis", {}, [10, 2]);
@@ -457,6 +459,10 @@ export const CLERIC_B = {
   "cleric::Steps of Night": async (rig) => {
     const who = rig.hero("cleric", "Twilight Domain", 6);
     await rig.fight(who);
+    // "As a bonus action while in dim light or darkness" (Steps of Night): a
+    // night board, as the feature asks; the fight's board is lit by day.
+    const { getDatabase } = await rig.load("lib/db/core.ts");
+    getDatabase().prepare("UPDATE battle_maps SET ambient = ?, outdoors = 0 WHERE id = ?").run("dim", rig.kit.map().id);
     const out = await rig.spend(who, "Steps of Night");
     const state = { budget: rig.budget(), meta: rig.meta(who, "flying"), speeds: rig.srd.computeSheetDerived(rig.world.sheet(who.id)).speeds ?? null, conditions: rig.conditions(who) };
     rig.note("steps", [out.ok, out.error, brief(out.result), state]);
@@ -523,7 +529,11 @@ export const CLERIC_B = {
     const [foe] = await rig.fight(who);
     rig.kit.place(friend.id, 4, 5);
     rig.world.patch(friend.id, { currentHp: 50 });
-    const held = await rig.call("set_condition", { characterId: friend.id, condition: "paralyzed", rounds: 10, magical: true, source: "Hold Person", spell: "Hold Person", level: 2, casterEnemyId: foe.id });
+    // Staged as a cast Hold Person lays it (spell-effects.ts): the spell, its
+    // slot and its caster on the instance. set_condition takes none of these,
+    // so the paralysis it laid was no spell at all and nothing could end one.
+    rig.world.patch(friend.id, { conditions: ["paralyzed"], conditionMeta: { paralyzed: { rounds: 10, spell: "Hold Person", slotLevel: 2, source: foe.id } } });
+    const held = { ok: true, error: "", result: { staged: "Hold Person (2nd level) from the foe" } };
     const before = rig.conditions(friend);
     const heal = await rig.call("heal", { characterId: friend.id, casterId: who.id, spell: "Cure Wounds", level: 2 }, [4, 4]);
     const after = rig.conditions(friend);

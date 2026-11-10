@@ -314,13 +314,15 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
     subclass: "Light Domain",
     spends: [
       {
+        // An action of its own, as often as the cleric likes: neither the
+        // feature's words nor the published feature make it a Channel
+        // Divinity option, and it took a use of one.
         name: "Corona of Light",
-        pool: { id: "channel_divinity" },
         action: "action",
         does: { kind: "buff", condition: "corona of light", rounds: 10 },
       },
     ],
-    effects: [{ kind: "enemy_save", when: "near", rangeFt: 60, anyCaster: true, gate: { condition: "corona of light" } }],
+    effects: [{ kind: "enemy_save", when: "near", rangeFt: 60, anyCaster: true, damageTypes: ["fire", "radiant"], gate: { condition: "corona of light" } }],
   },
   "cleric::Dampen Elements": {
     subclass: "Nature Domain",
@@ -345,7 +347,8 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
       {
         name: "Blessing of the Trickster",
         action: "action",
-        does: { kind: "buff", target: "ally", othersOnly: true, condition: "blessing of the trickster", rounds: 600 },
+        // "Touch a willing creature other than yourself": within 5 feet.
+        does: { kind: "buff", target: "ally", othersOnly: true, condition: "blessing of the trickster", rounds: 600, rangeFt: 5 },
       },
     ],
   },
@@ -401,7 +404,8 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
   },
   "cleric::Circle of Mortality": {
     subclass: "Grave Domain",
-    effects: [{ kind: "heal_max", note: "Spare the Dying at 30 feet as a bonus action is narrated." }],
+    // Spare the Dying at 30 feet as a bonus action: src/lib/dm/stabilize.ts.
+    effects: [{ kind: "heal_max" }],
   },
   "cleric::Keeper of Souls": {
     subclass: "Grave Domain",
@@ -449,7 +453,7 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
       {
         name: "Protective Bond",
         usedBy: "party",
-        does: { kind: "take_for_ally", rangeFt: [[6, 30], [17, 60]], resistFrom: 17 },
+        does: { kind: "take_for_ally", rangeFt: [[6, 30], [17, 60]], resistFrom: 17, bond: "emboldening bond", teleport: true },
       },
     ],
   },

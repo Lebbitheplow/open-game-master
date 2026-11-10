@@ -503,6 +503,16 @@ function basicCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders,
   return cards;
 }
 
+// The counters that work only in dim light or darkness (Steps of Night, One
+// with Shadows), shut while the board says the square is bright, as
+// use_resource refuses them there (one-with-shadows.ts shadowLightProblem).
+const DARK_BOUND = new Set(["sub_steps_of_night", "one_with_shadows"]);
+function darkBound(card: HandCard, board: HandOptions["board"]): HandCard {
+  return board?.bright && card.pool && DARK_BOUND.has(card.pool) && !card.disabled
+    ? { ...card, disabled: `${board.bright}; ${card.name} works only in dim light or darkness.`, spent: false }
+    : card;
+}
+
 // ---- the hand ----
 
 // Attacks, the riders that ride them, spells by level, class features, then
@@ -510,7 +520,7 @@ function basicCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders,
 export function deriveHand(sheet: CharacterSheet, turn: HandTurn = FRESH_TURN, options: HandOptions = {}): HandCard[] {
   const riders = combatRiders(sheet);
   const spells = spellCards(sheet, turn, riders, options);
-  const features = featureCards(sheet, turn);
+  const features = featureCards(sheet, turn).map((card) => darkBound(card, options.board));
   // By name, and by the spend a card plays (Arcane Jolt's two cards are one spend, and so are Cauterizing Flames' two reactions).
   const taken = new Set(features.flatMap((card) => [textKey(card.name), ...(card.intent.card === "reaction" ? [textKey(card.intent.feature)] : []), ...(card.intent.card === "feature" && card.intent.resourceId ? [textKey(card.intent.resourceId)] : [])]));
   return [
