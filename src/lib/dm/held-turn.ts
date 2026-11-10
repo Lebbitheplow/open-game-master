@@ -173,12 +173,14 @@ function heldActionLine(name: string, ahead: string[]): string {
   return `${who} ${one ? "acts" : "act"} before ${name}: play ${one ? "its turn" : "their turns"} (enemy_attack / take_action with ${one ? "its" : "each one's"} enemyId) first, then resolve ${name}'s action. Nothing was spent.`;
 }
 
-// The refusal of a walk on a turn that has not begun.
-export function heldTurnLine(name: string, ahead: string[]): string {
+// The refusal of a walk on a turn that has not begun, in a player's words
+// (the board's walk; `does` the act, "acts" for the sheet's gear toggle, whose
+// route relayed heldActionLine's sentence for the model, tool names and all).
+export function heldTurnLine(name: string, ahead: string[], does = "moves"): string {
   const who = ahead.length > 1 ? `${ahead.slice(0, -1).join(", ")} and ${ahead[ahead.length - 1]}` : ahead[0];
   return who
-    ? `${who} ${ahead.length > 1 ? "take their turns" : "takes its turn"} before ${name}'s: ${name} moves once their turn begins.`
-    : `The enemies before ${name} are taking their turns; ${name} moves once the GM hands the turn on.`;
+    ? `${who} ${ahead.length > 1 ? "take their turns" : "takes its turn"} before ${name}'s: ${name} ${does} once their turn begins.`
+    : `The enemies before ${name} are taking their turns; ${name} ${does} once the GM hands the turn on.`;
 }
 
 // The enemies before the held character have acted: their turn begins.
