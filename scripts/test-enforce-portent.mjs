@@ -505,6 +505,19 @@ await test("A rider thrown from the saddle stops for the save to land on their f
   setMount(fightWorld.campaignId, target.id, null);
 });
 
+await test("A poison laid with afflict stops for its save.", async () => {
+  arm();
+  await enemyTurn([modelCall("afflict", { characterId: target.id, kind: "poison", name: "Serpent Venom" })], "The fang sinks in.");
+  const [stop] = stops();
+  assert.ok(stop, "the poison's save stops");
+  assert.match(stop.reason, /Kara is about to make a saving throw against Serpent Venom\./);
+  assert.equal((await answer(stop.id, { value: 17 })).status, 200);
+  await settleQueue(fightWorld.campaignId);
+  assert.equal(saveRolls().at(-1)?.breakdown.natural, 17, "the foretold 17 is the save's d20");
+  assert.deepEqual(fightWorld.sheet(seer.id).foretold, [3]);
+  fightWorld.patch(target.id, { conditions: [], conditionMeta: {}, currentHp: 60 });
+});
+
 await test("Polymorph at a creature of the fight stops before its save.", async () => {
   arm();
   const order = fightWorld.encounter();

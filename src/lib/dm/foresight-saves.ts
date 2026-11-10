@@ -1,10 +1,12 @@
 // The saves a GM call throws inside it, that a watch stop answers before the
 // call runs (src/lib/dm/foresight.ts rollAbout): a trap or a hazard sprung on
 // characters, a condition laid with the save that keeps it off, a rider
-// thrown from a mount, a shape spell at an unwilling creature. Each lands on
-// a roll site that carries the save's tag and asks what the stop armed: the
-// character's or the creature's full save (src/lib/dm/forced-save.ts), or for
-// the hours of cold and heat src/lib/dm/endurance.ts. Without a stop these
+// thrown from a mount, a shape spell at an unwilling creature, a disease, a
+// poison or a madness. Each lands on a roll site that carries the save's tag
+// and asks what the stop armed: the character's or the creature's full save
+// (src/lib/dm/forced-save.ts), or throwWatchedSave there for the hours of
+// cold and heat (endurance.ts) and an affliction (between-io.ts). Without a
+// stop these
 // went by with the watcher's Portent, Chronal Shift, Flash of Genius or
 // Favored by the Gods unasked (SRD 5.1 Portent: "any attack roll, saving
 // throw, or ability check made by you or a creature that you can see").
@@ -158,6 +160,13 @@ export function savesAbout(campaign: Campaign, encounter: Encounter, name: strin
   }
   if (name === "cast_buff") {
     return shapeAbout(campaign, encounter, args, sheets);
+  }
+  if (name === "afflict" && args.save !== false && (args.kind === "disease" || args.kind === "poison" || (args.kind === "madness" && Number(args.saveDc) >= 1))) {
+    // A disease's infection, a poison's save, a madness's when its source
+    // allows one (afflictions.ts, between-io.ts characterSave).
+    const hero = sheets.find((sheet) => sheet.id === args.characterId);
+    const what = typeof args.name === "string" && args.name.trim() ? args.name.trim().slice(0, 60) : args.kind === "madness" ? "madness" : `a ${args.kind}`;
+    return hero ? heroesAbout([hero], ` against ${what}`) : null;
   }
   return null;
 }

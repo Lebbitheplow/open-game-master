@@ -11,7 +11,7 @@ import { insertRoll } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
 import { rollExpression } from "@/lib/dice";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
-import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
+import { heldDieWaits, rollExtrasFor, spendRollCarriers, throwWatchedSave } from "@/lib/dm/forced-save";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
 import type { SaveAgainstValue } from "@/lib/dm/roll-about";
 import type { Affliction, DowntimeProgress, Lifestyle } from "@/lib/dm/between-state";
@@ -114,8 +114,8 @@ export function characterSave(
     return { success: false, total: 0, failBy: input.dc, autoFailed: true };
   }
   spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-  const thrown = rollExpression(resolved.expression);
-  const outcome = waits ? settleHeldDie(campaign.id, sheet.id, thrown, input.dc) : thrown;
+  // A watch stop's answer lands here too (afflict in a fight, foresight-saves.ts).
+  const outcome = throwWatchedSave(campaign.id, sheet, resolved.expression, input.dc, waits);
   const roll = insertRoll({
     campaignId: campaign.id,
     characterId: sheet.id,

@@ -7,20 +7,18 @@
 //
 // Every save rides the character's own roll path, so a held Bardic
 // Inspiration, Help or Guidance is folded in and spent by the save it rides.
-// Each is tagged as the character's save, as forced-save.ts tags its own, so
-// what a watch stop armed for it in a fight (a foretold number, a Chronal
-// Shift, Flash of Genius, Favored by the Gods: src/lib/dm/foresight.ts) lands
-// on the first hour's save it answers.
+// Each is thrown as a watched save (forced-save.ts throwWatchedSave), so what
+// a watch stop armed for it in a fight (a foretold number, a Chronal Shift,
+// Flash of Genius, Favored by the Gods: src/lib/dm/foresight.ts) lands on the
+// first hour's save it answers.
 
 import type { Campaign } from "@/lib/db/campaigns";
 import { allocateSeq } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { insertRoll } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
-import { rollExpression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
-import { noteShift, takeSaveHelp, takeShift } from "@/lib/dm/chronal-shift";
-import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
+import { heldDieWaits, rollExtrasFor, spendRollCarriers, throwWatchedSave } from "@/lib/dm/forced-save";
 import { applyDmMutation } from "@/lib/dm/mutations";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -70,19 +68,7 @@ export function hourlyConSaves(input: {
       failed = true;
     } else {
       spendRollCarriers(campaign.id, sheet.id, resolved.spendInspiration);
-      const purpose = { roller: "hero" as const, kind: "save" as const, who: sheet.name };
-      const throwSave = () => {
-        const thrown = rollExpression(resolved.expression, undefined, { purpose });
-        return waits ? settleHeldDie(campaign.id, sheet.id, thrown, dc) : thrown;
-      };
-      let rolled = throwSave();
-      const shiftedBy = takeShift(campaign.id, purpose, rolled.total >= dc);
-      if (shiftedBy) {
-        const first = rolled.total;
-        rolled = throwSave();
-        noteShift(campaign.id, `${shiftedBy} used Chronal Shift: ${sheet.name} rolled the hour ${hour} save again (${first} became ${rolled.total}) against DC ${dc}, and the new roll stands.`);
-      }
-      rolled = takeSaveHelp(campaign.id, purpose, sheet.name, rolled, dc)?.outcome ?? rolled;
+      const rolled = throwWatchedSave(campaign.id, sheet, resolved.expression, dc, waits);
       save = rolled.total;
       const roll = insertRoll({
         campaignId: campaign.id,

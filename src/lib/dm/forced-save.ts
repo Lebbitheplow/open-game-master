@@ -167,6 +167,27 @@ export function settleHeldDie(campaignId: string, sheetId: string, outcome: Roll
   return settled;
 }
 
+// A character's save thrown outside rollCharacterSave (an hour of the
+// weather, endurance.ts; an affliction, between-io.ts): tagged as the
+// character's save, so a watch stop's foretold number lands on its d20, and
+// answered by what the stop armed (a Chronal Shift rolls it again, Flash of
+// Genius or Favored by the Gods adds to it when it fails), as
+// rollCharacterSave's own save is. `waits`: heldDieWaits for this DC.
+export function throwWatchedSave(campaignId: string, sheet: Pick<CharacterSheet, "id" | "name">, expression: string, dc: number, waits: boolean): RollResult {
+  const purpose = { roller: "hero" as const, kind: "save" as const, who: sheet.name };
+  const throwSave = () => {
+    const thrown = rollExpression(expression, undefined, { purpose });
+    return waits ? settleHeldDie(campaignId, sheet.id, thrown, dc) : thrown;
+  };
+  let outcome = throwSave();
+  const shiftedBy = takeShift(campaignId, purpose, outcome.total >= dc);
+  if (shiftedBy) {
+    outcome = throwSave();
+    noteShift(campaignId, `${shiftedBy} used Chronal Shift: ${sheet.name} rolled the save again, ${outcome.total} against DC ${dc}, and the new roll stands.`);
+  }
+  return takeSaveHelp(campaignId, purpose, sheet.name, outcome, dc)?.outcome ?? outcome;
+}
+
 // An attack roll's held Bardic Inspiration die (settleHeldDie): added only to
 // a roll that misses `ac` and is no natural 1 or critical, when the die can
 // lift it to a hit. The same object back when nothing was added.
