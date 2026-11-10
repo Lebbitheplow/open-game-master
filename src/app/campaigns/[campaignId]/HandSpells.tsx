@@ -52,22 +52,21 @@ function toFact(entry: SpellResult): SpellFact {
     ...(entry.bestEffort ? { bestEffort: true } : {}),
     ...(mech ? { mech } : {}),
     ...(runsAs ? { runsAs } : {}),
-    // The bundled data knows no workshop spell, so its card reads the
-    // facts the cast guard reads: the row's own (spell-facts.ts).
-    ...(homebrew
-      ? {
-          facts: factsFromRow({
-            name: entry.name,
-            level: entry.level,
-            ritual: entry.ritual,
-            concentration: entry.concentration,
-            classes: entry.classes,
-            aliases: entry.aliases,
-            homebrew: true,
-            data: entry.data,
-          }),
-        }
-      : {}),
+    // The card reads the facts the cast guard reads: the row's own
+    // (content spellFactsFor, spell-facts.ts). The bundled data knows no
+    // workshop spell, and keeps only the checklist line of a pack spell
+    // outside the SRD, with no components: the card of a Ray of Sickness
+    // was open with both hands full, and the cast guard refused it.
+    facts: factsFromRow({
+      name: entry.name,
+      level: entry.level,
+      ritual: entry.ritual,
+      concentration: entry.concentration,
+      classes: entry.classes,
+      aliases: entry.aliases,
+      homebrew,
+      data: entry.data,
+    }),
   };
 }
 

@@ -1428,6 +1428,8 @@ export function SessionView({
                     unseen={state.battleMap?.unseen}
                     drops={state.battleMap?.drops}
                     mounts={state.battleMap?.mounts}
+                    board={state.battleMap?.self}
+                    sight={state.battleMap?.sight}
                     sheets={sheets}
                     meUserId={me.id}
                     activeSheetId={state.activeSheetId}
