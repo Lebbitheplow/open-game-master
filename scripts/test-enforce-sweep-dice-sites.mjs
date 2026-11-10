@@ -506,6 +506,7 @@ const SITES = {
   "lib/dm/enemy-hit.ts#resolveOnHit": "F", "lib/dm/enemy-strike.ts#enemyStrikesEnemy": "F",
   "lib/dm/feat-reactions.ts#lucky": "H the Lucky feat's d20 against an attacker", "lib/dm/feat-reactions.ts#reservesRecovery": "D a hit die",
   "lib/dm/forced-save.ts#rollCharacterSave": "H", "lib/dm/forced-save.ts#rollEnemySave": "F", "lib/dm/forced-save.ts#settleHeldDie": "D a held Bardic die",
+  "lib/dm/foresight-more.ts#damageCeiling": "F no die: the most a blow could deal, to read whether it could drop the hero before the watch stop",
   "lib/dm/foretold-logic.ts#rollForetold": "H Portent's two d20s at the long rest",
   "lib/dm/gear-weapon-hit.ts#enemyExtinguish": "F", "lib/dm/hazard-tools.ts#resolveHazard": "F which target a trap picks",
   "lib/dm/heal-spell.ts#castHealingSpell": "D", "lib/dm/hit-dice.ts#spendHitDice": "D hit dice",

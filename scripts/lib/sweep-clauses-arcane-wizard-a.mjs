@@ -3,6 +3,7 @@
 // (scripts/clauses/arcane.json; run by test-enforce-sweep-clauses-arcane-wizard.mjs).
 import assert from "node:assert/strict";
 import { MOD, prof, spellDc } from "./sweep-clauses-arcane.mjs";
+import { hasPack } from "./enforce-world.mjs";
 
 const DATA = "src/lib/srd/authored-effects-data*.ts";
 
@@ -388,7 +389,9 @@ export function probes(rig, shared) {
     },
     "harvest-paths": async () => {
       const area = await harvest("aoe_damage", (enemy) => ({ casterCharacterId: nec().id, spell: "Fireball", enemyIds: [enemy.id] }), [1, 6, 6, 6, 6, 6, 6, 6, 6]);
-      const attack = await harvest("pc_attack", (enemy) => ({ characterId: nec().id, targetEnemyId: enemy.id, spell: "Ray of Sickness" }), [15, 5, 5]);
+      // With no content pack the spell's dice are not known: the call names
+      // them (2d8 poison), as pc_attack asks.
+      const attack = await harvest("pc_attack", (enemy) => ({ characterId: nec().id, targetEnemyId: enemy.id, spell: "Ray of Sickness", ...(hasPack ? {} : { damage: "2d8" }) }), [15, 5, 5]);
       assert.deepEqual({ "Fireball through aoe_damage": area, "Ray of Sickness through pc_attack": attack }, { "Fireball through aoe_damage": 6, "Ray of Sickness through pc_attack": 3 }, "hit points back from a kill");
     },
     "thralls-learn": async () => {

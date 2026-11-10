@@ -2364,7 +2364,7 @@
     "lib/srd/odds.ts#partial": [["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "lib/srd/options.ts#partial": [["identity",1,"options by whole name"],["key",7,"ODM's own \"Family: Choice\" and \"Feature (Choice)\" pick names, read for their choice, under the kind's prefix or a family's other name (\"Favored Enemy Improvement: fiends\")"]],
     "lib/srd/options.ts#whole": [["identity",9,"options by whole name"],["identity",3,"an option's requirement: the class by the grant's kind, a pact boon and a cantrip by whole name"]],
-    "lib/srd/owed-picks-logic.ts#whole": [["identity",7,"owed options, styles and training grants by whole name"],["identity",3,"an owed workshop choice and its option by whole name (textKey on both sides)"]],
+    "lib/srd/owed-picks-logic.ts#whole": [["identity",6,"owed options, styles and training grants by whole name"],["identity",3,"an owed workshop choice and its option by whole name (textKey on both sides)"]],
     "lib/srd/owed-picks-logic.ts#keyed": [["identity",2,"a training grant's picks keyed by its name"],["identity",2,"a workshop choice's replacement picks by the grant's name, textKey"]],
     "lib/srd/owed-picks-logic.ts#partial": [["identity",1,"a chosen option by whole name"],["identity",3,"a held skill, tool or expertise by textKey on both sides (expertiseOptionsAfter)"]],
     "lib/srd/style-slots.ts#whole": [["identity",1,"held fighting styles against a style's whole name, textKey on both sides"]],

@@ -19,7 +19,7 @@
 // not state (scripts/lib/sweep-lifecycle.mjs LOG_TABLES).
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import "./lib/enforce-world.mjs";
+import { hasPack } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { diff, revertTurn, snapshot } from "./lib/sweep-lifecycle.mjs";
 import { stage } from "./lib/sweep-lifecycle-stage.mjs";
@@ -163,7 +163,9 @@ const RECIPES = {
     { variant: "hand", stage: "calm", args: (c) => ({ characterId: c.hero.id, action: "hand", item: "Longbow", toCharacterId: c.mage.id }) },
   ],
   use_item: one("fight", (c) => ({ characterId: c.hero.id, item: "Potion of Healing" }), { before: (c) => c.world.patch(c.hero.id, { currentHp: 10 }), dice: [2, 2] }),
-  purchase: one("calm", (c) => ({ characterId: c.hero.id, action: "buy", item: "Dagger", qty: 1 })),
+  // With no content pack nothing prices a Dagger, so the GM names the price,
+  // as the tool's refusal asks.
+  purchase: one("calm", (c) => ({ characterId: c.hero.id, action: "buy", item: "Dagger", qty: 1, ...(hasPack ? {} : { price: 2 }) })),
   use_resource: [
     { variant: "second wind", stage: "fight", before: (c) => c.world.patch(c.hero.id, { currentHp: 10 }), args: (c) => ({ characterId: c.hero.id, resource: "Second Wind" }), dice: [4] },
     { variant: "action surge", stage: "fight", args: (c) => ({ characterId: c.hero.id, resource: "Action Surge" }) },

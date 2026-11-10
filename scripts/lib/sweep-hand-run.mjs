@@ -203,7 +203,10 @@ export function judge({ state, card, played, variant, heroId, riderCards = [] })
       // after the dice is in its answer, not in the roll (Empowered Evocation).
       const summed = damageRolls.map((roll) => roll.expression).join("+");
       const flatLeft = termsOf(card.damage).flat - termsOf(damageRoll.expression).flat;
-      const noted = flatLeft > 0 && new RegExp(`\\+${flatLeft}\\b`).test(said) && damageAgrees({ ...card, damage: `${damageRoll.expression}+${flatLeft}` }, card.damage, riderDice);
+      // Both forms: one roll with the bonus, or a two-type spell's two rolls
+      // summed with it (Empowered Evocation on Ice Storm's hail and cold).
+      const noted = flatLeft > 0 && new RegExp(`\\+${flatLeft}\\b`).test(said)
+        && [damageRoll.expression, summed].some((rolled) => damageAgrees({ ...card, damage: `${rolled}+${flatLeft}` }, card.damage, riderDice));
       out.push(damageAgrees(card, damageRoll.expression, riderDice) || damageAgrees(card, summed, riderDice) || noted
         ? { prop: "P3", ok: true }
         : { prop: "P3", ok: false, msg: `damage: the card shows ${card.damage}, the engine rolled ${damageRolls.map((roll) => roll.expression).join(" and ")}` });

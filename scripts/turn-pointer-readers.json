@@ -78,8 +78,8 @@
       "why": "reads the entry and asks ownTurnOf of it for the pact's own turn"
     },
     "lib/dm/encounter-tools.ts": {
-      "count": 27,
-      "why": "the pointer machinery itself (advancePointer, end_turn, the order, death saves at a turn's start); end_turn handles the held turn itself"
+      "count": 28,
+      "why": "the pointer machinery itself (advancePointer, end_turn and the move it holds for a watcher's stop, the order, death saves at a turn's start); end_turn handles the held turn itself"
     },
     "lib/dm/enemy-actions-view.ts": {
       "count": 1,
@@ -88,6 +88,10 @@
     "lib/dm/enemy-turn-order.ts": {
       "count": 1,
       "why": "names whose turn it is in an enemy's refusal"
+    },
+    "lib/dm/foresight-more.ts": {
+      "count": 1,
+      "why": "the pointer move's own saves (moveSavesAbout): who is leaving as End Turn moves the pointer, and the dying it reaches next"
     },
     "lib/dm/initiative-ask.ts": {
       "count": 1,

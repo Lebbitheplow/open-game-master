@@ -10,6 +10,7 @@
 // with the built-in engine (node:sqlite, the Android app's) as a child.
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { revertTurn } from "./lib/sweep-lifecycle.mjs";
@@ -187,7 +188,7 @@ if (!child) {
 
 if (!child) {
   await test("the same journal runs on the built-in engine (node:sqlite)", () => {
-    const run = spawnSync(process.execPath, [new URL(import.meta.url).pathname, "--engine-child"], {
+    const run = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "--engine-child"], {
       env: { ...process.env, ODM_SQLITE_DRIVER: "node" },
       encoding: "utf8",
     });

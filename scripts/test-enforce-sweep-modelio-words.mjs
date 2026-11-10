@@ -27,8 +27,8 @@ const { test, gap, finish } = suite("test-enforce-sweep-modelio-words");
 const { readPlayerWord, englishHold, englishActs, onlyAsks } = await import("../src/lib/dm/player-word-logic.ts");
 
 const source = fs.readFileSync(fileURLToPath(new URL("../src/lib/dm/player-word-logic.ts", import.meta.url)), "utf8");
-// const ACTS = /\b(?:a|b|c ...)(?:s|es|ed|ing)?\b/i;
-const actsSource = /const ACTS =\s*\n?\s*\/\\b\(\?:(.+?)\)\(\?:s\|es\|ed\|ing\)\?\\b\/i;/s.exec(source);
+// const ACT_VERBS = "a|b|c ...";, which ACTS and DECLINED both read.
+const actsSource = /const ACT_VERBS =\s*\n?\s*"([^"]+)";/.exec(source);
 assert.ok(actsSource, "the ACTS expression is where this suite reads it");
 // Top-level alternatives only; "go (?:to|for)" becomes "go to".
 const VERBS = [];
@@ -63,14 +63,10 @@ const FORMS = {
 
 // What fails today. One entry per form: the reader has no notion of the
 // form at all, so every verb fails it the same way; a verb that starts
-// holding moves its row out of the gap by failing the suite.
+// holding moves its row out of the gap by failing the suite. A turned-down
+// action ("I won't attack the goblin.") holds for every verb since #888's
+// review (DECLINED in player-word-logic.ts), so it is a test now.
 const KNOWN_FORMS = {
-  negated: {
-    rule: "The AI spends a character's turn only on what their player asked for (src/lib/dm/player-word-logic.ts: 'Counting any line as the player's word let the AI play a turn its player never declared'). A line that only says what the character will not do asks for nothing.",
-    where: "src/lib/dm/player-word-logic.ts readPlayerWord (in a fight any line that is not a question declares; ACTS matches the verb after \"won't\")",
-    severity: "medium",
-    note: "In flight: PR #888 reads a turned-down action and refuses the turn-spending calls.",
-  },
   "to-another": {
     rule: "The AI spends a character's turn only on what their player asked for that character. An order to another character ('Brann, attack the goblin!') declares nothing the speaker's own character does.",
     where: "src/lib/dm/player-word-logic.ts readPlayerWord (the reader is handed foes and spells as names, never the party's)",

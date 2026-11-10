@@ -11,7 +11,7 @@
 // surroundings". A stunned or paralyzed character outside a fight is left to
 // the fight matrix (test-enforce-sweep-doors-block-heroes.mjs).
 import assert from "node:assert/strict";
-import { openWorld } from "./lib/enforce-world.mjs";
+import { hasPack, openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { cleric, wizard } from "./lib/enforce-spells.mjs";
 import { BROM, dbTools, doors as openDoors } from "./lib/sweep-doors.mjs";
@@ -26,7 +26,14 @@ const rows = quietRows();
 
 // ---- what fails today, and what cannot be run ----
 
-const SKIP = {};
+// With no content pack the shop stocks no Torch and nothing prices a Dagger,
+// so neither trade plays on a clear table: there is no trade to block.
+const SKIP = hasPack
+  ? {}
+  : {
+      "purchase:buy": "needs the content pack: without it the general store stocks no Torch",
+      "purchase:sell": "needs the content pack: without it nothing prices a Dagger",
+    };
 
 
 // None left: every deed out of a fight asks canAct first
@@ -41,7 +48,7 @@ const cells = (row) => OUT_STATES.flatMap((state) => ["console", "ai"].map((door
 // deed guard (src/lib/dm/deed-guard.ts) leaves a trade out of DEEDS for that
 // reason; these cells hold that it still goes through.
 const KNOWN = {};
-const ALLOWED = known([...cells("purchase:buy"), ...cells("purchase:sell")], {
+const ALLOWED = known(hasPack ? [...cells("purchase:buy"), ...cells("purchase:sell")] : [], {
   ruling: "the GM settling a fallen friend's trades (scripts/test-enforce-break-and-counter.mjs)",
 });
 

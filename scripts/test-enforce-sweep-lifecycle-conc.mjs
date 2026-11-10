@@ -30,7 +30,7 @@
 // incapacitated or if you die."
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import "./lib/enforce-world.mjs";
+import { hasPack } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { castRow, dropCaster, left, metaOf, mustGo, spellRows, strays, stunCaster, swapConcentration, walkRounds } from "./lib/sweep-lifecycle-spells.mjs";
 
@@ -67,8 +67,19 @@ const SKIP = {
 const CASTER_TRANSFORMED = { Shapechange: true };
 
 // Known today, by "Spell/check". Each is in /tmp/odm-gapstudy/findings/lifecycle.jsonl.
-// None today: every row the sweep walks is enforced.
-const KNOWN = {};
+// With the content pack every row the sweep walks is enforced. Without it,
+// Ravenous Void (an authored spell, src/lib/srd/authored-spells.json) lays its
+// restraint with no rounds: the duration is read from the pack's record of
+// the spell, which a server with no pack does not have.
+const KNOWN = hasPack
+  ? {}
+  : {
+      "Ravenous Void/duration": {
+        where: "the area spell's laid condition takes its rounds from the pack's spell record, not the authored spell's own duration",
+        severity: "low",
+        note: "Only a server with no content pack: the apps and Docker image carry it.",
+      },
+    };
 
 // One check of one row not made, and why.
 const SUBSKIP = {
