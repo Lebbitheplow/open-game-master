@@ -33,6 +33,7 @@ import {
   HAND_BOARD_CONTROL_EVENT,
   HAND_BOARD_SURFACE_EVENT,
   handReady,
+  seenChips,
   type HandBoardActionDetail,
   type HandBoardControlDetail,
   composeSentence,
@@ -401,7 +402,9 @@ function HandInner({
   const offered = useMemo(() => fixedChip
     ? [fixedChip]
     : picked?.target === "enemy"
-      ? reactionPicks(picked, pickable, picked.actor ? undefined : ownFeet)
+      // A card that takes a creature its holder can see leaves out the ones
+      // the board says they cannot (hand-play.ts aimUnseen, the engine's gate).
+      ? seenChips(picked, reactionPicks(picked, pickable, picked.actor ? undefined : ownFeet))
       : picked?.target === "ally"
         ? picked.othersOnly ? partyTargets.filter((target) => target.kind !== "self") : partyTargets
         : [], [fixedChip, picked, pickable, partyTargets, ownFeet]);

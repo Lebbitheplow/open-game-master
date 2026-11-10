@@ -88,6 +88,14 @@ export function judge({ state, card, played, variant, heroId, riderCards = [] })
     return out;
   }
 
+  if (enabled && played.withheld) {
+    // The card leaves this creature's chip off its aim bar (it cannot be
+    // seen): the engine, forced, must refuse it too.
+    out.push(accepted
+      ? { prop: "P5", ok: false, msg: `the card withholds the chip ("${short(played.withheld)}"), and the engine takes it when forced (${played.calls.map((call) => call.name).join(", ")})` }
+      : { prop: "P5", ok: true });
+    return out;
+  }
   if (enabled) {
     if (variant === ":self") {
       // The holder's own chip on an ally card.

@@ -110,8 +110,25 @@ export function sharePhrase(card: HandCard, list: HandShare[]): string {
   return names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : names[0] ?? "";
 }
 
+// Why a sight-bound card (HandCard.sight) cannot be aimed at this creature,
+// or null: the board's verdict on the engine's own gate (view-tactics.ts
+// TargetSight.unseen / unseenBy, which is authored-saves.ts unseenBecause,
+// the call use_resource refuses by). One answer for the aim bar and the play,
+// so the Hand never offers an invisible foe's chip the engine then refuses.
+export function aimUnseen(card: HandCard, aim: Pick<HandAim, "kind" | "sight"> | null): string | null {
+  if (!card.sight || aim?.kind !== "enemy") return null;
+  return (card.sight === "seesHolder" ? aim.sight?.unseenBy : aim.sight?.unseen) ?? null;
+}
+
+// The chips a raised card offers among those given: a sight-bound card leaves
+// out the creatures its holder cannot see (aimUnseen).
+export function seenChips<T extends Pick<HandAim, "kind" | "sight">>(card: HandCard, chips: T[]): T[] {
+  return card.sight ? chips.filter((chip) => !aimUnseen(card, chip)) : chips;
+}
+
 export function handReady(card: HandCard, aim: HandAim | null, choices: HandChoices = {}): boolean {
   return (!(card.target === "enemy" || card.target === "ally") || aim !== null || hasPick(card.area, choices.area ?? {}))
+    && !aimUnseen(card, aim)
     && (card.asks !== "trigger" || Boolean(choices.trigger?.trim()))
     // A summoning card goes with its creature picked (hand-summon.ts).
     && (!card.summon || summonReady(card, summonChoicesOf(card, choices)));

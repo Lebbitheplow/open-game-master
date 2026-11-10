@@ -18,6 +18,7 @@ import {
 } from "@/lib/dm/attack-spatial";
 import { attackSenses, characterSenses, enemySenses } from "@/lib/dm/attack-light";
 import { attackSightVerdict } from "@/lib/dm/attack-sight";
+import { unseenBecause } from "@/lib/dm/authored-saves";
 import type { PastSight } from "@/lib/dm/condition-logic";
 import { hideRefusal } from "@/lib/dm/hide-traits";
 import { silenceAround } from "@/lib/dm/zone-rules";
@@ -50,7 +51,16 @@ export type TargetEdge = {
 // cannot see too (in magical darkness the foes are not shown, and that is
 // when sight matters), never a token the GM keeps hidden, and nothing of
 // where they stand.
-export type TargetSight = { light: Array<"advantage" | "disadvantage">; attacker: string[]; target: string[]; targetSees: boolean };
+//
+// `unseen` and `unseenBy` are the engine's own gate for a feature that takes
+// "a creature you can see" (authored-saves.ts unseenBecause, the call
+// use_resource makes for Nature's Wrath, Hexblade's Curse, Champion
+// Challenge and the rest): why the viewer cannot see the creature, and why
+// the creature cannot see the viewer ("seesHolder"). The Hand reads them to
+// withhold that creature's chip from a sight-bound card (hand-play.ts
+// aimUnseen), so the card and the engine cannot disagree. Absent when seen,
+// and from an older host, where the chip is offered as before.
+export type TargetSight = { light: Array<"advantage" | "disadvantage">; attacker: string[]; target: string[]; targetSees: boolean; unseen?: string; unseenBy?: string };
 
 export function targetEdges(input: {
   campaignId: string;
@@ -97,7 +107,16 @@ export function targetSight(input: { campaignId: string; encounterId: string; ch
       continue;
     }
     const seen = attackSightVerdict({ campaignId: input.campaignId, encounterId: input.encounterId, sheet, enemy });
-    out[enemyId] = { light: seen.light, attacker: seen.attackerConditions, target: seen.targetConditions, targetSees: seen.sight?.targetSees !== false };
+    const unseen = unseenBecause(input.encounterId, sheet, enemy);
+    const unseenBy = unseenBecause(input.encounterId, enemy, sheet);
+    out[enemyId] = {
+      light: seen.light,
+      attacker: seen.attackerConditions,
+      target: seen.targetConditions,
+      targetSees: seen.sight?.targetSees !== false,
+      ...(unseen ? { unseen } : {}),
+      ...(unseenBy ? { unseenBy } : {}),
+    };
   }
   return out;
 }

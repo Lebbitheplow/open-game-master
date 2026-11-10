@@ -446,7 +446,12 @@ export async function handRig() {
     const out = { cardId: card.id, name: card.name, aim: aim ? { id: aim.id, kind: aim.kind, name: aim.name } : null, ready: true };
     if (card.compose) return { ...out, skip: "finished in the composer: the card posts no intent" };
     if ((card.target === "enemy" || card.target === "ally") && !aim) return { ...out, skip: "nothing to aim at in this state" };
-    if (!handPlay.handReady(card, aim, choices)) return { ...out, ready: false, skip: "the card is not ready as staged (a pick it needs was not made)" };
+    // A chip the card leaves off its aim bar (a sight-bound card and a foe the
+    // board says the holder cannot see, hand-play.ts aimUnseen) is still
+    // forced through the engine, which must refuse it as the card did.
+    const withheld = aim ? handPlay.aimUnseen(card, aim) : null;
+    if (withheld) out.withheld = withheld;
+    if (!handPlay.handReady(card, withheld ? { ...aim, sight: undefined } : aim, choices)) return { ...out, ready: false, skip: "the card is not ready as staged (a pick it needs was not made)" };
     const body = handPlay.intentBody(card, aim, riders, choices);
     const parsed = intentLogic.messageIntentSchema.safeParse(body);
     if (!parsed.success) {

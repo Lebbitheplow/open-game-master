@@ -70,7 +70,22 @@ function aimDoes(does: SpendDoes, variant: string | undefined): SpendDoes {
 // (Watcher's Will) leaves the unseen out instead, so it stays open.
 function sightBound(does: SpendDoes): boolean {
   if (!("sight" in does) || !does.sight) return false;
+  // The creatures of the player's choice that they can see (Champion
+  // Challenge): a blinded holder sees none, and the engine finds nothing in reach.
+  if (does.kind === "save_area") return Boolean(does.chosen) && does.sight === true;
   return does.kind === "save_effect" || (does.kind === "buff" && (does.target === "enemy" || Boolean(does.quarry)));
+}
+
+// The sight a card aimed at a foe carries (HandCard.sight): the spend's own
+// flag, which use_resource reads (authored-spend-effects.ts unseenBecause),
+// for one creature (sightBound) or the creatures of the player's choice an
+// area takes (Champion Challenge leaves the unseen out of its reach).
+function sightOf(does: SpendDoes, target: HandTarget): Pick<HandCard, "sight"> {
+  if (target !== "enemy" || !("sight" in does) || !does.sight) return {};
+  // A "seesHolder" area of the player's choice (Charm Animals and Plants) is
+  // not shut by a blinded holder, but its chips still follow the board.
+  if (!sightBound(does) && !(does.kind === "save_area" && does.chosen)) return {};
+  return { sight: does.sight === "seesHolder" ? "seesHolder" : true };
 }
 
 // The reach a spend holds its creatures to, printed on the card.
@@ -255,6 +270,7 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
           ? { card: "reaction", feature: spend.name, ...(aim.variant ? { variant: aim.variant } : {}) }
           : { card: "feature", resourceId: spend.name, ...(aim.variant ? { variant: aim.variant } : {}) },
       ...(does.kind === "buff" && does.othersOnly ? { othersOnly: true } : {}),
+      ...sightOf(aimDoes(does, aim.variant), aim.target),
     };
     if (does.kind === "buff" && does.variants) {
       // One pick per outcome: Adjust Density's "halve" is another word for "lighter".

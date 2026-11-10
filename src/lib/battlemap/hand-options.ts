@@ -42,7 +42,7 @@ function card(
   sheet: CharacterSheet,
   turn: HandTurn,
   pool: { id: string; label: string },
-  option: { name: string; cost: HandCost; rules: string; target?: HandTarget; dice?: string; ritual?: boolean; icon?: IconRef; shares?: HandShares; reach?: string; gates?: Array<{ reason: string; spent: boolean } | null> },
+  option: { name: string; cost: HandCost; rules: string; target?: HandTarget; dice?: string; ritual?: boolean; icon?: IconRef; shares?: HandShares; reach?: string; sight?: HandCard["sight"]; gates?: Array<{ reason: string; spent: boolean } | null> },
 ): HandCard {
   const state = sheet.resources[pool.id];
   const left = state ? state.max - state.used : 0;
@@ -66,6 +66,7 @@ function card(
     },
     target: option.target ?? "none",
     ...(option.shares ? { shares: option.shares } : {}),
+    ...(option.sight ? { sight: option.sight } : {}),
     toHit: null,
     damage: null,
     damageType: "",
@@ -97,14 +98,26 @@ function card(
 // says the reach and shuts with no fight on.
 const TURNING = [textKey("Turn Undead"), textKey("Turn the Unholy"), textKey("Turn the Faithless"), textKey("Abjure the Extraplanar")];
 const REACH_30 = [...TURNING, textKey("Preserve Life")];
-// The options held to a creature the holder can see.
+// The options held to a creature the holder can see: the engine asks
+// unseenBecause for each (feature-spends.ts Vow of Enmity, command-undead.ts
+// Control Undead, channel-fear.ts sees "them"). Their cards carry the sight
+// flag, so the aim bar leaves an unseen creature's chip out (hand-play.ts
+// aimUnseen), and shut while the holder is blinded.
 const SIGHT_OPTIONS = [VOW_OF_ENMITY, textKey("Abjure Enemy"), textKey("Control Undead"), textKey("Conquering Presence")];
+// Held to a creature that can see the holder (channel-fear.ts sees "user":
+// Dreadful Aspect's "if it can see you"); a blinded holder still plays it.
+const SEEN_BY_OPTIONS = [textKey("Dreadful Aspect")];
+
+function optionSight(name: string): HandCard["sight"] {
+  const key = textKey(name);
+  return SIGHT_OPTIONS.includes(key) ? true : SEEN_BY_OPTIONS.includes(key) ? "seesHolder" : undefined;
+}
 
 function optionGates(sheet: CharacterSheet, turn: HandTurn, name: string) {
   const key = textKey(name);
   return [
     TURNING.includes(key) && inFightOf(turn) === false ? { reason: `${name} works on the creatures of a fight; there is none.`, spent: false } : null,
-    SIGHT_OPTIONS.includes(key) && sheet.conditions.some((entry) => isConditionNamed(entry, "blinded")) ? { reason: `${name} takes a creature ${sheet.name} can see, and they are blinded.`, spent: false } : null,
+    optionSight(name) === true && sheet.conditions.some((entry) => isConditionNamed(entry, "blinded")) ? { reason: `${name} takes a creature ${sheet.name} can see, and they are blinded.`, spent: false } : null,
   ];
 }
 
@@ -149,6 +162,7 @@ export function optionCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] {
           ...(AIMED_OPTIONS.includes(textKey(option.name)) ? { target: "enemy" as const } : {}),
           ...(CHOSEN_OPTIONS.includes(textKey(option.name)) ? { target: "enemy" as const, shares: CHOSEN_CREATURES } : {}),
           ...(REACH_30.includes(textKey(option.name)) ? { reach: "30 ft" } : {}),
+          sight: optionSight(option.name),
           gates: optionGates(sheet, turn, option.name),
         }),
       );
