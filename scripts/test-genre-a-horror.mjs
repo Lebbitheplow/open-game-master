@@ -129,5 +129,18 @@ await test("Bleeding Power: a 1st-level stigmata with no slot for 1d4 that nothi
   assert.ok(refused.ok === false || refused.error, "a 3rd-level stigmata is not paid at 2nd level");
 });
 
+await test("Borrowed Eyes: a WIS save, and a creature the occultist cannot see is refused with nothing spent", async () => {
+  const scene = await t.stage({ classId: "occultist", level: 6 });
+  t.kit.setEnemy(scene.near.id, { conditions: ["invisible"] });
+  const unseen = await spend(scene, "horror_borrowed_eyes", { targetEnemyId: scene.near.id });
+  assert.equal(unseen.ok, false, "an invisible creature");
+  assert.equal(sheet(scene.holder.id).resources.horror_borrowed_eyes.used, 0, "nothing spent");
+  t.kit.setEnemy(scene.near.id, { conditions: [] });
+  t.world.dice(1);
+  must(await spend(scene, "horror_borrowed_eyes", { targetEnemyId: scene.near.id }), "Borrowed Eyes");
+  t.world.clearDice();
+  assert.ok(t.kit.enemy(scene.near.id).conditions.some((entry) => entry.toLowerCase().startsWith("borrowed eyes")), "the failed save lends its eyes");
+});
+
 t.close();
 console.log(`test-genre-a-horror: ${passed} passed`);

@@ -39,6 +39,23 @@ export const GENRE_A_HORROR: GenreRow[] = [
     }],
   }),
   held("apostate", "Deeper Scars", "src/lib/dm/genre-a-casts.ts", "bleeding power (deeper scars)"),
+  // "1/rest, see through the eyes of a creature you can see for 1 minute (WIS
+  // save negates)": the save is rolled and, failed, the creature carries the
+  // link for the minute; what the occultist sees through it is the GM's.
+  counted("occultist", "Borrowed Eyes", "horror_borrowed_eyes", {
+    spends: [{
+      name: "Borrowed Eyes",
+      pool: { id: "horror_borrowed_eyes" },
+      action: "action",
+      does: { kind: "save_effect", save: "wis", dcAbility: "spell", sight: true, condition: "borrowed eyes", rounds: 10, onFail: "lends the occultist its eyes for a minute" },
+    }],
+  }),
+  // "1/rest, after a creature you have measured attacks, impose disadvantage
+  // on that attack": a reaction to the open attack record; which creatures
+  // were measured is the GM's to keep.
+  counted("parapsychologist", "Predictive Model", "horror_predictive_model", {
+    reactions: [{ name: "Predictive Model", pool: { id: "horror_predictive_model" }, sees: "attacker", does: { kind: "disadv_vs_hit" } }],
+  }),
   counted("apostate", "Their Power, Your Hands", "horror_their_power_your_hands", {
     spends: [{ name: "Their Power, Your Hands", pool: { id: "horror_their_power_your_hands" }, action: "none", does: { kind: "buff", condition: "their power, your hands", rounds: 1 } }],
   }),

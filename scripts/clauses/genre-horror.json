@@ -688,15 +688,15 @@
    },
    {
     "c": "see through the eyes of a creature you can see for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_borrowed_eyes#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-horror-borrowed-eyes"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs counter:horror_borrowed_eyes; scripts/test-genre-a-horror.mjs: Borrowed Eyes",
+    "by": "src/lib/srd/authored-effects-genre-a-horror.ts save_effect on a creature the occultist can see (sight), the link for 10 rounds"
    },
    {
     "c": "WIS save negates",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_borrowed_eyes#GUIDANCE_ONLY",
-    "same_probe_as": 1
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs counter:horror_borrowed_eyes; scripts/test-genre-a-horror.mjs: Borrowed Eyes",
+    "by": "the save_effect's WIS save against the occultist's spell DC: a made save lays nothing"
    }
   ]
  },
@@ -2435,9 +2435,9 @@
    },
    {
     "c": "after a creature you have measured attacks, impose disadvantage on that attack",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_predictive_model#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-horror-predictive-model"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs counter:horror_predictive_model; scripts/test-enforce-sweep-spends-reactions.mjs",
+    "by": "src/lib/srd/authored-effects-genre-a-horror.ts reaction disadv_vs_hit on the open attack record (sees the attacker), its counter passive to use_resource (genre-a-counter-terms.ts)"
    }
   ]
  },
