@@ -37,8 +37,10 @@ const table = await rig.table({ campaign: { maxPlayers: 60 } });
 
 // A fighter 1 soldier of the lineage, as the builder sends it, through the
 // server's check.
-function made(raceId) {
-  const built = builder.build({ race: raceId, class: "fighter", background: "soldier", level: 1, scores: SCORES, chosenSkills: ["perception", "survival"], stylePicks: ["defense"] });
+const START = { class: "fighter", background: "soldier", level: 1, scores: SCORES, stylePicks: ["defense"] };
+function made(raceId, picks = null) {
+  const built = builder.build({ race: raceId, ...START, chosenSkills: picks ? ["acrobatics", "animal_handling"] : ["perception", "survival"], ...(picks ?? {}) });
+  if (picks) assert.equal(built.blocker, null, `with every pick made the builder still refuses: ${built.blocker?.message}`);
   const race = races.find((entry) => entry.id === raceId);
   assert.ok(race, `the builder offers no ${raceId}`);
   return legalizeSheet(built.sheet, {
@@ -69,6 +71,26 @@ const darkvisionFeet = (row) => {
   return trait ? Number(/(\d+) ft/.exec(trait)[1]) : 0;
 };
 
+// The picks a lineage leaves to its player, made from its own lists: the
+// first tool offered, skills from its list (or two no class or background
+// here grants), a language, the increases on two abilities, a wizard
+// cantrip, a red dragon.
+function picksFor(row) {
+  const picks = {};
+  if (row.toolChoice) picks.racialTool = row.toolChoice.from[0];
+  // Never one the fighter's picks or the soldier's training already hold.
+  const taken = ["acrobatics", "animal_handling", "athletics", "intimidation"];
+  if (row.skillChoice) picks.racialSkills = (row.skillChoice.from ?? ["arcana", "history", "religion"]).filter((skill) => !taken.includes(skill)).slice(0, row.skillChoice.count);
+  // A lineage that also takes a feat (Variant Human) is staged elsewhere:
+  // its feat pick is the builder's feat section, not a lineage field.
+  if (row.traits.some((trait) => /feat of your choice/i.test(trait))) return null;
+  if (row.bonusLanguages) picks.bonusLanguages = ["Giant", "Sylvan"].slice(0, row.bonusLanguages);
+  if (row.asiChoice) picks.racialAsi = ["int", "wis", "dex"].filter((ability) => !row.asi?.[ability]).slice(0, row.asiChoice.count);
+  if (row.cantripChoice) picks.racialCantrips = ["Fire Bolt"].slice(0, row.cantripChoice.count);
+  if (row.ancestryChoice) picks.racialAncestry = "red";
+  return Object.keys(picks).length ? picks : null;
+}
+
 const P = {};
 for (const row of RACES) {
   P[`species.${row.id}.grants`] = () => {
@@ -87,6 +109,25 @@ for (const row of RACES) {
     const failed = Object.entries(wrong).filter(([, list]) => list.length);
     assert.deepEqual(failed, [], `${row.name}: what the stored sheet carries against the row`);
   };
+  const picks = picksFor(row);
+  if (picks) {
+    // Unpicked, the builder will not save; picked, the server's sheet
+    // carries each pick.
+    P[`species.${row.id}.choices`] = () => {
+      const bare = builder.build({ race: row.id, ...START, chosenSkills: ["acrobatics", "animal_handling"] });
+      assert.notEqual(bare.blocker, null, `${row.name}: the builder saves with the lineage's picks unmade`);
+      const sheet = made(row.id, picks);
+      const wrong = {
+        tool: picks.racialTool ? missing([picks.racialTool], sheet.proficiencies.tools) : [],
+        skills: missing(picks.racialSkills, sheet.proficiencies.skills),
+        languages: missing(picks.bonusLanguages, sheet.proficiencies.languages),
+        asi: (picks.racialAsi ?? []).filter((ability) => sheet.abilities[ability] !== SCORES[ability] + row.asiChoice.amount),
+        cantrip: picks.racialCantrips ? missing(picks.racialCantrips.map((name) => `Racial cantrip: ${name}`), sheet.features.map((feature) => feature.name)) : [],
+        ancestry: picks.racialAncestry && sheet.racialChoices?.ancestry !== picks.racialAncestry ? [String(sheet.racialChoices?.ancestry)] : [],
+      };
+      assert.deepEqual(Object.entries(wrong).filter(([, list]) => list.length), [], `${row.name}: the picks on the stored sheet`);
+    };
+  }
   const feet = darkvisionFeet(row);
   if (feet) {
     // A hero of the lineage as the sheet door stores it (its racial traits
@@ -112,6 +153,8 @@ const NAMES = [
   "species.forest_gnome.darkvision", "species.deep_gnome.darkvision", "species.half_elf.darkvision", "species.half_orc.darkvision",
   "species.tiefling.darkvision", "species.aasimar.darkvision", "species.tabaxi.darkvision", "species.fire_genasi.darkvision",
   "species.earth_genasi.darkvision", "species.goblin.darkvision", "species.bugbear.darkvision", "species.orc.darkvision",
+  "species.hill_dwarf.choices", "species.mountain_dwarf.choices", "species.high_elf.choices", "species.human.choices", "species.dragonborn.choices",
+  "species.half_elf.choices", "species.kenku.choices", "species.changeling.choices", "species.warforged.choices", "species.lizardfolk.choices", "species.orc.choices",
 ];
 assert.deepEqual(Object.keys(P).sort(), [...NAMES].sort(), "the table makes other probes than NAMES lists: a row of races.json was added or changed");
 

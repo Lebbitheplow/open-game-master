@@ -31,9 +31,9 @@
    },
    {
     "c": "\"toolChoice\":{\"count\":1,\"from\":[\"smith's tools\",\"brewer's supplies\",\"mason's tools\"]}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.hill_dwarf.choices"
    },
    {
     "c": "\"weapons\":[\"battleaxes\",\"handaxes\",\"light hammers\",\"warhammers\"]",
@@ -105,9 +105,9 @@
    },
    {
     "c": "\"toolChoice\":{\"count\":1,\"from\":[\"smith's tools\",\"brewer's supplies\",\"mason's tools\"]}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.mountain_dwarf.choices"
    },
    {
     "c": "\"armor\":[\"light\",\"medium\"]",
@@ -185,9 +185,9 @@
    },
    {
     "c": "\"bonusLanguages\":1",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.high_elf.choices"
    },
    {
     "c": "\"skills\":[\"perception\"]",
@@ -197,9 +197,9 @@
    },
    {
     "c": "\"cantripChoice\":{\"list\":\"wizard\",\"count\":1}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.high_elf.choices"
    },
    {
     "c": "\"weapons\":[\"longswords\",\"shortswords\",\"shortbows\",\"longbows\"]",
@@ -239,9 +239,9 @@
    },
    {
     "c": "One wizard cantrip",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.high_elf.choices"
    },
    {
     "c": "Perception proficiency (Keen Senses)",
@@ -579,15 +579,15 @@
    },
    {
     "c": "\"bonusLanguages\":1",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.human.choices"
    },
    {
     "c": "One extra language",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.human.choices"
    }
   ]
  },
@@ -685,15 +685,15 @@
    },
    {
     "c": "\"ancestryChoice\":\"draconic\"",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.dragonborn.choices"
    },
    {
     "c": "Draconic Ancestry",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.dragonborn.choices"
    },
    {
     "c": "Breath Weapon (2d6, DC 8 + CON mod + PB)",
@@ -909,9 +909,9 @@
    },
    {
     "c": "\"asiChoice\":{\"count\":2,\"amount\":1}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.half_elf.choices"
    },
    {
     "c": "\"languages\":[\"Common\",\"Elvish\",\"one of your choice\"]",
@@ -921,15 +921,15 @@
    },
    {
     "c": "\"bonusLanguages\":1",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.half_elf.choices"
    },
    {
     "c": "\"skillChoice\":{\"count\":2}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.half_elf.choices"
    },
    {
     "c": "Darkvision 60 ft",
@@ -945,9 +945,9 @@
    },
    {
     "c": "Two skill proficiencies of your choice (Skill Versatility)",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.half_elf.choices"
    }
   ]
  },
@@ -1355,9 +1355,9 @@
    },
    {
     "c": "\"skillChoice\":{\"count\":2}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.kenku.choices"
    },
    {
     "c": "Expert Forgery (advantage on checks to duplicate writing and craftwork)",
@@ -1373,9 +1373,9 @@
    },
    {
     "c": "Kenku Training (two skills of your choice)",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.kenku.choices"
    }
   ]
  },
@@ -1685,9 +1685,9 @@
    },
    {
     "c": "\"skillChoice\":{\"count\":2}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.changeling.choices"
    },
    {
     "c": "Shapechanger (alter your appearance as an action, no action economy cost to revert)",
@@ -1697,9 +1697,9 @@
    },
    {
     "c": "Changeling Instincts (two social or insight skills of your choice)",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.changeling.choices"
    }
   ]
  },
@@ -1735,15 +1735,15 @@
    },
    {
     "c": "\"skillChoice\":{\"count\":1}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.warforged.choices"
    },
    {
     "c": "\"toolChoice\":{\"count\":1,\"from\":[\"smith's tools\",\"tinker's tools\",\"thieves' tools\",\"carpenter's tools\"]}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.warforged.choices"
    },
    {
     "c": "Constructed Resilience (no need to eat, drink or sleep; immune to disease, poison and magical sleep)",
@@ -1765,9 +1765,9 @@
    },
    {
     "c": "One skill and one tool of your choice (Specialized Design)",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.warforged.choices"
    }
   ]
  },
@@ -1921,9 +1921,9 @@
    },
    {
     "c": "\"skillChoice\":{\"count\":2}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.lizardfolk.choices"
    },
    {
     "c": "Natural Armor (AC 13 + DEX)",
@@ -1957,9 +1957,9 @@
    },
    {
     "c": "Two skills from a survival list (Cunning Artisan)",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.lizardfolk.choices"
    }
   ]
  },
@@ -1995,9 +1995,9 @@
    },
    {
     "c": "\"skillChoice\":{\"count\":2,\"from\":[\"animal_handling\",\"insight\",\"intimidation\",\"medicine\",\"nature\",\"perception\",\"survival\"]}",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run here: a builder grant the sheet stores at creation; the builder sweep (scripts/test-enforce-sweep-builder-*.mjs) walks each species' picks through the create route, and no clause probe of this ledger reads it"
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.orc.choices"
    },
    {
     "c": "Darkvision 60 ft",
@@ -2019,9 +2019,9 @@
    },
    {
     "c": "Primal Intuition (two skills from Animal Handling, Insight, Intimidation, Medicine, Nature, Perception, Survival)",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.orc.choices"
    }
   ]
  }
