@@ -21,16 +21,6 @@ const NO_STOP = {
   note: "The wizard's own checks and saves asked through request_roll wait on Portent with no button pressed; the same wizard's save against a trap, a hazard or an area is thrown before they can name a number.",
 };
 const KNOWN = {
-  "831-champion-challenge-walks-away": {
-    where: "src/lib/dm/map-tools.ts move_token / src/lib/dm/enemy-speed.ts (a creature's own move does not read the leash on its conditions); src/lib/dm/condition-leash.ts only ends the mark",
-    severity: "medium",
-    note: "The creature walks out of the 30 feet and the leash then lets it go at the turn's end: the option does the opposite of its text.",
-  },
-  "831-challenge-let-go-at-turn-end": {
-    where: "src/lib/dm/condition-leash.ts (checked from src/lib/dm/turn-end.ts only)",
-    severity: "low",
-    note: "A creature shoved or carried beyond 30 feet stays challenged until some turn ends.",
-  },
   "831-within-feet:warlock::Hexblade's Curse/Hexblade's Curse": {
     where: "src/lib/srd/authored-effects-data*.ts Hexblade's Curse (buff, quarry: true, no rangeFt), read by src/lib/dm/authored-spend-effects.ts",
     severity: "medium",

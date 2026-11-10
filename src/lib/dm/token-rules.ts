@@ -34,6 +34,7 @@ import { toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors
 import { textKey } from "@/lib/language/text-logic";
 import { takeFeatureTeleport } from "@/lib/dm/feature-teleport";
 import { unknownEnemyRef } from "@/lib/dm/enemy-damage";
+import { afterMoveLeashes } from "@/lib/dm/condition-leash";
 import { swallowWalk } from "@/lib/dm/swallow";
 
 // The rules behind two board moves the model can make: a teleport, which
@@ -288,9 +289,11 @@ export function walkCharacter(
   for (const entry of carried) {
     moveToken(entry.token.id, entry.at.x, entry.at.y, entry.token.movedThisRound);
   }
-  // Walking away from a grapple ends it (grapple.ts), and the board shows the
-  // walk at once rather than at the end of the DM turn.
+  // Walking away from a grapple ends it (grapple.ts), and away from a
+  // creature it leashes ends the leash (condition-leash.ts); the board shows
+  // the walk at once rather than at the end of the DM turn.
   releaseGrapplesOutOfReach(campaign);
+  afterMoveLeashes(campaign);
   publishEphemeral(campaign.id, "battle_map_updated", {});
   if (prone) {
     const stood = removeConditions(sheet.conditions, sheet.conditionMeta, [prone]);

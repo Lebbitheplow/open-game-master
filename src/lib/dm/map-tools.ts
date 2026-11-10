@@ -60,6 +60,7 @@ import { releaseGrapplesOutOfReach } from "@/lib/dm/grapple";
 import { isIncapacitated } from "@/lib/dm/condition-logic";
 import { canAct, canEnemyAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal, ownTurnOf } from "@/lib/dm/held-turn";
+import { afterMoveLeashes, leashRefusal } from "@/lib/dm/condition-leash";
 import { awayFromFear, enemyMoveTraits, fearSourceAt, standUpCost, standUpIfProne } from "@/lib/dm/enemy-approach";
 import { enemyMoveBudget } from "@/lib/dm/enemy-speed";
 import { movementLeft, spendEnemyDisengage } from "@/lib/dm/enemy-actions";
@@ -748,6 +749,12 @@ export function handleMoveToken(
     landing = walk.at;
     spent = walk.spent * factor;
     clamped = !walk.reachedEnd || aggressiveCut || approachCut;
+    // Its own walk keeps to a leash on it (condition-leash.ts): Champion
+    // Challenge's "cannot move more than 30 feet away".
+    const leashed = !args.forced && resolved.enemy ? leashRefusal(map.id, resolved.enemy, resolved.token, landing) : null;
+    if (leashed) {
+      return leashed;
+    }
   }
   const origin = { x: resolved.token.x, y: resolved.token.y };
   const carried = drag ? dragLandings({ map, tokens, mover: resolved.token, landing, walked: [origin, ...walkedPart(path, landing)], held: drag.held, footprintOf: footprints }) : [];
@@ -797,8 +804,10 @@ export function handleMoveToken(
     }
   }
   publishBattleMapUpdate(campaign.id);
-  // Moving two creatures apart ends a grapple between them (src/lib/dm/grapple.ts).
+  // Moving two creatures apart ends a grapple between them (src/lib/dm/grapple.ts),
+  // and a leash whose source is now too far (condition-leash.ts).
   releaseGrapplesOutOfReach(campaign);
+  const leashesEnded = afterMoveLeashes(campaign);
   // A large creature that ended its move where only one size smaller fits is
   // squeezing (SRD 5.1); one that has room again is not.
   if (resolved.kind === "enemy" && resolved.enemy) {
@@ -826,6 +835,7 @@ export function handleMoveToken(
     at: `(${landing.x},${landing.y})`,
     ...distancesFrom(tokens, resolved.token, landing),
     ...(zoneEffects.length ? { zoneEffects } : {}),
+    ...(leashesEnded.length ? { released: leashesEnded.join(" ") } : {}),
     ...(opportunity.length
       ? {
           opportunityAttacks: opportunity,
