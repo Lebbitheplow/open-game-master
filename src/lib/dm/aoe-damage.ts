@@ -3,7 +3,7 @@
 // a trap). Split out of encounter-tools-extra.ts; never imports encounter-tools.
 
 import { magicImmunityNote } from "@/lib/dm/monster-traits";
-import { abilityAreaShape, areaProblem, creaturesInBlast, spellAreaShape } from "@/lib/dm/aoe-shape";
+import { abilityAreaShape, areaProblem, spellAreaShape } from "@/lib/dm/aoe-shape";
 import { spellFactsFor } from "@/lib/content";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import { elementalAdeptApplies, floorDamageDice } from "@/lib/srd/feat-combat";
@@ -31,7 +31,7 @@ import { canonicalCondition, castBarred } from "@/lib/dm/mutations";
 import { conditionNameRefusal } from "@/lib/dm/set-condition";
 import { charmedBy } from "@/lib/dm/enemy-profile";
 import { planAoeSpell, type AoeSpellPlan } from "@/lib/dm/aoe-spell";
-import { boardCatchesCast, freeRepeatOf, markRepeatStruck, repeatStrikesProblem } from "@/lib/dm/area-casting";
+import { boardCatch, freeRepeatOf, markRepeatStruck, repeatStrikesProblem } from "@/lib/dm/area-casting";
 import { aoePool } from "@/lib/dm/spell-pool";
 import { commanderOf } from "@/lib/dm/companion-command";
 import { spellConditionMeta } from "@/lib/dm/spell-effects";
@@ -166,28 +166,20 @@ export function handleAoeDamage(
   }
   // A player's blast laid on the battle map that names nobody catches
   // everyone standing in it (issue 570): the engine reads the board where it
-  // used to check a list the model wrote. So does a blast that also leaves
-  // a lasting area (Ice Storm's hail); a lasting area alone (a Web) is laid
-  // by its zone row and catches nobody when cast (area-casting.ts
-  // boardCatchesCast).
+  // used to check a list the model wrote. So does a lasting area that
+  // catches whoever stands in it as it appears (Ice Storm's hail, Entangle,
+  // a Wall of Fire); one that bites only later (a Web) is laid by its zone
+  // row and catches nobody when cast (area-casting.ts boardCatch).
   const named = Boolean(args.enemyIds?.length || args.characterIds?.length || args.targets?.trim());
-  const blastSheet = !named && args.spell && args.casterCharacterId && !args.casterEnemyId
+  const blastCaster = !named && args.spell && args.casterCharacterId && !args.casterEnemyId
     ? resolveSheetRef(args.casterCharacterId, sheets, sheetsById)
     : null;
-  const blastCaster = blastSheet && engineSpell && boardCatchesCast(campaign, blastSheet.id, engineSpell) ? blastSheet : null;
-  const blastArea = blastCaster && args.spell ? spellAreaShape(args.spell, spellAuthorsFor(campaign)) : null;
+  const onBoard = blastCaster && args.spell && engineSpell
+    ? boardCatch({ authors: spellAuthorsFor(campaign), encounterId: encounter.id, caster: blastCaster, spell: args.spell, runsAs: engineSpell.runsAs, slotLevel: args.level, placement: zonePlacement(args) })
+    : null;
   let caughtByArea = false;
-  if (blastCaster && blastArea && args.spell) {
-    const range = spellFactsFor(args.spell, spellAuthorsFor(campaign))?.range;
-    const caught = creaturesInBlast({
-      encounterId: encounter.id,
-      casterId: blastCaster.id,
-      casterName: blastCaster.name,
-      label: args.spell,
-      area: blastArea,
-      rangeFeet: range?.kind === "feet" ? range.feet : null,
-      ...zonePlacement(args),
-    });
+  if (blastCaster && onBoard && args.spell) {
+    const { caught, blast: blastArea } = onBoard;
     // What bars the cast itself (no slot, not their turn) is said before a
     // question about where it lands (src/lib/dm/tool-errors.ts).
     const barred = caught && ("error" in caught || !(caught.enemyIds.length + caught.characterIds.length))
@@ -202,7 +194,7 @@ export function handleAoeDamage(
     if (caught) {
       // A blast on nobody is refused, to be aimed again; Ice Storm's hail
       // laid on empty ground is still cast, for the area it leaves.
-      if (!caught.enemyIds.length && !caught.characterIds.length && !zoneRowFor(engineSpell)) {
+      if (!caught.enemyIds.length && !caught.characterIds.length && blastArea && !zoneRowFor(engineSpell)) {
         return { error: `${args.spell} laid there catches nobody: no creature stands in its ${blastArea.feet}-foot ${blastArea.shape}. Ask the player where to aim it. Nothing was spent.`, retry: true };
       }
       caughtByArea = Boolean(caught.enemyIds.length || caught.characterIds.length);

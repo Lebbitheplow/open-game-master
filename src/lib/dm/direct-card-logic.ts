@@ -92,8 +92,10 @@ export function summonCall(intent: MessageIntent, characterId: string, context: 
 // A save spell's area (Web, Moonbeam, Cloudkill) is aoe_damage's with its
 // squares and nobody named, which lays it: who it catches is decided as they
 // enter it or start a turn there. One whose first saves come as it appears
-// (Entangle, a Wall of Fire) would skip them that way, and off the board
-// nothing is laid, so those stay with the GM to name who stands in it. An
+// (Entangle, a Wall of Fire) is laid the same way on a board, where the
+// engine catches whoever stands on its squares (area-casting.ts boardCatch);
+// `catches` marks the rest (off the board, a wall that only shoves), which
+// stay with the GM to name who stands in it. An
 // area with nothing to roll (Fog Cloud, Spike Growth) is use_spell_slot's,
 // which lays it too, or only spends the slot where there is no board.
 export function lastingAreaCall(intent: MessageIntent, characterId: string, context: DirectContext): DirectCall | null | undefined {

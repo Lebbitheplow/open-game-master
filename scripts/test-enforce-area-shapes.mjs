@@ -16,6 +16,12 @@
 //     (play-test 2026-11-09: it rolled, spent its slot and caught nobody).
 //     Web's area catches nobody as it is cast; it waits for a creature to
 //     enter it or start a turn there.
+//   - Entangle: "When the spell is cast, each creature within the area must
+//     succeed on a Strength saving throw or be restrained"; Wall of Fire:
+//     "When the wall appears, each creature within its area must make a
+//     Dexterity saving throw". Their text prints no burst, so the squares
+//     their area is laid on are the ones read; a wall's burning side is not
+//     its area.
 //
 // A refusal spends nothing. Every check reads a refusal, a slot or an enemy.
 import assert from "node:assert/strict";
@@ -28,6 +34,7 @@ const { test, finish } = suite("test-enforce-area-shapes");
 const { boardCatchesCast } = await import("../src/lib/dm/area-casting.ts");
 
 const WIZARD = caster("wizard", "int", ["Fireball", "Burning Hands", "Lightning Bolt", "Shatter", "Ice Storm", "Web"], [], 9);
+const DRUID = caster("druid", "wis", ["Entangle", "Wall of Fire"], [], 9);
 const slots = (world, id, level) => world.sheet(id).spellcasting.slots[String(level)].used;
 
 await test("Fireball refuses two creatures 110 feet apart, and spends no slot.", async () => {
@@ -133,7 +140,7 @@ await test("Ice Storm laid on empty ground is still cast, for its hail; Web laid
 
 await test("What aoe_damage and the Portent stop both catch on the board: a blast, Ice Storm's hail as it falls, never a Web as it is cast, nor a held Insect Plague coming again.", async () => {
   const { world, sheets: [mage] } = await board([WIZARD], { 0: { x: 2, y: 4 } });
-  const catches = (spell) => boardCatchesCast(world.campaign(), mage.id, spell);
+  const catches = (spell) => boardCatchesCast([], mage.id, spell);
   assert.equal(catches("Fireball"), true);
   assert.equal(catches("Ice Storm"), true);
   assert.equal(catches({ spell: "Hailfall", runsAs: "Ice Storm" }), true, "a workshop copy reads the row of the spell it runs as");
@@ -142,6 +149,34 @@ await test("What aoe_damage and the Portent stop both catch on the board: a blas
   assert.equal(catches("Insect Plague"), true, "the swarm catches whoever stands in it as it appears");
   world.patch(mage.id, { concentratingOn: "Insect Plague" });
   assert.equal(catches("Insect Plague"), false, "coming again, it strikes only the creatures named");
+});
+
+await test("Entangle laid on a square with nobody named holds every creature standing in it to its save, and nobody outside it; a Wall of Fire catches the creature on the wall, not the one on its burning side.", async () => {
+  const { world, sheets: [druid], enemies: [a, b, far] } = await board([DRUID], { 0: { x: 2, y: 4 }, e0: { x: 12, y: 4 }, e1: { x: 13, y: 4 }, e2: { x: 17, y: 4 } }, { count: 3, stats: { maxHp: 200 } });
+  // Both Strength saves fail.
+  world.dice(1, 1);
+  const out = await world.invoke("aoe_damage", { casterCharacterId: druid.id, spell: "Entangle", level: 1, atX: 12, atY: 4 });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.deepEqual((out.result?.results ?? []).map((entry) => entry.target).sort(), [a.displayName, b.displayName].sort(), JSON.stringify(out.result));
+  for (const enemy of [a, b]) {
+    assert.ok(enemyOf(world, enemy.id).conditions.includes("restrained"), `${enemy.displayName} is restrained`);
+  }
+  assert.ok(!enemyOf(world, far.id).conditions.includes("restrained"), "the goblin outside the vines is free");
+  assert.equal(slots(world, druid.id, 1), 1);
+  const wall = await board([DRUID], { 0: { x: 2, y: 4 }, e0: { x: 12, y: 4 }, e1: { x: 13, y: 4 } }, { count: 2, stats: { maxHp: 200 } });
+  const fire = await wall.world.invoke("aoe_damage", { casterCharacterId: wall.sheets[0].id, spell: "Wall of Fire", level: 4, atX: 12, atY: 4 });
+  assert.equal(fire.ok, true, fire.error);
+  assert.deepEqual((fire.result?.results ?? []).map((entry) => entry.target), [wall.enemies[0].displayName], JSON.stringify(fire.result));
+  assert.equal(enemyOf(wall.world, wall.enemies[1].id).currentHp, 200, "the burning side bites at the end of a turn, not as the wall appears");
+});
+
+await test("Entangle with nobody named and no square picked is asked where it goes, and spends nothing.", async () => {
+  const { world, sheets: [druid] } = await board([DRUID], { 0: { x: 2, y: 4 }, e0: { x: 12, y: 4 } });
+  const out = await world.invoke("aoe_damage", { casterCharacterId: druid.id, spell: "Entangle", level: 1 });
+  assert.equal(out.ok, false, "laid where nobody chose, it would catch nobody by chance");
+  assert.match(String(out.error), /atX, atY/);
+  assert.equal(slots(world, druid.id, 1), 0);
 });
 
 closeTables();

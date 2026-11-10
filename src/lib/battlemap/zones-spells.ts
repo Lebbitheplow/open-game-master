@@ -182,9 +182,10 @@ export type ZoneRow = {
   mundane?: boolean;
   // SRD 5.1: the creatures standing in the area when it appears are caught
   // then (Entangle's and Grease's saves, a Wall of Fire's burn, a wall that
-  // shoves them aside). Laid with nobody named they never would be, so a
-  // card that lays one stays with the GM to name them (intent-logic.ts
-  // directCardCall, issue 685).
+  // shoves them aside). Laid on the board with nobody named, the engine
+  // catches whoever stands on its squares (area-casting.ts boardCatch); a
+  // card that lays one off the board, or one with nothing to roll, stays
+  // with the GM to name them (direct-context.ts, issue 685).
   catchesWhenLaid?: boolean;
   // What it does, one line for GAME STATE and the board's label.
   summary: string;

@@ -549,6 +549,35 @@ await test("A hero's spell at two creatures asks whose save takes the number, as
   fightWorld.patch(target.id, { concentratingOn: null, concentrationRounds: null, equipment: kept });
 });
 
+// A lasting area whose first saves come as it appears, laid on a square and
+// naming nobody (Grease, whose text prints no burst): the stop reads who
+// stands on its squares as aoe_damage then catches them (area-casting.ts
+// boardCatch). It read only a burst, so no stop came.
+await test("Grease laid on a square with nobody named stops for the save of the creature standing in it, and the number lands there.", async () => {
+  arm();
+  const order = fightWorld.encounter();
+  saveEncounter({ ...order, turnIndex: order.order.findIndex((entry) => entry.characterId === target.id), turnBudget: null });
+  const kept = fightWorld.sheet(target.id).equipment;
+  fightWorld.patch(target.id, { concentratingOn: null, equipment: [...kept, { name: "Component Pouch", qty: 1 }], spellcasting: { ability: "wis", cantrips: [], known: [], prepared: ["Grease"], slots: { 1: { max: 1, used: 0 } } } });
+  // Kara steps back, so only the goblin stands on the grease's 10-foot square.
+  kit.place(target.id, 1, 1);
+  fightModel.script([reply({ calls: [modelCall("aoe_damage", { casterCharacterId: target.id, spell: "Grease", level: 1, atX: 6, atY: 5 })] }), reply({ text: "The goblin slides." })]);
+  const before = saveRolls().length;
+  await fightModel.turn(fightWorld, "I cast Grease under the goblin.", target.id, targetUser.id);
+  const [stop] = stops();
+  assert.ok(stop, "the casting stops before the save");
+  assert.match(stop.reason, /Goblin.* is about to make a saving throw against Grease/);
+  assert.equal(stop.watch.choices.length, 1, "one creature on the grease");
+  assert.equal((await answer(stop.id, { value: 3 })).status, 200);
+  await settleQueue(fightWorld.campaignId);
+  const landed = saveRolls().slice(before);
+  assert.equal(landed[0]?.breakdown.natural, 3, `the goblin's save shows the 3 (${JSON.stringify(landed.map((roll) => roll.detail))})`);
+  assert.deepEqual(fightWorld.sheet(seer.id).foretold, [17]);
+  kit.place(target.id, 5, 5);
+  kit.setEnemy(goblin.id, { conditions: [] });
+  fightWorld.patch(target.id, { equipment: kept });
+});
+
 await test("A foretold miss on a hero's own swing still leaves them their Bardic die to decide, on the card, and the turn waits for it.", async () => {
   arm({ foretold: [17, 9] });
   const order = fightWorld.encounter();

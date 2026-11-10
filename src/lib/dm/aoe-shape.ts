@@ -15,6 +15,8 @@ import { findSpellByName } from "@/lib/content";
 import { authoredSpellRow } from "@/lib/srd/spell-mechanics";
 import { templateTiles, type TemplateShape } from "@/lib/battlemap/template";
 import { footprintForSize, footprintTiles } from "@/lib/battlemap/footprint";
+import { layZone } from "@/lib/battlemap/zones";
+import { zoneRowFor, type ZoneNamed } from "@/lib/battlemap/zones-spells";
 import { chebyshev, tileIndex, type XY } from "@/lib/battlemap/types";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { areaShapeFromText, blastPickOf, blastTemplate, SRD_AREAS, type AreaShape } from "@/lib/battlemap/area-shape";
@@ -167,21 +169,72 @@ export function creaturesInBlast(input: {
     const needs = pick === "point" ? "the square it is centred on (atX, atY)" : "the way it points (towardX, towardY)";
     return { error: `${input.label}'s ${input.area.feet}-foot ${input.area.shape} needs ${needs} to be laid on the battle map, or the creatures it catches in enemyIds and characterIds. Nothing was spent.`, retry: true };
   }
-  const cells = new Set(templateTiles(map, spec));
+  return standingIn(map.width, tokens, new Set(templateTiles(map, spec)), {
+    skip: input.area.self || pick !== "point" ? input.casterId : null,
+    spareParty: Boolean(input.area.choose),
+  });
+}
+
+// The creatures with a square among `cells`: an enemy by every square of
+// its size, a character by its own.
+function standingIn(
+  width: number,
+  tokens: ReturnType<typeof listTokens>,
+  cells: ReadonlySet<number>,
+  options: { skip: string | null; spareParty: boolean },
+): { enemyIds: string[]; characterIds: string[] } {
   const enemyIds: string[] = [];
   const characterIds: string[] = [];
   for (const token of tokens) {
-    if (token.refId === input.casterId && (input.area.self || pick !== "point")) {
+    if (token.refId === options.skip) {
       continue;
     }
     if (token.kind === "enemy") {
       const enemy = getEnemy(token.refId);
       if (!enemy || enemy.status !== "alive") continue;
-      const covered = footprintTiles({ x: token.x, y: token.y }, footprintForSize(enemy.stats.size)).some((cell) => cells.has(tileIndex(map.width, cell.x, cell.y)));
+      const covered = footprintTiles({ x: token.x, y: token.y }, footprintForSize(enemy.stats.size)).some((cell) => cells.has(tileIndex(width, cell.x, cell.y)));
       if (covered) enemyIds.push(enemy.id);
-    } else if (token.kind === "pc" && !input.area.choose && cells.has(tileIndex(map.width, token.x, token.y))) {
+    } else if (token.kind === "pc" && !options.spareParty && cells.has(tileIndex(width, token.x, token.y))) {
       characterIds.push(token.refId);
     }
   }
   return { enemyIds, characterIds };
+}
+
+// Who a lasting area catches as it appears when its text prints no burst to
+// read (SRD 5.1: Entangle's and Grease's squares, a wall "When the wall
+// appears, each creature within its area"; zones-spells.ts catchesWhenLaid):
+// every creature standing on the squares its zone row lays at the point the
+// call names, as placeSpellZone (zone-cast.ts) lays them. Laid with nobody
+// named, these caught nobody, so Entangle restrained no one standing in it.
+// Null with no board or no such row; with no square named the area would go
+// down where nobody chose, so the call is asked for one. The cast guard
+// holds the square to the spell's range.
+export function creaturesInLaidZone(input: {
+  encounterId: string;
+  casterId: string;
+  label: string;
+  spell: ZoneNamed;
+  slotLevel?: number | null;
+  at?: XY;
+  toward?: XY;
+}): { enemyIds: string[]; characterIds: string[] } | ToolError | null {
+  const row = zoneRowFor(input.spell);
+  const map = row?.catchesWhenLaid ? getBattleMapForEncounter(input.encounterId) : null;
+  if (!row || !map) {
+    return null;
+  }
+  const tokens = listTokens(map.id);
+  const casterToken = tokens.find((token) => token.refId === input.casterId);
+  const caster = casterToken ? { x: casterToken.x, y: casterToken.y } : null;
+  const fromCaster = row.shape === "aura" || row.shape === "line" || Boolean(row.self);
+  const origin = fromCaster ? caster : input.at && input.at.x >= 0 && input.at.y >= 0 && input.at.x < map.width && input.at.y < map.height ? input.at : null;
+  if (!origin) {
+    return fromCaster
+      ? null
+      : { error: `${input.label} needs the square it is laid on (atX, atY) on the battle map, or the creatures standing there in enemyIds and characterIds. Nothing was spent.`, retry: true };
+  }
+  const toward = row.shape === "line" ? (input.toward ?? input.at ?? null) : (input.toward ?? null);
+  const { cells } = layZone(row, { origin, toward, caster, slotLevel: input.slotLevel ?? null }, map);
+  return standingIn(map.width, tokens, new Set(cells), { skip: fromCaster ? input.casterId : null, spareParty: false });
 }

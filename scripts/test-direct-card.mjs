@@ -53,9 +53,9 @@ const vex = world.addHero({
     ability: "int",
     slots: { 1: { max: 4, used: 0 }, 2: { max: 3, used: 0 }, 3: { max: 2, used: 0 } },
     known: [],
-    prepared: ["Fireball", "Burning Hands", "Thunderwave", "Lightning Bolt", "Scorching Ray", "Magic Missile"],
+    prepared: ["Fireball", "Burning Hands", "Thunderwave", "Lightning Bolt", "Scorching Ray", "Magic Missile", "Grease"],
     cantrips: ["Fire Bolt"],
-    spellbook: ["Fireball", "Burning Hands", "Thunderwave", "Lightning Bolt", "Scorching Ray", "Magic Missile"],
+    spellbook: ["Fireball", "Burning Hands", "Thunderwave", "Lightning Bolt", "Scorching Ray", "Magic Missile", "Grease"],
   },
 });
 
@@ -399,6 +399,27 @@ await test("The model may lay a blast itself and name nobody: aoe_damage catches
   const told = JSON.stringify(result);
   assert.ok(result && !result.error, told);
   assert.ok(told.includes(near.displayName) && told.includes(close.displayName) && !told.includes(far.displayName), told.slice(0, 400));
+});
+
+// SRD 5.1, Grease: "When the grease appears, each creature standing in its
+// area must succeed on a Dexterity saving throw or fall prone." The card went
+// to the GM to name them, since a lasting area laid with nobody named caught
+// nobody; on the board the engine reads who stands on its squares.
+await test("A Grease card laid on a square is cast by the engine, which catches every creature standing on its squares, a friend included, and nobody outside them.", async () => {
+  const { near, close, far } = await stageBlast();
+  model.script([reply({ text: "The ground slicks over." })]);
+  await model.turn(world, "I cast Grease on (10,5) using a level 1 slot.", vex.id, vex.userId, {
+    intent: { card: "spell", spell: "Grease", slotLevel: 1, atX: 10, atY: 5 },
+  });
+  const first = firstCall(model.requests[0]);
+  assert.equal(first?.name, "aoe_damage", JSON.stringify(toolCalls(model.requests[0])));
+  assert.equal(first.args.enemyIds, undefined, "the card names nobody: the engine reads the board");
+  const [result] = results(model.requests[0]);
+  assert.ok(result && !result.error, JSON.stringify(result));
+  // Its 10-foot square from (10,5) covers (9,4) to (10,5).
+  assert.deepEqual((result.results ?? []).map((entry) => entry.target).sort(), [near.displayName, "Kara"].sort(), JSON.stringify(result).slice(0, 400));
+  assert.ok(![close.displayName, far.displayName].some((name) => JSON.stringify(result.results).includes(name)));
+  assert.equal(world.sheet(vex.id).spellcasting.slots[1].used, 1, "one slot");
 });
 
 await test("Off the battle map, or aimed at one creature with no square, a blast stays with the model; a lasting area laid on a square does too.", () => {

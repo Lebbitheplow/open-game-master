@@ -204,7 +204,7 @@ function targetArgs(intent: MessageIntent): Record<string, unknown> {
 // a rider card alone, a target the card did not fix, a blast with no board
 // or no square picked (aimed at one creature: the model names who stands in
 // it), a lasting area that catches whoever stands in it as it appears
-// (Entangle), a spell the content has no resolution for, a summon whose
+// off the board or with nothing to roll (a Wall of Stone), a spell the content has no resolution for, a summon whose
 // creatures the GM picks, Ready with no trigger, and anything aimed at an
 // enemy when no fight is on, since the fight has to start first. A card the
 // engine then refuses comes back as the tool's own refusal, which the model
