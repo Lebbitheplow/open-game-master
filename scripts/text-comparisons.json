@@ -1518,7 +1518,7 @@
     "lib/dm/hazard-tools.ts#toLowerCase": [["key",1,"condition label (engine vocabulary)"]],
     "lib/dm/heal-spell.ts#\\b": [["table-language",4,"meaning reader: a spell's description read for whether it heals (pack rows, and a homebrew spell's free text; follow-up F)"]],
     "lib/dm/heal-spell.ts#re-word": [["table-language",1,"meaning reader: a spell's description read for whether it heals (pack rows, and a homebrew spell's free text; follow-up F)"]],
-    "lib/dm/heal-spell.ts#str-eq": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
+    "lib/dm/heal-spell.ts#str-eq": [["key",4,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/heal-spell.ts#toLowerCase": [["key",1,"condition label (engine vocabulary)"]],
     "lib/dm/help-logic.ts#toLowerCase": [["key",1,"condition label (engine vocabulary)"]],
     "lib/dm/hide-traits.ts#str-eq": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],

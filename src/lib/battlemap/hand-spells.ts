@@ -618,6 +618,10 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
     if (id === "channel_divinity" || (id === "sub_psionic_energy" && psionicOptions(sheet).length)) continue;
     // Spent by the bonus attack itself (hand-class.ts bonusStrikeCards).
     if (BONUS_ATTACK_COUNTERS.includes(id)) continue;
+    // Hand of Ultimate Mercy returns the dead, and the Hand has no target
+    // for the dead (HandTarget): a card aimed at the living is only ever
+    // refused (src/lib/dm/ultimate-mercy.ts), so none is dealt.
+    if (id === "sub_wholeness_of_body_mercy") continue;
     // Spent on the card a missed roll waits on (after-roll-logic.ts).
     if (AFTER_ROLL_COUNTERS.includes(id)) continue;
     // A spend the server resolves is its own card, dealt here in its

@@ -1029,8 +1029,9 @@
    },
    {
     "c": "to one damage roll per turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: giants-might-one-roll-a-turn"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: giants-might-one-roll-a-turn",
+    "by": "src/lib/dm/attack-damage-riders.ts giantsMightRiders (oncePerTurn, claimed by claimOncePerTurnRiders)"
    },
    {
     "c": "a proficiency-bonus number of times per long rest",
@@ -2576,8 +2577,9 @@
   "clauses": [
    {
     "c": "Spend 1 ki to stay at 1 hit point instead of dropping to 0, as long as ki remains.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: mastery-of-death"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: mastery-of-death",
+    "by": "src/lib/dm/mastery-of-death.ts masteryOfDeathHold, called from pc-damage.ts as the blow lands"
    }
   ]
  },
@@ -2700,8 +2702,9 @@
    },
    {
     "c": "spend 5 ki to return a creature dead no more than 24 hours to life with 4d10 + Wisdom hit points",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: hand-of-ultimate-mercy-revives"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-monk.mjs: hand-of-ultimate-mercy-revives",
+    "by": "src/lib/dm/ultimate-mercy.ts ultimateMercy (feature-spends.ts sub_wholeness_of_body_mercy), heal-spell.ts returnToLife"
    }
   ]
  },

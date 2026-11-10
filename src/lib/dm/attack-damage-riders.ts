@@ -21,6 +21,7 @@ import { conditionOnHitDice } from "@/lib/srd/condition-effects";
 import type { CombatRiders } from "@/lib/srd/feature-effects";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { holdsFeature, isNamed } from "@/lib/srd/feature-names";
+import { textKey } from "@/lib/language/text-logic";
 import { subclassNamed } from "@/lib/srd/subclass-name";
 import { authoredDamageAbility } from "@/lib/srd/authored-effects-more";
 
@@ -59,7 +60,7 @@ export function attackDamageRiders(input: {
   const featureRiders: FeatureRider[] =
     kind === "spell" || kind === "granted"
       ? []
-      : [...riders.damageRiders, ...hunterRiders(sheet, input.enemy), ...pactRiders(sheet, kind, profile)]
+      : [...riders.damageRiders, ...hunterRiders(sheet, input.enemy), ...pactRiders(sheet, kind, profile), ...giantsMightRiders(sheet)]
           .filter((rider) => {
             if (rider.when === "melee" && profile.ranged) {
               return false;
@@ -98,6 +99,18 @@ function hunterRiders(sheet: CharacterSheet, enemy: Pick<EncounterEnemy, "curren
     return [];
   }
   return [{ feature: "Colossus Slayer", dice: "1d8", type: "", when: "weapon", oncePerTurn: true }];
+}
+
+// Giant's Might (Rune Knight 3): "Once on each of your turns, one of your
+// attacks with a weapon or an unarmed strike can deal an extra 1d6 damage to a
+// target on a hit" (1d8 from 10th level, Runic Juggernaut's 1d10 at 18th, the
+// die the condition the spend laid names). A once-per-turn rider, so the
+// turn budget spends it on the first hit (pc-attack-damage.ts
+// claimOncePerTurnRiders); as a held condition's die it rode every hit.
+const GIANTS_MIGHT: Array<[string, string]> = [["giant's might (1d10)", "1d10"], ["giant's might (1d8)", "1d8"], ["giant's might", "1d6"]];
+function giantsMightRiders(sheet: CharacterSheet): FeatureRider[] {
+  const held = GIANTS_MIGHT.find(([condition]) => sheet.conditions.some((entry) => textKey(entry) === textKey(condition)));
+  return held ? [{ feature: "Giant's Might", dice: held[1], type: "", when: "weapon", oncePerTurn: true }] : [];
 }
 
 // Lifedrinker (SRD 5.1, warlock invocation): a pact weapon hit deals extra

@@ -281,7 +281,8 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   },
   "monk::Mastery of Death": {
     subclass: "Way of the Long Death",
-    narrated: "Spending 1 ki to drop to 1 hit point instead of 0: the GM heals the monk to 1 and spends the ki with use_resource.",
+    // The damage path holds the monk and spends the ki (src/lib/dm/mastery-of-death.ts).
+    narrated: "Spending 1 ki to drop to 1 hit point instead of 0: the engine holds the monk at 1 and spends the ki as the blow lands.",
   },
   "monk::Hand of Healing": {
     subclass: "Way of Mercy",

@@ -136,13 +136,6 @@ export const KNOWN = {
     fix: "Add \"within 30 feet\" to the text.",
     files: ["src/lib/srd/subclasses.json"],
   },
-  "giants-might-one-roll-a-turn": {
-    severity: "medium", kind: "rule-wrong",
-    where: "src/lib/srd/condition-effects.ts (\"giant's might\") and src/lib/srd/authored-conditions.ts (\"giant's might (1d8)\", \"(1d10)\"): the damage die is not once a turn",
-    note: "Every hit of the turn carries the die: a Rune Knight of 5th level adds 2d6 a turn, of 20th 4d10.",
-    fix: "Mark the condition's damage rider oncePerTurn, as Divine Fury's rider is.",
-    files: ["src/lib/srd/condition-effects.ts", "src/lib/srd/authored-conditions.ts"],
-  },
   "runic-juggernaut-reach": {
     severity: "low", kind: "rule-missing",
     where: `${ROWS_B} fighter::Runic Juggernaut (its row only swaps the die; no reach effect as Giant's Havoc has)`,

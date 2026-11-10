@@ -340,41 +340,8 @@ function revive(
   if (typeof paid.error === "string") {
     return toolError(paid);
   }
-  const before = getSheetById(target.id) ?? target;
-  // "Being raised from the dead reduces a creature's exhaustion level by 1"
-  // (SRD 5.1, Conditions, Exhaustion), so one who died of the sixth level
-  // comes back at the fifth. The maximum below is read at the new level.
-  const exhaustion = Math.max(0, (before.exhaustion ?? 0) - 1);
-  const fresh = { ...before, exhaustion };
-  const woke = wakeConditions(fresh);
-  const hp = rule.hp === "all" ? effectiveMaxHp(fresh) : 1;
-  // Coming back is an ordeal (Raise Dead, Resurrection): -4 to attack rolls
-  // and saving throws, one less after each long rest.
-  const ordeal = rule.ordeal ? "returned from death (-4)" : null;
-  const conditions = ordeal && !woke.conditions.includes(ordeal) ? [...woke.conditions, ordeal] : woke.conditions;
-  const lifted = (before.exhaustion ?? 0) > exhaustion;
-  const patch = { deathSaves: null, currentHp: hp, conditions, conditionMeta: woke.conditionMeta, ...(lifted ? { exhaustion } : {}) };
-  const updated = patchSheet(fresh.id, patch);
-  const entry = insertSheetAudit({
-    campaignId: campaign.id,
-    characterId: fresh.id,
-    turnId,
-    kind: "death_state",
-    delta: { revived: name, currentHp: hp, ...(lifted ? { exhaustion } : {}) },
-    reason: `${name} cast by ${input.caster.name}`,
-    seq: allocateSeq(campaign.id),
-    before,
-    patch,
-  });
-  publishPersisted(campaign.id, "sheet_audit", { entry, characterName: fresh.name });
-  if (updated) {
-    publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
-    // Back among the living, they know whoever the party met while they lay
-    // dead (issue 657): those bonds opened for the living heroes only.
-    if (openJoinerBonds(campaign, updated)) {
-      publishEphemeral(campaign.id, "relationships_updated", {});
-    }
-  }
+  const back = returnToLife(campaign, turnId, target, { hp: rule.hp, ordeal: rule.ordeal === true, name, reason: `${name} cast by ${input.caster.name}` });
+  const { hp, fresh, ordeal, lifted, exhaustion } = back;
   return {
     done: {
       ok: true,
@@ -388,4 +355,54 @@ function revive(
       note: `${target.name} returns to life with ${hp} hit point${hp === 1 ? "" : "s"}; narrate it.`,
     },
   };
+}
+
+// One dead creature returned to life, every way the table does it (a spell's
+// revive here, Hand of Ultimate Mercy in src/lib/dm/ultimate-mercy.ts): the
+// exhaustion level death lifts, the conditions it wakes from, the hit points
+// it comes back with, the audit row and the bonds it missed. `hp` is "one",
+// "all" (Resurrection) or a number already rolled.
+export function returnToLife(
+  campaign: Campaign,
+  turnId: string,
+  target: CharacterSheet,
+  rule: { hp: "one" | "all" | number; ordeal: boolean; name: string; reason: string },
+): { hp: number; fresh: CharacterSheet; ordeal: string | null; lifted: boolean; exhaustion: number } {
+  const name = rule.name;
+  const before = getSheetById(target.id) ?? target;
+  // "Being raised from the dead reduces a creature's exhaustion level by 1"
+  // (SRD 5.1, Conditions, Exhaustion), so one who died of the sixth level
+  // comes back at the fifth. The maximum below is read at the new level.
+  const exhaustion = Math.max(0, (before.exhaustion ?? 0) - 1);
+  const fresh = { ...before, exhaustion };
+  const woke = wakeConditions(fresh);
+  const hp = rule.hp === "all" ? effectiveMaxHp(fresh) : rule.hp === "one" ? 1 : Math.max(1, Math.min(effectiveMaxHp(fresh), rule.hp));
+  // Coming back is an ordeal (Raise Dead, Resurrection): -4 to attack rolls
+  // and saving throws, one less after each long rest.
+  const ordeal = rule.ordeal ? "returned from death (-4)" : null;
+  const conditions = ordeal && !woke.conditions.includes(ordeal) ? [...woke.conditions, ordeal] : woke.conditions;
+  const lifted = (before.exhaustion ?? 0) > exhaustion;
+  const patch = { deathSaves: null, currentHp: hp, conditions, conditionMeta: woke.conditionMeta, ...(lifted ? { exhaustion } : {}) };
+  const updated = patchSheet(fresh.id, patch);
+  const entry = insertSheetAudit({
+    campaignId: campaign.id,
+    characterId: fresh.id,
+    turnId,
+    kind: "death_state",
+    delta: { revived: name, currentHp: hp, ...(lifted ? { exhaustion } : {}) },
+    reason: rule.reason,
+    seq: allocateSeq(campaign.id),
+    before,
+    patch,
+  });
+  publishPersisted(campaign.id, "sheet_audit", { entry, characterName: fresh.name });
+  if (updated) {
+    publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
+    // Back among the living, they know whoever the party met while they lay
+    // dead (issue 657): those bonds opened for the living heroes only.
+    if (openJoinerBonds(campaign, updated)) {
+      publishEphemeral(campaign.id, "relationships_updated", {});
+    }
+  }
+  return { hp, fresh, ordeal, lifted, exhaustion };
 }

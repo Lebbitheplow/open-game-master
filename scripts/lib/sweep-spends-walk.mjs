@@ -45,7 +45,7 @@ export const TRIGGERS = [
 // For a spend on the holder's own turn: as staged, then the states a spend may ask for.
 // The last two come after "no fight", so a spend accepted earlier is still
 // read where it was: they are for the uses that answer a kill or a step.
-export const OWN_TURN = ["own turn, nothing staged", "the holder below half hit points", "the holder hit a foe", "the holder failed a save", "the holder failed a save + then the holder's turn", "the holder missed a foe", "no fight", "the holder killed a foe", "the holder used Step of the Wind", "the holder sneak attacked a foe"];
+export const OWN_TURN = ["own turn, nothing staged", "the holder below half hit points", "the holder hit a foe", "the holder failed a save", "the holder failed a save + then the holder's turn", "the holder missed a foe", "no fight", "the holder killed a foe", "the holder used Step of the Wind", "the holder sneak attacked a foe", "the ally at 0 died"];
 
 const lastStep = (key) => key.split(" + ").at(-1);
 export const untriggered = (key) => UNTRIGGERED.includes(lastStep(key));
@@ -197,6 +197,11 @@ async function step(rig, scene, name, notes) {
     // hurt ally: the hit carries Sneak Attack, and the foe beside them (the
     // ladder's target) is the other creature within 30 feet, for what answers
     // a Sneak Attack on another creature (Wails from the Grave).
+    // The ally at 0 dead an hour since, for a use that returns the dead to
+    // life (Hand of Ultimate Mercy).
+    case "the ally at 0 died":
+      world.patch(scene.fallen.id, { deathSaves: { successes: 0, failures: 3, stable: false, dead: true } });
+      return { ok: true };
     case "the holder sneak attacked a foe": {
       const held = world.sheet(holder);
       world.patch(holder, { equipment: [...(held.equipment ?? []), { name: "Dagger", qty: 1, equipped: true }] });

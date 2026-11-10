@@ -157,12 +157,20 @@ const expr = (hit) => String(hit?.damage?.breakdown?.expression ?? hit?.result?.
     assert.deepEqual([foeHas(near, "frightened"), foeHas(far, "frightened")], [true, false], `a creature 5 feet off and one 40 feet off, both failing: ${show(out)}`);
   });
 
+  // "instead of dropping to 0": the hold answers the blow itself, as
+  // Relentless Endurance does, so the probe reads the hit, not a later call.
   await probe("mastery-of-death", async () => {
     const [enemy] = await stage(death);
     world.patch(death.id, { currentHp: 3 });
+    const kiBefore = r.used(death, "ki");
     await enemyHits(enemy, death, [16, 4]);
-    const out = await spend(death, "Mastery of Death");
-    assert.ok(out.ok && sheet(death).currentHp === 1 && !r.has(death, "unconscious"), `dropped to 0 with ki left: ${show(out)}; at ${sheet(death).currentHp} hit points, [${sheet(death).conditions.join(", ")}]`);
+    assert.ok(sheet(death).currentHp === 1 && !r.has(death, "unconscious"), `dropped to 0 with ki left: at ${sheet(death).currentHp} hit points, [${sheet(death).conditions.join(", ")}]`);
+    assert.equal(r.used(death, "ki"), kiBefore + 1, "the hold costs 1 ki");
+    const [again] = await stage(death);
+    const ki = sheet(death).resources.ki;
+    world.patch(death.id, { currentHp: 3, resources: { ...sheet(death).resources, ki: { max: ki.max, used: ki.max } } });
+    await enemyHits(again, death, [16, 4]);
+    assert.equal(sheet(death).currentHp, 0, "with no ki left the monk drops");
   });
 }
 
