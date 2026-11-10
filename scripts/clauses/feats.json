@@ -51,9 +51,8 @@
    },
    {
     "c": "you can mimic the speech or sounds of a creature you have heard for at least 1 minute",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the Insight contest against the mimicry"
+    "is": "left",
+    "why": "Mimicry is roleplay; the Insight contest a listener makes against it is the GM's request_roll, with no number of the feat's own."
    }
   ]
  },
@@ -174,9 +173,8 @@
    },
    {
     "c": "you can search for traps while travelling at a normal pace",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: travel pace"
+    "is": "left",
+    "why": "Travel pace is narrated: the app keeps no overland pace for a search to change."
    }
   ]
  },
@@ -411,9 +409,8 @@
    },
    {
     "c": "You always know which way is north and how many hours remain before sunrise or sunset, and you accurately recall anything you have seen or heard in the past month.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: information the GM gives; no written ruling names it"
+    "is": "left",
+    "why": "Information the GM gives (direction, the hours to sunrise, what was seen): nothing on a sheet or in a roll holds it."
    }
   ]
  },
@@ -675,9 +672,8 @@
    },
    {
     "c": "You can read lips",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: information the GM gives"
+    "is": "left",
+    "why": "Reading lips is information the GM gives in a scene: no number, roll or sheet field holds it."
    },
    {
     "c": "and you gain a +5 bonus to your passive Perception and passive Investigation",
@@ -745,9 +741,8 @@
    },
    {
     "c": "You can add further rituals of a level you can cast to the book by copying them.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "left",
+    "why": "Copying a ritual into the book is downtime the GM charges; the rituals the book holds are the sheet's spells, which the builder and the cast tools read."
    }
   ]
  },
@@ -865,9 +860,9 @@
    },
    {
     "c": "The range of your attack-roll spells doubles, they ignore half and three-quarters cover",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: a spell attack at twice its range"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.spell-sniper.range",
+    "by": "src/lib/dm/cast-reach.ts (twice the range of an attack-roll spell) and pc-attack-plan.ts (half and three-quarters cover ignored)"
    },
    {
     "c": "and you learn one attack cantrip from the bard, cleric, druid, sorcerer, warlock or wizard list",
@@ -961,9 +956,9 @@
   "clauses": [
    {
     "c": "Increase your Strength or Dexterity by 1, to a maximum of 20, and gain proficiency with four weapons of your choice.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: the four weapon picks"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.weapon-master.picks",
+    "by": "feat-grant-text.ts featGrantSpec (four weapons) and feat-effects.ts featAbilityIncrease (Strength or Dexterity, capped at 20)"
    }
   ]
  },
@@ -1001,9 +996,9 @@
    },
    {
     "c": "You learn invisibility and one 1st-level illusion or necromancy spell, each castable once per long rest without a slot as well as with slots.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: Shadow Touched's own picks (Fey Touched's same shape is held)"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.shadow-touched.picks",
+    "by": "feat-grant-text.ts featGrantSpec taught (invisibility and one illusion or necromancy spell); the daily free cast is the feat-spells row Fey Touched's held clause runs"
    }
   ]
  },
@@ -1041,9 +1036,8 @@
    },
    {
     "c": "You can speak telepathically to any creature within 60 feet that shares a language with you",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause: conversation"
+    "is": "left",
+    "why": "Telepathic speech is conversation at this table: nothing on a sheet changes."
    },
    {
     "c": "and you can cast detect thoughts once per long rest without a slot",
@@ -1227,9 +1221,9 @@
    },
    {
     "c": "and you gain proficiency with the poisoner's kit",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.poisoner.kit",
+    "by": "feat-grant-text.ts featGrantSpec fixedTools (the poisoner's kit)"
    }
   ]
  },
@@ -1247,9 +1241,9 @@
    },
    {
     "c": "You gain proficiency with firearms, ignore their loading property",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.gunner.proficiency",
+    "by": "feat-grant-text.ts featGrantSpec fixedWeapons firearms; feat-combat.ts shootsFreelyInMelee (loading ignored)"
    },
    {
     "c": "and being within 5 feet of a hostile creature gives you no disadvantage on ranged attacks",
@@ -1303,9 +1297,9 @@
    },
    {
     "c": "This feat raises no ability score.",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: no probe of this sweep stages it, and no existing suite's test names this clause"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.skilled.no-score",
+    "by": "feat-effects.ts featAbilityIncrease answers no score for Skilled"
    }
   ]
  },

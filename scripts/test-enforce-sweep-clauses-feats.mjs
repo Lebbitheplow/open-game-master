@@ -190,4 +190,53 @@ P["feat.alert.unseen"] = async () => {
   assert.equal(faces, 1, `an invisible attacker rolls with advantage against an Alert holder: ${faces} d20s, ${JSON.stringify(out.result).slice(0, 200)}`);
 };
 
+// ---- wave 2: the read_only clauses no probe had staged ----
+const grants = (feat) => featGrantSpec(authoredFeatDesc(feat));
+const { featAbilityIncrease } = await import("../src/lib/srd/feat-effects.ts");
+
+P["feat.weapon-master.picks"] = async () => {
+  const spec = grants("Weapon Master");
+  assert.equal(spec.weapons, 4, `weapons picked: ${spec.weapons}`);
+  const raise = JSON.stringify(featAbilityIncrease("Weapon Master"));
+  assert.ok(/str/i.test(raise) && /dex/i.test(raise), `the score it raises: ${raise}`);
+};
+
+P["feat.poisoner.kit"] = async () => {
+  assert.deepEqual(grants("Poisoner").fixedTools, ["poisoner's kit"]);
+};
+
+P["feat.gunner.proficiency"] = async () => {
+  assert.deepEqual(grants("Gunner").fixedWeapons, ["firearms"]);
+  // The loading property is ignored where every shot reads it (feat-combat.ts).
+  const { shootsFreelyInMelee } = await import("../src/lib/srd/feat-combat.ts");
+  assert.equal(shootsFreelyInMelee({ feats: ["Gunner"], features: [] }), true);
+  assert.equal(shootsFreelyInMelee({ feats: [], features: [] }), false);
+};
+
+P["feat.skilled.no-score"] = async () => {
+  assert.equal(featAbilityIncrease("Skilled"), null, "Skilled raises a score");
+};
+
+P["feat.shadow-touched.picks"] = async () => {
+  const taught = grants("Shadow Touched").taught;
+  assert.equal(taught.spells, 1, "one 1st-level spell picked");
+  assert.deepEqual([...taught.schools].sort(), ["illusion", "necromancy"]);
+  assert.ok(JSON.stringify(taught.fixedSpells ?? []).toLowerCase().includes("invisibility"), `fixed: ${JSON.stringify(taught.fixedSpells)}`);
+};
+
+P["feat.spell-sniper.range"] = async () => {
+  const t = await rig.table();
+  const reached = {};
+  for (const [label, feats] of [["plain", []], ["sniper", ["Spell Sniper"]]]) {
+    const hero = t.hero({ class: "wizard", level: 4, feats, spells: ["Ray of Frost"], cantrips: ["Ray of Frost"] });
+    const [foe] = await t.fight([hero]);
+    const at = t.kit.token(hero.id);
+    // 90 feet off: past Ray of Frost's 60, inside twice it.
+    t.kit.place(foe.id, at.x + 18 < t.kit.map().width ? at.x + 18 : at.x - 18, at.y);
+    const out = await t.invoke("pc_attack", { characterId: hero.id, targetEnemyId: foe.id, spell: "Ray of Frost" }, [15, 4]);
+    reached[label] = out.ok;
+  }
+  assert.deepEqual(reached, { plain: false, sniper: true }, "Ray of Frost at 90 feet");
+};
+
 await runOrSurvey("scripts/test-enforce-sweep-clauses-feats.mjs", P);
