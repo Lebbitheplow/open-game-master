@@ -92,8 +92,11 @@ export function handleReaperCast(
   if (live && liveBudget) {
     const open = openCastOf(liveBudget, name);
     const slotLevel = typeof rest.level === "number" ? rest.level : (open?.slotLevel ?? facts?.level ?? null);
-    storeBudget(live, withOpenCast(liveBudget, { spell: name, slotLevel, left: (open?.left ?? 0) + 1 }));
+    // Daemon Swarm's third creature: one more share stays open after the
+    // second, for a cast_at_enemy of the same spell at it.
+    storeBudget(live, withOpenCast(liveBudget, { spell: name, slotLevel, left: (open?.left ?? 0) + (twin.targets ?? 2) - 1 }));
   }
   const again = handleCastAtEnemy(campaign, turn, JSON.stringify({ ...rest, targetEnemyId: second.id }), sheets, sheetsById);
-  return { ...cast, secondTarget: again, [twin.feature]: `${name} also strikes ${second.displayName}.` };
+  const more = (twin.targets ?? 2) > 2 ? ` Cast it once more with cast_at_enemy at a third creature: it is paid.` : "";
+  return { ...cast, secondTarget: again, [twin.feature]: `${name} also strikes ${second.displayName}.${more}` };
 }

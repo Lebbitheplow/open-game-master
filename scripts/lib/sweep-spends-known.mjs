@@ -15,7 +15,6 @@ export const KNOWN = {
   "reaction:genre::bullet time::Bullet Time": { UNREACHED: { severity: "low", note: "the sweep stages melee hits only, and Bullet Time answers a ranged attack: scripts/test-genre-a-spends.mjs and the clause probe reaction_cost play it after a shortbow" } },
   "counter:cyberpunk_daemon_cache": { GUIDANCE_ONLY: { severity: "medium", note: "the counter is held (1/long rest); the cached program's cast without a slot is not wired to the cast guard: no pick names the program (w2-genre-a handoff)" } },
   "counter:cyberpunk_grease_the_wheels": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
-  "counter:cyberpunk_reality_rend": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "counter:dark_fantasy_apotheosis_of_suffering": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "counter:dark_fantasy_blood_offering": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "counter:dark_fantasy_candle_in_the_dark": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },

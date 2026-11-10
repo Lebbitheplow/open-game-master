@@ -261,7 +261,8 @@ export type AuthoredEffect = Base &
     // `anySchool`: a spell of every school. `anyRange`: the second target
     // stands anywhere the spell reaches ("at two targets": Singularity, The
     // Grave Chorus's "one additional target").
-    | { kind: "twin_spell"; school: string; maxLevel: number; minLevel?: number; spells?: string[]; anySchool?: boolean; anyRange?: boolean }
+    // `targets`: how many creatures in all (Daemon Swarm's three); two when absent.
+    | { kind: "twin_spell"; school: string; maxLevel: number; minLevel?: number; spells?: string[]; anySchool?: boolean; anyRange?: boolean; targets?: number }
     // pc_attack rapidStrike: an attack with advantage forgoes it for one more
     // attack of the action, once a turn (Rapid Strike).
     | { kind: "rapid_strike" }

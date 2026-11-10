@@ -129,3 +129,23 @@ CYBER.synaptic = async function synaptic(t, run, feature) {
   t.world.clearDice();
   eq(t.kit.enemy(scene.far.id).conditions.map((entry) => entry.toLowerCase()).includes("stunned"), true, "stunned after a failed WIS save");
 };
+
+// "your next damaging psionic deals maximum damage": after the spend, a
+// Burning Hands through aoe_damage lands 3d6 at 18 and takes the mark off;
+// the next lands as rolled.
+CYBER.rend = async function rend(t, run, feature) {
+  const scene = await t.stage(feature, { extra: { equipment: [], spellcasting: { ...CASTING("cha"), known: ["Burning Hands"], prepared: ["Burning Hands"] } } });
+  must(await t.world.invoke("use_resource", { characterId: scene.holder.id, resource: "Reality Rend" }), "Reality Rend");
+  const burn = async () => {
+    t.kit.giveTurn(scene.holder.id);
+    t.kit.setEnemy(scene.near.id, { currentHp: 300 });
+    t.world.clearDice();
+    t.world.dice(1, 1, 1, 20, 20);
+    must(await t.world.invoke("aoe_damage", { casterId: scene.holder.id, spell: "Burning Hands", level: 1, enemyIds: [scene.near.id] }), "Burning Hands");
+    t.world.clearDice();
+    return 300 - t.foeHp(scene.near.id);
+  };
+  const first = await burn();
+  const second = await burn();
+  eq(`${first}/${second}`, "18/1", "Burning Hands with the mark, then without (the dice show 1s; the foe saves at 20 for half)");
+};

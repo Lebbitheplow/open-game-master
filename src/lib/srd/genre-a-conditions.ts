@@ -23,5 +23,10 @@ export const GENRE_A_CONDITIONS: ConditionEffectRow[] = [
   { id: "author_of_the_unwritten", match: ["author of the unwritten"], summary: "Author of the Unwritten: the occultist's next warlock spell of 5th level or lower this turn costs no slot and may strike a second target." },
   { id: "the_grave_chorus", match: ["the grave chorus"], summary: "The Grave Chorus: for a minute each dirge the dirgesinger casts may strike one additional target." },
   { id: "beyond_the_veil", match: ["beyond the veil"], summary: "Beyond the Veil: for a minute they see invisible creatures and into the Ethereal Plane, and strike what stands there.", seesInvisible: true },
+  // The cyberpunk round's marks (src/lib/srd/authored-effects-genre-a-cyberpunk.ts).
+  { id: "daemon_swarm", match: ["daemon swarm"], summary: "Daemon Swarm: the netrunner's next single-target damaging program this turn strikes up to three creatures, one casting." },
+  { id: "reality_rend", match: ["reality rend"], summary: "Reality Rend: the esper's next damaging psionic deals its maximum damage." },
+  { id: "deus_in_machina", match: ["deus in machina"], summary: "Deus in Machina: for a minute the rigger's drones act on their own and the rigger may cast one routine through each." },
+  { id: "self_repaired", match: ["self-repaired"], summary: "Self-Repair Protocol: this drone has been mended since the rigger's last rest." },
   { id: "deathless_champion", match: ["deathless champion"], summary: "Deathless Champion: for a minute the grave knight cannot drop below 1 hit point." },
 ];

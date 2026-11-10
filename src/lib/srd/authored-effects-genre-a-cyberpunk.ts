@@ -76,3 +76,25 @@ GENRE_A_CYBERPUNK.push(
   // "Replace one attack with a spinning slash: weapon damage to every foe within 5 ft."
   { feature: "Whirl of Edges", classes: ["street_samurai"], entry: { subclass: "genre", spends: [{ name: "Whirl of Edges", action: "none", does: { kind: "cyber_spend", what: "whirl" } }] } },
 );
+
+// The capstones that mark a minute or the next cast.
+GENRE_A_CYBERPUNK.push(
+  // "1/long rest, split one single-target damaging program among up to three
+  // targets": the program reaches three creatures at any distance, one
+  // casting (the twin of src/lib/dm/authored-reaper.ts, with one more share).
+  counted("netrunner", "Daemon Swarm", "cyberpunk_daemon_swarm", {
+    effects: [{ kind: "twin_spell", school: "", anySchool: true, minLevel: 0, maxLevel: 9, anyRange: true, targets: 3, gate: { condition: "daemon swarm" } }],
+    spends: [{ name: "Daemon Swarm", pool: { id: "cyberpunk_daemon_swarm" }, action: "none", does: { kind: "buff", condition: "daemon swarm", rounds: 1 } }],
+  }),
+  // "1/long rest, your next damaging psionic deals maximum damage": the mark
+  // the next damaging cast takes off (genre-a-cyberpunk-spends.ts).
+  counted("esper", "Reality Rend", "cyberpunk_reality_rend", {
+    spends: [{ name: "Reality Rend", pool: { id: "cyberpunk_reality_rend" }, action: "none", does: { kind: "buff", condition: "reality rend", rounds: 600 } }],
+  }),
+  // "1/long rest, for 1 minute your drones act independently and you may cast
+  // one routine through each": a minute's mark; the drones already act as
+  // allies on the board with no command to wait for.
+  counted("rigger", "Deus in Machina", "cyberpunk_deus_in_machina", {
+    spends: [{ name: "Deus in Machina", pool: { id: "cyberpunk_deus_in_machina" }, action: "none", does: { kind: "buff", condition: "deus in machina", rounds: 10 } }],
+  }),
+);

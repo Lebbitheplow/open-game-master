@@ -57,5 +57,22 @@ await test("Field Surgeon: the stabilized ally's wait is ten rounds on the stabl
   assert.equal(meta?.source, "stable");
 });
 
+await test("Daemon Swarm: one Blight strikes three creatures for one slot; without the mark a second target is refused", async () => {
+  t.fresh();
+  const hero = t.hero("netrunner", 14, { equipment: [], spellcasting: { ability: "int", slots: { 4: { max: 2, used: 0 } }, known: ["Blight"], prepared: ["Blight"], cantrips: [] } });
+  await t.kit.fight(3, { heroFaces: { [hero.id]: 19 } });
+  const foes = t.world.enemies();
+  t.kit.place(hero.id, 5, 5);
+  foes.forEach((foe, index) => t.kit.place(foe.id, 7 + index * 2, 5));
+  t.kit.giveTurn(hero.id);
+  const cast = (target, more = {}) => t.world.invoke("cast_at_enemy", { characterId: hero.id, spell: "Blight", level: 4, targetEnemyId: target.id, ...more });
+  assert.equal((await cast(foes[0], { secondTargetEnemyId: foes[1].id })).ok, false, "a second target with no mark");
+  must(await t.world.invoke("use_resource", { characterId: hero.id, resource: "Daemon Swarm" }), "Daemon Swarm");
+  must(await cast(foes[0], { secondTargetEnemyId: foes[1].id }), "Blight at two");
+  must(await cast(foes[2]), "Blight at the third");
+  assert.equal(t.world.sheet(hero.id).spellcasting.slots["4"].used, 1, "slots spent for the three");
+  assert.ok(foes.every((foe) => t.foeHp(foe.id) < 300 || t.kit.enemy(foe.id).currentHp < t.kit.enemy(foe.id).maxHp), "each of the three took the Blight");
+});
+
 t.close();
 console.log(`test-genre-a-cyberpunk: ${passed} passed`);

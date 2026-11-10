@@ -439,11 +439,9 @@
      "k": "spend_moves",
      "id": "cyberpunk_daemon_swarm"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap netrunner::Daemon Swarm#1",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row in src/lib/classes/resources.json (no fx)",
-    "sev": "medium",
-    "observed": "spending cyberpunk_daemon_swarm moved its counter and the turn's cost and nothing else; the result was its guidance: 1/long rest, split one single-target damaging program among up to three targets."
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts Daemon Swarm: the spend lays a mark for the turn, and twin_spell with targets 3 opens a share for a second and a third creature of one casting (src/lib/dm/authored-reaper.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Daemon Swarm#1"
    }
   ]
  },
@@ -1379,11 +1377,9 @@
      "k": "spend_moves",
      "id": "cyberpunk_deus_in_machina"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Deus in Machina#1",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row in src/lib/classes/resources.json (no fx)",
-    "sev": "medium",
-    "observed": "spending cyberpunk_deus_in_machina moved its counter and the turn's cost and nothing else; the result was its guidance: 1/long rest, for 1 minute your drones act independently and you may cast one routine through each."
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts Deus in Machina: a minute mark (ten rounds) on the rigger; the drones act as allies on the board with no command to wait for (src/lib/dm/genre-a-summons.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: rigger::Deus in Machina#1"
    }
   ]
  },
@@ -2203,9 +2199,12 @@
    },
    {
     "c": "your next damaging psionic deals maximum damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:cyberpunk_reality_rend#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-cyberpunk-reality-rend"
+    "run": {
+     "k": "rend"
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-a-cyberpunk-spends.ts spendRealityRend, read by cast_at_enemy and aoe_damage as Overchannel is",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: esper::Reality Rend#1"
    }
   ]
  },

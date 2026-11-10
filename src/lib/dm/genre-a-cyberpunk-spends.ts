@@ -143,3 +143,18 @@ function synaptic({ campaign, sheet, label, args }: Ctx, then: (does: SpendDoes)
   }
   return then({ kind: "save_effect", save: "wis", dcAbility: "spell", condition: "stunned", rounds: 1, onFail: "is stunned until the esper's next turn" });
 }
+
+export const REALITY_REND = "reality rend";
+
+// The mark taken off and the line for the cast, or null with no mark held.
+export function spendRealityRend(campaign: Campaign, caster: CharacterSheet): string | null {
+  const live = getSheetById(caster.id) ?? caster;
+  if (!live.conditions.some((entry) => textKey(entry) === REALITY_REND)) {
+    return null;
+  }
+  const conditions = live.conditions.filter((entry) => textKey(entry) !== REALITY_REND);
+  const conditionMeta = { ...((live.conditionMeta as Record<string, unknown> | undefined) ?? {}) };
+  delete conditionMeta[REALITY_REND];
+  patchSheetAudited(campaign.id, live.id, { conditions, conditionMeta: conditionMeta as never }, { kind: "set_condition", reason: "Reality Rend spent on the cast", delta: { condition: REALITY_REND } });
+  return "Reality Rend: the psionic deals its maximum damage.";
+}

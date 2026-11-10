@@ -203,12 +203,12 @@ export function authoredConcentrationGuard(
 export function authoredTwinSpell(
   sheet: AuthoredSheet,
   spell: { name?: string | null; school?: string | null; level: number },
-): { feature: string; anyRange?: boolean } | null {
+): { feature: string; anyRange?: boolean; targets?: number } | null {
   for (const { effect, held } of activeAuthored(sheet, "twin_spell")) {
     const named = !effect.spells || effect.spells.some((entry) => textKey(entry) === textKey(spell.name ?? ""));
     const school = effect.anySchool || textKey(spell.school ?? "") === textKey(effect.school);
     if (named && school && spell.level >= (effect.minLevel ?? 1) && spell.level <= effect.maxLevel) {
-      return { feature: held.feature, ...(effect.anyRange ? { anyRange: true } : {}) };
+      return { feature: held.feature, ...(effect.anyRange ? { anyRange: true } : {}), ...(effect.targets ? { targets: effect.targets } : {}) };
     }
   }
   return null;
