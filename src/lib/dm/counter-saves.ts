@@ -74,10 +74,13 @@ export function counterSaveTable(campaign: Campaign) {
 
 export function resolveCounterSave(campaign: Campaign, sheet: CharacterSheet, spec: CounterSave, aim: CounterSaveAim): CounterSaveResult {
   const encounter = getActiveEncounter(campaign.id);
+  // The feature's numbers, said whatever happens next, so the story and the
+  // card read the same dice and DC the creatures roll against.
+  const numbers = { ...(spec.dice ? { damage: spec.dice } : {}), saveAbility: spec.save, dc: spec.dc, ...(spec.type ? { type: spec.type } : {}), ...(spec.condition ? { condition: spec.condition } : {}) };
   // No creature is on the board to save: the use is paid and the GM tells it
   // in the story (as a save area does with no fight on, authored-spend-effects.ts).
   if (!encounter) {
-    return { result: { applied: [`${spec.name}: there is no fight, so no creature on the board saves; the GM resolves it in the story on the creature the player names.`] } };
+    return { result: { ...numbers, applied: [`${spec.name}: there is no fight, so no creature on the board saves; the GM resolves it in the story on the creature the player names.`] } };
   }
   const refs = namedRefs(aim);
   if (!refs.length) {
@@ -151,7 +154,7 @@ export function resolveCounterSave(campaign: Campaign, sheet: CharacterSheet, sp
     lines.push(`${enemy.displayName} ${save.success ? "saves" : "fails"} ${verdict}${parts.length ? `: ${parts.join(", and ")}` : ""}.`);
   }
   publishEncounter(campaign.id);
-  return { result: { ...(spec.dice ? { rolled: `${spec.dice}: ${rolled}` } : {}), saves, applied: lines } };
+  return { result: { ...numbers, ...(spec.dice ? { rolled: `${spec.dice}: ${rolled}` } : {}), saves, applied: lines } };
 }
 
 const SIZES = ["tiny", "small", "medium", "large", "huge", "gargantuan"];

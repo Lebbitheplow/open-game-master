@@ -49,6 +49,10 @@ function targetOf(does: SpendDoes): HandTarget {
   // and the creatures an area report rolls for (counter-saves.ts): the
   // engine asks for targetEnemyId, which a card aimed at nothing never sent.
   if (does.kind === "flourish" || does.kind === "swarm_push" || does.kind === "aoe_report") return "enemy";
+  // A heal only (an Experimental Elixir's healing) goes to the creature fed it.
+  if (does.kind === "flames" && does.healOnly) return "ally";
+  // A slot given back to the creature touched (Bolstering Magic).
+  if (does.kind === "regain_slot") return "ally";
   return "none";
 }
 
@@ -67,7 +71,7 @@ function sightBound(does: SpendDoes): boolean {
 
 // The reach a spend holds its creatures to, printed on the card.
 function reachOf(does: SpendDoes): string {
-  const feet = "rangeFt" in does && typeof does.rangeFt === "number" ? does.rangeFt : does.kind === "heal_area" ? does.rangeFt : null;
+  const feet = "rangeFt" in does && typeof does.rangeFt === "number" ? does.rangeFt : null;
   return feet ? `${feet} ft` : "";
 }
 

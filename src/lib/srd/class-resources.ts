@@ -860,6 +860,17 @@ const DRACONIC_ACTION_DEFS: ResourceDef[] = [
 // Channel Divinity's options, a maneuver, a psionic use, a Metamagic option):
 // the tool that resolves the option charges the turn.
 const COST_BY_OPTION = new Set(["ki", "sorcery_points", "channel_divinity", "sub_superiority_dice", "sub_psionic_energy"]);
+// The counters whose words name a cost another call charges (the bonus
+// attack a War Priest's use buys, the spell an Embodiment of the Law or a
+// surge moves to the bonus action, the move a genre feature makes): their own
+// spend costs nothing, and scripts/test-class-resources.mjs CHARGED_ELSEWHERE
+// says why for each.
+const CHARGED_BY_ANOTHER_CALL = new Set([
+  "sub_war_priest", "race_hungry_jaws", "sub_unwavering_mark", "sub_embodiment_of_the_law",
+  "cyberpunk_surge_momentum", "horror_the_rite_remembers", "post_apocalyptic_surge_of_change", "steampunk_surge_casting",
+  "dark_fantasy_the_crown_descends", "steampunk_arc_coil", "horror_last_one_out", "mystery_general_strike", "horror_adrenaline_surge", "mystery_vanish",
+  "sub_telekinetic_master", "sub_waxing_and_waning",
+]);
 
 // The cost a counter's own words state, for a row that names none: "a bonus
 // action", "as an action". A row that states none costs nothing of the turn
@@ -879,7 +890,7 @@ export function statedAction(text: string): ResourceAction | undefined {
 // and charged none. A cost added to a counter goes on its row; this fills
 // the rows that name none from their own words.
 function withStatedCost(def: ResourceDef): ResourceDef {
-  if (def.action || def.into || COST_BY_OPTION.has(def.id)) {
+  if (def.action || def.into || COST_BY_OPTION.has(def.id) || CHARGED_BY_ANOTHER_CALL.has(def.id)) {
     return def;
   }
   const stated = statedAction(def.guidance);

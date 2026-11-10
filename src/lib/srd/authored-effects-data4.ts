@@ -140,7 +140,7 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   "druid::Circle Forms": {
     subclass: "Circle of the Moon",
     // Wild Shape's challenge rating ceiling for a Moon druid.
-    heldBy: { file: "src/lib/srd/beast-forms.ts", call: "moonDruid ? Math.max(baseCr, moonCr)" },
+    heldBy: { file: "src/lib/srd/wild-shape-caps.ts", call: "moonDruid ? Math.max(baseCr, moonCr)" },
   },
   "druid::Thousand Forms": {
     subclass: "Circle of the Moon",

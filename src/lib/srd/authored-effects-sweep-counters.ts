@@ -109,8 +109,10 @@ export const AUTHORED_DATA_COUNTERS: Record<string, AuthoredEntry> = {
         does: {
           kind: "variants",
           options: {
-            "full moon": { does: { kind: "save_area", save: "con", dcAbility: "spell", rangeFt: 30, chosen: true, condition: "blinded", untilNextTurnEnds: true } },
-            "new moon": { does: { kind: "save_area", save: "dex", dcAbility: "spell", rangeFt: 30, chosen: true, dice: "3d10", type: "necrotic" } },
+            // The hostile creatures within 30 feet; the GM leaves out any the
+            // sorcerer spares.
+            "full moon": { does: { kind: "save_area", save: "con", dcAbility: "spell", rangeFt: 30, condition: "blinded", untilNextTurnEnds: true } },
+            "new moon": { does: { kind: "save_area", save: "dex", dcAbility: "spell", rangeFt: 30, dice: "3d10", type: "necrotic" } },
             "crescent moon": { does: { kind: "teleport", feet: 60 } },
           },
         },

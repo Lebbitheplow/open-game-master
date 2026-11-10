@@ -216,7 +216,12 @@ await test("Breath of the Dragon has proficiency-bonus uses, and 2 ki buys one m
   assert.equal(resourceDef("sub_breath_of_the_dragon").maxFor(5, { wis: 2 }), 3);
   world.patch(monk.id, { resources: { sub_breath_of_the_dragon: { max: 3, used: 3 }, ki: { max: 5, used: 0 } } });
   kit.giveTurn(monk.id);
-  const out = await spend(monk, "Breath of the Dragon");
+  // The breath rolls the creatures it catches in the spend (counter-saves.ts),
+  // within its 30 feet: the goblin is set beside the monk.
+  const [goblin] = world.enemies();
+  kit.place(monk.id, 5, 5);
+  kit.place(goblin.id, 5, 6);
+  const out = await spend(monk, "Breath of the Dragon", { targetEnemyId: goblin.id });
   assert.equal(out.ok, true, out.error);
   assert.equal(used(monk, "ki"), 2);
   assert.equal(used(monk, "sub_breath_of_the_dragon"), 3);
