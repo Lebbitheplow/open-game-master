@@ -44,5 +44,51 @@ await test("Twin Brand: a second creature takes a second brand, the first stays,
   assert.match(String(hit.result.damage?.expression ?? JSON.stringify(hit.result)), /1d8.*1d8|2d8/, "the weapon's d8 and the brand's d8");
 });
 
+await test("Grave Grip: each creature named within 15 feet saves on Strength or is restrained until the knight's next turn", async () => {
+  const scene = await t.stage({ classId: "grave_knight", level: 6 });
+  t.kit.place(scene.far.id, 6, 6);
+  t.world.dice(1, 1);
+  must(await spend(scene, "dark_fantasy_grave_grip"), "Grave Grip");
+  t.world.clearDice();
+  for (const foe of [scene.near, scene.far]) {
+    const held = t.kit.enemy(foe.id);
+    assert.ok(held.conditions.includes("restrained"), `${foe.id}: ${JSON.stringify(held.conditions)}`);
+    assert.equal(held.conditionMeta.restrained?.untilTurnOf ?? held.conditionMeta.restrained?.instances?.[0]?.untilTurnOf, scene.holder.id, JSON.stringify(held.conditionMeta));
+  }
+  assert.equal(t.budget().actionUsed, true, "the action");
+});
+
+await test("Voice Like Embers: 3d6 fire and deafened for a minute on a failed Constitution save, both foes in 15 feet", async () => {
+  const scene = await t.stage({ classId: "penitent", level: 7 });
+  t.kit.place(scene.far.id, 7, 5);
+  const before = [t.foeHp(scene.near.id), t.foeHp(scene.far.id)];
+  t.world.dice(3, 3, 3, 1, 1);
+  must(await spend(scene, "dark_fantasy_voice_like_embers"), "Voice Like Embers");
+  t.world.clearDice();
+  assert.deepEqual([before[0] - t.foeHp(scene.near.id), before[1] - t.foeHp(scene.far.id)], [9, 9]);
+  assert.ok(t.kit.enemy(scene.far.id).conditions.includes("deafened"));
+});
+
+await test("Murder of Crows: enemies within 20 feet that fail are blinded until a Constitution save ends it; the foe 70 feet off is untouched", async () => {
+  const scene = await t.stage({ classId: "plague_doctor", level: 7 });
+  t.world.dice(1, 1);
+  must(await spend(scene, "dark_fantasy_murder_of_crows"), "Murder of Crows");
+  t.world.clearDice();
+  const near = t.kit.enemy(scene.near.id);
+  assert.ok(near.conditions.includes("blinded"));
+  assert.match(JSON.stringify(near.conditionMeta.blinded), /saveEnds/);
+  assert.ok(!t.kit.enemy(scene.far.id).conditions.includes("blinded"));
+});
+
+await test("Immolate the Sin: for a minute a hit carries 2d8 fire and fire does nothing to the penitent", async () => {
+  const scene = await t.stage({ classId: "penitent", level: 15 });
+  must(await spend(scene, "dark_fantasy_immolate_the_sin"), "Immolate the Sin");
+  assert.ok(conditions(scene.holder.id).includes("immolate the sin"));
+  const hit = must(await swing(scene, scene.near, [15, 4, 3, 3, 3, 3, 3]), "the swing");
+  assert.match(JSON.stringify(hit.result), /2d8/);
+  must(await t.world.invoke("apply_damage", { characterId: scene.holder.id, amount: 10, type: "fire" }), "the fire");
+  assert.equal(sheet(scene.holder.id).currentHp, 100);
+});
+
 t.close();
 console.log(`test-genre-a-dark-fantasy: ${passed} passed`);

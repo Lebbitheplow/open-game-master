@@ -663,7 +663,8 @@ function saveArea(ctx: SpendContext, does: Extract<SpendDoes, { kind: "save_area
       } else {
         layEnemyConditionInstance(campaign, fresh(), does.condition, {
           source: sheet.id,
-          ...(does.untilNextTurnEnds ? { untilTurnEndOf: sheet.id } : does.rounds ? { rounds: does.rounds } : {}),
+          ...(does.untilNextTurn ? { untilTurnOf: sheet.id } : does.untilNextTurnEnds ? { untilTurnEndOf: sheet.id } : does.rounds ? { rounds: does.rounds } : {}),
+          ...(does.saveEnds ? { saveEnds: { ability: does.save, dc } } : {}),
           ...(does.endsOnDamage ? { endsOnDamage: true } : {}),
           ...(does.leashFeet ? { leashFeet: does.leashFeet } : {}),
         });

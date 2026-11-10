@@ -27,4 +27,5 @@ export const DARK_FANTASY_CONDITIONS: ConditionEffectRow[] = [
     onHitDice: { dice: "1d8", type: "radiant" },
     marksTarget: true,
   },
+  { id: "immolate_the_sin", match: ["immolate the sin"], summary: "Immolate the Sin: for a minute the penitent burns in gray flame, +2d8 fire on their attacks and immune to fire." },
 ];

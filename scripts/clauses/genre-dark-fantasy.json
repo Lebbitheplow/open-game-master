@@ -1092,14 +1092,16 @@
    },
    {
     "c": "a wheeling flock blinds enemies in a 20-ft radius for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_murder_of_crows#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the Murder of Crows save_area of src/lib/srd/authored-effects-genre-a-dark-fantasy.ts (blinded, enemies within 20 feet)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Murder of Crows",
     "recorded_as": "spends-guidance-only-counter-dark-fantasy-murder-of-crows"
    },
    {
     "c": "CON save each turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_murder_of_crows#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the Murder of Crows save_area of src/lib/srd/authored-effects-genre-a-dark-fantasy.ts (saveEnds: a CON save at the end of each of its turns)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Murder of Crows",
     "same_probe_as": 1
    }
   ]
@@ -1305,14 +1307,16 @@
    },
    {
     "c": "spectral hands erupt in a 15-ft cube",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_grave_grip#HANDS_BACK",
+    "is": "held",
+    "by": "the Grave Grip save_area of src/lib/srd/authored-effects-genre-a-dark-fantasy.ts (the creatures named within 15 feet)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Grave Grip",
     "recorded_as": "spends-hands-back-counter-dark-fantasy-grave-grip"
    },
    {
     "c": "creatures save (STR) or are restrained until your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_grave_grip#HANDS_BACK",
+    "is": "held",
+    "by": "the Grave Grip save_area of src/lib/srd/authored-effects-genre-a-dark-fantasy.ts (restrained until the start of the knight's next turn)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Grave Grip",
     "same_probe_as": 1
    }
   ]
@@ -2298,8 +2302,9 @@
    },
    {
     "c": "creatures in a 15-ft cone save (CON) or take 3d6 fire and are deafened for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_voice_like_embers#HANDS_BACK",
+    "is": "held",
+    "by": "the Voice Like Embers save_area of src/lib/srd/authored-effects-genre-a-dark-fantasy.ts",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Voice Like Embers",
     "recorded_as": "spends-hands-back-counter-dark-fantasy-voice-like-embers"
    }
   ]
@@ -2352,15 +2357,17 @@
    },
    {
     "c": "wreathe yourself in gray flame for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs ruling counter:dark_fantasy_immolate_the_sin#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the Immolate the Sin buff of src/lib/srd/authored-effects-genre-a-dark-fantasy.ts (10 rounds)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Immolate the Sin",
     "recorded_as": "spends-guidance-only-counter-dark-fantasy-immolate-the-sin",
     "ruling": "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\""
    },
    {
     "c": "+2d8 fire on your attacks and immunity to fire",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs ruling counter:dark_fantasy_immolate_the_sin#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the hit_rider and immune_damage of src/lib/srd/authored-effects-genre-a-dark-fantasy.ts gated on the immolate the sin condition",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Immolate the Sin",
     "same_probe_as": 1
    }
   ]

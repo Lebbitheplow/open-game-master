@@ -434,6 +434,11 @@ export type SpendDoes =
       rounds?: number;
       // Until the end of the holder's next turn, not a count of rounds.
       untilNextTurnEnds?: boolean;
+      // Until the start of the holder's next turn (Grave Grip: "until your next
+      // turn"), or until the creature saves at the end of one of its turns
+      // (Murder of Crows: "CON save each turn").
+      untilNextTurn?: boolean;
+      saveEnds?: boolean;
       endsOnDamage?: boolean;
       // Held while the holder stands within this many feet and is neither down
       // nor incapacitated, with no count of rounds (src/lib/dm/condition-leash.ts).
