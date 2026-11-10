@@ -210,5 +210,23 @@ await run("Masterwork Arsenal: a gadgeteer's weapon is +2 and magical, and a 19 
   assert.equal(lost(near), 11, `the arsenal's 19 dealt ${lost(near)} (two 3s on the critical, STR +3, +2, unresisted)`);
 });
 
+// ---- an ally's attack ----
+
+await run("Warlord of the Wastes: an ally within 30 ft who can see the road warrior gains +1 to attack rolls, not one who cannot", async () => {
+  const hero = rig.holder(feature("road_warrior", "Warlord of the Wastes", 18));
+  const { near } = await rig.fight(hero);
+  const toHit = async () => {
+    rig.myTurn(ally);
+    const out = await kit.swing(ally.id, near.id, [10, 3, 3, 3, 3]);
+    rig.must(out.out, "pc_attack");
+    const roll = out.toHit;
+    return roll?.result?.total ?? roll?.total;
+  };
+  const { on, off } = await rig.both(hero, { name: "Warlord of the Wastes" }, toHit);
+  assert.equal(on - off, 1, `the ally's attack totalled ${on} with the warlord and ${off} without`);
+  world.patch(hero.id, { conditions: ["invisible"] });
+  assert.equal(await toHit(), off, "an ally who cannot see the road warrior still gained the +1");
+});
+
 world.close();
 finish();

@@ -15,6 +15,7 @@ import type { AttackProfile } from "@/lib/dm/attack-logic";
 import { damageParts, type TypedRider } from "@/lib/dm/damage-parts";
 import type { BlowSource } from "@/lib/dm/damage-logic";
 import { effectOutcome } from "@/lib/dm/effect-tools";
+import { genreBAuraAttack } from "@/lib/dm/genre-b-auras";
 import type { Encounter, EncounterEnemy } from "@/lib/db/encounters";
 import { authoredSneakEdge } from "@/lib/dm/authored-hooks";
 import { authoredSneakBonus } from "@/lib/srd/authored-effects-more";
@@ -101,6 +102,11 @@ export function foldDamageRiders(input: {
   const damageEffect = effectOutcome(campaignId, { kind: "character", id: sheet.id }, "damage");
   if (attackEffect.bonus) {
     profile = { ...profile, toHit: profile.toHit + attackEffect.bonus };
+  }
+  // An ally's genre aura on the attack roll (Warlord of the Wastes).
+  const aura = genreBAuraAttack(campaignId, sheet);
+  if (aura.bonus) {
+    profile = { ...profile, toHit: profile.toHit + aura.bonus, riderNotes: [...profile.riderNotes, `${aura.features.join(", ")}: +${aura.bonus} to hit`] };
   }
   if (damageEffect.bonus) {
     profile = {
