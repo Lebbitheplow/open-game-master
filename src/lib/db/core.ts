@@ -21,6 +21,7 @@ import { tableHazardsFrom } from "@/lib/db/table-hazards";
 import { ROW_TEXT, settleLoreTexts } from "@/lib/worldforge/account";
 import { backfillLegacyItemRows } from "@/lib/db/item-row-backfill";
 import { backfillNarratorVoices } from "@/lib/db/narrator-voice-backfill";
+import { installTurnJournal } from "@/lib/db/turn-journal";
 
 const dbPath =
   process.env.SQLITE_DB_PATH || path.join(/*turbopackIgnore: true*/ process.cwd(), "data", "local-roleplay.sqlite");
@@ -2068,6 +2069,12 @@ function ensureSchema(db: SqliteDatabase) {
     // never by saveEncounter, so a handler holding a stale Encounter cannot
     // send back someone who has arrived.
     ["away_ids_json", `TEXT NOT NULL DEFAULT '[]'`],
+    // Once-a-turn and once-a-round marks of features off the turn budget
+    // (Grim Harvest, Keeper of Souls, Form of the Beast's bite), as
+    // {key: stamp} (src/lib/dm/turn-marks.ts). In the database, so a restart
+    // remembers them; on the fight's own row, so they revert with it. Written
+    // only there, never by saveEncounter.
+    ["turn_marks_json", `TEXT NOT NULL DEFAULT '{}'`],
     // The action economy of whichever combatant is currently acting: action,
     // bonus action, reaction, attacks made, and movement spent. Rebuilt from
     // scratch whenever the initiative pointer moves, so it never needs a
@@ -3946,6 +3953,7 @@ export function getDatabase() {
       ensureSchema(globalThis.__localRoleplayDb);
       schemaEnsured = true;
     }
+    installTurnJournal(globalThis.__localRoleplayDb);
     return globalThis.__localRoleplayDb;
   }
 
@@ -3999,6 +4007,8 @@ export function getDatabase() {
   db.pragma("foreign_keys = ON");
   ensureSchema(db);
   schemaEnsured = true;
+  // Every write a GM turn makes is kept with the turn (turn-journal.ts).
+  installTurnJournal(db);
   if (revision < SCHEMA_REVISION) {
     db.pragma(`user_version = ${SCHEMA_REVISION}`);
   }

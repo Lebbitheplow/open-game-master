@@ -1,3 +1,4 @@
+import { turnLedger, writeTurnLedger } from "@/lib/dm/turn-marks";
 import { z } from "zod";
 import { rollCard } from "@/lib/dm/roll-card";
 import { type Campaign } from "@/lib/db/campaigns";
@@ -373,17 +374,13 @@ const treasureSchema = z.object({
   reason: z.string().optional(),
 });
 
-// The hoards each running turn has paid, by what its call named: the CR,
-// whether it is one foe's pocket money, who shares it, and the reason. No
-// record the engine keeps says which hoard a roll was for, so a later turn's
-// call is a new hoard; but the same call twice in one turn is the model
-// sending it again (a retry, a batch that repeated a line), and it used to
-// roll and pay the coin a second time. It is answered with the first payout.
-// Held for the last few turns only, keyed by turn id since each call reads
-// its turn afresh.
-const PAID_HOARDS = new Map<string, Map<string, Record<string, unknown>>>();
-const PAID_HOARD_TURNS = 20;
-
+// The hoards a turn has paid, by what its call named: the CR, whether it is
+// one foe's pocket money, who shares it, and the reason. No record the
+// engine keeps says which hoard a roll was for, so a later turn's call is a
+// new hoard; but the same call twice in one turn is the model sending it
+// again (a retry, a batch that repeated a line), and it used to roll and pay
+// the coin a second time. It is answered with the first payout, from the
+// turn's own ledger (turn-marks.ts), which a restart remembers.
 function hoardKey(args: z.infer<typeof treasureSchema>, recipients: CharacterSheet[]): string {
   const ids = recipients.map((sheet) => sheet.id).sort().join(",");
   return [args.cr, args.individual ? "pocket" : "hoard", ids, textKey(args.reason ?? "")].join("|");
@@ -407,8 +404,7 @@ export function handleRollTreasure(
     return { error: "No characters to receive treasure; use characterIds from GAME STATE.", retry: true };
   }
   const key = hoardKey(args, recipients);
-  const paidThisTurn = PAID_HOARDS.get(turn.id);
-  const already = paidThisTurn?.get(key);
+  const already = turnLedger(campaign.id, turn.id, `roll_treasure:${key}`);
   if (already) {
     return {
       ...already,
@@ -452,13 +448,7 @@ export function handleRollTreasure(
         ? ` A hoard this size tends to hold about ${items} magic item${items === 1 ? "" : "s"}; hand any out with grant_item.`
         : ""),
   };
-  const ledger = paidThisTurn ?? new Map<string, Record<string, unknown>>();
-  ledger.set(key, result);
-  PAID_HOARDS.delete(turn.id);
-  PAID_HOARDS.set(turn.id, ledger);
-  while (PAID_HOARDS.size > PAID_HOARD_TURNS) {
-    PAID_HOARDS.delete(PAID_HOARDS.keys().next().value as string);
-  }
+  writeTurnLedger(campaign.id, turn.id, `roll_treasure:${key}`, result);
   return result;
 }
 

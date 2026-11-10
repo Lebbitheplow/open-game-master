@@ -30,7 +30,7 @@ import { caster } from "./lib/enforce-spell-kit.mjs";
 import { restarted } from "./lib/sweep-lifecycle.mjs";
 import { stage } from "./lib/sweep-lifecycle-stage.mjs";
 
-const { test, gap, finish } = suite("test-enforce-sweep-lifecycle-restart");
+const { test, finish } = suite("test-enforce-sweep-lifecycle-restart");
 
 const root = path.resolve(import.meta.dirname, "../src/lib/dm");
 
@@ -52,11 +52,9 @@ function scan() {
 
 const PLUMBING = "plumbing";
 const REGISTRY = {
-  // ---- game state with no written reason ----
-  "authored-hooks.ts:HARVEST_USED": { kind: "state", what: "Grim Harvest's once a turn" },
-  "authored-hooks.ts:KEEPER_USED": { kind: "state", what: "Keeper of Souls' once a turn" },
-  "authored-attacks.ts:BITE_HEALED": { kind: "state", what: "Form of the Beast's bite healing once a turn" },
-  "world-tools.ts:PAID_HOARDS": { kind: "state", what: "the hoards a turn has paid, so the same roll_treasure sent twice pays once" },
+  // ---- game state with no written reason: none today. Grim Harvest, Keeper
+  // of Souls, Form of the Beast's bite and the hoards a turn paid were here;
+  // the database keeps their marks now (src/lib/dm/turn-marks.ts). ----
   // ---- game state, the loss written down in the file ----
   "feature-teleport.ts:credits": { kind: "ruling", what: "\"A restart forgets them; the move is then refused as an unpaid teleport, and nothing was moved for free.\"" },
   "manual-ticks.ts:ticks": { kind: "ruling", what: "\"A restart forgets them, which costs only the old behaviour (the cast spends).\"" },
@@ -112,9 +110,8 @@ await test("the registry names nothing that is gone", () => {
 
 // ---- shown by running: Grim Harvest's once a turn ----
 const RULE = "src/lib/srd/subclasses.json, School of Necromancy, Grim Harvest: \"Once per turn, killing a creature with a spell of 1st level or higher restores twice the spell's level in hit points, three times for necromancy spells.\"";
-await gap(
-  "sweep-lifecycle-restart:authored-hooks.ts:HARVEST_USED",
-  { rule: RULE, where: "src/lib/dm/authored-hooks.ts authoredOnKill (HARVEST_USED is a module-level Map: the turn's mark belongs on the encounter's turn budget, which the database keeps)", severity: "low" },
+await test(
+  `Grim Harvest's once a turn holds across a restart (${RULE})`,
   async () => {
     const ctx = await stage("fight", {
       heroes: [
@@ -142,5 +139,5 @@ await gap(
 );
 
 const counts = Object.values(REGISTRY).reduce((sum, entry) => ({ ...sum, [entry.kind]: (sum[entry.kind] ?? 0) + 1 }), {});
-console.log(`sweep-lifecycle-restart: ${found.length} module-level stores under src/lib/dm classed: ${JSON.stringify(counts)}; 1 of the ${counts.state} state stores is shown by running, the others share its shape`);
+console.log(`sweep-lifecycle-restart: ${found.length} module-level stores under src/lib/dm classed: ${JSON.stringify(counts)}; Grim Harvest's mark is shown by running across a restart`);
 finish();

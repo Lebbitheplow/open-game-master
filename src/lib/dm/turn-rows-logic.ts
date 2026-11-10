@@ -1,10 +1,12 @@
 import type { KeptRow, KeptTable, Row } from "@/lib/db/turn-rows";
 
 // The fight's and the board's own tables, whose rows a revert writes back
-// field by field. A row of any other table was kept whole by a cascade (a
-// summoned creature sent away, its sheet with it): it comes back if it is
-// gone and goes if the turn made it, nothing more, since a sheet's fields
-// are the sheet audit's to put back.
+// field by field under the fight's rules below. A row of any other table
+// (src/lib/db/turn-journal.ts keeps every one a turn writes: a sheet, the
+// campaign's floor and scene, an NPC, a quest, a timeline entry) comes back
+// if the turn took it away, goes if the turn made it, and otherwise has the
+// columns the turn changed written back as the turn found them, and no
+// other column: what a later turn changed in another column stands.
 export const FIGHT_TABLES = ["encounters", "encounter_enemies", "battle_maps", "battle_tokens", "active_effects", "dropped_items"] as const;
 export type FightTable = (typeof FIGHT_TABLES)[number];
 
@@ -51,7 +53,19 @@ export const FIGHT_COLUMNS = [
   // back with the slot and token it was given, or they stayed off the list
   // with neither, and their next initiative roll brought no token.
   "away_ids_json",
+  // The once-a-turn marks the turn spent (turn-marks.ts).
+  "turn_marks_json",
 ] as const;
+
+// Columns a row image of another table keeps but no revert writes back:
+// when a row was made and last written, and the ones their owner puts back
+// (the clock: src/lib/db/clock.ts rewindTurnClock, which knows whether time
+// moved since). turn-journal.ts leaves the campaign's sequence counter out
+// of the image altogether.
+const STAMPS = ["created_at", "updated_at"];
+export const OWNED_COLUMNS: Readonly<Record<string, readonly string[]>> = {
+  campaigns: ["clock_json", "next_seq"],
+};
 
 // Columns never written back: who the row is and when it was made.
 const FIXED: Record<FightTable, readonly string[]> = {
@@ -67,11 +81,37 @@ export function restoredColumns(table: KeptTable, row: Row): string[] {
   if (table === "encounters") {
     return FIGHT_COLUMNS.filter((column) => column in row);
   }
-  return isFightTable(table) ? Object.keys(row).filter((column) => !FIXED[table].includes(column)) : Object.keys(row);
+  if (isFightTable(table)) {
+    return Object.keys(row).filter((column) => !FIXED[table].includes(column));
+  }
+  const owned = OWNED_COLUMNS[table] ?? [];
+  return Object.keys(row).filter((column) => !STAMPS.includes(column) && !owned.includes(column));
 }
 
 function pick(row: Row, columns: readonly string[]): Row {
   return Object.fromEntries(columns.map((column) => [column, row[column] ?? null]));
+}
+
+const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+
+// The columns of a row of another table the turn changed: what its revert
+// writes back.
+export function turnColumns(table: KeptTable, before: Row, after: Row): string[] {
+  return restoredColumns(table, before).filter((column) => !same(before[column], after[column]));
+}
+
+// Whether a kept row ends the turn as the turn found it (nothing to take
+// back: turn-rows.ts lets it go when the turn's work is done). The columns
+// an owner puts back count: a campaign row whose clock alone moved is still
+// what the clock's rewind reads.
+export function unchangedByTurn(table: KeptTable, before: Row | null, after: Row | null): boolean {
+  if (!before || !after) {
+    return before === after;
+  }
+  if (isFightTable(table)) {
+    return !changedSince(table, before, after);
+  }
+  return Object.keys(before).every((column) => STAMPS.includes(column) || column === "next_seq" || same(before[column], after[column]));
 }
 
 // Whether a row reads otherwise than the turn left it, in the columns a
@@ -84,8 +124,12 @@ export function changedSince(table: KeptTable, after: Row | null, now: Row | nul
   return JSON.stringify(pick(after, columns)) !== JSON.stringify(pick(now, columns));
 }
 
-// What the revert reads of each fight the rows belong to.
-export type FightState = { active: boolean; begunInTurn: boolean; endedInTurn: boolean };
+// What the revert reads of each fight the rows belong to. `blocked`: a
+// fight this turn ended cannot be opened again, because another fight is on
+// now (one the turn did not begin). `scene`: the row is an exploration
+// scene, not a fight (one a fight the turn began closed is opened again with
+// the fight's going).
+export type FightState = { active: boolean; begunInTurn: boolean; endedInTurn: boolean; blocked?: boolean; scene?: boolean };
 
 export type RowState = KeptRow & {
   now: Row | null;
@@ -107,6 +151,9 @@ export type RowPlan = {
   // Boards whose ground goes back: nobody may be left inside it.
   grounds: string[];
   warnings: string[];
+  // Why the turn cannot be reverted at all, said to the lead; nothing is
+  // written.
+  refusal: string | null;
 };
 
 // `hidden`: ids of the creatures and tokens kept off the board from the
@@ -140,47 +187,120 @@ function isScene(row: RowState): boolean {
 // The scene columns a revert writes back when the fight that closed it goes.
 const SCENE_COLUMNS = ["status", "outcome", "ended_instant"] as const;
 
+// And a fight's, when the turn that ended it is reverted: it is on again, as
+// the blow before the last found it.
+const ENDED_COLUMNS = [...SCENE_COLUMNS, "summary", "summary_json"] as const;
+
+// A row of another table, as the event log and the revert's question name it.
+const WORDS: Readonly<Record<string, readonly [string, string]>> = {
+  character_sheets: ["character sheet", "character sheets"],
+  campaigns: ["the scene", "the scene"],
+  npcs: ["NPC", "NPCs"],
+  relationships: ["bond", "bonds"],
+  quests: ["quest", "quests"],
+  character_events: ["timeline entry", "timeline entries"],
+  locations: ["place", "places"],
+  overworld_maps: ["the map", "the map"],
+  shops: ["shop", "shops"],
+  dm_whispers: ["whisper", "whispers"],
+  campaign_notes: ["note", "notes"],
+  world_facts: ["fact of the world", "facts of the world"],
+  factions: ["faction", "factions"],
+  lore_entries: ["lore entry", "lore entries"],
+  pending_rolls: ["roll asked for", "rolls asked for"],
+  users: ["companion", "companions"],
+  campaign_members: ["seat", "seats"],
+};
+
+function wordFor(table: string, count: number): string {
+  const [one, more] = WORDS[table] ?? ["record", "records"];
+  if (one.startsWith("the ")) {
+    return one;
+  }
+  return `${count} ${count === 1 ? one : more}`;
+}
+
 export function planRowsRevert(
   rows: readonly RowState[],
   fights: ReadonlyMap<string, FightState>,
   hidden: ReadonlySet<string> = new Set(),
 ): RowPlan {
-  const plan: RowPlan = { dropFights: [], settled: [], deletes: [], inserts: [], updates: [], grounds: [], warnings: [] };
+  const plan: RowPlan = { dropFights: [], settled: [], deletes: [], inserts: [], updates: [], grounds: [], warnings: [], refusal: null };
   const changed: string[] = [];
   const told = new Set<string>();
+  // A fight the turn began goes whole, whether it is still on or the turn
+  // ended it too.
+  const goes = (fight: FightState | undefined) => Boolean(fight?.begunInTurn && (fight.active || fight.endedInTurn));
+  // A fight the turn ended is opened again (WAVE1 maintainer decision on
+  // LC-REV-13: "a turn that ended a fight reopens it, or refuses with a
+  // sentence saying why it cannot"): every row the turn kept of it goes back,
+  // its standing too. Left ended, the revert took back what the blow paid the
+  // heroes and left the foe dead, the fight over and the action spent.
+  const reopens = (fight: FightState | undefined) => Boolean(fight && fight.endedInTurn && !fight.begunInTurn && !fight.active && !fight.scene);
+  for (const fight of fights.values()) {
+    if (reopens(fight) && fight.blocked) {
+      plan.refusal =
+        "This turn ended a fight, and another fight has begun since: the first cannot be opened again beside it. Revert the turns since, newest first, or end the fight that is on, and try again.";
+      return plan;
+    }
+  }
   // A fight the turn began on an exploration map closed that scene; with the
   // fight gone the scene is open again, its board with it, as the turn found
   // them. Left closed, the revert left the table with no board at all.
-  const dropping = [...fights.values()].some((fight) => fight.begunInTurn && fight.active);
+  const dropping = [...fights.values()].some(goes);
   const reopened = new Set(
     dropping
       ? rows.filter((row) => isScene(row) && row.before?.status === "active" && row.now?.status === "ended").map((row) => row.rowId)
       : [],
   );
+  const others = new Map<string, number>();
   for (const row of rows) {
     if (!isFightTable(row.table)) {
       if (row.before && !row.now) {
         plan.inserts.push({ table: row.table, row: row.before });
       } else if (!row.before && row.now) {
         plan.deletes.push({ table: row.table, rowId: row.rowId });
+      } else if (row.before && row.now) {
+        const columns = turnColumns(row.table, row.before, row.after ?? row.now);
+        if (columns.length) {
+          plan.updates.push({ table: row.table, rowId: row.rowId, values: pick(row.before, columns) });
+          // A sheet's own fields are asked about by the sheet audit
+          // (sheet-undo.ts undoConflictWarnings).
+          if (row.after && row.table !== "character_sheets" && JSON.stringify(pick(row.after, columns)) !== JSON.stringify(pick(row.now, columns))) {
+            others.set(row.table, (others.get(row.table) ?? 0) + 1);
+          }
+        }
       }
       continue;
     }
     const fight = row.encounterId ? fights.get(row.encounterId) : undefined;
-    if (row.encounterId && fight?.begunInTurn) {
-      if (fight.active && !plan.dropFights.includes(row.encounterId)) {
+    if (row.encounterId && goes(fight)) {
+      if (!plan.dropFights.includes(row.encounterId)) {
         plan.dropFights.push(row.encounterId);
         plan.warnings.push("This turn began the fight: reverting it takes the fight away, as if it never began.");
       }
       // An item has no tie to the board it lies on that a fight's delete
       // follows (dropped_items.map_id): it is put back on its own, or it
       // outlived the fight on a board that no longer exists.
-      if (row.table !== "dropped_items" || !fight.active) {
+      if (row.table !== "dropped_items") {
         continue;
       }
     } else if (row.encounterId && reopened.has(row.encounterId)) {
       if (row.table === "encounters" && row.before) {
         plan.updates.push({ table: row.table, rowId: row.rowId, values: pick(row.before, [...restoredColumns(row.table, row.before), ...SCENE_COLUMNS]) });
+        continue;
+      }
+    } else if (row.encounterId && reopens(fight)) {
+      if (!told.has(row.encounterId)) {
+        told.add(row.encounterId);
+        plan.warnings.push("This turn ended the fight: reverting it opens the fight again, as the turn found it.");
+      }
+      if (row.table === "encounters" && row.before && row.now) {
+        plan.updates.push({
+          table: row.table,
+          rowId: row.rowId,
+          values: pick(row.before, [...restoredColumns(row.table, row.before), ...ENDED_COLUMNS.filter((column) => column in row.before!)]),
+        });
         continue;
       }
     } else if (row.encounterId && (!fight || !fight.active)) {
@@ -215,6 +335,9 @@ export function planRowsRevert(
       plan.grounds.push(row.rowId);
     }
   }
+  for (const [table, count] of others) {
+    changed.push(wordFor(table, count));
+  }
   if (changed.length) {
     plan.warnings.push(
       `Since this turn, ${listWords([...new Set(changed)])} changed again; reverting puts ${changed.length === 1 ? "it" : "them"} back as this turn found ${changed.length === 1 ? "it" : "them"}.`,
@@ -236,4 +359,12 @@ export function fightLine(counts: Partial<Record<string, number>>): string {
     many(counts.dropped_items, "dropped item", "dropped items"),
   ].filter(Boolean);
   return parts.length ? `The fight changes: ${listWords(parts)}.` : "The fight changes.";
+}
+
+// The event log's line for what a turn changed outside the fight (the
+// scene, an NPC, a quest, a pet on a sheet no audit row names): counts by
+// table, in plain words. Empty when there is nothing to tell.
+export function storyLine(counts: Partial<Record<string, number>>): string {
+  const parts = Object.entries(counts).flatMap(([table, count]) => (count && !isFightTable(table) ? [wordFor(table, count)] : []));
+  return parts.length ? `The story changes: ${listWords([...new Set(parts)])}.` : "";
 }

@@ -2775,10 +2775,12 @@
     "lib/dm/persons-record-logic.ts#str-eq": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/persons-record-logic.ts#str-key": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/slotless-cast-logic.ts#str-eq": [["key",1,"tool names (engine vocabulary)"]],
-    "lib/dm/turn-revert.ts#str-eq": [["key",4,"turn change kinds, table names and a fight's standing (engine vocabulary)"]],
+    "lib/dm/turn-revert.ts#str-eq": [["key",6,"turn change kinds, table names and a fight's standing (engine vocabulary)"]],
     "lib/dm/turn-revert.ts#str-case": [["key",1,"the tables a kept row may be from (table names)"]],
     "lib/dm/turn-rows-logic.ts#str-eq": [["key",5,"table names, and a fight's kind and standing (the schema's own vocabulary)"]],
-    "lib/dm/turn-rows-logic.ts#str-list": [["key",1,"column names (the schema's own)"]],
+    "lib/dm/turn-rows-logic.ts#str-list": [["key",19,"column names (the schema's own)"]],
+    "lib/dm/turn-rows-logic.ts#str-startsWith": [["key",1,"table and column names, and a fight's kind and standing (the schema's own vocabulary)"]],
+    "lib/dm/turn-rows-logic.ts#str-key": [["key",2,"table and column names, and a fight's kind and standing (the schema's own vocabulary)"]],
     "lib/srd/racial-grants.ts#str-list": [["key",1,"the spellcasting abilities a racial spell group may name"]],
     "lib/srd/feat-spells.ts#str-eq": [["key",1,"an ASI choice's mode, as stored (\"feat\")"]],
     "lib/content/species-spells.ts#str-eq": [["key",2,"a species spell row's rest, as stored (\"long\", \"short\")"]],
@@ -2873,6 +2875,8 @@
     "app/workshop/pdf-import/PdfMatches.tsx#str-eq": [["key",1,"the select's own value for keeping the book's numbers"]],
     "lib/srd/scrolls.ts#toLowerCase": [["key",1,"class id"]],
     "lib/srd/item-charge-rules.ts#str-eq": [["key",1,"a charge count, by its field and type, and what it regains"]],
-    "lib/battlemap/hand-items.ts#str-key": [["key",1,"ability ids, to the word a check names"]]
+    "lib/battlemap/hand-items.ts#str-key": [["key",1,"ability ids, to the word a check names"]],
+    "lib/db/turn-journal.ts#re-word": [["key",3,"table and column names and SQL column types (the schema's own vocabulary)"]],
+    "lib/db/turn-journal.ts#str-key": [["key",3,"table and column names and SQL column types (the schema's own vocabulary)"]]
   }
 }

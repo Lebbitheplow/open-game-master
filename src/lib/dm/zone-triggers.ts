@@ -19,7 +19,7 @@
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import type { Campaign } from "@/lib/db/campaigns";
 import { closeStandInTurn, openStandInTurn, type DmTurn } from "@/lib/db/dm-turns";
-import { getBattleMapForEncounter, listHiddenRefIds, listTokens, moveToken, type BattleMap } from "@/lib/db/battle-maps";
+import { getBattleMap, getBattleMapForEncounter, listHiddenRefIds, listTokens, moveToken, type BattleMap } from "@/lib/db/battle-maps";
 import type { RollAttacker } from "@/lib/db/rolls";
 import { rollCard } from "@/lib/dm/roll-card";
 import { rollAgainst } from "@/lib/roll-labels";
@@ -173,7 +173,7 @@ function strike(
     }
     zone.dealt = (zone.dealt ?? 0) + dealt;
     const standing = getEnemy(enemy.id);
-    if (failed && standing?.status === "alive") {
+    if (failed && standing?.status === "alive" && zoneStands(map, zone)) {
       lines.push(...afterFailOnEnemy(map, zone, trigger, standing));
     }
     // Sleet Storm's concentration save is its own, whatever the DEX save did.
@@ -232,7 +232,7 @@ function strike(
       }
     }
     const standing = getSheetById(sheet.id);
-    if (failed && standing && !standing.deathSaves?.dead) {
+    if (failed && standing && !standing.deathSaves?.dead && zoneStands(map, zone)) {
       lines.push(...afterFailOnCharacter(campaign, turn, map, zone, trigger, standing));
     }
     // Sleet Storm's concentration save is its own, whatever the DEX save did.
@@ -325,12 +325,24 @@ function touches(zone: SpellZone, trigger: ZoneTrigger, victim: Victim): boolean
   return trigger.who !== "hostile" || hostileTo(zone, victim.kind);
 }
 
+// Whether the area is still on the board: its own damage may have broken
+// the concentration holding it (the caster standing in her own Black
+// Tentacles), and what ended with the spell is never laid again after it.
+// Before, the tentacles' restraint was written on the caster after the
+// spell's end had cleared it, and crushed her each turn from a spell that no
+// longer existed (SRD 5.1, Concentration: "If you lose concentration, such
+// a spell ends").
+function zoneStands(map: BattleMap, zone: SpellZone): boolean {
+  return (getBattleMap(map.id)?.spellZones ?? []).some((entry) => entry.id === zone.id);
+}
+
 // Writes the areas back after a pass: running totals, who was struck, and
-// a Guardian of Faith that has spent itself gone.
+// a Guardian of Faith that has spent itself gone. An area that ended during
+// the pass stays ended.
 function settle(campaign: Campaign, map: BattleMap, zones: SpellZone[]) {
   const kept = zones.filter((zone) => {
     const budget = zoneRowFor(zone)?.budget;
-    return !budget || (zone.dealt ?? 0) < budget;
+    return (!budget || (zone.dealt ?? 0) < budget) && zoneStands(map, zone);
   });
   saveZones(map.id, kept);
   publishZones(campaign.id);

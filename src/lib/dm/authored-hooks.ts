@@ -21,6 +21,7 @@
 // hit points, concentration, death, the token), so this module never imports
 // enemy-damage.ts, which reaches it.
 
+import { fightMarked, markFight } from "@/lib/dm/turn-marks";
 import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { UNWAVERING_STRIKE } from "@/lib/dm/feature-bonus-attacks";
@@ -402,12 +403,12 @@ function markEnemy(encounter: Encounter, sheet: CharacterSheet, target: Encounte
   return lines;
 }
 
-// Grim Harvest works once a turn: the turn it last worked, per holder.
-const HARVEST_USED = new Map<string, string>();
-
-// Keeper of Souls works once until the start of the cleric's next turn: the
-// round it last worked, per holder.
-const KEEPER_USED = new Map<string, string>();
+// Grim Harvest works once a turn (the turn it last worked, per holder), and
+// Keeper of Souls once until the start of the cleric's next turn (the round
+// it last worked): marks the fight's row keeps (turn-marks.ts), which a
+// restart remembers.
+const harvestKey = (holderId: string) => `grim harvest:${holderId}`;
+const keeperKey = (holderId: string) => `keeper of souls:${holderId}`;
 
 // A creature dropped to 0: Touch of Death for a monk within 5 feet (the
 // killer off the board), Keeper of Souls for a Grave cleric within 60.
@@ -429,10 +430,10 @@ export function authoredOnKill(
   if (killer && spell && spell.level >= 1 && !/construct|undead/.test(creature)) {
     const harvest = activeAuthored(killer, "grim_harvest")[0];
     const stamp = `${encounter.id}:${turnKey(encounter)}`;
-    if (harvest && HARVEST_USED.get(killer.id) !== stamp) {
+    if (harvest && !fightMarked(encounter.id, harvestKey(killer.id), stamp)) {
       const amount = spell.level * (textKey(spell.school ?? "") === "necromancy" ? 3 : 2);
       const given = heal(campaign, killer, amount);
-      HARVEST_USED.set(killer.id, stamp);
+      markFight(encounter.id, harvestKey(killer.id), stamp);
       if (given > 0) {
         lines.push(`${harvest.held.feature}: ${killer.name} regains ${given} hit points from the life the spell took.`);
       }
@@ -458,7 +459,7 @@ export function authoredOnKill(
       }
     }
     for (const { effect, held } of activeAuthored(holder, "death_heal")) {
-      if (!near(holder, effect.rangeFt) || KEEPER_USED.get(holder.id) === stamp || isIncapacitated(holder.conditions)) {
+      if (!near(holder, effect.rangeFt) || fightMarked(encounter.id, keeperKey(holder.id), stamp) || isIncapacitated(holder.conditions)) {
         continue;
       }
       const party = fielded(campaign.id).filter((ally) => !board || withinFeet(encounter.id, holder.id, ally.id, effect.rangeFt));
@@ -468,7 +469,7 @@ export function authoredOnKill(
       }
       const given = heal(campaign, hurt, hitDiceOf(enemy));
       if (given > 0) {
-        KEEPER_USED.set(holder.id, stamp);
+        markFight(encounter.id, keeperKey(holder.id), stamp);
         lines.push(`${held.feature}: ${hurt.name} regains ${given} hit points from the fallen creature's life.`);
       }
     }
