@@ -47,6 +47,7 @@ import { liveZones, publishZones, saveZones } from "@/lib/dm/zone-store";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { saveAgainst } from "@/lib/dm/roll-about";
 import { withActor } from "@/lib/dm/acting-party";
+import { textKey } from "@/lib/language/text-logic";
 
 // A turn for a character's saves and damage, closed once used, as an
 // opportunity attack's is (src/lib/dm/opportunity-strike.ts).
@@ -321,6 +322,12 @@ function afterFailOnCharacter(campaign: Campaign, turn: DmTurn, map: BattleMap, 
 function touches(zone: SpellZone, trigger: ZoneTrigger, victim: Victim): boolean {
   if (victim.id === zone.casterId && (zoneRowFor(zone)?.shape === "aura" || trigger.others)) {
     return false;
+  }
+  if (trigger.types) {
+    const type = victim.kind === "enemy" ? textKey(getEnemy(victim.id)?.stats.type ?? "") : "";
+    if (!trigger.types.some((kind) => type.includes(kind))) {
+      return false;
+    }
   }
   return trigger.who !== "hostile" || hostileTo(zone, victim.kind);
 }

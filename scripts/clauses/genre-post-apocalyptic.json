@@ -2557,9 +2557,9 @@
    },
    {
     "c": "30-ft radius",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_dawnlight#GUIDANCE_ONLY",
-    "note": "The light's reach is not measured: only the preacher is guarded."
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Dawnlight: an undead within the 30-ft light attacks an ally at disadvantage, a humanoid does not",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Dawnlight (attacked_disadv rangeFt 30, read for every fielded holder by src/lib/dm/authored-hooks.ts authoredIncomingAttack) and the 30-foot aura src/lib/battlemap/zones-genre-b.ts dawnlight"
    },
    {
     "c": "for 10 minutes",
@@ -2569,9 +2569,9 @@
    },
    {
     "c": "undead and mutants in it have disadvantage on attacks",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_dawnlight#GUIDANCE_ONLY",
-    "note": "Built for an undead's attack on the preacher (attacked_disadv gated on dawnlight); an attack on an ally in the light, and a mutant (no creature type), are not."
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Dawnlight: an undead within the 30-ft light attacks an ally at disadvantage, a humanoid does not",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Dawnlight (attacked_disadv from undead and monstrosity, a mutant on the SRD engine, within 30 feet of the preacher whoever is attacked), src/lib/dm/authored-hooks.ts authoredIncomingAttack"
    }
   ]
  },
@@ -2635,16 +2635,15 @@
   "clauses": [
    {
     "c": "Your Dawnlight damages: hostile undead and aberrations take 2d8 radiant entering or starting their turn in it",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::The Last Dawn Rises#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to The Last Dawn Rises: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs The Last Dawn Rises: a hostile undead starting its turn in the Dawnlight takes 2d8 radiant, a humanoid nothing",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Dawnlight (zone upgrade: the preacher with The Last Dawn Rises lays the last dawn), src/lib/battlemap/zones-genre-b.ts the last dawn (enter and start, hostile, types undead and aberration), src/lib/dm/zone-triggers.ts touches"
    },
    {
     "c": "2d8 radiant",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::The Last Dawn Rises#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs The Last Dawn Rises: a hostile undead starting its turn in the Dawnlight takes 2d8 radiant, a humanoid nothing",
+    "by": "src/lib/battlemap/zones-genre-b.ts the last dawn (2d8 radiant)"
    }
   ]
  },

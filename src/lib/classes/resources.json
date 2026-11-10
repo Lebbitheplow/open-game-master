@@ -3358,13 +3358,13 @@
       "ability": null,
       "recharge": "long",
       "upgrades": [],
-      "guidance": "1/long rest, a 20-ft radius acid fog for 1 minute: 3d6 acid at the start of each creature's turn inside (CON save halves).",
+      "guidance": "1/long rest, a 20-ft radius acid fog centred on a creature within 60 ft for 1 minute: 3d6 acid at the start of each creature's turn inside (CON save halves).",
       "fx": {
         "kind": "aoe",
         "dice": "3d6",
         "save": "con",
         "rounds": 10,
-        "rangeFt": 20,
+        "rangeFt": 60,
         "type": "acid"
       }
     },
@@ -3484,7 +3484,7 @@
       "ability": null,
       "recharge": "short",
       "upgrades": [],
-      "guidance": "1/rest, loose a box of whirring gears: a 15-ft cube becomes difficult terrain and deals 2d6 slashing to creatures entering it, for 1 minute."
+      "guidance": "1/rest, loose a box of whirring gears at a creature within 30 ft: a 15-ft cube centred on it becomes difficult terrain and deals 2d6 slashing to creatures entering it, for 1 minute."
     },
     {
       "id": "steampunk_living_dynamo",

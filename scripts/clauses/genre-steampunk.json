@@ -478,7 +478,7 @@
   "source": "src/lib/classes/steampunk-features.json",
   "group": "Clockwork Savant",
   "level": 7,
-  "sha": "b8ef9302ca7e",
+  "sha": "57209818c2da",
   "clauses": [
    {
     "c": "1/rest",
@@ -493,24 +493,34 @@
     }
    },
    {
-    "c": "loose a box of whirring gears: a 15-ft cube becomes difficult terrain and deals 2d6 slashing to creatures entering it, for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_gear_swarm#GUIDANCE_ONLY"
+    "c": "loose a box of whirring gears at a creature within 30 ft: a 15-ft cube centred on it becomes difficult terrain and deals 2d6 slashing to creatures entering it, for 1 minute",
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Gear Swarm: gears thrown within 30 ft deal 2d6 slashing to a creature entering the cube; one farther off is refused, nothing spent",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Gear Swarm (kind zone), laid by src/lib/dm/genre-b-zones.ts layGenreZone; the area's row in src/lib/battlemap/zones-genre-b.ts, struck by src/lib/dm/zone-triggers.ts"
    },
    {
     "c": "15-ft cube",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_gear_swarm#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Gear Swarm: gears thrown within 30 ft deal 2d6 slashing to a creature entering the cube; one farther off is refused, nothing spent",
+    "by": "src/lib/battlemap/zones-genre-b.ts gear swarm (cube, 15 feet)"
    },
    {
     "c": "for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_gear_swarm#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Gear Swarm: gears thrown within 30 ft deal 2d6 slashing to a creature entering the cube; one farther off is refused, nothing spent",
+    "by": "src/lib/battlemap/zones-genre-b.ts gear swarm (10 rounds)"
    },
    {
     "c": "2d6 slashing",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_gear_swarm#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Gear Swarm: gears thrown within 30 ft deal 2d6 slashing to a creature entering the cube; one farther off is refused, nothing spent",
+    "by": "src/lib/battlemap/zones-genre-b.ts gear swarm (trigger on enter, 2d6 slashing)"
+   },
+   {
+    "c": "within 30 ft",
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Gear Swarm: gears thrown within 30 ft deal 2d6 slashing to a creature entering the cube; one farther off is refused, nothing spent",
+    "by": "src/lib/dm/genre-b-zones.ts landing (rangeFt 30 from src/lib/srd/authored-effects-genre-b.ts): the reach the text now states (WAVE2 D5), a creature farther off refused before the use is paid"
    }
   ]
  },
@@ -1562,7 +1572,7 @@
   "source": "src/lib/classes/steampunk-features.json",
   "group": "The Vitriolic School",
   "level": 10,
-  "sha": "6401628a04bc",
+  "sha": "24411ac9a688",
   "clauses": [
    {
     "c": "1/long rest",
@@ -1577,46 +1587,40 @@
     }
    },
    {
-    "c": "a 20-ft radius acid fog for 1 minute: 3d6 acid at the start of each creature's turn inside (CON save halves)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_dissolving_mist#HANDS_BACK"
+    "c": "a 20-ft radius acid fog centred on a creature within 60 ft for 1 minute: 3d6 acid at the start of each creature's turn inside (CON save halves)",
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Dissolving Mist: a creature starting its turn in the fog saves (CON) or takes 3d6 acid, half on a success",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Dissolving Mist (kind zone, DC 8 + proficiency + INT), laid by src/lib/dm/genre-b-zones.ts layGenreZone; src/lib/battlemap/zones-genre-b.ts dissolving mist, struck at each turn's start by src/lib/dm/zone-triggers.ts zoneTurnStart"
    },
    {
     "c": "20-ft radius",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_dissolving_mist#HANDS_BACK"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Dissolving Mist: a creature starting its turn in the fog saves (CON) or takes 3d6 acid, half on a success",
+    "by": "src/lib/battlemap/zones-genre-b.ts dissolving mist (sphere, 20 feet)"
    },
    {
     "c": "for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_dissolving_mist#HANDS_BACK"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Dissolving Mist: a creature starting its turn in the fog saves (CON) or takes 3d6 acid, half on a success",
+    "by": "src/lib/battlemap/zones-genre-b.ts dissolving mist (10 rounds)"
    },
    {
     "c": "(CON save halves)",
     "is": "held",
-    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test alchemist::Dissolving Mist#4:fx",
-    "k": "fx",
-    "p": {
-     "id": "steampunk_dissolving_mist",
-     "save": "con",
-     "made": {
-      "dice": "3d6",
-      "takes": "half"
-     }
-    }
+    "by": "src/lib/battlemap/zones-genre-b.ts dissolving mist (CON save, half on a success), rolled at each creature's turn start; the counter's fx is no longer a one-off save at the spend, which the text never said",
+    "probe": "scripts/test-genre-b-features-4.mjs Dissolving Mist: a creature starting its turn in the fog saves (CON) or takes 3d6 acid, half on a success"
    },
    {
     "c": "3d6 acid",
     "is": "held",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test alchemist::Dissolving Mist#5:fx",
-    "k": "fx",
-    "p": {
-     "id": "steampunk_dissolving_mist",
-     "dice": "3d6",
-     "type": "acid"
-    },
-    "by": "src/lib/classes/resources.json fx (reach, rounds and damage type read from the text by scripts/generate-class-resources.mjs saveTermsFromText), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave"
+    "probe": "scripts/test-genre-b-features-4.mjs Dissolving Mist: a creature starting its turn in the fog saves (CON) or takes 3d6 acid, half on a success",
+    "by": "src/lib/battlemap/zones-genre-b.ts dissolving mist (3d6 acid)"
+   },
+   {
+    "c": "centred on a creature within 60 ft",
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Dissolving Mist: a creature starting its turn in the fog saves (CON) or takes 3d6 acid, half on a success",
+    "by": "src/lib/dm/genre-b-zones.ts landing (rangeFt 60): the reach and placement the text now states (WAVE2 D5)"
    }
   ]
  },

@@ -30,7 +30,7 @@
             { "n": "Improved Familiar Frame", "d": "Your familiar gains a sting (1d8 + INT piercing, 30 ft) and HP equal to 3 x your level." },
             { "n": "Wind-Up Ally", "d": "Command your familiar as a bonus action." }
           ],
-          "7": [{ "n": "Gear Swarm", "d": "1/rest, loose a box of whirring gears: a 15-ft cube becomes difficult terrain and deals 2d6 slashing to creatures entering it, for 1 minute." }],
+          "7": [{ "n": "Gear Swarm", "d": "1/rest, loose a box of whirring gears at a creature within 30 ft: a 15-ft cube centred on it becomes difficult terrain and deals 2d6 slashing to creatures entering it, for 1 minute." }],
           "11": [{ "n": "Twin Automata", "d": "Build a second familiar; both act on your command." }],
           "15": [{ "n": "The Great Work Walks", "d": "1/long rest, your familiars merge into a brass juggernaut for 10 minutes (double HP, 2d10 + INT slam, you may ride it)." }]
         }
@@ -101,7 +101,7 @@
             { "n": "Etching Acid", "d": "Your acid damage reduces a hit target's AC by 1 until your next turn (not cumulative)." }
           ],
           "6": [{ "n": "Vitriol Ampoule", "d": "Reaction when hit in melee: the attacker takes 2d6 acid as an ampoule bursts, INT-mod uses per long rest." }],
-          "10": [{ "n": "Dissolving Mist", "d": "1/long rest, a 20-ft radius acid fog for 1 minute: 3d6 acid at the start of each creature's turn inside (CON save halves)." }],
+          "10": [{ "n": "Dissolving Mist", "d": "1/long rest, a 20-ft radius acid fog centred on a creature within 60 ft for 1 minute: 3d6 acid at the start of each creature's turn inside (CON save halves)." }],
           "14": [{ "n": "Universal Solvent", "d": "Your acid formulae treat immunity as resistance; Etching Acid stacks to -3 AC." }]
         }
       }

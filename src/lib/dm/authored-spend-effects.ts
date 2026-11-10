@@ -4,6 +4,7 @@
 
 import { regainSlotLevels } from "@/lib/srd/slot-levels";
 import { genreCure } from "@/lib/dm/genre-b-cure";
+import { layGenreZone } from "@/lib/dm/genre-b-zones";
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
 import { saveModFor } from "@/lib/bestiary/enemy-numbers";
 import { layEnemyConditionInstance } from "@/lib/dm/enemy-condition-lay";
@@ -318,6 +319,10 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       if (does.burst) {
         lines.push(...burst(ctx, does.burst));
       }
+      // A buff's area stands on its holder (no rangeFt), which never refuses.
+      if (does.zone) {
+        lines.push(...(layGenreZone({ campaign, sheet, name: ctx.spend.name }, does.zone) as string[]));
+      }
       return { patch, result: { applied: lines } };
     }
     case "save_effect": {
@@ -561,6 +566,10 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       }
       const cured = genreCure(ctx, does);
       return "error" in cured ? cured : { result: { ...(healed?.result ?? {}), ...cured.result } };
+    }
+    case "zone": {
+      const laid = layGenreZone({ campaign, sheet, name: ctx.spend.name, targetEnemyId: ctx.args.targetEnemyId }, does);
+      return Array.isArray(laid) ? { result: { applied: laid } } : laid;
     }
     case "regain_slot_levels": {
       const slots = sheet.spellcasting?.slots;

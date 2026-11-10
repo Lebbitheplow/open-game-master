@@ -78,8 +78,9 @@ export type AuthoredEffect = Base &
     // `spells`: only the damage of the holder's spells (Perfected Instability's mutations).
     | { kind: "ignore_resist"; types: string[]; spells?: boolean }
     // Attacks against the holder by creatures of these types are at
-    // disadvantage.
-    | { kind: "attacked_disadv"; from: string[] }
+    // disadvantage. `rangeFt`: every attack such a creature makes within this
+    // reach of the holder is (Dawnlight: "undead and mutants in it").
+    | { kind: "attacked_disadv"; from: string[]; rangeFt?: number }
     // A creature of these types that targets the holder with an attack must
     // first save against the holder's spell save DC or lose the attack
     // (Among the Dead: undead, Wisdom).
@@ -331,6 +332,8 @@ export type SpendDoes =
       // see"): an invisible one, or any while the holder is blinded, is left
       // out, and one named for it is refused with nothing spent.
       sight?: boolean;
+      // An area laid with the condition (src/lib/dm/genre-b-zones.ts): Dawnlight's light.
+      zone?: GenreZoneSpec;
     }
   // Choose an option for the feature, outside a fight: the feature is
   // renamed "Feature (Option)", which the passive effects read.
@@ -468,7 +471,16 @@ export type SpendDoes =
   | { kind: "note"; text: string }
   // Spent dice come back to a pool (Psionic Recovery: one Psionic Energy die).
   // `clears`: the mark the spend's gate asked for is spent with it.
-  | { kind: "restore"; pool: string; amount: number; clears?: string };
+  | { kind: "restore"; pool: string; amount: number; clears?: string }
+  // An area on the board (src/lib/dm/genre-b-zones.ts): Gear Swarm, Dissolving Mist.
+  | ({ kind: "zone" } & GenreZoneSpec);
+
+// An area a genre spend lays, by its row of src/lib/battlemap/zones-genre-b.ts.
+// `rangeFt`: thrown onto the creature named (or the nearest foe) within this
+// reach; without it the area stands on the holder. `dcAbility`: its save DC is
+// 8 + proficiency + this modifier. `upgrade`: the row laid instead while the
+// holder has that feature (The Last Dawn Rises' burning light).
+export type GenreZoneSpec = { lays: string; rangeFt?: number; dcAbility?: Ability; upgrade?: { feature: string; lays: string } };
 
 export type SpendAction = "action" | "bonus" | "reaction" | "none";
 

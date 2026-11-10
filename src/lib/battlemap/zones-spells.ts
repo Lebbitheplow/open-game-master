@@ -9,6 +9,7 @@
 
 import { textKey } from "@/lib/language/text-logic";
 import { GEAR_ZONE_ROWS } from "@/lib/battlemap/zones-gear";
+import { GENRE_B_ZONE_ROWS } from "@/lib/battlemap/zones-genre-b";
 
 export type ZoneShape =
   // A burst around a point: every square within `feet` of it (a cylinder
@@ -39,6 +40,9 @@ export type ZoneTrigger = {
   // "hostile": only creatures hostile to the caster (Spirit Guardians,
   // Guardian of Faith). Everyone otherwise.
   who?: "hostile";
+  // Only creatures of these rules types (The Last Dawn Rises: "hostile undead
+  // and aberrations"), read from an enemy's stat block; a character is none.
+  types?: string[];
   save?: ZoneSave;
   // Damage: dice, or a flat number written as a string ("20").
   dice?: string;
@@ -508,7 +512,7 @@ export const CREATURE_ZONE_ROWS: Record<string, ZoneRow> = {
   },
 };
 
-const AREA_ROWS: Record<string, ZoneRow> = { ...ZONE_ROWS, ...GEAR_ZONE_ROWS, ...CREATURE_ZONE_ROWS };
+const AREA_ROWS: Record<string, ZoneRow> = { ...ZONE_ROWS, ...GEAR_ZONE_ROWS, ...CREATURE_ZONE_ROWS, ...GENRE_B_ZONE_ROWS };
 
 export function zoneRowFor(spell: ZoneNamed): ZoneRow | null {
   return AREA_ROWS[zoneKey(spell)] ?? null;

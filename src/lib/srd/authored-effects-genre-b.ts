@@ -211,8 +211,13 @@ export const GENRE_B_AUTHORED: GenreRow[] = [
     entry: {
       subclass: "genre",
       counter: "post_apocalyptic_dawnlight",
-      effects: [{ kind: "attacked_disadv", from: ["undead"], gate: { condition: "dawnlight" } }],
-      spends: [{ name: "Dawnlight", pool: { id: "post_apocalyptic_dawnlight" }, does: { kind: "buff", condition: "dawnlight", rounds: 100 } }],
+      // "undead and mutants in it": a mutant is a monstrosity on the SRD
+      // engine (as Alpha's Roar reads it), and "in it" is within the 30 feet
+      // of the light, whoever they attack.
+      effects: [{ kind: "attacked_disadv", from: ["undead", "monstrosity"], rangeFt: 30, gate: { condition: "dawnlight" } }],
+      // The light on the board (src/lib/battlemap/zones-genre-b.ts), burning
+      // once the preacher has The Last Dawn Rises.
+      spends: [{ name: "Dawnlight", pool: { id: "post_apocalyptic_dawnlight" }, does: { kind: "buff", condition: "dawnlight", rounds: 100, zone: { lays: "dawnlight", upgrade: { feature: "The Last Dawn Rises", lays: "the last dawn" } } } }],
     },
   },
 
@@ -238,6 +243,11 @@ export const GENRE_B_AUTHORED: GenreRow[] = [
   // "Your healing sermons add your WIS modifier again to HP restored": every
   // spell the preacher heals with is a sermon.
   row("Lay On the Word", ["waste_preacher"], { effects: [{ kind: "spell_rider", dice: "wis", healing: true }] }),
+
+  // Areas on the board (src/lib/dm/genre-b-zones.ts, rows in
+  // src/lib/battlemap/zones-genre-b.ts), thrown onto a creature within reach.
+  spend("Gear Swarm", ["machinist"], "steampunk_gear_swarm", undefined, { kind: "zone", lays: "gear swarm", rangeFt: 30 }),
+  spend("Dissolving Mist", ["alchemist"], "steampunk_dissolving_mist", undefined, { kind: "zone", lays: "dissolving mist", rangeFt: 60, dcAbility: "int" }),
 
   // Foes in reach save or suffer (src/lib/dm/authored-spend-effects.ts saveArea,
   // only the holder's foes: the procession and the cloud spare the party).

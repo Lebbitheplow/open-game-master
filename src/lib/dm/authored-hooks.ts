@@ -148,7 +148,7 @@ export function authoredIncomingAttack(input: {
     }
   }
   for (const { effect, held } of activeAuthored(target, "attacked_disadv")) {
-    if (effect.from.some((kind) => type.includes(kind))) {
+    if (!effect.rangeFt && effect.from.some((kind) => type.includes(kind))) {
       sources.push("disadvantage");
       notes.push(`${held.feature}: a ${type} attacks ${target.name} at disadvantage`);
     }
@@ -161,6 +161,16 @@ export function authoredIncomingAttack(input: {
       notes.push(`${condition}: it attacks anyone but its marker at disadvantage`);
       if ((meta as { halve?: boolean }).halve) {
         halve = condition;
+      }
+    }
+  }
+  // An area the holder stands in (Dawnlight's light): the creature's every
+  // attack within it, on the holder or anyone else.
+  for (const holder of fielded(input.campaignId)) {
+    for (const { effect, held } of activeAuthored(holder, "attacked_disadv")) {
+      if (effect.rangeFt && effect.from.some((kind) => type.includes(kind)) && withinFeet(input.encounterId, holder.id, attacker.id, effect.rangeFt)) {
+        sources.push("disadvantage");
+        notes.push(`${held.feature}: a ${type} within ${effect.rangeFt} feet of ${holder.name} attacks at disadvantage`);
       }
     }
   }
