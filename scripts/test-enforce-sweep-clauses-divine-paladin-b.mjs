@@ -5,5 +5,6 @@
 // scripts/lib/sweep-clauses-divine-paladin-b.mjs.
 import { runClauseSuite } from "./lib/sweep-clauses-divine.mjs";
 import { PALADIN_B } from "./lib/sweep-clauses-divine-paladin-b.mjs";
+import { RO_PALADIN_B } from "./lib/sweep-clauses-divine-ro-A-b.mjs";
 
-await runClauseSuite("test-enforce-sweep-clauses-divine-paladin-b.mjs", PALADIN_B);
+await runClauseSuite("test-enforce-sweep-clauses-divine-paladin-b.mjs", { ...PALADIN_B, ...RO_PALADIN_B });
