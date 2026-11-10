@@ -9,9 +9,12 @@
     "authoring": "the workshop's and WorldForge's authoring tools, which read what an author writes as they go"
   },
   "sites": {
+    "lib/dm/allies-join.ts#number": [["key",1,"a resolved formula's count of allies"]],
+    "lib/dm/allies-join.ts#whole": [["identity",1,"a condition by textKey on both sides"]],
     "lib/dm/arg-coerce.ts#first": [["identity", 1, "the one sheet a whole name names; a name two sheets share names neither"]],
     "lib/dm/arg-coerce.ts#whole": [["identity", 1, "a character ref by its sheet id; a name by textKey on both sides; a miss is refused with the party listed"]],
     "lib/dm/arg-coerce.ts#keyed": [["key", 3, "tool-argument field names and the tool's published field kinds"]],
+    "lib/dm/rage-bound.ts#keyed": [["key",1,"a sheet's and an enemy's conditionMeta by the condition key it was written under"]],
     "lib/table-delivery.ts#keyed": [["key", 1, "event kinds and enemy ids"]],
     "lib/hidden-names-logic.ts#keyed": [["search", 1, "the names a creature the table sees also answers to, kept in the prose"]],
     "lib/battlemap/hand-attack-lines.ts#partial": [["key", 1, "the once-per-turn rider keys the engine marks (pc-attack-damage.ts claimOncePerTurnRiders)"]],
@@ -20,7 +23,7 @@
     "lib/dm/attack-damage-riders.ts#keyed": [["key", 1, "ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "lib/dm/attack-damage-riders.ts#normalizer": [["key", 1, "slugs, hosts, file names, ids, env values, display text, throttle keys, model ids (src/: every site read)"]],
     "lib/dm/attack-damage-riders.ts#partial": [["pattern", 1, "a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
-    "lib/dm/attack-damage-riders.ts#whole": [["key", 1, "damage types and once-per-turn keys"], ["identity", 1, "conditions by whole name"]],
+    "lib/dm/attack-damage-riders.ts#whole": [["key", 2, "damage types, once-per-turn keys and a held rider table's own feature name"], ["identity", 1, "conditions by whole name"]],
     "lib/dm/attack-roll-extras.ts#number": [["key", 1, "digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "lib/dm/attack-roll-extras.ts#partial": [["identity", 1, "ODM's own condition with its die note, whole"], ["parse", 1, "the dice and flat terms of a roll suffix the engine wrote"]],
     "lib/dm/attack-sight.ts#partial": [["identity", 1, "invisible or hidden by whole name (anchored)"]],

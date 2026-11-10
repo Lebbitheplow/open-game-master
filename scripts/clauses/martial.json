@@ -1031,7 +1031,7 @@
     "c": "to one damage roll per turn",
     "is": "held",
     "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: giants-might-one-roll-a-turn",
-    "by": "src/lib/dm/attack-damage-riders.ts giantsMightRiders (oncePerTurn, claimed by claimOncePerTurnRiders)"
+    "by": "src/lib/dm/attack-damage-riders.ts heldConditionRiders (oncePerTurn, claimed by claimOncePerTurnRiders)"
    },
    {
     "c": "a proficiency-bonus number of times per long rest",
@@ -1427,7 +1427,8 @@
    },
    {
     "c": "or until your rage ends",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/authored-hooks.ts markEnemy (whileRagingOf), src/lib/dm/rage-bound.ts endRageBound",
     "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: ancestral-protectors-rage-ends"
    },
    {
@@ -1864,13 +1865,15 @@
    },
    {
     "c": "you can choose a number of other willing creatures you can see within 30 feet equal to your Constitution modifier (minimum one).",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: call-the-hunt-does-nothing"
+    "is": "held",
+    "by": "src/lib/dm/allies-join.ts (authored-effects-w2-martial.ts barbarian::Call the Hunt), attack-damage-riders.ts heldConditionRiders, rage-bound.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: call-the-hunt-allies"
    },
    {
     "c": "You gain 5 temporary hit points for each that accepts, and until the rage ends each of them can, once on each of its turns, roll a d6 and add it to the damage of an attack that hits.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: call-the-hunt-does-nothing"
+    "is": "held",
+    "by": "src/lib/dm/allies-join.ts (authored-effects-w2-martial.ts barbarian::Call the Hunt), attack-damage-riders.ts heldConditionRiders, rage-bound.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: call-the-hunt-allies"
    }
   ]
  },

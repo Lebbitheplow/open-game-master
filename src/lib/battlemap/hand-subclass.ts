@@ -30,6 +30,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { iconPath, isPainted } from "@/lib/icons";
 import { inFightOf } from "@/lib/battlemap/hand-counters";
+import { TRIGGERED_COUNTERS } from "@/lib/srd/trigger-table";
 
 type SpendDoes = AuthoredSpend["does"];
 
@@ -126,7 +127,13 @@ export function playedAsSpendCard(sheet: CharacterSheet, name: string): boolean 
   const found = authoredSpendFor(sheet, name);
   if (!found) return false;
   const { spend, held } = found;
-  return spend.fight !== "out" && spend.does.kind !== "choose" && (spendAction(spend) !== "reaction" || aimedReaction(spend)) && gateHolds(spend.gate, sheet, held);
+  return spend.fight !== "out" && spend.does.kind !== "choose" && (spendAction(spend) !== "reaction" || aimedReaction(spend)) && !triggeredSpend(spend) && gateHolds(spend.gate, sheet, held);
+}
+
+// A spend paid from a counter trigger-table.ts holds (authored-spends.ts
+// answers its record before anything is spent).
+function triggeredSpend(spend: AuthoredSpend): boolean {
+  return Boolean(spend.pool && TRIGGERED_COUNTERS.includes(spend.pool.id));
 }
 
 // A reaction that heals one creature or burns another (Cauterizing Flames): one
@@ -213,6 +220,10 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
   const counter = ownCounter(spend);
   const action = spendAction(spend);
   if (spend.gm || spend.fight === "out" || does.kind === "choose" || (action === "reaction" && !aimedReaction(spend)) || !gateHolds(spend.gate, sheet, held)) return [];
+  // A spend whose counter waits on a trigger (Call the Hunt's rage just
+  // entered) is dealt when the trigger opens (hand-react-triggers.ts), never
+  // on the holder's own turn: the engine refuses it until then.
+  if (triggeredSpend(spend)) return [];
   const cost = COST[action] ?? "action";
   const pool = spend.pool;
   const state = pool ? sheet.resources[pool.id] : undefined;

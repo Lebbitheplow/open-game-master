@@ -498,12 +498,35 @@ const rageBonus = (level) => (level >= 16 ? 4 : level >= 9 ? 3 : 2);
     assert.equal(out.ok, true, `no way to take the swim, climb or jump option: ${show(out)}`);
   });
 
-  await probe("call-the-hunt-does-nothing", async () => {
-    await stage(beast, { cast: [[ally, 5, 6]] });
+  await probe("call-the-hunt-allies", async () => {
+    const far = hero("fighter", "Champion", 5);
+    await stage(beast, { cast: [[ally, 5, 6], [far, 5, 13]] });
+    // Raging with no rage entered this turn: nothing on record to answer.
     rage(beast);
-    const out = await spend(beast, "Call the Hunt", { targetCharacterId: ally.id });
+    const early = await spend(beast, "Call the Hunt");
+    assert.equal(early.ok, false, `Call the Hunt answered a rage entered on no turn: ${show(early)}`);
+    world.patch(beast.id, { conditions: [], conditionMeta: {} });
+    const raged = await spend(beast, "Rage");
+    assert.equal(raged.ok, true, raged.error);
+    const out = await spend(beast, "Call the Hunt");
     assert.equal(out.ok, true, out.error);
-    assert.equal(sheet(beast).tempHp, 5, `one ally accepted: ${sheet(beast).tempHp} temporary hit points, and the ally carries [${sheet(ally).conditions.join(", ")}]`);
+    assert.equal(sheet(beast).tempHp, 5, `one ally within 30 feet accepted: ${sheet(beast).tempHp} temporary hit points`);
+    assert.ok(sheet(ally).conditions.includes("call the hunt"), `the ally carries [${sheet(ally).conditions.join(", ")}]`);
+    assert.ok(!sheet(far).conditions.includes("call the hunt"), "the fighter 40 feet off was called too");
+    // On the ally's turn the d6 rides one hit, not the second.
+    const [enemy] = world.enemies();
+    kit.giveTurn(ally.id);
+    kit.freshRound();
+    const first = await swing(ally, kit.enemy(enemy.id), [15, 4, 4, 4]);
+    assert.match(expr(first), /1d6/, `the ally's first hit: ${expr(first)}`);
+    const second = await swing(ally, kit.enemy(enemy.id), [15, 4, 4, 4]);
+    assert.doesNotMatch(expr(second), /1d6/, `the second hit of the turn: ${expr(second)}`);
+    // The rage ends: so does the call.
+    world.patch(beast.id, { conditions: [], conditionMeta: {} });
+    kit.freshRound();
+    const after = await swing(ally, kit.enemy(enemy.id), [15, 4, 4, 4]);
+    assert.doesNotMatch(expr(after), /1d6/, `after the rage ended: ${expr(after)}`);
+    assert.ok(!sheet(ally).conditions.includes("call the hunt"), "the call outlived the rage");
   });
 }
 

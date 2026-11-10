@@ -24,6 +24,7 @@ import { holdsFeature, isNamed } from "@/lib/srd/feature-names";
 import { textKey } from "@/lib/language/text-logic";
 import { subclassNamed } from "@/lib/srd/subclass-name";
 import { authoredDamageAbility } from "@/lib/srd/authored-effects-more";
+import { CALL_THE_HUNT } from "@/lib/srd/authored-effects-w2-martial";
 
 export type FeatureRider = CombatRiders["damageRiders"][number];
 
@@ -60,7 +61,7 @@ export function attackDamageRiders(input: {
   const featureRiders: FeatureRider[] =
     kind === "spell" || kind === "granted"
       ? []
-      : [...riders.damageRiders, ...hunterRiders(sheet, input.enemy), ...pactRiders(sheet, kind, profile), ...giantsMightRiders(sheet)]
+      : [...riders.damageRiders, ...hunterRiders(sheet, input.enemy), ...pactRiders(sheet, kind, profile), ...heldConditionRiders(sheet)]
           .filter((rider) => {
             if (rider.when === "melee" && profile.ranged) {
               return false;
@@ -101,16 +102,32 @@ function hunterRiders(sheet: CharacterSheet, enemy: Pick<EncounterEnemy, "curren
   return [{ feature: "Colossus Slayer", dice: "1d8", type: "", when: "weapon", oncePerTurn: true }];
 }
 
-// Giant's Might (Rune Knight 3): "Once on each of your turns, one of your
-// attacks with a weapon or an unarmed strike can deal an extra 1d6 damage to a
-// target on a hit" (1d8 from 10th level, Runic Juggernaut's 1d10 at 18th, the
-// die the condition the spend laid names). A once-per-turn rider, so the
-// turn budget spends it on the first hit (pc-attack-damage.ts
+// The held conditions whose die rides one weapon hit a turn, as a feature
+// rider the turn budget spends on the first hit (pc-attack-damage.ts
 // claimOncePerTurnRiders); as a held condition's die it rode every hit.
-const GIANTS_MIGHT: Array<[string, string]> = [["giant's might (1d10)", "1d10"], ["giant's might (1d8)", "1d8"], ["giant's might", "1d6"]];
-function giantsMightRiders(sheet: CharacterSheet): FeatureRider[] {
-  const held = GIANTS_MIGHT.find(([condition]) => sheet.conditions.some((entry) => textKey(entry) === textKey(condition)));
-  return held ? [{ feature: "Giant's Might", dice: held[1], type: "", when: "weapon", oncePerTurn: true }] : [];
+//   Giant's Might (Rune Knight 3): "Once on each of your turns, one of your
+//   attacks with a weapon or an unarmed strike can deal an extra 1d6 damage to
+//   a target on a hit" (1d8 from 10th level, Runic Juggernaut's 1d10 at 18th,
+//   the die the condition the spend laid names).
+//   Call the Hunt (Path of the Beast 14): an ally who answered it "can, once on
+//   each of its turns, roll a d6 and add it to the damage of an attack that
+//   hits", until the barbarian's rage ends (rage-bound.ts ends the condition).
+//   The rider rides weapon, natural and unarmed hits; a spell's is not read.
+const HELD_RIDERS: Array<{ condition: string; dice: string; feature: string }> = [
+  { condition: "giant's might (1d10)", dice: "1d10", feature: "Giant's Might" },
+  { condition: "giant's might (1d8)", dice: "1d8", feature: "Giant's Might" },
+  { condition: "giant's might", dice: "1d6", feature: "Giant's Might" },
+  { condition: CALL_THE_HUNT, dice: "1d6", feature: "Call the Hunt" },
+];
+function heldConditionRiders(sheet: CharacterSheet): FeatureRider[] {
+  const riders: FeatureRider[] = [];
+  for (const row of HELD_RIDERS) {
+    if (riders.some((rider) => rider.feature === row.feature)) continue;
+    if (sheet.conditions.some((entry) => textKey(entry) === textKey(row.condition))) {
+      riders.push({ feature: row.feature, dice: row.dice, type: "", when: "weapon", oncePerTurn: true });
+    }
+  }
+  return riders;
 }
 
 // Lifedrinker (SRD 5.1, warlock invocation): a pact weapon hit deals extra

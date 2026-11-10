@@ -12,6 +12,7 @@ import { openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
 
+const { TRIGGERED_COUNTERS } = await import("../src/lib/srd/trigger-table.ts");
 const { test, finish } = suite("test-authored-spend-cards");
 const world = await openWorld({ campaign: { maxPlayers: 400 } });
 const kit = await combatKit(world);
@@ -72,7 +73,10 @@ for (const classId of Object.keys(classFeatures)) {
       (held.entry.spends ?? [])
         .filter((spend) => spend.fight !== "out" && spend.does.kind !== "choose" && spend.action !== "reaction" && gateHolds(spend.gate, sheet, held))
         // The ones this suite is about: a counter of the feature's own name.
-        .filter((spend) => spend.pool && resourceDef(spend.pool.id)?.displayName === spend.name),
+        .filter((spend) => spend.pool && resourceDef(spend.pool.id)?.displayName === spend.name)
+        // Not one dealt when its trigger opens (Call the Hunt on the rage just
+        // entered, hand-react-triggers.ts): the own-turn Hand holds no card of it.
+        .filter((spend) => !TRIGGERED_COUNTERS.includes(spend.pool.id)),
     );
     builds.push({ classId, subclass: subclass.name, hero, spends });
   }

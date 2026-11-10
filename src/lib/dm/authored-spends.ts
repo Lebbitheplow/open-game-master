@@ -28,6 +28,9 @@ import { resolveSpendEffect, type SpendContext } from "@/lib/dm/authored-spend-e
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { namedOption, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
+import { triggerSpecFor } from "@/lib/srd/trigger-table";
+import { answerTriggers, triggerRefusal, type TriggerAsk } from "@/lib/dm/reaction-triggers";
+import { answerKey } from "@/lib/dm/last-hit";
 
 export type AuthoredSpendArgs = {
   amount?: number;
@@ -175,6 +178,20 @@ export function authoredFeatureSpend(
     const refusal = gateSentence(spend);
     return { ...refusal, error: `${refusal.error} Nothing was spent.` };
   }
+  // A spend whose counter waits on a trigger (trigger-table.ts: Call the
+  // Hunt's rage just entered) answers the record, refused before anything is
+  // spent when none is open: the generic door (reaction-counters.ts) asks the
+  // same, and this one runs first.
+  // The creature the call names picks the record only where the trigger is
+  // a creature's doing (aimsAt): the rage Call the Hunt answers is the holder's own.
+  const spec = spend.pool ? triggerSpecFor("", { counterId: spend.pool.id }) : null;
+  const trigger: TriggerAsk | null = spend.pool && spec
+    ? { campaignId: campaign.id, reactor: sheet, name: spend.name, counterId: spend.pool.id, targetEnemyId: spec.aimsAt ? args.targetEnemyId : undefined, label: answerKey(spend.pool.id, sheet.id) }
+    : null;
+  const unanswered = trigger ? triggerRefusal(trigger) : null;
+  if (unanswered) {
+    return unanswered;
+  }
   const encounter = getActiveEncounter(campaign.id);
   const inFight = encounter !== null && (encounter.kind ?? "fight") === "fight";
   if (spend.fight === "out" && inFight) {
@@ -259,6 +276,9 @@ export function authoredFeatureSpend(
     if (updated) {
       publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
     }
+  }
+  if (trigger) {
+    answerTriggers(trigger);
   }
   const left = poolId ? getSheetById(sheet.id)?.resources?.[poolId] : null;
   return {

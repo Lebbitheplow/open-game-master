@@ -1,4 +1,5 @@
 import { getFoe } from "@/lib/dm/sheet-foe";
+import { endRageBound } from "@/lib/dm/rage-bound";
 import { spendFeatureUse } from "@/lib/dm/attack-onhit";
 import { z } from "zod";
 import type { Campaign } from "@/lib/db/campaigns";
@@ -313,6 +314,9 @@ export function handlePcAttack(
   if (!encounter) {
     return { error: "No active encounter. Call start_encounter first.", retry: true };
   }
+  // A condition that rode a rage now over goes before the riders are read
+  // (rage-bound.ts: Call the Hunt's d6).
+  endRageBound(campaign.id);
   let raw: unknown;
   try {
     raw = JSON.parse(rawArguments || "{}");

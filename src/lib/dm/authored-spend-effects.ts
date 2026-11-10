@@ -47,6 +47,7 @@ import { resourceName } from "@/lib/srd/class-resources";
 import { resolveCounterSave } from "@/lib/dm/counter-saves";
 import { regainSlot } from "@/lib/dm/authored-spend-counters";
 import { sneakAnswerFor } from "@/lib/dm/sneak-answer";
+import { martialSpend } from "@/lib/dm/authored-spend-martial";
 
 const DAMAGE_WORDS = new Set(["acid", "bludgeoning", "cold", "fire", "force", "lightning", "necrotic", "piercing", "poison", "psychic", "radiant", "slashing", "thunder"]);
 
@@ -553,6 +554,9 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
     // Bolstering Magic's slot (src/lib/dm/authored-spend-counters.ts).
     case "regain_slot":
       return regainSlot(ctx, does);
+    // The martial subclasses' own (src/lib/dm/authored-spend-martial.ts).
+    case "allies_join":
+      return martialSpend(ctx, does);
   }
 }
 

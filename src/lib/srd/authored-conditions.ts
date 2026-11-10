@@ -106,7 +106,7 @@ export const AUTHORED_CONDITION_ROWS: ConditionEffectRow[] = [
         { kind: "save", ability: "str" },
         { kind: "check", ability: "str" },
       ],
-      // The die is a once-per-turn rider (attack-damage-riders.ts giantsMightRiders).
+      // The die is a once-per-turn rider (attack-damage-riders.ts heldConditionRiders).
     }),
   ),
   {

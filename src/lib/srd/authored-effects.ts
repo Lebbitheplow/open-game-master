@@ -40,6 +40,7 @@ import type {
 } from "@/lib/srd/authored-effects-types";
 import { AUTHORED_DATA_CHANNEL } from "@/lib/srd/authored-effects-channel";
 import { AUTHORED_DATA_COUNTERS } from "@/lib/srd/authored-effects-sweep-counters";
+import { AUTHORED_DATA_W2_MARTIAL } from "@/lib/srd/authored-effects-w2-martial";
 import { textKey } from "@/lib/language/text-logic";
 import { choiceIn } from "@/lib/srd/feature-names";
 import type { CheckAbout } from "@/lib/dm/roll-about";
@@ -55,6 +56,7 @@ export const AUTHORED_TABLE: Record<string, AuthoredEntry> = {
   ...AUTHORED_DATA_C,
   ...AUTHORED_DATA_CHANNEL,
   ...AUTHORED_DATA_COUNTERS,
+  ...AUTHORED_DATA_W2_MARTIAL,
 };
 
 type Row = { key: string; classId: string; feature: string; entry: AuthoredEntry };

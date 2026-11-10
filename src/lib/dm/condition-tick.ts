@@ -1,4 +1,5 @@
 import { settleFrenzies } from "@/lib/dm/frenzy";
+import { endRageBound } from "@/lib/dm/rage-bound";
 import { type Campaign } from "@/lib/db/campaigns";
 import type { TurnBudget } from "@/lib/dm/action-budget";
 import {
@@ -108,6 +109,8 @@ export function tickEncounterConditions(campaign: Campaign, encounter: Encounter
   }
   // A frenzy outliving its rage costs its level of exhaustion (frenzy.ts).
   lines.push(...settleFrenzies(campaign));
+  // And what lasted until a rage now over (rage-bound.ts).
+  lines.push(...endRageBound(campaign.id).lines);
 
   if (lines.length || expired.length) {
     publishPersisted(campaign.id, "encounter_updated", {

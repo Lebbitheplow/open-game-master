@@ -676,7 +676,7 @@ export const CONDITION_EFFECTS: ConditionEffectRow[] = [
       { kind: "check", ability: "str" },
     ],
     // The die is a once-per-turn rider, as the text says (one damage roll a
-    // turn): src/lib/dm/attack-damage-riders.ts giantsMightRiders.
+    // turn): src/lib/dm/attack-damage-riders.ts heldConditionRiders.
   },
   {
     id: "bladesong",
