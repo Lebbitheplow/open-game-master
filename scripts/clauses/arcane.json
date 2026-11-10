@@ -3815,7 +3815,7 @@
   "source": "src/lib/srd/subclasses.json",
   "group": "College of Spirits",
   "level": 3,
-  "sha": "cfc57591499b",
+  "sha": "a7debc24d4c2",
   "clauses": [
    {
     "c": "A candle, a deck, a talking board or the like serves as your spellcasting focus",
@@ -3824,9 +3824,10 @@
     "why": "not run: the row's note leaves the focus to the GM (\"Cast through the spiritual focus; the GM keeps to that.\"); a casting without one was not staged"
    },
    {
-    "c": "and adds a die to the damage or healing of your bard spells at higher levels",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: focus-text"
+    "c": "and from 6th level a bard spell cast through it that deals damage or restores hit points adds a d6 to one of its damage or healing rolls",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: focus-text",
+    "by": "src/lib/srd/authored-effects-data4.ts bard::Spiritual Focus spell_rider 1d6 from 6th level, damage and healing (the words now name the die)"
    }
   ]
  },
