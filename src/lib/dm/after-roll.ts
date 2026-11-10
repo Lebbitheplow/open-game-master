@@ -49,6 +49,7 @@ import { luckPointsLeft } from "@/lib/srd/class-resources";
 import { rollsWrathDice } from "@/lib/dm/destructive-wrath-logic";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { markReactionUsed } from "@/lib/dm/turn-budget";
+import { inPlay } from "@/lib/dm/roster";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 // Whether this character's rolls can wait on their player. A companion rolls
@@ -116,6 +117,7 @@ export function optionsForPending(
 // (invoke-roll.ts, pc-attack-parked.ts throwForChoice): the roll parks on them
 // as it would on the roller's own options. Chronal Shift, War God's Blessing
 // and Flash of Genius, which the artificer may also spend on their own roll.
+// A helper on the bench (one character fielded per player) answers nobody.
 export function allyChoicesFor(
   campaignId: string,
   sheet: CharacterSheet,
@@ -126,7 +128,7 @@ export function allyChoicesFor(
   const skip = new Set([sheet.id, ...(done.shiftedBy ?? []), ...(done.declined ?? [])]);
   const others = listSheets(campaignId)
     .map((stale) => getSheetById(stale.id) ?? stale)
-    .filter((other) => !skip.has(other.id) && rollsCanWait(other) && playerAtTable(campaignId, other) && canReactNow(campaignId, other));
+    .filter((other) => !skip.has(other.id) && rollsCanWait(other) && playerAtTable(campaignId, other) && inPlay(campaignId, other) && canReactNow(campaignId, other));
   if ("ac" in roll) {
     // "When a creature within 30 feet of you makes an attack roll": the text
     // asks for 30 feet and, unlike Chronal Shift and Flash of Genius ("a

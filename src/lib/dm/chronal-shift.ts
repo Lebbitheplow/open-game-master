@@ -39,6 +39,7 @@ import { spendFeatureUse } from "@/lib/dm/attack-onhit";
 import { unseenBecause, withinFeet } from "@/lib/dm/authored-saves";
 import { incapacitatedBy } from "@/lib/dm/condition-logic";
 import { markReactionUsed } from "@/lib/dm/turn-budget";
+import { inPlay } from "@/lib/dm/roster";
 import { textKey } from "@/lib/language/text-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { holdsFeature } from "@/lib/srd/feature-names";
@@ -86,7 +87,8 @@ export function inShiftReach(campaignId: string, wizard: CharacterSheet, creatur
 
 // The wizards at the table who could answer this character's failing roll on
 // their own screen: another player's seat (an agent's has no card) whose
-// player is here, not the roller, not one who already shifted or let it stand.
+// player is here, not on the bench, not the roller, not one who already
+// shifted or let it stand.
 export function allyShifters(
   campaignId: string,
   roller: CharacterSheet,
@@ -96,7 +98,7 @@ export function allyShifters(
   const skip = new Set([roller.id, ...(done.shiftedBy ?? []), ...(done.declined ?? [])]);
   return listSheets(campaignId)
     .map((stale) => getSheetById(stale.id) ?? stale)
-    .filter((wizard) => !skip.has(wizard.id) && rollsCanWait(wizard) && playerAtTable(campaignId, wizard) && canShiftNow(campaignId, wizard) && inShiftReach(campaignId, wizard, roller))
+    .filter((wizard) => !skip.has(wizard.id) && rollsCanWait(wizard) && playerAtTable(campaignId, wizard) && inPlay(campaignId, wizard) && canShiftNow(campaignId, wizard) && inShiftReach(campaignId, wizard, roller))
     .map((wizard) => allyShiftOption(wizard.id, roller.name, kind));
 }
 

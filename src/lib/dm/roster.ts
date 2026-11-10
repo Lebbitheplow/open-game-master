@@ -1,5 +1,5 @@
 import type { Campaign } from "@/lib/db/campaigns";
-import { listMembers } from "@/lib/db/campaigns";
+import { getCampaignById, listMembers } from "@/lib/db/campaigns";
 import { listSheets } from "@/lib/db/sheets";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { fieldedOf } from "@/lib/player-characters";
@@ -18,6 +18,18 @@ export function fieldedSheets(campaign: Campaign, sheets: CharacterSheet[] = lis
     active.set(member.userId, member.activeCharacterId);
   }
   return fieldedOf(sheets, "one_active", (userId) => active.get(userId));
+}
+
+// Whether the character is in play, for a helper who would answer another's
+// roll (after-roll.ts, chronal-shift.ts, foresight.ts): one waiting on the
+// bench is off the board and out of the scene, and the player who holds it
+// plays only the one fielded (player-characters.ts resolveActionCharacter).
+export function inPlay(campaignId: string, sheet: CharacterSheet): boolean {
+  const campaign = getCampaignById(campaignId);
+  if (!campaign || campaign.gameSettings.multiCharacter !== "one_active" || sheet.isCompanion) {
+    return true;
+  }
+  return fieldedSheets(campaign, listSheets(campaignId).filter((entry) => entry.userId === sheet.userId)).some((entry) => entry.id === sheet.id);
 }
 
 // The characters a travel formation arranges (issue 230): the ones in play,

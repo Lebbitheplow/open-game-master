@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { PendingRoll } from "@/app/campaigns/[campaignId]/useCampaignStream";
 import { CheckFrame } from "@/app/campaigns/[campaignId]/SkillCheckCard";
@@ -56,6 +56,11 @@ export function AfterRollCard({
   }, [deadline]);
   // The clock ticks once a second, so a fresh deadline can briefly read long.
   const left = deadline ? Math.min(AFTER_ROLL_SECONDS, Math.max(0, Math.ceil((new Date(deadline).getTime() - now) / 1000))) : null;
+  // The clock is not a live region (it would speak every second): each
+  // button names it as its description, so a keyboard or screen reader user
+  // hears the time left as they reach a choice.
+  const clockId = useId();
+  const timed = left !== null ? clockId : undefined;
   const thrown = pending.thrown;
   if (!thrown) {
     return null;
@@ -94,10 +99,10 @@ export function AfterRollCard({
   const onlyShifts = thrown.options.filter((option) => option.by).every((option) => option.id === "chronal_shift");
   const myHelpers = [...new Set(myShifts.map((option) => option.by))];
   const standing = pending.kind === "attack" ? "misses as it stands" : pending.dc !== null ? `fails against Difficulty Class ${pending.dc} as it stands` : "may still fail";
-  const clock = left !== null ? <span className="check-dim text-xs" aria-live="off">The roll stands in {left}s</span> : null;
+  const clock = left !== null ? <span id={clockId} className="check-dim text-xs" aria-live="off">The roll stands in {left}s</span> : null;
   const helpLabel = `${onlyShifts ? "Use Chronal Shift on" : "Help"} ${character?.name ? `${character.name}'s` : "this"} roll, or let it stand`;
   const letItStand = myHelpers.map((helper) => (
-    <button key={`leave-${helper}`} type="button" disabled={busy} onClick={() => void choose({ decline: true, by: helper })} className={`${PLAIN} check-dim`}>
+    <button key={`leave-${helper}`} type="button" disabled={busy} aria-describedby={timed} onClick={() => void choose({ decline: true, by: helper })} className={`${PLAIN} check-dim`}>
       {busy ? <Loader2 className="size-4 animate-spin" /> : myHelpers.length > 1 ? `Let it stand (${sheets.find((sheet) => sheet.id === helper)?.name})` : "Let it stand"}
     </button>
   ));
@@ -113,7 +118,7 @@ export function AfterRollCard({
         {pending.reason ? <p className="check-dim mt-0.5 text-xs">{pending.reason}</p> : null}
         <div className="mt-2 flex flex-wrap items-center gap-2" role="group" aria-label={helpLabel}>
           {myShifts.map((option) => (
-            <button key={`${option.id}:${option.by}`} type="button" disabled={busy} title={option.note} onClick={() => void choose({ use: option.id, by: option.by })} className={OPTION}>
+            <button key={`${option.id}:${option.by}`} type="button" disabled={busy} aria-describedby={timed} title={option.note} onClick={() => void choose({ use: option.id, by: option.by })} className={OPTION}>
               {option.label}
             </button>
           ))}
@@ -190,6 +195,7 @@ export function AfterRollCard({
                 key={index}
                 type="button"
                 disabled={busy}
+                aria-describedby={timed}
                 onClick={() => void choose({ die: index })}
                 className={OPTION}
               >
@@ -202,6 +208,7 @@ export function AfterRollCard({
                 type="button"
                 disabled={busy}
                 title={option.note}
+                aria-describedby={timed}
                 onClick={() => void choose(option.by ? { use: option.id, by: option.by } : { use: option.id })}
                 className={OPTION}
               >
@@ -218,6 +225,7 @@ export function AfterRollCard({
           <button
             type="button"
             disabled={busy}
+            aria-describedby={timed}
             onClick={() => void choose({ keep: true })}
             className={`${PLAIN} check-dim`}
           >
@@ -226,7 +234,7 @@ export function AfterRollCard({
         )}
         {left !== null ? (
           // Read once by a screen reader with the card, not every second.
-          <span className="check-dim text-xs" aria-live="off">
+          <span id={clockId} className="check-dim text-xs" aria-live="off">
             {thrown.choosing ? "The higher die counts" : "The roll stands"} in {left}s
           </span>
         ) : null}

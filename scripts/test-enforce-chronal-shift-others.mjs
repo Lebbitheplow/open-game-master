@@ -309,6 +309,105 @@ await test("At the save itself: a foe's success is rolled again and the second r
   assert.equal(used(), 0, "a failure is what the wizard wanted: nothing spent");
 });
 
+// ---- one account playing the roller and the wizard (play-test 2026-11-09) ----
+
+const { setMemberActiveCharacter, updateGameSettings } = await import("../src/lib/db/campaigns.ts");
+const twin = world.addHero({
+  user: allyUser, name: "Ines", class: "wizard", subclass: "Chronurgy Magic", level: 5, maxHp: 30,
+  abilities: { str: 10, dex: 14, con: 12, int: 16, wis: 12, cha: 10 },
+});
+const twinUsed = () => world.sheet(twin.id).resources[COUNTER].used;
+
+await test("A wizard the roller's own account plays is answered by the roller's keep: the roll lands at once, nothing spent, though nobody else is online to start a clock.", async () => {
+  await kit.endFight();
+  reset();
+  wizardHere();
+  const rollerHere = subscribe(world.campaignId, () => {}, allyUser.id);
+  try {
+    world.dice(3);
+    assert.equal((await check()).parked, true);
+    world.clearDice();
+    const [pending] = open();
+    assert.deepEqual(pending.thrown.options.map((option) => option.by), [twin.id], "the twin's shift, on the roller's own card");
+    assert.equal(pending.thrown.deadline, undefined, "nobody else online: no clock");
+    const kept = await choose(pending.id, { keep: true }, allyUser);
+    assert.equal(kept.status, 200, JSON.stringify(kept.json));
+    assert.equal(open().length, 0, "the keep was the twin's answer too: nothing waits on a card with nothing left to press");
+    assert.equal(getRoll(getPendingRoll(pending.id).rollId).total, 6);
+    assert.equal(twinUsed(), 0);
+  } finally {
+    rollerHere();
+    wizardHere = subscribe(world.campaignId, () => {}, wizUser.id);
+  }
+});
+
+await test("With another player's wizard beside the twin, the keep answers for the twin and the roll waits on the other wizard alone.", async () => {
+  reset();
+  const rollerHere = subscribe(world.campaignId, () => {}, allyUser.id);
+  try {
+    world.dice(3);
+    await check();
+    world.clearDice();
+    const [pending] = open();
+    assert.deepEqual(pending.thrown.options.map((option) => option.by).sort(), [twin.id, wizard.id].sort());
+    assert.equal((await choose(pending.id, { keep: true }, allyUser)).status, 200);
+    const waiting = getPendingRoll(pending.id);
+    assert.equal(waiting.status, "pending");
+    assert.deepEqual(waiting.thrown.options.map((option) => option.by), [wizard.id], "only the other player's wizard is still asked");
+    assert.deepEqual(waiting.thrown.declined, [twin.id]);
+    assert.ok(waiting.thrown.deadline, "someone else is online: the clock runs");
+    assert.equal((await choose(pending.id, { decline: true, by: wizard.id }, wizUser)).status, 200);
+    assert.equal(open().length, 0);
+    assert.equal(twinUsed() + used(), 0);
+  } finally {
+    rollerHere();
+  }
+});
+
+await test("At a table that fields one character per player, a wizard waiting on the bench answers nobody's roll and watches no fight.", async () => {
+  reset();
+  wizardHere();
+  const rollerHere = subscribe(world.campaignId, () => {}, allyUser.id);
+  updateGameSettings(world.campaignId, { multiCharacter: "one_active" });
+  setMemberActiveCharacter(world.campaignId, allyUser.id, ally.id);
+  try {
+    world.dice(3);
+    const out = await check();
+    world.clearDice();
+    assert.notEqual(out.parked, true, `the benched twin is not offered: ${JSON.stringify(open().map((pending) => pending.thrown?.options))}`);
+    assert.equal(open().length, 0);
+    // In a fight: the twin set to watch while every character was fielded,
+    // then benched, stops a hazard's save on the fighter for nobody; fielded
+    // again, the same save stops for the twin.
+    updateGameSettings(world.campaignId, { multiCharacter: "all_active" });
+    await kit.fight(1, { heroFaces: { [ally.id]: 19, [twin.id]: 15, [wizard.id]: 2 } });
+    [goblin] = world.enemies();
+    kit.place(ally.id, 5, 5);
+    kit.place(goblin.id, 6, 5);
+    kit.place(twin.id, 5, 3);
+    world.signIn(allyUser);
+    assert.equal((await call(route.toggle, "POST", { on: true, characterId: twin.id }, { campaignId: world.campaignId })).status, 200);
+    updateGameSettings(world.campaignId, { multiCharacter: "one_active" });
+    const needle = [modelCall("cast_at_player", { characterId: ally.id, source: "a poison needle", saveAbility: "con", dc: 12, damage: "1d4", damageType: "poison" })];
+    await enemyTurn(needle);
+    await settleQueue(world.campaignId);
+    assert.equal(stops().length, 0, "the benched twin's watch stops nothing");
+    updateGameSettings(world.campaignId, { multiCharacter: "all_active" });
+    await enemyTurn(needle);
+    const [stop] = stops();
+    assert.equal(stop?.characterId, twin.id, "fielded, the twin's watch stops the save");
+    await answer(stop.id, { pass: true }, allyUser);
+    await settleQueue(world.campaignId);
+    assert.equal(twinUsed(), 0);
+  } finally {
+    world.signIn(allyUser);
+    await call(route.toggle, "POST", { on: false, characterId: twin.id }, { campaignId: world.campaignId });
+    updateGameSettings(world.campaignId, { multiCharacter: "off" });
+    rollerHere();
+    wizardHere = subscribe(world.campaignId, () => {}, wizUser.id);
+  }
+});
+
 model.close();
 finish();
 world.close();

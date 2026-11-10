@@ -1,13 +1,14 @@
 // One account holding both the roller and the helper on an after-the-roll
 // card (play-test 2026-11-09, W-08): the lead plays a fighter and the
 // Chronurgy wizard beside him. A failing check of the fighter's waits on the
-// lead's screen as the roller; "Keep this roll" leaves it waiting on the
-// wizard, and that same screen must now offer the wizard's "Let it stand" as
-// well as the reroll, with the clock still running while the GM's screen is
-// open beside it. Before, the kept card showed only the reroll and the roll
-// stayed pending. The card's words are held by scripts/test-after-roll-card.mjs;
-// this is the real roll landing. Finger-sized, inside the phone's width, by
-// day and by night, through axe.
+// lead's screen with the wizard's reroll beside "Keep this roll"; the keep is
+// the wizard's answer too, so the roll lands. Before, it went on waiting on
+// the wizard, and the kept card had no way to let it stand. The clock runs
+// while the GM's screen is open beside it, and each button names it. The
+// card's words are held by scripts/test-after-roll-card.mjs and the route by
+// scripts/test-enforce-chronal-shift-others.mjs; this is the real roll
+// landing. Finger-sized, inside the phone's width, by day and by night,
+// through axe.
 import { request } from "playwright-core";
 import { axeViolations, check, eventually, untilStill } from "../lib.mjs";
 
@@ -47,46 +48,57 @@ const scenario = {
       };
       check(await askUntilParked(), "a failing check of Wren's waits on the table");
 
-      const choices = page.locator(`${root}[role="group"][aria-label="Change this roll, or keep it"]`).locator("visible=true");
+      const group = `${root}[role="group"][aria-label="Change this roll, or keep it"]`;
+      const choices = page.locator(group).locator("visible=true");
       await eventually(() => choices.count(), { timeoutMs: 30_000, label: "the roller's card" });
       await untilStill(page);
-      check(await choices.getByRole("button", { name: "Chronal Shift: make Wren Ashby roll again" }).count(), "the lead's wizard is offered the reroll on the lead's own roll");
-      check(!(await choices.getByRole("button", { name: "Let it stand" }).count()), "the roller keeps the roll first");
-      await t.tap(choices.getByRole("button", { name: "Keep this roll" }));
-
-      // Kept: the roll now waits on the wizard alone, on this same screen.
-      const helping = `${root}[role="group"][aria-label="Use Chronal Shift on Wren Ashby's roll, or let it stand"]`;
-      const kept = page.locator(helping).locator("visible=true");
-      await eventually(() => kept.count(), { timeoutMs: 15_000, label: "the kept card with the wizard's choice" });
-      await untilStill(page);
-      check(await page.getByText("You kept this roll.").locator("visible=true").count(), "the card says the roll was kept");
-      const shift = kept.getByRole("button", { name: "Chronal Shift: make Wren Ashby roll again" });
-      const stand = kept.getByRole("button", { name: "Let it stand" });
-      check(await stand.count(), "the wizard can let the kept roll stand (W-08)");
-      for (const button of [shift, stand]) {
+      const shift = choices.getByRole("button", { name: "Chronal Shift: make Wren Ashby roll again" });
+      const keep = choices.getByRole("button", { name: "Keep this roll" });
+      check(await shift.count(), "the lead's wizard is offered the reroll on the lead's own roll");
+      check(await keep.count(), "and the roller's keep beside it");
+      for (const button of [shift, keep]) {
         const box = await button.boundingBox();
         check((box?.height ?? 0) >= 40, `a finger-sized button (${box?.height}px)`);
       }
-      check(await kept.getByText(/^The roll stands in \d+s$/).count(), "the kept card still counts down to when the roll stands");
+      check(await choices.getByText(/^The roll stands in \d+s$/).count(), "the card counts down to when the roll stands");
+      // The clock is no live region: each choice names it, so the time left
+      // is heard as the keyboard reaches the button.
+      const described = await keep.evaluate((node) => document.getElementById(node.getAttribute("aria-describedby") ?? "")?.textContent ?? "");
+      check(/^The roll stands in \d+s$/.test(described), `Keep this roll is described by the clock (${described})`);
       check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "the card does not push the page sideways");
-      const night = await axeViolations(page, helping);
-      check(!night.length, `axe on the kept card at night: ${night.map((entry) => entry.id).join(", ")}`);
-      await t.shot("kept");
+      if (viewport === "phone") {
+        // The harness's phone is 412px wide; a small phone is 375px.
+        const size = page.viewportSize();
+        await page.setViewportSize({ width: 375, height: size.height });
+        await untilStill(page);
+        check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "nor on a 375px phone");
+        for (const button of [shift, keep]) {
+          const box = await button.boundingBox();
+          check((box?.height ?? 0) >= 40 && (box?.x ?? -1) >= 0 && (box?.x ?? 0) + (box?.width ?? 0) <= 375, `a whole finger-sized button at 375px (${JSON.stringify(box)})`);
+        }
+        await page.setViewportSize(size);
+        await untilStill(page);
+      }
+      const night = await axeViolations(page, group);
+      check(!night.length, `axe on the card at night: ${night.map((entry) => entry.id).join(", ")}`);
+      await t.shot("card");
       await page.evaluate(() => (document.documentElement.dataset.theme = "light"));
       await untilStill(page);
-      const day = await axeViolations(page, helping);
-      check(!day.length, `axe on the kept card by day: ${day.map((entry) => entry.id).join(", ")}`);
-      await t.shot("kept-day");
+      const day = await axeViolations(page, group);
+      check(!day.length, `axe on the card by day: ${day.map((entry) => entry.id).join(", ")}`);
+      await t.shot("card-day");
       await page.evaluate(() => (document.documentElement.dataset.theme = "dark"));
 
-      // From the keyboard: letting it stand lands the roll and spends nothing.
-      await stand.focus();
+      // From the keyboard: the keep is the wizard's answer too, as both sat
+      // on this one card, so the roll lands at once and spends nothing.
+      // Before, it went on waiting on the wizard with no way to let it stand.
+      await keep.focus();
       await page.keyboard.press("Enter");
-      await eventually(async () => !(await kept.count()) && !(await choices.count()), { timeoutMs: 15_000, label: "the card gone once the roll stands" });
+      await eventually(async () => !(await choices.count()) && !(await page.getByText("You kept this roll.").locator("visible=true").count()), { timeoutMs: 15_000, label: "the card gone once the roll is kept" });
       const after = await (await gm.get(`${base}/api/campaigns/${table.id}`)).json();
       check(!after.pendingRolls?.length, "nothing is left waiting");
       const wizard = after.sheets.find((sheet) => sheet.id === table.wizard);
-      check(!wizard?.resources?.sub_chronal_shift?.used, `letting it stand spent no Chronal Shift (${JSON.stringify(wizard?.resources?.sub_chronal_shift)})`);
+      check(!wizard?.resources?.sub_chronal_shift?.used, `keeping the roll spent no Chronal Shift (${JSON.stringify(wizard?.resources?.sub_chronal_shift)})`);
     } finally {
       watching.abort();
       await gm.dispose();
