@@ -86,7 +86,21 @@ export function Select<T extends string>({
       </DropdownMenu.Trigger>
       {name ? <input type="hidden" name={name} value={value} /> : null}
       <DropdownMenu.Portal>
-        <DropdownMenu.Content align={align} sideOffset={6} collisionPadding={10} className="panel kit-select-list z-[75]">
+        <DropdownMenu.Content
+          align={align}
+          sideOffset={6}
+          collisionPadding={10}
+          className="panel kit-select-list z-[75]"
+          // The focus goes back to the trigger once the list has left, unless
+          // it has already gone on: the list stays for its closing frames, and
+          // a field focused in that gap (the next one tapped, or reached by a
+          // quick hand) lost its focus, and the keys typed into it, to this
+          // trigger.
+          onCloseAutoFocus={(event) => {
+            const now = document.activeElement;
+            if (now instanceof HTMLElement && now !== document.body && now.isConnected && !now.closest('[role="menu"]')) event.preventDefault();
+          }}
+        >
           <DropdownMenu.RadioGroup value={value} onValueChange={(next) => onChange(next as T)}>
             {groups.map((group) => (
               <div key={group.name || "_"}>
