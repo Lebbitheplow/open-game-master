@@ -8,7 +8,7 @@
 import { COMBAT_RESOURCE_DEFS } from "@/lib/srd/combat-rows";
 import customResourcesJson from "@/lib/classes/resources.json";
 import authoredResourcesJson from "@/lib/srd/authored-resources.json";
-import { GENRE_COUNTER_TERMS } from "@/lib/srd/genre-counter-terms";
+import { GENRE_COUNTER_TERMS, GENRE_EXTRA_COUNTERS } from "@/lib/srd/genre-counter-terms";
 import { innateSpellCounters, racialCounterRest, racialCounterSpell, RACIAL_COUNTER_PREFIX, speciesSpellsReadable } from "@/lib/srd/racial-grants";
 import { INVOCATION_COUNTER_PREFIX, invocationCounters, invocationOfCounter } from "@/lib/srd/granted-casts";
 import { freeCastOf, freeCastResourceId, freeCastSpellOf, isFreeCastResource } from "@/lib/srd/feat-spells";
@@ -672,7 +672,7 @@ const SRD_RESOURCE_DEFS: ResourceDef[] = [
 // catalogs by scripts/generate-class-resources.mjs. Each is a plain
 // limited-use narrative feature: the server spends the use and hands the
 // model the SRD-style guidance line, exactly like Ki or Action Surge.
-type CustomResourceRow = {
+export type CustomResourceRow = {
   id: string;
   displayName: string;
   match: string[];
@@ -690,9 +690,12 @@ type CustomResourceRow = {
   action?: ResourceAction;
 };
 
-const CUSTOM_RESOURCE_DEFS: ResourceDef[] = (
-  customResourcesJson as { resources: CustomResourceRow[] }
-).resources.map((row) => ({
+const CUSTOM_RESOURCE_DEFS: ResourceDef[] = [
+  ...(customResourcesJson as { resources: CustomResourceRow[] }).resources,
+  // Limits the prose states in words the generator does not read ("1/week",
+  // "one favor per day"), written per genre package (genre-counter-terms.ts).
+  ...GENRE_EXTRA_COUNTERS,
+].map((row) => ({
   id: row.id,
   match: row.match,
   // A genre counter belongs to the feature of exactly that name, granted by

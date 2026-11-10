@@ -3,6 +3,7 @@
 // counter is spent by the engine at its trigger, so use_resource refuses a
 // bare spend of it with the guidance below, spending nothing (WAVE1 R10).
 import type { CounterTerms } from "@/lib/srd/genre-counter-terms";
+import type { CustomResourceRow } from "@/lib/srd/class-resources";
 
 // Spent by src/lib/dm/genre-drop-holds.ts the moment the hit point drop lands.
 const HELD_AT_THE_DROP = (feature: string, what: string): CounterTerms => ({
@@ -40,6 +41,55 @@ export const GENRE_A_COUNTER_TERMS: Record<string, CounterTerms> = {
   },
   dark_fantasy_deathless_vigor: HELD_AT_THE_DROP("Deathless Vigor", "once a long rest, when the grave knight drops to 0 hit points but is not killed outright, they drop to 1 instead and gain temporary hit points equal to their level."),
   horror_the_last_candle: HELD_AT_THE_DROP("The Last Candle", "once a long rest, when the exorcist would drop to 0 hit points but is not killed outright, they drop to 1 instead and their Candlelight Vigil burns again for a minute, at double radius."),
+  // Upgrades a later feature's text states for an earlier feature's counter
+  // ("Street Contacts has 2 uses"), read by populateResources.
+  cyberpunk_street_contacts: { upgrades: [{ match: "favor network", uses: 2 }, { match: "shadow network", uses: 3 }] },
+  cyberpunk_jury_rig: { upgrades: [{ match: "omni-tool mastery", uses: 4 }] },
+  // Requiem d8 (5th level): "regain all uses on a short rest"; Requiem d8,
+  // d10 and d12 (5th, 10th, 15th): "Requiem Inspiration die becomes a d8".
+  dark_fantasy_requiem_inspiration: {
+    rechargeFor: (level: number) => (level >= 5 ? "short" : "long"),
+    effect: { kind: "inspire", die: (level: number) => (level >= 15 ? "d12" : level >= 10 ? "d10" : level >= 5 ? "d8" : "d6") },
+  },
   cyberpunk_one_more_dawn: HELD_AT_THE_DROP("One More Dawn", "once a long rest, an ally within 30 feet of the trauma doc who would drop to 0 hit points (not killed outright) drops to 1 instead."),
   horror_final_benediction: HELD_AT_THE_DROP("Final Benediction", "once a long rest, when an ally within 30 feet of the exorcist drops to 0 hit points (not killed outright), they drop instead to five times the exorcist's Wisdom modifier."),
+};
+
+// A limit the prose states that the generator writes no row for. "1/week":
+// back after seven long rests, a day's rest each (ResourceDef.recovers, the
+// marker src/lib/dm/rest-logic.ts counts down); the GM may give it back sooner.
+const row = (id: string, displayName: string, classId: string, uses: number, recharge: "short" | "long", guidance: string): CustomResourceRow => ({
+  id,
+  displayName,
+  // Compared keyed (textKey) by featureHolds.
+  match: [displayName],
+  classes: [classId],
+  uses,
+  ability: null,
+  recharge,
+  upgrades: [],
+  guidance,
+});
+const WEEKLY = { recovers: "7" } as const;
+
+export const GENRE_A_EXTRA_COUNTERS: CustomResourceRow[] = [
+  row("cyberpunk_the_big_favor", "The Big Favor", "fixer", 1, "long", "1/week, a contact performs a genuinely dangerous service for the fixer (the GM says what it costs them)."),
+  row("cyberpunk_lazarus_protocol", "Lazarus Protocol", "trauma_doc", 1, "long", "1/week, a creature dead less than 1 minute is restored to life at half its hit points."),
+  row("cyberpunk_daemon_cache", "Daemon Cache", "netrunner", 1, "long", "The cached program (level 1-3, or 1-5 with two programs) is cast once without a slot; back after a long rest."),
+  row("cyberpunk_autodoc_implant", "Autodoc Implant", "trauma_doc", 5, "long", "While below half HP, the trauma doc regains WIS-mod HP at the start of their turn, for 5 rounds per long rest."),
+  row("dark_fantasy_gutter_king_s_word", "Gutter King's Word", "vermin_lord", 1, "long", "One favor per day from beggars, urchins and rat-folk, within their power."),
+  row("horror_the_long_hunt", "The Long Hunt", "slayer", 1, "long", "1/week, a short rest gives the slayer the benefits of a long rest."),
+  row("horror_stake_and_salt", "Stake and Salt", "slayer", 2, "short", "Two Hunter's Kit wardings crafted per rest, each covering the whole party."),
+];
+
+// Their terms: the weekly ones come back after seven long rests.
+export const GENRE_A_EXTRA_TERMS: Record<string, CounterTerms> = {
+  // Spent by the turn heal (authored-effects-genre-a.ts, authored-turns.ts).
+  cyberpunk_autodoc_implant: {
+    passive: true,
+    guidance: "Autodoc Implant: while below half HP, the trauma doc regains WIS-mod HP at the start of their turn, 5 rounds per long rest. The server heals and spends the round itself as the turn starts; no call spends it.",
+  },
+  cyberpunk_the_big_favor: WEEKLY,
+  cyberpunk_lazarus_protocol: WEEKLY,
+  horror_the_long_hunt: WEEKLY,
 };

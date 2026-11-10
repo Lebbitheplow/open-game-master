@@ -183,6 +183,11 @@ const STRIKES: GenreRow[] = [
   ]),
   // cyberpunk
   row("street_samurai", "Twin Chrome", [{ kind: "ac", amount: 1, gate: { dualWield: true } }]),
+  // "While below half HP, regain WIS-mod HP at the start of your turn (5
+  // rounds per long rest)": each heal spends a round of the counter.
+  row("trauma_doc", "Autodoc Implant", [{ kind: "turn_heal", when: "start", formula: "wis", spends: "cyberpunk_autodoc_implant", gate: { belowHalf: true, notCondition: "unconscious" } }]),
+  // "Regain WIS-mod HP at the start of each of your turns while below half HP and conscious"
+  row("penitent", "The Body Is a Prayer", [{ kind: "turn_heal", when: "start", formula: "wis", gate: { belowHalf: true, notCondition: "unconscious" } }]),
 ];
 
 // ---- auras on the party ----

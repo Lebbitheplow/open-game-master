@@ -1566,15 +1566,13 @@
     "c": "Won't Die Here works 2/day",
     "run": {
      "k": "counter",
-     "id": "horror_won_t_die_here",
+     "id": "horror_the_one_who_lives",
      "n": 2,
      "rest": "long"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap survivor::The One Who Lives#0",
-    "observed": "uses of horror_won_t_die_here at level 20: the engine gives 1, the text 2",
-    "where": "scripts/generate-class-resources.mjs parseUses and the row in src/lib/classes/resources.json",
-    "sev": "medium"
+    "is": "held",
+    "by": "the horror_the_one_who_lives counter (2 a day), the pool src/lib/dm/genre-drop-holds.ts spends at the drop",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: survivor::The One Who Lives#0"
    },
    {
     "c": "each use also restores CON-mod x 5 HP",
@@ -2077,11 +2075,9 @@
     "run": {
      "k": "limit_tracked"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap slayer::The Long Hunt#1",
-    "observed": "the text limits its use and a level 18 slayer holds no counter for it (it holds horror_called_shot, horror_one_against_the_night, horror_the_stake_remembers)",
-    "where": "scripts/generate-class-resources.mjs parseUses (reads N/rest, N per rest, once per day, once per rest; not N/week, per day in words, or rounds per rest)",
-    "sev": "medium"
+    "is": "held",
+    "by": "the horror_the_long_hunt counter, back after seven long rests",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: slayer::The Long Hunt#1"
    }
   ]
  },
@@ -2128,10 +2124,7 @@
     "is": "gap",
     "read_only": true,
     "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap slayer::Stake and Salt#0 (a table check only: no engine table answers to the feature)",
+    "probe": "none of its own: the Hunter's Kit wardings are not built (Hunter's Kit#1); the hook probe now answers for the counter of clause #1",
     "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
     "sev": "low"
    },
@@ -2140,11 +2133,9 @@
     "run": {
      "k": "limit_tracked"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap slayer::Stake and Salt#1",
-    "observed": "the text limits its use and a level 3 slayer holds no counter for it (it holds none)",
-    "where": "scripts/generate-class-resources.mjs parseUses (reads N/rest, N per rest, once per day, once per rest; not N/week, per day in words, or rounds per rest)",
-    "sev": "medium"
+    "is": "held",
+    "by": "the horror_stake_and_salt counter, two per rest",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: slayer::Stake and Salt#1"
    }
   ]
  },

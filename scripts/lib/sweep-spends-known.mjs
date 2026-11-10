@@ -10,6 +10,7 @@ export const KNOWN = {
   "counter:art_flash_of_genius": { SPENT_FOR_NOTHING: { severity: "low", note: "another path carries the effect; a plain spend takes the use without it" }, TRIGGER_UNCHECKED: { severity: "medium", note: "accepted with no trigger staged" } },
   "counter:cyberpunk_bullet_time": { UNREACHED: { severity: "low", note: "the sweep stages melee hits only, and Bullet Time answers a ranged attack: scripts/test-genre-a-spends.mjs and the clause probe reaction_cost play it after a shortbow" } },
   "reaction:genre::bullet time::Bullet Time": { UNREACHED: { severity: "low", note: "the sweep stages melee hits only, and Bullet Time answers a ranged attack: scripts/test-genre-a-spends.mjs and the clause probe reaction_cost play it after a shortbow" } },
+  "counter:cyberpunk_daemon_cache": { GUIDANCE_ONLY: { severity: "medium", note: "the counter is held (1/long rest); the cached program's cast without a slot is not wired to the cast guard: no pick names the program (w2-genre-a handoff)" } },
   "counter:cyberpunk_grease_the_wheels": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "counter:cyberpunk_nanite_reserve": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "counter:cyberpunk_overmind": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },

@@ -79,10 +79,18 @@ export function authoredTurnStart(campaign: Campaign, encounter: Encounter, comb
         if (effect.when !== "start") {
           continue;
         }
+        const pool = effect.spends ? (getSheetById(id) ?? sheet).resources?.[effect.spends] : undefined;
+        if (effect.spends && (!pool || pool.used >= pool.max)) {
+          continue;
+        }
         const amount = rollCard(campaign, null, sheet.id, "custom", `${held.feature}: hit points regained`, resolveFormula(effect.formula, held.level, modsOf(sheet)), null).total;
         const given = heal(campaign, getSheetById(id) ?? sheet, amount);
         if (given > 0) {
           lines.push(`${held.feature}: ${sheet.name} regains ${given} hit points.`);
+          if (effect.spends && pool) {
+            const now = getSheetById(id) ?? sheet;
+            patchSheetAudited(campaign.id, id, { resources: { ...now.resources, [effect.spends]: { max: pool.max, used: pool.used + 1 } } }, { kind: "use_resource", reason: `${held.feature}, as the turn starts`, delta: { resource: held.feature, spent: 1 } });
+          }
         }
       }
       continue;

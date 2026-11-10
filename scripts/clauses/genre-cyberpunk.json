@@ -123,10 +123,7 @@
     "is": "gap",
     "read_only": true,
     "stopped": "a stored program is not a state any tool of the catalog writes; there is no call to make",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap netrunner::Daemon Cache#0 (a table check only: no engine table answers to the feature)",
+    "probe": "none of its own: no program is stored on the sheet; the hook probe now answers for the counter of clause #1",
     "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
     "sev": "low"
    },
@@ -135,11 +132,9 @@
     "run": {
      "k": "limit_tracked"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap netrunner::Daemon Cache#1",
-    "where": "scripts/generate-class-resources.mjs parseUses (reads N/rest, N per rest, once per day, once per rest; not N/week, per day in words, or rounds per rest)",
-    "sev": "medium",
-    "observed": "the text limits its use and a level 5 netrunner holds no counter for it (it holds cyberpunk_signal_tap)"
+    "is": "held",
+    "by": "the cyberpunk_daemon_cache counter (src/lib/srd/genre-a-counter-terms.ts GENRE_A_EXTRA_COUNTERS), one use a long rest",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Daemon Cache#1"
    }
   ]
  },
@@ -204,10 +199,7 @@
     "is": "gap",
     "read_only": true,
     "stopped": "a stored program is not a state any tool of the catalog writes; there is no call to make",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap netrunner::Daemon Cache (2 programs)#0 (a table check only: no engine table answers to the feature)",
+    "probe": "none of its own: no program is stored on the sheet; the hook probe now answers for the Daemon Cache counter",
     "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
     "sev": "low"
    }
@@ -1333,11 +1325,9 @@
      "n": 4,
      "rest": "long"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Omni-Tool Mastery#0",
-    "where": "scripts/generate-class-resources.mjs parseUses and the row in src/lib/classes/resources.json",
-    "sev": "medium",
-    "observed": "uses of cyberpunk_jury_rig at level 14"
+    "is": "held",
+    "by": "the upgrade of cyberpunk_jury_rig to 4 uses (genre-a-counter-terms.ts), read by populateResources",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: rigger::Omni-Tool Mastery#0"
    },
    {
     "c": "can affect magical or exotic devices",
@@ -1666,11 +1656,9 @@
      "n": 2,
      "rest": "long"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap fixer::Favor Network#0",
-    "where": "scripts/generate-class-resources.mjs parseUses and the row in src/lib/classes/resources.json",
-    "sev": "medium",
-    "observed": "uses of cyberpunk_street_contacts at level 5"
+    "is": "held",
+    "by": "the upgrade of cyberpunk_street_contacts to 2 uses (genre-a-counter-terms.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: fixer::Favor Network#0"
    },
    {
     "c": "reaches contacts in other cities",
@@ -1765,11 +1753,9 @@
     "run": {
      "k": "limit_tracked"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap fixer::The Big Favor#0",
-    "where": "scripts/generate-class-resources.mjs parseUses (reads N/rest, N per rest, once per day, once per rest; not N/week, per day in words, or rounds per rest)",
-    "sev": "medium",
-    "observed": "the text limits its use and a level 11 fixer holds no counter for it (it holds cyberpunk_grease_the_wheels, cyberpunk_street_contacts)"
+    "is": "held",
+    "by": "the cyberpunk_the_big_favor counter, back after seven long rests (recovers 7)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: fixer::The Big Favor#0"
    },
    {
     "c": "a contact performs a genuinely dangerous service for you",
@@ -1832,11 +1818,9 @@
      "n": 3,
      "rest": "long"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap fixer::Shadow Network#0",
-    "where": "scripts/generate-class-resources.mjs parseUses and the row in src/lib/classes/resources.json",
-    "sev": "medium",
-    "observed": "uses of cyberpunk_street_contacts at level 15"
+    "is": "held",
+    "by": "the upgrade of cyberpunk_street_contacts to 3 uses (genre-a-counter-terms.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: fixer::Shadow Network#0"
    },
    {
     "c": "favors arrive in half the usual time",
@@ -2830,26 +2814,21 @@
   "clauses": [
    {
     "c": "While below half HP, regain WIS-mod HP at the start of your turn",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "a start-of-turn tick needs the order walked through every other seat's End Turn; not staged",
     "run": {
      "k": "hook"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Autodoc Implant#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "the turn_heal row (start of turn, WIS, below half and conscious) spending a round of cyberpunk_autodoc_implant, read by src/lib/dm/authored-turns.ts; scripts/test-genre-a-counters.mjs",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Autodoc Implant#0"
    },
    {
     "c": "5 rounds per long rest",
     "run": {
      "k": "limit_tracked"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Autodoc Implant#1",
-    "where": "scripts/generate-class-resources.mjs parseUses (reads N/rest, N per rest, once per day, once per rest; not N/week, per day in words, or rounds per rest)",
-    "sev": "medium",
-    "observed": "the text limits its use and a level 15 trauma_doc holds no counter for it (it holds cyberpunk_miracle_worker, cyberpunk_nanite_reserve, cyberpunk_one_more_dawn, cyberpunk_stim_injector)"
+    "is": "held",
+    "by": "the cyberpunk_autodoc_implant counter, 5 rounds a long rest, spent by the turn heal",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Autodoc Implant#1"
    }
   ]
  },
@@ -2924,16 +2903,15 @@
     "run": {
      "k": "limit_tracked"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Lazarus Protocol#0",
-    "where": "scripts/generate-class-resources.mjs parseUses (reads N/rest, N per rest, once per day, once per rest; not N/week, per day in words, or rounds per rest)",
-    "sev": "medium",
-    "observed": "the text limits its use and a level 20 trauma_doc holds no counter for it (it holds cyberpunk_miracle_worker, cyberpunk_nanite_reserve, cyberpunk_one_more_dawn, cyberpunk_plague_breaker, cyberpunk_stim_injector)"
+    "is": "held",
+    "by": "the cyberpunk_lazarus_protocol counter, back after seven long rests",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Lazarus Protocol#0"
    },
    {
     "c": "restore a creature dead less than 1 minute to life at half HP",
     "run": {
-     "k": "no_door"
+     "k": "revive",
+     "id": "cyberpunk_lazarus_protocol"
     },
     "is": "gap",
     "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Lazarus Protocol#1",

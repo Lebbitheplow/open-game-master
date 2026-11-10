@@ -2180,15 +2180,12 @@
   "clauses": [
    {
     "c": "Regain WIS-mod HP at the start of each of your turns while below half HP and conscious",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "a start-of-turn tick needs the order walked through every other seat's End Turn; not staged",
     "run": {
      "k": "hook"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap penitent::The Body Is a Prayer#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "the turn_heal row gated below half and not unconscious, read by src/lib/dm/authored-turns.ts; scripts/test-genre-a-counters.mjs",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: penitent::The Body Is a Prayer#0"
    }
   ]
  },
@@ -2509,11 +2506,9 @@
      "k": "inspire",
      "die": "d8"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap dirgesinger::Requiem d8#0",
-    "observed": "the die handed to the ally at level 5: the engine gives \"d6\", the text \"d8\"",
-    "where": "the row's fx in src/lib/classes/resources.json (inspire, d6) has no upgrades: the die never grows",
-    "sev": "medium"
+    "is": "held",
+    "by": "the inspire die ladder on dark_fantasy_requiem_inspiration (genre-a-counter-terms.ts effect)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: dirgesinger::Requiem d8#0"
    },
    {
     "c": "regain all uses on a short rest",
@@ -2523,11 +2518,9 @@
      "n": "cha",
      "rest": "short"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap dirgesinger::Requiem d8#1",
-    "observed": "dark_fantasy_requiem_inspiration after a short rest: the engine gives 2, the text 0",
-    "where": "scripts/generate-class-resources.mjs parseUses and the row in src/lib/classes/resources.json",
-    "sev": "medium"
+    "is": "held",
+    "by": "rechargeFor on dark_fantasy_requiem_inspiration: a short rest from 5th level",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: dirgesinger::Requiem d8#1"
    }
   ]
  },
@@ -2615,11 +2608,9 @@
      "k": "inspire",
      "die": "d10"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap dirgesinger::Requiem d10#0",
-    "observed": "the die handed to the ally at level 10: the engine gives \"d6\", the text \"d10\"",
-    "where": "the row's fx in src/lib/classes/resources.json (inspire, d6) has no upgrades: the die never grows",
-    "sev": "medium"
+    "is": "held",
+    "by": "the inspire die ladder: d10 from 10th level",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: dirgesinger::Requiem d10#0"
    }
   ]
  },
@@ -2714,11 +2705,9 @@
      "k": "inspire",
      "die": "d12"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap dirgesinger::Requiem d12#0",
-    "observed": "the die handed to the ally at level 15: the engine gives \"d6\", the text \"d12\"",
-    "where": "the row's fx in src/lib/classes/resources.json (inspire, d6) has no upgrades: the die never grows",
-    "sev": "medium"
+    "is": "held",
+    "by": "the inspire die ladder: d12 from 15th level",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: dirgesinger::Requiem d12#0"
    }
   ]
  },
@@ -3162,11 +3151,9 @@
     "run": {
      "k": "limit_tracked"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap vermin_lord::Gutter King's Word#1",
-    "observed": "the text limits its use and a level 10 vermin_lord holds no counter for it (it holds dark_fantasy_rat_tide, dark_fantasy_ten_thousand_eyes)",
-    "where": "scripts/generate-class-resources.mjs parseUses (reads N/rest, N per rest, once per day, once per rest; not N/week, per day in words, or rounds per rest)",
-    "sev": "medium"
+    "is": "held",
+    "by": "the dark_fantasy_gutter_king_s_word counter, one a day (a long rest)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::Gutter King's Word#1"
    },
    {
     "c": "within their power",

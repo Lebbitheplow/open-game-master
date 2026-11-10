@@ -127,7 +127,9 @@ export type AuthoredEffect = Base &
     // equal to its Hit Dice (Keeper of Souls), once a turn.
     | { kind: "death_heal"; rangeFt: number }
     // Hit points at the start or end of the holder's turn in a fight.
-    | { kind: "turn_heal"; when: "start" | "end"; formula: Formula; belowHalf?: boolean }
+    // `spends`: each heal takes a use of this counter, none left none given
+    // (Autodoc Implant's "5 rounds per long rest").
+    | { kind: "turn_heal"; when: "start" | "end"; formula: Formula; belowHalf?: boolean; spends?: string }
     // An aura while the holder's spend holds (gate.condition): each character
     // who ends a turn within `rangeFt` of the holder, the holder too, loses one
     // of `ends` laid on them or, holding none, gains temporary hit points

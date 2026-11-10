@@ -280,6 +280,16 @@ export const NAMED = {
       eq(after.currentHp - before, (run.dice ?? 0) * die + plus, `hit points ${run.id} restored`);
     }
   },
+  // "restore a creature dead less than 1 minute to life at half HP": the ally
+  // who died this round, spent on, stands at half their hit points.
+  async revive(t, run, feature) {
+    const scene = await t.stage(feature);
+    t.world.patch(scene.fallen.id, { currentHp: 0, deathSaves: { successes: 0, failures: 3, stable: false, dead: true } });
+    const out = await spendOn(t, scene, run.id, { targetCharacterId: scene.fallen.id });
+    eq(out.ok, true, `${run.id} on the ally who just died: ${out.error}`);
+    const after = t.world.sheet(scene.fallen.id);
+    eq(after.deathSaves?.dead === true ? "dead" : after.currentHp, Math.floor(after.maxHp / 2), "the ally's hit points after the spend");
+  },
   async ghost(t, run, feature) {
     const scene = await t.stage(feature);
     must((await spendAny(t, scene, "cyberpunk_ghost_protocol")).out, "Ghost Protocol");
@@ -314,7 +324,9 @@ export const NAMED = {
     const scene = await t.stage(feature);
     const out = must(await spendOn(t, scene, "dark_fantasy_requiem_inspiration", { targetCharacterId: scene.ally.id }), "Requiem Inspiration");
     const ally = t.world.sheet(scene.ally.id);
-    const handed = /\b1?(d\d+)\b/.exec(JSON.stringify([out.result.inspiration, out.result, ally.conditionMeta, ally.conditions]))?.[1] ?? "no die";
+    // What was granted first: the result's guidance repeats the 1st-level
+    // text ("gains a d6") whatever the die is now.
+    const handed = /\b1?(d\d+)\b/.exec(JSON.stringify([out.result.granted, out.result.inspiration, ally.conditions, ally.conditionMeta, out.result]))?.[1] ?? "no die";
     eq(handed, run.die, `the die handed to the ally at level ${feature.level}`);
   },
 

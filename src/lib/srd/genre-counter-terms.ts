@@ -8,11 +8,17 @@
 // class-resources.ts lays these over the generated rows (CUSTOM_RESOURCE_DEFS).
 //
 // Type-only imports: class-resources.ts imports this module's values.
-import type { ResourceDef } from "@/lib/srd/class-resources";
-import { GENRE_A_COUNTER_TERMS } from "@/lib/srd/genre-a-counter-terms";
+import type { CustomResourceRow, ResourceDef } from "@/lib/srd/class-resources";
+import { GENRE_A_COUNTER_TERMS, GENRE_A_EXTRA_COUNTERS, GENRE_A_EXTRA_TERMS } from "@/lib/srd/genre-a-counter-terms";
 
-export type CounterTerms = Partial<Pick<ResourceDef, "passive" | "options" | "outOfFight" | "fightOnly" | "action" | "guidance" | "rechargeFor" | "upgrades" | "extraAction">>;
+export type CounterTerms = Partial<Pick<ResourceDef, "passive" | "options" | "outOfFight" | "fightOnly" | "action" | "guidance" | "rechargeFor" | "upgrades" | "extraAction" | "recovers" | "noRefill" | "effect">>;
 
 export const GENRE_COUNTER_TERMS: Record<string, CounterTerms> = {
   ...GENRE_A_COUNTER_TERMS,
+  ...GENRE_A_EXTRA_TERMS,
 };
+
+// Counters the generator writes no row for: a limit stated in words it does
+// not read ("1/week", "one favor per day", "craft two per rest"). Each genre
+// package lists its own and spreads them here with one line.
+export const GENRE_EXTRA_COUNTERS: CustomResourceRow[] = [...GENRE_A_EXTRA_COUNTERS];
