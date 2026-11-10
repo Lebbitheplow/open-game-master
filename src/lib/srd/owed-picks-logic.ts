@@ -17,7 +17,7 @@
 import type { CharacterSheet, Proficiencies, SheetFeature } from "@/lib/schemas/sheet";
 import { featChoice, keyedFeatChoices, withFeatChoice } from "@/lib/schemas/sheet";
 import type { FeatChoices } from "@/lib/srd/feat-grants";
-import { featPicksOwed } from "@/lib/srd/feat-grants";
+import { applyFeatGrants, featPicksOwed } from "@/lib/srd/feat-grants";
 import {
   chosenFightingStyles,
   fightingStyleChoices,
@@ -26,7 +26,7 @@ import {
   newStyleFits,
   FIGHTING_STYLES,
 } from "@/lib/srd/feature-effects";
-import { classFeaturesFor, populateFeaturesForClasses } from "@/lib/srd/features";
+import { classFeaturesFor, isThievesTools, populateFeaturesForClasses, THIEVES_TOOLS } from "@/lib/srd/features";
 import { classListFor } from "@/lib/srd/multiclass";
 import {
   findOptionByFeatureName,
@@ -324,4 +324,40 @@ export function applyOwedPicks(sheet: OwedSheet, request: OwedPicksRequest, cont
     made.push(...grants.map((grant) => grant.name));
   }
   return { ok: true, features, made, ...(proficiencies ? { proficiencies } : {}), ...(featChoices ? { featChoices } : {}) };
+}
+
+// What this level's expertise may double: every skill held once the level
+// is taken (SRD 5.1, Bard and Rogue: "choose two of your skill
+// proficiencies"), as src/lib/srd/level-up.ts and the seat's picks
+// (src/lib/characters/seat-picks.ts) apply the training before they judge
+// the picks. A Lore bard at 3rd gains its college's three skills and
+// its expertise at once; a rogue taken now, its one skill and thieves'
+// tools. Read from the sheet alone, neither could be doubled at the level
+// that gave it.
+export function expertiseOptionsAfter(input: {
+  sheet: Pick<CharacterSheet, "proficiencies">;
+  classesAfter: Array<{ id: string; level: number }>;
+  // The skill and tools a class taken with this level brings.
+  newClass?: { skill?: string; tools: string[] };
+  // The feats taken with this level, the subclass training arriving with
+  // it, and the picks made for both (keyed by name, as the request sends them).
+  feats: Array<{ name: string; desc: string }>;
+  training: SubclassGrant[];
+  choices: FeatChoices;
+}): string[] {
+  const held = input.sheet.proficiencies;
+  const skill = (input.newClass?.skill ?? "").trim().toLowerCase();
+  let proficiencies = {
+    ...held,
+    skills: skill && !held.skills.includes(skill) ? [...held.skills, skill] : held.skills,
+    tools: [...held.tools, ...(input.newClass?.tools ?? []).filter((tool) => !held.tools.some((entry) => textKey(entry) === textKey(tool)))],
+  };
+  proficiencies = applyFeatGrants({ proficiencies, feats: input.feats, choices: input.choices, strict: false }).proficiencies;
+  proficiencies = applySubclassTraining({ proficiencies, grants: input.training, choices: input.choices, strict: false }).proficiencies;
+  const expert = new Set((proficiencies.expertise ?? []).map(textKey));
+  const tool =
+    input.classesAfter.some((entry) => textKey(entry.id) === "rogue") && proficiencies.tools.some(isThievesTools) && !(held.expertise ?? []).some(isThievesTools)
+      ? [THIEVES_TOOLS]
+      : [];
+  return [...new Set(proficiencies.skills.map((entry) => entry.toLowerCase()))].filter((entry) => !expert.has(textKey(entry))).concat(tool);
 }

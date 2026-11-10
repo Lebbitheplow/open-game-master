@@ -66,7 +66,6 @@ import {
   abilitiesAfterLevel,
   casterPreview,
   expertiseOpen,
-  expertiseOptionsAfter,
   freeCantripsIn,
   levelUpHpPreview,
   thirdCasterPickRefusal,
@@ -82,7 +81,7 @@ import { useFeatDescs } from "@/app/characters/builder/useFeatDescs";
 import { authoredFeatDesc, featAbilityIncrease } from "@/lib/srd/feat-effects";
 import { featGrantSpec, featOwed, type FeatChoices, type FeatPicks } from "@/lib/srd/feat-grants";
 import { grantsForHeldTraining, subclassGrants } from "@/lib/srd/subclass-training";
-import { sheetSpellbook } from "@/lib/srd/owed-picks-logic";
+import { expertiseOptionsAfter, sheetSpellbook } from "@/lib/srd/owed-picks-logic";
 import { subclassChoiceSlots } from "@/lib/srd/subclass-choice-picks";
 import { parseSubclassChoicePick, subclassChoicePickName } from "@/lib/content/subclass-choices";
 import { SubclassChoicePick } from "@/app/campaigns/[campaignId]/SubclassChoicePick";
