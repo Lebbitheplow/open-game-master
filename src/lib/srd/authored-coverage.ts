@@ -159,6 +159,7 @@ export const AUTHORED_READERS: Record<string, { file: string; call: string }> = 
   rapid_strike: { file: "src/lib/dm/pc-attack-plan.ts", call: "rapidStrike(" },
   oa_each_turn: { file: "src/lib/dm/opportunity.ts", call: "opportunityReactionKey(" },
   stand_cost: { file: "src/lib/battlemap/view.ts", call: "standUpTiles(" },
+  attack_turn_speed: { file: "src/lib/battlemap/view.ts", call: "attackTurnSpeed(" },
   mote: { file: "src/lib/dm/resource-tools.ts", call: "holdsMote(" },
   swarm_prone: { file: "src/lib/dm/authored-spend-more.ts", call: "swarmKnocksProne(" },
   // The last round's (src/lib/dm/arcane-ward.ts, summon-cast.ts, summon-defender.ts).

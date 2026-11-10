@@ -273,6 +273,7 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
   },
   "bard::Blade Flourish": {
     subclass: "College of Swords",
+    effects: [{ kind: "attack_turn_speed", feet: 10 }],
     spends: [
       // "when you hit a creature with a weapon attack" (XGtE): after the hit.
       // Master's Flourish (14): with no die left, a d6 pays.

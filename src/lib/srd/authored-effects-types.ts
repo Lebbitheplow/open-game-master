@@ -237,6 +237,9 @@ export type AuthoredEffect = Base &
     | { kind: "oa_each_turn" }
     // Standing up from prone costs this many feet of movement (Tipsy Sway).
     | { kind: "stand_cost"; feet: number }
+    // Walking speed added on a turn the holder took the Attack action, to
+    // the turn's end (Blade Flourish: src/lib/battlemap/view.ts pcMoveBudget).
+    | { kind: "attack_turn_speed"; feet: number }
     // The holder's Bardic Inspiration die carries a mote that bursts when the
     // die is spent (Mote of Potential).
     | { kind: "mote" }

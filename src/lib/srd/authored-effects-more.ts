@@ -250,6 +250,13 @@ export function standUpTiles(sheet: AuthoredSheet, speedTiles: number): number {
   return found ? Math.max(0, Math.round(found.effect.feet / 5)) : Math.floor(speedTiles / 2);
 }
 
+// The feet a turn with the Attack action adds to the holder's walking speed
+// (Blade Flourish: "Whenever you take the Attack action on your turn, your
+// walking speed increases by 10 feet until the end of the turn").
+export function attackTurnSpeed(sheet: AuthoredSheet): number {
+  return activeAuthored(sheet, "attack_turn_speed").reduce((sum, found) => sum + found.effect.feet, 0);
+}
+
 export function holdsMote(sheet: AuthoredSheet): string | null {
   return activeAuthored(sheet, "mote")[0]?.held.feature ?? null;
 }

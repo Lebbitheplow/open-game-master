@@ -54,7 +54,7 @@ import { characterHealthWord, characterStageRows, enemyStageRows } from "@/lib/b
 import { ownSquareFacts, targetEdges, targetSight } from "@/lib/battlemap/view-tactics";
 import { lightSourcesWithZones, lightsWithZones, sightTerrainFor, withZoneSteps } from "@/lib/dm/zone-rules";
 import { viewZones } from "@/lib/dm/zone-view";
-import { standUpTiles } from "@/lib/srd/authored-effects-more";
+import { attackTurnSpeed, standUpTiles } from "@/lib/srd/authored-effects-more";
 import { addSilenceChips, movesProne, viewerMoves } from "@/lib/battlemap/view-moves";
 import { undoableMove, undoOffer } from "@/lib/battlemap/move-undo";
 import type { AuraTone, PlayerMapView } from "@/lib/battlemap/view-types";
@@ -145,8 +145,12 @@ export function pcMoveBudget(
     : flying ?? speedFor(sheet, {
         encumbrance: campaign?.gameSettings.variantRules.encumbrance ?? false,
       });
+  // A turn the character took the Attack action on walks farther (Blade
+  // Flourish's 10 feet): their own walk, not a mount's or a flight.
+  const ownTurn = budgetApplies(encounter.turnBudget, sheet.id, encounter.round) ? encounter.turnBudget : null;
+  const attackTurn = !mount && flying === null && ownTurn && ownTurn.attacksMade > 0 ? attackTurnSpeed(sheet) : 0;
   // An active effect on their speed (set_effect) moves the base first.
-  const moved = Math.max(0, applyField(base, resolveField(listEffects(campaignId, { kind: "character", id: sheet.id }), "speed")));
+  const moved = Math.max(0, applyField(base, resolveField(listEffects(campaignId, { kind: "character", id: sheet.id }), "speed")) + attackTurn);
   const speed = exhaustionSpeed(sheet.exhaustion ?? 0, effectiveSpeed(sheet.conditions, moved));
   // A scene has no rounds, so there is no per-round budget to spend: the
   // party walks the board while the DM describes it.

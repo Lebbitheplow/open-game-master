@@ -162,10 +162,18 @@ export function probes(rig, shared) {
       assert.match(JSON.stringify(grant.spec), /scimitar/i);
     },
     "flourish-speed": async () => {
-      await struck(swords());
-      const from = kit.token(swords().id);
-      const out = await call("move_token", { characterId: swords().id, x: from.x, y: from.y + 8 });
-      assert.equal(out.ok, true, `40 feet on a turn the bard took the Attack action: ${String(out.error).slice(0, 160)}`);
+      // The speed the board and the move route both read (view.ts pcMoveBudget).
+      const { pcMoveBudget } = await import("../../src/lib/battlemap/view.ts");
+      const { getBattleMapForEncounter, getTokenByRef } = await import("../../src/lib/db/battle-maps.ts");
+      const speed = () => {
+        const encounter = world.encounter();
+        const map = getBattleMapForEncounter(encounter.id);
+        return pcMoveBudget(world.campaignId, encounter, map, sheet(swords()), getTokenByRef(map.id, swords().id)).speed;
+      };
+      await stage(swords());
+      const walking = speed();
+      await struck(swords(), "Scimitar");
+      assert.equal(speed(), walking + 10, `10 feet more on a turn the bard took the Attack action (${walking} before)`);
     },
     "flourish-once": async () => {
       const [enemy] = await struck(swords(), "Scimitar");
@@ -333,7 +341,6 @@ export function probes(rig, shared) {
 
   const KNOWN = {
     "combat-damage": { severity: "medium", kind: "rule-missing", where: `${DATA} bard::Combat Inspiration (one reaction, ac_vs_hit)`, note: "", fix: "Let the inspired creature add the die to a damage roll it just made." },
-    "flourish-speed": { severity: "low", kind: "rule-missing", where: `${DATA} bard::Blade Flourish (the spend only)`, note: "", fix: "Add 10 feet to the bard's speed on a turn they take the Attack action." },
     unfailing: { severity: "low", kind: "rule-missing", where: `${DATA} bard::Unfailing Inspiration (narrated)`, note: "", fix: "Keep the inspiration of an Eloquence bard when the roll it rode still fails." },
     "tales-door": { severity: "medium", kind: "rule-missing", where: `${DATA} bard::Tales from Beyond (narrated)`, note: "", fix: "A spend that rolls the Spirit Tales table and plays the tale." },
     session: { severity: "low", kind: "rule-missing", where: `${RES} sub_spirit_session (a counter with guidance)`, note: "", fix: "Teach the chosen divination or necromancy spell until the next long rest." },
