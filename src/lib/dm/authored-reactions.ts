@@ -12,6 +12,7 @@
 // reaction was spent and the effect was "resolved from its own text".
 
 import { spendWrath, wrathApplies, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
+import { feetFromOwnZone } from "@/lib/dm/zone-reach";
 import { maximumOf } from "@/lib/dm/heal-spell";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { getEnemy, patchEnemyConditions, type EncounterEnemy } from "@/lib/db/encounters";
@@ -414,6 +415,12 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       }
       if (does.rangeFt && encounter && target.id !== ctx.sheet.id && !withinFeet(encounter.id, ctx.sheet.id, target.id, does.rangeFt)) {
         return { error: `${target.name} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
+      }
+      if (does.nearZone && encounter) {
+        const feet = feetFromOwnZone(encounter, ctx.sheet.id, does.nearZone.spell, target.id);
+        if (feet !== null && feet > does.nearZone.feet) {
+          return { error: `${target.name} stands ${feet} feet from ${ctx.sheet.name}'s ${does.nearZone.spell}, beyond the ${does.nearZone.feet} feet ${reaction.name} reaches. Nothing was spent.`, refused: "rules" };
+        }
       }
       const hit = lastHitOn(ctx, target, label);
       if ("error" in hit) return hit;

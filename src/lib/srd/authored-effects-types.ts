@@ -527,7 +527,10 @@ export type ReactionDoes =
   // "ward": the holder's Arcane Ward takes what it can (Projected Ward).
   // `reflect`: with that feature held, the damage prevented strikes the
   // attacker (Spirit Shield with Vengeful Ancestors).
-  | { kind: "reduce"; amount: Formula | "half" | "slot5" | "psionic_int" | "ward"; who: "self" | "ally" | "either"; rangeFt?: number; types?: string[]; reflect?: { feature: string; type: string } }
+  // `nearZone`: the creature it covers, the holder too, must stand within
+  // `feet` of the holder's zone of that spell (Guardian Coil's tentacle:
+  // src/lib/dm/zone-reach.ts), in place of a reach from the holder.
+  | { kind: "reduce"; amount: Formula | "half" | "slot5" | "psionic_int" | "ward"; who: "self" | "ally" | "either"; rangeFt?: number; nearZone?: { spell: string; feet: number }; types?: string[]; reflect?: { feature: string; type: string } }
   // A bonus to AC (the Bardic Inspiration die, or the holder's Charisma modifier,
   // at least 1) against the last hit. `rangeFt`: it may cover an ally that near.
   // `strikeOnMiss`: a miss it causes lets the holder attack the attacker.

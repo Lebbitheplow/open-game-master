@@ -313,7 +313,9 @@ export const AUTHORED_DATA_B2: Record<string, AuthoredEntry> = {
       {
         name: "Guardian Coil",
         gate: { condition: "tentacle of the deep" },
-        does: { kind: "reduce", amount: [[6, "1d8"], [10, "2d8"]], who: "either", rangeFt: 30 },
+        // "When you or a creature you can see takes damage while within 10
+        // feet of the tentacle": measured from the tentacle's zone.
+        does: { kind: "reduce", amount: [[6, "1d8"], [10, "2d8"]], who: "either", nearZone: { spell: "tentacle of the deeps", feet: 10 } },
       },
     ],
   },

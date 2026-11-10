@@ -300,7 +300,12 @@ export function probes(rig, shared) {
       const who = W("The Fathomless", 6);
       const [enemy] = await stage(who, { others: [friend()], first: who });
       assert.equal((await spend(who, "Tentacle of the Deeps")).ok, true);
+      // The tentacle's strike sets it on the board beside the foe.
+      kit.freshTurn();
+      const lash = await kit.swing(who.id, enemy.id, [15, 3], { weapon: "Tentacle of the Deeps" });
+      assert.equal(lash.ok, true, lash.error);
       const zone = (kit.map()?.spellZones ?? []).find((entry) => /tentacle/i.test(entry.spell));
+      assert.ok(zone, "the tentacle stands on the board");
       // The friend stands 25 feet from the warlock and well away from the tentacle.
       kit.place(friend().id, 0, 5);
       kit.place(enemy.id, 0, 6);
@@ -308,7 +313,7 @@ export function probes(rig, shared) {
       kit.freshTurn();
       await rig.table.strike(enemy, friend(), [9, 4]);
       const out = await react(who, "Guardian Coil", { targetCharacterId: friend().id }, [5]);
-      assert.equal(out.ok, false, `the tentacle (${zone ? `${zone.x},${zone.y}` : "no zone"}) is far from the friend at 0,5, and the coil reduced the blow`);
+      assert.equal(out.ok, false, `the tentacle (${zone.origin.x},${zone.origin.y}) is far from the friend at 0,5, and the coil reduced the blow`);
     },
     "coil-dice": async () => {
       for (const [level, faces, cut] of [[6, [5], 5], [10, [3, 3], 6]]) {
@@ -544,7 +549,6 @@ export function probes(rig, shared) {
   const KNOWN = {
     "thought-reflect": { severity: "medium", kind: "rule-missing", where: `${DATA} warlock::Thought Shield (note: "the GM applies it")`, note: "", fix: "Deal the psychic damage the warlock took back to its source." },
     "resilience-choice": { severity: "low", kind: "rule-wrong", where: "src/lib/dm/authored-turns.ts authoredRestTempHp (the first five rested, in order)", note: "", fix: "Give it to up to five creatures the warlock names, or all who rested when five or fewer." },
-    "coil-near": { severity: "medium", kind: "rule-wrong", where: `${DATA} warlock::Guardian Coil (rangeFt 30 from the warlock, not 10 feet from the tentacle)`, note: "", fix: "Measure the coil's reach from the tentacle's zone." },
     plunge: { severity: "low", kind: "rule-missing", where: `${RES} sub_fathomless_plunge (a counter and nothing else)`, note: "", fix: "Move the warlock and up to five willing creatures, or write the ruling." },
     "dread-fright": { severity: "medium", kind: "rule-missing", where: `${RES} sub_form_of_dread (fx buff and temporary hit points only)`, note: "", fix: "Once a turn, on a hit in Form of Dread, roll the creature's Wisdom save against frightened." },
     "grave-die": { severity: "low", kind: "rule-missing", where: `${DATA} warlock::Grave Touched (narrated)`, note: "", fix: "Roll one more damage die once a turn in Form of Dread." },
