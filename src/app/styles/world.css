@@ -1261,7 +1261,27 @@ html[data-theme="light"] .ts-below .ts-ghost:hover { background: rgba(255, 252, 
   opacity: 1;
   transform: scale(1.286);
   box-shadow: 0 0 0 3px rgba(10, 8, 23, 0.8), 0 0 0 4px #f4e0a6, 0 0 24px rgba(212, 171, 58, 0.6);
-  animation: cine-turn-take var(--dur-beat) var(--ease-spring) backwards, cine-turn-halo 2.4s ease-in-out var(--dur-beat) infinite;
+  animation: cine-turn-take var(--dur-beat) var(--ease-spring) backwards;
+}
+/* The halo breathes on a light of its own behind the face, by opacity: as
+   keyframes on the face's own shadow it was repainted on the main thread
+   every frame for as long as a fight was on (the largest of the table's
+   endless animations at rest). The face keeps its rings and its still glow. */
+.cine-ribbon-seat[data-current="true"]::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 7px;
+  left: 50%;
+  width: 42px;
+  height: 42px;
+  margin-left: -21px;
+  border-radius: 9999px;
+  transform: scale(1.286);
+  box-shadow: 0 0 36px rgba(212, 171, 58, 0.85);
+  opacity: 0;
+  pointer-events: none;
+  animation: cine-turn-halo 2.4s ease-in-out var(--dur-beat) infinite;
 }
 .cine-ribbon-seat[data-current="true"] .cine-ribbon-face:hover { transform: scale(1.286) translateY(-2px); }
 .cine-ribbon-seat[data-done="true"] .cine-ribbon-face { opacity: 0.55; filter: saturate(0.45) brightness(0.85); }
@@ -1276,8 +1296,8 @@ html[data-theme="light"] .ts-below .ts-ghost:hover { background: rgba(255, 252, 
 .cine-ribbon-name { font-size: 10.5px; color: var(--cine-ink-soft); white-space: nowrap; max-width: 64px; overflow: hidden; text-overflow: ellipsis; }
 .cine-ribbon-seat[data-current="true"] .cine-ribbon-name { color: var(--cine-gold-pale); }
 @keyframes cine-turn-halo {
-  0%, 100% { box-shadow: 0 0 0 3px rgba(10, 8, 23, 0.8), 0 0 0 4px #f4e0a6, 0 0 24px rgba(212, 171, 58, 0.6); }
-  50% { box-shadow: 0 0 0 3px rgba(10, 8, 23, 0.8), 0 0 0 4px #f4e0a6, 0 0 36px rgba(212, 171, 58, 0.85); }
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
 }
 
 /* ---- the party down the left (wide screens) ---- */
@@ -1803,13 +1823,15 @@ html[data-theme="light"] :is(.text-amber-300\/70, .text-amber-300\/80, .text-amb
 @media (prefers-reduced-motion: reduce) {
   .cine-art, .cine-art-in { animation: none; }
   .cine-party-card, .cine-tabletop { animation: none; }
-  .cine-ribbon-seat[data-current="true"] .cine-ribbon-face { animation: none; }
+  .cine-ribbon-seat[data-current="true"] .cine-ribbon-face,
+  .cine-ribbon-seat[data-current="true"]::before { animation: none; }
   .cine-roll, .cine-quest, .cine-quest[data-leaving] { animation: none; }
   .cine-ribbon-face, .cine-party-card, .cine-party-fill, .cine-quest, .cine-order-row { transition: none; }
 }
 html[data-effects="low"] .cine-art,
 html[data-effects="low"] .cine-art-in { animation: none; }
-html[data-effects="low"] .cine-ribbon-seat[data-current="true"] .cine-ribbon-face { animation: none; }
+html[data-effects="low"] .cine-ribbon-seat[data-current="true"] .cine-ribbon-face,
+html[data-effects="low"] .cine-ribbon-seat[data-current="true"]::before { animation: none; }
 
 /* ---- the day theme: the painting stays night at the edges, the prose
    columns go opaque parchment so ink stays ink ---- */
