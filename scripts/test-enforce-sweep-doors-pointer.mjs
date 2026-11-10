@@ -75,6 +75,7 @@ const SKIP = {
   "reaction-attack:Opportunist": "answers a creature within 5 feet that another creature just hit, on record: the bare staging has no such hit (the trigger is the spends sweep's to stage)",
   "reaction-attack:Inspiring Surge": "answers the banneret's Action Surge this turn, on record: the bare staging has none (the trigger is the spends sweep's to stage)",
   "reaction-attack:Slayer's Counter": "answers a save the creature under Slayer's Prey forced on the holder, on record: the bare staging has neither (the trigger is the spends sweep's to stage)",
+  "reaction-attack:Voice of Authority": "answers a spell of 1st level or higher the holder's cleric cast at them, on record (last-save.ts recordCast): the bare staging has no such spell (the trigger is the spends sweep's to stage)",
 };
 
 const HELD_AS_OWN = {
@@ -84,9 +85,9 @@ const HELD_AS_OWN = {
 };
 const KNOWN = {
   ...Object.fromEntries(
-    // Voice of Authority and Hold the Line now go on a held turn as on any other
-    // hero's (authored-reactions.ts asks turnHeldForEnemies); the three in SKIP
-    // wait for their trigger. The entry stays for a reaction that regresses.
+    // Hold the Line now goes on a held turn as on any other hero's
+    // (authored-reactions.ts asks turnHeldForEnemies); the four in SKIP wait
+    // for their trigger. The entry stays for a reaction that regresses.
     ([]).flatMap((name) => ["console", "ai"].map((door) => [`reaction-attack:${name}|${door}`, HELD_AS_OWN])),
   ),
 };
