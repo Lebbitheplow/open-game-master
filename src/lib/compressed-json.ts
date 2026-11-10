@@ -1,7 +1,7 @@
 import zlib from "node:zlib";
 
 // A route's JSON answer, packed when it is big and the caller takes it.
-// `next start` gzips its pages and static files but not a route handler's
+// `next start` gzipped its pages and static files but not a route handler's
 // answer, so a 4,000-entry world went over the wire as 12.7 MB of JSON
 // (audit WF-24, docs/worldforge-large-worlds.md). Packed it is about 2 MB.
 // A small answer is sent as Response.json would send it.
@@ -11,6 +11,11 @@ import zlib from "node:zlib";
 // than the machine itself. Both run synchronously on purpose: zlib's own
 // pool, shared with the server's other work, took 3 to 4 seconds for the
 // same answer in the running server (measured in the docs above).
+//
+// Next gzips every route's JSON now (src/lib/json-compression.ts), through
+// that pool, which suits answers of kilobytes. An answer packed here already
+// says how it is encoded, and Next leaves an encoded answer alone, so the
+// one measured in megabytes still goes out the fast way.
 
 const FROM_BYTES = 64 * 1024;
 
