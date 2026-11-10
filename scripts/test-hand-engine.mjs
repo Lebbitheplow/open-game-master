@@ -527,7 +527,11 @@ test("a versatile weapon offers two hands only when no shield is worn", () => {
 // that can be thrown offers two hands in melee.
 test("a thrown versatile weapon offers two hands in melee", () => {
   const spear = byId(deriveHand(sheet({ equipment: [item("Spear", { equipped: true })] }), mine()), "attack:spear");
-  assert.equal(spear.range, "5 ft / 20 ft");
+  // Both ranges (SRD 5.1, Range: "The smaller number is the normal range,
+  // and the larger number is the long range"): pc_attack takes a spear
+  // thrown 60 feet, at disadvantage, and the card said 20.
+  assert.equal(spear.range, "5 ft / 20/60 ft");
+  assert.deepEqual(spear.shot, { reachFt: 5, normalFt: 20, longFt: 60, thrown: true });
   assert.match(spear.rules, /Versatile: say two hands in melee for the bigger die\./);
   const sword = byId(deriveHand(sheet({ equipment: [item("Longsword", { equipped: true })] }), mine()), "attack:longsword");
   assert.doesNotMatch(sword.rules, /in melee/);

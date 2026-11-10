@@ -172,7 +172,9 @@ export function judge({ state, card, played, variant, heroId, riderCards = [] })
     } else {
       const flat = flatOf(attackRoll);
       const otherDice = attackRoll.terms.filter((term) => term.kind === "dice" && term.sides !== 20).map((term) => `${term.sign < 0 ? "-" : "+"}${term.count}d${term.sides}`);
-      out.push(flat === card.toHit && !otherDice.length
+      // The dice the card names beside its bonus (toHitDice, "+1d4" while
+      // blessed) must be exactly the ones rolled: a card with none names none.
+      out.push(flat === card.toHit && sameTerms(termsOf(otherDice.join("")), termsOf(card.toHitDice ?? ""))
         ? { prop: "P3", ok: true }
         : { prop: "P3", ok: false, msg: `to hit: the card shows ${card.toHit >= 0 ? "+" : ""}${card.toHit}, the engine rolled ${attackRoll.expression}` });
       const row = (played.preview ?? []).find((entry) => entry.key === "To hit");

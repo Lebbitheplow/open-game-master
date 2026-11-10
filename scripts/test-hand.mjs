@@ -128,7 +128,8 @@ test("a magic weapon adds its bonus, a finesse weapon takes the better modifier"
 test("a bow reads its range and its quiver; an empty quiver only refuses when the table tracks ammunition", () => {
   const stocked = deriveHand(sheet({ equipment: [item("Longbow"), item("Arrows", 20)] }));
   const bow = byId(stocked, "attack:longbow");
-  assert.equal(bow.range, "150 ft");
+  // Both ranges (SRD 5.1, Range): pc_attack shoots a longbow to 600 feet, at disadvantage past 150.
+  assert.equal(bow.range, "150/600 ft");
   assert.match(bow.resource, /20$/);
   assert.equal(bow.melee, false);
   const dry = deriveHand(sheet({ equipment: [item("Longbow")] }));

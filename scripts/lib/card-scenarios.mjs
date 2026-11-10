@@ -172,7 +172,8 @@ export const SCENARIOS = [
   S("basic-disengage", "basic", "fighter", "Disengage"),
   S("basic-help", "basic", "fighter", "Help", { aim: "ally" }),
   S("basic-hide", "basic", "rogue", "Hide", { place: "ranged" }),
-  S("basic-grapple", "basic", "fighter", "Grapple", { aim: "enemy" }),
+  // A grapple takes a free hand (SRD 5.1, Grappling): the shield is off for it.
+  S("basic-grapple", "basic", "fighter", "Grapple", { aim: "enemy", equipped: ["Longsword"] }),
   S("basic-shove", "basic", "fighter", "Shove", { aim: "enemy" }),
   S("basic-search", "basic", "rogue", "Search", { place: "ranged" }),
   S("basic-stand-up", "basic", "fighter", "Stand up", { conditions: ["prone"] }),
