@@ -14,7 +14,9 @@ import { spellPoolKeyFor } from "@/lib/classes";
 import type { AbilityScores, AsiChoice, CharacterSheet } from "@/lib/schemas/sheet";
 import { findClass, findRace } from "@/lib/srd";
 import { applyFeatIncrease } from "@/lib/srd/feat-effects";
-import { expertiseSlotsFor } from "@/lib/srd/features";
+import { expertiseSlotsFor, isThievesTools, THIEVES_TOOLS } from "@/lib/srd/features";
+import { applyFeatGrants, type FeatChoices } from "@/lib/srd/feat-grants";
+import { applySubclassTraining, type SubclassGrant } from "@/lib/srd/subclass-training";
 import { freeCantripCount } from "@/lib/srd/free-cantrips";
 import type { RacialCantripChoices } from "@/lib/srd/racial-cantrips";
 import {
@@ -155,6 +157,41 @@ export function expertiseOpen(
 ): number {
   const slots = classesAfter.reduce((sum, entry) => sum + expertiseSlotsFor(entry.id, entry.level), 0);
   return Math.max(0, slots - (sheet.proficiencies.expertise ?? []).length);
+}
+
+// What this level's expertise may double: every skill held once the level
+// is taken (SRD 5.1, Bard and Rogue: "choose two of your skill
+// proficiencies"), as src/lib/srd/level-up.ts applies the level before it
+// judges the picks. A Lore bard at 3rd gains its college's three skills and
+// its expertise at once; a rogue taken now, its one skill and thieves'
+// tools. Read from the sheet alone, neither could be doubled at the level
+// that gave it.
+export function expertiseOptionsAfter(input: {
+  sheet: Pick<CharacterSheet, "proficiencies">;
+  classesAfter: ClassRow[];
+  // The skill and tools a class taken with this level brings.
+  newClass?: { skill?: string; tools: string[] };
+  // The feats taken with this level, the subclass training arriving with
+  // it, and the picks made for both (keyed by name, as the request sends them).
+  feats: Array<{ name: string; desc: string }>;
+  training: SubclassGrant[];
+  choices: FeatChoices;
+}): string[] {
+  const held = input.sheet.proficiencies;
+  const skill = (input.newClass?.skill ?? "").trim().toLowerCase();
+  let proficiencies = {
+    ...held,
+    skills: skill && !held.skills.includes(skill) ? [...held.skills, skill] : held.skills,
+    tools: [...held.tools, ...(input.newClass?.tools ?? []).filter((tool) => !held.tools.some((entry) => textKey(entry) === textKey(tool)))],
+  };
+  proficiencies = applyFeatGrants({ proficiencies, feats: input.feats, choices: input.choices, strict: false }).proficiencies;
+  proficiencies = applySubclassTraining({ proficiencies, grants: input.training, choices: input.choices, strict: false }).proficiencies;
+  const expert = new Set((proficiencies.expertise ?? []).map(textKey));
+  const tool =
+    input.classesAfter.some((entry) => textKey(entry.id) === "rogue") && proficiencies.tools.some(isThievesTools) && !(held.expertise ?? []).some(isThievesTools)
+      ? [THIEVES_TOOLS]
+      : [];
+  return [...new Set(proficiencies.skills.map((entry) => entry.toLowerCase()))].filter((entry) => !expert.has(textKey(entry))).concat(tool);
 }
 
 export type CasterPreview = {
