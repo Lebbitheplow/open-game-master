@@ -2885,7 +2885,7 @@
     "lib/srd/item-charge-rules.ts#str-eq": [["key",1,"a charge count, by its field and type, and what it regains"]],
     "lib/battlemap/hand-items.ts#str-key": [["key",1,"ability ids, to the word a check names"]],
     "lib/dm/counter-saves.ts#toUpperCase": [["display", 1, "a save's ability shown in capitals"], ["display", 1, "a save's ability shown in capitals"]],
-    "lib/srd/counter-casts.ts#str-list": [["key", 1, "ODM's own ids and words (engine vocabulary)"], ["key", 2, "ODM's own ids and words (engine vocabulary)"]],
+    "lib/srd/counter-casts.ts#str-list": [["key", 1, "ODM's own ids and words (engine vocabulary)"], ["key", 2, "ODM's own ids and words (engine vocabulary)"], ["key", 1, "the feature sources (race, background) that never hold a subclass counter: ODM's own ids"]],
     "lib/dm/counter-saves.ts#str-list": [["key", 1, "ODM's own ids and words (engine vocabulary)"]],
     "lib/battlemap/hand-counters.ts#str-eq": [["key", 1, "ODM's own ids and words (engine vocabulary)"]],
     "lib/db/turn-journal.ts#re-word": [["key",4,"table and column names and SQL column types (the schema's own vocabulary)"]],

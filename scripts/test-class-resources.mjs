@@ -323,4 +323,15 @@ test("the costs the authored summaries got wrong are the books'", () => {
   }
 });
 
+// A subclass counter's free cast is held by the subclass feature, never by a
+// species trait of the same name: a changeling's Shapechanger alters their
+// looks and casts no polymorph (src/lib/srd/counter-casts.ts).
+const { counterCastsHeld } = await import("../src/lib/srd/counter-casts.ts");
+test("a species trait named like a subclass counter casts nothing", () => {
+  const changeling = [{ name: "Shapechanger (alter your appearance as an action, no action economy cost to revert)", source: "race" }];
+  assert.deepEqual(counterCastsHeld(changeling), []);
+  const transmuter = [{ name: "Shapechanger", source: "srd" }];
+  assert.deepEqual(counterCastsHeld(transmuter).map((entry) => entry.spell), ["Polymorph"]);
+});
+
 console.log(`test-class-resources: ${passed} tests passed`);

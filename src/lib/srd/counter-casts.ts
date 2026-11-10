@@ -53,10 +53,17 @@ export function counterCastOf(counter: string): CounterCast | null {
 }
 
 // The spells a sheet's features cast through these counters.
-export function counterCastsHeld(features: ReadonlyArray<{ name: string }>): Array<{ row: CounterCast; spell: string }> {
+// Every row is a subclass counter, so a species trait or a background feature
+// of the same name never holds one: a changeling's "Shapechanger (alter your
+// appearance...)" is not the Transmuter's Shapechanger, and dealt them a
+// polymorph card that cast_buff refused.
+const NOT_A_SUBCLASS = new Set(["race", "background"]);
+
+export function counterCastsHeld(features: ReadonlyArray<{ name: string; source?: string }>): Array<{ row: CounterCast; spell: string }> {
   const out: Array<{ row: CounterCast; spell: string }> = [];
+  const held = features.filter((feature) => !NOT_A_SUBCLASS.has(feature.source ?? ""));
   for (const row of COUNTER_CASTS) {
-    const holding = features.filter((feature) => isNamed(feature.name, ...row.features));
+    const holding = held.filter((feature) => isNamed(feature.name, ...row.features));
     if (!holding.length) continue;
     if (row.byChoice) {
       // "Lunar Embodiment (Full Moon)": the phase chosen picks the spell.

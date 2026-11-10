@@ -245,7 +245,7 @@ export const TAIL_CONDITION_EFFECTS: ConditionEffectRow[] = [
   },
   {
     id: "elixir_resilience",
-    match: ["elixir of resilience (+1 AC)"],
+    match: ["elixir of resilience (+1 ac)"],
     summary: "Elixir of Resilience: +1 AC for 10 minutes.",
     acBonus: 1,
   },
