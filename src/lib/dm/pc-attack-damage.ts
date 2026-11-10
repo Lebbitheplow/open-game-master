@@ -51,6 +51,8 @@ export function foldDamageRiders(input: {
   // The marking conditions (Hunter's Mark, Hex) whose die rides a hit on
   // this target (src/lib/dm/attack-marks.ts). Absent: every one does.
   marked?: Set<string>;
+  // Surprised, in the first round (attack-damage-riders.ts).
+  surprised?: boolean;
 }) {
   const { campaignId, sheet } = input;
   let profile = input.profile;

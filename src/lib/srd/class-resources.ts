@@ -723,6 +723,10 @@ type SubclassResourceRow = {
   displayName: string;
   match: string[];
   uses: number;
+  // The character level the counter starts at (Celestial Revelation, 3rd).
+  minLevel?: number;
+  // Used only in a fight (Feline Agility's doubled speed for a turn).
+  fightOnly?: boolean;
   ability: "str" | "dex" | "con" | "int" | "wis" | "cha" | null;
   // Uses = this multiple of the proficiency bonus (1 for most, 2 for the
   // psionic pools).
@@ -789,6 +793,8 @@ const SUBCLASS_RESOURCE_DEFS: ResourceDef[] = (
   ...(row.options ? { options: true } : {}),
   ...(row.outOfFight ? { outOfFight: true } : {}),
   ...(row.action ? { action: row.action } : {}),
+  ...(row.minLevel ? { minLevel: row.minLevel } : {}),
+  ...(row.fightOnly ? { fightOnly: true } : {}),
   ...(row.fallbackPool ? { fallbackPool: row.fallbackPool } : {}),
   ...(row.replacesAttack ? { replacesAttack: true } : {}),
   ...(row.requires ? { requires: row.requires } : {}),
@@ -1082,6 +1088,13 @@ const withoutUses = (name: string) => name.replace(/\s*\((?:\d+|[a-z]+) uses?\)\
 // class was kept) is matched on its name alone.
 function featureHolds(def: ResourceDef, feature: { name: string; classId?: string; source?: string }): boolean {
   if (def.featOnly && feature.source === "race") {
+    return false;
+  }
+  // A subclass's counter is never a lineage trait's of the same name: a
+  // changeling's "Shapechanger (alter your appearance...)" is not the
+  // Transmuter's Shapechanger, and held as it gave every changeling a free
+  // Polymorph to cast.
+  if (feature.source === "race" && def.id.startsWith("sub_")) {
     return false;
   }
   if (def.grantedBy?.length && feature.classId) {

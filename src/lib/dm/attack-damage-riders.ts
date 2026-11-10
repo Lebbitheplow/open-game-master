@@ -25,6 +25,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { subclassNamed } from "@/lib/srd/subclass-name";
 import { authoredDamageAbility } from "@/lib/srd/authored-effects-more";
 import { CALL_THE_HUNT } from "@/lib/srd/authored-effects-w2-martial";
+import { lineageRiders } from "@/lib/srd/mt-species-traits";
 
 export type FeatureRider = CombatRiders["damageRiders"][number];
 
@@ -47,6 +48,10 @@ export function attackDamageRiders(input: {
   // The marking conditions (Hunter's Mark, Hex) whose die rides a hit on
   // this target (src/lib/dm/attack-marks.ts). Absent: every one does.
   marked?: Set<string>;
+  // The target is surprised and the fight is in its first round (a
+  // bugbear's Surprise Attack, src/lib/srd/mt-species-traits.ts). Absent
+  // (the Hand): the rider is left out.
+  surprised?: boolean;
 }): AttackDamageRiders {
   const { sheet, profile, riders, kind, marked } = input;
   const rageBonus = ragingMeleeBonus(sheet, profile);
@@ -61,7 +66,7 @@ export function attackDamageRiders(input: {
   const featureRiders: FeatureRider[] =
     kind === "spell" || kind === "granted"
       ? []
-      : [...riders.damageRiders, ...hunterRiders(sheet, input.enemy), ...pactRiders(sheet, kind, profile), ...heldConditionRiders(sheet)]
+      : [...riders.damageRiders, ...hunterRiders(sheet, input.enemy), ...pactRiders(sheet, kind, profile), ...heldConditionRiders(sheet), ...lineageRiders(sheet, { surprised: input.surprised })]
           .filter((rider) => {
             if (rider.when === "melee" && profile.ranged) {
               return false;

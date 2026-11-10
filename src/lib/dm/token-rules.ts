@@ -244,6 +244,7 @@ export function walkCharacter(
   const traits = withZoneSteps(
     pcMoveTraits({
       width: map.width,
+      theme: map.theme,
       tokens,
       mover: token,
       sheet,

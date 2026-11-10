@@ -55,6 +55,7 @@ function walkOf(campaign: Campaign, encounter: Encounter | null, sheet: Characte
   const footprintOf = footprintLookup(enemiesById);
   const traits = pcMoveTraits({
     width: map.width,
+    theme: map.theme,
     tokens,
     mover: token,
     sheet,

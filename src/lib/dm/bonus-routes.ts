@@ -53,6 +53,11 @@ export function bonusRouteFor(sheet: CharacterSheet, action: MoveAction, context
   if ((action === "hide" || action === "disengage") && holdsFeature(sheet, "nimble escape")) {
     return { feature: "Nimble Escape", ki: 0 };
   }
+  // Aggressive (a character of the orc lineage): the speed again as a bonus
+  // action, toward a hostile creature they can see (mt-species-board.ts).
+  if (action === "dash" && holdsFeature(sheet, "aggressive")) {
+    return { feature: "Aggressive", ki: 0 };
+  }
   if (action !== "dodge" && holdsFeature(sheet, "adrenaline surge") && usesLeft(sheet, ADRENALINE_SURGE) !== null) {
     return { feature: "Adrenaline Surge", ki: 0, counter: ADRENALINE_SURGE };
   }
@@ -95,7 +100,7 @@ export function noBonusRoute(sheet: CharacterSheet, action: MoveAction): ToolErr
       : action === "hide"
         ? "Cunning Action, Vanish or Nimble Escape"
         : action === "dash"
-          ? "Cunning Action, Step of the Wind or Expeditious Retreat"
+          ? "Cunning Action, Step of the Wind, Aggressive or Expeditious Retreat"
           : "Cunning Action or Step of the Wind";
   return { error: `${sheet.name} has no feature that makes ${action === "dodge" ? "a Dodge" : `a ${action[0].toUpperCase()}${action.slice(1)}`} a bonus action (that takes ${which}). They can take it with their action instead.`, refused: "rules" };
 }

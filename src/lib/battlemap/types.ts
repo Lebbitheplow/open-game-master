@@ -268,7 +268,9 @@ function ownFlyingSpeed(input: Parameters<typeof flyingSpeedOf>[0]): number | nu
     return Number(named[1]);
   }
   const winged = (input.features ?? []).some(
-    (feature) => /\bwings?\b|flying speed/i.test(feature.name) && !MANIFESTED_WINGS.has(feature.name.trim().toLowerCase()),
+    // An aasimar's Celestial Revelation names its Heavenly Wings in its
+    // line; they fly only while that form is held (MANIFESTED_WINGS).
+    (feature) => /\bwings?\b|flying speed/i.test(feature.name) && !MANIFESTED_WINGS.has(feature.name.trim().toLowerCase()) && !/^celestial revelation\b/i.test(feature.name.trim()),
   );
   if (winged || input.wildShaped) {
     return input.walkingFeet ?? 30;
@@ -282,4 +284,5 @@ const MANIFESTED_WINGS = new Map<string, number | null>([
   ["dragon wings", null],
   ["otherworldly wings", 30],
   ["wings unfurled", null],
+  ["celestial revelation: heavenly wings", null],
 ]);

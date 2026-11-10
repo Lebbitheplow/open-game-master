@@ -35,6 +35,7 @@ import { SAMPLE_TRAPS } from "@/lib/srd/trap-specs";
 import { hazardNamesAt, trapAt } from "@/lib/srd/table-hazards";
 import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import { hasItemTag } from "@/lib/srd/item-tags";
+import { breathOf, coldAdapted } from "@/lib/srd/mt-species-traits";
 
 // Traps and environmental hazards used to be pure narration routed through the
 // generic damage_enemy call, so a "dart trap" or a "40-foot fall" dealt
@@ -327,10 +328,23 @@ function resolveHazard(
     const perTarget = targets.map((sheet) => {
       const conMod = computeSheetDerived(sheet).abilityMods.con;
       const survival = suffocationRounds(conMod);
+      // A lineage's own breath (src/lib/srd/mt-species-traits.ts): one that
+      // breathes water never drowns, one whose breath never ends never runs
+      // out of air while it can hold it (awake), and Hold Breath's hour or
+      // quarter hour stands in for the 1 + Constitution modifier minutes.
+      const breath = breathOf(sheet);
+      const spared = args.type === "drowning" && breath.water
+        ? `${breath.water}: breathes water and does not drown`
+        : breath.unending && !sheet.conditions.includes("unconscious") && sheet.currentHp > 0
+          ? `${breath.unending}: holds their breath indefinitely`
+          : null;
+      if (spared) {
+        return { name: sheet.name, immune: spared, dropped: false };
+      }
       if (out <= survival) {
         return {
           name: sheet.name,
-          holdBreathMinutes: breathHoldMinutes(conMod),
+          holdBreathMinutes: breath.holdMinutes ?? breathHoldMinutes(conMod),
           survivalRounds: survival,
           roundsWithoutAir: out,
           roundsLeft: survival - out,
@@ -499,6 +513,12 @@ function exposureShrug(sheet: CharacterSheet, cold: boolean): string | null {
   }
   if (cold && sheet.equipment.some((item) => hasItemTag(item, "cold_weather_gear"))) {
     return "dressed for the cold: unaffected";
+  }
+  // SRD 5.1, Extreme Cold: "creatures naturally adapted to cold climates"
+  // succeed without a roll (a goliath's Mountain Born).
+  const adapted = cold ? coldAdapted(sheet) : null;
+  if (adapted) {
+    return `${adapted}: at home in the cold, unaffected`;
   }
   return null;
 }

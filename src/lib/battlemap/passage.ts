@@ -9,6 +9,7 @@
 // Pure: the caller hands in the tokens, their footprints and their sizes.
 
 import { climbsFreely } from "@/lib/srd/feat-combat";
+import { earthUnderfoot, hasEarthWalk } from "@/lib/srd/mt-species-traits";
 import { footprintIndexes, type Footprint } from "@/lib/battlemap/footprint";
 import { moveTraitsFrom, tileIndex, type BattleToken, type MoveTraits } from "@/lib/battlemap/types";
 import { sizeForRace } from "@/lib/srd";
@@ -85,6 +86,9 @@ export function pcMoveTraits(input: {
   footprintOf: (token: BattleToken) => Footprint;
   enemySize: (refId: string) => string | undefined;
   sideOf?: TokenSide;
+  // What the board was drawn for (BattleMap.theme), for the traits that ask
+  // what the difficult ground is made of (Earth Walk).
+  theme?: string;
 }): MoveTraits {
   const moverSize = sizeForRace(input.sheet.race);
   // Athlete: climbing costs no extra movement (src/lib/srd/feat-combat.ts).
@@ -96,8 +100,12 @@ export function pcMoveTraits(input: {
   const traits = typeof freely === "object" && freely !== null && (worn.swim || worn.climb)
     ? { ...freely, ...(worn.swim ? { swims: true } : {}), ...(worn.climb ? { climbs: true } : {}) }
     : freely;
+  // Earth Walk (earth genasi): difficult ground of earth or stone costs no
+  // extra movement (src/lib/srd/mt-species-traits.ts).
+  const earthen = hasEarthWalk(input.sheet) && earthUnderfoot(input.theme) ? { landStride: true } : {};
   return {
     ...(typeof traits === "object" ? traits : { swims: traits }),
+    ...earthen,
     passable: passableTiles({
       width: input.width,
       tokens: input.tokens,

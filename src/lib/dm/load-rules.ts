@@ -23,6 +23,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { rowName } from "@/lib/srd/item-row";
 import { purseCoins, type Purse } from "@/lib/srd/currency";
+import { carrySize } from "@/lib/srd/mt-species-traits";
 
 type Carrier = Pick<CharacterSheet, "name" | "abilities" | "race" | "gold"> & Partial<Pick<CharacterSheet, "copper">> & Partial<Wearer>;
 
@@ -61,7 +62,7 @@ export function capacityProblem(
   if (!then.overCapacity || then.carriedLb <= now.carriedLb) {
     return null;
   }
-  return { error: `${sheet.name} can carry ${then.capacityLb} lb (Strength x 15) and would be carrying ${then.carriedLb} lb with ${what}. They cannot carry it: give it to someone else, leave something behind, or drag it (the lift tool) at 5 feet. Ask the player which.`, retry: true };
+  return { error: `${sheet.name} can carry ${then.capacityLb} lb (Strength x 15${carrySize("Medium", sheet as Wearer) === "Medium" ? "" : ", doubled by Powerful Build"}) and would be carrying ${then.carriedLb} lb with ${what}. They cannot carry it: give it to someone else, leave something behind, or drag it (the lift tool) at 5 feet. Ask the player which.`, retry: true };
 }
 
 // A character's carrying capacity and push, drag or lift limit, in pounds.
@@ -69,6 +70,6 @@ export function liftLimits(sheet: Carrier & { equipment: CarriedItem[] }): { cap
   // A Belt of Giant Strength's score, or an Ioun Stone of Strength's +2.
   const set = itemAbilityScore("str", Math.floor(sheet.abilities.str || 1), sheet.equipment ?? [], sheet as Wearer);
   const strength = Math.max(1, set);
-  const multiplier = carryMultiplier(sheet.race ? sizeForRace(sheet.race) : undefined);
+  const multiplier = carryMultiplier(carrySize(sheet.race ? sizeForRace(sheet.race) : undefined, sheet as Wearer));
   return { capacityLb: strength * 15 * multiplier, liftLb: strength * 30 * multiplier };
 }

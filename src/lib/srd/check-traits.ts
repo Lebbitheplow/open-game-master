@@ -114,6 +114,11 @@ export function heldCheckTraits(sheet: TraitSheet & { race?: string }): CheckTra
   if (holds("artificer's lore") || race === "rock_gnome") {
     out.push({ roll: "check", skills: ["history"], about: "devices", gives: "double", note: () => "Artificer's Lore: twice the proficiency bonus on History about magic items and devices" });
   }
+  // Kenku: "Expert Forgery (advantage on checks to duplicate writing and
+  // craftwork)", whatever the skill or tool the copy is made with.
+  if (holds("expert forgery")) {
+    out.push({ roll: "check", about: "forgery", gives: "advantage", note: () => "Expert Forgery: advantage on a check to duplicate writing or craftwork" });
+  }
   if (holds("stone camouflage") || race === "deep_gnome" || race === "svirfneblin") {
     out.push({ roll: "check", skills: ["stealth"], about: "rocky_terrain", gives: "advantage", note: () => "Stone Camouflage: advantage on Stealth in rocky terrain" });
   }
