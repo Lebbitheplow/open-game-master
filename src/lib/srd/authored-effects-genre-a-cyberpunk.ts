@@ -6,6 +6,12 @@
 import type { AuthoredEffect, AuthoredEntry } from "@/lib/srd/authored-effects-types";
 import type { GenreRow } from "@/lib/srd/authored-effects-genre";
 
+const counted = (classId: string, feature: string, counter: string, more: Omit<AuthoredEntry, "subclass" | "counter">): GenreRow => ({
+  feature,
+  classes: [classId],
+  entry: { subclass: "genre", counter, ...more },
+});
+
 const row = (classId: string, feature: string, effects: AuthoredEffect[], more: Partial<AuthoredEntry> = {}): GenreRow => ({
   feature,
   classes: [classId],
@@ -52,3 +58,21 @@ GENRE_A_CYBERPUNK.push(row("trauma_doc", "Perfected Formula", [{ kind: "heal_flo
 
 // "1/turn, dropping a foe to 0 HP grants one extra weapon attack immediately."
 GENRE_A_CYBERPUNK.push(row("street_samurai", "Apex Predator", [{ kind: "kill_attack" }]));
+
+// The counters spent through src/lib/dm/genre-a-cyberpunk-spends.ts.
+GENRE_A_CYBERPUNK.push(
+  // "1/long rest, one drone turns invisible for 1 minute."
+  counted("rigger", "Ghost Protocol", "cyberpunk_ghost_protocol", {
+    spends: [{ name: "Ghost Protocol", pool: { id: "cyberpunk_ghost_protocol" }, action: "none", does: { kind: "cyber_spend", what: "ghost_protocol" } }],
+  }),
+  // "1/week, restore a creature dead less than 1 minute to life at half HP."
+  counted("trauma_doc", "Lazarus Protocol", "cyberpunk_lazarus_protocol", {
+    spends: [{ name: "Lazarus Protocol", pool: { id: "cyberpunk_lazarus_protocol" }, action: "action", does: { kind: "cyber_spend", what: "lazarus" } }],
+  }),
+  // "1/long rest, a creature hit by your psionic saves (WIS) or is stunned until your next turn."
+  counted("esper", "Synaptic Overload", "cyberpunk_synaptic_overload", {
+    spends: [{ name: "Synaptic Overload", pool: { id: "cyberpunk_synaptic_overload" }, action: "none", does: { kind: "cyber_spend", what: "synaptic" } }],
+  }),
+  // "Replace one attack with a spinning slash: weapon damage to every foe within 5 ft."
+  { feature: "Whirl of Edges", classes: ["street_samurai"], entry: { subclass: "genre", spends: [{ name: "Whirl of Edges", action: "none", does: { kind: "cyber_spend", what: "whirl" } }] } },
+);

@@ -88,3 +88,44 @@ CYBER.apex_once = async function apexOnce(t, run, feature) {
   }
   eq(t.world.encounter().turnBudget.attacksAllowed, 4, "attacks allowed after dropping two foes in one turn (three and one more, once)");
 };
+
+// "one drone turns invisible for 1 minute": the rigger's drone, not the rigger.
+CYBER.drone_ghost = async function droneGhost(t, run, feature) {
+  t.fresh();
+  const hero = t.hero(feature.classId, feature.level);
+  const made = must(await t.world.invoke("use_resource", { characterId: hero.id, resource: "Drone Companion" }), "Drone Companion").result;
+  const drone = (made?.result?.summoned ?? made?.summoned ?? [])[0]?.characterId;
+  if (!drone) throw new Error("the staged rigger has no drone");
+  must(await t.world.invoke("use_resource", { characterId: hero.id, resource: "Ghost Protocol" }), "Ghost Protocol");
+  const has = (id) => t.world.sheet(id).conditions.map((entry) => entry.toLowerCase()).includes("invisible");
+  eq(`${has(drone)}/${has(hero.id)}`, "true/false", "invisible on the drone / on the rigger");
+  eq(JSON.stringify(t.world.sheet(drone).conditionMeta?.invisible ?? {}).includes("10"), true, "ten rounds (a minute) on the drone's invisibility");
+};
+
+// "weapon damage to every foe within 5 ft": the slash hurts the foe beside
+// the samurai and not the one 70 feet off, and spends one attack.
+CYBER.whirl = async function whirl(t, run, feature) {
+  const scene = await t.stage(feature);
+  const near = t.foeHp(scene.near.id);
+  const far = t.foeHp(scene.far.id);
+  t.world.clearDice();
+  t.world.dice(5);
+  must(await t.world.invoke("use_resource", { characterId: scene.holder.id, resource: "Whirl of Edges" }), "Whirl of Edges");
+  t.world.clearDice();
+  eq(`${near - t.foeHp(scene.near.id)}/${far - t.foeHp(scene.far.id)}`, "9/0", "damage to the foe within 5 feet (a longsword's 5 + STR 4) / to the far foe");
+  eq(t.budget().attacksMade, 1, "attacks of the Attack action made");
+};
+
+// "a creature hit by your psionic saves (WIS) or is stunned": refused with
+// no hit; after a Fire Bolt hits, a failed save stuns.
+CYBER.synaptic = async function synaptic(t, run, feature) {
+  const scene = await t.stage(feature, { lane: true, extra: { equipment: [], spellcasting: CASTING("cha") } });
+  const spend = () => t.world.invoke("use_resource", { characterId: scene.holder.id, resource: "cyberpunk_synaptic_overload", targetEnemyId: scene.far.id });
+  eq((await spend()).ok, false, "Synaptic Overload on a creature no psionic hit");
+  must(await t.kit.swing(scene.holder.id, scene.far.id, [15, 3, 3, 3], { spell: "Fire Bolt" }), "the Fire Bolt");
+  t.world.clearDice();
+  t.world.dice(2);
+  must(await spend(), "Synaptic Overload after the hit");
+  t.world.clearDice();
+  eq(t.kit.enemy(scene.far.id).conditions.map((entry) => entry.toLowerCase()).includes("stunned"), true, "stunned after a failed WIS save");
+};

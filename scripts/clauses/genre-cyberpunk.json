@@ -943,17 +943,18 @@
     "run": {
      "k": "no_door"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Whirl of Edges#0",
-    "where": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED (no row) and src/lib/classes/resources.json (no counter): no tool plays the feature",
-    "sev": "medium",
-    "observed": "no call plays it: use_resource answers \"No resource called \"whirl of edges\" is known. Their resources: cyberpunk_adrenal_override. Send the one meant, by the name on the sheet. / No resource called \"w\""
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts the Whirl of Edges spend (cyber_spend whirl), one attack of the Attack action spent by src/lib/dm/genre-a-cyberpunk-spends.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Whirl of Edges#0"
    },
    {
     "c": "weapon damage to every foe within 5 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Whirl of Edges#0",
-    "same_probe_as": 0
+    "run": {
+     "k": "whirl"
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-a-cyberpunk-spends.ts whirl: the held melee weapon damage rolled once and dealt to each enemy within 5 feet",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Whirl of Edges#1"
    }
   ]
  },
@@ -1346,13 +1347,11 @@
    {
     "c": "one drone turns invisible for 1 minute",
     "run": {
-     "k": "ghost"
+     "k": "drone_ghost"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Ghost Protocol#1",
-    "where": "scripts/generate-class-resources.mjs parseFx (\"turns invisible\" becomes a buff on the spender) and src/lib/dm/resource-tools.ts",
-    "sev": "medium",
-    "observed": "the rigger turned invisible; the text turns one drone invisible"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-cyberpunk-spends.ts ghost_protocol: the drone named (or the first) invisible for ten rounds",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: rigger::Ghost Protocol#1"
    }
   ]
  },
@@ -2334,9 +2333,12 @@
    },
    {
     "c": "a creature hit by your psionic saves (WIS) or is stunned until your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:cyberpunk_synaptic_overload#HANDS_BACK",
-    "recorded_as": "spends-hands-back-counter-cyberpunk-synaptic-overload"
+    "run": {
+     "k": "synaptic"
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-a-cyberpunk-spends.ts synaptic: a creature a spell attack hit this turn (the spell-hit mark of src/lib/dm/attack-swing.ts) saves WIS against the esper spell save DC or is stunned, through save_effect",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: esper::Synaptic Overload#1"
    }
   ]
  },
@@ -2814,11 +2816,9 @@
      "k": "revive",
      "id": "cyberpunk_lazarus_protocol"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Lazarus Protocol#1",
-    "where": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED (no row) and src/lib/classes/resources.json (no counter): no tool plays the feature",
-    "sev": "medium",
-    "observed": "no call plays it: use_resource answers \"No resource called \"lazarus protocol\" is known. Their resources: cyberpunk_miracle_worker, cyberpunk_nanite_reserve, cyberpunk_one_more_dawn, cyberpunk_plague_b\""
+    "is": "held",
+    "by": "src/lib/dm/genre-a-cyberpunk-spends.ts lazarus: a dead character named stands at half its maximum, death saves cleared; the time of death is the GM to say outside the fight running",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Lazarus Protocol#1"
    }
   ]
  },

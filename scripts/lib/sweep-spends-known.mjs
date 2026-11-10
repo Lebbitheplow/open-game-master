@@ -9,6 +9,9 @@
 export const KNOWN = {
   "counter:art_flash_of_genius": { SPENT_FOR_NOTHING: { severity: "low", note: "another path carries the effect; a plain spend takes the use without it" }, TRIGGER_UNCHECKED: { severity: "medium", note: "accepted with no trigger staged" } },
   "counter:cyberpunk_bullet_time": { UNREACHED: { severity: "low", note: "the sweep stages melee hits only, and Bullet Time answers a ranged attack: scripts/test-genre-a-spends.mjs and the clause probe reaction_cost play it after a shortbow" } },
+  "counter:cyberpunk_ghost_protocol": { UNREACHED: { severity: "low", note: "the sweep stages no drone; Ghost Protocol hides the rigger's drone: the clause probe drone_ghost (scripts/lib/sweep-clauses-genre-a-cyberpunk.mjs) builds one and plays it" } },
+  "counter:cyberpunk_synaptic_overload": { UNREACHED: { severity: "low", note: "the sweep stages no spell attack hit, which Synaptic Overload answers: the clause probe synaptic plays it after a Fire Bolt hits" } },
+  "counter:cyberpunk_lazarus_protocol": { UNREACHED: { severity: "low", note: "the sweep stages no dead ally, which Lazarus Protocol restores: the clause probe revive plays it" } },
   "reaction:genre::bullet time::Bullet Time": { UNREACHED: { severity: "low", note: "the sweep stages melee hits only, and Bullet Time answers a ranged attack: scripts/test-genre-a-spends.mjs and the clause probe reaction_cost play it after a shortbow" } },
   "counter:cyberpunk_daemon_cache": { GUIDANCE_ONLY: { severity: "medium", note: "the counter is held (1/long rest); the cached program's cast without a slot is not wired to the cast guard: no pick names the program (w2-genre-a handoff)" } },
   "counter:cyberpunk_grease_the_wheels": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },

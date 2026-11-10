@@ -2,6 +2,7 @@
 // has checked the gate, the pool and the turn). Each resolver refuses before
 // it writes; the caller then spends the pool and the turn.
 
+import { resolveCyberSpend } from "@/lib/dm/genre-a-cyberpunk-spends";
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
 import { saveModFor } from "@/lib/bestiary/enemy-numbers";
 import { layEnemyConditionInstance } from "@/lib/dm/enemy-condition-lay";
@@ -542,6 +543,8 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       return swarmPush(ctx, does);
     case "summon":
       return summonSteelDefender(ctx.campaign, sheet, ctx.held.level);
+    case "cyber_spend":
+      return resolveCyberSpend({ campaign: ctx.campaign, sheet, label: ctx.spend.name, args: ctx.args }, does.what, (next) => resolveSpendEffect(ctx, next));
     case "genre_summon":
       return summonGenreCompanion(ctx.campaign, sheet, does.companion, ctx.held.level);
     // Bolstering Magic's slot (src/lib/dm/authored-spend-counters.ts).
