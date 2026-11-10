@@ -742,6 +742,10 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (does.rangeFt && !does.afterSave && !withinFeet(encounter.id, ctx.sheet.id, enemy.id, does.rangeFt)) {
         return { error: `${enemy.displayName} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
       }
+      // Halo of Spores: "a creature you can see" starting its turn near; the
+      // creature struck back is the one that must be seen.
+      const unseen = reaction.sees === "attacker" ? unseenRefusal(encounter.id, ctx.sheet, { id: enemy.id, name: enemy.displayName }, reaction.name) : null;
+      if (unseen) return unseen;
       const type = strikeType(ctx, does, found.variant, reaction.name, enemy);
       if (typeof type !== "string") {
         return type;

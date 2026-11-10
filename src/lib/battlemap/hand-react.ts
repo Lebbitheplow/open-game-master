@@ -503,7 +503,7 @@ export function reactionCards(
   }
   // The reactions and triggered uses whose trigger is not a hit: a death, a
   // turn's end, a save forced, damage, a cast (hand-react-triggers.ts).
-  cards.push(...triggerCards(sheet, turn, hits, saves, (id, reach) => inReach(feet, id, reach)));
+  cards.push(...triggerCards(sheet, turn, hits, saves, (id, reach) => inReach(feet, id, reach), unseen));
   return cards;
 }
 

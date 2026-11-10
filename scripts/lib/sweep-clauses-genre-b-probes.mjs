@@ -209,11 +209,44 @@ export const PROBES = {
     if (p.cost === "reaction") assert.equal(rig.reacted(hero), true, "the reaction was not spent");
   },
 
-  // What a typed counter hands back for aoe_damage, and what that call then does.
+  // What a typed counter's spend does to the creature it names. A counter
+  // whose use makes creatures save rolls them in the spend itself and refuses
+  // a spend that names none (src/lib/dm/counter-saves.ts resolveCounterSave:
+  // "Before this the spend paid the use and the action and handed the numbers
+  // back for an aoe_damage call"), so the probe names its creature and reads
+  // what landed. Every die is staged before the spend: 20s for a made save
+  // ("made"), 1s otherwise so the save fails and the condition lands.
   async fx(rig, row, p) {
     const hero = rig.holder(row);
     const { near, far } = await rig.fight(hero);
-    const out = await rig.world.invoke("use_resource", { characterId: hero.id, resource: p.id, reason: "clause probe" });
+    const target = p.resolve === "far" ? far : near;
+    const spend = async (faces) => {
+      clearDice();
+      dice(...new Array(12).fill(faces));
+      const out = await rig.world.invoke("use_resource", { characterId: hero.id, resource: p.id, targetEnemyId: target.id, reason: "clause probe" });
+      clearDice();
+      return out;
+    };
+    if (p.resolve === "far") {
+      const out = await spend(1);
+      const foe = rig.kit.enemy(target.id);
+      assert.ok(!out.ok || !foe.conditions.length, `a creature ${p.feet} ft and more away was caught: ${JSON.stringify(foe.conditions)}`);
+      assert.equal(out.ok, false, `use_resource ${p.id} took a creature 65 ft away for an effect that reaches ${p.feet} ft`);
+      return;
+    }
+    if (p.made) {
+      const [count, sides] = p.made.dice.split("d").map(Number);
+      const out = await spend(20);
+      assert.equal(out.ok, true, `use_resource ${p.id}: ${out.error}`);
+      // A spend that rolls no damage at all would read as "takes none".
+      assert.equal(out.result.damage, p.made.dice, `the spend rolls ${out.result.damage ?? "no damage"}, and the text says ${p.made.dice}`);
+      const lost = 300 - rig.kit.enemy(near.id).currentHp;
+      const want = p.made.takes === "half" ? Math.floor((count * sides) / 2) : 0;
+      assert.equal(lost, want, `a creature that made the save lost ${lost} of ${count * sides}, and the text makes it ${want} (${JSON.stringify(out.result).slice(0, 200)})`);
+      if (p.save) assert.equal(out.result.saveAbility, p.save, `the spend rolls a ${out.result.saveAbility} save`);
+      return;
+    }
+    const out = await spend(1);
     assert.equal(out.ok, true, `use_resource ${p.id}: ${out.error}`);
     const given = out.result;
     if (p.save) assert.equal(given.saveAbility, p.save, `the spend hands back saveAbility ${given.saveAbility}`);
@@ -222,34 +255,8 @@ export const PROBES = {
     if (p.half !== undefined) assert.equal(Boolean(given.halfOnSave), p.half, `halfOnSave is ${given.halfOnSave} (${JSON.stringify({ ...given, effect: undefined, note: undefined }).slice(0, 240)})`);
     if (p.condition) assert.equal(given.condition, p.condition, `the spend hands back condition ${given.condition}, and the text's is ${p.condition} (${JSON.stringify(given).slice(0, 200)})`);
     for (const key of p.absent ?? []) assert.ok(!(key in given), `the spend hands back ${key} ${JSON.stringify(given[key])}, which the text does not lay on anyone`);
-    if (p.made) {
-      // Every die a 20: the save is made, and each damage die shows its most.
-      const [count, sides] = p.made.dice.split("d").map(Number);
-      const fields = Object.fromEntries(["casterCharacterId", "saveAbility", "dc", "damage", "type", "halfOnSave"].filter((key) => key in given).map((key) => [key, given[key]]));
-      clearDice();
-      dice(...new Array(count + 2).fill(20));
-      rig.must(await rig.world.invoke("aoe_damage", { ...fields, enemyIds: [near.id], reason: "clause probe" }), "aoe_damage");
-      clearDice();
-      const lost = 300 - rig.kit.enemy(near.id).currentHp;
-      const want = p.made.takes === "half" ? Math.floor((count * sides) / 2) : 0;
-      assert.equal(lost, want, `a creature that made the save lost ${lost} of ${count * sides}, and the text makes it ${want} (the spend hands back halfOnSave ${given.halfOnSave})`);
-      return;
-    }
     if (!p.resolve) return;
-    assert.equal(given.resolveWith, "aoe_damage", `the spend resolves with ${given.resolveWith}`);
-    const fields = Object.fromEntries(["casterCharacterId", "saveAbility", "dc", "condition", "damage", "type", "halfOnSave", "rounds"].filter((key) => key in given).map((key) => [key, given[key]]));
-    const target = p.resolve === "far" ? far : near;
-    clearDice();
-    dice(1, 1, 1, 1, 1, 1, 1, 1, 1, 1);
-    const resolved = await rig.world.invoke("aoe_damage", { ...fields, enemyIds: [target.id], reason: "clause probe" });
-    clearDice();
     const foe = rig.kit.enemy(target.id);
-    if (p.resolve === "far") {
-      assert.ok(!resolved.ok || !foe.conditions.includes(given.condition), `a creature ${p.feet} ft and more away was caught: ${JSON.stringify(foe.conditions)}`);
-      assert.equal(resolved.ok, false, `aoe_damage accepted a creature 65 ft away for an effect that reaches ${p.feet} ft`);
-      return;
-    }
-    rig.must(resolved, "aoe_damage");
     if (p.resolve === "lands") assert.ok(foe.conditions.includes(given.condition), `the failed save left ${JSON.stringify(foe.conditions)}`);
     if (p.resolve === "rounds") {
       const meta = foe.conditionMeta?.[given.condition] ?? {};

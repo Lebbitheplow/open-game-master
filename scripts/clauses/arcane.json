@@ -751,14 +751,15 @@
    },
    {
     "c": "and you can cast it without a spell slot",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/srd/counter-casts.ts sub_shapechanger (a grant the cast guard reads: cast_buff Polymorph spends the counter, not a 4th-level slot)",
     "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: shapechanger-free"
    },
    {
     "c": "targeting only yourself and becoming a beast of challenge rating 1 or lower",
     "is": "gap",
     "read_only": true,
-    "why": "not run: no free casting exists to limit (shapechanger-free)"
+    "why": "not run: the free casting (src/lib/srd/counter-casts.ts sub_shapechanger) carries this limit only as its note; no probe casts it free on another creature or into a beast above challenge rating 1"
    },
    {
     "c": "once per short or long rest",

@@ -73,6 +73,10 @@ export function triggerCards(
   hits: PublicLastHit[],
   saves: PublicSave[],
   near: (id: string, feet: number) => boolean,
+  // Who on the board the character cannot see (hand-react.ts reactionCards):
+  // a reaction whose text needs its creature seen (authored `sees: "attacker"`,
+  // Halo of Spores) is not dealt for them, as authored-reactions.ts refuses it.
+  unseen?: { has(id: string): boolean },
 ): HandCard[] {
   const events = [...hits.map(eventOfHit), ...saves.map(eventOfRecord)];
   if (!events.length) return [];
@@ -120,6 +124,7 @@ export function triggerCards(
       const pool = reaction.pool;
       if (!spec || (pool && "id" in pool && (sheet.resources[pool.id]?.max ?? 0) - (sheet.resources[pool.id]?.used ?? 0) < (pool.amount ?? 1))) continue;
       for (const event of openFor(spec, events, context(triggerKey(textKey(reaction.name), sheet.id))).slice(-2)) {
+        if (reaction.sees === "attacker" && event.creatureId && unseen?.has(event.creatureId)) continue;
         cards.push(card(sheet, turn, { id: reaction.name, name: reaction.name, cost: "reaction", spec, event, intent: { card: "reaction", feature: reaction.name }, rules: `${reaction.name} answers ${spec.what}.`, resource: "" }));
       }
     }

@@ -2588,7 +2588,7 @@
   "name": "Channel Divinity: Rebuke the Violent",
   "group": "Oath of Redemption",
   "level": 3,
-  "sha": "78fed6eaf5e8",
+  "sha": "c0419ca11543",
   "clauses": [
    {
     "c": "A reaction deals the same damage back to an attacker",
@@ -2597,13 +2597,16 @@
     "why": "not run: no scene of the divine suites stages paladin::Channel Divinity: Rebuke the Violent"
    },
    {
-    "c": "who wounded someone near you",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-limits-reactions.mjs gap 774-text-says-near [limits finding L774-rebuke-text-reach]",
-    "severity": "low",
-    "where": "src/lib/srd/subclasses.json paladin / Oath of Redemption / Channel Divinity: Rebuke the Violent",
-    "kind": "data",
-    "note": "held by the limits sweep (finding L774-rebuke-text-reach)"
+    "c": "within 30 feet of you",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-data2.ts AUTHORED_TABLE[\"paladin::Channel Divinity: Rebuke the Violent\"] echo_hit rangeFt 30 (the attacker's distance from the paladin), read by the card (src/lib/battlemap/hand-react.ts) and the reaction (src/lib/dm/reaction-tools.ts)",
+    "probe": "scripts/test-rebuke-the-violent.mjs test \"It refuses the paladin's own hit, no hit at all, and a creature out of range, spending nothing.\"; scripts/test-enforce-sweep-limits-reactions.mjs row 774-text-says-near (the words now name the engine's 30 feet: limits finding L774-rebuke-text-reach, closed)"
+   },
+   {
+    "c": "who damaged another creature with an attack",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-data2.ts echo_hit, answered in src/lib/dm/reaction-tools.ts from the last attack hit on an ally on record, never the paladin's own hit or a spell's damage",
+    "probe": "scripts/test-rebuke-the-violent.mjs test \"It is offered on a hit on an ally, not on the paladin, and is no card on their own turn.\"; scripts/test-enforce-sweep-limits-reactions.mjs row 774-spell-damage (a spell's damage is refused)"
    },
    {
     "c": "halved on a Wisdom save",
@@ -3879,11 +3882,9 @@
    },
    {
     "c": "you can see",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Halo of Spores#sight",
-    "severity": "medium",
-    "kind": "rule-wrong",
-    "where": "src/lib/dm/authored-reactions.ts (src/lib/srd/authored-effects-data*.ts AUTHORED_TABLE[\"druid::Halo of Spores\"]): no sight check on the creature struck"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-data-b.ts AUTHORED_TABLE[\"druid::Halo of Spores\"] sees \"attacker\", read by src/lib/dm/authored-reactions.ts strike_back (unseenRefusal on the creature struck)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Halo of Spores#sight"
    },
    {
     "c": "moves into a space",
@@ -3897,12 +3898,9 @@
    },
    {
     "c": "or starts its turn there",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs gap reaction:druid::Halo of Spores::Halo of Spores#TRIGGER_UNCHECKED [spends finding spends-trigger-unchecked-reaction-druid-halo-of-spores-halo-of-spores]",
-    "severity": "high",
-    "where": "src/lib/dm/reaction-tools.ts useReaction, src/lib/dm/authored-reactions.ts and src/lib/dm/resource-turn.ts prepareResourceCharge (a reaction with no open trigger)",
-    "kind": "timing-window",
-    "note": "held by the spends sweep (finding spends-trigger-unchecked-reaction-druid-halo-of-spores-halo-of-spores)"
+    "is": "held",
+    "by": "src/lib/srd/trigger-table.ts \"halo of spores\" turn_start, opened by the turn's end src/lib/dm/last-hit.ts closeHitsAtTurnEnd records (src/lib/dm/reaction-triggers.ts triggerRecords) and refused without one (triggerRefusal)",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-druid.mjs :: druid::Halo of Spores#turn-start"
    },
    {
     "c": "a reaction deals it 1d4 necrotic damage",

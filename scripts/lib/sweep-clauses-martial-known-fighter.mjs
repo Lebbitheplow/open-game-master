@@ -108,26 +108,12 @@ export const KNOWN = {
     fix: "Reword the text: \"When you roll initiative with no Unleash Incarnation uses left, you regain one\".",
     files: ["src/lib/srd/subclasses.json"],
   },
-  "psionic-strike-needs-a-hit": {
-    severity: "medium", kind: "timing-window",
-    where: `${ROWS_4} fighter::Psionic Strike (a die_damage spend with no afterWeaponHit)`,
-    note: "With no attack made this turn the die still deals its force damage to any creature named. Arcane Jolt's row carries afterWeaponHit for the same wording.",
-    fix: "afterWeaponHit: true on the spend.",
-    files: [ROWS_4],
-  },
   "telekinetic-movement-free-use": {
     severity: "low", kind: "rule-wrong",
     where: "src/lib/dm/option-costs.ts (Telekinetic Movement always spends a Psionic Energy die)",
     note: "The first use after a rest costs a die like every other.",
     fix: "A once-per-short-rest counter the option spends before the pool.",
     files: ["src/lib/dm/option-costs.ts", "src/lib/srd/authored-resources.json"],
-  },
-  "telekinetic-thrust-needs-a-strike": {
-    severity: "low", kind: "timing-window",
-    where: `${ROWS_B} fighter::Telekinetic Adept (thrust: save_effect, action "none", nothing ties it to Psionic Strike)`,
-    note: "Thrust knocks a creature prone with no Psionic Strike made, on any turn, for nothing.",
-    fix: "Gate thrust on the turn's Psionic Strike (its once-a-turn key).",
-    files: [ROWS_B, "src/lib/dm/authored-spends.ts"],
   },
   "telekinetic-thrust-save-not-in-text": {
     severity: "low", kind: "data",

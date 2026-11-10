@@ -192,6 +192,21 @@ export const NAMED = {
   async strike_back(t, run, feature) {
     const scene = await t.stage(feature);
     await t.clubs(scene, scene.holder, 16, 4);
+    if (run.spell) {
+      // "when a creature damages you with a spell": the club is no spell, and
+      // is refused with nothing spent; then the foe's spell burns the holder
+      // (cast_at_player, a failed save: the record the reaction answers,
+      // src/lib/dm/last-save.ts noteSaveDamage).
+      const club = await t.world.invoke("use_reaction", { characterId: scene.holder.id, feature: run.feature });
+      eq(club.ok, false, `${run.feature} answered a club, which is no spell`);
+      t.kit.setEnemy(scene.near.id, { stats: { ...t.kit.enemy(scene.near.id).stats, spellcasting: { dc: 14, attack: 6, ability: "int", slots: { 1: 2 }, spells: [{ name: "Burning Hands", level: 1 }] } } });
+      t.kit.freshRound();
+      t.world.clearDice();
+      t.world.dice(1, 3, 3, 3);
+      const cast = await t.world.invoke("cast_at_player", { characterId: scene.holder.id, casterEnemyId: scene.near.id, spell: "Burning Hands" });
+      t.world.clearDice();
+      must(cast, "the foe's staged Burning Hands");
+    }
     const before = t.foeHp(scene.near.id);
     must(await t.world.invoke("use_reaction", { characterId: scene.holder.id, feature: run.feature }), run.feature);
     const want = run.amount === "cha" ? mod("cha") : mod("cha") + feature.level;
@@ -237,7 +252,11 @@ export const NAMED = {
       eq(out.ok, true, `${run.id}: ${out.error}`);
       return;
     }
-    must(out, `spending ${run.id}`);
+    // The spend on the creature healed is what the clause asks for, not the
+    // probe's staging: a refusal of it is the engine not doing what the text
+    // says (Master of the Black Ledger's "full HP restored" on an ally is
+    // refused, its counter knowing only the save), so it is asserted.
+    eq(out.ok, true, `spending ${run.id} on the ${run.target === "self" ? "holder" : run.target}: ${out.error}`);
     const after = t.world.sheet(target.id);
     if (run.want === "temp") assert.ok(after.tempHp > tempBefore, "temporary hit points on the healed ally");
     else if (run.want === "ac") eq(t.srd.effectiveAcFor(after) - acBefore, 2, "what the heal added to the ally's armor class");

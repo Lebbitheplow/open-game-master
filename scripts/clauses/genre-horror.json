@@ -3056,16 +3056,23 @@
   "clauses": [
    {
     "c": "Reaction when a creature damages you with a spell",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs gap reaction:genre::the mark burns back::The Mark Burns Back#TRIGGER_UNCHECKED",
-    "recorded_as": "spends-trigger-unchecked-reaction-genre-the-mark-burns-back-the-mark-burns-back"
+    "run": {
+     "k": "strike_back",
+     "feature": "The Mark Burns Back",
+     "amount": "cha+level",
+     "spell": true
+    },
+    "is": "held",
+    "by": "src/lib/srd/trigger-table.ts \"the mark burns back\" (damaged, spell), read by src/lib/dm/reaction-triggers.ts triggerRefusal before src/lib/dm/authored-reactions.ts plays it",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: apostate::The Mark Burns Back#0"
    },
    {
     "c": "it takes your CHA mod + level in necrotic damage",
     "run": {
      "k": "strike_back",
      "feature": "The Mark Burns Back",
-     "amount": "cha+level"
+     "amount": "cha+level",
+     "spell": true
     },
     "is": "held",
     "by": "src/lib/srd/authored-effects-genre.ts strike_back row, played by src/lib/dm/authored-reactions.ts",

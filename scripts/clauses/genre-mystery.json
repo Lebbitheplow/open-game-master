@@ -617,7 +617,7 @@
    {
     "c": "(WIS save resists if unwilling)",
     "is": "held",
-    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), resolved by aoe_damage",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
     "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test alienist::Hypnotic Induction#2:fx",
     "k": "fx",
     "p": {
@@ -939,7 +939,7 @@
    {
     "c": "an illusory double of a creature's guilt confronts it: it is frightened of you for 1 minute (WIS save negates)",
     "is": "held",
-    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), resolved by aoe_damage",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
     "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test alienist::Projection#1:fx",
     "k": "fx",
     "p": {
@@ -963,7 +963,7 @@
    {
     "c": "(WIS save negates)",
     "is": "held",
-    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), resolved by aoe_damage",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
     "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test alienist::Projection#3:fx",
     "k": "fx",
     "p": {
@@ -1534,7 +1534,7 @@
    {
     "c": "reveal a con at the perfect moment: every enemy who believed it is stunned until their next turn (WIS save negates)",
     "is": "held",
-    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), resolved by aoe_damage",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
     "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test grifter::House of Cards#1:fx",
     "k": "fx",
     "p": {
@@ -1558,7 +1558,7 @@
    {
     "c": "(WIS save negates)",
     "is": "held",
-    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), resolved by aoe_damage",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
     "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test grifter::House of Cards#3:fx",
     "k": "fx",
     "p": {
@@ -1786,7 +1786,7 @@
    {
     "c": "force every hostile creature within 30 ft to save (WIS) or be frightened of you for 1 minute",
     "is": "held",
-    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), resolved by aoe_damage",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
     "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test enforcer::Menace#1:fx",
     "k": "fx",
     "p": {
@@ -1822,7 +1822,7 @@
    {
     "c": "save (WIS)",
     "is": "held",
-    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), resolved by aoe_damage",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
     "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test enforcer::Menace#4:fx",
     "k": "fx",
     "p": {
@@ -2996,8 +2996,9 @@
    },
    {
     "c": "(WIS save)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap spirit_medium::Queen of the Quiet Court#3:fx",
+    "is": "held",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test spirit_medium::Queen of the Quiet Court#3:fx",
     "k": "fx",
     "p": {
      "id": "mystery_queen_of_the_quiet_court",
@@ -3006,8 +3007,7 @@
       "dice": "2d8",
       "takes": "none"
      }
-    },
-    "observed": "a creature that made the save lost 8 of 16, and the text makes it 0 (the spend hands back halfOnSave undefined)"
+    }
    },
    {
     "c": "2d8 necrotic",

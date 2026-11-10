@@ -145,5 +145,21 @@ await test("Skirmisher answers an enemy ending its turn beside the scout, and re
   assert.match(far.error, /beyond 5 feet/);
 });
 
+// Halo of Spores answers "a creature you can see" starting its turn within
+// 10 feet (authored sees: "attacker", refused in authored-reactions.ts): the
+// Hand deals no card for a creature the druid cannot see, as the engine
+// refuses it.
+await test("Halo of Spores: no card for a creature the druid cannot see starting its turn beside them", async () => {
+  const { triggerCards } = await import("../src/lib/battlemap/hand-react-triggers.ts");
+  const druid = hero({ class: "druid", subclass: "Circle of Spores" });
+  const sheet = world.sheet(druid.id);
+  const began = { id: "ts1", kind: "turn_start", characterId: "", ability: "con", forcerId: "e9", forcer: "Goblin", enemy: true };
+  const offTurn = { ...FRESH_TURN, myTurn: false };
+  const halo = (unseen) => triggerCards(sheet, offTurn, [], [began], () => true, unseen).filter((card) => card.name === "Halo of Spores");
+  assert.equal(halo(undefined).length, 1, "a seen goblin starting its turn beside the druid deals the card");
+  assert.equal(halo({ has: () => false }).length, 1);
+  assert.equal(halo({ has: (id) => id === "e9" }).length, 0, "an unseen goblin deals none");
+});
+
 world.close();
 finish();

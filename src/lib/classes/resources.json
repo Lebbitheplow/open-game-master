@@ -659,7 +659,8 @@
       "fx": {
         "kind": "enemy_save",
         "save": "con",
-        "dice": "3d8"
+        "dice": "3d8",
+        "half": true
       }
     },
     {
@@ -793,7 +794,8 @@
       "fx": {
         "kind": "enemy_save",
         "save": "con",
-        "dice": "10d10"
+        "dice": "10d10",
+        "half": true
       }
     },
     {
@@ -3333,7 +3335,8 @@
       "fx": {
         "kind": "enemy_save",
         "save": "dex",
-        "dice": "3d8"
+        "dice": "3d8",
+        "half": true
       }
     },
     {

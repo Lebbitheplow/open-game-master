@@ -10,6 +10,19 @@ const NONMAGICAL = "bludgeoning, piercing, and slashing from nonmagical attacks"
 // The sheets a summoning made: every sheet of the table that was not there.
 const newSheets = (rig, before) => rig.world.sheets().filter((sheet) => !before.has(sheet.id));
 const ids = (rig) => new Set(rig.world.sheets().map((sheet) => sheet.id));
+// The foe's turn begins after the holder's ends, through the door a table's
+// turn change goes through (src/lib/dm/last-hit.ts closeHitsAtTurnEnd, which
+// advancePointer calls): the ending is recorded, and the creature now up is
+// the one "starting its turn" a reaction like Halo of Spores answers
+// (src/lib/dm/reaction-triggers.ts triggerRecords). Moving the pointer alone
+// records nothing, and the engine refuses such a reaction for it.
+async function foeStartsTurn(rig, who, foe) {
+  const { closeHitsAtTurnEnd } = await import(new URL("../../src/lib/dm/last-hit.ts", import.meta.url).href);
+  rig.kit.giveTurn(who.id);
+  const encounter = rig.world.encounter();
+  closeHitsAtTurnEnd(rig.world.campaignId, encounter, encounter.order[encounter.turnIndex]);
+  rig.foesTurn(foe);
+}
 
 export const DRUID = {
   "druid::Combat Wild Shape": async (rig) => {
@@ -260,7 +273,7 @@ export const DRUID = {
       rig.reset();
       const who = rig.hero("druid", "Circle of Spores", level);
       const [foe] = await rig.fight(who);
-      rig.foesTurn(foe);
+      await foeStartsTurn(rig, who, foe);
       const before = new Set(rig.lastRolls(40).map((roll) => roll.id));
       const out = await rig.react(who, "Halo of Spores", { targetEnemyId: foe.id }, [3, 1]);
       const rolls = rig.lastRolls(40).filter((roll) => !before.has(roll.id));
@@ -271,24 +284,35 @@ export const DRUID = {
     rig.reset();
     const who = rig.hero("druid", "Circle of Spores", 2);
     const [foe] = await rig.fight(who);
-    rig.foesTurn(foe);
+    // On the druid's own turn no creature has started one beside them.
+    const early = await rig.react(who, "Halo of Spores", { targetEnemyId: foe.id }, [3, 1]);
     rig.kit.place(foe.id, 5, 8);
+    await foeStartsTurn(rig, who, foe);
     const far = await rig.react(who, "Halo of Spores", { targetEnemyId: foe.id }, [3, 1]);
     rig.kit.place(foe.id, 5, 7);
+    await foeStartsTurn(rig, who, foe);
     const saved = await rig.react(who, "Halo of Spores", { targetEnemyId: foe.id }, [3, 19]);
     const afterSave = 300 - rig.enemy(foe.id).currentHp;
     rig.kit.setEnemy(foe.id, { currentHp: 300, conditions: ["invisible"], conditionMeta: { invisible: { rounds: 10 } } });
-    rig.foesTurn(foe);
+    await foeStartsTurn(rig, who, foe);
     const unseen = await rig.react(who, "Halo of Spores", { targetEnemyId: foe.id }, [3, 1]);
     rig.note("halo", [ladder, far.ok, far.error, saved.ok, saved.error, brief(saved.result), afterSave, unseen.ok, unseen.error]);
     return {
       dice: () => assert.deepEqual(ladder, ["1d4", "1d6", "1d8", "1d10"], "the die at levels 2, 6, 10 and 14"),
       "10-feet": () => {
         assert.equal(far.ok, false, "a creature 15 feet away was struck");
+        assert.match(far.error, /beyond 10 feet/, "the refusal of a creature 15 feet away is for its distance");
         assert.equal(saved.ok, true, saved.error);
       },
+      "turn-start": () => {
+        assert.equal(early.ok, false, `struck on the druid's own turn, with no creature starting one near them: ${brief(early.result, 140)}`);
+        assert.match(early.error, /starting its turn/, "the refusal names the trigger it waits for");
+      },
       save: () => assert.equal(afterSave, 0, `a creature that made its Constitution save lost ${afterSave}`),
-      sight: () => assert.equal(unseen.ok, false, `an invisible creature, which the druid cannot see, was struck: ${brief(unseen.result, 140)}`),
+      sight: () => {
+        assert.equal(unseen.ok, false, `an invisible creature, which the druid cannot see, was struck: ${brief(unseen.result, 140)}`);
+        assert.match(unseen.error, /cannot see/, "the refusal of an invisible creature is for sight");
+      },
     };
   },
 

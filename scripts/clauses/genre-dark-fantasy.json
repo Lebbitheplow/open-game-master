@@ -1055,8 +1055,8 @@
     },
     "is": "gap",
     "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap plague_doctor::Master of the Black Ledger#2",
-    "observed": "the touched creature's hit points: the engine gives 20, the text 60",
-    "where": "scripts/generate-class-resources.mjs parseFx and src/lib/dm/resource-tools.ts (heal_target): the fx carries the dice of the base line only, and none of the text's gate, range or upgrades",
+    "observed": "the spend on the ally is refused: \"Master of the Black Ledger makes the creatures it catches save: pass targetEnemyId\"; the counter knows only the death choice",
+    "where": "scripts/generate-class-resources.mjs parseFx (enemy_save) and src/lib/dm/resource-tools.ts: the fx carries the death choice's save only, and no life choice (a touched creature restored to full HP)",
     "sev": "medium"
    },
    {

@@ -483,7 +483,7 @@
    {
     "c": "trigger or predict a structural collapse: creatures in a 15-ft cube save (DEX) or take 4d6 bludgeoning and are restrained by rubble",
     "is": "held",
-    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), resolved by aoe_damage",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
     "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test scavenger::Collapse Instinct#1:fx",
     "k": "fx",
     "p": {
@@ -506,8 +506,9 @@
    },
    {
     "c": "save (DEX)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Collapse Instinct#3:fx",
+    "is": "held",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test scavenger::Collapse Instinct#3:fx",
     "k": "fx",
     "p": {
      "id": "post_apocalyptic_collapse_instinct",
@@ -516,8 +517,7 @@
       "dice": "4d6",
       "takes": "none"
      }
-    },
-    "observed": "a creature that made the save lost 12 of 24, and the text makes it 0 (the spend hands back halfOnSave undefined)"
+    }
    },
    {
     "c": "4d6 bludgeoning",
@@ -1654,7 +1654,7 @@
    {
     "c": "constructs and machines within 15 ft save (CON) or are stunned until your next turn",
     "is": "held",
-    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), resolved by aoe_damage",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
     "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::EMP Coil#1:fx",
     "k": "fx",
     "p": {
@@ -1690,7 +1690,7 @@
    {
     "c": "save (CON)",
     "is": "held",
-    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), resolved by aoe_damage",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
     "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::EMP Coil#4:fx",
     "k": "fx",
     "p": {
@@ -2039,7 +2039,7 @@
    {
     "c": "emit a 10-ft flare: enemies save (CON) or are blinded until your next turn",
     "is": "held",
-    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), resolved by aoe_damage",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
     "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Halo of the Core#1:fx",
     "k": "fx",
     "p": {
@@ -2075,7 +2075,7 @@
    {
     "c": "save (CON)",
     "is": "held",
-    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), resolved by aoe_damage",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
     "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Halo of the Core#4:fx",
     "k": "fx",
     "p": {
@@ -2132,7 +2132,7 @@
    {
     "c": "(CON save halves)",
     "is": "held",
-    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), resolved by aoe_damage",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
     "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Second Sun#3:fx",
     "k": "fx",
     "p": {
@@ -3157,8 +3157,9 @@
    },
    {
     "c": "(WIS save)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Legend of the Pack#3:fx",
+    "is": "held",
+    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test packmaster::Legend of the Pack#3:fx",
     "k": "fx",
     "p": {
      "id": "post_apocalyptic_legend_of_the_pack",
@@ -3167,8 +3168,7 @@
       "dice": "2d8",
       "takes": "none"
      }
-    },
-    "observed": "a creature that made the save lost 8 of 16, and the text makes it 0 (the spend hands back halfOnSave undefined)"
+    }
    },
    {
     "c": "+2d8",

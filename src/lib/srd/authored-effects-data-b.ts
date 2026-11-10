@@ -33,6 +33,8 @@ export const AUTHORED_DATA_A2: Record<string, AuthoredEntry> = {
     reactions: [
       {
         name: "Halo of Spores",
+        // "a creature you can see": the creature struck (authored-reactions.ts strike_back).
+        sees: "attacker",
         does: {
           kind: "strike_back",
           amount: [[2, "1d4"], [6, "1d6"], [10, "1d8"], [14, "1d10"]],

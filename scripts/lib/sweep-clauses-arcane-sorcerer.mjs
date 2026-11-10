@@ -363,7 +363,9 @@ export function probes(rig, shared) {
     },
     "phenomenon-cost": async () => {
       await stage(lunar());
-      const out = await spend(lunar(), "Lunar Phenomenon");
+      // A bare spend is refused: the use names its phase's variant (WAVE1 R10,
+      // a pool spent only through a named option). Crescent Moon asks no creature.
+      const out = await spend(lunar(), "Lunar Phenomenon", { variant: "crescent moon" });
       assert.equal(out.ok, true, out.error);
       assert.equal(budget().bonusUsed, true);
       await uses(["sorcerer", "Lunar Sorcery"], "sub_lunar_phenomenon", { 18: 1 })();

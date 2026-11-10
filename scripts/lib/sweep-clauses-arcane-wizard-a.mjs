@@ -507,7 +507,6 @@ export function probes(rig, shared) {
     "inured-maximum": { severity: "low", kind: "rule-missing", where: "src/lib/dm/effect-tools.ts set_effect field maxHp (and any creature ability that lowers a maximum)", note: "Reached by the GM's own hand here; the feature-effects row for Inured to Undeath holds the resistance only.", fix: "Refuse a lowering of the hit point maximum for a holder." },
     "stone-change": { severity: "low", kind: "rule-wrong", where: `${DATA} wizard::Transmuter's Stone (the choose spend is fight: "out" and asks for no spell)`, note: "Looser and stricter than the text at once: out of a fight the benefit changes at will, in one it cannot change even on a transmutation spell.", fix: "A ruling, or tie the change to a transmutation spell of 1st level or higher." },
     "shapechanger-book": { severity: "low", kind: "data", where: "src/lib/srd/subclasses.json School of Transmutation (no spells table for level 10)", note: "", fix: "Add spells: { 10: [\"Polymorph\"] }." },
-    "shapechanger-free": { severity: "medium", kind: "rule-missing", where: "src/lib/dm/cast-tools.ts cast_buff Polymorph (no free casting for sub_shapechanger)", note: "The counter is spent by hand for nothing (spends sweep, counter:sub_shapechanger#SPENT_FOR_NOTHING) and the cast takes a 4th-level slot.", fix: "A self-cast of Polymorph into a beast of CR 1 or lower spends the Shapechanger use instead of a slot." },
   };
   return { PROBES, KNOWN };
 }
