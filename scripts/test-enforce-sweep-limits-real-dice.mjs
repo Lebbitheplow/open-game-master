@@ -54,11 +54,7 @@ const KNOWN = {
     severity: "low",
     note: "The console's \"and end the turn\" is dropped when the seat rolls real dice; the GM ends the turn by hand.",
   },
-  "822-invisible-by-another-name": {
-    where: "src/lib/dm/enemy-reactions.ts attackerUnseen (matches a condition that starts with \"invisible\") against the attack's advantage for an unseen attacker (the exact word)",
-    severity: "low",
-    note: "Two readers of \"is this attacker unseen\" that disagree on a condition written with a note in brackets. No engine path was found that writes one; a GM's or a pack's wording can.",
-  },
+
 };
 const RULING = {
   "825-damage-lands-after-the-turn": "pull request #825 lists it under \"Already true of an ordinary real-dice hit\"; scripts/test-enforce-physical-feat-bonus.mjs \"a damage roll that lands on the next character's turn opens nothing, whether or not they have acted\" pins that the damage lands and only the turn's bonuses are withheld",

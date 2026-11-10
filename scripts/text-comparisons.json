@@ -1334,7 +1334,7 @@
     "lib/dm/condition-logic.ts#re-word": [["key",3,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/condition-logic.ts#str-eq": [["key",1,"condition labels (engine vocabulary)"]],
     "lib/dm/condition-logic.ts#str-list": [["key",8,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
-    "lib/dm/condition-logic.ts#toLowerCase": [["key",10,"condition labels (engine vocabulary)"]],
+    "lib/dm/condition-logic.ts#toLowerCase": [["key",9,"condition labels (engine vocabulary)"]],
     "lib/dm/condition-logic.ts#toUpperCase": [["display",1,"ability abbreviation shown in a note"]],
     "lib/dm/condition-tick.ts#str-eq": [["key",5,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/condition-tick.ts#toLowerCase": [["key",8,"condition labels (engine vocabulary)"]],
