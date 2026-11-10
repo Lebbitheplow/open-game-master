@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { preloadable } from "@/lib/preloadable";
 
 // The side panels as separate downloads (SidePanelRouter.tsx), and the one
@@ -10,7 +11,10 @@ export const panels = {
   MarketPanel: preloadable(() => import("@/app/campaigns/[campaignId]/MarketPanel").then((module) => module.MarketPanel)),
   DmConsolePanel: preloadable(() => import("@/app/campaigns/[campaignId]/DmConsolePanel").then((module) => module.DmConsolePanel)),
   LeadPanel: preloadable(() => import("@/app/campaigns/[campaignId]/LeadPanel").then((module) => module.LeadPanel)),
-  BattleMapPanel: preloadable(() => import("@/app/campaigns/[campaignId]/BattleMapPanel").then((module) => module.BattleMapPanel)),
+  // Memoized: the board is the heaviest thing on the table, and the table
+  // renders again on every stream event. With the same view, sheets and
+  // handlers it has nothing new to draw.
+  BattleMapPanel: preloadable(() => import("@/app/campaigns/[campaignId]/BattleMapPanel").then((module) => memo(module.BattleMapPanel))),
   DmWhisperPanel: preloadable(() => import("@/app/campaigns/[campaignId]/DmWhisperPanel").then((module) => module.DmWhisperPanel)),
   DmInboxPanel: preloadable(() => import("@/app/campaigns/[campaignId]/DmInboxPanel").then((module) => module.DmInboxPanel)),
   EventLog: preloadable(() => import("@/app/campaigns/[campaignId]/EventLog").then((module) => module.EventLog)),

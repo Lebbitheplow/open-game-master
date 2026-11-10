@@ -1089,47 +1089,112 @@ export function SessionView({
     [showJoinBanner, joinNoticeId, joinNoticeText],
   );
 
+  // What the header, the side panel and the board are handed, kept the same
+  // between the events that really change it. Every stream event renders
+  // this component again (it reads the whole table state), and a fresh
+  // object, element or function made here on each of those renders undid
+  // the memo on SessionHeader and SidePanel and re-rendered the board: a
+  // presence ping or a status change repainted about 900 components, the
+  // header's every button and tooltip among them. Hooks, so above the early
+  // return below.
+  const stageSwitch = sessionLayout || (Boolean(state.battleMap) && docked && !battlePane);
+  const headerStage = useMemo(
+    () => (stageSwitch ? { on: shownStageView === "board", onToggle: toggleStage } : undefined),
+    [stageSwitch, shownStageView, toggleStage],
+  );
+  const openPartyTab = useCallback(() => openTab("party"), [openTab]);
+  const fightEncounter = state.encounter?.status === "active" ? state.encounter : null;
+  const campaignGenre = campaign?.genre;
+  const headerRibbon = useMemo(
+    () =>
+      fightEncounter ? (
+        <InitiativeRibbon encounter={fightEncounter} sheets={sheets} genre={campaignGenre} onOpen={openPartyTab} />
+      ) : null,
+    [fightEncounter, sheets, campaignGenre, openPartyTab],
+  );
+  const raiseLevelUp = useCallback(() => setLevelUpByHand(true), []);
+  const questLog = campaign?.questLog;
+  const questGlance = useMemo(
+    () =>
+      campaignId ? (
+        <QuestGlance campaignId={campaignId} refreshKey={state.questsVersion} initial={questLog ?? []} onOpen={openQuests} />
+      ) : null,
+    [campaignId, state.questsVersion, questLog, openQuests],
+  );
+  // The engine's count, the one the Hand reads (src/lib/battlemap/
+  // hand-table.ts): a spent reaction lives in reactionsUsed, not the turn
+  // budget. A companion only on its own turn, when this player commands it
+  // (player-characters.ts).
+  const stageEncounter = state.encounter;
+  const stageTurnBudget = useMemo(
+    () =>
+      actingSheet && (!actingSheet.isCompanion || actingSheet.id === turnSheet?.id) && stageEncounter
+        ? turnHudBudget(
+            turnFromEncounter(stageEncounter, actingSheet, {
+              myTurn: stageEncounter.turn?.ownerId === actingSheet.id,
+            }),
+          )
+        : null,
+    [actingSheet, turnSheet?.id, stageEncounter],
+  );
+  const dismissHandout = useCallback(
+    async (id: string) => {
+      await fetch(`/api/campaigns/${campaignId}/dm/invoke`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "dismiss_handout", args: { handoutId: id } }),
+      });
+    },
+    [campaignId],
+  );
+  // Two copies of the scroll: the fight stage's has no composer (the desk
+  // is right under the board); the enlarged board's keeps it (the dialog
+  // covers the desk).
+  const chronicleBlocked = gate.inputBlocked || silenced;
+  const chroniclePlaceholder = silenced ? silencedPlaceholder : (heldPlaceholder ?? fallenPlaceholder ?? gate.placeholder);
+  const chronicleLimit = composerLimit(kind, leadPrivate);
+  const stateRolls = state.rolls;
+  const stateMembers = state.members;
+  const [chronicle, chronicleDesk] = useMemo(() => {
+    const chronicleFor = (composer: boolean) => needsCharacter ? null : (
+      <TabletopChronicle
+        messages={messages}
+        rolls={stateRolls}
+        sheets={sheets}
+        members={stateMembers}
+        isDm={isDm}
+        steersStory={steersStory}
+        kind={kind}
+        onKindChange={setKind}
+        input={input}
+        setInput={setInput}
+        sending={sending}
+        inputBlocked={chronicleBlocked}
+        placeholder={chroniclePlaceholder}
+        onSubmit={submit}
+        maxChars={chronicleLimit}
+        // The stage's copy opens the story for what its window leaves out;
+        // the enlarged board's dialog covers the story, so it only says so.
+        onShowStory={composer ? undefined : toggleStage}
+        composer={composer}
+        meUserId={meId}
+      />
+    );
+    return [chronicleFor(false), chronicleFor(true)] as const;
+  }, [needsCharacter, messages, stateRolls, sheets, stateMembers, isDm, steersStory, kind, input, sending, chronicleBlocked, chroniclePlaceholder, submit, chronicleLimit, toggleStage, meId]);
+
   if (!campaign || !me) {
     return null;
   }
 
   const storyDue = storyCadence.level !== "quiet";
   const fightStaged = boardStaged || sessionLayout;
-  // Two copies of the scroll: the fight stage's has no composer (the desk
-  // is right under the board); the enlarged board's keeps it (the dialog
-  // covers the desk).
-  const chronicleFor = (composer: boolean) => needsCharacter ? null : (
-    <TabletopChronicle
-      messages={messages}
-      rolls={state.rolls}
-      sheets={sheets}
-      members={state.members}
-      isDm={isDm}
-      steersStory={steersStory}
-      kind={kind}
-      onKindChange={setKind}
-      input={input}
-      setInput={setInput}
-      sending={sending}
-      inputBlocked={gate.inputBlocked || silenced}
-      placeholder={silenced ? silencedPlaceholder : (heldPlaceholder ?? fallenPlaceholder ?? gate.placeholder)}
-      onSubmit={submit}
-      maxChars={composerLimit(kind, leadPrivate)}
-      // The stage's copy opens the story for what its window leaves out;
-      // the enlarged board's dialog covers the story, so it only says so.
-      onShowStory={composer ? undefined : toggleStage}
-      composer={composer}
-      meUserId={meId}
-    />
-  );
-  const chronicle = chronicleFor(false);
-  const chronicleDesk = chronicleFor(true);
 
   // Everything a side-panel tab's content needs, shared by the side panel
   // and by any tab with a pane of its own (TabPane).
   const routerProps = {
     levelUpLevel: myLevelUp && !levelUpShown ? myLevelUp.level : null,
-    onLevelUp: () => setLevelUpByHand(true),
+    onLevelUp: raiseLevelUp,
     pinsVersion: pinsVersion + state.pinsVersion,
     campaignId: campaign.id,
     sheets,
@@ -1245,22 +1310,13 @@ export function SessionView({
         ambience={ambience}
         sound={sound}
         onHelp={openHelp}
-        stage={sessionLayout || (state.battleMap && docked && !battlePane) ? { on: shownStageView === "board", onToggle: toggleStage } : undefined}
+        stage={headerStage}
         layoutSeat={sessionLayout ? undefined : layoutSeat}
         tableBreak={breakControl}
         prep={headerPrep}
         session={sessionControl}
         exit={headerExit}
-        ribbon={
-          state.encounter?.status === "active" ? (
-            <InitiativeRibbon
-              encounter={state.encounter}
-              sheets={sheets}
-              genre={campaign.genre}
-              onOpen={() => openTab("party")}
-            />
-          ) : null
-        }
+        ribbon={headerRibbon}
       />
 
       {/* The table itself. While prep is open it stays laid out under it,
@@ -1314,20 +1370,7 @@ export function SessionView({
 
                           intents={state.battleMap.intents}
                           genre={campaign.gameSettings?.genre ?? null}
-                          turnBudget={
-                            // The engine's count, the one the Hand reads
-                            // (src/lib/battlemap/hand-table.ts): a spent reaction
-                            // lives in reactionsUsed, not the turn budget.
-                            // A companion only on its own turn, when this
-                            // player commands it (player-characters.ts).
-                            actingSheet && (!actingSheet.isCompanion || actingSheet.id === turnSheet?.id) && state.encounter
-                              ? turnHudBudget(
-                                  turnFromEncounter(state.encounter, actingSheet, {
-                                    myTurn: state.encounter.turn?.ownerId === actingSheet.id,
-                                  }),
-                                )
-                              : null
-                          }
+                          turnBudget={stageTurnBudget}
                           canDirect={caps.adjudicates}
                           canFocusPing={steersStory}
                           ping={state.mapPing ?? null}
@@ -1492,7 +1535,7 @@ export function SessionView({
                 chatUnread={chatUnreadTotal}
                 mobileVisible={mobileView === "panel"}
                 storyDue={storyDue}
-                glance={<QuestGlance campaignId={campaign.id} refreshKey={state.questsVersion} initial={campaign.questLog ?? []} onOpen={openQuests} />}
+                glance={questGlance}
               />
             ),
           },
@@ -1545,13 +1588,7 @@ export function SessionView({
         userId={me?.id ?? ""}
         steersStory={steersStory}
         canTakeDown={caps.adjudicates}
-        onDismiss={async (id) => {
-          await fetch(`/api/campaigns/${campaign.id}/dm/invoke`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name: "dismiss_handout", args: { handoutId: id } }),
-          });
-        }}
+        onDismiss={dismissHandout}
       />
       <Suspense fallback={null}>
       {labelMounted ? (
