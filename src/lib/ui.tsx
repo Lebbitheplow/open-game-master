@@ -13,6 +13,7 @@ import {
   type CharacterLook,
   type MonsterLook,
 } from "@/lib/placeholders";
+import { variantUrl } from "@/lib/image-variant-url";
 
 // The arcane-night visual vocabulary, shared by every surface: gold-foil
 // primary buttons with press states, glassy panels over indigo night,
@@ -141,6 +142,14 @@ export function MonsterTile({
   );
 }
 
+// A face drawn at 48 pixels or less asks the server for the small copy it
+// keeps of an uploaded or painted picture (src/lib/image-variant-url.ts)
+// rather than the painting itself: four party cards were eleven megabytes of
+// portraits behind four thumbnails. A larger face, built-in art and a
+// placeholder are asked for as they are.
+const THUMB_SIZES = new Set(["size-5", "size-6", "size-7", "size-8", "size-9", "size-10", "size-11", "size-12"]);
+const faceSrc = (src: string, size: string) => (THUMB_SIZES.has(size) ? variantUrl(src, 256) : src);
+
 // A player's face: their uploaded avatar, or the sigil their user id hashes
 // to, so somebody who never chose one still looks like themselves everywhere.
 export function UserAvatar({
@@ -157,7 +166,7 @@ export function UserAvatar({
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={url || avatarPlaceholder(userId)}
+      src={faceSrc(url || avatarPlaceholder(userId), size)}
       alt=""
       loading="lazy"
       className={cn(
@@ -198,7 +207,7 @@ export function CharacterPortrait({
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={url || fallback || characterPlaceholder(look ?? {})}
+      src={faceSrc(url || fallback || characterPlaceholder(look ?? {}), size)}
       alt={alt}
       loading="lazy"
       className={cn(

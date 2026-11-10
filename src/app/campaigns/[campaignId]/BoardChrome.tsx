@@ -14,6 +14,7 @@ import type { StageToken } from "@/app/campaigns/[campaignId]/BoardStage";
 import type { PublicEncounter } from "@/lib/db/encounter-view";
 import { offSide, SidePlateBand, sidesLine, SideSr } from "@/app/campaigns/[campaignId]/SideBadge";
 import type { TargetEdge } from "@/lib/battlemap/view-tactics";
+import { variantUrl } from "@/lib/image-variant-url";
 
 // The chrome on the board as a stage (docs/visual-overhaul-plan.md 5.1): the
 // initiative rail, the turn HUD, the turn banner, the hover plate and the
@@ -56,7 +57,10 @@ export function TokenFace({
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={src}
+          // A face on a plate, a rail or a ribbon is a thumbnail: the small
+          // copy the server keeps of a portrait (src/lib/image-format.ts),
+          // as the board's own tokens ask for, not the full painting.
+          src={variantUrl(src, 256)}
           alt=""
           loading="lazy"
           decoding="async"

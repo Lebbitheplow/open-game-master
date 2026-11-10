@@ -23,6 +23,7 @@ import type { SystemGlyph } from "@/lib/system-glyphs";
 import { PACT_REVEAL_PREFIX } from "@/lib/dm/pact-logic";
 import { kitButtonClass } from "@/app/campaigns/[campaignId]/PanelKit";
 import { CardReturnedNote } from "@/app/campaigns/[campaignId]/CardReturnedNote";
+import { variantUrl } from "@/lib/image-variant-url";
 
 // The transcript's smaller voices: the table's own notices and what the
 // players say. The DM's passage, the hero of the screen, is MessageItem.tsx.
@@ -179,8 +180,12 @@ export function PlayerMessage({
   if (onReport && !mine && message.userId) {
     actions.push(reportAction(message, onReport, false));
   }
+  // The face beside a line is at most seven rem across: the small copy the
+  // server keeps of a portrait (src/lib/image-variant-url.ts), not the
+  // painting. A table's chronicle fetched every speaker's full portrait,
+  // megabytes each, the moment it opened.
   // eslint-disable-next-line @next/next/no-img-element
-  const face = portraitUrl ? <img src={portraitUrl} alt="" onError={onFaceError} /> : null;
+  const face = portraitUrl ? <img src={variantUrl(portraitUrl, 256)} alt="" onError={onFaceError} /> : null;
   const ooc = message.content.startsWith("(ooc)");
   // The portrait as tall as the name and bubble beside it (useFaceSize).
   const [faceStyle, textColumn] = useFaceSize<HTMLDivElement>();

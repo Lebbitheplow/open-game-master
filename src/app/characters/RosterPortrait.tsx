@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { CharacterPortrait, ui } from "@/lib/ui";
 import { portraitPhase, portraitReadyLine, type PortraitSubject } from "@/app/characters/portrait-arrival";
+import { variantUrl } from "@/lib/image-variant-url";
 
 // The roster card's portrait while it is painted (backlog F25), in three
 // pieces the page places: the picture itself, the card's line saying what
@@ -29,7 +30,7 @@ export function RosterPortraitSlot({
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={character.sheet!.portrait!.url}
+        src={variantUrl(character.sheet!.portrait!.url, 256)}
         alt={character.name}
         className={cn(
           "size-12 shrink-0 rounded-lg border border-amber-500/30 object-cover shadow-glow-gold",
