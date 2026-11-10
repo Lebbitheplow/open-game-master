@@ -203,8 +203,9 @@
   "clauses": [
    {
     "c": "Action Surge also teleports you up to 30 feet.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: arcane-charge-teleport"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: arcane-charge-teleport",
+    "by": "src/lib/dm/mt-fb-counter-riders.ts arcaneCharge (Action Surge credits the teleport, feature-teleport.ts)"
    }
   ]
  },
@@ -299,8 +300,9 @@
   "clauses": [
    {
     "c": "Arrows you fire from a shortbow or longbow",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: magic-arrow-arrows-only"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: magic-arrow-arrows-only",
+    "by": "src/lib/dm/pc-attack-damage.ts magicalStrikeApplies (Magic Arrow: a shortbow's or longbow's arrow)"
    },
    {
     "c": "count as magical",
@@ -821,8 +823,9 @@
    },
    {
     "c": "as a bonus action you can regain one spent die",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-authored.mjs gap spend:fighter::Psionic Power (Psi Warrior)::Psionic Recovery#REPORTED_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: psionic-recovery",
+    "by": "src/lib/srd/authored-effects-data-b.ts Psionic Recovery (restore, a bonus action)"
    },
    {
     "c": "once per short or long rest",
@@ -879,8 +882,9 @@
    },
    {
     "c": "free once per short rest or by spending a die",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: telekinetic-movement-free-use"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: telekinetic-movement-free-use",
+    "by": "src/lib/srd/authored-effects-data4.ts fighter::Telekinetic Movement (pool sub_telekinetic_movement, fallback sub_psionic_energy)"
    }
   ]
  },
@@ -888,7 +892,7 @@
   "source": "src/lib/srd/subclasses.json",
   "group": "Psi Warrior",
   "level": 7,
-  "sha": "476dc89306b0",
+  "sha": "1c2a48a63271",
   "clauses": [
    {
     "c": "Psi-Powered Leap lets you fly briefly as a bonus action",
@@ -897,16 +901,22 @@
     "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: telekinetic-adept-leap-and-thrust"
    },
    {
-    "c": "Telekinetic Thrust can knock a Psionic Strike target prone",
+    "c": "Telekinetic Thrust forces a Psionic Strike target",
     "is": "held",
     "by": "src/lib/srd/authored-effects-data-b.ts fighter::Telekinetic Adept thrust variant afterWeaponHit: true, save_effect prone (refused with no hit this turn): src/lib/dm/authored-spends.ts",
     "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: telekinetic-thrust-needs-a-strike"
    },
    {
-    "c": "or push it 10 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: telekinetic-thrust-save-not-in-text",
-    "note": "The push is a line of guidance (onFail: \"may instead be pushed 10 feet (move_token forced)\"); the save the engine rolls is not in the text."
+    "c": "to make a Strength save (DC 8 + your proficiency bonus + your Intelligence modifier) or be knocked prone",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-data-b.ts fighter::Telekinetic Adept thrust (save_effect str, dcAbility int, prone)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: telekinetic-thrust-save"
+   },
+   {
+    "c": "or pushed 10 feet",
+    "is": "held",
+    "by": "src/lib/dm/mt-fb-spend.ts pushFoe (the push variant: save_effect pushes 10 feet)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: telekinetic-thrust-push"
    }
   ]
  },
@@ -924,8 +934,9 @@
    },
    {
     "c": "a reaction-free end to being charmed or frightened by spending a die",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: guarded-mind-ends-a-condition"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: guarded-mind-ends-a-condition",
+    "by": "src/lib/dm/mt-fb-spend.ts cleanse (the Guarded Mind spend)"
    }
   ]
  },
@@ -933,7 +944,7 @@
   "source": "src/lib/srd/subclasses.json",
   "group": "Psi Warrior",
   "level": 15,
-  "sha": "329192b3acc9",
+  "sha": "3aad0a91083b",
   "clauses": [
    {
     "c": "A bonus action gives yourself and up to your Intelligence modifier in allies half cover for a minute",
@@ -948,9 +959,10 @@
     "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: bulwark-of-force"
    },
    {
-    "c": "allies",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: bulwark-of-force-range-not-in-text"
+    "c": "within 30 feet",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-data-b.ts fighter::Bulwark of Force (rangeFt 30)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: bulwark-of-force-30-feet"
    }
   ]
  },
@@ -1124,8 +1136,9 @@
    },
    {
     "c": "can make you Huge with 5 extra feet of reach",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: runic-juggernaut-reach"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: runic-juggernaut-reach",
+    "by": "src/lib/srd/authored-effects-data-b.ts fighter::Runic Juggernaut (reach, gated on giant's might (1d10))"
    }
   ]
  },
@@ -1137,8 +1150,9 @@
   "clauses": [
    {
     "c": "Second Wind also heals up to three allies within 60 feet for your fighter level.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: rallying-cry-heals-allies"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-fighter.mjs: rallying-cry-heals-allies",
+    "by": "src/lib/dm/mt-fb-counter-riders.ts rallyingCry"
    }
   ]
  },
@@ -1385,8 +1399,9 @@
    },
    {
     "c": "Elk lets you pass through a Large or smaller creature's space",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: totemic-attunement-elk-size"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: totemic-attunement-elk-size",
+    "by": "src/lib/dm/mt-fb-spend.ts sizeRefusal (save_effect maxSize Large)"
    },
    {
     "c": "as a bonus action, and it is knocked prone and takes 1d12 + your Strength modifier bludgeoning damage unless it succeeds on a Strength save (DC 8 + your proficiency bonus + your Strength modifier)",
@@ -1408,9 +1423,9 @@
    },
    {
     "c": "Wolf lets you knock a Large or smaller creature prone as a bonus action when you hit it with a melee weapon attack",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-authored.mjs gap spend:barbarian::Totemic Attunement::Wolf Takedown#GUIDANCE_ONLY",
-    "recorded_by": "spends-guidance-only-spend-barbarian-totemic-attunement-wolf-takedown"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: totemic-attunement-wolf-takedown",
+    "by": "src/lib/srd/authored-effects-data.ts Wolf Takedown (afterWeaponHit, maxSize Large); src/lib/dm/mt-fb-spend.ts meleeHitRefusal"
    }
   ]
  },
@@ -1466,8 +1481,9 @@
    },
    {
     "c": "you can see",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: spirit-shield-sight"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: spirit-shield-sight",
+    "by": "src/lib/dm/authored-reactions.ts reduce (sees: target)"
    },
    {
     "c": "within 30 feet",
@@ -1543,8 +1559,9 @@
    },
    {
     "c": "When you enter your rage its 10-foot aura wakes",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: storm-aura-wakes-with-rage"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: storm-aura-wakes-with-rage",
+    "by": "src/lib/dm/mt-fb-counter-riders.ts stormAuraWakes"
    },
    {
     "c": "and on each later turn of the rage a bonus action wakes it again",
@@ -1554,8 +1571,9 @@
    },
    {
     "c": "Desert: each other creature in it",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: storm-aura-desert-each-other-creature"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: storm-aura-desert-each-other-creature",
+    "by": "src/lib/dm/authored-spend-effects.ts stormAura (allies in the aura burn, sheltered by Shielding Storm)"
    },
    {
     "c": "takes 2 fire damage (3 at 5th level, 4 at 10th, 5 at 15th, 6 at 20th)",
@@ -1756,19 +1774,21 @@
   "clauses": [
    {
     "c": "While you rage, having 0 hit points doesn't knock you unconscious.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: rage-beyond-death-stays-up"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: rage-beyond-death-stays-up",
+    "by": "src/lib/dm/death.ts applyDamageDeathHook (ragingOnConditions) and src/lib/dm/vitals-logic.ts holdsOn"
    },
    {
     "c": "You still make death saving throws and suffer the usual effects of taking damage at 0 hit points",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "seen only inside the gap probe rage-beyond-death-no-death (damage at 0 counted a failure); no held probe"
+    "is": "held",
+    "by": "src/lib/dm/death.ts (onDamageAtZero and rollDeathSave run for a zealot raging on)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: rage-beyond-death-death-saves"
    },
    {
     "c": "but if you would die from failed death saves you don't die until your rage ends, and then only if you still have 0 hit points.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: rage-beyond-death-no-death"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: rage-beyond-death-no-death",
+    "by": "src/lib/dm/mt-fb-rage-death-logic.ts heldDeath and src/lib/dm/mt-fb-rage-death.ts fallAsRageEnds"
    }
   ]
  },
@@ -1828,8 +1848,9 @@
   "clauses": [
    {
     "c": "Your natural weapons",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: bestial-soul-natural-weapons-only"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: bestial-soul-natural-weapons-only",
+    "by": "src/lib/dm/pc-attack-damage.ts magicalStrikeApplies (Bestial Soul: the feature's natural weapons)"
    },
    {
     "c": "count as magical",
@@ -2044,8 +2065,9 @@
    },
    {
     "c": "its damage becomes that type",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: elemental-cleaver-damage-type"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: elemental-cleaver-damage-type",
+    "by": "src/lib/srd/authored-mt-fb.ts authoredInfusion (infuse), read by src/lib/dm/pc-attack-profile.ts"
    },
    {
     "c": "it deals an extra 1d6 damage of it",
@@ -2055,8 +2077,9 @@
    },
    {
     "c": "and it gains the thrown property (20/60), returning to your hand after a throw",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: elemental-cleaver-thrown"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: elemental-cleaver-thrown",
+    "by": "src/lib/dm/pc-attack-profile.ts (infuse: thrown 20/60, returns)"
    },
    {
     "c": "Its benefits do not work for anyone else",
@@ -2066,8 +2089,9 @@
    },
    {
     "c": "a bonus action changes the element",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: elemental-cleaver-change-costs-a-bonus-action"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: elemental-cleaver-change-costs-a-bonus-action",
+    "by": "src/lib/srd/authored-effects-data.ts Elemental Cleaver (action bonus)"
    }
   ]
  },
@@ -2085,8 +2109,9 @@
    },
    {
     "c": "Medium or smaller creature",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: mighty-impel-size"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: mighty-impel-size",
+    "by": "src/lib/dm/mt-fb-spend.ts sizeRefusal (maxSize Medium, Large from 14th)"
    },
    {
     "c": "within your reach",
@@ -2096,8 +2121,9 @@
    },
    {
     "c": "and move it to an unoccupied space you can see within 30 feet of you",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: mighty-impel-moves-nothing"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: mighty-impel-moves-nothing",
+    "by": "src/lib/dm/mt-fb-spend.ts throwFoe"
    },
    {
     "c": "an unwilling creature avoids this with a Strength save (DC 8 + your proficiency bonus + your Strength modifier)",
@@ -2107,8 +2133,9 @@
    },
    {
     "c": "A creature left in the air falls and lands prone.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: mighty-impel-moves-nothing"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: mighty-impel-fall",
+    "by": "src/lib/dm/mt-fb-spend.ts throwFoe (variant up: SRD 5.1 Falling)"
    }
   ]
  },
@@ -2120,8 +2147,9 @@
   "clauses": [
    {
     "c": "When you rage, your reach grows by 10 feet",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: demiurgic-colossus-reach"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: demiurgic-colossus-reach",
+    "by": "src/lib/srd/authored-effects-more.ts authoredReachBonus (the widest reach held)"
    },
    {
     "c": "you can become Large or Huge (your choice) if there is room",
@@ -2130,9 +2158,9 @@
    },
    {
     "c": "Mighty Impel can move Large or smaller creatures",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "not run on its own: the probe mighty-impel-size shows a Huge creature thrown at 14th level, and a Large one at 14th was not staged"
+    "is": "held",
+    "by": "src/lib/dm/mt-fb-spend.ts sizeRefusal (Mighty Impel's ladder: Large from 14th)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: mighty-impel-large-at-14th"
    },
    {
     "c": "and Elemental Cleaver's extra damage becomes 2d6",

@@ -50,7 +50,7 @@ export const TRIGGERS = [
 // For a spend on the holder's own turn: as staged, then the states a spend may ask for.
 // The last two come after "no fight", so a spend accepted earlier is still
 // read where it was: they are for the uses that answer a kill or a step.
-export const OWN_TURN = ["own turn, nothing staged", "the holder below half hit points", "the holder hit a foe", "the holder failed a save", "the holder failed a save + then the holder's turn", "the holder missed a foe", "no fight", "the holder killed a foe", "the holder used Step of the Wind", "the holder entered a rage", "the holder succeeded on a death save", "the holder stabilized the fallen ally with spare the dying", "the holder's echo was destroyed", "the holder sneak attacked a foe", "the ally at 0 died"];
+export const OWN_TURN = ["own turn, nothing staged", "the holder below half hit points", "the holder hit a foe", "the holder failed a save", "the holder failed a save + then the holder's turn", "the holder missed a foe", "no fight", "the holder killed a foe", "the holder used Step of the Wind", "the holder entered a rage", "the holder succeeded on a death save", "the holder stabilized the fallen ally with spare the dying", "the holder's echo was destroyed", "the holder sneak attacked a foe", "the ally at 0 died", "the holder ran at a foe and hit it", "the holder frightened"];
 
 const lastStep = (key) => key.split(" + ").at(-1);
 export const untriggered = (key) => UNTRIGGERED.includes(lastStep(key));
@@ -196,6 +196,27 @@ async function step(rig, scene, name, notes) {
       return save(scene.ally.id);
     case "the holder hit a foe":
       return swing([18, 5]);
+    // A run of two squares straight at the foe by the holder's own move, then
+    // the hit: what rides a charge (Ferocious Charger) asks the turn for both.
+    // The move is the player's own, through the board's route: the GM's
+    // move_token walks a character only for a move their player declared.
+    case "the holder ran at a foe and hit it": {
+      kit.place(holder, 5, 3);
+      const route = await world.route("campaigns/[campaignId]/battle-map/move");
+      world.signIn({ id: world.sheet(holder).userId });
+      const walked = await route.POST(
+        new Request(`http://odm.test/api/campaigns/${world.campaignId}/battle-map/move`, { method: "POST", body: JSON.stringify({ x: 5, y: 5 }) }),
+        { params: Promise.resolve({ campaignId: world.campaignId }) },
+      );
+      if (walked.status !== 200) return { ok: false, error: `the run was refused (${walked.status})` };
+      return swing([18, 5]);
+    }
+    // A condition a spend ends (Guarded Mind: charmed or frightened).
+    case "the holder frightened": {
+      const now = world.sheet(holder);
+      world.patch(holder, { conditions: [...now.conditions.filter((entry) => entry !== "frightened"), "frightened"], conditionMeta: { ...now.conditionMeta, frightened: { rounds: 5 } } });
+      return { ok: true };
+    }
     case "the holder missed a foe":
       return swing([2]);
     // A finesse blade at the second foe, brought beside the holder and the

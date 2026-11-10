@@ -1,4 +1,5 @@
 import { healerKitStabilize, healerKitUse } from "@/lib/dm/stabilize";
+import { afterCounterSpend } from "@/lib/dm/mt-fb-counter-riders";
 import { conductGate } from "@/lib/dm/party-conduct";
 import { shadowExperience } from "@/lib/db/companion-departures";
 import { ALIGNMENT_CODES } from "@/lib/dm/companion-values-logic";
@@ -1505,6 +1506,11 @@ function dmMutation(
         outcome.patch,
       );
       publishSheet(campaign, sheet.id);
+      // What rides this counter's spend for the holder of another feature
+      // (Arcane Charge, Rallying Cry, a storm herald's aura: mt-fb-counter-riders.ts).
+      if (counter) {
+        Object.assign(outcome.result, afterCounterSpend({ campaign, turnId, sheet, defId: counter.id, args, reason }));
+      }
       // A feature that lands on someone else (Bardic Inspiration) patches
       // the second sheet the same audited way.
       if (outcome.patchTarget) {

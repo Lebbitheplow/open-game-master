@@ -30,6 +30,7 @@ import { shillelaghSwing, hexWarriorSwing } from "@/lib/dm/attack-features";
 import { combatRiders, type CombatRiders } from "@/lib/srd/feature-effects";
 import { grantedAttackConditions, grantedAttackDice, grantedAttackFor } from "@/lib/srd/granted-attacks";
 import { authoredNaturalWeapon, authoredReachBonus, naturalWeaponGated } from "@/lib/srd/authored-effects-more";
+import { authoredInfusion } from "@/lib/srd/authored-mt-fb";
 import { racialNaturalWeapon } from "@/lib/srd/racial-weapons";
 import { allSpellNames } from "@/lib/srd/spell-lists";
 import { matchWeapon, SPECIAL_WEAPONS } from "@/lib/srd/weapons";
@@ -450,6 +451,18 @@ export function buildAttackProfile(
   const reach = kind === "weapon" && !profile.ranged ? authoredReachBonus(sheet) : null;
   if (reach) {
     profile = { ...profile, reachTiles: profile.reachTiles + reach.tiles, riderNotes: [...profile.riderNotes, `${reach.feature}: ${reach.tiles * 5} more feet of reach`] };
+  }
+  // Elemental Cleaver: the infused weapon deals the element, and can be
+  // thrown and comes back (authored-mt-fb.ts authoredInfusion).
+  const infusion = kind === "weapon" ? authoredInfusion(sheet) : null;
+  if (infusion) {
+    profile = {
+      ...profile,
+      damageType: infusion.type,
+      returns: true,
+      ...(profile.ranged ? {} : { thrown: true, rangeTiles: Math.max(profile.thrown ? profile.rangeTiles : 0, infusion.rangeFt / 5), longRangeTiles: Math.max(profile.thrown ? (profile.longRangeTiles ?? 0) : 0, infusion.longRangeFt / 5) }),
+      riderNotes: [...profile.riderNotes, `${infusion.feature}: ${infusion.type} damage, thrown ${infusion.rangeFt}/${infusion.longRangeFt} ft, returning to the hand`],
+    };
   }
   return { profile, derived, riders, scalingNote, grantedBonusAction, grantedWholeAction: granted?.attack.wholeAction === true, grantedWithActivation, grantedActivation: granted?.attack.activation ?? "bonus", kind, special, conjured, grantedSpell };
 }

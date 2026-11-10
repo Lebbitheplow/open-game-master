@@ -205,6 +205,9 @@ export type AuthoredEffect = Base &
     // Melee weapon reach grows by this many 5-foot squares (Demiurgic
     // Colossus while raging).
     | { kind: "reach"; tiles: number }
+    // The weapon the holder swings deals this damage type and can be thrown,
+    // coming back to the hand (Elemental Cleaver's infused weapon).
+    | { kind: "infuse"; type: string; rangeFt: number; longRangeFt: number }
     // Sneak Attack gains dice against a creature the holder marked
     // (Eye for Weakness: 3d6 against the Insightful Fighting target).
     | { kind: "sneak_bonus"; dice: number; mark: string }
@@ -322,6 +325,10 @@ export type SpendDoes =
       // The holder's condition is a mark on the named creature (its meta's
       // quarry, src/lib/dm/attack-marks.ts): Target Lock, Quarry.
       quarry?: boolean;
+      // An enemy target no larger than this (Wolf Takedown: "a Large or smaller
+      // creature"); with the spend's afterWeaponHit, the creature is the one
+      // a melee weapon attack hit this turn (src/lib/dm/mt-fb-spend.ts).
+      maxSize?: string;
       // The spend's own burst (Arms of the Astral Self, Avenging Angel).
       // `mark`: a second condition each creature that failed carries
       // (Avenging Angel: "menaced", which gives every attacker advantage).
@@ -360,6 +367,15 @@ export type SpendDoes =
       // not invisible or hidden, and the holder not blinded.
       sight?: boolean;
       onFail?: string;
+      // Only a creature this size or smaller, one size or a ladder by class
+      // level (Elk Trample: Large; Mighty Impel: Medium, Large from 14th), and
+      // a failed save throws it up to this many feet (Mighty Impel):
+      // src/lib/dm/mt-fb-spend.ts.
+      maxSize?: string | Array<[number, string]>;
+      throws?: { feet: number };
+      // A failed save pushes it this many feet straight away from the holder
+      // (Telekinetic Thrust's push).
+      pushes?: { feet: number };
       typeFromVariant?: string[];
       // Only a creature of these types (its block's type, creature-type.ts):
       // any other is refused before the use is paid.
@@ -476,7 +492,10 @@ export type SpendDoes =
   | { kind: "action_attack"; note: string }
   // Spent dice come back to a pool (Psionic Recovery: one Psionic Energy die).
   // `clears`: the mark the spend's gate asked for is spent with it.
-  | { kind: "restore"; pool: string; amount: number; clears?: string };
+  | { kind: "restore"; pool: string; amount: number; clears?: string }
+  // Ends these conditions on the holder; refused, with nothing spent, when
+  // they carry none of them (Guarded Mind: src/lib/dm/mt-fb-spend.ts).
+  | { kind: "cleanse"; conditions: string[] };
 
 export type SpendAction = "action" | "bonus" | "reaction" | "none";
 

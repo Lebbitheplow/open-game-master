@@ -151,6 +151,7 @@ export const AUTHORED_READERS: Record<string, { file: string; call: string }> = 
   // The final round's hooks (src/lib/srd/authored-effects-more.ts).
   natural_weapon: { file: "src/lib/dm/pc-attack-profile.ts", call: "authoredNaturalWeapon(" },
   reach: { file: "src/lib/dm/pc-attack-profile.ts", call: "authoredReachBonus(" },
+  infuse: { file: "src/lib/dm/pc-attack-profile.ts", call: "authoredInfusion(" },
   sneak_bonus: { file: "src/lib/dm/pc-attack-damage.ts", call: "authoredSneakBonus(" },
   save_die_vs: { file: "src/lib/dm/forced-save.ts", call: "authoredSaveDieVs(" },
   spell_rider: { file: "src/lib/srd/spell-damage-riders.ts", call: "authoredSpellDice(" },

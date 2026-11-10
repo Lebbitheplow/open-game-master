@@ -2055,6 +2055,18 @@
    "guidance": "The bonus-action melee attack against a marked creature that damaged someone else, on the fighter's next turn: pc_attack feature \"Unwavering Mark\" at that creature, with advantage and +half the fighter level damage; the attack spends the use. The mark itself the server lays on every melee hit."
   },
   {
+   "id": "sub_telekinetic_movement",
+   "displayName": "Telekinetic Movement",
+   "match": [
+    "telekinetic movement"
+   ],
+   "uses": 1,
+   "ability": null,
+   "recharge": "short",
+   "action": "action",
+   "guidance": "An action: move a Large or smaller loose object or a willing creature up to 30 feet with the mind. Free once per short rest; after that each use spends a Psionic Energy die. Spend it with use_resource \"Telekinetic Movement\": the server takes the free use first, then a die."
+  },
+  {
    "id": "sub_bulwark_of_force",
    "displayName": "Bulwark of Force",
    "match": [

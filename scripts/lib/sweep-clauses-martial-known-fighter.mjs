@@ -6,13 +6,6 @@ const ROWS_B = "src/lib/srd/authored-effects-data-b.ts";
 const ROWS_4 = "src/lib/srd/authored-effects-data4.ts";
 
 export const KNOWN = {
-  "arcane-charge-teleport": {
-    severity: "medium", kind: "rule-missing",
-    where: `${ROWS_4} fighter::Arcane Charge (narrated: "A 30-foot teleport with Action Surge: a move_token the GM makes when the fighter surges."); src/lib/dm/feature-spends.ts (Action Surge credits no teleport)`,
-    note: "Shadow Step's row credits its 60 feet (creditFeatureTeleport, src/lib/dm/authored-spend-effects.ts); Action Surge for an Eldritch Knight of 15th level credits none and says nothing of it.",
-    fix: "Credit a 30-foot teleport when a holder of Arcane Charge spends Action Surge, as buff rows with teleportFeet do.",
-    files: [ROWS_4, "src/lib/dm/feature-spends.ts", "src/lib/dm/authored-spend-effects.ts"],
-  },
   "arcane-shot-once-per-turn": {
     severity: "medium", kind: "rule-wrong",
     where: "src/lib/srd/authored-resources.json sub_arcane_shot (a plain counter: no oncePerTurn, no attack it rides)",
@@ -34,63 +27,13 @@ export const KNOWN = {
     fix: "Give the subclass a cantrip pick (prestidigitation or druidcraft) the way Giant's Power's row does (choose).",
     files: ["src/lib/srd/subclasses.json", "src/lib/srd/authored-effects-data-b.ts"],
   },
-  "magic-arrow-arrows-only": {
-    severity: "low", kind: "rule-wrong",
-    where: "src/lib/srd/feature-effects.ts (the def for \"magic arrow\": magical_attacks, for every attack)",
-    note: "A longsword in the archer's hand cuts through resistance to nonmagical weapons too. Bestial Soul (natural weapons) and One with the Blade (kensei weapons) carry the same unscoped effect.",
-    paths: "Right: an arrow from a bow. Wrong: every other weapon the archer swings.",
-    fix: "Scope magical_attacks to a weapon filter (bows; natural weapons; kensei weapons).",
-    files: ["src/lib/srd/feature-effects.ts", "src/lib/dm/pc-attack-damage.ts"],
-  },
 
-  "telekinetic-movement-free-use": {
-    severity: "low", kind: "rule-wrong",
-    where: "src/lib/dm/option-costs.ts (Telekinetic Movement always spends a Psionic Energy die)",
-    note: "The first use after a rest costs a die like every other.",
-    fix: "A once-per-short-rest counter the option spends before the pool.",
-    files: ["src/lib/dm/option-costs.ts", "src/lib/srd/authored-resources.json"],
-  },
-  "telekinetic-thrust-save-not-in-text": {
-    severity: "low", kind: "data",
-    where: "src/lib/srd/subclasses.json fighter::Telekinetic Adept (the text) against the row's Strength save, DC 8 + proficiency + Intelligence",
-    note: "The engine rolls the published save; the stored text states none, so the player reads an automatic knock-down.",
-    fix: "Add the save to the text.",
-    files: ["src/lib/srd/subclasses.json"],
-  },
-  "guarded-mind-ends-a-condition": {
-    severity: "medium", kind: "rule-missing",
-    where: "src/lib/srd/feature-effects.ts (the def for \"guarded mind\" holds the resistance only); no spend ends charmed or frightened",
-    note: "A die is spent under the variant and the fighter stays frightened.",
-    fix: "A spend on sub_psionic_energy that ends charmed and frightened on the holder, open at the start of their turn.",
-    files: ["src/lib/srd/authored-effects-data-b.ts"],
-  },
-  "bulwark-of-force-range-not-in-text": {
-    severity: "low", kind: "data",
-    where: "src/lib/srd/subclasses.json fighter::Bulwark of Force (the text) against the row's rangeFt: 30",
-    note: "The engine keeps the published 30 feet; the stored text names no distance.",
-    fix: "Add \"within 30 feet\" to the text.",
-    files: ["src/lib/srd/subclasses.json"],
-  },
-  "runic-juggernaut-reach": {
-    severity: "low", kind: "rule-missing",
-    where: `${ROWS_B} fighter::Runic Juggernaut (its row only swaps the die; no reach effect as Giant's Havoc has)`,
-    note: "A creature 10 feet away is out of reach under Giant's Might at 18th level.",
-    fix: "A reach effect gated on the giant's might (1d10) condition.",
-    files: [ROWS_B],
-  },
   "rune-carver-runes-do-nothing": {
     severity: "medium", kind: "rule-missing",
     where: "src/lib/srd/options.json (the six runes are text only); nothing under src/lib/dm or src/lib/srd reads \"Rune: ...\" features",
     note: "A knight carrying the Stone and Hill runes has no advantage on Insight, none on saves against poison, no poison resistance, and no way to invoke either. Master of Runes' second invocation has nothing to count.",
     fix: "Rows for the six runes: passive effects (check_adv, save_adv, resist, darkvision) and an invoke spend each with a per-rest counter (two uses with Master of Runes).",
     files: ["src/lib/srd/options.json", "src/lib/srd/authored-effects-data-b.ts", "src/lib/srd/authored-resources.json"],
-  },
-  "rallying-cry-heals-allies": {
-    severity: "medium", kind: "rule-missing",
-    where: `${ROWS_4} fighter::Rallying Cry (narrated: "heals the GM makes when Second Wind is spent"); src/lib/dm/feature-spends.ts Second Wind`,
-    note: "A wounded ally beside the Banneret gains nothing when Second Wind is spent.",
-    fix: "Second Wind for a holder of Rallying Cry heals up to three chosen allies within 60 feet for the fighter level (heal_area is the shape).",
-    files: [ROWS_4, "src/lib/dm/feature-spends.ts"],
   },
   "royal-envoy-already-proficient": {
     severity: "low", kind: "rule-missing",

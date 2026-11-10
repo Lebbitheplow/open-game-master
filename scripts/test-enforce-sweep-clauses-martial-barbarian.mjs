@@ -145,6 +145,31 @@ const rageBonus = (level) => (level >= 16 ? 4 : level >= 9 ? 3 : 2);
     assert.equal(out.ok, false, "a Huge creature was trampled prone");
   });
 
+  // "Wolf lets you knock a Large or smaller creature prone as a bonus action
+  // when you hit it with a melee weapon attack."
+  await probe("totemic-attunement-wolf-takedown", async () => {
+    const wolf = await totem(14, "wolf", "wolf", "wolf");
+    const [enemy, other] = await stage(wolf, { enemies: 2 });
+    kit.place(other.id, 5, 6);
+    assert.equal((await spend(wolf, "Wolf Takedown", { targetEnemyId: enemy.id })).ok, false, "not while calm");
+    rage(wolf);
+    const early = await spend(wolf, "Wolf Takedown", { targetEnemyId: enemy.id });
+    assert.equal(early.ok, false, `with no hit landed: ${show(early)}`);
+    await swing(wolf, enemy, [15, 4]);
+    const elsewhere = await spend(wolf, "Wolf Takedown", { targetEnemyId: other.id });
+    assert.equal(elsewhere.ok, false, `at a creature the hit did not land on: ${show(elsewhere)}`);
+    const out = await spend(wolf, "Wolf Takedown", { targetEnemyId: enemy.id });
+    assert.equal(out.ok, true, out.error);
+    assert.ok(foeHas(enemy, "prone"), "no save: the creature is prone");
+    assert.equal(budget().bonusUsed, true, "the bonus action");
+    const [huge] = await stage(wolf);
+    rage(wolf);
+    kit.setEnemy(huge.id, { stats: { size: "Huge" } });
+    await swing(wolf, huge, [15, 4]);
+    assert.equal((await spend(wolf, "Wolf Takedown", { targetEnemyId: huge.id })).ok, false, "a Huge creature");
+    assert.ok(!foeHas(huge, "prone"));
+  });
+
   await probe("totemic-attunement-tiger-needs-a-run", async () => {
     const tiger = await totem(14, "tiger", "tiger", "tiger");
     const [enemy] = await stage(tiger);
@@ -316,11 +341,20 @@ const rageBonus = (level) => (level >= 16 ? 4 : level >= 9 ? 3 : 2);
     }
   });
   await probe("storm-aura-desert-each-other-creature", async () => {
-    const desert = await herald(20, "desert");
+    // Below 10th level nothing shelters an ally: the aura's fire is theirs too.
+    const desert = await herald(5, "desert");
     await stage(desert, { cast: [[ally, 5, 6]] });
     rage(desert);
     await spend(desert, "Storm Aura");
-    assert.equal(80 - sheet(ally).currentHp, 6, "an ally standing in the aura took no fire damage");
+    assert.equal(80 - sheet(ally).currentHp, 3, "an ally standing in the aura took no fire damage");
+    assert.equal(80 - sheet(desert).currentHp, 0, "each OTHER creature: not the barbarian");
+    // From 10th level Shielding Storm gives the allies in the aura the
+    // barbarian's own resistance to it: half of the 6 a 20th-level aura deals.
+    const elder = await herald(20, "desert");
+    await stage(elder, { cast: [[ally, 5, 6]] });
+    rage(elder);
+    await spend(elder, "Storm Aura");
+    assert.equal(80 - sheet(ally).currentHp, 3, "an ally sheltered by Shielding Storm takes half");
   });
 
   await probe("storm-aura-sea", async () => {
@@ -467,6 +501,35 @@ const rageBonus = (level) => (level >= 16 ? 4 : level >= 9 ? 3 : 2);
     assert.equal(sheet(zealot).currentHp, 0, "setup: the blow dropped them");
     assert.ok(has(zealot, "raging") && !has(zealot, "unconscious"), `at 0 hit points the raging zealot is ${sheet(zealot).conditions.join(", ")}`);
   });
+  // The zealot dropped by a blow while raging, as the engine leaves them.
+  const dropped = async (level = 14) => {
+    const zealot = hero("barbarian", "Path of the Zealot", level, { ...AXE, ac: 5 });
+    const [enemy] = await stage(zealot);
+    rage(zealot);
+    world.patch(zealot.id, { currentHp: 3 });
+    await forced([16, 4, 1, 1], () => world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: zealot.id }));
+    assert.equal(sheet(zealot).currentHp, 0, "setup: the blow dropped them");
+    return { zealot, enemy };
+  };
+  const hurt = (who) => world.invoke("apply_damage", { characterId: who.id, amount: 3, type: "slashing" });
+  await probe("rage-beyond-death-death-saves", async () => {
+    const { zealot, enemy } = await dropped();
+    assert.deepEqual([sheet(zealot).deathSaves?.failures, sheet(zealot).deathSaves?.dead], [0, false], "dying, with a track");
+    await hurt(zealot);
+    assert.equal(sheet(zealot).deathSaves?.failures, 1, "damage at 0 hit points is a death save failure");
+    // Up, they act: an attack of their own at 0 hit points.
+    kit.giveTurn(zealot.id);
+    const struck = await swing(zealot, enemy, [15, 4]);
+    assert.equal(struck.ok, true, `a zealot raging at 0 hit points cannot attack: ${struck.error}`);
+    // And the server still rolls their death saves.
+    const { rollDeathSave } = await import("../src/lib/dm/death.ts");
+    const line = await forced([5], () => rollDeathSave(world.campaign(), zealot.id));
+    assert.match(String(line), /failure/, `their death save: ${line}`);
+    assert.equal(sheet(zealot).deathSaves?.failures, 2);
+    // Below 14th level the same blow knocks a raging zealot out.
+    const young = await dropped(10);
+    assert.ok(has(young.zealot, "unconscious") && !has(young.zealot, "raging"), `a 10th-level zealot at 0 is ${sheet(young.zealot).conditions.join(", ")}`);
+  });
   await probe("rage-beyond-death-no-death", async () => {
     const zealot = hero("barbarian", "Path of the Zealot", 14, AXE);
     await stage(zealot);
@@ -474,6 +537,26 @@ const rageBonus = (level) => (level >= 16 ? 4 : level >= 9 ? 3 : 2);
     const out = await world.invoke("apply_damage", { characterId: zealot.id, amount: 3, type: "slashing" });
     assert.equal(out.ok, true, out.error);
     assert.equal(sheet(zealot).deathSaves?.dead, false, "a third death save failure while raging killed the zealot");
+    assert.equal(sheet(zealot).deathSaves?.failures, 3, "the failure is still counted");
+    // "You don't die until your rage ends": it ends, and they do.
+    const first = await dropped();
+    for (let blow = 0; blow < 3; blow += 1) await hurt(first.zealot);
+    assert.deepEqual([sheet(first.zealot).deathSaves?.failures, sheet(first.zealot).deathSaves?.dead], [3, false], "three failures, held off");
+    await world.invoke("clear_condition", { characterId: first.zealot.id, condition: "raging" });
+    r.endTurn();
+    assert.equal(sheet(first.zealot).deathSaves?.dead, true, "the rage ended at 0 hit points with three failures, and the zealot lives");
+    // "And then only if you still have 0 hit points": healed first, they live.
+    const second = await dropped();
+    for (let blow = 0; blow < 3; blow += 1) await hurt(second.zealot);
+    await world.invoke("heal", { characterId: second.zealot.id, amount: 5 });
+    await world.invoke("clear_condition", { characterId: second.zealot.id, condition: "raging" });
+    r.endTurn();
+    assert.equal(Boolean(sheet(second.zealot).deathSaves?.dead), false, "healed above 0 before the rage ended, the zealot died all the same");
+    // The rage over at 0 with fewer than three failures: they fall, dying.
+    const third = await dropped();
+    await world.invoke("clear_condition", { characterId: third.zealot.id, condition: "raging" });
+    r.endTurn();
+    assert.ok(has(third.zealot, "unconscious") && !sheet(third.zealot).deathSaves?.dead, `once the rage ends at 0 hit points they are ${sheet(third.zealot).conditions.join(", ") || "standing"}`);
   });
 }
 
@@ -658,6 +741,14 @@ const rageBonus = (level) => (level >= 16 ? 4 : level >= 9 ? 3 : 2);
     kit.place(enemy.id, 9, 5);
     const out = await swing(sixth, enemy, [15, 4, 4]);
     assert.equal(out.ok, true, `the infused greataxe cannot be thrown 20 feet: ${String(out.error).slice(0, 80)}`);
+    assert.ok(sheet(sixth).equipment.some((item) => item.name === "Greataxe" && item.qty === 1), "returning to the hand: the axe thrown is still theirs");
+    kit.freshTurn();
+    kit.place(enemy.id, 18, 5);
+    assert.equal((await swing(sixth, enemy, [15, 4, 4])).ok, false, "65 feet is past its long range of 60");
+    // Calm, the axe is an axe: no throw.
+    const [calm] = await stage(sixth);
+    kit.place(calm.id, 9, 5);
+    assert.equal((await swing(sixth, calm, [15, 4, 4])).ok, false, "not while calm");
   });
   await probe("elemental-cleaver-change-costs-a-bonus-action", async () => {
     await stage(sixth);
@@ -694,6 +785,29 @@ const rageBonus = (level) => (level >= 16 ? 4 : level >= 9 ? 3 : 2);
     }
     assert.deepEqual(taken, [], "thrown all the same");
   });
+  // "A creature left in the air falls and lands prone": thrown straight up
+  // the 30 feet, it falls them (SRD 5.1, Falling: 1d6 for every 10 feet).
+  await probe("mighty-impel-fall", async () => {
+    const [enemy] = await stage(tenth);
+    rage(tenth);
+    const at = kit.token(enemy.id);
+    const out = await spend(tenth, "Mighty Impel", { targetEnemyId: enemy.id, variant: "up" }, 2);
+    assert.equal(out.result?.saved, false, show(out));
+    assert.equal(300 - foe(enemy).currentHp, 6, "3d6 at 2 each");
+    assert.ok(foeHas(enemy, "prone"), "and it lands prone");
+    assert.deepEqual([kit.token(enemy.id).x, kit.token(enemy.id).y], [at.x, at.y], "where it stood");
+  });
+  // "Mighty Impel can move Large or smaller creatures" from 14th level.
+  await probe("mighty-impel-large-at-14th", async () => {
+    const who = await giant(14);
+    const [enemy] = await stage(who);
+    rage(who);
+    kit.setEnemy(enemy.id, { stats: { size: "Large" } });
+    const before = kit.token(enemy.id);
+    const out = await spend(who, "Mighty Impel", { targetEnemyId: enemy.id }, 2);
+    assert.equal(out.ok, true, out.error);
+    assert.notDeepEqual([kit.token(enemy.id).x, kit.token(enemy.id).y], [before.x, before.y], "a Large creature is thrown at 14th level");
+  });
   await probe("mighty-impel-moves-nothing", async () => {
     const [enemy] = await stage(tenth);
     rage(tenth);
@@ -702,6 +816,15 @@ const rageBonus = (level) => (level >= 16 ? 4 : level >= 9 ? 3 : 2);
     assert.equal(out.result?.saved, false, show(out));
     const after = kit.token(enemy.id);
     assert.notDeepEqual([after.x, after.y], [before.x, before.y], "the creature failed its save and stands where it stood");
+    const me = kit.token(tenth.id);
+    assert.ok(Math.max(Math.abs(after.x - me.x), Math.abs(after.y - me.y)) <= 6, "within 30 feet of the barbarian");
+    // A save made: nothing is thrown.
+    kit.freshTurn();
+    const held = kit.token(enemy.id);
+    kit.place(enemy.id, 6, 5);
+    const made = await spend(tenth, "Mighty Impel", { targetEnemyId: enemy.id }, 20);
+    assert.equal(made.result?.saved, true, show(made));
+    assert.deepEqual([kit.token(enemy.id).x, kit.token(enemy.id).y], [6, 5], `a creature that saved was moved from where it stood (it was at ${held.x},${held.y})`);
   });
 
   await probe("demiurgic-colossus-reach", async () => {

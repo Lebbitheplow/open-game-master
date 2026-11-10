@@ -46,13 +46,15 @@ import { swallowCoverBetween, swallowCoverError } from "@/lib/dm/swallow";
 import { resourceName } from "@/lib/srd/class-resources";
 import { resolveCounterSave } from "@/lib/dm/counter-saves";
 import { regainSlot } from "@/lib/dm/authored-spend-counters";
+import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { sneakAnswerFor } from "@/lib/dm/sneak-answer";
 import { martialSpend } from "@/lib/dm/authored-spend-martial";
+import { cleanse, meleeHitRefusal, pushFoe, sizeRefusal, throwFoe } from "@/lib/dm/mt-fb-spend";
 
 const DAMAGE_WORDS = new Set(["acid", "bludgeoning", "cold", "fire", "force", "lightning", "necrotic", "piercing", "poison", "psychic", "radiant", "slashing", "thunder"]);
 
 // A spend's damage on one enemy, as the holder's dice card.
-const damageDice = (ctx: SpendContext, enemy: EncounterEnemy, dice: string) =>
+export const damageDice = (ctx: SpendContext, enemy: EncounterEnemy, dice: string) =>
   rollCard(ctx.campaign, ctx.turn, ctx.sheet.id, "damage", rollAgainst(ctx.spend.name, enemy.displayName), dice, sheetAttacker(ctx.sheet)).total;
 
 export type SpendContext = {
@@ -123,7 +125,7 @@ function targetEnemy(ctx: SpendContext): EncounterEnemy | ToolError {
   return swallowCoverError(ctx.sheet.id, enemy.id) ?? enemy;
 }
 
-function damageEnemy(ctx: SpendContext, enemy: EncounterEnemy, amount: number, type: string): Record<string, unknown> {
+export function damageEnemy(ctx: SpendContext, enemy: EncounterEnemy, amount: number, type: string): Record<string, unknown> {
   const encounter = getActiveEncounter(ctx.campaign.id);
   if (!encounter || amount <= 0) {
     return { damage: 0 };
@@ -141,7 +143,7 @@ function damageEnemy(ctx: SpendContext, enemy: EncounterEnemy, amount: number, t
 
 // Whether it landed: not on a creature immune to it, stone's poison
 // included (damage-logic.ts immuneToCondition).
-function enemyCondition(ctx: SpendContext, enemy: EncounterEnemy, condition: string, meta: Record<string, unknown>): boolean {
+export function enemyCondition(ctx: SpendContext, enemy: EncounterEnemy, condition: string, meta: Record<string, unknown>): boolean {
   const fresh = getEnemy(enemy.id) ?? enemy;
   if (immuneToCondition(fresh, condition)) {
     return false;
@@ -200,6 +202,11 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       if (typeof option !== "string") {
         return option;
       }
+      // The option already chosen changes nothing, and in a fight would take
+      // its bonus action for it (Elemental Cleaver).
+      if (ctx.held.choice && textKey(ctx.held.choice) === textKey(option)) {
+        return { error: `${ctx.held.feature} is ${option} already; choosing it again changes nothing. Nothing was spent.`, refused: "rules" };
+      }
       const features = sheet.features.map((feature) =>
         feature.name === ctx.held.name ? { ...feature, name: `${ctx.held.feature} (${option})` } : feature,
       );
@@ -226,6 +233,10 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
         const live = getActiveEncounter(campaign.id);
         if (live && does.rangeFt && !withinFeet(live.id, sheet.id, enemy.id, does.rangeFt)) {
           return { error: `${enemy.displayName} is beyond ${does.rangeFt} feet of ${sheet.name}; ${ctx.spend.name} reaches no further. Nothing was spent.`, refused: "rules" };
+        }
+        const barred = (does.maxSize ? sizeRefusal(ctx.spend.name, enemy, does.maxSize, ctx.held.level) : null) ?? (does.maxSize && ctx.spend.afterWeaponHit ? meleeHitRefusal(ctx, enemy) : null);
+        if (barred) {
+          return barred;
         }
         const landed = enemyCondition(ctx, enemy, condition, { rounds: does.rounds });
         lines.push(landed ? `${enemy.displayName} is ${condition} for ${does.rounds} rounds.` : `${enemy.displayName} cannot be ${condition}.`);
@@ -342,6 +353,10 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       if (does.perUnit && ctx.units < 1) {
         return { error: `${ctx.spend.name} needs at least 1 point spent: pass amount. Nothing was spent.`, retry: true };
       }
+      const tooBig = does.maxSize ? sizeRefusal(ctx.spend.name, enemy, does.maxSize, ctx.held.level) : null;
+      if (tooBig) {
+        return tooBig;
+      }
       // A damage type the caster chooses is named whole in the variant.
       const type = does.typeFromVariant ? namedOption(ctx.spend.name, ctx.args.variant, does.typeFromVariant) : (does.type ?? "");
       if (typeof type !== "string") {
@@ -382,6 +397,12 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       }
       if (!save.success && does.onFail) {
         result.onFail = `${enemy.displayName} ${does.onFail}.`;
+      }
+      if (!save.success && does.pushes) {
+        Object.assign(result, pushFoe(ctx, getEnemy(enemy.id) ?? enemy, does.pushes.feet));
+      }
+      if (!save.success && does.throws) {
+        Object.assign(result, throwFoe(ctx, getEnemy(enemy.id) ?? enemy, does.throws.feet));
       }
       return { result };
     }
@@ -558,6 +579,9 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
     case "allies_join":
     case "action_attack":
       return martialSpend(ctx, does);
+    // The fighter and barbarian repair's own (src/lib/dm/mt-fb-spend.ts).
+    case "cleanse":
+      return cleanse(ctx, does.conditions);
   }
 }
 
@@ -731,6 +755,17 @@ function stormAura(ctx: SpendContext): Resolution {
       if (enemy.status === "alive") {
         lines.push(hurtEnemy(ctx.campaign, encounter!, enemy, Number(amount), "fire", "Storm Aura"));
       }
+    }
+    // "Each other creature in it": an ally in the aura burns too. The aura is
+    // written first, so Shielding Storm's shelter (pc-damage.ts
+    // authoredAuraResistances reads the condition) already covers them.
+    const allies = alliesInReach(ctx, 10, false).filter((ally) => ally.currentHp > 0);
+    if (allies.length) {
+      patchSheet(ctx.sheet.id, patch);
+    }
+    for (const ally of allies) {
+      const burnt = applyPcDamage(ctx.campaign, ctx.turnId, getSheetById(ally.id) ?? ally, { amount: Number(amount), type: "fire", magical: true, reason: "Storm Aura" });
+      lines.push(`${ally.name}: ${burnt.damageApplied ?? 0} fire damage${burnt.resistance ? ` (${String(burnt.resistance)})` : ""}.`);
     }
     if (encounter) {
       publishEncounter(ctx.campaign.id);

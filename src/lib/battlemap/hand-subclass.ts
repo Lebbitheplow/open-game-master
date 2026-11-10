@@ -8,6 +8,7 @@
 //
 // Pure; scripts/test-hand-engine.mjs drives it.
 import { SNEAK_HIT, WEAPON_HIT } from "@/lib/dm/action-budget";
+import { chargedFeet } from "@/lib/srd/mt-fb-run";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { computeSheetDerived } from "@/lib/srd";
 import { authoredSpendFor, gateHolds, heldAuthored, resolveFormula, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
@@ -306,6 +307,11 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
       poolGate,
       (aim.afterWeaponHit ?? spend.afterWeaponHit) && turn.myTurn && !(turn.marks ?? []).some((mark) => mark.startsWith(WEAPON_HIT))
         ? { reason: `${spend.name} rides a weapon hit: land one this turn first.`, spent: false }
+        : null,
+      // A spend that rides a charge waits for the run, as the engine does
+      // (src/lib/dm/mt-fb-charge.ts).
+      spend.chargeFeet && turn.myTurn && chargedFeet(turn.marks) < spend.chargeFeet
+        ? { reason: `${spend.name} follows a run of at least ${spend.chargeFeet} feet straight at the creature, then a hit on it.`, spent: false }
         : null,
       // What answers a Sneak Attack waits for the hit that dealt it, as the
       // engine does (src/lib/dm/sneak-answer.ts).

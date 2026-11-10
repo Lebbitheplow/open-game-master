@@ -21,3 +21,10 @@ export function authoredCheckBonus(sheet: AuthoredSheet, skill: string | undefin
   }
   return { bonus, notes };
 }
+
+// infuse: the element the weapon in hand deals, and how far it is thrown
+// (Elemental Cleaver, while raging, by the option chosen).
+export function authoredInfusion(sheet: AuthoredSheet): { type: string; rangeFt: number; longRangeFt: number; feature: string } | null {
+  const found = activeAuthored(sheet, "infuse")[0];
+  return found ? { type: found.effect.type, rangeFt: found.effect.rangeFt, longRangeFt: found.effect.longRangeFt, feature: found.held.feature } : null;
+}

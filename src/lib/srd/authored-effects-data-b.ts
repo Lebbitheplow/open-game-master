@@ -260,7 +260,13 @@ export const AUTHORED_DATA_A2: Record<string, AuthoredEntry> = {
             // "When you deal damage to a target with your Psionic Strike"
             // (TCoE): it follows the hit, on the creature hit.
             thrust: {
-              does: { kind: "save_effect", save: "str", dcAbility: "int", condition: "prone", rangeFt: 5, onFail: "may instead be pushed 10 feet (move_token forced)" },
+              does: { kind: "save_effect", save: "str", dcAbility: "int", condition: "prone", rangeFt: 5 },
+              action: "none",
+              afterWeaponHit: true,
+            },
+            // "or pushed 10 feet": the same save, the creature moved instead.
+            push: {
+              does: { kind: "save_effect", save: "str", dcAbility: "int", rangeFt: 5, pushes: { feet: 10 } },
               action: "none",
               afterWeaponHit: true,
             },
@@ -321,6 +327,8 @@ export const AUTHORED_DATA_A2: Record<string, AuthoredEntry> = {
         does: { kind: "buff", condition: "giant's might (1d10)", rounds: 10 },
       },
     ],
+    // "can make you Huge with 5 extra feet of reach", while the might lasts.
+    effects: [{ kind: "reach", tiles: 1, gate: { condition: "giant's might (1d10)" } }],
   },
   "fighter::Inspiring Surge": {
     subclass: "Banneret",

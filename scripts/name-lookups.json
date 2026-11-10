@@ -1246,7 +1246,7 @@
     "lib/dm/authored-saves.ts#whole-single": [["key",1,"two creatures' token refs, one board check (seesOnBoard)"]],
     "lib/dm/authored-spends.ts#partial": [["key",1,"the prefix of a once-per-turn budget key"]],
     "lib/dm/sneak-answer.ts#partial": [["key",1,"the prefix of a once-per-turn budget key"]],
-    "lib/dm/authored-spend-effects.ts#number": [["key",7,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
+    "lib/dm/authored-spend-effects.ts#number": [["key",8,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "lib/dm/authored-spend-effects.ts#partial": [["parse", 1, "dice"], ["pattern", 1, "a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"], ["parse", 1, "ODM's own counter guidance read for the turn cost it names (bundled data)"]],
     "lib/dm/authored-spend-effects.ts#whole": [["identity", 3, "conditions by whole name"], ["identity", 1, "conditions and the held feature by whole name"], ["identity", 1, "a counter's own condition, or a rule's word, by its whole name (textKey on both sides)"]],
     "lib/dm/authored-spend-more.ts#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
@@ -1680,7 +1680,7 @@
     "lib/dm/passage.ts#partial": [["parse",1,"paragraphs"],["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "lib/dm/pc-attack-damage.ts#keyed": [["key", 1, "ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "lib/dm/pc-attack-damage.ts#partial": [["key", 3, "ODM's own feature names, rider dice and notes"], ["key", 1, "ODM's own Sneak Attack note"]],
-    "lib/dm/pc-attack-damage.ts#whole": [["key", 1, "damage types and once-per-turn keys"]],
+    "lib/dm/pc-attack-damage.ts#whole": [["key",1,"damage types and once-per-turn keys"],["identity",1,"an SRD weapon by its whole row name, textKey on the profile's side"]],
     "lib/dm/pc-attack-options.ts#partial": [["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["key",2,"turn-budget keys"]],
     "lib/dm/pc-attack-options.ts#whole": [["identity",2,"features and conditions by whole name"]],
     "lib/dm/attack-blow.ts#fallback": [["key",1,"the lowest kept die"]],
@@ -1931,7 +1931,7 @@
     "lib/dm/usage-rules.ts#bypass": [["key",3,"the item's own name as a change's label"],["identity",1,"moving a line by its own name"]],
     "lib/dm/usage-rules.ts#keyed": [["key",5,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "lib/dm/vitals-logic.ts#partial": [["identity",1,"a condition by whole name"]],
-    "lib/dm/vitals-logic.ts#whole": [["identity",1,"a condition by whole name"]],
+    "lib/dm/vitals-logic.ts#whole": [["identity",2,"a condition by whole name"]],
     "lib/dm/waypoint-logic.ts#keyed": [["key",3,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "lib/dm/waypoint-logic.ts#partial": [["pattern",4,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "lib/dm/waypoint-logic.ts#switch": [["key",1,"switches on tool names, event kinds, key names and kinds"]],
@@ -2784,6 +2784,10 @@
     "lib/dm/mt-fb-charge.ts#partial": [["key",5,"the turn's own marks: a key the engine wrote, by its prefix, and the square in it"]],
     "lib/dm/authored-attacks.ts#partial": [["key",1,"the turn's own mark of a Rapid Strike owed, by its prefix"]],
     "lib/dm/authored-attacks.ts#whole-single": [["key",1,"the enemy id a turn mark carries against the target's id"]],
-    "lib/dm/authored-attacks.ts#whole": [["key",1,"a turn mark struck from the turn's list by its whole text"]]
+    "lib/dm/authored-attacks.ts#whole": [["key",1,"a turn mark struck from the turn's list by its whole text"]],
+    "lib/srd/authored-mt-fb.ts#first": [["key",1,"an authored effect by its kind"]],
+    "lib/dm/mt-fb-spend.ts#partial": [["key",1,"the turn's own marks: a key the engine wrote, by its prefix"],["search",1,"a flying speed in a stat block's speed line"]],
+    "lib/dm/authored-spend-effects.ts#whole-single": [["identity",1,"the option a feature holds against the option asked for, textKey on both sides"]],
+    "lib/dm/mt-fb-counter-riders.ts#first": [["search",1,"the nearest creature in the aura: a sort by distance, its first"]]
   }
 }

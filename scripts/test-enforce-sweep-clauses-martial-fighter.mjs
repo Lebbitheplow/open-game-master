@@ -525,6 +525,30 @@ const d20sOf = (log) => log.filter((die) => die.sides === 20).map((die) => die.f
     const out = await spend(psi, "sub_psionic_energy", { variant: "telekinetic movement" });
     assert.equal(out.ok, true, out.error);
     assert.equal(used(psi, "sub_psionic_energy"), 0, "the first Telekinetic Movement after a rest cost a Psionic Energy die");
+    assert.equal(budget().actionUsed, true, "it takes the action");
+    // "Or by spending a die": the second use before a rest takes one.
+    kit.freshTurn();
+    const second = await spend(psi, "Telekinetic Movement");
+    assert.equal(second.ok, true, second.error);
+    assert.deepEqual([used(psi, "sub_telekinetic_movement"), used(psi, "sub_psionic_energy")], [1, 1], "the free use, then a die");
+    // "Once per short rest": the rest gives the free use back, not the die.
+    await kit.endFight();
+    assert.equal((await world.invoke("take_rest", { kind: "short" })).ok, true);
+    assert.deepEqual([used(psi, "sub_telekinetic_movement"), used(psi, "sub_psionic_energy")], [0, 1]);
+  });
+  // "As a bonus action you can regain one spent die."
+  await probe("psionic-recovery", async () => {
+    await stage(psi);
+    const full = await spend(psi, "Psionic Recovery");
+    assert.equal(full.ok, false, `with every die unspent: ${show(full)}`);
+    assert.equal(used(psi, "sub_psionic_recovery"), 0, "a refusal spends nothing");
+    r.setUsed(psi, "sub_psionic_energy", 3);
+    const out = await spend(psi, "Psionic Recovery");
+    assert.equal(out.ok, true, out.error);
+    assert.deepEqual([used(psi, "sub_psionic_energy"), used(psi, "sub_psionic_recovery")], [2, 1], "one die back, the use spent");
+    assert.equal(budget().bonusUsed, true, "a bonus action");
+    kit.freshTurn();
+    assert.equal((await spend(psi, "Psionic Recovery")).ok, false, "once per short or long rest");
   });
 
   await probe("telekinetic-adept-leap-and-thrust", async () => {
@@ -544,13 +568,39 @@ const d20sOf = (log) => log.filter((die) => die.sides === 20).map((die) => die.f
     const out = await spend(psi, "Telekinetic Adept", { variant: "thrust", targetEnemyId: enemy.id }, 2);
     assert.equal(out.ok, false, "with no Psionic Strike made, Thrust knocked the creature prone");
   });
-  await probe("telekinetic-thrust-save-not-in-text", async () => {
+  // The text now states the save the engine rolls: "to make a Strength save
+  // (DC 8 + your proficiency bonus + your Intelligence modifier) or be knocked
+  // prone or pushed 10 feet".
+  const struck = async () => {
     const [enemy] = await stage(psi);
     await swing(psi, enemy);
     await spend(psi, "Psionic Strike", { targetEnemyId: enemy.id });
-    const out = await spend(psi, "Telekinetic Adept", { variant: "thrust", targetEnemyId: enemy.id }, 20);
+    return enemy;
+  };
+  await probe("telekinetic-thrust-save", async () => {
+    const text = (await import("../src/lib/srd/subclasses.json", { with: { type: "json" } })).default.classes.fighter.flatMap((sub) => Object.values(sub.levels).flat()).find((feature) => feature.n === "Telekinetic Adept").d;
+    assert.match(text, /Strength save \(DC 8 \+ your proficiency bonus \+ your Intelligence modifier\)/, "the stored text states the save");
+    const made = await struck();
+    const kept = await spend(psi, "Telekinetic Adept", { variant: "thrust", targetEnemyId: made.id }, 20);
+    assert.deepEqual([kept.result.dc, kept.result.saved], [8 + prof(15) + MOD, true], show(kept));
+    assert.ok(!foeHas(made, "prone"), "a save made: it stands");
+    const failed = await struck();
+    assert.equal((await spend(psi, "Telekinetic Adept", { variant: "thrust", targetEnemyId: failed.id }, 2)).result.saved, false);
+    assert.ok(foeHas(failed, "prone"));
+  });
+  await probe("telekinetic-thrust-push", async () => {
+    const enemy = await struck();
+    const at = kit.token(enemy.id);
+    const out = await spend(psi, "Telekinetic Adept", { variant: "push", targetEnemyId: enemy.id }, 2);
     assert.equal(out.ok, true, out.error);
-    assert.ok(foeHas(enemy, "prone"), `the text states no save, and the creature made one (${out.result.save} against DC ${out.result.dc}) and stands`);
+    assert.deepEqual([kit.token(enemy.id).x, kit.token(enemy.id).y], [at.x + 2, at.y], `a failed save pushes it 10 feet straight away: ${show(out)}`);
+    assert.ok(!foeHas(enemy, "prone"), "pushed, not prone");
+    const stood = await struck();
+    const where = kit.token(stood.id);
+    await spend(psi, "Telekinetic Adept", { variant: "push", targetEnemyId: stood.id }, 20);
+    assert.deepEqual([kit.token(stood.id).x, kit.token(stood.id).y], [where.x, where.y], "a save made: it stays");
+    const idle = await stage(psi);
+    assert.equal((await spend(psi, "Telekinetic Adept", { variant: "push", targetEnemyId: idle[0].id }, 2)).ok, false, "with no Psionic Strike made");
   });
 
   await probe("guarded-mind-resistance", async () => {
@@ -564,6 +614,14 @@ const d20sOf = (log) => log.filter((die) => die.sides === 20).map((die) => die.f
     give(psi, "frightened", { rounds: 5 });
     const out = await spend(psi, "sub_psionic_energy", { variant: "guarded mind" });
     assert.ok(out.ok && !has(psi, "frightened"), `a die was ${out.ok ? "spent" : "refused"} and the fighter is still frightened`);
+    assert.equal(used(psi, "sub_psionic_energy"), 1, "by spending a die");
+    assert.equal(budget().reactionUsed ?? false, false, "reaction-free");
+    give(psi, "charmed", { rounds: 5 });
+    assert.equal((await spend(psi, "Guarded Mind")).ok, true, "charmed, by the feature's own name");
+    assert.ok(!has(psi, "charmed"));
+    const calm = await spend(psi, "Guarded Mind");
+    assert.equal(calm.ok, false, "neither charmed nor frightened: nothing to end");
+    assert.equal(used(psi, "sub_psionic_energy"), 2, "and nothing spent");
   });
 
   await probe("bulwark-of-force", async () => {
@@ -583,10 +641,14 @@ const d20sOf = (log) => log.filter((die) => die.sides === 20).map((die) => die.f
     assert.equal((await spend(psi, "Bulwark of Force")).ok, true, "a second use, for a die");
     assert.deepEqual([used(psi, "sub_bulwark_of_force"), used(psi, "sub_psionic_energy")], [1, 1]);
   });
-  await probe("bulwark-of-force-range-not-in-text", async () => {
+  // The text now states the reach the engine keeps: "allies within 30 feet".
+  await probe("bulwark-of-force-30-feet", async () => {
     await stage(psi, { cast: [[allies[0], 12, 5]] });
     await spend(psi, "Bulwark of Force");
-    assert.ok(has(allies[0], "bulwark of force"), "the text names no distance, and an ally 35 feet away was left out");
+    assert.ok(!has(allies[0], "bulwark of force"), "an ally 35 feet away was covered");
+    await stage(psi, { cast: [[allies[0], 11, 5]] });
+    await spend(psi, "Bulwark of Force");
+    assert.ok(has(allies[0], "bulwark of force"), "an ally 30 feet away was left out");
   });
 
   await probe("telekinetic-master-bonus-attack", async () => {

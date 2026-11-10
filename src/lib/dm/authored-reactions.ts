@@ -415,6 +415,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (does.rangeFt && encounter && target.id !== ctx.sheet.id && !withinFeet(encounter.id, ctx.sheet.id, target.id, does.rangeFt)) {
         return { error: `${target.name} is beyond ${does.rangeFt} feet of ${ctx.sheet.name}. Nothing was spent.`, refused: "rules" };
       }
+      // "An ally you can see" (Spirit Shield): a blinded holder shields nobody.
+      const hidden = unseenTarget(ctx, found, target);
+      if (hidden) return hidden;
       const hit = lastHitOn(ctx, target, label);
       if ("error" in hit) return hit;
       const swing = hit.record.swings[hit.index];

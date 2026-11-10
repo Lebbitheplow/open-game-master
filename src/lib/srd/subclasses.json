@@ -1904,7 +1904,7 @@
           "7": [
             {
               "n": "Telekinetic Adept",
-              "d": "Psi-Powered Leap lets you fly briefly as a bonus action, and Telekinetic Thrust can knock a Psionic Strike target prone or push it 10 feet."
+              "d": "Psi-Powered Leap lets you fly briefly as a bonus action, and Telekinetic Thrust forces a Psionic Strike target to make a Strength save (DC 8 + your proficiency bonus + your Intelligence modifier) or be knocked prone or pushed 10 feet."
             }
           ],
           "10": [
@@ -1916,7 +1916,7 @@
           "15": [
             {
               "n": "Bulwark of Force",
-              "d": "A bonus action gives yourself and up to your Intelligence modifier in allies half cover for a minute; once per long rest or by spending a die."
+              "d": "A bonus action gives yourself and up to your Intelligence modifier in allies within 30 feet half cover for a minute; once per long rest or by spending a die."
             }
           ],
           "18": [

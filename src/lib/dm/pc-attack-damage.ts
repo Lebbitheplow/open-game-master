@@ -6,6 +6,8 @@
 // pc-attack.ts, which decides and rolls the attack these dice belong to.
 // Nothing here refuses the attack.
 
+import { textKey } from "@/lib/language/text-logic";
+import { authoredNaturalWeapon } from "@/lib/srd/authored-effects-more";
 import { pactWeaponAttack } from "@/lib/srd/pact-weapon";
 import { getFoe } from "@/lib/dm/sheet-foe";
 import { poisonerIgnoresResistance } from "@/lib/srd/feat-combat";
@@ -309,6 +311,14 @@ function magicalStrikeApplies(plan: Pick<AttackPlan, "kind" | "profile" | "rider
       }
       if (isNamed(feature, "Primal Strike")) {
         return plan.kind === "natural";
+      }
+      // "Arrows you fire from a shortbow or longbow" (Magic Arrow) and "Your
+      // natural weapons" (Bestial Soul): a sword in the same hands is not one.
+      if (isNamed(feature, "Magic Arrow")) {
+        return plan.profile.ranged && ["shortbow", "longbow"].includes(textKey(plan.profile.base ?? ""));
+      }
+      if (isNamed(feature, "Bestial Soul")) {
+        return Boolean(authoredNaturalWeapon(plan.sheet, plan.profile.weapon));
       }
       return true;
     });

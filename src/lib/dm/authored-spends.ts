@@ -32,6 +32,7 @@ import { triggerSpecFor } from "@/lib/srd/trigger-table";
 import { answerTriggers, triggerRefusal, type TriggerAsk } from "@/lib/dm/reaction-triggers";
 import { answerKey } from "@/lib/dm/last-hit";
 import { chargeRefusal } from "@/lib/dm/mt-fb-charge";
+import { holdsOn } from "@/lib/dm/vitals-logic";
 
 export type AuthoredSpendArgs = {
   amount?: number;
@@ -151,7 +152,9 @@ function poolOptionSpend(sheet: CharacterSheet, resourceName: string, variant: s
   const option = variant ?? nameChoice(resourceName);
   const pool = matchResource(resourceName);
   const found = option && pool ? authoredSpendFor(sheet, option) : null;
-  return found?.spend.pool?.id === pool?.id ? found : null;
+  // The pool named pays for it, at once or once the option's own free use is
+  // gone (Telekinetic Movement, Bulwark of Force: `fallback`).
+  return pool && (found?.spend.pool?.id === pool.id || found?.spend.pool?.fallback === pool.id) ? found : null;
 }
 
 // A use_resource call this module resolves, or null for the other paths.
@@ -172,7 +175,7 @@ export function authoredFeatureSpend(
     return null;
   }
   const { spend, held } = found;
-  if (sheet.deathSaves?.dead || sheet.currentHp <= 0) {
+  if (sheet.deathSaves?.dead || (sheet.currentHp <= 0 && !holdsOn(sheet))) {
     return { error: `${sheet.name} is down and cannot use ${spend.name}.`, refused: "rules" };
   }
   if (!gateHolds(spend.gate, sheet, held)) {

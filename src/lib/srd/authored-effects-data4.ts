@@ -46,8 +46,9 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   },
   "barbarian::Rage Beyond Death": {
     subclass: "Path of the Zealot",
-    narrated:
-      "The death engine drops a character at 0 hit points; while the zealot rages the GM keeps them acting and rolling death saves, and only the rage's end at 0 kills them.",
+    // Up at 0 hit points while raging, dying all the same, the death held off
+    // until the rage ends.
+    heldBy: { file: "src/lib/dm/death.ts", call: "ragesBeyondDeath(" },
   },
   "barbarian::Wild Surge": {
     subclass: "Path of Wild Magic",
@@ -182,7 +183,8 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   },
   "fighter::Arcane Charge": {
     subclass: "Eldritch Knight",
-    narrated: "A 30-foot teleport with Action Surge: a move_token the GM makes when the fighter surges.",
+    // Action Surge credits the 30-foot teleport.
+    heldBy: { file: "src/lib/dm/mutations.ts", call: "afterCounterSpend(" },
   },
   "fighter::Improved War Magic": {
     subclass: "Eldritch Knight",
@@ -229,9 +231,21 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
       },
     ],
   },
+  // "free once per short rest or by spending a die": the free use first, then
+  // a Psionic Energy die. Every use took a die before.
   "fighter::Telekinetic Movement": {
     subclass: "Psi Warrior",
-    narrated: "Moving an object or a willing creature 30 feet is a move_token the GM makes; the die it may spend is the Psionic Energy counter.",
+    counter: "sub_telekinetic_movement",
+    spends: [
+      {
+        name: "Telekinetic Movement",
+        pool: { id: "sub_telekinetic_movement", fallback: "sub_psionic_energy" },
+        action: "action",
+        // The move is credited as a feature's is (feature-teleport.ts), for
+        // move_token to make: no touch is asked, the mind does it.
+        does: { kind: "teleport", feet: 30, touched: true, note: "by the mind alone, no touch needed (a Large or smaller loose object may be moved instead)" },
+      },
+    ],
   },
   "fighter::Master of Runes": {
     subclass: "Rune Knight",
@@ -239,7 +253,8 @@ export const AUTHORED_DATA_C: Record<string, AuthoredEntry> = {
   },
   "fighter::Rallying Cry": {
     subclass: "Banneret",
-    narrated: "Second Wind also heals up to three allies within 60 feet for the fighter level: heals the GM makes when Second Wind is spent.",
+    // Second Wind heals up to three allies within 60 feet for the fighter level.
+    heldBy: { file: "src/lib/dm/mutations.ts", call: "afterCounterSpend(" },
   },
   "fighter::Bulwark": {
     subclass: "Banneret",

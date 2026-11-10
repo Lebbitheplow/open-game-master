@@ -2893,6 +2893,13 @@
     "lib/db/turn-journal.ts#re-word": [["key",4,"table and column names and SQL column types (the schema's own vocabulary)"]],
     "lib/db/turn-journal.ts#str-key": [["key",3,"table and column names and SQL column types (the schema's own vocabulary)"]],
     "lib/db/turn-journal.ts#\\b": [["key",3,"SQL keywords of a schema change (ALTER TABLE, RENAME TO, CREATE TABLE) the journal rebuilds its triggers after"]],
-    "lib/db/turn-journal.ts#\\w": [["key",3,"the table name in a schema change (ALTER TABLE, RENAME TO, CREATE TABLE) the journal rebuilds its triggers after"]]
+    "lib/db/turn-journal.ts#\\w": [["key",3,"the table name in a schema change (ALTER TABLE, RENAME TO, CREATE TABLE) the journal rebuilds its triggers after"]],
+    "lib/dm/mt-fb-spend.ts#\\b": [["english-source", 2, "the SRD stat block's speed line (English data): \"fly\""]],
+    "lib/dm/mt-fb-spend.ts#re-word": [["english-source", 1, "the SRD stat block's speed line (English data): \"fly\""]],
+    "lib/srd/authored-effects-w2-mt-fb.ts#str-list": [["english-source", 1, "ODM's authored effect rows (bundled data)"]],
+    "lib/dm/mt-fb-rage-death.ts#str-list": [["key", 1, "condition names the engine writes, for the audit's delta"]],
+    "lib/dm/mt-fb-counter-riders.ts#str-case": [["key", 1, "counter ids (engine vocabulary)"]],
+    "lib/dm/mt-fb-counter-riders.ts#str-eq": [["key", 1, "an authored option's key, as heldAuthored normalizes it"]],
+    "lib/dm/pc-attack-damage.ts#str-list": [["key", 1, "SRD weapon row names, compared through textKey"]]
   }
 }
