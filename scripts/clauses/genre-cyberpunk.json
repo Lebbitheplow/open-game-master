@@ -1024,26 +1024,15 @@
   "clauses": [
    {
     "c": "A small drone obeys you",
-    "run": {
-     "k": "companion"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Drone Companion#0",
-    "where": "src/lib/db/sheets.ts createSheet and src/lib/dm/summon-store.ts: no pet or summon is made for the class",
-    "sev": "medium",
-    "observed": "the sheet holds no companion: no pet, no summon"
+    "is": "held",
+    "probe": "scripts/test-genre-a-summons.mjs",
+    "by": "src/lib/dm/genre-a-summons.ts: the companion as an ally with the text's stats (the drone built as the steel defender is; WAVE2 D5 maps the drone to a summoned construct)"
    },
    {
     "c": "AC 13, HP 5 + level, moves 30 ft, acts on your command",
-    "run": {
-     "k": "companion",
-     "stats": 1
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Drone Companion#1",
-    "where": "src/lib/db/sheets.ts createSheet and src/lib/dm/summon-store.ts: no pet or summon is made for the class",
-    "sev": "medium",
-    "observed": "the sheet holds no companion: no pet, no summon"
+    "is": "held",
+    "probe": "scripts/test-genre-a-summons.mjs",
+    "by": "src/lib/dm/genre-a-summons.ts: the companion as an ally with the text's stats (the drone built as the steel defender is; WAVE2 D5 maps the drone to a summoned construct)"
    }
   ]
  },
@@ -1143,15 +1132,10 @@
   "clauses": [
    {
     "c": "A second drone",
-    "is": "gap",
-    "read_only": true,
+    "is": "held",
     "stopped": "the drone or beast the clause changes is not an entity the engine holds for this class (see the gap on the companion feature), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Drone Swarm#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "probe": "scripts/test-genre-a-summons.mjs",
+    "by": "src/lib/dm/genre-a-summons.ts: the companion as an ally with the text's stats (the drone built as the steel defender is; WAVE2 D5 maps the drone to a summoned construct)"
    },
    {
     "c": "command all your drones with a single action",
@@ -1191,15 +1175,10 @@
   "clauses": [
    {
     "c": "Your drones add your INT modifier to their damage",
-    "is": "gap",
-    "read_only": true,
+    "is": "held",
     "stopped": "the drone or beast the clause changes is not an entity the engine holds for this class (see the gap on the companion feature), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Overclocked Servos#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "probe": "scripts/test-genre-a-summons.mjs",
+    "by": "src/lib/dm/genre-a-summons.ts: the companion as an ally with the text's stats (the drone built as the steel defender is; WAVE2 D5 maps the drone to a summoned construct)"
    }
   ]
  },
@@ -1266,15 +1245,10 @@
   "clauses": [
    {
     "c": "Your drones improve to AC 16 and HP 15 + twice your level",
-    "is": "gap",
-    "read_only": true,
+    "is": "held",
     "stopped": "the drone or beast the clause changes is not an entity the engine holds for this class (see the gap on the companion feature), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Improved Chassis#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "probe": "scripts/test-genre-a-summons.mjs",
+    "by": "src/lib/dm/genre-a-summons.ts: the companion as an ally with the text's stats (the drone built as the steel defender is; WAVE2 D5 maps the drone to a summoned construct)"
    }
   ]
  },
@@ -1337,15 +1311,10 @@
   "clauses": [
    {
     "c": "A third drone joins your swarm",
-    "is": "gap",
-    "read_only": true,
+    "is": "held",
     "stopped": "the drone or beast the clause changes is not an entity the engine holds for this class (see the gap on the companion feature), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Drone Legion#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "probe": "scripts/test-genre-a-summons.mjs",
+    "by": "src/lib/dm/genre-a-summons.ts: the companion as an ally with the text's stats (the drone built as the steel defender is; WAVE2 D5 maps the drone to a summoned construct)"
    }
   ]
  },
@@ -1439,23 +1408,18 @@
   "clauses": [
    {
     "c": "Your primary drone mounts a weapon",
-    "is": "gap",
-    "read_only": true,
+    "is": "held",
     "stopped": "the drone or beast the clause changes is not an entity the engine holds for this class (see the gap on the companion feature), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Combat Chassis#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "probe": "scripts/test-genre-a-summons.mjs",
+    "by": "src/lib/dm/genre-a-summons.ts: the companion as an ally with the text's stats (the drone built as the steel defender is; WAVE2 D5 maps the drone to a summoned construct)"
    },
    {
     "c": "on your command it attacks for 1d8 + INT force damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Combat Chassis#0 (a table check only: no engine table answers to the feature)",
-    "read_only": true,
+    "is": "held",
+    "probe": "scripts/test-genre-a-summons.mjs",
     "stopped": "the drone or beast the clause changes is not an entity the engine holds for this class (see the gap on the companion feature), so there is nothing to play it on",
-    "same_probe_as": 0
+    "same_probe_as": 0,
+    "by": "src/lib/dm/genre-a-summons.ts: the companion as an ally with the text's stats (the drone built as the steel defender is; WAVE2 D5 maps the drone to a summoned construct)"
    }
   ]
  },
@@ -1487,15 +1451,10 @@
   "clauses": [
    {
     "c": "Two drones attack when you command an attack",
-    "is": "gap",
-    "read_only": true,
+    "is": "held",
     "stopped": "the drone or beast the clause changes is not an entity the engine holds for this class (see the gap on the companion feature), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Twinned Strike#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "probe": "scripts/test-genre-a-summons.mjs",
+    "by": "src/lib/dm/genre-a-summons.ts: the companion as an ally with the text's stats (the drone built as the steel defender is; WAVE2 D5 maps the drone to a summoned construct)"
    }
   ]
  },
@@ -1507,15 +1466,10 @@
   "clauses": [
    {
     "c": "Primary drone doubles its HP, deals +1d8 damage, and can carry a rider",
-    "is": "gap",
-    "read_only": true,
+    "is": "held",
     "stopped": "the drone or beast the clause changes is not an entity the engine holds for this class (see the gap on the companion feature), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Titan Frame#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "probe": "scripts/test-genre-a-summons.mjs",
+    "by": "src/lib/dm/genre-a-summons.ts: the companion as an ally with the text's stats (the drone built as the steel defender is; WAVE2 D5 maps the drone to a summoned construct)"
    }
   ]
  },

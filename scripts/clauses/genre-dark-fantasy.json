@@ -3299,15 +3299,9 @@
    },
    {
     "c": "summon a giant rat pack",
-    "run": {
-     "k": "spend_moves",
-     "id": "dark_fantasy_king_below_the_streets"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap vermin_lord::King Below the Streets#1",
-    "observed": "spending dark_fantasy_king_below_the_streets moved its counter and the turn's cost and nothing else; the result was its guidance: 1/long rest, summon a giant rat pack: four allied giant-rat-statted beasts serve for 10 minutes.",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row in src/lib/classes/resources.json (no fx)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-a-summons.mjs",
+    "by": "src/lib/dm/genre-a-summons.ts: the companion as an ally with the text's stats (the drone built as the steel defender is; WAVE2 D5 maps the drone to a summoned construct)"
    },
    {
     "c": "four allied giant-rat-statted beasts serve for 10 minutes",
@@ -3355,26 +3349,15 @@
   "clauses": [
    {
     "c": "A dire rat companion fights beside you",
-    "run": {
-     "k": "companion"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap vermin_lord::Favored of the Swarm#0",
-    "observed": "the sheet holds no companion: no pet, no summon",
-    "where": "src/lib/db/sheets.ts createSheet and src/lib/dm/summon-store.ts: no pet or summon is made for the class",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-a-summons.mjs",
+    "by": "src/lib/dm/genre-a-summons.ts: the companion as an ally with the text's stats (the drone built as the steel defender is; WAVE2 D5 maps the drone to a summoned construct)"
    },
    {
     "c": "AC 13, HP 3 x level, bite 1d6 + DEX, obeys your commands",
-    "run": {
-     "k": "companion",
-     "stats": 1
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap vermin_lord::Favored of the Swarm#1",
-    "observed": "the sheet holds no companion: no pet, no summon",
-    "where": "src/lib/db/sheets.ts createSheet and src/lib/dm/summon-store.ts: no pet or summon is made for the class",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-a-summons.mjs",
+    "by": "src/lib/dm/genre-a-summons.ts: the companion as an ally with the text's stats (the drone built as the steel defender is; WAVE2 D5 maps the drone to a summoned construct)"
    }
   ]
  },
@@ -3419,15 +3402,10 @@
   "clauses": [
    {
     "c": "Your dire rat grows",
-    "is": "gap",
-    "read_only": true,
+    "is": "held",
     "stopped": "the drone or beast the clause changes is not an entity the engine holds for this class (see the gap on the companion feature), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap vermin_lord::Grey Tide Rising#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "probe": "scripts/test-genre-a-summons.mjs",
+    "by": "src/lib/dm/genre-a-summons.ts: the companion as an ally with the text's stats (the drone built as the steel defender is; WAVE2 D5 maps the drone to a summoned construct)"
    },
    {
     "c": "HP 5 x level, bite 2d6 + DEX, and its bite forces a CON save against a weakening bite",

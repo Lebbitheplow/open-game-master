@@ -27,7 +27,22 @@ const twinWhile = (mark: string, minLevel: number, maxLevel: number): AuthoredEf
   gate: { condition: mark },
 });
 
+// The companions, built by their spend as the steel defender is
+// (src/lib/dm/genre-a-summons.ts holds the text's stats).
+const companion = (classId: string, feature: string, kind: "drones" | "dire_rat"): GenreRow => ({
+  feature,
+  classes: [classId],
+  entry: { subclass: "genre", spends: [{ name: feature, action: "none", fight: "out", does: { kind: "genre_summon", companion: kind } }] },
+});
+
 export const GENRE_A_CAPSTONES: GenreRow[] = [
+  companion("rigger", "Drone Companion", "drones"),
+  companion("vermin_lord", "Favored of the Swarm", "dire_rat"),
+  // "1/long rest, summon a giant rat pack: four allied giant-rat-statted
+  // beasts serve for 10 minutes"
+  counted("vermin_lord", "King Below the Streets", "dark_fantasy_king_below_the_streets", {
+    spends: [{ name: "King Below the Streets", pool: { id: "dark_fantasy_king_below_the_streets" }, action: "action", does: { kind: "genre_summon", companion: "rat_pack" } }],
+  }),
   // "1/long rest, fly 30 ft for 10 minutes"
   counted("esper", "Psychic Flight", "cyberpunk_psychic_flight", {
     effects: [{ kind: "move", fly: 30, gate: { condition: "psychic flight" } }],

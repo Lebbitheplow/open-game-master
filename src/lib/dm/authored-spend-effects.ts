@@ -34,6 +34,7 @@ import { darknessNear, dispelZones } from "@/lib/dm/zone-cast";
 import { tilesBetween, wallBetween } from "@/lib/dm/attack-spatial";
 import { rerollLastSave, swarmPush } from "@/lib/dm/authored-spend-more";
 import { summonSteelDefender } from "@/lib/dm/summon-defender";
+import { summonGenreCompanion } from "@/lib/dm/genre-a-summons";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import { rollAgainst } from "@/lib/roll-labels";
@@ -541,6 +542,8 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       return swarmPush(ctx, does);
     case "summon":
       return summonSteelDefender(ctx.campaign, sheet, ctx.held.level);
+    case "genre_summon":
+      return summonGenreCompanion(ctx.campaign, sheet, does.companion, ctx.held.level);
     // Bolstering Magic's slot (src/lib/dm/authored-spend-counters.ts).
     case "regain_slot":
       return regainSlot(ctx, does);
