@@ -30,6 +30,26 @@ export function chargeMax(rule: ChargeRule): number {
   return match ? Math.max(0, Number(match[1]) * Number(match[2]) + Number(match[3] ?? 0)) : 0;
 }
 
+// A row whose most is dice (a Luck Blade's 1d4 - 1, a Necklace of Fireballs'
+// 1d6 + 3) with its starting charges rolled, as it is granted: every door
+// that adds an equipment row writes through the sheet store's one pack
+// settle (src/lib/db/sheets.ts capAttunement: handle_item, a purchase, the
+// party stash, the sheet route, the builder's starting gear, the workshop),
+// which calls this. Rolled at first use instead, neither the sheet nor the
+// Hand knew the count, and a card was dealt for a use the roll then refused.
+// `roll` is passed in so this module stays pure. A row that already has a
+// count, or a fixed most, comes back as it was.
+export function withStartingCharges<T extends Pick<EquipmentItem, "name" | "slug" | "gear" | "charges">>(item: T, roll: (expression: string) => number): T {
+  if (typeof item.charges === "number") {
+    return item;
+  }
+  const rule = chargeRuleOf(item);
+  if (!rule || typeof rule.max !== "string") {
+    return item;
+  }
+  return { ...item, charges: Math.max(0, Math.min(chargeMax(rule), roll(rule.max))) };
+}
+
 // How many charges a row holds now. A row that never recorded a count is
 // full; one whose most is dice (rolled once, when the item is first used)
 // reads its count from `rolled`.

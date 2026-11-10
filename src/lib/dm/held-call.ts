@@ -343,10 +343,21 @@ export type HeldRunner = (campaign: Campaign, turn: DmTurn, call: HeldCallSpec) 
 
 declare global {
   var __odmHeldRunner: HeldRunner | undefined;
+  // Calls the server makes itself, under a name no GM tool has (the
+  // enemy-turn backstop, backstop-calls.ts): run again by their own runner.
+  var __odmNamedHeldRunners: Map<string, HeldRunner> | undefined;
 }
 
 export function registerHeldRunner(runner: HeldRunner) {
   globalThis.__odmHeldRunner = runner;
+}
+
+export function registerNamedHeldRunner(name: string, runner: HeldRunner) {
+  (globalThis.__odmNamedHeldRunners ??= new Map()).set(name, runner);
+}
+
+function runnerFor(name: string): HeldRunner | undefined {
+  return globalThis.__odmNamedHeldRunners?.get(name) ?? globalThis.__odmHeldRunner;
 }
 
 // A held roll has landed: the call runs again with it, and what it answered
@@ -361,7 +372,7 @@ export function runHeldAgain(
 ): { roll: StoredRoll | null; answer: ToolResult | null } {
   const call = pending.carry?.call;
   const turn = getDmTurn(pending.turnId);
-  const runner = globalThis.__odmHeldRunner;
+  const runner = call ? runnerFor(call.name) : undefined;
   if (!call || !turn || !runner || !pending.characterId) {
     return { roll: null, answer: null };
   }
@@ -416,6 +427,6 @@ export function clearWatchAnswered(campaignId: string) {
 // A call a watch stop held, run now that the watcher has answered, held in
 // turn so a roll inside it may still wait on its player.
 export function runHeldCallNow(campaign: Campaign, turn: DmTurn, call: HeldCallSpec): ToolResult | null {
-  const runner = globalThis.__odmHeldRunner;
+  const runner = runnerFor(call.name);
   return runner ? (runHeld(campaign, turn, call, () => runner(campaign, turn, call)) as ToolResult) : null;
 }

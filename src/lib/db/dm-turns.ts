@@ -359,6 +359,10 @@ export type PendingAttack = {
   riders?: Array<{ dice: string; type: string; flat?: number }>;
   critExtraDice?: number;
   crit?: boolean;
+  // The attack was sent with endTurn ("and end the turn"): once the last of
+  // its rolls lands, the turn ends, as on the server's dice
+  // (pending-roll-land.ts carryEndTurn).
+  endTurn?: boolean;
 };
 
 export type PendingCarry = {

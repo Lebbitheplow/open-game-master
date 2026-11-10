@@ -11,6 +11,7 @@
 // after the dice land (src/lib/dm/after-roll.ts) whether they are physical or
 // digital, an initiative roll feeds the encounter, and a damage roll aimed at
 // an enemy applies itself.
+import { recordRequestedSave } from "@/lib/dm/last-save";
 import { afterRollOptions, canWaitOnRoll } from "@/lib/dm/after-roll-logic";
 import { allyChoicesFor, reactionFreeFor, rollsCanWait } from "@/lib/dm/after-roll";
 import { noteShift, takeShift } from "@/lib/dm/chronal-shift";
@@ -360,6 +361,11 @@ export function handleRequestRoll(
             args.damageType,
           )
         : null;
+    // A save asked of a player in a fight goes on record with the foe whose
+    // turn it is (last-save.ts): Vigilant Rebuke answers it as it does a forced save.
+    if (args.kind === "saving_throw" && sheet && args.dc !== undefined) {
+      recordRequestedSave(campaignId, sheet.id, args.ability, roll.total >= args.dc);
+    }
     return {
       ok: true,
       total: roll.total,

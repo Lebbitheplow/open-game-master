@@ -3,7 +3,8 @@ import { isErrorResponse, requireMember, steersStory } from "@/lib/campaign-api"
 import { getPendingRoll, publicPendingRoll, setPendingCombatNote, setPendingThrown } from "@/lib/db/dm-turns";
 import { getSheetById } from "@/lib/db/sheets";
 import { optionsForPending, spendAfterRoll } from "@/lib/dm/after-roll";
-import { answeredLine, keepD20, type ThrownRoll } from "@/lib/dm/after-roll-logic";
+import { answeredLine, bardOfHeldDie, keepD20, type ThrownRoll } from "@/lib/dm/after-roll-logic";
+import { recordInspiredSuccess } from "@/lib/dm/last-save";
 import { afterRollDeadline, armAfterRollKeep } from "@/lib/dm/after-roll-timer";
 import type { AttackRecord } from "@/lib/dm/attack-record";
 import { runInTurnScope } from "@/lib/dm/job-control";
@@ -128,10 +129,18 @@ export async function POST(
   if (!optionsForPending(pending, thrown.outcome, thrown.spent, thrown).some((option) => option.id === choice.use && (option.by ?? null) === by)) {
     return Response.json({ error: "That is no longer on offer for this roll." }, { status: 409 });
   }
+  // The bard whose die this is, read before the spend takes it off the sheet.
+  const bard = choice.use === "bardic" ? bardOfHeldDie(sheet) : null;
   // The parked turn's spend: its revert gives it back (issue #622).
   const paid = runInTurnScope(pending.turnId, () => spendAfterRoll(context.campaign, sheet, choice.use, thrown.outcome, pending.advantage, wizard ?? undefined, (pending.attack as AttackRecord | null)?.elvenAccuracy === true));
   if (!paid) {
     return Response.json({ error: "That is no longer on offer for this roll." }, { status: 409 });
+  }
+  // A Bardic Inspiration die that made the roll succeed is on record as its
+  // bard's (last-save.ts recordInspiredSuccess): Infectious Inspiration answers it.
+  const mark = pending.dc ?? (pending.attack as AttackRecord | null)?.targetAc ?? null;
+  if (bard && typeof mark === "number" && paid.outcome.total >= mark) {
+    runInTurnScope(pending.turnId, () => recordInspiredSuccess(context.campaign.id, { id: sheet.id, name: sheet.name }, bard, pending.attack ? "attack" : pending.kind === "saving_throw" ? "save" : "check"));
   }
   if ((paid.touchOfDeath || paid.destructiveWrath) && pending.attack) {
     // No die is thrown: the roll stays the player's, and the hit carries the

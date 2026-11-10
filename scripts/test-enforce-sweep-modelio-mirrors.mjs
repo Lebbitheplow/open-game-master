@@ -14,10 +14,15 @@
 //      (src/lib/dm/intent-logic.ts directCardCall and directCardCalls, read
 //      from the source): a card that went through and was not narrated says
 //      so, and never "try again".
-//   D. The watch stop's list of calls (src/lib/dm/foresight.ts rollAbout)
-//      against the tools that throw a d20 in a fight: every fight tool is
-//      called once for each value of its mode argument (the schema's own
-//      enum), and one that threw a d20 has a branch in rollAbout.
+//   D. The watch stop against the tools that throw a d20 in a fight: every
+//      fight tool is called once for each value of its mode argument (the
+//      schema's own enum), and each d20 it threw carries the roll's own tag
+//      a watch stop is read from (src/lib/dm/foresight.ts watchStopForRoll,
+//      asked by held-call.ts before the die): an attack, a save or a check,
+//      naming who rolls it. The stop is read from that tag, not from a list
+//      of tool names (the gap study's wave 2: a hand list was what drifted);
+//      scripts/test-enforce-sweep-dice-windows.mjs plays the same calls as
+//      whole turns with a Portent holder watching and sees each stop.
 //   E. SERVER_FEATURES (src/lib/capabilities.ts) against the screens: every
 //      flag is read by a hostOffers call somewhere under src/.
 import assert from "node:assert/strict";
@@ -29,8 +34,10 @@ import { suite } from "./lib/enforce-harness.mjs";
 import { fakeModel } from "./lib/enforce-narrator.mjs";
 import { toolUniverse } from "./lib/sweep-modelio-tools.mjs";
 import { baseArgs, modelDoor } from "./lib/sweep-modelio-fuzz.mjs";
+import { d20sOf, installDiceSpy } from "./lib/sweep-dice.mjs";
 
 const { test, gap, finish } = suite("test-enforce-sweep-modelio-mirrors");
+const spy = installDiceSpy();
 const root = fileURLToPath(new URL("../", import.meta.url));
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 
@@ -66,32 +73,9 @@ async function row(id, fn) {
 let rows = 0;
 // The d20-throwing calls with no branch in rollAbout, today (filled from a run).
 const WATCH_TODAY = [
-  "watch:group_check",
-  "watch:apply_hazard:trap",
-  "watch:apply_hazard:generic",
-  "watch:apply_hazard:extreme_cold",
-  "watch:apply_hazard:extreme_heat",
-  "watch:social_check:persuade",
-  "watch:social_check:deceive",
-  "watch:social_check:intimidate",
-  "watch:take_action:hide",
-  "watch:take_action:grapple",
-  "watch:take_action:shove",
   "watch:add_enemies",
 ];
-const IN_FLIGHT_891 = "In flight: PR #891 stops a trap's or hazard's save thrown with apply_hazard.";
 const WATCH_NOTES = {
-  "watch:group_check": "Each hero's check is an ability check a watcher could foretell; group_check rolls them all with no stop.",
-  "watch:apply_hazard:trap": IN_FLIGHT_891,
-  "watch:apply_hazard:generic": IN_FLIGHT_891,
-  "watch:apply_hazard:extreme_cold": IN_FLIGHT_891,
-  "watch:apply_hazard:extreme_heat": IN_FLIGHT_891,
-  "watch:social_check:persuade": "A Charisma check rolled mid-fight with no stop.",
-  "watch:social_check:deceive": "A Charisma check rolled mid-fight with no stop.",
-  "watch:social_check:intimidate": "A Charisma check rolled mid-fight with no stop.",
-  "watch:take_action:hide": "The hero's Stealth check: no stop.",
-  "watch:take_action:grapple": "A contest: the hero's Athletics check and the foe's answer, two d20s, no stop for either.",
-  "watch:take_action:shove": "A contest: two d20s, no stop for either.",
   "watch:add_enemies": "The reinforcements' initiative (a Dexterity check). The opening's own initiative is not stopped either; recorded for a ruling, severity low.",
 };
 
@@ -184,7 +168,8 @@ for (const fight of [false, true]) {
   const enemy = world.enemies()[0];
   const fixtures = { characterId: mage.id, characterName: "Mira", otherCharacterId: sword.id, otherCharacterName: "Brann", enemyId: enemy.id, enemyName: enemy.name };
   const door = await modelDoor(world);
-  const watched = new Set([...read("src/lib/dm/foresight.ts").matchAll(/call\.name === "([a-z_]+)"/g)].map((match) => match[1]));
+  // The roll kinds a watch stop answers (foresight.ts ROLL_WORDS).
+  const STOPPABLE = new Set(["attack", "save", "check"]);
   // What a mode needs beside its name to reach its dice at this table.
   const WITH = {
     request_roll: { characterId: mage.id, skill: "perception", ability: "wis", dc: 12, reason: "listening", expression: "1d20" },
@@ -200,7 +185,7 @@ for (const fight of [false, true]) {
   };
   const WATCH = {
     rule: "A player watching a fight for Portent, Chronal Shift, Flash of Genius or Favored by the Gods is stopped before a d20 they could answer is thrown (SRD 5.1 Portent: 'You can replace any attack roll, saving throw, or ability check made by you or a creature that you can see with one of these foretelling rolls. You must choose to do so before the roll').",
-    where: "src/lib/dm/foresight.ts rollAbout (a branch for each of enemy_attack, pc_attack, cast_at_player, cast_at_enemy, aoe_damage, request_roll and no other)",
+    where: "the roll site's tag (src/lib/dm/character-roll.ts, src/lib/dice.ts purpose) that src/lib/dm/foresight.ts watchStopForRoll reads",
     severity: "medium",
   };
   for (const id of WATCH_TODAY) {
@@ -218,16 +203,21 @@ for (const fight of [false, true]) {
     for (const value of modes) {
       rows += 1;
       const args = { ...baseArgs(tool, fixtures), ...(WITH[name] ?? {}), ...(mode ? { [mode]: value } : {}) };
+      spy.take();
       const out = await door.call(name, args);
+      // A d20 that is no attack, save or check (a damage roll of a d20, the
+      // GM's custom roll) is nothing Portent replaces, and no stop is owed.
+      const custom = name === "request_roll" && value === "custom";
+      const untagged = custom ? [] : d20sOf(spy.take()).filter((die) => die.purpose?.kind !== "damage" && (!STOPPABLE.has(die.purpose?.kind) || !die.purpose?.who));
       const id = `watch:${name}${mode ? `:${value}` : ""}`;
       if (out.d20s > 0) rolled.push(id);
       answers.push(`${id}\t${out.d20s}\t${out.kind}\t${String(out.error ?? "").slice(0, 150)}`);
       await row(id, () => {
-        assert.ok(!(out.d20s > 0) || watched.has(name), `${name}${mode ? ` (${mode} ${value})` : ""} threw ${out.d20s} d20 in a fight and rollAbout has no branch for it: a watcher is never stopped`);
+        assert.equal(untagged.length, 0, `${name}${mode ? ` (${mode} ${value})` : ""} threw ${untagged.length} d20 in a fight with no attack, save or check tag naming its roller (${untagged.map((die) => `${die.file}:${die.line}<${die.purpose ? `${die.purpose.roller}/${die.purpose.kind}` : "untagged"}>`).join(", ")}): a watcher is never asked before it`);
       });
     }
   }
-  await test(`the walk found the tools that roll (${rolled.length} calls threw a d20; rollAbout names ${[...watched].join(", ")})`, () => {
+  await test(`the walk found the tools that roll (${rolled.length} calls threw a d20)`, () => {
     assert.ok(rolled.some((id) => id.startsWith("watch:pc_attack")), "pc_attack rolled");
     assert.ok(rolled.length >= 6, rolled.join(", "));
   });

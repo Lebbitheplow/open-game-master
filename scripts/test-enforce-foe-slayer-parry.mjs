@@ -84,15 +84,20 @@ await test("A parried hit Foe Slayer cannot lift past the raised AC stays a miss
   assert.ok((next.result.conditionEffects ?? []).some((line) => /Foe Slayer: \+1 damage/.test(line)), JSON.stringify(next.result.conditionEffects));
 });
 
-await test("A Foe Slayer bonus that reaches Parry's raised AC still turns the miss into a hit, and is spent", async () => {
+// The creature's reaction is decided once, against the best total the
+// attacker can reach (the roll and an unspent Foe Slayer), and only a reaction
+// that turns that total is taken (gap study wave 2, L819: "Decide the
+// creature's reaction once from the best total the attacker can reach ...
+// choosing the smaller reaction (Parry +2 before Shield +5) that still turns
+// that total"). This used to pin a Parry spent on a total Foe Slayer then
+// carried past it: the reaction went for nothing.
+await test("A Foe Slayer bonus that would carry past Parry's raised AC draws no Parry, and the attack hits", async () => {
   const enemy = await stage(large, { traits: [PARRY] });
   const blow = await kit.swing(large.id, enemy.id, [7, 5], { weapon: "Longsword" });
   assert.equal(blow.ok, true, blow.error);
   assert.equal(blow.result.hit, true, JSON.stringify(blow.result));
-  assert.ok(reactionSpent(enemy), "Parry was still taken");
-  assert.ok(blow.damage, "the rescued hit rolls damage");
-  assert.ok(marks().includes("foe-slayer"), JSON.stringify(marks()));
-  assert.ok((blow.result.conditionEffects ?? []).some((line) => /turns the miss into a hit/.test(line)), JSON.stringify(blow.result.conditionEffects));
+  assert.ok(!reactionSpent(enemy), "no Parry is spent on a total it cannot turn");
+  assert.ok(blow.damage, "the hit rolls damage");
 });
 
 await test("Shield's +5 holds against a Foe Slayer bonus that would have beaten Parry's +2", async () => {
@@ -216,14 +221,13 @@ await test("With real dice, a parried hit Foe Slayer cannot lift past the raised
   assert.ok(!marks().includes("foe-slayer"), JSON.stringify(marks()));
 });
 
-await test("With real dice, a Foe Slayer bonus that reaches Parry's raised AC still hits, and the note says the reaction went on it", async () => {
+// As on the server's dice above (L819): no Parry on a total it cannot turn.
+await test("With real dice, a Foe Slayer bonus that would carry past Parry's raised AC draws no Parry, and the attack hits", async () => {
   const enemy = await stage(large, { traits: [PARRY] });
   const { note, damage } = await tableSwing(large, enemy, 7);
   assert.match(note, /HIT/, note);
   assert.ok(damage, note);
-  assert.ok(reactionSpent(enemy));
-  assert.ok(marks().includes("foe-slayer"), JSON.stringify(marks()));
-  assert.match(note, /parries \(its reaction\)/, note);
+  assert.ok(!reactionSpent(enemy), note);
 });
 
 await test("With real dice, Shield's +5 holds against a Foe Slayer bonus that would have beaten Parry's +2", async () => {
@@ -331,13 +335,20 @@ await test("With real dice, a Foe Slayer an earlier part of the attack spent dra
       assert.equal(out.status, 200, JSON.stringify(out.json));
       return getPendingRoll(pending.id).combatNote ?? "";
     };
-    const [first, second] = open().filter((entry) => entry.kind === "attack");
-    assert.ok(first && second, "both parts are parked");
+    // The second part waits behind the first (pc-attack-parts.ts
+    // afterToHitLanded): made once the first has landed with its damage.
+    const [first, early] = open().filter((entry) => entry.kind === "attack");
+    assert.ok(first && !early, "the second part is parked before the first has landed");
     // A 19 is past Parry's raise, so the first part leaves the reaction free
     // and spends Foe Slayer on its damage.
     await answer(first, 13);
     assert.ok(marks().includes("foe-slayer"), JSON.stringify(marks()));
     assert.ok(!reactionSpent(enemy), "the first part drew no reaction");
+    const [blow] = open().filter((entry) => entry.kind === "damage" && entry.status === "pending");
+    assert.ok(blow, "the first part's hit parks its damage");
+    await answer(blow, 1);
+    const [second] = open().filter((entry) => entry.kind === "attack" && entry.id !== first.id);
+    assert.ok(second, "the second part was not made once the first had landed");
     // A 12: a near miss Foe Slayer could have lifted, had it not gone.
     const note = await answer(second, 6);
     assert.ok(!reactionSpent(enemy), `the spent bonus drew a reaction: ${note}`);

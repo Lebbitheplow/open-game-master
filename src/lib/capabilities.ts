@@ -165,6 +165,11 @@ export const SERVER_FEATURES = {
   // questions. An older host drops start_encounter's building unread and opens
   // the fight on open ground, so they stay hidden there.
   fightInBuilding: true,
+  // How a prepared fight opens, asked as the GM deploys it (the Deploy
+  // dialog, DeployOpeningDialog.tsx): the deploy route's body. An older host
+  // reads no body and deploys the fight as prepared, so the dialog stays
+  // hidden there and Deploy deploys at once.
+  deployOpening: true,
   // A declaration's parts in one call (PR 749): the console's "Made with"
   // on an attack, a journey's Days and a blow's Blows. An older host strips
   // all three unread (a flurry strike swung as the Attack action's, one day

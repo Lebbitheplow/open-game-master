@@ -57,6 +57,11 @@ export type LegendaryState = {
   // began a new round, which the turn's table note says once the narration
   // is in.
   handoff?: { turnId: string; enemyIds: string[]; wrapped?: boolean; dying?: string[] };
+  // The backstop stopped on a held roll (src/lib/dm/backstop-calls.ts): the
+  // DM turn it belongs to, and where the close of that turn goes on once the
+  // roll is in: the whole close again (`narration`, the pass came first in
+  // it), or only the rest of the pass and the wake after it (`follow`).
+  backstop?: { turnId: string; then: "narration" | "follow" };
   // The enemies that have taken a bonus action in `round` (Nimble Escape's
   // Disengage or Hide).
   bonus?: { round: number; ids: string[] };
@@ -163,6 +168,7 @@ export function normalizeLegendaryState(raw: unknown): LegendaryState {
   const handoff = (record.handoff && typeof record.handoff === "object" ? record.handoff : null) as Record<string, unknown> | null;
   const heldMove = (record.heldMove && typeof record.heldMove === "object" ? record.heldMove : null) as Record<string, unknown> | null;
   const bonus = (record.bonus && typeof record.bonus === "object" ? record.bonus : null) as Record<string, unknown> | null;
+  const backstop = (record.backstop && typeof record.backstop === "object" ? record.backstop : null) as Record<string, unknown> | null;
   const idle = (record.idle && typeof record.idle === "object" ? record.idle : null) as Record<string, unknown> | null;
   const rest = (record.rest && typeof record.rest === "object" ? record.rest : null) as Record<string, unknown> | null;
   const failed = (record.failedSave && typeof record.failedSave === "object" ? record.failedSave : null) as Record<string, unknown> | null;
@@ -198,6 +204,7 @@ export function normalizeLegendaryState(raw: unknown): LegendaryState {
           },
         }
       : {}),
+    ...(backstop && typeof backstop.turnId === "string" ? { backstop: { turnId: backstop.turnId, then: backstop.then === "follow" ? ("follow" as const) : ("narration" as const) } } : {}),
     ...(bonus ? { bonus: { round: Number(bonus.round) || 0, ids: stringList(bonus.ids) } } : {}),
     ...(stringList(record.due).length ? { due: stringList(record.due) } : {}),
     ...(stringList(record.lost).length ? { lost: stringList(record.lost) } : {}),

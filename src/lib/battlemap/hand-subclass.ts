@@ -25,6 +25,7 @@ import {
   type HandCost,
   type HandTarget,
   type HandTurn,
+  failedSaveGate,
 } from "@/lib/battlemap/hand-core";
 import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
@@ -306,6 +307,7 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
         ? { reason: `${spend.name} takes a creature ${sheet.name} can see, and they are blinded.`, spent: false }
         : null,
       aimCost === "free" ? null : costGate(aimCost, turn, sheet, spend.name),
+      does.kind === "reroll_save" ? failedSaveGate(spend.name, turn) : null,
     );
   });
 }

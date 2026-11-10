@@ -288,9 +288,13 @@ export type PcAttackArgs = z.infer<typeof pcAttackArgsSchema>;
 // Sentinel the turn loop checks: a parked pc_attack pushes no tool result
 // now; the resumed turn answers it with the adjudicated roll.
 export const PC_ATTACK_PARKED = "_parked";
-// Parked by the server's own throw for the player's after-the-roll choice
-// (pc-attack-parked.ts throwForChoice), with the parked roll's id: the attacks
-// declared after it wait behind it (pc-attack-parts.ts).
+// A parked d20 of the pc_attack tool's own (`mayWait`), with the parked roll's
+// id: the attacks declared after it wait behind it (pc-attack-parts.ts), on
+// the player's physical dice as on the server's throw that waits for their
+// after-the-roll choice (pc-attack-parked.ts throwForChoice). Each later part
+// is then planned once the one before it has landed, reading the attacker and
+// the creature as that left them (a hidden archer's hit gives them away
+// before the sword swings), as the server's dice make the parts in turn.
 export const PC_ATTACK_WAITS = "_waitsOnChoice";
 
 export function handlePcAttack(
@@ -422,8 +426,8 @@ function attackFrom(
   // Physical dice: park the to-hit roll for the player; the submit route
   // adjudicates it and, on a hit, parks the damage roll too.
   if (realDiceUserIds.has(sheet.userId)) {
-    parkPcAttack(plan, strike, toolCallId, mote);
-    return { [PC_ATTACK_PARKED]: true };
+    const parked = parkPcAttack(plan, strike, toolCallId, mote);
+    return engine.mayWait ? { [PC_ATTACK_PARKED]: true, [PC_ATTACK_WAITS]: parked.id } : { [PC_ATTACK_PARKED]: true };
   }
   // The server's dice, for a player who may still change a miss once they see
   // it: the roll waits thrown, or resolves with that throw. Only on the

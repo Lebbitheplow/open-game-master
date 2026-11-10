@@ -16,21 +16,37 @@
 // One row per campaign (the last_saves table, named for the first record it
 // held) holds the events of the fight; one is open in the turn it happened, and
 // a turn's end stays open into the next turn until its creature does anything.
-// A save a player rolled at the GM's request carries no forcer, and the GM's
-// call names the creature for it.
+// A save a player rolled at the GM's request is put to the foe whose turn it
+// is (recordRequestedSave); on a character's own turn it has no forcer.
 import { randomUUID } from "node:crypto";
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
-import { getActiveEncounter, orderEntryId, turnKey, type Encounter, type OrderEntry } from "@/lib/db/encounters";
+import { getActiveEncounter, listEnemies, orderEntryId, turnKey, type Encounter, type OrderEntry } from "@/lib/db/encounters";
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
+import { getSheetById } from "@/lib/db/sheets";
+import { textKey } from "@/lib/language/text-logic";
 
 const db = () => getDatabase();
 
 export type SaveAbility = "str" | "dex" | "con" | "int" | "wis" | "cha";
 type Ref = { id: string; name: string };
 
-// The last four are read off the running turn, never written here
+// The last five are read off the running turn, never written here
 // (reaction-triggers.ts triggerRecords).
-export type TriggerKind = "save" | "death" | "turn_end" | "cast" | "pet_damage" | "turn_start" | "weapon_hit" | "surge" | "wind_step";
+export type TriggerKind =
+  | "save"
+  | "death"
+  | "turn_end"
+  | "cast"
+  | "pet_damage"
+  | "steadied"
+  | "echo_destroyed"
+  | "inspired_success"
+  | "moved_near"
+  | "turn_start"
+  | "weapon_hit"
+  | "surge"
+  | "wind_step"
+  | "rage_entered";
 
 // One trigger. `characterId` is the character it befell (who saved, whose pet
 // was hurt, who surged); `forcer` the creature that did it (forced the save,
@@ -55,8 +71,16 @@ export type LastSave = {
   spell?: string;
   level?: number;
   targets?: string[];
-  // A turn's end: whether an enemy's (or a character's) turn it was.
+  // A turn's end: whether an enemy's (or a character's) turn it was. A cast:
+  // whether an enemy cast it (false for a character's own casting).
   enemy?: boolean;
+  // How it came about: a steadying's "death save", "spare the dying",
+  // "medicine" or "kit"; an inspired success's roll ("attack", "save", "check").
+  how?: string;
+  // A move near a character: how far the mover stood from them before the
+  // move and at its nearest along the way, in feet.
+  fromFeet?: number;
+  feet?: number;
   // The reactions that answered it, by answer key (last-hit.ts answerKey).
   answered?: string[];
   encounterId: string;
@@ -89,8 +113,14 @@ function writeRow(campaignId: string, saves: LastSave[]) {
 // Whether the creature whose turn it is has done anything with it yet: an
 // attack, a cast, an action card, or a step on the board. A turn's end stays
 // open to a reaction until then (last-hit.ts reads the same for a hit).
+// The entry the pointer is on: who is up, asking nothing of whether it is
+// anyone's own turn (held-turn.ts ownTurnOf asks that).
+function upNow(encounter: Encounter): OrderEntry | null {
+  return encounter.order[encounter.turnIndex] ?? null;
+}
+
 export function actedThisTurn(encounter: Encounter): boolean {
-  const current = encounter.order[encounter.turnIndex];
+  const current = upNow(encounter);
   if (!current) {
     return false;
   }
@@ -149,6 +179,26 @@ export function recordSave(campaignId: string, characterId: string, ability: Sav
   append(campaignId, { kind: "save", characterId, ability, forcer, success, ...(against ? { against } : {}) });
 }
 
+// A save the GM asked a player to roll (request_roll, invoke-roll.ts), made
+// or failed: request_roll names no creature, so in a fight the save is put to
+// the creature whose turn it is when that is a foe's (its spell or its
+// ability forced it). On a character's own turn there is no forcer to name,
+// and the save is kept by nobody, as one with no forcer always was.
+export function recordRequestedSave(campaignId: string, characterId: string, ability: string | undefined, success: boolean) {
+  const encounter = getActiveEncounter(campaignId);
+  const current = encounter && (encounter.kind ?? "fight") === "fight" ? upNow(encounter) : null;
+  const key = textKey(ability ?? "").slice(0, 3) as SaveAbility;
+  if (!encounter || !current || current.kind === "pc" || !["str", "dex", "con", "int", "wis", "cha"].includes(key)) {
+    return;
+  }
+  const id = orderEntryId(current);
+  const enemy = listEnemies(encounter.id).find((entry) => entry.id === id);
+  if (!enemy) {
+    return;
+  }
+  recordSave(campaignId, characterId, key, { id: enemy.id, name: enemy.displayName }, success);
+}
+
 // The damage the creature that forced a save dealt through it (cast-at-player.ts),
 // put on that save: Hellish Rebuke answers "being damaged by a creature", and a
 // spell's failed save leaves no hit record.
@@ -166,11 +216,58 @@ export function noteSaveDamage(campaignId: string, characterId: string, forcerId
   writeRow(campaignId, rows);
 }
 
-// A trigger other than a save, written where it happens: a death
-// (enemy-damage.ts), a turn's end (last-hit.ts closeHitsAtTurnEnd), a cast, a
-// pet's damage (pet-tools.ts), an Action Surge (resource-turn.ts).
-export function recordTrigger(campaignId: string, record: { kind: "death" | "turn_end" | "cast" | "pet_damage"; characterId?: string; forcer: Ref } & Partial<Pick<LastSave, "damage" | "petName" | "creatureType" | "killerId" | "spell" | "level" | "targets" | "enemy">>, turn?: string): LastSave | null {
+// The kinds written to the record, each where it happens. A feature that
+// answers one of these reads it through src/lib/srd/trigger-table.ts; a new
+// event a reaction waits for is a kind here and a writer at the one door
+// where the engine makes it happen, never a check of the call's word.
+//   death             a creature died (enemy-damage.ts); `killerId` struck the blow
+//   turn_end          a turn ended (recordTurnEnd)
+//   cast              `forcer` cast `spell` at `characterId` (cast-at-player.ts
+//                     for an enemy's, recordCast for a character's)
+//   pet_damage        `characterId`'s pet took `damage` (pet-tools.ts)
+//   steadied          `characterId` was steadied by `forcer` (recordSteadied)
+//   echo_destroyed    `characterId`'s echo was destroyed by `forcer` (authored-reactions.ts)
+//   inspired_success  `characterId` made a roll succeed with `forcer`'s
+//                     Bardic Inspiration die (after-roll.ts)
+//   moved_near        `forcer` moved to within `feet` of `characterId` from
+//                     `fromFeet` (map-tools.ts move_token, recordMovesNear)
+export type RecordedKind = "death" | "turn_end" | "cast" | "pet_damage" | "steadied" | "echo_destroyed" | "inspired_success" | "moved_near";
+export function recordTrigger(
+  campaignId: string,
+  record: { kind: RecordedKind; characterId?: string; forcer: Ref } & Partial<Pick<LastSave, "damage" | "petName" | "creatureType" | "killerId" | "spell" | "level" | "targets" | "enemy" | "how" | "fromFeet" | "feet">>,
+  turn?: string,
+): LastSave | null {
   return append(campaignId, { ability: "con", characterId: "", ...record }, turn);
+}
+
+// A character's spell at the characters it targets (cast-buff.ts, heal): one
+// record per target, so a reaction the target takes (Voice of Authority)
+// answers the casting that named them. A spell of no slot level is a cantrip
+// (level 0). Written only in a fight, as every record is.
+export function recordCast(campaignId: string, caster: Ref, spell: string, level: number, targetIds: readonly string[]) {
+  const targets = [...new Set(targetIds.filter(Boolean))];
+  for (const id of targets) {
+    recordTrigger(campaignId, { kind: "cast", characterId: id, forcer: caster, spell, level, targets, enemy: false });
+  }
+}
+
+// A roll a Bardic Inspiration die made succeed (forced-save.ts settleHeldDie,
+// the after-roll card's spend): `characterId` the roller, `forcer` the bard
+// whose die it was, `how` the roll ("attack", "save", "check"). With no bard
+// on the die (one given before the source was kept) nothing is written.
+export function recordInspiredSuccess(campaignId: string, roller: Ref, bardId: string | null, how: string) {
+  const bard = bardId ? getSheetById(bardId) : null;
+  if (!bard || bard.id === roller.id) {
+    return;
+  }
+  recordTrigger(campaignId, { kind: "inspired_success", characterId: roller.id, forcer: { id: bard.id, name: bard.name }, how });
+}
+
+// A dying creature steadied: their own death save succeeding (`by` is
+// themselves, `how` "death save"), or another stabilizing them (stabilize.ts,
+// `how` "spare the dying", "medicine" or "kit"). Defy Death answers it.
+export function recordSteadied(campaignId: string, characterId: string, by: Ref, how: string) {
+  recordTrigger(campaignId, { kind: "steadied", characterId, forcer: by, how });
 }
 
 // A turn ending, as the pointer leaves it: kept under the ending turn's key,

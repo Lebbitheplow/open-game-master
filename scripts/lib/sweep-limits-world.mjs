@@ -167,6 +167,22 @@ export async function limitsTable(world) {
   const openRolls = (who, kind) =>
     pending.listOpenPendingRolls(world.campaignId).filter((entry) => (!kind || entry.kind === kind) && (!who || entry.userId === world.sheet(who.id).userId));
   // Enters faces (or a body such as { fallback: "digital" }) for a parked roll.
+  // The board indoors and dark everywhere but where `lamps` shine (the
+  // lights_json the fog of war and attack-light.ts read: a tile and two radii
+  // in squares), with every carried light out and no spell areas: a board
+  // split into lit and dark parts. No lamps is a board dark all over.
+  const { getDatabase } = await import("../../src/lib/db/core.ts");
+  const maps = await import("../../src/lib/db/battle-maps.ts");
+  const { clearLitTilesCache } = await import("../../src/lib/battlemap/lit-cache.ts");
+  function lightBoard(lamps = []) {
+    const board = kit.map();
+    maps.setBattleMapOutdoors(board.id, false);
+    const lights = lamps.map(({ x, y, bright = 1, dim = bright }) => ({ x, y, brightRadius: bright, dimRadius: dim }));
+    getDatabase().prepare(`UPDATE battle_maps SET ambient = 'dark', lights_json = ?, zones_json = '[]' WHERE id = ?`).run(JSON.stringify(lights), board.id);
+    for (const token of maps.listTokens(board.id)) maps.setTokenLight(token.id, 0);
+    clearLitTilesCache();
+  }
+
   async function enter(who, roll, body) {
     world.signIn({ id: world.sheet(who.id).userId });
     const out = await call(submitRoute, "POST", Array.isArray(body) ? { dice: body } : body, { campaignId: world.campaignId, pendingRollId: roll.id });
@@ -175,7 +191,7 @@ export async function limitsTable(world) {
 
   return {
     kit, hero, stage, strike, hits, view, offered, used, reacted, ledger,
-    withRealDice, openRolls, enter, deriveHand, FRESH_TURN, reactionCards,
+    withRealDice, openRolls, enter, deriveHand, FRESH_TURN, reactionCards, lightBoard,
     publicEncounter: () => activePublicEncounter(world.campaignId),
   };
 }

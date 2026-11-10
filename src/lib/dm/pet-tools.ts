@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { petReachProblem } from "@/lib/dm/pet-place";
 import { recordTrigger } from "@/lib/dm/last-save";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
@@ -54,7 +55,7 @@ export const petTools: ToolDef[] = [
     function: {
       name: "summon_pet",
       description:
-        "Summon or bond a creature a feature grants: kind familiar (Find Familiar), beast_companion (Beast Master), drake (Drakewarden, its essence) or other (a story pet: a stat block's name, or hp and ac). A story pet with no stat block cannot attack. A familiar takes a Find Familiar form (an owl, a cat, a raven; an imp, quasit, pseudodragon or sprite with Pact of the Chain); a Beast Master companion is a Medium or smaller beast of CR 1/4 or lower. A story pet named for an SRD or workshop creature (mastiff, wolf) takes that stat block, and fights with it when its CR is within what a druid of the owner's level could become. The server checks the feature and attaches the pet to their sheet. Call it BEFORE narrating the summon.",
+        "Summon or bond a creature a feature grants: kind familiar (Find Familiar), beast_companion (Beast Master), drake (Drakewarden, its essence) or other (a story pet: a stat block's name, or hp and ac). A pet has no token: it stands with its owner, so its reach is measured from the owner's square. A story pet with no stat block cannot attack. A familiar takes a Find Familiar form (an owl, a cat, a raven; an imp, quasit, pseudodragon or sprite with Pact of the Chain); a Beast Master companion is a Medium or smaller beast of CR 1/4 or lower. A story pet named for an SRD or workshop creature (mastiff, wolf) takes that stat block, and fights with it when its CR is within what a druid of the owner's level could become. The server checks the feature and attaches the pet to their sheet. Call it BEFORE narrating the summon.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -302,6 +303,12 @@ export function handlePetAttack(
     return args.attack
       ? noneNamed(`${pet.name} has no attack called`, args.attack, names)
       : { error: `${pet.name} has several attacks; name one: ${names.join(", ")}.`, retry: true };
+  }
+  // The pet stands with its owner (pet-place.ts, ruling D2): its reach is
+  // measured from the owner's square.
+  const tooFar = petReachProblem(encounter.id, sheet, pet.name, attack, { id: enemy.id, name: enemy.displayName });
+  if (tooFar) {
+    return tooFar;
   }
   if (attack.proneTargetsOnly && !enemy.conditions.includes("prone")) {
     return { error: `${pet.name}'s ${attack.name} strikes only a prone creature, and ${enemy.displayName} is not prone. Nothing was spent.`, refused: "rules" };

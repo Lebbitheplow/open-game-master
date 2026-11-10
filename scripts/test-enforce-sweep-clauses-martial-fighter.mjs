@@ -381,6 +381,13 @@ const d20sOf = (log) => log.filter((die) => die.sides === 20).map((die) => die.f
 
   await probe("reclaim-potential-temporary-hit-points", async () => {
     await stage(echo);
+    // "When an echo of yours is destroyed by taking damage": the counter answers
+    // that record (trigger-table.ts own_echo_destroyed), put on it here as
+    // authored-reactions.ts does when the echo falls. This probe is the temporary
+    // hit points; the spends sweep stages the echo's fall through its own door.
+    const { recordTrigger } = await import("../src/lib/dm/last-save.ts");
+    const [foe] = world.enemies();
+    recordTrigger(world.campaignId, { kind: "echo_destroyed", characterId: echo.id, forcer: { id: foe.id, name: foe.displayName } });
     const out = await spend(echo, "Reclaim Potential", {}, 2);
     assert.equal(out.ok, true, out.error);
     assert.equal(sheet(echo).tempHp, 2 + 2 + MOD, "2d6 (two 2s) + Constitution");

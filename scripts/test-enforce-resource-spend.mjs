@@ -287,7 +287,9 @@ await test("Bardic Inspiration is a die another creature holds and spends on one
   assert.deepEqual(world.sheet(bard.id).resources.bardic_inspiration, { max: 3, used: 1 });
   // A d8 at bard 5, held for 10 minutes (100 rounds).
   assert.deepEqual(world.sheet(friend.id).conditions, ["bardic inspiration (d8)"]);
-  assert.deepEqual(world.sheet(friend.id).conditionMeta, { "bardic inspiration (d8)": { rounds: 100 } });
+  // The bard is kept as the die's source, so a roll it makes succeed is theirs
+  // (Infectious Inspiration answers that record, last-save.ts).
+  assert.deepEqual(world.sheet(friend.id).conditionMeta, { "bardic inspiration (d8)": { rounds: 100, source: bard.id } });
 
   // One die at a time: a second is refused and costs the bard nothing.
   await refusedUnchanged(

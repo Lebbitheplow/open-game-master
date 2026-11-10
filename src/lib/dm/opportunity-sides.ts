@@ -39,8 +39,10 @@ type XY = { x: number; y: number };
 // Only a creature the reactor can see provokes it: a blinded reactor, an
 // invisible or hidden walker, past the blindsight or truesight that reaches
 // it (attack-light.ts sensesReaching, the rule every sight check reads).
-function unseenByReactor(encounterId: string, reactor: EncounterEnemy, walker: EncounterEnemy): boolean {
-  return Boolean(sightBlockedBy(reactor.conditions, walker.conditions, sensesReaching(encounterId, { refId: reactor.id, senses: enemySenses(reactor) }, { refId: walker.id })));
+// `at`: the tile the walker left the reach from (opportunity-strike.ts
+// opportunitySight says why).
+function unseenByReactor(encounterId: string, reactor: EncounterEnemy, walker: EncounterEnemy, at: XY): boolean {
+  return Boolean(sightBlockedBy(reactor.conditions, walker.conditions, sensesReaching(encounterId, { refId: reactor.id, senses: enemySenses(reactor) }, { refId: walker.id, at })));
 }
 
 // The enemies of the other side whose reach the walker (an enemy row) leaves
@@ -62,7 +64,7 @@ export function enemiesStrikeWalker(campaignId: string, walkerId: string, steps:
     if (reactor.id === walkerId || sideOf(encounter, "enemy", reactor.id, reactor) === walkerSide) {
       continue;
     }
-    if (!canEnemyAct({ enemy: reactor, encounter, kind: "reaction" }).ok || conditionBlocksReactions(reactor.conditions) || unseenByReactor(encounter.id, reactor, walker)) {
+    if (!canEnemyAct({ enemy: reactor, encounter, kind: "reaction" }).ok || conditionBlocksReactions(reactor.conditions)) {
       continue;
     }
     if (encounter.reactionsUsed.includes(reactor.id)) {
@@ -70,22 +72,28 @@ export function enemiesStrikeWalker(campaignId: string, walkerId: string, steps:
     }
     const token = getTokenByRef(map.id, reactor.id);
     const weapon = opportunityWeapon(reactor.stats);
-    if (!token || !weapon || !leavesReachAt(steps, token, weapon.reachTiles, footprintForSize(reactor.stats.size), walkerFootprint)) {
+    const leftFrom = token && weapon ? leavesReachAt(steps, token, weapon.reachTiles, footprintForSize(reactor.stats.size), walkerFootprint) : null;
+    if (!weapon || !leftFrom || unseenByReactor(encounter.id, reactor, walker, leftFrom)) {
+      continue;
+    }
+    // Fear only with its source in sight, a Dodge only against an attacker
+    // the dodger sees (attack-light.ts), as on every other attack. And only
+    // a walker it can see provokes it: in the dark, with no darkvision and
+    // no light where the walker was, it slips away, as from a character.
+    const sight = attackSight({
+      campaignId,
+      encounterId: encounter.id,
+      attacker: { refId: reactor.id, senses: enemySenses(reactor) },
+      target: { refId: walker.id, senses: enemySenses(walker), at: leftFrom },
+    });
+    if (sight && !sight.attackerSees) {
       continue;
     }
     encounter.reactionsUsed = [...encounter.reactionsUsed, reactor.id];
     saveEncounter(encounter);
     const { attack } = weapon;
-    // Fear only with its source in sight, a Dodge only against an attacker
-    // the dodger sees (attack-light.ts), as on every other attack.
-    const sight = attackSight({
-      campaignId,
-      encounterId: encounter.id,
-      attacker: { refId: reactor.id, senses: enemySenses(reactor) },
-      target: { refId: walker.id, senses: enemySenses(walker) },
-    });
     const context = attackContext({
-      ...attackSenses(encounter.id, { refId: reactor.id, senses: enemySenses(reactor) }, { refId: walker.id, senses: enemySenses(walker) }),
+      ...attackSenses(encounter.id, { refId: reactor.id, senses: enemySenses(reactor) }, { refId: walker.id, senses: enemySenses(walker), at: leftFrom }),
       attackerConditions: fearAsRolled(encounter.id, reactor.id, reactor.conditions, reactor.conditionMeta),
       targetConditions: walker.conditions,
       melee: true,

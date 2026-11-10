@@ -1,4 +1,6 @@
 import { normalizeHandLayout, type HandLayout } from "@/lib/battlemap/hand-layout";
+import { withStartingCharges } from "@/lib/srd/item-charge-rules";
+import { rollExpression } from "@/lib/dice";
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { touchCampaign } from "@/lib/db/campaigns";
 import { effectiveMaxHp, endedByRegain, maxHpRiders, tempHpClaims, withoutTempHpClaims, type ConditionMetaMap } from "@/lib/dm/condition-logic";
@@ -383,12 +385,14 @@ function withItemWeights(equipment: CharacterSheet["equipment"]): CharacterSheet
 
 // Attunement the rules deny (a fourth item, a second copy, an item that
 // needs none, one whose text keeps this character out) is taken off here,
-// whatever path wrote the pack.
+// whatever path wrote the pack. An item whose charges are dice gets its
+// starting count rolled here too (item-charge-rules.ts withStartingCharges),
+// so every door that adds a row writes it with its charges.
 function capAttunement(
   equipment: CharacterSheet["equipment"],
   wearer: Wearer,
 ): CharacterSheet["equipment"] {
-  return settleAttunement(equipment, wearer);
+  return settleAttunement(equipment.map((item) => withStartingCharges(item, (expression) => rollExpression(expression).total)), wearer);
 }
 
 export function createSheet(

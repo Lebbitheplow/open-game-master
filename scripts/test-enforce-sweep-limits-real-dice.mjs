@@ -17,28 +17,7 @@ const { entryDice } = await import("../src/lib/dice.ts");
 const fill = (roll, faces) => (Array.isArray(faces) ? faces : entryDice(roll.expression).map(() => faces));
 
 const KNOWN = {
-  "822-skulker-second-part-unseen": {
-    where: "src/lib/dm/pc-attack-parked.ts (each part's sight of the attacker is fixed when the parts park together; the first part's reveal does not reach the second)",
-    severity: "low",
-    note: "On the server's dice the parts resolve in turn and the second is seen (the row checks that first). On entered dice the sword part still rolls with \"attacker is hidden: advantage\" and draws no Parry.",
-  },
 
-  "819-parry-and-shield-not-steady:server's dice": {
-    where: "src/lib/dm/enemy-reactions.ts tryParry with src/lib/dm/pc-attack-resolve.ts rescueMiss (Foe Slayer's lift judged against one reaction at a time)",
-    severity: "low",
-    note: "Needs a creature with both Parry and Shield: none of the six SRD Parry creatures has Shield, so homebrew or the content pack.",
-  },
-  "819-parry-and-shield-not-steady:entered dice": {
-    where: "src/lib/dm/enemy-reactions.ts tryParry with src/lib/dm/pc-attack-parked.ts (the same stages on entered dice)",
-    severity: "low",
-    note: "Same faces, same result as the server's dice: the two paths agree, and both are unsteady.",
-  },
-
-  "820-end-turn-on-a-parked-attack": {
-    where: "src/lib/dm/pc-attack-parked.ts (endTurn is not carried on the parked roll) / src/lib/dm/pending-roll-land.ts",
-    severity: "low",
-    note: "The console's \"and end the turn\" is dropped when the seat rolls real dice; the GM ends the turn by hand.",
-  },
 
 };
 const RULING = {
@@ -51,7 +30,6 @@ const SKIP = {
   "820-curving-shot": "the body's own note is \"read only\": it needs an Arcane Archer's magic arrow to miss and a bonus action to turn it, two calls whose dice differ by path.",
   "825-guard-accepts-the-rolled-total": "the narration guard reads a GM model's prose against the rolls; it needs a scripted narrator turn (scripts/lib/enforce-narrator.mjs) around a parked roll, which this suite does not run. Pinned elsewhere: scripts/test-enforce-real-dice-half-on-miss.mjs \"the GM may say the half that landed: the narration guard finds it, and not a figure no roll made\".",
   "820-same-turn-come-round": "the body says it was seen \"with the test helper only, not a real order edit\": it needs the initiative pointer to leave a turn and come back within one round, which no player or GM door does.",
-  "824-opportunity-light-at-landing": "needs a board lit in one part and dark in another, a mover and a watcher with a light of their own; recorded as a read-only finding (L824-opportunity-sight-at-landing).",
   "824-large-token-origin-tile": "the body's own note says \"neither was run\" and the second \"may be a rules call\"; a Large token's sight from its far tile needs the same split-lit board.",
   "825-notes-missing-bardic-and-concentration": "the after-roll card (Bardic Inspiration) and a concentrating creature both need a second seat's choice mid-attack; left to the dice package's differential, which diffs notes.",
 };
@@ -337,11 +315,20 @@ async function twoParts(hero, parts, firstFaces, secondFaces, between = () => {}
   return table.withRealDice(hero, async () => {
     const parked = await world.invoke("pc_attack", { characterId: hero.id, attacks: parts });
     assert.equal(parked.ok, true, parked.error);
-    const [first, second] = table.openRolls(hero, "attack");
-    assert.ok(first && second, "both parts are parked");
+    // The second part waits behind the first, made once the first has landed
+    // with its damage (pc-attack-parts.ts afterToHitLanded), as on the server's dice.
+    const [first, early] = table.openRolls(hero, "attack");
+    assert.ok(first && !early, "the second part is parked before the first has landed");
     const one = await table.enter(hero, first, fill(first, firstFaces));
     assert.equal(one.status, 200, JSON.stringify(one.json));
+    const [blow] = table.openRolls(hero, "damage");
+    if (blow) {
+      const landed = await table.enter(hero, blow, entryDice(blow.expression).map(() => 1));
+      assert.equal(landed.status, 200, JSON.stringify(landed.json));
+    }
     await between();
+    const [second] = table.openRolls(hero, "attack");
+    assert.ok(second, "the second part was not made once the first had landed");
     const two = await table.enter(hero, second, fill(second, secondFaces));
     assert.equal(two.status, 200, JSON.stringify(two.json));
     return [one.note, two.note];
@@ -596,16 +583,7 @@ await row("822-invisible-by-another-name", {
   assert.equal(d20s === 2, !parried, `the attack rolled ${d20s} d20 (advantage for being unseen: ${d20s === 2}) and the creature ${parried ? "parried, so it saw them" : "did not parry, so it did not"}`);
 });
 
-const { getDatabase } = await import("../src/lib/db/core.ts");
-const maps = await import("../src/lib/db/battle-maps.ts");
-const { clearLitTilesCache } = await import("../src/lib/battlemap/lit-cache.ts");
-function lightsOut() {
-  const board = kit.map();
-  maps.setBattleMapOutdoors(board.id, false);
-  getDatabase().prepare(`UPDATE battle_maps SET ambient = 'dark', lights_json = '[]', zones_json = '[]' WHERE id = ?`).run(board.id);
-  for (const token of maps.listTokens(board.id)) maps.setTokenLight(token.id, 0);
-  clearLitTilesCache();
-}
+const lightsOut = () => table.lightBoard([]);
 for (const real of [false, true]) {
   await row(`822-parry-in-the-dark:${real ? "entered dice" : "server's dice"}`, {
     pr: 822,
@@ -635,7 +613,42 @@ for (const real of [false, true]) {
 
 // ---- #824 ----
 
-await row("824-opportunity-light-at-landing", { pr: 824, limit: "An opportunity attack reads the light where the creature ends its move.", rule: "-" }, async () => {});
+await row("824-opportunity-light-at-landing", {
+  pr: 824,
+  limit: "An opportunity attack reads the light where the creature ends its move.",
+  rule: "SRD 5.1, Opportunity Attacks: \"You can make an opportunity attack when a hostile creature that you can see moves out of your reach ... the attack occurs right before the creature leaves your reach.\"",
+}, async () => {
+  const { resolveOpportunityAttacks } = await import("../src/lib/dm/opportunity.ts");
+  const { getCampaignById } = await import("../src/lib/db/campaigns.ts");
+  const walk = [{ x: 5, y: 4 }, { x: 5, y: 3 }, { x: 5, y: 2 }];
+  // A lamp over the square the walker stands on, and dark three squares on:
+  // the watcher, with no darkvision, sees the walker go and not where it lands.
+  const blind = { stats: { senses: { passivePerception: 10 } } };
+  {
+    // A character walking off a creature (the move route, token-rules.ts).
+    const human = fighter();
+    const [watcher] = await stage(human, blind);
+    table.lightBoard([{ x: 5, y: 5, bright: 1 }]);
+    kit.place(human.id, 5, 2);
+    world.clearDice();
+    world.dice(15, 4);
+    const out = resolveOpportunityAttacks(getCampaignById(world.campaignId), human.id, { x: 5, y: 5 }, { x: 5, y: 2 }, false, walk);
+    world.clearDice();
+    assert.ok(reactionSpent(watcher), `a creature that saw the character leave its reach in the lamplight made no opportunity attack: ${JSON.stringify(out.notes)}`);
+  }
+  {
+    // A creature walking off a character (move_token, opportunity.ts resolvePcOpportunityAttacks).
+    const human = fighter();
+    const [walker] = await stage(human, blind);
+    table.lightBoard([{ x: 5, y: 6, bright: 1 }]);
+    kit.place(walker.id, 5, 9);
+    world.clearDice();
+    world.dice(15, 4);
+    const notes = resolvePcOpportunityAttacks(world.campaign(), walker.id, { x: 5, y: 6 }, { x: 5, y: 9 }, [{ x: 5, y: 7 }, { x: 5, y: 8 }, { x: 5, y: 9 }]);
+    world.clearDice();
+    assert.ok(world.encounter().reactionsUsed.some((key) => key.includes(human.id)), `a character who saw the creature leave their reach in the lamplight made no opportunity attack: ${JSON.stringify(notes)}`);
+  }
+});
 await row("824-large-token-origin-tile", { pr: 824, limit: "Large tokens read only their origin tile, and conjured melee such as Spiritual Weapon reads the caster's token.", rule: "-" }, async () => {});
 
 // ---- #825 ----

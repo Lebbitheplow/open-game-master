@@ -443,7 +443,7 @@ export function DmConsolePanel({
             <div className="reveal space-y-4">
               <DmMapStudioPanel campaignId={campaignId} />
               <DmMapLibraryPanel campaignId={campaignId} />
-              <DmEncounterPrepPanel campaignId={campaignId} />
+              <DmEncounterPrepPanel campaignId={campaignId} sheets={sheets} />
             </div>
           ) : category === "cast" ? (
             <DmNpcForgePanel campaignId={campaignId} refreshKey={castKey} />

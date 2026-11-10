@@ -300,6 +300,10 @@ export type HandTurn = {
   interactionUsed?: boolean;
   // The engine's reading of the fight, so the gates ask canAct itself.
   table?: HandTable | null;
+  // Whether a save this character failed is open on the record
+  // (PublicEncounter.lastSaves): never out of a fight, where nothing is
+  // recorded. Undefined from a caller that does not read the record.
+  failedSave?: boolean;
 };
 
 // What canAct needs to know about the fight, off the public encounter.
@@ -409,6 +413,15 @@ export function primaryClass(sheet: CharacterSheet): string {
 // ---- what stops a card ----
 
 export type Gate = { reason: string; spent: boolean } | null;
+
+// A reroll of a save the holder failed (Indomitable, Diamond Soul, Fanatical
+// Focus): shut while no failed save of theirs is on record, as the engine
+// refuses it then ("has no failed saving throw to reroll"). Out of a fight
+// nothing is recorded, so the card is shut there too. SRD 5.1
+// fighter, Indomitable: "you can reroll a saving throw that you fail."
+export function failedSaveGate(name: string, turn: Pick<HandTurn, "failedSave">): Gate {
+  return turn.failedSave === false ? { reason: `${name} rerolls a saving throw you have just failed, and there is none on record.`, spent: false } : null;
+}
 
 // The fight as canAct reads it, built from the public projection. The order
 // is reduced to the one entry canAct looks at (the pointer's), and the

@@ -485,6 +485,7 @@ const SITES = {
   "app/api/campaigns/[campaignId]/pending-rolls/[pendingRollId]/portent/route.ts#POST": "S Portent's number on a parked roll",
   "app/api/campaigns/[campaignId]/pending-rolls/[pendingRollId]/route.ts#POST": "S Roll digitally, a held roll let go (test-enforce-sweep-dice-paths.mjs)",
   "app/api/campaigns/[campaignId]/rolls/route.ts#POST": "S the player's own dice tray",
+  "lib/db/sheets.ts#capAttunement": "F an item's starting charges, rolled as it is granted (item-charge-rules.ts withStartingCharges): the item's dice, not a throw of the wearer's",
   "lib/dice/tray-rules.ts#trayExpressionProblem": "F reads an expression",
   "lib/dm/action-common.ts#rollEnemyContest": "F the creature's side of a contest",
   "lib/dm/advance-tick.ts#tickAdvances": "F d100",

@@ -115,10 +115,14 @@ export type AttackRecord = PendingAttack & {
   // it lands, the server throws the damage too (pc-attack-parked.ts).
   serverDice?: boolean;
   // The attacks declared after this one in the same pc_attack call. They are
-  // made, in order, once this roll lands (pc-attack-parts.ts runQueuedParts),
-  // and what they did rides back with it (queuedResults).
-  queue?: { characterId: string; parts: Record<string, unknown>[] };
+  // made, in order, once this attack has landed (pc-attack-parts.ts
+  // runQueuedParts), and what they did rides back with it (queuedResults). A
+  // hit whose damage the player rolls hands the queue on to that damage roll
+  // (queueMovedTo, its id), whose record then holds the queue and its results;
+  // `toolCallId` is the call's, which the damage roll does not carry.
+  queue?: { characterId: string; parts: Record<string, unknown>[]; toolCallId?: string | null };
   queuedResults?: Record<string, unknown>[];
+  queueMovedTo?: string;
   critGear?: { suffix: string; typed: Array<{ dice: string; type: string }>; notes: string[] };
   extras?: {
     foeSlayer?: number;

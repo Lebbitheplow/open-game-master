@@ -191,14 +191,11 @@ for (const action of Object.keys(HERO_ACTION)) {
 
 // ---- what is known ----
 
-const PORTENT = '"You can replace any attack roll, saving throw, or ability check made by you or a creature that you can see with one of these foretelling rolls. You must choose to do so before the roll." (Portent, src/lib/srd/subclasses.json; the watch is its moment: src/lib/dm/foresight.ts)';
 // The watched tools are read from the roll sites now (foresight.ts
 // watchStopForRoll, held-call.ts): a held call stops before the d20 its tag
-// says a watcher may answer. Left: the turn the server plays itself after the
-// model has spoken, which no held call carries.
-const KNOWN = {
-  "backstop.enemy_turn_unplayed": { rule: PORTENT, where: "src/lib/dm/turn.ts (the enemy-turn backstop plays the creature's attack outside parkForWatch)", severity: "medium", note: "a creature's turn the model narrates and never plays is played by the server, whose enemy_attack is never held for the watcher" },
-};
+// says a watcher may answer, the creature turns the server plays itself after
+// the model has spoken included (backstop-calls.ts).
+const KNOWN = {};
 // Rows that throw no d20, and why.
 const QUIET = {};
 

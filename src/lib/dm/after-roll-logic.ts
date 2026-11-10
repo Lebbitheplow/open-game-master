@@ -110,6 +110,17 @@ function heldDie(sheet: Pick<CharacterSheet, "conditions">, name: "bardic inspir
 export const heldBardicDie = (sheet: Pick<CharacterSheet, "conditions">) => heldDie(sheet, "bardic inspiration");
 export const heldOwnLuckDie = (sheet: Pick<CharacterSheet, "conditions">) => heldDie(sheet, "dark one's own luck");
 
+// The bard whose Bardic Inspiration die the sheet holds (the condition's
+// `source`, written as the die is given), for the record a roll it turns into
+// a success leaves (last-save.ts recordInspiredSuccess). Null for a die given
+// before the source was kept, or none held.
+export function bardOfHeldDie(sheet: Pick<CharacterSheet, "conditions" | "conditionMeta">): string | null {
+  const held = heldBardicDie(sheet);
+  const meta = (sheet.conditionMeta ?? {}) as Record<string, { source?: unknown } | undefined>;
+  const source = held ? meta[held.condition]?.source : null;
+  return typeof source === "string" && source ? source : null;
+}
+
 // A Creation bard's mote bursts when its die is spent on a roll the server
 // throws at once (src/lib/dm/authored-mote.ts): a character holding one rolls
 // as they always did, so the mote is not lost in the wait.

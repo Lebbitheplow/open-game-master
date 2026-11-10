@@ -22,7 +22,7 @@ import { effectiveAmbient } from "@/lib/battlemap/daylight";
 import { cachedLitTiles } from "@/lib/battlemap/lit-cache";
 import { darkvisionTilesFromText, hasLineOfSight } from "@/lib/battlemap/los";
 import { ambientAt, magicalDarknessAt } from "@/lib/battlemap/scene";
-import { chebyshev, tileIndex, type BattleToken } from "@/lib/battlemap/types";
+import { chebyshev, tileIndex, type BattleToken, type XY } from "@/lib/battlemap/types";
 import { breakDown } from "@/lib/dm/calendar";
 import { sensesFromBlock, sensesFromText, type Senses } from "@/lib/srd/senses";
 import { weatherObscurementTiles } from "@/lib/srd/weather";
@@ -65,25 +65,37 @@ export function enemySenses(enemy: Pick<EncounterEnemy, "stats"> & { conditions?
 // The one rule every sight check reads: an attack roll (condition-logic.ts
 // attackContext), "a creature you can see" (authored-saves.ts), and who
 // provokes an opportunity attack.
-export function sensesReaching(encounterId: string | null, viewer: { refId: string; senses: Senses }, seen: { refId: string }): PastSight {
+//
+// `at` puts a creature on a tile other than its token's: an opportunity
+// attack happens as the mover leaves the reach, before the token reaches the
+// square it lands on, so the tile it left is where it is seen (or not).
+export function sensesReaching(encounterId: string | null, viewer: Placed & { senses: Senses }, seen: Placed): PastSight {
   const { blindsight, truesight } = viewer.senses;
   if (!blindsight && !truesight) {
     return { blindsight: false, truesight: false };
   }
   const map = encounterId ? getBattleMapForEncounter(encounterId) : null;
-  const from = map ? getTokenByRef(map.id, viewer.refId) : null;
-  const to = map ? getTokenByRef(map.id, seen.refId) : null;
+  const from = map ? placedToken(map.id, viewer) : null;
+  const to = map ? placedToken(map.id, seen) : null;
   const apart = from && to ? tilesApart(from, to) : null;
   const reaches = (tiles: number) => tiles > 0 && (apart === null || apart <= tiles);
   return { blindsight: reaches(blindsight), truesight: reaches(truesight) };
+}
+
+// A creature by its token, or by the tile `at` names for it (see
+// sensesReaching). Null when it has no token on the board.
+type Placed = { refId: string; at?: XY | null };
+function placedToken(mapId: string, who: Placed): BattleToken | null {
+  const token = getTokenByRef(mapId, who.refId);
+  return token && who.at ? { ...token, x: who.at.x, y: who.at.y } : token;
 }
 
 // Both ways round, for an attack: what the attacker's senses reach of the
 // target, and the target's of the attacker.
 export function attackSenses(
   encounterId: string | null,
-  attacker: { refId: string; senses: Senses },
-  target: { refId: string; senses: Senses },
+  attacker: Placed & { senses: Senses },
+  target: Placed & { senses: Senses },
 ): { attackerSenses: PastSight; targetSenses: PastSight } {
   return { attackerSenses: sensesReaching(encounterId, attacker, target), targetSenses: sensesReaching(encounterId, target, attacker) };
 }
@@ -94,16 +106,18 @@ export type Sight = {
   targetSees: boolean;
 };
 
-// Null when there is no board or either creature is off it.
+// Null when there is no board or either creature is off it. Either side may
+// name the tile it stands on with `at` (an opportunity attack's mover, at the
+// tile it left: opportunity-strike.ts opportunitySight).
 export function attackSight(input: {
   campaignId: string;
   encounterId: string;
-  attacker: { refId: string; senses: Senses };
-  target: { refId: string; senses: Senses };
+  attacker: Placed & { senses: Senses };
+  target: Placed & { senses: Senses };
 }): Sight | null {
   const map = getBattleMapForEncounter(input.encounterId);
-  const from = map ? getTokenByRef(map.id, input.attacker.refId) : null;
-  const to = map ? getTokenByRef(map.id, input.target.refId) : null;
+  const from = map ? placedToken(map.id, input.attacker) : null;
+  const to = map ? placedToken(map.id, input.target) : null;
   if (!map || !from || !to) {
     return null;
   }

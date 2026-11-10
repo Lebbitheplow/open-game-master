@@ -28,6 +28,9 @@ import {
 import { useOpenOnArrival } from "@/app/workshop/world/WorldEntryLink";
 import { OpenTestFightCard, useTestFight } from "@/app/workshop/encounters/OpenTestFight";
 import { TestFightSheet } from "@/app/workshop/encounters/TestFightSheet";
+import { DeployOpeningDialog } from "@/app/campaigns/[campaignId]/DeployOpeningDialog";
+import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
+import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 // Prepared encounters: the roster a DM writes down before the session and
 // deploys in one action.
@@ -92,6 +95,7 @@ export function DmEncounterPrepPanel({
   only = false,
   onClose,
   testFight,
+  sheets,
 }: {
   campaignId: string;
   // The fight to open on arrival, by id: a World entry's "Add to a fight"
@@ -114,6 +118,8 @@ export function DmEncounterPrepPanel({
   // button tests it on a table of its own instead (issue 553,
   // src/lib/workshop/test-fight.ts).
   testFight?: { workshopId: string };
+  // The table's characters, for the Deploy dialog's "Not at this fight".
+  sheets?: CharacterSheet[];
 }) {
   const [testing, setTesting] = useState<PreparedEncounter | null>(null);
   const test = useTestFight(testFight?.workshopId ?? null);
@@ -126,6 +132,11 @@ export function DmEncounterPrepPanel({
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
   const rows = layout === "rows";
+  // A GM's Deploy asks how the fight opens first (DeployOpeningDialog.tsx);
+  // the lead's cue and an older host deploy at once.
+  const capabilities = useCapabilities();
+  const asksOpening = !cue && !testFight && capabilities !== null && hostOffers(capabilities, "deployOpening");
+  const [opening, setOpening] = useState<PreparedEncounter | null>(null);
 
   // The state lands in a .then callback rather than after an await, so the
   // refetch reads as "subscribe to an external system" to React and to the
@@ -371,7 +382,32 @@ export function DmEncounterPrepPanel({
     await load();
   }
 
-  async function deploy(id: string, cueIt = true) {
+  // A GM's Deploy opens the dialog; its answer deploys with the opening.
+  function pressDeploy(template: PreparedEncounter) {
+    if (asksOpening) {
+      setOpening(template);
+      return;
+    }
+    void deploy(template.id, !template.cued);
+  }
+
+  const deployDialog = opening ? (
+    <DeployOpeningDialog
+      key={opening.id}
+      open
+      name={opening.name}
+      sheets={sheets ?? []}
+      busy={busy}
+      onCancel={() => setOpening(null)}
+      onDeploy={(options) => {
+        const id = opening.id;
+        setOpening(null);
+        void deploy(id, true, options);
+      }}
+    />
+  ) : null;
+
+  async function deploy(id: string, cueIt = true, options: Record<string, unknown> = {}) {
     setBusy(true);
     setError("");
     setNote("");
@@ -380,7 +416,7 @@ export function DmEncounterPrepPanel({
         fetch(`/api/campaigns/${campaignId}/dm/encounter-templates/${id}/deploy`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(cue ? { cue: cueIt } : {}),
+          body: JSON.stringify(cue ? { cue: cueIt } : options),
         }),
         "That could not be deployed.",
       );
@@ -451,7 +487,7 @@ export function DmEncounterPrepPanel({
             onOpen={openEditor}
             onDeploy={(template) => {
               if (!testFight) {
-                void deploy(template.id);
+                pressDeploy(template);
                 return;
               }
               // What the sheet offers is read again as it opens: a model set
@@ -466,6 +502,7 @@ export function DmEncounterPrepPanel({
           />
         </Listed>
         {feedback}
+        {deployDialog}
         {testFight ? (
           <TestFightSheet workshopId={testFight.workshopId} encounter={testing} info={test.info} onClose={() => setTesting(null)} />
         ) : null}
@@ -512,7 +549,7 @@ export function DmEncounterPrepPanel({
                   label: deployLabel,
                   glyph: "tab-battle",
                   disabled: busy,
-                  onSelect: () => void deploy(template.id, !template.cued),
+                  onSelect: () => pressDeploy(template),
                 },
                 { id: "duplicate", label: `Duplicate ${template.name}`, glyph: "ui-duplicate", disabled: busy, onSelect: () => void duplicate(template) },
                 { id: "delete", label: `Delete ${template.name}`, glyph: "ui-delete", tone: "danger", separated: true, onSelect: () => void remove(template) },
@@ -546,7 +583,7 @@ export function DmEncounterPrepPanel({
                         type="button"
                         disabled={busy}
                         aria-busy={busy}
-                        onClick={() => void deploy(template.id, !template.cued)}
+                        onClick={() => pressDeploy(template)}
                         className={cn(cue && template.cued ? ui.btnSecondary : ui.btnPrimary, "h-9 px-3 text-[11px]")}
                       >
                         {cue ? (template.cued ? "Take back" : "Cue") : "Deploy"}
@@ -580,6 +617,7 @@ export function DmEncounterPrepPanel({
       />
 
       {feedback}
+      {deployDialog}
     </div>
   );
 }

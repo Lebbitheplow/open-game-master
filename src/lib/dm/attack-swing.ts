@@ -95,16 +95,24 @@ export function judgeSwing(scene: SwingScene, record: AttackRecord, toHit: RollR
   const turn = attackTurn(campaign.id, record);
   const foeSlayer = turn && !turn.budget.oncePerTurn.includes(FOE_SLAYER) ? (record.extras?.foeSlayer ?? 0) : 0;
   const metTotal = totalAReactionMeets({ total: toHit.total, ac: targetAc, hit: judged.hit, crit: judged.crit, natural1, foeSlayer });
+  // The creature's reaction is decided once, against the best total the
+  // attacker can reach (the roll and an unspent Foe Slayer), and it is the
+  // smaller one that still turns that total (Parry's +2 before Shield's +5,
+  // tryParry's order). Asked of the roll as rolled, a Parry that the lift then
+  // beat let a d8 hit where a d9 and a d10 met a Shield and missed: a better
+  // roll must never miss where a worse one hits (gap study L819).
+  const best = metTotal === null ? null : natural1 ? metTotal : Math.max(metTotal, toHit.total + foeSlayer);
   const encounter = getActiveEncounter(campaign.id);
   const foe = getFoe(record.targetEnemyId);
   const parry =
-    metTotal !== null && encounter && foe
-      ? tryParry({ encounter, enemy: foe, total: metTotal, natural20: false, ac: targetAc, melee: record.melee === true, attackerUnseen: record.attackerUnseen === true })
+    best !== null && encounter && foe
+      ? tryParry({ encounter, enemy: foe, total: best, natural20: false, ac: targetAc, melee: record.melee === true, attackerUnseen: record.attackerUnseen === true })
       : null;
   if (parry) {
     notes.push(parry.note);
-    // Foe Slayer's bonus lifted the near miss the reaction answered: it went on
-    // this roll, so it is spent, and cannot draw a second reaction or lift again.
+    // A roll that missed as rolled reached the hit the reaction answered only
+    // with Foe Slayer's bonus: it went on this roll, so it is spent, and cannot
+    // lift again. A roll that hit as rolled needed none of it.
     if (metTotal !== toHit.total && markAttackTurn(campaign.id, record, FOE_SLAYER)) {
       notes.push(`Foe Slayer: +${foeSlayer} lifted ${toHit.total} to ${metTotal} before the reaction, and is spent`);
     }

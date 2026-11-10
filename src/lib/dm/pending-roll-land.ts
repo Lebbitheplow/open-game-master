@@ -8,6 +8,7 @@ import {
   listPendingForTurn,
   resolvePendingRoll,
   getPendingRoll,
+  setPendingAttack,
   setPendingCombatNote,
   type PendingRoll,
 } from "@/lib/db/dm-turns";
@@ -15,10 +16,10 @@ import { insertRoll, type StoredRoll } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
 import { settleAttackDie } from "@/lib/dm/forced-save";
 import { rollsCanWait } from "@/lib/dm/after-roll";
-import { runQueuedParts } from "@/lib/dm/pc-attack-parts";
+import { afterToHitLanded, runQueuedParts } from "@/lib/dm/pc-attack-parts";
 import { moteAfterRoll } from "@/lib/dm/authored-mote";
 import type { RollResult } from "@/lib/dice";
-import { recordInitiativeRoll, settleTurn, turnHolder } from "@/lib/dm/encounter-tools";
+import { endTurnOnLanding, recordInitiativeRoll, settleTurn, turnHolder } from "@/lib/dm/encounter-tools";
 import { applyInitiativeRefills } from "@/lib/dm/feature-hooks";
 import { applyPendingDamageRoll } from "@/lib/dm/enemy-damage";
 import { resolvePendingPcAttack } from "@/lib/dm/pc-attack";
@@ -30,6 +31,8 @@ import { enqueueDmJob } from "@/lib/dm/queue";
 import { runInTurnScope } from "@/lib/dm/job-control";
 import { postPersonsRecord, startPersonsRecord } from "@/lib/dm/persons-record";
 import { claimHeldPending, runHeldAgain } from "@/lib/dm/held-call";
+import { backstopTurn } from "@/lib/dm/backstop-calls";
+import { resumeBackstop } from "@/lib/dm/backstop-resume";
 import { publishWithSeq } from "@/lib/events";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 
@@ -60,6 +63,32 @@ function landHeld(campaign: Campaign, pending: PendingRoll, outcome: RollResult,
     postPersonsRecord(campaign, after, record, { rollIds: roll ? [roll.id] : [] });
   }
   return roll;
+}
+
+// An attack sent with endTurn ("and end the turn", the console's check box)
+// on dice entered at the table: the ask rides each of its rolls, and the turn
+// ends once the last of them has landed, as the server's dice end it. A roll
+// the landing left open (the damage of a hit, a queued part) takes the ask
+// over; a turn already over (the pointer moved on) is not ended again.
+function carryEndTurn(campaign: Campaign, pending: PendingRoll) {
+  const record = pending.attack;
+  if (!record?.endTurn || !pending.characterId) {
+    return;
+  }
+  const open = listPendingForTurn(pending.turnId).filter((entry) => entry.id !== pending.id && entry.status === "pending" && entry.attack && entry.characterId === pending.characterId);
+  if (open.length) {
+    for (const entry of open) {
+      if (!entry.attack?.endTurn) setPendingAttack(entry.id, { ...entry.attack!, endTurn: true });
+    }
+    return;
+  }
+  if (!attackTurnOver(campaign.id, record as AttackRecord, pending.characterId)) {
+    const ended = endTurnOnLanding(campaign, pending.turnId, pending.characterId);
+    if (!ended.error) {
+      const note = getPendingRoll(pending.id)?.combatNote;
+      setPendingCombatNote(pending.id, [note, "the turn ends, as the attack asked"].filter(Boolean).join("; "));
+    }
+  }
 }
 
 function landOne(campaign: Campaign, pending: PendingRoll, thrown: RollResult, landing: RollLanding): StoredRoll | null {
@@ -150,18 +179,25 @@ function landOne(campaign: Campaign, pending: PendingRoll, thrown: RollResult, l
         setPendingCombatNote(pending.id, helped ? `${helped}; ${note}` : note);
       }
       // The attacks declared after this one wait behind it: made now, in
-      // order, as the server's dice would have made them.
+      // order, as the server's dice would have made them, or behind the
+      // damage roll a hit parked (pc-attack-parts.ts afterToHitLanded).
       if (!over) {
-        runQueuedParts(campaign, pending);
+        afterToHitLanded(campaign, pending, roll);
       }
     } else if (pending.kind === "damage" && pending.targetEnemyId) {
       // Targeted damage applies server-side the moment the dice land; the
       // enemy card updates now, not when the model gets around to it. A
       // pc_attack's damage lands through the attack's own stage, as the
       // server's dice land it (attack-blow.ts).
+      const over = pending.attack ? attackTurnOver(campaignId, pending.attack as AttackRecord, pending.characterId) : true;
       const note = pending.attack ? resolvePendingPcDamage(pending, roll) : applyPendingDamageRoll(pending, roll);
       if (note) {
         setPendingCombatNote(pending.id, note);
+      }
+      // The attacks of the call that waited behind this blow: made now that
+      // it has landed, unless the turn they belong to is over.
+      if (!over && (pending.attack as AttackRecord | null)?.queue) {
+        runQueuedParts(campaign, pending);
       }
     } else if (pending.carry?.mote) {
       // A mote the spent inspiration die carried goes off as it does on the
@@ -175,6 +211,7 @@ function landOne(campaign: Campaign, pending: PendingRoll, thrown: RollResult, l
 
     // A combatant who left the fight during the call takes no turn with them.
     settleTurn(campaign, holder);
+    carryEndTurn(campaign, pending);
   });
   const after = record ? getDmTurn(pending.turnId) : null;
   if (record && after) {
@@ -188,7 +225,14 @@ export function landPendingRoll(campaign: Campaign, pending: PendingRoll, outcom
   if (!roll) {
     return null;
   }
-  const remaining = listPendingForTurn(pending.turnId).filter((entry) => entry.status === "pending");
+  const pendings = listPendingForTurn(pending.turnId);
+  const remaining = pendings.filter((entry) => entry.status === "pending");
+  // A roll of the backstop's (backstop-calls.ts): the creature's turn ran as
+  // it landed (landHeld), and the pass goes on with no model call.
+  if (!remaining.length && backstopTurn(pendings)) {
+    enqueueDmJob(campaign.id, () => resumeBackstop(campaign.id, pending.turnId), { kind: "turn" });
+    return roll;
+  }
   if (!remaining.length) {
     // A turn a person opened has no model waiting on the answer: the roll
     // already published itself and applied what it applies, so closing the

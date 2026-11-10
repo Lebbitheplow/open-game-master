@@ -8,6 +8,7 @@
 // point after 1d4 hours (src/lib/dm/death.ts rollStableTimer).
 //
 // This module must not import mutations.ts (which imports it).
+import { recordSteadied } from "@/lib/dm/last-save";
 import { catalogName } from "@/lib/srd/adventuring-gear";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
@@ -275,6 +276,9 @@ export function handleStabilize(
   if (kitPatch) {
     write(campaign, turnId, healer, "use_item", { item: "healer's kit" }, reason, kitPatch);
   }
+  // The creature is steadied by the healer (last-save.ts): Defy Death answers
+  // one stabilized with spare the dying.
+  recordSteadied(campaign.id, sheet.id, { id: healer.id, name: healer.name }, method === "spell" ? "spare the dying" : method === "kit" ? "kit" : "medicine");
   // Healer: a creature stabilized with the kit also regains 1 hit point,
   // which wakes them (src/lib/srd/feat-combat.ts).
   if (method === "kit" && holdsFeat(healer, "Healer")) {
