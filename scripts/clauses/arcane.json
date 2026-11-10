@@ -3734,9 +3734,9 @@
    },
    {
     "c": "on an attack roll, the mote bursts and each creature of your choice within 5 feet of the target makes a Constitution save against your spell save DC or takes thunder damage equal to the die's roll",
-    "is": "gap",
-    "read_only": true,
-    "why": "not run: the die spent on an attack roll (the after-roll card of the inspired creature) was not staged"
+    "is": "held",
+    "by": "src/lib/dm/authored-mote.ts moteBurst (attack-swing.ts finishSwing): the target and every foe within 5 feet of it save on Constitution against the bard's spell save DC or take thunder equal to what the die showed on the attack roll (withMoteRoll, from judgeSwing); the bard's choice is read as every foe and no friend",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-bard.mjs :: mote-burst"
    },
    {
     "c": "on a saving throw, it gains temporary hit points equal to the die's roll + your Charisma modifier (minimum 1)",

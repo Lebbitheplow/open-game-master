@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 
 export function probes(rig, shared) {
-  const { world, kit, holder, sheet, show, call, stage } = rig;
+  const { world, kit, holder, sheet, foe, show, call, stage } = rig;
   const { friend } = shared;
   const B = (college, level = 20, extra = {}, tag = "") => holder("bard", college, level, extra, tag);
   const d = (out, sides) => out.rolled.filter((die) => die.sides === sides).length;
@@ -58,6 +58,29 @@ export function probes(rig, shared) {
       // Charmed by somebody else, it rolls.
       kit.setEnemy(enemy.id, { conditions: ["charmed"], conditionMeta: { charmed: { source: friend().id, rounds: 10 } } });
       assert.equal((await command()).result.saved, true, "another creature's charm failed the save");
+    },
+    // ---- College of Creation
+    "mote-burst": async () => {
+      const who = B("College of Creation");
+      const [struck, near, far] = await stage(who, { count: 3, others: [friend()] });
+      world.patch(friend().id, { conditions: [], conditionMeta: {} });
+      const gave = await rig.spend(who, "Bardic Inspiration", { targetCharacterId: friend().id });
+      assert.equal(gave.ok, true, gave.error);
+      // The friend beside the first foe; the second foe 5 feet from it, the third 10.
+      kit.place(friend().id, 6, 4);
+      kit.giveTurn(friend().id);
+      kit.freshTurn();
+      const before = [struck, near, far].map((enemy) => foe(enemy).currentHp);
+      const friendHp = sheet(friend()).currentHp;
+      // The d20, then the mote's die on the attack roll (a 7), then low dice: every Constitution save fails.
+      const out = await call("pc_attack", { characterId: friend().id, targetEnemyId: struck.id }, [15, 7, 3, 3, 3, 3, 3, 3]);
+      assert.equal(out.ok, true, out.error);
+      const lost = [struck, near, far].map((enemy, at) => before[at] - foe(enemy).currentHp);
+      assert.equal(lost[1], 7, `the foe 5 feet from the target takes thunder equal to the die's roll (a 7): ${JSON.stringify(lost)} ${show(out).slice(0, 260)}`);
+      assert.equal(lost[2], 0, "a foe 10 feet from the target was caught");
+      assert.ok(lost[0] >= 7, `the target takes the burst with the hit: ${lost[0]}`);
+      assert.equal(has(friend(), "bardic inspiration"), false, "the die is spent");
+      assert.equal(sheet(friend()).currentHp, friendHp, "the burst hurt a friend beside the target");
     },
     // ---- College of Spirits
     "spirits-focus": async () => {

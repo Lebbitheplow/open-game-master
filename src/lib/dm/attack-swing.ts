@@ -18,7 +18,7 @@ import { FOE_SLAYER, rescueMiss, STROKE_OF_LUCK, totalAReactionMeets } from "@/l
 import { spendFeatureUse } from "@/lib/dm/attack-onhit";
 import { CHANNEL_DIVINITY } from "@/lib/dm/after-roll-logic";
 import { recordTargetAc, type AttackRecord, type DamageAsk } from "@/lib/dm/attack-record";
-import { moteBurst } from "@/lib/dm/authored-mote";
+import { moteBurst, withMoteRoll } from "@/lib/dm/authored-mote";
 import { spendCombatDie } from "@/lib/dm/ar-wbf-bard-dice";
 import { breakConcentration } from "@/lib/dm/concentration";
 import { critDamageExpression } from "@/lib/dm/encounter-logic";
@@ -88,6 +88,10 @@ export function markAttackTurn(campaignId: string, record: AttackRecord, key: st
 // Stroke of Luck on a miss. On a hit, the once-a-turn riders it carried are spent.
 export function judgeSwing(scene: SwingScene, record: AttackRecord, toHit: RollResult, notes: string[]): Judged {
   const { campaign } = scene;
+  // The mote's burst deals what its die showed on this roll (authored-mote.ts).
+  if (record.mote) {
+    record.mote = withMoteRoll(record.mote, toHit);
+  }
   const targetAc = recordTargetAc(campaign.id, record);
   const natural1 = toHit.crit === "nat1";
   const judged = adjudicateHit(toHit.total, toHit.crit, targetAc, { natural: toHit.natural, critRange: record.critRange });
