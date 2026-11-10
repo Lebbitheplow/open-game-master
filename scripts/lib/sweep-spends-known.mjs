@@ -108,9 +108,10 @@ export const KNOWN = {
   "counter:sub_performance_of_creation": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "counter:sub_power_surge": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "counter:sub_reclaim_potential": { TRIGGER_AS_CARD: { severity: "high", note: "dealt as a card on the holder's own turn and accepted with nothing to react to" } },
-  "counter:sub_restore_balance": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
+  "counter:sub_restore_balance": { SPENT_FOR_NOTHING: { severity: "low", note: "another path carries the effect; a plain spend takes the use without it" } },
   "counter:sub_spell_thief": { SPENT_FOR_NOTHING: { severity: "low", note: "another path carries the effect; a plain spend takes the use without it" } },
   "counter:sub_unleash_incarnation": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
+  "counter:sub_violent_attraction": { SPENT_FOR_NOTHING: { severity: "low", note: "another path carries the effect; a plain spend takes the use without it" } },
   "reaction:cleric::Voice of Authority::Voice of Authority": { TRIGGER_UNCHECKED: { severity: "high", note: "accepted with no trigger staged" } },
   "reaction:fighter::Hold the Line::Hold the Line": { TRIGGER_UNCHECKED: { severity: "high", note: "accepted with no trigger staged" } },
   "spend:druid::Cauterizing Flames::Cauterizing Flames": { TRIGGER_UNCHECKED: { severity: "high", note: "accepted with no trigger staged" }, TRIGGER_AS_CARD: { severity: "high", note: "dealt as a card on the holder's own turn and accepted with nothing to react to" } },
@@ -148,7 +149,6 @@ export const RULINGS = {
   "counter:sub_magic_users_nemesis": { GUIDANCE_ONLY: "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\"" },
   "counter:sub_psionic_energy": { SPENT_FOR_NOTHING: "src/lib/srd/authored-resources.json sub_psionic_energy guidance: \"Psionic Strike and Psi-Bolstered Knack ride a hit or a check already made\"" },
   "counter:sub_superiority_dice": { SPENT_FOR_NOTHING: "src/lib/srd/authored-resources.json sub_superiority_dice guidance: \"A maneuver that rides a check or a move (Ambush, Bait and Switch, Commanding Presence, Evasive Footwork, Tactical Assessment) is a plain spend with that variant.\"" },
-  "counter:sub_violent_attraction": { GUIDANCE_ONLY: "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\"" },
 };
 
 const INTO = "pours into another counter (ResourceDef.into): no sheet holds a counter under this id, and its uses are walked as that counter's";

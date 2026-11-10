@@ -85,8 +85,9 @@ export function throwForChoice(plan: AttackPlan, strike: Strike, toolCallId: str
   const thrown = shiftedThrow(plan, strike, ac, critRange);
   const options = [
     ...afterAttackOptions(fresh, { outcome: thrown, ac, critRange, spent: record.luck ? ["lucky"] : [], reactionFree: reactionFreeFor(campaign.id, fresh.id), melee: record.melee === true && record.ranged !== true, wrathDice: rollsWrathDice(record.damageExpression, record.damageType, record.riders) }),
-    // A wizard or a War cleric beside them may answer the miss (after-roll.ts).
-    ...allyChoicesFor(campaign.id, fresh, { kind: "attack", outcome: thrown, ac, critRange }),
+    // A wizard or a War cleric beside them may answer the miss, a
+    // graviturgist a weapon's hit (after-roll.ts).
+    ...allyChoicesFor(campaign.id, fresh, { kind: "attack", outcome: thrown, ac, critRange, weapon: record.weaponAttack === true }),
   ];
   if (!options.length) {
     return { thrown };

@@ -1183,9 +1183,15 @@
   "sha": "faee7e5913fd",
   "clauses": [
    {
-    "c": "When a creature you can see within 60 feet hits with a weapon attack, a reaction adds 1d10 to its damage; or when a creature within 60 feet takes falling damage, a reaction adds 2d10.",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_violent_attraction#GUIDANCE_ONLY"
+    "c": "When a creature you can see within 60 feet hits with a weapon attack, a reaction adds 1d10 to its damage",
+    "is": "held",
+    "by": "src/lib/dm/after-roll-table.ts violent_attraction: an ally's weapon hit waits on the wizard's card (after-roll.ts allyChoicesFor), and the 1d10 rides the hit once it stands (attack-swing.ts, after-roll.ts payHelperHit); scripts/test-enforce-after-roll-table.mjs runs it",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-wizard.mjs :: attraction-hit"
+   },
+   {
+    "c": "or when a creature within 60 feet takes falling damage, a reaction adds 2d10",
+    "is": "left",
+    "why": "Falling damage reaches the engine only as damage the GM applies (catalog-combat.ts, Falling); no event marks a fall for a reaction to ride, so the counter's guidance has the GM add the 2d10 with the fall."
    },
    {
     "c": "A number of times equal to your Intelligence modifier (minimum once) per long rest",
@@ -1971,7 +1977,7 @@
    {
     "c": "A reaction cancels advantage or disadvantage on a roll within 60 feet",
     "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs :: counter:sub_restore_balance#GUIDANCE_ONLY"
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: balance-enemy-roll"
    },
    {
     "c": "a proficiency-bonus number of times per long rest",

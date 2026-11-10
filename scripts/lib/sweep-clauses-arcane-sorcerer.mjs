@@ -275,6 +275,13 @@ export function probes(rig, shared) {
       assert.deepEqual(spellsAt("Clockwork Soul", 1), ["Alarm", "Protection from Evil and Good"]);
       assert.ok(spellsAt("Clockwork Soul", 9).includes("Wall of Force"));
     },
+    // A player's roll with disadvantage is answered on the after-the-roll card
+    // (scripts/test-enforce-after-roll-table.mjs); an enemy's roll is thrown
+    // inside its call, where only a watch row could answer it.
+    "balance-enemy-roll": async () => {
+      const table = await import("../../src/lib/dm/after-roll-table.ts");
+      assert.ok(table.WATCH_ROWS.some((row) => row.id === "restore_balance"), "no watch row answers an enemy's roll with Restore Balance");
+    },
     "balance-uses": async () => {
       await uses(["sorcerer", "Clockwork Soul"], "sub_restore_balance", { 1: prof(1), 20: prof(20) })();
       await balanceRest();
@@ -393,6 +400,7 @@ export function probes(rig, shared) {
   }
 
   const KNOWN = {
+    "balance-enemy-roll": { severity: "medium", kind: "rule-missing", where: "src/lib/dm/after-roll-table.ts restore_balance (no watch: an enemy's roll inside a call has no stop that offers it)", note: "The sorcerer's own roll and an ally's with disadvantage are answered on the after-the-roll card, the first d20 counting. An enemy's attack with advantage on an ally is thrown inside its call, and the watch stop holds no enemy attack for a reaction on purpose (foresight.ts): whether it should is the maintainer's ruling.", fix: "A watch for restore_balance at the stop before an enemy's roll, once that is ruled." },
     "bend-doors": { severity: "medium", kind: "rule-missing", where: `${DATA} sorcerer::Bend Luck (one reaction, attack_penalty 1d4: a subtraction from an attack that hit)`, note: "Of the six cases in the text (add or subtract, on an attack, a check or a save) one has a door. An ally's save that failed by one cannot be lifted; a foe's save that passed by one cannot be dropped.", fix: "Offer Bend Luck on the after-roll card for another creature's check or save, and as an addition to an ally's attack." },
     "bombardment-door": { severity: "low", kind: "rule-missing", where: `${DATA} sorcerer::Spell Bombardment (narrated: "the GM adds it with apply_damage")`, note: "The engine rolls the spell's dice and knows which is the highest.", fix: "Explode the highest die of the holder's spell damage once a turn." },
     "empowered-healing-door": { severity: "low", kind: "rule-missing", where: `${DATA} sorcerer::Empowered Healing (narrated: "the GM rolls them again and spends the point with use_resource")`, note: "", fix: "A reroll of the healing dice of the last heal for a sorcery point, once a turn." },

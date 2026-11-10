@@ -234,6 +234,18 @@ export function probes(rig, shared) {
       if (!out.ok) throw new Error(out.error);
       assert.ok(foe(enemy).conditions.some((name) => name.startsWith("adjusted density")), `aimed at a creature of the other side, it lands elsewhere: ${show(out).slice(0, 150)}`);
     },
+    // An ally's weapon hit is offered on the card it waits on, from the
+    // after-the-roll table; scripts/test-enforce-after-roll-table.mjs runs the
+    // card, the spend and the damage.
+    "attraction-hit": async () => {
+      const logic = await import("../../src/lib/dm/after-roll-logic.ts");
+      rig.refill(gra());
+      const d20 = (value) => ({ expression: "1d20+5", total: value + 5, natural: value, terms: [{ kind: "dice", sign: 1, count: 1, sides: 20, dice: [{ sides: 20, value, kept: true }], subtotal: value }, { kind: "modifier", sign: 1, value: 5 }] });
+      const offer = (value, weapon) => logic.hitHelperOption(sheet(gra()), "violent_attraction", { outcome: d20(value), ac: 15, critRange: 20, weapon }, "the fighter");
+      assert.match(offer(12, true)?.label ?? "", /1d10/, "a weapon attack that hits");
+      assert.equal(offer(12, false), null, "an attack that is not a weapon's");
+      assert.equal(offer(3, true), null, "a miss");
+    },
     "attraction-uses": async () => {
       await uses(["wizard", "Graviturgy Magic"], "sub_violent_attraction", { 10: Math.max(1, MOD.int) })();
       await attractionRest();

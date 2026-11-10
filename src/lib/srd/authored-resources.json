@@ -1056,7 +1056,7 @@
    "proficiency": 1,
    "recharge": "long",
    "action": "reaction",
-   "guidance": "A reaction cancelling advantage or disadvantage on a roll by a creature within 60 feet."
+   "guidance": "A reaction cancelling advantage or disadvantage on a roll by a creature within 60 feet. A player's check, save or attack with disadvantage waits on a card that offers this (the first d20 counts), so do not spend it for them there. Use it here only for a roll that cannot wait (an enemy's roll, an agent's seat), and narrate the result."
   },
   {
    "id": "sub_trance_of_order",
@@ -1317,7 +1317,7 @@
    "ability": "int",
    "recharge": "long",
    "action": "reaction",
-   "guidance": "A reaction adding 1d10 to a weapon attack's damage by a creature within 60 feet, or 2d10 to a creature's falling damage."
+   "guidance": "A reaction adding 1d10 to a weapon attack's damage by a creature within 60 feet, or 2d10 to a creature's falling damage. A player's weapon hit waits on a card that offers the 1d10, so do not spend it for them there. Use it here only for a hit that cannot wait (an enemy's, an agent's seat) or for falling damage, and narrate the result."
   },
   {
    "id": "sub_event_horizon",

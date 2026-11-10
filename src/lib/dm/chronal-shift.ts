@@ -31,7 +31,8 @@ import { getActiveEncounter } from "@/lib/db/encounters";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import type { RollTag } from "@/lib/dice-script-logic";
 import { reactionFreeFor, rollsCanWait } from "@/lib/dm/after-roll";
-import { allyShiftOption, CHRONAL_SHIFT, FAVORED_BY_THE_GODS, FLASH_OF_GENIUS, withBonusDie, withFlatBonus, type AfterRollOption } from "@/lib/dm/after-roll-logic";
+import { allyShiftOption, CHRONAL_SHIFT, holdsRow, withBonusDie, withFlatBonus, type AfterRollOption } from "@/lib/dm/after-roll-logic";
+import { afterRollRow, mostAdded, watchRow, type SaveHelp, type WatchRowId } from "@/lib/dm/after-roll-table";
 import { rollExpression, type RollResult } from "@/lib/dice";
 import { computeSheetDerived } from "@/lib/srd";
 import { onlineUserIds } from "@/lib/events";
@@ -72,9 +73,10 @@ export function canShiftNow(campaignId: string, wizard: CharacterSheet): boolean
   return holdsFeature(wizard, "chronal shift") && usesLeft(wizard) > 0 && canReactNow(campaignId, wizard);
 }
 
-// Whether the creature is in the wizard's reach for it: within 30 feet and
-// in sight. With no board the fiction decides, and it is.
-export function inShiftReach(campaignId: string, wizard: CharacterSheet, creature: Parameters<typeof unseenBecause>[2]): boolean {
+// Whether the creature is in the helper's reach: within `feet` (Chronal
+// Shift's and Flash of Genius's 30, Restore Balance's and Violent
+// Attraction's 60) and in sight. With no board the fiction decides, and it is.
+export function inShiftReach(campaignId: string, wizard: CharacterSheet, creature: Parameters<typeof unseenBecause>[2], feet = SHIFT_RANGE_FEET): boolean {
   if (wizard.id === creature.id) {
     return true;
   }
@@ -82,7 +84,7 @@ export function inShiftReach(campaignId: string, wizard: CharacterSheet, creatur
   if (!encounter) {
     return true;
   }
-  return withinFeet(encounter.id, wizard.id, creature.id, SHIFT_RANGE_FEET) && !unseenBecause(encounter.id, wizard, creature);
+  return withinFeet(encounter.id, wizard.id, creature.id, feet) && !unseenBecause(encounter.id, wizard, creature);
 }
 
 // The wizards at the table who could answer this character's failing roll on
@@ -121,13 +123,11 @@ export function payChronalShift(campaignId: string, wizardId: string): boolean {
 }
 
 // Whether the character could spend this feature on a failed save now: a use
-// left, and for Flash of Genius the reaction it costs. Favored by the Gods
-// costs no reaction.
+// left, and the reaction for a row that costs one (Flash of Genius). Favored
+// by the Gods costs no reaction.
 export function canHelpSaveNow(campaignId: string, sheet: CharacterSheet, power: SaveHelp): boolean {
-  if (power === "flash_of_genius") {
-    return holdsFeature(sheet, "flash of genius") && usesLeft(sheet, FLASH_OF_GENIUS) > 0 && canReactNow(campaignId, sheet);
-  }
-  return holdsFeature(sheet, "favored by the gods") && usesLeft(sheet, FAVORED_BY_THE_GODS) > 0 && !sheet.deathSaves?.dead;
+  const row = afterRollRow(power);
+  return holdsRow(sheet, row) && (row.reaction ? canReactNow(campaignId, sheet) : !sheet.deathSaves?.dead);
 }
 
 // ---- the watch stop's answer, armed while its call runs ----
@@ -136,10 +136,10 @@ export function canHelpSaveNow(campaignId: string, sheet: CharacterSheet, power:
 // "success" rolls a creature's success again (a foe's save), "failure" an
 // ally's failure (an ally's save, a companion's miss).
 export type ShiftRoll = { tag: RollTag; reverse: "success" | "failure" };
-// What a stop arms: a Chronal Shift rolls the d20 again; the other two add to
-// a failed save.
-export type SaveHelp = "flash_of_genius" | "favored_by_the_gods";
-export type ArmedPower = "chronal_shift" | SaveHelp;
+// What a stop arms: a Chronal Shift rolls the d20 again; the save helps
+// (after-roll-table.ts SAVE_HELPS) add to a failed save.
+export type { SaveHelp } from "@/lib/dm/after-roll-table";
+export type ArmedPower = WatchRowId;
 type ArmedShift = { wizardId: string; rolls: readonly ShiftRoll[]; power: ArmedPower; used: boolean; note: string | null };
 
 declare global {
@@ -187,12 +187,13 @@ export function takeShift(campaignId: string, tag: RollTag | undefined, succeede
   return getSheetById(armed.wizardId)?.name ?? "The wizard";
 }
 
-// The save site's question for Flash of Genius or Favored by the Gods armed
-// at the stop: does it answer this failed save? Flash of Genius is paid only
-// where the Intelligence modifier carries the save (as its card offers it,
-// after-roll-logic.ts flashOfGeniusOption), and Favored by the Gods where 8
-// could; then the use (and Flash of Genius's reaction) is spent here and the
-// save comes back with the bonus on it. Null leaves the save as it was.
+// The save site's question for a save help armed at the stop (Flash of
+// Genius, Favored by the Gods): does it answer this failed save? It is paid
+// only where the most it adds could carry the save (as its card offers it,
+// after-roll-logic.ts helperOption): Flash of Genius's Intelligence modifier,
+// Favored by the Gods' 8. Then the use (and a reaction, for a row that costs
+// one) is spent here and the save comes back with the bonus on it. Null
+// leaves the save as it was.
 export function takeSaveHelp(campaignId: string, tag: RollTag, saver: string, outcome: RollResult, dc: number): { outcome: RollResult; line: string } | null {
   const armed = globalThis.__odmArmedShifts?.get(campaignId);
   if (!armed || armed.used || armed.power === "chronal_shift" || outcome.total >= dc || !armed.rolls.some((roll) => tagFits(roll.tag, tag))) {
@@ -203,23 +204,30 @@ export function takeSaveHelp(campaignId: string, tag: RollTag, saver: string, ou
   if (!campaign || !helper || !canHelpSaveNow(campaignId, helper, armed.power)) {
     return null;
   }
-  const flash = armed.power === "flash_of_genius";
-  const intelligence = flash ? computeSheetDerived(helper).abilityMods.int : 0;
-  if (flash ? intelligence < 1 || outcome.total + intelligence < dc : outcome.total + 8 < dc) {
+  const row = watchRow(armed.power)!;
+  const amount = row.amount;
+  const modifier = amount?.kind === "ability" ? computeSheetDerived(helper).abilityMods[amount.ability] : 0;
+  const most = mostAdded(row, { modifier });
+  if ((amount?.kind === "ability" && modifier < 1) || outcome.total + most < dc) {
     return null;
   }
-  const paid = flash ? spendFeatureUse(campaign, helper.id, FLASH_OF_GENIUS, "Flash of Genius", "player") : spendFeatureUse(campaign, helper.id, FAVORED_BY_THE_GODS, "Favored by the Gods", "player");
-  if (!paid) {
+  if (!spendFeatureUse(campaign, helper.id, row.counter!, row.feature, "player")) {
     return null;
   }
-  const encounter = flash ? getActiveEncounter(campaignId) : null;
+  const encounter = row.reaction ? getActiveEncounter(campaignId) : null;
   if (encounter) {
     markReactionUsed(encounter, helper.id);
   }
   armed.used = true;
-  const d4 = () => ({ sides: 4, value: rollExpression("1d4").total, kept: true });
-  const helped = flash ? withFlatBonus(outcome, intelligence) : withBonusDie(withBonusDie(outcome, d4()), d4());
-  const feature = flash ? "Flash of Genius" : "Favored by the Gods";
+  let helped = outcome;
+  if (amount?.kind === "dice") {
+    for (let at = 0; at < amount.count; at += 1) {
+      helped = withBonusDie(helped, { sides: amount.sides, value: rollExpression(`1d${amount.sides}`).total, kept: true });
+    }
+  } else {
+    helped = withFlatBonus(outcome, amount?.kind === "flat" ? amount.value : modifier);
+  }
+  const feature = row.feature;
   const verdict = helped.total >= dc ? "it succeeds" : "it still fails";
   armed.note = `${helper.name} used ${feature}: ${saver}'s ${tag.kind === "check" ? "check" : "save"} went from ${outcome.total} to ${helped.total} against DC ${dc}, and ${verdict}.`;
   return { outcome: helped, line: `${feature}: ${outcome.total} became ${helped.total}` };

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { isErrorResponse, requireMember, steersStory } from "@/lib/campaign-api";
-import { getPendingRoll, type WatchPower } from "@/lib/db/dm-turns";
+import { getPendingRoll } from "@/lib/db/dm-turns";
+import { SAVE_HELPS, WATCH_FEATURES, watchRow, type SaveHelp } from "@/lib/dm/after-roll-table";
 import { getSheetById } from "@/lib/db/sheets";
 import { answerWatch } from "@/lib/dm/foresight-release";
 import { foretoldLeft } from "@/lib/dm/foretold-logic";
@@ -9,7 +10,6 @@ import { refuseDuringBreak } from "@/lib/dm/table-break";
 
 export const runtime = "nodejs";
 
-const FEATURES: Record<WatchPower, string> = { portent: "Portent", chronal_shift: "Chronal Shift", flash_of_genius: "Flash of Genius", favored_by_the_gods: "Favored by the Gods" };
 export const dynamic = "force-dynamic";
 
 // `choice`: whose roll, by its place in the stop's list, when the stop offers
@@ -55,7 +55,7 @@ export async function POST(
   const due = Date.now() >= new Date(pending.watch.deadline).getTime();
   const data = parsed.data;
   const power = pending.watch.power ?? "portent";
-  const feature = FEATURES[power];
+  const feature = WATCH_FEATURES[power];
   const choices = pending.watch.choices ?? [];
   let chosen: number | undefined;
   if ("value" in data || "shift" in data) {
@@ -78,11 +78,9 @@ export async function POST(
     if ("value" in data && (!sheet || !foretoldLeft(sheet).includes(data.value))) {
       return Response.json({ error: `You hold no foretold ${data.value}.` }, { status: 409 });
     }
-    if ("shift" in data && power === "chronal_shift" && (!sheet || !canShiftNow(campaignId, sheet))) {
-      return Response.json({ error: "Your Chronal Shift is spent, or your reaction is." }, { status: 409 });
-    }
-    if ("shift" in data && (power === "flash_of_genius" || power === "favored_by_the_gods") && (!sheet || !canHelpSaveNow(campaignId, sheet, power))) {
-      return Response.json({ error: power === "flash_of_genius" ? "Your Flash of Genius is spent, or your reaction is." : "Your Favored by the Gods is spent." }, { status: 409 });
+    const help = SAVE_HELPS.includes(power as SaveHelp) ? (power as SaveHelp) : null;
+    if ("shift" in data && power !== "portent" && (!sheet || !(help ? canHelpSaveNow(campaignId, sheet, help) : canShiftNow(campaignId, sheet)))) {
+      return Response.json({ error: watchRow(power)!.watch.spentError }, { status: 409 });
     }
   } else if (!isWatcher && !due && !steersStory(context)) {
     return Response.json({ error: "This is not your choice yet." }, { status: 403 });
