@@ -37,9 +37,9 @@ import { applyFeatGrants, featGrantSpec } from "@/lib/srd/feat-grants";
 import { elementalAdeptFeatureName } from "@/lib/srd/feat-combat";
 import { featSpellGrants, freeCastFeatures, withFeatSpells } from "@/lib/srd/feat-spells";
 import { chosenFightingStyles, fightingStyleChoices, newStyleFits } from "@/lib/srd/feature-effects";
+import { styleSlotFeatures } from "@/lib/srd/style-slots";
 import {
   bundledSubclassName,
-  classFeaturesFor,
   expertiseAllowed,
   expertiseSlotsFor,
   populateFeaturesForClasses,
@@ -553,9 +553,7 @@ export function buildLevelUp(
     // one the sheet holds stays (features.ts pruneChoiceFeatures).
     const [style] = chosenFightingStyles([pick]);
     if (style !== undefined) {
-      const after = classes.flatMap((entry) =>
-        classFeaturesFor(entry.id, entry.subclass ?? "", entry.level, context.subclassExtras).map((feature) => ({ ...feature, classId: entry.id })),
-      );
+      const after = styleSlotFeatures(classes, context.subclassExtras);
       const heldStyles = chosenFightingStyles(featuresWithPicks.filter((feature) => feature.name !== pick.name));
       if (!newStyleFits(heldStyles, style, after)) {
         const open = fightingStyleChoices(after).filter((entry) => newStyleFits(heldStyles, entry.name, after));
