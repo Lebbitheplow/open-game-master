@@ -118,7 +118,9 @@ const state = (hero, enemy) => {
   return {
     foe: { hp: foe.currentHp, status: foe.status, conditions: [...foe.conditions].sort(), at: token ? [token.x, token.y] : null },
     hero: { hp: sheet.currentHp, tempHp: sheet.tempHp, conditions: [...sheet.conditions].sort() },
-    marks: [...(world.encounter()?.turnBudget?.oncePerTurn ?? [])].sort(),
+    // A mark names the creature it concerns by id (a weapon hit's "weapon-hit:<id>"),
+    // which differs between the two worlds compared: read as the role.
+    marks: [...(world.encounter()?.turnBudget?.oncePerTurn ?? [])].map((mark) => mark.replace(enemy.id, "<foe>")).sort(),
     fight: world.encounter() ? "on" : "over",
   };
 };
