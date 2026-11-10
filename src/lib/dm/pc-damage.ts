@@ -38,7 +38,9 @@ import { rollFeatureSave } from "@/lib/dm/contest-roll";
 import { holdsFeature } from "@/lib/srd/trait-rules";
 import { PRONE } from "@/lib/dm/vitals-logic";
 import { authoredAuraResistances } from "@/lib/dm/authored-saves";
-import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { wearsHeavyArmor, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { heavyArmorMasterReduction } from "@/lib/srd/feat-effects";
+import { textKey } from "@/lib/language/text-logic";
 import { silencedImmunity } from "@/lib/dm/zone-rules";
 import { burnWebUnder } from "@/lib/dm/zone-cast";
 import { lightOil } from "@/lib/dm/gear-zones";
@@ -61,6 +63,9 @@ export type PcDamageInput = {
   // From a spell, a magic weapon or strikes that count as magical, so
   // resistance to nonmagical attacks does not apply.
   magical?: boolean;
+  // From an attack (a weapon's or a creature's own), not a trap or a fall:
+  // Heavy Armor Master's "damage from nonmagical attacks is reduced by 3".
+  attack?: boolean;
   // From a spell: Spell Resistance and Aura of Warding resist it, and so
   // does a form or a summoned creature whose block resists "damage from
   // spells".
@@ -96,14 +101,19 @@ export type PcDamageInput = {
 // "from nonmagical attacks"), and the type a feature sets its resistance
 // aside for. A hit keeps them (last-hit.ts SwingRecord.flags), so a reaction
 // that replays it meets the same clauses.
-export type BlowFlags = Pick<PcDamageInput, "magical" | "spell" | "silvered" | "adamantine" | "goodWielder" | "ignoreResistanceTo" | "exceptFeatures">;
+export type BlowFlags = Pick<PcDamageInput, "attack" | "magical" | "spell" | "silvered" | "adamantine" | "goodWielder" | "ignoreResistanceTo" | "exceptFeatures">;
 
 export type BlowDefenses = {
   resisted: string;
   immune: string;
   vulnerable: string;
   flags: { magical: boolean; spell: boolean; silvered?: boolean; adamantine?: boolean; goodWielder?: boolean };
+  // Taken off the bludgeoning, piercing or slashing of the blow before
+  // resistance (Heavy Armor Master, src/lib/srd/feat-effects.ts).
+  reduceWeapon: number;
 };
+
+const WEAPON_TYPES = new Set(["bludgeoning", "piercing", "slashing"]);
 
 // The defenses a character meets a blow with: their own resistances, an
 // ally's aura (Aura of Warding, Shielding Storm), a summoned creature's block,
@@ -132,10 +142,15 @@ export function blowDefenses(campaignId: string, sheet: CharacterSheet, input: B
   // Inside Silence, thunder does nothing (zone-rules.ts).
   const immune = `${summonImmunities(sheet)}${pcImmunities(sheet)}${silencedImmunity(campaignId, sheet.id)}${shape?.immune ? `; ${shape.immune}` : ""}`;
   const vulnerable = [summonVulnerabilities(sheet), shape?.vulnerable ?? ""].filter(Boolean).join("; ");
+  // SRD 5.1, Heavy Armor Master: "While you are wearing heavy armor,
+  // bludgeoning, piercing, and slashing damage that you take from nonmagical
+  // weapons is reduced by 3." A creature's own form keeps no armor.
+  const reduceWeapon = input.attack && !shape ? heavyArmorMasterReduction(sheet, { wearingHeavyArmor: wearsHeavyArmor(sheet.equipment), damageType: "bludgeoning", magical: input.magical === true }) : 0;
   return {
     resisted,
     immune,
     vulnerable,
+    reduceWeapon,
     flags: { magical: input.magical === true, spell: input.spell === true, silvered: input.silvered, adamantine: input.adamantine, goodWielder: input.goodWielder },
   };
 }
@@ -152,10 +167,18 @@ export function meetDefenses(
   absorbed: number,
 ): { amount: number; note: string | null; met: Array<{ amount: number; type: string; note: string | null }> | null } {
   const { resisted, immune, vulnerable, flags } = defenses;
+  // The reduction comes off the first weapon-typed part, once a blow.
+  let cut = defenses.reduceWeapon ?? 0;
+  const reduced = (part: { amount: number; type: string }) => {
+    if (!cut || !WEAPON_TYPES.has(textKey(part.type))) return part;
+    const off = Math.min(cut, part.amount);
+    cut -= off;
+    return { ...part, amount: part.amount - off };
+  };
   const met = parts?.length
-    ? partsPast(parts, absorbed).map((part) => ({ ...part, ...damageAdjust(part.amount, part.type, resisted, immune, vulnerable, flags) }))
+    ? partsPast(parts, absorbed).map(reduced).map((part) => ({ ...part, ...damageAdjust(part.amount, part.type, resisted, immune, vulnerable, flags) }))
     : null;
-  const overflow = amount - absorbed;
+  const overflow = met ? 0 : reduced({ amount: amount - absorbed, type: type ?? "" }).amount;
   const adjusted = met
     ? { amount: met.reduce((sum, part) => sum + part.amount, 0), note: met.map((part) => part.note).filter(Boolean).join("; ") || null }
     : overflow > 0

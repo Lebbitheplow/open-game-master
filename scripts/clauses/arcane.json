@@ -2030,8 +2030,9 @@
    },
    {
     "c": "attacks against you cannot have advantage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: trance-advantage"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-arcane-sorcerer.mjs :: trance-advantage",
+    "by": "src/lib/dm/enemy-swing-odds.ts (the trance of order condition strikes advantage, as Elusive)"
    },
    {
     "c": "and you treat any d20 of 9 or lower as a 10 on attacks, checks and saves",

@@ -9,6 +9,7 @@
     "authoring": "the workshop's and WorldForge's authoring tools, which read what an author writes as they go"
   },
   "sites": {
+    "lib/dm/pc-damage.ts#keyed": [["identity", 1, "a feat by its whole name, a damage type of the engine's words (textKey on both sides)"]],
     "lib/dm/authored-save-effect-extras.ts#keyed": [["identity", 1, "a condition or a feature's held instance, by whole name (textKey on both sides)"], ["identity", 3, "a condition or a feature's held instance, by whole name (textKey on both sides)"]],
     "lib/dm/authored-save-effect-extras.ts#whole": [["identity", 1, "a condition or a feature's held instance, by whole name (textKey on both sides)"], ["identity", 2, "a condition or a feature's held instance, by whole name (textKey on both sides)"]],
     "lib/battlemap/hand-subclass.ts#whole": [["identity", 1, "the feature a choice belongs to and its option, by whole name (textKey on both sides)"], ["identity", 1, "the feature a choice belongs to and its option, by whole name (textKey on both sides)"]],

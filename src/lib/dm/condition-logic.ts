@@ -449,6 +449,9 @@ export function attackContext(input: {
   // blindsight swung blind.
   attackerSenses?: PastSight;
   targetSenses?: PastSight;
+  // The target holds the Alert feat: "an attacker hidden from your sight
+  // gets no advantage against you merely because you cannot see it".
+  targetAlert?: boolean;
 }): { advantage: AdvantageState; sources: AdvantageState[]; autoCrit: boolean; notes: string[] } {
   // Every source is kept for the caller to merge with its own: advantage
   // and disadvantage cancel once, over all of them (SRD 5.1), so a
@@ -467,14 +470,20 @@ export function attackContext(input: {
   }
   // See Invisibility and True Seeing see the invisible (condition-effects-last.ts).
   if (has(input.attackerConditions, ["invisible"]) && !seesInvisible(input.targetConditions, targetSees)) {
-    sources.push("advantage");
-    notes.push("attacker is invisible: advantage");
+    if (input.targetAlert) notes.push("attacker is invisible: no advantage against an Alert target");
+    else {
+      sources.push("advantage");
+      notes.push("attacker is invisible: advantage");
+    }
   }
   // Attacking from hiding: advantage, and the attack gives the position
   // away (the caller clears the condition).
   if (has(input.attackerConditions, ["hidden"])) {
-    sources.push("advantage");
-    notes.push("attacker is hidden: advantage, and the attack reveals them");
+    if (input.targetAlert) notes.push("attacker is hidden: no advantage against an Alert target, and the attack reveals them");
+    else {
+      sources.push("advantage");
+      notes.push("attacker is hidden: advantage, and the attack reveals them");
+    }
   }
 
   // An unconscious creature has fallen prone, whether or not anything wrote

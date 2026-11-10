@@ -767,6 +767,8 @@ export function handleEnemyAttack(
     // What the blow is made of for the target's defenses, kept with the hit
     // so a reaction's replay meets the same clauses (last-hit.ts flags).
     const flags: BlowFlags = {
+      // An attack, so Heavy Armor Master's reduction answers it (pc-damage.ts).
+      ...(attack.spellAttack ? {} : { attack: true }),
       // Magic Weapons: its weapon attacks are magical; so is a spell attack,
       // and a blow the block prints as magical ("magical bludgeoning").
       ...(hasTrait(standing.stats, "magicWeapons") || attack.spellAttack || attack.magical ? { magical: true } : {}),
