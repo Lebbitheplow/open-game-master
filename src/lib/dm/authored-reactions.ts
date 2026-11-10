@@ -40,8 +40,7 @@ import { ENTROPIC_EDGE } from "@/lib/dm/reaction-kinds";
 import { answerSave, kindOf, MENTAL, openSaves, openTriggers, savedIt, type LastSave } from "@/lib/dm/last-save";
 import { rollAgainst } from "@/lib/roll-labels";
 import { applyPcDamage, blowDefenses, meetDefenses } from "@/lib/dm/pc-damage";
-import { actingCombatantId } from "@/lib/dm/can-act";
-import { turnHeldForEnemies } from "@/lib/dm/held-turn";
+import { ownTurnOf } from "@/lib/dm/held-turn";
 import { answerTriggers, openTriggersFor, triggerRefusal, triggerSpecOf, type TriggerAsk } from "@/lib/dm/reaction-triggers";
 import { handlePcAttack } from "@/lib/dm/pc-attack";
 import { allyOf, noHit, settle, SPENT, spendReaction, type Ctx } from "@/lib/dm/reaction-tools";
@@ -808,7 +807,7 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       // the engine has seen the trigger itself (the vowed creature's attack).
       // A turn held while the enemies before it act is not yet the holder's own
       // (src/lib/dm/held-turn.ts): Hold the Line answers the goblins moving then.
-      if (actingCombatantId(encounter) === ctx.sheet.id && !does.vowed && !turnHeldForEnemies(encounter, ctx.sheet.id)) {
+      if (ownTurnOf(encounter, ctx.sheet.id) && !does.vowed) {
         return { error: `${reaction.name} answers what another creature does on its turn, and it is ${ctx.sheet.name}'s own turn. Nothing was spent.`, refused: "rules" };
       }
       // The attack is the reaction alone (pc-attack.ts reactionAttack). It

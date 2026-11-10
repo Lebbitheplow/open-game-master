@@ -61,10 +61,6 @@
       "count": 1,
       "why": "attackTurnOver: a parked roll's turn by the pointer and the round it was rolled in, not a new act"
     },
-    "lib/dm/authored-reactions.ts": {
-      "count": 1,
-      "why": "doors-18 (reactions package): the attack reaction's own-turn refusal, to move onto ownTurnOf there"
-    },
     "lib/dm/authored-saves.ts": {
       "count": 1,
       "why": "actingSheetId reads the entry and asks ownTurnOf of it"
@@ -110,8 +106,12 @@
       "why": "locking and walking the order: the pointer's own mechanics: advancing it, splicing the order, the turn's key"
     },
     "lib/dm/last-hit.ts": {
-      "count": 2,
-      "why": "lateFor asks turnStart and the pass itself; actedThisTurn reads the acting entry's budget"
+      "count": 1,
+      "why": "lateFor asks turnStart and the pass itself"
+    },
+    "lib/dm/last-save.ts": {
+      "count": 1,
+      "why": "actedThisTurn reads the acting entry's budget (moved here from last-hit.ts): whether the creature whose turn it is has done anything yet, not whose turn it is"
     },
     "lib/dm/legendary-tools.ts": {
       "count": 1,
@@ -132,6 +132,10 @@
     "lib/dm/reaction-counters.ts": {
       "count": 1,
       "why": "splices an extra turn after the pointer: the pointer's own mechanics: advancing it, splicing the order, the turn's key"
+    },
+    "lib/dm/reaction-triggers.ts": {
+      "count": 1,
+      "why": "triggerRecords names the creature whose turn has just begun, for a turn-start trigger: who the pointer is on, not whether it is their own turn"
     },
     "lib/dm/readied-release.ts": {
       "count": 1,
