@@ -273,6 +273,48 @@ await test("A trap the GM springs with apply_hazard stops for the save it throws
   assert.equal(stops().length, 0, "a fall throws no save");
 });
 
+// The hours of cold or heat roll their saves through endurance.ts, which
+// neither stopped nor took what a stop armed.
+await test("The cold's hourly saves stop too, and Favored by the Gods lands on the first hour's save that fails.", async () => {
+  reset();
+  world.patch(sorcerer.id, { watchingEncounterId: world.encounter().id });
+  await enemyTurn([modelCall("apply_hazard", { type: "extreme_cold", hours: 1, characterIds: [sorcerer.id] })], "The wind cuts.");
+  const [stop] = stops();
+  assert.ok(stop, "the cold's save stops");
+  assert.match(stop.reason, /Sol is about to make a saving throw against the cold\./);
+  // 2 against DC 10; 2d4 of 8 carries it.
+  world.dice(2, 4, 4);
+  assert.equal((await answer(stop.id, { shift: true }, solUser)).status, 200);
+  await settleQueue(world.campaignId);
+  world.clearDice();
+  assert.equal(lastSave(sorcerer.id)?.total, 10, "the stored save carries the 2d4");
+  assert.equal(favoredUsed(), 1);
+  assert.ok(!world.sheet(sorcerer.id).conditions.some((name) => /exhaust/i.test(name)), "a save made costs no exhaustion");
+});
+
+// A hit on a concentrating character asks their concentration save inside
+// enemy_attack, as a poison rider's save is: a card comes too late for it.
+await test("An enemy's hit on a concentrating character stops for the concentration save.", async () => {
+  reset();
+  world.patch(sorcerer.id, { watchingEncounterId: world.encounter().id, concentratingOn: "Bless" });
+  // A plain blow, with no rider of its own to stop for.
+  kit.setEnemy(goblin.id, { stats: { attacks: [{ name: "Club", toHit: 20, damage: "5", type: "bludgeoning", reach: 5, mode: "melee" }] } });
+  kit.place(sorcerer.id, 7, 5);
+  await enemyTurn([modelCall("enemy_attack", { enemyId: goblin.id, targetCharacterId: sorcerer.id })], "The club lands.");
+  const [stop] = stops();
+  assert.ok(stop, "the hit's concentration save stops");
+  assert.deepEqual(publicPendingRoll(stop).watch.choices, [{ name: "Sol", when: "if it fails" }]);
+  // A hit of 5 (DC 10); the save of 2 fails, and 2d4 of 8 carries it.
+  world.dice(18, 2, 4, 4);
+  assert.equal((await answer(stop.id, { shift: true }, solUser)).status, 200);
+  await settleQueue(world.campaignId);
+  world.clearDice();
+  assert.equal(favoredUsed(), 1, JSON.stringify(toldLast()));
+  assert.equal(world.sheet(sorcerer.id).concentratingOn, "Bless", `the 2d4 kept the concentration: ${JSON.stringify(toldLast())}`);
+  world.patch(sorcerer.id, { concentratingOn: null });
+  kit.place(sorcerer.id, 8, 8);
+});
+
 model.close();
 finish();
 world.close();

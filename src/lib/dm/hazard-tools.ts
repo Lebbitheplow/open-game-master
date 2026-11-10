@@ -492,7 +492,8 @@ function resolveHazard(
 
 // What keeps a character from the weather's toll: resistance to cold or
 // fire, or cold weather gear against the cold (the SRD's weather rules).
-function exposureShrug(sheet: CharacterSheet, cold: boolean): string | null {
+// A watch stop reads it too: such a character rolls no save (foresight-saves.ts).
+export function exposureShrug(sheet: CharacterSheet, cold: boolean): string | null {
   const wanted = cold ? "cold" : "fire";
   if (pcResistances(sheet).includes(wanted)) {
     return `${wanted} resistance: unaffected by the ${cold ? "cold" : "heat"}`;

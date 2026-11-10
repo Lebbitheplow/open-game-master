@@ -435,6 +435,90 @@ await test("A save one creature makes stops too: a hazard forcing a hero's save 
   assert.deepEqual(fightWorld.sheet(seer.id).foretold, [3]);
 });
 
+// The saves a GM call throws inside it, with no card to wait on
+// (src/lib/dm/foresight-saves.ts): each stopped for nobody.
+const { setParty, getParty } = await import("../src/lib/db/party.ts");
+const { setMount } = await import("../src/lib/db/mounts.ts");
+
+await test("The hours of cold stop too, and the number lands on the first hour's save.", async () => {
+  arm();
+  const before = saveRolls().length;
+  await enemyTurn([modelCall("apply_hazard", { type: "extreme_cold", hours: 2, characterIds: [target.id] })], "The cold bites.");
+  const [stop] = stops();
+  assert.ok(stop, "the cold's saves stop");
+  assert.match(stop.reason, /Kara is about to make 2 saving throws, one an hour, against the cold\./);
+  assert.equal((await answer(stop.id, { value: 17 })).status, 200);
+  await settleQueue(fightWorld.campaignId);
+  const landed = saveRolls().slice(before);
+  assert.equal(landed.length, 2, "one save an hour");
+  assert.equal(landed[0].breakdown.natural, 17, "the first hour's d20 shows the 17");
+  assert.deepEqual(fightWorld.sheet(seer.id).foretold, [3]);
+  fightWorld.patch(target.id, { conditions: [], conditionMeta: {} });
+});
+
+await test("A trap aimed at the front of the travel formation stops for the one who walks there.", async () => {
+  arm();
+  setParty(fightWorld.campaignId, { ...getParty(fightWorld.campaignId), marchingOrder: [target.id, seer.id] });
+  await enemyTurn([modelCall("apply_hazard", { type: "trap", severity: "setback", rank: "front" })], "Darts fly.");
+  const [stop] = stops();
+  assert.ok(stop, "the trap's save stops");
+  assert.match(stop.reason, /Kara is about to make a saving throw against a trap\./);
+  await answer(stop.id, { pass: true });
+  await settleQueue(fightWorld.campaignId);
+  assert.deepEqual(fightWorld.sheet(seer.id).foretold, [17, 3], "Let it roll spends nothing");
+  setParty(fightWorld.campaignId, { ...getParty(fightWorld.campaignId), marchingOrder: [] });
+});
+
+await test("A condition laid with its save stops for that save, a character's or a creature's.", async () => {
+  arm();
+  await enemyTurn([modelCall("set_condition", { characterId: target.id, condition: "restrained", saveAbility: "str", saveDc: 15, reason: "a net" })], "The net falls.");
+  const [stop] = stops();
+  assert.ok(stop, "the character's save stops");
+  assert.match(stop.reason, /Kara is about to make a saving throw against being restrained\./);
+  assert.equal((await answer(stop.id, { value: 17 })).status, 200);
+  await settleQueue(fightWorld.campaignId);
+  assert.equal(saveRolls().at(-1)?.breakdown.natural, 17, "the foretold 17 is the save's d20");
+  assert.ok(!fightWorld.sheet(target.id).conditions.includes("restrained"), "the save is made");
+  arm();
+  await enemyTurn([modelCall("set_condition", { enemyId: goblin2.id, condition: "restrained", saveAbility: "str", saveDc: 15, reason: "a net" })], "The net falls.");
+  const [held] = stops();
+  assert.ok(held, "the creature's save stops");
+  assert.match(held.reason, /Goblin 2 is about to make a saving throw against being restrained\./);
+  assert.equal((await answer(held.id, { value: 3 })).status, 200);
+  await settleQueue(fightWorld.campaignId);
+  assert.ok(kit.enemy(goblin2.id).conditions.includes("restrained"), "the 3 fails the save");
+  assert.deepEqual(fightWorld.sheet(seer.id).foretold, [17]);
+  kit.setEnemy(goblin2.id, { conditions: [], conditionMeta: {} });
+});
+
+await test("A rider thrown from the saddle stops for the save to land on their feet.", async () => {
+  arm();
+  setMount(fightWorld.campaignId, target.id, { name: "Riding Horse", speed: 60, size: "large", controlled: true, hp: 13, maxHp: 13 });
+  await enemyTurn([modelCall("dismount", { characterId: target.id, cause: "forced-move" })], "Kara is thrown.");
+  const [stop] = stops();
+  assert.ok(stop, "the save stops");
+  assert.match(stop.reason, /Kara is about to make a saving throw to land on their feet\./);
+  assert.equal((await answer(stop.id, { value: 17 })).status, 200);
+  await settleQueue(fightWorld.campaignId);
+  assert.equal(saveRolls().at(-1)?.breakdown.natural, 17);
+  assert.ok(!fightWorld.sheet(target.id).conditions.includes("prone"), "17 lands on their feet");
+  setMount(fightWorld.campaignId, target.id, null);
+});
+
+await test("Polymorph at a creature of the fight stops before its save.", async () => {
+  arm();
+  const order = fightWorld.encounter();
+  saveEncounter({ ...order, turnIndex: order.order.findIndex((entry) => entry.characterId === target.id), turnBudget: null });
+  fightModel.script([reply({ calls: [modelCall("cast_buff", { characterId: target.id, targetEnemyId: goblin.id, spell: "Polymorph" })] }), reply({ text: "The goblin shrinks." })]);
+  await fightModel.turn(fightWorld, "I polymorph the goblin.", target.id, targetUser.id);
+  const [stop] = stops();
+  assert.ok(stop, "the spell stops before the creature's save");
+  assert.match(stop.reason, /Kara is about to cast Polymorph at Goblin/);
+  await answer(stop.id, { pass: true });
+  await settleQueue(fightWorld.campaignId);
+  assert.deepEqual(fightWorld.sheet(seer.id).foretold, [17, 3]);
+});
+
 await test("A hero's spell at one creature stops before it is cast, and the number lands on that creature's save.", async () => {
   arm();
   const order = fightWorld.encounter();
