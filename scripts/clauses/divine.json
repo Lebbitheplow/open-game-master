@@ -4712,12 +4712,9 @@
    },
    {
     "c": "reveals a creature's damage immunities, resistances and vulnerabilities",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-subclass.mjs gap counter:sub_hunters_sense#GUIDANCE_ONLY [spends finding spends-guidance-only-counter-sub-hunters-sense]",
-    "severity": "medium",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row's fx in src/lib/srd/authored-resources.json or src/lib/classes/resources.json",
-    "kind": "rule-missing",
-    "note": "held by the spends sweep (finding spends-guidance-only-counter-sub-hunters-sense)"
+    "is": "held",
+    "by": "src/lib/dm/authored-spend-divine.ts revealDefenses (the AUTHORED_TABLE row in src/lib/srd/authored-effects-w2-divine.ts): the stat block's immunities, resistances and vulnerabilities, refused for a creature the ranger cannot see",
+    "probe": "scripts/test-enforce-sweep-clauses-divine-ranger.mjs :: ranger::Hunter's Sense#reveals"
    },
    {
     "c": "a Wisdom-modifier number of times",

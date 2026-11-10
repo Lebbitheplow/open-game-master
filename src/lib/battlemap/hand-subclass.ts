@@ -54,11 +54,13 @@ function targetOf(does: SpendDoes): HandTarget {
   if (does.kind === "flames" && does.healOnly) return "ally";
   // A slot given back to the creature touched (Bolstering Magic).
   if (does.kind === "regain_slot") return "ally";
+  // The creature Hunter's Sense reads (authored-spend-divine.ts).
+  if (does.kind === "reveal_defenses") return "enemy";
   return "none";
 }
 
 // The kinds the engine resolves only on a creature in a fight.
-const FIGHT_ONLY = new Set<SpendDoes["kind"]>(["save_effect", "die_damage", "flourish", "swarm_push", "insight_contest"]);
+const FIGHT_ONLY = new Set<SpendDoes["kind"]>(["save_effect", "die_damage", "flourish", "swarm_push", "insight_contest", "reveal_defenses"]);
 
 // The option an aim plays, or the spend's own.
 function aimDoes(does: SpendDoes, variant: string | undefined): SpendDoes {
@@ -73,7 +75,7 @@ function sightBound(does: SpendDoes): boolean {
   // The creatures of the player's choice that they can see (Champion
   // Challenge): a blinded holder sees none, and the engine finds nothing in reach.
   if (does.kind === "save_area") return Boolean(does.chosen) && does.sight === true;
-  return does.kind === "save_effect" || (does.kind === "buff" && (does.target === "enemy" || Boolean(does.quarry)));
+  return does.kind === "save_effect" || does.kind === "reveal_defenses" || (does.kind === "buff" && (does.target === "enemy" || Boolean(does.quarry)));
 }
 
 // The sight a card aimed at a foe carries (HandCard.sight): the spend's own

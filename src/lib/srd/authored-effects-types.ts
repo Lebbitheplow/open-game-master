@@ -447,7 +447,10 @@ export type SpendDoes =
   | { kind: "note"; text: string }
   // Spent dice come back to a pool (Psionic Recovery: one Psionic Energy die).
   // `clears`: the mark the spend's gate asked for is spent with it.
-  | { kind: "restore"; pool: string; amount: number; clears?: string };
+  | { kind: "restore"; pool: string; amount: number; clears?: string }
+  // Hunter's Sense: the named creature's damage immunities, resistances and
+  // vulnerabilities, read from its stat block (src/lib/dm/authored-spend-divine.ts).
+  | { kind: "reveal_defenses"; sight: true };
 
 export type SpendAction = "action" | "bonus" | "reaction" | "none";
 

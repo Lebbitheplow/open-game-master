@@ -102,7 +102,6 @@ export const KNOWN = {
   "counter:sub_call_the_hunt": { TRIGGER_AS_CARD: { severity: "medium", note: "dealt as a card on the holder's own turn and accepted with nothing to react to" } },
   "counter:sub_cauterizing_flames": { TRIGGER_UNCHECKED: { severity: "high", note: "accepted with no trigger staged" }, TRIGGER_AS_CARD: { severity: "high", note: "dealt as a card on the holder's own turn and accepted with nothing to react to" } },
   "counter:sub_defy_death": { TRIGGER_AS_CARD: { severity: "high", note: "dealt as a card on the holder's own turn and accepted with nothing to react to" } },
-  "counter:sub_hunters_sense": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "counter:sub_infectious_inspiration": { TRIGGER_UNCHECKED: { severity: "medium", note: "accepted with no trigger staged" }, TRIGGER_AS_CARD: { severity: "medium", note: "dealt as a card on the holder's own turn and accepted with nothing to react to" } },
   "counter:sub_manifest_mind_casts": { SPENT_FOR_NOTHING: { severity: "low", note: "another path carries the effect; a plain spend takes the use without it" } },
   "counter:sub_performance_of_creation": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
@@ -120,6 +119,7 @@ export const KNOWN = {
 };
 
 export const RULINGS = {
+  "counter:sub_hunters_sense": { REPORTED_ONLY: "src/lib/dm/authored-spend-divine.ts revealDefenses: gap study WAVE2 D3, Hunter's Sense answers with the creature's stat block defences and spends the use; what it gives is knowledge, so nothing on the table is written" },
   "counter:cyberpunk_jury_rig": { GUIDANCE_ONLY: "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\"" },
   "counter:cyberpunk_the_net_remembers": { GUIDANCE_ONLY: "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\"" },
   "counter:dark_fantasy_immolate_the_sin": { GUIDANCE_ONLY: "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\"" },

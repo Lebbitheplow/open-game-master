@@ -216,15 +216,30 @@ export const RANGER = {
 
   "ranger::Hunter's Sense": async (rig) => {
     const who = rig.hero("ranger", "Monster Slayer", 3);
-    await rig.fight(who);
-    const out = await rig.spend(who, "Hunter's Sense");
+    const [foe, hidden] = await rig.fight(who, { enemies: 2 });
+    rig.kit.setEnemy(foe.id, { currentHp: 300, stats: { ...rig.enemy(foe.id).stats, immune: "poison", resist: "fire", vulnerable: "radiant" } });
+    rig.kit.setEnemy(hidden.id, { currentHp: 300, conditions: ["invisible"], conditionMeta: { invisible: { rounds: 10 } } });
+    const unseen = await rig.spend(who, "Hunter's Sense", { targetEnemyId: hidden.id });
+    const usedUnseen = rig.res(who, "sub_hunters_sense")?.used ?? null;
+    const out = await rig.spend(who, "Hunter's Sense", { targetEnemyId: foe.id });
     const budget = rig.budget();
+    const usedAfter = rig.res(who, "sub_hunters_sense")?.used ?? null;
     rig.reset();
     const facts = await rig.counterFacts("ranger", "Monster Slayer", 3, "sub_hunters_sense");
     return {
       action: () => {
         assert.equal(out.ok, true, out.error);
         assert.equal(budget?.actionUsed, true);
+      },
+      // Gap study WAVE2 D3: the creature's stat block, the use spent; one the
+      // ranger cannot see is refused, spending nothing.
+      reveals: () => {
+        assert.equal(out.ok, true, out.error);
+        assert.deepEqual([out.result.immunities, out.result.resistances, out.result.vulnerabilities], ["poison", "fire", "radiant"]);
+        assert.equal(usedAfter, 1);
+        assert.equal(unseen.ok, false, "an invisible creature was read");
+        assert.match(unseen.error, /cannot see/);
+        assert.equal(usedUnseen, 0, "the refusal spent a use");
       },
       uses: () => assert.equal(facts.max, wis(3), `${facts.max} uses at 3rd level (Wisdom +${wis(3)}, proficiency +2)`),
       "long-rest": () => assert.deepEqual([facts.afterShort, facts.afterLong], [facts.max, 0]),
