@@ -82,6 +82,19 @@ export const securityHeaders = [
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
 ];
 
+// The game's own art under public/assets (tiles, props, icons, placeholder
+// portraits): about 150 pictures on a table's board, and Next serves a public
+// file as "max-age=0", so a browser asked the server about every one of them
+// again on each open and each reload and was told 304 each time. A browser
+// now keeps a picture for an hour before it asks. An hour, not for good: a
+// repaint keeps its path (docs/art/token-readability.md), so the address
+// alone never says the picture changed. Pictures only: the manifests beside
+// them say which files exist and are read with the page's script, so they
+// are still asked for every time. Uploads and generated pictures are not
+// here at all (they sit behind a login, src/lib/serve-file.ts).
+export const BUILT_IN_ART_SOURCE = "/assets/:file(.*\\.(?:webp|png|jpg))";
+export const builtInArtHeaders = [{ key: "Cache-Control", value: "public, max-age=3600" }];
+
 const nextConfig: NextConfig = {
   env: {
     ODM_BUILD_COMMIT: buildCommit,
@@ -102,6 +115,7 @@ const nextConfig: NextConfig = {
       { source: "/:path((?!api/addons/[^/]+/(?:ui|assets)/).*)", headers: securityHeaders },
       // A session token or a password must never sit in a cache.
       { source: "/api/auth/:path*", headers: [{ key: "Cache-Control", value: "no-store" }] },
+      { source: BUILT_IN_ART_SOURCE, headers: builtInArtHeaders },
       // HSTS only where the request really arrived over https (a TLS proxy in
       // front says so); a browser ignores it over plain http, so a LAN
       // server's http address is never pinned. No includeSubDomains: the
