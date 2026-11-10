@@ -484,7 +484,8 @@
       "fx": {
         "kind": "enemy_save",
         "save": "wis",
-        "condition": "stunned"
+        "condition": "stunned",
+        "rounds": 1
       }
     },
     {
@@ -660,7 +661,8 @@
         "kind": "enemy_save",
         "save": "con",
         "dice": "3d8",
-        "half": true
+        "half": true,
+        "type": "radiant"
       }
     },
     {
@@ -699,7 +701,9 @@
       "fx": {
         "kind": "enemy_save",
         "save": "str",
-        "condition": "restrained"
+        "condition": "restrained",
+        "rounds": 1,
+        "rangeFt": 15
       }
     },
     {
@@ -795,7 +799,8 @@
         "kind": "enemy_save",
         "save": "con",
         "dice": "10d10",
-        "half": true
+        "half": true,
+        "type": "necrotic"
       }
     },
     {
@@ -895,7 +900,10 @@
       "fx": {
         "kind": "aoe",
         "dice": "2d6",
-        "save": "con"
+        "save": "con",
+        "rounds": 100,
+        "rangeFt": 20,
+        "type": "poison"
       }
     },
     {
@@ -920,7 +928,9 @@
       "fx": {
         "kind": "enemy_save",
         "save": "dex",
-        "dice": "2d6"
+        "dice": "2d6",
+        "rangeFt": 15,
+        "type": "piercing"
       }
     },
     {
@@ -1141,7 +1151,10 @@
       "fx": {
         "kind": "aoe",
         "dice": "3d6",
-        "save": "con"
+        "save": "con",
+        "rounds": 10,
+        "rangeFt": 15,
+        "type": "fire"
       }
     },
     {
@@ -2056,7 +2069,8 @@
       "fx": {
         "kind": "enemy_save",
         "save": "wis",
-        "condition": "stunned"
+        "condition": "stunned",
+        "rounds": 1
       }
     },
     {
@@ -2111,7 +2125,9 @@
       "fx": {
         "kind": "enemy_save",
         "save": "wis",
-        "condition": "frightened"
+        "condition": "frightened",
+        "rounds": 10,
+        "rangeFt": 30
       }
     },
     {
@@ -2161,7 +2177,8 @@
       "fx": {
         "kind": "enemy_save",
         "save": "wis",
-        "condition": "frightened"
+        "condition": "frightened",
+        "rounds": 10
       }
     },
     {
@@ -2181,7 +2198,9 @@
       "fx": {
         "kind": "enemy_save",
         "save": "wis",
-        "dice": "2d8"
+        "dice": "2d8",
+        "rounds": 10,
+        "type": "necrotic"
       }
     },
     {
@@ -2553,7 +2572,9 @@
         "kind": "enemy_save",
         "save": "dex",
         "condition": "restrained",
-        "dice": "4d6"
+        "dice": "4d6",
+        "rangeFt": 15,
+        "type": "bludgeoning"
       }
     },
     {
@@ -2618,7 +2639,9 @@
       "fx": {
         "kind": "enemy_save",
         "save": "con",
-        "condition": "stunned"
+        "condition": "stunned",
+        "rounds": 1,
+        "rangeFt": 15
       }
     },
     {
@@ -2654,7 +2677,9 @@
       "fx": {
         "kind": "enemy_save",
         "save": "con",
-        "condition": "blinded"
+        "condition": "blinded",
+        "rounds": 1,
+        "rangeFt": 10
       }
     },
     {
@@ -2739,7 +2764,8 @@
       "fx": {
         "kind": "enemy_save",
         "save": "wis",
-        "dice": "2d8"
+        "dice": "2d8",
+        "rounds": 10
       }
     },
     {
@@ -2964,7 +2990,9 @@
       "fx": {
         "kind": "aoe",
         "dice": "8d6",
-        "save": "con"
+        "save": "con",
+        "rangeFt": 30,
+        "type": "radiant"
       }
     },
     {
@@ -3300,7 +3328,10 @@
       "fx": {
         "kind": "aoe",
         "dice": "3d6",
-        "save": "con"
+        "save": "con",
+        "rounds": 10,
+        "rangeFt": 20,
+        "type": "acid"
       }
     },
     {
@@ -3336,7 +3367,9 @@
         "kind": "enemy_save",
         "save": "dex",
         "dice": "3d8",
-        "half": true
+        "half": true,
+        "rangeFt": 10,
+        "type": "fire"
       }
     },
     {
@@ -3566,7 +3599,9 @@
       "fx": {
         "kind": "enemy_save",
         "save": "con",
-        "condition": "blinded"
+        "condition": "blinded",
+        "rounds": 1,
+        "rangeFt": 5
       }
     },
     {
@@ -3586,7 +3621,9 @@
       "fx": {
         "kind": "enemy_save",
         "save": "dex",
-        "dice": "3d8"
+        "dice": "3d8",
+        "rangeFt": 5,
+        "type": "fire"
       }
     },
     {
@@ -3667,7 +3704,8 @@
       "fx": {
         "kind": "enemy_save",
         "save": "wis",
-        "condition": "frightened"
+        "condition": "frightened",
+        "rounds": 10
       }
     },
     {

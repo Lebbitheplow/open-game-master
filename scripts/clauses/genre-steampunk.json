@@ -198,15 +198,15 @@
    },
    {
     "c": "3d8 fire",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Steamvent Burst#4:fx",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test machinist::Steamvent Burst#4:fx",
     "k": "fx",
     "p": {
      "id": "steampunk_steamvent_burst",
      "dice": "3d8",
      "type": "fire"
     },
-    "observed": "the spend hands back no fire damage type ({\"ok\":true,\"resource\":\"Steamvent Burst\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on any rest\",\"effect\":\"1/rest, adjacent creatures save (DEX) or take 3d8 fire and are pushed 10 ft when you vent your armor.\",\"resolveWith\":\"aoe_d)"
+    "by": "src/lib/classes/resources.json fx (reach, rounds and damage type read from the text by scripts/generate-class-resources.mjs saveTermsFromText), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave"
    }
   ]
  },
@@ -1050,15 +1050,15 @@
    },
    {
     "c": "for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Terror of the Trade Winds#2:fx",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test aeronaut::Terror of the Trade Winds#2:fx",
     "k": "fx",
     "p": {
      "id": "steampunk_terror_of_the_trade_winds",
      "resolve": "rounds",
      "rounds": 10
     },
-    "observed": "the condition's record is {\"source\":\"95f4cc07-4023-40c0-872b-8345728a1b36\",\"saveEnds\":{\"ability\":\"wis\",\"dc\":16}}, and the text says 10 round(s)"
+    "by": "src/lib/classes/resources.json fx (reach, rounds and damage type read from the text by scripts/generate-class-resources.mjs saveTermsFromText), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave"
    },
    {
     "c": "save (WIS)",
@@ -1614,15 +1614,15 @@
    },
    {
     "c": "3d6 acid",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Dissolving Mist#5:fx",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test alchemist::Dissolving Mist#5:fx",
     "k": "fx",
     "p": {
      "id": "steampunk_dissolving_mist",
      "dice": "3d6",
      "type": "acid"
     },
-    "observed": "the spend hands back no acid damage type ({\"ok\":true,\"resource\":\"Dissolving Mist\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, a 20-ft radius acid fog for 1 minute: 3d6 acid at the start of each creature's turn inside (CON save halves)"
+    "by": "src/lib/classes/resources.json fx (reach, rounds and damage type read from the text by scripts/generate-class-resources.mjs saveTermsFromText), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave"
    }
   ]
  },
@@ -2754,27 +2754,27 @@
    },
    {
     "c": "adjacent",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Steam Vent#2:fx",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test steam_knight::Steam Vent#2:fx",
     "k": "fx",
     "p": {
      "id": "steampunk_steam_vent",
      "resolve": "far",
      "feet": 5
     },
-    "observed": "a creature 5 ft and more away was caught: [\"blinded\"]"
+    "by": "src/lib/classes/resources.json fx (reach, rounds and damage type read from the text by scripts/generate-class-resources.mjs saveTermsFromText), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave"
    },
    {
     "c": "until your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Steam Vent#3:fx",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test steam_knight::Steam Vent#3:fx",
     "k": "fx",
     "p": {
      "id": "steampunk_steam_vent",
      "resolve": "rounds",
      "rounds": 1
     },
-    "observed": "the condition's record is {\"source\":\"2bb45d7f-b149-45e9-aafb-75e19ecbcc46\",\"saveEnds\":{\"ability\":\"con\",\"dc\":14}}, and the text says 1 round(s)"
+    "by": "src/lib/classes/resources.json fx (reach, rounds and damage type read from the text by scripts/generate-class-resources.mjs saveTermsFromText), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave"
    },
    {
     "c": "save (CON)",
@@ -2948,15 +2948,15 @@
    },
    {
     "c": "3d8 fire",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Emergency Release#4:fx",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test steam_knight::Emergency Release#4:fx",
     "k": "fx",
     "p": {
      "id": "steampunk_emergency_release",
      "dice": "3d8",
      "type": "fire"
     },
-    "observed": "the spend hands back no fire damage type ({\"ok\":true,\"resource\":\"Emergency Release\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on any rest\",\"effect\":\"1/rest, when reduced below half HP, vent: attackers within 10 ft take 3d8 fire (DEX save halves).\",\"resolveWith\":\"aoe_dam)"
+    "by": "src/lib/classes/resources.json fx (reach, rounds and damage type read from the text by scripts/generate-class-resources.mjs saveTermsFromText), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave"
    }
   ]
  },

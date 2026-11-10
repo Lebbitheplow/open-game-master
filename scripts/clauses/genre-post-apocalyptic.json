@@ -499,15 +499,15 @@
    },
    {
     "c": "15-ft cube",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Collapse Instinct#2:fx",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test scavenger::Collapse Instinct#2:fx",
     "k": "fx",
     "p": {
      "id": "post_apocalyptic_collapse_instinct",
      "resolve": "far",
      "feet": 15
     },
-    "observed": "a creature 15 ft and more away was caught: [\"restrained\"]"
+    "by": "src/lib/classes/resources.json fx (reach, rounds and damage type read from the text by scripts/generate-class-resources.mjs saveTermsFromText), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave"
    },
    {
     "c": "save (DEX)",
@@ -526,15 +526,15 @@
    },
    {
     "c": "4d6 bludgeoning",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Collapse Instinct#4:fx",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test scavenger::Collapse Instinct#4:fx",
     "k": "fx",
     "p": {
      "id": "post_apocalyptic_collapse_instinct",
      "dice": "4d6",
      "type": "bludgeoning"
     },
-    "observed": "the spend hands back no bludgeoning damage type ({\"ok\":true,\"resource\":\"Collapse Instinct\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on any rest\",\"effect\":\"1/rest, trigger or predict a structural collapse: creatures in a 15-ft cube save (DEX) or take 4d6 bludgeoning and are re)"
+    "by": "src/lib/classes/resources.json fx (reach, rounds and damage type read from the text by scripts/generate-class-resources.mjs saveTermsFromText), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave"
    }
   ]
  },
@@ -1678,27 +1678,27 @@
    },
    {
     "c": "within 15 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::EMP Coil#2:fx",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::EMP Coil#2:fx",
     "k": "fx",
     "p": {
      "id": "post_apocalyptic_emp_coil",
      "resolve": "far",
      "feet": 15
     },
-    "observed": "a creature 15 ft and more away was caught: [\"stunned\"]"
+    "by": "src/lib/classes/resources.json fx (reach, rounds and damage type read from the text by scripts/generate-class-resources.mjs saveTermsFromText), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave"
    },
    {
     "c": "until your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::EMP Coil#3:fx",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::EMP Coil#3:fx",
     "k": "fx",
     "p": {
      "id": "post_apocalyptic_emp_coil",
      "resolve": "rounds",
      "rounds": 1
     },
-    "observed": "the condition's record is {\"source\":\"62fa2122-d63f-4001-962a-fe8f577b8c4e\",\"saveEnds\":{\"ability\":\"con\",\"dc\":14}}, and the text says 1 round(s)"
+    "by": "src/lib/classes/resources.json fx (reach, rounds and damage type read from the text by scripts/generate-class-resources.mjs saveTermsFromText), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave"
    },
    {
     "c": "save (CON)",
@@ -2070,27 +2070,27 @@
    },
    {
     "c": "10-ft flare",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Halo of the Core#2:fx",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Halo of the Core#2:fx",
     "k": "fx",
     "p": {
      "id": "post_apocalyptic_halo_of_the_core",
      "resolve": "far",
      "feet": 10
     },
-    "observed": "a creature 10 ft and more away was caught: [\"blinded\"]"
+    "by": "src/lib/classes/resources.json fx (reach, rounds and damage type read from the text by scripts/generate-class-resources.mjs saveTermsFromText), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave"
    },
    {
     "c": "until your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Halo of the Core#3:fx",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Halo of the Core#3:fx",
     "k": "fx",
     "p": {
      "id": "post_apocalyptic_halo_of_the_core",
      "resolve": "rounds",
      "rounds": 1
     },
-    "observed": "the condition's record is {\"source\":\"31875fe1-d92a-4c42-9400-d27d147b676f\",\"saveEnds\":{\"ability\":\"con\",\"dc\":14}}, and the text says 1 round(s)"
+    "by": "src/lib/classes/resources.json fx (reach, rounds and damage type read from the text by scripts/generate-class-resources.mjs saveTermsFromText), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave"
    },
    {
     "c": "save (CON)",
@@ -2166,15 +2166,15 @@
    },
    {
     "c": "8d6 radiant",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Second Sun#4:fx",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Second Sun#4:fx",
     "k": "fx",
     "p": {
      "id": "post_apocalyptic_second_sun",
      "dice": "8d6",
      "type": "radiant"
     },
-    "observed": "the spend hands back no radiant damage type ({\"ok\":true,\"resource\":\"Second Sun\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, unleash the core: a 30-ft radius burst dealing 8d6 radiant (CON save halves); allies are spared.\",\"resolveWith\":)"
+    "by": "src/lib/classes/resources.json fx (reach, rounds and damage type read from the text by scripts/generate-class-resources.mjs saveTermsFromText), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave"
    },
    {
     "c": "allies are spared",
