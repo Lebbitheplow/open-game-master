@@ -873,13 +873,13 @@
    },
    {
     "c": "cast one treatment of 5th level or lower without a slot",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap alienist::The Examined Mind#1:spend_moves",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test alienist::The Examined Mind#1:spend_moves",
     "k": "spend_moves",
     "p": {
      "id": "mystery_the_examined_mind"
     },
-    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"The Examined Mind\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, cast one treatment of 5th level or lower without a slot; it canno"
+    "by": "src/lib/srd/authored-effects-genre-b.ts slotless-cast spend (src/lib/dm/genre-b-free-cast.ts MARKS, read by src/lib/dm/cast-guard.ts before it plans a slot)"
    },
    {
     "c": "it cannot be resisted by creatures you have a Trauma Map of",

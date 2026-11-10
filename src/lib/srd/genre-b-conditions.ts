@@ -90,4 +90,25 @@ export const GENRE_B_CONDITION_EFFECTS: ConditionEffectRow[] = [
     match: ["hardened"],
     summary: "Hardened: every blow this round is cut by the road warrior's Constitution modifier (twice it from 10th level).",
   },
+  // The slotless casts' marks (src/lib/dm/genre-b-free-cast.ts MARKS): the
+  // cast guard reads them; a one-cast mark is spent by the cast it pays for.
+  ...([
+    ["slotless_cast_1st", "slotless cast (1st)", "one spell of 1st level cast with no slot"],
+    ["slotless_cast_3rd", "slotless cast (3rd)", "one spell of 3rd level or lower cast with no slot"],
+    ["slotless_cast_5th", "slotless cast (5th)", "one spell of 5th level or lower cast with no slot"],
+    ["slotless_cast_6th", "slotless cast (6th)", "one spell of 6th level or lower cast with no slot"],
+    ["slotless_cast_7th", "slotless cast (7th)", "one spell of 7th level or lower cast with no slot"],
+    ["chosen_cast_3rd", "chosen cast (3rd)", "the chosen 3rd-level spell cast with no slot"],
+    ["chosen_cast_5th", "chosen cast (5th)", "the chosen 5th-level spell cast with no slot"],
+    ["slotless_minute_3rd", "slotless minute (3rd)", "for a minute, spells of 3rd level or lower cost no slot"],
+    ["slotless_minute_4th", "slotless minute (4th)", "for a minute, spells of 4th level or lower cost no slot"],
+  ] as const).map(([id, name, what]) => ({ id, match: [name], summary: `${name}: ${what}.` })),
+  {
+    // The Next Step: "your mutations of 3rd level or lower cost no slots and
+    // your Adaptive Hide grants +2 more AC", for a minute.
+    id: "the_next_step",
+    match: ["the next step"],
+    summary: "The Next Step: for a minute, spells of 3rd level or lower cost no slot, and Adaptive Hide grants +2 more AC.",
+    acBonus: 2,
+  },
 ];

@@ -1391,13 +1391,15 @@
    },
    {
     "c": "for 1 minute your mutations of 3rd level or lower cost no slots and your Adaptive Hide grants +2 more AC",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_the_next_step#SPENT_FOR_NOTHING"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Living Dynamo: for a minute every spell of 3rd level or lower costs no slot",
+    "by": "src/lib/srd/authored-effects-genre-b.ts slotless-cast spend (src/lib/dm/genre-b-free-cast.ts MARKS, read by src/lib/dm/cast-guard.ts before it plans a slot)"
    },
    {
     "c": "for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_the_next_step#SPENT_FOR_NOTHING"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Living Dynamo: for a minute every spell of 3rd level or lower costs no slot",
+    "by": "src/lib/srd/authored-effects-genre-b.ts slotless-cast spend (src/lib/dm/genre-b-free-cast.ts MARKS, read by src/lib/dm/cast-guard.ts before it plans a slot)"
    }
   ]
  },
@@ -1634,13 +1636,13 @@
    },
    {
     "c": "cast a 1st-level tech effect without expending a slot",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Power Cell Cache#1:spend_moves",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Power Cell Cache#1:spend_moves",
     "k": "spend_moves",
     "p": {
      "id": "post_apocalyptic_power_cell_cache"
     },
-    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Power Cell Cache\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on any rest\",\"effect\":\"1/rest, cast a 1st-level tech effect without expending a slot.\"}"
+    "by": "src/lib/srd/authored-effects-genre-b.ts slotless-cast spend (src/lib/dm/genre-b-free-cast.ts MARKS, read by src/lib/dm/cast-guard.ts before it plans a slot)"
    }
   ]
  },
@@ -1861,11 +1863,10 @@
   "clauses": [
    {
     "c": "Power Cell Cache works for tech effects up to 3rd level",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Power Cell Cache (3rd)#0:unhooked",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Power Cell Cache (3rd)#0:unhooked",
     "k": "unhooked",
-    "observed": "nothing in the engine answers to Power Cell Cache (3rd): no typed effect, no authored row, no typed counter (its counter: post_apocalyptic_power_cell_cache:narrative)",
-    "sev": "medium"
+    "by": "src/lib/srd/authored-effects-genre-b.ts slotless-cast spend (src/lib/dm/genre-b-free-cast.ts MARKS, read by src/lib/dm/cast-guard.ts before it plans a slot)"
    }
   ]
  },
@@ -1903,13 +1904,13 @@
    },
    {
     "c": "cast it 1/long rest without a slot",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Prototype Rig#1:spend_moves",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Prototype Rig#1:spend_moves",
     "k": "spend_moves",
     "p": {
      "id": "post_apocalyptic_prototype_rig"
     },
-    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Prototype Rig\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"Choose one 5th-level tech effect; cast it 1/long rest without a slot.\"}"
+    "by": "src/lib/srd/authored-effects-genre-b.ts slotless-cast spend (src/lib/dm/genre-b-free-cast.ts MARKS, read by src/lib/dm/cast-guard.ts before it plans a slot)"
    },
    {
     "c": "1/long rest",
@@ -1975,18 +1976,19 @@
    },
    {
     "c": "for 1 minute your tech effects of 4th level or lower cost no slots",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Reactor Heart#1:spend_moves",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Reactor Heart#1:spend_moves",
     "k": "spend_moves",
     "p": {
      "id": "post_apocalyptic_reactor_heart"
     },
-    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Reactor Heart\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, for 1 minute your tech effects of 4th level or lower cost no slots; y"
+    "by": "src/lib/srd/authored-effects-genre-b.ts slotless-cast spend (src/lib/dm/genre-b-free-cast.ts MARKS, read by src/lib/dm/cast-guard.ts before it plans a slot)"
    },
    {
     "c": "for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Reactor Heart#1:spend_moves"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Living Dynamo: for a minute every spell of 3rd level or lower costs no slot",
+    "by": "src/lib/srd/authored-effects-genre-b.ts slotless-cast spend (src/lib/dm/genre-b-free-cast.ts MARKS, read by src/lib/dm/cast-guard.ts before it plans a slot)"
    },
    {
     "c": "you glow visibly",

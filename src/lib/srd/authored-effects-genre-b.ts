@@ -162,6 +162,25 @@ export const GENRE_B_AUTHORED: GenreRow[] = [
   // "whack a machine or construct: restore 1d8 + INT HP to it".
   spend("Percussive Maintenance", ["salvage_tech"], "post_apocalyptic_percussive_maintenance", "action", { kind: "flames", healOnly: true, type: "", formula: "1d8+int" }),
 
+  // Slotless casts (src/lib/dm/genre-b-free-cast.ts MARKS, read by the cast
+  // guard): one cast of the level or lower, the mark spent by it.
+  // "cast a 1st-level schematic without expending a slot"; Perpetual Motion:
+  // "works for schematics up to 3rd level, twice per rest".
+  spend("Overpressure Valve", ["machinist"], "steampunk_overpressure_valve", undefined, { kind: "buff", condition: [[5, "slotless cast (1st)"], [18, "slotless cast (3rd)"]], rounds: 600 }),
+  // "cast a 1st-level tech effect without expending a slot"; Power Cell Cache (3rd): "up to 3rd level".
+  spend("Power Cell Cache", ["salvage_tech"], "post_apocalyptic_power_cell_cache", undefined, { kind: "buff", condition: [[5, "slotless cast (1st)"], [14, "slotless cast (3rd)"]], rounds: 600 }),
+  spend("Sublimation", ["alchemist"], "steampunk_sublimation", undefined, { kind: "buff", condition: "slotless cast (3rd)", rounds: 600 }),
+  spend("The Examined Mind", ["alienist"], "mystery_the_examined_mind", undefined, { kind: "buff", condition: "slotless cast (5th)", rounds: 600 }),
+  spend("Magnum Opus", ["machinist"], "steampunk_magnum_opus", undefined, { kind: "buff", condition: "slotless cast (6th)", rounds: 600 }),
+  spend("The Great Work", ["alchemist"], "steampunk_the_great_work", undefined, { kind: "buff", condition: "slotless cast (7th)", rounds: 600 }),
+  // "Choose one 3rd-level schematic; cast it 1/long rest without a slot": the player's chosen spell, of exactly that level.
+  spend("Master Schematic", ["machinist"], "steampunk_master_schematic", undefined, { kind: "buff", condition: "chosen cast (3rd)", rounds: 600 }),
+  spend("Prototype Rig", ["salvage_tech"], "post_apocalyptic_prototype_rig", undefined, { kind: "buff", condition: "chosen cast (5th)", rounds: 600 }),
+  // "for 1 minute your ... of Nth level or lower cost no slots", the mark kept for the minute.
+  spend("Living Dynamo", ["aether_channeler"], "steampunk_living_dynamo", undefined, { kind: "buff", condition: "slotless minute (3rd)", rounds: 10 }),
+  spend("Reactor Heart", ["salvage_tech"], "post_apocalyptic_reactor_heart", undefined, { kind: "buff", condition: "slotless minute (4th)", rounds: 10 }),
+  // "your mutations of 3rd level or lower cost no slots and your Adaptive Hide grants +2 more AC".
+  spend("The Next Step", ["aberrant"], "post_apocalyptic_the_next_step", undefined, { kind: "buff", condition: "the next step", rounds: 10 }),
   // Conditions ended (src/lib/dm/genre-b-cure.ts): an illusion or a curse is
   // no condition the board holds, so charm and fear (and a curse the GM laid
   // by that name) are the engine's.

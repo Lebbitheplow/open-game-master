@@ -9,6 +9,7 @@
 //   drops        src/lib/dm/genre-b-drops.ts (Stand at the Dawn) and
 //                Hardened's cut, both in src/lib/dm/pc-damage.ts
 //   cures        src/lib/dm/genre-b-cure.ts (the "cure" spend kind)
+//   slotless     src/lib/dm/genre-b-free-cast.ts marks, read by the cast guard
 //   passives     rows of src/lib/srd/authored-effects-genre-b.ts on the
 //                engine's own readers: darkvision, a turn's heal, acid that
 //                ignores resistance, a concentration damage cannot break or
@@ -301,6 +302,45 @@ await run("Revelation: every ally within 60 ft regains 5d8, sheds fear and charm
   kit.place(ally.id, 5, 15);
   rig.must(await world.invoke("use_resource", { characterId: hero.id, resource: "Revelation", reason: "test" }), "use_resource Revelation");
   assert.deepEqual([world.sheet(ally.id).currentHp, world.sheet(ally.id).conditions.includes("frightened")], [40, true], "an ally 65 ft off was reached");
+});
+
+// ---- slotless casts (src/lib/dm/genre-b-free-cast.ts, read by cast-guard.ts) ----
+
+const caster = (hero) =>
+  world.patch(hero.id, { equipment: [...world.sheet(hero.id).equipment, { name: "Component Pouch", qty: 1 }], spellcasting: { ability: "int", slots: { 1: { max: 4, used: 0 }, 2: { max: 3, used: 0 }, 3: { max: 3, used: 0 } }, prepared: ["Mage Armor", "Mirror Image", "Haste"], known: [], cantrips: [] } });
+const used = (hero) => Object.fromEntries(Object.entries(world.sheet(hero.id).spellcasting.slots).map(([level, slot]) => [level, slot.used]));
+const cast = async (hero, spell) => rig.must(await world.invoke("cast_buff", { characterId: hero.id, spell }), `cast_buff ${spell}`);
+
+await run("Overpressure Valve: one 1st-level spell with no slot, the mark spent by it; a 2nd-level spell still takes its slot", async () => {
+  const hero = rig.holder(feature("machinist", "Overpressure Valve", 5));
+  caster(hero);
+  rig.must(await world.invoke("use_resource", { characterId: hero.id, resource: "Overpressure Valve", reason: "test" }), "use_resource");
+  await cast(hero, "Mirror Image");
+  assert.deepEqual(used(hero), { 1: 0, 2: 1, 3: 0 }, "a 2nd-level spell was paid by the 1st-level mark");
+  await cast(hero, "Mage Armor");
+  assert.deepEqual(used(hero), { 1: 0, 2: 1, 3: 0 }, "the 1st-level spell took a slot");
+  await cast(hero, "Mage Armor");
+  assert.deepEqual(used(hero), { 1: 1, 2: 1, 3: 0 }, "the mark paid twice");
+});
+
+await run("Living Dynamo: for a minute every spell of 3rd level or lower costs no slot", async () => {
+  const hero = rig.holder(feature("aether_channeler", "Living Dynamo", 20));
+  caster(hero);
+  await rig.fight(hero);
+  rig.must(await world.invoke("use_resource", { characterId: hero.id, resource: "Living Dynamo", reason: "test" }), "use_resource");
+  await cast(hero, "Haste");
+  rig.myTurn(hero);
+  await cast(hero, "Mirror Image");
+  assert.deepEqual(used(hero), { 1: 0, 2: 0, 3: 0 }, "a slot was spent inside the minute");
+});
+
+await run("Master Schematic: the chosen 3rd-level spell with no slot, never a lower one", async () => {
+  const hero = rig.holder(feature("machinist", "Master Schematic", 14));
+  caster(hero);
+  rig.must(await world.invoke("use_resource", { characterId: hero.id, resource: "Master Schematic", reason: "test" }), "use_resource");
+  await cast(hero, "Mage Armor");
+  await cast(hero, "Haste");
+  assert.deepEqual(used(hero), { 1: 1, 2: 0, 3: 0 }, "the 1st-level spell rode the 3rd-level choice, or the 3rd took a slot");
 });
 
 rig.world.close();

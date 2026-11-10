@@ -25,6 +25,8 @@
 // module reads the live state and writes the spend. It must not import
 // mutations.ts (which imports it).
 
+import { genreFreeCast } from "@/lib/dm/genre-b-free-cast";
+import { removeConditions } from "@/lib/dm/condition-logic";
 import { subclassExtrasForTable } from "@/lib/db/subclass-extras";
 import { enemyCounterspell } from "@/lib/dm/enemy-reactions";
 import { endInvisibilityOnCast } from "@/lib/dm/attack-marks";
@@ -555,6 +557,9 @@ export function castSpell(
   const freeCast = input.ritual || signature ? null : freeCastCounter(sheet, spell, facts, input.level);
   // A warlock's Mystic Arcanum pays for its own spell (counter-cast-arcanum.ts).
   const arcanum = input.ritual || signature || freeCast || slowHeld ? null : arcanumCounter(sheet, facts, input.level);
+  // A genre feature's slotless cast (Overpressure Valve, Sublimation, Reactor
+  // Heart...): its mark on the caster pays (src/lib/dm/genre-b-free-cast.ts).
+  const genreFree = input.ritual || signature || freeCast || arcanum || slowHeld ? null : genreFreeCast(sheet, facts?.level, input.level);
   // Mantle of Majesty's Command costs no slot while the mantle holds.
   const mantled =
     !input.ritual && !signature && !freeCast && /^command$/i.test(engine.trim()) &&
@@ -562,7 +567,7 @@ export function castSpell(
   // The race's grant pays only when nothing before it in the plan below
   // did: a Topaz fighter with Fey Touched casting misty step spends the
   // feat's free cast or the ancestry's use, never both (issue #833).
-  const grantPaid = Boolean(grant) && grantNoSlot && !input.ritual && !slowHeld && !signature && !freeCast;
+  const grantPaid = Boolean(grant) && grantNoSlot && !input.ritual && !slowHeld && !signature && !freeCast && !genreFree;
   // A reaction spell cast into a ring answers no trigger: it takes the action.
   const turnFacts = input.storing && facts?.castingTime === "reaction" ? { ...facts, castingTime: "action" as const } : facts;
   const slot: SlotPlan | ToolError = input.ritual
@@ -575,6 +580,8 @@ export function castSpell(
         ? { kind: "none", note: `${name} is cast without a slot (a feat's free cast): once until a long rest.` }
         : arcanum
           ? { kind: "none", note: `${name} is cast as a Mystic Arcanum, with no spell slot: once until a long rest.` }
+        : genreFree
+          ? { kind: "none", note: `${name} is cast with no spell slot (${genreFree.condition}${genreFree.spent ? ", now spent" : ", for the minute"}).` }
         : grant && grantPaid
           ? { kind: "none", note: `${name} is cast through ${grant.source} with no spell slot${grant.counter ? `: ${(grant.uses ?? 1) === 1 ? "once" : `${grant.uses} times`}, and again after a ${grant.rest ?? "long"} rest` : ", at will"}${grant.castAt ? `, as a level ${grant.castAt} spell` : ""}.` }
         : mantled
@@ -590,7 +597,7 @@ export function castSpell(
     return barred && "error" in barred ? barred : slot;
   }
   // Infernal Legacy's hellish rebuke is cast as a 2nd-level spell, with no slot.
-  const slotLevel = slowHeld ? slowHeld.slotLevel : slot.kind === "none" ? (grantPaid ? grant?.castAt ?? null : null) : slot.level;
+  const slotLevel = slowHeld ? slowHeld.slotLevel : slot.kind === "none" ? (grantPaid ? grant?.castAt ?? null : genreFree ? genreFree.level : null) : slot.level;
   // A ritual out of a fight costs no turn; in one it is begun with the
   // action like any casting held across turns, and a completing casting
   // costs no action at all.
@@ -644,6 +651,12 @@ export function castSpell(
   }
   if (arcanum) {
     patch.resources = spendSignature(patch.resources ?? sheet.resources, arcanum);
+  }
+  // A one-cast genre mark is spent by the cast it paid for.
+  if (genreFree?.spent) {
+    const left = removeConditions(sheet.conditions, sheet.conditionMeta, sheet.conditions.filter((entry) => isConditionNamed(entry, genreFree.condition)));
+    patch.conditions = left.conditions;
+    patch.conditionMeta = left.meta;
   }
   // The grant's use (Thief of Five Fates' with its slot, Infernal Legacy's
   // without one). A cast a slot paid for, its free uses spent, spends none.
