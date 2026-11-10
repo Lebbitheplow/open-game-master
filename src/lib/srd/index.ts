@@ -12,7 +12,7 @@ import { computeArmorClass, unarmoredFormulaFor, type AcBreakdown } from "@/lib/
 import { conditionAcRiders } from "@/lib/srd/condition-effects";
 import { auraGranted, combatRiders, defenseRiders, halfProficiencyCovers } from "@/lib/srd/feature-effects";
 import { featureSaveProficiencies, featureSkillProficiencies } from "@/lib/srd/trait-rules";
-import { authoredAcBonus, authoredSaveModifier, authoredSpeeds } from "@/lib/srd/authored-effects";
+import { authoredAcBonus, authoredExpertise, authoredSaveModifier, authoredSpeeds } from "@/lib/srd/authored-effects";
 import { effectiveAbilities, itemSpeeds, magicItemRiders, type Wearer, type WornMagicItem } from "@/lib/srd/magic-items";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
 import { purseCoins } from "@/lib/srd/currency";
@@ -501,7 +501,12 @@ export function computeSheetDerived(
   // the Champion's, which covers the physical abilities only, rounds up.
   const halfScope = defense.halfProficiency ?? null;
   const halfPb = halfScope === "physical" ? Math.ceil(pb / 2) : Math.floor(pb / 2);
-  const expertise = sheet.proficiencies.expertise ?? [];
+  // A genre feature's doubled skill (authored-effects.ts authoredExpertise)
+  // doubles a proficiency the sheet has, as Expertise does.
+  const expertise = [
+    ...(sheet.proficiencies.expertise ?? []),
+    ...authoredExpertise(sheet).filter((skill) => sheet.proficiencies.skills.includes(skill)),
+  ];
   // Skills a feature trains (Beguiling Influence), as featureSaves above.
   const featureSkills = featureSkillProficiencies({ features: riderFeatures });
   const skillParts = Object.fromEntries(
@@ -532,7 +537,8 @@ export function computeSheetDerived(
   const initiativeParts = keepMeaningful([
     { label: "DEX modifier", value: abilityMods.dex },
     { label: "features", value: defense.initiativeBonus },
-    { label: "half proficiency", value: halfScope ? halfPb : 0 },
+    // Sharpened Logic's Intelligence and Wisdom half does not reach it.
+    { label: "half proficiency", value: halfScope && halfProficiencyCovers(halfScope, "dex") ? halfPb : 0 },
   ]);
   const passiveParts = keepMeaningful([
     { label: "base", value: 10 },

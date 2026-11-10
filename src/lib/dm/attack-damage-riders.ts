@@ -23,6 +23,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { holdsFeature, isNamed } from "@/lib/srd/feature-names";
 import { subclassNamed } from "@/lib/srd/subclass-name";
 import { authoredDamageAbility } from "@/lib/srd/authored-effects-more";
+import { genreBRiders } from "@/lib/srd/genre-b-combat";
 
 export type FeatureRider = CombatRiders["damageRiders"][number];
 
@@ -59,7 +60,7 @@ export function attackDamageRiders(input: {
   const featureRiders: FeatureRider[] =
     kind === "spell" || kind === "granted"
       ? []
-      : [...riders.damageRiders, ...hunterRiders(sheet, input.enemy), ...pactRiders(sheet, kind, profile)]
+      : [...riders.damageRiders, ...hunterRiders(sheet, input.enemy), ...pactRiders(sheet, kind, profile), ...genreBRiders(sheet, profile, input.enemy as { conditions?: string[] } | undefined)]
           .filter((rider) => {
             if (rider.when === "melee" && profile.ranged) {
               return false;

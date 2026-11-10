@@ -81,6 +81,8 @@ export type AuthoredSheet = {
   conditionMeta?: unknown;
   equipment?: Array<{ name: string; equipped?: boolean; gear?: { armor?: { category?: string } } }>;
   concentratingOn?: string | null;
+  currentHp?: number;
+  maxHp?: number;
 };
 
 export type HeldAuthored = Row & { choice: string | null; level: number; name: string };
@@ -226,6 +228,9 @@ export function gateHolds(gate: Gate | undefined, sheet: AuthoredSheet, held: He
   if (gate.concentrating && !sheet.concentratingOn) {
     return false;
   }
+  if (gate.belowHalf && !(typeof sheet.currentHp === "number" && typeof sheet.maxHp === "number" && sheet.currentHp * 2 < sheet.maxHp)) {
+    return false;
+  }
   if (gate.condition && !hasCondition(sheet, gate.condition)) {
     return false;
   }
@@ -351,6 +356,12 @@ export function authoredCheckTraits(sheet: AuthoredSheet): Array<RollKey & { not
   ].map((key) => ({ ...key, note: `${held.feature}: advantage` })));
 }
 
+// The skills a held feature doubles the proficiency bonus of
+// (srd/index.ts reads it as expertise in a skill the sheet is proficient in).
+export function authoredExpertise(sheet: AuthoredSheet): string[] {
+  return activeAuthored(sheet, "skill_expertise").flatMap(({ effect }) => effect.skills);
+}
+
 export function authoredSaveProficiencies(sheet: AuthoredSheet): Ability[] {
   return [...new Set(activeAuthored(sheet, "save_prof").flatMap(({ effect }) => effect.abilities))];
 }
@@ -441,7 +452,9 @@ export function authoredRollRiders(
         advantage.push(`${held.label}: advantage`);
       }
     }
-    const roll = { roll: "check" as const, skill, ability: input.ability, about: input.about };
+    // The key's skills are ids ("sleight_of_hand"), which textKey above spells
+    // with spaces: a two-word skill's advantage was never read.
+    const roll = { roll: "check" as const, skill: input.skill, ability: input.ability, about: input.about };
     for (const note of new Set(authoredCheckTraits(sheet).filter((key) => keyFits(key, roll)).map((key) => key.note))) {
       advantage.push(note);
     }

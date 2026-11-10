@@ -38,6 +38,8 @@ export type Gate = {
   // The class that granted the feature has reached this level (a part of
   // the feature that arrives later: Spiritual Focus's d6 from 6th level).
   level?: number;
+  // The holder is below half their hit point maximum (Last Man Standing).
+  belowHalf?: boolean;
 };
 
 type Base = { gate?: Gate; note?: string };
@@ -66,6 +68,9 @@ export type AuthoredEffect = Base &
     // Advantage on checks: named skills, or checks of an ability about one
     // circumstance (the roll's `about`).
     | { kind: "check_adv"; skills?: string[]; abilities?: Ability[]; about?: CheckAbout }
+    // Twice the proficiency bonus on checks with these skills the holder is
+    // proficient in (a mystery class's "Double proficiency bonus on Insight").
+    | { kind: "skill_expertise"; skills: string[] }
     // A critical hit against the holder is a normal hit.
     | { kind: "crit_immune" }
     // The holder's damage of these types ignores resistance.

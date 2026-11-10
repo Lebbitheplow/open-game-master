@@ -677,7 +677,7 @@ export function resolveRollExpression(
     // Jack of All Trades / Remarkable Athlete: raw ability checks never
     // carry proficiency, so a covered ability always gets the half bonus.
     const halfScope =
-      (defense as { halfProficiency?: "all" | "physical" | null }).halfProficiency ?? null;
+      (defense as { halfProficiency?: "all" | "physical" | "mental" | null }).halfProficiency ?? null;
     // Jack of All Trades rounds down; Remarkable Athlete (the physical
     // scope) rounds up.
     const halfBonus =

@@ -203,6 +203,10 @@ export function subclassGate(classId: string, level: number): { pickLevel: numbe
 const EXPERTISE_GRANTS: Record<string, number[]> = {
   rogue: [1, 6],
   bard: [3, 10],
+  // The genre classes whose tables grant "Expertise" at 2nd level and
+  // "Expertise (2 more skills)" at 10th (src/lib/classes/mystery-features.json).
+  detective: [2, 10],
+  grifter: [2, 10],
 };
 
 // A rogue's Expertise may take thieves' tools in place of a skill (SRD 5.1,

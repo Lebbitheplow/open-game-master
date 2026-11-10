@@ -21,6 +21,7 @@ import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { publishPersisted } from "@/lib/events";
 import { RAGING, spendRelentlessEndurance, spendUndyingSentinel } from "@/lib/srd/class-resources";
+import { spendGenreHold } from "@/lib/srd/genre-b-counter-terms";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { applyDamageMath, wildShapeDamageMath } from "@/lib/dm/mutation-math";
 import { applyDamageDeathHook } from "@/lib/dm/death";
@@ -402,6 +403,15 @@ export function applyPcDamage(
         undyingSentinel: true,
         note: `${sheet.name} should have fallen, but Undying Sentinel holds them at 1 HP. The feature is now spent until a long rest.`,
       });
+    }
+    // Hard to Kill (enforcer 7): "when you drop to 0 HP, drop to 1 instead".
+    const genreHold = spendGenreHold(sheet.resources);
+    if (genreHold) {
+      const patch: FullPatchSheetInput = { currentHp: 1, resources: genreHold.resources };
+      patchSheet(sheet.id, patch);
+      audit(campaign, turnId, sheet, "apply_damage", { held: genreHold.name }, reason, patch);
+      publishSheet(campaign, sheet.id);
+      return tookIt({ ok: true, hp: `1/${effectiveMaxHp(sheet)}`, held: genreHold.name, note: `${sheet.name} should have fallen, but ${genreHold.name} holds them at 1 HP. The use is spent.` });
     }
     const spent = spendRelentlessEndurance(sheet.resources);
     if (spent) {

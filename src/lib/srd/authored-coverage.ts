@@ -123,6 +123,7 @@ export const AUTHORED_READERS: Record<string, { file: string; call: string }> = 
   init_adv: { file: "src/lib/srd/trait-rules.ts", call: "authoredInitiativeAdvantage(" },
   init_ability: { file: "src/lib/srd/feature-effects.ts", call: "authoredFeatureDefs(" },
   check_adv: { file: "src/lib/dm/roll-feature-riders.ts", call: "authoredRollRiders(" },
+  skill_expertise: { file: "src/lib/srd/index.ts", call: "authoredExpertise(" },
   crit_immune: { file: "src/lib/dm/enemy-swing-odds.ts", call: "authoredIncomingAttack(" },
   ignore_resist: { file: "src/lib/dm/enemy-damage.ts", call: "authoredIgnoresResistance(" },
   attacked_disadv: { file: "src/lib/dm/enemy-swing-odds.ts", call: "authoredIncomingAttack(" },

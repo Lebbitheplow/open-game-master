@@ -17,6 +17,9 @@
 // Pure: no database, so a test and the Hand import it directly.
 import { textKey } from "@/lib/language/text-logic";
 import { authoredRows } from "@/lib/srd/authored-effects";
+import { GENRE_AUTHORED } from "@/lib/srd/authored-effects-genre";
+import { GENRE_B_TRIGGERS } from "@/lib/srd/authored-effects-genre-b";
+import type { AuthoredEntry } from "@/lib/srd/authored-effects-types";
 
 // One thing that happened, as both the engine and the Hand read it.
 //   hit, miss    an attack on `characterId` by `creatureId`
@@ -179,6 +182,8 @@ const WRITTEN: Record<string, TriggerSpec> = {
   "duelist's flourish": { on: [{ kind: "missed", melee: true }], what: "a melee attack that has just missed them" , aimsAt: true },
   // Authored spends that wait for a trigger (src/lib/dm/authored-spends.ts).
   "master of hexes": { on: [{ kind: "death", marked: "hexblade's curse" }], what: "the death of the creature under their Hexblade's Curse" },
+  // The mystery, post-apocalyptic and steampunk counters (authored-effects-genre-b.ts).
+  ...GENRE_B_TRIGGERS,
 };
 
 // Raging Storm's environments each wait for their own thing.
@@ -208,7 +213,9 @@ export const TRIGGERED_COUNTERS: readonly string[] = Object.keys(TABLE).filter((
 // the trigger and applies the effect. A shared pool (ki, Bardic Inspiration)
 // is spent by many things and is never one reaction's.
 export function reactionSpending(defId: string): string | null {
-  const rows = authoredRows();
+  // The genre classes' rows (authored-effects-genre.ts) draw on their own
+  // counters the same way: Deductive Counter's use is its reaction's.
+  const rows: Array<{ entry: AuthoredEntry }> = [...authoredRows(), ...GENRE_AUTHORED];
   if (rows.some((row) => (row.entry.spends ?? []).some((spend) => spend.pool?.id === defId))) return null;
   for (const row of rows) {
     if (row.entry.counter !== defId) continue;

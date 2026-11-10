@@ -5,6 +5,7 @@
 // rests refill by recharge type. Pure and dependency-light so test scripts
 // import it directly.
 
+import { genreBCounterTerms } from "@/lib/srd/genre-b-counter-terms";
 import { COMBAT_RESOURCE_DEFS } from "@/lib/srd/combat-rows";
 import customResourcesJson from "@/lib/classes/resources.json";
 import authoredResourcesJson from "@/lib/srd/authored-resources.json";
@@ -707,6 +708,9 @@ const CUSTOM_RESOURCE_DEFS: ResourceDef[] = (
   guidance: row.guidance,
   upgrades: row.upgrades,
   ...(row.action ? { action: row.action } : {}),
+  // What later features of the mystery, post-apocalyptic and steampunk
+  // catalogs say of the counter (src/lib/srd/genre-b-counter-terms.ts).
+  ...genreBCounterTerms(row),
 }));
 
 // The limited-use features of the authored subclass layer. Same row shape as

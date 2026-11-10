@@ -42,13 +42,15 @@
    },
    {
     "c": "1 minute of work restores 1d8 + INT HP to a construct, machine, or armored ally",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_field_repair#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:steampunk_field_repair",
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts, resolved by src/lib/dm/authored-spends.ts (flames, heal only)"
    },
    {
     "c": "1d8 + INT",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_field_repair#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:steampunk_field_repair",
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts, resolved by src/lib/dm/authored-spends.ts (flames, heal only)"
    }
   ]
  },
@@ -134,16 +136,22 @@
   "clauses": [
    {
     "c": "+1 AC while wearing armor you have tuned (any armor after a long rest)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Reinforced Chassis#0:ac",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test machinist::Reinforced Chassis#0:ac",
     "k": "ac",
     "p": {
      "delta": 1,
      "gear": "armor"
     },
-    "observed": "AC is 15 with Reinforced Chassis and 15 without it"
+    "observed": "AC is 15 with Reinforced Chassis and 15 without it",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_FEATURE_DEFS, read by src/lib/srd/feature-effects.ts"
    }
-  ]
+  ],
+  "name": {
+   "effects": [
+    "ac_bonus"
+   ]
+  }
  },
  "machinist::Steamvent Burst": {
   "source": "src/lib/classes/steampunk-features.json",
@@ -226,28 +234,31 @@
   "clauses": [
    {
     "c": "Field Repair restores 2d8 + INT and has 4 uses per rest",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Field Repair (2d8)#0:unhooked",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test machinist::Field Repair (2d8)#0:unhooked",
     "k": "unhooked",
     "observed": "nothing in the engine answers to Field Repair (2d8): no typed effect, no authored row, no typed counter (its counter: steampunk_field_repair:narrative)",
-    "sev": "medium"
+    "sev": "medium",
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts, resolved by src/lib/dm/authored-spends.ts (2d8 + INT from 11th) and src/lib/srd/genre-b-counter-terms.ts, laid over the generated row by src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS"
    },
    {
     "c": "2d8 + INT",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Field Repair (2d8)#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:steampunk_field_repair",
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts, resolved by src/lib/dm/authored-spends.ts"
    },
    {
     "c": "has 4 uses per rest",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Field Repair (2d8)#2:uses",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test machinist::Field Repair (2d8)#2:uses",
     "k": "uses",
     "p": {
      "id": "steampunk_field_repair",
      "n": 4,
      "rest": "any"
     },
-    "observed": "steampunk_field_repair holds 2 use(s) at level 11, and the text gives 4"
+    "observed": "steampunk_field_repair holds 2 use(s) at level 11, and the text gives 4",
+    "by": "src/lib/srd/genre-b-counter-terms.ts, laid over the generated row by src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS"
    }
   ]
  },
@@ -378,15 +389,16 @@
    },
    {
     "c": "twice per rest",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Perpetual Motion#1:uses",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test machinist::Perpetual Motion#1:uses",
     "k": "uses",
     "p": {
      "id": "steampunk_overpressure_valve",
      "n": 2,
      "rest": "any"
     },
-    "observed": "steampunk_overpressure_valve holds 1 use(s) at level 18, and the text gives 2"
+    "observed": "steampunk_overpressure_valve holds 1 use(s) at level 18, and the text gives 2",
+    "by": "src/lib/srd/genre-b-counter-terms.ts, laid over the generated row by src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS"
    }
   ]
  },
@@ -828,11 +840,12 @@
    },
    {
     "c": "opportunity attacks against you have disadvantage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Cat's Grace#1:unhooked",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test aeronaut::Cat's Grace#1:unhooked",
     "k": "unhooked",
     "observed": "nothing in the engine answers to Cat's Grace: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "sev": "medium",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED (registered in src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED), read by the authored layer's readers"
    }
   ]
  },
@@ -876,23 +889,29 @@
   "clauses": [
    {
     "c": "Your speed increases by 10 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Master of the High Wire#0:speed",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test aeronaut::Master of the High Wire#0:speed",
     "k": "speed",
     "p": {
      "delta": 10
     },
-    "observed": "speed is 30 with Master of the High Wire and 30 without it"
+    "observed": "speed is 30 with Master of the High Wire and 30 without it",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_FEATURE_DEFS, read by src/lib/srd/feature-effects.ts"
    },
    {
     "c": "difficult terrain never slows you",
     "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Master of the High Wire#1:unhooked",
-    "k": "unhooked",
+    "probe": "not run: no movement reader skips difficult terrain for a feature (src/lib/battlemap/view.ts and the move cost).",
     "observed": "nothing in the engine answers to Master of the High Wire: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "sev": "low",
+    "note": "The feature's other clauses are built, so the unhooked probe (any hook on the feature) no longer tells this one apart: no movement reader skips difficult terrain for a feature (src/lib/battlemap/view.ts and the move cost)."
    }
-  ]
+  ],
+  "name": {
+   "effects": [
+    "speed_bonus"
+   ]
+  }
  },
  "aeronaut::Legend of the Skies": {
   "source": "src/lib/classes/steampunk-features.json",
@@ -1174,8 +1193,8 @@
   "clauses": [
    {
     "c": "Resistance to acid and poison damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Acid Resistant Apron#0:resist",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test alchemist::Acid Resistant Apron#0:resist",
     "k": "resist",
     "p": {
      "types": [
@@ -1183,7 +1202,8 @@
       "poison"
      ]
     },
-    "observed": "20 acid damage took 20 hit points with Acid Resistant Apron (20 without it), and the text makes it 10"
+    "observed": "20 acid damage took 20 hit points with Acid Resistant Apron (20 without it), and the text makes it 10",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED (registered in src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED), read by the authored layer's readers"
    }
   ]
  },
@@ -1253,15 +1273,16 @@
    },
    {
     "c": "has 3 uses per rest",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Improved Catalyst#2:uses",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test alchemist::Improved Catalyst#2:uses",
     "k": "uses",
     "p": {
      "id": "steampunk_catalyst_stone",
      "n": 3,
      "rest": "any"
     },
-    "observed": "steampunk_catalyst_stone holds 1 use(s) at level 9, and the text gives 3"
+    "observed": "steampunk_catalyst_stone holds 1 use(s) at level 9, and the text gives 3",
+    "by": "src/lib/srd/genre-b-counter-terms.ts, laid over the generated row by src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS"
    }
   ]
  },
@@ -1381,13 +1402,15 @@
    },
    {
     "c": "brew a greater elixir: drinker gains advantage on everything for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_elixir_of_mastery#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:steampunk_elixir_of_mastery",
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts (src/lib/dm/authored-spends.ts) and the condition's row in src/lib/srd/genre-b-conditions.ts"
    },
    {
     "c": "for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_elixir_of_mastery#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:steampunk_elixir_of_mastery",
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts (src/lib/dm/authored-spends.ts) and the condition's row in src/lib/srd/genre-b-conditions.ts"
    }
   ]
  },
@@ -1503,28 +1526,27 @@
    {
     "c": "Reaction",
     "is": "held",
-    "by": "src/lib/classes/resources.json action, charged by src/lib/dm/resource-tools.ts",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test alchemist::Vitriol Ampoule#0:action_cost",
-    "k": "action_cost",
-    "p": {
-     "id": "steampunk_vitriol_ampoule",
-     "cost": "reaction"
-    }
+    "by": "the reaction on its counter in src/lib/srd/authored-effects-genre-b.ts (src/lib/dm/authored-reactions.ts); use_resource is refused toward it (src/lib/srd/trigger-table.ts reactionSpending)",
+    "probe": "scripts/test-genre-b-features.mjs Vitriol Ampoule; scripts/test-enforce-sweep-spends-genre-b.mjs test counter:steampunk_vitriol_ampoule",
+    "note": "The use costs the reaction through use_reaction; a use_resource spend of its own is refused toward it."
    },
    {
     "c": "when hit in melee",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_vitriol_ampoule#TRIGGER_UNCHECKED"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:steampunk_vitriol_ampoule",
+    "by": "the reaction on its counter in src/lib/srd/authored-effects-genre-b.ts (src/lib/dm/authored-reactions.ts); use_resource is refused toward it (src/lib/srd/trigger-table.ts reactionSpending)"
    },
    {
     "c": "the attacker takes 2d6 acid as an ampoule bursts",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_vitriol_ampoule#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:steampunk_vitriol_ampoule",
+    "by": "the reaction on its counter in src/lib/srd/authored-effects-genre-b.ts (src/lib/dm/authored-reactions.ts); use_resource is refused toward it (src/lib/srd/trigger-table.ts reactionSpending)"
    },
    {
     "c": "2d6 acid",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_vitriol_ampoule#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:steampunk_vitriol_ampoule",
+    "by": "the reaction on its counter in src/lib/srd/authored-effects-genre-b.ts (src/lib/dm/authored-reactions.ts); use_resource is refused toward it (src/lib/srd/trigger-table.ts reactionSpending)"
    },
    {
     "c": "INT-mod uses per long rest",
@@ -1821,15 +1843,16 @@
    },
    {
     "c": "Overclock has 2 uses per rest",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Fourth Gadget#1:uses",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test gadgeteer::Fourth Gadget#1:uses",
     "k": "uses",
     "p": {
      "id": "steampunk_overclock",
      "n": 2,
      "rest": "any"
     },
-    "observed": "steampunk_overclock holds 1 use(s) at level 10, and the text gives 2"
+    "observed": "steampunk_overclock holds 1 use(s) at level 10, and the text gives 2",
+    "by": "src/lib/srd/genre-b-counter-terms.ts, laid over the generated row by src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS"
    }
   ]
  },
@@ -2046,13 +2069,15 @@
    },
    {
     "c": "your tuned weapon deals +2d8 lightning on one hit",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_arc_coil#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:steampunk_arc_coil",
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts, resolved by src/lib/dm/authored-spends.ts (die_damage after a weapon hit)"
    },
    {
     "c": "+2d8 lightning",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_arc_coil#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:steampunk_arc_coil",
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts, resolved by src/lib/dm/authored-spends.ts (die_damage after a weapon hit)"
    },
    {
     "c": "the target cannot take reactions until its next turn",
@@ -2177,15 +2202,16 @@
   "clauses": [
    {
     "c": "Resistance to lightning damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aether_channeler::Grounded Stance#0:resist",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test aether_channeler::Grounded Stance#0:resist",
     "k": "resist",
     "p": {
      "types": [
       "lightning"
      ]
     },
-    "observed": "20 lightning damage took 20 hit points with Grounded Stance (20 without it), and the text makes it 10"
+    "observed": "20 lightning damage took 20 hit points with Grounded Stance (20 without it), and the text makes it 10",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED (registered in src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED), read by the authored layer's readers"
    }
   ]
  },
@@ -2383,24 +2409,19 @@
   "clauses": [
    {
     "c": "Immunity to lightning damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aether_channeler::Lightning Rod#0:resist",
-    "k": "resist",
-    "p": {
-     "types": [
-      "lightning"
-     ],
-     "immune": true
-    },
-    "observed": "20 lightning damage took 10 hit points with Lightning Rod (10 without it), and the text makes it 0"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features.mjs Lightning Rod",
+    "observed": "20 lightning damage took 10 hit points with Lightning Rod (10 without it), and the text makes it 0",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED (registered in src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED), read by the authored layer's readers",
+    "note": "The holder also has Grounded Stance's resistance, so with Lightning Rod off the blow takes 10, not 20."
    },
    {
     "c": "Galvanic Discharge is always active",
     "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aether_channeler::Lightning Rod#1:unhooked",
-    "k": "unhooked",
+    "probe": "not run: Galvanic Discharge's 1d8 strike back is not built (its counter stays the GM's, RULINGS in scripts/lib/sweep-spends-known.mjs).",
     "observed": "nothing in the engine answers to Lightning Rod: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "sev": "low",
+    "note": "The feature's other clauses are built, so the unhooked probe (any hook on the feature) no longer tells this one apart: Galvanic Discharge's 1d8 strike back is not built (its counter stays the GM's, RULINGS in scripts/lib/sweep-spends-known.mjs)."
    }
   ]
  },
@@ -2526,18 +2547,21 @@
    },
    {
     "c": "a whirling storm shield for 1 minute: +2 AC and melee attackers take 2d8 lightning",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_tempest_shell#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:steampunk_tempest_shell; scripts/test-genre-b-features.mjs Tempest Shell",
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts (src/lib/dm/authored-spends.ts) and the condition's row in src/lib/srd/genre-b-conditions.ts and the retaliate gated on it"
    },
    {
     "c": "for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_tempest_shell#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:steampunk_tempest_shell; scripts/test-genre-b-features.mjs Tempest Shell",
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts (src/lib/dm/authored-spends.ts) and the condition's row in src/lib/srd/genre-b-conditions.ts and the retaliate gated on it"
    },
    {
     "c": "2d8 lightning",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_tempest_shell#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:steampunk_tempest_shell; scripts/test-genre-b-features.mjs Tempest Shell",
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts (src/lib/dm/authored-spends.ts) and the condition's row in src/lib/srd/genre-b-conditions.ts and the retaliate gated on it"
    }
   ]
  },
@@ -2567,28 +2591,34 @@
    {
     "c": "Your tuned armor grants +1 AC and immunity to being pushed while conscious",
     "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Boiler Plate#0:unhooked",
-    "k": "unhooked",
+    "probe": "not run: the +1 AC is built (GENRE_B_FEATURE_DEFS); no forced-movement path asks for an immunity to being pushed.",
     "observed": "nothing in the engine answers to Boiler Plate: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "sev": "medium",
+    "note": "The feature's other clauses are built, so the unhooked probe (any hook on the feature) no longer tells this one apart: the +1 AC is built (GENRE_B_FEATURE_DEFS); no forced-movement path asks for an immunity to being pushed."
    },
    {
     "c": "Your tuned armor grants +1 AC",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Boiler Plate#1:ac",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test steam_knight::Boiler Plate#1:ac",
     "k": "ac",
     "p": {
      "delta": 1,
      "gear": "armor"
     },
-    "observed": "AC is 15 with Boiler Plate and 15 without it"
+    "observed": "AC is 15 with Boiler Plate and 15 without it",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_FEATURE_DEFS, read by src/lib/srd/feature-effects.ts"
    },
    {
     "c": "immunity to being pushed while conscious",
     "is": "gap",
     "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Boiler Plate#0:unhooked"
    }
-  ]
+  ],
+  "name": {
+   "effects": [
+    "ac_bonus"
+   ]
+  }
  },
  "steam_knight::Piston Strike": {
   "source": "src/lib/classes/steampunk-features.json",
@@ -2598,26 +2628,28 @@
   "clauses": [
    {
     "c": "1/turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Piston Strike#0:unhooked",
-    "k": "unhooked",
+    "is": "held",
+    "probe": "scripts/test-genre-b-features.mjs Piston Strike",
     "observed": "nothing in the engine answers to Piston Strike: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "sev": "medium",
+    "by": "src/lib/srd/genre-b-combat.ts, read by src/lib/dm/attack-damage-riders.ts (riders) and src/lib/dm/attack-logic.ts (a strike's die) (oncePerTurn, every hit under Piston Barrage)"
    },
    {
     "c": "+1d6 bludgeoning on a melee hit as the pistons slam",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Piston Strike#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test steam_knight::Piston Strike#2:rider",
+    "by": "src/lib/srd/genre-b-combat.ts, read by src/lib/dm/attack-damage-riders.ts (riders) and src/lib/dm/attack-logic.ts (a strike's die)"
    },
    {
     "c": "+1d6 bludgeoning",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Piston Strike#2:rider",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test steam_knight::Piston Strike#2:rider",
     "k": "rider",
     "p": {
      "dice": "1d6"
     },
-    "observed": "a hit rolls 1d8+3 with Piston Strike (1d8+3 without it), and the text makes it 1d6"
+    "observed": "a hit rolls 1d8+3 with Piston Strike (1d8+3 without it), and the text makes it 1d6",
+    "by": "src/lib/srd/genre-b-combat.ts, read by src/lib/dm/attack-damage-riders.ts (riders) and src/lib/dm/attack-logic.ts (a strike's die)"
    }
   ]
  },
@@ -2640,15 +2672,12 @@
    },
    {
     "c": "build pressure. Your next Piston Strike this turn deals +2d6 instead",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Head of Steam#1:rider",
-    "k": "rider",
-    "p": {
-     "dice": "2d6",
-     "pre": "Head of Steam"
-    },
+    "is": "held",
+    "probe": "scripts/test-genre-b-features.mjs Piston Strike",
     "observed": "a hit rolls 1d8+3 with Head of Steam (1d8+3 without it), and the text makes it 2d6",
-    "where": "src/lib/srd/authored-conditions.ts head_of_steam (summaryOnly: the buff lands and nothing reads it)"
+    "where": "src/lib/srd/authored-conditions.ts head_of_steam (summaryOnly: the buff lands and nothing reads it)",
+    "by": "src/lib/srd/genre-b-combat.ts, read by src/lib/dm/attack-damage-riders.ts (riders) and src/lib/dm/attack-logic.ts (a strike's die) (the head of steam condition the spend lays)",
+    "note": "The ledger's rider probe reads the condition left from its own first spend when the feature is off."
    }
   ]
  },
@@ -2786,15 +2815,16 @@
   "clauses": [
    {
     "c": "Advantage on saves against poison gas and drowning",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Pressure Seal#0:save_adv",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test steam_knight::Pressure Seal#0:save_adv",
     "k": "save_adv",
     "p": {
      "against": [
       "poisoned"
      ]
     },
-    "observed": "a save against poisoned threw 1 d20 with Pressure Seal (1 without it)"
+    "observed": "a save against poisoned threw 1 d20 with Pressure Seal (1 without it)",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED (registered in src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED), read by the authored layer's readers"
    },
    {
     "c": "the armor is airtight for 10 minutes",
@@ -2816,29 +2846,36 @@
   "clauses": [
    {
     "c": "Boiler Plate grants +2 AC",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Reinforced Boiler#0:ac",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test steam_knight::Reinforced Boiler#0:ac",
     "k": "ac",
     "p": {
      "delta": 1,
      "gear": "armor"
     },
     "observed": "AC is 15 with Reinforced Boiler and 15 without it",
-    "note": "measured as one more than Boiler Plate's +1, which is not applied either"
+    "note": "measured as one more than Boiler Plate's +1, which is not applied either",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_FEATURE_DEFS, read by src/lib/srd/feature-effects.ts"
    },
    {
     "c": "resistance to fire damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Reinforced Boiler#1:resist",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test steam_knight::Reinforced Boiler#1:resist",
     "k": "resist",
     "p": {
      "types": [
       "fire"
      ]
     },
-    "observed": "20 fire damage took 20 hit points with Reinforced Boiler (20 without it), and the text makes it 10"
+    "observed": "20 fire damage took 20 hit points with Reinforced Boiler (20 without it), and the text makes it 10",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED (registered in src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED), read by the authored layer's readers"
    }
-  ]
+  ],
+  "name": {
+   "effects": [
+    "ac_bonus"
+   ]
+  }
  },
  "steam_knight::Extra Attack (2)": {
   "source": "src/lib/classes/steampunk-features.json",
@@ -2965,11 +3002,12 @@
   "clauses": [
    {
     "c": "Critical hits against you become normal hits",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Adamant Boiler#0:unhooked",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs test steam_knight::Adamant Boiler#0:unhooked",
     "k": "unhooked",
     "observed": "nothing in the engine answers to Adamant Boiler: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "sev": "low",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED (registered in src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED), read by the authored layer's readers"
    }
   ]
  },
@@ -2993,13 +3031,15 @@
    },
    {
     "c": "double your speed and gain an extra action each turn for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_full_throttle#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:steampunk_full_throttle",
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts (src/lib/dm/authored-spends.ts) and the condition's row in src/lib/srd/genre-b-conditions.ts"
    },
    {
     "c": "for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_full_throttle#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:steampunk_full_throttle",
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts (src/lib/dm/authored-spends.ts) and the condition's row in src/lib/srd/genre-b-conditions.ts"
    },
    {
     "c": "take 3d10 fire when it ends",
@@ -3153,18 +3193,21 @@
    },
    {
     "c": "for 1 minute you and adjacent allies have resistance to all damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_unbreakable_vanguard#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:steampunk_unbreakable_vanguard",
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts (src/lib/dm/authored-spends.ts) and the condition's row in src/lib/srd/genre-b-conditions.ts"
    },
    {
     "c": "adjacent",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_unbreakable_vanguard#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:steampunk_unbreakable_vanguard",
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts (src/lib/dm/authored-spends.ts) and the condition's row in src/lib/srd/genre-b-conditions.ts"
    },
    {
     "c": "for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_unbreakable_vanguard#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:steampunk_unbreakable_vanguard",
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts (src/lib/dm/authored-spends.ts) and the condition's row in src/lib/srd/genre-b-conditions.ts"
    }
   ]
  }

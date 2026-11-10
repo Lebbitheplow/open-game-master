@@ -347,6 +347,10 @@ export type AttackStance = {
   martialArts?: boolean;
   // Tavern Brawler: the unarmed strike deals 1d4 (src/lib/srd/feat-combat.ts).
   brawler?: boolean;
+  // A genre feature's own die for the unarmed strike or an improvised weapon
+  // (src/lib/srd/genre-b-combat.ts genreStrike: Heavy Hands, Improvised Weapon
+  // Mastery, which also counts the improvised weapon proficient).
+  strike?: { unarmed?: string; improvised?: string; improvisedTwoHanded?: string; improvisedProficient?: boolean };
   // What worn items add to attacks with some weapons (Bracers of Archery) or
   // with the unarmed strike (UNARMED_STRIKE_KEY), from
   // src/lib/srd/magic-items.ts magicItemRiders(...).weaponRiders.
@@ -438,7 +442,11 @@ export function weaponAttackProfile(
     const fistRiders = resolved.unarmed ? (stance.worn ?? []).filter((rider) => rider.weapons.includes(UNARMED_STRIKE_KEY) && !rider.ranged) : [];
     const fist = wornRiderTotals(fistRiders);
     notes.push(...fist.notes);
-    const ownDice = martial ? `1${martial}` : resolved.unarmed ? (stance.brawler ? "1d4" : "1") : "1d4";
+    const strike = stance.strike ?? {};
+    const improvisedDie = (stance.twoHanded ? strike.improvisedTwoHanded : undefined) ?? strike.improvised;
+    const fistDie = strike.unarmed ?? (stance.brawler ? "1d4" : "1");
+    const ownDice = martial ? `1${martial}` : resolved.unarmed ? fistDie : (improvisedDie ?? "1d4");
+    const improvisedTrained = !resolved.unarmed && Boolean(strike.improvisedProficient);
     // An item's die stands in when it beats the strike's own, as the Martial
     // Arts die does for a weapon's (martialDice).
     const form = fistRiders.find((rider) => rider.unarmed)?.unarmed ?? null;
@@ -457,7 +465,7 @@ export function weaponAttackProfile(
     const damageType = form?.damageType ?? (from?.kind === "melee" ? splitDamage(from.damage).type || "bludgeoning" : "bludgeoning");
     return {
       weapon: resolved.displayName,
-      toHit: mod + fist.attack + (resolved.unarmed ? derived.proficiencyBonus : 0),
+      toHit: mod + fist.attack + (resolved.unarmed || improvisedTrained ? derived.proficiencyBonus : 0),
       damageExpression: withModifier(dice, offHandModifier(mod, stance) + fist.damage),
       damageType,
       ranged: false,
@@ -467,7 +475,7 @@ export function weaponAttackProfile(
       // "An improvised thrown weapon has a normal range of 20 feet and a
       // long range of 60 feet."
       ...(resolved.unarmed ? {} : { longRangeTiles: 12 }),
-      proficient: resolved.unarmed,
+      proficient: resolved.unarmed || improvisedTrained,
       improvised: !resolved.unarmed,
       ability: useDex ? "dex" : "str",
       magicBonus: 0,

@@ -4,6 +4,7 @@
 // module describes. Nothing is spent here and nothing is rolled: every
 // return is either a refusal or a profile.
 
+import { genreStrike } from "@/lib/srd/genre-b-combat";
 import { holdsPactOfTheBlade } from "@/lib/srd/pact-weapon";
 import { sheetSpellAuthors } from "@/lib/dm/spell-authors";
 import { brawlerUnarmed } from "@/lib/srd/feat-combat";
@@ -404,6 +405,7 @@ export function buildAttackProfile(
         riders,
         martialArts: martialArtsApplies(sheet),
         brawler: brawlerUnarmed(sheet),
+        strike: genreStrike(sheet),
         // Bracers of Archery's longbow training and +2 damage.
         worn: magicItemRiders(sheet.equipment, sheet).weaponRiders,
         twoHanded,

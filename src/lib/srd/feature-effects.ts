@@ -18,6 +18,7 @@
 import subclassesJson from "@/lib/srd/subclasses.json";
 import authoredFeatsJson from "@/lib/srd/authored-feats.json";
 import { authoredFeatureDefs } from "@/lib/srd/authored-feature-defs";
+import { GENRE_B_FEATURE_DEFS } from "@/lib/srd/authored-effects-genre-b";
 import { tableFeat } from "@/lib/srd/feat-effects";
 import { textKey } from "@/lib/language/text-logic";
 import { choiceIn, isConditionNamed, isNamed } from "@/lib/srd/feature-names";
@@ -81,7 +82,8 @@ export type FeatureEffect =
   // Half the proficiency bonus (rounded down) on ability checks that do not
   // already use it, initiative included. Jack of All Trades covers every
   // ability; Remarkable Athlete only STR, DEX, and CON.
-  | { kind: "half_proficiency"; scope: "all" | "physical" }
+  // "mental": Intelligence and Wisdom checks (Sharpened Logic).
+  | { kind: "half_proficiency"; scope: "all" | "physical" | "mental" }
   // Extra damage dice on landed attacks (Divine Strike, Improved Divine
   // Smite, Divine Fury). `when` restricts the carrier; oncePerTurn rides the
   // turn budget; requiresCondition gates it (Divine Fury: raging).
@@ -604,6 +606,11 @@ const AUTHORED_PARSED = new Map<string, { effects: FeatureEffect[]; guidance: st
       FEATURE_EFFECTS.push(def);
     }
   }
+  // The mystery, post-apocalyptic and steampunk classes' features of these
+  // shapes, each held to its class (src/lib/srd/authored-effects-genre-b.ts).
+  for (const def of GENRE_B_FEATURE_DEFS) {
+    FEATURE_EFFECTS.push({ ...def, match: def.match.map(textKey), classes: def.classes.map(textKey) });
+  }
 }
 
 // The names of every class and subclass feature ODM knows: a content pack
@@ -1087,7 +1094,7 @@ export type DefenseRiders = {
   // Half proficiency on ability checks that lack it: "all" (Jack of All
   // Trades) or "physical" for STR/DEX/CON only (Remarkable Athlete). The
   // broader scope wins when a sheet somehow carries both.
-  halfProficiency: "all" | "physical" | null;
+  halfProficiency: "all" | "physical" | "mental" | null;
 };
 
 // SRD 5.1 paladin, Aura of Protection: "You must be conscious to grant this
@@ -1158,11 +1165,14 @@ export function defenseRiders(
 
 // Whether a half-proficiency scope covers checks of this ability.
 export function halfProficiencyCovers(
-  scope: "all" | "physical" | null,
+  scope: "all" | "physical" | "mental" | null,
   ability: string,
 ): boolean {
   if (scope === "all") {
     return true;
+  }
+  if (scope === "mental") {
+    return ability === "int" || ability === "wis";
   }
   return scope === "physical" && (ability === "str" || ability === "dex" || ability === "con");
 }
