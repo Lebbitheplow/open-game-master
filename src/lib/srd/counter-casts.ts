@@ -14,7 +14,6 @@
 //
 // Pure.
 import { isNamed } from "@/lib/srd/feature-names";
-import { textKey } from "@/lib/language/text-logic";
 
 export type CounterCast = {
   counter: string;
@@ -59,8 +58,8 @@ export function counterCastsHeld(features: ReadonlyArray<{ name: string }>): Arr
     if (!holding.length) continue;
     if (row.byChoice) {
       // "Lunar Embodiment (Full Moon)": the phase chosen picks the spell.
-      const chosen = holding.map((feature) => /\(([^)]+)\)\s*$/.exec(feature.name)?.[1] ?? "").map(textKey).find((key) => key in row.byChoice!);
-      if (chosen) out.push({ row, spell: row.byChoice[chosen] });
+      const chosen = Object.entries(row.byChoice).find(([phase]) => holding.some((feature) => isNamed(feature.name, `${row.features[0]} (${phase})`)));
+      if (chosen) out.push({ row, spell: chosen[1] });
       continue;
     }
     for (const spell of row.spells) out.push({ row, spell });

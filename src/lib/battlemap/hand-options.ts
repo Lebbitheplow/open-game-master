@@ -25,7 +25,7 @@ import {
   type HandTurn,
 } from "@/lib/battlemap/hand-core";
 import { textKey } from "@/lib/language/text-logic";
-import { isNamed } from "@/lib/srd/feature-names";
+import { isConditionNamed, isNamed } from "@/lib/srd/feature-names";
 import { DESTRUCTIVE_WRATH, holdsDestructiveWrath } from "@/lib/dm/destructive-wrath-logic";
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
 import { inFightOf } from "@/lib/battlemap/hand-counters";
@@ -104,7 +104,7 @@ function optionGates(sheet: CharacterSheet, turn: HandTurn, name: string) {
   const key = textKey(name);
   return [
     TURNING.includes(key) && inFightOf(turn) === false ? { reason: `${name} works on the creatures of a fight; there is none.`, spent: false } : null,
-    SIGHT_OPTIONS.includes(key) && sheet.conditions.some((entry) => entry.toLowerCase() === "blinded") ? { reason: `${name} takes a creature ${sheet.name} can see, and they are blinded.`, spent: false } : null,
+    SIGHT_OPTIONS.includes(key) && sheet.conditions.some((entry) => isConditionNamed(entry, "blinded")) ? { reason: `${name} takes a creature ${sheet.name} can see, and they are blinded.`, spent: false } : null,
   ];
 }
 

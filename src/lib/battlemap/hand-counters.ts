@@ -10,6 +10,7 @@ import type { HandChoice, HandTurn } from "@/lib/battlemap/hand-core";
 import { beastsWithin, crWords, wildShapeCapsFor, BEAST_INDEX } from "@/lib/srd/wild-shape-caps";
 import { classLevelFor, classListFor } from "@/lib/srd/multiclass";
 import { subclassNamed } from "@/lib/srd/subclass-name";
+import { textKey } from "@/lib/language/text-logic";
 
 // A fight is on (true), none is (false), or an older server's Hand cannot
 // tell (null). The board view sends no table out of a fight.
@@ -22,7 +23,7 @@ export function inFightOf(turn: HandTurn): boolean | null {
 // the form use_resource asks for. The card sent none, and every play was sent
 // back for "the beast being assumed".
 export function wildShapeChoice(sheet: CharacterSheet): HandChoice {
-  const druid = classListFor(sheet).find((entry) => entry.id.toLowerCase() === "druid");
+  const druid = classListFor(sheet).find((entry) => textKey(entry.id) === "druid");
   const level = classLevelFor(sheet, "druid") || sheet.level;
   const moon = subclassNamed(druid?.subclass ?? sheet.subclass ?? "", "Circle of the Moon");
   return {

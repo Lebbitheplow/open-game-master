@@ -38,7 +38,7 @@ import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import { rollAgainst } from "@/lib/roll-labels";
 import { namedOption, type ToolError } from "@/lib/dm/tool-errors";
-import { textKey } from "@/lib/language/text-logic";
+import { textKey, words } from "@/lib/language/text-logic";
 import { creatureTypeOf } from "@/lib/bestiary/creature-type";
 import { creditFeatureTeleport } from "@/lib/dm/feature-teleport";
 import { isConditionNamed, isNamed, nameChoice } from "@/lib/srd/feature-names";
@@ -420,7 +420,7 @@ export function resolveSpendEffect(ctx: SpendContext, does: SpendDoes): Resoluti
       const dice = addUnits(formula(ctx, does.dice), does.perUnit, extra);
       // A type the holder picks ("acid, cold, fire, lightning or poison") is
       // the one the variant names, else the first.
-      const choices = ((does.type ?? "").match(/[a-z]+/gi) ?? []).filter((word) => DAMAGE_WORDS.has(word.toLowerCase()));
+      const choices = words(does.type ?? "").filter((word) => DAMAGE_WORDS.has(textKey(word)));
       const type = choices.find((word) => textKey(word) === textKey(ctx.args.variant ?? "")) ?? choices[0] ?? "";
       const saved = resolveCounterSave(campaign, sheet, { name: ctx.spend.name, save: does.save, dc: saveDc(ctx, does.dcAbility), dice, type, half: true, magical: true }, { turnId: ctx.turnId, targetEnemyId: ctx.args.targetEnemyId, targetEnemyIds: ctx.args.targetEnemyIds });
       return "error" in saved ? saved : { result: { area: does.area, ...saved.result } };

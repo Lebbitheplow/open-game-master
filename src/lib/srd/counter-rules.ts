@@ -17,6 +17,7 @@ import { effectiveMaxHp } from "@/lib/dm/condition-logic";
 import type { ResourceDef, SaveTerms } from "@/lib/srd/class-resources";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { holdsFeature } from "@/lib/srd/feature-names";
+import { textKey } from "@/lib/language/text-logic";
 import { heldAuthored, type AuthoredSheet } from "@/lib/srd/authored-effects";
 import { resourceDef } from "@/lib/srd/class-resources";
 
@@ -40,7 +41,7 @@ export function counterGate(def: ResourceDef, sheet: GateSheet, inFight: boolean
   }
   // A self effect already running is not entered again (a rage while raging).
   const running = def.effect.kind === "condition" || (def.effect.kind === "buff" && def.effect.target !== "ally" && !def.effect.variants?.length) ? def.effect.condition : null;
-  if (running && sheet.conditions.some((entry) => entry.toLowerCase() === running.toLowerCase())) {
+  if (running && sheet.conditions.some((entry) => textKey(entry) === textKey(running))) {
     return `${sheet.name} is already ${running}; the feature is already running.`;
   }
   return null;

@@ -27,6 +27,7 @@ import {
   type HandTurn,
 } from "@/lib/battlemap/hand-core";
 import { textKey } from "@/lib/language/text-logic";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 import { iconPath, isPainted } from "@/lib/icons";
 import { inFightOf } from "@/lib/battlemap/hand-counters";
 
@@ -279,7 +280,7 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
         ? { reason: `${spend.name} is used in a fight, on a creature in it.`, spent: false }
         : null,
       // "A creature you can see": none while the holder is blinded.
-      sightBound(aimDoes(does, aim.variant)) && sheet.conditions.some((entry) => entry.toLowerCase() === "blinded")
+      sightBound(aimDoes(does, aim.variant)) && sheet.conditions.some((entry) => isConditionNamed(entry, "blinded"))
         ? { reason: `${spend.name} takes a creature ${sheet.name} can see, and they are blinded.`, spent: false }
         : null,
       aimCost === "free" ? null : costGate(aimCost, turn, sheet, spend.name),

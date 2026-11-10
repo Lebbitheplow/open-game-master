@@ -30,6 +30,7 @@ import { unseenBecause, withinFeet } from "@/lib/dm/authored-saves";
 import { creatureTypeOf } from "@/lib/bestiary/creature-type";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { textKey } from "@/lib/language/text-logic";
 
 export type SaveAbility = "str" | "dex" | "con" | "int" | "wis" | "cha";
 
@@ -182,8 +183,8 @@ export function resolveCounterHit(
     return { error: `${spec.name} follows ${sheet.name}'s weapon hit on ${enemy.displayName} this turn, and they have landed none on it. Nothing was spent.`, refused: "rules" };
   }
   if (spec.larger) {
-    const theirs = SIZES.indexOf(String(enemy.stats.size ?? "medium").toLowerCase());
-    const mine = SIZES.indexOf((spec.holderSize ?? "small").toLowerCase());
+    const theirs = SIZES.indexOf(textKey(String(enemy.stats.size ?? "medium")));
+    const mine = SIZES.indexOf(textKey(spec.holderSize ?? "small"));
     if (theirs <= mine) {
       return { error: `${spec.name} works on a creature larger than ${sheet.name}, and ${enemy.displayName} is not. Nothing was spent.`, refused: "rules" };
     }
