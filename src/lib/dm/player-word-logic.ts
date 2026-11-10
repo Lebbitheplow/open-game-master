@@ -35,7 +35,10 @@ export type WordLine = {
 };
 
 // The utility model's reading of the words at a table in another language.
-export type WordReading = { acts: boolean; holds: boolean };
+// `declines`: they turn an action down, and `ends`: they end the turn, read
+// as englishDeclines and englishEndsTurn read English (absent from a reply
+// that left them out: then neither is said).
+export type WordReading = { acts: boolean; holds: boolean; declines?: boolean; ends?: boolean };
 
 export type PlayerWord = {
   // Any own line since the DM last spoke.
@@ -290,10 +293,12 @@ export function readPlayerWord(
     if (holds && !read.acts) {
       return { spoke: true, declares: false, holds, holdQuote, why: during.length ? "held" : "before_fight" };
     }
-    if (read.acts) {
+    // An end said in the fight is the player's word, as in English.
+    if (read.acts || (read.ends && during.length)) {
       return { spoke: true, declares: true, holds, holdQuote, why: null };
     }
-    return { spoke: true, declares: false, holds, holdQuote, why: during.length ? "asked" : "before_fight" };
+    const why = !during.length ? "before_fight" : read.declines ? "declined" : "asked";
+    return { spoke: true, declares: false, holds, holdQuote, why };
   }
   if (during.some((line) => !asking(line))) {
     return { spoke: true, declares: true, holds: false, holdQuote: null, why: null };

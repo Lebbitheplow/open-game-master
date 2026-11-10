@@ -228,9 +228,21 @@ assert.equal(spanish([line("me quedo y corto con la espada")], { acts: true, hol
 assert.equal(spanish([line("ataco al goblin")], null).declares, true);
 assert.deepEqual([spanish([before("ataco al goblin")], null).declares, spanish([before("ataco al goblin")], null).why], [false, "before_fight"]);
 assert.equal(spanish([line("¿Qué veo?")], null).declares, false);
+// An action turned down reads the same in every language: "no vuelvo a
+// atacar" ended the turn at a Spanish table as an act until the reader said
+// so (issue 761).
+const noMas = spanish([line("No vuelvo a atacar.")], { acts: false, holds: false, declines: true });
+assert.deepEqual([noMas.declares, noMas.why], [false, "declined"]);
+assert.equal(spanish([line("No vuelvo a atacar, retrocedo.")], { acts: true, holds: false, declines: true }).declares, true);
+assert.deepEqual([spanish([before("No ataco al goblin.")], { acts: false, holds: false, declines: true }).why], ["before_fight"]);
+assert.equal(spanish([line("Me quedo quieta, no ataco más.")], { acts: false, holds: true, declines: true }).why, "held");
+// An end in their own words still ends it, whether or not the reader also
+// called it an act.
+assert.equal(spanish([line("No vuelvo a atacar, termino mi turno.")], { acts: false, holds: false, declines: true, ends: true }).declares, true);
 
-assert.deepEqual(parseWordReading('{"acts":false,"holds":true}'), { acts: false, holds: true });
-assert.deepEqual(parseWordReading('Sure: {"acts": true, "holds": false} done'), { acts: true, holds: false });
+assert.deepEqual(parseWordReading('{"acts":false,"holds":true}'), { acts: false, holds: true, declines: false, ends: false });
+assert.deepEqual(parseWordReading('Sure: {"acts": true, "holds": false} done'), { acts: true, holds: false, declines: false, ends: false });
+assert.deepEqual(parseWordReading('{"acts":false,"holds":false,"declines":true,"ends":true}'), { acts: false, holds: false, declines: true, ends: true });
 assert.equal(parseWordReading('{"acts":"yes"}'), null);
 assert.equal(parseWordReading("no json"), null);
 
