@@ -67,6 +67,9 @@ export async function tableRows(rig) {
   // (Slayer's Counter answers the creature under Slayer's Prey).
   const { triggerSpecFor } = await import(new URL("lib/srd/trigger-table.ts", SRC).href);
   const preyOf = (item) => (item ? (triggerSpecFor(item.name, { gateCondition: item.gate?.condition })?.on ?? []).flatMap((on) => (on.kind === "save_on_self" && on.prey ? [on.prey] : [])) : []);
+  // A spend that answers the death of the creature under a mark (Master of
+  // Hexes): that death staged, through the holder's own blow.
+  const markedDeathOf = (item) => (item ? (triggerSpecFor(item.name, { gateCondition: item.gate?.condition })?.on ?? []).flatMap((on) => (on.kind === "death" && on.marked ? [on.marked] : [])) : []);
   const authoredRows = rig.authored.authoredRows();
   const rows = [];
 
@@ -79,6 +82,8 @@ export async function tableRows(rig) {
       ...(does?.vsMark ? [`mark: ${does.vsMark}`] : []),
       ...(does?.vowed ? ["mark: vow of enmity"] : []),
       ...preyOf(item).map((mark) => `mark: ${mark}`),
+      ...markedDeathOf(item).map((mark) => `the creature under ${mark} died`),
+      ...(item?.afterSpellDamage ? ["the holder's spell hurt the foe"] : []),
       ...(does?.kind === "resist_instance" && does.bond ? ["the holder's drake summoned"] : []),
       ...(does?.kind === "restore" ? [`pool down: ${does.pool}`] : []),
       ...(does?.types?.length && (does.kind === "save_effect" || does.kind === "save_area") ? [`the foe is ${does.types[0]}`] : []),

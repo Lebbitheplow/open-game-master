@@ -147,7 +147,6 @@ export const RULINGS = {
 const INTO = "pours into another counter (ResourceDef.into): no sheet holds a counter under this id, and its uses are walked as that counter's";
 const BY_REST = "spent by take_rest as a short rest ends (use_resource refuses it, with nothing spent: seen)";
 const BY_ATTACK = "spent by the bonus-action attack it buys (pc_attack with its feature; use_resource refuses it, with nothing spent: seen), which the dice package walks";
-const BY_DEATH = "answers the death of the creature under the holder's mark (a death record); refused with nothing spent without one (seen), and no staging here kills a marked creature";
 const BY_CAST = "needs a spell cast earlier in the same turn (the cast's own mark); refused with nothing spent without one (seen), and no staging here casts";
 export const SKIP = {
   "counter:ki_inner_resilience": INTO,
@@ -159,13 +158,6 @@ export const SKIP = {
   "counter:race_hungry_jaws": BY_ATTACK,
   "counter:sub_unwavering_mark": BY_ATTACK,
   "counter:elemental_affinity": BY_CAST,
-  // Power Surge rides a wizard spell's damage of the turn (spell-damage-mark.ts);
-  // its spend is run by scripts/test-enforce-sweep-clauses-arcane-wizard.mjs surge-spend.
-  "counter:sub_power_surge": BY_CAST,
-  "spend:wizard::Power Surge::Power Surges": BY_CAST,
-  // Master of Hexes answers the cursed creature's death (trigger-table.ts); its
-  // spend is run by scripts/test-enforce-sweep-clauses-arcane-warlock.mjs hexes-move.
-  "spend:warlock::Master of Hexes::Master of Hexes": BY_DEATH,
   "counter:cyberpunk_surge_momentum": BY_CAST,
   "counter:horror_the_rite_remembers": BY_CAST,
   "counter:post_apocalyptic_surge_of_change": BY_CAST,

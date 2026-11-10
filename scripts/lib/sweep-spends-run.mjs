@@ -247,9 +247,19 @@ export async function walkRow(rig, scene, row) {
     const state = scene.holder.resources[row.def.id];
     const level = scene.holder.level;
     const recharge = row.def.rechargeFor ? row.def.rechargeFor(level) : row.def.recharge;
-    // A row that names its own rest (restHolds: Power Surge's one after a long
-    // rest) is held to it by its feature's clause probes.
-    if (state && state.max > 0 && state.max < 90 && !row.def.noRefill && !row.def.recovers && !row.def.restHolds) {
+    // A row that names what a rest leaves held in place of a refill
+    // (restHolds: Power Surge's "After a long rest you have one ... and you
+    // gain one at the end of a short rest if you have none") is held to that
+    // rule, read from its own row: from every use spent, a long rest leaves
+    // `long` held and a short rest `shortIfNone`.
+    const holds = row.def.restHolds;
+    if (state && state.max > 0 && holds) {
+      const heldAfter = (kind) => state.max - rests[kind].used[row.def.id];
+      const want = (count) => Math.min(state.max, count ?? 0);
+      if (rests.long.ok && holds.long !== undefined && heldAfter("long") !== want(holds.long)) add("NO_REFILL", `its row says a long rest leaves ${holds.long} held (restHolds), and from ${state.max} spent it leaves ${heldAfter("long")}/${state.max}`);
+      if (rests.short.ok && heldAfter("short") !== want(holds.shortIfNone)) add("SHORT_REST_MISMATCH", `its row says a short rest begun with none leaves ${holds.shortIfNone ?? 0} held (restHolds), and from ${state.max} spent it leaves ${heldAfter("short")}/${state.max}`);
+      if (!rests.long.ok || !rests.short.ok) notes.push(`rest refused: ${rests.short.error ?? ""} ${rests.long.error ?? ""}`);
+    } else if (state && state.max > 0 && state.max < 90 && !row.def.noRefill && !row.def.recovers) {
       if (rests.long.ok && rests.long.used[row.def.id] > 0) add("NO_REFILL", `spent to ${state.max}/${state.max}, a long rest leaves ${rests.long.used[row.def.id]} used`);
       if (rests.short.ok && (rests.short.used[row.def.id] === 0) !== (recharge === "short")) {
         add("SHORT_REST_MISMATCH", `its row says it comes back on a ${recharge} rest, and a short rest leaves ${rests.short.used[row.def.id]}/${state.max} used`);

@@ -20,7 +20,6 @@ const RULING = {
 const SKIP = {
   "831-you-can-see:barbarian::Mighty Impel/Mighty Impel": "its \"you can see\" is the space the creature is moved to, not the creature (\"move it to an unoccupied space you can see within 30 feet of you\"); the generator's pattern caught the wrong noun.",
   "831-within-feet:barbarian::Mighty Impel/Mighty Impel": "its first \"within\" is \"within your reach\"; the 30 feet is where the creature lands.",
-  "831-you-can-see:warlock::Master of Hexes/Master of Hexes": "it answers the death of the cursed creature (a death record), which this row's staging never makes; its sight limit is run by scripts/test-enforce-sweep-clauses-arcane-warlock.mjs hexes-move.",
   "831-within-feet:warlock::Master of Hexes/Master of Hexes": "its 30 feet is measured from the creature that died (\"another creature you can see within 30 feet of it\"), which is gone from the board when the curse moves.",
   "832-gm-form-lists-enemies-only": "a property of the console's form (a field of kind \"enemies\" lists the encounter's enemies); the tool takes a character fighting for the foes by id, and only the browser harness can open the form.",
   "809-foretold-number-on-the-sheet": "who may read another seat's sheet is the sheet route's business as another member; left to the modelio package's leak rows, which walk every payload a seat receives.",
@@ -34,6 +33,7 @@ const { kit } = table;
 const TEXT = authoredText();
 const text = (key) => `"${TEXT.get(key)?.text ?? "?"}" (src/lib/srd/subclasses.json, ${key})`;
 const { authoredRows } = await import("../src/lib/srd/authored-effects.ts");
+const { triggerSpecFor } = await import("../src/lib/srd/trigger-table.ts");
 const show = (out) => (out.ok ? JSON.stringify(out.result).slice(0, 260) : String(out.error));
 
 const friend = table.hero({ class: "fighter", subclass: "Champion" });
@@ -247,6 +247,31 @@ for (const { entry, spend, words, feet } of reachRows) {
   });
 }
 
+// A spend that answers the death of the creature under the holder's mark
+// (Master of Hexes: "When the creature cursed by your Hexblade's Curse dies"):
+// the mark is laid on a second foe beside the holder by their own spend, and
+// that foe is slain by their own blow through pc_attack, so the spend has the
+// death record it answers. The mark's name, or null for any other spend.
+const markedDeath = (spend) => triggerSpecFor(spend.name)?.on.find((on) => on.kind === "death" && on.marked)?.marked ?? null;
+async function stageFor(who, spend, classId) {
+  const mark = markedDeath(spend);
+  if (!mark) return (await stage(who, 1))[0];
+  const [target, victim] = await stage(who, 2);
+  kit.place(victim.id, 6, 6);
+  const lays = authoredRows().filter((row) => row.classId === classId).flatMap((entry) => entry.entry.spends ?? []).find((other) => {
+    const names = other.does.kind !== "buff" ? [] : Array.isArray(other.does.condition) ? other.does.condition.map(([, value]) => value) : [other.does.condition];
+    return names.some((value) => value === mark || value?.startsWith(`${mark} (`));
+  });
+  const laid = lays ? await world.invoke("use_resource", { characterId: who.id, resource: lays.name, targetEnemyId: victim.id }) : null;
+  if (!laid?.ok) throw new Error(`the rig: the mark "${mark}" could not be laid: ${laid?.error ?? "no spend lays it"}`);
+  kit.setEnemy(victim.id, { currentHp: 1 });
+  world.dice(18, 5);
+  const blow = await world.invoke("pc_attack", { characterId: who.id, targetEnemyId: victim.id, weapon: "Longsword" });
+  world.clearDice();
+  if (!blow.ok || foe(victim.id).currentHp > 0) throw new Error(`the rig: the marked creature did not die: ${show(blow)}`);
+  return target;
+}
+
 for (const { entry, spend, words } of sightRows) {
   await row(`831-you-can-see:${entry.key}/${spend.name}`, {
     pr: "831/860",
@@ -255,14 +280,14 @@ for (const { entry, spend, words } of sightRows) {
   }, async () => {
     const who = table.hero({ class: entry.classId, subclass: entry.entry.subclass });
     const args = (enemy) => ({ characterId: who.id, resource: spend.name, targetEnemyId: enemy.id, ...(does(spend).variants ? { variant: Object.keys(does(spend).variants)[0] } : {}) });
-    const [seen] = await stage(who, 1);
+    const seen = await stageFor(who, spend, entry.classId);
     openGate(who, spend.gate);
     if (does(spend).types?.length) kit.setEnemy(seen.id, { stats: { type: does(spend).types[0] } });
     world.dice(1, 1, 1, 1);
     const control = await world.invoke("use_resource", args(seen));
     world.clearDice();
     assert.equal(control.ok, true, `on a creature in plain sight the spend is refused, so this row proves nothing: ${control.error}`);
-    const [hidden] = await stage(who, 1);
+    const hidden = await stageFor(who, spend, entry.classId);
     openGate(who, spend.gate);
     if (does(spend).types?.length) kit.setEnemy(hidden.id, { stats: { type: does(spend).types[0] } });
     kit.setEnemy(hidden.id, { conditions: ["invisible"] });
