@@ -448,6 +448,11 @@ await test("In a fight a summoning of a minute is begun by its card, held throug
 await test("A familiar's kind is the type its attack meets a ward with: Protection from Evil and Good turns a celestial pseudodragon, not one of old with no kind", async () => {
   const [goblin] = world.enemies();
   kit.setEnemy(goblin.id, { conditions: ["protected from evil and good"] });
+  // A pet has no square of its own: it stands with its owner, and its bite
+  // reaches from there (WAVE2 D2, src/lib/dm/pet-place.ts), so the goblin
+  // stands beside Wren.
+  const by = kit.token(wren.id);
+  kit.place(goblin.id, by.x + 1, by.y);
   kit.giveTurn(wren.id);
   kit.freshTurn();
   world.dice(19, 2);

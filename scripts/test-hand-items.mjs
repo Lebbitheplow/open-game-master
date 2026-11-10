@@ -191,9 +191,14 @@ await test("The route refuses what the card would grey, in the same words, and w
 await test("A dry run of a wand rolls nothing and writes nothing", async () => {
   await stage(mage, [wand("Necklace of Fireballs")]);
   const before = world.encounter();
+  // Its 1d6 + 3 beads are rolled as it is granted (item-charge-rules.ts
+  // withStartingCharges), so the sheet and the Hand know the count; asking
+  // neither rolls it again nor spends one.
+  const count = world.sheet(mage.id).equipment[0].charges;
+  assert.equal(typeof count, "number", "the count was rolled as the necklace was granted");
   const asked = chargedItemUse(campaign(), "", world.sheet(mage.id), "Necklace of Fireballs", undefined, "Fireball", { dryRun: true });
   assert.equal(asked.ok, true, JSON.stringify(asked));
-  assert.equal(world.sheet(mage.id).equipment[0].charges, undefined, "its count, rolled at first use, is not rolled by asking");
+  assert.equal(world.sheet(mage.id).equipment[0].charges, count, "asking rolls nothing and spends nothing");
   assert.deepEqual(world.encounter().budget, before.budget);
 });
 
