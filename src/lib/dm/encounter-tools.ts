@@ -2232,7 +2232,7 @@ function advanceAfterNarration(campaign: Campaign, turn?: DmTurn) {
     // An enemy it plays may take out the summon whose turn it is.
     const holder = turnHolder(campaign.id);
     autoActSkippedEnemies(campaign, turn, encounter, handoff.enemyIds, sheets, sheetsById);
-    beginHeldTurn(campaign);
+    beginHeldTurn(campaign, true);
     passOnFrom(campaign, holder);
     // The pass the model's end_turn made, said now that the narration is in,
     // with what waited for the enemies it handed over (issue 713).
@@ -2777,7 +2777,7 @@ export function handOnEnemyTurns(campaign: Campaign, turn: DmTurn, play: boolean
   releaseEnemyHold(campaign);
   // The enemies before the character up next have had their turns: theirs
   // begins (src/lib/dm/held-turn.ts).
-  beginHeldTurn(campaign);
+  beginHeldTurn(campaign, true);
   // What the pass left for after them: the round turning over, the dying's
   // saves (issue 713).
   finishPass(campaign);

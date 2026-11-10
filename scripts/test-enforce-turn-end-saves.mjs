@@ -14,9 +14,12 @@ import assert from "node:assert/strict";
 import { openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
+import { call as modelCall, fakeModel, reply, settleQueue } from "./lib/enforce-narrator.mjs";
 
 const { test, finish } = suite("test-enforce-turn-end-saves");
-const world = await openWorld();
+const world = await openWorld({ gameSettings: { ttsEnabled: false } });
+const model = await fakeModel();
+model.pointAt(world);
 const kit = await combatKit(world);
 const { listEffects } = await import("../src/lib/db/active-effects.ts");
 
@@ -64,7 +67,8 @@ function endTurnOf(hero) {
 await test("A creature held after its turn this round does not save as the holder's turn ends: it saves at the end of its own next turn.", async () => {
   const enemy = await stage();
   endTurnOf(fighter);
-  // The creature's turn is over; the wizard's has come.
+  // The GM hands the turn on: the creature's turn is over; the wizard's has come.
+  kit.handOnEnemies();
   hold(enemy);
   endTurnOf(wizard);
   assert.ok(held(enemy), "saved before it had a turn under the hold");
@@ -86,6 +90,7 @@ await test("A creature held before its turn saves as that turn ends.", async () 
 await test("An effect with a save laid on a creature after its turn waits for the end of its next turn too.", async () => {
   const enemy = await stage();
   endTurnOf(fighter);
+  kit.handOnEnemies();
   const out = await world.invoke("set_effect", {
     enemyId: enemy.id, name: "Witch's Curse", modifiers: [{ field: "attack", mode: "add", value: -2 }],
     saveAbility: "wis", saveDc: 1, visible: true,
@@ -97,6 +102,60 @@ await test("An effect with a save laid on a creature after its turn waits for th
   endTurnOf(fighter);
   endTurnOf(wizard);
   assert.ok(!cursed(), "the end of its own turn brings the save");
+});
+
+// The creature's turn runs from the move that walks past it until the turn
+// after it begins: while it is still the creature's to play, a hold laid on
+// it (a readied Hold Person released as it moves, a reaction) holds it
+// through that turn's end, and the save comes then (SRD 5.1, Hold Person).
+await test("A creature held while its own turn is still being played saves as that turn ends.", async () => {
+  const enemy = await stage();
+  endTurnOf(fighter);
+  assert.deepEqual(world.encounter().legendary.due, [enemy.id], "the creature's turn is still to play");
+  hold(enemy);
+  endTurnOf(wizard);
+  assert.ok(!held(enemy), "the end of the turn it was held in brings the save");
+  // The same when the character after it begins their turn by acting: the
+  // creature, paralyzed, has nothing left of its turn to wait for.
+  const again = await stage();
+  endTurnOf(fighter);
+  hold(again);
+  const dodged = await world.invoke("take_action", { characterId: wizard.id, action: "dodge" });
+  assert.ok(!dodged.error, dodged.error);
+  endTurnOf(wizard);
+  assert.ok(!held(again), "the turn the wizard's act began ends the creature's, held");
+});
+
+await test("Once the character after it acts, the creature's turn is over: a hold that character lays waits for the creature's next turn.", async () => {
+  const enemy = await stage();
+  endTurnOf(fighter);
+  const struck = await world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: fighter.id });
+  assert.ok(!struck.error, struck.error);
+  const dodged = await world.invoke("take_action", { characterId: wizard.id, action: "dodge" });
+  assert.ok(!dodged.error, dodged.error);
+  hold(enemy);
+  endTurnOf(wizard);
+  assert.ok(held(enemy), "saved before it had a turn under the hold");
+  endTurnOf(fighter);
+  endTurnOf(wizard);
+  assert.ok(!held(enemy), "the end of its own turn brings the save");
+});
+
+// The AI's own end_turn hands the creature to the reply it ends: what that
+// reply lays on it before the turn after begins is laid in the creature's
+// turn, and the pass is over once the reply is narrated.
+await test("A curse the AI's reply lays on the creature it was handed is saved against as that creature's turn ends.", async () => {
+  const enemy = await stage();
+  model.script([
+    reply({ calls: [modelCall("end_turn", { characterId: fighter.id }), modelCall("set_effect", { enemyId: enemy.id, name: "Witch's Curse", modifiers: [{ field: "attack", mode: "add", value: -2 }], saveAbility: "wis", saveDc: 1, visible: true })] }),
+    reply({ text: "The curse settles on it." }),
+  ]);
+  await model.turn(world, "I step back and end my turn.", fighter.id, fighter.userId);
+  await settleQueue(world.campaignId);
+  const cursed = () => listEffects(world.campaignId).some((effect) => effect.targetId === enemy.id);
+  assert.ok(cursed(), "the curse is laid");
+  endTurnOf(wizard);
+  assert.ok(!cursed(), "the end of the turn it was cursed in brings the save");
 });
 
 // A paralyzed character's turn is walked past, starting and ending in the
@@ -113,4 +172,5 @@ await test("A character held after their turn saves at the end of their own next
   assert.ok(!frightened(), "the end of their own turn brings the save");
 });
 
+model.close();
 finish();

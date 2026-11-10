@@ -428,7 +428,9 @@ function effectHoldKey(holderId: string, effectId: string): string {
 // hold had no turn of the creature's under it, so it is not saved against
 // until the end of the creature's next turn (SRD 5.1, Hold Person: "at the
 // end of each of its turns"). advancePointer keeps this list as it walks
-// past them and hands it back to endTurnSaves at the next move.
+// past them, held-turn.ts reads it again once their turns are known to be
+// over (what was laid during one counts), and endTurnSaves takes it at the
+// next move.
 export function turnHoldKeys(campaign: Campaign, encounterId: string, enemyIds: string[]): string[] {
   const holders = new Set(enemyIds);
   const keys: string[] = [];

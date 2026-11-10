@@ -29,7 +29,7 @@ import { getActiveEncounter, listEnemies, orderEntryId, saveEncounter, turnKey, 
 import { getDmTurn } from "@/lib/db/dm-turns";
 import { activePublicEncounter } from "@/lib/db/encounter-view";
 import { publishPersisted } from "@/lib/events";
-import { endTurnStartHolds } from "@/lib/dm/condition-tick";
+import { endTurnStartHolds, turnHoldKeys } from "@/lib/dm/condition-tick";
 import { beginTurns } from "@/lib/dm/turn-end";
 import { lateFor } from "@/lib/dm/last-hit";
 import { VIGILANT_PREFIX } from "@/lib/srd/authored-effects-more";
@@ -41,6 +41,23 @@ import type { ToolError } from "@/lib/dm/tool-errors";
 // Defender's per-turn ones ("vigilant:<id>:<mover>").
 function withoutReactionsOf(reactionsUsed: string[], id: string): string[] {
   return reactionsUsed.filter((entry) => entry !== id && !entry.startsWith(`${VIGILANT_PREFIX}${id}:`));
+}
+
+// The enemies of the pass before the held turn have had their turns, which
+// were theirs to play until now (enemiesAhead): what holds them now is what
+// those turns ended under, and so what they save against when the pointer
+// next moves (condition-tick.ts turnHoldKeys). A hold laid during one of
+// them, a readied Hold Person released as the creature moved, is saved
+// against as that turn ends; one the held character lays once their turn
+// has begun waits for the end of the creature's next turn. Only where the
+// pass is known to be over (the character acts, the GM hands the turn on,
+// the reply that played them is narrated): a turn begun by the pointer
+// moving again keeps the list the pass began with.
+function passTurnsEnded(campaign: Campaign, encounter: Encounter) {
+  const walked = encounter.legendary.walked ?? [];
+  if (walked.length) {
+    encounter.legendary.walkedHolds = turnHoldKeys(campaign, encounter.id, walked);
+  }
 }
 
 // The held turn begins on the encounter in hand, which the caller saves.
@@ -80,6 +97,7 @@ export function beginHeldTurnOf(encounter: Encounter, id: string) {
   if (!campaign) {
     return;
   }
+  passTurnsEnded(campaign, encounter);
   startHeldTurn(campaign, encounter);
   saveEncounter(encounter);
 }
@@ -167,10 +185,16 @@ export function heldTurnLine(name: string, ahead: string[]): string {
 }
 
 // The enemies before the held character have acted: their turn begins.
-export function beginHeldTurn(campaign: Campaign) {
+// `passOver`: the caller knows the enemies' turns are over (the GM handed the
+// turn on, the reply that played them is narrated), not a turn ending while
+// the rest of a pass waited (encounter-tools.ts finishPassBeforeMove).
+export function beginHeldTurn(campaign: Campaign, passOver = false) {
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter?.legendary.turnStart) {
     return;
+  }
+  if (passOver) {
+    passTurnsEnded(campaign, encounter);
   }
   startHeldTurn(campaign, encounter);
   saveEncounter(encounter);

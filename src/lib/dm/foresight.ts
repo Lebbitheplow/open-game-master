@@ -19,7 +19,6 @@ import { getActiveEncounter, type Encounter, type EncounterEnemy } from "@/lib/d
 import { spellEngineName, spellMechanicsFor } from "@/lib/content";
 import { boardCatch } from "@/lib/dm/area-casting";
 import { canHelpSaveNow, canShiftNow, inShiftReach, playerAtTable, type SaveHelp } from "@/lib/dm/chronal-shift";
-import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { kindOfId, sideOf } from "@/lib/dm/combatant";
 import { resolveEnemyRef } from "@/lib/dm/enemy-damage";
 import { attackNamed } from "@/lib/dm/enemy-profile";
@@ -36,16 +35,11 @@ import { foretoldLeft } from "@/lib/dm/foretold-logic";
 import { getFoe } from "@/lib/dm/sheet-foe";
 import { inPlay } from "@/lib/dm/roster";
 import { publishPersisted } from "@/lib/events";
-import { isConditionNamed } from "@/lib/srd/feature-names";
-import { trapAt } from "@/lib/srd/table-hazards";
+import { foeRoll, holdsCondition, savesAbout, unseen, type About, type Seen } from "@/lib/dm/foresight-saves";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 // A stop comes before every watched roll, so it cannot ask for long.
 export const WATCH_SECONDS = 20;
-
-function holdsCondition(creature: { conditions?: readonly string[] }, ...names: string[]): boolean {
-  return (creature.conditions ?? []).some((written) => isConditionNamed(written, ...names));
-}
 
 // Whether the sheet is watching this fight and could answer a stop: a
 // number left (Portent), or a Chronal Shift, Flash of Genius or Favored by the
@@ -74,27 +68,15 @@ function argsOf(raw: string): Record<string, unknown> {
   }
 }
 
-// One creature's roll a call is about to make: its tag on the dice, the
-// creature (for a Chronal Shift's reach and side) and its name.
-type Seen = { tag: RollTag; ref: string; name: string };
-
-// What a call is about to roll, for the player to read and the number to aim
-// at. Null for a call no watch stops. `perCreature`: an area, where each
-// creature caught makes its own save and the watcher picks whose; otherwise
-// the rolls are one roll of the call's, whichever comes first. `rollerWaits`:
-// the roller is a player whose own card answers the roll after it lands
-// (after-roll.ts), so a Chronal Shift is offered there, not here.
-// `riderSaves`: the save an enemy's hit may force on its target, which only
-// Flash of Genius and Favored by the Gods answer here.
-type About = { line: string; rollerId: string; rolls: Seen[]; perCreature: boolean; rollerWaits: boolean; riderSaves?: Seen[] };
-
-// A creature of the fight as its save is tagged: a character fighting the
-// party saves as the character it is (forced-save.ts rollEnemySave).
-function foeRoll(enemy: { id: string; displayName: string; slug?: string }, kind: RollTag["kind"]): Seen {
-  return { tag: { roller: isSheetFoe(enemy) ? "hero" : "enemy", kind, who: enemy.displayName }, ref: enemy.id, name: enemy.displayName };
-}
-
-const unseen = (creature: { conditions?: readonly string[] } | null | undefined) => !creature || holdsCondition(creature, "invisible", "hidden");
+// What a call is about to roll (About, foresight-saves.ts), for the player to
+// read and the number to aim at. Null for a call no watch stops.
+// `perCreature`: an area, where each creature caught makes its own save and
+// the watcher picks whose; otherwise the rolls are one roll of the call's,
+// whichever comes first. `rollerWaits`: the roller is a player whose own card
+// answers the roll after it lands (after-roll.ts), so a Chronal Shift is
+// offered there, not here. `riderSaves`: the saves an enemy's hit may force
+// on its target, which only Flash of Genius and Favored by the Gods answer
+// here.
 
 // Who an area call catches, before it runs: the creatures it names, else
 // (a player's blast laid on the board that names nobody) those standing in
@@ -140,7 +122,8 @@ function areaCatch(campaign: Campaign, args: Record<string, unknown>, sheets: re
   return { enemies, heroes };
 }
 
-function rollAbout(campaign: Campaign, call: HeldCall, sheets: readonly CharacterSheet[], encounterId: string): About | null {
+function rollAbout(campaign: Campaign, call: HeldCall, sheets: readonly CharacterSheet[], encounter: Encounter): About | null {
+  const encounterId = encounter.id;
   const args = argsOf(call.rawArguments);
   const sheetOf = (id: unknown) => sheets.find((sheet) => sheet.id === id);
   if (call.name === "enemy_attack") {
@@ -154,7 +137,9 @@ function rollAbout(campaign: Campaign, call: HeldCall, sheets: readonly Characte
     // is thrown inside this call, too late for any card.
     // The attack named as enemy_attack itself finds it (enemy-attack.ts).
     const named = typeof args.attack === "string" ? attackNamed(enemy.stats.attacks ?? [], args.attack) : null;
-    const forcesSave = (named ? [named] : (enemy.stats.attacks ?? [])).some((attack) => attack.onHit?.save && attack.onHit.dc);
+    // A hit on a character holding concentration asks their Constitution
+    // save to keep it (concentration.ts), inside the call as well.
+    const forcesSave = Boolean(victim?.concentratingOn) || (named ? [named] : (enemy.stats.attacks ?? [])).some((attack) => attack.onHit?.save && attack.onHit.dc);
     return {
       line: `${enemy.displayName} is about to attack${target ? ` ${target}` : ""}.`,
       rollerId: enemy.id,
@@ -181,34 +166,6 @@ function rollAbout(campaign: Campaign, call: HeldCall, sheets: readonly Characte
     }
     const source = typeof args.source === "string" && args.source.trim() ? ` against ${args.source.trim().slice(0, 80)}` : "";
     return { line: `${hero.name} is about to make a saving throw${source}.`, rollerId: hero.id, rolls: [{ tag: { roller: "hero", kind: "save", who: hero.name }, ref: hero.id, name: hero.name }], perCreature: false, rollerWaits: false };
-  }
-  if (call.name === "apply_hazard") {
-    // A trap or a hazard the GM throws: each character it names saves through
-    // cast_at_player (hazard-tools.ts), the save that call already stops for.
-    // A fall and lost air roll no save, nor does a named trap without one
-    // (or with a name no trap holds, which is refused), and the hours of cold
-    // or heat roll saves no number or shift is armed for (endurance.ts). A
-    // travel-formation rank names nobody until the call runs, and a formation
-    // is for travel, not a fight.
-    const isTrap = args.type === "trap";
-    const trapName = isTrap && typeof args.trap === "string" && args.trap.trim() ? args.trap : null;
-    const trap = trapName ? trapAt(trapName, campaign.id) : null;
-    const saves = args.type === "generic" || (isTrap && (trapName ? Boolean(trap?.trap.save) : true));
-    const heroes: CharacterSheet[] = [];
-    for (const ref of saves && Array.isArray(args.characterIds) ? args.characterIds : []) {
-      const hero = typeof ref === "string" ? (sheetOf(ref) ?? findNamed(sheets, ref, (sheet) => [sheet.name])) : undefined;
-      if (hero && !unseen(hero) && !heroes.some((entry) => entry.id === hero.id)) heroes.push(hero);
-    }
-    if (!heroes.length) {
-      return null;
-    }
-    const rolls: Seen[] = heroes.map((hero) => ({ tag: { roller: "hero" as const, kind: "save" as const, who: hero.name }, ref: hero.id, name: hero.name }));
-    const named = typeof args.reason === "string" && args.reason.trim() ? args.reason.trim() : (trap?.name ?? (isTrap ? "a trap" : ""));
-    const source = named ? ` against ${named.slice(0, 80)}` : "";
-    const line = heroes.length === 1 ? `${heroes[0].name} is about to make a saving throw${source}.` : `${heroes.length} characters are about to make saving throws${source}.`;
-    // Each character caught saves on its own, as in an area: the watcher
-    // picks whose.
-    return { line, rollerId: heroes[0].id, rolls, perCreature: true, rollerWaits: false };
   }
   if (call.name === "cast_at_enemy") {
     // A hero's spell at one creature: the caster's attack roll or the
@@ -277,7 +234,7 @@ function rollAbout(campaign: Campaign, call: HeldCall, sheets: readonly Characte
     }
     return { line: `${hero.name} is about to roll a ${kind.replaceAll("_", " ")}.`, rollerId: hero.id, rolls: [{ tag, ref: hero.id, name: hero.name }], perCreature: false, rollerWaits: rollsCanWait(hero) };
   }
-  return null;
+  return savesAbout(campaign, encounter, call.name, args, sheets);
 }
 
 // "Within 30 feet" and "a creature you can see", for Chronal Shift: the
@@ -349,7 +306,7 @@ export function parkForWatch(campaign: Campaign, turn: DmTurn, calls: readonly H
     return false;
   }
   const sheets = listSheets(campaign.id);
-  const about = rollAbout(campaign, first, sheets, encounter.id);
+  const about = rollAbout(campaign, first, sheets, encounter);
   if (!about) {
     return false;
   }
