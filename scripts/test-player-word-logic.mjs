@@ -174,6 +174,37 @@ const noMore = word([line("I hold my ground, no more attacks.")]);
 assert.deepEqual([noMore.declares, noMore.holds, noMore.why], [false, true, "held"]);
 // Words before the fight that turn an attack down name nothing done in it.
 assert.deepEqual([word([before("We won't attack the goblin.")]).declares, word([before("We won't attack the goblin.")]).why], [false, "before_fight"]);
+// The negation reaches only its own verb: a new subject or a "when", "if" or
+// "let" between them starts another thought, and what follows is an act.
+for (const text of ["I never miss when I attack.", "Not him I attack the archer.", "I don't think I can hit it from here, so I shove it.", "I can't let them hit Corin!"]) {
+  assert.equal(englishDeclines(text), false, `declines: ${text}`);
+  assert.equal(word([line(text)]).declares, true, text);
+}
+// A question with a negation in it only asks: it says nothing of what is not
+// done, and a question about someone else's attack asks nothing of the turn.
+for (const text of ["Don't you attack?", "Won't he attack us first?", '"Why don\'t they attack?" I ask Corin.']) {
+  const read = word([line(text)]);
+  assert.deepEqual([read.declares, read.why], [false, "asked"], text);
+}
+// Asking someone else not to attack, or turning the attack down to talk, is
+// no act of the character's: the turn stays open.
+for (const text of ["I ask Corin not to attack.", "I won't attack, I ask him what he wants."]) {
+  assert.deepEqual([word([line(text)]).declares, word([line(text)]).why], [false, "declined"], text);
+}
+// A thing of the character's or of the scene named beside the turned-down
+// attack is not a spell cast or a foe attacked, even when the sheet has a
+// spell of that name or the fight a foe: "keep my shield up" with Shield
+// prepared ended the turn as an act.
+for (const text of ["Don't attack again this turn. I keep my shield up.", "I won't attack again, the goblin has had enough."]) {
+  const read = word([line(text)], { names: ["Goblin", "Shield", "Fire Bolt"] });
+  assert.deepEqual([read.declares, read.why], [false, "declined"], text);
+}
+// A spell named as the thing to do still is one.
+assert.equal(word([line("No more attacks. Fire Bolt on the archer.")]).declares, true);
+// The short ways a turn is closed close it beside a turned-down attack.
+for (const text of ["No more attacks, I'm done.", "I don’t attack again. That’s all.", "I won't attack again, that’s my turn."]) {
+  assert.equal(word([line(text)]).declares, true, text);
+}
 
 // A Hand card always declares.
 assert.equal(word([line("I attack the goblin.", undefined, "attack")]).declares, true);
