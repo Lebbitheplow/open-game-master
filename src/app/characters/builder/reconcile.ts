@@ -1,5 +1,5 @@
 import type { Ability } from "@/lib/schemas/sheet";
-import { classFeaturesFor, expertiseSlotsFor, racialTraitsFor, subclassLevelFor } from "@/lib/srd/features";
+import { classFeaturesFor, expertiseAllowed, expertiseSlotsFor, racialTraitsFor, subclassLevelFor } from "@/lib/srd/features";
 import { fightingStyleChoices, fightingStyleSlots, type FightingStyleId } from "@/lib/srd/feature-effects";
 import { findOptionByFeatureName, optionCost, optionSlotsFor } from "@/lib/srd/options";
 import { subclassChoicePickKept, subclassPickFeatures } from "@/lib/srd/subclass-choice-picks";
@@ -342,8 +342,13 @@ export function reconcilePicks(
     ...Object.values(input.featChoices ?? {}).flatMap((choice) => choice?.skills ?? []).map(textKey),
     ...subclassGrants(classes.map((entry) => ({ id: entry.klass.id, level: entry.level, subclass: entry.subclass }))).flatMap((grant) => grant.spec.fixedSkills).map(textKey),
   ]);
+  // And a rogue's thieves' tools (SRD 5.1, Rogue, Expertise: "or one of
+  // your skill proficiencies and your proficiency with thieves' tools"),
+  // which the class step offers: dropped here, a rogue who took it lost it
+  // on any change and could not be saved ("pick 1 more").
+  const classIds = classes.map((entry) => entry.klass.id);
   const expertisePicks = klass
-    ? unique(picks.expertisePicks.filter((skill) => expertiseOn.has(textKey(skill)))).slice(0, expertiseSlots)
+    ? unique(picks.expertisePicks.filter((skill) => expertiseOn.has(textKey(skill)) || expertiseAllowed(skill, [], classIds))).slice(0, expertiseSlots)
     : [];
   note("expertise", "expertise", picks.expertisePicks, expertisePicks);
 

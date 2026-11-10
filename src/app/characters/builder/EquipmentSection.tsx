@@ -6,7 +6,7 @@ import { InfoButton } from "@/components/ui/InfoDialog";
 import { cn } from "@/lib/cn";
 import { contentSlug } from "@/lib/help";
 import { gearFromHomebrewData, type HomebrewGear } from "@/lib/homebrew/gear";
-import { formatPrice, purseCopper } from "@/lib/srd/currency";
+import { formatPrice, priceText, purseCopper } from "@/lib/srd/currency";
 import { packRowPrice } from "@/lib/srd/starting-wealth";
 import CatalogBrowser, { type CatalogSection } from "./CatalogBrowser";
 import ContentPicker, { type PickerEntry } from "./ContentPicker";
@@ -199,7 +199,8 @@ export default function EquipmentSection({
             : undefined
         }
         sections={GEAR_SHELF}
-        metaOf={(entry) => entry.rarity || entry.cost || ""}
+        // The pack's price in the receipt's own notation ("0.05 gp" is "5 cp").
+        metaOf={(entry) => entry.rarity || priceText(entry.cost ?? "")}
       />
       {purse.receipt ? (
         <GearReceipt receipt={purse.receipt} />

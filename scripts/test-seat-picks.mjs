@@ -237,4 +237,34 @@ await test("the pickers read the owed choices off the seated sheet; a sheet that
   assert.equal(readAsiLedger(applied.sheet.features), 1);
 });
 
+// A Lore bard seated at 3rd owes its college and its expertise at once
+// (SRD 5.1); the seat applies the college's skills before it judges the
+// expertise, but the confirm sheet offered only the skills on the sheet,
+// so a college skill could not be doubled on the way in.
+await test("the confirm sheet's expertise may double the college skills picked on it", async () => {
+  const { createElement } = await import("react");
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  const { OwedPicksFields } = await import("../src/app/campaigns/[campaignId]/OwedPicksFields.tsx");
+  const { withFeatChoice } = await import("../src/lib/schemas/sheet.ts");
+  const owed = {
+    subclasses: [{ classId: "bard", className: "Bard", classLevel: 3, dueAt: 3, options: ["College of Lore"] }],
+    asi: 0,
+    asiLevels: [],
+    skills: { count: 0, options: [] },
+    expertise: { count: 2, options: ["performance", "persuasion", "deception"] },
+    scores: { str: 10, dex: 14, con: 12, int: 10, wis: 10, cha: 16 },
+    known: { armor: [], languages: ["Common"], skills: ["performance", "persuasion", "deception"], weapons: [], tools: [], expertise: [] },
+  };
+  const draft = {
+    subclasses: { bard: "College of Lore" },
+    asiChoices: [],
+    featChoices: withFeatChoice({}, "Bonus Proficiencies (Lore)", { skills: ["arcana", "history", "nature"] }),
+    skills: [],
+    expertise: [],
+  };
+  const markup = renderToStaticMarkup(createElement(OwedPicksFields, { owed, name: "Wren", draft, onChange: () => {}, featDescOf: () => "" }));
+  const offered = [...(markup.split("data-owed-expertise")[1] ?? "").matchAll(/aria-pressed="false"[^>]*>([^<]+)</g)].map((match) => match[1]);
+  assert.deepEqual(offered, ["Performance", "Persuasion", "Deception", "Arcana", "History", "Nature"]);
+});
+
 finish();

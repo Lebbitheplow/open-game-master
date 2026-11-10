@@ -148,7 +148,8 @@ test("the receipt's foot writes the coin in silver as well as gold and copper", 
         },
       }),
     );
-    const cells = (label) => markup.match(new RegExp(`${label}</th><td[^>]*></td><td[^>]*>([^<]*)</td>`))?.[1];
+    // A coin's number and code are held together by a no-break space.
+    const cells = (label) => markup.match(new RegExp(`${label}</th><td[^>]*></td><td[^>]*>([^<]*)</td>`))?.[1]?.replace(/\u00a0/g, " ");
     return { start: cells("Starting coin"), spent: cells("Spent"), left: cells("Coin left") };
   };
   assert.deepEqual(foot(1000, 610), { start: "10 gp", spent: "6 gp 1 sp", left: "3 gp 9 sp" });

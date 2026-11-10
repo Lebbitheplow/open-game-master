@@ -12,6 +12,7 @@ import { grantsForHeldTraining, subclassGrants } from "@/lib/srd/subclass-traini
 import { textKey } from "@/lib/language/text-logic";
 import { featChoice, withFeatChoice, type AsiChoice } from "@/lib/schemas/sheet";
 import type { OwedPicks, SeatPicks } from "@/lib/characters/seat-picks";
+import { expertiseOptionsAfter } from "@/lib/srd/owed-picks-logic";
 import AsiFeatEditor from "@/app/characters/builder/AsiFeatEditor";
 import FeatChoicesFields from "@/app/characters/builder/FeatChoicesFields";
 import { useFeatDescs } from "@/app/characters/builder/useFeatDescs";
@@ -120,6 +121,22 @@ export function OwedPicksFields({
   // Training a subclass picked here brings counts as held for the pickers
   // after it, as the server applies it first.
   const skillsHeld = [...owed.known.skills, ...draft.skills];
+  // What the expertise may double once these picks are made: the class
+  // skills, a feat's and the subclass's training picked here (a Lore bard's
+  // college skills), as the server applies them before it judges the
+  // expertise. The owed list read the sheet as it sat.
+  const expertiseOptions = [
+    ...new Set([
+      ...owed.expertise.options,
+      ...expertiseOptionsAfter({
+        sheet: { proficiencies: { ...owed.known, saves: [], skills: skillsHeld } },
+        classesAfter: [],
+        feats: draft.asiChoices.flatMap((choice) => (choice?.mode === "feat" ? [{ name: choice.feat, desc: featDescOf(choice.feat) }] : [])),
+        training,
+        choices: draft.featChoices,
+      }),
+    ]),
+  ];
 
   return (
     <div className="space-y-4" data-owed-pickers>
@@ -211,7 +228,7 @@ export function OwedPicksFields({
             Expertise: pick {owed.expertise.count} of {name}&apos;s skills to double their proficiency bonus in
           </legend>
           <div className="flex flex-wrap gap-1.5">
-            {[...new Set([...owed.expertise.options, ...draft.skills.filter((id) => skillsHeld.includes(id))])].map((id) => {
+            {expertiseOptions.map((id) => {
               const picked = draft.expertise.includes(id);
               return (
                 <button

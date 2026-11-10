@@ -33,6 +33,7 @@ import { acBreakdownFor, effectiveAcFor, SRD_SKILLS } from "@/lib/srd";
 import { ABILITY_NAMES } from "@/lib/srd/legality/types";
 import { isCantripName } from "@/lib/srd/spell-lists";
 import { spellStyleFor } from "@/lib/srd/spell-prep";
+import { priceText } from "@/lib/srd/currency";
 import MultiContentPicker from "@/app/characters/builder/MultiContentPicker";
 import { ABILITIES, type Ability, type CharacterSheet, type Proficiencies } from "@/lib/schemas/sheet";
 import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
@@ -462,7 +463,7 @@ export function LeadEditDialog({
                   ])
                 }
                 renderMeta={(entry) =>
-                  [entry.kind, entry.rarity ?? entry.cost].filter(Boolean).join(" · ")
+                  [entry.kind, entry.rarity ?? priceText(entry.cost ?? "")].filter(Boolean).join(" · ")
                 }
               />
             </div>

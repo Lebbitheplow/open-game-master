@@ -147,6 +147,20 @@ test("v2 gear gets its category, weight and a small price in silver", () => {
   assert.equal(sheet.cost, "1 cp");
 });
 
+// The card's Value wrote prices with a formatter of its own: 0.15 gp as
+// "15 cp", 1.5 gp as "1.5 gp", and a v1 row's "0.05 gp" as the pack prints
+// it, where the receipt and the market say "1 sp 5 cp", "1 gp 5 sp", "5 cp".
+test("an item's value reads in gold, silver and copper, as every price does", () => {
+  const value = (cost) => buildItemSheet("Trinket", [{ name: "Trinket", desc: "A small thing.", category: { name: "Adventuring Gear" }, cost }]).cost;
+  assert.equal(value("0.15"), "1 sp 5 cp");
+  assert.equal(value("1.5"), "1 gp 5 sp");
+  assert.equal(value("0.05 gp"), "5 cp");
+  assert.equal(value("0.4 gp"), "4 sp");
+  assert.equal(value("2,000 gp"), "2,000 gp");
+  assert.equal(value("0 gp"), null);
+  assert.equal(value("varies"), "varies");
+});
+
 test("homebrew armour reads its own block", () => {
   const sheet = buildItemSheet("Dragonhide Coat", [
     {

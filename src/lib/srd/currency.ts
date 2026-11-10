@@ -95,15 +95,30 @@ export function formatCopper(total: number): string {
 // for what is left under a gold piece: "55 gp", "1 gp 5 sp", "2 sp 2 cp".
 // Platinum belongs to the coins in a purse (formatCopper), not to prices:
 // "5 pp 5 gp" for a 55 gp item made every Market tile a sum.
-export function formatPrice(total: number): string {
+// `space` goes between a coin's number and its code: a narrow cell passes a
+// no-break space, so it breaks between coins and never inside one.
+export function formatPrice(total: number, space = " "): string {
   const value = Math.max(0, Math.round(total));
   const parts = [
     [Math.floor(value / COPPER_PER_GOLD), "gp"],
     [Math.floor((value % COPPER_PER_GOLD) / DENOMINATION_COPPER.sp), "sp"],
     [value % DENOMINATION_COPPER.sp, "cp"],
   ] as const;
-  const written = parts.filter(([count]) => count > 0).map(([count, code]) => `${count} ${code}`);
-  return written.length ? written.join(" ") : "0 gp";
+  const written = parts.filter(([count]) => count > 0).map(([count, code]) => `${count}${space}${code}`);
+  return written.length ? written.join(" ") : `0${space}gp`;
+}
+
+// A price as the content pack or an author wrote it, put in the notation
+// every other price takes (formatPrice). The pack prints a part of a gold
+// piece as a decimal ("0.05 gp", "0.4 gp") and its newer rows a bare gold
+// figure ("0.01"), so the builder's gear list said "0.05 gp" beside a
+// receipt that said "5 cp" for the same candle. A whole amount already in
+// the codes keeps its own marks ("2,000 gp"), and text that is no amount
+// ("varies") is passed through.
+export function priceText(text: string): string {
+  const written = String(text ?? "").trim();
+  const copper = packCostCopper(written);
+  return copper !== null && /\.|^[\d,]+$/.test(written) ? formatPrice(copper) : written;
 }
 
 export function formatPurse(purse: Purse): string {

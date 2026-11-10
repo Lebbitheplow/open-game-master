@@ -469,6 +469,17 @@ await test("Fill what's left keeps a Lore bard's expertise in its college skills
   assert.equal(fields.expertisePicks.length, 4, "and filled the one open slot");
 });
 
+// The class step offers a rogue thieves' tools for its expertise (SRD 5.1,
+// Rogue); the save's own check dropped it and then asked for "1 more", so
+// a rogue who took it could not be made. Filled around it, it stays too.
+await test("a rogue with expertise in thieves' tools is filled, saved and stored with it", async () => {
+  const picked = ["stealth", "thieves' tools"];
+  const { fields } = await runFill(fresh({ classId: "rogue", chosenSkills: ["stealth", "acrobatics", "perception", "insight"], expertisePicks: picked }));
+  assert.deepEqual(fields.expertisePicks, picked, `the fill changed the expertise: ${fields.expertisePicks.join(", ")}`);
+  const built = await saves(fields, "rogue with thieves' tools expertise");
+  assert.deepEqual(built.sheet.proficiencies.expertise, picked);
+});
+
 await test("an Order cleric's fill takes Intimidation or Persuasion for Bonus Proficiencies (Order)", async () => {
   const { fields } = await runFill(fresh({ level: 3, classId: "cleric", subclass: "Order Domain" }));
   const built = await saves(fields, "Order cleric at 3");

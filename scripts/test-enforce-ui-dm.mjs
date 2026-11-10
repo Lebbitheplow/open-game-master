@@ -131,6 +131,42 @@ await test("a rogue 6 taking bard 3 has bard's two expertise picks on top of the
   assert.equal(preview.expertiseOpen(rogue, [{ id: "rogue", subclass: "", level: 6 }, { id: "bard", subclass: "", level: 2 }]), 0);
 });
 
+// SRD 5.1: a Lore bard's college skills and its expertise both come at 3rd,
+// and a rogue taken second brings a skill, thieves' tools and two expertise
+// picks at once. The dialog offered only the skills already on the sheet,
+// so the expertise could never double what the same level gave; the server
+// applies the level's training before it judges the picks, and accepts it.
+await test("the level-up's expertise may double what the same level trains: a Lore bard's college skills, a new rogue's skill and tools", async () => {
+  const { subclassGrants, grantsForHeldTraining } = await import("../src/lib/srd/subclass-training.ts");
+  const { multiclassGrantsFor } = await import("../src/lib/srd/multiclass.ts");
+  const { withFeatChoice } = await import("../src/lib/schemas/sheet.ts");
+  const { expertiseOptionsAfter } = await import("../src/lib/srd/owed-picks-logic.ts");
+  const bard = sheetOf({ class: "bard", level: 2, proficiencies: { saves: [], skills: ["performance", "persuasion", "deception"], expertise: [], languages: [], tools: [], armor: [], weapons: [] } });
+  const classesAfter = [{ id: "bard", subclass: "College of Lore", level: 3 }];
+  const training = grantsForHeldTraining(subclassGrants(classesAfter), bard.proficiencies);
+  const college = ["arcana", "history", "nature"];
+  const choices = withFeatChoice({}, "Bonus Proficiencies (Lore)", { skills: college });
+  const options = expertiseOptionsAfter({ sheet: bard, classesAfter, feats: [], training, choices });
+  assert.deepEqual(options, ["performance", "persuasion", "deception", ...college]);
+  const fighter = sheetOf({ class: "fighter", level: 3, proficiencies: { saves: [], skills: ["athletics", "perception"], expertise: [], languages: [], tools: [], armor: [], weapons: [] } });
+  const split = [{ id: "fighter", subclass: "", level: 3 }, { id: "rogue", subclass: "", level: 1 }];
+  const rogue = expertiseOptionsAfter({ sheet: fighter, classesAfter: split, newClass: { skill: "stealth", tools: multiclassGrantsFor("rogue").tools }, feats: [], training: [], choices: {} });
+  assert.deepEqual(rogue, ["athletics", "perception", "stealth", "thieves' tools"]);
+  // Held expertise is not offered again.
+  assert.deepEqual(expertiseOptionsAfter({ sheet: { proficiencies: { ...bard.proficiencies, expertise: ["performance"] } }, classesAfter, feats: [], training, choices }), ["persuasion", "deception", ...college]);
+  // What the dialog now offers, the route takes.
+  const world = await openWorld();
+  const sheetRoute = await world.route("campaigns/[campaignId]/sheet");
+  const hero = world.addHero({ class: "bard", level: 2, proficiencies: bard.proficiencies, hitDice: { die: "d8", total: 2, spent: 0 } });
+  const awarded = await world.invoke("award_xp", { characterIds: [hero.id], amount: 900, reason: "earned" });
+  assert.equal(awarded.ok, true, awarded.error);
+  const out = await patchSheetAs(world, sheetRoute, world.owner, {
+    level: 3, levelUpClass: "bard", subclass: "College of Lore", featChoices: choices, expertise: ["arcana", "history"],
+  });
+  assert.equal(out.status, 200, out.json.error);
+  assert.deepEqual(world.sheet(hero.id).proficiencies.expertise, ["arcana", "history"]);
+});
+
 // ---- U:UB5 hit point preview with every per-level bonus ----
 
 await test("a hill dwarf fighter's preview adds the dwarf's point: average 6 + CON 2 + 1", () => {
