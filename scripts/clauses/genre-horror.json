@@ -383,15 +383,15 @@
    },
    {
     "c": "when an ally within 30 ft drops to 0 HP",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_final_benediction#TRIGGER_AS_CARD",
-    "recorded_as": "spends-trigger-as-card-counter-horror-final-benediction"
+    "is": "held",
+    "by": "src/lib/dm/genre-drop-holds.ts, called by src/lib/dm/pc-damage.ts before the death engine; the counter is passive (src/lib/srd/genre-a-counter-terms.ts)",
+    "probe": "scripts/test-genre-drop-holds.mjs"
    },
    {
     "c": "they instead drop to WIS-mod x 5 HP",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_final_benediction#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-horror-final-benediction"
+    "is": "held",
+    "by": "src/lib/dm/genre-drop-holds.ts, called by src/lib/dm/pc-damage.ts before the death engine; the counter is passive (src/lib/srd/genre-a-counter-terms.ts)",
+    "probe": "scripts/test-genre-drop-holds.mjs"
    }
   ]
  },
@@ -553,15 +553,15 @@
    },
    {
     "c": "when you would drop to 0 HP",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_the_last_candle#TRIGGER_AS_CARD",
-    "recorded_as": "spends-trigger-as-card-counter-horror-the-last-candle"
+    "is": "held",
+    "by": "src/lib/dm/genre-drop-holds.ts, called by src/lib/dm/pc-damage.ts before the death engine; the counter is passive (src/lib/srd/genre-a-counter-terms.ts)",
+    "probe": "scripts/test-genre-drop-holds.mjs"
    },
    {
     "c": "drop to 1 instead and your Vigil reignites at double radius",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_the_last_candle#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-horror-the-last-candle"
+    "is": "held",
+    "by": "src/lib/dm/genre-drop-holds.ts, called by src/lib/dm/pc-damage.ts before the death engine; the counter is passive (src/lib/srd/genre-a-counter-terms.ts); the Vigil is the candlelight vigil condition, laid again for a minute; its doubled radius is the condition's to say",
+    "probe": "scripts/test-genre-drop-holds.mjs"
    }
   ]
  },
@@ -1217,15 +1217,15 @@
    },
    {
     "c": "when you drop to 0 HP",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_won_t_die_here#TRIGGER_AS_CARD",
-    "recorded_as": "spends-trigger-as-card-counter-horror-won-t-die-here"
+    "is": "held",
+    "by": "src/lib/dm/genre-drop-holds.ts, called by src/lib/dm/pc-damage.ts before the death engine; the counter is passive (src/lib/srd/genre-a-counter-terms.ts)",
+    "probe": "scripts/test-genre-drop-holds.mjs"
    },
    {
     "c": "drop to 1 instead",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_won_t_die_here#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-horror-won-t-die-here"
+    "is": "held",
+    "by": "src/lib/dm/genre-drop-holds.ts, called by src/lib/dm/pc-damage.ts before the death engine; the counter is passive (src/lib/srd/genre-a-counter-terms.ts)",
+    "probe": "scripts/test-genre-drop-holds.mjs"
    }
   ]
  },
@@ -1592,9 +1592,9 @@
    },
    {
     "c": "each use also restores CON-mod x 5 HP",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_the_one_who_lives#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-horror-the-one-who-lives"
+    "is": "held",
+    "by": "src/lib/dm/genre-drop-holds.ts, called by src/lib/dm/pc-damage.ts before the death engine; the counter is passive (src/lib/srd/genre-a-counter-terms.ts); the pool is horror_the_one_who_lives once it is held",
+    "probe": "scripts/test-genre-drop-holds.mjs"
    }
   ]
  },

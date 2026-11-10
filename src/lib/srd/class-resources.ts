@@ -8,6 +8,7 @@
 import { COMBAT_RESOURCE_DEFS } from "@/lib/srd/combat-rows";
 import customResourcesJson from "@/lib/classes/resources.json";
 import authoredResourcesJson from "@/lib/srd/authored-resources.json";
+import { GENRE_COUNTER_TERMS } from "@/lib/srd/genre-counter-terms";
 import { innateSpellCounters, racialCounterRest, racialCounterSpell, RACIAL_COUNTER_PREFIX, speciesSpellsReadable } from "@/lib/srd/racial-grants";
 import { INVOCATION_COUNTER_PREFIX, invocationCounters, invocationOfCounter } from "@/lib/srd/granted-casts";
 import { freeCastOf, freeCastResourceId, freeCastSpellOf, isFreeCastResource } from "@/lib/srd/feat-spells";
@@ -707,6 +708,9 @@ const CUSTOM_RESOURCE_DEFS: ResourceDef[] = (
   guidance: row.guidance,
   upgrades: row.upgrades,
   ...(row.action ? { action: row.action } : {}),
+  // What the prose cannot carry: a trigger the server spends it on, a cost,
+  // a recharge by level (src/lib/srd/genre-counter-terms.ts).
+  ...GENRE_COUNTER_TERMS[row.id],
 }));
 
 // The limited-use features of the authored subclass layer. Same row shape as

@@ -35,6 +35,7 @@ import {
   removeConditions,
 } from "@/lib/dm/condition-logic";
 import { rollFeatureSave } from "@/lib/dm/contest-roll";
+import { genreDropHold } from "@/lib/dm/genre-drop-holds";
 import { holdsFeature } from "@/lib/srd/trait-rules";
 import { PRONE } from "@/lib/dm/vitals-logic";
 import { authoredAuraResistances } from "@/lib/dm/authored-saves";
@@ -435,6 +436,15 @@ export function applyPcDamage(
   const grave = strengthOfTheGrave(campaign, turnId, sheet, math, input, adjusted.amount, reason);
   if (grave) {
     return tookIt(grave);
+  }
+  // The genre classes' "drop to 1 instead" counters (src/lib/dm/genre-drop-holds.ts).
+  const genre = genreDropHold(campaign, sheet, math, input, (target, patch, delta) => {
+    patchSheet(target.id, patch);
+    audit(campaign, turnId, target, "apply_damage", delta, reason, patch);
+    publishSheet(campaign, target.id);
+  });
+  if (genre) {
+    return tookIt(genre);
   }
   // A barbarian knocked unconscious stops raging. Checked after Relentless
   // Endurance, which keeps them on their feet still raging.

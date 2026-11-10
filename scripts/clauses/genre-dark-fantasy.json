@@ -1414,15 +1414,15 @@
    },
    {
     "c": "when you drop to 0 HP",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_deathless_vigor#TRIGGER_AS_CARD",
-    "recorded_as": "spends-trigger-as-card-counter-dark-fantasy-deathless-vigor"
+    "is": "held",
+    "by": "src/lib/dm/genre-drop-holds.ts, called by src/lib/dm/pc-damage.ts before the death engine; the counter is passive (src/lib/srd/genre-a-counter-terms.ts)",
+    "probe": "scripts/test-genre-drop-holds.mjs"
    },
    {
     "c": "drop to 1 instead and gain temp HP equal to your level",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_deathless_vigor#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-dark-fantasy-deathless-vigor"
+    "is": "held",
+    "by": "src/lib/dm/genre-drop-holds.ts, called by src/lib/dm/pc-damage.ts before the death engine; the counter is passive (src/lib/srd/genre-a-counter-terms.ts)",
+    "probe": "scripts/test-genre-drop-holds.mjs"
    }
   ]
  },
@@ -2025,15 +2025,15 @@
    },
    {
     "c": "when you drop to 0 HP",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_martyr_s_endurance#TRIGGER_AS_CARD",
-    "recorded_as": "spends-trigger-as-card-counter-dark-fantasy-martyr-s-endurance"
+    "is": "held",
+    "by": "src/lib/dm/genre-drop-holds.ts, called by src/lib/dm/pc-damage.ts before the death engine; the counter is passive (src/lib/srd/genre-a-counter-terms.ts)",
+    "probe": "scripts/test-genre-drop-holds.mjs"
    },
    {
     "c": "drop to 1 instead",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_martyr_s_endurance#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-dark-fantasy-martyr-s-endurance"
+    "is": "held",
+    "by": "src/lib/dm/genre-drop-holds.ts, called by src/lib/dm/pc-damage.ts before the death engine; the counter is passive (src/lib/srd/genre-a-counter-terms.ts)",
+    "probe": "scripts/test-genre-drop-holds.mjs"
    }
   ]
  },
@@ -2189,23 +2189,16 @@
      "n": 1,
      "rest": "short"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap penitent::Sainted Scars#0",
-    "observed": "dark_fantasy_martyr_s_endurance after a short rest: the engine gives 1, the text 0",
-    "where": "scripts/generate-class-resources.mjs parseUses and the row in src/lib/classes/resources.json",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/genre-a-counter-terms.ts rechargeFor (short from 17th), read by take_rest",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: penitent::Sainted Scars#0"
    },
    {
     "c": "each use also grants temp HP equal to your level",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap penitent::Sainted Scars#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-drop-holds.ts, called by src/lib/dm/pc-damage.ts before the death engine; the counter is passive (src/lib/srd/genre-a-counter-terms.ts); temporary hit points equal to the level from 17th",
+    "probe": "scripts/test-genre-drop-holds.mjs",
+    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on"
    }
   ]
  },

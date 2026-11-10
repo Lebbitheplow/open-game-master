@@ -3087,9 +3087,9 @@
    },
    {
     "c": "an ally within 30 ft that would drop to 0 HP drops to 1 instead",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:cyberpunk_one_more_dawn#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-cyberpunk-one-more-dawn"
+    "is": "held",
+    "by": "src/lib/dm/genre-drop-holds.ts, called by src/lib/dm/pc-damage.ts before the death engine; the counter is passive (src/lib/srd/genre-a-counter-terms.ts)",
+    "probe": "scripts/test-genre-drop-holds.mjs"
    }
   ]
  }
