@@ -3099,13 +3099,18 @@
   "clauses": [
    {
     "c": "Right after a creature casts a spell that targets you or includes you in its area, a reaction makes it save with its spellcasting ability modifier against your spell save DC.",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/spell-thief.ts (reaction-counters.ts, on the cast record)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: spell-thief-steals",
     "read_only": true,
     "stopped": "not run: no enemy spell was cast at the trickster to open the reaction"
    },
    {
     "c": "On a failure the spell has no effect on you, and if it is of 1st level or higher and of a level you can cast, you steal it: for 8 hours you know it and can cast it with your spell slots, and the creature can't cast it.",
-    "is": "gap",
+    "is": "held",
+    "by": "src/lib/dm/spell-thief.ts (reaction-counters.ts, on the cast record)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: spell-thief-steals",
+    "note": "The caster's own casting of the stolen spell is marked (spell stolen) for the GM, who plays the creature's spells.",
     "read_only": true,
     "stopped": "not run: no probe of this sweep stages it"
    },

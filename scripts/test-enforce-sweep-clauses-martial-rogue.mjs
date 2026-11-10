@@ -55,6 +55,28 @@ const sneakDice = (level) => Math.ceil(level / 2);
     assert.equal(world.diceLog().filter((die) => die.sides === 20).length, 2, "the creature the trickster is hidden from saves with one d20");
   });
 
+  // Spell Thief at 17th level: the caster saves against the rogue's spell save
+  // DC; failed, the spell's damage comes back and the 1st-level spell is the
+  // rogue's for 8 hours, the caster's no more (spell-thief.ts).
+  await probe("spell-thief-steals", async () => {
+    const thief = hero("rogue", "Arcane Trickster", 17, { ...RAPIER, spellcasting: { ...CASTER, slots: { 1: { max: 4, used: 0 }, 2: { max: 3, used: 0 }, 3: { max: 3, used: 0 }, 4: { max: 1, used: 0 } } } });
+    const [enemy] = await stage(thief);
+    const none = await spend(thief, "Spell Thief");
+    assert.equal(none.ok, false, `with no spell cast at the rogue: ${show(none)}`);
+    kit.setEnemy(enemy.id, { stats: { spells: ["Burning Hands"], abilities: { str: 10, dex: 10, con: 10, int: 14, wis: 10, cha: 10 } } });
+    // The foe's turn: the order's first creature entry (as the hand sweep stages it).
+    const fight = world.encounter();
+    kit.saveEncounter({ ...fight, turnIndex: Math.max(0, fight.order.findIndex((entry) => entry.kind !== "pc")), turnBudget: null });
+    const before = sheet(thief).currentHp;
+    const cast = await forced([1, 4, 4, 4], () => world.invoke("cast_at_player", { characterId: thief.id, casterEnemyId: enemy.id, spell: "Burning Hands", level: 1, saveAbility: "dex", dc: 15, damage: "3d6", damageType: "fire" }));
+    assert.equal(cast.ok, true, cast.error);
+    assert.ok(sheet(thief).currentHp < before, "the staging: the spell burned the rogue");
+    const out = await spend(thief, "Spell Thief", {}, 1);
+    assert.equal(out.ok, true, out.error);
+    assert.equal(sheet(thief).currentHp, before, `the spell had no effect on the rogue: ${show(out)}`);
+    assert.ok(sheet(thief).conditions.some((entry) => /stolen spell \(burning hands\)/i.test(entry)), `the rogue knows the spell: ${sheet(thief).conditions.join(", ")}`);
+  });
+
   await probe("versatile-trickster", async () => {
     const [enemy] = await stage(trickster);
     const out = await spend(trickster, "Versatile Trickster", { targetEnemyId: enemy.id });

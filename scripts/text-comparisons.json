@@ -16,6 +16,7 @@
   "sites": {
     "lib/dm/arg-coerce.ts#re-word": [["key", 2, "tool-argument field names"]],
     "lib/dm/sampling-logic.ts#str-eq": [["key", 1, "pydantic's error type and loc names"]],
+    "lib/dm/spell-thief.ts#str-list": [["key",1,"the mental ability codes a caster's save is read from (int, wis, cha)"]],
     "lib/hidden-names-logic.ts#RegExp i": [["key", 1, "a hidden creature's own names in the table's prose"]],
     "lib/hidden-names-logic.ts#toLowerCase": [["key", 2, "creature names compared as the table shows them"]],
     "lib/dm/sampling-logic.ts#\\b": [["english-source", 4, "the model server's own English error message, read for no function calling or the --jinja flag"]],

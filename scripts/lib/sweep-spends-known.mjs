@@ -105,7 +105,6 @@ export const KNOWN = {
   "counter:sub_performance_of_creation": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "counter:sub_power_surge": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
   "counter:sub_restore_balance": { GUIDANCE_ONLY: { severity: "medium", note: "the use is spent and what the text states is left to the GM to apply by hand" } },
-  "counter:sub_spell_thief": { SPENT_FOR_NOTHING: { severity: "low", note: "another path carries the effect; a plain spend takes the use without it" } },
   "counter:sub_unleash_incarnation": { REPORTED_ONLY: { severity: "low", note: "DISPUTED (w2-martial handoff): the use adds one attack to the Attack action being taken, which is the turn budget's attacksAllowed, and COST_KEYS reads every attacksAllowed change as the turn's cost; the clause probe unleash-incarnation-extra-attack holds the attack" } },
   "spend:fighter::Unleash Incarnation::Unleash Incarnation": { REPORTED_ONLY: { severity: "low", note: "DISPUTED (w2-martial handoff): the spend adds one attack to the Attack action being taken, the turn budget's attacksAllowed, which COST_KEYS reads as cost; the clause probe unleash-incarnation-extra-attack holds the attack" } },
   "reaction:fighter::Hold the Line::Hold the Line": { TRIGGER_UNCHECKED: { severity: "high", note: "accepted with no trigger staged" } },
