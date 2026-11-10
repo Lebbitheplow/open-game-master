@@ -46,3 +46,6 @@ GENRE_A_CYBERPUNK.push(
   row("esper", "Neural Spike", [{ kind: "program_rider", dice: "cha", type: "psychic", oncePerTurn: true }]),
   row("netrunner", "Flatline Protocol", [{ kind: "program_crit", low: 19, vsTypes: ["construct"], casters: true }]),
 );
+
+// "Your healing dice each count as at least half their maximum."
+GENRE_A_CYBERPUNK.push(row("trauma_doc", "Perfected Formula", [{ kind: "heal_floor" }]));

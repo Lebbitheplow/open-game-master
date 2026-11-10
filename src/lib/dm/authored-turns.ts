@@ -4,6 +4,7 @@
 // Protective Spirit, Celestial Resilience. Split from authored-hooks.ts,
 // which holds the attack moments.
 
+import { selfRepairDrones } from "@/lib/dm/genre-a-cyberpunk-drones";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, getEnemy, type Encounter } from "@/lib/db/encounters";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
@@ -75,6 +76,7 @@ export function authoredTurnStart(campaign: Campaign, encounter: Encounter, comb
       if (risesWithVengeance(sheet)) {
         lines.push(...searingVengeance(campaign, sheet));
       }
+      lines.push(...selfRepairDrones(campaign, sheet));
       for (const { effect, held } of activeAuthored(sheet, "turn_heal")) {
         if (effect.when !== "start") {
           continue;

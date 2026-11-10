@@ -46,3 +46,28 @@ CYBER.program_once = async function programOnce(t, run, feature) {
   const second = await bolt();
   eq(first - second, run.n, `damage the rider added to the first Fire Bolt of the turn over the second (${first} then ${second})`);
 };
+
+// "Each drone regains 2d6 HP at the start of your turn, once per rest each":
+// both drones of a 9th-level rigger, hurt, are mended as the rigger's turn
+// starts (2d6 on 3s), the rigger untouched; hurt again, they are not.
+CYBER.drone_repair = async function droneRepair(t, run, feature) {
+  const turns = await import(new URL("../../src/lib/dm/authored-turns.ts", import.meta.url).href);
+  t.fresh();
+  const hero = t.hero(feature.classId, run.level ?? feature.level, { currentHp: 40 });
+  const made = must(await t.world.invoke("use_resource", { characterId: hero.id, resource: "Drone Companion" }), "Drone Companion").result;
+  const drones = (made?.result?.summoned ?? made?.summoned ?? []).map((entry) => entry.characterId);
+  if (drones.length < 2) throw new Error(`the staged rigger has ${drones.length} drones`);
+  const hurt = () => drones.forEach((id) => t.world.patch(id, { currentHp: 1 }));
+  const start = () => {
+    t.world.clearDice();
+    t.world.dice(3, 3, 3, 3);
+    turns.authoredTurnStart(t.world.campaign(), t.world.encounter(), [hero.id]);
+    t.world.clearDice();
+  };
+  hurt();
+  start();
+  eq(drones.map((id) => t.hp(id)).join(","), "7,7", "the drones' hit points after the rigger's turn starts");
+  hurt();
+  start();
+  eq(drones.map((id) => t.hp(id)).join(","), "1,1", "the drones' hit points as a second turn starts, each mended once since the rest");
+};

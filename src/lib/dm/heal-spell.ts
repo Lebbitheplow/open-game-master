@@ -22,6 +22,7 @@
 //
 // This module does not import mutations.ts: the cast is handed in.
 
+import { healDiceFloor } from "@/lib/dm/genre-a-cyberpunk-programs";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 // The credits live in the database on the server (src/lib/db/item-cast-credits.ts).
 import "@/lib/db/item-cast-credits";
@@ -240,7 +241,7 @@ export function castHealingSpell(
     // Circle of Mortality: on a creature at 0 hit points (authored-effects.ts).
     authoredHealMax(caster, target) !== null ||
     target.conditions.some((entry) => entry.toLowerCase() === "beacon of hope");
-  const withBond = [expression, ...added.dice].join("+");
+  const withBond = healDiceFloor(caster, [expression, ...added.dice].join("+"));
   const full = bonus > 0 ? `${withBond}+${bonus}` : bonus < 0 ? `${withBond}-${-bonus}` : withBond;
   let amount: number;
   if (maximize) {

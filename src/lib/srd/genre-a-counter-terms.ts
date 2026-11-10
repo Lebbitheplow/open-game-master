@@ -71,6 +71,13 @@ export const GENRE_A_COUNTER_TERMS: Record<string, CounterTerms> = {
   // "Regain one 1st-level slot on a short rest": every short rest, so its
   // one use comes back with the rest that spends it.
   cyberpunk_psi_font: { ...BY_REST("Psi Font", "each short rest gives the esper back one expended 1st-level spell slot."), effect: { kind: "recover_slots", levels: () => 1, most: 1, maxLevel: 1 } },
+  // "Each drone regains 2d6 HP at the start of your turn, once per rest
+  // each": one use per drone (src/lib/dm/genre-a-cyberpunk-drones.ts).
+  cyberpunk_self_repair_protocol: {
+    passive: true,
+    guidance: "Self-Repair Protocol: each damaged drone regains 2d6 hit points as the rigger's turn starts, once per rest each. The server mends the drones and spends the uses itself; no call spends it.",
+    upgrades: [{ match: "drone swarm", uses: 2 }, { match: "drone legion", uses: 3 }],
+  },
   cyberpunk_overmind: { effect: { kind: "recover_slots", levels: (_level, mods) => Math.max(1, mods?.cha ?? 0), now: true } },
   dark_fantasy_the_tomb_provides: { effect: { kind: "recover_slots", levels: (_level, mods) => Math.max(1, mods?.cha ?? 0), now: true } },
   horror_unfinished_ritual: {

@@ -75,6 +75,9 @@ export type AuthoredEffect = Base &
     // src/lib/dm/genre-a-cyberpunk-programs.ts.
     | { kind: "program_rider"; dice: Formula; type: string; oncePerTurn?: boolean }
     | { kind: "program_crit"; low: number; vsTypes: string[]; casters?: boolean }
+    // Every healing die the holder rolls counts as at least half its faces
+    // (Perfected Formula): genre-a-cyberpunk-programs.ts healDiceFloor.
+    | { kind: "heal_floor" }
     | { kind: "concentration_adv" }
     | { kind: "save_prof"; abilities: Ability[] }
     // `ability`: saves of that ability only (Thought Shield: +2 on WIS saves).

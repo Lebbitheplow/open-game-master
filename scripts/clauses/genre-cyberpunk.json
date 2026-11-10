@@ -1192,28 +1192,22 @@
    {
     "c": "Each drone regains 2d6 HP at the start of your turn",
     "run": {
-     "k": "heal",
-     "id": "cyberpunk_self_repair_protocol",
-     "target": "ally",
-     "dice": 2,
-     "want": "nobody"
+     "k": "drone_repair"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Self-Repair Protocol#0",
-    "where": "scripts/generate-class-resources.mjs parseFx and src/lib/dm/resource-tools.ts (heal_target): the fx carries the dice of the base line only, and none of the text's gate, range or upgrades",
-    "sev": "medium",
-    "observed": "it healed a character; the text heals each drone"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-cyberpunk-drones.ts selfRepairDrones at the rigger turn start (src/lib/dm/authored-turns.ts), one use of cyberpunk_self_repair_protocol per drone mended",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: rigger::Self-Repair Protocol#0"
    },
    {
     "c": "once per rest each",
     "run": {
      "k": "counter",
      "id": "cyberpunk_self_repair_protocol",
-     "n": 1,
+     "n": 2,
      "rest": "short"
     },
     "is": "held",
-    "by": "src/lib/classes/resources.json row (uses, ability, recharge, upgrades), read by src/lib/srd/class-resources.ts populateResources and take_rest",
+    "by": "the cyberpunk_self_repair_protocol counter, one use per drone (two at 9th level with Drone Swarm, three with Drone Legion: src/lib/srd/genre-a-counter-terms.ts upgrades), back on a short rest; each drone keeps a mark of its use (src/lib/dm/genre-a-cyberpunk-drones.ts)",
     "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: rigger::Self-Repair Protocol#1"
    }
   ]
@@ -2767,11 +2761,9 @@
      "face": 1,
      "floor": 3
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Perfected Formula#0",
-    "where": "scripts/generate-class-resources.mjs parseFx and src/lib/dm/resource-tools.ts (heal_target): the fx carries the dice of the base line only, and none of the text's gate, range or upgrades",
-    "sev": "medium",
-    "observed": "hit points cyberpunk_stim_injector restored"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts heal_floor, read by src/lib/dm/genre-a-cyberpunk-programs.ts healDiceFloor in src/lib/dm/resource-tools.ts heal_target and src/lib/dm/heal-spell.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Perfected Formula#0"
    }
   ]
  },

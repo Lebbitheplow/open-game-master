@@ -11,6 +11,10 @@
 //     against constructs and spellcasters"): the attack's critical range
 //     (attack-record.ts), against a creature of those types or one whose
 //     block casts spells.
+//   heal_floor (Perfected Formula, "Your healing dice each count as at least
+//     half their maximum"): every die of the holder's heals, a counter's
+//     (resource-tools.ts heal_target) and a spell's (heal-spell.ts), floored
+//     at half its faces.
 // Pure: the sheet and the target come in as values.
 import { activeAuthored, resolveFormula } from "@/lib/srd/authored-effects";
 import type { CombatRiders } from "@/lib/srd/feature-effects";
@@ -42,4 +46,12 @@ export function programCritRange(sheet: CharacterSheet, target: { stats?: { type
     }
   }
   return low;
+}
+
+// "3d6+4" becomes "3d6f3+4" for a holder of a heal_floor row.
+export function healDiceFloor(sheet: CharacterSheet, expression: string): string {
+  if (!activeAuthored(sheet, "heal_floor").length) {
+    return expression;
+  }
+  return expression.replace(/(\d{1,3})d(\d{1,3})(?:f\d{1,3})?(?![\df])/gi, (_term, count: string, sides: string) => `${count}d${sides}f${Math.ceil(Number(sides) / 2)}`);
 }

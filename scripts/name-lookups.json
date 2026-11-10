@@ -16,6 +16,7 @@
     "lib/dm/genre-a-cyberpunk-defenses.ts#first": [["key",1,"a downed ally beside the holder, by sheet id and the board"]],
     "lib/dm/genre-a-cyberpunk-hits.ts#first": [["key",1,"the holder's one shove row, by effect kind"]],
     "lib/dm/genre-a-cyberpunk-programs.ts#partial": [["key",1,"the SRD row's creature type"]],
+    "lib/dm/genre-a-cyberpunk-programs.ts#number": [["parse",1,"a die's faces read from a dice expression"]],
     "lib/table-delivery.ts#keyed": [["key", 1, "event kinds and enemy ids"]],
     "lib/hidden-names-logic.ts#keyed": [["search", 1, "the names a creature the table sees also answers to, kept in the prose"]],
     "lib/battlemap/hand-attack-lines.ts#partial": [["key", 1, "the once-per-turn rider keys the engine marks (pc-attack-damage.ts claimOncePerTurnRiders)"]],

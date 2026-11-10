@@ -125,3 +125,9 @@ export function summonGenreCompanion(
     },
   };
 }
+
+// The rigger's drones on the board, primary first (Self-Repair Protocol and
+// the other drone features, src/lib/dm/genre-a-cyberpunk-drones.ts).
+export function riggerDrones(campaignId: string, riggerId: string): CharacterSheet[] {
+  return summonsOf(campaignId, riggerId, DRONES);
+}

@@ -1,4 +1,5 @@
 import { genreCounterHeal, genreStimTemp } from "@/lib/dm/genre-a-heals";
+import { healDiceFloor } from "@/lib/dm/genre-a-cyberpunk-programs";
 import { recoverSlotLevels, regainedLine } from "@/lib/dm/genre-a-slots";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { shadowInvisibility, shadowLightProblem } from "@/lib/dm/one-with-shadows";
@@ -580,7 +581,7 @@ export function computeUseResource(
       if (target.deathSaves?.dead) {
         return { error: `${target.name} is DEAD; ${def.displayName} cannot help.`, refused: "rules" };
       }
-      const expression = def.effect.dice(fxLevel, derived.abilityMods);
+      const expression = healDiceFloor(sheet, def.effect.dice(fxLevel, derived.abilityMods));
       const total = rollHealing(campaign, target, def.displayName, expression);
       outcome.healTarget = { characterId: target.id, amount: Math.max(1, total) };
       outcome.result.healingRolled = total;
