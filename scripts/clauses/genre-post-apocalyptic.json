@@ -1006,26 +1006,27 @@
   "clauses": [
    {
     "c": "When you drop a creature, enemies within 15 ft save (WIS) or are frightened of you until your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Skull Takers#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Skull Takers: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Skull Takers: enemies within 15 ft of the road warrior save or are frightened; one 65 ft off is not",
+    "by": "src/lib/dm/genre-b-kills.ts genreBOnKill, from src/lib/dm/authored-hooks.ts authoredOnKill (DC 8 + proficiency + the best modifier, src/lib/srd/counter-rules.ts counterSaveDc)"
    },
    {
     "c": "within 15 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Skull Takers#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Skull Takers: enemies within 15 ft of the road warrior save or are frightened; one 65 ft off is not",
+    "by": "src/lib/dm/genre-b-kills.ts genreBOnKill, from src/lib/dm/authored-hooks.ts authoredOnKill (DC 8 + proficiency + the best modifier, src/lib/srd/counter-rules.ts counterSaveDc)"
    },
    {
     "c": "until your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Skull Takers#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Skull Takers: enemies within 15 ft of the road warrior save or are frightened; one 65 ft off is not",
+    "by": "src/lib/dm/genre-b-kills.ts genreBOnKill, from src/lib/dm/authored-hooks.ts authoredOnKill (DC 8 + proficiency + the best modifier, src/lib/srd/counter-rules.ts counterSaveDc)"
    },
    {
     "c": "save (WIS)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Skull Takers#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Skull Takers: enemies within 15 ft of the road warrior save or are frightened; one 65 ft off is not",
+    "by": "src/lib/dm/genre-b-kills.ts genreBOnKill, from src/lib/dm/authored-hooks.ts authoredOnKill (DC 8 + proficiency + the best modifier, src/lib/srd/counter-rules.ts counterSaveDc)"
    }
   ]
  },

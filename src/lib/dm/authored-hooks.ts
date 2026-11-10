@@ -47,6 +47,7 @@ import { activeAuthored, resolveFormula } from "@/lib/srd/authored-effects";
 import { effectiveMaxHp, isIncapacitated, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { hurtEnemy } from "@/lib/dm/spell-aura";
 import { withinFeet } from "@/lib/dm/authored-saves";
+import { genreBOnKill } from "@/lib/dm/genre-b-kills";
 import { vowedFoe } from "@/lib/srd/vow-of-enmity";
 import { ENTROPIC_EDGE, entropicQuarry } from "@/lib/dm/reaction-kinds";
 import { naturalWeaponOnHit } from "@/lib/dm/authored-attacks";
@@ -491,6 +492,8 @@ export function authoredOnKill(
       lines.push(`Hexblade's Curse: ${enemy.displayName} dies cursed, and ${holder.name} regains ${given} hit points.`);
     }
   }
+  // Message Sent, Skull Takers (src/lib/dm/genre-b-kills.ts).
+  lines.push(...genreBOnKill(campaign, encounter, enemy, killerId));
   return lines;
 }
 

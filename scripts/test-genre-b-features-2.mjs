@@ -10,6 +10,7 @@
 //                Hardened's cut, both in src/lib/dm/pc-damage.ts
 //   cures        src/lib/dm/genre-b-cure.ts (the "cure" spend kind)
 //   slotless     src/lib/dm/genre-b-free-cast.ts marks, read by the cast guard
+//   kills        src/lib/dm/genre-b-kills.ts, from authored-hooks.ts authoredOnKill
 //   passives     rows of src/lib/srd/authored-effects-genre-b.ts on the
 //                engine's own readers: darkvision, a turn's heal, acid that
 //                ignores resistance, a concentration damage cannot break or
@@ -341,6 +342,31 @@ await run("Master Schematic: the chosen 3rd-level spell with no slot, never a lo
   await cast(hero, "Mage Armor");
   await cast(hero, "Haste");
   assert.deepEqual(used(hero), { 1: 1, 2: 0, 3: 0 }, "the 1st-level spell rode the 3rd-level choice, or the 3rd took a slot");
+});
+
+// ---- kills (src/lib/dm/genre-b-kills.ts) ----
+
+// The holder drops the near foe with one blow, then the other foe's WIS save rolls a 1.
+async function dropNear(hero, farAt) {
+  const { near, far } = await rig.fight(hero);
+  kit.setEnemy(near.id, { currentHp: 1 });
+  kit.place(far.id, ...farAt);
+  const out = await kit.swing(hero.id, near.id, [15, 3, 3, 3, 1, 1]);
+  if (!out.ok) throw new Error(`pc_attack: ${out.error}`);
+  return kit.enemy(far.id).conditions.includes("frightened");
+}
+
+await run("Message Sent: the fallen creature's allies save or are frightened of the enforcer, however far", async () => {
+  const hero = rig.holder(feature("enforcer", "Message Sent", 14));
+  assert.equal(await dropNear(hero, [18, 2]), true, "the other foe, 65 ft off, was not frightened");
+});
+
+await run("Skull Takers: enemies within 15 ft of the road warrior save or are frightened; one 65 ft off is not", async () => {
+  const hero = rig.holder(feature("road_warrior", "Skull Takers", 7));
+  assert.equal(await dropNear(hero, [8, 2]), true, "a foe 15 ft off was not frightened");
+  rig.reset();
+  const again = rig.holder(feature("road_warrior", "Skull Takers", 7));
+  assert.equal(await dropNear(again, [18, 2]), false, "a foe 65 ft off was frightened");
 });
 
 rig.world.close();
