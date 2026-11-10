@@ -90,9 +90,14 @@ export async function POST(
   if ("keep" in choice) {
     // The roller keeps it, but a wizard who may still answer it decides
     // for themselves: the roll waits on them. Whoever runs the story keeps
-    // it outright for a table that has stepped away.
+    // it outright for a table that has stepped away. A helper this account
+    // also plays was offered on the same card as the keep, so the keep is
+    // their answer too: the roll waited on that card with nothing left to
+    // press, and with nobody else online no clock ever kept it (play-test
+    // 2026-11-09).
     if (isRoller && !thrown.choosing && thrown.options.some((option) => option.by)) {
-      return next({ kept: true });
+      const own = [...new Set(thrown.options.flatMap((option) => (option.by && getSheetById(option.by)?.userId === context.user.id ? [option.by] : [])))];
+      return next({ kept: true, ...(own.length ? { declined: [...(thrown.declined ?? []), ...own] } : {}) });
     }
     return land(thrown.outcome);
   }

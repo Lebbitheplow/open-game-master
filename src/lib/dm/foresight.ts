@@ -35,6 +35,7 @@ import { canWaitOnRoll } from "@/lib/dm/after-roll-logic";
 import { spendForetold } from "@/lib/dm/foretold";
 import { foretoldLeft } from "@/lib/dm/foretold-logic";
 import { getFoe } from "@/lib/dm/sheet-foe";
+import { inPlay } from "@/lib/dm/roster";
 import { publishPersisted } from "@/lib/events";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { trapAt } from "@/lib/srd/table-hazards";
@@ -51,7 +52,8 @@ function holdsCondition(creature: { conditions?: readonly string[] }, ...names: 
 // number left (Portent), or a Chronal Shift, Flash of Genius or Favored by the
 // Gods it holds. "A creature that you can see": a blinded or unconscious
 // watcher sees nothing to stop. A player who has left the table would hold
-// every watched roll for the stop's whole time (chronal-shift.ts playerAtTable).
+// every watched roll for the stop's whole time (chronal-shift.ts playerAtTable),
+// and one waiting on the bench is not in the fight at all (roster.ts inPlay).
 function canWatch(campaignId: string, sheet: CharacterSheet, encounterId: string): boolean {
   return (
     sheet.watchingEncounterId === encounterId &&
@@ -59,7 +61,8 @@ function canWatch(campaignId: string, sheet: CharacterSheet, encounterId: string
     sheet.currentHp > 0 &&
     !holdsCondition(sheet, "blinded", "unconscious") &&
     rollsCanWait(sheet) &&
-    playerAtTable(campaignId, sheet)
+    playerAtTable(campaignId, sheet) &&
+    inPlay(campaignId, sheet)
   );
 }
 
